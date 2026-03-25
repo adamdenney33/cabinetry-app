@@ -25,7 +25,7 @@
   --muted:    #888888;
   --header-bg:#111111;
   --header-fg:#ffffff;
-  --nav-bg:   #ffffff;
+  --tabbar:   #e2e2e2;
 
   --radius: 10px;
   --shadow: 0 1px 4px rgba(0,0,0,0.07);
@@ -44,7 +44,7 @@ html.dark {
   --muted:    #666666;
   --header-bg:#0a0a0a;
   --header-fg:#f0f0f0;
-  --nav-bg:   #1a1a1a;
+  --tabbar:   #161616;
   --shadow: 0 1px 4px rgba(0,0,0,0.3);
   --shadow-md: 0 4px 16px rgba(0,0,0,0.4);
 }
@@ -83,20 +83,12 @@ header {
   align-items: center;
   justify-content: space-between;
   flex-shrink: 0;
-  box-shadow: 0 1px 0 var(--border);
+  box-shadow: 0 1px 0 rgba(255,255,255,0.06);
   z-index: 100;
 }
 
 .logo { display: flex; align-items: center; gap: 10px; }
-.logo-icon {
-  width: 30px; height: 30px;
-  background: var(--accent);
-  border-radius: 7px;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 15px;
-}
-.logo-text { font-size: 19px; font-weight: 800; letter-spacing: -0.5px; color: var(--header-fg); }
-.logo-text span { color: var(--accent); }
+.logo-text { font-size: 19px; font-weight: 800; letter-spacing: -0.5px; color: #ffffff; }
 .logo-badge {
   font-size: 9px; font-weight: 700;
   background: rgba(255,255,255,0.1);
@@ -125,12 +117,46 @@ header {
   cursor: pointer;
 }
 
-/* ── DARK MODE TOGGLE ── */
-.theme-toggle {
-  display: flex; align-items: center; gap: 7px;
-  cursor: pointer; user-select: none;
+/* ── SETTINGS BUTTON & DROPDOWN ── */
+.settings-wrap {
+  position: relative;
 }
-.theme-icon { font-size: 14px; opacity: 0.7; }
+.settings-btn {
+  width: 32px; height: 32px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 7px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; color: #aaa;
+  transition: all 0.15s;
+  position: relative;
+}
+.settings-btn:hover { background: rgba(255,255,255,0.14); color: #fff; }
+.settings-dropdown {
+  position: absolute; top: calc(100% + 8px); right: 0;
+  width: 240px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+  z-index: 1000;
+  overflow: hidden;
+  display: none;
+}
+.settings-dropdown.open { display: block; }
+.sd-section { padding: 12px 16px; border-bottom: 1px solid var(--border); }
+.sd-section:last-child { border-bottom: none; }
+.sd-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--muted); margin-bottom: 10px; }
+.sd-row { display: flex; align-items: center; justify-content: space-between; }
+.sd-row-label { font-size: 13px; color: var(--text); font-weight: 500; }
+.pill-toggle { display: flex; background: var(--surface2); border-radius: 6px; border: 1px solid var(--border); overflow: hidden; }
+.pill-btn { padding: 5px 12px; font-size: 12px; font-weight: 600; color: var(--muted); cursor: pointer; transition: all 0.15s; background: none; border: none; font-family: inherit; }
+.pill-btn.active { background: var(--accent); color: #fff; }
+.currency-btns { display: flex; gap: 6px; }
+.currency-btn { width: 36px; height: 30px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface2); font-size: 14px; font-weight: 700; color: var(--muted); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s; font-family: inherit; }
+.currency-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+/* ── DARK MODE TOGGLE (inside dropdown) ── */
 .toggle-track {
   width: 36px; height: 20px;
   background: #333;
@@ -138,6 +164,8 @@ header {
   position: relative;
   transition: background 0.2s;
   border: 1px solid #444;
+  cursor: pointer;
+  flex-shrink: 0;
 }
 .toggle-track.on { background: var(--accent); border-color: var(--accent); }
 .toggle-thumb {
@@ -151,38 +179,68 @@ header {
 }
 .toggle-track.on .toggle-thumb { transform: translateX(16px); }
 
-/* ── NAV TABS ── */
+/* ── NAV TABS (Chrome-style) ── */
 .nav-tabs {
-  background: var(--nav-bg);
+  background: var(--tabbar);
   border-bottom: 1px solid var(--border);
   display: flex;
-  align-items: center;
-  padding: 0 24px;
+  align-items: flex-end;
+  padding: 8px 16px 0;
   gap: 2px;
   flex-shrink: 0;
   z-index: 99;
+  overflow: visible;
 }
 
 .nav-tab {
   display: flex; align-items: center; gap: 7px;
-  padding: 14px 18px;
+  padding: 8px 18px 10px;
   font-size: 13px; font-weight: 500;
   color: var(--muted);
   cursor: pointer;
-  border-bottom: 2px solid transparent;
+  border-radius: 8px 8px 0 0;
   transition: all 0.15s;
   white-space: nowrap;
   user-select: none;
   letter-spacing: 0.1px;
+  position: relative;
+  background: transparent;
+  border: 1px solid transparent;
+  border-bottom: none;
 }
-.nav-tab:hover { color: var(--text); }
-.nav-tab.active { color: var(--text); border-bottom-color: var(--accent); font-weight: 700; }
-.nav-tab .tab-icon { font-size: 14px; }
+.nav-tab:hover { color: var(--text); background: rgba(128,128,128,0.12); }
+.nav-tab.active {
+  color: var(--text);
+  background: var(--surface);
+  font-weight: 700;
+  border: 1px solid var(--border);
+  border-bottom-color: var(--surface);
+  margin-bottom: -1px;
+}
 .nav-tab .tab-badge {
   font-size: 10px; font-weight: 700;
   background: var(--accent);
   color: #fff;
   padding: 1px 6px; border-radius: 10px;
+}
+/* Chrome wing pseudo-elements */
+.nav-tab.active::before {
+  content: '';
+  position: absolute;
+  bottom: 0; left: -8px;
+  width: 8px; height: 8px;
+  background: var(--tabbar);
+  border-radius: 0 0 8px 0;
+  box-shadow: 4px 4px 0 4px var(--surface);
+}
+.nav-tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0; right: -8px;
+  width: 8px; height: 8px;
+  background: var(--tabbar);
+  border-radius: 0 0 0 8px;
+  box-shadow: -4px 4px 0 4px var(--surface);
 }
 
 /* ── MAIN BODY ── */
@@ -469,17 +527,53 @@ canvas { display: block; }
 <!-- HEADER -->
 <header>
   <div class="logo">
-    <div class="logo-icon">🪵</div>
-    <div class="logo-text">Pro<span>Cabinet</span></div>
-    <div class="logo-badge">.app</div>
+    <div class="logo-text">ProCabinet.App</div>
+    <div class="logo-badge">BETA</div>
   </div>
   <div class="header-right">
-    <div class="theme-toggle" onclick="toggleTheme()" title="Toggle dark mode">
-      <span class="theme-icon">☀️</span>
-      <div class="toggle-track" id="toggle-track"><div class="toggle-thumb"></div></div>
-      <span class="theme-icon">🌙</span>
+    <div class="plan-badge">Pro Plan</div>
+    <div class="settings-wrap">
+      <button class="settings-btn" onclick="toggleSettings()" id="settings-btn" title="Settings">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+      </button>
+      <div class="settings-dropdown" id="settings-dropdown">
+        <!-- Appearance -->
+        <div class="sd-section">
+          <div class="sd-label">Appearance</div>
+          <div class="sd-row">
+            <span class="sd-row-label" style="display:flex;align-items:center;gap:6px">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+              Dark Mode
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+            </span>
+            <div class="toggle-track" id="toggle-track" onclick="toggleTheme()"><div class="toggle-thumb"></div></div>
+          </div>
+        </div>
+        <!-- Units -->
+        <div class="sd-section">
+          <div class="sd-label">Units</div>
+          <div class="sd-row">
+            <span class="sd-row-label">Measurement</span>
+            <div class="pill-toggle">
+              <button class="pill-btn" id="unit-imperial" onclick="setUnits('imperial')">Imperial</button>
+              <button class="pill-btn" id="unit-metric" onclick="setUnits('metric')">Metric</button>
+            </div>
+          </div>
+        </div>
+        <!-- Currency -->
+        <div class="sd-section">
+          <div class="sd-label">Currency</div>
+          <div class="sd-row">
+            <span class="sd-row-label">Symbol</span>
+            <div class="currency-btns">
+              <button class="currency-btn" id="cur-usd" onclick="setCurrency('$')">$</button>
+              <button class="currency-btn" id="cur-gbp" onclick="setCurrency('£')">£</button>
+              <button class="currency-btn" id="cur-eur" onclick="setCurrency('€')">€</button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
-    <div class="plan-badge">⭐ Pro Plan</div>
     <div class="user-avatar">AD</div>
   </div>
 </header>
@@ -487,16 +581,20 @@ canvas { display: block; }
 <!-- NAV TABS -->
 <div class="nav-tabs">
   <div class="nav-tab active" onclick="switchSection('stock')">
-    <span class="tab-icon">📦</span> Stock
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+    Stock
   </div>
   <div class="nav-tab" onclick="switchSection('cutlist')">
-    <span class="tab-icon">✂️</span> Cut List
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg>
+    Cut List
   </div>
   <div class="nav-tab" onclick="switchSection('quote')">
-    <span class="tab-icon">💰</span> Quote
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+    Quote
   </div>
   <div class="nav-tab" onclick="switchSection('orders')">
-    <span class="tab-icon">📋</span> Orders
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/></svg>
+    Orders
     <span class="tab-badge" id="orders-badge">3</span>
   </div>
 </div>
@@ -541,7 +639,7 @@ canvas { display: block; }
           </div>
           <div class="form-row">
             <div class="form-group">
-              <label>Cost per Sheet ($)</label>
+              <label>Cost per Sheet</label>
               <input type="number" id="stock-cost" value="65.00" min="0" step="0.01">
             </div>
           </div>
@@ -641,7 +739,10 @@ canvas { display: block; }
 
       </div>
       <div class="action-bar">
-        <button class="btn btn-primary btn-lg" onclick="optimize()">⚡ Optimize Cut Layout</button>
+        <button class="btn btn-primary btn-lg" onclick="optimize()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          Optimize Cut Layout
+        </button>
       </div>
     </div>
 
@@ -652,7 +753,9 @@ canvas { display: block; }
       </div>
       <div class="main-scroll" id="results-area">
         <div class="empty-state">
-          <div class="empty-icon">📐</div>
+          <div class="empty-icon" style="font-size:48px;opacity:0.2">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+          </div>
           <h3>Ready to Optimize</h3>
           <p>Add sheet panels and cut pieces, then click "Optimize Cut Layout"</p>
         </div>
@@ -682,7 +785,7 @@ canvas { display: block; }
           </div>
           <div class="form-row">
             <div class="form-group">
-              <label>Labour Rate ($/hr)</label>
+              <label>Labour Rate (/hr)</label>
               <input type="number" id="q-labour-rate" value="65" min="0">
             </div>
             <div class="form-group">
@@ -729,7 +832,7 @@ canvas { display: block; }
           </div>
           <div class="form-row">
             <div class="form-group">
-              <label>Order Value ($)</label>
+              <label>Order Value</label>
               <input type="number" id="o-value" placeholder="0.00" min="0" step="0.01">
             </div>
             <div class="form-group">
@@ -762,20 +865,98 @@ canvas { display: block; }
 
 <script>
 // ══════════════════════════════════════════
+// GLOBALS
+// ══════════════════════════════════════════
+window.currency = '$';
+window.units = 'imperial';
+
+// ══════════════════════════════════════════
+// SETTINGS DROPDOWN
+// ══════════════════════════════════════════
+function toggleSettings() {
+  const dd = document.getElementById('settings-dropdown');
+  dd.classList.toggle('open');
+}
+
+document.addEventListener('click', function(e) {
+  const wrap = document.querySelector('.settings-wrap');
+  if (wrap && !wrap.contains(e.target)) {
+    document.getElementById('settings-dropdown').classList.remove('open');
+  }
+});
+
+// ══════════════════════════════════════════
 // THEME TOGGLE
 // ══════════════════════════════════════════
 let darkMode = false;
-function toggleTheme() {
-  darkMode = !darkMode;
+
+function setTheme(dark) {
+  darkMode = dark;
   document.documentElement.classList.toggle('dark', darkMode);
   document.getElementById('toggle-track').classList.toggle('on', darkMode);
   localStorage.setItem('pcDark', darkMode ? '1' : '0');
 }
+
+function toggleTheme() {
+  setTheme(!darkMode);
+}
+
 (function() {
   if (localStorage.getItem('pcDark') === '1') {
-    darkMode = true;
-    document.documentElement.classList.add('dark');
-    document.getElementById('toggle-track').classList.add('on');
+    setTheme(true);
+  }
+})();
+
+// ══════════════════════════════════════════
+// UNITS
+// ══════════════════════════════════════════
+function setUnits(u) {
+  window.units = u;
+  localStorage.setItem('pcUnits', u);
+  document.getElementById('unit-imperial').classList.toggle('active', u === 'imperial');
+  document.getElementById('unit-metric').classList.toggle('active', u === 'metric');
+  try { renderStockMain(); renderQuoteMain(); renderOrdersMain(); } catch(e) {}
+}
+
+(function() {
+  const saved = localStorage.getItem('pcUnits');
+  if (saved) {
+    setUnits(saved);
+  } else {
+    const lang = navigator.language || 'en-US';
+    const imperialLocales = ['en-US', 'en-CA', 'en-AU'];
+    const isImperial = imperialLocales.some(l => lang.startsWith(l.split('-')[0]) && lang.includes(l.split('-')[1]));
+    setUnits(isImperial ? 'imperial' : 'metric');
+  }
+})();
+
+// ══════════════════════════════════════════
+// CURRENCY
+// ══════════════════════════════════════════
+const EURO_LOCALES = ['de','fr','es','it','nl','pt','fi','el','cs','sk','sl','hr','bg','ro','hu','lv','lt','et','mt','ga'];
+
+function setCurrency(c) {
+  window.currency = c;
+  localStorage.setItem('pcCurrency', c);
+  document.getElementById('cur-usd').classList.toggle('active', c === '$');
+  document.getElementById('cur-gbp').classList.toggle('active', c === '£');
+  document.getElementById('cur-eur').classList.toggle('active', c === '€');
+  try { renderStockMain(); renderQuoteMain(); renderOrdersMain(); } catch(e) {}
+}
+
+(function() {
+  const saved = localStorage.getItem('pcCurrency');
+  if (saved) {
+    setCurrency(saved);
+    return;
+  }
+  const lang = navigator.language || 'en-US';
+  if (lang === 'en-GB' || lang.startsWith('en-GB')) {
+    setCurrency('£');
+  } else if (EURO_LOCALES.some(l => lang.startsWith(l))) {
+    setCurrency('€');
+  } else {
+    setCurrency('$');
   }
 })();
 
@@ -837,6 +1018,7 @@ function adjustStock(id, delta) {
 }
 
 function renderStockMain() {
+  const cur = window.currency;
   const el = document.getElementById('stock-main');
   const totalSheets = stockItems.reduce((s, i) => s + i.qty, 0);
   const totalValue = stockItems.reduce((s, i) => s + i.qty * i.cost, 0);
@@ -861,7 +1043,7 @@ function renderStockMain() {
       </div>
       <div class="stat-card warn">
         <div class="stat-label">Stock Value</div>
-        <div class="stat-value">$${totalValue.toLocaleString('en-US', {minimumFractionDigits:0, maximumFractionDigits:0})}</div>
+        <div class="stat-value">${cur}${totalValue.toLocaleString('en-US', {minimumFractionDigits:0, maximumFractionDigits:0})}</div>
         <div class="stat-sub">total inventory</div>
       </div>
     </div>
@@ -876,7 +1058,7 @@ function renderStockMain() {
               <div class="stock-name">${item.name}</div>
               <div class="stock-sku">${item.sku} &nbsp;·&nbsp; ${item.w}"×${item.h}"</div>
             </div>
-            <span class="badge ${isLow ? 'badge-red' : 'badge-green'}">${isLow ? '⚠ Low' : '✓ OK'}</span>
+            <span class="badge ${isLow ? 'badge-red' : 'badge-green'}">${isLow ? 'Low' : 'OK'}</span>
           </div>
           <div class="stock-qty-row">
             <div>
@@ -884,8 +1066,8 @@ function renderStockMain() {
               <div class="stock-qty-label">sheets</div>
             </div>
             <div style="text-align:right">
-              <div style="font-size:13px;font-weight:700;color:var(--text)">$${(item.qty * item.cost).toFixed(0)}</div>
-              <div style="font-size:10px;color:var(--muted)">$${item.cost.toFixed(2)}/sheet</div>
+              <div style="font-size:13px;font-weight:700;color:var(--text)">${cur}${(item.qty * item.cost).toFixed(0)}</div>
+              <div style="font-size:10px;color:var(--muted)">${cur}${item.cost.toFixed(2)}/sheet</div>
             </div>
           </div>
           <div class="stock-actions">
@@ -1066,7 +1248,7 @@ function renderResults() {
 
 function renderLayout(area) {
   if (!results.layouts.length) {
-    area.innerHTML = '<div class="empty-state"><div class="empty-icon">⚠️</div><h3>No layouts generated</h3><p>Check that your pieces fit within your sheet dimensions.</p></div>';
+    area.innerHTML = '<div class="empty-state"><h3>No layouts generated</h3><p>Check that your pieces fit within your sheet dimensions.</p></div>';
     return;
   }
   const u = document.getElementById('units').value;
@@ -1122,7 +1304,7 @@ function drawCanvas(container, layout, units) {
       if (h > 36) {
         ctx.font = `${fs*0.82}px -apple-system,sans-serif`;
         ctx.fillStyle = 'rgba(255,255,255,0.75)';
-        ctx.fillText((p.rotated?`${p.item.h}×${p.item.w}`:`${p.item.w}×${p.item.h}`) + (p.rotated?' ↺':''), x+w/2, y+h/2+fs*0.75);
+        ctx.fillText((p.rotated?`${p.item.h}×${p.item.w}`:`${p.item.w}×${p.item.h}`) + (p.rotated?' r':''), x+w/2, y+h/2+fs*0.75);
       }
     }
   }
@@ -1170,7 +1352,7 @@ function renderSummary(area) {
             <td>${item.w} × ${item.h}</td>
             <td>${list.length} / ${item.qty}</td>
             <td>${[...new Set(list.map(p=>'#'+p.sheetNum))].join(', ')}</td>
-            <td>${list.some(p=>p.rotated)?'<span class="badge badge-orange">↺ rotated</span>':''}</td>
+            <td>${list.some(p=>p.rotated)?'<span class="badge badge-orange">rotated</span>':''}</td>
           </tr>`).join('')}
       </tbody>
     </table>
@@ -1238,6 +1420,7 @@ function createQuote() {
 function removeQuote(id) { quotes = quotes.filter(q => q.id !== id); renderQuoteMain(); }
 
 function renderQuoteMain() {
+  const cur = window.currency;
   const el = document.getElementById('quote-main');
   const totalValue = quotes.reduce((s,q) => s + quoteTotal(q), 0);
   const approved = quotes.filter(q => q.status === 'approved').length;
@@ -1252,7 +1435,7 @@ function renderQuoteMain() {
     <div class="stats-grid">
       <div class="stat-card accent"><div class="stat-label">Total Quotes</div><div class="stat-value">${quotes.length}</div><div class="stat-sub">all time</div></div>
       <div class="stat-card success"><div class="stat-label">Approved</div><div class="stat-value">${approved}</div><div class="stat-sub">ready to start</div></div>
-      <div class="stat-card warn"><div class="stat-label">Pipeline Value</div><div class="stat-value">$${totalValue.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0})}</div><div class="stat-sub">total quoted</div></div>
+      <div class="stat-card warn"><div class="stat-label">Pipeline Value</div><div class="stat-value">${cur}${totalValue.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0})}</div><div class="stat-sub">total quoted</div></div>
     </div>
     <div class="quote-list">
       ${quotes.map(q => {
@@ -1261,10 +1444,10 @@ function renderQuoteMain() {
         <div class="quote-item">
           <div class="quote-info">
             <div class="quote-name">${q.project}</div>
-            <div class="quote-meta">👤 ${q.client} &nbsp;·&nbsp; 📅 ${q.date} &nbsp;·&nbsp; ${statusBadge(q.status)}</div>
+            <div class="quote-meta">${q.client} &nbsp;·&nbsp; ${q.date} &nbsp;·&nbsp; ${statusBadge(q.status)}</div>
           </div>
           <div style="text-align:right;margin-left:16px">
-            <div class="quote-value">$${total.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0})}</div>
+            <div class="quote-value">${cur}${total.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0})}</div>
             <div class="quote-value-label">Total inc. tax</div>
           </div>
           <button class="btn btn-danger" onclick="removeQuote(${q.id})" style="margin-left:10px">×</button>
@@ -1324,7 +1507,10 @@ function advanceOrder(id) {
   renderOrdersMain();
 }
 
+const ARROW_SVG = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>`;
+
 function renderOrdersMain() {
+  const cur = window.currency;
   const el = document.getElementById('orders-main');
   const active = orders.filter(o => o.status !== 'complete');
   const complete = orders.filter(o => o.status === 'complete');
@@ -1335,8 +1521,8 @@ function renderOrdersMain() {
     <div class="stats-grid">
       <div class="stat-card accent"><div class="stat-label">Active Orders</div><div class="stat-value">${active.length}</div><div class="stat-sub">in progress</div></div>
       <div class="stat-card success"><div class="stat-label">Completed</div><div class="stat-value">${complete.length}</div><div class="stat-sub">this period</div></div>
-      <div class="stat-card warn"><div class="stat-label">Pipeline</div><div class="stat-value">$${pipeline.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0})}</div><div class="stat-sub">active order value</div></div>
-      <div class="stat-card success"><div class="stat-label">Revenue</div><div class="stat-value">$${totalRevenue.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0})}</div><div class="stat-sub">completed orders</div></div>
+      <div class="stat-card warn"><div class="stat-label">Pipeline</div><div class="stat-value">${cur}${pipeline.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0})}</div><div class="stat-sub">active order value</div></div>
+      <div class="stat-card success"><div class="stat-label">Revenue</div><div class="stat-value">${cur}${totalRevenue.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0})}</div><div class="stat-sub">completed orders</div></div>
     </div>
     <div class="orders-list">
       ${orders.map(o => `
@@ -1344,14 +1530,14 @@ function renderOrdersMain() {
           <div class="order-status-dot" style="background:${STATUS_COLORS[o.status]}"></div>
           <div class="order-info">
             <div class="order-name">${o.project}</div>
-            <div class="order-meta">👤 ${o.client} &nbsp;·&nbsp; Due: ${o.due} &nbsp;·&nbsp; <span class="badge ${STATUS_BADGES[o.status]}">${STATUS_LABELS[o.status]}</span></div>
+            <div class="order-meta">${o.client} &nbsp;·&nbsp; Due: ${o.due} &nbsp;·&nbsp; <span class="badge ${STATUS_BADGES[o.status]}">${STATUS_LABELS[o.status]}</span></div>
           </div>
           <div class="order-right">
-            <div class="order-value">$${o.value.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0})}</div>
-            <div class="order-date">${o.status === 'complete' ? '✓ Done' : `Due ${o.due}`}</div>
+            <div class="order-value">${cur}${o.value.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0})}</div>
+            <div class="order-date">${o.status === 'complete' ? 'Done' : `Due ${o.due}`}</div>
           </div>
           <div style="display:flex;gap:6px;margin-left:12px;flex-shrink:0">
-            ${o.status !== 'complete' ? `<button class="btn btn-success" onclick="advanceOrder(${o.id})" style="font-size:11px;padding:5px 10px">→ Next</button>` : ''}
+            ${o.status !== 'complete' ? `<button class="btn btn-success" onclick="advanceOrder(${o.id})" style="font-size:11px;padding:5px 10px;display:inline-flex;align-items:center;gap:4px">Next ${ARROW_SVG}</button>` : ''}
             <button class="btn btn-danger" onclick="removeOrder(${o.id})">×</button>
           </div>
         </div>`).join('')}
