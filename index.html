@@ -3,423 +3,903 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Cut List Optimizer</title>
+<title>ProCabinet — Cabinetry Production Dashboard</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
+/* ── LIGHT MODE (default) ── */
+:root {
+  --accent:   #e8a838;
+  --accent-dim: rgba(232,168,56,0.12);
+  --danger:   #e05252;
+  --success:  #3d9970;
+  --warn:     #e8a838;
+
+  --bg:       #f2f2f2;
+  --surface:  #ffffff;
+  --surface2: #f7f7f7;
+  --border:   #e0e0e0;
+  --border2:  #ebebeb;
+  --text:     #111111;
+  --text2:    #444444;
+  --muted:    #888888;
+  --header-bg:#111111;
+  --header-fg:#ffffff;
+  --nav-bg:   #ffffff;
+
+  --radius: 10px;
+  --shadow: 0 1px 4px rgba(0,0,0,0.07);
+  --shadow-md: 0 4px 16px rgba(0,0,0,0.10);
+}
+
+/* ── DARK MODE ── */
+html.dark {
+  --bg:       #141414;
+  --surface:  #1e1e1e;
+  --surface2: #252525;
+  --border:   #2e2e2e;
+  --border2:  #282828;
+  --text:     #f0f0f0;
+  --text2:    #bbbbbb;
+  --muted:    #666666;
+  --header-bg:#0a0a0a;
+  --header-fg:#f0f0f0;
+  --nav-bg:   #1a1a1a;
+  --shadow: 0 1px 4px rgba(0,0,0,0.3);
+  --shadow-md: 0 4px 16px rgba(0,0,0,0.4);
+}
+
+html.dark input:focus, html.dark select:focus, html.dark textarea:focus {
+  background: #2a2a2a;
+}
+html.dark .badge-gray { background: #2a2a2a; color: var(--muted); }
+html.dark .badge-orange { background: rgba(232,168,56,0.15); }
+html.dark .badge-green { background: rgba(61,153,112,0.15); color: #5dbf90; }
+html.dark .badge-blue { background: rgba(80,140,220,0.15); color: #7ab4f5; }
+html.dark .badge-red { background: rgba(224,82,82,0.15); color: #f08080; }
+html.dark .badge-teal { background: rgba(61,153,112,0.15); color: #5dbf90; }
+html.dark .lock-overlay { background: rgba(20,20,20,0.88); }
+html.dark .canvas-wrap { background: var(--surface); }
+html.dark .sum-table th { background: var(--surface2); }
+
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  background: #f0ece4;
-  color: #2c2c2c;
+  background: var(--bg);
+  color: var(--text);
   height: 100vh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  transition: background 0.2s, color 0.2s;
 }
 
+/* ── HEADER ── */
 header {
-  background: #1a1a1a;
-  color: white;
+  background: var(--header-bg);
+  color: var(--header-fg);
   padding: 0 24px;
-  height: 54px;
+  height: 56px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   flex-shrink: 0;
-  border-bottom: 2px solid #d4763b;
+  box-shadow: 0 1px 0 var(--border);
+  z-index: 100;
 }
 
-header h1 { font-size: 19px; font-weight: 700; letter-spacing: -0.3px; }
-header h1 span { color: #d4763b; }
-.header-sub { font-size: 12px; color: #777; }
+.logo { display: flex; align-items: center; gap: 10px; }
+.logo-icon {
+  width: 30px; height: 30px;
+  background: var(--accent);
+  border-radius: 7px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px;
+}
+.logo-text { font-size: 19px; font-weight: 800; letter-spacing: -0.5px; color: var(--header-fg); }
+.logo-text span { color: var(--accent); }
+.logo-badge {
+  font-size: 9px; font-weight: 700;
+  background: rgba(255,255,255,0.1);
+  color: rgba(255,255,255,0.55);
+  padding: 2px 6px; border-radius: 4px;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  border: 1px solid rgba(255,255,255,0.12);
+}
 
-.app-body { display: flex; flex: 1; overflow: hidden; }
+.header-right { display: flex; align-items: center; gap: 12px; }
+.plan-badge {
+  font-size: 11px; font-weight: 700;
+  background: var(--accent);
+  color: #fff;
+  padding: 4px 10px; border-radius: 20px;
+  letter-spacing: 0.3px;
+}
+.user-avatar {
+  width: 30px; height: 30px;
+  background: #333;
+  border: 1px solid #444;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700; color: #ccc;
+  cursor: pointer;
+}
 
-/* ── Sidebar ── */
-.sidebar {
-  width: 340px;
+/* ── DARK MODE TOGGLE ── */
+.theme-toggle {
+  display: flex; align-items: center; gap: 7px;
+  cursor: pointer; user-select: none;
+}
+.theme-icon { font-size: 14px; opacity: 0.7; }
+.toggle-track {
+  width: 36px; height: 20px;
+  background: #333;
+  border-radius: 10px;
+  position: relative;
+  transition: background 0.2s;
+  border: 1px solid #444;
+}
+.toggle-track.on { background: var(--accent); border-color: var(--accent); }
+.toggle-thumb {
+  position: absolute;
+  top: 2px; left: 2px;
+  width: 14px; height: 14px;
   background: #fff;
-  border-right: 1px solid #e0d8cc;
+  border-radius: 50%;
+  transition: transform 0.2s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+.toggle-track.on .toggle-thumb { transform: translateX(16px); }
+
+/* ── NAV TABS ── */
+.nav-tabs {
+  background: var(--nav-bg);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  gap: 2px;
+  flex-shrink: 0;
+  z-index: 99;
+}
+
+.nav-tab {
+  display: flex; align-items: center; gap: 7px;
+  padding: 14px 18px;
+  font-size: 13px; font-weight: 500;
+  color: var(--muted);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.15s;
+  white-space: nowrap;
+  user-select: none;
+  letter-spacing: 0.1px;
+}
+.nav-tab:hover { color: var(--text); }
+.nav-tab.active { color: var(--text); border-bottom-color: var(--accent); font-weight: 700; }
+.nav-tab .tab-icon { font-size: 14px; }
+.nav-tab .tab-badge {
+  font-size: 10px; font-weight: 700;
+  background: var(--accent);
+  color: #fff;
+  padding: 1px 6px; border-radius: 10px;
+}
+
+/* ── MAIN BODY ── */
+.app-body { flex: 1; overflow: hidden; display: flex; }
+.section-panel { display: none; flex: 1; overflow: hidden; }
+.section-panel.active { display: flex; }
+
+/* ── SHARED LAYOUT ── */
+.sidebar {
+  width: 310px;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
   overflow: hidden;
   flex-shrink: 0;
 }
+.sidebar-scroll { overflow-y: auto; flex: 1; padding: 16px; }
+.main-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+.main-scroll { flex: 1; overflow: auto; padding: 20px; }
 
-.sidebar-scroll { overflow-y: auto; flex: 1; padding: 14px; }
-
-.section { margin-bottom: 18px; }
-
-.section-title {
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.9px;
-  color: #999;
+/* ── FORM ELEMENTS ── */
+.form-section { margin-bottom: 20px; }
+.form-section-title {
+  font-size: 10px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 1px;
+  color: var(--muted);
   margin-bottom: 10px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  display: flex; align-items: center; gap: 8px;
 }
-.section-title::after { content: ''; flex: 1; height: 1px; background: #ede6db; }
+.form-section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
 
-.form-row { display: flex; gap: 7px; margin-bottom: 7px; align-items: flex-end; }
+.form-row { display: flex; gap: 8px; margin-bottom: 8px; align-items: flex-end; }
 .form-group { flex: 1; }
+label { display: block; font-size: 11px; font-weight: 600; color: var(--muted); margin-bottom: 4px; letter-spacing: 0.2px; }
 
-label {
-  display: block;
-  font-size: 11px;
-  color: #777;
-  margin-bottom: 3px;
-  font-weight: 500;
-}
-
-input[type="text"], input[type="number"], select {
+input[type="text"], input[type="number"], input[type="email"], select, textarea {
   width: 100%;
-  padding: 6px 9px;
-  border: 1px solid #d5cdc0;
-  border-radius: 6px;
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
   font-size: 13px;
-  background: #faf9f7;
-  color: #2c2c2c;
+  background: var(--surface2);
+  color: var(--text);
   outline: none;
-  transition: border-color 0.15s;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  font-family: inherit;
 }
-input:focus, select:focus { border-color: #d4763b; background: #fff; }
+input:focus, select:focus, textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-dim);
+  background: var(--surface);
+}
+textarea { resize: vertical; min-height: 70px; }
 
 .btn {
-  padding: 7px 12px;
-  border: none;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.15s;
-  white-space: nowrap;
+  padding: 8px 14px;
+  border: none; border-radius: 7px;
+  font-size: 12px; font-weight: 600;
+  cursor: pointer; transition: all 0.15s;
+  font-family: inherit; white-space: nowrap;
+  display: inline-flex; align-items: center; gap: 5px;
 }
-.btn-outline {
-  background: #f5f0e8;
-  color: #555;
-  border: 1px solid #d5cdc0;
-  width: 100%;
-  margin-top: 2px;
-}
-.btn-outline:hover { background: #ede6db; }
-.btn-del {
-  background: none;
-  border: none;
-  color: #c0392b;
-  padding: 3px 7px;
-  font-size: 15px;
-  cursor: pointer;
-  border-radius: 4px;
-  line-height: 1;
-}
-.btn-del:hover { background: #fef0ee; }
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:hover { filter: brightness(1.1); }
+.btn-secondary { background: var(--text); color: var(--bg); }
+.btn-secondary:hover { opacity: 0.85; }
+.btn-outline { background: transparent; color: var(--text2); border: 1px solid var(--border); width: 100%; justify-content: center; }
+.btn-outline:hover { background: var(--surface2); border-color: var(--text2); }
+.btn-success { background: rgba(61,153,112,0.12); color: var(--success); border: 1px solid rgba(61,153,112,0.25); }
+.btn-success:hover { background: rgba(61,153,112,0.2); }
+.btn-danger { background: transparent; color: var(--muted); border: none; padding: 4px 8px; font-size: 14px; border-radius: 5px; }
+.btn-danger:hover { background: rgba(224,82,82,0.1); color: var(--danger); }
+.btn-lg { padding: 12px 20px; font-size: 14px; width: 100%; justify-content: center; border-radius: 8px; }
 
+.action-bar { padding: 14px 16px; border-top: 1px solid var(--border); background: var(--surface); }
+
+/* ── DATA TABLE ── */
 .data-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px; }
 .data-table th {
-  text-align: left;
-  padding: 4px 5px;
-  font-size: 10px;
-  font-weight: 700;
-  color: #aaa;
-  border-bottom: 1px solid #ede6db;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  text-align: left; padding: 5px 6px;
+  font-size: 10px; font-weight: 700;
+  color: var(--muted); border-bottom: 2px solid var(--border);
+  text-transform: uppercase; letter-spacing: 0.5px;
 }
-.data-table td {
-  padding: 5px 5px;
-  border-bottom: 1px solid #f5f0e8;
-  vertical-align: middle;
-}
+.data-table td { padding: 6px 6px; border-bottom: 1px solid var(--border2); vertical-align: middle; color: var(--text2); }
 .data-table tr:last-child td { border-bottom: none; }
-.data-table tr:hover td { background: #faf9f7; }
+.data-table tr:hover td { background: var(--surface2); }
 
-.color-dot {
-  width: 11px; height: 11px;
-  border-radius: 50%;
-  display: inline-block;
-  border: 1px solid rgba(0,0,0,0.15);
-  flex-shrink: 0;
-}
-
-.optimize-area {
-  padding: 14px;
-  border-top: 1px solid #ede6db;
-  background: #fff;
-}
-.btn-optimize {
-  width: 100%;
-  padding: 11px;
-  background: #1a1a1a;
-  color: #fff;
-  font-size: 14px;
-  font-weight: 600;
-  border-radius: 8px;
-  border: none;
-  cursor: pointer;
-  transition: background 0.15s;
-  letter-spacing: 0.2px;
-}
-.btn-optimize:hover { background: #d4763b; }
-
-/* ── Main ── */
-.main-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-
-.tabs {
-  display: flex;
-  background: #fff;
-  border-bottom: 1px solid #e0d8cc;
-  padding: 0 20px;
-  gap: 0;
-  flex-shrink: 0;
-}
-.tab {
-  padding: 13px 16px;
-  font-size: 13px;
-  font-weight: 500;
-  color: #999;
-  cursor: pointer;
-  border-bottom: 2px solid transparent;
-  transition: all 0.15s;
-}
-.tab:hover { color: #555; }
-.tab.active { color: #d4763b; border-bottom-color: #d4763b; }
-
-.results-area { flex: 1; overflow: auto; padding: 20px; }
-
-/* Stats */
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 10px;
-  margin-bottom: 18px;
-}
+/* ── CARDS & STATS ── */
+.stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 20px; }
 .stat-card {
-  background: #fff;
-  border-radius: 10px;
-  border: 1px solid #e0d8cc;
-  padding: 14px 16px;
+  background: var(--surface);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  padding: 16px 18px;
+  box-shadow: var(--shadow);
 }
-.stat-label { font-size: 10px; color: #aaa; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
-.stat-value { font-size: 26px; font-weight: 700; color: #1a1a1a; margin: 4px 0 2px; }
-.stat-sub { font-size: 11px; color: #bbb; }
-.stat-warn { border-color: #f44336 !important; }
-.stat-warn .stat-label { color: #f44336; }
-.stat-warn .stat-value { color: #f44336; }
+.stat-card.accent { border-top: 3px solid var(--accent); }
+.stat-card.success { border-top: 3px solid var(--success); }
+.stat-card.warn { border-top: 3px solid var(--warn); }
+.stat-card.danger { border-top: 3px solid var(--danger); }
+.stat-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--muted); }
+.stat-value { font-size: 28px; font-weight: 800; color: var(--text); margin: 5px 0 3px; line-height: 1; }
+.stat-sub { font-size: 11px; color: var(--muted); }
 
-/* Sheet tabs */
-.sheet-tabs { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
-.sheet-tab {
-  padding: 5px 14px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 500;
-  cursor: pointer;
-  background: #e8e0d5;
-  color: #777;
-  border: 2px solid transparent;
-  transition: all 0.15s;
-}
-.sheet-tab:hover:not(.active) { background: #ddd5c8; }
-.sheet-tab.active { background: #d4763b; color: #fff; }
-
-/* Canvas */
-.canvas-wrap {
-  background: #fff;
-  border-radius: 10px;
-  border: 1px solid #e0d8cc;
-  padding: 20px;
-  display: inline-block;
-  max-width: 100%;
-}
-
-canvas { display: block; }
-
-.legend { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
-.legend-item { display: flex; align-items: center; gap: 5px; font-size: 12px; color: #555; }
-.legend-swatch {
-  width: 14px; height: 14px;
-  border-radius: 3px;
-  flex-shrink: 0;
-  border: 1px solid rgba(0,0,0,0.15);
-}
-
-/* Summary table */
-.sum-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
-  background: #fff;
-  border-radius: 10px;
+.card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
   overflow: hidden;
-  border: 1px solid #e0d8cc;
+}
+.card-header {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  background: var(--surface2);
+}
+.card-title { font-size: 13px; font-weight: 700; color: var(--text); }
+.card-body { padding: 16px 18px; }
+
+/* ── BADGE / PILL ── */
+.badge {
+  display: inline-flex; align-items: center;
+  padding: 2px 8px; border-radius: 20px;
+  font-size: 10px; font-weight: 700;
+}
+.badge-orange { background: rgba(232,168,56,0.15); color: var(--accent); }
+.badge-green  { background: #e6f4ee; color: var(--success); }
+.badge-blue   { background: #e8f0fc; color: #2962d9; }
+.badge-red    { background: #fdf0f0; color: var(--danger); }
+.badge-gray   { background: var(--surface2); color: var(--muted); border: 1px solid var(--border); }
+.badge-teal   { background: #e6f4ee; color: var(--success); }
+
+/* ── COLOR DOT ── */
+.color-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; border: 1px solid rgba(0,0,0,0.1); flex-shrink: 0; }
+
+/* ── PROGRESS BAR ── */
+.progress-wrap { display: flex; align-items: center; gap: 8px; }
+.progress-bg { flex: 1; height: 5px; background: var(--border); border-radius: 3px; overflow: hidden; min-width: 60px; }
+.progress-fill { height: 100%; border-radius: 3px; transition: width 0.3s; }
+
+/* ── EMPTY STATE ── */
+.empty-state { text-align: center; padding: 80px 40px; }
+.empty-icon { font-size: 48px; margin-bottom: 16px; opacity: 0.3; }
+.empty-state h3 { font-size: 16px; color: var(--muted); margin-bottom: 8px; font-weight: 600; }
+.empty-state p { font-size: 13px; color: var(--muted); opacity: 0.7; }
+
+/* ── LOCK OVERLAY ── */
+.locked-feature { position: relative; overflow: hidden; border-radius: var(--radius); }
+.lock-overlay {
+  position: absolute; inset: 0;
+  background: rgba(255,255,255,0.88);
+  backdrop-filter: blur(4px);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 10px; z-index: 10;
+  border-radius: var(--radius);
+}
+.lock-overlay .lock-icon { font-size: 28px; }
+.lock-overlay p { font-size: 13px; color: var(--muted); font-weight: 500; }
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+/* ══════════════════════════════════════════
+   STOCK SECTION
+══════════════════════════════════════════ */
+.stock-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 14px;
   margin-bottom: 20px;
 }
-.sum-table th {
-  background: #f5f0e8;
-  padding: 9px 13px;
-  text-align: left;
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: #aaa;
+.stock-card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  padding: 16px;
+  transition: box-shadow 0.2s;
+  cursor: default;
 }
-.sum-table td { padding: 9px 13px; border-top: 1px solid #f5f0e8; }
-.sum-table tr:hover td { background: #faf9f7; }
+.stock-card:hover { box-shadow: var(--shadow-md); }
+.stock-card-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 10px; }
+.stock-name { font-size: 14px; font-weight: 700; color: var(--text); }
+.stock-sku { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.stock-dims { font-size: 12px; color: var(--muted); margin-bottom: 10px; }
+.stock-qty-row { display: flex; align-items: center; justify-content: space-between; }
+.stock-qty { font-size: 22px; font-weight: 800; color: var(--text); }
+.stock-qty-label { font-size: 10px; color: var(--muted); font-weight: 600; text-transform: uppercase; }
+.stock-low { color: var(--danger) !important; }
+.stock-actions { display: flex; gap: 6px; margin-top: 10px; }
+.stock-actions button { flex: 1; padding: 5px; font-size: 11px; }
 
-.badge {
-  display: inline-block;
-  padding: 2px 7px;
-  border-radius: 10px;
-  font-size: 10px;
-  font-weight: 600;
-  background: #fff3e0;
-  color: #d4763b;
+/* ══════════════════════════════════════════
+   CUTLIST SECTION
+══════════════════════════════════════════ */
+.inner-tabs { display: flex; background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 20px; flex-shrink: 0; }
+.inner-tab { padding: 11px 16px; font-size: 12px; font-weight: 500; color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.15s; }
+.inner-tab:hover { color: var(--text); }
+.inner-tab.active { color: var(--text); border-bottom-color: var(--accent); font-weight: 700; }
+
+.sheet-tabs { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+.sheet-tab { padding: 5px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; cursor: pointer; background: var(--border); color: var(--muted); transition: all 0.15s; }
+.sheet-tab:hover:not(.active) { background: #dde3ec; }
+.sheet-tab.active { background: var(--accent); color: #fff; }
+
+.canvas-wrap { background: var(--surface2); border-radius: var(--radius); border: 1px solid var(--border); padding: 20px; display: inline-block; max-width: 100%; box-shadow: var(--shadow); }
+canvas { display: block; }
+.legend { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--muted); }
+.legend-swatch { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; border: 1px solid rgba(0,0,0,0.1); }
+
+.sum-table { width: 100%; border-collapse: collapse; font-size: 13px; background: var(--surface); border-radius: var(--radius); overflow: hidden; border: 1px solid var(--border); margin-bottom: 20px; box-shadow: var(--shadow); }
+.sum-table th { background: var(--surface2); padding: 10px 14px; text-align: left; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); border-bottom: 1px solid var(--border); }
+.sum-table td { padding: 10px 14px; border-top: 1px solid var(--border2); color: var(--text2); }
+.sum-table tr:hover td { background: var(--surface2); }
+
+/* ══════════════════════════════════════════
+   QUOTE SECTION
+══════════════════════════════════════════ */
+.quote-list { display: flex; flex-direction: column; gap: 10px; }
+.quote-item {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 18px;
+  display: flex; align-items: center; justify-content: space-between;
+  box-shadow: var(--shadow);
+  transition: box-shadow 0.2s; cursor: pointer;
 }
+.quote-item:hover { box-shadow: var(--shadow-md); }
+.quote-info { flex: 1; }
+.quote-name { font-size: 14px; font-weight: 700; color: var(--text); }
+.quote-meta { font-size: 12px; color: var(--muted); margin-top: 3px; }
+.quote-value { font-size: 20px; font-weight: 800; color: var(--text); text-align: right; }
+.quote-value-label { font-size: 10px; color: var(--muted); text-align: right; font-weight: 600; text-transform: uppercase; }
 
-.bar-wrap { display: flex; align-items: center; gap: 8px; }
-.bar-bg { width: 80px; height: 7px; background: #f0ece4; border-radius: 4px; overflow: hidden; }
-.bar-fill { height: 100%; border-radius: 4px; }
+.line-items-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 16px; }
+.line-items-table th { text-align: left; padding: 8px 10px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); border-bottom: 2px solid var(--border); }
+.line-items-table td { padding: 8px 10px; border-bottom: 1px solid var(--light); }
+.line-items-table tfoot td { font-weight: 700; border-top: 2px solid var(--border); border-bottom: none; padding-top: 12px; }
+.line-items-table input { padding: 4px 8px; font-size: 12px; }
 
-.empty-state {
-  text-align: center;
-  padding: 80px 40px;
-  color: #bbb;
+/* ══════════════════════════════════════════
+   ORDERS SECTION
+══════════════════════════════════════════ */
+.orders-list { display: flex; flex-direction: column; gap: 10px; }
+.order-item {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  display: flex; align-items: center; gap: 16px;
+  box-shadow: var(--shadow);
+  transition: box-shadow 0.2s; cursor: pointer;
 }
-.empty-icon { font-size: 56px; margin-bottom: 16px; }
-.empty-state h3 { font-size: 17px; color: #aaa; margin-bottom: 8px; font-weight: 500; }
-.empty-state p { font-size: 13px; }
+.order-item:hover { box-shadow: var(--shadow-md); }
+.order-status-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.order-info { flex: 1; }
+.order-name { font-size: 14px; font-weight: 700; color: var(--text); }
+.order-meta { font-size: 12px; color: var(--muted); margin-top: 3px; }
+.order-right { text-align: right; }
+.order-value { font-size: 16px; font-weight: 800; color: var(--text); }
+.order-date { font-size: 11px; color: var(--muted); margin-top: 2px; }
 
-.section-h { font-size: 14px; font-weight: 600; color: #333; margin-bottom: 12px; }
-
-::-webkit-scrollbar { width: 5px; height: 5px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #ccc; border-radius: 3px; }
+.progress-steps { display: flex; align-items: center; gap: 0; margin: 20px 0; }
+.step { flex: 1; text-align: center; position: relative; }
+.step::before { content: ''; position: absolute; top: 14px; left: 50%; width: 100%; height: 2px; background: var(--border); z-index: 0; }
+.step:last-child::before { display: none; }
+.step-dot { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; margin: 0 auto 6px; position: relative; z-index: 1; border: 2px solid var(--border); background: var(--surface); color: var(--muted); }
+.step.done .step-dot { background: var(--accent2); border-color: var(--accent2); color: #fff; }
+.step.active .step-dot { background: var(--accent); border-color: var(--accent); color: #fff; }
+.step-label { font-size: 10px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.4px; }
+.step.done .step-label, .step.active .step-label { color: var(--text); }
 </style>
 </head>
 <body>
 
+<!-- HEADER -->
 <header>
-  <h1>Cut<span>List</span> Optimizer</h1>
-  <div class="header-sub">2D Sheet Optimization for Cabinetry &amp; Woodworking</div>
+  <div class="logo">
+    <div class="logo-icon">🪵</div>
+    <div class="logo-text">Pro<span>Cabinet</span></div>
+    <div class="logo-badge">.app</div>
+  </div>
+  <div class="header-right">
+    <div class="theme-toggle" onclick="toggleTheme()" title="Toggle dark mode">
+      <span class="theme-icon">☀️</span>
+      <div class="toggle-track" id="toggle-track"><div class="toggle-thumb"></div></div>
+      <span class="theme-icon">🌙</span>
+    </div>
+    <div class="plan-badge">⭐ Pro Plan</div>
+    <div class="user-avatar">AD</div>
+  </div>
 </header>
 
-<div class="app-body">
-  <!-- Sidebar -->
-  <div class="sidebar">
-    <div class="sidebar-scroll">
-
-      <!-- Settings -->
-      <div class="section">
-        <div class="section-title">Settings</div>
-        <div class="form-row">
-          <div class="form-group">
-            <label>Units</label>
-            <select id="units">
-              <option value="in">Inches (in)</option>
-              <option value="mm">Millimeters (mm)</option>
-              <option value="cm">Centimeters (cm)</option>
-            </select>
-          </div>
-          <div class="form-group" style="max-width:90px">
-            <label>Blade Kerf</label>
-            <input type="number" id="kerf" value="0.125" min="0" step="0.01">
-          </div>
-        </div>
-      </div>
-
-      <!-- Sheets -->
-      <div class="section">
-        <div class="section-title">Sheet Panels</div>
-        <div class="form-row">
-          <div class="form-group">
-            <label>Material</label>
-            <input type="text" id="sheet-name" value="3/4&quot; Plywood" placeholder="e.g. 3/4 Plywood">
-          </div>
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label>Width</label>
-            <input type="number" id="sheet-w" value="96" min="1">
-          </div>
-          <div class="form-group">
-            <label>Height</label>
-            <input type="number" id="sheet-h" value="48" min="1">
-          </div>
-          <div class="form-group" style="max-width:54px">
-            <label>Qty</label>
-            <input type="number" id="sheet-qty" value="5" min="1" max="99">
-          </div>
-        </div>
-        <button class="btn btn-outline" onclick="addSheet()">+ Add Sheet</button>
-        <table class="data-table">
-          <thead><tr><th>Material</th><th>W × H</th><th>Qty</th><th></th></tr></thead>
-          <tbody id="sheets-body"></tbody>
-        </table>
-      </div>
-
-      <!-- Pieces -->
-      <div class="section">
-        <div class="section-title">Cut Pieces</div>
-        <div class="form-row">
-          <div class="form-group">
-            <label>Label</label>
-            <input type="text" id="piece-label" placeholder="e.g. Side Panel">
-          </div>
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label>Width</label>
-            <input type="number" id="piece-w" value="24" min="0.1" step="0.01">
-          </div>
-          <div class="form-group">
-            <label>Height</label>
-            <input type="number" id="piece-h" value="30" min="0.1" step="0.01">
-          </div>
-          <div class="form-group" style="max-width:54px">
-            <label>Qty</label>
-            <input type="number" id="piece-qty" value="2" min="1" max="999">
-          </div>
-        </div>
-        <div style="display:flex;align-items:center;gap:6px;margin-bottom:7px">
-          <input type="checkbox" id="piece-grain" style="width:auto;accent-color:#d4763b">
-          <label for="piece-grain" style="margin:0;font-size:12px;color:#666;cursor:pointer">Lock grain direction (no rotation)</label>
-        </div>
-        <button class="btn btn-outline" onclick="addPiece()">+ Add Piece</button>
-        <table class="data-table">
-          <thead><tr><th></th><th>Label</th><th>W × H</th><th>Qty</th><th></th></tr></thead>
-          <tbody id="pieces-body"></tbody>
-        </table>
-      </div>
-
-    </div>
-    <div class="optimize-area">
-      <button class="btn-optimize" onclick="optimize()">⚡ Optimize Cut Layout</button>
-    </div>
+<!-- NAV TABS -->
+<div class="nav-tabs">
+  <div class="nav-tab active" onclick="switchSection('stock')">
+    <span class="tab-icon">📦</span> Stock
   </div>
-
-  <!-- Main -->
-  <div class="main-content">
-    <div class="tabs">
-      <div class="tab active" data-tab="layout" onclick="switchTab('layout')">Layout View</div>
-      <div class="tab" data-tab="summary" onclick="switchTab('summary')">Cut List</div>
-    </div>
-    <div class="results-area" id="results-area">
-      <div class="empty-state">
-        <div class="empty-icon">📐</div>
-        <h3>Ready to Optimize</h3>
-        <p>Add sheet panels and cut pieces, then click "Optimize Cut Layout"</p>
-      </div>
-    </div>
+  <div class="nav-tab" onclick="switchSection('cutlist')">
+    <span class="tab-icon">✂️</span> Cut List
+  </div>
+  <div class="nav-tab" onclick="switchSection('quote')">
+    <span class="tab-icon">💰</span> Quote
+  </div>
+  <div class="nav-tab" onclick="switchSection('orders')">
+    <span class="tab-icon">📋</span> Orders
+    <span class="tab-badge" id="orders-badge">3</span>
   </div>
 </div>
 
+<div class="app-body">
+
+  <!-- ════════════════════════════════════
+       STOCK SECTION
+  ════════════════════════════════════ -->
+  <div class="section-panel active" id="panel-stock">
+    <div class="sidebar">
+      <div class="sidebar-scroll">
+        <div class="form-section">
+          <div class="form-section-title">Add Material</div>
+          <div class="form-group" style="margin-bottom:8px">
+            <label>Material Name</label>
+            <input type="text" id="stock-name" placeholder="e.g. 3/4&quot; Birch Plywood">
+          </div>
+          <div class="form-group" style="margin-bottom:8px">
+            <label>SKU / Code</label>
+            <input type="text" id="stock-sku" placeholder="e.g. PLY-34-B">
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Width</label>
+              <input type="number" id="stock-w" value="96" min="1">
+            </div>
+            <div class="form-group">
+              <label>Height</label>
+              <input type="number" id="stock-h" value="48" min="1">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Qty in Stock</label>
+              <input type="number" id="stock-qty" value="10" min="0">
+            </div>
+            <div class="form-group">
+              <label>Low Stock Alert</label>
+              <input type="number" id="stock-low" value="3" min="0">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Cost per Sheet ($)</label>
+              <input type="number" id="stock-cost" value="65.00" min="0" step="0.01">
+            </div>
+          </div>
+          <button class="btn btn-outline" onclick="addStockItem()" style="margin-top:4px">+ Add to Stock</button>
+        </div>
+      </div>
+    </div>
+    <div class="main-content">
+      <div class="main-scroll" id="stock-main">
+        <!-- rendered by JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════
+       CUTLIST SECTION
+  ════════════════════════════════════ -->
+  <div class="section-panel" id="panel-cutlist">
+    <div class="sidebar">
+      <div class="sidebar-scroll">
+
+        <div class="form-section">
+          <div class="form-section-title">Settings</div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Units</label>
+              <select id="units">
+                <option value="in">Inches (in)</option>
+                <option value="mm">Millimeters (mm)</option>
+                <option value="cm">Centimeters (cm)</option>
+              </select>
+            </div>
+            <div class="form-group" style="max-width:90px">
+              <label>Blade Kerf</label>
+              <input type="number" id="kerf" value="0.125" min="0" step="0.01">
+            </div>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <div class="form-section-title">Sheet Panels</div>
+          <div class="form-group" style="margin-bottom:8px">
+            <label>Material</label>
+            <input type="text" id="sheet-name" value="3/4&quot; Plywood" placeholder="e.g. 3/4 Plywood">
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Width</label>
+              <input type="number" id="sheet-w" value="96" min="1">
+            </div>
+            <div class="form-group">
+              <label>Height</label>
+              <input type="number" id="sheet-h" value="48" min="1">
+            </div>
+            <div class="form-group" style="max-width:60px">
+              <label>Qty</label>
+              <input type="number" id="sheet-qty" value="5" min="1" max="99">
+            </div>
+          </div>
+          <button class="btn btn-outline" onclick="addSheet()">+ Add Sheet</button>
+          <table class="data-table">
+            <thead><tr><th>Material</th><th>W × H</th><th>Qty</th><th></th></tr></thead>
+            <tbody id="sheets-body"></tbody>
+          </table>
+        </div>
+
+        <div class="form-section">
+          <div class="form-section-title">Cut Pieces</div>
+          <div class="form-group" style="margin-bottom:8px">
+            <label>Label</label>
+            <input type="text" id="piece-label" placeholder="e.g. Side Panel">
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Width</label>
+              <input type="number" id="piece-w" value="24" min="0.1" step="0.01">
+            </div>
+            <div class="form-group">
+              <label>Height</label>
+              <input type="number" id="piece-h" value="30" min="0.1" step="0.01">
+            </div>
+            <div class="form-group" style="max-width:60px">
+              <label>Qty</label>
+              <input type="number" id="piece-qty" value="2" min="1" max="999">
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
+            <input type="checkbox" id="piece-grain" style="width:auto;accent-color:var(--accent)">
+            <label for="piece-grain" style="margin:0;font-size:11px;cursor:pointer">Lock grain (no rotation)</label>
+          </div>
+          <button class="btn btn-outline" onclick="addPiece()">+ Add Piece</button>
+          <table class="data-table">
+            <thead><tr><th></th><th>Label</th><th>W × H</th><th>Qty</th><th></th></tr></thead>
+            <tbody id="pieces-body"></tbody>
+          </table>
+        </div>
+
+      </div>
+      <div class="action-bar">
+        <button class="btn btn-primary btn-lg" onclick="optimize()">⚡ Optimize Cut Layout</button>
+      </div>
+    </div>
+
+    <div class="main-content">
+      <div class="inner-tabs">
+        <div class="inner-tab active" data-tab="layout" onclick="switchTab('layout')">Layout View</div>
+        <div class="inner-tab" data-tab="summary" onclick="switchTab('summary')">Cut List</div>
+      </div>
+      <div class="main-scroll" id="results-area">
+        <div class="empty-state">
+          <div class="empty-icon">📐</div>
+          <h3>Ready to Optimize</h3>
+          <p>Add sheet panels and cut pieces, then click "Optimize Cut Layout"</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════
+       QUOTE SECTION
+  ════════════════════════════════════ -->
+  <div class="section-panel" id="panel-quote">
+    <div class="sidebar">
+      <div class="sidebar-scroll">
+        <div class="form-section">
+          <div class="form-section-title">New Quote</div>
+          <div class="form-group" style="margin-bottom:8px">
+            <label>Client Name</label>
+            <input type="text" id="q-client" placeholder="e.g. John Smith">
+          </div>
+          <div class="form-group" style="margin-bottom:8px">
+            <label>Project Name</label>
+            <input type="text" id="q-project" placeholder="e.g. Kitchen Renovation">
+          </div>
+          <div class="form-group" style="margin-bottom:8px">
+            <label>Notes</label>
+            <textarea id="q-notes" placeholder="Project details..."></textarea>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Labour Rate ($/hr)</label>
+              <input type="number" id="q-labour-rate" value="65" min="0">
+            </div>
+            <div class="form-group">
+              <label>Hours</label>
+              <input type="number" id="q-hours" value="8" min="0" step="0.5">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Markup %</label>
+              <input type="number" id="q-markup" value="20" min="0">
+            </div>
+            <div class="form-group">
+              <label>Tax %</label>
+              <input type="number" id="q-tax" value="13" min="0">
+            </div>
+          </div>
+          <button class="btn btn-outline" onclick="createQuote()" style="margin-top:4px">+ Create Quote</button>
+        </div>
+      </div>
+    </div>
+    <div class="main-content">
+      <div class="main-scroll" id="quote-main">
+        <!-- rendered by JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════
+       ORDERS SECTION
+  ════════════════════════════════════ -->
+  <div class="section-panel" id="panel-orders">
+    <div class="sidebar">
+      <div class="sidebar-scroll">
+        <div class="form-section">
+          <div class="form-section-title">New Order</div>
+          <div class="form-group" style="margin-bottom:8px">
+            <label>Client Name</label>
+            <input type="text" id="o-client" placeholder="e.g. Sarah Johnson">
+          </div>
+          <div class="form-group" style="margin-bottom:8px">
+            <label>Project</label>
+            <input type="text" id="o-project" placeholder="e.g. Master Bath Vanity">
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Order Value ($)</label>
+              <input type="number" id="o-value" placeholder="0.00" min="0" step="0.01">
+            </div>
+            <div class="form-group">
+              <label>Due Date</label>
+              <input type="text" id="o-due" placeholder="e.g. Apr 15">
+            </div>
+          </div>
+          <div class="form-group" style="margin-bottom:8px">
+            <label>Status</label>
+            <select id="o-status">
+              <option value="quote">Quote Sent</option>
+              <option value="confirmed">Confirmed</option>
+              <option value="production">In Production</option>
+              <option value="delivery">Ready for Delivery</option>
+              <option value="complete">Complete</option>
+            </select>
+          </div>
+          <button class="btn btn-outline" onclick="addOrder()" style="margin-top:4px">+ Add Order</button>
+        </div>
+      </div>
+    </div>
+    <div class="main-content">
+      <div class="main-scroll" id="orders-main">
+        <!-- rendered by JS -->
+      </div>
+    </div>
+  </div>
+
+</div><!-- end app-body -->
+
 <script>
 // ══════════════════════════════════════════
-// State
+// THEME TOGGLE
+// ══════════════════════════════════════════
+let darkMode = false;
+function toggleTheme() {
+  darkMode = !darkMode;
+  document.documentElement.classList.toggle('dark', darkMode);
+  document.getElementById('toggle-track').classList.toggle('on', darkMode);
+  localStorage.setItem('pcDark', darkMode ? '1' : '0');
+}
+(function() {
+  if (localStorage.getItem('pcDark') === '1') {
+    darkMode = true;
+    document.documentElement.classList.add('dark');
+    document.getElementById('toggle-track').classList.add('on');
+  }
+})();
+
+// ══════════════════════════════════════════
+// SECTION NAVIGATION
+// ══════════════════════════════════════════
+function switchSection(name) {
+  document.querySelectorAll('.nav-tab').forEach((t,i) => {
+    const sections = ['stock','cutlist','quote','orders'];
+    t.classList.toggle('active', sections[i] === name);
+  });
+  document.querySelectorAll('.section-panel').forEach(p => {
+    p.classList.toggle('active', p.id === 'panel-' + name);
+  });
+  if (name === 'stock') renderStockMain();
+  if (name === 'quote') renderQuoteMain();
+  if (name === 'orders') renderOrdersMain();
+}
+
+// ══════════════════════════════════════════
+// STOCK
+// ══════════════════════════════════════════
+let stockItems = [
+  { id: 1, name: '3/4" Birch Plywood', sku: 'PLY-34-B', w: 96, h: 48, qty: 12, low: 4, cost: 72.00 },
+  { id: 2, name: '1/2" MDF', sku: 'MDF-12', w: 96, h: 48, qty: 3, low: 4, cost: 45.00 },
+  { id: 3, name: '3/4" Maple Plywood', sku: 'PLY-34-M', w: 96, h: 48, qty: 8, low: 3, cost: 95.00 },
+  { id: 4, name: '1/4" Hardboard', sku: 'HB-14', w: 96, h: 48, qty: 20, low: 5, cost: 18.00 },
+  { id: 5, name: '3/4" Oak Plywood', sku: 'PLY-34-O', w: 96, h: 48, qty: 2, low: 3, cost: 110.00 },
+];
+let stockNextId = 6;
+
+function addStockItem() {
+  const name = document.getElementById('stock-name').value.trim();
+  if (!name) return alert('Enter a material name.');
+  const item = {
+    id: stockNextId++,
+    name,
+    sku: document.getElementById('stock-sku').value.trim() || '—',
+    w: parseFloat(document.getElementById('stock-w').value) || 96,
+    h: parseFloat(document.getElementById('stock-h').value) || 48,
+    qty: parseInt(document.getElementById('stock-qty').value) || 0,
+    low: parseInt(document.getElementById('stock-low').value) || 3,
+    cost: parseFloat(document.getElementById('stock-cost').value) || 0,
+  };
+  stockItems.push(item);
+  document.getElementById('stock-name').value = '';
+  document.getElementById('stock-sku').value = '';
+  renderStockMain();
+}
+
+function removeStock(id) {
+  stockItems = stockItems.filter(s => s.id !== id);
+  renderStockMain();
+}
+
+function adjustStock(id, delta) {
+  const item = stockItems.find(s => s.id === id);
+  if (item) { item.qty = Math.max(0, item.qty + delta); renderStockMain(); }
+}
+
+function renderStockMain() {
+  const el = document.getElementById('stock-main');
+  const totalSheets = stockItems.reduce((s, i) => s + i.qty, 0);
+  const totalValue = stockItems.reduce((s, i) => s + i.qty * i.cost, 0);
+  const lowItems = stockItems.filter(i => i.qty <= i.low).length;
+
+  el.innerHTML = `
+    <div class="stats-grid">
+      <div class="stat-card accent">
+        <div class="stat-label">Total Materials</div>
+        <div class="stat-value">${stockItems.length}</div>
+        <div class="stat-sub">product types</div>
+      </div>
+      <div class="stat-card success">
+        <div class="stat-label">Sheets in Stock</div>
+        <div class="stat-value">${totalSheets}</div>
+        <div class="stat-sub">across all materials</div>
+      </div>
+      <div class="stat-card ${lowItems ? 'danger' : 'success'}">
+        <div class="stat-label">Low Stock Alerts</div>
+        <div class="stat-value">${lowItems}</div>
+        <div class="stat-sub">${lowItems ? 'need reordering' : 'all stocked well'}</div>
+      </div>
+      <div class="stat-card warn">
+        <div class="stat-label">Stock Value</div>
+        <div class="stat-value">$${totalValue.toLocaleString('en-US', {minimumFractionDigits:0, maximumFractionDigits:0})}</div>
+        <div class="stat-sub">total inventory</div>
+      </div>
+    </div>
+
+    <div class="stock-grid">
+      ${stockItems.map(item => {
+        const isLow = item.qty <= item.low;
+        return `
+        <div class="stock-card">
+          <div class="stock-card-header">
+            <div>
+              <div class="stock-name">${item.name}</div>
+              <div class="stock-sku">${item.sku} &nbsp;·&nbsp; ${item.w}"×${item.h}"</div>
+            </div>
+            <span class="badge ${isLow ? 'badge-red' : 'badge-green'}">${isLow ? '⚠ Low' : '✓ OK'}</span>
+          </div>
+          <div class="stock-qty-row">
+            <div>
+              <div class="stock-qty ${isLow ? 'stock-low' : ''}">${item.qty}</div>
+              <div class="stock-qty-label">sheets</div>
+            </div>
+            <div style="text-align:right">
+              <div style="font-size:13px;font-weight:700;color:var(--text)">$${(item.qty * item.cost).toFixed(0)}</div>
+              <div style="font-size:10px;color:var(--muted)">$${item.cost.toFixed(2)}/sheet</div>
+            </div>
+          </div>
+          <div class="stock-actions">
+            <button class="btn btn-outline" onclick="adjustStock(${item.id}, -1)">− Remove</button>
+            <button class="btn btn-success" onclick="adjustStock(${item.id}, 1)">+ Add Sheet</button>
+            <button class="btn btn-danger" onclick="removeStock(${item.id})">×</button>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`;
+}
+
+// ══════════════════════════════════════════
+// CUTLIST — State & Logic
 // ══════════════════════════════════════════
 let sheets = [];
 let pieces = [];
@@ -435,9 +915,6 @@ const COLORS = [
   '#1e88e5','#43a047','#fdd835','#8e24aa','#039be5',
 ];
 
-// ══════════════════════════════════════════
-// Sheets
-// ══════════════════════════════════════════
 function addSheet() {
   const name = document.getElementById('sheet-name').value.trim() || 'Sheet';
   const w = parseFloat(document.getElementById('sheet-w').value);
@@ -448,10 +925,7 @@ function addSheet() {
   renderSheets();
 }
 
-function removeSheet(id) {
-  sheets = sheets.filter(s => s.id !== id);
-  renderSheets();
-}
+function removeSheet(id) { sheets = sheets.filter(s => s.id !== id); renderSheets(); }
 
 function renderSheets() {
   const u = document.getElementById('units').value;
@@ -465,13 +939,10 @@ function renderSheets() {
       <td>${s.name}</td>
       <td>${s.w} × ${s.h} ${u}</td>
       <td>${s.qty}</td>
-      <td><button class="btn-del" onclick="removeSheet(${s.id})">×</button></td>
+      <td><button class="btn btn-danger" onclick="removeSheet(${s.id})">×</button></td>
     </tr>`).join('');
 }
 
-// ══════════════════════════════════════════
-// Pieces
-// ══════════════════════════════════════════
 function addPiece() {
   const label = document.getElementById('piece-label').value.trim() || `Piece ${pieces.length + 1}`;
   const w = parseFloat(document.getElementById('piece-w').value);
@@ -485,10 +956,7 @@ function addPiece() {
   document.getElementById('piece-label').value = '';
 }
 
-function removePiece(id) {
-  pieces = pieces.filter(p => p.id !== id);
-  renderPieces();
-}
+function removePiece(id) { pieces = pieces.filter(p => p.id !== id); renderPieces(); }
 
 function renderPieces() {
   const u = document.getElementById('units').value;
@@ -500,165 +968,93 @@ function renderPieces() {
   tbody.innerHTML = pieces.map(p => `
     <tr>
       <td><span class="color-dot" style="background:${p.color}"></span></td>
-      <td style="font-weight:500">${p.label}</td>
+      <td style="font-weight:600">${p.label}</td>
       <td>${p.w} × ${p.h}</td>
       <td>${p.qty}</td>
-      <td><button class="btn-del" onclick="removePiece(${p.id})">×</button></td>
+      <td><button class="btn btn-danger" onclick="removePiece(${p.id})">×</button></td>
     </tr>`).join('');
 }
 
-// ══════════════════════════════════════════
-// MAXRECTS bin-packing algorithm
-// ══════════════════════════════════════════
+// MAXRECTS algorithm
 function rectsOverlap(a, b) {
   return !(a.x + a.w <= b.x || b.x + b.w <= a.x || a.y + a.h <= b.y || b.y + b.h <= a.y);
 }
-
 function contains(outer, inner) {
   return outer.x <= inner.x && outer.y <= inner.y &&
          outer.x + outer.w >= inner.x + inner.w &&
          outer.y + outer.h >= inner.y + inner.h;
 }
-
 function prune(rects) {
   return rects.filter((r, i) => {
     if (r.w <= 0 || r.h <= 0) return false;
     return !rects.some((o, j) => i !== j && contains(o, r));
   });
 }
-
 function packSheet(sheetW, sheetH, items, kerf) {
   let free = [{ x: 0, y: 0, w: sheetW, h: sheetH }];
-  const placed = [];
-  const leftover = [];
-
+  const placed = [], leftover = [];
   for (const item of items) {
     let best = null, bestR = false, bestS1 = Infinity, bestS2 = Infinity;
-
     for (const r of free) {
-      // Normal
       if (r.w >= item.w && r.h >= item.h) {
         const s1 = Math.min(r.w - item.w, r.h - item.h);
         const s2 = Math.max(r.w - item.w, r.h - item.h);
-        if (s1 < bestS1 || (s1 === bestS1 && s2 < bestS2)) {
-          bestS1 = s1; bestS2 = s2; best = r; bestR = false;
-        }
+        if (s1 < bestS1 || (s1 === bestS1 && s2 < bestS2)) { bestS1=s1; bestS2=s2; best=r; bestR=false; }
       }
-      // Rotated (only if grain not locked)
       if (!item.grain && r.w >= item.h && r.h >= item.w) {
         const s1 = Math.min(r.w - item.h, r.h - item.w);
         const s2 = Math.max(r.w - item.h, r.h - item.w);
-        if (s1 < bestS1 || (s1 === bestS1 && s2 < bestS2)) {
-          bestS1 = s1; bestS2 = s2; best = r; bestR = true;
-        }
+        if (s1 < bestS1 || (s1 === bestS1 && s2 < bestS2)) { bestS1=s1; bestS2=s2; best=r; bestR=true; }
       }
     }
-
     if (!best) { leftover.push(item); continue; }
-
-    const pw = bestR ? item.h : item.w;
-    const ph = bestR ? item.w : item.h;
-
+    const pw = bestR ? item.h : item.w, ph = bestR ? item.w : item.h;
     placed.push({ x: best.x, y: best.y, w: pw, h: ph, item, rotated: bestR });
-
     const occ = { x: best.x, y: best.y, w: pw + kerf, h: ph + kerf };
-
     const newFree = [];
     for (const r of free) {
       if (!rectsOverlap(r, occ)) { newFree.push(r); continue; }
-      // Left
-      if (occ.x > r.x)
-        newFree.push({ x: r.x, y: r.y, w: occ.x - r.x, h: r.h });
-      // Right
-      if (occ.x + occ.w < r.x + r.w)
-        newFree.push({ x: occ.x + occ.w, y: r.y, w: (r.x + r.w) - (occ.x + occ.w), h: r.h });
-      // Top
-      if (occ.y > r.y)
-        newFree.push({ x: r.x, y: r.y, w: r.w, h: occ.y - r.y });
-      // Bottom
-      if (occ.y + occ.h < r.y + r.h)
-        newFree.push({ x: r.x, y: occ.y + occ.h, w: r.w, h: (r.y + r.h) - (occ.y + occ.h) });
+      if (occ.x > r.x) newFree.push({ x: r.x, y: r.y, w: occ.x - r.x, h: r.h });
+      if (occ.x + occ.w < r.x + r.w) newFree.push({ x: occ.x + occ.w, y: r.y, w: (r.x + r.w) - (occ.x + occ.w), h: r.h });
+      if (occ.y > r.y) newFree.push({ x: r.x, y: r.y, w: r.w, h: occ.y - r.y });
+      if (occ.y + occ.h < r.y + r.h) newFree.push({ x: r.x, y: occ.y + occ.h, w: r.w, h: (r.y + r.h) - (occ.y + occ.h) });
     }
     free = prune(newFree);
   }
-
   return { placed, leftover };
 }
 
-// ══════════════════════════════════════════
-// Optimize controller
-// ══════════════════════════════════════════
 function optimize() {
   if (!sheets.length) return alert('Add at least one sheet panel.');
   if (!pieces.length) return alert('Add at least one cut piece.');
-
   const kerf = parseFloat(document.getElementById('kerf').value) || 0;
-
-  // Expand pieces by qty, sort largest area first
   let remaining = [];
-  for (const p of pieces) {
-    for (let i = 0; i < p.qty; i++) {
-      remaining.push({ ...p, _inst: i });
-    }
-  }
+  for (const p of pieces) for (let i = 0; i < p.qty; i++) remaining.push({ ...p, _inst: i });
   remaining.sort((a, b) => (b.w * b.h) - (a.w * a.h));
-
-  // Build sheet instances
   const sheetInsts = [];
-  for (const s of sheets) {
-    for (let i = 0; i < s.qty; i++) sheetInsts.push({ ...s, _inst: i });
-  }
-
+  for (const s of sheets) for (let i = 0; i < s.qty; i++) sheetInsts.push({ ...s, _inst: i });
   const layouts = [];
-
   for (const si of sheetInsts) {
     if (!remaining.length) break;
-
-    // Only pass pieces that can fit dimensionally
     const fittable = remaining.filter(p => {
-      const ok = p.w <= si.w && p.h <= si.h;
-      const okR = !p.grain && p.h <= si.w && p.w <= si.h;
-      return ok || okR;
+      return (p.w <= si.w && p.h <= si.h) || (!p.grain && p.h <= si.w && p.w <= si.h);
     });
     if (!fittable.length) continue;
-
     const { placed, leftover } = packSheet(si.w, si.h, fittable, kerf);
     if (!placed.length) continue;
-
     const usedArea = placed.reduce((s, p) => s + p.w * p.h, 0);
-    const sheetArea = si.w * si.h;
-    layouts.push({
-      sheet: si,
-      placed,
-      util: usedArea / sheetArea,
-      waste: 1 - usedArea / sheetArea,
-    });
-
-    // Remove placed pieces from remaining
+    layouts.push({ sheet: si, placed, util: usedArea / (si.w * si.h), waste: 1 - usedArea / (si.w * si.h) });
     const placedKeys = new Set(placed.map(p => `${p.item.id}_${p.item._inst}`));
     remaining = remaining.filter(p => !placedKeys.has(`${p.id}_${p._inst}`));
   }
-
-  results = {
-    layouts,
-    unplaced: remaining,
-    total: pieces.reduce((s, p) => s + p.qty, 0),
-    placed: pieces.reduce((s, p) => s + p.qty, 0) - remaining.length,
-    kerf,
-  };
-
+  results = { layouts, unplaced: remaining, total: pieces.reduce((s,p) => s+p.qty, 0), placed: pieces.reduce((s,p) => s+p.qty, 0) - remaining.length, kerf };
   activeSheetIdx = 0;
   renderResults();
 }
 
-// ══════════════════════════════════════════
-// UI Rendering
-// ══════════════════════════════════════════
 function switchTab(tab) {
   activeTab = tab;
-  document.querySelectorAll('.tab').forEach(el => {
-    el.classList.toggle('active', el.dataset.tab === tab);
-  });
+  document.querySelectorAll('.inner-tab').forEach(el => el.classList.toggle('active', el.dataset.tab === tab));
   renderResults();
 }
 
@@ -673,128 +1069,69 @@ function renderLayout(area) {
     area.innerHTML = '<div class="empty-state"><div class="empty-icon">⚠️</div><h3>No layouts generated</h3><p>Check that your pieces fit within your sheet dimensions.</p></div>';
     return;
   }
-
   const u = document.getElementById('units').value;
-  const totalArea = results.layouts.reduce((s, l) => s + l.sheet.w * l.sheet.h, 0);
-  const usedArea  = results.layouts.reduce((s, l) => s + l.placed.reduce((a, p) => a + p.w * p.h, 0), 0);
+  const totalArea = results.layouts.reduce((s,l) => s + l.sheet.w * l.sheet.h, 0);
+  const usedArea  = results.layouts.reduce((s,l) => s + l.placed.reduce((a,p) => a + p.w * p.h, 0), 0);
   const avgUtil   = totalArea ? (usedArea / totalArea * 100).toFixed(1) : '0.0';
 
   let html = `<div class="stats-grid">
-    <div class="stat-card">
-      <div class="stat-label">Sheets Used</div>
-      <div class="stat-value">${results.layouts.length}</div>
-      <div class="stat-sub">of ${sheets.reduce((s,sh)=>s+sh.qty,0)} available</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-label">Pieces Placed</div>
-      <div class="stat-value">${results.placed}</div>
-      <div class="stat-sub">of ${results.total} total</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-label">Material Usage</div>
-      <div class="stat-value">${avgUtil}%</div>
-      <div class="stat-sub">${(100 - parseFloat(avgUtil)).toFixed(1)}% waste</div>
-    </div>
-    ${results.unplaced.length ? `
-    <div class="stat-card stat-warn">
-      <div class="stat-label">Unplaced</div>
-      <div class="stat-value">${results.unplaced.length}</div>
-      <div class="stat-sub">need more sheets</div>
-    </div>` : ''}
+    <div class="stat-card accent"><div class="stat-label">Sheets Used</div><div class="stat-value">${results.layouts.length}</div><div class="stat-sub">of ${sheets.reduce((s,sh)=>s+sh.qty,0)} available</div></div>
+    <div class="stat-card success"><div class="stat-label">Pieces Placed</div><div class="stat-value">${results.placed}</div><div class="stat-sub">of ${results.total} total</div></div>
+    <div class="stat-card warn"><div class="stat-label">Material Usage</div><div class="stat-value">${avgUtil}%</div><div class="stat-sub">${(100 - parseFloat(avgUtil)).toFixed(1)}% waste</div></div>
+    ${results.unplaced.length ? `<div class="stat-card danger"><div class="stat-label">Unplaced</div><div class="stat-value">${results.unplaced.length}</div><div class="stat-sub">need more sheets</div></div>` : ''}
   </div>
   <div class="sheet-tabs">
-    ${results.layouts.map((l, i) => `
-      <div class="sheet-tab ${i === activeSheetIdx ? 'active' : ''}" onclick="selectSheet(${i})">
-        Sheet ${i + 1} <span style="opacity:.7;font-size:10px">${(l.util * 100).toFixed(0)}%</span>
-      </div>`).join('')}
+    ${results.layouts.map((l,i) => `<div class="sheet-tab ${i===activeSheetIdx?'active':''}" onclick="selectSheet(${i})">Sheet ${i+1} <span style="opacity:.7;font-size:10px">${(l.util*100).toFixed(0)}%</span></div>`).join('')}
   </div>`;
-
   area.innerHTML = html;
   drawCanvas(area, results.layouts[activeSheetIdx], u);
 }
 
-function selectSheet(i) {
-  activeSheetIdx = i;
-  renderResults();
-}
+function selectSheet(i) { activeSheetIdx = i; renderResults(); }
 
 function drawCanvas(container, layout, units) {
   const { sheet, placed } = layout;
   const avail = Math.min(container.clientWidth - 56, 1100);
-  const scale = Math.min(avail / sheet.w, 580 / sheet.h, 10);
-  const cw = Math.round(sheet.w * scale);
-  const ch = Math.round(sheet.h * scale);
-
+  const scale = Math.min(avail / sheet.w, 560 / sheet.h, 10);
+  const cw = Math.round(sheet.w * scale), ch = Math.round(sheet.h * scale);
   const wrap = document.createElement('div');
   wrap.className = 'canvas-wrap';
-
   const canvas = document.createElement('canvas');
   canvas.width = cw; canvas.height = ch;
-  canvas.style.width = cw + 'px'; canvas.style.height = ch + 'px';
+  canvas.style.cssText = `width:${cw}px;height:${ch}px`;
   wrap.appendChild(canvas);
   container.appendChild(wrap);
-
   const ctx = canvas.getContext('2d');
-
-  // Sheet bg
   ctx.fillStyle = '#f7f2ea';
   ctx.fillRect(0, 0, cw, ch);
-
-  // Subtle grid
-  ctx.strokeStyle = '#e8e0d0';
-  ctx.lineWidth = 0.5;
+  ctx.strokeStyle = '#e8e2d8'; ctx.lineWidth = 0.5;
   const gs = scale * (units === 'mm' ? 100 : units === 'cm' ? 10 : 6);
   for (let x = gs; x < cw; x += gs) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,ch); ctx.stroke(); }
   for (let y = gs; y < ch; y += gs) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(cw,y); ctx.stroke(); }
-
-  // Pieces
   for (const p of placed) {
-    const x = p.x * scale, y = p.y * scale, w = p.w * scale, h = p.h * scale;
-    const color = p.item.color;
-
-    ctx.fillStyle = hexRgba(color, 0.72);
-    ctx.fillRect(x, y, w, h);
-
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 1.5;
-    ctx.strokeRect(x + 0.75, y + 0.75, w - 1.5, h - 1.5);
-
-    // Label text
+    const x = p.x*scale, y = p.y*scale, w = p.w*scale, h = p.h*scale;
+    ctx.fillStyle = hexRgba(p.item.color, 0.72); ctx.fillRect(x, y, w, h);
+    ctx.strokeStyle = p.item.color; ctx.lineWidth = 1.5; ctx.strokeRect(x+.75, y+.75, w-1.5, h-1.5);
     if (w > 22 && h > 16) {
-      const fs = Math.max(8, Math.min(13, w / 9, h / 3));
+      const fs = Math.max(8, Math.min(13, w/9, h/3));
       ctx.fillStyle = 'rgba(255,255,255,0.95)';
       ctx.font = `bold ${fs}px -apple-system,sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       const lbl = trunc(p.item.label, Math.floor(w / (fs * 0.55)));
-      ctx.fillText(lbl, x + w / 2, y + h / 2 - (h > 36 ? fs * 0.65 : 0));
+      ctx.fillText(lbl, x+w/2, y+h/2 - (h>36 ? fs*0.65 : 0));
       if (h > 36) {
-        ctx.font = `${fs * 0.82}px -apple-system,sans-serif`;
+        ctx.font = `${fs*0.82}px -apple-system,sans-serif`;
         ctx.fillStyle = 'rgba(255,255,255,0.75)';
-        const orig = p.rotated ? `${p.item.h}×${p.item.w}` : `${p.item.w}×${p.item.h}`;
-        ctx.fillText(orig + (p.rotated ? ' ↺' : ''), x + w / 2, y + h / 2 + fs * 0.75);
+        ctx.fillText((p.rotated?`${p.item.h}×${p.item.w}`:`${p.item.w}×${p.item.h}`) + (p.rotated?' ↺':''), x+w/2, y+h/2+fs*0.75);
       }
     }
   }
-
-  // Border
-  ctx.strokeStyle = '#9d8b72';
-  ctx.lineWidth = 2;
-  ctx.strokeRect(1, 1, cw - 2, ch - 2);
-
-  // Dimension labels
-  ctx.fillStyle = '#888';
-  ctx.font = '11px -apple-system,sans-serif';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText(`${sheet.w} ${units}`, cw / 2, ch - 7);
-  ctx.save();
-  ctx.translate(10, ch / 2);
-  ctx.rotate(-Math.PI / 2);
-  ctx.fillText(`${sheet.h} ${units}`, 0, 0);
-  ctx.restore();
-
-  // Legend
+  ctx.strokeStyle = '#8a7a66'; ctx.lineWidth = 2; ctx.strokeRect(1,1,cw-2,ch-2);
+  ctx.fillStyle = '#888'; ctx.font = '11px -apple-system,sans-serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(`${sheet.w} ${units}`, cw/2, ch-7);
+  ctx.save(); ctx.translate(10, ch/2); ctx.rotate(-Math.PI/2);
+  ctx.fillText(`${sheet.h} ${units}`, 0, 0); ctx.restore();
   const legend = document.createElement('div');
   legend.className = 'legend';
   const seen = new Set();
@@ -811,72 +1148,49 @@ function drawCanvas(container, layout, units) {
 
 function renderSummary(area) {
   if (!results || !results.layouts.length) {
-    area.innerHTML = '<p style="color:#aaa;font-size:13px;padding:20px">No results. Click Optimize first.</p>';
+    area.innerHTML = '<p style="color:#94a3b8;font-size:13px;padding:20px">No results. Click Optimize first.</p>';
     return;
   }
-
   const u = document.getElementById('units').value;
-  const allPlaced = results.layouts.flatMap((l, si) =>
-    l.placed.map(p => ({ ...p, sheetNum: si + 1 }))
-  );
-
-  // Group by piece type
+  const allPlaced = results.layouts.flatMap((l,si) => l.placed.map(p => ({...p, sheetNum: si+1})));
   const byPiece = {};
   for (const p of allPlaced) {
     if (!byPiece[p.item.id]) byPiece[p.item.id] = { item: p.item, list: [] };
     byPiece[p.item.id].list.push(p);
   }
-
   area.innerHTML = `
-    <div class="section-h">Cut List</div>
+    <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:12px">Cut List</div>
     <table class="sum-table">
       <thead><tr><th></th><th>Label</th><th>W × H (${u})</th><th>Placed / Total</th><th>Sheet(s)</th><th>Notes</th></tr></thead>
       <tbody>
-        ${Object.values(byPiece).map(({ item, list }) => `
+        ${Object.values(byPiece).map(({item,list}) => `
           <tr>
             <td><span class="color-dot" style="background:${item.color}"></span></td>
-            <td style="font-weight:500">${item.label}</td>
+            <td style="font-weight:600">${item.label}</td>
             <td>${item.w} × ${item.h}</td>
             <td>${list.length} / ${item.qty}</td>
-            <td>${[...new Set(list.map(p => '#' + p.sheetNum))].join(', ')}</td>
-            <td>${list.some(p => p.rotated) ? '<span class="badge">↺ rotated</span>' : ''}</td>
+            <td>${[...new Set(list.map(p=>'#'+p.sheetNum))].join(', ')}</td>
+            <td>${list.some(p=>p.rotated)?'<span class="badge badge-orange">↺ rotated</span>':''}</td>
           </tr>`).join('')}
       </tbody>
     </table>
-
     ${results.unplaced.length ? `
-    <div class="section-h" style="color:#e53935">Unplaced Pieces (${results.unplaced.length})</div>
+    <div style="font-size:14px;font-weight:700;color:var(--danger);margin-bottom:12px">Unplaced Pieces (${results.unplaced.length})</div>
     <table class="sum-table">
       <thead><tr><th>Label</th><th>Size</th><th>Note</th></tr></thead>
-      <tbody>
-        ${results.unplaced.map(p => `
-          <tr>
-            <td>${p.label}</td>
-            <td>${p.w} × ${p.h} ${u}</td>
-            <td style="color:#e53935">Not enough sheet space</td>
-          </tr>`).join('')}
-      </tbody>
+      <tbody>${results.unplaced.map(p=>`<tr><td>${p.label}</td><td>${p.w}×${p.h} ${u}</td><td style="color:var(--danger)">Not enough sheet space</td></tr>`).join('')}</tbody>
     </table>` : ''}
-
-    <div class="section-h">Sheet Usage</div>
+    <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:12px">Sheet Usage</div>
     <table class="sum-table">
       <thead><tr><th>Sheet</th><th>Material</th><th>Size</th><th>Pieces</th><th>Usage</th><th>Waste</th></tr></thead>
       <tbody>
-        ${results.layouts.map((l, i) => {
-          const pct = (l.util * 100).toFixed(1);
-          const barColor = l.util > 0.7 ? '#4caf50' : l.util > 0.4 ? '#d4763b' : '#e53935';
+        ${results.layouts.map((l,i) => {
+          const pct = (l.util*100).toFixed(1);
+          const color = l.util>0.7?'#4caf50':l.util>0.4?'var(--accent)':'var(--danger)';
           return `<tr>
-            <td>#${i + 1}</td>
-            <td>${l.sheet.name}</td>
-            <td>${l.sheet.w} × ${l.sheet.h} ${u}</td>
-            <td>${l.placed.length}</td>
-            <td>
-              <div class="bar-wrap">
-                <div class="bar-bg"><div class="bar-fill" style="width:${pct}%;background:${barColor}"></div></div>
-                ${pct}%
-              </div>
-            </td>
-            <td>${(l.waste * 100).toFixed(1)}%</td>
+            <td>#${i+1}</td><td>${l.sheet.name}</td><td>${l.sheet.w}×${l.sheet.h} ${u}</td><td>${l.placed.length}</td>
+            <td><div class="progress-wrap"><div class="progress-bg"><div class="progress-fill" style="width:${pct}%;background:${color}"></div></div>${pct}%</div></td>
+            <td>${(l.waste*100).toFixed(1)}%</td>
           </tr>`;
         }).join('')}
       </tbody>
@@ -884,26 +1198,186 @@ function renderSummary(area) {
 }
 
 // ══════════════════════════════════════════
-// Utils
+// QUOTES
+// ══════════════════════════════════════════
+let quotes = [
+  { id: 1, client: 'Sarah Johnson', project: 'Kitchen Renovation', materials: 1240, labour: 520, markup: 20, tax: 13, status: 'sent', date: 'Mar 20' },
+  { id: 2, client: 'Mike Peters', project: 'Master Bath Vanity', materials: 650, labour: 260, markup: 20, tax: 13, status: 'approved', date: 'Mar 22' },
+  { id: 3, client: 'Linda Walsh', project: 'Home Office Cabinets', materials: 980, labour: 390, markup: 20, tax: 13, status: 'draft', date: 'Mar 24' },
+];
+let quoteNextId = 4;
+
+function quoteTotal(q) {
+  const sub = q.materials + q.labour;
+  const marked = sub * (1 + q.markup / 100);
+  return marked * (1 + q.tax / 100);
+}
+
+function createQuote() {
+  const client = document.getElementById('q-client').value.trim();
+  const project = document.getElementById('q-project').value.trim();
+  if (!client || !project) return alert('Enter client name and project.');
+  const labourRate = parseFloat(document.getElementById('q-labour-rate').value) || 65;
+  const hours = parseFloat(document.getElementById('q-hours').value) || 0;
+  const q = {
+    id: quoteNextId++, client, project,
+    materials: 0, labour: labourRate * hours,
+    markup: parseFloat(document.getElementById('q-markup').value) || 20,
+    tax: parseFloat(document.getElementById('q-tax').value) || 13,
+    status: 'draft',
+    date: 'Today',
+    notes: document.getElementById('q-notes').value.trim(),
+  };
+  quotes.unshift(q);
+  document.getElementById('q-client').value = '';
+  document.getElementById('q-project').value = '';
+  document.getElementById('q-notes').value = '';
+  renderQuoteMain();
+}
+
+function removeQuote(id) { quotes = quotes.filter(q => q.id !== id); renderQuoteMain(); }
+
+function renderQuoteMain() {
+  const el = document.getElementById('quote-main');
+  const totalValue = quotes.reduce((s,q) => s + quoteTotal(q), 0);
+  const approved = quotes.filter(q => q.status === 'approved').length;
+
+  const statusBadge = s => {
+    if (s === 'approved') return '<span class="badge badge-green">Approved</span>';
+    if (s === 'sent') return '<span class="badge badge-blue">Sent</span>';
+    return '<span class="badge badge-gray">Draft</span>';
+  };
+
+  el.innerHTML = `
+    <div class="stats-grid">
+      <div class="stat-card accent"><div class="stat-label">Total Quotes</div><div class="stat-value">${quotes.length}</div><div class="stat-sub">all time</div></div>
+      <div class="stat-card success"><div class="stat-label">Approved</div><div class="stat-value">${approved}</div><div class="stat-sub">ready to start</div></div>
+      <div class="stat-card warn"><div class="stat-label">Pipeline Value</div><div class="stat-value">$${totalValue.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0})}</div><div class="stat-sub">total quoted</div></div>
+    </div>
+    <div class="quote-list">
+      ${quotes.map(q => {
+        const total = quoteTotal(q);
+        return `
+        <div class="quote-item">
+          <div class="quote-info">
+            <div class="quote-name">${q.project}</div>
+            <div class="quote-meta">👤 ${q.client} &nbsp;·&nbsp; 📅 ${q.date} &nbsp;·&nbsp; ${statusBadge(q.status)}</div>
+          </div>
+          <div style="text-align:right;margin-left:16px">
+            <div class="quote-value">$${total.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0})}</div>
+            <div class="quote-value-label">Total inc. tax</div>
+          </div>
+          <button class="btn btn-danger" onclick="removeQuote(${q.id})" style="margin-left:10px">×</button>
+        </div>`;
+      }).join('')}
+    </div>`;
+}
+
+// ══════════════════════════════════════════
+// ORDERS
+// ══════════════════════════════════════════
+let orders = [
+  { id: 1, client: 'Sarah Johnson', project: 'Kitchen Renovation', value: 3840, status: 'production', due: 'Apr 5' },
+  { id: 2, client: 'Mike Peters', project: 'Master Bath Vanity', value: 1670, status: 'delivery', due: 'Mar 28' },
+  { id: 3, client: 'Tom & Kim Reed', project: 'Laundry Room Cabinets', value: 2210, status: 'confirmed', due: 'Apr 18' },
+];
+let orderNextId = 4;
+
+const ORDER_STATUSES = ['quote','confirmed','production','delivery','complete'];
+const STATUS_LABELS = { quote:'Quote Sent', confirmed:'Confirmed', production:'In Production', delivery:'Ready for Delivery', complete:'Complete' };
+const STATUS_COLORS = { quote:'#94a3b8', confirmed:'#1565c0', production:'var(--accent)', delivery:'var(--accent2)', complete:'var(--success)' };
+const STATUS_BADGES = {
+  quote: 'badge-gray', confirmed: 'badge-blue',
+  production: 'badge-orange', delivery: 'badge-teal', complete: 'badge-green'
+};
+
+function addOrder() {
+  const client = document.getElementById('o-client').value.trim();
+  const project = document.getElementById('o-project').value.trim();
+  if (!client || !project) return alert('Enter client name and project.');
+  orders.unshift({
+    id: orderNextId++, client, project,
+    value: parseFloat(document.getElementById('o-value').value) || 0,
+    status: document.getElementById('o-status').value,
+    due: document.getElementById('o-due').value.trim() || 'TBD',
+  });
+  document.getElementById('o-client').value = '';
+  document.getElementById('o-project').value = '';
+  document.getElementById('o-value').value = '';
+  document.getElementById('o-due').value = '';
+  document.getElementById('orders-badge').textContent = orders.filter(o => o.status !== 'complete').length;
+  renderOrdersMain();
+}
+
+function removeOrder(id) {
+  orders = orders.filter(o => o.id !== id);
+  document.getElementById('orders-badge').textContent = orders.filter(o => o.status !== 'complete').length;
+  renderOrdersMain();
+}
+
+function advanceOrder(id) {
+  const o = orders.find(o => o.id === id);
+  if (!o) return;
+  const idx = ORDER_STATUSES.indexOf(o.status);
+  if (idx < ORDER_STATUSES.length - 1) o.status = ORDER_STATUSES[idx + 1];
+  document.getElementById('orders-badge').textContent = orders.filter(o => o.status !== 'complete').length;
+  renderOrdersMain();
+}
+
+function renderOrdersMain() {
+  const el = document.getElementById('orders-main');
+  const active = orders.filter(o => o.status !== 'complete');
+  const complete = orders.filter(o => o.status === 'complete');
+  const totalRevenue = complete.reduce((s,o) => s+o.value, 0);
+  const pipeline = active.reduce((s,o) => s+o.value, 0);
+
+  el.innerHTML = `
+    <div class="stats-grid">
+      <div class="stat-card accent"><div class="stat-label">Active Orders</div><div class="stat-value">${active.length}</div><div class="stat-sub">in progress</div></div>
+      <div class="stat-card success"><div class="stat-label">Completed</div><div class="stat-value">${complete.length}</div><div class="stat-sub">this period</div></div>
+      <div class="stat-card warn"><div class="stat-label">Pipeline</div><div class="stat-value">$${pipeline.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0})}</div><div class="stat-sub">active order value</div></div>
+      <div class="stat-card success"><div class="stat-label">Revenue</div><div class="stat-value">$${totalRevenue.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0})}</div><div class="stat-sub">completed orders</div></div>
+    </div>
+    <div class="orders-list">
+      ${orders.map(o => `
+        <div class="order-item">
+          <div class="order-status-dot" style="background:${STATUS_COLORS[o.status]}"></div>
+          <div class="order-info">
+            <div class="order-name">${o.project}</div>
+            <div class="order-meta">👤 ${o.client} &nbsp;·&nbsp; Due: ${o.due} &nbsp;·&nbsp; <span class="badge ${STATUS_BADGES[o.status]}">${STATUS_LABELS[o.status]}</span></div>
+          </div>
+          <div class="order-right">
+            <div class="order-value">$${o.value.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0})}</div>
+            <div class="order-date">${o.status === 'complete' ? '✓ Done' : `Due ${o.due}`}</div>
+          </div>
+          <div style="display:flex;gap:6px;margin-left:12px;flex-shrink:0">
+            ${o.status !== 'complete' ? `<button class="btn btn-success" onclick="advanceOrder(${o.id})" style="font-size:11px;padding:5px 10px">→ Next</button>` : ''}
+            <button class="btn btn-danger" onclick="removeOrder(${o.id})">×</button>
+          </div>
+        </div>`).join('')}
+    </div>`;
+}
+
+// ══════════════════════════════════════════
+// UTILS
 // ══════════════════════════════════════════
 function hexRgba(hex, a) {
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
+  const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
   return `rgba(${r},${g},${b},${a})`;
 }
-
-function trunc(s, n) {
-  return s.length <= n ? s : s.slice(0, n - 1) + '…';
-}
+function trunc(s, n) { return s.length <= n ? s : s.slice(0, n-1) + '…'; }
 
 // ══════════════════════════════════════════
-// Init with defaults
+// INIT
 // ══════════════════════════════════════════
+renderStockMain();
+renderQuoteMain();
+renderOrdersMain();
+
+// Default cutlist data
 addSheet();
-
 const defaults = [
-  { label: 'Side Panel',   w: 23.25, h: 30,   qty: 2 },
+  { label: 'Side Panel',   w: 23.25, h: 30,    qty: 2 },
   { label: 'Top / Bottom', w: 22.5,  h: 23.25, qty: 2 },
   { label: 'Shelf',        w: 22.5,  h: 22,    qty: 3 },
   { label: 'Back Panel',   w: 23.25, h: 30,    qty: 1 },
