@@ -534,10 +534,7 @@ canvas { display: block; }
         <!-- Theme -->
         <div class="sd-section">
           <div class="sd-row">
-            <span class="sd-row-label" id="sd-theme-label">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
-              Light
-            </span>
+            <span class="sd-row-label" id="sd-theme-label">Light Mode</span>
             <div class="sd-pill">
               <button class="sd-pill-btn active" id="toggle-light" onclick="setTheme(false)">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
@@ -551,7 +548,7 @@ canvas { display: block; }
         <!-- Units -->
         <div class="sd-section">
           <div class="sd-row">
-            <span class="sd-row-label" id="sd-units-label">Imperial</span>
+            <span class="sd-row-label">Units</span>
             <div class="sd-pill">
               <button class="sd-pill-btn active" id="unit-imperial" onclick="setUnits('imperial')">in</button>
               <button class="sd-pill-btn" id="unit-metric" onclick="setUnits('metric')">mm</button>
@@ -561,7 +558,7 @@ canvas { display: block; }
         <!-- Currency -->
         <div class="sd-section">
           <div class="sd-row">
-            <span class="sd-row-label" id="sd-currency-label">$</span>
+            <span class="sd-row-label">Currency</span>
             <div class="sd-pill">
               <button class="sd-pill-btn active" id="cur-usd" onclick="setCurrency('$')">$</button>
               <button class="sd-pill-btn" id="cur-gbp" onclick="setCurrency('£')">£</button>
@@ -893,10 +890,8 @@ function setTheme(dark) {
   darkMode = dark;
   document.documentElement.classList.toggle('dark', darkMode);
   localStorage.setItem('pcDark', darkMode ? '1' : '0');
-  const sunSVG = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>`;
-  const moonSVG = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>`;
   const lbl = document.getElementById('sd-theme-label');
-  if (lbl) lbl.innerHTML = darkMode ? moonSVG + ' Dark' : sunSVG + ' Light';
+  if (lbl) lbl.textContent = darkMode ? 'Dark Mode' : 'Light Mode';
   const tl = document.getElementById('toggle-light'), td = document.getElementById('toggle-dark');
   if (tl) tl.classList.toggle('active', !darkMode);
   if (td) td.classList.toggle('active', darkMode);
@@ -922,8 +917,6 @@ function setUnits(u) {
   const uiEl = document.getElementById('unit-imperial'), umEl = document.getElementById('unit-metric');
   if (uiEl) uiEl.classList.toggle('active', u === 'imperial');
   if (umEl) umEl.classList.toggle('active', u === 'metric');
-  const ulbl = document.getElementById('sd-units-label');
-  if (ulbl) ulbl.textContent = m ? 'Metric' : 'Imperial';
 
   const m = u === 'metric';
 
@@ -1001,8 +994,6 @@ function setCurrency(c) {
     const el = document.getElementById(id);
     if (el) el.classList.toggle('active', c === s);
   });
-  const clbl = document.getElementById('sd-currency-label');
-  if (clbl) clbl.textContent = c;
   try { renderStockMain(); renderQuoteMain(); renderOrdersMain(); } catch(e) {}
 }
 
