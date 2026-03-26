@@ -788,6 +788,10 @@ html.dark .cl-table tbody tr:nth-child(even) td { background: rgba(255,255,255,0
     Orders
     <span class="tab-badge" id="orders-badge">3</span>
   </div>
+  <div class="nav-tab" onclick="switchSection('dashboard')" style="margin-left:auto">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+    Dashboard
+  </div>
 </div>
 
 <div class="app-body">
@@ -1091,6 +1095,17 @@ html.dark .cl-table tbody tr:nth-child(even) td { background: rgba(255,255,255,0
     </div>
   </div>
 
+  <!-- ════════════════════════════════════
+       DASHBOARD SECTION
+  ════════════════════════════════════ -->
+  <div class="section-panel" id="panel-dashboard">
+    <div class="main-content">
+      <div class="main-scroll" id="dashboard-main">
+        <!-- rendered by JS -->
+      </div>
+    </div>
+  </div>
+
 </div><!-- end app-body -->
 
 <script>
@@ -1245,7 +1260,7 @@ function setCurrency(c) {
 // ══════════════════════════════════════════
 function switchSection(name) {
   document.querySelectorAll('.nav-tab').forEach((t,i) => {
-    const sections = ['cutlist','stock','quote','orders'];
+    const sections = ['cutlist','stock','quote','orders','dashboard'];
     t.classList.toggle('active', sections[i] === name);
   });
   document.querySelectorAll('.section-panel').forEach(p => {
@@ -1254,6 +1269,7 @@ function switchSection(name) {
   if (name === 'stock') renderStockMain();
   if (name === 'quote') renderQuoteMain();
   if (name === 'orders') renderOrdersMain();
+  if (name === 'dashboard') renderDashboard();
 }
 
 // ══════════════════════════════════════════
@@ -2289,6 +2305,165 @@ function renderOrdersMain() {
             <button class="btn btn-danger" onclick="removeOrder(${o.id})">×</button>
           </div>
         </div>`).join('')}
+    </div>`;
+}
+
+// ══════════════════════════════════════════
+// DASHBOARD
+// ══════════════════════════════════════════
+function renderDashboard() {
+  const cur = window.currency;
+  const el = document.getElementById('dashboard-main');
+  if (!el) return;
+
+  const activeOrders  = orders.filter(o => o.status !== 'complete');
+  const doneOrders    = orders.filter(o => o.status === 'complete');
+  const pipeline      = activeOrders.reduce((s,o) => s+o.value, 0);
+  const revenue       = doneOrders.reduce((s,o) => s+o.value, 0);
+  const approvedQ     = quotes.filter(q => q.status === 'approved').length;
+  const quoteValue    = quotes.reduce((s,q) => s+quoteTotal(q), 0);
+  const lowStock      = stockItems.filter(i => i.qty <= i.low);
+  const stockValue    = stockItems.reduce((s,i) => s+i.qty*i.cost, 0);
+  const totalSheets   = stockItems.reduce((s,i) => s+i.qty, 0);
+
+  const fmt = v => v.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0});
+
+  const statusBar = (label, pct, color) => `
+    <div style="margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:3px">
+        <span>${label}</span><span>${pct.toFixed(0)}%</span>
+      </div>
+      <div class="progress-bg" style="height:6px">
+        <div class="progress-fill" style="width:${Math.min(100,pct)}%;background:${color}"></div>
+      </div>
+    </div>`;
+
+  const ordersByStatus = ORDER_STATUSES.map(s => ({
+    status: s, label: STATUS_LABELS[s], count: orders.filter(o=>o.status===s).length,
+    color: STATUS_COLORS[s], badge: STATUS_BADGES[s]
+  }));
+
+  el.innerHTML = `
+    <div style="padding:24px;max-width:1200px">
+
+      <!-- KPI Row -->
+      <div class="stats-grid" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr));margin-bottom:24px">
+        <div class="stat-card accent">
+          <div class="stat-label">Pipeline</div>
+          <div class="stat-value">${cur}${fmt(pipeline)}</div>
+          <div class="stat-sub">${activeOrders.length} active order${activeOrders.length!==1?'s':''}</div>
+        </div>
+        <div class="stat-card success">
+          <div class="stat-label">Revenue</div>
+          <div class="stat-value">${cur}${fmt(revenue)}</div>
+          <div class="stat-sub">${doneOrders.length} completed</div>
+        </div>
+        <div class="stat-card warn">
+          <div class="stat-label">Quoted</div>
+          <div class="stat-value">${cur}${fmt(quoteValue)}</div>
+          <div class="stat-sub">${approvedQ} approved</div>
+        </div>
+        <div class="stat-card ${lowStock.length ? 'danger' : 'success'}">
+          <div class="stat-label">Stock Value</div>
+          <div class="stat-value">${cur}${fmt(stockValue)}</div>
+          <div class="stat-sub">${lowStock.length ? lowStock.length+' low stock' : totalSheets+' sheets'}</div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px;margin-bottom:18px">
+
+        <!-- Orders by status -->
+        <div class="card">
+          <div class="card-header"><span class="card-title">Orders by Status</span></div>
+          <div class="card-body" style="padding:14px 18px">
+            ${ordersByStatus.map(s => `
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border2)">
+                <div style="display:flex;align-items:center;gap:8px">
+                  <span style="width:8px;height:8px;border-radius:50%;background:${s.color};display:inline-block;flex-shrink:0"></span>
+                  <span style="font-size:13px;color:var(--text)">${s.label}</span>
+                </div>
+                <span style="font-size:13px;font-weight:700;color:var(--text)">${s.count}</span>
+              </div>`).join('')}
+          </div>
+        </div>
+
+        <!-- Active Orders -->
+        <div class="card">
+          <div class="card-header" style="justify-content:space-between">
+            <span class="card-title">Active Orders</span>
+            <button class="btn btn-outline" style="padding:3px 10px;font-size:11px" onclick="switchSection('orders')">View all</button>
+          </div>
+          <div class="card-body" style="padding:0">
+            ${activeOrders.length === 0
+              ? `<div style="padding:20px;text-align:center;color:var(--muted);font-size:13px">No active orders</div>`
+              : activeOrders.slice(0,5).map(o => `
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 18px;border-bottom:1px solid var(--border2)">
+                <div style="flex:1;min-width:0">
+                  <div style="font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${o.project}</div>
+                  <div style="font-size:11px;color:var(--muted)">${o.client} · Due ${o.due}</div>
+                </div>
+                <div style="text-align:right;margin-left:12px;flex-shrink:0">
+                  <div style="font-size:13px;font-weight:700">${cur}${fmt(o.value)}</div>
+                  <span class="badge ${STATUS_BADGES[o.status]}" style="font-size:9px">${STATUS_LABELS[o.status]}</span>
+                </div>
+              </div>`).join('')}
+          </div>
+        </div>
+
+        <!-- Stock Alerts + Quotes -->
+        <div style="display:flex;flex-direction:column;gap:18px">
+          <div class="card" style="flex:1">
+            <div class="card-header" style="justify-content:space-between">
+              <span class="card-title">Stock Alerts</span>
+              <button class="btn btn-outline" style="padding:3px 10px;font-size:11px" onclick="switchSection('stock')">View stock</button>
+            </div>
+            <div class="card-body" style="padding:0">
+              ${lowStock.length === 0
+                ? `<div style="padding:16px;text-align:center;color:var(--muted);font-size:13px">All materials well stocked</div>`
+                : lowStock.slice(0,4).map(i => `
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 18px;border-bottom:1px solid var(--border2)">
+                  <div>
+                    <div style="font-size:12px;font-weight:600;color:var(--text)">${i.name}</div>
+                    <div style="font-size:11px;color:var(--danger)">${i.qty} left · reorder at ${i.low}</div>
+                  </div>
+                  <span class="badge badge-red">Low</span>
+                </div>`).join('')}
+            </div>
+          </div>
+          <div class="card" style="flex:1">
+            <div class="card-header" style="justify-content:space-between">
+              <span class="card-title">Recent Quotes</span>
+              <button class="btn btn-outline" style="padding:3px 10px;font-size:11px" onclick="switchSection('quote')">View all</button>
+            </div>
+            <div class="card-body" style="padding:0">
+              ${quotes.slice(0,3).map(q => `
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 18px;border-bottom:1px solid var(--border2)">
+                  <div style="flex:1;min-width:0">
+                    <div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${q.project}</div>
+                    <div style="font-size:11px;color:var(--muted)">${q.client}</div>
+                  </div>
+                  <div style="text-align:right;margin-left:8px;flex-shrink:0">
+                    <div style="font-size:12px;font-weight:700">${cur}${fmt(quoteTotal(q))}</div>
+                    <div style="font-size:10px;color:var(--muted)">${q.date}</div>
+                  </div>
+                </div>`).join('')}
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Production pipeline bar -->
+      <div class="card" style="margin-bottom:0">
+        <div class="card-header"><span class="card-title">Production Pipeline</span></div>
+        <div class="card-body">
+          ${ordersByStatus.filter(s=>s.status!=='complete').map(s =>
+            statusBar(s.label + (s.count ? ` (${s.count})` : ''), orders.length ? s.count/orders.length*100 : 0, s.color)
+          ).join('')}
+          ${orders.length === 0 ? `<div style="color:var(--muted);font-size:13px;text-align:center;padding:8px">No orders yet</div>` : ''}
+        </div>
+      </div>
+
     </div>`;
 }
 
