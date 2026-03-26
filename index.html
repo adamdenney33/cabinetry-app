@@ -1932,7 +1932,7 @@ function renderLayout(area) {
     area.innerHTML = '<div class="empty-state"><h3>No layouts generated</h3><p>Check that your pieces fit within your sheet dimensions.</p></div>';
     return;
   }
-  const u = document.getElementById('units').value;
+  const u = window.units === 'metric' ? 'mm' : 'in';
   const totalArea = results.layouts.reduce((s,l) => s + l.sheet.w * l.sheet.h, 0);
   const usedArea  = results.layouts.reduce((s,l) => s + l.placed.reduce((a,p) => a + p.w * p.h, 0), 0);
   const avgUtil   = totalArea ? (usedArea / totalArea * 100).toFixed(1) : '0.0';
@@ -2081,7 +2081,7 @@ function renderSummary(area) {
     area.innerHTML = '<p style="color:#94a3b8;font-size:13px;padding:20px">No results. Click Optimize first.</p>';
     return;
   }
-  const u = document.getElementById('units').value;
+  const u = window.units === 'metric' ? 'mm' : 'in';
   const allPlaced = results.layouts.flatMap((l,si) => l.placed.map(p => ({...p, sheetNum: si+1})));
   const byPiece = {};
   for (const p of allPlaced) {
