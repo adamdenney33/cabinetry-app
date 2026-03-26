@@ -326,6 +326,60 @@ textarea { resize: vertical; min-height: 70px; }
 
 .action-bar { padding: 14px 16px; border-top: 1px solid var(--border); background: var(--surface); }
 
+/* ── CUTLIST INLINE TABLE LAYOUT ── */
+.cl-left {
+  width: 420px; min-width: 340px; flex-shrink: 0;
+  display: flex; flex-direction: column;
+  border-right: 1px solid var(--border);
+  background: var(--surface); overflow: hidden;
+}
+.cl-right { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+.cl-scroll { flex: 1; overflow-y: auto; }
+.cl-settings-bar {
+  display: flex; gap: 12px; align-items: flex-end;
+  padding: 10px 14px; border-bottom: 2px solid var(--border);
+  background: var(--surface); flex-shrink: 0;
+}
+.cl-settings-bar .form-group { margin: 0; }
+.cl-settings-bar label { font-size: 10px; margin-bottom: 3px; display: block; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; }
+.cl-settings-bar select, .cl-settings-bar input { padding: 5px 8px; font-size: 13px; }
+.cl-section-header { padding: 14px 14px 6px; display: flex; align-items: center; justify-content: space-between; }
+.cl-section-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: var(--muted); }
+.cl-table { width: 100%; border-collapse: collapse; }
+.cl-table th {
+  font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px;
+  color: var(--muted); padding: 5px 6px; text-align: left;
+  background: var(--surface2); border-bottom: 1px solid var(--border);
+  border-top: 1px solid var(--border);
+}
+.cl-table td { padding: 1px; border-bottom: 1px solid var(--border2); }
+.cl-table tr:last-child td { border-bottom: none; }
+.cl-table tr:hover td { background: var(--surface2); }
+.cl-input {
+  width: 100%; padding: 7px 8px; border: none; background: transparent;
+  color: var(--text); font-size: 13px; font-family: inherit; outline: none; min-width: 0;
+}
+.cl-input:focus { background: var(--accent-dim); border-radius: 3px; }
+.cl-dim-input { text-align: right; }
+.cl-qty-input { text-align: center; }
+.cl-num-cell { font-size: 11px; color: var(--muted); text-align: center; padding: 0 6px; user-select: none; }
+.cl-grain-cell { text-align: center; padding: 0; }
+.cl-grain-check { width: auto; cursor: pointer; accent-color: var(--accent); margin: 0; }
+.cl-del-cell { padding: 0 4px; }
+.cl-del-btn {
+  width: 22px; height: 22px; border: none; background: none; color: var(--muted);
+  cursor: pointer; border-radius: 4px; display: flex; align-items: center;
+  justify-content: center; transition: all 0.15s; padding: 0;
+}
+.cl-del-btn:hover { color: var(--danger); background: rgba(224,82,82,0.1); }
+.cl-add-btn {
+  margin: 6px 14px 2px; padding: 7px 12px; font-size: 12px; font-weight: 600;
+  color: var(--muted); background: none; border: 1.5px dashed var(--border);
+  border-radius: 6px; cursor: pointer; width: calc(100% - 28px);
+  transition: all 0.15s; font-family: inherit; text-align: left; display: block;
+}
+.cl-add-btn:hover { color: var(--text); border-color: var(--muted); background: var(--surface2); }
+
 /* ── DATA TABLE ── */
 .data-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px; }
 .data-table th {
@@ -677,84 +731,65 @@ canvas { display: block; }
        CUTLIST SECTION
   ════════════════════════════════════ -->
   <div class="section-panel active" id="panel-cutlist">
-    <div class="sidebar">
-      <div class="sidebar-scroll">
 
-        <div class="form-section">
-          <div class="form-section-title">Settings</div>
-          <div class="form-row">
-            <div class="form-group">
-              <label>Units</label>
-              <select id="units" onchange="setUnits(this.value==='mm'?'metric':'imperial')">
-                <option value="in">Inches (in)</option>
-                <option value="mm">Millimeters (mm)</option>
-                <option value="cm">Centimeters (cm)</option>
-              </select>
-            </div>
-            <div class="form-group" style="max-width:90px">
-              <label>Blade Kerf</label>
-              <input type="number" id="kerf" value="0.125" min="0" step="0.01">
-            </div>
+    <!-- LEFT: Inputs -->
+    <div class="cl-left">
+      <div class="cl-scroll">
+
+        <!-- Settings bar -->
+        <div class="cl-settings-bar">
+          <div class="form-group">
+            <label>Units</label>
+            <select id="units" onchange="setUnits(this.value==='mm'?'metric':'imperial')">
+              <option value="in">Inches (in)</option>
+              <option value="mm">Millimeters (mm)</option>
+            </select>
+          </div>
+          <div class="form-group" style="max-width:90px">
+            <label>Blade Kerf</label>
+            <input type="number" id="kerf" value="0.125" min="0" step="0.01">
           </div>
         </div>
 
-        <div class="form-section">
-          <div class="form-section-title">Sheet Panels</div>
-          <div class="form-group" style="margin-bottom:8px">
-            <label>Material</label>
-            <input type="text" id="sheet-name" value="3/4&quot; Plywood" placeholder="e.g. 3/4 Plywood">
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label>Width</label>
-              <input type="number" id="sheet-w" value="96" min="1">
-            </div>
-            <div class="form-group">
-              <label>Height</label>
-              <input type="number" id="sheet-h" value="48" min="1">
-            </div>
-            <div class="form-group" style="max-width:60px">
-              <label>Qty</label>
-              <input type="number" id="sheet-qty" value="5" min="1" max="99">
-            </div>
-          </div>
-          <button class="btn btn-outline" onclick="addSheet()">+ Add Sheet</button>
-          <table class="data-table">
-            <thead><tr><th>Material</th><th>W × H</th><th>Qty</th><th></th></tr></thead>
-            <tbody id="sheets-body"></tbody>
-          </table>
+        <!-- Stock Panels table -->
+        <div class="cl-section-header">
+          <span class="cl-section-title">Stock Panels</span>
         </div>
+        <table class="cl-table">
+          <thead>
+            <tr>
+              <th style="width:28px">#</th>
+              <th>Material</th>
+              <th style="width:64px">W</th>
+              <th style="width:64px">H</th>
+              <th style="width:38px">Qty</th>
+              <th style="width:28px"></th>
+            </tr>
+          </thead>
+          <tbody id="sheets-body"></tbody>
+        </table>
+        <button class="cl-add-btn" onclick="addSheet()">+ Add sheet</button>
 
-        <div class="form-section">
-          <div class="form-section-title">Cut Pieces</div>
-          <div class="form-group" style="margin-bottom:8px">
-            <label>Label</label>
-            <input type="text" id="piece-label" placeholder="e.g. Side Panel">
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label>Width</label>
-              <input type="number" id="piece-w" value="24" min="0.1" step="0.01">
-            </div>
-            <div class="form-group">
-              <label>Height</label>
-              <input type="number" id="piece-h" value="30" min="0.1" step="0.01">
-            </div>
-            <div class="form-group" style="max-width:60px">
-              <label>Qty</label>
-              <input type="number" id="piece-qty" value="2" min="1" max="999">
-            </div>
-          </div>
-          <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
-            <input type="checkbox" id="piece-grain" style="width:auto;accent-color:var(--accent)">
-            <label for="piece-grain" style="margin:0;font-size:11px;cursor:pointer">Lock grain (no rotation)</label>
-          </div>
-          <button class="btn btn-outline" onclick="addPiece()">+ Add Piece</button>
-          <table class="data-table">
-            <thead><tr><th></th><th>Label</th><th>W × H</th><th>Qty</th><th></th></tr></thead>
-            <tbody id="pieces-body"></tbody>
-          </table>
+        <!-- Cut Pieces table -->
+        <div class="cl-section-header" style="margin-top:12px">
+          <span class="cl-section-title">Cut Pieces</span>
+          <span style="font-size:10px;color:var(--muted)" title="Check to lock grain direction — piece will not be rotated">↕ = grain lock</span>
         </div>
+        <table class="cl-table">
+          <thead>
+            <tr>
+              <th style="width:28px">#</th>
+              <th>Label</th>
+              <th style="width:64px">W</th>
+              <th style="width:64px">H</th>
+              <th style="width:38px">Qty</th>
+              <th style="width:28px" title="Lock grain direction">↕</th>
+              <th style="width:28px"></th>
+            </tr>
+          </thead>
+          <tbody id="pieces-body"></tbody>
+        </table>
+        <button class="cl-add-btn" onclick="addPiece()" style="margin-bottom:16px">+ Add piece</button>
 
       </div>
       <div class="action-bar">
@@ -765,7 +800,8 @@ canvas { display: block; }
       </div>
     </div>
 
-    <div class="main-content">
+    <!-- RIGHT: Results -->
+    <div class="cl-right">
       <div class="inner-tabs">
         <div class="inner-tab active" data-tab="layout" onclick="switchTab('layout')">Layout View</div>
         <div class="inner-tab" data-tab="summary" onclick="switchTab('summary')">Cut List</div>
@@ -776,10 +812,11 @@ canvas { display: block; }
             <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
           </div>
           <h3>Ready to Optimize</h3>
-          <p>Add sheet panels and cut pieces, then click "Optimize Cut Layout"</p>
+          <p>Add stock panels and cut pieces, then click "Optimize Cut Layout"</p>
         </div>
       </div>
     </div>
+
   </div>
 
   <!-- ════════════════════════════════════
@@ -951,14 +988,8 @@ function setUnits(u) {
   const uSel = document.getElementById('units');
   if (uSel) uSel.value = m ? 'mm' : 'in';
 
-  // Cutlist: sheet panel form defaults
-  const sw = document.getElementById('sheet-w');
-  const sh = document.getElementById('sheet-h');
-  const sn = document.getElementById('sheet-name');
+  // Cutlist: update kerf default
   const kf = document.getElementById('kerf');
-  if (sw) sw.value = m ? 2440 : 96;
-  if (sh) sh.value = m ? 1220 : 48;
-  if (sn) sn.value = m ? '18mm Plywood' : '3/4" Plywood';
   if (kf) kf.value = m ? 3 : 0.125;
 
   // Stock form defaults
@@ -968,12 +999,6 @@ function setUnits(u) {
   if (stW) stW.value = m ? 2440 : 96;
   if (stH) stH.value = m ? 1220 : 48;
   if (stN && !stN.value) stN.placeholder = m ? 'e.g. 18mm Birch Plywood' : 'e.g. 3/4" Birch Plywood';
-
-  // Update piece form placeholders
-  const pw = document.getElementById('piece-w');
-  const ph = document.getElementById('piece-h');
-  if (pw) pw.placeholder = m ? '300' : '11.5';
-  if (ph) ph.placeholder = m ? '750' : '29.5';
 
   // Convert existing sheets and pieces only when actually changing unit
   if (prevUnits && prevUnits !== u) {
@@ -1177,63 +1202,97 @@ const COLORS = [
   '#1e88e5','#43a047','#fdd835','#8e24aa','#039be5',
 ];
 
-function addSheet() {
-  const name = document.getElementById('sheet-name').value.trim() || 'Sheet';
-  const w = parseFloat(document.getElementById('sheet-w').value);
-  const h = parseFloat(document.getElementById('sheet-h').value);
-  const qty = parseInt(document.getElementById('sheet-qty').value) || 1;
-  if (!w || !h || w <= 0 || h <= 0) return alert('Enter valid sheet dimensions.');
-  sheets.push({ id: Date.now(), name, w, h, qty });
+let _sheetId = 1;
+let _pieceId = 1;
+
+function addSheet(name, w, h, qty) {
+  const m = window.units === 'metric';
+  sheets.push({
+    id: _sheetId++,
+    name: name !== undefined ? name : (m ? '18mm Plywood' : '3/4" Plywood'),
+    w:   w   !== undefined ? w   : (m ? 2440 : 96),
+    h:   h   !== undefined ? h   : (m ? 1220 : 48),
+    qty: qty !== undefined ? qty : 1
+  });
   renderSheets();
 }
 
 function removeSheet(id) { sheets = sheets.filter(s => s.id !== id); renderSheets(); }
 
+function updateSheet(id, field, val) {
+  const s = sheets.find(s => s.id === id);
+  if (!s) return;
+  if (field === 'w' || field === 'h') s[field] = parseFloat(val) || 0;
+  else if (field === 'qty') s[field] = parseInt(val) || 1;
+  else s[field] = val;
+}
+
 function renderSheets() {
-  const u = document.getElementById('units').value;
   const tbody = document.getElementById('sheets-body');
+  if (!tbody) return;
   if (!sheets.length) {
-    tbody.innerHTML = '<tr><td colspan="4" style="color:#ccc;font-size:11px;padding:8px 5px">No sheets added</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" style="color:var(--muted);font-size:11px;padding:10px 14px;text-align:center">No sheets — click "+ Add sheet"</td></tr>';
     return;
   }
-  tbody.innerHTML = sheets.map(s => `
+  tbody.innerHTML = sheets.map((s, i) => `
     <tr>
-      <td>${s.name}</td>
-      <td>${s.w} × ${s.h} ${u}</td>
-      <td>${s.qty}</td>
-      <td><button class="btn btn-danger" onclick="removeSheet(${s.id})">×</button></td>
+      <td class="cl-num-cell">${i + 1}</td>
+      <td><input class="cl-input" value="${s.name.replace(/"/g,'&quot;')}" onchange="updateSheet(${s.id},'name',this.value)" placeholder="Material"></td>
+      <td><input class="cl-input cl-dim-input" type="number" value="${s.w}" min="1" onchange="updateSheet(${s.id},'w',this.value)"></td>
+      <td><input class="cl-input cl-dim-input" type="number" value="${s.h}" min="1" onchange="updateSheet(${s.id},'h',this.value)"></td>
+      <td><input class="cl-input cl-qty-input" type="number" value="${s.qty}" min="1" max="99" onchange="updateSheet(${s.id},'qty',this.value)"></td>
+      <td class="cl-del-cell"><button class="cl-del-btn" onclick="removeSheet(${s.id})" title="Remove row">
+        <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="1" y1="1" x2="11" y2="11"/><line x1="11" y1="1" x2="1" y2="11"/></svg>
+      </button></td>
     </tr>`).join('');
 }
 
-function addPiece() {
-  const label = document.getElementById('piece-label').value.trim() || `Piece ${pieces.length + 1}`;
-  const w = parseFloat(document.getElementById('piece-w').value);
-  const h = parseFloat(document.getElementById('piece-h').value);
-  const qty = parseInt(document.getElementById('piece-qty').value) || 1;
-  const grain = document.getElementById('piece-grain').checked;
-  if (!w || !h || w <= 0 || h <= 0) return alert('Enter valid piece dimensions.');
+function addPiece(label, w, h, qty, grain) {
+  const m = window.units === 'metric';
   const color = COLORS[pieceColorIdx++ % COLORS.length];
-  pieces.push({ id: Date.now(), label, w, h, qty, grain, color });
+  pieces.push({
+    id:    _pieceId++,
+    label: label !== undefined ? label : `Piece ${pieces.length + 1}`,
+    w:     w     !== undefined ? w     : (m ? 300 : 12),
+    h:     h     !== undefined ? h     : (m ? 600 : 24),
+    qty:   qty   !== undefined ? qty   : 1,
+    grain: grain !== undefined ? grain : false,
+    color
+  });
   renderPieces();
-  document.getElementById('piece-label').value = '';
 }
 
 function removePiece(id) { pieces = pieces.filter(p => p.id !== id); renderPieces(); }
 
+function updatePiece(id, field, val) {
+  const p = pieces.find(p => p.id === id);
+  if (!p) return;
+  if (field === 'w' || field === 'h') p[field] = parseFloat(val) || 0;
+  else if (field === 'qty') p[field] = parseInt(val) || 1;
+  else if (field === 'grain') p[field] = val;
+  else p[field] = val;
+}
+
 function renderPieces() {
-  const u = document.getElementById('units').value;
   const tbody = document.getElementById('pieces-body');
+  if (!tbody) return;
   if (!pieces.length) {
-    tbody.innerHTML = '<tr><td colspan="5" style="color:#ccc;font-size:11px;padding:8px 5px">No pieces added</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" style="color:var(--muted);font-size:11px;padding:10px 14px;text-align:center">No pieces — click "+ Add piece"</td></tr>';
     return;
   }
-  tbody.innerHTML = pieces.map(p => `
+  tbody.innerHTML = pieces.map((p, i) => `
     <tr>
-      <td><span class="color-dot" style="background:${p.color}"></span></td>
-      <td style="font-weight:600">${p.label}</td>
-      <td>${p.w} × ${p.h}</td>
-      <td>${p.qty}</td>
-      <td><button class="btn btn-danger" onclick="removePiece(${p.id})">×</button></td>
+      <td class="cl-num-cell" style="white-space:nowrap">
+        <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${p.color};vertical-align:middle;margin-right:2px"></span>${i + 1}
+      </td>
+      <td><input class="cl-input" value="${p.label.replace(/"/g,'&quot;')}" onchange="updatePiece(${p.id},'label',this.value)" placeholder="Label"></td>
+      <td><input class="cl-input cl-dim-input" type="number" value="${p.w}" min="0.1" step="0.01" onchange="updatePiece(${p.id},'w',this.value)"></td>
+      <td><input class="cl-input cl-dim-input" type="number" value="${p.h}" min="0.1" step="0.01" onchange="updatePiece(${p.id},'h',this.value)"></td>
+      <td><input class="cl-input cl-qty-input" type="number" value="${p.qty}" min="1" max="999" onchange="updatePiece(${p.id},'qty',this.value)"></td>
+      <td class="cl-grain-cell"><input type="checkbox" class="cl-grain-check" ${p.grain ? 'checked' : ''} onchange="updatePiece(${p.id},'grain',this.checked)" title="Lock grain — no rotation"></td>
+      <td class="cl-del-cell"><button class="cl-del-btn" onclick="removePiece(${p.id})" title="Remove row">
+        <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="1" y1="1" x2="11" y2="11"/><line x1="11" y1="1" x2="1" y2="11"/></svg>
+      </button></td>
     </tr>`).join('');
 }
 
@@ -1641,30 +1700,26 @@ renderQuoteMain();
 renderOrdersMain();
 
 // Default cutlist data
-addSheet();
-const defaultsImperial = [
+const _m = window.units === 'metric';
+addSheet(_m ? '18mm Plywood' : '3/4" Plywood', _m ? 2440 : 96, _m ? 1220 : 48, 5);
+
+const _defaultsImperial = [
   { label: 'Side Panel',   w: 23.25, h: 30,    qty: 2 },
   { label: 'Top / Bottom', w: 22.5,  h: 23.25, qty: 2 },
   { label: 'Shelf',        w: 22.5,  h: 22,    qty: 3 },
   { label: 'Back Panel',   w: 23.25, h: 30,    qty: 1 },
   { label: 'Door',         w: 11.5,  h: 29.5,  qty: 2 },
 ];
-const defaultsMetric = [
+const _defaultsMetric = [
   { label: 'Side Panel',   w: 590,   h: 762,   qty: 2 },
   { label: 'Top / Bottom', w: 572,   h: 590,   qty: 2 },
   { label: 'Shelf',        w: 572,   h: 559,   qty: 3 },
   { label: 'Back Panel',   w: 590,   h: 762,   qty: 1 },
   { label: 'Door',         w: 292,   h: 749,   qty: 2 },
 ];
-const defaults = window.units === 'metric' ? defaultsMetric : defaultsImperial;
-for (const d of defaults) {
-  document.getElementById('piece-label').value = d.label;
-  document.getElementById('piece-w').value = d.w;
-  document.getElementById('piece-h').value = d.h;
-  document.getElementById('piece-qty').value = d.qty;
-  addPiece();
+for (const d of (_m ? _defaultsMetric : _defaultsImperial)) {
+  addPiece(d.label, d.w, d.h, d.qty);
 }
-document.getElementById('piece-label').value = '';
 </script>
 </body>
 </html>
