@@ -919,6 +919,7 @@ function toggleTheme() {
 // UNITS
 // ══════════════════════════════════════════
 function setUnits(u) {
+  const prevUnits = window.units;
   window.units = u;
   localStorage.setItem('pcUnits', u);
   document.getElementById('unit-imperial').classList.toggle('active', u === 'imperial');
@@ -953,6 +954,24 @@ function setUnits(u) {
   const ph = document.getElementById('piece-h');
   if (pw) pw.placeholder = m ? '300' : '11.5';
   if (ph) ph.placeholder = m ? '750' : '29.5';
+
+  // Convert existing sheets and pieces only when actually changing unit
+  if (prevUnits && prevUnits !== u) {
+    try {
+      sheets.forEach(s => {
+        if (m) { s.w = Math.round(s.w * 25.4); s.h = Math.round(s.h * 25.4); }
+        else   { s.w = Math.round(s.w / 25.4 * 100) / 100; s.h = Math.round(s.h / 25.4 * 100) / 100; }
+      });
+      renderSheets();
+    } catch(e) {}
+    try {
+      pieces.forEach(p => {
+        if (m) { p.w = Math.round(p.w * 25.4); p.h = Math.round(p.h * 25.4); }
+        else   { p.w = Math.round(p.w / 25.4 * 100) / 100; p.h = Math.round(p.h / 25.4 * 100) / 100; }
+      });
+      renderPieces();
+    } catch(e) {}
+  }
 
   try { renderStockMain(); renderQuoteMain(); renderOrdersMain(); } catch(e) {}
 }
