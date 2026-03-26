@@ -751,28 +751,9 @@ canvas { display: block; }
           </div>
         </div>
 
-        <!-- Stock Panels table -->
+        <!-- Cut Parts table -->
         <div class="cl-section-header">
-          <span class="cl-section-title">Stock Panels</span>
-        </div>
-        <table class="cl-table">
-          <thead>
-            <tr>
-              <th style="width:28px">#</th>
-              <th>Material</th>
-              <th style="width:64px">W</th>
-              <th style="width:64px">H</th>
-              <th style="width:38px">Qty</th>
-              <th style="width:28px"></th>
-            </tr>
-          </thead>
-          <tbody id="sheets-body"></tbody>
-        </table>
-        <button class="cl-add-btn" onclick="addSheet()">+ Add sheet</button>
-
-        <!-- Cut Pieces table -->
-        <div class="cl-section-header" style="margin-top:12px">
-          <span class="cl-section-title">Cut Pieces</span>
+          <span class="cl-section-title">Cut Parts</span>
           <span style="font-size:10px;color:var(--muted)" title="Check to lock grain direction — piece will not be rotated">↕ = grain lock</span>
         </div>
         <table class="cl-table">
@@ -789,7 +770,26 @@ canvas { display: block; }
           </thead>
           <tbody id="pieces-body"></tbody>
         </table>
-        <button class="cl-add-btn" onclick="addPiece()" style="margin-bottom:16px">+ Add piece</button>
+        <button class="cl-add-btn" onclick="addPiece()">+ Add part</button>
+
+        <!-- Stock Panels table -->
+        <div class="cl-section-header" style="margin-top:12px">
+          <span class="cl-section-title">Stock Panels</span>
+        </div>
+        <table class="cl-table">
+          <thead>
+            <tr>
+              <th style="width:28px">#</th>
+              <th>Material</th>
+              <th style="width:64px">W</th>
+              <th style="width:64px">H</th>
+              <th style="width:38px">Qty</th>
+              <th style="width:28px"></th>
+            </tr>
+          </thead>
+          <tbody id="sheets-body"></tbody>
+        </table>
+        <button class="cl-add-btn" onclick="addSheet()" style="margin-bottom:16px">+ Add sheet</button>
 
       </div>
       <div class="action-bar">
