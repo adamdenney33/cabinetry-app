@@ -162,28 +162,16 @@ header {
 .currency-btn { width: 36px; height: 30px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface2); font-size: 14px; font-weight: 700; color: var(--muted); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s; font-family: inherit; }
 .currency-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
 
-/* ── DARK MODE TOGGLE (inside dropdown) ── */
-.toggle-track {
-  width: 36px; height: 20px;
-  background: #333;
-  border-radius: 10px;
-  position: relative;
-  transition: background 0.2s;
-  border: 1px solid #444;
-  cursor: pointer;
-  flex-shrink: 0;
+/* ── SETTINGS PILL TOGGLES ── */
+.sd-pill { display: flex; background: var(--surface2); border-radius: 6px; border: 1px solid var(--border); overflow: hidden; }
+.sd-pill-btn {
+  padding: 5px 11px; font-size: 12px; font-weight: 600;
+  color: var(--muted); cursor: pointer; transition: all 0.15s;
+  background: none; border: none; font-family: inherit;
+  display: flex; align-items: center; gap: 5px;
 }
-.toggle-track.on { background: var(--accent); border-color: var(--accent); }
-.toggle-thumb {
-  position: absolute;
-  top: 2px; left: 2px;
-  width: 14px; height: 14px;
-  background: #fff;
-  border-radius: 50%;
-  transition: transform 0.2s;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
-}
-.toggle-track.on .toggle-thumb { transform: translateX(16px); }
+.sd-pill-btn.active { background: var(--surface); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,0.15); }
+.sd-row-label { font-size: 13px; color: var(--text); font-weight: 600; display: flex; align-items: center; gap: 6px; }
 
 /* ── NAV TABS (Chrome-style) ── */
 .nav-tabs {
@@ -543,38 +531,41 @@ canvas { display: block; }
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
       </button>
       <div class="settings-dropdown" id="settings-dropdown">
-        <!-- Appearance -->
+        <!-- Theme -->
         <div class="sd-section">
-          <div class="sd-label">Appearance</div>
           <div class="sd-row">
-            <span class="sd-row-label" style="display:flex;align-items:center;gap:6px">
+            <span class="sd-row-label" id="sd-theme-label">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
-              Dark Mode
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+              Light
             </span>
-            <div class="toggle-track" id="toggle-track" onclick="toggleTheme()"><div class="toggle-thumb"></div></div>
+            <div class="sd-pill">
+              <button class="sd-pill-btn active" id="toggle-light" onclick="setTheme(false)">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+              </button>
+              <button class="sd-pill-btn" id="toggle-dark" onclick="setTheme(true)">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+              </button>
+            </div>
           </div>
         </div>
         <!-- Units -->
         <div class="sd-section">
-          <div class="sd-label">Units</div>
           <div class="sd-row">
-            <span class="sd-row-label">Measurement</span>
-            <div class="pill-toggle">
-              <button class="pill-btn" id="unit-imperial" onclick="setUnits('imperial')">Imperial</button>
-              <button class="pill-btn" id="unit-metric" onclick="setUnits('metric')">Metric</button>
+            <span class="sd-row-label" id="sd-units-label">Imperial</span>
+            <div class="sd-pill">
+              <button class="sd-pill-btn active" id="unit-imperial" onclick="setUnits('imperial')">in</button>
+              <button class="sd-pill-btn" id="unit-metric" onclick="setUnits('metric')">mm</button>
             </div>
           </div>
         </div>
         <!-- Currency -->
         <div class="sd-section">
-          <div class="sd-label">Currency</div>
           <div class="sd-row">
-            <span class="sd-row-label">Symbol</span>
-            <div class="currency-btns">
-              <button class="currency-btn" id="cur-usd" onclick="setCurrency('$')">$</button>
-              <button class="currency-btn" id="cur-gbp" onclick="setCurrency('£')">£</button>
-              <button class="currency-btn" id="cur-eur" onclick="setCurrency('€')">€</button>
+            <span class="sd-row-label" id="sd-currency-label">$</span>
+            <div class="sd-pill">
+              <button class="sd-pill-btn active" id="cur-usd" onclick="setCurrency('$')">$</button>
+              <button class="sd-pill-btn" id="cur-gbp" onclick="setCurrency('£')">£</button>
+              <button class="sd-pill-btn" id="cur-eur" onclick="setCurrency('€')">€</button>
             </div>
           </div>
         </div>
@@ -901,8 +892,14 @@ let darkMode = false;
 function setTheme(dark) {
   darkMode = dark;
   document.documentElement.classList.toggle('dark', darkMode);
-  document.getElementById('toggle-track').classList.toggle('on', darkMode);
   localStorage.setItem('pcDark', darkMode ? '1' : '0');
+  const sunSVG = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>`;
+  const moonSVG = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>`;
+  const lbl = document.getElementById('sd-theme-label');
+  if (lbl) lbl.innerHTML = darkMode ? moonSVG + ' Dark' : sunSVG + ' Light';
+  const tl = document.getElementById('toggle-light'), td = document.getElementById('toggle-dark');
+  if (tl) tl.classList.toggle('active', !darkMode);
+  if (td) td.classList.toggle('active', darkMode);
 }
 
 function toggleTheme() {
@@ -922,8 +919,11 @@ function setUnits(u) {
   const prevUnits = window.units;
   window.units = u;
   localStorage.setItem('pcUnits', u);
-  document.getElementById('unit-imperial').classList.toggle('active', u === 'imperial');
-  document.getElementById('unit-metric').classList.toggle('active', u === 'metric');
+  const uiEl = document.getElementById('unit-imperial'), umEl = document.getElementById('unit-metric');
+  if (uiEl) uiEl.classList.toggle('active', u === 'imperial');
+  if (umEl) umEl.classList.toggle('active', u === 'metric');
+  const ulbl = document.getElementById('sd-units-label');
+  if (ulbl) ulbl.textContent = m ? 'Metric' : 'Imperial';
 
   const m = u === 'metric';
 
@@ -996,9 +996,13 @@ const EURO_LOCALES = ['de','fr','es','it','nl','pt','fi','el','cs','sk','sl','hr
 function setCurrency(c) {
   window.currency = c;
   localStorage.setItem('pcCurrency', c);
-  document.getElementById('cur-usd').classList.toggle('active', c === '$');
-  document.getElementById('cur-gbp').classList.toggle('active', c === '£');
-  document.getElementById('cur-eur').classList.toggle('active', c === '€');
+  ['$','£','€'].forEach(s => {
+    const id = s === '$' ? 'cur-usd' : s === '£' ? 'cur-gbp' : 'cur-eur';
+    const el = document.getElementById(id);
+    if (el) el.classList.toggle('active', c === s);
+  });
+  const clbl = document.getElementById('sd-currency-label');
+  if (clbl) clbl.textContent = c;
   try { renderStockMain(); renderQuoteMain(); renderOrdersMain(); } catch(e) {}
 }
 
