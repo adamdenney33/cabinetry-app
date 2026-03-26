@@ -104,19 +104,24 @@ header {
   font-size: 11px; font-weight: 700;
   background: rgba(255,255,255,0.1);
   color: rgba(255,255,255,0.75);
-  padding: 4px 10px; border-radius: 7px;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 7px;
   letter-spacing: 0.3px;
   border: 1px solid rgba(255,255,255,0.18);
+  display: flex; align-items: center;
 }
 .user-avatar {
-  width: 30px; height: 30px;
-  background: #333;
-  border: 1px solid #444;
-  border-radius: 50%;
+  width: 32px; height: 32px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 7px;
   display: flex; align-items: center; justify-content: center;
-  font-size: 11px; font-weight: 700; color: #ccc;
+  color: #aaa;
   cursor: pointer;
+  transition: all 0.15s;
 }
+.user-avatar:hover { background: rgba(255,255,255,0.14); color: #fff; }
 
 /* ── SETTINGS BUTTON & DROPDOWN ── */
 .settings-wrap {
@@ -575,7 +580,9 @@ canvas { display: block; }
         </div>
       </div>
     </div>
-    <div class="user-avatar">AD</div>
+    <div class="user-avatar" title="Account">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+    </div>
   </div>
 </header>
 
