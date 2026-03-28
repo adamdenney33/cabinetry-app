@@ -560,6 +560,7 @@ canvas { display: block; }
 .qc-actions { display: flex; gap: 5px; flex-shrink: 0; align-items: flex-start; }
 .qc-breakdown { border-top: 1px solid var(--border2); padding: 12px 18px; background: var(--surface2); }
 .qc-footer { display: flex; gap: 6px; padding: 10px 18px; border-top: 1px solid var(--border2); flex-wrap: wrap; }
+.qc-footer .btn { width: auto; font-size: 11px; padding: 5px 10px; }
 .qb-row { display: flex; justify-content: space-between; font-size: 13px; color: var(--text2); padding: 3px 0; }
 .qb-row:last-child { padding-bottom: 0; }
 .qb-muted { color: var(--muted); font-size: 12px; }
@@ -578,8 +579,9 @@ canvas { display: block; }
 .oc-title { font-size: 15px; font-weight: 700; color: var(--text); cursor: text; }
 .oc-title:focus { outline: none; border-bottom: 1px solid var(--accent); }
 .oc-meta { font-size: 12px; color: var(--muted); margin-top: 3px; }
-.oc-notes { font-size: 12px; color: var(--text2); margin-top: 5px; font-style: italic; cursor: text; padding: 2px 0; }
+.oc-notes { font-size: 12px; color: var(--text2); margin-top: 5px; font-style: italic; cursor: text; padding: 2px 0; min-height: 18px; }
 .oc-notes:focus { outline: none; font-style: normal; }
+.oc-notes:empty:not(:focus)::before { content: attr(data-placeholder); color: var(--muted); font-style: italic; opacity: 0.6; }
 .oc-edit { cursor: text; border-bottom: 1px dashed var(--muted); padding: 0 2px; }
 .oc-edit:focus { outline: none; border-bottom-color: var(--accent); }
 .oc-right { display: flex; align-items: center; flex-shrink: 0; }
@@ -906,6 +908,7 @@ html.dark .cl-table tbody tr:nth-child(even) td { background: rgba(255,255,255,0
               <button class="sd-pill-btn active" id="cur-usd" onclick="setCurrency('$')">$</button>
               <button class="sd-pill-btn" id="cur-gbp" onclick="setCurrency('£')">£</button>
               <button class="sd-pill-btn" id="cur-eur" onclick="setCurrency('€')">€</button>
+              <button class="sd-pill-btn" id="cur-aud" onclick="setCurrency('A$')">A$</button>
             </div>
           </div>
         </div>
@@ -915,6 +918,8 @@ html.dark .cl-table tbody tr:nth-child(even) td { background: rgba(255,255,255,0
           <input class="sd-text-input" id="biz-name" placeholder="Business name" oninput="saveBizInfo()">
           <input class="sd-text-input" id="biz-phone" placeholder="Phone" oninput="saveBizInfo()" style="margin-top:5px">
           <input class="sd-text-input" id="biz-email" placeholder="Email" oninput="saveBizInfo()" style="margin-top:5px">
+          <input class="sd-text-input" id="biz-address" placeholder="Address (optional)" oninput="saveBizInfo()" style="margin-top:5px">
+          <input class="sd-text-input" id="biz-abn" placeholder="ABN / Tax No. (optional)" oninput="saveBizInfo()" style="margin-top:5px">
         </div>
       </div>
     </div>
@@ -1462,6 +1467,7 @@ async function loadAllData() {
     _db('stock_items').select('*').order('created_at', { ascending: true }),
   ]);
   orders = ord || [];
+  _onRestore(orders);  // merge locally-stored notes (notes col may not be in DB schema yet)
   quotes = quo || [];
   stockItems = stk || [];
   if (orders.length) orderNextId = Math.max(...orders.map(o => o.id)) + 1;
@@ -1502,17 +1508,21 @@ window.units = 'imperial';
 // ══════════════════════════════════════════
 function saveBizInfo() {
   localStorage.setItem('pc_biz', JSON.stringify({
-    name:  document.getElementById('biz-name')?.value  || '',
-    phone: document.getElementById('biz-phone')?.value || '',
-    email: document.getElementById('biz-email')?.value || '',
+    name:    document.getElementById('biz-name')?.value    || '',
+    phone:   document.getElementById('biz-phone')?.value   || '',
+    email:   document.getElementById('biz-email')?.value   || '',
+    address: document.getElementById('biz-address')?.value || '',
+    abn:     document.getElementById('biz-abn')?.value     || '',
   }));
 }
 function loadBizInfo() {
   try {
     const b = JSON.parse(localStorage.getItem('pc_biz') || '{}');
-    if (b.name)  document.getElementById('biz-name').value  = b.name;
-    if (b.phone) document.getElementById('biz-phone').value = b.phone;
-    if (b.email) document.getElementById('biz-email').value = b.email;
+    if (b.name)    document.getElementById('biz-name').value    = b.name;
+    if (b.phone)   document.getElementById('biz-phone').value   = b.phone;
+    if (b.email)   document.getElementById('biz-email').value   = b.email;
+    if (b.address) document.getElementById('biz-address').value = b.address;
+    if (b.abn)     document.getElementById('biz-abn').value     = b.abn;
   } catch(e) {}
 }
 function getBizInfo() {
@@ -1635,10 +1645,10 @@ const EURO_LOCALES = ['de','fr','es','it','nl','pt','fi','el','cs','sk','sl','hr
 function setCurrency(c) {
   window.currency = c;
   localStorage.setItem('pcCurrency', c);
-  ['$','£','€'].forEach(s => {
-    const id = s === '$' ? 'cur-usd' : s === '£' ? 'cur-gbp' : 'cur-eur';
+  const curMap = { '$': 'cur-usd', '£': 'cur-gbp', '€': 'cur-eur', 'A$': 'cur-aud' };
+  Object.entries(curMap).forEach(([sym, id]) => {
     const el = document.getElementById(id);
-    if (el) el.classList.toggle('active', c === s);
+    if (el) el.classList.toggle('active', c === sym);
   });
   try { renderStockMain(); renderQuoteMain(); renderOrdersMain(); } catch(e) {}
 }
@@ -1693,9 +1703,22 @@ function _scSet(id, cat) {
   localStorage.setItem('pc_stock_cats', JSON.stringify(m));
 }
 
+// Order notes — persisted in localStorage since notes column may not be in DB schema
+function _onMap() { try { return JSON.parse(localStorage.getItem('pc_order_notes') || '{}'); } catch(e) { return {}; } }
+function _onGet(id) { return _onMap()[String(id)] || ''; }
+function _onSet(id, notes) {
+  const m = _onMap();
+  if (notes) m[String(id)] = notes; else delete m[String(id)];
+  localStorage.setItem('pc_order_notes', JSON.stringify(m));
+}
+function _onRestore(orderArr) {
+  const m = _onMap();
+  orderArr.forEach(o => { if (m[String(o.id)]) o.notes = m[String(o.id)]; });
+}
+
 async function addStockItem() {
   const name = document.getElementById('stock-name').value.trim();
-  if (!name) return alert('Enter a material name.');
+  if (!name) { _toast('Enter a material name.', 'error'); return; }
   if (!_requireAuth()) return;
   const cat = document.getElementById('stock-cat').value.trim();
   const row = {
@@ -2547,8 +2570,8 @@ function optimize() {
   }
   const activeSheets = sheets.filter(s => s.enabled !== false);
   const activePieces = pieces.filter(p => p.enabled !== false);
-  if (!activeSheets.length) return alert('Add at least one enabled sheet panel.');
-  if (!activePieces.length) return alert('Add at least one enabled cut part.');
+  if (!activeSheets.length) { _toast('Add at least one enabled sheet panel.', 'error'); return; }
+  if (!activePieces.length) { _toast('Add at least one enabled cut part.', 'error'); return; }
   const kerf = parseFloat(document.getElementById('kerf').value) || 0;
   let remaining = [];
   for (const p of activePieces) for (let i = 0; i < p.qty; i++) remaining.push({ ...p, _inst: i });
@@ -2876,7 +2899,7 @@ function quoteTotal(q) {
 async function createQuote() {
   const client = document.getElementById('q-client').value.trim();
   const project = document.getElementById('q-project').value.trim();
-  if (!client || !project) return alert('Enter client name and project.');
+  if (!client || !project) { _toast('Enter client name and project.', 'error'); return; }
   const labourRate = parseFloat(document.getElementById('q-labour-rate').value) || 65;
   const hours = parseFloat(document.getElementById('q-hours').value) || 0;
   const row = {
@@ -2919,6 +2942,27 @@ async function convertQuoteToOrder(id) {
   if (oErr) { _toast('Could not create order — ' + (oErr.message || JSON.stringify(oErr)), 'error'); console.error(oErr); return; }
   orders.unshift(data);
   document.getElementById('orders-badge').textContent = orders.filter(o => o.status !== 'complete').length;
+  _toast(`Order created for ${q.client} — ${q.project}`, 'success');
+  renderQuoteMain();
+  switchSection('orders');
+}
+
+async function approveQuote(id) {
+  if (!_requireAuth()) return;
+  const q = quotes.find(q => q.id === id);
+  if (!q) return;
+  await _db('quotes').update({ status: 'approved' }).eq('id', id);
+  q.status = 'approved';
+  _toast('Quote marked as approved', 'success');
+  renderQuoteMain();
+}
+
+async function revertQuoteToDraft(id) {
+  if (!_requireAuth()) return;
+  const q = quotes.find(q => q.id === id);
+  if (!q) return;
+  await _db('quotes').update({ status: 'draft' }).eq('id', id);
+  q.status = 'draft';
   renderQuoteMain();
 }
 
@@ -2972,10 +3016,12 @@ function renderQuoteMain() {
         <div class="qb-row qb-total"><span>Total inc. tax</span><span>${fmt(total)}</span></div>
       </div>
       <div class="qc-footer">
-        ${q.status === 'draft' ? `<button class="btn btn-outline" onclick="markQuoteSent(${q.id})" style="font-size:11px;padding:5px 10px">Mark Sent</button>` : ''}
-        ${q.status !== 'approved' ? `<button class="btn btn-outline" onclick="convertQuoteToOrder(${q.id})" style="font-size:11px;padding:5px 10px">→ Order</button>` : ''}
-        <button class="btn btn-outline" onclick="printQuote(${q.id})" style="font-size:11px;padding:5px 10px" title="Print / Save PDF">⎙ Print</button>
-        <button class="btn btn-outline" onclick="duplicateQuote(${q.id})" style="font-size:11px;padding:5px 10px" title="Duplicate quote">⧉ Copy</button>
+        ${q.status === 'draft' ? `<button class="btn btn-outline" onclick="markQuoteSent(${q.id})">Mark Sent</button>` : ''}
+        ${q.status === 'sent' ? `<button class="btn btn-success" onclick="approveQuote(${q.id})" style="width:auto;padding:5px 10px;font-size:11px">✓ Approve</button>` : ''}
+        <button class="btn btn-outline" onclick="convertQuoteToOrder(${q.id})">${q.status === 'approved' ? '+ New Order' : '→ Order'}</button>
+        <button class="btn btn-outline" onclick="printQuote(${q.id})" title="Print / Save PDF">⎙ Print</button>
+        <button class="btn btn-outline" onclick="duplicateQuote(${q.id})" title="Duplicate quote">⧉ Copy</button>
+        ${q.status !== 'draft' ? `<button class="btn btn-outline" onclick="revertQuoteToDraft(${q.id})" style="color:var(--muted)" title="Revert to Draft">↩ Draft</button>` : ''}
       </div>
     </div>`;
   };
@@ -2984,13 +3030,27 @@ function renderQuoteMain() {
     <div class="empty-icon" style="opacity:.18"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></div>
     <h3>No quotes yet</h3><p>Fill in the form on the left to create your first quote.</p></div>`;
 
+  const qFilter = window._quoteFilter || 'all';
+  const qSearch = (window._quoteSearch || '').toLowerCase().trim();
+  let filteredQ = quotes;
+  if (qFilter !== 'all') filteredQ = filteredQ.filter(q => q.status === qFilter);
+  if (qSearch) filteredQ = filteredQ.filter(q => (q.client + ' ' + q.project).toLowerCase().includes(qSearch));
+
+  const filterBar = `<div class="order-filter-tabs" style="align-items:center">
+    <input class="order-search-input" type="search" placeholder="Search client or project…" value="${window._quoteSearch||''}" oninput="window._quoteSearch=this.value;renderQuoteMain()">
+    <button class="ofilter-tab ${qFilter==='all'?'active':''}" onclick="window._quoteFilter='all';renderQuoteMain()">All (${quotes.length})</button>
+    <button class="ofilter-tab ${qFilter==='draft'?'active':''}" onclick="window._quoteFilter='draft';renderQuoteMain()">Draft (${draft})</button>
+    <button class="ofilter-tab ${qFilter==='sent'?'active':''}" onclick="window._quoteFilter='sent';renderQuoteMain()">Sent (${sent})</button>
+    <button class="ofilter-tab ${qFilter==='approved'?'active':''}" onclick="window._quoteFilter='approved';renderQuoteMain()">Approved (${approved})</button>
+  </div>`;
+
   el.innerHTML = `
     <div class="stats-grid">
       <div class="stat-card accent"><div class="stat-label">Total Quotes</div><div class="stat-value">${quotes.length}</div><div class="stat-sub">${draft} draft · ${sent} sent</div></div>
       <div class="stat-card success"><div class="stat-label">Approved</div><div class="stat-value">${approved}</div><div class="stat-sub">ready to start</div></div>
       <div class="stat-card warn"><div class="stat-label">Pipeline Value</div><div class="stat-value">${fmt(totalValue)}</div><div class="stat-sub">total quoted</div></div>
     </div>
-    ${quotes.length === 0 ? emptyState : `<div class="quote-list">${quotes.map(qCard).join('')}</div>`}`;
+    ${quotes.length === 0 ? emptyState : filterBar + `<div class="quote-list">${filteredQ.map(qCard).join('')}${filteredQ.length === 0 ? '<div class="empty-state" style="padding:40px 0"><p style="color:var(--muted)">No quotes match this filter.</p></div>' : ''}</div>`}`;
 }
 
 // ══════════════════════════════════════════
@@ -3010,7 +3070,7 @@ const STATUS_BADGES = {
 async function addOrder() {
   const client = document.getElementById('o-client').value.trim();
   const project = document.getElementById('o-project').value.trim();
-  if (!client || !project) return alert('Enter client name and project.');
+  if (!client || !project) { _toast('Enter client name and project.', 'error'); return; }
   const dueRaw = document.getElementById('o-due').value;
   const due = dueRaw ? new Date(dueRaw + 'T12:00:00').toLocaleDateString('en-GB', {day:'numeric', month:'short', year:'numeric'}) : 'TBD';
   const row = {
@@ -3095,7 +3155,7 @@ function renderOrdersMain() {
         <div class="oc-info">
           <div class="oc-title" contenteditable="true" onblur="updateOrderField(${o.id},'project',this.innerText.trim())" title="Click to edit project">${o.project}</div>
           <div class="oc-meta">${(() => { const rel = _relativeDate(o.due); const relTag = rel ? ` <span style="font-size:10px;font-weight:700;color:${rel.color};margin-left:4px">${rel.label}</span>` : ''; return `<span contenteditable="true" onblur="updateOrderField(${o.id},'client',this.innerText.trim())" title="Click to edit client">${o.client}</span> &nbsp;·&nbsp; Due: <span class="oc-edit" contenteditable="true" onblur="updateOrderField(${o.id},'due',this.innerText.trim())" title="Click to edit due date">${o.due}</span>${relTag}${isOverdue ? ' <span class="badge badge-red" style="font-size:9px;margin-left:4px">Overdue</span>' : ''}`; })()}</div>
-          ${o.notes ? `<div class="oc-notes" contenteditable="true" onblur="updateOrderField(${o.id},'notes',this.innerText.trim())" title="Click to edit notes">${o.notes}</div>` : ''}
+          <div class="oc-notes" contenteditable="true" onblur="updateOrderField(${o.id},'notes',this.innerText.trim())" title="Click to add notes" data-placeholder="Add production notes…">${o.notes || ''}</div>
         </div>
         <div class="oc-right">
           <div class="oc-value" contenteditable="true" onblur="updateOrderField(${o.id},'value',this.innerText.replace(/[^0-9.]/g,''))" title="Click to edit value">${fmt(o.value)}</div>
@@ -3500,7 +3560,7 @@ function printWorkOrder(id) {
 <div class="hdr">
   <div>
     <div class="biz-name">${biz.name || 'ProCabinet'}</div>
-    <div class="biz-contact">${biz.phone ? biz.phone + '<br>' : ''}${biz.email || ''}</div>
+    <div class="biz-contact">${[biz.phone, biz.email, biz.address, biz.abn ? 'ABN: ' + biz.abn : ''].filter(Boolean).join('<br>')}</div>
   </div>
   <div class="wo-ref">
     <div class="wo-ref-num">#WO-${String(o.id).padStart(4,'0')}</div>
@@ -3651,7 +3711,7 @@ function printQuote(id) {
 <div class="hdr">
   <div>
     <div class="biz-name">${biz.name || 'Your Business'}</div>
-    <div class="biz-contact">${biz.phone ? biz.phone + '<br>' : ''}${biz.email || ''}</div>
+    <div class="biz-contact">${[biz.phone, biz.email, biz.address, biz.abn ? 'ABN: ' + biz.abn : ''].filter(Boolean).join('<br>')}</div>
   </div>
   <div class="doc-right">
     <div class="doc-word">Quotation</div>
@@ -3749,8 +3809,8 @@ async function updateOrderField(id, field, val) {
   if (!o) return;
   const v = field === 'value' ? (parseFloat(val) || 0) : val;
   o[field] = v;
-  // 'notes' column not yet in DB schema — skip that field, update others normally
-  if (field !== 'notes') await _db('orders').update({ [field]: v }).eq('id', id);
+  // 'notes' column not yet in DB schema — persist in localStorage, update others normally
+  if (field === 'notes') { _onSet(id, v); } else { await _db('orders').update({ [field]: v }).eq('id', id); }
   document.getElementById('orders-badge').textContent = orders.filter(o => o.status !== 'complete').length;
   renderOrdersMain();
 }
@@ -3823,6 +3883,19 @@ function showAuthFromPaywall() {
   _showAuth();
 }
 
+// Escape key closes overlays
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  const auth = document.getElementById('auth-screen');
+  if (auth && !auth.classList.contains('hidden')) { dismissAuth(); return; }
+  const paywall = document.getElementById('paywall-modal');
+  if (paywall && !paywall.classList.contains('hidden')) { paywall.classList.add('hidden'); return; }
+  const acct = document.getElementById('account-panel');
+  if (acct && acct.classList.contains('open')) { acct.classList.remove('open'); return; }
+  const proj = document.getElementById('projects-panel');
+  if (proj && proj.classList.contains('open')) { proj.classList.remove('open'); }
+});
+
 // ══════════════════════════════════════════
 // FREE TIER
 // ══════════════════════════════════════════
@@ -3883,13 +3956,13 @@ async function promptSaveProject() {
 async function saveProject(name) {
   const payload = { sheets: JSON.parse(JSON.stringify(sheets)), pieces: JSON.parse(JSON.stringify(pieces)), settings: { units: window.units, kerf: document.getElementById('kerf').value } };
   const { error } = await _db('projects').insert([{ name, data: payload, user_id: _userId }]);
-  if (error) { alert('Save failed: ' + error.message); return; }
+  if (error) { _toast('Save failed: ' + error.message, 'error'); return; }
   loadProjects();
 }
 
 async function loadProject(id) {
   const { data, error } = await _db('projects').select('*').eq('id', id).single();
-  if (error || !data) { alert('Could not load project.'); return; }
+  if (error || !data) { _toast('Could not load project.', 'error'); return; }
   const p = data.data;
   sheets = []; pieces = []; _sheetId = 1; _pieceId = 1; pieceColorIdx = 0;
   for (const s of (p.sheets || [])) { sheets.push({ ...s, id: _sheetId++ }); }
