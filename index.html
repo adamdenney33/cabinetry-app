@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ProCabinet — Cabinetry Production Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -11,6 +12,7 @@
 :root {
   --accent:   #e8a838;
   --accent-dim: rgba(232,168,56,0.12);
+  --accent2:  #0d9488;
   --danger:   #e05252;
   --success:  #3d9970;
   --warn:     #e8a838;
@@ -154,7 +156,7 @@ header {
 .settings-btn:hover { background: rgba(255,255,255,0.14); color: #fff; }
 .settings-dropdown {
   position: absolute; top: calc(100% + 8px); right: 0;
-  width: 240px;
+  width: 260px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 10px;
@@ -166,6 +168,12 @@ header {
 .settings-dropdown.open { display: block; }
 .sd-section { padding: 12px 16px; border-bottom: 1px solid var(--border); }
 .sd-section:last-child { border-bottom: none; }
+.sd-text-input { width: 100%; font-size: 12px; padding: 5px 8px; border-radius: 5px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); font-family: inherit; }
+.sd-text-input:focus { outline: none; border-color: var(--accent); }
+.client-suggest-list { position: absolute; top: 100%; left: 0; right: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; box-shadow: var(--shadow-md); z-index: 200; max-height: 160px; overflow-y: auto; }
+.client-suggest-item { padding: 8px 12px; font-size: 13px; cursor: pointer; border-bottom: 1px solid var(--border2); }
+.client-suggest-item:last-child { border-bottom: none; }
+.client-suggest-item:hover { background: var(--accent-dim); color: var(--accent); }
 .sd-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--muted); margin-bottom: 10px; }
 .sd-row { display: flex; align-items: center; justify-content: space-between; }
 .sd-row-label { font-size: 13px; color: var(--text); font-weight: 500; }
@@ -519,6 +527,7 @@ textarea { resize: vertical; min-height: 70px; }
 .sheet-tab { padding: 5px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; cursor: pointer; background: var(--border); color: var(--muted); transition: all 0.15s; }
 .sheet-tab:hover:not(.active) { background: #dde3ec; }
 .sheet-tab.active { background: var(--accent); color: #fff; }
+.sheet-block-label { display: flex; align-items: baseline; gap: 10px; font-size: 13px; font-weight: 700; color: var(--text); margin: 20px 0 8px; }
 
 .canvas-wrap { background: var(--surface2); border-radius: var(--radius); border: 1px solid var(--border); padding: 20px; display: inline-block; max-width: 100%; box-shadow: var(--shadow); }
 canvas { display: block; }
@@ -534,60 +543,79 @@ canvas { display: block; }
 /* ══════════════════════════════════════════
    QUOTE SECTION
 ══════════════════════════════════════════ */
-.quote-list { display: flex; flex-direction: column; gap: 10px; }
-.quote-item {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 14px 18px;
-  display: flex; align-items: center; justify-content: space-between;
-  box-shadow: var(--shadow);
-  transition: box-shadow 0.2s; cursor: pointer;
-}
-.quote-item:hover { box-shadow: var(--shadow-md); }
-.quote-info { flex: 1; }
-.quote-name { font-size: 14px; font-weight: 700; color: var(--text); }
-.quote-meta { font-size: 12px; color: var(--muted); margin-top: 3px; }
-.quote-value { font-size: 20px; font-weight: 800; color: var(--text); text-align: right; }
-.quote-value-label { font-size: 10px; color: var(--muted); text-align: right; font-weight: 600; text-transform: uppercase; }
-
-.line-items-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 16px; }
-.line-items-table th { text-align: left; padding: 8px 10px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); border-bottom: 2px solid var(--border); }
-.line-items-table td { padding: 8px 10px; border-bottom: 1px solid var(--light); }
-.line-items-table tfoot td { font-weight: 700; border-top: 2px solid var(--border); border-bottom: none; padding-top: 12px; }
-.line-items-table input { padding: 4px 8px; font-size: 12px; }
+.quote-list { display: flex; flex-direction: column; gap: 12px; }
+.quote-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+.qc-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 16px 18px 12px; }
+.qc-title { font-size: 15px; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; cursor: text; }
+.qc-title:focus { outline: none; white-space: normal; border-bottom: 1px solid var(--accent); }
+.qc-meta { font-size: 12px; color: var(--muted); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.qc-notes { font-size: 12px; color: var(--text2); margin-top: 5px; font-style: italic; opacity: 0.8; cursor: text; }
+.qc-notes:focus { outline: none; font-style: normal; }
+.qc-actions { display: flex; gap: 5px; flex-shrink: 0; align-items: flex-start; }
+.qc-breakdown { border-top: 1px solid var(--border2); padding: 12px 18px; background: var(--surface2); }
+.qc-footer { display: flex; gap: 6px; padding: 10px 18px; border-top: 1px solid var(--border2); flex-wrap: wrap; }
+.qb-row { display: flex; justify-content: space-between; font-size: 13px; color: var(--text2); padding: 3px 0; }
+.qb-row:last-child { padding-bottom: 0; }
+.qb-muted { color: var(--muted); font-size: 12px; }
+.qb-total { font-size: 14px; font-weight: 800; color: var(--text); }
+.qb-divider { border-top: 1px solid var(--border); margin: 6px 0; }
+.qb-edit { cursor: text; border-bottom: 1px dashed var(--muted); padding: 0 2px; min-width: 24px; display: inline-block; }
+.qb-edit:focus { outline: none; border-bottom-color: var(--accent); background: var(--surface2); border-radius: 2px; }
 
 /* ══════════════════════════════════════════
    ORDERS SECTION
 ══════════════════════════════════════════ */
-.orders-list { display: flex; flex-direction: column; gap: 10px; }
-.order-item {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 16px 20px;
-  display: flex; align-items: center; gap: 16px;
-  box-shadow: var(--shadow);
-  transition: box-shadow 0.2s; cursor: pointer;
-}
-.order-item:hover { box-shadow: var(--shadow-md); }
-.order-status-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
-.order-info { flex: 1; }
-.order-name { font-size: 14px; font-weight: 700; color: var(--text); }
-.order-meta { font-size: 12px; color: var(--muted); margin-top: 3px; }
-.order-right { text-align: right; }
-.order-value { font-size: 16px; font-weight: 800; color: var(--text); }
-.order-date { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.orders-list { display: flex; flex-direction: column; gap: 12px; }
+.order-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+.order-overdue { border-left: 3px solid var(--danger); }
+.oc-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 16px 18px 12px; }
+.oc-title { font-size: 15px; font-weight: 700; color: var(--text); cursor: text; }
+.oc-title:focus { outline: none; border-bottom: 1px solid var(--accent); }
+.oc-meta { font-size: 12px; color: var(--muted); margin-top: 3px; }
+.oc-notes { font-size: 12px; color: var(--text2); margin-top: 5px; font-style: italic; cursor: text; padding: 2px 0; }
+.oc-notes:focus { outline: none; font-style: normal; }
+.oc-edit { cursor: text; border-bottom: 1px dashed var(--muted); padding: 0 2px; }
+.oc-edit:focus { outline: none; border-bottom-color: var(--accent); }
+.oc-right { display: flex; align-items: center; flex-shrink: 0; }
+.oc-value { font-size: 18px; font-weight: 800; color: var(--text); cursor: text; border-bottom: 1px dashed transparent; padding: 0 4px; border-radius: 3px; }
+.oc-value:hover { border-bottom-color: var(--muted); }
+.oc-value:focus { outline: none; border-bottom-color: var(--accent); background: var(--surface2); }
+.oc-pipeline { display: flex; align-items: center; padding: 10px 18px; border-top: 1px solid var(--border2); background: var(--surface2); overflow-x: auto; }
+.pipe-step { display: flex; flex-direction: column; align-items: center; flex-shrink: 0; min-width: 60px; }
+.pipe-dot { width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--border); background: var(--surface); margin-bottom: 4px; flex-shrink: 0; transition: all 0.2s; }
+.pipe-label { font-size: 9px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.3px; text-align: center; }
+.pipe-active .pipe-label { color: var(--text); }
+.pipe-done .pipe-label { color: var(--text2); }
+.pipe-line { flex: 1; height: 2px; background: var(--border); min-width: 16px; margin-bottom: 14px; transition: background 0.2s; }
+.pipe-line-done { background: var(--success); }
+.oc-footer { display: flex; align-items: center; gap: 10px; padding: 10px 18px; border-top: 1px solid var(--border2); }
+.oc-status-select { font-size: 12px; padding: 5px 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); font-family: inherit; cursor: pointer; }
+.order-filter-tabs { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
+.order-search-input { flex: 1; min-width: 140px; font-size: 12px; padding: 5px 10px; border-radius: 20px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); font-family: inherit; }
+.order-search-input:focus { outline: none; border-color: var(--accent); }
+.ofilter-tab { padding: 5px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; cursor: pointer; background: var(--surface2); border: 1px solid var(--border); color: var(--muted); transition: all 0.15s; font-family: inherit; }
+.ofilter-tab:hover { border-color: var(--accent); color: var(--text); }
+.ofilter-tab.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+.cl-totals-row { font-size: 11px; color: var(--muted); padding: 4px 6px; text-align: right; }
 
-.progress-steps { display: flex; align-items: center; gap: 0; margin: 20px 0; }
-.step { flex: 1; text-align: center; position: relative; }
-.step::before { content: ''; position: absolute; top: 14px; left: 50%; width: 100%; height: 2px; background: var(--border); z-index: 0; }
-.step:last-child::before { display: none; }
-.step-dot { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; margin: 0 auto 6px; position: relative; z-index: 1; border: 2px solid var(--border); background: var(--surface); color: var(--muted); }
-.step.done .step-dot { background: var(--accent2); border-color: var(--accent2); color: #fff; }
-.step.active .step-dot { background: var(--accent); border-color: var(--accent); color: #fff; }
-.step-label { font-size: 10px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.4px; }
-.step.done .step-label, .step.active .step-label { color: var(--text); }
+/* ══════════════════════════════════════════
+   WORKSHOP CUT SHEET
+══════════════════════════════════════════ */
+.cutsheet-toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.cutsheet-sheet { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 14px; overflow: hidden; box-shadow: var(--shadow); }
+.cutsheet-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: var(--surface2); border-bottom: 1px solid var(--border); }
+.cutsheet-title { font-size: 13px; font-weight: 700; color: var(--text); }
+.cutsheet-sub { font-size: 12px; color: var(--muted); }
+.cutsheet-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.cutsheet-table th { padding: 7px 12px; text-align: left; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; color: var(--muted); border-bottom: 1px solid var(--border); }
+.cutsheet-table td { padding: 9px 12px; border-bottom: 1px solid var(--border2); color: var(--text2); }
+.cutsheet-table tr:last-child td { border-bottom: none; }
+.cutsheet-table tr:hover td { background: var(--surface2); }
+.cutsheet-num { color: var(--muted); font-size: 11px; }
+.cutsheet-dim { font-variant-numeric: tabular-nums; font-weight: 600; color: var(--text); text-align: right; }
+.cut-checkbox { display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; border: 2px solid var(--border); border-radius: 3px; cursor: pointer; font-size: 10px; transition: all 0.15s; }
+.cut-checkbox.checked { background: var(--success); border-color: var(--success); color: #fff; }
+.cut-checkbox.checked::after { content: '✓'; }
 
 /* ── RESIZE HANDLE ── */
 .cl-resize-handle {
@@ -700,9 +728,122 @@ html.dark .cl-table tbody tr:nth-child(even) td { background: rgba(255,255,255,0
   .cl-right, .section-panel { display: block !important; }
   .canvas-wrap { page-break-inside: avoid; }
 }
+/* ── AUTH SCREEN ── */
+#auth-screen {
+  position: fixed; inset: 0; z-index: 9999;
+  background: var(--bg);
+  display: flex; align-items: center; justify-content: center;
+}
+#auth-screen.hidden { display: none; }
+.auth-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 14px; padding: 40px; width: 360px;
+  box-shadow: var(--shadow-md);
+}
+.auth-logo { font-size: 22px; font-weight: 800; color: var(--text); margin-bottom: 6px; }
+.auth-logo span { color: var(--accent); }
+.auth-tagline { font-size: 12px; color: var(--muted); margin-bottom: 28px; }
+.auth-heading { font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 16px; }
+.auth-error { font-size: 12px; color: var(--danger); margin-bottom: 10px; min-height: 16px; }
+.auth-success { font-size: 12px; color: var(--success); margin-bottom: 10px; }
+.auth-input {
+  width: 100%; padding: 10px 14px; border: 1px solid var(--border);
+  border-radius: 8px; background: var(--surface2); color: var(--text);
+  font-size: 14px; margin-bottom: 12px; display: block; outline: none;
+}
+.auth-input:focus { border-color: var(--accent); }
+.auth-btn {
+  width: 100%; padding: 11px; background: var(--accent); border: none;
+  border-radius: 8px; color: #fff; font-size: 14px; font-weight: 700;
+  cursor: pointer; margin-top: 4px;
+}
+.auth-btn:hover { opacity: 0.9; }
+.auth-btn:disabled { opacity: 0.5; cursor: default; }
+.auth-toggle { font-size: 12px; color: var(--muted); text-align: center; margin-top: 16px; }
+.auth-toggle span { color: var(--accent); cursor: pointer; text-decoration: underline; }
+.auth-guest { font-size: 12px; color: var(--muted); text-align: center; margin-top: 10px; cursor: pointer; }
+.auth-guest span { text-decoration: underline; color: var(--muted); }
+
+/* ── PROJECTS PANEL ── */
+.projects-panel {
+  background: var(--surface2); border-bottom: 1px solid var(--border);
+  overflow: hidden; transition: max-height 0.25s ease;
+  max-height: 0;
+}
+.projects-panel.open { max-height: 320px; }
+.projects-panel-inner { padding: 10px 14px 12px; }
+.projects-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.projects-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); }
+.project-item {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 7px 10px; border-radius: 6px; cursor: pointer;
+  border: 1px solid var(--border); background: var(--surface);
+  margin-bottom: 5px; transition: border-color 0.15s;
+}
+.project-item:hover { border-color: var(--accent); }
+.project-item-name { font-size: 13px; font-weight: 600; color: var(--text); }
+.project-item-date { font-size: 10px; color: var(--muted); margin-top: 1px; }
+.projects-empty { font-size: 12px; color: var(--muted); text-align: center; padding: 12px 0; }
+.projects-signin { font-size: 12px; color: var(--muted); text-align: center; padding: 12px 0; }
+.projects-signin span { color: var(--accent); cursor: pointer; text-decoration: underline; }
+.project-row { display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); margin-bottom: 5px; }
+.project-row:hover { border-color: var(--accent); }
+.project-name { flex: 1; font-size: 13px; font-weight: 600; color: var(--text); cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.project-name:hover { color: var(--accent); }
+.project-date { font-size: 10px; color: var(--muted); flex-shrink: 0; }
+.project-del { background: none; border: none; color: var(--muted); font-size: 16px; cursor: pointer; padding: 0 2px; line-height: 1; flex-shrink: 0; }
+.project-del:hover { color: var(--danger); }
+
+/* ── FREE TIER COUNTER ── */
+.opt-counter { font-size: 11px; color: var(--muted); text-align: center; margin-top: 4px; }
+.opt-counter.warn { color: var(--danger); font-weight: 600; }
+
+/* ── PAYWALL MODAL ── */
+.paywall-overlay {
+  position: fixed; inset: 0; z-index: 9000;
+  background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center;
+}
+.paywall-overlay.hidden { display: none; }
+.paywall-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 14px; padding: 36px; width: 380px; text-align: center;
+  box-shadow: var(--shadow-md);
+}
+.paywall-icon { font-size: 32px; margin-bottom: 12px; }
+.paywall-title { font-size: 18px; font-weight: 800; color: var(--text); margin-bottom: 8px; }
+.paywall-sub { font-size: 13px; color: var(--muted); margin-bottom: 24px; line-height: 1.5; }
+.paywall-btn { width: 100%; padding: 12px; background: var(--accent); border: none; border-radius: 8px; color: #fff; font-size: 14px; font-weight: 700; cursor: pointer; margin-bottom: 10px; }
+.paywall-btn:hover { opacity: 0.9; }
+.paywall-dismiss { font-size: 12px; color: var(--muted); cursor: pointer; text-decoration: underline; }
 </style>
 </head>
 <body>
+
+<!-- AUTH SCREEN -->
+<div id="auth-screen" class="hidden">
+  <div class="auth-card">
+    <div class="auth-logo">ProCabinet<span>.App</span></div>
+    <div class="auth-tagline">Cabinetry Production Dashboard</div>
+    <div class="auth-heading" id="auth-heading">Sign in to your account</div>
+    <div id="auth-msg"></div>
+    <input type="email" id="auth-email" class="auth-input" placeholder="Email address" autocomplete="email">
+    <input type="password" id="auth-password" class="auth-input" placeholder="Password" autocomplete="current-password">
+    <button class="auth-btn" id="auth-btn" onclick="authSubmit()">Sign In</button>
+    <div class="auth-toggle" id="auth-toggle">No account? <span onclick="toggleAuthMode()">Create one</span></div>
+    <div class="auth-guest" id="auth-guest-link"><span onclick="dismissAuth()">Continue as guest</span></div>
+  </div>
+</div>
+
+<!-- PAYWALL MODAL -->
+<div class="paywall-overlay hidden" id="paywall-modal">
+  <div class="paywall-card">
+    <div class="paywall-icon">🔒</div>
+    <div class="paywall-title">You've used your 5 free optimizations</div>
+    <div class="paywall-sub">Sign in for unlimited optimizations, save projects, and access all features. Free to create an account.</div>
+    <button class="paywall-btn" onclick="showAuthFromPaywall()">Sign In / Create Account</button>
+    <div class="paywall-dismiss" onclick="document.getElementById('paywall-modal').classList.add('hidden')">Maybe later</div>
+  </div>
+</div>
 
 <!-- HEADER -->
 <header>
@@ -751,6 +892,13 @@ html.dark .cl-table tbody tr:nth-child(even) td { background: rgba(255,255,255,0
             </div>
           </div>
         </div>
+        <!-- Business Info -->
+        <div class="sd-section">
+          <div class="sd-label">Business Info</div>
+          <input class="sd-text-input" id="biz-name" placeholder="Business name" oninput="saveBizInfo()">
+          <input class="sd-text-input" id="biz-phone" placeholder="Phone" oninput="saveBizInfo()" style="margin-top:5px">
+          <input class="sd-text-input" id="biz-email" placeholder="Email" oninput="saveBizInfo()" style="margin-top:5px">
+        </div>
       </div>
     </div>
     <div class="account-wrap">
@@ -758,12 +906,18 @@ html.dark .cl-table tbody tr:nth-child(even) td { background: rgba(255,255,255,0
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
       </div>
       <div class="account-dropdown" id="account-dropdown">
-        <div class="account-plan-row">
-          <span class="account-plan-name">Pro Plan</span>
-          <span class="badge badge-green">Active</span>
+        <div id="account-guest-view">
+          <div class="account-menu-item" style="color:var(--muted);font-size:12px;cursor:default;padding-bottom:4px">Not signed in</div>
+          <div class="account-menu-item" onclick="toggleAccount();_showAuth()" style="color:var(--accent);font-weight:600">Sign In / Create Account</div>
         </div>
-        <div class="account-menu-item">Account Settings</div>
-        <div class="account-menu-item">Sign Out</div>
+        <div id="account-user-view" style="display:none">
+          <div class="account-plan-row">
+            <span class="account-plan-name">Pro Plan</span>
+            <span class="badge badge-green">Active</span>
+          </div>
+          <div class="account-menu-item" id="account-email-item" style="color:var(--muted);font-size:11px;cursor:default"></div>
+          <div class="account-menu-item" onclick="signOut()">Sign Out</div>
+        </div>
       </div>
     </div>
   </div>
@@ -788,7 +942,7 @@ html.dark .cl-table tbody tr:nth-child(even) td { background: rgba(255,255,255,0
     Orders
     <span class="tab-badge" id="orders-badge">3</span>
   </div>
-  <div class="nav-tab" onclick="switchSection('dashboard')" style="margin-left:auto">
+  <div class="nav-tab" onclick="switchSection('dashboard')">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
     Dashboard
   </div>
@@ -858,6 +1012,17 @@ html.dark .cl-table tbody tr:nth-child(even) td { background: rgba(255,255,255,0
     <div class="cl-left">
       <div class="cl-scroll">
 
+        <!-- Projects panel -->
+        <div class="projects-panel" id="projects-panel">
+          <div class="projects-panel-inner">
+            <div class="projects-header">
+              <span class="projects-title">Saved Projects</span>
+              <button class="btn btn-outline" onclick="promptSaveProject()" style="font-size:11px;padding:3px 10px">+ Save Current</button>
+            </div>
+            <div id="projects-list"><div class="projects-signin">Sign in to save and load projects. <span onclick="dismissAuth();_showAuth()">Sign in</span></div></div>
+          </div>
+        </div>
+
         <!-- Settings bar -->
         <div class="cl-settings-bar">
           <div>
@@ -869,9 +1034,12 @@ html.dark .cl-table tbody tr:nth-child(even) td { background: rgba(255,255,255,0
           </div>
           <div style="max-width:80px">
             <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);margin-bottom:4px">Kerf</div>
-            <input type="number" id="kerf" value="0.125" min="0" step="0.01" style="padding:5px 8px;font-size:13px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);outline:none;width:100%;font-family:inherit">
+            <input type="number" id="kerf" value="0.125" min="0" step="0.01" style="padding:5px 8px;font-size:13px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);outline:none;width:100%;font-family:inherit" onchange="localStorage.setItem('pc_kerf',this.value)">
           </div>
           <div style="margin-left:auto;display:flex;gap:6px;align-items:flex-end">
+            <button class="cl-csv-btn" onclick="toggleProjectsPanel()" title="My Projects" id="projects-toggle-btn" style="padding:5px 8px">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
+            </button>
             <button class="cl-csv-btn" onclick="triggerImportCSV('pieces')" title="Import parts CSV" style="padding:5px 8px">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
             </button>
@@ -890,8 +1058,10 @@ html.dark .cl-table tbody tr:nth-child(even) td { background: rgba(255,255,255,0
           <div style="display:flex;gap:3px;margin-left:8px;flex:1">
             <button class="cl-col-pill active" id="pill-label" onclick="toggleCol('label')" title="Show/hide label column">Label</button>
             <button class="cl-col-pill active" id="pill-grain" onclick="toggleCol('grain')" title="Show/hide grain column">Grain</button>
-            <button class="cl-col-pill active" id="pill-material" onclick="toggleCol('material')" title="Show/hide material column">Material</button>
+            <button class="cl-col-pill active" id="pill-material" onclick="toggleCol('material')" title="Show/hide material column">Panel</button>
+            <button class="cl-col-pill active" id="pill-notes" onclick="toggleCol('notes')" title="Show/hide notes column">Notes</button>
           </div>
+          <button class="cl-csv-btn" onclick="clearCutList()" title="Clear all parts and panels" style="padding:3px 8px;margin-left:4px;font-size:10px;color:var(--muted)">Clear</button>
         </div>
         <table class="cl-table" id="pieces-table">
           <thead>
@@ -906,11 +1076,13 @@ html.dark .cl-table tbody tr:nth-child(even) td { background: rgba(255,255,255,0
                 <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="2" y1="4.5" x2="12" y2="4.5"/><line x1="2" y1="7" x2="12" y2="7"/><line x1="2" y1="9.5" x2="12" y2="9.5"/></svg>
               </th>
               <th style="width:86px" class="cl-col-material" id="th-material">Panel</th>
+              <th class="cl-col-notes" id="th-notes" style="min-width:80px">Notes</th>
               <th style="width:24px"></th>
             </tr>
           </thead>
           <tbody id="pieces-body"></tbody>
         </table>
+        <div class="cl-totals-row" id="pieces-totals"></div>
         <button class="cl-add-btn" onclick="addPiece()">+ Add part</button>
         <input type="file" id="csv-import-input" accept=".csv" style="display:none" onchange="handleCSVImport(this)">
 
@@ -951,6 +1123,7 @@ html.dark .cl-table tbody tr:nth-child(even) td { background: rgba(255,255,255,0
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
           Optimize Cut Layout
         </button>
+        <div id="opt-counter" style="display:none;font-size:11px;margin-top:6px;text-align:center;color:var(--muted)"></div>
       </div>
     </div>
 
@@ -1005,9 +1178,10 @@ html.dark .cl-table tbody tr:nth-child(even) td { background: rgba(255,255,255,0
       <div class="sidebar-scroll">
         <div class="form-section">
           <div class="form-section-title">New Quote</div>
-          <div class="form-group" style="margin-bottom:8px">
+          <div class="form-group" style="margin-bottom:8px;position:relative">
             <label>Client Name</label>
-            <input type="text" id="q-client" placeholder="e.g. John Smith">
+            <input type="text" id="q-client" placeholder="e.g. John Smith" autocomplete="off" oninput="_clientSuggest(this)">
+            <div id="q-client-suggest" class="client-suggest-list" style="display:none"></div>
           </div>
           <div class="form-group" style="margin-bottom:8px">
             <label>Project Name</label>
@@ -1016,6 +1190,10 @@ html.dark .cl-table tbody tr:nth-child(even) td { background: rgba(255,255,255,0
           <div class="form-group" style="margin-bottom:8px">
             <label>Notes</label>
             <textarea id="q-notes" placeholder="Project details..."></textarea>
+          </div>
+          <div class="form-group" style="margin-bottom:8px">
+            <label>Materials Cost</label>
+            <input type="number" id="q-materials" placeholder="0.00" min="0" step="0.01">
           </div>
           <div class="form-row">
             <div class="form-group">
@@ -1037,7 +1215,13 @@ html.dark .cl-table tbody tr:nth-child(even) td { background: rgba(255,255,255,0
               <input type="number" id="q-tax" value="13" min="0">
             </div>
           </div>
-          <button class="btn btn-outline" onclick="createQuote()" style="margin-top:4px">+ Create Quote</button>
+          <div id="quote-form-preview" style="background:var(--surface2);border-radius:8px;padding:10px 12px;margin-top:8px;display:none">
+            <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:4px"><span>Labour</span><span id="qfp-labour">—</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:4px"><span>Materials</span><span id="qfp-materials">—</span></div>
+            <div style="border-top:1px solid var(--border);margin:4px 0"></div>
+            <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;color:var(--text)"><span>Total</span><span id="qfp-total">—</span></div>
+          </div>
+          <button class="btn btn-primary" onclick="createQuote()" style="margin-top:8px;width:100%">+ Create Quote</button>
         </div>
       </div>
     </div>
@@ -1071,8 +1255,12 @@ html.dark .cl-table tbody tr:nth-child(even) td { background: rgba(255,255,255,0
             </div>
             <div class="form-group">
               <label>Due Date</label>
-              <input type="text" id="o-due" placeholder="e.g. Apr 15">
+              <input type="date" id="o-due">
             </div>
+          </div>
+          <div class="form-group" style="margin-bottom:8px">
+            <label>Notes</label>
+            <textarea id="o-notes" placeholder="Job details, special instructions..."></textarea>
           </div>
           <div class="form-group" style="margin-bottom:8px">
             <label>Status</label>
@@ -1110,10 +1298,123 @@ html.dark .cl-table tbody tr:nth-child(even) td { background: rgba(255,255,255,0
 
 <script>
 // ══════════════════════════════════════════
+// SUPABASE
+// ══════════════════════════════════════════
+const _sb = window.supabase.createClient(
+  'https://mhzneruvlfmhnsohfrdo.supabase.co',
+  'sb_publishable_4lHAEgWPQz8DX8TH2KnuiA_oimj8J__'
+);
+let _userId = null;
+let _authMode = 'signin';
+
+function _showApp() {
+  document.getElementById('auth-screen').classList.add('hidden');
+}
+function _showAuth() {
+  document.getElementById('auth-screen').classList.remove('hidden');
+}
+
+function toggleAuthMode() {
+  _authMode = _authMode === 'signin' ? 'signup' : 'signin';
+  const isSign = _authMode === 'signin';
+  document.getElementById('auth-heading').textContent = isSign ? 'Sign in to your account' : 'Create your account';
+  document.getElementById('auth-btn').textContent = isSign ? 'Sign In' : 'Create Account';
+  document.getElementById('auth-toggle').innerHTML = isSign
+    ? 'No account? <span onclick="toggleAuthMode()">Create one</span>'
+    : 'Already have an account? <span onclick="toggleAuthMode()">Sign In</span>';
+  document.getElementById('auth-msg').innerHTML = '';
+}
+
+async function authSubmit() {
+  const email = document.getElementById('auth-email').value.trim();
+  const password = document.getElementById('auth-password').value;
+  const msgEl = document.getElementById('auth-msg');
+  const btn = document.getElementById('auth-btn');
+  msgEl.innerHTML = '';
+  if (!email || !password) { msgEl.innerHTML = '<div class="auth-error">Email and password required.</div>'; return; }
+  btn.disabled = true; btn.textContent = '…';
+  let error;
+  if (_authMode === 'signin') {
+    ({ error } = await _sb.auth.signInWithPassword({ email, password }));
+  } else {
+    ({ error } = await _sb.auth.signUp({ email, password }));
+  }
+  btn.disabled = false; btn.textContent = _authMode === 'signin' ? 'Sign In' : 'Create Account';
+  if (error) { msgEl.innerHTML = `<div class="auth-error">${error.message}</div>`; return; }
+  if (_authMode === 'signup') { msgEl.innerHTML = '<div class="auth-success">Check your email to confirm your account, then sign in.</div>'; }
+}
+
+async function signOut() {
+  await _sb.auth.signOut();
+  orders = []; quotes = []; stockItems = [];
+  _userId = null;
+  toggleAccount();
+  renderStockMain(); renderQuoteMain(); renderOrdersMain();
+}
+
+async function loadAllData() {
+  const [{ data: ord }, { data: quo }, { data: stk }] = await Promise.all([
+    _sb.from('orders').select('*').order('created_at', { ascending: false }),
+    _sb.from('quotes').select('*').order('created_at', { ascending: false }),
+    _sb.from('stock_items').select('*').order('created_at', { ascending: true }),
+  ]);
+  orders = ord || [];
+  quotes = quo || [];
+  stockItems = stk || [];
+  if (orders.length) orderNextId = Math.max(...orders.map(o => o.id)) + 1;
+  if (quotes.length) quoteNextId = Math.max(...quotes.map(q => q.id)) + 1;
+  if (stockItems.length) stockNextId = Math.max(...stockItems.map(s => s.id)) + 1;
+  document.getElementById('orders-badge').textContent = orders.filter(o => o.status !== 'complete').length;
+  renderStockMain();
+  renderQuoteMain();
+  renderOrdersMain();
+}
+
+_sb.auth.onAuthStateChange(async (event, session) => {
+  if (session) {
+    _userId = session.user.id;
+    const emailEl = document.getElementById('account-email-item');
+    if (emailEl) emailEl.textContent = session.user.email;
+    document.getElementById('account-guest-view').style.display = 'none';
+    document.getElementById('account-user-view').style.display = '';
+    _showApp();
+    await loadAllData();
+    loadProjects();
+  } else {
+    _userId = null;
+    document.getElementById('account-guest-view').style.display = '';
+    document.getElementById('account-user-view').style.display = 'none';
+    loadProjects(); // refresh panel to show sign-in prompt
+  }
+});
+
+// ══════════════════════════════════════════
 // GLOBALS
 // ══════════════════════════════════════════
 window.currency = '$';
 window.units = 'imperial';
+
+// ══════════════════════════════════════════
+// BUSINESS INFO
+// ══════════════════════════════════════════
+function saveBizInfo() {
+  localStorage.setItem('pc_biz', JSON.stringify({
+    name:  document.getElementById('biz-name')?.value  || '',
+    phone: document.getElementById('biz-phone')?.value || '',
+    email: document.getElementById('biz-email')?.value || '',
+  }));
+}
+function loadBizInfo() {
+  try {
+    const b = JSON.parse(localStorage.getItem('pc_biz') || '{}');
+    if (b.name)  document.getElementById('biz-name').value  = b.name;
+    if (b.phone) document.getElementById('biz-phone').value = b.phone;
+    if (b.email) document.getElementById('biz-email').value = b.email;
+  } catch(e) {}
+}
+function getBizInfo() {
+  try { return JSON.parse(localStorage.getItem('pc_biz') || '{}'); } catch(e) { return {}; }
+}
 
 // ══════════════════════════════════════════
 // SETTINGS DROPDOWN
@@ -1269,27 +1570,20 @@ function switchSection(name) {
   if (name === 'stock') renderStockMain();
   if (name === 'quote') renderQuoteMain();
   if (name === 'orders') renderOrdersMain();
-  if (name === 'dashboard') renderDashboard();
+  if (name === 'dashboard') { renderDashboard(); setTimeout(drawRevenueChart, 0); }
 }
 
 // ══════════════════════════════════════════
 // STOCK
 // ══════════════════════════════════════════
-let stockItems = [
-  { id: 1, name: '3/4" Birch Plywood', sku: 'PLY-34-B', w: 96, h: 48, qty: 12, low: 4, cost: 72.00 },
-  { id: 2, name: '1/2" MDF', sku: 'MDF-12', w: 96, h: 48, qty: 3, low: 4, cost: 45.00 },
-  { id: 3, name: '3/4" Maple Plywood', sku: 'PLY-34-M', w: 96, h: 48, qty: 8, low: 3, cost: 95.00 },
-  { id: 4, name: '1/4" Hardboard', sku: 'HB-14', w: 96, h: 48, qty: 20, low: 5, cost: 18.00 },
-  { id: 5, name: '3/4" Oak Plywood', sku: 'PLY-34-O', w: 96, h: 48, qty: 2, low: 3, cost: 110.00 },
-];
-let stockNextId = 6;
+let stockItems = [];
+let stockNextId = 1;
 
-function addStockItem() {
+async function addStockItem() {
   const name = document.getElementById('stock-name').value.trim();
   if (!name) return alert('Enter a material name.');
-  const item = {
-    id: stockNextId++,
-    name,
+  const row = {
+    user_id: _userId, name,
     sku: document.getElementById('stock-sku').value.trim() || '—',
     w: parseFloat(document.getElementById('stock-w').value) || 96,
     h: parseFloat(document.getElementById('stock-h').value) || 48,
@@ -1297,20 +1591,27 @@ function addStockItem() {
     low: parseInt(document.getElementById('stock-low').value) || 3,
     cost: parseFloat(document.getElementById('stock-cost').value) || 0,
   };
-  stockItems.push(item);
+  const { data, error } = await _sb.from('stock_items').insert(row).select().single();
+  if (error) { console.error(error); return; }
+  stockItems.push(data);
   document.getElementById('stock-name').value = '';
   document.getElementById('stock-sku').value = '';
   renderStockMain();
 }
 
-function removeStock(id) {
+async function removeStock(id) {
+  await _sb.from('stock_items').delete().eq('id', id);
   stockItems = stockItems.filter(s => s.id !== id);
   renderStockMain();
 }
 
-function adjustStock(id, delta) {
+async function adjustStock(id, delta) {
   const item = stockItems.find(s => s.id === id);
-  if (item) { item.qty = Math.max(0, item.qty + delta); renderStockMain(); }
+  if (!item) return;
+  const newQty = Math.max(0, item.qty + delta);
+  await _sb.from('stock_items').update({ qty: newQty }).eq('id', id);
+  item.qty = newQty;
+  renderStockMain();
 }
 
 function renderStockMain() {
@@ -1344,35 +1645,42 @@ function renderStockMain() {
       </div>
     </div>
 
+    ${stockItems.length === 0 ? `<div class="empty-state">
+      <div class="empty-icon" style="opacity:.18"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg></div>
+      <h3>No stock items yet</h3><p>Add your first material using the form on the left.</p></div>` : `<div style="padding:0 24px 10px;display:flex;align-items:center;gap:8px"><input class="order-search-input" type="search" placeholder="Search materials…" value="${window._stockSearch||''}" oninput="window._stockSearch=this.value;renderStockMain()" style="max-width:260px"><span style="font-size:12px;color:var(--muted)">${stockItems.length} item${stockItems.length!==1?'s':''}</span></div>`}
     <div class="stock-grid">
-      ${stockItems.map(item => {
+      ${(() => { const q = (window._stockSearch||'').toLowerCase(); const filtered = q ? stockItems.filter(i => i.name.toLowerCase().includes(q) || (i.sku||'').toLowerCase().includes(q)) : stockItems; const sorted = [...filtered].sort((a,b) => (a.qty<=a.low ? 0 : 1) - (b.qty<=b.low ? 0 : 1)); return sorted.map(item => {
         const isLow = item.qty <= item.low;
+        const u = window.units === 'metric' ? 'mm' : '"';
         return `
         <div class="stock-card">
           <div class="stock-card-header">
-            <div>
-              <div class="stock-name">${item.name}</div>
-              <div class="stock-sku">${item.sku} &nbsp;·&nbsp; ${item.w}"×${item.h}"</div>
+            <div style="flex:1;min-width:0">
+              <div class="stock-name" contenteditable="true" onblur="updateStockField(${item.id},'name',this.innerText.trim())" title="Click to edit name">${item.name}</div>
+              <div class="stock-sku"><span contenteditable="true" onblur="updateStockField(${item.id},'sku',this.innerText.trim())" title="Click to edit SKU">${item.sku}</span> &nbsp;·&nbsp; <span contenteditable="true" onblur="updateStockField(${item.id},'w',this.innerText)" title="Width">${item.w}</span>×<span contenteditable="true" onblur="updateStockField(${item.id},'h',this.innerText)" title="Height">${item.h}</span>${u}</div>
             </div>
             <span class="badge ${isLow ? 'badge-red' : 'badge-green'}">${isLow ? 'Low' : 'OK'}</span>
           </div>
           <div class="stock-qty-row">
             <div>
-              <div class="stock-qty ${isLow ? 'stock-low' : ''}">${item.qty}</div>
-              <div class="stock-qty-label">sheets</div>
+              <div class="stock-qty ${isLow ? 'stock-low' : ''}" contenteditable="true" onblur="setStockQty(${item.id},this.innerText)" title="Click to edit quantity">${item.qty}</div>
+              <div class="stock-qty-label">sheets &nbsp;·&nbsp; alert at <span contenteditable="true" onblur="updateStockField(${item.id},'low',this.innerText)" title="Low stock threshold">${item.low}</span></div>
             </div>
             <div style="text-align:right">
               <div style="font-size:13px;font-weight:700;color:var(--text)">${cur}${(item.qty * item.cost).toFixed(0)}</div>
-              <div style="font-size:10px;color:var(--muted)">${cur}${item.cost.toFixed(2)}/sheet</div>
+              <div style="font-size:10px;color:var(--muted)"><span contenteditable="true" onblur="updateStockField(${item.id},'cost',this.innerText)" title="Cost per sheet">${cur}${item.cost.toFixed(2)}</span>/sheet</div>
             </div>
           </div>
           <div class="stock-actions">
-            <button class="btn btn-outline" onclick="adjustStock(${item.id}, -1)">− Remove</button>
-            <button class="btn btn-success" onclick="adjustStock(${item.id}, 1)">+ Add Sheet</button>
-            <button class="btn btn-danger" onclick="removeStock(${item.id})">×</button>
+            <button class="btn btn-outline" onclick="adjustStock(${item.id}, -1)" style="font-size:12px;padding:5px 10px">− 1</button>
+            <button class="btn btn-success" onclick="adjustStock(${item.id}, 1)" style="font-size:12px;padding:5px 10px">+ 1</button>
+            <button class="btn btn-outline" onclick="adjustStock(${item.id}, 5)" style="font-size:12px;padding:5px 10px">+ 5</button>
+            <button class="btn btn-outline" onclick="adjustStock(${item.id}, 10)" style="font-size:12px;padding:5px 10px">+ 10</button>
+            <button class="btn btn-outline" onclick="useStockInCutList(${item.id})" style="font-size:11px;padding:5px 8px;flex:1" title="Load into cut list">→ Cut List</button>
+            <button class="btn btn-danger" onclick="if(confirm('Remove this stock item?'))removeStock(${item.id})" style="padding:5px 8px">×</button>
           </div>
         </div>`;
-      }).join('')}
+      }).join(''); })()}
     </div>`;
 }
 
@@ -1392,7 +1700,7 @@ let layoutZoom = 1.0;
 let layoutColor = true;
 let layoutGrain = true;
 let layoutFontScale = 1.0;
-let colsVisible = { grain: true, material: true, label: true };
+let colsVisible = { grain: true, material: true, label: true, notes: true };
 let layoutRotate = false;
 let _dragSrc = null, _dragTable = null;
 
@@ -1495,6 +1803,14 @@ function onDrop(e, table, idx) {
 }
 function onDragEnd() {
   document.querySelectorAll('.cl-drag-over').forEach(r => r.classList.remove('cl-drag-over'));
+}
+
+function clearCutList() {
+  if (!confirm('Clear all parts and panels? This cannot be undone.')) return;
+  pieces = []; sheets = []; _pieceId = 1; _sheetId = 1; pieceColorIdx = 0; results = null;
+  ['pc_cl_pieces','pc_cl_sheets','pc_cl_pid','pc_cl_sid','pc_cl_colorIdx'].forEach(k => localStorage.removeItem(k));
+  renderPieces(); renderSheets();
+  document.getElementById('results-area').innerHTML = '<div class="empty-state"><div class="empty-icon" style="opacity:.18"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg></div><h3>Ready to Optimize</h3><p>Add stock panels and cut pieces, then click "Optimize Cut Layout"</p></div>';
 }
 
 // ── PANEL RESIZE ──
@@ -1613,6 +1929,30 @@ function renderSheets() {
       <td class="cl-del-cell"><button class="cl-del-btn" onclick="removeSheet(${s.id})" title="Remove">${DEL_SVG}</button></td>
     </tr>`;
   }).join('');
+  _saveCutList();
+}
+
+// ── CUT LIST PERSISTENCE ──
+function _saveCutList() {
+  try {
+    localStorage.setItem('pc_cl_pieces', JSON.stringify(pieces));
+    localStorage.setItem('pc_cl_sheets', JSON.stringify(sheets));
+    localStorage.setItem('pc_cl_pid', _pieceId);
+    localStorage.setItem('pc_cl_sid', _sheetId);
+    localStorage.setItem('pc_cl_colorIdx', pieceColorIdx);
+  } catch(e) {}
+}
+
+function _loadCutList() {
+  try {
+    const p = localStorage.getItem('pc_cl_pieces');
+    const s = localStorage.getItem('pc_cl_sheets');
+    if (p) { pieces = JSON.parse(p); pieces.forEach(x => { if (x.notes === undefined) x.notes = ''; }); }
+    if (s) { sheets = JSON.parse(s); }
+    const pid = localStorage.getItem('pc_cl_pid'); if (pid) _pieceId = parseInt(pid);
+    const sid = localStorage.getItem('pc_cl_sid'); if (sid) _sheetId = parseInt(sid);
+    const ci  = localStorage.getItem('pc_cl_colorIdx'); if (ci) pieceColorIdx = parseInt(ci);
+  } catch(e) {}
 }
 
 // ── PIECES ──
@@ -1628,6 +1968,7 @@ function addPiece(label, w, h, qty, grain) {
     qty:      qty   !== undefined ? qty   : 1,
     grain:    (grain !== undefined && grain !== false) ? grain : 'none',
     material: prevMat,
+    notes:    '',
     enabled:  true,
     color,
   });
@@ -1712,13 +2053,34 @@ function renderPieces() {
           ${makeOpts(p.material)}
         </select>
       </td>
+      <td class="cl-col-notes" style="${colsVisible.notes?'':'display:none'}">
+        <input class="cl-input" value="${(p.notes||'').replace(/"/g,'&quot;')}"
+          data-table="pieces" data-row="${i}" data-col="notes"
+          onblur="updatePiece(${p.id},'notes',this.value)"
+          onkeydown="clKeydown(event,'pieces',${i},'notes')"
+          ${dis ? 'disabled' : ''} placeholder="e.g. edge band, veneer">
+      </td>
       <td class="cl-del-cell"><button class="cl-del-btn" onclick="removePiece(${p.id})" title="Remove">${DEL_SVG}</button></td>
     </tr>`;
   }).join('');
+
+  // Totals footer
+  const tot = document.getElementById('pieces-totals');
+  if (tot) {
+    const enabled = pieces.filter(p => p.enabled !== false);
+    const totalQty = enabled.reduce((s,p) => s+p.qty, 0);
+    const totalArea = enabled.reduce((s,p) => s + p.w * p.h * p.qty, 0);
+    const m = window.units === 'metric';
+    const areaStr = m
+      ? `${(totalArea / 1e6).toFixed(2)} m²`
+      : `${(totalArea / 144).toFixed(1)} ft²`;
+    tot.textContent = pieces.length ? `${totalQty} piece${totalQty!==1?'s':''} · ${areaStr} total` : '';
+  }
+  _saveCutList();
 }
 
 // ── KEYBOARD NAV ──
-const CL_COLS = { pieces: ['label','w','h','qty'], sheets: ['name','w','h','qty'] };
+const CL_COLS = { pieces: ['label','w','h','qty','notes'], sheets: ['name','w','h','qty'] };
 function clKeydown(event, tableId, rowIdx, colName) {
   if (event.key !== 'Tab' && event.key !== 'Enter') return;
   event.preventDefault();
@@ -1902,6 +2264,10 @@ function packSheet(sheetW, sheetH, items, kerf) {
 }
 
 function optimize() {
+  if (!_userId && _getOptCount() >= FREE_LIMIT) {
+    document.getElementById('paywall-modal').classList.remove('hidden');
+    return;
+  }
   const activeSheets = sheets.filter(s => s.enabled !== false);
   const activePieces = pieces.filter(p => p.enabled !== false);
   if (!activeSheets.length) return alert('Add at least one enabled sheet panel.');
@@ -1927,8 +2293,17 @@ function optimize() {
     remaining = remaining.filter(p => !placedKeys.has(`${p.id}_${p._inst}`));
   }
   results = { layouts, unplaced: remaining, total: activePieces.reduce((s,p) => s+p.qty, 0), placed: activePieces.reduce((s,p) => s+p.qty, 0) - remaining.length, kerf };
+  if (!_userId) _incOptCount();
   activeSheetIdx = 0;
   renderResults();
+  // Scroll results into view
+  setTimeout(() => {
+    const el = document.getElementById('results-area');
+    if (el) el.scrollTop = 0;
+    // On narrow screens, scroll the right panel into view
+    const right = document.querySelector('.cl-right');
+    if (right) right.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }, 80);
 }
 
 function switchTab(tab) {
@@ -1951,19 +2326,44 @@ function renderLayout(area) {
   const u = window.units === 'metric' ? 'mm' : 'in';
   const totalArea = results.layouts.reduce((s,l) => s + l.sheet.w * l.sheet.h, 0);
   const usedArea  = results.layouts.reduce((s,l) => s + l.placed.reduce((a,p) => a + p.w * p.h, 0), 0);
+  const wasteArea = totalArea - usedArea;
   const avgUtil   = totalArea ? (usedArea / totalArea * 100).toFixed(1) : '0.0';
+  // Total cuts = sum of (unique cut lines per sheet). Each piece needs 2 rip + 2 cross cuts minus shared edges — approximate as pieces*2 cuts per sheet.
+  const totalCuts = results.layouts.reduce((s,l) => s + l.placed.length * 2, 0);
+  // Total cut length = sum of all piece perimeters / 2 (each cut serves one edge)
+  const totalCutLen = results.layouts.reduce((s,l) => s + l.placed.reduce((a,p) => a + p.w + p.h, 0), 0);
+  const lenLabel = totalCutLen >= 1000 ? `${(totalCutLen/1000).toFixed(1)}m` : `${Math.round(totalCutLen)}${u}`;
+
+  // Material cost estimate — match sheet name to stock items
+  const matCost = results.layouts.reduce((s, l) => {
+    const stock = stockItems.find(si => si.name === l.sheet.name);
+    return s + (stock ? stock.cost : 0);
+  }, 0);
+  const cur = window.currency;
 
   let html = `<div class="stats-grid">
     <div class="stat-card accent"><div class="stat-label">Sheets Used</div><div class="stat-value">${results.layouts.length}</div><div class="stat-sub">of ${sheets.reduce((s,sh)=>s+sh.qty,0)} available</div></div>
     <div class="stat-card success"><div class="stat-label">Pieces Placed</div><div class="stat-value">${results.placed}</div><div class="stat-sub">of ${results.total} total</div></div>
     <div class="stat-card warn"><div class="stat-label">Material Usage</div><div class="stat-value">${avgUtil}%</div><div class="stat-sub">${(100 - parseFloat(avgUtil)).toFixed(1)}% waste</div></div>
+    <div class="stat-card"><div class="stat-label">Total Cuts</div><div class="stat-value">${totalCuts}</div><div class="stat-sub">${lenLabel} cut length</div></div>
+    ${matCost > 0 ? `<div class="stat-card success"><div class="stat-label">Material Cost</div><div class="stat-value">${cur}${matCost.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0})}</div><div class="stat-sub">from stock prices</div></div>` : ''}
     ${results.unplaced.length ? `<div class="stat-card danger"><div class="stat-label">Unplaced</div><div class="stat-value">${results.unplaced.length}</div><div class="stat-sub">need more sheets</div></div>` : ''}
-  </div>
-  <div class="sheet-tabs">
-    ${results.layouts.map((l,i) => `<div class="sheet-tab ${i===activeSheetIdx?'active':''}" onclick="selectSheet(${i})">Sheet ${i+1} <span style="opacity:.7;font-size:10px">${(l.util*100).toFixed(0)}%</span></div>`).join('')}
+  </div>`;
+  // "Quote this job" action bar
+  const qBtn = matCost > 0 ? `<button class="btn btn-outline" onclick="quoteFromCutList(${matCost})" style="font-size:11px;padding:5px 12px" title="Pre-fill a new quote with this material cost">⎙ Quote this Job</button>` : '';
+  const printBtn = `<button class="btn btn-outline" onclick="printLayout()" style="font-size:11px;padding:5px 10px">⎙ Print</button>`;
+  html += `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:8px">
+    <span style="font-size:12px;color:var(--muted)">${results.placed} pieces · ${results.layouts.length} sheet${results.layouts.length!==1?'s':''}</span>
+    <div style="display:flex;gap:6px">${qBtn}${printBtn}</div>
   </div>`;
   area.innerHTML = html;
-  drawCanvas(area, results.layouts[activeSheetIdx], u);
+  results.layouts.forEach((layout, i) => {
+    const lbl = document.createElement('div');
+    lbl.className = 'sheet-block-label';
+    lbl.innerHTML = `<span>Sheet ${i+1}</span><span style="font-weight:400;color:var(--muted)">${layout.sheet.name} &nbsp;·&nbsp; ${(layout.util*100).toFixed(0)}% used</span>`;
+    area.appendChild(lbl);
+    drawCanvas(area, layout, u);
+  });
 }
 
 function selectSheet(i) { activeSheetIdx = i; renderResults(); }
@@ -2013,6 +2413,21 @@ function drawCanvas(container, layout, units) {
   for (let x = gs; x < cw; x += gs) { ctx.beginPath(); ctx.moveTo(PAD+x,0); ctx.lineTo(PAD+x,ch); ctx.stroke(); }
   for (let y = gs; y < ch; y += gs) { ctx.beginPath(); ctx.moveTo(PAD,y); ctx.lineTo(PAD+cw,y); ctx.stroke(); }
 
+  // Sheet grain lines (behind pieces)
+  const sheetGrain = sheet.grain || 'none';
+  if (layoutGrain && sheetGrain !== 'none') {
+    ctx.save();
+    ctx.beginPath(); ctx.rect(PAD+1, 1, cw-2, ch-2); ctx.clip();
+    ctx.strokeStyle = '#d6cfc3'; ctx.lineWidth = 0.8;
+    const sgsp = Math.max(10, Math.min(28, cw/18, ch/10));
+    if (sheetGrain === 'h') {
+      for (let gy = sgsp; gy < ch; gy += sgsp) { ctx.beginPath(); ctx.moveTo(PAD,gy); ctx.lineTo(PAD+cw,gy); ctx.stroke(); }
+    } else {
+      for (let gx = sgsp; gx < cw; gx += sgsp) { ctx.beginPath(); ctx.moveTo(PAD+gx,0); ctx.lineTo(PAD+gx,ch); ctx.stroke(); }
+    }
+    ctx.restore();
+  }
+
   // Pieces
   for (const p of rotPieces) {
     const x = PAD + p.x*scale, y = p.y*scale, w = p.w*scale, h = p.h*scale;
@@ -2022,8 +2437,9 @@ function drawCanvas(container, layout, units) {
     ctx.fillStyle = fill; ctx.fillRect(x, y, w, h);
     ctx.strokeStyle = bdCol; ctx.lineWidth = 1; ctx.strokeRect(x+.5, y+.5, w-1, h-1);
 
-    // Grain lines
-    const gdir = p.item.grain || 'none';
+    // Grain lines — derived from sheet grain, flipped if piece was rotated during packing
+    const baseGrain = sheet.grain || 'none';
+    const gdir = baseGrain === 'none' ? 'none' : (p.rotated ? (baseGrain === 'h' ? 'v' : 'h') : baseGrain);
     if (layoutGrain && gdir !== 'none') {
       ctx.save();
       ctx.beginPath(); ctx.rect(x+1, y+1, w-2, h-2); ctx.clip();
@@ -2098,60 +2514,81 @@ function renderSummary(area) {
     return;
   }
   const u = window.units === 'metric' ? 'mm' : 'in';
-  const allPlaced = results.layouts.flatMap((l,si) => l.placed.map(p => ({...p, sheetNum: si+1})));
-  const byPiece = {};
-  for (const p of allPlaced) {
-    if (!byPiece[p.item.id]) byPiece[p.item.id] = { item: p.item, list: [] };
-    byPiece[p.item.id].list.push(p);
-  }
-  area.innerHTML = `
-    <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:12px">Cut List</div>
-    <table class="sum-table">
-      <thead><tr><th></th><th>Label</th><th>W × H (${u})</th><th>Placed / Total</th><th>Sheet(s)</th><th>Notes</th></tr></thead>
-      <tbody>
-        ${Object.values(byPiece).map(({item,list}) => `
+
+  let html = `<div class="cutsheet-toolbar">
+    <div style="font-size:14px;font-weight:700;color:var(--text)">Workshop Cut Sheet</div>
+    <div style="display:flex;gap:8px">
+      <span style="font-size:12px;color:var(--muted);align-self:center">${results.placed} pieces · ${results.layouts.length} sheet${results.layouts.length!==1?'s':''}</span>
+      <button class="btn btn-outline" onclick="printLayout()" style="font-size:11px;padding:5px 10px">Print</button>
+    </div>
+  </div>`;
+
+  results.layouts.forEach((layout, si) => {
+    const pct = (layout.util * 100).toFixed(0);
+    const wasteColor = layout.util > 0.7 ? 'var(--success)' : layout.util > 0.4 ? 'var(--accent)' : 'var(--danger)';
+    html += `
+    <div class="cutsheet-sheet">
+      <div class="cutsheet-header">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span class="cutsheet-title">Sheet ${si + 1}</span>
+          <span class="cutsheet-sub">${layout.sheet.name} &nbsp;·&nbsp; ${layout.sheet.w}×${layout.sheet.h} ${u}</span>
+        </div>
+        <span style="font-size:12px;font-weight:700;color:${wasteColor}">${pct}% used &nbsp;·&nbsp; ${(layout.waste*100).toFixed(0)}% waste</span>
+      </div>
+      <table class="cutsheet-table">
+        <thead>
           <tr>
-            <td><span class="color-dot" style="background:${item.color}"></span></td>
-            <td style="font-weight:600">${item.label}</td>
-            <td>${item.w} × ${item.h}</td>
-            <td>${list.length} / ${item.qty}</td>
-            <td>${[...new Set(list.map(p=>'#'+p.sheetNum))].join(', ')}</td>
-            <td>${list.some(p=>p.rotated)?'<span class="badge badge-orange">rotated</span>':''}</td>
-          </tr>`).join('')}
-      </tbody>
-    </table>
-    ${results.unplaced.length ? `
-    <div style="font-size:14px;font-weight:700;color:var(--danger);margin-bottom:12px">Unplaced Pieces (${results.unplaced.length})</div>
-    <table class="sum-table">
-      <thead><tr><th>Label</th><th>Size</th><th>Note</th></tr></thead>
-      <tbody>${results.unplaced.map(p=>`<tr><td>${p.label}</td><td>${p.w}×${p.h} ${u}</td><td style="color:var(--danger)">Not enough sheet space</td></tr>`).join('')}</tbody>
-    </table>` : ''}
-    <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:12px">Sheet Usage</div>
-    <table class="sum-table">
-      <thead><tr><th>Sheet</th><th>Material</th><th>Size</th><th>Pieces</th><th>Usage</th><th>Waste</th></tr></thead>
-      <tbody>
-        ${results.layouts.map((l,i) => {
-          const pct = (l.util*100).toFixed(1);
-          const color = l.util>0.7?'#4caf50':l.util>0.4?'var(--accent)':'var(--danger)';
-          return `<tr>
-            <td>#${i+1}</td><td>${l.sheet.name}</td><td>${l.sheet.w}×${l.sheet.h} ${u}</td><td>${l.placed.length}</td>
-            <td><div class="progress-wrap"><div class="progress-bg"><div class="progress-fill" style="width:${pct}%;background:${color}"></div></div>${pct}%</div></td>
-            <td>${(l.waste*100).toFixed(1)}%</td>
-          </tr>`;
-        }).join('')}
-      </tbody>
-    </table>`;
+            <th style="width:28px">#</th>
+            <th>Label</th>
+            <th style="width:80px;text-align:right">W (${u})</th>
+            <th style="width:80px;text-align:right">H (${u})</th>
+            <th style="width:48px;text-align:center">Grain</th>
+            <th style="width:60px">Notes</th>
+            <th style="width:32px;text-align:center">✓</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${layout.placed.map((p, i) => {
+            const baseGrain = layout.sheet.grain || 'none';
+            const cutW = p.rotated ? p.item.h : p.item.w;
+            const cutH = p.rotated ? p.item.w : p.item.h;
+            const grainDir = baseGrain === 'none' ? '—' : (p.rotated ? (baseGrain==='h'?'↕':'↔') : (baseGrain==='h'?'↔':'↕'));
+            return `<tr>
+              <td class="cutsheet-num">${i + 1}</td>
+              <td><span class="color-dot" style="background:${p.item.color};margin-right:6px;display:inline-block;vertical-align:middle"></span>${p.item.label}</td>
+              <td class="cutsheet-dim">${cutW}</td>
+              <td class="cutsheet-dim">${cutH}</td>
+              <td style="text-align:center;font-size:15px;color:var(--muted)">${grainDir}</td>
+              <td>${p.rotated ? '<span class="badge badge-orange" style="font-size:9px">rotated</span>' : ''}</td>
+              <td style="text-align:center"><span class="cut-checkbox" onclick="this.classList.toggle(\'checked\')"></span></td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>`;
+  });
+
+  if (results.unplaced.length) {
+    html += `<div class="cutsheet-sheet" style="border-color:var(--danger)">
+      <div class="cutsheet-header" style="background:rgba(239,68,68,0.08)">
+        <span class="cutsheet-title" style="color:var(--danger)">⚠ Unplaced Pieces (${results.unplaced.length})</span>
+        <span class="cutsheet-sub" style="color:var(--danger)">Add more sheets to fit these</span>
+      </div>
+      <table class="cutsheet-table">
+        <thead><tr><th>Label</th><th style="text-align:right">W (${u})</th><th style="text-align:right">H (${u})</th></tr></thead>
+        <tbody>${results.unplaced.map(p=>`<tr><td>${p.label}</td><td class="cutsheet-dim">${p.w}</td><td class="cutsheet-dim">${p.h}</td></tr>`).join('')}</tbody>
+      </table>
+    </div>`;
+  }
+
+  area.innerHTML = html;
 }
 
 // ══════════════════════════════════════════
 // QUOTES
 // ══════════════════════════════════════════
-let quotes = [
-  { id: 1, client: 'Sarah Johnson', project: 'Kitchen Renovation', materials: 1240, labour: 520, markup: 20, tax: 13, status: 'sent', date: 'Mar 20' },
-  { id: 2, client: 'Mike Peters', project: 'Master Bath Vanity', materials: 650, labour: 260, markup: 20, tax: 13, status: 'approved', date: 'Mar 22' },
-  { id: 3, client: 'Linda Walsh', project: 'Home Office Cabinets', materials: 980, labour: 390, markup: 20, tax: 13, status: 'draft', date: 'Mar 24' },
-];
-let quoteNextId = 4;
+let quotes = [];
+let quoteNextId = 1;
 
 function quoteTotal(q) {
   const sub = q.materials + q.labour;
@@ -2159,35 +2596,60 @@ function quoteTotal(q) {
   return marked * (1 + q.tax / 100);
 }
 
-function createQuote() {
+async function createQuote() {
   const client = document.getElementById('q-client').value.trim();
   const project = document.getElementById('q-project').value.trim();
   if (!client || !project) return alert('Enter client name and project.');
   const labourRate = parseFloat(document.getElementById('q-labour-rate').value) || 65;
   const hours = parseFloat(document.getElementById('q-hours').value) || 0;
-  const q = {
-    id: quoteNextId++, client, project,
-    materials: 0, labour: labourRate * hours,
+  const row = {
+    user_id: _userId, client, project,
+    materials: parseFloat(document.getElementById('q-materials').value) || 0,
+    labour: labourRate * hours,
     markup: parseFloat(document.getElementById('q-markup').value) || 20,
     tax: parseFloat(document.getElementById('q-tax').value) || 13,
-    status: 'draft',
-    date: 'Today',
+    status: 'draft', date: new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short'}),
     notes: document.getElementById('q-notes').value.trim(),
   };
-  quotes.unshift(q);
+  const { data, error } = await _sb.from('quotes').insert(row).select().single();
+  if (error) { console.error(error); return; }
+  quotes.unshift(data);
   document.getElementById('q-client').value = '';
   document.getElementById('q-project').value = '';
   document.getElementById('q-notes').value = '';
+  document.getElementById('q-materials').value = '';
   renderQuoteMain();
 }
 
-function removeQuote(id) { quotes = quotes.filter(q => q.id !== id); renderQuoteMain(); }
+async function removeQuote(id) {
+  await _sb.from('quotes').delete().eq('id', id);
+  quotes = quotes.filter(q => q.id !== id);
+  renderQuoteMain();
+}
+
+async function convertQuoteToOrder(id) {
+  const q = quotes.find(q => q.id === id);
+  if (!q) return;
+  const { error: qErr } = await _sb.from('quotes').update({ status: 'approved' }).eq('id', id);
+  if (qErr) { console.error(qErr); return; }
+  q.status = 'approved';
+  const orderRow = { user_id: _userId, client: q.client, project: q.project, value: Math.round(quoteTotal(q)), status: 'confirmed', due: 'TBD' };
+  const { data, error: oErr } = await _sb.from('orders').insert(orderRow).select().single();
+  if (oErr) { console.error(oErr); return; }
+  orders.unshift(data);
+  document.getElementById('orders-badge').textContent = orders.filter(o => o.status !== 'complete').length;
+  renderQuoteMain();
+}
 
 function renderQuoteMain() {
   const cur = window.currency;
   const el = document.getElementById('quote-main');
+  if (!el) return;
+  const fmt = v => cur + v.toLocaleString('en-US', {minimumFractionDigits:0, maximumFractionDigits:0});
   const totalValue = quotes.reduce((s,q) => s + quoteTotal(q), 0);
   const approved = quotes.filter(q => q.status === 'approved').length;
+  const sent = quotes.filter(q => q.status === 'sent').length;
+  const draft = quotes.filter(q => q.status === 'draft').length;
 
   const statusBadge = s => {
     if (s === 'approved') return '<span class="badge badge-green">Approved</span>';
@@ -2195,40 +2657,66 @@ function renderQuoteMain() {
     return '<span class="badge badge-gray">Draft</span>';
   };
 
+  const qCard = q => {
+    const sub = q.materials + q.labour;
+    const markupAmt = sub * q.markup / 100;
+    const afterMarkup = sub + markupAmt;
+    const taxAmt = afterMarkup * q.tax / 100;
+    const total = afterMarkup + taxAmt;
+    const hrs = q.labour > 0 ? (q.labour / Math.max(1, parseFloat(document.getElementById('q-labour-rate')?.value) || 65)).toFixed(1) : '0';
+    return `
+    <div class="quote-card">
+      <div class="qc-header">
+        <div style="flex:1;min-width:0;overflow:hidden">
+          <div class="qc-title" contenteditable="true" onblur="updateQuoteField(${q.id},'project',this.innerText.trim())" title="Click to edit project name">${q.project}</div>
+          <div class="qc-meta"><span contenteditable="true" onblur="updateQuoteField(${q.id},'client',this.innerText.trim())" title="Click to edit client" style="cursor:text">${q.client}</span> &nbsp;·&nbsp; ${q.date} &nbsp;·&nbsp; ${statusBadge(q.status)}</div>
+          ${q.notes ? `<div class="qc-notes" contenteditable="true" onblur="updateQuoteField(${q.id},'notes',this.innerText.trim())" title="Click to edit notes">${q.notes}</div>` : ''}
+        </div>
+        <button class="btn btn-danger" onclick="if(confirm('Delete this quote?'))removeQuote(${q.id})" style="padding:4px 8px;margin-left:8px;flex-shrink:0">×</button>
+      </div>
+      <div class="qc-breakdown">
+        <div class="qb-row">
+          <span>Labour</span>
+          <span class="qb-edit" contenteditable="true" onblur="updateQuoteField(${q.id},'labour',this.innerText.replace(/[^0-9.]/g,''))" title="Click to edit labour">${fmt(q.labour)}</span>
+        </div>
+        <div class="qb-row">
+          <span>Materials</span>
+          <span class="qb-edit" contenteditable="true" onblur="updateQuoteField(${q.id},'materials',this.innerText.replace(/[^0-9.]/g,''))" title="Click to edit materials">${fmt(q.materials)}</span>
+        </div>
+        <div class="qb-divider"></div>
+        <div class="qb-row"><span>Subtotal</span><span>${fmt(sub)}</span></div>
+        ${q.markup > 0 ? `<div class="qb-row qb-muted"><span>Markup (${q.markup}%)</span><span>+${fmt(markupAmt)}</span></div>` : ''}
+        ${q.tax > 0 ? `<div class="qb-row qb-muted"><span>Tax (${q.tax}%)</span><span>+${fmt(taxAmt)}</span></div>` : ''}
+        <div class="qb-divider"></div>
+        <div class="qb-row qb-total"><span>Total inc. tax</span><span>${fmt(total)}</span></div>
+      </div>
+      <div class="qc-footer">
+        ${q.status === 'draft' ? `<button class="btn btn-outline" onclick="markQuoteSent(${q.id})" style="font-size:11px;padding:5px 10px">Mark Sent</button>` : ''}
+        ${q.status !== 'approved' ? `<button class="btn btn-outline" onclick="convertQuoteToOrder(${q.id})" style="font-size:11px;padding:5px 10px">→ Order</button>` : ''}
+        <button class="btn btn-outline" onclick="printQuote(${q.id})" style="font-size:11px;padding:5px 10px" title="Print / Save PDF">⎙ Print</button>
+        <button class="btn btn-outline" onclick="duplicateQuote(${q.id})" style="font-size:11px;padding:5px 10px" title="Duplicate quote">⧉ Copy</button>
+      </div>
+    </div>`;
+  };
+
+  const emptyState = `<div class="empty-state">
+    <div class="empty-icon" style="opacity:.18"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></div>
+    <h3>No quotes yet</h3><p>Fill in the form on the left to create your first quote.</p></div>`;
+
   el.innerHTML = `
     <div class="stats-grid">
-      <div class="stat-card accent"><div class="stat-label">Total Quotes</div><div class="stat-value">${quotes.length}</div><div class="stat-sub">all time</div></div>
+      <div class="stat-card accent"><div class="stat-label">Total Quotes</div><div class="stat-value">${quotes.length}</div><div class="stat-sub">${draft} draft · ${sent} sent</div></div>
       <div class="stat-card success"><div class="stat-label">Approved</div><div class="stat-value">${approved}</div><div class="stat-sub">ready to start</div></div>
-      <div class="stat-card warn"><div class="stat-label">Pipeline Value</div><div class="stat-value">${cur}${totalValue.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0})}</div><div class="stat-sub">total quoted</div></div>
+      <div class="stat-card warn"><div class="stat-label">Pipeline Value</div><div class="stat-value">${fmt(totalValue)}</div><div class="stat-sub">total quoted</div></div>
     </div>
-    <div class="quote-list">
-      ${quotes.map(q => {
-        const total = quoteTotal(q);
-        return `
-        <div class="quote-item">
-          <div class="quote-info">
-            <div class="quote-name">${q.project}</div>
-            <div class="quote-meta">${q.client} &nbsp;·&nbsp; ${q.date} &nbsp;·&nbsp; ${statusBadge(q.status)}</div>
-          </div>
-          <div style="text-align:right;margin-left:16px">
-            <div class="quote-value">${cur}${total.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0})}</div>
-            <div class="quote-value-label">Total inc. tax</div>
-          </div>
-          <button class="btn btn-danger" onclick="removeQuote(${q.id})" style="margin-left:10px">×</button>
-        </div>`;
-      }).join('')}
-    </div>`;
+    ${quotes.length === 0 ? emptyState : `<div class="quote-list">${quotes.map(qCard).join('')}</div>`}`;
 }
 
 // ══════════════════════════════════════════
 // ORDERS
 // ══════════════════════════════════════════
-let orders = [
-  { id: 1, client: 'Sarah Johnson', project: 'Kitchen Renovation', value: 3840, status: 'production', due: 'Apr 5' },
-  { id: 2, client: 'Mike Peters', project: 'Master Bath Vanity', value: 1670, status: 'delivery', due: 'Mar 28' },
-  { id: 3, client: 'Tom & Kim Reed', project: 'Laundry Room Cabinets', value: 2210, status: 'confirmed', due: 'Apr 18' },
-];
-let orderNextId = 4;
+let orders = [];
+let orderNextId = 1;
 
 const ORDER_STATUSES = ['quote','confirmed','production','delivery','complete'];
 const STATUS_LABELS = { quote:'Quote Sent', confirmed:'Confirmed', production:'In Production', delivery:'Ready for Delivery', complete:'Complete' };
@@ -2238,35 +2726,47 @@ const STATUS_BADGES = {
   production: 'badge-orange', delivery: 'badge-teal', complete: 'badge-green'
 };
 
-function addOrder() {
+async function addOrder() {
   const client = document.getElementById('o-client').value.trim();
   const project = document.getElementById('o-project').value.trim();
   if (!client || !project) return alert('Enter client name and project.');
-  orders.unshift({
-    id: orderNextId++, client, project,
+  const dueRaw = document.getElementById('o-due').value;
+  const due = dueRaw ? new Date(dueRaw + 'T12:00:00').toLocaleDateString('en-GB', {day:'numeric', month:'short', year:'numeric'}) : 'TBD';
+  const row = {
+    user_id: _userId, client, project,
     value: parseFloat(document.getElementById('o-value').value) || 0,
     status: document.getElementById('o-status').value,
-    due: document.getElementById('o-due').value.trim() || 'TBD',
-  });
+    due,
+    notes: document.getElementById('o-notes').value.trim(),
+  };
+  const { data, error } = await _sb.from('orders').insert(row).select().single();
+  if (error) { console.error(error); return; }
+  orders.unshift(data);
   document.getElementById('o-client').value = '';
   document.getElementById('o-project').value = '';
   document.getElementById('o-value').value = '';
   document.getElementById('o-due').value = '';
+  document.getElementById('o-notes').value = '';
   document.getElementById('orders-badge').textContent = orders.filter(o => o.status !== 'complete').length;
   renderOrdersMain();
 }
 
-function removeOrder(id) {
+async function removeOrder(id) {
+  await _sb.from('orders').delete().eq('id', id);
   orders = orders.filter(o => o.id !== id);
   document.getElementById('orders-badge').textContent = orders.filter(o => o.status !== 'complete').length;
   renderOrdersMain();
 }
 
-function advanceOrder(id) {
+async function advanceOrder(id) {
   const o = orders.find(o => o.id === id);
   if (!o) return;
   const idx = ORDER_STATUSES.indexOf(o.status);
-  if (idx < ORDER_STATUSES.length - 1) o.status = ORDER_STATUSES[idx + 1];
+  if (idx < ORDER_STATUSES.length - 1) {
+    const newStatus = ORDER_STATUSES[idx + 1];
+    await _sb.from('orders').update({ status: newStatus }).eq('id', id);
+    o.status = newStatus;
+  }
   document.getElementById('orders-badge').textContent = orders.filter(o => o.status !== 'complete').length;
   renderOrdersMain();
 }
@@ -2276,36 +2776,83 @@ const ARROW_SVG = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" s
 function renderOrdersMain() {
   const cur = window.currency;
   const el = document.getElementById('orders-main');
+  if (!el) return;
+  const fmt = v => cur + v.toLocaleString('en-US', {minimumFractionDigits:0, maximumFractionDigits:0});
   const active = orders.filter(o => o.status !== 'complete');
   const complete = orders.filter(o => o.status === 'complete');
   const totalRevenue = complete.reduce((s,o) => s+o.value, 0);
   const pipeline = active.reduce((s,o) => s+o.value, 0);
 
+  const pipelineSteps = ['quote','confirmed','production','delivery','complete'];
+  const stepLabels = ['Quote','Confirmed','Production','Delivery','Done'];
+
+  const orderCard = o => {
+    const curIdx = pipelineSteps.indexOf(o.status);
+    const pipe = pipelineSteps.map((s,i) => {
+      const done = i < curIdx;
+      const active = i === curIdx;
+      const color = active ? STATUS_COLORS[s] : done ? 'var(--success)' : 'var(--border)';
+      return `<div class="pipe-step ${active?'pipe-active':''}${done?' pipe-done':''}">
+        <div class="pipe-dot" style="background:${color};border-color:${color}"></div>
+        <div class="pipe-label">${stepLabels[i]}</div>
+      </div>${i < pipelineSteps.length-1 ? `<div class="pipe-line ${done?'pipe-line-done':''}"></div>` : ''}`;
+    }).join('');
+
+    // Overdue detection — parse due date and compare to today
+    let isOverdue = false;
+    if (o.status !== 'complete' && o.due && o.due !== 'TBD') {
+      const parsed = new Date(o.due);
+      if (!isNaN(parsed) && parsed < new Date()) isOverdue = true;
+    }
+
+    return `
+    <div class="order-card${isOverdue ? ' order-overdue' : ''}">
+      <div class="oc-header">
+        <div class="oc-info">
+          <div class="oc-title" contenteditable="true" onblur="updateOrderField(${o.id},'project',this.innerText.trim())" title="Click to edit project">${o.project}</div>
+          <div class="oc-meta">${(() => { const rel = _relativeDate(o.due); const relTag = rel ? ` <span style="font-size:10px;font-weight:700;color:${rel.color};margin-left:4px">${rel.label}</span>` : ''; return `<span contenteditable="true" onblur="updateOrderField(${o.id},'client',this.innerText.trim())" title="Click to edit client">${o.client}</span> &nbsp;·&nbsp; Due: <span class="oc-edit" contenteditable="true" onblur="updateOrderField(${o.id},'due',this.innerText.trim())" title="Click to edit due date">${o.due}</span>${relTag}${isOverdue ? ' <span class="badge badge-red" style="font-size:9px;margin-left:4px">Overdue</span>' : ''}`; })()}</div>
+          ${o.notes ? `<div class="oc-notes" contenteditable="true" onblur="updateOrderField(${o.id},'notes',this.innerText.trim())" title="Click to edit notes">${o.notes}</div>` : ''}
+        </div>
+        <div class="oc-right">
+          <div class="oc-value" contenteditable="true" onblur="updateOrderField(${o.id},'value',this.innerText.replace(/[^0-9.]/g,''))" title="Click to edit value">${fmt(o.value)}</div>
+          <button class="btn btn-danger" onclick="if(confirm('Delete this order?'))removeOrder(${o.id})" style="padding:4px 8px;margin-left:8px">×</button>
+        </div>
+      </div>
+      <div class="oc-pipeline">${pipe}</div>
+      <div class="oc-footer">
+        <select class="oc-status-select" onchange="setOrderStatus(${o.id},this.value)">
+          ${pipelineSteps.map(s=>`<option value="${s}" ${o.status===s?'selected':''}>${STATUS_LABELS[s]}</option>`).join('')}
+        </select>
+        ${o.status !== 'complete' ? `<button class="btn btn-success" onclick="advanceOrder(${o.id})" style="font-size:11px;padding:5px 12px;display:inline-flex;align-items:center;gap:4px">Next Stage ${ARROW_SVG}</button>` : '<span class="badge badge-green" style="align-self:center">Complete</span>'}
+        <button class="btn btn-outline" onclick="printWorkOrder(${o.id})" style="font-size:11px;padding:5px 10px;width:auto;margin-left:auto" title="Print work order">⎙ Work Order</button>
+      </div>
+    </div>`;
+  };
+
+  const filterVal = window._orderFilter || 'active';
+  const filterSearch = (window._orderSearch || '').toLowerCase().trim();
+  let pool = filterVal === 'all' ? orders : filterVal === 'active' ? active : complete;
+  const filtered = filterSearch ? pool.filter(o => (o.client+' '+o.project).toLowerCase().includes(filterSearch)) : pool;
+
+  const emptyState = `<div class="empty-state">
+    <div class="empty-icon" style="opacity:.18"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg></div>
+    <h3>No orders yet</h3><p>Add your first order using the form on the left, or convert a quote.</p></div>`;
+
+  const filterTabs = `<div class="order-filter-tabs" style="align-items:center">
+    <input class="order-search-input" type="search" placeholder="Search client or project…" value="${window._orderSearch||''}" oninput="window._orderSearch=this.value;renderOrdersMain()">
+    <button class="ofilter-tab ${filterVal==='active'?'active':''}" onclick="setOrderFilter('active')">Active (${active.length})</button>
+    <button class="ofilter-tab ${filterVal==='all'?'active':''}" onclick="setOrderFilter('all')">All (${orders.length})</button>
+    <button class="ofilter-tab ${filterVal==='complete'?'active':''}" onclick="setOrderFilter('complete')">Completed (${complete.length})</button>
+  </div>`;
+
   el.innerHTML = `
     <div class="stats-grid">
       <div class="stat-card accent"><div class="stat-label">Active Orders</div><div class="stat-value">${active.length}</div><div class="stat-sub">in progress</div></div>
       <div class="stat-card success"><div class="stat-label">Completed</div><div class="stat-value">${complete.length}</div><div class="stat-sub">this period</div></div>
-      <div class="stat-card warn"><div class="stat-label">Pipeline</div><div class="stat-value">${cur}${pipeline.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0})}</div><div class="stat-sub">active order value</div></div>
-      <div class="stat-card success"><div class="stat-label">Revenue</div><div class="stat-value">${cur}${totalRevenue.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0})}</div><div class="stat-sub">completed orders</div></div>
+      <div class="stat-card warn"><div class="stat-label">Pipeline</div><div class="stat-value">${fmt(pipeline)}</div><div class="stat-sub">active order value</div></div>
+      <div class="stat-card success"><div class="stat-label">Revenue</div><div class="stat-value">${fmt(totalRevenue)}</div><div class="stat-sub">completed orders</div></div>
     </div>
-    <div class="orders-list">
-      ${orders.map(o => `
-        <div class="order-item">
-          <div class="order-status-dot" style="background:${STATUS_COLORS[o.status]}"></div>
-          <div class="order-info">
-            <div class="order-name">${o.project}</div>
-            <div class="order-meta">${o.client} &nbsp;·&nbsp; Due: ${o.due} &nbsp;·&nbsp; <span class="badge ${STATUS_BADGES[o.status]}">${STATUS_LABELS[o.status]}</span></div>
-          </div>
-          <div class="order-right">
-            <div class="order-value">${cur}${o.value.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0})}</div>
-            <div class="order-date">${o.status === 'complete' ? 'Done' : `Due ${o.due}`}</div>
-          </div>
-          <div style="display:flex;gap:6px;margin-left:12px;flex-shrink:0">
-            ${o.status !== 'complete' ? `<button class="btn btn-success" onclick="advanceOrder(${o.id})" style="font-size:11px;padding:5px 10px;display:inline-flex;align-items:center;gap:4px">Next ${ARROW_SVG}</button>` : ''}
-            <button class="btn btn-danger" onclick="removeOrder(${o.id})">×</button>
-          </div>
-        </div>`).join('')}
-    </div>`;
+    ${orders.length === 0 ? emptyState : filterTabs + `<div class="orders-list">${filtered.map(orderCard).join('')}</div>`}`;
 }
 
 // ══════════════════════════════════════════
@@ -2318,6 +2865,7 @@ function renderDashboard() {
 
   const activeOrders  = orders.filter(o => o.status !== 'complete');
   const doneOrders    = orders.filter(o => o.status === 'complete');
+  const overdueOrders = activeOrders.filter(o => { if (!o.due || o.due === 'TBD') return false; const d = new Date(o.due); return !isNaN(d) && d < new Date(); });
   const pipeline      = activeOrders.reduce((s,o) => s+o.value, 0);
   const revenue       = doneOrders.reduce((s,o) => s+o.value, 0);
   const approvedQ     = quotes.filter(q => q.status === 'approved').length;
@@ -2345,6 +2893,34 @@ function renderDashboard() {
 
   el.innerHTML = `
     <div style="padding:24px;max-width:1200px">
+
+      <!-- Quick actions -->
+      <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap">
+        <button class="btn btn-primary" onclick="switchSection('quote')" style="font-size:12px;padding:7px 16px">+ New Quote</button>
+        <button class="btn btn-outline" onclick="switchSection('orders')" style="font-size:12px;padding:7px 16px;width:auto">+ New Order</button>
+        <button class="btn btn-outline" onclick="switchSection('cutlist')" style="font-size:12px;padding:7px 16px;width:auto">⚙ Cut List</button>
+        ${overdueOrders.length ? `<span class="badge badge-red" style="align-self:center;font-size:12px;padding:6px 12px">${overdueOrders.length} overdue order${overdueOrders.length!==1?'s':''}</span>` : ''}
+      </div>
+
+      <!-- Getting started guide — only when everything is empty -->
+      ${orders.length === 0 && quotes.length === 0 && stockItems.length === 0 ? `
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px 24px;margin-bottom:20px">
+        <div style="font-size:13px;font-weight:700;margin-bottom:12px;color:var(--text)">Getting Started</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px">
+          <div style="display:flex;gap:12px;align-items:flex-start;cursor:pointer" onclick="switchSection('stock')">
+            <div style="width:28px;height:28px;border-radius:50%;background:var(--accent-dim);color:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;flex-shrink:0">1</div>
+            <div><div style="font-size:13px;font-weight:600;color:var(--accent)">Add stock panels</div><div style="font-size:11px;color:var(--muted);margin-top:2px">Enter your sheet materials (plywood, MDF, etc.) with sizes and costs</div></div>
+          </div>
+          <div style="display:flex;gap:12px;align-items:flex-start;cursor:pointer" onclick="switchSection('cutlist')">
+            <div style="width:28px;height:28px;border-radius:50%;background:var(--surface2);color:var(--muted);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;flex-shrink:0">2</div>
+            <div><div style="font-size:13px;font-weight:600;color:var(--text2)">Build a cut list</div><div style="font-size:11px;color:var(--muted);margin-top:2px">Add your parts, optimize the layout, and see material costs</div></div>
+          </div>
+          <div style="display:flex;gap:12px;align-items:flex-start;cursor:pointer" onclick="switchSection('quote')">
+            <div style="width:28px;height:28px;border-radius:50%;background:var(--surface2);color:var(--muted);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;flex-shrink:0">3</div>
+            <div><div style="font-size:13px;font-weight:600;color:var(--text2)">Create a quote</div><div style="font-size:11px;color:var(--muted);margin-top:2px">Quote labour + materials, send to client, then convert to an order</div></div>
+          </div>
+        </div>
+      </div>` : ''}
 
       <!-- KPI Row -->
       <div class="stats-grid" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr));margin-bottom:24px">
@@ -2396,17 +2972,19 @@ function renderDashboard() {
           <div class="card-body" style="padding:0">
             ${activeOrders.length === 0
               ? `<div style="padding:20px;text-align:center;color:var(--muted);font-size:13px">No active orders</div>`
-              : activeOrders.slice(0,5).map(o => `
-              <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 18px;border-bottom:1px solid var(--border2)">
+              : activeOrders.slice(0,5).map(o => {
+                const isOD = o.due && o.due !== 'TBD' && !isNaN(new Date(o.due)) && new Date(o.due) < new Date();
+                return `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 18px;border-bottom:1px solid var(--border2);${isOD?'border-left:3px solid var(--danger);':''}">
                 <div style="flex:1;min-width:0">
                   <div style="font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${o.project}</div>
-                  <div style="font-size:11px;color:var(--muted)">${o.client} · Due ${o.due}</div>
+                  <div style="font-size:11px;color:${isOD?'var(--danger)':'var(--muted)'}">${o.client} · Due ${o.due}${isOD?' ⚠':''}
+                  </div>
                 </div>
                 <div style="text-align:right;margin-left:12px;flex-shrink:0">
                   <div style="font-size:13px;font-weight:700">${cur}${fmt(o.value)}</div>
                   <span class="badge ${STATUS_BADGES[o.status]}" style="font-size:9px">${STATUS_LABELS[o.status]}</span>
                 </div>
-              </div>`).join('')}
+              </div>`;}).join('')}
           </div>
         </div>
 
@@ -2453,18 +3031,436 @@ function renderDashboard() {
 
       </div>
 
-      <!-- Production pipeline bar -->
-      <div class="card" style="margin-bottom:0">
-        <div class="card-header"><span class="card-title">Production Pipeline</span></div>
-        <div class="card-body">
-          ${ordersByStatus.filter(s=>s.status!=='complete').map(s =>
-            statusBar(s.label + (s.count ? ` (${s.count})` : ''), orders.length ? s.count/orders.length*100 : 0, s.color)
-          ).join('')}
-          ${orders.length === 0 ? `<div style="color:var(--muted);font-size:13px;text-align:center;padding:8px">No orders yet</div>` : ''}
+      <!-- Revenue chart + Pipeline -->
+      <div style="display:grid;grid-template-columns:2fr 1fr;gap:18px;margin-bottom:0">
+        <div class="card">
+          <div class="card-header"><span class="card-title">Monthly Revenue</span><span style="font-size:11px;color:var(--muted)">completed orders</span></div>
+          <div class="card-body" style="padding:12px 18px">
+            <canvas id="revenue-chart" height="120" style="width:100%;display:block"></canvas>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">Pipeline</span></div>
+          <div class="card-body" style="padding:14px 18px">
+            ${ordersByStatus.filter(s=>s.status!=='complete').map(s =>
+              statusBar(s.label + (s.count ? ` (${s.count})` : ''), orders.length ? s.count/orders.length*100 : 0, s.color)
+            ).join('')}
+            ${orders.length === 0 ? `<div style="color:var(--muted);font-size:13px;text-align:center;padding:8px">No orders yet</div>` : ''}
+          </div>
         </div>
       </div>
 
     </div>`;
+}
+
+function drawRevenueChart() {
+  const canvas = document.getElementById('revenue-chart');
+  if (!canvas) return;
+  canvas.width = canvas.offsetWidth || 400;
+  const W = canvas.width, H = canvas.height;
+  const ctx = canvas.getContext('2d');
+  const dark = document.documentElement.classList.contains('dark');
+  const gridCol = dark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
+  const labelCol = dark ? '#64748b' : '#94a3b8';
+  const barCol = dark ? '#4caf50' : '#4caf50';
+  const emptyCol = dark ? '#334155' : '#e2e8f0';
+
+  const now = new Date();
+  const months = Array.from({length: 6}, (_, i) => {
+    const d = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1);
+    return { label: d.toLocaleDateString('en-US', {month:'short'}), y: d.getFullYear(), m: d.getMonth(), revenue: 0 };
+  });
+
+  for (const o of orders.filter(o => o.status === 'complete')) {
+    const d = new Date(o.created_at || Date.now());
+    const slot = months.find(s => s.y === d.getFullYear() && s.m === d.getMonth());
+    if (slot) slot.revenue += o.value;
+  }
+
+  const maxRev = Math.max(...months.map(m => m.revenue), 1);
+  const PAD = { t: 8, b: 24, l: 44, r: 8 };
+  const cW = W - PAD.l - PAD.r, cH = H - PAD.t - PAD.b;
+  const barW = cW / months.length;
+
+  ctx.clearRect(0, 0, W, H);
+
+  // Gridlines + Y labels
+  ctx.font = '10px -apple-system,sans-serif'; ctx.fillStyle = labelCol; ctx.textAlign = 'right';
+  for (let i = 0; i <= 3; i++) {
+    const y = PAD.t + cH - (i / 3) * cH;
+    ctx.strokeStyle = gridCol; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(PAD.l, y); ctx.lineTo(W - PAD.r, y); ctx.stroke();
+    if (i > 0) {
+      const v = (maxRev * i / 3);
+      ctx.fillText(v >= 1000 ? (v/1000).toFixed(0)+'k' : v.toFixed(0), PAD.l - 4, y + 4);
+    }
+  }
+
+  // Bars
+  months.forEach((m, i) => {
+    const barH = Math.max(2, (m.revenue / maxRev) * cH);
+    const x = PAD.l + i * barW + barW * 0.18;
+    const bw = barW * 0.64;
+    const y = PAD.t + cH - barH;
+    ctx.fillStyle = m.revenue > 0 ? barCol : emptyCol;
+    ctx.beginPath();
+    ctx.moveTo(x + 3, y); ctx.lineTo(x + bw - 3, y);
+    ctx.arcTo(x + bw, y, x + bw, y + 3, 3); ctx.lineTo(x + bw, y + barH);
+    ctx.lineTo(x, y + barH); ctx.arcTo(x, y, x + 3, y, 3);
+    ctx.closePath(); ctx.fill();
+
+    ctx.fillStyle = labelCol; ctx.textAlign = 'center';
+    ctx.fillText(m.label, PAD.l + i * barW + barW / 2, H - 6);
+  });
+}
+
+function saveData() { /* data is persisted via Supabase */ }
+
+// ══════════════════════════════════════════
+// QUOTE HELPERS
+// ══════════════════════════════════════════
+function _clientSuggest(input) {
+  const val = input.value.toLowerCase().trim();
+  const box = document.getElementById('q-client-suggest');
+  if (!box) return;
+  if (!val) { box.style.display = 'none'; return; }
+  // Collect unique clients from quotes and orders
+  const allClients = [...new Set([...quotes.map(q => q.client), ...orders.map(o => o.client)].filter(Boolean))];
+  const matches = allClients.filter(c => c.toLowerCase().includes(val) && c.toLowerCase() !== val);
+  if (!matches.length) { box.style.display = 'none'; return; }
+  box.innerHTML = matches.slice(0,5).map(c => `<div class="client-suggest-item" onmousedown="document.getElementById('q-client').value='${c.replace(/'/g,'&#39;')}';document.getElementById('q-client-suggest').style.display='none'">${c}</div>`).join('');
+  box.style.display = '';
+}
+
+// Close suggest on blur
+document.addEventListener('click', e => {
+  const box = document.getElementById('q-client-suggest');
+  if (box && !box.contains(e.target) && e.target.id !== 'q-client') box.style.display = 'none';
+});
+
+function printWorkOrder(id) {
+  const o = orders.find(o => o.id === id);
+  if (!o) return;
+  const biz = getBizInfo();
+  const rel = _relativeDate(o.due);
+  const relStr = rel ? ` (${rel.label})` : '';
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Work Order — ${o.project}</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; color:#111; background:#fff; padding:40px; font-size:14px; }
+  .hdr { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:32px; padding-bottom:16px; border-bottom:2px solid #111; }
+  .brand { font-size:20px; font-weight:800; }
+  .brand-sub { font-size:11px; color:#888; margin-top:2px; }
+  .wo-label h1 { font-size:26px; font-weight:300; letter-spacing:2px; text-transform:uppercase; color:#333; text-align:right; }
+  .wo-label .wnum { font-size:11px; color:#888; text-align:right; margin-top:4px; }
+  .meta-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:24px; margin-bottom:28px; padding:16px; background:#f8f8f8; border-radius:6px; }
+  .meta-block label { font-size:9px; text-transform:uppercase; letter-spacing:0.8px; color:#999; display:block; margin-bottom:3px; }
+  .meta-block .val { font-size:14px; font-weight:700; }
+  .status-chip { display:inline-block; padding:2px 10px; border-radius:12px; font-size:11px; font-weight:700; background:#f0f0f0; color:#555; }
+  .notes-section { margin-bottom:24px; }
+  .notes-section h3 { font-size:11px; text-transform:uppercase; letter-spacing:0.8px; color:#999; margin-bottom:8px; }
+  .notes-box { border:1px solid #e0e0e0; border-radius:6px; padding:14px; min-height:80px; font-size:13px; color:#444; line-height:1.6; }
+  .blank-lines { margin-top:24px; }
+  .blank-lines h3 { font-size:11px; text-transform:uppercase; letter-spacing:0.8px; color:#999; margin-bottom:10px; }
+  .blank-line { border-bottom:1px solid #ddd; margin-bottom:16px; height:0; }
+  .footer { margin-top:40px; padding-top:12px; border-top:1px solid #e0e0e0; font-size:10px; color:#bbb; display:flex; justify-content:space-between; }
+  .sig-block { display:grid; grid-template-columns:1fr 1fr; gap:40px; margin-top:32px; }
+  .sig-line { border-bottom:1px solid #ccc; padding-top:32px; font-size:10px; color:#aaa; }
+  @media print { body { padding:20px; } }
+</style></head><body>
+<div class="hdr">
+  <div><div class="brand">${biz.name || 'ProCabinet'}</div><div class="brand-sub">${[biz.phone, biz.email].filter(Boolean).join(' · ') || 'Professional Cabinetry'}</div></div>
+  <div class="wo-label"><h1>Work Order</h1><div class="wnum">#WO-${String(o.id).padStart(4,'0')}</div></div>
+</div>
+<div class="meta-grid">
+  <div class="meta-block"><label>Client</label><div class="val">${o.client}</div></div>
+  <div class="meta-block"><label>Project</label><div class="val">${o.project}</div></div>
+  <div class="meta-block"><label>Due Date</label><div class="val">${o.due}${relStr}</div></div>
+  <div class="meta-block"><label>Order Value</label><div class="val">${window.currency}${(o.value||0).toLocaleString('en-US',{minimumFractionDigits:0})}</div></div>
+  <div class="meta-block"><label>Status</label><div class="val"><span class="status-chip">${STATUS_LABELS[o.status] || o.status}</span></div></div>
+  <div class="meta-block"><label>Order ID</label><div class="val" style="color:#999">#WO-${String(o.id).padStart(4,'0')}</div></div>
+</div>
+${o.notes ? `<div class="notes-section"><h3>Job Notes</h3><div class="notes-box">${(o.notes||'').replace(/\n/g,'<br>')}</div></div>` : ''}
+<div class="blank-lines">
+  <h3>Production Notes</h3>
+  ${[1,2,3,4,5,6].map(() => `<div class="blank-line"></div>`).join('')}
+</div>
+<div class="sig-block">
+  <div class="sig-line">Prepared by</div>
+  <div class="sig-line">Date completed</div>
+</div>
+<div class="footer"><span>Generated by ProCabinet.App</span><span>${new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})}</span></div>
+</body></html>`;
+  const win = window.open('', '_blank');
+  win.document.write(html);
+  win.document.close();
+  win.focus();
+  setTimeout(() => win.print(), 400);
+}
+
+function quoteFromCutList(matCost) {
+  switchSection('quote');
+  const el = document.getElementById('q-materials');
+  if (el) { el.value = matCost.toFixed(2); el.focus(); }
+  const pn = document.getElementById('q-project');
+  if (pn && !pn.value) pn.value = 'Untitled Job';
+  // Subtle flash to draw attention to the pre-filled field
+  if (el) { el.style.background = 'rgba(232,168,56,0.2)'; setTimeout(() => el.style.background = '', 1200); }
+}
+
+async function markQuoteSent(id) {
+  const q = quotes.find(q => q.id === id);
+  if (!q) return;
+  await _sb.from('quotes').update({ status: 'sent' }).eq('id', id);
+  q.status = 'sent';
+  renderQuoteMain();
+}
+
+function printQuote(id) {
+  const q = quotes.find(q => q.id === id);
+  if (!q) return;
+  const cur = window.currency;
+  const fmt = v => cur + v.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+  const sub = q.materials + q.labour;
+  const markupAmt = sub * q.markup / 100;
+  const afterMarkup = sub + markupAmt;
+  const taxAmt = afterMarkup * q.tax / 100;
+  const total = afterMarkup + taxAmt;
+  const statusText = { draft:'Draft', sent:'Sent to Client', approved:'Approved' }[q.status] || q.status;
+  const biz = getBizInfo();
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+<title>Quote — ${q.project}</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; color:#111; background:#fff; padding:48px; max-width:720px; margin:0 auto; font-size:14px; }
+  .hdr { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:40px; padding-bottom:24px; border-bottom:2px solid #111; }
+  .brand { font-size:22px; font-weight:800; letter-spacing:-0.5px; }
+  .brand-sub { font-size:12px; color:#888; margin-top:2px; }
+  .quote-label { text-align:right; }
+  .quote-label h1 { font-size:28px; font-weight:300; letter-spacing:2px; text-transform:uppercase; color:#333; }
+  .quote-label .qnum { font-size:12px; color:#888; margin-top:4px; }
+  .meta-grid { display:grid; grid-template-columns:1fr 1fr; gap:32px; margin-bottom:36px; }
+  .meta-block label { font-size:10px; text-transform:uppercase; letter-spacing:0.8px; color:#999; display:block; margin-bottom:4px; }
+  .meta-block .val { font-size:14px; font-weight:600; }
+  .meta-block .val-sub { font-size:12px; color:#666; margin-top:2px; }
+  table { width:100%; border-collapse:collapse; margin-bottom:0; }
+  th { font-size:10px; text-transform:uppercase; letter-spacing:0.6px; color:#999; text-align:left; padding:8px 12px; border-bottom:1px solid #e0e0e0; }
+  td { padding:12px 12px; border-bottom:1px solid #f0f0f0; font-size:14px; }
+  tr.total-row td { border-top:2px solid #111; border-bottom:none; font-weight:700; font-size:16px; padding-top:14px; }
+  tr.sub-row td { color:#666; font-size:13px; }
+  .td-right { text-align:right; }
+  .notes-block { margin-top:36px; padding:18px; background:#f8f8f8; border-radius:6px; }
+  .notes-block label { font-size:10px; text-transform:uppercase; letter-spacing:0.8px; color:#999; display:block; margin-bottom:6px; }
+  .notes-block p { font-size:13px; color:#444; line-height:1.6; }
+  .footer { margin-top:48px; padding-top:18px; border-top:1px solid #e0e0e0; font-size:11px; color:#aaa; display:flex; justify-content:space-between; }
+  .status-badge { display:inline-block; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:600; background:#f0f0f0; color:#666; }
+  @media print { body { padding:24px; } }
+</style></head><body>
+<div class="hdr">
+  <div><div class="brand">${biz.name || 'ProCabinet'}</div><div class="brand-sub">${[biz.phone, biz.email].filter(Boolean).join(' &nbsp;·&nbsp; ') || 'Professional Cabinetry'}</div></div>
+  <div class="quote-label"><h1>Quote</h1><div class="qnum">#Q-${String(q.id).padStart(4,'0')} &nbsp;·&nbsp; ${q.date} &nbsp;·&nbsp; <span class="status-badge">${statusText}</span></div></div>
+</div>
+<div class="meta-grid">
+  <div class="meta-block">
+    <label>Prepared for</label>
+    <div class="val">${q.client}</div>
+  </div>
+  <div class="meta-block">
+    <label>Project</label>
+    <div class="val">${q.project}</div>
+  </div>
+</div>
+<table>
+  <thead><tr><th>Description</th><th class="td-right">Amount</th></tr></thead>
+  <tbody>
+    <tr><td>Labour</td><td class="td-right">${fmt(q.labour)}</td></tr>
+    <tr><td>Materials</td><td class="td-right">${fmt(q.materials)}</td></tr>
+    <tr class="sub-row"><td style="padding-left:24px">Subtotal</td><td class="td-right">${fmt(sub)}</td></tr>
+    ${q.markup > 0 ? `<tr class="sub-row"><td style="padding-left:24px">Markup (${q.markup}%)</td><td class="td-right">+ ${fmt(markupAmt)}</td></tr>` : ''}
+    ${q.tax > 0 ? `<tr class="sub-row"><td style="padding-left:24px">Tax (${q.tax}%)</td><td class="td-right">+ ${fmt(taxAmt)}</td></tr>` : ''}
+    <tr class="total-row"><td>Total</td><td class="td-right">${fmt(total)}</td></tr>
+  </tbody>
+</table>
+${q.notes ? `<div class="notes-block"><label>Notes</label><p>${q.notes.replace(/\n/g,'<br>')}</p></div>` : ''}
+<div class="footer"><span>Generated by ProCabinet.App</span><span>${new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})}</span></div>
+</body></html>`;
+  const win = window.open('', '_blank');
+  win.document.write(html);
+  win.document.close();
+  win.focus();
+  setTimeout(() => win.print(), 400);
+}
+
+async function duplicateQuote(id) {
+  const q = quotes.find(q => q.id === id);
+  if (!q) return;
+  const row = { user_id: _userId, client: q.client, project: q.project + ' (copy)', materials: q.materials, labour: q.labour, markup: q.markup, tax: q.tax, status: 'draft', date: new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short'}), notes: q.notes || '' };
+  const { data, error } = await _sb.from('quotes').insert(row).select().single();
+  if (error) { console.error(error); return; }
+  quotes.unshift(data);
+  renderQuoteMain();
+}
+
+async function updateQuoteField(id, field, val) {
+  const q = quotes.find(q => q.id === id);
+  if (!q) return;
+  const numFields = ['materials','labour','markup','tax'];
+  const v = numFields.includes(field) ? (parseFloat(val) || 0) : val;
+  q[field] = v;
+  await _sb.from('quotes').update({ [field]: v }).eq('id', id);
+  renderQuoteMain();
+}
+
+// ══════════════════════════════════════════
+// ORDER HELPERS
+// ══════════════════════════════════════════
+async function updateOrderField(id, field, val) {
+  const o = orders.find(o => o.id === id);
+  if (!o) return;
+  const v = field === 'value' ? (parseFloat(val) || 0) : val;
+  o[field] = v;
+  await _sb.from('orders').update({ [field]: v }).eq('id', id);
+  document.getElementById('orders-badge').textContent = orders.filter(o => o.status !== 'complete').length;
+  renderOrdersMain();
+}
+
+function setOrderFilter(f) { window._orderFilter = f; renderOrdersMain(); }
+
+async function setOrderStatus(id, status) {
+  const o = orders.find(o => o.id === id);
+  if (!o) return;
+  await _sb.from('orders').update({ status }).eq('id', id);
+  o.status = status;
+  document.getElementById('orders-badge').textContent = orders.filter(o => o.status !== 'complete').length;
+  renderOrdersMain();
+}
+
+// ══════════════════════════════════════════
+// STOCK HELPERS
+// ══════════════════════════════════════════
+function useStockInCutList(id) {
+  const item = stockItems.find(s => s.id === id);
+  if (!item) return;
+  addSheet(item.name, item.w, item.h, Math.max(1, item.qty));
+  switchSection('cutlist');
+}
+
+async function setStockQty(id, val) {
+  const item = stockItems.find(s => s.id === id);
+  if (!item) return;
+  const qty = Math.max(0, parseInt(val) || 0);
+  await _sb.from('stock_items').update({ qty }).eq('id', id);
+  item.qty = qty;
+  renderStockMain();
+}
+
+async function updateStockField(id, field, val) {
+  const item = stockItems.find(s => s.id === id);
+  if (!item) return;
+  const numFields = ['w','h','qty','low','cost'];
+  const v = numFields.includes(field) ? (parseFloat(val) || 0) : val;
+  item[field] = v;
+  await _sb.from('stock_items').update({ [field]: v }).eq('id', id);
+  renderStockMain();
+}
+
+// ══════════════════════════════════════════
+// AUTH HELPERS
+// ══════════════════════════════════════════
+function dismissAuth() {
+  document.getElementById('auth-screen').classList.add('hidden');
+}
+function showAuthFromPaywall() {
+  document.getElementById('paywall-modal').classList.add('hidden');
+  _showAuth();
+}
+
+// ══════════════════════════════════════════
+// FREE TIER
+// ══════════════════════════════════════════
+const FREE_LIMIT = 5;
+function _getOptCount() { return parseInt(localStorage.getItem('pcOptCount') || '0', 10); }
+function _incOptCount() { localStorage.setItem('pcOptCount', _getOptCount() + 1); _updateOptCounter(); }
+function _updateOptCounter() {
+  const el = document.getElementById('opt-counter');
+  if (!el) return;
+  if (_userId) { el.style.display = 'none'; return; }
+  const n = _getOptCount();
+  const left = Math.max(0, FREE_LIMIT - n);
+  el.style.display = '';
+  el.textContent = left > 0 ? `${left} free optimization${left === 1 ? '' : 's'} remaining` : 'Free limit reached — sign in for unlimited';
+  el.style.color = left === 0 ? 'var(--danger)' : 'var(--muted)';
+}
+
+// ══════════════════════════════════════════
+// PROJECTS PANEL
+// ══════════════════════════════════════════
+function toggleProjectsPanel() {
+  const panel = document.getElementById('projects-panel');
+  const isOpen = panel.classList.toggle('open');
+  if (isOpen) loadProjects();
+}
+
+function loadProjects() {
+  const listEl = document.getElementById('projects-list');
+  if (!listEl) return;
+  if (!_userId) {
+    listEl.innerHTML = '<div class="projects-signin">Sign in to save &amp; load projects. <span onclick="dismissAuth();_showAuth()">Sign in</span></div>';
+    return;
+  }
+  listEl.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:6px 0">Loading…</div>';
+  _sb.from('projects').select('id,name,updated_at').order('updated_at', { ascending: false })
+    .then(({ data, error }) => {
+      if (error || !data) { listEl.innerHTML = '<div style="color:var(--danger);font-size:12px">Error loading projects.</div>'; return; }
+      if (!data.length) { listEl.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:6px 0">No saved projects yet.</div>'; return; }
+      listEl.innerHTML = data.map(p => {
+        const d = new Date(p.updated_at);
+        const label = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+        return `<div class="project-row">
+          <span class="project-name" onclick="loadProject('${p.id}')" title="Load">${p.name}</span>
+          <span class="project-date">${label}</span>
+          <button class="project-del" onclick="deleteProject('${p.id}')" title="Delete">×</button>
+        </div>`;
+      }).join('');
+    });
+}
+
+async function promptSaveProject() {
+  if (!_userId) { _showAuth(); return; }
+  const name = prompt('Project name:', `Project ${new Date().toLocaleDateString()}`);
+  if (!name) return;
+  await saveProject(name);
+}
+
+async function saveProject(name) {
+  const payload = { sheets: JSON.parse(JSON.stringify(sheets)), pieces: JSON.parse(JSON.stringify(pieces)), settings: { units: window.units, kerf: document.getElementById('kerf').value } };
+  const { error } = await _sb.from('projects').insert([{ name, data: payload, user_id: _userId }]);
+  if (error) { alert('Save failed: ' + error.message); return; }
+  loadProjects();
+}
+
+async function loadProject(id) {
+  const { data, error } = await _sb.from('projects').select('*').eq('id', id).single();
+  if (error || !data) { alert('Could not load project.'); return; }
+  const p = data.data;
+  sheets = []; pieces = []; _sheetId = 1; _pieceId = 1; pieceColorIdx = 0;
+  for (const s of (p.sheets || [])) { sheets.push({ ...s, id: _sheetId++ }); }
+  for (const pc of (p.pieces || [])) { pieces.push({ ...pc, id: _pieceId++ }); }
+  if (p.settings) {
+    if (p.settings.units) setUnits(p.settings.units);
+    const kerfEl = document.getElementById('kerf');
+    if (kerfEl && p.settings.kerf) kerfEl.value = p.settings.kerf;
+  }
+  results = null;
+  renderSheets(); renderPieces();
+  document.getElementById('results-area').innerHTML = '<div class="empty-state"><h3>Project loaded</h3><p>Click Optimize to generate layouts.</p></div>';
+  toggleProjectsPanel();
+}
+
+async function deleteProject(id) {
+  if (!confirm('Delete this project?')) return;
+  await _sb.from('projects').delete().eq('id', id);
+  loadProjects();
 }
 
 // ══════════════════════════════════════════
@@ -2477,28 +3473,92 @@ function hexRgba(hex, a) {
 function trunc(s, n) { return s.length <= n ? s : s.slice(0, n-1) + '…'; }
 
 // ══════════════════════════════════════════
+// FORM DEFAULTS (persist across sessions)
+// ══════════════════════════════════════════
+(function() {
+  const defs = { 'q-labour-rate': 65, 'q-hours': 8, 'q-markup': 20, 'q-tax': 13 };
+  Object.entries(defs).forEach(([id, fallback]) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const saved = localStorage.getItem('pc_' + id);
+    if (saved !== null) el.value = saved;
+    el.addEventListener('change', () => { localStorage.setItem('pc_' + id, el.value); _updateQuotePreview(); });
+  });
+  // Also update preview on input to these fields
+  ['q-labour-rate','q-hours','q-materials','q-markup','q-tax'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('input', _updateQuotePreview);
+  });
+  _updateQuotePreview();
+})();
+
+function _relativeDate(dateStr) {
+  if (!dateStr || dateStr === 'TBD') return null;
+  const d = new Date(dateStr);
+  if (isNaN(d)) return null;
+  const today = new Date(); today.setHours(0,0,0,0); d.setHours(0,0,0,0);
+  const diff = Math.round((d - today) / 86400000);
+  if (diff === 0) return { label: 'Today', color: 'var(--warn)' };
+  if (diff === 1) return { label: 'Tomorrow', color: 'var(--success)' };
+  if (diff > 1 && diff <= 7) return { label: `in ${diff} days`, color: 'var(--success)' };
+  if (diff > 7 && diff <= 30) return { label: `in ${diff} days`, color: 'var(--text2)' };
+  if (diff < 0) return { label: `${Math.abs(diff)}d overdue`, color: 'var(--danger)' };
+  return null;
+}
+
+function _updateQuotePreview() {
+  const cur = window.currency;
+  const fmt = v => cur + v.toLocaleString('en-US', {minimumFractionDigits:0, maximumFractionDigits:0});
+  const rate = parseFloat(document.getElementById('q-labour-rate')?.value) || 0;
+  const hrs  = parseFloat(document.getElementById('q-hours')?.value)       || 0;
+  const mat  = parseFloat(document.getElementById('q-materials')?.value)   || 0;
+  const mkp  = parseFloat(document.getElementById('q-markup')?.value)      || 0;
+  const tax  = parseFloat(document.getElementById('q-tax')?.value)         || 0;
+  const labour = rate * hrs;
+  const sub    = labour + mat;
+  const total  = sub * (1 + mkp/100) * (1 + tax/100);
+  const prev   = document.getElementById('quote-form-preview');
+  if (!prev) return;
+  if (sub === 0) { prev.style.display = 'none'; return; }
+  prev.style.display = '';
+  document.getElementById('qfp-labour').textContent    = `${hrs}h @ ${cur}${rate}/hr = ${fmt(labour)}`;
+  document.getElementById('qfp-materials').textContent = fmt(mat);
+  document.getElementById('qfp-total').textContent     = fmt(total);
+}
+
+// ══════════════════════════════════════════
 // INIT
 // ══════════════════════════════════════════
+loadBizInfo();
+// Restore kerf
+(function(){ const k = localStorage.getItem('pc_kerf'); if (k) { const el = document.getElementById('kerf'); if (el) el.value = k; } })();
 renderStockMain();
 renderQuoteMain();
 renderOrdersMain();
+_updateOptCounter();
 
-// Default cutlist data
-const _m = window.units === 'metric';
-addSheet(_m ? '18mm Plywood' : '3/4" Plywood', _m ? 2440 : 96, _m ? 1220 : 48, 5);
-for (const d of (_m ? [
-  { label: 'Side Panel',   w: 590, h: 762, qty: 2 },
-  { label: 'Top / Bottom', w: 572, h: 590, qty: 2 },
-  { label: 'Shelf',        w: 572, h: 559, qty: 3 },
-  { label: 'Back Panel',   w: 590, h: 762, qty: 1 },
-  { label: 'Door',         w: 292, h: 749, qty: 2 },
-] : [
-  { label: 'Side Panel',   w: 23.25, h: 30,    qty: 2 },
-  { label: 'Top / Bottom', w: 22.5,  h: 23.25, qty: 2 },
-  { label: 'Shelf',        w: 22.5,  h: 22,    qty: 3 },
-  { label: 'Back Panel',   w: 23.25, h: 30,    qty: 1 },
-  { label: 'Door',         w: 11.5,  h: 29.5,  qty: 2 },
-])) { addPiece(d.label, d.w, d.h, d.qty, 'none'); }
+// Cut list — restore saved state, or load demo data on first visit
+_loadCutList();
+if (pieces.length === 0 && sheets.length === 0) {
+  const _m = window.units === 'metric';
+  addSheet(_m ? '18mm Plywood' : '3/4" Plywood', _m ? 2440 : 96, _m ? 1220 : 48, 5);
+  for (const d of (_m ? [
+    { label: 'Side Panel',   w: 590, h: 762, qty: 2 },
+    { label: 'Top / Bottom', w: 572, h: 590, qty: 2 },
+    { label: 'Shelf',        w: 572, h: 559, qty: 3 },
+    { label: 'Back Panel',   w: 590, h: 762, qty: 1 },
+    { label: 'Door',         w: 292, h: 749, qty: 2 },
+  ] : [
+    { label: 'Side Panel',   w: 23.25, h: 30,    qty: 2 },
+    { label: 'Top / Bottom', w: 22.5,  h: 23.25, qty: 2 },
+    { label: 'Shelf',        w: 22.5,  h: 22,    qty: 3 },
+    { label: 'Back Panel',   w: 23.25, h: 30,    qty: 1 },
+    { label: 'Door',         w: 11.5,  h: 29.5,  qty: 2 },
+  ])) { addPiece(d.label, d.w, d.h, d.qty, 'none'); }
+} else {
+  renderSheets();
+  renderPieces();
+}
 </script>
 </body>
 </html>
