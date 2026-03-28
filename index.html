@@ -1051,7 +1051,14 @@ html.dark .cl-table tbody tr:nth-child(even) td { background: rgba(255,255,255,0
           <div class="projects-panel-inner">
             <div class="projects-header">
               <span class="projects-title">Saved Projects</span>
-              <button class="btn btn-outline" onclick="promptSaveProject()" style="font-size:11px;padding:3px 10px">+ Save Current</button>
+              <button class="btn btn-outline" onclick="showSaveProjectForm()" id="save-proj-btn" style="font-size:11px;padding:3px 10px">+ Save</button>
+            </div>
+            <div id="save-proj-form" style="display:none;margin-bottom:8px;display:none">
+              <div style="display:flex;gap:4px;align-items:center">
+                <input id="save-proj-name" class="order-search-input" placeholder="Project name…" style="flex:1;font-size:12px" onkeydown="if(event.key==='Enter')confirmSaveProject();if(event.key==='Escape')hideSaveProjectForm()">
+                <button class="btn btn-primary" onclick="confirmSaveProject()" style="width:auto;padding:4px 10px;font-size:11px">Save</button>
+                <button class="btn btn-outline" onclick="hideSaveProjectForm()" style="width:auto;padding:4px 8px;font-size:11px">✕</button>
+              </div>
             </div>
             <div id="projects-list"><div class="projects-signin">Sign in to save and load projects. <span onclick="dismissAuth();_showAuth()">Sign in</span></div></div>
           </div>
@@ -2055,6 +2062,16 @@ function removeSheet(id) {
   renderPieces();
 }
 
+function duplicateSheet(id) {
+  const s = sheets.find(s => s.id === id);
+  if (!s) return;
+  const idx = sheets.indexOf(s);
+  const copy = { ...s, id: _sheetId++, name: s.name + ' (copy)' };
+  sheets.splice(idx + 1, 0, copy);
+  renderSheets();
+  renderPieces();
+}
+
 function updateSheet(id, field, val) {
   const s = sheets.find(s => s.id === id);
   if (!s) return;
@@ -2120,7 +2137,10 @@ function renderSheets() {
         <button class="cl-grain-btn${s.grain !== 'none' ? ' active' : ''}"
           onclick="cycleGrain(${s.id},'sheet')" title="Grain: ${s.grain}">${grainIcon(s.grain)}</button>
       </td>
-      <td class="cl-del-cell"><button class="cl-del-btn" onclick="removeSheet(${s.id})" title="Remove">${DEL_SVG}</button></td>
+      <td class="cl-del-cell" style="white-space:nowrap">
+        <button class="cl-del-btn" onclick="duplicateSheet(${s.id})" title="Duplicate sheet" style="opacity:.6;margin-right:2px">⧉</button>
+        <button class="cl-del-btn" onclick="removeSheet(${s.id})" title="Remove">${DEL_SVG}</button>
+      </td>
     </tr>`;
   }).join('');
   _saveCutList();
@@ -2170,6 +2190,15 @@ function addPiece(label, w, h, qty, grain) {
 }
 
 function removePiece(id) { pieces = pieces.filter(p => p.id !== id); renderPieces(); }
+
+function duplicatePiece(id) {
+  const p = pieces.find(p => p.id === id);
+  if (!p) return;
+  const idx = pieces.indexOf(p);
+  const copy = { ...p, id: _pieceId++, label: p.label + ' (copy)', color: COLORS[pieceColorIdx++ % COLORS.length] };
+  pieces.splice(idx + 1, 0, copy);
+  renderPieces();
+}
 
 function updatePiece(id, field, val) {
   const p = pieces.find(p => p.id === id);
@@ -2254,7 +2283,10 @@ function renderPieces() {
           onkeydown="clKeydown(event,'pieces',${i},'notes')"
           ${dis ? 'disabled' : ''} placeholder="e.g. edge band, veneer">
       </td>
-      <td class="cl-del-cell"><button class="cl-del-btn" onclick="removePiece(${p.id})" title="Remove">${DEL_SVG}</button></td>
+      <td class="cl-del-cell" style="white-space:nowrap">
+        <button class="cl-del-btn" onclick="duplicatePiece(${p.id})" title="Duplicate part" style="opacity:.6;margin-right:2px">⧉</button>
+        <button class="cl-del-btn" onclick="removePiece(${p.id})" title="Remove">${DEL_SVG}</button>
+      </td>
     </tr>`;
   }).join('');
 
@@ -4060,17 +4092,33 @@ function loadProjects() {
     });
 }
 
-async function promptSaveProject() {
+function showSaveProjectForm() {
   if (!_requireAuth()) return;
-  const name = prompt('Project name:', `Project ${new Date().toLocaleDateString()}`);
-  if (!name) return;
+  const form = document.getElementById('save-proj-form');
+  const inp = document.getElementById('save-proj-name');
+  if (!form || !inp) return;
+  inp.value = `Project ${new Date().toLocaleDateString()}`;
+  form.style.display = '';
+  setTimeout(() => { inp.focus(); inp.select(); }, 50);
+}
+function hideSaveProjectForm() {
+  const form = document.getElementById('save-proj-form');
+  if (form) form.style.display = 'none';
+}
+async function confirmSaveProject() {
+  const inp = document.getElementById('save-proj-name');
+  const name = inp?.value.trim();
+  if (!name) { inp?.focus(); return; }
+  hideSaveProjectForm();
   await saveProject(name);
 }
+async function promptSaveProject() { showSaveProjectForm(); }
 
 async function saveProject(name) {
   const payload = { sheets: JSON.parse(JSON.stringify(sheets)), pieces: JSON.parse(JSON.stringify(pieces)), settings: { units: window.units, kerf: document.getElementById('kerf').value } };
   const { error } = await _db('projects').insert([{ name, data: payload, user_id: _userId }]);
   if (error) { _toast('Save failed: ' + error.message, 'error'); return; }
+  _toast(`"${name}" saved`, 'success');
   loadProjects();
 }
 
