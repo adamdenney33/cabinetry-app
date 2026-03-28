@@ -1304,6 +1304,59 @@ const _sb = window.supabase.createClient(
   'https://mhzneruvlfmhnsohfrdo.supabase.co',
   'sb_publishable_4lHAEgWPQz8DX8TH2KnuiA_oimj8J__'
 );
+
+// ── Raw-fetch DB helper (replaces _db() for queries — SDK hangs with sb_publishable keys) ──
+const _SBURL = 'https://mhzneruvlfmhnsohfrdo.supabase.co';
+const _SBKEY = 'sb_publishable_4lHAEgWPQz8DX8TH2KnuiA_oimj8J__';
+function _dbHeaders() {
+  try {
+    const raw = localStorage.getItem('sb-mhzneruvlfmhnsohfrdo-auth-token');
+    const token = raw ? (JSON.parse(raw)?.access_token || _SBKEY) : _SBKEY;
+    return { 'apikey': _SBKEY, 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' };
+  } catch(e) { return { 'apikey': _SBKEY, 'Content-Type': 'application/json' }; }
+}
+class _DBBuilder {
+  constructor(table) {
+    this._t = table; this._method = 'select'; this._sel = '*';
+    this._where = {}; this._orderBy = null; this._orderAsc = true;
+    this._isSingle = false; this._body = null; this._lim = null;
+  }
+  _clone() { const b = new _DBBuilder(this._t); return Object.assign(b, this, { _where: { ...this._where } }); }
+  select(cols = '*') { const b = this._clone(); b._sel = cols; return b; }
+  insert(body)       { const b = this._clone(); b._method = 'insert'; b._body = body; return b; }
+  update(body)       { const b = this._clone(); b._method = 'update'; b._body = body; return b; }
+  delete()           { const b = this._clone(); b._method = 'delete'; return b; }
+  eq(col, val)       { const b = this._clone(); b._where[col] = `eq.${val}`; return b; }
+  order(col, { ascending = true } = {}) { const b = this._clone(); b._orderBy = col; b._orderAsc = ascending; return b; }
+  limit(n)           { const b = this._clone(); b._lim = n; return b; }
+  single()           { const b = this._clone(); b._isSingle = true; return b; }
+  _params() {
+    const p = new URLSearchParams();
+    if (this._method === 'select') p.set('select', this._sel);
+    Object.entries(this._where).forEach(([c, v]) => p.set(c, v));
+    if (this._orderBy) p.set('order', `${this._orderBy}.${this._orderAsc ? 'asc' : 'desc'}`);
+    if (this._lim) p.set('limit', this._lim);
+    return p.toString();
+  }
+  then(resolve) {
+    const h = _dbHeaders(), ps = this._params();
+    const url = `${_SBURL}/rest/v1/${this._t}${ps ? '?' + ps : ''}`;
+    let opts = { headers: h };
+    if (this._method === 'insert') opts = { method: 'POST',  headers: { ...h, 'Prefer': 'return=representation' }, body: JSON.stringify(this._body) };
+    if (this._method === 'update') opts = { method: 'PATCH', headers: { ...h, 'Prefer': 'return=representation' }, body: JSON.stringify(this._body) };
+    if (this._method === 'delete') opts = { method: 'DELETE', headers: h };
+    fetch(url, opts).then(async r => {
+      const txt = await r.text();
+      let data; try { data = JSON.parse(txt); } catch(e) { data = null; }
+      if (!r.ok) return resolve({ data: null, error: data || { message: 'HTTP ' + r.status } });
+      if (this._isSingle) return resolve({ data: Array.isArray(data) ? (data[0] || null) : (data || null), error: null });
+      resolve({ data: data || [], error: null });
+    }).catch(e => resolve({ data: null, error: { message: e.message } }));
+    return this;
+  }
+  catch() { return this; }
+}
+function _db(table) { return new _DBBuilder(table); }
 let _userId = null;
 let _authMode = 'signin';
 
@@ -1354,9 +1407,9 @@ async function signOut() {
 
 async function loadAllData() {
   const [{ data: ord }, { data: quo }, { data: stk }] = await Promise.all([
-    _sb.from('orders').select('*').order('created_at', { ascending: false }),
-    _sb.from('quotes').select('*').order('created_at', { ascending: false }),
-    _sb.from('stock_items').select('*').order('created_at', { ascending: true }),
+    _db('orders').select('*').order('created_at', { ascending: false }),
+    _db('quotes').select('*').order('created_at', { ascending: false }),
+    _db('stock_items').select('*').order('created_at', { ascending: true }),
   ]);
   orders = ord || [];
   quotes = quo || [];
@@ -1591,7 +1644,7 @@ async function addStockItem() {
     low: parseInt(document.getElementById('stock-low').value) || 3,
     cost: parseFloat(document.getElementById('stock-cost').value) || 0,
   };
-  const { data, error } = await _sb.from('stock_items').insert(row).select().single();
+  const { data, error } = await _db('stock_items').insert(row).select().single();
   if (error) { console.error(error); return; }
   stockItems.push(data);
   document.getElementById('stock-name').value = '';
@@ -1600,7 +1653,7 @@ async function addStockItem() {
 }
 
 async function removeStock(id) {
-  await _sb.from('stock_items').delete().eq('id', id);
+  await _db('stock_items').delete().eq('id', id);
   stockItems = stockItems.filter(s => s.id !== id);
   renderStockMain();
 }
@@ -1609,7 +1662,7 @@ async function adjustStock(id, delta) {
   const item = stockItems.find(s => s.id === id);
   if (!item) return;
   const newQty = Math.max(0, item.qty + delta);
-  await _sb.from('stock_items').update({ qty: newQty }).eq('id', id);
+  await _db('stock_items').update({ qty: newQty }).eq('id', id);
   item.qty = newQty;
   renderStockMain();
 }
@@ -2611,7 +2664,7 @@ async function createQuote() {
     status: 'draft', date: new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short'}),
     notes: document.getElementById('q-notes').value.trim(),
   };
-  const { data, error } = await _sb.from('quotes').insert(row).select().single();
+  const { data, error } = await _db('quotes').insert(row).select().single();
   if (error) { console.error(error); return; }
   quotes.unshift(data);
   document.getElementById('q-client').value = '';
@@ -2622,7 +2675,7 @@ async function createQuote() {
 }
 
 async function removeQuote(id) {
-  await _sb.from('quotes').delete().eq('id', id);
+  await _db('quotes').delete().eq('id', id);
   quotes = quotes.filter(q => q.id !== id);
   renderQuoteMain();
 }
@@ -2630,11 +2683,11 @@ async function removeQuote(id) {
 async function convertQuoteToOrder(id) {
   const q = quotes.find(q => q.id === id);
   if (!q) return;
-  const { error: qErr } = await _sb.from('quotes').update({ status: 'approved' }).eq('id', id);
+  const { error: qErr } = await _db('quotes').update({ status: 'approved' }).eq('id', id);
   if (qErr) { console.error(qErr); return; }
   q.status = 'approved';
   const orderRow = { user_id: _userId, client: q.client, project: q.project, value: Math.round(quoteTotal(q)), status: 'confirmed', due: 'TBD' };
-  const { data, error: oErr } = await _sb.from('orders').insert(orderRow).select().single();
+  const { data, error: oErr } = await _db('orders').insert(orderRow).select().single();
   if (oErr) { console.error(oErr); return; }
   orders.unshift(data);
   document.getElementById('orders-badge').textContent = orders.filter(o => o.status !== 'complete').length;
@@ -2737,9 +2790,8 @@ async function addOrder() {
     value: parseFloat(document.getElementById('o-value').value) || 0,
     status: document.getElementById('o-status').value,
     due,
-    notes: document.getElementById('o-notes').value.trim(),
   };
-  const { data, error } = await _sb.from('orders').insert(row).select().single();
+  const { data, error } = await _db('orders').insert(row).select().single();
   if (error) { console.error(error); return; }
   orders.unshift(data);
   document.getElementById('o-client').value = '';
@@ -2752,7 +2804,7 @@ async function addOrder() {
 }
 
 async function removeOrder(id) {
-  await _sb.from('orders').delete().eq('id', id);
+  await _db('orders').delete().eq('id', id);
   orders = orders.filter(o => o.id !== id);
   document.getElementById('orders-badge').textContent = orders.filter(o => o.status !== 'complete').length;
   renderOrdersMain();
@@ -2764,7 +2816,7 @@ async function advanceOrder(id) {
   const idx = ORDER_STATUSES.indexOf(o.status);
   if (idx < ORDER_STATUSES.length - 1) {
     const newStatus = ORDER_STATUSES[idx + 1];
-    await _sb.from('orders').update({ status: newStatus }).eq('id', id);
+    await _db('orders').update({ status: newStatus }).eq('id', id);
     o.status = newStatus;
   }
   document.getElementById('orders-badge').textContent = orders.filter(o => o.status !== 'complete').length;
@@ -3211,7 +3263,7 @@ function quoteFromCutList(matCost) {
 async function markQuoteSent(id) {
   const q = quotes.find(q => q.id === id);
   if (!q) return;
-  await _sb.from('quotes').update({ status: 'sent' }).eq('id', id);
+  await _db('quotes').update({ status: 'sent' }).eq('id', id);
   q.status = 'sent';
   renderQuoteMain();
 }
@@ -3295,7 +3347,7 @@ async function duplicateQuote(id) {
   const q = quotes.find(q => q.id === id);
   if (!q) return;
   const row = { user_id: _userId, client: q.client, project: q.project + ' (copy)', materials: q.materials, labour: q.labour, markup: q.markup, tax: q.tax, status: 'draft', date: new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short'}), notes: q.notes || '' };
-  const { data, error } = await _sb.from('quotes').insert(row).select().single();
+  const { data, error } = await _db('quotes').insert(row).select().single();
   if (error) { console.error(error); return; }
   quotes.unshift(data);
   renderQuoteMain();
@@ -3307,7 +3359,7 @@ async function updateQuoteField(id, field, val) {
   const numFields = ['materials','labour','markup','tax'];
   const v = numFields.includes(field) ? (parseFloat(val) || 0) : val;
   q[field] = v;
-  await _sb.from('quotes').update({ [field]: v }).eq('id', id);
+  await _db('quotes').update({ [field]: v }).eq('id', id);
   renderQuoteMain();
 }
 
@@ -3319,7 +3371,8 @@ async function updateOrderField(id, field, val) {
   if (!o) return;
   const v = field === 'value' ? (parseFloat(val) || 0) : val;
   o[field] = v;
-  await _sb.from('orders').update({ [field]: v }).eq('id', id);
+  // 'notes' column not yet in DB schema — skip that field, update others normally
+  if (field !== 'notes') await _db('orders').update({ [field]: v }).eq('id', id);
   document.getElementById('orders-badge').textContent = orders.filter(o => o.status !== 'complete').length;
   renderOrdersMain();
 }
@@ -3329,7 +3382,7 @@ function setOrderFilter(f) { window._orderFilter = f; renderOrdersMain(); }
 async function setOrderStatus(id, status) {
   const o = orders.find(o => o.id === id);
   if (!o) return;
-  await _sb.from('orders').update({ status }).eq('id', id);
+  await _db('orders').update({ status }).eq('id', id);
   o.status = status;
   document.getElementById('orders-badge').textContent = orders.filter(o => o.status !== 'complete').length;
   renderOrdersMain();
@@ -3349,7 +3402,7 @@ async function setStockQty(id, val) {
   const item = stockItems.find(s => s.id === id);
   if (!item) return;
   const qty = Math.max(0, parseInt(val) || 0);
-  await _sb.from('stock_items').update({ qty }).eq('id', id);
+  await _db('stock_items').update({ qty }).eq('id', id);
   item.qty = qty;
   renderStockMain();
 }
@@ -3360,7 +3413,7 @@ async function updateStockField(id, field, val) {
   const numFields = ['w','h','qty','low','cost'];
   const v = numFields.includes(field) ? (parseFloat(val) || 0) : val;
   item[field] = v;
-  await _sb.from('stock_items').update({ [field]: v }).eq('id', id);
+  await _db('stock_items').update({ [field]: v }).eq('id', id);
   renderStockMain();
 }
 
@@ -3409,7 +3462,7 @@ function loadProjects() {
     return;
   }
   listEl.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:6px 0">Loading…</div>';
-  _sb.from('projects').select('id,name,updated_at').order('updated_at', { ascending: false })
+  _db('projects').select('id,name,updated_at').order('updated_at', { ascending: false })
     .then(({ data, error }) => {
       if (error || !data) { listEl.innerHTML = '<div style="color:var(--danger);font-size:12px">Error loading projects.</div>'; return; }
       if (!data.length) { listEl.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:6px 0">No saved projects yet.</div>'; return; }
@@ -3434,13 +3487,13 @@ async function promptSaveProject() {
 
 async function saveProject(name) {
   const payload = { sheets: JSON.parse(JSON.stringify(sheets)), pieces: JSON.parse(JSON.stringify(pieces)), settings: { units: window.units, kerf: document.getElementById('kerf').value } };
-  const { error } = await _sb.from('projects').insert([{ name, data: payload, user_id: _userId }]);
+  const { error } = await _db('projects').insert([{ name, data: payload, user_id: _userId }]);
   if (error) { alert('Save failed: ' + error.message); return; }
   loadProjects();
 }
 
 async function loadProject(id) {
-  const { data, error } = await _sb.from('projects').select('*').eq('id', id).single();
+  const { data, error } = await _db('projects').select('*').eq('id', id).single();
   if (error || !data) { alert('Could not load project.'); return; }
   const p = data.data;
   sheets = []; pieces = []; _sheetId = 1; _pieceId = 1; pieceColorIdx = 0;
@@ -3459,7 +3512,7 @@ async function loadProject(id) {
 
 async function deleteProject(id) {
   if (!confirm('Delete this project?')) return;
-  await _sb.from('projects').delete().eq('id', id);
+  await _db('projects').delete().eq('id', id);
   loadProjects();
 }
 
