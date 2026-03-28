@@ -1276,7 +1276,10 @@ html.dark .cl-table tbody tr:nth-child(even) td { background: rgba(255,255,255,0
           <div class="form-section-title">New Order</div>
           <div class="form-group" style="margin-bottom:8px">
             <label>Client Name</label>
-            <input type="text" id="o-client" placeholder="e.g. Sarah Johnson">
+            <div style="position:relative">
+              <input type="text" id="o-client" placeholder="e.g. Sarah Johnson" autocomplete="off" oninput="_oClientSuggest(this)">
+              <div id="o-client-suggest" class="client-suggest-list" style="display:none"></div>
+            </div>
           </div>
           <div class="form-group" style="margin-bottom:8px">
             <label>Project</label>
@@ -1867,6 +1870,8 @@ function renderStockMain() {
     <div style="padding:0 24px 10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
       <input class="order-search-input" type="search" placeholder="Search materials…" value="${window._stockSearch||''}" oninput="window._stockSearch=this.value;renderStockMain()" style="max-width:220px">
       <span style="font-size:12px;color:var(--muted)">${filtered.length} of ${stockItems.length} item${stockItems.length!==1?'s':''}</span>
+      <button class="btn btn-outline" onclick="exportStockCSV()" style="width:auto;padding:4px 10px;font-size:11px;margin-left:auto" title="Export inventory to CSV">↓ CSV</button>
+      <button class="btn btn-outline" onclick="printStockList()" style="width:auto;padding:4px 10px;font-size:11px" title="Print inventory list">⎙ Print</button>
     </div>
     ${showCatFilter ? `<div class="stock-cat-filter-bar">${allCatPills.map(c => `<span class="stock-cat-pill${c===activeCat?' active':''}" onclick="window._stockCatFilter='${c}';renderStockMain()">${c}</span>`).join('')}</div>` : ''}
     `}
@@ -3082,6 +3087,9 @@ async function addOrder() {
   if (!_requireAuth()) return;
   const { data, error } = await _db('orders').insert(row).select().single();
   if (error) { _toast('Could not save order — ' + (error.message || JSON.stringify(error)), 'error'); console.error(error); return; }
+  // Save notes to localStorage (notes column may not be in DB schema)
+  const notesVal = document.getElementById('o-notes').value.trim();
+  if (notesVal && data) { data.notes = notesVal; _onSet(data.id, notesVal); }
   orders.unshift(data);
   _toast('Order created', 'success');
   document.getElementById('o-client').value = '';
@@ -3326,7 +3334,7 @@ function renderDashboard() {
                 </div>
                 <div style="text-align:right;margin-left:12px;flex-shrink:0">
                   <div style="font-size:13px;font-weight:700">${cur}${fmt(o.value)}</div>
-                  <span class="badge ${STATUS_BADGES[o.status]}" style="font-size:9px">${STATUS_LABELS[o.status]}</span>
+                  <span class="badge ${STATUS_BADGES[o.status] || 'badge-gray'}" style="font-size:9px">${STATUS_LABELS[o.status] || o.status || 'Unknown'}</span>
                 </div>
               </div>`;}).join('')}
           </div>
@@ -3478,9 +3486,23 @@ function _clientSuggest(input) {
 
 // Close suggest on blur
 document.addEventListener('click', e => {
-  const box = document.getElementById('q-client-suggest');
-  if (box && !box.contains(e.target) && e.target.id !== 'q-client') box.style.display = 'none';
+  const qBox = document.getElementById('q-client-suggest');
+  if (qBox && !qBox.contains(e.target) && e.target.id !== 'q-client') qBox.style.display = 'none';
+  const oBox = document.getElementById('o-client-suggest');
+  if (oBox && !oBox.contains(e.target) && e.target.id !== 'o-client') oBox.style.display = 'none';
 });
+
+function _oClientSuggest(input) {
+  const val = input.value.toLowerCase().trim();
+  const box = document.getElementById('o-client-suggest');
+  if (!box) return;
+  if (!val) { box.style.display = 'none'; return; }
+  const allClients = [...new Set([...quotes.map(q => q.client), ...orders.map(o => o.client)].filter(Boolean))];
+  const matches = allClients.filter(c => c.toLowerCase().includes(val) && c.toLowerCase() !== val);
+  if (!matches.length) { box.style.display = 'none'; return; }
+  box.innerHTML = matches.slice(0,5).map(c => `<div class="client-suggest-item" onmousedown="document.getElementById('o-client').value='${c.replace(/'/g,'&#39;')}';document.getElementById('o-client-suggest').style.display='none'">${c}</div>`).join('');
+  box.style.display = '';
+}
 
 function printWorkOrder(id) {
   const o = orders.find(o => o.id === id);
@@ -3834,7 +3856,99 @@ function useStockInCutList(id) {
   const item = stockItems.find(s => s.id === id);
   if (!item) return;
   addSheet(item.name, item.w, item.h, Math.max(1, item.qty));
+  _toast(`"${item.name}" added to cut list`, 'success');
   switchSection('cutlist');
+}
+
+function exportStockCSV() {
+  const u = window.units === 'metric' ? 'mm' : 'in';
+  const rows = [['Name','SKU','Category',`W (${u})`,`H (${u})`,'Qty','Low Alert','Cost/Sheet','Total Value','Status']];
+  stockItems.forEach(i => {
+    const cat = _scGet(i.id);
+    const status = i.qty <= i.low ? 'Low Stock' : 'OK';
+    rows.push([i.name, i.sku||'', cat, i.w, i.h, i.qty, i.low, i.cost.toFixed(2), (i.qty*i.cost).toFixed(2), status]);
+  });
+  const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([csv],{type:'text/csv'})), download: `stock-inventory-${new Date().toISOString().slice(0,10)}.csv` });
+  a.click(); URL.revokeObjectURL(a.href);
+  _toast('Inventory exported to CSV', 'success');
+}
+
+function printStockList() {
+  const cur = window.currency;
+  const u = window.units === 'metric' ? 'mm' : 'in';
+  const biz = getBizInfo();
+  const usedCats = [...new Set(stockItems.map(i => _scGet(i.id)).filter(Boolean))].sort();
+  const totalValue = stockItems.reduce((s,i) => s + i.qty*i.cost, 0);
+  const totalSheets = stockItems.reduce((s,i) => s + i.qty, 0);
+  const lowItems = stockItems.filter(i => i.qty <= i.low);
+
+  // Group by category
+  const grouped = {};
+  stockItems.forEach(i => { const c = _scGet(i.id) || 'Uncategorised'; if (!grouped[c]) grouped[c] = []; grouped[c].push(i); });
+  const catOrder = [...STOCK_CATS, ...Object.keys(grouped).filter(k => !STOCK_CATS.includes(k) && k !== 'Uncategorised'), 'Uncategorised'];
+
+  const rows = catOrder.filter(c => grouped[c]).map(cat => `
+    <tr><td colspan="6" style="background:#f5f5f5;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#888;padding:6px 10px">${cat}</td></tr>
+    ${grouped[cat].map(i => {
+      const isLow = i.qty <= i.low;
+      return `<tr style="${isLow?'background:#fff5f5':''}">
+        <td>${i.name}</td>
+        <td>${i.sku||'—'}</td>
+        <td>${i.w}×${i.h}${u}</td>
+        <td style="text-align:right;${isLow?'color:#c0392b;font-weight:700':''}">${i.qty}</td>
+        <td style="text-align:right">${i.low}</td>
+        <td style="text-align:right">${cur}${(i.qty*i.cost).toFixed(0)}</td>
+      </tr>`;
+    }).join('')}`).join('');
+
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Stock Inventory</title>
+<style>
+  @page { size:A4; margin:14mm 16mm; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; color:#111; font-size:12px; }
+  .hdr { display:flex; justify-content:space-between; align-items:flex-end; border-bottom:2.5px solid #111; padding-bottom:10px; margin-bottom:18px; }
+  .biz { font-size:16px; font-weight:800; }
+  .biz-sub { font-size:10px; color:#888; margin-top:2px; }
+  .doc-right { text-align:right; }
+  .doc-title { font-size:20px; font-weight:300; letter-spacing:3px; text-transform:uppercase; color:#333; }
+  .doc-meta { font-size:10px; color:#999; margin-top:3px; }
+  .summary { display:flex; gap:0; border:1px solid #e0e0e0; border-radius:6px; overflow:hidden; margin-bottom:20px; }
+  .sstat { flex:1; padding:10px 14px; border-right:1px solid #e0e0e0; }
+  .sstat:last-child { border-right:none; }
+  .sstat-val { font-size:18px; font-weight:800; }
+  .sstat-lbl { font-size:9px; text-transform:uppercase; letter-spacing:.7px; color:#888; margin-top:1px; }
+  table { width:100%; border-collapse:collapse; }
+  thead tr { border-bottom:1.5px solid #111; }
+  thead th { font-size:9px; text-transform:uppercase; letter-spacing:.5px; color:#999; padding:6px 10px; text-align:left; }
+  thead th.r { text-align:right; }
+  tbody td { padding:7px 10px; border-bottom:1px solid #f3f3f3; font-size:11px; }
+  .footer { margin-top:24px; border-top:1px solid #eee; padding-top:8px; display:flex; justify-content:space-between; font-size:9px; color:#bbb; }
+  .low-note { background:#fff5f5; border:1px solid #fca5a5; border-radius:4px; padding:6px 10px; margin-bottom:14px; font-size:11px; color:#c0392b; }
+</style></head><body>
+<div class="hdr">
+  <div><div class="biz">${biz.name||'ProCabinet'}</div><div class="biz-sub">${[biz.phone,biz.email].filter(Boolean).join(' · ')||'Cabinetry'}</div></div>
+  <div class="doc-right"><div class="doc-title">Stock Inventory</div><div class="doc-meta">${new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})}</div></div>
+</div>
+<div class="summary">
+  <div class="sstat"><div class="sstat-val">${stockItems.length}</div><div class="sstat-lbl">Materials</div></div>
+  <div class="sstat"><div class="sstat-val">${totalSheets}</div><div class="sstat-lbl">Total Sheets</div></div>
+  <div class="sstat"><div class="sstat-val">${cur}${totalValue.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0})}</div><div class="sstat-lbl">Total Value</div></div>
+  <div class="sstat"><div class="sstat-val" style="${lowItems.length?'color:#c0392b':''}">${lowItems.length}</div><div class="sstat-lbl">Low Stock</div></div>
+</div>
+${lowItems.length ? `<div class="low-note">⚠ Low stock: ${lowItems.map(i=>i.name).join(', ')}</div>` : ''}
+<table>
+  <thead><tr><th>Material</th><th>SKU</th><th>Size</th><th class="r">Qty</th><th class="r">Alert</th><th class="r">Value</th></tr></thead>
+  <tbody>${rows}</tbody>
+</table>
+<div class="footer"><span>${biz.name||'ProCabinet'} — ProCabinet.App</span><span>Printed ${new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})}</span></div>
+</body></html>`;
+
+  const win = window.open('', '_blank');
+  win.document.write(html);
+  win.document.close();
+  win.focus();
+  setTimeout(() => win.print(), 400);
 }
 
 async function setStockQty(id, val) {
