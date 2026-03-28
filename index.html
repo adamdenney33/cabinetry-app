@@ -514,6 +514,12 @@ textarea { resize: vertical; min-height: 70px; }
 .stock-low { color: var(--danger) !important; }
 .stock-actions { display: flex; gap: 6px; margin-top: 10px; }
 .stock-actions button { flex: 1; padding: 5px; font-size: 11px; }
+.stock-cat-tag { display: inline-block; font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 10px; background: var(--accent-dim); color: var(--accent); text-transform: uppercase; letter-spacing: .4px; margin-bottom: 6px; cursor: pointer; }
+.stock-cat-select { font-size: 10px; font-weight: 600; padding: 2px 4px; border-radius: 6px; border: 1px solid var(--accent); background: var(--surface2); color: var(--accent); font-family: inherit; cursor: pointer; text-transform: uppercase; letter-spacing: .4px; }
+.stock-cat-group-header { grid-column: 1/-1; font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .8px; padding: 6px 2px 2px; border-bottom: 1px solid var(--border2); margin-bottom: 4px; }
+.stock-cat-filter-bar { display: flex; gap: 6px; flex-wrap: wrap; padding: 0 24px 12px; }
+.stock-cat-pill { font-size: 11px; font-weight: 600; padding: 4px 12px; border-radius: 20px; border: 1px solid var(--border); background: var(--surface2); color: var(--text2); cursor: pointer; transition: all .15s; }
+.stock-cat-pill.active, .stock-cat-pill:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
 
 /* ══════════════════════════════════════════
    CUTLIST SECTION
@@ -970,6 +976,18 @@ html.dark .cl-table tbody tr:nth-child(even) td { background: rgba(255,255,255,0
           <div class="form-group" style="margin-bottom:8px">
             <label>Material Name</label>
             <input type="text" id="stock-name" placeholder="e.g. 3/4&quot; Birch Plywood">
+          </div>
+          <div class="form-group" style="margin-bottom:8px">
+            <label>Category</label>
+            <input type="text" id="stock-cat" list="stock-cat-list" placeholder="e.g. Sheet Goods" autocomplete="off">
+            <datalist id="stock-cat-list">
+              <option value="Sheet Goods">
+              <option value="Solid Timber">
+              <option value="Edge Banding">
+              <option value="Hardware">
+              <option value="Finishing">
+              <option value="Other">
+            </datalist>
           </div>
           <div class="form-group" style="margin-bottom:8px">
             <label>SKU / Code</label>
@@ -1663,10 +1681,21 @@ function switchSection(name) {
 // ══════════════════════════════════════════
 let stockItems = [];
 let stockNextId = 1;
+const STOCK_CATS = ['Sheet Goods','Solid Timber','Edge Banding','Hardware','Finishing','Other'];
+
+function _scMap() { try { return JSON.parse(localStorage.getItem('pc_stock_cats') || '{}'); } catch(e) { return {}; } }
+function _scGet(id) { return _scMap()[String(id)] || ''; }
+function _scSet(id, cat) {
+  const m = _scMap();
+  if (cat) m[String(id)] = cat; else delete m[String(id)];
+  localStorage.setItem('pc_stock_cats', JSON.stringify(m));
+}
 
 async function addStockItem() {
   const name = document.getElementById('stock-name').value.trim();
   if (!name) return alert('Enter a material name.');
+  if (!_requireAuth()) return;
+  const cat = document.getElementById('stock-cat').value.trim();
   const row = {
     user_id: _userId, name,
     sku: document.getElementById('stock-sku').value.trim() || '—',
@@ -1676,12 +1705,13 @@ async function addStockItem() {
     low: parseInt(document.getElementById('stock-low').value) || 3,
     cost: parseFloat(document.getElementById('stock-cost').value) || 0,
   };
-  if (!_requireAuth()) return;
   const { data, error } = await _db('stock_items').insert(row).select().single();
   if (error) { _toast('Could not save stock item — ' + (error.message || JSON.stringify(error)), 'error'); console.error(error); return; }
   stockItems.push(data);
+  if (cat) _scSet(data.id, cat);
   _toast('Stock item added', 'success');
   document.getElementById('stock-name').value = '';
+  document.getElementById('stock-cat').value = '';
   document.getElementById('stock-sku').value = '';
   renderStockMain();
 }
@@ -1709,6 +1739,78 @@ function renderStockMain() {
   const totalSheets = stockItems.reduce((s, i) => s + i.qty, 0);
   const totalValue = stockItems.reduce((s, i) => s + i.qty * i.cost, 0);
   const lowItems = stockItems.filter(i => i.qty <= i.low).length;
+  const activeCat = window._stockCatFilter || 'All';
+  const q = (window._stockSearch || '').toLowerCase();
+
+  // Build list of used categories for filter bar
+  const usedCats = [...new Set(stockItems.map(i => _scGet(i.id)).filter(Boolean))].sort();
+  const showCatFilter = usedCats.length > 0;
+
+  // Filter by search + category
+  let filtered = stockItems.filter(i => {
+    const matchSearch = !q || i.name.toLowerCase().includes(q) || (i.sku || '').toLowerCase().includes(q);
+    const matchCat = activeCat === 'All' || _scGet(i.id) === activeCat || (activeCat === 'Uncategorised' && !_scGet(i.id));
+    return matchSearch && matchCat;
+  });
+  filtered.sort((a,b) => (a.qty<=a.low ? 0 : 1) - (b.qty<=b.low ? 0 : 1));
+
+  const stockCardHTML = (item) => {
+    const isLow = item.qty <= item.low;
+    const u = window.units === 'metric' ? 'mm' : '"';
+    const cat = _scGet(item.id);
+    const catOptions = ['', ...STOCK_CATS, ...usedCats.filter(c => !STOCK_CATS.includes(c))];
+    return `
+    <div class="stock-card">
+      ${cat ? `<div><span class="stock-cat-tag" title="Click to change category" onclick="setStockCatInline(${item.id},this)">${cat}</span></div>` : `<div><span class="stock-cat-tag" style="opacity:.45;background:var(--surface2);color:var(--muted)" onclick="setStockCatInline(${item.id},this)">+ Category</span></div>`}
+      <div class="stock-card-header">
+        <div style="flex:1;min-width:0">
+          <div class="stock-name" contenteditable="true" onblur="updateStockField(${item.id},'name',this.innerText.trim())" title="Click to edit name">${item.name}</div>
+          <div class="stock-sku"><span contenteditable="true" onblur="updateStockField(${item.id},'sku',this.innerText.trim())" title="Click to edit SKU">${item.sku}</span> &nbsp;·&nbsp; <span contenteditable="true" onblur="updateStockField(${item.id},'w',this.innerText)" title="Width">${item.w}</span>×<span contenteditable="true" onblur="updateStockField(${item.id},'h',this.innerText)" title="Height">${item.h}</span>${u}</div>
+        </div>
+        <span class="badge ${isLow ? 'badge-red' : 'badge-green'}">${isLow ? 'Low' : 'OK'}</span>
+      </div>
+      <div class="stock-qty-row">
+        <div>
+          <div class="stock-qty ${isLow ? 'stock-low' : ''}" contenteditable="true" onblur="setStockQty(${item.id},this.innerText)" title="Click to edit quantity">${item.qty}</div>
+          <div class="stock-qty-label">sheets &nbsp;·&nbsp; alert at <span contenteditable="true" onblur="updateStockField(${item.id},'low',this.innerText)" title="Low stock threshold">${item.low}</span></div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:13px;font-weight:700;color:var(--text)">${cur}${(item.qty * item.cost).toFixed(0)}</div>
+          <div style="font-size:10px;color:var(--muted)"><span contenteditable="true" onblur="updateStockField(${item.id},'cost',this.innerText)" title="Cost per sheet">${cur}${item.cost.toFixed(2)}</span>/sheet</div>
+        </div>
+      </div>
+      <div class="stock-actions">
+        <button class="btn btn-outline" onclick="adjustStock(${item.id}, -1)" style="font-size:12px;padding:5px 10px">− 1</button>
+        <button class="btn btn-success" onclick="adjustStock(${item.id}, 1)" style="font-size:12px;padding:5px 10px">+ 1</button>
+        <button class="btn btn-outline" onclick="adjustStock(${item.id}, 5)" style="font-size:12px;padding:5px 10px">+ 5</button>
+        <button class="btn btn-outline" onclick="adjustStock(${item.id}, 10)" style="font-size:12px;padding:5px 10px">+ 10</button>
+        <button class="btn btn-outline" onclick="useStockInCutList(${item.id})" style="font-size:11px;padding:5px 8px;flex:1" title="Load into cut list">→ Cut List</button>
+        <button class="btn btn-danger" onclick="if(confirm('Remove this stock item?'))removeStock(${item.id})" style="padding:5px 8px">×</button>
+      </div>
+    </div>`;
+  };
+
+  // When viewing "All" and categories exist, group by category
+  const shouldGroup = activeCat === 'All' && usedCats.length > 0 && !q;
+  let cardsHTML = '';
+  if (shouldGroup) {
+    const grouped = {};
+    filtered.forEach(i => {
+      const c = _scGet(i.id) || 'Uncategorised';
+      if (!grouped[c]) grouped[c] = [];
+      grouped[c].push(i);
+    });
+    const catOrder = [...STOCK_CATS, ...Object.keys(grouped).filter(k => !STOCK_CATS.includes(k) && k !== 'Uncategorised'), 'Uncategorised'];
+    catOrder.forEach(cat => {
+      if (!grouped[cat]) return;
+      cardsHTML += `<div class="stock-cat-group-header">${cat} <span style="font-weight:400;color:var(--muted)">(${grouped[cat].length})</span></div>`;
+      cardsHTML += grouped[cat].map(stockCardHTML).join('');
+    });
+  } else {
+    cardsHTML = filtered.map(stockCardHTML).join('');
+  }
+
+  const allCatPills = ['All', ...usedCats, ...(stockItems.some(i => !_scGet(i.id)) ? ['Uncategorised'] : [])];
 
   el.innerHTML = `
     <div class="stats-grid">
@@ -1736,41 +1838,14 @@ function renderStockMain() {
 
     ${stockItems.length === 0 ? `<div class="empty-state">
       <div class="empty-icon" style="opacity:.18"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg></div>
-      <h3>No stock items yet</h3><p>Add your first material using the form on the left.</p></div>` : `<div style="padding:0 24px 10px;display:flex;align-items:center;gap:8px"><input class="order-search-input" type="search" placeholder="Search materials…" value="${window._stockSearch||''}" oninput="window._stockSearch=this.value;renderStockMain()" style="max-width:260px"><span style="font-size:12px;color:var(--muted)">${stockItems.length} item${stockItems.length!==1?'s':''}</span></div>`}
-    <div class="stock-grid">
-      ${(() => { const q = (window._stockSearch||'').toLowerCase(); const filtered = q ? stockItems.filter(i => i.name.toLowerCase().includes(q) || (i.sku||'').toLowerCase().includes(q)) : stockItems; const sorted = [...filtered].sort((a,b) => (a.qty<=a.low ? 0 : 1) - (b.qty<=b.low ? 0 : 1)); return sorted.map(item => {
-        const isLow = item.qty <= item.low;
-        const u = window.units === 'metric' ? 'mm' : '"';
-        return `
-        <div class="stock-card">
-          <div class="stock-card-header">
-            <div style="flex:1;min-width:0">
-              <div class="stock-name" contenteditable="true" onblur="updateStockField(${item.id},'name',this.innerText.trim())" title="Click to edit name">${item.name}</div>
-              <div class="stock-sku"><span contenteditable="true" onblur="updateStockField(${item.id},'sku',this.innerText.trim())" title="Click to edit SKU">${item.sku}</span> &nbsp;·&nbsp; <span contenteditable="true" onblur="updateStockField(${item.id},'w',this.innerText)" title="Width">${item.w}</span>×<span contenteditable="true" onblur="updateStockField(${item.id},'h',this.innerText)" title="Height">${item.h}</span>${u}</div>
-            </div>
-            <span class="badge ${isLow ? 'badge-red' : 'badge-green'}">${isLow ? 'Low' : 'OK'}</span>
-          </div>
-          <div class="stock-qty-row">
-            <div>
-              <div class="stock-qty ${isLow ? 'stock-low' : ''}" contenteditable="true" onblur="setStockQty(${item.id},this.innerText)" title="Click to edit quantity">${item.qty}</div>
-              <div class="stock-qty-label">sheets &nbsp;·&nbsp; alert at <span contenteditable="true" onblur="updateStockField(${item.id},'low',this.innerText)" title="Low stock threshold">${item.low}</span></div>
-            </div>
-            <div style="text-align:right">
-              <div style="font-size:13px;font-weight:700;color:var(--text)">${cur}${(item.qty * item.cost).toFixed(0)}</div>
-              <div style="font-size:10px;color:var(--muted)"><span contenteditable="true" onblur="updateStockField(${item.id},'cost',this.innerText)" title="Cost per sheet">${cur}${item.cost.toFixed(2)}</span>/sheet</div>
-            </div>
-          </div>
-          <div class="stock-actions">
-            <button class="btn btn-outline" onclick="adjustStock(${item.id}, -1)" style="font-size:12px;padding:5px 10px">− 1</button>
-            <button class="btn btn-success" onclick="adjustStock(${item.id}, 1)" style="font-size:12px;padding:5px 10px">+ 1</button>
-            <button class="btn btn-outline" onclick="adjustStock(${item.id}, 5)" style="font-size:12px;padding:5px 10px">+ 5</button>
-            <button class="btn btn-outline" onclick="adjustStock(${item.id}, 10)" style="font-size:12px;padding:5px 10px">+ 10</button>
-            <button class="btn btn-outline" onclick="useStockInCutList(${item.id})" style="font-size:11px;padding:5px 8px;flex:1" title="Load into cut list">→ Cut List</button>
-            <button class="btn btn-danger" onclick="if(confirm('Remove this stock item?'))removeStock(${item.id})" style="padding:5px 8px">×</button>
-          </div>
-        </div>`;
-      }).join(''); })()}
-    </div>`;
+      <h3>No stock items yet</h3><p>Add your first material using the form on the left.</p></div>` : `
+    <div style="padding:0 24px 10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      <input class="order-search-input" type="search" placeholder="Search materials…" value="${window._stockSearch||''}" oninput="window._stockSearch=this.value;renderStockMain()" style="max-width:220px">
+      <span style="font-size:12px;color:var(--muted)">${filtered.length} of ${stockItems.length} item${stockItems.length!==1?'s':''}</span>
+    </div>
+    ${showCatFilter ? `<div class="stock-cat-filter-bar">${allCatPills.map(c => `<span class="stock-cat-pill${c===activeCat?' active':''}" onclick="window._stockCatFilter='${c}';renderStockMain()">${c}</span>`).join('')}</div>` : ''}
+    `}
+    <div class="stock-grid">${cardsHTML}</div>`;
 }
 
 // ══════════════════════════════════════════
@@ -3465,6 +3540,22 @@ async function updateStockField(id, field, val) {
   item[field] = v;
   await _db('stock_items').update({ [field]: v }).eq('id', id);
   renderStockMain();
+}
+
+function setStockCatInline(id, tagEl) {
+  // Replace the tag with a small select to pick category
+  const cur = _scGet(id);
+  const opts = ['', ...STOCK_CATS].map(c => `<option value="${c}"${c===cur?' selected':''}>${c||'— None —'}</option>`).join('');
+  const sel = document.createElement('select');
+  sel.className = 'stock-cat-select';
+  sel.innerHTML = opts;
+  sel.onblur = sel.onchange = () => {
+    const val = sel.value.trim();
+    _scSet(id, val);
+    renderStockMain();
+  };
+  tagEl.replaceWith(sel);
+  sel.focus();
 }
 
 // ══════════════════════════════════════════
