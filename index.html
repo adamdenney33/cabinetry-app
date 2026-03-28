@@ -1367,6 +1367,12 @@ class _DBBuilder {
 }
 function _db(table) { return new _DBBuilder(table); }
 
+function _requireAuth() {
+  if (_userId) return true;
+  _showAuth();
+  return false;
+}
+
 function _toast(msg, type = 'info', duration = 3500) {
   const c = document.getElementById('toast-container');
   if (!c) return;
@@ -1637,6 +1643,8 @@ function setCurrency(c) {
 // SECTION NAVIGATION
 // ══════════════════════════════════════════
 function switchSection(name) {
+  const AUTH_SECTIONS = ['stock','quote','orders','dashboard'];
+  if (AUTH_SECTIONS.includes(name) && !_requireAuth()) return;
   document.querySelectorAll('.nav-tab').forEach((t,i) => {
     const sections = ['cutlist','stock','quote','orders','dashboard'];
     t.classList.toggle('active', sections[i] === name);
@@ -1668,7 +1676,7 @@ async function addStockItem() {
     low: parseInt(document.getElementById('stock-low').value) || 3,
     cost: parseFloat(document.getElementById('stock-cost').value) || 0,
   };
-  if (!_userId) { _showAuth(); return; }
+  if (!_requireAuth()) return;
   const { data, error } = await _db('stock_items').insert(row).select().single();
   if (error) { _toast('Could not save stock item — ' + (error.message || JSON.stringify(error)), 'error'); console.error(error); return; }
   stockItems.push(data);
@@ -1679,12 +1687,14 @@ async function addStockItem() {
 }
 
 async function removeStock(id) {
+  if (!_requireAuth()) return;
   await _db('stock_items').delete().eq('id', id);
   stockItems = stockItems.filter(s => s.id !== id);
   renderStockMain();
 }
 
 async function adjustStock(id, delta) {
+  if (!_requireAuth()) return;
   const item = stockItems.find(s => s.id === id);
   if (!item) return;
   const newQty = Math.max(0, item.qty + delta);
@@ -2690,7 +2700,7 @@ async function createQuote() {
     status: 'draft', date: new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short'}),
     notes: document.getElementById('q-notes').value.trim(),
   };
-  if (!_userId) { _showAuth(); return; }
+  if (!_requireAuth()) return;
   const { data, error } = await _db('quotes').insert(row).select().single();
   if (error) { _toast('Could not save quote — ' + (error.message || JSON.stringify(error)), 'error'); console.error(error); return; }
   quotes.unshift(data);
@@ -2703,12 +2713,14 @@ async function createQuote() {
 }
 
 async function removeQuote(id) {
+  if (!_requireAuth()) return;
   await _db('quotes').delete().eq('id', id);
   quotes = quotes.filter(q => q.id !== id);
   renderQuoteMain();
 }
 
 async function convertQuoteToOrder(id) {
+  if (!_requireAuth()) return;
   const q = quotes.find(q => q.id === id);
   if (!q) return;
   const { error: qErr } = await _db('quotes').update({ status: 'approved' }).eq('id', id);
@@ -2819,7 +2831,7 @@ async function addOrder() {
     status: document.getElementById('o-status').value,
     due,
   };
-  if (!_userId) { _showAuth(); return; }
+  if (!_requireAuth()) return;
   const { data, error } = await _db('orders').insert(row).select().single();
   if (error) { _toast('Could not save order — ' + (error.message || JSON.stringify(error)), 'error'); console.error(error); return; }
   orders.unshift(data);
@@ -2834,6 +2846,7 @@ async function addOrder() {
 }
 
 async function removeOrder(id) {
+  if (!_requireAuth()) return;
   await _db('orders').delete().eq('id', id);
   orders = orders.filter(o => o.id !== id);
   document.getElementById('orders-badge').textContent = orders.filter(o => o.status !== 'complete').length;
@@ -2841,6 +2854,7 @@ async function removeOrder(id) {
 }
 
 async function advanceOrder(id) {
+  if (!_requireAuth()) return;
   const o = orders.find(o => o.id === id);
   if (!o) return;
   const idx = ORDER_STATUSES.indexOf(o.status);
@@ -3291,6 +3305,7 @@ function quoteFromCutList(matCost) {
 }
 
 async function markQuoteSent(id) {
+  if (!_requireAuth()) return;
   const q = quotes.find(q => q.id === id);
   if (!q) return;
   await _db('quotes').update({ status: 'sent' }).eq('id', id);
@@ -3374,6 +3389,7 @@ ${q.notes ? `<div class="notes-block"><label>Notes</label><p>${q.notes.replace(/
 }
 
 async function duplicateQuote(id) {
+  if (!_requireAuth()) return;
   const q = quotes.find(q => q.id === id);
   if (!q) return;
   const row = { user_id: _userId, client: q.client, project: q.project + ' (copy)', materials: q.materials, labour: q.labour, markup: q.markup, tax: q.tax, status: 'draft', date: new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short'}), notes: q.notes || '' };
@@ -3385,6 +3401,7 @@ async function duplicateQuote(id) {
 }
 
 async function updateQuoteField(id, field, val) {
+  if (!_requireAuth()) return;
   const q = quotes.find(q => q.id === id);
   if (!q) return;
   const numFields = ['materials','labour','markup','tax'];
@@ -3398,6 +3415,7 @@ async function updateQuoteField(id, field, val) {
 // ORDER HELPERS
 // ══════════════════════════════════════════
 async function updateOrderField(id, field, val) {
+  if (!_requireAuth()) return;
   const o = orders.find(o => o.id === id);
   if (!o) return;
   const v = field === 'value' ? (parseFloat(val) || 0) : val;
@@ -3411,6 +3429,7 @@ async function updateOrderField(id, field, val) {
 function setOrderFilter(f) { window._orderFilter = f; renderOrdersMain(); }
 
 async function setOrderStatus(id, status) {
+  if (!_requireAuth()) return;
   const o = orders.find(o => o.id === id);
   if (!o) return;
   await _db('orders').update({ status }).eq('id', id);
@@ -3510,7 +3529,7 @@ function loadProjects() {
 }
 
 async function promptSaveProject() {
-  if (!_userId) { _showAuth(); return; }
+  if (!_requireAuth()) return;
   const name = prompt('Project name:', `Project ${new Date().toLocaleDateString()}`);
   if (!name) return;
   await saveProject(name);
