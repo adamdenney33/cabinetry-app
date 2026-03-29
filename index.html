@@ -536,6 +536,17 @@ textarea { resize: vertical; min-height: 70px; }
 .sheet-tab:hover:not(.active) { background: #dde3ec; }
 .sheet-tab.active { background: var(--accent); color: #fff; }
 .sheet-block-label { display: flex; align-items: baseline; gap: 10px; font-size: 13px; font-weight: 700; color: var(--text); margin: 20px 0 8px; }
+.combined-pg-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; box-shadow: var(--shadow); }
+.combined-pg-stats { display: flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; margin-bottom: 16px; }
+.combined-pg-stat { flex: 1; padding: 10px 14px; border-right: 1px solid var(--border); }
+.combined-pg-stat:last-child { border-right: none; }
+.combined-pg-stat-val { font-size: 20px; font-weight: 800; color: var(--text); }
+.combined-pg-stat-lbl { font-size: 9px; text-transform: uppercase; letter-spacing: .7px; color: var(--muted); margin-top: 2px; }
+.combined-pg-section-hdr { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .7px; color: var(--muted); margin-bottom: 8px; }
+.combined-pg-table { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+.combined-pg-table th { font-size: 9.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); text-align: left; padding: 5px 8px; background: var(--surface2); border-bottom: 1px solid var(--border); }
+.combined-pg-table td { padding: 5px 8px; border-bottom: 1px solid var(--border2); vertical-align: middle; }
+.combined-pg-table tr:last-child td { border-bottom: none; }
 
 .canvas-wrap { background: var(--surface2); border-radius: var(--radius); border: 1px solid var(--border); padding: 20px; display: inline-block; max-width: 100%; box-shadow: var(--shadow); }
 canvas { display: block; }
@@ -1200,6 +1211,9 @@ html.dark .cl-table tbody tr:nth-child(even) td { background: rgba(255,255,255,0
           <option value="2">2 per page</option>
           <option value="4">4 per page</option>
         </select>
+        <div class="layout-tool-sep"></div>
+        <button class="layout-tool-btn active" id="lt-pg-summary" onclick="toggleClSummary()" title="Include summary &amp; stats in export">Summary</button>
+        <button class="layout-tool-btn active" id="lt-pg-cutlist" onclick="toggleClCutList()" title="Include full cut list in export">Cut List</button>
         <div class="layout-tool-sep"></div>
         <button class="layout-tool-btn" onclick="printLayout('print')" title="Send to printer">⎙ Print</button>
         <button class="layout-tool-btn" onclick="printLayout('pdf')" title="Save as PDF file">↓ PDF</button>
@@ -1914,6 +1928,8 @@ let layoutGrain = true;
 let layoutFontScale = 1.0;
 let colsVisible = { grain: true, material: true, label: true, notes: true };
 let layoutRotate = false;
+let clShowSummary = true;
+let clShowCutList = true;
 let _dragSrc = null, _dragTable = null;
 
 const COLORS = [
@@ -2496,12 +2512,58 @@ function printLayout(mode='print') {
         <td>${p.notes || ''}</td>
       </tr>`).join('');
 
+    const dateStr = new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
+    const bizSub  = [biz.phone, biz.email].filter(Boolean).join(' · ');
+
+    // Optional combined page (summary stats + full cut list) — respects toggles
+    const combinedPageHTML = (clShowSummary || clShowCutList) ? `
+<div class="combined-pg">
+  <div class="hdr">
+    <div><div class="biz">${biz.name || 'ProCabinet'}</div>${bizSub ? `<div class="biz-sub">${bizSub}</div>` : ''}</div>
+    <div class="doc-right"><div class="doc-title">Cut List</div><div class="doc-meta">${dateStr}</div></div>
+  </div>
+  ${clShowSummary ? `<div class="summary">
+    <div class="sstat"><div class="sstat-val">${results.layouts.length}</div><div class="sstat-lbl">Sheets</div></div>
+    <div class="sstat"><div class="sstat-val">${totalPieces}</div><div class="sstat-lbl">Pieces</div></div>
+    <div class="sstat"><div class="sstat-val">${avgUtil}%</div><div class="sstat-lbl">Efficiency</div></div>
+    <div class="sstat"><div class="sstat-val">${(100-parseFloat(avgUtil)).toFixed(1)}%</div><div class="sstat-lbl">Waste</div></div>
+    ${matCost > 0 ? `<div class="sstat"><div class="sstat-val">${cur}${matCost.toLocaleString()}</div><div class="sstat-lbl">Material Cost</div></div>` : ''}
+  </div>` : ''}
+  ${clShowCutList ? `<div class="section-hdr" style="margin-top:${clShowSummary?'18px':'0'}">Full Cut List — All Pieces</div>
+  <table class="ptable" style="border:1px solid #e0e0e0">
+    <thead><tr><th></th><th>Label</th><th>W (${u})</th><th>H (${u})</th><th>Qty</th><th>Material</th><th>Grain</th><th>Notes</th></tr></thead>
+    <tbody>${allPieceRows}</tbody>
+  </table>` : ''}
+  <div class="footer"><span>${biz.name || 'ProCabinet'} — ProCabinet.App</span><span>Printed ${dateStr}</span></div>
+</div>` : '';
+
     const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Cut List — ${new Date().toLocaleDateString('en-GB')}</title>
 <style>
-  /* A4 landscape throughout — 10mm margins → 190mm usable height, 277mm usable width */
+  /* A4 landscape — 10mm margins → 190mm usable height, 277mm usable width */
   @page { size: A4 landscape; margin: 10mm 10mm; }
   * { margin:0; padding:0; box-sizing:border-box; }
   body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; color:#111; font-size:12px; background:#fff; }
+  /* Compact title bar — sits above first sheet on page 1 */
+  .doc-title-bar { display:flex; justify-content:space-between; align-items:baseline; font-size:10px; color:#888; border-bottom:1px solid #ddd; padding-bottom:5px; margin-bottom:7px; }
+  .doc-title-bar strong { font-size:12px; font-weight:700; color:#111; }
+  /* Sheets — first sheet shares page with title bar, subsequent sheets each get their own page */
+  .sheet-section { break-inside:avoid; }
+  .sheet-section + .sheet-section { break-before:page; }
+  .sheet-heading { display:flex; justify-content:space-between; align-items:baseline; background:#f5f5f5; padding:7px 12px; border-radius:5px 5px 0 0; border:1px solid #ddd; border-bottom:2px solid #ddd; }
+  .sheet-title { font-size:13px; font-weight:700; }
+  .sheet-meta { font-size:10px; color:#777; }
+  /* Two-column body: panel LEFT (2/3), cut list RIGHT (1/3) */
+  .sheet-body { display:flex; flex-direction:row; gap:12px; align-items:flex-start; border:1px solid #e0e0e0; border-top:none; border-radius:0 0 5px 5px; padding:10px; overflow:hidden; }
+  .sheet-left { flex:0 0 66%; overflow:hidden; }
+  .sheet-img { display:block; max-width:100%; max-height:158mm; width:auto; height:auto; border:1px solid #e8e8e8; border-radius:3px; }
+  .sheet-right { flex:1 1 auto; min-width:0; }
+  .ptable { width:100%; border-collapse:collapse; font-size:11px; border:1px solid #e0e0e0; }
+  .ptable th { font-size:9px; text-transform:uppercase; letter-spacing:.5px; color:#999; padding:5px 8px; background:#fafafa; border-bottom:1px solid #e8e8e8; text-align:left; }
+  .ptable td { padding:5px 8px; border-bottom:1px solid #f3f3f3; vertical-align:middle; }
+  .ptable tr:last-child td { border-bottom:none; }
+  .num { text-align:right; font-variant-numeric:tabular-nums; }
+  /* Combined summary + cut list page — always starts on its own page */
+  .combined-pg { break-before:page; }
   .hdr { display:flex; justify-content:space-between; align-items:flex-end; border-bottom:2.5px solid #111; padding-bottom:10px; margin-bottom:16px; }
   .biz { font-size:17px; font-weight:800; letter-spacing:-.5px; }
   .biz-sub { font-size:10px; color:#888; margin-top:2px; }
@@ -2513,48 +2575,12 @@ function printLayout(mode='print') {
   .sstat:last-child { border-right:none; }
   .sstat-val { font-size:20px; font-weight:800; }
   .sstat-lbl { font-size:9px; text-transform:uppercase; letter-spacing:.7px; color:#888; margin-top:1px; }
-  /* Each sheet section occupies exactly one landscape page */
-  .sheet-section { break-before: page; break-inside: avoid; }
-  .sheet-heading { display:flex; justify-content:space-between; align-items:baseline; background:#f5f5f5; padding:7px 12px; border-radius:5px 5px 0 0; border:1px solid #ddd; border-bottom:2px solid #ddd; }
-  .sheet-title { font-size:13px; font-weight:700; }
-  .sheet-meta { font-size:10px; color:#777; }
-  /* Two-column body: panel LEFT, cut list RIGHT */
-  .sheet-body { display:flex; flex-direction:row; gap:12px; align-items:flex-start; border:1px solid #e0e0e0; border-top:none; border-radius:0 0 5px 5px; padding:10px; overflow:hidden; }
-  /* Left col: panel image — 2/3 width, capped to fit one landscape page height */
-  .sheet-left { flex:0 0 66%; overflow:hidden; }
-  /* Image: max-height keeps it within one landscape page (190mm - heading ~12mm - body padding 20px ≈ 166mm) */
-  .sheet-img { display:block; max-width:100%; max-height:163mm; width:auto; height:auto; border:1px solid #e8e8e8; border-radius:3px; }
-  /* Right col: cut list table */
-  .sheet-right { flex:1 1 auto; min-width:0; }
-  .ptable { width:100%; border-collapse:collapse; font-size:11px; border:1px solid #e0e0e0; }
-  .ptable th { font-size:9px; text-transform:uppercase; letter-spacing:.5px; color:#999; padding:5px 8px; background:#fafafa; border-bottom:1px solid #e8e8e8; text-align:left; }
-  .ptable td { padding:5px 8px; border-bottom:1px solid #f3f3f3; vertical-align:middle; }
-  .ptable tr:last-child td { border-bottom:none; }
-  .num { text-align:right; font-variant-numeric:tabular-nums; }
-  .ls-section { break-before: page; }
   .section-hdr { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:#555; padding:0 0 8px; }
   .footer { margin-top:32px; padding-top:10px; border-top:1px solid #eee; display:flex; justify-content:space-between; font-size:9px; color:#bbb; }
 </style></head><body>
-<div class="hdr">
-  <div><div class="biz">${biz.name || 'ProCabinet'}</div><div class="biz-sub">${[biz.phone, biz.email].filter(Boolean).join(' · ') || 'Cabinetry'}</div></div>
-  <div class="doc-right"><div class="doc-title">Cut List</div><div class="doc-meta">${new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})}</div></div>
-</div>
-<div class="summary">
-  <div class="sstat"><div class="sstat-val">${results.layouts.length}</div><div class="sstat-lbl">Sheets</div></div>
-  <div class="sstat"><div class="sstat-val">${totalPieces}</div><div class="sstat-lbl">Pieces</div></div>
-  <div class="sstat"><div class="sstat-val">${avgUtil}%</div><div class="sstat-lbl">Efficiency</div></div>
-  <div class="sstat"><div class="sstat-val">${(100-parseFloat(avgUtil)).toFixed(1)}%</div><div class="sstat-lbl">Waste</div></div>
-  ${matCost > 0 ? `<div class="sstat"><div class="sstat-val">${cur}${matCost.toLocaleString()}</div><div class="sstat-lbl">Material Cost</div></div>` : ''}
-</div>
+<div class="doc-title-bar"><span><strong>${biz.name || 'ProCabinet'}</strong>${bizSub ? ' &nbsp;·&nbsp; ' + bizSub : ''}</span><span style="letter-spacing:2px;text-transform:uppercase;font-size:9px">Cut List &nbsp;·&nbsp; ${dateStr}</span></div>
 ${sheetSections}
-<div class="ls-section">
-  <div class="section-hdr">Full Cut List — All Pieces</div>
-  <table class="ptable" style="border:1px solid #e0e0e0">
-    <thead><tr><th></th><th>Label</th><th>W (${u})</th><th>H (${u})</th><th>Qty</th><th>Material</th><th>Grain</th><th>Notes</th></tr></thead>
-    <tbody>${allPieceRows}</tbody>
-  </table>
-  <div class="footer"><span>${biz.name || 'ProCabinet'} — ProCabinet.App</span><span>Printed ${new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})}</span></div>
-</div>
+${combinedPageHTML}
 </body></html>`;
     if (mode === 'pdf') {
       _buildCutListPDF({ biz, layouts: results.layouts, imgs, pieces, u, cur,
@@ -2615,81 +2641,58 @@ async function _buildCutListPDF({ biz, layouts, imgs, pieces, u, cur, totalPiece
       return [parseInt(hex.slice(1,3),16), parseInt(hex.slice(3,5),16), parseInt(hex.slice(5,7),16)];
     }
 
-    // ── page header (biz name left, title right, divider) ──
-    function pageHeader(title, subtitle) {
+    // ── compact title bar drawn at top of each sheet page ──
+    function titleBar() {
+      const sub = [biz.phone, biz.email].filter(Boolean).join(' · ');
+      pdf.setFontSize(9); pdf.setFont('helvetica','bold'); pdf.setTextColor(17);
+      pdf.text(biz.name || 'ProCabinet', M, M+5);
+      if (sub) { pdf.setFontSize(7); pdf.setFont('helvetica','normal'); pdf.setTextColor(136); pdf.text(sub, M+pdf.getTextWidth(biz.name||'ProCabinet')+3, M+5); }
+      pdf.setFontSize(7.5); pdf.setFont('helvetica','normal'); pdf.setTextColor(136);
+      pdf.text('CUT LIST  ·  '+dateStr, PW-M, M+5, { align:'right' });
+      pdf.setDrawColor(200); pdf.setLineWidth(0.25); pdf.line(M, M+7, PW-M, M+7);
+      pdf.setTextColor(17);
+    }
+
+    // ── full-page header used on the combined summary/cutlist page ──
+    function pageHeader() {
       pdf.setFontSize(14); pdf.setFont('helvetica','bold'); pdf.setTextColor(17,17,17);
       pdf.text(biz.name || 'ProCabinet', M, M+7);
       const sub = [biz.phone, biz.email].filter(Boolean).join('  \u00b7  ');
       if (sub) { pdf.setFontSize(7.5); pdf.setFont('helvetica','normal'); pdf.setTextColor(136); pdf.text(sub, M, M+12); }
       pdf.setFontSize(20); pdf.setFont('helvetica','normal'); pdf.setTextColor(51);
-      pdf.text(title, PW-M, M+9, { align:'right' });
+      pdf.text('CUT LIST', PW-M, M+9, { align:'right' });
       pdf.setFontSize(7.5); pdf.setFont('helvetica','normal'); pdf.setTextColor(153);
-      if (subtitle) pdf.text(subtitle, PW-M, M+14, { align:'right' });
-      pdf.setDrawColor(17); pdf.setLineWidth(0.7);
-      pdf.line(M, M+17, PW-M, M+17);
+      pdf.text(dateStr, PW-M, M+14, { align:'right' });
+      pdf.setDrawColor(17); pdf.setLineWidth(0.7); pdf.line(M, M+17, PW-M, M+17);
       pdf.setTextColor(17);
     }
 
-    // ── PAGE 1: summary ──
-    pageHeader('CUT LIST', dateStr);
-    const stats = [
-      { v: layouts.length,                           l: 'SHEETS' },
-      { v: totalPieces,                              l: 'PIECES' },
-      { v: avgUtil + '%',                            l: 'EFFICIENCY' },
-      { v: (100-parseFloat(avgUtil)).toFixed(1)+'%', l: 'WASTE' },
-    ];
-    if (matCost > 0) stats.push({ v: cur + matCost.toLocaleString(), l: 'MATERIAL COST' });
-    const sw = W / stats.length;
-    stats.forEach((s, i) => {
-      const sx = M + i*sw, sy = M+22;
-      pdf.setFillColor(247,247,247); pdf.roundedRect(sx, sy, sw-2, 20, 2, 2, 'F');
-      pdf.setFontSize(18); pdf.setFont('helvetica','bold'); pdf.setTextColor(17);
-      pdf.text(String(s.v), sx+sw/2-1, sy+12, { align:'center' });
-      pdf.setFontSize(7); pdf.setFont('helvetica','normal'); pdf.setTextColor(136);
-      pdf.text(s.l, sx+sw/2-1, sy+17, { align:'center' });
-    });
-    // Brief sheet overview list
-    let oy = M+52;
-    pdf.setFontSize(7); pdf.setFont('helvetica','bold'); pdf.setTextColor(100);
-    pdf.text('SHEET', M+2, oy); pdf.text('MATERIAL', M+30, oy);
-    pdf.text('SIZE', M+100, oy); pdf.text('PIECES', M+145, oy); pdf.text('EFFICIENCY', M+170, oy);
-    pdf.setLineWidth(0.2); pdf.setDrawColor(220); pdf.line(M, oy+1.5, PW-M, oy+1.5);
-    oy += 6;
-    layouts.forEach((l, i) => {
-      pdf.setFontSize(8.5); pdf.setFont('helvetica','normal'); pdf.setTextColor(17);
-      pdf.text(`Sheet ${i+1}`, M+2, oy);
-      pdf.text(l.sheet.name, M+30, oy);
-      pdf.text(`${l.sheet.w}\u00d7${l.sheet.h} ${u}`, M+100, oy);
-      pdf.text(String(l.placed.length), M+145, oy);
-      const util = (l.util*100).toFixed(0)+'%';
-      pdf.text(util, M+170, oy);
-      pdf.setDrawColor(240); pdf.line(M, oy+1.5, PW-M, oy+1.5);
-      oy += 7;
-    });
-
-    // ── PAGES 2+: one landscape page per sheet ──
+    // ── one landscape page per sheet — sheets start on page 1 ──
     const leftW  = Math.floor(W * 2/3);   // ~184 mm (2/3)
     const gap    = 8;
     const rightX = M + leftW + gap;
     const rightW = W - leftW - gap;       // ~85 mm
     const hdgH   = 9;                     // heading bar height
+    const titleBarH = 9;                  // compact title bar height
 
     layouts.forEach((layout, i) => {
-      pdf.addPage();
+      if (i > 0) pdf.addPage();           // first sheet on page 1, rest add pages
+      titleBar();
       const util = (layout.util*100).toFixed(0);
 
-      // heading bar
-      pdf.setFillColor(245,245,245); pdf.rect(M, M, W, hdgH, 'F');
-      pdf.setDrawColor(210); pdf.setLineWidth(0.25); pdf.rect(M, M, W, hdgH, 'S');
+      // sheet heading bar (sits below title bar)
+      const sheetHdgY = M + titleBarH + 2;
+      pdf.setFillColor(245,245,245); pdf.rect(M, sheetHdgY, W, hdgH, 'F');
+      pdf.setDrawColor(210); pdf.setLineWidth(0.25); pdf.rect(M, sheetHdgY, W, hdgH, 'S');
       pdf.setFontSize(9.5); pdf.setFont('helvetica','bold'); pdf.setTextColor(17);
-      pdf.text(`Sheet ${i+1}  \u2014  ${layout.sheet.name}`, M+4, M+6);
+      pdf.text(`Sheet ${i+1}  \u2014  ${layout.sheet.name}`, M+4, sheetHdgY+6);
       pdf.setFontSize(7.5); pdf.setFont('helvetica','normal'); pdf.setTextColor(110);
-      pdf.text(`${layout.sheet.w}\u00d7${layout.sheet.h} ${u}    ${layout.placed.length} piece${layout.placed.length!==1?'s':''}    ${util}% used`, PW-M-2, M+6, { align:'right' });
+      pdf.text(`${layout.sheet.w}\u00d7${layout.sheet.h} ${u}    ${layout.placed.length} piece${layout.placed.length!==1?'s':''}    ${util}% used`, PW-M-2, sheetHdgY+6, { align:'right' });
       pdf.setTextColor(17);
 
       // panel image — left 2/3, aspect-correct
       if (imgs[i]) {
-        const imgX = M+2, imgY = M+hdgH+3;
+        const imgX = M+2, imgY = sheetHdgY + hdgH + 3;
         const maxW = leftW-4, maxH = PH-imgY-M-2;
         const aspect = layout.sheet.w / layout.sheet.h;
         let iw, ih;
@@ -2701,7 +2704,7 @@ async function _buildCutListPDF({ biz, layouts, imgs, pieces, u, cur, totalPiece
 
       // cut list table — right 1/3
       pdf.autoTable({
-        startY: M+hdgH+3,
+        startY: sheetHdgY + hdgH + 3,
         margin: { left: rightX, right: M },
         tableWidth: rightW,
         head: [['', 'Label', `W (${u})`, `H (${u})`, 'Rot', 'Notes']],
@@ -2720,30 +2723,60 @@ async function _buildCutListPDF({ biz, layouts, imgs, pieces, u, cur, totalPiece
       });
     });
 
-    // ── FINAL PAGE: full cut list ──
-    pdf.addPage();
-    pdf.setFontSize(9); pdf.setFont('helvetica','bold'); pdf.setTextColor(17);
-    pdf.text('FULL CUT LIST \u2014 ALL PIECES', M, M+6);
-    pdf.setDrawColor(200); pdf.setLineWidth(0.3); pdf.line(M, M+8, PW-M, M+8);
-    pdf.autoTable({
-      startY: M+12, margin: { left:M, right:M },
-      head: [['','Label',`W (${u})`,`H (${u})`,'Qty','Material','Grain','Notes']],
-      body: pieces.map(p => ['',p.label,p.w,p.h,p.qty,p.material||'--',p.grain==='h'?'Horiz':p.grain==='v'?'Vert':'--',p.notes||'']),
-      styles: { fontSize:8, cellPadding:2, overflow:'ellipsize', textColor:[17,17,17] },
-      headStyles: { fillColor:[250,250,250], textColor:[140,140,140], fontStyle:'normal', fontSize:7, lineWidth:0 },
-      columnStyles: { 0:{cellWidth:6}, 2:{halign:'right'}, 3:{halign:'right'}, 4:{halign:'right',cellWidth:10} },
-      theme: 'plain', tableLineColor:[224,224,224], tableLineWidth:0.2,
-      didDrawCell(data) {
-        if (data.column.index===0 && data.section==='body') {
-          const p = pieces[data.row.index];
-          if (p) { const [r,g,b]=hexRgb(p.color); pdf.setFillColor(r,g,b); pdf.roundedRect(data.cell.x+1,data.cell.y+1.5,3,3,0.5,0.5,'F'); }
-        }
+    // ── OPTIONAL COMBINED PAGE: summary stats + full cut list ──
+    if (clShowSummary || clShowCutList) {
+      pdf.addPage();
+      pageHeader();
+      let cy = M + 22;
+
+      if (clShowSummary) {
+        const stats = [
+          { v: layouts.length,                           l: 'SHEETS' },
+          { v: totalPieces,                              l: 'PIECES' },
+          { v: avgUtil + '%',                            l: 'EFFICIENCY' },
+          { v: (100-parseFloat(avgUtil)).toFixed(1)+'%', l: 'WASTE' },
+        ];
+        if (matCost > 0) stats.push({ v: cur + matCost.toLocaleString(), l: 'MATERIAL COST' });
+        const sw = W / stats.length;
+        stats.forEach((s, i) => {
+          const sx = M + i*sw;
+          pdf.setFillColor(247,247,247); pdf.roundedRect(sx, cy, sw-2, 20, 2, 2, 'F');
+          pdf.setFontSize(18); pdf.setFont('helvetica','bold'); pdf.setTextColor(17);
+          pdf.text(String(s.v), sx+sw/2-1, cy+12, { align:'center' });
+          pdf.setFontSize(7); pdf.setFont('helvetica','normal'); pdf.setTextColor(136);
+          pdf.text(s.l, sx+sw/2-1, cy+17, { align:'center' });
+        });
+        cy += 26;
       }
-    });
-    // footer
-    pdf.setFontSize(7); pdf.setFont('helvetica','normal'); pdf.setTextColor(187);
-    pdf.text((biz.name||'ProCabinet')+' \u2014 ProCabinet.App', M, PH-M+4);
-    pdf.text('Printed '+dateStr, PW-M, PH-M+4, { align:'right' });
+
+      if (clShowCutList) {
+        if (clShowSummary) { cy += 4; }
+        pdf.setFontSize(8); pdf.setFont('helvetica','bold'); pdf.setTextColor(80);
+        pdf.text('ALL PIECES', M, cy);
+        pdf.setDrawColor(210); pdf.setLineWidth(0.2); pdf.line(M, cy+1.5, PW-M, cy+1.5);
+        cy += 5;
+        pdf.autoTable({
+          startY: cy, margin: { left:M, right:M },
+          head: [['','Label',`W (${u})`,`H (${u})`,'Qty','Material','Grain','Notes']],
+          body: pieces.map(p => ['',p.label,p.w,p.h,p.qty,p.material||'--',p.grain==='h'?'Horiz':p.grain==='v'?'Vert':'--',p.notes||'']),
+          styles: { fontSize:8, cellPadding:2, overflow:'ellipsize', textColor:[17,17,17] },
+          headStyles: { fillColor:[250,250,250], textColor:[140,140,140], fontStyle:'normal', fontSize:7, lineWidth:0 },
+          columnStyles: { 0:{cellWidth:6}, 2:{halign:'right'}, 3:{halign:'right'}, 4:{halign:'right',cellWidth:10} },
+          theme: 'plain', tableLineColor:[224,224,224], tableLineWidth:0.2,
+          didDrawCell(data) {
+            if (data.column.index===0 && data.section==='body') {
+              const p = pieces[data.row.index];
+              if (p) { const [r,g,b]=hexRgb(p.color); pdf.setFillColor(r,g,b); pdf.roundedRect(data.cell.x+1,data.cell.y+1.5,3,3,0.5,0.5,'F'); }
+            }
+          }
+        });
+      }
+
+      // footer
+      pdf.setFontSize(7); pdf.setFont('helvetica','normal'); pdf.setTextColor(187);
+      pdf.text((biz.name||'ProCabinet')+' \u2014 ProCabinet.App', M, PH-M+4);
+      pdf.text('Printed '+dateStr, PW-M, PH-M+4, { align:'right' });
+    }
 
     // output as real PDF blob → opens in browser PDF viewer
     const blob = pdf.output('blob');
@@ -2761,6 +2794,16 @@ async function _buildCutListPDF({ biz, layouts, imgs, pieces, u, cur, totalPiece
 function toggleLayoutRotate() {
   layoutRotate = !layoutRotate;
   const b = document.getElementById('lt-rotate'); if (b) b.classList.toggle('active', layoutRotate);
+  renderResults();
+}
+function toggleClSummary() {
+  clShowSummary = !clShowSummary;
+  document.getElementById('lt-pg-summary').classList.toggle('active', clShowSummary);
+  renderResults();
+}
+function toggleClCutList() {
+  clShowCutList = !clShowCutList;
+  document.getElementById('lt-pg-cutlist').classList.toggle('active', clShowCutList);
   renderResults();
 }
 function setPagesPerSheet(n) {
@@ -2923,6 +2966,52 @@ function renderLayout(area) {
     area.appendChild(lbl);
     drawCanvas(area, layout, u);
   });
+
+  // Combined Summary + Cut List preview card (shown below sheets when toggled on)
+  if (clShowSummary || clShowCutList) {
+    const lbl2 = document.createElement('div');
+    lbl2.className = 'sheet-block-label';
+    lbl2.innerHTML = `<span>Summary &amp; Cut List</span><span style="font-weight:400;color:var(--muted)">combined export page · appears after sheets</span>`;
+    area.appendChild(lbl2);
+
+    const card = document.createElement('div');
+    card.className = 'combined-pg-card';
+    let inner = '';
+
+    if (clShowSummary) {
+      const statList = [
+        ['Sheets', results.layouts.length],
+        ['Pieces', results.placed],
+        ['Efficiency', avgUtil + '%'],
+        ['Waste', (100 - parseFloat(avgUtil)).toFixed(1) + '%'],
+      ];
+      if (matCost > 0) statList.push(['Material Cost', cur + matCost.toLocaleString('en-US', {minimumFractionDigits:0, maximumFractionDigits:0})]);
+      inner += `<div class="combined-pg-stats">${statList.map(([l, v]) => `<div class="combined-pg-stat"><div class="combined-pg-stat-val">${v}</div><div class="combined-pg-stat-lbl">${l}</div></div>`).join('')}</div>`;
+    }
+
+    if (clShowCutList) {
+      inner += `<div class="combined-pg-section-hdr">All Pieces</div>
+      <table class="combined-pg-table">
+        <thead><tr>
+          <th style="width:14px"></th><th>Label</th>
+          <th style="text-align:right">W (${u})</th><th style="text-align:right">H (${u})</th>
+          <th style="text-align:right">Qty</th><th>Material</th><th>Grain</th><th>Notes</th>
+        </tr></thead>
+        <tbody>${pieces.map(p => `<tr>
+          <td><div style="width:10px;height:10px;border-radius:2px;background:${p.color};opacity:.8;display:inline-block"></div></td>
+          <td>${p.label}</td>
+          <td style="text-align:right">${p.w}</td><td style="text-align:right">${p.h}</td>
+          <td style="text-align:right">${p.qty}</td>
+          <td>${p.material || '—'}</td>
+          <td>${p.grain === 'h' ? 'Horiz' : p.grain === 'v' ? 'Vert' : '—'}</td>
+          <td>${p.notes || '—'}</td>
+        </tr>`).join('')}</tbody>
+      </table>`;
+    }
+
+    card.innerHTML = inner;
+    area.appendChild(card);
+  }
 }
 
 function selectSheet(i) { activeSheetIdx = i; renderResults(); }
