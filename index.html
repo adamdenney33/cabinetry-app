@@ -2454,6 +2454,8 @@ function printLayout(mode='print') {
 
     const sheetSections = results.layouts.map((layout, i) => {
       const util = (layout.util * 100).toFixed(0);
+      const isLandscape = layout.sheet.w >= layout.sheet.h;
+      const pgClass = isLandscape ? 'ls-section' : 'pt-section';
       const imgTag = imgs[i] ? `<img src="${imgs[i]}" class="sheet-img">` : '';
       const pieceRows = layout.placed.map(p => `
         <tr>
@@ -2465,16 +2467,20 @@ function printLayout(mode='print') {
           <td>${p.item.notes || ''}</td>
         </tr>`).join('');
       return `
-      <div class="sheet-section">
+      <div class="sheet-section ${pgClass}">
         <div class="sheet-heading">
           <span class="sheet-title">Sheet ${i+1} &mdash; ${layout.sheet.name}</span>
           <span class="sheet-meta">${layout.sheet.w}&times;${layout.sheet.h}${u} &nbsp;&bull;&nbsp; ${layout.placed.length} piece${layout.placed.length!==1?'s':''} &nbsp;&bull;&nbsp; ${util}% used</span>
         </div>
-        ${imgTag}
-        <table class="ptable">
-          <thead><tr><th></th><th>Label</th><th>W (${u})</th><th>H (${u})</th><th>Rotated</th><th>Notes</th></tr></thead>
-          <tbody>${pieceRows}</tbody>
-        </table>
+        <div class="sheet-body">
+          <div class="sheet-left">${imgTag}</div>
+          <div class="sheet-right">
+            <table class="ptable">
+              <thead><tr><th></th><th>Label</th><th>W (${u})</th><th>H (${u})</th><th>Rotated</th><th>Notes</th></tr></thead>
+              <tbody>${pieceRows}</tbody>
+            </table>
+          </div>
+        </div>
       </div>`;
     }).join('');
 
@@ -2492,7 +2498,12 @@ function printLayout(mode='print') {
 
     const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Cut List — ${new Date().toLocaleDateString('en-GB')}</title>
 <style>
-  @page { margin: 12mm 14mm; }
+  /* Default page: landscape. Named pages override per-section. */
+  @page { size: A4 landscape; margin: 12mm 14mm; }
+  @page landscape-pg { size: A4 landscape; margin: 12mm 14mm; }
+  @page portrait-pg  { size: A4 portrait;  margin: 12mm 14mm; }
+  .ls-section { page: landscape-pg; break-before: page; }
+  .pt-section { page: portrait-pg;  break-before: page; }
   * { margin:0; padding:0; box-sizing:border-box; }
   body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; color:#111; font-size:12px; background:#fff; }
   .hdr { display:flex; justify-content:space-between; align-items:flex-end; border-bottom:2.5px solid #111; padding-bottom:10px; margin-bottom:18px; }
@@ -2506,19 +2517,22 @@ function printLayout(mode='print') {
   .sstat:last-child { border-right:none; }
   .sstat-val { font-size:20px; font-weight:800; }
   .sstat-lbl { font-size:9px; text-transform:uppercase; letter-spacing:.7px; color:#888; margin-top:1px; }
-  .sheet-section { break-inside:avoid; margin-bottom:28px; }
-  .sheet-heading { display:flex; justify-content:space-between; align-items:baseline; background:#f5f5f5; padding:8px 12px; border-radius:5px 5px 0 0; border-bottom:2px solid #ddd; margin-bottom:0; }
+  /* Sheet section: panel left, cut list right */
+  .sheet-section { break-inside: avoid; }
+  .sheet-heading { display:flex; justify-content:space-between; align-items:baseline; background:#f5f5f5; padding:8px 12px; border-radius:5px 5px 0 0; border:1px solid #ddd; border-bottom:2px solid #ddd; }
   .sheet-title { font-size:13px; font-weight:700; }
   .sheet-meta { font-size:10px; color:#777; }
-  .sheet-img { display:block; max-width:100%; border:1px solid #e0e0e0; border-top:none; background:#fff; }
-  .ptable { width:100%; border-collapse:collapse; margin-top:0; font-size:11px; border:1px solid #e0e0e0; border-top:none; }
+  .sheet-body { display:flex; flex-direction:row; gap:14px; align-items:flex-start; border:1px solid #e0e0e0; border-top:none; border-radius:0 0 5px 5px; padding:10px; }
+  .sheet-left { flex:0 0 auto; max-width:56%; }
+  .sheet-img { display:block; max-width:100%; max-height:148mm; width:auto; background:#fff; border:1px solid #e8e8e8; border-radius:3px; }
+  .sheet-right { flex:1 1 auto; min-width:0; }
+  .ptable { width:100%; border-collapse:collapse; font-size:11px; border:1px solid #e0e0e0; }
   .ptable th { font-size:9px; text-transform:uppercase; letter-spacing:.5px; color:#999; padding:5px 8px; background:#fafafa; border-bottom:1px solid #e8e8e8; text-align:left; }
   .ptable td { padding:5px 8px; border-bottom:1px solid #f3f3f3; vertical-align:middle; }
   .ptable tr:last-child td { border-bottom:none; }
   .num { text-align:right; font-variant-numeric:tabular-nums; }
-  .section-hdr { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:#555; padding:14px 0 8px; border-top:1px solid #e0e0e0; margin-top:24px; }
+  .section-hdr { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:#555; padding:0 0 8px; }
   .footer { margin-top:32px; padding-top:10px; border-top:1px solid #eee; display:flex; justify-content:space-between; font-size:9px; color:#bbb; }
-  @media print { .sheet-section { break-inside:avoid; page-break-inside:avoid; } }
 </style></head><body>
 <div class="hdr">
   <div><div class="biz">${biz.name || 'ProCabinet'}</div><div class="biz-sub">${[biz.phone, biz.email].filter(Boolean).join(' · ') || 'Cabinetry'}</div></div>
@@ -2532,12 +2546,14 @@ function printLayout(mode='print') {
   ${matCost > 0 ? `<div class="sstat"><div class="sstat-val">${cur}${matCost.toLocaleString()}</div><div class="sstat-lbl">Material Cost</div></div>` : ''}
 </div>
 ${sheetSections}
-<div class="section-hdr">Full Cut List — All Pieces</div>
-<table class="ptable" style="border:1px solid #e0e0e0;border-radius:0">
-  <thead><tr><th></th><th>Label</th><th>W (${u})</th><th>H (${u})</th><th>Qty</th><th>Material</th><th>Grain</th><th>Notes</th></tr></thead>
-  <tbody>${allPieceRows}</tbody>
-</table>
-<div class="footer"><span>${biz.name || 'ProCabinet'} — ProCabinet.App</span><span>Printed ${new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})}</span></div>
+<div class="ls-section">
+  <div class="section-hdr">Full Cut List — All Pieces</div>
+  <table class="ptable" style="border:1px solid #e0e0e0">
+    <thead><tr><th></th><th>Label</th><th>W (${u})</th><th>H (${u})</th><th>Qty</th><th>Material</th><th>Grain</th><th>Notes</th></tr></thead>
+    <tbody>${allPieceRows}</tbody>
+  </table>
+  <div class="footer"><span>${biz.name || 'ProCabinet'} — ProCabinet.App</span><span>Printed ${new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})}</span></div>
+</div>
 </body></html>`;
     mode === 'pdf' ? _saveAsPDF(html) : _printInFrame(html);
   }, 400);
@@ -2549,7 +2565,7 @@ function _printInFrame(html) {
   if (old) old.remove();
   const frame = document.createElement('iframe');
   frame.id = '_print_frame';
-  frame.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:210mm;height:297mm;border:none;opacity:0;pointer-events:none;z-index:-1';
+  frame.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:297mm;height:210mm;border:none;opacity:0;pointer-events:none;z-index:-1';
   document.body.appendChild(frame);
   frame.contentDocument.open();
   frame.contentDocument.write(html);
