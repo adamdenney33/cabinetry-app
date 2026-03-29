@@ -1199,7 +1199,8 @@ html.dark .cl-table tbody tr:nth-child(even) td { background: rgba(255,255,255,0
           <option value="4">4 per page</option>
         </select>
         <div class="layout-tool-sep"></div>
-        <button class="layout-tool-btn" onclick="printLayout()">⎙ PDF</button>
+        <button class="layout-tool-btn" onclick="printLayout('print')" title="Send to printer">⎙ Print</button>
+        <button class="layout-tool-btn" onclick="printLayout('pdf')" title="Save as PDF file">↓ PDF</button>
       </div>
       <div class="inner-tabs">
         <div class="inner-tab active" data-tab="layout" onclick="switchTab('layout')">Layout View</div>
@@ -1885,7 +1886,8 @@ function renderStockMain() {
       <input class="order-search-input" type="search" placeholder="Search materials…" value="${window._stockSearch||''}" oninput="window._stockSearch=this.value;renderStockMain()" style="max-width:220px">
       <span style="font-size:12px;color:var(--muted)">${filtered.length} of ${stockItems.length} item${stockItems.length!==1?'s':''}</span>
       <button class="btn btn-outline" onclick="exportStockCSV()" style="width:auto;padding:4px 10px;font-size:11px;margin-left:auto" title="Export inventory to CSV">↓ CSV</button>
-      <button class="btn btn-outline" onclick="printStockList()" style="width:auto;padding:4px 10px;font-size:11px" title="Print inventory list">⎙ Print</button>
+      <button class="btn btn-outline" onclick="printStockList('print')" style="width:auto;padding:4px 10px;font-size:11px" title="Print inventory list">⎙ Print</button>
+      <button class="btn btn-outline" onclick="printStockList('pdf')" style="width:auto;padding:4px 10px;font-size:11px" title="Save inventory as PDF">↓ PDF</button>
     </div>
     ${showCatFilter ? `<div class="stock-cat-filter-bar">${allCatPills.map(c => `<span class="stock-cat-pill${c===activeCat?' active':''}" onclick="window._stockCatFilter='${c}';renderStockMain()">${c}</span>`).join('')}</div>` : ''}
     `}
@@ -2432,7 +2434,7 @@ function toggleLayoutGrain() {
   renderResults();
 }
 function adjustFontScale(d) { layoutFontScale = Math.max(0.5, Math.min(2.5, layoutFontScale + d)); renderResults(); }
-function printLayout() {
+function printLayout(mode='print') {
   if (!results || !results.layouts || !results.layouts.length) { _toast('Run the optimiser first', 'info'); return; }
   if (activeTab !== 'layout') { switchTab('layout'); }
   // Brief delay so canvases finish rendering before capture
@@ -2537,7 +2539,7 @@ ${sheetSections}
 </table>
 <div class="footer"><span>${biz.name || 'ProCabinet'} — ProCabinet.App</span><span>Printed ${new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})}</span></div>
 </body></html>`;
-    _printInFrame(html);
+    mode === 'pdf' ? _saveAsPDF(html) : _printInFrame(html);
   }, 400);
 }
 
@@ -2557,15 +2559,29 @@ function _printInFrame(html) {
       frame.contentWindow.focus();
       frame.contentWindow.print();
     } catch(e) {
-      // Fallback: open in new tab
-      const blob = new Blob([html], { type: 'text/html' });
-      const url = URL.createObjectURL(blob);
-      const a = Object.assign(document.createElement('a'), { href: url, target: '_blank' });
-      a.click();
-      setTimeout(() => URL.revokeObjectURL(url), 5000);
+      _saveAsPDF(html); // fallback to new-tab PDF flow
     }
     setTimeout(() => { const f = document.getElementById('_print_frame'); if (f) f.remove(); }, 3000);
   }, 600);
+}
+
+function _saveAsPDF(html) {
+  // Opens the document in a new tab and auto-triggers the print dialog
+  // so the user can choose "Save as PDF" as the destination
+  const withAutoprint = html.replace('</body>', `<script>
+    window.onload = function() {
+      window.focus();
+      setTimeout(function() { window.print(); }, 300);
+    };
+  <\/script></body>`);
+  const blob = new Blob([withAutoprint], { type: 'text/html' });
+  const url = URL.createObjectURL(blob);
+  const a = Object.assign(document.createElement('a'), { href: url, target: '_blank', rel: 'noopener' });
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 30000);
+  _toast('Select "Save as PDF" in the print dialog', 'info', 4000);
 }
 function toggleLayoutRotate() {
   layoutRotate = !layoutRotate;
@@ -2718,7 +2734,8 @@ function renderLayout(area) {
   </div>`;
   // "Quote this job" action bar
   const qBtn = matCost > 0 ? `<button class="btn btn-outline" onclick="quoteFromCutList(${matCost})" style="font-size:11px;padding:5px 12px" title="Pre-fill a new quote with this material cost">⎙ Quote this Job</button>` : '';
-  const printBtn = `<button class="btn btn-outline" onclick="printLayout()" style="font-size:11px;padding:5px 10px">⎙ Print</button>`;
+  const printBtn = `<button class="btn btn-outline" onclick="printLayout('print')" style="font-size:11px;padding:5px 10px" title="Send to printer">⎙ Print</button>
+    <button class="btn btn-outline" onclick="printLayout('pdf')" style="font-size:11px;padding:5px 10px" title="Save as PDF">↓ PDF</button>`;
   html += `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:8px">
     <span style="font-size:12px;color:var(--muted)">${results.placed} pieces · ${results.layouts.length} sheet${results.layouts.length!==1?'s':''}</span>
     <div style="display:flex;gap:6px">${qBtn}${printBtn}</div>
@@ -2886,7 +2903,8 @@ function renderSummary(area) {
     <div style="font-size:14px;font-weight:700;color:var(--text)">Workshop Cut Sheet</div>
     <div style="display:flex;gap:8px">
       <span style="font-size:12px;color:var(--muted);align-self:center">${results.placed} pieces · ${results.layouts.length} sheet${results.layouts.length!==1?'s':''}</span>
-      <button class="btn btn-outline" onclick="printLayout()" style="font-size:11px;padding:5px 10px">Print</button>
+      <button class="btn btn-outline" onclick="printLayout('print')" style="font-size:11px;padding:5px 10px" title="Send to printer">⎙ Print</button>
+      <button class="btn btn-outline" onclick="printLayout('pdf')" style="font-size:11px;padding:5px 10px" title="Save as PDF">↓ PDF</button>
     </div>
   </div>`;
 
@@ -3086,7 +3104,8 @@ function renderQuoteMain() {
         ${q.status === 'draft' ? `<button class="btn btn-outline" onclick="markQuoteSent(${q.id})">Mark Sent</button>` : ''}
         ${q.status === 'sent' ? `<button class="btn btn-success" onclick="approveQuote(${q.id})" style="width:auto;padding:5px 10px;font-size:11px">✓ Approve</button>` : ''}
         <button class="btn btn-outline" onclick="convertQuoteToOrder(${q.id})">${q.status === 'approved' ? '+ New Order' : '→ Order'}</button>
-        <button class="btn btn-outline" onclick="printQuote(${q.id})" title="Print / Save PDF">⎙ Print</button>
+        <button class="btn btn-outline" onclick="printQuote(${q.id},'print')" title="Send to printer">⎙ Print</button>
+        <button class="btn btn-outline" onclick="printQuote(${q.id},'pdf')" title="Save as PDF">↓ PDF</button>
         <button class="btn btn-outline" onclick="duplicateQuote(${q.id})" title="Duplicate quote">⧉ Copy</button>
         ${q.status !== 'draft' ? `<button class="btn btn-outline" onclick="revertQuoteToDraft(${q.id})" style="color:var(--muted)" title="Revert to Draft">↩ Draft</button>` : ''}
       </div>
@@ -3238,7 +3257,8 @@ function renderOrdersMain() {
           ${pipelineSteps.map(s=>`<option value="${s}" ${o.status===s?'selected':''}>${STATUS_LABELS[s]}</option>`).join('')}
         </select>
         ${o.status !== 'complete' ? `<button class="btn btn-success" onclick="advanceOrder(${o.id})" style="font-size:11px;padding:5px 12px;display:inline-flex;align-items:center;gap:4px">Next Stage ${ARROW_SVG}</button>` : '<span class="badge badge-green" style="align-self:center">Complete</span>'}
-        <button class="btn btn-outline" onclick="printWorkOrder(${o.id})" style="font-size:11px;padding:5px 10px;width:auto;margin-left:auto" title="Print work order">⎙ Work Order</button>
+        <button class="btn btn-outline" onclick="printWorkOrder(${o.id},'print')" style="font-size:11px;padding:5px 10px;width:auto;margin-left:auto" title="Print work order">⎙ Work Order</button>
+        <button class="btn btn-outline" onclick="printWorkOrder(${o.id},'pdf')" style="font-size:11px;padding:5px 10px;width:auto" title="Save work order as PDF">↓ PDF</button>
       </div>
     </div>`;
   };
@@ -3566,7 +3586,7 @@ function _oClientSuggest(input) {
   box.style.display = '';
 }
 
-function printWorkOrder(id) {
+function printWorkOrder(id, mode='print') {
   const o = orders.find(o => o.id === id);
   if (!o) return;
   const biz = getBizInfo();
@@ -3702,7 +3722,7 @@ ${[1,2,3,4,5].map(() => `<div class="note-line"></div>`).join('')}
 </div>
 </body></html>`;
 
-  _printInFrame(html);
+  mode === 'pdf' ? _saveAsPDF(html) : _printInFrame(html);
 }
 
 function quoteFromCutList(matCost) {
@@ -3724,7 +3744,7 @@ async function markQuoteSent(id) {
   renderQuoteMain();
 }
 
-function printQuote(id) {
+function printQuote(id, mode='print') {
   const q = quotes.find(q => q.id === id);
   if (!q) return;
   const cur = window.currency;
@@ -3850,7 +3870,7 @@ ${q.notes ? `<div class="notes-box"><label>Notes &amp; Inclusions</label><p>${q.
 </div>
 </body></html>`;
 
-  _printInFrame(html);
+  mode === 'pdf' ? _saveAsPDF(html) : _printInFrame(html);
 }
 
 async function duplicateQuote(id) {
@@ -3928,7 +3948,7 @@ function exportStockCSV() {
   _toast('Inventory exported to CSV', 'success');
 }
 
-function printStockList() {
+function printStockList(mode='print') {
   const cur = window.currency;
   const u = window.units === 'metric' ? 'mm' : 'in';
   const biz = getBizInfo();
@@ -3998,7 +4018,7 @@ ${lowItems.length ? `<div class="low-note">⚠ Low stock: ${lowItems.map(i=>i.na
 <div class="footer"><span>${biz.name||'ProCabinet'} — ProCabinet.App</span><span>Printed ${new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})}</span></div>
 </body></html>`;
 
-  _printInFrame(html);
+  mode === 'pdf' ? _saveAsPDF(html) : _printInFrame(html);
 }
 
 async function setStockQty(id, val) {
