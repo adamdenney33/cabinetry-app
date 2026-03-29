@@ -732,11 +732,18 @@ html.dark .cl-table tbody tr:nth-child(even) td { background: rgba(255,255,255,0
 
 /* Print */
 @media print {
-  header, .tab-bar, .cl-left, .inner-tabs, .stats-grid, .sheet-tabs, .layout-toolbar,
-  .sidebar, nav, button, .form-section, #toast-container { display: none !important; }
-  .cl-right, .section-panel { display: block !important; width: 100% !important; }
-  .canvas-wrap { page-break-inside: avoid; break-inside: avoid; max-width: 100%; }
-  body { background: #fff !important; color: #111 !important; }
+  /* Hide everything by default */
+  header, .nav-tabs, .tab-bar, .cl-left, .inner-tabs, .sheet-tabs, .layout-toolbar,
+  .sidebar, nav, button, .form-section, #toast-container,
+  .stats-grid, .order-filter-tabs, .stock-cat-filter-bar,
+  .section-panel { display: none !important; }
+  /* Only show the active cut-list right panel */
+  .section-panel#panel-cutlist { display: block !important; width: 100% !important; }
+  .cl-right { display: block !important; width: 100% !important; overflow: visible !important; }
+  #results-area { overflow: visible !important; height: auto !important; max-height: none !important; }
+  .canvas-wrap { page-break-inside: avoid; break-inside: avoid; max-width: 100%; display: block; }
+  body { background: #fff !important; color: #111 !important; overflow: visible !important; }
+  .app-body { overflow: visible !important; height: auto !important; }
 }
 /* ── AUTH SCREEN ── */
 #auth-screen {
@@ -2530,12 +2537,35 @@ ${sheetSections}
 </table>
 <div class="footer"><span>${biz.name || 'ProCabinet'} — ProCabinet.App</span><span>Printed ${new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})}</span></div>
 </body></html>`;
-    const win = window.open('', '_blank');
-    win.document.write(html);
-    win.document.close();
-    win.focus();
-    setTimeout(() => win.print(), 600);
-  }, 250);
+    _printInFrame(html);
+  }, 400);
+}
+
+function _printInFrame(html) {
+  // Use a hidden iframe — avoids popup blockers entirely
+  const old = document.getElementById('_print_frame');
+  if (old) old.remove();
+  const frame = document.createElement('iframe');
+  frame.id = '_print_frame';
+  frame.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:210mm;height:297mm;border:none;opacity:0;pointer-events:none;z-index:-1';
+  document.body.appendChild(frame);
+  frame.contentDocument.open();
+  frame.contentDocument.write(html);
+  frame.contentDocument.close();
+  setTimeout(() => {
+    try {
+      frame.contentWindow.focus();
+      frame.contentWindow.print();
+    } catch(e) {
+      // Fallback: open in new tab
+      const blob = new Blob([html], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      const a = Object.assign(document.createElement('a'), { href: url, target: '_blank' });
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+    }
+    setTimeout(() => { const f = document.getElementById('_print_frame'); if (f) f.remove(); }, 3000);
+  }, 600);
 }
 function toggleLayoutRotate() {
   layoutRotate = !layoutRotate;
@@ -3672,11 +3702,7 @@ ${[1,2,3,4,5].map(() => `<div class="note-line"></div>`).join('')}
 </div>
 </body></html>`;
 
-  const win = window.open('', '_blank');
-  win.document.write(html);
-  win.document.close();
-  win.focus();
-  setTimeout(() => win.print(), 400);
+  _printInFrame(html);
 }
 
 function quoteFromCutList(matCost) {
@@ -3824,11 +3850,7 @@ ${q.notes ? `<div class="notes-box"><label>Notes &amp; Inclusions</label><p>${q.
 </div>
 </body></html>`;
 
-  const win = window.open('', '_blank');
-  win.document.write(html);
-  win.document.close();
-  win.focus();
-  setTimeout(() => win.print(), 400);
+  _printInFrame(html);
 }
 
 async function duplicateQuote(id) {
@@ -3976,11 +3998,7 @@ ${lowItems.length ? `<div class="low-note">⚠ Low stock: ${lowItems.map(i=>i.na
 <div class="footer"><span>${biz.name||'ProCabinet'} — ProCabinet.App</span><span>Printed ${new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})}</span></div>
 </body></html>`;
 
-  const win = window.open('', '_blank');
-  win.document.write(html);
-  win.document.close();
-  win.focus();
-  setTimeout(() => win.print(), 400);
+  _printInFrame(html);
 }
 
 async function setStockQty(id, val) {
