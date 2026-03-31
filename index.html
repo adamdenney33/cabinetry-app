@@ -1086,29 +1086,22 @@ html.dark .cl-table tbody tr:nth-child(even) td { background: rgba(255,255,255,0
 
         <!-- Settings bar -->
         <div class="cl-settings-bar">
-          <div>
-            <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);margin-bottom:4px">Units</div>
-            <div class="cl-unit-pill">
-              <button class="cl-unit-btn active" id="cl-unit-in" onclick="setUnits('imperial')">in</button>
-              <button class="cl-unit-btn" id="cl-unit-mm" onclick="setUnits('metric')">mm</button>
-            </div>
-          </div>
-          <div style="max-width:80px">
-            <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);margin-bottom:4px">Kerf</div>
-            <input type="number" id="kerf" value="0.125" min="0" step="0.01" style="padding:5px 8px;font-size:13px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);outline:none;width:100%;font-family:inherit" onchange="localStorage.setItem('pc_kerf',this.value)">
-          </div>
-          <div style="margin-left:auto;display:flex;gap:6px;align-items:flex-end">
-            <button class="cl-csv-btn" onclick="toggleProjectsPanel()" title="My Projects" id="projects-toggle-btn" style="padding:5px 8px">
+          <div style="display:flex;gap:4px;align-items:center">
+            <button class="cl-csv-btn" onclick="toggleProjectsPanel()" title="My Projects" id="projects-toggle-btn" style="padding:5px 10px;display:flex;align-items:center;gap:5px">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
+              Projects
             </button>
-            <button class="cl-csv-btn" onclick="triggerImportCSV('pieces')" title="Import parts CSV" style="padding:5px 8px">
+            <button class="cl-csv-btn" onclick="triggerImportCSV('pieces')" title="Import parts CSV" style="padding:5px 10px;display:flex;align-items:center;gap:5px">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              Import
             </button>
-            <button class="cl-csv-btn" onclick="exportCSV('pieces')" title="Export parts CSV" style="padding:5px 8px">
+            <button class="cl-csv-btn" onclick="exportCSV('pieces')" title="Export parts CSV" style="padding:5px 10px;display:flex;align-items:center;gap:5px">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Export
             </button>
-            <button class="cl-csv-btn" onclick="downloadTemplate('pieces')" title="Download blank template" style="padding:5px 8px">
+            <button class="cl-csv-btn" onclick="downloadTemplate('pieces')" title="Download blank template" style="padding:5px 10px;display:flex;align-items:center;gap:5px">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M8 12h8M8 8h5M8 16h6"/></svg>
+              Template
             </button>
           </div>
         </div>
@@ -1149,11 +1142,13 @@ html.dark .cl-table tbody tr:nth-child(even) td { background: rgba(255,255,255,0
         <div class="cl-section-header" style="margin-top:10px;padding-bottom:4px">
           <span class="cl-section-title">Stock Panels</span>
           <div style="display:flex;gap:4px;margin-left:auto">
-            <button class="cl-csv-btn" onclick="triggerImportCSV('sheets')" title="Import panels CSV" style="padding:4px 7px">
+            <button class="cl-csv-btn" onclick="triggerImportCSV('sheets')" title="Import panels CSV" style="padding:4px 9px;display:flex;align-items:center;gap:4px">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              Import
             </button>
-            <button class="cl-csv-btn" onclick="exportCSV('sheets')" title="Export panels CSV" style="padding:4px 7px">
+            <button class="cl-csv-btn" onclick="exportCSV('sheets')" title="Export panels CSV" style="padding:4px 9px;display:flex;align-items:center;gap:4px">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Export
             </button>
           </div>
         </div>
@@ -1166,9 +1161,8 @@ html.dark .cl-table tbody tr:nth-child(even) td { background: rgba(255,255,255,0
               <th style="width:60px">W</th>
               <th style="width:60px">H</th>
               <th style="width:68px">Qty</th>
-              <th style="width:30px" class="cl-col-grain" title="Grain">
-                <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="2" y1="4.5" x2="12" y2="4.5"/><line x1="2" y1="7" x2="12" y2="7"/><line x1="2" y1="9.5" x2="12" y2="9.5"/></svg>
-              </th>
+              <th style="width:48px" class="cl-col-grain" id="th-grain-sheet" title="Grain direction">Grain</th>
+              <th style="width:52px" title="Blade kerf allowance">Kerf</th>
               <th style="width:24px"></th>
             </tr>
           </thead>
@@ -1195,6 +1189,11 @@ html.dark .cl-table tbody tr:nth-child(even) td { background: rgba(255,255,255,0
         <button class="layout-tool-btn" onclick="zoomOut()">−</button>
         <button class="layout-tool-btn" onclick="zoomFit()">Fit</button>
         <button class="layout-tool-btn" onclick="zoomIn()">+</button>
+        <div class="layout-tool-sep"></div>
+        <div class="cl-unit-pill" style="margin:0 2px">
+          <button class="cl-unit-btn active" id="cl-unit-in" onclick="setUnits('imperial')" style="padding:3px 7px;font-size:11px">in</button>
+          <button class="cl-unit-btn" id="cl-unit-mm" onclick="setUnits('metric')" style="padding:3px 7px;font-size:11px">mm</button>
+        </div>
         <div class="layout-tool-sep"></div>
         <button class="layout-tool-btn active" id="lt-color" onclick="toggleLayoutColor()">Color</button>
         <button class="layout-tool-btn active" id="lt-grain" onclick="toggleLayoutGrain()">Grain</button>
@@ -1637,14 +1636,9 @@ function setUnits(u) {
 
   const m = u === 'metric';
 
-  // Sync cutlist unit pills
-  const clIn = document.getElementById('cl-unit-in'), clMm = document.getElementById('cl-unit-mm');
-  if (clIn) clIn.classList.toggle('active', !m);
-  if (clMm) clMm.classList.toggle('active', m);
-
-  // Cutlist: update kerf default
-  const kf = document.getElementById('kerf');
-  if (kf) kf.value = m ? 3 : 0.125;
+  // Sync unit pills (settings bar + layout toolbar)
+  document.querySelectorAll('#cl-unit-in').forEach(el => el.classList.toggle('active', !m));
+  document.querySelectorAll('#cl-unit-mm').forEach(el => el.classList.toggle('active', m));
 
   // Stock form defaults
   const stW = document.getElementById('stock-w');
@@ -2012,6 +2006,14 @@ function stepQty(type, id, delta) {
 }
 
 // ── COLUMN TOGGLE ──
+function initColVisibility() {
+  ['grain','material','notes','label'].forEach(col => {
+    const on = colsVisible[col];
+    document.querySelectorAll('.cl-col-' + col).forEach(el => { el.style.display = on ? '' : 'none'; });
+    const pill = document.getElementById('pill-' + col);
+    if (pill) pill.classList.toggle('active', on);
+  });
+}
 function toggleCol(col) {
   colsVisible[col] = !colsVisible[col];
   const pill = document.getElementById('pill-' + col);
@@ -2096,6 +2098,7 @@ function addSheet(name, w, h, qty) {
     h:       h    !== undefined ? h    : (m ? 1220 : 48),
     qty:     qty  !== undefined ? qty  : 1,
     grain:   'none',
+    kerf:    m ? 3 : 0.125,
     enabled: true,
   });
   renderSheets();
@@ -2183,6 +2186,13 @@ function renderSheets() {
         <button class="cl-grain-btn${s.grain !== 'none' ? ' active' : ''}"
           onclick="cycleGrain(${s.id},'sheet')" title="Grain: ${s.grain}">${grainIcon(s.grain)}</button>
       </td>
+      <td style="padding:0 4px">
+        <input class="cl-input cl-dim-input" type="number" value="${s.kerf ?? (window.units==='metric'?3:0.125)}"
+          style="width:44px;text-align:center" min="0" step="0.01"
+          onblur="updateSheet(${s.id},'kerf',parseFloat(this.value)||0)"
+          onkeydown="if(event.key==='Enter')this.blur()"
+          ${dis ? 'disabled' : ''} placeholder="0">
+      </td>
       <td class="cl-del-cell" style="white-space:nowrap">
         <button class="cl-del-btn" onclick="duplicateSheet(${s.id})" title="Duplicate sheet" style="opacity:.6;margin-right:2px">⧉</button>
         <button class="cl-del-btn" onclick="removeSheet(${s.id})" title="Remove">${DEL_SVG}</button>
@@ -2208,7 +2218,7 @@ function _loadCutList() {
     const p = localStorage.getItem('pc_cl_pieces');
     const s = localStorage.getItem('pc_cl_sheets');
     if (p) { pieces = JSON.parse(p); pieces.forEach(x => { if (x.notes === undefined) x.notes = ''; }); }
-    if (s) { sheets = JSON.parse(s); }
+    if (s) { sheets = JSON.parse(s); sheets.forEach(x => { if (x.kerf === undefined) x.kerf = (window.units === 'metric' ? 3 : 0.125); }); }
     const pid = localStorage.getItem('pc_cl_pid'); if (pid) _pieceId = parseInt(pid);
     const sid = localStorage.getItem('pc_cl_sid'); if (sid) _sheetId = parseInt(sid);
     const ci  = localStorage.getItem('pc_cl_colorIdx'); if (ci) pieceColorIdx = parseInt(ci);
@@ -2913,7 +2923,6 @@ function optimize() {
   const activePieces = pieces.filter(p => p.enabled !== false);
   if (!activeSheets.length) { _toast('Add at least one enabled sheet panel.', 'error'); return; }
   if (!activePieces.length) { _toast('Add at least one enabled cut part.', 'error'); return; }
-  const kerf = parseFloat(document.getElementById('kerf').value) || 0;
   let remaining = [];
   for (const p of activePieces) for (let i = 0; i < p.qty; i++) remaining.push({ ...p, _inst: i });
   remaining.sort((a, b) => (b.w * b.h) - (a.w * a.h));
@@ -2934,14 +2943,15 @@ function optimize() {
       return fitsNatural;
     });
     if (!fittable.length) continue;
-    const { placed, leftover } = packSheet(si.w, si.h, si.grain || 'none', fittable, kerf);
+    const sheetKerf = si.kerf ?? 0;
+    const { placed, leftover } = packSheet(si.w, si.h, si.grain || 'none', fittable, sheetKerf);
     if (!placed.length) continue;
     const usedArea = placed.reduce((s, p) => s + p.w * p.h, 0);
     layouts.push({ sheet: si, placed, util: usedArea / (si.w * si.h), waste: 1 - usedArea / (si.w * si.h) });
     const placedKeys = new Set(placed.map(p => `${p.item.id}_${p.item._inst}`));
     remaining = remaining.filter(p => !placedKeys.has(`${p.id}_${p._inst}`));
   }
-  results = { layouts, unplaced: remaining, total: activePieces.reduce((s,p) => s+p.qty, 0), placed: activePieces.reduce((s,p) => s+p.qty, 0) - remaining.length, kerf };
+  results = { layouts, unplaced: remaining, total: activePieces.reduce((s,p) => s+p.qty, 0), placed: activePieces.reduce((s,p) => s+p.qty, 0) - remaining.length };
   if (!_userId) _incOptCount();
   activeSheetIdx = 0;
   renderResults();
@@ -2995,7 +3005,7 @@ function renderLayout(area) {
     <div class="stat-card success"><div class="stat-label">Pieces Placed</div><div class="stat-value">${results.placed}</div><div class="stat-sub">of ${results.total} total</div></div>
     <div class="stat-card warn"><div class="stat-label">Material Usage</div><div class="stat-value">${avgUtil}%</div><div class="stat-sub">${(100 - parseFloat(avgUtil)).toFixed(1)}% waste</div></div>
     <div class="stat-card"><div class="stat-label">Total Cuts</div><div class="stat-value">${totalCuts}</div><div class="stat-sub">${lenLabel} cut length</div></div>
-    ${results.kerf > 0 ? `<div class="stat-card"><div class="stat-label">Kerf</div><div class="stat-value">${results.kerf}${u}</div><div class="stat-sub">blade allowance applied</div></div>` : ''}
+    ${(() => { const kv=[...new Set(results.layouts.map(l=>l.sheet.kerf??0).filter(k=>k>0))]; if(!kv.length)return''; const lo=Math.min(...kv),hi=Math.max(...kv); return `<div class="stat-card"><div class="stat-label">Kerf</div><div class="stat-value">${lo===hi?lo:lo+'–'+hi}${u}</div><div class="stat-sub">blade allowance applied</div></div>`; })()}
     ${matCost > 0 ? `<div class="stat-card success"><div class="stat-label">Material Cost</div><div class="stat-value">${cur}${matCost.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0})}</div><div class="stat-sub">from stock prices</div></div>` : ''}
     ${results.unplaced.length ? `<div class="stat-card danger"><div class="stat-label">Unplaced</div><div class="stat-value">${results.unplaced.length}</div><div class="stat-sub">add more sheets to place all pieces</div></div>` : ''}
   </div>`;
@@ -3134,9 +3144,14 @@ function drawCanvas(container, layout, units) {
     ctx.fillStyle = fill; ctx.fillRect(x, y, w, h);
     ctx.strokeStyle = bdCol; ctx.lineWidth = 1; ctx.strokeRect(x+.5, y+.5, w-1, h-1);
 
-    // Grain lines — derived from sheet grain, flipped if piece was rotated during packing
-    const baseGrain = sheet.grain || 'none';
-    const gdir = baseGrain === 'none' ? 'none' : (p.rotated ? (baseGrain === 'h' ? 'v' : 'h') : baseGrain);
+    // Grain lines — use piece's own grain direction as placed; ungrained pieces show sheet grain
+    const pGrain = p.item.grain || 'none';
+    let gdir;
+    if (pGrain !== 'none') {
+      gdir = p.rotated ? (pGrain === 'h' ? 'v' : 'h') : pGrain;
+    } else {
+      gdir = sheet.grain || 'none';
+    }
     if (layoutGrain && gdir !== 'none') {
       ctx.save();
       ctx.beginPath(); ctx.rect(x+1, y+1, w-2, h-2); ctx.clip();
@@ -4466,7 +4481,7 @@ async function confirmSaveProject() {
 async function promptSaveProject() { showSaveProjectForm(); }
 
 async function saveProject(name) {
-  const payload = { sheets: JSON.parse(JSON.stringify(sheets)), pieces: JSON.parse(JSON.stringify(pieces)), settings: { units: window.units, kerf: document.getElementById('kerf').value } };
+  const payload = { sheets: JSON.parse(JSON.stringify(sheets)), pieces: JSON.parse(JSON.stringify(pieces)), settings: { units: window.units } };
   const { error } = await _db('projects').insert([{ name, data: payload, user_id: _userId }]);
   if (error) { _toast('Save failed: ' + error.message, 'error'); return; }
   _toast(`"${name}" saved`, 'success');
@@ -4482,8 +4497,6 @@ async function loadProject(id) {
   for (const pc of (p.pieces || [])) { pieces.push({ ...pc, id: _pieceId++ }); }
   if (p.settings) {
     if (p.settings.units) setUnits(p.settings.units);
-    const kerfEl = document.getElementById('kerf');
-    if (kerfEl && p.settings.kerf) kerfEl.value = p.settings.kerf;
   }
   results = null;
   renderSheets(); renderPieces();
@@ -4594,6 +4607,7 @@ if (pieces.length === 0 && sheets.length === 0) {
   renderSheets();
   renderPieces();
 }
+initColVisibility();
 </script>
 </body>
 </html>
