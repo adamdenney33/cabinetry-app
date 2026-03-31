@@ -1118,9 +1118,9 @@ html.dark .cl-table tbody tr:nth-child(even) td { background: rgba(255,255,255,0
           <span class="cl-section-title">Cut Parts</span>
           <div style="display:flex;gap:3px;margin-left:8px;flex:1">
             <button class="cl-col-pill active" id="pill-label" onclick="toggleCol('label')" title="Show/hide label column">Label</button>
-            <button class="cl-col-pill active" id="pill-grain" onclick="toggleCol('grain')" title="Show/hide grain column">Grain</button>
-            <button class="cl-col-pill active" id="pill-material" onclick="toggleCol('material')" title="Show/hide material column">Panel</button>
-            <button class="cl-col-pill active" id="pill-notes" onclick="toggleCol('notes')" title="Show/hide notes column">Notes</button>
+            <button class="cl-col-pill" id="pill-grain" onclick="toggleCol('grain')" title="Show/hide grain column">Grain</button>
+            <button class="cl-col-pill" id="pill-material" onclick="toggleCol('material')" title="Show/hide material column">Panel</button>
+            <button class="cl-col-pill" id="pill-notes" onclick="toggleCol('notes')" title="Show/hide notes column">Notes</button>
           </div>
           <button class="cl-csv-btn" onclick="clearCutList()" title="Clear all parts and panels" style="padding:3px 8px;margin-left:4px;font-size:10px;color:var(--muted)">Clear</button>
         </div>
@@ -1133,9 +1133,7 @@ html.dark .cl-table tbody tr:nth-child(even) td { background: rgba(255,255,255,0
               <th style="width:60px">W</th>
               <th style="width:60px">H</th>
               <th style="width:68px">Qty</th>
-              <th style="width:30px" class="cl-col-grain" id="th-grain" title="Grain">
-                <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="2" y1="4.5" x2="12" y2="4.5"/><line x1="2" y1="7" x2="12" y2="7"/><line x1="2" y1="9.5" x2="12" y2="9.5"/></svg>
-              </th>
+              <th style="width:48px" class="cl-col-grain" id="th-grain" title="Grain direction">Grain</th>
               <th style="width:86px" class="cl-col-material" id="th-material">Panel</th>
               <th class="cl-col-notes" id="th-notes" style="min-width:80px">Notes</th>
               <th style="width:24px"></th>
@@ -1725,8 +1723,6 @@ function setCurrency(c) {
 // SECTION NAVIGATION
 // ══════════════════════════════════════════
 function switchSection(name) {
-  const AUTH_SECTIONS = ['stock','quote','orders','dashboard'];
-  if (AUTH_SECTIONS.includes(name) && !_requireAuth()) return;
   document.querySelectorAll('.nav-tab').forEach((t,i) => {
     const sections = ['cutlist','stock','quote','orders','dashboard'];
     t.classList.toggle('active', sections[i] === name);
@@ -1944,7 +1940,7 @@ let layoutZoom = parseFloat(localStorage.getItem('pc_zoom')) || 1.0;
 let layoutColor = true;
 let layoutGrain = true;
 let layoutFontScale = parseFloat(localStorage.getItem('pc_font_scale')) || 1.0;
-let colsVisible = { grain: true, material: true, label: true, notes: true };
+let colsVisible = { grain: false, material: false, label: true, notes: false };
 let layoutRotate = false;
 let clShowSummary = true;
 let clShowCutList = true;
@@ -1959,9 +1955,12 @@ const COLORS = [
 
 // ── GRAIN ICONS ──
 const GRAIN_ICONS = {
-  'none': `<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.28"><line x1="2" y1="4.5" x2="12" y2="4.5"/><line x1="2" y1="7" x2="12" y2="7"/><line x1="2" y1="9.5" x2="12" y2="9.5"/></svg>`,
-  'h':    `<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="2" y1="4.5" x2="12" y2="4.5"/><line x1="2" y1="7" x2="12" y2="7"/><line x1="2" y1="9.5" x2="12" y2="9.5"/></svg>`,
-  'v':    `<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="4.5" y1="2" x2="4.5" y2="12"/><line x1="7" y1="2" x2="7" y2="12"/><line x1="9.5" y1="2" x2="9.5" y2="12"/></svg>`,
+  // none: faint equal lines — no constraint
+  'none': `<svg width="20" height="12" viewBox="0 0 20 12" fill="none" stroke="currentColor" stroke-width="1.4" opacity="0.25"><line x1="1" y1="2.5" x2="19" y2="2.5"/><line x1="1" y1="6" x2="19" y2="6"/><line x1="1" y1="9.5" x2="19" y2="9.5"/></svg>`,
+  // h: LONG horizontal lines — grain runs the length of the board
+  'h':    `<svg width="22" height="12" viewBox="0 0 22 12" fill="none" stroke="currentColor" stroke-width="1.6"><line x1="0" y1="2.5" x2="22" y2="2.5"/><line x1="0" y1="6" x2="22" y2="6"/><line x1="0" y1="9.5" x2="22" y2="9.5"/></svg>`,
+  // v: SHORT vertical lines — cross grain (shorter = narrower boards stacked)
+  'v':    `<svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6"><line x1="2.5" y1="2" x2="2.5" y2="10"/><line x1="6" y1="2" x2="6" y2="10"/><line x1="9.5" y1="2" x2="9.5" y2="10"/></svg>`,
 };
 const EYE_ON  = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
 const EYE_OFF = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`;
@@ -2850,21 +2849,42 @@ function prune(rects) {
     return !rects.some((o, j) => i !== j && contains(o, r));
   });
 }
-function packSheet(sheetW, sheetH, items, kerf) {
+function packSheet(sheetW, sheetH, sheetGrain, items, kerf) {
   let free = [{ x: 0, y: 0, w: sheetW, h: sheetH }];
   const placed = [], leftover = [];
   for (const item of items) {
     let best = null, bestR = false, bestS1 = Infinity, bestS2 = Infinity;
+    const pGrain = item.grain || 'none';
+    const sGrain = sheetGrain || 'none';
+    // Rotation rules:
+    //   piece=none  → free to rotate either way
+    //   piece=h/v, sheet=none → place as-is, no rotation
+    //   piece=h, sheet=h → no rotation needed (grains already match)
+    //   piece=v, sheet=v → no rotation needed
+    //   piece=h, sheet=v → MUST rotate to align grain
+    //   piece=v, sheet=h → MUST rotate to align grain
+    const mustRotate = pGrain !== 'none' && sGrain !== 'none' && pGrain !== sGrain;
+    const canRotate  = pGrain === 'none' || mustRotate;
     for (const r of free) {
-      if (r.w >= item.w && r.h >= item.h) {
+      if (!mustRotate && r.w >= item.w && r.h >= item.h) {
         const s1 = Math.min(r.w - item.w, r.h - item.h);
         const s2 = Math.max(r.w - item.w, r.h - item.h);
         if (s1 < bestS1 || (s1 === bestS1 && s2 < bestS2)) { bestS1=s1; bestS2=s2; best=r; bestR=false; }
       }
-      if (item.grain === 'none' && r.w >= item.h && r.h >= item.w) {
+      if (canRotate && r.w >= item.h && r.h >= item.w) {
         const s1 = Math.min(r.w - item.h, r.h - item.w);
         const s2 = Math.max(r.w - item.h, r.h - item.w);
         if (s1 < bestS1 || (s1 === bestS1 && s2 < bestS2)) { bestS1=s1; bestS2=s2; best=r; bestR=true; }
+      }
+    }
+    // Grain mismatch but rotated placement didn't fit — fall back to natural (grain warning)
+    if (!best && mustRotate) {
+      for (const r of free) {
+        if (r.w >= item.w && r.h >= item.h) {
+          const s1 = Math.min(r.w - item.w, r.h - item.h);
+          const s2 = Math.max(r.w - item.w, r.h - item.h);
+          if (s1 < bestS1 || (s1 === bestS1 && s2 < bestS2)) { bestS1=s1; bestS2=s2; best=r; bestR=false; }
+        }
       }
     }
     if (!best) { leftover.push(item); continue; }
@@ -2903,10 +2923,18 @@ function optimize() {
   for (const si of sheetInsts) {
     if (!remaining.length) break;
     const fittable = remaining.filter(p => {
-      return (p.w <= si.w && p.h <= si.h) || (p.grain === 'none' && p.h <= si.w && p.w <= si.h);
+      const pGrain = p.grain || 'none';
+      const sGrain = si.grain || 'none';
+      const mustRotate = pGrain !== 'none' && sGrain !== 'none' && pGrain !== sGrain;
+      const canRotate  = pGrain === 'none' || mustRotate;
+      const fitsNatural = p.w <= si.w && p.h <= si.h;
+      const fitsRotated = p.h <= si.w && p.w <= si.h;
+      if (mustRotate) return fitsRotated || fitsNatural;
+      if (canRotate)  return fitsNatural || fitsRotated;
+      return fitsNatural;
     });
     if (!fittable.length) continue;
-    const { placed, leftover } = packSheet(si.w, si.h, fittable, kerf);
+    const { placed, leftover } = packSheet(si.w, si.h, si.grain || 'none', fittable, kerf);
     if (!placed.length) continue;
     const usedArea = placed.reduce((s, p) => s + p.w * p.h, 0);
     layouts.push({ sheet: si, placed, util: usedArea / (si.w * si.h), waste: 1 - usedArea / (si.w * si.h) });
