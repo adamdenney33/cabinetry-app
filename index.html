@@ -355,7 +355,7 @@ textarea { resize: vertical; min-height: 70px; }
 .cl-settings-bar select, .cl-settings-bar input { padding: 5px 8px; font-size: 13px; }
 .cl-section-header { padding: 14px 14px 6px; display: flex; align-items: center; justify-content: space-between; }
 .cl-section-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: var(--muted); }
-.cl-table { width: 100%; border-collapse: collapse; }
+.cl-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
 .cl-table th {
   font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px;
   color: var(--muted); padding: 5px 6px; text-align: left;
@@ -1127,8 +1127,9 @@ html.dark .cl-table tbody tr:nth-child(even) td { background: rgba(255,255,255,0
               <th style="width:60px">H</th>
               <th style="width:68px">Qty</th>
               <th style="width:48px" class="cl-col-grain" id="th-grain" title="Grain direction">Grain</th>
+              <th style="width:52px"></th>
               <th style="width:86px" class="cl-col-material" id="th-material">Panel</th>
-              <th class="cl-col-notes" id="th-notes" style="min-width:80px">Notes</th>
+              <th style="width:80px" class="cl-col-notes" id="th-notes">Notes</th>
               <th style="width:24px"></th>
             </tr>
           </thead>
@@ -1163,6 +1164,8 @@ html.dark .cl-table tbody tr:nth-child(even) td { background: rgba(255,255,255,0
               <th style="width:68px">Qty</th>
               <th style="width:48px" class="cl-col-grain" id="th-grain-sheet" title="Grain direction">Grain</th>
               <th style="width:52px" title="Blade kerf allowance">Kerf</th>
+              <th style="width:86px" class="cl-col-material"></th>
+              <th style="width:80px" class="cl-col-notes"></th>
               <th style="width:24px"></th>
             </tr>
           </thead>
@@ -1983,6 +1986,7 @@ function cycleGrain(id, type) {
   if (!item) return;
   item.grain = item.grain === 'none' ? 'h' : item.grain === 'h' ? 'v' : 'none';
   type === 'sheet' ? renderSheets() : renderPieces();
+  if (results) optimize();
 }
 
 // ── TOGGLE ENABLE ──
@@ -2137,7 +2141,7 @@ function renderSheets() {
   const tbody = document.getElementById('sheets-body');
   if (!tbody) return;
   if (!sheets.length) {
-    tbody.innerHTML = `<tr><td colspan="8" style="color:var(--muted);font-size:11px;padding:10px 14px;text-align:center">No panels — click "+ Add panel"</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="11" style="color:var(--muted);font-size:11px;padding:10px 14px;text-align:center">No panels — click "+ Add panel"</td></tr>`;
     return;
   }
   tbody.innerHTML = sheets.map((s, i) => {
@@ -2193,6 +2197,8 @@ function renderSheets() {
           onkeydown="if(event.key==='Enter')this.blur()"
           ${dis ? 'disabled' : ''} placeholder="0">
       </td>
+      <td class="cl-col-material" style="${colsVisible.material?'':'display:none'}"></td>
+      <td class="cl-col-notes" style="${colsVisible.notes?'':'display:none'}"></td>
       <td class="cl-del-cell" style="white-space:nowrap">
         <button class="cl-del-btn" onclick="duplicateSheet(${s.id})" title="Duplicate sheet" style="opacity:.6;margin-right:2px">⧉</button>
         <button class="cl-del-btn" onclick="removeSheet(${s.id})" title="Remove">${DEL_SVG}</button>
@@ -2269,7 +2275,7 @@ function renderPieces() {
   const tbody = document.getElementById('pieces-body');
   if (!tbody) return;
   if (!pieces.length) {
-    tbody.innerHTML = `<tr><td colspan="9" style="color:var(--muted);font-size:11px;padding:10px 14px;text-align:center">No parts — click "+ Add part"</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="11" style="color:var(--muted);font-size:11px;padding:10px 14px;text-align:center">No parts — click "+ Add part"</td></tr>`;
     return;
   }
   const makeOpts = (sel) => {
@@ -2326,6 +2332,7 @@ function renderPieces() {
         <button class="cl-grain-btn${p.grain !== 'none' ? ' active' : ''}"
           onclick="cycleGrain(${p.id},'piece')" title="Grain: ${p.grain}">${grainIcon(p.grain)}</button>
       </td>
+      <td></td>
       <td class="cl-col-material" style="${colsVisible.material?'':'display:none'}">
         <select class="cl-input" style="font-size:11px;padding:3px 4px;border-radius:3px"
           onchange="updatePiece(${p.id},'material',this.value)" ${dis ? 'disabled' : ''}>
