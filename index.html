@@ -4370,32 +4370,90 @@ function toggleProjectsPanel() {
   if (isOpen) loadProjects();
 }
 
+// ── Local project storage helpers ──
+function _getLocalProjects() {
+  try { return JSON.parse(localStorage.getItem('pc_local_projects') || '[]'); } catch { return []; }
+}
+function _setLocalProjects(list) {
+  localStorage.setItem('pc_local_projects', JSON.stringify(list));
+}
+
+function _renderProjectPayload(p) {
+  sheets = []; pieces = []; _sheetId = 1; _pieceId = 1; pieceColorIdx = 0;
+  for (const s of (p.sheets || [])) { sheets.push({ ...s, id: _sheetId++ }); }
+  for (const pc of (p.pieces || [])) { pieces.push({ ...pc, id: _pieceId++ }); }
+  if (p.settings) {
+    if (p.settings.units) setUnits(p.settings.units);
+    const kerfEl = document.getElementById('kerf');
+    if (kerfEl && p.settings.kerf) kerfEl.value = p.settings.kerf;
+  }
+  results = null;
+  renderSheets(); renderPieces();
+  document.getElementById('results-area').innerHTML = '<div class="empty-state"><h3>Project loaded</h3><p>Click Optimize to generate layouts.</p></div>';
+  toggleProjectsPanel();
+}
+
 function loadProjects() {
   const listEl = document.getElementById('projects-list');
   if (!listEl) return;
+
+  const localProjects = _getLocalProjects();
+
   if (!_userId) {
-    listEl.innerHTML = '<div class="projects-signin">Sign in to save &amp; load projects. <span onclick="dismissAuth();_showAuth()">Sign in</span></div>';
+    // Show only local projects with a sign-in prompt
+    let html = '';
+    if (localProjects.length) {
+      html += localProjects.map(p => {
+        const label = new Date(p.updatedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+        return `<div class="project-row">
+          <span class="project-name" onclick="loadLocalProject('${p.id}')" title="Load">${p.name}</span>
+          <span class="project-date">${label}</span>
+          <button class="project-del" onclick="deleteLocalProject('${p.id}')" title="Delete">×</button>
+        </div>`;
+      }).join('');
+    } else {
+      html += '<div style="color:var(--muted);font-size:12px;padding:6px 0">No saved projects yet.</div>';
+    }
+    html += '<div class="projects-signin" style="margin-top:6px">Sign in to sync to the cloud. <span onclick="dismissAuth();_showAuth()">Sign in</span></div>';
+    listEl.innerHTML = html;
     return;
   }
+
+  // Logged in: show cloud projects, plus any local projects at the bottom
   listEl.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:6px 0">Loading…</div>';
   _db('projects').select('id,name,updated_at').order('updated_at', { ascending: false })
     .then(({ data, error }) => {
-      if (error || !data) { listEl.innerHTML = '<div style="color:var(--danger);font-size:12px">Error loading projects.</div>'; return; }
-      if (!data.length) { listEl.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:6px 0">No saved projects yet.</div>'; return; }
-      listEl.innerHTML = data.map(p => {
-        const d = new Date(p.updated_at);
-        const label = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-        return `<div class="project-row">
-          <span class="project-name" onclick="loadProject('${p.id}')" title="Load">${p.name}</span>
-          <span class="project-date">${label}</span>
-          <button class="project-del" onclick="deleteProject('${p.id}')" title="Delete">×</button>
-        </div>`;
-      }).join('');
+      let html = '';
+      if (error || !data) {
+        html += '<div style="color:var(--danger);font-size:12px">Error loading cloud projects.</div>';
+      } else if (!data.length) {
+        html += '<div style="color:var(--muted);font-size:12px;padding:6px 0">No cloud projects yet.</div>';
+      } else {
+        html += data.map(p => {
+          const label = new Date(p.updated_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+          return `<div class="project-row">
+            <span class="project-name" onclick="loadProject('${p.id}')" title="Load">${p.name}</span>
+            <span class="project-date">${label}</span>
+            <button class="project-del" onclick="deleteProject('${p.id}')" title="Delete">×</button>
+          </div>`;
+        }).join('');
+      }
+      if (localProjects.length) {
+        html += '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);margin-top:10px;margin-bottom:4px">On This Device</div>';
+        html += localProjects.map(p => {
+          const label = new Date(p.updatedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+          return `<div class="project-row">
+            <span class="project-name" onclick="loadLocalProject('${p.id}')" title="Load">${p.name}</span>
+            <span class="project-date">${label}</span>
+            <button class="project-del" onclick="deleteLocalProject('${p.id}')" title="Delete">×</button>
+          </div>`;
+        }).join('');
+      }
+      listEl.innerHTML = html;
     });
 }
 
 function showSaveProjectForm() {
-  if (!_requireAuth()) return;
   const form = document.getElementById('save-proj-form');
   const inp = document.getElementById('save-proj-name');
   if (!form || !inp) return;
@@ -4418,6 +4476,15 @@ async function promptSaveProject() { showSaveProjectForm(); }
 
 async function saveProject(name) {
   const payload = { sheets: JSON.parse(JSON.stringify(sheets)), pieces: JSON.parse(JSON.stringify(pieces)), settings: { units: window.units, kerf: document.getElementById('kerf').value } };
+  if (!_userId) {
+    // Save locally
+    const list = _getLocalProjects();
+    list.unshift({ id: Date.now().toString(36) + Math.random().toString(36).slice(2), name, updatedAt: new Date().toISOString(), data: payload });
+    _setLocalProjects(list);
+    _toast(`"${name}" saved on this device`, 'success');
+    loadProjects();
+    return;
+  }
   const { error } = await _db('projects').insert([{ name, data: payload, user_id: _userId }]);
   if (error) { _toast('Save failed: ' + error.message, 'error'); return; }
   _toast(`"${name}" saved`, 'success');
@@ -4427,24 +4494,25 @@ async function saveProject(name) {
 async function loadProject(id) {
   const { data, error } = await _db('projects').select('*').eq('id', id).single();
   if (error || !data) { _toast('Could not load project.', 'error'); return; }
-  const p = data.data;
-  sheets = []; pieces = []; _sheetId = 1; _pieceId = 1; pieceColorIdx = 0;
-  for (const s of (p.sheets || [])) { sheets.push({ ...s, id: _sheetId++ }); }
-  for (const pc of (p.pieces || [])) { pieces.push({ ...pc, id: _pieceId++ }); }
-  if (p.settings) {
-    if (p.settings.units) setUnits(p.settings.units);
-    const kerfEl = document.getElementById('kerf');
-    if (kerfEl && p.settings.kerf) kerfEl.value = p.settings.kerf;
-  }
-  results = null;
-  renderSheets(); renderPieces();
-  document.getElementById('results-area').innerHTML = '<div class="empty-state"><h3>Project loaded</h3><p>Click Optimize to generate layouts.</p></div>';
-  toggleProjectsPanel();
+  _renderProjectPayload(data.data);
+}
+
+function loadLocalProject(id) {
+  const list = _getLocalProjects();
+  const project = list.find(p => p.id === id);
+  if (!project) { _toast('Project not found.', 'error'); return; }
+  _renderProjectPayload(project.data);
 }
 
 async function deleteProject(id) {
   if (!confirm('Delete this project?')) return;
   await _db('projects').delete().eq('id', id);
+  loadProjects();
+}
+
+function deleteLocalProject(id) {
+  if (!confirm('Delete this project?')) return;
+  _setLocalProjects(_getLocalProjects().filter(p => p.id !== id));
   loadProjects();
 }
 
