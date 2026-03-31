@@ -1446,6 +1446,24 @@ function _toast(msg, type = 'info', duration = 3500) {
   }, duration);
 }
 
+function _confirm(msg, onConfirm, danger = true) {
+  const id = '_confirm_' + Date.now();
+  const div = document.createElement('div');
+  div.id = id;
+  div.style.cssText = 'position:fixed;bottom:24px;right:24px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px;box-shadow:0 6px 24px rgba(0,0,0,.18);z-index:9999;max-width:280px;font-size:13px;color:var(--text);animation:slideIn .18s ease';
+  const btnStyle = danger
+    ? 'background:var(--danger);color:#fff;border:none'
+    : 'background:var(--accent);color:#fff;border:none';
+  div.innerHTML = `<div style="margin-bottom:12px;line-height:1.4">${msg}</div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button onclick="document.getElementById('${id}').remove()" style="padding:5px 14px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);cursor:pointer;font-size:12px">Cancel</button>
+      <button id="${id}_ok" style="padding:5px 14px;border-radius:6px;cursor:pointer;font-size:12px;${btnStyle}">Confirm</button>
+    </div>`;
+  document.body.appendChild(div);
+  document.getElementById(id + '_ok').onclick = () => { div.remove(); onConfirm(); };
+  setTimeout(() => { const el = document.getElementById(id); if (el) el.remove(); }, 8000);
+}
+
 let _userId = null;
 let _authMode = 'signin';
 
@@ -1844,7 +1862,7 @@ function renderStockMain() {
         <button class="btn btn-outline" onclick="adjustStock(${item.id}, 5)" style="font-size:12px;padding:5px 10px">+ 5</button>
         <button class="btn btn-outline" onclick="adjustStock(${item.id}, 10)" style="font-size:12px;padding:5px 10px">+ 10</button>
         <button class="btn btn-outline" onclick="useStockInCutList(${item.id})" style="font-size:11px;padding:5px 8px;flex:1" title="Load into cut list">→ Cut List</button>
-        <button class="btn btn-danger" onclick="if(confirm('Remove this stock item?'))removeStock(${item.id})" style="padding:5px 8px">×</button>
+        <button class="btn btn-danger" onclick="_confirm('Remove <strong>${item.name}</strong> from stock?',()=>removeStock(${item.id}))" style="padding:5px 8px">×</button>
       </div>
     </div>`;
   };
@@ -1922,10 +1940,10 @@ let pieceColorIdx = 0;
 let _sheetId = 1;
 let _pieceId = 1;
 let _csvImportTarget = 'pieces';
-let layoutZoom = 1.0;
+let layoutZoom = parseFloat(localStorage.getItem('pc_zoom')) || 1.0;
 let layoutColor = true;
 let layoutGrain = true;
-let layoutFontScale = 1.0;
+let layoutFontScale = parseFloat(localStorage.getItem('pc_font_scale')) || 1.0;
 let colsVisible = { grain: true, material: true, label: true, notes: true };
 let layoutRotate = false;
 let clShowSummary = true;
@@ -2034,7 +2052,9 @@ function onDragEnd() {
 }
 
 function clearCutList() {
-  if (!confirm('Clear all parts and panels? This cannot be undone.')) return;
+  _confirm('Clear all parts and panels? This cannot be undone.', () => _doClearAll()); return;
+}
+function _doClearAll() {
   pieces = []; sheets = []; _pieceId = 1; _sheetId = 1; pieceColorIdx = 0; results = null;
   ['pc_cl_pieces','pc_cl_sheets','pc_cl_pid','pc_cl_sid','pc_cl_colorIdx'].forEach(k => localStorage.removeItem(k));
   renderPieces(); renderSheets();
@@ -2438,9 +2458,9 @@ function handleCSVImport(input) {
 }
 
 // ── LAYOUT TOOLBAR ──
-function zoomIn()  { layoutZoom = Math.min(layoutZoom + 0.25, 4); renderResults(); }
-function zoomOut() { layoutZoom = Math.max(layoutZoom - 0.25, 0.25); renderResults(); }
-function zoomFit() { layoutZoom = 1.0; renderResults(); }
+function zoomIn()  { layoutZoom = Math.min(layoutZoom + 0.25, 4); localStorage.setItem('pc_zoom', layoutZoom); renderResults(); }
+function zoomOut() { layoutZoom = Math.max(layoutZoom - 0.25, 0.25); localStorage.setItem('pc_zoom', layoutZoom); renderResults(); }
+function zoomFit() { layoutZoom = 1.0; layoutFontScale = 1.0; localStorage.setItem('pc_zoom', layoutZoom); localStorage.setItem('pc_font_scale', layoutFontScale); renderResults(); }
 function toggleLayoutColor() {
   layoutColor = !layoutColor;
   const b = document.getElementById('lt-color'); if (b) b.classList.toggle('active', layoutColor);
@@ -2451,7 +2471,7 @@ function toggleLayoutGrain() {
   const b = document.getElementById('lt-grain'); if (b) b.classList.toggle('active', layoutGrain);
   renderResults();
 }
-function adjustFontScale(d) { layoutFontScale = Math.max(0.5, Math.min(2.5, layoutFontScale + d)); renderResults(); }
+function adjustFontScale(d) { layoutFontScale = Math.max(0.5, Math.min(2.5, layoutFontScale + d)); localStorage.setItem('pc_font_scale', layoutFontScale); renderResults(); }
 function printLayout(mode='print') {
   if (!results || !results.layouts || !results.layouts.length) { _toast('Run the optimiser first', 'info'); return; }
   if (activeTab !== 'layout') { switchTab('layout'); }
@@ -2947,8 +2967,9 @@ function renderLayout(area) {
     <div class="stat-card success"><div class="stat-label">Pieces Placed</div><div class="stat-value">${results.placed}</div><div class="stat-sub">of ${results.total} total</div></div>
     <div class="stat-card warn"><div class="stat-label">Material Usage</div><div class="stat-value">${avgUtil}%</div><div class="stat-sub">${(100 - parseFloat(avgUtil)).toFixed(1)}% waste</div></div>
     <div class="stat-card"><div class="stat-label">Total Cuts</div><div class="stat-value">${totalCuts}</div><div class="stat-sub">${lenLabel} cut length</div></div>
+    ${results.kerf > 0 ? `<div class="stat-card"><div class="stat-label">Kerf</div><div class="stat-value">${results.kerf}${u}</div><div class="stat-sub">blade allowance applied</div></div>` : ''}
     ${matCost > 0 ? `<div class="stat-card success"><div class="stat-label">Material Cost</div><div class="stat-value">${cur}${matCost.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0})}</div><div class="stat-sub">from stock prices</div></div>` : ''}
-    ${results.unplaced.length ? `<div class="stat-card danger"><div class="stat-label">Unplaced</div><div class="stat-value">${results.unplaced.length}</div><div class="stat-sub">need more sheets</div></div>` : ''}
+    ${results.unplaced.length ? `<div class="stat-card danger"><div class="stat-label">Unplaced</div><div class="stat-value">${results.unplaced.length}</div><div class="stat-sub">add more sheets to place all pieces</div></div>` : ''}
   </div>`;
   // "Quote this job" action bar
   const qBtn = matCost > 0 ? `<button class="btn btn-outline" onclick="quoteFromCutList(${matCost})" style="font-size:11px;padding:5px 12px" title="Pre-fill a new quote with this material cost">⎙ Quote this Job</button>` : '';
@@ -3346,7 +3367,7 @@ function renderQuoteMain() {
           <div class="qc-meta"><span contenteditable="true" onblur="updateQuoteField(${q.id},'client',this.innerText.trim())" title="Click to edit client" style="cursor:text">${q.client}</span> &nbsp;·&nbsp; ${q.date} &nbsp;·&nbsp; ${statusBadge(q.status)}</div>
           ${q.notes ? `<div class="qc-notes" contenteditable="true" onblur="updateQuoteField(${q.id},'notes',this.innerText.trim())" title="Click to edit notes">${q.notes}</div>` : ''}
         </div>
-        <button class="btn btn-danger" onclick="if(confirm('Delete this quote?'))removeQuote(${q.id})" style="padding:4px 8px;margin-left:8px;flex-shrink:0">×</button>
+        <button class="btn btn-danger" onclick="_confirm('Delete quote for <strong>${q.client}</strong>?',()=>removeQuote(${q.id}))" style="padding:4px 8px;margin-left:8px;flex-shrink:0">×</button>
       </div>
       <div class="qc-breakdown">
         <div class="qb-row">
@@ -3434,7 +3455,7 @@ async function addOrder() {
   if (error) { _toast('Could not save order — ' + (error.message || JSON.stringify(error)), 'error'); console.error(error); return; }
   // Save notes to localStorage (notes column may not be in DB schema)
   const notesVal = document.getElementById('o-notes').value.trim();
-  if (notesVal && data) { data.notes = notesVal; _onSet(data.id, notesVal); }
+  if (data) { data.notes = notesVal; _onSet(data.id, notesVal); }
   orders.unshift(data);
   _toast('Order created', 'success');
   document.getElementById('o-client').value = '';
@@ -3512,7 +3533,7 @@ function renderOrdersMain() {
         </div>
         <div class="oc-right">
           <div class="oc-value" contenteditable="true" onblur="updateOrderField(${o.id},'value',this.innerText.replace(/[^0-9.]/g,''))" title="Click to edit value">${fmt(o.value)}</div>
-          <button class="btn btn-danger" onclick="if(confirm('Delete this order?'))removeOrder(${o.id})" style="padding:4px 8px;margin-left:8px">×</button>
+          <button class="btn btn-danger" onclick="_confirm('Delete order for <strong>${o.client}</strong>?',()=>removeOrder(${o.id}))" style="padding:4px 8px;margin-left:8px">×</button>
         </div>
       </div>
       <div class="oc-pipeline">${pipe}</div>
@@ -4442,10 +4463,11 @@ async function loadProject(id) {
   toggleProjectsPanel();
 }
 
-async function deleteProject(id) {
-  if (!confirm('Delete this project?')) return;
-  await _db('projects').delete().eq('id', id);
-  loadProjects();
+function deleteProject(id) {
+  _confirm('Delete this project? This cannot be undone.', async () => {
+    await _db('projects').delete().eq('id', id);
+    loadProjects();
+  });
 }
 
 // ══════════════════════════════════════════
