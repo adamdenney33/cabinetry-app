@@ -4465,11 +4465,11 @@ function printQuote(id, mode='print') {
 <div class="bill-row">
   <div class="bill-block">
     <label>Prepared for</label>
-    <div class="name">${q.client}</div>
+    <div class="name">${_escHtml(q.client)}</div>
   </div>
   <div class="bill-block">
     <label>Project</label>
-    <div class="name" style="font-size:15px">${q.project}</div>
+    <div class="name" style="font-size:15px">${_escHtml(q.project)}</div>
   </div>
 </div>
 
@@ -4488,7 +4488,7 @@ function printQuote(id, mode='print') {
   <div class="total-amount">${fmt0(total)}</div>
 </div>
 
-${q.notes ? `<div class="notes-box"><label>Notes &amp; Inclusions</label><p>${q.notes.replace(/\n/g,'<br>')}</p></div>` : ''}
+${q.notes ? `<div class="notes-box"><label>Notes &amp; Inclusions</label><p>${_escHtml(q.notes).replace(/\n/g,'<br>')}</p></div>` : ''}
 
 <div class="validity">This quote is valid for 30 days from the date of issue. Prices are subject to change after this period.</div>
 
@@ -5962,6 +5962,7 @@ function renderCQSavedShelf() {
       <div style="font-size:11px;font-weight:600;color:var(--text)">${q.client||q.project}</div>
       <div style="font-size:10px;color:var(--muted)">${q.date}</div>
       <div style="font-size:11px;font-weight:700;color:var(--accent)">${cur}${Math.round(gt).toLocaleString()}</div>
+      <button style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:11px;padding:0" onclick="event.stopPropagation();dupCQSavedQuote(${i})" title="Duplicate">&#10697;</button>
       <button style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;padding:0" onclick="event.stopPropagation();deleteCQQuote(${i})">&times;</button>
     </div>`;
   }).join('');
@@ -6168,6 +6169,20 @@ function importCabBuilderToCQ() {
   switchSection('quote');
   switchQuoteTab('cabinet');
   renderCQTable();
+}
+
+// ── Duplicate saved quote ──
+function dupCQSavedQuote(idx) {
+  const src = cqSavedQuotes[idx];
+  if (!src) return;
+  const copy = JSON.parse(JSON.stringify(src));
+  copy.id = Date.now();
+  copy.client = src.client + ' (copy)';
+  copy.date = new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
+  cqSavedQuotes.unshift(copy);
+  saveCQSaved();
+  renderCQSavedShelf();
+  _toast('Quote duplicated', 'success');
 }
 
 // ── Init CQ ──
