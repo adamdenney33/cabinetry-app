@@ -668,7 +668,8 @@ canvas { display: block; }
 
 /* CQ Global Settings Cards */
 .cq-gv-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(120px, 1fr)); gap:10px; }
-.cq-gv-card { background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:10px 12px; text-align:center; }
+.cq-gv-card { background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:10px 12px; text-align:center; transition:border-color .15s; }
+.cq-gv-card:focus-within { border-color:var(--accent); }
 .cq-gv-card label { display:block; font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:var(--muted); margin-bottom:6px; }
 .cq-gv-card input { width:100%; text-align:center; font-size:16px; font-weight:700; color:var(--text); padding:6px 4px; border:1px solid transparent; border-radius:6px; background:transparent; outline:none; font-family:inherit; }
 .cq-gv-card input:focus { border-color:var(--accent); background:var(--surface); box-shadow:0 0 0 2px var(--accent-dim); }
@@ -5991,6 +5992,7 @@ function renderCQTable() {
     <span style="flex:1"></span>
     <button style="font-size:10px;color:var(--muted);background:none;border:none;cursor:pointer;padding:2px 6px;font-family:inherit" onclick="cqExpandAll()" title="Expand all sections">Expand All</button>
     <button style="font-size:10px;color:var(--muted);background:none;border:none;cursor:pointer;padding:2px 6px;font-family:inherit" onclick="cqCollapseAll()" title="Collapse all sections">Collapse All</button>
+    <button style="font-size:10px;color:var(--danger);background:none;border:none;cursor:pointer;padding:2px 6px;font-family:inherit" onclick="_confirm('Clear all cabinets from this quote?',()=>{cqLines=[];cqNextId=1;saveCQLines();renderCQTable()})" title="Remove all cabinets">Clear All</button>
   </div>`;
   area.innerHTML = html;
 
@@ -6039,6 +6041,7 @@ function renderCQTable() {
       <div class="cq-summary-row"><span>Linear Run</span><span>${(cqLines.reduce((s,l)=>s+(l.w/1000)*l.qty,0)).toFixed(1)}m</span></div>
       ${cqSettings.markup > 0 ? `<div class="cq-summary-row"><span style="color:var(--success)">Profit (markup)</span><span style="color:var(--success);font-weight:700">${fmt0(markupAmt)}</span></div>` : ''}
       <div class="cq-summary-row"><span>Effective Rate</span><span>${cur}${totalHrs > 0 ? (grandTotal / totalHrs).toFixed(0) : '0'}/hr</span></div>
+      ${(() => { const lm = cqLines.reduce((s,l)=>s+(l.w/1000)*l.qty,0); return lm > 0 ? `<div class="cq-summary-row"><span>Price per Lin. Metre</span><span>${cur}${Math.round(grandTotal / lm).toLocaleString()}/m</span></div>` : ''; })()}
     </div>
     <div>
       <div class="cq-grand-total">
