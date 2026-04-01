@@ -5316,6 +5316,7 @@ function renderCabResults() {
       <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);margin-bottom:8px">Full Quote Total (${cabItems.length} cabinets)</div>
       <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="color:var(--text2);font-size:13px">Subtotal</span><span style="font-size:14px;font-weight:600">${fmt(quoteSubtotal)}</span></div>
       <div style="display:flex;justify-content:space-between"><span style="font-weight:700;font-size:15px;color:var(--accent)">Total (inc VAT)</span><span style="font-weight:700;font-size:18px;color:var(--accent)">${fmt(quoteTotal)}</span></div>
+      <button class="btn btn-outline" onclick="importCabBuilderToCQ()" style="width:100%;margin-top:10px;font-size:11px">Export to Cabinet Quote Tab &rarr;</button>
     </div>`;
   }
 
@@ -5447,24 +5448,45 @@ function renderCQSettingsLists() {
 function addCQMaterial() { cqSettings.materials.push({name:'New Material',price:0}); saveCQSettings(); renderCQSettingsLists(); }
 function addCQHardware() { cqSettings.hardware.push({name:'New Hardware',price:0}); saveCQSettings(); renderCQSettingsLists(); }
 
+// ── Type Presets ──
+const CQ_PRESETS = {
+  'Base Cabinet':   { w:600, h:720, d:560, doors:2, drawers:0, shelves:1 },
+  'Wall Cabinet':   { w:600, h:720, d:330, doors:2, drawers:0, shelves:2 },
+  'Tall Cabinet':   { w:600, h:2100, d:560, doors:2, drawers:0, shelves:4 },
+  'Drawer Unit':    { w:600, h:720, d:560, doors:0, drawers:3, shelves:0 },
+  'Shelf Unit':     { w:800, h:1800, d:350, doors:0, drawers:0, shelves:4 },
+  'Vanity':         { w:900, h:850, d:500, doors:2, drawers:1, shelves:0 },
+  'Island':         { w:1200, h:900, d:600, doors:4, drawers:2, shelves:1 },
+  'Pantry':         { w:600, h:2100, d:560, doors:2, drawers:0, shelves:6 },
+  'Custom':         { w:600, h:720, d:560, doors:0, drawers:0, shelves:0 },
+};
+
 // ── Default Line Item ──
-function cqDefaultLine() {
+function cqDefaultLine(type) {
+  type = type || 'Base Cabinet';
+  const preset = CQ_PRESETS[type] || CQ_PRESETS['Base Cabinet'];
   return {
-    id: cqNextId++, name: '', type: 'Base Cabinet',
-    w: 600, h: 720, d: 560, qty: 1,
+    id: cqNextId++, name: '', type,
+    w: preset.w, h: preset.h, d: preset.d, qty: 1,
     material: cqSettings.materials[0]?.name || '',
     backMat: (cqSettings.materials.find(m=>m.name.toLowerCase().includes('3mm') || m.name.toLowerCase().includes('back')) || cqSettings.materials[0])?.name || '',
-    doors: 0, drawers: 0, shelves: 0, adjShelves: 0,
-    hwItems: [], // array of {name, qty}
+    doors: preset.doors, drawers: preset.drawers, shelves: preset.shelves, adjShelves: 0,
+    hwItems: [],
     labourHrs: 0, labourOverride: false,
-    matCostOverride: null, // null = auto-calc
+    matCostOverride: null,
     notes: ''
   };
 }
 
 // ── Add / Remove / Duplicate Lines ──
-function addCQLine() {
-  cqLines.push(cqDefaultLine());
+function addCQLine(type) {
+  cqLines.push(cqDefaultLine(type));
+  saveCQLines(); renderCQTable();
+}
+function addCQLineFromPreset(type) {
+  const line = cqDefaultLine(type);
+  line.name = type;
+  cqLines.push(line);
   saveCQLines(); renderCQTable();
 }
 function removeCQLine(id) {
@@ -5491,6 +5513,14 @@ function updateCQLine(id, field, val) {
   } else if (field === 'matCostOverride') {
     const v = parseFloat(val);
     line.matCostOverride = isNaN(v) ? null : v;
+  } else if (field === 'type') {
+    line.type = val;
+    // Apply preset dimensions if type changed
+    const preset = CQ_PRESETS[val];
+    if (preset) {
+      line.w = preset.w; line.h = preset.h; line.d = preset.d;
+      line.doors = preset.doors; line.drawers = preset.drawers; line.shelves = preset.shelves;
+    }
   } else {
     line[field] = val;
   }
@@ -5619,6 +5649,9 @@ function renderCQTable() {
       <h3>Cabinet Quote Builder</h3>
       <p style="margin-bottom:16px">Add line items for each cabinet. Dimensions auto-calculate material costs.<br>Set your rates & material prices using the button above.</p>
       <button class="btn btn-primary" onclick="addCQLine()" style="margin:0 auto">+ Add First Cabinet</button>
+      <div style="margin-top:12px;display:flex;gap:6px;flex-wrap:wrap;justify-content:center">
+        ${Object.keys(CQ_PRESETS).filter(t=>t!=='Custom').map(t=>`<button class="btn btn-outline" onclick="addCQLineFromPreset('${t}')" style="font-size:11px;padding:5px 10px;width:auto">${t}</button>`).join('')}
+      </div>
     </div>`;
     sumArea.innerHTML = '';
     return;
@@ -5696,7 +5729,10 @@ function renderCQTable() {
   });
 
   html += `</tbody></table>`;
-  html += `<button class="cq-add-row" onclick="addCQLine()">+ Add Cabinet Line</button>`;
+  html += `<div style="display:flex;gap:6px;flex-wrap:wrap;margin:8px 0">
+    <button class="cq-add-row" onclick="addCQLine()" style="margin:0">+ Add Blank</button>
+    ${Object.keys(CQ_PRESETS).filter(t=>t!=='Custom').map(t=>`<button class="cq-add-row" onclick="addCQLineFromPreset('${t}')" style="margin:0;border-style:solid;font-size:11px;padding:5px 10px">${t}</button>`).join('')}
+  </div>`;
   area.innerHTML = html;
 
   // Summary
@@ -5966,6 +6002,30 @@ ${notes?'<div class="notes-box"><label>Scope &amp; Notes</label><p>'+notes.repla
 </body></html>`;
 
   mode === 'pdf' ? _saveAsPDF(pdfHtml) : _printInFrame(pdfHtml);
+}
+
+// ── Import from Cabinet Builder tab ──
+function importCabBuilderToCQ() {
+  if (!cabItems.length) { _toast('No cabinets in the Cabinet Builder to import.', 'error'); return; }
+  cabItems.forEach(cab => {
+    const line = cqDefaultLine('Custom');
+    line.name = cab.name || 'Imported Cabinet';
+    line.w = cab.w; line.h = cab.h; line.d = cab.d;
+    line.qty = cab.qty || 1;
+    line.doors = cab.doorCount || 0;
+    line.drawers = cab.drawerCount || 0;
+    line.shelves = (cab.fixedShelves || 0) + (cab.adjShelves || 0) + (cab.looseShelves || 0);
+    // Try to match material names
+    const matchMat = name => cqSettings.materials.find(m => m.name.toLowerCase().includes(name.toLowerCase().split(' ')[0]))?.name || cqSettings.materials[0]?.name || '';
+    line.material = matchMat(cab.carcassMat);
+    line.backMat = matchMat(cab.backMat);
+    cqLines.push(line);
+  });
+  saveCQLines();
+  _toast(`Imported ${cabItems.length} cabinet(s) from Cabinet Builder`, 'success');
+  switchSection('quote');
+  switchQuoteTab('cabinet');
+  renderCQTable();
 }
 
 // ── Init CQ ──
