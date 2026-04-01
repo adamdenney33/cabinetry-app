@@ -829,6 +829,21 @@ html.dark .cl-table tbody tr:nth-child(even) td { background: rgba(255,255,255,0
 }
 .cl-col-pill.active { background: var(--text); color: var(--surface); border-color: var(--text); }
 
+/* ── Responsive: Cabinet Quote on smaller screens ── */
+@media (max-width: 1200px) {
+  .cq-summary-grid { grid-template-columns: 1fr 1fr; }
+  .cq-project-bar { flex-direction: column; gap: 8px; }
+  .cq-project-bar .form-group { min-width: 100% !important; }
+}
+@media (max-width: 768px) {
+  .cq-table-wrap { padding: 8px; }
+  .cq-table th, .cq-table td { padding: 2px; }
+  .cq-table .cq-input { padding: 4px 5px; font-size: 11px; }
+  .cq-summary-grid { grid-template-columns: 1fr; }
+  .cq-settings-expanded .cq-mat-grid { grid-template-columns: 1fr; }
+  .cq-dim-group { flex-wrap: wrap; }
+}
+
 /* Print */
 @media print {
   /* Hide everything by default */
