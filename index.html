@@ -5683,111 +5683,161 @@ function renderCQEditor() {
   const cur = window.currency;
   const c = calcCQLine(line);
   const matOpts = (field, val) => cqSettings.materials.map(m => `<option value="${m.name}" ${m.name===val?'selected':''}>${m.name} (${cur}${m.price})</option>`).join('');
-  const hwOpts = cqSettings.hardware.map(h => `<option value="${h.name}">${h.name} (${cur}${h.price})</option>`).join('');
   const typeOpts = CQ_TYPES.map(t => `<option value="${t}" ${t===line.type?'selected':''}>${t}</option>`).join('');
+  const so = sec => cqOpenSections.has(line.id + '-' + sec);
+  const chevron = sec => `<span style="font-size:10px;color:var(--muted);transition:transform .2s;display:inline-block;${so(sec)?'transform:rotate(90deg)':''}">&#9654;</span>`;
+  const secBorder = 'border:1px solid var(--border);border-radius:8px;margin-bottom:8px;overflow:hidden;background:var(--surface)';
+  const secHead = 'display:flex;align-items:center;gap:8px;padding:10px 12px;cursor:pointer;user-select:none';
+  const secTitle = 'font-size:13px;font-weight:600;color:var(--text);flex:1';
+  const secSub = 'font-size:11px;color:var(--muted)';
+  const secBody = sec => `style="padding:10px 12px;border-top:1px solid var(--border);${so(sec)?'':'display:none'}"`;
+  const fgStyle = 'margin:0';
+  const lblStyle = 'font-size:12px';
+  const inputStyle = 'font-size:14px';
+  const selectStyle = 'font-size:13px';
 
   el.innerHTML = `
     <div style="border-top:1px solid var(--border);padding-top:10px;margin-top:6px">
 
-      <!-- Name & Type -->
-      <div class="form-section" style="margin-bottom:12px">
-        <div class="form-row" style="margin-bottom:8px">
-          <div class="form-group" style="flex:2"><label style="font-size:12px">Name</label><input type="text" id="cqe-name" value="${line.name||''}" placeholder="${line.type}" style="font-size:14px;font-weight:600" oninput="cqUpdateField('name',this.value)"></div>
-          <div class="form-group" style="flex:1"><label style="font-size:12px">Type</label><select id="cqe-type" style="font-size:13px" onchange="cqUpdateField('type',this.value)">${typeOpts}</select></div>
-        </div>
+      <!-- Name & Type (always visible) -->
+      <div class="form-row" style="margin-bottom:10px">
+        <div class="form-group" style="flex:2;${fgStyle}"><label style="${lblStyle}">Name</label><input type="text" value="${line.name||''}" placeholder="${line.type}" style="${inputStyle};font-weight:600" oninput="cqUpdateField('name',this.value)"></div>
+        <div class="form-group" style="flex:1;${fgStyle}"><label style="${lblStyle}">Type</label><select style="${selectStyle}" onchange="cqUpdateField('type',this.value)">${typeOpts}</select></div>
       </div>
 
-      <!-- Dimensions -->
-      <div class="form-section" style="margin-bottom:12px">
-        <div class="form-section-title" style="font-size:12px">Dimensions</div>
-        <div class="form-row">
-          <div class="form-group"><label style="font-size:12px">Width (mm)</label><input type="number" value="${line.w}" style="font-size:14px" oninput="cqUpdateField('w',this.value)"></div>
-          <div class="form-group"><label style="font-size:12px">Height (mm)</label><input type="number" value="${line.h}" style="font-size:14px" oninput="cqUpdateField('h',this.value)"></div>
-          <div class="form-group"><label style="font-size:12px">Depth (mm)</label><input type="number" value="${line.d}" style="font-size:14px" oninput="cqUpdateField('d',this.value)"></div>
-          <div class="form-group" style="flex:0 0 60px"><label style="font-size:12px">Qty</label><input type="number" value="${line.qty}" min="1" style="font-size:14px;font-weight:700;text-align:center" oninput="cqUpdateField('qty',this.value)"></div>
+      <!-- DIMENSIONS -->
+      <div style="${secBorder}">
+        <div style="${secHead}" onclick="toggleCQSection(${line.id},'dims')">
+          ${chevron('dims')}
+          <span style="${secTitle}">Dimensions</span>
+          <span style="${secSub}">${line.w} × ${line.h} × ${line.d}mm${line.qty>1?' ×'+line.qty:''}</span>
         </div>
-      </div>
-
-      <!-- Materials -->
-      <div class="form-section" style="margin-bottom:12px">
-        <div class="form-section-title" style="font-size:12px">Materials</div>
-        <div class="form-row" style="margin-bottom:8px">
-          <div class="form-group"><label style="font-size:12px">Carcass</label><select style="font-size:13px" onchange="cqUpdateField('material',this.value)">${matOpts('material', line.material)}</select></div>
-          <div class="form-group"><label style="font-size:12px">Back Panel</label><select style="font-size:13px" onchange="cqUpdateField('backMat',this.value)">${matOpts('backMat', line.backMat)}</select></div>
-        </div>
-      </div>
-
-      <!-- Doors -->
-      <div class="form-section" style="margin-bottom:12px">
-        <div class="form-section-title" style="font-size:12px">Doors</div>
-        <div class="form-row" style="margin-bottom:8px">
-          <div class="form-group" style="flex:0 0 70px"><label style="font-size:12px">Count</label><input type="number" value="${line.doors}" min="0" style="font-size:14px;text-align:center" oninput="cqUpdateField('doors',this.value)"></div>
-          <div class="form-group"><label style="font-size:12px">Door Material</label><select style="font-size:13px" onchange="cqUpdateField('doorMat',this.value)">${matOpts('doorMat', line.doorMat||line.material)}</select></div>
-        </div>
-        ${line.doors > 0 ? `<div style="margin-bottom:4px">
-          <label style="font-size:11px;color:var(--muted)">% of front area</label>
-          <div class="cq-pct-row">
-            <input type="range" class="cq-pct-slider" min="50" max="100" value="${line.doorPct||95}" oninput="this.nextElementSibling.textContent=this.value+'%'" onchange="cqUpdateField('doorPct',this.value)">
-            <span class="cq-pct-val">${line.doorPct||95}%</span>
+        <div ${secBody('dims')}>
+          <div class="form-row" style="margin-bottom:0">
+            <div class="form-group" style="${fgStyle}"><label style="${lblStyle}">Width (mm)</label><input type="number" value="${line.w}" style="${inputStyle}" oninput="cqUpdateField('w',this.value)"></div>
+            <div class="form-group" style="${fgStyle}"><label style="${lblStyle}">Height (mm)</label><input type="number" value="${line.h}" style="${inputStyle}" oninput="cqUpdateField('h',this.value)"></div>
+            <div class="form-group" style="${fgStyle}"><label style="${lblStyle}">Depth (mm)</label><input type="number" value="${line.d}" style="${inputStyle}" oninput="cqUpdateField('d',this.value)"></div>
+            <div class="form-group" style="flex:0 0 60px;${fgStyle}"><label style="${lblStyle}">Qty</label><input type="number" value="${line.qty}" min="1" style="${inputStyle};font-weight:700;text-align:center" oninput="cqUpdateField('qty',this.value)"></div>
           </div>
-        </div>` : ''}
+        </div>
       </div>
 
-      <!-- Drawers -->
-      <div class="form-section" style="margin-bottom:12px">
-        <div class="form-section-title" style="font-size:12px">Drawers</div>
-        <div class="form-row" style="margin-bottom:8px">
-          <div class="form-group" style="flex:0 0 70px"><label style="font-size:12px">Count</label><input type="number" value="${line.drawers}" min="0" style="font-size:14px;text-align:center" oninput="cqUpdateField('drawers',this.value)"></div>
-          <div class="form-group"><label style="font-size:12px">Front Material</label><select style="font-size:13px" onchange="cqUpdateField('drawerFrontMat',this.value)">${matOpts('drawerFrontMat', line.drawerFrontMat||line.material)}</select></div>
+      <!-- MATERIALS -->
+      <div style="${secBorder}">
+        <div style="${secHead}" onclick="toggleCQSection(${line.id},'mats')">
+          ${chevron('mats')}
+          <span style="${secTitle}">Materials</span>
+          <span style="${secSub}">${(line.material||'').split(' ').slice(0,2).join(' ')}</span>
         </div>
-        ${line.drawers > 0 ? `<div class="form-row" style="margin-bottom:8px">
-          <div class="form-group"><label style="font-size:12px">Inner Material</label><select style="font-size:13px" onchange="cqUpdateField('drawerInnerMat',this.value)">${matOpts('drawerInnerMat', line.drawerInnerMat||line.backMat)}</select></div>
-        </div>
-        <div style="margin-bottom:4px">
-          <label style="font-size:11px;color:var(--muted)">% of front area</label>
-          <div class="cq-pct-row">
-            <input type="range" class="cq-pct-slider" min="30" max="100" value="${line.drawerPct||85}" oninput="this.nextElementSibling.textContent=this.value+'%'" onchange="cqUpdateField('drawerPct',this.value)">
-            <span class="cq-pct-val">${line.drawerPct||85}%</span>
+        <div ${secBody('mats')}>
+          <div class="form-row" style="margin-bottom:0">
+            <div class="form-group" style="${fgStyle}"><label style="${lblStyle}">Carcass</label><select style="${selectStyle}" onchange="cqUpdateField('material',this.value)">${matOpts('material', line.material)}</select></div>
+            <div class="form-group" style="${fgStyle}"><label style="${lblStyle}">Back Panel</label><select style="${selectStyle}" onchange="cqUpdateField('backMat',this.value)">${matOpts('backMat', line.backMat)}</select></div>
           </div>
-        </div>` : ''}
-      </div>
-
-      <!-- Shelves -->
-      <div class="form-section" style="margin-bottom:12px">
-        <div class="form-section-title" style="font-size:12px">Shelves</div>
-        <div class="form-row">
-          <div class="form-group"><label style="font-size:12px">Fixed</label><input type="number" value="${line.shelves}" min="0" style="font-size:14px" oninput="cqUpdateField('shelves',this.value)"></div>
-          <div class="form-group"><label style="font-size:12px">Adjustable</label><input type="number" value="${line.adjShelves}" min="0" style="font-size:14px" oninput="cqUpdateField('adjShelves',this.value)"></div>
         </div>
       </div>
 
-      <!-- Hardware -->
-      <div class="form-section" style="margin-bottom:12px">
-        <div class="form-section-title" style="font-size:12px">Extra Hardware</div>
-        <div style="font-size:11px;color:var(--muted);margin-bottom:6px">Auto: ${line.doors > 0 ? line.doors*2+' hinges' : ''}${line.doors>0&&line.drawers>0?' + ':''}${line.drawers > 0 ? line.drawers+' slides' : ''}${line.doors===0&&line.drawers===0?'None':''}</div>
-        ${line.hwItems.map((hw, hi) => `<div style="display:flex;gap:4px;align-items:center;margin-bottom:4px">
-          <select style="flex:1;font-size:12px;padding:5px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);font-family:inherit" onchange="updateCQHw(${line.id},${hi},'name',this.value)">${cqSettings.hardware.map(h=>`<option value="${h.name}" ${h.name===hw.name?'selected':''}>${h.name} (${cur}${h.price})</option>`).join('')}</select>
-          <input type="number" style="width:44px;text-align:center;padding:5px;font-size:12px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text)" value="${hw.qty}" min="1" onchange="updateCQHw(${line.id},${hi},'qty',this.value)">
-          <button class="cq-del-btn" onclick="removeCQHw(${line.id},${hi})">×</button>
-        </div>`).join('')}
-        <button class="cl-add-btn" onclick="addCQHwToLine(${line.id})" style="font-size:11px;padding:4px 10px;margin:4px 0 0">+ Add Hardware</button>
+      <!-- DOORS -->
+      <div style="${secBorder}">
+        <div style="${secHead}" onclick="toggleCQSection(${line.id},'doors')">
+          ${chevron('doors')}
+          <span style="${secTitle}">${line.doors > 0 ? '<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--accent);margin-right:4px"></span>' : ''}Doors</span>
+          <span style="${secSub}">${line.doors > 0 ? line.doors + ' door' + (line.doors!==1?'s':'') : 'None'}</span>
+        </div>
+        <div ${secBody('doors')}>
+          <div class="form-row" style="margin-bottom:8px">
+            <div class="form-group" style="flex:0 0 70px;${fgStyle}"><label style="${lblStyle}">Count</label><input type="number" value="${line.doors}" min="0" style="${inputStyle};text-align:center" oninput="cqUpdateField('doors',this.value)"></div>
+            <div class="form-group" style="${fgStyle}"><label style="${lblStyle}">Door Material</label><select style="${selectStyle}" onchange="cqUpdateField('doorMat',this.value)">${matOpts('doorMat', line.doorMat||line.material)}</select></div>
+          </div>
+          ${line.doors > 0 ? `<div>
+            <label style="font-size:11px;color:var(--muted)">% of front area covered</label>
+            <div class="cq-pct-row">
+              <input type="range" class="cq-pct-slider" min="50" max="100" value="${line.doorPct||95}" oninput="this.nextElementSibling.textContent=this.value+'%'" onchange="cqUpdateField('doorPct',this.value)">
+              <span class="cq-pct-val">${line.doorPct||95}%</span>
+            </div>
+          </div>` : ''}
+        </div>
       </div>
 
-      <!-- Extras -->
-      <div class="form-section" style="margin-bottom:12px">
-        <div class="form-section-title" style="font-size:12px">Extras</div>
-        <div class="form-row" style="margin-bottom:8px">
-          <div class="form-group"><label style="font-size:12px">Room</label><input type="text" value="${line.room||''}" placeholder="e.g. Kitchen" style="font-size:13px" list="cq-room-list" onchange="cqUpdateField('room',this.value)"></div>
+      <!-- DRAWERS -->
+      <div style="${secBorder}">
+        <div style="${secHead}" onclick="toggleCQSection(${line.id},'drawers')">
+          ${chevron('drawers')}
+          <span style="${secTitle}">${line.drawers > 0 ? '<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--accent);margin-right:4px"></span>' : ''}Drawers</span>
+          <span style="${secSub}">${line.drawers > 0 ? line.drawers + ' drawer' + (line.drawers!==1?'s':'') : 'None'}</span>
         </div>
-        <div class="form-row" style="margin-bottom:8px">
-          <div class="form-group"><label style="font-size:12px">Notes</label><input type="text" value="${line.notes||''}" placeholder="Notes..." style="font-size:13px" onchange="cqUpdateField('notes',this.value)"></div>
+        <div ${secBody('drawers')}>
+          <div class="form-row" style="margin-bottom:8px">
+            <div class="form-group" style="flex:0 0 70px;${fgStyle}"><label style="${lblStyle}">Count</label><input type="number" value="${line.drawers}" min="0" style="${inputStyle};text-align:center" oninput="cqUpdateField('drawers',this.value)"></div>
+            <div class="form-group" style="${fgStyle}"><label style="${lblStyle}">Front Material</label><select style="${selectStyle}" onchange="cqUpdateField('drawerFrontMat',this.value)">${matOpts('drawerFrontMat', line.drawerFrontMat||line.material)}</select></div>
+          </div>
+          ${line.drawers > 0 ? `<div class="form-row" style="margin-bottom:8px">
+            <div class="form-group" style="${fgStyle}"><label style="${lblStyle}">Inner Box Material</label><select style="${selectStyle}" onchange="cqUpdateField('drawerInnerMat',this.value)">${matOpts('drawerInnerMat', line.drawerInnerMat||line.backMat)}</select></div>
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--muted)">% of front area used</label>
+            <div class="cq-pct-row">
+              <input type="range" class="cq-pct-slider" min="30" max="100" value="${line.drawerPct||85}" oninput="this.nextElementSibling.textContent=this.value+'%'" onchange="cqUpdateField('drawerPct',this.value)">
+              <span class="cq-pct-val">${line.drawerPct||85}%</span>
+            </div>
+          </div>` : ''}
         </div>
       </div>
 
-      <!-- Add to Quote buttons -->
-      <div style="display:flex;gap:6px;flex-wrap:wrap;padding-top:10px;border-top:2px solid var(--accent)">
-        <button class="btn btn-primary" onclick="cqAddToNewQuote()" style="flex:1;font-size:12px;padding:8px 12px">+ Create New Quote</button>
-        <button class="btn btn-outline" onclick="cqAddToExistingQuote()" style="flex:1;font-size:12px;padding:8px 12px;width:auto">Add to Existing Quote</button>
+      <!-- SHELVES -->
+      <div style="${secBorder}">
+        <div style="${secHead}" onclick="toggleCQSection(${line.id},'shelves')">
+          ${chevron('shelves')}
+          <span style="${secTitle}">${(line.shelves+line.adjShelves) > 0 ? '<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--accent);margin-right:4px"></span>' : ''}Shelves</span>
+          <span style="${secSub}">${(line.shelves+line.adjShelves) > 0 ? (line.shelves+line.adjShelves) + ' total' : 'None'}</span>
+        </div>
+        <div ${secBody('shelves')}>
+          <div class="form-row" style="margin-bottom:0">
+            <div class="form-group" style="${fgStyle}"><label style="${lblStyle}">Fixed</label><input type="number" value="${line.shelves}" min="0" style="${inputStyle}" oninput="cqUpdateField('shelves',this.value)"></div>
+            <div class="form-group" style="${fgStyle}"><label style="${lblStyle}">Adjustable</label><input type="number" value="${line.adjShelves}" min="0" style="${inputStyle}" oninput="cqUpdateField('adjShelves',this.value)"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- HARDWARE -->
+      <div style="${secBorder}">
+        <div style="${secHead}" onclick="toggleCQSection(${line.id},'hw')">
+          ${chevron('hw')}
+          <span style="${secTitle}">${line.hwItems.length > 0 ? '<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--accent2);margin-right:4px"></span>' : ''}Hardware</span>
+          <span style="${secSub}">${c.hwCost > 0 ? cur+Math.round(c.hwCost) : 'Auto'}</span>
+        </div>
+        <div ${secBody('hw')}>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:8px">Auto-included: ${line.doors > 0 ? line.doors*2+' hinges' : ''}${line.doors>0&&line.drawers>0?', ':''}${line.drawers > 0 ? line.drawers+' drawer slides' : ''}${line.doors===0&&line.drawers===0?'None':''}</div>
+          ${line.hwItems.map((hw, hi) => `<div style="display:flex;gap:4px;align-items:center;margin-bottom:6px">
+            <select style="flex:1;font-size:12px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);font-family:inherit" onchange="updateCQHw(${line.id},${hi},'name',this.value)">${cqSettings.hardware.map(h=>`<option value="${h.name}" ${h.name===hw.name?'selected':''}>${h.name} (${cur}${h.price})</option>`).join('')}</select>
+            <input type="number" style="width:44px;text-align:center;padding:6px;font-size:12px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text)" value="${hw.qty}" min="1" onchange="updateCQHw(${line.id},${hi},'qty',this.value)">
+            <button class="cq-del-btn" onclick="removeCQHw(${line.id},${hi})">×</button>
+          </div>`).join('')}
+          <button class="cl-add-btn" onclick="addCQHwToLine(${line.id})" style="font-size:12px;padding:5px 10px;margin:4px 0 0">+ Add Hardware</button>
+        </div>
+      </div>
+
+      <!-- EXTRAS & NOTES -->
+      <div style="${secBorder}">
+        <div style="${secHead}" onclick="toggleCQSection(${line.id},'extras')">
+          ${chevron('extras')}
+          <span style="${secTitle}">Extras & Notes</span>
+          <span style="${secSub}">${line.room||line.notes?'✓':''}</span>
+        </div>
+        <div ${secBody('extras')}>
+          <div class="form-row" style="margin-bottom:8px">
+            <div class="form-group" style="${fgStyle}"><label style="${lblStyle}">Room / Area</label><input type="text" value="${line.room||''}" placeholder="e.g. Kitchen" style="${selectStyle}" list="cq-room-list" onchange="cqUpdateField('room',this.value)"></div>
+          </div>
+          <div class="form-row" style="margin-bottom:0">
+            <div class="form-group" style="${fgStyle}"><label style="${lblStyle}">Notes</label><input type="text" value="${line.notes||''}" placeholder="Notes..." style="${selectStyle}" onchange="cqUpdateField('notes',this.value)"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quote Actions -->
+      <div style="display:flex;gap:6px;flex-wrap:wrap;padding-top:8px">
+        <button class="btn btn-primary" onclick="cqAddToNewQuote()" style="flex:1;font-size:12px;padding:9px 12px">+ Create New Quote</button>
+        <button class="btn btn-outline" onclick="cqAddToExistingQuote()" style="flex:1;font-size:12px;padding:9px 12px;width:auto">Add to Existing Quote</button>
       </div>
 
     </div>
