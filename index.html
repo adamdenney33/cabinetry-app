@@ -5510,9 +5510,11 @@ function updateCQLine(id, field, val) {
   const numFields = ['w','h','d','qty','doors','drawers','shelves','adjShelves','labourHrs'];
   if (numFields.includes(field)) {
     line[field] = parseFloat(val) || 0;
+  } else if (field === 'labourOverride') {
+    line.labourOverride = val === 'true' || val === true;
   } else if (field === 'matCostOverride') {
     const v = parseFloat(val);
-    line.matCostOverride = isNaN(v) ? null : v;
+    line.matCostOverride = (val === '' || val === null || isNaN(v)) ? null : v;
   } else if (field === 'type') {
     line.type = val;
     // Apply preset dimensions if type changed
@@ -5546,6 +5548,24 @@ function removeCQHw(lineId, hwIdx) {
   if (!line) return;
   line.hwItems.splice(hwIdx, 1);
   saveCQLines(); renderCQTable();
+}
+
+// ── Move rows up/down ──
+function moveCQLine(id, dir) {
+  const idx = cqLines.findIndex(l => l.id === id);
+  if (idx < 0) return;
+  const newIdx = idx + dir;
+  if (newIdx < 0 || newIdx >= cqLines.length) return;
+  [cqLines[idx], cqLines[newIdx]] = [cqLines[newIdx], cqLines[idx]];
+  saveCQLines(); renderCQTable();
+}
+
+// ── Toggle expanded detail for a row ──
+let cqExpandedRows = new Set();
+function toggleCQExpand(id) {
+  if (cqExpandedRows.has(id)) cqExpandedRows.delete(id);
+  else cqExpandedRows.add(id);
+  renderCQTable();
 }
 
 // ── Calculate a single line item ──
@@ -5694,13 +5714,13 @@ function renderCQTable() {
       </div>`).join('');
     }
 
+    const isExpanded = cqExpandedRows.has(line.id);
     html += `<tr>
-      <td class="cq-cell-muted" style="text-align:center;font-size:11px">${idx+1}</td>
+      <td class="cq-cell-muted" style="text-align:center;font-size:11px;cursor:pointer" onclick="toggleCQExpand(${line.id})" title="Click to ${isExpanded?'collapse':'expand'} details">
+        <span style="font-size:9px;color:var(--muted)">${isExpanded?'&#9660;':'&#9654;'}</span><br>${idx+1}
+      </td>
       <td>
         <input class="cq-input" value="${line.name}" placeholder="e.g. Kitchen Base 1" onchange="updateCQLine(${line.id},'name',this.value)">
-        <div style="padding:0 7px">${hwHtml}
-          <button style="font-size:9px;color:var(--muted);background:none;border:none;cursor:pointer;padding:2px 0;margin-top:2px" onclick="addCQHwToLine(${line.id})">+ hardware</button>
-        </div>
       </td>
       <td><select class="cq-select" onchange="updateCQLine(${line.id},'type',this.value)">${CQ_TYPES.map(t=>`<option value="${t}" ${t===line.type?'selected':''}>${t}</option>`).join('')}</select></td>
       <td>
@@ -5722,10 +5742,41 @@ function renderCQTable() {
       <td class="cq-cell-muted">${fmt0(c.hwCost * line.qty)}</td>
       <td class="cq-cell-price" style="font-size:13px">${fmt0(c.lineSubtotal)}</td>
       <td style="white-space:nowrap">
+        <button class="cq-dup-btn" onclick="moveCQLine(${line.id},-1)" title="Move up" style="font-size:10px">&#9650;</button>
+        <button class="cq-dup-btn" onclick="moveCQLine(${line.id},1)" title="Move down" style="font-size:10px">&#9660;</button>
         <button class="cq-dup-btn" onclick="dupCQLine(${line.id})" title="Duplicate">&#10697;</button>
         <button class="cq-del-btn" onclick="removeCQLine(${line.id})" title="Remove">&times;</button>
       </td>
     </tr>`;
+    // Expanded detail row
+    if (isExpanded) {
+      html += `<tr style="background:var(--surface2)"><td></td><td colspan="13" style="padding:8px 12px">
+        <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:11px">
+          <div class="form-group" style="min-width:120px;margin:0"><label>Back Material</label>
+            <select class="cq-select" style="font-size:10px;border:1px solid var(--border)" onchange="updateCQLine(${line.id},'backMat',this.value)">${cqSettings.materials.map(m=>`<option value="${m.name}" ${m.name===line.backMat?'selected':''}>${m.name}</option>`).join('')}</select>
+          </div>
+          <div class="form-group" style="min-width:100px;margin:0"><label>Labour Hrs Override</label>
+            <div style="display:flex;gap:4px;align-items:center">
+              <input type="checkbox" ${line.labourOverride?'checked':''} onchange="updateCQLine(${line.id},'labourOverride',this.checked?'true':'');if(this.checked){const el=this.parentNode.querySelector('input[type=number]');updateCQLine(${line.id},'labourHrs',el.value)}">
+              <input type="number" class="cq-input" style="width:60px;font-size:11px;padding:3px 6px;border:1px solid var(--border)" value="${c.labourHrs.toFixed(1)}" step="0.25" ${line.labourOverride?'':'disabled'} onchange="updateCQLine(${line.id},'labourHrs',this.value)">
+              <span style="color:var(--muted);font-size:10px">${line.labourOverride?'manual':'auto: '+c.labourHrsAuto.toFixed(1)+'h'}</span>
+            </div>
+          </div>
+          <div class="form-group" style="min-width:100px;margin:0"><label>Material Cost Override</label>
+            <div style="display:flex;gap:4px;align-items:center">
+              <input type="number" class="cq-input" style="width:80px;font-size:11px;padding:3px 6px;border:1px solid var(--border)" value="${line.matCostOverride !== null ? line.matCostOverride : ''}" placeholder="auto: ${c.matCostAuto.toFixed(2)}" onchange="updateCQLine(${line.id},'matCostOverride',this.value)">
+              ${line.matCostOverride !== null ? `<button style="font-size:9px;color:var(--muted);background:none;border:none;cursor:pointer" onclick="updateCQLine(${line.id},'matCostOverride','')">reset</button>` : ''}
+            </div>
+          </div>
+          <div class="form-group" style="flex:1;min-width:150px;margin:0"><label>Notes</label>
+            <input class="cq-input" style="font-size:11px;padding:3px 6px;border:1px solid var(--border)" value="${line.notes||''}" placeholder="Line item notes..." onchange="updateCQLine(${line.id},'notes',this.value)">
+          </div>
+        </div>
+        <div style="display:flex;gap:4px;margin-top:6px">${hwHtml}
+          <button style="font-size:9px;color:var(--accent);background:none;border:1px dashed var(--border);border-radius:4px;cursor:pointer;padding:2px 8px" onclick="addCQHwToLine(${line.id})">+ Add Hardware</button>
+        </div>
+      </td></tr>`;
+    }
   });
 
   html += `</tbody></table>`;
@@ -5756,9 +5807,11 @@ function renderCQTable() {
       ${cqSettings.tax > 0 ? `<div class="cq-summary-row"><span>Tax (${cqSettings.tax}%)</span><span>+${fmt0(taxAmt)}</span></div>` : ''}
     </div>
     <div class="cq-summary-block">
-      <div class="cq-summary-label">Items</div>
-      <div class="cq-summary-row"><span>Cabinets</span><span>${cqLines.length} items</span></div>
-      <div class="cq-summary-row"><span>Total Units</span><span>${cqLines.reduce((s,l)=>s+l.qty,0)}</span></div>
+      <div class="cq-summary-label">Summary</div>
+      <div class="cq-summary-row"><span>Cabinets</span><span>${cqLines.length} line${cqLines.length!==1?'s':''} (${cqLines.reduce((s,l)=>s+l.qty,0)} units)</span></div>
+      <div class="cq-summary-row"><span>Est. Labour</span><span>${totalHrs.toFixed(1)} hrs (${(totalHrs/8).toFixed(1)} days)</span></div>
+      ${cqSettings.markup > 0 ? `<div class="cq-summary-row"><span style="color:var(--success)">Profit (markup)</span><span style="color:var(--success);font-weight:700">${fmt0(markupAmt)}</span></div>` : ''}
+      <div class="cq-summary-row"><span>Effective Rate</span><span>${cur}${totalHrs > 0 ? (grandTotal / totalHrs).toFixed(0) : '0'}/hr</span></div>
     </div>
     <div>
       <div class="cq-grand-total">
