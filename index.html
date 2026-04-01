@@ -5802,8 +5802,12 @@ function renderCQTable() {
     area.innerHTML = `<div class="empty-state" style="padding:60px 40px">
       <div class="empty-icon" style="font-size:48px;opacity:.15"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="12" y1="3" x2="12" y2="12"/></svg></div>
       <h3>Cabinet Quote Builder</h3>
-      <p style="margin-bottom:16px">Add cabinets to build your quote. Each cabinet has collapsible sections for dimensions, doors, drawers & more.</p>
-      <button class="btn btn-primary" onclick="addCQLine()" style="margin:0 auto">+ Add First Cabinet</button>
+      <p style="margin-bottom:8px">Build detailed quotes for custom cabinetry. Each cabinet has collapsible sections for dimensions, doors, drawers & more.</p>
+      <p style="margin-bottom:16px;font-size:12px;color:var(--muted)">1. Click <strong>"My Rates"</strong> above to set your labour rate, material prices & markup<br>2. Add cabinets below — costs calculate automatically</p>
+      <div style="display:flex;gap:10px;justify-content:center;margin-bottom:12px">
+        <button class="btn btn-outline" onclick="toggleCQSettings()" style="font-size:12px;padding:8px 16px;width:auto">Step 1: Set My Rates</button>
+        <button class="btn btn-primary" onclick="addCQLine()" style="font-size:12px;padding:8px 16px">Step 2: Add First Cabinet</button>
+      </div>
       <div style="margin-top:12px;display:flex;gap:6px;flex-wrap:wrap;justify-content:center">
         ${Object.keys(CQ_PRESETS).filter(t=>t!=='Custom').map(t=>`<button class="btn btn-outline" onclick="addCQLineFromPreset('${t}')" style="font-size:11px;padding:5px 10px;width:auto">${t}</button>`).join('')}
       </div>
