@@ -870,14 +870,18 @@ html.dark .cl-table tbody tr:nth-child(even) td { background: rgba(255,255,255,0
   .cq-summary-grid { grid-template-columns: 1fr 1fr; }
   .cq-project-bar { flex-direction: column; gap: 8px; }
   .cq-project-bar .form-group { min-width: 100% !important; }
+  .cq-gv-grid { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); }
 }
 @media (max-width: 768px) {
   .cq-table-wrap { padding: 8px; }
-  .cq-table th, .cq-table td { padding: 2px; }
-  .cq-table .cq-input { padding: 4px 5px; font-size: 11px; }
   .cq-summary-grid { grid-template-columns: 1fr; }
   .cq-settings-expanded .cq-mat-grid { grid-template-columns: 1fr; }
-  .cq-dim-group { flex-wrap: wrap; }
+  .cq-gv-grid { grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .cq-gv-card { padding: 8px; }
+  .cq-gv-card input { font-size: 14px; }
+  .cq-cab-header { flex-wrap: wrap; }
+  .cq-cab-header .cq-cab-name-input { min-width: 120px; }
+  .cq-cab-sec-body .form-row { flex-direction: column; gap: 6px; }
 }
 
 /* Print */
@@ -5567,14 +5571,20 @@ function cqDefaultLine(type) {
 
 // ── Add / Remove / Duplicate Lines ──
 function addCQLine(type) {
-  cqLines.push(cqDefaultLine(type));
+  const line = cqDefaultLine(type);
+  cqLines.push(line);
+  // Auto-expand dimensions section for new cabinet
+  cqOpenSections.add(line.id + '-dims');
   saveCQLines(); renderCQTable();
+  // Scroll to new cabinet
+  setTimeout(() => { const el = document.getElementById('cq-table-area'); if (el) el.scrollTop = el.scrollHeight; }, 50);
 }
 function addCQLineFromPreset(type) {
   const line = cqDefaultLine(type);
   line.name = type;
   cqLines.push(line);
   saveCQLines(); renderCQTable();
+  setTimeout(() => { const el = document.getElementById('cq-table-area'); if (el) el.scrollTop = el.scrollHeight; }, 50);
 }
 function removeCQLine(id) {
   cqLines = cqLines.filter(l => l.id !== id);
