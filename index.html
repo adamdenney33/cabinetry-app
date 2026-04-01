@@ -583,6 +583,92 @@ canvas { display: block; }
 .qb-edit:focus { outline: none; border-bottom-color: var(--accent); background: var(--surface2); border-radius: 2px; }
 
 /* ══════════════════════════════════════════
+   CABINET QUOTE TAB (CQ)
+══════════════════════════════════════════ */
+.cq-wrap { display:flex; flex-direction:column; height:100%; overflow:hidden; }
+.cq-inner-tabs { display:flex; background:var(--surface); border-bottom:1px solid var(--border); padding:0 20px; flex-shrink:0; }
+.cq-inner-tab { padding:11px 16px; font-size:12px; font-weight:500; color:var(--muted); cursor:pointer; border-bottom:2px solid transparent; transition:all 0.15s; }
+.cq-inner-tab:hover { color:var(--text); }
+.cq-inner-tab.active { color:var(--text); border-bottom-color:var(--accent); font-weight:700; }
+.cq-panel { display:none; flex:1; overflow:hidden; }
+.cq-panel.active { display:flex; }
+
+/* Cabinet Quote Settings */
+.cq-settings-bar { display:flex; flex-wrap:wrap; gap:10px; align-items:flex-end; padding:12px 20px; background:var(--surface); border-bottom:1px solid var(--border); flex-shrink:0; }
+.cq-settings-bar .form-group { margin:0; min-width:100px; }
+.cq-settings-bar label { font-size:9px; margin-bottom:3px; }
+.cq-settings-bar input, .cq-settings-bar select { padding:5px 8px; font-size:12px; }
+.cq-settings-toggle { padding:5px 12px; font-size:11px; font-weight:600; border:1px solid var(--border); background:var(--surface2); color:var(--text2); border-radius:6px; cursor:pointer; display:flex; align-items:center; gap:5px; font-family:inherit; transition:all .15s; }
+.cq-settings-toggle:hover { border-color:var(--accent); color:var(--accent); }
+.cq-settings-toggle.open { background:var(--accent-dim); border-color:var(--accent); color:var(--accent); }
+
+/* Line Items Table */
+.cq-table-wrap { flex:1; overflow:auto; padding:16px 20px; }
+.cq-table { width:100%; border-collapse:collapse; font-size:12px; }
+.cq-table th { position:sticky; top:0; z-index:2; background:var(--surface2); font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:var(--muted); padding:8px 8px; text-align:left; border-bottom:2px solid var(--border); white-space:nowrap; }
+.cq-table th.r { text-align:right; }
+.cq-table td { padding:4px 4px; border-bottom:1px solid var(--border2); vertical-align:middle; }
+.cq-table tr:hover td { background:var(--accent-dim); }
+.cq-table .cq-input { width:100%; padding:5px 7px; border:1px solid transparent; border-radius:5px; background:transparent; color:var(--text); font-size:12px; font-family:inherit; outline:none; min-width:0; }
+.cq-table .cq-input:focus { border-color:var(--accent); background:var(--surface); box-shadow:0 0 0 2px var(--accent-dim); }
+.cq-table .cq-input-num { text-align:right; width:60px; }
+.cq-table .cq-input-sm { width:50px; text-align:center; }
+.cq-table .cq-dim-group { display:flex; gap:2px; align-items:center; }
+.cq-table .cq-dim-x { font-size:10px; color:var(--muted); }
+.cq-table .cq-select { padding:4px 6px; border:1px solid transparent; border-radius:5px; background:transparent; color:var(--text); font-size:11px; font-family:inherit; cursor:pointer; outline:none; min-width:0; width:100%; }
+.cq-table .cq-select:focus { border-color:var(--accent); background:var(--surface); }
+.cq-table .cq-cell-price { text-align:right; font-variant-numeric:tabular-nums; font-weight:600; color:var(--text); padding-right:8px; white-space:nowrap; font-size:12px; }
+.cq-table .cq-cell-muted { text-align:right; font-variant-numeric:tabular-nums; color:var(--muted); padding-right:8px; white-space:nowrap; font-size:11px; }
+.cq-table .cq-row-total td { background:var(--surface2); font-weight:700; border-top:2px solid var(--border); }
+.cq-del-btn { width:22px; height:22px; border:none; background:none; color:var(--muted); cursor:pointer; border-radius:4px; display:flex; align-items:center; justify-content:center; padding:0; font-size:14px; }
+.cq-del-btn:hover { color:var(--danger); background:rgba(224,82,82,0.1); }
+.cq-dup-btn { width:22px; height:22px; border:none; background:none; color:var(--muted); cursor:pointer; border-radius:4px; display:flex; align-items:center; justify-content:center; padding:0; font-size:12px; }
+.cq-dup-btn:hover { color:var(--accent); background:var(--accent-dim); }
+.cq-add-row { margin:8px 0; padding:7px 14px; font-size:12px; font-weight:600; color:var(--muted); background:none; border:1.5px dashed var(--border); border-radius:6px; cursor:pointer; font-family:inherit; transition:all .15s; }
+.cq-add-row:hover { color:var(--text); border-color:var(--muted); background:var(--surface2); }
+
+/* Summary Panel */
+.cq-summary { background:var(--surface); border-top:2px solid var(--border); padding:16px 20px; flex-shrink:0; }
+.cq-summary-grid { display:grid; grid-template-columns:1fr 1fr 1fr auto; gap:12px; align-items:start; }
+.cq-summary-block { }
+.cq-summary-label { font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:.6px; color:var(--muted); margin-bottom:6px; }
+.cq-summary-row { display:flex; justify-content:space-between; font-size:12px; color:var(--text2); padding:2px 0; }
+.cq-summary-row.total { font-size:14px; font-weight:800; color:var(--text); padding-top:6px; border-top:2px solid var(--accent); margin-top:4px; }
+.cq-summary-row.subtotal { font-weight:600; color:var(--text); padding-top:4px; border-top:1px solid var(--border); margin-top:2px; }
+.cq-summary-actions { display:flex; flex-direction:column; gap:6px; }
+.cq-grand-total { text-align:center; padding:10px 16px; background:var(--text); color:var(--bg); border-radius:8px; min-width:180px; }
+.cq-grand-total .label { font-size:9px; text-transform:uppercase; letter-spacing:1px; opacity:.6; margin-bottom:2px; }
+.cq-grand-total .amount { font-size:22px; font-weight:800; }
+
+/* Project Header */
+.cq-project-bar { display:flex; gap:12px; align-items:flex-end; padding:12px 20px; background:var(--surface2); border-bottom:1px solid var(--border); flex-shrink:0; flex-wrap:wrap; }
+.cq-project-bar .form-group { margin:0; }
+.cq-project-bar input, .cq-project-bar textarea { padding:6px 10px; font-size:13px; }
+.cq-project-bar textarea { min-height:32px; resize:none; }
+
+/* Expandable Settings */
+.cq-settings-expanded { display:none; padding:12px 20px; background:var(--surface); border-bottom:1px solid var(--border); }
+.cq-settings-expanded.open { display:block; }
+.cq-mat-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(200px, 1fr)); gap:6px; max-height:200px; overflow-y:auto; }
+.cq-mat-row { display:flex; gap:4px; align-items:center; }
+.cq-mat-row input { padding:3px 6px; font-size:11px; border-radius:4px; border:1px solid var(--border); background:var(--surface2); color:var(--text); }
+.cq-mat-row input:first-child { flex:1; }
+.cq-mat-row input:nth-child(2) { width:60px; text-align:right; }
+.cq-mat-row button { background:none; border:none; color:var(--muted); cursor:pointer; font-size:14px; padding:0 2px; }
+.cq-mat-row button:hover { color:var(--danger); }
+
+/* Quote list for saved cabinet quotes */
+.cq-saved-list { display:flex; flex-direction:column; gap:8px; margin-bottom:16px; }
+.cq-saved-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow); padding:14px 16px; cursor:pointer; transition:border-color .15s; display:flex; justify-content:space-between; align-items:center; }
+.cq-saved-card:hover { border-color:var(--accent); }
+.cq-saved-card.active { border-color:var(--accent); background:var(--accent-dim); }
+.cq-saved-info { flex:1; min-width:0; }
+.cq-saved-title { font-size:14px; font-weight:700; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.cq-saved-meta { font-size:11px; color:var(--muted); margin-top:2px; }
+.cq-saved-total { font-size:16px; font-weight:800; color:var(--accent); white-space:nowrap; margin-left:12px; }
+.cq-saved-actions { display:flex; gap:4px; margin-left:8px; }
+
+/* ══════════════════════════════════════════
    ORDERS SECTION
 ══════════════════════════════════════════ */
 .orders-list { display: flex; flex-direction: column; gap: 12px; }
@@ -1369,63 +1455,148 @@ html.dark .cl-table tbody tr:nth-child(even) td { background: rgba(255,255,255,0
   </div>
 
   <!-- ════════════════════════════════════
-       QUOTE SECTION
+       QUOTE SECTION (with inner tabs)
   ════════════════════════════════════ -->
   <div class="section-panel" id="panel-quote">
-    <div class="sidebar">
-      <div class="sidebar-scroll">
-        <div class="form-section">
-          <div class="form-section-title">New Quote</div>
-          <div class="form-group" style="margin-bottom:8px;position:relative">
-            <label>Client Name</label>
-            <input type="text" id="q-client" placeholder="e.g. John Smith" autocomplete="off" oninput="_clientSuggest(this)">
-            <div id="q-client-suggest" class="client-suggest-list" style="display:none"></div>
-          </div>
-          <div class="form-group" style="margin-bottom:8px">
-            <label>Project Name</label>
-            <input type="text" id="q-project" placeholder="e.g. Kitchen Renovation">
-          </div>
-          <div class="form-group" style="margin-bottom:8px">
-            <label>Notes</label>
-            <textarea id="q-notes" placeholder="Project details..."></textarea>
-          </div>
-          <div class="form-group" style="margin-bottom:8px">
-            <label>Materials Cost</label>
-            <input type="number" id="q-materials" placeholder="0.00" min="0" step="0.01">
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label>Labour Rate (/hr)</label>
-              <input type="number" id="q-labour-rate" value="65" min="0">
+    <div class="cq-wrap">
+      <!-- Inner Tabs -->
+      <div class="cq-inner-tabs">
+        <div class="cq-inner-tab active" onclick="switchQuoteTab('quick')">Quick Quote</div>
+        <div class="cq-inner-tab" onclick="switchQuoteTab('cabinet')">Cabinet Quote</div>
+      </div>
+
+      <!-- ═══ QUICK QUOTE (original) ═══ -->
+      <div class="cq-panel active" id="qpanel-quick" style="display:flex">
+        <div class="sidebar">
+          <div class="sidebar-scroll">
+            <div class="form-section">
+              <div class="form-section-title">New Quote</div>
+              <div class="form-group" style="margin-bottom:8px;position:relative">
+                <label>Client Name</label>
+                <input type="text" id="q-client" placeholder="e.g. John Smith" autocomplete="off" oninput="_clientSuggest(this)">
+                <div id="q-client-suggest" class="client-suggest-list" style="display:none"></div>
+              </div>
+              <div class="form-group" style="margin-bottom:8px">
+                <label>Project Name</label>
+                <input type="text" id="q-project" placeholder="e.g. Kitchen Renovation">
+              </div>
+              <div class="form-group" style="margin-bottom:8px">
+                <label>Notes</label>
+                <textarea id="q-notes" placeholder="Project details..."></textarea>
+              </div>
+              <div class="form-group" style="margin-bottom:8px">
+                <label>Materials Cost</label>
+                <input type="number" id="q-materials" placeholder="0.00" min="0" step="0.01">
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Labour Rate (/hr)</label>
+                  <input type="number" id="q-labour-rate" value="65" min="0">
+                </div>
+                <div class="form-group">
+                  <label>Hours</label>
+                  <input type="number" id="q-hours" value="8" min="0" step="0.5">
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Markup %</label>
+                  <input type="number" id="q-markup" value="20" min="0">
+                </div>
+                <div class="form-group">
+                  <label>Tax %</label>
+                  <input type="number" id="q-tax" value="13" min="0">
+                </div>
+              </div>
+              <div id="quote-form-preview" style="background:var(--surface2);border-radius:8px;padding:10px 12px;margin-top:8px;display:none">
+                <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:4px"><span>Labour</span><span id="qfp-labour">—</span></div>
+                <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:4px"><span>Materials</span><span id="qfp-materials">—</span></div>
+                <div style="border-top:1px solid var(--border);margin:4px 0"></div>
+                <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;color:var(--text)"><span>Total</span><span id="qfp-total">—</span></div>
+              </div>
+              <button class="btn btn-primary" onclick="createQuote()" style="margin-top:8px;width:100%">+ Create Quote</button>
             </div>
-            <div class="form-group">
-              <label>Hours</label>
-              <input type="number" id="q-hours" value="8" min="0" step="0.5">
-            </div>
           </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label>Markup %</label>
-              <input type="number" id="q-markup" value="20" min="0">
-            </div>
-            <div class="form-group">
-              <label>Tax %</label>
-              <input type="number" id="q-tax" value="13" min="0">
-            </div>
+        </div>
+        <div class="main-content">
+          <div class="main-scroll" id="quote-main">
+            <!-- rendered by JS -->
           </div>
-          <div id="quote-form-preview" style="background:var(--surface2);border-radius:8px;padding:10px 12px;margin-top:8px;display:none">
-            <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:4px"><span>Labour</span><span id="qfp-labour">—</span></div>
-            <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:4px"><span>Materials</span><span id="qfp-materials">—</span></div>
-            <div style="border-top:1px solid var(--border);margin:4px 0"></div>
-            <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;color:var(--text)"><span>Total</span><span id="qfp-total">—</span></div>
-          </div>
-          <button class="btn btn-primary" onclick="createQuote()" style="margin-top:8px;width:100%">+ Create Quote</button>
         </div>
       </div>
-    </div>
-    <div class="main-content">
-      <div class="main-scroll" id="quote-main">
-        <!-- rendered by JS -->
+
+      <!-- ═══ CABINET QUOTE (new detailed system) ═══ -->
+      <div class="cq-panel" id="qpanel-cabinet">
+        <!-- Project Bar -->
+        <div class="cq-project-bar" id="cq-project-bar">
+          <div class="form-group" style="min-width:180px">
+            <label>Client</label>
+            <input type="text" id="cq-client" placeholder="Client name" autocomplete="off">
+          </div>
+          <div class="form-group" style="min-width:200px">
+            <label>Project</label>
+            <input type="text" id="cq-project" placeholder="Project name">
+          </div>
+          <div class="form-group" style="min-width:140px">
+            <label>Quote #</label>
+            <input type="text" id="cq-quote-num" placeholder="Auto" style="font-weight:700;color:var(--accent)">
+          </div>
+          <div class="form-group" style="flex:1;min-width:200px">
+            <label>Notes / Scope</label>
+            <input type="text" id="cq-notes" placeholder="e.g. Supply & install kitchen cabinetry...">
+          </div>
+          <div style="display:flex;gap:6px;align-items:flex-end">
+            <button class="cq-settings-toggle" id="cq-settings-btn" onclick="toggleCQSettings()">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.32 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+              Rates & Materials
+            </button>
+            <button class="btn btn-primary" onclick="saveCQQuote()" style="padding:6px 14px;font-size:12px">Save Quote</button>
+            <button class="btn btn-outline" onclick="newCQQuote()" style="padding:6px 14px;font-size:12px;width:auto">+ New</button>
+          </div>
+        </div>
+
+        <!-- Expandable Global Settings -->
+        <div class="cq-settings-expanded" id="cq-settings-panel">
+          <div style="display:flex;gap:20px;flex-wrap:wrap">
+            <!-- Rates -->
+            <div style="min-width:260px">
+              <div class="form-section-title" style="margin-bottom:8px">Rates & Markup</div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <div class="form-group" style="width:80px"><label>Labour/hr</label><input type="number" id="cq-labour-rate" value="65" min="0" step="1" onchange="saveCQSettings();renderCQTable()"></div>
+                <div class="form-group" style="width:70px"><label>Markup %</label><input type="number" id="cq-markup" value="20" min="0" step="1" onchange="saveCQSettings();renderCQTable()"></div>
+                <div class="form-group" style="width:70px"><label>Tax %</label><input type="number" id="cq-tax" value="13" min="0" step="1" onchange="saveCQSettings();renderCQTable()"></div>
+                <div class="form-group" style="width:50px"><label>Kerf</label><input type="number" id="cq-kerf" value="3" min="0" step="0.5" onchange="saveCQSettings();renderCQTable()"></div>
+              </div>
+            </div>
+            <!-- Sheet Good Prices -->
+            <div style="flex:1;min-width:300px">
+              <div class="form-section-title" style="margin-bottom:8px">Sheet Goods (price per sheet · 2440×1220mm)</div>
+              <div class="cq-mat-grid" id="cq-mat-list"></div>
+              <button class="cq-add-row" onclick="addCQMaterial()" style="margin-top:6px;width:auto;display:inline-block;padding:4px 10px;font-size:11px">+ Add Material</button>
+            </div>
+            <!-- Hardware Presets -->
+            <div style="min-width:240px">
+              <div class="form-section-title" style="margin-bottom:8px">Hardware Presets</div>
+              <div id="cq-hw-list" style="max-height:200px;overflow-y:auto"></div>
+              <button class="cq-add-row" onclick="addCQHardware()" style="margin-top:6px;width:auto;display:inline-block;padding:4px 10px;font-size:11px">+ Add Hardware</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Saved Quotes Shelf -->
+        <div id="cq-saved-shelf" style="padding:8px 20px;border-bottom:1px solid var(--border);display:none">
+          <div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px" id="cq-saved-pills"></div>
+        </div>
+
+        <!-- Line Items Table -->
+        <div class="cq-table-wrap" id="cq-table-area">
+          <!-- rendered by JS -->
+        </div>
+
+        <!-- Summary Footer -->
+        <div class="cq-summary" id="cq-summary">
+          <!-- rendered by JS -->
+        </div>
       </div>
     </div>
   </div>
@@ -1862,7 +2033,7 @@ function switchSection(name) {
   });
   if (name === 'cabinet') renderCabinetQuote();
   if (name === 'stock') renderStockMain();
-  if (name === 'quote') renderQuoteMain();
+  if (name === 'quote') { renderQuoteMain(); try { renderCQTable(); } catch(e) {} }
   if (name === 'orders') renderOrdersMain();
   if (name === 'dashboard') { renderDashboard(); setTimeout(drawRevenueChart, 0); }
 }
@@ -5177,6 +5348,631 @@ function renderCabinetQuote() {
 
   renderCabResults();
 }
+
+// ══════════════════════════════════════════
+// CABINET QUOTE TAB (CQ) — Detailed Line-Item Quoting
+// ══════════════════════════════════════════
+
+// ── Quote Tab Switching ──
+function switchQuoteTab(tab) {
+  document.querySelectorAll('.cq-inner-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.cq-panel').forEach(p => { p.classList.remove('active'); p.style.display = 'none'; });
+  const idx = tab === 'quick' ? 0 : 1;
+  document.querySelectorAll('.cq-inner-tab')[idx].classList.add('active');
+  const panel = document.getElementById(tab === 'quick' ? 'qpanel-quick' : 'qpanel-cabinet');
+  if (panel) { panel.classList.add('active'); panel.style.display = 'flex'; }
+  if (tab === 'cabinet') renderCQTable();
+}
+
+// ── CQ Settings State ──
+let cqSettings = {
+  labourRate: 65, markup: 20, tax: 13, kerf: 3,
+  materials: [
+    { name: 'Birch Ply 18mm', price: 72 },
+    { name: 'Birch Ply 12mm', price: 58 },
+    { name: 'Birch Ply 6mm', price: 42 },
+    { name: 'Melamine 16mm', price: 45 },
+    { name: 'MDF 18mm', price: 38 },
+    { name: 'Hardwood Edging', price: 25 },
+    { name: 'Plywood 3mm (backs)', price: 22 },
+    { name: 'Solid Oak 20mm', price: 110 },
+  ],
+  hardware: [
+    { name: 'Blum Hinges (pair)', price: 12 },
+    { name: 'Soft-close Slides (pair)', price: 24 },
+    { name: 'Shelf Pins (4)', price: 3 },
+    { name: 'Handle - Bar', price: 8 },
+    { name: 'Handle - Cup', price: 6 },
+    { name: 'Push-to-Open', price: 14 },
+    { name: 'Leg Levellers (4)', price: 10 },
+    { name: 'Cam & Dowel (10)', price: 5 },
+  ]
+};
+
+// ── CQ Line Items State ──
+let cqLines = [];
+let cqNextId = 1;
+let cqSavedQuotes = [];
+let cqActiveQuoteIdx = -1;
+
+const CQ_TYPES = ['Base Cabinet','Wall Cabinet','Tall Cabinet','Drawer Unit','Shelf Unit','Vanity','Island','Pantry','Custom'];
+const SHEET_W = 2.44, SHEET_H = 1.22, SHEET_M2 = SHEET_W * SHEET_H;
+
+// ── Load / Save Settings ──
+function loadCQSettings() {
+  try { const s = localStorage.getItem('pc_cq_settings'); if (s) cqSettings = JSON.parse(s); } catch(e) {}
+}
+function saveCQSettings() {
+  cqSettings.labourRate = parseFloat(document.getElementById('cq-labour-rate')?.value) || 65;
+  cqSettings.markup = parseFloat(document.getElementById('cq-markup')?.value) || 20;
+  cqSettings.tax = parseFloat(document.getElementById('cq-tax')?.value) || 13;
+  cqSettings.kerf = parseFloat(document.getElementById('cq-kerf')?.value) || 3;
+  localStorage.setItem('pc_cq_settings', JSON.stringify(cqSettings));
+}
+function loadCQLines() {
+  try { const s = localStorage.getItem('pc_cq_lines'); if (s) { cqLines = JSON.parse(s); cqNextId = Math.max(0, ...cqLines.map(l=>l.id)) + 1; } } catch(e) {}
+}
+function saveCQLines() { localStorage.setItem('pc_cq_lines', JSON.stringify(cqLines)); }
+function loadCQSaved() {
+  try { const s = localStorage.getItem('pc_cq_saved'); if (s) cqSavedQuotes = JSON.parse(s); } catch(e) {}
+}
+function saveCQSaved() { localStorage.setItem('pc_cq_saved', JSON.stringify(cqSavedQuotes)); }
+
+function toggleCQSettings() {
+  const p = document.getElementById('cq-settings-panel');
+  const b = document.getElementById('cq-settings-btn');
+  if (p) { const open = p.classList.toggle('open'); if (b) b.classList.toggle('open', open); }
+  renderCQSettingsLists();
+}
+
+// ── Settings Lists Render ──
+function renderCQSettingsLists() {
+  const mEl = document.getElementById('cq-mat-list');
+  if (mEl) {
+    mEl.innerHTML = cqSettings.materials.map((m, i) => `<div class="cq-mat-row">
+      <input value="${m.name}" onblur="cqSettings.materials[${i}].name=this.value;saveCQSettings();renderCQTable()">
+      <input type="number" value="${m.price}" onblur="cqSettings.materials[${i}].price=parseFloat(this.value)||0;saveCQSettings();renderCQTable()">
+      <button onclick="cqSettings.materials.splice(${i},1);saveCQSettings();renderCQSettingsLists();renderCQTable()">&times;</button>
+    </div>`).join('');
+  }
+  const hEl = document.getElementById('cq-hw-list');
+  if (hEl) {
+    hEl.innerHTML = cqSettings.hardware.map((h, i) => `<div class="cq-mat-row">
+      <input value="${h.name}" onblur="cqSettings.hardware[${i}].name=this.value;saveCQSettings();renderCQTable()">
+      <input type="number" value="${h.price}" onblur="cqSettings.hardware[${i}].price=parseFloat(this.value)||0;saveCQSettings();renderCQTable()">
+      <button onclick="cqSettings.hardware.splice(${i},1);saveCQSettings();renderCQSettingsLists();renderCQTable()">&times;</button>
+    </div>`).join('');
+  }
+}
+function addCQMaterial() { cqSettings.materials.push({name:'New Material',price:0}); saveCQSettings(); renderCQSettingsLists(); }
+function addCQHardware() { cqSettings.hardware.push({name:'New Hardware',price:0}); saveCQSettings(); renderCQSettingsLists(); }
+
+// ── Default Line Item ──
+function cqDefaultLine() {
+  return {
+    id: cqNextId++, name: '', type: 'Base Cabinet',
+    w: 600, h: 720, d: 560, qty: 1,
+    material: cqSettings.materials[0]?.name || '',
+    backMat: (cqSettings.materials.find(m=>m.name.toLowerCase().includes('3mm') || m.name.toLowerCase().includes('back')) || cqSettings.materials[0])?.name || '',
+    doors: 0, drawers: 0, shelves: 0, adjShelves: 0,
+    hwItems: [], // array of {name, qty}
+    labourHrs: 0, labourOverride: false,
+    matCostOverride: null, // null = auto-calc
+    notes: ''
+  };
+}
+
+// ── Add / Remove / Duplicate Lines ──
+function addCQLine() {
+  cqLines.push(cqDefaultLine());
+  saveCQLines(); renderCQTable();
+}
+function removeCQLine(id) {
+  cqLines = cqLines.filter(l => l.id !== id);
+  saveCQLines(); renderCQTable();
+}
+function dupCQLine(id) {
+  const src = cqLines.find(l => l.id === id);
+  if (!src) return;
+  const copy = JSON.parse(JSON.stringify(src));
+  copy.id = cqNextId++;
+  copy.name = src.name ? src.name + ' (copy)' : '';
+  cqLines.push(copy);
+  saveCQLines(); renderCQTable();
+}
+
+// ── Update a field on a line ──
+function updateCQLine(id, field, val) {
+  const line = cqLines.find(l => l.id === id);
+  if (!line) return;
+  const numFields = ['w','h','d','qty','doors','drawers','shelves','adjShelves','labourHrs'];
+  if (numFields.includes(field)) {
+    line[field] = parseFloat(val) || 0;
+  } else if (field === 'matCostOverride') {
+    const v = parseFloat(val);
+    line.matCostOverride = isNaN(v) ? null : v;
+  } else {
+    line[field] = val;
+  }
+  saveCQLines(); renderCQTable();
+}
+
+// ── Add hardware item to a line ──
+function addCQHwToLine(id) {
+  const line = cqLines.find(l => l.id === id);
+  if (!line) return;
+  line.hwItems.push({ name: cqSettings.hardware[0]?.name || '', qty: 1 });
+  saveCQLines(); renderCQTable();
+}
+function updateCQHw(lineId, hwIdx, field, val) {
+  const line = cqLines.find(l => l.id === lineId);
+  if (!line || !line.hwItems[hwIdx]) return;
+  if (field === 'qty') line.hwItems[hwIdx].qty = parseInt(val) || 1;
+  else line.hwItems[hwIdx].name = val;
+  saveCQLines(); renderCQTable();
+}
+function removeCQHw(lineId, hwIdx) {
+  const line = cqLines.find(l => l.id === lineId);
+  if (!line) return;
+  line.hwItems.splice(hwIdx, 1);
+  saveCQLines(); renderCQTable();
+}
+
+// ── Calculate a single line item ──
+function calcCQLine(line) {
+  const W = line.w / 1000, H = line.h / 1000, D = line.d / 1000;
+  const T = 0.018;
+  const innerW = Math.max(0, W - 2 * T);
+
+  // Material price per m2
+  function mp(matName) {
+    const m = cqSettings.materials.find(m => m.name === matName);
+    return m ? m.price / SHEET_M2 : 0;
+  }
+  function hwp(hwName) {
+    const h = cqSettings.hardware.find(h => h.name === hwName);
+    return h ? h.price : 0;
+  }
+
+  // Auto material cost: carcass panels
+  let matCost = 0;
+  // Sides (2)
+  matCost += 2 * H * D * mp(line.material);
+  // Top + bottom
+  matCost += 2 * innerW * D * mp(line.material);
+  // Back
+  matCost += W * H * mp(line.backMat);
+  // Doors
+  if (line.doors > 0) {
+    const doorH = H * 0.95, doorW = innerW / Math.max(1, line.doors);
+    matCost += line.doors * doorW * doorH * mp(line.material);
+  }
+  // Drawers (fronts + boxes)
+  if (line.drawers > 0) {
+    const drwH = (H * 0.85) / line.drawers;
+    matCost += line.drawers * innerW * drwH * mp(line.material); // fronts
+    matCost += line.drawers * (2 * D * drwH + 2 * innerW * drwH + innerW * D) * mp(line.backMat); // boxes (cheaper mat)
+  }
+  // Shelves
+  const shelfArea = innerW * (D - T);
+  matCost += (line.shelves + line.adjShelves) * shelfArea * mp(line.material);
+
+  // Use override if set
+  const finalMatCost = (line.matCostOverride !== null && line.matCostOverride !== undefined) ? line.matCostOverride : matCost;
+
+  // Auto labour estimate (hours)
+  let autoLabour = 0;
+  autoLabour += 1.5; // base carcass assembly
+  autoLabour += line.doors * 0.4;
+  autoLabour += line.drawers * 0.6;
+  autoLabour += (line.shelves + line.adjShelves) * 0.25;
+  // finishing
+  const surfaceArea = 2*H*D + 2*innerW*D + W*H;
+  autoLabour += surfaceArea * 0.5; // sanding/finishing
+
+  const labourHrs = line.labourOverride ? line.labourHrs : autoLabour;
+  const labourCost = labourHrs * cqSettings.labourRate;
+
+  // Hardware
+  let hwCost = 0;
+  // Auto hardware for doors/drawers
+  if (line.doors > 0) hwCost += line.doors * 2 * 6; // 2 hinges per door at $6
+  if (line.drawers > 0) hwCost += line.drawers * 24; // slides per drawer
+  // Manual hardware items
+  for (const hw of line.hwItems) {
+    hwCost += hwp(hw.name) * hw.qty;
+  }
+
+  const lineSubtotal = (finalMatCost + labourCost + hwCost) * line.qty;
+
+  return {
+    matCost: finalMatCost, matCostAuto: matCost,
+    labourHrs, labourHrsAuto: autoLabour, labourCost,
+    hwCost, lineSubtotal,
+    qty: line.qty
+  };
+}
+
+// ── Main Render ──
+function renderCQTable() {
+  const cur = window.currency;
+  const fmt = v => cur + Number(v).toFixed(2);
+  const fmt0 = v => cur + Math.round(v).toLocaleString();
+  const area = document.getElementById('cq-table-area');
+  const sumArea = document.getElementById('cq-summary');
+  if (!area || !sumArea) return;
+
+  // Settings values into form
+  const lr = document.getElementById('cq-labour-rate'); if (lr && lr !== document.activeElement) lr.value = cqSettings.labourRate;
+  const mk = document.getElementById('cq-markup'); if (mk && mk !== document.activeElement) mk.value = cqSettings.markup;
+  const tx = document.getElementById('cq-tax'); if (tx && tx !== document.activeElement) tx.value = cqSettings.tax;
+  const kf = document.getElementById('cq-kerf'); if (kf && kf !== document.activeElement) kf.value = cqSettings.kerf;
+
+  // Material options HTML
+  const matOpts = cqSettings.materials.map(m => `<option value="${m.name}">${m.name}</option>`).join('');
+  const hwOpts = cqSettings.hardware.map(h => `<option value="${h.name}">${h.name} (${cur}${h.price})</option>`).join('');
+  const typeOpts = CQ_TYPES.map(t => `<option value="${t}">${t}</option>`).join('');
+
+  if (cqLines.length === 0) {
+    area.innerHTML = `<div class="empty-state" style="padding:60px 40px">
+      <div class="empty-icon" style="font-size:48px;opacity:.15"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="12" y1="3" x2="12" y2="12"/></svg></div>
+      <h3>Cabinet Quote Builder</h3>
+      <p style="margin-bottom:16px">Add line items for each cabinet. Dimensions auto-calculate material costs.<br>Set your rates & material prices using the button above.</p>
+      <button class="btn btn-primary" onclick="addCQLine()" style="margin:0 auto">+ Add First Cabinet</button>
+    </div>`;
+    sumArea.innerHTML = '';
+    return;
+  }
+
+  // Build table
+  let html = `<table class="cq-table"><thead><tr>
+    <th style="width:28px">#</th>
+    <th style="min-width:140px">Description</th>
+    <th style="width:100px">Type</th>
+    <th style="width:180px">Dimensions (mm)</th>
+    <th style="width:90px">Material</th>
+    <th style="width:50px">Doors</th>
+    <th style="width:50px">Drw</th>
+    <th style="width:50px">Shlv</th>
+    <th style="width:40px">Qty</th>
+    <th style="width:80px" class="r">Materials</th>
+    <th style="width:70px" class="r">Labour</th>
+    <th style="width:70px" class="r">Hardware</th>
+    <th style="width:90px" class="r">Line Total</th>
+    <th style="width:50px"></th>
+  </tr></thead><tbody>`;
+
+  let grandMatCost = 0, grandLabour = 0, grandHw = 0, grandSubtotal = 0;
+
+  cqLines.forEach((line, idx) => {
+    const c = calcCQLine(line);
+    grandMatCost += c.matCost * line.qty;
+    grandLabour += c.labourCost * line.qty;
+    grandHw += c.hwCost * line.qty;
+    grandSubtotal += c.lineSubtotal;
+
+    // Hardware sub-rows
+    let hwHtml = '';
+    if (line.hwItems.length > 0) {
+      hwHtml = line.hwItems.map((hw, hi) => `<div style="display:flex;gap:3px;align-items:center;margin-top:2px">
+        <select class="cq-select" style="flex:1;font-size:10px;padding:2px 4px" onchange="updateCQHw(${line.id},${hi},'name',this.value)">${cqSettings.hardware.map(h=>`<option value="${h.name}" ${h.name===hw.name?'selected':''}>${h.name}</option>`).join('')}</select>
+        <input type="number" class="cq-input cq-input-sm" style="width:32px;font-size:10px;padding:2px" value="${hw.qty}" min="1" onchange="updateCQHw(${line.id},${hi},'qty',this.value)">
+        <button class="cq-del-btn" style="width:16px;height:16px;font-size:11px" onclick="removeCQHw(${line.id},${hi})">&times;</button>
+      </div>`).join('');
+    }
+
+    html += `<tr>
+      <td class="cq-cell-muted" style="text-align:center;font-size:11px">${idx+1}</td>
+      <td>
+        <input class="cq-input" value="${line.name}" placeholder="e.g. Kitchen Base 1" onchange="updateCQLine(${line.id},'name',this.value)">
+        <div style="padding:0 7px">${hwHtml}
+          <button style="font-size:9px;color:var(--muted);background:none;border:none;cursor:pointer;padding:2px 0;margin-top:2px" onclick="addCQHwToLine(${line.id})">+ hardware</button>
+        </div>
+      </td>
+      <td><select class="cq-select" onchange="updateCQLine(${line.id},'type',this.value)">${CQ_TYPES.map(t=>`<option value="${t}" ${t===line.type?'selected':''}>${t}</option>`).join('')}</select></td>
+      <td>
+        <div class="cq-dim-group">
+          <input type="number" class="cq-input" style="width:55px;text-align:right" value="${line.w}" onchange="updateCQLine(${line.id},'w',this.value)">
+          <span class="cq-dim-x">&times;</span>
+          <input type="number" class="cq-input" style="width:55px;text-align:right" value="${line.h}" onchange="updateCQLine(${line.id},'h',this.value)">
+          <span class="cq-dim-x">&times;</span>
+          <input type="number" class="cq-input" style="width:55px;text-align:right" value="${line.d}" onchange="updateCQLine(${line.id},'d',this.value)">
+        </div>
+      </td>
+      <td><select class="cq-select" style="font-size:10px" onchange="updateCQLine(${line.id},'material',this.value)">${cqSettings.materials.map(m=>`<option value="${m.name}" ${m.name===line.material?'selected':''}>${m.name}</option>`).join('')}</select></td>
+      <td><input type="number" class="cq-input cq-input-sm" value="${line.doors}" min="0" onchange="updateCQLine(${line.id},'doors',this.value)"></td>
+      <td><input type="number" class="cq-input cq-input-sm" value="${line.drawers}" min="0" onchange="updateCQLine(${line.id},'drawers',this.value)"></td>
+      <td><input type="number" class="cq-input cq-input-sm" value="${line.shelves + line.adjShelves}" min="0" onchange="updateCQLine(${line.id},'shelves',this.value)"></td>
+      <td><input type="number" class="cq-input cq-input-sm" value="${line.qty}" min="1" onchange="updateCQLine(${line.id},'qty',this.value)"></td>
+      <td class="cq-cell-price">${fmt(c.matCost * line.qty)}</td>
+      <td class="cq-cell-muted">${c.labourHrs.toFixed(1)}h</td>
+      <td class="cq-cell-muted">${fmt0(c.hwCost * line.qty)}</td>
+      <td class="cq-cell-price" style="font-size:13px">${fmt0(c.lineSubtotal)}</td>
+      <td style="white-space:nowrap">
+        <button class="cq-dup-btn" onclick="dupCQLine(${line.id})" title="Duplicate">&#10697;</button>
+        <button class="cq-del-btn" onclick="removeCQLine(${line.id})" title="Remove">&times;</button>
+      </td>
+    </tr>`;
+  });
+
+  html += `</tbody></table>`;
+  html += `<button class="cq-add-row" onclick="addCQLine()">+ Add Cabinet Line</button>`;
+  area.innerHTML = html;
+
+  // Summary
+  const markupAmt = grandSubtotal * cqSettings.markup / 100;
+  const afterMarkup = grandSubtotal + markupAmt;
+  const taxAmt = afterMarkup * cqSettings.tax / 100;
+  const grandTotal = afterMarkup + taxAmt;
+  const totalHrs = cqLines.reduce((s, l) => { const c = calcCQLine(l); return s + c.labourHrs * l.qty; }, 0);
+
+  sumArea.innerHTML = `<div class="cq-summary-grid">
+    <div class="cq-summary-block">
+      <div class="cq-summary-label">Cost Breakdown</div>
+      <div class="cq-summary-row"><span>Materials</span><span>${fmt0(grandMatCost)}</span></div>
+      <div class="cq-summary-row"><span>Labour (${totalHrs.toFixed(1)} hrs @ ${cur}${cqSettings.labourRate}/hr)</span><span>${fmt0(grandLabour)}</span></div>
+      <div class="cq-summary-row"><span>Hardware</span><span>${fmt0(grandHw)}</span></div>
+      <div class="cq-summary-row subtotal"><span>Subtotal</span><span>${fmt0(grandSubtotal)}</span></div>
+    </div>
+    <div class="cq-summary-block">
+      <div class="cq-summary-label">Markup & Tax</div>
+      ${cqSettings.markup > 0 ? `<div class="cq-summary-row"><span>Markup (${cqSettings.markup}%)</span><span>+${fmt0(markupAmt)}</span></div>` : ''}
+      ${cqSettings.tax > 0 ? `<div class="cq-summary-row"><span>Tax (${cqSettings.tax}%)</span><span>+${fmt0(taxAmt)}</span></div>` : ''}
+    </div>
+    <div class="cq-summary-block">
+      <div class="cq-summary-label">Items</div>
+      <div class="cq-summary-row"><span>Cabinets</span><span>${cqLines.length} items</span></div>
+      <div class="cq-summary-row"><span>Total Units</span><span>${cqLines.reduce((s,l)=>s+l.qty,0)}</span></div>
+    </div>
+    <div>
+      <div class="cq-grand-total">
+        <div class="label">Quote Total</div>
+        <div class="amount">${fmt0(grandTotal)}</div>
+      </div>
+      <div style="display:flex;gap:6px;margin-top:8px">
+        <button class="btn btn-outline" onclick="printCQQuote('print')" style="flex:1;font-size:11px;padding:6px 10px">&#9113; Print</button>
+        <button class="btn btn-outline" onclick="printCQQuote('pdf')" style="flex:1;font-size:11px;padding:6px 10px">&darr; PDF</button>
+      </div>
+      <button class="btn btn-outline" onclick="cqConvertToOrder()" style="width:100%;font-size:11px;padding:6px 10px;margin-top:4px">&rarr; Convert to Order</button>
+    </div>
+  </div>`;
+
+  // Saved quotes shelf
+  renderCQSavedShelf();
+}
+
+// ── Save / Load / New Quotes ──
+function saveCQQuote() {
+  const client = document.getElementById('cq-client')?.value?.trim() || '';
+  const project = document.getElementById('cq-project')?.value?.trim() || '';
+  const notes = document.getElementById('cq-notes')?.value?.trim() || '';
+  const quoteNum = document.getElementById('cq-quote-num')?.value?.trim() || '';
+  if (!client && !project) { _toast('Enter a client or project name first.', 'error'); return; }
+
+  const quote = {
+    id: Date.now(), client, project, notes, quoteNum,
+    lines: JSON.parse(JSON.stringify(cqLines)),
+    date: new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}),
+    settings: { labourRate: cqSettings.labourRate, markup: cqSettings.markup, tax: cqSettings.tax }
+  };
+
+  if (cqActiveQuoteIdx >= 0 && cqSavedQuotes[cqActiveQuoteIdx]) {
+    quote.id = cqSavedQuotes[cqActiveQuoteIdx].id;
+    cqSavedQuotes[cqActiveQuoteIdx] = quote;
+    _toast('Quote updated', 'success');
+  } else {
+    cqSavedQuotes.unshift(quote);
+    cqActiveQuoteIdx = 0;
+    _toast('Quote saved', 'success');
+  }
+  saveCQSaved();
+  renderCQSavedShelf();
+}
+
+function loadCQQuote(idx) {
+  const q = cqSavedQuotes[idx];
+  if (!q) return;
+  cqActiveQuoteIdx = idx;
+  cqLines = JSON.parse(JSON.stringify(q.lines));
+  cqNextId = Math.max(0, ...cqLines.map(l=>l.id)) + 1;
+  document.getElementById('cq-client').value = q.client || '';
+  document.getElementById('cq-project').value = q.project || '';
+  document.getElementById('cq-notes').value = q.notes || '';
+  document.getElementById('cq-quote-num').value = q.quoteNum || '';
+  saveCQLines();
+  renderCQTable();
+}
+
+function newCQQuote() {
+  cqActiveQuoteIdx = -1;
+  cqLines = [];
+  cqNextId = 1;
+  document.getElementById('cq-client').value = '';
+  document.getElementById('cq-project').value = '';
+  document.getElementById('cq-notes').value = '';
+  document.getElementById('cq-quote-num').value = '';
+  saveCQLines();
+  renderCQTable();
+}
+
+function deleteCQQuote(idx) {
+  _confirm('Delete this saved quote?', () => {
+    cqSavedQuotes.splice(idx, 1);
+    if (cqActiveQuoteIdx === idx) { cqActiveQuoteIdx = -1; newCQQuote(); }
+    else if (cqActiveQuoteIdx > idx) cqActiveQuoteIdx--;
+    saveCQSaved();
+    renderCQSavedShelf();
+  });
+}
+
+function renderCQSavedShelf() {
+  const shelf = document.getElementById('cq-saved-shelf');
+  const pills = document.getElementById('cq-saved-pills');
+  if (!shelf || !pills) return;
+  if (cqSavedQuotes.length === 0) { shelf.style.display = 'none'; return; }
+  shelf.style.display = '';
+  const cur = window.currency;
+  pills.innerHTML = cqSavedQuotes.map((q, i) => {
+    const total = q.lines.reduce((s, l) => {
+      const c = calcCQLine(l);
+      return s + c.lineSubtotal;
+    }, 0);
+    const gt = total * (1 + (q.settings?.markup||0)/100) * (1 + (q.settings?.tax||0)/100);
+    const active = i === cqActiveQuoteIdx;
+    return `<div style="display:flex;align-items:center;gap:6px;padding:5px 10px;border-radius:6px;border:1px solid ${active?'var(--accent)':'var(--border)'};background:${active?'var(--accent-dim)':'var(--surface)'};cursor:pointer;flex-shrink:0;white-space:nowrap" onclick="loadCQQuote(${i})">
+      <div style="font-size:11px;font-weight:600;color:var(--text)">${q.client||q.project}</div>
+      <div style="font-size:10px;color:var(--muted)">${q.date}</div>
+      <div style="font-size:11px;font-weight:700;color:var(--accent)">${cur}${Math.round(gt).toLocaleString()}</div>
+      <button style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;padding:0" onclick="event.stopPropagation();deleteCQQuote(${i})">&times;</button>
+    </div>`;
+  }).join('');
+}
+
+// ── Convert to Order ──
+function cqConvertToOrder() {
+  const client = document.getElementById('cq-client')?.value?.trim() || 'Cabinet Client';
+  const project = document.getElementById('cq-project')?.value?.trim() || 'Cabinet Project';
+  if (!cqLines.length) { _toast('Add cabinet lines first.', 'error'); return; }
+
+  const grandSubtotal = cqLines.reduce((s, l) => s + calcCQLine(l).lineSubtotal, 0);
+  const grandTotal = grandSubtotal * (1 + cqSettings.markup/100) * (1 + cqSettings.tax/100);
+
+  // Create via the existing quote system
+  const row = {
+    user_id: _userId, client, project,
+    materials: cqLines.reduce((s, l) => s + calcCQLine(l).matCost * l.qty, 0),
+    labour: cqLines.reduce((s, l) => s + calcCQLine(l).labourCost * l.qty, 0),
+    markup: cqSettings.markup, tax: cqSettings.tax,
+    status: 'draft',
+    date: new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short'}),
+    notes: 'Cabinet Quote: ' + cqLines.map(l => l.name || l.type).filter(Boolean).join(', '),
+  };
+
+  if (_userId) {
+    _db('quotes').insert(row).select().single().then(({data, error}) => {
+      if (error) { _toast('Could not save quote: ' + (error.message||''), 'error'); return; }
+      quotes.unshift(data);
+      _toast('Quote created from cabinet quote', 'success');
+      renderQuoteMain();
+      switchQuoteTab('quick');
+    });
+  } else {
+    _toast('Sign in to save quotes', 'error');
+  }
+}
+
+// ── PDF / Print ──
+function printCQQuote(mode) {
+  const cur = window.currency;
+  const fmt = v => cur + Number(v).toFixed(2);
+  const fmt0 = v => cur + Math.round(v).toLocaleString();
+  const biz = getBizInfo();
+  const client = document.getElementById('cq-client')?.value?.trim() || '';
+  const project = document.getElementById('cq-project')?.value?.trim() || '';
+  const notes = document.getElementById('cq-notes')?.value?.trim() || '';
+  const quoteNum = document.getElementById('cq-quote-num')?.value?.trim() || ('CQ-' + Date.now().toString(36).toUpperCase());
+
+  let grandMat = 0, grandLabour = 0, grandHw = 0, grandSub = 0;
+  const lineRows = cqLines.map((line, i) => {
+    const c = calcCQLine(line);
+    grandMat += c.matCost * line.qty;
+    grandLabour += c.labourCost * line.qty;
+    grandHw += c.hwCost * line.qty;
+    grandSub += c.lineSubtotal;
+    return `<tr>
+      <td style="padding:8px 10px;border-bottom:1px solid #f0f0f0;font-size:12px;color:#555">${i+1}</td>
+      <td style="padding:8px 10px;border-bottom:1px solid #f0f0f0"><strong>${line.name || line.type}</strong><br><span style="font-size:10px;color:#999">${line.type} &middot; ${line.w}&times;${line.h}&times;${line.d}mm &middot; ${line.material}</span>
+      ${line.doors>0?'<br><span style="font-size:10px;color:#999">'+line.doors+' door(s)</span>':''}
+      ${line.drawers>0?'<br><span style="font-size:10px;color:#999">'+line.drawers+' drawer(s)</span>':''}
+      ${line.shelves+line.adjShelves>0?'<br><span style="font-size:10px;color:#999">'+(line.shelves+line.adjShelves)+' shelf/shelves</span>':''}
+      ${line.hwItems.length>0?'<br><span style="font-size:10px;color:#999">HW: '+line.hwItems.map(h=>h.name+' x'+h.qty).join(', ')+'</span>':''}</td>
+      <td style="padding:8px 10px;border-bottom:1px solid #f0f0f0;text-align:center">${line.qty}</td>
+      <td style="padding:8px 10px;border-bottom:1px solid #f0f0f0;text-align:right;font-variant-numeric:tabular-nums">${fmt(c.matCost + c.labourCost + c.hwCost)}</td>
+      <td style="padding:8px 10px;border-bottom:1px solid #f0f0f0;text-align:right;font-weight:600;font-variant-numeric:tabular-nums">${fmt0(c.lineSubtotal)}</td>
+    </tr>`;
+  }).join('');
+
+  const markupAmt = grandSub * cqSettings.markup / 100;
+  const afterMarkup = grandSub + markupAmt;
+  const taxAmt = afterMarkup * cqSettings.tax / 100;
+  const grandTotal = afterMarkup + taxAmt;
+
+  const pdfHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Quote ${quoteNum} - ${project}</title>
+<style>
+  @page { size:A4; margin:14mm 16mm; }
+  * { margin:0;padding:0;box-sizing:border-box; }
+  body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; color:#111; font-size:12px; line-height:1.5; }
+  .hdr { display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:12px;border-bottom:3px solid #111;margin-bottom:24px; }
+  .biz-name { font-size:18px;font-weight:800;letter-spacing:-.3px; }
+  .biz-contact { font-size:10px;color:#777;margin-top:4px;line-height:1.7; }
+  .doc-right { text-align:right; }
+  .doc-word { font-size:26px;font-weight:200;letter-spacing:3px;text-transform:uppercase;color:#222; }
+  .doc-num { font-size:11px;color:#888;margin-top:4px; }
+  .bill-row { display:flex;gap:40px;margin-bottom:22px; }
+  .bill-block label { font-size:8px;text-transform:uppercase;letter-spacing:.7px;color:#bbb;display:block;margin-bottom:4px;border-bottom:1px solid #eee;padding-bottom:3px; }
+  .bill-block .name { font-size:15px;font-weight:700; }
+  table { width:100%;border-collapse:collapse;margin-bottom:4px; }
+  thead tr { border-bottom:1.5px solid #111; }
+  thead th { font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:#888;padding:6px 10px;text-align:left; }
+  thead th.r { text-align:right; }
+  .total-box { display:flex;justify-content:space-between;align-items:center;background:#111;color:#fff;padding:12px 16px;border-radius:6px;margin-top:8px; }
+  .total-label { font-size:10px;text-transform:uppercase;letter-spacing:1.2px;font-weight:600;opacity:.7; }
+  .total-amount { font-size:24px;font-weight:800;letter-spacing:-.4px; }
+  .breakdown { display:flex;gap:24px;margin-top:14px;padding:12px 16px;background:#f8f8f8;border-radius:6px; }
+  .bd-item { flex:1; }
+  .bd-label { font-size:8px;text-transform:uppercase;letter-spacing:.6px;color:#aaa;margin-bottom:2px; }
+  .bd-val { font-size:14px;font-weight:700; }
+  .notes-box { margin-top:18px;background:#f8f8f8;border-radius:6px;padding:14px 16px; }
+  .notes-box label { font-size:8px;text-transform:uppercase;letter-spacing:.7px;color:#aaa;display:block;margin-bottom:6px; }
+  .notes-box p { font-size:12px;color:#333;line-height:1.6; }
+  .validity { margin-top:16px;font-size:10px;color:#aaa; }
+  .acceptance { margin-top:28px;padding-top:16px;border-top:1px solid #e0e0e0; }
+  .acceptance-title { font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:#555;margin-bottom:10px; }
+  .acceptance-text { font-size:11px;color:#777;margin-bottom:18px;line-height:1.5; }
+  .sig-grid { display:grid;grid-template-columns:2fr 1fr;gap:28px; }
+  .sig-field { border-bottom:1.5px solid #ccc;padding-top:28px; }
+  .sig-label { font-size:8px;text-transform:uppercase;letter-spacing:.5px;color:#bbb;margin-top:4px; }
+  .footer { margin-top:30px;display:flex;justify-content:space-between;font-size:8px;color:#ccc;border-top:1px solid #f0f0f0;padding-top:8px; }
+</style></head><body>
+<div class="hdr">
+  <div><div class="biz-name">${biz.name||'Your Business'}</div><div class="biz-contact">${[biz.phone,biz.email,biz.address,biz.abn?'ABN: '+biz.abn:''].filter(Boolean).join('<br>')}</div></div>
+  <div class="doc-right"><div class="doc-word">Quotation</div><div class="doc-num">#${quoteNum} &bull; ${new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}</div></div>
+</div>
+<div class="bill-row">
+  <div class="bill-block"><label>Prepared for</label><div class="name">${client||'—'}</div></div>
+  <div class="bill-block"><label>Project</label><div class="name" style="font-size:14px">${project||'—'}</div></div>
+</div>
+<table>
+  <thead><tr><th>#</th><th>Description</th><th style="text-align:center">Qty</th><th class="r">Unit Price</th><th class="r">Total</th></tr></thead>
+  <tbody>${lineRows}</tbody>
+</table>
+<div class="breakdown">
+  <div class="bd-item"><div class="bd-label">Materials</div><div class="bd-val">${fmt0(grandMat)}</div></div>
+  <div class="bd-item"><div class="bd-label">Labour</div><div class="bd-val">${fmt0(grandLabour)}</div></div>
+  <div class="bd-item"><div class="bd-label">Hardware</div><div class="bd-val">${fmt0(grandHw)}</div></div>
+  <div class="bd-item"><div class="bd-label">Subtotal</div><div class="bd-val">${fmt0(grandSub)}</div></div>
+  ${cqSettings.markup>0?'<div class="bd-item"><div class="bd-label">Markup ('+cqSettings.markup+'%)</div><div class="bd-val">+'+fmt0(markupAmt)+'</div></div>':''}
+  ${cqSettings.tax>0?'<div class="bd-item"><div class="bd-label">Tax ('+cqSettings.tax+'%)</div><div class="bd-val">+'+fmt0(taxAmt)+'</div></div>':''}
+</div>
+<div class="total-box"><div class="total-label">Total Amount Due</div><div class="total-amount">${fmt0(grandTotal)}</div></div>
+${notes?'<div class="notes-box"><label>Scope &amp; Notes</label><p>'+notes.replace(/\\n/g,'<br>')+'</p></div>':''}
+<div class="validity">This quote is valid for 30 days from the date of issue. Prices are subject to change after this period.</div>
+<div class="acceptance">
+  <div class="acceptance-title">Acceptance</div>
+  <div class="acceptance-text">To accept this quotation, please sign below and return a copy to ${biz.name||'us'}${biz.email?' at '+biz.email:''}.</div>
+  <div class="sig-grid"><div><div class="sig-field"></div><div class="sig-label">Client Signature</div></div><div><div class="sig-field"></div><div class="sig-label">Date</div></div></div>
+</div>
+<div class="footer"><span>${biz.name||'ProCabinet'} — Generated by ProCabinet.App</span><span>${new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})}</span></div>
+</body></html>`;
+
+  mode === 'pdf' ? _saveAsPDF(pdfHtml) : _printInFrame(pdfHtml);
+}
+
+// ── Init CQ ──
+loadCQSettings();
+loadCQLines();
+loadCQSaved();
+
 
 // Init cabinet module
 loadCabSettings();
