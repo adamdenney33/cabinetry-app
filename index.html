@@ -5515,19 +5515,26 @@ function toggleCQSettings() {
 
 // ── Settings Lists Render ──
 function renderCQSettingsLists() {
+  const cur = window.currency;
   const mEl = document.getElementById('cq-mat-list');
   if (mEl) {
     mEl.innerHTML = cqSettings.materials.map((m, i) => `<div class="cq-mat-row">
-      <input value="${m.name}" onblur="cqSettings.materials[${i}].name=this.value;saveCQSettings();renderCQTable()">
-      <input type="number" value="${m.price}" onblur="cqSettings.materials[${i}].price=parseFloat(this.value)||0;saveCQSettings();renderCQTable()">
+      <input value="${m.name}" placeholder="Material name" onblur="cqSettings.materials[${i}].name=this.value;saveCQSettings();renderCQTable()">
+      <div style="display:flex;align-items:center;gap:0;border:1px solid var(--border);border-radius:4px;overflow:hidden;background:var(--surface2)">
+        <span style="font-size:10px;color:var(--muted);padding:3px 4px 3px 6px;background:var(--surface)">${cur}</span>
+        <input type="number" value="${m.price}" style="border:none;border-radius:0;padding:3px 6px 3px 2px" onblur="cqSettings.materials[${i}].price=parseFloat(this.value)||0;saveCQSettings();renderCQTable()">
+      </div>
       <button onclick="cqSettings.materials.splice(${i},1);saveCQSettings();renderCQSettingsLists();renderCQTable()">&times;</button>
     </div>`).join('');
   }
   const hEl = document.getElementById('cq-hw-list');
   if (hEl) {
     hEl.innerHTML = cqSettings.hardware.map((h, i) => `<div class="cq-mat-row">
-      <input value="${h.name}" onblur="cqSettings.hardware[${i}].name=this.value;saveCQSettings();renderCQTable()">
-      <input type="number" value="${h.price}" onblur="cqSettings.hardware[${i}].price=parseFloat(this.value)||0;saveCQSettings();renderCQTable()">
+      <input value="${h.name}" placeholder="Hardware name" onblur="cqSettings.hardware[${i}].name=this.value;saveCQSettings();renderCQTable()">
+      <div style="display:flex;align-items:center;gap:0;border:1px solid var(--border);border-radius:4px;overflow:hidden;background:var(--surface2)">
+        <span style="font-size:10px;color:var(--muted);padding:3px 4px 3px 6px;background:var(--surface)">${cur}</span>
+        <input type="number" value="${h.price}" style="border:none;border-radius:0;padding:3px 6px 3px 2px" onblur="cqSettings.hardware[${i}].price=parseFloat(this.value)||0;saveCQSettings();renderCQTable()">
+      </div>
       <button onclick="cqSettings.hardware.splice(${i},1);saveCQSettings();renderCQSettingsLists();renderCQTable()">&times;</button>
     </div>`).join('');
   }
