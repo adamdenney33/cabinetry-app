@@ -5827,6 +5827,16 @@ function renderCQTable() {
     }
   });
 
+  // Total row
+  html += `<tr class="cq-row-total">
+    <td colspan="4" style="text-align:right;padding-right:12px;font-size:11px;color:var(--muted)">${cqLines.length} item${cqLines.length!==1?'s':''} &middot; ${cqLines.reduce((s,l)=>s+l.qty,0)} unit${cqLines.reduce((s,l)=>s+l.qty,0)!==1?'s':''}</td>
+    <td colspan="5"></td>
+    <td class="cq-cell-price">${fmt0(grandMatCost)}</td>
+    <td class="cq-cell-muted">${cqLines.reduce((s,l)=>{const c=calcCQLine(l);return s+c.labourHrs*l.qty},0).toFixed(1)}h</td>
+    <td class="cq-cell-muted">${fmt0(grandHw)}</td>
+    <td class="cq-cell-price" style="font-size:14px;color:var(--accent)">${fmt0(grandSubtotal)}</td>
+    <td></td>
+  </tr>`;
   html += `</tbody></table>`;
   html += `<div style="display:flex;gap:6px;flex-wrap:wrap;margin:8px 0">
     <button class="cq-add-row" onclick="addCQLine()" style="margin:0">+ Add Blank</button>
@@ -5903,6 +5913,7 @@ function renderCQTable() {
         <button class="btn btn-outline" onclick="printCQQuote('print')" style="flex:1;font-size:11px;padding:6px 10px">&#9113; Print</button>
         <button class="btn btn-outline" onclick="printCQQuote('pdf')" style="flex:1;font-size:11px;padding:6px 10px">&darr; PDF</button>
       </div>
+      <button class="btn btn-outline" onclick="cqSendToQuickQuote()" style="width:100%;font-size:11px;padding:6px 10px;margin-top:4px">&larr; Send to Quick Quote</button>
       <button class="btn btn-outline" onclick="cqConvertToOrder()" style="width:100%;font-size:11px;padding:6px 10px;margin-top:4px">&rarr; Convert to Order</button>
     </div>
   </div>
@@ -6192,6 +6203,30 @@ function copyCQSummary() {
   ].filter(Boolean).join('\n');
 
   navigator.clipboard.writeText(text).then(() => _toast('Summary copied to clipboard', 'success')).catch(() => _toast('Copy failed', 'error'));
+}
+
+// ── Send to Quick Quote ──
+function cqSendToQuickQuote() {
+  if (!cqLines.length) { _toast('Add cabinet lines first.', 'error'); return; }
+  const grandSub = cqLines.reduce((s, l) => s + calcCQLine(l).lineSubtotal, 0);
+  const matTotal = cqLines.reduce((s, l) => s + calcCQLine(l).matCost * l.qty, 0);
+  const labourTotal = cqLines.reduce((s, l) => s + calcCQLine(l).labourCost * l.qty, 0);
+  const client = document.getElementById('cq-client')?.value?.trim() || '';
+  const project = document.getElementById('cq-project')?.value?.trim() || '';
+
+  document.getElementById('q-client').value = client;
+  document.getElementById('q-project').value = project;
+  document.getElementById('q-materials').value = matTotal.toFixed(2);
+  document.getElementById('q-labour-rate').value = cqSettings.labourRate;
+  const totalHrs = cqLines.reduce((s, l) => s + calcCQLine(l).labourHrs * l.qty, 0);
+  document.getElementById('q-hours').value = totalHrs.toFixed(1);
+  document.getElementById('q-markup').value = cqSettings.markup;
+  document.getElementById('q-tax').value = cqSettings.tax;
+  document.getElementById('q-notes').value = 'Cabinet Quote: ' + cqLines.map(l => (l.name || l.type) + (l.qty > 1 ? ' x' + l.qty : '')).join(', ');
+
+  switchQuoteTab('quick');
+  try { _updateQuotePreview(); } catch(e) {}
+  _toast('Sent to Quick Quote — review and create', 'success');
 }
 
 // ── Import from Cabinet Builder tab ──
