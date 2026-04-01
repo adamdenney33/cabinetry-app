@@ -5511,9 +5511,14 @@ function dupCQLine(id) {
 function updateCQLine(id, field, val) {
   const line = cqLines.find(l => l.id === id);
   if (!line) return;
-  const numFields = ['w','h','d','qty','doors','drawers','shelves','adjShelves','labourHrs'];
+  const numFields = ['w','h','d','qty','doors','drawers','adjShelves','labourHrs'];
   if (numFields.includes(field)) {
     line[field] = parseFloat(val) || 0;
+  } else if (field === 'shelves') {
+    // The main table shows combined shelves - update shelves, keep adjShelves separate
+    const total = parseFloat(val) || 0;
+    line.shelves = total;
+    line.adjShelves = 0;
   } else if (field === 'labourOverride') {
     line.labourOverride = val === 'true' || val === true;
   } else if (field === 'matCostOverride') {
@@ -5907,8 +5912,8 @@ function loadCQQuote(idx) {
   const q = cqSavedQuotes[idx];
   if (!q) return;
   cqActiveQuoteIdx = idx;
-  cqLines = JSON.parse(JSON.stringify(q.lines));
-  cqNextId = Math.max(0, ...cqLines.map(l=>l.id)) + 1;
+  cqLines = JSON.parse(JSON.stringify(q.lines || []));
+  cqNextId = cqLines.length > 0 ? Math.max(...cqLines.map(l=>l.id)) + 1 : 1;
   document.getElementById('cq-client').value = q.client || '';
   document.getElementById('cq-project').value = q.project || '';
   document.getElementById('cq-notes').value = q.notes || '';
@@ -5996,7 +6001,10 @@ function cqConvertToOrder() {
 }
 
 // ── PDF / Print ──
+function _escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+
 function printCQQuote(mode) {
+  if (!cqLines.length) { _toast('Add cabinet lines first.', 'error'); return; }
   const cur = window.currency;
   const fmt = v => cur + Number(v).toFixed(2);
   const fmt0 = v => cur + Math.round(v).toLocaleString();
@@ -6015,11 +6023,11 @@ function printCQQuote(mode) {
     grandSub += c.lineSubtotal;
     return `<tr>
       <td style="padding:8px 10px;border-bottom:1px solid #f0f0f0;font-size:12px;color:#555">${i+1}</td>
-      <td style="padding:8px 10px;border-bottom:1px solid #f0f0f0"><strong>${line.name || line.type}</strong><br><span style="font-size:10px;color:#999">${line.type} &middot; ${line.w}&times;${line.h}&times;${line.d}mm &middot; ${line.material}</span>
+      <td style="padding:8px 10px;border-bottom:1px solid #f0f0f0"><strong>${_escHtml(line.name || line.type)}</strong><br><span style="font-size:10px;color:#999">${_escHtml(line.type)} &middot; ${line.w}&times;${line.h}&times;${line.d}mm &middot; ${_escHtml(line.material)}</span>
       ${line.doors>0?'<br><span style="font-size:10px;color:#999">'+line.doors+' door(s)</span>':''}
       ${line.drawers>0?'<br><span style="font-size:10px;color:#999">'+line.drawers+' drawer(s)</span>':''}
       ${line.shelves+line.adjShelves>0?'<br><span style="font-size:10px;color:#999">'+(line.shelves+line.adjShelves)+' shelf/shelves</span>':''}
-      ${line.hwItems.length>0?'<br><span style="font-size:10px;color:#999">HW: '+line.hwItems.map(h=>h.name+' x'+h.qty).join(', ')+'</span>':''}</td>
+      ${line.hwItems.length>0?'<br><span style="font-size:10px;color:#999">HW: '+line.hwItems.map(h=>_escHtml(h.name)+' x'+h.qty).join(', ')+'</span>':''}</td>
       <td style="padding:8px 10px;border-bottom:1px solid #f0f0f0;text-align:center">${line.qty}</td>
       <td style="padding:8px 10px;border-bottom:1px solid #f0f0f0;text-align:right;font-variant-numeric:tabular-nums">${fmt(c.matCost + c.labourCost + c.hwCost)}</td>
       <td style="padding:8px 10px;border-bottom:1px solid #f0f0f0;text-align:right;font-weight:600;font-variant-numeric:tabular-nums">${fmt0(c.lineSubtotal)}</td>
@@ -6073,8 +6081,8 @@ function printCQQuote(mode) {
   <div class="doc-right"><div class="doc-word">Quotation</div><div class="doc-num">#${quoteNum} &bull; ${new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}</div></div>
 </div>
 <div class="bill-row">
-  <div class="bill-block"><label>Prepared for</label><div class="name">${client||'—'}</div></div>
-  <div class="bill-block"><label>Project</label><div class="name" style="font-size:14px">${project||'—'}</div></div>
+  <div class="bill-block"><label>Prepared for</label><div class="name">${_escHtml(client)||'—'}</div></div>
+  <div class="bill-block"><label>Project</label><div class="name" style="font-size:14px">${_escHtml(project)||'—'}</div></div>
 </div>
 <table>
   <thead><tr><th>#</th><th>Description</th><th style="text-align:center">Qty</th><th class="r">Unit Price</th><th class="r">Total</th></tr></thead>
@@ -6093,7 +6101,7 @@ ${cqSettings.deposit > 0 && cqSettings.deposit < 100 ? `<div style="display:flex
   <div><div style="font-size:8px;text-transform:uppercase;letter-spacing:.6px;color:#6b8db5;margin-bottom:1px">Deposit Required (${cqSettings.deposit}%)</div><div style="font-size:16px;font-weight:800">${fmt0(grandTotal * cqSettings.deposit / 100)}</div></div>
   <div><div style="font-size:8px;text-transform:uppercase;letter-spacing:.6px;color:#6b8db5;margin-bottom:1px">Balance on Completion</div><div style="font-size:16px;font-weight:800">${fmt0(grandTotal * (1 - cqSettings.deposit / 100))}</div></div>
 </div>` : ''}
-${notes?'<div class="notes-box"><label>Scope &amp; Notes</label><p>'+notes.replace(/\\n/g,'<br>')+'</p></div>':''}
+${notes?'<div class="notes-box"><label>Scope &amp; Notes</label><p>'+_escHtml(notes).replace(/\\n/g,'<br>')+'</p></div>':''}
 <div class="validity">This quote is valid for 30 days from the date of issue. Prices are subject to change after this period.${cqSettings.deposit > 0 && cqSettings.deposit < 100 ? ' A deposit of ' + cqSettings.deposit + '% is required upon acceptance to commence work.' : ''}</div>
 <div class="acceptance">
   <div class="acceptance-title">Acceptance</div>
