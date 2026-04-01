@@ -971,6 +971,10 @@ html.dark .cl-table tbody tr:nth-child(even) td { background: rgba(255,255,255,0
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.8,5.1 L12,2 L12.6,5 L14.4,5.4 L17,3.3 L16,6.3 L17.4,7.5 L20.7,7 L18.3,9 L18.9,10.8 L22,12 L19,12.6 L18.6,14.4 L20.7,17 L17.7,16 L16.5,17.4 L17,20.7 L15,18.3 L13.2,18.9 L12,22 L11.4,19 L9.6,18.6 L7,20.7 L8,17.7 L6.6,16.5 L3.3,17 L5.7,15 L5.1,13.2 L2,12 L5,11.4 L5.4,9.6 L3.3,7 L6.3,8 L7.5,6.6 L7,3.3 L9,5.7 Z"/><circle cx="12" cy="12" r="2.5"/></svg>
     Cut List
   </div>
+  <div class="nav-tab" onclick="switchSection('cabinet')">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="12" y1="3" x2="12" y2="12"/></svg>
+    Cabinet
+  </div>
   <div class="nav-tab" onclick="switchSection('stock')">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
     Stock
@@ -991,6 +995,135 @@ html.dark .cl-table tbody tr:nth-child(even) td { background: rgba(255,255,255,0
 </div>
 
 <div class="app-body">
+
+  <!-- ════════════════════════════════════
+       CABINET QUOTE SECTION
+  ════════════════════════════════════ -->
+  <div class="section-panel" id="panel-cabinet">
+    <div class="sidebar" style="width:420px;min-width:360px">
+      <div class="sidebar-scroll" id="cab-sidebar">
+
+        <!-- Settings Toggle -->
+        <div style="padding:10px 14px 0;display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:13px;font-weight:700;color:var(--text)">Cabinet Quote Builder</span>
+          <button class="cl-csv-btn" onclick="toggleCabSettings()" id="cab-settings-btn" style="padding:4px 10px;display:flex;align-items:center;gap:5px;font-size:11px">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.32 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+            Settings
+          </button>
+        </div>
+
+        <!-- Global Settings Panel (collapsible) -->
+        <div id="cab-settings-panel" style="display:none;padding:8px 14px 4px;border-bottom:1px solid var(--border);margin-bottom:6px">
+          <div class="form-section" style="margin-bottom:8px">
+            <div class="form-section-title" style="margin-bottom:6px">Rates</div>
+            <div class="form-row" style="margin-bottom:6px">
+              <div class="form-group"><label>Labour (per hr)</label><input type="number" id="cab-labour-rate" value="50" min="0" step="1" onchange="saveCabSettings();renderCabinetQuote()"></div>
+              <div class="form-group"><label>VAT %</label><input type="number" id="cab-vat-rate" value="20" min="0" step="1" onchange="saveCabSettings();renderCabinetQuote()"></div>
+              <div class="form-group"><label>Currency</label><select id="cab-currency" onchange="saveCabSettings();renderCabinetQuote()"><option value="£">£ GBP</option><option value="$">$ USD</option><option value="€">€ EUR</option></select></div>
+            </div>
+          </div>
+          <div class="form-section" style="margin-bottom:8px">
+            <div class="form-section-title" style="margin-bottom:6px">Material Prices (per sheet)</div>
+            <div id="cab-materials-list" style="max-height:180px;overflow-y:auto"></div>
+            <button class="cl-add-btn" onclick="addCabMaterial()" style="margin-top:4px;font-size:11px;padding:4px 10px">+ Add Material</button>
+          </div>
+          <div class="form-section" style="margin-bottom:8px">
+            <div class="form-section-title" style="margin-bottom:6px">Handle / Hardware Prices</div>
+            <div id="cab-handles-list" style="max-height:140px;overflow-y:auto"></div>
+            <button class="cl-add-btn" onclick="addCabHandle()" style="margin-top:4px;font-size:11px;padding:4px 10px">+ Add Handle Type</button>
+          </div>
+        </div>
+
+        <!-- Cabinet Items List -->
+        <div style="padding:8px 14px 4px;display:flex;justify-content:space-between;align-items:center">
+          <span class="cl-section-title">Cabinets in Quote</span>
+          <button class="cl-csv-btn" onclick="addCabinetItem()" style="padding:4px 10px;display:flex;align-items:center;gap:4px;font-size:11px">+ Add Cabinet</button>
+        </div>
+        <div id="cab-items-list" style="padding:4px 14px"></div>
+
+        <!-- Active Cabinet Editor -->
+        <div id="cab-editor" style="padding:0 14px 14px">
+          <div class="form-section" style="margin-bottom:10px">
+            <div class="form-section-title" style="margin-bottom:6px">Dimensions</div>
+            <div class="form-row" style="margin-bottom:6px">
+              <div class="form-group"><label>Name</label><input type="text" id="cab-name" placeholder="e.g. Kitchen Base Unit" oninput="updateActiveCab()"></div>
+            </div>
+            <div class="form-row">
+              <div class="form-group"><label>Width (mm)</label><input type="number" id="cab-w" value="600" min="0" oninput="updateActiveCab()"></div>
+              <div class="form-group"><label>Height (mm)</label><input type="number" id="cab-h" value="720" min="0" oninput="updateActiveCab()"></div>
+              <div class="form-group"><label>Depth (mm)</label><input type="number" id="cab-d" value="560" min="0" oninput="updateActiveCab()"></div>
+            </div>
+          </div>
+
+          <div class="form-section" style="margin-bottom:10px">
+            <div class="form-section-title" style="margin-bottom:6px">Construction</div>
+            <div class="form-row" style="margin-bottom:6px">
+              <div class="form-group"><label>Carcass Material</label><select id="cab-carcass-mat" onchange="updateActiveCab()"></select></div>
+              <div class="form-group"><label>Top Material</label><select id="cab-top-mat" onchange="updateActiveCab()"></select></div>
+            </div>
+            <div class="form-row" style="margin-bottom:6px">
+              <div class="form-group" style="flex:0 0 auto"><label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="cab-has-back" checked onchange="updateActiveCab()"> Back Panel</label></div>
+              <div class="form-group"><label>Back Material</label><select id="cab-back-mat" onchange="updateActiveCab()"></select></div>
+            </div>
+            <div class="form-row" style="margin-bottom:6px">
+              <div class="form-group"><label>Base Type</label>
+                <select id="cab-base-type" onchange="updateActiveCab()">
+                  <option value="none">None</option>
+                  <option value="plinth" selected>Plinth</option>
+                  <option value="legs">Legs / Feet</option>
+                  <option value="frame">Frame Base</option>
+                </select>
+              </div>
+              <div class="form-group"><label>Finish</label><input type="text" id="cab-finish" value="Osmo Polyx Oil" oninput="updateActiveCab()"></div>
+            </div>
+          </div>
+
+          <div class="form-section" style="margin-bottom:10px">
+            <div class="form-section-title" style="margin-bottom:6px">Doors</div>
+            <div class="form-row" style="margin-bottom:6px">
+              <div class="form-group" style="flex:0 0 70px"><label>Count</label><input type="number" id="cab-door-count" value="0" min="0" oninput="updateActiveCab()"></div>
+              <div class="form-group"><label>Door Material</label><select id="cab-door-mat" onchange="updateActiveCab()"></select></div>
+              <div class="form-group"><label>Handle</label><select id="cab-door-handle" onchange="updateActiveCab()"></select></div>
+            </div>
+          </div>
+
+          <div class="form-section" style="margin-bottom:10px">
+            <div class="form-section-title" style="margin-bottom:6px">Drawers</div>
+            <div class="form-row" style="margin-bottom:6px">
+              <div class="form-group" style="flex:0 0 70px"><label>Count</label><input type="number" id="cab-drawer-count" value="0" min="0" oninput="updateActiveCab()"></div>
+              <div class="form-group"><label>Drawer Front</label><select id="cab-drawer-front-mat" onchange="updateActiveCab()"></select></div>
+              <div class="form-group"><label>Handle</label><select id="cab-drawer-handle" onchange="updateActiveCab()"></select></div>
+            </div>
+            <div class="form-row">
+              <div class="form-group"><label>Inner Material</label><select id="cab-drawer-inner-mat" onchange="updateActiveCab()"></select></div>
+            </div>
+          </div>
+
+          <div class="form-section" style="margin-bottom:10px">
+            <div class="form-section-title" style="margin-bottom:6px">Shelves &amp; Partitions</div>
+            <div class="form-row">
+              <div class="form-group"><label>Fixed Shelves</label><input type="number" id="cab-fixed-shelves" value="0" min="0" oninput="updateActiveCab()"></div>
+              <div class="form-group"><label>Adj. Shelves</label><input type="number" id="cab-adj-shelves" value="0" min="0" oninput="updateActiveCab()"></div>
+              <div class="form-group"><label>Loose Shelves</label><input type="number" id="cab-loose-shelves" value="0" min="0" oninput="updateActiveCab()"></div>
+            </div>
+          </div>
+
+          <div class="form-section" style="margin-bottom:10px">
+            <div class="form-section-title" style="margin-bottom:6px">Extras</div>
+            <div class="form-row" style="margin-bottom:6px">
+              <div class="form-group"><label>Cable Holes</label><input type="number" id="cab-cable-holes" value="0" min="0" oninput="updateActiveCab()"></div>
+              <div class="form-group"><label>Extra Labour (hrs)</label><input type="number" id="cab-extra-labour" value="0" min="0" step="0.25" oninput="updateActiveCab()"></div>
+              <div class="form-group"><label>Qty</label><input type="number" id="cab-qty" value="1" min="1" oninput="updateActiveCab()"></div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+    <div class="main-content">
+      <div class="main-scroll" id="cab-results" style="padding:20px"></div>
+    </div>
+  </div>
 
   <!-- ════════════════════════════════════
        STOCK SECTION
@@ -1721,12 +1854,13 @@ function setCurrency(c) {
 // ══════════════════════════════════════════
 function switchSection(name) {
   document.querySelectorAll('.nav-tab').forEach((t,i) => {
-    const sections = ['cutlist','stock','quote','orders','dashboard'];
+    const sections = ['cutlist','cabinet','stock','quote','orders','dashboard'];
     t.classList.toggle('active', sections[i] === name);
   });
   document.querySelectorAll('.section-panel').forEach(p => {
     p.classList.toggle('active', p.id === 'panel-' + name);
   });
+  if (name === 'cabinet') renderCabinetQuote();
   if (name === 'stock') renderStockMain();
   if (name === 'quote') renderQuoteMain();
   if (name === 'orders') renderOrdersMain();
@@ -4580,6 +4714,473 @@ function _updateQuotePreview() {
   document.getElementById('qfp-materials').textContent = fmt(mat);
   document.getElementById('qfp-total').textContent     = fmt(total);
 }
+
+// ══════════════════════════════════════════
+// CABINET QUOTE BUILDER
+// ══════════════════════════════════════════
+
+const CAB_DEFAULT_MATERIALS = [
+  { name: 'Birch Plywood 18mm', price: 40 },
+  { name: 'Birch Plywood 12mm', price: 30 },
+  { name: 'Birch Plywood 6mm',  price: 25 },
+  { name: 'Birch Plywood 35mm', price: 80 },
+  { name: 'Veneered Plywood 18mm', price: 70 },
+  { name: 'Veneered Plywood 12mm', price: 60 },
+  { name: 'Veneered Plywood 6mm',  price: 55 },
+  { name: 'Edged Wood Veneer', price: 170 },
+  { name: 'Valchromat',       price: 60 },
+  { name: 'White Melamine',   price: 60 },
+  { name: 'Solid Pine',       price: 60 },
+  { name: 'Solid Oak',        price: 90 },
+  { name: 'Baubuche',         price: 110 },
+  { name: 'Forbo',            price: 210 },
+  { name: 'Formica',          price: 210 },
+  { name: 'Fenix',            price: 210 },
+];
+const CAB_DEFAULT_HANDLES = [
+  { name: 'Circular Cut-outs',       price: 15 },
+  { name: 'Curved Cut-outs',         price: 25 },
+  { name: 'Square Cut-outs',         price: 25 },
+  { name: 'Circular Finger Pulls',   price: 25 },
+  { name: 'Finger Pull + Routered',  price: 40 },
+  { name: 'Push to Open',            price: 25 },
+  { name: 'Divider',                 price: 40 },
+  { name: 'None',                    price: 0 },
+];
+const SHEET_AREA = 2.44 * 1.22; // m² per standard sheet
+
+// State
+let cabSettings = { labourRate: 50, vatRate: 20, currency: '£', materials: [], handles: [] };
+let cabItems = [];  // array of cabinet configs
+let cabActiveIdx = 0;
+let _cabId = 1;
+
+function loadCabSettings() {
+  try {
+    const s = localStorage.getItem('pc_cab_settings');
+    if (s) cabSettings = JSON.parse(s);
+  } catch(e) {}
+  if (!cabSettings.materials || !cabSettings.materials.length) cabSettings.materials = JSON.parse(JSON.stringify(CAB_DEFAULT_MATERIALS));
+  if (!cabSettings.handles || !cabSettings.handles.length) cabSettings.handles = JSON.parse(JSON.stringify(CAB_DEFAULT_HANDLES));
+}
+function saveCabSettings() {
+  cabSettings.labourRate = parseFloat(document.getElementById('cab-labour-rate')?.value) || 50;
+  cabSettings.vatRate = parseFloat(document.getElementById('cab-vat-rate')?.value) || 20;
+  cabSettings.currency = document.getElementById('cab-currency')?.value || '£';
+  localStorage.setItem('pc_cab_settings', JSON.stringify(cabSettings));
+}
+function saveCabItems() {
+  localStorage.setItem('pc_cab_items', JSON.stringify(cabItems));
+}
+function loadCabItems() {
+  try {
+    const s = localStorage.getItem('pc_cab_items');
+    if (s) { cabItems = JSON.parse(s); _cabId = Math.max(...cabItems.map(c => c.id), 0) + 1; }
+  } catch(e) {}
+}
+
+function defaultCabinet() {
+  return {
+    id: _cabId++, name: 'Cabinet ' + _cabId,
+    w: 600, h: 720, d: 560,
+    carcassMat: cabSettings.materials[0]?.name || '',
+    topMat: cabSettings.materials[0]?.name || '',
+    hasBack: true, backMat: (cabSettings.materials.find(m => m.name.includes('6mm')) || cabSettings.materials[0])?.name || '',
+    baseType: 'plinth', finish: 'Osmo Polyx Oil',
+    doorCount: 0, doorMat: cabSettings.materials[0]?.name || '', doorHandle: cabSettings.handles[0]?.name || '',
+    drawerCount: 0, drawerFrontMat: cabSettings.materials[0]?.name || '', drawerHandle: cabSettings.handles[0]?.name || '',
+    drawerInnerMat: (cabSettings.materials.find(m => m.name.includes('12mm')) || cabSettings.materials[0])?.name || '',
+    fixedShelves: 0, adjShelves: 0, looseShelves: 0,
+    cableHoles: 0, extraLabour: 0, qty: 1,
+  };
+}
+
+function addCabinetItem() {
+  const cab = defaultCabinet();
+  cabItems.push(cab);
+  cabActiveIdx = cabItems.length - 1;
+  saveCabItems();
+  renderCabinetQuote();
+}
+
+function removeCabinetItem(id) {
+  cabItems = cabItems.filter(c => c.id !== id);
+  if (cabActiveIdx >= cabItems.length) cabActiveIdx = Math.max(0, cabItems.length - 1);
+  saveCabItems();
+  renderCabinetQuote();
+}
+
+function duplicateCabinetItem(id) {
+  const src = cabItems.find(c => c.id === id);
+  if (!src) return;
+  const copy = { ...src, id: _cabId++, name: src.name + ' (copy)' };
+  cabItems.push(copy);
+  cabActiveIdx = cabItems.length - 1;
+  saveCabItems();
+  renderCabinetQuote();
+}
+
+function selectCabinet(idx) {
+  cabActiveIdx = idx;
+  renderCabinetQuote();
+}
+
+function toggleCabSettings() {
+  const p = document.getElementById('cab-settings-panel');
+  if (p) p.style.display = p.style.display === 'none' ? '' : 'none';
+}
+
+// Material price lookup
+function matPrice(name) {
+  const m = cabSettings.materials.find(m => m.name === name);
+  return m ? m.price : 0;
+}
+function handlePrice(name) {
+  const h = cabSettings.handles.find(h => h.name === name);
+  return h ? h.price : 0;
+}
+// Price per m² from price per sheet
+function pricePerM2(name) { return matPrice(name) / SHEET_AREA; }
+
+// Calculate a single cabinet's cost breakdown
+function calcCabinet(cab) {
+  const rate = cabSettings.labourRate;
+  const W = cab.w / 1000, H = cab.h / 1000, D = cab.d / 1000; // convert mm to m
+  const T = 0.018; // 18mm carcass thickness in m
+  const lines = [];
+  let totalMat = 0, totalLabour = 0, totalHardware = 0;
+
+  function addLine(name, matArea, matName, labourHrs, hardwareCost) {
+    const mc = matArea * pricePerM2(matName);
+    const lc = labourHrs * rate;
+    totalMat += mc; totalLabour += lc; totalHardware += (hardwareCost || 0);
+    lines.push({ name, material: mc, labour: lc, hardware: hardwareCost || 0, total: mc + lc + (hardwareCost || 0) });
+  }
+
+  // Carcass sides (2)
+  const sideArea = 2 * H * D;
+  addLine('Carcass Sides (2)', sideArea, cab.carcassMat, 0.8, 0);
+
+  // Top + Bottom
+  const innerW = W - 2 * T;
+  const tbArea = 2 * innerW * D;
+  addLine('Top & Bottom', tbArea, cab.carcassMat, 0.5, 0);
+
+  // Top panel (if different material)
+  if (cab.topMat && cab.topMat !== cab.carcassMat) {
+    const topArea = W * D;
+    addLine('Top Panel', topArea, cab.topMat, 0.3, 0);
+  }
+
+  // Back
+  if (cab.hasBack) {
+    const backArea = W * H;
+    addLine('Back Panel', backArea, cab.backMat, 0.3, 0);
+  }
+
+  // Base
+  if (cab.baseType === 'plinth') {
+    const plinthH = 0.1; // 100mm plinth
+    const plinthArea = W * plinthH;
+    addLine('Plinth', plinthArea, cab.carcassMat, 0.4, 20);
+  } else if (cab.baseType === 'legs') {
+    addLine('Legs / Feet', 0, cab.carcassMat, 0.3, 40);
+  } else if (cab.baseType === 'frame') {
+    addLine('Frame Base', 0, cab.carcassMat, 1.0, 30);
+  }
+
+  // Finish
+  const totalSurfaceArea = sideArea + tbArea + (cab.hasBack ? W * H : 0);
+  const finishHrs = totalSurfaceArea * 0.8; // ~0.8 hrs per m²
+  addLine('Finish (' + (cab.finish || 'none') + ')', 0, cab.carcassMat, Math.max(0.5, finishHrs), totalSurfaceArea * 2);
+
+  // Doors
+  if (cab.doorCount > 0) {
+    const doorH = H * 0.95; // doors slightly smaller than cabinet
+    const doorW = innerW / cab.doorCount;
+    const doorArea = cab.doorCount * doorW * doorH;
+    addLine('Door(s) x' + cab.doorCount, doorArea, cab.doorMat, cab.doorCount * 0.4, 0);
+    addLine('Door Hinges', 0, '', 0, cab.doorCount * 8);
+    const hp = handlePrice(cab.doorHandle);
+    if (hp > 0) addLine('Door Handles (' + cab.doorHandle + ')', 0, '', 0.1 * cab.doorCount, hp * cab.doorCount);
+  }
+
+  // Drawers
+  if (cab.drawerCount > 0) {
+    const drawerH = (H * 0.9) / cab.drawerCount;
+    const drawerW = innerW;
+    // Drawer fronts
+    const frontArea = cab.drawerCount * drawerW * drawerH;
+    addLine('Drawer Fronts x' + cab.drawerCount, frontArea, cab.drawerFrontMat, cab.drawerCount * 0.15, 0);
+    // Drawer boxes (sides + front/back + bottom)
+    const boxSideArea = cab.drawerCount * 2 * D * drawerH;
+    const boxFbArea = cab.drawerCount * 2 * (drawerW - 2 * T) * drawerH;
+    const boxBottomArea = cab.drawerCount * drawerW * D;
+    const boxTotal = boxSideArea + boxFbArea + boxBottomArea;
+    addLine('Drawer Boxes x' + cab.drawerCount, boxTotal, cab.drawerInnerMat, cab.drawerCount * 0.5, 0);
+    // Slides
+    addLine('Drawer Slides', 0, '', 0, cab.drawerCount * 12);
+    // Handles
+    const dhp = handlePrice(cab.drawerHandle);
+    if (dhp > 0) addLine('Drawer Handles (' + cab.drawerHandle + ')', 0, '', 0.1 * cab.drawerCount, dhp * cab.drawerCount);
+  }
+
+  // Shelves
+  const shelfArea = innerW * (D - T);
+  if (cab.fixedShelves > 0) {
+    addLine('Fixed Shelves x' + cab.fixedShelves, cab.fixedShelves * shelfArea, cab.carcassMat, cab.fixedShelves * 0.3, 0);
+  }
+  if (cab.adjShelves > 0) {
+    addLine('Adj. Shelves x' + cab.adjShelves, cab.adjShelves * shelfArea, cab.carcassMat, cab.adjShelves * 0.25, 0);
+    addLine('Shelf Pin Holes', 0, '', 0.4, 0);
+  }
+  if (cab.looseShelves > 0) {
+    addLine('Loose Shelves x' + cab.looseShelves, cab.looseShelves * shelfArea, cab.carcassMat, cab.looseShelves * 0.2, 0);
+  }
+
+  // Cable holes
+  if (cab.cableHoles > 0) {
+    addLine('Cable Holes x' + cab.cableHoles, 0, '', cab.cableHoles * 0.15, cab.cableHoles * 5);
+  }
+
+  // Extra labour
+  if (cab.extraLabour > 0) {
+    addLine('Additional Labour', 0, '', cab.extraLabour, 0);
+  }
+
+  const subtotal = totalMat + totalLabour + totalHardware;
+  const vat = subtotal * (cabSettings.vatRate / 100);
+  const totalHrs = lines.reduce((s, l) => s + l.labour / rate, 0);
+
+  return { lines, totalMat, totalLabour, totalHardware, subtotal, vat, grandTotal: subtotal + vat, totalHrs };
+}
+
+// Populate material/handle dropdowns
+function populateCabDropdowns() {
+  const matSelects = ['cab-carcass-mat','cab-top-mat','cab-back-mat','cab-door-mat','cab-drawer-front-mat','cab-drawer-inner-mat'];
+  const matOpts = cabSettings.materials.map(m => `<option value="${m.name}">${m.name} (${cabSettings.currency}${m.price})</option>`).join('');
+  matSelects.forEach(id => { const el = document.getElementById(id); if (el) el.innerHTML = matOpts; });
+
+  const handleSelects = ['cab-door-handle','cab-drawer-handle'];
+  const hOpts = cabSettings.handles.map(h => `<option value="${h.name}">${h.name} (${cabSettings.currency}${h.price})</option>`).join('');
+  handleSelects.forEach(id => { const el = document.getElementById(id); if (el) el.innerHTML = hOpts; });
+}
+
+// Load active cabinet into the form
+function loadCabForm(cab) {
+  if (!cab) return;
+  document.getElementById('cab-name').value = cab.name || '';
+  document.getElementById('cab-w').value = cab.w;
+  document.getElementById('cab-h').value = cab.h;
+  document.getElementById('cab-d').value = cab.d;
+  document.getElementById('cab-carcass-mat').value = cab.carcassMat;
+  document.getElementById('cab-top-mat').value = cab.topMat;
+  document.getElementById('cab-has-back').checked = cab.hasBack;
+  document.getElementById('cab-back-mat').value = cab.backMat;
+  document.getElementById('cab-base-type').value = cab.baseType;
+  document.getElementById('cab-finish').value = cab.finish || '';
+  document.getElementById('cab-door-count').value = cab.doorCount;
+  document.getElementById('cab-door-mat').value = cab.doorMat;
+  document.getElementById('cab-door-handle').value = cab.doorHandle;
+  document.getElementById('cab-drawer-count').value = cab.drawerCount;
+  document.getElementById('cab-drawer-front-mat').value = cab.drawerFrontMat;
+  document.getElementById('cab-drawer-handle').value = cab.drawerHandle;
+  document.getElementById('cab-drawer-inner-mat').value = cab.drawerInnerMat;
+  document.getElementById('cab-fixed-shelves').value = cab.fixedShelves;
+  document.getElementById('cab-adj-shelves').value = cab.adjShelves;
+  document.getElementById('cab-loose-shelves').value = cab.looseShelves;
+  document.getElementById('cab-cable-holes').value = cab.cableHoles;
+  document.getElementById('cab-extra-labour').value = cab.extraLabour;
+  document.getElementById('cab-qty').value = cab.qty;
+}
+
+// Read form into active cabinet
+function updateActiveCab() {
+  const cab = cabItems[cabActiveIdx];
+  if (!cab) return;
+  cab.name = document.getElementById('cab-name').value;
+  cab.w = parseFloat(document.getElementById('cab-w').value) || 600;
+  cab.h = parseFloat(document.getElementById('cab-h').value) || 720;
+  cab.d = parseFloat(document.getElementById('cab-d').value) || 560;
+  cab.carcassMat = document.getElementById('cab-carcass-mat').value;
+  cab.topMat = document.getElementById('cab-top-mat').value;
+  cab.hasBack = document.getElementById('cab-has-back').checked;
+  cab.backMat = document.getElementById('cab-back-mat').value;
+  cab.baseType = document.getElementById('cab-base-type').value;
+  cab.finish = document.getElementById('cab-finish').value;
+  cab.doorCount = parseInt(document.getElementById('cab-door-count').value) || 0;
+  cab.doorMat = document.getElementById('cab-door-mat').value;
+  cab.doorHandle = document.getElementById('cab-door-handle').value;
+  cab.drawerCount = parseInt(document.getElementById('cab-drawer-count').value) || 0;
+  cab.drawerFrontMat = document.getElementById('cab-drawer-front-mat').value;
+  cab.drawerHandle = document.getElementById('cab-drawer-handle').value;
+  cab.drawerInnerMat = document.getElementById('cab-drawer-inner-mat').value;
+  cab.fixedShelves = parseInt(document.getElementById('cab-fixed-shelves').value) || 0;
+  cab.adjShelves = parseInt(document.getElementById('cab-adj-shelves').value) || 0;
+  cab.looseShelves = parseInt(document.getElementById('cab-loose-shelves').value) || 0;
+  cab.cableHoles = parseInt(document.getElementById('cab-cable-holes').value) || 0;
+  cab.extraLabour = parseFloat(document.getElementById('cab-extra-labour').value) || 0;
+  cab.qty = parseInt(document.getElementById('cab-qty').value) || 1;
+  saveCabItems();
+  renderCabResults();
+  renderCabItemsList();
+}
+
+// Render settings lists
+function renderCabMaterialsList() {
+  const el = document.getElementById('cab-materials-list');
+  if (!el) return;
+  el.innerHTML = cabSettings.materials.map((m, i) => `
+    <div style="display:flex;gap:4px;align-items:center;margin-bottom:3px">
+      <input style="flex:1;padding:3px 6px;font-size:11px;border-radius:4px;border:1px solid var(--border);background:var(--surface2);color:var(--text)" value="${m.name}" onblur="cabSettings.materials[${i}].name=this.value;saveCabSettings();populateCabDropdowns()">
+      <input type="number" style="width:60px;padding:3px 6px;font-size:11px;border-radius:4px;border:1px solid var(--border);background:var(--surface2);color:var(--text);text-align:right" value="${m.price}" onblur="cabSettings.materials[${i}].price=parseFloat(this.value)||0;saveCabSettings();renderCabinetQuote()">
+      <button style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:0 2px" onclick="cabSettings.materials.splice(${i},1);saveCabSettings();renderCabMaterialsList();populateCabDropdowns()">&times;</button>
+    </div>`).join('');
+}
+function addCabMaterial() {
+  cabSettings.materials.push({ name: 'New Material', price: 0 });
+  saveCabSettings(); renderCabMaterialsList(); populateCabDropdowns();
+}
+function renderCabHandlesList() {
+  const el = document.getElementById('cab-handles-list');
+  if (!el) return;
+  el.innerHTML = cabSettings.handles.map((h, i) => `
+    <div style="display:flex;gap:4px;align-items:center;margin-bottom:3px">
+      <input style="flex:1;padding:3px 6px;font-size:11px;border-radius:4px;border:1px solid var(--border);background:var(--surface2);color:var(--text)" value="${h.name}" onblur="cabSettings.handles[${i}].name=this.value;saveCabSettings();populateCabDropdowns()">
+      <input type="number" style="width:60px;padding:3px 6px;font-size:11px;border-radius:4px;border:1px solid var(--border);background:var(--surface2);color:var(--text);text-align:right" value="${h.price}" onblur="cabSettings.handles[${i}].price=parseFloat(this.value)||0;saveCabSettings();renderCabinetQuote()">
+      <button style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:0 2px" onclick="cabSettings.handles.splice(${i},1);saveCabSettings();renderCabHandlesList();populateCabDropdowns()">&times;</button>
+    </div>`).join('');
+}
+function addCabHandle() {
+  cabSettings.handles.push({ name: 'New Handle', price: 0 });
+  saveCabSettings(); renderCabHandlesList(); populateCabDropdowns();
+}
+
+// Render items list in sidebar
+function renderCabItemsList() {
+  const el = document.getElementById('cab-items-list');
+  if (!el) return;
+  if (!cabItems.length) {
+    el.innerHTML = '<div style="color:var(--muted);font-size:12px;text-align:center;padding:12px 0">No cabinets yet. Click "+ Add Cabinet".</div>';
+    return;
+  }
+  el.innerHTML = cabItems.map((c, i) => {
+    const calc = calcCabinet(c);
+    const cur = cabSettings.currency;
+    const active = i === cabActiveIdx;
+    return `<div style="display:flex;align-items:center;gap:6px;padding:7px 10px;margin-bottom:4px;border-radius:6px;border:1px solid ${active ? 'var(--accent)' : 'var(--border)'};background:${active ? 'rgba(59,130,246,0.06)' : 'var(--surface)'};cursor:pointer" onclick="selectCabinet(${i})">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.name}${c.qty > 1 ? ' <span style=\"color:var(--muted);font-weight:400\">x'+c.qty+'</span>' : ''}</div>
+        <div style="font-size:10px;color:var(--muted)">${c.w}×${c.h}×${c.d}mm</div>
+      </div>
+      <div style="font-size:12px;font-weight:700;color:var(--accent);white-space:nowrap">${cur}${(calc.grandTotal * c.qty).toFixed(0)}</div>
+      <button style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:12px;padding:0 2px" onclick="event.stopPropagation();duplicateCabinetItem(${c.id})" title="Duplicate">⧉</button>
+      <button style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:0 2px" onclick="event.stopPropagation();removeCabinetItem(${c.id})" title="Remove">&times;</button>
+    </div>`;
+  }).join('');
+}
+
+// Render the right panel (price breakdown)
+function renderCabResults() {
+  const el = document.getElementById('cab-results');
+  if (!el) return;
+  const cur = cabSettings.currency;
+  const fmt = v => cur + v.toFixed(2);
+
+  if (!cabItems.length) {
+    el.innerHTML = '<div class="empty-state"><h3>Cabinet Quote Builder</h3><p>Add a cabinet to start building your quote. Configure dimensions, materials, doors, drawers, and shelves — pricing updates live.</p></div>';
+    return;
+  }
+
+  // Active cabinet breakdown
+  const cab = cabItems[cabActiveIdx];
+  if (!cab) return;
+  const calc = calcCabinet(cab);
+
+  let html = `<div style="max-width:700px">`;
+  html += `<h3 style="font-size:16px;font-weight:700;margin:0 0 4px">${cab.name}</h3>`;
+  html += `<div style="font-size:12px;color:var(--muted);margin-bottom:16px">${cab.w} × ${cab.h} × ${cab.d} mm</div>`;
+
+  // Line items table
+  html += `<table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:16px">
+    <thead><tr style="border-bottom:2px solid var(--border)">
+      <th style="text-align:left;padding:6px 8px;font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted)">Component</th>
+      <th style="text-align:right;padding:6px 8px;font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted)">Material</th>
+      <th style="text-align:right;padding:6px 8px;font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted)">Labour</th>
+      <th style="text-align:right;padding:6px 8px;font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted)">Hardware</th>
+      <th style="text-align:right;padding:6px 8px;font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted)">Total</th>
+    </tr></thead><tbody>`;
+
+  for (const l of calc.lines) {
+    html += `<tr style="border-bottom:1px solid var(--border)">
+      <td style="padding:5px 8px;color:var(--text)">${l.name}</td>
+      <td style="padding:5px 8px;text-align:right;color:var(--text2)">${l.material > 0 ? fmt(l.material) : '—'}</td>
+      <td style="padding:5px 8px;text-align:right;color:var(--text2)">${l.labour > 0 ? fmt(l.labour) : '—'}</td>
+      <td style="padding:5px 8px;text-align:right;color:var(--text2)">${l.hardware > 0 ? fmt(l.hardware) : '—'}</td>
+      <td style="padding:5px 8px;text-align:right;font-weight:600;color:var(--text)">${fmt(l.total)}</td>
+    </tr>`;
+  }
+  html += `</tbody></table>`;
+
+  // Totals
+  html += `<div style="background:var(--surface2);border-radius:8px;padding:14px 16px;margin-bottom:16px">
+    <div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="color:var(--muted);font-size:12px">Materials</span><span style="font-size:13px;font-weight:600">${fmt(calc.totalMat)}</span></div>
+    <div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="color:var(--muted);font-size:12px">Labour (${calc.totalHrs.toFixed(1)} hrs @ ${cur}${cabSettings.labourRate}/hr)</span><span style="font-size:13px;font-weight:600">${fmt(calc.totalLabour)}</span></div>
+    <div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="color:var(--muted);font-size:12px">Hardware</span><span style="font-size:13px;font-weight:600">${fmt(calc.totalHardware)}</span></div>
+    <div style="display:flex;justify-content:space-between;padding-top:6px;border-top:1px solid var(--border);margin-bottom:4px"><span style="font-weight:700;font-size:13px">Subtotal</span><span style="font-weight:700;font-size:14px">${fmt(calc.subtotal)}</span></div>
+    <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="color:var(--muted);font-size:12px">VAT (${cabSettings.vatRate}%)</span><span style="font-size:13px">${fmt(calc.vat)}</span></div>
+    <div style="display:flex;justify-content:space-between;padding-top:6px;border-top:2px solid var(--accent)"><span style="font-weight:700;font-size:15px;color:var(--accent)">Total (inc VAT)</span><span style="font-weight:700;font-size:17px;color:var(--accent)">${fmt(calc.grandTotal)}</span></div>
+    ${cab.qty > 1 ? `<div style="display:flex;justify-content:space-between;margin-top:6px"><span style="color:var(--muted);font-size:12px">x${cab.qty} units</span><span style="font-weight:700;font-size:14px">${fmt(calc.grandTotal * cab.qty)}</span></div>` : ''}
+  </div>`;
+
+  // Quote total (all cabinets)
+  if (cabItems.length > 1) {
+    let quoteTotal = 0, quoteSubtotal = 0;
+    cabItems.forEach(c => {
+      const cc = calcCabinet(c);
+      quoteSubtotal += cc.subtotal * c.qty;
+      quoteTotal += cc.grandTotal * c.qty;
+    });
+    html += `<div style="background:var(--surface);border:2px solid var(--accent);border-radius:8px;padding:14px 16px">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);margin-bottom:8px">Full Quote Total (${cabItems.length} cabinets)</div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="color:var(--text2);font-size:13px">Subtotal</span><span style="font-size:14px;font-weight:600">${fmt(quoteSubtotal)}</span></div>
+      <div style="display:flex;justify-content:space-between"><span style="font-weight:700;font-size:15px;color:var(--accent)">Total (inc VAT)</span><span style="font-weight:700;font-size:18px;color:var(--accent)">${fmt(quoteTotal)}</span></div>
+    </div>`;
+  }
+
+  html += `</div>`;
+  el.innerHTML = html;
+}
+
+// Main render
+function renderCabinetQuote() {
+  // Settings form
+  const lr = document.getElementById('cab-labour-rate');
+  if (lr) lr.value = cabSettings.labourRate;
+  const vr = document.getElementById('cab-vat-rate');
+  if (vr) vr.value = cabSettings.vatRate;
+  const cc = document.getElementById('cab-currency');
+  if (cc) cc.value = cabSettings.currency;
+
+  renderCabMaterialsList();
+  renderCabHandlesList();
+  populateCabDropdowns();
+  renderCabItemsList();
+
+  // Load active cabinet into form
+  if (cabItems[cabActiveIdx]) {
+    loadCabForm(cabItems[cabActiveIdx]);
+    document.getElementById('cab-editor').style.display = '';
+  } else {
+    document.getElementById('cab-editor').style.display = 'none';
+  }
+
+  renderCabResults();
+}
+
+// Init cabinet module
+loadCabSettings();
+loadCabItems();
 
 // ══════════════════════════════════════════
 // INIT
