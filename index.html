@@ -604,22 +604,8 @@ canvas { display: block; }
 
 /* Line Items Table */
 .cq-table-wrap { flex:1; overflow:auto; padding:16px 20px; }
-.cq-table { width:100%; border-collapse:collapse; font-size:12px; }
-.cq-table th { position:sticky; top:0; z-index:2; background:var(--surface2); font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:var(--muted); padding:8px 8px; text-align:left; border-bottom:2px solid var(--border); white-space:nowrap; }
-.cq-table th.r { text-align:right; }
-.cq-table td { padding:4px 4px; border-bottom:1px solid var(--border2); vertical-align:middle; }
-.cq-table tr:hover td { background:var(--accent-dim); }
-.cq-table .cq-input { width:100%; padding:5px 7px; border:1px solid transparent; border-radius:5px; background:transparent; color:var(--text); font-size:12px; font-family:inherit; outline:none; min-width:0; }
-.cq-table .cq-input:focus { border-color:var(--accent); background:var(--surface); box-shadow:0 0 0 2px var(--accent-dim); }
-.cq-table .cq-input-num { text-align:right; width:60px; }
-.cq-table .cq-input-sm { width:50px; text-align:center; }
-.cq-table .cq-dim-group { display:flex; gap:2px; align-items:center; }
-.cq-table .cq-dim-x { font-size:10px; color:var(--muted); }
-.cq-table .cq-select { padding:4px 6px; border:1px solid transparent; border-radius:5px; background:transparent; color:var(--text); font-size:11px; font-family:inherit; cursor:pointer; outline:none; min-width:0; width:100%; }
-.cq-table .cq-select:focus { border-color:var(--accent); background:var(--surface); }
-.cq-table .cq-cell-price { text-align:right; font-variant-numeric:tabular-nums; font-weight:600; color:var(--text); padding-right:8px; white-space:nowrap; font-size:12px; }
-.cq-table .cq-cell-muted { text-align:right; font-variant-numeric:tabular-nums; color:var(--muted); padding-right:8px; white-space:nowrap; font-size:11px; }
-.cq-table .cq-row-total td { background:var(--surface2); font-weight:700; border-top:2px solid var(--border); }
+.cq-select { padding:4px 6px; border:1px solid transparent; border-radius:5px; background:transparent; color:var(--text); font-size:11px; font-family:inherit; cursor:pointer; outline:none; min-width:0; width:100%; }
+.cq-select:focus { border-color:var(--accent); background:var(--surface); }
 .cq-del-btn { width:22px; height:22px; border:none; background:none; color:var(--muted); cursor:pointer; border-radius:4px; display:flex; align-items:center; justify-content:center; padding:0; font-size:14px; }
 .cq-del-btn:hover { color:var(--danger); background:rgba(224,82,82,0.1); }
 .cq-dup-btn { width:22px; height:22px; border:none; background:none; color:var(--muted); cursor:pointer; border-radius:4px; display:flex; align-items:center; justify-content:center; padding:0; font-size:12px; }
@@ -5883,7 +5869,7 @@ function renderCQTable() {
               <div class="form-group" style="flex:1">
                 <label>% of front area covered by doors</label>
                 <div class="cq-pct-row">
-                  <input type="range" class="cq-pct-slider" min="50" max="100" value="${line.doorPct||95}" oninput="updateCQLine(${line.id},'doorPct',this.value)">
+                  <input type="range" class="cq-pct-slider" min="50" max="100" value="${line.doorPct||95}" oninput="this.nextElementSibling.textContent=this.value+'%'" onchange="updateCQLine(${line.id},'doorPct',this.value)">
                   <span class="cq-pct-val">${line.doorPct||95}%</span>
                 </div>
               </div>
@@ -5904,7 +5890,7 @@ function renderCQTable() {
               <div class="form-group" style="flex:1">
                 <label>% of front area used by drawers</label>
                 <div class="cq-pct-row">
-                  <input type="range" class="cq-pct-slider" min="30" max="100" value="${line.drawerPct||85}" oninput="updateCQLine(${line.id},'drawerPct',this.value)">
+                  <input type="range" class="cq-pct-slider" min="30" max="100" value="${line.drawerPct||85}" oninput="this.nextElementSibling.textContent=this.value+'%'" onchange="updateCQLine(${line.id},'drawerPct',this.value)">
                   <span class="cq-pct-val">${line.drawerPct||85}%</span>
                 </div>
               </div>
@@ -5957,7 +5943,7 @@ function renderCQTable() {
               <div class="form-group" style="flex:0 0 auto">
                 <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" ${line.labourOverride?'checked':''} onchange="updateCQLine(${line.id},'labourOverride',this.checked?'true':'')"> Override Labour</label>
               </div>
-              <div class="form-group" style="flex:0 0 80px"><label>Labour Hrs</label><input type="number" value="${c.labourHrs.toFixed(1)}" step="0.25" ${line.labourOverride?'':'disabled style="opacity:.5"'} onchange="updateCQLine(${line.id},'labourHrs',this.value)"></div>
+              <div class="form-group" style="flex:0 0 80px"><label>Labour Hrs</label><input type="number" value="${c.labourHrs.toFixed(1)}" step="0.25" ${line.labourOverride?'':'disabled'} style="${line.labourOverride?'':'opacity:.5'}" onchange="updateCQLine(${line.id},'labourHrs',this.value)"></div>
               <div class="form-group" style="flex:0 0 100px"><label>Material Override</label><input type="number" value="${line.matCostOverride !== null ? line.matCostOverride : ''}" placeholder="Auto" onchange="updateCQLine(${line.id},'matCostOverride',this.value)"></div>
             </div>
           </div>
