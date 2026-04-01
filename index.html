@@ -5478,7 +5478,7 @@ function cqDefaultLine(type) {
     hwItems: [],
     labourHrs: 0, labourOverride: false,
     matCostOverride: null,
-    notes: ''
+    notes: '', room: ''
   };
 }
 
@@ -5687,8 +5687,12 @@ function renderCQTable() {
     return;
   }
 
+  // Room datalist for autocomplete
+  const rooms = [...new Set(cqLines.map(l=>l.room).filter(Boolean))];
+  let roomListHtml = `<datalist id="cq-room-list">${['Kitchen','Bathroom','Bedroom','Living Room','Laundry','Garage','Office','Pantry','Hallway'].concat(rooms).filter((v,i,a)=>a.indexOf(v)===i).map(r=>`<option value="${r}">`).join('')}</datalist>`;
+
   // Build table
-  let html = `<table class="cq-table"><thead><tr>
+  let html = roomListHtml + `<table class="cq-table"><thead><tr>
     <th style="width:28px">#</th>
     <th style="min-width:140px">Description</th>
     <th style="width:100px">Type</th>
@@ -5777,6 +5781,9 @@ function renderCQTable() {
               <input type="number" class="cq-input" style="width:80px;font-size:11px;padding:3px 6px;border:1px solid var(--border)" value="${line.matCostOverride !== null ? line.matCostOverride : ''}" placeholder="auto: ${c.matCostAuto.toFixed(2)}" onchange="updateCQLine(${line.id},'matCostOverride',this.value)">
               ${line.matCostOverride !== null ? `<button style="font-size:9px;color:var(--muted);background:none;border:none;cursor:pointer" onclick="updateCQLine(${line.id},'matCostOverride','')">reset</button>` : ''}
             </div>
+          </div>
+          <div class="form-group" style="min-width:100px;margin:0"><label>Room / Area</label>
+            <input class="cq-input" style="font-size:11px;padding:3px 6px;border:1px solid var(--border)" value="${line.room||''}" placeholder="e.g. Kitchen" list="cq-room-list" onchange="updateCQLine(${line.id},'room',this.value)">
           </div>
           <div class="form-group" style="flex:1;min-width:150px;margin:0"><label>Notes</label>
             <input class="cq-input" style="font-size:11px;padding:3px 6px;border:1px solid var(--border)" value="${line.notes||''}" placeholder="Line item notes..." onchange="updateCQLine(${line.id},'notes',this.value)">
@@ -6016,14 +6023,22 @@ function printCQQuote(mode) {
   const quoteNum = document.getElementById('cq-quote-num')?.value?.trim() || ('CQ-' + Date.now().toString(36).toUpperCase());
 
   let grandMat = 0, grandLabour = 0, grandHw = 0, grandSub = 0;
-  const lineRows = cqLines.map((line, i) => {
+  let lineNum = 0, lastRoom = null;
+  const hasRooms = cqLines.some(l => l.room);
+  const lineRows = cqLines.map((line) => {
     const c = calcCQLine(line);
     grandMat += c.matCost * line.qty;
     grandLabour += c.labourCost * line.qty;
     grandHw += c.hwCost * line.qty;
     grandSub += c.lineSubtotal;
-    return `<tr>
-      <td style="padding:8px 10px;border-bottom:1px solid #f0f0f0;font-size:12px;color:#555">${i+1}</td>
+    lineNum++;
+    let roomHeader = '';
+    if (hasRooms && line.room !== lastRoom) {
+      lastRoom = line.room;
+      roomHeader = `<tr><td colspan="5" style="padding:10px 10px 4px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:#888;background:#f8f8f8;border-bottom:1px solid #e0e0e0">${_escHtml(line.room || 'Other')}</td></tr>`;
+    }
+    return roomHeader + `<tr>
+      <td style="padding:8px 10px;border-bottom:1px solid #f0f0f0;font-size:12px;color:#555">${lineNum}</td>
       <td style="padding:8px 10px;border-bottom:1px solid #f0f0f0"><strong>${_escHtml(line.name || line.type)}</strong><br><span style="font-size:10px;color:#999">${_escHtml(line.type)} &middot; ${line.w}&times;${line.h}&times;${line.d}mm &middot; ${_escHtml(line.material)}</span>
       ${line.doors>0?'<br><span style="font-size:10px;color:#999">'+line.doors+' door(s)</span>':''}
       ${line.drawers>0?'<br><span style="font-size:10px;color:#999">'+line.drawers+' drawer(s)</span>':''}
