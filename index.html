@@ -1138,135 +1138,98 @@ html.dark .cl-table tbody tr:nth-child(even) td { background: rgba(255,255,255,0
 
 <div class="app-body">
 
-  <!-- ════════════════════════════════════
-       CABINET QUOTE SECTION
+    <!-- ════════════════════════════════════
+       CABINET SECTION (Cabinet Builder + Pricing)
   ════════════════════════════════════ -->
   <div class="section-panel" id="panel-cabinet">
-    <div class="sidebar" style="width:420px;min-width:360px">
-      <div class="sidebar-scroll" id="cab-sidebar">
+    <div class="sidebar" style="width:440px;min-width:380px">
+      <div class="sidebar-scroll" id="cq-sidebar">
 
         <!-- Settings Toggle -->
         <div style="padding:10px 14px 0;display:flex;justify-content:space-between;align-items:center">
-          <span style="font-size:13px;font-weight:700;color:var(--text)">Cabinet Quote Builder</span>
-          <button class="cl-csv-btn" onclick="toggleCabSettings()" id="cab-settings-btn" style="padding:4px 10px;display:flex;align-items:center;gap:5px;font-size:11px">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.32 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
-            Settings
-          </button>
+          <span style="font-size:14px;font-weight:700;color:var(--text)">Cabinet Builder</span>
+          <div style="display:flex;gap:4px">
+            <button class="cl-csv-btn" onclick="toggleCQSettings()" id="cq-settings-btn" style="padding:5px 10px;display:flex;align-items:center;gap:5px;font-size:12px">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.32 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+              My Rates
+            </button>
+          </div>
         </div>
 
         <!-- Global Settings Panel (collapsible) -->
-        <div id="cab-settings-panel" style="display:none;padding:8px 14px 4px;border-bottom:1px solid var(--border);margin-bottom:6px">
-          <div class="form-section" style="margin-bottom:8px">
-            <div class="form-section-title" style="margin-bottom:6px">Rates</div>
-            <div class="form-row" style="margin-bottom:6px">
-              <div class="form-group"><label>Labour (per hr)</label><input type="number" id="cab-labour-rate" value="50" min="0" step="1" onchange="saveCabSettings();renderCabinetQuote()"></div>
-              <div class="form-group"><label>VAT %</label><input type="number" id="cab-vat-rate" value="20" min="0" step="1" onchange="saveCabSettings();renderCabinetQuote()"></div>
-              <div class="form-group"><label>Currency</label><select id="cab-currency" onchange="saveCabSettings();renderCabinetQuote()"><option value="£">£ GBP</option><option value="$">$ USD</option><option value="€">€ EUR</option></select></div>
+        <div class="cq-settings-expanded" id="cq-settings-panel">
+          <div style="margin-bottom:14px">
+            <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:8px">Your Rates</div>
+            <div class="cq-gv-grid" style="grid-template-columns:repeat(3, 1fr)">
+              <div class="cq-gv-card">
+                <label>Labour Rate</label>
+                <input type="number" id="cq-labour-rate" value="65" min="0" step="1" onchange="saveCQSettings();renderCQPanel()">
+                <div class="cq-gv-unit">per hour</div>
+              </div>
+              <div class="cq-gv-card">
+                <label>Markup</label>
+                <input type="number" id="cq-markup" value="20" min="0" step="1" onchange="saveCQSettings();renderCQPanel()">
+                <div class="cq-gv-unit">%</div>
+              </div>
+              <div class="cq-gv-card">
+                <label>Tax / GST</label>
+                <input type="number" id="cq-tax" value="13" min="0" step="1" onchange="saveCQSettings();renderCQPanel()">
+                <div class="cq-gv-unit">%</div>
+              </div>
+              <div class="cq-gv-card">
+                <label>Deposit</label>
+                <input type="number" id="cq-deposit" value="50" min="0" max="100" step="5" onchange="saveCQSettings();renderCQPanel()">
+                <div class="cq-gv-unit">%</div>
+              </div>
+              <div class="cq-gv-card">
+                <label>Finishing</label>
+                <input type="number" id="cq-finish-m2" value="8" min="0" step="0.5" onchange="saveCQSettings();renderCQPanel()">
+                <div class="cq-gv-unit">per m²</div>
+              </div>
+              <div class="cq-gv-card">
+                <label>Edge Band</label>
+                <input type="number" id="cq-edging-m" value="3" min="0" step="0.5" onchange="saveCQSettings();renderCQPanel()">
+                <div class="cq-gv-unit">per metre</div>
+              </div>
             </div>
           </div>
-          <div class="form-section" style="margin-bottom:8px">
-            <div class="form-section-title" style="margin-bottom:6px">Material Prices (per sheet)</div>
-            <div id="cab-materials-list" style="max-height:180px;overflow-y:auto"></div>
-            <button class="cl-add-btn" onclick="addCabMaterial()" style="margin-top:4px;font-size:11px;padding:4px 10px">+ Add Material</button>
-          </div>
-          <div class="form-section" style="margin-bottom:8px">
-            <div class="form-section-title" style="margin-bottom:6px">Handle / Hardware Prices</div>
-            <div id="cab-handles-list" style="max-height:140px;overflow-y:auto"></div>
-            <button class="cl-add-btn" onclick="addCabHandle()" style="margin-top:4px;font-size:11px;padding:4px 10px">+ Add Handle Type</button>
+          <div style="display:flex;gap:16px;flex-wrap:wrap">
+            <div style="flex:1;min-width:180px">
+              <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:6px">Sheet Goods <span style="font-weight:400;color:var(--muted)">(per sheet)</span></div>
+              <div class="cq-mat-grid" id="cq-mat-list" style="grid-template-columns:1fr;max-height:160px"></div>
+              <button class="cl-add-btn" onclick="addCQMaterial()" style="font-size:11px;padding:4px 10px;margin:4px 0 0">+ Add Material</button>
+            </div>
+            <div style="flex:1;min-width:180px">
+              <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:6px">Hardware <span style="font-weight:400;color:var(--muted)">(each)</span></div>
+              <div id="cq-hw-list" style="max-height:160px;overflow-y:auto"></div>
+              <button class="cl-add-btn" onclick="addCQHardware()" style="font-size:11px;padding:4px 10px;margin:4px 0 0">+ Add Hardware</button>
+            </div>
           </div>
         </div>
 
         <!-- Cabinet Items List -->
-        <div style="padding:8px 14px 4px;display:flex;justify-content:space-between;align-items:center">
-          <span class="cl-section-title">Cabinets in Quote</span>
-          <button class="cl-csv-btn" onclick="addCabinetItem()" style="padding:4px 10px;display:flex;align-items:center;gap:4px;font-size:11px">+ Add Cabinet</button>
+        <div style="padding:10px 14px 4px;display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--border);margin-top:6px">
+          <span style="font-size:12px;font-weight:700;color:var(--text)">Cabinets</span>
+          <button class="cl-csv-btn" onclick="addCQLine()" style="padding:5px 10px;font-size:12px">+ Add Cabinet</button>
         </div>
-        <div id="cab-items-list" style="padding:4px 14px"></div>
+        <div id="cq-cab-list" style="padding:4px 14px"></div>
 
         <!-- Active Cabinet Editor -->
-        <div id="cab-editor" style="padding:0 14px 14px">
-          <div class="form-section" style="margin-bottom:10px">
-            <div class="form-section-title" style="margin-bottom:6px">Dimensions</div>
-            <div class="form-row" style="margin-bottom:6px">
-              <div class="form-group"><label>Name</label><input type="text" id="cab-name" placeholder="e.g. Kitchen Base Unit" oninput="updateActiveCab()"></div>
-            </div>
-            <div class="form-row">
-              <div class="form-group"><label>Width (mm)</label><input type="number" id="cab-w" value="600" min="0" oninput="updateActiveCab()"></div>
-              <div class="form-group"><label>Height (mm)</label><input type="number" id="cab-h" value="720" min="0" oninput="updateActiveCab()"></div>
-              <div class="form-group"><label>Depth (mm)</label><input type="number" id="cab-d" value="560" min="0" oninput="updateActiveCab()"></div>
-            </div>
-          </div>
-
-          <div class="form-section" style="margin-bottom:10px">
-            <div class="form-section-title" style="margin-bottom:6px">Construction</div>
-            <div class="form-row" style="margin-bottom:6px">
-              <div class="form-group"><label>Carcass Material</label><select id="cab-carcass-mat" onchange="updateActiveCab()"></select></div>
-              <div class="form-group"><label>Top Material</label><select id="cab-top-mat" onchange="updateActiveCab()"></select></div>
-            </div>
-            <div class="form-row" style="margin-bottom:6px">
-              <div class="form-group" style="flex:0 0 auto"><label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="cab-has-back" checked onchange="updateActiveCab()"> Back Panel</label></div>
-              <div class="form-group"><label>Back Material</label><select id="cab-back-mat" onchange="updateActiveCab()"></select></div>
-            </div>
-            <div class="form-row" style="margin-bottom:6px">
-              <div class="form-group"><label>Base Type</label>
-                <select id="cab-base-type" onchange="updateActiveCab()">
-                  <option value="none">None</option>
-                  <option value="plinth" selected>Plinth</option>
-                  <option value="legs">Legs / Feet</option>
-                  <option value="frame">Frame Base</option>
-                </select>
-              </div>
-              <div class="form-group"><label>Finish</label><input type="text" id="cab-finish" value="Osmo Polyx Oil" oninput="updateActiveCab()"></div>
-            </div>
-          </div>
-
-          <div class="form-section" style="margin-bottom:10px">
-            <div class="form-section-title" style="margin-bottom:6px">Doors</div>
-            <div class="form-row" style="margin-bottom:6px">
-              <div class="form-group" style="flex:0 0 70px"><label>Count</label><input type="number" id="cab-door-count" value="0" min="0" oninput="updateActiveCab()"></div>
-              <div class="form-group"><label>Door Material</label><select id="cab-door-mat" onchange="updateActiveCab()"></select></div>
-              <div class="form-group"><label>Handle</label><select id="cab-door-handle" onchange="updateActiveCab()"></select></div>
-            </div>
-          </div>
-
-          <div class="form-section" style="margin-bottom:10px">
-            <div class="form-section-title" style="margin-bottom:6px">Drawers</div>
-            <div class="form-row" style="margin-bottom:6px">
-              <div class="form-group" style="flex:0 0 70px"><label>Count</label><input type="number" id="cab-drawer-count" value="0" min="0" oninput="updateActiveCab()"></div>
-              <div class="form-group"><label>Drawer Front</label><select id="cab-drawer-front-mat" onchange="updateActiveCab()"></select></div>
-              <div class="form-group"><label>Handle</label><select id="cab-drawer-handle" onchange="updateActiveCab()"></select></div>
-            </div>
-            <div class="form-row">
-              <div class="form-group"><label>Inner Material</label><select id="cab-drawer-inner-mat" onchange="updateActiveCab()"></select></div>
-            </div>
-          </div>
-
-          <div class="form-section" style="margin-bottom:10px">
-            <div class="form-section-title" style="margin-bottom:6px">Shelves &amp; Partitions</div>
-            <div class="form-row">
-              <div class="form-group"><label>Fixed Shelves</label><input type="number" id="cab-fixed-shelves" value="0" min="0" oninput="updateActiveCab()"></div>
-              <div class="form-group"><label>Adj. Shelves</label><input type="number" id="cab-adj-shelves" value="0" min="0" oninput="updateActiveCab()"></div>
-              <div class="form-group"><label>Loose Shelves</label><input type="number" id="cab-loose-shelves" value="0" min="0" oninput="updateActiveCab()"></div>
-            </div>
-          </div>
-
-          <div class="form-section" style="margin-bottom:10px">
-            <div class="form-section-title" style="margin-bottom:6px">Extras</div>
-            <div class="form-row" style="margin-bottom:6px">
-              <div class="form-group"><label>Cable Holes</label><input type="number" id="cab-cable-holes" value="0" min="0" oninput="updateActiveCab()"></div>
-              <div class="form-group"><label>Extra Labour (hrs)</label><input type="number" id="cab-extra-labour" value="0" min="0" step="0.25" oninput="updateActiveCab()"></div>
-              <div class="form-group"><label>Qty</label><input type="number" id="cab-qty" value="1" min="1" oninput="updateActiveCab()"></div>
-            </div>
-          </div>
+        <div id="cq-cab-editor" style="padding:0 14px 14px">
+          <!-- rendered by JS -->
         </div>
 
       </div>
     </div>
     <div class="main-content">
-      <div class="main-scroll" id="cab-results" style="padding:20px"></div>
+      <div class="main-scroll" id="cq-results" style="padding:20px">
+        <!-- rendered by JS -->
+      </div>
     </div>
   </div>
 
+  <!-- ════════════════════════════════════
+       STOCK SECTION
   <!-- ════════════════════════════════════
        STOCK SECTION
   ════════════════════════════════════ -->
@@ -1510,177 +1473,64 @@ html.dark .cl-table tbody tr:nth-child(even) td { background: rgba(255,255,255,0
 
   </div>
 
-  <!-- ════════════════════════════════════
-       QUOTE SECTION (with inner tabs)
+    <!-- ════════════════════════════════════
+       QUOTE SECTION
   ════════════════════════════════════ -->
   <div class="section-panel" id="panel-quote">
-    <div class="cq-wrap">
-      <!-- Inner Tabs -->
-      <div class="cq-inner-tabs">
-        <div class="cq-inner-tab active" onclick="switchQuoteTab('quick')">Quick Quote</div>
-        <div class="cq-inner-tab" onclick="switchQuoteTab('cabinet')">Cabinet Quote</div>
-      </div>
-
-      <!-- ═══ QUICK QUOTE (original) ═══ -->
-      <div class="cq-panel active" id="qpanel-quick" style="display:flex">
-        <div class="sidebar">
-          <div class="sidebar-scroll">
-            <div class="form-section">
-              <div class="form-section-title">New Quote</div>
-              <div class="form-group" style="margin-bottom:8px;position:relative">
-                <label>Client Name</label>
-                <input type="text" id="q-client" placeholder="e.g. John Smith" autocomplete="off" oninput="_clientSuggest(this)">
-                <div id="q-client-suggest" class="client-suggest-list" style="display:none"></div>
-              </div>
-              <div class="form-group" style="margin-bottom:8px">
-                <label>Project Name</label>
-                <input type="text" id="q-project" placeholder="e.g. Kitchen Renovation">
-              </div>
-              <div class="form-group" style="margin-bottom:8px">
-                <label>Notes</label>
-                <textarea id="q-notes" placeholder="Project details..."></textarea>
-              </div>
-              <div class="form-group" style="margin-bottom:8px">
-                <label>Materials Cost</label>
-                <input type="number" id="q-materials" placeholder="0.00" min="0" step="0.01">
-              </div>
-              <div class="form-row">
-                <div class="form-group">
-                  <label>Labour Rate (/hr)</label>
-                  <input type="number" id="q-labour-rate" value="65" min="0">
-                </div>
-                <div class="form-group">
-                  <label>Hours</label>
-                  <input type="number" id="q-hours" value="8" min="0" step="0.5">
-                </div>
-              </div>
-              <div class="form-row">
-                <div class="form-group">
-                  <label>Markup %</label>
-                  <input type="number" id="q-markup" value="20" min="0">
-                </div>
-                <div class="form-group">
-                  <label>Tax %</label>
-                  <input type="number" id="q-tax" value="13" min="0">
-                </div>
-              </div>
-              <div id="quote-form-preview" style="background:var(--surface2);border-radius:8px;padding:10px 12px;margin-top:8px;display:none">
-                <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:4px"><span>Labour</span><span id="qfp-labour">—</span></div>
-                <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:4px"><span>Materials</span><span id="qfp-materials">—</span></div>
-                <div style="border-top:1px solid var(--border);margin:4px 0"></div>
-                <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;color:var(--text)"><span>Total</span><span id="qfp-total">—</span></div>
-              </div>
-              <button class="btn btn-primary" onclick="createQuote()" style="margin-top:8px;width:100%">+ Create Quote</button>
+    <div class="sidebar">
+      <div class="sidebar-scroll">
+        <div class="form-section">
+          <div class="form-section-title">New Quote</div>
+          <div class="form-group" style="margin-bottom:8px;position:relative">
+            <label>Client Name</label>
+            <input type="text" id="q-client" placeholder="e.g. John Smith" autocomplete="off" oninput="_clientSuggest(this)">
+            <div id="q-client-suggest" class="client-suggest-list" style="display:none"></div>
+          </div>
+          <div class="form-group" style="margin-bottom:8px">
+            <label>Project Name</label>
+            <input type="text" id="q-project" placeholder="e.g. Kitchen Renovation">
+          </div>
+          <div class="form-group" style="margin-bottom:8px">
+            <label>Notes</label>
+            <textarea id="q-notes" placeholder="Project details..."></textarea>
+          </div>
+          <div class="form-group" style="margin-bottom:8px">
+            <label>Materials Cost</label>
+            <input type="number" id="q-materials" placeholder="0.00" min="0" step="0.01">
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Labour Rate (/hr)</label>
+              <input type="number" id="q-labour-rate" value="65" min="0">
+            </div>
+            <div class="form-group">
+              <label>Hours</label>
+              <input type="number" id="q-hours" value="8" min="0" step="0.5">
             </div>
           </div>
-        </div>
-        <div class="main-content">
-          <div class="main-scroll" id="quote-main">
-            <!-- rendered by JS -->
+          <div class="form-row">
+            <div class="form-group">
+              <label>Markup %</label>
+              <input type="number" id="q-markup" value="20" min="0">
+            </div>
+            <div class="form-group">
+              <label>Tax %</label>
+              <input type="number" id="q-tax" value="13" min="0">
+            </div>
           </div>
+          <div id="quote-form-preview" style="background:var(--surface2);border-radius:8px;padding:10px 12px;margin-top:8px;display:none">
+            <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:4px"><span>Labour</span><span id="qfp-labour">—</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:4px"><span>Materials</span><span id="qfp-materials">—</span></div>
+            <div style="border-top:1px solid var(--border);margin:4px 0"></div>
+            <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;color:var(--text)"><span>Total</span><span id="qfp-total">—</span></div>
+          </div>
+          <button class="btn btn-primary" onclick="createQuote()" style="margin-top:8px;width:100%">+ Create Quote</button>
         </div>
       </div>
-
-      <!-- ═══ CABINET QUOTE (new detailed system) ═══ -->
-      <div class="cq-panel" id="qpanel-cabinet" style="flex-direction:column">
-        <!-- Project Bar -->
-        <div class="cq-project-bar" id="cq-project-bar">
-          <div class="form-group" style="min-width:160px">
-            <label>Client</label>
-            <input type="text" id="cq-client" placeholder="Client name" autocomplete="off">
-          </div>
-          <div class="form-group" style="min-width:180px">
-            <label>Project</label>
-            <input type="text" id="cq-project" placeholder="Project name">
-          </div>
-          <div class="form-group" style="flex:1;min-width:180px">
-            <label>Scope / Notes</label>
-            <input type="text" id="cq-notes" placeholder="e.g. Supply & install kitchen cabinetry...">
-          </div>
-          <input type="hidden" id="cq-quote-num">
-          <div style="display:flex;gap:4px;align-items:flex-end;flex-wrap:wrap">
-            <button class="cq-settings-toggle" id="cq-settings-btn" onclick="toggleCQSettings()" title="Set your rates, material prices and hardware costs">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.32 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
-              My Rates
-            </button>
-            <button class="btn btn-primary" onclick="saveCQQuote()" style="padding:5px 12px;font-size:11px">Save</button>
-            <button class="btn btn-outline" onclick="newCQQuote()" style="padding:5px 12px;font-size:11px;width:auto">New</button>
-            <button class="btn btn-outline" onclick="copyCQSummary()" style="padding:5px 12px;font-size:11px;width:auto" title="Copy pricing summary to clipboard">Copy</button>
-          </div>
-        </div>
-
-        <!-- Expandable Global Settings — Clean Card Layout -->
-        <div class="cq-settings-expanded" id="cq-settings-panel">
-          <!-- Your Rates -->
-          <div style="margin-bottom:14px">
-            <div style="font-size:11px;font-weight:700;color:var(--text);margin-bottom:8px">Your Rates</div>
-            <div class="cq-gv-grid">
-              <div class="cq-gv-card">
-                <label>Labour Rate</label>
-                <input type="number" id="cq-labour-rate" value="65" min="0" step="1" onchange="saveCQSettings();renderCQTable()">
-                <div class="cq-gv-unit">per hour</div>
-              </div>
-              <div class="cq-gv-card">
-                <label>Markup</label>
-                <input type="number" id="cq-markup" value="20" min="0" step="1" onchange="saveCQSettings();renderCQTable()">
-                <div class="cq-gv-unit">%</div>
-              </div>
-              <div class="cq-gv-card">
-                <label>Tax / GST</label>
-                <input type="number" id="cq-tax" value="13" min="0" step="1" onchange="saveCQSettings();renderCQTable()">
-                <div class="cq-gv-unit">%</div>
-              </div>
-              <div class="cq-gv-card">
-                <label>Deposit</label>
-                <input type="number" id="cq-deposit" value="50" min="0" max="100" step="5" onchange="saveCQSettings();renderCQTable()">
-                <div class="cq-gv-unit">%</div>
-              </div>
-              <div class="cq-gv-card">
-                <label>Finishing</label>
-                <input type="number" id="cq-finish-m2" value="8" min="0" step="0.5" onchange="saveCQSettings();renderCQTable()">
-                <div class="cq-gv-unit">per m&sup2;</div>
-              </div>
-              <div class="cq-gv-card">
-                <label>Edge Band</label>
-                <input type="number" id="cq-edging-m" value="3" min="0" step="0.5" onchange="saveCQSettings();renderCQTable()">
-                <div class="cq-gv-unit">per metre</div>
-              </div>
-              <div class="cq-gv-card">
-                <label>Saw Kerf</label>
-                <input type="number" id="cq-kerf" value="3" min="0" step="0.5" onchange="saveCQSettings();renderCQTable()">
-                <div class="cq-gv-unit">mm</div>
-              </div>
-            </div>
-          </div>
-          <!-- Materials & Hardware side by side -->
-          <div style="display:flex;gap:16px;flex-wrap:wrap">
-            <div style="flex:1;min-width:280px">
-              <div style="font-size:11px;font-weight:700;color:var(--text);margin-bottom:8px">Sheet Goods <span style="font-weight:400;color:var(--muted)">(price per 2440&times;1220 sheet)</span></div>
-              <div class="cq-mat-grid" id="cq-mat-list" style="grid-template-columns:1fr;max-height:180px"></div>
-              <button class="cq-add-row" onclick="addCQMaterial()" style="margin-top:6px;width:auto;display:inline-block;padding:4px 10px;font-size:11px">+ Add Material</button>
-            </div>
-            <div style="flex:1;min-width:240px">
-              <div style="font-size:11px;font-weight:700;color:var(--text);margin-bottom:8px">Hardware Presets <span style="font-weight:400;color:var(--muted)">(price each)</span></div>
-              <div id="cq-hw-list" style="max-height:180px;overflow-y:auto"></div>
-              <button class="cq-add-row" onclick="addCQHardware()" style="margin-top:6px;width:auto;display:inline-block;padding:4px 10px;font-size:11px">+ Add Hardware</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Saved Quotes Shelf -->
-        <div id="cq-saved-shelf" style="padding:8px 20px;border-bottom:1px solid var(--border);display:none">
-          <div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px" id="cq-saved-pills"></div>
-        </div>
-
-        <!-- Line Items Table -->
-        <div class="cq-table-wrap" id="cq-table-area">
-          <!-- rendered by JS -->
-        </div>
-
-        <!-- Summary Footer -->
-        <div class="cq-summary" id="cq-summary">
-          <!-- rendered by JS -->
-        </div>
+    </div>
+    <div class="main-content">
+      <div class="main-scroll" id="quote-main">
+        <!-- rendered by JS -->
       </div>
     </div>
   </div>
@@ -2115,9 +1965,9 @@ function switchSection(name) {
   document.querySelectorAll('.section-panel').forEach(p => {
     p.classList.toggle('active', p.id === 'panel-' + name);
   });
-  if (name === 'cabinet') renderCabinetQuote();
+  if (name === 'cabinet') { try { renderCQPanel(); } catch(e) {} }
   if (name === 'stock') renderStockMain();
-  if (name === 'quote') { renderQuoteMain(); try { renderCQTable(); } catch(e) {} }
+  if (name === 'quote') renderQuoteMain();
   if (name === 'orders') renderOrdersMain();
   if (name === 'dashboard') { renderDashboard(); setTimeout(drawRevenueChart, 0); }
 }
@@ -4055,7 +3905,7 @@ function renderDashboard() {
       <!-- Quick actions -->
       <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap">
         <button class="btn btn-primary" onclick="switchSection('quote')" style="font-size:12px;padding:7px 16px">+ New Quote</button>
-        <button class="btn btn-outline" onclick="switchSection('quote');setTimeout(()=>switchQuoteTab('cabinet'),50)" style="font-size:12px;padding:7px 16px;width:auto">+ Cabinet Quote</button>
+        <button class="btn btn-outline" onclick="switchSection('cabinet')" style="font-size:12px;padding:7px 16px;width:auto">+ Cabinet Builder</button>
         <button class="btn btn-outline" onclick="switchSection('orders')" style="font-size:12px;padding:7px 16px;width:auto">+ New Order</button>
         <button class="btn btn-outline" onclick="switchSection('cutlist')" style="font-size:12px;padding:7px 16px;width:auto">⚙ Cut List</button>
         ${overdueOrders.length ? `<span class="badge badge-red" style="align-self:center;font-size:12px;padding:6px 12px">${overdueOrders.length} overdue order${overdueOrders.length!==1?'s':''}</span>` : ''}
@@ -5439,19 +5289,7 @@ function renderCabinetQuote() {
 // CABINET QUOTE TAB (CQ) — Detailed Line-Item Quoting
 // ══════════════════════════════════════════
 
-// ── Quote Tab Switching ──
-function switchQuoteTab(tab) {
-  document.querySelectorAll('.cq-inner-tab').forEach(t => t.classList.remove('active'));
-  document.querySelectorAll('.cq-panel').forEach(p => { p.classList.remove('active'); p.style.display = 'none'; });
-  const idx = tab === 'quick' ? 0 : 1;
-  document.querySelectorAll('.cq-inner-tab')[idx].classList.add('active');
-  const panel = document.getElementById(tab === 'quick' ? 'qpanel-quick' : 'qpanel-cabinet');
-  if (panel) { panel.classList.add('active'); panel.style.display = 'flex'; }
-  // Cabinet panel needs column direction (not row like quick quote's sidebar layout)
-  const cabPanel = document.getElementById('qpanel-cabinet');
-  if (cabPanel) cabPanel.style.flexDirection = 'column';
-  if (tab === 'cabinet') renderCQTable();
-}
+// switchQuoteTab removed — cabinet builder is now its own tab
 
 // ── CQ Settings State ──
 let cqSettings = {
@@ -5495,7 +5333,7 @@ function saveCQSettings() {
   cqSettings.labourRate = parseFloat(document.getElementById('cq-labour-rate')?.value) || 65;
   cqSettings.markup = parseFloat(document.getElementById('cq-markup')?.value) || 20;
   cqSettings.tax = parseFloat(document.getElementById('cq-tax')?.value) || 13;
-  cqSettings.kerf = parseFloat(document.getElementById('cq-kerf')?.value) || 3;
+  // kerf removed from cabinet section (use cut list kerf instead)
   cqSettings.deposit = parseFloat(document.getElementById('cq-deposit')?.value) || 50;
   cqSettings.finishPerM2 = parseFloat(document.getElementById('cq-finish-m2')?.value) || 0;
   cqSettings.edgingPerM = parseFloat(document.getElementById('cq-edging-m')?.value) || 0;
@@ -5523,23 +5361,23 @@ function renderCQSettingsLists() {
   const mEl = document.getElementById('cq-mat-list');
   if (mEl) {
     mEl.innerHTML = cqSettings.materials.map((m, i) => `<div class="cq-mat-row">
-      <input value="${m.name}" placeholder="Material name" onblur="cqSettings.materials[${i}].name=this.value;saveCQSettings();renderCQTable()">
+      <input value="${m.name}" placeholder="Material name" onblur="cqSettings.materials[${i}].name=this.value;saveCQSettings();renderCQPanel()">
       <div style="display:flex;align-items:center;gap:0;border:1px solid var(--border);border-radius:4px;overflow:hidden;background:var(--surface2)">
         <span style="font-size:10px;color:var(--muted);padding:3px 4px 3px 6px;background:var(--surface)">${cur}</span>
-        <input type="number" value="${m.price}" style="border:none;border-radius:0;padding:3px 6px 3px 2px" onblur="cqSettings.materials[${i}].price=parseFloat(this.value)||0;saveCQSettings();renderCQTable()">
+        <input type="number" value="${m.price}" style="border:none;border-radius:0;padding:3px 6px 3px 2px" onblur="cqSettings.materials[${i}].price=parseFloat(this.value)||0;saveCQSettings();renderCQPanel()">
       </div>
-      <button onclick="cqSettings.materials.splice(${i},1);saveCQSettings();renderCQSettingsLists();renderCQTable()">&times;</button>
+      <button onclick="cqSettings.materials.splice(${i},1);saveCQSettings();renderCQSettingsLists();renderCQPanel()">&times;</button>
     </div>`).join('');
   }
   const hEl = document.getElementById('cq-hw-list');
   if (hEl) {
     hEl.innerHTML = cqSettings.hardware.map((h, i) => `<div class="cq-mat-row">
-      <input value="${h.name}" placeholder="Hardware name" onblur="cqSettings.hardware[${i}].name=this.value;saveCQSettings();renderCQTable()">
+      <input value="${h.name}" placeholder="Hardware name" onblur="cqSettings.hardware[${i}].name=this.value;saveCQSettings();renderCQPanel()">
       <div style="display:flex;align-items:center;gap:0;border:1px solid var(--border);border-radius:4px;overflow:hidden;background:var(--surface2)">
         <span style="font-size:10px;color:var(--muted);padding:3px 4px 3px 6px;background:var(--surface)">${cur}</span>
-        <input type="number" value="${h.price}" style="border:none;border-radius:0;padding:3px 6px 3px 2px" onblur="cqSettings.hardware[${i}].price=parseFloat(this.value)||0;saveCQSettings();renderCQTable()">
+        <input type="number" value="${h.price}" style="border:none;border-radius:0;padding:3px 6px 3px 2px" onblur="cqSettings.hardware[${i}].price=parseFloat(this.value)||0;saveCQSettings();renderCQPanel()">
       </div>
-      <button onclick="cqSettings.hardware.splice(${i},1);saveCQSettings();renderCQSettingsLists();renderCQTable()">&times;</button>
+      <button onclick="cqSettings.hardware.splice(${i},1);saveCQSettings();renderCQSettingsLists();renderCQPanel()">&times;</button>
     </div>`).join('');
   }
 }
@@ -5570,6 +5408,9 @@ function cqDefaultLine(type) {
     backMat: (cqSettings.materials.find(m=>m.name.toLowerCase().includes('3mm') || m.name.toLowerCase().includes('back')) || cqSettings.materials[0])?.name || '',
     doors: preset.doors, drawers: preset.drawers, shelves: preset.shelves, adjShelves: 0,
     doorPct: 95, drawerPct: 85,
+    doorMat: cqSettings.materials[0]?.name || '',
+    drawerFrontMat: cqSettings.materials[0]?.name || '',
+    drawerInnerMat: (cqSettings.materials.find(m=>m.name.toLowerCase().includes('3mm') || m.name.toLowerCase().includes('back')) || cqSettings.materials[0])?.name || '',
     hwItems: [],
     labourHrs: 0, labourOverride: false,
     matCostOverride: null,
@@ -5583,7 +5424,7 @@ function addCQLine(type) {
   cqLines.push(line);
   // Auto-expand dimensions section for new cabinet
   cqOpenSections.add(line.id + '-dims');
-  saveCQLines(); renderCQTable();
+  saveCQLines(); renderCQPanel();
   // Scroll to new cabinet
   setTimeout(() => { const el = document.getElementById('cq-table-area'); if (el) el.scrollTop = el.scrollHeight; }, 50);
 }
@@ -5591,12 +5432,12 @@ function addCQLineFromPreset(type) {
   const line = cqDefaultLine(type);
   line.name = type;
   cqLines.push(line);
-  saveCQLines(); renderCQTable();
+  saveCQLines(); renderCQPanel();
   setTimeout(() => { const el = document.getElementById('cq-table-area'); if (el) el.scrollTop = el.scrollHeight; }, 50);
 }
 function removeCQLine(id) {
   cqLines = cqLines.filter(l => l.id !== id);
-  saveCQLines(); renderCQTable();
+  saveCQLines(); renderCQPanel();
 }
 function dupCQLine(id) {
   const src = cqLines.find(l => l.id === id);
@@ -5605,7 +5446,7 @@ function dupCQLine(id) {
   copy.id = cqNextId++;
   copy.name = src.name ? src.name + ' (copy)' : '';
   cqLines.push(copy);
-  saveCQLines(); renderCQTable();
+  saveCQLines(); renderCQPanel();
 }
 
 // ── Update a field on a line ──
@@ -5636,7 +5477,7 @@ function updateCQLine(id, field, val) {
   } else {
     line[field] = val;
   }
-  saveCQLines(); renderCQTable();
+  saveCQLines(); renderCQPanel();
 }
 
 // ── Add hardware item to a line ──
@@ -5644,20 +5485,20 @@ function addCQHwToLine(id) {
   const line = cqLines.find(l => l.id === id);
   if (!line) return;
   line.hwItems.push({ name: cqSettings.hardware[0]?.name || '', qty: 1 });
-  saveCQLines(); renderCQTable();
+  saveCQLines(); renderCQPanel();
 }
 function updateCQHw(lineId, hwIdx, field, val) {
   const line = cqLines.find(l => l.id === lineId);
   if (!line || !line.hwItems[hwIdx]) return;
   if (field === 'qty') line.hwItems[hwIdx].qty = parseInt(val) || 1;
   else line.hwItems[hwIdx].name = val;
-  saveCQLines(); renderCQTable();
+  saveCQLines(); renderCQPanel();
 }
 function removeCQHw(lineId, hwIdx) {
   const line = cqLines.find(l => l.id === lineId);
   if (!line) return;
   line.hwItems.splice(hwIdx, 1);
-  saveCQLines(); renderCQTable();
+  saveCQLines(); renderCQPanel();
 }
 
 // ── Move rows up/down ──
@@ -5667,7 +5508,7 @@ function moveCQLine(id, dir) {
   const newIdx = idx + dir;
   if (newIdx < 0 || newIdx >= cqLines.length) return;
   [cqLines[idx], cqLines[newIdx]] = [cqLines[newIdx], cqLines[idx]];
-  saveCQLines(); renderCQTable();
+  saveCQLines(); renderCQPanel();
 }
 
 // ── Toggle expanded detail for a row ──
@@ -5675,7 +5516,7 @@ let cqExpandedRows = new Set();
 function toggleCQExpand(id) {
   if (cqExpandedRows.has(id)) cqExpandedRows.delete(id);
   else cqExpandedRows.add(id);
-  renderCQTable();
+  renderCQPanel();
 }
 
 // ── Toggle individual sections within a cabinet card ──
@@ -5684,16 +5525,16 @@ function toggleCQSection(lineId, section) {
   const key = lineId + '-' + section;
   if (cqOpenSections.has(key)) cqOpenSections.delete(key);
   else cqOpenSections.add(key);
-  renderCQTable();
+  renderCQPanel();
 }
 function cqExpandAll() {
   const secs = ['dims','doors','drawers','shelves','hw','extras'];
   cqLines.forEach(l => secs.forEach(s => cqOpenSections.add(l.id + '-' + s)));
-  renderCQTable();
+  renderCQPanel();
 }
 function cqCollapseAll() {
   cqOpenSections.clear();
-  renderCQTable();
+  renderCQPanel();
 }
 
 // ── Calculate a single line item ──
@@ -5720,18 +5561,18 @@ function calcCQLine(line) {
   matCost += 2 * innerW * D * mp(line.material);
   // Back
   matCost += W * H * mp(line.backMat);
-  // Doors (using % of front area)
+  // Doors (using % of front area, separate door material)
   const doorPct = (line.doorPct || 95) / 100;
   if (line.doors > 0) {
     const doorH = H * doorPct, doorW = innerW / Math.max(1, line.doors);
-    matCost += line.doors * doorW * doorH * mp(line.material);
+    matCost += line.doors * doorW * doorH * mp(line.doorMat || line.material);
   }
-  // Drawers (fronts + boxes, using % of front area)
+  // Drawers (fronts + boxes, using % of front area, separate materials)
   const drawerPct = (line.drawerPct || 85) / 100;
   if (line.drawers > 0) {
     const drwH = (H * drawerPct) / line.drawers;
-    matCost += line.drawers * innerW * drwH * mp(line.material); // fronts
-    matCost += line.drawers * (2 * D * drwH + 2 * innerW * drwH + innerW * D) * mp(line.backMat); // boxes (cheaper mat)
+    matCost += line.drawers * innerW * drwH * mp(line.drawerFrontMat || line.material); // fronts
+    matCost += line.drawers * (2 * D * drwH + 2 * innerW * drwH + innerW * D) * mp(line.drawerInnerMat || line.backMat); // boxes
   }
   // Shelves
   const shelfArea = innerW * (D - T);
@@ -5783,312 +5624,311 @@ function calcCQLine(line) {
   };
 }
 
-// ── Main Render (Card-based with collapsible sections) ──
-function renderCQTable() {
+
+// ── Render the sidebar: cabinet list + active editor ──
+function renderCQPanel() {
   const cur = window.currency;
   const fmt = v => cur + Number(v).toFixed(2);
   const fmt0 = v => cur + Math.round(v).toLocaleString();
-  const area = document.getElementById('cq-table-area');
-  const sumArea = document.getElementById('cq-summary');
-  if (!area || !sumArea) return;
 
-  // Settings values into form
-  const lr = document.getElementById('cq-labour-rate'); if (lr && lr !== document.activeElement) lr.value = cqSettings.labourRate;
-  const mk = document.getElementById('cq-markup'); if (mk && mk !== document.activeElement) mk.value = cqSettings.markup;
-  const tx = document.getElementById('cq-tax'); if (tx && tx !== document.activeElement) tx.value = cqSettings.tax;
-  const kf = document.getElementById('cq-kerf'); if (kf && kf !== document.activeElement) kf.value = cqSettings.kerf;
-  const dp = document.getElementById('cq-deposit'); if (dp && dp !== document.activeElement) dp.value = cqSettings.deposit;
-  const fm = document.getElementById('cq-finish-m2'); if (fm && fm !== document.activeElement) fm.value = cqSettings.finishPerM2;
-  const em = document.getElementById('cq-edging-m'); if (em && em !== document.activeElement) em.value = cqSettings.edgingPerM;
+  // Sync settings form values
+  const fields = {labourRate:'cq-labour-rate', markup:'cq-markup', tax:'cq-tax', deposit:'cq-deposit', finishPerM2:'cq-finish-m2', edgingPerM:'cq-edging-m'};
+  Object.entries(fields).forEach(([k, id]) => { const el = document.getElementById(id); if (el && el !== document.activeElement) el.value = cqSettings[k]; });
 
-  if (cqLines.length === 0) {
-    area.innerHTML = `<div class="empty-state" style="padding:60px 40px">
-      <div class="empty-icon" style="font-size:48px;opacity:.15"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="12" y1="3" x2="12" y2="12"/></svg></div>
-      <h3>Cabinet Quote Builder</h3>
-      <p style="margin-bottom:8px">Build detailed quotes for custom cabinetry. Each cabinet has collapsible sections for dimensions, doors, drawers & more.</p>
-      <p style="margin-bottom:16px;font-size:12px;color:var(--muted)">1. Click <strong>"My Rates"</strong> above to set your labour rate, material prices & markup<br>2. Add cabinets below — costs calculate automatically</p>
-      <div style="display:flex;gap:10px;justify-content:center;margin-bottom:12px">
-        <button class="btn btn-outline" onclick="toggleCQSettings()" style="font-size:12px;padding:8px 16px;width:auto">Step 1: Set My Rates</button>
-        <button class="btn btn-primary" onclick="addCQLine()" style="font-size:12px;padding:8px 16px">Step 2: Add First Cabinet</button>
+  renderCQCabList();
+  renderCQEditor();
+  renderCQResults();
+}
+
+// ── Render cabinet list in sidebar ──
+function renderCQCabList() {
+  const el = document.getElementById('cq-cab-list');
+  if (!el) return;
+  const cur = window.currency;
+  const fmt0 = v => cur + Math.round(v).toLocaleString();
+
+  if (!cqLines.length) {
+    el.innerHTML = `<div style="color:var(--muted);font-size:13px;text-align:center;padding:16px 0">No cabinets yet. Click "+ Add Cabinet" above.</div>`;
+    return;
+  }
+  el.innerHTML = cqLines.map((c, i) => {
+    const calc = calcCQLine(c);
+    const active = i === cqActiveLineIdx;
+    return `<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;margin-bottom:4px;border-radius:8px;border:1.5px solid ${active?'var(--accent)':'var(--border)'};background:${active?'var(--accent-dim)':'var(--surface)'};cursor:pointer;transition:border-color .15s" onclick="cqSelectLine(${i})">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.name || c.type}${c.qty > 1 ? ' <span style="color:var(--muted);font-weight:400">x'+c.qty+'</span>' : ''}</div>
+        <div style="font-size:11px;color:var(--muted)">${c.w}×${c.h}×${c.d}mm</div>
       </div>
-      <div style="margin-top:12px;display:flex;gap:6px;flex-wrap:wrap;justify-content:center">
-        ${Object.keys(CQ_PRESETS).filter(t=>t!=='Custom').map(t=>`<button class="btn btn-outline" onclick="addCQLineFromPreset('${t}')" style="font-size:11px;padding:5px 10px;width:auto">${t}</button>`).join('')}
-      </div>
+      <div style="font-size:13px;font-weight:700;color:var(--accent);white-space:nowrap">${fmt0(calc.lineSubtotal)}</div>
+      <button style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:12px;padding:2px" onclick="event.stopPropagation();dupCQLine(${c.id})" title="Duplicate">⧉</button>
+      <button style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:15px;padding:2px" onclick="event.stopPropagation();removeCQLine(${c.id})" title="Remove">×</button>
     </div>`;
-    sumArea.innerHTML = '';
+  }).join('');
+}
+
+// ── Active line index ──
+let cqActiveLineIdx = 0;
+function cqSelectLine(idx) {
+  cqActiveLineIdx = idx;
+  renderCQPanel();
+}
+
+// ── Render the active cabinet editor in sidebar ──
+function renderCQEditor() {
+  const el = document.getElementById('cq-cab-editor');
+  if (!el) return;
+  const line = cqLines[cqActiveLineIdx];
+  if (!line) { el.innerHTML = ''; return; }
+
+  const cur = window.currency;
+  const c = calcCQLine(line);
+  const matOpts = (field, val) => cqSettings.materials.map(m => `<option value="${m.name}" ${m.name===val?'selected':''}>${m.name} (${cur}${m.price})</option>`).join('');
+  const hwOpts = cqSettings.hardware.map(h => `<option value="${h.name}">${h.name} (${cur}${h.price})</option>`).join('');
+  const typeOpts = CQ_TYPES.map(t => `<option value="${t}" ${t===line.type?'selected':''}>${t}</option>`).join('');
+
+  el.innerHTML = `
+    <div style="border-top:1px solid var(--border);padding-top:10px;margin-top:6px">
+
+      <!-- Name & Type -->
+      <div class="form-section" style="margin-bottom:12px">
+        <div class="form-row" style="margin-bottom:8px">
+          <div class="form-group" style="flex:2"><label style="font-size:12px">Name</label><input type="text" id="cqe-name" value="${line.name||''}" placeholder="${line.type}" style="font-size:14px;font-weight:600" oninput="cqUpdateField('name',this.value)"></div>
+          <div class="form-group" style="flex:1"><label style="font-size:12px">Type</label><select id="cqe-type" style="font-size:13px" onchange="cqUpdateField('type',this.value)">${typeOpts}</select></div>
+        </div>
+      </div>
+
+      <!-- Dimensions -->
+      <div class="form-section" style="margin-bottom:12px">
+        <div class="form-section-title" style="font-size:12px">Dimensions</div>
+        <div class="form-row">
+          <div class="form-group"><label style="font-size:12px">Width (mm)</label><input type="number" value="${line.w}" style="font-size:14px" oninput="cqUpdateField('w',this.value)"></div>
+          <div class="form-group"><label style="font-size:12px">Height (mm)</label><input type="number" value="${line.h}" style="font-size:14px" oninput="cqUpdateField('h',this.value)"></div>
+          <div class="form-group"><label style="font-size:12px">Depth (mm)</label><input type="number" value="${line.d}" style="font-size:14px" oninput="cqUpdateField('d',this.value)"></div>
+          <div class="form-group" style="flex:0 0 60px"><label style="font-size:12px">Qty</label><input type="number" value="${line.qty}" min="1" style="font-size:14px;font-weight:700;text-align:center" oninput="cqUpdateField('qty',this.value)"></div>
+        </div>
+      </div>
+
+      <!-- Materials -->
+      <div class="form-section" style="margin-bottom:12px">
+        <div class="form-section-title" style="font-size:12px">Materials</div>
+        <div class="form-row" style="margin-bottom:8px">
+          <div class="form-group"><label style="font-size:12px">Carcass</label><select style="font-size:13px" onchange="cqUpdateField('material',this.value)">${matOpts('material', line.material)}</select></div>
+          <div class="form-group"><label style="font-size:12px">Back Panel</label><select style="font-size:13px" onchange="cqUpdateField('backMat',this.value)">${matOpts('backMat', line.backMat)}</select></div>
+        </div>
+      </div>
+
+      <!-- Doors -->
+      <div class="form-section" style="margin-bottom:12px">
+        <div class="form-section-title" style="font-size:12px">Doors</div>
+        <div class="form-row" style="margin-bottom:8px">
+          <div class="form-group" style="flex:0 0 70px"><label style="font-size:12px">Count</label><input type="number" value="${line.doors}" min="0" style="font-size:14px;text-align:center" oninput="cqUpdateField('doors',this.value)"></div>
+          <div class="form-group"><label style="font-size:12px">Door Material</label><select style="font-size:13px" onchange="cqUpdateField('doorMat',this.value)">${matOpts('doorMat', line.doorMat||line.material)}</select></div>
+        </div>
+        ${line.doors > 0 ? `<div style="margin-bottom:4px">
+          <label style="font-size:11px;color:var(--muted)">% of front area</label>
+          <div class="cq-pct-row">
+            <input type="range" class="cq-pct-slider" min="50" max="100" value="${line.doorPct||95}" oninput="this.nextElementSibling.textContent=this.value+'%'" onchange="cqUpdateField('doorPct',this.value)">
+            <span class="cq-pct-val">${line.doorPct||95}%</span>
+          </div>
+        </div>` : ''}
+      </div>
+
+      <!-- Drawers -->
+      <div class="form-section" style="margin-bottom:12px">
+        <div class="form-section-title" style="font-size:12px">Drawers</div>
+        <div class="form-row" style="margin-bottom:8px">
+          <div class="form-group" style="flex:0 0 70px"><label style="font-size:12px">Count</label><input type="number" value="${line.drawers}" min="0" style="font-size:14px;text-align:center" oninput="cqUpdateField('drawers',this.value)"></div>
+          <div class="form-group"><label style="font-size:12px">Front Material</label><select style="font-size:13px" onchange="cqUpdateField('drawerFrontMat',this.value)">${matOpts('drawerFrontMat', line.drawerFrontMat||line.material)}</select></div>
+        </div>
+        ${line.drawers > 0 ? `<div class="form-row" style="margin-bottom:8px">
+          <div class="form-group"><label style="font-size:12px">Inner Material</label><select style="font-size:13px" onchange="cqUpdateField('drawerInnerMat',this.value)">${matOpts('drawerInnerMat', line.drawerInnerMat||line.backMat)}</select></div>
+        </div>
+        <div style="margin-bottom:4px">
+          <label style="font-size:11px;color:var(--muted)">% of front area</label>
+          <div class="cq-pct-row">
+            <input type="range" class="cq-pct-slider" min="30" max="100" value="${line.drawerPct||85}" oninput="this.nextElementSibling.textContent=this.value+'%'" onchange="cqUpdateField('drawerPct',this.value)">
+            <span class="cq-pct-val">${line.drawerPct||85}%</span>
+          </div>
+        </div>` : ''}
+      </div>
+
+      <!-- Shelves -->
+      <div class="form-section" style="margin-bottom:12px">
+        <div class="form-section-title" style="font-size:12px">Shelves</div>
+        <div class="form-row">
+          <div class="form-group"><label style="font-size:12px">Fixed</label><input type="number" value="${line.shelves}" min="0" style="font-size:14px" oninput="cqUpdateField('shelves',this.value)"></div>
+          <div class="form-group"><label style="font-size:12px">Adjustable</label><input type="number" value="${line.adjShelves}" min="0" style="font-size:14px" oninput="cqUpdateField('adjShelves',this.value)"></div>
+        </div>
+      </div>
+
+      <!-- Hardware -->
+      <div class="form-section" style="margin-bottom:12px">
+        <div class="form-section-title" style="font-size:12px">Extra Hardware</div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:6px">Auto: ${line.doors > 0 ? line.doors*2+' hinges' : ''}${line.doors>0&&line.drawers>0?' + ':''}${line.drawers > 0 ? line.drawers+' slides' : ''}${line.doors===0&&line.drawers===0?'None':''}</div>
+        ${line.hwItems.map((hw, hi) => `<div style="display:flex;gap:4px;align-items:center;margin-bottom:4px">
+          <select style="flex:1;font-size:12px;padding:5px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);font-family:inherit" onchange="updateCQHw(${line.id},${hi},'name',this.value)">${cqSettings.hardware.map(h=>`<option value="${h.name}" ${h.name===hw.name?'selected':''}>${h.name} (${cur}${h.price})</option>`).join('')}</select>
+          <input type="number" style="width:44px;text-align:center;padding:5px;font-size:12px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text)" value="${hw.qty}" min="1" onchange="updateCQHw(${line.id},${hi},'qty',this.value)">
+          <button class="cq-del-btn" onclick="removeCQHw(${line.id},${hi})">×</button>
+        </div>`).join('')}
+        <button class="cl-add-btn" onclick="addCQHwToLine(${line.id})" style="font-size:11px;padding:4px 10px;margin:4px 0 0">+ Add Hardware</button>
+      </div>
+
+      <!-- Extras -->
+      <div class="form-section" style="margin-bottom:12px">
+        <div class="form-section-title" style="font-size:12px">Extras</div>
+        <div class="form-row" style="margin-bottom:8px">
+          <div class="form-group"><label style="font-size:12px">Room</label><input type="text" value="${line.room||''}" placeholder="e.g. Kitchen" style="font-size:13px" list="cq-room-list" onchange="cqUpdateField('room',this.value)"></div>
+        </div>
+        <div class="form-row" style="margin-bottom:8px">
+          <div class="form-group"><label style="font-size:12px">Notes</label><input type="text" value="${line.notes||''}" placeholder="Notes..." style="font-size:13px" onchange="cqUpdateField('notes',this.value)"></div>
+        </div>
+      </div>
+
+      <!-- Add to Quote buttons -->
+      <div style="display:flex;gap:6px;flex-wrap:wrap;padding-top:10px;border-top:2px solid var(--accent)">
+        <button class="btn btn-primary" onclick="cqAddToNewQuote()" style="flex:1;font-size:12px;padding:8px 12px">+ Create New Quote</button>
+        <button class="btn btn-outline" onclick="cqAddToExistingQuote()" style="flex:1;font-size:12px;padding:8px 12px;width:auto">Add to Existing Quote</button>
+      </div>
+
+    </div>
+    <datalist id="cq-room-list">${['Kitchen','Bathroom','Bedroom','Living Room','Laundry','Garage','Office','Pantry'].map(r=>'<option value="'+r+'">').join('')}</datalist>
+  `;
+}
+
+// ── Quick field updater ──
+function cqUpdateField(field, val) {
+  const line = cqLines[cqActiveLineIdx];
+  if (!line) return;
+  const numFields = ['w','h','d','qty','doors','drawers','shelves','adjShelves','labourHrs','doorPct','drawerPct'];
+  if (numFields.includes(field)) {
+    line[field] = parseFloat(val) || 0;
+  } else if (field === 'type') {
+    line.type = val;
+    const preset = CQ_PRESETS[val];
+    if (preset) { line.w = preset.w; line.h = preset.h; line.d = preset.d; line.doors = preset.doors; line.drawers = preset.drawers; line.shelves = preset.shelves; }
+  } else {
+    line[field] = val;
+  }
+  saveCQLines();
+  renderCQCabList();
+  renderCQResults();
+  // Only re-render editor if type changed (resets fields)
+  if (field === 'type' || field === 'doors' || field === 'drawers') renderCQEditor();
+}
+
+// ── Render right panel: cost breakdown ──
+function renderCQResults() {
+  const el = document.getElementById('cq-results');
+  if (!el) return;
+  const cur = window.currency;
+  const fmt = v => cur + Number(v).toFixed(2);
+  const fmt0 = v => cur + Math.round(v).toLocaleString();
+
+  if (!cqLines.length) {
+    el.innerHTML = '<div class="empty-state"><h3>Cabinet Builder</h3><p>Add a cabinet using the sidebar to start. Costs calculate live as you configure dimensions, materials, doors, and drawers.</p></div>';
     return;
   }
 
-  // Pre-calculate all totals
-  let grandMatCost = 0, grandLabour = 0, grandHw = 0, grandSubtotal = 0;
-  const lineCalcs = cqLines.map(l => { const c = calcCQLine(l); grandMatCost += c.matCost * l.qty; grandLabour += c.labourCost * l.qty; grandHw += c.hwCost * l.qty; grandSubtotal += c.lineSubtotal; return c; });
-  const preMarkup = grandSubtotal * cqSettings.markup / 100;
-  const preTotal = (grandSubtotal + preMarkup) * (1 + cqSettings.tax / 100);
+  const line = cqLines[cqActiveLineIdx];
+  if (!line) return;
+  const c = calcCQLine(line);
 
-  // Room datalist
-  const rooms = [...new Set(cqLines.map(l=>l.room).filter(Boolean))];
-  let html = `<datalist id="cq-room-list">${['Kitchen','Bathroom','Bedroom','Living Room','Laundry','Garage','Office','Pantry','Hallway'].concat(rooms).filter((v,i,a)=>a.indexOf(v)===i).map(r=>`<option value="${r}">`).join('')}</datalist>`;
+  // Grand totals across all cabinets
+  let gMat = 0, gLabour = 0, gHw = 0, gSub = 0;
+  cqLines.forEach(l => { const cc = calcCQLine(l); gMat += cc.matCost*l.qty; gLabour += cc.labourCost*l.qty; gHw += cc.hwCost*l.qty; gSub += cc.lineSubtotal; });
+  const gMarkup = gSub * cqSettings.markup / 100;
+  const gTotal = (gSub + gMarkup) * (1 + cqSettings.tax / 100);
+  const totalHrs = cqLines.reduce((s,l) => s + calcCQLine(l).labourHrs * l.qty, 0);
 
-  // Quick stats bar
-  html += `<div style="display:flex;gap:0;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:12px;overflow:hidden;box-shadow:var(--shadow)">
-    <div style="flex:1;padding:8px 14px;border-right:1px solid var(--border)"><div style="font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:700">Cabinets</div><div style="font-size:18px;font-weight:800;color:var(--text)">${cqLines.length}</div></div>
-    <div style="flex:1;padding:8px 14px;border-right:1px solid var(--border)"><div style="font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:700">Materials</div><div style="font-size:18px;font-weight:800;color:var(--text)">${fmt0(grandMatCost)}</div></div>
-    <div style="flex:1;padding:8px 14px;border-right:1px solid var(--border)"><div style="font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:700">Labour</div><div style="font-size:18px;font-weight:800;color:var(--text)">${fmt0(grandLabour)}</div></div>
-    <div style="flex:1;padding:8px 14px;border-right:1px solid var(--border)"><div style="font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:700">Hardware</div><div style="font-size:18px;font-weight:800;color:var(--text)">${fmt0(grandHw)}</div></div>
-    <div style="flex:1.5;padding:8px 14px;background:var(--text)"><div style="font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:var(--bg);font-weight:700;opacity:.6">Quote Total</div><div style="font-size:20px;font-weight:800;color:var(--bg)">${fmt0(preTotal)}</div></div>
+  let html = `<div style="max-width:700px">`;
+
+  // Active cabinet header
+  html += `<h3 style="font-size:18px;font-weight:700;margin:0 0 4px">${line.name || line.type}</h3>`;
+  html += `<div style="font-size:13px;color:var(--muted);margin-bottom:20px">${line.w} × ${line.h} × ${line.d} mm · ${line.material} · ${line.type}</div>`;
+
+  // Cost breakdown card
+  html += `<div style="background:var(--surface2);border-radius:10px;padding:18px 20px;margin-bottom:16px">
+    <div style="display:flex;justify-content:space-between;margin-bottom:8px"><span style="color:var(--muted);font-size:13px">Materials</span><span style="font-size:14px;font-weight:600">${fmt(c.matCost)}</span></div>
+    <div style="display:flex;justify-content:space-between;margin-bottom:8px"><span style="color:var(--muted);font-size:13px">Labour (${c.labourHrs.toFixed(1)} hrs @ ${cur}${cqSettings.labourRate}/hr)</span><span style="font-size:14px;font-weight:600">${fmt(c.labourCost)}</span></div>
+    <div style="display:flex;justify-content:space-between;margin-bottom:8px"><span style="color:var(--muted);font-size:13px">Hardware</span><span style="font-size:14px;font-weight:600">${fmt0(c.hwCost)}</span></div>
+    <div style="border-top:2px solid var(--accent);padding-top:8px;margin-top:4px;display:flex;justify-content:space-between">
+      <span style="font-weight:700;font-size:15px;color:var(--accent)">Unit Cost</span>
+      <span style="font-weight:800;font-size:18px;color:var(--accent)">${fmt0(c.lineSubtotal / line.qty)}</span>
+    </div>
+    ${line.qty > 1 ? `<div style="display:flex;justify-content:space-between;margin-top:4px"><span style="color:var(--muted);font-size:13px">× ${line.qty} units</span><span style="font-size:14px;font-weight:700">${fmt0(c.lineSubtotal)}</span></div>` : ''}
   </div>`;
 
-  // Reset accumulators for per-card use
-  grandMatCost = 0; grandLabour = 0; grandHw = 0; grandSubtotal = 0;
-
-  cqLines.forEach((line, idx) => {
-    const c = lineCalcs[idx];
-    grandMatCost += c.matCost * line.qty;
-    grandLabour += c.labourCost * line.qty;
-    grandHw += c.hwCost * line.qty;
-    grandSubtotal += c.lineSubtotal;
-
-    const secOpen = (sec) => cqOpenSections.has(line.id + '-' + sec);
-
-    // Material options
-    const matSelect = (field, val) => `<select class="cq-select" style="font-size:11px;padding:4px 8px;border:1px solid var(--border);border-radius:5px;background:var(--surface2)" onchange="updateCQLine(${line.id},'${field}',this.value)">${cqSettings.materials.map(m=>`<option value="${m.name}" ${m.name===val?'selected':''}>${m.name}</option>`).join('')}</select>`;
-
-    // Hardware sub-rows for expanded section
-    let hwHtml = line.hwItems.map((hw, hi) => `<div style="display:flex;gap:4px;align-items:center;margin-bottom:4px">
-      <select class="cq-select" style="flex:1;font-size:11px;padding:3px 6px;border:1px solid var(--border);border-radius:5px;background:var(--surface2)" onchange="updateCQHw(${line.id},${hi},'name',this.value)">${cqSettings.hardware.map(h=>`<option value="${h.name}" ${h.name===hw.name?'selected':''}>${h.name} (${cur}${h.price})</option>`).join('')}</select>
-      <input type="number" style="width:40px;text-align:center;padding:3px;font-size:11px;border:1px solid var(--border);border-radius:5px;background:var(--surface2);color:var(--text)" value="${hw.qty}" min="1" onchange="updateCQHw(${line.id},${hi},'qty',this.value)">
-      <button class="cq-del-btn" style="width:18px;height:18px;font-size:12px" onclick="removeCQHw(${line.id},${hi})">&times;</button>
-    </div>`).join('');
-
-    html += `<div class="cq-cab-card">
-      <!-- Cabinet Header -->
-      <div class="cq-cab-header">
-        <div class="cq-cab-num">${idx + 1}</div>
-        <input class="cq-cab-name-input" value="${line.name || ''}" placeholder="${line.type}" onchange="updateCQLine(${line.id},'name',this.value)">
-        <select style="font-size:11px;padding:3px 8px;border:1px solid var(--border);border-radius:5px;background:var(--surface2);color:var(--text2);font-family:inherit;cursor:pointer" onchange="updateCQLine(${line.id},'type',this.value)">${CQ_TYPES.map(t=>`<option value="${t}" ${t===line.type?'selected':''}>${t}</option>`).join('')}</select>
-        <div style="display:flex;align-items:center;gap:4px;margin-left:4px">
-          <span style="font-size:10px;color:var(--muted)">Qty</span>
-          <input type="number" style="width:36px;text-align:center;padding:3px;font-size:12px;font-weight:700;border:1px solid var(--border);border-radius:5px;background:var(--surface2);color:var(--text)" value="${line.qty}" min="1" onchange="updateCQLine(${line.id},'qty',this.value)">
-        </div>
-        <div class="cq-cab-total">${fmt0(c.lineSubtotal)}</div>
-        <div class="cq-cab-actions">
-          <button class="cq-dup-btn" onclick="moveCQLine(${line.id},-1)" title="Move up" style="font-size:10px">&#9650;</button>
-          <button class="cq-dup-btn" onclick="moveCQLine(${line.id},1)" title="Move down" style="font-size:10px">&#9660;</button>
-          <button class="cq-dup-btn" onclick="dupCQLine(${line.id})" title="Duplicate">&#10697;</button>
-          <button class="cq-del-btn" onclick="removeCQLine(${line.id})" title="Remove">&times;</button>
-        </div>
-      </div>
-
-      <!-- Collapsible Sections -->
-      <div class="cq-cab-sections">
-
-        <!-- DIMENSIONS -->
-        <div class="cq-cab-sec">
-          <div class="cq-cab-sec-header" onclick="toggleCQSection(${line.id},'dims')">
-            <span class="cq-cab-sec-chevron ${secOpen('dims')?'open':''}">&#9654;</span>
-            <span class="cq-cab-sec-title">Dimensions & Material</span>
-            <span class="cq-cab-sec-subtitle">${line.w} &times; ${line.h} &times; ${line.d} mm &middot; ${line.material.split(' ')[0]}</span>
-          </div>
-          <div class="cq-cab-sec-body ${secOpen('dims')?'open':''}">
-            <div class="form-row">
-              <div class="form-group"><label>Width (mm)</label><input type="number" value="${line.w}" min="0" onchange="updateCQLine(${line.id},'w',this.value)"></div>
-              <div class="form-group"><label>Height (mm)</label><input type="number" value="${line.h}" min="0" onchange="updateCQLine(${line.id},'h',this.value)"></div>
-              <div class="form-group"><label>Depth (mm)</label><input type="number" value="${line.d}" min="0" onchange="updateCQLine(${line.id},'d',this.value)"></div>
-            </div>
-            <div class="form-row">
-              <div class="form-group"><label>Carcass Material</label>${matSelect('material', line.material)}</div>
-              <div class="form-group"><label>Back Material</label>${matSelect('backMat', line.backMat)}</div>
-            </div>
-          </div>
-        </div>
-
-        <!-- DOORS -->
-        <div class="cq-cab-sec">
-          <div class="cq-cab-sec-header" onclick="toggleCQSection(${line.id},'doors')">
-            <span class="cq-cab-sec-chevron ${secOpen('doors')?'open':''}">&#9654;</span>
-            <span class="cq-cab-sec-title">${line.doors > 0 ? '<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--accent);margin-right:4px"></span>' : ''}Doors</span>
-            <span class="cq-cab-sec-subtitle">${line.doors > 0 ? line.doors + ' door' + (line.doors!==1?'s':'') + ' &middot; ' + (line.doorPct||95) + '% of front' : 'None'}</span>
-          </div>
-          <div class="cq-cab-sec-body ${secOpen('doors')?'open':''}">
-            <div class="form-row" style="align-items:center">
-              <div class="form-group" style="flex:0 0 70px"><label>Count</label><input type="number" value="${line.doors}" min="0" onchange="updateCQLine(${line.id},'doors',this.value)"></div>
-              <div class="form-group" style="flex:1">
-                <label>% of front area covered by doors</label>
-                <div class="cq-pct-row">
-                  <input type="range" class="cq-pct-slider" min="50" max="100" value="${line.doorPct||95}" oninput="this.nextElementSibling.textContent=this.value+'%'" onchange="updateCQLine(${line.id},'doorPct',this.value)">
-                  <span class="cq-pct-val">${line.doorPct||95}%</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- DRAWERS -->
-        <div class="cq-cab-sec">
-          <div class="cq-cab-sec-header" onclick="toggleCQSection(${line.id},'drawers')">
-            <span class="cq-cab-sec-chevron ${secOpen('drawers')?'open':''}">&#9654;</span>
-            <span class="cq-cab-sec-title">${line.drawers > 0 ? '<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--accent);margin-right:4px"></span>' : ''}Drawers</span>
-            <span class="cq-cab-sec-subtitle">${line.drawers > 0 ? line.drawers + ' drawer' + (line.drawers!==1?'s':'') + ' &middot; ' + (line.drawerPct||85) + '% of front' : 'None'}</span>
-          </div>
-          <div class="cq-cab-sec-body ${secOpen('drawers')?'open':''}">
-            <div class="form-row" style="align-items:center">
-              <div class="form-group" style="flex:0 0 70px"><label>Count</label><input type="number" value="${line.drawers}" min="0" onchange="updateCQLine(${line.id},'drawers',this.value)"></div>
-              <div class="form-group" style="flex:1">
-                <label>% of front area used by drawers</label>
-                <div class="cq-pct-row">
-                  <input type="range" class="cq-pct-slider" min="30" max="100" value="${line.drawerPct||85}" oninput="this.nextElementSibling.textContent=this.value+'%'" onchange="updateCQLine(${line.id},'drawerPct',this.value)">
-                  <span class="cq-pct-val">${line.drawerPct||85}%</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- SHELVES -->
-        <div class="cq-cab-sec">
-          <div class="cq-cab-sec-header" onclick="toggleCQSection(${line.id},'shelves')">
-            <span class="cq-cab-sec-chevron ${secOpen('shelves')?'open':''}">&#9654;</span>
-            <span class="cq-cab-sec-title">${(line.shelves+line.adjShelves) > 0 ? '<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--accent);margin-right:4px"></span>' : ''}Shelves</span>
-            <span class="cq-cab-sec-subtitle">${(line.shelves+line.adjShelves) > 0 ? (line.shelves+line.adjShelves) + ' shelf/shelves' : 'None'}</span>
-          </div>
-          <div class="cq-cab-sec-body ${secOpen('shelves')?'open':''}">
-            <div class="form-row">
-              <div class="form-group"><label>Fixed Shelves</label><input type="number" value="${line.shelves}" min="0" onchange="updateCQLine(${line.id},'shelves',this.value)"></div>
-              <div class="form-group"><label>Adjustable</label><input type="number" value="${line.adjShelves}" min="0" onchange="updateCQLine(${line.id},'adjShelves',this.value)"></div>
-            </div>
-          </div>
-        </div>
-
-        <!-- HARDWARE -->
-        <div class="cq-cab-sec">
-          <div class="cq-cab-sec-header" onclick="toggleCQSection(${line.id},'hw')">
-            <span class="cq-cab-sec-chevron ${secOpen('hw')?'open':''}">&#9654;</span>
-            <span class="cq-cab-sec-title">${line.hwItems.length > 0 ? '<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--accent2);margin-right:4px"></span>' : ''}Hardware</span>
-            <span class="cq-cab-sec-subtitle">${c.hwCost > 0 ? fmt0(c.hwCost) : 'Auto'} ${line.hwItems.length > 0 ? '+ ' + line.hwItems.length + ' extra' : ''}</span>
-          </div>
-          <div class="cq-cab-sec-body ${secOpen('hw')?'open':''}">
-            <div style="font-size:10px;color:var(--muted);margin-bottom:6px">Auto: ${line.doors > 0 ? line.doors*2 + ' hinges' : ''} ${line.drawers > 0 ? (line.doors>0?' + ':'') + line.drawers + ' slides' : ''} ${line.doors===0&&line.drawers===0?'No auto hardware':''}</div>
-            ${hwHtml}
-            <button style="font-size:10px;color:var(--accent);background:none;border:1px dashed var(--border);border-radius:4px;cursor:pointer;padding:4px 10px;font-family:inherit" onclick="addCQHwToLine(${line.id})">+ Add Hardware Item</button>
-          </div>
-        </div>
-
-        <!-- EXTRAS -->
-        <div class="cq-cab-sec">
-          <div class="cq-cab-sec-header" onclick="toggleCQSection(${line.id},'extras')">
-            <span class="cq-cab-sec-chevron ${secOpen('extras')?'open':''}">&#9654;</span>
-            <span class="cq-cab-sec-title">Extras & Notes</span>
-            <span class="cq-cab-sec-subtitle">${line.room ? line.room + ' &middot; ' : ''}${line.labourOverride ? c.labourHrs.toFixed(1)+'h manual' : c.labourHrs.toFixed(1)+'h auto'}</span>
-          </div>
-          <div class="cq-cab-sec-body ${secOpen('extras')?'open':''}">
-            <div class="form-row">
-              <div class="form-group"><label>Room / Area</label><input type="text" value="${line.room||''}" placeholder="e.g. Kitchen" list="cq-room-list" onchange="updateCQLine(${line.id},'room',this.value)"></div>
-              <div class="form-group"><label>Notes</label><input type="text" value="${line.notes||''}" placeholder="Line notes..." onchange="updateCQLine(${line.id},'notes',this.value)"></div>
-            </div>
-            <div class="form-row" style="align-items:center">
-              <div class="form-group" style="flex:0 0 auto">
-                <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" ${line.labourOverride?'checked':''} onchange="updateCQLine(${line.id},'labourOverride',this.checked?'true':'')"> Override Labour</label>
-              </div>
-              <div class="form-group" style="flex:0 0 80px"><label>Labour Hrs</label><input type="number" value="${c.labourHrs.toFixed(1)}" step="0.25" ${line.labourOverride?'':'disabled'} style="${line.labourOverride?'':'opacity:.5'}" onchange="updateCQLine(${line.id},'labourHrs',this.value)"></div>
-              <div class="form-group" style="flex:0 0 100px"><label>Material Override</label><input type="number" value="${line.matCostOverride !== null ? line.matCostOverride : ''}" placeholder="Auto" onchange="updateCQLine(${line.id},'matCostOverride',this.value)"></div>
-            </div>
-          </div>
-        </div>
-
-        <!-- COST BREAKDOWN (always visible mini-bar) -->
-        <div style="display:flex;gap:0;border-top:1px solid var(--border2);font-size:10px;color:var(--muted)">
-          <div style="flex:1;padding:6px 10px;border-right:1px solid var(--border2)">Mat: <strong style="color:var(--text)">${fmt(c.matCost)}</strong></div>
-          <div style="flex:1;padding:6px 10px;border-right:1px solid var(--border2)">Labour: <strong style="color:var(--text)">${c.labourHrs.toFixed(1)}h (${fmt(c.labourCost)})</strong></div>
-          <div style="flex:1;padding:6px 10px;border-right:1px solid var(--border2)">HW: <strong style="color:var(--text)">${fmt0(c.hwCost)}</strong></div>
-          <div style="flex:1;padding:6px 10px;text-align:right"><strong style="color:var(--accent);font-size:12px">${line.qty > 1 ? line.qty + ' &times; ' : ''}${fmt0(c.lineSubtotal)}</strong></div>
-        </div>
-
-      </div>
+  // Quote total (all cabinets)
+  if (cqLines.length > 0) {
+    html += `<div style="background:var(--surface);border:2px solid var(--border);border-radius:10px;padding:18px 20px;margin-bottom:16px">
+      <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:10px">All Cabinets (${cqLines.length})</div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="color:var(--text2);font-size:13px">Materials</span><span style="font-size:14px;font-weight:600">${fmt0(gMat)}</span></div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="color:var(--text2);font-size:13px">Labour (${totalHrs.toFixed(1)} hrs)</span><span style="font-size:14px;font-weight:600">${fmt0(gLabour)}</span></div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="color:var(--text2);font-size:13px">Hardware</span><span style="font-size:14px;font-weight:600">${fmt0(gHw)}</span></div>
+      <div style="display:flex;justify-content:space-between;padding-top:6px;border-top:1px solid var(--border);margin-bottom:4px"><span style="font-weight:600;font-size:13px">Subtotal</span><span style="font-weight:600;font-size:14px">${fmt0(gSub)}</span></div>
+      ${cqSettings.markup > 0 ? `<div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="color:var(--muted);font-size:13px">Markup (${cqSettings.markup}%)</span><span style="font-size:13px">+${fmt0(gMarkup)}</span></div>` : ''}
+      ${cqSettings.tax > 0 ? `<div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="color:var(--muted);font-size:13px">Tax (${cqSettings.tax}%)</span><span style="font-size:13px">+${fmt0(gTotal - gSub - gMarkup)}</span></div>` : ''}
+      <div style="display:flex;justify-content:space-between;padding-top:8px;border-top:2px solid var(--accent)"><span style="font-weight:700;font-size:16px;color:var(--accent)">Quote Total</span><span style="font-weight:800;font-size:20px;color:var(--accent)">${fmt0(gTotal)}</span></div>
+      ${cqSettings.deposit > 0 && cqSettings.deposit < 100 ? `<div style="display:flex;justify-content:space-between;margin-top:6px"><span style="color:var(--muted);font-size:12px">Deposit (${cqSettings.deposit}%)</span><span style="font-size:12px">${fmt0(gTotal*cqSettings.deposit/100)} · Balance: ${fmt0(gTotal*(1-cqSettings.deposit/100))}</span></div>` : ''}
     </div>`;
-  });
 
-  // Add + expand/collapse buttons
-  html += `<div style="display:flex;gap:6px;flex-wrap:wrap;margin:8px 0;align-items:center">
-    <button class="cq-add-row" onclick="addCQLine()" style="margin:0">+ Add Blank</button>
-    ${Object.keys(CQ_PRESETS).filter(t=>t!=='Custom').map(t=>`<button class="cq-add-row" onclick="addCQLineFromPreset('${t}')" style="margin:0;border-style:solid;font-size:11px;padding:5px 10px">${t}</button>`).join('')}
-    <span style="flex:1"></span>
-    <button style="font-size:10px;color:var(--muted);background:none;border:none;cursor:pointer;padding:2px 6px;font-family:inherit" onclick="cqExpandAll()" title="Expand all sections">Expand All</button>
-    <button style="font-size:10px;color:var(--muted);background:none;border:none;cursor:pointer;padding:2px 6px;font-family:inherit" onclick="cqCollapseAll()" title="Collapse all sections">Collapse All</button>
-    <button style="font-size:10px;color:var(--danger);background:none;border:none;cursor:pointer;padding:2px 6px;font-family:inherit" onclick="_confirm('Clear all cabinets from this quote?',()=>{cqLines=[];cqNextId=1;saveCQLines();renderCQTable()})" title="Remove all cabinets">Clear All</button>
-  </div>`;
-  area.innerHTML = html;
+    // Quick actions
+    html += `<div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-primary" onclick="cqAddToNewQuote()" style="font-size:13px;padding:10px 16px">+ Create New Quote</button>
+      <button class="btn btn-outline" onclick="cqAddToExistingQuote()" style="font-size:13px;padding:10px 16px;width:auto">Add to Existing Quote</button>
+      <button class="btn btn-outline" onclick="printCQQuote('pdf')" style="font-size:13px;padding:10px 16px;width:auto">↓ PDF</button>
+      <button class="btn btn-outline" onclick="printCQQuote('print')" style="font-size:13px;padding:10px 16px;width:auto">⎙ Print</button>
+    </div>`;
+  }
 
-  // ── Summary ──
-  const markupAmt = grandSubtotal * cqSettings.markup / 100;
-  const afterMarkup = grandSubtotal + markupAmt;
-  const taxAmt = afterMarkup * cqSettings.tax / 100;
-  const grandTotal = afterMarkup + taxAmt;
-  const totalHrs = cqLines.reduce((s, l) => { const c = calcCQLine(l); return s + c.labourHrs * l.qty; }, 0);
+  html += `</div>`;
+  el.innerHTML = html;
+}
 
-  // Material sheet usage
-  const matUsage = {};
-  cqLines.forEach(line => {
-    const W = line.w/1000, H = line.h/1000, D = line.d/1000, T = 0.018, iW = Math.max(0,W-2*T);
-    function addArea(matName, a) { if (!matName || a <= 0) return; if (!matUsage[matName]) matUsage[matName] = 0; matUsage[matName] += a * line.qty; }
-    addArea(line.material, 2*H*D + 2*iW*D);
-    addArea(line.backMat, W*H);
-    if (line.doors > 0) addArea(line.material, line.doors * (iW/Math.max(1,line.doors)) * H * (line.doorPct||95)/100);
-    if (line.drawers > 0) { const drwH = (H*(line.drawerPct||85)/100)/line.drawers; addArea(line.material, line.drawers * iW * drwH); addArea(line.backMat, line.drawers * (2*D*drwH + 2*iW*drwH + iW*D)); }
-    addArea(line.material, (line.shelves + line.adjShelves) * iW * (D-T));
-  });
-  const matSummaryRows = Object.entries(matUsage).map(([name, m2]) => {
-    const sheets = Math.ceil(m2 / SHEET_M2);
-    const waste = ((sheets * SHEET_M2 - m2) / (sheets * SHEET_M2) * 100).toFixed(0);
-    const cost = cqSettings.materials.find(m=>m.name===name);
-    return { name, m2, sheets, waste, cost: cost ? sheets * cost.price : 0 };
-  });
+// ── Add to new quote ──
+function cqAddToNewQuote() {
+  if (!cqLines.length) { _toast('Add cabinets first.', 'error'); return; }
+  const gMat = cqLines.reduce((s, l) => s + calcCQLine(l).matCost * l.qty, 0);
+  const gLabour = cqLines.reduce((s, l) => s + calcCQLine(l).labourCost * l.qty, 0);
+  const totalHrs = cqLines.reduce((s, l) => s + calcCQLine(l).labourHrs * l.qty, 0);
 
-  sumArea.innerHTML = `<div class="cq-summary-grid">
-    <div class="cq-summary-block">
-      <div class="cq-summary-label">Cost Breakdown</div>
-      <div class="cq-summary-row"><span>Materials</span><span>${fmt0(grandMatCost)}</span></div>
-      <div class="cq-summary-row"><span>Labour (${totalHrs.toFixed(1)} hrs @ ${cur}${cqSettings.labourRate}/hr)</span><span>${fmt0(grandLabour)}</span></div>
-      <div class="cq-summary-row"><span>Hardware</span><span>${fmt0(grandHw)}</span></div>
-      <div class="cq-summary-row subtotal"><span>Subtotal</span><span>${fmt0(grandSubtotal)}</span></div>
-    </div>
-    <div class="cq-summary-block">
-      <div class="cq-summary-label">Markup & Tax</div>
-      ${cqSettings.markup > 0 ? `<div class="cq-summary-row"><span>Markup (${cqSettings.markup}%)</span><span>+${fmt0(markupAmt)}</span></div>` : ''}
-      ${cqSettings.tax > 0 ? `<div class="cq-summary-row"><span>Tax (${cqSettings.tax}%)</span><span>+${fmt0(taxAmt)}</span></div>` : ''}
-    </div>
-    <div class="cq-summary-block">
-      <div class="cq-summary-label">Summary</div>
-      <div class="cq-summary-row"><span>Cabinets</span><span>${cqLines.length} line${cqLines.length!==1?'s':''} (${cqLines.reduce((s,l)=>s+l.qty,0)} units)</span></div>
-      <div class="cq-summary-row"><span>Est. Labour</span><span>${totalHrs.toFixed(1)} hrs (${(totalHrs/8).toFixed(1)} days)</span></div>
-      <div class="cq-summary-row"><span>Linear Run</span><span>${(cqLines.reduce((s,l)=>s+(l.w/1000)*l.qty,0)).toFixed(1)}m</span></div>
-      ${cqSettings.markup > 0 ? `<div class="cq-summary-row"><span style="color:var(--success)">Profit (markup)</span><span style="color:var(--success);font-weight:700">${fmt0(markupAmt)}</span></div>` : ''}
-      <div class="cq-summary-row"><span>Effective Rate</span><span>${cur}${totalHrs > 0 ? (grandTotal / totalHrs).toFixed(0) : '0'}/hr</span></div>
-      ${(() => { const lm = cqLines.reduce((s,l)=>s+(l.w/1000)*l.qty,0); return lm > 0 ? `<div class="cq-summary-row"><span>Price per Lin. Metre</span><span>${cur}${Math.round(grandTotal / lm).toLocaleString()}/m</span></div>` : ''; })()}
-    </div>
-    <div>
-      <div class="cq-grand-total">
-        <div class="label">Quote Total</div>
-        <div class="amount">${fmt0(grandTotal)}</div>
-      </div>
-      ${cqSettings.deposit > 0 && cqSettings.deposit < 100 ? `<div style="text-align:center;margin-top:4px;font-size:11px;color:var(--muted)">Deposit (${cqSettings.deposit}%): <strong style="color:var(--text)">${fmt0(grandTotal * cqSettings.deposit / 100)}</strong> &middot; Balance: ${fmt0(grandTotal * (1 - cqSettings.deposit / 100))}</div>` : ''}
-      <div style="display:flex;gap:6px;margin-top:8px">
-        <button class="btn btn-outline" onclick="printCQQuote('print')" style="flex:1;font-size:11px;padding:6px 10px">&#9113; Print</button>
-        <button class="btn btn-outline" onclick="printCQQuote('pdf')" style="flex:1;font-size:11px;padding:6px 10px">&darr; PDF</button>
-      </div>
-      <button class="btn btn-outline" onclick="cqSendToQuickQuote()" style="width:100%;font-size:11px;padding:6px 10px;margin-top:4px">&larr; Send to Quick Quote</button>
-      <button class="btn btn-outline" onclick="cqConvertToOrder()" style="width:100%;font-size:11px;padding:6px 10px;margin-top:4px">&rarr; Convert to Order</button>
-    </div>
-  </div>
-  ${matSummaryRows.length > 0 ? `<div style="margin-top:10px;border-top:1px solid var(--border);padding-top:10px">
-    <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin-bottom:6px">Sheet Requirements</div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap">${matSummaryRows.map(r => `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:6px 10px;min-width:140px">
-      <div style="font-size:11px;font-weight:600;color:var(--text)">${r.name}</div>
-      <div style="font-size:18px;font-weight:800;color:var(--accent)">${r.sheets} <span style="font-size:11px;font-weight:500;color:var(--muted)">sheet${r.sheets!==1?'s':''}</span></div>
-      <div style="font-size:10px;color:var(--muted)">${r.m2.toFixed(2)}m&sup2; &middot; ${r.waste}% waste &middot; ${cur}${r.cost.toFixed(0)}</div>
-    </div>`).join('')}</div>
-  </div>` : ''}`;
+  // Pre-fill the quote form
+  document.getElementById('q-materials').value = gMat.toFixed(2);
+  document.getElementById('q-labour-rate').value = cqSettings.labourRate;
+  document.getElementById('q-hours').value = totalHrs.toFixed(1);
+  document.getElementById('q-markup').value = cqSettings.markup;
+  document.getElementById('q-tax').value = cqSettings.tax;
+  document.getElementById('q-notes').value = 'Cabinets: ' + cqLines.map(l => (l.name || l.type) + (l.qty > 1 ? ' x' + l.qty : '')).join(', ');
 
-  renderCQSavedShelf();
+  switchSection('quote');
+  try { _updateQuotePreview(); } catch(e) {}
+  _toast('Quote form pre-filled — enter client details and create', 'success');
+}
+
+// ── Add to existing quote (show picker) ──
+function cqAddToExistingQuote() {
+  if (!cqLines.length) { _toast('Add cabinets first.', 'error'); return; }
+  if (!quotes.length) { _toast('No existing quotes. Use "Create New Quote" instead.', 'info'); cqAddToNewQuote(); return; }
+
+  const gMat = cqLines.reduce((s, l) => s + calcCQLine(l).matCost * l.qty, 0);
+  const gLabour = cqLines.reduce((s, l) => s + calcCQLine(l).labourCost * l.qty, 0);
+  const totalHrs = cqLines.reduce((s, l) => s + calcCQLine(l).labourHrs * l.qty, 0);
+  const cabDesc = cqLines.map(l => (l.name || l.type) + (l.qty > 1 ? ' x' + l.qty : '')).join(', ');
+
+  // Find most recent draft quote and update it
+  const draft = quotes.find(q => q.status === 'draft');
+  if (draft) {
+    draft.materials = (draft.materials || 0) + gMat;
+    draft.labour = (draft.labour || 0) + gLabour;
+    draft.notes = ((draft.notes || '') + '\nCabinets: ' + cabDesc).trim();
+    if (_userId) _db('quotes').update({ materials: draft.materials, labour: draft.labour, notes: draft.notes }).eq('id', draft.id);
+    switchSection('quote');
+    renderQuoteMain();
+    _toast(`Added to quote "${draft.project}" — materials & labour updated`, 'success');
+  } else {
+    _toast('No draft quotes found. Creating new quote instead.', 'info');
+    cqAddToNewQuote();
+  }
 }
 
 // ── Save / Load / New Quotes ──
@@ -6130,7 +5970,7 @@ function loadCQQuote(idx) {
   document.getElementById('cq-notes').value = q.notes || '';
   document.getElementById('cq-quote-num').value = q.quoteNum || '';
   saveCQLines();
-  renderCQTable();
+  renderCQPanel();
 }
 
 function newCQQuote() {
@@ -6142,7 +5982,7 @@ function newCQQuote() {
   document.getElementById('cq-notes').value = '';
   document.getElementById('cq-quote-num').value = '';
   saveCQLines();
-  renderCQTable();
+  renderCQPanel();
 }
 
 function deleteCQQuote(idx) {
@@ -6205,7 +6045,7 @@ function cqConvertToOrder() {
       quotes.unshift(data);
       _toast('Quote created from cabinet quote', 'success');
       renderQuoteMain();
-      switchQuoteTab('quick');
+      switchSection('quote');
     });
   } else {
     _toast('Sign in to save quotes', 'error');
@@ -6385,9 +6225,9 @@ function cqSendToQuickQuote() {
   document.getElementById('q-tax').value = cqSettings.tax;
   document.getElementById('q-notes').value = 'Cabinet Quote: ' + cqLines.map(l => (l.name || l.type) + (l.qty > 1 ? ' x' + l.qty : '')).join(', ');
 
-  switchQuoteTab('quick');
+  switchSection('quote');
   try { _updateQuotePreview(); } catch(e) {}
-  _toast('Sent to Quick Quote — review and create', 'success');
+  _toast('Sent to Quote — review and create', 'success');
 }
 
 // ── Import from Cabinet Builder tab ──
@@ -6408,10 +6248,9 @@ function importCabBuilderToCQ() {
     cqLines.push(line);
   });
   saveCQLines();
-  _toast(`Imported ${cabItems.length} cabinet(s) from Cabinet Builder`, 'success');
-  switchSection('quote');
-  switchQuoteTab('cabinet');
-  renderCQTable();
+  _toast(`Imported ${cabItems.length} cabinet(s)`, 'success');
+  switchSection('cabinet');
+  renderCQPanel();
 }
 
 // ── Duplicate saved quote ──
