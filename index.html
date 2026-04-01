@@ -1552,6 +1552,7 @@ html.dark .cl-table tbody tr:nth-child(even) td { background: rgba(255,255,255,0
             </button>
             <button class="btn btn-primary" onclick="saveCQQuote()" style="padding:6px 14px;font-size:12px">Save Quote</button>
             <button class="btn btn-outline" onclick="newCQQuote()" style="padding:6px 14px;font-size:12px;width:auto">+ New</button>
+            <button class="btn btn-outline" onclick="copyCQSummary()" style="padding:6px 14px;font-size:12px;width:auto" title="Copy pricing summary to clipboard">Copy</button>
           </div>
         </div>
 
@@ -3972,6 +3973,7 @@ function renderDashboard() {
       <!-- Quick actions -->
       <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap">
         <button class="btn btn-primary" onclick="switchSection('quote')" style="font-size:12px;padding:7px 16px">+ New Quote</button>
+        <button class="btn btn-outline" onclick="switchSection('quote');setTimeout(()=>switchQuoteTab('cabinet'),50)" style="font-size:12px;padding:7px 16px;width:auto">+ Cabinet Quote</button>
         <button class="btn btn-outline" onclick="switchSection('orders')" style="font-size:12px;padding:7px 16px;width:auto">+ New Order</button>
         <button class="btn btn-outline" onclick="switchSection('cutlist')" style="font-size:12px;padding:7px 16px;width:auto">⚙ Cut List</button>
         ${overdueOrders.length ? `<span class="badge badge-red" style="align-self:center;font-size:12px;padding:6px 12px">${overdueOrders.length} overdue order${overdueOrders.length!==1?'s':''}</span>` : ''}
@@ -6102,6 +6104,38 @@ ${notes?'<div class="notes-box"><label>Scope &amp; Notes</label><p>'+notes.repla
 </body></html>`;
 
   mode === 'pdf' ? _saveAsPDF(pdfHtml) : _printInFrame(pdfHtml);
+}
+
+// ── Copy summary to clipboard ──
+function copyCQSummary() {
+  if (!cqLines.length) { _toast('No items to copy.', 'error'); return; }
+  const cur = window.currency;
+  const client = document.getElementById('cq-client')?.value?.trim() || '';
+  const project = document.getElementById('cq-project')?.value?.trim() || '';
+  let grandSub = 0;
+  const lineTexts = cqLines.map((line, i) => {
+    const c = calcCQLine(line);
+    grandSub += c.lineSubtotal;
+    return `${i+1}. ${line.name||line.type} (${line.w}x${line.h}x${line.d}mm) x${line.qty} — ${cur}${Math.round(c.lineSubtotal)}`;
+  });
+  const markupAmt = grandSub * cqSettings.markup / 100;
+  const taxAmt = (grandSub + markupAmt) * cqSettings.tax / 100;
+  const grandTotal = grandSub + markupAmt + taxAmt;
+  const depositAmt = grandTotal * cqSettings.deposit / 100;
+
+  const text = [
+    client || project ? `${client}${project ? ' — ' + project : ''}` : 'Cabinet Quote',
+    '─'.repeat(30),
+    ...lineTexts,
+    '─'.repeat(30),
+    `Subtotal: ${cur}${Math.round(grandSub)}`,
+    cqSettings.markup > 0 ? `Markup (${cqSettings.markup}%): +${cur}${Math.round(markupAmt)}` : '',
+    cqSettings.tax > 0 ? `Tax (${cqSettings.tax}%): +${cur}${Math.round(taxAmt)}` : '',
+    `TOTAL: ${cur}${Math.round(grandTotal)}`,
+    cqSettings.deposit > 0 && cqSettings.deposit < 100 ? `Deposit (${cqSettings.deposit}%): ${cur}${Math.round(depositAmt)}` : '',
+  ].filter(Boolean).join('\n');
+
+  navigator.clipboard.writeText(text).then(() => _toast('Summary copied to clipboard', 'success')).catch(() => _toast('Copy failed', 'error'));
 }
 
 // ── Import from Cabinet Builder tab ──
