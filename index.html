@@ -5668,6 +5668,15 @@ function toggleCQSection(lineId, section) {
   else cqOpenSections.add(key);
   renderCQTable();
 }
+function cqExpandAll() {
+  const secs = ['dims','doors','drawers','shelves','hw','extras'];
+  cqLines.forEach(l => secs.forEach(s => cqOpenSections.add(l.id + '-' + s)));
+  renderCQTable();
+}
+function cqCollapseAll() {
+  cqOpenSections.clear();
+  renderCQTable();
+}
 
 // ── Calculate a single line item ──
 function calcCQLine(line) {
@@ -5860,7 +5869,7 @@ function renderCQTable() {
         <div class="cq-cab-sec">
           <div class="cq-cab-sec-header" onclick="toggleCQSection(${line.id},'doors')">
             <span class="cq-cab-sec-chevron ${secOpen('doors')?'open':''}">&#9654;</span>
-            <span class="cq-cab-sec-title">Doors</span>
+            <span class="cq-cab-sec-title">${line.doors > 0 ? '<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--accent);margin-right:4px"></span>' : ''}Doors</span>
             <span class="cq-cab-sec-subtitle">${line.doors > 0 ? line.doors + ' door' + (line.doors!==1?'s':'') + ' &middot; ' + (line.doorPct||95) + '% of front' : 'None'}</span>
           </div>
           <div class="cq-cab-sec-body ${secOpen('doors')?'open':''}">
@@ -5881,7 +5890,7 @@ function renderCQTable() {
         <div class="cq-cab-sec">
           <div class="cq-cab-sec-header" onclick="toggleCQSection(${line.id},'drawers')">
             <span class="cq-cab-sec-chevron ${secOpen('drawers')?'open':''}">&#9654;</span>
-            <span class="cq-cab-sec-title">Drawers</span>
+            <span class="cq-cab-sec-title">${line.drawers > 0 ? '<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--accent);margin-right:4px"></span>' : ''}Drawers</span>
             <span class="cq-cab-sec-subtitle">${line.drawers > 0 ? line.drawers + ' drawer' + (line.drawers!==1?'s':'') + ' &middot; ' + (line.drawerPct||85) + '% of front' : 'None'}</span>
           </div>
           <div class="cq-cab-sec-body ${secOpen('drawers')?'open':''}">
@@ -5902,7 +5911,7 @@ function renderCQTable() {
         <div class="cq-cab-sec">
           <div class="cq-cab-sec-header" onclick="toggleCQSection(${line.id},'shelves')">
             <span class="cq-cab-sec-chevron ${secOpen('shelves')?'open':''}">&#9654;</span>
-            <span class="cq-cab-sec-title">Shelves</span>
+            <span class="cq-cab-sec-title">${(line.shelves+line.adjShelves) > 0 ? '<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--accent);margin-right:4px"></span>' : ''}Shelves</span>
             <span class="cq-cab-sec-subtitle">${(line.shelves+line.adjShelves) > 0 ? (line.shelves+line.adjShelves) + ' shelf/shelves' : 'None'}</span>
           </div>
           <div class="cq-cab-sec-body ${secOpen('shelves')?'open':''}">
@@ -5917,7 +5926,7 @@ function renderCQTable() {
         <div class="cq-cab-sec">
           <div class="cq-cab-sec-header" onclick="toggleCQSection(${line.id},'hw')">
             <span class="cq-cab-sec-chevron ${secOpen('hw')?'open':''}">&#9654;</span>
-            <span class="cq-cab-sec-title">Hardware</span>
+            <span class="cq-cab-sec-title">${line.hwItems.length > 0 ? '<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--accent2);margin-right:4px"></span>' : ''}Hardware</span>
             <span class="cq-cab-sec-subtitle">${c.hwCost > 0 ? fmt0(c.hwCost) : 'Auto'} ${line.hwItems.length > 0 ? '+ ' + line.hwItems.length + ' extra' : ''}</span>
           </div>
           <div class="cq-cab-sec-body ${secOpen('hw')?'open':''}">
@@ -5961,10 +5970,13 @@ function renderCQTable() {
     </div>`;
   });
 
-  // Add buttons
-  html += `<div style="display:flex;gap:6px;flex-wrap:wrap;margin:8px 0">
+  // Add + expand/collapse buttons
+  html += `<div style="display:flex;gap:6px;flex-wrap:wrap;margin:8px 0;align-items:center">
     <button class="cq-add-row" onclick="addCQLine()" style="margin:0">+ Add Blank</button>
     ${Object.keys(CQ_PRESETS).filter(t=>t!=='Custom').map(t=>`<button class="cq-add-row" onclick="addCQLineFromPreset('${t}')" style="margin:0;border-style:solid;font-size:11px;padding:5px 10px">${t}</button>`).join('')}
+    <span style="flex:1"></span>
+    <button style="font-size:10px;color:var(--muted);background:none;border:none;cursor:pointer;padding:2px 6px;font-family:inherit" onclick="cqExpandAll()" title="Expand all sections">Expand All</button>
+    <button style="font-size:10px;color:var(--muted);background:none;border:none;cursor:pointer;padding:2px 6px;font-family:inherit" onclick="cqCollapseAll()" title="Collapse all sections">Collapse All</button>
   </div>`;
   area.innerHTML = html;
 
