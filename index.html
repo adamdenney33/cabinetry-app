@@ -1582,7 +1582,7 @@ html.dark .cl-table tbody tr:nth-child(even) td { background: rgba(255,255,255,0
       </div>
 
       <!-- ═══ CABINET QUOTE (new detailed system) ═══ -->
-      <div class="cq-panel" id="qpanel-cabinet">
+      <div class="cq-panel" id="qpanel-cabinet" style="flex-direction:column">
         <!-- Project Bar -->
         <div class="cq-project-bar" id="cq-project-bar">
           <div class="form-group" style="min-width:160px">
@@ -5447,6 +5447,9 @@ function switchQuoteTab(tab) {
   document.querySelectorAll('.cq-inner-tab')[idx].classList.add('active');
   const panel = document.getElementById(tab === 'quick' ? 'qpanel-quick' : 'qpanel-cabinet');
   if (panel) { panel.classList.add('active'); panel.style.display = 'flex'; }
+  // Cabinet panel needs column direction (not row like quick quote's sidebar layout)
+  const cabPanel = document.getElementById('qpanel-cabinet');
+  if (cabPanel) cabPanel.style.flexDirection = 'column';
   if (tab === 'cabinet') renderCQTable();
 }
 
