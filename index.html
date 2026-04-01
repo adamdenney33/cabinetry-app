@@ -5812,20 +5812,35 @@ function renderCQTable() {
     return;
   }
 
+  // Pre-calculate all totals
+  let grandMatCost = 0, grandLabour = 0, grandHw = 0, grandSubtotal = 0;
+  const lineCalcs = cqLines.map(l => { const c = calcCQLine(l); grandMatCost += c.matCost * l.qty; grandLabour += c.labourCost * l.qty; grandHw += c.hwCost * l.qty; grandSubtotal += c.lineSubtotal; return c; });
+  const preMarkup = grandSubtotal * cqSettings.markup / 100;
+  const preTotal = (grandSubtotal + preMarkup) * (1 + cqSettings.tax / 100);
+
   // Room datalist
   const rooms = [...new Set(cqLines.map(l=>l.room).filter(Boolean))];
   let html = `<datalist id="cq-room-list">${['Kitchen','Bathroom','Bedroom','Living Room','Laundry','Garage','Office','Pantry','Hallway'].concat(rooms).filter((v,i,a)=>a.indexOf(v)===i).map(r=>`<option value="${r}">`).join('')}</datalist>`;
 
-  let grandMatCost = 0, grandLabour = 0, grandHw = 0, grandSubtotal = 0;
+  // Quick stats bar
+  html += `<div style="display:flex;gap:0;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:12px;overflow:hidden;box-shadow:var(--shadow)">
+    <div style="flex:1;padding:8px 14px;border-right:1px solid var(--border)"><div style="font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:700">Cabinets</div><div style="font-size:18px;font-weight:800;color:var(--text)">${cqLines.length}</div></div>
+    <div style="flex:1;padding:8px 14px;border-right:1px solid var(--border)"><div style="font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:700">Materials</div><div style="font-size:18px;font-weight:800;color:var(--text)">${fmt0(grandMatCost)}</div></div>
+    <div style="flex:1;padding:8px 14px;border-right:1px solid var(--border)"><div style="font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:700">Labour</div><div style="font-size:18px;font-weight:800;color:var(--text)">${fmt0(grandLabour)}</div></div>
+    <div style="flex:1;padding:8px 14px;border-right:1px solid var(--border)"><div style="font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:700">Hardware</div><div style="font-size:18px;font-weight:800;color:var(--text)">${fmt0(grandHw)}</div></div>
+    <div style="flex:1.5;padding:8px 14px;background:var(--text)"><div style="font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:var(--bg);font-weight:700;opacity:.6">Quote Total</div><div style="font-size:20px;font-weight:800;color:var(--bg)">${fmt0(preTotal)}</div></div>
+  </div>`;
+
+  // Reset accumulators for per-card use
+  grandMatCost = 0; grandLabour = 0; grandHw = 0; grandSubtotal = 0;
 
   cqLines.forEach((line, idx) => {
-    const c = calcCQLine(line);
+    const c = lineCalcs[idx];
     grandMatCost += c.matCost * line.qty;
     grandLabour += c.labourCost * line.qty;
     grandHw += c.hwCost * line.qty;
     grandSubtotal += c.lineSubtotal;
 
-    const isOpen = cqExpandedRows.has(line.id);
     const secOpen = (sec) => cqOpenSections.has(line.id + '-' + sec);
 
     // Material options
