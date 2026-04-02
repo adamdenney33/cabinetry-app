@@ -3670,10 +3670,10 @@ function renderQuoteMain() {
         <button class="btn btn-danger" onclick="_confirm('Delete quote for <strong>${q.client}</strong>?',()=>removeQuote(${q.id}))" style="padding:4px 8px;margin-left:8px;flex-shrink:0">×</button>
       </div>
       ${q.notes ? `<div style="border-top:1px solid var(--border2);padding:10px 18px;background:var(--surface)">
-        ${q.notes.split(/\\n|\n/).filter(Boolean).map(line => {
-          if (line.includes('—')) {
-            const parts = line.split('—');
-            return '<div style="margin-bottom:6px"><div style="font-size:14px;font-weight:700;color:var(--text)">' + _escHtml(parts[0].trim()) + '</div><div style="font-size:12px;color:var(--muted);padding-left:14px;border-left:2px solid var(--accent);margin-left:4px;margin-top:3px">' + _escHtml(parts.slice(1).join('—').trim()) + '</div></div>';
+        ${q.notes.split(/\r?\n/).filter(Boolean).map(line => {
+          if (line.includes('\u2014') || line.includes('—')) {
+            const parts = line.split(/\u2014|—/);
+            return '<div style="margin-bottom:8px"><div style="font-size:14px;font-weight:700;color:var(--text)">' + _escHtml(parts[0].trim()) + '</div><div style="font-size:12px;color:var(--muted);padding-left:14px;border-left:2px solid var(--accent);margin-left:4px;margin-top:3px">' + _escHtml(parts.slice(1).join('\u2014').trim()) + '</div></div>';
           }
           return '<div style="font-size:12px;color:var(--text2);margin-bottom:3px">' + _escHtml(line) + '</div>';
         }).join('')}
@@ -4424,11 +4424,11 @@ function printQuote(id, mode='print') {
 <table>
   <thead><tr><th>Description</th><th class="r">Amount</th></tr></thead>
   <tbody>
-    ${(q.notes||'').split(/\\n|\n/).filter(l => l.includes('\u2014')).map(cl => {
-      const parts = cl.split('\u2014').map(s=>s.trim());
-      return '<tr><td style="padding:8px 10px"><strong style="font-size:14px">'+_escHtml(parts[0])+'</strong><br><span style="font-size:11px;color:#888;padding-left:14px">'+_escHtml(parts.slice(1).join('\u2014').trim())+'</span></td><td class="r"></td></tr>';
+    ${(q.notes||'').split(/\r?\n/).filter(l => l.includes('\u2014') || l.includes('—')).map(cl => {
+      const parts = cl.split(/\u2014|—/).map(s=>s.trim());
+      return '<tr><td style="padding:10px"><strong style="font-size:14px">'+_escHtml(parts[0])+'</strong><br><span style="font-size:11px;color:#888;padding-left:14px">'+_escHtml(parts.slice(1).join(' — ').trim())+'</span></td><td class="r"></td></tr>';
     }).join('')}
-    ${(q.notes||'').split(/\\n|\n/).some(l => l.includes('\u2014')) ? '<tr><td colspan="2" style="border-bottom:1.5px solid #ddd;padding:0"></td></tr>' : ''}
+    ${(q.notes||'').split(/\r?\n/).some(l => l.includes('\u2014') || l.includes('—')) ? '<tr><td colspan="2" style="border-bottom:1.5px solid #ddd;padding:0"></td></tr>' : ''}
     ${q.markup > 0 || q.tax > 0 ? `<tr class="subtotal"><td style="color:#aaa">Subtotal</td><td class="r">${fmt(sub)}</td></tr>` : ''}
     ${q.markup > 0 ? `<tr class="subtotal"><td style="padding-left:20px">Markup &nbsp;<span style="color:#bbb">(${q.markup}%)</span></td><td class="r">+ ${fmt(markupAmt)}</td></tr>` : ''}
     ${q.tax > 0 ? `<tr class="subtotal"><td style="padding-left:20px">Tax &nbsp;<span style="color:#bbb">(${q.tax}%)</span></td><td class="r">+ ${fmt(taxAmt)}</td></tr>` : ''}
@@ -4440,8 +4440,8 @@ function printQuote(id, mode='print') {
 </div>
 
 ${(() => {
-  const noteLines = (q.notes||'').split(/\\n|\n/).filter(Boolean);
-  const plainNotes = noteLines.filter(l => !l.includes('\u2014')).join('<br>');
+  const noteLines = (q.notes||'').split(/\r?\n/).filter(Boolean);
+  const plainNotes = noteLines.filter(l => !l.includes('\u2014') && !l.includes('—')).join('<br>');
   return plainNotes ? '<div class="notes-box"><label>Notes</label><p>'+_escHtml(plainNotes)+'</p></div>' : '';
 })()}
 
