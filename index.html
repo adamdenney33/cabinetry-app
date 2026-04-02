@@ -262,7 +262,7 @@ header {
 }
 
 /* ── MAIN BODY ── */
-.app-body { flex: 1; overflow: hidden; display: flex; justify-content: center; }
+.app-body { flex: 1; overflow: hidden; display: flex; justify-content: center; background: var(--bg); }
 .section-panel { display: none; flex: 1; overflow: hidden; max-width: 1400px; width: 100%; }
 .section-panel.active { display: flex; }
 
@@ -270,7 +270,7 @@ header {
 .sidebar {
   width: 310px;
   background: var(--surface);
-  border-right: 1px solid var(--border);
+  border-right: none;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -341,7 +341,7 @@ textarea { resize: vertical; min-height: 70px; }
 .cl-left {
   width: 420px; min-width: 340px; flex-shrink: 0;
   display: flex; flex-direction: column;
-  border-right: 1px solid var(--border);
+  border-right: none;
   background: var(--surface); overflow: hidden;
 }
 .cl-right { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
@@ -1553,6 +1553,10 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
               <input type="number" id="o-value" placeholder="0.00" min="0" step="0.01">
             </div>
             <div class="form-group">
+              <label>Start Date</label>
+              <input type="date" id="o-start">
+            </div>
+            <div class="form-group">
               <label>Due Date</label>
               <input type="date" id="o-due">
             </div>
@@ -2150,8 +2154,8 @@ function renderStockMain() {
 
   const allCatPills = ['All', ...usedCats, ...(stockItems.some(i => !_scGet(i.id)) ? ['Uncategorised'] : [])];
 
-  el.innerHTML = `<div style="max-width:900px">
-    <div class="stats-grid" style="grid-template-columns:repeat(4, 1fr)">
+  el.innerHTML = `<div>
+    <div class="stats-grid" style="grid-template-columns:repeat(auto-fit, minmax(140px, 1fr))">
         <div class="stat-value">${stockItems.length}</div>
         <div class="stat-sub">product types</div>
       </div>
@@ -3930,7 +3934,7 @@ function renderQuoteMain() {
       <div class="qc-header">
         <div style="flex:1;min-width:0;overflow:hidden">
           <div class="qc-title" contenteditable="true" onblur="updateQuoteField(${q.id},'project',this.innerText.trim())" title="Click to edit project name">${q.project}</div>
-          <div class="qc-meta"><span contenteditable="true" onblur="updateQuoteField(${q.id},'client',this.innerText.trim())" title="Click to edit client" style="cursor:text">${q.client}</span> &nbsp;·&nbsp; ${q.date} &nbsp;·&nbsp; ${statusBadge(q.status)}</div>
+          <div class="qc-meta"><span contenteditable="true" onblur="updateQuoteField(${q.id},'client',this.innerText.trim())" title="Click to edit client" style="cursor:text">${q.client}</span> &nbsp;·&nbsp; ${q.date} &nbsp;·&nbsp; <select style="font-size:10px;font-weight:700;padding:2px 6px;border-radius:12px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:inherit;cursor:pointer" onchange="updateQuoteField(${q.id},'status',this.value)"><option value="draft" ${q.status==='draft'?'selected':''}>Draft</option><option value="sent" ${q.status==='sent'?'selected':''}>Sent</option><option value="approved" ${q.status==='approved'?'selected':''}>Approved</option></select></div>
         </div>
         <button class="btn btn-danger" onclick="_confirm('Delete quote for <strong>${q.client}</strong>?',()=>removeQuote(${q.id}))" style="padding:4px 8px;margin-left:8px;flex-shrink:0">×</button>
       </div>
@@ -4020,9 +4024,14 @@ async function addOrder() {
   if (!_requireAuth()) return;
   const { data, error } = await _db('orders').insert(row).select().single();
   if (error) { _toast('Could not save order — ' + (error.message || JSON.stringify(error)), 'error'); console.error(error); return; }
-  // Save notes to localStorage (notes column may not be in DB schema)
+  // Save notes and prodStart to localStorage
   const notesVal = document.getElementById('o-notes').value.trim();
-  if (data) { data.notes = notesVal; _onSet(data.id, notesVal); }
+  const startRaw = document.getElementById('o-start').value;
+  const prodStart = startRaw ? new Date(startRaw + 'T12:00:00').toLocaleDateString('en-GB', {day:'numeric', month:'short', year:'numeric'}) : '';
+  if (data) {
+    data.notes = notesVal; _onSet(data.id, notesVal);
+    if (prodStart) { data.prodStart = prodStart; const ps = JSON.parse(localStorage.getItem('pc_order_prodstarts')||'{}'); ps[data.id] = prodStart; localStorage.setItem('pc_order_prodstarts', JSON.stringify(ps)); }
+  }
   orders.unshift(data);
   _toast('Order created', 'success');
   document.getElementById('o-client').value = '';
@@ -6879,130 +6888,116 @@ function renderSchedule() {
   if (!el) return;
   const cur = window.currency;
   const today = new Date(); today.setHours(0,0,0,0);
-
-  // Date range: 2 weeks back, 8 weeks forward
-  const startDate = new Date(today); startDate.setDate(startDate.getDate() - 14);
-  const endDate = new Date(today); endDate.setDate(endDate.getDate() + 56);
-  const totalDays = Math.round((endDate - startDate) / 86400000);
-
-  // Build day columns
-  const days = [];
-  for (let i = 0; i < totalDays; i++) {
-    const d = new Date(startDate);
-    d.setDate(d.getDate() + i);
-    days.push(d);
-  }
-
-  const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-  const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  const isToday = d => d.getTime() === today.getTime();
-  const isWeekend = d => d.getDay() === 0 || d.getDay() === 6;
-
-  // Get active orders
-  const activeOrders = orders.filter(o => o.status !== 'complete');
   const statusColors = { quote:'#94a3b8', confirmed:'#2563eb', production:'#e8a838', delivery:'#0d9488', complete:'#3d9970' };
 
-  // Parse dates for each order
-  const orderBars = activeOrders.map(o => {
-    let dueDate = null, prodStart = null;
-    if (o.due && o.due !== 'TBD') { dueDate = new Date(o.due); if (isNaN(dueDate)) dueDate = null; else dueDate.setHours(0,0,0,0); }
-    if (o.prodStart) { prodStart = new Date(o.prodStart); if (isNaN(prodStart)) prodStart = null; else prodStart.setHours(0,0,0,0); }
-    return { ...o, dueDate, prodStart };
-  }).filter(o => o.dueDate || o.prodStart);
+  // Build 6 months of weeks (past 1 month + future 5 months)
+  const calStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+  // Align to Monday
+  while (calStart.getDay() !== 1) calStart.setDate(calStart.getDate() - 1);
+  const calEnd = new Date(today.getFullYear(), today.getMonth() + 5, 0);
+  const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const dayNames = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 
-  // Sort by start date or due date
-  orderBars.sort((a, b) => (a.prodStart || a.dueDate || today) - (b.prodStart || b.dueDate || today));
-
-  // Also show completed recent orders
-  const recentComplete = orders.filter(o => o.status === 'complete' && o.due && o.due !== 'TBD').map(o => {
-    let dueDate = new Date(o.due); if (isNaN(dueDate)) return null; dueDate.setHours(0,0,0,0);
-    if (dueDate >= startDate && dueDate <= endDate) return { ...o, dueDate, prodStart: null };
-    return null;
+  // Collect all orders with dates
+  const orderEvents = orders.filter(o => o.status !== 'complete').map(o => {
+    let due = null, start = null;
+    if (o.due && o.due !== 'TBD') { due = new Date(o.due); if (isNaN(due)) due = null; else due.setHours(0,0,0,0); }
+    if (o.prodStart) { start = new Date(o.prodStart); if (isNaN(start)) start = null; else start.setHours(0,0,0,0); }
+    if (!due && !start) return null;
+    return { id: o.id, project: o.project, client: o.client, status: o.status, value: o.value, start, due, color: statusColors[o.status]||'#888' };
   }).filter(Boolean);
 
-  const allOrders = [...orderBars, ...recentComplete];
-
-  // Grid template: label column + day columns
-  const colTemplate = `180px repeat(${totalDays}, minmax(32px, 1fr))`;
-
-  // Header row
-  let headerHTML = `<div class="gantt-corner">Orders</div>`;
-  days.forEach(d => {
-    const td = isToday(d);
-    const we = isWeekend(d);
-    const showMonth = d.getDate() === 1 || d === days[0];
-    headerHTML += `<div class="gantt-day-header${td?' today':''}${we?' weekend':''}">
-      ${showMonth ? `<span style="font-size:8px;letter-spacing:.3px">${monthNames[d.getMonth()]}</span>` : ''}
-      <span class="gantt-day-num">${d.getDate()}</span>
-      <span style="font-size:8px">${dayNames[d.getDay()]}</span>
-    </div>`;
-  });
-
-  // Order rows
-  let rowsHTML = '';
-  if (allOrders.length === 0) {
-    rowsHTML = `<div class="gantt-label" style="grid-column:1/-1;text-align:center;padding:40px;color:var(--muted);font-size:14px">No orders with dates. Add due dates to orders to see them here.</div>`;
+  // Build weeks
+  const weeks = [];
+  let weekStart = new Date(calStart);
+  while (weekStart <= calEnd) {
+    const week = [];
+    for (let d = 0; d < 7; d++) {
+      const day = new Date(weekStart);
+      day.setDate(day.getDate() + d);
+      week.push(new Date(day));
+    }
+    weeks.push(week);
+    weekStart.setDate(weekStart.getDate() + 7);
   }
 
-  allOrders.forEach(o => {
-    const color = statusColors[o.status] || '#888';
-    const barStart = o.prodStart || o.dueDate;
-    const barEnd = o.dueDate || o.prodStart;
-
-    // Label cell
-    rowsHTML += `<div class="gantt-label">
-      <div class="gantt-label-name">${_escHtml(o.project)}</div>
-      <div class="gantt-label-meta">${_escHtml(o.client)} · ${cur}${Math.round(o.value).toLocaleString()}</div>
-      <div style="display:flex;gap:4px;margin-top:3px;align-items:center">
-        <span style="font-size:9px;color:var(--muted)">Start:</span>
-        <input type="date" style="font-size:10px;padding:1px 3px;border:1px solid var(--border);border-radius:3px;background:var(--surface2);color:var(--text);font-family:inherit" value="${o.prodStart ? o.prodStart.toISOString().split('T')[0] : ''}" onchange="setOrderProdStart(${o.id},this.value)">
-      </div>
-    </div>`;
-
-    // Day cells with bar overlay
-    days.forEach((d, di) => {
-      const td = isToday(d);
-      const we = isWeekend(d);
-      let cellContent = '';
-
-      // Check if bar starts on this day
-      if (barStart && barEnd) {
-        const startIdx = Math.round((barStart - startDate) / 86400000);
-        const endIdx = Math.round((barEnd - startDate) / 86400000);
-        const barStartClamped = Math.max(0, startIdx);
-        const barEndClamped = Math.min(totalDays - 1, endIdx);
-
-        if (di === barStartClamped) {
-          const span = barEndClamped - barStartClamped + 1;
-          const label = o.project.length > span * 3 ? o.project.substring(0, span * 3) : o.project;
-          cellContent = `<div class="gantt-bar" style="background:${color};left:0;right:0;grid-column:span 1;width:${span * 100}%;z-index:1">${span > 2 ? _escHtml(label) : ''}</div>`;
-        }
-      } else if (barEnd && !barStart) {
-        // Due date only — show as single marker
-        const dueIdx = Math.round((barEnd - startDate) / 86400000);
-        if (di === dueIdx) {
-          cellContent = `<div style="position:absolute;top:4px;bottom:4px;left:25%;right:25%;border-radius:4px;background:${color};opacity:0.8"></div>`;
-        }
+  // Helper: events on a given day
+  function eventsOnDay(day) {
+    const t = day.getTime();
+    return orderEvents.filter(e => {
+      if (e.start && e.due) {
+        return t >= e.start.getTime() && t <= e.due.getTime();
       }
-
-      rowsHTML += `<div class="gantt-cell${td?' today':''}${we?' weekend':''}">${cellContent}</div>`;
+      if (e.due) return t === e.due.getTime();
+      if (e.start) return t === e.start.getTime();
+      return false;
     });
+  }
+
+  // Check if day is start/end of a bar
+  function barInfo(day, e) {
+    const t = day.getTime();
+    const isStart = e.start && t === e.start.getTime();
+    const isEnd = e.due && t === e.due.getTime();
+    const isSingle = (!e.start && e.due && t === e.due.getTime()) || (e.start && !e.due && t === e.start.getTime());
+    return { isStart, isEnd, isSingle };
+  }
+
+  let html = `
+    <div style="padding:12px 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);flex-shrink:0;background:var(--surface)">
+      <div style="font-size:18px;font-weight:800;color:var(--text)">Schedule</div>
+      <div style="font-size:12px;color:var(--muted)">${orderEvents.length} active order${orderEvents.length!==1?'s':''}</div>
+    </div>
+    <div style="flex:1;overflow:auto">
+    <table style="width:100%;border-collapse:collapse;table-layout:fixed">
+      <thead>
+        <tr style="position:sticky;top:0;z-index:5;background:var(--surface)">
+          ${dayNames.map((d,i) => `<th style="padding:8px 4px;font-size:11px;font-weight:600;color:${i>=5?'var(--muted)':'var(--text2)'};text-align:center;border-bottom:2px solid var(--border);width:${100/7}%">${d}</th>`).join('')}
+        </tr>
+      </thead>
+      <tbody>`;
+
+  let lastMonth = -1;
+  weeks.forEach(week => {
+    // Month label row
+    const firstDay = week[0];
+    const monthOfWeek = week.find(d => d.getDate() <= 7 && d.getDate() >= 1 && d.getMonth() !== lastMonth);
+    if (monthOfWeek && monthOfWeek.getMonth() !== lastMonth) {
+      lastMonth = monthOfWeek.getMonth();
+      html += `<tr><td colspan="7" style="padding:10px 12px 4px;font-size:14px;font-weight:800;color:var(--text);background:var(--bg);border-bottom:1px solid var(--border)">${monthNames[lastMonth]} ${monthOfWeek.getFullYear()}</td></tr>`;
+    }
+
+    html += `<tr>`;
+    week.forEach((day, di) => {
+      const td = day.getTime() === today.getTime();
+      const isWeekend = di >= 5;
+      const isOtherMonth = false;
+      const dayEvents = eventsOnDay(day);
+
+      let cellBg = '';
+      if (td) cellBg = 'background:rgba(232,168,56,0.06);';
+      else if (isWeekend) cellBg = 'background:rgba(0,0,0,0.015);';
+
+      let eventsHTML = '';
+      dayEvents.forEach(e => {
+        const bi = barInfo(day, e);
+        const radius = bi.isSingle ? '4px' : bi.isStart ? '4px 0 0 4px' : bi.isEnd ? '0 4px 4px 0' : '0';
+        const leftPad = bi.isStart || bi.isSingle ? '4px' : '0';
+        eventsHTML += `<div style="background:${e.color};color:#fff;font-size:10px;font-weight:600;padding:2px ${leftPad};border-radius:${radius};margin:1px -1px 1px ${bi.isStart||bi.isSingle?'1px':'-1px'};overflow:hidden;white-space:nowrap;text-overflow:ellipsis;min-height:18px;display:flex;align-items:center" title="${_escHtml(e.project)} — ${_escHtml(e.client)}">${bi.isStart || bi.isSingle ? _escHtml(e.project) : ''}</div>`;
+      });
+
+      html += `<td style="vertical-align:top;padding:2px;height:70px;border:1px solid var(--border2);${cellBg}">
+        <div style="font-size:${td?'13':'12'}px;font-weight:${td?'800':'500'};color:${td?'var(--accent)':isWeekend?'var(--muted)':'var(--text2)'};padding:2px 4px;${td?'background:var(--accent);color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;margin:0 auto 2px':''}">${day.getDate()}</div>
+        ${eventsHTML}
+      </td>`;
+    });
+    html += `</tr>`;
   });
 
-  el.innerHTML = `
-    <div class="gantt-header">
-      <h2>Schedule</h2>
-      <span style="font-size:12px;color:var(--muted)">${allOrders.length} order${allOrders.length!==1?'s':''} · ${dayNames[today.getDay()]} ${today.getDate()} ${monthNames[today.getMonth()]} ${today.getFullYear()}</span>
-    </div>
-    <div class="gantt-wrap">
-      <div class="gantt-grid" style="grid-template-columns:${colTemplate}">
-        ${headerHTML}
-        ${rowsHTML}
-      </div>
-    </div>`;
+  html += `</tbody></table></div>`;
+  el.innerHTML = html;
 }
 
-// ── Set production start date on an order ──
 function setOrderProdStart(id, val) {
   const o = orders.find(o => o.id === id);
   if (!o) return;
