@@ -1176,7 +1176,6 @@ html.dark .cl-table tbody tr:nth-child(even) td { background: rgba(255,255,255,0
         <!-- Cabinet Library -->
         <div style="padding:8px 14px 4px;display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--border);margin-top:6px">
           <span style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Cabinet Library</span>
-          <button class="cl-csv-btn" onclick="cqSaveToLibrary()" style="padding:4px 8px;font-size:11px" title="Save current cabinet to library">+ Save to Library</button>
         </div>
         <div id="cq-library-list" style="padding:2px 14px 4px"></div>
 
@@ -5797,7 +5796,7 @@ function renderCQPanel() {
   const fmt0 = v => cur + Math.round(v).toLocaleString();
 
   // Sync settings form values
-  const fields = {labourRate:'cq-labour-rate', markup:'cq-markup', tax:'cq-tax', deposit:'cq-deposit', finishPerM2:'cq-finish-m2', edgingPerM:'cq-edging-m'};
+  const fields = {labourRate:'cq-labour-rate', markup:'cq-markup', tax:'cq-tax', deposit:'cq-deposit', edgingPerM:'cq-edging-m'};
   Object.entries(fields).forEach(([k, id]) => { const el = document.getElementById(id); if (el && el !== document.activeElement) el.value = cqSettings[k]; });
 
   renderCQRates();
@@ -6031,11 +6030,12 @@ function renderCQEditor() {
         </div>
       </div>
 
-      <!-- Quote Actions -->
+      <!-- Quote & Library Actions -->
       <div style="display:flex;gap:6px;flex-wrap:wrap;padding-top:8px">
         <button class="btn btn-primary" onclick="cqAddToNewQuote()" style="flex:1;font-size:13px;padding:10px 12px">+ Create New Quote</button>
         <button class="btn btn-outline" onclick="cqAddToExistingQuote()" style="flex:1;font-size:13px;padding:10px 12px;width:auto">Add to Quote</button>
       </div>
+      <button class="btn btn-outline" onclick="cqSaveToLibrary()" style="width:100%;font-size:12px;padding:8px 12px;margin-top:6px">Save Cabinet to Library</button>
 
     </div>
     <datalist id="cq-room-list">${['Kitchen','Bathroom','Bedroom','Living Room','Laundry','Garage','Office','Pantry'].map(r=>'<option value="'+r+'">').join('')}</datalist>
