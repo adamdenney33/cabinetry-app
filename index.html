@@ -377,8 +377,8 @@ textarea { resize: vertical; min-height: 70px; }
 .cl-settings-bar input[type=number]::-webkit-inner-spin-button,
 .cl-settings-bar input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 .cl-settings-bar input[type=number] { -moz-appearance: textfield; }
-.cl-dim-input { text-align: right; }
-.cl-qty-input { text-align: center; }
+.cl-dim-input { text-align: left; }
+.cl-qty-input { text-align: left; }
 .cl-num-cell { font-size: 11px; color: var(--muted); text-align: center; padding: 0 6px; user-select: none; }
 .cl-grain-cell { text-align: center; padding: 0; }
 .cl-grain-check { width: auto; cursor: pointer; accent-color: var(--accent); margin: 0; }
@@ -2131,7 +2131,7 @@ function renderStockMain() {
   const allCatPills = ['All', ...usedCats, ...(stockItems.some(i => !_scGet(i.id)) ? ['Uncategorised'] : [])];
 
   el.innerHTML = `<div style="max-width:900px">
-    <div class="stats-grid">
+    <div class="stats-grid" style="grid-template-columns:repeat(4, 1fr)">
         <div class="stat-value">${stockItems.length}</div>
         <div class="stat-sub">product types</div>
       </div>
