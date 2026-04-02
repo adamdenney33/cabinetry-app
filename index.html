@@ -6248,10 +6248,17 @@ function _cqApplyToQuote(qi) {
   if (!q) return;
   const gMat = cqLines.reduce((s, l) => s + calcCQLine(l).matCost * l.qty, 0);
   const gLabour = cqLines.reduce((s, l) => s + calcCQLine(l).labourCost * l.qty, 0);
-  const cabDesc = cqLines.map(l => (l.name || l.type) + (l.qty > 1 ? ' x' + l.qty : '')).join(', ');
+  const cabNotes = cqLines.map(l => {
+    const desc = l.name || 'Cabinet';
+    const details = [l.w+'\u00d7'+l.h+'\u00d7'+l.d+'mm', l.material];
+    if (l.doors > 0) details.push(l.doors + ' door' + (l.doors!==1?'s':''));
+    if (l.drawers > 0) details.push(l.drawers + ' drawer' + (l.drawers!==1?'s':''));
+    if (l.qty > 1) details.push('x' + l.qty);
+    return desc + ' \u2014 ' + details.join(', ');
+  }).join('\n');
   q.materials = (q.materials || 0) + gMat;
   q.labour = (q.labour || 0) + gLabour;
-  q.notes = ((q.notes || '') + '\nCabinets: ' + cabDesc).trim();
+  q.notes = ((q.notes || '') + '\n' + cabNotes).trim();
   if (_userId) _db('quotes').update({ materials: q.materials, labour: q.labour, notes: q.notes }).eq('id', q.id);
   switchSection('quote');
   renderQuoteMain();
