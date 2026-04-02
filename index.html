@@ -367,7 +367,7 @@ textarea { resize: vertical; min-height: 70px; }
 .cl-table tr:hover td { background: var(--surface2); }
 .cl-input {
   width: 100%; padding: 7px 8px; border: none; background: transparent;
-  color: var(--text); font-size: 13px; font-family: inherit; outline: none; min-width: 0;
+  color: var(--text); font-size: 14px; font-family: inherit; outline: none; min-width: 0;
 }
 .cl-input:focus { background: var(--accent-dim); border-radius: 3px; }
 .cl-input[type=number]::-webkit-inner-spin-button,
@@ -383,9 +383,9 @@ textarea { resize: vertical; min-height: 70px; }
 .cl-grain-check { width: auto; cursor: pointer; accent-color: var(--accent); margin: 0; }
 .cl-del-cell { padding: 0 4px; }
 .cl-del-btn {
-  width: 22px; height: 22px; border: none; background: none; color: var(--muted);
+  width: 26px; height: 26px; border: none; background: none; color: var(--muted);
   cursor: pointer; border-radius: 4px; display: flex; align-items: center;
-  justify-content: center; transition: all 0.15s; padding: 0;
+  justify-content: center; transition: all 0.15s; padding: 0; font-size: 15px;
 }
 .cl-del-btn:hover { color: var(--danger); background: rgba(224,82,82,0.1); }
 .cl-add-btn {
@@ -606,9 +606,9 @@ canvas { display: block; }
 .cq-table-wrap { flex:1; overflow:auto; padding:16px 20px; }
 .cq-select { padding:4px 6px; border:1px solid transparent; border-radius:5px; background:transparent; color:var(--text); font-size:11px; font-family:inherit; cursor:pointer; outline:none; min-width:0; width:100%; }
 .cq-select:focus { border-color:var(--accent); background:var(--surface); }
-.cq-del-btn { width:22px; height:22px; border:none; background:none; color:var(--muted); cursor:pointer; border-radius:4px; display:flex; align-items:center; justify-content:center; padding:0; font-size:14px; }
+.cq-del-btn { width:28px; height:28px; border:none; background:none; color:var(--muted); cursor:pointer; border-radius:4px; display:flex; align-items:center; justify-content:center; padding:0; font-size:18px; }
 .cq-del-btn:hover { color:var(--danger); background:rgba(224,82,82,0.1); }
-.cq-dup-btn { width:22px; height:22px; border:none; background:none; color:var(--muted); cursor:pointer; border-radius:4px; display:flex; align-items:center; justify-content:center; padding:0; font-size:12px; }
+.cq-dup-btn { width:28px; height:28px; border:none; background:none; color:var(--muted); cursor:pointer; border-radius:4px; display:flex; align-items:center; justify-content:center; padding:0; font-size:15px; }
 .cq-dup-btn:hover { color:var(--accent); background:var(--accent-dim); }
 .cq-add-row { margin:8px 0; padding:7px 14px; font-size:12px; font-weight:600; color:var(--muted); background:none; border:1.5px dashed var(--border); border-radius:6px; cursor:pointer; font-family:inherit; transition:all .15s; }
 .cq-add-row:hover { color:var(--text); border-color:var(--muted); background:var(--surface2); }
@@ -839,8 +839,8 @@ html.dark .cl-table tbody tr:nth-child(even) td { background: rgba(255,255,255,0
   flex-wrap: wrap;
 }
 .layout-tool-btn {
-  padding: 4px 10px; font-size: 11px; font-weight: 600; border: 1px solid var(--border);
-  background: var(--surface); color: var(--text2); border-radius: 5px; cursor: pointer;
+  padding: 6px 14px; font-size: 13px; font-weight: 600; border: 1px solid var(--border);
+  background: var(--surface); color: var(--text2); border-radius: 6px; cursor: pointer;
   transition: all 0.15s; font-family: inherit;
 }
 .layout-tool-btn:hover { background: var(--surface2); }
@@ -1307,28 +1307,8 @@ html.dark .cl-table tbody tr:nth-child(even) td { background: rgba(255,255,255,0
 
     <!-- LEFT: Inputs -->
     <div class="cl-left">
-      <div class="cl-scroll">
-
-        <!-- Projects panel -->
-        <div class="projects-panel" id="projects-panel">
-          <div class="projects-panel-inner">
-            <div class="projects-header">
-              <span class="projects-title">Saved Projects</span>
-              <button class="btn btn-outline" onclick="showSaveProjectForm()" id="save-proj-btn" style="font-size:11px;padding:3px 10px">+ Save</button>
-            </div>
-            <div id="save-proj-form" style="display:none;margin-bottom:8px;display:none">
-              <div style="display:flex;gap:4px;align-items:center">
-                <input id="save-proj-name" class="order-search-input" placeholder="Project name…" style="flex:1;font-size:12px" onkeydown="if(event.key==='Enter')confirmSaveProject();if(event.key==='Escape')hideSaveProjectForm()">
-                <button class="btn btn-primary" onclick="confirmSaveProject()" style="width:auto;padding:4px 10px;font-size:11px">Save</button>
-                <button class="btn btn-outline" onclick="hideSaveProjectForm()" style="width:auto;padding:4px 8px;font-size:11px">✕</button>
-              </div>
-            </div>
-            <div id="projects-list"><div class="projects-signin">Sign in to save and load projects. <span onclick="dismissAuth();_showAuth()">Sign in</span></div></div>
-          </div>
-        </div>
-
-        <!-- Settings bar -->
-        <div class="cl-settings-bar">
+      <!-- Settings bar fixed above scroll -->
+      <div class="cl-settings-bar">
           <div style="display:flex;gap:4px;align-items:center">
             <button class="cl-csv-btn" onclick="toggleProjectsPanel()" title="My Projects" id="projects-toggle-btn" style="padding:5px 10px;display:flex;align-items:center;gap:5px">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
@@ -1346,6 +1326,25 @@ html.dark .cl-table tbody tr:nth-child(even) td { background: rgba(255,255,255,0
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M8 12h8M8 8h5M8 16h6"/></svg>
               Template
             </button>
+          </div>
+        </div>
+
+      <div class="cl-scroll">
+        <!-- Projects panel (inside scroll so it doesn't push toolbar) -->
+        <div class="projects-panel" id="projects-panel">
+          <div class="projects-panel-inner">
+            <div class="projects-header">
+              <span class="projects-title">Saved Projects</span>
+              <button class="btn btn-outline" onclick="showSaveProjectForm()" id="save-proj-btn" style="font-size:11px;padding:3px 10px">+ Save</button>
+            </div>
+            <div id="save-proj-form" style="display:none;margin-bottom:8px">
+              <div style="display:flex;gap:4px;align-items:center">
+                <input id="save-proj-name" class="order-search-input" placeholder="Project name…" style="flex:1;font-size:12px" onkeydown="if(event.key==='Enter')confirmSaveProject();if(event.key==='Escape')hideSaveProjectForm()">
+                <button class="btn btn-primary" onclick="confirmSaveProject()" style="width:auto;padding:4px 10px;font-size:11px">Save</button>
+                <button class="btn btn-outline" onclick="hideSaveProjectForm()" style="width:auto;padding:4px 8px;font-size:11px">✕</button>
+              </div>
+            </div>
+            <div id="projects-list"><div class="projects-signin">Sign in to save and load projects. <span onclick="dismissAuth();_showAuth()">Sign in</span></div></div>
           </div>
         </div>
 
@@ -4302,7 +4301,7 @@ ${[1,2,3,4,5].map(() => `<div class="note-line"></div>`).join('')}
 </div>
 </body></html>`;
 
-  mode === 'pdf' ? _saveAsPDF(html) : _printInFrame(html);
+  _printInFrame(html);
 }
 
 function quoteFromCutList(matCost) {
@@ -4450,7 +4449,7 @@ ${q.notes ? `<div class="notes-box"><label>Notes &amp; Inclusions</label><p>${_e
 </div>
 </body></html>`;
 
-  mode === 'pdf' ? _saveAsPDF(html) : _printInFrame(html);
+  _printInFrame(html);
 }
 
 async function duplicateQuote(id) {
@@ -4598,7 +4597,7 @@ ${lowItems.length ? `<div class="low-note">⚠ Low stock: ${lowItems.map(i=>i.na
 <div class="footer"><span>${biz.name||'ProCabinet'} — ProCabinet.App</span><span>Printed ${new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})}</span></div>
 </body></html>`;
 
-  mode === 'pdf' ? _saveAsPDF(html) : _printInFrame(html);
+  _printInFrame(html);
 }
 
 async function setStockQty(id, val) {
