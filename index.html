@@ -262,8 +262,8 @@ header {
 }
 
 /* ── MAIN BODY ── */
-.app-body { flex: 1; overflow: hidden; display: flex; }
-.section-panel { display: none; flex: 1; overflow: hidden; }
+.app-body { flex: 1; overflow: hidden; display: flex; justify-content: center; }
+.section-panel { display: none; flex: 1; overflow: hidden; max-width: 1400px; width: 100%; }
 .section-panel.active { display: flex; }
 
 /* ── SHARED LAYOUT ── */
@@ -278,7 +278,8 @@ header {
 }
 .sidebar-scroll { overflow-y: auto; flex: 1; padding: 16px; }
 .main-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-.main-scroll { flex: 1; overflow: auto; padding: 20px; }
+.main-scroll { flex: 1; overflow: auto; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+.main-scroll > * { width: 100%; }
 
 /* ── FORM ELEMENTS ── */
 .form-section { margin-bottom: 20px; }
