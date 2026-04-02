@@ -1082,6 +1082,14 @@ html.dark .cl-table tbody tr:nth-child(even) td { background: rgba(255,255,255,0
           <input class="sd-text-input" id="biz-email" placeholder="Email" oninput="saveBizInfo()" style="margin-top:5px">
           <input class="sd-text-input" id="biz-address" placeholder="Address (optional)" oninput="saveBizInfo()" style="margin-top:5px">
           <input class="sd-text-input" id="biz-abn" placeholder="ABN / Tax No. (optional)" oninput="saveBizInfo()" style="margin-top:5px">
+          <div style="margin-top:8px;display:flex;align-items:center;gap:8px">
+            <img id="biz-logo-preview" style="width:40px;height:40px;object-fit:contain;border-radius:4px;border:1px solid var(--border);display:none">
+            <div style="flex:1">
+              <label style="font-size:10px;cursor:pointer;color:var(--accent);font-weight:600" onclick="document.getElementById('biz-logo-input').click()">Upload Logo</label>
+              <input type="file" id="biz-logo-input" accept="image/*" style="display:none" onchange="handleLogoUpload(this)">
+              <button id="biz-logo-remove" style="display:none;font-size:9px;color:var(--muted);background:none;border:none;cursor:pointer;margin-left:4px" onclick="removeLogo()">Remove</button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -1819,6 +1827,31 @@ function loadBizInfo() {
     if (b.abn)     document.getElementById('biz-abn').value     = b.abn;
   } catch(e) {}
 }
+function handleLogoUpload(input) {
+  const file = input.files[0];
+  if (!file) return;
+  if (file.size > 500000) { _toast('Logo too large (max 500KB)', 'error'); return; }
+  const reader = new FileReader();
+  reader.onload = e => {
+    localStorage.setItem('pc_biz_logo', e.target.result);
+    loadLogoPreview();
+    _toast('Logo saved', 'success');
+  };
+  reader.readAsDataURL(file);
+}
+function removeLogo() {
+  localStorage.removeItem('pc_biz_logo');
+  loadLogoPreview();
+}
+function loadLogoPreview() {
+  const logo = localStorage.getItem('pc_biz_logo');
+  const img = document.getElementById('biz-logo-preview');
+  const btn = document.getElementById('biz-logo-remove');
+  if (img) { img.style.display = logo ? '' : 'none'; if (logo) img.src = logo; }
+  if (btn) btn.style.display = logo ? '' : 'none';
+}
+function getBizLogo() { return localStorage.getItem('pc_biz_logo') || ''; }
+
 function getBizInfo() {
   try { return JSON.parse(localStorage.getItem('pc_biz') || '{}'); } catch(e) { return {}; }
 }
@@ -3673,8 +3706,8 @@ function renderQuoteMain() {
         </div>
         <div class="qb-divider"></div>
         <div class="qb-row"><span>Subtotal</span><span>${fmt(sub)}</span></div>
-        ${q.markup > 0 ? `<div class="qb-row qb-muted"><span>Markup (${q.markup}%)</span><span>+${fmt(markupAmt)}</span></div>` : ''}
-        ${q.tax > 0 ? `<div class="qb-row qb-muted"><span>Tax (${q.tax}%)</span><span>+${fmt(taxAmt)}</span></div>` : ''}
+        <div class="qb-row qb-muted"><span>Markup (<span class="qb-edit" contenteditable="true" onblur="updateQuoteField(${q.id},'markup',this.innerText.replace(/[^0-9.]/g,''))" title="Click to edit markup">${q.markup}</span>%)</span><span>+${fmt(markupAmt)}</span></div>
+        <div class="qb-row qb-muted"><span>Tax (<span class="qb-edit" contenteditable="true" onblur="updateQuoteField(${q.id},'tax',this.innerText.replace(/[^0-9.]/g,''))" title="Click to edit tax">${q.tax}</span>%)</span><span>+${fmt(taxAmt)}</span></div>
         <div class="qb-divider"></div>
         <div class="qb-row qb-total"><span>Total inc. tax</span><span>${fmt(total)}</span></div>
       </div>
@@ -4329,6 +4362,7 @@ function printQuote(id, mode='print') {
   const cur = window.currency;
   const fmt  = v => cur + Number(v).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
   const fmt0 = v => cur + Number(v).toLocaleString('en-US', {minimumFractionDigits:0, maximumFractionDigits:0});
+  const logo = getBizLogo();
   const sub = q.materials + q.labour;
   const markupAmt = sub * q.markup / 100;
   const afterMarkup = sub + markupAmt;
@@ -4388,9 +4422,12 @@ function printQuote(id, mode='print') {
 </style></head><body>
 
 <div class="hdr">
-  <div>
-    <div class="biz-name">${biz.name || 'Your Business'}</div>
-    <div class="biz-contact">${[biz.phone, biz.email, biz.address, biz.abn ? 'ABN: ' + biz.abn : ''].filter(Boolean).join('<br>')}</div>
+  <div style="display:flex;align-items:center;gap:12px">
+    ${logo ? `<img src="${logo}" style="max-height:48px;max-width:120px;object-fit:contain">` : ''}
+    <div>
+      <div class="biz-name">${biz.name || 'Your Business'}</div>
+      <div class="biz-contact">${[biz.phone, biz.email, biz.address, biz.abn ? 'ABN: ' + biz.abn : ''].filter(Boolean).join('<br>')}</div>
+    </div>
   </div>
   <div class="doc-right">
     <div class="doc-word">Quotation</div>
@@ -6451,6 +6488,7 @@ loadCabItems();
 // INIT
 // ══════════════════════════════════════════
 loadBizInfo();
+loadLogoPreview();
 // Restore kerf
 (function(){ const k = localStorage.getItem('pc_kerf'); if (k) { const el = document.getElementById('kerf'); if (el) el.value = k; } })();
 renderStockMain();
