@@ -1204,6 +1204,11 @@ html.dark .cl-table tbody tr:nth-child(even) td { background: rgba(255,255,255,0
               <div id="cq-hw-list" style="max-height:160px;overflow-y:auto"></div>
               <button class="cl-add-btn" onclick="addCQHardware()" style="font-size:11px;padding:4px 10px;margin:4px 0 0">+ Add Hardware</button>
             </div>
+            <div style="flex:1;min-width:180px">
+              <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:6px">Finishes <span style="font-weight:400;color:var(--muted)">(per m&sup2;)</span></div>
+              <div id="cq-finish-list" style="max-height:160px;overflow-y:auto"></div>
+              <button class="cl-add-btn" onclick="addCQFinish()" style="font-size:11px;padding:4px 10px;margin:4px 0 0">+ Add Finish</button>
+            </div>
           </div>
         </div>
 
@@ -5313,6 +5318,15 @@ let cqSettings = {
     { name: 'Push-to-Open', price: 14 },
     { name: 'Leg Levellers (4)', price: 10 },
     { name: 'Cam & Dowel (10)', price: 5 },
+  ],
+  finishes: [
+    { name: 'None', price: 0 },
+    { name: 'Oil (Osmo/Rubio)', price: 12 },
+    { name: 'Lacquer', price: 18 },
+    { name: 'Paint', price: 22 },
+    { name: 'Stain + Oil', price: 15 },
+    { name: 'Wax', price: 8 },
+    { name: '2-Pack Spray', price: 35 },
   ]
 };
 
@@ -5380,9 +5394,21 @@ function renderCQSettingsLists() {
       <button onclick="cqSettings.hardware.splice(${i},1);saveCQSettings();renderCQSettingsLists();renderCQPanel()">&times;</button>
     </div>`).join('');
   }
+  const fEl = document.getElementById('cq-finish-list');
+  if (fEl && cqSettings.finishes) {
+    fEl.innerHTML = cqSettings.finishes.map((f, i) => `<div class="cq-mat-row">
+      <input value="${f.name}" placeholder="Finish name" onblur="cqSettings.finishes[${i}].name=this.value;saveCQSettings();renderCQPanel()">
+      <div style="display:flex;align-items:center;gap:0;border:1px solid var(--border);border-radius:4px;overflow:hidden;background:var(--surface2)">
+        <span style="font-size:10px;color:var(--muted);padding:3px 4px 3px 6px;background:var(--surface)">${cur}</span>
+        <input type="number" value="${f.price}" style="border:none;border-radius:0;padding:3px 6px 3px 2px" onblur="cqSettings.finishes[${i}].price=parseFloat(this.value)||0;saveCQSettings();renderCQPanel()">
+      </div>
+      <button onclick="cqSettings.finishes.splice(${i},1);saveCQSettings();renderCQSettingsLists();renderCQPanel()">&times;</button>
+    </div>`).join('');
+  }
 }
 function addCQMaterial() { cqSettings.materials.push({name:'New Material',price:0}); saveCQSettings(); renderCQSettingsLists(); }
 function addCQHardware() { cqSettings.hardware.push({name:'New Hardware',price:0}); saveCQSettings(); renderCQSettingsLists(); }
+function addCQFinish() { if (!cqSettings.finishes) cqSettings.finishes = []; cqSettings.finishes.push({name:'New Finish',price:0}); saveCQSettings(); renderCQSettingsLists(); }
 
 // ── Type Presets ──
 const CQ_PRESETS = {
@@ -5398,23 +5424,25 @@ const CQ_PRESETS = {
 };
 
 // ── Default Line Item ──
-function cqDefaultLine(type) {
-  type = type || 'Base Cabinet';
-  const preset = CQ_PRESETS[type] || CQ_PRESETS['Base Cabinet'];
+function cqDefaultLine() {
   return {
-    id: cqNextId++, name: '', type,
-    w: preset.w, h: preset.h, d: preset.d, qty: 1,
+    id: cqNextId++, name: '',
+    w: 600, h: 720, d: 560, qty: 1,
+    construction: 'overlay', // overlay, inset, face frame
+    baseType: 'plinth', // plinth, feet, castors, frame, none
     material: cqSettings.materials[0]?.name || '',
     backMat: (cqSettings.materials.find(m=>m.name.toLowerCase().includes('3mm') || m.name.toLowerCase().includes('back')) || cqSettings.materials[0])?.name || '',
-    doors: preset.doors, drawers: preset.drawers, shelves: preset.shelves, adjShelves: 0,
-    doorPct: 95, drawerPct: 85,
+    finish: cqSettings.finishes?.[0]?.name || 'None',
+    doors: 0, doorPct: 95,
     doorMat: cqSettings.materials[0]?.name || '',
+    drawers: 0, drawerPct: 85,
     drawerFrontMat: cqSettings.materials[0]?.name || '',
     drawerInnerMat: (cqSettings.materials.find(m=>m.name.toLowerCase().includes('3mm') || m.name.toLowerCase().includes('back')) || cqSettings.materials[0])?.name || '',
+    shelves: 0, adjShelves: 0, endPanels: 0,
     hwItems: [],
+    extras: [], // [{label, cost}]
     labourHrs: 0, labourOverride: false,
     matCostOverride: null,
-    finish: 'None',
     notes: '', room: ''
   };
 }
@@ -5578,11 +5606,18 @@ function calcCQLine(line) {
   // Shelves
   const shelfArea = innerW * (D - T);
   matCost += (line.shelves + line.adjShelves) * shelfArea * mp(line.material);
+  // End panels
+  matCost += (line.endPanels || 0) * H * D * mp(line.material);
 
-  // Finishing cost (applied to all visible surfaces)
-  const allSurface = 2*H*D + 2*innerW*D + W*H; // sides + top/bottom + back
-  const finishCost = allSurface * (cqSettings.finishPerM2 || 0);
+  // Finishing cost (from finish presets in settings)
+  const allSurface = 2*H*D + 2*innerW*D + W*H;
+  const finishPricePerM2 = (cqSettings.finishes||[]).find(f => f.name === line.finish)?.price || 0;
+  const finishCost = allSurface * finishPricePerM2;
   matCost += finishCost;
+
+  // Extras cost
+  const extrasCost = (line.extras||[]).reduce((s, e) => s + (parseFloat(e.cost)||0), 0);
+  matCost += extrasCost;
 
   // Edge banding (exposed edges: front edges of sides, shelves, top, bottom)
   const edgingLength = 2*H + 2*innerW + (line.shelves + line.adjShelves) * innerW; // front edges
@@ -5684,178 +5719,197 @@ function renderCQEditor() {
   const cur = window.currency;
   const c = calcCQLine(line);
   const matOpts = (field, val) => cqSettings.materials.map(m => `<option value="${m.name}" ${m.name===val?'selected':''}>${m.name} (${cur}${m.price})</option>`).join('');
-  const typeOpts = CQ_TYPES.map(t => `<option value="${t}" ${t===line.type?'selected':''}>${t}</option>`).join('');
+  const finishOpts = (cqSettings.finishes||[]).map(f => `<option value="${f.name}" ${f.name===(line.finish||'None')?'selected':''}>${f.name}${f.price?' ('+cur+f.price+'/m²)':''}</option>`).join('') || '<option value="None">None</option>';
   const stepper = (field, val, min) => `<div class="cl-stepper"><button class="cl-step-btn" onclick="cqStepField('${field}',-1)">−</button><input type="number" class="cl-input cl-qty-input" value="${val}" min="${min||0}" style="font-size:14px;width:42px" onchange="cqUpdateField('${field}',this.value)"><button class="cl-step-btn" onclick="cqStepField('${field}',1)">+</button></div>`;
-  const FINISH_TYPES = ['None','Oil (Osmo/Rubio)','Lacquer','Paint','Stain','Wax','Varnish','2-Pack','Custom'];
-  const finishOpts = FINISH_TYPES.map(f => `<option value="${f}" ${f===(line.finish||'None')?'selected':''}>${f}</option>`).join('');
   const so = sec => cqOpenSections.has(line.id + '-' + sec);
-  const chevron = sec => `<span style="font-size:10px;color:var(--muted);transition:transform .2s;display:inline-block;${so(sec)?'transform:rotate(90deg)':''}">&#9654;</span>`;
-  const secBorder = 'border:1px solid var(--border);border-radius:8px;margin-bottom:8px;overflow:hidden;background:var(--surface)';
-  const secHead = 'display:flex;align-items:center;gap:8px;padding:10px 12px;cursor:pointer;user-select:none';
-  const secTitle = 'font-size:13px;font-weight:600;color:var(--text);flex:1';
-  const secSub = 'font-size:11px;color:var(--muted)';
-  const secBody = sec => `style="padding:10px 12px;border-top:1px solid var(--border);${so(sec)?'':'display:none'}"`;
-  const fgStyle = 'margin:0';
-  const lblStyle = 'font-size:12px';
-  const inputStyle = 'font-size:14px';
-  const selectStyle = 'font-size:13px';
+  const chev = sec => `<span style="font-size:10px;color:var(--muted);transition:transform .2s;display:inline-block;${so(sec)?'transform:rotate(90deg)':''}">&#9654;</span>`;
+  const SB = 'border:1px solid var(--border);border-radius:8px;margin-bottom:8px;overflow:hidden;background:var(--surface)';
+  const SH = 'display:flex;align-items:center;gap:8px;padding:10px 12px;cursor:pointer;user-select:none';
+  const ST = 'font-size:13px;font-weight:600;color:var(--text);flex:1';
+  const SS = 'font-size:11px;color:var(--muted)';
+  const SC = sec => `style="padding:10px 12px;border-top:1px solid var(--border);${so(sec)?'':'display:none'}"`;
+  const FM = 'margin:0';
+  const LB = 'font-size:12px';
+  const IS = 'font-size:14px';
+  const SL = 'font-size:13px';
+  const dot = c => `<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--${c});margin-right:4px"></span>`;
+  const liveCost = v => `<span style="font-size:12px;font-weight:700;color:var(--accent);white-space:nowrap">${cur}${Math.round(v)}</span>`;
+
+  // Calculate per-section costs
+  const W=line.w/1000, H=line.h/1000, D=line.d/1000, T=0.018, iW=Math.max(0,W-2*T);
+  function mp(n){ const m=cqSettings.materials.find(m=>m.name===n); return m?m.price/2.9768:0; }
+  const carcassCost = (2*H*D + 2*iW*D)*mp(line.material) + W*H*mp(line.backMat);
+  const finishPrice = (cqSettings.finishes||[]).find(f=>f.name===line.finish)?.price || 0;
+  const surfArea = 2*H*D + 2*iW*D + W*H;
+  const finishCostVal = surfArea * finishPrice;
+  const doorCost = line.doors > 0 ? line.doors*(iW/Math.max(1,line.doors))*(H*(line.doorPct||95)/100)*mp(line.doorMat||line.material) : 0;
+  const drwFrontCost = line.drawers > 0 ? line.drawers*iW*((H*(line.drawerPct||85)/100)/line.drawers)*mp(line.drawerFrontMat||line.material) : 0;
+  const shelfCost = (line.shelves+line.adjShelves)*iW*(D-T)*mp(line.material) + (line.endPanels||0)*H*D*mp(line.material);
+  const extrasCost = (line.extras||[]).reduce((s,e)=>s+(parseFloat(e.cost)||0),0);
 
   el.innerHTML = `
     <div style="border-top:1px solid var(--border);padding-top:10px;margin-top:6px">
 
-      <!-- Name & Type (always visible) -->
-      <div class="form-row" style="margin-bottom:10px">
-        <div class="form-group" style="flex:2;${fgStyle}"><label style="${lblStyle}">Name</label><input type="text" value="${line.name||''}" placeholder="${line.type}" style="${inputStyle};font-weight:600" oninput="cqUpdateField('name',this.value)"></div>
-        <div class="form-group" style="flex:1;${fgStyle}"><label style="${lblStyle}">Type</label><select style="${selectStyle}" onchange="cqUpdateField('type',this.value)">${typeOpts}</select></div>
+      <!-- Name (always visible) -->
+      <div style="margin-bottom:10px">
+        <label style="${LB}">Cabinet Name</label>
+        <input type="text" value="${line.name||''}" placeholder="e.g. Kitchen Base 1" style="${IS};font-weight:600" oninput="cqUpdateField('name',this.value)">
       </div>
 
-      <!-- DIMENSIONS -->
-      <div style="${secBorder}">
-        <div style="${secHead}" onclick="toggleCQSection(${line.id},'dims')">
-          ${chevron('dims')}
-          <span style="${secTitle}">Dimensions</span>
-          <span style="${secSub}">${line.w} × ${line.h} × ${line.d}mm${line.qty>1?' ×'+line.qty:''}</span>
+      <!-- CABINET (dims + material + finish + construction + base) -->
+      <div style="${SB}">
+        <div style="${SH}" onclick="toggleCQSection(${line.id},'cab')">
+          ${chev('cab')}
+          <span style="${ST}">Cabinet</span>
+          ${liveCost(carcassCost + finishCostVal)}
+          <span style="${SS}">${line.w}×${line.h}×${line.d}</span>
         </div>
-        <div ${secBody('dims')}>
-          <div class="form-row" style="margin-bottom:0">
-            <div class="form-group" style="${fgStyle}"><label style="${lblStyle}">Width (mm)</label><input type="number" value="${line.w}" style="${inputStyle}" oninput="cqUpdateField('w',this.value)"></div>
-            <div class="form-group" style="${fgStyle}"><label style="${lblStyle}">Height (mm)</label><input type="number" value="${line.h}" style="${inputStyle}" oninput="cqUpdateField('h',this.value)"></div>
-            <div class="form-group" style="${fgStyle}"><label style="${lblStyle}">Depth (mm)</label><input type="number" value="${line.d}" style="${inputStyle}" oninput="cqUpdateField('d',this.value)"></div>
-            <div class="form-group" style="flex:0 0 auto;${fgStyle}"><label style="${lblStyle}">Qty</label>${stepper('qty', line.qty, 1)}</div>
+        <div ${SC('cab')}>
+          <div class="form-row" style="margin-bottom:8px">
+            <div class="form-group" style="${FM}"><label style="${LB}">Width (mm)</label><input type="number" value="${line.w}" style="${IS}" oninput="cqUpdateField('w',this.value)"></div>
+            <div class="form-group" style="${FM}"><label style="${LB}">Height (mm)</label><input type="number" value="${line.h}" style="${IS}" oninput="cqUpdateField('h',this.value)"></div>
+            <div class="form-group" style="${FM}"><label style="${LB}">Depth (mm)</label><input type="number" value="${line.d}" style="${IS}" oninput="cqUpdateField('d',this.value)"></div>
+            <div class="form-group" style="flex:0 0 auto;${FM}"><label style="${LB}">Qty</label>${stepper('qty', line.qty, 1)}</div>
           </div>
-        </div>
-      </div>
-
-      <!-- MATERIALS -->
-      <div style="${secBorder}">
-        <div style="${secHead}" onclick="toggleCQSection(${line.id},'mats')">
-          ${chevron('mats')}
-          <span style="${secTitle}">Materials</span>
-          <span style="${secSub}">${(line.material||'').split(' ').slice(0,2).join(' ')}</span>
-        </div>
-        <div ${secBody('mats')}>
-          <div class="form-row" style="margin-bottom:0">
-            <div class="form-group" style="${fgStyle}"><label style="${lblStyle}">Carcass</label><select style="${selectStyle}" onchange="cqUpdateField('material',this.value)">${matOpts('material', line.material)}</select></div>
-            <div class="form-group" style="${fgStyle}"><label style="${lblStyle}">Back Panel</label><select style="${selectStyle}" onchange="cqUpdateField('backMat',this.value)">${matOpts('backMat', line.backMat)}</select></div>
+          <div class="form-row" style="margin-bottom:8px">
+            <div class="form-group" style="${FM}"><label style="${LB}">Carcass Material</label><select style="${SL}" onchange="cqUpdateField('material',this.value)">${matOpts('material', line.material)}</select></div>
+            <div class="form-group" style="${FM}"><label style="${LB}">Back Panel</label><select style="${SL}" onchange="cqUpdateField('backMat',this.value)">${matOpts('backMat', line.backMat)}</select></div>
           </div>
-        </div>
-      </div>
-
-      <!-- FINISH -->
-      <div style="${secBorder}">
-        <div style="${secHead}" onclick="toggleCQSection(${line.id},'finish')">
-          ${chevron('finish')}
-          <span style="${secTitle}">${(line.finish && line.finish !== 'None') ? '<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--success);margin-right:4px"></span>' : ''}Finish</span>
-          <span style="${secSub}">${line.finish || 'None'}</span>
-        </div>
-        <div ${secBody('finish')}>
+          <div class="form-row" style="margin-bottom:8px">
+            <div class="form-group" style="${FM}"><label style="${LB}">Finish</label><select style="${SL}" onchange="cqUpdateField('finish',this.value)">${finishOpts}</select></div>
+            <div class="form-group" style="${FM}"><label style="${LB}">Construction</label>
+              <select style="${SL}" onchange="cqUpdateField('construction',this.value)">
+                <option value="overlay" ${line.construction==='overlay'?'selected':''}>Overlay</option>
+                <option value="inset" ${line.construction==='inset'?'selected':''}>Inset</option>
+                <option value="faceframe" ${line.construction==='faceframe'?'selected':''}>Face Frame</option>
+              </select>
+            </div>
+          </div>
           <div class="form-row" style="margin-bottom:0">
-            <div class="form-group" style="${fgStyle}"><label style="${lblStyle}">Finish Type</label><select style="${selectStyle}" onchange="cqUpdateField('finish',this.value)">${finishOpts}</select></div>
+            <div class="form-group" style="${FM}"><label style="${LB}">Base</label>
+              <select style="${SL}" onchange="cqUpdateField('baseType',this.value)">
+                <option value="none" ${line.baseType==='none'?'selected':''}>None</option>
+                <option value="plinth" ${line.baseType==='plinth'?'selected':''}>Plinth</option>
+                <option value="feet" ${line.baseType==='feet'?'selected':''}>Feet / Legs</option>
+                <option value="castors" ${line.baseType==='castors'?'selected':''}>Castors</option>
+                <option value="frame" ${line.baseType==='frame'?'selected':''}>Frame</option>
+              </select>
+            </div>
           </div>
         </div>
       </div>
 
       <!-- DOORS -->
-      <div style="${secBorder}">
-        <div style="${secHead}" onclick="toggleCQSection(${line.id},'doors')">
-          ${chevron('doors')}
-          <span style="${secTitle}">${line.doors > 0 ? '<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--accent);margin-right:4px"></span>' : ''}Doors</span>
-          <span style="${secSub}">${line.doors > 0 ? line.doors + ' door' + (line.doors!==1?'s':'') : 'None'}</span>
+      <div style="${SB}">
+        <div style="${SH}" onclick="toggleCQSection(${line.id},'doors')">
+          ${chev('doors')}
+          <span style="${ST}">${line.doors>0?dot('accent'):''}Doors</span>
+          ${line.doors > 0 ? liveCost(doorCost) : ''}
+          <span style="${SS}">${line.doors>0?line.doors+' door'+(line.doors!==1?'s':''):'None'}</span>
         </div>
-        <div ${secBody('doors')}>
-          <div class="form-row" style="margin-bottom:8px">
-            <div class="form-group" style="flex:0 0 auto;${fgStyle}"><label style="${lblStyle}">Count</label>${stepper('doors', line.doors, 0)}</div>
-            <div class="form-group" style="${fgStyle}"><label style="${lblStyle}">Door Material</label><select style="${selectStyle}" onchange="cqUpdateField('doorMat',this.value)">${matOpts('doorMat', line.doorMat||line.material)}</select></div>
+        <div ${SC('doors')}>
+          <div class="form-row" style="margin-bottom:8px;align-items:flex-end">
+            <div class="form-group" style="flex:0 0 auto;${FM}"><label style="${LB}">Count</label>${stepper('doors', line.doors, 0)}</div>
+            <div class="form-group" style="${FM}"><label style="${LB}">Door Material</label><select style="${SL}" onchange="cqUpdateField('doorMat',this.value)">${matOpts('doorMat', line.doorMat||line.material)}</select></div>
           </div>
-          ${line.doors > 0 ? `<div>
-            <label style="font-size:11px;color:var(--muted)">% of front area covered</label>
-            <div class="cq-pct-row">
-              <input type="range" class="cq-pct-slider" min="50" max="100" value="${line.doorPct||95}" oninput="this.nextElementSibling.textContent=this.value+'%'" onchange="cqUpdateField('doorPct',this.value)">
-              <span class="cq-pct-val">${line.doorPct||95}%</span>
-            </div>
-          </div>` : ''}
+          ${line.doors>0?`<label style="font-size:11px;color:var(--muted)">% of front area</label><div class="cq-pct-row"><input type="range" class="cq-pct-slider" min="50" max="100" value="${line.doorPct||95}" oninput="this.nextElementSibling.textContent=this.value+'%'" onchange="cqUpdateField('doorPct',this.value)"><span class="cq-pct-val">${line.doorPct||95}%</span></div>`:''}
         </div>
       </div>
 
       <!-- DRAWERS -->
-      <div style="${secBorder}">
-        <div style="${secHead}" onclick="toggleCQSection(${line.id},'drawers')">
-          ${chevron('drawers')}
-          <span style="${secTitle}">${line.drawers > 0 ? '<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--accent);margin-right:4px"></span>' : ''}Drawers</span>
-          <span style="${secSub}">${line.drawers > 0 ? line.drawers + ' drawer' + (line.drawers!==1?'s':'') : 'None'}</span>
+      <div style="${SB}">
+        <div style="${SH}" onclick="toggleCQSection(${line.id},'drawers')">
+          ${chev('drawers')}
+          <span style="${ST}">${line.drawers>0?dot('accent'):''}Drawers</span>
+          ${line.drawers > 0 ? liveCost(drwFrontCost) : ''}
+          <span style="${SS}">${line.drawers>0?line.drawers+' drawer'+(line.drawers!==1?'s':''):'None'}</span>
         </div>
-        <div ${secBody('drawers')}>
-          <div class="form-row" style="margin-bottom:8px">
-            <div class="form-group" style="flex:0 0 auto;${fgStyle}"><label style="${lblStyle}">Count</label>${stepper('drawers', line.drawers, 0)}</div>
-            <div class="form-group" style="${fgStyle}"><label style="${lblStyle}">Front Material</label><select style="${selectStyle}" onchange="cqUpdateField('drawerFrontMat',this.value)">${matOpts('drawerFrontMat', line.drawerFrontMat||line.material)}</select></div>
+        <div ${SC('drawers')}>
+          <div class="form-row" style="margin-bottom:8px;align-items:flex-end">
+            <div class="form-group" style="flex:0 0 auto;${FM}"><label style="${LB}">Count</label>${stepper('drawers', line.drawers, 0)}</div>
+            <div class="form-group" style="${FM}"><label style="${LB}">Front Material</label><select style="${SL}" onchange="cqUpdateField('drawerFrontMat',this.value)">${matOpts('drawerFrontMat', line.drawerFrontMat||line.material)}</select></div>
           </div>
-          ${line.drawers > 0 ? `<div class="form-row" style="margin-bottom:8px">
-            <div class="form-group" style="${fgStyle}"><label style="${lblStyle}">Inner Box Material</label><select style="${selectStyle}" onchange="cqUpdateField('drawerInnerMat',this.value)">${matOpts('drawerInnerMat', line.drawerInnerMat||line.backMat)}</select></div>
-          </div>
-          <div>
-            <label style="font-size:11px;color:var(--muted)">% of front area used</label>
-            <div class="cq-pct-row">
-              <input type="range" class="cq-pct-slider" min="30" max="100" value="${line.drawerPct||85}" oninput="this.nextElementSibling.textContent=this.value+'%'" onchange="cqUpdateField('drawerPct',this.value)">
-              <span class="cq-pct-val">${line.drawerPct||85}%</span>
-            </div>
-          </div>` : ''}
+          ${line.drawers>0?`<div class="form-row" style="margin-bottom:8px"><div class="form-group" style="${FM}"><label style="${LB}">Inner Box Material</label><select style="${SL}" onchange="cqUpdateField('drawerInnerMat',this.value)">${matOpts('drawerInnerMat', line.drawerInnerMat||line.backMat)}</select></div></div>
+          <label style="font-size:11px;color:var(--muted)">% of front area</label><div class="cq-pct-row"><input type="range" class="cq-pct-slider" min="30" max="100" value="${line.drawerPct||85}" oninput="this.nextElementSibling.textContent=this.value+'%'" onchange="cqUpdateField('drawerPct',this.value)"><span class="cq-pct-val">${line.drawerPct||85}%</span></div>`:''}
         </div>
       </div>
 
-      <!-- SHELVES -->
-      <div style="${secBorder}">
-        <div style="${secHead}" onclick="toggleCQSection(${line.id},'shelves')">
-          ${chevron('shelves')}
-          <span style="${secTitle}">${(line.shelves+line.adjShelves) > 0 ? '<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--accent);margin-right:4px"></span>' : ''}Shelves</span>
-          <span style="${secSub}">${(line.shelves+line.adjShelves) > 0 ? (line.shelves+line.adjShelves) + ' total' : 'None'}</span>
+      <!-- SHELVES & PARTITIONS -->
+      <div style="${SB}">
+        <div style="${SH}" onclick="toggleCQSection(${line.id},'shelves')">
+          ${chev('shelves')}
+          <span style="${ST}">${(line.shelves+line.adjShelves+(line.endPanels||0))>0?dot('accent'):''}Shelves & Partitions</span>
+          ${(line.shelves+line.adjShelves+(line.endPanels||0))>0 ? liveCost(shelfCost) : ''}
+          <span style="${SS}">${(line.shelves+line.adjShelves+(line.endPanels||0))>0?(line.shelves+line.adjShelves+(line.endPanels||0))+' total':'None'}</span>
         </div>
-        <div ${secBody('shelves')}>
-          <div class="form-row" style="margin-bottom:0">
-            <div class="form-group" style="flex:0 0 auto;${fgStyle}"><label style="${lblStyle}">Fixed</label>${stepper('shelves', line.shelves, 0)}</div>
-            <div class="form-group" style="flex:0 0 auto;${fgStyle}"><label style="${lblStyle}">Adjustable</label>${stepper('adjShelves', line.adjShelves, 0)}</div>
+        <div ${SC('shelves')}>
+          <div class="form-row" style="margin-bottom:0;align-items:flex-end">
+            <div class="form-group" style="flex:0 0 auto;${FM}"><label style="${LB}">Fixed</label>${stepper('shelves', line.shelves, 0)}</div>
+            <div class="form-group" style="flex:0 0 auto;${FM}"><label style="${LB}">Adjustable</label>${stepper('adjShelves', line.adjShelves, 0)}</div>
+            <div class="form-group" style="flex:0 0 auto;${FM}"><label style="${LB}">End Panels</label>${stepper('endPanels', line.endPanels||0, 0)}</div>
           </div>
         </div>
       </div>
 
       <!-- HARDWARE -->
-      <div style="${secBorder}">
-        <div style="${secHead}" onclick="toggleCQSection(${line.id},'hw')">
-          ${chevron('hw')}
-          <span style="${secTitle}">${line.hwItems.length > 0 ? '<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--accent2);margin-right:4px"></span>' : ''}Hardware</span>
-          <span style="${secSub}">${c.hwCost > 0 ? cur+Math.round(c.hwCost) : 'Auto'}</span>
+      <div style="${SB}">
+        <div style="${SH}" onclick="toggleCQSection(${line.id},'hw')">
+          ${chev('hw')}
+          <span style="${ST}">${line.hwItems.length>0?dot('accent2'):''}Hardware</span>
+          ${liveCost(c.hwCost)}
         </div>
-        <div ${secBody('hw')}>
-          <div style="font-size:12px;color:var(--muted);margin-bottom:8px">Auto-included: ${line.doors > 0 ? line.doors*2+' hinges' : ''}${line.doors>0&&line.drawers>0?', ':''}${line.drawers > 0 ? line.drawers+' drawer slides' : ''}${line.doors===0&&line.drawers===0?'None':''}</div>
+        <div ${SC('hw')}>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:8px">Auto: ${line.doors>0?line.doors*2+' hinges':''}${line.doors>0&&line.drawers>0?', ':''}${line.drawers>0?line.drawers+' slides':''}${line.doors===0&&line.drawers===0?'None':''}</div>
           ${line.hwItems.map((hw, hi) => `<div style="display:flex;gap:4px;align-items:center;margin-bottom:6px">
-            <select style="flex:1;font-size:12px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);font-family:inherit" onchange="updateCQHw(${line.id},${hi},'name',this.value)">${cqSettings.hardware.map(h=>`<option value="${h.name}" ${h.name===hw.name?'selected':''}>${h.name} (${cur}${h.price})</option>`).join('')}</select>
-            <input type="number" style="width:44px;text-align:center;padding:6px;font-size:12px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text)" value="${hw.qty}" min="1" onchange="updateCQHw(${line.id},${hi},'qty',this.value)">
-            <button class="cq-del-btn" onclick="removeCQHw(${line.id},${hi})">×</button>
+            <select style="flex:1;font-size:13px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);font-family:inherit" onchange="updateCQHw(${line.id},${hi},'name',this.value)">${cqSettings.hardware.map(h=>`<option value="${h.name}" ${h.name===hw.name?'selected':''}>${h.name} (${cur}${h.price})</option>`).join('')}</select>
+            <input type="number" style="width:44px;text-align:center;padding:6px;font-size:13px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text)" value="${hw.qty}" min="1" onchange="updateCQHw(${line.id},${hi},'qty',this.value)">
+            <button class="cq-del-btn" style="font-size:16px" onclick="removeCQHw(${line.id},${hi})">×</button>
           </div>`).join('')}
           <button class="cl-add-btn" onclick="addCQHwToLine(${line.id})" style="font-size:12px;padding:5px 10px;margin:4px 0 0">+ Add Hardware</button>
         </div>
       </div>
 
-      <!-- EXTRAS & NOTES -->
-      <div style="${secBorder}">
-        <div style="${secHead}" onclick="toggleCQSection(${line.id},'extras')">
-          ${chevron('extras')}
-          <span style="${secTitle}">Extras & Notes</span>
-          <span style="${secSub}">${line.room||line.notes?'✓':''}</span>
+      <!-- EXTRAS (custom items with label + cost) -->
+      <div style="${SB}">
+        <div style="${SH}" onclick="toggleCQSection(${line.id},'extras')">
+          ${chev('extras')}
+          <span style="${ST}">${(line.extras||[]).length>0?dot('accent2'):''}Extras</span>
+          ${extrasCost > 0 ? liveCost(extrasCost) : ''}
+          <span style="${SS}">${(line.extras||[]).length>0?(line.extras.length)+' item'+(line.extras.length!==1?'s':''):'None'}</span>
         </div>
-        <div ${secBody('extras')}>
+        <div ${SC('extras')}>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:6px">Add custom items like cable holes, lighting cutouts, etc.</div>
+          ${(line.extras||[]).map((ex, ei) => `<div style="display:flex;gap:4px;align-items:center;margin-bottom:6px">
+            <input style="flex:1;font-size:13px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);font-family:inherit" value="${ex.label||''}" placeholder="Item name" onblur="cqUpdateExtra(${line.id},${ei},'label',this.value)">
+            <div style="display:flex;align-items:center;border:1px solid var(--border);border-radius:6px;overflow:hidden;background:var(--surface2)">
+              <span style="font-size:11px;color:var(--muted);padding:4px 4px 4px 8px;background:var(--surface)">${cur}</span>
+              <input type="number" style="width:60px;border:none;padding:6px 6px 6px 2px;font-size:13px;background:transparent;color:var(--text)" value="${ex.cost||0}" onblur="cqUpdateExtra(${line.id},${ei},'cost',this.value)">
+            </div>
+            <button class="cq-del-btn" style="font-size:16px" onclick="cqRemoveExtra(${line.id},${ei})">×</button>
+          </div>`).join('')}
+          <button class="cl-add-btn" onclick="cqAddExtra(${line.id})" style="font-size:12px;padding:5px 10px;margin:4px 0 0">+ Add Extra</button>
+        </div>
+      </div>
+
+      <!-- NOTES -->
+      <div style="${SB}">
+        <div style="${SH}" onclick="toggleCQSection(${line.id},'notes')">
+          ${chev('notes')}
+          <span style="${ST}">Notes</span>
+          <span style="${SS}">${line.notes?'✓':''} ${line.room||''}</span>
+        </div>
+        <div ${SC('notes')}>
           <div class="form-row" style="margin-bottom:8px">
-            <div class="form-group" style="${fgStyle}"><label style="${lblStyle}">Room / Area</label><input type="text" value="${line.room||''}" placeholder="e.g. Kitchen" style="${selectStyle}" list="cq-room-list" onchange="cqUpdateField('room',this.value)"></div>
+            <div class="form-group" style="${FM}"><label style="${LB}">Room / Area</label><input type="text" value="${line.room||''}" placeholder="e.g. Kitchen" style="${SL}" list="cq-room-list" onchange="cqUpdateField('room',this.value)"></div>
           </div>
-          <div class="form-row" style="margin-bottom:0">
-            <div class="form-group" style="${fgStyle}"><label style="${lblStyle}">Notes</label><input type="text" value="${line.notes||''}" placeholder="Notes..." style="${selectStyle}" onchange="cqUpdateField('notes',this.value)"></div>
-          </div>
+          <div class="form-group" style="${FM}"><label style="${LB}">Notes</label><textarea style="${SL};min-height:60px;resize:vertical" onblur="cqUpdateField('notes',this.value)">${line.notes||''}</textarea></div>
         </div>
       </div>
 
       <!-- Quote Actions -->
       <div style="display:flex;gap:6px;flex-wrap:wrap;padding-top:8px">
-        <button class="btn btn-primary" onclick="cqAddToNewQuote()" style="flex:1;font-size:12px;padding:9px 12px">+ Create New Quote</button>
-        <button class="btn btn-outline" onclick="cqAddToExistingQuote()" style="flex:1;font-size:12px;padding:9px 12px;width:auto">Add to Existing Quote</button>
+        <button class="btn btn-primary" onclick="cqAddToNewQuote()" style="flex:1;font-size:13px;padding:10px 12px">+ Create New Quote</button>
+        <button class="btn btn-outline" onclick="cqAddToExistingQuote()" style="flex:1;font-size:13px;padding:10px 12px;width:auto">Add to Quote</button>
       </div>
 
     </div>
@@ -5863,7 +5917,28 @@ function renderCQEditor() {
   `;
 }
 
-// ── Quick field updater ──
+// ── Extras CRUD ──
+function cqAddExtra(lineId) {
+  const line = cqLines.find(l=>l.id===lineId);
+  if (!line) return;
+  if (!line.extras) line.extras = [];
+  line.extras.push({label:'',cost:0});
+  saveCQLines(); renderCQEditor();
+}
+function cqUpdateExtra(lineId, idx, field, val) {
+  const line = cqLines.find(l=>l.id===lineId);
+  if (!line || !line.extras || !line.extras[idx]) return;
+  if (field==='cost') line.extras[idx].cost = parseFloat(val)||0;
+  else line.extras[idx].label = val;
+  saveCQLines(); renderCQResults();
+}
+function cqRemoveExtra(lineId, idx) {
+  const line = cqLines.find(l=>l.id===lineId);
+  if (!line || !line.extras) return;
+  line.extras.splice(idx,1);
+  saveCQLines(); renderCQEditor(); renderCQResults();
+}
+
 function cqStepField(field, dir) {
   const line = cqLines[cqActiveLineIdx];
   if (!line) return;
@@ -5877,21 +5952,17 @@ function cqStepField(field, dir) {
 function cqUpdateField(field, val) {
   const line = cqLines[cqActiveLineIdx];
   if (!line) return;
-  const numFields = ['w','h','d','qty','doors','drawers','shelves','adjShelves','labourHrs','doorPct','drawerPct'];
+  const numFields = ['w','h','d','qty','doors','drawers','shelves','adjShelves','endPanels','labourHrs','doorPct','drawerPct'];
   if (numFields.includes(field)) {
     line[field] = parseFloat(val) || 0;
-  } else if (field === 'type') {
-    line.type = val;
-    const preset = CQ_PRESETS[val];
-    if (preset) { line.w = preset.w; line.h = preset.h; line.d = preset.d; line.doors = preset.doors; line.drawers = preset.drawers; line.shelves = preset.shelves; }
   } else {
     line[field] = val;
   }
   saveCQLines();
   renderCQCabList();
   renderCQResults();
-  // Only re-render editor if type changed (resets fields)
-  if (field === 'type' || field === 'doors' || field === 'drawers') renderCQEditor();
+  // Re-render editor when structural fields change
+  if (['doors','drawers','construction','baseType','finish'].includes(field)) renderCQEditor();
 }
 
 // ── Render right panel: cost breakdown ──
@@ -5976,7 +6047,14 @@ function cqAddToNewQuote() {
   document.getElementById('q-hours').value = totalHrs.toFixed(1);
   document.getElementById('q-markup').value = cqSettings.markup;
   document.getElementById('q-tax').value = cqSettings.tax;
-  document.getElementById('q-notes').value = 'Cabinets: ' + cqLines.map(l => (l.name || l.type) + (l.qty > 1 ? ' x' + l.qty : '')).join(', ');
+  document.getElementById('q-notes').value = cqLines.map(l => {
+    const desc = l.name || 'Cabinet';
+    const details = [l.w+'×'+l.h+'×'+l.d+'mm', l.material];
+    if (l.doors > 0) details.push(l.doors + ' door' + (l.doors!==1?'s':''));
+    if (l.drawers > 0) details.push(l.drawers + ' drawer' + (l.drawers!==1?'s':''));
+    if (l.qty > 1) details.push('x' + l.qty);
+    return desc + ' — ' + details.join(', ');
+  }).join('\n');
 
   switchSection('quote');
   try { _updateQuotePreview(); } catch(e) {}
