@@ -2897,8 +2897,19 @@ function _printInFrame(html) {
 }
 
 function _saveAsPDF(html) {
-  // Open print dialog — user can save as PDF from browser print
-  _printInFrame(html);
+  // Open HTML in a new browser tab — user can print/save from there
+  const w = window.open('', '_blank');
+  if (w) {
+    w.document.open();
+    w.document.write(html);
+    w.document.close();
+  } else {
+    // Fallback if popup blocked — use blob URL
+    const blob = new Blob([html], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    window.open(url, '_blank');
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  }
 }
 
 async function _buildCutListPDF({ biz, layouts, imgs, pieces, u, cur, totalPieces, avgUtil, matCost }) {
@@ -3669,20 +3680,11 @@ function renderQuoteMain() {
         <div style="margin-top:4px"><textarea style="width:100%;font-size:12px;color:var(--text2);background:transparent;border:1px dashed var(--border);border-radius:4px;padding:4px 6px;resize:vertical;min-height:24px;font-family:inherit;font-style:italic" onblur="updateQuoteField(${q.id},'notes',this.value)" placeholder="Edit notes...">${_escHtml(q.notes)}</textarea></div>
       </div>` : ''}
       <div class="qc-breakdown">
-        <div class="qb-row">
-          <span>Labour</span>
-          <span class="qb-edit" contenteditable="true" onblur="updateQuoteField(${q.id},'labour',this.innerText.replace(/[^0-9.]/g,''))" title="Click to edit labour">${fmt(q.labour)}</span>
-        </div>
-        <div class="qb-row">
-          <span>Materials</span>
-          <span class="qb-edit" contenteditable="true" onblur="updateQuoteField(${q.id},'materials',this.innerText.replace(/[^0-9.]/g,''))" title="Click to edit materials">${fmt(q.materials)}</span>
-        </div>
-        <div class="qb-divider"></div>
         <div class="qb-row"><span>Subtotal</span><span>${fmt(sub)}</span></div>
-        <div class="qb-row qb-muted"><span>Markup (<span class="qb-edit" contenteditable="true" onblur="updateQuoteField(${q.id},'markup',this.innerText.replace(/[^0-9.]/g,''))" title="Click to edit markup">${q.markup}</span>%)</span><span>+${fmt(markupAmt)}</span></div>
-        <div class="qb-row qb-muted"><span>Tax (<span class="qb-edit" contenteditable="true" onblur="updateQuoteField(${q.id},'tax',this.innerText.replace(/[^0-9.]/g,''))" title="Click to edit tax">${q.tax}</span>%)</span><span>+${fmt(taxAmt)}</span></div>
+        ${q.markup > 0 ? `<div class="qb-row qb-muted"><span>Markup (<span class="qb-edit" contenteditable="true" onblur="updateQuoteField(${q.id},'markup',this.innerText.replace(/[^0-9.]/g,''))" title="Click to edit markup">${q.markup}</span>%)</span><span>+${fmt(markupAmt)}</span></div>` : ''}
+        ${q.tax > 0 ? `<div class="qb-row qb-muted"><span>Tax (<span class="qb-edit" contenteditable="true" onblur="updateQuoteField(${q.id},'tax',this.innerText.replace(/[^0-9.]/g,''))" title="Click to edit tax">${q.tax}</span>%)</span><span>+${fmt(taxAmt)}</span></div>` : ''}
         <div class="qb-divider"></div>
-        <div class="qb-row qb-total"><span>Total inc. tax</span><span>${fmt(total)}</span></div>
+        <div class="qb-row qb-total"><span>Total</span><span>${fmt(total)}</span></div>
       </div>
       <div class="qc-footer">
         ${q.status === 'draft' ? `<button class="btn btn-outline" onclick="markQuoteSent(${q.id})">Mark Sent</button>` : ''}
@@ -4427,9 +4429,7 @@ function printQuote(id, mode='print') {
       return '<tr><td style="padding:8px 10px"><strong style="font-size:14px">'+_escHtml(parts[0])+'</strong><br><span style="font-size:11px;color:#888;padding-left:14px">'+_escHtml(parts.slice(1).join('\u2014').trim())+'</span></td><td class="r"></td></tr>';
     }).join('')}
     ${(q.notes||'').split(/\\n|\n/).some(l => l.includes('\u2014')) ? '<tr><td colspan="2" style="border-bottom:1.5px solid #ddd;padding:0"></td></tr>' : ''}
-    <tr><td>Labour</td><td class="r">${fmt(q.labour)}</td></tr>
-    <tr><td>Materials &amp; Supplies</td><td class="r">${fmt(q.materials)}</td></tr>
-    ${q.markup > 0 || q.tax > 0 ? `<tr class="subtotal"><td style="padding-left:20px;color:#aaa">Subtotal</td><td class="r">${fmt(sub)}</td></tr>` : ''}
+    ${q.markup > 0 || q.tax > 0 ? `<tr class="subtotal"><td style="color:#aaa">Subtotal</td><td class="r">${fmt(sub)}</td></tr>` : ''}
     ${q.markup > 0 ? `<tr class="subtotal"><td style="padding-left:20px">Markup &nbsp;<span style="color:#bbb">(${q.markup}%)</span></td><td class="r">+ ${fmt(markupAmt)}</td></tr>` : ''}
     ${q.tax > 0 ? `<tr class="subtotal"><td style="padding-left:20px">Tax &nbsp;<span style="color:#bbb">(${q.tax}%)</span></td><td class="r">+ ${fmt(taxAmt)}</td></tr>` : ''}
   </tbody>
@@ -4439,7 +4439,11 @@ function printQuote(id, mode='print') {
   <div class="total-amount">${fmt0(total)}</div>
 </div>
 
-${q.notes ? `<div class="notes-box"><label>Notes &amp; Inclusions</label><p>${_escHtml(q.notes).replace(/\n/g,'<br>')}</p></div>` : ''}
+${(() => {
+  const noteLines = (q.notes||'').split(/\\n|\n/).filter(Boolean);
+  const plainNotes = noteLines.filter(l => !l.includes('\u2014')).join('<br>');
+  return plainNotes ? '<div class="notes-box"><label>Notes</label><p>'+_escHtml(plainNotes)+'</p></div>' : '';
+})()}
 
 <div class="validity">This quote is valid for 30 days from the date of issue. Prices are subject to change after this period.</div>
 
