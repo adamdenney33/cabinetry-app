@@ -2129,10 +2129,8 @@ function renderStockMain() {
 
   const allCatPills = ['All', ...usedCats, ...(stockItems.some(i => !_scGet(i.id)) ? ['Uncategorised'] : [])];
 
-  el.innerHTML = `
+  el.innerHTML = `<div style="max-width:900px">
     <div class="stats-grid">
-      <div class="stat-card accent">
-        <div class="stat-label">Total Materials</div>
         <div class="stat-value">${stockItems.length}</div>
         <div class="stat-sub">product types</div>
       </div>
@@ -2165,7 +2163,8 @@ function renderStockMain() {
     </div>
     ${showCatFilter ? `<div class="stock-cat-filter-bar">${allCatPills.map(c => `<span class="stock-cat-pill${c===activeCat?' active':''}" onclick="window._stockCatFilter='${c}';renderStockMain()">${c}</span>`).join('')}</div>` : ''}
     `}
-    <div class="stock-grid">${cardsHTML}</div>`;
+    <div class="stock-grid">${cardsHTML}</div>
+  </div>`;
 }
 
 // ══════════════════════════════════════════
@@ -3070,6 +3069,92 @@ function _buildQuotePDF(q) {
   setTimeout(() => URL.revokeObjectURL(url), 60000);
 }
 
+
+function _buildWorkOrderPDF(o) {
+  if (!window.jspdf) { _toast('PDF library not loaded yet', 'error'); return; }
+  const { jsPDF } = window.jspdf;
+  const biz = getBizInfo();
+  const cur = window.currency;
+  const fmt = v => cur + Math.round(v).toLocaleString();
+  const dateStr = new Date().toLocaleDateString('en-GB', { day:'numeric', month:'long', year:'numeric' });
+  const statusLabel = { quote:'Quote Sent', confirmed:'Confirmed', production:'In Production', delivery:'Ready for Delivery', complete:'Complete' }[o.status] || o.status;
+
+  const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const PW = 210, PH = 297, M = 18;
+  const W = PW - 2*M;
+  let y = M;
+
+  // Header
+  pdf.setFontSize(14); pdf.setFont('helvetica','bold'); pdf.setTextColor(17);
+  pdf.text(biz.name || 'ProCabinet', M, y + 6);
+  const bizSub = [biz.phone, biz.email].filter(Boolean).join('  ·  ');
+  if (bizSub) { pdf.setFontSize(8); pdf.setFont('helvetica','normal'); pdf.setTextColor(120); pdf.text(bizSub, M, y + 11); }
+  pdf.setFontSize(20); pdf.setFont('helvetica','normal'); pdf.setTextColor(50);
+  pdf.text('WORK ORDER', PW - M, y + 7, { align:'right' });
+  pdf.setFontSize(8); pdf.setTextColor(140);
+  pdf.text('#WO-' + String(o.id).padStart(4,'0') + '  ·  ' + dateStr, PW - M, y + 12, { align:'right' });
+  y += 18;
+  pdf.setDrawColor(17); pdf.setLineWidth(0.6); pdf.line(M, y, PW-M, y);
+  y += 10;
+
+  // Project info
+  const infoItems = [
+    ['Client', o.client], ['Project', o.project],
+    ['Order Value', fmt(o.value)], ['Status', statusLabel],
+    ['Due Date', o.due || 'TBD']
+  ];
+  infoItems.forEach(([label, val]) => {
+    pdf.setFontSize(7); pdf.setFont('helvetica','normal'); pdf.setTextColor(170);
+    pdf.text(label.toUpperCase(), M, y);
+    pdf.setFontSize(11); pdf.setFont('helvetica','bold'); pdf.setTextColor(17);
+    pdf.text(String(val), M + 35, y);
+    y += 7;
+  });
+  y += 5;
+
+  // Notes
+  if (o.notes) {
+    pdf.setDrawColor(220); pdf.setLineWidth(0.25); pdf.line(M, y, PW-M, y); y += 6;
+    pdf.setFontSize(8); pdf.setFont('helvetica','bold'); pdf.setTextColor(100);
+    pdf.text('NOTES', M, y); y += 5;
+    pdf.setFontSize(10); pdf.setFont('helvetica','normal'); pdf.setTextColor(40);
+    const noteLines = pdf.splitTextToSize(o.notes, W);
+    noteLines.forEach(nl => { pdf.text(nl, M, y); y += 5; });
+    y += 5;
+  }
+
+  // Production notes (blank lines)
+  pdf.setDrawColor(220); pdf.setLineWidth(0.25); pdf.line(M, y, PW-M, y); y += 6;
+  pdf.setFontSize(8); pdf.setFont('helvetica','bold'); pdf.setTextColor(100);
+  pdf.text('PRODUCTION NOTES', M, y); y += 8;
+  for (let i = 0; i < 8; i++) {
+    pdf.setDrawColor(210); pdf.setLineWidth(0.15); pdf.line(M, y, PW-M, y);
+    y += 8;
+  }
+  y += 5;
+
+  // Sign-off
+  if (y > PH - 50) { pdf.addPage(); y = M + 10; }
+  pdf.setFontSize(8); pdf.setFont('helvetica','bold'); pdf.setTextColor(100);
+  pdf.text('SIGN-OFF', M, y); y += 8;
+  ['Prepared by', 'Date started', 'Date completed'].forEach(label => {
+    pdf.setFontSize(7); pdf.setFont('helvetica','normal'); pdf.setTextColor(170);
+    pdf.text(label, M, y + 10);
+    pdf.setDrawColor(180); pdf.setLineWidth(0.3); pdf.line(M + 30, y + 10, M + 80, y + 10);
+    y += 14;
+  });
+
+  // Footer
+  pdf.setFontSize(6.5); pdf.setTextColor(190);
+  pdf.text((biz.name || 'ProCabinet') + ' — ProCabinet.App', M, PH - M);
+  pdf.text(dateStr, PW - M, PH - M, { align:'right' });
+
+  const blob = pdf.output('blob');
+  const url = URL.createObjectURL(blob);
+  const a = Object.assign(document.createElement('a'), { href:url, target:'_blank', rel:'noopener' });
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+}
 
 async function _buildCutListPDF({ biz, layouts, imgs, pieces, u, cur, totalPieces, avgUtil, matCost }) {
   if (!window.jspdf) { _toast('PDF library not loaded yet — try again', 'error'); return; }
@@ -3989,7 +4074,7 @@ function renderOrdersMain() {
       <div class="oc-header">
         <div class="oc-info">
           <div class="oc-title" contenteditable="true" onblur="updateOrderField(${o.id},'project',this.innerText.trim())" title="Click to edit project">${o.project}</div>
-          <div class="oc-meta">${(() => { const rel = _relativeDate(o.due); const relTag = rel ? ` <span style="font-size:10px;font-weight:700;color:${rel.color};margin-left:4px">${rel.label}</span>` : ''; return `<span contenteditable="true" onblur="updateOrderField(${o.id},'client',this.innerText.trim())" title="Click to edit client">${o.client}</span> &nbsp;·&nbsp; Due: <span class="oc-edit" contenteditable="true" onblur="updateOrderField(${o.id},'due',this.innerText.trim())" title="Click to edit due date">${o.due}</span>${relTag}${isOverdue ? ' <span class="badge badge-red" style="font-size:9px;margin-left:4px">Overdue</span>' : ''}`; })()}</div>
+          <div class="oc-meta">${(() => { const rel = _relativeDate(o.due); const relTag = rel ? ` <span style="font-size:10px;font-weight:700;color:${rel.color};margin-left:4px">${rel.label}</span>` : ''; return `<span contenteditable="true" onblur="updateOrderField(${o.id},'client',this.innerText.trim())" title="Click to edit client">${o.client}</span> &nbsp;·&nbsp; Due: <input type="date" style="font-size:12px;padding:2px 4px;border:1px solid transparent;border-radius:4px;background:transparent;color:var(--text);font-family:inherit;cursor:pointer" value="${(() => { try { const d = new Date(o.due); return !isNaN(d) ? d.toISOString().split('T')[0] : ''; } catch(e) { return ''; }})()}" onchange="updateOrderField(${o.id},'due',this.value ? new Date(this.value+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : 'TBD')" title="Click to set due date">${relTag}${isOverdue ? ' <span class="badge badge-red" style="font-size:9px;margin-left:4px">Overdue</span>' : ''}`; })()}</div>
           <div class="oc-notes" contenteditable="true" onblur="updateOrderField(${o.id},'notes',this.innerText.trim())" title="Click to add notes" data-placeholder="Add production notes…">${o.notes || ''}</div>
         </div>
         <div class="oc-right">
@@ -4337,6 +4422,7 @@ function _oClientSuggest(input) {
 function printWorkOrder(id, mode='print') {
   const o = orders.find(o => o.id === id);
   if (!o) return;
+  if (mode === 'pdf') { _buildWorkOrderPDF(o); return; }
   const biz = getBizInfo();
   const cur = window.currency;
   const rel = _relativeDate(o.due);
@@ -6793,9 +6879,9 @@ function renderSchedule() {
   const statusLabel = s => ({ quote:'Quote', confirmed:'Confirmed', production:'Production', delivery:'Delivery', complete:'Done' }[s] || s);
 
   function orderRow(o) {
-    const isOverdue = o.daysLeft < 0;
-    const dueStr = o.dueDate.toLocaleDateString('en-GB', {weekday:'short', day:'numeric', month:'short'});
-    const daysStr = o.daysLeft === 0 ? 'Today' : o.daysLeft === 1 ? 'Tomorrow' : isOverdue ? Math.abs(o.daysLeft) + 'd overdue' : o.daysLeft + ' days';
+    const isOverdue = o.daysLeft !== null && o.daysLeft < 0;
+    const dueStr = o.dueDate ? o.dueDate.toLocaleDateString('en-GB', {weekday:'short', day:'numeric', month:'short'}) : (o.due || 'No date');
+    const daysStr = o.daysLeft === null ? '' : o.daysLeft === 0 ? 'Today' : o.daysLeft === 1 ? 'Tomorrow' : isOverdue ? Math.abs(o.daysLeft) + 'd overdue' : o.daysLeft + ' days';
     return `<div style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--border2);${isOverdue?'background:rgba(224,82,82,0.05)':''}">
       <div style="width:4px;height:36px;border-radius:2px;background:${statusColor(o.status)};flex-shrink:0"></div>
       <div style="flex:1;min-width:0">
