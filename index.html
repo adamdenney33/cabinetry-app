@@ -867,6 +867,27 @@ html.dark .cl-table tbody tr:nth-child(even) td { background: rgba(255,255,255,0
 }
 .cl-col-pill.active { background: var(--text); color: var(--surface); border-color: var(--text); }
 
+/* ── Schedule / Gantt Calendar ── */
+.gantt-wrap { flex:1; overflow:auto; padding:0; }
+.gantt-header { display:flex; align-items:center; gap:12px; padding:12px 20px; background:var(--surface); border-bottom:1px solid var(--border); flex-shrink:0; }
+.gantt-header h2 { font-size:16px; font-weight:800; margin:0; }
+.gantt-grid { display:grid; min-width:100%; }
+.gantt-row { display:contents; }
+.gantt-label { position:sticky; left:0; z-index:2; background:var(--surface); border-right:1px solid var(--border); border-bottom:1px solid var(--border2); padding:6px 12px; font-size:12px; min-width:180px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.gantt-label-name { font-weight:700; color:var(--text); font-size:13px; }
+.gantt-label-meta { font-size:10px; color:var(--muted); margin-top:1px; }
+.gantt-cell { border-right:1px solid var(--border2); border-bottom:1px solid var(--border2); min-height:40px; position:relative; min-width:32px; }
+.gantt-cell.today { background:rgba(232,168,56,0.08); }
+.gantt-cell.weekend { background:rgba(0,0,0,0.02); }
+html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
+.gantt-bar { position:absolute; top:6px; bottom:6px; border-radius:4px; min-width:4px; cursor:pointer; z-index:1; display:flex; align-items:center; padding:0 6px; font-size:10px; font-weight:600; color:#fff; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+.gantt-day-header { position:sticky; top:0; z-index:3; background:var(--surface); border-right:1px solid var(--border2); border-bottom:2px solid var(--border); padding:4px 2px; text-align:center; font-size:10px; font-weight:600; color:var(--muted); min-width:32px; }
+.gantt-day-header.today { color:var(--accent); font-weight:800; }
+.gantt-day-header .gantt-day-num { font-size:13px; font-weight:700; color:var(--text); display:block; }
+.gantt-day-header.today .gantt-day-num { color:var(--accent); }
+.gantt-day-header.weekend { color:var(--border); }
+.gantt-corner { position:sticky; left:0; top:0; z-index:4; background:var(--surface); border-right:1px solid var(--border); border-bottom:2px solid var(--border); min-width:180px; padding:4px 12px; font-size:10px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; }
+
 /* ── Responsive: Cabinet Quote on smaller screens ── */
 @media (max-width: 1200px) {
   .cq-summary-grid { grid-template-columns: 1fr 1fr; }
@@ -1565,10 +1586,8 @@ html.dark .cl-table tbody tr:nth-child(even) td { background: rgba(255,255,255,0
        SCHEDULE SECTION
   ════════════════════════════════════ -->
   <div class="section-panel" id="panel-schedule">
-    <div class="main-content">
-      <div class="main-scroll" id="schedule-main">
-        <!-- rendered by JS -->
-      </div>
+    <div style="flex:1;overflow:auto;display:flex;flex-direction:column" id="schedule-main">
+      <!-- rendered by JS -->
     </div>
   </div>
 
@@ -1741,6 +1760,7 @@ async function loadAllData() {
   ]);
   orders = ord || [];
   _onRestore(orders);  // merge locally-stored notes (notes col may not be in DB schema yet)
+  _restoreProdStarts(orders);  // merge locally-stored production start dates
   quotes = quo || [];
   stockItems = stk || [];
   if (orders.length) orderNextId = Math.max(...orders.map(o => o.id)) + 1;
@@ -6858,91 +6878,152 @@ function renderSchedule() {
   const el = document.getElementById('schedule-main');
   if (!el) return;
   const cur = window.currency;
-  const fmt = v => cur + Math.round(v).toLocaleString();
   const today = new Date(); today.setHours(0,0,0,0);
 
-  // Parse order due dates
-  const scheduled = orders.filter(o => o.status !== 'complete' && o.due && o.due !== 'TBD').map(o => {
-    const d = new Date(o.due);
-    if (isNaN(d)) return null;
-    d.setHours(0,0,0,0);
-    const diff = Math.round((d - today) / 86400000);
-    return { ...o, dueDate: d, daysLeft: diff };
-  }).filter(Boolean).sort((a, b) => a.dueDate - b.dueDate);
+  // Date range: 2 weeks back, 8 weeks forward
+  const startDate = new Date(today); startDate.setDate(startDate.getDate() - 14);
+  const endDate = new Date(today); endDate.setDate(endDate.getDate() + 56);
+  const totalDays = Math.round((endDate - startDate) / 86400000);
 
-  const noDate = orders.filter(o => o.status !== 'complete' && (!o.due || o.due === 'TBD'));
-  const overdue = scheduled.filter(o => o.daysLeft < 0);
-  const thisWeek = scheduled.filter(o => o.daysLeft >= 0 && o.daysLeft <= 7);
-  const nextWeek = scheduled.filter(o => o.daysLeft > 7 && o.daysLeft <= 14);
-  const later = scheduled.filter(o => o.daysLeft > 14);
-
-  const statusColor = s => ({ quote:'#94a3b8', confirmed:'#1565c0', production:'var(--accent)', delivery:'var(--accent2)', complete:'var(--success)' }[s] || '#888');
-  const statusLabel = s => ({ quote:'Quote', confirmed:'Confirmed', production:'Production', delivery:'Delivery', complete:'Done' }[s] || s);
-
-  function orderRow(o) {
-    const isOverdue = o.daysLeft !== null && o.daysLeft < 0;
-    const dueStr = o.dueDate ? o.dueDate.toLocaleDateString('en-GB', {weekday:'short', day:'numeric', month:'short'}) : (o.due || 'No date');
-    const daysStr = o.daysLeft === null ? '' : o.daysLeft === 0 ? 'Today' : o.daysLeft === 1 ? 'Tomorrow' : isOverdue ? Math.abs(o.daysLeft) + 'd overdue' : o.daysLeft + ' days';
-    return `<div style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--border2);${isOverdue?'background:rgba(224,82,82,0.05)':''}">
-      <div style="width:4px;height:36px;border-radius:2px;background:${statusColor(o.status)};flex-shrink:0"></div>
-      <div style="flex:1;min-width:0">
-        <div style="font-size:14px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_escHtml(o.project)}</div>
-        <div style="font-size:12px;color:var(--muted)">${_escHtml(o.client)} · ${statusLabel(o.status)}</div>
-      </div>
-      <div style="text-align:right;flex-shrink:0">
-        <div style="font-size:13px;font-weight:600;color:var(--text)">${dueStr}</div>
-        <div style="font-size:11px;font-weight:700;color:${isOverdue?'var(--danger)':o.daysLeft<=3?'var(--accent)':'var(--muted)'}">${daysStr}</div>
-      </div>
-      <div style="font-size:14px;font-weight:700;color:var(--text);min-width:70px;text-align:right">${fmt(o.value)}</div>
-    </div>`;
+  // Build day columns
+  const days = [];
+  for (let i = 0; i < totalDays; i++) {
+    const d = new Date(startDate);
+    d.setDate(d.getDate() + i);
+    days.push(d);
   }
 
-  function section(title, items, color) {
-    if (!items.length) return '';
-    return `<div style="margin-bottom:20px">
-      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:${color||'var(--muted)'};padding:8px 16px;background:var(--surface2);border-bottom:1px solid var(--border)">${title} (${items.length})</div>
-      ${items.map(orderRow).join('')}
+  const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const isToday = d => d.getTime() === today.getTime();
+  const isWeekend = d => d.getDay() === 0 || d.getDay() === 6;
+
+  // Get active orders
+  const activeOrders = orders.filter(o => o.status !== 'complete');
+  const statusColors = { quote:'#94a3b8', confirmed:'#2563eb', production:'#e8a838', delivery:'#0d9488', complete:'#3d9970' };
+
+  // Parse dates for each order
+  const orderBars = activeOrders.map(o => {
+    let dueDate = null, prodStart = null;
+    if (o.due && o.due !== 'TBD') { dueDate = new Date(o.due); if (isNaN(dueDate)) dueDate = null; else dueDate.setHours(0,0,0,0); }
+    if (o.prodStart) { prodStart = new Date(o.prodStart); if (isNaN(prodStart)) prodStart = null; else prodStart.setHours(0,0,0,0); }
+    return { ...o, dueDate, prodStart };
+  }).filter(o => o.dueDate || o.prodStart);
+
+  // Sort by start date or due date
+  orderBars.sort((a, b) => (a.prodStart || a.dueDate || today) - (b.prodStart || b.dueDate || today));
+
+  // Also show completed recent orders
+  const recentComplete = orders.filter(o => o.status === 'complete' && o.due && o.due !== 'TBD').map(o => {
+    let dueDate = new Date(o.due); if (isNaN(dueDate)) return null; dueDate.setHours(0,0,0,0);
+    if (dueDate >= startDate && dueDate <= endDate) return { ...o, dueDate, prodStart: null };
+    return null;
+  }).filter(Boolean);
+
+  const allOrders = [...orderBars, ...recentComplete];
+
+  // Grid template: label column + day columns
+  const colTemplate = `180px repeat(${totalDays}, minmax(32px, 1fr))`;
+
+  // Header row
+  let headerHTML = `<div class="gantt-corner">Orders</div>`;
+  days.forEach(d => {
+    const td = isToday(d);
+    const we = isWeekend(d);
+    const showMonth = d.getDate() === 1 || d === days[0];
+    headerHTML += `<div class="gantt-day-header${td?' today':''}${we?' weekend':''}">
+      ${showMonth ? `<span style="font-size:8px;letter-spacing:.3px">${monthNames[d.getMonth()]}</span>` : ''}
+      <span class="gantt-day-num">${d.getDate()}</span>
+      <span style="font-size:8px">${dayNames[d.getDay()]}</span>
     </div>`;
+  });
+
+  // Order rows
+  let rowsHTML = '';
+  if (allOrders.length === 0) {
+    rowsHTML = `<div class="gantt-label" style="grid-column:1/-1;text-align:center;padding:40px;color:var(--muted);font-size:14px">No orders with dates. Add due dates to orders to see them here.</div>`;
   }
 
-  // Timeline bar - visual representation of upcoming due dates
-  const maxDays = 30;
-  const timelineOrders = scheduled.filter(o => o.daysLeft >= 0 && o.daysLeft <= maxDays);
-  let timelineHTML = '';
-  if (timelineOrders.length > 0) {
-    timelineHTML = `<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 20px;margin-bottom:20px;box-shadow:var(--shadow)">
-      <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:12px">Next 30 Days</div>
-      <div style="position:relative;height:${Math.max(40, timelineOrders.length * 28 + 20)}px;border-left:2px solid var(--border);margin-left:60px">
-        <!-- Day markers -->
-        ${[0,7,14,21,28].map(d => `<div style="position:absolute;left:-62px;top:${(d/maxDays)*100}%;font-size:9px;color:var(--muted);width:55px;text-align:right">${d===0?'Today':d+'d'}</div><div style="position:absolute;left:-1px;top:${(d/maxDays)*100}%;width:8px;height:1px;background:var(--border)"></div>`).join('')}
-        <!-- Orders -->
-        ${timelineOrders.map((o, i) => {
-          const pct = (o.daysLeft / maxDays) * 100;
-          return `<div style="position:absolute;left:12px;top:${pct}%;transform:translateY(-50%);display:flex;align-items:center;gap:8px;white-space:nowrap">
-            <div style="width:10px;height:10px;border-radius:50%;background:${statusColor(o.status)};border:2px solid var(--surface);box-shadow:0 0 0 1px ${statusColor(o.status)};flex-shrink:0"></div>
-            <span style="font-size:12px;font-weight:600;color:var(--text)">${_escHtml(o.project)}</span>
-            <span style="font-size:10px;color:var(--muted)">${o.client} · ${o.dueDate.toLocaleDateString('en-GB',{day:'numeric',month:'short'})}</span>
-          </div>`;
-        }).join('')}
+  allOrders.forEach(o => {
+    const color = statusColors[o.status] || '#888';
+    const barStart = o.prodStart || o.dueDate;
+    const barEnd = o.dueDate || o.prodStart;
+
+    // Label cell
+    rowsHTML += `<div class="gantt-label">
+      <div class="gantt-label-name">${_escHtml(o.project)}</div>
+      <div class="gantt-label-meta">${_escHtml(o.client)} · ${cur}${Math.round(o.value).toLocaleString()}</div>
+      <div style="display:flex;gap:4px;margin-top:3px;align-items:center">
+        <span style="font-size:9px;color:var(--muted)">Start:</span>
+        <input type="date" style="font-size:10px;padding:1px 3px;border:1px solid var(--border);border-radius:3px;background:var(--surface2);color:var(--text);font-family:inherit" value="${o.prodStart ? o.prodStart.toISOString().split('T')[0] : ''}" onchange="setOrderProdStart(${o.id},this.value)">
       </div>
     </div>`;
-  }
 
-  el.innerHTML = `<div style="padding:20px;max-width:900px">
-    <h2 style="font-size:20px;font-weight:800;margin:0 0 4px">Schedule</h2>
-    <p style="font-size:13px;color:var(--muted);margin-bottom:20px">${scheduled.length + noDate.length} active order${(scheduled.length+noDate.length)!==1?'s':''}</p>
+    // Day cells with bar overlay
+    days.forEach((d, di) => {
+      const td = isToday(d);
+      const we = isWeekend(d);
+      let cellContent = '';
 
-    ${timelineHTML}
+      // Check if bar starts on this day
+      if (barStart && barEnd) {
+        const startIdx = Math.round((barStart - startDate) / 86400000);
+        const endIdx = Math.round((barEnd - startDate) / 86400000);
+        const barStartClamped = Math.max(0, startIdx);
+        const barEndClamped = Math.min(totalDays - 1, endIdx);
 
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow)">
-      ${overdue.length ? section('Overdue', overdue, 'var(--danger)') : ''}
-      ${section('This Week', thisWeek, 'var(--accent)')}
-      ${section('Next Week', nextWeek)}
-      ${section('Later', later)}
-      ${noDate.length ? section('No Due Date', noDate.map(o => ({...o, dueDate: null, daysLeft: null}))) : ''}
-      ${!scheduled.length && !noDate.length ? '<div class="empty-state" style="padding:40px"><h3>No Active Orders</h3><p>Create orders from the Orders tab to see them here.</p></div>' : ''}
+        if (di === barStartClamped) {
+          const span = barEndClamped - barStartClamped + 1;
+          const label = o.project.length > span * 3 ? o.project.substring(0, span * 3) : o.project;
+          cellContent = `<div class="gantt-bar" style="background:${color};left:0;right:0;grid-column:span 1;width:${span * 100}%;z-index:1">${span > 2 ? _escHtml(label) : ''}</div>`;
+        }
+      } else if (barEnd && !barStart) {
+        // Due date only — show as single marker
+        const dueIdx = Math.round((barEnd - startDate) / 86400000);
+        if (di === dueIdx) {
+          cellContent = `<div style="position:absolute;top:4px;bottom:4px;left:25%;right:25%;border-radius:4px;background:${color};opacity:0.8"></div>`;
+        }
+      }
+
+      rowsHTML += `<div class="gantt-cell${td?' today':''}${we?' weekend':''}">${cellContent}</div>`;
+    });
+  });
+
+  el.innerHTML = `
+    <div class="gantt-header">
+      <h2>Schedule</h2>
+      <span style="font-size:12px;color:var(--muted)">${allOrders.length} order${allOrders.length!==1?'s':''} · ${dayNames[today.getDay()]} ${today.getDate()} ${monthNames[today.getMonth()]} ${today.getFullYear()}</span>
     </div>
-  </div>`;
+    <div class="gantt-wrap">
+      <div class="gantt-grid" style="grid-template-columns:${colTemplate}">
+        ${headerHTML}
+        ${rowsHTML}
+      </div>
+    </div>`;
+}
+
+// ── Set production start date on an order ──
+function setOrderProdStart(id, val) {
+  const o = orders.find(o => o.id === id);
+  if (!o) return;
+  if (val) {
+    o.prodStart = new Date(val + 'T12:00:00').toLocaleDateString('en-GB', {day:'numeric', month:'short', year:'numeric'});
+  } else {
+    o.prodStart = '';
+  }
+  // Save to localStorage (prodStart not in DB schema yet)
+  const stored = JSON.parse(localStorage.getItem('pc_order_prodstarts') || '{}');
+  stored[id] = o.prodStart;
+  localStorage.setItem('pc_order_prodstarts', JSON.stringify(stored));
+  renderSchedule();
+}
+
+// ── Restore prodStart from localStorage ──
+function _restoreProdStarts(ordersList) {
+  try {
+    const stored = JSON.parse(localStorage.getItem('pc_order_prodstarts') || '{}');
+    ordersList.forEach(o => { if (stored[o.id]) o.prodStart = stored[o.id]; });
+  } catch(e) {}
 }
 
 // ── Init CQ ──
