@@ -2912,6 +2912,165 @@ function _saveAsPDF(html) {
   }
 }
 
+
+// ── Build a real PDF for quotes using jsPDF ──
+function _buildQuotePDF(q) {
+  if (!window.jspdf) { _toast('PDF library not loaded yet — try again', 'error'); return; }
+  const { jsPDF } = window.jspdf;
+  const cur = window.currency;
+  const biz = getBizInfo();
+  const logo = getBizLogo();
+  const dateStr = new Date().toLocaleDateString('en-GB', { day:'numeric', month:'long', year:'numeric' });
+  const sub = q.materials + q.labour;
+  const markupAmt = sub * q.markup / 100;
+  const afterMarkup = sub + markupAmt;
+  const taxAmt = afterMarkup * q.tax / 100;
+  const total = afterMarkup + taxAmt;
+  const fmt = v => cur + Number(v).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+  const fmt0 = v => cur + Math.round(v).toLocaleString();
+
+  // Portrait A4
+  const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const PW = 210, PH = 297, M = 18;
+  const W = PW - 2*M;
+  let y = M;
+
+  // ── Header ──
+  pdf.setFontSize(16); pdf.setFont('helvetica','bold'); pdf.setTextColor(17);
+  pdf.text(biz.name || 'Your Business', M, y + 6);
+  const bizSub = [biz.phone, biz.email, biz.address].filter(Boolean).join('  ·  ');
+  if (bizSub) { pdf.setFontSize(8); pdf.setFont('helvetica','normal'); pdf.setTextColor(120); pdf.text(bizSub, M, y + 11); }
+  if (biz.abn) { pdf.setFontSize(7); pdf.text('ABN: ' + biz.abn, M, y + 15); }
+
+  pdf.setFontSize(22); pdf.setFont('helvetica','normal'); pdf.setTextColor(50);
+  pdf.text('QUOTATION', PW - M, y + 7, { align:'right' });
+  pdf.setFontSize(8); pdf.setTextColor(140);
+  pdf.text('#Q-' + String(q.id).padStart(4,'0') + '  ·  ' + (q.date||dateStr), PW - M, y + 12, { align:'right' });
+
+  y += 20;
+  pdf.setDrawColor(17); pdf.setLineWidth(0.6); pdf.line(M, y, PW-M, y);
+  y += 10;
+
+  // ── Client & Project ──
+  pdf.setFontSize(7); pdf.setFont('helvetica','normal'); pdf.setTextColor(170);
+  pdf.text('PREPARED FOR', M, y);
+  pdf.text('PROJECT', M + 70, y);
+  y += 5;
+  pdf.setFontSize(13); pdf.setFont('helvetica','bold'); pdf.setTextColor(17);
+  pdf.text(q.client || '—', M, y);
+  pdf.setFontSize(12); pdf.setFont('helvetica','bold');
+  pdf.text(q.project || '—', M + 70, y);
+  y += 12;
+
+  // ── Cabinet Line Items (from notes) ──
+  const noteLines = (q.notes||'').split(/\r?\n/).filter(Boolean);
+  const cabLines = noteLines.filter(l => l.includes('\u2014') || l.includes('—'));
+  const plainNotes = noteLines.filter(l => !l.includes('\u2014') && !l.includes('—')).join('\n').trim();
+
+  if (cabLines.length > 0) {
+    // Table header
+    pdf.setFontSize(7); pdf.setFont('helvetica','bold'); pdf.setTextColor(140);
+    pdf.text('DESCRIPTION', M, y); pdf.text('', PW-M, y, { align:'right' });
+    y += 2;
+    pdf.setDrawColor(17); pdf.setLineWidth(0.4); pdf.line(M, y, PW-M, y);
+    y += 6;
+
+    cabLines.forEach(cl => {
+      const parts = cl.split(/\u2014|—/).map(s => s.trim());
+      const name = parts[0] || 'Cabinet';
+      const details = parts.slice(1).join(' — ').trim();
+
+      pdf.setFontSize(11); pdf.setFont('helvetica','bold'); pdf.setTextColor(17);
+      pdf.text(name, M, y);
+      y += 5;
+      if (details) {
+        pdf.setFontSize(8.5); pdf.setFont('helvetica','normal'); pdf.setTextColor(130);
+        const detailLines = pdf.splitTextToSize(details, W - 10);
+        detailLines.forEach(dl => { pdf.text(dl, M + 4, y); y += 4; });
+      }
+      y += 3;
+
+      if (y > PH - 60) { pdf.addPage(); y = M + 10; }
+    });
+
+    pdf.setDrawColor(210); pdf.setLineWidth(0.25); pdf.line(M, y, PW-M, y);
+    y += 8;
+  }
+
+  // ── Totals ──
+  const totalsX = PW - M;
+  const labelX = PW - M - 80;
+
+  if (q.markup > 0 || q.tax > 0) {
+    pdf.setFontSize(9); pdf.setFont('helvetica','normal'); pdf.setTextColor(140);
+    pdf.text('Subtotal', labelX, y); pdf.text(fmt(sub), totalsX, y, { align:'right' });
+    y += 6;
+  }
+  if (q.markup > 0) {
+    pdf.setFontSize(8.5); pdf.setTextColor(140);
+    pdf.text('Markup (' + q.markup + '%)', labelX, y); pdf.text('+ ' + fmt(markupAmt), totalsX, y, { align:'right' });
+    y += 5;
+  }
+  if (q.tax > 0) {
+    pdf.setFontSize(8.5); pdf.setTextColor(140);
+    pdf.text('Tax (' + q.tax + '%)', labelX, y); pdf.text('+ ' + fmt(taxAmt), totalsX, y, { align:'right' });
+    y += 5;
+  }
+
+  // ── Total box ──
+  y += 3;
+  pdf.setFillColor(17,17,17); pdf.roundedRect(M, y, W, 14, 3, 3, 'F');
+  pdf.setFontSize(8); pdf.setFont('helvetica','bold'); pdf.setTextColor(255);
+  pdf.text('TOTAL AMOUNT DUE', M + 8, y + 9);
+  pdf.setFontSize(18); pdf.setFont('helvetica','bold');
+  pdf.text(fmt0(total), PW - M - 8, y + 10, { align:'right' });
+  y += 22;
+
+  // ── Notes ──
+  if (plainNotes) {
+    pdf.setFontSize(7); pdf.setFont('helvetica','bold'); pdf.setTextColor(170);
+    pdf.text('NOTES', M, y); y += 5;
+    pdf.setFontSize(9); pdf.setFont('helvetica','normal'); pdf.setTextColor(60);
+    const noteWrapped = pdf.splitTextToSize(plainNotes, W);
+    noteWrapped.forEach(nl => { pdf.text(nl, M, y); y += 4.5; });
+    y += 6;
+  }
+
+  // ── Validity ──
+  pdf.setFontSize(7.5); pdf.setFont('helvetica','normal'); pdf.setTextColor(170);
+  pdf.text('This quote is valid for 30 days from the date of issue.', M, y);
+  y += 12;
+
+  // ── Acceptance ──
+  if (y > PH - 60) { pdf.addPage(); y = M + 10; }
+  pdf.setFontSize(8); pdf.setFont('helvetica','bold'); pdf.setTextColor(80);
+  pdf.text('ACCEPTANCE', M, y); y += 6;
+  pdf.setFontSize(7.5); pdf.setFont('helvetica','normal'); pdf.setTextColor(120);
+  const accText = 'To accept this quotation, please sign below and return a copy to ' + (biz.name||'us') + '.';
+  pdf.text(accText, M, y); y += 10;
+
+  // Signature lines
+  pdf.setDrawColor(180); pdf.setLineWidth(0.4);
+  pdf.line(M, y + 16, M + 100, y + 16);
+  pdf.line(M + 120, y + 16, PW - M, y + 16);
+  pdf.setFontSize(6.5); pdf.setTextColor(180);
+  pdf.text('Client Signature', M, y + 20);
+  pdf.text('Date', M + 120, y + 20);
+
+  // ── Footer ──
+  pdf.setFontSize(6.5); pdf.setTextColor(190);
+  pdf.text((biz.name || 'ProCabinet') + ' — Generated by ProCabinet.App', M, PH - M);
+  pdf.text(dateStr, PW - M, PH - M, { align:'right' });
+
+  // Output
+  const blob = pdf.output('blob');
+  const url = URL.createObjectURL(blob);
+  const a = Object.assign(document.createElement('a'), { href:url, target:'_blank', rel:'noopener' });
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+}
+
+
 async function _buildCutListPDF({ biz, layouts, imgs, pieces, u, cur, totalPieces, avgUtil, matCost }) {
   if (!window.jspdf) { _toast('PDF library not loaded yet — try again', 'error'); return; }
   _toast('Building PDF\u2026', 'info', 8000);
@@ -4334,6 +4493,7 @@ async function markQuoteSent(id) {
 function printQuote(id, mode='print') {
   const q = quotes.find(q => q.id === id);
   if (!q) return;
+  if (mode === 'pdf') { _buildQuotePDF(q); return; }
   const cur = window.currency;
   const fmt  = v => cur + Number(v).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
   const fmt0 = v => cur + Number(v).toLocaleString('en-US', {minimumFractionDigits:0, maximumFractionDigits:0});
@@ -6371,6 +6531,27 @@ function _escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'
 
 function printCQQuote(mode) {
   if (!cqLines.length) { _toast('Add cabinet lines first.', 'error'); return; }
+  if (mode === 'pdf') {
+    // Build a synthetic quote object for the jsPDF builder
+    const gMat = cqLines.reduce((s, l) => s + calcCQLine(l).matCost * l.qty, 0);
+    const gLabour = cqLines.reduce((s, l) => s + calcCQLine(l).labourCost * l.qty, 0);
+    const cabNotes = cqLines.map(l => {
+      const desc = l.name || 'Cabinet';
+      const details = [l.w+'\u00d7'+l.h+'\u00d7'+l.d+'mm', l.material];
+      if (l.doors > 0) details.push(l.doors + ' door' + (l.doors!==1?'s':''));
+      if (l.drawers > 0) details.push(l.drawers + ' drawer' + (l.drawers!==1?'s':''));
+      if (l.qty > 1) details.push('x' + l.qty);
+      return desc + ' \u2014 ' + details.join(', ');
+    }).join('\n');
+    _buildQuotePDF({
+      id: Date.now(), client: '', project: 'Cabinet Quote',
+      materials: gMat, labour: gLabour,
+      markup: cqSettings.markup, tax: cqSettings.tax,
+      status: 'draft', date: new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short'}),
+      notes: cabNotes
+    });
+    return;
+  }
   const cur = window.currency;
   const fmt = v => cur + Number(v).toFixed(2);
   const fmt0 = v => cur + Math.round(v).toLocaleString();
