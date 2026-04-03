@@ -278,8 +278,7 @@ header {
 }
 .sidebar-scroll { overflow-y: auto; flex: 1; padding: 16px; }
 .main-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-.main-scroll { flex: 1; overflow: auto; padding: 20px; display: flex; flex-direction: column; align-items: center; }
-.main-scroll > * { width: 100%; }
+.main-scroll { flex: 1; overflow: auto; padding: 20px; }
 
 /* ── FORM ELEMENTS ── */
 .form-section { margin-bottom: 20px; }
@@ -3985,7 +3984,7 @@ function renderQuoteMain() {
     <button class="ofilter-tab ${qFilter==='approved'?'active':''}" onclick="window._quoteFilter='approved';renderQuoteMain()">Approved (${approved})</button>
   </div>`;
 
-  el.innerHTML = `<div style="max-width:800px">
+  el.innerHTML = `<div style="max-width:800px;margin:0 auto">
     <div class="stats-grid">
       <div class="stat-card accent"><div class="stat-label">Total Quotes</div><div class="stat-value">${quotes.length}</div><div class="stat-sub">${draft} draft · ${sent} sent</div></div>
       <div class="stat-card success"><div class="stat-label">Approved</div><div class="stat-value">${approved}</div><div class="stat-sub">ready to start</div></div>
@@ -4140,7 +4139,7 @@ function renderOrdersMain() {
     <button class="ofilter-tab ${filterVal==='complete'?'active':''}" onclick="setOrderFilter('complete')">Completed (${complete.length})</button>
   </div>`;
 
-  el.innerHTML = `<div style="max-width:800px">
+  el.innerHTML = `<div style="max-width:800px;margin:0 auto">
     <div class="stats-grid">
       <div class="stat-card accent"><div class="stat-label">Active Orders</div><div class="stat-value">${active.length}</div><div class="stat-sub">in progress</div></div>
       <div class="stat-card success"><div class="stat-label">Completed</div><div class="stat-value">${complete.length}</div><div class="stat-sub">this period</div></div>
@@ -4746,7 +4745,7 @@ ${(() => {
 </div>
 </body></html>`;
 
-  _saveAsPDF(html);
+  _printInFrame(html);
 }
 
 async function duplicateQuote(id) {
@@ -6888,110 +6887,124 @@ function renderSchedule() {
   if (!el) return;
   const cur = window.currency;
   const today = new Date(); today.setHours(0,0,0,0);
-  const statusColors = { quote:'#94a3b8', confirmed:'#2563eb', production:'#e8a838', delivery:'#0d9488', complete:'#3d9970' };
-
-  // Build 6 months of weeks (past 1 month + future 5 months)
-  const calStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-  // Align to Monday
-  while (calStart.getDay() !== 1) calStart.setDate(calStart.getDate() - 1);
-  const calEnd = new Date(today.getFullYear(), today.getMonth() + 5, 0);
+  // Distinct colors for each job
+  const palette = ['#2563eb','#e8a838','#0d9488','#9333ea','#dc2626','#059669','#d97706','#6366f1','#ec4899','#14b8a6','#f97316','#8b5cf6'];
   const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
   const dayNames = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 
-  // Collect all orders with dates
-  const orderEvents = orders.filter(o => o.status !== 'complete').map(o => {
+  // Range: 1 month back, 5 months forward
+  const calStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+  while (calStart.getDay() !== 1) calStart.setDate(calStart.getDate() - 1);
+  const calEnd = new Date(today.getFullYear(), today.getMonth() + 5, 0);
+
+  // Collect events
+  const events = orders.filter(o => o.status !== 'complete').map((o, idx) => {
     let due = null, start = null;
     if (o.due && o.due !== 'TBD') { due = new Date(o.due); if (isNaN(due)) due = null; else due.setHours(0,0,0,0); }
     if (o.prodStart) { start = new Date(o.prodStart); if (isNaN(start)) start = null; else start.setHours(0,0,0,0); }
     if (!due && !start) return null;
-    return { id: o.id, project: o.project, client: o.client, status: o.status, value: o.value, start, due, color: statusColors[o.status]||'#888' };
+    return { id:o.id, project:o.project, client:o.client, start, due, color:palette[idx % palette.length] };
   }).filter(Boolean);
 
   // Build weeks
   const weeks = [];
-  let weekStart = new Date(calStart);
-  while (weekStart <= calEnd) {
+  let ws = new Date(calStart);
+  while (ws <= calEnd) {
     const week = [];
-    for (let d = 0; d < 7; d++) {
-      const day = new Date(weekStart);
-      day.setDate(day.getDate() + d);
-      week.push(new Date(day));
-    }
+    for (let d = 0; d < 7; d++) { const day = new Date(ws); day.setDate(day.getDate() + d); week.push(day); }
     weeks.push(week);
-    weekStart.setDate(weekStart.getDate() + 7);
+    ws.setDate(ws.getDate() + 7);
   }
 
-  // Helper: events on a given day
-  function eventsOnDay(day) {
+  // For each day, find which events are active
+  function dayKey(d) { return d.toISOString().split('T')[0]; }
+  function eventActive(e, day) {
     const t = day.getTime();
-    return orderEvents.filter(e => {
-      if (e.start && e.due) {
-        return t >= e.start.getTime() && t <= e.due.getTime();
-      }
-      if (e.due) return t === e.due.getTime();
-      if (e.start) return t === e.start.getTime();
-      return false;
-    });
+    if (e.start && e.due) return t >= e.start.getTime() && t <= e.due.getTime();
+    if (e.due) return t === e.due.getTime();
+    if (e.start) return t === e.start.getTime();
+    return false;
   }
-
-  // Check if day is start/end of a bar
-  function barInfo(day, e) {
-    const t = day.getTime();
-    const isStart = e.start && t === e.start.getTime();
-    const isEnd = e.due && t === e.due.getTime();
-    const isSingle = (!e.start && e.due && t === e.due.getTime()) || (e.start && !e.due && t === e.start.getTime());
-    return { isStart, isEnd, isSingle };
+  function isEventStart(e, day) {
+    if (e.start) return day.getTime() === e.start.getTime();
+    return e.due && day.getTime() === e.due.getTime();
+  }
+  function isEventEnd(e, day) {
+    if (e.due) return day.getTime() === e.due.getTime();
+    return e.start && day.getTime() === e.start.getTime();
+  }
+  // Is this event starting this week row (either real start or continuation from prev week)?
+  function isWeekStart(e, day, weekIdx) {
+    if (isEventStart(e, day)) return true;
+    // Continuation: event started before this week
+    if (weekIdx > 0 && day.getDay() === 1 && eventActive(e, day)) return true;
+    if (weekIdx === 0 && day === weeks[0][0] && eventActive(e, day)) return true;
+    return false;
   }
 
   let html = `
     <div style="padding:12px 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);flex-shrink:0;background:var(--surface)">
       <div style="font-size:18px;font-weight:800;color:var(--text)">Schedule</div>
-      <div style="font-size:12px;color:var(--muted)">${orderEvents.length} active order${orderEvents.length!==1?'s':''}</div>
+      <div style="font-size:12px;color:var(--muted)">${events.length} active order${events.length!==1?'s':''}</div>
     </div>
-    <div style="flex:1;overflow:auto">
+    <div style="flex:1;overflow:auto;background:var(--bg)">
     <table style="width:100%;border-collapse:collapse;table-layout:fixed">
-      <thead>
-        <tr style="position:sticky;top:0;z-index:5;background:var(--surface)">
-          ${dayNames.map((d,i) => `<th style="padding:8px 4px;font-size:11px;font-weight:600;color:${i>=5?'var(--muted)':'var(--text2)'};text-align:center;border-bottom:2px solid var(--border);width:${100/7}%">${d}</th>`).join('')}
-        </tr>
-      </thead>
-      <tbody>`;
+      <thead><tr style="position:sticky;top:0;z-index:5;background:var(--surface)">
+        ${dayNames.map((d,i) => `<th style="padding:8px 4px;font-size:11px;font-weight:600;color:${i>=5?'var(--muted)':'var(--text2)'};text-align:center;border-bottom:1px solid var(--border)">${d}</th>`).join('')}
+      </tr></thead><tbody>`;
 
   let lastMonth = -1;
-  weeks.forEach(week => {
-    // Month label row
-    const firstDay = week[0];
-    const monthOfWeek = week.find(d => d.getDate() <= 7 && d.getDate() >= 1 && d.getMonth() !== lastMonth);
-    if (monthOfWeek && monthOfWeek.getMonth() !== lastMonth) {
-      lastMonth = monthOfWeek.getMonth();
-      html += `<tr><td colspan="7" style="padding:10px 12px 4px;font-size:14px;font-weight:800;color:var(--text);background:var(--bg);border-bottom:1px solid var(--border)">${monthNames[lastMonth]} ${monthOfWeek.getFullYear()}</td></tr>`;
+  weeks.forEach((week, wi) => {
+    // Month header
+    const monthDay = week.find(d => d.getDate() <= 7 && d.getMonth() !== lastMonth);
+    if (monthDay && monthDay.getMonth() !== lastMonth) {
+      lastMonth = monthDay.getMonth();
+      html += `<tr><td colspan="7" style="padding:14px 14px 6px;font-size:15px;font-weight:800;color:var(--text);background:var(--bg);border-bottom:none">${monthNames[lastMonth]} ${monthDay.getFullYear()}</td></tr>`;
     }
 
+    // Day number row
     html += `<tr>`;
     week.forEach((day, di) => {
       const td = day.getTime() === today.getTime();
-      const isWeekend = di >= 5;
-      const isOtherMonth = false;
-      const dayEvents = eventsOnDay(day);
-
-      let cellBg = '';
-      if (td) cellBg = 'background:rgba(232,168,56,0.06);';
-      else if (isWeekend) cellBg = 'background:rgba(0,0,0,0.015);';
-
-      let eventsHTML = '';
-      dayEvents.forEach(e => {
-        const bi = barInfo(day, e);
-        const radius = bi.isSingle ? '4px' : bi.isStart ? '4px 0 0 4px' : bi.isEnd ? '0 4px 4px 0' : '0';
-        const leftPad = bi.isStart || bi.isSingle ? '4px' : '0';
-        eventsHTML += `<div style="background:${e.color};color:#fff;font-size:10px;font-weight:600;padding:2px ${leftPad};border-radius:${radius};margin:1px -1px 1px ${bi.isStart||bi.isSingle?'1px':'-1px'};overflow:hidden;white-space:nowrap;text-overflow:ellipsis;min-height:18px;display:flex;align-items:center" title="${_escHtml(e.project)} — ${_escHtml(e.client)}">${bi.isStart || bi.isSingle ? _escHtml(e.project) : ''}</div>`;
-      });
-
-      html += `<td style="vertical-align:top;padding:2px;height:70px;border:1px solid var(--border2);${cellBg}">
-        <div style="font-size:${td?'13':'12'}px;font-weight:${td?'800':'500'};color:${td?'var(--accent)':isWeekend?'var(--muted)':'var(--text2)'};padding:2px 4px;${td?'background:var(--accent);color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;margin:0 auto 2px':''}">${day.getDate()}</div>
-        ${eventsHTML}
+      const we = di >= 5;
+      const otherMonth = day.getMonth() !== lastMonth && lastMonth !== -1;
+      html += `<td style="vertical-align:top;padding:3px 4px;height:28px;border:1px solid var(--border2);${td?'background:rgba(232,168,56,0.06)':we?'background:rgba(0,0,0,0.015)':''}">
+        <div style="font-size:12px;font-weight:${td?'800':'500'};color:${otherMonth?'var(--border)':td?'#fff':we?'var(--muted)':'var(--text2)'};${td?'background:var(--accent);border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center':'padding:1px 2px'}">${day.getDate()}</div>
       </td>`;
     });
     html += `</tr>`;
+
+    // Event bars row
+    const weekEvents = events.filter(e => week.some(d => eventActive(e, d)));
+    if (weekEvents.length > 0) {
+      html += `<tr>`;
+      // Render bars using colspan
+      let col = 0;
+      // Build a grid: for each day, which events are present
+      // Then render bars with colspan
+      html += `<td colspan="7" style="padding:0 0 4px 0;border-bottom:1px solid var(--border2);vertical-align:top">`;
+      weekEvents.forEach(e => {
+        // Find first and last active day in this week
+        let firstIdx = -1, lastIdx = -1;
+        week.forEach((d, i) => {
+          if (eventActive(e, d)) {
+            if (firstIdx === -1) firstIdx = i;
+            lastIdx = i;
+          }
+        });
+        if (firstIdx === -1) return;
+
+        const span = lastIdx - firstIdx + 1;
+        const leftPct = (firstIdx / 7 * 100).toFixed(2);
+        const widthPct = (span / 7 * 100).toFixed(2);
+        const isStart = isEventStart(e, week[firstIdx]);
+        const isEnd = isEventEnd(e, week[lastIdx]);
+        const radius = (isStart && isEnd) ? '5px' : isStart ? '5px 0 0 5px' : isEnd ? '0 5px 5px 0' : '0';
+
+        html += `<div style="position:relative;margin-left:${leftPct}%;width:${widthPct}%;background:${e.color};color:#fff;font-size:11px;font-weight:600;padding:3px 6px;border-radius:${radius};margin-bottom:2px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;min-height:20px" title="${_escHtml(e.project)} — ${_escHtml(e.client)}">${isStart || firstIdx === 0 ? _escHtml(e.project) : ''}</div>`;
+      });
+      html += `</td></tr>`;
+    }
   });
 
   html += `</tbody></table></div>`;
