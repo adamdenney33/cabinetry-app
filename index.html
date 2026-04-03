@@ -1279,7 +1279,8 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
             <label>Reorder Link</label>
             <input type="text" id="stock-reorder-url" placeholder="https://supplier.com/product">
           </div>
-          <button class="btn btn-outline" onclick="addStockItem()" style="margin-top:4px">+ Add to Stock</button>
+          <button class="btn btn-primary" onclick="window._editingStockId ? saveStockEdit() : addStockItem()" id="stock-submit-btn" style="margin-top:4px;width:100%">+ Add to Stock</button>
+          <button class="btn btn-outline" onclick="window._editingStockId=null;document.getElementById('stock-name').value='';document.getElementById('stock-submit-btn').textContent='+ Add to Stock';renderStockMain()" id="stock-cancel-btn" style="margin-top:4px;width:100%;display:none">Cancel Edit</button>
         </div>
       </div>
     </div>
@@ -2020,6 +2021,10 @@ const STOCK_CATS = ['Sheet Goods','Solid Timber','Edge Banding','Hardware','Fini
 
 function _scMap() { try { return JSON.parse(localStorage.getItem('pc_stock_cats') || '{}'); } catch(e) { return {}; } }
 function _scGet(id) { return _scMap()[String(id)] || ''; }
+
+// ── Stock Supplier Storage ──
+function _ssGet(id) { try { return JSON.parse(localStorage.getItem('pc_stock_suppliers')||'{}')[String(id)] || {}; } catch(e) { return {}; } }
+function _ssSet(id, data) { try { const m = JSON.parse(localStorage.getItem('pc_stock_suppliers')||'{}'); m[String(id)] = data; localStorage.setItem('pc_stock_suppliers', JSON.stringify(m)); } catch(e) {} }
 function _scSet(id, cat) {
   const m = _scMap();
   if (cat) m[String(id)] = cat; else delete m[String(id)];
@@ -2057,10 +2062,67 @@ async function addStockItem() {
   if (error) { _toast('Could not save stock item — ' + (error.message || JSON.stringify(error)), 'error'); console.error(error); return; }
   stockItems.push(data);
   if (cat) _scSet(data.id, cat);
+  const supplier = document.getElementById('stock-supplier')?.value?.trim() || '';
+  const reorderUrl = document.getElementById('stock-reorder-url')?.value?.trim() || '';
+  if (supplier || reorderUrl) _ssSet(data.id, {supplier, url: reorderUrl});
   _toast('Stock item added', 'success');
   document.getElementById('stock-name').value = '';
   document.getElementById('stock-cat').value = '';
   document.getElementById('stock-sku').value = '';
+  if (document.getElementById('stock-supplier')) document.getElementById('stock-supplier').value = '';
+  if (document.getElementById('stock-reorder-url')) document.getElementById('stock-reorder-url').value = '';
+  window._editingStockId = null;
+  renderStockMain();
+}
+
+function editStockItem(id) {
+  const item = stockItems.find(s => s.id === id);
+  if (!item) return;
+  window._editingStockId = id;
+  document.getElementById('stock-name').value = item.name;
+  document.getElementById('stock-sku').value = item.sku || '';
+  document.getElementById('stock-cat').value = _scGet(id) || '';
+  document.getElementById('stock-w').value = item.w;
+  document.getElementById('stock-h').value = item.h;
+  document.getElementById('stock-qty').value = item.qty;
+  document.getElementById('stock-low').value = item.low;
+  document.getElementById('stock-cost').value = item.cost;
+  const sup = _ssGet(id);
+  if (document.getElementById('stock-supplier')) document.getElementById('stock-supplier').value = sup.supplier || '';
+  if (document.getElementById('stock-reorder-url')) document.getElementById('stock-reorder-url').value = sup.url || '';
+  // Scroll sidebar to top and change button text
+  const sidebar = document.querySelector('#panel-stock .sidebar-scroll');
+  if (sidebar) sidebar.scrollTop = 0;
+  const btn = document.getElementById('stock-submit-btn');
+  if (btn) btn.textContent = 'Save Changes';
+  const cancel = document.getElementById('stock-cancel-btn');
+  if (cancel) cancel.style.display = '';
+}
+
+async function saveStockEdit() {
+  const id = window._editingStockId;
+  if (!id) { addStockItem(); return; }
+  const item = stockItems.find(s => s.id === id);
+  if (!item) return;
+  const updates = {
+    name: document.getElementById('stock-name').value.trim(),
+    sku: document.getElementById('stock-sku').value.trim(),
+    w: parseFloat(document.getElementById('stock-w').value) || item.w,
+    h: parseFloat(document.getElementById('stock-h').value) || item.h,
+    qty: parseInt(document.getElementById('stock-qty').value) || 0,
+    low: parseInt(document.getElementById('stock-low').value) || 3,
+    cost: parseFloat(document.getElementById('stock-cost').value) || 0,
+  };
+  Object.assign(item, updates);
+  if (_userId) await _db('stock_items').update(updates).eq('id', id);
+  const cat = document.getElementById('stock-cat').value.trim();
+  _scSet(id, cat);
+  const supplier = document.getElementById('stock-supplier')?.value?.trim() || '';
+  const reorderUrl = document.getElementById('stock-reorder-url')?.value?.trim() || '';
+  _ssSet(id, {supplier, url: reorderUrl});
+  window._editingStockId = null;
+  _toast('Stock item updated', 'success');
+  document.getElementById('stock-name').value = '';
   renderStockMain();
 }
 
@@ -2106,34 +2168,42 @@ function renderStockMain() {
     const isLow = item.qty <= item.low;
     const u = window.units === 'metric' ? 'mm' : '"';
     const cat = _scGet(item.id);
-    const catOptions = ['', ...STOCK_CATS, ...usedCats.filter(c => !STOCK_CATS.includes(c))];
+    const sup = _ssGet(item.id);
     return `
-    <div class="stock-card">
-      ${cat ? `<div><span class="stock-cat-tag" title="Click to change category" onclick="setStockCatInline(${item.id},this)">${cat}</span></div>` : `<div><span class="stock-cat-tag" style="opacity:.45;background:var(--surface2);color:var(--muted)" onclick="setStockCatInline(${item.id},this)">+ Category</span></div>`}
-      <div class="stock-card-header">
-        <div style="flex:1;min-width:0">
-          <div class="stock-name" contenteditable="true" onblur="updateStockField(${item.id},'name',this.innerText.trim())" title="Click to edit name">${item.name}</div>
-          <div class="stock-sku"><span contenteditable="true" onblur="updateStockField(${item.id},'sku',this.innerText.trim())" title="Click to edit SKU">${item.sku}</span> &nbsp;·&nbsp; <span contenteditable="true" onblur="updateStockField(${item.id},'w',this.innerText)" title="Width">${item.w}</span>×<span contenteditable="true" onblur="updateStockField(${item.id},'h',this.innerText)" title="Height">${item.h}</span>${u}</div>
+    <div class="stock-card" style="display:flex;flex-direction:column;gap:0">
+      <div style="padding:12px 14px">
+        <!-- Header: name + badge + edit -->
+        <div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:6px">
+          <div style="flex:1;min-width:0">
+            <div style="font-size:14px;font-weight:700;color:var(--text);line-height:1.3">${_escHtml(item.name)}</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px">${item.sku||''} · ${item.w}×${item.h}${u}</div>
+          </div>
+          <span class="badge ${isLow ? 'badge-red' : 'badge-green'}" style="flex-shrink:0">${isLow ? 'Low' : 'OK'}</span>
         </div>
-        <span class="badge ${isLow ? 'badge-red' : 'badge-green'}">${isLow ? 'Low' : 'OK'}</span>
+        ${cat ? `<div style="margin-bottom:6px"><span class="stock-cat-tag">${_escHtml(cat)}</span></div>` : ''}
+        <!-- Qty + Price row -->
+        <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:8px">
+          <div>
+            <div style="font-size:24px;font-weight:800;color:${isLow?'var(--danger)':'var(--text)'};line-height:1">${item.qty}</div>
+            <div style="font-size:10px;color:var(--muted)">sheets · alert at ${item.low}</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:14px;font-weight:700;color:var(--text)">${cur}${(item.qty * item.cost).toFixed(0)}</div>
+            <div style="font-size:11px;color:var(--muted)">${cur}${item.cost.toFixed(2)}/sheet</div>
+          </div>
+        </div>
+        ${sup.supplier ? `<div style="font-size:11px;color:var(--text2);margin-bottom:4px">Supplier: <strong>${_escHtml(sup.supplier)}</strong></div>` : ''}
+        ${sup.url ? `<a href="${_escHtml(sup.url)}" target="_blank" rel="noopener" style="font-size:11px;color:var(--accent);text-decoration:none" title="Reorder link">🔗 Reorder →</a>` : ''}
       </div>
-      <div class="stock-qty-row">
-        <div>
-          <div class="stock-qty ${isLow ? 'stock-low' : ''}" contenteditable="true" onblur="setStockQty(${item.id},this.innerText)" title="Click to edit quantity">${item.qty}</div>
-          <div class="stock-qty-label">sheets &nbsp;·&nbsp; alert at <span contenteditable="true" onblur="updateStockField(${item.id},'low',this.innerText)" title="Low stock threshold">${item.low}</span></div>
-        </div>
-        <div style="text-align:right">
-          <div style="font-size:13px;font-weight:700;color:var(--text)">${cur}${(item.qty * item.cost).toFixed(0)}</div>
-          <div style="font-size:10px;color:var(--muted)"><span contenteditable="true" onblur="updateStockField(${item.id},'cost',this.innerText)" title="Cost per sheet">${cur}${item.cost.toFixed(2)}</span>/sheet</div>
-        </div>
-      </div>
-      <div class="stock-actions">
-        <button class="btn btn-outline" onclick="adjustStock(${item.id}, -1)" style="font-size:12px;padding:5px 10px">− 1</button>
-        <button class="btn btn-success" onclick="adjustStock(${item.id}, 1)" style="font-size:12px;padding:5px 10px">+ 1</button>
-        <button class="btn btn-outline" onclick="adjustStock(${item.id}, 5)" style="font-size:12px;padding:5px 10px">+ 5</button>
-        <button class="btn btn-outline" onclick="adjustStock(${item.id}, 10)" style="font-size:12px;padding:5px 10px">+ 10</button>
-        <button class="btn btn-outline" onclick="useStockInCutList(${item.id})" style="font-size:11px;padding:5px 8px;flex:1" title="Load into cut list">→ Cut List</button>
-        <button class="btn btn-danger" onclick="_confirm('Remove <strong>${item.name}</strong> from stock?',()=>removeStock(${item.id}))" style="padding:5px 8px">×</button>
+      <!-- Actions -->
+      <div style="display:flex;gap:4px;padding:8px 14px;border-top:1px solid var(--border2);flex-wrap:wrap">
+        <button class="btn btn-outline" onclick="adjustStock(${item.id},-1)" style="font-size:12px;padding:4px 8px">−1</button>
+        <button class="btn btn-success" onclick="adjustStock(${item.id},1)" style="font-size:12px;padding:4px 8px">+1</button>
+        <button class="btn btn-outline" onclick="adjustStock(${item.id},5)" style="font-size:12px;padding:4px 8px">+5</button>
+        <span style="flex:1"></span>
+        <button class="btn btn-outline" onclick="editStockItem(${item.id})" style="font-size:11px;padding:4px 8px" title="Edit in sidebar">✎ Edit</button>
+        <button class="btn btn-outline" onclick="useStockInCutList(${item.id})" style="font-size:11px;padding:4px 8px" title="Send to cut list">→ Cut List</button>
+        <button class="btn btn-danger" onclick="_confirm('Remove <strong>${_escHtml(item.name)}</strong>?',()=>removeStock(${item.id}))" style="padding:4px 8px">×</button>
       </div>
     </div>`;
   };
@@ -2161,25 +2231,11 @@ function renderStockMain() {
   const allCatPills = ['All', ...usedCats, ...(stockItems.some(i => !_scGet(i.id)) ? ['Uncategorised'] : [])];
 
   el.innerHTML = `<div>
-    <div class="stats-grid" style="grid-template-columns:repeat(4,1fr);grid-auto-flow:column">
-        <div class="stat-value">${stockItems.length}</div>
-        <div class="stat-sub">product types</div>
-      </div>
-      <div class="stat-card success">
-        <div class="stat-label">Sheets in Stock</div>
-        <div class="stat-value">${totalSheets}</div>
-        <div class="stat-sub">across all materials</div>
-      </div>
-      <div class="stat-card ${lowItems ? 'danger' : 'success'}">
-        <div class="stat-label">Low Stock Alerts</div>
-        <div class="stat-value">${lowItems}</div>
-        <div class="stat-sub">${lowItems ? 'need reordering' : 'all stocked well'}</div>
-      </div>
-      <div class="stat-card warn">
-        <div class="stat-label">Stock Value</div>
-        <div class="stat-value">${cur}${totalValue.toLocaleString('en-US', {minimumFractionDigits:0, maximumFractionDigits:0})}</div>
-        <div class="stat-sub">total inventory</div>
-      </div>
+    <div style="display:flex;gap:12px;margin-bottom:20px">
+      <div class="stat-card accent" style="flex:1"><div class="stat-label">Materials</div><div class="stat-value">${stockItems.length}</div><div class="stat-sub">product types</div></div>
+      <div class="stat-card success" style="flex:1"><div class="stat-label">Sheets</div><div class="stat-value">${totalSheets}</div><div class="stat-sub">in stock</div></div>
+      <div class="stat-card ${lowItems ? 'danger' : 'success'}" style="flex:1"><div class="stat-label">Low Stock</div><div class="stat-value">${lowItems}</div><div class="stat-sub">${lowItems ? 'need reorder' : 'all OK'}</div></div>
+      <div class="stat-card warn" style="flex:1"><div class="stat-label">Value</div><div class="stat-value">${cur}${totalValue.toLocaleString('en-US',{maximumFractionDigits:0})}</div><div class="stat-sub">total</div></div>
     </div>
 
     ${stockItems.length === 0 ? `<div class="empty-state">
@@ -4897,7 +4953,7 @@ function importStockCSV() {
   input.onchange = async e => {
     const file = e.target.files[0]; if (!file) return;
     const text = await file.text();
-    const rows = text.split('\\n').map(r => r.split(',').map(c => c.replace(/^"|"$/g,'').trim()));
+    const rows = text.split(/\r?\n/).map(r => r.split(',').map(c => c.replace(/^"|"$/g,'').trim()));
     if (rows.length < 2) { _toast('CSV has no data rows', 'error'); return; }
     let imported = 0;
     for (let i = 1; i < rows.length; i++) {
