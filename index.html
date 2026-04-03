@@ -1176,54 +1176,47 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
        CABINET SECTION (Cabinet Builder + Pricing)
   ════════════════════════════════════ -->
   <div class="section-panel" id="panel-cabinet">
-    <div class="sidebar" style="width:440px;min-width:380px">
-      <div class="sidebar-scroll" id="cq-sidebar">
+    <!-- Inner tabs for Builder vs My Rates -->
+    <div class="cq-inner-tabs" style="flex-shrink:0">
+      <div class="cq-inner-tab active" id="cab-tab-builder" onclick="switchCabTab('builder')">Cabinet Builder</div>
+      <div class="cq-inner-tab" id="cab-tab-rates" onclick="switchCabTab('rates')">My Rates</div>
+    </div>
 
-        <!-- Settings Toggle -->
-        <div style="padding:10px 14px 0;display:flex;justify-content:space-between;align-items:center">
-          <span style="font-size:14px;font-weight:700;color:var(--text)">Cabinet Builder</span>
-          <div style="display:flex;gap:4px">
-            <button class="cl-csv-btn" onclick="toggleCQSettings()" id="cq-settings-btn" style="padding:5px 10px;display:flex;align-items:center;gap:5px;font-size:12px">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.32 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
-              My Rates
-            </button>
+    <!-- BUILDER view -->
+    <div id="cab-view-builder" style="flex:1;display:flex;overflow:hidden">
+      <div class="sidebar" style="width:440px;min-width:380px">
+        <div class="sidebar-scroll" id="cq-sidebar">
+          <!-- Cabinet Library -->
+          <div style="padding:8px 14px 4px;display:flex;justify-content:space-between;align-items:center">
+            <span style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Cabinet Library</span>
           </div>
-        </div>
+          <div id="cq-library-list" style="padding:2px 14px 4px"></div>
 
-        <!-- Global Settings Panel (collapsible) — rendered by JS -->
-        <div class="cq-settings-expanded" id="cq-settings-panel">
-          <div id="cq-rates-content"><!-- rendered by renderCQRates() --></div>
-        </div>
+          <!-- Cabinets in Quote -->
+          <div style="padding:8px 14px 4px;display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--border);margin-top:4px">
+            <span style="font-size:12px;font-weight:700;color:var(--text)">Cabinets in Quote</span>
+            <button class="cl-csv-btn" onclick="addCQLine()" style="padding:5px 10px;font-size:12px">+ Add Cabinet</button>
+          </div>
+          <div id="cq-cab-list" style="padding:4px 14px"></div>
 
-        <!-- Cabinet Library -->
-        <div style="padding:8px 14px 4px;display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--border);margin-top:6px">
-          <span style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Cabinet Library</span>
+          <!-- Active Cabinet Editor -->
+          <div id="cq-cab-editor" style="padding:0 14px 14px"></div>
         </div>
-        <div id="cq-library-list" style="padding:2px 14px 4px"></div>
-
-        <!-- Cabinets in Quote -->
-        <div style="padding:8px 14px 4px;display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--border);margin-top:4px">
-          <span style="font-size:12px;font-weight:700;color:var(--text)">Cabinets in Quote</span>
-          <button class="cl-csv-btn" onclick="addCQLine()" style="padding:5px 10px;font-size:12px">+ Add Cabinet</button>
-        </div>
-        <div id="cq-cab-list" style="padding:4px 14px"></div>
-
-        <!-- Active Cabinet Editor -->
-        <div id="cq-cab-editor" style="padding:0 14px 14px">
-          <!-- rendered by JS -->
-        </div>
-
+      </div>
+      <div class="main-content">
+        <div class="main-scroll" id="cq-results" style="padding:20px"></div>
       </div>
     </div>
-    <div class="main-content">
-      <div class="main-scroll" id="cq-results" style="padding:20px">
-        <!-- rendered by JS -->
+
+    <!-- MY RATES view -->
+    <div id="cab-view-rates" style="flex:1;display:none;overflow:auto;padding:20px">
+      <div style="max-width:900px;margin:0 auto">
+        <h2 style="font-size:18px;font-weight:800;margin:0 0 16px">My Rates</h2>
+        <div id="cq-rates-content"><!-- rendered by renderCQRates() --></div>
       </div>
     </div>
   </div>
 
-  <!-- ════════════════════════════════════
-       STOCK SECTION
   <!-- ════════════════════════════════════
        STOCK SECTION
   ════════════════════════════════════ -->
@@ -1353,6 +1346,7 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
             <button class="cl-col-pill" id="pill-grain" onclick="toggleCol('grain')" title="Show/hide grain column">Grain</button>
             <button class="cl-col-pill" id="pill-material" onclick="toggleCol('material')" title="Show/hide material column">Panel</button>
             <button class="cl-col-pill" id="pill-notes" onclick="toggleCol('notes')" title="Show/hide notes column">Notes</button>
+            <button class="cl-col-pill" id="pill-edgeband" onclick="toggleCol('edgeband')" title="Show/hide edge banding column">Edge Band</button>
           </div>
           <button class="cl-csv-btn" onclick="clearCutList()" title="Clear all parts and panels" style="padding:3px 8px;margin-left:4px;font-size:10px;color:var(--muted)">Clear</button>
         </div>
@@ -1369,6 +1363,7 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
               <th style="width:52px"></th>
               <th style="width:86px" class="cl-col-material" id="th-material">Panel</th>
               <th style="width:80px" class="cl-col-notes" id="th-notes">Notes</th>
+              <th style="width:70px" class="cl-col-edgeband" id="th-edgeband">Edge Band</th>
               <th style="width:24px"></th>
             </tr>
           </thead>
@@ -2221,7 +2216,7 @@ let layoutZoom = parseFloat(localStorage.getItem('pc_zoom')) || 1.0;
 let layoutColor = true;
 let layoutGrain = true;
 let layoutFontScale = parseFloat(localStorage.getItem('pc_font_scale')) || 1.0;
-let colsVisible = { grain: false, material: false, label: true, notes: false };
+let colsVisible = { grain: false, material: false, label: true, notes: false, edgeband: false };
 let layoutRotate = false;
 let clShowSummary = true;
 let clShowCutList = true;
@@ -2629,6 +2624,15 @@ function renderPieces() {
           onblur="updatePiece(${p.id},'notes',this.value)"
           onkeydown="clKeydown(event,'pieces',${i},'notes')"
           ${dis ? 'disabled' : ''} placeholder="e.g. edge band, veneer">
+      </td>
+      <td class="cl-col-edgeband" style="${colsVisible.edgeband?'':'display:none'}">
+        <select class="cl-input" style="font-size:12px;padding:4px 6px" onchange="updatePiece(${p.id},'edgeBand',this.value)" ${dis?'disabled':''}>
+          <option value="none" ${(p.edgeBand||'none')==='none'?'selected':''}>None</option>
+          <option value="L" ${p.edgeBand==='L'?'selected':''}>L (long)</option>
+          <option value="W" ${p.edgeBand==='W'?'selected':''}>W (short)</option>
+          <option value="LW" ${p.edgeBand==='LW'?'selected':''}>L+W</option>
+          <option value="all" ${p.edgeBand==='all'?'selected':''}>All edges</option>
+        </select>
       </td>
       <td class="cl-del-cell" style="white-space:nowrap">
         <button class="cl-del-btn" onclick="duplicatePiece(${p.id})" title="Duplicate part" style="opacity:.6;margin-right:2px">⧉</button>
@@ -5726,6 +5730,17 @@ const SHEET_W = 2.44, SHEET_H = 1.22, SHEET_M2 = SHEET_W * SHEET_H;
 // ── Load / Save Settings ──
 function loadCQSettings() {
   try { const s = localStorage.getItem('pc_cq_settings'); if (s) cqSettings = JSON.parse(s); } catch(e) {}
+  // Ensure defaults exist for all list fields
+  if (!cqSettings.baseTypes || !cqSettings.baseTypes.length) cqSettings.baseTypes = [
+    {name:'None',price:0},{name:'Plinth',price:20},{name:'Feet / Legs',price:40},{name:'Castors',price:60},{name:'Frame',price:30}
+  ];
+  if (!cqSettings.constructions || !cqSettings.constructions.length) cqSettings.constructions = [
+    {name:'Overlay',price:0},{name:'Inset',price:25},{name:'Face Frame',price:35}
+  ];
+  if (!cqSettings.finishes || !cqSettings.finishes.length) cqSettings.finishes = [
+    {name:'None',price:0},{name:'Oil (Osmo/Rubio)',price:12},{name:'Lacquer',price:18},{name:'Paint',price:22},{name:'Stain + Oil',price:15},{name:'Wax',price:8},{name:'2-Pack Spray',price:35}
+  ];
+  if (!cqSettings.labourTimes) cqSettings.labourTimes = {carcass:1.5,door:0.4,drawer:0.6,shelf:0.25,finishPerM2:0.5};
 }
 function saveCQSettings() {
   const g = id => parseFloat(document.getElementById(id)?.value);
@@ -5748,10 +5763,26 @@ function loadCQSaved() {
 function saveCQSaved() { localStorage.setItem('pc_cq_saved', JSON.stringify(cqSavedQuotes)); }
 
 function toggleCQSettings() {
-  const p = document.getElementById('cq-settings-panel');
-  const b = document.getElementById('cq-settings-btn');
-  if (p) { const open = p.classList.toggle('open'); if (b) b.classList.toggle('open', open); }
-  renderCQSettingsLists();
+  switchCabTab('rates');
+}
+
+function switchCabTab(tab) {
+  const builder = document.getElementById('cab-view-builder');
+  const rates = document.getElementById('cab-view-rates');
+  const tabBuilder = document.getElementById('cab-tab-builder');
+  const tabRates = document.getElementById('cab-tab-rates');
+  if (tab === 'rates') {
+    if (builder) builder.style.display = 'none';
+    if (rates) rates.style.display = '';
+    if (tabBuilder) tabBuilder.classList.remove('active');
+    if (tabRates) tabRates.classList.add('active');
+    renderCQRates();
+  } else {
+    if (builder) builder.style.display = 'flex';
+    if (rates) rates.style.display = 'none';
+    if (tabBuilder) tabBuilder.classList.add('active');
+    if (tabRates) tabRates.classList.remove('active');
+  }
 }
 
 // ── Settings Lists Render ──
