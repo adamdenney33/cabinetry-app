@@ -4213,6 +4213,7 @@ function renderDashboard() {
         <button class="btn btn-outline" onclick="switchSection('cabinet')" style="font-size:12px;padding:7px 16px;width:auto">+ Cabinet Builder</button>
         <button class="btn btn-outline" onclick="switchSection('orders')" style="font-size:12px;padding:7px 16px;width:auto">+ New Order</button>
         <button class="btn btn-outline" onclick="switchSection('cutlist')" style="font-size:12px;padding:7px 16px;width:auto">⚙ Cut List</button>
+        <button class="btn btn-outline" onclick="switchSection('schedule')" style="font-size:12px;padding:7px 16px;width:auto">📅 Schedule</button>
         ${overdueOrders.length ? `<span class="badge badge-red" style="align-self:center;font-size:12px;padding:6px 12px">${overdueOrders.length} overdue order${overdueOrders.length!==1?'s':''}</span>` : ''}
       </div>
 
@@ -4344,6 +4345,28 @@ function renderDashboard() {
         </div>
 
       </div>
+
+      <!-- Upcoming Deadlines -->
+      ${(() => {
+        const upcoming = activeOrders.filter(o => o.due && o.due !== 'TBD').map(o => {
+          const d = new Date(o.due); if (isNaN(d)) return null; d.setHours(0,0,0,0);
+          return {...o, _due: d, _days: Math.round((d - new Date().setHours(0,0,0,0)) / 86400000)};
+        }).filter(Boolean).sort((a,b) => a._due - b._due).slice(0, 5);
+        if (!upcoming.length) return '';
+        return `<div class="card" style="margin-bottom:18px">
+          <div class="card-header" style="justify-content:space-between"><span class="card-title">Upcoming Deadlines</span><button class="btn btn-outline" style="padding:3px 10px;font-size:11px" onclick="switchSection('schedule')">Schedule</button></div>
+          <div class="card-body" style="padding:0">
+            ${upcoming.map(o => {
+              const urgent = o._days <= 3; const overdue = o._days < 0;
+              return `<div style="display:flex;align-items:center;gap:12px;padding:8px 18px;border-bottom:1px solid var(--border2)">
+                <div style="width:36px;height:36px;border-radius:8px;background:${overdue?'var(--danger)':urgent?'var(--accent)':'var(--surface2)'};color:${overdue||urgent?'#fff':'var(--text)'};display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;flex-shrink:0">${Math.abs(o._days)}</div>
+                <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;color:var(--text)">${o.project}</div><div style="font-size:11px;color:var(--muted)">${o.client} · ${overdue?'overdue':'day'+(o._days!==1?'s':'')+' left'}</div></div>
+                <span class="badge ${STATUS_BADGES[o.status]||'badge-gray'}" style="font-size:10px">${STATUS_LABELS[o.status]||o.status}</span>
+              </div>`;
+            }).join('')}
+          </div>
+        </div>`;
+      })()}
 
       <!-- Revenue chart + Pipeline -->
       <div style="display:grid;grid-template-columns:2fr 1fr;gap:18px;margin-bottom:0">
