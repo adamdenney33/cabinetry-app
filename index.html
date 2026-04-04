@@ -1197,10 +1197,6 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
 
           <!-- Projects panel (collapsible) -->
           <div id="cq-projects-panel" style="display:none;border-bottom:1px solid var(--border);background:var(--surface2);padding:8px 14px">
-            <div style="display:flex;gap:4px;margin-bottom:6px">
-              <input type="text" id="cq-project-save-name" placeholder="Project name..." style="flex:1;font-size:12px;padding:5px 8px">
-              <button class="btn btn-primary" onclick="cqSaveProject()" style="padding:5px 10px;font-size:11px;width:auto">Save</button>
-            </div>
             <div id="cq-projects-list"></div>
           </div>
 
@@ -1209,10 +1205,11 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
             <div id="cq-library-list" style="padding:8px 14px"></div>
           </div>
 
-          <!-- Project Name -->
+          <!-- Project Name + Save -->
           <div style="padding:10px 14px 6px">
             <label style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Project Name</label>
             <input type="text" id="cq-project-name" placeholder="e.g. Kitchen Renovation" style="font-size:14px;font-weight:600;width:100%;margin-top:4px" oninput="saveCQLines()">
+            <button class="btn btn-outline" onclick="cqSaveProject()" style="width:100%;margin-top:6px;font-size:12px;padding:7px 10px">Save Project</button>
           </div>
 
           <!-- Cabinets -->
@@ -6123,19 +6120,20 @@ function loadCQProjectLibrary() { try { cqProjectLibrary = JSON.parse(localStora
 function saveCQProjectLibrary() { localStorage.setItem('pc_cq_projects', JSON.stringify(cqProjectLibrary)); }
 
 function cqSaveProject() {
-  const nameEl = document.getElementById('cq-project-save-name');
-  const name = nameEl?.value?.trim() || document.getElementById('cq-project-name')?.value?.trim() || '';
-  if (!name) { _toast('Enter a project name', 'error'); return; }
+  const name = document.getElementById('cq-project-name')?.value?.trim() || '';
+  if (!name) { _toast('Enter a project name first', 'error'); return; }
   const project = {
     id: Date.now(), name,
     date: new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}),
     lines: JSON.parse(JSON.stringify(cqLines)),
-    projectName: document.getElementById('cq-project-name')?.value || name
+    projectName: name
   };
   cqProjectLibrary.unshift(project);
   saveCQProjectLibrary();
-  if (nameEl) nameEl.value = '';
   renderCQProjects();
+  // Open projects panel to show saved
+  const p = document.getElementById('cq-projects-panel');
+  if (p) p.style.display = '';
   _toast(`Project "${name}" saved`, 'success');
 }
 
@@ -6166,7 +6164,7 @@ function renderCQProjects() {
   if (!el) return;
   const cur = window.currency;
   if (!cqProjectLibrary.length) {
-    el.innerHTML = '<div style="font-size:11px;color:var(--muted);text-align:center;padding:8px 0">No saved projects</div>';
+    el.innerHTML = `<div style="color:var(--muted);font-size:12px;padding:6px 0">${_userId ? 'No saved projects yet. Enter a project name and click Save Project.' : '<div class="projects-signin">Sign in to save & load projects. <span onclick="dismissAuth();_showAuth()">Sign in</span></div>'}</div>`;
     return;
   }
   el.innerHTML = cqProjectLibrary.map((p, i) => {
