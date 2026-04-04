@@ -1235,6 +1235,27 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
   ════════════════════════════════════ -->
   <div class="section-panel" id="panel-stock">
     <div class="sidebar">
+      <!-- Stock Libraries toolbar -->
+      <div class="cl-settings-bar" style="border-bottom:2px solid var(--border)">
+        <div style="display:flex;gap:4px;align-items:center">
+          <button class="cl-csv-btn" onclick="toggleStockLibraries()" style="padding:5px 10px;display:flex;align-items:center;gap:5px">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
+            Libraries
+          </button>
+        </div>
+      </div>
+      <!-- Stock Libraries panel (collapsible) -->
+      <div id="stock-libraries-panel" style="display:none;border-bottom:1px solid var(--border);background:var(--surface2);padding:8px 14px">
+        <div style="display:flex;gap:4px;margin-bottom:6px">
+          <input type="text" id="stock-lib-name" placeholder="Library name..." style="flex:1;font-size:12px;padding:5px 8px">
+          <button class="btn btn-primary" onclick="saveStockLibrary()" style="padding:5px 10px;font-size:11px;width:auto">Save</button>
+        </div>
+        <div style="display:flex;gap:4px;margin-bottom:6px">
+          <button class="cl-csv-btn" onclick="importStockLibrary()" style="padding:4px 8px;font-size:11px">Import</button>
+          <button class="cl-csv-btn" onclick="exportStockLibrary()" style="padding:4px 8px;font-size:11px">Export</button>
+        </div>
+        <div id="stock-libraries-list"></div>
+      </div>
       <div class="sidebar-scroll">
         <div class="form-section">
           <div class="form-section-title">Add Material</div>
@@ -5153,6 +5174,96 @@ function useStockInCutList(id) {
   switchSection('cutlist');
 }
 
+// ── Stock Libraries ──
+let stockLibraries = [];
+function loadStockLibraries() { try { stockLibraries = JSON.parse(localStorage.getItem('pc_stock_libraries')||'[]'); } catch(e) { stockLibraries=[]; } }
+function saveStockLibraries() { localStorage.setItem('pc_stock_libraries', JSON.stringify(stockLibraries)); }
+
+function toggleStockLibraries() {
+  const p = document.getElementById('stock-libraries-panel');
+  if (p) p.style.display = p.style.display === 'none' ? '' : 'none';
+  renderStockLibraries();
+}
+
+function saveStockLibrary() {
+  const nameEl = document.getElementById('stock-lib-name');
+  const name = nameEl?.value?.trim();
+  if (!name) { _toast('Enter a library name', 'error'); return; }
+  const lib = {
+    id: Date.now(), name,
+    date: new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}),
+    items: JSON.parse(JSON.stringify(stockItems)),
+    categories: JSON.parse(localStorage.getItem('pc_stock_cats')||'{}'),
+    suppliers: JSON.parse(localStorage.getItem('pc_stock_suppliers')||'{}')
+  };
+  stockLibraries.unshift(lib);
+  saveStockLibraries();
+  if (nameEl) nameEl.value = '';
+  renderStockLibraries();
+  _toast(`Library "${name}" saved`, 'success');
+}
+
+function loadStockLibrary(idx) {
+  const lib = stockLibraries[idx];
+  if (!lib) return;
+  _confirm(`Load "${lib.name}"? This will replace current stock.`, () => {
+    // Clear current and load
+    stockItems.length = 0;
+    (lib.items||[]).forEach(item => stockItems.push(item));
+    if (lib.categories) localStorage.setItem('pc_stock_cats', JSON.stringify(lib.categories));
+    if (lib.suppliers) localStorage.setItem('pc_stock_suppliers', JSON.stringify(lib.suppliers));
+    renderStockMain();
+    toggleStockLibraries();
+    _toast(`Loaded "${lib.name}"`, 'success');
+  }, false);
+}
+
+function deleteStockLibrary(idx) {
+  _confirm('Delete this library?', () => {
+    stockLibraries.splice(idx, 1);
+    saveStockLibraries();
+    renderStockLibraries();
+  });
+}
+
+function renderStockLibraries() {
+  const el = document.getElementById('stock-libraries-list');
+  if (!el) return;
+  if (!stockLibraries.length) {
+    el.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:6px 0">No saved libraries. Enter a name and click Save.</div>';
+    return;
+  }
+  el.innerHTML = stockLibraries.map((lib, i) => `<div style="display:flex;align-items:center;gap:6px;padding:6px 8px;margin-bottom:3px;border-radius:6px;border:1px solid var(--border);background:var(--surface);cursor:pointer" onclick="loadStockLibrary(${i})">
+    <div style="flex:1;min-width:0">
+      <div style="font-size:12px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_escHtml(lib.name)}</div>
+      <div style="font-size:10px;color:var(--muted)">${lib.date} · ${(lib.items||[]).length} items</div>
+    </div>
+    <button style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:0 2px" onclick="event.stopPropagation();deleteStockLibrary(${i})">×</button>
+  </div>`).join('');
+}
+
+function exportStockLibrary() {
+  if (!stockLibraries.length) { _toast('No libraries to export', 'error'); return; }
+  const json = JSON.stringify(stockLibraries);
+  const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([json],{type:'application/json'})), download: 'stock-libraries.json' });
+  a.click(); URL.revokeObjectURL(a.href);
+  _toast('Libraries exported', 'success');
+}
+
+function importStockLibrary() {
+  const input = document.createElement('input');
+  input.type = 'file'; input.accept = '.json';
+  input.onchange = async e => {
+    const file = e.target.files[0]; if (!file) return;
+    try {
+      const data = JSON.parse(await file.text());
+      if (Array.isArray(data)) { data.forEach(lib => { lib.id = Date.now() + Math.random(); stockLibraries.push(lib); }); saveStockLibraries(); renderStockLibraries(); _toast(data.length + ' libraries imported', 'success'); }
+      else _toast('Invalid file', 'error');
+    } catch(e) { _toast('Could not read file', 'error'); }
+  };
+  input.click();
+}
+
 function exportStockCSV() {
   const u = window.units === 'metric' ? 'mm' : 'in';
   const rows = [['Name','SKU','Category',`W (${u})`,`H (${u})`,'Qty','Low Alert','Cost/Sheet','Total Value','Status']];
@@ -7686,6 +7797,7 @@ loadCQLines();
 loadCQSaved();
 loadCQLibrary();
 loadCQProjectLibrary();
+loadStockLibraries();
 
 
 // Init cabinet module
