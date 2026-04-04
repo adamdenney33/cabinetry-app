@@ -4161,10 +4161,10 @@ async function addOrder() {
   // Save notes and prodStart to localStorage
   const notesVal = document.getElementById('o-notes').value.trim();
   const startRaw = document.getElementById('o-start').value;
-  const prodStart = startRaw ? new Date(startRaw + 'T12:00:00').toLocaleDateString('en-GB', {day:'numeric', month:'short', year:'numeric'}) : '';
+  const prodStart = startRaw || '';
   if (data) {
     data.notes = notesVal; _onSet(data.id, notesVal);
-    if (prodStart) { data.prodStart = prodStart; const ps = JSON.parse(localStorage.getItem('pc_order_prodstarts')||'{}'); ps[data.id] = prodStart; localStorage.setItem('pc_order_prodstarts', JSON.stringify(ps)); }
+    if (prodStart) { data.prodStart = prodStart; const ps = JSON.parse(localStorage.getItem('pc_order_prodstarts')||'{}'); ps[String(data.id)] = prodStart; localStorage.setItem('pc_order_prodstarts', JSON.stringify(ps)); }
   }
   orders.unshift(data);
   _toast('Order created', 'success');
@@ -7169,7 +7169,6 @@ function renderSchedule() {
 
   const events = orders.filter(o=>o.status!=='complete').map((o,idx)=>{
     const due=parseDate(o.due), start=parseDate(o.prodStart);
-    console.log('Order:', o.project, 'prodStart raw:', JSON.stringify(o.prodStart), 'parsed:', start, 'due raw:', JSON.stringify(o.due), 'parsed:', due);
     if(!due&&!start)return null;
     return{id:o.id,project:o.project,client:o.client,start,due,color:palette[idx%palette.length]};
   }).filter(Boolean);
