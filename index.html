@@ -1355,8 +1355,8 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
               <th style="width:14px"></th>
               <th style="width:22px"></th>
               <th class="cl-col-label" id="th-label" style="min-width:80px">Label</th>
+              <th style="width:60px">L</th>
               <th style="width:60px">W</th>
-              <th style="width:60px">H</th>
               <th style="width:68px">Qty</th>
               <th style="width:48px" class="cl-col-grain" id="th-grain" title="Grain direction">Grain</th>
               <th style="width:52px"></th>
@@ -2725,11 +2725,15 @@ function clKeydown(event, tableId, rowIdx, colName) {
   const colIdx = cols.indexOf(colName);
   const arr = tableId === 'pieces' ? pieces : sheets;
   if (event.key === 'Enter') {
-    if (rowIdx + 1 < arr.length) {
-      focusClCell(tableId, rowIdx + 1, colName);
-    } else {
-      tableId === 'pieces' ? addPiece() : addSheet();
-      setTimeout(() => focusClCell(tableId, arr.length, cols[0]), 30);
+    // Enter = duplicate current row
+    const item = arr[rowIdx];
+    if (item && tableId === 'pieces') {
+      duplicatePiece(item.id);
+      setTimeout(() => focusClCell(tableId, rowIdx + 1, cols[0]), 30);
+    } else if (item) {
+      // For sheets, just move to next row or add new
+      if (rowIdx + 1 < arr.length) focusClCell(tableId, rowIdx + 1, colName);
+      else { addSheet(); setTimeout(() => focusClCell(tableId, arr.length, cols[0]), 30); }
     }
   } else { // Tab
     const next = event.shiftKey ? colIdx - 1 : colIdx + 1;
