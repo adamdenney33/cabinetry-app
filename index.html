@@ -1178,15 +1178,14 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
        CABINET SECTION (Cabinet Builder + Pricing)
   ════════════════════════════════════ -->
   <div class="section-panel" id="panel-cabinet">
-    <!-- Inner tabs for Builder vs My Rates -->
-    <div class="cq-inner-tabs" style="flex-shrink:0">
-      <div class="cq-inner-tab active" id="cab-tab-builder" onclick="switchCabTab('builder')">Cabinet Builder</div>
-      <div class="cq-inner-tab" id="cab-tab-rates" onclick="switchCabTab('rates')">My Rates</div>
-    </div>
-
-    <!-- BUILDER view -->
+    <!-- BUILDER view (default) -->
     <div id="cab-view-builder" style="flex:1;display:flex;overflow:hidden">
       <div class="sidebar" style="width:440px;min-width:380px">
+        <!-- Tabs inside sidebar -->
+        <div style="display:flex;border-bottom:2px solid var(--border);flex-shrink:0">
+          <div id="cab-tab-builder" onclick="switchCabTab('builder')" style="flex:1;padding:10px 16px;font-size:13px;font-weight:700;text-align:center;cursor:pointer;border-bottom:2px solid var(--accent);margin-bottom:-2px;color:var(--text)">Cabinet Builder</div>
+          <div id="cab-tab-rates" onclick="switchCabTab('rates')" style="flex:1;padding:10px 16px;font-size:13px;font-weight:500;text-align:center;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-2px">My Rates</div>
+        </div>
         <div class="sidebar-scroll" id="cq-sidebar">
           <!-- Cabinet Library -->
           <div style="padding:8px 14px 4px;display:flex;justify-content:space-between;align-items:center">
@@ -1203,18 +1202,15 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
 
           <!-- Active Cabinet Editor -->
           <div id="cq-cab-editor" style="padding:0 14px 14px"></div>
+
+          <!-- MY RATES (shown when rates tab active) -->
+          <div id="cab-view-rates" style="display:none;padding:14px">
+            <div id="cq-rates-content"></div>
+          </div>
         </div>
       </div>
       <div class="main-content">
         <div class="main-scroll" id="cq-results" style="padding:20px"></div>
-      </div>
-    </div>
-
-    <!-- MY RATES view -->
-    <div id="cab-view-rates" style="flex:1;display:none;overflow:auto;padding:20px">
-      <div style="max-width:900px;margin:0 auto">
-        <h2 style="font-size:18px;font-weight:800;margin:0 0 16px">My Rates</h2>
-        <div id="cq-rates-content"><!-- rendered by renderCQRates() --></div>
       </div>
     </div>
   </div>
@@ -5914,21 +5910,25 @@ function toggleCQSettings() {
 }
 
 function switchCabTab(tab) {
-  const builder = document.getElementById('cab-view-builder');
   const rates = document.getElementById('cab-view-rates');
   const tabBuilder = document.getElementById('cab-tab-builder');
   const tabRates = document.getElementById('cab-tab-rates');
+  // Get all builder content divs (everything in sidebar except the rates div and the tabs)
+  const sidebar = document.getElementById('cq-sidebar');
+  if (!sidebar) return;
+  const builderDivs = Array.from(sidebar.children).filter(el => el.id !== 'cab-view-rates');
+
   if (tab === 'rates') {
-    if (builder) builder.style.display = 'none';
+    builderDivs.forEach(el => el.style.display = 'none');
     if (rates) rates.style.display = '';
-    if (tabBuilder) tabBuilder.classList.remove('active');
-    if (tabRates) tabRates.classList.add('active');
+    if (tabBuilder) { tabBuilder.style.borderBottomColor = 'transparent'; tabBuilder.style.fontWeight = '500'; tabBuilder.style.color = 'var(--muted)'; }
+    if (tabRates) { tabRates.style.borderBottomColor = 'var(--accent)'; tabRates.style.fontWeight = '700'; tabRates.style.color = 'var(--text)'; }
     renderCQRates();
   } else {
-    if (builder) builder.style.display = 'flex';
+    builderDivs.forEach(el => el.style.display = '');
     if (rates) rates.style.display = 'none';
-    if (tabBuilder) tabBuilder.classList.add('active');
-    if (tabRates) tabRates.classList.remove('active');
+    if (tabBuilder) { tabBuilder.style.borderBottomColor = 'var(--accent)'; tabBuilder.style.fontWeight = '700'; tabBuilder.style.color = 'var(--text)'; }
+    if (tabRates) { tabRates.style.borderBottomColor = 'transparent'; tabRates.style.fontWeight = '500'; tabRates.style.color = 'var(--muted)'; }
   }
 }
 
@@ -7138,11 +7138,21 @@ function renderSchedule() {
   while (calStart.getDay() !== 1) calStart.setDate(calStart.getDate() - 1);
   const calEnd = new Date(today.getFullYear(), today.getMonth() + 5, 0);
 
-  // Events
+  // Events - parse dates robustly
+  function parseDate(str) {
+    if (!str || str === 'TBD') return null;
+    // Try ISO first
+    let d = new Date(str);
+    if (!isNaN(d)) { d.setHours(0,0,0,0); return d; }
+    // Try "4 Apr 2026" format
+    const parts = str.match(/(\d+)\s+(\w+)\s+(\d{4})/);
+    if (parts) { d = new Date(parts[2] + ' ' + parts[1] + ', ' + parts[3]); if (!isNaN(d)) { d.setHours(0,0,0,0); return d; } }
+    return null;
+  }
+
   const events = orders.filter(o => o.status !== 'complete').map((o, idx) => {
-    let due = null, start = null;
-    if (o.due && o.due !== 'TBD') { due = new Date(o.due); if (isNaN(due)) due = null; else due.setHours(0,0,0,0); }
-    if (o.prodStart) { start = new Date(o.prodStart); if (isNaN(start)) start = null; else start.setHours(0,0,0,0); }
+    const due = parseDate(o.due);
+    const start = parseDate(o.prodStart);
     if (!due && !start) return null;
     return { id:o.id, project:o.project, client:o.client, status:o.status, start, due, color:palette[idx % palette.length] };
   }).filter(Boolean);
