@@ -2231,7 +2231,7 @@ function renderStockMain() {
   const allCatPills = ['All', ...usedCats, ...(stockItems.some(i => !_scGet(i.id)) ? ['Uncategorised'] : [])];
 
   el.innerHTML = `<div>
-    <div style="display:flex;gap:12px;margin-bottom:20px">
+    <div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:nowrap">
       <div class="stat-card accent" style="flex:1"><div class="stat-label">Materials</div><div class="stat-value">${stockItems.length}</div><div class="stat-sub">product types</div></div>
       <div class="stat-card success" style="flex:1"><div class="stat-label">Sheets</div><div class="stat-value">${totalSheets}</div><div class="stat-sub">in stock</div></div>
       <div class="stat-card ${lowItems ? 'danger' : 'success'}" style="flex:1"><div class="stat-label">Low Stock</div><div class="stat-value">${lowItems}</div><div class="stat-sub">${lowItems ? 'need reorder' : 'all OK'}</div></div>
@@ -3167,6 +3167,70 @@ function _buildQuotePDF(q) {
   setTimeout(() => URL.revokeObjectURL(url), 60000);
 }
 
+
+function _buildStockPDF() {
+  if (!window.jspdf) { _toast('PDF library not loaded yet', 'error'); return; }
+  const { jsPDF } = window.jspdf;
+  const biz = getBizInfo();
+  const cur = window.currency;
+  const u = window.units === 'metric' ? 'mm' : 'in';
+  const dateStr = new Date().toLocaleDateString('en-GB', { day:'numeric', month:'long', year:'numeric' });
+  const totalValue = stockItems.reduce((s,i) => s+i.qty*i.cost, 0);
+
+  const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const PW = 210, PH = 297, M = 14;
+  const W = PW - 2*M;
+  let y = M;
+
+  // Header
+  pdf.setFontSize(14); pdf.setFont('helvetica','bold'); pdf.setTextColor(17);
+  pdf.text(biz.name || 'ProCabinet', M, y + 6);
+  pdf.setFontSize(18); pdf.setFont('helvetica','normal'); pdf.setTextColor(50);
+  pdf.text('STOCK INVENTORY', PW - M, y + 7, { align:'right' });
+  pdf.setFontSize(8); pdf.setTextColor(140);
+  pdf.text(dateStr + '  ·  ' + stockItems.length + ' items  ·  ' + cur + Math.round(totalValue), PW - M, y + 12, { align:'right' });
+  y += 18;
+  pdf.setDrawColor(17); pdf.setLineWidth(0.5); pdf.line(M, y, PW-M, y);
+  y += 6;
+
+  // Table header
+  const cols = [M, M+60, M+90, M+110, M+130, M+155];
+  pdf.setFontSize(7); pdf.setFont('helvetica','bold'); pdf.setTextColor(140);
+  ['Material','SKU','Size','Qty','Alert',cur+' Value'].forEach((h,i) => pdf.text(h, cols[i], y));
+  y += 4;
+  pdf.setDrawColor(200); pdf.setLineWidth(0.2); pdf.line(M, y, PW-M, y);
+  y += 5;
+
+  // Rows
+  stockItems.forEach(item => {
+    if (y > PH - 20) { pdf.addPage(); y = M + 10; }
+    const isLow = item.qty <= item.low;
+    pdf.setFontSize(9); pdf.setFont('helvetica', isLow?'bold':'normal');
+    pdf.setTextColor(isLow ? 192 : 40, isLow ? 50 : 40, isLow ? 50 : 40);
+    pdf.text(item.name.substring(0,25), cols[0], y);
+    pdf.setTextColor(120); pdf.setFont('helvetica','normal');
+    pdf.text((item.sku||'').substring(0,12), cols[1], y);
+    pdf.text(item.w+'×'+item.h+u, cols[2], y);
+    pdf.setTextColor(isLow?192:40, isLow?50:40, isLow?50:40);
+    pdf.setFont('helvetica', isLow?'bold':'normal');
+    pdf.text(String(item.qty), cols[3], y);
+    pdf.setTextColor(120); pdf.setFont('helvetica','normal');
+    pdf.text(String(item.low), cols[4], y);
+    pdf.text(cur + (item.qty*item.cost).toFixed(0), cols[5], y);
+    y += 5;
+  });
+
+  // Footer
+  pdf.setFontSize(6.5); pdf.setTextColor(190);
+  pdf.text((biz.name || 'ProCabinet') + ' — ProCabinet.App', M, PH - M);
+  pdf.text(dateStr, PW - M, PH - M, { align:'right' });
+
+  const blob = pdf.output('blob');
+  const url = URL.createObjectURL(blob);
+  const a = Object.assign(document.createElement('a'), { href:url, target:'_blank', rel:'noopener' });
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+}
 
 function _buildWorkOrderPDF(o) {
   if (!window.jspdf) { _toast('PDF library not loaded yet', 'error'); return; }
@@ -4972,6 +5036,7 @@ function importStockCSV() {
 }
 
 function printStockList(mode='print') {
+  if (mode === 'pdf') { _buildStockPDF(); return; }
   const cur = window.currency;
   const u = window.units === 'metric' ? 'mm' : 'in';
   const biz = getBizInfo();
@@ -5820,6 +5885,8 @@ function loadCQSettings() {
     {name:'None',price:0},{name:'Oil (Osmo/Rubio)',price:12},{name:'Lacquer',price:18},{name:'Paint',price:22},{name:'Stain + Oil',price:15},{name:'Wax',price:8},{name:'2-Pack Spray',price:35}
   ];
   if (!cqSettings.labourTimes) cqSettings.labourTimes = {carcass:1.5,door:0.4,drawer:0.6,shelf:0.25,finishPerM2:0.5};
+  // Persist defaults back so they stick
+  localStorage.setItem('pc_cq_settings', JSON.stringify(cqSettings));
 }
 function saveCQSettings() {
   const g = id => parseFloat(document.getElementById(id)?.value);
