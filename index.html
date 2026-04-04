@@ -1495,6 +1495,27 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
   ════════════════════════════════════ -->
   <div class="section-panel" id="panel-quote">
     <div class="sidebar">
+      <!-- Toolbar -->
+      <div class="cl-settings-bar" style="border-bottom:2px solid var(--border)">
+        <div style="display:flex;gap:4px;align-items:center">
+          <button class="cl-csv-btn" onclick="toggleQuoteClients()" style="padding:5px 10px;display:flex;align-items:center;gap:5px">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+            Clients
+          </button>
+          <button class="cl-csv-btn" onclick="importQuotesCSV()" style="padding:5px 10px;display:flex;align-items:center;gap:5px">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            Import
+          </button>
+          <button class="cl-csv-btn" onclick="exportQuotesCSV()" style="padding:5px 10px;display:flex;align-items:center;gap:5px">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Export
+          </button>
+        </div>
+      </div>
+      <!-- Clients panel -->
+      <div id="quote-clients-panel" style="display:none;border-bottom:1px solid var(--border);background:var(--surface2);padding:8px 14px">
+        <div id="quote-clients-list"></div>
+      </div>
       <div class="sidebar-scroll">
         <div class="form-section">
           <div class="form-section-title">New Quote</div>
@@ -1557,6 +1578,27 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
   ════════════════════════════════════ -->
   <div class="section-panel" id="panel-orders">
     <div class="sidebar">
+      <!-- Toolbar -->
+      <div class="cl-settings-bar" style="border-bottom:2px solid var(--border)">
+        <div style="display:flex;gap:4px;align-items:center">
+          <button class="cl-csv-btn" onclick="toggleOrderClients()" style="padding:5px 10px;display:flex;align-items:center;gap:5px">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+            Clients
+          </button>
+          <button class="cl-csv-btn" onclick="importOrdersCSV()" style="padding:5px 10px;display:flex;align-items:center;gap:5px">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            Import
+          </button>
+          <button class="cl-csv-btn" onclick="exportOrdersCSV()" style="padding:5px 10px;display:flex;align-items:center;gap:5px">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Export
+          </button>
+        </div>
+      </div>
+      <!-- Clients panel -->
+      <div id="order-clients-panel" style="display:none;border-bottom:1px solid var(--border);background:var(--surface2);padding:8px 14px">
+        <div id="order-clients-list"></div>
+      </div>
       <div class="sidebar-scroll">
         <div class="form-section">
           <div class="form-section-title">New Order</div>
@@ -4983,6 +5025,102 @@ async function updateOrderField(id, field, val) {
 }
 
 function setOrderFilter(f) { window._orderFilter = f; renderOrdersMain(); }
+
+// ── Quote Clients Panel & Import/Export ──
+function toggleQuoteClients() {
+  const p = document.getElementById('quote-clients-panel');
+  if (p) p.style.display = p.style.display === 'none' ? '' : 'none';
+  renderQuoteClients();
+}
+function renderQuoteClients() {
+  const el = document.getElementById('quote-clients-list');
+  if (!el) return;
+  const clients = [...new Set(quotes.map(q => q.client).filter(Boolean))].sort();
+  if (!clients.length) { el.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:6px 0">No clients yet. Create a quote to see clients here.</div>'; return; }
+  el.innerHTML = clients.map(c => {
+    const count = quotes.filter(q => q.client === c).length;
+    return `<div style="display:flex;align-items:center;gap:8px;padding:5px 8px;margin-bottom:3px;border-radius:6px;border:1px solid var(--border);background:var(--surface);cursor:pointer" onclick="window._quoteSearch='${_escHtml(c)}';document.getElementById('quote-clients-panel').style.display='none';renderQuoteMain()">
+      <div style="flex:1;font-size:12px;font-weight:600;color:var(--text)">${_escHtml(c)}</div>
+      <div style="font-size:10px;color:var(--muted)">${count} quote${count!==1?'s':''}</div>
+    </div>`;
+  }).join('');
+}
+function exportQuotesCSV() {
+  if (!quotes.length) { _toast('No quotes to export', 'error'); return; }
+  const cur = window.currency;
+  const rows = [['Client','Project','Materials','Labour','Markup %','Tax %','Status','Date','Notes']];
+  quotes.forEach(q => rows.push([q.client,q.project,q.materials,q.labour,q.markup,q.tax,q.status,q.date,q.notes||'']));
+  const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([csv],{type:'text/csv'})), download: `quotes-${new Date().toISOString().slice(0,10)}.csv` });
+  a.click(); URL.revokeObjectURL(a.href);
+  _toast('Quotes exported', 'success');
+}
+function importQuotesCSV() {
+  const input = document.createElement('input');
+  input.type = 'file'; input.accept = '.csv';
+  input.onchange = async e => {
+    const file = e.target.files[0]; if (!file) return;
+    const text = await file.text();
+    const rows = text.split(/\r?\n/).map(r => r.split(',').map(c => c.replace(/^"|"$/g,'').trim()));
+    if (rows.length < 2) { _toast('No data rows', 'error'); return; }
+    let imported = 0;
+    for (let i = 1; i < rows.length; i++) {
+      const r = rows[i]; if (r.length < 4 || !r[0]) continue;
+      const row = { user_id: _userId, client: r[0], project: r[1]||'', materials: parseFloat(r[2])||0, labour: parseFloat(r[3])||0, markup: parseFloat(r[4])||20, tax: parseFloat(r[5])||13, status: r[6]||'draft', date: r[7]||new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short'}), notes: r[8]||'' };
+      if (_userId) { const{data}=await _db('quotes').insert(row).select().single(); if(data){quotes.unshift(data);imported++;} }
+    }
+    _toast(imported+' quotes imported','success'); renderQuoteMain();
+  };
+  input.click();
+}
+
+// ── Order Clients Panel & Import/Export ──
+function toggleOrderClients() {
+  const p = document.getElementById('order-clients-panel');
+  if (p) p.style.display = p.style.display === 'none' ? '' : 'none';
+  renderOrderClients();
+}
+function renderOrderClients() {
+  const el = document.getElementById('order-clients-list');
+  if (!el) return;
+  const clients = [...new Set(orders.map(o => o.client).filter(Boolean))].sort();
+  if (!clients.length) { el.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:6px 0">No clients yet. Create an order to see clients here.</div>'; return; }
+  el.innerHTML = clients.map(c => {
+    const count = orders.filter(o => o.client === c).length;
+    return `<div style="display:flex;align-items:center;gap:8px;padding:5px 8px;margin-bottom:3px;border-radius:6px;border:1px solid var(--border);background:var(--surface);cursor:pointer" onclick="window._orderSearch='${_escHtml(c)}';document.getElementById('order-clients-panel').style.display='none';renderOrdersMain()">
+      <div style="flex:1;font-size:12px;font-weight:600;color:var(--text)">${_escHtml(c)}</div>
+      <div style="font-size:10px;color:var(--muted)">${count} order${count!==1?'s':''}</div>
+    </div>`;
+  }).join('');
+}
+function exportOrdersCSV() {
+  if (!orders.length) { _toast('No orders to export', 'error'); return; }
+  const rows = [['Client','Project','Value','Status','Due','Notes']];
+  orders.forEach(o => rows.push([o.client,o.project,o.value,o.status,o.due||'TBD',o.notes||'']));
+  const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([csv],{type:'text/csv'})), download: `orders-${new Date().toISOString().slice(0,10)}.csv` });
+  a.click(); URL.revokeObjectURL(a.href);
+  _toast('Orders exported', 'success');
+}
+function importOrdersCSV() {
+  const input = document.createElement('input');
+  input.type = 'file'; input.accept = '.csv';
+  input.onchange = async e => {
+    const file = e.target.files[0]; if (!file) return;
+    const text = await file.text();
+    const rows = text.split(/\r?\n/).map(r => r.split(',').map(c => c.replace(/^"|"$/g,'').trim()));
+    if (rows.length < 2) { _toast('No data rows', 'error'); return; }
+    let imported = 0;
+    for (let i = 1; i < rows.length; i++) {
+      const r = rows[i]; if (r.length < 2 || !r[0]) continue;
+      const row = { user_id: _userId, client: r[0], project: r[1]||'', value: parseFloat(r[2])||0, status: r[3]||'quote', due: r[4]||'TBD' };
+      if (_userId) { const{data}=await _db('orders').insert(row).select().single(); if(data){data.notes=r[5]||'';_onSet(data.id,data.notes);orders.unshift(data);imported++;} }
+    }
+    _toast(imported+' orders imported','success'); renderOrdersMain();
+    document.getElementById('orders-badge').textContent = orders.filter(o=>o.status!=='complete').length;
+  };
+  input.click();
+}
 
 async function setOrderStatus(id, status) {
   if (!_requireAuth()) return;
