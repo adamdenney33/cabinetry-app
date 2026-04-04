@@ -1169,36 +1169,18 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
           <div id="cab-tab-rates" onclick="switchCabTab('rates')" style="flex:1;padding:10px 16px;font-size:13px;font-weight:500;text-align:center;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-2px">My Rates</div>
         </div>
         <div class="sidebar-scroll" id="cq-sidebar">
-          <!-- Toolbar: Projects + Cabinet Library -->
-          <div class="cl-settings-bar" style="border-bottom:2px solid var(--border)">
-            <div style="display:flex;gap:4px;align-items:center">
-              <button class="cl-csv-btn" onclick="toggleCabPanel('projects')" style="padding:5px 10px;display:flex;align-items:center;gap:5px">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
-                Projects
-              </button>
-              <button class="cl-csv-btn" onclick="toggleCabPanel('library')" style="padding:5px 10px;display:flex;align-items:center;gap:5px">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="12" y1="3" x2="12" y2="12"/></svg>
-                Cabinets
-              </button>
-            </div>
-          </div>
+          <!-- Library: Projects (shared) -->
+          <div style="padding:8px 14px 4px"><div id="lib-cab-projects"></div></div>
+          <!-- Library: Cabinets -->
+          <div style="padding:4px 14px 4px"><div id="lib-cab-cabinets"></div></div>
 
-          <!-- Projects panel (collapsible) -->
+          <!-- Projects panel (collapsible, rendered by library click) -->
           <div id="cq-projects-panel" style="display:none;border-bottom:1px solid var(--border);background:var(--surface2);padding:8px 14px">
-            <div style="display:flex;gap:4px;margin-bottom:6px">
-              <button class="cl-csv-btn" onclick="cqImportProjects()" style="padding:4px 8px;font-size:11px">Import</button>
-              <button class="cl-csv-btn" onclick="cqExportProjects()" style="padding:4px 8px;font-size:11px">Export</button>
-            </div>
             <div id="cq-projects-list"></div>
           </div>
-
           <!-- Cabinet Library panel (collapsible) -->
           <div id="cq-library-panel" style="display:none;border-bottom:1px solid var(--border);background:var(--surface2)">
-            <div style="display:flex;gap:4px;padding:8px 14px 4px">
-              <button class="cl-csv-btn" onclick="cqImportLibrary()" style="padding:4px 8px;font-size:11px">Import</button>
-              <button class="cl-csv-btn" onclick="cqExportLibrary()" style="padding:4px 8px;font-size:11px">Export</button>
-            </div>
-            <div id="cq-library-list" style="padding:4px 14px 8px"></div>
+            <div id="cq-library-list" style="padding:8px 14px"></div>
           </div>
 
           <!-- Project Name + Save -->
@@ -1235,28 +1217,19 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
   ════════════════════════════════════ -->
   <div class="section-panel" id="panel-stock">
     <div class="sidebar">
-      <!-- Stock Libraries toolbar -->
-      <div class="cl-settings-bar" style="border-bottom:2px solid var(--border)">
-        <div style="display:flex;gap:4px;align-items:center">
-          <button class="cl-csv-btn" onclick="toggleStockLibraries()" style="padding:5px 10px;display:flex;align-items:center;gap:5px">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
-            Libraries
-          </button>
-        </div>
-      </div>
-      <!-- Stock Libraries panel (collapsible) -->
-      <div id="stock-libraries-panel" style="display:none;border-bottom:1px solid var(--border);background:var(--surface2);padding:8px 14px">
-        <div style="display:flex;gap:4px;margin-bottom:6px">
-          <input type="text" id="stock-lib-name" placeholder="Library name..." style="flex:1;font-size:12px;padding:5px 8px">
-          <button class="btn btn-primary" onclick="saveStockLibrary()" style="padding:5px 10px;font-size:11px;width:auto">Save</button>
-        </div>
-        <div style="display:flex;gap:4px;margin-bottom:6px">
-          <button class="cl-csv-btn" onclick="importStockLibrary()" style="padding:4px 8px;font-size:11px">Import</button>
-          <button class="cl-csv-btn" onclick="exportStockLibrary()" style="padding:4px 8px;font-size:11px">Export</button>
-        </div>
-        <div id="stock-libraries-list"></div>
-      </div>
       <div class="sidebar-scroll">
+        <!-- Library: Stock Libraries -->
+        <div style="padding:8px 14px 4px"><div id="lib-stock-libraries"></div></div>
+        <!-- Library: Stock Items -->
+        <div style="padding:4px 14px 6px"><div id="lib-stock-items"></div></div>
+        <!-- Stock Libraries panel (collapsible, rendered by library click) -->
+        <div id="stock-libraries-panel" style="display:none;border-bottom:1px solid var(--border);background:var(--surface2);padding:8px 14px">
+          <div style="display:flex;gap:4px;margin-bottom:6px">
+            <input type="text" id="stock-lib-name" placeholder="Library name..." style="flex:1;font-size:12px;padding:5px 8px">
+            <button class="btn btn-primary" onclick="saveStockLibrary()" style="padding:5px 10px;font-size:11px;width:auto">Save</button>
+          </div>
+          <div id="stock-libraries-list"></div>
+        </div>
         <div class="form-section">
           <div class="form-section-title">Add Material</div>
           <div class="form-group" style="margin-bottom:8px">
@@ -1332,41 +1305,31 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
 
     <!-- LEFT: Inputs -->
     <div class="cl-left">
-      <!-- Settings bar fixed above scroll -->
-      <div class="cl-settings-bar">
-          <div style="display:flex;gap:4px;align-items:center">
-            <button class="cl-csv-btn" onclick="toggleProjectsPanel()" title="My Projects" id="projects-toggle-btn" style="padding:5px 10px;display:flex;align-items:center;gap:5px">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
-              Projects
-            </button>
-            <button class="cl-csv-btn" onclick="triggerImportCSV('pieces')" title="Import parts CSV" style="padding:5px 10px;display:flex;align-items:center;gap:5px">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-              Import
-            </button>
-            <button class="cl-csv-btn" onclick="exportCSV('pieces')" title="Export parts CSV" style="padding:5px 10px;display:flex;align-items:center;gap:5px">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-              Export
-            </button>
-          </div>
-        </div>
+      <!-- Libraries -->
+      <div style="padding:8px 14px 0">
+        <div id="lib-cl-projects"></div>
+      </div>
+      <div style="padding:4px 14px 0">
+        <div id="lib-cl-cutlists"></div>
+      </div>
 
+      <!-- Projects panel (existing, toggle via library) -->
       <div class="cl-scroll">
-        <!-- Projects panel (inside scroll so it doesn't push toolbar) -->
-        <div class="projects-panel" id="projects-panel">
-          <div class="projects-panel-inner">
-            <div class="projects-header">
-              <span class="projects-title">Saved Projects</span>
-              <button class="btn btn-outline" onclick="showSaveProjectForm()" id="save-proj-btn" style="font-size:11px;padding:3px 10px">+ Save</button>
-            </div>
-            <div id="save-proj-form" style="display:none;margin-bottom:8px">
-              <div style="display:flex;gap:4px;align-items:center">
-                <input id="save-proj-name" class="order-search-input" placeholder="Project name…" style="flex:1;font-size:12px" onkeydown="if(event.key==='Enter')confirmSaveProject();if(event.key==='Escape')hideSaveProjectForm()">
-                <button class="btn btn-primary" onclick="confirmSaveProject()" style="width:auto;padding:4px 10px;font-size:11px">Save</button>
-                <button class="btn btn-outline" onclick="hideSaveProjectForm()" style="width:auto;padding:4px 8px;font-size:11px">✕</button>
-              </div>
-            </div>
-            <div id="projects-list"><div class="projects-signin">Sign in to save and load projects. <span onclick="dismissAuth();_showAuth()">Sign in</span></div></div>
+      <div class="projects-panel" id="projects-panel">
+        <div class="projects-panel-inner">
+          <div class="projects-header">
+            <span class="projects-title">Saved Projects</span>
+            <button class="btn btn-outline" onclick="showSaveProjectForm()" id="save-proj-btn" style="font-size:11px;padding:3px 10px">+ Save</button>
           </div>
+          <div id="save-proj-form" style="display:none;margin-bottom:8px">
+            <div style="display:flex;gap:4px;align-items:center">
+              <input id="save-proj-name" class="order-search-input" placeholder="Project name…" style="flex:1;font-size:12px" onkeydown="if(event.key==='Enter')confirmSaveProject();if(event.key==='Escape')hideSaveProjectForm()">
+              <button class="btn btn-primary" onclick="confirmSaveProject()" style="width:auto;padding:4px 10px;font-size:11px">Save</button>
+              <button class="btn btn-outline" onclick="hideSaveProjectForm()" style="width:auto;padding:4px 8px;font-size:11px">✕</button>
+            </div>
+          </div>
+          <div id="projects-list"><div class="projects-signin">Sign in to save and load projects. <span onclick="dismissAuth();_showAuth()">Sign in</span></div></div>
+        </div>
         </div>
 
         <!-- Cut Parts table -->
@@ -2049,10 +2012,11 @@ function switchSection(name) {
   document.querySelectorAll('.section-panel').forEach(p => {
     p.classList.toggle('active', p.id === 'panel-' + name);
   });
-  if (name === 'cabinet') { try { renderCQPanel(); } catch(e) {} }
-  if (name === 'stock') renderStockMain();
+  if (name === 'cabinet') { try { renderCQPanel(); renderCabLibraries(); } catch(e) {} }
+  if (name === 'stock') { renderStockMain(); try{renderStockLibrariesUI();}catch(e){} }
   if (name === 'quote') { renderQuoteMain(); try{renderQuoteLibraries();}catch(e){} }
   if (name === 'orders') { renderOrdersMain(); try{renderOrderLibraries();}catch(e){} }
+  if (name === 'cutlist') { try{renderCLLibraries();}catch(e){} }
   if (name === 'schedule') renderSchedule();
   if (name === 'dashboard') { renderDashboard(); setTimeout(drawRevenueChart, 0); }
 }
@@ -7467,6 +7431,47 @@ function _renderLibUI(containerId, libName, items, opts) {
 }
 
 function _escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+
+// ── Tab Library Renderers ──
+function renderCLLibraries() {
+  // Cut List: Projects (shared) + Cut Lists
+  _renderLibUI('lib-cl-projects', 'Projects', [], {
+    icon:'folder', renderFn:'renderCLLibraries', importFn:'triggerImportCSV.bind(null,"pieces")', exportFn:'exportCSV.bind(null,"pieces")',
+    loadFn:'toggleProjectsPanel', emptyMsg:'Click Projects to manage saved projects.'
+  });
+  // For cut lists, just show the import/export for cut list data
+  _renderLibUI('lib-cl-cutlists', 'Cut Lists', [], {
+    icon:'doc', renderFn:'renderCLLibraries', importFn:'triggerImportCSV.bind(null,"pieces")', exportFn:'exportCSV.bind(null,"pieces")',
+    loadFn:'_noOp', emptyMsg:'Use Import/Export to manage cut list data.'
+  });
+}
+
+function renderCabLibraries() {
+  // Cabinet: Projects (shared) + Cabinets
+  const projItems = cqProjectLibrary.map(p => ({_label:p.name, _sub:p.date, _count:(p.lines||[]).length+' cab'}));
+  _renderLibUI('lib-cab-projects', 'Projects', projItems, {
+    icon:'folder', renderFn:'renderCabLibraries', importFn:'cqImportProjects', exportFn:'cqExportProjects',
+    loadFn:'cqLoadProject', deleteFn:'cqDeleteProject', emptyMsg:'No saved projects.'
+  });
+  const cabItems = cqLibrary.map(c => ({_label:c._libName||c.name||'Cabinet', _count:c.w+'×'+c.h}));
+  _renderLibUI('lib-cab-cabinets', 'Cabinets', cabItems, {
+    icon:'cabinet', renderFn:'renderCabLibraries', importFn:'cqImportLibrary', exportFn:'cqExportLibrary',
+    loadFn:'cqLoadFromLibrary', deleteFn:'cqRemoveFromLibrary', emptyMsg:'No saved cabinets.'
+  });
+}
+
+function renderStockLibrariesUI() {
+  // Stock: Libraries + Items
+  const libItems = stockLibraries.map(lib => ({_label:lib.name, _sub:lib.date, _count:(lib.items||[]).length+' items'}));
+  _renderLibUI('lib-stock-libraries', 'Stock Libraries', libItems, {
+    icon:'folder', renderFn:'renderStockLibrariesUI', importFn:'importStockLibrary', exportFn:'exportStockLibrary',
+    loadFn:'loadStockLibrary', deleteFn:'deleteStockLibrary', emptyMsg:'No saved libraries.'
+  });
+  _renderLibUI('lib-stock-items', 'Stock Items', [], {
+    icon:'box', renderFn:'renderStockLibrariesUI', importFn:'importStockCSV', exportFn:'exportStockCSV',
+    loadFn:'_noOp', emptyMsg:'Use Import/Export to manage stock data.'
+  });
+}
 
 function printCQQuote(mode) {
   if (!cqLines.length) { _toast('Add cabinet lines first.', 'error'); return; }
