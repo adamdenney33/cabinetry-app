@@ -242,25 +242,7 @@ header {
   color: #fff;
   padding: 1px 6px; border-radius: 10px;
 }
-/* Chrome wing pseudo-elements */
-.nav-tab.active::before {
-  content: '';
-  position: absolute;
-  bottom: 0; left: -8px;
-  width: 8px; height: 8px;
-  background: var(--tabbar);
-  border-radius: 0 0 8px 0;
-  box-shadow: 4px 4px 0 4px var(--surface);
-}
-.nav-tab.active::after {
-  content: '';
-  position: absolute;
-  bottom: 0; right: -8px;
-  width: 8px; height: 8px;
-  background: var(--tabbar);
-  border-radius: 0 0 0 8px;
-  box-shadow: -4px 4px 0 4px var(--surface);
-}
+/* Chrome wing pseudo-elements — disabled for cleaner look */
 
 /* ── MAIN BODY ── */
 .app-body { flex: 1; overflow: hidden; display: flex; justify-content: center; background: var(--bg); }
@@ -6487,24 +6469,18 @@ function renderCQEditor() {
             <div class="form-group" style="${FM}"><label style="${LB}">Depth (mm)</label><input type="number" value="${line.d}" style="${IS}" oninput="cqUpdateField('d',this.value)"></div>
             <div class="form-group" style="flex:0 0 auto;${FM}"><label style="${LB}">Qty</label>${stepper('qty', line.qty, 1)}</div>
           </div>
-          <div class="form-row" style="margin-bottom:8px">
-            <div class="form-group" style="${FM}"><label style="${LB}">Carcass Material</label><select style="${SL}" onchange="cqUpdateField('material',this.value)">${matOpts('material', line.material)}</select></div>
-            <div class="form-group" style="${FM}"><label style="${LB}">Back Panel</label><select style="${SL}" onchange="cqUpdateField('backMat',this.value)">${matOpts('backMat', line.backMat)}</select></div>
+          <div style="margin-bottom:8px"><label style="${LB}">Carcass Material</label><select style="${SL};width:100%" onchange="cqUpdateField('material',this.value)">${matOpts('material', line.material)}</select></div>
+          <div style="margin-bottom:8px"><label style="${LB}">Back Panel</label><select style="${SL};width:100%" onchange="cqUpdateField('backMat',this.value)">${matOpts('backMat', line.backMat)}</select></div>
+          <div style="margin-bottom:8px"><label style="${LB}">Finish</label><select style="${SL};width:100%" onchange="cqUpdateField('finish',this.value)">${finishOpts}</select></div>
+          <div style="margin-bottom:8px"><label style="${LB}">Construction</label>
+            <select style="${SL};width:100%" onchange="cqUpdateField('construction',this.value)">
+              ${(cqSettings.constructions||[]).map(c=>`<option value="${c.name}" ${c.name===line.construction?'selected':''}>${c.name}${c.price?' (+'+cur+c.price+'/m²)':''}</option>`).join('')}
+            </select>
           </div>
-          <div class="form-row" style="margin-bottom:8px">
-            <div class="form-group" style="${FM}"><label style="${LB}">Finish</label><select style="${SL}" onchange="cqUpdateField('finish',this.value)">${finishOpts}</select></div>
-            <div class="form-group" style="${FM}"><label style="${LB}">Construction</label>
-              <select style="${SL}" onchange="cqUpdateField('construction',this.value)">
-                ${(cqSettings.constructions||[]).map(c=>`<option value="${c.name}" ${c.name===line.construction?'selected':''}>${c.name}${c.price?' (+'+cur+c.price+')':''}</option>`).join('')}
-              </select>
-            </div>
-          </div>
-          <div class="form-row" style="margin-bottom:0">
-            <div class="form-group" style="${FM}"><label style="${LB}">Base</label>
-              <select style="${SL}" onchange="cqUpdateField('baseType',this.value)">
-                ${(cqSettings.baseTypes||[]).map(b=>`<option value="${b.name}" ${b.name===line.baseType?'selected':''}>${b.name}${b.price?' (+'+cur+b.price+')':''}</option>`).join('')}
-              </select>
-            </div>
+          <div style="margin-bottom:0"><label style="${LB}">Base</label>
+            <select style="${SL};width:100%" onchange="cqUpdateField('baseType',this.value)">
+              ${(cqSettings.baseTypes||[]).map(b=>`<option value="${b.name}" ${b.name===line.baseType?'selected':''}>${b.name}${b.price?' (+'+cur+b.price+')':''}</option>`).join('')}
+            </select>
           </div>
         </div>
       </div>
@@ -6518,10 +6494,8 @@ function renderCQEditor() {
           <span style="${SS}">${line.doors>0?line.doors+' door'+(line.doors!==1?'s':''):'None'}</span>
         </div>
         <div ${SC('doors')}>
-          <div class="form-row" style="margin-bottom:8px;align-items:flex-end">
-            <div class="form-group" style="flex:0 0 auto;${FM}"><label style="${LB}">Count</label>${stepper('doors', line.doors, 0)}</div>
-            <div class="form-group" style="${FM}"><label style="${LB}">Door Material</label><select style="${SL}" onchange="cqUpdateField('doorMat',this.value)">${matOpts('doorMat', line.doorMat||line.material)}</select></div>
-          </div>
+          <div style="margin-bottom:8px"><label style="${LB}">Count</label>${stepper('doors', line.doors, 0)}</div>
+          <div style="margin-bottom:8px"><label style="${LB}">Door Material</label><select style="${SL};width:100%" onchange="cqUpdateField('doorMat',this.value)">${matOpts('doorMat', line.doorMat||line.material)}</select></div>
           ${line.doors>0?`<label style="font-size:11px;color:var(--muted)">% of front area</label><div class="cq-pct-row"><input type="range" class="cq-pct-slider" min="50" max="100" value="${line.doorPct||95}" oninput="this.nextElementSibling.textContent=this.value+'%'" onchange="cqUpdateField('doorPct',this.value)"><span class="cq-pct-val">${line.doorPct||95}%</span></div>`:''}
         </div>
       </div>
@@ -6535,11 +6509,9 @@ function renderCQEditor() {
           <span style="${SS}">${line.drawers>0?line.drawers+' drawer'+(line.drawers!==1?'s':''):'None'}</span>
         </div>
         <div ${SC('drawers')}>
-          <div class="form-row" style="margin-bottom:8px;align-items:flex-end">
-            <div class="form-group" style="flex:0 0 auto;${FM}"><label style="${LB}">Count</label>${stepper('drawers', line.drawers, 0)}</div>
-            <div class="form-group" style="${FM}"><label style="${LB}">Front Material</label><select style="${SL}" onchange="cqUpdateField('drawerFrontMat',this.value)">${matOpts('drawerFrontMat', line.drawerFrontMat||line.material)}</select></div>
-          </div>
-          ${line.drawers>0?`<div class="form-row" style="margin-bottom:8px"><div class="form-group" style="${FM}"><label style="${LB}">Inner Box Material</label><select style="${SL}" onchange="cqUpdateField('drawerInnerMat',this.value)">${matOpts('drawerInnerMat', line.drawerInnerMat||line.backMat)}</select></div></div>
+          <div style="margin-bottom:8px"><label style="${LB}">Count</label>${stepper('drawers', line.drawers, 0)}</div>
+          <div style="margin-bottom:8px"><label style="${LB}">Front Material</label><select style="${SL};width:100%" onchange="cqUpdateField('drawerFrontMat',this.value)">${matOpts('drawerFrontMat', line.drawerFrontMat||line.material)}</select></div>
+          ${line.drawers>0?`<div style="margin-bottom:8px"><label style="${LB}">Inner Box Material</label><select style="${SL};width:100%" onchange="cqUpdateField('drawerInnerMat',this.value)">${matOpts('drawerInnerMat', line.drawerInnerMat||line.backMat)}</select></div>
           <label style="font-size:11px;color:var(--muted)">% of front area</label><div class="cq-pct-row"><input type="range" class="cq-pct-slider" min="30" max="100" value="${line.drawerPct||85}" oninput="this.nextElementSibling.textContent=this.value+'%'" onchange="cqUpdateField('drawerPct',this.value)"><span class="cq-pct-val">${line.drawerPct||85}%</span></div>`:''}
         </div>
       </div>
