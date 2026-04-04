@@ -40,6 +40,7 @@
 html.dark {
   --bg:       #141414;
   --surface:  #1e1e1e;
+  color-scheme: dark;
   --surface2: #252525;
   --border:   #2e2e2e;
   --border2:  #282828;
@@ -505,6 +506,7 @@ textarea { resize: vertical; min-height: 70px; }
   transition: box-shadow 0.2s;
   cursor: default;
 }
+.stock-card { overflow: hidden; }
 .stock-card:hover { box-shadow: var(--shadow-md); }
 .stock-card-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 10px; }
 .stock-name { font-size: 14px; font-weight: 700; color: var(--text); }
@@ -573,7 +575,7 @@ canvas { display: block; }
 .qc-actions { display: flex; gap: 5px; flex-shrink: 0; align-items: flex-start; }
 .qc-breakdown { border-top: 1px solid var(--border2); padding: 12px 18px; background: var(--surface2); }
 .qc-footer { display: flex; gap: 6px; padding: 10px 18px; border-top: 1px solid var(--border2); flex-wrap: wrap; }
-.qc-footer .btn { width: auto; font-size: 11px; padding: 5px 10px; }
+.qc-footer .btn { width: auto; font-size: 12px; padding: 5px 10px; }
 .qb-row { display: flex; justify-content: space-between; font-size: 13px; color: var(--text2); padding: 3px 0; }
 .qb-row:last-child { padding-bottom: 0; }
 .qb-muted { color: var(--muted); font-size: 12px; }
@@ -850,7 +852,7 @@ html.dark .cl-table tbody tr:nth-child(even) td { background: rgba(255,255,255,0
 
 /* Section header CSV buttons */
 .cl-csv-btn {
-  padding: 5px 10px; font-size: 12px; font-weight: 600; border: 1px solid var(--border);
+  padding: 5px 10px; font-size: 13px; font-weight: 600; border: 1px solid var(--border);
   background: none; color: var(--muted); border-radius: 5px; cursor: pointer;
   font-family: inherit; transition: all 0.15s;
 }
@@ -4241,7 +4243,7 @@ function renderOrdersMain() {
       <div class="oc-header">
         <div class="oc-info">
           <div class="oc-title" contenteditable="true" onblur="updateOrderField(${o.id},'project',this.innerText.trim())" title="Click to edit project">${o.project}</div>
-          <div class="oc-meta">${(() => { const rel = _relativeDate(o.due); const relTag = rel ? ` <span style="font-size:10px;font-weight:700;color:${rel.color};margin-left:4px">${rel.label}</span>` : ''; return `<span contenteditable="true" onblur="updateOrderField(${o.id},'client',this.innerText.trim())" title="Click to edit client">${o.client}</span> &nbsp;·&nbsp; Due: <input type="date" style="font-size:12px;padding:2px 4px;border:1px solid transparent;border-radius:4px;background:transparent;color:var(--text);font-family:inherit;cursor:pointer" value="${(() => { try { const d = new Date(o.due); return !isNaN(d) ? d.toISOString().split('T')[0] : ''; } catch(e) { return ''; }})()}" onchange="updateOrderField(${o.id},'due',this.value ? new Date(this.value+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : 'TBD')" title="Click to set due date">${relTag}${isOverdue ? ' <span class="badge badge-red" style="font-size:9px;margin-left:4px">Overdue</span>' : ''}`; })()}</div>
+          <div class="oc-meta">${(() => { const rel = _relativeDate(o.due); const relTag = rel ? ` <span style="font-size:10px;font-weight:700;color:${rel.color};margin-left:4px">${rel.label}</span>` : ''; return `<span contenteditable="true" onblur="updateOrderField(${o.id},'client',this.innerText.trim())" title="Click to edit client">${o.client}</span> &nbsp;·&nbsp; Due: <input type="date" style="font-size:12px;padding:2px 4px;border:1px solid transparent;border-radius:4px;background:transparent;color:var(--text);font-family:inherit;cursor:pointer;color-scheme:var(--color-scheme,light)" value="${(() => { try { const d = new Date(o.due); return !isNaN(d) ? d.toISOString().split('T')[0] : ''; } catch(e) { return ''; }})()}" onchange="updateOrderField(${o.id},'due',this.value ? new Date(this.value+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : 'TBD')" title="Click to set due date">${relTag}${isOverdue ? ' <span class="badge badge-red" style="font-size:9px;margin-left:4px">Overdue</span>' : ''}`; })()}</div>
           <div class="oc-notes" contenteditable="true" onblur="updateOrderField(${o.id},'notes',this.innerText.trim())" title="Click to add notes" data-placeholder="Add production notes…">${o.notes || ''}</div>
         </div>
         <div class="oc-right">
@@ -4254,9 +4256,9 @@ function renderOrdersMain() {
         <select class="oc-status-select" onchange="setOrderStatus(${o.id},this.value)">
           ${pipelineSteps.map(s=>`<option value="${s}" ${o.status===s?'selected':''}>${STATUS_LABELS[s]}</option>`).join('')}
         </select>
-        ${o.status !== 'complete' ? `<button class="btn btn-success" onclick="advanceOrder(${o.id})" style="font-size:11px;padding:5px 12px;display:inline-flex;align-items:center;gap:4px">Next Stage ${ARROW_SVG}</button>` : '<span class="badge badge-green" style="align-self:center">Complete</span>'}
-        <button class="btn btn-outline" onclick="printWorkOrder(${o.id},'print')" style="font-size:11px;padding:5px 10px;width:auto;margin-left:auto" title="Print work order">⎙ Work Order</button>
-        <button class="btn btn-outline" onclick="printWorkOrder(${o.id},'pdf')" style="font-size:11px;padding:5px 10px;width:auto" title="Save work order as PDF">↓ PDF</button>
+        ${o.status !== 'complete' ? `<button class="btn btn-success" onclick="advanceOrder(${o.id})" style="font-size:12px;padding:6px 12px;display:inline-flex;align-items:center;gap:4px">Next Stage ${ARROW_SVG}</button>` : '<span class="badge badge-green" style="align-self:center">Complete</span>'}
+        <button class="btn btn-outline" onclick="printWorkOrder(${o.id},'print')" style="font-size:12px;padding:6px 12px;width:auto;margin-left:auto" title="Print work order">⎙ Work Order</button>
+        <button class="btn btn-outline" onclick="printWorkOrder(${o.id},'pdf')" style="font-size:12px;padding:6px 12px;width:auto" title="Save work order as PDF">↓ PDF</button>
       </div>
     </div>`;
   };
