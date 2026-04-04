@@ -1169,12 +1169,16 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
           <div id="cab-tab-rates" onclick="switchCabTab('rates')" style="flex:1;padding:10px 16px;font-size:13px;font-weight:500;text-align:center;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-2px">My Rates</div>
         </div>
         <div class="sidebar-scroll" id="cq-sidebar">
-          <!-- Cabinet Library bar (matches cutlist toolbar style) -->
+          <!-- Toolbar: Projects + Cabinet Library -->
           <div class="cl-settings-bar" style="border-bottom:2px solid var(--border)">
-            <div style="display:flex;gap:4px;align-items:center">
-              <button class="cl-csv-btn" onclick="toggleCabLibrary()" id="cab-library-toggle" style="padding:5px 10px;display:flex;align-items:center;gap:5px">
+            <div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap">
+              <button class="cl-csv-btn" onclick="toggleCabPanel('projects')" style="padding:5px 10px;display:flex;align-items:center;gap:5px">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
-                Library
+                Projects
+              </button>
+              <button class="cl-csv-btn" onclick="toggleCabPanel('library')" style="padding:5px 10px;display:flex;align-items:center;gap:5px">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="12" y1="3" x2="12" y2="12"/></svg>
+                Cabinets
               </button>
               <button class="cl-csv-btn" onclick="cqImportLibrary()" style="padding:5px 10px;display:flex;align-items:center;gap:5px">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
@@ -1191,9 +1195,24 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
             </div>
           </div>
 
-          <!-- Collapsible library panel -->
+          <!-- Projects panel (collapsible) -->
+          <div id="cq-projects-panel" style="display:none;border-bottom:1px solid var(--border);background:var(--surface2);padding:8px 14px">
+            <div style="display:flex;gap:4px;margin-bottom:6px">
+              <input type="text" id="cq-project-save-name" placeholder="Project name..." style="flex:1;font-size:12px;padding:5px 8px">
+              <button class="btn btn-primary" onclick="cqSaveProject()" style="padding:5px 10px;font-size:11px;width:auto">Save</button>
+            </div>
+            <div id="cq-projects-list"></div>
+          </div>
+
+          <!-- Cabinet Library panel (collapsible) -->
           <div id="cq-library-panel" style="display:none;border-bottom:1px solid var(--border);background:var(--surface2)">
             <div id="cq-library-list" style="padding:8px 14px"></div>
+          </div>
+
+          <!-- Project Name -->
+          <div style="padding:10px 14px 6px">
+            <label style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Project Name</label>
+            <input type="text" id="cq-project-name" placeholder="e.g. Kitchen Renovation" style="font-size:14px;font-weight:600;width:100%;margin-top:4px" oninput="saveCQLines()">
           </div>
 
           <!-- Cabinets in Quote -->
@@ -5942,8 +5961,14 @@ function saveCQSettings() {
 }
 function loadCQLines() {
   try { const s = localStorage.getItem('pc_cq_lines'); if (s) { cqLines = JSON.parse(s); cqNextId = Math.max(0, ...cqLines.map(l=>l.id)) + 1; } } catch(e) {}
+  // Restore project name
+  setTimeout(() => { const pn = document.getElementById('cq-project-name'); const saved = localStorage.getItem('pc_cq_project_name'); if (pn && saved) pn.value = saved; }, 100);
 }
-function saveCQLines() { localStorage.setItem('pc_cq_lines', JSON.stringify(cqLines)); }
+function saveCQLines() {
+  localStorage.setItem('pc_cq_lines', JSON.stringify(cqLines));
+  const pn = document.getElementById('cq-project-name');
+  if (pn) localStorage.setItem('pc_cq_project_name', pn.value);
+}
 function loadCQSaved() {
   try { const s = localStorage.getItem('pc_cq_saved'); if (s) cqSavedQuotes = JSON.parse(s); } catch(e) {}
 }
@@ -6064,9 +6089,82 @@ function addCQHardware() { cqSettings.hardware.push({name:'New Hardware',price:0
 function addCQFinish() { if (!cqSettings.finishes) cqSettings.finishes = []; cqSettings.finishes.push({name:'New Finish',price:0}); saveCQSettings(); renderCQRates(); }
 
 // ── Cabinet Library ──
-function toggleCabLibrary() {
-  const p = document.getElementById('cq-library-panel');
-  if (p) p.style.display = p.style.display === 'none' ? '' : 'none';
+function toggleCabPanel(panel) {
+  const projects = document.getElementById('cq-projects-panel');
+  const library = document.getElementById('cq-library-panel');
+  if (panel === 'projects') {
+    if (projects) projects.style.display = projects.style.display === 'none' ? '' : 'none';
+    if (library) library.style.display = 'none';
+    renderCQProjects();
+  } else {
+    if (library) library.style.display = library.style.display === 'none' ? '' : 'none';
+    if (projects) projects.style.display = 'none';
+  }
+}
+function toggleCabLibrary() { toggleCabPanel('library'); }
+
+// ── Project Library (saves project name + all cabinets) ──
+let cqProjectLibrary = [];
+function loadCQProjectLibrary() { try { cqProjectLibrary = JSON.parse(localStorage.getItem('pc_cq_projects')||'[]'); } catch(e) { cqProjectLibrary=[]; } }
+function saveCQProjectLibrary() { localStorage.setItem('pc_cq_projects', JSON.stringify(cqProjectLibrary)); }
+
+function cqSaveProject() {
+  const nameEl = document.getElementById('cq-project-save-name');
+  const name = nameEl?.value?.trim() || document.getElementById('cq-project-name')?.value?.trim() || '';
+  if (!name) { _toast('Enter a project name', 'error'); return; }
+  const project = {
+    id: Date.now(), name,
+    date: new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}),
+    lines: JSON.parse(JSON.stringify(cqLines)),
+    projectName: document.getElementById('cq-project-name')?.value || name
+  };
+  cqProjectLibrary.unshift(project);
+  saveCQProjectLibrary();
+  if (nameEl) nameEl.value = '';
+  renderCQProjects();
+  _toast(`Project "${name}" saved`, 'success');
+}
+
+function cqLoadProject(idx) {
+  const p = cqProjectLibrary[idx];
+  if (!p) return;
+  cqLines = JSON.parse(JSON.stringify(p.lines || []));
+  cqNextId = cqLines.length > 0 ? Math.max(...cqLines.map(l=>l.id)) + 1 : 1;
+  const nameEl = document.getElementById('cq-project-name');
+  if (nameEl) nameEl.value = p.projectName || p.name || '';
+  cqActiveLineIdx = 0;
+  saveCQLines();
+  renderCQPanel();
+  toggleCabPanel('projects'); // close panel
+  _toast(`Loaded "${p.name}"`, 'success');
+}
+
+function cqDeleteProject(idx) {
+  _confirm('Delete this project?', () => {
+    cqProjectLibrary.splice(idx, 1);
+    saveCQProjectLibrary();
+    renderCQProjects();
+  });
+}
+
+function renderCQProjects() {
+  const el = document.getElementById('cq-projects-list');
+  if (!el) return;
+  const cur = window.currency;
+  if (!cqProjectLibrary.length) {
+    el.innerHTML = '<div style="font-size:11px;color:var(--muted);text-align:center;padding:8px 0">No saved projects</div>';
+    return;
+  }
+  el.innerHTML = cqProjectLibrary.map((p, i) => {
+    const count = (p.lines||[]).length;
+    return `<div style="display:flex;align-items:center;gap:6px;padding:6px 8px;margin-bottom:3px;border-radius:6px;border:1px solid var(--border);background:var(--surface);cursor:pointer" onclick="cqLoadProject(${i})">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_escHtml(p.name)}</div>
+        <div style="font-size:10px;color:var(--muted)">${p.date} · ${count} cabinet${count!==1?'s':''}</div>
+      </div>
+      <button style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:0 2px" onclick="event.stopPropagation();cqDeleteProject(${i})">×</button>
+    </div>`;
+  }).join('');
 }
 function cqExportLibrary() {
   if (!cqLibrary.length) { _toast('No cabinets in library', 'error'); return; }
@@ -6804,6 +6902,8 @@ function cqAddToNewQuote() {
   const totalHrs = cqLines.reduce((s, l) => s + calcCQLine(l).labourHrs * l.qty, 0);
 
   // Pre-fill the quote form
+  const projName = document.getElementById('cq-project-name')?.value?.trim() || '';
+  if (projName) document.getElementById('q-project').value = projName;
   document.getElementById('q-materials').value = gMat.toFixed(2);
   document.getElementById('q-labour-rate').value = cqSettings.labourRate;
   document.getElementById('q-hours').value = totalHrs.toFixed(1);
@@ -7353,6 +7453,7 @@ loadCQSettings();
 loadCQLines();
 loadCQSaved();
 loadCQLibrary();
+loadCQProjectLibrary();
 
 
 // Init cabinet module
