@@ -1358,7 +1358,7 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
             <tr>
               <th style="width:14px"></th>
               <th style="width:22px"></th>
-              <th class="cl-col-label" id="th-label">Label</th>
+              <th class="cl-col-label" id="th-label" style="min-width:80px">Label</th>
               <th style="width:60px">W</th>
               <th style="width:60px">H</th>
               <th style="width:68px">Qty</th>
@@ -2198,14 +2198,13 @@ function renderStockMain() {
         ${sup.url ? `<a href="${_escHtml(sup.url)}" target="_blank" rel="noopener" style="font-size:11px;color:var(--accent);text-decoration:none" title="Reorder link">🔗 Reorder →</a>` : ''}
       </div>
       <!-- Actions -->
-      <div style="display:flex;gap:4px;padding:8px 14px;border-top:1px solid var(--border2);flex-wrap:wrap">
+      <div style="display:flex;gap:4px;padding:8px 14px;border-top:1px solid var(--border2);align-items:center">
         <button class="btn btn-outline" onclick="adjustStock(${item.id},-1)" style="font-size:12px;padding:4px 8px">−1</button>
         <button class="btn btn-success" onclick="adjustStock(${item.id},1)" style="font-size:12px;padding:4px 8px">+1</button>
         <button class="btn btn-outline" onclick="adjustStock(${item.id},5)" style="font-size:12px;padding:4px 8px">+5</button>
-        <span style="flex:1"></span>
-        <button class="btn btn-outline" onclick="editStockItem(${item.id})" style="font-size:11px;padding:4px 8px" title="Edit in sidebar">✎ Edit</button>
-        <button class="btn btn-outline" onclick="useStockInCutList(${item.id})" style="font-size:11px;padding:4px 8px" title="Send to cut list">→ Cut List</button>
-        <button class="btn btn-danger" onclick="_confirm('Remove <strong>${_escHtml(item.name)}</strong>?',()=>removeStock(${item.id}))" style="padding:4px 8px">×</button>
+        <button class="btn btn-outline" onclick="editStockItem(${item.id})" style="font-size:11px;padding:4px 6px" title="Edit">✎</button>
+        <button class="btn btn-outline" onclick="useStockInCutList(${item.id})" style="font-size:11px;padding:4px 6px" title="Cut list">→</button>
+        <button class="btn btn-danger" onclick="_confirm('Remove?',()=>removeStock(${item.id}))" style="padding:4px 6px">×</button>
       </div>
     </div>`;
   };
@@ -4085,7 +4084,7 @@ function renderQuoteMain() {
           }
           return '<div style="font-size:12px;color:var(--text2);margin-bottom:3px">' + _escHtml(line) + '</div>';
         }).join('')}
-        <div style="margin-top:4px"><textarea style="width:100%;font-size:12px;color:var(--text2);background:transparent;border:1px dashed var(--border);border-radius:4px;padding:4px 6px;resize:vertical;min-height:24px;font-family:inherit;font-style:italic" onblur="updateQuoteField(${q.id},'notes',this.value)" placeholder="Edit notes...">${_escHtml(q.notes)}</textarea></div>
+
       </div>` : ''}
       <div class="qc-breakdown">
         <div class="qb-row"><span>Subtotal</span><span>${fmt(sub)}</span></div>
@@ -4243,7 +4242,7 @@ function renderOrdersMain() {
       <div class="oc-header">
         <div class="oc-info">
           <div class="oc-title" contenteditable="true" onblur="updateOrderField(${o.id},'project',this.innerText.trim())" title="Click to edit project">${o.project}</div>
-          <div class="oc-meta">${(() => { const rel = _relativeDate(o.due); const relTag = rel ? ` <span style="font-size:10px;font-weight:700;color:${rel.color};margin-left:4px">${rel.label}</span>` : ''; return `<span contenteditable="true" onblur="updateOrderField(${o.id},'client',this.innerText.trim())" title="Click to edit client">${o.client}</span> &nbsp;·&nbsp; Due: <input type="date" style="font-size:12px;padding:2px 4px;border:1px solid transparent;border-radius:4px;background:transparent;color:var(--text);font-family:inherit;cursor:pointer;color-scheme:var(--color-scheme,light)" value="${(() => { try { const d = new Date(o.due); return !isNaN(d) ? d.toISOString().split('T')[0] : ''; } catch(e) { return ''; }})()}" onchange="updateOrderField(${o.id},'due',this.value ? new Date(this.value+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : 'TBD')" title="Click to set due date">${relTag}${isOverdue ? ' <span class="badge badge-red" style="font-size:9px;margin-left:4px">Overdue</span>' : ''}`; })()}</div>
+          <div class="oc-meta">${(() => { const rel = _relativeDate(o.due); const relTag = rel ? ` <span style="font-size:10px;font-weight:700;color:${rel.color};margin-left:4px">${rel.label}</span>` : ''; return `<span contenteditable="true" onblur="updateOrderField(${o.id},'client',this.innerText.trim())" title="Click to edit client">${o.client}</span> &nbsp;·&nbsp; Due: <input type="date" style="font-size:12px;padding:2px 4px;border:1px solid transparent;border-radius:4px;background:var(--surface2);color:var(--text);font-family:inherit;cursor:pointer" value="${(() => { try { const d = new Date(o.due); return !isNaN(d) ? d.toISOString().split('T')[0] : ''; } catch(e) { return ''; }})()}" onchange="updateOrderField(${o.id},'due',this.value ? new Date(this.value+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : 'TBD')" title="Click to set due date">${relTag}${isOverdue ? ' <span class="badge badge-red" style="font-size:9px;margin-left:4px">Overdue</span>' : ''}`; })()}</div>
           <div class="oc-notes" contenteditable="true" onblur="updateOrderField(${o.id},'notes',this.innerText.trim())" title="Click to add notes" data-placeholder="Add production notes…">${o.notes || ''}</div>
         </div>
         <div class="oc-right">
@@ -6359,7 +6358,7 @@ function renderCQCabList() {
     const active = i === cqActiveLineIdx;
     return `<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;margin-bottom:4px;border-radius:8px;border:1.5px solid ${active?'var(--accent)':'var(--border)'};background:${active?'var(--accent-dim)':'var(--surface)'};cursor:pointer;transition:border-color .15s" onclick="cqSelectLine(${i})">
       <div style="flex:1;min-width:0">
-        <div style="font-size:13px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.name || c.type}${c.qty > 1 ? ' <span style="color:var(--muted);font-weight:400">x'+c.qty+'</span>' : ''}</div>
+        <div style="font-size:13px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.name || 'Cabinet'}${c.qty > 1 ? ' <span style="color:var(--muted);font-weight:400">x'+c.qty+'</span>' : ''}</div>
         <div style="font-size:11px;color:var(--muted)">${c.w}×${c.h}×${c.d}mm</div>
       </div>
       <div style="font-size:13px;font-weight:700;color:var(--accent);white-space:nowrap">${fmt0(calc.lineSubtotal)}</div>
@@ -6655,8 +6654,8 @@ function renderCQResults() {
   let html = `<div style="max-width:700px">`;
 
   // Active cabinet header
-  html += `<h3 style="font-size:18px;font-weight:700;margin:0 0 4px">${line.name || line.type}</h3>`;
-  html += `<div style="font-size:13px;color:var(--muted);margin-bottom:20px">${line.w} × ${line.h} × ${line.d} mm · ${line.material} · ${line.type}</div>`;
+  html += `<h3 style="font-size:18px;font-weight:700;margin:0 0 4px">${line.name || 'Cabinet'}</h3>`;
+  html += `<div style="font-size:13px;color:var(--muted);margin-bottom:20px">${line.w} × ${line.h} × ${line.d} mm · ${line.material}</div>`;
 
   // Cost breakdown card
   html += `<div style="background:var(--surface2);border-radius:10px;padding:18px 20px;margin-bottom:16px">
@@ -6686,8 +6685,6 @@ function renderCQResults() {
 
     // Quick actions
     html += `<div style="display:flex;gap:8px;flex-wrap:wrap">
-      <button class="btn btn-primary" onclick="cqAddToNewQuote()" style="font-size:13px;padding:10px 16px">+ Create New Quote</button>
-      <button class="btn btn-outline" onclick="cqAddToExistingQuote()" style="font-size:13px;padding:10px 16px;width:auto">Add to Existing Quote</button>
       <button class="btn btn-outline" onclick="printCQQuote('pdf')" style="font-size:13px;padding:10px 16px;width:auto">↓ PDF</button>
       <button class="btn btn-outline" onclick="printCQQuote('print')" style="font-size:13px;padding:10px 16px;width:auto">⎙ Print</button>
     </div>`;
@@ -6872,7 +6869,7 @@ function cqConvertToOrder() {
     markup: cqSettings.markup, tax: cqSettings.tax,
     status: 'draft',
     date: new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short'}),
-    notes: 'Cabinet Quote: ' + cqLines.map(l => l.name || l.type).filter(Boolean).join(', '),
+    notes: 'Cabinet Quote: ' + cqLines.map(l => l.name || 'Cabinet').filter(Boolean).join(', '),
   };
 
   if (_userId) {
@@ -6940,7 +6937,7 @@ function printCQQuote(mode) {
     }
     return roomHeader + `<tr>
       <td style="padding:8px 10px;border-bottom:1px solid #f0f0f0;font-size:12px;color:#555">${lineNum}</td>
-      <td style="padding:8px 10px;border-bottom:1px solid #f0f0f0"><strong>${_escHtml(line.name || line.type)}</strong><br><span style="font-size:10px;color:#999">${_escHtml(line.type)} &middot; ${line.w}&times;${line.h}&times;${line.d}mm &middot; ${_escHtml(line.material)}</span>
+      <td style="padding:8px 10px;border-bottom:1px solid #f0f0f0"><strong>${_escHtml(line.name || 'Cabinet')}</strong><br><span style="font-size:10px;color:#999">${line.w}&times;${line.h}&times;${line.d}mm &middot; ${_escHtml(line.material)}</span>
       ${line.doors>0?'<br><span style="font-size:10px;color:#999">'+line.doors+' door(s)</span>':''}
       ${line.drawers>0?'<br><span style="font-size:10px;color:#999">'+line.drawers+' drawer(s)</span>':''}
       ${line.shelves+line.adjShelves>0?'<br><span style="font-size:10px;color:#999">'+(line.shelves+line.adjShelves)+' shelf/shelves</span>':''}
@@ -7080,7 +7077,7 @@ function cqSendToQuickQuote() {
   document.getElementById('q-hours').value = totalHrs.toFixed(1);
   document.getElementById('q-markup').value = cqSettings.markup;
   document.getElementById('q-tax').value = cqSettings.tax;
-  document.getElementById('q-notes').value = 'Cabinet Quote: ' + cqLines.map(l => (l.name || l.type) + (l.qty > 1 ? ' x' + l.qty : '')).join(', ');
+  document.getElementById('q-notes').value = 'Cabinet Quote: ' + cqLines.map(l => (l.name || 'Cabinet') + (l.qty > 1 ? ' x' + l.qty : '')).join(', ');
 
   switchSection('quote');
   try { _updateQuotePreview(); } catch(e) {}
