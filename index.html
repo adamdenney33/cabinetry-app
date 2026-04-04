@@ -4238,7 +4238,15 @@ function renderOrdersMain() {
       <div class="oc-header">
         <div class="oc-info">
           <div class="oc-title" contenteditable="true" onblur="updateOrderField(${o.id},'project',this.innerText.trim())" title="Click to edit project">${o.project}</div>
-          <div class="oc-meta">${(() => { const rel = _relativeDate(o.due); const relTag = rel ? ` <span style="font-size:10px;font-weight:700;color:${rel.color};margin-left:4px">${rel.label}</span>` : ''; return `<span contenteditable="true" onblur="updateOrderField(${o.id},'client',this.innerText.trim())" title="Click to edit client">${o.client}</span> &nbsp;·&nbsp; Due: <input type="date" style="font-size:12px;padding:2px 4px;border:1px solid transparent;border-radius:4px;background:var(--surface2);color:var(--text);font-family:inherit;cursor:pointer" value="${(() => { try { const d = new Date(o.due); return !isNaN(d) ? d.toISOString().split('T')[0] : ''; } catch(e) { return ''; }})()}" onchange="updateOrderField(${o.id},'due',this.value ? new Date(this.value+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : 'TBD')" title="Click to set due date">${relTag}${isOverdue ? ' <span class="badge badge-red" style="font-size:9px;margin-left:4px">Overdue</span>' : ''}`; })()}</div>
+          <div class="oc-meta">
+            <span contenteditable="true" onblur="updateOrderField(${o.id},'client',this.innerText.trim())" title="Click to edit client" style="cursor:text">${o.client}</span>
+          </div>
+          <div style="display:flex;gap:10px;align-items:center;margin-top:4px;font-size:12px;color:var(--muted)">
+            <span>Start:</span><input type="date" style="font-size:12px;padding:3px 6px;border:1px solid var(--border);border-radius:5px;background:var(--surface2);color:var(--text);font-family:inherit;cursor:pointer" value="${(() => { try { if (!o.prodStart) return ''; const d = new Date(o.prodStart); return !isNaN(d)?d.toISOString().split('T')[0]:''; } catch(e) { return ''; }})()}" onchange="setOrderProdStart(${o.id},this.value)" title="Production start date">
+            <span>Due:</span><input type="date" style="font-size:12px;padding:3px 6px;border:1px solid var(--border);border-radius:5px;background:var(--surface2);color:var(--text);font-family:inherit;cursor:pointer" value="${(() => { try { const d = new Date(o.due); return !isNaN(d)?d.toISOString().split('T')[0]:''; } catch(e) { return ''; }})()}" onchange="updateOrderField(${o.id},'due',this.value ? new Date(this.value+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : 'TBD')" title="Due date">
+            ${(() => { const rel = _relativeDate(o.due); return rel ? `<span style="font-size:10px;font-weight:700;color:${rel.color}">${rel.label}</span>` : ''; })()}
+            ${isOverdue ? '<span class="badge badge-red" style="font-size:9px">Overdue</span>' : ''}
+          </div>
           <div class="oc-notes" contenteditable="true" onblur="updateOrderField(${o.id},'notes',this.innerText.trim())" title="Click to add notes" data-placeholder="Add production notes…">${o.notes || ''}</div>
         </div>
         <div class="oc-right">
