@@ -1168,20 +1168,10 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
           <div id="cab-tab-builder" onclick="switchCabTab('builder')" style="flex:1;padding:10px 16px;font-size:13px;font-weight:700;text-align:center;cursor:pointer;border-bottom:2px solid var(--accent);margin-bottom:-2px;color:var(--text)">Cabinet Builder</div>
           <div id="cab-tab-rates" onclick="switchCabTab('rates')" style="flex:1;padding:10px 16px;font-size:13px;font-weight:500;text-align:center;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-2px">My Rates</div>
         </div>
+        <!-- Libraries pinned at top -->
+        <div style="padding:8px 14px 4px;flex-shrink:0"><div id="lib-cab-projects"></div></div>
+        <div style="padding:4px 14px 6px;flex-shrink:0;border-bottom:1px solid var(--border)"><div id="lib-cab-cabinets"></div></div>
         <div class="sidebar-scroll" id="cq-sidebar">
-          <!-- Library: Projects (shared) -->
-          <div style="padding:8px 14px 4px"><div id="lib-cab-projects"></div></div>
-          <!-- Library: Cabinets -->
-          <div style="padding:4px 14px 4px"><div id="lib-cab-cabinets"></div></div>
-
-          <!-- Projects panel (collapsible, rendered by library click) -->
-          <div id="cq-projects-panel" style="display:none;border-bottom:1px solid var(--border);background:var(--surface2);padding:8px 14px">
-            <div id="cq-projects-list"></div>
-          </div>
-          <!-- Cabinet Library panel (collapsible) -->
-          <div id="cq-library-panel" style="display:none;border-bottom:1px solid var(--border);background:var(--surface2)">
-            <div id="cq-library-list" style="padding:8px 14px"></div>
-          </div>
 
           <!-- Project Name + Save -->
           <div style="padding:10px 14px 6px">
@@ -1217,11 +1207,10 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
   ════════════════════════════════════ -->
   <div class="section-panel" id="panel-stock">
     <div class="sidebar">
+      <!-- Libraries pinned at top -->
+      <div style="padding:8px 14px 4px;flex-shrink:0"><div id="lib-stock-libraries"></div></div>
+      <div style="padding:4px 14px 6px;flex-shrink:0;border-bottom:1px solid var(--border)"><div id="lib-stock-items"></div></div>
       <div class="sidebar-scroll">
-        <!-- Library: Stock Libraries -->
-        <div style="padding:8px 14px 4px"><div id="lib-stock-libraries"></div></div>
-        <!-- Library: Stock Items -->
-        <div style="padding:4px 14px 6px"><div id="lib-stock-items"></div></div>
         <!-- Stock Libraries panel (collapsible, rendered by library click) -->
         <div id="stock-libraries-panel" style="display:none;border-bottom:1px solid var(--border);background:var(--surface2);padding:8px 14px">
           <div style="display:flex;gap:4px;margin-bottom:6px">
@@ -1305,13 +1294,9 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
 
     <!-- LEFT: Inputs -->
     <div class="cl-left">
-      <!-- Libraries -->
-      <div style="padding:8px 14px 0">
-        <div id="lib-cl-projects"></div>
-      </div>
-      <div style="padding:4px 14px 0">
-        <div id="lib-cl-cutlists"></div>
-      </div>
+      <!-- Libraries pinned at top -->
+      <div style="padding:8px 14px 4px;flex-shrink:0"><div id="lib-cl-projects"></div></div>
+      <div style="padding:4px 14px 6px;flex-shrink:0;border-bottom:1px solid var(--border)"><div id="lib-cl-cutlists"></div></div>
 
       <!-- Projects panel (existing, toggle via library) -->
       <div class="cl-scroll">
@@ -1471,12 +1456,11 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
   ════════════════════════════════════ -->
   <div class="section-panel" id="panel-quote">
     <div class="sidebar">
+      <!-- Libraries pinned at top -->
+      <div style="padding:8px 14px 4px;flex-shrink:0"><div id="lib-quote-clients"></div></div>
+      <div style="padding:4px 14px 6px;flex-shrink:0;border-bottom:1px solid var(--border)"><div id="lib-quote-projects"></div></div>
       <div class="sidebar-scroll">
-        <!-- Library: Clients (shared) -->
-        <div style="padding:8px 14px 4px"><div id="lib-quote-clients"></div></div>
-        <!-- Library: Projects -->
-        <div style="padding:4px 14px 6px"><div id="lib-quote-projects"></div></div>
-        <div class="form-section" style="border-top:1px solid var(--border);padding-top:10px">
+        <div class="form-section">
           <div class="form-section-title">New Quote</div>
           <div class="form-group" style="margin-bottom:8px;position:relative">
             <label>Client Name</label>
@@ -1537,11 +1521,10 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
   ════════════════════════════════════ -->
   <div class="section-panel" id="panel-orders">
     <div class="sidebar">
+      <!-- Libraries pinned at top -->
+      <div style="padding:8px 14px 4px;flex-shrink:0"><div id="lib-order-clients"></div></div>
+      <div style="padding:4px 14px 6px;flex-shrink:0;border-bottom:1px solid var(--border)"><div id="lib-order-projects"></div></div>
       <div class="sidebar-scroll">
-        <!-- Library: Clients (shared) -->
-        <div style="padding:8px 14px 4px"><div id="lib-order-clients"></div></div>
-        <!-- Library: Projects -->
-        <div style="padding:4px 14px 6px"><div id="lib-order-projects"></div></div>
         <div class="form-section">
           <div class="form-section-title">New Order</div>
           <div class="form-group" style="margin-bottom:8px">
