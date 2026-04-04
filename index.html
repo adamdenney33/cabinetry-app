@@ -1595,8 +1595,15 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
        SCHEDULE SECTION
   ════════════════════════════════════ -->
   <div class="section-panel" id="panel-schedule">
-    <div style="flex:1;overflow:auto;display:flex;flex-direction:column" id="schedule-main">
-      <!-- rendered by JS -->
+    <div class="sidebar" style="width:220px;min-width:180px">
+      <div class="sidebar-scroll" id="schedule-sidebar" style="padding:12px">
+        <!-- rendered by JS -->
+      </div>
+    </div>
+    <div class="main-content">
+      <div style="flex:1;overflow:auto" id="schedule-main">
+        <!-- rendered by JS -->
+      </div>
     </div>
   </div>
 
@@ -7178,13 +7185,16 @@ function renderSchedule() {
   while(ws<=calEnd){const w=[];for(let d=0;d<7;d++){const day=new Date(ws);day.setDate(day.getDate()+d);w.push(day);}weeks.push(w);ws.setDate(ws.getDate()+7);}
 
   // Sidebar
-  let sidebar=`<div style="width:200px;flex-shrink:0;border-right:1px solid var(--border);overflow-y:auto;background:var(--surface);padding:12px"><div style="font-size:14px;font-weight:800;color:var(--text);margin-bottom:12px">Jobs</div>`;
-  events.forEach(e=>{sidebar+=`<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;margin-bottom:4px;border-radius:6px;cursor:pointer" onclick="switchSection('orders')"><div style="width:10px;height:10px;border-radius:3px;background:${e.color};flex-shrink:0"></div><div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_escHtml(e.project)}</div><div style="font-size:10px;color:var(--muted)">${_escHtml(e.client)}</div></div></div>`;});
-  if(!events.length)sidebar+=`<div style="font-size:12px;color:var(--muted)">No active orders</div>`;
-  sidebar+=`</div>`;
+  // Sidebar: job list (rendered into separate sidebar element)
+  let sidebarHTML = `<div style="font-size:14px;font-weight:800;color:var(--text);margin-bottom:12px">Jobs</div>`;
+  events.forEach(e=>{sidebarHTML+=`<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;margin-bottom:4px;border-radius:6px;cursor:pointer" onclick="switchSection('orders')" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''"><div style="width:10px;height:10px;border-radius:3px;background:${e.color};flex-shrink:0"></div><div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_escHtml(e.project)}</div><div style="font-size:10px;color:var(--muted)">${_escHtml(e.client)}</div></div></div>`;});
+  if(!events.length)sidebarHTML+=`<div style="font-size:12px;color:var(--muted)">No active orders</div>`;
+  const sidebarEl = document.getElementById('schedule-sidebar');
+  if (sidebarEl) sidebarEl.innerHTML = sidebarHTML;
 
   // Calendar using CSS grid per week
-  let cal = `<div style="flex:1;overflow:auto"><div style="position:sticky;top:0;z-index:5;background:var(--surface);display:grid;grid-template-columns:repeat(7,1fr);border-bottom:1px solid var(--border)">
+  // Calendar (rendered into main area)
+  let cal = `<div style="position:sticky;top:0;z-index:5;background:var(--surface);display:grid;grid-template-columns:repeat(7,1fr);border-bottom:1px solid var(--border)">
     ${dayNames.map((d,i)=>`<div style="padding:8px 4px;font-size:11px;font-weight:600;color:${i>=5?'var(--muted)':'var(--text2)'};text-align:center">${d}</div>`).join('')}
   </div>`;
 
@@ -7236,9 +7246,7 @@ function renderSchedule() {
     cal += `</div>`; // close week container
   });
 
-  cal += `</div>`;
-  el.innerHTML = sidebar + cal;
-  el.style.display = 'flex';
+  el.innerHTML = cal;
 }
 
 function setOrderProdStart(id, val) {
