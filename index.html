@@ -6047,25 +6047,39 @@ function renderCQRates() {
     </div>`).join('') + `<button class="cl-add-btn" onclick="${path}.push({name:'New',price:0});saveCQSettings();renderCQRates()" style="font-size:11px;padding:4px 8px;margin:6px 0 0">+ Add</button>`;
   }
 
-  // Core Rates
-  const coreContent = `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px">
-    ${[['Labour Rate',cqSettings.labourRate,'cqSettings.labourRate','per hour'],['Markup %',cqSettings.markup,'cqSettings.markup','%'],['Tax / GST %',cqSettings.tax,'cqSettings.tax','%']].map(([label,val,path,unit])=>`<div class="cq-gv-card"><label>${label}</label><input type="number" value="${val}" min="0" step="1" onchange="${path}=parseFloat(this.value)||0;saveCQSettings();renderCQPanel()"><div class="cq-gv-unit">${unit}</div></div>`).join('')}
-  </div>`;
+  // Core Rates as list
+  const coreItems = [
+    {name:'Labour Rate',price:cqSettings.labourRate,path:'cqSettings.labourRate',unit:'per hour'},
+    {name:'Markup',price:cqSettings.markup,path:'cqSettings.markup',unit:'%'},
+    {name:'Tax / GST',price:cqSettings.tax,path:'cqSettings.tax',unit:'%'},
+  ];
+  const coreContent = coreItems.map(item => `<div class="cq-mat-row" style="margin-top:4px">
+    <input value="${item.name}" disabled style="opacity:.7;cursor:default">
+    <div style="display:flex;align-items:center;border:1px solid var(--border);border-radius:4px;overflow:hidden;background:var(--surface2)">
+      <span style="font-size:10px;color:var(--muted);padding:3px 4px 3px 6px;background:var(--surface)">${item.unit}</span>
+      <input type="number" value="${item.price}" style="border:none;border-radius:0;padding:3px 6px 3px 2px;width:55px" onblur="${item.path}=parseFloat(this.value)||0;saveCQSettings();renderCQPanel()">
+    </div>
+  </div>`).join('');
 
-  // Labour Times
-  const labourContent = `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px">
-    ${[
-      ['Carcass (vol.)',lt.carcass||1.5,'cqSettings.labourTimes.carcass','hrs/m³'],
-      ['Per Door',lt.door||0.4,'cqSettings.labourTimes.door','hrs'],
-      ['Per Drawer',lt.drawer||0.6,'cqSettings.labourTimes.drawer','hrs'],
-      ['Fixed Shelf',lt.fixedShelf||0.3,'cqSettings.labourTimes.fixedShelf','hrs'],
-      ['Adj. Shelf Holes',lt.adjShelfHoles||0.4,'cqSettings.labourTimes.adjShelfHoles','hrs'],
-      ['Loose Shelf',lt.looseShelf||0.2,'cqSettings.labourTimes.looseShelf','hrs'],
-      ['Partition',lt.partition||0.5,'cqSettings.labourTimes.partition','hrs'],
-      ['End Panel',lt.endPanel||0.3,'cqSettings.labourTimes.endPanel','hrs'],
-      ['Finish',lt.finishPerM2||0.5,'cqSettings.labourTimes.finishPerM2','hrs/m²'],
-    ].map(([label,val,path,unit])=>`<div class="cq-gv-card"><label>${label}</label><input type="number" value="${val}" min="0" step="0.05" onchange="${path}=parseFloat(this.value)||0;saveCQSettings();renderCQPanel()"><div class="cq-gv-unit">${unit}</div></div>`).join('')}
-  </div>`;
+  // Labour Times as list
+  const labourItems = [
+    {name:'Carcass (volume)',val:lt.carcass||1.5,path:'cqSettings.labourTimes.carcass',unit:'hrs/m³'},
+    {name:'Per Door',val:lt.door||0.4,path:'cqSettings.labourTimes.door',unit:'hrs'},
+    {name:'Per Drawer',val:lt.drawer||0.6,path:'cqSettings.labourTimes.drawer',unit:'hrs'},
+    {name:'Fixed Shelf',val:lt.fixedShelf||0.3,path:'cqSettings.labourTimes.fixedShelf',unit:'hrs'},
+    {name:'Adj. Shelf Holes',val:lt.adjShelfHoles||0.4,path:'cqSettings.labourTimes.adjShelfHoles',unit:'hrs'},
+    {name:'Loose Shelf',val:lt.looseShelf||0.2,path:'cqSettings.labourTimes.looseShelf',unit:'hrs'},
+    {name:'Partition',val:lt.partition||0.5,path:'cqSettings.labourTimes.partition',unit:'hrs'},
+    {name:'End Panel',val:lt.endPanel||0.3,path:'cqSettings.labourTimes.endPanel',unit:'hrs'},
+    {name:'Finish',val:lt.finishPerM2||0.5,path:'cqSettings.labourTimes.finishPerM2',unit:'hrs/m²'},
+  ];
+  const labourContent = labourItems.map(item => `<div class="cq-mat-row" style="margin-top:4px">
+    <input value="${item.name}" disabled style="opacity:.7;cursor:default">
+    <div style="display:flex;align-items:center;border:1px solid var(--border);border-radius:4px;overflow:hidden;background:var(--surface2)">
+      <span style="font-size:10px;color:var(--muted);padding:3px 4px 3px 6px;background:var(--surface)">${item.unit}</span>
+      <input type="number" value="${item.val}" step="0.05" style="border:none;border-radius:0;padding:3px 6px 3px 2px;width:55px" onblur="${item.path}=parseFloat(this.value)||0;saveCQSettings();renderCQPanel()">
+    </div>
+  </div>`).join('');
 
   // Edge Banding
   if (!cqSettings.edgeBanding) cqSettings.edgeBanding = [{name:'Iron-on Veneer',price:3},{name:'PVC 1mm',price:4},{name:'PVC 2mm',price:5},{name:'Solid Timber',price:8}];
@@ -6891,6 +6905,8 @@ function renderCQResults() {
   cqLines.forEach((line, idx) => {
     const c = calcs[idx];
     const isActive = idx === cqActiveLineIdx;
+    const cabMarkup = c.lineSubtotal * cqSettings.markup / 100;
+    const cabTotal = (c.lineSubtotal + cabMarkup) * (1 + cqSettings.tax / 100);
     html += `<div style="background:var(--surface);border:${isActive?'2px solid var(--accent)':'1px solid var(--border)'};border-radius:var(--radius);margin-bottom:10px;overflow:hidden;cursor:pointer;box-shadow:var(--shadow)" onclick="cqEditCabinetFromOutput(${idx})">
       <!-- Header -->
       <div style="display:flex;align-items:center;gap:10px;padding:12px 16px;background:${isActive?'var(--accent-dim)':'var(--surface2)'}">
@@ -6898,7 +6914,7 @@ function renderCQResults() {
           <div style="font-size:14px;font-weight:700;color:var(--text)">${_escHtml(line.name||'Cabinet '+(idx+1))}</div>
           <div style="font-size:11px;color:var(--muted)">${line.w} × ${line.h} × ${line.d} mm · ${_escHtml(line.material)}${line.qty>1?' · x'+line.qty:''}</div>
         </div>
-        <div style="font-size:16px;font-weight:800;color:var(--accent)">${fmt0(c.lineSubtotal)}</div>
+        <div style="font-size:16px;font-weight:800;color:var(--accent)">${fmt0(cabTotal)}</div>
       </div>
       <!-- Details -->
       <div style="padding:10px 16px;font-size:12px;color:var(--text2)">
@@ -6906,6 +6922,9 @@ function renderCQResults() {
           <span>Materials</span><span style="text-align:right;font-weight:600;color:var(--text)">${fmt(c.matCost)}</span>
           <span>Labour (${c.labourHrs.toFixed(1)} hrs @ ${cur}${cqSettings.labourRate}/hr)</span><span style="text-align:right;font-weight:600;color:var(--text)">${fmt(c.labourCost)}</span>
           <span>Hardware</span><span style="text-align:right;font-weight:600;color:var(--text)">${fmt0(c.hwCost)}</span>
+          <span style="color:var(--muted)">Subtotal</span><span style="text-align:right;font-weight:600">${fmt0(c.lineSubtotal)}</span>
+          ${cqSettings.markup>0?`<span style="color:var(--muted)">Markup (${cqSettings.markup}%)</span><span style="text-align:right;color:var(--muted)">+${fmt0(cabMarkup)}</span>`:''}
+          ${cqSettings.tax>0?`<span style="color:var(--muted)">Tax (${cqSettings.tax}%)</span><span style="text-align:right;color:var(--muted)">+${fmt0(cabTotal-c.lineSubtotal-cabMarkup)}</span>`:''}
         </div>
         <!-- Sub details -->
         <div style="margin-top:6px;padding-top:6px;border-top:1px solid var(--border2);font-size:11px;color:var(--muted);display:flex;gap:8px;flex-wrap:wrap">
