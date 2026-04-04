@@ -7169,6 +7169,7 @@ function renderSchedule() {
 
   const events = orders.filter(o=>o.status!=='complete').map((o,idx)=>{
     const due=parseDate(o.due), start=parseDate(o.prodStart);
+    console.log('Order:', o.project, 'prodStart raw:', JSON.stringify(o.prodStart), 'parsed:', start, 'due raw:', JSON.stringify(o.due), 'parsed:', due);
     if(!due&&!start)return null;
     return{id:o.id,project:o.project,client:o.client,start,due,color:palette[idx%palette.length]};
   }).filter(Boolean);
@@ -7257,7 +7258,10 @@ function setOrderProdStart(id, val) {
 function _restoreProdStarts(ordersList) {
   try {
     const stored = JSON.parse(localStorage.getItem('pc_order_prodstarts') || '{}');
-    ordersList.forEach(o => { if (stored[String(o.id)]) o.prodStart = stored[String(o.id)]; });
+    ordersList.forEach(o => {
+      const val = stored[String(o.id)] || stored[o.id];
+      if (val) o.prodStart = val;
+    });
   } catch(e) {}
 }
 
