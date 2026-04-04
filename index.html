@@ -6766,12 +6766,10 @@ function renderCQEditor() {
         </div>
       </div>
 
-      <!-- Quote & Library Actions -->
-      <div style="padding-top:8px;position:relative">
-        <button class="btn btn-primary" onclick="cqAddToExistingQuote(this)" style="width:100%;font-size:13px;padding:10px 12px;margin-bottom:6px">Add to Existing Quote</button>
-        <div id="cq-quote-picker" style="display:none"></div>
-        <button class="btn btn-outline" onclick="cqAddToNewQuote()" style="width:100%;font-size:13px;padding:10px 12px;margin-bottom:6px">+ Create New Quote</button>
-        <button class="btn btn-outline" onclick="cqSaveToLibrary()" style="width:100%;font-size:12px;padding:8px 12px">Save Cabinet to Library</button>
+      <!-- Sidebar Actions -->
+      <div style="padding-top:8px;display:flex;gap:6px">
+        <button class="btn btn-primary" onclick="cqAddOrUpdateCabinet()" id="cq-add-btn" style="flex:1;font-size:13px;padding:10px 12px">${cqActiveLineIdx >= 0 && cqLines[cqActiveLineIdx] ? 'Update Cabinet' : 'Add to Project'}</button>
+        <button class="btn btn-outline" onclick="cqSaveToLibrary()" style="flex:1;font-size:12px;padding:10px 12px">Save to Library</button>
       </div>
 
     </div>
@@ -6799,6 +6797,29 @@ function cqRemoveExtra(lineId, idx) {
   if (!line || !line.extras) return;
   line.extras.splice(idx,1);
   saveCQLines(); renderCQEditor(); renderCQResults();
+}
+
+function cqAddOrUpdateCabinet() {
+  if (cqActiveLineIdx >= 0 && cqLines[cqActiveLineIdx]) {
+    // Already editing — deselect and reset form
+    cqActiveLineIdx = -1;
+    saveCQLines();
+    renderCQPanel();
+    _toast('Cabinet updated', 'success');
+  } else {
+    // Add new cabinet
+    addCQLine();
+  }
+}
+
+function cqEditCabinetFromOutput(idx) {
+  cqActiveLineIdx = idx;
+  renderCQCabList();
+  renderCQEditor();
+  renderCQResults();
+  // Scroll sidebar to editor
+  const sidebar = document.getElementById('cq-sidebar');
+  if (sidebar) sidebar.scrollTop = sidebar.scrollHeight;
 }
 
 function cqStepField(field, dir) {
@@ -6834,67 +6855,99 @@ function renderCQResults() {
   const cur = window.currency;
   const fmt = v => cur + Number(v).toFixed(2);
   const fmt0 = v => cur + Math.round(v).toLocaleString();
+  const projName = document.getElementById('cq-project-name')?.value || '';
 
   if (!cqLines.length) {
-    el.innerHTML = '<div class="empty-state"><h3>Cabinet Builder</h3><p>Add a cabinet using the sidebar to start. Costs calculate live as you configure dimensions, materials, doors, and drawers.</p></div>';
+    el.innerHTML = '<div class="empty-state"><h3>Cabinet Builder</h3><p>Add cabinets using the sidebar to start building your project.</p></div>';
     return;
   }
 
-  const line = cqLines[cqActiveLineIdx];
-  if (!line) return;
-  const c = calcCQLine(line);
-
-  // Grand totals across all cabinets
-  let gMat = 0, gLabour = 0, gHw = 0, gSub = 0;
-  cqLines.forEach(l => { const cc = calcCQLine(l); gMat += cc.matCost*l.qty; gLabour += cc.labourCost*l.qty; gHw += cc.hwCost*l.qty; gSub += cc.lineSubtotal; });
-  const gMarkup = gSub * cqSettings.markup / 100;
-  const gTotal = (gSub + gMarkup) * (1 + cqSettings.tax / 100);
-  const totalHrs = cqLines.reduce((s,l) => s + calcCQLine(l).labourHrs * l.qty, 0);
+  // Totals
+  let gMat=0,gLabour=0,gHw=0,gSub=0;
+  const calcs = cqLines.map(l => { const c=calcCQLine(l); gMat+=c.matCost*l.qty; gLabour+=c.labourCost*l.qty; gHw+=c.hwCost*l.qty; gSub+=c.lineSubtotal; return c; });
+  const totalHrs = cqLines.reduce((s,l,i)=>s+calcs[i].labourHrs*l.qty,0);
+  const gMarkup = gSub * cqSettings.markup/100;
+  const gTotal = (gSub+gMarkup)*(1+cqSettings.tax/100);
 
   let html = `<div style="max-width:700px">`;
 
-  // Active cabinet header
-  html += `<h3 style="font-size:18px;font-weight:700;margin:0 0 4px">${line.name || 'Cabinet'}</h3>`;
-  html += `<div style="font-size:13px;color:var(--muted);margin-bottom:20px">${line.w} × ${line.h} × ${line.d} mm · ${line.material}</div>`;
-
-  // Cost breakdown card
-  html += `<div style="background:var(--surface2);border-radius:10px;padding:18px 20px;margin-bottom:16px">
-    <div style="display:flex;justify-content:space-between;margin-bottom:8px"><span style="color:var(--muted);font-size:13px">Materials</span><span style="font-size:14px;font-weight:600">${fmt(c.matCost)}</span></div>
-    <div style="display:flex;justify-content:space-between;margin-bottom:8px"><span style="color:var(--muted);font-size:13px">Labour (${c.labourHrs.toFixed(1)} hrs @ ${cur}${cqSettings.labourRate}/hr)</span><span style="font-size:14px;font-weight:600">${fmt(c.labourCost)}</span></div>
-    <div style="display:flex;justify-content:space-between;margin-bottom:8px"><span style="color:var(--muted);font-size:13px">Hardware</span><span style="font-size:14px;font-weight:600">${fmt0(c.hwCost)}</span></div>
-    <div style="border-top:2px solid var(--accent);padding-top:8px;margin-top:4px;display:flex;justify-content:space-between">
-      <span style="font-weight:700;font-size:15px;color:var(--accent)">Unit Cost</span>
-      <span style="font-weight:800;font-size:18px;color:var(--accent)">${fmt0(c.lineSubtotal / line.qty)}</span>
-    </div>
-    ${line.qty > 1 ? `<div style="display:flex;justify-content:space-between;margin-top:4px"><span style="color:var(--muted);font-size:13px">× ${line.qty} units</span><span style="font-size:14px;font-weight:700">${fmt0(c.lineSubtotal)}</span></div>` : ''}
+  // ── Top buttons bar ──
+  html += `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;align-items:center">
+    <button class="btn btn-primary" onclick="cqAddToExistingQuote()" style="font-size:12px;padding:8px 14px">Add to Existing Quote</button>
+    <div id="cq-quote-picker" style="display:none"></div>
+    <button class="btn btn-outline" onclick="cqAddToNewQuote()" style="font-size:12px;padding:8px 14px;width:auto">+ New Quote</button>
+    <span style="flex:1"></span>
+    <button class="btn btn-outline" onclick="printCQQuote('pdf')" style="font-size:12px;padding:8px 12px;width:auto">&darr; PDF</button>
+    <button class="btn btn-outline" onclick="printCQQuote('print')" style="font-size:12px;padding:8px 12px;width:auto">&oplus; Print</button>
+    <button class="btn btn-outline" onclick="cqExportLibrary()" style="font-size:12px;padding:8px 12px;width:auto">&darr; Export</button>
+    <button class="btn btn-outline" onclick="cqImportLibrary()" style="font-size:12px;padding:8px 12px;width:auto">&uarr; Import</button>
   </div>`;
 
-  // Quote total (all cabinets)
-  if (cqLines.length > 0) {
-    html += `<div style="background:var(--surface);border:2px solid var(--border);border-radius:10px;padding:18px 20px;margin-bottom:16px">
-      <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:10px">All Cabinets (${cqLines.length})</div>
-      <div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="color:var(--text2);font-size:13px">Materials</span><span style="font-size:14px;font-weight:600">${fmt0(gMat)}</span></div>
-      <div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="color:var(--text2);font-size:13px">Labour (${totalHrs.toFixed(1)} hrs)</span><span style="font-size:14px;font-weight:600">${fmt0(gLabour)}</span></div>
-      <div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="color:var(--text2);font-size:13px">Hardware</span><span style="font-size:14px;font-weight:600">${fmt0(gHw)}</span></div>
-      <div style="display:flex;justify-content:space-between;padding-top:6px;border-top:1px solid var(--border);margin-bottom:4px"><span style="font-weight:600;font-size:13px">Subtotal</span><span style="font-weight:600;font-size:14px">${fmt0(gSub)}</span></div>
-      ${cqSettings.markup > 0 ? `<div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="color:var(--muted);font-size:13px">Markup (${cqSettings.markup}%)</span><span style="font-size:13px">+${fmt0(gMarkup)}</span></div>` : ''}
-      ${cqSettings.tax > 0 ? `<div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="color:var(--muted);font-size:13px">Tax (${cqSettings.tax}%)</span><span style="font-size:13px">+${fmt0(gTotal - gSub - gMarkup)}</span></div>` : ''}
-      <div style="display:flex;justify-content:space-between;padding-top:8px;border-top:2px solid var(--accent)"><span style="font-weight:700;font-size:16px;color:var(--accent)">Quote Total</span><span style="font-weight:800;font-size:20px;color:var(--accent)">${fmt0(gTotal)}</span></div>
-      ${cqSettings.deposit > 0 && cqSettings.deposit < 100 ? `<div style="display:flex;justify-content:space-between;margin-top:6px"><span style="color:var(--muted);font-size:12px">Deposit (${cqSettings.deposit}%)</span><span style="font-size:12px">${fmt0(gTotal*cqSettings.deposit/100)} · Balance: ${fmt0(gTotal*(1-cqSettings.deposit/100))}</span></div>` : ''}
-    </div>`;
+  // ── Project header ──
+  if (projName) html += `<h2 style="font-size:18px;font-weight:800;margin:0 0 4px">${_escHtml(projName)}</h2>`;
+  html += `<div style="font-size:12px;color:var(--muted);margin-bottom:16px">${cqLines.length} cabinet${cqLines.length!==1?'s':''} · ${cqLines.reduce((s,l)=>s+l.qty,0)} units</div>`;
 
-    // Quick actions
-    html += `<div style="display:flex;gap:8px;flex-wrap:wrap">
-      <button class="btn btn-outline" onclick="printCQQuote('pdf')" style="font-size:13px;padding:10px 16px;width:auto">↓ PDF</button>
-      <button class="btn btn-outline" onclick="printCQQuote('print')" style="font-size:13px;padding:10px 16px;width:auto">⎙ Print</button>
+  // ── Individual cabinet cards ──
+  cqLines.forEach((line, idx) => {
+    const c = calcs[idx];
+    const isActive = idx === cqActiveLineIdx;
+    html += `<div style="background:var(--surface);border:${isActive?'2px solid var(--accent)':'1px solid var(--border)'};border-radius:var(--radius);margin-bottom:10px;overflow:hidden;cursor:pointer;box-shadow:var(--shadow)" onclick="cqEditCabinetFromOutput(${idx})">
+      <!-- Header -->
+      <div style="display:flex;align-items:center;gap:10px;padding:12px 16px;background:${isActive?'var(--accent-dim)':'var(--surface2)'}">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:14px;font-weight:700;color:var(--text)">${_escHtml(line.name||'Cabinet '+(idx+1))}</div>
+          <div style="font-size:11px;color:var(--muted)">${line.w} × ${line.h} × ${line.d} mm · ${_escHtml(line.material)}${line.qty>1?' · x'+line.qty:''}</div>
+        </div>
+        <div style="font-size:16px;font-weight:800;color:var(--accent)">${fmt0(c.lineSubtotal)}</div>
+      </div>
+      <!-- Details -->
+      <div style="padding:10px 16px;font-size:12px;color:var(--text2)">
+        <div style="display:grid;grid-template-columns:1fr auto;gap:2px 16px">
+          <span>Materials</span><span style="text-align:right;font-weight:600;color:var(--text)">${fmt(c.matCost)}</span>
+          <span>Labour (${c.labourHrs.toFixed(1)} hrs @ ${cur}${cqSettings.labourRate}/hr)</span><span style="text-align:right;font-weight:600;color:var(--text)">${fmt(c.labourCost)}</span>
+          <span>Hardware</span><span style="text-align:right;font-weight:600;color:var(--text)">${fmt0(c.hwCost)}</span>
+        </div>
+        <!-- Sub details -->
+        <div style="margin-top:6px;padding-top:6px;border-top:1px solid var(--border2);font-size:11px;color:var(--muted);display:flex;gap:8px;flex-wrap:wrap">
+          ${line.finish&&line.finish!=='None'?`<span>${_escHtml(line.finish)}</span>`:''}\
+          ${line.construction?`<span>${_escHtml(line.construction)}</span>`:''}\
+          ${line.baseType&&line.baseType!=='None'?`<span>${_escHtml(line.baseType)}</span>`:''}\
+          ${line.doors>0?`<span>${line.doors} door${line.doors!==1?'s':''}</span>`:''}\
+          ${line.drawers>0?`<span>${line.drawers} drawer${line.drawers!==1?'s':''}</span>`:''}\
+          ${(line.shelves||0)+(line.adjShelves||0)+(line.looseShelves||0)>0?`<span>${(line.shelves||0)+(line.adjShelves||0)+(line.looseShelves||0)} shelves</span>`:''}\
+          ${(line.partitions||0)>0?`<span>${line.partitions} partition${line.partitions!==1?'s':''}</span>`:''}\
+          ${(line.endPanels||0)>0?`<span>${line.endPanels} end panel${line.endPanels!==1?'s':''}</span>`:''}\
+          ${line.room?`<span>${_escHtml(line.room)}</span>`:''}
+        </div>
+      </div>
     </div>`;
-  }
+  });
+
+  // ── All Cabinets Total card ──
+  html += `<div style="background:var(--surface);border:2px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow)">
+    <div style="padding:12px 16px;background:var(--surface2);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)">All Cabinets (${cqLines.length})</div>
+    <div style="padding:12px 16px">
+      <div style="display:grid;grid-template-columns:1fr auto;gap:3px 16px;font-size:13px">
+        <span style="color:var(--text2)">Materials</span><span style="text-align:right;font-weight:600">${fmt0(gMat)}</span>
+        <span style="color:var(--text2)">Labour (${totalHrs.toFixed(1)} hrs)</span><span style="text-align:right;font-weight:600">${fmt0(gLabour)}</span>
+        <span style="color:var(--text2)">Hardware</span><span style="text-align:right;font-weight:600">${fmt0(gHw)}</span>
+      </div>
+      <div style="border-top:1px solid var(--border);margin-top:6px;padding-top:6px;display:grid;grid-template-columns:1fr auto;gap:3px 16px;font-size:13px">
+        <span style="font-weight:700">Subtotal</span><span style="text-align:right;font-weight:700">${fmt0(gSub)}</span>
+        ${cqSettings.markup>0?`<span style="color:var(--muted)">Markup (${cqSettings.markup}%)</span><span style="text-align:right;color:var(--muted)">+${fmt0(gMarkup)}</span>`:''}
+        ${cqSettings.tax>0?`<span style="color:var(--muted)">Tax (${cqSettings.tax}%)</span><span style="text-align:right;color:var(--muted)">+${fmt0(gTotal-gSub-gMarkup)}</span>`:''}
+      </div>
+      <div style="border-top:2px solid var(--accent);margin-top:6px;padding-top:8px;display:flex;justify-content:space-between;font-size:16px">
+        <span style="font-weight:700;color:var(--accent)">Quote Total</span>
+        <span style="font-weight:800;color:var(--accent)">${fmt0(gTotal)}</span>
+      </div>
+    </div>
+  </div>`;
 
   html += `</div>`;
   el.innerHTML = html;
 }
 
-// ── Add to new quote ──
 function cqAddToNewQuote() {
   if (!cqLines.length) { _toast('Add cabinets first.', 'error'); return; }
   const gMat = cqLines.reduce((s, l) => s + calcCQLine(l).matCost * l.qty, 0);
