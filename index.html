@@ -4242,8 +4242,8 @@ function renderOrdersMain() {
             <span contenteditable="true" onblur="updateOrderField(${o.id},'client',this.innerText.trim())" title="Click to edit client" style="cursor:text">${o.client}</span>
           </div>
           <div style="display:flex;gap:10px;align-items:center;margin-top:4px;font-size:12px;color:var(--muted)">
-            <span>Start:</span><input type="date" style="font-size:12px;padding:3px 6px;border:1px solid var(--border);border-radius:5px;background:var(--surface2);color:var(--text);font-family:inherit;cursor:pointer" value="${(() => { try { if (!o.prodStart) return ''; const d = new Date(o.prodStart); return !isNaN(d)?d.toISOString().split('T')[0]:''; } catch(e) { return ''; }})()}" onchange="setOrderProdStart(${o.id},this.value)" title="Production start date">
-            <span>Due:</span><input type="date" style="font-size:12px;padding:3px 6px;border:1px solid var(--border);border-radius:5px;background:var(--surface2);color:var(--text);font-family:inherit;cursor:pointer" value="${(() => { try { const d = new Date(o.due); return !isNaN(d)?d.toISOString().split('T')[0]:''; } catch(e) { return ''; }})()}" onchange="updateOrderField(${o.id},'due',this.value ? new Date(this.value+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : 'TBD')" title="Due date">
+            <span>Start:</span><input type="date" style="font-size:12px;padding:3px 6px;border:1px solid var(--border);border-radius:5px;background:var(--surface2);color:var(--text);font-family:inherit;cursor:pointer" value="${_orderDateToISO(o.prodStart)}" onchange="setOrderProdStart(${o.id},this.value)" title="Production start date">
+            <span>Due:</span><input type="date" style="font-size:12px;padding:3px 6px;border:1px solid var(--border);border-radius:5px;background:var(--surface2);color:var(--text);font-family:inherit;cursor:pointer" value="${_orderDateToISO(o.due)}" onchange="updateOrderField(${o.id},'due',this.value ? new Date(this.value+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : 'TBD')" title="Due date">
             ${(() => { const rel = _relativeDate(o.due); return rel ? `<span style="font-size:10px;font-weight:700;color:${rel.color}">${rel.label}</span>` : ''; })()}
             ${isOverdue ? '<span class="badge badge-red" style="font-size:9px">Overdue</span>' : ''}
           </div>
@@ -5304,6 +5304,17 @@ function trunc(s, n) { return s.length <= n ? s : s.slice(0, n-1) + '…'; }
   });
   _updateQuotePreview();
 })();
+
+function _orderDateToISO(str) {
+  if (!str || str === 'TBD') return '';
+  const p = str.match(/(\d{1,2})\s+(\w+)\s+(\d{4})/);
+  if (p) {
+    const m = {jan:'01',feb:'02',mar:'03',apr:'04',may:'05',jun:'06',jul:'07',aug:'08',sep:'09',oct:'10',nov:'11',dec:'12'};
+    const mo = m[p[2].toLowerCase().substring(0,3)];
+    if (mo) return p[3]+'-'+mo+'-'+p[1].padStart(2,'0');
+  }
+  try { const d = new Date(str); return !isNaN(d) ? d.toISOString().split('T')[0] : ''; } catch(e) { return ''; }
+}
 
 function _relativeDate(dateStr) {
   if (!dateStr || dateStr === 'TBD') return null;
@@ -7135,6 +7146,7 @@ function dupCQSavedQuote(idx) {
 function renderSchedule() {
   const el = document.getElementById('schedule-main');
   if (!el) return;
+  _restoreProdStarts(orders); // ensure prodStart dates loaded
   const today = new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
   const palette = ['#e8a838','#2563eb','#0d9488','#9333ea','#dc2626','#059669','#d97706','#6366f1','#ec4899','#14b8a6'];
   const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
