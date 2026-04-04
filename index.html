@@ -1511,23 +1511,31 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
       <!-- Toolbar -->
       <div class="cl-settings-bar" style="border-bottom:2px solid var(--border)">
         <div style="display:flex;gap:4px;align-items:center">
-          <button class="cl-csv-btn" onclick="toggleQuoteClients()" style="padding:5px 10px;display:flex;align-items:center;gap:5px">
+          <button class="cl-csv-btn" onclick="toggleQuotePanel('clients')" style="padding:5px 10px;display:flex;align-items:center;gap:5px">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
             Clients
           </button>
-          <button class="cl-csv-btn" onclick="importQuotesCSV()" style="padding:5px 10px;display:flex;align-items:center;gap:5px">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-            Import
-          </button>
-          <button class="cl-csv-btn" onclick="exportQuotesCSV()" style="padding:5px 10px;display:flex;align-items:center;gap:5px">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            Export
+          <button class="cl-csv-btn" onclick="toggleQuotePanel('quotes')" style="padding:5px 10px;display:flex;align-items:center;gap:5px">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            Quotes
           </button>
         </div>
       </div>
       <!-- Clients panel -->
       <div id="quote-clients-panel" style="display:none;border-bottom:1px solid var(--border);background:var(--surface2);padding:8px 14px">
+        <div style="display:flex;gap:4px;margin-bottom:6px">
+          <button class="cl-csv-btn" onclick="importClientsCSV()" style="padding:4px 8px;font-size:11px">Import</button>
+          <button class="cl-csv-btn" onclick="exportClientsCSV()" style="padding:4px 8px;font-size:11px">Export</button>
+        </div>
         <div id="quote-clients-list"></div>
+      </div>
+      <!-- Quotes library panel -->
+      <div id="quote-library-panel" style="display:none;border-bottom:1px solid var(--border);background:var(--surface2);padding:8px 14px">
+        <div style="display:flex;gap:4px;margin-bottom:6px">
+          <button class="cl-csv-btn" onclick="importQuotesCSV()" style="padding:4px 8px;font-size:11px">Import</button>
+          <button class="cl-csv-btn" onclick="exportQuotesCSV()" style="padding:4px 8px;font-size:11px">Export</button>
+        </div>
+        <div style="font-size:11px;color:var(--muted);padding:4px 0">${'Quotes are saved automatically. Use Export to back up.'}</div>
       </div>
       <div class="sidebar-scroll">
         <div class="form-section">
@@ -1594,23 +1602,31 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
       <!-- Toolbar -->
       <div class="cl-settings-bar" style="border-bottom:2px solid var(--border)">
         <div style="display:flex;gap:4px;align-items:center">
-          <button class="cl-csv-btn" onclick="toggleOrderClients()" style="padding:5px 10px;display:flex;align-items:center;gap:5px">
+          <button class="cl-csv-btn" onclick="toggleOrderPanel('clients')" style="padding:5px 10px;display:flex;align-items:center;gap:5px">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
             Clients
           </button>
-          <button class="cl-csv-btn" onclick="importOrdersCSV()" style="padding:5px 10px;display:flex;align-items:center;gap:5px">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-            Import
-          </button>
-          <button class="cl-csv-btn" onclick="exportOrdersCSV()" style="padding:5px 10px;display:flex;align-items:center;gap:5px">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            Export
+          <button class="cl-csv-btn" onclick="toggleOrderPanel('orders')" style="padding:5px 10px;display:flex;align-items:center;gap:5px">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>
+            Orders
           </button>
         </div>
       </div>
       <!-- Clients panel -->
       <div id="order-clients-panel" style="display:none;border-bottom:1px solid var(--border);background:var(--surface2);padding:8px 14px">
+        <div style="display:flex;gap:4px;margin-bottom:6px">
+          <button class="cl-csv-btn" onclick="importClientsCSV()" style="padding:4px 8px;font-size:11px">Import</button>
+          <button class="cl-csv-btn" onclick="exportClientsCSV()" style="padding:4px 8px;font-size:11px">Export</button>
+        </div>
         <div id="order-clients-list"></div>
+      </div>
+      <!-- Orders library panel -->
+      <div id="order-library-panel" style="display:none;border-bottom:1px solid var(--border);background:var(--surface2);padding:8px 14px">
+        <div style="display:flex;gap:4px;margin-bottom:6px">
+          <button class="cl-csv-btn" onclick="importOrdersCSV()" style="padding:4px 8px;font-size:11px">Import</button>
+          <button class="cl-csv-btn" onclick="exportOrdersCSV()" style="padding:4px 8px;font-size:11px">Export</button>
+        </div>
+        <div style="font-size:11px;color:var(--muted);padding:4px 0">Orders are saved automatically. Use Export to back up.</div>
       </div>
       <div class="sidebar-scroll">
         <div class="form-section">
@@ -5039,15 +5055,23 @@ async function updateOrderField(id, field, val) {
 function setOrderFilter(f) { window._orderFilter = f; renderOrdersMain(); }
 
 // ── Quote Clients Panel & Import/Export ──
-function toggleQuoteClients() {
-  const p = document.getElementById('quote-clients-panel');
-  if (p) p.style.display = p.style.display === 'none' ? '' : 'none';
-  renderQuoteClients();
+function toggleQuotePanel(panel) {
+  const clients = document.getElementById('quote-clients-panel');
+  const library = document.getElementById('quote-library-panel');
+  if (panel === 'clients') {
+    if (clients) clients.style.display = clients.style.display === 'none' ? '' : 'none';
+    if (library) library.style.display = 'none';
+    renderQuoteClients();
+  } else {
+    if (library) library.style.display = library.style.display === 'none' ? '' : 'none';
+    if (clients) clients.style.display = 'none';
+  }
 }
+function toggleQuoteClients() { toggleQuotePanel('clients'); }
 function renderQuoteClients() {
   const el = document.getElementById('quote-clients-list');
   if (!el) return;
-  const clients = [...new Set(quotes.map(q => q.client).filter(Boolean))].sort();
+  const clients = [...new Set([...quotes.map(q => q.client), ...orders.map(o => o.client)].filter(Boolean))].sort();
   if (!clients.length) { el.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:6px 0">No clients yet. Create a quote to see clients here.</div>'; return; }
   el.innerHTML = clients.map(c => {
     const count = quotes.filter(q => q.client === c).length;
@@ -5057,6 +5081,26 @@ function renderQuoteClients() {
     </div>`;
   }).join('');
 }
+// ── Shared Client Library Import/Export ──
+function exportClientsCSV() {
+  const allClients = [...new Set([...quotes.map(q=>q.client), ...orders.map(o=>o.client)].filter(Boolean))].sort();
+  if (!allClients.length) { _toast('No clients to export', 'error'); return; }
+  const rows = [['Client Name','Quotes','Orders','Total Value']];
+  allClients.forEach(c => {
+    const qCount = quotes.filter(q=>q.client===c).length;
+    const oCount = orders.filter(o=>o.client===c).length;
+    const totalVal = quotes.filter(q=>q.client===c).reduce((s,q)=>s+quoteTotal(q),0) + orders.filter(o=>o.client===c).reduce((s,o)=>s+o.value,0);
+    rows.push([c, qCount, oCount, totalVal.toFixed(2)]);
+  });
+  const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([csv],{type:'text/csv'})), download: `clients-${new Date().toISOString().slice(0,10)}.csv` });
+  a.click(); URL.revokeObjectURL(a.href);
+  _toast('Clients exported', 'success');
+}
+function importClientsCSV() {
+  _toast('Clients are created automatically from quotes and orders', 'info');
+}
+
 function exportQuotesCSV() {
   if (!quotes.length) { _toast('No quotes to export', 'error'); return; }
   const cur = window.currency;
@@ -5087,15 +5131,23 @@ function importQuotesCSV() {
 }
 
 // ── Order Clients Panel & Import/Export ──
-function toggleOrderClients() {
-  const p = document.getElementById('order-clients-panel');
-  if (p) p.style.display = p.style.display === 'none' ? '' : 'none';
-  renderOrderClients();
+function toggleOrderPanel(panel) {
+  const clients = document.getElementById('order-clients-panel');
+  const library = document.getElementById('order-library-panel');
+  if (panel === 'clients') {
+    if (clients) clients.style.display = clients.style.display === 'none' ? '' : 'none';
+    if (library) library.style.display = 'none';
+    renderOrderClients();
+  } else {
+    if (library) library.style.display = library.style.display === 'none' ? '' : 'none';
+    if (clients) clients.style.display = 'none';
+  }
 }
+function toggleOrderClients() { toggleOrderPanel('clients'); }
 function renderOrderClients() {
   const el = document.getElementById('order-clients-list');
   if (!el) return;
-  const clients = [...new Set(orders.map(o => o.client).filter(Boolean))].sort();
+  const clients = [...new Set([...quotes.map(q => q.client), ...orders.map(o => o.client)].filter(Boolean))].sort();
   if (!clients.length) { el.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:6px 0">No clients yet. Create an order to see clients here.</div>'; return; }
   el.innerHTML = clients.map(c => {
     const count = orders.filter(o => o.client === c).length;
