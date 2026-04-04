@@ -7140,9 +7140,10 @@ function renderSchedule() {
   const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
   const dayNames = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 
-  const calStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+  // Range: 2 weeks back, 12 weeks forward
+  const calStart = new Date(today); calStart.setDate(calStart.getDate() - 14);
   while (calStart.getDay() !== 1) calStart.setDate(calStart.getDate() - 1);
-  const calEnd = new Date(today.getFullYear(), today.getMonth() + 5, 0);
+  const calEnd = new Date(today); calEnd.setDate(calEnd.getDate() + 84);
 
   function parseDate(str) {
     if (!str || str === 'TBD') return null;
@@ -7191,71 +7192,54 @@ function renderSchedule() {
 
   // Calendar
   let cal = `<div style="flex:1;overflow:auto">
-    <div style="padding:16px 20px 8px;font-size:22px;font-weight:800;color:var(--text)">${monthNames[today.getMonth()]} ${today.getFullYear()}</div>
     <table style="width:100%;border-collapse:collapse;table-layout:fixed">
     <thead><tr style="position:sticky;top:0;z-index:5;background:var(--surface)">
-      ${dayNames.map((d,i) => `<th style="padding:6px 4px;font-size:11px;font-weight:600;color:${i>=5?'var(--muted)':'var(--text2)'};text-align:center;border-bottom:1px solid var(--border)">${d}</th>`).join('')}
+      ${dayNames.map((d,i) => `<th style="padding:8px 4px;font-size:11px;font-weight:600;color:${i>=5?'var(--muted)':'var(--text2)'};text-align:center;border-bottom:1px solid var(--border)">${d}</th>`).join('')}
     </tr></thead><tbody>`;
 
-  let lastMonth = -1;
+  let prevMonth = -1;
   weeks.forEach(week => {
-    const monthDay = week.find(d => d.getDate() <= 7 && d.getMonth() !== lastMonth);
-    if (monthDay && monthDay.getMonth() !== lastMonth) {
-      lastMonth = monthDay.getMonth();
-      if (weeks.indexOf(week) > 0) {
-        cal += `<tr><td colspan="7" style="padding:16px 8px 4px;font-size:16px;font-weight:800;color:var(--text);background:var(--bg)">${monthNames[lastMonth]} ${monthDay.getFullYear()}</td></tr>`;
-      }
+    // Month header — show when first day of week is in a new month
+    const weekMonth = week[0].getMonth();
+    if (weekMonth !== prevMonth) {
+      prevMonth = weekMonth;
+      cal += `<tr><td colspan="7" style="padding:20px 8px 6px;font-size:18px;font-weight:800;color:var(--text);background:var(--bg);border:none">${monthNames[weekMonth]} ${week[0].getFullYear()}</td></tr>`;
     }
 
-    // Day numbers row
-    cal += `<tr>`;
+    // Day numbers + events in one row, fixed height
+    cal += `<tr style="height:90px">`;
     week.forEach((day, di) => {
       const td = sameDay(day, today);
       const we = di >= 5;
-      const cellBg = td ? 'background:rgba(232,168,56,0.06)' : we ? 'background:rgba(0,0,0,0.015)' : '';
-      cal += `<td style="vertical-align:top;padding:4px;height:24px;border-left:1px solid var(--border2);border-right:1px solid var(--border2);border-top:1px solid var(--border2);${cellBg}">
-        <div style="font-size:${td?'12':'11'}px;font-weight:${td?'800':'500'};color:${td?'#fff':we?'var(--muted)':'var(--text2)'};${td?'background:var(--accent);border-radius:50%;width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center':'padding:1px 3px'}">${day.getDate()}</div>
+      const cellBg = td ? 'background:rgba(232,168,56,0.06)' : we ? 'background:rgba(0,0,0,0.02)' : '';
+
+      // Events active on this day
+      const dayEvents = events.filter(e => {
+        const s = e.start || e.due;
+        const d = e.due || e.start;
+        return dayInRange(day, s, d);
+      });
+
+      let evHTML = '';
+      dayEvents.forEach(e => {
+        const s = e.start || e.due;
+        const d = e.due || e.start;
+        const isSt = sameDay(day, s);
+        const isEn = sameDay(day, d);
+        const single = isSt && isEn;
+        const r = single ? '4px' : isSt ? '4px 0 0 4px' : isEn ? '0 4px 4px 0' : '0';
+        const ml = isSt || single ? '2px' : '0';
+        const mr = isEn || single ? '2px' : '0';
+        const pl = isSt || single || di === 0 ? '4px' : '0';
+        evHTML += `<div style="background:${e.color};color:#fff;font-size:10px;font-weight:600;padding:1px ${pl};border-radius:${r};margin:1px ${mr} 1px ${ml};height:16px;line-height:16px;cursor:pointer;overflow:hidden;white-space:nowrap;text-overflow:ellipsis" onclick="switchSection('orders')" title="${_escHtml(e.project)} — ${_escHtml(e.client)}">${isSt || di === 0 ? _escHtml(e.project) : '&nbsp;'}</div>`;
+      });
+
+      cal += `<td style="vertical-align:top;padding:3px;border:1px solid var(--border2);${cellBg}">
+        <div style="font-size:${td?'12':'11'}px;font-weight:${td?'800':'500'};color:${td?'#fff':we?'var(--muted)':'var(--text2)'};${td?'background:var(--accent);border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center':'padding:1px 3px'};margin-bottom:2px">${day.getDate()}</div>
+        ${evHTML}
       </td>`;
     });
     cal += `</tr>`;
-
-    // Event bars row — each event gets its own sub-row with colspan
-    const weekEvents = events.filter(e => {
-      const s = e.start || e.due;
-      const d = e.due || e.start;
-      return week.some(day => dayInRange(day, s, d));
-    });
-
-    if (weekEvents.length > 0) {
-      weekEvents.forEach(e => {
-        const s = e.start || e.due;
-        const d = e.due || e.start;
-        let startCol = -1, endCol = -1;
-        week.forEach((day, di) => {
-          if (dayInRange(day, s, d)) {
-            if (startCol === -1) startCol = di;
-            endCol = di;
-          }
-        });
-        if (startCol === -1) return;
-
-        const isRealStart = e.start && sameDay(week[startCol], e.start);
-        const isRealEnd = e.due && sameDay(week[endCol], e.due);
-        const span = endCol - startCol + 1;
-        const r = (isRealStart && isRealEnd) ? '4px' : isRealStart ? '4px 0 0 4px' : isRealEnd ? '0 4px 4px 0' : '0';
-
-        cal += `<tr>`;
-        if (startCol > 0) cal += `<td colspan="${startCol}" style="padding:0;height:18px;border:none"></td>`;
-        cal += `<td colspan="${span}" style="padding:0 2px;height:18px;border:none">
-          <div style="background:${e.color};color:#fff;font-size:10px;font-weight:600;padding:1px 6px;border-radius:${r};overflow:hidden;white-space:nowrap;text-overflow:ellipsis;height:16px;line-height:16px;cursor:pointer" onclick="switchSection('orders')" title="${_escHtml(e.project)}">${isRealStart || startCol === 0 ? _escHtml(e.project) : ''}</div>
-        </td>`;
-        if (endCol < 6) cal += `<td colspan="${6 - endCol}" style="padding:0;height:18px;border:none"></td>`;
-        cal += `</tr>`;
-      });
-    }
-
-    // Bottom border row
-    cal += `<tr><td colspan="7" style="height:10px;border-bottom:1px solid var(--border2)"></td></tr>`;
   });
 
   cal += `</tbody></table></div>`;
