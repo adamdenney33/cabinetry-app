@@ -7864,6 +7864,7 @@ if (pieces.length === 0 && sheets.length === 0) {
   renderPieces();
 }
 initColVisibility();
+try { renderCLLibraries(); } catch(e) {}
 </script>
 </body>
 </html>
