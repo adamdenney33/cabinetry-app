@@ -1169,16 +1169,33 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
           <div id="cab-tab-rates" onclick="switchCabTab('rates')" style="flex:1;padding:10px 16px;font-size:13px;font-weight:500;text-align:center;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-2px">My Rates</div>
         </div>
         <div class="sidebar-scroll" id="cq-sidebar">
-          <!-- Cabinet Library -->
-          <div style="padding:8px 14px 4px;display:flex;justify-content:space-between;align-items:center">
-            <span style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Cabinet Library</span>
+          <!-- Cabinet Library bar (matches cutlist toolbar style) -->
+          <div class="cl-settings-bar" style="border-bottom:2px solid var(--border)">
+            <div style="display:flex;gap:4px;align-items:center">
+              <button class="cl-csv-btn" onclick="toggleCabLibrary()" id="cab-library-toggle" style="padding:5px 10px;display:flex;align-items:center;gap:5px">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
+                Library
+              </button>
+              <button class="cl-csv-btn" onclick="cqImportLibrary()" style="padding:5px 10px;display:flex;align-items:center;gap:5px">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                Import
+              </button>
+              <button class="cl-csv-btn" onclick="cqExportLibrary()" style="padding:5px 10px;display:flex;align-items:center;gap:5px">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Export
+              </button>
+            </div>
           </div>
-          <div id="cq-library-list" style="padding:2px 14px 4px"></div>
+
+          <!-- Collapsible library panel -->
+          <div id="cq-library-panel" style="display:none;border-bottom:1px solid var(--border);background:var(--surface2)">
+            <div id="cq-library-list" style="padding:8px 14px"></div>
+          </div>
 
           <!-- Cabinets in Quote -->
-          <div style="padding:8px 14px 4px;display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--border);margin-top:4px">
-            <span style="font-size:12px;font-weight:700;color:var(--text)">Cabinets in Quote</span>
-            <button class="cl-csv-btn" onclick="addCQLine()" style="padding:5px 10px;font-size:12px">+ Add Cabinet</button>
+          <div class="cl-section-header" style="padding:10px 14px 4px">
+            <span class="cl-section-title">Cabinets in Quote</span>
+            <button class="cl-csv-btn" onclick="addCQLine()" style="padding:5px 10px;font-size:12px">+ Add</button>
           </div>
           <div id="cq-cab-list" style="padding:4px 14px"></div>
 
@@ -6043,6 +6060,30 @@ function addCQHardware() { cqSettings.hardware.push({name:'New Hardware',price:0
 function addCQFinish() { if (!cqSettings.finishes) cqSettings.finishes = []; cqSettings.finishes.push({name:'New Finish',price:0}); saveCQSettings(); renderCQRates(); }
 
 // ── Cabinet Library ──
+function toggleCabLibrary() {
+  const p = document.getElementById('cq-library-panel');
+  if (p) p.style.display = p.style.display === 'none' ? '' : 'none';
+}
+function cqExportLibrary() {
+  if (!cqLibrary.length) { _toast('No cabinets in library', 'error'); return; }
+  const json = JSON.stringify(cqLibrary, null, 2);
+  const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([json],{type:'application/json'})), download: 'cabinet-library.json' });
+  a.click(); URL.revokeObjectURL(a.href);
+  _toast('Library exported', 'success');
+}
+function cqImportLibrary() {
+  const input = document.createElement('input');
+  input.type = 'file'; input.accept = '.json';
+  input.onchange = async e => {
+    const file = e.target.files[0]; if (!file) return;
+    try {
+      const data = JSON.parse(await file.text());
+      if (Array.isArray(data)) { data.forEach(c => { c.id = Date.now() + Math.random(); cqLibrary.push(c); }); saveCQLibrary(); renderCQLibrary(); _toast(data.length + ' cabinets imported', 'success'); }
+      else _toast('Invalid file format', 'error');
+    } catch(e) { _toast('Could not read file', 'error'); }
+  };
+  input.click();
+}
 function cqSaveToLibrary() {
   const line = cqLines[cqActiveLineIdx];
   if (!line) { _toast('Select a cabinet first', 'error'); return; }
