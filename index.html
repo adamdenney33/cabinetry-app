@@ -1215,9 +1215,9 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
             <input type="text" id="cq-project-name" placeholder="e.g. Kitchen Renovation" style="font-size:14px;font-weight:600;width:100%;margin-top:4px" oninput="saveCQLines()">
           </div>
 
-          <!-- Cabinets in Quote -->
+          <!-- Cabinets -->
           <div class="cl-section-header" style="padding:10px 14px 4px">
-            <span class="cl-section-title">Cabinets in Quote</span>
+            <span class="cl-section-title">Cabinets</span>
             <button class="cl-csv-btn" onclick="addCQLine()" style="padding:5px 10px;font-size:12px">+ Add</button>
           </div>
           <div id="cq-cab-list" style="padding:4px 14px"></div>
@@ -6317,13 +6317,17 @@ function cqDefaultLine() {
 
 // ── Add / Remove / Duplicate Lines ──
 function addCQLine(type) {
-  const line = cqDefaultLine(type);
+  // If we have a blank line with user edits, use that instead of a fresh default
+  let line;
+  if (!type && window._cqBlankLine && window._cqBlankLine.name) {
+    line = JSON.parse(JSON.stringify(window._cqBlankLine));
+    line.id = cqNextId++;
+    window._cqBlankLine = cqDefaultLine(); // reset blank
+  } else {
+    line = cqDefaultLine(type);
+  }
   cqLines.push(line);
-  // Auto-expand dimensions section for new cabinet
-  cqOpenSections.add(line.id + '-dims');
   saveCQLines(); renderCQPanel();
-  // Scroll to new cabinet
-  setTimeout(() => { const el = document.getElementById('cq-table-area'); if (el) el.scrollTop = el.scrollHeight; }, 50);
 }
 function addCQLineFromPreset(type) {
   const line = cqDefaultLine(type);
@@ -6599,8 +6603,10 @@ function cqSelectLine(idx) {
 function renderCQEditor() {
   const el = document.getElementById('cq-cab-editor');
   if (!el) return;
-  const line = cqLines[cqActiveLineIdx];
-  if (!line) { el.innerHTML = ''; return; }
+  // Use active line or a blank default for "Add" mode
+  const isEditing = cqActiveLineIdx >= 0 && cqLines[cqActiveLineIdx];
+  if (!window._cqBlankLine) window._cqBlankLine = cqDefaultLine();
+  const line = isEditing ? cqLines[cqActiveLineIdx] : window._cqBlankLine;
 
   const cur = window.currency;
   const c = calcCQLine(line);
@@ -6815,14 +6821,18 @@ function cqRemoveExtra(lineId, idx) {
 
 function cqAddOrUpdateCabinet() {
   if (cqActiveLineIdx >= 0 && cqLines[cqActiveLineIdx]) {
-    // Already editing — deselect and reset form
+    // Was editing — save and deselect
     cqActiveLineIdx = -1;
     saveCQLines();
     renderCQPanel();
     _toast('Cabinet updated', 'success');
   } else {
-    // Add new cabinet
+    // Add new cabinet from current form data
     addCQLine();
+    // Deselect so form resets to blank
+    cqActiveLineIdx = -1;
+    renderCQEditor();
+    renderCQResults();
   }
 }
 
@@ -6837,7 +6847,8 @@ function cqEditCabinetFromOutput(idx) {
 }
 
 function cqStepField(field, dir) {
-  const line = cqLines[cqActiveLineIdx];
+  const isEditing = cqActiveLineIdx >= 0 && cqLines[cqActiveLineIdx];
+  const line = isEditing ? cqLines[cqActiveLineIdx] : window._cqBlankLine;
   if (!line) return;
   const cur = parseFloat(line[field]) || 0;
   const min = (field === 'qty') ? 1 : 0;
@@ -6847,7 +6858,8 @@ function cqStepField(field, dir) {
 }
 
 function cqUpdateField(field, val) {
-  const line = cqLines[cqActiveLineIdx];
+  const isEditing = cqActiveLineIdx >= 0 && cqLines[cqActiveLineIdx];
+  const line = isEditing ? cqLines[cqActiveLineIdx] : window._cqBlankLine;
   if (!line) return;
   const numFields = ['w','h','d','qty','doors','drawers','shelves','adjShelves','endPanels','looseShelves','partitions','labourHrs','doorPct','drawerPct'];
   if (numFields.includes(field)) {
