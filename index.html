@@ -7127,33 +7127,26 @@ function dupCQSavedQuote(idx) {
 function renderSchedule() {
   const el = document.getElementById('schedule-main');
   if (!el) return;
-  const cur = window.currency;
   const today = new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
   const palette = ['#e8a838','#2563eb','#0d9488','#9333ea','#dc2626','#059669','#d97706','#6366f1','#ec4899','#14b8a6','#f97316','#8b5cf6'];
   const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
   const dayNames = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 
-  // 1 month back, 5 months forward
   const calStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
   while (calStart.getDay() !== 1) calStart.setDate(calStart.getDate() - 1);
   const calEnd = new Date(today.getFullYear(), today.getMonth() + 5, 0);
 
-  // Events - parse dates robustly
   function parseDate(str) {
     if (!str || str === 'TBD') return null;
-    // Try "4 Apr 2026" or "15 Apr 2026" format first (most common in this app)
     const parts = str.match(/(\d{1,2})\s+(\w+)\s+(\d{4})/);
     if (parts) {
       const months = {jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
       const m = months[parts[2].toLowerCase().substring(0,3)];
-      if (m !== undefined) { return new Date(parseInt(parts[3]), m, parseInt(parts[1])); }
+      if (m !== undefined) return new Date(parseInt(parts[3]), m, parseInt(parts[1]));
     }
-    // Try ISO "2026-04-15" format
     const iso = str.match(/(\d{4})-(\d{2})-(\d{2})/);
-    if (iso) { return new Date(parseInt(iso[1]), parseInt(iso[2])-1, parseInt(iso[3])); }
-    // Fallback
-    const d = new Date(str);
-    if (!isNaN(d)) { d.setHours(12,0,0,0); return d; }
+    if (iso) return new Date(parseInt(iso[1]), parseInt(iso[2])-1, parseInt(iso[3]));
+    const d = new Date(str); if (!isNaN(d)) return new Date(d.getFullYear(), d.getMonth(), d.getDate());
     return null;
   }
 
@@ -7161,10 +7154,9 @@ function renderSchedule() {
     const due = parseDate(o.due);
     const start = parseDate(o.prodStart);
     if (!due && !start) return null;
-    return { id:o.id, project:o.project, client:o.client, status:o.status, start, due, color:palette[idx % palette.length] };
+    return { id:o.id, project:o.project, client:o.client, start, due, color:palette[idx % palette.length] };
   }).filter(Boolean);
 
-  // Weeks
   const weeks = [];
   let ws = new Date(calStart);
   while (ws <= calEnd) {
@@ -7174,34 +7166,22 @@ function renderSchedule() {
     ws.setDate(ws.getDate() + 7);
   }
 
-  function eventActive(e, day) {
-    const t = day.getTime();
-    if (e.start && e.due) return t >= e.start.getTime() && t <= e.due.getTime();
-    if (e.due) return t === e.due.getTime();
-    if (e.start) return t === e.start.getTime();
-    return false;
-  }
-  function isEvStart(e, day) { return (e.start && day.getTime() === e.start.getTime()) || (!e.start && e.due && day.getTime() === e.due.getTime()); }
-  function isEvEnd(e, day) { return (e.due && day.getTime() === e.due.getTime()) || (!e.due && e.start && day.getTime() === e.start.getTime()); }
+  function sameDay(a, b) { return a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate(); }
+  function dayInRange(day, s, e) { return day >= s && day <= e; }
 
-  // Sidebar: job list
-  let sidebar = `<div style="width:220px;flex-shrink:0;border-right:1px solid var(--border);overflow-y:auto;background:var(--surface);padding:12px">
+  // Sidebar
+  let sidebar = `<div style="width:200px;flex-shrink:0;border-right:1px solid var(--border);overflow-y:auto;background:var(--surface);padding:12px">
     <div style="font-size:14px;font-weight:800;color:var(--text);margin-bottom:12px">Jobs</div>`;
-  if (events.length === 0) {
-    sidebar += `<div style="font-size:12px;color:var(--muted)">No active orders with dates</div>`;
-  }
   events.forEach(e => {
-    sidebar += `<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;margin-bottom:4px;border-radius:6px;cursor:pointer;transition:background .1s" onclick="switchSection('orders')" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
+    sidebar += `<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;margin-bottom:4px;border-radius:6px;cursor:pointer" onclick="switchSection('orders')" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
       <div style="width:10px;height:10px;border-radius:3px;background:${e.color};flex-shrink:0"></div>
-      <div style="flex:1;min-width:0">
-        <div style="font-size:12px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_escHtml(e.project)}</div>
-        <div style="font-size:10px;color:var(--muted)">${_escHtml(e.client)}</div>
-      </div>
+      <div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_escHtml(e.project)}</div><div style="font-size:10px;color:var(--muted)">${_escHtml(e.client)}</div></div>
     </div>`;
   });
+  if (!events.length) sidebar += `<div style="font-size:12px;color:var(--muted)">No active orders</div>`;
   sidebar += `</div>`;
 
-  // Calendar grid
+  // Calendar
   let cal = `<div style="flex:1;overflow:auto">
     <div style="padding:16px 20px 8px;font-size:22px;font-weight:800;color:var(--text)">${monthNames[today.getMonth()]} ${today.getFullYear()}</div>
     <table style="width:100%;border-collapse:collapse;table-layout:fixed">
@@ -7219,34 +7199,58 @@ function renderSchedule() {
       }
     }
 
+    // Day numbers row
     cal += `<tr>`;
     week.forEach((day, di) => {
-      const td = day.getTime() === today.getTime();
+      const td = sameDay(day, today);
       const we = di >= 5;
-      const dayEvents = events.filter(e => eventActive(e, day));
       const cellBg = td ? 'background:rgba(232,168,56,0.06)' : we ? 'background:rgba(0,0,0,0.015)' : '';
-
-      let evHTML = '';
-      dayEvents.forEach(e => {
-        const isSt = isEvStart(e, day);
-        const isEn = isEvEnd(e, day);
-        const single = isSt && isEn;
-        const r = single ? '4px' : isSt ? '4px 0 0 4px' : isEn ? '0 4px 4px 0' : '0';
-        const ml = isSt || single ? '2px' : '-2px';
-        const mr = isEn || single ? '2px' : '-2px';
-        evHTML += `<div style="background:${e.color};color:#fff;font-size:10px;font-weight:600;padding:1px 4px;border-radius:${r};margin:1px ${mr} 1px ${ml};overflow:hidden;white-space:nowrap;text-overflow:ellipsis;height:16px;line-height:16px;cursor:pointer" onclick="switchSection('orders')" title="${_escHtml(e.project)} — ${_escHtml(e.client)}">${isSt || di === 0 ? _escHtml(e.project) : ''}</div>`;
-      });
-
-      cal += `<td style="vertical-align:top;padding:2px;min-height:80px;height:80px;border:1px solid var(--border2);${cellBg}">
-        <div style="font-size:${td?'12':'11'}px;font-weight:${td?'800':'500'};color:${td?'#fff':we?'var(--muted)':'var(--text2)'};${td?'background:var(--accent);border-radius:50%;width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center':'padding:1px 3px'};margin-bottom:2px">${day.getDate()}</div>
-        ${evHTML}
+      cal += `<td style="vertical-align:top;padding:4px;height:24px;border-left:1px solid var(--border2);border-right:1px solid var(--border2);border-top:1px solid var(--border2);${cellBg}">
+        <div style="font-size:${td?'12':'11'}px;font-weight:${td?'800':'500'};color:${td?'#fff':we?'var(--muted)':'var(--text2)'};${td?'background:var(--accent);border-radius:50%;width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center':'padding:1px 3px'}">${day.getDate()}</div>
       </td>`;
     });
     cal += `</tr>`;
+
+    // Event bars row — each event gets its own sub-row with colspan
+    const weekEvents = events.filter(e => {
+      const s = e.start || e.due;
+      const d = e.due || e.start;
+      return week.some(day => dayInRange(day, s, d));
+    });
+
+    if (weekEvents.length > 0) {
+      weekEvents.forEach(e => {
+        const s = e.start || e.due;
+        const d = e.due || e.start;
+        let startCol = -1, endCol = -1;
+        week.forEach((day, di) => {
+          if (dayInRange(day, s, d)) {
+            if (startCol === -1) startCol = di;
+            endCol = di;
+          }
+        });
+        if (startCol === -1) return;
+
+        const isRealStart = e.start && sameDay(week[startCol], e.start);
+        const isRealEnd = e.due && sameDay(week[endCol], e.due);
+        const span = endCol - startCol + 1;
+        const r = (isRealStart && isRealEnd) ? '4px' : isRealStart ? '4px 0 0 4px' : isRealEnd ? '0 4px 4px 0' : '0';
+
+        cal += `<tr>`;
+        if (startCol > 0) cal += `<td colspan="${startCol}" style="padding:0;height:18px;border:none"></td>`;
+        cal += `<td colspan="${span}" style="padding:0 2px;height:18px;border:none">
+          <div style="background:${e.color};color:#fff;font-size:10px;font-weight:600;padding:1px 6px;border-radius:${r};overflow:hidden;white-space:nowrap;text-overflow:ellipsis;height:16px;line-height:16px;cursor:pointer" onclick="switchSection('orders')" title="${_escHtml(e.project)}">${isRealStart || startCol === 0 ? _escHtml(e.project) : ''}</div>
+        </td>`;
+        if (endCol < 6) cal += `<td colspan="${6 - endCol}" style="padding:0;height:18px;border:none"></td>`;
+        cal += `</tr>`;
+      });
+    }
+
+    // Bottom border row
+    cal += `<tr><td colspan="7" style="height:10px;border-bottom:1px solid var(--border2)"></td></tr>`;
   });
 
   cal += `</tbody></table></div>`;
-
   el.innerHTML = sidebar + cal;
   el.style.display = 'flex';
 }
