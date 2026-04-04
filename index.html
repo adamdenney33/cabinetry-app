@@ -7244,23 +7244,20 @@ function renderSchedule() {
 function setOrderProdStart(id, val) {
   const o = orders.find(o => o.id === id);
   if (!o) return;
-  if (val) {
-    o.prodStart = new Date(val + 'T12:00:00').toLocaleDateString('en-GB', {day:'numeric', month:'short', year:'numeric'});
-  } else {
-    o.prodStart = '';
-  }
-  // Save to localStorage (prodStart not in DB schema yet)
+  // Store as ISO date string for reliable parsing
+  o.prodStart = val || '';
   const stored = JSON.parse(localStorage.getItem('pc_order_prodstarts') || '{}');
-  stored[id] = o.prodStart;
+  stored[String(id)] = o.prodStart;
   localStorage.setItem('pc_order_prodstarts', JSON.stringify(stored));
   renderSchedule();
+  renderOrdersMain();
 }
 
 // ── Restore prodStart from localStorage ──
 function _restoreProdStarts(ordersList) {
   try {
     const stored = JSON.parse(localStorage.getItem('pc_order_prodstarts') || '{}');
-    ordersList.forEach(o => { if (stored[o.id]) o.prodStart = stored[o.id]; });
+    ordersList.forEach(o => { if (stored[String(o.id)]) o.prodStart = stored[String(o.id)]; });
   } catch(e) {}
 }
 
