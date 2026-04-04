@@ -1184,6 +1184,10 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                 Export
               </button>
+              <button class="cl-csv-btn" onclick="cqDownloadTemplate()" style="padding:5px 10px;display:flex;align-items:center;gap:5px">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M8 12h8M8 8h5M8 16h6"/></svg>
+                Template
+              </button>
             </div>
           </div>
 
@@ -6066,23 +6070,54 @@ function toggleCabLibrary() {
 }
 function cqExportLibrary() {
   if (!cqLibrary.length) { _toast('No cabinets in library', 'error'); return; }
-  const json = JSON.stringify(cqLibrary, null, 2);
-  const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([json],{type:'application/json'})), download: 'cabinet-library.json' });
+  const headers = ['Name','Width','Height','Depth','Qty','Material','Back Material','Finish','Construction','Base','Doors','Door Material','Door %','Drawers','Front Material','Inner Material','Drawer %','Fixed Shelves','Adj Shelves','Loose Shelves','Partitions','End Panels'];
+  const rows = [headers];
+  cqLibrary.forEach(c => {
+    rows.push([c._libName||c.name||'Cabinet',c.w,c.h,c.d,c.qty||1,c.material||'',c.backMat||'',c.finish||'None',c.construction||'Overlay',c.baseType||'None',c.doors||0,c.doorMat||'',c.doorPct||95,c.drawers||0,c.drawerFrontMat||'',c.drawerInnerMat||'',c.drawerPct||85,c.shelves||0,c.adjShelves||0,c.looseShelves||0,c.partitions||0,c.endPanels||0]);
+  });
+  const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([csv],{type:'text/csv'})), download: 'cabinet-library.csv' });
   a.click(); URL.revokeObjectURL(a.href);
-  _toast('Library exported', 'success');
+  _toast('Library exported as CSV', 'success');
 }
 function cqImportLibrary() {
   const input = document.createElement('input');
-  input.type = 'file'; input.accept = '.json';
+  input.type = 'file'; input.accept = '.csv';
   input.onchange = async e => {
     const file = e.target.files[0]; if (!file) return;
     try {
-      const data = JSON.parse(await file.text());
-      if (Array.isArray(data)) { data.forEach(c => { c.id = Date.now() + Math.random(); cqLibrary.push(c); }); saveCQLibrary(); renderCQLibrary(); _toast(data.length + ' cabinets imported', 'success'); }
-      else _toast('Invalid file format', 'error');
-    } catch(e) { _toast('Could not read file', 'error'); }
+      const text = await file.text();
+      const rows = text.split(/\r?\n/).map(r => r.split(',').map(c => c.replace(/^"|"$/g,'').trim()));
+      if (rows.length < 2) { _toast('CSV has no data rows', 'error'); return; }
+      let imported = 0;
+      for (let i = 1; i < rows.length; i++) {
+        const r = rows[i]; if (r.length < 4 || !r[0]) continue;
+        const cab = cqDefaultLine();
+        cab.id = Date.now() + Math.random();
+        cab._libName = r[0]; cab.name = r[0];
+        cab.w = parseFloat(r[1])||600; cab.h = parseFloat(r[2])||720; cab.d = parseFloat(r[3])||560;
+        cab.qty = parseInt(r[4])||1; cab.material = r[5]||cab.material; cab.backMat = r[6]||cab.backMat;
+        cab.finish = r[7]||'None'; cab.construction = r[8]||'Overlay'; cab.baseType = r[9]||'None';
+        cab.doors = parseInt(r[10])||0; cab.doorMat = r[11]||cab.material; cab.doorPct = parseInt(r[12])||95;
+        cab.drawers = parseInt(r[13])||0; cab.drawerFrontMat = r[14]||cab.material; cab.drawerInnerMat = r[15]||cab.backMat;
+        cab.drawerPct = parseInt(r[16])||85; cab.shelves = parseInt(r[17])||0; cab.adjShelves = parseInt(r[18])||0;
+        cab.looseShelves = parseInt(r[19])||0; cab.partitions = parseInt(r[20])||0; cab.endPanels = parseInt(r[21])||0;
+        cqLibrary.push(cab); imported++;
+      }
+      saveCQLibrary(); renderCQLibrary();
+      _toast(imported + ' cabinets imported', 'success');
+      const p = document.getElementById('cq-library-panel'); if (p) p.style.display = '';
+    } catch(e) { _toast('Could not read CSV: ' + e.message, 'error'); }
   };
   input.click();
+}
+function cqDownloadTemplate() {
+  const headers = ['Name','Width','Height','Depth','Qty','Material','Back Material','Finish','Construction','Base','Doors','Door Material','Door %','Drawers','Front Material','Inner Material','Drawer %','Fixed Shelves','Adj Shelves','Loose Shelves','Partitions','End Panels'];
+  const example = ['Kitchen Base 1','600','720','560','1','Birch Ply 18mm','Plywood 3mm (backs)','Oil (Osmo/Rubio)','Overlay','Plinth','2','Birch Ply 18mm','95','0','','','85','1','0','0','0','0'];
+  const csv = [headers, example].map(r => r.map(v => `"${v}"`).join(',')).join('\n');
+  const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([csv],{type:'text/csv'})), download: 'cabinet-template.csv' });
+  a.click(); URL.revokeObjectURL(a.href);
+  _toast('Template downloaded', 'success');
 }
 function cqSaveToLibrary() {
   const line = cqLines[cqActiveLineIdx];
