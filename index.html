@@ -7128,7 +7128,7 @@ function renderSchedule() {
   const el = document.getElementById('schedule-main');
   if (!el) return;
   const cur = window.currency;
-  const today = new Date(); today.setHours(0,0,0,0);
+  const today = new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
   const palette = ['#e8a838','#2563eb','#0d9488','#9333ea','#dc2626','#059669','#d97706','#6366f1','#ec4899','#14b8a6','#f97316','#8b5cf6'];
   const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
   const dayNames = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
@@ -7141,12 +7141,19 @@ function renderSchedule() {
   // Events - parse dates robustly
   function parseDate(str) {
     if (!str || str === 'TBD') return null;
-    // Try ISO first
-    let d = new Date(str);
-    if (!isNaN(d)) { d.setHours(0,0,0,0); return d; }
-    // Try "4 Apr 2026" format
-    const parts = str.match(/(\d+)\s+(\w+)\s+(\d{4})/);
-    if (parts) { d = new Date(parts[2] + ' ' + parts[1] + ', ' + parts[3]); if (!isNaN(d)) { d.setHours(0,0,0,0); return d; } }
+    // Try "4 Apr 2026" or "15 Apr 2026" format first (most common in this app)
+    const parts = str.match(/(\d{1,2})\s+(\w+)\s+(\d{4})/);
+    if (parts) {
+      const months = {jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
+      const m = months[parts[2].toLowerCase().substring(0,3)];
+      if (m !== undefined) { return new Date(parseInt(parts[3]), m, parseInt(parts[1])); }
+    }
+    // Try ISO "2026-04-15" format
+    const iso = str.match(/(\d{4})-(\d{2})-(\d{2})/);
+    if (iso) { return new Date(parseInt(iso[1]), parseInt(iso[2])-1, parseInt(iso[3])); }
+    // Fallback
+    const d = new Date(str);
+    if (!isNaN(d)) { d.setHours(12,0,0,0); return d; }
     return null;
   }
 
