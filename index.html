@@ -6489,7 +6489,7 @@ function renderCQEditor() {
       <div style="${SB}">
         <div style="${SH}" onclick="toggleCQSection(${line.id},'doors')">
           ${chev('doors')}
-          <span style="${ST}">${line.doors>0?dot('accent'):''}Doors</span>
+          <span style="${ST}">Doors</span>
           ${line.doors > 0 ? liveCost(doorCost) : ''}
           <span style="${SS}">${line.doors>0?line.doors+' door'+(line.doors!==1?'s':''):'None'}</span>
         </div>
@@ -6504,7 +6504,7 @@ function renderCQEditor() {
       <div style="${SB}">
         <div style="${SH}" onclick="toggleCQSection(${line.id},'drawers')">
           ${chev('drawers')}
-          <span style="${ST}">${line.drawers>0?dot('accent'):''}Drawers</span>
+          <span style="${ST}">Drawers</span>
           ${line.drawers > 0 ? liveCost(drwFrontCost) : ''}
           <span style="${SS}">${line.drawers>0?line.drawers+' drawer'+(line.drawers!==1?'s':''):'None'}</span>
         </div>
@@ -6520,7 +6520,7 @@ function renderCQEditor() {
       <div style="${SB}">
         <div style="${SH}" onclick="toggleCQSection(${line.id},'shelves')">
           ${chev('shelves')}
-          <span style="${ST}">${(line.shelves+(line.adjShelves||0)+(line.looseShelves||0)+(line.partitions||0)+(line.endPanels||0))>0?dot('accent'):''}Shelves & Partitions</span>
+          <span style="${ST}">Shelves & Partitions</span>
           ${(line.shelves+(line.adjShelves||0)+(line.looseShelves||0)+(line.partitions||0)+(line.endPanels||0))>0 ? liveCost(shelfCost) : ''}
           <span style="${SS}">${(line.shelves+(line.adjShelves||0)+(line.looseShelves||0)+(line.partitions||0)+(line.endPanels||0))>0?(line.shelves+(line.adjShelves||0)+(line.looseShelves||0)+(line.partitions||0)+(line.endPanels||0))+' total':'None'}</span>
         </div>
@@ -6541,7 +6541,7 @@ function renderCQEditor() {
       <div style="${SB}">
         <div style="${SH}" onclick="toggleCQSection(${line.id},'hw')">
           ${chev('hw')}
-          <span style="${ST}">${line.hwItems.length>0?dot('accent2'):''}Hardware</span>
+          <span style="${ST}">Hardware</span>
           ${liveCost(c.hwCost)}
         </div>
         <div ${SC('hw')}>
@@ -6559,7 +6559,7 @@ function renderCQEditor() {
       <div style="${SB}">
         <div style="${SH}" onclick="toggleCQSection(${line.id},'extras')">
           ${chev('extras')}
-          <span style="${ST}">${(line.extras||[]).length>0?dot('accent2'):''}Extras</span>
+          <span style="${ST}">Extras</span>
           ${extrasCost > 0 ? liveCost(extrasCost) : ''}
           <span style="${SS}">${(line.extras||[]).length>0?(line.extras.length)+' item'+(line.extras.length!==1?'s':''):'None'}</span>
         </div>
