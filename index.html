@@ -1352,19 +1352,8 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
         <button class="cl-add-btn" onclick="addPiece()">+ Add part</button>
         <input type="file" id="csv-import-input" accept=".csv" style="display:none" onchange="handleCSVImport(this)">
 
-        <!-- Stock Panels table -->
-        <div class="cl-section-header" style="margin-top:10px;padding-bottom:4px">
-          <span class="cl-section-title">Stock Panels</span>
-          <div style="display:flex;gap:4px;margin-left:auto">
-            <button class="cl-csv-btn" onclick="triggerImportCSV('sheets')" title="Import panels CSV" style="padding:4px 9px;display:flex;align-items:center;gap:4px">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-              Import
-            </button>
-            <button class="cl-csv-btn" onclick="exportCSV('sheets')" title="Export panels CSV" style="padding:4px 9px;display:flex;align-items:center;gap:4px">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-              Export
-            </button>
-          </div>
+        <!-- Stock Panels library bar -->
+        <div style="padding:8px 14px 4px;margin-top:10px"><div id="lib-cl-panels"></div></div>
         </div>
         <table class="cl-table" id="sheets-table">
           <thead>
@@ -7417,16 +7406,29 @@ function _escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'
 
 // ── Tab Library Renderers ──
 function renderCLLibraries() {
-  // Cut List: Projects (shared) + Cut Lists
+  // Cut List: Projects (shared) + Cut Lists + Stock Panels
   _renderLibUI('lib-cl-projects', 'Projects', [], {
     icon:'folder', renderFn:'renderCLLibraries', importFn:'triggerImportCSV.bind(null,"pieces")', exportFn:'exportCSV.bind(null,"pieces")',
     loadFn:'toggleProjectsPanel', emptyMsg:'Click Projects to manage saved projects.'
   });
-  // For cut lists, just show the import/export for cut list data
   _renderLibUI('lib-cl-cutlists', 'Cut Lists', [], {
     icon:'doc', renderFn:'renderCLLibraries', importFn:'triggerImportCSV.bind(null,"pieces")', exportFn:'exportCSV.bind(null,"pieces")',
     loadFn:'_noOp', emptyMsg:'Use Import/Export to manage cut list data.'
   });
+  // Stock Panels — shows stock items from Stock tab as available panels
+  const panelItems = stockItems.map(s => ({_label:s.name, _count:s.qty+' sheets', _sub:s.w+'×'+s.h}));
+  _renderLibUI('lib-cl-panels', 'Stock Panels', panelItems, {
+    icon:'box', renderFn:'renderCLLibraries', importFn:'triggerImportCSV.bind(null,"sheets")', exportFn:'exportCSV.bind(null,"sheets")',
+    loadFn:'_clAddPanelFromStock', emptyMsg:'No stock items. Add materials in the Stock tab.'
+  });
+}
+
+// Add a stock panel to the cutlist sheets
+function _clAddPanelFromStock(idx) {
+  const item = stockItems[idx];
+  if (!item) return;
+  addSheet(item.name, item.w, item.h, Math.max(1, item.qty));
+  _toast('"'+item.name+'" added to panels', 'success');
 }
 
 function renderCabLibraries() {
