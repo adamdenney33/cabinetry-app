@@ -1182,13 +1182,6 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
         <div style="padding:8px 14px 4px;flex-shrink:0;border-bottom:1px solid var(--border)"><div id="lib-cab-projects"></div></div>
         <div class="sidebar-scroll" id="cq-sidebar">
 
-          <!-- Project Name + Save -->
-          <div style="padding:10px 14px 6px">
-            <label style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Project Name</label>
-            <input type="text" id="cq-project-name" placeholder="e.g. Kitchen Renovation" style="font-size:14px;font-weight:600;width:100%;margin-top:4px" oninput="saveCQLines()">
-            <button class="btn btn-outline" onclick="cqSaveProject()" style="width:100%;margin-top:6px;font-size:12px;padding:7px 10px">Save Project</button>
-          </div>
-
           <!-- Library: Cabinets -->
           <div style="padding:8px 14px 4px"><div id="lib-cab-cabinets"></div></div>
 
@@ -1459,13 +1452,7 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
       <div style="padding:8px 14px 4px;flex-shrink:0"><div id="lib-quote-clients"></div></div>
       <div style="padding:4px 14px 6px;flex-shrink:0;border-bottom:1px solid var(--border)"><div id="lib-quote-projects"></div></div>
       <div class="sidebar-scroll">
-        <!-- Project Name -->
-        <div style="padding:10px 16px 6px">
-          <label style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Project Name</label>
-          <input type="text" id="q-project" placeholder="e.g. Kitchen Renovation" style="font-size:14px;font-weight:600;width:100%;margin-top:4px">
-          <button class="btn btn-outline" onclick="createQuote()" style="width:100%;margin-top:6px;font-size:12px;padding:7px 10px">Save Project</button>
-        </div>
-        <div class="form-section" style="border-top:1px solid var(--border);padding-top:10px">
+        <div class="form-section">
           <div class="form-section-title">New Quote</div>
           <div class="form-group" style="margin-bottom:8px;position:relative">
             <label>Client Name</label>
@@ -1526,13 +1513,7 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
       <div style="padding:8px 14px 4px;flex-shrink:0"><div id="lib-order-clients"></div></div>
       <div style="padding:4px 14px 6px;flex-shrink:0;border-bottom:1px solid var(--border)"><div id="lib-order-projects"></div></div>
       <div class="sidebar-scroll">
-        <!-- Project Name -->
-        <div style="padding:10px 16px 6px">
-          <label style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Project Name</label>
-          <input type="text" id="o-project" placeholder="e.g. Master Bath Vanity" style="font-size:14px;font-weight:600;width:100%;margin-top:4px">
-          <button class="btn btn-outline" onclick="addOrder()" style="width:100%;margin-top:6px;font-size:12px;padding:7px 10px">Save Project</button>
-        </div>
-        <div class="form-section" style="border-top:1px solid var(--border);padding-top:10px">
+        <div class="form-section">
           <div class="form-section-title">New Order</div>
           <div class="form-group" style="margin-bottom:8px">
             <label>Client Name</label>
@@ -6300,8 +6281,24 @@ let cqProjectLibrary = [];
 function loadCQProjectLibrary() { try { cqProjectLibrary = JSON.parse(localStorage.getItem('pc_cq_projects')||'[]'); } catch(e) { cqProjectLibrary=[]; } }
 function saveCQProjectLibrary() { localStorage.setItem('pc_cq_projects', JSON.stringify(cqProjectLibrary)); }
 
-function cqSaveProject() {
-  const name = document.getElementById('cq-project-name')?.value?.trim() || '';
+function _cqSaveProjectByName(name) {
+  if (!name || !name.trim()) { _toast('Enter a project name', 'error'); return; }
+  cqSaveProject(name.trim());
+}
+function _cqSaveCabByName(name) {
+  if (!name || !name.trim()) { _toast('Enter a cabinet name', 'error'); return; }
+  const line = cqLines[cqActiveLineIdx];
+  if (line) line.name = name.trim();
+  cqSaveToLibrary();
+}
+function _saveStockLibByName(name) {
+  if (!name || !name.trim()) { _toast('Enter a library name', 'error'); return; }
+  const el = document.getElementById('stock-lib-name');
+  if (el) el.value = name.trim();
+  saveStockLibrary();
+}
+function cqSaveProject(nameOverride) {
+  const name = nameOverride || '';
   if (!name) { _toast('Enter a project name first', 'error'); return; }
   const project = {
     id: Date.now(), name,
@@ -7403,16 +7400,20 @@ function _renderLibUI(containerId, libName, items, opts) {
   </div>`;
 
   if (isOpen) {
+    // Save input inside dropdown
+    if (opts.saveFn) {
+      html += `<div style="display:flex;gap:4px;margin-bottom:6px">
+        <input type="text" id="_lib_save_${containerId}" placeholder="${opts.savePlaceholder||'Enter name...'}" style="flex:1;font-size:12px;padding:5px 8px;border:1px solid var(--border);border-radius:5px;background:var(--surface2);color:var(--text);font-family:inherit">
+        <button class="btn btn-primary" onclick="${opts.saveFn}(document.getElementById('_lib_save_${containerId}').value)" style="padding:5px 10px;font-size:11px;width:auto">Save</button>
+      </div>`;
+    }
     if (!items.length) {
-      html += `<div style="color:var(--muted);font-size:12px;padding:6px 0">${opts.emptyMsg || 'No items yet.'}</div>`;
+      html += `<div style="color:var(--muted);font-size:12px;padding:4px 0">${opts.emptyMsg || 'No items yet.'}</div>`;
     } else {
-      html += items.map((item, i) => `<div style="display:flex;align-items:center;gap:6px;padding:6px 8px;margin-bottom:3px;border-radius:6px;border:1px solid var(--border);background:var(--surface);cursor:pointer" onclick="${opts.loadFn}(${i})">
-        <div style="flex:1;min-width:0">
-          <div style="font-size:12px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_escHtml(item._label||item.name||'')}</div>
-          ${item._sub?`<div style="font-size:10px;color:var(--muted)">${_escHtml(item._sub)}</div>`:''}
-        </div>
-        <div style="font-size:10px;color:var(--muted)">${item._count||''}</div>
-        ${opts.deleteFn?`<button style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:0 2px" onclick="event.stopPropagation();${opts.deleteFn}(${i})">×</button>`:''}
+      html += items.map((item, i) => `<div style="display:flex;align-items:center;gap:6px;padding:5px 8px;margin-bottom:2px;border-radius:5px;border:1px solid var(--border);background:var(--surface);cursor:pointer;overflow:hidden" onclick="${opts.loadFn}(${i})">
+        <div style="font-size:12px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">${_escHtml(item._label||item.name||'')}${item._sub?' <span style="font-weight:400;color:var(--muted);font-size:10px">'+_escHtml(item._sub)+'</span>':''}</div>
+        <div style="font-size:10px;color:var(--muted);white-space:nowrap;flex-shrink:0">${item._count||''}</div>
+        ${opts.deleteFn?`<button style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;padding:0 2px;flex-shrink:0" onclick="event.stopPropagation();${opts.deleteFn}(${i})">×</button>`:''}
       </div>`).join('');
     }
   }
@@ -7450,12 +7451,12 @@ function renderCabLibraries() {
   const projItems = cqProjectLibrary.map(p => ({_label:p.name, _sub:p.date, _count:(p.lines||[]).length+' cab'}));
   _renderLibUI('lib-cab-projects', 'Projects', projItems, {
     icon:'folder', renderFn:'renderCabLibraries', importFn:'cqImportProjects', exportFn:'cqExportProjects',
-    loadFn:'cqLoadProject', deleteFn:'cqDeleteProject', emptyMsg:'No saved projects.'
+    loadFn:'cqLoadProject', deleteFn:'cqDeleteProject', saveFn:'_cqSaveProjectByName', savePlaceholder:'Project name...', emptyMsg:'No saved projects.'
   });
   const cabItems = cqLibrary.map(c => ({_label:c._libName||c.name||'Cabinet', _count:c.w+'×'+c.h}));
   _renderLibUI('lib-cab-cabinets', 'Cabinets', cabItems, {
     icon:'cabinet', renderFn:'renderCabLibraries', importFn:'cqImportLibrary', exportFn:'cqExportLibrary',
-    loadFn:'cqLoadFromLibrary', deleteFn:'cqRemoveFromLibrary', emptyMsg:'No saved cabinets.'
+    loadFn:'cqLoadFromLibrary', deleteFn:'cqRemoveFromLibrary', saveFn:'_cqSaveCabByName', savePlaceholder:'Cabinet name...', emptyMsg:'No saved cabinets.'
   });
 }
 
@@ -7464,7 +7465,7 @@ function renderStockLibrariesUI() {
   const libItems = stockLibraries.map(lib => ({_label:lib.name, _sub:lib.date, _count:(lib.items||[]).length+' items'}));
   _renderLibUI('lib-stock-libraries', 'Stock Libraries', libItems, {
     icon:'folder', renderFn:'renderStockLibrariesUI', importFn:'importStockLibrary', exportFn:'exportStockLibrary',
-    loadFn:'loadStockLibrary', deleteFn:'deleteStockLibrary', emptyMsg:'No saved libraries.'
+    loadFn:'loadStockLibrary', deleteFn:'deleteStockLibrary', saveFn:'_saveStockLibByName', savePlaceholder:'Library name...', emptyMsg:'No saved libraries.'
   });
   _renderLibUI('lib-stock-items', 'Stock Items', [], {
     icon:'box', renderFn:'renderStockLibrariesUI', importFn:'importStockCSV', exportFn:'exportStockCSV',
