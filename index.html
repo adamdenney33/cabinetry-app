@@ -7378,14 +7378,13 @@ function _renderLibUI(containerId, libName, items, opts) {
   // Toggle
   const isOpen = window['_libOpen_'+containerId];
   
-  const tabStyle = `display:inline-flex;align-items:center;gap:5px;padding:7px 14px 8px;font-size:12px;font-weight:500;color:var(--muted);cursor:pointer;border-radius:8px 8px 0 0;border:1px solid transparent;border-bottom:none;background:transparent;font-family:inherit;transition:all .15s;position:relative`;
-  const tabActiveStyle = `color:var(--text);background:var(--surface);font-weight:700;border-color:var(--border);margin-bottom:-1px`;
-  const tabSmStyle = `display:inline-flex;align-items:center;gap:4px;padding:5px 10px 6px;font-size:11px;font-weight:500;color:var(--muted);cursor:pointer;border-radius:6px 6px 0 0;border:1px solid transparent;border-bottom:none;background:transparent;font-family:inherit;transition:all .15s`;
+  const tabBase = `display:inline-flex;align-items:center;gap:6px;padding:8px 16px 9px;font-size:13px;font-weight:500;color:var(--muted);cursor:pointer;border-radius:8px 8px 0 0;border:1px solid transparent;border-bottom:none;background:transparent;font-family:inherit;transition:all .15s;white-space:nowrap;position:relative`;
+  const tabActive = `color:var(--text);background:var(--surface);font-weight:700;border-color:var(--border);border-bottom-color:var(--surface);margin-bottom:-1px`;
 
-  let html = `<div style="display:flex;align-items:flex-end;gap:2px;border-bottom:1px solid var(--border);padding:0 0 0;margin-bottom:${isOpen?'8':'0'}px">
-    <button onclick="window['_libOpen_${containerId}']=!window['_libOpen_${containerId}'];${opts.renderFn}()" style="${tabStyle};${isOpen?tabActiveStyle:''}">${svgIcon} ${libName}</button>
-    <button onclick="${opts.importFn}()" style="${tabSmStyle}">${importIcon} Import</button>
-    <button onclick="${opts.exportFn}()" style="${tabSmStyle}">${exportIcon} Export</button>
+  let html = `<div style="display:flex;align-items:flex-end;gap:2px;background:var(--tabbar);border-bottom:1px solid var(--border);padding:6px 8px 0">
+    <button onclick="window['_libOpen_${containerId}']=!window['_libOpen_${containerId}'];${opts.renderFn}()" style="${tabBase};${isOpen?tabActive:''}">${svgIcon} ${libName}</button>
+    <button onclick="${opts.importFn}()" style="${tabBase};font-size:11px;padding:6px 12px 7px">${importIcon} Import</button>
+    <button onclick="${opts.exportFn}()" style="${tabBase};font-size:11px;padding:6px 12px 7px">${exportIcon} Export</button>
   </div>`;
 
   if (isOpen) {
