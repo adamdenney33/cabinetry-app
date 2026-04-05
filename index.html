@@ -1169,8 +1169,7 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
           <div id="cab-tab-rates" onclick="switchCabTab('rates')" style="flex:1;padding:10px 16px;font-size:13px;font-weight:500;text-align:center;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-2px">My Rates</div>
         </div>
         <!-- Libraries pinned at top -->
-        <div style="padding:8px 14px 4px;flex-shrink:0"><div id="lib-cab-projects"></div></div>
-        <div style="padding:4px 14px 6px;flex-shrink:0;border-bottom:1px solid var(--border)"><div id="lib-cab-cabinets"></div></div>
+        <div style="padding:8px 14px 4px;flex-shrink:0;border-bottom:1px solid var(--border)"><div id="lib-cab-projects"></div></div>
         <div class="sidebar-scroll" id="cq-sidebar">
 
           <!-- Project Name + Save -->
@@ -1180,8 +1179,11 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
             <button class="btn btn-outline" onclick="cqSaveProject()" style="width:100%;margin-top:6px;font-size:12px;padding:7px 10px">Save Project</button>
           </div>
 
+          <!-- Library: Cabinets -->
+          <div style="padding:8px 14px 4px"><div id="lib-cab-cabinets"></div></div>
+
           <!-- Cabinets -->
-          <div class="cl-section-header" style="padding:10px 14px 4px">
+          <div class="cl-section-header" style="padding:4px 14px 4px">
             <span class="cl-section-title">Cabinets</span>
             <button class="cl-csv-btn" onclick="addCQLine()" style="padding:5px 10px;font-size:12px">+ Add</button>
           </div>
@@ -1295,8 +1297,7 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
     <!-- LEFT: Inputs -->
     <div class="cl-left">
       <!-- Libraries pinned at top -->
-      <div style="padding:8px 14px 4px;flex-shrink:0"><div id="lib-cl-projects"></div></div>
-      <div style="padding:4px 14px 6px;flex-shrink:0;border-bottom:1px solid var(--border)"><div id="lib-cl-cutlists"></div></div>
+      <div style="padding:8px 14px 4px;flex-shrink:0;border-bottom:1px solid var(--border)"><div id="lib-cl-projects"></div></div>
 
       <!-- Projects panel (existing, toggle via library) -->
       <div class="cl-scroll">
@@ -7409,10 +7410,6 @@ function renderCLLibraries() {
   _renderLibUI('lib-cl-projects', 'Projects', [], {
     icon:'folder', renderFn:'renderCLLibraries', importFn:'triggerImportCSV.bind(null,"pieces")', exportFn:'exportCSV.bind(null,"pieces")',
     loadFn:'toggleProjectsPanel', emptyMsg:'Click Projects to manage saved projects.'
-  });
-  _renderLibUI('lib-cl-cutlists', 'Cut Lists', [], {
-    icon:'doc', renderFn:'renderCLLibraries', importFn:'triggerImportCSV.bind(null,"pieces")', exportFn:'exportCSV.bind(null,"pieces")',
-    loadFn:'_noOp', emptyMsg:'Use Import/Export to manage cut list data.'
   });
   // Stock Panels — shows stock items from Stock tab as available panels
   const panelItems = stockItems.map(s => ({_label:s.name, _count:s.qty+' sheets', _sub:s.w+'×'+s.h}));
