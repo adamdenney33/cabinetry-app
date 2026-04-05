@@ -215,11 +215,13 @@ header {
 }
 
 .nav-tab {
-  display: flex; align-items: center; justify-content: center; gap: 7px;
+  display: flex !important; align-items: center; justify-content: center; gap: 7px;
   padding: 8px 0 10px;
-  min-width: 165px;
-  width: 165px;
-  flex: 0 0 165px;
+  min-width: 165px !important;
+  width: 165px !important;
+  max-width: 165px !important;
+  flex: 0 0 165px !important;
+  box-sizing: border-box;
   font-size: 13px; font-weight: 500;
   color: var(--muted);
   cursor: pointer;
