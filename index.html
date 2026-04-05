@@ -811,14 +811,14 @@ tr:hover .cl-drag-handle { color: var(--muted); }
 /* Stepper */
 .cl-stepper { display: flex; align-items: stretch; }
 .cl-step-btn {
-  width: 20px; border: none; background: var(--surface2); color: var(--text2);
+  width: 16px; border: none; background: var(--surface2); color: var(--text2);
   cursor: pointer; font-size: 13px; font-weight: 700; line-height: 1;
   transition: background 0.1s; flex-shrink: 0; padding: 0;
 }
 .cl-step-btn:first-child { border-radius: 3px 0 0 3px; }
 .cl-step-btn:last-child { border-radius: 0 3px 3px 0; }
 .cl-step-btn:hover { background: var(--border); }
-.cl-stepper .cl-qty-input { border-radius: 0; text-align: center; width: 44px; }
+.cl-stepper .cl-qty-input { border-radius: 0; text-align: center; width: 32px; padding: 5px 2px; }
 
 /* Alternating rows */
 .cl-table tbody tr:nth-child(even) td { background: rgba(0,0,0,0.025); }
@@ -1341,7 +1341,7 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
               <th class="cl-col-label" id="th-label" style="min-width:80px">Label</th>
               <th style="width:60px">L</th>
               <th style="width:60px">W</th>
-              <th style="width:90px">Qty</th>
+              <th style="width:72px">Qty</th>
               <th style="width:48px" class="cl-col-grain" id="th-grain" title="Grain direction">Grain</th>
               <th style="width:52px"></th>
               <th style="width:86px" class="cl-col-material" id="th-material">Panel</th>
@@ -1366,7 +1366,7 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
               <th>Material</th>
               <th style="width:60px">W</th>
               <th style="width:60px">H</th>
-              <th style="width:90px">Qty</th>
+              <th style="width:72px">Qty</th>
               <th style="width:48px" class="cl-col-grain" id="th-grain-sheet" title="Grain direction">Grain</th>
               <th style="width:52px" title="Blade kerf allowance">Kerf</th>
               <th style="width:86px" class="cl-col-material"></th>
