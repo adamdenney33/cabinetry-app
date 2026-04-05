@@ -374,7 +374,7 @@ textarea { resize: vertical; min-height: 70px; }
 .cl-grain-check { width: auto; cursor: pointer; accent-color: var(--accent); margin: 0; }
 .cl-del-cell { padding: 0 2px; white-space: nowrap; display: flex; gap: 0; align-items: center; }
 .cl-del-btn {
-  width: 20px; height: 20px; border: none; background: none; color: var(--muted);
+  width: 18px; height: 18px; border: none; background: none; color: var(--muted);
   cursor: pointer; border-radius: 4px; display: flex; align-items: center;
   justify-content: center; transition: all 0.15s; padding: 0; font-size: 15px;
 }
@@ -1362,16 +1362,16 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
           <thead>
             <tr>
               <th style="width:14px"></th>
-              <th style="width:22px"></th>
-              <th>Material</th>
-              <th style="width:60px">W</th>
-              <th style="width:60px">H</th>
+              <th style="width:18px"></th>
+              <th style="min-width:90px">Material</th>
+              <th style="width:55px">W</th>
+              <th style="width:55px">H</th>
               <th style="width:72px">Qty</th>
-              <th style="width:48px" class="cl-col-grain" id="th-grain-sheet" title="Grain direction">Grain</th>
-              <th style="width:52px" title="Blade kerf allowance">Kerf</th>
+              <th style="width:44px" class="cl-col-grain" id="th-grain-sheet" title="Grain direction">Grain</th>
+              <th style="width:46px" title="Blade kerf allowance">Kerf</th>
               <th style="width:86px" class="cl-col-material"></th>
               <th style="width:80px" class="cl-col-notes"></th>
-              <th style="width:24px"></th>
+              <th style="width:40px"></th>
             </tr>
           </thead>
           <tbody id="sheets-body"></tbody>
