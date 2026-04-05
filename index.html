@@ -7863,6 +7863,8 @@ if (pieces.length === 0 && sheets.length === 0) {
   renderPieces();
 }
 initColVisibility();
+// Default library panels to open
+if (window['_libOpen_lib-cl-panels'] === undefined) window['_libOpen_lib-cl-panels'] = true;
 try { renderCLLibraries(); } catch(e) {}
 </script>
 </body>
