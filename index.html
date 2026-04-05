@@ -1044,7 +1044,7 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
 <header>
   <div class="logo">
     <div class="logo-text">ProCabinet.App</div>
-    <div class="logo-badge">BETA v0.9.2</div>
+    <div class="logo-badge">BETA v0.9.3</div>
   </div>
   <div class="header-right">
     <div class="settings-wrap">
@@ -2462,11 +2462,6 @@ function renderSheets() {
       ondragend="onDragEnd()">
       <td class="cl-del-cell" style="padding:0 2px;width:14px">
         <span class="cl-drag-handle" title="Drag to reorder">${DRAG_HANDLE}</span>
-      </td>
-      <td class="cl-del-cell">
-        <button class="cl-toggle-btn${dis ? ' disabled' : ''}" onclick="toggleSheet(${s.id})" title="${dis ? 'Enable' : 'Disable'}" style="color:${dis?'var(--muted)':'var(--text2)'}">
-          ${dis ? EYE_OFF : EYE_ON}
-        </button>
       </td>
       <td><input class="cl-input" value="${s.name.replace(/"/g,'&quot;')}"
         data-table="sheets" data-row="${i}" data-col="name"
