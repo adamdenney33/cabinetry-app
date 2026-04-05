@@ -7379,8 +7379,8 @@ function _renderLibUI(containerId, libName, items, opts) {
   
   let html = `<div style="display:flex;gap:4px;align-items:center;margin-bottom:${isOpen?'6':'0'}px">
     <button class="cl-csv-btn" onclick="window['_libOpen_${containerId}']=!window['_libOpen_${containerId}'];${opts.renderFn}()" style="padding:5px 10px;display:flex;align-items:center;gap:5px">${svgIcon} ${libName}</button>
-    ${isOpen?`<button class="cl-csv-btn" onclick="${opts.importFn}()" style="padding:5px 8px;display:flex;align-items:center;gap:4px">${importIcon} Import</button>
-    <button class="cl-csv-btn" onclick="${opts.exportFn}()" style="padding:5px 8px;display:flex;align-items:center;gap:4px">${exportIcon} Export</button>`:''}
+    <button class="cl-csv-btn" onclick="${opts.importFn}()" style="padding:5px 8px;display:flex;align-items:center;gap:4px">${importIcon} Import</button>
+    <button class="cl-csv-btn" onclick="${opts.exportFn}()" style="padding:5px 8px;display:flex;align-items:center;gap:4px">${exportIcon} Export</button>
   </div>`;
 
   if (isOpen) {
