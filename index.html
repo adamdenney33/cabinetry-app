@@ -373,6 +373,7 @@ textarea { resize: vertical; min-height: 70px; }
 .cl-grain-cell { text-align: center; padding: 0; }
 .cl-grain-check { width: auto; cursor: pointer; accent-color: var(--accent); margin: 0; }
 .cl-del-cell { padding: 0 2px; white-space: nowrap; vertical-align: middle; }
+.cl-del-cell > * { display: inline-block; vertical-align: middle; }
 .cl-del-btn {
   width: 18px; height: 18px; border: none; background: none; color: var(--muted);
   cursor: pointer; border-radius: 4px; display: flex; align-items: center;
@@ -1044,7 +1045,7 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
 <header>
   <div class="logo">
     <div class="logo-text">ProCabinet.App</div>
-    <div class="logo-badge">BETA v0.9.5</div>
+    <div class="logo-badge">BETA v0.9.6</div>
   </div>
   <div class="header-right">
     <div class="settings-wrap">
@@ -1363,8 +1364,8 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
             <tr>
               <th style="width:14px"></th>
               <th style="min-width:90px">Material</th>
+              <th style="width:55px">L</th>
               <th style="width:55px">W</th>
-              <th style="width:55px">H</th>
               <th style="width:72px">Qty</th>
               <th style="width:44px" class="cl-col-grain" id="th-grain-sheet" title="Grain direction">Grain</th>
               <th style="width:36px" title="Blade kerf allowance">Kerf</th>
