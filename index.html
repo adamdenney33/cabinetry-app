@@ -4059,11 +4059,7 @@ async function createQuote() {
   };
   if (clientId) row.client_id = clientId;
   if (projectId) row.project_id = projectId;
-  let { data, error } = await _db('quotes').insert(row).select().single();
-  if (error && error.message && (error.message.includes('client_id') || error.message.includes('project_id'))) {
-    delete row.client_id; delete row.project_id;
-    ({ data, error } = await _db('quotes').insert(row).select().single());
-  }
+  const { data, error } = await _dbInsertSafe('quotes', row);
   if (error) { _toast('Could not save quote — ' + (error.message || JSON.stringify(error)), 'error'); console.error(error); return; }
   quotes.unshift(data);
   _toast('Quote created', 'success');
@@ -4091,11 +4087,7 @@ async function convertQuoteToOrder(id) {
   const orderRow = { user_id: _userId, client: q.client, project: q.project, value: Math.round(quoteTotal(q)), status: 'confirmed', due: 'TBD' };
   if (q.client_id) orderRow.client_id = q.client_id;
   if (q.project_id) orderRow.project_id = q.project_id;
-  let { data, error: oErr } = await _db('orders').insert(orderRow).select().single();
-  if (oErr && oErr.message && (oErr.message.includes('client_id') || oErr.message.includes('project_id'))) {
-    delete orderRow.client_id; delete orderRow.project_id;
-    ({ data, error: oErr } = await _db('orders').insert(orderRow).select().single());
-  }
+  const { data, error: oErr } = await _dbInsertSafe('orders', orderRow);
   if (oErr) { _toast('Could not create order — ' + (oErr.message || JSON.stringify(oErr)), 'error'); console.error(oErr); return; }
   orders.unshift(data);
   document.getElementById('orders-badge').textContent = orders.filter(o => o.status !== 'complete').length;
@@ -4243,11 +4235,7 @@ async function addOrder() {
   };
   if (clientId) row.client_id = clientId;
   if (projectId) row.project_id = projectId;
-  let { data, error } = await _db('orders').insert(row).select().single();
-  if (error && error.message && (error.message.includes('client_id') || error.message.includes('project_id'))) {
-    delete row.client_id; delete row.project_id;
-    ({ data, error } = await _db('orders').insert(row).select().single());
-  }
+  let { data, error } = await _dbInsertSafe('orders', row);
   if (error) { _toast('Could not save order — ' + (error.message || JSON.stringify(error)), 'error'); console.error(error); return; }
   // Save notes and prodStart to localStorage
   const notesVal = document.getElementById('o-notes').value.trim();
@@ -8028,6 +8016,18 @@ initColVisibility();
 // CLIENTS & PROJECTS — CRUD + RENDER
 // ══════════════════════════════════════════
 
+// ── Safe insert — retries by stripping columns the schema doesn't have yet ──
+async function _dbInsertSafe(table, row) {
+  let { data, error } = await _db(table).insert(row).select().single();
+  while (error && error.message) {
+    const m = error.message.match(/Could not find the '(\w+)' column/);
+    if (!m) break;
+    delete row[m[1]];
+    ({ data, error } = await _db(table).insert(row).select().single());
+  }
+  return { data, error };
+}
+
 // ── Resolve-or-create helpers ──
 async function resolveClient(name) {
   if (!name) return null;
@@ -8047,11 +8047,7 @@ async function resolveProject(name, clientId) {
   if (existing) return existing.id;
   const row = { user_id: _userId, name, status: 'active' };
   if (clientId) row.client_id = clientId;
-  let { data, error } = await _db('projects').insert(row).select().single();
-  if (error && error.message && error.message.includes('client_id')) {
-    delete row.client_id;
-    ({ data, error } = await _db('projects').insert(row).select().single());
-  }
+  const { data, error } = await _dbInsertSafe('projects', row);
   if (error || !data) return null;
   projects.unshift(data);
   return data.id;
@@ -8069,7 +8065,7 @@ async function createClient() {
     address: document.getElementById('cl-address').value.trim() || null,
     notes: document.getElementById('cl-notes').value.trim() || null,
   };
-  const { data, error } = await _db('clients').insert(row).select().single();
+  const { data, error } = await _dbInsertSafe('clients', row);
   if (error) { _toast('Could not save client — ' + (error.message || JSON.stringify(error)), 'error'); return; }
   clients.push(data);
   clients.sort((a,b) => a.name.localeCompare(b.name));
@@ -8110,12 +8106,7 @@ async function createProject() {
     status: document.getElementById('pj-status').value,
   };
   if (clientId) row.client_id = clientId;
-  let { data, error } = await _db('projects').insert(row).select().single();
-  // Retry without client_id if column doesn't exist yet
-  if (error && error.message && error.message.includes('client_id')) {
-    delete row.client_id;
-    ({ data, error } = await _db('projects').insert(row).select().single());
-  }
+  let { data, error } = await _dbInsertSafe('projects', row);
   if (error) { _toast('Could not save project — ' + (error.message || JSON.stringify(error)), 'error'); return; }
   projects.unshift(data);
   _toast('Project created', 'success');
