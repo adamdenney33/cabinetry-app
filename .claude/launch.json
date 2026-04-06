@@ -3,8 +3,8 @@
   "configurations": [
     {
       "name": "Static File Server (npx serve)",
-      "runtimeExecutable": "/usr/bin/python3",
-      "runtimeArgs": ["/tmp/cabinetry_server.py"],
+      "runtimeExecutable": "/opt/homebrew/bin/node",
+      "runtimeArgs": [".claude/server.js"],
       "port": 8081
     }
   ]

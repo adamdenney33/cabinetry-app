@@ -376,8 +376,8 @@ textarea { resize: vertical; min-height: 70px; }
 .cl-del-cell > * { display: inline-block; vertical-align: middle; }
 .cl-del-btn {
   width: 18px; height: 18px; border: none; background: none; color: var(--muted);
-  cursor: pointer; border-radius: 4px; display: flex; align-items: center;
-  justify-content: center; transition: all 0.15s; padding: 0; font-size: 15px;
+  cursor: pointer; border-radius: 4px; display: inline-flex; align-items: center;
+  justify-content: center; transition: all 0.15s; padding: 0; font-size: 15px; vertical-align: middle;
 }
 .cl-del-btn:hover { color: var(--danger); background: rgba(224,82,82,0.1); }
 .cl-add-btn {
@@ -401,21 +401,21 @@ textarea { resize: vertical; min-height: 70px; }
 .data-table tr:hover td { background: var(--surface2); }
 
 /* ── CARDS & STATS ── */
-.stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 20px; }
+.stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px; margin-bottom: 14px; }
 .stat-card {
   background: var(--surface);
   border-radius: var(--radius);
   border: 1px solid var(--border);
-  padding: 16px 18px;
+  padding: 8px 10px;
   box-shadow: var(--shadow);
 }
-.stat-card.accent { border-top: 3px solid var(--accent); }
-.stat-card.success { border-top: 3px solid var(--success); }
-.stat-card.warn { border-top: 3px solid var(--warn); }
-.stat-card.danger { border-top: 3px solid var(--danger); }
-.stat-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--muted); }
-.stat-value { font-size: 28px; font-weight: 800; color: var(--text); margin: 5px 0 3px; line-height: 1; }
-.stat-sub { font-size: 11px; color: var(--muted); }
+.stat-card.accent { border-top: 2px solid var(--accent); }
+.stat-card.success { border-top: 2px solid var(--success); }
+.stat-card.warn { border-top: 2px solid var(--warn); }
+.stat-card.danger { border-top: 2px solid var(--danger); }
+.stat-label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: var(--muted); }
+.stat-value { font-size: 18px; font-weight: 800; color: var(--text); margin: 2px 0 1px; line-height: 1; }
+.stat-sub { font-size: 10px; color: var(--muted); }
 
 .card {
   background: var(--surface);
@@ -1162,6 +1162,14 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
     Dashboard
   </div>
+  <div class="nav-tab" onclick="switchSection('projects')">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
+    Projects
+  </div>
+  <div class="nav-tab" onclick="switchSection('clients')">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+    Clients
+  </div>
 </div>
 </div>
 
@@ -1363,6 +1371,7 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
           <thead>
             <tr>
               <th style="width:14px"></th>
+              <th style="width:18px"></th>
               <th style="min-width:90px">Material</th>
               <th style="width:55px">L</th>
               <th style="width:55px">W</th>
@@ -1404,7 +1413,6 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
         </div>
         <div class="layout-tool-sep"></div>
         <button class="layout-tool-btn active" id="lt-color" onclick="toggleLayoutColor()">Color</button>
-        <button class="layout-tool-btn active" id="lt-grain" onclick="toggleLayoutGrain()">Grain</button>
         <div class="layout-tool-sep"></div>
         <button class="layout-tool-btn" onclick="adjustFontScale(-0.15)">A−</button>
         <button class="layout-tool-btn" onclick="adjustFontScale(0.15)">A+</button>
@@ -1588,6 +1596,85 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
     </div>
   </div>
 
+  <!-- ════════════════════════════════════
+       PROJECTS SECTION
+  ════════════════════════════════════ -->
+  <div class="section-panel" id="panel-projects">
+    <div class="sidebar">
+      <div class="sidebar-scroll">
+        <div class="form-section">
+          <div class="form-section-title">New Project</div>
+          <div class="form-group" style="margin-bottom:8px;position:relative">
+            <label>Project Name</label>
+            <input type="text" id="pj-name" placeholder="e.g. Kitchen Remodel">
+          </div>
+          <div class="form-group" style="margin-bottom:8px;position:relative">
+            <label>Client</label>
+            <input type="text" id="pj-client" placeholder="Select or type client..." autocomplete="off" oninput="_pjClientSuggest(this)">
+            <div id="pj-client-suggest" class="client-suggest-list" style="display:none"></div>
+          </div>
+          <div class="form-group" style="margin-bottom:8px">
+            <label>Description</label>
+            <textarea id="pj-desc" placeholder="Project details..."></textarea>
+          </div>
+          <div class="form-group" style="margin-bottom:8px">
+            <label>Status</label>
+            <select id="pj-status">
+              <option value="active">Active</option>
+              <option value="on-hold">On Hold</option>
+              <option value="complete">Complete</option>
+            </select>
+          </div>
+          <button class="btn btn-primary" onclick="createProject()" style="margin-top:4px;width:100%">+ Create Project</button>
+        </div>
+      </div>
+    </div>
+    <div class="main-content">
+      <div class="main-scroll" id="projects-main">
+        <!-- rendered by JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════
+       CLIENTS SECTION
+  ════════════════════════════════════ -->
+  <div class="section-panel" id="panel-clients">
+    <div class="sidebar">
+      <div class="sidebar-scroll">
+        <div class="form-section">
+          <div class="form-section-title">New Client</div>
+          <div class="form-group" style="margin-bottom:8px">
+            <label>Name</label>
+            <input type="text" id="cl-name" placeholder="e.g. John Smith">
+          </div>
+          <div class="form-group" style="margin-bottom:8px">
+            <label>Email</label>
+            <input type="email" id="cl-email" placeholder="john@example.com">
+          </div>
+          <div class="form-group" style="margin-bottom:8px">
+            <label>Phone</label>
+            <input type="tel" id="cl-phone" placeholder="+1 555 123 4567">
+          </div>
+          <div class="form-group" style="margin-bottom:8px">
+            <label>Address</label>
+            <textarea id="cl-address" placeholder="Street, City..."></textarea>
+          </div>
+          <div class="form-group" style="margin-bottom:8px">
+            <label>Notes</label>
+            <textarea id="cl-notes" placeholder="Any notes..."></textarea>
+          </div>
+          <button class="btn btn-primary" onclick="createClient()" style="margin-top:4px;width:100%">+ Add Client</button>
+        </div>
+      </div>
+    </div>
+    <div class="main-content">
+      <div class="main-scroll" id="clients-main">
+        <!-- rendered by JS -->
+      </div>
+    </div>
+  </div>
+
 </div><!-- end app-body -->
 
 <script>
@@ -1732,23 +1819,27 @@ async function authSubmit() {
 
 async function signOut() {
   await _sb.auth.signOut();
-  orders = []; quotes = []; stockItems = [];
+  orders = []; quotes = []; stockItems = []; clients = []; projects = [];
   _userId = null;
   toggleAccount();
   renderStockMain(); renderQuoteMain(); renderOrdersMain();
 }
 
 async function loadAllData() {
-  const [{ data: ord }, { data: quo }, { data: stk }] = await Promise.all([
+  const [{ data: ord }, { data: quo }, { data: stk }, { data: cli }, { data: prj }] = await Promise.all([
     _db('orders').select('*').order('created_at', { ascending: false }),
     _db('quotes').select('*').order('created_at', { ascending: false }),
     _db('stock_items').select('*').order('created_at', { ascending: true }),
+    _db('clients').select('*').order('name', { ascending: true }).then(r => r).catch(() => ({data:[]})),
+    _db('projects').select('*').order('created_at', { ascending: false }).then(r => r).catch(() => ({data:[]})),
   ]);
   orders = ord || [];
   _onRestore(orders);  // merge locally-stored notes (notes col may not be in DB schema yet)
   _restoreProdStarts(orders);  // merge locally-stored production start dates
   quotes = quo || [];
   stockItems = stk || [];
+  clients = cli || [];
+  projects = prj || [];
   if (orders.length) orderNextId = Math.max(...orders.map(o => o.id)) + 1;
   if (quotes.length) quoteNextId = Math.max(...quotes.map(q => q.id)) + 1;
   if (stockItems.length) stockNextId = Math.max(...stockItems.map(s => s.id)) + 1;
@@ -1973,7 +2064,7 @@ function setCurrency(c) {
 // ══════════════════════════════════════════
 function switchSection(name) {
   document.querySelectorAll('.nav-tab').forEach((t,i) => {
-    const sections = ['cutlist','cabinet','quote','orders','stock','schedule','dashboard'];
+    const sections = ['cutlist','cabinet','quote','orders','stock','schedule','dashboard','projects','clients'];
     t.classList.toggle('active', sections[i] === name);
   });
   document.querySelectorAll('.section-panel').forEach(p => {
@@ -1986,12 +2077,16 @@ function switchSection(name) {
   if (name === 'cutlist') { try{renderCLLibraries();}catch(e){} }
   if (name === 'schedule') renderSchedule();
   if (name === 'dashboard') { renderDashboard(); setTimeout(drawRevenueChart, 0); }
+  if (name === 'projects') renderProjectsMain();
+  if (name === 'clients') renderClientsMain();
 }
 
 // ══════════════════════════════════════════
 // STOCK
 // ══════════════════════════════════════════
 let stockItems = [];
+let clients = [];
+let projects = [];
 let stockNextId = 1;
 const STOCK_CATS = ['Sheet Goods','Solid Timber','Edge Banding','Hardware','Finishing','Other'];
 
@@ -2370,7 +2465,7 @@ function clearCutList() {
 }
 function _doClearAll() {
   pieces = []; sheets = []; _pieceId = 1; _sheetId = 1; pieceColorIdx = 0; results = null;
-  ['pc_cl_pieces','pc_cl_sheets','pc_cl_pid','pc_cl_sid','pc_cl_colorIdx'].forEach(k => localStorage.removeItem(k));
+  ['pc_cl_pieces','pc_cl_sheets','pc_cl_pid','pc_cl_sid','pc_cl_colorIdx','pc_cl_sheetColorIdx'].forEach(k => localStorage.removeItem(k));
   renderPieces(); renderSheets();
   document.getElementById('results-area').innerHTML = '<div class="empty-state"><div class="empty-icon" style="opacity:.18"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg></div><h3>Ready to Optimize</h3><p>Add stock panels and cut pieces, then click "Optimize Cut Layout"</p></div>';
 }
@@ -2413,6 +2508,7 @@ function addSheet(name, w, h, qty) {
     grain:   'none',
     kerf:    m ? 3 : 0.125,
     enabled: true,
+    color:   COLORS[pieceColorIdx++ % COLORS.length],
   });
   renderSheets();
   renderPieces(); // refresh material dropdowns
@@ -2428,7 +2524,7 @@ function duplicateSheet(id) {
   const s = sheets.find(s => s.id === id);
   if (!s) return;
   const idx = sheets.indexOf(s);
-  const copy = { ...s, id: _sheetId++, name: s.name + ' (copy)' };
+  const copy = { ...s, id: _sheetId++, name: s.name + ' (copy)', color: COLORS[pieceColorIdx++ % COLORS.length] };
   sheets.splice(idx + 1, 0, copy);
   renderSheets();
   renderPieces();
@@ -2450,7 +2546,7 @@ function renderSheets() {
   const tbody = document.getElementById('sheets-body');
   if (!tbody) return;
   if (!sheets.length) {
-    tbody.innerHTML = `<tr><td colspan="11" style="color:var(--muted);font-size:11px;padding:10px 14px;text-align:center">No panels — click "+ Add panel"</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="12" style="color:var(--muted);font-size:11px;padding:10px 14px;text-align:center">No panels — click "+ Add panel"</td></tr>`;
     return;
   }
   tbody.innerHTML = sheets.map((s, i) => {
@@ -2463,6 +2559,9 @@ function renderSheets() {
       ondragend="onDragEnd()">
       <td class="cl-del-cell" style="padding:0 2px;width:14px">
         <span class="cl-drag-handle" title="Drag to reorder">${DRAG_HANDLE}</span>
+      </td>
+      <td class="cl-del-cell">
+        <span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${s.color || 'var(--muted)'};flex-shrink:0"></span>
       </td>
       <td><input class="cl-input" value="${s.name.replace(/"/g,'&quot;')}"
         data-table="sheets" data-row="${i}" data-col="name"
@@ -2528,7 +2627,7 @@ function _loadCutList() {
     const p = localStorage.getItem('pc_cl_pieces');
     const s = localStorage.getItem('pc_cl_sheets');
     if (p) { pieces = JSON.parse(p); pieces.forEach(x => { if (x.notes === undefined) x.notes = ''; }); }
-    if (s) { sheets = JSON.parse(s); sheets.forEach(x => { if (x.kerf === undefined) x.kerf = (window.units === 'metric' ? 3 : 0.125); }); }
+    if (s) { sheets = JSON.parse(s); sheets.forEach(x => { if (x.kerf === undefined) x.kerf = (window.units === 'metric' ? 3 : 0.125); if (!x.color) x.color = COLORS[pieceColorIdx++ % COLORS.length]; }); }
     const pid = localStorage.getItem('pc_cl_pid'); if (pid) _pieceId = parseInt(pid);
     const sid = localStorage.getItem('pc_cl_sid'); if (sid) _sheetId = parseInt(sid);
     const ci  = localStorage.getItem('pc_cl_colorIdx'); if (ci) pieceColorIdx = parseInt(ci);
@@ -3648,17 +3747,18 @@ function renderLayout(area) {
   </div>`;
   // "Quote this job" action bar
   const qBtn = matCost > 0 ? `<button class="btn btn-outline" onclick="quoteFromCutList(${matCost})" style="font-size:11px;padding:5px 12px" title="Pre-fill a new quote with this material cost">⎙ Quote this Job</button>` : '';
+  const deductBtn = stockItems.length ? `<button class="btn btn-outline" onclick="deductStockFromCutList()" style="font-size:11px;padding:5px 12px" title="Subtract used sheets from stock quantities">↓ Deduct from Stock</button>` : '';
   const printBtn = `<button class="btn btn-outline" onclick="printLayout('print')" style="font-size:11px;padding:5px 10px" title="Send to printer">⎙ Print</button>
     <button class="btn btn-outline" onclick="printLayout('pdf')" style="font-size:11px;padding:5px 10px" title="Save as PDF">↓ PDF</button>`;
   html += `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:8px">
     <span style="font-size:12px;color:var(--muted)">${results.placed} pieces · ${results.layouts.length} sheet${results.layouts.length!==1?'s':''}</span>
-    <div style="display:flex;gap:6px">${qBtn}${printBtn}</div>
+    <div style="display:flex;gap:6px">${qBtn}${deductBtn}${printBtn}</div>
   </div>`;
   area.innerHTML = html;
   results.layouts.forEach((layout, i) => {
     const lbl = document.createElement('div');
     lbl.className = 'sheet-block-label';
-    lbl.innerHTML = `<span>Sheet ${i+1}</span><span style="font-weight:400;color:var(--muted)">${layout.sheet.name} &nbsp;·&nbsp; ${(layout.util*100).toFixed(0)}% used</span>`;
+    lbl.innerHTML = `<span><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${layout.sheet.color || 'var(--muted)'};margin-right:6px;vertical-align:middle"></span>Sheet ${i+1}</span><span style="font-weight:400;color:var(--muted)">${layout.sheet.name} &nbsp;·&nbsp; ${(layout.util*100).toFixed(0)}% used</span>`;
     area.appendChild(lbl);
     drawCanvas(area, layout, u);
   });
@@ -3747,24 +3847,20 @@ function drawCanvas(container, layout, units) {
   container.appendChild(wrap);
   const ctx = canvas.getContext('2d');
 
-  // Sheet background
-  ctx.fillStyle = '#f5f0e8';
+  // Sheet background — use sheet color if available
+  ctx.fillStyle = sheet.color ? toPastel(sheet.color) : '#f5f0e8';
   ctx.fillRect(PAD, 0, cw, ch);
 
-  // Grid
-  ctx.strokeStyle = '#e4ddd0'; ctx.lineWidth = 0.5;
-  const gs = scale * (units === 'mm' ? 100 : units === 'cm' ? 10 : 6);
-  for (let x = gs; x < cw; x += gs) { ctx.beginPath(); ctx.moveTo(PAD+x,0); ctx.lineTo(PAD+x,ch); ctx.stroke(); }
-  for (let y = gs; y < ch; y += gs) { ctx.beginPath(); ctx.moveTo(PAD,y); ctx.lineTo(PAD+cw,y); ctx.stroke(); }
-
-  // Sheet grain lines (behind pieces)
+  // Grain direction or grid lines on sheet background
   const sheetGrain = sheet.grain || 'none';
-  if (layoutGrain && sheetGrain !== 'none') {
+  const drawSheetGrain = layoutRotate ? (sheetGrain === 'h' ? 'v' : sheetGrain === 'v' ? 'h' : 'none') : sheetGrain;
+  if (drawSheetGrain !== 'none') {
+    // Grain lines — one direction only matching panel grain
     ctx.save();
     ctx.beginPath(); ctx.rect(PAD+1, 1, cw-2, ch-2); ctx.clip();
-    ctx.strokeStyle = '#d6cfc3'; ctx.lineWidth = 0.8;
-    const sgsp = Math.max(10, Math.min(28, cw/18, ch/10));
-    if (sheetGrain === 'h') {
+    ctx.strokeStyle = sheet.color ? toPastelDark(sheet.color) : '#d6cfc3'; ctx.lineWidth = 0.65;
+    const sgsp = Math.max(6, Math.min(18, cw/6, ch/6));
+    if (drawSheetGrain === 'h') {
       for (let gy = sgsp; gy < ch; gy += sgsp) { ctx.beginPath(); ctx.moveTo(PAD,gy); ctx.lineTo(PAD+cw,gy); ctx.stroke(); }
     } else {
       for (let gx = sgsp; gx < cw; gx += sgsp) { ctx.beginPath(); ctx.moveTo(PAD+gx,0); ctx.lineTo(PAD+gx,ch); ctx.stroke(); }
@@ -3781,15 +3877,10 @@ function drawCanvas(container, layout, units) {
     ctx.fillStyle = fill; ctx.fillRect(x, y, w, h);
     ctx.strokeStyle = bdCol; ctx.lineWidth = 1; ctx.strokeRect(x+.5, y+.5, w-1, h-1);
 
-    // Grain lines — use piece's own grain direction as placed; ungrained pieces show sheet grain
+    // Piece grain lines — show piece's own grain direction
     const pGrain = p.item.grain || 'none';
-    let gdir;
     if (pGrain !== 'none') {
-      gdir = p.rotated ? (pGrain === 'h' ? 'v' : 'h') : pGrain;
-    } else {
-      gdir = sheet.grain || 'none';
-    }
-    if (layoutGrain && gdir !== 'none') {
+      const gdir = p.rotated ? (pGrain === 'h' ? 'v' : 'h') : pGrain;
       ctx.save();
       ctx.beginPath(); ctx.rect(x+1, y+1, w-2, h-2); ctx.clip();
       ctx.strokeStyle = bdCol; ctx.lineWidth = 0.65;
@@ -3950,10 +4041,14 @@ async function createQuote() {
   const client = document.getElementById('q-client').value.trim();
   const project = document.getElementById('q-project').value.trim();
   if (!client || !project) { _toast('Enter client name and project.', 'error'); return; }
+  if (!_requireAuth()) return;
   const labourRate = parseFloat(document.getElementById('q-labour-rate').value) || 65;
   const hours = parseFloat(document.getElementById('q-hours').value) || 0;
+  const clientId = await resolveClient(client);
+  const projectId = await resolveProject(project, clientId);
   const row = {
     user_id: _userId, client, project,
+    client_id: clientId, project_id: projectId,
     materials: parseFloat(document.getElementById('q-materials').value) || 0,
     labour: labourRate * hours,
     markup: parseFloat(document.getElementById('q-markup').value) || 20,
@@ -3961,7 +4056,6 @@ async function createQuote() {
     status: 'draft', date: new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short'}),
     notes: document.getElementById('q-notes').value.trim(),
   };
-  if (!_requireAuth()) return;
   const { data, error } = await _db('quotes').insert(row).select().single();
   if (error) { _toast('Could not save quote — ' + (error.message || JSON.stringify(error)), 'error'); console.error(error); return; }
   quotes.unshift(data);
@@ -3987,7 +4081,7 @@ async function convertQuoteToOrder(id) {
   const { error: qErr } = await _db('quotes').update({ status: 'approved' }).eq('id', id);
   if (qErr) { _toast('Could not update quote — ' + (qErr.message || JSON.stringify(qErr)), 'error'); console.error(qErr); return; }
   q.status = 'approved';
-  const orderRow = { user_id: _userId, client: q.client, project: q.project, value: Math.round(quoteTotal(q)), status: 'confirmed', due: 'TBD' };
+  const orderRow = { user_id: _userId, client: q.client, project: q.project, client_id: q.client_id||null, project_id: q.project_id||null, value: Math.round(quoteTotal(q)), status: 'confirmed', due: 'TBD' };
   const { data, error: oErr } = await _db('orders').insert(orderRow).select().single();
   if (oErr) { _toast('Could not create order — ' + (oErr.message || JSON.stringify(oErr)), 'error'); console.error(oErr); return; }
   orders.unshift(data);
@@ -4123,15 +4217,18 @@ async function addOrder() {
   const client = document.getElementById('o-client').value.trim();
   const project = document.getElementById('o-project').value.trim();
   if (!client || !project) { _toast('Enter client name and project.', 'error'); return; }
+  if (!_requireAuth()) return;
   const dueRaw = document.getElementById('o-due').value;
   const due = dueRaw ? new Date(dueRaw + 'T12:00:00').toLocaleDateString('en-GB', {day:'numeric', month:'short', year:'numeric'}) : 'TBD';
+  const clientId = await resolveClient(client);
+  const projectId = await resolveProject(project, clientId);
   const row = {
     user_id: _userId, client, project,
+    client_id: clientId, project_id: projectId,
     value: parseFloat(document.getElementById('o-value').value) || 0,
     status: document.getElementById('o-status').value,
     due,
   };
-  if (!_requireAuth()) return;
   const { data, error } = await _db('orders').insert(row).select().single();
   if (error) { _toast('Could not save order — ' + (error.message || JSON.stringify(error)), 'error'); console.error(error); return; }
   // Save notes and prodStart to localStorage
@@ -4287,6 +4384,8 @@ function renderDashboard() {
   const lowStock      = stockItems.filter(i => i.qty <= i.low);
   const stockValue    = stockItems.reduce((s,i) => s+i.qty*i.cost, 0);
   const totalSheets   = stockItems.reduce((s,i) => s+i.qty, 0);
+  const activeProjects = projects.filter(p => p.status === 'active').length;
+  const totalClients   = clients.length;
 
   const fmt = v => v.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0});
 
@@ -4314,6 +4413,8 @@ function renderDashboard() {
         <button class="btn btn-outline" onclick="switchSection('cabinet')" style="font-size:12px;padding:7px 16px;width:auto">+ Cabinet Builder</button>
         <button class="btn btn-outline" onclick="switchSection('orders')" style="font-size:12px;padding:7px 16px;width:auto">+ New Order</button>
         <button class="btn btn-outline" onclick="switchSection('cutlist')" style="font-size:12px;padding:7px 16px;width:auto">⚙ Cut List</button>
+        <button class="btn btn-outline" onclick="switchSection('projects')" style="font-size:12px;padding:7px 16px;width:auto">Projects</button>
+        <button class="btn btn-outline" onclick="switchSection('clients')" style="font-size:12px;padding:7px 16px;width:auto">Clients</button>
         <button class="btn btn-outline" onclick="switchSection('schedule')" style="font-size:12px;padding:7px 16px;width:auto">📅 Schedule</button>
         ${overdueOrders.length ? `<span class="badge badge-red" style="align-self:center;font-size:12px;padding:6px 12px">${overdueOrders.length} overdue order${overdueOrders.length!==1?'s':''}</span>` : ''}
       </div>
@@ -4359,6 +4460,16 @@ function renderDashboard() {
           <div class="stat-label">Stock Value</div>
           <div class="stat-value">${cur}${fmt(stockValue)}</div>
           <div class="stat-sub">${lowStock.length ? lowStock.length+' low stock' : totalSheets+' sheets'}</div>
+        </div>
+        <div class="stat-card" style="cursor:pointer" onclick="switchSection('projects')">
+          <div class="stat-label">Projects</div>
+          <div class="stat-value">${activeProjects}</div>
+          <div class="stat-sub">${projects.length} total</div>
+        </div>
+        <div class="stat-card" style="cursor:pointer" onclick="switchSection('clients')">
+          <div class="stat-label">Clients</div>
+          <div class="stat-value">${totalClients}</div>
+          <div class="stat-sub">${orders.length ? [...new Set(orders.map(o=>o.client))].length + ' with orders' : 'no orders yet'}</div>
         </div>
       </div>
 
@@ -4730,6 +4841,32 @@ ${[1,2,3,4,5].map(() => `<div class="note-line"></div>`).join('')}
   _saveAsPDF(html);
 }
 
+async function deductStockFromCutList() {
+  if (!window.results || !window.results.layouts) { _toast('Run optimization first.', 'error'); return; }
+  if (!_requireAuth()) return;
+  // Count sheets used by name
+  const usage = {};
+  window.results.layouts.forEach(l => {
+    const name = l.sheet.label || l.sheet.name || '';
+    usage[name] = (usage[name] || 0) + 1;
+  });
+  let deducted = 0;
+  for (const [name, count] of Object.entries(usage)) {
+    const stock = stockItems.find(s => s.name === name);
+    if (!stock) continue;
+    const newQty = Math.max(0, stock.qty - count);
+    await _db('stock_items').update({ qty: newQty }).eq('id', stock.id);
+    stock.qty = newQty;
+    deducted += count;
+  }
+  if (deducted) {
+    _toast(deducted + ' sheet' + (deducted !== 1 ? 's' : '') + ' deducted from stock', 'success');
+    renderStockMain();
+  } else {
+    _toast('No matching stock items found to deduct', 'info');
+  }
+}
+
 function quoteFromCutList(matCost) {
   switchSection('quote');
   const el = document.getElementById('q-materials');
@@ -4937,13 +5074,13 @@ function renderQuoteLibraries() {
   const clientItems = allClients.map(c => ({_label:c, _count:quotes.filter(q=>q.client===c).length+' quote'+(quotes.filter(q=>q.client===c).length!==1?'s':'')}));
   _renderLibUI('lib-quote-clients', 'Clients', clientItems, {
     icon:'person', renderFn:'renderQuoteLibraries', importFn:'importClientsCSV', exportFn:'exportClientsCSV',
-    loadFn:'_filterQuoteByClient', emptyMsg:'No clients yet.'
+    loadFn:'_filterQuoteByClient', savePlaceholder:'Client name...', emptyMsg:'No clients yet.'
   });
   // Projects library (quotes)
   const projItems = quotes.map(q => ({_label:q.project||q.client, _sub:q.client, _count:q.date}));
   _renderLibUI('lib-quote-projects', 'Projects', projItems, {
     icon:'doc', renderFn:'renderQuoteLibraries', importFn:'importQuotesCSV', exportFn:'exportQuotesCSV',
-    loadFn:'_noOp', emptyMsg:'No quotes yet. Create one below.'
+    loadFn:'_noOp', savePlaceholder:'Project name...', emptyMsg:'No quotes yet. Create one below.'
   });
 }
 function _filterQuoteByClient(idx) {
@@ -5008,13 +5145,13 @@ function renderOrderLibraries() {
   const clientItems = allClients.map(c => ({_label:c, _count:orders.filter(o=>o.client===c).length+' order'+(orders.filter(o=>o.client===c).length!==1?'s':'')}));
   _renderLibUI('lib-order-clients', 'Clients', clientItems, {
     icon:'person', renderFn:'renderOrderLibraries', importFn:'importClientsCSV', exportFn:'exportClientsCSV',
-    loadFn:'_filterOrderByClient', emptyMsg:'No clients yet.'
+    loadFn:'_filterOrderByClient', savePlaceholder:'Client name...', emptyMsg:'No clients yet.'
   });
   // Projects library (orders)
   const projItems = orders.map(o => ({_label:o.project||o.client, _sub:o.client, _count:o.due||''}));
   _renderLibUI('lib-order-projects', 'Projects', projItems, {
     icon:'doc', renderFn:'renderOrderLibraries', importFn:'importOrdersCSV', exportFn:'exportOrdersCSV',
-    loadFn:'_noOp', emptyMsg:'No orders yet. Create one below.'
+    loadFn:'_noOp', savePlaceholder:'Project name...', emptyMsg:'No orders yet. Create one below.'
   });
 }
 function _filterOrderByClient(idx) {
@@ -5147,7 +5284,7 @@ function renderStockLibraries() {
   const el = document.getElementById('stock-libraries-list');
   if (!el) return;
   if (!stockLibraries.length) {
-    el.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:6px 0">No saved libraries. Enter a name and click Save.</div>';
+    el.innerHTML = '<div style="color:var(--muted);font-size:11px;padding:8px 10px;border-radius:5px;border:1px solid var(--border);background:var(--surface);text-align:center">No saved libraries. Enter a name and click Save.</div>';
     return;
   }
   el.innerHTML = stockLibraries.map((lib, i) => `<div style="display:flex;align-items:center;gap:6px;padding:6px 8px;margin-bottom:3px;border-radius:6px;border:1px solid var(--border);background:var(--surface);cursor:pointer" onclick="loadStockLibrary(${i})">
@@ -5397,7 +5534,7 @@ function loadProjects() {
   _db('projects').select('id,name,updated_at').order('updated_at', { ascending: false })
     .then(({ data, error }) => {
       if (error || !data) { listEl.innerHTML = '<div style="color:var(--danger);font-size:12px">Error loading projects.</div>'; return; }
-      if (!data.length) { listEl.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:6px 0">No saved projects yet.</div>'; return; }
+      if (!data.length) { listEl.innerHTML = '<div style="color:var(--muted);font-size:11px;padding:8px 10px;border-radius:5px;border:1px solid var(--border);background:var(--surface);text-align:center">No saved projects yet.</div>'; return; }
       listEl.innerHTML = data.map(p => {
         const d = new Date(p.updated_at);
         const label = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
@@ -5445,7 +5582,7 @@ async function loadProject(id) {
   if (error || !data) { _toast('Could not load project.', 'error'); return; }
   const p = data.data;
   sheets = []; pieces = []; _sheetId = 1; _pieceId = 1; pieceColorIdx = 0;
-  for (const s of (p.sheets || [])) { sheets.push({ ...s, id: _sheetId++ }); }
+  for (const s of (p.sheets || [])) { sheets.push({ ...s, id: _sheetId++, color: s.color || COLORS[pieceColorIdx++ % COLORS.length] }); }
   for (const pc of (p.pieces || [])) { pieces.push({ ...pc, id: _pieceId++ }); }
   if (p.settings) {
     if (p.settings.units) setUnits(p.settings.units);
@@ -5883,7 +6020,7 @@ function renderCabItemsList() {
   const el = document.getElementById('cab-items-list');
   if (!el) return;
   if (!cabItems.length) {
-    el.innerHTML = '<div style="color:var(--muted);font-size:12px;text-align:center;padding:12px 0">No cabinets yet. Click "+ Add Cabinet".</div>';
+    el.innerHTML = '<div style="color:var(--muted);font-size:11px;padding:8px 10px;border-radius:5px;border:1px solid var(--border);background:var(--surface);text-align:center">No cabinets yet. Click "+ Add Cabinet".</div>';
     return;
   }
   el.innerHTML = cabItems.map((c, i) => {
@@ -6337,7 +6474,7 @@ function renderCQProjects() {
   if (!el) return;
   const cur = window.currency;
   if (!cqProjectLibrary.length) {
-    el.innerHTML = `<div style="color:var(--muted);font-size:12px;padding:6px 0">${_userId ? 'No saved projects yet. Enter a project name and click Save Project.' : '<div class="projects-signin">Sign in to save & load projects. <span onclick="dismissAuth();_showAuth()">Sign in</span></div>'}</div>`;
+    el.innerHTML = `<div style="color:var(--muted);font-size:11px;padding:8px 10px;border-radius:5px;border:1px solid var(--border);background:var(--surface);text-align:center">${_userId ? 'No saved projects yet. Enter a project name and click Save Project.' : '<div class="projects-signin">Sign in to save & load projects. <span onclick="dismissAuth();_showAuth()">Sign in</span></div>'}</div>`;
     return;
   }
   el.innerHTML = cqProjectLibrary.map((p, i) => {
@@ -6456,7 +6593,7 @@ function renderCQLibrary() {
   if (!el) return;
   const cur = window.currency;
   if (!cqLibrary.length) {
-    el.innerHTML = '<div style="font-size:11px;color:var(--muted);padding:4px 0;text-align:center">No saved cabinets. Build one and click "Save to Library".</div>';
+    el.innerHTML = '<div style="color:var(--muted);font-size:11px;padding:8px 10px;border-radius:5px;border:1px solid var(--border);background:var(--surface);text-align:center">No saved cabinets. Build one and click "Save to Library".</div>';
     return;
   }
   el.innerHTML = cqLibrary.map((c, i) => {
@@ -6766,7 +6903,7 @@ function renderCQCabList() {
   const fmt0 = v => cur + Math.round(v).toLocaleString();
 
   if (!cqLines.length) {
-    el.innerHTML = `<div style="color:var(--muted);font-size:13px;text-align:center;padding:16px 0">No cabinets yet. Click "+ Add Cabinet" above.</div>`;
+    el.innerHTML = `<div style="color:var(--muted);font-size:11px;padding:8px 10px;border-radius:5px;border:1px solid var(--border);background:var(--surface);text-align:center">No cabinets yet. Click "+ Add Cabinet" above.</div>`;
     return;
   }
   el.innerHTML = cqLines.map((c, i) => {
@@ -7395,15 +7532,14 @@ function _renderLibUI(containerId, libName, items, opts) {
   </div>`;
 
   if (isOpen) {
-    // Save input inside dropdown
-    if (opts.saveFn) {
-      html += `<div style="display:flex;gap:4px;margin-bottom:6px">
-        <input type="text" id="_lib_save_${containerId}" placeholder="${opts.savePlaceholder||'Enter name...'}" style="flex:1;font-size:12px;padding:5px 8px;border:1px solid var(--border);border-radius:5px;background:var(--surface2);color:var(--text);font-family:inherit">
-        <button class="btn btn-primary" onclick="${opts.saveFn}(document.getElementById('_lib_save_${containerId}').value)" style="padding:5px 10px;font-size:11px;width:auto">Save</button>
-      </div>`;
-    }
+    html += `<div style="height:6px"></div>`;
+    // Save input row — always shown for visual consistency
+    html += `<div style="display:flex;gap:4px;margin-bottom:6px">
+      <input type="text" id="_lib_save_${containerId}" placeholder="${opts.savePlaceholder||'Enter name...'}" style="flex:1;font-size:12px;padding:5px 8px;border:1px solid var(--border);border-radius:5px;background:var(--surface2);color:var(--text);font-family:inherit" onkeydown="if(event.key==='Enter'){${opts.saveFn||'_noOp'}(this.value);this.value=''}">
+      <button class="btn btn-primary" onclick="const i=document.getElementById('_lib_save_${containerId}');${opts.saveFn||'_noOp'}(i.value);i.value=''" style="padding:5px 10px;font-size:11px;width:auto">Save</button>
+    </div>`;
     if (!items.length) {
-      html += `<div style="color:var(--muted);font-size:12px;padding:4px 0">${opts.emptyMsg || 'No items yet.'}</div>`;
+      html += `<div style="color:var(--muted);font-size:11px;padding:8px 10px;border-radius:5px;border:1px solid var(--border);background:var(--surface);text-align:center">${opts.emptyMsg || 'No items yet.'}</div>`;
     } else {
       html += items.map((item, i) => `<div style="display:flex;align-items:center;gap:6px;padding:5px 8px;margin-bottom:2px;border-radius:5px;border:1px solid var(--border);background:var(--surface);cursor:pointer;overflow:hidden" onclick="${opts.loadFn}(${i})">
         <div style="font-size:12px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">${_escHtml(item._label||item.name||'')}${item._sub?' <span style="font-weight:400;color:var(--muted);font-size:10px">'+_escHtml(item._sub)+'</span>':''}</div>
@@ -7423,13 +7559,13 @@ function renderCLLibraries() {
   // Cut List: Projects (shared) + Cut Lists + Stock Panels
   _renderLibUI('lib-cl-projects', 'Projects', [], {
     icon:'folder', renderFn:'renderCLLibraries', importFn:'triggerImportCSV.bind(null,"pieces")', exportFn:'exportCSV.bind(null,"pieces")',
-    loadFn:'toggleProjectsPanel', emptyMsg:'Click Projects to manage saved projects.'
+    loadFn:'toggleProjectsPanel', savePlaceholder:'Project name...', emptyMsg:'Click Projects to manage saved projects.'
   });
   // Stock Panels — shows stock items from Stock tab as available panels
   const panelItems = stockItems.map(s => ({_label:s.name, _count:s.qty+' sheets', _sub:s.w+'×'+s.h}));
   _renderLibUI('lib-cl-panels', 'Stock Panels', panelItems, {
     icon:'box', renderFn:'renderCLLibraries', importFn:'triggerImportCSV.bind(null,"sheets")', exportFn:'exportCSV.bind(null,"sheets")',
-    loadFn:'_clAddPanelFromStock', emptyMsg:'No stock items. Add materials in the Stock tab.'
+    loadFn:'_clAddPanelFromStock', savePlaceholder:'Panel name...', emptyMsg:'No stock items. Add materials in the Stock tab.'
   });
 }
 
@@ -7464,7 +7600,7 @@ function renderStockLibrariesUI() {
   });
   _renderLibUI('lib-stock-items', 'Stock Items', [], {
     icon:'box', renderFn:'renderStockLibrariesUI', importFn:'importStockCSV', exportFn:'exportStockCSV',
-    loadFn:'_noOp', emptyMsg:'Use Import/Export to manage stock data.'
+    loadFn:'_noOp', savePlaceholder:'Item name...', emptyMsg:'Use Import/Export to manage stock data.'
   });
 }
 
@@ -7874,6 +8010,286 @@ if (pieces.length === 0 && sheets.length === 0) {
   renderPieces();
 }
 initColVisibility();
+
+// ══════════════════════════════════════════
+// CLIENTS & PROJECTS — CRUD + RENDER
+// ══════════════════════════════════════════
+
+// ── Resolve-or-create helpers ──
+async function resolveClient(name) {
+  if (!name) return null;
+  const existing = clients.find(c => c.name.toLowerCase() === name.toLowerCase());
+  if (existing) return existing.id;
+  const row = { user_id: _userId, name };
+  const { data, error } = await _db('clients').insert(row).select().single();
+  if (error || !data) return null;
+  clients.push(data);
+  clients.sort((a,b) => a.name.localeCompare(b.name));
+  return data.id;
+}
+
+async function resolveProject(name, clientId) {
+  if (!name) return null;
+  const existing = projects.find(p => p.name.toLowerCase() === name.toLowerCase() && (p.client_id === clientId || !clientId));
+  if (existing) return existing.id;
+  const row = { user_id: _userId, name, client_id: clientId || null, status: 'active' };
+  const { data, error } = await _db('projects').insert(row).select().single();
+  if (error || !data) return null;
+  projects.unshift(data);
+  return data.id;
+}
+
+// ── Client CRUD ──
+async function createClient() {
+  const name = document.getElementById('cl-name').value.trim();
+  if (!name) { _toast('Enter a client name.', 'error'); return; }
+  if (!_requireAuth()) return;
+  const row = {
+    user_id: _userId, name,
+    email: document.getElementById('cl-email').value.trim() || null,
+    phone: document.getElementById('cl-phone').value.trim() || null,
+    address: document.getElementById('cl-address').value.trim() || null,
+    notes: document.getElementById('cl-notes').value.trim() || null,
+  };
+  const { data, error } = await _db('clients').insert(row).select().single();
+  if (error) { _toast('Could not save client — ' + (error.message || JSON.stringify(error)), 'error'); return; }
+  clients.push(data);
+  clients.sort((a,b) => a.name.localeCompare(b.name));
+  _toast('Client added', 'success');
+  document.getElementById('cl-name').value = '';
+  document.getElementById('cl-email').value = '';
+  document.getElementById('cl-phone').value = '';
+  document.getElementById('cl-address').value = '';
+  document.getElementById('cl-notes').value = '';
+  renderClientsMain();
+}
+
+async function updateClient(id, field, value) {
+  const c = clients.find(c => c.id === id);
+  if (!c) return;
+  c[field] = value;
+  await _db('clients').update({ [field]: value }).eq('id', id);
+}
+
+async function removeClient(id) {
+  if (!_requireAuth()) return;
+  await _db('clients').delete().eq('id', id);
+  clients = clients.filter(c => c.id !== id);
+  renderClientsMain();
+  _toast('Client removed', 'success');
+}
+
+// ── Project CRUD ──
+async function createProject() {
+  const name = document.getElementById('pj-name').value.trim();
+  if (!name) { _toast('Enter a project name.', 'error'); return; }
+  if (!_requireAuth()) return;
+  const clientName = document.getElementById('pj-client').value.trim();
+  const clientId = clientName ? await resolveClient(clientName) : null;
+  const row = {
+    user_id: _userId, name, client_id: clientId,
+    description: document.getElementById('pj-desc').value.trim() || null,
+    status: document.getElementById('pj-status').value,
+  };
+  const { data, error } = await _db('projects').insert(row).select().single();
+  if (error) { _toast('Could not save project — ' + (error.message || JSON.stringify(error)), 'error'); return; }
+  projects.unshift(data);
+  _toast('Project created', 'success');
+  document.getElementById('pj-name').value = '';
+  document.getElementById('pj-client').value = '';
+  document.getElementById('pj-desc').value = '';
+  renderProjectsMain();
+}
+
+async function updateProject(id, field, value) {
+  const p = projects.find(p => p.id === id);
+  if (!p) return;
+  p[field] = value;
+  await _db('projects').update({ [field]: value }).eq('id', id);
+}
+
+async function removeProject(id) {
+  if (!_requireAuth()) return;
+  await _db('projects').delete().eq('id', id);
+  projects = projects.filter(p => p.id !== id);
+  renderProjectsMain();
+  _toast('Project removed', 'success');
+}
+
+// ── Client name helper ──
+function _clientName(id) {
+  const c = clients.find(c => c.id === id);
+  return c ? c.name : '';
+}
+function _projectName(id) {
+  const p = projects.find(p => p.id === id);
+  return p ? p.name : '';
+}
+
+// ── Client suggest for Projects sidebar ──
+function _pjClientSuggest(input) {
+  const val = input.value.toLowerCase();
+  const list = document.getElementById('pj-client-suggest');
+  if (!val) { list.style.display = 'none'; return; }
+  const matches = clients.filter(c => c.name.toLowerCase().includes(val)).slice(0, 5);
+  if (!matches.length) { list.style.display = 'none'; return; }
+  list.innerHTML = matches.map(c => `<div class="client-suggest-item" onmousedown="document.getElementById('pj-client').value='${_escHtml(c.name)}';document.getElementById('pj-client-suggest').style.display='none'">${_escHtml(c.name)}</div>`).join('');
+  list.style.display = 'block';
+  input.onblur = () => setTimeout(() => list.style.display = 'none', 150);
+}
+
+// ── Render Clients Tab ──
+function renderClientsMain() {
+  const el = document.getElementById('clients-main');
+  if (!el) return;
+  const cur = window.currency;
+
+  const clientCard = c => {
+    const cQuotes = quotes.filter(q => q.client_id === c.id || (!q.client_id && q.client === c.name));
+    const cOrders = orders.filter(o => o.client_id === c.id || (!o.client_id && o.client === c.name));
+    const cProjects = projects.filter(p => p.client_id === c.id);
+    const totalValue = cOrders.reduce((s,o) => s + o.value, 0) + cQuotes.reduce((s,q) => s + quoteTotal(q), 0);
+    const fmt = v => cur + v.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0});
+
+    return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;margin-bottom:8px">
+      <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:10px">
+        <div style="width:36px;height:36px;border-radius:50%;background:var(--accent-dim);color:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;flex-shrink:0">${c.name.charAt(0).toUpperCase()}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:15px;font-weight:700;color:var(--text)" contenteditable="true" onblur="updateClient(${c.id},'name',this.innerText.trim())">${_escHtml(c.name)}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">
+            ${c.email ? '<span>'+_escHtml(c.email)+'</span> · ' : ''}${c.phone ? '<span>'+_escHtml(c.phone)+'</span>' : ''}
+          </div>
+        </div>
+        <button class="btn btn-danger" onclick="_confirm('Delete client <strong>${_escHtml(c.name)}</strong>?',()=>removeClient(${c.id}))" style="padding:4px 8px;flex-shrink:0">×</button>
+      </div>
+      <div style="display:flex;gap:16px;font-size:11px;color:var(--muted);margin-bottom:8px;flex-wrap:wrap">
+        <span>${cProjects.length} project${cProjects.length!==1?'s':''}</span>
+        <span>${cQuotes.length} quote${cQuotes.length!==1?'s':''}</span>
+        <span>${cOrders.length} order${cOrders.length!==1?'s':''}</span>
+        <span style="font-weight:600;color:var(--text2)">${fmt(totalValue)} total</span>
+      </div>
+      ${cProjects.length ? `<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px">${cProjects.map(p => `<span class="badge ${p.status==='complete'?'badge-green':p.status==='on-hold'?'badge-gray':'badge-blue'}" style="cursor:pointer;font-size:10px" onclick="switchSection('projects');_highlightProject(${p.id})">${_escHtml(p.name)}</span>`).join('')}</div>` : ''}
+      ${c.address ? `<div style="font-size:11px;color:var(--muted);margin-top:4px">${_escHtml(c.address)}</div>` : ''}
+      ${c.notes ? `<div style="font-size:11px;color:var(--muted);margin-top:4px;font-style:italic">${_escHtml(c.notes)}</div>` : ''}
+      <div style="display:flex;gap:6px;margin-top:10px;border-top:1px solid var(--border2);padding-top:8px">
+        <button class="btn btn-outline" onclick="switchSection('quote');document.getElementById('q-client').value='${_escHtml(c.name)}'" style="font-size:11px;padding:4px 10px;width:auto">+ Quote</button>
+        <button class="btn btn-outline" onclick="switchSection('orders');document.getElementById('o-client').value='${_escHtml(c.name)}'" style="font-size:11px;padding:4px 10px;width:auto">+ Order</button>
+        <button class="btn btn-outline" onclick="switchSection('projects');document.getElementById('pj-client').value='${_escHtml(c.name)}'" style="font-size:11px;padding:4px 10px;width:auto">+ Project</button>
+      </div>
+    </div>`;
+  };
+
+  const search = (window._clientSearch || '').toLowerCase();
+  const filtered = search ? clients.filter(c => c.name.toLowerCase().includes(search)) : clients;
+
+  el.innerHTML = `<div style="padding:24px;max-width:900px">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap">
+      <div style="font-size:18px;font-weight:800;color:var(--text);flex:1">Clients <span style="font-size:13px;font-weight:400;color:var(--muted)">(${clients.length})</span></div>
+      <input type="text" placeholder="Search clients..." value="${_escHtml(window._clientSearch||'')}" oninput="window._clientSearch=this.value;renderClientsMain()" style="font-size:12px;padding:6px 12px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);width:200px;font-family:inherit">
+    </div>
+    ${filtered.length ? filtered.map(clientCard).join('') : `<div style="color:var(--muted);font-size:13px;text-align:center;padding:40px 20px;border:1px dashed var(--border);border-radius:var(--radius)">No clients yet. Add one using the form on the left.</div>`}
+  </div>`;
+}
+
+function _highlightProject(id) {
+  setTimeout(() => {
+    const el = document.getElementById('project-card-'+id);
+    if (el) { el.scrollIntoView({behavior:'smooth',block:'center'}); el.style.outline='2px solid var(--accent)'; setTimeout(()=>el.style.outline='',2000); }
+  }, 100);
+}
+
+// ── Render Projects Tab ──
+function renderProjectsMain() {
+  const el = document.getElementById('projects-main');
+  if (!el) return;
+  const cur = window.currency;
+
+  const statusBadge = s => {
+    if (s === 'complete') return '<span class="badge badge-green">Complete</span>';
+    if (s === 'on-hold') return '<span class="badge badge-gray">On Hold</span>';
+    return '<span class="badge badge-blue">Active</span>';
+  };
+
+  const projectCard = p => {
+    const client = p.client_id ? clients.find(c => c.id === p.client_id) : null;
+    const pQuotes = quotes.filter(q => q.project_id === p.id || (!q.project_id && q.project === p.name));
+    const pOrders = orders.filter(o => o.project_id === p.id || (!o.project_id && o.project === p.name));
+    const totalValue = pOrders.reduce((s,o) => s + o.value, 0);
+    const quoteValue = pQuotes.reduce((s,q) => s + quoteTotal(q), 0);
+    const fmt = v => cur + v.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0});
+    const created = p.created_at ? new Date(p.created_at).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : '';
+
+    return `<div id="project-card-${p.id}" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;margin-bottom:8px">
+      <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:8px">
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+            <div style="font-size:15px;font-weight:700;color:var(--text)" contenteditable="true" onblur="updateProject(${p.id},'name',this.innerText.trim())">${_escHtml(p.name)}</div>
+            ${statusBadge(p.status)}
+          </div>
+          <div style="font-size:11px;color:var(--muted)">
+            ${client ? `<span style="cursor:pointer;text-decoration:underline" onclick="switchSection('clients');window._clientSearch='${_escHtml(client.name)}';renderClientsMain()">${_escHtml(client.name)}</span> · ` : ''}${created}
+          </div>
+        </div>
+        <select style="font-size:10px;font-weight:600;padding:3px 8px;border-radius:12px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:inherit;cursor:pointer" onchange="updateProject(${p.id},'status',this.value);renderProjectsMain()">
+          <option value="active" ${p.status==='active'?'selected':''}>Active</option>
+          <option value="on-hold" ${p.status==='on-hold'?'selected':''}>On Hold</option>
+          <option value="complete" ${p.status==='complete'?'selected':''}>Complete</option>
+        </select>
+        <button class="btn btn-danger" onclick="_confirm('Delete project <strong>${_escHtml(p.name)}</strong>?',()=>removeProject(${p.id}))" style="padding:4px 8px;flex-shrink:0">×</button>
+      </div>
+      ${p.description ? `<div style="font-size:12px;color:var(--text2);margin-bottom:8px">${_escHtml(p.description)}</div>` : ''}
+      <div style="display:flex;gap:16px;font-size:11px;color:var(--muted);margin-bottom:6px">
+        <span>${pQuotes.length} quote${pQuotes.length!==1?'s':''} (${fmt(quoteValue)})</span>
+        <span>${pOrders.length} order${pOrders.length!==1?'s':''} (${fmt(totalValue)})</span>
+      </div>
+      <!-- Linked items -->
+      ${pQuotes.length || pOrders.length ? `<div style="border-top:1px solid var(--border2);padding-top:8px;margin-top:4px">
+        ${pQuotes.map(q => `<div style="display:flex;align-items:center;gap:6px;font-size:11px;padding:3px 0;cursor:pointer" onclick="switchSection('quote')">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          <span style="color:var(--text2)">Quote — ${_escHtml(q.client||_clientName(q.client_id))}</span>
+          <span class="badge ${q.status==='approved'?'badge-green':q.status==='sent'?'badge-blue':'badge-gray'}" style="font-size:9px">${q.status}</span>
+          <span style="color:var(--muted)">${fmt(quoteTotal(q))}</span>
+        </div>`).join('')}
+        ${pOrders.map(o => `<div style="display:flex;align-items:center;gap:6px;font-size:11px;padding:3px 0;cursor:pointer" onclick="switchSection('orders')">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg>
+          <span style="color:var(--text2)">Order — ${_escHtml(o.client||_clientName(o.client_id))}</span>
+          <span class="badge ${STATUS_BADGES[o.status]||'badge-gray'}" style="font-size:9px">${STATUS_LABELS[o.status]||o.status}</span>
+          <span style="color:var(--muted)">${fmt(o.value)}</span>
+        </div>`).join('')}
+      </div>` : ''}
+      <div style="display:flex;gap:6px;margin-top:8px;border-top:1px solid var(--border2);padding-top:8px">
+        <button class="btn btn-outline" onclick="switchSection('quote');document.getElementById('q-project').value='${_escHtml(p.name)}';${client?`document.getElementById('q-client').value='${_escHtml(client.name)}'`:''}" style="font-size:11px;padding:4px 10px;width:auto">+ Quote</button>
+        <button class="btn btn-outline" onclick="switchSection('orders');document.getElementById('o-project').value='${_escHtml(p.name)}';${client?`document.getElementById('o-client').value='${_escHtml(client.name)}'`:''}" style="font-size:11px;padding:4px 10px;width:auto">+ Order</button>
+        <button class="btn btn-outline" onclick="switchSection('cutlist')" style="font-size:11px;padding:4px 10px;width:auto">Cut List</button>
+      </div>
+    </div>`;
+  };
+
+  const filter = window._projFilter || 'all';
+  const search = (window._projSearch || '').toLowerCase();
+  let filtered = projects;
+  if (filter !== 'all') filtered = filtered.filter(p => p.status === filter);
+  if (search) filtered = filtered.filter(p => p.name.toLowerCase().includes(search) || (_clientName(p.client_id)||'').toLowerCase().includes(search));
+
+  const activeCount = projects.filter(p => p.status === 'active').length;
+  const holdCount = projects.filter(p => p.status === 'on-hold').length;
+  const doneCount = projects.filter(p => p.status === 'complete').length;
+
+  el.innerHTML = `<div style="padding:24px;max-width:900px">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap">
+      <div style="font-size:18px;font-weight:800;color:var(--text);flex:1">Projects <span style="font-size:13px;font-weight:400;color:var(--muted)">(${projects.length})</span></div>
+      <input type="text" placeholder="Search projects..." value="${_escHtml(window._projSearch||'')}" oninput="window._projSearch=this.value;renderProjectsMain()" style="font-size:12px;padding:6px 12px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);width:200px;font-family:inherit">
+    </div>
+    <div style="display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap">
+      <button class="btn ${filter==='all'?'btn-primary':'btn-outline'}" onclick="window._projFilter='all';renderProjectsMain()" style="font-size:11px;padding:5px 12px;width:auto">All (${projects.length})</button>
+      <button class="btn ${filter==='active'?'btn-primary':'btn-outline'}" onclick="window._projFilter='active';renderProjectsMain()" style="font-size:11px;padding:5px 12px;width:auto">Active (${activeCount})</button>
+      <button class="btn ${filter==='on-hold'?'btn-primary':'btn-outline'}" onclick="window._projFilter='on-hold';renderProjectsMain()" style="font-size:11px;padding:5px 12px;width:auto">On Hold (${holdCount})</button>
+      <button class="btn ${filter==='complete'?'btn-primary':'btn-outline'}" onclick="window._projFilter='complete';renderProjectsMain()" style="font-size:11px;padding:5px 12px;width:auto">Complete (${doneCount})</button>
+    </div>
+    ${filtered.length ? filtered.map(projectCard).join('') : `<div style="color:var(--muted);font-size:13px;text-align:center;padding:40px 20px;border:1px dashed var(--border);border-radius:var(--radius)">No projects yet. Create one using the form on the left.</div>`}
+  </div>`;
+}
+
 // Default library panels to open
 if (window['_libOpen_lib-cl-panels'] === undefined) window['_libOpen_lib-cl-panels'] = true;
 try { renderCLLibraries(); } catch(e) {}
