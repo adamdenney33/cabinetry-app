@@ -487,8 +487,8 @@ textarea { resize: vertical; min-height: 70px; }
 ══════════════════════════════════════════ */
 .stock-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 14px;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 10px;
   margin-bottom: 20px;
 }
 .stock-card {
@@ -496,11 +496,11 @@ textarea { resize: vertical; min-height: 70px; }
   border-radius: var(--radius);
   border: 1px solid var(--border);
   box-shadow: var(--shadow);
-  padding: 16px;
+  padding: 0;
   transition: box-shadow 0.2s;
   cursor: default;
+  overflow: hidden;
 }
-.stock-card { overflow: hidden; }
 .stock-card:hover { box-shadow: var(--shadow-md); }
 .stock-card-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 10px; }
 .stock-name { font-size: 14px; font-weight: 700; color: var(--text); }
@@ -559,22 +559,22 @@ canvas { display: block; }
    QUOTE SECTION
 ══════════════════════════════════════════ */
 .quote-list { display: flex; flex-direction: column; gap: 12px; }
-.quote-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
-.qc-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 16px 18px 12px; }
-.qc-title { font-size: 15px; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; cursor: text; }
+.quote-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; margin-bottom: 8px; }
+.qc-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 12px 16px 8px; }
+.qc-title { font-size: 14px; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; cursor: text; }
 .qc-title:focus { outline: none; white-space: normal; border-bottom: 1px solid var(--accent); }
-.qc-meta { font-size: 12px; color: var(--muted); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.qc-notes { font-size: 12px; color: var(--text2); margin-top: 5px; font-style: italic; opacity: 0.8; cursor: text; }
+.qc-meta { font-size: 11px; color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.qc-notes { font-size: 11px; color: var(--text2); margin-top: 4px; font-style: italic; opacity: 0.8; cursor: text; }
 .qc-notes:focus { outline: none; font-style: normal; }
 .qc-actions { display: flex; gap: 5px; flex-shrink: 0; align-items: flex-start; }
-.qc-breakdown { border-top: 1px solid var(--border2); padding: 12px 18px; background: var(--surface2); }
-.qc-footer { display: flex; gap: 6px; padding: 10px 18px; border-top: 1px solid var(--border2); flex-wrap: wrap; }
-.qc-footer .btn { width: auto; font-size: 12px; padding: 5px 10px; }
-.qb-row { display: flex; justify-content: space-between; font-size: 13px; color: var(--text2); padding: 3px 0; }
+.qc-breakdown { border-top: 1px solid var(--border2); padding: 8px 16px; background: var(--surface2); }
+.qc-footer { display: flex; gap: 4px; padding: 8px 16px; border-top: 1px solid var(--border2); flex-wrap: wrap; align-items: center; }
+.qc-footer .btn { width: auto; font-size: 11px; padding: 4px 8px; }
+.qb-row { display: flex; justify-content: space-between; font-size: 12px; color: var(--text2); padding: 2px 0; }
 .qb-row:last-child { padding-bottom: 0; }
-.qb-muted { color: var(--muted); font-size: 12px; }
-.qb-total { font-size: 14px; font-weight: 800; color: var(--text); }
-.qb-divider { border-top: 1px solid var(--border); margin: 6px 0; }
+.qb-muted { color: var(--muted); font-size: 11px; }
+.qb-total { font-size: 13px; font-weight: 800; color: var(--text); }
+.qb-divider { border-top: 1px solid var(--border); margin: 4px 0; }
 .qb-edit { cursor: text; border-bottom: 1px dashed var(--muted); padding: 0 2px; min-width: 24px; display: inline-block; }
 .qb-edit:focus { outline: none; border-bottom-color: var(--accent); background: var(--surface2); border-radius: 2px; }
 
@@ -706,13 +706,13 @@ canvas { display: block; }
    ORDERS SECTION
 ══════════════════════════════════════════ */
 .orders-list { display: flex; flex-direction: column; gap: 12px; }
-.order-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+.order-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; margin-bottom: 8px; }
 .order-overdue { border-left: 3px solid var(--danger); }
-.oc-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 16px 18px 12px; }
-.oc-title { font-size: 15px; font-weight: 700; color: var(--text); cursor: text; }
+.oc-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; padding: 12px 16px 8px; }
+.oc-title { font-size: 14px; font-weight: 700; color: var(--text); cursor: text; }
 .oc-title:focus { outline: none; border-bottom: 1px solid var(--accent); }
-.oc-meta { font-size: 12px; color: var(--muted); margin-top: 3px; }
-.oc-notes { font-size: 12px; color: var(--text2); margin-top: 5px; font-style: italic; cursor: text; padding: 2px 0; min-height: 18px; }
+.oc-meta { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.oc-notes { font-size: 11px; color: var(--text2); margin-top: 4px; font-style: italic; cursor: text; padding: 2px 0; min-height: 16px; }
 .oc-notes:focus { outline: none; font-style: normal; }
 .oc-notes:empty:not(:focus)::before { content: attr(data-placeholder); color: var(--muted); font-style: italic; opacity: 0.6; }
 .oc-edit { cursor: text; border-bottom: 1px dashed var(--muted); padding: 0 2px; }
@@ -721,15 +721,15 @@ canvas { display: block; }
 .oc-value { font-size: 18px; font-weight: 800; color: var(--text); cursor: text; border-bottom: 1px dashed transparent; padding: 0 4px; border-radius: 3px; }
 .oc-value:hover { border-bottom-color: var(--muted); }
 .oc-value:focus { outline: none; border-bottom-color: var(--accent); background: var(--surface2); }
-.oc-pipeline { display: flex; align-items: center; padding: 10px 18px; border-top: 1px solid var(--border2); background: var(--surface2); overflow-x: auto; }
-.pipe-step { display: flex; flex-direction: column; align-items: center; flex-shrink: 0; min-width: 60px; }
-.pipe-dot { width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--border); background: var(--surface); margin-bottom: 4px; flex-shrink: 0; transition: all 0.2s; }
-.pipe-label { font-size: 9px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.3px; text-align: center; }
+.oc-pipeline { display: flex; align-items: center; padding: 6px 16px; border-top: 1px solid var(--border2); background: var(--surface2); overflow-x: auto; }
+.pipe-step { display: flex; flex-direction: column; align-items: center; flex-shrink: 0; min-width: 50px; }
+.pipe-dot { width: 8px; height: 8px; border-radius: 50%; border: 2px solid var(--border); background: var(--surface); margin-bottom: 3px; flex-shrink: 0; transition: all 0.2s; }
+.pipe-label { font-size: 8px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.3px; text-align: center; }
 .pipe-active .pipe-label { color: var(--text); }
 .pipe-done .pipe-label { color: var(--text2); }
-.pipe-line { flex: 1; height: 2px; background: var(--border); min-width: 16px; margin-bottom: 14px; transition: background 0.2s; }
+.pipe-line { flex: 1; height: 2px; background: var(--border); min-width: 12px; margin-bottom: 12px; transition: background 0.2s; }
 .pipe-line-done { background: var(--success); }
-.oc-footer { display: flex; align-items: center; gap: 10px; padding: 10px 18px; border-top: 1px solid var(--border2); }
+.oc-footer { display: flex; align-items: center; gap: 6px; padding: 8px 16px; border-top: 1px solid var(--border2); }
 .oc-status-select { font-size: 12px; padding: 5px 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); font-family: inherit; cursor: pointer; }
 .order-filter-tabs { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
 .order-search-input { flex: 1; min-width: 140px; font-size: 12px; padding: 5px 10px; border-radius: 20px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); font-family: inherit; }
@@ -1048,7 +1048,7 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
 <header>
   <div class="logo">
     <div class="logo-text">ProCabinet.App</div>
-    <div class="logo-badge">BETA v0.9.6</div>
+    <div class="logo-badge">BETA v0.9.7</div>
   </div>
   <div class="header-right">
     <div class="settings-wrap">
@@ -1237,63 +1237,72 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
           <div id="stock-libraries-list"></div>
         </div>
         <div class="form-section">
-          <div class="form-section-title">Add Material</div>
-          <div class="form-group" style="margin-bottom:8px">
-            <label>Material Name</label>
-            <input type="text" id="stock-name" placeholder="e.g. 3/4&quot; Birch Plywood">
-          </div>
-          <div class="form-group" style="margin-bottom:8px">
+          <div class="form-section-title" id="stock-form-title">Add Material</div>
+          <div class="form-group" style="margin-bottom:6px">
             <label>Category</label>
-            <input type="text" id="stock-cat" list="stock-cat-list" placeholder="e.g. Sheet Goods" autocomplete="off">
-            <datalist id="stock-cat-list">
-              <option value="Sheet Goods">
-              <option value="Solid Timber">
-              <option value="Edge Banding">
-              <option value="Hardware">
-              <option value="Finishing">
-              <option value="Other">
-            </datalist>
+            <select id="stock-cat" onchange="stockCatChanged()" style="font-size:12px">
+              <option value="Sheet Goods">Sheet Goods</option>
+              <option value="Solid Timber">Solid Timber</option>
+              <option value="Edge Banding">Edge Banding</option>
+              <option value="Hardware">Hardware</option>
+              <option value="Finishing">Finishing</option>
+              <option value="Other">Other</option>
+            </select>
           </div>
-          <div class="form-group" style="margin-bottom:8px">
+          <div class="form-group" style="margin-bottom:6px">
+            <label>Name</label>
+            <input type="text" id="stock-name" placeholder="e.g. Birch Plywood">
+          </div>
+          <div class="form-group" style="margin-bottom:6px">
+            <label>Variant / Spec</label>
+            <input type="text" id="stock-variant" placeholder="e.g. 18mm, 500mm depth, Oak veneer">
+          </div>
+          <div class="form-group" style="margin-bottom:6px">
             <label>SKU / Code</label>
             <input type="text" id="stock-sku" placeholder="e.g. PLY-34-B">
           </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label>Width</label>
-              <input type="number" id="stock-w" value="96" min="1">
-            </div>
-            <div class="form-group">
-              <label>Height</label>
-              <input type="number" id="stock-h" value="48" min="1">
+          <div id="stock-dims-fields">
+            <div class="form-row">
+              <div class="form-group">
+                <label>Length</label>
+                <input type="number" id="stock-w" value="2440" min="1">
+              </div>
+              <div class="form-group">
+                <label>Width</label>
+                <input type="number" id="stock-h" value="1220" min="1">
+              </div>
+              <div class="form-group">
+                <label>Thickness</label>
+                <input type="number" id="stock-thick" value="18" min="0" step="0.1">
+              </div>
             </div>
           </div>
           <div class="form-row">
             <div class="form-group">
-              <label>Qty in Stock</label>
+              <label>Qty</label>
               <input type="number" id="stock-qty" value="10" min="0">
             </div>
             <div class="form-group">
-              <label>Low Stock Alert</label>
+              <label>Low Alert</label>
               <input type="number" id="stock-low" value="3" min="0">
+            </div>
+            <div class="form-group">
+              <label>Cost / Unit</label>
+              <input type="number" id="stock-cost" value="65.00" min="0" step="0.01">
             </div>
           </div>
           <div class="form-row">
             <div class="form-group">
-              <label>Cost per Sheet</label>
-              <input type="number" id="stock-cost" value="65.00" min="0" step="0.01">
+              <label>Supplier</label>
+              <input type="text" id="stock-supplier" placeholder="e.g. Timber Merchant Ltd">
             </div>
           </div>
-          <div class="form-group" style="margin-bottom:8px">
-            <label>Supplier</label>
-            <input type="text" id="stock-supplier" placeholder="e.g. Timber Merchant Ltd">
-          </div>
-          <div class="form-group" style="margin-bottom:8px">
+          <div class="form-group" style="margin-bottom:6px">
             <label>Reorder Link</label>
             <input type="text" id="stock-reorder-url" placeholder="https://supplier.com/product">
           </div>
           <button class="btn btn-primary" onclick="window._editingStockId ? saveStockEdit() : addStockItem()" id="stock-submit-btn" style="margin-top:4px;width:100%">+ Add to Stock</button>
-          <button class="btn btn-outline" onclick="window._editingStockId=null;document.getElementById('stock-name').value='';document.getElementById('stock-submit-btn').textContent='+ Add to Stock';renderStockMain()" id="stock-cancel-btn" style="margin-top:4px;width:100%;display:none">Cancel Edit</button>
+          <button class="btn btn-outline" onclick="cancelStockEdit()" id="stock-cancel-btn" style="margin-top:4px;width:100%;display:none">Cancel Edit</button>
         </div>
       </div>
     </div>
@@ -1466,7 +1475,8 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
           </div>
           <div class="form-group" style="margin-bottom:8px;position:relative">
             <label>Project Name</label>
-            <input type="text" id="q-project" placeholder="e.g. Kitchen Remodel" autocomplete="off">
+            <input type="text" id="q-project" placeholder="e.g. Kitchen Remodel" autocomplete="off" oninput="_projectSuggest(this,'q-project-suggest')">
+            <div id="q-project-suggest" class="client-suggest-list" style="display:none"></div>
           </div>
           <div class="form-group" style="margin-bottom:8px">
             <label>Notes</label>
@@ -1528,9 +1538,10 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
               <div id="o-client-suggest" class="client-suggest-list" style="display:none"></div>
             </div>
           </div>
-          <div class="form-group" style="margin-bottom:8px">
+          <div class="form-group" style="margin-bottom:8px;position:relative">
             <label>Project Name</label>
-            <input type="text" id="o-project" placeholder="e.g. Kitchen Remodel" autocomplete="off">
+            <input type="text" id="o-project" placeholder="e.g. Kitchen Remodel" autocomplete="off" oninput="_projectSuggest(this,'o-project-suggest')">
+            <div id="o-project-suggest" class="client-suggest-list" style="display:none"></div>
           </div>
           <div class="form-row">
             <div class="form-group">
@@ -2104,6 +2115,10 @@ function _scSet(id, cat) {
   localStorage.setItem('pc_stock_cats', JSON.stringify(m));
 }
 
+// ── Stock Variant/Thickness Storage ──
+function _svGet(id) { try { return JSON.parse(localStorage.getItem('pc_stock_variants')||'{}')[String(id)] || {}; } catch(e) { return {}; } }
+function _svSet(id, data) { try { const m = JSON.parse(localStorage.getItem('pc_stock_variants')||'{}'); m[String(id)] = data; localStorage.setItem('pc_stock_variants', JSON.stringify(m)); } catch(e) {} }
+
 // Order notes — persisted in localStorage since notes column may not be in DB schema
 function _onMap() { try { return JSON.parse(localStorage.getItem('pc_order_notes') || '{}'); } catch(e) { return {}; } }
 function _onGet(id) { return _onMap()[String(id)] || ''; }
@@ -2117,16 +2132,37 @@ function _onRestore(orderArr) {
   orderArr.forEach(o => { if (m[String(o.id)]) o.notes = m[String(o.id)]; });
 }
 
+function stockCatChanged() {
+  const cat = document.getElementById('stock-cat').value;
+  const dimsEl = document.getElementById('stock-dims-fields');
+  if (!dimsEl) return;
+  // Show sheet dimensions for Sheet Goods / Solid Timber / Edge Banding, hide for Hardware / Finishing / Other
+  const sheetCats = ['Sheet Goods', 'Solid Timber', 'Edge Banding'];
+  dimsEl.style.display = sheetCats.includes(cat) ? '' : 'none';
+}
+function cancelStockEdit() {
+  window._editingStockId = null;
+  document.getElementById('stock-name').value = '';
+  document.getElementById('stock-variant').value = '';
+  document.getElementById('stock-sku').value = '';
+  document.getElementById('stock-submit-btn').textContent = '+ Add to Stock';
+  document.getElementById('stock-cancel-btn').style.display = 'none';
+  document.getElementById('stock-form-title').textContent = 'Add Material';
+  renderStockMain();
+}
+
 async function addStockItem() {
   const name = document.getElementById('stock-name').value.trim();
   if (!name) { _toast('Enter a material name.', 'error'); return; }
   if (!_requireAuth()) return;
   const cat = document.getElementById('stock-cat').value.trim();
+  const variant = document.getElementById('stock-variant').value.trim();
+  const thick = parseFloat(document.getElementById('stock-thick')?.value) || 0;
   const row = {
     user_id: _userId, name,
     sku: document.getElementById('stock-sku').value.trim() || '—',
-    w: parseFloat(document.getElementById('stock-w').value) || 96,
-    h: parseFloat(document.getElementById('stock-h').value) || 48,
+    w: parseFloat(document.getElementById('stock-w').value) || 2440,
+    h: parseFloat(document.getElementById('stock-h').value) || 1220,
     qty: parseInt(document.getElementById('stock-qty').value) || 0,
     low: parseInt(document.getElementById('stock-low').value) || 3,
     cost: parseFloat(document.getElementById('stock-cost').value) || 0,
@@ -2135,12 +2171,14 @@ async function addStockItem() {
   if (error) { _toast('Could not save stock item — ' + (error.message || JSON.stringify(error)), 'error'); console.error(error); return; }
   stockItems.push(data);
   if (cat) _scSet(data.id, cat);
+  // Store variant and thickness in local metadata
+  if (variant || thick) _svSet(data.id, { variant, thickness: thick });
   const supplier = document.getElementById('stock-supplier')?.value?.trim() || '';
   const reorderUrl = document.getElementById('stock-reorder-url')?.value?.trim() || '';
   if (supplier || reorderUrl) _ssSet(data.id, {supplier, url: reorderUrl});
   _toast('Stock item added', 'success');
   document.getElementById('stock-name').value = '';
-  document.getElementById('stock-cat').value = '';
+  document.getElementById('stock-variant').value = '';
   document.getElementById('stock-sku').value = '';
   if (document.getElementById('stock-supplier')) document.getElementById('stock-supplier').value = '';
   if (document.getElementById('stock-reorder-url')) document.getElementById('stock-reorder-url').value = '';
@@ -2152,9 +2190,14 @@ function editStockItem(id) {
   const item = stockItems.find(s => s.id === id);
   if (!item) return;
   window._editingStockId = id;
+  const cat = _scGet(id) || 'Sheet Goods';
+  document.getElementById('stock-cat').value = cat;
+  stockCatChanged();
   document.getElementById('stock-name').value = item.name;
+  const vd = _svGet(id);
+  document.getElementById('stock-variant').value = vd.variant || '';
+  document.getElementById('stock-thick').value = vd.thickness || '';
   document.getElementById('stock-sku').value = item.sku || '';
-  document.getElementById('stock-cat').value = _scGet(id) || '';
   document.getElementById('stock-w').value = item.w;
   document.getElementById('stock-h').value = item.h;
   document.getElementById('stock-qty').value = item.qty;
@@ -2163,13 +2206,12 @@ function editStockItem(id) {
   const sup = _ssGet(id);
   if (document.getElementById('stock-supplier')) document.getElementById('stock-supplier').value = sup.supplier || '';
   if (document.getElementById('stock-reorder-url')) document.getElementById('stock-reorder-url').value = sup.url || '';
-  // Scroll sidebar to top and change button text
+  // Scroll sidebar to top and change button/title text
   const sidebar = document.querySelector('#panel-stock .sidebar-scroll');
   if (sidebar) sidebar.scrollTop = 0;
-  const btn = document.getElementById('stock-submit-btn');
-  if (btn) btn.textContent = 'Save Changes';
-  const cancel = document.getElementById('stock-cancel-btn');
-  if (cancel) cancel.style.display = '';
+  document.getElementById('stock-submit-btn').textContent = 'Save Changes';
+  document.getElementById('stock-cancel-btn').style.display = '';
+  document.getElementById('stock-form-title').textContent = 'Edit Material';
 }
 
 async function saveStockEdit() {
@@ -2190,13 +2232,14 @@ async function saveStockEdit() {
   if (_userId) await _db('stock_items').update(updates).eq('id', id);
   const cat = document.getElementById('stock-cat').value.trim();
   _scSet(id, cat);
+  const variant = document.getElementById('stock-variant')?.value?.trim() || '';
+  const thick = parseFloat(document.getElementById('stock-thick')?.value) || 0;
+  _svSet(id, { variant, thickness: thick });
   const supplier = document.getElementById('stock-supplier')?.value?.trim() || '';
   const reorderUrl = document.getElementById('stock-reorder-url')?.value?.trim() || '';
   _ssSet(id, {supplier, url: reorderUrl});
-  window._editingStockId = null;
+  cancelStockEdit();
   _toast('Stock item updated', 'success');
-  document.getElementById('stock-name').value = '';
-  renderStockMain();
 }
 
 async function removeStock(id) {
@@ -2242,40 +2285,40 @@ function renderStockMain() {
     const u = window.units === 'metric' ? 'mm' : '"';
     const cat = _scGet(item.id);
     const sup = _ssGet(item.id);
+    const vd = _svGet(item.id);
+    const sheetCat = ['Sheet Goods','Solid Timber','Edge Banding'].includes(cat);
+    const dims = sheetCat ? `${item.w}×${item.h}${u}` : '';
+    const thk = vd.thickness ? `${vd.thickness}mm` : '';
+    const subtitle = [vd.variant, thk, item.sku !== '—' ? item.sku : '', dims].filter(Boolean).join(' · ');
+    const unitLabel = sheetCat ? 'sheets' : 'units';
     return `
-    <div class="stock-card" style="display:flex;flex-direction:column;gap:0">
-      <div style="padding:12px 14px">
-        <!-- Header: name + badge + edit -->
-        <div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:6px">
-          <div style="flex:1;min-width:0">
-            <div style="font-size:14px;font-weight:700;color:var(--text);line-height:1.3">${_escHtml(item.name)}</div>
-            <div style="font-size:11px;color:var(--muted);margin-top:2px">${item.sku||''} · ${item.w}×${item.h}${u}</div>
-          </div>
-          <span class="badge ${isLow ? 'badge-red' : 'badge-green'}" style="flex-shrink:0">${isLow ? 'Low' : 'OK'}</span>
+    <div class="stock-card" style="display:flex;flex-direction:column;gap:0;padding:0">
+      <div style="padding:10px 12px">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px">
+          <div style="font-size:13px;font-weight:700;color:var(--text);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_escHtml(item.name)}</div>
+          <span class="badge ${isLow ? 'badge-red' : 'badge-green'}" style="flex-shrink:0;font-size:9px;padding:2px 6px">${isLow ? 'Low' : 'OK'}</span>
         </div>
-        ${cat ? `<div style="margin-bottom:6px"><span class="stock-cat-tag">${_escHtml(cat)}</span></div>` : ''}
-        <!-- Qty + Price row -->
-        <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:8px">
-          <div>
-            <div style="font-size:24px;font-weight:800;color:${isLow?'var(--danger)':'var(--text)'};line-height:1">${item.qty}</div>
-            <div style="font-size:10px;color:var(--muted)">sheets · alert at ${item.low}</div>
+        ${subtitle ? `<div style="font-size:10px;color:var(--muted);margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_escHtml(subtitle)}</div>` : '<div style="margin-bottom:6px"></div>'}
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div style="display:flex;align-items:center;gap:6px">
+            <button class="btn btn-outline" onclick="adjustStock(${item.id},-1)" style="padding:2px 8px;font-size:14px;font-weight:700;line-height:1">−</button>
+            <div style="text-align:center;min-width:32px">
+              <div style="font-size:20px;font-weight:800;color:${isLow?'var(--danger)':'var(--text)'};line-height:1">${item.qty}</div>
+              <div style="font-size:9px;color:var(--muted)">${unitLabel}</div>
+            </div>
+            <button class="btn btn-outline" onclick="adjustStock(${item.id},1)" style="padding:2px 8px;font-size:14px;font-weight:700;line-height:1">+</button>
           </div>
           <div style="text-align:right">
-            <div style="font-size:14px;font-weight:700;color:var(--text)">${cur}${(item.qty * item.cost).toFixed(0)}</div>
-            <div style="font-size:11px;color:var(--muted)">${cur}${item.cost.toFixed(2)}/sheet</div>
+            <div style="font-size:13px;font-weight:700;color:var(--text)">${cur}${(item.qty * item.cost).toFixed(0)}</div>
+            <div style="font-size:9px;color:var(--muted)">${cur}${item.cost.toFixed(2)}/${sheetCat?'sheet':'unit'}</div>
           </div>
         </div>
-        ${sup.supplier ? `<div style="font-size:11px;color:var(--text2);margin-bottom:4px">Supplier: <strong>${_escHtml(sup.supplier)}</strong></div>` : ''}
-        ${sup.url ? `<a href="${_escHtml(sup.url)}" target="_blank" rel="noopener" style="font-size:11px;color:var(--accent);text-decoration:none" title="Reorder link">🔗 Reorder →</a>` : ''}
       </div>
-      <!-- Actions -->
-      <div style="display:flex;gap:4px;padding:8px 14px;border-top:1px solid var(--border2);align-items:center">
-        <button class="btn btn-outline" onclick="adjustStock(${item.id},-1)" style="font-size:12px;padding:4px 8px">−1</button>
-        <button class="btn btn-success" onclick="adjustStock(${item.id},1)" style="font-size:12px;padding:4px 8px">+1</button>
-        <button class="btn btn-outline" onclick="adjustStock(${item.id},5)" style="font-size:12px;padding:4px 8px">+5</button>
-        <button class="btn btn-outline" onclick="editStockItem(${item.id})" style="font-size:11px;padding:4px 6px" title="Edit">✎</button>
-        <button class="btn btn-outline" onclick="useStockInCutList(${item.id})" style="font-size:11px;padding:4px 6px" title="Cut list">→</button>
-        <button class="btn btn-danger" onclick="_confirm('Remove?',()=>removeStock(${item.id}))" style="padding:4px 6px">×</button>
+      <div style="display:flex;border-top:1px solid var(--border2)">
+        <button class="btn btn-outline" onclick="editStockItem(${item.id})" style="flex:1;border:0;border-radius:0;padding:6px;font-size:11px;border-right:1px solid var(--border2)">Edit</button>
+        <button class="btn btn-outline" onclick="useStockInCutList(${item.id})" style="flex:1;border:0;border-radius:0;padding:6px;font-size:11px;border-right:1px solid var(--border2)">+ Cut List</button>
+        ${sup.url ? `<a href="${_escHtml(sup.url)}" target="_blank" rel="noopener" class="btn btn-outline" style="flex:1;border:0;border-radius:0;padding:6px;font-size:11px;text-decoration:none;text-align:center;border-right:1px solid var(--border2)">Reorder</a>` : ''}
+        <button class="btn btn-danger" onclick="_confirm('Remove <strong>${_escHtml(item.name)}</strong>?',()=>removeStock(${item.id}))" style="border:0;border-radius:0;padding:6px 10px;font-size:11px">×</button>
       </div>
     </div>`;
   };
@@ -2303,23 +2346,25 @@ function renderStockMain() {
   const allCatPills = ['All', ...usedCats, ...(stockItems.some(i => !_scGet(i.id)) ? ['Uncategorised'] : [])];
 
   el.innerHTML = `<div>
-    <div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:nowrap">
-      <div class="stat-card accent" style="flex:1"><div class="stat-label">Materials</div><div class="stat-value">${stockItems.length}</div><div class="stat-sub">product types</div></div>
-      <div class="stat-card success" style="flex:1"><div class="stat-label">Sheets</div><div class="stat-value">${totalSheets}</div><div class="stat-sub">in stock</div></div>
-      <div class="stat-card ${lowItems ? 'danger' : 'success'}" style="flex:1"><div class="stat-label">Low Stock</div><div class="stat-value">${lowItems}</div><div class="stat-sub">${lowItems ? 'need reorder' : 'all OK'}</div></div>
-      <div class="stat-card warn" style="flex:1"><div class="stat-label">Value</div><div class="stat-value">${cur}${totalValue.toLocaleString('en-US',{maximumFractionDigits:0})}</div><div class="stat-sub">total</div></div>
+    <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:nowrap">
+      <div class="stat-card accent" style="flex:1;padding:10px 14px"><div class="stat-label">Materials</div><div class="stat-value">${stockItems.length}</div></div>
+      <div class="stat-card success" style="flex:1;padding:10px 14px"><div class="stat-label">In Stock</div><div class="stat-value">${totalSheets}</div></div>
+      <div class="stat-card ${lowItems ? 'danger' : 'success'}" style="flex:1;padding:10px 14px"><div class="stat-label">Low Stock</div><div class="stat-value">${lowItems}</div></div>
+      <div class="stat-card warn" style="flex:1;padding:10px 14px"><div class="stat-label">Value</div><div class="stat-value">${cur}${totalValue.toLocaleString('en-US',{maximumFractionDigits:0})}</div></div>
     </div>
 
     ${stockItems.length === 0 ? `<div class="empty-state">
       <div class="empty-icon" style="opacity:.18"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg></div>
       <h3>No stock items yet</h3><p>Add your first material using the form on the left.</p></div>` : `
-    <div style="padding:0 24px 10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-      <input class="order-search-input" type="search" placeholder="Search materials…" value="${window._stockSearch||''}" oninput="window._stockSearch=this.value;renderStockMain()" style="max-width:220px">
-      <span style="font-size:12px;color:var(--muted)">${filtered.length} of ${stockItems.length} item${stockItems.length!==1?'s':''}</span>
-      <button class="btn btn-outline" onclick="exportStockCSV()" style="width:auto;padding:5px 12px;font-size:12px;margin-left:auto" title="Export inventory to CSV">↓ Export</button>
-      <button class="btn btn-outline" onclick="importStockCSV()" style="width:auto;padding:5px 12px;font-size:12px" title="Import stock from CSV">↑ Import</button>
-      <button class="btn btn-outline" onclick="printStockList('print')" style="width:auto;padding:5px 12px;font-size:12px" title="Print inventory list">⎙ Print</button>
-      <button class="btn btn-outline" onclick="printStockList('pdf')" style="width:auto;padding:5px 12px;font-size:12px" title="Save inventory as PDF">↓ PDF</button>
+    <div style="padding:0 24px 8px;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+      <input class="order-search-input" type="search" placeholder="Search…" value="${window._stockSearch||''}" oninput="window._stockSearch=this.value;renderStockMain()" style="max-width:180px">
+      <span style="font-size:11px;color:var(--muted)">${filtered.length} of ${stockItems.length}</span>
+      <div style="margin-left:auto;display:flex;gap:4px">
+        <button class="btn btn-outline" onclick="exportStockCSV()" style="width:auto;padding:4px 10px;font-size:11px" title="Export CSV">Export</button>
+        <button class="btn btn-outline" onclick="importStockCSV()" style="width:auto;padding:4px 10px;font-size:11px" title="Import CSV">Import</button>
+        <button class="btn btn-outline" onclick="printStockList('print')" style="width:auto;padding:4px 10px;font-size:11px" title="Print">Print</button>
+        <button class="btn btn-outline" onclick="printStockList('pdf')" style="width:auto;padding:4px 10px;font-size:11px" title="PDF">PDF</button>
+      </div>
     </div>
     ${showCatFilter ? `<div class="stock-cat-filter-bar">${allCatPills.map(c => `<span class="stock-cat-pill${c===activeCat?' active':''}" onclick="window._stockCatFilter='${c}';renderStockMain()">${c}</span>`).join('')}</div>` : ''}
     `}
@@ -4147,15 +4192,14 @@ function renderQuoteMain() {
         </div>
         <button class="btn btn-danger" onclick="_confirm('Delete quote for <strong>${q.client}</strong>?',()=>removeQuote(${q.id}))" style="padding:4px 8px;margin-left:8px;flex-shrink:0">×</button>
       </div>
-      ${q.notes ? `<div style="border-top:1px solid var(--border2);padding:10px 18px;background:var(--surface)">
+      ${q.notes ? `<div style="border-top:1px solid var(--border2);padding:8px 16px;background:var(--surface)">
         ${q.notes.split(/\r?\n/).filter(Boolean).map(line => {
           if (line.includes('\u2014') || line.includes('—')) {
             const parts = line.split(/\u2014|—/);
-            return '<div style="margin-bottom:8px"><div style="font-size:14px;font-weight:700;color:var(--text)">' + _escHtml(parts[0].trim()) + '</div><div style="font-size:12px;color:var(--muted);padding-left:14px;border-left:2px solid var(--accent);margin-left:4px;margin-top:3px">' + _escHtml(parts.slice(1).join('\u2014').trim()) + '</div></div>';
+            return '<div style="margin-bottom:6px"><div style="font-size:13px;font-weight:700;color:var(--text)">' + _escHtml(parts[0].trim()) + '</div><div style="font-size:11px;color:var(--muted);padding-left:12px;border-left:2px solid var(--accent);margin-left:4px;margin-top:2px">' + _escHtml(parts.slice(1).join('\u2014').trim()) + '</div></div>';
           }
-          return '<div style="font-size:12px;color:var(--text2);margin-bottom:3px">' + _escHtml(line) + '</div>';
+          return '<div style="font-size:11px;color:var(--text2);margin-bottom:2px">' + _escHtml(line) + '</div>';
         }).join('')}
-
       </div>` : ''}
       <div class="qc-breakdown">
         <div class="qb-row"><span>Subtotal</span><span>${fmt(sub)}</span></div>
@@ -4166,12 +4210,13 @@ function renderQuoteMain() {
       </div>
       <div class="qc-footer">
         ${q.status === 'draft' ? `<button class="btn btn-outline" onclick="markQuoteSent(${q.id})">Mark Sent</button>` : ''}
-        ${q.status === 'sent' ? `<button class="btn btn-success" onclick="approveQuote(${q.id})" style="width:auto;padding:5px 10px;font-size:11px">✓ Approve</button>` : ''}
-        <button class="btn btn-outline" onclick="convertQuoteToOrder(${q.id})">${q.status === 'approved' ? '+ New Order' : '→ Order'}</button>
-        <button class="btn btn-outline" onclick="printQuote(${q.id},'print')" title="Send to printer">⎙ Print</button>
-        <button class="btn btn-outline" onclick="printQuote(${q.id},'pdf')" title="Save as PDF">↓ PDF</button>
-        <button class="btn btn-outline" onclick="duplicateQuote(${q.id})" title="Duplicate quote">⧉ Copy</button>
-        ${q.status !== 'draft' ? `<button class="btn btn-outline" onclick="revertQuoteToDraft(${q.id})" style="color:var(--muted)" title="Revert to Draft">↩ Draft</button>` : ''}
+        ${q.status === 'sent' ? `<button class="btn btn-success" onclick="approveQuote(${q.id})">Approve</button>` : ''}
+        ${q.status !== 'draft' ? `<button class="btn btn-outline" onclick="revertQuoteToDraft(${q.id})" style="color:var(--muted)">↩ Draft</button>` : ''}
+        <button class="btn btn-outline" onclick="convertQuoteToOrder(${q.id})">→ Order</button>
+        <span style="flex:1"></span>
+        <button class="btn btn-outline" onclick="duplicateQuote(${q.id})" title="Duplicate">Copy</button>
+        <button class="btn btn-outline" onclick="printQuote(${q.id},'print')" title="Print">Print</button>
+        <button class="btn btn-outline" onclick="printQuote(${q.id},'pdf')" title="PDF">PDF</button>
       </div>
     </div>`;
   };
@@ -4320,11 +4365,11 @@ function renderOrdersMain() {
           <div class="oc-meta">
             <span contenteditable="true" onblur="updateOrderField(${o.id},'client',this.innerText.trim())" title="Click to edit client" style="cursor:text">${o.client}</span>
           </div>
-          <div style="display:flex;gap:10px;align-items:center;margin-top:4px;font-size:12px;color:var(--muted)">
-            <span>Start:</span><input type="date" style="font-size:12px;padding:3px 6px;border:1px solid var(--border);border-radius:5px;background:var(--surface2);color:var(--text);font-family:inherit;cursor:pointer" value="${_orderDateToISO(o.prodStart)}" onchange="setOrderProdStart(${o.id},this.value)" title="Production start date">
-            <span>Due:</span><input type="date" style="font-size:12px;padding:3px 6px;border:1px solid var(--border);border-radius:5px;background:var(--surface2);color:var(--text);font-family:inherit;cursor:pointer" value="${_orderDateToISO(o.due)}" onchange="updateOrderField(${o.id},'due',this.value ? new Date(this.value+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : 'TBD')" title="Due date">
-            ${(() => { const rel = _relativeDate(o.due); return rel ? `<span style="font-size:10px;font-weight:700;color:${rel.color}">${rel.label}</span>` : ''; })()}
-            ${isOverdue ? '<span class="badge badge-red" style="font-size:9px">Overdue</span>' : ''}
+          <div style="display:flex;gap:8px;align-items:center;margin-top:3px;font-size:11px;color:var(--muted)">
+            <span>Start:</span><input type="date" style="font-size:11px;padding:2px 4px;border:1px solid var(--border);border-radius:4px;background:var(--surface2);color:var(--text);font-family:inherit;cursor:pointer" value="${_orderDateToISO(o.prodStart)}" onchange="setOrderProdStart(${o.id},this.value)" title="Production start date">
+            <span>Due:</span><input type="date" style="font-size:11px;padding:2px 4px;border:1px solid var(--border);border-radius:4px;background:var(--surface2);color:var(--text);font-family:inherit;cursor:pointer" value="${_orderDateToISO(o.due)}" onchange="updateOrderField(${o.id},'due',this.value ? new Date(this.value+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : 'TBD')" title="Due date">
+            ${(() => { const rel = _relativeDate(o.due); return rel ? `<span style="font-size:9px;font-weight:700;color:${rel.color}">${rel.label}</span>` : ''; })()}
+            ${isOverdue ? '<span class="badge badge-red" style="font-size:8px;padding:1px 5px">Overdue</span>' : ''}
           </div>
           <div class="oc-notes" contenteditable="true" onblur="updateOrderField(${o.id},'notes',this.innerText.trim())" title="Click to add notes" data-placeholder="Add production notes…">${o.notes || ''}</div>
         </div>
@@ -4338,9 +4383,10 @@ function renderOrdersMain() {
         <select class="oc-status-select" onchange="setOrderStatus(${o.id},this.value)">
           ${pipelineSteps.map(s=>`<option value="${s}" ${o.status===s?'selected':''}>${STATUS_LABELS[s]}</option>`).join('')}
         </select>
-        ${o.status !== 'complete' ? `<button class="btn btn-success" onclick="advanceOrder(${o.id})" style="font-size:12px;padding:6px 12px;display:inline-flex;align-items:center;gap:4px">Next Stage ${ARROW_SVG}</button>` : '<span class="badge badge-green" style="align-self:center">Complete</span>'}
-        <button class="btn btn-outline" onclick="printWorkOrder(${o.id},'print')" style="font-size:12px;padding:6px 12px;width:auto;margin-left:auto" title="Print work order">⎙ Work Order</button>
-        <button class="btn btn-outline" onclick="printWorkOrder(${o.id},'pdf')" style="font-size:12px;padding:6px 12px;width:auto" title="Save work order as PDF">↓ PDF</button>
+        ${o.status !== 'complete' ? `<button class="btn btn-success" onclick="advanceOrder(${o.id})" style="font-size:11px;padding:5px 10px;display:inline-flex;align-items:center;gap:4px">Next Stage ${ARROW_SVG}</button>` : '<span class="badge badge-green" style="align-self:center">Complete</span>'}
+        <span style="flex:1"></span>
+        <button class="btn btn-outline" onclick="printWorkOrder(${o.id},'print')" style="font-size:11px;padding:5px 10px;width:auto" title="Print work order">Work Order</button>
+        <button class="btn btn-outline" onclick="printWorkOrder(${o.id},'pdf')" style="font-size:11px;padding:5px 10px;width:auto" title="Save work order as PDF">PDF</button>
       </div>
     </div>`;
   };
@@ -4414,15 +4460,13 @@ function renderDashboard() {
     <div style="padding:24px;max-width:1200px">
 
       <!-- Quick actions -->
-      <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap">
-        <button class="btn btn-primary" onclick="switchSection('quote')" style="font-size:12px;padding:7px 16px">+ New Quote</button>
-        <button class="btn btn-outline" onclick="switchSection('cabinet')" style="font-size:12px;padding:7px 16px;width:auto">+ Cabinet Builder</button>
-        <button class="btn btn-outline" onclick="switchSection('orders')" style="font-size:12px;padding:7px 16px;width:auto">+ New Order</button>
-        <button class="btn btn-outline" onclick="switchSection('cutlist')" style="font-size:12px;padding:7px 16px;width:auto">⚙ Cut List</button>
-        <button class="btn btn-outline" onclick="switchSection('projects')" style="font-size:12px;padding:7px 16px;width:auto">Projects</button>
-        <button class="btn btn-outline" onclick="switchSection('clients')" style="font-size:12px;padding:7px 16px;width:auto">Clients</button>
-        <button class="btn btn-outline" onclick="switchSection('schedule')" style="font-size:12px;padding:7px 16px;width:auto">📅 Schedule</button>
-        ${overdueOrders.length ? `<span class="badge badge-red" style="align-self:center;font-size:12px;padding:6px 12px">${overdueOrders.length} overdue order${overdueOrders.length!==1?'s':''}</span>` : ''}
+      <div style="display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap;align-items:center">
+        <button class="btn btn-primary" onclick="switchSection('quote')" style="font-size:11px;padding:6px 12px">+ Quote</button>
+        <button class="btn btn-outline" onclick="switchSection('orders')" style="font-size:11px;padding:6px 12px;width:auto">+ Order</button>
+        <button class="btn btn-outline" onclick="switchSection('cabinet')" style="font-size:11px;padding:6px 12px;width:auto">+ Cabinet</button>
+        <button class="btn btn-outline" onclick="switchSection('cutlist')" style="font-size:11px;padding:6px 12px;width:auto">Cut List</button>
+        <button class="btn btn-outline" onclick="switchSection('schedule')" style="font-size:11px;padding:6px 12px;width:auto">Schedule</button>
+        ${overdueOrders.length ? `<span class="badge badge-red" style="font-size:11px;padding:5px 10px;margin-left:4px">${overdueOrders.length} overdue</span>` : ''}
       </div>
 
       <!-- Getting started guide — only when everything is empty -->
@@ -4446,40 +4490,40 @@ function renderDashboard() {
       </div>` : ''}
 
       <!-- KPI Row -->
-      <div class="stats-grid" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr));margin-bottom:24px">
-        <div class="stat-card accent">
+      <div class="stats-grid" style="grid-template-columns:repeat(auto-fit,minmax(130px,1fr));margin-bottom:18px;gap:10px">
+        <div class="stat-card accent" style="padding:10px 14px">
           <div class="stat-label">Pipeline</div>
           <div class="stat-value">${cur}${fmt(pipeline)}</div>
-          <div class="stat-sub">${activeOrders.length} active order${activeOrders.length!==1?'s':''}</div>
+          <div class="stat-sub">${activeOrders.length} active</div>
         </div>
-        <div class="stat-card success">
+        <div class="stat-card success" style="padding:10px 14px">
           <div class="stat-label">Revenue</div>
           <div class="stat-value">${cur}${fmt(revenue)}</div>
           <div class="stat-sub">${doneOrders.length} completed</div>
         </div>
-        <div class="stat-card warn">
+        <div class="stat-card warn" style="padding:10px 14px">
           <div class="stat-label">Quoted</div>
           <div class="stat-value">${cur}${fmt(quoteValue)}</div>
           <div class="stat-sub">${approvedQ} approved</div>
         </div>
-        <div class="stat-card ${lowStock.length ? 'danger' : 'success'}">
-          <div class="stat-label">Stock Value</div>
+        <div class="stat-card ${lowStock.length ? 'danger' : 'success'}" style="padding:10px 14px">
+          <div class="stat-label">Stock</div>
           <div class="stat-value">${cur}${fmt(stockValue)}</div>
-          <div class="stat-sub">${lowStock.length ? lowStock.length+' low stock' : totalSheets+' sheets'}</div>
+          <div class="stat-sub">${lowStock.length ? lowStock.length+' low' : totalSheets+' sheets'}</div>
         </div>
-        <div class="stat-card" style="cursor:pointer" onclick="switchSection('projects')">
+        <div class="stat-card" style="padding:10px 14px;cursor:pointer" onclick="switchSection('projects')">
           <div class="stat-label">Projects</div>
           <div class="stat-value">${activeProjects}</div>
           <div class="stat-sub">${projects.length} total</div>
         </div>
-        <div class="stat-card" style="cursor:pointer" onclick="switchSection('clients')">
+        <div class="stat-card" style="padding:10px 14px;cursor:pointer" onclick="switchSection('clients')">
           <div class="stat-label">Clients</div>
           <div class="stat-value">${totalClients}</div>
-          <div class="stat-sub">${orders.length ? [...new Set(orders.map(o=>o.client))].length + ' with orders' : 'no orders yet'}</div>
+          <div class="stat-sub">${orders.length ? [...new Set(orders.map(o=>o.client))].length + ' with orders' : ''}</div>
         </div>
       </div>
 
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px;margin-bottom:18px">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:14px">
 
         <!-- Orders by status -->
         <div class="card">
@@ -4687,12 +4731,23 @@ function _clientSuggest(input) {
   box.style.display = '';
 }
 
+function _projectSuggest(input, boxId) {
+  const val = input.value.toLowerCase().trim();
+  const box = document.getElementById(boxId);
+  if (!box) return;
+  if (!val) { box.style.display = 'none'; return; }
+  const allProjects = [...new Set([...projects.map(p => p.name), ...quotes.map(q => q.project), ...orders.map(o => o.project)].filter(Boolean))];
+  const matches = allProjects.filter(p => p.toLowerCase().includes(val) && p.toLowerCase() !== val);
+  if (!matches.length) { box.style.display = 'none'; return; }
+  box.innerHTML = matches.slice(0,5).map(p => `<div class="client-suggest-item" onmousedown="this.closest('.form-group').querySelector('input').value='${p.replace(/'/g,'&#39;')}';this.parentElement.style.display='none'">${p}</div>`).join('');
+  box.style.display = '';
+}
+
 // Close suggest on blur
 document.addEventListener('click', e => {
-  const qBox = document.getElementById('q-client-suggest');
-  if (qBox && !qBox.contains(e.target) && e.target.id !== 'q-client') qBox.style.display = 'none';
-  const oBox = document.getElementById('o-client-suggest');
-  if (oBox && !oBox.contains(e.target) && e.target.id !== 'o-client') oBox.style.display = 'none';
+  document.querySelectorAll('.client-suggest-list').forEach(box => {
+    if (!box.contains(e.target) && e.target !== box.previousElementSibling) box.style.display = 'none';
+  });
 });
 
 function _oClientSuggest(input) {
@@ -7563,7 +7618,13 @@ function _escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'
 // ── Tab Library Renderers ──
 function renderCLLibraries() {
   // Stock Panels — shows stock items from Stock tab as available panels
-  const panelItems = stockItems.map(s => ({_label:s.name, _count:s.qty+' sheets', _sub:s.w+'×'+s.h}));
+  const panelItems = stockItems.map(s => {
+    const vd = _svGet(s.id);
+    const thk = vd.thickness ? vd.thickness+'mm' : '';
+    const variant = vd.variant || '';
+    const sub = [s.w+'×'+s.h, thk, variant].filter(Boolean).join(' · ');
+    return {_label:s.name, _count:s.qty+' sheets', _sub:sub};
+  });
   _renderLibUI('lib-cl-panels', 'Stock Panels', panelItems, {
     icon:'box', renderFn:'renderCLLibraries', importFn:'triggerImportCSV.bind(null,"sheets")', exportFn:'exportCSV.bind(null,"sheets")',
     loadFn:'_clAddPanelFromStock', savePlaceholder:'Panel name...', emptyMsg:'No stock items. Add materials in the Stock tab.'
@@ -8167,30 +8228,24 @@ function renderClientsMain() {
     const totalValue = cOrders.reduce((s,o) => s + o.value, 0) + cQuotes.reduce((s,q) => s + quoteTotal(q), 0);
     const fmt = v => cur + v.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0});
 
-    return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;margin-bottom:8px">
-      <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:10px">
-        <div style="width:36px;height:36px;border-radius:50%;background:var(--accent-dim);color:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;flex-shrink:0">${c.name.charAt(0).toUpperCase()}</div>
+    return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;margin-bottom:6px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+        <div style="width:30px;height:30px;border-radius:50%;background:var(--accent-dim);color:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;flex-shrink:0">${c.name.charAt(0).toUpperCase()}</div>
         <div style="flex:1;min-width:0">
-          <div style="font-size:15px;font-weight:700;color:var(--text)" contenteditable="true" onblur="updateClient(${c.id},'name',this.innerText.trim())">${_escHtml(c.name)}</div>
-          <div style="font-size:11px;color:var(--muted);margin-top:2px">
-            ${c.email ? '<span>'+_escHtml(c.email)+'</span> · ' : ''}${c.phone ? '<span>'+_escHtml(c.phone)+'</span>' : ''}
+          <div style="font-size:14px;font-weight:700;color:var(--text)" contenteditable="true" onblur="updateClient(${c.id},'name',this.innerText.trim())">${_escHtml(c.name)}</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:1px">
+            ${c.email ? '<span>'+_escHtml(c.email)+'</span>' : ''}${c.email && c.phone ? ' · ' : ''}${c.phone ? '<span>'+_escHtml(c.phone)+'</span>' : ''} · ${cProjects.length} projects · ${cOrders.length} orders · ${fmt(totalValue)}
           </div>
         </div>
-        <button class="btn btn-danger" onclick="_confirm('Delete client <strong>${_escHtml(c.name)}</strong>?',()=>removeClient(${c.id}))" style="padding:4px 8px;flex-shrink:0">×</button>
+        <button class="btn btn-danger" onclick="_confirm('Delete client <strong>${_escHtml(c.name)}</strong>?',()=>removeClient(${c.id}))" style="padding:3px 6px;font-size:10px;flex-shrink:0">×</button>
       </div>
-      <div style="display:flex;gap:16px;font-size:11px;color:var(--muted);margin-bottom:8px;flex-wrap:wrap">
-        <span>${cProjects.length} project${cProjects.length!==1?'s':''}</span>
-        <span>${cQuotes.length} quote${cQuotes.length!==1?'s':''}</span>
-        <span>${cOrders.length} order${cOrders.length!==1?'s':''}</span>
-        <span style="font-weight:600;color:var(--text2)">${fmt(totalValue)} total</span>
-      </div>
-      ${cProjects.length ? `<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px">${cProjects.map(p => `<span class="badge ${p.status==='complete'?'badge-green':p.status==='on-hold'?'badge-gray':'badge-blue'}" style="cursor:pointer;font-size:10px" onclick="switchSection('projects');_highlightProject(${p.id})">${_escHtml(p.name)}</span>`).join('')}</div>` : ''}
-      ${c.address ? `<div style="font-size:11px;color:var(--muted);margin-top:4px">${_escHtml(c.address)}</div>` : ''}
-      ${c.notes ? `<div style="font-size:11px;color:var(--muted);margin-top:4px;font-style:italic">${_escHtml(c.notes)}</div>` : ''}
-      <div style="display:flex;gap:6px;margin-top:10px;border-top:1px solid var(--border2);padding-top:8px">
-        <button class="btn btn-outline" onclick="switchSection('quote');document.getElementById('q-client').value='${_escHtml(c.name)}'" style="font-size:11px;padding:4px 10px;width:auto">+ Quote</button>
-        <button class="btn btn-outline" onclick="switchSection('orders');document.getElementById('o-client').value='${_escHtml(c.name)}'" style="font-size:11px;padding:4px 10px;width:auto">+ Order</button>
-        <button class="btn btn-outline" onclick="switchSection('projects');document.getElementById('pj-client').value='${_escHtml(c.name)}'" style="font-size:11px;padding:4px 10px;width:auto">+ Project</button>
+      ${cProjects.length ? `<div style="display:flex;gap:3px;flex-wrap:wrap;margin-bottom:4px">${cProjects.map(p => `<span class="badge ${p.status==='complete'?'badge-green':p.status==='on-hold'?'badge-gray':'badge-blue'}" style="cursor:pointer;font-size:9px;padding:1px 6px" onclick="switchSection('projects');_highlightProject(${p.id})">${_escHtml(p.name)}</span>`).join('')}</div>` : ''}
+      ${c.address ? `<div style="font-size:10px;color:var(--muted)">${_escHtml(c.address)}</div>` : ''}
+      ${c.notes ? `<div style="font-size:10px;color:var(--muted);font-style:italic">${_escHtml(c.notes)}</div>` : ''}
+      <div style="display:flex;gap:4px;margin-top:6px;border-top:1px solid var(--border2);padding-top:6px">
+        <button class="btn btn-outline" onclick="switchSection('quote');document.getElementById('q-client').value='${_escHtml(c.name)}'" style="font-size:10px;padding:3px 8px;width:auto">+ Quote</button>
+        <button class="btn btn-outline" onclick="switchSection('orders');document.getElementById('o-client').value='${_escHtml(c.name)}'" style="font-size:10px;padding:3px 8px;width:auto">+ Order</button>
+        <button class="btn btn-outline" onclick="switchSection('projects');document.getElementById('pj-client').value='${_escHtml(c.name)}'" style="font-size:10px;padding:3px 8px;width:auto">+ Project</button>
       </div>
     </div>`;
   };
@@ -8235,45 +8290,39 @@ function renderProjectsMain() {
     const fmt = v => cur + v.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0});
     const created = p.created_at ? new Date(p.created_at).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : '';
 
-    return `<div id="project-card-${p.id}" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;margin-bottom:8px">
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px">
-        <div style="font-size:15px;font-weight:700;color:var(--text)" contenteditable="true" onblur="updateProject(${p.id},'name',this.innerText.trim())">${_escHtml(p.name)}</div>
-        <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
-          <select style="font-size:10px;font-weight:600;padding:3px 8px;border-radius:12px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:inherit;cursor:pointer" onchange="updateProject(${p.id},'status',this.value);renderProjectsMain()">
+    return `<div id="project-card-${p.id}" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;margin-bottom:6px">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px">
+        <div style="font-size:14px;font-weight:700;color:var(--text)" contenteditable="true" onblur="updateProject(${p.id},'name',this.innerText.trim())">${_escHtml(p.name)}</div>
+        <div style="display:flex;align-items:center;gap:4px;flex-shrink:0">
+          <select style="font-size:10px;font-weight:600;padding:2px 6px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:inherit;cursor:pointer" onchange="updateProject(${p.id},'status',this.value);renderProjectsMain()">
             <option value="active" ${p.status==='active'?'selected':''}>Active</option>
             <option value="on-hold" ${p.status==='on-hold'?'selected':''}>On Hold</option>
             <option value="complete" ${p.status==='complete'?'selected':''}>Complete</option>
           </select>
-          <button class="btn btn-danger" onclick="_confirm('Delete project <strong>${_escHtml(p.name)}</strong>?',()=>removeProject(${p.id}))" style="padding:4px 8px">×</button>
+          <button class="btn btn-danger" onclick="_confirm('Delete project <strong>${_escHtml(p.name)}</strong>?',()=>removeProject(${p.id}))" style="padding:3px 6px;font-size:10px">×</button>
         </div>
       </div>
-      <div style="font-size:11px;color:var(--muted);margin-bottom:8px">
-        ${client ? `<span style="cursor:pointer;text-decoration:underline" onclick="switchSection('clients');window._clientSearch='${_escHtml(client.name)}';renderClientsMain()">${_escHtml(client.name)}</span> · ` : ''}${created}
+      <div style="font-size:10px;color:var(--muted);margin-bottom:6px">
+        ${client ? `<span style="cursor:pointer;text-decoration:underline" onclick="switchSection('clients');window._clientSearch='${_escHtml(client.name)}';renderClientsMain()">${_escHtml(client.name)}</span> · ` : ''}${created} · ${pQuotes.length} quote${pQuotes.length!==1?'s':''} (${fmt(quoteValue)}) · ${pOrders.length} order${pOrders.length!==1?'s':''} (${fmt(totalValue)})
       </div>
-      ${p.description ? `<div style="font-size:12px;color:var(--text2);margin-bottom:8px">${_escHtml(p.description)}</div>` : ''}
-      <div style="display:flex;gap:16px;font-size:11px;color:var(--muted);margin-bottom:6px">
-        <span>${pQuotes.length} quote${pQuotes.length!==1?'s':''} (${fmt(quoteValue)})</span>
-        <span>${pOrders.length} order${pOrders.length!==1?'s':''} (${fmt(totalValue)})</span>
-      </div>
+      ${p.description ? `<div style="font-size:11px;color:var(--text2);margin-bottom:6px">${_escHtml(p.description)}</div>` : ''}
       <!-- Linked items -->
-      ${pQuotes.length || pOrders.length ? `<div style="border-top:1px solid var(--border2);padding-top:8px;margin-top:4px">
-        ${pQuotes.map(q => `<div style="display:flex;align-items:center;gap:6px;font-size:11px;padding:3px 0;cursor:pointer" onclick="switchSection('quote')">
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      ${pQuotes.length || pOrders.length ? `<div style="border-top:1px solid var(--border2);padding-top:6px;margin-top:4px">
+        ${pQuotes.map(q => `<div style="display:flex;align-items:center;gap:5px;font-size:10px;padding:2px 0;cursor:pointer" onclick="switchSection('quote')">
           <span style="color:var(--text2)">Quote — ${_escHtml(q.client||_clientName(q.client_id))}</span>
-          <span class="badge ${q.status==='approved'?'badge-green':q.status==='sent'?'badge-blue':'badge-gray'}" style="font-size:9px">${q.status}</span>
+          <span class="badge ${q.status==='approved'?'badge-green':q.status==='sent'?'badge-blue':'badge-gray'}" style="font-size:8px;padding:1px 5px">${q.status}</span>
           <span style="color:var(--muted)">${fmt(quoteTotal(q))}</span>
         </div>`).join('')}
-        ${pOrders.map(o => `<div style="display:flex;align-items:center;gap:6px;font-size:11px;padding:3px 0;cursor:pointer" onclick="switchSection('orders')">
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg>
+        ${pOrders.map(o => `<div style="display:flex;align-items:center;gap:5px;font-size:10px;padding:2px 0;cursor:pointer" onclick="switchSection('orders')">
           <span style="color:var(--text2)">Order — ${_escHtml(o.client||_clientName(o.client_id))}</span>
-          <span class="badge ${STATUS_BADGES[o.status]||'badge-gray'}" style="font-size:9px">${STATUS_LABELS[o.status]||o.status}</span>
+          <span class="badge ${STATUS_BADGES[o.status]||'badge-gray'}" style="font-size:8px;padding:1px 5px">${STATUS_LABELS[o.status]||o.status}</span>
           <span style="color:var(--muted)">${fmt(o.value)}</span>
         </div>`).join('')}
       </div>` : ''}
-      <div style="display:flex;gap:6px;margin-top:8px;border-top:1px solid var(--border2);padding-top:8px">
-        <button class="btn btn-outline" onclick="switchSection('quote');document.getElementById('q-project').value='${_escHtml(p.name)}';${client?`document.getElementById('q-client').value='${_escHtml(client.name)}'`:''}" style="font-size:11px;padding:4px 10px;width:auto">+ Quote</button>
-        <button class="btn btn-outline" onclick="switchSection('orders');document.getElementById('o-project').value='${_escHtml(p.name)}';${client?`document.getElementById('o-client').value='${_escHtml(client.name)}'`:''}" style="font-size:11px;padding:4px 10px;width:auto">+ Order</button>
-        <button class="btn btn-outline" onclick="switchSection('cutlist')" style="font-size:11px;padding:4px 10px;width:auto">Cut List</button>
+      <div style="display:flex;gap:4px;margin-top:6px;border-top:1px solid var(--border2);padding-top:6px">
+        <button class="btn btn-outline" onclick="switchSection('quote');document.getElementById('q-project').value='${_escHtml(p.name)}';${client?`document.getElementById('q-client').value='${_escHtml(client.name)}'`:''}" style="font-size:10px;padding:3px 8px;width:auto">+ Quote</button>
+        <button class="btn btn-outline" onclick="switchSection('orders');document.getElementById('o-project').value='${_escHtml(p.name)}';${client?`document.getElementById('o-client').value='${_escHtml(client.name)}'`:''}" style="font-size:10px;padding:3px 8px;width:auto">+ Order</button>
+        <button class="btn btn-outline" onclick="switchSection('cutlist')" style="font-size:10px;padding:3px 8px;width:auto">Cut List</button>
       </div>
     </div>`;
   };
