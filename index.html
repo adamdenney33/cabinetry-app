@@ -4050,7 +4050,6 @@ async function createQuote() {
   const projectId = await resolveProject(project, clientId);
   const row = {
     user_id: _userId, client, project,
-    client_id: clientId, project_id: projectId,
     materials: parseFloat(document.getElementById('q-materials').value) || 0,
     labour: labourRate * hours,
     markup: parseFloat(document.getElementById('q-markup').value) || 20,
@@ -4058,7 +4057,13 @@ async function createQuote() {
     status: 'draft', date: new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short'}),
     notes: document.getElementById('q-notes').value.trim(),
   };
-  const { data, error } = await _db('quotes').insert(row).select().single();
+  if (clientId) row.client_id = clientId;
+  if (projectId) row.project_id = projectId;
+  let { data, error } = await _db('quotes').insert(row).select().single();
+  if (error && error.message && (error.message.includes('client_id') || error.message.includes('project_id'))) {
+    delete row.client_id; delete row.project_id;
+    ({ data, error } = await _db('quotes').insert(row).select().single());
+  }
   if (error) { _toast('Could not save quote — ' + (error.message || JSON.stringify(error)), 'error'); console.error(error); return; }
   quotes.unshift(data);
   _toast('Quote created', 'success');
@@ -4083,8 +4088,14 @@ async function convertQuoteToOrder(id) {
   const { error: qErr } = await _db('quotes').update({ status: 'approved' }).eq('id', id);
   if (qErr) { _toast('Could not update quote — ' + (qErr.message || JSON.stringify(qErr)), 'error'); console.error(qErr); return; }
   q.status = 'approved';
-  const orderRow = { user_id: _userId, client: q.client, project: q.project, client_id: q.client_id||null, project_id: q.project_id||null, value: Math.round(quoteTotal(q)), status: 'confirmed', due: 'TBD' };
-  const { data, error: oErr } = await _db('orders').insert(orderRow).select().single();
+  const orderRow = { user_id: _userId, client: q.client, project: q.project, value: Math.round(quoteTotal(q)), status: 'confirmed', due: 'TBD' };
+  if (q.client_id) orderRow.client_id = q.client_id;
+  if (q.project_id) orderRow.project_id = q.project_id;
+  let { data, error: oErr } = await _db('orders').insert(orderRow).select().single();
+  if (oErr && oErr.message && (oErr.message.includes('client_id') || oErr.message.includes('project_id'))) {
+    delete orderRow.client_id; delete orderRow.project_id;
+    ({ data, error: oErr } = await _db('orders').insert(orderRow).select().single());
+  }
   if (oErr) { _toast('Could not create order — ' + (oErr.message || JSON.stringify(oErr)), 'error'); console.error(oErr); return; }
   orders.unshift(data);
   document.getElementById('orders-badge').textContent = orders.filter(o => o.status !== 'complete').length;
@@ -4226,12 +4237,17 @@ async function addOrder() {
   const projectId = await resolveProject(project, clientId);
   const row = {
     user_id: _userId, client, project,
-    client_id: clientId, project_id: projectId,
     value: parseFloat(document.getElementById('o-value').value) || 0,
     status: document.getElementById('o-status').value,
     due,
   };
-  const { data, error } = await _db('orders').insert(row).select().single();
+  if (clientId) row.client_id = clientId;
+  if (projectId) row.project_id = projectId;
+  let { data, error } = await _db('orders').insert(row).select().single();
+  if (error && error.message && (error.message.includes('client_id') || error.message.includes('project_id'))) {
+    delete row.client_id; delete row.project_id;
+    ({ data, error } = await _db('orders').insert(row).select().single());
+  }
   if (error) { _toast('Could not save order — ' + (error.message || JSON.stringify(error)), 'error'); console.error(error); return; }
   // Save notes and prodStart to localStorage
   const notesVal = document.getElementById('o-notes').value.trim();
@@ -8029,8 +8045,13 @@ async function resolveProject(name, clientId) {
   if (!name) return null;
   const existing = projects.find(p => p.name.toLowerCase() === name.toLowerCase() && (p.client_id === clientId || !clientId));
   if (existing) return existing.id;
-  const row = { user_id: _userId, name, client_id: clientId || null, status: 'active' };
-  const { data, error } = await _db('projects').insert(row).select().single();
+  const row = { user_id: _userId, name, status: 'active' };
+  if (clientId) row.client_id = clientId;
+  let { data, error } = await _db('projects').insert(row).select().single();
+  if (error && error.message && error.message.includes('client_id')) {
+    delete row.client_id;
+    ({ data, error } = await _db('projects').insert(row).select().single());
+  }
   if (error || !data) return null;
   projects.unshift(data);
   return data.id;
@@ -8084,11 +8105,17 @@ async function createProject() {
   const clientName = document.getElementById('pj-client').value.trim();
   const clientId = clientName ? await resolveClient(clientName) : null;
   const row = {
-    user_id: _userId, name, client_id: clientId,
+    user_id: _userId, name,
     description: document.getElementById('pj-desc').value.trim() || null,
     status: document.getElementById('pj-status').value,
   };
-  const { data, error } = await _db('projects').insert(row).select().single();
+  if (clientId) row.client_id = clientId;
+  let { data, error } = await _db('projects').insert(row).select().single();
+  // Retry without client_id if column doesn't exist yet
+  if (error && error.message && error.message.includes('client_id')) {
+    delete row.client_id;
+    ({ data, error } = await _db('projects').insert(row).select().single());
+  }
   if (error) { _toast('Could not save project — ' + (error.message || JSON.stringify(error)), 'error'); return; }
   projects.unshift(data);
   _toast('Project created', 'success');
