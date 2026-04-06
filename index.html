@@ -2258,6 +2258,14 @@ async function adjustStock(id, delta) {
   item.qty = newQty;
   renderStockMain();
 }
+async function setStockQty(id, text) {
+  const qty = parseInt(String(text).replace(/[^0-9]/g,'')) || 0;
+  const item = stockItems.find(s => s.id === id);
+  if (!item || item.qty === qty) return;
+  item.qty = Math.max(0, qty);
+  if (_userId) await _db('stock_items').update({ qty: item.qty }).eq('id', id);
+  renderStockMain();
+}
 
 function renderStockMain() {
   const cur = window.currency;
@@ -2292,18 +2300,19 @@ function renderStockMain() {
     const subtitle = [vd.variant, thk, item.sku !== '—' ? item.sku : '', dims].filter(Boolean).join(' · ');
     const unitLabel = sheetCat ? 'sheets' : 'units';
     return `
-    <div class="stock-card" style="display:flex;flex-direction:column;gap:0;padding:0">
+    <div class="stock-card" style="display:flex;flex-direction:column;gap:0;padding:0${isLow?';border-color:var(--danger);border-left:3px solid var(--danger)':''}">
       <div style="padding:10px 12px">
         <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px">
           <div style="font-size:13px;font-weight:700;color:var(--text);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_escHtml(item.name)}</div>
           <span class="badge ${isLow ? 'badge-red' : 'badge-green'}" style="flex-shrink:0;font-size:9px;padding:2px 6px">${isLow ? 'Low' : 'OK'}</span>
         </div>
-        ${subtitle ? `<div style="font-size:10px;color:var(--muted);margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_escHtml(subtitle)}</div>` : '<div style="margin-bottom:6px"></div>'}
+        ${subtitle ? `<div style="font-size:10px;color:var(--muted);margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_escHtml(subtitle)}</div>` : ''}
+        ${sup.supplier ? `<div style="font-size:9px;color:var(--text2);margin-bottom:4px">${_escHtml(sup.supplier)}</div>` : (!subtitle ? '<div style="margin-bottom:4px"></div>' : '')}
         <div style="display:flex;justify-content:space-between;align-items:center">
           <div style="display:flex;align-items:center;gap:6px">
             <button class="btn btn-outline" onclick="adjustStock(${item.id},-1)" style="padding:2px 8px;font-size:14px;font-weight:700;line-height:1">−</button>
             <div style="text-align:center;min-width:32px">
-              <div style="font-size:20px;font-weight:800;color:${isLow?'var(--danger)':'var(--text)'};line-height:1">${item.qty}</div>
+              <div style="font-size:20px;font-weight:800;color:${isLow?'var(--danger)':'var(--text)'};line-height:1;cursor:text" contenteditable="true" onblur="setStockQty(${item.id},this.innerText)" onfocus="document.execCommand('selectAll',false,null)" title="Click to edit quantity">${item.qty}</div>
               <div style="font-size:9px;color:var(--muted)">${unitLabel}</div>
             </div>
             <button class="btn btn-outline" onclick="adjustStock(${item.id},1)" style="padding:2px 8px;font-size:14px;font-weight:700;line-height:1">+</button>
@@ -7939,7 +7948,7 @@ function renderSchedule() {
   // Sidebar
   // Sidebar: job list (rendered into separate sidebar element)
   let sidebarHTML = `<div style="font-size:14px;font-weight:800;color:var(--text);margin-bottom:12px">Jobs</div>`;
-  events.forEach(e=>{sidebarHTML+=`<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;margin-bottom:4px;border-radius:6px;cursor:pointer" onclick="switchSection('orders')" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''"><div style="width:10px;height:10px;border-radius:3px;background:${e.color};flex-shrink:0"></div><div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_escHtml(e.project)}</div><div style="font-size:10px;color:var(--muted)">${_escHtml(e.client)}</div></div></div>`;});
+  events.forEach(e=>{const o=orders.find(x=>x.id===e.id);const st=o?STATUS_LABELS[o.status]||o.status:'';sidebarHTML+=`<div style="display:flex;align-items:center;gap:8px;padding:5px 8px;margin-bottom:2px;border-radius:6px;cursor:pointer" onclick="switchSection('orders')" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''"><div style="width:8px;height:8px;border-radius:2px;background:${e.color};flex-shrink:0"></div><div style="flex:1;min-width:0"><div style="font-size:11px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_escHtml(e.project)}</div><div style="font-size:9px;color:var(--muted)">${_escHtml(e.client)}${st?' · '+st:''}</div></div></div>`;});
   if(!events.length)sidebarHTML+=`<div style="font-size:12px;color:var(--muted)">No active orders</div>`;
   const sidebarEl = document.getElementById('schedule-sidebar');
   if (sidebarEl) sidebarEl.innerHTML = sidebarHTML;
