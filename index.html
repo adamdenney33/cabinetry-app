@@ -1841,7 +1841,7 @@ async function loadAllData() {
   quotes = quo || [];
   stockItems = stk || [];
   clients = cli || [];
-  projects = prj || [];
+  projects = (prj || []).map(p => ({ ...p, status: p.status || 'active' }));
   if (orders.length) orderNextId = Math.max(...orders.map(o => o.id)) + 1;
   if (quotes.length) quoteNextId = Math.max(...quotes.map(q => q.id)) + 1;
   if (stockItems.length) stockNextId = Math.max(...stockItems.map(s => s.id)) + 1;
@@ -8108,6 +8108,7 @@ async function createProject() {
   if (clientId) row.client_id = clientId;
   let { data, error } = await _dbInsertSafe('projects', row);
   if (error) { _toast('Could not save project — ' + (error.message || JSON.stringify(error)), 'error'); return; }
+  data.status = data.status || 'active';
   projects.unshift(data);
   _toast('Project created', 'success');
   document.getElementById('pj-name').value = '';
@@ -8235,22 +8236,19 @@ function renderProjectsMain() {
     const created = p.created_at ? new Date(p.created_at).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : '';
 
     return `<div id="project-card-${p.id}" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;margin-bottom:8px">
-      <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:8px">
-        <div style="flex:1;min-width:0">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-            <div style="font-size:15px;font-weight:700;color:var(--text)" contenteditable="true" onblur="updateProject(${p.id},'name',this.innerText.trim())">${_escHtml(p.name)}</div>
-            ${statusBadge(p.status)}
-          </div>
-          <div style="font-size:11px;color:var(--muted)">
-            ${client ? `<span style="cursor:pointer;text-decoration:underline" onclick="switchSection('clients');window._clientSearch='${_escHtml(client.name)}';renderClientsMain()">${_escHtml(client.name)}</span> · ` : ''}${created}
-          </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px">
+        <div style="font-size:15px;font-weight:700;color:var(--text)" contenteditable="true" onblur="updateProject(${p.id},'name',this.innerText.trim())">${_escHtml(p.name)}</div>
+        <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+          <select style="font-size:10px;font-weight:600;padding:3px 8px;border-radius:12px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:inherit;cursor:pointer" onchange="updateProject(${p.id},'status',this.value);renderProjectsMain()">
+            <option value="active" ${p.status==='active'?'selected':''}>Active</option>
+            <option value="on-hold" ${p.status==='on-hold'?'selected':''}>On Hold</option>
+            <option value="complete" ${p.status==='complete'?'selected':''}>Complete</option>
+          </select>
+          <button class="btn btn-danger" onclick="_confirm('Delete project <strong>${_escHtml(p.name)}</strong>?',()=>removeProject(${p.id}))" style="padding:4px 8px">×</button>
         </div>
-        <select style="font-size:10px;font-weight:600;padding:3px 8px;border-radius:12px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:inherit;cursor:pointer" onchange="updateProject(${p.id},'status',this.value);renderProjectsMain()">
-          <option value="active" ${p.status==='active'?'selected':''}>Active</option>
-          <option value="on-hold" ${p.status==='on-hold'?'selected':''}>On Hold</option>
-          <option value="complete" ${p.status==='complete'?'selected':''}>Complete</option>
-        </select>
-        <button class="btn btn-danger" onclick="_confirm('Delete project <strong>${_escHtml(p.name)}</strong>?',()=>removeProject(${p.id}))" style="padding:4px 8px;flex-shrink:0">×</button>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:8px">
+        ${client ? `<span style="cursor:pointer;text-decoration:underline" onclick="switchSection('clients');window._clientSearch='${_escHtml(client.name)}';renderClientsMain()">${_escHtml(client.name)}</span> · ` : ''}${created}
       </div>
       ${p.description ? `<div style="font-size:12px;color:var(--text2);margin-bottom:8px">${_escHtml(p.description)}</div>` : ''}
       <div style="display:flex;gap:16px;font-size:11px;color:var(--muted);margin-bottom:6px">
