@@ -768,7 +768,7 @@ canvas { display: block; }
 
 /* ── DRAG HANDLE ── */
 .cl-drag-handle {
-  width: 16px; display: flex; align-items: center; justify-content: center;
+  width: 14px; display: flex; align-items: center; justify-content: center;
   cursor: grab; color: var(--border); padding: 0; flex-shrink: 0;
   transition: color 0.15s;
 }
@@ -1044,7 +1044,7 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
 <header>
   <div class="logo">
     <div class="logo-text">ProCabinet.App</div>
-    <div class="logo-badge">BETA v0.9.3</div>
+    <div class="logo-badge">BETA v0.9.4</div>
   </div>
   <div class="header-right">
     <div class="settings-wrap">
@@ -1367,7 +1367,7 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
               <th style="width:55px">H</th>
               <th style="width:72px">Qty</th>
               <th style="width:44px" class="cl-col-grain" id="th-grain-sheet" title="Grain direction">Grain</th>
-              <th style="width:46px" title="Blade kerf allowance">Kerf</th>
+              <th style="width:36px" title="Blade kerf allowance">Kerf</th>
               <th style="width:86px" class="cl-col-material"></th>
               <th style="width:80px" class="cl-col-notes"></th>
               <th style="width:40px"></th>
@@ -2495,7 +2495,7 @@ function renderSheets() {
       </td>
       <td style="padding:0 4px">
         <input class="cl-input cl-dim-input" type="number" value="${s.kerf ?? (window.units==='metric'?3:0.125)}"
-          style="width:44px;text-align:center" min="0" step="0.01"
+          style="width:32px;text-align:center;padding:2px 2px" min="0" step="0.01"
           onblur="updateSheet(${s.id},'kerf',parseFloat(this.value)||0)"
           onkeydown="if(event.key==='Enter')this.blur()"
           ${dis ? 'disabled' : ''} placeholder="0">
