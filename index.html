@@ -961,35 +961,7 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
 .auth-guest { font-size: 12px; color: var(--muted); text-align: center; margin-top: 10px; cursor: pointer; }
 .auth-guest span { text-decoration: underline; color: var(--muted); }
 
-/* ── PROJECTS PANEL ── */
-.projects-panel {
-  background: var(--surface2); border-bottom: 1px solid var(--border);
-  overflow: hidden; transition: max-height 0.25s ease;
-  max-height: 0;
-}
-.projects-panel.open { max-height: 320px; }
-.projects-panel-inner { padding: 10px 14px 12px; }
-.projects-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
-.projects-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); }
-.project-item {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 7px 10px; border-radius: 6px; cursor: pointer;
-  border: 1px solid var(--border); background: var(--surface);
-  margin-bottom: 5px; transition: border-color 0.15s;
-}
-.project-item:hover { border-color: var(--accent); }
-.project-item-name { font-size: 13px; font-weight: 600; color: var(--text); }
-.project-item-date { font-size: 10px; color: var(--muted); margin-top: 1px; }
-.projects-empty { font-size: 12px; color: var(--muted); text-align: center; padding: 12px 0; }
-.projects-signin { font-size: 12px; color: var(--muted); text-align: center; padding: 12px 0; }
-.projects-signin span { color: var(--accent); cursor: pointer; text-decoration: underline; }
-.project-row { display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); margin-bottom: 5px; }
-.project-row:hover { border-color: var(--accent); }
-.project-name { flex: 1; font-size: 13px; font-weight: 600; color: var(--text); cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.project-name:hover { color: var(--accent); }
-.project-date { font-size: 10px; color: var(--muted); flex-shrink: 0; }
-.project-del { background: none; border: none; color: var(--muted); font-size: 16px; cursor: pointer; padding: 0 2px; line-height: 1; flex-shrink: 0; }
-.project-del:hover { color: var(--danger); }
+/* (Old projects-panel CSS removed — now uses _renderLibUI) */
 
 /* ── FREE TIER COUNTER ── */
 .opt-counter { font-size: 11px; color: var(--muted); text-align: center; margin-top: 4px; }
@@ -1055,7 +1027,7 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
 <header>
   <div class="logo">
     <div class="logo-text">ProCabinet.App</div>
-    <div class="logo-badge">BETA v0.9.8</div>
+    <div class="logo-badge">BETA v0.9.9</div>
   </div>
   <div class="header-right">
     <div class="settings-wrap">
@@ -1199,16 +1171,14 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
           <div id="cab-tab-rates" onclick="switchCabTab('rates')" style="flex:1;padding:10px 16px;font-size:13px;font-weight:500;text-align:center;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-2px">My Rates</div>
         </div>
         <!-- Libraries pinned at top -->
-        <div style="padding:8px 14px 4px;flex-shrink:0;border-bottom:1px solid var(--border)"><div id="lib-cab-projects"></div></div>
+        <div style="padding:8px 14px 4px;flex-shrink:0"><div id="lib-cab-projects"></div></div>
+        <div style="padding:4px 14px 4px;flex-shrink:0;border-bottom:1px solid var(--border)"><div id="lib-cab-cabinets"></div></div>
         <div class="sidebar-scroll" id="cq-sidebar">
 
-          <!-- Library: Cabinets -->
-          <div style="padding:8px 14px 4px"><div id="lib-cab-cabinets"></div></div>
-
-          <!-- Cabinets -->
-          <div class="cl-section-header" style="padding:4px 14px 4px">
-            <span class="cl-section-title">Cabinets</span>
-            <button class="cl-csv-btn" onclick="addCQLine()" style="padding:5px 10px;font-size:12px">+ Add</button>
+          <!-- Active Cabinets list -->
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px 6px">
+            <span style="font-size:12px;font-weight:700;color:var(--text)">Active Cabinets</span>
+            <button class="btn btn-primary" onclick="addCQLine()" style="padding:4px 12px;font-size:11px;width:auto">+ Add Cabinet</button>
           </div>
           <div id="cq-cab-list" style="padding:4px 14px"></div>
 
@@ -1232,18 +1202,9 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
   ════════════════════════════════════ -->
   <div class="section-panel" id="panel-stock">
     <div class="sidebar">
-      <!-- Libraries pinned at top -->
-      <div style="padding:8px 14px 4px;flex-shrink:0"><div id="lib-stock-libraries"></div></div>
-      <div style="padding:4px 14px 6px;flex-shrink:0;border-bottom:1px solid var(--border)"><div id="lib-stock-items"></div></div>
+      <!-- Library pinned at top -->
+      <div style="padding:8px 14px 4px;flex-shrink:0;border-bottom:1px solid var(--border)"><div id="lib-stock-libraries"></div></div>
       <div class="sidebar-scroll">
-        <!-- Stock Libraries panel (collapsible, rendered by library click) -->
-        <div id="stock-libraries-panel" style="display:none;border-bottom:1px solid var(--border);background:var(--surface2);padding:8px 14px">
-          <div style="display:flex;gap:4px;margin-bottom:6px">
-            <input type="text" id="stock-lib-name" placeholder="Library name..." style="flex:1;font-size:12px;padding:5px 8px">
-            <button class="btn btn-primary" onclick="saveStockLibrary()" style="padding:5px 10px;font-size:11px;width:auto">Save</button>
-          </div>
-          <div id="stock-libraries-list"></div>
-        </div>
         <div class="form-section">
           <div class="form-section-title" id="stock-form-title">Add Material</div>
           <div class="form-group" style="margin-bottom:6px">
@@ -1330,19 +1291,7 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
     <div class="cl-left">
       <!-- Projects panel (existing, toggle via library) -->
       <div class="cl-scroll">
-      <div id="lib-cl-projects" style="padding:4px 14px 0"></div>
-      <div class="projects-panel" id="projects-panel">
-        <div class="projects-panel-inner">
-          <div id="save-proj-form" style="display:none;margin-bottom:8px">
-            <div style="display:flex;gap:4px;align-items:center">
-              <input id="save-proj-name" class="order-search-input" placeholder="Project name…" style="flex:1;font-size:12px" onkeydown="if(event.key==='Enter')confirmSaveProject();if(event.key==='Escape')hideSaveProjectForm()">
-              <button class="btn btn-primary" onclick="confirmSaveProject()" style="width:auto;padding:4px 10px;font-size:11px">Save</button>
-              <button class="btn btn-outline" onclick="hideSaveProjectForm()" style="width:auto;padding:4px 8px;font-size:11px">✕</button>
-            </div>
-          </div>
-          <div id="projects-list"><div class="projects-signin">Sign in to save and load projects. <span onclick="dismissAuth();_showAuth()">Sign in</span></div></div>
-        </div>
-        </div>
+      <div id="lib-cl-projects" style="padding:4px 14px 0;border-bottom:1px solid var(--border)"></div>
 
         <!-- Cut Parts table -->
         <div class="cl-section-header" style="padding-bottom:4px">
@@ -1878,12 +1827,12 @@ _sb.auth.onAuthStateChange(async (event, session) => {
     document.getElementById('account-user-view').style.display = '';
     _showApp();
     await loadAllData();
-    loadProjects();
+    _clLoadProjectList();
   } else {
     _userId = null;
     document.getElementById('account-guest-view').style.display = '';
     document.getElementById('account-user-view').style.display = 'none';
-    loadProjects(); // refresh panel to show sign-in prompt
+    _clProjectCache = []; renderCLLibraries(); // refresh to show sign-in prompt
   }
 });
 
@@ -5323,14 +5272,12 @@ function loadStockLibraries() { try { stockLibraries = JSON.parse(localStorage.g
 function saveStockLibraries() { localStorage.setItem('pc_stock_libraries', JSON.stringify(stockLibraries)); }
 
 function toggleStockLibraries() {
-  const p = document.getElementById('stock-libraries-panel');
-  if (p) p.style.display = p.style.display === 'none' ? '' : 'none';
-  renderStockLibraries();
+  window['_libOpen_lib-stock-libraries'] = !window['_libOpen_lib-stock-libraries'];
+  renderStockLibrariesUI();
 }
 
-function saveStockLibrary() {
-  const nameEl = document.getElementById('stock-lib-name');
-  const name = nameEl?.value?.trim();
+function saveStockLibrary(nameArg) {
+  const name = (nameArg || '').trim();
   if (!name) { _toast('Enter a library name', 'error'); return; }
   const lib = {
     id: Date.now(), name,
@@ -5341,8 +5288,7 @@ function saveStockLibrary() {
   };
   stockLibraries.unshift(lib);
   saveStockLibraries();
-  if (nameEl) nameEl.value = '';
-  renderStockLibraries();
+  renderStockLibrariesUI();
   _toast(`Library "${name}" saved`, 'success');
 }
 
@@ -5356,7 +5302,8 @@ function loadStockLibrary(idx) {
     if (lib.categories) localStorage.setItem('pc_stock_cats', JSON.stringify(lib.categories));
     if (lib.suppliers) localStorage.setItem('pc_stock_suppliers', JSON.stringify(lib.suppliers));
     renderStockMain();
-    toggleStockLibraries();
+    _updateStockBadge();
+    renderCLLibraries();
     _toast(`Loaded "${lib.name}"`, 'success');
   }, false);
 }
@@ -5365,25 +5312,11 @@ function deleteStockLibrary(idx) {
   _confirm('Delete this library?', () => {
     stockLibraries.splice(idx, 1);
     saveStockLibraries();
-    renderStockLibraries();
+    renderStockLibrariesUI();
   });
 }
 
-function renderStockLibraries() {
-  const el = document.getElementById('stock-libraries-list');
-  if (!el) return;
-  if (!stockLibraries.length) {
-    el.innerHTML = '<div style="color:var(--muted);font-size:11px;padding:8px 10px;border-radius:5px;border:1px solid var(--border);background:var(--surface);text-align:center">No saved libraries. Enter a name and click Save.</div>';
-    return;
-  }
-  el.innerHTML = stockLibraries.map((lib, i) => `<div style="display:flex;align-items:center;gap:6px;padding:6px 8px;margin-bottom:3px;border-radius:6px;border:1px solid var(--border);background:var(--surface);cursor:pointer" onclick="loadStockLibrary(${i})">
-    <div style="flex:1;min-width:0">
-      <div style="font-size:12px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_escHtml(lib.name)}</div>
-      <div style="font-size:10px;color:var(--muted)">${lib.date} · ${(lib.items||[]).length} items</div>
-    </div>
-    <button style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:0 2px" onclick="event.stopPropagation();deleteStockLibrary(${i})">×</button>
-  </div>`).join('');
-}
+
 
 function exportStockLibrary() {
   if (!stockLibraries.length) { _toast('No libraries to export', 'error'); return; }
@@ -5400,7 +5333,7 @@ function importStockLibrary() {
     const file = e.target.files[0]; if (!file) return;
     try {
       const data = JSON.parse(await file.text());
-      if (Array.isArray(data)) { data.forEach(lib => { lib.id = Date.now() + Math.random(); stockLibraries.push(lib); }); saveStockLibraries(); renderStockLibraries(); _toast(data.length + ' libraries imported', 'success'); }
+      if (Array.isArray(data)) { data.forEach(lib => { lib.id = Date.now() + Math.random(); stockLibraries.push(lib); }); saveStockLibraries(); renderStockLibrariesUI(); _toast(data.length + ' libraries imported', 'success'); }
       else _toast('Invalid file', 'error');
     } catch(e) { _toast('Could not read file', 'error'); }
   };
@@ -5617,65 +5550,64 @@ function _updateOptCounter() {
 // ══════════════════════════════════════════
 // PROJECTS PANEL
 // ══════════════════════════════════════════
+// Legacy toggleProjectsPanel — now just toggles the _renderLibUI open state
 function toggleProjectsPanel() {
-  const panel = document.getElementById('projects-panel');
-  const isOpen = panel.classList.toggle('open');
-  if (isOpen) loadProjects();
+  window['_libOpen_lib-cl-projects'] = !window['_libOpen_lib-cl-projects'];
+  if (window['_libOpen_lib-cl-projects'] && _userId) _clLoadProjectList();
   renderCLLibraries();
 }
 
-function loadProjects() {
-  const listEl = document.getElementById('projects-list');
-  if (!listEl) return;
-  if (!_userId) {
-    listEl.innerHTML = '<div class="projects-signin">Sign in to save &amp; load projects. <span onclick="dismissAuth();_showAuth()">Sign in</span></div>';
-    return;
-  }
-  listEl.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:6px 0">Loading…</div>';
-  _db('projects').select('id,name,updated_at').order('updated_at', { ascending: false })
-    .then(({ data, error }) => {
-      if (error || !data) { listEl.innerHTML = '<div style="color:var(--danger);font-size:12px">Error loading projects.</div>'; return; }
-      if (!data.length) { listEl.innerHTML = '<div style="color:var(--muted);font-size:11px;padding:8px 10px;border-radius:5px;border:1px solid var(--border);background:var(--surface);text-align:center">No saved projects yet.</div>'; return; }
-      listEl.innerHTML = data.map(p => {
-        const d = new Date(p.updated_at);
-        const label = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-        return `<div class="project-row">
-          <span class="project-name" onclick="loadProject('${p.id}')" title="Load">${p.name}</span>
-          <span class="project-date">${label}</span>
-          <button class="project-del" onclick="deleteProject('${p.id}')" title="Delete">×</button>
-        </div>`;
-      }).join('');
-    });
+async function _clLoadProjectList() {
+  const { data, error } = await _db('projects').select('id,name,updated_at').order('updated_at', { ascending: false });
+  if (!error && data) { _clProjectCache = data; renderCLLibraries(); }
 }
 
+function _clSaveProjectByName(name) {
+  if (!name) return;
+  if (!_requireAuth()) return;
+  const payload = { sheets: JSON.parse(JSON.stringify(sheets)), pieces: JSON.parse(JSON.stringify(pieces)), settings: { units: window.units } };
+  _db('projects').insert([{ name, data: payload, user_id: _userId }]).then(({ error }) => {
+    if (error) { _toast('Save failed: ' + error.message, 'error'); return; }
+    _toast(`"${name}" saved`, 'success');
+    _clLoadProjectList();
+  });
+}
+
+function _clLoadProjectByIdx(idx) {
+  const p = _clProjectCache[idx];
+  if (!p) return;
+  loadProject(p.id);
+}
+
+function _clDeleteProjectByIdx(idx) {
+  const p = _clProjectCache[idx];
+  if (!p) return;
+  deleteProject(p.id);
+}
+
+// Keep save form helpers for backwards compat
 function showSaveProjectForm() {
   if (!_requireAuth()) return;
-  const form = document.getElementById('save-proj-form');
-  const inp = document.getElementById('save-proj-name');
-  if (!form || !inp) return;
-  inp.value = `Project ${new Date().toLocaleDateString()}`;
-  form.style.display = '';
-  setTimeout(() => { inp.focus(); inp.select(); }, 50);
+  window['_libOpen_lib-cl-projects'] = true;
+  _clLoadProjectList();
+  renderCLLibraries();
+  setTimeout(() => {
+    const inp = document.getElementById('_lib_save_lib-cl-projects');
+    if (inp) { inp.value = `Project ${new Date().toLocaleDateString()}`; inp.focus(); inp.select(); }
+  }, 50);
 }
-function hideSaveProjectForm() {
-  const form = document.getElementById('save-proj-form');
-  if (form) form.style.display = 'none';
-}
+function hideSaveProjectForm() { /* no-op, handled by lib UI */ }
 async function confirmSaveProject() {
-  const inp = document.getElementById('save-proj-name');
+  const inp = document.getElementById('_lib_save_lib-cl-projects');
   const name = inp?.value.trim();
-  if (!name) { inp?.focus(); return; }
-  hideSaveProjectForm();
-  await saveProject(name);
+  if (!name) return;
+  _clSaveProjectByName(name);
+  if (inp) inp.value = '';
 }
 async function promptSaveProject() { showSaveProjectForm(); }
 
 async function saveProject(name) {
-  const payload = { sheets: JSON.parse(JSON.stringify(sheets)), pieces: JSON.parse(JSON.stringify(pieces)), settings: { units: window.units } };
-  const { error } = await _db('projects').insert([{ name, data: payload, user_id: _userId }]);
-  if (error) { _toast('Save failed: ' + error.message, 'error'); return; }
-  _toast(`"${name}" saved`, 'success');
-  loadProjects();
+  _clSaveProjectByName(name);
 }
 
 async function loadProject(id) {
@@ -5691,13 +5623,14 @@ async function loadProject(id) {
   results = null;
   renderSheets(); renderPieces();
   document.getElementById('results-area').innerHTML = '<div class="empty-state"><h3>Project loaded</h3><p>Click Optimize to generate layouts.</p></div>';
-  toggleProjectsPanel();
+  _toast('Project loaded — click Optimize to generate layouts', 'success');
 }
 
 function deleteProject(id) {
   _confirm('Delete this project? This cannot be undone.', async () => {
     await _db('projects').delete().eq('id', id);
-    loadProjects();
+    _clProjectCache = _clProjectCache.filter(p => p.id !== id);
+    renderCLLibraries();
   });
 }
 
@@ -6533,9 +6466,7 @@ function _cqSaveCabByName(name) {
 }
 function _saveStockLibByName(name) {
   if (!name || !name.trim()) { _toast('Enter a library name', 'error'); return; }
-  const el = document.getElementById('stock-lib-name');
-  if (el) el.value = name.trim();
-  saveStockLibrary();
+  saveStockLibrary(name.trim());
 }
 function cqSaveProject(nameOverride) {
   const name = nameOverride || '';
@@ -7667,17 +7598,20 @@ function _renderLibUI(containerId, libName, items, opts) {
 function _escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 
 // ── Tab Library Renderers ──
+let _clProjectCache = [];
 function renderCLLibraries() {
-  // Projects — toggle saved cut list projects panel
-  const projEl = document.getElementById('lib-cl-projects');
-  if (projEl) {
-    const isOpen = document.getElementById('projects-panel')?.classList.contains('open');
-    projEl.innerHTML = `<div style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:4px 0" onclick="toggleProjectsPanel()">
-      <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);flex:1">Saved Projects</span>
-      <button class="btn btn-outline" onclick="event.stopPropagation();toggleProjectsPanel();showSaveProjectForm()" style="font-size:10px;padding:2px 8px;width:auto">+ Save</button>
-      <span style="font-size:10px;color:var(--muted);transform:rotate(${isOpen?'180':'0'}deg);transition:transform .2s">▼</span>
-    </div>`;
-  }
+  // Projects — use standard _renderLibUI
+  const projItems = _clProjectCache.map(p => {
+    const d = p.updated_at ? new Date(p.updated_at) : null;
+    const label = d ? d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : '';
+    return {_label: p.name, _sub: label, _id: p.id};
+  });
+  _renderLibUI('lib-cl-projects', 'Projects', projItems, {
+    icon:'folder', renderFn:'renderCLLibraries', importFn:'triggerImportCSV.bind(null,"pieces")', exportFn:'exportCSV.bind(null,"pieces")',
+    loadFn:'_clLoadProjectByIdx', deleteFn:'_clDeleteProjectByIdx', saveFn:'_clSaveProjectByName', savePlaceholder:'Project name...', emptyMsg: _userId ? 'No saved projects yet.' : 'Sign in to save projects.'
+  });
+  // Auto-load project list when opened
+  if (window['_libOpen_lib-cl-projects'] && _userId && !_clProjectCache.length) _clLoadProjectList();
 
   // Stock Panels — shows stock items from Stock tab as available panels
   const panelItems = stockItems.map(s => {
@@ -7709,23 +7643,26 @@ function renderCabLibraries() {
     loadFn:'cqLoadProject', deleteFn:'cqDeleteProject', saveFn:'_cqSaveProjectByName', savePlaceholder:'Project name...', emptyMsg:'No saved projects.'
   });
   const cabItems = cqLibrary.map(c => ({_label:c._libName||c.name||'Cabinet', _count:c.w+'×'+c.h}));
-  _renderLibUI('lib-cab-cabinets', 'Cabinets', cabItems, {
+  _renderLibUI('lib-cab-cabinets', 'Saved Cabinets', cabItems, {
     icon:'cabinet', renderFn:'renderCabLibraries', importFn:'cqImportLibrary', exportFn:'cqExportLibrary',
     loadFn:'cqLoadFromLibrary', deleteFn:'cqRemoveFromLibrary', saveFn:'_cqSaveCabByName', savePlaceholder:'Cabinet name...', emptyMsg:'No saved cabinets.'
   });
 }
 
 function renderStockLibrariesUI() {
-  // Stock: Libraries + Items
+  // Stock: Saved Libraries
   const libItems = stockLibraries.map(lib => ({_label:lib.name, _sub:lib.date, _count:(lib.items||[]).length+' items'}));
-  _renderLibUI('lib-stock-libraries', 'Stock Libraries', libItems, {
+  _renderLibUI('lib-stock-libraries', 'Saved Sets', libItems, {
     icon:'folder', renderFn:'renderStockLibrariesUI', importFn:'importStockLibrary', exportFn:'exportStockLibrary',
     loadFn:'loadStockLibrary', deleteFn:'deleteStockLibrary', saveFn:'_saveStockLibByName', savePlaceholder:'Library name...', emptyMsg:'No saved libraries.'
   });
-  _renderLibUI('lib-stock-items', 'Stock Items', [], {
-    icon:'box', renderFn:'renderStockLibrariesUI', importFn:'importStockCSV', exportFn:'exportStockCSV',
-    loadFn:'_noOp', savePlaceholder:'Item name...', emptyMsg:'Use Import/Export to manage stock data.'
-  });
+  // Update the form title with import/export buttons
+  const formTitle = document.getElementById('stock-form-title');
+  if (formTitle) {
+    formTitle.innerHTML = `Add Material <span style="flex:1"></span>
+      <button onclick="importStockCSV()" style="font-size:10px;font-weight:500;color:var(--muted);background:none;border:none;cursor:pointer;font-family:inherit;padding:2px 4px" title="Import stock items from CSV">Import</button>
+      <button onclick="exportStockCSV()" style="font-size:10px;font-weight:500;color:var(--muted);background:none;border:none;cursor:pointer;font-family:inherit;padding:2px 4px" title="Export stock items to CSV">Export</button>`;
+  }
 }
 
 function printCQQuote(mode) {
