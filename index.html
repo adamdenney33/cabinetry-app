@@ -4204,9 +4204,12 @@ function renderQuoteMain() {
 
   const qFilter = window._quoteFilter || 'all';
   const qSearch = (window._quoteSearch || '').toLowerCase().trim();
-  let filteredQ = quotes;
+  const qSort = window._quoteSort || 'newest';
+  let filteredQ = [...quotes];
   if (qFilter !== 'all') filteredQ = filteredQ.filter(q => q.status === qFilter);
   if (qSearch) filteredQ = filteredQ.filter(q => (q.client + ' ' + q.project).toLowerCase().includes(qSearch));
+  if (qSort === 'value') filteredQ.sort((a,b) => quoteTotal(b) - quoteTotal(a));
+  else if (qSort === 'client') filteredQ.sort((a,b) => (a.client||'').localeCompare(b.client||''));
 
   const filterBar = `<div class="order-filter-tabs" style="align-items:center">
     <input class="order-search-input" type="search" placeholder="Search client or project…" value="${window._quoteSearch||''}" oninput="window._quoteSearch=this.value;renderQuoteMain()">
@@ -4214,6 +4217,11 @@ function renderQuoteMain() {
     <button class="ofilter-tab ${qFilter==='draft'?'active':''}" onclick="window._quoteFilter='draft';renderQuoteMain()">Draft (${draft})</button>
     <button class="ofilter-tab ${qFilter==='sent'?'active':''}" onclick="window._quoteFilter='sent';renderQuoteMain()">Sent (${sent})</button>
     <button class="ofilter-tab ${qFilter==='approved'?'active':''}" onclick="window._quoteFilter='approved';renderQuoteMain()">Approved (${approved})</button>
+    <select style="font-size:11px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--muted);font-family:inherit;cursor:pointer;margin-left:auto" onchange="window._quoteSort=this.value;renderQuoteMain()">
+      <option value="newest" ${qSort==='newest'?'selected':''}>Newest first</option>
+      <option value="value" ${qSort==='value'?'selected':''}>Value</option>
+      <option value="client" ${qSort==='client'?'selected':''}>Client</option>
+    </select>
   </div>`;
 
   el.innerHTML = `<div style="max-width:800px;margin:0 auto">
@@ -4285,6 +4293,22 @@ async function removeOrder(id) {
   await _db('orders').delete().eq('id', id);
   orders = orders.filter(o => o.id !== id);
   document.getElementById('orders-badge').textContent = orders.filter(o => o.status !== 'complete').length;
+  renderOrdersMain();
+}
+
+async function duplicateOrder(id) {
+  if (!_requireAuth()) return;
+  const o = orders.find(o => o.id === id);
+  if (!o) return;
+  const row = { user_id: _userId, client: o.client, project: o.project + ' (copy)', value: o.value, status: 'quote', due: 'TBD' };
+  if (o.client_id) row.client_id = o.client_id;
+  if (o.project_id) row.project_id = o.project_id;
+  const { data, error } = await _dbInsertSafe('orders', row);
+  if (error) { _toast('Could not duplicate — ' + (error.message || JSON.stringify(error)), 'error'); return; }
+  if (o.notes) { data.notes = o.notes; _onSet(data.id, o.notes); }
+  orders.unshift(data);
+  document.getElementById('orders-badge').textContent = orders.filter(o => o.status !== 'complete').length;
+  _toast('Order duplicated', 'success');
   renderOrdersMain();
 }
 
@@ -4364,6 +4388,7 @@ function renderOrdersMain() {
         </select>
         ${o.status !== 'complete' ? `<button class="btn btn-success" onclick="advanceOrder(${o.id})" style="font-size:11px;padding:5px 10px;display:inline-flex;align-items:center;gap:4px">Next Stage ${ARROW_SVG}</button>` : '<span class="badge badge-green" style="align-self:center">Complete</span>'}
         <span style="flex:1"></span>
+        <button class="btn btn-outline" onclick="duplicateOrder(${o.id})" style="font-size:11px;padding:5px 10px;width:auto" title="Duplicate order">Copy</button>
         <button class="btn btn-outline" onclick="printWorkOrder(${o.id},'print')" style="font-size:11px;padding:5px 10px;width:auto" title="Print work order">Work Order</button>
         <button class="btn btn-outline" onclick="printWorkOrder(${o.id},'pdf')" style="font-size:11px;padding:5px 10px;width:auto" title="Save work order as PDF">PDF</button>
       </div>
@@ -4372,8 +4397,13 @@ function renderOrdersMain() {
 
   const filterVal = window._orderFilter || 'active';
   const filterSearch = (window._orderSearch || '').toLowerCase().trim();
+  const sortBy = window._orderSort || 'newest';
   let pool = filterVal === 'all' ? orders : filterVal === 'active' ? active : complete;
-  const filtered = filterSearch ? pool.filter(o => (o.client+' '+o.project).toLowerCase().includes(filterSearch)) : pool;
+  let filtered = filterSearch ? pool.filter(o => (o.client+' '+o.project).toLowerCase().includes(filterSearch)) : [...pool];
+  // Sort
+  if (sortBy === 'due') filtered.sort((a,b) => { const da=_orderDateToISO(a.due)||'9999', db=_orderDateToISO(b.due)||'9999'; return da.localeCompare(db); });
+  else if (sortBy === 'value') filtered.sort((a,b) => b.value - a.value);
+  else if (sortBy === 'client') filtered.sort((a,b) => (a.client||'').localeCompare(b.client||''));
 
   const emptyState = `<div class="empty-state">
     <div class="empty-icon" style="opacity:.18"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg></div>
@@ -4384,6 +4414,12 @@ function renderOrdersMain() {
     <button class="ofilter-tab ${filterVal==='active'?'active':''}" onclick="setOrderFilter('active')">Active (${active.length})</button>
     <button class="ofilter-tab ${filterVal==='all'?'active':''}" onclick="setOrderFilter('all')">All (${orders.length})</button>
     <button class="ofilter-tab ${filterVal==='complete'?'active':''}" onclick="setOrderFilter('complete')">Completed (${complete.length})</button>
+    <select style="font-size:11px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--muted);font-family:inherit;cursor:pointer;margin-left:auto" onchange="window._orderSort=this.value;renderOrdersMain()">
+      <option value="newest" ${sortBy==='newest'?'selected':''}>Newest first</option>
+      <option value="due" ${sortBy==='due'?'selected':''}>Due date</option>
+      <option value="value" ${sortBy==='value'?'selected':''}>Value</option>
+      <option value="client" ${sortBy==='client'?'selected':''}>Client</option>
+    </select>
   </div>`;
 
   el.innerHTML = `<div style="max-width:800px;margin:0 auto">
