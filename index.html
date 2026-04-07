@@ -1029,7 +1029,7 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
 <header>
   <div class="logo">
     <div class="logo-text">ProCabinet.App</div>
-    <div class="logo-badge">BETA v0.9.9</div>
+    <div class="logo-badge">BETA v0.10.0</div>
   </div>
   <div class="header-right">
     <div class="settings-wrap">
@@ -2082,6 +2082,11 @@ function _scSet(id, cat) {
 // ── Stock Variant/Thickness Storage ──
 function _svGet(id) { try { return JSON.parse(localStorage.getItem('pc_stock_variants')||'{}')[String(id)] || {}; } catch(e) { return {}; } }
 function _svSet(id, data) { try { const m = JSON.parse(localStorage.getItem('pc_stock_variants')||'{}'); m[String(id)] = data; localStorage.setItem('pc_stock_variants', JSON.stringify(m)); } catch(e) {} }
+
+// Order-to-quote reference — tracks which quote an order was created from
+function _oqMap() { try { return JSON.parse(localStorage.getItem('pc_order_quote_ref') || '{}'); } catch(e) { return {}; } }
+function _oqGet(id) { return _oqMap()[String(id)] || null; }
+function _oqSet(id, quoteId) { const m = _oqMap(); m[String(id)] = quoteId; localStorage.setItem('pc_order_quote_ref', JSON.stringify(m)); }
 
 // Order notes — persisted in localStorage since notes column may not be in DB schema
 function _onMap() { try { return JSON.parse(localStorage.getItem('pc_order_notes') || '{}'); } catch(e) { return {}; } }
@@ -4116,8 +4121,9 @@ async function convertQuoteToOrder(id) {
   if (q.project_id) orderRow.project_id = q.project_id;
   const { data, error: oErr } = await _dbInsertSafe('orders', orderRow);
   if (oErr) { _toast('Could not create order — ' + (oErr.message || JSON.stringify(oErr)), 'error'); console.error(oErr); return; }
-  // Carry quote notes to order notes
+  // Carry quote notes to order notes & store quote reference
   if (q.notes && data) { data.notes = q.notes; _onSet(data.id, q.notes); }
+  if (data) { _oqSet(data.id, q.id); }
   orders.unshift(data);
   document.getElementById('orders-badge').textContent = orders.filter(o => o.status !== 'complete').length;
   _toast(`Order created for ${q.client} — ${q.project}`, 'success');
@@ -4195,7 +4201,7 @@ function renderQuoteMain() {
         ${q.status === 'draft' ? `<button class="btn btn-outline" onclick="markQuoteSent(${q.id})">Mark Sent</button>` : ''}
         ${q.status === 'sent' ? `<button class="btn btn-success" onclick="approveQuote(${q.id})">Approve</button>` : ''}
         ${q.status !== 'draft' ? `<button class="btn btn-outline" onclick="revertQuoteToDraft(${q.id})" style="color:var(--muted)">↩ Draft</button>` : ''}
-        <button class="btn btn-outline" onclick="convertQuoteToOrder(${q.id})">→ Order</button>
+        ${(() => { const hasOrder = orders.some(o => o.project === q.project && o.client === q.client); return hasOrder ? `<button class="btn btn-outline" onclick="switchSection('orders');window._orderSearch='${_escHtml(q.project)}';renderOrdersMain()" style="color:var(--success)">✓ View Order</button>` : `<button class="btn btn-outline" onclick="convertQuoteToOrder(${q.id})">→ Order</button>`; })()}
         <span style="flex:1"></span>
         <button class="btn btn-outline" onclick="duplicateQuote(${q.id})" title="Duplicate">Copy</button>
         <button class="btn btn-outline" onclick="printQuote(${q.id},'print')" title="Print">Print</button>
@@ -4380,6 +4386,7 @@ function renderOrdersMain() {
             ${(() => { const rel = _relativeDate(o.due); return rel ? `<span style="font-size:9px;font-weight:700;color:${rel.color}">${rel.label}</span>` : ''; })()}
             ${isOverdue ? '<span class="badge badge-red" style="font-size:8px;padding:1px 5px">Overdue</span>' : ''}
           </div>
+          ${(() => { const qId = _oqGet(o.id); const q = qId ? quotes.find(q => q.id === qId) : null; return q ? `<div style="margin-top:2px"><span class="badge badge-blue" style="font-size:9px;padding:1px 6px;cursor:pointer" onclick="switchSection('quote');window._quoteSearch='${_escHtml(q.project)}';renderQuoteMain()" title="View original quote">From Quote: ${_escHtml(q.project)}</span></div>` : ''; })()}
           <div class="oc-notes" contenteditable="true" onblur="updateOrderField(${o.id},'notes',this.innerText.trim())" title="Click to add notes" data-placeholder="Add production notes…">${o.notes || ''}</div>
         </div>
         <div class="oc-right">
@@ -4793,10 +4800,10 @@ function printWorkOrder(id, mode='print') {
   const biz = getBizInfo();
   const cur = window.currency;
   const rel = _relativeDate(o.due);
-  const statusColMap = { quote:'#6b7280', confirmed:'#2563eb', in_production:'#d97706', finishing:'#7c3aed', delivery:'#0891b2', complete:'#16a34a' };
+  const statusColMap = { quote:'#6b7280', confirmed:'#2563eb', production:'#d97706', delivery:'#0891b2', complete:'#16a34a' };
   const statusCol = statusColMap[o.status] || '#6b7280';
-  const stageLabels = ['Quote Sent','Confirmed','In Production','Finishing','Delivery','Complete'];
-  const stageKeys   = ['quote','confirmed','in_production','finishing','delivery','complete'];
+  const stageLabels = ['Quote Sent','Confirmed','In Production','Ready for Delivery','Complete'];
+  const stageKeys   = ['quote','confirmed','production','delivery','complete'];
   const currentIdx  = stageKeys.indexOf(o.status);
 
   const stageRows = stageKeys.map((s, i) => {
