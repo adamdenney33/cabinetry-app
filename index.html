@@ -1421,6 +1421,9 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
   ════════════════════════════════════ -->
   <div class="section-panel" id="panel-quote">
     <div class="sidebar">
+      <!-- Libraries pinned at top -->
+      <div style="padding:8px 14px 4px;flex-shrink:0"><div id="lib-quote-clients"></div></div>
+      <div style="padding:4px 14px 4px;flex-shrink:0;border-bottom:1px solid var(--border)"><div id="lib-quote-projects"></div></div>
       <div class="sidebar-scroll">
         <div class="form-section">
           <div class="form-section-title">New Quote</div>
@@ -1486,6 +1489,9 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
   ════════════════════════════════════ -->
   <div class="section-panel" id="panel-orders">
     <div class="sidebar">
+      <!-- Libraries pinned at top -->
+      <div style="padding:8px 14px 4px;flex-shrink:0"><div id="lib-order-clients"></div></div>
+      <div style="padding:4px 14px 4px;flex-shrink:0;border-bottom:1px solid var(--border)"><div id="lib-order-projects"></div></div>
       <div class="sidebar-scroll">
         <div class="form-section">
           <div class="form-section-title">New Order</div>
@@ -4488,19 +4494,22 @@ function renderDashboard() {
       ${orders.length === 0 && quotes.length === 0 && stockItems.length === 0 ? `
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px 24px;margin-bottom:20px">
         <div style="font-size:13px;font-weight:700;margin-bottom:12px;color:var(--text)">Getting Started</div>
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px">
-          <div style="display:flex;gap:12px;align-items:flex-start;cursor:pointer" onclick="switchSection('stock')">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px">
+          <div style="display:flex;gap:12px;align-items:flex-start;cursor:pointer" onclick="switchSection('clients')">
             <div style="width:28px;height:28px;border-radius:50%;background:var(--accent-dim);color:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;flex-shrink:0">1</div>
-            <div><div style="font-size:13px;font-weight:600;color:var(--accent)">Add stock panels</div><div style="font-size:11px;color:var(--muted);margin-top:2px">Enter your sheet materials (plywood, MDF, etc.) with sizes and costs</div></div>
+            <div><div style="font-size:13px;font-weight:600;color:var(--accent)">Add clients &amp; projects</div><div style="font-size:11px;color:var(--muted);margin-top:2px">Create clients and projects — they appear in shared libraries across all tabs</div></div>
           </div>
-          <div style="display:flex;gap:12px;align-items:flex-start;cursor:pointer" onclick="switchSection('cutlist')">
+          <div style="display:flex;gap:12px;align-items:flex-start;cursor:pointer" onclick="switchSection('stock')">
             <div style="width:28px;height:28px;border-radius:50%;background:var(--surface2);color:var(--muted);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;flex-shrink:0">2</div>
-            <div><div style="font-size:13px;font-weight:600;color:var(--text2)">Build a cut list</div><div style="font-size:11px;color:var(--muted);margin-top:2px">Add your parts, optimize the layout, and see material costs</div></div>
+            <div><div style="font-size:13px;font-weight:600;color:var(--text2)">Add stock materials</div><div style="font-size:11px;color:var(--muted);margin-top:2px">Enter your sheet materials — they flow into the Cut List as Stock Panels</div></div>
           </div>
           <div style="display:flex;gap:12px;align-items:flex-start;cursor:pointer" onclick="switchSection('quote')">
             <div style="width:28px;height:28px;border-radius:50%;background:var(--surface2);color:var(--muted);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;flex-shrink:0">3</div>
-            <div><div style="font-size:13px;font-weight:600;color:var(--text2)">Create a quote</div><div style="font-size:11px;color:var(--muted);margin-top:2px">Quote labour + materials, send to client, then convert to an order</div></div>
+            <div><div style="font-size:13px;font-weight:600;color:var(--text2)">Quote &amp; build</div><div style="font-size:11px;color:var(--muted);margin-top:2px">Create quotes, optimize cut lists, build cabinets — convert quotes to orders when ready</div></div>
           </div>
+        </div>
+        <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border2);font-size:11px;color:var(--muted)">
+          <strong style="color:var(--text2)">Shared Libraries:</strong> Clients and Projects are shared across tabs. Look for the library tabs at the top of each sidebar — you can add or select entries from any tab.
         </div>
       </div>` : ''}
 
@@ -5145,25 +5154,52 @@ function setOrderFilter(f) { window._orderFilter = f; renderOrdersMain(); }
 
 // ── Quote Clients Panel & Import/Export ──
 function renderQuoteLibraries() {
-  // Clients library (shared)
-  const allClients = [...new Set([...quotes.map(q=>q.client),...orders.map(o=>o.client)].filter(Boolean))].sort();
-  const clientItems = allClients.map(c => ({_label:c, _count:quotes.filter(q=>q.client===c).length+' quote'+(quotes.filter(q=>q.client===c).length!==1?'s':'')}));
+  // Clients library (shared across tabs)
+  const clientItems = clients.map(c => {
+    const qCount = quotes.filter(q => q.client_id === c.id || q.client === c.name).length;
+    return {_label:c.name, _count:qCount+' quote'+(qCount!==1?'s':'')};
+  });
   _renderLibUI('lib-quote-clients', 'Clients', clientItems, {
     icon:'person', renderFn:'renderQuoteLibraries', importFn:'importClientsCSV', exportFn:'exportClientsCSV',
-    loadFn:'_filterQuoteByClient', savePlaceholder:'Client name...', emptyMsg:'No clients yet.'
+    loadFn:'_fillQuoteClient', saveFn:'_createClientFromLib', savePlaceholder:'New client name...', emptyMsg:'No clients yet. Add one above or on the Clients tab.'
   });
-  // Projects library (quotes)
-  const projItems = quotes.map(q => ({_label:q.project||q.client, _sub:q.client, _count:q.date}));
+  // Projects library (shared across tabs)
+  const projItems = projects.filter(p => p.status !== 'complete').map(p => {
+    const clientName = p.client_id ? _clientName(p.client_id) : '';
+    return {_label:p.name, _sub:clientName, _count:p.status};
+  });
   _renderLibUI('lib-quote-projects', 'Projects', projItems, {
-    icon:'doc', renderFn:'renderQuoteLibraries', importFn:'importQuotesCSV', exportFn:'exportQuotesCSV',
-    loadFn:'_noOp', savePlaceholder:'Project name...', emptyMsg:'No quotes yet. Create one below.'
+    icon:'folder', renderFn:'renderQuoteLibraries', importFn:'importQuotesCSV', exportFn:'exportQuotesCSV',
+    loadFn:'_fillQuoteProject', savePlaceholder:'Project name...', emptyMsg:'No active projects.'
   });
 }
-function _filterQuoteByClient(idx) {
-  const allClients = [...new Set([...quotes.map(q=>q.client),...orders.map(o=>o.client)].filter(Boolean))].sort();
-  window._quoteSearch = allClients[idx]||''; renderQuoteMain();
+function _fillQuoteClient(idx) {
+  const c = clients[idx];
+  if (!c) return;
+  document.getElementById('q-client').value = c.name;
+}
+function _fillQuoteProject(idx) {
+  const active = projects.filter(p => p.status !== 'complete');
+  const p = active[idx];
+  if (!p) return;
+  document.getElementById('q-project').value = p.name;
+  const client = p.client_id ? clients.find(c => c.id === p.client_id) : null;
+  if (client) document.getElementById('q-client').value = client.name;
 }
 function _noOp() {}
+async function _createClientFromLib(name) {
+  if (!name || !name.trim()) return;
+  if (!_requireAuth()) return;
+  // Check if client already exists
+  const existing = clients.find(c => c.name.toLowerCase() === name.trim().toLowerCase());
+  if (existing) { _toast('Client "' + name.trim() + '" already exists', 'info'); return; }
+  const row = { user_id: _userId, name: name.trim() };
+  const { data, error } = await _dbInsertSafe('clients', row);
+  if (error) { _toast('Could not create client', 'error'); return; }
+  clients.unshift(data);
+  _toast('Client "' + name.trim() + '" created', 'success');
+  renderQuoteLibraries(); renderOrderLibraries();
+}
 function toggleQuoteClients() { window['_libOpen_lib-quote-clients']=!window['_libOpen_lib-quote-clients']; renderQuoteLibraries(); }
 // ── Shared Client Library Import/Export ──
 function exportClientsCSV() {
@@ -5216,23 +5252,37 @@ function importQuotesCSV() {
 
 // ── Order Clients Panel & Import/Export ──
 function renderOrderLibraries() {
-  // Clients library (shared)
-  const allClients = [...new Set([...quotes.map(q=>q.client),...orders.map(o=>o.client)].filter(Boolean))].sort();
-  const clientItems = allClients.map(c => ({_label:c, _count:orders.filter(o=>o.client===c).length+' order'+(orders.filter(o=>o.client===c).length!==1?'s':'')}));
+  // Clients library (shared across tabs)
+  const clientItems = clients.map(c => {
+    const oCount = orders.filter(o => o.client_id === c.id || o.client === c.name).length;
+    return {_label:c.name, _count:oCount+' order'+(oCount!==1?'s':'')};
+  });
   _renderLibUI('lib-order-clients', 'Clients', clientItems, {
     icon:'person', renderFn:'renderOrderLibraries', importFn:'importClientsCSV', exportFn:'exportClientsCSV',
-    loadFn:'_filterOrderByClient', savePlaceholder:'Client name...', emptyMsg:'No clients yet.'
+    loadFn:'_fillOrderClient', saveFn:'_createClientFromLib', savePlaceholder:'New client name...', emptyMsg:'No clients yet. Add one above or on the Clients tab.'
   });
-  // Projects library (orders)
-  const projItems = orders.map(o => ({_label:o.project||o.client, _sub:o.client, _count:o.due||''}));
+  // Projects library (shared across tabs)
+  const projItems = projects.filter(p => p.status !== 'complete').map(p => {
+    const clientName = p.client_id ? _clientName(p.client_id) : '';
+    return {_label:p.name, _sub:clientName, _count:p.status};
+  });
   _renderLibUI('lib-order-projects', 'Projects', projItems, {
-    icon:'doc', renderFn:'renderOrderLibraries', importFn:'importOrdersCSV', exportFn:'exportOrdersCSV',
-    loadFn:'_noOp', savePlaceholder:'Project name...', emptyMsg:'No orders yet. Create one below.'
+    icon:'folder', renderFn:'renderOrderLibraries', importFn:'importOrdersCSV', exportFn:'exportOrdersCSV',
+    loadFn:'_fillOrderProject', savePlaceholder:'Project name...', emptyMsg:'No active projects.'
   });
 }
-function _filterOrderByClient(idx) {
-  const allClients = [...new Set([...quotes.map(q=>q.client),...orders.map(o=>o.client)].filter(Boolean))].sort();
-  window._orderSearch = allClients[idx]||''; renderOrdersMain();
+function _fillOrderClient(idx) {
+  const c = clients[idx];
+  if (!c) return;
+  document.getElementById('o-client').value = c.name;
+}
+function _fillOrderProject(idx) {
+  const active = projects.filter(p => p.status !== 'complete');
+  const p = active[idx];
+  if (!p) return;
+  document.getElementById('o-project').value = p.name;
+  const client = p.client_id ? clients.find(c => c.id === p.client_id) : null;
+  if (client) document.getElementById('o-client').value = client.name;
 }
 function toggleOrderClients() { window['_libOpen_lib-order-clients']=!window['_libOpen_lib-order-clients']; renderOrderLibraries(); }
 function exportOrdersCSV() {
