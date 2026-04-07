@@ -2073,6 +2073,20 @@ function _scGet(id) { return _scMap()[String(id)] || ''; }
 // ── Stock Supplier Storage ──
 function _ssGet(id) { try { return JSON.parse(localStorage.getItem('pc_stock_suppliers')||'{}')[String(id)] || {}; } catch(e) { return {}; } }
 function _ssSet(id, data) { try { const m = JSON.parse(localStorage.getItem('pc_stock_suppliers')||'{}'); m[String(id)] = data; localStorage.setItem('pc_stock_suppliers', JSON.stringify(m)); } catch(e) {} }
+function _updateStockSupplier(id, field, val) {
+  const sup = _ssGet(id);
+  sup[field] = val;
+  _ssSet(id, sup);
+  renderStockMain();
+}
+function _promptReorderUrl(id) {
+  const url = prompt('Enter supplier/reorder URL:');
+  if (url === null) return;
+  const sup = _ssGet(id);
+  sup.url = url.trim();
+  _ssSet(id, sup);
+  renderStockMain();
+}
 function _scSet(id, cat) {
   const m = _scMap();
   if (cat) m[String(id)] = cat; else delete m[String(id)];
@@ -2285,7 +2299,7 @@ function renderStockMain() {
           <span class="badge ${isLow ? 'badge-red' : 'badge-green'}" style="flex-shrink:0;font-size:9px;padding:2px 6px">${isLow ? 'Low' : 'OK'}</span>
         </div>
         ${subtitle ? `<div style="font-size:10px;color:var(--muted);margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_escHtml(subtitle)}</div>` : ''}
-        ${sup.supplier ? `<div style="font-size:10px;color:var(--text2);margin-bottom:4px;display:flex;align-items:center;gap:4px"><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_escHtml(sup.supplier)}</span>${sup.url ? `<a href="${_escHtml(sup.url)}" target="_blank" rel="noopener" style="color:var(--accent);font-size:9px;flex-shrink:0" title="Open supplier link">↗</a>` : ''}</div>` : (!subtitle ? '<div style="margin-bottom:4px"></div>' : '')}
+        <div style="font-size:10px;color:${sup.supplier?'var(--text2)':'var(--muted)'};margin-bottom:4px;display:flex;align-items:center;gap:4px;opacity:${sup.supplier?'1':'.5'}"><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:text;border-bottom:1px dashed transparent" contenteditable="true" onblur="_updateStockSupplier(${item.id},'supplier',this.innerText.trim())" onmouseover="this.style.borderBottomColor='var(--muted)'" onmouseout="this.style.borderBottomColor='transparent'" title="Click to edit supplier">${sup.supplier ? _escHtml(sup.supplier) : '+ supplier'}</span>${sup.url ? `<a href="${_escHtml(sup.url)}" target="_blank" rel="noopener" style="color:var(--accent);font-size:9px;flex-shrink:0" title="Open supplier link">↗</a>` : ''}</div>
         <div style="display:flex;justify-content:space-between;align-items:center">
           <div style="display:flex;align-items:center;gap:6px">
             <button class="btn btn-outline" onclick="adjustStock(${item.id},-1)" style="padding:2px 8px;font-size:14px;font-weight:700;line-height:1">−</button>
@@ -2304,7 +2318,7 @@ function renderStockMain() {
       <div style="display:flex;border-top:1px solid var(--border2)">
         <button class="btn btn-outline" onclick="editStockItem(${item.id})" style="flex:1;border:0;border-radius:0;padding:6px;font-size:11px;border-right:1px solid var(--border2)">Edit</button>
         <button class="btn btn-outline" onclick="useStockInCutList(${item.id})" style="flex:1;border:0;border-radius:0;padding:6px;font-size:11px;border-right:1px solid var(--border2)">+ Cut List</button>
-        ${sup.url ? `<a href="${_escHtml(sup.url)}" target="_blank" rel="noopener" class="btn btn-outline" style="flex:1;border:0;border-radius:0;padding:6px;font-size:11px;text-decoration:none;text-align:center;border-right:1px solid var(--border2);${isLow?'color:var(--accent);font-weight:700':''}">Reorder${isLow?' ↗':''}</a>` : ''}
+        ${sup.url ? `<a href="${_escHtml(sup.url)}" target="_blank" rel="noopener" class="btn btn-outline" style="flex:1;border:0;border-radius:0;padding:6px;font-size:11px;text-decoration:none;text-align:center;border-right:1px solid var(--border2);${isLow?'color:var(--accent);font-weight:700':''}">Reorder${isLow?' ↗':''}</a>` : `<button class="btn btn-outline" onclick="_promptReorderUrl(${item.id})" style="flex:1;border:0;border-radius:0;padding:6px;font-size:11px;border-right:1px solid var(--border2);opacity:.5" title="Add reorder link">+ Reorder</button>`}
         <button class="btn btn-danger" onclick="_confirm('Remove <strong>${_escHtml(item.name)}</strong>?',()=>removeStock(${item.id}))" style="border:0;border-radius:0;padding:6px 10px;font-size:11px">×</button>
       </div>
     </div>`;
@@ -5612,8 +5626,23 @@ document.addEventListener('keydown', e => {
     if (tabMap[e.key]) { e.preventDefault(); switchSection(tabMap[e.key]); return; }
   }
   // ? key shows keyboard shortcuts (when not typing in an input)
-  if (e.key === '?' && !['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName) && !document.activeElement?.contentEditable?.toString()?.includes('true')) {
+  const typing = ['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName) || document.activeElement?.contentEditable?.toString()?.includes('true');
+  if (e.key === '?' && !typing) {
     _showShortcutsHelp();
+  }
+  // N key: new item for current tab (when not typing)
+  if (e.key === 'n' && !typing && !e.ctrlKey && !e.metaKey) {
+    const active = document.querySelector('.section-panel.active')?.id;
+    if (active === 'panel-quote') { document.getElementById('q-client')?.focus(); e.preventDefault(); }
+    else if (active === 'panel-orders') { document.getElementById('o-client')?.focus(); e.preventDefault(); }
+    else if (active === 'panel-stock') { document.getElementById('stock-name')?.focus(); e.preventDefault(); }
+    else if (active === 'panel-clients') { document.getElementById('cl-name')?.focus(); e.preventDefault(); }
+    else if (active === 'panel-projects') { document.getElementById('pj-name')?.focus(); e.preventDefault(); }
+  }
+  // / key: focus search (when not typing)
+  if (e.key === '/' && !typing && !e.ctrlKey && !e.metaKey) {
+    const search = document.querySelector('.section-panel.active .order-search-input, .section-panel.active input[type="search"], .section-panel.active input[placeholder*="Search"]');
+    if (search) { search.focus(); e.preventDefault(); }
   }
 });
 function _showShortcutsHelp() {
@@ -5625,6 +5654,8 @@ function _showShortcutsHelp() {
   m.onclick = e => { if (e.target === m) m.remove(); };
   const shortcuts = [
     ['Ctrl/Cmd + 1–9', 'Switch tabs'],
+    ['N', 'New item (focus sidebar form)'],
+    ['/', 'Focus search'],
     ['Escape', 'Close dialogs / overlays'],
     ['?', 'Toggle this help']
   ];
