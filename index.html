@@ -275,7 +275,7 @@ header {
 .main-scroll { flex: 1; overflow: auto; padding: 20px; }
 
 /* ── FORM ELEMENTS ── */
-.form-section { margin-bottom: 20px; }
+.form-section { margin-bottom: 14px; }
 .form-section-title {
   font-size: 10px; font-weight: 700;
   text-transform: uppercase; letter-spacing: 1px;
@@ -411,7 +411,10 @@ textarea { resize: vertical; min-height: 70px; }
   border: 1px solid var(--border);
   padding: 8px 10px;
   box-shadow: var(--shadow);
+  transition: box-shadow 0.15s, transform 0.15s;
 }
+.stat-card[onclick]:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
+.stat-card[style*="cursor:pointer"]:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
 .stat-card.accent { border-top: 2px solid var(--accent); }
 .stat-card.success { border-top: 2px solid var(--success); }
 .stat-card.warn { border-top: 2px solid var(--warn); }
@@ -559,7 +562,8 @@ canvas { display: block; }
    QUOTE SECTION
 ══════════════════════════════════════════ */
 .quote-list { display: flex; flex-direction: column; gap: 12px; }
-.quote-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; margin-bottom: 8px; }
+.quote-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; margin-bottom: 8px; transition: box-shadow 0.15s; }
+.quote-card:hover { box-shadow: var(--shadow-md); }
 .qc-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 12px 16px 8px; }
 .qc-title { font-size: 14px; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; cursor: text; }
 .qc-title:focus { outline: none; white-space: normal; border-bottom: 1px solid var(--accent); }
@@ -706,7 +710,8 @@ canvas { display: block; }
    ORDERS SECTION
 ══════════════════════════════════════════ */
 .orders-list { display: flex; flex-direction: column; gap: 12px; }
-.order-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; margin-bottom: 8px; }
+.order-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; margin-bottom: 8px; transition: box-shadow 0.15s; }
+.order-card:hover { box-shadow: var(--shadow-md); }
 .order-overdue { border-left: 3px solid var(--danger); }
 .oc-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; padding: 12px 16px 8px; }
 .oc-title { font-size: 14px; font-weight: 700; color: var(--text); cursor: text; }
@@ -717,6 +722,8 @@ canvas { display: block; }
 .oc-notes:empty:not(:focus)::before { content: attr(data-placeholder); color: var(--muted); font-style: italic; opacity: 0.6; }
 .oc-edit { cursor: text; border-bottom: 1px dashed var(--muted); padding: 0 2px; }
 .oc-edit:focus { outline: none; border-bottom-color: var(--accent); }
+[data-placeholder]:empty:not(:focus)::before { content: attr(data-placeholder); color: var(--muted); font-style: italic; opacity: 0.5; }
+[contenteditable]:focus { outline: none; }
 .oc-right { display: flex; align-items: center; flex-shrink: 0; }
 .oc-value { font-size: 18px; font-weight: 800; color: var(--text); cursor: text; border-bottom: 1px dashed transparent; padding: 0 4px; border-radius: 3px; }
 .oc-value:hover { border-bottom-color: var(--muted); }
@@ -1048,7 +1055,7 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
 <header>
   <div class="logo">
     <div class="logo-text">ProCabinet.App</div>
-    <div class="logo-badge">BETA v0.9.7</div>
+    <div class="logo-badge">BETA v0.9.8</div>
   </div>
   <div class="header-right">
     <div class="settings-wrap">
@@ -1503,7 +1510,7 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
               <input type="number" id="q-tax" value="13" min="0">
             </div>
           </div>
-          <div id="quote-form-preview" style="background:var(--surface2);border-radius:8px;padding:10px 12px;margin-top:8px;display:none">
+          <div id="quote-form-preview" style="background:var(--surface2);border-radius:8px;padding:10px 12px;margin-top:8px">
             <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:4px"><span>Labour</span><span id="qfp-labour">—</span></div>
             <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:4px"><span>Materials</span><span id="qfp-materials">—</span></div>
             <div style="border-top:1px solid var(--border);margin:4px 0"></div>
@@ -1540,11 +1547,11 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
             <input type="text" id="o-project" placeholder="e.g. Kitchen Remodel" autocomplete="off" oninput="_projectSuggest(this,'o-project-suggest')">
             <div id="o-project-suggest" class="client-suggest-list" style="display:none"></div>
           </div>
+          <div class="form-group" style="margin-bottom:6px">
+            <label>Order Value</label>
+            <input type="number" id="o-value" placeholder="0.00" min="0" step="0.01">
+          </div>
           <div class="form-row">
-            <div class="form-group">
-              <label>Order Value</label>
-              <input type="number" id="o-value" placeholder="0.00" min="0" step="0.01">
-            </div>
             <div class="form-group">
               <label>Start Date</label>
               <input type="date" id="o-start">
@@ -1554,11 +1561,11 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
               <input type="date" id="o-due">
             </div>
           </div>
-          <div class="form-group" style="margin-bottom:8px">
+          <div class="form-group" style="margin-bottom:6px">
             <label>Notes</label>
-            <textarea id="o-notes" placeholder="Job details, special instructions..."></textarea>
+            <textarea id="o-notes" placeholder="Job details, special instructions..." rows="2"></textarea>
           </div>
-          <div class="form-group" style="margin-bottom:8px">
+          <div class="form-group" style="margin-bottom:6px">
             <label>Status</label>
             <select id="o-status">
               <option value="quote">Quote Sent</option>
@@ -1568,7 +1575,7 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
               <option value="complete">Complete</option>
             </select>
           </div>
-          <button class="btn btn-outline" onclick="addOrder()" style="margin-top:4px">+ Add Order</button>
+          <button class="btn btn-primary" onclick="addOrder()" style="margin-top:4px;width:100%">+ Add Order</button>
         </div>
       </div>
     </div>
@@ -2279,7 +2286,8 @@ function renderStockMain() {
 
   // Filter by search + category
   let filtered = stockItems.filter(i => {
-    const matchSearch = !q || i.name.toLowerCase().includes(q) || (i.sku || '').toLowerCase().includes(q);
+    const vd = _svGet(i.id); const sup = _ssGet(i.id);
+    const matchSearch = !q || i.name.toLowerCase().includes(q) || (i.sku || '').toLowerCase().includes(q) || (_scGet(i.id)||'').toLowerCase().includes(q) || (vd.variant||'').toLowerCase().includes(q) || (sup.supplier||'').toLowerCase().includes(q);
     const matchCat = activeCat === 'All' || _scGet(i.id) === activeCat || (activeCat === 'Uncategorised' && !_scGet(i.id));
     return matchSearch && matchCat;
   });
@@ -4140,6 +4148,8 @@ async function convertQuoteToOrder(id) {
   if (q.project_id) orderRow.project_id = q.project_id;
   const { data, error: oErr } = await _dbInsertSafe('orders', orderRow);
   if (oErr) { _toast('Could not create order — ' + (oErr.message || JSON.stringify(oErr)), 'error'); console.error(oErr); return; }
+  // Carry quote notes to order notes
+  if (q.notes && data) { data.notes = q.notes; _onSet(data.id, q.notes); }
   orders.unshift(data);
   document.getElementById('orders-badge').textContent = orders.filter(o => o.status !== 'complete').length;
   _toast(`Order created for ${q.client} — ${q.project}`, 'success');
@@ -4198,19 +4208,18 @@ function renderQuoteMain() {
         </div>
         <button class="btn btn-danger" onclick="_confirm('Delete quote for <strong>${q.client}</strong>?',()=>removeQuote(${q.id}))" style="padding:4px 8px;margin-left:8px;flex-shrink:0">×</button>
       </div>
-      ${q.notes ? `<div style="border-top:1px solid var(--border2);padding:8px 16px;background:var(--surface)">
-        ${q.notes.split(/\r?\n/).filter(Boolean).map(line => {
+      <div style="border-top:1px solid var(--border2);padding:8px 16px;background:var(--surface);cursor:text" contenteditable="true" onblur="updateQuoteField(${q.id},'notes',this.innerText.trim())" data-placeholder="+ Add line items or notes…">
+        ${q.notes ? q.notes.split(/\r?\n/).filter(Boolean).map(line => {
           if (line.includes('\u2014') || line.includes('—')) {
             const parts = line.split(/\u2014|—/);
             return '<div style="margin-bottom:6px"><div style="font-size:13px;font-weight:700;color:var(--text)">' + _escHtml(parts[0].trim()) + '</div><div style="font-size:11px;color:var(--muted);padding-left:12px;border-left:2px solid var(--accent);margin-left:4px;margin-top:2px">' + _escHtml(parts.slice(1).join('\u2014').trim()) + '</div></div>';
           }
           return '<div style="font-size:11px;color:var(--text2);margin-bottom:2px">' + _escHtml(line) + '</div>';
-        }).join('')}
-      </div>` : ''}
+        }).join('') : ''}
+      </div>
       <div class="qc-breakdown">
-        <div class="qb-row"><span>Subtotal</span><span>${fmt(sub)}</span></div>
-        ${q.markup > 0 ? `<div class="qb-row qb-muted"><span>Markup (<span class="qb-edit" contenteditable="true" onblur="updateQuoteField(${q.id},'markup',this.innerText.replace(/[^0-9.]/g,''))" title="Click to edit markup">${q.markup}</span>%)</span><span>+${fmt(markupAmt)}</span></div>` : ''}
-        ${q.tax > 0 ? `<div class="qb-row qb-muted"><span>Tax (<span class="qb-edit" contenteditable="true" onblur="updateQuoteField(${q.id},'tax',this.innerText.replace(/[^0-9.]/g,''))" title="Click to edit tax">${q.tax}</span>%)</span><span>+${fmt(taxAmt)}</span></div>` : ''}
+        <div class="qb-row qb-muted"><span>Markup (<span class="qb-edit" contenteditable="true" onblur="updateQuoteField(${q.id},'markup',this.innerText.replace(/[^0-9.]/g,''))" title="Click to edit markup">${q.markup}</span>%)</span><span>+${fmt(markupAmt)}</span></div>
+        <div class="qb-row qb-muted"><span>Tax (<span class="qb-edit" contenteditable="true" onblur="updateQuoteField(${q.id},'tax',this.innerText.replace(/[^0-9.]/g,''))" title="Click to edit tax">${q.tax}</span>%)</span><span>+${fmt(taxAmt)}</span></div>
         <div class="qb-divider"></div>
         <div class="qb-row qb-total"><span>Total</span><span>${fmt(total)}</span></div>
       </div>
@@ -4467,12 +4476,12 @@ function renderDashboard() {
 
       <!-- Quick actions -->
       <div style="display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap;align-items:center">
-        <button class="btn btn-primary" onclick="switchSection('quote')" style="font-size:11px;padding:6px 12px">+ Quote</button>
-        <button class="btn btn-outline" onclick="switchSection('orders')" style="font-size:11px;padding:6px 12px;width:auto">+ Order</button>
+        <button class="btn btn-primary" onclick="switchSection('quote');setTimeout(()=>document.getElementById('q-client')?.focus(),100)" style="font-size:11px;padding:6px 12px">+ Quote</button>
+        <button class="btn btn-outline" onclick="switchSection('orders');setTimeout(()=>document.getElementById('o-client')?.focus(),100)" style="font-size:11px;padding:6px 12px;width:auto">+ Order</button>
         <button class="btn btn-outline" onclick="switchSection('cabinet')" style="font-size:11px;padding:6px 12px;width:auto">+ Cabinet</button>
         <button class="btn btn-outline" onclick="switchSection('cutlist')" style="font-size:11px;padding:6px 12px;width:auto">Cut List</button>
         <button class="btn btn-outline" onclick="switchSection('schedule')" style="font-size:11px;padding:6px 12px;width:auto">Schedule</button>
-        ${overdueOrders.length ? `<span class="badge badge-red" style="font-size:11px;padding:5px 10px;margin-left:4px">${overdueOrders.length} overdue</span>` : ''}
+        ${overdueOrders.length ? `<span class="badge badge-red" style="font-size:11px;padding:5px 10px;margin-left:4px;cursor:pointer" onclick="switchSection('orders');window._orderFilter='active';renderOrdersMain()">${overdueOrders.length} overdue</span>` : ''}
       </div>
 
       <!-- Getting started guide — only when everything is empty -->
@@ -4497,22 +4506,22 @@ function renderDashboard() {
 
       <!-- KPI Row -->
       <div class="stats-grid" style="grid-template-columns:repeat(auto-fit,minmax(130px,1fr));margin-bottom:18px;gap:10px">
-        <div class="stat-card accent" style="padding:10px 14px">
+        <div class="stat-card accent" style="padding:10px 14px;cursor:pointer" onclick="switchSection('orders');window._orderFilter='active';renderOrdersMain()">
           <div class="stat-label">Pipeline</div>
           <div class="stat-value">${cur}${fmt(pipeline)}</div>
           <div class="stat-sub">${activeOrders.length} active</div>
         </div>
-        <div class="stat-card success" style="padding:10px 14px">
+        <div class="stat-card success" style="padding:10px 14px;cursor:pointer" onclick="switchSection('orders');window._orderFilter='complete';renderOrdersMain()">
           <div class="stat-label">Revenue</div>
           <div class="stat-value">${cur}${fmt(revenue)}</div>
           <div class="stat-sub">${doneOrders.length} completed</div>
         </div>
-        <div class="stat-card warn" style="padding:10px 14px">
+        <div class="stat-card warn" style="padding:10px 14px;cursor:pointer" onclick="switchSection('quote')">
           <div class="stat-label">Quoted</div>
           <div class="stat-value">${cur}${fmt(quoteValue)}</div>
           <div class="stat-sub">${approvedQ} approved</div>
         </div>
-        <div class="stat-card ${lowStock.length ? 'danger' : 'success'}" style="padding:10px 14px">
+        <div class="stat-card ${lowStock.length ? 'danger' : 'success'}" style="padding:10px 14px;cursor:pointer" onclick="switchSection('stock')">
           <div class="stat-label">Stock</div>
           <div class="stat-value">${cur}${fmt(stockValue)}</div>
           <div class="stat-sub">${lowStock.length ? lowStock.length+' low' : totalSheets+' sheets'}</div>
@@ -5561,7 +5570,10 @@ document.addEventListener('keydown', e => {
   const acct = document.getElementById('account-panel');
   if (acct && acct.classList.contains('open')) { acct.classList.remove('open'); return; }
   const proj = document.getElementById('projects-panel');
-  if (proj && proj.classList.contains('open')) { proj.classList.remove('open'); }
+  if (proj && proj.classList.contains('open')) { proj.classList.remove('open'); return; }
+  // Close any open confirm dialogs
+  const confirms = document.querySelectorAll('[id^="_confirm_"]');
+  if (confirms.length) { confirms.forEach(c => c.remove()); return; }
 });
 
 // ══════════════════════════════════════════
@@ -7281,7 +7293,11 @@ function renderCQResults() {
   const projName = document.getElementById('cq-project-name')?.value || '';
 
   if (!cqLines.length) {
-    el.innerHTML = '<div class="empty-state"><h3>Cabinet Builder</h3><p>Add cabinets using the sidebar to start building your project.</p></div>';
+    el.innerHTML = `<div class="empty-state">
+      <div class="empty-icon" style="opacity:.18"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="12" y1="3" x2="12" y2="12"/></svg></div>
+      <h3>Cabinet Builder</h3>
+      <p>Add cabinets using the sidebar to start building your project.</p>
+    </div>`;
     return;
   }
 
@@ -7956,7 +7972,10 @@ function renderSchedule() {
 
   // Sidebar
   // Sidebar: job list (rendered into separate sidebar element)
-  let sidebarHTML = `<div style="font-size:14px;font-weight:800;color:var(--text);margin-bottom:12px">Jobs</div>`;
+  let sidebarHTML = `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+    <div style="font-size:14px;font-weight:800;color:var(--text)">Jobs</div>
+    <button class="btn btn-outline" onclick="document.getElementById('schedule-today-marker')?.scrollIntoView({behavior:'smooth',block:'center'})" style="font-size:10px;padding:3px 8px;width:auto">Today</button>
+  </div>`;
   events.forEach(e=>{const o=orders.find(x=>x.id===e.id);const st=o?STATUS_LABELS[o.status]||o.status:'';sidebarHTML+=`<div style="display:flex;align-items:center;gap:8px;padding:5px 8px;margin-bottom:2px;border-radius:6px;cursor:pointer" onclick="switchSection('orders')" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''"><div style="width:8px;height:8px;border-radius:2px;background:${e.color};flex-shrink:0"></div><div style="flex:1;min-width:0"><div style="font-size:11px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_escHtml(e.project)}</div><div style="font-size:9px;color:var(--muted)">${_escHtml(e.client)}${st?' · '+st:''}</div></div></div>`;});
   if(!events.length)sidebarHTML+=`<div style="font-size:12px;color:var(--muted)">No active orders</div>`;
   const sidebarEl = document.getElementById('schedule-sidebar');
@@ -7984,7 +8003,7 @@ function renderSchedule() {
       const td = sameDay(day,today);
       const we = di>=5;
       const bg = td?'rgba(232,168,56,0.06)':we?'rgba(255,255,255,0.015)':'';
-      cal += `<div style="border:1px solid var(--border2);padding:3px;${bg?'background:'+bg:''}">
+      cal += `<div style="border:1px solid var(--border2);padding:3px;${bg?'background:'+bg:''}"${td?' id="schedule-today-marker"':''}>
         <div style="font-size:${td?'12':'11'}px;font-weight:${td?'800':'500'};color:${td?'#fff':we?'var(--muted)':'var(--text2)'};${td?'background:var(--accent);border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center':'padding:1px 3px'}">${day.getDate()}</div>
       </div>`;
     });
@@ -8017,6 +8036,11 @@ function renderSchedule() {
   });
 
   el.innerHTML = cal;
+  // Auto-scroll to today on load
+  setTimeout(() => {
+    const todayEl = document.getElementById('schedule-today-marker');
+    if (todayEl) todayEl.scrollIntoView({behavior:'smooth',block:'center'});
+  }, 100);
 }
 
 function setOrderProdStart(id, val) {
@@ -8252,14 +8276,16 @@ function renderClientsMain() {
         <div style="flex:1;min-width:0">
           <div style="font-size:14px;font-weight:700;color:var(--text)" contenteditable="true" onblur="updateClient(${c.id},'name',this.innerText.trim())">${_escHtml(c.name)}</div>
           <div style="font-size:10px;color:var(--muted);margin-top:1px">
-            ${c.email ? '<span>'+_escHtml(c.email)+'</span>' : ''}${c.email && c.phone ? ' · ' : ''}${c.phone ? '<span>'+_escHtml(c.phone)+'</span>' : ''} · ${cProjects.length} projects · ${cOrders.length} orders · ${fmt(totalValue)}
+            <span contenteditable="true" style="cursor:text;border-bottom:1px dashed transparent;padding:0 1px" onblur="updateClient(${c.id},'email',this.innerText.trim())" onmouseover="this.style.borderBottomColor='var(--muted)'" onmouseout="this.style.borderBottomColor='transparent'" title="Click to edit email">${c.email ? _escHtml(c.email) : '<span style=color:var(--muted);opacity:.5>+ email</span>'}</span>
+             · <span contenteditable="true" style="cursor:text;border-bottom:1px dashed transparent;padding:0 1px" onblur="updateClient(${c.id},'phone',this.innerText.trim())" onmouseover="this.style.borderBottomColor='var(--muted)'" onmouseout="this.style.borderBottomColor='transparent'" title="Click to edit phone">${c.phone ? _escHtml(c.phone) : '<span style=color:var(--muted);opacity:.5>+ phone</span>'}</span>
+             · ${cProjects.length} project${cProjects.length!==1?'s':''} · ${cOrders.length} order${cOrders.length!==1?'s':''} · ${fmt(totalValue)}
           </div>
         </div>
         <button class="btn btn-danger" onclick="_confirm('Delete client <strong>${_escHtml(c.name)}</strong>?',()=>removeClient(${c.id}))" style="padding:3px 6px;font-size:10px;flex-shrink:0">×</button>
       </div>
       ${cProjects.length ? `<div style="display:flex;gap:3px;flex-wrap:wrap;margin-bottom:4px">${cProjects.map(p => `<span class="badge ${p.status==='complete'?'badge-green':p.status==='on-hold'?'badge-gray':'badge-blue'}" style="cursor:pointer;font-size:9px;padding:1px 6px" onclick="switchSection('projects');_highlightProject(${p.id})">${_escHtml(p.name)}</span>`).join('')}</div>` : ''}
-      ${c.address ? `<div style="font-size:10px;color:var(--muted)">${_escHtml(c.address)}</div>` : ''}
-      ${c.notes ? `<div style="font-size:10px;color:var(--muted);font-style:italic">${_escHtml(c.notes)}</div>` : ''}
+      <div style="font-size:10px;color:var(--muted)" contenteditable="true" onblur="updateClient(${c.id},'address',this.innerText.trim())" title="Click to edit address" data-placeholder="+ address">${c.address ? _escHtml(c.address) : ''}</div>
+      ${c.notes ? `<div style="font-size:10px;color:var(--muted);font-style:italic" contenteditable="true" onblur="updateClient(${c.id},'notes',this.innerText.trim())" title="Click to edit notes">${_escHtml(c.notes)}</div>` : `<div style="font-size:10px;color:var(--muted);font-style:italic;opacity:.5" contenteditable="true" onblur="if(this.innerText.trim())updateClient(${c.id},'notes',this.innerText.trim())" data-placeholder="+ notes"></div>`}
       <div style="display:flex;gap:4px;margin-top:6px;border-top:1px solid var(--border2);padding-top:6px">
         <button class="btn btn-outline" onclick="switchSection('quote');document.getElementById('q-client').value='${_escHtml(c.name)}'" style="font-size:10px;padding:3px 8px;width:auto">+ Quote</button>
         <button class="btn btn-outline" onclick="switchSection('orders');document.getElementById('o-client').value='${_escHtml(c.name)}'" style="font-size:10px;padding:3px 8px;width:auto">+ Order</button>
@@ -8323,7 +8349,7 @@ function renderProjectsMain() {
       <div style="font-size:10px;color:var(--muted);margin-bottom:6px">
         ${client ? `<span style="cursor:pointer;text-decoration:underline" onclick="switchSection('clients');window._clientSearch='${_escHtml(client.name)}';renderClientsMain()">${_escHtml(client.name)}</span> · ` : ''}${created} · ${pQuotes.length} quote${pQuotes.length!==1?'s':''} (${fmt(quoteValue)}) · ${pOrders.length} order${pOrders.length!==1?'s':''} (${fmt(totalValue)})
       </div>
-      ${p.description ? `<div style="font-size:11px;color:var(--text2);margin-bottom:6px">${_escHtml(p.description)}</div>` : ''}
+      <div style="font-size:11px;color:var(--text2);margin-bottom:6px;cursor:text" contenteditable="true" onblur="updateProject(${p.id},'description',this.innerText.trim())" data-placeholder="+ Add description…">${p.description ? _escHtml(p.description) : ''}</div>
       <!-- Linked items -->
       ${pQuotes.length || pOrders.length ? `<div style="border-top:1px solid var(--border2);padding-top:6px;margin-top:4px">
         ${pQuotes.map(q => `<div style="display:flex;align-items:center;gap:5px;font-size:10px;padding:2px 0;cursor:pointer" onclick="switchSection('quote')">
