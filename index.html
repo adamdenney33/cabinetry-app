@@ -8395,13 +8395,32 @@ function renderClientsMain() {
   };
 
   const search = (window._clientSearch || '').toLowerCase();
-  const filtered = search ? clients.filter(c => c.name.toLowerCase().includes(search)) : clients;
+  const sortBy = window._clientSort || 'name';
+  let filtered = search ? clients.filter(c => c.name.toLowerCase().includes(search)) : [...clients];
+  if (sortBy === 'value') filtered.sort((a,b) => {
+    const va = orders.filter(o=>o.client_id===a.id||o.client===a.name).reduce((s,o)=>s+o.value,0) + quotes.filter(q=>q.client_id===a.id||q.client===a.name).reduce((s,q)=>s+quoteTotal(q),0);
+    const vb = orders.filter(o=>o.client_id===b.id||o.client===b.name).reduce((s,o)=>s+o.value,0) + quotes.filter(q=>q.client_id===b.id||q.client===b.name).reduce((s,q)=>s+quoteTotal(q),0);
+    return vb - va;
+  });
+  else if (sortBy === 'orders') filtered.sort((a,b) => orders.filter(o=>o.client_id===b.id||o.client===b.name).length - orders.filter(o=>o.client_id===a.id||o.client===a.name).length);
+  else filtered.sort((a,b) => a.name.localeCompare(b.name));
+
+  const totalClientValue = clients.reduce((s,c) => s + orders.filter(o=>o.client_id===c.id||o.client===c.name).reduce((t,o)=>t+o.value,0), 0);
+  const fmt = v => cur + v.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0});
 
   el.innerHTML = `<div style="padding:24px;max-width:900px">
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap">
       <div style="font-size:18px;font-weight:800;color:var(--text);flex:1">Clients <span style="font-size:13px;font-weight:400;color:var(--muted)">(${clients.length})</span></div>
       <input type="text" placeholder="Search clients..." value="${_escHtml(window._clientSearch||'')}" oninput="window._clientSearch=this.value;renderClientsMain()" style="font-size:12px;padding:6px 12px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);width:200px;font-family:inherit">
     </div>
+    ${clients.length > 1 ? `<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+      <select style="font-size:11px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--muted);font-family:inherit;cursor:pointer" onchange="window._clientSort=this.value;renderClientsMain()">
+        <option value="name" ${sortBy==='name'?'selected':''}>Sort by name</option>
+        <option value="value" ${sortBy==='value'?'selected':''}>Sort by value</option>
+        <option value="orders" ${sortBy==='orders'?'selected':''}>Sort by orders</option>
+      </select>
+      <span style="font-size:11px;color:var(--muted);margin-left:auto">Total order value: <strong style="color:var(--text)">${fmt(totalClientValue)}</strong></span>
+    </div>` : ''}
     ${filtered.length ? filtered.map(clientCard).join('') : `<div style="color:var(--muted);font-size:13px;text-align:center;padding:40px 20px;border:1px dashed var(--border);border-radius:var(--radius)">${search ? 'No clients match your search.' : 'No clients yet. Add one using the form on the left.'}</div>`}
   </div>`;
 }
@@ -8473,9 +8492,17 @@ function renderProjectsMain() {
 
   const filter = window._projFilter || 'all';
   const search = (window._projSearch || '').toLowerCase();
-  let filtered = projects;
+  const sortBy = window._projSort || 'newest';
+  let filtered = [...projects];
   if (filter !== 'all') filtered = filtered.filter(p => p.status === filter);
   if (search) filtered = filtered.filter(p => p.name.toLowerCase().includes(search) || (_clientName(p.client_id)||'').toLowerCase().includes(search));
+  if (sortBy === 'name') filtered.sort((a,b) => a.name.localeCompare(b.name));
+  else if (sortBy === 'client') filtered.sort((a,b) => (_clientName(a.client_id)||'').localeCompare(_clientName(b.client_id)||''));
+  else if (sortBy === 'value') filtered.sort((a,b) => {
+    const va = orders.filter(o=>o.project_id===a.id||o.project===a.name).reduce((s,o)=>s+o.value,0);
+    const vb = orders.filter(o=>o.project_id===b.id||o.project===b.name).reduce((s,o)=>s+o.value,0);
+    return vb - va;
+  });
 
   const activeCount = projects.filter(p => p.status === 'active').length;
   const holdCount = projects.filter(p => p.status === 'on-hold').length;
@@ -8486,11 +8513,17 @@ function renderProjectsMain() {
       <div style="font-size:18px;font-weight:800;color:var(--text);flex:1">Projects <span style="font-size:13px;font-weight:400;color:var(--muted)">(${projects.length})</span></div>
       <input type="text" placeholder="Search projects..." value="${_escHtml(window._projSearch||'')}" oninput="window._projSearch=this.value;renderProjectsMain()" style="font-size:12px;padding:6px 12px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);width:200px;font-family:inherit">
     </div>
-    <div style="display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap">
+    <div style="display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap;align-items:center">
       <button class="ofilter-tab ${filter==='all'?'active':''}" onclick="window._projFilter='all';renderProjectsMain()">All (${projects.length})</button>
       <button class="ofilter-tab ${filter==='active'?'active':''}" onclick="window._projFilter='active';renderProjectsMain()">Active (${activeCount})</button>
       <button class="ofilter-tab ${filter==='on-hold'?'active':''}" onclick="window._projFilter='on-hold';renderProjectsMain()">On Hold (${holdCount})</button>
       <button class="ofilter-tab ${filter==='complete'?'active':''}" onclick="window._projFilter='complete';renderProjectsMain()">Complete (${doneCount})</button>
+      <select style="font-size:11px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--muted);font-family:inherit;cursor:pointer;margin-left:auto" onchange="window._projSort=this.value;renderProjectsMain()">
+        <option value="newest" ${sortBy==='newest'?'selected':''}>Newest first</option>
+        <option value="name" ${sortBy==='name'?'selected':''}>Name</option>
+        <option value="client" ${sortBy==='client'?'selected':''}>Client</option>
+        <option value="value" ${sortBy==='value'?'selected':''}>Value</option>
+      </select>
     </div>
     ${filtered.length ? filtered.map(projectCard).join('') : `<div style="color:var(--muted);font-size:13px;text-align:center;padding:40px 20px;border:1px dashed var(--border);border-radius:var(--radius)">${(search || filter !== 'all') ? 'No projects match this filter.' : 'No projects yet. Create one using the form on the left.'}</div>`}
   </div>`;
