@@ -1179,6 +1179,7 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
   <div class="nav-tab" onclick="switchSection('stock')">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
     Stock
+    <span class="tab-badge" id="stock-badge" style="display:none;background:var(--danger)"></span>
   </div>
 </div>
 </div>
@@ -2273,7 +2274,15 @@ async function setStockQty(id, text) {
   renderStockMain();
 }
 
+function _updateStockBadge() {
+  const badge = document.getElementById('stock-badge');
+  if (!badge) return;
+  const low = stockItems.filter(i => i.qty <= i.low).length;
+  if (low > 0) { badge.textContent = low; badge.style.display = ''; }
+  else { badge.style.display = 'none'; }
+}
 function renderStockMain() {
+  _updateStockBadge();
   const cur = window.currency;
   const el = document.getElementById('stock-main');
   const totalSheets = stockItems.reduce((s, i) => s + i.qty, 0);
@@ -5564,6 +5573,14 @@ function showAuthFromPaywall() {
   _showAuth();
 }
 
+// Keyboard shortcuts
+document.addEventListener('keydown', e => {
+  // Ctrl/Cmd + number: switch tabs
+  if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey) {
+    const tabMap = {'1':'dashboard','2':'projects','3':'clients','4':'quote','5':'orders','6':'schedule','7':'cutlist','8':'cabinet','9':'stock'};
+    if (tabMap[e.key]) { e.preventDefault(); switchSection(tabMap[e.key]); return; }
+  }
+});
 // Escape key closes overlays
 document.addEventListener('keydown', e => {
   if (e.key !== 'Escape') return;
