@@ -729,7 +729,9 @@ canvas { display: block; }
 .oc-value:hover { border-bottom-color: var(--muted); }
 .oc-value:focus { outline: none; border-bottom-color: var(--accent); background: var(--surface2); }
 .oc-pipeline { display: flex; align-items: center; padding: 6px 16px; border-top: 1px solid var(--border2); background: var(--surface2); overflow-x: auto; }
-.pipe-step { display: flex; flex-direction: column; align-items: center; flex-shrink: 0; min-width: 50px; }
+.pipe-step { display: flex; flex-direction: column; align-items: center; flex-shrink: 0; min-width: 50px; transition: opacity 0.15s; }
+.pipe-step:hover { opacity: 0.7; }
+.pipe-step:hover .pipe-dot { transform: scale(1.3); }
 .pipe-dot { width: 8px; height: 8px; border-radius: 50%; border: 2px solid var(--border); background: var(--surface); margin-bottom: 3px; flex-shrink: 0; transition: all 0.2s; }
 .pipe-label { font-size: 8px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.3px; text-align: center; }
 .pipe-active .pipe-label { color: var(--text); }
@@ -4321,7 +4323,7 @@ function renderOrdersMain() {
       const done = i < curIdx;
       const active = i === curIdx;
       const color = active ? STATUS_COLORS[s] : done ? 'var(--success)' : 'var(--border)';
-      return `<div class="pipe-step ${active?'pipe-active':''}${done?' pipe-done':''}">
+      return `<div class="pipe-step ${active?'pipe-active':''}${done?' pipe-done':''}" onclick="setOrderStatus(${o.id},'${s}')" style="cursor:pointer" title="Set to ${stepLabels[i]}">
         <div class="pipe-dot" style="background:${color};border-color:${color}"></div>
         <div class="pipe-label">${stepLabels[i]}</div>
       </div>${i < pipelineSteps.length-1 ? `<div class="pipe-line ${done?'pipe-line-done':''}"></div>` : ''}`;
@@ -7941,7 +7943,7 @@ function renderSchedule() {
     <div style="font-size:14px;font-weight:800;color:var(--text)">Jobs</div>
     <button class="btn btn-outline" onclick="document.getElementById('schedule-today-marker')?.scrollIntoView({behavior:'smooth',block:'center'})" style="font-size:10px;padding:3px 8px;width:auto">Today</button>
   </div>`;
-  events.forEach(e=>{const o=orders.find(x=>x.id===e.id);const st=o?STATUS_LABELS[o.status]||o.status:'';sidebarHTML+=`<div style="display:flex;align-items:center;gap:8px;padding:5px 8px;margin-bottom:2px;border-radius:6px;cursor:pointer" onclick="switchSection('orders')" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''"><div style="width:8px;height:8px;border-radius:2px;background:${e.color};flex-shrink:0"></div><div style="flex:1;min-width:0"><div style="font-size:11px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_escHtml(e.project)}</div><div style="font-size:9px;color:var(--muted)">${_escHtml(e.client)}${st?' · '+st:''}</div></div></div>`;});
+  events.forEach(e=>{const o=orders.find(x=>x.id===e.id);const st=o?STATUS_LABELS[o.status]||o.status:'';sidebarHTML+=`<div style="display:flex;align-items:center;gap:8px;padding:5px 8px;margin-bottom:2px;border-radius:6px;cursor:pointer" onclick="_scrollToSchedBar(${e.id})" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''"><div style="width:8px;height:8px;border-radius:2px;background:${e.color};flex-shrink:0"></div><div style="flex:1;min-width:0"><div style="font-size:11px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_escHtml(e.project)}</div><div style="font-size:9px;color:var(--muted)">${_escHtml(e.client)}${st?' · '+st:''}</div></div></div>`;});
   if(!events.length)sidebarHTML+=`<div style="font-size:12px;color:var(--muted)">No active orders</div>`;
   const sidebarEl = document.getElementById('schedule-sidebar');
   if (sidebarEl) sidebarEl.innerHTML = sidebarHTML;
@@ -7991,7 +7993,7 @@ function renderSchedule() {
       const isRealEnd = e.due && d >= weekStart && d <= weekEnd;
       const radius = (isRealStart&&isRealEnd)?'4px':isRealStart?'4px 0 0 4px':isRealEnd?'0 4px 4px 0':'0';
 
-      cal += `<div style="position:absolute;top:${barTop}px;left:${left}%;width:${width}%;height:18px;padding:0 2px;z-index:2;pointer-events:auto" onclick="switchSection('orders')">
+      cal += `<div class="sched-bar-${e.id}" style="position:absolute;top:${barTop}px;left:${left}%;width:${width}%;height:18px;padding:0 2px;z-index:2;pointer-events:auto" onclick="switchSection('orders')">
         <div style="background:${e.color};color:#fff;font-size:10px;font-weight:600;padding:1px 6px;border-radius:${radius};height:16px;line-height:16px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;cursor:pointer" title="${_escHtml(e.project)} — ${_escHtml(e.client)}">${isRealStart||startInWeek===0?_escHtml(e.project):''}</div>
       </div>`;
       barTop += 20;
@@ -8006,6 +8008,15 @@ function renderSchedule() {
     const todayEl = document.getElementById('schedule-today-marker');
     if (todayEl) todayEl.scrollIntoView({behavior:'smooth',block:'center'});
   }, 100);
+}
+
+function _scrollToSchedBar(orderId) {
+  const bar = document.querySelector('.sched-bar-' + orderId);
+  if (bar) {
+    bar.scrollIntoView({behavior:'smooth',block:'center'});
+    const inner = bar.firstElementChild;
+    if (inner) { inner.style.outline = '2px solid #fff'; inner.style.boxShadow = '0 0 8px rgba(255,255,255,0.5)'; setTimeout(() => { inner.style.outline = ''; inner.style.boxShadow = ''; }, 1500); }
+  }
 }
 
 function setOrderProdStart(id, val) {
@@ -8270,7 +8281,7 @@ function renderClientsMain() {
       <div style="font-size:18px;font-weight:800;color:var(--text);flex:1">Clients <span style="font-size:13px;font-weight:400;color:var(--muted)">(${clients.length})</span></div>
       <input type="text" placeholder="Search clients..." value="${_escHtml(window._clientSearch||'')}" oninput="window._clientSearch=this.value;renderClientsMain()" style="font-size:12px;padding:6px 12px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);width:200px;font-family:inherit">
     </div>
-    ${filtered.length ? filtered.map(clientCard).join('') : `<div style="color:var(--muted);font-size:13px;text-align:center;padding:40px 20px;border:1px dashed var(--border);border-radius:var(--radius)">No clients yet. Add one using the form on the left.</div>`}
+    ${filtered.length ? filtered.map(clientCard).join('') : `<div style="color:var(--muted);font-size:13px;text-align:center;padding:40px 20px;border:1px dashed var(--border);border-radius:var(--radius)">${search ? 'No clients match your search.' : 'No clients yet. Add one using the form on the left.'}</div>`}
   </div>`;
 }
 
@@ -8355,12 +8366,12 @@ function renderProjectsMain() {
       <input type="text" placeholder="Search projects..." value="${_escHtml(window._projSearch||'')}" oninput="window._projSearch=this.value;renderProjectsMain()" style="font-size:12px;padding:6px 12px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);width:200px;font-family:inherit">
     </div>
     <div style="display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap">
-      <button class="btn ${filter==='all'?'btn-primary':'btn-outline'}" onclick="window._projFilter='all';renderProjectsMain()" style="font-size:11px;padding:5px 12px;width:auto">All (${projects.length})</button>
-      <button class="btn ${filter==='active'?'btn-primary':'btn-outline'}" onclick="window._projFilter='active';renderProjectsMain()" style="font-size:11px;padding:5px 12px;width:auto">Active (${activeCount})</button>
-      <button class="btn ${filter==='on-hold'?'btn-primary':'btn-outline'}" onclick="window._projFilter='on-hold';renderProjectsMain()" style="font-size:11px;padding:5px 12px;width:auto">On Hold (${holdCount})</button>
-      <button class="btn ${filter==='complete'?'btn-primary':'btn-outline'}" onclick="window._projFilter='complete';renderProjectsMain()" style="font-size:11px;padding:5px 12px;width:auto">Complete (${doneCount})</button>
+      <button class="ofilter-tab ${filter==='all'?'active':''}" onclick="window._projFilter='all';renderProjectsMain()">All (${projects.length})</button>
+      <button class="ofilter-tab ${filter==='active'?'active':''}" onclick="window._projFilter='active';renderProjectsMain()">Active (${activeCount})</button>
+      <button class="ofilter-tab ${filter==='on-hold'?'active':''}" onclick="window._projFilter='on-hold';renderProjectsMain()">On Hold (${holdCount})</button>
+      <button class="ofilter-tab ${filter==='complete'?'active':''}" onclick="window._projFilter='complete';renderProjectsMain()">Complete (${doneCount})</button>
     </div>
-    ${filtered.length ? filtered.map(projectCard).join('') : `<div style="color:var(--muted);font-size:13px;text-align:center;padding:40px 20px;border:1px dashed var(--border);border-radius:var(--radius)">No projects yet. Create one using the form on the left.</div>`}
+    ${filtered.length ? filtered.map(projectCard).join('') : `<div style="color:var(--muted);font-size:13px;text-align:center;padding:40px 20px;border:1px dashed var(--border);border-radius:var(--radius)">${(search || filter !== 'all') ? 'No projects match this filter.' : 'No projects yet. Create one using the form on the left.'}</div>`}
   </div>`;
 }
 
