@@ -2284,8 +2284,8 @@ function renderStockMain() {
           <div style="font-size:13px;font-weight:700;color:var(--text);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_escHtml(item.name)}</div>
           <span class="badge ${isLow ? 'badge-red' : 'badge-green'}" style="flex-shrink:0;font-size:9px;padding:2px 6px">${isLow ? 'Low' : 'OK'}</span>
         </div>
-        ${subtitle ? `<div style="font-size:10px;color:var(--muted);margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_escHtml(subtitle)}</div>` : ''}
-        ${sup.supplier ? `<div style="font-size:9px;color:var(--text2);margin-bottom:4px">${_escHtml(sup.supplier)}</div>` : (!subtitle ? '<div style="margin-bottom:4px"></div>' : '')}
+        ${subtitle ? `<div style="font-size:10px;color:var(--muted);margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_escHtml(subtitle)}</div>` : ''}
+        ${sup.supplier ? `<div style="font-size:10px;color:var(--text2);margin-bottom:4px;display:flex;align-items:center;gap:4px"><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_escHtml(sup.supplier)}</span>${sup.url ? `<a href="${_escHtml(sup.url)}" target="_blank" rel="noopener" style="color:var(--accent);font-size:9px;flex-shrink:0" title="Open supplier link">↗</a>` : ''}</div>` : (!subtitle ? '<div style="margin-bottom:4px"></div>' : '')}
         <div style="display:flex;justify-content:space-between;align-items:center">
           <div style="display:flex;align-items:center;gap:6px">
             <button class="btn btn-outline" onclick="adjustStock(${item.id},-1)" style="padding:2px 8px;font-size:14px;font-weight:700;line-height:1">−</button>
@@ -2304,7 +2304,7 @@ function renderStockMain() {
       <div style="display:flex;border-top:1px solid var(--border2)">
         <button class="btn btn-outline" onclick="editStockItem(${item.id})" style="flex:1;border:0;border-radius:0;padding:6px;font-size:11px;border-right:1px solid var(--border2)">Edit</button>
         <button class="btn btn-outline" onclick="useStockInCutList(${item.id})" style="flex:1;border:0;border-radius:0;padding:6px;font-size:11px;border-right:1px solid var(--border2)">+ Cut List</button>
-        ${sup.url ? `<a href="${_escHtml(sup.url)}" target="_blank" rel="noopener" class="btn btn-outline" style="flex:1;border:0;border-radius:0;padding:6px;font-size:11px;text-decoration:none;text-align:center;border-right:1px solid var(--border2)">Reorder</a>` : ''}
+        ${sup.url ? `<a href="${_escHtml(sup.url)}" target="_blank" rel="noopener" class="btn btn-outline" style="flex:1;border:0;border-radius:0;padding:6px;font-size:11px;text-decoration:none;text-align:center;border-right:1px solid var(--border2);${isLow?'color:var(--accent);font-weight:700':''}">Reorder${isLow?' ↗':''}</a>` : ''}
         <button class="btn btn-danger" onclick="_confirm('Remove <strong>${_escHtml(item.name)}</strong>?',()=>removeStock(${item.id}))" style="border:0;border-radius:0;padding:6px 10px;font-size:11px">×</button>
       </div>
     </div>`;
@@ -4754,8 +4754,7 @@ function _clientSuggest(input) {
   const box = document.getElementById('q-client-suggest');
   if (!box) return;
   if (!val) { box.style.display = 'none'; return; }
-  // Collect unique clients from quotes and orders
-  const allClients = [...new Set([...quotes.map(q => q.client), ...orders.map(o => o.client)].filter(Boolean))];
+  const allClients = [...new Set([...clients.map(c => c.name), ...quotes.map(q => q.client), ...orders.map(o => o.client)].filter(Boolean))];
   const matches = allClients.filter(c => c.toLowerCase().includes(val) && c.toLowerCase() !== val);
   if (!matches.length) { box.style.display = 'none'; return; }
   box.innerHTML = matches.slice(0,5).map(c => `<div class="client-suggest-item" onmousedown="document.getElementById('q-client').value='${c.replace(/'/g,'&#39;')}';document.getElementById('q-client-suggest').style.display='none'">${c}</div>`).join('');
@@ -4786,7 +4785,7 @@ function _oClientSuggest(input) {
   const box = document.getElementById('o-client-suggest');
   if (!box) return;
   if (!val) { box.style.display = 'none'; return; }
-  const allClients = [...new Set([...quotes.map(q => q.client), ...orders.map(o => o.client)].filter(Boolean))];
+  const allClients = [...new Set([...clients.map(c => c.name), ...quotes.map(q => q.client), ...orders.map(o => o.client)].filter(Boolean))];
   const matches = allClients.filter(c => c.toLowerCase().includes(val) && c.toLowerCase() !== val);
   if (!matches.length) { box.style.display = 'none'; return; }
   box.innerHTML = matches.slice(0,5).map(c => `<div class="client-suggest-item" onmousedown="document.getElementById('o-client').value='${c.replace(/'/g,'&#39;')}';document.getElementById('o-client-suggest').style.display='none'">${c}</div>`).join('');
