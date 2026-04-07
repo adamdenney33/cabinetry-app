@@ -1513,6 +1513,8 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
           <div id="quote-form-preview" style="background:var(--surface2);border-radius:8px;padding:10px 12px;margin-top:8px">
             <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:4px"><span>Labour</span><span id="qfp-labour">—</span></div>
             <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:4px"><span>Materials</span><span id="qfp-materials">—</span></div>
+            <div id="qfp-markup-row" style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:2px"><span id="qfp-markup-label">Markup</span><span id="qfp-markup">—</span></div>
+            <div id="qfp-tax-row" style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:2px"><span id="qfp-tax-label">Tax</span><span id="qfp-tax">—</span></div>
             <div style="border-top:1px solid var(--border);margin:4px 0"></div>
             <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;color:var(--text)"><span>Total</span><span id="qfp-total">—</span></div>
           </div>
@@ -4310,8 +4312,10 @@ async function addOrder() {
   document.getElementById('o-client').value = '';
   document.getElementById('o-project').value = '';
   document.getElementById('o-value').value = '';
+  document.getElementById('o-start').value = '';
   document.getElementById('o-due').value = '';
   document.getElementById('o-notes').value = '';
+  document.getElementById('o-status').value = 'quote';
   document.getElementById('orders-badge').textContent = orders.filter(o => o.status !== 'complete').length;
   renderOrdersMain();
 }
@@ -4566,7 +4570,7 @@ function renderDashboard() {
               ? `<div style="padding:20px;text-align:center;color:var(--muted);font-size:13px">No active orders</div>`
               : activeOrders.slice(0,5).map(o => {
                 const isOD = o.due && o.due !== 'TBD' && !isNaN(new Date(o.due)) && new Date(o.due) < new Date();
-                return `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 18px;border-bottom:1px solid var(--border2);${isOD?'border-left:3px solid var(--danger);':''}">
+                return `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 18px;border-bottom:1px solid var(--border2);cursor:pointer;${isOD?'border-left:3px solid var(--danger);':''}" onclick="switchSection('orders')">
                 <div style="flex:1;min-width:0">
                   <div style="font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${o.project}</div>
                   <div style="font-size:11px;color:${isOD?'var(--danger)':'var(--muted)'}">${o.client} · Due ${o.due}${isOD?' ⚠':''}
@@ -4591,7 +4595,7 @@ function renderDashboard() {
               ${lowStock.length === 0
                 ? `<div style="padding:16px;text-align:center;color:var(--muted);font-size:13px">All materials well stocked</div>`
                 : lowStock.slice(0,4).map(i => `
-                <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 18px;border-bottom:1px solid var(--border2)">
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 18px;border-bottom:1px solid var(--border2);cursor:pointer" onclick="switchSection('stock')">
                   <div>
                     <div style="font-size:12px;font-weight:600;color:var(--text)">${i.name}</div>
                     <div style="font-size:11px;color:var(--danger)">${i.qty} left · reorder at ${i.low}</div>
@@ -4607,7 +4611,7 @@ function renderDashboard() {
             </div>
             <div class="card-body" style="padding:0">
               ${quotes.slice(0,3).map(q => `
-                <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 18px;border-bottom:1px solid var(--border2)">
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 18px;border-bottom:1px solid var(--border2);cursor:pointer" onclick="switchSection('quote')">
                   <div style="flex:1;min-width:0">
                     <div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${q.project}</div>
                     <div style="font-size:11px;color:var(--muted)">${q.client}</div>
@@ -5749,9 +5753,16 @@ function _updateQuotePreview() {
   if (!prev) return;
   if (sub === 0) { prev.style.display = 'none'; return; }
   prev.style.display = '';
+  const markupAmt = sub * mkp / 100;
+  const afterMarkup = sub + markupAmt;
+  const taxAmt = afterMarkup * tax / 100;
   document.getElementById('qfp-labour').textContent    = `${hrs}h @ ${cur}${rate}/hr = ${fmt(labour)}`;
   document.getElementById('qfp-materials').textContent = fmt(mat);
-  document.getElementById('qfp-total').textContent     = fmt(total);
+  document.getElementById('qfp-markup-label').textContent = `Markup (${mkp}%)`;
+  document.getElementById('qfp-markup').textContent = `+${fmt(markupAmt)}`;
+  document.getElementById('qfp-tax-label').textContent = `Tax (${tax}%)`;
+  document.getElementById('qfp-tax').textContent = `+${fmt(taxAmt)}`;
+  document.getElementById('qfp-total').textContent     = fmt(afterMarkup + taxAmt);
 }
 
 // ══════════════════════════════════════════
@@ -8217,7 +8228,10 @@ async function createProject() {
   document.getElementById('pj-name').value = '';
   document.getElementById('pj-client').value = '';
   document.getElementById('pj-desc').value = '';
+  document.getElementById('pj-status').value = 'active';
   renderProjectsMain();
+  // Scroll to the newly created project
+  setTimeout(() => _highlightProject(data.id), 100);
 }
 
 async function updateProject(id, field, value) {
