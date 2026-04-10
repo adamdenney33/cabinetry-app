@@ -1302,20 +1302,14 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
 
           <!-- Cabinet Library smart search -->
           <div style="padding:10px 14px 4px;position:relative">
-            <label style="font-size:10px;font-weight:600;color:var(--muted);margin-bottom:3px;display:block">Cabinet Library</label>
             <div class="smart-input-wrap">
-              <input type="text" id="cq-cabinet-search" placeholder="Search saved templates..." autocomplete="off" oninput="_smartCQLibrarySuggest(this,'cq-cabinet-suggest')" onfocus="_smartCQLibrarySuggest(this,'cq-cabinet-suggest')" onblur="setTimeout(()=>document.getElementById('cq-cabinet-suggest').style.display='none',150)">
+              <input type="text" id="cq-cabinet-search" placeholder="Search or add cabinet..." autocomplete="off" oninput="_smartCQLibrarySuggest(this,'cq-cabinet-suggest')" onfocus="_smartCQLibrarySuggest(this,'cq-cabinet-suggest')" onblur="setTimeout(()=>document.getElementById('cq-cabinet-suggest').style.display='none',150)">
               <div class="smart-input-add" onclick="cqSaveToLibrary()" title="Save current cabinet to library">+</div>
             </div>
             <div id="cq-cabinet-suggest" class="client-suggest-list" style="display:none"></div>
           </div>
 
-          <!-- Active Cabinets list -->
-          <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px 6px">
-            <span style="font-size:12px;font-weight:700;color:var(--text)">Active Cabinets</span>
-            <button class="btn btn-primary" onclick="addCQLine()" style="padding:4px 12px;font-size:11px;width:auto">+ Add Cabinet</button>
-          </div>
-          <div id="cq-cab-list" style="padding:4px 14px"></div>
+          <div id="cq-cab-list" style="display:none"></div>
 
           <!-- Active Cabinet Editor -->
           <div id="cq-cab-editor" style="padding:0 14px 14px"></div>
@@ -1424,11 +1418,11 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
     <div class="cl-left">
       <!-- Projects panel (existing, toggle via library) -->
       <div class="cl-scroll">
-        <!-- Project smart input -->
-        <div style="padding:10px 14px 6px">
-          <label style="font-size:10px;font-weight:600;color:var(--muted);margin-bottom:3px;display:block">Project</label>
+        <!-- Project Library -->
+        <div style="padding:8px 14px 6px;position:relative">
+          <span class="cl-section-title" style="display:block;margin-bottom:4px">Project Library</span>
           <div class="smart-input-wrap">
-            <input type="text" id="cl-project" placeholder="Search or save project..." autocomplete="off" oninput="_smartCLProjectSuggest(this,'cl-project-suggest')" onfocus="_smartCLProjectSuggest(this,'cl-project-suggest')" onblur="setTimeout(()=>document.getElementById('cl-project-suggest').style.display='none',150)">
+            <input type="text" id="cl-project" placeholder="Load or save project parts..." autocomplete="off" style="font-size:12px" oninput="_smartCLProjectSuggest(this,'cl-project-suggest')" onfocus="_smartCLProjectSuggest(this,'cl-project-suggest')" onblur="setTimeout(()=>document.getElementById('cl-project-suggest').style.display='none',150)">
             <div class="smart-input-add" onclick="_openNewProjectPopup('cl-project')" title="Add new project">+</div>
           </div>
           <div id="cl-project-suggest" class="client-suggest-list" style="display:none"></div>
@@ -1439,9 +1433,7 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
           <span class="cl-section-title">Cut Parts</span>
           <div style="display:flex;gap:3px;margin-left:8px;flex:1">
             <button class="cl-col-pill active" id="pill-label" onclick="toggleCol('label')" title="Show/hide label column">Label</button>
-            <button class="cl-col-pill" id="pill-grain" onclick="toggleCol('grain')" title="Show/hide grain column">Grain</button>
             <button class="cl-col-pill" id="pill-material" onclick="toggleCol('material')" title="Show/hide material column">Panel</button>
-            <button class="cl-col-pill" id="pill-notes" onclick="toggleCol('notes')" title="Show/hide notes column">Notes</button>
             <button class="cl-col-pill" id="pill-edgeband" onclick="toggleCol('edgeband')" title="Show/hide edge banding column">Edge Band</button>
           </div>
           <button class="cl-csv-btn" onclick="clearCutList()" title="Clear all parts and panels" style="padding:3px 8px;margin-left:4px;font-size:10px;color:var(--muted)">Clear</button>
@@ -1455,12 +1447,11 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
               <th style="width:60px">L</th>
               <th style="width:60px">W</th>
               <th style="width:72px">Qty</th>
-              <th style="width:48px" class="cl-col-grain" id="th-grain" title="Grain direction">Grain</th>
+              <th style="width:48px" title="Grain direction"></th>
               <th style="width:52px"></th>
               <th style="width:86px" class="cl-col-material" id="th-material">Panel</th>
-              <th style="width:80px" class="cl-col-notes" id="th-notes">Notes</th>
               <th style="width:70px" class="cl-col-edgeband" id="th-edgeband">Edge Band</th>
-              <th style="width:24px"></th>
+              <th style="width:36px"></th>
             </tr>
           </thead>
           <tbody id="pieces-body"></tbody>
@@ -1469,9 +1460,20 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
         <button class="cl-add-btn" onclick="addPiece()">+ Add part</button>
         <input type="file" id="csv-import-input" accept=".csv" style="display:none" onchange="handleCSVImport(this)">
 
+        <!-- Cabinet Library -->
+        <!-- Cabinet Library -->
+        <div style="padding:8px 14px 6px;position:relative">
+          <span class="cl-section-title" style="display:block;margin-bottom:4px">Cabinet Library</span>
+          <div class="smart-input-wrap">
+            <input type="text" id="cl-cabinet-search" placeholder="Load or save cabinet parts..." autocomplete="off" style="font-size:12px" oninput="_smartCLCabinetSuggest(this,'cl-cabinet-suggest')" onfocus="_smartCLCabinetSuggest(this,'cl-cabinet-suggest')" onblur="setTimeout(()=>document.getElementById('cl-cabinet-suggest').style.display='none',150)">
+            <div class="smart-input-add" onclick="_clSaveToCabinetLibrary()" title="Save current cut parts to cabinet library">+</div>
+          </div>
+          <div id="cl-cabinet-suggest" class="client-suggest-list" style="display:none"></div>
+        </div>
+
         <!-- Stock Panels -->
         <div class="cl-section-header" style="padding-top:16px;padding-bottom:4px">
-          <span class="cl-section-title">Stock Panels</span>
+          <span class="cl-section-title">Project Panels</span>
         </div>
         <table class="cl-table" id="sheets-table">
           <thead>
@@ -1482,7 +1484,7 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
               <th style="width:55px">L</th>
               <th style="width:55px">W</th>
               <th style="width:72px">Qty</th>
-              <th style="width:44px" class="cl-col-grain" id="th-grain-sheet" title="Grain direction">Grain</th>
+              <th style="width:44px" title="Grain direction"></th>
               <th style="width:36px" title="Blade kerf allowance">Kerf</th>
               <th style="width:86px" class="cl-col-material"></th>
               <th style="width:80px" class="cl-col-notes"></th>
@@ -1493,11 +1495,11 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
         </table>
         <button class="cl-add-btn" onclick="addSheet()" style="margin-bottom:4px">+ Add panel</button>
 
-        <!-- Stock smart input -->
-        <div style="padding:4px 14px 14px;position:relative">
-          <label style="font-size:10px;font-weight:600;color:var(--muted);margin-bottom:3px;display:block">Add from Stock</label>
+        <!-- Stock Library -->
+        <div style="padding:8px 14px 6px;position:relative">
+          <span class="cl-section-title" style="display:block;margin-bottom:4px">Stock Library</span>
           <div class="smart-input-wrap">
-            <input type="text" id="cl-stock" placeholder="Search stock materials..." autocomplete="off" oninput="_smartCLStockSuggest(this,'cl-stock-suggest')" onfocus="_smartCLStockSuggest(this,'cl-stock-suggest')" onblur="setTimeout(()=>document.getElementById('cl-stock-suggest').style.display='none',150)">
+            <input type="text" id="cl-stock" placeholder="Load or add stock panels..." autocomplete="off" style="font-size:12px" oninput="_smartCLStockSuggest(this,'cl-stock-suggest')" onfocus="_smartCLStockSuggest(this,'cl-stock-suggest')" onblur="setTimeout(()=>document.getElementById('cl-stock-suggest').style.display='none',150)">
             <div class="smart-input-add" onclick="_openNewStockPopup()" title="Add new stock material">+</div>
           </div>
           <div id="cl-stock-suggest" class="client-suggest-list suggest-up" style="display:none"></div>
@@ -3297,7 +3299,7 @@ let layoutZoom = parseFloat(localStorage.getItem('pc_zoom')) || 1.0;
 let layoutColor = true;
 let layoutGrain = true;
 let layoutFontScale = parseFloat(localStorage.getItem('pc_font_scale')) || 1.0;
-let colsVisible = { grain: false, material: false, label: true, notes: false, edgeband: false };
+let colsVisible = { grain: true, material: false, label: true, notes: false, edgeband: false };
 let layoutRotate = false;
 let clShowSummary = true;
 let clShowCutList = true;
@@ -3313,11 +3315,11 @@ const COLORS = [
 // ── GRAIN ICONS ──
 const GRAIN_ICONS = {
   // none: faint equal lines — no constraint
-  'none': `<svg width="20" height="12" viewBox="0 0 20 12" fill="none" stroke="currentColor" stroke-width="1.4" opacity="0.25"><line x1="1" y1="2.5" x2="19" y2="2.5"/><line x1="1" y1="6" x2="19" y2="6"/><line x1="1" y1="9.5" x2="19" y2="9.5"/></svg>`,
-  // h: LONG horizontal lines — grain runs the length of the board
-  'h':    `<svg width="22" height="12" viewBox="0 0 22 12" fill="none" stroke="currentColor" stroke-width="1.6"><line x1="0" y1="2.5" x2="22" y2="2.5"/><line x1="0" y1="6" x2="22" y2="6"/><line x1="0" y1="9.5" x2="22" y2="9.5"/></svg>`,
-  // v: vertical lines — cross grain, same width and height as horizontal icon
-  'v':    `<svg width="22" height="12" viewBox="0 0 22 12" fill="none" stroke="currentColor" stroke-width="1.6"><line x1="2.5" y1="0" x2="2.5" y2="12"/><line x1="6" y1="0" x2="6" y2="12"/><line x1="9.5" y1="0" x2="9.5" y2="12"/><line x1="13" y1="0" x2="13" y2="12"/><line x1="16.5" y1="0" x2="16.5" y2="12"/><line x1="20" y1="0" x2="20" y2="12"/></svg>`,
+  'none': `<svg width="14" height="12" viewBox="0 0 14 12" fill="none" stroke="currentColor" stroke-width="1.4" opacity="0.25"><line x1="1" y1="2.5" x2="13" y2="2.5"/><line x1="1" y1="6" x2="13" y2="6"/><line x1="1" y1="9.5" x2="13" y2="9.5"/></svg>`,
+  // h: horizontal lines — grain runs the length of the board
+  'h':    `<svg width="14" height="12" viewBox="0 0 14 12" fill="none" stroke="currentColor" stroke-width="1.6"><line x1="0" y1="2.5" x2="14" y2="2.5"/><line x1="0" y1="6" x2="14" y2="6"/><line x1="0" y1="9.5" x2="14" y2="9.5"/></svg>`,
+  // v: vertical lines — cross grain
+  'v':    `<svg width="14" height="12" viewBox="0 0 14 12" fill="none" stroke="currentColor" stroke-width="1.6"><line x1="2" y1="0" x2="2" y2="12"/><line x1="5.5" y1="0" x2="5.5" y2="12"/><line x1="9" y1="0" x2="9" y2="12"/><line x1="12.5" y1="0" x2="12.5" y2="12"/></svg>`,
 };
 const EYE_ON  = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
 const EYE_OFF = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`;
@@ -3354,9 +3356,46 @@ function toggleSheet(id) {
   const s = sheets.find(x => x.id === id);
   if (s) { s.enabled = s.enabled === false ? true : false; renderSheets(); }
 }
+let _lastToggleIdx = -1;
+function _clCheckboxClick(id, idx, checked, ev) {
+  if (ev && ev.shiftKey && _lastToggleIdx >= 0) {
+    const from = Math.min(_lastToggleIdx, idx);
+    const to = Math.max(_lastToggleIdx, idx);
+    for (let i = from; i <= to; i++) pieces[i].enabled = checked;
+    _lastToggleIdx = idx;
+    renderPieces(); _saveCutList();
+  } else {
+    pieces[idx].enabled = checked;
+    _lastToggleIdx = idx;
+    // Update row style and dot without full re-render
+    const row = document.querySelector(`#pieces-body tr:nth-child(${idx+1})`);
+    if (row) {
+      row.classList.toggle('cl-row-disabled', !checked);
+      const dot = row.querySelector('.cl-toggle-btn span');
+      if (dot) dot.style.background = checked ? pieces[idx].color : 'var(--muted)';
+      row.querySelectorAll('input:not([type=checkbox]):not(.cl-step-btn),select').forEach(el => el.disabled = !checked);
+      row.querySelectorAll('.cl-step-btn').forEach(el => el.disabled = !checked);
+    }
+    _saveCutList();
+    // Update totals
+    const tot = document.getElementById('pieces-totals');
+    if (tot) {
+      const enabled = pieces.filter(p => p.enabled !== false);
+      const totalQty = enabled.reduce((s,p) => s+p.qty, 0);
+      const totalArea = enabled.reduce((s,p) => s + p.w * p.h * p.qty, 0);
+      const m = window.units === 'metric';
+      const areaStr = m ? (totalArea / 1e6).toFixed(2) + ' m²' : (totalArea / 144).toFixed(1) + ' sq.in.';
+      tot.innerHTML = `<span>${totalQty} pieces · ${areaStr} total</span>`;
+    }
+  }
+}
 function togglePiece(id) {
   const p = pieces.find(x => x.id === id);
-  if (p) { p.enabled = p.enabled === false ? true : false; renderPieces(); }
+  if (p) { p.enabled = !(p.enabled !== false); renderPieces(); _saveCutList(); }
+}
+function _clToggleAll(checked) {
+  pieces.forEach(p => p.enabled = checked);
+  renderPieces();
 }
 
 // ── STEP QTY ──
@@ -3385,11 +3424,6 @@ function toggleCol(col) {
   document.querySelectorAll('.cl-col-' + col).forEach(el => {
     el.style.display = colsVisible[col] ? '' : 'none';
   });
-  if (col === 'grain') {
-    document.querySelectorAll('#sheets-table .cl-col-grain').forEach(el => {
-      el.style.display = colsVisible.grain ? '' : 'none';
-    });
-  }
 }
 
 // ── DRAG REORDER ──
@@ -3545,7 +3579,7 @@ function renderSheets() {
           <button class="cl-step-btn" onclick="stepQty('sheet',${s.id},1)">+</button>
         </div>
       </td>
-      <td class="cl-col-grain cl-grain-cell" style="${colsVisible.grain?'':'display:none'}">
+      <td class="cl-grain-cell">
         <button class="cl-grain-btn${s.grain !== 'none' ? ' active' : ''}"
           onclick="cycleGrain(${s.id},'sheet')" title="Grain: ${s.grain}">${grainIcon(s.grain)}</button>
       </td>
@@ -3687,7 +3721,7 @@ function renderPieces() {
           <button class="cl-step-btn" onclick="stepQty('piece',${p.id},1)">+</button>
         </div>
       </td>
-      <td class="cl-grain-cell cl-col-grain" style="${colsVisible.grain?'':'display:none'}">
+      <td class="cl-grain-cell">
         <button class="cl-grain-btn${p.grain !== 'none' ? ' active' : ''}"
           onclick="cycleGrain(${p.id},'piece')" title="Grain: ${p.grain}">${grainIcon(p.grain)}</button>
       </td>
@@ -3698,13 +3732,6 @@ function renderPieces() {
           ${makeOpts(p.material)}
         </select>
       </td>
-      <td class="cl-col-notes" style="${colsVisible.notes?'':'display:none'}">
-        <input class="cl-input" value="${(p.notes||'').replace(/"/g,'&quot;')}"
-          data-table="pieces" data-row="${i}" data-col="notes"
-          onblur="updatePiece(${p.id},'notes',this.value)"
-          onkeydown="clKeydown(event,'pieces',${i},'notes')"
-          ${dis ? 'disabled' : ''} placeholder="e.g. edge band, veneer">
-      </td>
       <td class="cl-col-edgeband" style="${colsVisible.edgeband?'':'display:none'}">
         <select class="cl-input" style="font-size:12px;padding:4px 6px" onchange="updatePiece(${p.id},'edgeBand',this.value)" ${dis?'disabled':''}>
           <option value="none" ${(p.edgeBand||'none')==='none'?'selected':''}>None</option>
@@ -3714,8 +3741,8 @@ function renderPieces() {
           <option value="all" ${p.edgeBand==='all'?'selected':''}>All edges</option>
         </select>
       </td>
-      <td class="cl-del-cell" style="white-space:nowrap">
-        <button class="cl-del-btn" onclick="duplicatePiece(${p.id})" title="Duplicate part" style="opacity:.6;margin-right:2px">⧉</button>
+      <td class="cl-del-cell" style="white-space:nowrap;display:flex;align-items:center;gap:2px">
+        <input type="checkbox" ${dis ? '' : 'checked'} onclick="_clCheckboxClick(${p.id},${i},this.checked,event)" title="Include in layout&#10;Shift+click to select range" style="cursor:pointer;width:13px;height:13px;accent-color:#888;filter:grayscale(1)">
         <button class="cl-del-btn" onclick="removePiece(${p.id})" title="Remove">${DEL_SVG}</button>
       </td>
     </tr>`;
@@ -5677,19 +5704,19 @@ function _smartClientSuggest(input, boxId) {
   const val = input.value.toLowerCase().trim();
   const box = document.getElementById(boxId);
   if (!box) return;
-  if (!val) { box.style.display = 'none'; return; }
+  _posSuggest(input, box);
   const allClients = [...new Set([...clients.map(c => c.name), ...quotes.map(q => q.client), ...orders.map(o => o.client)].filter(Boolean))];
-  const matches = allClients.filter(c => c.toLowerCase().includes(val) && c.toLowerCase() !== val);
+  const matches = val ? allClients.filter(c => c.toLowerCase().includes(val) && c.toLowerCase() !== val) : allClients;
+  if (!matches.length && !val) { box.style.display = 'none'; return; }
   const inputId = input.id;
-  let html = matches.slice(0,5).map(c => {
+  let html = matches.slice(0,8).map(c => {
     const initial = c.charAt(0).toUpperCase();
     return `<div class="client-suggest-item" onmousedown="document.getElementById('${inputId}').value='${c.replace(/'/g,'&#39;')}';document.getElementById('${boxId}').style.display='none'">
       <span class="suggest-icon">${initial}</span>
       <span>${_escHtml(c)}</span>
     </div>`;
   }).join('');
-  // Always show "Add new" option at bottom
-  html += `<div class="client-suggest-add" onmousedown="_openNewClientPopup('${inputId}')">+ Add "${_escHtml(input.value.trim())}" as new client</div>`;
+  html += `<div class="client-suggest-add" onmousedown="_openNewClientPopup('${inputId}')">+ Add${val ? ' "'+_escHtml(input.value.trim())+'" as' : ''} new client</div>`;
   box.innerHTML = html;
   box.style.display = '';
 }
@@ -5698,11 +5725,12 @@ function _smartProjectSuggest(input, boxId) {
   const val = input.value.toLowerCase().trim();
   const box = document.getElementById(boxId);
   if (!box) return;
-  if (!val) { box.style.display = 'none'; return; }
+  _posSuggest(input, box);
   const allProjects = [...new Set([...projects.map(p => p.name), ...quotes.map(q => q.project), ...orders.map(o => o.project)].filter(Boolean))];
-  const matches = allProjects.filter(p => p.toLowerCase().includes(val) && p.toLowerCase() !== val);
+  const matches = val ? allProjects.filter(p => p.toLowerCase().includes(val) && p.toLowerCase() !== val) : allProjects;
+  if (!matches.length && !val) { box.style.display = 'none'; return; }
   const inputId = input.id;
-  let html = matches.slice(0,5).map(p => {
+  let html = matches.slice(0,8).map(p => {
     const proj = projects.find(px => px.name === p);
     const clientName = proj ? proj.client : '';
     return `<div class="client-suggest-item" onmousedown="document.getElementById('${inputId}').value='${p.replace(/'/g,'&#39;')}';document.getElementById('${boxId}').style.display='none';_autoFillClientFromProject('${p.replace(/'/g,'&#39;')}','${inputId}')">
@@ -5711,7 +5739,7 @@ function _smartProjectSuggest(input, boxId) {
       ${clientName ? `<span style="font-size:11px;color:var(--muted)">${_escHtml(clientName)}</span>` : ''}
     </div>`;
   }).join('');
-  html += `<div class="client-suggest-add" onmousedown="_openNewProjectPopup('${inputId}')">+ Add "${_escHtml(input.value.trim())}" as new project</div>`;
+  html += `<div class="client-suggest-add" onmousedown="_openNewProjectPopup('${inputId}')">+ Add${val ? ' "'+_escHtml(input.value.trim())+'" as' : ''} new project</div>`;
   box.innerHTML = html;
   box.style.display = '';
 }
@@ -5794,7 +5822,10 @@ function _openNewProjectPopup(targetInputId) {
     </div>
     <div class="popup-body">
       <div class="pf"><label class="pf-label">PROJECT NAME</label><input class="pf-input pf-input-lg" id="pnp-name" value="${_escHtml(existing)}"></div>
-      <div class="pf"><label class="pf-label">CLIENT</label><input class="pf-input" id="pnp-client" value="${_escHtml(clientVal)}" placeholder="Client name..."></div>
+      <div class="pf" style="position:relative"><label class="pf-label">CLIENT</label>
+        <div class="smart-input-wrap"><input class="pf-input" id="pnp-client" value="${_escHtml(clientVal)}" placeholder="Search or add client..." autocomplete="off" oninput="_smartClientSuggest(this,'pnp-client-suggest')" onfocus="_smartClientSuggest(this,'pnp-client-suggest')" onblur="setTimeout(()=>document.getElementById('pnp-client-suggest').style.display='none',150)"><div class="smart-input-add" onclick="_openNewClientPopup('pnp-client')" title="Add new client">+</div></div>
+        <div id="pnp-client-suggest" class="client-suggest-list" style="display:none"></div>
+      </div>
       <div class="pf"><label class="pf-label">DESCRIPTION</label><textarea class="pf-textarea" id="pnp-desc" rows="2" placeholder="Project details..."></textarea></div>
     </div>
     <div class="popup-footer">
@@ -7543,10 +7574,10 @@ function renderCQRates() {
   el.innerHTML = `
     ${section('core', 'Core Rates', '3 rates', coreContent)}
     ${section('labour', 'Labour Times', '9 rates', labourContent)}
-    ${section('materials', 'Sheet Goods', '('+cqSettings.materials.length+' items)', listItems(cqSettings.materials, 'cqSettings.materials', cur))}
+    ${section('materials', 'Stock Materials', '('+stockItems.length+' in stock)', `<div style="position:relative;margin-top:6px"><div class="smart-input-wrap"><input type="text" id="rates-stock-search" placeholder="Search stock materials..." autocomplete="off" style="font-size:12px" oninput="_smartRatesStockSuggest(this,'rates-stock-suggest')" onfocus="_smartRatesStockSuggest(this,'rates-stock-suggest')" onblur="setTimeout(()=>document.getElementById('rates-stock-suggest').style.display='none',150)"><div class="smart-input-add" onclick="_openNewStockPopup()" title="Add new stock material">+</div></div><div id="rates-stock-suggest" class="client-suggest-list" style="display:none"></div></div>`)}
     ${section('hardware', 'Hardware', '('+cqSettings.hardware.length+' items)', listItems(cqSettings.hardware, 'cqSettings.hardware', cur))}
-    ${section('finishes', 'Finishes', '('+(cqSettings.finishes||[]).length+' items)', listItems(cqSettings.finishes||[], 'cqSettings.finishes', cur+'/m²'))}
-    ${section('edgebanding', 'Edge Banding', '('+(cqSettings.edgeBanding||[]).length+' types)', edgeBandContent)}
+    ${section('finishes', 'Finishes', '('+stockItems.filter(s=>s.category==='Finishing').length+' in stock)', `<div style="position:relative;margin-top:6px"><div class="smart-input-wrap"><input type="text" id="rates-finish-search" placeholder="Search finishing products..." autocomplete="off" style="font-size:12px" oninput="_smartRatesFinishSuggest(this,'rates-finish-suggest')" onfocus="_smartRatesFinishSuggest(this,'rates-finish-suggest')" onblur="setTimeout(()=>document.getElementById('rates-finish-suggest').style.display='none',150)"><div class="smart-input-add" onclick="_openNewStockPopup()" title="Add new finish to stock">+</div></div><div id="rates-finish-suggest" class="client-suggest-list" style="display:none"></div></div>`)}
+    ${section('edgebanding', 'Edge Banding', '('+stockItems.filter(s=>s.category==='Edge Banding').length+' in stock)', `<div style="position:relative;margin-top:6px"><div class="smart-input-wrap"><input type="text" id="rates-edge-search" placeholder="Search edge banding..." autocomplete="off" style="font-size:12px" oninput="_smartRatesEdgeSuggest(this,'rates-edge-suggest')" onfocus="_smartRatesEdgeSuggest(this,'rates-edge-suggest')" onblur="setTimeout(()=>document.getElementById('rates-edge-suggest').style.display='none',150)"><div class="smart-input-add" onclick="_openNewStockPopup()" title="Add new edge banding to stock">+</div></div><div id="rates-edge-suggest" class="client-suggest-list" style="display:none"></div></div>`)}
     ${section('basetypes', 'Base Types', '('+(cqSettings.baseTypes||[]).length+' types)', listItems(cqSettings.baseTypes||[], 'cqSettings.baseTypes', cur))}
     ${section('constructions', 'Construction Types', '('+(cqSettings.constructions||[]).length+' types)', listItems(cqSettings.constructions||[], 'cqSettings.constructions', cur+'/m²'))}
   `;
@@ -7943,8 +7974,10 @@ function calcCQLine(line) {
   const T = 0.018;
   const innerW = Math.max(0, W - 2 * T);
 
-  // Material price per m2
+  // Material price per m2 — checks stockItems first, then cqSettings.materials as fallback
   function mp(matName) {
+    const s = stockItems.find(s => s.name === matName);
+    if (s) return s.cost / (s.w && s.h ? (s.w/1000)*(s.h/1000) : SHEET_M2);
     const m = cqSettings.materials.find(m => m.name === matName);
     return m ? m.price / SHEET_M2 : 0;
   }
@@ -7982,7 +8015,8 @@ function calcCQLine(line) {
 
   // Finishing cost (from finish presets in settings)
   const allSurface = 2*H*D + 2*innerW*D + W*H;
-  const finishPricePerM2 = (cqSettings.finishes||[]).find(f => f.name === line.finish)?.price || 0;
+  const _fs = stockItems.find(s => s.name === line.finish && s.category === 'Finishing');
+  const finishPricePerM2 = _fs ? _fs.cost : ((cqSettings.finishes||[]).find(f => f.name === line.finish)?.price || 0);
   const finishCost = allSurface * finishPricePerM2;
   matCost += finishCost;
 
@@ -8112,8 +8146,8 @@ function renderCQEditor() {
 
   const cur = window.currency;
   const c = calcCQLine(line);
-  const matSmart = (field, val) => `<div style="position:relative"><div class="smart-input-wrap"><input type="text" id="cq-mat-${field}" value="${_escHtml(val||'')}" autocomplete="off" style="font-size:13px" oninput="_smartCQMaterialSuggest(this,'cq-mat-suggest-${field}','${field}')" onfocus="_smartCQMaterialSuggest(this,'cq-mat-suggest-${field}','${field}')" onblur="setTimeout(()=>{document.getElementById('cq-mat-suggest-${field}').style.display='none';cqUpdateField('${field}',this.value)},150)"><div class="smart-input-add" onclick="_openNewCQMaterialPopup('${field}')" title="Add new material">+</div></div><div id="cq-mat-suggest-${field}" class="client-suggest-list" style="display:none"></div></div>`;
-  const finishSmart = () => `<div style="position:relative"><div class="smart-input-wrap"><input type="text" id="cq-mat-finish" value="${_escHtml(line.finish||'None')}" autocomplete="off" style="font-size:13px" oninput="_smartCQFinishSuggest(this,'cq-mat-suggest-finish')" onfocus="_smartCQFinishSuggest(this,'cq-mat-suggest-finish')" onblur="setTimeout(()=>{document.getElementById('cq-mat-suggest-finish').style.display='none';cqUpdateField('finish',this.value)},150)"><div class="smart-input-add" onclick="_openNewCQFinishPopup()" title="Add new finish">+</div></div><div id="cq-mat-suggest-finish" class="client-suggest-list" style="display:none"></div></div>`;
+  const matSmart = (field, val) => `<div style="position:relative"><div class="smart-input-wrap"><input type="text" id="cq-mat-${field}" value="${_escHtml(val||'')}" autocomplete="off" style="font-size:13px" oninput="_smartCQMaterialSuggest(this,'cq-mat-suggest-${field}','${field}')" onfocus="_smartCQMaterialSuggest(this,'cq-mat-suggest-${field}','${field}')" onblur="setTimeout(()=>{document.getElementById('cq-mat-suggest-${field}').style.display='none';cqUpdateField('${field}',this.value)},150)"><div class="smart-input-add" onclick="_openNewStockPopup()" title="Add new material">+</div></div><div id="cq-mat-suggest-${field}" class="client-suggest-list" style="display:none"></div></div>`;
+  const finishSmart = () => `<div style="position:relative"><div class="smart-input-wrap"><input type="text" id="cq-mat-finish" value="${_escHtml(line.finish||'None')}" autocomplete="off" style="font-size:13px" oninput="_smartCQFinishSuggest(this,'cq-mat-suggest-finish')" onfocus="_smartCQFinishSuggest(this,'cq-mat-suggest-finish')" onblur="setTimeout(()=>{document.getElementById('cq-mat-suggest-finish').style.display='none';cqUpdateField('finish',this.value)},150)"><div class="smart-input-add" onclick="_openNewStockPopup()" title="Add new finish">+</div></div><div id="cq-mat-suggest-finish" class="client-suggest-list" style="display:none"></div></div>`;
   const stepper = (field, val, min) => `<div class="cl-stepper"><button class="cl-step-btn" onclick="cqStepField('${field}',-1)">−</button><input type="number" class="cl-input cl-qty-input" value="${val}" min="${min||0}" style="font-size:14px;width:42px" onchange="cqUpdateField('${field}',this.value)"><button class="cl-step-btn" onclick="cqStepField('${field}',1)">+</button></div>`;
   const so = sec => cqOpenSections.has(line.id + '-' + sec);
   const chev = sec => `<span style="font-size:10px;color:var(--muted);transition:transform .2s;display:inline-block;${so(sec)?'transform:rotate(90deg)':''}">&#9654;</span>`;
@@ -8131,9 +8165,10 @@ function renderCQEditor() {
 
   // Calculate per-section costs
   const W=line.w/1000, H=line.h/1000, D=line.d/1000, T=0.018, iW=Math.max(0,W-2*T);
-  function mp(n){ const m=cqSettings.materials.find(m=>m.name===n); return m?m.price/2.9768:0; }
+  function mp(n){ const s=stockItems.find(s=>s.name===n); if(s) return s.cost/(s.w&&s.h?(s.w/1000)*(s.h/1000):2.9768); const m=cqSettings.materials.find(m=>m.name===n); return m?m.price/2.9768:0; }
   const carcassCost = (2*H*D + 2*iW*D)*mp(line.material) + W*H*mp(line.backMat);
-  const finishPrice = (cqSettings.finishes||[]).find(f=>f.name===line.finish)?.price || 0;
+  const _fss = stockItems.find(s => s.name === line.finish && s.category === 'Finishing');
+  const finishPrice = _fss ? _fss.cost : ((cqSettings.finishes||[]).find(f=>f.name===line.finish)?.price || 0);
   const surfArea = 2*H*D + 2*iW*D + W*H;
   const finishCostVal = surfArea * finishPrice;
   const doorCost = line.doors > 0 ? line.doors*(iW/Math.max(1,line.doors))*(H*(line.doorPct||95)/100)*mp(line.doorMat||line.material) : 0;
@@ -8143,12 +8178,6 @@ function renderCQEditor() {
 
   el.innerHTML = `
     <div style="border-top:1px solid var(--border);padding-top:10px;margin-top:6px">
-
-      <!-- Name (always visible) -->
-      <div style="margin-bottom:10px">
-        <label style="${LB}">Cabinet Name</label>
-        <input type="text" value="${line.name||''}" placeholder="e.g. Kitchen Base 1" style="${IS};font-weight:600" oninput="cqUpdateField('name',this.value)">
-      </div>
 
       <!-- CABINET (dims + material + finish + construction + base) -->
       <div style="${SB}">
@@ -8404,6 +8433,76 @@ function _posSuggest(input, box) {
   }
 }
 
+// ── Rates Stock Smart Suggest (opens stock edit popup on click) ──
+function _smartRatesStockSuggest(input, boxId) {
+  const box = document.getElementById(boxId);
+  if (!box) return;
+  _posSuggest(input, box);
+  const q = input.value.trim().toLowerCase();
+  const cur = window.currency;
+  const pool = stockItems.filter(s => s.category === 'Sheet Goods' || s.category === 'Solid Timber' || s.category === 'Edge Banding' || (s.w > 0 && s.h > 0));
+  const matches = q ? pool.filter(s => s.name.toLowerCase().includes(q)) : pool;
+  let html = '';
+  matches.slice(0, 10).forEach(s => {
+    const dims = s.w && s.h ? `${s.w}×${s.h}` : '';
+    const qtyColor = s.qty <= (s.low || 3) ? '#ef4444' : '#22c55e';
+    html += `<div class="client-suggest-item" onmousedown="document.getElementById('rates-stock-search').value='';document.getElementById('${boxId}').style.display='none';_openStockPopup(${s.id})">
+      <span class="suggest-icon" style="background:${qtyColor}20;color:${qtyColor}">${s.qty}</span>
+      <span style="flex:1">${_escHtml(s.name)}</span>
+      <span style="font-size:10px;color:var(--muted)">${dims ? dims + ' · ' : ''}${cur}${s.cost}/sheet</span>
+    </div>`;
+  });
+  html += `<div class="client-suggest-add" onmousedown="_openNewStockPopup()">+ Add new stock material</div>`;
+  box.innerHTML = html;
+  box.style.display = matches.length || q ? '' : 'none';
+}
+
+// ── Rates Finish Smart Suggest ──
+function _smartRatesFinishSuggest(input, boxId) {
+  const box = document.getElementById(boxId);
+  if (!box) return;
+  _posSuggest(input, box);
+  const q = input.value.trim().toLowerCase();
+  const cur = window.currency;
+  const pool = stockItems.filter(s => s.category === 'Finishing');
+  const matches = q ? pool.filter(s => s.name.toLowerCase().includes(q)) : pool;
+  let html = '';
+  matches.slice(0, 10).forEach(s => {
+    const qtyColor = s.qty <= (s.low || 3) ? '#ef4444' : '#22c55e';
+    html += `<div class="client-suggest-item" onmousedown="document.getElementById('rates-finish-search').value='';document.getElementById('${boxId}').style.display='none';_openStockPopup(${s.id})">
+      <span class="suggest-icon" style="background:${qtyColor}20;color:${qtyColor}">${s.qty}</span>
+      <span style="flex:1">${_escHtml(s.name)}</span>
+      <span style="font-size:10px;color:var(--muted)">${cur}${s.cost}/m²</span>
+    </div>`;
+  });
+  html += `<div class="client-suggest-add" onmousedown="_openNewStockPopup()">+ Add new finish to stock</div>`;
+  box.innerHTML = html;
+  box.style.display = matches.length || q ? '' : 'none';
+}
+
+// ── Rates Edge Banding Smart Suggest ──
+function _smartRatesEdgeSuggest(input, boxId) {
+  const box = document.getElementById(boxId);
+  if (!box) return;
+  _posSuggest(input, box);
+  const q = input.value.trim().toLowerCase();
+  const cur = window.currency;
+  const pool = stockItems.filter(s => s.category === 'Edge Banding');
+  const matches = q ? pool.filter(s => s.name.toLowerCase().includes(q)) : pool;
+  let html = '';
+  matches.slice(0, 10).forEach(s => {
+    const qtyColor = s.qty <= (s.low || 3) ? '#ef4444' : '#22c55e';
+    html += `<div class="client-suggest-item" onmousedown="document.getElementById('rates-edge-search').value='';document.getElementById('${boxId}').style.display='none';_openStockPopup(${s.id})">
+      <span class="suggest-icon" style="background:${qtyColor}20;color:${qtyColor}">${s.qty}</span>
+      <span style="flex:1">${_escHtml(s.name)}</span>
+      <span style="font-size:10px;color:var(--muted)">${cur}${s.cost}/m</span>
+    </div>`;
+  });
+  html += `<div class="client-suggest-add" onmousedown="_openNewStockPopup()">+ Add new edge banding to stock</div>`;
+  box.innerHTML = html;
+  box.style.display = matches.length || q ? '' : 'none';
+}
+
 // ── Cabinet Material Smart Suggest ──
 function _smartCQMaterialSuggest(input, boxId, fieldName) {
   const box = document.getElementById(boxId);
@@ -8411,16 +8510,20 @@ function _smartCQMaterialSuggest(input, boxId, fieldName) {
   _posSuggest(input, box);
   const q = input.value.trim().toLowerCase();
   const cur = window.currency;
-  const matches = q ? cqSettings.materials.filter(m => m.name.toLowerCase().includes(q)) : cqSettings.materials;
+  // Search from shared stockItems library (Sheet Goods + items with dimensions)
+  const pool = stockItems.filter(s => s.category === 'Sheet Goods' || s.category === 'Solid Timber' || s.category === 'Edge Banding' || (s.w > 0 && s.h > 0));
+  const matches = q ? pool.filter(s => s.name.toLowerCase().includes(q)) : pool;
   let html = '';
-  matches.slice(0, 8).forEach(m => {
-    html += `<div class="client-suggest-item" onmousedown="document.getElementById('cq-mat-${fieldName}').value='${_escHtml(m.name)}';cqUpdateField('${fieldName}','${_escHtml(m.name)}');document.getElementById('${boxId}').style.display='none'">
-      <span class="suggest-icon" style="background:var(--accent-dim);color:var(--accent)">M</span>
-      <span style="flex:1">${_escHtml(m.name)}</span>
-      <span style="font-size:10px;color:var(--muted)">${cur}${m.price}/sheet</span>
+  matches.slice(0, 8).forEach(s => {
+    const dims = s.w && s.h ? `${s.w}×${s.h}` : '';
+    const qtyColor = s.qty <= (s.low || 3) ? '#ef4444' : '#22c55e';
+    html += `<div class="client-suggest-item" onmousedown="document.getElementById('cq-mat-${fieldName}').value='${_escHtml(s.name)}';cqUpdateField('${fieldName}','${_escHtml(s.name)}');document.getElementById('${boxId}').style.display='none'">
+      <span class="suggest-icon" style="background:${qtyColor}20;color:${qtyColor}">${s.qty}</span>
+      <span style="flex:1">${_escHtml(s.name)}</span>
+      <span style="font-size:10px;color:var(--muted)">${dims ? dims + ' · ' : ''}${cur}${s.cost}/sheet</span>
     </div>`;
   });
-  if (q) html += `<div class="client-suggest-add" onmousedown="_openNewCQMaterialPopup('${fieldName}')">+ Add "${_escHtml(input.value.trim())}" as new material</div>`;
+  html += `<div class="client-suggest-add" onmousedown="_openNewStockPopup()">+ Add new stock material</div>`;
   box.innerHTML = html;
   box.style.display = matches.length || q ? '' : 'none';
 }
@@ -8431,17 +8534,18 @@ function _smartCQFinishSuggest(input, boxId) {
   _posSuggest(input, box);
   const q = input.value.trim().toLowerCase();
   const cur = window.currency;
-  const finishes = cqSettings.finishes || [];
-  const matches = q ? finishes.filter(f => f.name.toLowerCase().includes(q)) : finishes;
+  const pool = stockItems.filter(s => s.category === 'Finishing');
+  const matches = q ? pool.filter(s => s.name.toLowerCase().includes(q)) : pool;
   let html = '';
-  matches.slice(0, 8).forEach(f => {
-    html += `<div class="client-suggest-item" onmousedown="document.getElementById('cq-mat-finish').value='${_escHtml(f.name)}';cqUpdateField('finish','${_escHtml(f.name)}');document.getElementById('${boxId}').style.display='none'">
-      <span class="suggest-icon" style="background:var(--accent-dim);color:var(--accent)">F</span>
-      <span style="flex:1">${_escHtml(f.name)}</span>
-      ${f.price ? `<span style="font-size:10px;color:var(--muted)">${cur}${f.price}/m²</span>` : ''}
+  matches.slice(0, 8).forEach(s => {
+    const qtyColor = s.qty <= (s.low || 3) ? '#ef4444' : '#22c55e';
+    html += `<div class="client-suggest-item" onmousedown="document.getElementById('cq-mat-finish').value='${_escHtml(s.name)}';cqUpdateField('finish','${_escHtml(s.name)}');document.getElementById('${boxId}').style.display='none'">
+      <span class="suggest-icon" style="background:${qtyColor}20;color:${qtyColor}">${s.qty}</span>
+      <span style="flex:1">${_escHtml(s.name)}</span>
+      <span style="font-size:10px;color:var(--muted)">${cur}${s.cost}/unit</span>
     </div>`;
   });
-  if (q) html += `<div class="client-suggest-add" onmousedown="_openNewCQFinishPopup()">+ Add "${_escHtml(input.value.trim())}" as new finish</div>`;
+  html += `<div class="client-suggest-add" onmousedown="_openNewStockPopup()">+ Add new finish to stock</div>`;
   box.innerHTML = html;
   box.style.display = matches.length || q ? '' : 'none';
 }
@@ -8480,7 +8584,7 @@ function _saveNewCQMaterial(fieldName) {
   _toast('"' + name + '" added to materials', 'success');
 }
 
-function _openNewCQFinishPopup() {
+function _openNewStockPopup() {
   const existing = document.getElementById('cq-mat-finish')?.value || '';
   _openPopup(`
     <div class="popup-header">
@@ -8917,6 +9021,7 @@ function renderCLLibraries() {}
 function _smartCLProjectSuggest(input, boxId) {
   const box = document.getElementById(boxId);
   if (!box) return;
+  _posSuggest(input, box);
   const q = input.value.trim().toLowerCase();
   const matches = q ? _clProjectCache.filter(p => p.name.toLowerCase().includes(q)).slice(0, 8) : _clProjectCache.slice(0, 8);
   if (matches.length === 0 && !q) { box.style.display = 'none'; return; }
@@ -8939,6 +9044,7 @@ function _smartCLProjectSuggest(input, boxId) {
 function _smartCLStockSuggest(input, boxId) {
   const box = document.getElementById(boxId);
   if (!box) return;
+  _posSuggest(input, box);
   const q = input.value.trim().toLowerCase();
   // Show sheet goods that match
   const sheetItems = stockItems.filter(s => s.category === 'Sheet Goods' || (s.w > 0 && s.h > 0));
@@ -8963,6 +9069,159 @@ function _smartCLStockSuggest(input, boxId) {
 }
 
 function _clAddPanelFromStock(idx) { const item = stockItems[idx]; if (!item) return; addSheet(item.name, item.w, item.h, Math.max(1, item.qty)); _toast('"'+item.name+'" added to panels', 'success'); }
+
+// ── Cut List Cabinet Library ──
+function _smartCLCabinetSuggest(input, boxId) {
+  const box = document.getElementById(boxId);
+  if (!box) return;
+  _posSuggest(input, box);
+  const q = input.value.trim().toLowerCase();
+  const cur = window.currency;
+  const matches = q ? cqLibrary.filter(c => (c._libName||c.name||'').toLowerCase().includes(q)) : cqLibrary;
+  let html = '';
+  matches.slice(0, 8).forEach(c => {
+    const idx = cqLibrary.indexOf(c);
+    const partCount = _cabinetPartCount(c);
+    html += `<div class="client-suggest-item" onmousedown="_clLoadCabinetParts(${idx});document.getElementById('cl-cabinet-search').value='';document.getElementById('${boxId}').style.display='none'">
+      <span class="suggest-icon" style="background:var(--accent-dim);color:var(--accent)">C</span>
+      <span style="flex:1">${_escHtml(c._libName||c.name||'Cabinet')}</span>
+      <span style="font-size:10px;color:var(--muted)">${c.w}×${c.h} · ${partCount} parts</span>
+    </div>`;
+  });
+  html += `<div class="client-suggest-add" onmousedown="_clSaveToCabinetLibrary()">+ Save current cut parts to library</div>`;
+  box.innerHTML = html;
+  box.style.display = matches.length || q ? '' : 'none';
+}
+
+// Count how many cut parts a cabinet would produce
+function _cabinetPartCount(cab) {
+  let n = 4; // 2 sides + top + bottom
+  if (cab.backMat) n++; // back panel
+  n += (cab.doors || 0);
+  n += (cab.drawers || 0) * 2; // front + box per drawer
+  n += (cab.shelves || 0) + (cab.adjShelves || 0) + (cab.looseShelves || 0);
+  n += (cab.partitions || 0) + (cab.endPanels || 0);
+  return n;
+}
+
+// Explode a saved cabinet into individual cut list pieces
+function _clLoadCabinetParts(libIdx) {
+  const cab = cqLibrary[libIdx];
+  if (!cab) return;
+  const W = cab.w, H = cab.h, D = cab.d;
+  const T = 18; // carcass thickness mm
+  const iW = Math.max(0, W - 2*T);
+  const mat = cab.material || '';
+  const backMat = cab.backMat || mat;
+  const doorMat = cab.doorMat || mat;
+  const drwFrontMat = cab.drawerFrontMat || mat;
+  const drwInnerMat = cab.drawerInnerMat || backMat;
+  const name = cab._libName || cab.name || 'Cabinet';
+
+  // Carcass panels
+  addPiece(name + ' — Side', H, D, 2, 'none');
+  addPiece(name + ' — Top/Bottom', iW, D, 2, 'none');
+  if (backMat) addPiece(name + ' — Back', W, H, 1, 'none');
+
+  // Doors
+  if (cab.doors > 0) {
+    const doorPct = (cab.doorPct || 95) / 100;
+    const doorH = Math.round(H * doorPct);
+    const doorW = Math.round(iW / Math.max(1, cab.doors));
+    addPiece(name + ' — Door', doorW, doorH, cab.doors, 'none');
+  }
+
+  // Drawers
+  if (cab.drawers > 0) {
+    const drwPct = (cab.drawerPct || 85) / 100;
+    const drwH = Math.round((H * drwPct) / cab.drawers);
+    addPiece(name + ' — Drawer Front', iW, drwH, cab.drawers, 'none');
+    // Drawer box sides (2 per drawer) + front/back (2 per drawer)
+    const boxH = drwH - 20; // box slightly shorter than front
+    const boxD = D - 40; // box shorter than carcass depth
+    addPiece(name + ' — Drawer Side', boxD, boxH, cab.drawers * 2, 'none');
+    addPiece(name + ' — Drawer F/B', Math.max(0, iW - 2*T), boxH, cab.drawers * 2, 'none');
+    addPiece(name + ' — Drawer Base', Math.max(0, iW - 2*T), boxD, cab.drawers, 'none');
+  }
+
+  // Shelves
+  const shelfCount = (cab.shelves||0) + (cab.adjShelves||0) + (cab.looseShelves||0);
+  if (shelfCount > 0) addPiece(name + ' — Shelf', iW, D - T, shelfCount, 'none');
+
+  // Partitions
+  if (cab.partitions > 0) addPiece(name + ' — Partition', H, D, cab.partitions, 'none');
+
+  // End panels
+  if (cab.endPanels > 0) addPiece(name + ' — End Panel', H, D, cab.endPanels, 'none');
+
+  renderPieces();
+  _toast(`"${name}" — ${_cabinetPartCount(cab)} parts added to cut list`, 'success');
+}
+
+// Save current cut parts as a cabinet library entry
+function _clSaveToCabinetLibrary() {
+  if (!pieces.length) { _toast('No cut parts to save', 'error'); return; }
+  const projName = document.getElementById('cl-project')?.value?.trim() || '';
+  const defaultName = projName || `Cut List ${new Date().toLocaleDateString()}`;
+  _openPopup(`
+    <div class="popup-header">
+      <div class="popup-title">Save to Cabinet Library</div>
+      <button class="popup-close" onclick="_closePopup()">×</button>
+    </div>
+    <div class="popup-body">
+      <div class="pf"><label class="pf-label">Template Name</label><input class="pf-input pf-input-lg" id="pcl-name" value="${_escHtml(defaultName)}"></div>
+      <div style="font-size:11px;color:var(--muted);margin-top:4px">${pieces.length} cut parts will be saved as a reusable template.</div>
+    </div>
+    <div class="popup-footer">
+      <button class="btn btn-outline" onclick="_closePopup()">Cancel</button>
+      <button class="btn btn-accent" onclick="_confirmSaveCLToCabLib()">Save Template</button>
+    </div>
+  `, 'sm');
+  setTimeout(() => { const i = document.getElementById('pcl-name'); if (i) { i.focus(); i.select(); } }, 50);
+}
+
+function _confirmSaveCLToCabLib() {
+  const name = _popupVal('pcl-name');
+  if (!name) { _toast('Name is required', 'error'); return; }
+  // Create a lightweight cabinet library entry that stores cut parts directly
+  const entry = cqDefaultLine();
+  entry.id = Date.now();
+  entry._libName = name;
+  entry.name = name;
+  // Store cut parts snapshot
+  entry._cutParts = pieces.filter(p => p.enabled !== false).map(p => ({
+    label: p.label, w: p.w, h: p.h, qty: p.qty, grain: p.grain || 'none', material: p.material || '', notes: p.notes || '', edgeBand: p.edgeBand || 'none'
+  }));
+  // Estimate dims from largest part
+  const maxW = Math.max(...pieces.map(p => Math.max(p.w, p.h)), 600);
+  const maxD = Math.max(...pieces.map(p => Math.min(p.w, p.h)), 560);
+  entry.w = maxW; entry.h = maxW; entry.d = maxD;
+  cqLibrary.push(entry);
+  saveCQLibrary();
+  _closePopup();
+  _toast(`"${name}" saved to cabinet library`, 'success');
+}
+
+// Override _clLoadCabinetParts to also handle entries with _cutParts
+const _clLoadCabinetParts_orig = _clLoadCabinetParts;
+_clLoadCabinetParts = function(libIdx) {
+  const cab = cqLibrary[libIdx];
+  if (!cab) return;
+  if (cab._cutParts && cab._cutParts.length) {
+    // Load stored cut parts directly
+    cab._cutParts.forEach(p => {
+      addPiece(p.label, p.w, p.h, p.qty, p.grain);
+      // Set material and notes on the last added piece
+      const last = pieces[pieces.length - 1];
+      if (last) { last.material = p.material || ''; last.notes = p.notes || ''; last.edgeBand = p.edgeBand || 'none'; }
+    });
+    renderPieces();
+    _toast(`"${cab._libName}" — ${cab._cutParts.length} parts loaded`, 'success');
+    return;
+  }
+  // Otherwise explode from cabinet dimensions
+  _clLoadCabinetParts_orig(libIdx);
+};
 function renderCabLibraries() {}
 function renderStockLibrariesUI() {}
 /* ── OLD _renderLibUI body removed ──
@@ -9578,12 +9837,16 @@ function _projectName(id) {
 
 // ── Client suggest for Projects sidebar ──
 function _pjClientSuggest(input) {
-  const val = input.value.toLowerCase();
+  const val = input.value.toLowerCase().trim();
   const list = document.getElementById('pj-client-suggest');
-  if (!val) { list.style.display = 'none'; return; }
-  const matches = clients.filter(c => c.name.toLowerCase().includes(val)).slice(0, 5);
-  if (!matches.length) { list.style.display = 'none'; return; }
-  list.innerHTML = matches.map(c => `<div class="client-suggest-item" onmousedown="document.getElementById('pj-client').value='${_escHtml(c.name)}';document.getElementById('pj-client-suggest').style.display='none'">${_escHtml(c.name)}</div>`).join('');
+  if (!list) return;
+  _posSuggest(input, list);
+  const matches = val ? clients.filter(c => c.name.toLowerCase().includes(val)).slice(0, 8) : clients.slice(0, 8);
+  if (!matches.length && !val) { list.style.display = 'none'; return; }
+  list.innerHTML = matches.map(c => `<div class="client-suggest-item" onmousedown="document.getElementById('pj-client').value='${_escHtml(c.name)}';document.getElementById('pj-client-suggest').style.display='none'">
+    <span class="suggest-icon">${c.name.charAt(0).toUpperCase()}</span>
+    <span>${_escHtml(c.name)}</span>
+  </div>`).join('') + `<div class="client-suggest-add" onmousedown="_openNewClientPopup('pj-client')">+ Add${val ? ' "'+_escHtml(input.value.trim())+'" as' : ''} new client</div>`;
   list.style.display = 'block';
   input.onblur = () => setTimeout(() => list.style.display = 'none', 150);
 }
