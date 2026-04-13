@@ -829,6 +829,34 @@ tr:hover .cl-drag-handle { color: var(--muted); }
 .cl-toggle-btn:hover { background: var(--surface2); }
 .cl-row-disabled td { opacity: 0.35; }
 .cl-row-disabled input, .cl-row-disabled select { pointer-events: none; }
+.cl-row-disabled input.cl-check, .cl-row-disabled .cl-del-btn { pointer-events: auto; opacity: 1; }
+.cl-row-disabled .cl-del-cell { opacity: 1; }
+.cl-check {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 13px; height: 13px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 2px;
+  cursor: pointer;
+  position: relative;
+  margin: 0;
+  flex-shrink: 0;
+}
+.cl-check:hover { border-color: var(--muted); }
+.cl-check:checked {
+  background: #888;
+  border-color: #888;
+}
+.cl-check:checked::after {
+  content: '';
+  position: absolute;
+  left: 3px; top: 0px;
+  width: 4px; height: 8px;
+  border: solid #fff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
 
 /* Stepper */
 .cl-stepper { display: flex; align-items: stretch; }
@@ -1303,7 +1331,7 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
           <!-- Cabinet Library smart search -->
           <div style="padding:10px 14px 4px;position:relative">
             <div class="smart-input-wrap">
-              <input type="text" id="cq-cabinet-search" placeholder="Search or add cabinet..." autocomplete="off" oninput="_smartCQLibrarySuggest(this,'cq-cabinet-suggest')" onfocus="_smartCQLibrarySuggest(this,'cq-cabinet-suggest')" onblur="setTimeout(()=>document.getElementById('cq-cabinet-suggest').style.display='none',150)">
+              <input type="text" id="cq-cabinet-search" placeholder="Search or add cabinet..." autocomplete="off" oninput="_cqCabinetSearchInput(this)" onfocus="_smartCQLibrarySuggest(this,'cq-cabinet-suggest')" onblur="setTimeout(()=>document.getElementById('cq-cabinet-suggest').style.display='none',150)">
               <div class="smart-input-add" onclick="cqSaveToLibrary()" title="Save current cabinet to library">+</div>
             </div>
             <div id="cq-cabinet-suggest" class="client-suggest-list" style="display:none"></div>
@@ -1898,20 +1926,24 @@ function _toast(msg, type = 'info', duration = 3500) {
 
 function _confirm(msg, onConfirm, danger = true) {
   const id = '_confirm_' + Date.now();
-  const div = document.createElement('div');
-  div.id = id;
-  div.style.cssText = 'position:fixed;bottom:24px;right:24px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px;box-shadow:0 6px 24px rgba(0,0,0,.18);z-index:9999;max-width:280px;font-size:13px;color:var(--text);animation:slideIn .18s ease';
+  const overlay = document.createElement('div');
+  overlay.id = id;
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;animation:popupFadeIn .15s ease;transform:translateZ(0)';
   const btnStyle = danger
     ? 'background:var(--danger);color:#fff;border:none'
     : 'background:var(--accent);color:#fff;border:none';
-  div.innerHTML = `<div style="margin-bottom:12px;line-height:1.4">${msg}</div>
+  overlay.innerHTML = `<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 20px;box-shadow:0 16px 64px rgba(0,0,0,0.5),0 0 0 1px rgba(255,255,255,0.04);max-width:380px;width:calc(100vw - 32px);font-size:13px;color:var(--text);animation:popupSlideIn .2s ease">
+    <div style="margin-bottom:16px;line-height:1.5">${msg}</div>
     <div style="display:flex;gap:8px;justify-content:flex-end">
-      <button onclick="document.getElementById('${id}').remove()" style="padding:5px 14px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);cursor:pointer;font-size:12px">Cancel</button>
-      <button id="${id}_ok" style="padding:5px 14px;border-radius:6px;cursor:pointer;font-size:12px;${btnStyle}">Confirm</button>
-    </div>`;
-  document.body.appendChild(div);
-  document.getElementById(id + '_ok').onclick = () => { div.remove(); onConfirm(); };
-  setTimeout(() => { const el = document.getElementById(id); if (el) el.remove(); }, 8000);
+      <button id="${id}_cancel" style="padding:7px 16px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);cursor:pointer;font-size:12px;font-family:inherit">Cancel</button>
+      <button id="${id}_ok" style="padding:7px 16px;border-radius:6px;cursor:pointer;font-size:12px;font-family:inherit;${btnStyle}">Confirm</button>
+    </div>
+  </div>`;
+  document.body.appendChild(overlay);
+  const close = () => overlay.remove();
+  document.getElementById(id + '_cancel').onclick = close;
+  document.getElementById(id + '_ok').onclick = () => { close(); onConfirm(); };
+  overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
 }
 
 // ══════════════════════════════════════════
@@ -3362,32 +3394,12 @@ function _clCheckboxClick(id, idx, checked, ev) {
     const from = Math.min(_lastToggleIdx, idx);
     const to = Math.max(_lastToggleIdx, idx);
     for (let i = from; i <= to; i++) pieces[i].enabled = checked;
-    _lastToggleIdx = idx;
-    renderPieces(); _saveCutList();
   } else {
     pieces[idx].enabled = checked;
-    _lastToggleIdx = idx;
-    // Update row style and dot without full re-render
-    const row = document.querySelector(`#pieces-body tr:nth-child(${idx+1})`);
-    if (row) {
-      row.classList.toggle('cl-row-disabled', !checked);
-      const dot = row.querySelector('.cl-toggle-btn span');
-      if (dot) dot.style.background = checked ? pieces[idx].color : 'var(--muted)';
-      row.querySelectorAll('input:not([type=checkbox]):not(.cl-step-btn),select').forEach(el => el.disabled = !checked);
-      row.querySelectorAll('.cl-step-btn').forEach(el => el.disabled = !checked);
-    }
-    _saveCutList();
-    // Update totals
-    const tot = document.getElementById('pieces-totals');
-    if (tot) {
-      const enabled = pieces.filter(p => p.enabled !== false);
-      const totalQty = enabled.reduce((s,p) => s+p.qty, 0);
-      const totalArea = enabled.reduce((s,p) => s + p.w * p.h * p.qty, 0);
-      const m = window.units === 'metric';
-      const areaStr = m ? (totalArea / 1e6).toFixed(2) + ' m²' : (totalArea / 144).toFixed(1) + ' sq.in.';
-      tot.innerHTML = `<span>${totalQty} pieces · ${areaStr} total</span>`;
-    }
   }
+  _lastToggleIdx = idx;
+  renderPieces();
+  _saveCutList();
 }
 function togglePiece(id) {
   const p = pieces.find(x => x.id === id);
@@ -3505,9 +3517,14 @@ function addSheet(name, w, h, qty) {
 }
 
 function removeSheet(id) {
-  sheets = sheets.filter(s => s.id !== id);
-  renderSheets();
-  renderPieces();
+  const s = sheets.find(x => x.id === id);
+  if (!s) return;
+  _confirm(`Delete panel <strong>${_escHtml(s.name || 'Untitled')}</strong>?`, () => {
+    sheets = sheets.filter(x => x.id !== id);
+    renderSheets();
+    renderPieces();
+    _saveCutList();
+  });
 }
 
 function duplicateSheet(id) {
@@ -3644,7 +3661,15 @@ function addPiece(label, w, h, qty, grain) {
   renderPieces();
 }
 
-function removePiece(id) { pieces = pieces.filter(p => p.id !== id); renderPieces(); }
+function removePiece(id) {
+  const p = pieces.find(x => x.id === id);
+  if (!p) return;
+  _confirm(`Delete part <strong>${_escHtml(p.label || 'Untitled')}</strong>?`, () => {
+    pieces = pieces.filter(x => x.id !== id);
+    renderPieces();
+    _saveCutList();
+  });
+}
 
 function duplicatePiece(id) {
   const p = pieces.find(p => p.id === id);
@@ -3742,7 +3767,7 @@ function renderPieces() {
         </select>
       </td>
       <td class="cl-del-cell" style="white-space:nowrap;display:flex;align-items:center;gap:2px">
-        <input type="checkbox" ${dis ? '' : 'checked'} onclick="_clCheckboxClick(${p.id},${i},this.checked,event)" title="Include in layout&#10;Shift+click to select range" style="cursor:pointer;width:13px;height:13px;accent-color:#888;filter:grayscale(1)">
+        <input type="checkbox" class="cl-check" ${dis ? '' : 'checked'} onclick="_clCheckboxClick(${p.id},${i},this.checked,event)" title="Include in layout&#10;Shift+click to select range">
         <button class="cl-del-btn" onclick="removePiece(${p.id})" title="Remove">${DEL_SVG}</button>
       </td>
     </tr>`;
@@ -7783,6 +7808,17 @@ function cqRemoveFromLibrary(idx) {
 }
 function renderCQLibrary() {} // Library now via smart search dropdown
 
+function _cqCabinetSearchInput(input) {
+  // Update the active cabinet name as the user types
+  if (cqActiveLineIdx >= 0 && cqLines[cqActiveLineIdx]) {
+    cqLines[cqActiveLineIdx].name = input.value;
+    saveCQLines();
+    renderCQCabList();
+    renderCQResults();
+  }
+  _smartCQLibrarySuggest(input, 'cq-cabinet-suggest');
+}
+
 function _smartCQLibrarySuggest(input, boxId) {
   const box = document.getElementById(boxId);
   if (!box) return;
@@ -8141,6 +8177,11 @@ function renderCQEditor() {
   if (!el) return;
   // Use active line or a blank default for "Add" mode
   const isEditing = cqActiveLineIdx >= 0 && cqLines[cqActiveLineIdx];
+  // Sync cabinet library search box with active cabinet name
+  const searchInp = document.getElementById('cq-cabinet-search');
+  if (searchInp && document.activeElement !== searchInp) {
+    searchInp.value = isEditing ? (cqLines[cqActiveLineIdx].name || '') : '';
+  }
   if (!window._cqBlankLine) window._cqBlankLine = cqDefaultLine();
   const line = isEditing ? cqLines[cqActiveLineIdx] : window._cqBlankLine;
 
