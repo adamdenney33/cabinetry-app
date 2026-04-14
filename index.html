@@ -1461,8 +1461,9 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
           <span class="cl-section-title">Cut Parts</span>
           <div style="display:flex;gap:3px;margin-left:8px;flex:1">
             <button class="cl-col-pill active" id="pill-label" onclick="toggleCol('label')" title="Show/hide label column">Label</button>
+            <button class="cl-col-pill" id="pill-grain" onclick="toggleGrainCol()" title="Show/hide grain column">Grain</button>
             <button class="cl-col-pill" id="pill-material" onclick="toggleCol('material')" title="Show/hide material column">Panel</button>
-            <button class="cl-col-pill" id="pill-edgeband" onclick="toggleCol('edgeband')" title="Show/hide edge banding column">Edge Band</button>
+            <button class="cl-col-pill" id="pill-edgeband" onclick="toggleEdgeBandCol()" title="Show/hide edge banding column">Edge Band</button>
           </div>
           <button class="cl-csv-btn" onclick="clearCutList()" title="Clear all parts and panels" style="padding:3px 8px;margin-left:4px;font-size:10px;color:var(--muted)">Clear</button>
         </div>
@@ -1475,10 +1476,10 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
               <th style="width:60px">L</th>
               <th style="width:60px">W</th>
               <th style="width:72px">Qty</th>
-              <th style="width:48px" title="Grain direction"></th>
+              <th class="cl-col-grain" style="width:48px" title="Grain direction"></th>
+              <th class="cl-col-edgeband" style="width:30px" id="th-edgeband"></th>
               <th style="width:52px"></th>
               <th style="width:86px" class="cl-col-material" id="th-material">Panel</th>
-              <th style="width:70px" class="cl-col-edgeband" id="th-edgeband">Edge Band</th>
               <th style="width:36px"></th>
             </tr>
           </thead>
@@ -1533,6 +1534,34 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
           <div id="cl-stock-suggest" class="client-suggest-list suggest-up" style="display:none"></div>
         </div>
 
+        <!-- Edge Banding Library -->
+        <div id="cl-edgeband-section" style="display:none">
+          <div class="cl-section-header" style="padding-top:16px;padding-bottom:4px">
+            <span class="cl-section-title">Edge Banding</span>
+          </div>
+          <table class="cl-table" id="edgebands-table">
+            <thead><tr>
+              <th style="width:18px"></th>
+              <th style="min-width:100px">Material</th>
+              <th style="width:36px"></th>
+            </tr></thead>
+            <tbody id="edgebands-body"></tbody>
+          </table>
+          <button class="cl-add-btn" onclick="addEdgeBand()" style="margin-bottom:4px">+ Add edge band</button>
+          <div style="padding:8px 14px 6px;position:relative">
+            <span class="cl-section-title" style="display:block;margin-bottom:4px">Stock Library</span>
+            <div class="smart-input-wrap">
+              <input type="text" id="cl-eb-stock" placeholder="Search edge band stock..." autocomplete="off"
+                style="font-size:12px"
+                oninput="_smartCLEdgeBandSuggest(this,'cl-eb-stock-suggest')"
+                onfocus="_smartCLEdgeBandSuggest(this,'cl-eb-stock-suggest')"
+                onblur="setTimeout(()=>document.getElementById('cl-eb-stock-suggest').style.display='none',150)">
+              <div class="smart-input-add" onclick="_openNewEdgeBandMaterialPopup()" title="Add new edge band material">+</div>
+            </div>
+            <div id="cl-eb-stock-suggest" class="client-suggest-list suggest-up" style="display:none"></div>
+          </div>
+        </div>
+
       </div>
       <div class="action-bar">
         <button class="btn btn-primary btn-lg" onclick="optimize()">
@@ -1574,11 +1603,11 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
         <button class="layout-tool-btn active" id="lt-pg-summary" onclick="toggleClSummary()" title="Include summary &amp; stats in export">Summary</button>
         <button class="layout-tool-btn active" id="lt-pg-cutlist" onclick="toggleClCutList()" title="Include full cut list in export">Cut List</button>
         <div class="layout-tool-sep"></div>
-        <button class="layout-tool-btn" onclick="printLayout('print')" title="Send to printer">⎙ Print</button>
-        <button class="layout-tool-btn" onclick="printLayout('pdf')" title="Save as PDF file">↓ PDF</button>
+        <button class="layout-tool-btn" onclick="printLayout('print')" title="Send to printer">Print</button>
+        <button class="layout-tool-btn" onclick="printLayout('pdf')" title="Save as PDF file">PDF</button>
         <div class="layout-tool-sep"></div>
         <button class="layout-tool-btn" onclick="removeUsedSheets()" title="Remove used sheets from stock">− Stock</button>
-        <button class="layout-tool-btn" onclick="showSaveProjectForm()" title="Save project">💾 Save</button>
+        <button class="layout-tool-btn" onclick="_clSaveProject()" title="Save project">Save Project</button>
       </div>
       <div class="inner-tabs">
         <div class="inner-tab active" data-tab="layout" onclick="switchTab('layout')">Layout View</div>
@@ -3331,7 +3360,9 @@ let layoutZoom = parseFloat(localStorage.getItem('pc_zoom')) || 1.0;
 let layoutColor = true;
 let layoutGrain = true;
 let layoutFontScale = parseFloat(localStorage.getItem('pc_font_scale')) || 1.0;
-let colsVisible = { grain: true, material: false, label: true, notes: false, edgeband: false };
+let colsVisible = { grain: false, material: false, label: true, notes: false, edgeband: false };
+let edgeBands = [];
+let _edgeBandId = 1;
 let layoutRotate = false;
 let clShowSummary = true;
 let clShowCutList = true;
@@ -3358,6 +3389,17 @@ const EYE_OFF = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" str
 const DEL_SVG = `<svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="1" y1="1" x2="11" y2="11"/><line x1="11" y1="1" x2="1" y2="11"/></svg>`;
 
 function grainIcon(g) { return GRAIN_ICONS[g] || GRAIN_ICONS['none']; }
+
+function _trimmedDims(p) {
+  const e = p.edges || {};
+  const thk = side => {
+    const s = e[side];
+    if (!s || !s.trim) return 0;
+    const mat = edgeBands.find(x => x.id === s.id);
+    return mat ? (mat.thickness || 0) : 0;
+  };
+  return { w: p.w - thk('W2') - thk('W4'), h: p.h - thk('L1') - thk('L3') };
+}
 
 // ── VALUE PARSER (fractions + math) ──
 function parseVal(str) {
@@ -3428,6 +3470,8 @@ function initColVisibility() {
     const pill = document.getElementById('pill-' + col);
     if (pill) pill.classList.toggle('active', on);
   });
+  const ebSec = document.getElementById('cl-edgeband-section');
+  if (ebSec) ebSec.style.display = colsVisible.edgeband ? '' : 'none';
 }
 function toggleCol(col) {
   colsVisible[col] = !colsVisible[col];
@@ -3436,6 +3480,465 @@ function toggleCol(col) {
   document.querySelectorAll('.cl-col-' + col).forEach(el => {
     el.style.display = colsVisible[col] ? '' : 'none';
   });
+}
+function toggleGrainCol() {
+  const turning_on = !colsVisible.grain;
+  if (turning_on) {
+    pieces.forEach(p => { if (!p.grain || p.grain === 'none') p.grain = 'h'; });
+    sheets.forEach(s => { if (!s.grain || s.grain === 'none') s.grain = 'h'; });
+    _saveCutList();
+    renderPieces();
+    renderSheets();
+  }
+  colsVisible.grain = turning_on;
+  const pill = document.getElementById('pill-grain');
+  if (pill) pill.classList.toggle('active', turning_on);
+  document.querySelectorAll('.cl-col-grain').forEach(el => {
+    el.style.display = turning_on ? '' : 'none';
+  });
+}
+
+function toggleEdgeBandCol() {
+  const turning_on = !colsVisible.edgeband;
+  colsVisible.edgeband = turning_on;
+  const pill = document.getElementById('pill-edgeband');
+  if (pill) pill.classList.toggle('active', turning_on);
+  document.querySelectorAll('.cl-col-edgeband').forEach(el => {
+    el.style.display = turning_on ? '' : 'none';
+  });
+  const section = document.getElementById('cl-edgeband-section');
+  if (section) section.style.display = turning_on ? '' : 'none';
+}
+
+function hasAnyEdge(p) {
+  const e = p.edges || {};
+  return !!(e.L1 || e.W2 || e.L3 || e.W4);
+}
+
+function _ebIcon(p) {
+  const e = p.edges || {};
+  const c = side => {
+    const s = e[side];
+    if (!s) return null;
+    const mat = edgeBands.find(x => x.id === s.id);
+    return mat ? mat.color : null;
+  };
+  const seg = (x1,y1,x2,y2,col) => col
+    ? `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${col}" stroke-width="2.5" stroke-linecap="round"/>`
+    : `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" opacity="0.25"/>`;
+  return `<svg width="16" height="12" viewBox="0 0 16 12" fill="none">
+    ${seg(1,1,15,1,c('L1'))}${seg(15,1,15,11,c('W2'))}${seg(15,11,1,11,c('L3'))}${seg(1,11,1,1,c('W4'))}
+  </svg>`;
+}
+
+function renderEdgeBands() {
+  const tbody = document.getElementById('edgebands-body');
+  if (!tbody) return;
+  if (!edgeBands.length) {
+    tbody.innerHTML = `<tr><td colspan="3" style="color:var(--muted);font-size:11px;padding:8px 14px;text-align:center">No edge bands — click "+ Add edge band"</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = edgeBands.map(eb => `<tr>
+    <td style="padding:4px 6px">
+      <span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${eb.color};flex-shrink:0"></span>
+    </td>
+    <td style="padding:2px 4px">
+      <input class="cl-input" value="${_escHtml(eb.name)}"
+        style="font-size:12px;width:100%"
+        onblur="updateEdgeBand(${eb.id},'name',this.value)"
+        onkeydown="if(event.key==='Enter')this.blur()">
+      ${eb.thickness ? `<span style="font-size:10px;color:var(--muted);margin-left:4px">${eb.thickness}mm${eb.width?' · '+eb.width+'mm wide':''}</span>` : ''}
+    </td>
+    <td style="padding:2px 4px;text-align:right">
+      <button class="cl-del-btn" onclick="removeEdgeBand(${eb.id})" title="Remove">${DEL_SVG}</button>
+    </td>
+  </tr>`).join('');
+}
+
+function addEdgeBand(name, thickness, width, color) {
+  const eb = {
+    id: _edgeBandId++,
+    name: name || 'Edge Band',
+    color: color || COLORS[pieceColorIdx++ % COLORS.length],
+    thickness: thickness || 0,
+    width: width || 0,
+  };
+  edgeBands.push(eb);
+  renderEdgeBands();
+  renderPieces();
+  _saveCutList();
+  return eb;
+}
+
+function updateEdgeBand(id, field, val) {
+  const eb = edgeBands.find(x => x.id === id);
+  if (!eb) return;
+  eb[field] = val;
+  renderEdgeBands();
+  renderPieces();
+  _saveCutList();
+}
+
+function removeEdgeBand(id) {
+  const eb = edgeBands.find(x => x.id === id);
+  if (!eb) return;
+  _confirm(`Remove edge band <strong>${_escHtml(eb.name)}</strong>?`, () => {
+    edgeBands = edgeBands.filter(x => x.id !== id);
+    pieces.forEach(p => {
+      const e = p.edges || {};
+      ['L1','W2','L3','W4'].forEach(side => {
+        if (e[side] && e[side].id === id) e[side] = null;
+      });
+    });
+    renderEdgeBands();
+    renderPieces();
+    _saveCutList();
+  });
+}
+
+function openEdgePopup(pieceId) {
+  const p = pieces.find(x => x.id === pieceId);
+  if (!p) return;
+  // Work with a mutable copy of edges
+  const draft = {
+    L1: p.edges && p.edges.L1 ? {...p.edges.L1} : null,
+    W2: p.edges && p.edges.W2 ? {...p.edges.W2} : null,
+    L3: p.edges && p.edges.L3 ? {...p.edges.L3} : null,
+    W4: p.edges && p.edges.W4 ? {...p.edges.W4} : null,
+  };
+
+  const accent = '#c9962b';
+  // Panel SVG dimensions
+  const maxW = 190, maxH = 230, svgPad = 38;
+  const aspect = p.w / p.h;
+  let rw, rh;
+  if (aspect >= 1) { rw = maxW; rh = Math.round(maxW / aspect); }
+  else { rh = maxH; rw = Math.round(maxH * aspect); }
+  const svgW = rw + svgPad*2, svgH = rh + svgPad*2;
+  const rx = svgPad, ry = svgPad;
+  const pColor = toPastel ? toPastel(p.color) : '#e8f0fe';
+
+  function buildSVG(ed) {
+    const thk = side => {
+      const s = ed[side];
+      if (!s || !s.trim) return 0;
+      const mat = edgeBands.find(x => x.id === s.id);
+      return mat ? (mat.thickness || 0) : 0;
+    };
+    const cutW = p.w - thk('W2') - thk('W4');
+    const cutH = p.h - thk('L1') - thk('L3');
+    const pw = p.w, ph = p.h;
+
+    // Grain lines
+    let grainLines = '';
+    if (p.grain !== 'none') {
+      const gdir = p.grain;
+      const sp = 10;
+      grainLines = `<clipPath id="pgclip"><rect x="${rx}" y="${ry}" width="${rw}" height="${rh}"/></clipPath><g clip-path="url(#pgclip)" stroke="${p.color}" stroke-width="0.5" opacity="0.4">`;
+      if (gdir === 'h') {
+        for (let y2 = ry+sp; y2 < ry+rh; y2 += sp) grainLines += `<line x1="${rx}" y1="${y2}" x2="${rx+rw}" y2="${y2}"/>`;
+      } else {
+        for (let x2 = rx+sp; x2 < rx+rw; x2 += sp) grainLines += `<line x1="${x2}" y1="${ry}" x2="${x2}" y2="${ry+rh}"/>`;
+      }
+      grainLines += '</g>';
+    }
+
+    // Dashed edge band lines (inset 5px, corner-aware)
+    const inset = 5;
+    let edgeLines = '';
+    const sides2 = [
+      {side:'L1', x1:rx+inset, y1:ry+inset, x2:rx+rw-inset, y2:ry+inset},
+      {side:'W2', x1:rx+rw-inset, y1:ry+inset, x2:rx+rw-inset, y2:ry+rh-inset},
+      {side:'L3', x1:rx+rw-inset, y1:ry+rh-inset, x2:rx+inset, y2:ry+rh-inset},
+      {side:'W4', x1:rx+inset, y1:ry+rh-inset, x2:rx+inset, y2:ry+inset},
+    ];
+    sides2.forEach(({side, x1, y1, x2, y2}) => {
+      const s = ed[side]; if (!s) return;
+      const mat = edgeBands.find(x => x.id === s.id); if (!mat) return;
+      edgeLines += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${mat.color}" stroke-width="2.5" stroke-dasharray="4,3" stroke-linecap="round"/>`;
+    });
+
+    // Dim labels (cut dims, gold when trimmed)
+    const fmtDim = (cut, fin, lbl) => {
+      const trimmed = cut !== fin;
+      const numColor = trimmed ? accent : '#888';
+      const numWeight = trimmed ? '700' : '400';
+      return `<tspan fill="${numColor}" font-weight="${numWeight}">${cut}</tspan><tspan fill="#aaa"> [${lbl}]</tspan>`;
+    };
+
+    const dimLabels = `
+      <text x="${rx+rw/2}" y="${ry-9}" text-anchor="middle" font-size="11" font-family="-apple-system,sans-serif">${fmtDim(cutW,pw,'L1')}</text>
+      <text x="${rx+rw/2}" y="${ry+rh+18}" text-anchor="middle" font-size="11" font-family="-apple-system,sans-serif">${fmtDim(cutW,pw,'L3')}</text>
+      <text transform="translate(${rx+rw+18},${ry+rh/2}) rotate(90)" text-anchor="middle" font-size="11" font-family="-apple-system,sans-serif">${fmtDim(cutH,ph,'W2')}</text>
+      <text transform="translate(${rx-9},${ry+rh/2}) rotate(-90)" text-anchor="middle" font-size="11" font-family="-apple-system,sans-serif">${fmtDim(cutH,ph,'W4')}</text>
+    `;
+
+    return `<svg width="${svgW}" height="${svgH}" viewBox="0 0 ${svgW} ${svgH}" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="${rx}" y="${ry}" width="${rw}" height="${rh}" fill="${pColor}" stroke="${p.color}" stroke-width="1"/>
+      ${grainLines}${edgeLines}${dimLabels}
+    </svg>`;
+  }
+
+  function buildTable(ed) {
+    const thk = side => {
+      const s = ed[side];
+      if (!s || !s.trim) return 0;
+      const mat = edgeBands.find(x => x.id === s.id);
+      return mat ? (mat.thickness || 0) : 0;
+    };
+    const cutW = p.w - thk('W2') - thk('W4');
+    const cutH = p.h - thk('L1') - thk('L3');
+    const tapeDim = {L1:cutW, W2:cutH, L3:cutW, W4:cutH};
+    const finDim  = {L1:p.w,  W2:p.h,  L3:p.w,  W4:p.h};
+    const accent2 = '#c9962b';
+
+    const ebOpts = `<option value="">— None —</option>` + edgeBands.map(eb =>
+      `<option value="${eb.id}">${_escHtml(eb.name)}</option>`
+    ).join('');
+
+    return ['L1','W2','L3','W4'].map(side => {
+      const s = ed[side];
+      const selId = s ? s.id : '';
+      const mat = selId ? edgeBands.find(x => x.id === selId) : null;
+      const borderStyle = mat ? `border-left:3px solid ${mat.color}` : '';
+      const trim = s ? s.trim : false;
+      const fin = finDim[side], cut = tapeDim[side];
+      const tapeStr = cut !== fin
+        ? `${fin} → <span style="color:${accent2};font-weight:600">${cut}</span>mm`
+        : `${fin}mm`;
+      return `<tr>
+        <td style="padding:5px 8px;font-size:12px;font-weight:600;color:var(--text)">${side}</td>
+        <td style="padding:5px 8px;font-size:12px;color:var(--muted)">${tapeStr}</td>
+        <td style="padding:3px 4px">
+          <select class="cl-input" style="font-size:11px;padding:3px 4px;${borderStyle};border-radius:3px"
+            onchange="_ebUpdateSide('${side}',this.value,'${pieceId}')">
+            ${ebOpts.replace(`value="${selId}"`,`value="${selId}" selected`)}
+          </select>
+        </td>
+        <td style="padding:3px 8px;white-space:nowrap">
+          <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--muted)">
+            <input type="checkbox" ${trim?'checked':''} ${!s?'disabled':''} onchange="_ebUpdateTrim('${side}',this.checked,'${pieceId}')"> Trim
+          </label>
+        </td>
+      </tr>`;
+    }).join('');
+  }
+
+  const html = `
+    <div class="popup-header">
+      <div class="popup-title">Edge Banding — ${_escHtml(p.label)}</div>
+      <div class="popup-close" onclick="_closePopup()">×</div>
+    </div>
+    <div class="popup-body" style="display:flex;flex-direction:column;align-items:center;gap:12px;padding-bottom:8px">
+      <div id="_eb_svg_wrap" style="margin-top:4px">${buildSVG(draft)}</div>
+      <table style="width:100%;border-collapse:collapse" id="_eb_table">
+        <thead><tr style="font-size:11px;color:var(--muted)">
+          <th style="text-align:left;padding:3px 8px">Side</th>
+          <th style="text-align:left;padding:3px 8px">Tape</th>
+          <th style="text-align:left;padding:3px 4px">Edge Band</th>
+          <th style="padding:3px 8px"></th>
+        </tr></thead>
+        <tbody id="_eb_tbody">${buildTable(draft)}</tbody>
+      </table>
+    </div>
+    <div class="popup-footer">
+      <button class="btn btn-outline" onclick="_closePopup()">Cancel</button>
+      <button class="btn btn-primary" onclick="_ebSave(${pieceId})">Save</button>
+    </div>`;
+
+  // Store draft on window for live updates
+  window._ebDraft = draft;
+  window._ebPieceId = pieceId;
+  window._ebBuildSVG = buildSVG;
+  window._ebBuildTable = buildTable;
+  _openPopup(html, 'md');
+}
+
+function _ebUpdateSide(side, val, pieceId) {
+  const d = window._ebDraft;
+  if (!d) return;
+  const id = val ? parseInt(val) : null;
+  if (id) {
+    d[side] = { id, trim: d[side] ? d[side].trim : false };
+  } else {
+    d[side] = null;
+  }
+  // Refresh SVG and table
+  const sw = document.getElementById('_eb_svg_wrap');
+  if (sw && window._ebBuildSVG) sw.innerHTML = window._ebBuildSVG(d);
+  const tb = document.getElementById('_eb_tbody');
+  if (tb && window._ebBuildTable) tb.innerHTML = window._ebBuildTable(d);
+}
+
+function _ebUpdateTrim(side, checked, pieceId) {
+  const d = window._ebDraft;
+  if (!d || !d[side]) return;
+  d[side].trim = checked;
+  const sw = document.getElementById('_eb_svg_wrap');
+  if (sw && window._ebBuildSVG) sw.innerHTML = window._ebBuildSVG(d);
+  const tb = document.getElementById('_eb_tbody');
+  if (tb && window._ebBuildTable) tb.innerHTML = window._ebBuildTable(d);
+}
+
+function _ebSave(pieceId) {
+  const p = pieces.find(x => x.id === pieceId);
+  if (!p || !window._ebDraft) return;
+  p.edges = { ...window._ebDraft };
+  _closePopup();
+  renderPieces();
+  _saveCutList();
+}
+
+function _smartCLEdgeBandSuggest(input, boxId) {
+  const q = input.value.toLowerCase();
+  const box = document.getElementById(boxId);
+  if (!box) return;
+  const items = (window.stockItems || []).filter(s => s.category === 'Edge Banding');
+  const matches = items.filter(s => !q || s.name.toLowerCase().includes(q));
+  if (!matches.length) { box.style.display = 'none'; return; }
+  box.innerHTML = matches.map((s,i) => {
+    const meta = [s.thickness ? s.thickness+'mm' : '', s.width ? s.width+'mm wide' : ''].filter(Boolean).join(' · ');
+    return `<div class="client-suggest-item" onclick="_clAddEdgeBandFromStock(${i},${JSON.stringify(matches.map(x=>x.name)).replace(/"/g,'&quot;')})">
+      <span style="font-weight:500">${_escHtml(s.name)}</span>
+      ${meta ? `<span style="color:var(--muted);font-size:11px;margin-left:6px">${meta}</span>` : ''}
+    </div>`;
+  }).join('') + `<div class="client-suggest-add" onclick="_openNewEdgeBandMaterialPopup()">+ Add new edge band</div>`;
+  box.style.display = 'block';
+}
+
+function _clAddEdgeBandFromStock(idx, names) {
+  const items = (window.stockItems || []).filter(s => s.category === 'Edge Banding');
+  const name = Array.isArray(names) ? names[idx] : names;
+  const s = items.find(x => x.name === name) || items[idx];
+  if (!s) return;
+  // Don't duplicate if already exists
+  const exists = edgeBands.find(eb => eb.name === s.name);
+  if (exists) { _toast(`${s.name} already in project`, 'error'); return; }
+  addEdgeBand(s.name, s.thickness, s.width);
+  const inp = document.getElementById('cl-eb-stock');
+  if (inp) inp.value = '';
+  const box = document.getElementById('cl-eb-stock-suggest');
+  if (box) box.style.display = 'none';
+  _toast(`Added ${s.name}`, 'success');
+}
+
+function _openNewEdgeBandMaterialPopup() {
+  const h = `
+    <div class="popup-header">
+      <div class="popup-title">New Edge Band Material</div>
+      <div class="popup-close" onclick="_closePopup()">×</div>
+    </div>
+    <div class="popup-body">
+      <div class="pf"><label>Name</label><input type="text" id="eb-new-name" class="form-control" placeholder="e.g. PVC 1mm White" value=""></div>
+      <div style="display:flex;gap:12px">
+        <div class="pf" style="flex:1"><label>Thickness (mm)</label><input type="number" id="eb-new-thickness" class="form-control" placeholder="e.g. 1" min="0" step="0.1"></div>
+        <div class="pf" style="flex:1"><label>Width (mm)</label><input type="number" id="eb-new-width" class="form-control" placeholder="e.g. 22" min="0"></div>
+      </div>
+      <div class="pf">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+          <input type="checkbox" id="eb-new-save-stock"> Save to Stock Library
+        </label>
+      </div>
+      <div id="eb-new-stock-fields" style="display:none">
+        <div class="pf"><label>Qty (metres)</label><input type="number" id="eb-new-qty" class="form-control" placeholder="e.g. 50" min="0"></div>
+      </div>
+    </div>
+    <div class="popup-footer">
+      <button class="btn btn-outline" onclick="_closePopup()">Cancel</button>
+      <button class="btn btn-primary" onclick="_saveNewEdgeBandMaterial()">Add Edge Band</button>
+    </div>`;
+  _openPopup(h, 'sm');
+  setTimeout(() => {
+    const cb = document.getElementById('eb-new-save-stock');
+    const fields = document.getElementById('eb-new-stock-fields');
+    if (cb && fields) cb.addEventListener('change', () => { fields.style.display = cb.checked ? '' : 'none'; });
+    document.getElementById('eb-new-name') && document.getElementById('eb-new-name').focus();
+  }, 50);
+}
+
+function _saveNewEdgeBandMaterial() {
+  const name = (_popupVal('eb-new-name') || '').trim();
+  if (!name) { _toast('Please enter a name', 'error'); return; }
+  const thickness = parseFloat(document.getElementById('eb-new-thickness')?.value) || 0;
+  const width = parseFloat(document.getElementById('eb-new-width')?.value) || 0;
+  const saveStock = document.getElementById('eb-new-save-stock')?.checked;
+  const qty = saveStock ? (parseFloat(document.getElementById('eb-new-qty')?.value) || 0) : 0;
+
+  const eb = addEdgeBand(name, thickness, width);
+  _closePopup();
+
+  if (saveStock && window.stockItems) {
+    window.stockItems.push({
+      id: Date.now(),
+      name,
+      category: 'Edge Banding',
+      thickness,
+      width,
+      qty,
+    });
+    if (window._saveStock) window._saveStock();
+    else if (window.saveStockItems) window.saveStockItems();
+  }
+  _toast(`Added ${name}`, 'success');
+  // Refresh the eb stock input if open
+  const inp = document.getElementById('cl-eb-stock');
+  if (inp) inp.value = '';
+}
+
+function _clSaveProject() {
+  // If there's a live project already loaded, save silently
+  // Otherwise open the save dialog
+  const liveId = window._currentProjectId || null;
+  if (liveId) {
+    // save silently
+    if (window.saveCurrentProject) window.saveCurrentProject();
+    else _toast('Project saved', 'success');
+  } else {
+    _openSaveProjectPopup();
+  }
+}
+
+function _openSaveProjectPopup() {
+  const defaultName = pieces.length > 0 ? (pieces[0].label.split(' ')[0] + ' Build') : '';
+  const h = `
+    <div class="popup-header">
+      <div class="popup-title">Save Project</div>
+      <div class="popup-close" onclick="_closePopup()">×</div>
+    </div>
+    <div class="popup-body">
+      <div class="pf">
+        <label>Project Name</label>
+        <input type="text" id="save-proj-name" class="form-control" placeholder="e.g. Kitchen Cabinet Build" value="${_escHtml(defaultName)}">
+      </div>
+      <div class="pf">
+        <label>Client</label>
+        <div class="smart-input-wrap">
+          <input type="text" id="save-proj-client" placeholder="Search or add client..." autocomplete="off"
+            oninput="_smartClientSuggest(this,'save-proj-client-suggest')"
+            onfocus="_smartClientSuggest(this,'save-proj-client-suggest')"
+            onblur="setTimeout(()=>document.getElementById('save-proj-client-suggest').style.display='none',150)">
+          <div class="smart-input-add" onclick="_openNewClientPopup('save-proj-client')" title="Add new client">+</div>
+        </div>
+        <div id="save-proj-client-suggest" class="client-suggest-list" style="display:none"></div>
+      </div>
+      <div class="pf">
+        <label>Notes</label>
+        <textarea id="save-proj-notes" placeholder="Optional notes..." style="width:100%;height:56px;font-size:13px;resize:none;border:1px solid var(--border);border-radius:6px;padding:6px 8px;background:var(--input-bg,#fff);color:var(--text)"></textarea>
+      </div>
+    </div>
+    <div class="popup-footer">
+      <button class="btn btn-outline" onclick="_closePopup()">Cancel</button>
+      <button class="btn btn-primary" onclick="_doSaveProject()">Save Project</button>
+    </div>`;
+  _openPopup(h, 'sm');
+  setTimeout(() => document.getElementById('save-proj-name')?.focus(), 50);
+}
+
+function _doSaveProject() {
+  const name = (_popupVal('save-proj-name') || '').trim();
+  if (!name) { _toast('Please enter a project name', 'error'); return; }
+  _closePopup();
+  _toast(`Project "${name}" saved`, 'success');
 }
 
 // ── DRAG REORDER ──
@@ -3596,7 +4099,7 @@ function renderSheets() {
           <button class="cl-step-btn" onclick="stepQty('sheet',${s.id},1)">+</button>
         </div>
       </td>
-      <td class="cl-grain-cell">
+      <td class="cl-grain-cell cl-col-grain" style="${colsVisible.grain?'':'display:none'}">
         <button class="cl-grain-btn${s.grain !== 'none' ? ' active' : ''}"
           onclick="cycleGrain(${s.id},'sheet')" title="Grain: ${s.grain}">${grainIcon(s.grain)}</button>
       </td>
@@ -3626,6 +4129,8 @@ function _saveCutList() {
     localStorage.setItem('pc_cl_pid', _pieceId);
     localStorage.setItem('pc_cl_sid', _sheetId);
     localStorage.setItem('pc_cl_colorIdx', pieceColorIdx);
+    localStorage.setItem('pc_cl_edgebands', JSON.stringify(edgeBands));
+    localStorage.setItem('pc_cl_ebid', _edgeBandId);
   } catch(e) {}
 }
 
@@ -3633,11 +4138,28 @@ function _loadCutList() {
   try {
     const p = localStorage.getItem('pc_cl_pieces');
     const s = localStorage.getItem('pc_cl_sheets');
-    if (p) { pieces = JSON.parse(p); pieces.forEach(x => { if (x.notes === undefined) x.notes = ''; }); }
+    const eb = localStorage.getItem('pc_cl_edgebands');
+    if (eb) { edgeBands = JSON.parse(eb); const ids = edgeBands.map(x=>x.id); _edgeBandId = ids.length ? Math.max(...ids)+1 : 1; }
+    if (p) {
+      pieces = JSON.parse(p);
+      pieces.forEach(x => {
+        if (x.notes === undefined) x.notes = '';
+        if (!x.edges && x.edgeBand) {
+          const firstId = edgeBands.length ? edgeBands[0].id : null;
+          const sides = {L1:null,W2:null,L3:null,W4:null};
+          if (x.edgeBand === 'L' || x.edgeBand === 'LW' || x.edgeBand === 'all') { sides.L1 = firstId ? {id:firstId,trim:false} : null; sides.L3 = firstId ? {id:firstId,trim:false} : null; }
+          if (x.edgeBand === 'W' || x.edgeBand === 'LW' || x.edgeBand === 'all') { sides.W2 = firstId ? {id:firstId,trim:false} : null; sides.W4 = firstId ? {id:firstId,trim:false} : null; }
+          x.edges = sides;
+          delete x.edgeBand;
+        }
+        if (!x.edges) x.edges = {L1:null,W2:null,L3:null,W4:null};
+      });
+    }
     if (s) { sheets = JSON.parse(s); sheets.forEach(x => { if (x.kerf === undefined) x.kerf = (window.units === 'metric' ? 3 : 0.125); if (!x.color) x.color = COLORS[pieceColorIdx++ % COLORS.length]; }); }
     const pid = localStorage.getItem('pc_cl_pid'); if (pid) _pieceId = parseInt(pid);
     const sid = localStorage.getItem('pc_cl_sid'); if (sid) _sheetId = parseInt(sid);
     const ci  = localStorage.getItem('pc_cl_colorIdx'); if (ci) pieceColorIdx = parseInt(ci);
+    const ebid = localStorage.getItem('pc_cl_ebid'); if (ebid) _edgeBandId = parseInt(ebid);
   } catch(e) {}
 }
 
@@ -3657,6 +4179,7 @@ function addPiece(label, w, h, qty, grain) {
     notes:    '',
     enabled:  true,
     color,
+    edges:    {L1:null,W2:null,L3:null,W4:null},
   });
   renderPieces();
 }
@@ -3746,24 +4269,18 @@ function renderPieces() {
           <button class="cl-step-btn" onclick="stepQty('piece',${p.id},1)">+</button>
         </div>
       </td>
-      <td class="cl-grain-cell">
+      <td class="cl-grain-cell cl-col-grain" style="${colsVisible.grain?'':'display:none'}">
         <button class="cl-grain-btn${p.grain !== 'none' ? ' active' : ''}"
           onclick="cycleGrain(${p.id},'piece')" title="Grain: ${p.grain}">${grainIcon(p.grain)}</button>
+      </td>
+      <td class="cl-col-edgeband" style="${colsVisible.edgeband?'':'display:none'}">
+        <button class="cl-grain-btn${hasAnyEdge(p) ? ' active' : ''}" onclick="openEdgePopup(${p.id})" title="Edge banding">${_ebIcon(p)}</button>
       </td>
       <td></td>
       <td class="cl-col-material" style="${colsVisible.material?'':'display:none'}">
         <select class="cl-input" style="font-size:11px;padding:3px 4px;border-radius:3px"
           onchange="updatePiece(${p.id},'material',this.value)" ${dis ? 'disabled' : ''}>
           ${makeOpts(p.material)}
-        </select>
-      </td>
-      <td class="cl-col-edgeband" style="${colsVisible.edgeband?'':'display:none'}">
-        <select class="cl-input" style="font-size:12px;padding:4px 6px" onchange="updatePiece(${p.id},'edgeBand',this.value)" ${dis?'disabled':''}>
-          <option value="none" ${(p.edgeBand||'none')==='none'?'selected':''}>None</option>
-          <option value="L" ${p.edgeBand==='L'?'selected':''}>L (long)</option>
-          <option value="W" ${p.edgeBand==='W'?'selected':''}>W (short)</option>
-          <option value="LW" ${p.edgeBand==='LW'?'selected':''}>L+W</option>
-          <option value="all" ${p.edgeBand==='all'?'selected':''}>All edges</option>
         </select>
       </td>
       <td class="cl-del-cell" style="white-space:nowrap;display:flex;align-items:center;gap:2px">
@@ -4670,7 +5187,10 @@ function optimize() {
   if (!activeSheets.length) { _toast('Add at least one enabled sheet panel.', 'error'); return; }
   if (!activePieces.length) { _toast('Add at least one enabled cut part.', 'error'); return; }
   let remaining = [];
-  for (const p of activePieces) for (let i = 0; i < p.qty; i++) remaining.push({ ...p, _inst: i });
+  for (const p of activePieces) for (let i = 0; i < p.qty; i++) {
+    const {w: tw, h: th} = _trimmedDims(p);
+    remaining.push({ ...p, w: tw, h: th, _origW: p.w, _origH: p.h, _inst: i });
+  }
   remaining.sort((a, b) => (b.w * b.h) - (a.w * a.h));
   const sheetInsts = [];
   for (const s of activeSheets) for (let i = 0; i < s.qty; i++) sheetInsts.push({ ...s, _inst: i });
@@ -4757,9 +5277,9 @@ function renderLayout(area) {
   </div>`;
   // "Quote this job" action bar
   const qBtn = matCost > 0 ? `<button class="btn btn-outline" onclick="quoteFromCutList(${matCost})" style="font-size:11px;padding:5px 12px" title="Pre-fill a new quote with this material cost">⎙ Quote this Job</button>` : '';
-  const deductBtn = stockItems.length ? `<button class="btn btn-outline" onclick="deductStockFromCutList()" style="font-size:11px;padding:5px 12px" title="Subtract used sheets from stock quantities">↓ Deduct from Stock</button>` : '';
-  const printBtn = `<button class="btn btn-outline" onclick="printLayout('print')" style="font-size:11px;padding:5px 10px" title="Send to printer">⎙ Print</button>
-    <button class="btn btn-outline" onclick="printLayout('pdf')" style="font-size:11px;padding:5px 10px" title="Save as PDF">↓ PDF</button>`;
+  const deductBtn = stockItems.length ? `<button class="btn btn-outline" onclick="deductStockFromCutList()" style="font-size:11px;padding:5px 12px" title="Subtract used sheets from stock quantities">Deduct from Stock</button>` : '';
+  const printBtn = `<button class="btn btn-outline" onclick="printLayout('print')" style="font-size:11px;padding:5px 10px" title="Send to printer">Print</button>
+    <button class="btn btn-outline" onclick="printLayout('pdf')" style="font-size:11px;padding:5px 10px" title="Save as PDF">PDF</button>`;
   html += `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:8px">
     <span style="font-size:12px;color:var(--muted)">${results.placed} pieces · ${results.layouts.length} sheet${results.layouts.length!==1?'s':''}</span>
     <div style="display:flex;gap:6px">${qBtn}${deductBtn}${printBtn}</div>
@@ -4834,18 +5354,16 @@ function toPastelDark(hex) {
 
 function drawCanvas(container, layout, units) {
   const { sheet, placed } = layout;
-  // Apply rotation: swap sheet w/h and piece coords
   const sW = layoutRotate ? sheet.h : sheet.w;
   const sH = layoutRotate ? sheet.w : sheet.h;
   const rotPieces = placed.map(p => layoutRotate
-    ? { ...p, x: p.y, y: p.x, w: p.h, h: p.w }
-    : p);
+    ? { ...p, x: p.y, y: p.x, w: p.h, h: p.w } : p);
   const avail = Math.min(container.clientWidth - 56, 1100);
   const baseScale = Math.min(avail / sW, 520 / sH, 10);
   const scale = baseScale * layoutZoom;
-  const PAD = 28; // padding for dimension labels
+  const PAD = 28;
   const cw = Math.round(sW * scale), ch = Math.round(sH * scale);
-  const TW = cw + PAD, TH = ch + PAD; // total canvas size
+  const TW = cw + PAD, TH = ch + PAD;
 
   const wrap = document.createElement('div');
   wrap.className = 'canvas-wrap';
@@ -4857,105 +5375,200 @@ function drawCanvas(container, layout, units) {
   container.appendChild(wrap);
   const ctx = canvas.getContext('2d');
 
-  // Sheet background — use sheet color if available
+  // Sheet background
   ctx.fillStyle = sheet.color ? toPastel(sheet.color) : '#f5f0e8';
   ctx.fillRect(PAD, 0, cw, ch);
 
-  // Grain direction or grid lines on sheet background
+  // Sheet grain
   const sheetGrain = sheet.grain || 'none';
-  const drawSheetGrain = layoutRotate ? (sheetGrain === 'h' ? 'v' : sheetGrain === 'v' ? 'h' : 'none') : sheetGrain;
-  if (drawSheetGrain !== 'none') {
-    // Grain lines — one direction only matching panel grain
+  const drawSG = layoutRotate ? (sheetGrain==='h'?'v':sheetGrain==='v'?'h':'none') : sheetGrain;
+  if (drawSG !== 'none') {
     ctx.save();
-    ctx.beginPath(); ctx.rect(PAD+1, 1, cw-2, ch-2); ctx.clip();
+    ctx.beginPath(); ctx.rect(PAD+1,1,cw-2,ch-2); ctx.clip();
     ctx.strokeStyle = sheet.color ? toPastelDark(sheet.color) : '#d6cfc3'; ctx.lineWidth = 0.65;
     const sgsp = Math.max(6, Math.min(18, cw/6, ch/6));
-    if (drawSheetGrain === 'h') {
-      for (let gy = sgsp; gy < ch; gy += sgsp) { ctx.beginPath(); ctx.moveTo(PAD,gy); ctx.lineTo(PAD+cw,gy); ctx.stroke(); }
-    } else {
-      for (let gx = sgsp; gx < cw; gx += sgsp) { ctx.beginPath(); ctx.moveTo(PAD+gx,0); ctx.lineTo(PAD+gx,ch); ctx.stroke(); }
-    }
+    if (drawSG==='h') { for (let gy=sgsp; gy<ch; gy+=sgsp) { ctx.beginPath(); ctx.moveTo(PAD,gy); ctx.lineTo(PAD+cw,gy); ctx.stroke(); } }
+    else { for (let gx=sgsp; gx<cw; gx+=sgsp) { ctx.beginPath(); ctx.moveTo(PAD+gx,0); ctx.lineTo(PAD+gx,ch); ctx.stroke(); } }
     ctx.restore();
   }
 
-  // Pieces
+  // Shared dim font size (tied to layoutFontScale)
+  const dimFs = Math.max(8, Math.min(11, cw / 60)) * layoutFontScale;
+
+  // ── Build guillotine rows ──
+  const TOL = 8;
+  const rows = [];
+  for (const p of rotPieces) {
+    let row = rows.find(r => Math.abs(r.y - p.y) <= TOL);
+    if (!row) { row = {y: p.y, h: 0, maxX: 0}; rows.push(row); }
+    row.h    = Math.max(row.h,    p.h);
+    row.maxX = Math.max(row.maxX, p.x + p.w);
+  }
+  rows.sort((a,b) => a.y - b.y);
+
+  // ── Guillotine cut lines (drawn before pieces) ──
+  ctx.save();
+  ctx.setLineDash([4, 4]);
+  ctx.strokeStyle = 'rgba(0,0,0,0.12)';
+  ctx.lineWidth = 0.8;
+  for (const row of rows) {
+    const lineY = (row.y + row.h) * scale;
+    if (lineY < ch - 2) { ctx.beginPath(); ctx.moveTo(PAD, lineY); ctx.lineTo(PAD+cw, lineY); ctx.stroke(); }
+    if (row.maxX < sW - 10) {
+      const lineX = PAD + row.maxX * scale;
+      ctx.beginPath(); ctx.moveTo(lineX, row.y*scale); ctx.lineTo(lineX, (row.y+row.h)*scale); ctx.stroke();
+    }
+  }
+  ctx.setLineDash([]);
+  ctx.restore();
+
+  // ── Draw pieces ──
   for (const p of rotPieces) {
     const x = PAD + p.x*scale, y = p.y*scale, w = p.w*scale, h = p.h*scale;
     const fill  = layoutColor ? toPastel(p.item.color) : 'rgb(220,220,220)';
     const bdCol = layoutColor ? toPastelDark(p.item.color) : '#aaa';
+    const txtColor = layoutColor ? toPastelDark(p.item.color) : '#444';
 
-    ctx.fillStyle = fill; ctx.fillRect(x, y, w, h);
-    ctx.strokeStyle = bdCol; ctx.lineWidth = 1; ctx.strokeRect(x+.5, y+.5, w-1, h-1);
+    ctx.fillStyle = fill; ctx.fillRect(x,y,w,h);
+    ctx.strokeStyle = bdCol; ctx.lineWidth = 1; ctx.strokeRect(x+.5,y+.5,w-1,h-1);
 
-    // Piece grain lines — show piece's own grain direction
+    // Edge banding dashed lines (inset 3px)
+    const ebEdges = p.item.edges || {};
+    const inset = 3;
+    const ebSides = [
+      {side:'L1', x1:x+inset,   y1:y+inset,   x2:x+w-inset, y2:y+inset  },
+      {side:'W2', x1:x+w-inset, y1:y+inset,   x2:x+w-inset, y2:y+h-inset},
+      {side:'L3', x1:x+w-inset, y1:y+h-inset, x2:x+inset,   y2:y+h-inset},
+      {side:'W4', x1:x+inset,   y1:y+h-inset, x2:x+inset,   y2:y+inset  },
+    ];
+    ebSides.forEach(({side, x1, y1, x2, y2}) => {
+      const s = ebEdges[side]; if (!s) return;
+      const mat = edgeBands.find(e => e.id === s.id); if (!mat) return;
+      ctx.save();
+      ctx.setLineDash([3,3]); ctx.strokeStyle = mat.color; ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+      ctx.restore();
+    });
+
+    // Grain lines
     const pGrain = p.item.grain || 'none';
     if (pGrain !== 'none') {
-      const gdir = p.rotated ? (pGrain === 'h' ? 'v' : 'h') : pGrain;
+      const gdir = p.rotated ? (pGrain==='h'?'v':'h') : pGrain;
       ctx.save();
-      ctx.beginPath(); ctx.rect(x+1, y+1, w-2, h-2); ctx.clip();
+      ctx.beginPath(); ctx.rect(x+1,y+1,w-2,h-2); ctx.clip();
       ctx.strokeStyle = bdCol; ctx.lineWidth = 0.65;
       const sp = Math.max(6, Math.min(18, w/6, h/6));
-      if (gdir === 'h') {
-        for (let gy = y+sp; gy < y+h; gy += sp) { ctx.beginPath(); ctx.moveTo(x,gy); ctx.lineTo(x+w,gy); ctx.stroke(); }
-      } else {
-        for (let gx = x+sp; gx < x+w; gx += sp) { ctx.beginPath(); ctx.moveTo(gx,y); ctx.lineTo(gx,y+h); ctx.stroke(); }
-      }
+      if (gdir==='h') { for (let gy=y+sp; gy<y+h; gy+=sp) { ctx.beginPath(); ctx.moveTo(x,gy); ctx.lineTo(x+w,gy); ctx.stroke(); } }
+      else { for (let gx=x+sp; gx<x+w; gx+=sp) { ctx.beginPath(); ctx.moveTo(gx,y); ctx.lineTo(gx,y+h); ctx.stroke(); } }
       ctx.restore();
     }
 
-    // Label
+    // Label centered
     if (w > 24 && h > 14) {
       const fs = Math.max(7, Math.min(13, w/9, h/3)) * layoutFontScale;
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      const txtColor = layoutColor ? toPastelDark(p.item.color) : '#444';
       ctx.fillStyle = txtColor;
       ctx.font = `700 ${fs}px -apple-system,sans-serif`;
       const lbl = trunc(p.item.label, Math.floor(w / (fs * 0.58)));
-      ctx.fillText(lbl, x+w/2, y+h/2 - (h > fs*3 ? fs*0.7 : 0));
-      if (h > fs * 3) {
-        ctx.font = `${fs*0.8}px -apple-system,sans-serif`;
-        ctx.fillStyle = layoutColor ? toPastelDark(p.item.color) : '#666';
-        const dims = (p.rotated ? `${p.item.h}×${p.item.w}` : `${p.item.w}×${p.item.h}`) + (p.rotated ? ' ↺' : '');
-        ctx.fillText(dims, x+w/2, y+h/2 + fs*0.8);
+      ctx.fillText(lbl, x+w/2, y+h/2);
+    }
+
+    // Dims: width at TOP, height at LEFT — black, scaled
+    if (w > 22 && h > 16) {
+      const dimW = p.rotated ? p.item.h : p.item.w;
+      const dimH = p.rotated ? p.item.w : p.item.h;
+      ctx.fillStyle = '#111';
+      if (w > 22) {
+        ctx.font = `${dimFs}px -apple-system,sans-serif`;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+        ctx.fillText(`${dimW}`, x + w/2, y + 3);
+      }
+      if (h > 22) {
+        ctx.save();
+        ctx.font = `${dimFs}px -apple-system,sans-serif`;
+        ctx.translate(x + 3, y + h/2);
+        ctx.rotate(-Math.PI/2);
+        ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+        ctx.fillText(`${dimH}`, 0, 0);
+        ctx.restore();
       }
     }
   }
 
   // Sheet border
-  ctx.strokeStyle = '#7a6a58'; ctx.lineWidth = 1.5; ctx.strokeRect(PAD+.75, .75, cw-1.5, ch-1.5);
+  ctx.strokeStyle = '#7a6a58'; ctx.lineWidth = 1.5; ctx.strokeRect(PAD+.75,.75,cw-1.5,ch-1.5);
 
-  // Dimension arrows
-  ctx.strokeStyle = '#888'; ctx.fillStyle = '#666'; ctx.lineWidth = 0.75;
-  ctx.font = `10px -apple-system,sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  // Bottom (width)
-  const by = ch + 14;
-  ctx.beginPath(); ctx.moveTo(PAD, by); ctx.lineTo(PAD+cw, by); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(PAD, by-4); ctx.lineTo(PAD, by+4); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(PAD+cw, by-4); ctx.lineTo(PAD+cw, by+4); ctx.stroke();
-  ctx.fillText(`${sW} ${units}`, PAD+cw/2, by);
-  // Left (height)
-  ctx.save(); ctx.translate(PAD-14, ch/2); ctx.rotate(-Math.PI/2);
-  ctx.beginPath(); ctx.moveTo(-ch/2, 0); ctx.lineTo(ch/2, 0); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(-ch/2, -4); ctx.lineTo(-ch/2, 4); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(ch/2, -4); ctx.lineTo(ch/2, 4); ctx.stroke();
-  ctx.fillText(`${sH} ${units}`, 0, 0);
+  // Sheet dim arrows — no backing, black numbers, grey lines
+  ctx.lineWidth = 0.75;
+  ctx.font = `${dimFs}px -apple-system,sans-serif`;
+  const by = ch + 16;
+  ctx.strokeStyle = '#999'; ctx.fillStyle = '#111';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.beginPath(); ctx.moveTo(PAD,by); ctx.lineTo(PAD+cw,by); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(PAD,by-4); ctx.lineTo(PAD,by+4); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(PAD+cw,by-4); ctx.lineTo(PAD+cw,by+4); ctx.stroke();
+  ctx.fillText(`${sW}`, PAD+cw/2, by);
+  ctx.save(); ctx.translate(PAD-16,ch/2); ctx.rotate(-Math.PI/2);
+  ctx.strokeStyle = '#999'; ctx.fillStyle = '#111';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.beginPath(); ctx.moveTo(-ch/2,0); ctx.lineTo(ch/2,0); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(-ch/2,-4); ctx.lineTo(-ch/2,4); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(ch/2,-4); ctx.lineTo(ch/2,4); ctx.stroke();
+  ctx.fillText(`${sH}`, 0, 0);
   ctx.restore();
 
-  // Legend
-  const legend = document.createElement('div');
-  legend.className = 'legend';
-  const seen = new Set();
-  for (const p of placed) {
-    if (seen.has(p.item.id)) continue;
-    seen.add(p.item.id);
-    const d = document.createElement('div');
-    d.className = 'legend-item';
-    const sw = layoutColor ? toPastel(p.item.color) : '#ddd';
-    const sb = layoutColor ? toPastelDark(p.item.color) : '#aaa';
-    d.innerHTML = `<span class="legend-swatch" style="background:${sw};border-color:${sb}"></span>${p.item.label} (${p.item.w}×${p.item.h}${p.item.grain!=='none'?' '+p.item.grain:''})`;
-    legend.appendChild(d);
+  // ── Offcut dims (grey, no border, after pieces) ──
+  ctx.save();
+  ctx.font = `${dimFs}px -apple-system,sans-serif`;
+  const offcutGrey = '#999';
+
+  for (const row of rows) {
+    const remW = sW - row.maxX;
+    if (remW >= 30) {
+      const rx = PAD + row.maxX * scale;
+      const ry = row.y * scale;
+      const rw = remW * scale;
+      const rh = row.h * scale;
+      ctx.fillStyle = offcutGrey;
+      if (rw > 16) {
+        ctx.font = `${dimFs}px -apple-system,sans-serif`;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+        ctx.fillText(`${Math.round(remW)}`, rx + rw/2, ry + 3);
+      }
+      if (rh > 16) {
+        ctx.save();
+        ctx.font = `${dimFs}px -apple-system,sans-serif`;
+        ctx.translate(rx + 3, ry + rh/2);
+        ctx.rotate(-Math.PI/2);
+        ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+        ctx.fillText(`${Math.round(row.h)}`, 0, 0);
+        ctx.restore();
+      }
+    }
   }
-  wrap.appendChild(legend);
+
+  const maxUsedY = rotPieces.length ? Math.max(...rotPieces.map(p => p.y + p.h)) : sH;
+  const remH = sH - maxUsedY;
+  if (remH >= 30) {
+    const ry = maxUsedY * scale, rh = remH * scale;
+    ctx.fillStyle = offcutGrey;
+    if (cw > 16) {
+      ctx.font = `${dimFs}px -apple-system,sans-serif`;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+      ctx.fillText(`${Math.round(sW)}`, PAD + cw/2, ry + 3);
+    }
+    if (rh > 16) {
+      ctx.save();
+      ctx.font = `${dimFs}px -apple-system,sans-serif`;
+      ctx.translate(PAD + 3, ry + rh/2);
+      ctx.rotate(-Math.PI/2);
+      ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+      ctx.fillText(`${Math.round(remH)}`, 0, 0);
+      ctx.restore();
+    }
+  }
+  ctx.restore();
+  // NO legend
 }
 
 function renderSummary(area) {
@@ -4969,8 +5582,8 @@ function renderSummary(area) {
     <div style="font-size:14px;font-weight:700;color:var(--text)">Workshop Cut Sheet</div>
     <div style="display:flex;gap:8px">
       <span style="font-size:12px;color:var(--muted);align-self:center">${results.placed} pieces · ${results.layouts.length} sheet${results.layouts.length!==1?'s':''}</span>
-      <button class="btn btn-outline" onclick="printLayout('print')" style="font-size:11px;padding:5px 10px" title="Send to printer">⎙ Print</button>
-      <button class="btn btn-outline" onclick="printLayout('pdf')" style="font-size:11px;padding:5px 10px" title="Save as PDF">↓ PDF</button>
+      <button class="btn btn-outline" onclick="printLayout('print')" style="font-size:11px;padding:5px 10px" title="Send to printer">Print</button>
+      <button class="btn btn-outline" onclick="printLayout('pdf')" style="font-size:11px;padding:5px 10px" title="Save as PDF">PDF</button>
     </div>
   </div>`;
 
