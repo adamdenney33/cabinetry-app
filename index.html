@@ -1299,58 +1299,8 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
        CABINET SECTION (Cabinet Builder + Pricing)
   ════════════════════════════════════ -->
   <div class="section-panel" id="panel-cabinet">
-    <!-- BUILDER view (default) -->
-    <div id="cab-view-builder" style="flex:1;display:flex;overflow:hidden">
-      <div class="sidebar" style="width:440px;min-width:380px">
-        <!-- Client + Project smart inputs -->
-        <div style="padding:10px 14px 8px;border-bottom:1px solid var(--border);flex-shrink:0">
-          <div class="form-group" style="margin-bottom:6px;position:relative">
-            <label style="font-size:10px">Client</label>
-            <div class="smart-input-wrap">
-              <input type="text" id="cq-client" placeholder="Search or add client..." autocomplete="off" oninput="_smartClientSuggest(this,'cq-client-suggest')" onfocus="_smartClientSuggest(this,'cq-client-suggest')" onblur="setTimeout(()=>document.getElementById('cq-client-suggest').style.display='none',150)">
-              <div class="smart-input-add" onclick="_openNewClientPopup('cq-client')" title="Add new client">+</div>
-            </div>
-            <div id="cq-client-suggest" class="client-suggest-list" style="display:none"></div>
-          </div>
-          <div class="form-group" style="margin-bottom:0;position:relative">
-            <label style="font-size:10px">Project</label>
-            <div class="smart-input-wrap">
-              <input type="text" id="cq-project" placeholder="Search or add project..." autocomplete="off" oninput="_smartProjectSuggest(this,'cq-project-suggest')" onfocus="_smartProjectSuggest(this,'cq-project-suggest')" onblur="setTimeout(()=>document.getElementById('cq-project-suggest').style.display='none',150)">
-              <div class="smart-input-add" onclick="_openNewProjectPopup('cq-project')" title="Add new project">+</div>
-            </div>
-            <div id="cq-project-suggest" class="client-suggest-list" style="display:none"></div>
-          </div>
-        </div>
-        <!-- Tabs inside sidebar -->
-        <div style="display:flex;border-bottom:2px solid var(--border);flex-shrink:0">
-          <div id="cab-tab-builder" onclick="switchCabTab('builder')" style="flex:1;padding:10px 16px;font-size:13px;font-weight:700;text-align:center;cursor:pointer;border-bottom:2px solid var(--accent);margin-bottom:-2px;color:var(--text)">Cabinet Builder</div>
-          <div id="cab-tab-rates" onclick="switchCabTab('rates')" style="flex:1;padding:10px 16px;font-size:13px;font-weight:500;text-align:center;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-2px">My Rates</div>
-        </div>
-        <div class="sidebar-scroll" id="cq-sidebar">
-
-          <!-- Cabinet Library smart search -->
-          <div style="padding:10px 14px 4px;position:relative">
-            <div class="smart-input-wrap">
-              <input type="text" id="cq-cabinet-search" placeholder="Search or add cabinet..." autocomplete="off" oninput="_cqCabinetSearchInput(this)" onfocus="_smartCQLibrarySuggest(this,'cq-cabinet-suggest')" onblur="setTimeout(()=>document.getElementById('cq-cabinet-suggest').style.display='none',150)">
-              <div class="smart-input-add" onclick="cqSaveToLibrary()" title="Save current cabinet to library">+</div>
-            </div>
-            <div id="cq-cabinet-suggest" class="client-suggest-list" style="display:none"></div>
-          </div>
-
-          <div id="cq-cab-list" style="display:none"></div>
-
-          <!-- Active Cabinet Editor -->
-          <div id="cq-cab-editor" style="padding:0 14px 14px"></div>
-
-          <!-- MY RATES (shown when rates tab active) -->
-          <div id="cab-view-rates" style="display:none;padding:14px">
-            <div id="cq-rates-content"></div>
-          </div>
-        </div>
-      </div>
-      <div class="main-content">
-        <div class="main-scroll" id="cq-results" style="padding:20px"></div>
-      </div>
+    <div class="main-content">
+      <div class="main-scroll" id="cq-main" style="padding:20px"></div>
     </div>
   </div>
 
@@ -1358,78 +1308,6 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
        STOCK SECTION
   ════════════════════════════════════ -->
   <div class="section-panel" id="panel-stock">
-    <div class="sidebar">
-      <div class="sidebar-scroll">
-        <div class="form-section">
-          <div class="form-section-title" id="stock-form-title">Add Material</div>
-          <div class="form-group" style="margin-bottom:6px">
-            <label>Category</label>
-            <select id="stock-cat" onchange="stockCatChanged()" style="font-size:12px">
-              <option value="Sheet Goods">Sheet Goods</option>
-              <option value="Solid Timber">Solid Timber</option>
-              <option value="Edge Banding">Edge Banding</option>
-              <option value="Hardware">Hardware</option>
-              <option value="Finishing">Finishing</option>
-              <option value="Other">Other</option>
-            </select>
-          </div>
-          <div class="form-group" style="margin-bottom:6px">
-            <label>Name</label>
-            <input type="text" id="stock-name" placeholder="e.g. Birch Plywood">
-          </div>
-          <div class="form-group" style="margin-bottom:6px">
-            <label>Variant / Spec</label>
-            <input type="text" id="stock-variant" placeholder="e.g. 18mm, 500mm depth, Oak veneer">
-          </div>
-          <div class="form-group" style="margin-bottom:6px">
-            <label>SKU / Code</label>
-            <input type="text" id="stock-sku" placeholder="e.g. PLY-34-B">
-          </div>
-          <div id="stock-dims-fields">
-            <div class="form-row">
-              <div class="form-group">
-                <label>Length</label>
-                <input type="number" id="stock-w" value="2440" min="1">
-              </div>
-              <div class="form-group">
-                <label>Width</label>
-                <input type="number" id="stock-h" value="1220" min="1">
-              </div>
-              <div class="form-group">
-                <label>Thickness</label>
-                <input type="number" id="stock-thick" value="18" min="0" step="0.1">
-              </div>
-            </div>
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label>Qty</label>
-              <input type="number" id="stock-qty" value="10" min="0">
-            </div>
-            <div class="form-group">
-              <label>Low Alert</label>
-              <input type="number" id="stock-low" value="3" min="0">
-            </div>
-            <div class="form-group">
-              <label>Cost / Unit</label>
-              <input type="number" id="stock-cost" value="65.00" min="0" step="0.01">
-            </div>
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label>Supplier</label>
-              <input type="text" id="stock-supplier" placeholder="e.g. Timber Merchant Ltd">
-            </div>
-          </div>
-          <div class="form-group" style="margin-bottom:6px">
-            <label>Reorder Link</label>
-            <input type="text" id="stock-reorder-url" placeholder="https://supplier.com/product">
-          </div>
-          <button class="btn btn-primary" onclick="window._editingStockId ? saveStockEdit() : addStockItem()" id="stock-submit-btn" style="margin-top:4px;width:100%">+ Add to Stock</button>
-          <button class="btn btn-outline" onclick="cancelStockEdit()" id="stock-cancel-btn" style="margin-top:4px;width:100%;display:none">Cancel Edit</button>
-        </div>
-      </div>
-    </div>
     <div class="main-content">
       <div class="main-scroll" id="stock-main">
         <!-- rendered by JS -->
@@ -1630,66 +1508,6 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
        QUOTE SECTION
   ════════════════════════════════════ -->
   <div class="section-panel" id="panel-quote">
-    <div class="sidebar">
-      <div class="sidebar-scroll">
-        <div class="form-section">
-          <div class="form-section-title">New Quote</div>
-          <div class="form-group" style="margin-bottom:8px;position:relative">
-            <label>Client</label>
-            <div class="smart-input-wrap">
-              <input type="text" id="q-client" placeholder="Search or add client..." autocomplete="off" oninput="_smartClientSuggest(this,'q-client-suggest')">
-              <div class="smart-input-add" onclick="_openNewClientPopup('q-client')" title="Add new client">+</div>
-            </div>
-            <div id="q-client-suggest" class="client-suggest-list" style="display:none"></div>
-          </div>
-          <div class="form-group" style="margin-bottom:8px;position:relative">
-            <label>Project</label>
-            <div class="smart-input-wrap">
-              <input type="text" id="q-project" placeholder="Search or add project..." autocomplete="off" oninput="_smartProjectSuggest(this,'q-project-suggest')">
-              <div class="smart-input-add" onclick="_openNewProjectPopup('q-project')" title="Add new project">+</div>
-            </div>
-            <div id="q-project-suggest" class="client-suggest-list" style="display:none"></div>
-          </div>
-          <div class="form-group" style="margin-bottom:8px">
-            <label>Notes</label>
-            <textarea id="q-notes" placeholder="Project details..."></textarea>
-          </div>
-          <div class="form-group" style="margin-bottom:8px">
-            <label>Materials Cost</label>
-            <input type="number" id="q-materials" placeholder="0.00" min="0" step="0.01">
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label>Labour Rate (/hr)</label>
-              <input type="number" id="q-labour-rate" value="65" min="0">
-            </div>
-            <div class="form-group">
-              <label>Hours</label>
-              <input type="number" id="q-hours" value="8" min="0" step="0.5">
-            </div>
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label>Markup %</label>
-              <input type="number" id="q-markup" value="20" min="0">
-            </div>
-            <div class="form-group">
-              <label>Tax %</label>
-              <input type="number" id="q-tax" value="13" min="0">
-            </div>
-          </div>
-          <div id="quote-form-preview" style="background:var(--surface2);border-radius:8px;padding:10px 12px;margin-top:8px">
-            <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:4px"><span>Labour</span><span id="qfp-labour">—</span></div>
-            <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:4px"><span>Materials</span><span id="qfp-materials">—</span></div>
-            <div id="qfp-markup-row" style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:2px"><span id="qfp-markup-label">Markup</span><span id="qfp-markup">—</span></div>
-            <div id="qfp-tax-row" style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:2px"><span id="qfp-tax-label">Tax</span><span id="qfp-tax">—</span></div>
-            <div style="border-top:1px solid var(--border);margin:4px 0"></div>
-            <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;color:var(--text)"><span>Total</span><span id="qfp-total">—</span></div>
-          </div>
-          <button class="btn btn-primary" onclick="createQuote()" style="margin-top:8px;width:100%">+ Create Quote</button>
-        </div>
-      </div>
-    </div>
     <div class="main-content">
       <div class="main-scroll" id="quote-main">
         <!-- rendered by JS -->
@@ -1701,58 +1519,6 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
        ORDERS SECTION
   ════════════════════════════════════ -->
   <div class="section-panel" id="panel-orders">
-    <div class="sidebar">
-      <div class="sidebar-scroll">
-        <div class="form-section">
-          <div class="form-section-title">New Order</div>
-          <div class="form-group" style="margin-bottom:8px;position:relative">
-            <label>Client</label>
-            <div class="smart-input-wrap">
-              <input type="text" id="o-client" placeholder="Search or add client..." autocomplete="off" oninput="_smartClientSuggest(this,'o-client-suggest')">
-              <div class="smart-input-add" onclick="_openNewClientPopup('o-client')" title="Add new client">+</div>
-            </div>
-            <div id="o-client-suggest" class="client-suggest-list" style="display:none"></div>
-          </div>
-          <div class="form-group" style="margin-bottom:8px;position:relative">
-            <label>Project</label>
-            <div class="smart-input-wrap">
-              <input type="text" id="o-project" placeholder="Search or add project..." autocomplete="off" oninput="_smartProjectSuggest(this,'o-project-suggest')">
-              <div class="smart-input-add" onclick="_openNewProjectPopup('o-project')" title="Add new project">+</div>
-            </div>
-            <div id="o-project-suggest" class="client-suggest-list" style="display:none"></div>
-          </div>
-          <div class="form-group" style="margin-bottom:6px">
-            <label>Order Value</label>
-            <input type="number" id="o-value" placeholder="0.00" min="0" step="0.01">
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label>Start Date</label>
-              <input type="date" id="o-start">
-            </div>
-            <div class="form-group">
-              <label>Due Date</label>
-              <input type="date" id="o-due">
-            </div>
-          </div>
-          <div class="form-group" style="margin-bottom:6px">
-            <label>Notes</label>
-            <textarea id="o-notes" placeholder="Job details, special instructions..." rows="2"></textarea>
-          </div>
-          <div class="form-group" style="margin-bottom:6px">
-            <label>Status</label>
-            <select id="o-status">
-              <option value="quote">Quote Sent</option>
-              <option value="confirmed">Confirmed</option>
-              <option value="production">In Production</option>
-              <option value="delivery">Ready for Delivery</option>
-              <option value="complete">Complete</option>
-            </select>
-          </div>
-          <button class="btn btn-primary" onclick="addOrder()" style="margin-top:4px;width:100%">+ Add Order</button>
-        </div>
-      </div>
-    </div>
     <div class="main-content">
       <div class="main-scroll" id="orders-main">
         <!-- rendered by JS -->
@@ -1764,11 +1530,6 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
        SCHEDULE SECTION
   ════════════════════════════════════ -->
   <div class="section-panel" id="panel-schedule">
-    <div class="sidebar" style="width:220px;min-width:180px">
-      <div class="sidebar-scroll" id="schedule-sidebar" style="padding:12px">
-        <!-- rendered by JS -->
-      </div>
-    </div>
     <div class="main-content">
       <div style="flex:1;overflow:auto" id="schedule-main">
         <!-- rendered by JS -->
@@ -1791,38 +1552,6 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
        PROJECTS SECTION
   ════════════════════════════════════ -->
   <div class="section-panel" id="panel-projects">
-    <div class="sidebar">
-      <div class="sidebar-scroll">
-        <div class="form-section">
-          <div class="form-section-title">New Project</div>
-          <div class="form-group" style="margin-bottom:8px;position:relative">
-            <label>Project Name</label>
-            <input type="text" id="pj-name" placeholder="e.g. Kitchen Remodel">
-          </div>
-          <div class="form-group" style="margin-bottom:8px;position:relative">
-            <label>Client</label>
-            <div class="smart-input-wrap">
-              <input type="text" id="pj-client" placeholder="Search or add client..." autocomplete="off" oninput="_smartClientSuggest(this,'pj-client-suggest')">
-              <div class="smart-input-add" onclick="_openNewClientPopup('pj-client')" title="Add new client">+</div>
-            </div>
-            <div id="pj-client-suggest" class="client-suggest-list" style="display:none"></div>
-          </div>
-          <div class="form-group" style="margin-bottom:8px">
-            <label>Description</label>
-            <textarea id="pj-desc" placeholder="Project details..."></textarea>
-          </div>
-          <div class="form-group" style="margin-bottom:8px">
-            <label>Status</label>
-            <select id="pj-status">
-              <option value="active">Active</option>
-              <option value="on-hold">On Hold</option>
-              <option value="complete">Complete</option>
-            </select>
-          </div>
-          <button class="btn btn-primary" onclick="createProject()" style="margin-top:4px;width:100%">+ Create Project</button>
-        </div>
-      </div>
-    </div>
     <div class="main-content">
       <div class="main-scroll" id="projects-main">
         <!-- rendered by JS -->
@@ -1834,34 +1563,6 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
        CLIENTS SECTION
   ════════════════════════════════════ -->
   <div class="section-panel" id="panel-clients">
-    <div class="sidebar">
-      <div class="sidebar-scroll">
-        <div class="form-section">
-          <div class="form-section-title">New Client</div>
-          <div class="form-group" style="margin-bottom:8px">
-            <label>Name</label>
-            <input type="text" id="cl-name" placeholder="e.g. John Smith">
-          </div>
-          <div class="form-group" style="margin-bottom:8px">
-            <label>Email</label>
-            <input type="email" id="cl-email" placeholder="john@example.com">
-          </div>
-          <div class="form-group" style="margin-bottom:8px">
-            <label>Phone</label>
-            <input type="tel" id="cl-phone" placeholder="+1 555 123 4567">
-          </div>
-          <div class="form-group" style="margin-bottom:8px">
-            <label>Address</label>
-            <textarea id="cl-address" placeholder="Street, City..."></textarea>
-          </div>
-          <div class="form-group" style="margin-bottom:8px">
-            <label>Notes</label>
-            <textarea id="cl-notes" placeholder="Any notes..."></textarea>
-          </div>
-          <button class="btn btn-primary" onclick="createClient()" style="margin-top:4px;width:100%">+ Add Client</button>
-        </div>
-      </div>
-    </div>
     <div class="main-content">
       <div class="main-scroll" id="clients-main">
         <!-- rendered by JS -->
@@ -3019,7 +2720,7 @@ function switchSection(name) {
   document.querySelectorAll('.section-panel').forEach(p => {
     p.classList.toggle('active', p.id === 'panel-' + name);
   });
-  if (name === 'cabinet') { try { renderCQPanel(); renderCabLibraries(); } catch(e) {} }
+  if (name === 'cabinet') { try { renderCabinetMain(); renderCabLibraries(); } catch(e) {} }
   if (name === 'stock') { renderStockMain(); try{renderStockLibrariesUI();}catch(e){} }
   if (name === 'quote') { renderQuoteMain(); try{renderQuoteLibraries();}catch(e){} }
   if (name === 'orders') { renderOrdersMain(); try{renderOrderLibraries();}catch(e){} }
@@ -3087,7 +2788,8 @@ function _onRestore(orderArr) {
   orderArr.forEach(o => { if (m[String(o.id)]) o.notes = m[String(o.id)]; });
 }
 
-function stockCatChanged() {
+function stockCatChanged() { // Legacy sidebar — now handled by popup
+  if (!document.getElementById('stock-cat')) return;
   const cat = document.getElementById('stock-cat').value;
   const dimsEl = document.getElementById('stock-dims-fields');
   if (!dimsEl) return;
@@ -3095,7 +2797,8 @@ function stockCatChanged() {
   const sheetCats = ['Sheet Goods', 'Solid Timber', 'Edge Banding'];
   dimsEl.style.display = sheetCats.includes(cat) ? '' : 'none';
 }
-function cancelStockEdit() {
+function cancelStockEdit() { // Legacy sidebar — now handled by popup
+  if (!document.getElementById('stock-name')) return;
   window._editingStockId = null;
   document.getElementById('stock-name').value = '';
   document.getElementById('stock-variant').value = '';
@@ -3106,7 +2809,8 @@ function cancelStockEdit() {
   renderStockMain();
 }
 
-async function addStockItem() {
+async function addStockItem() { // Legacy sidebar — now handled by _openNewStockPopup()
+  if (!document.getElementById('stock-name')) return;
   const name = document.getElementById('stock-name').value.trim();
   if (!name) { _toast('Enter a material name.', 'error'); return; }
   if (!_requireAuth()) return;
@@ -3141,7 +2845,8 @@ async function addStockItem() {
   renderStockMain();
 }
 
-function editStockItem(id) {
+function editStockItem(id) { // Legacy sidebar — now handled by _openStockPopup()
+  if (!document.getElementById('stock-name')) return;
   const item = stockItems.find(s => s.id === id);
   if (!item) return;
   window._editingStockId = id;
@@ -3169,7 +2874,8 @@ function editStockItem(id) {
   document.getElementById('stock-form-title').textContent = 'Edit Material';
 }
 
-async function saveStockEdit() {
+async function saveStockEdit() { // Legacy sidebar — now handled by popup
+  if (!document.getElementById('stock-name')) return;
   const id = window._editingStockId;
   if (!id) { addStockItem(); return; }
   const item = stockItems.find(s => s.id === id);
@@ -3327,8 +3033,10 @@ function renderStockMain() {
 
     ${stockItems.length === 0 ? `<div class="empty-state">
       <div class="empty-icon" style="opacity:.18"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg></div>
-      <h3>No stock items yet</h3><p>Add your first material using the form on the left.</p></div>` : `
+      <h3>No stock items yet</h3><p>Click <strong>+ New Material</strong> to add your first item.</p>
+      <button class="btn btn-accent" onclick="_openNewStockPopup()" style="margin-top:12px">+ New Material</button></div>` : `
     <div style="padding:0 24px 8px;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+      <button class="btn btn-accent" onclick="_openNewStockPopup()" style="width:auto;padding:5px 14px;font-size:12px;font-weight:700">+ New Material</button>
       <input class="order-search-input" type="search" placeholder="Search…" value="${window._stockSearch||''}" oninput="window._stockSearch=this.value;renderStockMain()" style="max-width:180px">
       <span style="font-size:11px;color:var(--muted)">${filtered.length} of ${stockItems.length}</span>
       <div style="margin-left:auto;display:flex;gap:4px">
@@ -5660,23 +5368,85 @@ function quoteTotal(q) {
   return marked * (1 + q.tax / 100);
 }
 
-async function createQuote() {
-  const client = document.getElementById('q-client').value.trim();
-  const project = document.getElementById('q-project').value.trim();
+function _openNewQuotePopup() {
+  const cur = window.currency || '$';
+  const html = `
+    <div class="popup-header"><div class="popup-title">New Quote</div><button class="popup-close" onclick="_closePopup()">&times;</button></div>
+    <div class="popup-body">
+      <div class="pf" style="position:relative"><label class="pf-label">CLIENT</label>
+        <div class="smart-input-wrap"><input class="pf-input" type="text" id="nq-client" placeholder="Search or add client..." autocomplete="off" oninput="_smartClientSuggest(this,'nq-client-suggest')" onfocus="_smartClientSuggest(this,'nq-client-suggest')" onblur="setTimeout(()=>document.getElementById('nq-client-suggest').style.display='none',150)"><div class="smart-input-add" onclick="_openNewClientPopup('nq-client')" title="Add new client">+</div></div>
+        <div id="nq-client-suggest" class="client-suggest-list" style="display:none"></div>
+      </div>
+      <div class="pf" style="position:relative"><label class="pf-label">PROJECT</label>
+        <div class="smart-input-wrap"><input class="pf-input" type="text" id="nq-project" placeholder="Search or add project..." autocomplete="off" oninput="_smartProjectSuggest(this,'nq-project-suggest')" onfocus="_smartProjectSuggest(this,'nq-project-suggest')" onblur="setTimeout(()=>document.getElementById('nq-project-suggest').style.display='none',150)"><div class="smart-input-add" onclick="_openNewProjectPopup('nq-project')" title="Add new project">+</div></div>
+        <div id="nq-project-suggest" class="client-suggest-list" style="display:none"></div>
+      </div>
+      <div class="pf"><label class="pf-label">NOTES</label><textarea class="pf-input" id="nq-notes" placeholder="Project details..." rows="2"></textarea></div>
+      <div class="pf"><label class="pf-label">MATERIALS COST</label><input class="pf-input" type="number" id="nq-materials" placeholder="0.00" min="0" step="0.01"></div>
+      <div class="pf-row" style="display:flex;gap:10px">
+        <div class="pf" style="flex:1"><label class="pf-label">LABOUR RATE (/HR)</label><input class="pf-input" type="number" id="nq-labour-rate" value="65" min="0"></div>
+        <div class="pf" style="flex:1"><label class="pf-label">HOURS</label><input class="pf-input" type="number" id="nq-hours" value="8" min="0" step="0.5"></div>
+      </div>
+      <div class="pf-row" style="display:flex;gap:10px">
+        <div class="pf" style="flex:1"><label class="pf-label">MARKUP %</label><input class="pf-input" type="number" id="nq-markup" value="20" min="0"></div>
+        <div class="pf" style="flex:1"><label class="pf-label">TAX %</label><input class="pf-input" type="number" id="nq-tax" value="13" min="0"></div>
+      </div>
+      <div id="nq-preview" style="background:var(--surface2);border-radius:8px;padding:10px 12px;margin-top:8px">
+        <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:4px"><span>Labour</span><span id="nq-p-labour">&mdash;</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:4px"><span>Materials</span><span id="nq-p-materials">&mdash;</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:2px"><span>Markup</span><span id="nq-p-markup">&mdash;</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:2px"><span>Tax</span><span id="nq-p-tax">&mdash;</span></div>
+        <div style="border-top:1px solid var(--border);margin:4px 0"></div>
+        <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;color:var(--text)"><span>Total</span><span id="nq-p-total">&mdash;</span></div>
+      </div>
+    </div>
+    <div class="popup-footer"><div></div><div class="popup-footer-right"><button class="btn btn-outline" onclick="_closePopup()">Cancel</button><button class="btn btn-accent" onclick="_submitNewQuote()">Create Quote</button></div></div>`;
+  _openPopup(html, 'md');
+  // Live total preview
+  const update = () => {
+    const mat = parseFloat(document.getElementById('nq-materials')?.value) || 0;
+    const rate = parseFloat(document.getElementById('nq-labour-rate')?.value) || 0;
+    const hrs = parseFloat(document.getElementById('nq-hours')?.value) || 0;
+    const mkp = parseFloat(document.getElementById('nq-markup')?.value) || 0;
+    const tax = parseFloat(document.getElementById('nq-tax')?.value) || 0;
+    const labour = rate * hrs;
+    const sub = mat + labour;
+    const markupAmt = sub * mkp / 100;
+    const afterMarkup = sub + markupAmt;
+    const taxAmt = afterMarkup * tax / 100;
+    const total = afterMarkup + taxAmt;
+    const f = v => cur + v.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0});
+    const el = id => document.getElementById(id);
+    if(el('nq-p-labour')) el('nq-p-labour').textContent = f(labour);
+    if(el('nq-p-materials')) el('nq-p-materials').textContent = f(mat);
+    if(el('nq-p-markup')) el('nq-p-markup').textContent = f(markupAmt);
+    if(el('nq-p-tax')) el('nq-p-tax').textContent = f(taxAmt);
+    if(el('nq-p-total')) el('nq-p-total').textContent = f(total);
+  };
+  ['nq-materials','nq-labour-rate','nq-hours','nq-markup','nq-tax'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('input', update);
+  });
+  update();
+}
+
+async function _submitNewQuote() {
+  const client = _popupVal('nq-client');
+  const project = _popupVal('nq-project');
   if (!client || !project) { _toast('Enter client name and project.', 'error'); return; }
   if (!_requireAuth()) return;
-  const labourRate = parseFloat(document.getElementById('q-labour-rate').value) || 65;
-  const hours = parseFloat(document.getElementById('q-hours').value) || 0;
+  const labourRate = parseFloat(document.getElementById('nq-labour-rate').value) || 65;
+  const hours = parseFloat(document.getElementById('nq-hours').value) || 0;
   const clientId = await resolveClient(client);
   const projectId = await resolveProject(project, clientId);
   const row = {
     user_id: _userId, client, project,
-    materials: parseFloat(document.getElementById('q-materials').value) || 0,
+    materials: parseFloat(document.getElementById('nq-materials').value) || 0,
     labour: labourRate * hours,
-    markup: parseFloat(document.getElementById('q-markup').value) || 20,
-    tax: parseFloat(document.getElementById('q-tax').value) || 13,
+    markup: parseFloat(document.getElementById('nq-markup').value) || 20,
+    tax: parseFloat(document.getElementById('nq-tax').value) || 13,
     status: 'draft', date: new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short'}),
-    notes: document.getElementById('q-notes').value.trim(),
+    notes: (document.getElementById('nq-notes').value || '').trim(),
   };
   if (clientId) row.client_id = clientId;
   if (projectId) row.project_id = projectId;
@@ -5684,11 +5454,72 @@ async function createQuote() {
   if (error) { _toast('Could not save quote — ' + (error.message || JSON.stringify(error)), 'error'); console.error(error); return; }
   quotes.unshift(data);
   _toast('Quote created', 'success');
-  document.getElementById('q-client').value = '';
-  document.getElementById('q-project').value = '';
-  document.getElementById('q-notes').value = '';
-  document.getElementById('q-materials').value = '';
+  _closePopup();
   renderQuoteMain();
+}
+
+function _openNewOrderPopup() {
+  const html = `
+    <div class="popup-header"><div class="popup-title">New Order</div><button class="popup-close" onclick="_closePopup()">&times;</button></div>
+    <div class="popup-body">
+      <div class="pf" style="position:relative"><label class="pf-label">CLIENT</label>
+        <div class="smart-input-wrap"><input class="pf-input" type="text" id="no-client" placeholder="Search or add client..." autocomplete="off" oninput="_smartClientSuggest(this,'no-client-suggest')" onfocus="_smartClientSuggest(this,'no-client-suggest')" onblur="setTimeout(()=>document.getElementById('no-client-suggest').style.display='none',150)"><div class="smart-input-add" onclick="_openNewClientPopup('no-client')" title="Add new client">+</div></div>
+        <div id="no-client-suggest" class="client-suggest-list" style="display:none"></div>
+      </div>
+      <div class="pf" style="position:relative"><label class="pf-label">PROJECT</label>
+        <div class="smart-input-wrap"><input class="pf-input" type="text" id="no-project" placeholder="Search or add project..." autocomplete="off" oninput="_smartProjectSuggest(this,'no-project-suggest')" onfocus="_smartProjectSuggest(this,'no-project-suggest')" onblur="setTimeout(()=>document.getElementById('no-project-suggest').style.display='none',150)"><div class="smart-input-add" onclick="_openNewProjectPopup('no-project')" title="Add new project">+</div></div>
+        <div id="no-project-suggest" class="client-suggest-list" style="display:none"></div>
+      </div>
+      <div class="pf"><label class="pf-label">ORDER VALUE</label><input class="pf-input" type="number" id="no-value" placeholder="0.00" min="0" step="0.01"></div>
+      <div class="pf-row" style="display:flex;gap:10px">
+        <div class="pf" style="flex:1"><label class="pf-label">START DATE</label><input class="pf-input" type="date" id="no-start"></div>
+        <div class="pf" style="flex:1"><label class="pf-label">DUE DATE</label><input class="pf-input" type="date" id="no-due"></div>
+      </div>
+      <div class="pf"><label class="pf-label">NOTES</label><textarea class="pf-input" id="no-notes" placeholder="Job details, special instructions..." rows="2"></textarea></div>
+      <div class="pf"><label class="pf-label">STATUS</label>
+        <select class="pf-input" id="no-status" style="cursor:pointer">
+          <option value="quote">Quote Sent</option>
+          <option value="confirmed">Confirmed</option>
+          <option value="production">In Production</option>
+          <option value="delivery">Ready for Delivery</option>
+          <option value="complete">Complete</option>
+        </select>
+      </div>
+    </div>
+    <div class="popup-footer"><div></div><div class="popup-footer-right"><button class="btn btn-outline" onclick="_closePopup()">Cancel</button><button class="btn btn-accent" onclick="_submitNewOrder()">Add Order</button></div></div>`;
+  _openPopup(html, 'md');
+}
+
+async function _submitNewOrder() {
+  const client = _popupVal('no-client');
+  const project = _popupVal('no-project');
+  if (!client || !project) { _toast('Enter client name and project.', 'error'); return; }
+  if (!_requireAuth()) return;
+  const dueRaw = document.getElementById('no-due').value;
+  const due = dueRaw ? new Date(dueRaw + 'T12:00:00').toLocaleDateString('en-GB', {day:'numeric', month:'short', year:'numeric'}) : 'TBD';
+  const clientId = await resolveClient(client);
+  const projectId = await resolveProject(project, clientId);
+  const row = {
+    user_id: _userId, client, project,
+    value: parseFloat(document.getElementById('no-value').value) || 0,
+    status: document.getElementById('no-status').value,
+    due,
+  };
+  if (clientId) row.client_id = clientId;
+  if (projectId) row.project_id = projectId;
+  let { data, error } = await _dbInsertSafe('orders', row);
+  if (error) { _toast('Could not save order — ' + (error.message || JSON.stringify(error)), 'error'); console.error(error); return; }
+  const notesVal = (document.getElementById('no-notes').value || '').trim();
+  const startRaw = document.getElementById('no-start').value;
+  if (data) {
+    data.notes = notesVal; _onSet(data.id, notesVal);
+    if (startRaw) { data.prodStart = startRaw; const ps = JSON.parse(localStorage.getItem('pc_order_prodstarts')||'{}'); ps[String(data.id)] = startRaw; localStorage.setItem('pc_order_prodstarts', JSON.stringify(ps)); }
+  }
+  orders.unshift(data);
+  _toast('Order created', 'success');
+  document.getElementById('orders-badge').textContent = orders.filter(o => o.status !== 'complete').length;
+  _closePopup();
+  renderOrdersMain();
 }
 
 async function removeQuote(id) {
@@ -5799,7 +5630,8 @@ function renderQuoteMain() {
 
   const emptyState = `<div class="empty-state">
     <div class="empty-icon" style="opacity:.18"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></div>
-    <h3>No quotes yet</h3><p>Fill in the form on the left to create your first quote.</p></div>`;
+    <h3>No quotes yet</h3><p>Click <strong>+ New Quote</strong> to create your first quote.</p>
+    <button class="btn btn-accent" onclick="_openNewQuotePopup()" style="margin-top:12px">+ New Quote</button></div>`;
 
   const qFilter = window._quoteFilter || 'all';
   const qSearch = (window._quoteSearch || '').toLowerCase().trim();
@@ -5811,6 +5643,7 @@ function renderQuoteMain() {
   else if (qSort === 'client') filteredQ.sort((a,b) => (a.client||'').localeCompare(b.client||''));
 
   const filterBar = `<div class="order-filter-tabs" style="align-items:center">
+    <button class="btn btn-accent" onclick="_openNewQuotePopup()" style="width:auto;padding:5px 14px;font-size:12px;font-weight:700">+ New Quote</button>
     <input class="order-search-input" type="search" placeholder="Search client or project…" value="${window._quoteSearch||''}" oninput="window._quoteSearch=this.value;renderQuoteMain()">
     <button class="ofilter-tab ${qFilter==='all'?'active':''}" onclick="window._quoteFilter='all';renderQuoteMain()">All (${quotes.length})</button>
     <button class="ofilter-tab ${qFilter==='draft'?'active':''}" onclick="window._quoteFilter='draft';renderQuoteMain()">Draft (${draft})</button>
@@ -5849,7 +5682,8 @@ const STATUS_BADGES = {
   production: 'badge-orange', delivery: 'badge-teal', complete: 'badge-green'
 };
 
-async function addOrder() {
+async function addOrder() { // Legacy sidebar — now handled by _openNewOrderPopup()
+  if (!document.getElementById('o-client')) return;
   const client = document.getElementById('o-client').value.trim();
   const project = document.getElementById('o-project').value.trim();
   if (!client || !project) { _toast('Enter client name and project.', 'error'); return; }
@@ -6003,9 +5837,11 @@ function renderOrdersMain() {
 
   const emptyState = `<div class="empty-state">
     <div class="empty-icon" style="opacity:.18"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg></div>
-    <h3>No orders yet</h3><p>Add your first order using the form on the left, or convert a quote.</p></div>`;
+    <h3>No orders yet</h3><p>Click <strong>+ New Order</strong> to add your first order, or convert a quote.</p>
+    <button class="btn btn-accent" onclick="_openNewOrderPopup()" style="margin-top:12px">+ New Order</button></div>`;
 
   const filterTabs = `<div class="order-filter-tabs" style="align-items:center">
+    <button class="btn btn-accent" onclick="_openNewOrderPopup()" style="width:auto;padding:5px 14px;font-size:12px;font-weight:700">+ New Order</button>
     <input class="order-search-input" type="search" placeholder="Search client or project…" value="${window._orderSearch||''}" oninput="window._orderSearch=this.value;renderOrdersMain()">
     <button class="ofilter-tab ${filterVal==='active'?'active':''}" onclick="setOrderFilter('active')">Active (${active.length})</button>
     <button class="ofilter-tab ${filterVal==='all'?'active':''}" onclick="setOrderFilter('all')">All (${orders.length})</button>
@@ -6074,9 +5910,9 @@ function renderDashboard() {
 
       <!-- Quick actions -->
       <div style="display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap;align-items:center">
-        <button class="btn btn-primary" onclick="switchSection('quote');setTimeout(()=>document.getElementById('q-client')?.focus(),100)" style="font-size:11px;padding:6px 12px">+ Quote</button>
-        <button class="btn btn-outline" onclick="switchSection('orders');setTimeout(()=>document.getElementById('o-client')?.focus(),100)" style="font-size:11px;padding:6px 12px;width:auto">+ Order</button>
-        <button class="btn btn-outline" onclick="switchSection('projects');setTimeout(()=>document.getElementById('pj-name')?.focus(),100)" style="font-size:11px;padding:6px 12px;width:auto">+ Project</button>
+        <button class="btn btn-primary" onclick="_openNewQuotePopup()" style="font-size:11px;padding:6px 12px">+ Quote</button>
+        <button class="btn btn-outline" onclick="_openNewOrderPopup()" style="font-size:11px;padding:6px 12px;width:auto">+ Order</button>
+        <button class="btn btn-outline" onclick="_openNewProjectPopup()" style="font-size:11px;padding:6px 12px;width:auto">+ Project</button>
         <button class="btn btn-outline" onclick="switchSection('cabinet')" style="font-size:11px;padding:6px 12px;width:auto">+ Cabinet</button>
         <button class="btn btn-outline" onclick="switchSection('cutlist')" style="font-size:11px;padding:6px 12px;width:auto">Cut List</button>
         <button class="btn btn-outline" onclick="switchSection('schedule')" style="font-size:11px;padding:6px 12px;width:auto">Schedule</button>
@@ -6397,7 +6233,8 @@ function _openNewClientPopup(targetInputId) {
   // Close any suggest dropdowns
   document.querySelectorAll('.client-suggest-list').forEach(b => b.style.display = 'none');
   // Pre-fill with what user typed
-  const existing = document.getElementById(targetInputId)?.value || '';
+  const existing = targetInputId ? (document.getElementById(targetInputId)?.value || '') : '';
+  const tid = targetInputId || '';
   const html = `
     <div class="popup-header">
       <div class="popup-title"><div style="font-size:16px;font-weight:700">New Client</div></div>
@@ -6414,7 +6251,7 @@ function _openNewClientPopup(targetInputId) {
     </div>
     <div class="popup-footer">
       <button class="btn btn-outline" onclick="_closePopup()">Cancel</button>
-      <button class="btn btn-accent" onclick="_saveNewClientPopup('${targetInputId}')">Add Client</button>
+      <button class="btn btn-accent" onclick="_saveNewClientPopup('${tid}')">Add Client</button>
     </div>`;
   _openPopup(html, 'sm');
 }
@@ -6424,8 +6261,7 @@ async function _saveNewClientPopup(targetInputId) {
   if (!name) { _toast('Client name is required', 'error'); return; }
   // Check for duplicate
   if (clients.some(c => c.name.toLowerCase() === name.toLowerCase())) {
-    // Just set the input and close
-    document.getElementById(targetInputId).value = name;
+    if (targetInputId) document.getElementById(targetInputId).value = name;
     _closePopup();
     _toast('Client already exists — selected', 'info');
     return;
@@ -6441,7 +6277,7 @@ async function _saveNewClientPopup(targetInputId) {
   };
   clients.push(newClient);
   try { await _db('clients').insert(newClient); } catch(e) { console.warn('Client insert failed', e); }
-  document.getElementById(targetInputId).value = name;
+  if (targetInputId) document.getElementById(targetInputId).value = name;
   _closePopup();
   renderClientsMain();
   _toast(`Client "${name}" added`, 'success');
@@ -6449,10 +6285,10 @@ async function _saveNewClientPopup(targetInputId) {
 
 function _openNewProjectPopup(targetInputId) {
   document.querySelectorAll('.client-suggest-list').forEach(b => b.style.display = 'none');
-  const existing = document.getElementById(targetInputId)?.value || '';
-  // Get client from the corresponding client input
-  const clientInputId = targetInputId.replace('-project', '-client');
-  const clientVal = document.getElementById(clientInputId)?.value || '';
+  const existing = targetInputId ? (document.getElementById(targetInputId)?.value || '') : '';
+  const clientInputId = targetInputId ? targetInputId.replace('-project', '-client') : '';
+  const clientVal = clientInputId ? (document.getElementById(clientInputId)?.value || '') : '';
+  const tid = targetInputId || '';
   const html = `
     <div class="popup-header">
       <div class="popup-title"><div style="font-size:16px;font-weight:700">New Project</div></div>
@@ -6468,7 +6304,7 @@ function _openNewProjectPopup(targetInputId) {
     </div>
     <div class="popup-footer">
       <button class="btn btn-outline" onclick="_closePopup()">Cancel</button>
-      <button class="btn btn-accent" onclick="_saveNewProjectPopup('${targetInputId}')">Add Project</button>
+      <button class="btn btn-accent" onclick="_saveNewProjectPopup('${tid}')">Add Project</button>
     </div>`;
   _openPopup(html, 'sm');
 }
@@ -6479,10 +6315,12 @@ async function _saveNewProjectPopup(targetInputId) {
   const clientName = _popupVal('pnp-client') || '';
   // Check for duplicate
   if (projects.some(p => p.name.toLowerCase() === name.toLowerCase())) {
-    document.getElementById(targetInputId).value = name;
-    const clientInputId = targetInputId.replace('-project', '-client');
-    const ci = document.getElementById(clientInputId);
-    if (ci && clientName && !ci.value) ci.value = clientName;
+    if (targetInputId) {
+      document.getElementById(targetInputId).value = name;
+      const clientInputId = targetInputId.replace('-project', '-client');
+      const ci = document.getElementById(clientInputId);
+      if (ci && clientName && !ci.value) ci.value = clientName;
+    }
     _closePopup();
     _toast('Project already exists — selected', 'info');
     return;
@@ -6497,11 +6335,12 @@ async function _saveNewProjectPopup(targetInputId) {
   };
   projects.push(newProject);
   try { await _db('projects').insert(newProject); } catch(e) { console.warn('Project insert failed', e); }
-  document.getElementById(targetInputId).value = name;
-  // Also fill client input
-  const clientInputId = targetInputId.replace('-project', '-client');
-  const ci = document.getElementById(clientInputId);
-  if (ci && clientName && !ci.value) ci.value = clientName;
+  if (targetInputId) {
+    document.getElementById(targetInputId).value = name;
+    const clientInputId = targetInputId.replace('-project', '-client');
+    const ci = document.getElementById(clientInputId);
+    if (ci && clientName && !ci.value) ci.value = clientName;
+  }
   _closePopup();
   renderProjectsMain();
   _toast(`Project "${name}" added`, 'success');
@@ -6681,13 +6520,15 @@ async function deductStockFromCutList() {
 }
 
 function quoteFromCutList(matCost) {
-  switchSection('quote');
-  const el = document.getElementById('q-materials');
-  if (el) { el.value = matCost.toFixed(2); el.focus(); }
-  const pn = document.getElementById('q-project');
-  if (pn && !pn.value) pn.value = 'Untitled Job';
-  // Subtle flash to draw attention to the pre-filled field
-  if (el) { el.style.background = 'rgba(232,168,56,0.2)'; setTimeout(() => el.style.background = '', 1200); }
+  _openNewQuotePopup();
+  setTimeout(() => {
+    const el = document.getElementById('nq-materials');
+    if (el) el.value = matCost.toFixed(2);
+    const pn = document.getElementById('nq-project');
+    if (pn && !pn.value) pn.value = 'Untitled Job';
+    // Trigger preview update
+    el?.dispatchEvent(new Event('input'));
+  }, 50);
 }
 
 async function markQuoteSent(id) {
@@ -7258,11 +7099,11 @@ document.addEventListener('keydown', e => {
   // N key: new item for current tab (when not typing)
   if (e.key === 'n' && !typing && !e.ctrlKey && !e.metaKey) {
     const active = document.querySelector('.section-panel.active')?.id;
-    if (active === 'panel-quote') { document.getElementById('q-client')?.focus(); e.preventDefault(); }
-    else if (active === 'panel-orders') { document.getElementById('o-client')?.focus(); e.preventDefault(); }
-    else if (active === 'panel-stock') { document.getElementById('stock-name')?.focus(); e.preventDefault(); }
-    else if (active === 'panel-clients') { document.getElementById('cl-name')?.focus(); e.preventDefault(); }
-    else if (active === 'panel-projects') { document.getElementById('pj-name')?.focus(); e.preventDefault(); }
+    if (active === 'panel-quote') { _openNewQuotePopup(); e.preventDefault(); }
+    else if (active === 'panel-orders') { _openNewOrderPopup(); e.preventDefault(); }
+    else if (active === 'panel-stock') { _openNewStockPopup(); e.preventDefault(); }
+    else if (active === 'panel-clients') { _openNewClientPopup(); e.preventDefault(); }
+    else if (active === 'panel-projects') { _openNewProjectPopup(); e.preventDefault(); }
   }
   // / key: focus search (when not typing)
   if (e.key === '/' && !typing && !e.ctrlKey && !e.metaKey) {
@@ -7476,30 +7317,7 @@ function _relativeDate(dateStr) {
 }
 
 function _updateQuotePreview() {
-  const cur = window.currency;
-  const fmt = v => cur + v.toLocaleString('en-US', {minimumFractionDigits:0, maximumFractionDigits:0});
-  const rate = parseFloat(document.getElementById('q-labour-rate')?.value) || 0;
-  const hrs  = parseFloat(document.getElementById('q-hours')?.value)       || 0;
-  const mat  = parseFloat(document.getElementById('q-materials')?.value)   || 0;
-  const mkp  = parseFloat(document.getElementById('q-markup')?.value)      || 0;
-  const tax  = parseFloat(document.getElementById('q-tax')?.value)         || 0;
-  const labour = rate * hrs;
-  const sub    = labour + mat;
-  const total  = sub * (1 + mkp/100) * (1 + tax/100);
-  const prev   = document.getElementById('quote-form-preview');
-  if (!prev) return;
-  if (sub === 0) { prev.style.display = 'none'; return; }
-  prev.style.display = '';
-  const markupAmt = sub * mkp / 100;
-  const afterMarkup = sub + markupAmt;
-  const taxAmt = afterMarkup * tax / 100;
-  document.getElementById('qfp-labour').textContent    = `${hrs}h @ ${cur}${rate}/hr = ${fmt(labour)}`;
-  document.getElementById('qfp-materials').textContent = fmt(mat);
-  document.getElementById('qfp-markup-label').textContent = `Markup (${mkp}%)`;
-  document.getElementById('qfp-markup').textContent = `+${fmt(markupAmt)}`;
-  document.getElementById('qfp-tax-label').textContent = `Tax (${tax}%)`;
-  document.getElementById('qfp-tax').textContent = `+${fmt(taxAmt)}`;
-  document.getElementById('qfp-total').textContent     = fmt(afterMarkup + taxAmt);
+  // No-op: quote form is now in a popup with its own live preview
 }
 
 // ══════════════════════════════════════════
@@ -8088,10 +7906,8 @@ function loadCQLines() {
 }
 function saveCQLines() {
   localStorage.setItem('pc_cq_lines', JSON.stringify(cqLines));
-  const pn = document.getElementById('cq-project');
-  if (pn) localStorage.setItem('pc_cq_project_name', pn.value);
-  const cn = document.getElementById('cq-client');
-  if (cn) localStorage.setItem('pc_cq_client_name', cn.value);
+  // Also save to project-specific storage
+  _cabSaveProjectCabinets();
 }
 function loadCQSaved() {
   try { const s = localStorage.getItem('pc_cq_saved'); if (s) cqSavedQuotes = JSON.parse(s); } catch(e) {}
@@ -8103,25 +7919,11 @@ function toggleCQSettings() {
 }
 
 function switchCabTab(tab) {
-  const rates = document.getElementById('cab-view-rates');
-  const tabBuilder = document.getElementById('cab-tab-builder');
-  const tabRates = document.getElementById('cab-tab-rates');
-  // Get all builder content divs (everything in sidebar except the rates div and the tabs)
-  const sidebar = document.getElementById('cq-sidebar');
-  if (!sidebar) return;
-  const builderDivs = Array.from(sidebar.children).filter(el => el.id !== 'cab-view-rates');
-
+  // Legacy function — rates now opens as popup
   if (tab === 'rates') {
-    builderDivs.forEach(el => el.style.display = 'none');
-    if (rates) rates.style.display = '';
-    if (tabBuilder) { tabBuilder.style.borderBottomColor = 'transparent'; tabBuilder.style.fontWeight = '500'; tabBuilder.style.color = 'var(--muted)'; }
-    if (tabRates) { tabRates.style.borderBottomColor = 'var(--accent)'; tabRates.style.fontWeight = '700'; tabRates.style.color = 'var(--text)'; }
-    renderCQRates();
+    _openRatesPopup();
   } else {
-    builderDivs.forEach(el => el.style.display = '');
-    if (rates) rates.style.display = 'none';
-    if (tabBuilder) { tabBuilder.style.borderBottomColor = 'var(--accent)'; tabBuilder.style.fontWeight = '700'; tabBuilder.style.color = 'var(--text)'; }
-    if (tabRates) { tabRates.style.borderBottomColor = 'transparent'; tabRates.style.fontWeight = '500'; tabRates.style.color = 'var(--muted)'; }
+    renderCabinetMain();
   }
 }
 
@@ -8283,12 +8085,9 @@ function cqLoadProject(idx) {
   if (!p) return;
   cqLines = JSON.parse(JSON.stringify(p.lines || []));
   cqNextId = cqLines.length > 0 ? Math.max(...cqLines.map(l=>l.id)) + 1 : 1;
-  const nameEl = document.getElementById('cq-project');
-  if (nameEl) nameEl.value = p.projectName || p.name || '';
   cqActiveLineIdx = 0;
   saveCQLines();
-  renderCQPanel();
-  toggleCabPanel('projects'); // close panel
+  renderCQResults();
   _toast(`Loaded "${p.name}"`, 'success');
 }
 
@@ -8732,47 +8531,186 @@ function calcCQLine(line) {
 
 
 // ── Render the sidebar: cabinet list + active editor ──
-function renderCQPanel() {
-  const cur = window.currency;
-  const fmt = v => cur + Number(v).toFixed(2);
-  const fmt0 = v => cur + Math.round(v).toLocaleString();
-
-  // Sync settings form values
-  const fields = {labourRate:'cq-labour-rate', markup:'cq-markup', tax:'cq-tax', deposit:'cq-deposit', edgingPerM:'cq-edging-m'};
-  Object.entries(fields).forEach(([k, id]) => { const el = document.getElementById(id); if (el && el !== document.activeElement) el.value = cqSettings[k]; });
-
-  renderCQRates();
-  renderCQLibrary();
-  renderCQCabList();
-  renderCQEditor();
-  renderCQResults();
+// ── Cabinet Tab: Two-Level View ──
+function renderCabinetMain() {
+  const el = document.getElementById('cq-main');
+  if (!el) return;
+  if (window._cabView === 'detail' && window._cabActiveProject) {
+    renderCQResults();
+  } else {
+    _renderCabProjectList();
+  }
 }
 
-// ── Render cabinet list in sidebar ──
-function renderCQCabList() {
-  const el = document.getElementById('cq-cab-list');
+function _renderCabProjectList() {
+  const el = document.getElementById('cq-main');
   if (!el) return;
   const cur = window.currency;
   const fmt0 = v => cur + Math.round(v).toLocaleString();
+  const filter = window._cabProjFilter || 'all';
+  const search = (window._cabProjSearch || '').toLowerCase();
 
-  if (!cqLines.length) {
-    el.innerHTML = `<div style="color:var(--muted);font-size:11px;padding:8px 10px;border-radius:5px;border:1px solid var(--border);background:var(--surface);text-align:center">No cabinets yet. Click "+ Add Cabinet" above.</div>`;
-    return;
-  }
-  el.innerHTML = cqLines.map((c, i) => {
-    const calc = calcCQLine(c);
-    const active = i === cqActiveLineIdx;
-    return `<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;margin-bottom:4px;border-radius:8px;border:1.5px solid ${active?'var(--accent)':'var(--border)'};background:${active?'var(--accent-dim)':'var(--surface)'};cursor:pointer;transition:border-color .15s" onclick="cqSelectLine(${i})">
-      <div style="flex:1;min-width:0">
-        <div style="font-size:13px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.name || 'Cabinet'}${c.qty > 1 ? ' <span style="color:var(--muted);font-weight:400">x'+c.qty+'</span>' : ''}</div>
-        <div style="font-size:11px;color:var(--muted)">${c.w}×${c.h}×${c.d}mm</div>
+  let filtered = [...projects];
+  if (filter !== 'all') filtered = filtered.filter(p => p.status === filter);
+  if (search) filtered = filtered.filter(p => p.name.toLowerCase().includes(search) || (_clientName(p.client_id)||'').toLowerCase().includes(search));
+
+  const activeCount = projects.filter(p => p.status === 'active').length;
+  const holdCount = projects.filter(p => p.status === 'on-hold').length;
+  const doneCount = projects.filter(p => p.status === 'complete').length;
+
+  const projectCard = p => {
+    const client = p.client_id ? clients.find(c => c.id === p.client_id) : null;
+    const statusBadge = p.status==='complete'?'badge-green':p.status==='on-hold'?'badge-gray':'badge-blue';
+    const statusText = p.status==='complete'?'Complete':p.status==='on-hold'?'On Hold':'Active';
+    return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;margin-bottom:6px;cursor:pointer;transition:box-shadow .15s" onclick="_cabOpenProject(${p.id})" onmouseover="this.style.boxShadow='var(--shadow-md)'" onmouseout="this.style.boxShadow=''">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px">
+        <div style="font-size:14px;font-weight:700;color:var(--text)">${_escHtml(p.name)}</div>
+        <span class="badge ${statusBadge}" style="font-size:9px;padding:1px 6px">${statusText}</span>
       </div>
-      <div style="font-size:13px;font-weight:700;color:var(--accent);white-space:nowrap">${fmt0(calc.lineSubtotal)}</div>
-      <button style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:12px;padding:2px" onclick="event.stopPropagation();_openCabinetPopup(${i})" title="Edit in popup">✎</button>
-      <button style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:12px;padding:2px" onclick="event.stopPropagation();dupCQLine(${c.id})" title="Duplicate">⧉</button>
-      <button style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:15px;padding:2px" onclick="event.stopPropagation();removeCQLine(${c.id})" title="Remove">×</button>
+      <div style="font-size:10px;color:var(--muted)">
+        ${client ? _escHtml(client.name) + ' · ' : ''}${p.description ? _escHtml(p.description) : ''}
+      </div>
     </div>`;
-  }).join('');
+  };
+
+  el.innerHTML = `<div style="padding:24px;max-width:900px">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap">
+      <div style="font-size:18px;font-weight:800;color:var(--text)">Cabinet Projects <span style="font-size:13px;font-weight:400;color:var(--muted)">(${projects.length})</span></div>
+      <button class="btn btn-accent" onclick="_openNewProjectPopup()" style="width:auto;padding:5px 14px;font-size:12px;font-weight:700">+ New Project</button>
+      <button class="btn btn-outline" onclick="_openRatesPopup()" style="width:auto;padding:5px 12px;font-size:12px">My Rates</button>
+      <input type="text" placeholder="Search projects..." value="${_escHtml(window._cabProjSearch||'')}" oninput="window._cabProjSearch=this.value;renderCabinetMain()" style="font-size:12px;padding:6px 12px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);width:200px;font-family:inherit;margin-left:auto">
+    </div>
+    <div style="display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap;align-items:center">
+      <button class="ofilter-tab ${filter==='all'?'active':''}" onclick="window._cabProjFilter='all';renderCabinetMain()">All (${projects.length})</button>
+      <button class="ofilter-tab ${filter==='active'?'active':''}" onclick="window._cabProjFilter='active';renderCabinetMain()">Active (${activeCount})</button>
+      <button class="ofilter-tab ${filter==='on-hold'?'active':''}" onclick="window._cabProjFilter='on-hold';renderCabinetMain()">On Hold (${holdCount})</button>
+      <button class="ofilter-tab ${filter==='complete'?'active':''}" onclick="window._cabProjFilter='complete';renderCabinetMain()">Complete (${doneCount})</button>
+    </div>
+    ${filtered.length ? filtered.map(projectCard).join('') : `<div style="color:var(--muted);font-size:13px;text-align:center;padding:40px 20px;border:1px dashed var(--border);border-radius:var(--radius)">${(search || filter !== 'all') ? 'No projects match this filter.' : 'No projects yet. Click <strong>+ New Project</strong> to create one.'}</div>`}
+  </div>`;
+}
+
+function _cabDetailHeader() {
+  const proj = projects.find(p => p.id === window._cabActiveProject);
+  if (!proj) return '';
+  const client = proj.client_id ? clients.find(c => c.id === proj.client_id) : null;
+  const statusBadge = proj.status==='complete'?'badge-green':proj.status==='on-hold'?'badge-gray':'badge-blue';
+  const statusText = proj.status==='complete'?'Complete':proj.status==='on-hold'?'On Hold':'Active';
+  return `<div style="max-width:700px;margin-bottom:16px">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
+      <button class="btn btn-outline" onclick="_cabBackToProjects()" style="width:auto;padding:4px 12px;font-size:12px">&larr; Projects</button>
+      <div style="flex:1"></div>
+      <button class="btn btn-outline" onclick="_openProjectPopup(${proj.id})" style="width:auto;padding:4px 10px;font-size:11px">Edit Project</button>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <h2 style="font-size:18px;font-weight:800;margin:0">${_escHtml(proj.name)}</h2>
+      <span class="badge ${statusBadge}" style="font-size:9px;padding:1px 6px">${statusText}</span>
+    </div>
+    ${client ? `<div style="font-size:12px;color:var(--muted);margin-top:2px">${_escHtml(client.name)}</div>` : ''}
+  </div>`;
+}
+
+function _cabOpenProject(projectId) {
+  window._cabView = 'detail';
+  window._cabActiveProject = projectId;
+  // Load cabinets for this project from localStorage
+  _cabLoadProjectCabinets(projectId);
+  renderCabinetMain();
+}
+
+function _cabBackToProjects() {
+  // Save current cabinets before leaving
+  saveCQLines();
+  window._cabView = 'projects';
+  window._cabActiveProject = null;
+  renderCabinetMain();
+}
+
+function _cabLoadProjectCabinets(projectId) {
+  try {
+    const stored = JSON.parse(localStorage.getItem('pc_cab_project_' + projectId) || '[]');
+    cqLines = stored;
+    if (cqLines.length) {
+      cqActiveLineIdx = 0;
+      // Ensure IDs exist
+      let maxId = cqLines.reduce((m,l) => Math.max(m, l.id||0), 0);
+      cqLines.forEach(l => { if (!l.id) l.id = ++maxId; });
+    } else {
+      cqActiveLineIdx = -1;
+    }
+  } catch(e) { cqLines = []; cqActiveLineIdx = -1; }
+}
+
+function _cabSaveProjectCabinets() {
+  if (window._cabActiveProject) {
+    localStorage.setItem('pc_cab_project_' + window._cabActiveProject, JSON.stringify(cqLines));
+  }
+}
+
+function _cabAddNewCabinet() {
+  const line = cqDefaultLine();
+  cqLines.push(line);
+  cqActiveLineIdx = cqLines.length - 1;
+  _cabSaveProjectCabinets();
+  _openCabinetBuilderPopup(cqActiveLineIdx);
+}
+
+function _openCabinetBuilderPopup(idx) {
+  cqActiveLineIdx = idx;
+  const line = cqLines[idx];
+  if (!line) return;
+  const html = `
+    <div class="popup-header">
+      <div class="popup-title">${_escHtml(line.name || 'Cabinet ' + (idx+1))}</div>
+      <button class="popup-close" onclick="_closeCabBuilder()">&times;</button>
+    </div>
+    <div class="popup-body" style="padding:0">
+      <div style="padding:16px 20px">
+        <div class="pf" style="margin-bottom:8px"><label class="pf-label">CABINET NAME</label><input class="pf-input pf-input-lg" id="cab-pop-name" value="${_escHtml(line.name||'')}" placeholder="e.g. Base Cabinet" onblur="cqUpdateField('name',this.value)"></div>
+      </div>
+      <div id="cq-cab-editor" style="padding:0 20px 20px"></div>
+    </div>
+    <div class="popup-footer">
+      <div class="popup-footer-left">
+        <button class="btn btn-outline" style="color:var(--danger)" onclick="_confirm('Delete this cabinet?',()=>{removeCQLine(${line.id});_closePopup()})">Delete</button>
+      </div>
+      <div class="popup-footer-right">
+        <button class="btn btn-outline" onclick="dupCQLine(${line.id});_closePopup()">Duplicate</button>
+        <button class="btn btn-outline" onclick="cqSaveToLibrary()">Save to Library</button>
+        <button class="btn btn-accent" onclick="_closeCabBuilder()">Done</button>
+      </div>
+    </div>`;
+  _openPopup(html, 'lg');
+  renderCQEditor();
+}
+
+function _closeCabBuilder() {
+  _cabSaveProjectCabinets();
+  _closePopup();
+  renderCQResults();
+}
+
+function _openRatesPopup() {
+  const html = `
+    <div class="popup-header">
+      <div class="popup-title">My Rates</div>
+      <button class="popup-close" onclick="_closePopup()">&times;</button>
+    </div>
+    <div class="popup-body">
+      <div id="cq-rates-content"></div>
+    </div>
+    <div class="popup-footer"><div></div><div class="popup-footer-right"><button class="btn btn-accent" onclick="_closePopup()">Done</button></div></div>`;
+  _openPopup(html, 'lg');
+  renderCQRates();
+}
+
+function renderCQPanel() {
+  renderCQResults();
+}
+
+// ── Render cabinet list (no longer in sidebar — kept for compatibility) ──
+function renderCQCabList() {
+  // No longer renders to sidebar — cabinet list is shown in main results area
 }
 
 // ── Active line index ──
@@ -8790,11 +8728,6 @@ function renderCQEditor() {
   if (!el) return;
   // Use active line or a blank default for "Add" mode
   const isEditing = cqActiveLineIdx >= 0 && cqLines[cqActiveLineIdx];
-  // Sync cabinet library search box with active cabinet name
-  const searchInp = document.getElementById('cq-cabinet-search');
-  if (searchInp && document.activeElement !== searchInp) {
-    searchInp.value = isEditing ? (cqLines[cqActiveLineIdx].name || '') : '';
-  }
   if (!window._cqBlankLine) window._cqBlankLine = cqDefaultLine();
   const line = isEditing ? cqLines[cqActiveLineIdx] : window._cqBlankLine;
 
@@ -9030,13 +8963,7 @@ function cqAddOrUpdateCabinet() {
 }
 
 function cqEditCabinetFromOutput(idx) {
-  cqActiveLineIdx = idx;
-  renderCQCabList();
-  renderCQEditor();
-  renderCQResults();
-  // Scroll sidebar to editor
-  const sidebar = document.getElementById('cq-sidebar');
-  if (sidebar) sidebar.scrollTop = sidebar.scrollHeight;
+  _openCabinetBuilderPopup(idx);
 }
 
 function cqStepField(field, dir) {
@@ -9362,18 +9289,19 @@ function _saveNewCQHardware(lineId, hwIdx) {
 
 // ── Render right panel: cost breakdown ──
 function renderCQResults() {
-  const el = document.getElementById('cq-results');
+  const el = document.getElementById('cq-results') || document.getElementById('cq-main');
   if (!el) return;
   const cur = window.currency;
   const fmt = v => cur + Number(v).toFixed(2);
   const fmt0 = v => cur + Math.round(v).toLocaleString();
-  const projName = document.getElementById('cq-project')?.value || '';
+  const projName = window._cabActiveProject ? (projects.find(p => p.id === window._cabActiveProject)?.name || '') : '';
 
   if (!cqLines.length) {
-    el.innerHTML = `<div class="empty-state">
+    el.innerHTML = _cabDetailHeader() + `<div class="empty-state">
       <div class="empty-icon" style="opacity:.18"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="12" y1="3" x2="12" y2="12"/></svg></div>
-      <h3>Cabinet Builder</h3>
-      <p>Add cabinets using the sidebar to start building your project.</p>
+      <h3>No Cabinets Yet</h3>
+      <p>Click <strong>+ Add Cabinet</strong> to start building.</p>
+      <button class="btn btn-accent" onclick="_cabAddNewCabinet()" style="margin-top:12px">+ Add Cabinet</button>
     </div>`;
     return;
   }
@@ -9385,11 +9313,13 @@ function renderCQResults() {
   const gMarkup = gSub * cqSettings.markup/100;
   const gTotal = (gSub+gMarkup)*(1+cqSettings.tax/100);
 
-  let html = `<div style="max-width:700px">`;
+  let html = _cabDetailHeader() + `<div style="max-width:700px">`;
 
   // ── Top buttons bar ──
   html += `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;align-items:center">
-    <button class="btn btn-primary" onclick="cqAddToExistingQuote()" style="font-size:12px;padding:8px 14px">Add to Existing Quote</button>
+    <button class="btn btn-accent" onclick="_cabAddNewCabinet()" style="font-size:12px;padding:8px 14px;font-weight:700">+ Add Cabinet</button>
+    <button class="btn btn-outline" onclick="_openRatesPopup()" style="font-size:12px;padding:8px 14px;width:auto">My Rates</button>
+    <button class="btn btn-outline" onclick="cqAddToExistingQuote()" style="font-size:12px;padding:8px 14px;width:auto">Add to Quote</button>
     <div id="cq-quote-picker" style="display:none"></div>
     <button class="btn btn-outline" onclick="cqAddToNewQuote()" style="font-size:12px;padding:8px 14px;width:auto">+ New Quote</button>
     <span style="flex:1"></span>
@@ -9399,8 +9329,7 @@ function renderCQResults() {
     <button class="btn btn-outline" onclick="cqImportLibrary()" style="font-size:12px;padding:8px 12px;width:auto">&uarr; Import</button>
   </div>`;
 
-  // ── Project header ──
-  if (projName) html += `<h2 style="font-size:18px;font-weight:800;margin:0 0 4px">${_escHtml(projName)}</h2>`;
+  // ── Cabinet count ──
   html += `<div style="font-size:12px;color:var(--muted);margin-bottom:16px">${cqLines.length} cabinet${cqLines.length!==1?'s':''} · ${cqLines.reduce((s,l)=>s+l.qty,0)} units</div>`;
 
   // ── Individual cabinet cards ──
@@ -9475,17 +9404,13 @@ function cqAddToNewQuote() {
   const gLabour = cqLines.reduce((s, l) => s + calcCQLine(l).labourCost * l.qty, 0);
   const totalHrs = cqLines.reduce((s, l) => s + calcCQLine(l).labourHrs * l.qty, 0);
 
-  // Pre-fill the quote form
-  const projName = document.getElementById('cq-project')?.value?.trim() || '';
-  const clientName = document.getElementById('cq-client')?.value?.trim() || '';
-  if (projName) document.getElementById('q-project').value = projName;
-  if (clientName) document.getElementById('q-client').value = clientName;
-  document.getElementById('q-materials').value = gMat.toFixed(2);
-  document.getElementById('q-labour-rate').value = cqSettings.labourRate;
-  document.getElementById('q-hours').value = totalHrs.toFixed(1);
-  document.getElementById('q-markup').value = cqSettings.markup;
-  document.getElementById('q-tax').value = cqSettings.tax;
-  document.getElementById('q-notes').value = cqLines.map(l => {
+  // Get project/client from active project
+  const proj = window._cabActiveProject ? projects.find(p => p.id === window._cabActiveProject) : null;
+  const projName = proj ? proj.name : '';
+  const client = proj?.client_id ? clients.find(c => c.id === proj.client_id) : null;
+  const clientName = client ? client.name : '';
+
+  const notes = cqLines.map(l => {
     const desc = l.name || 'Cabinet';
     const details = [l.w+'×'+l.h+'×'+l.d+'mm', l.material];
     if (l.doors > 0) details.push(l.doors + ' door' + (l.doors!==1?'s':''));
@@ -9494,9 +9419,21 @@ function cqAddToNewQuote() {
     return desc + ' — ' + details.join(', ');
   }).join('\n');
 
-  switchSection('quote');
-  try { _updateQuotePreview(); } catch(e) {}
-  _toast('Quote form pre-filled — enter client details and create', 'success');
+  // Open the new quote popup pre-filled
+  _openNewQuotePopup();
+  setTimeout(() => {
+    const el = id => document.getElementById(id);
+    if (el('nq-project') && projName) el('nq-project').value = projName;
+    if (el('nq-client') && clientName) el('nq-client').value = clientName;
+    if (el('nq-materials')) el('nq-materials').value = gMat.toFixed(2);
+    if (el('nq-labour-rate')) el('nq-labour-rate').value = cqSettings.labourRate;
+    if (el('nq-hours')) el('nq-hours').value = totalHrs.toFixed(1);
+    if (el('nq-markup')) el('nq-markup').value = cqSettings.markup;
+    if (el('nq-tax')) el('nq-tax').value = cqSettings.tax;
+    if (el('nq-notes')) el('nq-notes').value = notes;
+    // Trigger preview update
+    el('nq-materials')?.dispatchEvent(new Event('input'));
+  }, 50);
 }
 
 // ── Add to existing quote (show picker) ──
@@ -10107,25 +10044,24 @@ function copyCQSummary() {
 // ── Send to Quick Quote ──
 function cqSendToQuickQuote() {
   if (!cqLines.length) { _toast('Add cabinet lines first.', 'error'); return; }
-  const grandSub = cqLines.reduce((s, l) => s + calcCQLine(l).lineSubtotal, 0);
   const matTotal = cqLines.reduce((s, l) => s + calcCQLine(l).matCost * l.qty, 0);
-  const labourTotal = cqLines.reduce((s, l) => s + calcCQLine(l).labourCost * l.qty, 0);
-  const client = document.getElementById('cq-client')?.value?.trim() || '';
-  const project = document.getElementById('cq-project')?.value?.trim() || '';
-
-  document.getElementById('q-client').value = client;
-  document.getElementById('q-project').value = project;
-  document.getElementById('q-materials').value = matTotal.toFixed(2);
-  document.getElementById('q-labour-rate').value = cqSettings.labourRate;
   const totalHrs = cqLines.reduce((s, l) => s + calcCQLine(l).labourHrs * l.qty, 0);
-  document.getElementById('q-hours').value = totalHrs.toFixed(1);
-  document.getElementById('q-markup').value = cqSettings.markup;
-  document.getElementById('q-tax').value = cqSettings.tax;
-  document.getElementById('q-notes').value = 'Cabinet Quote: ' + cqLines.map(l => (l.name || 'Cabinet') + (l.qty > 1 ? ' x' + l.qty : '')).join(', ');
+  const proj = window._cabActiveProject ? projects.find(p => p.id === window._cabActiveProject) : null;
+  const clientObj = proj?.client_id ? clients.find(c => c.id === proj.client_id) : null;
 
-  switchSection('quote');
-  try { _updateQuotePreview(); } catch(e) {}
-  _toast('Sent to Quote — review and create', 'success');
+  _openNewQuotePopup();
+  setTimeout(() => {
+    const el = id => document.getElementById(id);
+    if (el('nq-client') && clientObj) el('nq-client').value = clientObj.name;
+    if (el('nq-project') && proj) el('nq-project').value = proj.name;
+    if (el('nq-materials')) el('nq-materials').value = matTotal.toFixed(2);
+    if (el('nq-labour-rate')) el('nq-labour-rate').value = cqSettings.labourRate;
+    if (el('nq-hours')) el('nq-hours').value = totalHrs.toFixed(1);
+    if (el('nq-markup')) el('nq-markup').value = cqSettings.markup;
+    if (el('nq-tax')) el('nq-tax').value = cqSettings.tax;
+    if (el('nq-notes')) el('nq-notes').value = 'Cabinet Quote: ' + cqLines.map(l => (l.name || 'Cabinet') + (l.qty > 1 ? ' x' + l.qty : '')).join(', ');
+    el('nq-materials')?.dispatchEvent(new Event('input'));
+  }, 50);
 }
 
 // ── Import from Cabinet Builder tab ──
@@ -10202,20 +10138,17 @@ function renderSchedule() {
   let ws = new Date(calStart);
   while(ws<=calEnd){const w=[];for(let d=0;d<7;d++){const day=new Date(ws);day.setDate(day.getDate()+d);w.push(day);}weeks.push(w);ws.setDate(ws.getDate()+7);}
 
-  // Sidebar
-  // Sidebar: job list (rendered into separate sidebar element)
-  let sidebarHTML = `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-    <div style="font-size:14px;font-weight:800;color:var(--text)">Jobs</div>
-    <button class="btn btn-outline" onclick="document.getElementById('schedule-today-marker')?.scrollIntoView({behavior:'smooth',block:'center'})" style="font-size:10px;padding:3px 8px;width:auto">Today</button>
+  // Calendar header with Today button
+  let cal = `<div style="display:flex;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid var(--border);flex-shrink:0">
+    <div style="font-size:16px;font-weight:800;color:var(--text)">Schedule</div>
+    <span style="font-size:12px;color:var(--muted)">${events.length} active job${events.length!==1?'s':''}</span>
+    <span style="flex:1"></span>
+    <button class="btn btn-accent" onclick="_openNewOrderPopup()" style="width:auto;padding:5px 14px;font-size:12px;font-weight:700">+ New Order</button>
+    <button class="btn btn-outline" onclick="document.getElementById('schedule-today-marker')?.scrollIntoView({behavior:'smooth',block:'center'})" style="font-size:11px;padding:5px 12px;width:auto">Today</button>
   </div>`;
-  events.forEach(e=>{const o=orders.find(x=>x.id===e.id);const st=o?STATUS_LABELS[o.status]||o.status:'';sidebarHTML+=`<div style="display:flex;align-items:center;gap:8px;padding:5px 8px;margin-bottom:2px;border-radius:6px;cursor:pointer" onclick="_scrollToSchedBar(${e.id})" ondblclick="_openOrderPopup(${e.id})" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''"><div style="width:8px;height:8px;border-radius:2px;background:${e.color};flex-shrink:0"></div><div style="flex:1;min-width:0"><div style="font-size:11px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_escHtml(e.project)}</div><div style="font-size:9px;color:var(--muted)">${_escHtml(e.client)}${st?' · '+st:''}</div></div><div onclick="event.stopPropagation();_openOrderPopup(${e.id})" style="color:var(--muted);font-size:10px;opacity:0.5;padding:2px 4px" title="Edit order">✎</div></div>`;});
-  if(!events.length)sidebarHTML+=`<div style="font-size:12px;color:var(--muted)">No active orders</div>`;
-  const sidebarEl = document.getElementById('schedule-sidebar');
-  if (sidebarEl) sidebarEl.innerHTML = sidebarHTML;
 
-  // Calendar using CSS grid per week
-  // Calendar (rendered into main area)
-  let cal = `<div style="position:sticky;top:0;z-index:5;background:var(--surface);display:grid;grid-template-columns:repeat(7,1fr);border-bottom:1px solid var(--border)">
+  // Calendar day headers
+  cal += `<div style="position:sticky;top:0;z-index:5;background:var(--surface);display:grid;grid-template-columns:repeat(7,1fr);border-bottom:1px solid var(--border)">
     ${dayNames.map((d,i)=>`<div style="padding:8px 4px;font-size:11px;font-weight:600;color:${i>=5?'var(--muted)':'var(--text2)'};text-align:center">${d}</div>`).join('')}
   </div>`;
 
@@ -10398,7 +10331,8 @@ async function resolveProject(name, clientId) {
 }
 
 // ── Client CRUD ──
-async function createClient() {
+async function createClient() { // Legacy sidebar — now handled by _openNewClientPopup()
+  if (!document.getElementById('cl-name')) return;
   const name = document.getElementById('cl-name').value.trim();
   if (!name) { _toast('Enter a client name.', 'error'); return; }
   if (!_requireAuth()) return;
@@ -10438,7 +10372,8 @@ async function removeClient(id) {
 }
 
 // ── Project CRUD ──
-async function createProject() {
+async function createProject() { // Legacy sidebar — now handled by _openNewProjectPopup()
+  if (!document.getElementById('pj-name')) return;
   const name = document.getElementById('pj-name').value.trim();
   if (!name) { _toast('Enter a project name.', 'error'); return; }
   if (!_requireAuth()) return;
@@ -10549,8 +10484,9 @@ function renderClientsMain() {
 
   el.innerHTML = `<div style="padding:24px;max-width:900px">
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap">
-      <div style="font-size:18px;font-weight:800;color:var(--text);flex:1">Clients <span style="font-size:13px;font-weight:400;color:var(--muted)">(${clients.length})</span></div>
-      <input type="text" placeholder="Search clients..." value="${_escHtml(window._clientSearch||'')}" oninput="window._clientSearch=this.value;renderClientsMain()" style="font-size:12px;padding:6px 12px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);width:200px;font-family:inherit">
+      <div style="font-size:18px;font-weight:800;color:var(--text)">Clients <span style="font-size:13px;font-weight:400;color:var(--muted)">(${clients.length})</span></div>
+      <button class="btn btn-accent" onclick="_openNewClientPopup()" style="width:auto;padding:5px 14px;font-size:12px;font-weight:700">+ New Client</button>
+      <input type="text" placeholder="Search clients..." value="${_escHtml(window._clientSearch||'')}" oninput="window._clientSearch=this.value;renderClientsMain()" style="font-size:12px;padding:6px 12px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);width:200px;font-family:inherit;margin-left:auto">
       <button class="btn" onclick="exportClientsCSV()" style="font-size:11px;padding:5px 10px">Export</button>
       <button class="btn" onclick="importClientsCSV()" style="font-size:11px;padding:5px 10px">Import</button>
     </div>
@@ -10562,7 +10498,7 @@ function renderClientsMain() {
       </select>
       <span style="font-size:11px;color:var(--muted);margin-left:auto">Total order value: <strong style="color:var(--text)">${fmt(totalClientValue)}</strong></span>
     </div>` : ''}
-    ${filtered.length ? filtered.map(clientCard).join('') : `<div style="color:var(--muted);font-size:13px;text-align:center;padding:40px 20px;border:1px dashed var(--border);border-radius:var(--radius)">${search ? 'No clients match your search.' : 'No clients yet. Add one using the form on the left.'}</div>`}
+    ${filtered.length ? filtered.map(clientCard).join('') : `<div style="color:var(--muted);font-size:13px;text-align:center;padding:40px 20px;border:1px dashed var(--border);border-radius:var(--radius)">${search ? 'No clients match your search.' : 'No clients yet. Click <strong>+ New Client</strong> to add one.'}</div>`}
   </div>`;
 }
 
@@ -10628,8 +10564,9 @@ function renderProjectsMain() {
 
   el.innerHTML = `<div style="padding:24px;max-width:900px">
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap">
-      <div style="font-size:18px;font-weight:800;color:var(--text);flex:1">Projects <span style="font-size:13px;font-weight:400;color:var(--muted)">(${projects.length})</span></div>
-      <input type="text" placeholder="Search projects..." value="${_escHtml(window._projSearch||'')}" oninput="window._projSearch=this.value;renderProjectsMain()" style="font-size:12px;padding:6px 12px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);width:200px;font-family:inherit">
+      <div style="font-size:18px;font-weight:800;color:var(--text)">Projects <span style="font-size:13px;font-weight:400;color:var(--muted)">(${projects.length})</span></div>
+      <button class="btn btn-accent" onclick="_openNewProjectPopup()" style="width:auto;padding:5px 14px;font-size:12px;font-weight:700">+ New Project</button>
+      <input type="text" placeholder="Search projects..." value="${_escHtml(window._projSearch||'')}" oninput="window._projSearch=this.value;renderProjectsMain()" style="font-size:12px;padding:6px 12px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);width:200px;font-family:inherit;margin-left:auto">
     </div>
     <div style="display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap;align-items:center">
       <button class="ofilter-tab ${filter==='all'?'active':''}" onclick="window._projFilter='all';renderProjectsMain()">All (${projects.length})</button>
@@ -10643,7 +10580,7 @@ function renderProjectsMain() {
         <option value="value" ${sortBy==='value'?'selected':''}>Value</option>
       </select>
     </div>
-    ${filtered.length ? filtered.map(projectCard).join('') : `<div style="color:var(--muted);font-size:13px;text-align:center;padding:40px 20px;border:1px dashed var(--border);border-radius:var(--radius)">${(search || filter !== 'all') ? 'No projects match this filter.' : 'No projects yet. Create one using the form on the left.'}</div>`}
+    ${filtered.length ? filtered.map(projectCard).join('') : `<div style="color:var(--muted);font-size:13px;text-align:center;padding:40px 20px;border:1px dashed var(--border);border-radius:var(--radius)">${(search || filter !== 'all') ? 'No projects match this filter.' : 'No projects yet. Click <strong>+ New Project</strong> to create one.'}</div>`}
   </div>`;
 }
 
