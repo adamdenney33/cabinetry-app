@@ -556,7 +556,11 @@ textarea { resize: vertical; min-height: 70px; }
 .combined-pg-table td { padding: 5px 8px; border-bottom: 1px solid var(--border2); vertical-align: middle; }
 .combined-pg-table tr:last-child td { border-bottom: none; }
 
-.canvas-wrap { background: var(--surface2); border-radius: var(--radius); border: 1px solid var(--border); padding: 20px; display: inline-block; max-width: 100%; box-shadow: var(--shadow); }
+.canvas-wrap { background: #fff; border-radius: var(--radius); border: 1px solid var(--border); padding: 16px; display: block; max-width: 100%; box-shadow: var(--shadow); overflow: hidden; margin-bottom: 12px; }
+.lt-pages-select { width: auto !important; max-width: 130px; padding: 5px 12px !important; font-size: 13px !important; line-height: 1.2; height: auto; }
+.layout-toolbar-top { border-bottom: 1px solid var(--border2); }
+.sheet-cutlist { background: #fff; border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 14px; margin-bottom: 12px; box-shadow: var(--shadow); }
+.sheet-cutlist table { width: 100%; }
 canvas { display: block; }
 .legend { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
 .legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--muted); }
@@ -1524,17 +1528,7 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
         </table>
         <button class="cl-add-btn" onclick="addSheet()" style="margin-bottom:4px">+ Add panel</button>
 
-        <!-- Stock Library -->
-        <div style="padding:8px 14px 6px;position:relative">
-          <span class="cl-section-title" style="display:block;margin-bottom:4px">Stock Library</span>
-          <div class="smart-input-wrap">
-            <input type="text" id="cl-stock" placeholder="Load or add stock panels..." autocomplete="off" style="font-size:12px" oninput="_smartCLStockSuggest(this,'cl-stock-suggest')" onfocus="_smartCLStockSuggest(this,'cl-stock-suggest')" onblur="setTimeout(()=>document.getElementById('cl-stock-suggest').style.display='none',150)">
-            <div class="smart-input-add" onclick="_openNewStockPopup()" title="Add new stock material">+</div>
-          </div>
-          <div id="cl-stock-suggest" class="client-suggest-list suggest-up" style="display:none"></div>
-        </div>
-
-        <!-- Edge Banding Library -->
+        <!-- Edge Banding Section -->
         <div id="cl-edgeband-section" style="display:none">
           <div class="cl-section-header" style="padding-top:16px;padding-bottom:4px">
             <span class="cl-section-title">Edge Banding</span>
@@ -1548,18 +1542,16 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
             <tbody id="edgebands-body"></tbody>
           </table>
           <button class="cl-add-btn" onclick="addEdgeBand()" style="margin-bottom:4px">+ Add edge band</button>
-          <div style="padding:8px 14px 6px;position:relative">
-            <span class="cl-section-title" style="display:block;margin-bottom:4px">Stock Library</span>
-            <div class="smart-input-wrap">
-              <input type="text" id="cl-eb-stock" placeholder="Search edge band stock..." autocomplete="off"
-                style="font-size:12px"
-                oninput="_smartCLEdgeBandSuggest(this,'cl-eb-stock-suggest')"
-                onfocus="_smartCLEdgeBandSuggest(this,'cl-eb-stock-suggest')"
-                onblur="setTimeout(()=>document.getElementById('cl-eb-stock-suggest').style.display='none',150)">
-              <div class="smart-input-add" onclick="_openNewEdgeBandMaterialPopup()" title="Add new edge band material">+</div>
-            </div>
-            <div id="cl-eb-stock-suggest" class="client-suggest-list suggest-up" style="display:none"></div>
+        </div>
+
+        <!-- Stock Library (serves both panels and edge banding) -->
+        <div style="padding:8px 14px 6px;position:relative">
+          <span class="cl-section-title" style="display:block;margin-bottom:4px">Stock Library</span>
+          <div class="smart-input-wrap">
+            <input type="text" id="cl-stock" placeholder="Load or add materials..." autocomplete="off" style="font-size:12px" oninput="_smartCLStockSuggest(this,'cl-stock-suggest')" onfocus="_smartCLStockSuggest(this,'cl-stock-suggest')" onblur="setTimeout(()=>document.getElementById('cl-stock-suggest').style.display='none',150)">
+            <div class="smart-input-add" onclick="_openNewStockPopup()" title="Add new stock material">+</div>
           </div>
+          <div id="cl-stock-suggest" class="client-suggest-list suggest-up" style="display:none"></div>
         </div>
 
       </div>
@@ -1577,41 +1569,35 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
 
     <!-- RIGHT: Results -->
     <div class="cl-right">
-      <div class="layout-toolbar" id="layout-toolbar">
+      <div class="layout-toolbar layout-toolbar-top" id="layout-toolbar-top">
+        <button class="layout-tool-btn" id="lt-pg-summary" onclick="toggleClSummary()" title="Show summary, stats &amp; full cut list">Summary</button>
+        <div class="layout-tool-sep"></div>
+        <button class="layout-tool-btn" onclick="removeUsedSheets()" title="Deduct used sheets from stock quantities">Deduct from Stock</button>
+        <button class="layout-tool-btn" onclick="_clSaveProject()" title="Save project">Save Project</button>
+        <div class="layout-tool-sep"></div>
+        <button class="layout-tool-btn" onclick="printLayout('print')" title="Send to printer">Print</button>
+        <button class="layout-tool-btn" onclick="printLayout('pdf')" title="Save as PDF file">PDF</button>
+        <div class="layout-tool-sep"></div>
+        <select class="layout-tool-btn lt-pages-select" id="lt-pages" onchange="setPagesPerSheet(this.value)" title="Sheets per page when printing">
+          <option value="1">1 per page</option>
+          <option value="2">2 per page</option>
+          <option value="4">4 per page</option>
+        </select>
+      </div>
+      <div class="layout-toolbar layout-toolbar-bot" id="layout-toolbar">
+        <button class="layout-tool-btn" id="lt-cutorder" onclick="toggleCutOrder()" title="Show numbered cut sequence">Cut order</button>
+        <button class="layout-tool-btn" id="lt-sheetcl" onclick="toggleSheetCutList()" title="Show cut list under each sheet">Cut list</button>
+        <div class="layout-tool-sep"></div>
         <button class="layout-tool-btn" onclick="zoomOut()">−</button>
         <button class="layout-tool-btn" onclick="zoomFit()">Fit</button>
         <button class="layout-tool-btn" onclick="zoomIn()">+</button>
-        <div class="layout-tool-sep"></div>
-        <div class="cl-unit-pill" style="margin:0 2px">
-          <button class="cl-unit-btn active" id="cl-unit-in" onclick="setUnits('imperial')" style="padding:3px 7px;font-size:11px">in</button>
-          <button class="cl-unit-btn" id="cl-unit-mm" onclick="setUnits('metric')" style="padding:3px 7px;font-size:11px">mm</button>
-        </div>
-        <div class="layout-tool-sep"></div>
-        <button class="layout-tool-btn active" id="lt-color" onclick="toggleLayoutColor()">Color</button>
         <div class="layout-tool-sep"></div>
         <button class="layout-tool-btn" onclick="adjustFontScale(-0.15)">A−</button>
         <button class="layout-tool-btn" onclick="adjustFontScale(0.15)">A+</button>
         <div class="layout-tool-sep"></div>
         <button class="layout-tool-btn" id="lt-rotate" onclick="toggleLayoutRotate()" title="Rotate sheet 90°">↻ Rotate</button>
         <div class="layout-tool-sep"></div>
-        <select class="layout-tool-btn" id="lt-pages" onchange="setPagesPerSheet(this.value)" title="Pages per sheet when printing" style="cursor:pointer">
-          <option value="1">1 per page</option>
-          <option value="2">2 per page</option>
-          <option value="4">4 per page</option>
-        </select>
-        <div class="layout-tool-sep"></div>
-        <button class="layout-tool-btn active" id="lt-pg-summary" onclick="toggleClSummary()" title="Include summary &amp; stats in export">Summary</button>
-        <button class="layout-tool-btn active" id="lt-pg-cutlist" onclick="toggleClCutList()" title="Include full cut list in export">Cut List</button>
-        <div class="layout-tool-sep"></div>
-        <button class="layout-tool-btn" onclick="printLayout('print')" title="Send to printer">Print</button>
-        <button class="layout-tool-btn" onclick="printLayout('pdf')" title="Save as PDF file">PDF</button>
-        <div class="layout-tool-sep"></div>
-        <button class="layout-tool-btn" onclick="removeUsedSheets()" title="Remove used sheets from stock">− Stock</button>
-        <button class="layout-tool-btn" onclick="_clSaveProject()" title="Save project">Save Project</button>
-      </div>
-      <div class="inner-tabs">
-        <div class="inner-tab active" data-tab="layout" onclick="switchTab('layout')">Layout View</div>
-        <div class="inner-tab" data-tab="summary" onclick="switchTab('summary')">Cut List</div>
+        <button class="layout-tool-btn active" id="lt-color" onclick="toggleLayoutColor()">Color</button>
       </div>
       <div class="main-scroll" id="results-area">
         <div class="empty-state">
@@ -3360,12 +3346,14 @@ let layoutZoom = parseFloat(localStorage.getItem('pc_zoom')) || 1.0;
 let layoutColor = true;
 let layoutGrain = true;
 let layoutFontScale = parseFloat(localStorage.getItem('pc_font_scale')) || 1.0;
+let layoutCutOrder = localStorage.getItem('pc_cut_order') === '1';
+let layoutSheetCutList = localStorage.getItem('pc_sheet_cutlist') === '1';
 let colsVisible = { grain: false, material: false, label: true, notes: false, edgeband: false };
 let edgeBands = [];
 let _edgeBandId = 1;
 let layoutRotate = false;
-let clShowSummary = true;
-let clShowCutList = true;
+let clShowSummary = localStorage.getItem('pc_show_summary') === '1';
+let clShowCutList = clShowSummary;  // cut list is part of the Summary tile
 let _dragSrc = null, _dragTable = null;
 
 const COLORS = [
@@ -3789,39 +3777,6 @@ function _ebSave(pieceId) {
   _saveCutList();
 }
 
-function _smartCLEdgeBandSuggest(input, boxId) {
-  const q = input.value.toLowerCase();
-  const box = document.getElementById(boxId);
-  if (!box) return;
-  const items = (window.stockItems || []).filter(s => s.category === 'Edge Banding');
-  const matches = items.filter(s => !q || s.name.toLowerCase().includes(q));
-  if (!matches.length) { box.style.display = 'none'; return; }
-  box.innerHTML = matches.map((s,i) => {
-    const meta = [s.thickness ? s.thickness+'mm' : '', s.width ? s.width+'mm wide' : ''].filter(Boolean).join(' · ');
-    return `<div class="client-suggest-item" onclick="_clAddEdgeBandFromStock(${i},${JSON.stringify(matches.map(x=>x.name)).replace(/"/g,'&quot;')})">
-      <span style="font-weight:500">${_escHtml(s.name)}</span>
-      ${meta ? `<span style="color:var(--muted);font-size:11px;margin-left:6px">${meta}</span>` : ''}
-    </div>`;
-  }).join('') + `<div class="client-suggest-add" onclick="_openNewEdgeBandMaterialPopup()">+ Add new edge band</div>`;
-  box.style.display = 'block';
-}
-
-function _clAddEdgeBandFromStock(idx, names) {
-  const items = (window.stockItems || []).filter(s => s.category === 'Edge Banding');
-  const name = Array.isArray(names) ? names[idx] : names;
-  const s = items.find(x => x.name === name) || items[idx];
-  if (!s) return;
-  // Don't duplicate if already exists
-  const exists = edgeBands.find(eb => eb.name === s.name);
-  if (exists) { _toast(`${s.name} already in project`, 'error'); return; }
-  addEdgeBand(s.name, s.thickness, s.width);
-  const inp = document.getElementById('cl-eb-stock');
-  if (inp) inp.value = '';
-  const box = document.getElementById('cl-eb-stock-suggest');
-  if (box) box.style.display = 'none';
-  _toast(`Added ${s.name}`, 'success');
-}
-
 function _openNewEdgeBandMaterialPopup() {
   const h = `
     <div class="popup-header">
@@ -3880,9 +3835,6 @@ function _saveNewEdgeBandMaterial() {
     else if (window.saveStockItems) window.saveStockItems();
   }
   _toast(`Added ${name}`, 'success');
-  // Refresh the eb stock input if open
-  const inp = document.getElementById('cl-eb-stock');
-  if (inp) inp.value = '';
 }
 
 function _clSaveProject() {
@@ -4428,10 +4380,21 @@ function toggleLayoutGrain() {
   const b = document.getElementById('lt-grain'); if (b) b.classList.toggle('active', layoutGrain);
   renderResults();
 }
+function toggleCutOrder() {
+  layoutCutOrder = !layoutCutOrder;
+  localStorage.setItem('pc_cut_order', layoutCutOrder ? '1' : '0');
+  const b = document.getElementById('lt-cutorder'); if (b) b.classList.toggle('active', layoutCutOrder);
+  renderResults();
+}
+function toggleSheetCutList() {
+  layoutSheetCutList = !layoutSheetCutList;
+  localStorage.setItem('pc_sheet_cutlist', layoutSheetCutList ? '1' : '0');
+  const b = document.getElementById('lt-sheetcl'); if (b) b.classList.toggle('active', layoutSheetCutList);
+  renderResults();
+}
 function adjustFontScale(d) { layoutFontScale = Math.max(0.5, Math.min(2.5, layoutFontScale + d)); localStorage.setItem('pc_font_scale', layoutFontScale); renderResults(); }
 function printLayout(mode='print') {
   if (!results || !results.layouts || !results.layouts.length) { _toast('Run the optimiser first', 'info'); return; }
-  if (activeTab !== 'layout') { switchTab('layout'); }
   // Brief delay so canvases finish rendering before capture
   setTimeout(() => {
     const biz = getBizInfo();
@@ -5090,13 +5053,15 @@ function toggleLayoutRotate() {
 }
 function toggleClSummary() {
   clShowSummary = !clShowSummary;
-  document.getElementById('lt-pg-summary').classList.toggle('active', clShowSummary);
+  clShowCutList = clShowSummary;  // cut list table is part of the Summary tile now
+  localStorage.setItem('pc_show_summary', clShowSummary ? '1' : '0');
+  localStorage.setItem('pc_show_cutlist', clShowCutList ? '1' : '0');
+  document.getElementById('lt-pg-summary')?.classList.toggle('active', clShowSummary);
   renderResults();
 }
 function toggleClCutList() {
-  clShowCutList = !clShowCutList;
-  document.getElementById('lt-pg-cutlist').classList.toggle('active', clShowCutList);
-  renderResults();
+  // Legacy — routed through the combined Summary toggle
+  toggleClSummary();
 }
 function setPagesPerSheet(n) {
   let s = document.getElementById('print-pages-style');
@@ -5107,74 +5072,76 @@ function setPagesPerSheet(n) {
   else s.textContent = '';
 }
 
-// MAXRECTS algorithm
-function rectsOverlap(a, b) {
-  return !(a.x + a.w <= b.x || b.x + b.w <= a.x || a.y + a.h <= b.y || b.y + b.h <= a.y);
-}
-function contains(outer, inner) {
-  return outer.x <= inner.x && outer.y <= inner.y &&
-         outer.x + outer.w >= inner.x + inner.w &&
-         outer.y + outer.h >= inner.y + inner.h;
-}
-function prune(rects) {
-  return rects.filter((r, i) => {
-    if (r.w <= 0 || r.h <= 0) return false;
-    return !rects.some((o, j) => i !== j && contains(o, r));
-  });
-}
-function packSheet(sheetW, sheetH, sheetGrain, items, kerf) {
-  let free = [{ x: 0, y: 0, w: sheetW, h: sheetH }];
-  const placed = [], leftover = [];
-  for (const item of items) {
-    let best = null, bestR = false, bestS1 = Infinity, bestS2 = Infinity;
-    const pGrain = item.grain || 'none';
-    const sGrain = sheetGrain || 'none';
-    // Rotation rules:
-    //   piece=none  → free to rotate either way
-    //   piece=h/v, sheet=none → place as-is, no rotation
-    //   piece=h, sheet=h → no rotation needed (grains already match)
-    //   piece=v, sheet=v → no rotation needed
-    //   piece=h, sheet=v → MUST rotate to align grain
-    //   piece=v, sheet=h → MUST rotate to align grain
-    const mustRotate = pGrain !== 'none' && sGrain !== 'none' && pGrain !== sGrain;
-    const canRotate  = pGrain === 'none' || mustRotate;
-    for (const r of free) {
-      if (!mustRotate && r.w >= item.w && r.h >= item.h) {
-        const s1 = Math.min(r.w - item.w, r.h - item.h);
-        const s2 = Math.max(r.w - item.w, r.h - item.h);
-        if (s1 < bestS1 || (s1 === bestS1 && s2 < bestS2)) { bestS1=s1; bestS2=s2; best=r; bestR=false; }
-      }
-      if (canRotate && r.w >= item.h && r.h >= item.w) {
-        const s1 = Math.min(r.w - item.h, r.h - item.w);
-        const s2 = Math.max(r.w - item.h, r.h - item.w);
-        if (s1 < bestS1 || (s1 === bestS1 && s2 < bestS2)) { bestS1=s1; bestS2=s2; best=r; bestR=true; }
-      }
-    }
-    // Grain mismatch but rotated placement didn't fit — fall back to natural (grain warning)
-    if (!best && mustRotate) {
-      for (const r of free) {
-        if (r.w >= item.w && r.h >= item.h) {
-          const s1 = Math.min(r.w - item.w, r.h - item.h);
-          const s2 = Math.max(r.w - item.w, r.h - item.h);
-          if (s1 < bestS1 || (s1 === bestS1 && s2 < bestS2)) { bestS1=s1; bestS2=s2; best=r; bestR=false; }
+// Recursive guillotine packer — explicitly builds a cut tree. After placing a
+// piece at the top-left corner of a region, splits the remainder with either a
+// horizontal or vertical guillotine cut, trying BOTH and keeping whichever
+// packs more pieces. This produces fewer, more consolidated offcut regions.
+function packSheetRecGuillotine(sheetW, sheetH, sheetGrain, items, kerf) {
+  const orientOf = (it) => {
+    const pg = it.grain || 'none', sg = sheetGrain || 'none';
+    const mustRot = pg !== 'none' && sg !== 'none' && pg !== sg;
+    const canRot  = pg === 'none' || mustRot;
+    const nat = { w: it.w, h: it.h, rotated: false };
+    const rot = { w: it.h, h: it.w, rotated: true };
+    if (mustRot) return [rot, nat];
+    if (canRot)  return [nat, rot];
+    return [nat];
+  };
+
+  // Try to pack a list of items into a region. Returns { placed, leftover }.
+  // Pure function — no shared state.
+  function packRegion(x0, y0, x1, y1, items) {
+    const rw = x1 - x0, rh = y1 - y0;
+    if (rw < 1 || rh < 1 || !items.length) return { placed: [], leftover: items };
+
+    // Pick the largest item that fits (area desc), any orientation.
+    const sorted = [...items].sort((a, b) => (b.w * b.h) - (a.w * a.h));
+    let pick = null, pickIdx = -1;
+    for (let i = 0; i < sorted.length; i++) {
+      const it = sorted[i];
+      for (const o of orientOf(it)) {
+        if (o.w <= rw + 0.5 && o.h <= rh + 0.5) {
+          pick = { it, w: o.w, h: o.h, rotated: o.rotated };
+          pickIdx = i;
+          break;
         }
       }
+      if (pick) break;
     }
-    if (!best) { leftover.push(item); continue; }
-    const pw = bestR ? item.h : item.w, ph = bestR ? item.w : item.h;
-    placed.push({ x: best.x, y: best.y, w: pw, h: ph, item, rotated: bestR });
-    const occ = { x: best.x, y: best.y, w: pw + kerf, h: ph + kerf };
-    const newFree = [];
-    for (const r of free) {
-      if (!rectsOverlap(r, occ)) { newFree.push(r); continue; }
-      if (occ.x > r.x) newFree.push({ x: r.x, y: r.y, w: occ.x - r.x, h: r.h });
-      if (occ.x + occ.w < r.x + r.w) newFree.push({ x: occ.x + occ.w, y: r.y, w: (r.x + r.w) - (occ.x + occ.w), h: r.h });
-      if (occ.y > r.y) newFree.push({ x: r.x, y: r.y, w: r.w, h: occ.y - r.y });
-      if (occ.y + occ.h < r.y + r.h) newFree.push({ x: r.x, y: occ.y + occ.h, w: r.w, h: (r.y + r.h) - (occ.y + occ.h) });
-    }
-    free = prune(newFree);
+    if (!pick) return { placed: [], leftover: items };
+
+    const remaining = sorted.filter((_, i) => i !== pickIdx);
+    const placed0 = { x: x0, y: y0, w: pick.w, h: pick.h, item: pick.it, rotated: pick.rotated };
+
+    // Two possible splits of the remaining L-shape:
+    //   A (row-first): RIGHT = (x0+w+k, y0, x1, y0+h), BELOW = (x0, y0+h+k, x1, y1)
+    //   B (col-first): BELOW = (x0, y0+h+k, x0+w, y1), RIGHT = (x0+w+k, y0, x1, y1)
+    const rightA = { x0: x0 + pick.w + kerf, y0, x1, y1: y0 + pick.h };
+    const belowA = { x0, y0: y0 + pick.h + kerf, x1, y1 };
+    const rightB = { x0: x0 + pick.w + kerf, y0, x1, y1 };
+    const belowB = { x0, y0: y0 + pick.h + kerf, x1: x0 + pick.w, y1 };
+
+    // Try A
+    const rA1 = packRegion(rightA.x0, rightA.y0, rightA.x1, rightA.y1, remaining);
+    const rA2 = packRegion(belowA.x0, belowA.y0, belowA.x1, belowA.y1, rA1.leftover);
+    const placedA = [placed0, ...rA1.placed, ...rA2.placed];
+    const leftoverA = rA2.leftover;
+
+    // Try B
+    const rB1 = packRegion(belowB.x0, belowB.y0, belowB.x1, belowB.y1, remaining);
+    const rB2 = packRegion(rightB.x0, rightB.y0, rightB.x1, rightB.y1, rB1.leftover);
+    const placedB = [placed0, ...rB1.placed, ...rB2.placed];
+    const leftoverB = rB2.leftover;
+
+    // Pick whichever packs more pieces; tie-break by total placed area
+    const areaA = placedA.reduce((s, p) => s + p.w * p.h, 0);
+    const areaB = placedB.reduce((s, p) => s + p.w * p.h, 0);
+    const chooseA = placedA.length > placedB.length || (placedA.length === placedB.length && areaA >= areaB);
+    return chooseA ? { placed: placedA, leftover: leftoverA } : { placed: placedB, leftover: leftoverB };
   }
-  return { placed, leftover };
+
+  const result = packRegion(0, 0, sheetW, sheetH, items);
+  return { placed: result.placed, leftover: result.leftover };
 }
 
 function optimize() {
@@ -5210,7 +5177,15 @@ function optimize() {
     });
     if (!fittable.length) continue;
     const sheetKerf = si.kerf ?? 0;
-    const { placed, leftover } = packSheet(si.w, si.h, si.grain || 'none', fittable, sheetKerf);
+    // PANEL-SAW OPTIMISATION ───────────────────────────────────────────────
+    // Recursive guillotine only — builds an explicit cut tree by trying both
+    // horizontal and vertical splits at each region and keeping whichever
+    // packs more pieces. Produces clean hierarchical structure ideal for
+    // panel-saw workflows.
+    const recR   = packSheetRecGuillotine(si.w, si.h, si.grain || 'none', fittable, sheetKerf);
+    if (!recR.placed.length) continue;
+    const chosen = recR;
+    const { placed, leftover } = chosen;
     if (!placed.length) continue;
     const usedArea = placed.reduce((s, p) => s + p.w * p.h, 0);
     layouts.push({ sheet: si, placed, util: usedArea / (si.w * si.h), waste: 1 - usedArea / (si.w * si.h) });
@@ -5239,8 +5214,12 @@ function switchTab(tab) {
 
 function renderResults() {
   if (!results) return;
+  // Sync layout toolbar button states with persisted prefs
+  const btnCo = document.getElementById('lt-cutorder'); if (btnCo) btnCo.classList.toggle('active', layoutCutOrder);
+  const btnSum = document.getElementById('lt-pg-summary'); if (btnSum) btnSum.classList.toggle('active', clShowSummary);
+  const btnScl = document.getElementById('lt-sheetcl'); if (btnScl) btnScl.classList.toggle('active', layoutSheetCutList);
   const area = document.getElementById('results-area');
-  activeTab === 'layout' ? renderLayout(area) : renderSummary(area);
+  renderLayout(area);  // inner tabs removed; layout view is the only view
 }
 
 function renderLayout(area) {
@@ -5251,13 +5230,7 @@ function renderLayout(area) {
   const u = window.units === 'metric' ? 'mm' : 'in';
   const totalArea = results.layouts.reduce((s,l) => s + l.sheet.w * l.sheet.h, 0);
   const usedArea  = results.layouts.reduce((s,l) => s + l.placed.reduce((a,p) => a + p.w * p.h, 0), 0);
-  const wasteArea = totalArea - usedArea;
   const avgUtil   = totalArea ? (usedArea / totalArea * 100).toFixed(1) : '0.0';
-  // Total cuts = sum of (unique cut lines per sheet). Each piece needs 2 rip + 2 cross cuts minus shared edges — approximate as pieces*2 cuts per sheet.
-  const totalCuts = results.layouts.reduce((s,l) => s + l.placed.length * 2, 0);
-  // Total cut length = sum of all piece perimeters / 2 (each cut serves one edge)
-  const totalCutLen = results.layouts.reduce((s,l) => s + l.placed.reduce((a,p) => a + p.w + p.h, 0), 0);
-  const lenLabel = totalCutLen >= 1000 ? `${(totalCutLen/1000).toFixed(1)}m` : `${Math.round(totalCutLen)}${u}`;
 
   // Material cost estimate — match sheet name to stock items
   const matCost = results.layouts.reduce((s, l) => {
@@ -5266,57 +5239,25 @@ function renderLayout(area) {
   }, 0);
   const cur = window.currency;
 
-  let html = `<div class="stats-grid">
-    <div class="stat-card accent"><div class="stat-label">Sheets Used</div><div class="stat-value">${results.layouts.length}</div><div class="stat-sub">of ${sheets.reduce((s,sh)=>s+sh.qty,0)} available</div></div>
-    <div class="stat-card success"><div class="stat-label">Pieces Placed</div><div class="stat-value">${results.placed}</div><div class="stat-sub">of ${results.total} total</div></div>
-    <div class="stat-card warn"><div class="stat-label">Material Usage</div><div class="stat-value">${avgUtil}%</div><div class="stat-sub">${(100 - parseFloat(avgUtil)).toFixed(1)}% waste</div></div>
-    <div class="stat-card"><div class="stat-label">Total Cuts</div><div class="stat-value">${totalCuts}</div><div class="stat-sub">${lenLabel} cut length</div></div>
-    ${(() => { const kv=[...new Set(results.layouts.map(l=>l.sheet.kerf??0).filter(k=>k>0))]; if(!kv.length)return''; const lo=Math.min(...kv),hi=Math.max(...kv); return `<div class="stat-card"><div class="stat-label">Kerf</div><div class="stat-value">${lo===hi?lo:lo+'–'+hi}${u}</div><div class="stat-sub">blade allowance applied</div></div>`; })()}
-    ${matCost > 0 ? `<div class="stat-card success"><div class="stat-label">Material Cost</div><div class="stat-value">${cur}${matCost.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0})}</div><div class="stat-sub">from stock prices</div></div>` : ''}
-    ${results.unplaced.length ? `<div class="stat-card danger"><div class="stat-label">Unplaced</div><div class="stat-value">${results.unplaced.length}</div><div class="stat-sub">add more sheets to place all pieces</div></div>` : ''}
-  </div>`;
-  // "Quote this job" action bar
-  const qBtn = matCost > 0 ? `<button class="btn btn-outline" onclick="quoteFromCutList(${matCost})" style="font-size:11px;padding:5px 12px" title="Pre-fill a new quote with this material cost">⎙ Quote this Job</button>` : '';
-  const deductBtn = stockItems.length ? `<button class="btn btn-outline" onclick="deductStockFromCutList()" style="font-size:11px;padding:5px 12px" title="Subtract used sheets from stock quantities">Deduct from Stock</button>` : '';
-  const printBtn = `<button class="btn btn-outline" onclick="printLayout('print')" style="font-size:11px;padding:5px 10px" title="Send to printer">Print</button>
-    <button class="btn btn-outline" onclick="printLayout('pdf')" style="font-size:11px;padding:5px 10px" title="Save as PDF">PDF</button>`;
-  html += `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:8px">
-    <span style="font-size:12px;color:var(--muted)">${results.placed} pieces · ${results.layouts.length} sheet${results.layouts.length!==1?'s':''}</span>
-    <div style="display:flex;gap:6px">${qBtn}${deductBtn}${printBtn}</div>
-  </div>`;
-  area.innerHTML = html;
-  results.layouts.forEach((layout, i) => {
-    const lbl = document.createElement('div');
-    lbl.className = 'sheet-block-label';
-    lbl.innerHTML = `<span><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${layout.sheet.color || 'var(--muted)'};margin-right:6px;vertical-align:middle"></span>Sheet ${i+1}</span><span style="font-weight:400;color:var(--muted)">${layout.sheet.name} &nbsp;·&nbsp; ${(layout.util*100).toFixed(0)}% used</span>`;
-    area.appendChild(lbl);
-    drawCanvas(area, layout, u);
-  });
+  area.innerHTML = '';
 
-  // Combined Summary + Cut List preview card (shown below sheets when toggled on)
-  if (clShowSummary || clShowCutList) {
-    const lbl2 = document.createElement('div');
-    lbl2.className = 'sheet-block-label';
-    lbl2.innerHTML = `<span>Summary &amp; Cut List</span><span style="font-weight:400;color:var(--muted)">combined export page · appears after sheets</span>`;
-    area.appendChild(lbl2);
-
+  // Combined Summary tile — stats + full cut list in one card, shown when Summary is on
+  if (clShowSummary) {
     const card = document.createElement('div');
     card.className = 'combined-pg-card';
-    let inner = '';
+    card.style.marginBottom = '14px';
 
-    if (clShowSummary) {
-      const statList = [
-        ['Sheets', results.layouts.length],
-        ['Pieces', results.placed],
-        ['Efficiency', avgUtil + '%'],
-        ['Waste', (100 - parseFloat(avgUtil)).toFixed(1) + '%'],
-      ];
-      if (matCost > 0) statList.push(['Material Cost', cur + matCost.toLocaleString('en-US', {minimumFractionDigits:0, maximumFractionDigits:0})]);
-      inner += `<div class="combined-pg-stats">${statList.map(([l, v]) => `<div class="combined-pg-stat"><div class="combined-pg-stat-val">${v}</div><div class="combined-pg-stat-lbl">${l}</div></div>`).join('')}</div>`;
-    }
+    const statList = [
+      ['Sheets', results.layouts.length],
+      ['Pieces', results.placed],
+      ['Efficiency', avgUtil + '%'],
+      ['Waste', (100 - parseFloat(avgUtil)).toFixed(1) + '%'],
+    ];
+    if (matCost > 0) statList.push(['Material Cost', cur + matCost.toLocaleString('en-US', {minimumFractionDigits:0, maximumFractionDigits:0})]);
 
-    if (clShowCutList) {
-      inner += `<div class="combined-pg-section-hdr">All Pieces</div>
+    card.innerHTML = `
+      <div class="combined-pg-stats">${statList.map(([l, v]) => `<div class="combined-pg-stat"><div class="combined-pg-stat-val">${v}</div><div class="combined-pg-stat-lbl">${l}</div></div>`).join('')}</div>
+      <div class="combined-pg-section-hdr" style="margin-top:14px">All Pieces</div>
       <table class="combined-pg-table">
         <thead><tr>
           <th style="width:14px"></th><th>Label</th>
@@ -5333,19 +5274,60 @@ function renderLayout(area) {
           <td>${p.notes || '—'}</td>
         </tr>`).join('')}</tbody>
       </table>`;
-    }
-
-    card.innerHTML = inner;
     area.appendChild(card);
   }
+
+  // Sheets
+  results.layouts.forEach((layout, i) => {
+    const lbl = document.createElement('div');
+    lbl.className = 'sheet-block-label';
+    lbl.innerHTML = `<span><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${layout.sheet.color || 'var(--muted)'};margin-right:6px;vertical-align:middle"></span>Sheet ${i+1}</span><span style="font-weight:400;color:var(--muted)">${layout.sheet.name} &nbsp;·&nbsp; ${(layout.util*100).toFixed(0)}% used</span>`;
+    area.appendChild(lbl);
+    drawCanvas(area, layout, u);
+
+    // Per-sheet cut list table (toggleable from toolbar)
+    if (layoutSheetCutList && layout.placed.length) {
+      const agg = new Map();
+      for (const p of layout.placed) {
+        const k = p.item.id;
+        if (!agg.has(k)) agg.set(k, { label: p.item.label, w: p.item.w, h: p.item.h, qty: 0, color: p.item.color, material: p.item.material, grain: p.item.grain });
+        agg.get(k).qty++;
+      }
+      const rows = [...agg.values()];
+      const tableWrap = document.createElement('div');
+      tableWrap.className = 'sheet-cutlist';
+      tableWrap.innerHTML = `<table class="combined-pg-table">
+        <thead><tr>
+          <th style="width:14px"></th><th>Label</th>
+          <th style="text-align:right">W (${u})</th><th style="text-align:right">H (${u})</th>
+          <th style="text-align:right">Qty</th><th>Material</th><th>Grain</th>
+        </tr></thead>
+        <tbody>${rows.map(r => `<tr>
+          <td><div style="width:10px;height:10px;border-radius:2px;background:${r.color};opacity:.8;display:inline-block"></div></td>
+          <td>${r.label}</td>
+          <td style="text-align:right">${r.w}</td><td style="text-align:right">${r.h}</td>
+          <td style="text-align:right">${r.qty}</td>
+          <td>${r.material || '—'}</td>
+          <td>${r.grain === 'h' ? 'Horiz' : r.grain === 'v' ? 'Vert' : '—'}</td>
+        </tr>`).join('')}</tbody>
+      </table>`;
+      area.appendChild(tableWrap);
+    }
+  });
 }
 
 function selectSheet(i) { activeSheetIdx = i; renderResults(); }
 
 // Pastel color helpers
 function toPastel(hex) {
+  // Panel parts: moderate tint — blend 16% color with 84% white
   const r=parseInt(hex.slice(1,3),16), g=parseInt(hex.slice(3,5),16), b=parseInt(hex.slice(5,7),16);
-  return `rgb(${Math.round(r*.18+255*.82)},${Math.round(g*.18+255*.82)},${Math.round(b*.18+255*.82)})`;
+  return `rgb(${Math.round(r*.16+255*.84)},${Math.round(g*.16+255*.84)},${Math.round(b*.16+255*.84)})`;
+}
+function toPaleSheet(hex) {
+  // Sheet background: very pale (lighter than parts) — 4% tint
+  const r=parseInt(hex.slice(1,3),16), g=parseInt(hex.slice(3,5),16), b=parseInt(hex.slice(5,7),16);
+  return `rgb(${Math.round(r*.04+255*.96)},${Math.round(g*.04+255*.96)},${Math.round(b*.04+255*.96)})`;
 }
 function toPastelDark(hex) {
   const r=parseInt(hex.slice(1,3),16), g=parseInt(hex.slice(3,5),16), b=parseInt(hex.slice(5,7),16);
@@ -5358,79 +5340,308 @@ function drawCanvas(container, layout, units) {
   const sH = layoutRotate ? sheet.w : sheet.h;
   const rotPieces = placed.map(p => layoutRotate
     ? { ...p, x: p.y, y: p.x, w: p.h, h: p.w } : p);
-  const avail = Math.min(container.clientWidth - 56, 1100);
-  const baseScale = Math.min(avail / sW, 520 / sH, 10);
-  const scale = baseScale * layoutZoom;
-  const PAD = 28;
-  const cw = Math.round(sW * scale), ch = Math.round(sH * scale);
-  const TW = cw + PAD, TH = ch + PAD;
 
+  // Gutters — small margin for overall sheet dim arrows only (part/offcut dims are now inside)
+  const FAR_L = 22;   // left overall height arrow + label
+  const GUT_T = 6;    // top breathing room
+  const GUT_R = 10;   // right breathing room
+  const GUT_B = 28;   // bottom overall width arrow + label
+
+  // Append wrap first to measure actual inner width
   const wrap = document.createElement('div');
   wrap.className = 'canvas-wrap';
-  wrap.style.cssText = 'overflow:auto;max-width:100%';
+  container.appendChild(wrap);
+
+  // Auto-scale to actual wrap *content* width (clientWidth minus horizontal padding)
+  const wrapCS = getComputedStyle(wrap);
+  const wrapPadH = (parseFloat(wrapCS.paddingLeft) || 0) + (parseFloat(wrapCS.paddingRight) || 0);
+  const wrapInner = Math.max(200, wrap.clientWidth - wrapPadH - 2);
+  const layoutSpace = Math.max(200, wrapInner - FAR_L - GUT_R);
+  const heightBudget = 560;
+  const fitScale = Math.min(layoutSpace / sW, (heightBudget - GUT_T - GUT_B) / sH);
+  const scale = Math.max(0.02, fitScale * layoutZoom);
+  const cw = Math.round(sW * scale), ch = Math.round(sH * scale);
+
+  const OX = FAR_L;
+  const OY = GUT_T;
+  const TW = OX + cw + GUT_R;
+  const TH = OY + ch + GUT_B;
+
   const canvas = document.createElement('canvas');
-  canvas.width = TW; canvas.height = TH;
+
+  // ── High-DPI rendering ──
+  const dpr = Math.max(1, window.devicePixelRatio || 1);
+  canvas.width = Math.round(TW * dpr);
+  canvas.height = Math.round(TH * dpr);
   canvas.style.cssText = `width:${TW}px;height:${TH}px;display:block`;
   wrap.appendChild(canvas);
-  container.appendChild(wrap);
   const ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-  // Sheet background
-  ctx.fillStyle = sheet.color ? toPastel(sheet.color) : '#f5f0e8';
-  ctx.fillRect(PAD, 0, cw, ch);
+  // Unified font sizing — consistent across all labels + dims
+  const fs = Math.max(9, Math.min(12, cw / 55)) * layoutFontScale;
+  const FONT_FAMILY = '-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif';
+  const labelFont = `500 ${fs}px ${FONT_FAMILY}`;
+  const dimFont   = `400 ${fs}px ${FONT_FAMILY}`;
 
-  // Sheet grain
+  // Sheet background — honors layoutColor (grey when Color is off, very pale tinted otherwise)
+  if (layoutColor && sheet.color) {
+    ctx.fillStyle = toPaleSheet(sheet.color);
+  } else {
+    ctx.fillStyle = '#f7f7f7';
+  }
+  ctx.fillRect(OX, OY, cw, ch);
+
+  // Sheet grain — subtle
   const sheetGrain = sheet.grain || 'none';
   const drawSG = layoutRotate ? (sheetGrain==='h'?'v':sheetGrain==='v'?'h':'none') : sheetGrain;
-  if (drawSG !== 'none') {
+  if (drawSG !== 'none' && layoutGrain) {
     ctx.save();
-    ctx.beginPath(); ctx.rect(PAD+1,1,cw-2,ch-2); ctx.clip();
-    ctx.strokeStyle = sheet.color ? toPastelDark(sheet.color) : '#d6cfc3'; ctx.lineWidth = 0.65;
-    const sgsp = Math.max(6, Math.min(18, cw/6, ch/6));
-    if (drawSG==='h') { for (let gy=sgsp; gy<ch; gy+=sgsp) { ctx.beginPath(); ctx.moveTo(PAD,gy); ctx.lineTo(PAD+cw,gy); ctx.stroke(); } }
-    else { for (let gx=sgsp; gx<cw; gx+=sgsp) { ctx.beginPath(); ctx.moveTo(PAD+gx,0); ctx.lineTo(PAD+gx,ch); ctx.stroke(); } }
+    ctx.beginPath(); ctx.rect(OX+1, OY+1, cw-2, ch-2); ctx.clip();
+    ctx.strokeStyle = 'rgba(0,0,0,0.06)'; ctx.lineWidth = 0.65;
+    const sgsp = Math.max(5, Math.min(14, cw/8, ch/8));
+    if (drawSG==='h') { for (let gy=sgsp; gy<ch; gy+=sgsp) { ctx.beginPath(); ctx.moveTo(OX, OY+gy); ctx.lineTo(OX+cw, OY+gy); ctx.stroke(); } }
+    else { for (let gx=sgsp; gx<cw; gx+=sgsp) { ctx.beginPath(); ctx.moveTo(OX+gx, OY); ctx.lineTo(OX+gx, OY+ch); ctx.stroke(); } }
     ctx.restore();
   }
 
-  // Shared dim font size (tied to layoutFontScale)
-  const dimFs = Math.max(8, Math.min(11, cw / 60)) * layoutFontScale;
+  // ── Rip direction: parallel to sheet's long axis (with grain when specified) ──
+  // Rip cuts are made FIRST (industry standard), then cross cuts.
+  // For a landscape sheet, rips are horizontal lines; portrait, vertical.
+  const ripIsH = drawSG === 'h' ? true : drawSG === 'v' ? false : (sW >= sH);
+  const ripPass = 1, crossPass = 2;
+  const ripPassOf = isH => (isH === ripIsH) ? ripPass : crossPass;
 
-  // ── Build guillotine rows ──
-  const TOL = 8;
-  const rows = [];
-  for (const p of rotPieces) {
-    let row = rows.find(r => Math.abs(r.y - p.y) <= TOL);
-    if (!row) { row = {y: p.y, h: 0, maxX: 0}; rows.push(row); }
-    row.h    = Math.max(row.h,    p.h);
-    row.maxX = Math.max(row.maxX, p.x + p.w);
-  }
-  rows.sort((a,b) => a.y - b.y);
+  // ── Recursive guillotine decomposition ──
+  // TWO-PHASE per region: ALL rip-direction cuts (outer offcut rips + interior rip)
+  // BEFORE any cross-direction cut. Only if no rip is possible do we proceed to
+  // cross offcuts + interior cross. This guarantees a strict rip-first physical order.
+  function buildGuillotinePlan(x0, y0, x1, y1, pcs) {
+    const out = { cuts: [], offcuts: [] };
+    if (x1 - x0 < 0.5 || y1 - y0 < 0.5) return out;
+    if (pcs.length === 0) { out.offcuts.push({ x: x0, y: y0, w: x1 - x0, h: y1 - y0 }); return out; }
 
-  // ── Guillotine cut lines (drawn before pieces) ──
-  ctx.save();
-  ctx.setLineDash([4, 4]);
-  ctx.strokeStyle = 'rgba(0,0,0,0.12)';
-  ctx.lineWidth = 0.8;
-  for (const row of rows) {
-    const lineY = (row.y + row.h) * scale;
-    if (lineY < ch - 2) { ctx.beginPath(); ctx.moveTo(PAD, lineY); ctx.lineTo(PAD+cw, lineY); ctx.stroke(); }
-    if (row.maxX < sW - 10) {
-      const lineX = PAD + row.maxX * scale;
-      ctx.beginPath(); ctx.moveTo(lineX, row.y*scale); ctx.lineTo(lineX, (row.y+row.h)*scale); ctx.stroke();
+    const bounds = () => {
+      let mY=-Infinity, mX=-Infinity, nY=Infinity, nX=Infinity;
+      for (const p of pcs) { if (p.y+p.h>mY) mY=p.y+p.h; if (p.x+p.w>mX) mX=p.x+p.w; if (p.y<nY) nY=p.y; if (p.x<nX) nX=p.x; }
+      return { mY, mX, nY, nX };
+    };
+    const stripBot = () => { const { mY } = bounds(); if (mY < y1 - 0.5) { out.cuts.push({ x1: x0, y1: mY, x2: x1, y2: mY, pass: ripPassOf(true), outer: true }); out.offcuts.push({ x: x0, y: mY, w: x1 - x0, h: y1 - mY }); y1 = mY; } };
+    const stripTop = () => { const { nY } = bounds(); if (nY > y0 + 0.5) { out.cuts.push({ x1: x0, y1: nY, x2: x1, y2: nY, pass: ripPassOf(true), outer: true }); out.offcuts.push({ x: x0, y: y0, w: x1 - x0, h: nY - y0 }); y0 = nY; } };
+    const stripRight = () => { const { mX } = bounds(); if (mX < x1 - 0.5) { out.cuts.push({ x1: mX, y1: y0, x2: mX, y2: y1, pass: ripPassOf(false), outer: true }); out.offcuts.push({ x: mX, y: y0, w: x1 - mX, h: y1 - y0 }); x1 = mX; } };
+    const stripLeft  = () => { const { nX } = bounds(); if (nX > x0 + 0.5) { out.cuts.push({ x1: nX, y1: y0, x2: nX, y2: y1, pass: ripPassOf(false), outer: true }); out.offcuts.push({ x: x0, y: y0, w: nX - x0, h: y1 - y0 }); x0 = nX; } };
+
+    const spans = (v, axis) => pcs.some(p => (axis === 'h' ? (p.y < v - 0.5 && p.y + p.h > v + 0.5) : (p.x < v - 0.5 && p.x + p.w > v + 0.5)));
+    const pickFrom = (cands, axis) => {
+      let best = null;
+      const onSideA = (p, v) => (axis === 'h' ? (p.y + p.h <= v + 0.5) : (p.x + p.w <= v + 0.5));
+      // Perpendicular extent: for a vertical cut (axis='v'), sub-regions get stripped
+      // in the y-direction, so pieces' y+h matters. For a horizontal cut, x+w matters.
+      const perpEnd = p => axis === 'v' ? (p.y + p.h) : (p.x + p.w);
+      // Count pieces on a side that don't reach the side's max perpendicular extent.
+      // Each such piece forces an extra outer strip after recursion, fragmenting waste.
+      const shortCount = side => {
+        if (!side.length) return 0;
+        let M = -Infinity;
+        for (const p of side) { const e = perpEnd(p); if (e > M) M = e; }
+        let n = 0;
+        for (const p of side) if (perpEnd(p) < M - 0.5) n++;
+        return n;
+      };
+      for (const v of cands) {
+        const sideA = pcs.filter(p => onSideA(p, v));
+        const sideB = pcs.filter(p => !onSideA(p, v));
+        if (!sideA.length || !sideB.length) continue;
+        const bal = Math.abs(sideA.length - sideB.length);
+        const spread = shortCount(sideA) + shortCount(sideB);
+        if (!best || bal < best.bal || (bal === best.bal && spread < best.spread)) {
+          best = { v, bal, spread };
+        }
+      }
+      return best;
+    };
+
+    // ──── PHASE 1: interior RIP first (structural split in rip direction) ────
+    // Sequence target: structural cuts first, outer offcut trims last (accepting
+    // that outer trims spanning already-separated pieces become multiple passes).
+    if (pcs.length > 1) {
+      const ripCands = (ripIsH
+        ? [...new Set(pcs.flatMap(p => [p.y, p.y + p.h]))].filter(y => y > y0 + 0.5 && y < y1 - 0.5 && !spans(y, 'h'))
+        : [...new Set(pcs.flatMap(p => [p.x, p.x + p.w]))].filter(x => x > x0 + 0.5 && x < x1 - 0.5 && !spans(x, 'v')));
+      const ripBest = pickFrom(ripCands, ripIsH ? 'h' : 'v');
+      if (ripBest) {
+        const v = ripBest.v;
+        if (ripIsH) {
+          out.cuts.push({ x1: x0, y1: v, x2: x1, y2: v, pass: ripPassOf(true) });
+          const above = pcs.filter(p => p.y + p.h <= v + 0.5);
+          const below = pcs.filter(p => p.y >= v - 0.5);
+          const a = buildGuillotinePlan(x0, y0, x1, v, above);
+          const b = buildGuillotinePlan(x0, v, x1, y1, below);
+          out.cuts.push(...a.cuts, ...b.cuts);
+          out.offcuts.push(...a.offcuts, ...b.offcuts);
+        } else {
+          out.cuts.push({ x1: v, y1: y0, x2: v, y2: y1, pass: ripPassOf(false) });
+          const left  = pcs.filter(p => p.x + p.w <= v + 0.5);
+          const right = pcs.filter(p => p.x >= v - 0.5);
+          const l = buildGuillotinePlan(x0, y0, v, y1, left);
+          const r = buildGuillotinePlan(v, y0, x1, y1, right);
+          out.cuts.push(...l.cuts, ...r.cuts);
+          out.offcuts.push(...l.offcuts, ...r.offcuts);
+        }
+        return out;
+      }
     }
+
+    // ──── PHASE 2: outer offcut stripping ────
+    if (ripIsH) {
+      stripRight(); stripLeft();
+      stripBot(); stripTop();
+    } else {
+      stripBot(); stripTop();
+      stripRight(); stripLeft();
+    }
+
+    // ──── PHASE 3: interior CROSS (structural split in cross direction) ────
+    if (pcs.length > 1) {
+      const crossCands = (ripIsH
+        ? [...new Set(pcs.flatMap(p => [p.x, p.x + p.w]))].filter(x => x > x0 + 0.5 && x < x1 - 0.5 && !spans(x, 'v'))
+        : [...new Set(pcs.flatMap(p => [p.y, p.y + p.h]))].filter(y => y > y0 + 0.5 && y < y1 - 0.5 && !spans(y, 'h')));
+      const crossBest = pickFrom(crossCands, ripIsH ? 'v' : 'h');
+      if (crossBest) {
+        const v = crossBest.v;
+        if (ripIsH) {
+          out.cuts.push({ x1: v, y1: y0, x2: v, y2: y1, pass: ripPassOf(false) });
+          const left  = pcs.filter(p => p.x + p.w <= v + 0.5);
+          const right = pcs.filter(p => p.x >= v - 0.5);
+          const l = buildGuillotinePlan(x0, y0, v, y1, left);
+          const r = buildGuillotinePlan(v, y0, x1, y1, right);
+          out.cuts.push(...l.cuts, ...r.cuts);
+          out.offcuts.push(...l.offcuts, ...r.offcuts);
+        } else {
+          out.cuts.push({ x1: x0, y1: v, x2: x1, y2: v, pass: ripPassOf(true) });
+          const above = pcs.filter(p => p.y + p.h <= v + 0.5);
+          const below = pcs.filter(p => p.y >= v - 0.5);
+          const a = buildGuillotinePlan(x0, y0, x1, v, above);
+          const b = buildGuillotinePlan(x0, v, x1, y1, below);
+          out.cuts.push(...a.cuts, ...b.cuts);
+          out.offcuts.push(...a.offcuts, ...b.offcuts);
+        }
+        return out;
+      }
+    }
+
+    // Residual region
+    if (pcs.length === 0) out.offcuts.push({ x: x0, y: y0, w: x1 - x0, h: y1 - y0 });
+    return out;
+  }
+
+  const plan = buildGuillotinePlan(0, 0, sW, sH, rotPieces);
+
+  // Merge collinear cuts within kerf distance — a single saw pass should be ONE line.
+  const kerfTol = Math.max(4, (sheet.kerf || 3) + 1);
+  const cutLines = [];
+  for (const c of plan.cuts) {
+    const horiz = c.y1 === c.y2;
+    let merged = null;
+    for (const m of cutLines) {
+      const mHoriz = m.y1 === m.y2;
+      if (mHoriz !== horiz) continue;
+      if (horiz) {
+        if (Math.abs(m.y1 - c.y1) > kerfTol) continue;
+        if (m.x2 < c.x1 - 0.5 || c.x2 < m.x1 - 0.5) continue;
+      } else {
+        if (Math.abs(m.x1 - c.x1) > kerfTol) continue;
+        if (m.y2 < c.y1 - 0.5 || c.y2 < m.y1 - 0.5) continue;
+      }
+      merged = m; break;
+    }
+    if (merged) {
+      if (horiz) {
+        merged.y1 = merged.y2 = (merged.y1 + c.y1) / 2;
+        merged.x1 = Math.min(merged.x1, c.x1);
+        merged.x2 = Math.max(merged.x2, c.x2);
+      } else {
+        merged.x1 = merged.x2 = (merged.x1 + c.x1) / 2;
+        merged.y1 = Math.min(merged.y1, c.y1);
+        merged.y2 = Math.max(merged.y2, c.y2);
+      }
+      merged.pass = Math.min(merged.pass, c.pass);
+    } else {
+      cutLines.push({ ...c });
+    }
+  }
+
+  // Stable-sort so interior cuts come first and outer offcut strips come LAST.
+  // User preference: keep this order even though some outer trims spanning
+  // already-separated sub-pieces will become multiple physical saw passes.
+  cutLines.sort((a, b) => (a.outer ? 1 : 0) - (b.outer ? 1 : 0));
+
+  // ── Split cuts to reflect physical reality at the time each cut is made ──
+  // When a cut comes AFTER a perpendicular cut that intersects its span, the
+  // region it crosses is already separated — so the single planned cut is in
+  // fact multiple physical saw passes, one per still-connected sub-piece.
+  // Replace each such cut with a segment for each sub-piece.
+  const finalCuts = [];
+  for (const c of cutLines) {
+    const isH = c.y1 === c.y2;
+    const cuts = [];
+    for (const prior of finalCuts) {
+      const priorIsH = prior.y1 === prior.y2;
+      if (priorIsH === isH) continue;  // parallel cuts don't split each other
+      if (isH) {
+        if (prior.x1 > c.x1 + 0.5 && prior.x1 < c.x2 - 0.5 &&
+            c.y1 >= prior.y1 - 0.5 && c.y1 <= prior.y2 + 0.5) {
+          cuts.push(prior.x1);
+        }
+      } else {
+        if (prior.y1 > c.y1 + 0.5 && prior.y1 < c.y2 - 0.5 &&
+            c.x1 >= prior.x1 - 0.5 && c.x1 <= prior.x2 + 0.5) {
+          cuts.push(prior.y1);
+        }
+      }
+    }
+    if (!cuts.length) { finalCuts.push({ ...c }); continue; }
+    cuts.sort((a, b) => a - b);
+    // Minimum meaningful segment length = larger than a kerf (else it's just a saw-pass artefact)
+    const minSeg = kerfTol;
+    if (isH) {
+      let x = c.x1;
+      for (const ix of cuts) { if (ix - x > minSeg) finalCuts.push({ ...c, x1: x, x2: ix }); x = ix; }
+      if (c.x2 - x > minSeg) finalCuts.push({ ...c, x1: x, x2: c.x2 });
+    } else {
+      let y = c.y1;
+      for (const iy of cuts) { if (iy - y > minSeg) finalCuts.push({ ...c, y1: y, y2: iy }); y = iy; }
+      if (c.y2 - y > minSeg) finalCuts.push({ ...c, y1: y, y2: c.y2 });
+    }
+  }
+  cutLines.length = 0;
+  cutLines.push(...finalCuts);
+
+  // Filter out kerf-slot offcuts (too small to be meaningful)
+  const offcutRects = plan.offcuts.filter(o => o.w >= kerfTol + 1 && o.h >= kerfTol + 1);
+
+  ctx.save();
+  ctx.setLineDash([5, 4]);
+  ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+  for (const cl of cutLines) {
+    ctx.lineWidth = cl.pass === 1 ? 1.0 : 0.8;
+    ctx.beginPath();
+    ctx.moveTo(OX + cl.x1 * scale, OY + cl.y1 * scale);
+    ctx.lineTo(OX + cl.x2 * scale, OY + cl.y2 * scale);
+    ctx.stroke();
   }
   ctx.setLineDash([]);
   ctx.restore();
 
   // ── Draw pieces ──
   for (const p of rotPieces) {
-    const x = PAD + p.x*scale, y = p.y*scale, w = p.w*scale, h = p.h*scale;
-    const fill  = layoutColor ? toPastel(p.item.color) : 'rgb(220,220,220)';
+    const x = OX + p.x*scale, y = OY + p.y*scale, w = p.w*scale, h = p.h*scale;
+    const fill  = layoutColor ? toPastel(p.item.color) : 'rgb(235,235,235)';
     const bdCol = layoutColor ? toPastelDark(p.item.color) : '#aaa';
-    const txtColor = layoutColor ? toPastelDark(p.item.color) : '#444';
+    const txtColor = '#333';
 
     ctx.fillStyle = fill; ctx.fillRect(x,y,w,h);
-    ctx.strokeStyle = bdCol; ctx.lineWidth = 1; ctx.strokeRect(x+.5,y+.5,w-1,h-1);
+    ctx.strokeStyle = 'rgba(0,0,0,0.55)'; ctx.lineWidth = 1.2; ctx.strokeRect(x+.6, y+.6, w-1.2, h-1.2);
 
     // Edge banding dashed lines (inset 3px)
     const ebEdges = p.item.edges || {};
@@ -5452,123 +5663,155 @@ function drawCanvas(container, layout, units) {
 
     // Grain lines
     const pGrain = p.item.grain || 'none';
-    if (pGrain !== 'none') {
+    if (pGrain !== 'none' && layoutGrain) {
       const gdir = p.rotated ? (pGrain==='h'?'v':'h') : pGrain;
       ctx.save();
       ctx.beginPath(); ctx.rect(x+1,y+1,w-2,h-2); ctx.clip();
-      ctx.strokeStyle = bdCol; ctx.lineWidth = 0.65;
-      const sp = Math.max(6, Math.min(18, w/6, h/6));
+      ctx.strokeStyle = 'rgba(0,0,0,0.08)'; ctx.lineWidth = 0.65;
+      const sp = Math.max(5, Math.min(14, w/8, h/8));
       if (gdir==='h') { for (let gy=y+sp; gy<y+h; gy+=sp) { ctx.beginPath(); ctx.moveTo(x,gy); ctx.lineTo(x+w,gy); ctx.stroke(); } }
       else { for (let gx=x+sp; gx<x+w; gx+=sp) { ctx.beginPath(); ctx.moveTo(gx,y); ctx.lineTo(gx,y+h); ctx.stroke(); } }
       ctx.restore();
     }
 
-    // Label centered
-    if (w > 24 && h > 14) {
-      const fs = Math.max(7, Math.min(13, w/9, h/3)) * layoutFontScale;
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    // ── Label + dims inside part ──
+    const pW = Math.round(p.rotated ? p.item.h : p.item.w);
+    const pH = Math.round(p.rotated ? p.item.w : p.item.h);
+
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+
+    // Centered label (if there's room)
+    const labelRoom = w > 30 && h > 18;
+    if (labelRoom && p.item.label) {
       ctx.fillStyle = txtColor;
-      ctx.font = `700 ${fs}px -apple-system,sans-serif`;
+      ctx.font = labelFont;
       const lbl = trunc(p.item.label, Math.floor(w / (fs * 0.58)));
-      ctx.fillText(lbl, x+w/2, y+h/2);
+      ctx.fillText(lbl, x + w/2, y + h/2);
     }
 
-    // Dims: width at TOP, height at LEFT — black, scaled
-    if (w > 22 && h > 16) {
-      const dimW = p.rotated ? p.item.h : p.item.w;
-      const dimH = p.rotated ? p.item.w : p.item.h;
-      ctx.fillStyle = '#111';
-      if (w > 22) {
-        ctx.font = `${dimFs}px -apple-system,sans-serif`;
-        ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-        ctx.fillText(`${dimW}`, x + w/2, y + 3);
-      }
-      if (h > 22) {
-        ctx.save();
-        ctx.font = `${dimFs}px -apple-system,sans-serif`;
-        ctx.translate(x + 3, y + h/2);
-        ctx.rotate(-Math.PI/2);
-        ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-        ctx.fillText(`${dimH}`, 0, 0);
-        ctx.restore();
-      }
+    // Width dim at top-inside, height dim at left-inside (rotated) — both inside part
+    ctx.fillStyle = '#333';
+    ctx.font = dimFont;
+    if (w > 30) {
+      // Width near top, clear of the label
+      ctx.fillText(`${pW}`, x + w/2, y + Math.min(fs + 4, h * 0.22));
     }
-  }
-
-  // Sheet border
-  ctx.strokeStyle = '#7a6a58'; ctx.lineWidth = 1.5; ctx.strokeRect(PAD+.75,.75,cw-1.5,ch-1.5);
-
-  // Sheet dim arrows — no backing, black numbers, grey lines
-  ctx.lineWidth = 0.75;
-  ctx.font = `${dimFs}px -apple-system,sans-serif`;
-  const by = ch + 16;
-  ctx.strokeStyle = '#999'; ctx.fillStyle = '#111';
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.beginPath(); ctx.moveTo(PAD,by); ctx.lineTo(PAD+cw,by); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(PAD,by-4); ctx.lineTo(PAD,by+4); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(PAD+cw,by-4); ctx.lineTo(PAD+cw,by+4); ctx.stroke();
-  ctx.fillText(`${sW}`, PAD+cw/2, by);
-  ctx.save(); ctx.translate(PAD-16,ch/2); ctx.rotate(-Math.PI/2);
-  ctx.strokeStyle = '#999'; ctx.fillStyle = '#111';
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.beginPath(); ctx.moveTo(-ch/2,0); ctx.lineTo(ch/2,0); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(-ch/2,-4); ctx.lineTo(-ch/2,4); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(ch/2,-4); ctx.lineTo(ch/2,4); ctx.stroke();
-  ctx.fillText(`${sH}`, 0, 0);
-  ctx.restore();
-
-  // ── Offcut dims (grey, no border, after pieces) ──
-  ctx.save();
-  ctx.font = `${dimFs}px -apple-system,sans-serif`;
-  const offcutGrey = '#999';
-
-  for (const row of rows) {
-    const remW = sW - row.maxX;
-    if (remW >= 30) {
-      const rx = PAD + row.maxX * scale;
-      const ry = row.y * scale;
-      const rw = remW * scale;
-      const rh = row.h * scale;
-      ctx.fillStyle = offcutGrey;
-      if (rw > 16) {
-        ctx.font = `${dimFs}px -apple-system,sans-serif`;
-        ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-        ctx.fillText(`${Math.round(remW)}`, rx + rw/2, ry + 3);
-      }
-      if (rh > 16) {
-        ctx.save();
-        ctx.font = `${dimFs}px -apple-system,sans-serif`;
-        ctx.translate(rx + 3, ry + rh/2);
-        ctx.rotate(-Math.PI/2);
-        ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-        ctx.fillText(`${Math.round(row.h)}`, 0, 0);
-        ctx.restore();
-      }
-    }
-  }
-
-  const maxUsedY = rotPieces.length ? Math.max(...rotPieces.map(p => p.y + p.h)) : sH;
-  const remH = sH - maxUsedY;
-  if (remH >= 30) {
-    const ry = maxUsedY * scale, rh = remH * scale;
-    ctx.fillStyle = offcutGrey;
-    if (cw > 16) {
-      ctx.font = `${dimFs}px -apple-system,sans-serif`;
-      ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-      ctx.fillText(`${Math.round(sW)}`, PAD + cw/2, ry + 3);
-    }
-    if (rh > 16) {
+    if (h > 30) {
+      // Height rotated on left side, clear of the label
       ctx.save();
-      ctx.font = `${dimFs}px -apple-system,sans-serif`;
-      ctx.translate(PAD + 3, ry + rh/2);
-      ctx.rotate(-Math.PI/2);
-      ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-      ctx.fillText(`${Math.round(remH)}`, 0, 0);
+      ctx.translate(x + Math.min(fs + 4, w * 0.22), y + h/2);
+      ctx.rotate(-Math.PI / 2);
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(`${pH}`, 0, 0);
+      ctx.restore();
+    }
+  }
+
+  // ── Offcut dims — inside each offcut rectangle, centred top + left ──
+  // Skip a dim if it's redundant (matches sheet edge or a touching piece's matching dim).
+  ctx.save();
+  ctx.fillStyle = '#8a8a8a';
+  ctx.font = dimFont;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  const eq = (a, b) => Math.abs(a - b) < 1;
+  for (const oc of offcutRects) {
+    const oW = Math.round(oc.w), oH = Math.round(oc.h);
+    // Touching pieces on each side (edge-shared)
+    const touchLeft  = rotPieces.filter(p => eq(p.x + p.w, oc.x) && p.y < oc.y + oc.h && p.y + p.h > oc.y);
+    const touchRight = rotPieces.filter(p => eq(p.x, oc.x + oc.w) && p.y < oc.y + oc.h && p.y + p.h > oc.y);
+    const touchTop   = rotPieces.filter(p => eq(p.y + p.h, oc.y) && p.x < oc.x + oc.w && p.x + p.w > oc.x);
+    const touchBot   = rotPieces.filter(p => eq(p.y, oc.y + oc.h) && p.x < oc.x + oc.w && p.x + p.w > oc.x);
+
+    // Skip height if it matches sheet height OR matches an adjacent piece's height
+    const skipH = eq(oc.h, sH)
+      || touchLeft.some(p => eq(p.h, oc.h))
+      || touchRight.some(p => eq(p.h, oc.h));
+    // Skip width if it matches sheet width OR matches an adjacent piece's width
+    const skipW = eq(oc.w, sW)
+      || touchTop.some(p => eq(p.w, oc.w))
+      || touchBot.some(p => eq(p.w, oc.w));
+
+    const oxo = OX + oc.x * scale;
+    const oyo = OY + oc.y * scale;
+    const owo = oc.w * scale;
+    const oho = oc.h * scale;
+    if (!skipW && owo > 24 && oho > 14) {
+      ctx.fillText(`${oW}`, oxo + owo / 2, oyo + Math.min(fs + 4, oho * 0.22));
+    }
+    if (!skipH && oho > 30 && owo > 14) {
+      ctx.save();
+      ctx.translate(oxo + Math.min(fs + 4, owo * 0.22), oyo + oho / 2);
+      ctx.rotate(-Math.PI / 2);
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(`${oH}`, 0, 0);
       ctx.restore();
     }
   }
   ctx.restore();
-  // NO legend
+
+  // Sheet border
+  ctx.strokeStyle = 'rgba(0,0,0,0.55)'; ctx.lineWidth = 1.4; ctx.strokeRect(OX + .7, OY + .7, cw - 1.4, ch - 1.4);
+
+  // ── Overall sheet dimensions (bottom arrow + left arrow) ──
+  ctx.save();
+  ctx.strokeStyle = '#666'; ctx.lineWidth = 0.8;
+  ctx.fillStyle = '#333'; ctx.font = dimFont;
+  const by = OY + ch + 16;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.beginPath(); ctx.moveTo(OX, by); ctx.lineTo(OX + cw, by); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(OX, by - 4); ctx.lineTo(OX, by + 4); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(OX + cw, by - 4); ctx.lineTo(OX + cw, by + 4); ctx.stroke();
+  const swText = `${sW}`;
+  const swW = ctx.measureText(swText).width;
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(OX + cw / 2 - swW / 2 - 4, by - fs / 2 - 1, swW + 8, fs + 2);
+  ctx.fillStyle = '#333';
+  ctx.fillText(swText, OX + cw / 2, by);
+
+  const lx = Math.max(6, FAR_L - 12);
+  ctx.save();
+  ctx.translate(lx, OY + ch / 2);
+  ctx.rotate(-Math.PI / 2);
+  ctx.strokeStyle = '#666';
+  ctx.beginPath(); ctx.moveTo(-ch / 2, 0); ctx.lineTo(ch / 2, 0); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(-ch / 2, -4); ctx.lineTo(-ch / 2, 4); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(ch / 2, -4); ctx.lineTo(ch / 2, 4); ctx.stroke();
+  const shText = `${sH}`;
+  const shW = ctx.measureText(shText).width;
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(-shW / 2 - 4, -fs / 2 - 1, shW + 8, fs + 2);
+  ctx.fillStyle = '#333';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(shText, 0, 0);
+  ctx.restore();
+  ctx.restore();
+
+  // ── Optional: numbered cut-order overlay ──
+  if (layoutCutOrder && cutLines.length) {
+    ctx.save();
+    let step = 1;
+    // Use the planner's insertion order — it already emits:
+    //   1. Outer offcut rips for this region
+    //   2. Outer offcut cross cuts
+    //   3. Interior cut (rip preferred over cross)
+    //   4. Recurse into sub-regions (DFS)
+    // That matches physical cutting sequence: a sub-region's rips/crosses only
+    // appear after its parent strip has been separated.
+    const ordered = cutLines;
+    const badgeR = Math.max(8, Math.min(11, fs + 2));
+    ctx.font = `700 ${Math.round(badgeR * 1.1)}px ${FONT_FAMILY}`;
+    for (const cl of ordered) {
+      const mx = OX + ((cl.x1 + cl.x2) / 2) * scale;
+      const my = OY + ((cl.y1 + cl.y2) / 2) * scale;
+      ctx.beginPath(); ctx.arc(mx, my, badgeR, 0, Math.PI * 2);
+      ctx.fillStyle = '#222'; ctx.fill();
+      ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
+      ctx.fillStyle = '#fff';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(String(step++), mx, my + 0.5);
+    }
+    ctx.restore();
+  }
 }
 
 function renderSummary(area) {
@@ -9700,19 +9943,30 @@ function _smartCLStockSuggest(input, boxId) {
   if (!box) return;
   _posSuggest(input, box);
   const q = input.value.trim().toLowerCase();
-  // Show sheet goods that match
-  const sheetItems = stockItems.filter(s => s.category === 'Sheet Goods' || (s.w > 0 && s.h > 0));
-  const matches = q ? sheetItems.filter(s => s.name.toLowerCase().includes(q)) : sheetItems;
+  const ebOn = typeof colsVisible !== 'undefined' && !!colsVisible.edgeband;
+  // Panels: Sheet Goods or anything with dims (but not Edge Banding)
+  const panelItems = stockItems.filter(s => s.category !== 'Edge Banding' && (s.category === 'Sheet Goods' || (s.w > 0 && s.h > 0)));
+  // When edgeband column is on, also include Edge Banding items
+  const ebItems = ebOn ? stockItems.filter(s => s.category === 'Edge Banding') : [];
+  const pool = panelItems.concat(ebItems);
+  const matches = q ? pool.filter(s => s.name.toLowerCase().includes(q)) : pool;
   if (matches.length === 0 && !q) { box.style.display = 'none'; return; }
   let html = '';
   matches.slice(0, 10).forEach(s => {
     const origIdx = stockItems.indexOf(s);
-    const dims = s.w && s.h ? `${s.w}×${s.h}` : '';
+    const isEB = s.category === 'Edge Banding';
     const qtyColor = s.qty <= (s.lowAlert || 3) ? '#ef4444' : '#22c55e';
-    html += `<div class="client-suggest-item" onmousedown="_clAddPanelFromStock(${origIdx});document.getElementById('cl-stock').value='';document.getElementById('${boxId}').style.display='none'">
+    const meta = isEB
+      ? [s.thickness ? s.thickness+'mm' : '', s.width ? s.width+'mm' : ''].filter(Boolean).join(' · ')
+      : (s.w && s.h ? `${s.w}×${s.h}` : '');
+    const handler = isEB
+      ? `_clAddEdgeBandFromStockIdx(${origIdx})`
+      : `_clAddPanelFromStock(${origIdx})`;
+    const badge = isEB ? `<span style="font-size:9px;font-weight:600;color:var(--muted);background:var(--border);padding:1px 5px;border-radius:3px;margin-right:4px">EB</span>` : '';
+    html += `<div class="client-suggest-item" onmousedown="${handler};document.getElementById('cl-stock').value='';document.getElementById('${boxId}').style.display='none'">
       <span class="suggest-icon" style="background:${qtyColor}20;color:${qtyColor}">${s.qty}</span>
-      <span style="flex:1">${_escHtml(s.name)}</span>
-      <span style="font-size:10px;color:var(--muted)">${dims}</span>
+      <span style="flex:1">${badge}${_escHtml(s.name)}</span>
+      <span style="font-size:10px;color:var(--muted)">${meta}</span>
     </div>`;
   });
   if (matches.length === 0) {
@@ -9723,6 +9977,15 @@ function _smartCLStockSuggest(input, boxId) {
 }
 
 function _clAddPanelFromStock(idx) { const item = stockItems[idx]; if (!item) return; addSheet(item.name, item.w, item.h, Math.max(1, item.qty)); _toast('"'+item.name+'" added to panels', 'success'); }
+
+function _clAddEdgeBandFromStockIdx(idx) {
+  const s = stockItems[idx];
+  if (!s) return;
+  const exists = edgeBands.find(eb => eb.name === s.name);
+  if (exists) { _toast(`${s.name} already in project`, 'error'); return; }
+  addEdgeBand(s.name, s.thickness, s.width);
+  _toast(`Added ${s.name}`, 'success');
+}
 
 // ── Cut List Cabinet Library ──
 function _smartCLCabinetSuggest(input, boxId) {
