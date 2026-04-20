@@ -1405,7 +1405,34 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
               </div>
             </div>
           </div>
-          <div class="form-row">
+          <div id="stock-eb-fields" style="display:none">
+            <div class="form-row">
+              <div class="form-group">
+                <label>Thickness (mm)</label>
+                <input type="number" id="stock-eb-thick" value="1.0" min="0" step="0.1">
+              </div>
+              <div class="form-group">
+                <label>Width (mm)</label>
+                <input type="number" id="stock-eb-width" value="22" min="0">
+              </div>
+              <div class="form-group">
+                <label>Length (m)</label>
+                <input type="number" id="stock-eb-length" value="50" min="0" step="0.1">
+              </div>
+            </div>
+            <div class="form-group" style="margin-bottom:6px">
+              <label>Glue Type</label>
+              <select id="stock-eb-glue">
+                <option value="EVA">EVA</option>
+                <option value="PUR">PUR</option>
+                <option value="Laser">Laser</option>
+                <option value="Hot Melt">Hot Melt</option>
+                <option value="Pre-glued">Pre-glued</option>
+                <option value="None">None</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row" id="stock-qty-fields">
             <div class="form-group">
               <label>Qty</label>
               <input type="number" id="stock-qty" value="10" min="0">
@@ -1417,6 +1444,16 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
             <div class="form-group">
               <label>Cost / Unit</label>
               <input type="number" id="stock-cost" value="65.00" min="0" step="0.01">
+            </div>
+          </div>
+          <div class="form-row" id="stock-eb-qty-fields" style="display:none">
+            <div class="form-group">
+              <label>Low Alert (m)</label>
+              <input type="number" id="stock-eb-low" value="10" min="0" step="0.1">
+            </div>
+            <div class="form-group">
+              <label>Cost / m</label>
+              <input type="number" id="stock-eb-cost" value="0.00" min="0" step="0.01">
             </div>
           </div>
           <div class="form-row">
@@ -1536,8 +1573,16 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
           <table class="cl-table" id="edgebands-table">
             <thead><tr>
               <th style="width:18px"></th>
-              <th style="min-width:100px">Material</th>
-              <th style="width:36px"></th>
+              <th style="width:18px"></th>
+              <th style="min-width:90px">Material</th>
+              <th style="width:55px" title="Thickness (mm)">T</th>
+              <th style="width:55px" title="Width (mm)">W</th>
+              <th style="width:72px" title="Length (m)">L (m)</th>
+              <th style="width:44px"></th>
+              <th style="width:42px"></th>
+              <th class="cl-col-material" style="width:86px"></th>
+              <th class="cl-col-notes" style="width:80px"></th>
+              <th style="width:40px"></th>
             </tr></thead>
             <tbody id="edgebands-body"></tbody>
           </table>
@@ -2415,6 +2460,13 @@ function _openStockPopup(id) {
   const item = stockItems.find(x => x.id === id);
   if (!item) return;
   const sup = _ssGet(id);
+  const vd = _svGet(id);
+  const cat = _scGet(id) || item.category || '';
+  const isEB = cat === 'Edge Banding';
+  const ebThick = vd.thickness ?? item.thickness ?? '';
+  const ebWidth = vd.width ?? item.width ?? item.h ?? '';
+  const ebLength = vd.length ?? item.length ?? item.w ?? '';
+  const ebGlue = vd.glue || item.glue || 'EVA';
   const isLow = item.qty <= item.low;
 
   _openPopup(`
@@ -2432,24 +2484,45 @@ function _openStockPopup(id) {
       </div>
       <div class="pf">
         <label class="pf-label">Variant / Spec</label>
-        <input class="pf-input" id="ps-variant" value="${_escHtml(item.variant||'')}" placeholder="e.g. BP-18, 500mm depth">
+        <input class="pf-input" id="ps-variant" value="${_escHtml(vd.variant||item.variant||'')}" placeholder="e.g. BP-18, 500mm depth">
       </div>
+      ${isEB ? `
+      <div class="pf-row">
+        <div class="pf"><label class="pf-label">Thickness (mm)</label><input class="pf-input" id="ps-eb-thick" type="number" step="0.1" value="${ebThick}"></div>
+        <div class="pf"><label class="pf-label">Width (mm)</label><input class="pf-input" id="ps-eb-width" type="number" value="${ebWidth}"></div>
+        <div class="pf"><label class="pf-label">Length (m)</label><input class="pf-input" id="ps-eb-length" type="number" step="0.1" value="${ebLength}"></div>
+      </div>
+      <div class="pf-row">
+        <div class="pf"><label class="pf-label">Glue Type</label>
+          <select class="pf-select" id="ps-eb-glue">
+            ${['EVA','PUR','Laser','Hot Melt','Pre-glued','None'].map(g=>`<option value="${g}" ${ebGlue===g?'selected':''}>${g}</option>`).join('')}
+          </select>
+        </div>
+        <div class="pf"><label class="pf-label">Low Alert (m)</label><input class="pf-input" id="ps-low" type="number" step="0.1" value="${item.low}" style="text-align:center"></div>
+        <div class="pf"><label class="pf-label">Cost / m</label><input class="pf-input" id="ps-cost" type="number" step="0.01" value="${item.cost}" style="text-align:right"></div>
+      </div>
+      ` : `
       <div class="pf-row">
         <div class="pf"><label class="pf-label">Length</label><input class="pf-input" id="ps-length" value="${item.w}"></div>
         <div class="pf"><label class="pf-label">Width</label><input class="pf-input" id="ps-width" value="${item.h}"></div>
-        <div class="pf"><label class="pf-label">Thickness</label><input class="pf-input" id="ps-thick" value="${item.thick||''}"></div>
+        <div class="pf"><label class="pf-label">Thickness</label><input class="pf-input" id="ps-thick" value="${vd.thickness||item.thick||''}"></div>
       </div>
       <div class="pf-row">
         <div class="pf"><label class="pf-label">Qty in Stock</label><input class="pf-input" id="ps-qty" value="${item.qty}" style="font-weight:700;font-size:16px;text-align:center"></div>
         <div class="pf"><label class="pf-label">Low Alert</label><input class="pf-input" id="ps-low" value="${item.low}" style="text-align:center"></div>
         <div class="pf"><label class="pf-label">Cost / Unit</label><input class="pf-input" id="ps-cost" value="${item.cost}" style="text-align:right"></div>
       </div>
+      `}
       <div class="pf">
         <label class="pf-label">Category</label>
         <select class="pf-select" id="ps-cat">
-          <option value="Sheet Goods" ${item.category==='Sheet Goods'?'selected':''}>Sheet Goods</option>
-          <option value="Hardware" ${item.category==='Hardware'?'selected':''}>Hardware</option>
-          <option value="" ${!item.category||item.category==='Uncategorised'?'selected':''}>Uncategorised</option>
+          <option value="Sheet Goods" ${cat==='Sheet Goods'?'selected':''}>Sheet Goods</option>
+          <option value="Solid Timber" ${cat==='Solid Timber'?'selected':''}>Solid Timber</option>
+          <option value="Edge Banding" ${cat==='Edge Banding'?'selected':''}>Edge Banding</option>
+          <option value="Hardware" ${cat==='Hardware'?'selected':''}>Hardware</option>
+          <option value="Finishing" ${cat==='Finishing'?'selected':''}>Finishing</option>
+          <option value="Other" ${cat==='Other'?'selected':''}>Other</option>
+          <option value="" ${!cat||cat==='Uncategorised'?'selected':''}>Uncategorised</option>
         </select>
       </div>
       <div class="pf-divider"></div>
@@ -2479,24 +2552,47 @@ async function _saveStockPopup(id) {
   if (!item) return;
   const name = _popupVal('ps-name');
   if (!name) { _toast('Name is required', 'error'); return; }
-  const updates = {
-    name,
-    variant: _popupVal('ps-variant') || null,
-    w: parseFloat(_popupVal('ps-length')) || item.w,
-    h: parseFloat(_popupVal('ps-width')) || item.h,
-    thick: parseFloat(_popupVal('ps-thick')) || null,
-    qty: parseInt(_popupVal('ps-qty')) || 0,
-    low: parseInt(_popupVal('ps-low')) || 0,
-    cost: parseFloat(_popupVal('ps-cost')) || 0,
-    category: _popupVal('ps-cat') || null,
-  };
+  const cat = _popupVal('ps-cat') || '';
+  const isEB = cat === 'Edge Banding';
+  const variant = _popupVal('ps-variant') || '';
+  let updates, thick = 0, ebWidth = 0, ebLength = 0, ebGlue = '';
+  if (isEB) {
+    thick = parseFloat(_popupVal('ps-eb-thick')) || 0;
+    ebWidth = parseFloat(_popupVal('ps-eb-width')) || 0;
+    ebLength = parseFloat(_popupVal('ps-eb-length')) || 0;
+    ebGlue = _popupVal('ps-eb-glue') || '';
+    updates = {
+      name,
+      w: ebLength,
+      h: ebWidth,
+      qty: Math.round(ebLength),
+      low: Math.round(parseFloat(_popupVal('ps-low')) || 0),
+      cost: parseFloat(_popupVal('ps-cost')) || 0,
+    };
+  } else {
+    thick = parseFloat(_popupVal('ps-thick')) || 0;
+    updates = {
+      name,
+      w: parseFloat(_popupVal('ps-length')) || item.w,
+      h: parseFloat(_popupVal('ps-width')) || item.h,
+      qty: parseInt(_popupVal('ps-qty')) || 0,
+      low: parseInt(_popupVal('ps-low')) || 0,
+      cost: parseFloat(_popupVal('ps-cost')) || 0,
+    };
+  }
   Object.assign(item, updates);
+  if (isEB) { item.thickness = thick; item.width = ebWidth; item.length = ebLength; item.glue = ebGlue; }
+  else { delete item.thickness; delete item.width; delete item.length; delete item.glue; }
+  _scSet(id, cat);
+  const meta = { variant, thickness: thick };
+  if (isEB) { meta.width = ebWidth; meta.length = ebLength; meta.glue = ebGlue; }
+  _svSet(id, meta);
   // Save supplier info
   const sup = _ssGet(id);
   sup.supplier = _popupVal('ps-supplier');
   sup.url = _popupVal('ps-url');
   _ssSet(id, sup);
-  await _db('stock').update(updates).eq('id', id);
+  if (_userId) await _db('stock_items').update(updates).eq('id', id);
   _closePopup();
   renderStockMain();
   _toast('Material updated', 'success');
@@ -2515,22 +2611,8 @@ function _openNewStockPopup() {
         <input class="pf-input pf-input-lg" id="pns-name" placeholder="e.g. 18mm Birch Plywood">
       </div>
       <div class="pf">
-        <label class="pf-label">Variant / Spec</label>
-        <input class="pf-input" id="pns-variant" placeholder="e.g. BP-18, 500mm depth">
-      </div>
-      <div class="pf-row">
-        <div class="pf"><label class="pf-label">Length</label><input class="pf-input" id="pns-length" value="2440"></div>
-        <div class="pf"><label class="pf-label">Width</label><input class="pf-input" id="pns-width" value="1220"></div>
-        <div class="pf"><label class="pf-label">Thickness</label><input class="pf-input" id="pns-thick" placeholder="18"></div>
-      </div>
-      <div class="pf-row">
-        <div class="pf"><label class="pf-label">Qty in Stock</label><input class="pf-input" id="pns-qty" value="10" style="font-weight:700;font-size:16px;text-align:center"></div>
-        <div class="pf"><label class="pf-label">Low Alert</label><input class="pf-input" id="pns-low" value="3" style="text-align:center"></div>
-        <div class="pf"><label class="pf-label">Cost / Unit</label><input class="pf-input" id="pns-cost" value="0" style="text-align:right"></div>
-      </div>
-      <div class="pf">
         <label class="pf-label">Category</label>
-        <select class="pf-select" id="pns-cat">
+        <select class="pf-select" id="pns-cat" onchange="_pnsCatChanged()">
           <option value="Sheet Goods" selected>Sheet Goods</option>
           <option value="Solid Timber">Solid Timber</option>
           <option value="Edge Banding">Edge Banding</option>
@@ -2538,6 +2620,43 @@ function _openNewStockPopup() {
           <option value="Finishing">Finishing</option>
           <option value="Other">Other</option>
         </select>
+      </div>
+      <div class="pf">
+        <label class="pf-label">Variant / Spec</label>
+        <input class="pf-input" id="pns-variant" placeholder="e.g. BP-18, 500mm depth">
+      </div>
+      <div id="pns-sheet-fields">
+        <div class="pf-row">
+          <div class="pf"><label class="pf-label">Length</label><input class="pf-input" id="pns-length" value="2440"></div>
+          <div class="pf"><label class="pf-label">Width</label><input class="pf-input" id="pns-width" value="1220"></div>
+          <div class="pf"><label class="pf-label">Thickness</label><input class="pf-input" id="pns-thick" placeholder="18"></div>
+        </div>
+        <div class="pf-row">
+          <div class="pf"><label class="pf-label">Qty in Stock</label><input class="pf-input" id="pns-qty" value="10" style="font-weight:700;font-size:16px;text-align:center"></div>
+          <div class="pf"><label class="pf-label">Low Alert</label><input class="pf-input" id="pns-low" value="3" style="text-align:center"></div>
+          <div class="pf"><label class="pf-label">Cost / Unit</label><input class="pf-input" id="pns-cost" value="0" style="text-align:right"></div>
+        </div>
+      </div>
+      <div id="pns-eb-fields" style="display:none">
+        <div class="pf-row">
+          <div class="pf"><label class="pf-label">Thickness (mm)</label><input class="pf-input" id="pns-eb-thick" type="number" step="0.1" value="1.0"></div>
+          <div class="pf"><label class="pf-label">Width (mm)</label><input class="pf-input" id="pns-eb-width" type="number" value="22"></div>
+          <div class="pf"><label class="pf-label">Length (m)</label><input class="pf-input" id="pns-eb-length" type="number" step="0.1" value="50"></div>
+        </div>
+        <div class="pf-row">
+          <div class="pf"><label class="pf-label">Glue Type</label>
+            <select class="pf-select" id="pns-eb-glue">
+              <option value="EVA">EVA</option>
+              <option value="PUR">PUR</option>
+              <option value="Laser">Laser</option>
+              <option value="Hot Melt">Hot Melt</option>
+              <option value="Pre-glued">Pre-glued</option>
+              <option value="None">None</option>
+            </select>
+          </div>
+          <div class="pf"><label class="pf-label">Low Alert (m)</label><input class="pf-input" id="pns-eb-low" type="number" step="0.1" value="10" style="text-align:center"></div>
+          <div class="pf"><label class="pf-label">Cost / m</label><input class="pf-input" id="pns-eb-cost" type="number" step="0.01" value="0" style="text-align:right"></div>
+        </div>
       </div>
       <div class="pf-divider"></div>
       <div class="pf">
@@ -2557,33 +2676,65 @@ function _openNewStockPopup() {
   setTimeout(() => document.getElementById('pns-name')?.focus(), 50);
 }
 
+function _pnsCatChanged() {
+  const cat = document.getElementById('pns-cat')?.value;
+  const isEB = cat === 'Edge Banding';
+  const sheet = document.getElementById('pns-sheet-fields');
+  const eb = document.getElementById('pns-eb-fields');
+  if (sheet) sheet.style.display = isEB ? 'none' : '';
+  if (eb) eb.style.display = isEB ? '' : 'none';
+}
+
 async function _saveNewStockPopup() {
   const name = _popupVal('pns-name');
   if (!name) { _toast('Name is required', 'error'); return; }
-  const row = {
-    name,
-    variant: _popupVal('pns-variant') || null,
-    w: parseFloat(_popupVal('pns-length')) || 0,
-    h: parseFloat(_popupVal('pns-width')) || 0,
-    thick: parseFloat(_popupVal('pns-thick')) || null,
-    qty: parseInt(_popupVal('pns-qty')) || 0,
-    low: parseInt(_popupVal('pns-low')) || 0,
-    cost: parseFloat(_popupVal('pns-cost')) || 0,
-    category: _popupVal('pns-cat') || null,
-    sku: '',
-  };
+  const cat = _popupVal('pns-cat') || '';
+  const isEB = cat === 'Edge Banding';
+  const variant = _popupVal('pns-variant') || '';
+  let row, thick = 0, ebWidth = 0, ebLength = 0, ebGlue = '';
+  if (isEB) {
+    thick = parseFloat(_popupVal('pns-eb-thick')) || 0;
+    ebWidth = parseFloat(_popupVal('pns-eb-width')) || 0;
+    ebLength = parseFloat(_popupVal('pns-eb-length')) || 0;
+    ebGlue = _popupVal('pns-eb-glue') || '';
+    row = {
+      name, sku: '',
+      w: ebLength, h: ebWidth,
+      qty: Math.round(ebLength),
+      low: Math.round(parseFloat(_popupVal('pns-eb-low')) || 0),
+      cost: parseFloat(_popupVal('pns-eb-cost')) || 0,
+    };
+  } else {
+    thick = parseFloat(_popupVal('pns-thick')) || 0;
+    row = {
+      name, sku: '',
+      w: parseFloat(_popupVal('pns-length')) || 0,
+      h: parseFloat(_popupVal('pns-width')) || 0,
+      qty: parseInt(_popupVal('pns-qty')) || 0,
+      low: parseInt(_popupVal('pns-low')) || 0,
+      cost: parseFloat(_popupVal('pns-cost')) || 0,
+    };
+  }
+  let saved;
   if (_userId) {
     row.user_id = _userId;
-    const { data, error } = await _db('stock').insert(row).select().single();
+    const { data, error } = await _db('stock_items').insert(row).select().single();
     if (error) { _toast('Save failed: ' + error.message, 'error'); return; }
+    saved = data;
     stockItems.push(data);
   } else {
     row.id = stockNextId++;
+    saved = row;
     stockItems.push(row);
   }
+  if (isEB) { saved.thickness = thick; saved.width = ebWidth; saved.length = ebLength; saved.glue = ebGlue; }
+  _scSet(saved.id, cat);
+  const meta = { variant, thickness: thick };
+  if (isEB) { meta.width = ebWidth; meta.length = ebLength; meta.glue = ebGlue; }
+  _svSet(saved.id, meta);
   // Save supplier info
   const sup = { supplier: _popupVal('pns-supplier') || '', url: _popupVal('pns-url') || '' };
-  _ssSet(row.id, sup);
+  _ssSet(saved.id, sup);
   _closePopup();
   renderStockMain();
   _toast('"' + name + '" added to stock', 'success');
@@ -3076,10 +3227,16 @@ function _onRestore(orderArr) {
 function stockCatChanged() {
   const cat = document.getElementById('stock-cat').value;
   const dimsEl = document.getElementById('stock-dims-fields');
+  const ebEl = document.getElementById('stock-eb-fields');
+  const qtyEl = document.getElementById('stock-qty-fields');
+  const ebQtyEl = document.getElementById('stock-eb-qty-fields');
   if (!dimsEl) return;
-  // Show sheet dimensions for Sheet Goods / Solid Timber / Edge Banding, hide for Hardware / Finishing / Other
-  const sheetCats = ['Sheet Goods', 'Solid Timber', 'Edge Banding'];
+  const isEB = cat === 'Edge Banding';
+  const sheetCats = ['Sheet Goods', 'Solid Timber'];
   dimsEl.style.display = sheetCats.includes(cat) ? '' : 'none';
+  if (ebEl) ebEl.style.display = isEB ? '' : 'none';
+  if (qtyEl) qtyEl.style.display = isEB ? 'none' : '';
+  if (ebQtyEl) ebQtyEl.style.display = isEB ? '' : 'none';
 }
 function cancelStockEdit() {
   window._editingStockId = null;
@@ -3098,22 +3255,43 @@ async function addStockItem() {
   if (!_requireAuth()) return;
   const cat = document.getElementById('stock-cat').value.trim();
   const variant = document.getElementById('stock-variant').value.trim();
-  const thick = parseFloat(document.getElementById('stock-thick')?.value) || 0;
+  const isEB = cat === 'Edge Banding';
+  const thick = isEB
+    ? (parseFloat(document.getElementById('stock-eb-thick')?.value) || 0)
+    : (parseFloat(document.getElementById('stock-thick')?.value) || 0);
+  const ebWidth = isEB ? (parseFloat(document.getElementById('stock-eb-width')?.value) || 0) : 0;
+  const ebLength = isEB ? (parseFloat(document.getElementById('stock-eb-length')?.value) || 0) : 0;
+  const ebGlue = isEB ? (document.getElementById('stock-eb-glue')?.value || '') : '';
   const row = {
     user_id: _userId, name,
     sku: document.getElementById('stock-sku').value.trim() || '—',
-    w: parseFloat(document.getElementById('stock-w').value) || 2440,
-    h: parseFloat(document.getElementById('stock-h').value) || 1220,
-    qty: parseInt(document.getElementById('stock-qty').value) || 0,
-    low: parseInt(document.getElementById('stock-low').value) || 3,
-    cost: parseFloat(document.getElementById('stock-cost').value) || 0,
+    w: isEB ? ebLength : (parseFloat(document.getElementById('stock-w').value) || 2440),
+    h: isEB ? ebWidth : (parseFloat(document.getElementById('stock-h').value) || 1220),
+    qty: isEB
+      ? Math.round(ebLength)
+      : (parseInt(document.getElementById('stock-qty').value) || 0),
+    low: isEB
+      ? Math.round(parseFloat(document.getElementById('stock-eb-low')?.value) || 0)
+      : (parseInt(document.getElementById('stock-low').value) || 3),
+    cost: isEB
+      ? (parseFloat(document.getElementById('stock-eb-cost')?.value) || 0)
+      : (parseFloat(document.getElementById('stock-cost').value) || 0),
   };
   const { data, error } = await _db('stock_items').insert(row).select().single();
   if (error) { _toast('Could not save stock item — ' + (error.message || JSON.stringify(error)), 'error'); console.error(error); return; }
+  // Attach edge banding metadata to in-memory item so cut list dropdowns see it
+  if (isEB) {
+    data.thickness = thick;
+    data.width = ebWidth;
+    data.length = ebLength;
+    data.glue = ebGlue;
+  }
   stockItems.push(data);
   if (cat) _scSet(data.id, cat);
-  // Store variant and thickness in local metadata
-  if (variant || thick) _svSet(data.id, { variant, thickness: thick });
+  // Store variant/thickness (and edge banding extras) in local metadata
+  const meta = { variant, thickness: thick };
+  if (isEB) { meta.width = ebWidth; meta.length = ebLength; meta.glue = ebGlue; }
+  if (variant || thick || isEB) _svSet(data.id, meta);
   const supplier = document.getElementById('stock-supplier')?.value?.trim() || '';
   const reorderUrl = document.getElementById('stock-reorder-url')?.value?.trim() || '';
   if (supplier || reorderUrl) _ssSet(data.id, {supplier, url: reorderUrl});
@@ -3137,13 +3315,22 @@ function editStockItem(id) {
   document.getElementById('stock-name').value = item.name;
   const vd = _svGet(id);
   document.getElementById('stock-variant').value = vd.variant || '';
-  document.getElementById('stock-thick').value = vd.thickness || '';
   document.getElementById('stock-sku').value = item.sku || '';
-  document.getElementById('stock-w').value = item.w;
-  document.getElementById('stock-h').value = item.h;
-  document.getElementById('stock-qty').value = item.qty;
-  document.getElementById('stock-low').value = item.low;
-  document.getElementById('stock-cost').value = item.cost;
+  if (cat === 'Edge Banding') {
+    document.getElementById('stock-eb-thick').value = vd.thickness ?? item.thickness ?? '';
+    document.getElementById('stock-eb-width').value = vd.width ?? item.width ?? item.h ?? '';
+    document.getElementById('stock-eb-length').value = vd.length ?? item.length ?? item.w ?? '';
+    document.getElementById('stock-eb-glue').value = vd.glue || item.glue || 'EVA';
+    document.getElementById('stock-eb-low').value = item.low;
+    document.getElementById('stock-eb-cost').value = item.cost;
+  } else {
+    document.getElementById('stock-thick').value = vd.thickness || '';
+    document.getElementById('stock-w').value = item.w;
+    document.getElementById('stock-h').value = item.h;
+    document.getElementById('stock-qty').value = item.qty;
+    document.getElementById('stock-low').value = item.low;
+    document.getElementById('stock-cost').value = item.cost;
+  }
   const sup = _ssGet(id);
   if (document.getElementById('stock-supplier')) document.getElementById('stock-supplier').value = sup.supplier || '';
   if (document.getElementById('stock-reorder-url')) document.getElementById('stock-reorder-url').value = sup.url || '';
@@ -3160,22 +3347,44 @@ async function saveStockEdit() {
   if (!id) { addStockItem(); return; }
   const item = stockItems.find(s => s.id === id);
   if (!item) return;
-  const updates = {
-    name: document.getElementById('stock-name').value.trim(),
-    sku: document.getElementById('stock-sku').value.trim(),
-    w: parseFloat(document.getElementById('stock-w').value) || item.w,
-    h: parseFloat(document.getElementById('stock-h').value) || item.h,
-    qty: parseInt(document.getElementById('stock-qty').value) || 0,
-    low: parseInt(document.getElementById('stock-low').value) || 3,
-    cost: parseFloat(document.getElementById('stock-cost').value) || 0,
-  };
-  Object.assign(item, updates);
-  if (_userId) await _db('stock_items').update(updates).eq('id', id);
   const cat = document.getElementById('stock-cat').value.trim();
-  _scSet(id, cat);
+  const isEB = cat === 'Edge Banding';
   const variant = document.getElementById('stock-variant')?.value?.trim() || '';
-  const thick = parseFloat(document.getElementById('stock-thick')?.value) || 0;
-  _svSet(id, { variant, thickness: thick });
+  let updates, thick = 0, ebWidth = 0, ebLength = 0, ebGlue = '';
+  if (isEB) {
+    thick = parseFloat(document.getElementById('stock-eb-thick')?.value) || 0;
+    ebWidth = parseFloat(document.getElementById('stock-eb-width')?.value) || 0;
+    ebLength = parseFloat(document.getElementById('stock-eb-length')?.value) || 0;
+    ebGlue = document.getElementById('stock-eb-glue')?.value || '';
+    updates = {
+      name: document.getElementById('stock-name').value.trim(),
+      sku: document.getElementById('stock-sku').value.trim(),
+      w: ebLength,
+      h: ebWidth,
+      qty: Math.round(ebLength),
+      low: Math.round(parseFloat(document.getElementById('stock-eb-low')?.value) || 0),
+      cost: parseFloat(document.getElementById('stock-eb-cost')?.value) || 0,
+    };
+  } else {
+    thick = parseFloat(document.getElementById('stock-thick')?.value) || 0;
+    updates = {
+      name: document.getElementById('stock-name').value.trim(),
+      sku: document.getElementById('stock-sku').value.trim(),
+      w: parseFloat(document.getElementById('stock-w').value) || item.w,
+      h: parseFloat(document.getElementById('stock-h').value) || item.h,
+      qty: parseInt(document.getElementById('stock-qty').value) || 0,
+      low: parseInt(document.getElementById('stock-low').value) || 3,
+      cost: parseFloat(document.getElementById('stock-cost').value) || 0,
+    };
+  }
+  Object.assign(item, updates);
+  if (isEB) { item.thickness = thick; item.width = ebWidth; item.length = ebLength; item.glue = ebGlue; }
+  else { delete item.thickness; delete item.width; delete item.length; delete item.glue; }
+  if (_userId) await _db('stock_items').update(updates).eq('id', id);
+  _scSet(id, cat);
+  const meta = { variant, thickness: thick };
+  if (isEB) { meta.width = ebWidth; meta.length = ebLength; meta.glue = ebGlue; }
+  _svSet(id, meta);
   const supplier = document.getElementById('stock-supplier')?.value?.trim() || '';
   const reorderUrl = document.getElementById('stock-reorder-url')?.value?.trim() || '';
   _ssSet(id, {supplier, url: reorderUrl});
@@ -3244,11 +3453,26 @@ function renderStockMain() {
     const cat = _scGet(item.id);
     const sup = _ssGet(item.id);
     const vd = _svGet(item.id);
-    const sheetCat = ['Sheet Goods','Solid Timber','Edge Banding'].includes(cat);
-    const dims = sheetCat ? `${item.w}×${item.h}${u}` : '';
-    const thk = vd.thickness ? `${vd.thickness}mm` : '';
-    const subtitle = [vd.variant, thk, item.sku !== '—' ? item.sku : '', dims].filter(Boolean).join(' · ');
-    const unitLabel = sheetCat ? 'sheets' : 'units';
+    const isEB = cat === 'Edge Banding';
+    const sheetCat = ['Sheet Goods','Solid Timber'].includes(cat);
+    let dims = '';
+    let thk = '';
+    let glue = '';
+    if (isEB) {
+      const t = vd.thickness ?? item.thickness;
+      const w = vd.width ?? item.width ?? item.h;
+      const l = vd.length ?? item.length ?? item.w;
+      thk = t ? `${t}mm` : '';
+      dims = (w && l) ? `${w}mm × ${l}m` : (w ? `${w}mm` : '');
+      glue = vd.glue || item.glue || '';
+    } else if (sheetCat) {
+      dims = `${item.w}×${item.h}${u}`;
+      thk = vd.thickness ? `${vd.thickness}mm` : '';
+    } else {
+      thk = vd.thickness ? `${vd.thickness}mm` : '';
+    }
+    const subtitle = [vd.variant, thk, item.sku !== '—' ? item.sku : '', dims, glue].filter(Boolean).join(' · ');
+    const unitLabel = isEB ? 'metres' : (sheetCat ? 'sheets' : 'units');
     return `
     <div class="stock-card" style="display:flex;flex-direction:column;gap:0;padding:0;cursor:pointer;transition:box-shadow .15s${isLow?';border-color:var(--danger);border-left:3px solid var(--danger)':''}" onclick="_openStockPopup(${item.id})" onmouseover="this.style.boxShadow='var(--shadow-md)'" onmouseout="this.style.boxShadow=''">
       <div style="padding:10px 12px">
@@ -3269,7 +3493,7 @@ function renderStockMain() {
           </div>
           <div style="text-align:right">
             <div style="font-size:13px;font-weight:700;color:var(--text)">${cur}${(item.qty * item.cost).toFixed(0)}</div>
-            <div style="font-size:9px;color:var(--muted)">${cur}${item.cost.toFixed(2)}/${sheetCat?'sheet':'unit'}</div>
+            <div style="font-size:9px;color:var(--muted)">${cur}${item.cost.toFixed(2)}/${isEB?'m':(sheetCat?'sheet':'unit')}</div>
           </div>
         </div>
       </div>
@@ -3463,6 +3687,7 @@ function initColVisibility() {
 }
 function toggleCol(col) {
   colsVisible[col] = !colsVisible[col];
+  _saveCutList();
   const pill = document.getElementById('pill-' + col);
   if (pill) pill.classList.toggle('active', colsVisible[col]);
   document.querySelectorAll('.cl-col-' + col).forEach(el => {
@@ -3474,21 +3699,26 @@ function toggleGrainCol() {
   if (turning_on) {
     pieces.forEach(p => { if (!p.grain || p.grain === 'none') p.grain = 'h'; });
     sheets.forEach(s => { if (!s.grain || s.grain === 'none') s.grain = 'h'; });
-    _saveCutList();
-    renderPieces();
-    renderSheets();
+  } else {
+    pieces.forEach(p => { p.grain = 'none'; });
+    sheets.forEach(s => { s.grain = 'none'; });
   }
   colsVisible.grain = turning_on;
+  _saveCutList();
+  renderPieces();
+  renderSheets();
   const pill = document.getElementById('pill-grain');
   if (pill) pill.classList.toggle('active', turning_on);
   document.querySelectorAll('.cl-col-grain').forEach(el => {
     el.style.display = turning_on ? '' : 'none';
   });
+  renderResults();
 }
 
 function toggleEdgeBandCol() {
   const turning_on = !colsVisible.edgeband;
   colsVisible.edgeband = turning_on;
+  _saveCutList();
   const pill = document.getElementById('pill-edgeband');
   if (pill) pill.classList.toggle('active', turning_on);
   document.querySelectorAll('.cl-col-edgeband').forEach(el => {
@@ -3523,33 +3753,58 @@ function renderEdgeBands() {
   const tbody = document.getElementById('edgebands-body');
   if (!tbody) return;
   if (!edgeBands.length) {
-    tbody.innerHTML = `<tr><td colspan="3" style="color:var(--muted);font-size:11px;padding:8px 14px;text-align:center">No edge bands — click "+ Add edge band"</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="11" style="color:var(--muted);font-size:11px;padding:8px 14px;text-align:center">No edge bands — click "+ Add edge band"</td></tr>`;
     return;
   }
   tbody.innerHTML = edgeBands.map(eb => `<tr>
-    <td style="padding:4px 6px">
+    <td class="cl-del-cell" style="padding:0 2px;width:14px"></td>
+    <td class="cl-del-cell">
       <span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${eb.color};flex-shrink:0"></span>
     </td>
     <td style="padding:2px 4px">
       <input class="cl-input" value="${_escHtml(eb.name)}"
         style="font-size:12px;width:100%"
         onblur="updateEdgeBand(${eb.id},'name',this.value)"
-        onkeydown="if(event.key==='Enter')this.blur()">
-      ${eb.thickness ? `<span style="font-size:10px;color:var(--muted);margin-left:4px">${eb.thickness}mm${eb.width?' · '+eb.width+'mm wide':''}</span>` : ''}
+        onkeydown="if(event.key==='Enter')this.blur()"
+        ${eb.glue?`title="Glue: ${_escHtml(eb.glue)}"`:''}>
     </td>
+    <td style="padding:2px 2px">
+      <input class="cl-input" type="number" step="0.1" value="${eb.thickness||''}"
+        style="font-size:11px;width:100%;text-align:right"
+        onblur="updateEdgeBand(${eb.id},'thickness',parseFloat(this.value)||0)"
+        onkeydown="if(event.key==='Enter')this.blur()">
+    </td>
+    <td style="padding:2px 2px">
+      <input class="cl-input" type="number" value="${eb.width||''}"
+        style="font-size:11px;width:100%;text-align:right"
+        onblur="updateEdgeBand(${eb.id},'width',parseFloat(this.value)||0)"
+        onkeydown="if(event.key==='Enter')this.blur()">
+    </td>
+    <td style="padding:2px 2px">
+      <input class="cl-input" type="number" step="0.1" value="${eb.length||''}"
+        style="font-size:11px;width:100%;text-align:right"
+        onblur="updateEdgeBand(${eb.id},'length',parseFloat(this.value)||0)"
+        onkeydown="if(event.key==='Enter')this.blur()">
+    </td>
+    <td class="cl-col-grain" style="${colsVisible.grain?'':'display:none'}"></td>
+    <td></td>
+    <td class="cl-col-material" style="${colsVisible.material?'':'display:none'}"></td>
+    <td class="cl-col-notes" style="${colsVisible.notes?'':'display:none'}"></td>
     <td style="padding:2px 4px;text-align:right">
       <button class="cl-del-btn" onclick="removeEdgeBand(${eb.id})" title="Remove">${DEL_SVG}</button>
     </td>
   </tr>`).join('');
 }
 
-function addEdgeBand(name, thickness, width, color) {
+function addEdgeBand(name, thickness, width, color, length, glue) {
   const eb = {
     id: _edgeBandId++,
     name: name || 'Edge Band',
     color: color || COLORS[pieceColorIdx++ % COLORS.length],
     thickness: thickness || 0,
     width: width || 0,
+    length: length || 0,
+    glue: glue || '',
   };
   edgeBands.push(eb);
   renderEdgeBands();
@@ -3788,14 +4043,23 @@ function _openNewEdgeBandMaterialPopup() {
       <div style="display:flex;gap:12px">
         <div class="pf" style="flex:1"><label>Thickness (mm)</label><input type="number" id="eb-new-thickness" class="form-control" placeholder="e.g. 1" min="0" step="0.1"></div>
         <div class="pf" style="flex:1"><label>Width (mm)</label><input type="number" id="eb-new-width" class="form-control" placeholder="e.g. 22" min="0"></div>
+        <div class="pf" style="flex:1"><label>Length (m)</label><input type="number" id="eb-new-length" class="form-control" placeholder="e.g. 50" min="0" step="0.1"></div>
+      </div>
+      <div class="pf">
+        <label>Glue Type</label>
+        <select id="eb-new-glue" class="form-control">
+          <option value="EVA" selected>EVA</option>
+          <option value="PUR">PUR</option>
+          <option value="Laser">Laser</option>
+          <option value="Hot Melt">Hot Melt</option>
+          <option value="Pre-glued">Pre-glued</option>
+          <option value="None">None</option>
+        </select>
       </div>
       <div class="pf">
         <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
           <input type="checkbox" id="eb-new-save-stock"> Save to Stock Library
         </label>
-      </div>
-      <div id="eb-new-stock-fields" style="display:none">
-        <div class="pf"><label>Qty (metres)</label><input type="number" id="eb-new-qty" class="form-control" placeholder="e.g. 50" min="0"></div>
       </div>
     </div>
     <div class="popup-footer">
@@ -3804,9 +4068,6 @@ function _openNewEdgeBandMaterialPopup() {
     </div>`;
   _openPopup(h, 'sm');
   setTimeout(() => {
-    const cb = document.getElementById('eb-new-save-stock');
-    const fields = document.getElementById('eb-new-stock-fields');
-    if (cb && fields) cb.addEventListener('change', () => { fields.style.display = cb.checked ? '' : 'none'; });
     document.getElementById('eb-new-name') && document.getElementById('eb-new-name').focus();
   }, 50);
 }
@@ -3816,21 +4077,30 @@ function _saveNewEdgeBandMaterial() {
   if (!name) { _toast('Please enter a name', 'error'); return; }
   const thickness = parseFloat(document.getElementById('eb-new-thickness')?.value) || 0;
   const width = parseFloat(document.getElementById('eb-new-width')?.value) || 0;
+  const length = parseFloat(document.getElementById('eb-new-length')?.value) || 0;
+  const glue = document.getElementById('eb-new-glue')?.value || '';
   const saveStock = document.getElementById('eb-new-save-stock')?.checked;
-  const qty = saveStock ? (parseFloat(document.getElementById('eb-new-qty')?.value) || 0) : 0;
 
-  const eb = addEdgeBand(name, thickness, width);
+  const eb = addEdgeBand(name, thickness, width, null, length, glue);
   _closePopup();
 
   if (saveStock && window.stockItems) {
+    const id = Date.now();
     window.stockItems.push({
-      id: Date.now(),
+      id,
       name,
-      category: 'Edge Banding',
+      w: length,
+      h: width,
+      qty: Math.round(length),
+      low: 0,
+      cost: 0,
       thickness,
       width,
-      qty,
+      length,
+      glue,
     });
+    _scSet(id, 'Edge Banding');
+    _svSet(id, { variant: '', thickness, width, length, glue });
     if (window._saveStock) window._saveStock();
     else if (window.saveStockItems) window.saveStockItems();
   }
@@ -4083,6 +4353,7 @@ function _saveCutList() {
     localStorage.setItem('pc_cl_colorIdx', pieceColorIdx);
     localStorage.setItem('pc_cl_edgebands', JSON.stringify(edgeBands));
     localStorage.setItem('pc_cl_ebid', _edgeBandId);
+    localStorage.setItem('pc_cl_colsVisible', JSON.stringify(colsVisible));
   } catch(e) {}
 }
 
@@ -4112,6 +4383,13 @@ function _loadCutList() {
     const sid = localStorage.getItem('pc_cl_sid'); if (sid) _sheetId = parseInt(sid);
     const ci  = localStorage.getItem('pc_cl_colorIdx'); if (ci) pieceColorIdx = parseInt(ci);
     const ebid = localStorage.getItem('pc_cl_ebid'); if (ebid) _edgeBandId = parseInt(ebid);
+    const cv = localStorage.getItem('pc_cl_colsVisible');
+    if (cv) { try { Object.assign(colsVisible, JSON.parse(cv)); } catch(e) {} }
+    // Sync grain data with column visibility — clear stale grain values if column is hidden
+    if (!colsVisible.grain) {
+      pieces.forEach(p => { p.grain = 'none'; });
+      sheets.forEach(s => { s.grain = 'none'; });
+    }
   } catch(e) {}
 }
 
@@ -4150,7 +4428,23 @@ function duplicatePiece(id) {
   const p = pieces.find(p => p.id === id);
   if (!p) return;
   const idx = pieces.indexOf(p);
-  const copy = { ...p, id: _pieceId++, label: p.label + ' (copy)', color: COLORS[pieceColorIdx++ % COLORS.length] };
+  // Sequential copy naming: "Side Panel" → "Side Panel 2" → "Side Panel 3" …
+  // Strip any trailing " N" from the source to get the base, then pick the next
+  // number not already used among pieces sharing that base.
+  const srcLabel = p.label || '';
+  const m = srcLabel.match(/^(.*?)\s+(\d+)$/);
+  const base = m ? m[1] : srcLabel;
+  let maxN = 1;
+  for (const q of pieces) {
+    if (!q.label) continue;
+    if (q.label === base) continue;  // "base" alone counts as N=1 (implicit)
+    const qm = q.label.match(/^(.*?)\s+(\d+)$/);
+    if (qm && qm[1] === base) {
+      const n = parseInt(qm[2], 10);
+      if (n > maxN) maxN = n;
+    }
+  }
+  const copy = { ...p, id: _pieceId++, label: `${base} ${maxN + 1}`, color: COLORS[pieceColorIdx++ % COLORS.length] };
   pieces.splice(idx + 1, 0, copy);
   renderPieces();
 }
@@ -4188,7 +4482,7 @@ function renderPieces() {
         <span class="cl-drag-handle" title="Drag to reorder">${DRAG_HANDLE}</span>
       </td>
       <td class="cl-del-cell">
-        <button class="cl-toggle-btn" onclick="togglePiece(${p.id})" title="${dis ? 'Enable' : 'Disable'}"
+        <button class="cl-toggle-btn" tabindex="-1" onclick="togglePiece(${p.id})" title="${dis ? 'Enable' : 'Disable'}"
           style="background:none;border:none;padding:2px;cursor:pointer;border-radius:4px;display:flex;align-items:center;justify-content:center;width:22px;height:22px">
           <span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${dis?'var(--muted)':p.color};flex-shrink:0"></span>
         </button>
@@ -4212,32 +4506,32 @@ function renderPieces() {
         ${dis ? 'disabled' : ''}></td>
       <td>
         <div class="cl-stepper">
-          <button class="cl-step-btn" onclick="stepQty('piece',${p.id},-1)">−</button>
+          <button class="cl-step-btn" tabindex="-1" onclick="stepQty('piece',${p.id},-1)">−</button>
           <input class="cl-input cl-qty-input" value="${p.qty}"
             data-table="pieces" data-row="${i}" data-col="qty"
             onblur="updatePiece(${p.id},'qty',this.value)"
             onkeydown="clKeydown(event,'pieces',${i},'qty')"
             min="1" max="999" ${dis ? 'disabled' : ''}>
-          <button class="cl-step-btn" onclick="stepQty('piece',${p.id},1)">+</button>
+          <button class="cl-step-btn" tabindex="-1" onclick="stepQty('piece',${p.id},1)">+</button>
         </div>
       </td>
       <td class="cl-grain-cell cl-col-grain" style="${colsVisible.grain?'':'display:none'}">
-        <button class="cl-grain-btn${p.grain !== 'none' ? ' active' : ''}"
+        <button class="cl-grain-btn${p.grain !== 'none' ? ' active' : ''}" tabindex="-1"
           onclick="cycleGrain(${p.id},'piece')" title="Grain: ${p.grain}">${grainIcon(p.grain)}</button>
       </td>
       <td class="cl-col-edgeband" style="${colsVisible.edgeband?'':'display:none'}">
-        <button class="cl-grain-btn${hasAnyEdge(p) ? ' active' : ''}" onclick="openEdgePopup(${p.id})" title="Edge banding">${_ebIcon(p)}</button>
+        <button class="cl-grain-btn${hasAnyEdge(p) ? ' active' : ''}" tabindex="-1" onclick="openEdgePopup(${p.id})" title="Edge banding">${_ebIcon(p)}</button>
       </td>
       <td></td>
       <td class="cl-col-material" style="${colsVisible.material?'':'display:none'}">
-        <select class="cl-input" style="font-size:11px;padding:3px 4px;border-radius:3px"
+        <select class="cl-input" tabindex="-1" style="font-size:11px;padding:3px 4px;border-radius:3px"
           onchange="updatePiece(${p.id},'material',this.value)" ${dis ? 'disabled' : ''}>
           ${makeOpts(p.material)}
         </select>
       </td>
       <td class="cl-del-cell" style="white-space:nowrap;display:flex;align-items:center;gap:2px">
-        <input type="checkbox" class="cl-check" ${dis ? '' : 'checked'} onclick="_clCheckboxClick(${p.id},${i},this.checked,event)" title="Include in layout&#10;Shift+click to select range">
-        <button class="cl-del-btn" onclick="removePiece(${p.id})" title="Remove">${DEL_SVG}</button>
+        <input type="checkbox" class="cl-check" tabindex="-1" ${dis ? '' : 'checked'} onclick="_clCheckboxClick(${p.id},${i},this.checked,event)" title="Include in layout&#10;Shift+click to select range">
+        <button class="cl-del-btn" tabindex="-1" onclick="removePiece(${p.id})" title="Remove">${DEL_SVG}</button>
       </td>
     </tr>`;
   }).join('');
@@ -4258,13 +4552,30 @@ function renderPieces() {
 }
 
 // ── KEYBOARD NAV ──
-const CL_COLS = { pieces: ['label','w','h','qty','notes'], sheets: ['name','w','h','qty'] };
+const CL_COLS = { pieces: ['label','w','h','qty'], sheets: ['name','w','h','qty'] };
 function clKeydown(event, tableId, rowIdx, colName) {
   if (event.key !== 'Tab' && event.key !== 'Enter') return;
   event.preventDefault();
   const cols = CL_COLS[tableId];
   const colIdx = cols.indexOf(colName);
   const arr = tableId === 'pieces' ? pieces : sheets;
+
+  // Commit the current input's value to state NOW, and null out its onblur.
+  // Otherwise the pending blur (triggered when we move focus below) fires
+  // updatePiece/updateSheet → renderPieces/renderSheets, which rebuilds the
+  // entire tbody and destroys the input we're about to focus, causing the
+  // browser to drop focus outside the table.
+  const curEl = event.target;
+  if (curEl && 'value' in curEl) {
+    const item = arr[rowIdx];
+    if (item) {
+      if (colName === 'w' || colName === 'h') item[colName] = parseVal(curEl.value);
+      else if (colName === 'qty') item[colName] = Math.max(1, parseInt(curEl.value) || 1);
+      else item[colName] = curEl.value;
+    }
+    curEl.onblur = null;
+  }
+
   if (event.key === 'Enter') {
     // Enter = duplicate current row
     const item = arr[rowIdx];
@@ -4274,7 +4585,7 @@ function clKeydown(event, tableId, rowIdx, colName) {
     } else if (item) {
       // For sheets, just move to next row or add new
       if (rowIdx + 1 < arr.length) focusClCell(tableId, rowIdx + 1, colName);
-      else { addSheet(); setTimeout(() => focusClCell(tableId, arr.length, cols[0]), 30); }
+      else { addSheet(); setTimeout(() => focusClCell(tableId, arr.length - 1, cols[0]), 30); }
     }
   } else { // Tab
     const next = event.shiftKey ? colIdx - 1 : colIdx + 1;
@@ -4282,7 +4593,7 @@ function clKeydown(event, tableId, rowIdx, colName) {
       focusClCell(tableId, rowIdx, cols[next]);
     } else if (next >= cols.length) {
       if (rowIdx + 1 < arr.length) focusClCell(tableId, rowIdx + 1, cols[0]);
-      else { tableId === 'pieces' ? addPiece() : addSheet(); setTimeout(() => focusClCell(tableId, arr.length, cols[0]), 30); }
+      else { tableId === 'pieces' ? addPiece() : addSheet(); setTimeout(() => focusClCell(tableId, arr.length - 1, cols[0]), 30); }
     } else {
       if (rowIdx > 0) focusClCell(tableId, rowIdx - 1, cols[cols.length - 1]);
     }
@@ -5072,10 +5383,10 @@ function setPagesPerSheet(n) {
   else s.textContent = '';
 }
 
-// Recursive guillotine packer — explicitly builds a cut tree. After placing a
-// piece at the top-left corner of a region, splits the remainder with either a
-// horizontal or vertical guillotine cut, trying BOTH and keeping whichever
-// packs more pieces. This produces fewer, more consolidated offcut regions.
+// Recursive guillotine packer (multi-start best-fit).
+// Options A+B: tournament over several starting orderings × best-short-side-fit
+// pick at each region × shorter-axis-first split preference. Every layout is
+// pure guillotine by construction — edge-to-edge cuts per region.
 function packSheetRecGuillotine(sheetW, sheetH, sheetGrain, items, kerf) {
   const orientOf = (it) => {
     const pg = it.grain || 'none', sg = sheetGrain || 'none';
@@ -5087,61 +5398,86 @@ function packSheetRecGuillotine(sheetW, sheetH, sheetGrain, items, kerf) {
     if (canRot)  return [nat, rot];
     return [nat];
   };
+  const areaOf = (pcs) => pcs.reduce((s, p) => s + p.w * p.h, 0);
+  const betterThan = (a, b) => {
+    if (!b) return true;
+    if (a.placed.length !== b.placed.length) return a.placed.length > b.placed.length;
+    return areaOf(a.placed) > areaOf(b.placed);
+  };
 
-  // Try to pack a list of items into a region. Returns { placed, leftover }.
-  // Pure function — no shared state.
-  function packRegion(x0, y0, x1, y1, items) {
-    const rw = x1 - x0, rh = y1 - y0;
-    if (rw < 1 || rh < 1 || !items.length) return { placed: [], leftover: items };
+  // Inner packer: given a pre-sorted item list, recursively fill regions using
+  // best-short-side-fit picks. Orderings is the tiebreak when multiple items
+  // tie on BSSF score — earlier-in-list wins.
+  function packOrdered(orderedItems) {
+    function packRegion(x0, y0, x1, y1, items) {
+      const rw = x1 - x0, rh = y1 - y0;
+      if (rw < 1 || rh < 1 || !items.length) return { placed: [], leftover: items };
 
-    // Pick the largest item that fits (area desc), any orientation.
-    const sorted = [...items].sort((a, b) => (b.w * b.h) - (a.w * a.h));
-    let pick = null, pickIdx = -1;
-    for (let i = 0; i < sorted.length; i++) {
-      const it = sorted[i];
-      for (const o of orientOf(it)) {
-        if (o.w <= rw + 0.5 && o.h <= rh + 0.5) {
-          pick = { it, w: o.w, h: o.h, rotated: o.rotated };
-          pickIdx = i;
-          break;
+      // Best Short Side Fit: pick the item+orientation that leaves the smallest
+      // minor leftover. Ties broken by the caller-provided item order.
+      let pickIdx = -1, pickScore = Infinity;
+      for (let i = 0; i < items.length; i++) {
+        const it = items[i];
+        for (const o of orientOf(it)) {
+          if (o.w > rw + 0.5 || o.h > rh + 0.5) continue;
+          const score = Math.min(rw - o.w, rh - o.h);
+          if (score < pickScore) { pickIdx = i; pickScore = score; }
+          break;  // first valid orientation for this item — we'll branch on both later
         }
       }
-      if (pick) break;
+      if (pickIdx < 0) return { placed: [], leftover: items };
+
+      const it = items[pickIdx];
+      const remaining = items.filter((_, i) => i !== pickIdx);
+
+      // Branch on every fitting orientation × both guillotine splits.
+      // Split A (row-first): RIGHT = (x0+w+k, y0, x1, y0+h), BELOW = (x0, y0+h+k, x1, y1)
+      // Split B (col-first): BELOW = (x0, y0+h+k, x0+w, y1), RIGHT = (x0+w+k, y0, x1, y1)
+      // SAS preference: when leftover RIGHT arm is narrower than BELOW arm, prefer
+      // Split B (keep the wider BELOW arm intact); else Split A. Still try both —
+      // this only affects tie-breaking when both pack the same # of pieces.
+      let best = null;
+      for (const o of orientOf(it)) {
+        if (o.w > rw + 0.5 || o.h > rh + 0.5) continue;
+        const placed0 = { x: x0, y: y0, w: o.w, h: o.h, item: it, rotated: o.rotated };
+        const preferA = (rw - o.w) >= (rh - o.h);  // wider right arm → preserve it via split A
+
+        const tryA = () => {
+          const rA1 = packRegion(x0 + o.w + kerf, y0, x1, y0 + o.h, remaining);
+          const rA2 = packRegion(x0, y0 + o.h + kerf, x1, y1, rA1.leftover);
+          return { placed: [placed0, ...rA1.placed, ...rA2.placed], leftover: rA2.leftover };
+        };
+        const tryB = () => {
+          const rB1 = packRegion(x0, y0 + o.h + kerf, x0 + o.w, y1, remaining);
+          const rB2 = packRegion(x0 + o.w + kerf, y0, x1, y1, rB1.leftover);
+          return { placed: [placed0, ...rB1.placed, ...rB2.placed], leftover: rB2.leftover };
+        };
+
+        const [first, second] = preferA ? [tryA(), tryB()] : [tryB(), tryA()];
+        if (betterThan(first, best)) best = first;
+        if (betterThan(second, best)) best = second;
+      }
+
+      return best || { placed: [], leftover: items };
     }
-    if (!pick) return { placed: [], leftover: items };
-
-    const remaining = sorted.filter((_, i) => i !== pickIdx);
-    const placed0 = { x: x0, y: y0, w: pick.w, h: pick.h, item: pick.it, rotated: pick.rotated };
-
-    // Two possible splits of the remaining L-shape:
-    //   A (row-first): RIGHT = (x0+w+k, y0, x1, y0+h), BELOW = (x0, y0+h+k, x1, y1)
-    //   B (col-first): BELOW = (x0, y0+h+k, x0+w, y1), RIGHT = (x0+w+k, y0, x1, y1)
-    const rightA = { x0: x0 + pick.w + kerf, y0, x1, y1: y0 + pick.h };
-    const belowA = { x0, y0: y0 + pick.h + kerf, x1, y1 };
-    const rightB = { x0: x0 + pick.w + kerf, y0, x1, y1 };
-    const belowB = { x0, y0: y0 + pick.h + kerf, x1: x0 + pick.w, y1 };
-
-    // Try A
-    const rA1 = packRegion(rightA.x0, rightA.y0, rightA.x1, rightA.y1, remaining);
-    const rA2 = packRegion(belowA.x0, belowA.y0, belowA.x1, belowA.y1, rA1.leftover);
-    const placedA = [placed0, ...rA1.placed, ...rA2.placed];
-    const leftoverA = rA2.leftover;
-
-    // Try B
-    const rB1 = packRegion(belowB.x0, belowB.y0, belowB.x1, belowB.y1, remaining);
-    const rB2 = packRegion(rightB.x0, rightB.y0, rightB.x1, rightB.y1, rB1.leftover);
-    const placedB = [placed0, ...rB1.placed, ...rB2.placed];
-    const leftoverB = rB2.leftover;
-
-    // Pick whichever packs more pieces; tie-break by total placed area
-    const areaA = placedA.reduce((s, p) => s + p.w * p.h, 0);
-    const areaB = placedB.reduce((s, p) => s + p.w * p.h, 0);
-    const chooseA = placedA.length > placedB.length || (placedA.length === placedB.length && areaA >= areaB);
-    return chooseA ? { placed: placedA, leftover: leftoverA } : { placed: placedB, leftover: leftoverB };
+    return packRegion(0, 0, sheetW, sheetH, orderedItems);
   }
 
-  const result = packRegion(0, 0, sheetW, sheetH, items);
-  return { placed: result.placed, leftover: result.leftover };
+  // Multi-start tournament — five orderings, keep the best result.
+  const orderings = [
+    [...items].sort((a, b) => (b.w * b.h) - (a.w * a.h)),                         // area desc
+    [...items].sort((a, b) => b.h - a.h),                                         // height desc
+    [...items].sort((a, b) => b.w - a.w),                                         // width desc
+    [...items].sort((a, b) => Math.max(b.w, b.h) - Math.max(a.w, a.h)),           // longest-edge desc
+    [...items].sort((a, b) => (b.w + b.h) - (a.w + a.h)),                         // perimeter desc
+  ];
+
+  let best = null;
+  for (const ord of orderings) {
+    const res = packOrdered(ord);
+    if (betterThan(res, best)) best = res;
+  }
+  return best || { placed: [], leftover: items };
 }
 
 function optimize() {
@@ -5407,16 +5743,33 @@ function drawCanvas(container, layout, units) {
 
   // ── Rip direction: parallel to sheet's long axis (with grain when specified) ──
   // Rip cuts are made FIRST (industry standard), then cross cuts.
-  // For a landscape sheet, rips are horizontal lines; portrait, vertical.
-  const ripIsH = drawSG === 'h' ? true : drawSG === 'v' ? false : (sW >= sH);
+  // The plan is computed in the SHEET's ORIGINAL coordinate space so the cut
+  // tree (and therefore the cut order) is invariant under display rotation.
+  // After plan generation, cuts are transposed to display coords if needed.
+  const sW0 = sheet.w, sH0 = sheet.h;
+  const origPieces = placed;
+  const origRipIsH = sheetGrain === 'h' ? true : sheetGrain === 'v' ? false : (sW0 >= sH0);
+  const ripIsH = origRipIsH;  // used inside buildGuillotinePlan helpers below
   const ripPass = 1, crossPass = 2;
   const ripPassOf = isH => (isH === ripIsH) ? ripPass : crossPass;
 
+  // ── 4-PHASE cut ordering (rip-cross-rip-cross) ──
+  // phase=1 : rips reachable from root with no cross ancestor ("full-sheet rips")
+  // phase=2 : crosses that enable at least one phase-3 rip ("blocking crosses")
+  // phase=3 : rips that follow a phase-2 cross (have a cross ancestor in the tree)
+  // phase=4 : terminal crosses with no rip later in their subtree (piece-sizing)
+  // Each cut carries a `_path` — an array of 2-char ancestry tokens ('cL', 'cR',
+  // 'rL', 'rR') uniquely identifying its tree position. Rip phase is known at
+  // emit time. Cross phase is finalized post-build by searching for any later
+  // rip whose `_path` starts with this cross's `_path` (a true descendant).
+  const ripPhaseFor = (pathDirs) => pathDirs.some(d => d[0] === 'c') ? 3 : 1;
+
   // ── Recursive guillotine decomposition ──
-  // TWO-PHASE per region: ALL rip-direction cuts (outer offcut rips + interior rip)
-  // BEFORE any cross-direction cut. Only if no rip is possible do we proceed to
-  // cross offcuts + interior cross. This guarantees a strict rip-first physical order.
-  function buildGuillotinePlan(x0, y0, x1, y1, pcs) {
+  // Prefer interior rips first at each region. If none is possible, try outer
+  // strips, then an interior cross. Each cut carries a `_path` snapshot of its
+  // ancestor direction chain so phases can be finalized in a post-pass.
+  function buildGuillotinePlan(x0, y0, x1, y1, pcs, pathDirs) {
+    pathDirs = pathDirs || [];
     const out = { cuts: [], offcuts: [] };
     if (x1 - x0 < 0.5 || y1 - y0 < 0.5) return out;
     if (pcs.length === 0) { out.offcuts.push({ x: x0, y: y0, w: x1 - x0, h: y1 - y0 }); return out; }
@@ -5426,10 +5779,11 @@ function drawCanvas(container, layout, units) {
       for (const p of pcs) { if (p.y+p.h>mY) mY=p.y+p.h; if (p.x+p.w>mX) mX=p.x+p.w; if (p.y<nY) nY=p.y; if (p.x<nX) nX=p.x; }
       return { mY, mX, nY, nX };
     };
-    const stripBot = () => { const { mY } = bounds(); if (mY < y1 - 0.5) { out.cuts.push({ x1: x0, y1: mY, x2: x1, y2: mY, pass: ripPassOf(true), outer: true }); out.offcuts.push({ x: x0, y: mY, w: x1 - x0, h: y1 - mY }); y1 = mY; } };
-    const stripTop = () => { const { nY } = bounds(); if (nY > y0 + 0.5) { out.cuts.push({ x1: x0, y1: nY, x2: x1, y2: nY, pass: ripPassOf(true), outer: true }); out.offcuts.push({ x: x0, y: y0, w: x1 - x0, h: nY - y0 }); y0 = nY; } };
-    const stripRight = () => { const { mX } = bounds(); if (mX < x1 - 0.5) { out.cuts.push({ x1: mX, y1: y0, x2: mX, y2: y1, pass: ripPassOf(false), outer: true }); out.offcuts.push({ x: mX, y: y0, w: x1 - mX, h: y1 - y0 }); x1 = mX; } };
-    const stripLeft  = () => { const { nX } = bounds(); if (nX > x0 + 0.5) { out.cuts.push({ x1: nX, y1: y0, x2: nX, y2: y1, pass: ripPassOf(false), outer: true }); out.offcuts.push({ x: x0, y: y0, w: nX - x0, h: y1 - y0 }); x0 = nX; } };
+    const ripPhase = ripPhaseFor(pathDirs);
+    const stripBot = () => { const { mY } = bounds(); if (mY < y1 - 0.5) { out.cuts.push({ x1: x0, y1: mY, x2: x1, y2: mY, pass: ripPassOf(true),  phase: ripPhase, _path: pathDirs, outer: true }); out.offcuts.push({ x: x0, y: mY, w: x1 - x0, h: y1 - mY }); y1 = mY; } };
+    const stripTop = () => { const { nY } = bounds(); if (nY > y0 + 0.5) { out.cuts.push({ x1: x0, y1: nY, x2: x1, y2: nY, pass: ripPassOf(true),  phase: ripPhase, _path: pathDirs, outer: true }); out.offcuts.push({ x: x0, y: y0, w: x1 - x0, h: nY - y0 }); y0 = nY; } };
+    const stripRight = () => { const { mX } = bounds(); if (mX < x1 - 0.5) { out.cuts.push({ x1: mX, y1: y0, x2: mX, y2: y1, pass: ripPassOf(false), phase: 2, _path: pathDirs, outer: true }); out.offcuts.push({ x: mX, y: y0, w: x1 - mX, h: y1 - y0 }); x1 = mX; } };
+    const stripLeft  = () => { const { nX } = bounds(); if (nX > x0 + 0.5) { out.cuts.push({ x1: nX, y1: y0, x2: nX, y2: y1, pass: ripPassOf(false), phase: 2, _path: pathDirs, outer: true }); out.offcuts.push({ x: x0, y: y0, w: nX - x0, h: y1 - y0 }); x0 = nX; } };
 
     const spans = (v, axis) => pcs.some(p => (axis === 'h' ? (p.y < v - 0.5 && p.y + p.h > v + 0.5) : (p.x < v - 0.5 && p.x + p.w > v + 0.5)));
     const pickFrom = (cands, axis) => {
@@ -5461,9 +5815,7 @@ function drawCanvas(container, layout, units) {
       return best;
     };
 
-    // ──── PHASE 1: interior RIP first (structural split in rip direction) ────
-    // Sequence target: structural cuts first, outer offcut trims last (accepting
-    // that outer trims spanning already-separated pieces become multiple passes).
+    // ──── Interior RIP (structural split in rip direction) ────
     if (pcs.length > 1) {
       const ripCands = (ripIsH
         ? [...new Set(pcs.flatMap(p => [p.y, p.y + p.h]))].filter(y => y > y0 + 0.5 && y < y1 - 0.5 && !spans(y, 'h'))
@@ -5472,19 +5824,19 @@ function drawCanvas(container, layout, units) {
       if (ripBest) {
         const v = ripBest.v;
         if (ripIsH) {
-          out.cuts.push({ x1: x0, y1: v, x2: x1, y2: v, pass: ripPassOf(true) });
+          out.cuts.push({ x1: x0, y1: v, x2: x1, y2: v, pass: ripPassOf(true), phase: ripPhase, _path: pathDirs });
           const above = pcs.filter(p => p.y + p.h <= v + 0.5);
           const below = pcs.filter(p => p.y >= v - 0.5);
-          const a = buildGuillotinePlan(x0, y0, x1, v, above);
-          const b = buildGuillotinePlan(x0, v, x1, y1, below);
+          const a = buildGuillotinePlan(x0, y0, x1, v, above, [...pathDirs, 'rL']);
+          const b = buildGuillotinePlan(x0, v, x1, y1, below, [...pathDirs, 'rR']);
           out.cuts.push(...a.cuts, ...b.cuts);
           out.offcuts.push(...a.offcuts, ...b.offcuts);
         } else {
-          out.cuts.push({ x1: v, y1: y0, x2: v, y2: y1, pass: ripPassOf(false) });
+          out.cuts.push({ x1: v, y1: y0, x2: v, y2: y1, pass: ripPassOf(false), phase: ripPhase, _path: pathDirs });
           const left  = pcs.filter(p => p.x + p.w <= v + 0.5);
           const right = pcs.filter(p => p.x >= v - 0.5);
-          const l = buildGuillotinePlan(x0, y0, v, y1, left);
-          const r = buildGuillotinePlan(v, y0, x1, y1, right);
+          const l = buildGuillotinePlan(x0, y0, v, y1, left,  [...pathDirs, 'rL']);
+          const r = buildGuillotinePlan(v, y0, x1, y1, right, [...pathDirs, 'rR']);
           out.cuts.push(...l.cuts, ...r.cuts);
           out.offcuts.push(...l.offcuts, ...r.offcuts);
         }
@@ -5492,16 +5844,20 @@ function drawCanvas(container, layout, units) {
       }
     }
 
-    // ──── PHASE 2: outer offcut stripping ────
-    if (ripIsH) {
-      stripRight(); stripLeft();
-      stripBot(); stripTop();
+    // ──── Outer offcut stripping ────
+    // Phase-1 rips are cut FIRST physically, so emit them before crosses so
+    // their geometry captures the full region bounds. Phase-3 rips are cut
+    // after phase-2 crosses — emit crosses first so rips see the reduced
+    // bounds that match physical reality.
+    if (ripPhase === 1) {
+      if (ripIsH) { stripBot(); stripTop(); stripRight(); stripLeft(); }
+      else        { stripRight(); stripLeft(); stripBot(); stripTop(); }
     } else {
-      stripBot(); stripTop();
-      stripRight(); stripLeft();
+      if (ripIsH) { stripRight(); stripLeft(); stripBot(); stripTop(); }
+      else        { stripBot(); stripTop(); stripRight(); stripLeft(); }
     }
 
-    // ──── PHASE 3: interior CROSS (structural split in cross direction) ────
+    // ──── Interior CROSS (structural split in cross direction) ────
     if (pcs.length > 1) {
       const crossCands = (ripIsH
         ? [...new Set(pcs.flatMap(p => [p.x, p.x + p.w]))].filter(x => x > x0 + 0.5 && x < x1 - 0.5 && !spans(x, 'v'))
@@ -5510,19 +5866,19 @@ function drawCanvas(container, layout, units) {
       if (crossBest) {
         const v = crossBest.v;
         if (ripIsH) {
-          out.cuts.push({ x1: v, y1: y0, x2: v, y2: y1, pass: ripPassOf(false) });
+          out.cuts.push({ x1: v, y1: y0, x2: v, y2: y1, pass: ripPassOf(false), phase: 2, _path: pathDirs });
           const left  = pcs.filter(p => p.x + p.w <= v + 0.5);
           const right = pcs.filter(p => p.x >= v - 0.5);
-          const l = buildGuillotinePlan(x0, y0, v, y1, left);
-          const r = buildGuillotinePlan(v, y0, x1, y1, right);
+          const l = buildGuillotinePlan(x0, y0, v, y1, left,  [...pathDirs, 'cL']);
+          const r = buildGuillotinePlan(v, y0, x1, y1, right, [...pathDirs, 'cR']);
           out.cuts.push(...l.cuts, ...r.cuts);
           out.offcuts.push(...l.offcuts, ...r.offcuts);
         } else {
-          out.cuts.push({ x1: x0, y1: v, x2: x1, y2: v, pass: ripPassOf(true) });
+          out.cuts.push({ x1: x0, y1: v, x2: x1, y2: v, pass: ripPassOf(true), phase: 2, _path: pathDirs });
           const above = pcs.filter(p => p.y + p.h <= v + 0.5);
           const below = pcs.filter(p => p.y >= v - 0.5);
-          const a = buildGuillotinePlan(x0, y0, x1, v, above);
-          const b = buildGuillotinePlan(x0, v, x1, y1, below);
+          const a = buildGuillotinePlan(x0, y0, x1, v, above, [...pathDirs, 'cL']);
+          const b = buildGuillotinePlan(x0, v, x1, y1, below, [...pathDirs, 'cR']);
           out.cuts.push(...a.cuts, ...b.cuts);
           out.offcuts.push(...a.offcuts, ...b.offcuts);
         }
@@ -5535,7 +5891,38 @@ function drawCanvas(container, layout, units) {
     return out;
   }
 
-  const plan = buildGuillotinePlan(0, 0, sW, sH, rotPieces);
+  const plan = buildGuillotinePlan(0, 0, sW0, sH0, origPieces);
+
+  // Transform cuts + offcuts into display coordinates if the layout is rotated.
+  // The transform is a transposition (x↔y, w↔h) — it matches the same transform
+  // applied to pieces above. ripIsH etc. were computed in original space so the
+  // pre-rotation cut order is preserved.
+  if (layoutRotate) {
+    plan.cuts = plan.cuts.map(c => ({ ...c, x1: c.y1, y1: c.x1, x2: c.y2, y2: c.x2 }));
+    plan.offcuts = plan.offcuts.map(o => ({ ...o, x: o.y, y: o.x, w: o.h, h: o.w }));
+  }
+
+  // ── Finalize cross phases: 2 if a rip follows somewhere in this cut's subtree,
+  // else 4. "Subtree" = cuts emitted LATER in DFS order whose path starts with
+  // this cut's path (same region or any descendant region).
+  const pathStartsWith = (path, prefix) => {
+    if (path.length < prefix.length) return false;
+    for (let i = 0; i < prefix.length; i++) if (path[i] !== prefix[i]) return false;
+    return true;
+  };
+  for (let i = 0; i < plan.cuts.length; i++) {
+    const c = plan.cuts[i];
+    if (c.pass !== crossPass) continue;  // only crosses need resolving
+    const myPath = c._path || [];
+    let hasRipAfter = false;
+    for (let j = i + 1; j < plan.cuts.length; j++) {
+      const later = plan.cuts[j];
+      if (later.pass === ripPass && pathStartsWith(later._path || [], myPath)) {
+        hasRipAfter = true; break;
+      }
+    }
+    c.phase = hasRipAfter ? 2 : 4;
+  }
 
   // Merge collinear cuts within kerf distance — a single saw pass should be ONE line.
   const kerfTol = Math.max(4, (sheet.kerf || 3) + 1);
@@ -5566,15 +5953,19 @@ function drawCanvas(container, layout, units) {
         merged.y2 = Math.max(merged.y2, c.y2);
       }
       merged.pass = Math.min(merged.pass, c.pass);
+      merged.phase = Math.min(merged.phase ?? 4, c.phase ?? 4);
     } else {
       cutLines.push({ ...c });
     }
   }
 
-  // Stable-sort so interior cuts come first and outer offcut strips come LAST.
-  // User preference: keep this order even though some outer trims spanning
-  // already-separated sub-pieces will become multiple physical saw passes.
-  cutLines.sort((a, b) => (a.outer ? 1 : 0) - (b.outer ? 1 : 0));
+  // Sort by 4-phase saw order:
+  //   1 = rips reachable with no intervening cross (full-sheet-first rips)
+  //   2 = crosses that block further rips
+  //   3 = rips enabled by phase-2 crosses
+  //   4 = remaining crosses (piece-sizing)
+  // Stable within each phase.
+  cutLines.sort((a, b) => (a.phase ?? 4) - (b.phase ?? 4));
 
   // ── Split cuts to reflect physical reality at the time each cut is made ──
   // When a cut comes AFTER a perpendicular cut that intersects its span, the
@@ -5616,6 +6007,30 @@ function drawCanvas(container, layout, units) {
   }
   cutLines.length = 0;
   cutLines.push(...finalCuts);
+
+  // Drop cut segments that only traverse already-separated offcut regions —
+  // i.e. segments that don't lie along ANY piece edge. These are "phantom"
+  // passes created by the segmentation logic when a prior perpendicular cut
+  // pre-separated the region the cut was planned through.
+  const adjTol = kerfTol;  // allow for kerf offset between piece edge and cut line
+  const segmentTouchesPiece = (c) => {
+    const isH = c.y1 === c.y2;
+    for (const p of rotPieces) {
+      if (isH) {
+        const xOverlap = p.x < c.x2 - 0.5 && p.x + p.w > c.x1 + 0.5;
+        if (!xOverlap) continue;
+        if (Math.abs(p.y - c.y1) <= adjTol || Math.abs(p.y + p.h - c.y1) <= adjTol) return true;
+      } else {
+        const yOverlap = p.y < c.y2 - 0.5 && p.y + p.h > c.y1 + 0.5;
+        if (!yOverlap) continue;
+        if (Math.abs(p.x - c.x1) <= adjTol || Math.abs(p.x + p.w - c.x1) <= adjTol) return true;
+      }
+    }
+    return false;
+  };
+  const kept = cutLines.filter(segmentTouchesPiece);
+  cutLines.length = 0;
+  cutLines.push(...kept);
 
   // Filter out kerf-slot offcuts (too small to be meaningful)
   const offcutRects = plan.offcuts.filter(o => o.w >= kerfTol + 1 && o.h >= kerfTol + 1);
@@ -9945,20 +10360,27 @@ function _smartCLStockSuggest(input, boxId) {
   const q = input.value.trim().toLowerCase();
   const ebOn = typeof colsVisible !== 'undefined' && !!colsVisible.edgeband;
   // Panels: Sheet Goods or anything with dims (but not Edge Banding)
-  const panelItems = stockItems.filter(s => s.category !== 'Edge Banding' && (s.category === 'Sheet Goods' || (s.w > 0 && s.h > 0)));
+  const panelItems = stockItems.filter(s => (_scGet(s.id)||s.category) !== 'Edge Banding' && ((_scGet(s.id)||s.category) === 'Sheet Goods' || (s.w > 0 && s.h > 0)));
   // When edgeband column is on, also include Edge Banding items
-  const ebItems = ebOn ? stockItems.filter(s => s.category === 'Edge Banding') : [];
+  const ebItems = ebOn ? stockItems.filter(s => (_scGet(s.id)||s.category) === 'Edge Banding') : [];
   const pool = panelItems.concat(ebItems);
   const matches = q ? pool.filter(s => s.name.toLowerCase().includes(q)) : pool;
   if (matches.length === 0 && !q) { box.style.display = 'none'; return; }
   let html = '';
   matches.slice(0, 10).forEach(s => {
     const origIdx = stockItems.indexOf(s);
-    const isEB = s.category === 'Edge Banding';
+    const isEB = (_scGet(s.id)||s.category) === 'Edge Banding';
     const qtyColor = s.qty <= (s.lowAlert || 3) ? '#ef4444' : '#22c55e';
-    const meta = isEB
-      ? [s.thickness ? s.thickness+'mm' : '', s.width ? s.width+'mm' : ''].filter(Boolean).join(' · ')
-      : (s.w && s.h ? `${s.w}×${s.h}` : '');
+    let meta = '';
+    if (isEB) {
+      const vd = _svGet(s.id) || {};
+      const t = vd.thickness ?? s.thickness;
+      const w = vd.width ?? s.width ?? s.h;
+      const l = vd.length ?? s.length ?? s.w;
+      meta = [t?`${t}mm`:'', w?`${w}mm`:'', l?`${l}m`:''].filter(Boolean).join(' · ');
+    } else {
+      meta = (s.w && s.h ? `${s.w}×${s.h}` : '');
+    }
     const handler = isEB
       ? `_clAddEdgeBandFromStockIdx(${origIdx})`
       : `_clAddPanelFromStock(${origIdx})`;
@@ -9983,7 +10405,12 @@ function _clAddEdgeBandFromStockIdx(idx) {
   if (!s) return;
   const exists = edgeBands.find(eb => eb.name === s.name);
   if (exists) { _toast(`${s.name} already in project`, 'error'); return; }
-  addEdgeBand(s.name, s.thickness, s.width);
+  const vd = _svGet(s.id) || {};
+  const thickness = vd.thickness ?? s.thickness ?? 0;
+  const width = vd.width ?? s.width ?? s.h ?? 0;
+  const length = vd.length ?? s.length ?? s.w ?? 0;
+  const glue = vd.glue || s.glue || '';
+  addEdgeBand(s.name, thickness, width, null, length, glue);
   _toast(`Added ${s.name}`, 'success');
 }
 
@@ -10021,58 +10448,123 @@ function _cabinetPartCount(cab) {
   return n;
 }
 
-// Explode a saved cabinet into individual cut list pieces
-function _clLoadCabinetParts(libIdx) {
-  const cab = cqLibrary[libIdx];
-  if (!cab) return;
+// Build the list of parts a cabinet explodes into — pure data, no side effects.
+function _cabinetPartsList(cab) {
   const W = cab.w, H = cab.h, D = cab.d;
-  const T = 18; // carcass thickness mm
+  const T = 18;
   const iW = Math.max(0, W - 2*T);
   const mat = cab.material || '';
   const backMat = cab.backMat || mat;
-  const doorMat = cab.doorMat || mat;
-  const drwFrontMat = cab.drawerFrontMat || mat;
-  const drwInnerMat = cab.drawerInnerMat || backMat;
   const name = cab._libName || cab.name || 'Cabinet';
+  const parts = [];
+  const add = (label, w, h, qty) => parts.push({ label, w, h, qty, grain: 'none' });
 
-  // Carcass panels
-  addPiece(name + ' — Side', H, D, 2, 'none');
-  addPiece(name + ' — Top/Bottom', iW, D, 2, 'none');
-  if (backMat) addPiece(name + ' — Back', W, H, 1, 'none');
+  add(name + ' — Side', H, D, 2);
+  add(name + ' — Top/Bottom', iW, D, 2);
+  if (backMat) add(name + ' — Back', W, H, 1);
 
-  // Doors
   if (cab.doors > 0) {
     const doorPct = (cab.doorPct || 95) / 100;
     const doorH = Math.round(H * doorPct);
     const doorW = Math.round(iW / Math.max(1, cab.doors));
-    addPiece(name + ' — Door', doorW, doorH, cab.doors, 'none');
+    add(name + ' — Door', doorW, doorH, cab.doors);
   }
-
-  // Drawers
   if (cab.drawers > 0) {
     const drwPct = (cab.drawerPct || 85) / 100;
     const drwH = Math.round((H * drwPct) / cab.drawers);
-    addPiece(name + ' — Drawer Front', iW, drwH, cab.drawers, 'none');
-    // Drawer box sides (2 per drawer) + front/back (2 per drawer)
-    const boxH = drwH - 20; // box slightly shorter than front
-    const boxD = D - 40; // box shorter than carcass depth
-    addPiece(name + ' — Drawer Side', boxD, boxH, cab.drawers * 2, 'none');
-    addPiece(name + ' — Drawer F/B', Math.max(0, iW - 2*T), boxH, cab.drawers * 2, 'none');
-    addPiece(name + ' — Drawer Base', Math.max(0, iW - 2*T), boxD, cab.drawers, 'none');
+    add(name + ' — Drawer Front', iW, drwH, cab.drawers);
+    const boxH = drwH - 20;
+    const boxD = D - 40;
+    add(name + ' — Drawer Side', boxD, boxH, cab.drawers * 2);
+    add(name + ' — Drawer F/B', Math.max(0, iW - 2*T), boxH, cab.drawers * 2);
+    add(name + ' — Drawer Base', Math.max(0, iW - 2*T), boxD, cab.drawers);
   }
-
-  // Shelves
   const shelfCount = (cab.shelves||0) + (cab.adjShelves||0) + (cab.looseShelves||0);
-  if (shelfCount > 0) addPiece(name + ' — Shelf', iW, D - T, shelfCount, 'none');
+  if (shelfCount > 0) add(name + ' — Shelf', iW, D - T, shelfCount);
+  if (cab.partitions > 0) add(name + ' — Partition', H, D, cab.partitions);
+  if (cab.endPanels > 0) add(name + ' — End Panel', H, D, cab.endPanels);
+  return parts;
+}
 
-  // Partitions
-  if (cab.partitions > 0) addPiece(name + ' — Partition', H, D, cab.partitions, 'none');
-
-  // End panels
-  if (cab.endPanels > 0) addPiece(name + ' — End Panel', H, D, cab.endPanels, 'none');
-
+// Apply a built parts list to the cut list under a chosen merge strategy:
+//   'merge' — identical parts (same label + w + h + grain) bump existing qty;
+//             non-matching parts are appended as new rows.
+//   'new'   — every part becomes a new row (prior behaviour).
+// Extra fields on the part (material, notes, edgeBand) are carried onto newly-added pieces.
+function _applyCabinetParts(parts, mode) {
+  const key = p => `${p.label}|${p.w}|${p.h}|${p.grain||'none'}`;
+  const applyExtras = (src) => {
+    const last = pieces[pieces.length - 1];
+    if (!last) return;
+    if (src.material !== undefined) last.material = src.material || '';
+    if (src.notes    !== undefined) last.notes    = src.notes    || '';
+    if (src.edgeBand !== undefined) last.edgeBand = src.edgeBand || 'none';
+  };
+  let merged = 0, added = 0;
+  if (mode === 'merge') {
+    const idx = new Map();
+    pieces.forEach(p => idx.set(key(p), p));
+    for (const c of parts) {
+      const hit = idx.get(key(c));
+      if (hit) { hit.qty = (hit.qty || 0) + c.qty; merged++; }
+      else { addPiece(c.label, c.w, c.h, c.qty, c.grain); applyExtras(c); added++; }
+    }
+  } else {
+    for (const c of parts) { addPiece(c.label, c.w, c.h, c.qty, c.grain); applyExtras(c); added++; }
+  }
   renderPieces();
-  _toast(`"${name}" — ${_cabinetPartCount(cab)} parts added to cut list`, 'success');
+  return { merged, added };
+}
+
+// Prompt user to merge or add-as-new when a parts list has duplicates in the cut list.
+// If there are no duplicates, parts are added straight away with no prompt.
+function _clPromptMergeOrNew(parts, name) {
+  const key = p => `${p.label}|${p.w}|${p.h}|${p.grain||'none'}`;
+  const existing = new Set(pieces.map(key));
+  const dupCount = parts.filter(c => existing.has(key(c))).length;
+
+  const finish = (mode) => {
+    const r = _applyCabinetParts(parts, mode);
+    const suffix = r.merged
+      ? `${r.merged} merged, ${r.added} added`
+      : `${r.added} parts added`;
+    _toast(`"${name}" — ${suffix}`, 'success');
+  };
+
+  if (dupCount === 0) { finish('new'); return; }
+
+  _openPopup(`
+    <div class="popup-header">
+      <div class="popup-title">Identical parts already in cut list</div>
+      <button class="popup-close" onclick="_closePopup()">×</button>
+    </div>
+    <div class="popup-body">
+      <p style="margin:0 0 10px 0;line-height:1.5">
+        <strong>${dupCount}</strong> of the ${parts.length} parts in <strong>${_escHtml(name)}</strong>
+        match existing rows in your cut list (same label &amp; dimensions).
+      </p>
+      <p style="margin:0;color:var(--muted);font-size:12px;line-height:1.5">
+        Merging bumps the quantity on existing rows. Adding as new keeps them separate.
+      </p>
+    </div>
+    <div class="popup-footer">
+      <button class="btn btn-outline" id="cl-cab-cancel">Cancel</button>
+      <button class="btn btn-outline" id="cl-cab-new">Add as new</button>
+      <button class="btn btn-primary" id="cl-cab-merge">Merge quantities</button>
+    </div>
+  `, 'sm');
+  document.getElementById('cl-cab-cancel').onclick = () => _closePopup();
+  document.getElementById('cl-cab-new').onclick   = () => { _closePopup(); finish('new');   };
+  document.getElementById('cl-cab-merge').onclick = () => { _closePopup(); finish('merge'); };
+}
+
+// Explode a saved cabinet into individual cut list pieces.
+// If any parts match existing cut-list rows, prompt the user to merge or add as new.
+function _clLoadCabinetParts(libIdx) {
+  const cab = cqLibrary[libIdx];
+  if (!cab) return;
+  const name = cab._libName || cab.name || 'Cabinet';
+  _clPromptMergeOrNew(_cabinetPartsList(cab), name);
 }
 
 // Save current cut parts as a cabinet library entry
@@ -10125,15 +10617,8 @@ _clLoadCabinetParts = function(libIdx) {
   const cab = cqLibrary[libIdx];
   if (!cab) return;
   if (cab._cutParts && cab._cutParts.length) {
-    // Load stored cut parts directly
-    cab._cutParts.forEach(p => {
-      addPiece(p.label, p.w, p.h, p.qty, p.grain);
-      // Set material and notes on the last added piece
-      const last = pieces[pieces.length - 1];
-      if (last) { last.material = p.material || ''; last.notes = p.notes || ''; last.edgeBand = p.edgeBand || 'none'; }
-    });
-    renderPieces();
-    _toast(`"${cab._libName}" — ${cab._cutParts.length} parts loaded`, 'success');
+    const name = cab._libName || cab.name || 'Cabinet';
+    _clPromptMergeOrNew(cab._cutParts, name);
     return;
   }
   // Otherwise explode from cabinet dimensions
