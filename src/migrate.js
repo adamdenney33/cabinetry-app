@@ -244,6 +244,44 @@ async function _migrateCutListProjects(log) {
   _migLog(log, sub, 'OK', 'Migrated ' + totalSheets + ' sheets + ' + totalPieces + ' pieces across ' + projectsTouched + ' projects', projectsTouched);
 }
 
+// Inverse of _cqLineToRow — map a quote_lines row back to the cqLines shape calcCQLine expects.
+// backMat / doorMat default to carcass material (legacy cqLines convention; quote_lines schema only stores `material`).
+function _quoteLineRowToCQ(row) {
+  return {
+    name: row.name || '',
+    type: row.type || null,
+    room: row.room || null,
+    w: parseFloat(row.w_mm) || 0,
+    h: parseFloat(row.h_mm) || 0,
+    d: parseFloat(row.d_mm) || 0,
+    qty: parseInt(row.qty, 10) || 1,
+    material: row.material || null,
+    backMat: row.material || null,
+    doorMat: row.material || null,
+    finish: row.finish || null,
+    construction: row.construction || null,
+    baseType: row.base_type || null,
+    doors: parseInt(row.door_count, 10) || 0,
+    doorPct: row.door_pct != null ? parseFloat(row.door_pct) : null,
+    doorHandle: row.door_handle || null,
+    drawers: parseInt(row.drawer_count, 10) || 0,
+    drawerPct: row.drawer_pct != null ? parseFloat(row.drawer_pct) : null,
+    drawerFrontMat: row.drawer_front_material || null,
+    drawerInnerMat: row.drawer_inner_material || null,
+    shelves: parseInt(row.fixed_shelves, 10) || 0,
+    adjShelves: parseInt(row.adj_shelves, 10) || 0,
+    looseShelves: parseInt(row.loose_shelves, 10) || 0,
+    partitions: parseInt(row.partitions, 10) || 0,
+    endPanels: parseInt(row.end_panels, 10) || 0,
+    labourHrs: parseFloat(row.labour_hours) || 0,
+    labourOverride: !!row.labour_override,
+    matCostOverride: row.material_cost_override != null ? parseFloat(row.material_cost_override) : null,
+    hwItems: row.hardware || [],
+    extras: row.extras || [],
+    notes: row.notes || ''
+  };
+}
+
 // Helper: convert legacy cqLines line object to a quote_lines row
 function _cqLineToRow(l, position, quoteId) {
   return {

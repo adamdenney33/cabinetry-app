@@ -911,6 +911,8 @@ async function loadAllData() {
   if (orders.length) orderNextId = Math.max(...orders.map(o => o.id)) + 1;
   if (quotes.length) quoteNextId = Math.max(...quotes.map(q => q.id)) + 1;
   if (stockItems.length) stockNextId = Math.max(...stockItems.map(s => s.id)) + 1;
+  // Phase 7 step 1: hydrate quote totals from quote_lines (fire and forget; renders re-run when ready)
+  _hydrateQuoteTotals().then(() => { try { renderQuoteMain(); } catch(e){} }).catch(e => console.warn('[quote totals] hydrate failed:', e.message || e));
   // Phase 3.2 — overlay catalog from DB (only if rows exist; otherwise leave localStorage defaults)
   _applyCatalogFromDB(cat);
   // Phase 3.3 — overlay business_info from DB (only if a row exists)
@@ -4570,10 +4572,84 @@ function renderSummary(area) {
 let quotes = [];
 let quoteNextId = 1;
 
+// FK-resolving display helpers. Once Phase 7 drops legacy text columns the
+// `|| q.client` fallbacks become dead code — kept for the transitional commits.
+function quoteClient(q) {
+  if (!q) return '';
+  if (q.client_id) {
+    const c = clients.find(x => x.id === q.client_id);
+    if (c) return c.name;
+  }
+  return q.client || '';
+}
+function quoteProject(q) {
+  if (!q) return '';
+  if (q.project_id) {
+    const p = projects.find(x => x.id === q.project_id);
+    if (p) return p.name;
+  }
+  return q.project || '';
+}
+function orderClient(o) {
+  if (!o) return '';
+  if (o.client_id) {
+    const c = clients.find(x => x.id === o.client_id);
+    if (c) return c.name;
+  }
+  return o.client || '';
+}
+function orderProject(o) {
+  if (!o) return '';
+  if (o.project_id) {
+    const p = projects.find(x => x.id === o.project_id);
+    if (p) return p.name;
+  }
+  return o.project || '';
+}
+
+// Aggregate materials/labour for a quote from its `quote_lines` rows.
+// Returns null if no lines exist (caller falls back to legacy columns during transition).
+async function quoteTotalsFromLines(quoteId) {
+  if (!quoteId) return null;
+  const { data: lines, error } = await _db('quote_lines').select('*').eq('quote_id', quoteId);
+  if (error || !lines || lines.length === 0) return null;
+  let materials = 0, labour = 0;
+  for (const row of lines) {
+    const cq = _quoteLineRowToCQ(row);
+    const c = calcCQLine(cq);
+    const qty = cq.qty || 1;
+    materials += (c.matCost + c.hwCost) * qty;
+    labour += c.labourCost * qty;
+  }
+  return { materials, labour };
+}
+
+async function _hydrateQuoteTotals() {
+  for (const q of quotes) {
+    if (q._totals) continue;
+    try {
+      const t = await quoteTotalsFromLines(q.id);
+      if (t) q._totals = t;
+    } catch (e) {
+      console.warn('[quote totals] hydrate failed for', q.id, e.message || e);
+    }
+  }
+}
+
+async function _refreshQuoteTotals(quoteId) {
+  const q = quotes.find(x => x.id === quoteId);
+  if (!q) return;
+  delete q._totals;
+  const t = await quoteTotalsFromLines(quoteId);
+  if (t) q._totals = t;
+}
+
 function quoteTotal(q) {
-  const sub = q.materials + q.labour;
-  const marked = sub * (1 + q.markup / 100);
-  return marked * (1 + q.tax / 100);
+  const mat = q._totals ? q._totals.materials : (q.materials || 0);
+  const lab = q._totals ? q._totals.labour    : (q.labour    || 0);
+  const sub = mat + lab;
+  const marked = sub * (1 + (q.markup || 0) / 100);
+  return marked * (1 + (q.tax || 0) / 100);
 }
 
 async function createQuote() {
