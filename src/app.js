@@ -228,13 +228,16 @@ function _openQuotePopup(id) {
   if (!q) return;
   const cur = window.currency;
   const fmt = v => cur + Number(v).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0});
-  const sub = q.materials + q.labour;
-  const markupAmt = sub * q.markup / 100;
+  // Prefer cached aggregation from quote_lines; fall back to legacy columns during transition
+  const matVal = q._totals ? q._totals.materials : (q.materials || 0);
+  const labVal = q._totals ? q._totals.labour    : (q.labour    || 0);
+  const sub = matVal + labVal;
+  const markupAmt = sub * (q.markup || 0) / 100;
   const afterMarkup = sub + markupAmt;
-  const taxAmt = afterMarkup * q.tax / 100;
+  const taxAmt = afterMarkup * (q.tax || 0) / 100;
   const total = afterMarkup + taxAmt;
-  const rate = parseFloat(document.getElementById('q-labour-rate')?.value) || 65;
-  const hrs = q.labour > 0 ? (q.labour / Math.max(1, rate)).toFixed(1) : '0';
+  const rate = (typeof cqSettings !== 'undefined' && cqSettings.labourRate) ? cqSettings.labourRate : 65;
+  const hrs = labVal > 0 ? (labVal / Math.max(1, rate)).toFixed(1) : '0';
 
   const statusBadge = q.status === 'approved' ? 'badge-green' : q.status === 'sent' ? 'badge-blue' : 'badge-gray';
 
@@ -281,9 +284,9 @@ function _openQuotePopup(id) {
       </div>
       <div class="pf-divider"></div>
       <div class="pf-row">
-        <div class="pf"><label class="pf-label">Materials</label><input class="pf-input" id="pq-materials" value="${q.materials}" oninput="_updateQuotePopupTotals()"></div>
-        <div class="pf"><label class="pf-label">Rate /hr</label><input class="pf-input" id="pq-rate" value="${rate}" oninput="_updateQuotePopupTotals()"></div>
-        <div class="pf"><label class="pf-label">Hours</label><input class="pf-input" id="pq-hours" value="${hrs}" oninput="_updateQuotePopupTotals()"></div>
+        <div class="pf"><label class="pf-label">Materials</label><input class="pf-input" id="pq-materials" value="${matVal}" oninput="_updateQuotePopupTotals()"></div>
+        <div class="pf"><label class="pf-label">Hours @ ${cur}${rate}/hr</label><input class="pf-input" id="pq-hours" value="${hrs}" oninput="_updateQuotePopupTotals()"></div>
+        <div class="pf" style="flex:0.5"></div>
       </div>
       <div class="pf-row">
         <div class="pf"><label class="pf-label">Markup %</label><input class="pf-input" id="pq-markup" value="${q.markup}" oninput="_updateQuotePopupTotals()"></div>
@@ -291,8 +294,8 @@ function _openQuotePopup(id) {
         <div class="pf" style="flex:0.5"></div>
       </div>
       <div class="pf-totals" id="pq-totals">
-        <div class="pf-total-row"><span class="t-label">Materials</span><span class="t-val">${fmt(q.materials)}</span></div>
-        <div class="pf-total-row"><span class="t-label">Labour (${hrs}h @ ${cur}${rate}/hr)</span><span class="t-val">${fmt(q.labour)}</span></div>
+        <div class="pf-total-row"><span class="t-label">Materials</span><span class="t-val">${fmt(matVal)}</span></div>
+        <div class="pf-total-row"><span class="t-label">Labour (${hrs}h @ ${cur}${rate}/hr)</span><span class="t-val">${fmt(labVal)}</span></div>
         <div class="pf-total-row"><span class="t-label">Markup (${q.markup}%)</span><span class="t-val">+${fmt(markupAmt)}</span></div>
         <div class="pf-total-row"><span class="t-label">Tax (${q.tax}%)</span><span class="t-val">+${fmt(taxAmt)}</span></div>
         <div class="pf-total-row t-main"><span class="t-label">Total</span><span class="t-val">${fmt(total)}</span></div>
@@ -316,7 +319,7 @@ function _updateQuotePopupTotals() {
   const cur = window.currency;
   const fmt = v => cur + Number(v).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0});
   const mat = parseFloat(_popupVal('pq-materials')) || 0;
-  const rate = parseFloat(_popupVal('pq-rate')) || 0;
+  const rate = (typeof cqSettings !== 'undefined' && cqSettings.labourRate) ? cqSettings.labourRate : 65;
   const hrs = parseFloat(_popupVal('pq-hours')) || 0;
   const labour = rate * hrs;
   const markup = parseFloat(_popupVal('pq-markup')) || 0;
@@ -344,9 +347,7 @@ async function _saveQuotePopup(id) {
   const notes = _popupVal('pq-notes');
   const quote_number = _popupVal('pq-quote-number') || null;
   const materials = parseFloat(_popupVal('pq-materials')) || 0;
-  const rate = parseFloat(_popupVal('pq-rate')) || 0;
   const hrs = parseFloat(_popupVal('pq-hours')) || 0;
-  const labour = rate * hrs;
   const markup = parseFloat(_popupVal('pq-markup')) || 0;
   const tax = parseFloat(_popupVal('pq-tax')) || 0;
 
@@ -354,14 +355,44 @@ async function _saveQuotePopup(id) {
   const client_id = clientName ? await resolveClient(clientName) : null;
   const project_id = projectName ? await resolveProject(projectName, client_id) : null;
 
-  const update = { status, notes, quote_number, materials, labour, markup, tax, updated_at: new Date().toISOString() };
+  const update = { status, notes, quote_number, markup, tax, updated_at: new Date().toISOString() };
   if (client_id) update.client_id = client_id;
   if (project_id) update.project_id = project_id;
   Object.assign(q, update);
   await _db('quotes').update(update).eq('id', id);
+  // Manual-totals quote: store materials + labour hours on a single quote_lines stub row
+  await _writeManualTotalsLine(id, materials, hrs);
+  await _refreshQuoteTotals(id);
   _closePopup();
   renderQuoteMain();
   _toast('Quote updated', 'success');
+}
+
+// Maintain a single quote_lines row (name='Manual Quote') per quote that holds
+// the user-entered materials/labour totals as overrides. Aggregation sees this
+// row and produces the same total as the legacy materials+labour columns.
+async function _writeManualTotalsLine(quoteId, materials, labourHours) {
+  if (!_userId || !quoteId) return;
+  const { data: existing } = await _db('quote_lines')
+    .select('id').eq('quote_id', quoteId).eq('name', 'Manual Quote').limit(1);
+  const hasData = (materials > 0) || (labourHours > 0);
+  if (!hasData) {
+    if (existing && existing.length) {
+      await _db('quote_lines').delete().eq('id', existing[0].id);
+    }
+    return;
+  }
+  const row = {
+    quote_id: quoteId, user_id: _userId, position: 0, name: 'Manual Quote', qty: 1,
+    material_cost_override: materials > 0 ? materials : null,
+    labour_hours: labourHours > 0 ? labourHours : 0,
+    labour_override: true,
+  };
+  if (existing && existing.length) {
+    await _db('quote_lines').update(row).eq('id', existing[0].id);
+  } else {
+    await _db('quote_lines').insert([row]);
+  }
 }
 
 // ── Project Popup ──
@@ -3165,7 +3196,9 @@ function _buildQuotePDF(q) {
   const biz = getBizInfo();
   const logo = getBizLogo();
   const dateStr = new Date().toLocaleDateString('en-GB', { day:'numeric', month:'long', year:'numeric' });
-  const sub = q.materials + q.labour;
+  const matVal = q._totals ? q._totals.materials : (q.materials || 0);
+  const labVal = q._totals ? q._totals.labour    : (q.labour    || 0);
+  const sub = matVal + labVal;
   const markupAmt = sub * q.markup / 100;
   const afterMarkup = sub + markupAmt;
   const taxAmt = afterMarkup * q.tax / 100;
@@ -4671,14 +4704,12 @@ async function createQuote() {
   const project = document.getElementById('q-project').value.trim();
   if (!client || !project) { _toast('Enter client name and project.', 'error'); return; }
   if (!_requireAuth()) return;
-  const labourRate = parseFloat(document.getElementById('q-labour-rate').value) || 65;
   const hours = parseFloat(document.getElementById('q-hours').value) || 0;
+  const materials = parseFloat(document.getElementById('q-materials').value) || 0;
   const clientId = await resolveClient(client);
   const projectId = await resolveProject(project, clientId);
   const row = {
     user_id: _userId,
-    materials: parseFloat(document.getElementById('q-materials').value) || 0,
-    labour: labourRate * hours,
     markup: parseFloat(document.getElementById('q-markup').value) || 20,
     tax: parseFloat(document.getElementById('q-tax').value) || 13,
     status: 'draft', date: new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short'}),
@@ -4689,6 +4720,11 @@ async function createQuote() {
   const { data, error } = await _dbInsertSafe('quotes', row);
   if (error) { _toast('Could not save quote — ' + (error.message || JSON.stringify(error)), 'error'); console.error(error); return; }
   quotes.unshift(data);
+  // Manual-totals quote: stash entered materials/hours on a quote_lines stub so quoteTotal aggregates correctly
+  if (materials > 0 || hours > 0) {
+    await _writeManualTotalsLine(data.id, materials, hours);
+    await _refreshQuoteTotals(data.id);
+  }
   _toast('Quote created', 'success');
   document.getElementById('q-client').value = '';
   document.getElementById('q-project').value = '';
@@ -4762,7 +4798,9 @@ function renderQuoteMain() {
   };
 
   const qCard = q => {
-    const sub = q.materials + q.labour;
+    const matVal = q._totals ? q._totals.materials : (q.materials || 0);
+    const labVal = q._totals ? q._totals.labour    : (q.labour    || 0);
+    const sub = matVal + labVal;
     const markupAmt = sub * q.markup / 100;
     const afterMarkup = sub + markupAmt;
     const taxAmt = afterMarkup * q.tax / 100;
@@ -5713,7 +5751,9 @@ function printQuote(id, mode='print') {
   const fmt  = v => cur + Number(v).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
   const fmt0 = v => cur + Number(v).toLocaleString('en-US', {minimumFractionDigits:0, maximumFractionDigits:0});
   const logo = getBizLogo();
-  const sub = q.materials + q.labour;
+  const matVal = q._totals ? q._totals.materials : (q.materials || 0);
+  const labVal = q._totals ? q._totals.labour    : (q.labour    || 0);
+  const sub = matVal + labVal;
   const markupAmt = sub * q.markup / 100;
   const afterMarkup = sub + markupAmt;
   const taxAmt = afterMarkup * q.tax / 100;
@@ -5850,7 +5890,7 @@ async function duplicateQuote(id) {
   if (!_requireAuth()) return;
   const q = quotes.find(q => q.id === id);
   if (!q) return;
-  const row = { user_id: _userId, materials: q.materials, labour: q.labour, markup: q.markup, tax: q.tax, status: 'draft', date: new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short'}), notes: q.notes || '' };
+  const row = { user_id: _userId, markup: q.markup, tax: q.tax, status: 'draft', date: new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short'}), notes: q.notes || '' };
   if (q.client_id) row.client_id = q.client_id;
   if (q.project_id) row.project_id = q.project_id;
   const { data, error } = await _db('quotes').insert(row).select().single();
@@ -5926,7 +5966,11 @@ function exportQuotesCSV() {
   if (!quotes.length) { _toast('No quotes to export', 'error'); return; }
   const cur = window.currency;
   const rows = [['Client','Project','Materials','Labour','Markup %','Tax %','Status','Date','Notes']];
-  quotes.forEach(q => rows.push([quoteClient(q),quoteProject(q),q.materials,q.labour,q.markup,q.tax,q.status,q.date,q.notes||'']));
+  quotes.forEach(q => {
+    const matVal = q._totals ? q._totals.materials : (q.materials || 0);
+    const labVal = q._totals ? q._totals.labour    : (q.labour    || 0);
+    rows.push([quoteClient(q),quoteProject(q),matVal,labVal,q.markup,q.tax,q.status,q.date,q.notes||'']);
+  });
   const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
   const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([csv],{type:'text/csv'})), download: `quotes-${new Date().toISOString().slice(0,10)}.csv` });
   a.click(); URL.revokeObjectURL(a.href);
@@ -8809,11 +8853,9 @@ function cqAddToExistingQuote() {
     </div>
   </div>`;
 }
-function _cqApplyToQuote(qi) {
+async function _cqApplyToQuote(qi) {
   const q = quotes[qi];
   if (!q) return;
-  const gMat = cqLines.reduce((s, l) => s + calcCQLine(l).matCost * l.qty, 0);
-  const gLabour = cqLines.reduce((s, l) => s + calcCQLine(l).labourCost * l.qty, 0);
   const cabNotes = cqLines.map(l => {
     const desc = l.name || 'Cabinet';
     const details = [l.w+'\u00d7'+l.h+'\u00d7'+l.d+'mm', l.material];
@@ -8822,13 +8864,19 @@ function _cqApplyToQuote(qi) {
     if (l.qty > 1) details.push('x' + l.qty);
     return desc + ' \u2014 ' + details.join(', ');
   }).join('\n');
-  q.materials = (q.materials || 0) + gMat;
-  q.labour = (q.labour || 0) + gLabour;
   q.notes = ((q.notes || '') + '\n' + cabNotes).trim();
-  if (_userId) _db('quotes').update({ materials: q.materials, labour: q.labour, notes: q.notes }).eq('id', q.id);
+  if (_userId) {
+    // Append cabinet specs as quote_lines rows so totals aggregate from the schema source of truth
+    const { data: existing } = await _db('quote_lines').select('position').eq('quote_id', q.id);
+    const startPos = (existing && existing.length) ? Math.max(...existing.map(r => r.position || 0)) + 1 : 1;
+    const rows = cqLines.map((l, i) => _cqLineToRow(l, startPos + i, q.id));
+    if (rows.length) await _db('quote_lines').insert(rows);
+    await _db('quotes').update({ notes: q.notes, updated_at: new Date().toISOString() }).eq('id', q.id);
+    await _refreshQuoteTotals(q.id);
+  }
   switchSection('quote');
   renderQuoteMain();
-  _toast(`Added to "${quoteProject(q)}" — materials & labour updated`, 'success');
+  _toast(`Added to "${quoteProject(q)}" — quote lines added`, 'success');
 }
 
 // ── Save / Load / New Quotes ──
