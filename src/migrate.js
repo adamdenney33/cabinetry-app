@@ -348,7 +348,6 @@ async function _migrateCQProjects(log) {
     if (alreadyMigrated) continue;
     const { data: createdQ, error: qErr } = await _db('quotes').insert([{
       user_id: _userId, project_id: projectId,
-      client: '', project: name,
       notes: tag,
       status: 'draft',
       date: cqp.date || new Date().toLocaleDateString()
@@ -386,7 +385,6 @@ async function _migrateSavedQuotes(log) {
     const settings = sq.settings || {};
     const { data: createdQ, error: qErr } = await _db('quotes').insert([{
       user_id: _userId,
-      client: sq.client || '', project: sq.project || '',
       notes: ((sq.notes || '') + '\n' + tag).trim(),
       quote_number: sq.quoteNum || null,
       markup: parseFloat(settings.markup) || 0,

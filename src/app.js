@@ -17,8 +17,8 @@ function _openClientPopup(id) {
   if (!c) return;
   const cur = window.currency;
   const fmt = v => cur + v.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0});
-  const cQuotes = quotes.filter(q => q.client_id === c.id || (!q.client_id && q.client === c.name));
-  const cOrders = orders.filter(o => o.client_id === c.id || (!o.client_id && o.client === c.name));
+  const cQuotes = quotes.filter(q => q.client_id === c.id || (!q.client_id && quoteClient(q) === c.name));
+  const cOrders = orders.filter(o => o.client_id === c.id || (!o.client_id && orderClient(o) === c.name));
   const cProjects = projects.filter(p => p.client_id === c.id);
 
   const projectChips = cProjects.map(p => {
@@ -26,7 +26,7 @@ function _openClientPopup(id) {
     return `<span class="pf-chip badge ${badge}" onclick="_closePopup();switchSection('projects');_highlightProject(${p.id})">${_escHtml(p.name)}</span>`;
   }).join('') || '<span style="font-size:10px;color:var(--muted)">None</span>';
   const orderChips = cOrders.map(o =>
-    `<span class="pf-chip" onclick="_closePopup();switchSection('orders');window._orderSearch='${_escHtml(o.project)}';renderOrdersMain()">${_escHtml(o.project)} — ${fmt(o.value)}</span>`
+    `<span class="pf-chip" onclick="_closePopup();switchSection('orders');window._orderSearch='${_escHtml(orderProject(o))}';renderOrdersMain()">${_escHtml(orderProject(o))} — ${fmt(o.value)}</span>`
   ).join('') || '<span style="font-size:10px;color:var(--muted)">None</span>';
 
   _openPopup(`
@@ -139,12 +139,12 @@ function _openOrderPopup(id) {
     <div class="popup-body">
       <div class="pf">
         <label class="pf-label">Project</label>
-        <input class="pf-input pf-input-lg" id="po-project" value="${_escHtml(o.project)}">
+        <input class="pf-input pf-input-lg" id="po-project" value="${_escHtml(orderProject(o))}">
       </div>
       <div class="pf-row">
         <div class="pf">
           <label class="pf-label">Client</label>
-          <input class="pf-input" id="po-client" value="${_escHtml(o.client)}">
+          <input class="pf-input" id="po-client" value="${_escHtml(orderClient(o))}">
         </div>
         <div class="pf">
           <label class="pf-label">Value</label>
@@ -177,7 +177,7 @@ function _openOrderPopup(id) {
     </div>
     <div class="popup-footer">
       <div class="popup-footer-left">
-        <button class="btn btn-danger" onclick="_confirm('Delete order for <strong>${_escHtml(o.client)}</strong>?',()=>{_closePopup();removeOrder(${o.id})})">Delete</button>
+        <button class="btn btn-danger" onclick="_confirm('Delete order for <strong>${_escHtml(orderClient(o))}</strong>?',()=>{_closePopup();removeOrder(${o.id})})">Delete</button>
         <button class="btn btn-outline" onclick="_closePopup();printWorkOrder(${o.id},'print')">Work Order</button>
         <button class="btn btn-outline" onclick="_closePopup();printWorkOrder(${o.id},'pdf')">PDF</button>
       </div>
@@ -192,8 +192,8 @@ function _openOrderPopup(id) {
 async function _saveOrderPopup(id) {
   const o = orders.find(x => x.id === id);
   if (!o) return;
-  const project = _popupVal('po-project');
-  const client = _popupVal('po-client');
+  const projectName = _popupVal('po-project');
+  const clientName = _popupVal('po-client');
   const value = parseFloat(_popupVal('po-value').replace(/[^0-9.]/g,'')) || 0;
   const status = _popupVal('po-status');
   const notes = _popupVal('po-notes');
@@ -201,11 +201,18 @@ async function _saveOrderPopup(id) {
   const due = dueRaw ? new Date(dueRaw+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : 'TBD';
   const startRaw = _popupVal('po-start');
 
-  Object.assign(o, { project, client, value, status, notes, due });
+  // Resolve client/project FKs (find-or-create) so writes don't depend on the legacy text columns
+  const client_id = clientName ? await resolveClient(clientName) : null;
+  const project_id = projectName ? await resolveProject(projectName, client_id) : null;
+
+  const update = { value, status, due };
+  if (client_id) update.client_id = client_id;
+  if (project_id) update.project_id = project_id;
+  Object.assign(o, update, { notes });
   if (startRaw) setOrderProdStart(o.id, startRaw);
   _onSet(o.id, notes);
 
-  await _db('orders').update({ project, client, value, status, due }).eq('id', id);
+  await _db('orders').update(update).eq('id', id);
   document.getElementById('orders-badge').textContent = orders.filter(o => o.status !== 'complete').length;
   _closePopup();
   renderOrdersMain();
@@ -243,7 +250,7 @@ function _openQuotePopup(id) {
       <div class="pf-row">
         <div class="pf" style="flex:2">
           <label class="pf-label">Project</label>
-          <input class="pf-input pf-input-lg" id="pq-project" value="${_escHtml(q.project)}">
+          <input class="pf-input pf-input-lg" id="pq-project" value="${_escHtml(quoteProject(q))}">
         </div>
         <div class="pf" style="flex:1">
           <label class="pf-label">Status</label>
@@ -257,7 +264,7 @@ function _openQuotePopup(id) {
       <div class="pf-row">
         <div class="pf">
           <label class="pf-label">Client</label>
-          <input class="pf-input" id="pq-client" value="${_escHtml(q.client)}">
+          <input class="pf-input" id="pq-client" value="${_escHtml(quoteClient(q))}">
         </div>
         <div class="pf">
           <label class="pf-label">Quote Number</label>
@@ -293,12 +300,12 @@ function _openQuotePopup(id) {
     </div>
     <div class="popup-footer">
       <div class="popup-footer-left">
-        <button class="btn btn-danger" onclick="_confirm('Delete quote for <strong>${_escHtml(q.client)}</strong>?',()=>{_closePopup();removeQuote(${q.id})})">Delete</button>
+        <button class="btn btn-danger" onclick="_confirm('Delete quote for <strong>${_escHtml(quoteClient(q))}</strong>?',()=>{_closePopup();removeQuote(${q.id})})">Delete</button>
         <button class="btn btn-outline" onclick="_closePopup();printQuote(${q.id},'print')">Print</button>
         <button class="btn btn-outline" onclick="_closePopup();printQuote(${q.id},'pdf')">PDF</button>
       </div>
       <div class="popup-footer-right">
-        ${(() => { const hasOrder = orders.some(ox => ox.project === q.project && ox.client === q.client); return hasOrder ? `<button class="btn btn-outline" style="color:var(--success)" onclick="_closePopup();switchSection('orders');window._orderSearch='${_escHtml(q.project)}';renderOrdersMain()">✓ View Order</button>` : `<button class="btn btn-outline" onclick="_closePopup();convertQuoteToOrder(${q.id})">→ Order</button>`; })()}
+        ${(() => { const hasOrder = q.client_id && q.project_id && orders.some(ox => ox.client_id === q.client_id && ox.project_id === q.project_id); return hasOrder ? `<button class="btn btn-outline" style="color:var(--success)" onclick="_closePopup();switchSection('orders');window._orderSearch='${_escHtml(quoteProject(q))}';renderOrdersMain()">✓ View Order</button>` : `<button class="btn btn-outline" onclick="_closePopup();convertQuoteToOrder(${q.id})">→ Order</button>`; })()}
         <button class="btn btn-primary" onclick="_saveQuotePopup(${q.id})">Save</button>
       </div>
     </div>
@@ -331,8 +338,8 @@ function _updateQuotePopupTotals() {
 async function _saveQuotePopup(id) {
   const q = quotes.find(x => x.id === id);
   if (!q) return;
-  const project = _popupVal('pq-project');
-  const client = _popupVal('pq-client');
+  const projectName = _popupVal('pq-project');
+  const clientName = _popupVal('pq-client');
   const status = _popupVal('pq-status');
   const notes = _popupVal('pq-notes');
   const quote_number = _popupVal('pq-quote-number') || null;
@@ -343,8 +350,15 @@ async function _saveQuotePopup(id) {
   const markup = parseFloat(_popupVal('pq-markup')) || 0;
   const tax = parseFloat(_popupVal('pq-tax')) || 0;
 
-  Object.assign(q, { project, client, status, notes, quote_number, materials, labour, markup, tax });
-  await _db('quotes').update({ project, client, status, notes, quote_number, materials, labour, markup, tax, updated_at: new Date().toISOString() }).eq('id', id);
+  // Resolve client/project FKs from the popup's text inputs (find-or-create)
+  const client_id = clientName ? await resolveClient(clientName) : null;
+  const project_id = projectName ? await resolveProject(projectName, client_id) : null;
+
+  const update = { status, notes, quote_number, materials, labour, markup, tax, updated_at: new Date().toISOString() };
+  if (client_id) update.client_id = client_id;
+  if (project_id) update.project_id = project_id;
+  Object.assign(q, update);
+  await _db('quotes').update(update).eq('id', id);
   _closePopup();
   renderQuoteMain();
   _toast('Quote updated', 'success');
@@ -357,15 +371,15 @@ function _openProjectPopup(id) {
   const cur = window.currency;
   const fmt = v => cur + v.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0});
   const clientName = p.client_id ? (clients.find(c=>c.id===p.client_id)||{}).name||'' : '';
-  const pQuotes = quotes.filter(q => q.project_id === p.id || (!q.project_id && q.project === p.name));
-  const pOrders = orders.filter(o => o.project_id === p.id || (!o.project_id && o.project === p.name));
+  const pQuotes = quotes.filter(q => q.project_id === p.id || (!q.project_id && quoteProject(q) === p.name));
+  const pOrders = orders.filter(o => o.project_id === p.id || (!o.project_id && orderProject(o) === p.name));
   const statusBadge = p.status==='complete'?'badge-green':p.status==='on-hold'?'badge-gray':'badge-blue';
 
   const quoteChips = pQuotes.map(q =>
-    `<span class="pf-chip" onclick="_closePopup();switchSection('quote');window._quoteSearch='${_escHtml(q.project)}';renderQuoteMain()">Q-${String(q.id).padStart(4,'0')} · ${fmt(quoteTotal(q))} · ${q.status}</span>`
+    `<span class="pf-chip" onclick="_closePopup();switchSection('quote');window._quoteSearch='${_escHtml(quoteProject(q))}';renderQuoteMain()">Q-${String(q.id).padStart(4,'0')} · ${fmt(quoteTotal(q))} · ${q.status}</span>`
   ).join('') || '<span style="font-size:10px;color:var(--muted)">None</span>';
   const orderChips = pOrders.map(o =>
-    `<span class="pf-chip" onclick="_closePopup();switchSection('orders');window._orderSearch='${_escHtml(o.project)}';renderOrdersMain()">${_escHtml(o.project)} · ${fmt(o.value)} · ${STATUS_LABELS[o.status]||o.status}</span>`
+    `<span class="pf-chip" onclick="_closePopup();switchSection('orders');window._orderSearch='${_escHtml(orderProject(o))}';renderOrdersMain()">${_escHtml(orderProject(o))} · ${fmt(o.value)} · ${STATUS_LABELS[o.status]||o.status}</span>`
   ).join('') || '<span style="font-size:10px;color:var(--muted)">None</span>';
 
   _openPopup(`
@@ -3187,9 +3201,9 @@ function _buildQuotePDF(q) {
   pdf.text('PROJECT', M + 70, y);
   y += 5;
   pdf.setFontSize(13); pdf.setFont('helvetica','bold'); pdf.setTextColor(17);
-  pdf.text(q.client || '—', M, y);
+  pdf.text(quoteClient(q) || '—', M, y);
   pdf.setFontSize(12); pdf.setFont('helvetica','bold');
-  pdf.text(q.project || '—', M + 70, y);
+  pdf.text(quoteProject(q) || '—', M + 70, y);
   y += 12;
 
   // ── Cabinet Line Items (from notes) ──
@@ -3396,7 +3410,7 @@ function _buildWorkOrderPDF(o) {
 
   // Project info
   const infoItems = [
-    ['Client', o.client], ['Project', o.project],
+    ['Client', orderClient(o)], ['Project', orderProject(o)],
     ['Order Value', fmt(o.value)], ['Status', statusLabel],
     ['Due Date', o.due || 'TBD']
   ];
@@ -4572,8 +4586,8 @@ function renderSummary(area) {
 let quotes = [];
 let quoteNextId = 1;
 
-// FK-resolving display helpers. Once Phase 7 drops legacy text columns the
-// `|| q.client` fallbacks become dead code — kept for the transitional commits.
+// FK-resolving display helpers. The `|| q.client` fallbacks read the legacy
+// text columns and become dead code once Phase 7 step 6 drops them.
 function quoteClient(q) {
   if (!q) return '';
   if (q.client_id) {
@@ -4662,7 +4676,7 @@ async function createQuote() {
   const clientId = await resolveClient(client);
   const projectId = await resolveProject(project, clientId);
   const row = {
-    user_id: _userId, client, project,
+    user_id: _userId,
     materials: parseFloat(document.getElementById('q-materials').value) || 0,
     labour: labourRate * hours,
     markup: parseFloat(document.getElementById('q-markup').value) || 20,
@@ -4697,7 +4711,7 @@ async function convertQuoteToOrder(id) {
   const { error: qErr } = await _db('quotes').update({ status: 'approved' }).eq('id', id);
   if (qErr) { _toast('Could not update quote — ' + (qErr.message || JSON.stringify(qErr)), 'error'); console.error(qErr); return; }
   q.status = 'approved';
-  const orderRow = { user_id: _userId, client: q.client, project: q.project, value: Math.round(quoteTotal(q)), status: 'confirmed', due: 'TBD' };
+  const orderRow = { user_id: _userId, value: Math.round(quoteTotal(q)), status: 'confirmed', due: 'TBD' };
   if (q.client_id) orderRow.client_id = q.client_id;
   if (q.project_id) orderRow.project_id = q.project_id;
   const { data, error: oErr } = await _dbInsertSafe('orders', orderRow);
@@ -4707,7 +4721,7 @@ async function convertQuoteToOrder(id) {
   if (data) { _oqSet(data.id, q.id); }
   orders.unshift(data);
   document.getElementById('orders-badge').textContent = orders.filter(o => o.status !== 'complete').length;
-  _toast(`Order created for ${q.client} — ${q.project}`, 'success');
+  _toast(`Order created for ${quoteClient(q)} — ${quoteProject(q)}`, 'success');
   renderQuoteMain();
   switchSection('orders');
 }
@@ -4759,8 +4773,8 @@ function renderQuoteMain() {
     <div class="quote-card" style="cursor:pointer" onclick="_openQuotePopup(${q.id})">
       <div class="qc-header">
         <div style="flex:1;min-width:0;overflow:hidden">
-          <div class="qc-title">${q.project}</div>
-          <div class="qc-meta">${q.client} &nbsp;·&nbsp; ${q.date} &nbsp;·&nbsp; <span class="badge ${statusBadge}" style="font-size:9px;padding:1px 6px">${statusText}</span></div>
+          <div class="qc-title">${quoteProject(q)}</div>
+          <div class="qc-meta">${quoteClient(q)} &nbsp;·&nbsp; ${q.date} &nbsp;·&nbsp; <span class="badge ${statusBadge}" style="font-size:9px;padding:1px 6px">${statusText}</span></div>
         </div>
       </div>
       ${q.notes ? `<div style="border-top:1px solid var(--border2);padding:8px 16px;background:var(--surface)">
@@ -4780,7 +4794,7 @@ function renderQuoteMain() {
         ${q.status === 'draft' ? `<button class="btn btn-outline" onclick="markQuoteSent(${q.id})">Mark Sent</button>` : ''}
         ${q.status === 'sent' ? `<button class="btn btn-success" onclick="approveQuote(${q.id})">Approve</button>` : ''}
         ${q.status !== 'draft' ? `<button class="btn btn-outline" onclick="revertQuoteToDraft(${q.id})" style="color:var(--muted)">↩ Draft</button>` : ''}
-        ${(() => { const hasOrder = orders.some(o => o.project === q.project && o.client === q.client); return hasOrder ? `<button class="btn btn-outline" onclick="switchSection('orders');window._orderSearch='${_escHtml(q.project)}';renderOrdersMain()" style="color:var(--success)">✓ View Order</button>` : `<button class="btn btn-outline" onclick="convertQuoteToOrder(${q.id})">→ Order</button>`; })()}
+        ${(() => { const hasOrder = q.client_id && q.project_id && orders.some(o => o.client_id === q.client_id && o.project_id === q.project_id); return hasOrder ? `<button class="btn btn-outline" onclick="switchSection('orders');window._orderSearch='${_escHtml(quoteProject(q))}';renderOrdersMain()" style="color:var(--success)">✓ View Order</button>` : `<button class="btn btn-outline" onclick="convertQuoteToOrder(${q.id})">→ Order</button>`; })()}
         <span style="flex:1"></span>
         <button class="btn btn-outline" onclick="duplicateQuote(${q.id})">Copy</button>
         <button class="btn btn-outline" onclick="printQuote(${q.id},'print')">Print</button>
@@ -4798,7 +4812,7 @@ function renderQuoteMain() {
   const qSort = window._quoteSort || 'newest';
   let filteredQ = [...quotes];
   if (qFilter !== 'all') filteredQ = filteredQ.filter(q => q.status === qFilter);
-  if (qSearch) filteredQ = filteredQ.filter(q => (q.client + ' ' + q.project).toLowerCase().includes(qSearch));
+  if (qSearch) filteredQ = filteredQ.filter(q => (quoteClient(q) + ' ' + quoteProject(q)).toLowerCase().includes(qSearch));
   if (qSort === 'value') filteredQ.sort((a,b) => quoteTotal(b) - quoteTotal(a));
   else if (qSort === 'client') filteredQ.sort((a,b) => (a.client||'').localeCompare(b.client||''));
 
@@ -4893,7 +4907,7 @@ async function duplicateOrder(id) {
   if (!_requireAuth()) return;
   const o = orders.find(o => o.id === id);
   if (!o) return;
-  const row = { user_id: _userId, client: o.client, project: o.project + ' (copy)', value: o.value, status: 'quote', due: 'TBD' };
+  const row = { user_id: _userId, value: o.value, status: 'quote', due: 'TBD' };
   if (o.client_id) row.client_id = o.client_id;
   if (o.project_id) row.project_id = o.project_id;
   const { data, error } = await _dbInsertSafe('orders', row);
@@ -4958,8 +4972,8 @@ function renderOrdersMain() {
     <div class="order-card${isOverdue ? ' order-overdue' : ''}" style="cursor:pointer" onclick="_openOrderPopup(${o.id})">
       <div class="oc-header">
         <div class="oc-info">
-          <div class="oc-title">${o.project}</div>
-          <div class="oc-meta">${o.client}</div>
+          <div class="oc-title">${orderProject(o)}</div>
+          <div class="oc-meta">${orderClient(o)}</div>
           <div style="display:flex;gap:6px;align-items:center;margin-top:3px;font-size:11px;color:var(--muted)">
             <span>Due: ${o.due || 'TBD'}</span>
             ${relDate ? `<span style="font-size:9px;font-weight:700;color:${relDate.color}">${relDate.label}</span>` : ''}
@@ -4987,7 +5001,7 @@ function renderOrdersMain() {
   const filterSearch = (window._orderSearch || '').toLowerCase().trim();
   const sortBy = window._orderSort || 'newest';
   let pool = filterVal === 'all' ? orders : filterVal === 'active' ? active : complete;
-  let filtered = filterSearch ? pool.filter(o => (o.client+' '+o.project).toLowerCase().includes(filterSearch)) : [...pool];
+  let filtered = filterSearch ? pool.filter(o => (orderClient(o)+' '+orderProject(o)).toLowerCase().includes(filterSearch)) : [...pool];
   // Sort
   if (sortBy === 'due') filtered.sort((a,b) => { const da=_orderDateToISO(a.due)||'9999', db=_orderDateToISO(b.due)||'9999'; return da.localeCompare(db); });
   else if (sortBy === 'value') filtered.sort((a,b) => b.value - a.value);
@@ -5129,7 +5143,7 @@ function renderDashboard() {
         <div class="stat-card" style="padding:10px 14px;cursor:pointer" onclick="switchSection('clients')">
           <div class="stat-label">Clients</div>
           <div class="stat-value">${totalClients}</div>
-          <div class="stat-sub">${orders.length ? [...new Set(orders.map(o=>o.client))].length + ' with orders' : ''}</div>
+          <div class="stat-sub">${orders.length ? [...new Set(orders.map(o=>orderClient(o)))].length + ' with orders' : ''}</div>
         </div>
       </div>
 
@@ -5163,8 +5177,8 @@ function renderDashboard() {
                 const isOD = o.due && o.due !== 'TBD' && !isNaN(new Date(o.due)) && new Date(o.due) < new Date();
                 return `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 18px;border-bottom:1px solid var(--border2);cursor:pointer;${isOD?'border-left:3px solid var(--danger);':''}" onclick="_openOrderPopup(${o.id})">
                 <div style="flex:1;min-width:0">
-                  <div style="font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${o.project}</div>
-                  <div style="font-size:11px;color:${isOD?'var(--danger)':'var(--muted)'}">${o.client} · Due ${o.due}${isOD?' ⚠':''}
+                  <div style="font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${orderProject(o)}</div>
+                  <div style="font-size:11px;color:${isOD?'var(--danger)':'var(--muted)'}">${orderClient(o)} · Due ${o.due}${isOD?' ⚠':''}
                   </div>
                 </div>
                 <div style="text-align:right;margin-left:12px;flex-shrink:0">
@@ -5204,8 +5218,8 @@ function renderDashboard() {
               ${quotes.slice(0,3).map(q => `
                 <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 18px;border-bottom:1px solid var(--border2);cursor:pointer" onclick="_openQuotePopup(${q.id})">
                   <div style="flex:1;min-width:0">
-                    <div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${q.project}</div>
-                    <div style="font-size:11px;color:var(--muted)">${q.client}</div>
+                    <div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${quoteProject(q)}</div>
+                    <div style="font-size:11px;color:var(--muted)">${quoteClient(q)}</div>
                   </div>
                   <div style="text-align:right;margin-left:8px;flex-shrink:0">
                     <div style="font-size:12px;font-weight:700">${cur}${fmt(quoteTotal(q))}</div>
@@ -5232,7 +5246,7 @@ function renderDashboard() {
               const urgent = o._days <= 3; const overdue = o._days < 0;
               return `<div style="display:flex;align-items:center;gap:12px;padding:8px 18px;border-bottom:1px solid var(--border2);cursor:pointer" onclick="_openOrderPopup(${o.id})">
                 <div style="width:36px;height:36px;border-radius:8px;background:${overdue?'var(--danger)':urgent?'var(--accent)':'var(--surface2)'};color:${overdue||urgent?'#fff':'var(--text)'};display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;flex-shrink:0">${Math.abs(o._days)}</div>
-                <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;color:var(--text)">${o.project}</div><div style="font-size:11px;color:var(--muted)">${o.client} · ${overdue?'overdue':'day'+(o._days!==1?'s':'')+' left'}</div></div>
+                <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;color:var(--text)">${orderProject(o)}</div><div style="font-size:11px;color:var(--muted)">${orderClient(o)} · ${overdue?'overdue':'day'+(o._days!==1?'s':'')+' left'}</div></div>
                 <span class="badge ${STATUS_BADGES[o.status]||'badge-gray'}" style="font-size:10px">${STATUS_LABELS[o.status]||o.status}</span>
                 ${o.status !== 'complete' ? `<button class="btn btn-outline" onclick="event.stopPropagation();advanceOrder(${o.id});renderDashboard();setTimeout(drawRevenueChart,0)" style="font-size:10px;padding:3px 8px;width:auto;flex-shrink:0">Next →</button>` : ''}
               </div>`;
@@ -5335,7 +5349,7 @@ function _smartClientSuggest(input, boxId) {
   const box = document.getElementById(boxId);
   if (!box) return;
   _posSuggest(input, box);
-  const allClients = [...new Set([...clients.map(c => c.name), ...quotes.map(q => q.client), ...orders.map(o => o.client)].filter(Boolean))];
+  const allClients = [...new Set([...clients.map(c => c.name), ...quotes.map(q => quoteClient(q)), ...orders.map(o => orderClient(o))].filter(Boolean))];
   const matches = val ? allClients.filter(c => c.toLowerCase().includes(val) && c.toLowerCase() !== val) : allClients;
   if (!matches.length && !val) { box.style.display = 'none'; return; }
   const inputId = input.id;
@@ -5356,7 +5370,7 @@ function _smartProjectSuggest(input, boxId) {
   const box = document.getElementById(boxId);
   if (!box) return;
   _posSuggest(input, box);
-  const allProjects = [...new Set([...projects.map(p => p.name), ...quotes.map(q => q.project), ...orders.map(o => o.project)].filter(Boolean))];
+  const allProjects = [...new Set([...projects.map(p => p.name), ...quotes.map(q => quoteProject(q)), ...orders.map(o => orderProject(o))].filter(Boolean))];
   const matches = val ? allProjects.filter(p => p.toLowerCase().includes(val) && p.toLowerCase() !== val) : allProjects;
   if (!matches.length && !val) { box.style.display = 'none'; return; }
   const inputId = input.id;
@@ -5594,8 +5608,8 @@ function printWorkOrder(id, mode='print') {
 </div>
 
 <div class="job-block">
-  <div class="job-client">${o.client}</div>
-  <div class="job-project">${o.project}</div>
+  <div class="job-client">${orderClient(o)}</div>
+  <div class="job-project">${orderProject(o)}</div>
 </div>
 
 <div class="info-strip">
@@ -5708,7 +5722,7 @@ function printQuote(id, mode='print') {
   const statusCol = { draft:'#888', sent:'#2563eb', approved:'#16a34a' }[q.status] || '#888';
   const statusTxt = { draft:'Draft', sent:'Sent', approved:'Approved' }[q.status] || q.status;
 
-  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Quote #Q-${String(q.id).padStart(4,'0')} — ${q.project}</title>
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Quote #Q-${String(q.id).padStart(4,'0')} — ${quoteProject(q)}</title>
 <style>
   @page { size:A4; margin:15mm 18mm; }
   * { margin:0; padding:0; box-sizing:border-box; }
@@ -5774,11 +5788,11 @@ function printQuote(id, mode='print') {
 <div class="bill-row">
   <div class="bill-block">
     <label>Prepared for</label>
-    <div class="name">${_escHtml(q.client)}</div>
+    <div class="name">${_escHtml(quoteClient(q))}</div>
   </div>
   <div class="bill-block">
     <label>Project</label>
-    <div class="name" style="font-size:15px">${_escHtml(q.project)}</div>
+    <div class="name" style="font-size:15px">${_escHtml(quoteProject(q))}</div>
   </div>
 </div>
 
@@ -5836,10 +5850,21 @@ async function duplicateQuote(id) {
   if (!_requireAuth()) return;
   const q = quotes.find(q => q.id === id);
   if (!q) return;
-  const row = { user_id: _userId, client: q.client, project: q.project + ' (copy)', materials: q.materials, labour: q.labour, markup: q.markup, tax: q.tax, status: 'draft', date: new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short'}), notes: q.notes || '' };
+  const row = { user_id: _userId, materials: q.materials, labour: q.labour, markup: q.markup, tax: q.tax, status: 'draft', date: new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short'}), notes: q.notes || '' };
+  if (q.client_id) row.client_id = q.client_id;
+  if (q.project_id) row.project_id = q.project_id;
   const { data, error } = await _db('quotes').insert(row).select().single();
   if (error) { _toast('Could not duplicate quote — ' + (error.message || JSON.stringify(error)), 'error'); console.error(error); return; }
   quotes.unshift(data);
+  // Copy any existing quote_lines so the duplicate has matching totals
+  try {
+    const { data: oldLines } = await _db('quote_lines').select('*').eq('quote_id', q.id);
+    if (oldLines && oldLines.length) {
+      const newLines = oldLines.map(l => { const nl = { ...l, quote_id: data.id }; delete nl.id; return nl; });
+      await _db('quote_lines').insert(newLines);
+      await _refreshQuoteTotals(data.id);
+    }
+  } catch(e) { console.warn('[duplicateQuote] copy lines failed:', e.message || e); }
   _toast('Quote duplicated', 'success');
   renderQuoteMain();
 }
@@ -5879,13 +5904,13 @@ function renderOrderLibraries() {}
 function _noOp() {}
 // ── Shared Client Library Import/Export ──
 function exportClientsCSV() {
-  const allClients = [...new Set([...quotes.map(q=>q.client), ...orders.map(o=>o.client)].filter(Boolean))].sort();
+  const allClients = [...new Set([...quotes.map(q=>quoteClient(q)), ...orders.map(o=>orderClient(o))].filter(Boolean))].sort();
   if (!allClients.length) { _toast('No clients to export', 'error'); return; }
   const rows = [['Client Name','Quotes','Orders','Total Value']];
   allClients.forEach(c => {
-    const qCount = quotes.filter(q=>q.client===c).length;
-    const oCount = orders.filter(o=>o.client===c).length;
-    const totalVal = quotes.filter(q=>q.client===c).reduce((s,q)=>s+quoteTotal(q),0) + orders.filter(o=>o.client===c).reduce((s,o)=>s+o.value,0);
+    const qCount = quotes.filter(q=>quoteClient(q)===c).length;
+    const oCount = orders.filter(o=>orderClient(o)===c).length;
+    const totalVal = quotes.filter(q=>quoteClient(q)===c).reduce((s,q)=>s+quoteTotal(q),0) + orders.filter(o=>orderClient(o)===c).reduce((s,o)=>s+o.value,0);
     rows.push([c, qCount, oCount, totalVal.toFixed(2)]);
   });
   const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
@@ -5901,7 +5926,7 @@ function exportQuotesCSV() {
   if (!quotes.length) { _toast('No quotes to export', 'error'); return; }
   const cur = window.currency;
   const rows = [['Client','Project','Materials','Labour','Markup %','Tax %','Status','Date','Notes']];
-  quotes.forEach(q => rows.push([q.client,q.project,q.materials,q.labour,q.markup,q.tax,q.status,q.date,q.notes||'']));
+  quotes.forEach(q => rows.push([quoteClient(q),quoteProject(q),q.materials,q.labour,q.markup,q.tax,q.status,q.date,q.notes||'']));
   const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
   const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([csv],{type:'text/csv'})), download: `quotes-${new Date().toISOString().slice(0,10)}.csv` });
   a.click(); URL.revokeObjectURL(a.href);
@@ -5918,7 +5943,11 @@ function importQuotesCSV() {
     let imported = 0;
     for (let i = 1; i < rows.length; i++) {
       const r = rows[i]; if (r.length < 4 || !r[0]) continue;
-      const row = { user_id: _userId, client: r[0], project: r[1]||'', materials: parseFloat(r[2])||0, labour: parseFloat(r[3])||0, markup: parseFloat(r[4])||20, tax: parseFloat(r[5])||13, status: r[6]||'draft', date: r[7]||new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short'}), notes: r[8]||'' };
+      const client_id = r[0] ? await resolveClient(r[0]) : null;
+      const project_id = r[1] ? await resolveProject(r[1], client_id) : null;
+      const row = { user_id: _userId, materials: parseFloat(r[2])||0, labour: parseFloat(r[3])||0, markup: parseFloat(r[4])||20, tax: parseFloat(r[5])||13, status: r[6]||'draft', date: r[7]||new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short'}), notes: r[8]||'' };
+      if (client_id) row.client_id = client_id;
+      if (project_id) row.project_id = project_id;
       if (_userId) { const{data}=await _db('quotes').insert(row).select().single(); if(data){quotes.unshift(data);imported++;} }
     }
     _toast(imported+' quotes imported','success'); renderQuoteMain();
@@ -5930,7 +5959,7 @@ function importQuotesCSV() {
 function exportOrdersCSV() {
   if (!orders.length) { _toast('No orders to export', 'error'); return; }
   const rows = [['Client','Project','Value','Status','Due','Notes']];
-  orders.forEach(o => rows.push([o.client,o.project,o.value,o.status,o.due||'TBD',o.notes||'']));
+  orders.forEach(o => rows.push([orderClient(o),orderProject(o),o.value,o.status,o.due||'TBD',o.notes||'']));
   const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
   const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([csv],{type:'text/csv'})), download: `orders-${new Date().toISOString().slice(0,10)}.csv` });
   a.click(); URL.revokeObjectURL(a.href);
@@ -5947,7 +5976,11 @@ function importOrdersCSV() {
     let imported = 0;
     for (let i = 1; i < rows.length; i++) {
       const r = rows[i]; if (r.length < 2 || !r[0]) continue;
-      const row = { user_id: _userId, client: r[0], project: r[1]||'', value: parseFloat(r[2])||0, status: r[3]||'quote', due: r[4]||'TBD' };
+      const client_id = r[0] ? await resolveClient(r[0]) : null;
+      const project_id = r[1] ? await resolveProject(r[1], client_id) : null;
+      const row = { user_id: _userId, value: parseFloat(r[2])||0, status: r[3]||'quote', due: r[4]||'TBD' };
+      if (client_id) row.client_id = client_id;
+      if (project_id) row.project_id = project_id;
       if (_userId) { const{data}=await _db('orders').insert(row).select().single(); if(data){data.notes=r[5]||'';_onSet(data.id,data.notes);orders.unshift(data);imported++;} }
     }
     _toast(imported+' orders imported','success'); renderOrdersMain();
@@ -8768,7 +8801,7 @@ function cqAddToExistingQuote() {
   picker.style.display = 'block';
   picker.innerHTML = `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:8px">
     <select id="_cq_qsel" style="width:100%;padding:8px 10px;font-size:13px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);font-family:inherit;margin-bottom:8px">
-      ${quotes.map((q,i) => `<option value="${i}">${q.client || 'No client'} — ${q.project || 'No project'} (${cur}${Math.round(quoteTotal(q))})</option>`).join('')}
+      ${quotes.map((q,i) => `<option value="${i}">${quoteClient(q) || 'No client'} — ${quoteProject(q) || 'No project'} (${cur}${Math.round(quoteTotal(q))})</option>`).join('')}
     </select>
     <div style="display:flex;gap:6px">
       <button class="btn btn-primary" onclick="const qi=parseInt(document.getElementById('_cq_qsel').value);document.getElementById('cq-quote-picker').style.display='none';_cqApplyToQuote(qi)" style="flex:1;font-size:12px;padding:7px 10px">Add</button>
@@ -8795,7 +8828,7 @@ function _cqApplyToQuote(qi) {
   if (_userId) _db('quotes').update({ materials: q.materials, labour: q.labour, notes: q.notes }).eq('id', q.id);
   switchSection('quote');
   renderQuoteMain();
-  _toast(`Added to "${q.project}" — materials & labour updated`, 'success');
+  _toast(`Added to "${quoteProject(q)}" — materials & labour updated`, 'success');
 }
 
 // ── Save / Load / New Quotes ──
@@ -8832,8 +8865,8 @@ function loadCQQuote(idx) {
   cqActiveQuoteIdx = idx;
   cqLines = JSON.parse(JSON.stringify(q.lines || []));
   cqNextId = cqLines.length > 0 ? Math.max(...cqLines.map(l=>l.id)) + 1 : 1;
-  document.getElementById('cq-client').value = q.client || '';
-  document.getElementById('cq-project').value = q.project || '';
+  document.getElementById('cq-client').value = quoteClient(q) || '';
+  document.getElementById('cq-project').value = quoteProject(q) || '';
   document.getElementById('cq-notes').value = q.notes || '';
   document.getElementById('cq-quote-num').value = q.quoteNum || '';
   saveCQLines();
@@ -8877,7 +8910,7 @@ function renderCQSavedShelf() {
     const gt = total * (1 + (q.settings?.markup||0)/100) * (1 + (q.settings?.tax||0)/100);
     const active = i === cqActiveQuoteIdx;
     return `<div style="display:flex;align-items:center;gap:6px;padding:5px 10px;border-radius:6px;border:1px solid ${active?'var(--accent)':'var(--border)'};background:${active?'var(--accent-dim)':'var(--surface)'};cursor:pointer;flex-shrink:0;white-space:nowrap" onclick="loadCQQuote(${i})">
-      <div style="font-size:11px;font-weight:600;color:var(--text)">${q.client||q.project}</div>
+      <div style="font-size:11px;font-weight:600;color:var(--text)">${quoteClient(q)||quoteProject(q)}</div>
       <div style="font-size:10px;color:var(--muted)">${q.date}</div>
       <div style="font-size:11px;font-weight:700;color:var(--accent)">${cur}${Math.round(gt).toLocaleString()}</div>
       <button style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:11px;padding:0" onclick="event.stopPropagation();dupCQSavedQuote(${i})" title="Duplicate">&#10697;</button>
@@ -9541,7 +9574,7 @@ function renderSchedule() {
   const events = orders.filter(o=>o.status!=='complete').map((o,idx)=>{
     const due=parseDate(o.due), start=parseDate(o.prodStart);
     if(!due&&!start)return null;
-    return{id:o.id,project:o.project,client:o.client,start,due,color:palette[idx%palette.length]};
+    return{id:o.id,project:orderProject(o),client:orderClient(o),start,due,color:palette[idx%palette.length]};
   }).filter(Boolean);
 
   const weeks = [];
@@ -9867,8 +9900,8 @@ function renderClientsMain() {
   const cur = window.currency;
 
   const clientCard = c => {
-    const cQuotes = quotes.filter(q => q.client_id === c.id || (!q.client_id && q.client === c.name));
-    const cOrders = orders.filter(o => o.client_id === c.id || (!o.client_id && o.client === c.name));
+    const cQuotes = quotes.filter(q => q.client_id === c.id || (!q.client_id && quoteClient(q) === c.name));
+    const cOrders = orders.filter(o => o.client_id === c.id || (!o.client_id && orderClient(o) === c.name));
     const cProjects = projects.filter(p => p.client_id === c.id);
     const totalValue = cOrders.reduce((s,o) => s + o.value, 0) + cQuotes.reduce((s,q) => s + quoteTotal(q), 0);
     const fmt = v => cur + v.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0});
@@ -9892,14 +9925,14 @@ function renderClientsMain() {
   const sortBy = window._clientSort || 'name';
   let filtered = search ? clients.filter(c => c.name.toLowerCase().includes(search)) : [...clients];
   if (sortBy === 'value') filtered.sort((a,b) => {
-    const va = orders.filter(o=>o.client_id===a.id||o.client===a.name).reduce((s,o)=>s+o.value,0) + quotes.filter(q=>q.client_id===a.id||q.client===a.name).reduce((s,q)=>s+quoteTotal(q),0);
-    const vb = orders.filter(o=>o.client_id===b.id||o.client===b.name).reduce((s,o)=>s+o.value,0) + quotes.filter(q=>q.client_id===b.id||q.client===b.name).reduce((s,q)=>s+quoteTotal(q),0);
+    const va = orders.filter(o=>o.client_id===a.id||orderClient(o)===a.name).reduce((s,o)=>s+o.value,0) + quotes.filter(q=>q.client_id===a.id||quoteClient(q)===a.name).reduce((s,q)=>s+quoteTotal(q),0);
+    const vb = orders.filter(o=>o.client_id===b.id||orderClient(o)===b.name).reduce((s,o)=>s+o.value,0) + quotes.filter(q=>q.client_id===b.id||quoteClient(q)===b.name).reduce((s,q)=>s+quoteTotal(q),0);
     return vb - va;
   });
-  else if (sortBy === 'orders') filtered.sort((a,b) => orders.filter(o=>o.client_id===b.id||o.client===b.name).length - orders.filter(o=>o.client_id===a.id||o.client===a.name).length);
+  else if (sortBy === 'orders') filtered.sort((a,b) => orders.filter(o=>o.client_id===b.id||orderClient(o)===b.name).length - orders.filter(o=>o.client_id===a.id||orderClient(o)===a.name).length);
   else filtered.sort((a,b) => a.name.localeCompare(b.name));
 
-  const totalClientValue = clients.reduce((s,c) => s + orders.filter(o=>o.client_id===c.id||o.client===c.name).reduce((t,o)=>t+o.value,0), 0);
+  const totalClientValue = clients.reduce((s,c) => s + orders.filter(o=>o.client_id===c.id||orderClient(o)===c.name).reduce((t,o)=>t+o.value,0), 0);
   const fmt = v => cur + v.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0});
 
   el.innerHTML = `<div style="padding:24px;max-width:900px">
@@ -9942,8 +9975,8 @@ function renderProjectsMain() {
 
   const projectCard = p => {
     const client = p.client_id ? clients.find(c => c.id === p.client_id) : null;
-    const pQuotes = quotes.filter(q => q.project_id === p.id || (!q.project_id && q.project === p.name));
-    const pOrders = orders.filter(o => o.project_id === p.id || (!o.project_id && o.project === p.name));
+    const pQuotes = quotes.filter(q => q.project_id === p.id || (!q.project_id && quoteProject(q) === p.name));
+    const pOrders = orders.filter(o => o.project_id === p.id || (!o.project_id && orderProject(o) === p.name));
     const totalValue = pOrders.reduce((s,o) => s + o.value, 0);
     const quoteValue = pQuotes.reduce((s,q) => s + quoteTotal(q), 0);
     const fmt = v => cur + v.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0});
@@ -9972,8 +10005,8 @@ function renderProjectsMain() {
   if (sortBy === 'name') filtered.sort((a,b) => a.name.localeCompare(b.name));
   else if (sortBy === 'client') filtered.sort((a,b) => (_clientName(a.client_id)||'').localeCompare(_clientName(b.client_id)||''));
   else if (sortBy === 'value') filtered.sort((a,b) => {
-    const va = orders.filter(o=>o.project_id===a.id||o.project===a.name).reduce((s,o)=>s+o.value,0);
-    const vb = orders.filter(o=>o.project_id===b.id||o.project===b.name).reduce((s,o)=>s+o.value,0);
+    const va = orders.filter(o=>o.project_id===a.id||orderProject(o)===a.name).reduce((s,o)=>s+o.value,0);
+    const vb = orders.filter(o=>o.project_id===b.id||orderProject(o)===b.name).reduce((s,o)=>s+o.value,0);
     return vb - va;
   });
 
