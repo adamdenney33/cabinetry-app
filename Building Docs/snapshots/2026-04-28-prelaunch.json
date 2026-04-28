@@ -1,0 +1,62 @@
+{
+  "snapshot_date": "2026-04-28T00:55:00Z",
+  "purpose": "Pre-launch refactor — Phase 0 baseline snapshot. Captures every row of every Supabase public table BEFORE any schema changes are applied. Used as a rollback reference if Phase 1 migrations damage existing data.",
+  "supabase_project_id": "mhzneruvlfmhnsohfrdo",
+  "supabase_postgres_version": "17.6.1",
+  "row_counts": {
+    "clients": 2,
+    "projects": 4,
+    "quotes": 12,
+    "orders": 3,
+    "stock_items": 7
+  },
+  "schema_at_snapshot": {
+    "note": "Per SCHEMA.md, these are the original 5 tables BEFORE the refactor. Phase 1 ADDS columns and tables but does NOT alter or drop these existing rows.",
+    "clients_columns": ["id", "user_id", "name", "email", "phone", "address", "notes", "created_at"],
+    "projects_columns": ["id", "user_id", "name", "data", "created_at", "updated_at", "client_id"],
+    "quotes_columns": ["id", "user_id", "client", "project", "materials", "labour", "markup", "tax", "status", "date", "notes", "created_at", "client_id", "project_id"],
+    "orders_columns": ["id", "user_id", "client", "project", "value", "status", "due", "created_at", "client_id", "project_id"],
+    "stock_items_columns": ["id", "user_id", "name", "sku", "w", "h", "qty", "low", "cost", "created_at"]
+  },
+  "tables": {
+    "clients": [
+      {"id":2,"user_id":"366e4e9b-c7cc-422e-ae4b-78d4e36b174a","name":"Halimah","email":null,"phone":null,"address":null,"notes":null,"created_at":"2026-04-07T19:48:08.674579+00:00"},
+      {"id":1,"user_id":"366e4e9b-c7cc-422e-ae4b-78d4e36b174a","name":"Adam Denney","email":"adam.denney@hotmail.com","phone":"07939189154","address":"Barsett Cottage Longnor Shrewsbury SY5 7PP United Kingdom","notes":null,"created_at":"2026-04-06T02:14:00.024849+00:00"}
+    ],
+    "projects": [
+      {"id":7,"user_id":"366e4e9b-c7cc-422e-ae4b-78d4e36b174a","name":"Test Kitchen","data":{},"created_at":"2026-04-06T02:38:12.810865+00:00","updated_at":"2026-04-06T02:38:12.810865+00:00","client_id":null},
+      {"id":8,"user_id":"366e4e9b-c7cc-422e-ae4b-78d4e36b174a","name":"Kitchen","data":{},"created_at":"2026-04-06T02:38:14.204082+00:00","updated_at":"2026-04-06T02:38:14.204082+00:00","client_id":1},
+      {"id":9,"user_id":"366e4e9b-c7cc-422e-ae4b-78d4e36b174a","name":"Utility","data":{},"created_at":"2026-04-06T02:38:58.595433+00:00","updated_at":"2026-04-06T02:38:58.595433+00:00","client_id":1},
+      {"id":10,"user_id":"366e4e9b-c7cc-422e-ae4b-78d4e36b174a","name":"House","data":{},"created_at":"2026-04-07T19:48:09.042322+00:00","updated_at":"2026-04-07T19:48:09.042322+00:00","client_id":2}
+    ],
+    "quotes": [
+      {"id":1,"user_id":"366e4e9b-c7cc-422e-ae4b-78d4e36b174a","client":"A","project":"B","materials":0,"labour":0,"markup":0,"tax":0,"status":"draft","date":"1 Jan 2026","notes":"","created_at":"2026-03-28T14:46:11.538038+00:00","client_id":null,"project_id":null},
+      {"id":2,"user_id":"366e4e9b-c7cc-422e-ae4b-78d4e36b174a","client":"Tom Harris","project":"Laundry Cabinets","materials":850,"labour":780,"markup":15,"tax":10,"status":"draft","date":"28 Mar","notes":"","created_at":"2026-03-28T14:53:10.856428+00:00","client_id":null,"project_id":null},
+      {"id":13,"user_id":"366e4e9b-c7cc-422e-ae4b-78d4e36b174a","client":"njcncsd","project":"sdcsdv","materials":51265,"labour":520,"markup":20,"tax":13,"status":"draft","date":"28 Mar","notes":"vdssd","created_at":"2026-03-28T22:06:16.129753+00:00","client_id":null,"project_id":null},
+      {"id":14,"user_id":"366e4e9b-c7cc-422e-ae4b-78d4e36b174a","client":"eydkjd","project":"fjdtyjj","materials":254,"labour":520,"markup":20,"tax":13,"status":"draft","date":"2 Apr","notes":"","created_at":"2026-04-02T09:37:04.832565+00:00","client_id":null,"project_id":null},
+      {"id":15,"user_id":"366e4e9b-c7cc-422e-ae4b-78d4e36b174a","client":"ryjjfcj","project":"jhjhdj","materials":573,"labour":520,"markup":20,"tax":13,"status":"draft","date":"2 Apr","notes":"","created_at":"2026-04-02T09:37:33.070892+00:00","client_id":null,"project_id":null},
+      {"id":16,"user_id":"366e4e9b-c7cc-422e-ae4b-78d4e36b174a","client":"adfbh","project":"dbadfb","materials":283.2,"labour":604.5,"markup":20,"tax":13,"status":"approved","date":"2 Apr","notes":"Cabinet — 600×720×560mm, Birch Ply 18mm, 1 door, 1 drawer\nCabinet — 600×720×560mm, Birch Ply 18mm\nCabinet — 600×720×560mm, Birch Ply 18mm, 1 door, 1 drawer","created_at":"2026-04-02T09:38:32.338838+00:00","client_id":null,"project_id":null},
+      {"id":17,"user_id":"366e4e9b-c7cc-422e-ae4b-78d4e36b174a","client":"dfqqeg","project":"qegffeg","materials":551,"labour":520,"markup":20,"tax":13,"status":"draft","date":"2 Apr","notes":"","created_at":"2026-04-02T11:28:05.908923+00:00","client_id":null,"project_id":null},
+      {"id":18,"user_id":"366e4e9b-c7cc-422e-ae4b-78d4e36b174a","client":"n","project":"gdshjgmh","materials":283.2,"labour":604.5,"markup":20,"tax":13,"status":"draft","date":"2 Apr","notes":"Cabinet — 600×720×560mm, Birch Ply 18mm, 1 door, 1 drawer\nCabinet — 600×720×560mm, Birch Ply 18mm\nCabinet — 600×720×560mm, Birch Ply 18mm, 1 door, 1 drawer","created_at":"2026-04-02T13:04:26.432952+00:00","client_id":null,"project_id":null},
+      {"id":19,"user_id":"366e4e9b-c7cc-422e-ae4b-78d4e36b174a","client":"adagfg","project":"dfgdfg (copy)","materials":283.2,"labour":604.5,"markup":20,"tax":13,"status":"draft","date":"2 Apr","notes":"Cabinet — 600×720×560mm, Birch Ply 18mm, 1 door, 1 drawer\nCabinet — 600×720×560mm, Birch Ply 18mm\nCabinet — 600×720×560mm, Birch Ply 18mm, 1 door, 1 drawer","created_at":"2026-04-02T13:05:15.326881+00:00","client_id":null,"project_id":null},
+      {"id":20,"user_id":"366e4e9b-c7cc-422e-ae4b-78d4e36b174a","client":"ndjmh","project":"dnhmjyhm","materials":416,"labour":604.5,"markup":20,"tax":13,"status":"approved","date":"2 Apr","notes":"dnmgdg","created_at":"2026-04-02T13:05:51.610851+00:00","client_id":null,"project_id":null},
+      {"id":21,"user_id":"366e4e9b-c7cc-422e-ae4b-78d4e36b174a","client":"hybjhb","project":"hjbvhjb","materials":687.98,"labour":962,"markup":20,"tax":13,"status":"draft","date":"4 Apr","notes":"Base Cabinet — 600×720×560mm, Solid Oak 20mm\nBase Cabinet (copy) — 2000×2000×560mm, Birch Ply 18mm, 4 drawers\nCabinet — 600×720×560mm, Birch Ply 18mm\nCabinet — 600×720×560mm, Birch Ply 18mm","created_at":"2026-04-04T17:00:32.142938+00:00","client_id":null,"project_id":null},
+      {"id":22,"user_id":"366e4e9b-c7cc-422e-ae4b-78d4e36b174a","client":"Halimah","project":"House","materials":100,"labour":520,"markup":20,"tax":13,"status":"draft","date":"7 Apr","notes":"New Build","created_at":"2026-04-07T19:48:09.234937+00:00","client_id":2,"project_id":10}
+    ],
+    "orders": [
+      {"id":12,"user_id":"366e4e9b-c7cc-422e-ae4b-78d4e36b174a","client":"njnj","project":"jnjn","value":0.01,"status":"quote","due":"29 Apr 2026","created_at":"2026-04-04T02:22:01.259476+00:00","client_id":null,"project_id":null},
+      {"id":13,"user_id":"366e4e9b-c7cc-422e-ae4b-78d4e36b174a","client":"uhiuh","project":"jknj","value":0.03,"status":"quote","due":"17 Apr 2026","created_at":"2026-04-04T02:30:51.034242+00:00","client_id":null,"project_id":null},
+      {"id":14,"user_id":"366e4e9b-c7cc-422e-ae4b-78d4e36b174a","client":"niujio","project":"ojmoikp","value":0.04,"status":"quote","due":"30 Apr 2026","created_at":"2026-04-04T02:31:27.7743+00:00","client_id":null,"project_id":null}
+    ],
+    "stock_items": [
+      {"id":2,"user_id":"366e4e9b-c7cc-422e-ae4b-78d4e36b174a","name":"18mm Birch Ply","sku":"BP-18","w":2440,"h":1220,"qty":6,"low":3,"cost":72,"created_at":"2026-03-28T14:53:16.592905+00:00"},
+      {"id":11,"user_id":"366e4e9b-c7cc-422e-ae4b-78d4e36b174a","name":"Birch 19","sku":"—","w":2440,"h":1220,"qty":10,"low":3,"cost":65,"created_at":"2026-04-03T00:44:52.489452+00:00"},
+      {"id":17,"user_id":"366e4e9b-c7cc-422e-ae4b-78d4e36b174a","name":"Oak Veneered Birch Ply","sku":"—","w":2440,"h":1220,"qty":10,"low":3,"cost":65,"created_at":"2026-04-07T19:44:25.309238+00:00"},
+      {"id":19,"user_id":"366e4e9b-c7cc-422e-ae4b-78d4e36b174a","name":"25mm Oak","sku":"—","w":50,"h":25,"qty":50,"low":10,"cost":0,"created_at":"2026-04-20T18:00:36.093326+00:00"},
+      {"id":20,"user_id":"366e4e9b-c7cc-422e-ae4b-78d4e36b174a","name":"Oak Veneer 2 x 25","sku":"EB-O-2-25","w":50,"h":22,"qty":50,"low":10,"cost":1,"created_at":"2026-04-26T19:46:06.301244+00:00"},
+      {"id":21,"user_id":"366e4e9b-c7cc-422e-ae4b-78d4e36b174a","name":"DTC Runners 450","sku":"DTC-450","w":2440,"h":1220,"qty":10,"low":3,"cost":65,"created_at":"2026-04-26T19:46:29.465389+00:00"},
+      {"id":22,"user_id":"366e4e9b-c7cc-422e-ae4b-78d4e36b174a","name":"Osmo White Tint","sku":"OS-WT-S","w":2440,"h":1220,"qty":10,"low":3,"cost":65,"created_at":"2026-04-26T19:47:36.573996+00:00"}
+    ]
+  },
+  "rollback_instructions": "If Phase 1 additive migrations damage existing data: existing rows survived because alters are ADD COLUMN only (no drops). Verify with 'select count(*) from <table>' against the row_counts above. If counts differ, contact Supabase support for point-in-time recovery (free tier has 1 day). Otherwise this JSON can be replayed manually via 'insert into <table> (...)' statements built from the rows above."
+}

@@ -1,5 +1,14 @@
 # ProCabinet.App — Build Plan
 
+## Companion Docs
+
+- **`SPEC.md`** — pre-launch refactor spec (what gets cleaned up before this plan can ship)
+- **`SCHEMA.md`** — full database schema with DDL and migration order
+- **`CLAUDE.md`** — development guidelines and code conventions
+- **`Building Docs/Database_Visual_Guide.docx`** — plain-English schema overview
+
+This file (`PLAN.md`) covers the launch-level stack and progress. The structural work that has to happen first is in `SPEC.md`.
+
 ## The Stack
 
 ### Frontend — Plain HTML/CSS/JS

@@ -1,5 +1,16 @@
 # ProCabinet.App — Development Guidelines
 
+## Reference Docs
+
+Read these before making structural decisions or schema changes:
+
+- **`SPEC.md`** — pre-launch refactor spec (problem, goals, non-goals, scope, success criteria, phases, decisions log). The contract for what "done" means.
+- **`SCHEMA.md`** — full database schema with DDL, RLS patterns, and migration order. Source of truth for all tables, columns, and FKs.
+- **`PLAN.md`** — launch-level stack/hosting/payments plan.
+- **`Building Docs/Database_Visual_Guide.docx`** — plain-English version of the schema for non-technical reading.
+
+When making non-obvious decisions during work, append a one-line entry to `SPEC.md § 13 Decisions log`.
+
 ## Stack
 - Single-file app: `index.html` (HTML + CSS + JS, no build step)
 - Auth/DB: Supabase (PostgreSQL)
