@@ -4619,39 +4619,27 @@ function renderSummary(area) {
 let quotes = [];
 let quoteNextId = 1;
 
-// FK-resolving display helpers. The `|| q.client` fallbacks read the legacy
-// text columns and become dead code once Phase 7 step 6 drops them.
+// FK-resolving display helpers. After Phase 7 the legacy text columns are gone,
+// so an unresolved FK simply returns ''.
 function quoteClient(q) {
-  if (!q) return '';
-  if (q.client_id) {
-    const c = clients.find(x => x.id === q.client_id);
-    if (c) return c.name;
-  }
-  return q.client || '';
+  if (!q || !q.client_id) return '';
+  const c = clients.find(x => x.id === q.client_id);
+  return c ? c.name : '';
 }
 function quoteProject(q) {
-  if (!q) return '';
-  if (q.project_id) {
-    const p = projects.find(x => x.id === q.project_id);
-    if (p) return p.name;
-  }
-  return q.project || '';
+  if (!q || !q.project_id) return '';
+  const p = projects.find(x => x.id === q.project_id);
+  return p ? p.name : '';
 }
 function orderClient(o) {
-  if (!o) return '';
-  if (o.client_id) {
-    const c = clients.find(x => x.id === o.client_id);
-    if (c) return c.name;
-  }
-  return o.client || '';
+  if (!o || !o.client_id) return '';
+  const c = clients.find(x => x.id === o.client_id);
+  return c ? c.name : '';
 }
 function orderProject(o) {
-  if (!o) return '';
-  if (o.project_id) {
-    const p = projects.find(x => x.id === o.project_id);
-    if (p) return p.name;
-  }
-  return o.project || '';
+  if (!o || !o.project_id) return '';
+  const p = projects.find(x => x.id === o.project_id);
+  return p ? p.name : '';
 }
 
 // Aggregate materials/labour for a quote from its `quote_lines` rows.
@@ -6674,8 +6662,8 @@ async function loadProject(id) {
     });
   }
 
-  // ui_prefs (renamed from `data` in Phase 7 step 6) holds layout/UI settings only.
-  const prefs = data.ui_prefs || data.data || {};
+  // ui_prefs holds layout/UI settings only (renamed from `data` in Phase 7).
+  const prefs = data.ui_prefs || {};
   if (prefs.settings && prefs.settings.units) setUnits(prefs.settings.units);
   results = null;
   renderSheets(); renderPieces();
