@@ -1,6 +1,6 @@
 # Database Schema
 
-> **Status:** Draft
+> **Status:** Implemented (2026-04-29) — one deviation: `orders.value` retained, see § 3.15.
 > **Companion docs:** `SPEC.md` (refactor spec), `Building Docs/Database_Visual_Guide.docx` (plain-English version)
 > **Target DB:** Supabase Postgres 17
 
@@ -453,13 +453,14 @@ Existing table, modified.
 alter table public.orders
   drop column client,
   drop column project,
-  drop column value,                                -- derived from order_lines
   add column quote_id bigint references public.quotes(id) on delete set null,
   add column notes text,
   add column updated_at timestamptz not null default now();
 
--- Kept: id, user_id, client_id, project_id, status, due, created_at
+-- Kept: id, user_id, client_id, project_id, value, status, due, created_at
 ```
+
+> **`value` retained (deviation, 2026-04-29).** Originally this section said `drop column value, -- derived from order_lines`. During Phase 7 we found that `order_lines` aggregation only reproduces materials+labour, but `orders.value` is a snapshot of the customer-paid total at conversion time (post-markup, post-tax). Without markup/tax columns on `orders` and with the parent quote potentially editable or deletable, derivation isn't safe. `value` stays as the source of truth for dashboard pipeline/revenue, and `order_lines` is purely itemisation. See SPEC.md § 13 (2026-04-29).
 
 `status` values: `'confirmed' | 'production' | 'delivery' | 'done' | 'cancelled'`.
 
@@ -545,7 +546,7 @@ create policy "owner via piece"
 - `stock_items` — add 9 columns (category, supplier, supplier_url, variant, thickness_mm, width_mm, length_m, glue, updated_at)
 - `projects` — rename `data` → `ui_prefs` (data inside is migrated to child tables before the rename)
 - `quotes` — drop `client`, `project`, `materials`, `labour`; add `quote_number`, `updated_at`
-- `orders` — drop `client`, `project`, `value`; add `quote_id`, `notes`, `updated_at`
+- `orders` — drop `client`, `project` (NOT `value` — see § 3.15 deviation note); add `quote_id`, `notes`, `updated_at`
 
 ### Unchanged tables
 - `clients`
