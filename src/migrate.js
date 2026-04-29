@@ -188,10 +188,10 @@ async function _migrateCabinets(log) {
   _migLog(log, sub, 'OK', 'Inserted ' + toInsert.length + ' cabinet templates', toInsert.length);
 }
 
-// ── 5. Cut list data from existing projects.data jsonb ──
+// ── 5. Cut list data from existing projects.ui_prefs (formerly `data`) jsonb ──
 async function _migrateCutListProjects(log) {
   const sub = 'cutlist_projects';
-  const { data: projects } = await _db('projects').select('id,name,data').eq('user_id', _userId);
+  const { data: projects } = await _db('projects').select('id,name,ui_prefs').eq('user_id', _userId);
   if (!projects || projects.length === 0) {
     _migLog(log, sub, 'SKIP', 'No projects to migrate');
     return;
@@ -201,7 +201,8 @@ async function _migrateCutListProjects(log) {
     const { data: existingSheets } = await _db('sheets').select('id').eq('project_id', p.id).limit(1);
     const { data: existingPieces } = await _db('pieces').select('id').eq('project_id', p.id).limit(1);
     if ((existingSheets && existingSheets.length) || (existingPieces && existingPieces.length)) continue;
-    const cl = (p.data && p.data.cutlist) || (p.data && (p.data.sheets || p.data.pieces) ? p.data : null);
+    const blob = p.ui_prefs;
+    const cl = (blob && blob.cutlist) || (blob && (blob.sheets || blob.pieces) ? blob : null);
     if (!cl) continue;
     const sheets = cl.sheets || [];
     const pieces = cl.pieces || [];
@@ -335,7 +336,7 @@ async function _migrateCQProjects(log) {
     if (existing && existing.length > 0) {
       projectId = existing[0].id;
     } else {
-      const { data: created, error } = await _db('projects').insert([{ user_id: _userId, name, data: {} }]);
+      const { data: created, error } = await _db('projects').insert([{ user_id: _userId, name }]);
       if (error) { _migLog(log, sub, 'WARN', 'Project create: ' + error.message); continue; }
       projectId = (created && created[0]) ? created[0].id : null;
       if (!projectId) continue;

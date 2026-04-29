@@ -6439,12 +6439,12 @@ async function _clLoadProjectList() {
 }
 
 // ──────────────────────────────────────────────
-// UNIFIED PROJECT SAVE  (Phase 1.5 of pre-launch refactor)
+// UNIFIED PROJECT SAVE
 // One canonical place to save project data, regardless of which subsystem (Cut List
-// or Cabinet Quote) initiated the save. Ensures (user_id, name) maps to ONE projects row.
-// During the prototyping pause: writes scope payload into projects.data jsonb under
-// `data.cutlist` or `data.quote`. Phase 3 will switch this to write to child tables
-// (sheets, pieces, edge_bands, quote_lines).
+// or Cabinet Quote) initiated the save. Ensures (user_id, name) maps to ONE projects
+// row. The scope payload is written to the schema's child tables (sheets, pieces,
+// edge_bands, quote_lines); the projects row itself only holds UI prefs in `ui_prefs`
+// post Phase 7 (alias `data` pre-rename).
 // scope: 'cutlist' | 'quote'
 // payload: free-form scope-specific blob (cutlist: {sheets, pieces, settings}; quote: {lines, date})
 // Returns: { projectId, isNew, error }
@@ -6455,38 +6455,31 @@ async function _saveProjectScoped({ name, scope, payload }) {
   if (scope !== 'cutlist' && scope !== 'quote') return { error: 'Invalid scope: ' + scope };
   const trimmed = name.trim();
 
-  // 1. Look up existing project for this (user, name)
+  // 1. Find-or-create the projects row for (user, name). The row itself stores
+  //    nothing scope-specific anymore — child tables hold the data.
   const { data: existing, error: lookupErr } = await _db('projects')
-    .select('id,data')
+    .select('id')
     .eq('user_id', _userId)
     .eq('name', trimmed);
   if (lookupErr) return { error: 'Lookup failed: ' + lookupErr.message };
 
-  // 2. Update if exists, insert if not — merging the scope's payload into data jsonb
   let projectId, isNew;
   if (existing && existing.length > 0) {
-    const row = existing[0];
-    const mergedData = Object.assign({}, row.data || {}, { [scope]: payload });
-    const { error: updateErr } = await _db('projects')
-      .update({ data: mergedData, updated_at: new Date().toISOString() })
-      .eq('id', row.id);
-    if (updateErr) return { error: 'Update failed: ' + updateErr.message };
-    projectId = row.id; isNew = false;
+    projectId = existing[0].id; isNew = false;
+    await _db('projects').update({ updated_at: new Date().toISOString() }).eq('id', projectId);
   } else {
-    const newData = { [scope]: payload };
     const { data: created, error: insertErr } = await _db('projects')
-      .insert([{ name: trimmed, user_id: _userId, data: newData }]);
+      .insert([{ name: trimmed, user_id: _userId }]);
     if (insertErr) return { error: 'Insert failed: ' + insertErr.message };
     projectId = (created && created[0]) ? created[0].id : null;
     isNew = true;
   }
 
-  // 3. Phase 3.5: dual-write cutlist scope into sheets/pieces/edge_bands tables (REPLACE semantics).
+  // 2. Replace the scope's child-table rows with the current payload.
   if (scope === 'cutlist' && projectId) {
     try { await _replaceCutListChildTables(projectId, payload); }
     catch(e) { console.warn('[saveProjectScoped] child-table sync failed:', e.message || e); }
   }
-  // 3b. Phase 3.6: dual-write quote scope into quote_lines (REPLACE semantics).
   if (scope === 'quote' && projectId) {
     try { await _replaceQuoteLinesChildTable(projectId, payload); }
     catch(e) { console.warn('[saveProjectScoped] quote_lines sync failed:', e.message || e); }
@@ -6511,10 +6504,9 @@ async function _replaceQuoteLinesChildTable(projectId, payload) {
   if (!quoteId) {
     const { data: created, error } = await _db('quotes').insert([{
       user_id: _userId, project_id: projectId,
-      client: '', project: '',
       notes: tag, status: 'draft',
       date: payload.date || new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}),
-      markup: 0, tax: 0, materials: 0, labour: 0,
+      markup: 0, tax: 0,
     }]);
     if (error) { console.warn('[saveProjectScoped] quote create failed:', error.message); return; }
     quoteId = (created && created[0]) ? created[0].id : null;
@@ -6643,56 +6635,48 @@ async function saveProject(name) {
 async function loadProject(id) {
   const { data, error } = await _db('projects').select('*').eq('id', id).single();
   if (error || !data) { _toast('Could not load project.', 'error'); return; }
-  const projectData = data.data || {};
   sheets = []; pieces = []; edgeBands = []; _sheetId = 1; _pieceId = 1; _edgeBandId = 1; pieceColorIdx = 0;
 
-  // Phase 3.5: prefer DB child tables. Fall back to projects.data jsonb if DB rows don't exist yet.
+  // Source of truth: child tables (sheets / pieces / edge_bands).
   const [{ data: dbSheets }, { data: dbPieces }, { data: dbEdges }] = await Promise.all([
     _db('sheets').select('*').eq('project_id', id).order('position', { ascending: true }),
     _db('pieces').select('*').eq('project_id', id).order('position', { ascending: true }),
     _db('edge_bands').select('*').eq('project_id', id).order('position', { ascending: true }),
   ]);
 
-  if ((dbSheets && dbSheets.length) || (dbPieces && dbPieces.length) || (dbEdges && dbEdges.length)) {
-    // DB is the source
-    for (const r of (dbSheets || [])) {
-      sheets.push({
-        id: _sheetId++,
-        name: r.name, w: r.w_mm, h: r.h_mm, qty: r.qty,
-        kerf: r.kerf_mm, grain: r.grain,
-        color: r.color || COLORS[pieceColorIdx++ % COLORS.length],
-        enabled: r.enabled !== false,
-        db_id: r.id,
-      });
-    }
-    for (const r of (dbPieces || [])) {
-      pieces.push({
-        id: _pieceId++,
-        label: r.label, w: r.w_mm, h: r.h_mm, qty: r.qty,
-        grain: r.grain, material: r.material, notes: r.notes,
-        color: r.color || COLORS[pieceColorIdx++ % COLORS.length],
-        enabled: r.enabled !== false,
-        edges: { L1: null, W2: null, L3: null, W4: null },
-        db_id: r.id,
-      });
-    }
-    for (const r of (dbEdges || [])) {
-      edgeBands.push({
-        id: _edgeBandId++,
-        name: r.name, thickness: r.thickness_mm, width: r.width_mm,
-        length: r.length_m, glue: r.glue, color: r.color,
-        db_id: r.id,
-      });
-    }
-  } else {
-    // Fall back to legacy projects.data jsonb
-    const cl = projectData.cutlist || projectData;  // Phase 1.5 nests under cutlist; older saves are flat
-    for (const s of (cl.sheets || [])) { sheets.push({ ...s, id: _sheetId++, color: s.color || COLORS[pieceColorIdx++ % COLORS.length] }); }
-    for (const pc of (cl.pieces || [])) { pieces.push({ ...pc, id: _pieceId++ }); }
-    if (cl.settings && cl.settings.units) setUnits(cl.settings.units);
+  for (const r of (dbSheets || [])) {
+    sheets.push({
+      id: _sheetId++,
+      name: r.name, w: r.w_mm, h: r.h_mm, qty: r.qty,
+      kerf: r.kerf_mm, grain: r.grain,
+      color: r.color || COLORS[pieceColorIdx++ % COLORS.length],
+      enabled: r.enabled !== false,
+      db_id: r.id,
+    });
+  }
+  for (const r of (dbPieces || [])) {
+    pieces.push({
+      id: _pieceId++,
+      label: r.label, w: r.w_mm, h: r.h_mm, qty: r.qty,
+      grain: r.grain, material: r.material, notes: r.notes,
+      color: r.color || COLORS[pieceColorIdx++ % COLORS.length],
+      enabled: r.enabled !== false,
+      edges: { L1: null, W2: null, L3: null, W4: null },
+      db_id: r.id,
+    });
+  }
+  for (const r of (dbEdges || [])) {
+    edgeBands.push({
+      id: _edgeBandId++,
+      name: r.name, thickness: r.thickness_mm, width: r.width_mm,
+      length: r.length_m, glue: r.glue, color: r.color,
+      db_id: r.id,
+    });
   }
 
-  if (projectData.settings && projectData.settings.units) setUnits(projectData.settings.units);
+  // ui_prefs (renamed from `data` in Phase 7 step 6) holds layout/UI settings only.
+  const prefs = data.ui_prefs || data.data || {};
+  if (prefs.settings && prefs.settings.units) setUnits(prefs.settings.units);
   results = null;
   renderSheets(); renderPieces();
   if (typeof renderEdgeBands === 'function') { try { renderEdgeBands(); } catch(e) {} }
