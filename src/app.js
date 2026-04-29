@@ -4699,6 +4699,13 @@ function quoteTotal(q) {
   return marked * (1 + (q.tax || 0) / 100);
 }
 
+// orders.value is the customer-paid snapshot at conversion time (post-markup,
+// post-tax). order_lines exist for itemisation but do not drive the dashboard
+// total — see SPEC.md § 13 (2026-04-29) for why we kept the column.
+function orderTotal(o) {
+  return o ? (o.value || 0) : 0;
+}
+
 async function createQuote() {
   const client = document.getElementById('q-client').value.trim();
   const project = document.getElementById('q-project').value.trim();
@@ -4755,6 +4762,20 @@ async function convertQuoteToOrder(id) {
   // Carry quote notes to order notes & store quote reference
   if (q.notes && data) { data.notes = q.notes; _onSet(data.id, q.notes); }
   if (data) { _oqSet(data.id, q.id); }
+  // Copy the quote's line items to order_lines so the order has its own snapshot
+  if (data) {
+    try {
+      const { data: qlines } = await _db('quote_lines').select('*').eq('quote_id', q.id);
+      if (qlines && qlines.length) {
+        const olines = qlines.map(l => {
+          const nl = { ...l, order_id: data.id };
+          delete nl.id; delete nl.quote_id;
+          return nl;
+        });
+        await _db('order_lines').insert(olines);
+      }
+    } catch(e) { console.warn('[convertQuoteToOrder] copy lines failed:', e.message || e); }
+  }
   orders.unshift(data);
   document.getElementById('orders-badge').textContent = orders.filter(o => o.status !== 'complete').length;
   _toast(`Order created for ${quoteClient(q)} — ${quoteProject(q)}`, 'success');
@@ -4951,6 +4972,14 @@ async function duplicateOrder(id) {
   const { data, error } = await _dbInsertSafe('orders', row);
   if (error) { _toast('Could not duplicate — ' + (error.message || JSON.stringify(error)), 'error'); return; }
   if (o.notes) { data.notes = o.notes; _onSet(data.id, o.notes); }
+  // Copy order_lines to the duplicate so itemisation survives
+  try {
+    const { data: oldLines } = await _db('order_lines').select('*').eq('order_id', o.id);
+    if (oldLines && oldLines.length) {
+      const newLines = oldLines.map(l => { const nl = { ...l, order_id: data.id }; delete nl.id; return nl; });
+      await _db('order_lines').insert(newLines);
+    }
+  } catch(e) { console.warn('[duplicateOrder] copy lines failed:', e.message || e); }
   orders.unshift(data);
   document.getElementById('orders-badge').textContent = orders.filter(o => o.status !== 'complete').length;
   _toast('Order duplicated', 'success');
