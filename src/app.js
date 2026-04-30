@@ -1299,8 +1299,8 @@ function switchSection(name) {
   });
   if (name === 'cabinet') { try { renderCQPanel(); } catch(e) {} }
   if (name === 'stock') { renderStockMain(); }
-  if (name === 'quote') { renderQuoteMain(); try{renderQuoteLibraries();}catch(e){} }
-  if (name === 'orders') { renderOrdersMain(); try{renderOrderLibraries();}catch(e){} }
+  if (name === 'quote') renderQuoteMain();
+  if (name === 'orders') renderOrdersMain();
   if (name === 'schedule') renderSchedule();
   if (name === 'dashboard') { renderDashboard(); setTimeout(drawRevenueChart, 0); }
   if (name === 'projects') renderProjectsMain();
@@ -5110,25 +5110,9 @@ async function updateQuoteField(id, field, val) {
 // ══════════════════════════════════════════
 // ORDER HELPERS
 // ══════════════════════════════════════════
-async function updateOrderField(id, field, val) {
-  if (!_requireAuth()) return;
-  const o = orders.find(o => o.id === id);
-  if (!o) return;
-  const v = field === 'value' ? (parseFloat(val) || 0) : val;
-  o[field] = v;
-  // 'notes' column not yet in DB schema — persist in localStorage, update others normally
-  if (field === 'notes') { _onSet(id, v); } else { await _db('orders').update({ [field]: v }).eq('id', id); }
-  document.getElementById('orders-badge').textContent = orders.filter(o => o.status !== 'complete').length;
-  renderOrdersMain();
-}
-
 function setOrderFilter(f) { window._orderFilter = f; renderOrdersMain(); }
 
 // ── Quote Clients Panel & Import/Export ──
-// ── Library render stubs (old tabbed library system removed) ──
-function renderQuoteLibraries() {}
-function renderOrderLibraries() {}
-function _noOp() {}
 // ── Shared Client Library Import/Export ──
 function exportClientsCSV() {
   const allClients = [...new Set([...quotes.map(q=>quoteClient(q)), ...orders.map(o=>orderClient(o))].filter(Boolean))].sort();
