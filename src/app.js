@@ -1029,6 +1029,7 @@ _sb.auth.onAuthStateChange(async (event, session) => {
     document.getElementById('account-user-view').style.display = '';
     _showApp();
     await loadAllData();
+    await _loadCabinetTemplatesFromDB();
     _clLoadProjectList();
   } else {
     _userId = null;
@@ -6805,6 +6806,42 @@ let cqLibrary = [];
 function loadCQLibrary() { try { cqLibrary = JSON.parse(localStorage.getItem('pc_cq_library')||'[]'); } catch(e) { cqLibrary=[]; } }
 function saveCQLibrary() { localStorage.setItem('pc_cq_library', JSON.stringify(cqLibrary)); }
 
+// Cloud sync: cabinet_templates DB table backs the saved-cabinet library.
+// Saves dual-write (localStorage + DB); loads on auth replace the in-memory array.
+async function _saveCabinetToDB(entry) {
+  if (!_userId) return null;
+  try {
+    const { data, error } = await _db('cabinet_templates').insert({
+      user_id: _userId,
+      name: entry._libName || entry.name || 'Cabinet',
+      type: 'base',
+      default_w_mm: entry.w || null,
+      default_h_mm: entry.h || null,
+      default_d_mm: entry.d || null,
+      default_specs: entry,
+    }).select().single();
+    if (error) { console.warn('[cabinet-template save]', error.message); return null; }
+    return data?.id || null;
+  } catch(e) { console.warn('[cabinet-template save]', e.message || e); return null; }
+}
+async function _deleteCabinetFromDB(dbId) {
+  if (!_userId || !dbId) return;
+  try {
+    const { error } = await _db('cabinet_templates').delete().eq('id', dbId);
+    if (error) console.warn('[cabinet-template delete]', error.message);
+  } catch(e) { console.warn('[cabinet-template delete]', e.message || e); }
+}
+async function _loadCabinetTemplatesFromDB() {
+  if (!_userId) return;
+  try {
+    const { data, error } = await _db('cabinet_templates').select('*').eq('user_id', _userId).order('name');
+    if (error) { console.warn('[cabinet-template load]', error.message); return; }
+    if (!data) return;
+    cqLibrary = data.map(row => ({ ...(row.default_specs || {}), _libName: row.name, db_id: row.id }));
+    saveCQLibrary();
+  } catch(e) { console.warn('[cabinet-template load]', e.message || e); }
+}
+
 // ── CQ Line Items State ──
 let cqLines = [];
 let cqNextId = 1;
@@ -7174,6 +7211,11 @@ function cqImportLibrary() {
       saveCQLibrary(); renderCQLibrary();
       _toast(imported + ' cabinets imported', 'success');
       const p = document.getElementById('cq-library-panel'); if (p) p.style.display = '';
+      // Cloud sync: push the just-imported entries to DB and capture db_ids
+      const newEntries = cqLibrary.slice(-imported);
+      Promise.all(newEntries.map(e => _saveCabinetToDB(e).then(id => { if (id) e.db_id = id; })))
+        .then(() => saveCQLibrary())
+        .catch(err => console.warn('[cabinet-template bulk save]', err.message || err));
     } catch(e) { _toast('Could not read CSV: ' + e.message, 'error'); }
   };
   input.click();
@@ -7188,6 +7230,7 @@ function cqSaveToLibrary() {
   saveCQLibrary();
   renderCQLibrary();
   _toast(`"${copy._libName}" saved to library`, 'success');
+  _saveCabinetToDB(copy).then(id => { if (id) { copy.db_id = id; saveCQLibrary(); } });
 }
 function cqLoadFromLibrary(idx) {
   const src = cqLibrary[idx];
@@ -7202,9 +7245,11 @@ function cqLoadFromLibrary(idx) {
   _toast(`"${src._libName}" added to quote`, 'success');
 }
 function cqRemoveFromLibrary(idx) {
+  const removed = cqLibrary[idx];
   cqLibrary.splice(idx, 1);
   saveCQLibrary();
   renderCQLibrary();
+  if (removed?.db_id) _deleteCabinetFromDB(removed.db_id);
 }
 function renderCQLibrary() {} // Library now via smart search dropdown
 
@@ -8738,6 +8783,7 @@ function _confirmSaveCLToCabLib() {
   saveCQLibrary();
   _closePopup();
   _toast(`"${name}" saved to cabinet library`, 'success');
+  _saveCabinetToDB(entry).then(id => { if (id) { entry.db_id = id; saveCQLibrary(); } });
 }
 
 // Override _clLoadCabinetParts to also handle entries with _cutParts
