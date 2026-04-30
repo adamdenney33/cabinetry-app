@@ -4,9 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ProCabinet — Cabinetry Production Dashboard</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
+<script type="module" src="/src/main.js"></script>
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -793,9 +791,9 @@
 </div><!-- end app-body -->
 
 <!-- Module load order matters: db.js + ui.js define globals app.js depends on. -->
-<script src="src/db.js"></script>
-<script src="src/ui.js"></script>
-<script src="src/app.js"></script>
-<script src="src/migrate.js"></script>
+<script defer src="src/db.js"></script>
+<script defer src="src/ui.js"></script>
+<script defer src="src/app.js"></script>
+<script defer src="src/migrate.js"></script>
 </body>
 </html>
