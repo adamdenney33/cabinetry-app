@@ -158,21 +158,24 @@ async function _migrateStock(log) {
   _migLog(log, sub, 'OK', 'Updated metadata for ' + updated + ' stock items', updated);
 }
 
-// ── 4. Cabinet templates (from pc_cab_items) ──
+// ── 4. Cabinet templates (from pc_cq_library) ──
+// Migrates the localStorage saved-cabinet library to the cabinet_templates DB
+// table. Idempotent via name match. Replaces an earlier version that read
+// pc_cab_items from the now-removed orphan cabItems system.
 async function _migrateCabinets(log) {
   const sub = 'cabinet_templates';
-  const items = _migReadLS('pc_cab_items') || [];
+  const items = _migReadLS('pc_cq_library') || [];
   if (items.length === 0) {
-    _migLog(log, sub, 'SKIP', 'No cabinet items in localStorage');
+    _migLog(log, sub, 'SKIP', 'No saved cabinets in localStorage');
     return;
   }
   const { data: existing } = await _db('cabinet_templates').select('name').eq('user_id', _userId);
   const existingNames = new Set((existing || []).map(r => r.name));
   const toInsert = items
-    .filter(c => !existingNames.has(c.name || ('Cabinet ' + c.id)))
+    .filter(c => (c._libName || c.name) && !existingNames.has(c._libName || c.name))
     .map(c => ({
       user_id: _userId,
-      name: c.name || ('Cabinet ' + c.id),
+      name: c._libName || c.name,
       type: 'base',
       default_w_mm: parseFloat(c.w) || null,
       default_h_mm: parseFloat(c.h) || null,
@@ -180,7 +183,7 @@ async function _migrateCabinets(log) {
       default_specs: c
     }));
   if (toInsert.length === 0) {
-    _migLog(log, sub, 'SKIP', 'All ' + items.length + ' cabinet items already migrated', 0);
+    _migLog(log, sub, 'SKIP', 'All ' + items.length + ' saved cabinets already migrated', 0);
     return;
   }
   const { error } = await _db('cabinet_templates').insert(toInsert);
