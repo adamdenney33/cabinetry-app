@@ -6802,12 +6802,9 @@ let cqSettings = {
 };
 
 // ── Cabinet Library ──
+// Backed by the cabinet_templates DB table. Library is loaded on auth
+// (_loadCabinetTemplatesFromDB) and stays in-memory; saves go straight to DB.
 let cqLibrary = [];
-function loadCQLibrary() { try { cqLibrary = JSON.parse(localStorage.getItem('pc_cq_library')||'[]'); } catch(e) { cqLibrary=[]; } }
-function saveCQLibrary() { localStorage.setItem('pc_cq_library', JSON.stringify(cqLibrary)); }
-
-// Cloud sync: cabinet_templates DB table backs the saved-cabinet library.
-// Saves dual-write (localStorage + DB); loads on auth replace the in-memory array.
 async function _saveCabinetToDB(entry) {
   if (!_userId) return null;
   try {
@@ -6838,7 +6835,6 @@ async function _loadCabinetTemplatesFromDB() {
     if (error) { console.warn('[cabinet-template load]', error.message); return; }
     if (!data) return;
     cqLibrary = data.map(row => ({ ...(row.default_specs || {}), _libName: row.name, db_id: row.id }));
-    saveCQLibrary();
   } catch(e) { console.warn('[cabinet-template load]', e.message || e); }
 }
 
@@ -7208,13 +7204,12 @@ function cqImportLibrary() {
         cab.looseShelves = parseInt(r[19])||0; cab.partitions = parseInt(r[20])||0; cab.endPanels = parseInt(r[21])||0;
         cqLibrary.push(cab); imported++;
       }
-      saveCQLibrary(); renderCQLibrary();
+      renderCQLibrary();
       _toast(imported + ' cabinets imported', 'success');
       const p = document.getElementById('cq-library-panel'); if (p) p.style.display = '';
       // Cloud sync: push the just-imported entries to DB and capture db_ids
       const newEntries = cqLibrary.slice(-imported);
       Promise.all(newEntries.map(e => _saveCabinetToDB(e).then(id => { if (id) e.db_id = id; })))
-        .then(() => saveCQLibrary())
         .catch(err => console.warn('[cabinet-template bulk save]', err.message || err));
     } catch(e) { _toast('Could not read CSV: ' + e.message, 'error'); }
   };
@@ -7227,10 +7222,9 @@ function cqSaveToLibrary() {
   copy.id = Date.now();
   copy._libName = copy.name || copy.type || 'Cabinet';
   cqLibrary.push(copy);
-  saveCQLibrary();
   renderCQLibrary();
   _toast(`"${copy._libName}" saved to library`, 'success');
-  _saveCabinetToDB(copy).then(id => { if (id) { copy.db_id = id; saveCQLibrary(); } });
+  _saveCabinetToDB(copy).then(id => { if (id) copy.db_id = id; });
 }
 function cqLoadFromLibrary(idx) {
   const src = cqLibrary[idx];
@@ -7247,7 +7241,6 @@ function cqLoadFromLibrary(idx) {
 function cqRemoveFromLibrary(idx) {
   const removed = cqLibrary[idx];
   cqLibrary.splice(idx, 1);
-  saveCQLibrary();
   renderCQLibrary();
   if (removed?.db_id) _deleteCabinetFromDB(removed.db_id);
 }
@@ -8780,10 +8773,9 @@ function _confirmSaveCLToCabLib() {
   const maxD = Math.max(...pieces.map(p => Math.min(p.w, p.h)), 560);
   entry.w = maxW; entry.h = maxW; entry.d = maxD;
   cqLibrary.push(entry);
-  saveCQLibrary();
   _closePopup();
   _toast(`"${name}" saved to cabinet library`, 'success');
-  _saveCabinetToDB(entry).then(id => { if (id) { entry.db_id = id; saveCQLibrary(); } });
+  _saveCabinetToDB(entry).then(id => { if (id) entry.db_id = id; });
 }
 
 // Override _clLoadCabinetParts to also handle entries with _cutParts
@@ -9167,7 +9159,6 @@ function _restoreProdStarts(ordersList) {
 loadCQSettings();
 loadCQLines();
 loadCQSaved();
-loadCQLibrary();
 loadCQProjectLibrary();
 loadStockLibraries();
 
