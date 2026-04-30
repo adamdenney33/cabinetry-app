@@ -1041,7 +1041,7 @@ _sb.auth.onAuthStateChange(async (event, session) => {
     _userId = null;
     document.getElementById('account-guest-view').style.display = '';
     document.getElementById('account-user-view').style.display = 'none';
-    _clProjectCache = []; renderCLLibraries(); // refresh to show sign-in prompt
+    _clProjectCache = [];
   }
 });
 
@@ -1343,11 +1343,10 @@ function switchSection(name) {
   document.querySelectorAll('.section-panel').forEach(p => {
     p.classList.toggle('active', p.id === 'panel-' + name);
   });
-  if (name === 'cabinet') { try { renderCQPanel(); renderCabLibraries(); } catch(e) {} }
-  if (name === 'stock') { renderStockMain(); try{renderStockLibrariesUI();}catch(e){} }
+  if (name === 'cabinet') { try { renderCQPanel(); } catch(e) {} }
+  if (name === 'stock') { renderStockMain(); }
   if (name === 'quote') { renderQuoteMain(); try{renderQuoteLibraries();}catch(e){} }
   if (name === 'orders') { renderOrdersMain(); try{renderOrderLibraries();}catch(e){} }
-  if (name === 'cutlist') { try{renderCLLibraries();}catch(e){} }
   if (name === 'schedule') renderSchedule();
   if (name === 'dashboard') { renderDashboard(); setTimeout(drawRevenueChart, 0); }
   if (name === 'projects') renderProjectsMain();
@@ -6108,7 +6107,6 @@ function saveStockLibrary(nameArg) {
   };
   stockLibraries.unshift(lib);
   saveStockLibraries();
-  renderStockLibrariesUI();
   _toast(`Library "${name}" saved`, 'success');
 }
 
@@ -6123,7 +6121,6 @@ function loadStockLibrary(idx) {
     if (lib.suppliers) localStorage.setItem('pc_stock_suppliers', JSON.stringify(lib.suppliers));
     renderStockMain();
     _updateStockBadge();
-    renderCLLibraries();
     _toast(`Loaded "${lib.name}"`, 'success');
   }, false);
 }
@@ -6132,7 +6129,6 @@ function deleteStockLibrary(idx) {
   _confirm('Delete this library?', () => {
     stockLibraries.splice(idx, 1);
     saveStockLibraries();
-    renderStockLibrariesUI();
   });
 }
 
@@ -6153,7 +6149,7 @@ function importStockLibrary() {
     const file = e.target.files[0]; if (!file) return;
     try {
       const data = JSON.parse(await file.text());
-      if (Array.isArray(data)) { data.forEach(lib => { lib.id = Date.now() + Math.random(); stockLibraries.push(lib); }); saveStockLibraries(); renderStockLibrariesUI(); _toast(data.length + ' libraries imported', 'success'); }
+      if (Array.isArray(data)) { data.forEach(lib => { lib.id = Date.now() + Math.random(); stockLibraries.push(lib); }); saveStockLibraries(); _toast(data.length + ' libraries imported', 'success'); }
       else _toast('Invalid file', 'error');
     } catch(e) { _toast('Could not read file', 'error'); }
   };
@@ -6417,12 +6413,9 @@ function _updateOptCounter() {
 // ══════════════════════════════════════════
 // PROJECTS PANEL
 // ══════════════════════════════════════════
-// Legacy toggleProjectsPanel — no-op (old library system removed)
-function toggleProjectsPanel() {}
-
 async function _clLoadProjectList() {
   const { data, error } = await _db('projects').select('id,name,updated_at').order('updated_at', { ascending: false });
-  if (!error && data) { _clProjectCache = data; renderCLLibraries(); }
+  if (!error && data) { _clProjectCache = data; }
 }
 
 // ──────────────────────────────────────────────
@@ -6675,7 +6668,6 @@ function deleteProject(id) {
   _confirm('Delete this project? This cannot be undone.', async () => {
     await _db('projects').delete().eq('id', id);
     _clProjectCache = _clProjectCache.filter(p => p.id !== id);
-    renderCLLibraries();
   });
 }
 
@@ -9002,11 +8994,7 @@ function cqConvertToOrder() {
 
 // ── PDF / Print ──
 
-// ── Library system stubs (old tabbed library removed in v0.11) ──
-function _renderLibUI() {}
 let _clProjectCache = [];
-
-function renderCLLibraries() {}
 
 // ── Cut List smart search: Projects ──
 function _smartCLProjectSuggest(input, boxId) {
@@ -9303,8 +9291,6 @@ _clLoadCabinetParts = function(libIdx) {
   // Otherwise explode from cabinet dimensions
   _clLoadCabinetParts_orig(libIdx);
 };
-function renderCabLibraries() {}
-function renderStockLibrariesUI() {}
 /* ── OLD _renderLibUI body removed ──
 function _renderLibUI_OLD(containerId, libName, items, opts) {
   const el = document.getElementById(containerId);
@@ -9356,8 +9342,6 @@ function _renderLibUI_OLD(containerId, libName, items, opts) {
 } END OLD _renderLibUI body */
 
 function _escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
-
-// (Old tab library renderers removed — stubs defined above)
 
 function printCQQuote(mode) {
   if (!cqLines.length) { _toast('Add cabinet lines first.', 'error'); return; }
