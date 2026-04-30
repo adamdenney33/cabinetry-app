@@ -5110,8 +5110,6 @@ async function updateQuoteField(id, field, val) {
 // ══════════════════════════════════════════
 // ORDER HELPERS
 // ══════════════════════════════════════════
-function setOrderFilter(f) { window._orderFilter = f; renderOrdersMain(); }
-
 // ── Quote Clients Panel & Import/Export ──
 // ── Shared Client Library Import/Export ──
 function exportClientsCSV() {
@@ -5134,49 +5132,6 @@ function importClientsCSV() {
 }
 
 
-// ── Order Import/Export ──
-function exportOrdersCSV() {
-  if (!orders.length) { _toast('No orders to export', 'error'); return; }
-  const rows = [['Client','Project','Value','Status','Due','Notes']];
-  orders.forEach(o => rows.push([orderClient(o),orderProject(o),o.value,o.status,o.due||'TBD',o.notes||'']));
-  const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
-  const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([csv],{type:'text/csv'})), download: `orders-${new Date().toISOString().slice(0,10)}.csv` });
-  a.click(); URL.revokeObjectURL(a.href);
-  _toast('Orders exported', 'success');
-}
-function importOrdersCSV() {
-  const input = document.createElement('input');
-  input.type = 'file'; input.accept = '.csv';
-  input.onchange = async e => {
-    const file = e.target.files[0]; if (!file) return;
-    const text = await file.text();
-    const rows = text.split(/\r?\n/).map(r => r.split(',').map(c => c.replace(/^"|"$/g,'').trim()));
-    if (rows.length < 2) { _toast('No data rows', 'error'); return; }
-    let imported = 0;
-    for (let i = 1; i < rows.length; i++) {
-      const r = rows[i]; if (r.length < 2 || !r[0]) continue;
-      const client_id = r[0] ? await resolveClient(r[0]) : null;
-      const project_id = r[1] ? await resolveProject(r[1], client_id) : null;
-      const row = { user_id: _userId, value: parseFloat(r[2])||0, status: r[3]||'quote', due: r[4]||'TBD' };
-      if (client_id) row.client_id = client_id;
-      if (project_id) row.project_id = project_id;
-      if (_userId) { const{data}=await _db('orders').insert(row).select().single(); if(data){data.notes=r[5]||'';_onSet(data.id,data.notes);orders.unshift(data);imported++;} }
-    }
-    _toast(imported+' orders imported','success'); renderOrdersMain();
-    document.getElementById('orders-badge').textContent = orders.filter(o=>o.status!=='complete').length;
-  };
-  input.click();
-}
-
-async function setOrderStatus(id, status) {
-  if (!_requireAuth()) return;
-  const o = orders.find(o => o.id === id);
-  if (!o) return;
-  await _db('orders').update({ status }).eq('id', id);
-  o.status = status;
-  document.getElementById('orders-badge').textContent = orders.filter(o => o.status !== 'complete').length;
-  renderOrdersMain();
-}
 
 // ══════════════════════════════════════════
 // STOCK HELPERS
