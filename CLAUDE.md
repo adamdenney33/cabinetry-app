@@ -12,9 +12,15 @@ Read these before making structural decisions or schema changes:
 When making non-obvious decisions during work, append a one-line entry to `SPEC.md § 13 Decisions log`.
 
 ## Stack
-- Single-file app: `index.html` (HTML + CSS + JS, no build step)
+- `index.html` — markup shell (~800 lines)
+- `styles.css` — extracted in Phase 4
+- `src/app.js` — main app logic (~10k lines), extracted in Phase 5
+- `src/db.js` — Supabase client wrapper
+- `src/ui.js` — small UI helpers
+- `src/migrate.js` — one-time localStorage→DB migration, extracted in Phase 6
+- No build step; vanilla ES with classic `<script>` tags
 - Auth/DB: Supabase (PostgreSQL)
-- No frameworks — plain vanilla JS
+- No frameworks
 
 ## Library / Data Inputs Pattern
 
