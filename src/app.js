@@ -9291,55 +9291,6 @@ _clLoadCabinetParts = function(libIdx) {
   // Otherwise explode from cabinet dimensions
   _clLoadCabinetParts_orig(libIdx);
 };
-/* ── OLD _renderLibUI body removed ──
-function _renderLibUI_OLD(containerId, libName, items, opts) {
-  const el = document.getElementById(containerId);
-  if (!el) return;
-  const icon = opts.icon || 'folder';
-  const icons = {
-    folder: '<path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/>',
-    person: '<circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>',
-    doc: '<path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/>',
-    box: '<path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/>',
-    cabinet: '<rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="12" y1="3" x2="12" y2="12"/>',
-  };
-  const svgIcon = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${icons[icon]||icons.folder}</svg>`;
-  const importIcon = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>`;
-  const exportIcon = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>`;
-
-  // Toggle
-  const isOpen = window['_libOpen_'+containerId];
-  
-  const tabBase = `display:inline-flex;align-items:center;gap:6px;padding:8px 14px 9px;font-size:13px;font-weight:500;color:var(--muted);cursor:pointer;border-radius:8px 8px 0 0;border:1px solid var(--border);border-bottom:1px solid var(--surface);background:var(--surface);font-family:inherit;transition:all .15s;white-space:nowrap;margin-bottom:-1px`;
-  const tabActive = `color:var(--text);font-weight:700`;
-  const btnStyle = `display:inline-flex;align-items:center;gap:4px;padding:6px 10px;font-size:11px;font-weight:500;color:var(--muted);cursor:pointer;border:none;background:none;font-family:inherit`;
-
-  let html = `<div style="display:flex;align-items:flex-end;gap:0;border-bottom:1px solid var(--border);padding:0 4px">
-    <button onclick="window['_libOpen_${containerId}']=!window['_libOpen_${containerId}'];${opts.renderFn}()" style="${tabBase};${isOpen?tabActive:''}">${svgIcon} ${libName}</button>
-    <button onclick="${opts.importFn}()" style="${btnStyle}">${importIcon} Import</button>
-    <button onclick="${opts.exportFn}()" style="${btnStyle}">${exportIcon} Export</button>
-  </div>`;
-
-  if (isOpen) {
-    html += `<div style="height:6px"></div>`;
-    // Save input row — always shown for visual consistency
-    html += `<div style="display:flex;gap:4px;margin-bottom:6px">
-      <input type="text" id="_lib_save_${containerId}" placeholder="${opts.savePlaceholder||'Enter name...'}" style="flex:1;font-size:12px;padding:5px 8px;border:1px solid var(--border);border-radius:5px;background:var(--surface2);color:var(--text);font-family:inherit" onkeydown="if(event.key==='Enter'){${opts.saveFn||'_noOp'}(this.value);this.value=''}">
-      <button class="btn btn-primary" onclick="const i=document.getElementById('_lib_save_${containerId}');${opts.saveFn||'_noOp'}(i.value);i.value=''" style="padding:5px 10px;font-size:11px;width:auto">Save</button>
-    </div>`;
-    if (!items.length) {
-      html += `<div style="color:var(--muted);font-size:11px;padding:8px 10px;border-radius:5px;border:1px solid var(--border);background:var(--surface);text-align:center">${opts.emptyMsg || 'No items yet.'}</div>`;
-    } else {
-      html += items.map((item, i) => `<div style="display:flex;align-items:center;gap:6px;padding:5px 8px;margin-bottom:2px;border-radius:5px;border:1px solid var(--border);background:var(--surface);cursor:pointer;overflow:hidden" onclick="${opts.loadFn}(${i})">
-        <div style="font-size:12px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">${_escHtml(item._label||item.name||'')}${item._sub?' <span style="font-weight:400;color:var(--muted);font-size:10px">'+_escHtml(item._sub)+'</span>':''}</div>
-        <div style="font-size:10px;color:var(--muted);white-space:nowrap;flex-shrink:0">${item._count||''}</div>
-        ${opts.deleteFn?`<button style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;padding:0 2px;flex-shrink:0" onclick="event.stopPropagation();${opts.deleteFn}(${i})">×</button>`:''}
-      </div>`).join('');
-    }
-  }
-
-  el.innerHTML = html;
-} END OLD _renderLibUI body */
 
 function _escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 
