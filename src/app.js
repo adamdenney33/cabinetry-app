@@ -5391,8 +5391,6 @@ function drawRevenueChart() {
   });
 }
 
-function saveData() { /* data is persisted via Supabase */ }
-
 // ══════════════════════════════════════════
 // QUOTE HELPERS
 // ══════════════════════════════════════════
