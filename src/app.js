@@ -228,9 +228,8 @@ function _openQuotePopup(id) {
   if (!q) return;
   const cur = window.currency;
   const fmt = v => cur + Number(v).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0});
-  // Prefer cached aggregation from quote_lines; fall back to legacy columns during transition
-  const matVal = q._totals ? q._totals.materials : (q.materials || 0);
-  const labVal = q._totals ? q._totals.labour    : (q.labour    || 0);
+  const matVal = q._totals?.materials || 0;
+  const labVal = q._totals?.labour    || 0;
   const sub = matVal + labVal;
   const markupAmt = sub * (q.markup || 0) / 100;
   const afterMarkup = sub + markupAmt;
@@ -4643,7 +4642,7 @@ function orderProject(o) {
 }
 
 // Aggregate materials/labour for a quote from its `quote_lines` rows.
-// Returns null if no lines exist (caller falls back to legacy columns during transition).
+// Returns null if no lines exist; callers should treat null as zero totals.
 async function quoteTotalsFromLines(quoteId) {
   if (!quoteId) return null;
   const { data: lines, error } = await _db('quote_lines').select('*').eq('quote_id', quoteId);
