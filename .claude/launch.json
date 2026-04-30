@@ -2,6 +2,12 @@
   "version": "0.0.1",
   "configurations": [
     {
+      "name": "Vite dev",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "port": 3000
+    },
+    {
       "name": "Static File Server (npx serve)",
       "runtimeExecutable": "/opt/homebrew/bin/node",
       "runtimeArgs": [".claude/server.js"],

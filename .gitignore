@@ -8,8 +8,16 @@
 *.swo
 *~
 
-# Node (in case scripts/ ever uses local node_modules)
+# Node
 node_modules/
+
+# Vite build output
+dist/
+
+# Local env (publishable Supabase keys live here in dev)
+.env
+.env.local
+.env.*.local
 
 # Generated output from scripts/ (compare and copy across manually)
 scripts/output/
