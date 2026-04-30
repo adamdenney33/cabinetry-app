@@ -5107,11 +5107,8 @@ async function updateQuoteField(id, field, val) {
   renderQuoteMain();
 }
 
-// ══════════════════════════════════════════
-// ORDER HELPERS
-// ══════════════════════════════════════════
-// ── Quote Clients Panel & Import/Export ──
-// ── Shared Client Library Import/Export ──
+// Clients CSV import/export — moves to clients.js when the
+// CLIENTS section gets carved out of app.js.
 function exportClientsCSV() {
   const allClients = [...new Set([...quotes.map(q=>quoteClient(q)), ...orders.map(o=>orderClient(o))].filter(Boolean))].sort();
   if (!allClients.length) { _toast('No clients to export', 'error'); return; }
@@ -5130,8 +5127,6 @@ function exportClientsCSV() {
 function importClientsCSV() {
   _toast('Clients are created automatically from quotes and orders', 'info');
 }
-
-
 
 // ══════════════════════════════════════════
 // STOCK HELPERS
