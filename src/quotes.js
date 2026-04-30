@@ -289,3 +289,40 @@ function renderQuoteMain() {
 }
 
 
+// ── CSV import / export ──
+function exportQuotesCSV() {
+  if (!quotes.length) { _toast('No quotes to export', 'error'); return; }
+  const cur = window.currency;
+  const rows = [['Client','Project','Materials','Labour','Markup %','Tax %','Status','Date','Notes']];
+  quotes.forEach(q => {
+    const matVal = q._totals ? q._totals.materials : (q.materials || 0);
+    const labVal = q._totals ? q._totals.labour    : (q.labour    || 0);
+    rows.push([quoteClient(q),quoteProject(q),matVal,labVal,q.markup,q.tax,q.status,q.date,q.notes||'']);
+  });
+  const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([csv],{type:'text/csv'})), download: `quotes-${new Date().toISOString().slice(0,10)}.csv` });
+  a.click(); URL.revokeObjectURL(a.href);
+  _toast('Quotes exported', 'success');
+}
+function importQuotesCSV() {
+  const input = document.createElement('input');
+  input.type = 'file'; input.accept = '.csv';
+  input.onchange = async e => {
+    const file = e.target.files[0]; if (!file) return;
+    const text = await file.text();
+    const rows = text.split(/\r?\n/).map(r => r.split(',').map(c => c.replace(/^"|"$/g,'').trim()));
+    if (rows.length < 2) { _toast('No data rows', 'error'); return; }
+    let imported = 0;
+    for (let i = 1; i < rows.length; i++) {
+      const r = rows[i]; if (r.length < 4 || !r[0]) continue;
+      const client_id = r[0] ? await resolveClient(r[0]) : null;
+      const project_id = r[1] ? await resolveProject(r[1], client_id) : null;
+      const row = { user_id: _userId, materials: parseFloat(r[2])||0, labour: parseFloat(r[3])||0, markup: parseFloat(r[4])||20, tax: parseFloat(r[5])||13, status: r[6]||'draft', date: r[7]||new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short'}), notes: r[8]||'' };
+      if (client_id) row.client_id = client_id;
+      if (project_id) row.project_id = project_id;
+      if (_userId) { const{data}=await _db('quotes').insert(row).select().single(); if(data){quotes.unshift(data);imported++;} }
+    }
+    _toast(imported+' quotes imported','success'); renderQuoteMain();
+  };
+  input.click();
+}
