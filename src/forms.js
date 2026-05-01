@@ -1,4 +1,3 @@
-// @ts-nocheck
 // ProCabinet — Quote-form defaults + date helpers (carved out of src/app.js
 // in phase E carve 10).
 //
@@ -18,7 +17,7 @@
 (function() {
   const defs = { 'q-labour-rate': 65, 'q-hours': 8, 'q-markup': 20, 'q-tax': 13 };
   Object.entries(defs).forEach(([id, fallback]) => {
-    const el = document.getElementById(id);
+    const el = /** @type {HTMLInputElement | null} */ (document.getElementById(id));
     if (!el) return;
     const saved = localStorage.getItem('pc_' + id);
     if (saved !== null) el.value = saved;
@@ -40,15 +39,15 @@ function _orderDateToISO(str) {
     const mo = m[p[2].toLowerCase().substring(0,3)];
     if (mo) return p[3]+'-'+mo+'-'+p[1].padStart(2,'0');
   }
-  try { const d = new Date(str); return !isNaN(d) ? d.toISOString().split('T')[0] : ''; } catch(e) { return ''; }
+  try { const d = new Date(str); return !isNaN(+d) ? d.toISOString().split('T')[0] : ''; } catch(e) { return ''; }
 }
 
 function _relativeDate(dateStr) {
   if (!dateStr || dateStr === 'TBD') return null;
   const d = new Date(dateStr);
-  if (isNaN(d)) return null;
+  if (isNaN(+d)) return null;
   const today = new Date(); today.setHours(0,0,0,0); d.setHours(0,0,0,0);
-  const diff = Math.round((d - today) / 86400000);
+  const diff = Math.round((+d - +today) / 86400000);
   if (diff === 0) return { label: 'Today', color: 'var(--warn)' };
   if (diff === 1) return { label: 'Tomorrow', color: 'var(--success)' };
   if (diff > 1 && diff <= 7) return { label: `in ${diff} days`, color: 'var(--success)' };
@@ -60,11 +59,13 @@ function _relativeDate(dateStr) {
 function _updateQuotePreview() {
   const cur = window.currency;
   const fmt = v => cur + v.toLocaleString('en-US', {minimumFractionDigits:0, maximumFractionDigits:0});
-  const rate = parseFloat(document.getElementById('q-labour-rate')?.value) || 0;
-  const hrs  = parseFloat(document.getElementById('q-hours')?.value)       || 0;
-  const mat  = parseFloat(document.getElementById('q-materials')?.value)   || 0;
-  const mkp  = parseFloat(document.getElementById('q-markup')?.value)      || 0;
-  const tax  = parseFloat(document.getElementById('q-tax')?.value)         || 0;
+  /** @param {string} id */
+  const inputVal = id => /** @type {HTMLInputElement | null} */ (document.getElementById(id))?.value;
+  const rate = parseFloat(inputVal('q-labour-rate')) || 0;
+  const hrs  = parseFloat(inputVal('q-hours'))       || 0;
+  const mat  = parseFloat(inputVal('q-materials'))   || 0;
+  const mkp  = parseFloat(inputVal('q-markup'))      || 0;
+  const tax  = parseFloat(inputVal('q-tax'))         || 0;
   const labour = rate * hrs;
   const sub    = labour + mat;
   const total  = sub * (1 + mkp/100) * (1 + tax/100);

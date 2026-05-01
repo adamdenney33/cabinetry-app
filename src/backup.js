@@ -1,4 +1,3 @@
-// @ts-nocheck
 // ProCabinet — Local backup / export (carved out of src/app.js in phase E carve 5)
 //
 // Loaded as a classic <script defer> AFTER src/app.js (no state declarations

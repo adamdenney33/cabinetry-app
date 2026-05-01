@@ -1,4 +1,3 @@
-// @ts-nocheck
 // ProCabinet — UI primitives (Phase 6 module split)
 // Loaded BEFORE src/app.js. Defines globals: _toast, _confirm, _openPopup, _closePopup, _popupVal.
 // These are foundational — every feature uses them.
@@ -42,8 +41,12 @@ function _confirm(msg, onConfirm, danger = true) {
 // ══════════════════════════════════════════
 // POPUP MODAL SYSTEM
 // ══════════════════════════════════════════
+
+/** @typedef {HTMLDivElement & { _escHandler?: (e: KeyboardEvent) => void }} PopupOverlay */
+
 function _openPopup(html, size = 'sm') {
   _closePopup();
+  /** @type {PopupOverlay} */
   const overlay = document.createElement('div');
   overlay.className = 'popup-overlay';
   overlay.id = 'popup-overlay';
@@ -52,7 +55,7 @@ function _openPopup(html, size = 'sm') {
   document.body.appendChild(overlay);
   // Focus first input
   setTimeout(() => {
-    const first = overlay.querySelector('.pf-input, .pf-textarea, .pf-select');
+    const first = /** @type {HTMLElement | null} */ (overlay.querySelector('.pf-input, .pf-textarea, .pf-select'));
     if (first) first.focus();
   }, 50);
   // Escape key closes
@@ -60,14 +63,14 @@ function _openPopup(html, size = 'sm') {
   document.addEventListener('keydown', overlay._escHandler);
 }
 function _closePopup() {
-  const el = document.getElementById('popup-overlay');
+  const el = /** @type {PopupOverlay | null} */ (document.getElementById('popup-overlay'));
   if (el) {
     if (el._escHandler) document.removeEventListener('keydown', el._escHandler);
     el.remove();
   }
 }
 function _popupVal(id) {
-  const el = document.getElementById(id);
+  const el = /** @type {HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement | null} */ (document.getElementById(id));
   return el ? el.value.trim() : '';
 }
 

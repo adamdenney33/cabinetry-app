@@ -1,4 +1,3 @@
-// @ts-nocheck
 // ProCabinet — Supabase / DB layer (Phase 6 module split)
 // Loaded BEFORE src/app.js. Defines globals: _sb, _SBURL, _SBKEY, _dbHeaders, _DBBuilder, _db.
 

@@ -1,4 +1,3 @@
-// @ts-nocheck
 // ProCabinet — Auth helpers + keyboard shortcuts (carved out of src/app.js
 // in phase E carve 6).
 //
@@ -32,7 +31,8 @@ document.addEventListener('keydown', e => {
     if (tabMap[e.key]) { e.preventDefault(); switchSection(tabMap[e.key]); return; }
   }
   // ? key shows keyboard shortcuts (when not typing in an input)
-  const typing = ['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName) || document.activeElement?.contentEditable?.toString()?.includes('true');
+  const ae = /** @type {HTMLElement | null} */ (document.activeElement);
+  const typing = ['INPUT','TEXTAREA','SELECT'].includes(ae?.tagName) || ae?.contentEditable?.toString()?.includes('true');
   if (e.key === '?' && !typing) {
     _showShortcutsHelp();
   }
@@ -47,7 +47,7 @@ document.addEventListener('keydown', e => {
   }
   // / key: focus search (when not typing)
   if (e.key === '/' && !typing && !e.ctrlKey && !e.metaKey) {
-    const search = document.querySelector('.section-panel.active .order-search-input, .section-panel.active input[type="search"], .section-panel.active input[placeholder*="Search"]');
+    const search = /** @type {HTMLElement | null} */ (document.querySelector('.section-panel.active .order-search-input, .section-panel.active input[type="search"], .section-panel.active input[placeholder*="Search"]'));
     if (search) { search.focus(); e.preventDefault(); }
   }
 });
