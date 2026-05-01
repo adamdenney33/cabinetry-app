@@ -159,7 +159,7 @@ function loadCQSettings() {
   localStorage.setItem('pc_cq_settings', JSON.stringify(cqSettings));
 }
 function saveCQSettings() {
-  const g = id => parseFloat(_byId(id)?.value);
+  const g = id => parseFloat(_byId(id)?.value ?? '');
   cqSettings.labourRate = g('cq-labour-rate') || 65;
   cqSettings.markup = g('cq-markup') || 20;
   cqSettings.tax = g('cq-tax') || 13;
@@ -1586,16 +1586,18 @@ function cqAddToNewQuote() {
   const totalHrs = cqLines.reduce((s, l) => s + calcCQLine(l).labourHrs * l.qty, 0);
 
   // Pre-fill the quote form
+  /** @param {string} id */
+  const inp = id => /** @type {HTMLInputElement} */ (_byId(id));
   const projName = _byId('cq-project')?.value?.trim() || '';
   const clientName = _byId('cq-client')?.value?.trim() || '';
-  if (projName) _byId('q-project').value = projName;
-  if (clientName) _byId('q-client').value = clientName;
-  _byId('q-materials').value = gMat.toFixed(2);
-  _byId('q-labour-rate').value = String(cqSettings.labourRate);
-  _byId('q-hours').value = totalHrs.toFixed(1);
-  _byId('q-markup').value = String(cqSettings.markup);
-  _byId('q-tax').value = String(cqSettings.tax);
-  _byId('q-notes').value = cqLines.map(l => {
+  if (projName) inp('q-project').value = projName;
+  if (clientName) inp('q-client').value = clientName;
+  inp('q-materials').value = gMat.toFixed(2);
+  inp('q-labour-rate').value = String(cqSettings.labourRate);
+  inp('q-hours').value = totalHrs.toFixed(1);
+  inp('q-markup').value = String(cqSettings.markup);
+  inp('q-tax').value = String(cqSettings.tax);
+  inp('q-notes').value = cqLines.map(l => {
     const desc = l.name || 'Cabinet';
     const details = [l.w+'×'+l.h+'×'+l.d+'mm', l.material];
     if (l.doors > 0) details.push(l.doors + ' door' + (l.doors!==1?'s':''));
@@ -1690,10 +1692,12 @@ function loadCQQuote(idx) {
   cqActiveQuoteIdx = idx;
   cqLines = JSON.parse(JSON.stringify(q.lines || []));
   cqNextId = cqLines.length > 0 ? Math.max(...cqLines.map(l=>l.id)) + 1 : 1;
-  _byId('cq-client').value = quoteClient(q) || '';
-  _byId('cq-project').value = quoteProject(q) || '';
-  _byId('cq-notes').value = q.notes || '';
-  _byId('cq-quote-num').value = q.quoteNum || '';
+  /** @param {string} id */
+  const inp = id => /** @type {HTMLInputElement} */ (_byId(id));
+  inp('cq-client').value = quoteClient(q) || '';
+  inp('cq-project').value = quoteProject(q) || '';
+  inp('cq-notes').value = q.notes || '';
+  inp('cq-quote-num').value = q.quoteNum || '';
   saveCQLines();
   renderCQPanel();
 }
@@ -1702,10 +1706,12 @@ function newCQQuote() {
   cqActiveQuoteIdx = -1;
   cqLines = [];
   cqNextId = 1;
-  _byId('cq-client').value = '';
-  _byId('cq-project').value = '';
-  _byId('cq-notes').value = '';
-  _byId('cq-quote-num').value = '';
+  /** @param {string} id */
+  const inp = id => /** @type {HTMLInputElement} */ (_byId(id));
+  inp('cq-client').value = '';
+  inp('cq-project').value = '';
+  inp('cq-notes').value = '';
+  inp('cq-quote-num').value = '';
   saveCQLines();
   renderCQPanel();
 }
@@ -2005,9 +2011,9 @@ function _clPromptMergeOrNew(parts, name) {
       <button class="btn btn-primary" id="cl-cab-merge">Merge quantities</button>
     </div>
   `, 'sm');
-  _byId('cl-cab-cancel').onclick = () => _closePopup();
-  _byId('cl-cab-new').onclick   = () => { _closePopup(); finish('new');   };
-  _byId('cl-cab-merge').onclick = () => { _closePopup(); finish('merge'); };
+  /** @type {HTMLElement} */ (_byId('cl-cab-cancel')).onclick = () => _closePopup();
+  /** @type {HTMLElement} */ (_byId('cl-cab-new')).onclick   = () => { _closePopup(); finish('new');   };
+  /** @type {HTMLElement} */ (_byId('cl-cab-merge')).onclick = () => { _closePopup(); finish('merge'); };
 }
 
 // Explode a saved cabinet into individual cut list pieces.
@@ -2261,15 +2267,17 @@ function cqSendToQuickQuote() {
   const client = _byId('cq-client')?.value?.trim() || '';
   const project = _byId('cq-project')?.value?.trim() || '';
 
-  _byId('q-client').value = client;
-  _byId('q-project').value = project;
-  _byId('q-materials').value = matTotal.toFixed(2);
-  _byId('q-labour-rate').value = String(cqSettings.labourRate);
+  /** @param {string} id */
+  const inp = id => /** @type {HTMLInputElement} */ (_byId(id));
+  inp('q-client').value = client;
+  inp('q-project').value = project;
+  inp('q-materials').value = matTotal.toFixed(2);
+  inp('q-labour-rate').value = String(cqSettings.labourRate);
   const totalHrs = cqLines.reduce((s, l) => s + calcCQLine(l).labourHrs * l.qty, 0);
-  _byId('q-hours').value = totalHrs.toFixed(1);
-  _byId('q-markup').value = String(cqSettings.markup);
-  _byId('q-tax').value = String(cqSettings.tax);
-  _byId('q-notes').value = 'Cabinet Quote: ' + cqLines.map(l => (l.name || 'Cabinet') + (l.qty > 1 ? ' x' + l.qty : '')).join(', ');
+  inp('q-hours').value = totalHrs.toFixed(1);
+  inp('q-markup').value = String(cqSettings.markup);
+  inp('q-tax').value = String(cqSettings.tax);
+  inp('q-notes').value = 'Cabinet Quote: ' + cqLines.map(l => (l.name || 'Cabinet') + (l.qty > 1 ? ' x' + l.qty : '')).join(', ');
 
   switchSection('quote');
   try { _updateQuotePreview(); } catch(e) {}
