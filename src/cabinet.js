@@ -86,6 +86,7 @@ let cqSettings = {
 // ── Cabinet Library ──
 // Backed by the cabinet_templates DB table. Library is loaded on auth
 // (_loadCabinetTemplatesFromDB) and stays in-memory; saves go straight to DB.
+/** @type {any[]} */
 let cqLibrary = [];
 async function _saveCabinetToDB(entry) {
   if (!_userId) return null;
@@ -121,8 +122,10 @@ async function _loadCabinetTemplatesFromDB() {
 }
 
 // ── CQ Line Items State ──
+/** @type {any[]} */
 let cqLines = [];
 let cqNextId = 1;
+/** @type {any[]} */
 let cqSavedQuotes = [];
 let cqActiveQuoteIdx = -1;
 
@@ -334,6 +337,7 @@ function toggleCabPanel(panel) {
 function toggleCabLibrary() { toggleCabPanel('library'); }
 
 // ── Project Library (saves project name + all cabinets) ──
+/** @type {any[]} */
 let cqProjectLibrary = [];
 function loadCQProjectLibrary() { try { cqProjectLibrary = JSON.parse(localStorage.getItem('pc_cq_projects')||'[]'); } catch(e) { cqProjectLibrary=[]; } }
 function saveCQProjectLibrary() { localStorage.setItem('pc_cq_projects', JSON.stringify(cqProjectLibrary)); }
@@ -1785,6 +1789,7 @@ function cqConvertToOrder() {
 
 // ── PDF / Print ──
 
+/** @type {any[]} */
 let _clProjectCache = [];
 
 // ── Cut List smart search: Projects ──

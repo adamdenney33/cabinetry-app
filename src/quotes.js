@@ -16,6 +16,7 @@
 // ══════════════════════════════════════════
 // QUOTES
 // ══════════════════════════════════════════
+/** @type {import('./database.types').Tables<'quotes'>[]} */
 let quotes = [];
 let quoteNextId = 1;
 

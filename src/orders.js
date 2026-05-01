@@ -13,6 +13,7 @@
 // ══════════════════════════════════════════
 // ORDERS
 // ══════════════════════════════════════════
+/** @type {import('./database.types').Tables<'orders'>[]} */
 let orders = [];
 let orderNextId = 1;
 

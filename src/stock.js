@@ -57,6 +57,7 @@ function useStockInCutList(id) {
 }
 
 // ── Stock Libraries ──
+/** @type {any[]} */
 let stockLibraries = [];
 function loadStockLibraries() { try { stockLibraries = JSON.parse(localStorage.getItem('pc_stock_libraries')||'[]'); } catch(e) { stockLibraries=[]; } }
 function saveStockLibraries() { localStorage.setItem('pc_stock_libraries', JSON.stringify(stockLibraries)); }
@@ -285,8 +286,11 @@ function setStockCatInline(id, tagEl) {
 // ══════════════════════════════════════════
 // STOCK
 // ══════════════════════════════════════════
+/** @type {import('./database.types').Tables<'stock_items'>[]} */
 let stockItems = [];
+/** @type {import('./database.types').Tables<'clients'>[]} */
 let clients = [];
+/** @type {(import('./database.types').Tables<'projects'> & {status?: string})[]} */
 let projects = [];
 let stockNextId = 1;
 const STOCK_CATS = ['Sheet Goods','Solid Timber','Edge Banding','Hardware','Finishing','Other'];

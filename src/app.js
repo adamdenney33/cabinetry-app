@@ -888,6 +888,7 @@ function _saveCabinetPopup(idx) {
   _toast('Cabinet updated', 'success');
 }
 
+/** @type {string | null} */
 let _userId = null;
 let _authMode = 'signin';
 

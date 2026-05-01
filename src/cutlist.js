@@ -26,8 +26,11 @@
 // ══════════════════════════════════════════
 // CUTLIST — State & Logic
 // ══════════════════════════════════════════
+/** @type {any[]} */
 let sheets = [];
+/** @type {any[]} */
 let pieces = [];
+/** @type {any} */
 let results = null;
 let activeSheetIdx = 0;
 let activeTab = 'layout';
@@ -42,6 +45,7 @@ let layoutFontScale = parseFloat(localStorage.getItem('pc_font_scale') ?? '') ||
 let layoutCutOrder = localStorage.getItem('pc_cut_order') === '1';
 let layoutSheetCutList = localStorage.getItem('pc_sheet_cutlist') === '1';
 let colsVisible = { grain: false, material: false, label: true, notes: false, edgeband: false };
+/** @type {any[]} */
 let edgeBands = [];
 let _edgeBandId = 1;
 let layoutRotate = false;

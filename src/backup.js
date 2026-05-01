@@ -12,6 +12,7 @@
 // Use this before running migrations, or as an offline backup at any time.
 // ══════════════════════════════════════════
 function _exportLocal() {
+  /** @type {{exported_at: string, app: string, purpose: string, user_agent: string, keys: Record<string, string | null>}} */
   const snapshot = {
     exported_at: new Date().toISOString(),
     app: 'ProCabinet',
