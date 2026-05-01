@@ -890,21 +890,21 @@ let _userId = null;
 let _authMode = 'signin';
 
 function _showApp() {
-  document.getElementById('auth-screen').classList.add('hidden');
+  /** @type {HTMLElement} */ (document.getElementById('auth-screen')).classList.add('hidden');
 }
 function _showAuth() {
-  document.getElementById('auth-screen').classList.remove('hidden');
+  /** @type {HTMLElement} */ (document.getElementById('auth-screen')).classList.remove('hidden');
 }
 
 function toggleAuthMode() {
   _authMode = _authMode === 'signin' ? 'signup' : 'signin';
   const isSign = _authMode === 'signin';
-  document.getElementById('auth-heading').textContent = isSign ? 'Sign in to your account' : 'Create your account';
-  document.getElementById('auth-btn').textContent = isSign ? 'Sign In' : 'Create Account';
-  document.getElementById('auth-toggle').innerHTML = isSign
+  /** @type {HTMLElement} */ (document.getElementById('auth-heading')).textContent = isSign ? 'Sign in to your account' : 'Create your account';
+  /** @type {HTMLElement} */ (document.getElementById('auth-btn')).textContent = isSign ? 'Sign In' : 'Create Account';
+  /** @type {HTMLElement} */ (document.getElementById('auth-toggle')).innerHTML = isSign
     ? 'No account? <span onclick="toggleAuthMode()">Create one</span>'
     : 'Already have an account? <span onclick="toggleAuthMode()">Sign In</span>';
-  document.getElementById('auth-msg').innerHTML = '';
+  /** @type {HTMLElement} */ (document.getElementById('auth-msg')).innerHTML = '';
 }
 
 async function authSubmit() {
@@ -962,7 +962,7 @@ async function loadAllData() {
   _applyCatalogFromDB(cat);
   // Phase 3.3 — overlay business_info from DB (only if a row exists)
   _applyBizInfoFromDB(biz);
-  document.getElementById('orders-badge').textContent = orders.filter(o => o.status !== 'complete').length;
+  /** @type {HTMLElement} */ (document.getElementById('orders-badge')).textContent = String(orders.filter(o => o.status !== 'complete').length);
   renderStockMain();
   renderQuoteMain();
   renderOrdersMain();
@@ -1025,17 +1025,17 @@ _sb.auth.onAuthStateChange(async (event, session) => {
   if (session) {
     _userId = session.user.id;
     const emailEl = document.getElementById('account-email-item');
-    if (emailEl) emailEl.textContent = session.user.email;
-    document.getElementById('account-guest-view').style.display = 'none';
-    document.getElementById('account-user-view').style.display = '';
+    if (emailEl) emailEl.textContent = session.user.email ?? '';
+    /** @type {HTMLElement} */ (document.getElementById('account-guest-view')).style.display = 'none';
+    /** @type {HTMLElement} */ (document.getElementById('account-user-view')).style.display = '';
     _showApp();
     await loadAllData();
     await _loadCabinetTemplatesFromDB();
     _clLoadProjectList();
   } else {
     _userId = null;
-    document.getElementById('account-guest-view').style.display = '';
-    document.getElementById('account-user-view').style.display = 'none';
+    /** @type {HTMLElement} */ (document.getElementById('account-guest-view')).style.display = '';
+    /** @type {HTMLElement} */ (document.getElementById('account-user-view')).style.display = 'none';
     _clProjectCache = [];
   }
 });
