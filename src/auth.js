@@ -16,10 +16,10 @@
 // AUTH HELPERS
 // ══════════════════════════════════════════
 function dismissAuth() {
-  document.getElementById('auth-screen').classList.add('hidden');
+  /** @type {HTMLElement} */ (document.getElementById('auth-screen')).classList.add('hidden');
 }
 function showAuthFromPaywall() {
-  document.getElementById('paywall-modal').classList.add('hidden');
+  /** @type {HTMLElement} */ (document.getElementById('paywall-modal')).classList.add('hidden');
   _showAuth();
 }
 
@@ -32,7 +32,7 @@ document.addEventListener('keydown', e => {
   }
   // ? key shows keyboard shortcuts (when not typing in an input)
   const ae = /** @type {HTMLElement | null} */ (document.activeElement);
-  const typing = ['INPUT','TEXTAREA','SELECT'].includes(ae?.tagName) || ae?.contentEditable?.toString()?.includes('true');
+  const typing = ['INPUT','TEXTAREA','SELECT'].includes(ae?.tagName ?? '') || ae?.contentEditable?.toString()?.includes('true');
   if (e.key === '?' && !typing) {
     _showShortcutsHelp();
   }
