@@ -394,7 +394,7 @@ function _autoFillClientFromProject(projName, projInputId) {
 // ── New Client/Project Popup (inline creation) ──
 function _openNewClientPopup(targetInputId) {
   // Close any suggest dropdowns
-  document.querySelectorAll('.client-suggest-list').forEach(b => b.style.display = 'none');
+  /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('.client-suggest-list')).forEach(b => b.style.display = 'none');
   // Pre-fill with what user typed
   const existing = _byId(targetInputId)?.value || '';
   const html = `
@@ -449,7 +449,7 @@ async function _saveNewClientPopup(targetInputId) {
 }
 
 function _openNewProjectPopup(targetInputId) {
-  document.querySelectorAll('.client-suggest-list').forEach(b => b.style.display = 'none');
+  /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('.client-suggest-list')).forEach(b => b.style.display = 'none');
   const existing = _byId(targetInputId)?.value || '';
   // Get client from the corresponding client input
   const clientInputId = targetInputId.replace('-project', '-client');
@@ -513,7 +513,7 @@ async function _saveNewProjectPopup(targetInputId) {
 // Close suggest on blur
 document.addEventListener('click', e => {
   const target = /** @type {Node | null} */ (e.target);
-  document.querySelectorAll('.client-suggest-list').forEach(box => {
+  /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('.client-suggest-list')).forEach(box => {
     if (target && !box.contains(target) && !(/** @type {Element} */ (target)).closest('.smart-input-wrap')) box.style.display = 'none';
   });
 });

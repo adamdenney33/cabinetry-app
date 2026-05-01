@@ -147,7 +147,7 @@ function stepQty(type, id, delta) {
 function initColVisibility() {
   ['grain','material','notes','label','edgeband'].forEach(col => {
     const on = colsVisible[col];
-    document.querySelectorAll('.cl-col-' + col).forEach(el => { el.style.display = on ? '' : 'none'; });
+    /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('.cl-col-' + col)).forEach(el => { el.style.display = on ? '' : 'none'; });
     const pill = _byId('pill-' + col);
     if (pill) pill.classList.toggle('active', on);
   });
@@ -159,7 +159,7 @@ function toggleCol(col) {
   _saveCutList();
   const pill = _byId('pill-' + col);
   if (pill) pill.classList.toggle('active', colsVisible[col]);
-  document.querySelectorAll('.cl-col-' + col).forEach(el => {
+  /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('.cl-col-' + col)).forEach(el => {
     el.style.display = colsVisible[col] ? '' : 'none';
   });
 }
@@ -178,7 +178,7 @@ function toggleGrainCol() {
   renderSheets();
   const pill = _byId('pill-grain');
   if (pill) pill.classList.toggle('active', turning_on);
-  document.querySelectorAll('.cl-col-grain').forEach(el => {
+  /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('.cl-col-grain')).forEach(el => {
     el.style.display = turning_on ? '' : 'none';
   });
   renderResults();
@@ -190,7 +190,7 @@ function toggleEdgeBandCol() {
   _saveCutList();
   const pill = _byId('pill-edgeband');
   if (pill) pill.classList.toggle('active', turning_on);
-  document.querySelectorAll('.cl-col-edgeband').forEach(el => {
+  /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('.cl-col-edgeband')).forEach(el => {
     el.style.display = turning_on ? '' : 'none';
   });
   const section = _byId('cl-edgeband-section');
@@ -687,7 +687,7 @@ function _doClearAll() {
   document.addEventListener('DOMContentLoaded', () => {});
   const init = () => {
     const handle = _byId('cl-resize-handle');
-    const left   = document.querySelector('.cl-left');
+    const left   = /** @type {HTMLElement | null} */ (document.querySelector('.cl-left'));
     if (!handle || !left) return;
     let dragging = false, startX, startW;
     handle.addEventListener('mousedown', e => {
@@ -1098,7 +1098,7 @@ function clKeydown(event, tableId, rowIdx, colName) {
   }
 }
 function focusClCell(tableId, rowIdx, colName) {
-  const el = document.querySelector(`[data-table="${tableId}"][data-row="${rowIdx}"][data-col="${colName}"]`);
+  const el = /** @type {HTMLInputElement | null} */ (document.querySelector(`[data-table="${tableId}"][data-row="${rowIdx}"][data-col="${colName}"]`));
   if (el) { el.focus(); try { el.select(); } catch(e) {} }
 }
 
@@ -1218,7 +1218,7 @@ function printLayout(mode='print') {
     const matCost = results.layouts.reduce((s,l) => { const si = stockItems.find(i => i.name === l.sheet.name); return s + (si ? si.cost : 0); }, 0);
 
     // Capture canvas images
-    const canvases = document.querySelectorAll('.canvas-wrap canvas');
+    const canvases = /** @type {NodeListOf<HTMLCanvasElement>} */ (document.querySelectorAll('.canvas-wrap canvas'));
     const imgs = [...canvases].map(c => { try { return c.toDataURL('image/png'); } catch(e) { return ''; } });
 
     const sheetSections = results.layouts.map((layout, i) => {
@@ -2050,7 +2050,7 @@ function optimize() {
 
 function switchTab(tab) {
   activeTab = tab;
-  document.querySelectorAll('.inner-tab').forEach(el => el.classList.toggle('active', el.dataset.tab === tab));
+  /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('.inner-tab')).forEach(el => el.classList.toggle('active', el.dataset.tab === tab));
   renderResults();
 }
 

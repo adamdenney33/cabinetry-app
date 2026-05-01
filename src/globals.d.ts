@@ -62,36 +62,11 @@ declare global {
     clipboardData?: any;
   }
 
-  // ── Phase F transition: loosen Element/HTMLElement shape so peeled .js files
-  // can do the common DOM-element accesses without per-call casts. The runtime
-  // semantics are unchanged. Tighten in a future strict pass.
-  interface Element {
-    style: CSSStyleDeclaration;
-    value: any;
-    focus(): void;
-    select(): void;
-    offsetWidth: number;
-    offsetHeight: number;
-    dataset: DOMStringMap;
-    src: string;
-    width: number;
-    height: number;
-    getContext(contextId: string): any;
-    toDataURL(...args: any[]): string;
-    files: FileList | null;
-    checked: boolean;
-    disabled: boolean;
-    closest(selector: string): Element | null;
-    placeholder: string;
-  }
-
-  interface EventTarget {
-    files?: FileList | null;
-    dataset?: DOMStringMap;
-    closest?(selector: string): Element | null;
-    value?: any;
-    result?: any;
-  }
+  // Phase G.2 removed the Element/EventTarget transition augmentations from
+  // Phase F. Properties like .value / .checked / .files now require an
+  // HTMLInputElement narrowing at the call site; .style / .dataset /
+  // .focus() require HTMLElement; .src / .width / .height require the right
+  // image/canvas subtype; etc.
 }
 
 export {};

@@ -200,7 +200,7 @@ function switchCabTab(tab) {
   // Get all builder content divs (everything in sidebar except the rates div and the tabs)
   const sidebar = _byId('cq-sidebar');
   if (!sidebar) return;
-  const builderDivs = Array.from(sidebar.children).filter(el => el.id !== 'cab-view-rates');
+  const builderDivs = /** @type {HTMLElement[]} */ (Array.from(sidebar.children).filter(el => el.id !== 'cab-view-rates'));
 
   if (tab === 'rates') {
     builderDivs.forEach(el => el.style.display = 'none');
@@ -895,7 +895,7 @@ function cqSelectLine(idx) {
 // ── Render the active cabinet editor in sidebar ──
 function renderCQEditor() {
   // Hide any open fixed suggest dropdowns
-  document.querySelectorAll('.client-suggest-list').forEach(b => { b.style.display = 'none'; b.style.position = ''; });
+  /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('.client-suggest-list')).forEach(b => { b.style.display = 'none'; b.style.position = ''; });
   const el = _byId('cq-cab-editor');
   if (!el) return;
   // Use active line or a blank default for "Add" mode
