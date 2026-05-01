@@ -36,12 +36,12 @@ window.units = 'imperial';
 // SETTINGS DROPDOWN
 // ══════════════════════════════════════════
 function toggleSettings() {
-  document.getElementById('settings-dropdown').classList.toggle('open');
-  document.getElementById('account-dropdown').classList.remove('open');
+  /** @type {HTMLElement} */ (document.getElementById('settings-dropdown')).classList.toggle('open');
+  /** @type {HTMLElement} */ (document.getElementById('account-dropdown')).classList.remove('open');
 }
 function toggleAccount() {
-  document.getElementById('account-dropdown').classList.toggle('open');
-  document.getElementById('settings-dropdown').classList.remove('open');
+  /** @type {HTMLElement} */ (document.getElementById('account-dropdown')).classList.toggle('open');
+  /** @type {HTMLElement} */ (document.getElementById('settings-dropdown')).classList.remove('open');
 }
 
 document.addEventListener('click', function(e) {
