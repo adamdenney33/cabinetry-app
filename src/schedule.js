@@ -32,11 +32,13 @@ function renderSchedule() {
   function sameDay(a,b){return a.getFullYear()===b.getFullYear()&&a.getMonth()===b.getMonth()&&a.getDate()===b.getDate();}
   function dayIdx(d){return Math.round((+d-+calStart)/86400000);}
 
-  const events = orders.filter(o=>o.status!=='complete').map((o,idx)=>{
+  /** @typedef {{id:any,project:string,client:string,start:Date|null,due:Date|null,color:string}} SchedEvent */
+  /** @type {SchedEvent[]} */
+  const events = /** @type {any} */ (orders.filter(o=>o.status!=='complete').map((o,idx)=>{
     const due=parseDate(o.due), start=parseDate(o.prodStart);
     if(!due&&!start)return null;
     return{id:o.id,project:orderProject(o),client:orderClient(o),start,due,color:palette[idx%palette.length]};
-  }).filter(Boolean);
+  }).filter(Boolean));
 
   const weeks = [];
   let ws = new Date(calStart);
@@ -83,13 +85,15 @@ function renderSchedule() {
     // Event bars overlaid using absolute positioning
     const weekStart = week[0], weekEnd = week[6];
     const weekEvents = events.filter(e => {
-      const s = e.start||e.due, d = e.due||e.start;
+      // map() invariant: at least one of e.start / e.due is non-null
+      const s = /** @type {Date} */ (e.start||e.due), d = /** @type {Date} */ (e.due||e.start);
       return d >= weekStart && s <= weekEnd;
     });
 
     let barTop = 28; // below day numbers
     weekEvents.forEach(e => {
-      const s = e.start||e.due, d = e.due||e.start;
+      // map() invariant: at least one of e.start / e.due is non-null
+      const s = /** @type {Date} */ (e.start||e.due), d = /** @type {Date} */ (e.due||e.start);
       const startInWeek = s < weekStart ? 0 : s.getDay() === 0 ? 6 : s.getDay() - 1; // Mon=0
       const endInWeek = d > weekEnd ? 6 : d.getDay() === 0 ? 6 : d.getDay() - 1;
       const left = (startInWeek / 7 * 100).toFixed(2);
