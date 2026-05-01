@@ -431,7 +431,7 @@ function _onRestore(orderArr) {
 }
 
 function stockCatChanged() {
-  const cat = _byId('stock-cat').value;
+  const cat = _byId('stock-cat')?.value ?? '';
   const dimsEl = _byId('stock-dims-fields');
   const ebEl = _byId('stock-eb-fields');
   const qtyEl = _byId('stock-qty-fields');
@@ -446,42 +446,46 @@ function stockCatChanged() {
 }
 function cancelStockEdit() {
   window._editingStockId = null;
-  _byId('stock-name').value = '';
-  _byId('stock-variant').value = '';
-  _byId('stock-sku').value = '';
-  _byId('stock-submit-btn').textContent = '+ Add to Stock';
-  _byId('stock-cancel-btn').style.display = 'none';
-  _byId('stock-form-title').textContent = 'Add Material';
+  /** @param {string} id */
+  const inp = id => /** @type {HTMLInputElement} */ (_byId(id));
+  inp('stock-name').value = '';
+  inp('stock-variant').value = '';
+  inp('stock-sku').value = '';
+  inp('stock-submit-btn').textContent = '+ Add to Stock';
+  inp('stock-cancel-btn').style.display = 'none';
+  inp('stock-form-title').textContent = 'Add Material';
   renderStockMain();
 }
 
 async function addStockItem() {
-  const name = _byId('stock-name').value.trim();
+  /** @param {string} id */
+  const inp = id => /** @type {HTMLInputElement} */ (_byId(id));
+  const name = inp('stock-name').value.trim();
   if (!name) { _toast('Enter a material name.', 'error'); return; }
   if (!_requireAuth()) return;
-  const cat = _byId('stock-cat').value.trim();
-  const variant = _byId('stock-variant').value.trim();
+  const cat = inp('stock-cat').value.trim();
+  const variant = inp('stock-variant').value.trim();
   const isEB = cat === 'Edge Banding';
   const thick = isEB
-    ? (parseFloat(_byId('stock-eb-thick')?.value) || 0)
-    : (parseFloat(_byId('stock-thick')?.value) || 0);
-  const ebWidth = isEB ? (parseFloat(_byId('stock-eb-width')?.value) || 0) : 0;
-  const ebLength = isEB ? (parseFloat(_byId('stock-eb-length')?.value) || 0) : 0;
+    ? (parseFloat(_byId('stock-eb-thick')?.value ?? '') || 0)
+    : (parseFloat(_byId('stock-thick')?.value ?? '') || 0);
+  const ebWidth = isEB ? (parseFloat(_byId('stock-eb-width')?.value ?? '') || 0) : 0;
+  const ebLength = isEB ? (parseFloat(_byId('stock-eb-length')?.value ?? '') || 0) : 0;
   const ebGlue = isEB ? (_byId('stock-eb-glue')?.value || '') : '';
   const row = {
     user_id: _userId, name,
-    sku: _byId('stock-sku').value.trim() || '—',
-    w: isEB ? ebLength : (parseFloat(_byId('stock-w').value) || 2440),
-    h: isEB ? ebWidth : (parseFloat(_byId('stock-h').value) || 1220),
+    sku: inp('stock-sku').value.trim() || '—',
+    w: isEB ? ebLength : (parseFloat(inp('stock-w').value) || 2440),
+    h: isEB ? ebWidth : (parseFloat(inp('stock-h').value) || 1220),
     qty: isEB
       ? Math.round(ebLength)
-      : (parseInt(_byId('stock-qty').value) || 0),
+      : (parseInt(inp('stock-qty').value) || 0),
     low: isEB
-      ? Math.round(parseFloat(_byId('stock-eb-low')?.value) || 0)
-      : (parseInt(_byId('stock-low').value) || 3),
+      ? Math.round(parseFloat(_byId('stock-eb-low')?.value ?? '') || 0)
+      : (parseInt(inp('stock-low').value) || 3),
     cost: isEB
-      ? (parseFloat(_byId('stock-eb-cost')?.value) || 0)
-      : (parseFloat(_byId('stock-cost').value) || 0),
+      ? (parseFloat(_byId('stock-eb-cost')?.value ?? '') || 0)
+      : (parseFloat(inp('stock-cost').value) || 0),
   };
   const { data, error } = await _db('stock_items').insert(row).select().single();
   if (error) { _toast('Could not save stock item — ' + (error.message || JSON.stringify(error)), 'error'); console.error(error); return; }
@@ -502,11 +506,11 @@ async function addStockItem() {
   const reorderUrl = _byId('stock-reorder-url')?.value?.trim() || '';
   if (supplier || reorderUrl) _ssSet(data.id, {supplier, url: reorderUrl});
   _toast('Stock item added', 'success');
-  _byId('stock-name').value = '';
-  _byId('stock-variant').value = '';
-  _byId('stock-sku').value = '';
-  if (_byId('stock-supplier')) _byId('stock-supplier').value = '';
-  if (_byId('stock-reorder-url')) _byId('stock-reorder-url').value = '';
+  inp('stock-name').value = '';
+  inp('stock-variant').value = '';
+  inp('stock-sku').value = '';
+  const sup = _byId('stock-supplier'); if (sup) sup.value = '';
+  const reord = _byId('stock-reorder-url'); if (reord) reord.value = '';
   window._editingStockId = null;
   renderStockMain();
 }
@@ -515,37 +519,39 @@ function editStockItem(id) {
   const item = stockItems.find(s => s.id === id);
   if (!item) return;
   window._editingStockId = id;
+  /** @param {string} id */
+  const inp = id => /** @type {HTMLInputElement} */ (_byId(id));
   const cat = _scGet(id) || 'Sheet Goods';
-  _byId('stock-cat').value = cat;
+  inp('stock-cat').value = cat;
   stockCatChanged();
-  _byId('stock-name').value = item.name;
+  inp('stock-name').value = item.name;
   const vd = _svGet(id);
-  _byId('stock-variant').value = vd.variant || '';
-  _byId('stock-sku').value = item.sku || '';
+  inp('stock-variant').value = vd.variant || '';
+  inp('stock-sku').value = item.sku || '';
   if (cat === 'Edge Banding') {
-    _byId('stock-eb-thick').value = vd.thickness ?? item.thickness ?? '';
-    _byId('stock-eb-width').value = vd.width ?? item.width ?? item.h ?? '';
-    _byId('stock-eb-length').value = vd.length ?? item.length ?? item.w ?? '';
-    _byId('stock-eb-glue').value = vd.glue || item.glue || 'EVA';
-    _byId('stock-eb-low').value = item.low;
-    _byId('stock-eb-cost').value = item.cost;
+    inp('stock-eb-thick').value = vd.thickness ?? item.thickness ?? '';
+    inp('stock-eb-width').value = vd.width ?? item.width ?? item.h ?? '';
+    inp('stock-eb-length').value = vd.length ?? item.length ?? item.w ?? '';
+    inp('stock-eb-glue').value = vd.glue || item.glue || 'EVA';
+    inp('stock-eb-low').value = item.low;
+    inp('stock-eb-cost').value = item.cost;
   } else {
-    _byId('stock-thick').value = vd.thickness || '';
-    _byId('stock-w').value = item.w;
-    _byId('stock-h').value = item.h;
-    _byId('stock-qty').value = item.qty;
-    _byId('stock-low').value = item.low;
-    _byId('stock-cost').value = item.cost;
+    inp('stock-thick').value = vd.thickness || '';
+    inp('stock-w').value = item.w;
+    inp('stock-h').value = item.h;
+    inp('stock-qty').value = item.qty;
+    inp('stock-low').value = item.low;
+    inp('stock-cost').value = item.cost;
   }
   const sup = _ssGet(id);
-  if (_byId('stock-supplier')) _byId('stock-supplier').value = sup.supplier || '';
-  if (_byId('stock-reorder-url')) _byId('stock-reorder-url').value = sup.url || '';
+  const supEl = _byId('stock-supplier'); if (supEl) supEl.value = sup.supplier || '';
+  const reordEl = _byId('stock-reorder-url'); if (reordEl) reordEl.value = sup.url || '';
   // Scroll sidebar to top and change button/title text
   const sidebar = document.querySelector('#panel-stock .sidebar-scroll');
   if (sidebar) sidebar.scrollTop = 0;
-  _byId('stock-submit-btn').textContent = 'Save Changes';
-  _byId('stock-cancel-btn').style.display = '';
-  _byId('stock-form-title').textContent = 'Edit Material';
+  inp('stock-submit-btn').textContent = 'Save Changes';
+  inp('stock-cancel-btn').style.display = '';
+  inp('stock-form-title').textContent = 'Edit Material';
 }
 
 async function saveStockEdit() {
@@ -553,34 +559,36 @@ async function saveStockEdit() {
   if (!id) { addStockItem(); return; }
   const item = stockItems.find(s => s.id === id);
   if (!item) return;
-  const cat = _byId('stock-cat').value.trim();
+  /** @param {string} id */
+  const inp = id => /** @type {HTMLInputElement} */ (_byId(id));
+  const cat = inp('stock-cat').value.trim();
   const isEB = cat === 'Edge Banding';
   const variant = _byId('stock-variant')?.value?.trim() || '';
   let updates, thick = 0, ebWidth = 0, ebLength = 0, ebGlue = '';
   if (isEB) {
-    thick = parseFloat(_byId('stock-eb-thick')?.value) || 0;
-    ebWidth = parseFloat(_byId('stock-eb-width')?.value) || 0;
-    ebLength = parseFloat(_byId('stock-eb-length')?.value) || 0;
+    thick = parseFloat(_byId('stock-eb-thick')?.value ?? '') || 0;
+    ebWidth = parseFloat(_byId('stock-eb-width')?.value ?? '') || 0;
+    ebLength = parseFloat(_byId('stock-eb-length')?.value ?? '') || 0;
     ebGlue = _byId('stock-eb-glue')?.value || '';
     updates = {
-      name: _byId('stock-name').value.trim(),
-      sku: _byId('stock-sku').value.trim(),
+      name: inp('stock-name').value.trim(),
+      sku: inp('stock-sku').value.trim(),
       w: ebLength,
       h: ebWidth,
       qty: Math.round(ebLength),
-      low: Math.round(parseFloat(_byId('stock-eb-low')?.value) || 0),
-      cost: parseFloat(_byId('stock-eb-cost')?.value) || 0,
+      low: Math.round(parseFloat(_byId('stock-eb-low')?.value ?? '') || 0),
+      cost: parseFloat(_byId('stock-eb-cost')?.value ?? '') || 0,
     };
   } else {
-    thick = parseFloat(_byId('stock-thick')?.value) || 0;
+    thick = parseFloat(_byId('stock-thick')?.value ?? '') || 0;
     updates = {
-      name: _byId('stock-name').value.trim(),
-      sku: _byId('stock-sku').value.trim(),
-      w: parseFloat(_byId('stock-w').value) || item.w,
-      h: parseFloat(_byId('stock-h').value) || item.h,
-      qty: parseInt(_byId('stock-qty').value) || 0,
-      low: parseInt(_byId('stock-low').value) || 3,
-      cost: parseFloat(_byId('stock-cost').value) || 0,
+      name: inp('stock-name').value.trim(),
+      sku: inp('stock-sku').value.trim(),
+      w: parseFloat(inp('stock-w').value) || item.w,
+      h: parseFloat(inp('stock-h').value) || item.h,
+      qty: parseInt(inp('stock-qty').value) || 0,
+      low: parseInt(inp('stock-low').value) || 3,
+      cost: parseFloat(inp('stock-cost').value) || 0,
     };
   }
   Object.assign(item, updates);
@@ -634,6 +642,7 @@ function renderStockMain() {
   _updateStockBadge();
   const cur = window.currency;
   const el = _byId('stock-main');
+  if (!el) return;
   const totalSheets = stockItems.reduce((s, i) => s + i.qty, 0);
   const totalValue = stockItems.reduce((s, i) => s + i.qty * i.cost, 0);
   const lowItems = stockItems.filter(i => i.qty <= i.low).length;
