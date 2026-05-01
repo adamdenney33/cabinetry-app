@@ -47,8 +47,8 @@ function _confirm(msg, onConfirm, danger = true) {
   </div>`;
   document.body.appendChild(overlay);
   const close = () => overlay.remove();
-  document.getElementById(id + '_cancel').onclick = close;
-  document.getElementById(id + '_ok').onclick = () => { close(); onConfirm(); };
+  /** @type {HTMLElement} */ (document.getElementById(id + '_cancel')).onclick = close;
+  /** @type {HTMLElement} */ (document.getElementById(id + '_ok')).onclick = () => { close(); onConfirm(); };
   overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
 }
 
