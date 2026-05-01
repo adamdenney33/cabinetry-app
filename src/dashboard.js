@@ -251,6 +251,7 @@ function drawRevenueChart() {
   canvas.width = canvas.offsetWidth || 400;
   const W = canvas.width, H = canvas.height;
   const ctx = canvas.getContext('2d');
+  if (!ctx) return;
   const dark = document.documentElement.classList.contains('dark');
   const gridCol = dark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
   const labelCol = dark ? '#64748b' : '#94a3b8';
