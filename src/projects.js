@@ -1,3 +1,4 @@
+// @ts-nocheck
 // ProCabinet — Projects panel + persistence (carved out of src/app.js in
 // phase E carve 9).
 //

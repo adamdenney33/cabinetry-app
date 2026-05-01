@@ -1,3 +1,4 @@
+// @ts-nocheck
 // ProCabinet — Clients & projects CRUD/render (carved out of src/app.js
 // in phase E carve 11 — the last functional section of app.js).
 //

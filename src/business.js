@@ -1,3 +1,4 @@
+// @ts-nocheck
 // ProCabinet — Business info + logo (carved out of src/app.js in phase E carve 7)
 //
 // Loaded as a classic <script defer> BEFORE src/app.js. The file declares

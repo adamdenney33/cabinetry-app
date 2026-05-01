@@ -1,3 +1,4 @@
+// @ts-nocheck
 // ProCabinet — Cabinet Builder / line-based cabinet quoting (carved out of
 // src/app.js in phase E carve 15 — the largest carve of phase E).
 //

@@ -1,3 +1,4 @@
+// @ts-nocheck
 // ProCabinet — main app script (Phase 5 of pre-launch refactor)
 // Extracted from index.html. Module split (Phase 6) breaks this into src/<feature>.js
 

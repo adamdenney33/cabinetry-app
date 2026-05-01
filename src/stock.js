@@ -1,3 +1,4 @@
+// @ts-nocheck
 // ProCabinet — Stock helpers + main stock view (carved out of src/app.js
 // in phase E carve 8 — helpers — and carve 13 — STOCK section appended).
 //

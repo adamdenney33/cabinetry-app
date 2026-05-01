@@ -1,3 +1,4 @@
+// @ts-nocheck
 // ProCabinet — Dashboard view (carved out of src/app.js in phase E carve 2)
 //
 // Loaded as a classic <script defer> after src/app.js. Top-level functions

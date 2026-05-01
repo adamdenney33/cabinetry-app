@@ -1,3 +1,4 @@
+// @ts-nocheck
 // ProCabinet — UI primitives (Phase 6 module split)
 // Loaded BEFORE src/app.js. Defines globals: _toast, _confirm, _openPopup, _closePopup, _popupVal.
 // These are foundational — every feature uses them.

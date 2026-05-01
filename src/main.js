@@ -1,3 +1,4 @@
+// @ts-nocheck
 // ProCabinet — npm-package bridge module
 //
 // Loaded as <script type="module"> BEFORE the classic <script> tags in

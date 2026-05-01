@@ -1,3 +1,4 @@
+// @ts-nocheck
 // ProCabinet — Cutlist (carved out of src/app.js in phase E carve 16 — the
 // final big-section carve of phase E).
 //

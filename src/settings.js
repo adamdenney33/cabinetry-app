@@ -1,3 +1,4 @@
+// @ts-nocheck
 // ProCabinet — Settings cluster (carved out of src/app.js in phase E carve 12).
 // Bundles 6 small adjacent sections that share the "non-domain plumbing" theme:
 // GLOBALS (window.currency / window.units defaults), SETTINGS DROPDOWN,

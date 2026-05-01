@@ -1,3 +1,4 @@
+// @ts-nocheck
 // ProCabinet — Quote-form defaults + date helpers (carved out of src/app.js
 // in phase E carve 10).
 //

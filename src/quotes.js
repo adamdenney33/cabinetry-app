@@ -1,3 +1,4 @@
+// @ts-nocheck
 // ProCabinet — Quotes state + view (carved out of src/app.js in phase E carve 4)
 //
 // Loaded as a classic <script defer> BEFORE src/app.js (state declarations

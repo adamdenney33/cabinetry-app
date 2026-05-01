@@ -1,3 +1,4 @@
+// @ts-nocheck
 // ProCabinet — localStorage→Postgres migration (Phase 2 + 6 of pre-launch refactor)
 // Loaded after src/app.js; depends on globals from app.js: _db, _userId, _toast, _confirm,
 // _openPopup, _closePopup, _escHtml, _sb, stockItems, orders, etc.

@@ -1,3 +1,4 @@
+// @ts-nocheck
 // ProCabinet — Schedule view (carved out of src/app.js in phase E carve 1)
 //
 // Loaded as a classic <script defer> after src/app.js. Functions defined

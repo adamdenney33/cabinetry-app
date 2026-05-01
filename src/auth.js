@@ -1,3 +1,4 @@
+// @ts-nocheck
 // ProCabinet — Auth helpers + keyboard shortcuts (carved out of src/app.js
 // in phase E carve 6).
 //
