@@ -1,6 +1,20 @@
 // ProCabinet — UI primitives (Phase 6 module split)
-// Loaded BEFORE src/app.js. Defines globals: _toast, _confirm, _openPopup, _closePopup, _popupVal.
+// Loaded BEFORE src/app.js. Defines globals: _toast, _confirm, _openPopup, _closePopup, _popupVal, _byId.
 // These are foundational — every feature uses them.
+
+/**
+ * Phase F transition helper: typed shorthand for document.getElementById that
+ * lies about the return type as `HTMLInputElement` so `.value`/`.disabled`/
+ * `.checked`/`.files`/etc. type-check across the codebase without per-call-site
+ * casts. The lie is contained — runtime semantics are unchanged (calling a
+ * missing-element accessor still throws TypeError, matching pre-Phase-F
+ * behaviour). Tighten back to `HTMLElement | null` returns in a future pass
+ * once the codebase narrows per-call-site.
+ *
+ * @param {string} id
+ * @returns {HTMLInputElement}
+ */
+function _byId(id) { return /** @type {any} */ (document.getElementById(id)); }
 
 function _toast(msg, type = 'info', duration = 3500) {
   const c = document.getElementById('toast-container');

@@ -1,4 +1,3 @@
-// @ts-nocheck
 // ProCabinet — Cutlist (carved out of src/app.js in phase E carve 16 — the
 // final big-section carve of phase E).
 //
@@ -149,16 +148,16 @@ function initColVisibility() {
   ['grain','material','notes','label','edgeband'].forEach(col => {
     const on = colsVisible[col];
     document.querySelectorAll('.cl-col-' + col).forEach(el => { el.style.display = on ? '' : 'none'; });
-    const pill = document.getElementById('pill-' + col);
+    const pill = _byId('pill-' + col);
     if (pill) pill.classList.toggle('active', on);
   });
-  const ebSec = document.getElementById('cl-edgeband-section');
+  const ebSec = _byId('cl-edgeband-section');
   if (ebSec) ebSec.style.display = colsVisible.edgeband ? '' : 'none';
 }
 function toggleCol(col) {
   colsVisible[col] = !colsVisible[col];
   _saveCutList();
-  const pill = document.getElementById('pill-' + col);
+  const pill = _byId('pill-' + col);
   if (pill) pill.classList.toggle('active', colsVisible[col]);
   document.querySelectorAll('.cl-col-' + col).forEach(el => {
     el.style.display = colsVisible[col] ? '' : 'none';
@@ -177,7 +176,7 @@ function toggleGrainCol() {
   _saveCutList();
   renderPieces();
   renderSheets();
-  const pill = document.getElementById('pill-grain');
+  const pill = _byId('pill-grain');
   if (pill) pill.classList.toggle('active', turning_on);
   document.querySelectorAll('.cl-col-grain').forEach(el => {
     el.style.display = turning_on ? '' : 'none';
@@ -189,12 +188,12 @@ function toggleEdgeBandCol() {
   const turning_on = !colsVisible.edgeband;
   colsVisible.edgeband = turning_on;
   _saveCutList();
-  const pill = document.getElementById('pill-edgeband');
+  const pill = _byId('pill-edgeband');
   if (pill) pill.classList.toggle('active', turning_on);
   document.querySelectorAll('.cl-col-edgeband').forEach(el => {
     el.style.display = turning_on ? '' : 'none';
   });
-  const section = document.getElementById('cl-edgeband-section');
+  const section = _byId('cl-edgeband-section');
   if (section) section.style.display = turning_on ? '' : 'none';
 }
 
@@ -220,7 +219,7 @@ function _ebIcon(p) {
 }
 
 function renderEdgeBands() {
-  const tbody = document.getElementById('edgebands-body');
+  const tbody = _byId('edgebands-body');
   if (!tbody) return;
   if (!edgeBands.length) {
     tbody.innerHTML = `<tr><td colspan="11" style="color:var(--muted);font-size:11px;padding:8px 14px;text-align:center">No edge bands — click "+ Add edge band"</td></tr>`;
@@ -493,9 +492,9 @@ function _ebUpdateSide(side, val, pieceId) {
     d[side] = null;
   }
   // Refresh SVG and table
-  const sw = document.getElementById('_eb_svg_wrap');
+  const sw = _byId('_eb_svg_wrap');
   if (sw && window._ebBuildSVG) sw.innerHTML = window._ebBuildSVG(d);
-  const tb = document.getElementById('_eb_tbody');
+  const tb = _byId('_eb_tbody');
   if (tb && window._ebBuildTable) tb.innerHTML = window._ebBuildTable(d);
 }
 
@@ -503,9 +502,9 @@ function _ebUpdateTrim(side, checked, pieceId) {
   const d = window._ebDraft;
   if (!d || !d[side]) return;
   d[side].trim = checked;
-  const sw = document.getElementById('_eb_svg_wrap');
+  const sw = _byId('_eb_svg_wrap');
   if (sw && window._ebBuildSVG) sw.innerHTML = window._ebBuildSVG(d);
-  const tb = document.getElementById('_eb_tbody');
+  const tb = _byId('_eb_tbody');
   if (tb && window._ebBuildTable) tb.innerHTML = window._ebBuildTable(d);
 }
 
@@ -554,18 +553,18 @@ function _openNewEdgeBandMaterialPopup() {
     </div>`;
   _openPopup(h, 'sm');
   setTimeout(() => {
-    document.getElementById('eb-new-name') && document.getElementById('eb-new-name').focus();
+    _byId('eb-new-name') && _byId('eb-new-name').focus();
   }, 50);
 }
 
 function _saveNewEdgeBandMaterial() {
   const name = (_popupVal('eb-new-name') || '').trim();
   if (!name) { _toast('Please enter a name', 'error'); return; }
-  const thickness = parseFloat(document.getElementById('eb-new-thickness')?.value) || 0;
-  const width = parseFloat(document.getElementById('eb-new-width')?.value) || 0;
-  const length = parseFloat(document.getElementById('eb-new-length')?.value) || 0;
-  const glue = document.getElementById('eb-new-glue')?.value || '';
-  const saveStock = document.getElementById('eb-new-save-stock')?.checked;
+  const thickness = parseFloat(_byId('eb-new-thickness')?.value) || 0;
+  const width = parseFloat(_byId('eb-new-width')?.value) || 0;
+  const length = parseFloat(_byId('eb-new-length')?.value) || 0;
+  const glue = _byId('eb-new-glue')?.value || '';
+  const saveStock = _byId('eb-new-save-stock')?.checked;
 
   const eb = addEdgeBand(name, thickness, width, null, length, glue);
   _closePopup();
@@ -624,7 +623,7 @@ function _openSaveProjectPopup() {
           <input type="text" id="save-proj-client" placeholder="Search or add client..." autocomplete="off"
             oninput="_smartClientSuggest(this,'save-proj-client-suggest')"
             onfocus="_smartClientSuggest(this,'save-proj-client-suggest')"
-            onblur="setTimeout(()=>document.getElementById('save-proj-client-suggest').style.display='none',150)">
+            onblur="setTimeout(()=>_byId('save-proj-client-suggest').style.display='none',150)">
           <div class="smart-input-add" onclick="_openNewClientPopup('save-proj-client')" title="Add new client">+</div>
         </div>
         <div id="save-proj-client-suggest" class="client-suggest-list" style="display:none"></div>
@@ -639,7 +638,7 @@ function _openSaveProjectPopup() {
       <button class="btn btn-primary" onclick="_doSaveProject()">Save Project</button>
     </div>`;
   _openPopup(h, 'sm');
-  setTimeout(() => document.getElementById('save-proj-name')?.focus(), 50);
+  setTimeout(() => _byId('save-proj-name')?.focus(), 50);
 }
 
 function _doSaveProject() {
@@ -680,14 +679,14 @@ function _doClearAll() {
   pieces = []; sheets = []; _pieceId = 1; _sheetId = 1; pieceColorIdx = 0; results = null;
   ['pc_cl_pieces','pc_cl_sheets','pc_cl_pid','pc_cl_sid','pc_cl_colorIdx','pc_cl_sheetColorIdx'].forEach(k => localStorage.removeItem(k));
   renderPieces(); renderSheets();
-  document.getElementById('results-area').innerHTML = '<div class="empty-state"><div class="empty-icon" style="opacity:.18"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg></div><h3>Ready to Optimize</h3><p>Add stock panels and cut pieces, then click "Optimize Cut Layout"</p></div>';
+  _byId('results-area').innerHTML = '<div class="empty-state"><div class="empty-icon" style="opacity:.18"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg></div><h3>Ready to Optimize</h3><p>Add stock panels and cut pieces, then click "Optimize Cut Layout"</p></div>';
 }
 
 // ── PANEL RESIZE ──
 (function() {
   document.addEventListener('DOMContentLoaded', () => {});
   const init = () => {
-    const handle = document.getElementById('cl-resize-handle');
+    const handle = _byId('cl-resize-handle');
     const left   = document.querySelector('.cl-left');
     if (!handle || !left) return;
     let dragging = false, startX, startW;
@@ -761,7 +760,7 @@ function updateSheet(id, field, val) {
 const DRAG_HANDLE = `<svg width="10" height="14" viewBox="0 0 10 14" fill="currentColor"><circle cx="3" cy="2.5" r="1.2"/><circle cx="7" cy="2.5" r="1.2"/><circle cx="3" cy="7" r="1.2"/><circle cx="7" cy="7" r="1.2"/><circle cx="3" cy="11.5" r="1.2"/><circle cx="7" cy="11.5" r="1.2"/></svg>`;
 
 function renderSheets() {
-  const tbody = document.getElementById('sheets-body');
+  const tbody = _byId('sheets-body');
   if (!tbody) return;
   if (!sheets.length) {
     tbody.innerHTML = `<tr><td colspan="12" style="color:var(--muted);font-size:11px;padding:10px 14px;text-align:center">No panels — click "+ Add panel"</td></tr>`;
@@ -834,11 +833,11 @@ function _saveCutList() {
   try {
     localStorage.setItem('pc_cl_pieces', JSON.stringify(pieces));
     localStorage.setItem('pc_cl_sheets', JSON.stringify(sheets));
-    localStorage.setItem('pc_cl_pid', _pieceId);
-    localStorage.setItem('pc_cl_sid', _sheetId);
-    localStorage.setItem('pc_cl_colorIdx', pieceColorIdx);
+    localStorage.setItem('pc_cl_pid', String(_pieceId));
+    localStorage.setItem('pc_cl_sid', String(_sheetId));
+    localStorage.setItem('pc_cl_colorIdx', String(pieceColorIdx));
     localStorage.setItem('pc_cl_edgebands', JSON.stringify(edgeBands));
-    localStorage.setItem('pc_cl_ebid', _edgeBandId);
+    localStorage.setItem('pc_cl_ebid', String(_edgeBandId));
     localStorage.setItem('pc_cl_colsVisible', JSON.stringify(colsVisible));
   } catch(e) {}
 }
@@ -957,7 +956,7 @@ function updatePiece(id, field, val) {
 }
 
 function renderPieces() {
-  const tbody = document.getElementById('pieces-body');
+  const tbody = _byId('pieces-body');
   if (!tbody) return;
   if (!pieces.length) {
     tbody.innerHTML = `<tr><td colspan="11" style="color:var(--muted);font-size:11px;padding:10px 14px;text-align:center">No parts — click "+ Add part"</td></tr>`;
@@ -1035,7 +1034,7 @@ function renderPieces() {
   }).join('');
 
   // Totals footer
-  const tot = document.getElementById('pieces-totals');
+  const tot = _byId('pieces-totals');
   if (tot) {
     const enabled = pieces.filter(p => p.enabled !== false);
     const totalQty = enabled.reduce((s,p) => s+p.qty, 0);
@@ -1158,14 +1157,15 @@ function downloadTemplate(type) {
 }
 function triggerImportCSV(type) {
   _csvImportTarget = type;
-  const inp = document.getElementById('csv-import-input');
+  const inp = _byId('csv-import-input');
   inp.value = ''; inp.click();
 }
 function handleCSVImport(input) {
   const file = input.files[0]; if (!file) return;
   const reader = new FileReader();
   reader.onload = e => {
-    const lines = e.target.result.trim().split(/\r?\n/).slice(1);
+    const text = /** @type {string} */ (e.target.result);
+    const lines = text.trim().split(/\r?\n/).slice(1);
     lines.forEach(line => {
       const c = line.split(',').map(x => x.trim().replace(/^"|"$/g,''));
       if (_csvImportTarget === 'pieces') addPiece(c[0]||`Part ${pieces.length+1}`, parseVal(c[1]), parseVal(c[2]), parseInt(c[3])||1, c[4]||'none');
@@ -1176,32 +1176,32 @@ function handleCSVImport(input) {
 }
 
 // ── LAYOUT TOOLBAR ──
-function zoomIn()  { layoutZoom = Math.min(layoutZoom + 0.25, 4); localStorage.setItem('pc_zoom', layoutZoom); renderResults(); }
-function zoomOut() { layoutZoom = Math.max(layoutZoom - 0.25, 0.25); localStorage.setItem('pc_zoom', layoutZoom); renderResults(); }
-function zoomFit() { layoutZoom = 1.0; layoutFontScale = 1.0; localStorage.setItem('pc_zoom', layoutZoom); localStorage.setItem('pc_font_scale', layoutFontScale); renderResults(); }
+function zoomIn()  { layoutZoom = Math.min(layoutZoom + 0.25, 4); localStorage.setItem('pc_zoom', String(layoutZoom)); renderResults(); }
+function zoomOut() { layoutZoom = Math.max(layoutZoom - 0.25, 0.25); localStorage.setItem('pc_zoom', String(layoutZoom)); renderResults(); }
+function zoomFit() { layoutZoom = 1.0; layoutFontScale = 1.0; localStorage.setItem('pc_zoom', String(layoutZoom)); localStorage.setItem('pc_font_scale', String(layoutFontScale)); renderResults(); }
 function toggleLayoutColor() {
   layoutColor = !layoutColor;
-  const b = document.getElementById('lt-color'); if (b) b.classList.toggle('active', layoutColor);
+  const b = _byId('lt-color'); if (b) b.classList.toggle('active', layoutColor);
   renderResults();
 }
 function toggleLayoutGrain() {
   layoutGrain = !layoutGrain;
-  const b = document.getElementById('lt-grain'); if (b) b.classList.toggle('active', layoutGrain);
+  const b = _byId('lt-grain'); if (b) b.classList.toggle('active', layoutGrain);
   renderResults();
 }
 function toggleCutOrder() {
   layoutCutOrder = !layoutCutOrder;
   localStorage.setItem('pc_cut_order', layoutCutOrder ? '1' : '0');
-  const b = document.getElementById('lt-cutorder'); if (b) b.classList.toggle('active', layoutCutOrder);
+  const b = _byId('lt-cutorder'); if (b) b.classList.toggle('active', layoutCutOrder);
   renderResults();
 }
 function toggleSheetCutList() {
   layoutSheetCutList = !layoutSheetCutList;
   localStorage.setItem('pc_sheet_cutlist', layoutSheetCutList ? '1' : '0');
-  const b = document.getElementById('lt-sheetcl'); if (b) b.classList.toggle('active', layoutSheetCutList);
+  const b = _byId('lt-sheetcl'); if (b) b.classList.toggle('active', layoutSheetCutList);
   renderResults();
 }
-function adjustFontScale(d) { layoutFontScale = Math.max(0.5, Math.min(2.5, layoutFontScale + d)); localStorage.setItem('pc_font_scale', layoutFontScale); renderResults(); }
+function adjustFontScale(d) { layoutFontScale = Math.max(0.5, Math.min(2.5, layoutFontScale + d)); localStorage.setItem('pc_font_scale', String(layoutFontScale)); renderResults(); }
 function printLayout(mode='print') {
   if (!results || !results.layouts || !results.layouts.length) { _toast('Run the optimiser first', 'info'); return; }
   // Brief delay so canvases finish rendering before capture
@@ -1342,7 +1342,7 @@ ${combinedPageHTML}
 
 function _printInFrame(html) {
   // Use a hidden iframe — avoids popup blockers entirely
-  const old = document.getElementById('_print_frame');
+  const old = _byId('_print_frame');
   if (old) old.remove();
   const frame = document.createElement('iframe');
   frame.id = '_print_frame';
@@ -1358,7 +1358,7 @@ function _printInFrame(html) {
     } catch(e) {
       _saveAsPDF(html); // fallback to new-tab PDF flow
     }
-    setTimeout(() => { const f = document.getElementById('_print_frame'); if (f) f.remove(); }, 3000);
+    setTimeout(() => { const f = _byId('_print_frame'); if (f) f.remove(); }, 3000);
   }, 600);
 }
 
@@ -1769,7 +1769,7 @@ async function _buildCutListPDF({ biz, layouts, imgs, pieces, u, cur, totalPiece
       }
 
       // cut list table — right 1/3
-      pdf.autoTable({
+      /** @type {any} */ (pdf).autoTable({
         startY: sheetHdgY + hdgH + 3,
         margin: { left: rightX, right: M },
         tableWidth: rightW,
@@ -1821,7 +1821,7 @@ async function _buildCutListPDF({ biz, layouts, imgs, pieces, u, cur, totalPiece
         pdf.text('ALL PIECES', M, cy);
         pdf.setDrawColor(210); pdf.setLineWidth(0.2); pdf.line(M, cy+1.5, PW-M, cy+1.5);
         cy += 5;
-        pdf.autoTable({
+        /** @type {any} */ (pdf).autoTable({
           startY: cy, margin: { left:M, right:M },
           head: [['','Label',`W (${u})`,`H (${u})`,'Qty','Material','Grain','Notes']],
           body: pieces.map(p => ['',p.label,p.w,p.h,p.qty,p.material||'--',p.grain==='h'?'Horiz':p.grain==='v'?'Vert':'--',p.notes||'']),
@@ -1859,7 +1859,7 @@ async function _buildCutListPDF({ biz, layouts, imgs, pieces, u, cur, totalPiece
 
 function toggleLayoutRotate() {
   layoutRotate = !layoutRotate;
-  const b = document.getElementById('lt-rotate'); if (b) b.classList.toggle('active', layoutRotate);
+  const b = _byId('lt-rotate'); if (b) b.classList.toggle('active', layoutRotate);
   renderResults();
 }
 function toggleClSummary() {
@@ -1867,7 +1867,7 @@ function toggleClSummary() {
   clShowCutList = clShowSummary;  // cut list table is part of the Summary tile now
   localStorage.setItem('pc_show_summary', clShowSummary ? '1' : '0');
   localStorage.setItem('pc_show_cutlist', clShowCutList ? '1' : '0');
-  document.getElementById('lt-pg-summary')?.classList.toggle('active', clShowSummary);
+  _byId('lt-pg-summary')?.classList.toggle('active', clShowSummary);
   renderResults();
 }
 function toggleClCutList() {
@@ -1875,7 +1875,7 @@ function toggleClCutList() {
   toggleClSummary();
 }
 function setPagesPerSheet(n) {
-  let s = document.getElementById('print-pages-style');
+  let s = /** @type {HTMLStyleElement | null} */ (document.getElementById('print-pages-style'));
   if (!s) { s = document.createElement('style'); s.id = 'print-pages-style'; document.head.appendChild(s); }
   n = parseInt(n);
   if (n === 2) s.textContent = `@media print{.canvas-wrap{display:inline-block;width:48%;margin:0 1% 2%;vertical-align:top}}`;
@@ -1982,7 +1982,7 @@ function packSheetRecGuillotine(sheetW, sheetH, sheetGrain, items, kerf) {
 
 function optimize() {
   if (!_userId && _getOptCount() >= FREE_LIMIT) {
-    document.getElementById('paywall-modal').classList.remove('hidden');
+    _byId('paywall-modal').classList.remove('hidden');
     return;
   }
   const activeSheets = sheets.filter(s => s.enabled !== false);
@@ -2034,7 +2034,7 @@ function optimize() {
   renderResults();
   // Scroll results into view
   setTimeout(() => {
-    const el = document.getElementById('results-area');
+    const el = _byId('results-area');
     if (el) el.scrollTop = 0;
     // On narrow screens, scroll the right panel into view
     const right = document.querySelector('.cl-right');
@@ -2051,10 +2051,10 @@ function switchTab(tab) {
 function renderResults() {
   if (!results) return;
   // Sync layout toolbar button states with persisted prefs
-  const btnCo = document.getElementById('lt-cutorder'); if (btnCo) btnCo.classList.toggle('active', layoutCutOrder);
-  const btnSum = document.getElementById('lt-pg-summary'); if (btnSum) btnSum.classList.toggle('active', clShowSummary);
-  const btnScl = document.getElementById('lt-sheetcl'); if (btnScl) btnScl.classList.toggle('active', layoutSheetCutList);
-  const area = document.getElementById('results-area');
+  const btnCo = _byId('lt-cutorder'); if (btnCo) btnCo.classList.toggle('active', layoutCutOrder);
+  const btnSum = _byId('lt-pg-summary'); if (btnSum) btnSum.classList.toggle('active', clShowSummary);
+  const btnScl = _byId('lt-sheetcl'); if (btnScl) btnScl.classList.toggle('active', layoutSheetCutList);
+  const area = _byId('results-area');
   renderLayout(area);  // inner tabs removed; layout view is the only view
 }
 

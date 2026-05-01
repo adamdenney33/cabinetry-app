@@ -1,4 +1,3 @@
-// @ts-nocheck
 // ProCabinet — Stock helpers + main stock view (carved out of src/app.js
 // in phase E carve 8 — helpers — and carve 13 — STOCK section appended).
 //
@@ -432,11 +431,11 @@ function _onRestore(orderArr) {
 }
 
 function stockCatChanged() {
-  const cat = document.getElementById('stock-cat').value;
-  const dimsEl = document.getElementById('stock-dims-fields');
-  const ebEl = document.getElementById('stock-eb-fields');
-  const qtyEl = document.getElementById('stock-qty-fields');
-  const ebQtyEl = document.getElementById('stock-eb-qty-fields');
+  const cat = _byId('stock-cat').value;
+  const dimsEl = _byId('stock-dims-fields');
+  const ebEl = _byId('stock-eb-fields');
+  const qtyEl = _byId('stock-qty-fields');
+  const ebQtyEl = _byId('stock-eb-qty-fields');
   if (!dimsEl) return;
   const isEB = cat === 'Edge Banding';
   const sheetCats = ['Sheet Goods', 'Solid Timber'];
@@ -447,42 +446,42 @@ function stockCatChanged() {
 }
 function cancelStockEdit() {
   window._editingStockId = null;
-  document.getElementById('stock-name').value = '';
-  document.getElementById('stock-variant').value = '';
-  document.getElementById('stock-sku').value = '';
-  document.getElementById('stock-submit-btn').textContent = '+ Add to Stock';
-  document.getElementById('stock-cancel-btn').style.display = 'none';
-  document.getElementById('stock-form-title').textContent = 'Add Material';
+  _byId('stock-name').value = '';
+  _byId('stock-variant').value = '';
+  _byId('stock-sku').value = '';
+  _byId('stock-submit-btn').textContent = '+ Add to Stock';
+  _byId('stock-cancel-btn').style.display = 'none';
+  _byId('stock-form-title').textContent = 'Add Material';
   renderStockMain();
 }
 
 async function addStockItem() {
-  const name = document.getElementById('stock-name').value.trim();
+  const name = _byId('stock-name').value.trim();
   if (!name) { _toast('Enter a material name.', 'error'); return; }
   if (!_requireAuth()) return;
-  const cat = document.getElementById('stock-cat').value.trim();
-  const variant = document.getElementById('stock-variant').value.trim();
+  const cat = _byId('stock-cat').value.trim();
+  const variant = _byId('stock-variant').value.trim();
   const isEB = cat === 'Edge Banding';
   const thick = isEB
-    ? (parseFloat(document.getElementById('stock-eb-thick')?.value) || 0)
-    : (parseFloat(document.getElementById('stock-thick')?.value) || 0);
-  const ebWidth = isEB ? (parseFloat(document.getElementById('stock-eb-width')?.value) || 0) : 0;
-  const ebLength = isEB ? (parseFloat(document.getElementById('stock-eb-length')?.value) || 0) : 0;
-  const ebGlue = isEB ? (document.getElementById('stock-eb-glue')?.value || '') : '';
+    ? (parseFloat(_byId('stock-eb-thick')?.value) || 0)
+    : (parseFloat(_byId('stock-thick')?.value) || 0);
+  const ebWidth = isEB ? (parseFloat(_byId('stock-eb-width')?.value) || 0) : 0;
+  const ebLength = isEB ? (parseFloat(_byId('stock-eb-length')?.value) || 0) : 0;
+  const ebGlue = isEB ? (_byId('stock-eb-glue')?.value || '') : '';
   const row = {
     user_id: _userId, name,
-    sku: document.getElementById('stock-sku').value.trim() || '—',
-    w: isEB ? ebLength : (parseFloat(document.getElementById('stock-w').value) || 2440),
-    h: isEB ? ebWidth : (parseFloat(document.getElementById('stock-h').value) || 1220),
+    sku: _byId('stock-sku').value.trim() || '—',
+    w: isEB ? ebLength : (parseFloat(_byId('stock-w').value) || 2440),
+    h: isEB ? ebWidth : (parseFloat(_byId('stock-h').value) || 1220),
     qty: isEB
       ? Math.round(ebLength)
-      : (parseInt(document.getElementById('stock-qty').value) || 0),
+      : (parseInt(_byId('stock-qty').value) || 0),
     low: isEB
-      ? Math.round(parseFloat(document.getElementById('stock-eb-low')?.value) || 0)
-      : (parseInt(document.getElementById('stock-low').value) || 3),
+      ? Math.round(parseFloat(_byId('stock-eb-low')?.value) || 0)
+      : (parseInt(_byId('stock-low').value) || 3),
     cost: isEB
-      ? (parseFloat(document.getElementById('stock-eb-cost')?.value) || 0)
-      : (parseFloat(document.getElementById('stock-cost').value) || 0),
+      ? (parseFloat(_byId('stock-eb-cost')?.value) || 0)
+      : (parseFloat(_byId('stock-cost').value) || 0),
   };
   const { data, error } = await _db('stock_items').insert(row).select().single();
   if (error) { _toast('Could not save stock item — ' + (error.message || JSON.stringify(error)), 'error'); console.error(error); return; }
@@ -499,15 +498,15 @@ async function addStockItem() {
   const meta = { variant, thickness: thick };
   if (isEB) { meta.width = ebWidth; meta.length = ebLength; meta.glue = ebGlue; }
   if (variant || thick || isEB) _svSet(data.id, meta);
-  const supplier = document.getElementById('stock-supplier')?.value?.trim() || '';
-  const reorderUrl = document.getElementById('stock-reorder-url')?.value?.trim() || '';
+  const supplier = _byId('stock-supplier')?.value?.trim() || '';
+  const reorderUrl = _byId('stock-reorder-url')?.value?.trim() || '';
   if (supplier || reorderUrl) _ssSet(data.id, {supplier, url: reorderUrl});
   _toast('Stock item added', 'success');
-  document.getElementById('stock-name').value = '';
-  document.getElementById('stock-variant').value = '';
-  document.getElementById('stock-sku').value = '';
-  if (document.getElementById('stock-supplier')) document.getElementById('stock-supplier').value = '';
-  if (document.getElementById('stock-reorder-url')) document.getElementById('stock-reorder-url').value = '';
+  _byId('stock-name').value = '';
+  _byId('stock-variant').value = '';
+  _byId('stock-sku').value = '';
+  if (_byId('stock-supplier')) _byId('stock-supplier').value = '';
+  if (_byId('stock-reorder-url')) _byId('stock-reorder-url').value = '';
   window._editingStockId = null;
   renderStockMain();
 }
@@ -517,36 +516,36 @@ function editStockItem(id) {
   if (!item) return;
   window._editingStockId = id;
   const cat = _scGet(id) || 'Sheet Goods';
-  document.getElementById('stock-cat').value = cat;
+  _byId('stock-cat').value = cat;
   stockCatChanged();
-  document.getElementById('stock-name').value = item.name;
+  _byId('stock-name').value = item.name;
   const vd = _svGet(id);
-  document.getElementById('stock-variant').value = vd.variant || '';
-  document.getElementById('stock-sku').value = item.sku || '';
+  _byId('stock-variant').value = vd.variant || '';
+  _byId('stock-sku').value = item.sku || '';
   if (cat === 'Edge Banding') {
-    document.getElementById('stock-eb-thick').value = vd.thickness ?? item.thickness ?? '';
-    document.getElementById('stock-eb-width').value = vd.width ?? item.width ?? item.h ?? '';
-    document.getElementById('stock-eb-length').value = vd.length ?? item.length ?? item.w ?? '';
-    document.getElementById('stock-eb-glue').value = vd.glue || item.glue || 'EVA';
-    document.getElementById('stock-eb-low').value = item.low;
-    document.getElementById('stock-eb-cost').value = item.cost;
+    _byId('stock-eb-thick').value = vd.thickness ?? item.thickness ?? '';
+    _byId('stock-eb-width').value = vd.width ?? item.width ?? item.h ?? '';
+    _byId('stock-eb-length').value = vd.length ?? item.length ?? item.w ?? '';
+    _byId('stock-eb-glue').value = vd.glue || item.glue || 'EVA';
+    _byId('stock-eb-low').value = item.low;
+    _byId('stock-eb-cost').value = item.cost;
   } else {
-    document.getElementById('stock-thick').value = vd.thickness || '';
-    document.getElementById('stock-w').value = item.w;
-    document.getElementById('stock-h').value = item.h;
-    document.getElementById('stock-qty').value = item.qty;
-    document.getElementById('stock-low').value = item.low;
-    document.getElementById('stock-cost').value = item.cost;
+    _byId('stock-thick').value = vd.thickness || '';
+    _byId('stock-w').value = item.w;
+    _byId('stock-h').value = item.h;
+    _byId('stock-qty').value = item.qty;
+    _byId('stock-low').value = item.low;
+    _byId('stock-cost').value = item.cost;
   }
   const sup = _ssGet(id);
-  if (document.getElementById('stock-supplier')) document.getElementById('stock-supplier').value = sup.supplier || '';
-  if (document.getElementById('stock-reorder-url')) document.getElementById('stock-reorder-url').value = sup.url || '';
+  if (_byId('stock-supplier')) _byId('stock-supplier').value = sup.supplier || '';
+  if (_byId('stock-reorder-url')) _byId('stock-reorder-url').value = sup.url || '';
   // Scroll sidebar to top and change button/title text
   const sidebar = document.querySelector('#panel-stock .sidebar-scroll');
   if (sidebar) sidebar.scrollTop = 0;
-  document.getElementById('stock-submit-btn').textContent = 'Save Changes';
-  document.getElementById('stock-cancel-btn').style.display = '';
-  document.getElementById('stock-form-title').textContent = 'Edit Material';
+  _byId('stock-submit-btn').textContent = 'Save Changes';
+  _byId('stock-cancel-btn').style.display = '';
+  _byId('stock-form-title').textContent = 'Edit Material';
 }
 
 async function saveStockEdit() {
@@ -554,34 +553,34 @@ async function saveStockEdit() {
   if (!id) { addStockItem(); return; }
   const item = stockItems.find(s => s.id === id);
   if (!item) return;
-  const cat = document.getElementById('stock-cat').value.trim();
+  const cat = _byId('stock-cat').value.trim();
   const isEB = cat === 'Edge Banding';
-  const variant = document.getElementById('stock-variant')?.value?.trim() || '';
+  const variant = _byId('stock-variant')?.value?.trim() || '';
   let updates, thick = 0, ebWidth = 0, ebLength = 0, ebGlue = '';
   if (isEB) {
-    thick = parseFloat(document.getElementById('stock-eb-thick')?.value) || 0;
-    ebWidth = parseFloat(document.getElementById('stock-eb-width')?.value) || 0;
-    ebLength = parseFloat(document.getElementById('stock-eb-length')?.value) || 0;
-    ebGlue = document.getElementById('stock-eb-glue')?.value || '';
+    thick = parseFloat(_byId('stock-eb-thick')?.value) || 0;
+    ebWidth = parseFloat(_byId('stock-eb-width')?.value) || 0;
+    ebLength = parseFloat(_byId('stock-eb-length')?.value) || 0;
+    ebGlue = _byId('stock-eb-glue')?.value || '';
     updates = {
-      name: document.getElementById('stock-name').value.trim(),
-      sku: document.getElementById('stock-sku').value.trim(),
+      name: _byId('stock-name').value.trim(),
+      sku: _byId('stock-sku').value.trim(),
       w: ebLength,
       h: ebWidth,
       qty: Math.round(ebLength),
-      low: Math.round(parseFloat(document.getElementById('stock-eb-low')?.value) || 0),
-      cost: parseFloat(document.getElementById('stock-eb-cost')?.value) || 0,
+      low: Math.round(parseFloat(_byId('stock-eb-low')?.value) || 0),
+      cost: parseFloat(_byId('stock-eb-cost')?.value) || 0,
     };
   } else {
-    thick = parseFloat(document.getElementById('stock-thick')?.value) || 0;
+    thick = parseFloat(_byId('stock-thick')?.value) || 0;
     updates = {
-      name: document.getElementById('stock-name').value.trim(),
-      sku: document.getElementById('stock-sku').value.trim(),
-      w: parseFloat(document.getElementById('stock-w').value) || item.w,
-      h: parseFloat(document.getElementById('stock-h').value) || item.h,
-      qty: parseInt(document.getElementById('stock-qty').value) || 0,
-      low: parseInt(document.getElementById('stock-low').value) || 3,
-      cost: parseFloat(document.getElementById('stock-cost').value) || 0,
+      name: _byId('stock-name').value.trim(),
+      sku: _byId('stock-sku').value.trim(),
+      w: parseFloat(_byId('stock-w').value) || item.w,
+      h: parseFloat(_byId('stock-h').value) || item.h,
+      qty: parseInt(_byId('stock-qty').value) || 0,
+      low: parseInt(_byId('stock-low').value) || 3,
+      cost: parseFloat(_byId('stock-cost').value) || 0,
     };
   }
   Object.assign(item, updates);
@@ -592,8 +591,8 @@ async function saveStockEdit() {
   const meta = { variant, thickness: thick };
   if (isEB) { meta.width = ebWidth; meta.length = ebLength; meta.glue = ebGlue; }
   _svSet(id, meta);
-  const supplier = document.getElementById('stock-supplier')?.value?.trim() || '';
-  const reorderUrl = document.getElementById('stock-reorder-url')?.value?.trim() || '';
+  const supplier = _byId('stock-supplier')?.value?.trim() || '';
+  const reorderUrl = _byId('stock-reorder-url')?.value?.trim() || '';
   _ssSet(id, {supplier, url: reorderUrl});
   cancelStockEdit();
   _toast('Stock item updated', 'success');
@@ -625,16 +624,16 @@ async function setStockQty(id, text) {
 }
 
 function _updateStockBadge() {
-  const badge = document.getElementById('stock-badge');
+  const badge = _byId('stock-badge');
   if (!badge) return;
   const low = stockItems.filter(i => i.qty <= i.low).length;
-  if (low > 0) { badge.textContent = low; badge.style.display = ''; }
+  if (low > 0) { badge.textContent = String(low); badge.style.display = ''; }
   else { badge.style.display = 'none'; }
 }
 function renderStockMain() {
   _updateStockBadge();
   const cur = window.currency;
-  const el = document.getElementById('stock-main');
+  const el = _byId('stock-main');
   const totalSheets = stockItems.reduce((s, i) => s + i.qty, 0);
   const totalValue = stockItems.reduce((s, i) => s + i.qty * i.cost, 0);
   const lowItems = stockItems.filter(i => i.qty <= i.low).length;

@@ -1,4 +1,3 @@
-// @ts-nocheck
 // ProCabinet — Cabinet Builder / line-based cabinet quoting (carved out of
 // src/app.js in phase E carve 15 — the largest carve of phase E).
 //
@@ -143,7 +142,8 @@ function loadCQSettings() {
   if (!cqSettings.finishes || !cqSettings.finishes.length) cqSettings.finishes = [
     {name:'None',price:0},{name:'Oil (Osmo/Rubio)',price:12},{name:'Lacquer',price:18},{name:'Paint',price:22},{name:'Stain + Oil',price:15},{name:'Wax',price:8},{name:'2-Pack Spray',price:35}
   ];
-  if (!cqSettings.labourTimes) cqSettings.labourTimes = {};
+  if (!cqSettings.labourTimes) cqSettings.labourTimes = /** @type {any} */ ({});
+  /** @type {any} */
   const _lt = cqSettings.labourTimes;
   if (!_lt.carcass) _lt.carcass = 1.5;
   if (!_lt.door) _lt.door = 0.4;
@@ -159,7 +159,7 @@ function loadCQSettings() {
   localStorage.setItem('pc_cq_settings', JSON.stringify(cqSettings));
 }
 function saveCQSettings() {
-  const g = id => parseFloat(document.getElementById(id)?.value);
+  const g = id => parseFloat(_byId(id)?.value);
   cqSettings.labourRate = g('cq-labour-rate') || 65;
   cqSettings.markup = g('cq-markup') || 20;
   cqSettings.tax = g('cq-tax') || 13;
@@ -173,15 +173,15 @@ function loadCQLines() {
   try { const s = localStorage.getItem('pc_cq_lines'); if (s) { cqLines = JSON.parse(s); cqNextId = Math.max(0, ...cqLines.map(l=>l.id)) + 1; } } catch(e) {}
   // Restore project + client names
   setTimeout(() => {
-    const pn = document.getElementById('cq-project'); const saved = localStorage.getItem('pc_cq_project_name'); if (pn && saved) pn.value = saved;
-    const cn = document.getElementById('cq-client'); const savedC = localStorage.getItem('pc_cq_client_name'); if (cn && savedC) cn.value = savedC;
+    const pn = _byId('cq-project'); const saved = localStorage.getItem('pc_cq_project_name'); if (pn && saved) pn.value = saved;
+    const cn = _byId('cq-client'); const savedC = localStorage.getItem('pc_cq_client_name'); if (cn && savedC) cn.value = savedC;
   }, 100);
 }
 function saveCQLines() {
   localStorage.setItem('pc_cq_lines', JSON.stringify(cqLines));
-  const pn = document.getElementById('cq-project');
+  const pn = _byId('cq-project');
   if (pn) localStorage.setItem('pc_cq_project_name', pn.value);
-  const cn = document.getElementById('cq-client');
+  const cn = _byId('cq-client');
   if (cn) localStorage.setItem('pc_cq_client_name', cn.value);
 }
 function loadCQSaved() {
@@ -194,11 +194,11 @@ function toggleCQSettings() {
 }
 
 function switchCabTab(tab) {
-  const rates = document.getElementById('cab-view-rates');
-  const tabBuilder = document.getElementById('cab-tab-builder');
-  const tabRates = document.getElementById('cab-tab-rates');
+  const rates = _byId('cab-view-rates');
+  const tabBuilder = _byId('cab-tab-builder');
+  const tabRates = _byId('cab-tab-rates');
   // Get all builder content divs (everything in sidebar except the rates div and the tabs)
-  const sidebar = document.getElementById('cq-sidebar');
+  const sidebar = _byId('cq-sidebar');
   if (!sidebar) return;
   const builderDivs = Array.from(sidebar.children).filter(el => el.id !== 'cab-view-rates');
 
@@ -231,9 +231,10 @@ function _cqListHTML(arr, path, unitLabel) {
 }
 
 function renderCQRates() {
-  const el = document.getElementById('cq-rates-content');
+  const el = _byId('cq-rates-content');
   if (!el) return;
   const cur = window.currency;
+  /** @type {any} */
   const lt = cqSettings.labourTimes || {};
   if (!window._ratesOpen) window._ratesOpen = {};
   const ro = window._ratesOpen;
@@ -303,10 +304,10 @@ function renderCQRates() {
   el.innerHTML = `
     ${section('core', 'Core Rates', '3 rates', coreContent)}
     ${section('labour', 'Labour Times', '9 rates', labourContent)}
-    ${section('materials', 'Stock Materials', '('+stockItems.length+' in stock)', `<div style="position:relative;margin-top:6px"><div class="smart-input-wrap"><input type="text" id="rates-stock-search" placeholder="Search stock materials..." autocomplete="off" style="font-size:12px" oninput="_smartRatesStockSuggest(this,'rates-stock-suggest')" onfocus="_smartRatesStockSuggest(this,'rates-stock-suggest')" onblur="setTimeout(()=>document.getElementById('rates-stock-suggest').style.display='none',150)"><div class="smart-input-add" onclick="_openNewStockPopup()" title="Add new stock material">+</div></div><div id="rates-stock-suggest" class="client-suggest-list" style="display:none"></div></div>`)}
+    ${section('materials', 'Stock Materials', '('+stockItems.length+' in stock)', `<div style="position:relative;margin-top:6px"><div class="smart-input-wrap"><input type="text" id="rates-stock-search" placeholder="Search stock materials..." autocomplete="off" style="font-size:12px" oninput="_smartRatesStockSuggest(this,'rates-stock-suggest')" onfocus="_smartRatesStockSuggest(this,'rates-stock-suggest')" onblur="setTimeout(()=>_byId('rates-stock-suggest').style.display='none',150)"><div class="smart-input-add" onclick="_openNewStockPopup()" title="Add new stock material">+</div></div><div id="rates-stock-suggest" class="client-suggest-list" style="display:none"></div></div>`)}
     ${section('hardware', 'Hardware', '('+cqSettings.hardware.length+' items)', listItems(cqSettings.hardware, 'cqSettings.hardware', cur))}
-    ${section('finishes', 'Finishes', '('+stockItems.filter(s=>s.category==='Finishing').length+' in stock)', `<div style="position:relative;margin-top:6px"><div class="smart-input-wrap"><input type="text" id="rates-finish-search" placeholder="Search finishing products..." autocomplete="off" style="font-size:12px" oninput="_smartRatesFinishSuggest(this,'rates-finish-suggest')" onfocus="_smartRatesFinishSuggest(this,'rates-finish-suggest')" onblur="setTimeout(()=>document.getElementById('rates-finish-suggest').style.display='none',150)"><div class="smart-input-add" onclick="_openNewStockPopup()" title="Add new finish to stock">+</div></div><div id="rates-finish-suggest" class="client-suggest-list" style="display:none"></div></div>`)}
-    ${section('edgebanding', 'Edge Banding', '('+stockItems.filter(s=>s.category==='Edge Banding').length+' in stock)', `<div style="position:relative;margin-top:6px"><div class="smart-input-wrap"><input type="text" id="rates-edge-search" placeholder="Search edge banding..." autocomplete="off" style="font-size:12px" oninput="_smartRatesEdgeSuggest(this,'rates-edge-suggest')" onfocus="_smartRatesEdgeSuggest(this,'rates-edge-suggest')" onblur="setTimeout(()=>document.getElementById('rates-edge-suggest').style.display='none',150)"><div class="smart-input-add" onclick="_openNewStockPopup()" title="Add new edge banding to stock">+</div></div><div id="rates-edge-suggest" class="client-suggest-list" style="display:none"></div></div>`)}
+    ${section('finishes', 'Finishes', '('+stockItems.filter(s=>s.category==='Finishing').length+' in stock)', `<div style="position:relative;margin-top:6px"><div class="smart-input-wrap"><input type="text" id="rates-finish-search" placeholder="Search finishing products..." autocomplete="off" style="font-size:12px" oninput="_smartRatesFinishSuggest(this,'rates-finish-suggest')" onfocus="_smartRatesFinishSuggest(this,'rates-finish-suggest')" onblur="setTimeout(()=>_byId('rates-finish-suggest').style.display='none',150)"><div class="smart-input-add" onclick="_openNewStockPopup()" title="Add new finish to stock">+</div></div><div id="rates-finish-suggest" class="client-suggest-list" style="display:none"></div></div>`)}
+    ${section('edgebanding', 'Edge Banding', '('+stockItems.filter(s=>s.category==='Edge Banding').length+' in stock)', `<div style="position:relative;margin-top:6px"><div class="smart-input-wrap"><input type="text" id="rates-edge-search" placeholder="Search edge banding..." autocomplete="off" style="font-size:12px" oninput="_smartRatesEdgeSuggest(this,'rates-edge-suggest')" onfocus="_smartRatesEdgeSuggest(this,'rates-edge-suggest')" onblur="setTimeout(()=>_byId('rates-edge-suggest').style.display='none',150)"><div class="smart-input-add" onclick="_openNewStockPopup()" title="Add new edge banding to stock">+</div></div><div id="rates-edge-suggest" class="client-suggest-list" style="display:none"></div></div>`)}
     ${section('basetypes', 'Base Types', '('+(cqSettings.baseTypes||[]).length+' types)', listItems(cqSettings.baseTypes||[], 'cqSettings.baseTypes', cur))}
     ${section('constructions', 'Construction Types', '('+(cqSettings.constructions||[]).length+' types)', listItems(cqSettings.constructions||[], 'cqSettings.constructions', cur+'/m²'))}
   `;
@@ -319,8 +320,8 @@ function addCQFinish() { if (!cqSettings.finishes) cqSettings.finishes = []; cqS
 
 // ── Cabinet Library ──
 function toggleCabPanel(panel) {
-  const projects = document.getElementById('cq-projects-panel');
-  const library = document.getElementById('cq-library-panel');
+  const projects = _byId('cq-projects-panel');
+  const library = _byId('cq-library-panel');
   if (panel === 'projects') {
     if (projects) projects.style.display = projects.style.display === 'none' ? '' : 'none';
     if (library) library.style.display = 'none';
@@ -376,7 +377,7 @@ function cqSaveProject(nameOverride) {
   saveCQProjectLibrary();
   renderCQProjects();
   // Open projects panel to show saved
-  const p = document.getElementById('cq-projects-panel');
+  const p = _byId('cq-projects-panel');
   if (p) p.style.display = '';
   _toast(`Project "${name}" saved`, 'success');
 }
@@ -386,7 +387,7 @@ function cqLoadProject(idx) {
   if (!p) return;
   cqLines = JSON.parse(JSON.stringify(p.lines || []));
   cqNextId = cqLines.length > 0 ? Math.max(...cqLines.map(l=>l.id)) + 1 : 1;
-  const nameEl = document.getElementById('cq-project');
+  const nameEl = _byId('cq-project');
   if (nameEl) nameEl.value = p.projectName || p.name || '';
   cqActiveLineIdx = 0;
   saveCQLines();
@@ -404,7 +405,7 @@ function cqDeleteProject(idx) {
 }
 
 function renderCQProjects() {
-  const el = document.getElementById('cq-projects-list');
+  const el = _byId('cq-projects-list');
   if (!el) return;
   const cur = window.currency;
   if (!cqProjectLibrary.length) {
@@ -489,7 +490,7 @@ function cqImportLibrary() {
       }
       renderCQLibrary();
       _toast(imported + ' cabinets imported', 'success');
-      const p = document.getElementById('cq-library-panel'); if (p) p.style.display = '';
+      const p = _byId('cq-library-panel'); if (p) p.style.display = '';
       // Cloud sync: push the just-imported entries to DB and capture db_ids
       const newEntries = cqLibrary.slice(-imported);
       Promise.all(newEntries.map(e => _saveCabinetToDB(e).then(id => { if (id) e.db_id = id; })))
@@ -541,7 +542,7 @@ function _cqCabinetSearchInput(input) {
 }
 
 function _smartCQLibrarySuggest(input, boxId) {
-  const box = document.getElementById(boxId);
+  const box = _byId(boxId);
   if (!box) return;
   _posSuggest(input, box);
   const q = input.value.trim().toLowerCase();
@@ -552,7 +553,7 @@ function _smartCQLibrarySuggest(input, boxId) {
   matches.slice(0, 8).forEach(c => {
     const idx = cqLibrary.indexOf(c);
     const calc = calcCQLine(c);
-    html += `<div class="client-suggest-item" onmousedown="cqLoadFromLibrary(${idx});document.getElementById('cq-cabinet-search').value='';document.getElementById('${boxId}').style.display='none'">
+    html += `<div class="client-suggest-item" onmousedown="cqLoadFromLibrary(${idx});_byId('cq-cabinet-search').value='';_byId('${boxId}').style.display='none'">
       <span class="suggest-icon" style="background:var(--accent-dim);color:var(--accent)">C</span>
       <span style="flex:1">${_escHtml(c._libName||c.name||'Cabinet')}</span>
       <span style="font-size:10px;color:var(--muted)">${c.w}×${c.h}</span>
@@ -580,7 +581,7 @@ const CQ_PRESETS = {
 };
 
 // ── Default Line Item ──
-function cqDefaultLine() {
+function cqDefaultLine(type) {
   return {
     id: cqNextId++, name: '',
     w: 600, h: 720, d: 560, qty: 1,
@@ -622,7 +623,7 @@ function addCQLineFromPreset(type) {
   line.name = type;
   cqLines.push(line);
   saveCQLines(); renderCQPanel();
-  setTimeout(() => { const el = document.getElementById('cq-table-area'); if (el) el.scrollTop = el.scrollHeight; }, 50);
+  setTimeout(() => { const el = _byId('cq-table-area'); if (el) el.scrollTop = el.scrollHeight; }, 50);
 }
 function removeCQLine(id) {
   cqLines = cqLines.filter(l => l.id !== id);
@@ -799,6 +800,7 @@ function calcCQLine(line) {
   matCost += constPrice * frontArea;
 
   // Auto labour estimate (hours) — from configurable rates
+  /** @type {any} */
   const lt = cqSettings.labourTimes || {};
   let autoLabour = 0;
   // Carcass — volume based (hrs per m3)
@@ -847,7 +849,7 @@ function renderCQPanel() {
 
   // Sync settings form values
   const fields = {labourRate:'cq-labour-rate', markup:'cq-markup', tax:'cq-tax', deposit:'cq-deposit', edgingPerM:'cq-edging-m'};
-  Object.entries(fields).forEach(([k, id]) => { const el = document.getElementById(id); if (el && el !== document.activeElement) el.value = cqSettings[k]; });
+  Object.entries(fields).forEach(([k, id]) => { const el = _byId(id); if (el && el !== document.activeElement) el.value = cqSettings[k]; });
 
   renderCQRates();
   renderCQLibrary();
@@ -858,7 +860,7 @@ function renderCQPanel() {
 
 // ── Render cabinet list in sidebar ──
 function renderCQCabList() {
-  const el = document.getElementById('cq-cab-list');
+  const el = _byId('cq-cab-list');
   if (!el) return;
   const cur = window.currency;
   const fmt0 = v => cur + Math.round(v).toLocaleString();
@@ -894,12 +896,12 @@ function cqSelectLine(idx) {
 function renderCQEditor() {
   // Hide any open fixed suggest dropdowns
   document.querySelectorAll('.client-suggest-list').forEach(b => { b.style.display = 'none'; b.style.position = ''; });
-  const el = document.getElementById('cq-cab-editor');
+  const el = _byId('cq-cab-editor');
   if (!el) return;
   // Use active line or a blank default for "Add" mode
   const isEditing = cqActiveLineIdx >= 0 && cqLines[cqActiveLineIdx];
   // Sync cabinet library search box with active cabinet name
-  const searchInp = document.getElementById('cq-cabinet-search');
+  const searchInp = _byId('cq-cabinet-search');
   if (searchInp && document.activeElement !== searchInp) {
     searchInp.value = isEditing ? (cqLines[cqActiveLineIdx].name || '') : '';
   }
@@ -908,8 +910,8 @@ function renderCQEditor() {
 
   const cur = window.currency;
   const c = calcCQLine(line);
-  const matSmart = (field, val) => `<div style="position:relative"><div class="smart-input-wrap"><input type="text" id="cq-mat-${field}" value="${_escHtml(val||'')}" autocomplete="off" style="font-size:13px" oninput="_smartCQMaterialSuggest(this,'cq-mat-suggest-${field}','${field}')" onfocus="_smartCQMaterialSuggest(this,'cq-mat-suggest-${field}','${field}')" onblur="setTimeout(()=>{document.getElementById('cq-mat-suggest-${field}').style.display='none';cqUpdateField('${field}',this.value)},150)"><div class="smart-input-add" onclick="_openNewStockPopup()" title="Add new material">+</div></div><div id="cq-mat-suggest-${field}" class="client-suggest-list" style="display:none"></div></div>`;
-  const finishSmart = () => `<div style="position:relative"><div class="smart-input-wrap"><input type="text" id="cq-mat-finish" value="${_escHtml(line.finish||'None')}" autocomplete="off" style="font-size:13px" oninput="_smartCQFinishSuggest(this,'cq-mat-suggest-finish')" onfocus="_smartCQFinishSuggest(this,'cq-mat-suggest-finish')" onblur="setTimeout(()=>{document.getElementById('cq-mat-suggest-finish').style.display='none';cqUpdateField('finish',this.value)},150)"><div class="smart-input-add" onclick="_openNewStockPopup()" title="Add new finish">+</div></div><div id="cq-mat-suggest-finish" class="client-suggest-list" style="display:none"></div></div>`;
+  const matSmart = (field, val) => `<div style="position:relative"><div class="smart-input-wrap"><input type="text" id="cq-mat-${field}" value="${_escHtml(val||'')}" autocomplete="off" style="font-size:13px" oninput="_smartCQMaterialSuggest(this,'cq-mat-suggest-${field}','${field}')" onfocus="_smartCQMaterialSuggest(this,'cq-mat-suggest-${field}','${field}')" onblur="setTimeout(()=>{_byId('cq-mat-suggest-${field}').style.display='none';cqUpdateField('${field}',this.value)},150)"><div class="smart-input-add" onclick="_openNewStockPopup()" title="Add new material">+</div></div><div id="cq-mat-suggest-${field}" class="client-suggest-list" style="display:none"></div></div>`;
+  const finishSmart = () => `<div style="position:relative"><div class="smart-input-wrap"><input type="text" id="cq-mat-finish" value="${_escHtml(line.finish||'None')}" autocomplete="off" style="font-size:13px" oninput="_smartCQFinishSuggest(this,'cq-mat-suggest-finish')" onfocus="_smartCQFinishSuggest(this,'cq-mat-suggest-finish')" onblur="setTimeout(()=>{_byId('cq-mat-suggest-finish').style.display='none';cqUpdateField('finish',this.value)},150)"><div class="smart-input-add" onclick="_openNewStockPopup()" title="Add new finish">+</div></div><div id="cq-mat-suggest-finish" class="client-suggest-list" style="display:none"></div></div>`;
   const stepper = (field, val, min) => `<div class="cl-stepper"><button class="cl-step-btn" onclick="cqStepField('${field}',-1)">−</button><input type="number" class="cl-input cl-qty-input" value="${val}" min="${min||0}" style="font-size:14px;width:42px" onchange="cqUpdateField('${field}',this.value)"><button class="cl-step-btn" onclick="cqStepField('${field}',1)">+</button></div>`;
   const so = sec => cqOpenSections.has(line.id + '-' + sec);
   const chev = sec => `<span style="font-size:10px;color:var(--muted);transition:transform .2s;display:inline-block;${so(sec)?'transform:rotate(90deg)':''}">&#9654;</span>`;
@@ -1034,7 +1036,7 @@ function renderCQEditor() {
         <div ${SC('hw')}>
           <div style="font-size:12px;color:var(--muted);margin-bottom:8px">Auto: ${line.doors>0?line.doors*2+' hinges':''}${line.doors>0&&line.drawers>0?', ':''}${line.drawers>0?line.drawers+' slides':''}${line.doors===0&&line.drawers===0?'None':''}</div>
           ${line.hwItems.map((hw, hi) => `<div style="display:flex;gap:4px;align-items:center;margin-bottom:6px;position:relative">
-            <div style="flex:1;position:relative"><div class="smart-input-wrap"><input type="text" id="cq-hw-${line.id}-${hi}" value="${_escHtml(hw.name)}" style="font-size:12px" autocomplete="off" oninput="_smartCQHwSuggest(this,'cq-hw-suggest-${line.id}-${hi}',${line.id},${hi})" onfocus="_smartCQHwSuggest(this,'cq-hw-suggest-${line.id}-${hi}',${line.id},${hi})" onblur="setTimeout(()=>{document.getElementById('cq-hw-suggest-${line.id}-${hi}').style.display='none';updateCQHw(${line.id},${hi},'name',this.value)},150)"><div class="smart-input-add" onclick="_openNewCQHardwarePopup(${line.id},${hi})" title="Add new hardware type">+</div></div><div id="cq-hw-suggest-${line.id}-${hi}" class="client-suggest-list" style="display:none"></div></div>
+            <div style="flex:1;position:relative"><div class="smart-input-wrap"><input type="text" id="cq-hw-${line.id}-${hi}" value="${_escHtml(hw.name)}" style="font-size:12px" autocomplete="off" oninput="_smartCQHwSuggest(this,'cq-hw-suggest-${line.id}-${hi}',${line.id},${hi})" onfocus="_smartCQHwSuggest(this,'cq-hw-suggest-${line.id}-${hi}',${line.id},${hi})" onblur="setTimeout(()=>{_byId('cq-hw-suggest-${line.id}-${hi}').style.display='none';updateCQHw(${line.id},${hi},'name',this.value)},150)"><div class="smart-input-add" onclick="_openNewCQHardwarePopup(${line.id},${hi})" title="Add new hardware type">+</div></div><div id="cq-hw-suggest-${line.id}-${hi}" class="client-suggest-list" style="display:none"></div></div>
             <span style="font-size:10px;color:var(--muted)">×</span>
             <input type="number" style="width:40px;text-align:center;padding:5px;font-size:12px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text)" value="${hw.qty}" min="1" onchange="updateCQHw(${line.id},${hi},'qty',this.value)">
             <button class="cq-del-btn" style="font-size:16px" onclick="removeCQHw(${line.id},${hi})">×</button>
@@ -1042,7 +1044,7 @@ function renderCQEditor() {
           <div style="position:relative;margin-top:4px">
             <label style="font-size:10px;font-weight:600;color:var(--muted)">Add Hardware</label>
             <div class="smart-input-wrap">
-              <input type="text" id="cq-hw-add-${line.id}" placeholder="Search hardware..." style="font-size:12px" autocomplete="off" oninput="_smartCQHwAddSuggest(this,'cq-hw-add-suggest-${line.id}',${line.id})" onfocus="_smartCQHwAddSuggest(this,'cq-hw-add-suggest-${line.id}',${line.id})" onblur="setTimeout(()=>document.getElementById('cq-hw-add-suggest-${line.id}').style.display='none',150)">
+              <input type="text" id="cq-hw-add-${line.id}" placeholder="Search hardware..." style="font-size:12px" autocomplete="off" oninput="_smartCQHwAddSuggest(this,'cq-hw-add-suggest-${line.id}',${line.id})" onfocus="_smartCQHwAddSuggest(this,'cq-hw-add-suggest-${line.id}',${line.id})" onblur="setTimeout(()=>_byId('cq-hw-add-suggest-${line.id}').style.display='none',150)">
               <div class="smart-input-add" onclick="_openNewCQHardwarePopup(${line.id},-1)" title="Add new hardware type">+</div>
             </div>
             <div id="cq-hw-add-suggest-${line.id}" class="client-suggest-list" style="display:none"></div>
@@ -1143,7 +1145,7 @@ function cqEditCabinetFromOutput(idx) {
   renderCQEditor();
   renderCQResults();
   // Scroll sidebar to editor
-  const sidebar = document.getElementById('cq-sidebar');
+  const sidebar = _byId('cq-sidebar');
   if (sidebar) sidebar.scrollTop = sidebar.scrollHeight;
 }
 
@@ -1197,7 +1199,7 @@ function _posSuggest(input, box) {
 
 // ── Rates Stock Smart Suggest (opens stock edit popup on click) ──
 function _smartRatesStockSuggest(input, boxId) {
-  const box = document.getElementById(boxId);
+  const box = _byId(boxId);
   if (!box) return;
   _posSuggest(input, box);
   const q = input.value.trim().toLowerCase();
@@ -1208,7 +1210,7 @@ function _smartRatesStockSuggest(input, boxId) {
   matches.slice(0, 10).forEach(s => {
     const dims = s.w && s.h ? `${s.w}×${s.h}` : '';
     const qtyColor = s.qty <= (s.low || 3) ? '#ef4444' : '#22c55e';
-    html += `<div class="client-suggest-item" onmousedown="document.getElementById('rates-stock-search').value='';document.getElementById('${boxId}').style.display='none';_openStockPopup(${s.id})">
+    html += `<div class="client-suggest-item" onmousedown="_byId('rates-stock-search').value='';_byId('${boxId}').style.display='none';_openStockPopup(${s.id})">
       <span class="suggest-icon" style="background:${qtyColor}20;color:${qtyColor}">${s.qty}</span>
       <span style="flex:1">${_escHtml(s.name)}</span>
       <span style="font-size:10px;color:var(--muted)">${dims ? dims + ' · ' : ''}${cur}${s.cost}/sheet</span>
@@ -1221,7 +1223,7 @@ function _smartRatesStockSuggest(input, boxId) {
 
 // ── Rates Finish Smart Suggest ──
 function _smartRatesFinishSuggest(input, boxId) {
-  const box = document.getElementById(boxId);
+  const box = _byId(boxId);
   if (!box) return;
   _posSuggest(input, box);
   const q = input.value.trim().toLowerCase();
@@ -1231,7 +1233,7 @@ function _smartRatesFinishSuggest(input, boxId) {
   let html = '';
   matches.slice(0, 10).forEach(s => {
     const qtyColor = s.qty <= (s.low || 3) ? '#ef4444' : '#22c55e';
-    html += `<div class="client-suggest-item" onmousedown="document.getElementById('rates-finish-search').value='';document.getElementById('${boxId}').style.display='none';_openStockPopup(${s.id})">
+    html += `<div class="client-suggest-item" onmousedown="_byId('rates-finish-search').value='';_byId('${boxId}').style.display='none';_openStockPopup(${s.id})">
       <span class="suggest-icon" style="background:${qtyColor}20;color:${qtyColor}">${s.qty}</span>
       <span style="flex:1">${_escHtml(s.name)}</span>
       <span style="font-size:10px;color:var(--muted)">${cur}${s.cost}/m²</span>
@@ -1244,7 +1246,7 @@ function _smartRatesFinishSuggest(input, boxId) {
 
 // ── Rates Edge Banding Smart Suggest ──
 function _smartRatesEdgeSuggest(input, boxId) {
-  const box = document.getElementById(boxId);
+  const box = _byId(boxId);
   if (!box) return;
   _posSuggest(input, box);
   const q = input.value.trim().toLowerCase();
@@ -1254,7 +1256,7 @@ function _smartRatesEdgeSuggest(input, boxId) {
   let html = '';
   matches.slice(0, 10).forEach(s => {
     const qtyColor = s.qty <= (s.low || 3) ? '#ef4444' : '#22c55e';
-    html += `<div class="client-suggest-item" onmousedown="document.getElementById('rates-edge-search').value='';document.getElementById('${boxId}').style.display='none';_openStockPopup(${s.id})">
+    html += `<div class="client-suggest-item" onmousedown="_byId('rates-edge-search').value='';_byId('${boxId}').style.display='none';_openStockPopup(${s.id})">
       <span class="suggest-icon" style="background:${qtyColor}20;color:${qtyColor}">${s.qty}</span>
       <span style="flex:1">${_escHtml(s.name)}</span>
       <span style="font-size:10px;color:var(--muted)">${cur}${s.cost}/m</span>
@@ -1267,7 +1269,7 @@ function _smartRatesEdgeSuggest(input, boxId) {
 
 // ── Cabinet Material Smart Suggest ──
 function _smartCQMaterialSuggest(input, boxId, fieldName) {
-  const box = document.getElementById(boxId);
+  const box = _byId(boxId);
   if (!box) return;
   _posSuggest(input, box);
   const q = input.value.trim().toLowerCase();
@@ -1279,7 +1281,7 @@ function _smartCQMaterialSuggest(input, boxId, fieldName) {
   matches.slice(0, 8).forEach(s => {
     const dims = s.w && s.h ? `${s.w}×${s.h}` : '';
     const qtyColor = s.qty <= (s.low || 3) ? '#ef4444' : '#22c55e';
-    html += `<div class="client-suggest-item" onmousedown="document.getElementById('cq-mat-${fieldName}').value='${_escHtml(s.name)}';cqUpdateField('${fieldName}','${_escHtml(s.name)}');document.getElementById('${boxId}').style.display='none'">
+    html += `<div class="client-suggest-item" onmousedown="_byId('cq-mat-${fieldName}').value='${_escHtml(s.name)}';cqUpdateField('${fieldName}','${_escHtml(s.name)}');_byId('${boxId}').style.display='none'">
       <span class="suggest-icon" style="background:${qtyColor}20;color:${qtyColor}">${s.qty}</span>
       <span style="flex:1">${_escHtml(s.name)}</span>
       <span style="font-size:10px;color:var(--muted)">${dims ? dims + ' · ' : ''}${cur}${s.cost}/sheet</span>
@@ -1291,7 +1293,7 @@ function _smartCQMaterialSuggest(input, boxId, fieldName) {
 }
 
 function _smartCQFinishSuggest(input, boxId) {
-  const box = document.getElementById(boxId);
+  const box = _byId(boxId);
   if (!box) return;
   _posSuggest(input, box);
   const q = input.value.trim().toLowerCase();
@@ -1301,7 +1303,7 @@ function _smartCQFinishSuggest(input, boxId) {
   let html = '';
   matches.slice(0, 8).forEach(s => {
     const qtyColor = s.qty <= (s.low || 3) ? '#ef4444' : '#22c55e';
-    html += `<div class="client-suggest-item" onmousedown="document.getElementById('cq-mat-finish').value='${_escHtml(s.name)}';cqUpdateField('finish','${_escHtml(s.name)}');document.getElementById('${boxId}').style.display='none'">
+    html += `<div class="client-suggest-item" onmousedown="_byId('cq-mat-finish').value='${_escHtml(s.name)}';cqUpdateField('finish','${_escHtml(s.name)}');_byId('${boxId}').style.display='none'">
       <span class="suggest-icon" style="background:${qtyColor}20;color:${qtyColor}">${s.qty}</span>
       <span style="flex:1">${_escHtml(s.name)}</span>
       <span style="font-size:10px;color:var(--muted)">${cur}${s.cost}/unit</span>
@@ -1313,7 +1315,7 @@ function _smartCQFinishSuggest(input, boxId) {
 }
 
 function _openNewCQMaterialPopup(fieldName) {
-  const existing = document.getElementById('cq-mat-' + fieldName)?.value || '';
+  const existing = _byId('cq-mat-' + fieldName)?.value || '';
   _openPopup(`
     <div class="popup-header">
       <div class="popup-title">New Material</div>
@@ -1328,7 +1330,7 @@ function _openNewCQMaterialPopup(fieldName) {
       <button class="btn btn-accent" onclick="_saveNewCQMaterial('${fieldName}')">Add Material</button>
     </div>
   `, 'sm');
-  setTimeout(() => document.getElementById('pnm-name')?.focus(), 50);
+  setTimeout(() => _byId('pnm-name')?.focus(), 50);
 }
 
 function _saveNewCQMaterial(fieldName) {
@@ -1340,14 +1342,14 @@ function _saveNewCQMaterial(fieldName) {
     saveCQSettings();
   }
   cqUpdateField(fieldName, name);
-  const inp = document.getElementById('cq-mat-' + fieldName);
+  const inp = _byId('cq-mat-' + fieldName);
   if (inp) inp.value = name;
   _closePopup();
   _toast('"' + name + '" added to materials', 'success');
 }
 
 function _openNewStockPopup() {
-  const existing = document.getElementById('cq-mat-finish')?.value || '';
+  const existing = _byId('cq-mat-finish')?.value || '';
   _openPopup(`
     <div class="popup-header">
       <div class="popup-title">New Finish</div>
@@ -1362,7 +1364,7 @@ function _openNewStockPopup() {
       <button class="btn btn-accent" onclick="_saveNewCQFinish()">Add Finish</button>
     </div>
   `, 'sm');
-  setTimeout(() => document.getElementById('pnf-name')?.focus(), 50);
+  setTimeout(() => _byId('pnf-name')?.focus(), 50);
 }
 
 function _saveNewCQFinish() {
@@ -1375,7 +1377,7 @@ function _saveNewCQFinish() {
     saveCQSettings();
   }
   cqUpdateField('finish', name);
-  const inp = document.getElementById('cq-mat-finish');
+  const inp = _byId('cq-mat-finish');
   if (inp) inp.value = name;
   _closePopup();
   _toast('"' + name + '" added to finishes', 'success');
@@ -1383,7 +1385,7 @@ function _saveNewCQFinish() {
 
 // ── Cabinet Hardware Smart Suggest ──
 function _smartCQHwSuggest(input, boxId, lineId, hwIdx) {
-  const box = document.getElementById(boxId);
+  const box = _byId(boxId);
   if (!box) return;
   _posSuggest(input, box);
   const q = input.value.trim().toLowerCase();
@@ -1391,7 +1393,7 @@ function _smartCQHwSuggest(input, boxId, lineId, hwIdx) {
   const matches = q ? cqSettings.hardware.filter(h => h.name.toLowerCase().includes(q)) : cqSettings.hardware;
   let html = '';
   matches.slice(0, 8).forEach(h => {
-    html += `<div class="client-suggest-item" onmousedown="document.getElementById('cq-hw-${lineId}-${hwIdx}').value='${_escHtml(h.name)}';updateCQHw(${lineId},${hwIdx},'name','${_escHtml(h.name)}');document.getElementById('${boxId}').style.display='none'">
+    html += `<div class="client-suggest-item" onmousedown="_byId('cq-hw-${lineId}-${hwIdx}').value='${_escHtml(h.name)}';updateCQHw(${lineId},${hwIdx},'name','${_escHtml(h.name)}');_byId('${boxId}').style.display='none'">
       <span class="suggest-icon" style="background:#6b8aff20;color:#6b8aff">H</span>
       <span style="flex:1">${_escHtml(h.name)}</span>
       <span style="font-size:10px;color:var(--muted)">${cur}${h.price}/unit</span>
@@ -1403,7 +1405,7 @@ function _smartCQHwSuggest(input, boxId, lineId, hwIdx) {
 }
 
 function _smartCQHwAddSuggest(input, boxId, lineId) {
-  const box = document.getElementById(boxId);
+  const box = _byId(boxId);
   if (!box) return;
   _posSuggest(input, box);
   const q = input.value.trim().toLowerCase();
@@ -1411,7 +1413,7 @@ function _smartCQHwAddSuggest(input, boxId, lineId) {
   const matches = q ? cqSettings.hardware.filter(h => h.name.toLowerCase().includes(q)) : cqSettings.hardware;
   let html = '';
   matches.slice(0, 8).forEach(h => {
-    html += `<div class="client-suggest-item" onmousedown="_addCQHwByName(${lineId},'${_escHtml(h.name)}');document.getElementById('cq-hw-add-${lineId}').value='';document.getElementById('${boxId}').style.display='none'">
+    html += `<div class="client-suggest-item" onmousedown="_addCQHwByName(${lineId},'${_escHtml(h.name)}');_byId('cq-hw-add-${lineId}').value='';_byId('${boxId}').style.display='none'">
       <span class="suggest-icon" style="background:#6b8aff20;color:#6b8aff">H</span>
       <span style="flex:1">${_escHtml(h.name)}</span>
       <span style="font-size:10px;color:var(--muted)">${cur}${h.price}/unit</span>
@@ -1431,7 +1433,7 @@ function _addCQHwByName(lineId, hwName) {
 }
 
 function _openNewCQHardwarePopup(lineId, hwIdx) {
-  const existing = hwIdx >= 0 ? (document.getElementById('cq-hw-' + lineId + '-' + hwIdx)?.value || '') : (document.getElementById('cq-hw-add-' + lineId)?.value || '');
+  const existing = hwIdx >= 0 ? (_byId('cq-hw-' + lineId + '-' + hwIdx)?.value || '') : (_byId('cq-hw-add-' + lineId)?.value || '');
   _openPopup(`
     <div class="popup-header">
       <div class="popup-title">New Hardware</div>
@@ -1446,7 +1448,7 @@ function _openNewCQHardwarePopup(lineId, hwIdx) {
       <button class="btn btn-accent" onclick="_saveNewCQHardware(${lineId},${hwIdx})">Add Hardware</button>
     </div>
   `, 'sm');
-  setTimeout(() => document.getElementById('pnh-name')?.focus(), 50);
+  setTimeout(() => _byId('pnh-name')?.focus(), 50);
 }
 
 function _saveNewCQHardware(lineId, hwIdx) {
@@ -1459,7 +1461,7 @@ function _saveNewCQHardware(lineId, hwIdx) {
   }
   if (hwIdx >= 0) {
     updateCQHw(lineId, hwIdx, 'name', name);
-    const inp = document.getElementById('cq-hw-' + lineId + '-' + hwIdx);
+    const inp = _byId('cq-hw-' + lineId + '-' + hwIdx);
     if (inp) inp.value = name;
   } else {
     _addCQHwByName(lineId, name);
@@ -1470,12 +1472,12 @@ function _saveNewCQHardware(lineId, hwIdx) {
 
 // ── Render right panel: cost breakdown ──
 function renderCQResults() {
-  const el = document.getElementById('cq-results');
+  const el = _byId('cq-results');
   if (!el) return;
   const cur = window.currency;
   const fmt = v => cur + Number(v).toFixed(2);
   const fmt0 = v => cur + Math.round(v).toLocaleString();
-  const projName = document.getElementById('cq-project')?.value || '';
+  const projName = _byId('cq-project')?.value || '';
 
   if (!cqLines.length) {
     el.innerHTML = `<div class="empty-state">
@@ -1584,16 +1586,16 @@ function cqAddToNewQuote() {
   const totalHrs = cqLines.reduce((s, l) => s + calcCQLine(l).labourHrs * l.qty, 0);
 
   // Pre-fill the quote form
-  const projName = document.getElementById('cq-project')?.value?.trim() || '';
-  const clientName = document.getElementById('cq-client')?.value?.trim() || '';
-  if (projName) document.getElementById('q-project').value = projName;
-  if (clientName) document.getElementById('q-client').value = clientName;
-  document.getElementById('q-materials').value = gMat.toFixed(2);
-  document.getElementById('q-labour-rate').value = cqSettings.labourRate;
-  document.getElementById('q-hours').value = totalHrs.toFixed(1);
-  document.getElementById('q-markup').value = cqSettings.markup;
-  document.getElementById('q-tax').value = cqSettings.tax;
-  document.getElementById('q-notes').value = cqLines.map(l => {
+  const projName = _byId('cq-project')?.value?.trim() || '';
+  const clientName = _byId('cq-client')?.value?.trim() || '';
+  if (projName) _byId('q-project').value = projName;
+  if (clientName) _byId('q-client').value = clientName;
+  _byId('q-materials').value = gMat.toFixed(2);
+  _byId('q-labour-rate').value = String(cqSettings.labourRate);
+  _byId('q-hours').value = totalHrs.toFixed(1);
+  _byId('q-markup').value = String(cqSettings.markup);
+  _byId('q-tax').value = String(cqSettings.tax);
+  _byId('q-notes').value = cqLines.map(l => {
     const desc = l.name || 'Cabinet';
     const details = [l.w+'×'+l.h+'×'+l.d+'mm', l.material];
     if (l.doors > 0) details.push(l.doors + ' door' + (l.doors!==1?'s':''));
@@ -1613,7 +1615,7 @@ function cqAddToExistingQuote() {
   if (!quotes.length) { _toast('No existing quotes. Use "Create New Quote" instead.', 'info'); cqAddToNewQuote(); return; }
 
   // Show picker inline below button
-  const picker = document.getElementById('cq-quote-picker');
+  const picker = _byId('cq-quote-picker');
   if (!picker) return;
   if (picker.style.display !== 'none') { picker.style.display = 'none'; return; }
   const cur = window.currency;
@@ -1623,8 +1625,8 @@ function cqAddToExistingQuote() {
       ${quotes.map((q,i) => `<option value="${i}">${quoteClient(q) || 'No client'} — ${quoteProject(q) || 'No project'} (${cur}${Math.round(quoteTotal(q))})</option>`).join('')}
     </select>
     <div style="display:flex;gap:6px">
-      <button class="btn btn-primary" onclick="const qi=parseInt(document.getElementById('_cq_qsel').value);document.getElementById('cq-quote-picker').style.display='none';_cqApplyToQuote(qi)" style="flex:1;font-size:12px;padding:7px 10px">Add</button>
-      <button class="btn btn-outline" onclick="document.getElementById('cq-quote-picker').style.display='none'" style="width:auto;font-size:12px;padding:7px 10px">Cancel</button>
+      <button class="btn btn-primary" onclick="const qi=parseInt(_byId('_cq_qsel').value);_byId('cq-quote-picker').style.display='none';_cqApplyToQuote(qi)" style="flex:1;font-size:12px;padding:7px 10px">Add</button>
+      <button class="btn btn-outline" onclick="_byId('cq-quote-picker').style.display='none'" style="width:auto;font-size:12px;padding:7px 10px">Cancel</button>
     </div>
   </div>`;
 }
@@ -1656,10 +1658,10 @@ async function _cqApplyToQuote(qi) {
 
 // ── Save / Load / New Quotes ──
 function saveCQQuote() {
-  const client = document.getElementById('cq-client')?.value?.trim() || '';
-  const project = document.getElementById('cq-project')?.value?.trim() || '';
-  const notes = document.getElementById('cq-notes')?.value?.trim() || '';
-  const quoteNum = document.getElementById('cq-quote-num')?.value?.trim() || '';
+  const client = _byId('cq-client')?.value?.trim() || '';
+  const project = _byId('cq-project')?.value?.trim() || '';
+  const notes = _byId('cq-notes')?.value?.trim() || '';
+  const quoteNum = _byId('cq-quote-num')?.value?.trim() || '';
   if (!client && !project) { _toast('Enter a client or project name first.', 'error'); return; }
 
   const quote = {
@@ -1688,10 +1690,10 @@ function loadCQQuote(idx) {
   cqActiveQuoteIdx = idx;
   cqLines = JSON.parse(JSON.stringify(q.lines || []));
   cqNextId = cqLines.length > 0 ? Math.max(...cqLines.map(l=>l.id)) + 1 : 1;
-  document.getElementById('cq-client').value = quoteClient(q) || '';
-  document.getElementById('cq-project').value = quoteProject(q) || '';
-  document.getElementById('cq-notes').value = q.notes || '';
-  document.getElementById('cq-quote-num').value = q.quoteNum || '';
+  _byId('cq-client').value = quoteClient(q) || '';
+  _byId('cq-project').value = quoteProject(q) || '';
+  _byId('cq-notes').value = q.notes || '';
+  _byId('cq-quote-num').value = q.quoteNum || '';
   saveCQLines();
   renderCQPanel();
 }
@@ -1700,10 +1702,10 @@ function newCQQuote() {
   cqActiveQuoteIdx = -1;
   cqLines = [];
   cqNextId = 1;
-  document.getElementById('cq-client').value = '';
-  document.getElementById('cq-project').value = '';
-  document.getElementById('cq-notes').value = '';
-  document.getElementById('cq-quote-num').value = '';
+  _byId('cq-client').value = '';
+  _byId('cq-project').value = '';
+  _byId('cq-notes').value = '';
+  _byId('cq-quote-num').value = '';
   saveCQLines();
   renderCQPanel();
 }
@@ -1719,8 +1721,8 @@ function deleteCQQuote(idx) {
 }
 
 function renderCQSavedShelf() {
-  const shelf = document.getElementById('cq-saved-shelf');
-  const pills = document.getElementById('cq-saved-pills');
+  const shelf = _byId('cq-saved-shelf');
+  const pills = _byId('cq-saved-pills');
   if (!shelf || !pills) return;
   if (cqSavedQuotes.length === 0) { shelf.style.display = 'none'; return; }
   shelf.style.display = '';
@@ -1744,8 +1746,8 @@ function renderCQSavedShelf() {
 
 // ── Convert to Order ──
 function cqConvertToOrder() {
-  const client = document.getElementById('cq-client')?.value?.trim() || 'Cabinet Client';
-  const project = document.getElementById('cq-project')?.value?.trim() || 'Cabinet Project';
+  const client = _byId('cq-client')?.value?.trim() || 'Cabinet Client';
+  const project = _byId('cq-project')?.value?.trim() || 'Cabinet Project';
   if (!cqLines.length) { _toast('Add cabinet lines first.', 'error'); return; }
 
   const grandSubtotal = cqLines.reduce((s, l) => s + calcCQLine(l).lineSubtotal, 0);
@@ -1781,7 +1783,7 @@ let _clProjectCache = [];
 
 // ── Cut List smart search: Projects ──
 function _smartCLProjectSuggest(input, boxId) {
-  const box = document.getElementById(boxId);
+  const box = _byId(boxId);
   if (!box) return;
   _posSuggest(input, box);
   const q = input.value.trim().toLowerCase();
@@ -1791,7 +1793,7 @@ function _smartCLProjectSuggest(input, boxId) {
   matches.forEach((p, i) => {
     const idx = _clProjectCache.indexOf(p);
     const date = p.updated_at ? new Date(p.updated_at).toLocaleDateString() : '';
-    html += `<div class="client-suggest-item" onmousedown="_clLoadProjectByIdx(${idx});document.getElementById('cl-project').value='${_escHtml(p.name)}';document.getElementById('${boxId}').style.display='none'">
+    html += `<div class="client-suggest-item" onmousedown="_clLoadProjectByIdx(${idx});_byId('cl-project').value='${_escHtml(p.name)}';_byId('${boxId}').style.display='none'">
       <span class="suggest-icon">P</span>
       <span style="flex:1">${_escHtml(p.name)}</span>
       <span style="font-size:10px;color:var(--muted)">${date}</span>
@@ -1804,7 +1806,7 @@ function _smartCLProjectSuggest(input, boxId) {
 
 // ── Cut List smart search: Stock Materials ──
 function _smartCLStockSuggest(input, boxId) {
-  const box = document.getElementById(boxId);
+  const box = _byId(boxId);
   if (!box) return;
   _posSuggest(input, box);
   const q = input.value.trim().toLowerCase();
@@ -1835,7 +1837,7 @@ function _smartCLStockSuggest(input, boxId) {
       ? `_clAddEdgeBandFromStockIdx(${origIdx})`
       : `_clAddPanelFromStock(${origIdx})`;
     const badge = isEB ? `<span style="font-size:9px;font-weight:600;color:var(--muted);background:var(--border);padding:1px 5px;border-radius:3px;margin-right:4px">EB</span>` : '';
-    html += `<div class="client-suggest-item" onmousedown="${handler};document.getElementById('cl-stock').value='';document.getElementById('${boxId}').style.display='none'">
+    html += `<div class="client-suggest-item" onmousedown="${handler};_byId('cl-stock').value='';_byId('${boxId}').style.display='none'">
       <span class="suggest-icon" style="background:${qtyColor}20;color:${qtyColor}">${s.qty}</span>
       <span style="flex:1">${badge}${_escHtml(s.name)}</span>
       <span style="font-size:10px;color:var(--muted)">${meta}</span>
@@ -1866,7 +1868,7 @@ function _clAddEdgeBandFromStockIdx(idx) {
 
 // ── Cut List Cabinet Library ──
 function _smartCLCabinetSuggest(input, boxId) {
-  const box = document.getElementById(boxId);
+  const box = _byId(boxId);
   if (!box) return;
   _posSuggest(input, box);
   const q = input.value.trim().toLowerCase();
@@ -1876,7 +1878,7 @@ function _smartCLCabinetSuggest(input, boxId) {
   matches.slice(0, 8).forEach(c => {
     const idx = cqLibrary.indexOf(c);
     const partCount = _cabinetPartCount(c);
-    html += `<div class="client-suggest-item" onmousedown="_clLoadCabinetParts(${idx});document.getElementById('cl-cabinet-search').value='';document.getElementById('${boxId}').style.display='none'">
+    html += `<div class="client-suggest-item" onmousedown="_clLoadCabinetParts(${idx});_byId('cl-cabinet-search').value='';_byId('${boxId}').style.display='none'">
       <span class="suggest-icon" style="background:var(--accent-dim);color:var(--accent)">C</span>
       <span style="flex:1">${_escHtml(c._libName||c.name||'Cabinet')}</span>
       <span style="font-size:10px;color:var(--muted)">${c.w}×${c.h} · ${partCount} parts</span>
@@ -2003,9 +2005,9 @@ function _clPromptMergeOrNew(parts, name) {
       <button class="btn btn-primary" id="cl-cab-merge">Merge quantities</button>
     </div>
   `, 'sm');
-  document.getElementById('cl-cab-cancel').onclick = () => _closePopup();
-  document.getElementById('cl-cab-new').onclick   = () => { _closePopup(); finish('new');   };
-  document.getElementById('cl-cab-merge').onclick = () => { _closePopup(); finish('merge'); };
+  _byId('cl-cab-cancel').onclick = () => _closePopup();
+  _byId('cl-cab-new').onclick   = () => { _closePopup(); finish('new');   };
+  _byId('cl-cab-merge').onclick = () => { _closePopup(); finish('merge'); };
 }
 
 // Explode a saved cabinet into individual cut list pieces.
@@ -2020,7 +2022,7 @@ function _clLoadCabinetParts(libIdx) {
 // Save current cut parts as a cabinet library entry
 function _clSaveToCabinetLibrary() {
   if (!pieces.length) { _toast('No cut parts to save', 'error'); return; }
-  const projName = document.getElementById('cl-project')?.value?.trim() || '';
+  const projName = _byId('cl-project')?.value?.trim() || '';
   const defaultName = projName || `Cut List ${new Date().toLocaleDateString()}`;
   _openPopup(`
     <div class="popup-header">
@@ -2036,7 +2038,7 @@ function _clSaveToCabinetLibrary() {
       <button class="btn btn-accent" onclick="_confirmSaveCLToCabLib()">Save Template</button>
     </div>
   `, 'sm');
-  setTimeout(() => { const i = document.getElementById('pcl-name'); if (i) { i.focus(); i.select(); } }, 50);
+  setTimeout(() => { const i = _byId('pcl-name'); if (i) { i.focus(); i.select(); } }, 50);
 }
 
 function _confirmSaveCLToCabLib() {
@@ -2063,6 +2065,7 @@ function _confirmSaveCLToCabLib() {
 
 // Override _clLoadCabinetParts to also handle entries with _cutParts
 const _clLoadCabinetParts_orig = _clLoadCabinetParts;
+// @ts-expect-error reassigning a function-declared global to extend its behaviour
 _clLoadCabinetParts = function(libIdx) {
   const cab = cqLibrary[libIdx];
   if (!cab) return;
@@ -2104,10 +2107,10 @@ function printCQQuote(mode) {
   const fmt = v => cur + Number(v).toFixed(2);
   const fmt0 = v => cur + Math.round(v).toLocaleString();
   const biz = getBizInfo();
-  const client = document.getElementById('cq-client')?.value?.trim() || '';
-  const project = document.getElementById('cq-project')?.value?.trim() || '';
-  const notes = document.getElementById('cq-notes')?.value?.trim() || '';
-  const quoteNum = document.getElementById('cq-quote-num')?.value?.trim() || ('CQ-' + Date.now().toString(36).toUpperCase());
+  const client = _byId('cq-client')?.value?.trim() || '';
+  const project = _byId('cq-project')?.value?.trim() || '';
+  const notes = _byId('cq-notes')?.value?.trim() || '';
+  const quoteNum = _byId('cq-quote-num')?.value?.trim() || ('CQ-' + Date.now().toString(36).toUpperCase());
 
   let grandMat = 0, grandLabour = 0, grandHw = 0, grandSub = 0;
   let lineNum = 0, lastRoom = null;
@@ -2221,8 +2224,8 @@ ${notes?'<div class="notes-box"><label>Scope &amp; Notes</label><p>'+_escHtml(no
 function copyCQSummary() {
   if (!cqLines.length) { _toast('No items to copy.', 'error'); return; }
   const cur = window.currency;
-  const client = document.getElementById('cq-client')?.value?.trim() || '';
-  const project = document.getElementById('cq-project')?.value?.trim() || '';
+  const client = _byId('cq-client')?.value?.trim() || '';
+  const project = _byId('cq-project')?.value?.trim() || '';
   let grandSub = 0;
   const lineTexts = cqLines.map((line, i) => {
     const c = calcCQLine(line);
@@ -2255,18 +2258,18 @@ function cqSendToQuickQuote() {
   const grandSub = cqLines.reduce((s, l) => s + calcCQLine(l).lineSubtotal, 0);
   const matTotal = cqLines.reduce((s, l) => s + calcCQLine(l).matCost * l.qty, 0);
   const labourTotal = cqLines.reduce((s, l) => s + calcCQLine(l).labourCost * l.qty, 0);
-  const client = document.getElementById('cq-client')?.value?.trim() || '';
-  const project = document.getElementById('cq-project')?.value?.trim() || '';
+  const client = _byId('cq-client')?.value?.trim() || '';
+  const project = _byId('cq-project')?.value?.trim() || '';
 
-  document.getElementById('q-client').value = client;
-  document.getElementById('q-project').value = project;
-  document.getElementById('q-materials').value = matTotal.toFixed(2);
-  document.getElementById('q-labour-rate').value = cqSettings.labourRate;
+  _byId('q-client').value = client;
+  _byId('q-project').value = project;
+  _byId('q-materials').value = matTotal.toFixed(2);
+  _byId('q-labour-rate').value = String(cqSettings.labourRate);
   const totalHrs = cqLines.reduce((s, l) => s + calcCQLine(l).labourHrs * l.qty, 0);
-  document.getElementById('q-hours').value = totalHrs.toFixed(1);
-  document.getElementById('q-markup').value = cqSettings.markup;
-  document.getElementById('q-tax').value = cqSettings.tax;
-  document.getElementById('q-notes').value = 'Cabinet Quote: ' + cqLines.map(l => (l.name || 'Cabinet') + (l.qty > 1 ? ' x' + l.qty : '')).join(', ');
+  _byId('q-hours').value = totalHrs.toFixed(1);
+  _byId('q-markup').value = String(cqSettings.markup);
+  _byId('q-tax').value = String(cqSettings.tax);
+  _byId('q-notes').value = 'Cabinet Quote: ' + cqLines.map(l => (l.name || 'Cabinet') + (l.qty > 1 ? ' x' + l.qty : '')).join(', ');
 
   switchSection('quote');
   try { _updateQuotePreview(); } catch(e) {}

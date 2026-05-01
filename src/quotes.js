@@ -1,4 +1,3 @@
-// @ts-nocheck
 // ProCabinet — Quotes state + view (carved out of src/app.js in phase E carve 4)
 //
 // Loaded as a classic <script defer> BEFORE src/app.js (state declarations
@@ -96,20 +95,20 @@ function orderTotal(o) {
 }
 
 async function createQuote() {
-  const client = document.getElementById('q-client').value.trim();
-  const project = document.getElementById('q-project').value.trim();
+  const client = _byId('q-client').value.trim();
+  const project = _byId('q-project').value.trim();
   if (!client || !project) { _toast('Enter client name and project.', 'error'); return; }
   if (!_requireAuth()) return;
-  const hours = parseFloat(document.getElementById('q-hours').value) || 0;
-  const materials = parseFloat(document.getElementById('q-materials').value) || 0;
+  const hours = parseFloat(_byId('q-hours').value) || 0;
+  const materials = parseFloat(_byId('q-materials').value) || 0;
   const clientId = await resolveClient(client);
   const projectId = await resolveProject(project, clientId);
   const row = {
     user_id: _userId,
-    markup: parseFloat(document.getElementById('q-markup').value) || 20,
-    tax: parseFloat(document.getElementById('q-tax').value) || 13,
+    markup: parseFloat(_byId('q-markup').value) || 20,
+    tax: parseFloat(_byId('q-tax').value) || 13,
     status: 'draft', date: new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short'}),
-    notes: document.getElementById('q-notes').value.trim(),
+    notes: _byId('q-notes').value.trim(),
   };
   if (clientId) row.client_id = clientId;
   if (projectId) row.project_id = projectId;
@@ -122,10 +121,10 @@ async function createQuote() {
     await _refreshQuoteTotals(data.id);
   }
   _toast('Quote created', 'success');
-  document.getElementById('q-client').value = '';
-  document.getElementById('q-project').value = '';
-  document.getElementById('q-notes').value = '';
-  document.getElementById('q-materials').value = '';
+  _byId('q-client').value = '';
+  _byId('q-project').value = '';
+  _byId('q-notes').value = '';
+  _byId('q-materials').value = '';
   renderQuoteMain();
 }
 
@@ -166,7 +165,7 @@ async function convertQuoteToOrder(id) {
     } catch(e) { console.warn('[convertQuoteToOrder] copy lines failed:', e.message || e); }
   }
   orders.unshift(data);
-  document.getElementById('orders-badge').textContent = orders.filter(o => o.status !== 'complete').length;
+  _byId('orders-badge').textContent = String(orders.filter(o => o.status !== 'complete').length);
   _toast(`Order created for ${quoteClient(q)} — ${quoteProject(q)}`, 'success');
   renderQuoteMain();
   switchSection('orders');
@@ -193,7 +192,7 @@ async function revertQuoteToDraft(id) {
 
 function renderQuoteMain() {
   const cur = window.currency;
-  const el = document.getElementById('quote-main');
+  const el = _byId('quote-main');
   if (!el) return;
   const fmt = v => cur + v.toLocaleString('en-US', {minimumFractionDigits:0, maximumFractionDigits:0});
   const totalValue = quotes.reduce((s,q) => s + quoteTotal(q), 0);
@@ -336,7 +335,7 @@ function importQuotesCSV() {
 // ── Smart Suggest System ──
 function _smartClientSuggest(input, boxId) {
   const val = input.value.toLowerCase().trim();
-  const box = document.getElementById(boxId);
+  const box = _byId(boxId);
   if (!box) return;
   _posSuggest(input, box);
   const allClients = [...new Set([...clients.map(c => c.name), ...quotes.map(q => quoteClient(q)), ...orders.map(o => orderClient(o))].filter(Boolean))];
@@ -345,7 +344,7 @@ function _smartClientSuggest(input, boxId) {
   const inputId = input.id;
   let html = matches.slice(0,8).map(c => {
     const initial = c.charAt(0).toUpperCase();
-    return `<div class="client-suggest-item" onmousedown="document.getElementById('${inputId}').value='${c.replace(/'/g,'&#39;')}';document.getElementById('${boxId}').style.display='none'">
+    return `<div class="client-suggest-item" onmousedown="_byId('${inputId}').value='${c.replace(/'/g,'&#39;')}';_byId('${boxId}').style.display='none'">
       <span class="suggest-icon">${initial}</span>
       <span>${_escHtml(c)}</span>
     </div>`;
@@ -357,7 +356,7 @@ function _smartClientSuggest(input, boxId) {
 
 function _smartProjectSuggest(input, boxId) {
   const val = input.value.toLowerCase().trim();
-  const box = document.getElementById(boxId);
+  const box = _byId(boxId);
   if (!box) return;
   _posSuggest(input, box);
   const allProjects = [...new Set([...projects.map(p => p.name), ...quotes.map(q => quoteProject(q)), ...orders.map(o => orderProject(o))].filter(Boolean))];
@@ -367,7 +366,7 @@ function _smartProjectSuggest(input, boxId) {
   let html = matches.slice(0,8).map(p => {
     const proj = projects.find(px => px.name === p);
     const clientName = proj ? proj.client : '';
-    return `<div class="client-suggest-item" onmousedown="document.getElementById('${inputId}').value='${p.replace(/'/g,'&#39;')}';document.getElementById('${boxId}').style.display='none';_autoFillClientFromProject('${p.replace(/'/g,'&#39;')}','${inputId}')">
+    return `<div class="client-suggest-item" onmousedown="_byId('${inputId}').value='${p.replace(/'/g,'&#39;')}';_byId('${boxId}').style.display='none';_autoFillClientFromProject('${p.replace(/'/g,'&#39;')}','${inputId}')">
       <span class="suggest-icon">P</span>
       <span style="flex:1">${_escHtml(p)}</span>
       ${clientName ? `<span style="font-size:11px;color:var(--muted)">${_escHtml(clientName)}</span>` : ''}
@@ -384,7 +383,7 @@ function _autoFillClientFromProject(projName, projInputId) {
   if (!proj || !proj.client) return;
   // Determine which client input to fill based on the project input
   const clientInputId = projInputId.replace('-project', '-client');
-  const clientInput = document.getElementById(clientInputId);
+  const clientInput = _byId(clientInputId);
   if (clientInput && !clientInput.value) clientInput.value = proj.client;
 }
 
@@ -393,7 +392,7 @@ function _openNewClientPopup(targetInputId) {
   // Close any suggest dropdowns
   document.querySelectorAll('.client-suggest-list').forEach(b => b.style.display = 'none');
   // Pre-fill with what user typed
-  const existing = document.getElementById(targetInputId)?.value || '';
+  const existing = _byId(targetInputId)?.value || '';
   const html = `
     <div class="popup-header">
       <div class="popup-title"><div style="font-size:16px;font-weight:700">New Client</div></div>
@@ -421,7 +420,7 @@ async function _saveNewClientPopup(targetInputId) {
   // Check for duplicate
   if (clients.some(c => c.name.toLowerCase() === name.toLowerCase())) {
     // Just set the input and close
-    document.getElementById(targetInputId).value = name;
+    _byId(targetInputId).value = name;
     _closePopup();
     _toast('Client already exists — selected', 'info');
     return;
@@ -437,7 +436,7 @@ async function _saveNewClientPopup(targetInputId) {
   };
   clients.push(newClient);
   try { await _db('clients').insert(newClient); } catch(e) { console.warn('Client insert failed', e); }
-  document.getElementById(targetInputId).value = name;
+  _byId(targetInputId).value = name;
   _closePopup();
   renderClientsMain();
   _toast(`Client "${name}" added`, 'success');
@@ -445,10 +444,10 @@ async function _saveNewClientPopup(targetInputId) {
 
 function _openNewProjectPopup(targetInputId) {
   document.querySelectorAll('.client-suggest-list').forEach(b => b.style.display = 'none');
-  const existing = document.getElementById(targetInputId)?.value || '';
+  const existing = _byId(targetInputId)?.value || '';
   // Get client from the corresponding client input
   const clientInputId = targetInputId.replace('-project', '-client');
-  const clientVal = document.getElementById(clientInputId)?.value || '';
+  const clientVal = _byId(clientInputId)?.value || '';
   const html = `
     <div class="popup-header">
       <div class="popup-title"><div style="font-size:16px;font-weight:700">New Project</div></div>
@@ -457,7 +456,7 @@ function _openNewProjectPopup(targetInputId) {
     <div class="popup-body">
       <div class="pf"><label class="pf-label">PROJECT NAME</label><input class="pf-input pf-input-lg" id="pnp-name" value="${_escHtml(existing)}"></div>
       <div class="pf" style="position:relative"><label class="pf-label">CLIENT</label>
-        <div class="smart-input-wrap"><input class="pf-input" id="pnp-client" value="${_escHtml(clientVal)}" placeholder="Search or add client..." autocomplete="off" oninput="_smartClientSuggest(this,'pnp-client-suggest')" onfocus="_smartClientSuggest(this,'pnp-client-suggest')" onblur="setTimeout(()=>document.getElementById('pnp-client-suggest').style.display='none',150)"><div class="smart-input-add" onclick="_openNewClientPopup('pnp-client')" title="Add new client">+</div></div>
+        <div class="smart-input-wrap"><input class="pf-input" id="pnp-client" value="${_escHtml(clientVal)}" placeholder="Search or add client..." autocomplete="off" oninput="_smartClientSuggest(this,'pnp-client-suggest')" onfocus="_smartClientSuggest(this,'pnp-client-suggest')" onblur="setTimeout(()=>_byId('pnp-client-suggest').style.display='none',150)"><div class="smart-input-add" onclick="_openNewClientPopup('pnp-client')" title="Add new client">+</div></div>
         <div id="pnp-client-suggest" class="client-suggest-list" style="display:none"></div>
       </div>
       <div class="pf"><label class="pf-label">DESCRIPTION</label><textarea class="pf-textarea" id="pnp-desc" rows="2" placeholder="Project details..."></textarea></div>
@@ -475,9 +474,9 @@ async function _saveNewProjectPopup(targetInputId) {
   const clientName = _popupVal('pnp-client') || '';
   // Check for duplicate
   if (projects.some(p => p.name.toLowerCase() === name.toLowerCase())) {
-    document.getElementById(targetInputId).value = name;
+    _byId(targetInputId).value = name;
     const clientInputId = targetInputId.replace('-project', '-client');
-    const ci = document.getElementById(clientInputId);
+    const ci = _byId(clientInputId);
     if (ci && clientName && !ci.value) ci.value = clientName;
     _closePopup();
     _toast('Project already exists — selected', 'info');
@@ -493,10 +492,10 @@ async function _saveNewProjectPopup(targetInputId) {
   };
   projects.push(newProject);
   try { await _db('projects').insert(newProject); } catch(e) { console.warn('Project insert failed', e); }
-  document.getElementById(targetInputId).value = name;
+  _byId(targetInputId).value = name;
   // Also fill client input
   const clientInputId = targetInputId.replace('-project', '-client');
-  const ci = document.getElementById(clientInputId);
+  const ci = _byId(clientInputId);
   if (ci && clientName && !ci.value) ci.value = clientName;
   _closePopup();
   renderProjectsMain();
@@ -505,8 +504,9 @@ async function _saveNewProjectPopup(targetInputId) {
 
 // Close suggest on blur
 document.addEventListener('click', e => {
+  const target = /** @type {Node | null} */ (e.target);
   document.querySelectorAll('.client-suggest-list').forEach(box => {
-    if (!box.contains(e.target) && !e.target.closest('.smart-input-wrap')) box.style.display = 'none';
+    if (target && !box.contains(target) && !(/** @type {Element} */ (target)).closest('.smart-input-wrap')) box.style.display = 'none';
   });
 });
 
@@ -678,9 +678,9 @@ async function deductStockFromCutList() {
 
 function quoteFromCutList(matCost) {
   switchSection('quote');
-  const el = document.getElementById('q-materials');
+  const el = _byId('q-materials');
   if (el) { el.value = matCost.toFixed(2); el.focus(); }
-  const pn = document.getElementById('q-project');
+  const pn = _byId('q-project');
   if (pn && !pn.value) pn.value = 'Untitled Job';
   // Subtle flash to draw attention to the pre-filled field
   if (el) { el.style.background = 'rgba(232,168,56,0.2)'; setTimeout(() => el.style.background = '', 1200); }

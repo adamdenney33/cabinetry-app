@@ -38,6 +38,59 @@ declare global {
     _projSort?: string;
     _clientSearch?: string;
     _clientSort?: string;
+    /** Stock-panel UI stash slots — used by inline oninput / onchange / onclick handlers. */
+    _stockSearch?: string;
+    _stockCatFilter?: string;
+    _editingStockId?: number | null;
+    _saveStock?: () => void;
+    /** Cabinet-panel UI stash slots. */
+    _ratesOpen?: any;
+    _cqBlankLine?: any;
+    _currentProjectId?: number | null;
+    saveCurrentProject?: () => void;
+    /** Cutlist edge-band drafting stash slots. */
+    _ebDraft?: any;
+    _ebPieceId?: number;
+    _ebBuildSVG?: (...args: any[]) => string;
+    _ebBuildTable?: (...args: any[]) => string;
+    /** Quotes results stash. */
+    results?: any;
+    /** Stock items array — exposed on window for some callers. */
+    stockItems?: any[];
+    saveStockItems?: () => void;
+    /** Cutlist clipboard support — assigned in some browsers' paste handler. */
+    clipboardData?: any;
+  }
+
+  // ── Phase F transition: loosen Element/HTMLElement shape so peeled .js files
+  // can do the common DOM-element accesses without per-call casts. The runtime
+  // semantics are unchanged. Tighten in a future strict pass.
+  interface Element {
+    style: CSSStyleDeclaration;
+    value: any;
+    focus(): void;
+    select(): void;
+    offsetWidth: number;
+    offsetHeight: number;
+    dataset: DOMStringMap;
+    src: string;
+    width: number;
+    height: number;
+    getContext(contextId: string): any;
+    toDataURL(...args: any[]): string;
+    files: FileList | null;
+    checked: boolean;
+    disabled: boolean;
+    closest(selector: string): Element | null;
+    placeholder: string;
+  }
+
+  interface EventTarget {
+    files?: FileList | null;
+    dataset?: DOMStringMap;
+    closest?(selector: string): Element | null;
+    value?: any;
+    result?: any;
   }
 }
 
