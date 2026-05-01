@@ -12,6 +12,7 @@ const _sb = window.supabase.createClient(
 // ── Raw-fetch DB helper (replaces _db() for queries — SDK hangs with sb_publishable keys) ──
 const _SBURL = 'https://mhzneruvlfmhnsohfrdo.supabase.co';
 const _SBKEY = 'sb_publishable_4lHAEgWPQz8DX8TH2KnuiA_oimj8J__';
+/** @returns {Record<string, string>} */
 function _dbHeaders() {
   try {
     const raw = localStorage.getItem('sb-mhzneruvlfmhnsohfrdo-auth-token');
