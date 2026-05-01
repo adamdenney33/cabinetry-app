@@ -3,18 +3,19 @@
 // These are foundational — every feature uses them.
 
 /**
- * Phase F transition helper: typed shorthand for document.getElementById that
- * lies about the return type as `HTMLInputElement` so `.value`/`.disabled`/
- * `.checked`/`.files`/etc. type-check across the codebase without per-call-site
- * casts. The lie is contained — runtime semantics are unchanged (calling a
- * missing-element accessor still throws TypeError, matching pre-Phase-F
- * behaviour). Tighten back to `HTMLElement | null` returns in a future pass
- * once the codebase narrows per-call-site.
+ * Typed shorthand for document.getElementById. Returns null when the id is
+ * not in the DOM. Cast to `HTMLInputElement | null` so callers can read
+ * `.value`/`.disabled`/`.checked`/`.files` directly after a null guard or
+ * non-null assertion via JSDoc cast. The cast is a contained lie about the
+ * concrete element subtype; null-handling is honest. Runtime semantics
+ * unchanged — accessing a property on a missing-element result still throws
+ * (now via the null check the call site adds, instead of pre-Phase-F's
+ * implicit TypeError).
  *
  * @param {string} id
- * @returns {HTMLInputElement}
+ * @returns {HTMLInputElement | null}
  */
-function _byId(id) { return /** @type {any} */ (document.getElementById(id)); }
+function _byId(id) { return /** @type {HTMLInputElement | null} */ (document.getElementById(id)); }
 
 function _toast(msg, type = 'info', duration = 3500) {
   const c = document.getElementById('toast-container');

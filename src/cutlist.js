@@ -553,16 +553,16 @@ function _openNewEdgeBandMaterialPopup() {
     </div>`;
   _openPopup(h, 'sm');
   setTimeout(() => {
-    _byId('eb-new-name') && _byId('eb-new-name').focus();
+    _byId('eb-new-name')?.focus();
   }, 50);
 }
 
 function _saveNewEdgeBandMaterial() {
   const name = (_popupVal('eb-new-name') || '').trim();
   if (!name) { _toast('Please enter a name', 'error'); return; }
-  const thickness = parseFloat(_byId('eb-new-thickness')?.value) || 0;
-  const width = parseFloat(_byId('eb-new-width')?.value) || 0;
-  const length = parseFloat(_byId('eb-new-length')?.value) || 0;
+  const thickness = parseFloat(_byId('eb-new-thickness')?.value ?? '') || 0;
+  const width = parseFloat(_byId('eb-new-width')?.value ?? '') || 0;
+  const length = parseFloat(_byId('eb-new-length')?.value ?? '') || 0;
   const glue = _byId('eb-new-glue')?.value || '';
   const saveStock = _byId('eb-new-save-stock')?.checked;
 
@@ -679,7 +679,7 @@ function _doClearAll() {
   pieces = []; sheets = []; _pieceId = 1; _sheetId = 1; pieceColorIdx = 0; results = null;
   ['pc_cl_pieces','pc_cl_sheets','pc_cl_pid','pc_cl_sid','pc_cl_colorIdx','pc_cl_sheetColorIdx'].forEach(k => localStorage.removeItem(k));
   renderPieces(); renderSheets();
-  _byId('results-area').innerHTML = '<div class="empty-state"><div class="empty-icon" style="opacity:.18"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg></div><h3>Ready to Optimize</h3><p>Add stock panels and cut pieces, then click "Optimize Cut Layout"</p></div>';
+  /** @type {HTMLElement} */ (_byId('results-area')).innerHTML = '<div class="empty-state"><div class="empty-icon" style="opacity:.18"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg></div><h3>Ready to Optimize</h3><p>Add stock panels and cut pieces, then click "Optimize Cut Layout"</p></div>';
 }
 
 // ── PANEL RESIZE ──
@@ -1159,6 +1159,7 @@ function downloadTemplate(type) {
 function triggerImportCSV(type) {
   _csvImportTarget = type;
   const inp = _byId('csv-import-input');
+  if (!inp) return;
   inp.value = ''; inp.click();
 }
 function handleCSVImport(input) {
@@ -1987,7 +1988,7 @@ function packSheetRecGuillotine(sheetW, sheetH, sheetGrain, items, kerf) {
 
 function optimize() {
   if (!_userId && _getOptCount() >= FREE_LIMIT) {
-    _byId('paywall-modal').classList.remove('hidden');
+    /** @type {HTMLElement} */ (_byId('paywall-modal')).classList.remove('hidden');
     return;
   }
   const activeSheets = sheets.filter(s => s.enabled !== false);
