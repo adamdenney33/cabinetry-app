@@ -308,7 +308,7 @@ function importQuotesCSV() {
   const input = document.createElement('input');
   input.type = 'file'; input.accept = '.csv';
   input.onchange = async e => {
-    const file = e.target.files[0]; if (!file) return;
+    const file = /** @type {HTMLInputElement} */ (e.target).files?.[0]; if (!file) return;
     const text = await file.text();
     const rows = text.split(/\r?\n/).map(r => r.split(',').map(c => c.replace(/^"|"$/g,'').trim()));
     if (rows.length < 2) { _toast('No data rows', 'error'); return; }

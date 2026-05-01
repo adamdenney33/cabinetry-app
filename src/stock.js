@@ -114,7 +114,7 @@ function importStockLibrary() {
   const input = document.createElement('input');
   input.type = 'file'; input.accept = '.json';
   input.onchange = async e => {
-    const file = e.target.files[0]; if (!file) return;
+    const file = /** @type {HTMLInputElement} */ (e.target).files?.[0]; if (!file) return;
     try {
       const data = JSON.parse(await file.text());
       if (Array.isArray(data)) { data.forEach(lib => { lib.id = Date.now() + Math.random(); stockLibraries.push(lib); }); saveStockLibraries(); _toast(data.length + ' libraries imported', 'success'); }
@@ -150,7 +150,7 @@ function importStockCSV() {
   const input = document.createElement('input');
   input.type = 'file'; input.accept = '.csv';
   input.onchange = async e => {
-    const file = e.target.files[0]; if (!file) return;
+    const file = /** @type {HTMLInputElement} */ (e.target).files?.[0]; if (!file) return;
     const text = await file.text();
     const rows = text.split(/\r?\n/).map(r => r.split(',').map(c => c.replace(/^"|"$/g,'').trim()));
     if (rows.length < 2) { _toast('CSV has no data rows', 'error'); return; }
