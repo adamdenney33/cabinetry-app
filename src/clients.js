@@ -1,4 +1,3 @@
-// @ts-nocheck
 // ProCabinet — Clients & projects CRUD/render (carved out of src/app.js
 // in phase E carve 11 — the last functional section of app.js).
 //
@@ -60,28 +59,29 @@ async function resolveProject(name, clientId) {
   return data.id;
 }
 
+/** @param {string} id */
+const _clInput = id => /** @type {HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement | null} */ (document.getElementById(id));
+
 // ── Client CRUD ──
 async function createClient() {
-  const name = document.getElementById('cl-name').value.trim();
+  const name = _clInput('cl-name')?.value.trim() || '';
   if (!name) { _toast('Enter a client name.', 'error'); return; }
   if (!_requireAuth()) return;
   const row = {
     user_id: _userId, name,
-    email: document.getElementById('cl-email').value.trim() || null,
-    phone: document.getElementById('cl-phone').value.trim() || null,
-    address: document.getElementById('cl-address').value.trim() || null,
-    notes: document.getElementById('cl-notes').value.trim() || null,
+    email: _clInput('cl-email')?.value.trim() || null,
+    phone: _clInput('cl-phone')?.value.trim() || null,
+    address: _clInput('cl-address')?.value.trim() || null,
+    notes: _clInput('cl-notes')?.value.trim() || null,
   };
   const { data, error } = await _dbInsertSafe('clients', row);
   if (error) { _toast('Could not save client — ' + (error.message || JSON.stringify(error)), 'error'); return; }
   clients.push(data);
   clients.sort((a,b) => a.name.localeCompare(b.name));
   _toast('Client added', 'success');
-  document.getElementById('cl-name').value = '';
-  document.getElementById('cl-email').value = '';
-  document.getElementById('cl-phone').value = '';
-  document.getElementById('cl-address').value = '';
-  document.getElementById('cl-notes').value = '';
+  for (const id of ['cl-name','cl-email','cl-phone','cl-address','cl-notes']) {
+    const el = _clInput(id); if (el) el.value = '';
+  }
   renderClientsMain();
 }
 
@@ -102,15 +102,15 @@ async function removeClient(id) {
 
 // ── Project CRUD ──
 async function createProject() {
-  const name = document.getElementById('pj-name').value.trim();
+  const name = _clInput('pj-name')?.value.trim() || '';
   if (!name) { _toast('Enter a project name.', 'error'); return; }
   if (!_requireAuth()) return;
-  const clientName = document.getElementById('pj-client').value.trim();
+  const clientName = _clInput('pj-client')?.value.trim() || '';
   const clientId = clientName ? await resolveClient(clientName) : null;
   const row = {
     user_id: _userId, name,
-    description: document.getElementById('pj-desc').value.trim() || null,
-    status: document.getElementById('pj-status').value,
+    description: _clInput('pj-desc')?.value.trim() || null,
+    status: _clInput('pj-status')?.value || 'active',
   };
   if (clientId) row.client_id = clientId;
   let { data, error } = await _dbInsertSafe('projects', row);
@@ -118,10 +118,10 @@ async function createProject() {
   data.status = data.status || 'active';
   projects.unshift(data);
   _toast('Project created', 'success');
-  document.getElementById('pj-name').value = '';
-  document.getElementById('pj-client').value = '';
-  document.getElementById('pj-desc').value = '';
-  document.getElementById('pj-status').value = 'active';
+  for (const id of ['pj-name','pj-client','pj-desc']) {
+    const el = _clInput(id); if (el) el.value = '';
+  }
+  const status = _clInput('pj-status'); if (status) status.value = 'active';
   renderProjectsMain();
   // Scroll to the newly created project
   setTimeout(() => _highlightProject(data.id), 100);

@@ -36,6 +36,8 @@ declare global {
     _projFilter?: string;
     _projSearch?: string;
     _projSort?: string;
+    _clientSearch?: string;
+    _clientSort?: string;
   }
 }
 
