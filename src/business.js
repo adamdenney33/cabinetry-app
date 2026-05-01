@@ -69,7 +69,7 @@ function handleLogoUpload(input) {
   const reader = new FileReader();
   reader.onload = async e => {
     // 1. Always write to localStorage (legacy compatibility)
-    const result = /** @type {string} */ (e.target.result);
+    const result = /** @type {string} */ (/** @type {FileReader} */ (e.target).result);
     localStorage.setItem('pc_biz_logo', result);
     loadLogoPreview();
     // 2. Phase 3.3: also upload to Supabase Storage and store URL on business_info
