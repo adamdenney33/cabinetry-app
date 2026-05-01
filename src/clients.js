@@ -313,3 +313,23 @@ function renderProjectsMain() {
 // (Old library init removed)
 // Dashboard is the default landing tab
 try { renderDashboard(); setTimeout(drawRevenueChart, 0); } catch(e) {}
+
+// ── Clients CSV import / export ──
+function exportClientsCSV() {
+  const allClients = [...new Set([...quotes.map(q=>quoteClient(q)), ...orders.map(o=>orderClient(o))].filter(Boolean))].sort();
+  if (!allClients.length) { _toast('No clients to export', 'error'); return; }
+  const rows = [['Client Name','Quotes','Orders','Total Value']];
+  allClients.forEach(c => {
+    const qCount = quotes.filter(q=>quoteClient(q)===c).length;
+    const oCount = orders.filter(o=>orderClient(o)===c).length;
+    const totalVal = quotes.filter(q=>quoteClient(q)===c).reduce((s,q)=>s+quoteTotal(q),0) + orders.filter(o=>orderClient(o)===c).reduce((s,o)=>s+o.value,0);
+    rows.push([c, qCount, oCount, totalVal.toFixed(2)]);
+  });
+  const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([csv],{type:'text/csv'})), download: `clients-${new Date().toISOString().slice(0,10)}.csv` });
+  a.click(); URL.revokeObjectURL(a.href);
+  _toast('Clients exported', 'success');
+}
+function importClientsCSV() {
+  _toast('Clients are created automatically from quotes and orders', 'info');
+}
