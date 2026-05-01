@@ -95,20 +95,22 @@ function orderTotal(o) {
 }
 
 async function createQuote() {
-  const client = _byId('q-client').value.trim();
-  const project = _byId('q-project').value.trim();
+  /** @param {string} id */
+  const inp = id => /** @type {HTMLInputElement} */ (_byId(id));
+  const client = inp('q-client').value.trim();
+  const project = inp('q-project').value.trim();
   if (!client || !project) { _toast('Enter client name and project.', 'error'); return; }
   if (!_requireAuth()) return;
-  const hours = parseFloat(_byId('q-hours').value) || 0;
-  const materials = parseFloat(_byId('q-materials').value) || 0;
+  const hours = parseFloat(inp('q-hours').value) || 0;
+  const materials = parseFloat(inp('q-materials').value) || 0;
   const clientId = await resolveClient(client);
   const projectId = await resolveProject(project, clientId);
   const row = {
     user_id: _userId,
-    markup: parseFloat(_byId('q-markup').value) || 20,
-    tax: parseFloat(_byId('q-tax').value) || 13,
+    markup: parseFloat(inp('q-markup').value) || 20,
+    tax: parseFloat(inp('q-tax').value) || 13,
     status: 'draft', date: new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short'}),
-    notes: _byId('q-notes').value.trim(),
+    notes: inp('q-notes').value.trim(),
   };
   if (clientId) row.client_id = clientId;
   if (projectId) row.project_id = projectId;
@@ -121,10 +123,10 @@ async function createQuote() {
     await _refreshQuoteTotals(data.id);
   }
   _toast('Quote created', 'success');
-  _byId('q-client').value = '';
-  _byId('q-project').value = '';
-  _byId('q-notes').value = '';
-  _byId('q-materials').value = '';
+  inp('q-client').value = '';
+  inp('q-project').value = '';
+  inp('q-notes').value = '';
+  inp('q-materials').value = '';
   renderQuoteMain();
 }
 
@@ -165,7 +167,7 @@ async function convertQuoteToOrder(id) {
     } catch(e) { console.warn('[convertQuoteToOrder] copy lines failed:', e.message || e); }
   }
   orders.unshift(data);
-  _byId('orders-badge').textContent = String(orders.filter(o => o.status !== 'complete').length);
+  /** @type {HTMLElement} */ (_byId('orders-badge')).textContent = String(orders.filter(o => o.status !== 'complete').length);
   _toast(`Order created for ${quoteClient(q)} — ${quoteProject(q)}`, 'success');
   renderQuoteMain();
   switchSection('orders');
@@ -420,7 +422,7 @@ async function _saveNewClientPopup(targetInputId) {
   // Check for duplicate
   if (clients.some(c => c.name.toLowerCase() === name.toLowerCase())) {
     // Just set the input and close
-    _byId(targetInputId).value = name;
+    /** @type {HTMLInputElement} */ (_byId(targetInputId)).value = name;
     _closePopup();
     _toast('Client already exists — selected', 'info');
     return;
@@ -436,7 +438,7 @@ async function _saveNewClientPopup(targetInputId) {
   };
   clients.push(newClient);
   try { await _db('clients').insert(newClient); } catch(e) { console.warn('Client insert failed', e); }
-  _byId(targetInputId).value = name;
+  /** @type {HTMLInputElement} */ (_byId(targetInputId)).value = name;
   _closePopup();
   renderClientsMain();
   _toast(`Client "${name}" added`, 'success');
@@ -474,7 +476,7 @@ async function _saveNewProjectPopup(targetInputId) {
   const clientName = _popupVal('pnp-client') || '';
   // Check for duplicate
   if (projects.some(p => p.name.toLowerCase() === name.toLowerCase())) {
-    _byId(targetInputId).value = name;
+    /** @type {HTMLInputElement} */ (_byId(targetInputId)).value = name;
     const clientInputId = targetInputId.replace('-project', '-client');
     const ci = _byId(clientInputId);
     if (ci && clientName && !ci.value) ci.value = clientName;
@@ -492,7 +494,7 @@ async function _saveNewProjectPopup(targetInputId) {
   };
   projects.push(newProject);
   try { await _db('projects').insert(newProject); } catch(e) { console.warn('Project insert failed', e); }
-  _byId(targetInputId).value = name;
+  /** @type {HTMLInputElement} */ (_byId(targetInputId)).value = name;
   // Also fill client input
   const clientInputId = targetInputId.replace('-project', '-client');
   const ci = _byId(clientInputId);
