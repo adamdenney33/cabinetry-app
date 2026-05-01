@@ -1,4 +1,3 @@
-// @ts-nocheck
 // ProCabinet — Settings cluster (carved out of src/app.js in phase E carve 12).
 // Bundles 6 small adjacent sections that share the "non-domain plumbing" theme:
 // GLOBALS (window.currency / window.units defaults), SETTINGS DROPDOWN,
@@ -46,10 +45,11 @@ function toggleAccount() {
 }
 
 document.addEventListener('click', function(e) {
-  if (!document.querySelector('.settings-wrap').contains(e.target))
-    document.getElementById('settings-dropdown').classList.remove('open');
-  if (!document.querySelector('.account-wrap').contains(e.target))
-    document.getElementById('account-dropdown').classList.remove('open');
+  const target = /** @type {Node | null} */ (e.target);
+  if (target && !document.querySelector('.settings-wrap')?.contains(target))
+    document.getElementById('settings-dropdown')?.classList.remove('open');
+  if (target && !document.querySelector('.account-wrap')?.contains(target))
+    document.getElementById('account-dropdown')?.classList.remove('open');
 });
 
 // ══════════════════════════════════════════
@@ -96,11 +96,11 @@ function setUnits(u) {
   document.querySelectorAll('#cl-unit-mm').forEach(el => el.classList.toggle('active', m));
 
   // Stock form defaults
-  const stW = document.getElementById('stock-w');
-  const stH = document.getElementById('stock-h');
-  const stN = document.getElementById('stock-name');
-  if (stW) stW.value = m ? 2440 : 96;
-  if (stH) stH.value = m ? 1220 : 48;
+  const stW = /** @type {HTMLInputElement | null} */ (document.getElementById('stock-w'));
+  const stH = /** @type {HTMLInputElement | null} */ (document.getElementById('stock-h'));
+  const stN = /** @type {HTMLInputElement | null} */ (document.getElementById('stock-name'));
+  if (stW) stW.value = String(m ? 2440 : 96);
+  if (stH) stH.value = String(m ? 1220 : 48);
   if (stN && !stN.value) stN.placeholder = m ? 'e.g. 18mm Birch Plywood' : 'e.g. 3/4" Birch Plywood';
 
   // Convert existing sheets and pieces only when actually changing unit

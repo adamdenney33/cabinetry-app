@@ -1,4 +1,3 @@
-// @ts-nocheck
 // ProCabinet — Schedule view (carved out of src/app.js in phase E carve 1)
 //
 // Loaded as a classic <script defer> after src/app.js. Functions defined
@@ -28,10 +27,10 @@ function renderSchedule() {
     if (p) { const m={jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11}; const mo=m[p[2].toLowerCase().substring(0,3)]; if(mo!==undefined) return new Date(parseInt(p[3]),mo,parseInt(p[1])); }
     const iso = str.match(/(\d{4})-(\d{2})-(\d{2})/);
     if (iso) return new Date(parseInt(iso[1]),parseInt(iso[2])-1,parseInt(iso[3]));
-    const d = new Date(str); return isNaN(d)?null:new Date(d.getFullYear(),d.getMonth(),d.getDate());
+    const d = new Date(str); return isNaN(+d)?null:new Date(d.getFullYear(),d.getMonth(),d.getDate());
   }
   function sameDay(a,b){return a.getFullYear()===b.getFullYear()&&a.getMonth()===b.getMonth()&&a.getDate()===b.getDate();}
-  function dayIdx(d){return Math.round((d-calStart)/86400000);}
+  function dayIdx(d){return Math.round((+d-+calStart)/86400000);}
 
   const events = orders.filter(o=>o.status!=='complete').map((o,idx)=>{
     const due=parseDate(o.due), start=parseDate(o.prodStart);
@@ -120,7 +119,7 @@ function _scrollToSchedBar(orderId) {
   const bar = document.querySelector('.sched-bar-' + orderId);
   if (bar) {
     bar.scrollIntoView({behavior:'smooth',block:'center'});
-    const inner = bar.firstElementChild;
+    const inner = /** @type {HTMLElement | null} */ (bar.firstElementChild);
     if (inner) { inner.style.outline = '2px solid #fff'; inner.style.boxShadow = '0 0 8px rgba(255,255,255,0.5)'; setTimeout(() => { inner.style.outline = ''; inner.style.boxShadow = ''; }, 1500); }
   }
 }
