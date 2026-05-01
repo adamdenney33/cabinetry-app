@@ -262,7 +262,8 @@ async function loadProject(id) {
   results = null;
   renderSheets(); renderPieces();
   if (typeof renderEdgeBands === 'function') { try { renderEdgeBands(); } catch(e) {} }
-  document.getElementById('results-area').innerHTML = '<div class="empty-state"><h3>Project loaded</h3><p>Click Optimize to generate layouts.</p></div>';
+  const resArea = document.getElementById('results-area');
+  if (resArea) resArea.innerHTML = '<div class="empty-state"><h3>Project loaded</h3><p>Click Optimize to generate layouts.</p></div>';
   _toast('Project loaded — click Optimize to generate layouts', 'success');
 }
 
