@@ -60,7 +60,7 @@ function _updateQuotePreview() {
   const cur = window.currency;
   const fmt = v => cur + v.toLocaleString('en-US', {minimumFractionDigits:0, maximumFractionDigits:0});
   /** @param {string} id */
-  const inputVal = id => /** @type {HTMLInputElement | null} */ (document.getElementById(id))?.value;
+  const inputVal = id => /** @type {HTMLInputElement | null} */ (document.getElementById(id))?.value ?? '';
   const rate = parseFloat(inputVal('q-labour-rate')) || 0;
   const hrs  = parseFloat(inputVal('q-hours'))       || 0;
   const mat  = parseFloat(inputVal('q-materials'))   || 0;
@@ -76,12 +76,15 @@ function _updateQuotePreview() {
   const markupAmt = sub * mkp / 100;
   const afterMarkup = sub + markupAmt;
   const taxAmt = afterMarkup * tax / 100;
-  document.getElementById('qfp-labour').textContent    = `${hrs}h @ ${cur}${rate}/hr = ${fmt(labour)}`;
-  document.getElementById('qfp-materials').textContent = fmt(mat);
-  document.getElementById('qfp-markup-label').textContent = `Markup (${mkp}%)`;
-  document.getElementById('qfp-markup').textContent = `+${fmt(markupAmt)}`;
-  document.getElementById('qfp-tax-label').textContent = `Tax (${tax}%)`;
-  document.getElementById('qfp-tax').textContent = `+${fmt(taxAmt)}`;
-  document.getElementById('qfp-total').textContent     = fmt(afterMarkup + taxAmt);
+  // #qfp-* elements are descendants of #quote-form-preview (asserted non-null on line 73)
+  /** @param {string} id */
+  const out = id => /** @type {HTMLElement} */ (document.getElementById(id));
+  out('qfp-labour').textContent    = `${hrs}h @ ${cur}${rate}/hr = ${fmt(labour)}`;
+  out('qfp-materials').textContent = fmt(mat);
+  out('qfp-markup-label').textContent = `Markup (${mkp}%)`;
+  out('qfp-markup').textContent = `+${fmt(markupAmt)}`;
+  out('qfp-tax-label').textContent = `Tax (${tax}%)`;
+  out('qfp-tax').textContent = `+${fmt(taxAmt)}`;
+  out('qfp-total').textContent     = fmt(afterMarkup + taxAmt);
 }
 
