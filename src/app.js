@@ -1,4 +1,3 @@
-// @ts-nocheck
 // ProCabinet — main app script (Phase 5 of pre-launch refactor)
 // Extracted from index.html. Module split (Phase 6) breaks this into src/<feature>.js
 
@@ -125,7 +124,7 @@ function _openOrderPopup(id) {
   // Overdue detection
   let isOverdue = false;
   if (o.status !== 'complete' && o.due && o.due !== 'TBD') {
-    const parsed = new Date(o.due); if (!isNaN(parsed) && parsed < new Date()) isOverdue = true;
+    const parsed = new Date(o.due); if (!isNaN(+parsed) && parsed < new Date()) isOverdue = true;
   }
 
   _openPopup(`
@@ -214,7 +213,8 @@ async function _saveOrderPopup(id) {
   _onSet(o.id, notes);
 
   await _db('orders').update(update).eq('id', id);
-  document.getElementById('orders-badge').textContent = orders.filter(o => o.status !== 'complete').length;
+  const ob = document.getElementById('orders-badge');
+  if (ob) ob.textContent = String(orders.filter(o => o.status !== 'complete').length);
   _closePopup();
   renderOrdersMain();
   renderSchedule();
@@ -700,7 +700,7 @@ function _openNewStockPopup() {
 }
 
 function _pnsCatChanged() {
-  const cat = document.getElementById('pns-cat')?.value;
+  const cat = /** @type {HTMLSelectElement | null} */ (document.getElementById('pns-cat'))?.value;
   const isEB = cat === 'Edge Banding';
   const sheet = document.getElementById('pns-sheet-fields');
   const eb = document.getElementById('pns-eb-fields');
@@ -720,23 +720,23 @@ async function _saveNewStockPopup() {
     ebWidth = parseFloat(_popupVal('pns-eb-width')) || 0;
     ebLength = parseFloat(_popupVal('pns-eb-length')) || 0;
     ebGlue = _popupVal('pns-eb-glue') || '';
-    row = {
+    row = /** @type {any} */ ({
       name, sku: '',
       w: ebLength, h: ebWidth,
       qty: Math.round(ebLength),
       low: Math.round(parseFloat(_popupVal('pns-eb-low')) || 0),
       cost: parseFloat(_popupVal('pns-eb-cost')) || 0,
-    };
+    });
   } else {
     thick = parseFloat(_popupVal('pns-thick')) || 0;
-    row = {
+    row = /** @type {any} */ ({
       name, sku: '',
       w: parseFloat(_popupVal('pns-length')) || 0,
       h: parseFloat(_popupVal('pns-width')) || 0,
       qty: parseInt(_popupVal('pns-qty')) || 0,
       low: parseInt(_popupVal('pns-low')) || 0,
       cost: parseFloat(_popupVal('pns-cost')) || 0,
-    };
+    });
   }
   let saved;
   if (_userId) {
@@ -908,22 +908,22 @@ function toggleAuthMode() {
 }
 
 async function authSubmit() {
-  const email = document.getElementById('auth-email').value.trim();
-  const password = document.getElementById('auth-password').value;
+  const email = /** @type {HTMLInputElement | null} */ (document.getElementById('auth-email'))?.value.trim() || '';
+  const password = /** @type {HTMLInputElement | null} */ (document.getElementById('auth-password'))?.value || '';
   const msgEl = document.getElementById('auth-msg');
-  const btn = document.getElementById('auth-btn');
-  msgEl.innerHTML = '';
-  if (!email || !password) { msgEl.innerHTML = '<div class="auth-error">Email and password required.</div>'; return; }
-  btn.disabled = true; btn.textContent = '…';
+  const btn = /** @type {HTMLButtonElement | null} */ (document.getElementById('auth-btn'));
+  if (msgEl) msgEl.innerHTML = '';
+  if (!email || !password) { if (msgEl) msgEl.innerHTML = '<div class="auth-error">Email and password required.</div>'; return; }
+  if (btn) { btn.disabled = true; btn.textContent = '…'; }
   let error;
   if (_authMode === 'signin') {
     ({ error } = await _sb.auth.signInWithPassword({ email, password }));
   } else {
     ({ error } = await _sb.auth.signUp({ email, password }));
   }
-  btn.disabled = false; btn.textContent = _authMode === 'signin' ? 'Sign In' : 'Create Account';
-  if (error) { msgEl.innerHTML = `<div class="auth-error">${error.message}</div>`; return; }
-  if (_authMode === 'signup') { msgEl.innerHTML = '<div class="auth-success">Check your email to confirm your account, then sign in.</div>'; }
+  if (btn) { btn.disabled = false; btn.textContent = _authMode === 'signin' ? 'Sign In' : 'Create Account'; }
+  if (error) { if (msgEl) msgEl.innerHTML = `<div class="auth-error">${error.message}</div>`; return; }
+  if (_authMode === 'signup' && msgEl) { msgEl.innerHTML = '<div class="auth-success">Check your email to confirm your account, then sign in.</div>'; }
 }
 
 async function signOut() {
@@ -987,7 +987,7 @@ function _applyBizInfoFromDB(rows) {
   if (!rows || rows.length === 0) return;
   const b = rows[0];
   // Update form inputs (these mirror what saveBizInfo / loadBizInfo manage)
-  const set = (id, v) => { const el = document.getElementById(id); if (el && v != null) el.value = v; };
+  const set = (id, v) => { const el = /** @type {HTMLInputElement | null} */ (document.getElementById(id)); if (el && v != null) el.value = v; };
   set('biz-name', b.name);
   set('biz-phone', b.phone);
   set('biz-email', b.email);
@@ -995,7 +995,7 @@ function _applyBizInfoFromDB(rows) {
   set('biz-abn', b.abn);
   // Logo: if DB has a public URL, use it; otherwise fall through to localStorage base64
   if (b.logo_url) {
-    const img = document.getElementById('biz-logo-preview');
+    const img = /** @type {HTMLImageElement | null} */ (document.getElementById('biz-logo-preview'));
     const btn = document.getElementById('biz-logo-remove');
     if (img) { img.src = b.logo_url; img.style.display = ''; }
     if (btn) btn.style.display = '';
@@ -1045,7 +1045,7 @@ _sb.auth.onAuthStateChange(async (event, session) => {
 // ══════════════════════════════════════════
 const FREE_LIMIT = 5;
 function _getOptCount() { return parseInt(localStorage.getItem('pcOptCount') || '0', 10); }
-function _incOptCount() { localStorage.setItem('pcOptCount', _getOptCount() + 1); _updateOptCounter(); }
+function _incOptCount() { localStorage.setItem('pcOptCount', String(_getOptCount() + 1)); _updateOptCounter(); }
 function _updateOptCounter() {
   const el = document.getElementById('opt-counter');
   if (!el) return;
@@ -1072,7 +1072,7 @@ function trunc(s, n) { return s.length <= n ? s : s.slice(0, n-1) + '…'; }
 loadBizInfo();
 loadLogoPreview();
 // Restore kerf
-(function(){ const k = localStorage.getItem('pc_kerf'); if (k) { const el = document.getElementById('kerf'); if (el) el.value = k; } })();
+(function(){ const k = localStorage.getItem('pc_kerf'); if (k) { const el = /** @type {HTMLInputElement | null} */ (document.getElementById('kerf')); if (el) el.value = k; } })();
 renderStockMain();
 renderQuoteMain();
 renderOrdersMain();

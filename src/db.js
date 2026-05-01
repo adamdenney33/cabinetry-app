@@ -50,7 +50,7 @@ class _DBBuilder {
    * over the builder is valid.
    *
    * @param {(value: { data: any, error: any }) => any} [onfulfilled]
-   * @returns {PromiseLike<{ data: any, error: any }>}
+   * @returns {Promise<{ data: any, error: any }>}
    */
   then(onfulfilled) {
     const h = _dbHeaders(), ps = this._params();
