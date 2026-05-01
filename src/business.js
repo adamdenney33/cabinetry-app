@@ -1,4 +1,3 @@
-// @ts-nocheck
 // ProCabinet — Business info + logo (carved out of src/app.js in phase E carve 7)
 //
 // Loaded as a classic <script defer> BEFORE src/app.js. The file declares
@@ -13,12 +12,14 @@
 // BUSINESS INFO
 // ══════════════════════════════════════════
 function saveBizInfo() {
+  /** @param {string} id */
+  const inputVal = id => /** @type {HTMLInputElement | null} */ (document.getElementById(id))?.value;
   const payload = {
-    name:    document.getElementById('biz-name')?.value    || '',
-    phone:   document.getElementById('biz-phone')?.value   || '',
-    email:   document.getElementById('biz-email')?.value   || '',
-    address: document.getElementById('biz-address')?.value || '',
-    abn:     document.getElementById('biz-abn')?.value     || '',
+    name:    inputVal('biz-name')    || '',
+    phone:   inputVal('biz-phone')   || '',
+    email:   inputVal('biz-email')   || '',
+    address: inputVal('biz-address') || '',
+    abn:     inputVal('biz-abn')     || '',
   };
   localStorage.setItem('pc_biz', JSON.stringify(payload));
   // Phase 3.3: debounced dual-write to business_info table
@@ -51,12 +52,14 @@ function _syncBizInfoToDB(payload) {
 }
 function loadBizInfo() {
   try {
+    /** @param {string} id */
+    const input = id => /** @type {HTMLInputElement | null} */ (document.getElementById(id));
     const b = JSON.parse(localStorage.getItem('pc_biz') || '{}');
-    if (b.name)    document.getElementById('biz-name').value    = b.name;
-    if (b.phone)   document.getElementById('biz-phone').value   = b.phone;
-    if (b.email)   document.getElementById('biz-email').value   = b.email;
-    if (b.address) document.getElementById('biz-address').value = b.address;
-    if (b.abn)     document.getElementById('biz-abn').value     = b.abn;
+    if (b.name)    { const el = input('biz-name');    if (el) el.value = b.name; }
+    if (b.phone)   { const el = input('biz-phone');   if (el) el.value = b.phone; }
+    if (b.email)   { const el = input('biz-email');   if (el) el.value = b.email; }
+    if (b.address) { const el = input('biz-address'); if (el) el.value = b.address; }
+    if (b.abn)     { const el = input('biz-abn');     if (el) el.value = b.abn; }
   } catch(e) {}
 }
 function handleLogoUpload(input) {
@@ -66,7 +69,8 @@ function handleLogoUpload(input) {
   const reader = new FileReader();
   reader.onload = async e => {
     // 1. Always write to localStorage (legacy compatibility)
-    localStorage.setItem('pc_biz_logo', e.target.result);
+    const result = /** @type {string} */ (e.target.result);
+    localStorage.setItem('pc_biz_logo', result);
     loadLogoPreview();
     // 2. Phase 3.3: also upload to Supabase Storage and store URL on business_info
     if (_userId) {
@@ -104,7 +108,7 @@ function removeLogo() {
 }
 function loadLogoPreview() {
   const logo = localStorage.getItem('pc_biz_logo');
-  const img = document.getElementById('biz-logo-preview');
+  const img = /** @type {HTMLImageElement | null} */ (document.getElementById('biz-logo-preview'));
   const btn = document.getElementById('biz-logo-remove');
   if (img) { img.style.display = logo ? '' : 'none'; if (logo) img.src = logo; }
   if (btn) btn.style.display = logo ? '' : 'none';

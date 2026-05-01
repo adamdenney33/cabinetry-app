@@ -42,7 +42,17 @@ class _DBBuilder {
     if (this._lim) p.set('limit', this._lim);
     return p.toString();
   }
-  then(resolve) {
+  /**
+   * Custom thenable — `await new _DBBuilder(...)` triggers the fetch and
+   * resolves with `{ data, error }`. JSDoc lies about the return being
+   * `Promise<T>` (the runtime returns `this`, which is itself thenable
+   * and recurs once); the lie is what teaches TypeScript that `await`
+   * over the builder is valid.
+   *
+   * @param {(value: { data: any, error: any }) => any} [onfulfilled]
+   * @returns {PromiseLike<{ data: any, error: any }>}
+   */
+  then(onfulfilled) {
     const h = _dbHeaders(), ps = this._params();
     const url = `${_SBURL}/rest/v1/${this._t}${ps ? '?' + ps : ''}`;
     let opts = { headers: h };
@@ -52,10 +62,12 @@ class _DBBuilder {
     fetch(url, opts).then(async r => {
       const txt = await r.text();
       let data; try { data = JSON.parse(txt); } catch(e) { data = null; }
-      if (!r.ok) return resolve({ data: null, error: data || { message: 'HTTP ' + r.status } });
-      if (this._isSingle) return resolve({ data: Array.isArray(data) ? (data[0] || null) : (data || null), error: null });
-      resolve({ data: data || [], error: null });
-    }).catch(e => resolve({ data: null, error: { message: e.message } }));
+      if (!r.ok) return onfulfilled && onfulfilled({ data: null, error: data || { message: 'HTTP ' + r.status } });
+      if (this._isSingle) return onfulfilled && onfulfilled({ data: Array.isArray(data) ? (data[0] || null) : (data || null), error: null });
+      onfulfilled && onfulfilled({ data: data || [], error: null });
+    }).catch(e => onfulfilled && onfulfilled({ data: null, error: { message: e.message } }));
+    // @ts-expect-error fake-thenable: `this` is structurally PromiseLike (it has .then),
+    // but TS can't reconcile the fixed-shape resolve type with PromiseLike's generic signature
     return this;
   }
   catch() { return this; }
