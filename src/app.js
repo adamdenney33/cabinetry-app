@@ -472,7 +472,9 @@ async function _saveProjectPopup(id) {
   const description = _popupVal('pp-desc') || null;
   if (!name) { _toast('Name is required', 'error'); return; }
   Object.assign(p, { name, status, description });
-  await _db('projects').update({ name, status, description }).eq('id', id);
+  // TODO(schema-divergence): `status` and `description` are not in the projects schema —
+  // Supabase silently drops them. Either add columns or move to ui_prefs JSON.
+  await _db('projects').update(/** @type {any} */ ({ name, status, description })).eq('id', id);
   _closePopup();
   renderProjectsMain();
   _toast('Project updated', 'success');
@@ -952,7 +954,9 @@ async function loadAllData() {
   quotes = quo || [];
   stockItems = stk || [];
   clients = cli || [];
-  projects = (prj || []).map(p => ({ ...p, status: p.status || 'active' }));
+  // TODO(schema-divergence): projects table has no `status` column; the codebase
+  // tracks status only in-memory as a UI affordance.
+  projects = (prj || []).map(p => ({ ...p, status: /** @type {any} */ (p).status || 'active' }));
   if (orders.length) orderNextId = Math.max(...orders.map(o => o.id)) + 1;
   if (quotes.length) quoteNextId = Math.max(...quotes.map(q => q.id)) + 1;
   if (stockItems.length) stockNextId = Math.max(...stockItems.map(s => s.id)) + 1;

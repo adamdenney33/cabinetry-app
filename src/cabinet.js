@@ -116,7 +116,7 @@ async function _loadCabinetTemplatesFromDB() {
     const { data, error } = await _db('cabinet_templates').select('*').eq('user_id', _userId).order('name');
     if (error) { console.warn('[cabinet-template load]', error.message); return; }
     if (!data) return;
-    cqLibrary = data.map(row => ({ ...(row.default_specs || {}), _libName: row.name, db_id: row.id }));
+    cqLibrary = data.map(row => ({ .../** @type {Record<string, any>} */ (row.default_specs || {}), _libName: row.name, db_id: row.id }));
   } catch(e) { console.warn('[cabinet-template load]', e.message || e); }
 }
 

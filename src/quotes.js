@@ -158,7 +158,9 @@ async function convertQuoteToOrder(id) {
       const { data: qlines } = await _db('quote_lines').select('*').eq('quote_id', q.id);
       if (qlines && qlines.length) {
         const olines = qlines.map(l => {
-          const nl = { ...l, order_id: data.id };
+          // Cast: quote_lines Row has id+quote_id (required); order_lines Insert needs
+          // them stripped (delete operator forbids non-optional fields under strict).
+          const nl = /** @type {any} */ ({ ...l, order_id: data.id });
           delete nl.id; delete nl.quote_id;
           return nl;
         });
@@ -437,7 +439,9 @@ async function _saveNewClientPopup(targetInputId) {
     user_id: _userId
   };
   clients.push(newClient);
-  try { await _db('clients').insert(newClient); } catch(e) { console.warn('Client insert failed', e); }
+  // TODO(schema-divergence): newClient.id is a Date.now() local id; the DB has a serial
+  // id and silently overrides. Removing client-side IDs needs callsite audit.
+  try { await _db('clients').insert(/** @type {any} */ (newClient)); } catch(e) { console.warn('Client insert failed', e); }
   /** @type {HTMLInputElement} */ (_byId(targetInputId)).value = name;
   _closePopup();
   renderClientsMain();
@@ -493,7 +497,9 @@ async function _saveNewProjectPopup(targetInputId) {
     user_id: _userId
   };
   projects.push(newProject);
-  try { await _db('projects').insert(newProject); } catch(e) { console.warn('Project insert failed', e); }
+  // TODO(schema-divergence): newProject has Date.now() id, plus extra `client`/`desc`/
+  // `status` fields not in projects schema (DB silently drops them).
+  try { await _db('projects').insert(/** @type {any} */ (newProject)); } catch(e) { console.warn('Project insert failed', e); }
   /** @type {HTMLInputElement} */ (_byId(targetInputId)).value = name;
   // Also fill client input
   const clientInputId = targetInputId.replace('-project', '-client');
@@ -848,13 +854,13 @@ async function duplicateQuote(id) {
   if (q.client_id) row.client_id = q.client_id;
   if (q.project_id) row.project_id = q.project_id;
   const { data, error } = await _db('quotes').insert(row).select().single();
-  if (error) { _toast('Could not duplicate quote — ' + (error.message || JSON.stringify(error)), 'error'); console.error(error); return; }
+  if (error || !data) { _toast('Could not duplicate quote — ' + (error?.message || JSON.stringify(error)), 'error'); console.error(error); return; }
   quotes.unshift(data);
   // Copy any existing quote_lines so the duplicate has matching totals
   try {
     const { data: oldLines } = await _db('quote_lines').select('*').eq('quote_id', q.id);
     if (oldLines && oldLines.length) {
-      const newLines = oldLines.map(l => { const nl = { ...l, quote_id: data.id }; delete nl.id; return nl; });
+      const newLines = oldLines.map(l => { const nl = /** @type {any} */ ({ ...l, quote_id: data.id }); delete nl.id; return nl; });
       await _db('quote_lines').insert(newLines);
       await _refreshQuoteTotals(data.id);
     }

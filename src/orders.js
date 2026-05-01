@@ -90,7 +90,9 @@ async function duplicateOrder(id) {
   try {
     const { data: oldLines } = await _db('order_lines').select('*').eq('order_id', o.id);
     if (oldLines && oldLines.length) {
-      const newLines = oldLines.map(l => { const nl = { ...l, order_id: data.id }; delete nl.id; return nl; });
+      // Cast through any: order_lines Row has id (required); the Insert variant has
+      // id?: never, so we must strip it after the spread.
+      const newLines = oldLines.map(l => { const nl = /** @type {any} */ ({ ...l, order_id: data.id }); delete nl.id; return nl; });
       await _db('order_lines').insert(newLines);
     }
   } catch(e) { console.warn('[duplicateOrder] copy lines failed:', e.message || e); }

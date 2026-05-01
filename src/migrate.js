@@ -204,7 +204,7 @@ async function _migrateCutListProjects(log) {
     const { data: existingSheets } = await _db('sheets').select('id').eq('project_id', p.id).limit(1);
     const { data: existingPieces } = await _db('pieces').select('id').eq('project_id', p.id).limit(1);
     if ((existingSheets && existingSheets.length) || (existingPieces && existingPieces.length)) continue;
-    const blob = p.ui_prefs;
+    const blob = /** @type {any} */ (p.ui_prefs);
     const cl = (blob && blob.cutlist) || (blob && (blob.sheets || blob.pieces) ? blob : null);
     if (!cl) continue;
     const sheets = cl.sheets || [];

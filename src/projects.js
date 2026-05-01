@@ -257,7 +257,7 @@ async function loadProject(id) {
   }
 
   // ui_prefs holds layout/UI settings only (renamed from `data` in Phase 7).
-  const prefs = data.ui_prefs || {};
+  const prefs = /** @type {any} */ (data.ui_prefs || {});
   if (prefs.settings && prefs.settings.units) setUnits(prefs.settings.units);
   results = null;
   renderSheets(); renderPieces();

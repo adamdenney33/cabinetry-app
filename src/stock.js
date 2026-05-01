@@ -488,17 +488,22 @@ async function addStockItem() {
       : (parseFloat(inp('stock-cost').value) || 0),
   };
   const { data, error } = await _db('stock_items').insert(row).select().single();
-  if (error) { _toast('Could not save stock item — ' + (error.message || JSON.stringify(error)), 'error'); console.error(error); return; }
+  if (error || !data) { _toast('Could not save stock item — ' + (error?.message || JSON.stringify(error)), 'error'); console.error(error); return; }
+  // TODO(schema-divergence): in-memory edge-band fields (thickness/width/length) shadow
+  // the DB columns (thickness_mm/width_mm/length_m) and desync after page reload.
+  // Either rename to schema columns or sync both in setters.
+  const dataAny = /** @type {any} */ (data);
   // Attach edge banding metadata to in-memory item so cut list dropdowns see it
   if (isEB) {
-    data.thickness = thick;
-    data.width = ebWidth;
-    data.length = ebLength;
-    data.glue = ebGlue;
+    dataAny.thickness = thick;
+    dataAny.width = ebWidth;
+    dataAny.length = ebLength;
+    dataAny.glue = ebGlue;
   }
   stockItems.push(data);
   if (cat) _scSet(data.id, cat);
   // Store variant/thickness (and edge banding extras) in local metadata
+  /** @type {{variant: string, thickness: number, width?: number, length?: number, glue?: string}} */
   const meta = { variant, thickness: thick };
   if (isEB) { meta.width = ebWidth; meta.length = ebLength; meta.glue = ebGlue; }
   if (variant || thick || isEB) _svSet(data.id, meta);
