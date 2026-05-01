@@ -1,4 +1,3 @@
-// @ts-nocheck
 // ProCabinet — Dashboard view (carved out of src/app.js in phase E carve 2)
 //
 // Loaded as a classic <script defer> after src/app.js. Top-level functions
@@ -16,7 +15,7 @@ function renderDashboard() {
 
   const activeOrders  = orders.filter(o => o.status !== 'complete');
   const doneOrders    = orders.filter(o => o.status === 'complete');
-  const overdueOrders = activeOrders.filter(o => { if (!o.due || o.due === 'TBD') return false; const d = new Date(o.due); return !isNaN(d) && d < new Date(); });
+  const overdueOrders = activeOrders.filter(o => { if (!o.due || o.due === 'TBD') return false; const d = new Date(o.due); return !isNaN(+d) && d < new Date(); });
   const pipeline      = activeOrders.reduce((s,o) => s+o.value, 0);
   const revenue       = doneOrders.reduce((s,o) => s+o.value, 0);
   const approvedQ     = quotes.filter(q => q.status === 'approved').length;
@@ -143,7 +142,7 @@ function renderDashboard() {
             ${activeOrders.length === 0
               ? `<div style="padding:20px;text-align:center;color:var(--muted);font-size:13px">No active orders</div>`
               : activeOrders.slice(0,5).map(o => {
-                const isOD = o.due && o.due !== 'TBD' && !isNaN(new Date(o.due)) && new Date(o.due) < new Date();
+                const isOD = o.due && o.due !== 'TBD' && !isNaN(+new Date(o.due)) && new Date(o.due) < new Date();
                 return `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 18px;border-bottom:1px solid var(--border2);cursor:pointer;${isOD?'border-left:3px solid var(--danger);':''}" onclick="_openOrderPopup(${o.id})">
                 <div style="flex:1;min-width:0">
                   <div style="font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${orderProject(o)}</div>
@@ -204,9 +203,9 @@ function renderDashboard() {
       <!-- Upcoming Deadlines -->
       ${(() => {
         const upcoming = activeOrders.filter(o => o.due && o.due !== 'TBD').map(o => {
-          const d = new Date(o.due); if (isNaN(d)) return null; d.setHours(0,0,0,0);
-          return {...o, _due: d, _days: Math.round((d - new Date().setHours(0,0,0,0)) / 86400000)};
-        }).filter(Boolean).sort((a,b) => a._due - b._due).slice(0, 5);
+          const d = new Date(o.due); if (isNaN(+d)) return null; d.setHours(0,0,0,0);
+          return {...o, _due: d, _days: Math.round((+d - new Date().setHours(0,0,0,0)) / 86400000)};
+        }).filter(Boolean).sort((a,b) => +a._due - +b._due).slice(0, 5);
         if (!upcoming.length) return '';
         return `<div class="card" style="margin-bottom:18px">
           <div class="card-header" style="justify-content:space-between"><span class="card-title">Upcoming Deadlines</span><button class="btn btn-outline" style="padding:3px 10px;font-size:11px" onclick="switchSection('schedule')">Schedule</button></div>
@@ -247,7 +246,7 @@ function renderDashboard() {
 }
 
 function drawRevenueChart() {
-  const canvas = document.getElementById('revenue-chart');
+  const canvas = /** @type {HTMLCanvasElement | null} */ (document.getElementById('revenue-chart'));
   if (!canvas) return;
   canvas.width = canvas.offsetWidth || 400;
   const W = canvas.width, H = canvas.height;

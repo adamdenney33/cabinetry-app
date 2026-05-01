@@ -1,4 +1,3 @@
-// @ts-nocheck
 // ProCabinet — Orders state + view (carved out of src/app.js in phase E carve 3)
 //
 // Loaded as a classic <script defer> BEFORE src/app.js (state declarations
@@ -25,19 +24,26 @@ const STATUS_BADGES = {
   production: 'badge-orange', delivery: 'badge-teal', complete: 'badge-green'
 };
 
+/** @param {string} id */
+const _oInput = id => /** @type {HTMLInputElement | HTMLSelectElement | null} */ (document.getElementById(id));
+const _oBadge = () => {
+  const el = document.getElementById('orders-badge');
+  if (el) el.textContent = String(orders.filter(o => o.status !== 'complete').length);
+};
+
 async function addOrder() {
-  const client = document.getElementById('o-client').value.trim();
-  const project = document.getElementById('o-project').value.trim();
+  const client = _oInput('o-client')?.value.trim() || '';
+  const project = _oInput('o-project')?.value.trim() || '';
   if (!client || !project) { _toast('Enter client name and project.', 'error'); return; }
   if (!_requireAuth()) return;
-  const dueRaw = document.getElementById('o-due').value;
+  const dueRaw = _oInput('o-due')?.value || '';
   const due = dueRaw ? new Date(dueRaw + 'T12:00:00').toLocaleDateString('en-GB', {day:'numeric', month:'short', year:'numeric'}) : 'TBD';
   const clientId = await resolveClient(client);
   const projectId = await resolveProject(project, clientId);
   const row = {
     user_id: _userId, client, project,
-    value: parseFloat(document.getElementById('o-value').value) || 0,
-    status: document.getElementById('o-status').value,
+    value: parseFloat(_oInput('o-value')?.value || '') || 0,
+    status: _oInput('o-status')?.value || 'quote',
     due,
   };
   if (clientId) row.client_id = clientId;
@@ -45,8 +51,8 @@ async function addOrder() {
   let { data, error } = await _dbInsertSafe('orders', row);
   if (error) { _toast('Could not save order — ' + (error.message || JSON.stringify(error)), 'error'); console.error(error); return; }
   // Save notes and prodStart to localStorage
-  const notesVal = document.getElementById('o-notes').value.trim();
-  const startRaw = document.getElementById('o-start').value;
+  const notesVal = _oInput('o-notes')?.value.trim() || '';
+  const startRaw = _oInput('o-start')?.value || '';
   const prodStart = startRaw || '';
   if (data) {
     data.notes = notesVal; _onSet(data.id, notesVal);
@@ -54,14 +60,11 @@ async function addOrder() {
   }
   orders.unshift(data);
   _toast('Order created', 'success');
-  document.getElementById('o-client').value = '';
-  document.getElementById('o-project').value = '';
-  document.getElementById('o-value').value = '';
-  document.getElementById('o-start').value = '';
-  document.getElementById('o-due').value = '';
-  document.getElementById('o-notes').value = '';
-  document.getElementById('o-status').value = 'quote';
-  document.getElementById('orders-badge').textContent = orders.filter(o => o.status !== 'complete').length;
+  for (const id of ['o-client','o-project','o-value','o-start','o-due','o-notes']) {
+    const el = _oInput(id); if (el) el.value = '';
+  }
+  const status = _oInput('o-status'); if (status) status.value = 'quote';
+  _oBadge();
   renderOrdersMain();
 }
 
@@ -69,7 +72,7 @@ async function removeOrder(id) {
   if (!_requireAuth()) return;
   await _db('orders').delete().eq('id', id);
   orders = orders.filter(o => o.id !== id);
-  document.getElementById('orders-badge').textContent = orders.filter(o => o.status !== 'complete').length;
+  _oBadge();
   renderOrdersMain();
 }
 
@@ -92,7 +95,7 @@ async function duplicateOrder(id) {
     }
   } catch(e) { console.warn('[duplicateOrder] copy lines failed:', e.message || e); }
   orders.unshift(data);
-  document.getElementById('orders-badge').textContent = orders.filter(o => o.status !== 'complete').length;
+  _oBadge();
   _toast('Order duplicated', 'success');
   renderOrdersMain();
 }
@@ -107,7 +110,7 @@ async function advanceOrder(id) {
     await _db('orders').update({ status: newStatus }).eq('id', id);
     o.status = newStatus;
   }
-  document.getElementById('orders-badge').textContent = orders.filter(o => o.status !== 'complete').length;
+  _oBadge();
   renderOrdersMain();
 }
 
@@ -142,7 +145,7 @@ function renderOrdersMain() {
     let isOverdue = false;
     if (o.status !== 'complete' && o.due && o.due !== 'TBD') {
       const parsed = new Date(o.due);
-      if (!isNaN(parsed) && parsed < new Date()) isOverdue = true;
+      if (!isNaN(+parsed) && parsed < new Date()) isOverdue = true;
     }
 
     const relDate = _relativeDate(o.due);
@@ -224,7 +227,7 @@ async function setOrderStatus(id, status) {
   if (!o) return;
   await _db('orders').update({ status }).eq('id', id);
   o.status = status;
-  document.getElementById('orders-badge').textContent = orders.filter(o => o.status !== 'complete').length;
+  _oBadge();
   renderOrdersMain();
 }
 
@@ -242,7 +245,8 @@ function importOrdersCSV() {
   const input = document.createElement('input');
   input.type = 'file'; input.accept = '.csv';
   input.onchange = async e => {
-    const file = e.target.files[0]; if (!file) return;
+    const target = /** @type {HTMLInputElement} */ (e.target);
+    const file = target.files?.[0]; if (!file) return;
     const text = await file.text();
     const rows = text.split(/\r?\n/).map(r => r.split(',').map(c => c.replace(/^"|"$/g,'').trim()));
     if (rows.length < 2) { _toast('No data rows', 'error'); return; }
@@ -257,7 +261,7 @@ function importOrdersCSV() {
       if (_userId) { const{data}=await _db('orders').insert(row).select().single(); if(data){data.notes=r[5]||'';_onSet(data.id,data.notes);orders.unshift(data);imported++;} }
     }
     _toast(imported+' orders imported','success'); renderOrdersMain();
-    document.getElementById('orders-badge').textContent = orders.filter(o=>o.status!=='complete').length;
+    _oBadge();
   };
   input.click();
 }

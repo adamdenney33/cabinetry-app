@@ -1,4 +1,3 @@
-// @ts-nocheck
 // ProCabinet — Projects panel + persistence (carved out of src/app.js in
 // phase E carve 9).
 //
@@ -196,7 +195,7 @@ function showSaveProjectForm() {
     </div>
   `, 'small');
   setTimeout(() => {
-    const inp = document.getElementById('pop-save-proj-name');
+    const inp = /** @type {HTMLInputElement | null} */ (document.getElementById('pop-save-proj-name'));
     if (inp) { inp.focus(); inp.select(); }
   }, 50);
 }

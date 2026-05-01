@@ -1,4 +1,3 @@
-// @ts-nocheck
 // ProCabinet — localStorage→Postgres migration (Phase 2 + 6 of pre-launch refactor)
 // Loaded after src/app.js; depends on globals from app.js: _db, _userId, _toast, _confirm,
 // _openPopup, _closePopup, _escHtml, _sb, stockItems, orders, etc.
@@ -466,7 +465,7 @@ async function migrateLocalToDB() {
     ['order_refs', _migrateOrderRefs],
   ];
   for (const [name, fn] of subs) {
-    try { await fn(log); }
+    try { await /** @type {(log: any) => Promise<void>} */ (fn)(log); }
     catch(e) { _migLog(log, name, 'ERR', 'Exception: ' + (e.message || e)); }
   }
   try { _dropStockLibraries(log); }
