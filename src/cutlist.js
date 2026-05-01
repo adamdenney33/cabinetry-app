@@ -35,10 +35,10 @@ let pieceColorIdx = 0;
 let _sheetId = 1;
 let _pieceId = 1;
 let _csvImportTarget = 'pieces';
-let layoutZoom = parseFloat(localStorage.getItem('pc_zoom')) || 1.0;
+let layoutZoom = parseFloat(localStorage.getItem('pc_zoom') ?? '') || 1.0;
 let layoutColor = true;
 let layoutGrain = true;
-let layoutFontScale = parseFloat(localStorage.getItem('pc_font_scale')) || 1.0;
+let layoutFontScale = parseFloat(localStorage.getItem('pc_font_scale') ?? '') || 1.0;
 let layoutCutOrder = localStorage.getItem('pc_cut_order') === '1';
 let layoutSheetCutList = localStorage.getItem('pc_sheet_cutlist') === '1';
 let colsVisible = { grain: false, material: false, label: true, notes: false, edgeband: false };
@@ -855,6 +855,7 @@ function _loadCutList() {
         if (x.notes === undefined) x.notes = '';
         if (!x.edges && x.edgeBand) {
           const firstId = edgeBands.length ? edgeBands[0].id : null;
+          /** @type {Record<string, {id: any, trim: boolean} | null>} */
           const sides = {L1:null,W2:null,L3:null,W4:null};
           if (x.edgeBand === 'L' || x.edgeBand === 'LW' || x.edgeBand === 'all') { sides.L1 = firstId ? {id:firstId,trim:false} : null; sides.L3 = firstId ? {id:firstId,trim:false} : null; }
           if (x.edgeBand === 'W' || x.edgeBand === 'LW' || x.edgeBand === 'all') { sides.W2 = firstId ? {id:firstId,trim:false} : null; sides.W4 = firstId ? {id:firstId,trim:false} : null; }
@@ -1103,16 +1104,16 @@ function focusClCell(tableId, rowIdx, colName) {
 
 // ── PASTE FROM SPREADSHEET ──
 document.addEventListener('paste', function(e) {
-  const target = e.target;
-  if (!target.dataset || !target.dataset.table) return;
+  const target = /** @type {HTMLElement | null} */ (e.target);
+  if (!target || !target.dataset || !target.dataset.table) return;
   const text = (e.clipboardData || window.clipboardData).getData('text');
   const rows = text.trim().split(/\r?\n/);
   if (rows.length <= 1 && !text.includes('\t')) return;
   e.preventDefault();
   const tableId = target.dataset.table;
-  const rowIdx  = parseInt(target.dataset.row) || 0;
+  const rowIdx  = parseInt(target.dataset.row ?? '') || 0;
   const cols    = CL_COLS[tableId];
-  const startCI = cols.indexOf(target.dataset.col);
+  const startCI = cols.indexOf(target.dataset.col ?? '');
   rows.forEach((row, ri) => {
     const cells = row.split('\t');
     const ai = rowIdx + ri;
@@ -1164,7 +1165,7 @@ function handleCSVImport(input) {
   const file = input.files[0]; if (!file) return;
   const reader = new FileReader();
   reader.onload = e => {
-    const text = /** @type {string} */ (e.target.result);
+    const text = /** @type {string} */ (/** @type {FileReader} */ (e.target).result);
     const lines = text.trim().split(/\r?\n/).slice(1);
     lines.forEach(line => {
       const c = line.split(',').map(x => x.trim().replace(/^"|"$/g,''));
@@ -1348,13 +1349,17 @@ function _printInFrame(html) {
   frame.id = '_print_frame';
   frame.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:297mm;height:210mm;border:none;opacity:0;pointer-events:none;z-index:-1';
   document.body.appendChild(frame);
-  frame.contentDocument.open();
-  frame.contentDocument.write(html);
-  frame.contentDocument.close();
+  // contentDocument/contentWindow are guaranteed non-null after appendChild for a
+  // freshly-created same-origin iframe.
+  const cdoc = /** @type {Document} */ (frame.contentDocument);
+  const cwin = /** @type {Window} */ (frame.contentWindow);
+  cdoc.open();
+  cdoc.write(html);
+  cdoc.close();
   setTimeout(() => {
     try {
-      frame.contentWindow.focus();
-      frame.contentWindow.print();
+      cwin.focus();
+      cwin.print();
     } catch(e) {
       _saveAsPDF(html); // fallback to new-tab PDF flow
     }
@@ -2212,6 +2217,7 @@ function drawCanvas(container, layout, units) {
   canvas.style.cssText = `width:${TW}px;height:${TH}px;display:block`;
   wrap.appendChild(canvas);
   const ctx = canvas.getContext('2d');
+  if (!ctx) return;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
   // Unified font sizing — consistent across all labels + dims
@@ -2270,6 +2276,7 @@ function drawCanvas(container, layout, units) {
   // ancestor direction chain so phases can be finalized in a post-pass.
   function buildGuillotinePlan(x0, y0, x1, y1, pcs, pathDirs) {
     pathDirs = pathDirs || [];
+    /** @type {{ cuts: any[], offcuts: any[] }} */
     const out = { cuts: [], offcuts: [] };
     if (x1 - x0 < 0.5 || y1 - y0 < 0.5) return out;
     if (pcs.length === 0) { out.offcuts.push({ x: x0, y: y0, w: x1 - x0, h: y1 - y0 }); return out; }
@@ -2426,6 +2433,7 @@ function drawCanvas(container, layout, units) {
 
   // Merge collinear cuts within kerf distance — a single saw pass should be ONE line.
   const kerfTol = Math.max(4, (sheet.kerf || 3) + 1);
+  /** @type {any[]} */
   const cutLines = [];
   for (const c of plan.cuts) {
     const horiz = c.y1 === c.y2;
