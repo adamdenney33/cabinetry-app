@@ -224,7 +224,7 @@
           <div style="padding:10px 14px 4px;position:relative">
             <div class="smart-input-wrap">
               <input type="text" id="cq-cabinet-search" placeholder="Search or add cabinet..." autocomplete="off" oninput="_cqCabinetSearchInput(this)" onfocus="_smartCQLibrarySuggest(this,'cq-cabinet-suggest')" onblur="setTimeout(()=>document.getElementById('cq-cabinet-suggest').style.display='none',150)">
-              <div class="smart-input-add" onclick="cqSaveToLibrary()" title="Save current cabinet to library">+</div>
+              <div class="smart-input-add" onclick="addCQLine()" title="Add new cabinet">+</div>
             </div>
             <div id="cq-cabinet-suggest" class="client-suggest-list" style="display:none"></div>
           </div>
