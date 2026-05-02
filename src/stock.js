@@ -39,19 +39,20 @@ function removeUsedSheets() {
     const sheetName = sheets[0]?.material || '';
     const stockItem = stockItems.find(s => s.name.toLowerCase().includes(sheetName.toLowerCase().split(' ')[0]));
     if (stockItem) {
-      const newQty = Math.max(0, stockItem.qty - sheetsUsed);
+      const newQty = Math.max(0, (stockItem.qty ?? 0) - sheetsUsed);
       setStockQty(stockItem.id, newQty);
-      _toast(`Removed ${sheetsUsed} sheet${sheetsUsed!==1?'s':''} from "${stockItem.name}" (${stockItem.qty + sheetsUsed} → ${newQty})`, 'success');
+      _toast(`Removed ${sheetsUsed} sheet${sheetsUsed!==1?'s':''} from "${stockItem.name}" (${(stockItem.qty ?? 0) + sheetsUsed} → ${newQty})`, 'success');
     } else {
       _toast('No matching stock item found — update stock manually', 'info');
     }
   }, false);
 }
 
+/** @param {number} id */
 function useStockInCutList(id) {
   const item = stockItems.find(s => s.id === id);
   if (!item) return;
-  addSheet(item.name, item.w, item.h, Math.max(1, item.qty));
+  addSheet(item.name, item.w, item.h, Math.max(1, item.qty ?? 0));
   _toast(`"${item.name}" added to cut list`, 'success');
   switchSection('cutlist');
 }
@@ -64,6 +65,7 @@ function saveStockLibraries() { localStorage.setItem('pc_stock_libraries', JSON.
 
 function toggleStockLibraries() {}
 
+/** @param {string} nameArg */
 function saveStockLibrary(nameArg) {
   const name = (nameArg || '').trim();
   if (!name) { _toast('Enter a library name', 'error'); return; }
@@ -79,13 +81,14 @@ function saveStockLibrary(nameArg) {
   _toast(`Library "${name}" saved`, 'success');
 }
 
+/** @param {number} idx */
 function loadStockLibrary(idx) {
   const lib = stockLibraries[idx];
   if (!lib) return;
   _confirm(`Load "${lib.name}"? This will replace current stock.`, () => {
     // Clear current and load
     stockItems.length = 0;
-    (lib.items||[]).forEach(item => stockItems.push(item));
+    (lib.items||[]).forEach(/** @param {any} item */ item => stockItems.push(item));
     if (lib.categories) localStorage.setItem('pc_stock_cats', JSON.stringify(lib.categories));
     if (lib.suppliers) localStorage.setItem('pc_stock_suppliers', JSON.stringify(lib.suppliers));
     renderStockMain();
@@ -94,6 +97,7 @@ function loadStockLibrary(idx) {
   }, false);
 }
 
+/** @param {number} idx */
 function deleteStockLibrary(idx) {
   _confirm('Delete this library?', () => {
     stockLibraries.splice(idx, 1);
@@ -127,13 +131,14 @@ function importStockLibrary() {
 
 function exportStockCSV() {
   const u = window.units === 'metric' ? 'mm' : 'in';
+  /** @type {any[][]} */
   const rows = [['Name','SKU','Category',`W (${u})`,`H (${u})`,'Qty','Low Alert','Cost/Sheet','Total Value','Status']];
   stockItems.forEach(i => {
     const cat = _scGet(i.id);
-    const status = i.qty <= i.low ? 'Low Stock' : 'OK';
-    rows.push([i.name, i.sku||'', cat, i.w, i.h, i.qty, i.low, i.cost.toFixed(2), (i.qty*i.cost).toFixed(2), status]);
+    const status = (i.qty ?? 0) <= (i.low ?? 0) ? 'Low Stock' : 'OK';
+    rows.push([i.name, i.sku||'', cat, i.w, i.h, i.qty, i.low, (i.cost ?? 0).toFixed(2), ((i.qty ?? 0)*(i.cost ?? 0)).toFixed(2), status]);
   });
-  const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const csv = rows.map(r => r.map(/** @param {any} v */ v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
   const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([csv],{type:'text/csv'})), download: `stock-inventory-${new Date().toISOString().slice(0,10)}.csv` });
   a.click(); URL.revokeObjectURL(a.href);
   _toast('Inventory exported to CSV', 'success');
@@ -158,6 +163,7 @@ function importStockCSV() {
     let imported = 0;
     for (let i = 1; i < rows.length; i++) {
       const r = rows[i]; if (r.length < 6) continue;
+      /** @type {any} */
       const row = { user_id: _userId, name: r[0], sku: r[1]||'', w: parseFloat(r[3])||0, h: parseFloat(r[4])||0, qty: parseInt(r[5])||0, low: parseInt(r[6])||3, cost: parseFloat(r[7])||0 };
       if (!row.name) continue;
       if (_userId) {
@@ -171,25 +177,27 @@ function importStockCSV() {
   input.click();
 }
 
+/** @param {string} [mode] */
 function printStockList(mode='print') {
   if (mode === 'pdf') { _buildStockPDF(); return; }
   const cur = window.currency;
   const u = window.units === 'metric' ? 'mm' : 'in';
   const biz = getBizInfo();
   const usedCats = [...new Set(stockItems.map(i => _scGet(i.id)).filter(Boolean))].sort();
-  const totalValue = stockItems.reduce((s,i) => s + i.qty*i.cost, 0);
-  const totalSheets = stockItems.reduce((s,i) => s + i.qty, 0);
-  const lowItems = stockItems.filter(i => i.qty <= i.low);
+  const totalValue = stockItems.reduce((s,i) => s + (i.qty ?? 0)*(i.cost ?? 0), 0);
+  const totalSheets = stockItems.reduce((s,i) => s + (i.qty ?? 0), 0);
+  const lowItems = stockItems.filter(i => (i.qty ?? 0) <= (i.low ?? 0));
 
   // Group by category
+  /** @type {Record<string, any[]>} */
   const grouped = {};
   stockItems.forEach(i => { const c = _scGet(i.id) || 'Uncategorised'; if (!grouped[c]) grouped[c] = []; grouped[c].push(i); });
   const catOrder = [...STOCK_CATS, ...Object.keys(grouped).filter(k => !STOCK_CATS.includes(k) && k !== 'Uncategorised'), 'Uncategorised'];
 
   const rows = catOrder.filter(c => grouped[c]).map(cat => `
     <tr><td colspan="7" style="background:#f5f5f5;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#888;padding:6px 10px">${cat}</td></tr>
-    ${grouped[cat].map(i => {
-      const isLow = i.qty <= i.low;
+    ${grouped[cat].map(/** @param {any} i */ i => {
+      const isLow = (i.qty ?? 0) <= (i.low ?? 0);
       const sup = _ssGet(i.id);
       return `<tr style="${isLow?'background:#fff5f5':''}">
         <td>${i.name}</td>
@@ -198,7 +206,7 @@ function printStockList(mode='print') {
         <td style="font-size:10px;color:#666">${sup.supplier||''}</td>
         <td style="text-align:right;${isLow?'color:#c0392b;font-weight:700':''}">${i.qty}</td>
         <td style="text-align:right">${i.low}</td>
-        <td style="text-align:right">${cur}${(i.qty*i.cost).toFixed(0)}</td>
+        <td style="text-align:right">${cur}${((i.qty ?? 0)*(i.cost ?? 0)).toFixed(0)}</td>
       </tr>`;
     }).join('')}`).join('');
 
@@ -247,6 +255,7 @@ ${lowItems.length ? `<div class="low-note">⚠ Low stock: ${lowItems.map(i=>i.na
   _saveAsPDF(html);
 }
 
+/** @param {number} id @param {any} val */
 async function setStockQty(id, val) {
   const item = stockItems.find(s => s.id === id);
   if (!item) return;
@@ -256,16 +265,18 @@ async function setStockQty(id, val) {
   renderStockMain();
 }
 
+/** @param {number} id @param {string} field @param {any} val */
 async function updateStockField(id, field, val) {
   const item = stockItems.find(s => s.id === id);
   if (!item) return;
   const numFields = ['w','h','qty','low','cost'];
   const v = numFields.includes(field) ? (parseFloat(val) || 0) : val;
-  item[field] = v;
-  await _db('stock_items').update({ [field]: v }).eq('id', id);
+  /** @type {any} */ (item)[field] = v;
+  await _db('stock_items').update(/** @type {any} */ ({ [field]: v })).eq('id', id);
   renderStockMain();
 }
 
+/** @param {number} id @param {HTMLElement} tagEl */
 function setStockCatInline(id, tagEl) {
   // Replace the tag with a small select to pick category
   const cur = _scGet(id);
@@ -286,7 +297,10 @@ function setStockCatInline(id, tagEl) {
 // ══════════════════════════════════════════
 // STOCK
 // ══════════════════════════════════════════
-/** @type {import('./database.types').Tables<'stock_items'>[]} */
+// In-memory shadow fields beyond the DB schema: thickness/width/length/glue
+// (legacy edge-band field names that shadow the DB's *_mm/*_m columns; the
+// codebase is mid-rename, see G.4 SPEC entry).
+/** @type {(import('./database.types').Tables<'stock_items'> & { thickness?: number, width?: number, length?: number, thick?: number })[]} */
 let stockItems = [];
 /** @type {import('./database.types').Tables<'clients'>[]} */
 let clients = [];
@@ -301,6 +315,7 @@ const STOCK_CATS = ['Sheet Goods','Solid Timber','Edge Banding','Hardware','Fini
 // has run, the DB is the source of truth. localStorage stays as fallback for unmigrated browsers.
 
 // Helper: dual-write any subset of stock columns to DB + in-memory + localStorage map
+/** @param {number} id @param {any} updates @param {string | null} [lsKey] @param {any} [lsValue] */
 function _stockUpdateCols(id, updates, lsKey, lsValue) {
   // 1. localStorage map (legacy fallback)
   if (lsKey) {
@@ -323,16 +338,19 @@ function _stockUpdateCols(id, updates, lsKey, lsValue) {
 }
 
 function _scMap() { try { return JSON.parse(localStorage.getItem('pc_stock_cats') || '{}'); } catch(e) { return {}; } }
+/** @param {number} id */
 function _scGet(id) {
   const item = stockItems.find(s => s.id === id);
   if (item && item.category) return item.category;
   return _scMap()[String(id)] || '';
 }
+/** @param {number} id @param {string} cat */
 function _scSet(id, cat) {
   _stockUpdateCols(id, { category: cat || null }, 'pc_stock_cats', cat || null);
 }
 
 // ── Stock Supplier Storage ──
+/** @param {number} id */
 function _ssGet(id) {
   const item = stockItems.find(s => s.id === id);
   if (item && (item.supplier || item.supplier_url)) {
@@ -340,15 +358,19 @@ function _ssGet(id) {
   }
   try { return JSON.parse(localStorage.getItem('pc_stock_suppliers')||'{}')[String(id)] || {}; } catch(e) { return {}; }
 }
+/** @param {number} id @param {{supplier?: string, url?: string}} data */
 function _ssSet(id, data) {
   _stockUpdateCols(id, { supplier: data.supplier || null, supplier_url: data.url || null }, 'pc_stock_suppliers', data);
 }
+/** @param {number} id @param {string} field @param {any} val */
 function _updateStockSupplier(id, field, val) {
+  /** @type {any} */
   const sup = _ssGet(id);
   sup[field] = val;
   _ssSet(id, sup);
   renderStockMain();
 }
+/** @param {number} id */
 function _promptReorderUrl(id) {
   const url = prompt('Enter supplier/reorder URL:');
   if (url === null) return;
@@ -359,6 +381,7 @@ function _promptReorderUrl(id) {
 }
 
 // ── Stock Variant/Thickness Storage ──
+/** @param {number} id */
 function _svGet(id) {
   const item = stockItems.find(s => s.id === id);
   if (item && (item.variant || item.thickness_mm != null || item.width_mm != null || item.length_m != null || item.glue)) {
@@ -372,6 +395,7 @@ function _svGet(id) {
   }
   try { return JSON.parse(localStorage.getItem('pc_stock_variants')||'{}')[String(id)] || {}; } catch(e) { return {}; }
 }
+/** @param {number} id @param {{variant?: string, thickness?: any, width?: any, length?: any, glue?: string}} data */
 function _svSet(id, data) {
   const updates = {
     variant: data.variant || null,
@@ -385,12 +409,14 @@ function _svSet(id, data) {
 
 // Order-to-quote reference (Phase 3.8: orders.quote_id is now the source of truth) ──
 function _oqMap() { try { return JSON.parse(localStorage.getItem('pc_order_quote_ref') || '{}'); } catch(e) { return {}; } }
+/** @param {number} id */
 function _oqGet(id) {
   // Prefer DB column on the in-memory orders array; fall back to localStorage map.
   const o = orders.find(x => x.id === id);
   if (o && o.quote_id != null) return o.quote_id;
   return _oqMap()[String(id)] || null;
 }
+/** @param {number} id @param {number} quoteId */
 function _oqSet(id, quoteId) {
   // Dual-write: localStorage map + DB column + in-memory cache
   const m = _oqMap();
@@ -407,11 +433,13 @@ function _oqSet(id, quoteId) {
 
 // Order notes (Phase 3.8: orders.notes column now exists) ──
 function _onMap() { try { return JSON.parse(localStorage.getItem('pc_order_notes') || '{}'); } catch(e) { return {}; } }
+/** @param {number} id */
 function _onGet(id) {
   const o = orders.find(x => x.id === id);
   if (o && o.notes) return o.notes;
   return _onMap()[String(id)] || '';
 }
+/** @param {number} id @param {string} notes */
 function _onSet(id, notes) {
   // Dual-write
   const m = _onMap();
@@ -425,6 +453,7 @@ function _onSet(id, notes) {
   const o = orders.find(x => x.id === id);
   if (o) o.notes = notes || '';
 }
+/** @param {any[]} orderArr */
 function _onRestore(orderArr) {
   // For orders where DB notes is null but localStorage has a value, hydrate the in-memory cache
   // (DB takes precedence if both present).
@@ -491,7 +520,7 @@ async function addStockItem() {
       ? (parseFloat(_byId('stock-eb-cost')?.value ?? '') || 0)
       : (parseFloat(inp('stock-cost').value) || 0),
   };
-  const { data, error } = await _db('stock_items').insert(row).select().single();
+  const { data, error } = await _db('stock_items').insert(/** @type {any} */ (row)).select().single();
   if (error || !data) { _toast('Could not save stock item — ' + (error?.message || JSON.stringify(error)), 'error'); console.error(error); return; }
   // TODO(schema-divergence): in-memory edge-band fields (thickness/width/length) shadow
   // the DB columns (thickness_mm/width_mm/length_m) and desync after page reload.
@@ -524,6 +553,7 @@ async function addStockItem() {
   renderStockMain();
 }
 
+/** @param {number} id */
 function editStockItem(id) {
   const item = stockItems.find(s => s.id === id);
   if (!item) return;
@@ -534,7 +564,7 @@ function editStockItem(id) {
   inp('stock-cat').value = cat;
   stockCatChanged();
   inp('stock-name').value = item.name;
-  const vd = _svGet(id);
+  const vd = /** @type {any} */ (_svGet(id));
   inp('stock-variant').value = vd.variant || '';
   inp('stock-sku').value = item.sku || '';
   if (cat === 'Edge Banding') {
@@ -542,15 +572,15 @@ function editStockItem(id) {
     inp('stock-eb-width').value = vd.width ?? item.width ?? item.h ?? '';
     inp('stock-eb-length').value = vd.length ?? item.length ?? item.w ?? '';
     inp('stock-eb-glue').value = vd.glue || item.glue || 'EVA';
-    inp('stock-eb-low').value = item.low;
-    inp('stock-eb-cost').value = item.cost;
+    inp('stock-eb-low').value = String(item.low ?? '');
+    inp('stock-eb-cost').value = String(item.cost ?? '');
   } else {
     inp('stock-thick').value = vd.thickness || '';
-    inp('stock-w').value = item.w;
-    inp('stock-h').value = item.h;
-    inp('stock-qty').value = item.qty;
-    inp('stock-low').value = item.low;
-    inp('stock-cost').value = item.cost;
+    inp('stock-w').value = String(item.w ?? '');
+    inp('stock-h').value = String(item.h ?? '');
+    inp('stock-qty').value = String(item.qty ?? '');
+    inp('stock-low').value = String(item.low ?? '');
+    inp('stock-cost').value = String(item.cost ?? '');
   }
   const sup = _ssGet(id);
   const supEl = _byId('stock-supplier'); if (supEl) supEl.value = sup.supplier || '';
@@ -573,7 +603,9 @@ async function saveStockEdit() {
   const cat = inp('stock-cat').value.trim();
   const isEB = cat === 'Edge Banding';
   const variant = _byId('stock-variant')?.value?.trim() || '';
-  let updates, thick = 0, ebWidth = 0, ebLength = 0, ebGlue = '';
+  /** @type {any} */
+  let updates;
+  let thick = 0, ebWidth = 0, ebLength = 0, ebGlue = '';
   if (isEB) {
     thick = parseFloat(_byId('stock-eb-thick')?.value ?? '') || 0;
     ebWidth = parseFloat(_byId('stock-eb-width')?.value ?? '') || 0;
@@ -600,11 +632,14 @@ async function saveStockEdit() {
       cost: parseFloat(inp('stock-cost').value) || 0,
     };
   }
+  /** @type {any} */
+  const itemAny = item;
   Object.assign(item, updates);
-  if (isEB) { item.thickness = thick; item.width = ebWidth; item.length = ebLength; item.glue = ebGlue; }
-  else { delete item.thickness; delete item.width; delete item.length; delete item.glue; }
+  if (isEB) { itemAny.thickness = thick; itemAny.width = ebWidth; itemAny.length = ebLength; itemAny.glue = ebGlue; }
+  else { delete itemAny.thickness; delete itemAny.width; delete itemAny.length; delete itemAny.glue; }
   if (_userId) await _db('stock_items').update(updates).eq('id', id);
   _scSet(id, cat);
+  /** @type {{variant: string, thickness: number, width?: number, length?: number, glue?: string}} */
   const meta = { variant, thickness: thick };
   if (isEB) { meta.width = ebWidth; meta.length = ebLength; meta.glue = ebGlue; }
   _svSet(id, meta);
@@ -615,6 +650,7 @@ async function saveStockEdit() {
   _toast('Stock item updated', 'success');
 }
 
+/** @param {number} id */
 async function removeStock(id) {
   if (!_requireAuth()) return;
   await _db('stock_items').delete().eq('id', id);
@@ -622,15 +658,17 @@ async function removeStock(id) {
   renderStockMain();
 }
 
+/** @param {number} id @param {number} delta */
 async function adjustStock(id, delta) {
   if (!_requireAuth()) return;
   const item = stockItems.find(s => s.id === id);
   if (!item) return;
-  const newQty = Math.max(0, item.qty + delta);
+  const newQty = Math.max(0, (item.qty ?? 0) + delta);
   await _db('stock_items').update({ qty: newQty }).eq('id', id);
   item.qty = newQty;
   renderStockMain();
 }
+/** @param {number} id @param {string | number} text */
 async function setStockQty(id, text) {
   const qty = parseInt(String(text).replace(/[^0-9]/g,'')) || 0;
   const item = stockItems.find(s => s.id === id);
@@ -643,7 +681,7 @@ async function setStockQty(id, text) {
 function _updateStockBadge() {
   const badge = _byId('stock-badge');
   if (!badge) return;
-  const low = stockItems.filter(i => i.qty <= i.low).length;
+  const low = stockItems.filter(i => (i.qty ?? 0) <= (i.low ?? 0)).length;
   if (low > 0) { badge.textContent = String(low); badge.style.display = ''; }
   else { badge.style.display = 'none'; }
 }
@@ -652,9 +690,9 @@ function renderStockMain() {
   const cur = window.currency;
   const el = _byId('stock-main');
   if (!el) return;
-  const totalSheets = stockItems.reduce((s, i) => s + i.qty, 0);
-  const totalValue = stockItems.reduce((s, i) => s + i.qty * i.cost, 0);
-  const lowItems = stockItems.filter(i => i.qty <= i.low).length;
+  const totalSheets = stockItems.reduce((s, i) => s + (i.qty ?? 0), 0);
+  const totalValue = stockItems.reduce((s, i) => s + (i.qty ?? 0) * (i.cost ?? 0), 0);
+  const lowItems = stockItems.filter(i => (i.qty ?? 0) <= (i.low ?? 0)).length;
   const activeCat = window._stockCatFilter || 'All';
   const q = (window._stockSearch || '').toLowerCase();
 
@@ -669,10 +707,11 @@ function renderStockMain() {
     const matchCat = activeCat === 'All' || _scGet(i.id) === activeCat || (activeCat === 'Uncategorised' && !_scGet(i.id));
     return matchSearch && matchCat;
   });
-  filtered.sort((a,b) => (a.qty<=a.low ? 0 : 1) - (b.qty<=b.low ? 0 : 1));
+  filtered.sort((a,b) => ((a.qty ?? 0)<=(a.low ?? 0) ? 0 : 1) - ((b.qty ?? 0)<=(b.low ?? 0) ? 0 : 1));
 
+  /** @param {any} item */
   const stockCardHTML = (item) => {
-    const isLow = item.qty <= item.low;
+    const isLow = (item.qty ?? 0) <= (item.low ?? 0);
     const u = window.units === 'metric' ? 'mm' : '"';
     const cat = _scGet(item.id);
     const sup = _ssGet(item.id);
@@ -733,6 +772,7 @@ function renderStockMain() {
   const shouldGroup = activeCat === 'All' && usedCats.length > 0 && !q;
   let cardsHTML = '';
   if (shouldGroup) {
+    /** @type {Record<string, any[]>} */
     const grouped = {};
     filtered.forEach(i => {
       const c = _scGet(i.id) || 'Uncategorised';
