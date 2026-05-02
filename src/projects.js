@@ -31,6 +31,7 @@ async function _clLoadProjectList() {
 // payload: free-form scope-specific blob (cutlist: {sheets, pieces, settings}; quote: {lines, date})
 // Returns: { projectId, isNew, error }
 // ──────────────────────────────────────────────
+/** @param {{name: string, scope: 'cutlist' | 'quote', payload: any}} arg */
 async function _saveProjectScoped({ name, scope, payload }) {
   if (!_userId) return { error: 'Not authenticated' };
   if (!name || !name.trim()) return { error: 'Project name required' };
@@ -72,12 +73,16 @@ async function _saveProjectScoped({ name, scope, payload }) {
 
 // Phase 3.6: replace quote_lines for the project's "default" cabinet-quote (tagged [CQ_DEFAULT]).
 // Idempotent: finds existing tagged quote or creates one, then deletes old lines and inserts new.
+/** @param {number} projectId @param {any} payload */
 async function _replaceQuoteLinesChildTable(projectId, payload) {
   if (!projectId) return;
   const lines = payload.lines || [];
   const tag = '[CQ_DEFAULT]';
+  if (!_userId) return;
+  const uid = _userId;
   // Find existing default quote for this project
-  const { data: existing } = await _db('quotes').select('id,notes').eq('project_id', projectId).eq('user_id', _userId);
+  const { data: existing } = await _db('quotes').select('id,notes').eq('project_id', projectId).eq('user_id', uid);
+  /** @type {number | null} */
   let quoteId = null;
   if (existing) {
     const found = existing.find(q => (q.notes || '').includes(tag));
@@ -85,7 +90,7 @@ async function _replaceQuoteLinesChildTable(projectId, payload) {
   }
   if (!quoteId) {
     const { data: created, error } = await _db('quotes').insert([{
-      user_id: _userId, project_id: projectId,
+      user_id: uid, project_id: projectId,
       notes: tag, status: 'draft',
       date: payload.date || new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}),
       markup: 0, tax: 0,
@@ -97,7 +102,7 @@ async function _replaceQuoteLinesChildTable(projectId, payload) {
   // Replace lines
   await _db('quote_lines').delete().eq('quote_id', quoteId);
   if (lines.length > 0 && typeof _cqLineToRow === 'function') {
-    const rows = lines.map((l, i) => _cqLineToRow(l, i, quoteId));
+    const rows = lines.map(/** @param {any} l @param {number} i */ (l, i) => _cqLineToRow(l, i, quoteId));
     await _db('quote_lines').insert(rows);
   }
 }
@@ -105,6 +110,7 @@ async function _replaceQuoteLinesChildTable(projectId, payload) {
 // Phase 3.5: replace sheets/pieces/edge_bands rows for a project with the current payload.
 // Idempotent: deletes existing rows then inserts new ones. Doesn't touch piece_edges yet
 // (would require resolving edge_band ids by name; deferred until edge banding flows are migrated).
+/** @param {number} projectId @param {any} payload */
 async function _replaceCutListChildTables(projectId, payload) {
   if (!projectId) return;
   // Delete existing rows for this project (cascade not enabled here, but FK is — cascade handles piece_edges)
@@ -117,7 +123,7 @@ async function _replaceCutListChildTables(projectId, payload) {
   const pieces = payload.pieces || [];
   const ebs = payload.edgeBands || [];
   if (sheets.length) {
-    const rows = sheets.map((s, i) => ({
+    const rows = sheets.map(/** @param {any} s @param {number} i */ (s, i) => ({
       project_id: projectId, user_id: _userId, position: i,
       name: s.name || 'Sheet',
       w_mm: parseFloat(s.w) || 0, h_mm: parseFloat(s.h) || 0,
@@ -128,7 +134,7 @@ async function _replaceCutListChildTables(projectId, payload) {
     await _db('sheets').insert(rows);
   }
   if (pieces.length) {
-    const rows = pieces.map((pc, i) => ({
+    const rows = pieces.map(/** @param {any} pc @param {number} i */ (pc, i) => ({
       project_id: projectId, user_id: _userId, position: i,
       label: pc.label || 'Part',
       w_mm: parseFloat(pc.w) || 0, h_mm: parseFloat(pc.h) || 0,
@@ -140,7 +146,7 @@ async function _replaceCutListChildTables(projectId, payload) {
     await _db('pieces').insert(rows);
   }
   if (ebs.length) {
-    const rows = ebs.map((eb, i) => ({
+    const rows = ebs.map(/** @param {any} eb @param {number} i */ (eb, i) => ({
       project_id: projectId, user_id: _userId, position: i,
       name: eb.name || 'Edge Band',
       thickness_mm: parseFloat(eb.thickness) || 0,
@@ -152,6 +158,7 @@ async function _replaceCutListChildTables(projectId, payload) {
   }
 }
 
+/** @param {string} name */
 function _clSaveProjectByName(name) {
   if (!name) return;
   if (!_requireAuth()) return;
@@ -168,12 +175,14 @@ function _clSaveProjectByName(name) {
   });
 }
 
+/** @param {number} idx */
 function _clLoadProjectByIdx(idx) {
   const p = _clProjectCache[idx];
   if (!p) return;
   loadProject(p.id);
 }
 
+/** @param {number} idx */
 function _clDeleteProjectByIdx(idx) {
   const p = _clProjectCache[idx];
   if (!p) return;
@@ -210,10 +219,12 @@ function hideSaveProjectForm() {}
 async function confirmSaveProject() { _confirmSaveProjectPopup(); }
 async function promptSaveProject() { showSaveProjectForm(); }
 
+/** @param {string} name */
 async function saveProject(name) {
   _clSaveProjectByName(name);
 }
 
+/** @param {number} id */
 async function loadProject(id) {
   const { data, error } = await _db('projects').select('*').eq('id', id).single();
   if (error || !data) { _toast('Could not load project.', 'error'); return; }
@@ -267,6 +278,7 @@ async function loadProject(id) {
   _toast('Project loaded — click Optimize to generate layouts', 'success');
 }
 
+/** @param {number} id */
 function deleteProject(id) {
   _confirm('Delete this project? This cannot be undone.', async () => {
     await _db('projects').delete().eq('id', id);

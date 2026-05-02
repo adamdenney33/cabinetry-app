@@ -16,18 +16,20 @@ function renderDashboard() {
   const activeOrders  = orders.filter(o => o.status !== 'complete');
   const doneOrders    = orders.filter(o => o.status === 'complete');
   const overdueOrders = activeOrders.filter(o => { if (!o.due || o.due === 'TBD') return false; const d = new Date(o.due); return !isNaN(+d) && d < new Date(); });
-  const pipeline      = activeOrders.reduce((s,o) => s+o.value, 0);
-  const revenue       = doneOrders.reduce((s,o) => s+o.value, 0);
+  const pipeline      = activeOrders.reduce((s,o) => s+(o.value ?? 0), 0);
+  const revenue       = doneOrders.reduce((s,o) => s+(o.value ?? 0), 0);
   const approvedQ     = quotes.filter(q => q.status === 'approved').length;
   const quoteValue    = quotes.reduce((s,q) => s+quoteTotal(q), 0);
-  const lowStock      = stockItems.filter(i => i.qty <= i.low);
-  const stockValue    = stockItems.reduce((s,i) => s+i.qty*i.cost, 0);
-  const totalSheets   = stockItems.reduce((s,i) => s+i.qty, 0);
+  const lowStock      = stockItems.filter(i => (i.qty ?? 0) <= (i.low ?? 0));
+  const stockValue    = stockItems.reduce((s,i) => s+(i.qty ?? 0)*(i.cost ?? 0), 0);
+  const totalSheets   = stockItems.reduce((s,i) => s+(i.qty ?? 0), 0);
   const activeProjects = projects.filter(p => p.status === 'active').length;
   const totalClients   = clients.length;
 
+  /** @param {number} v */
   const fmt = v => v.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0});
 
+  /** @param {string} label @param {number} pct @param {string} color */
   const statusBar = (label, pct, color) => `
     <div style="margin-bottom:10px">
       <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:3px">
@@ -39,8 +41,8 @@ function renderDashboard() {
     </div>`;
 
   const ordersByStatus = ORDER_STATUSES.map(s => ({
-    status: s, label: STATUS_LABELS[s], count: orders.filter(o=>o.status===s).length,
-    color: STATUS_COLORS[s], badge: STATUS_BADGES[s]
+    status: s, label: (/** @type {Record<string,string>} */(STATUS_LABELS))[s], count: orders.filter(o=>o.status===s).length,
+    color: (/** @type {Record<string,string>} */(STATUS_COLORS))[s], badge: (/** @type {Record<string,string>} */(STATUS_BADGES))[s]
   }));
 
   el.innerHTML = `
@@ -150,8 +152,8 @@ function renderDashboard() {
                   </div>
                 </div>
                 <div style="text-align:right;margin-left:12px;flex-shrink:0">
-                  <div style="font-size:13px;font-weight:700">${cur}${fmt(o.value)}</div>
-                  <span class="badge ${STATUS_BADGES[o.status] || 'badge-gray'}" style="font-size:9px">${STATUS_LABELS[o.status] || o.status || 'Unknown'}</span>
+                  <div style="font-size:13px;font-weight:700">${cur}${fmt(o.value ?? 0)}</div>
+                  <span class="badge ${(/** @type {Record<string,string>} */(STATUS_BADGES))[o.status||''] || 'badge-gray'}" style="font-size:9px">${(/** @type {Record<string,string>} */(STATUS_LABELS))[o.status||''] || o.status || 'Unknown'}</span>
                 </div>
               </div>`;}).join('')}
           </div>
@@ -202,10 +204,11 @@ function renderDashboard() {
 
       <!-- Upcoming Deadlines -->
       ${(() => {
-        const upcoming = activeOrders.filter(o => o.due && o.due !== 'TBD').map(o => {
-          const d = new Date(o.due); if (isNaN(+d)) return null; d.setHours(0,0,0,0);
+        /** @typedef {(typeof orders)[number] & {_due: Date, _days: number}} UpcomingOrder */
+        const upcoming = /** @type {UpcomingOrder[]} */ (activeOrders.filter(o => o.due && o.due !== 'TBD').map(o => {
+          const d = new Date(o.due || ''); if (isNaN(+d)) return null; d.setHours(0,0,0,0);
           return {...o, _due: d, _days: Math.round((+d - new Date().setHours(0,0,0,0)) / 86400000)};
-        }).filter(Boolean).sort((a,b) => +a._due - +b._due).slice(0, 5);
+        }).filter(Boolean)).sort((a,b) => +a._due - +b._due).slice(0, 5);
         if (!upcoming.length) return '';
         return `<div class="card" style="margin-bottom:18px">
           <div class="card-header" style="justify-content:space-between"><span class="card-title">Upcoming Deadlines</span><button class="btn btn-outline" style="padding:3px 10px;font-size:11px" onclick="switchSection('schedule')">Schedule</button></div>
@@ -215,7 +218,7 @@ function renderDashboard() {
               return `<div style="display:flex;align-items:center;gap:12px;padding:8px 18px;border-bottom:1px solid var(--border2);cursor:pointer" onclick="_openOrderPopup(${o.id})">
                 <div style="width:36px;height:36px;border-radius:8px;background:${overdue?'var(--danger)':urgent?'var(--accent)':'var(--surface2)'};color:${overdue||urgent?'#fff':'var(--text)'};display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;flex-shrink:0">${Math.abs(o._days)}</div>
                 <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;color:var(--text)">${orderProject(o)}</div><div style="font-size:11px;color:var(--muted)">${orderClient(o)} · ${overdue?'overdue':'day'+(o._days!==1?'s':'')+' left'}</div></div>
-                <span class="badge ${STATUS_BADGES[o.status]||'badge-gray'}" style="font-size:10px">${STATUS_LABELS[o.status]||o.status}</span>
+                <span class="badge ${(/** @type {Record<string,string>} */(STATUS_BADGES))[o.status||'']||'badge-gray'}" style="font-size:10px">${(/** @type {Record<string,string>} */(STATUS_LABELS))[o.status||'']||o.status}</span>
                 ${o.status !== 'complete' ? `<button class="btn btn-outline" onclick="event.stopPropagation();advanceOrder(${o.id});renderDashboard();setTimeout(drawRevenueChart,0)" style="font-size:10px;padding:3px 8px;width:auto;flex-shrink:0">Next →</button>` : ''}
               </div>`;
             }).join('')}
@@ -267,7 +270,7 @@ function drawRevenueChart() {
   for (const o of orders.filter(o => o.status === 'complete')) {
     const d = new Date(o.created_at || Date.now());
     const slot = months.find(s => s.y === d.getFullYear() && s.m === d.getMonth());
-    if (slot) slot.revenue += o.value;
+    if (slot) slot.revenue += (o.value ?? 0);
   }
 
   const maxRev = Math.max(...months.map(m => m.revenue), 1);

@@ -44,6 +44,7 @@ async function addOrder() {
   const due = dueRaw ? new Date(dueRaw + 'T12:00:00').toLocaleDateString('en-GB', {day:'numeric', month:'short', year:'numeric'}) : 'TBD';
   const clientId = await resolveClient(client);
   const projectId = await resolveProject(project, clientId);
+  /** @type {any} */
   const row = {
     user_id: _userId, client, project,
     value: parseFloat(_oInput('o-value')?.value || '') || 0,
@@ -72,6 +73,7 @@ async function addOrder() {
   renderOrdersMain();
 }
 
+/** @param {number} id */
 async function removeOrder(id) {
   if (!_requireAuth()) return;
   await _db('orders').delete().eq('id', id);
@@ -80,15 +82,17 @@ async function removeOrder(id) {
   renderOrdersMain();
 }
 
+/** @param {number} id */
 async function duplicateOrder(id) {
   if (!_requireAuth()) return;
   const o = orders.find(o => o.id === id);
   if (!o) return;
+  /** @type {any} */
   const row = { user_id: _userId, value: o.value, status: 'quote', due: 'TBD' };
   if (o.client_id) row.client_id = o.client_id;
   if (o.project_id) row.project_id = o.project_id;
   const { data, error } = await _dbInsertSafe('orders', row);
-  if (error) { _toast('Could not duplicate — ' + (error.message || JSON.stringify(error)), 'error'); return; }
+  if (error || !data) { _toast('Could not duplicate — ' + (error?.message || JSON.stringify(error)), 'error'); return; }
   if (o.notes) { data.notes = o.notes; _onSet(data.id, o.notes); }
   // Copy order_lines to the duplicate so itemisation survives
   try {
@@ -106,11 +110,12 @@ async function duplicateOrder(id) {
   renderOrdersMain();
 }
 
+/** @param {number} id */
 async function advanceOrder(id) {
   if (!_requireAuth()) return;
   const o = orders.find(o => o.id === id);
   if (!o) return;
-  const idx = ORDER_STATUSES.indexOf(o.status);
+  const idx = ORDER_STATUSES.indexOf(o.status || '');
   if (idx < ORDER_STATUSES.length - 1) {
     const newStatus = ORDER_STATUSES[idx + 1];
     await _db('orders').update({ status: newStatus }).eq('id', id);
@@ -126,21 +131,24 @@ function renderOrdersMain() {
   const cur = window.currency;
   const el = document.getElementById('orders-main');
   if (!el) return;
+  /** @param {number} v */
   const fmt = v => cur + v.toLocaleString('en-US', {minimumFractionDigits:0, maximumFractionDigits:0});
   const active = orders.filter(o => o.status !== 'complete');
   const complete = orders.filter(o => o.status === 'complete');
-  const totalRevenue = complete.reduce((s,o) => s+o.value, 0);
-  const pipeline = active.reduce((s,o) => s+o.value, 0);
+  const totalRevenue = complete.reduce((s,o) => s+(o.value ?? 0), 0);
+  const pipeline = active.reduce((s,o) => s+(o.value ?? 0), 0);
 
+  /** @type {string[]} */
   const pipelineSteps = ['quote','confirmed','production','delivery','complete'];
   const stepLabels = ['Quote','Confirmed','Production','Delivery','Done'];
 
+  /** @param {any} o */
   const orderCard = o => {
     const curIdx = pipelineSteps.indexOf(o.status);
     const pipe = pipelineSteps.map((s,i) => {
       const done = i < curIdx;
       const active = i === curIdx;
-      const color = active ? STATUS_COLORS[s] : done ? 'var(--success)' : 'var(--border)';
+      const color = active ? (/** @type {Record<string,string>} */ (STATUS_COLORS))[s] : done ? 'var(--success)' : 'var(--border)';
       return `<div class="pipe-step ${active?'pipe-active':''}${done?' pipe-done':''}" onclick="setOrderStatus(${o.id},'${s}')" style="cursor:pointer" title="Set to ${stepLabels[i]}">
         <div class="pipe-dot" style="background:${color};border-color:${color}"></div>
         <div class="pipe-label">${stepLabels[i]}</div>
@@ -174,7 +182,7 @@ function renderOrdersMain() {
       </div>
       <div class="oc-pipeline">${pipe}</div>
       <div class="oc-footer" onclick="event.stopPropagation()">
-        <span class="badge ${STATUS_BADGES[o.status]||'badge-gray'}" style="font-size:10px">${STATUS_LABELS[o.status]||o.status}</span>
+        <span class="badge ${(/** @type {Record<string,string>} */(STATUS_BADGES))[o.status]||'badge-gray'}" style="font-size:10px">${(/** @type {Record<string,string>} */(STATUS_LABELS))[o.status]||o.status}</span>
         ${o.status !== 'complete' ? `<button class="btn btn-success" onclick="advanceOrder(${o.id})" style="font-size:11px;padding:5px 10px;display:inline-flex;align-items:center;gap:4px">Next Stage ${ARROW_SVG}</button>` : '<span class="badge badge-green" style="align-self:center">Complete</span>'}
         <span style="flex:1"></span>
         <button class="btn btn-outline" onclick="duplicateOrder(${o.id})" style="font-size:11px;padding:5px 10px;width:auto">Copy</button>
@@ -190,9 +198,9 @@ function renderOrdersMain() {
   let pool = filterVal === 'all' ? orders : filterVal === 'active' ? active : complete;
   let filtered = filterSearch ? pool.filter(o => (orderClient(o)+' '+orderProject(o)).toLowerCase().includes(filterSearch)) : [...pool];
   // Sort
-  if (sortBy === 'due') filtered.sort((a,b) => { const da=_orderDateToISO(a.due)||'9999', db=_orderDateToISO(b.due)||'9999'; return da.localeCompare(db); });
-  else if (sortBy === 'value') filtered.sort((a,b) => b.value - a.value);
-  else if (sortBy === 'client') filtered.sort((a,b) => (a.client||'').localeCompare(b.client||''));
+  if (sortBy === 'due') filtered.sort((a,b) => { const da=_orderDateToISO(a.due||'')||'9999', db=_orderDateToISO(b.due||'')||'9999'; return da.localeCompare(db); });
+  else if (sortBy === 'value') filtered.sort((a,b) => (b.value ?? 0) - (a.value ?? 0));
+  else if (sortBy === 'client') filtered.sort((a,b) => (orderClient(a)||'').localeCompare(orderClient(b)||''));
 
   const emptyState = `<div class="empty-state">
     <div class="empty-icon" style="opacity:.18"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg></div>
@@ -226,7 +234,9 @@ function renderOrdersMain() {
 
 
 // ── Filter & status helpers ──
+/** @param {string} f */
 function setOrderFilter(f) { window._orderFilter = f; renderOrdersMain(); }
+/** @param {number} id @param {string} status */
 async function setOrderStatus(id, status) {
   if (!_requireAuth()) return;
   const o = orders.find(o => o.id === id);
@@ -240,9 +250,10 @@ async function setOrderStatus(id, status) {
 // ── CSV import / export ──
 function exportOrdersCSV() {
   if (!orders.length) { _toast('No orders to export', 'error'); return; }
+  /** @type {any[][]} */
   const rows = [['Client','Project','Value','Status','Due','Notes']];
   orders.forEach(o => rows.push([orderClient(o),orderProject(o),o.value,o.status,o.due||'TBD',o.notes||'']));
-  const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const csv = rows.map(r => r.map(/** @param {any} v */ v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
   const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([csv],{type:'text/csv'})), download: `orders-${new Date().toISOString().slice(0,10)}.csv` });
   a.click(); URL.revokeObjectURL(a.href);
   _toast('Orders exported', 'success');
@@ -261,6 +272,7 @@ function importOrdersCSV() {
       const r = rows[i]; if (r.length < 2 || !r[0]) continue;
       const client_id = r[0] ? await resolveClient(r[0]) : null;
       const project_id = r[1] ? await resolveProject(r[1], client_id) : null;
+      /** @type {any} */
       const row = { user_id: _userId, value: parseFloat(r[2])||0, status: r[3]||'quote', due: r[4]||'TBD' };
       if (client_id) row.client_id = client_id;
       if (project_id) row.project_id = project_id;
