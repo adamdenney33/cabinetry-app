@@ -16,27 +16,38 @@
 // ══════════════════════════════════════════
 // QUOTES
 // ══════════════════════════════════════════
-/** @type {import('./database.types').Tables<'quotes'>[]} */
+// In-memory shadow fields beyond the DB schema: `_totals` (materials/labour
+// derived from quote_lines aggregation, cached on load), plus a few legacy
+// pre-Phase-7 fields retained for fallback rendering.
+/** @type {(import('./database.types').Tables<'quotes'> & {
+ *    _totals?: {materials: number, labour: number},
+ *    client?: string, project?: string,
+ *    materials?: number, labour?: number
+ * })[]} */
 let quotes = [];
 let quoteNextId = 1;
 
 // FK-resolving display helpers. After Phase 7 the legacy text columns are gone,
 // so an unresolved FK simply returns ''.
+/** @param {any} q */
 function quoteClient(q) {
   if (!q || !q.client_id) return '';
   const c = clients.find(x => x.id === q.client_id);
   return c ? c.name : '';
 }
+/** @param {any} q */
 function quoteProject(q) {
   if (!q || !q.project_id) return '';
   const p = projects.find(x => x.id === q.project_id);
   return p ? p.name : '';
 }
+/** @param {any} o */
 function orderClient(o) {
   if (!o || !o.client_id) return '';
   const c = clients.find(x => x.id === o.client_id);
   return c ? c.name : '';
 }
+/** @param {any} o */
 function orderProject(o) {
   if (!o || !o.project_id) return '';
   const p = projects.find(x => x.id === o.project_id);
@@ -45,6 +56,7 @@ function orderProject(o) {
 
 // Aggregate materials/labour for a quote from its `quote_lines` rows.
 // Returns null if no lines exist; callers should treat null as zero totals.
+/** @param {number} quoteId */
 async function quoteTotalsFromLines(quoteId) {
   if (!quoteId) return null;
   const { data: lines, error } = await _db('quote_lines').select('*').eq('quote_id', quoteId);
@@ -72,6 +84,7 @@ async function _hydrateQuoteTotals() {
   }
 }
 
+/** @param {number} quoteId */
 async function _refreshQuoteTotals(quoteId) {
   const q = quotes.find(x => x.id === quoteId);
   if (!q) return;
@@ -80,6 +93,7 @@ async function _refreshQuoteTotals(quoteId) {
   if (t) q._totals = t;
 }
 
+/** @param {any} q */
 function quoteTotal(q) {
   const mat = q._totals ? q._totals.materials : (q.materials || 0);
   const lab = q._totals ? q._totals.labour    : (q.labour    || 0);
@@ -91,6 +105,7 @@ function quoteTotal(q) {
 // orders.value is the customer-paid snapshot at conversion time (post-markup,
 // post-tax). order_lines exist for itemisation but do not drive the dashboard
 // total — see SPEC.md § 13 (2026-04-29) for why we kept the column.
+/** @param {any} o */
 function orderTotal(o) {
   return o ? (o.value || 0) : 0;
 }
@@ -106,6 +121,7 @@ async function createQuote() {
   const materials = parseFloat(inp('q-materials').value) || 0;
   const clientId = await resolveClient(client);
   const projectId = await resolveProject(project, clientId);
+  /** @type {any} */
   const row = {
     user_id: _userId,
     markup: parseFloat(inp('q-markup').value) || 20,
@@ -116,7 +132,7 @@ async function createQuote() {
   if (clientId) row.client_id = clientId;
   if (projectId) row.project_id = projectId;
   const { data, error } = await _dbInsertSafe('quotes', row);
-  if (error) { _toast('Could not save quote — ' + (error.message || JSON.stringify(error)), 'error'); console.error(error); return; }
+  if (error || !data) { _toast('Could not save quote — ' + (error?.message || JSON.stringify(error)), 'error'); console.error(error); return; }
   quotes.unshift(data);
   // Manual-totals quote: stash entered materials/hours on a quote_lines stub so quoteTotal aggregates correctly
   if (materials > 0 || hours > 0) {
@@ -131,6 +147,7 @@ async function createQuote() {
   renderQuoteMain();
 }
 
+/** @param {number} id */
 async function removeQuote(id) {
   if (!_requireAuth()) return;
   await _db('quotes').delete().eq('id', id);
@@ -138,6 +155,7 @@ async function removeQuote(id) {
   renderQuoteMain();
 }
 
+/** @param {number} id */
 async function convertQuoteToOrder(id) {
   if (!_requireAuth()) return;
   const q = quotes.find(q => q.id === id);
@@ -145,11 +163,12 @@ async function convertQuoteToOrder(id) {
   const { error: qErr } = await _db('quotes').update({ status: 'approved' }).eq('id', id);
   if (qErr) { _toast('Could not update quote — ' + (qErr.message || JSON.stringify(qErr)), 'error'); console.error(qErr); return; }
   q.status = 'approved';
+  /** @type {any} */
   const orderRow = { user_id: _userId, value: Math.round(quoteTotal(q)), status: 'confirmed', due: 'TBD' };
   if (q.client_id) orderRow.client_id = q.client_id;
   if (q.project_id) orderRow.project_id = q.project_id;
   const { data, error: oErr } = await _dbInsertSafe('orders', orderRow);
-  if (oErr) { _toast('Could not create order — ' + (oErr.message || JSON.stringify(oErr)), 'error'); console.error(oErr); return; }
+  if (oErr || !data) { _toast('Could not create order — ' + (oErr?.message || JSON.stringify(oErr)), 'error'); console.error(oErr); return; }
   // Carry quote notes to order notes & store quote reference
   if (q.notes && data) { data.notes = q.notes; _onSet(data.id, q.notes); }
   if (data) { _oqSet(data.id, q.id); }
@@ -176,6 +195,7 @@ async function convertQuoteToOrder(id) {
   switchSection('orders');
 }
 
+/** @param {number} id */
 async function approveQuote(id) {
   if (!_requireAuth()) return;
   const q = quotes.find(q => q.id === id);
@@ -186,6 +206,7 @@ async function approveQuote(id) {
   renderQuoteMain();
 }
 
+/** @param {number} id */
 async function revertQuoteToDraft(id) {
   if (!_requireAuth()) return;
   const q = quotes.find(q => q.id === id);
@@ -199,18 +220,21 @@ function renderQuoteMain() {
   const cur = window.currency;
   const el = _byId('quote-main');
   if (!el) return;
+  /** @param {number} v */
   const fmt = v => cur + v.toLocaleString('en-US', {minimumFractionDigits:0, maximumFractionDigits:0});
   const totalValue = quotes.reduce((s,q) => s + quoteTotal(q), 0);
   const approved = quotes.filter(q => q.status === 'approved').length;
   const sent = quotes.filter(q => q.status === 'sent').length;
   const draft = quotes.filter(q => q.status === 'draft').length;
 
+  /** @param {string} s */
   const statusBadge = s => {
     if (s === 'approved') return '<span class="badge badge-green">Approved</span>';
     if (s === 'sent') return '<span class="badge badge-blue">Sent</span>';
     return '<span class="badge badge-gray">Draft</span>';
   };
 
+  /** @param {any} q */
   const qCard = q => {
     const matVal = q._totals ? q._totals.materials : (q.materials || 0);
     const labVal = q._totals ? q._totals.labour    : (q.labour    || 0);
@@ -230,7 +254,7 @@ function renderQuoteMain() {
         </div>
       </div>
       ${q.notes ? `<div style="border-top:1px solid var(--border2);padding:8px 16px;background:var(--surface)">
-        ${q.notes.split(/\r?\n/).filter(Boolean).slice(0,3).map(line => {
+        ${q.notes.split(/\r?\n/).filter(Boolean).slice(0,3).map(/** @param {string} line */ line => {
           if (line.includes('\u2014') || line.includes('—')) {
             const parts = line.split(/\u2014|—/);
             return '<div style="font-size:11px;color:var(--text2);margin-bottom:2px"><strong>' + _escHtml(parts[0].trim()) + '</strong></div>';
@@ -266,7 +290,7 @@ function renderQuoteMain() {
   if (qFilter !== 'all') filteredQ = filteredQ.filter(q => q.status === qFilter);
   if (qSearch) filteredQ = filteredQ.filter(q => (quoteClient(q) + ' ' + quoteProject(q)).toLowerCase().includes(qSearch));
   if (qSort === 'value') filteredQ.sort((a,b) => quoteTotal(b) - quoteTotal(a));
-  else if (qSort === 'client') filteredQ.sort((a,b) => (a.client||'').localeCompare(b.client||''));
+  else if (qSort === 'client') filteredQ.sort((a,b) => (quoteClient(a)||'').localeCompare(quoteClient(b)||''));
 
   const filterBar = `<div class="order-filter-tabs" style="align-items:center">
     <input class="order-search-input" type="search" placeholder="Search client or project…" value="${window._quoteSearch||''}" oninput="window._quoteSearch=this.value;renderQuoteMain()">
@@ -298,13 +322,14 @@ function renderQuoteMain() {
 function exportQuotesCSV() {
   if (!quotes.length) { _toast('No quotes to export', 'error'); return; }
   const cur = window.currency;
+  /** @type {any[][]} */
   const rows = [['Client','Project','Materials','Labour','Markup %','Tax %','Status','Date','Notes']];
   quotes.forEach(q => {
     const matVal = q._totals ? q._totals.materials : (q.materials || 0);
     const labVal = q._totals ? q._totals.labour    : (q.labour    || 0);
     rows.push([quoteClient(q),quoteProject(q),matVal,labVal,q.markup,q.tax,q.status,q.date,q.notes||'']);
   });
-  const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const csv = rows.map(r => r.map(/** @param {any} v */ v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
   const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([csv],{type:'text/csv'})), download: `quotes-${new Date().toISOString().slice(0,10)}.csv` });
   a.click(); URL.revokeObjectURL(a.href);
   _toast('Quotes exported', 'success');
@@ -322,6 +347,7 @@ function importQuotesCSV() {
       const r = rows[i]; if (r.length < 4 || !r[0]) continue;
       const client_id = r[0] ? await resolveClient(r[0]) : null;
       const project_id = r[1] ? await resolveProject(r[1], client_id) : null;
+      /** @type {any} */
       const row = { user_id: _userId, materials: parseFloat(r[2])||0, labour: parseFloat(r[3])||0, markup: parseFloat(r[4])||20, tax: parseFloat(r[5])||13, status: r[6]||'draft', date: r[7]||new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short'}), notes: r[8]||'' };
       if (client_id) row.client_id = client_id;
       if (project_id) row.project_id = project_id;
@@ -338,6 +364,7 @@ function importQuotesCSV() {
 // pulled in during phase E carve 14)
 // ══════════════════════════════════════════
 // ── Smart Suggest System ──
+/** @param {HTMLInputElement} input @param {string} boxId */
 function _smartClientSuggest(input, boxId) {
   const val = input.value.toLowerCase().trim();
   const box = _byId(boxId);
@@ -359,6 +386,7 @@ function _smartClientSuggest(input, boxId) {
   box.style.display = '';
 }
 
+/** @param {HTMLInputElement} input @param {string} boxId */
 function _smartProjectSuggest(input, boxId) {
   const val = input.value.toLowerCase().trim();
   const box = _byId(boxId);
@@ -369,7 +397,7 @@ function _smartProjectSuggest(input, boxId) {
   if (!matches.length && !val) { box.style.display = 'none'; return; }
   const inputId = input.id;
   let html = matches.slice(0,8).map(p => {
-    const proj = projects.find(px => px.name === p);
+    const proj = /** @type {any} */ (projects.find(px => px.name === p));
     const clientName = proj ? proj.client : '';
     return `<div class="client-suggest-item" onmousedown="_byId('${inputId}').value='${p.replace(/'/g,'&#39;')}';_byId('${boxId}').style.display='none';_autoFillClientFromProject('${p.replace(/'/g,'&#39;')}','${inputId}')">
       <span class="suggest-icon">P</span>
@@ -383,8 +411,9 @@ function _smartProjectSuggest(input, boxId) {
 }
 
 // Auto-fill client when selecting a project that has a known client
+/** @param {string} projName @param {string} projInputId */
 function _autoFillClientFromProject(projName, projInputId) {
-  const proj = projects.find(p => p.name === projName);
+  const proj = /** @type {any} */ (projects.find(p => p.name === projName));
   if (!proj || !proj.client) return;
   // Determine which client input to fill based on the project input
   const clientInputId = projInputId.replace('-project', '-client');
@@ -393,6 +422,7 @@ function _autoFillClientFromProject(projName, projInputId) {
 }
 
 // ── New Client/Project Popup (inline creation) ──
+/** @param {string} targetInputId */
 function _openNewClientPopup(targetInputId) {
   // Close any suggest dropdowns
   /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('.client-suggest-list')).forEach(b => b.style.display = 'none');
@@ -419,6 +449,7 @@ function _openNewClientPopup(targetInputId) {
   _openPopup(html, 'sm');
 }
 
+/** @param {string} targetInputId */
 async function _saveNewClientPopup(targetInputId) {
   const name = _popupVal('pnc-name');
   if (!name) { _toast('Client name is required', 'error'); return; }
@@ -430,6 +461,7 @@ async function _saveNewClientPopup(targetInputId) {
     _toast('Client already exists — selected', 'info');
     return;
   }
+  /** @type {any} */
   const newClient = {
     id: Date.now(),
     name,
@@ -449,6 +481,7 @@ async function _saveNewClientPopup(targetInputId) {
   _toast(`Client "${name}" added`, 'success');
 }
 
+/** @param {string} targetInputId */
 function _openNewProjectPopup(targetInputId) {
   /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('.client-suggest-list')).forEach(b => b.style.display = 'none');
   const existing = _byId(targetInputId)?.value || '';
@@ -475,6 +508,7 @@ function _openNewProjectPopup(targetInputId) {
   _openPopup(html, 'sm');
 }
 
+/** @param {string} targetInputId */
 async function _saveNewProjectPopup(targetInputId) {
   const name = _popupVal('pnp-name');
   if (!name) { _toast('Project name is required', 'error'); return; }
@@ -489,6 +523,7 @@ async function _saveNewProjectPopup(targetInputId) {
     _toast('Project already exists — selected', 'info');
     return;
   }
+  /** @type {any} */
   const newProject = {
     id: Date.now(),
     name,
@@ -519,18 +554,20 @@ document.addEventListener('click', e => {
   });
 });
 
+/** @param {number} id @param {string} [mode] */
 function printWorkOrder(id, mode='print') {
   const o = orders.find(o => o.id === id);
   if (!o) return;
   if (mode === 'pdf') { _buildWorkOrderPDF(o); return; }
   const biz = getBizInfo();
   const cur = window.currency;
-  const rel = _relativeDate(o.due);
+  const rel = _relativeDate(o.due || '');
+  /** @type {Record<string, string>} */
   const statusColMap = { quote:'#6b7280', confirmed:'#2563eb', production:'#d97706', delivery:'#0891b2', complete:'#16a34a' };
-  const statusCol = statusColMap[o.status] || '#6b7280';
+  const statusCol = statusColMap[o.status || ''] || '#6b7280';
   const stageLabels = ['Quote Sent','Confirmed','In Production','Ready for Delivery','Complete'];
   const stageKeys   = ['quote','confirmed','production','delivery','complete'];
-  const currentIdx  = stageKeys.indexOf(o.status);
+  const currentIdx  = stageKeys.indexOf(o.status || '');
 
   const stageRows = stageKeys.map((s, i) => {
     const done = i < currentIdx;
@@ -592,7 +629,7 @@ function printWorkOrder(id, mode='print') {
 </style></head><body>
 
 <div class="top-bar">
-  <div class="top-bar-left">Work Order &nbsp;&bull;&nbsp; ${STATUS_LABELS[o.status] || o.status}</div>
+  <div class="top-bar-left">Work Order &nbsp;&bull;&nbsp; ${(/** @type {Record<string,string>} */(STATUS_LABELS))[o.status||''] || o.status}</div>
   <div class="top-bar-right">#WO-${String(o.id).padStart(4,'0')}</div>
 </div>
 <div class="hdr">
@@ -623,7 +660,7 @@ function printWorkOrder(id, mode='print') {
   </div>
   <div class="info-cell">
     <div class="info-lbl">Stage</div>
-    <div class="info-val" style="font-size:14px;color:${statusCol}">${STATUS_LABELS[o.status] || o.status}</div>
+    <div class="info-val" style="font-size:14px;color:${statusCol}">${(/** @type {Record<string,string>} */(STATUS_LABELS))[o.status||''] || o.status}</div>
   </div>
 </div>
 
@@ -663,8 +700,9 @@ async function deductStockFromCutList() {
   if (!window.results || !window.results.layouts) { _toast('Run optimization first.', 'error'); return; }
   if (!_requireAuth()) return;
   // Count sheets used by name
+  /** @type {Record<string, number>} */
   const usage = {};
-  window.results.layouts.forEach(l => {
+  window.results.layouts.forEach(/** @param {any} l */ l => {
     const name = l.sheet.label || l.sheet.name || '';
     usage[name] = (usage[name] || 0) + 1;
   });
@@ -672,7 +710,7 @@ async function deductStockFromCutList() {
   for (const [name, count] of Object.entries(usage)) {
     const stock = stockItems.find(s => s.name === name);
     if (!stock) continue;
-    const newQty = Math.max(0, stock.qty - count);
+    const newQty = Math.max(0, (stock.qty ?? 0) - count);
     await _db('stock_items').update({ qty: newQty }).eq('id', stock.id);
     stock.qty = newQty;
     deducted += count;
@@ -685,6 +723,7 @@ async function deductStockFromCutList() {
   }
 }
 
+/** @param {number} matCost */
 function quoteFromCutList(matCost) {
   switchSection('quote');
   const el = _byId('q-materials');
@@ -695,6 +734,7 @@ function quoteFromCutList(matCost) {
   if (el) { el.style.background = 'rgba(232,168,56,0.2)'; setTimeout(() => el.style.background = '', 1200); }
 }
 
+/** @param {number} id */
 async function markQuoteSent(id) {
   if (!_requireAuth()) return;
   const q = quotes.find(q => q.id === id);
@@ -704,24 +744,31 @@ async function markQuoteSent(id) {
   renderQuoteMain();
 }
 
+/** @param {number} id @param {string} [mode] */
 function printQuote(id, mode='print') {
   const q = quotes.find(q => q.id === id);
   if (!q) return;
   if (mode === 'pdf') { _buildQuotePDF(q); return; }
   const cur = window.currency;
+  /** @param {any} v */
   const fmt  = v => cur + Number(v).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+  /** @param {any} v */
   const fmt0 = v => cur + Number(v).toLocaleString('en-US', {minimumFractionDigits:0, maximumFractionDigits:0});
   const logo = getBizLogo();
   const matVal = q._totals ? q._totals.materials : (q.materials || 0);
   const labVal = q._totals ? q._totals.labour    : (q.labour    || 0);
   const sub = matVal + labVal;
-  const markupAmt = sub * q.markup / 100;
+  const markupAmt = sub * (q.markup ?? 0) / 100;
   const afterMarkup = sub + markupAmt;
-  const taxAmt = afterMarkup * q.tax / 100;
+  const taxAmt = afterMarkup * (q.tax ?? 0) / 100;
   const total = afterMarkup + taxAmt;
   const biz = getBizInfo();
-  const statusCol = { draft:'#888', sent:'#2563eb', approved:'#16a34a' }[q.status] || '#888';
-  const statusTxt = { draft:'Draft', sent:'Sent', approved:'Approved' }[q.status] || q.status;
+  /** @type {Record<string, string>} */
+  const statusColMap = { draft:'#888', sent:'#2563eb', approved:'#16a34a' };
+  /** @type {Record<string, string>} */
+  const statusTxtMap = { draft:'Draft', sent:'Sent', approved:'Approved' };
+  const statusCol = statusColMap[q.status||''] || '#888';
+  const statusTxt = statusTxtMap[q.status||''] || q.status;
 
   const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Quote #Q-${String(q.id).padStart(4,'0')} — ${quoteProject(q)}</title>
 <style>
@@ -805,9 +852,9 @@ function printQuote(id, mode='print') {
       return '<tr><td style="padding:10px"><strong style="font-size:14px">'+_escHtml(parts[0])+'</strong><br><span style="font-size:11px;color:#888;padding-left:14px">'+_escHtml(parts.slice(1).join(' — ').trim())+'</span></td><td class="r"></td></tr>';
     }).join('')}
     ${(q.notes||'').split(/\r?\n/).some(l => l.includes('\u2014') || l.includes('—')) ? '<tr><td colspan="2" style="border-bottom:1.5px solid #ddd;padding:0"></td></tr>' : ''}
-    ${q.markup > 0 || q.tax > 0 ? `<tr class="subtotal"><td style="color:#aaa">Subtotal</td><td class="r">${fmt(sub)}</td></tr>` : ''}
-    ${q.markup > 0 ? `<tr class="subtotal"><td style="padding-left:20px">Markup &nbsp;<span style="color:#bbb">(${q.markup}%)</span></td><td class="r">+ ${fmt(markupAmt)}</td></tr>` : ''}
-    ${q.tax > 0 ? `<tr class="subtotal"><td style="padding-left:20px">Tax &nbsp;<span style="color:#bbb">(${q.tax}%)</span></td><td class="r">+ ${fmt(taxAmt)}</td></tr>` : ''}
+    ${(q.markup ?? 0) > 0 || (q.tax ?? 0) > 0 ? `<tr class="subtotal"><td style="color:#aaa">Subtotal</td><td class="r">${fmt(sub)}</td></tr>` : ''}
+    ${(q.markup ?? 0) > 0 ? `<tr class="subtotal"><td style="padding-left:20px">Markup &nbsp;<span style="color:#bbb">(${q.markup}%)</span></td><td class="r">+ ${fmt(markupAmt)}</td></tr>` : ''}
+    ${(q.tax ?? 0) > 0 ? `<tr class="subtotal"><td style="padding-left:20px">Tax &nbsp;<span style="color:#bbb">(${q.tax}%)</span></td><td class="r">+ ${fmt(taxAmt)}</td></tr>` : ''}
   </tbody>
 </table>
 <div class="total-box">
@@ -847,10 +894,12 @@ ${(() => {
   _printInFrame(html);
 }
 
+/** @param {number} id */
 async function duplicateQuote(id) {
   if (!_requireAuth()) return;
   const q = quotes.find(q => q.id === id);
   if (!q) return;
+  /** @type {any} */
   const row = { user_id: _userId, markup: q.markup, tax: q.tax, status: 'draft', date: new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short'}), notes: q.notes || '' };
   if (q.client_id) row.client_id = q.client_id;
   if (q.project_id) row.project_id = q.project_id;
@@ -870,13 +919,14 @@ async function duplicateQuote(id) {
   renderQuoteMain();
 }
 
+/** @param {number} id @param {string} field @param {any} val */
 async function updateQuoteField(id, field, val) {
   if (!_requireAuth()) return;
   const q = quotes.find(q => q.id === id);
   if (!q) return;
   const numFields = ['materials','labour','markup','tax'];
   const v = numFields.includes(field) ? (parseFloat(val) || 0) : val;
-  q[field] = v;
-  await _db('quotes').update({ [field]: v }).eq('id', id);
+  /** @type {any} */ (q)[field] = v;
+  await _db('quotes').update(/** @type {any} */ ({ [field]: v })).eq('id', id);
   renderQuoteMain();
 }
