@@ -413,12 +413,14 @@ function _smartProjectSuggest(input, boxId) {
 // Auto-fill client when selecting a project that has a known client
 /** @param {string} projName @param {string} projInputId */
 function _autoFillClientFromProject(projName, projInputId) {
-  const proj = /** @type {any} */ (projects.find(p => p.name === projName));
-  if (!proj || !proj.client) return;
+  const proj = projects.find(p => p.name === projName);
+  if (!proj || proj.client_id == null) return;
+  const cli = clients.find(c => c.id === proj.client_id);
+  if (!cli) return;
   // Determine which client input to fill based on the project input
   const clientInputId = projInputId.replace('-project', '-client');
   const clientInput = _byId(clientInputId);
-  if (clientInput && !clientInput.value) clientInput.value = proj.client;
+  if (clientInput && !clientInput.value) clientInput.value = cli.name;
 }
 
 // ── New Client/Project Popup (inline creation) ──
@@ -461,20 +463,17 @@ async function _saveNewClientPopup(targetInputId) {
     _toast('Client already exists — selected', 'info');
     return;
   }
-  /** @type {any} */
-  const newClient = {
-    id: Date.now(),
+  const insertBody = {
     name,
     email: _popupVal('pnc-email') || '',
     phone: _popupVal('pnc-phone') || '',
     address: _popupVal('pnc-address') || '',
     notes: _popupVal('pnc-notes') || '',
-    user_id: _userId
+    user_id: /** @type {string} */ (_userId),
   };
-  clients.push(newClient);
-  // TODO(schema-divergence): newClient.id is a Date.now() local id; the DB has a serial
-  // id and silently overrides. Removing client-side IDs needs callsite audit.
-  try { await _db('clients').insert(/** @type {any} */ (newClient)); } catch(e) { console.warn('Client insert failed', e); }
+  const { data, error } = await _db('clients').insert(insertBody).select().single();
+  if (error || !data) { _toast('Could not save client — ' + (error?.message || ''), 'error'); console.error(error); return; }
+  clients.push(data);
   /** @type {HTMLInputElement} */ (_byId(targetInputId)).value = name;
   _closePopup();
   renderClientsMain();
@@ -523,24 +522,22 @@ async function _saveNewProjectPopup(targetInputId) {
     _toast('Project already exists — selected', 'info');
     return;
   }
-  /** @type {any} */
-  const newProject = {
-    id: Date.now(),
+  const cli = clientName ? clients.find(c => c.name === clientName) : null;
+  const insertBody = {
     name,
-    client: clientName,
-    desc: _popupVal('pnp-desc') || '',
+    client_id: cli?.id ?? null,
+    user_id: /** @type {string} */ (_userId),
     status: 'active',
-    user_id: _userId
+    description: _popupVal('pnp-desc') || null,
   };
-  projects.push(newProject);
-  // TODO(schema-divergence): newProject has Date.now() id, plus extra `client`/`desc`/
-  // `status` fields not in projects schema (DB silently drops them).
-  try { await _db('projects').insert(/** @type {any} */ (newProject)); } catch(e) { console.warn('Project insert failed', e); }
+  const { data, error } = await _db('projects').insert(insertBody).select().single();
+  if (error || !data) { _toast('Could not save project — ' + (error?.message || ''), 'error'); console.error(error); return; }
+  projects.push(data);
   /** @type {HTMLInputElement} */ (_byId(targetInputId)).value = name;
   // Also fill client input
   const clientInputId = targetInputId.replace('-project', '-client');
-  const ci = _byId(clientInputId);
-  if (ci && clientName && !ci.value) ci.value = clientName;
+  const ci2 = _byId(clientInputId);
+  if (ci2 && clientName && !ci2.value) ci2.value = clientName;
   _closePopup();
   renderProjectsMain();
   _toast(`Project "${name}" added`, 'success');
