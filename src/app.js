@@ -12,10 +12,12 @@ function _requireAuth() {
 }
 
 // ── Client Popup ──
+/** @param {number} id */
 function _openClientPopup(id) {
   const c = clients.find(x => x.id === id);
   if (!c) return;
   const cur = window.currency;
+  /** @param {number} v */
   const fmt = v => cur + v.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0});
   const cQuotes = quotes.filter(q => q.client_id === c.id || (!q.client_id && quoteClient(q) === c.name));
   const cOrders = orders.filter(o => o.client_id === c.id || (!o.client_id && orderClient(o) === c.name));
@@ -26,7 +28,7 @@ function _openClientPopup(id) {
     return `<span class="pf-chip badge ${badge}" onclick="_closePopup();switchSection('projects');_highlightProject(${p.id})">${_escHtml(p.name)}</span>`;
   }).join('') || '<span style="font-size:10px;color:var(--muted)">None</span>';
   const orderChips = cOrders.map(o =>
-    `<span class="pf-chip" onclick="_closePopup();switchSection('orders');window._orderSearch='${_escHtml(orderProject(o))}';renderOrdersMain()">${_escHtml(orderProject(o))} — ${fmt(o.value)}</span>`
+    `<span class="pf-chip" onclick="_closePopup();switchSection('orders');window._orderSearch='${_escHtml(orderProject(o))}';renderOrdersMain()">${_escHtml(orderProject(o))} — ${fmt(o.value ?? 0)}</span>`
   ).join('') || '<span style="font-size:10px;color:var(--muted)">None</span>';
 
   _openPopup(`
@@ -80,6 +82,7 @@ function _openClientPopup(id) {
   `, 'sm');
 }
 
+/** @param {number} id */
 async function _saveClientPopup(id) {
   const c = clients.find(x => x.id === id);
   if (!c) return;
@@ -92,21 +95,23 @@ async function _saveClientPopup(id) {
   };
   if (!updates.name) { _toast('Name is required', 'error'); return; }
   Object.assign(c, updates);
-  await _db('clients').update(updates).eq('id', id);
+  await _db('clients').update(/** @type {any} */ (updates)).eq('id', id);
   _closePopup();
   renderClientsMain();
   _toast('Client updated', 'success');
 }
 
 // ── Order Popup ──
+/** @param {number} id */
 function _openOrderPopup(id) {
   const o = orders.find(x => x.id === id);
   if (!o) return;
   const cur = window.currency;
+  /** @param {any} v */
   const fmt = v => cur + Number(v).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0});
   const pipelineSteps = ORDER_STATUSES;
   const stepLabels = ['Quote','Confirmed','Production','Delivery','Done'];
-  const curIdx = pipelineSteps.indexOf(o.status);
+  const curIdx = pipelineSteps.indexOf(o.status || '');
 
   const pipe = pipelineSteps.map((s,i) => {
     const done = i < curIdx;
@@ -119,7 +124,7 @@ function _openOrderPopup(id) {
 
   const qRef = _oqGet(o.id);
   const fromQuote = qRef ? quotes.find(q => q.id === qRef) : null;
-  const quoteChip = fromQuote ? `<div class="pf" style="margin-bottom:0"><label class="pf-label">From Quote</label><div class="pf-chips"><span class="pf-chip" style="border-color:rgba(37,99,235,0.3);color:#6b9bf4" onclick="_closePopup();switchSection('quote');window._quoteSearch='${_escHtml(fromQuote.project)}';renderQuoteMain()">Q-${String(fromQuote.id).padStart(4,'0')} · ${_escHtml(fromQuote.project)}</span></div></div>` : '';
+  const quoteChip = fromQuote ? `<div class="pf" style="margin-bottom:0"><label class="pf-label">From Quote</label><div class="pf-chips"><span class="pf-chip" style="border-color:rgba(37,99,235,0.3);color:#6b9bf4" onclick="_closePopup();switchSection('quote');window._quoteSearch='${_escHtml(quoteProject(fromQuote))}';renderQuoteMain()">Q-${String(fromQuote.id).padStart(4,'0')} · ${_escHtml(quoteProject(fromQuote))}</span></div></div>` : '';
 
   // Overdue detection
   let isOverdue = false;
@@ -131,7 +136,7 @@ function _openOrderPopup(id) {
     <div class="popup-header">
       <div class="popup-title">
         Edit Order
-        <span class="badge ${STATUS_BADGES[o.status]||'badge-gray'}" style="font-size:10px">${STATUS_LABELS[o.status]||o.status}</span>
+        <span class="badge ${(/** @type {Record<string,string>} */(STATUS_BADGES))[o.status||'']||'badge-gray'}" style="font-size:10px">${(/** @type {Record<string,string>} */(STATUS_LABELS))[o.status||'']||o.status}</span>
         ${isOverdue ? '<span class="badge badge-red" style="font-size:9px">Overdue</span>' : ''}
       </div>
       <button class="popup-close" onclick="_closePopup()">×</button>
@@ -156,17 +161,17 @@ function _openOrderPopup(id) {
         <label class="pf-label">Status Pipeline</label>
         <div class="pp-pipeline">${pipe}</div>
         <select class="pf-select" id="po-status" style="margin-top:6px">
-          ${pipelineSteps.map(s=>`<option value="${s}" ${o.status===s?'selected':''}>${STATUS_LABELS[s]}</option>`).join('')}
+          ${pipelineSteps.map(s=>`<option value="${s}" ${o.status===s?'selected':''}>${(/** @type {Record<string,string>} */(STATUS_LABELS))[s]}</option>`).join('')}
         </select>
       </div>
       <div class="pf-row">
         <div class="pf">
           <label class="pf-label">Production Start</label>
-          <input class="pf-input" type="date" id="po-start" value="${_orderDateToISO(o.prodStart)}">
+          <input class="pf-input" type="date" id="po-start" value="${_orderDateToISO(o.prodStart||'')}">
         </div>
         <div class="pf">
           <label class="pf-label">Due Date</label>
-          <input class="pf-input" type="date" id="po-due" value="${_orderDateToISO(o.due)}">
+          <input class="pf-input" type="date" id="po-due" value="${_orderDateToISO(o.due||'')}">
         </div>
       </div>
       <div class="pf">
@@ -189,6 +194,7 @@ function _openOrderPopup(id) {
   `, 'md');
 }
 
+/** @param {number} id */
 async function _saveOrderPopup(id) {
   const o = orders.find(x => x.id === id);
   if (!o) return;
@@ -205,6 +211,7 @@ async function _saveOrderPopup(id) {
   const client_id = clientName ? await resolveClient(clientName) : null;
   const project_id = projectName ? await resolveProject(projectName, client_id) : null;
 
+  /** @type {any} */
   const update = { value, status, due };
   if (client_id) update.client_id = client_id;
   if (project_id) update.project_id = project_id;
@@ -224,10 +231,12 @@ async function _saveOrderPopup(id) {
 }
 
 // ── Quote Popup ──
+/** @param {number} id */
 function _openQuotePopup(id) {
-  const q = quotes.find(x => x.id === id);
+  const q = /** @type {any} */ (quotes.find(x => x.id === id));
   if (!q) return;
   const cur = window.currency;
+  /** @param {any} v */
   const fmt = v => cur + Number(v).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0});
   const matVal = q._totals?.materials || 0;
   const labVal = q._totals?.labour    || 0;
@@ -317,6 +326,7 @@ function _openQuotePopup(id) {
 
 function _updateQuotePopupTotals() {
   const cur = window.currency;
+  /** @param {any} v */
   const fmt = v => cur + Number(v).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0});
   const mat = parseFloat(_popupVal('pq-materials')) || 0;
   const rate = (typeof cqSettings !== 'undefined' && cqSettings.labourRate) ? cqSettings.labourRate : 65;
@@ -338,6 +348,7 @@ function _updateQuotePopupTotals() {
     <div class="pf-total-row t-main"><span class="t-label">Total</span><span class="t-val">${fmt(total)}</span></div>`;
 }
 
+/** @param {number} id */
 async function _saveQuotePopup(id) {
   const q = quotes.find(x => x.id === id);
   if (!q) return;
@@ -355,6 +366,7 @@ async function _saveQuotePopup(id) {
   const client_id = clientName ? await resolveClient(clientName) : null;
   const project_id = projectName ? await resolveProject(projectName, client_id) : null;
 
+  /** @type {any} */
   const update = { status, notes, quote_number, markup, tax, updated_at: new Date().toISOString() };
   if (client_id) update.client_id = client_id;
   if (project_id) update.project_id = project_id;
@@ -371,6 +383,7 @@ async function _saveQuotePopup(id) {
 // Maintain a single quote_lines row (name='Manual Quote') per quote that holds
 // the user-entered materials/labour totals as overrides. Aggregation sees this
 // row and produces the same total as the legacy materials+labour columns.
+/** @param {number} quoteId @param {number} materials @param {number} labourHours */
 async function _writeManualTotalsLine(quoteId, materials, labourHours) {
   if (!_userId || !quoteId) return;
   const { data: existing } = await _db('quote_lines')
@@ -396,10 +409,12 @@ async function _writeManualTotalsLine(quoteId, materials, labourHours) {
 }
 
 // ── Project Popup ──
+/** @param {number} id */
 function _openProjectPopup(id) {
-  const p = projects.find(x => x.id === id);
+  const p = /** @type {any} */ (projects.find(x => x.id === id));
   if (!p) return;
   const cur = window.currency;
+  /** @param {number} v */
   const fmt = v => cur + v.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0});
   const clientName = p.client_id ? (clients.find(c=>c.id===p.client_id)||{}).name||'' : '';
   const pQuotes = quotes.filter(q => q.project_id === p.id || (!q.project_id && quoteProject(q) === p.name));
@@ -410,7 +425,7 @@ function _openProjectPopup(id) {
     `<span class="pf-chip" onclick="_closePopup();switchSection('quote');window._quoteSearch='${_escHtml(quoteProject(q))}';renderQuoteMain()">Q-${String(q.id).padStart(4,'0')} · ${fmt(quoteTotal(q))} · ${q.status}</span>`
   ).join('') || '<span style="font-size:10px;color:var(--muted)">None</span>';
   const orderChips = pOrders.map(o =>
-    `<span class="pf-chip" onclick="_closePopup();switchSection('orders');window._orderSearch='${_escHtml(orderProject(o))}';renderOrdersMain()">${_escHtml(orderProject(o))} · ${fmt(o.value)} · ${STATUS_LABELS[o.status]||o.status}</span>`
+    `<span class="pf-chip" onclick="_closePopup();switchSection('orders');window._orderSearch='${_escHtml(orderProject(o))}';renderOrdersMain()">${_escHtml(orderProject(o))} · ${fmt(o.value ?? 0)} · ${(/** @type {Record<string,string>} */(STATUS_LABELS))[o.status||'']||o.status}</span>`
   ).join('') || '<span style="font-size:10px;color:var(--muted)">None</span>';
 
   _openPopup(`
@@ -464,6 +479,7 @@ function _openProjectPopup(id) {
   `, 'sm');
 }
 
+/** @param {number} id */
 async function _saveProjectPopup(id) {
   const p = projects.find(x => x.id === id);
   if (!p) return;
@@ -481,8 +497,9 @@ async function _saveProjectPopup(id) {
 }
 
 // ── Stock Popup ──
+/** @param {number} id */
 function _openStockPopup(id) {
-  const item = stockItems.find(x => x.id === id);
+  const item = /** @type {any} */ (stockItems.find(x => x.id === id));
   if (!item) return;
   const sup = _ssGet(id);
   const vd = _svGet(id);
@@ -492,7 +509,7 @@ function _openStockPopup(id) {
   const ebWidth = vd.width ?? item.width ?? item.h ?? '';
   const ebLength = vd.length ?? item.length ?? item.w ?? '';
   const ebGlue = vd.glue || item.glue || 'EVA';
-  const isLow = item.qty <= item.low;
+  const isLow = (item.qty ?? 0) <= (item.low ?? 0);
 
   _openPopup(`
     <div class="popup-header">
@@ -572,15 +589,18 @@ function _openStockPopup(id) {
   `, 'sm');
 }
 
+/** @param {number} id */
 async function _saveStockPopup(id) {
-  const item = stockItems.find(x => x.id === id);
+  const item = /** @type {any} */ (stockItems.find(x => x.id === id));
   if (!item) return;
   const name = _popupVal('ps-name');
   if (!name) { _toast('Name is required', 'error'); return; }
   const cat = _popupVal('ps-cat') || '';
   const isEB = cat === 'Edge Banding';
   const variant = _popupVal('ps-variant') || '';
-  let updates, thick = 0, ebWidth = 0, ebLength = 0, ebGlue = '';
+  /** @type {any} */
+  let updates;
+  let thick = 0, ebWidth = 0, ebLength = 0, ebGlue = '';
   if (isEB) {
     thick = parseFloat(_popupVal('ps-eb-thick')) || 0;
     ebWidth = parseFloat(_popupVal('ps-eb-width')) || 0;
@@ -609,6 +629,7 @@ async function _saveStockPopup(id) {
   if (isEB) { item.thickness = thick; item.width = ebWidth; item.length = ebLength; item.glue = ebGlue; }
   else { delete item.thickness; delete item.width; delete item.length; delete item.glue; }
   _scSet(id, cat);
+  /** @type {{variant: string, thickness: number, width?: number, length?: number, glue?: string}} */
   const meta = { variant, thickness: thick };
   if (isEB) { meta.width = ebWidth; meta.length = ebLength; meta.glue = ebGlue; }
   _svSet(id, meta);
@@ -740,11 +761,12 @@ async function _saveNewStockPopup() {
       cost: parseFloat(_popupVal('pns-cost')) || 0,
     });
   }
+  /** @type {any} */
   let saved;
   if (_userId) {
     row.user_id = _userId;
     const { data, error } = await _db('stock_items').insert(row).select().single();
-    if (error) { _toast('Save failed: ' + error.message, 'error'); return; }
+    if (error || !data) { _toast('Save failed: ' + (error?.message || ''), 'error'); return; }
     saved = data;
     stockItems.push(data);
   } else {
@@ -754,6 +776,7 @@ async function _saveNewStockPopup() {
   }
   if (isEB) { saved.thickness = thick; saved.width = ebWidth; saved.length = ebLength; saved.glue = ebGlue; }
   _scSet(saved.id, cat);
+  /** @type {{variant: string, thickness: number, width?: number, length?: number, glue?: string}} */
   const meta = { variant, thickness: thick };
   if (isEB) { meta.width = ebWidth; meta.length = ebLength; meta.glue = ebGlue; }
   _svSet(saved.id, meta);
@@ -766,11 +789,13 @@ async function _saveNewStockPopup() {
 }
 
 // ── Cabinet Popup ──
+/** @param {number} idx */
 function _openCabinetPopup(idx) {
   const line = cqLines[idx];
   if (!line) return;
   const c = calcCQLine(line);
   const cur = window.currency;
+  /** @param {number} v */
   const fmt0 = v => cur + Math.round(v).toLocaleString();
   const cabMarkup = c.lineSubtotal * cqSettings.markup / 100;
   const cabTotal = (c.lineSubtotal + cabMarkup) * (1 + cqSettings.tax / 100);
@@ -849,6 +874,7 @@ function _openCabinetPopup(idx) {
   _openPopup(html, 'md');
 }
 
+/** @param {number} idx */
 function _duplicateCabinet(idx) {
   const line = cqLines[idx];
   if (!line) return;
@@ -862,6 +888,7 @@ function _duplicateCabinet(idx) {
   _toast('Cabinet duplicated', 'success');
 }
 
+/** @param {number} idx */
 function _saveCabinetPopup(idx) {
   const line = cqLines[idx];
   if (!line) return;
@@ -964,9 +991,9 @@ async function loadAllData() {
   // Phase 7 step 1: hydrate quote totals from quote_lines (fire and forget; renders re-run when ready)
   _hydrateQuoteTotals().then(() => { try { renderQuoteMain(); } catch(e){} }).catch(e => console.warn('[quote totals] hydrate failed:', e.message || e));
   // Phase 3.2 — overlay catalog from DB (only if rows exist; otherwise leave localStorage defaults)
-  _applyCatalogFromDB(cat);
+  _applyCatalogFromDB(/** @type {any[]} */ (cat || []));
   // Phase 3.3 — overlay business_info from DB (only if a row exists)
-  _applyBizInfoFromDB(biz);
+  _applyBizInfoFromDB(/** @type {any[]} */ (biz || []));
   /** @type {HTMLElement} */ (document.getElementById('orders-badge')).textContent = String(orders.filter(o => o.status !== 'complete').length);
   renderStockMain();
   renderQuoteMain();
@@ -975,8 +1002,10 @@ async function loadAllData() {
 
 // Phase 3.2: overlay catalog_items rows onto in-memory cqSettings.
 // If DB has no rows, the existing localStorage-loaded arrays remain untouched.
+/** @param {any[]} rows */
 function _applyCatalogFromDB(rows) {
   if (!rows || rows.length === 0) return;
+  /** @type {Record<string, {name: string, price: number}[]>} */
   const byType = { material: [], handle: [], finish: [], hardware: [] };
   for (const r of rows) {
     if (byType[r.type]) byType[r.type].push({ name: r.name, price: parseFloat(r.price) || 0 });
@@ -988,10 +1017,12 @@ function _applyCatalogFromDB(rows) {
 
 // Phase 3.3: overlay business_info row onto pc_biz fields and form inputs.
 // If DB has no row, existing localStorage-loaded values remain.
+/** @param {any[]} rows */
 function _applyBizInfoFromDB(rows) {
   if (!rows || rows.length === 0) return;
   const b = rows[0];
   // Update form inputs (these mirror what saveBizInfo / loadBizInfo manage)
+  /** @param {string} id @param {any} v */
   const set = (id, v) => { const el = /** @type {HTMLInputElement | null} */ (document.getElementById(id)); if (el && v != null) el.value = v; };
   set('biz-name', b.name);
   set('biz-phone', b.phone);
@@ -1065,10 +1096,12 @@ function _updateOptCounter() {
 // ══════════════════════════════════════════
 // UTILS
 // ══════════════════════════════════════════
+/** @param {string} hex @param {number} a */
 function hexRgba(hex, a) {
   const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
   return `rgba(${r},${g},${b},${a})`;
 }
+/** @param {string} s @param {number} n */
 function trunc(s, n) { return s.length <= n ? s : s.slice(0, n-1) + '…'; }
 
 // ══════════════════════════════════════════
