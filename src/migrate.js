@@ -9,6 +9,9 @@
 // Each subroutine is independent; failures in one don't stop others.
 // See SCHEMA.md and SPEC.md for the target schema and decisions log.
 // ══════════════════════════════════════════
+/** @typedef {{sub: string, status: string, msg: string, count: number | null, ts: number}} MigEntry */
+/** @typedef {MigEntry[]} MigLog */
+/** @param {string} key @param {boolean} [parseJson] */
 function _migReadLS(key, parseJson) {
   if (parseJson === undefined) parseJson = true;
   const raw = localStorage.getItem(key);
@@ -16,7 +19,9 @@ function _migReadLS(key, parseJson) {
   if (!parseJson) return raw;
   try { return JSON.parse(raw); } catch(e) { return null; }
 }
+/** @param {MigLog} log @param {string} sub @param {string} status @param {string} msg @param {number} [count] */
 function _migLog(log, sub, status, msg, count) {
+  /** @type {MigEntry} */
   const entry = { sub, status, msg, count: (count !== undefined ? count : null), ts: Date.now() };
   log.push(entry);
   const c = entry.count !== null ? ` [${entry.count}]` : '';
@@ -24,6 +29,7 @@ function _migLog(log, sub, status, msg, count) {
 }
 
 // ── 1. Business info ──
+/** @param {MigLog} log */
 async function _migrateBizInfo(log) {
   const sub = 'business_info';
   const biz = _migReadLS('pc_biz') || {};
@@ -56,8 +62,11 @@ async function _migrateBizInfo(log) {
       }
     } catch(e) { _migLog(log, sub, 'WARN', 'Logo upload exception: ' + (e.message || e)); }
   }
+  if (!_userId) return;
+  const uid = _userId;
+  /** @type {any} */
   const fields = {
-    user_id: _userId,
+    user_id: uid,
     name: biz.name || '',
     phone: biz.phone || null,
     email: biz.email || null,
@@ -71,9 +80,9 @@ async function _migrateBizInfo(log) {
     default_tax_pct: parseFloat(cqSettings.tax) || 13,
     updated_at: new Date().toISOString()
   };
-  const { data: existing } = await _db('business_info').select('id').eq('user_id', _userId);
+  const { data: existing } = await _db('business_info').select('id').eq('user_id', uid);
   if (existing && existing.length > 0) {
-    const { error } = await _db('business_info').update(fields).eq('user_id', _userId);
+    const { error } = await _db('business_info').update(fields).eq('user_id', uid);
     if (error) { _migLog(log, sub, 'ERR', 'Update failed: ' + error.message); return; }
     _migLog(log, sub, 'OK', 'Updated existing business_info row', 1);
   } else {
@@ -84,12 +93,15 @@ async function _migrateBizInfo(log) {
 }
 
 // ── 2. Catalog items (materials/handles/finishes/hardware unified) ──
+/** @param {MigLog} log */
 async function _migrateCatalog(log) {
   const sub = 'catalog_items';
   const cab = _migReadLS('pc_cab_settings') || {};
   const cq = _migReadLS('pc_cq_settings') || {};
+  /** @type {any[]} */
   const items = [];
   const seen = new Set();
+  /** @param {string} type @param {string} name @param {any} price @param {string} unit @param {any} [specs] */
   function add(type, name, price, unit, specs) {
     if (!name) return;
     const key = type + '|' + name;
@@ -102,12 +114,12 @@ async function _migrateCatalog(log) {
       specs: specs || {}
     });
   }
-  (cab.materials || []).forEach(m => add('material', m.name, m.price, 'sheet', m.specs || {}));
-  (cq.materials || []).forEach(m => add('material', m.name, m.price, 'sheet', m.specs || {}));
-  (cab.handles || []).forEach(h => add('handle', h.name, h.price, 'each'));
-  (cq.handles || []).forEach(h => add('handle', h.name, h.price, 'each'));
-  (cq.hardware || []).forEach(h => add('hardware', h.name, h.price, 'each'));
-  (cq.finishes || []).forEach(f => add('finish', f.name, f.price, 'm²'));
+  (cab.materials || []).forEach(/** @param {any} m */ m => add('material', m.name, m.price, 'sheet', m.specs || {}));
+  (cq.materials || []).forEach(/** @param {any} m */ m => add('material', m.name, m.price, 'sheet', m.specs || {}));
+  (cab.handles || []).forEach(/** @param {any} h */ h => add('handle', h.name, h.price, 'each'));
+  (cq.handles || []).forEach(/** @param {any} h */ h => add('handle', h.name, h.price, 'each'));
+  (cq.hardware || []).forEach(/** @param {any} h */ h => add('hardware', h.name, h.price, 'each'));
+  (cq.finishes || []).forEach(/** @param {any} f */ f => add('finish', f.name, f.price, 'm²'));
   if (items.length === 0) {
     _migLog(log, sub, 'SKIP', 'No catalog items in localStorage');
     return;
@@ -125,6 +137,7 @@ async function _migrateCatalog(log) {
 }
 
 // ── 3. Stock metadata (UPDATE existing rows) ──
+/** @param {MigLog} log */
 async function _migrateStock(log) {
   const sub = 'stock_metadata';
   const cats = _migReadLS('pc_stock_cats') || {};
@@ -140,6 +153,7 @@ async function _migrateStock(log) {
     const cat = cats[id];
     const sup = sups[id] || {};
     const v = vars[id] || {};
+    /** @type {any} */
     const fields = {};
     if (cat) fields.category = cat;
     if (sup.supplier) fields.supplier = sup.supplier;
@@ -162,8 +176,10 @@ async function _migrateStock(log) {
 // Migrates the localStorage saved-cabinet library to the cabinet_templates DB
 // table. Idempotent via name match. Replaces an earlier version that read
 // pc_cab_items from the now-removed orphan cabItems system.
+/** @param {MigLog} log */
 async function _migrateCabinets(log) {
   const sub = 'cabinet_templates';
+  /** @type {any[]} */
   const items = _migReadLS('pc_cq_library') || [];
   if (items.length === 0) {
     _migLog(log, sub, 'SKIP', 'No saved cabinets in localStorage');
@@ -172,8 +188,8 @@ async function _migrateCabinets(log) {
   const { data: existing } = await _db('cabinet_templates').select('name').eq('user_id', _userId);
   const existingNames = new Set((existing || []).map(r => r.name));
   const toInsert = items
-    .filter(c => (c._libName || c.name) && !existingNames.has(c._libName || c.name))
-    .map(c => ({
+    .filter(/** @param {any} c */ c => (c._libName || c.name) && !existingNames.has(c._libName || c.name))
+    .map(/** @param {any} c */ c => ({
       user_id: _userId,
       name: c._libName || c.name,
       type: 'base',
@@ -186,12 +202,13 @@ async function _migrateCabinets(log) {
     _migLog(log, sub, 'SKIP', 'All ' + items.length + ' saved cabinets already migrated', 0);
     return;
   }
-  const { error } = await _db('cabinet_templates').insert(toInsert);
+  const { error } = await _db('cabinet_templates').insert(/** @type {any} */ (toInsert));
   if (error) { _migLog(log, sub, 'ERR', error.message); return; }
   _migLog(log, sub, 'OK', 'Inserted ' + toInsert.length + ' cabinet templates', toInsert.length);
 }
 
 // ── 5. Cut list data from existing projects.ui_prefs (formerly `data`) jsonb ──
+/** @param {MigLog} log */
 async function _migrateCutListProjects(log) {
   const sub = 'cutlist_projects';
   const { data: projects } = await _db('projects').select('id,name,ui_prefs').eq('user_id', _userId);
@@ -211,7 +228,7 @@ async function _migrateCutListProjects(log) {
     const pieces = cl.pieces || [];
     if (sheets.length === 0 && pieces.length === 0) continue;
     if (sheets.length) {
-      const sheetRows = sheets.map((s, i) => ({
+      const sheetRows = sheets.map(/** @param {any} s @param {number} i */ (s, i) => ({
         project_id: p.id, user_id: _userId, position: i,
         name: s.name || 'Sheet',
         w_mm: parseFloat(s.w) || 0,
@@ -227,7 +244,7 @@ async function _migrateCutListProjects(log) {
       totalSheets += sheets.length;
     }
     if (pieces.length) {
-      const pieceRows = pieces.map((pc, i) => ({
+      const pieceRows = pieces.map(/** @param {any} pc @param {number} i */ (pc, i) => ({
         project_id: p.id, user_id: _userId, position: i,
         label: pc.label || 'Part',
         w_mm: parseFloat(pc.w) || 0,
@@ -250,6 +267,7 @@ async function _migrateCutListProjects(log) {
 
 // Inverse of _cqLineToRow — map a quote_lines row back to the cqLines shape calcCQLine expects.
 // backMat / doorMat default to carcass material (legacy cqLines convention; quote_lines schema only stores `material`).
+/** @param {any} row */
 function _quoteLineRowToCQ(row) {
   return {
     name: row.name || '',
@@ -287,6 +305,7 @@ function _quoteLineRowToCQ(row) {
 }
 
 // Helper: convert legacy cqLines line object to a quote_lines row
+/** @param {any} l @param {number} position @param {number} quoteId */
 function _cqLineToRow(l, position, quoteId) {
   return {
     quote_id: quoteId, user_id: _userId, position,
@@ -322,6 +341,7 @@ function _cqLineToRow(l, position, quoteId) {
 }
 
 // ── 6. CQ projects -> projects + quotes + quote_lines ──
+/** @param {MigLog} log */
 async function _migrateCQProjects(log) {
   const sub = 'cq_projects';
   const projs = _migReadLS('pc_cq_projects') || [];
@@ -329,17 +349,20 @@ async function _migrateCQProjects(log) {
     _migLog(log, sub, 'SKIP', 'No CQ projects in localStorage');
     return;
   }
+  if (!_userId) return;
+  const uid = _userId;
   let projectsCreated = 0, quotesCreated = 0, linesCreated = 0;
   for (const cqp of projs) {
     const name = cqp.name || cqp.projectName;
     if (!name) continue;
     // Find or create projects row
-    const { data: existing } = await _db('projects').select('id').eq('user_id', _userId).eq('name', name);
+    const { data: existing } = await _db('projects').select('id').eq('user_id', uid).eq('name', name);
+    /** @type {number | null} */
     let projectId;
     if (existing && existing.length > 0) {
       projectId = existing[0].id;
     } else {
-      const { data: created, error } = await _db('projects').insert([{ user_id: _userId, name }]);
+      const { data: created, error } = await _db('projects').insert([{ user_id: uid, name }]);
       if (error) { _migLog(log, sub, 'WARN', 'Project create: ' + error.message); continue; }
       projectId = (created && created[0]) ? created[0].id : null;
       if (!projectId) continue;
@@ -347,11 +370,11 @@ async function _migrateCQProjects(log) {
     }
     // Tag quotes with CQ-source-id to avoid double-migration
     const tag = '[CQMIG:' + cqp.id + ']';
-    const { data: existQ } = await _db('quotes').select('id,notes').eq('project_id', projectId).eq('user_id', _userId);
+    const { data: existQ } = await _db('quotes').select('id,notes').eq('project_id', projectId).eq('user_id', uid);
     let alreadyMigrated = (existQ || []).some(q => (q.notes || '').includes(tag));
     if (alreadyMigrated) continue;
     const { data: createdQ, error: qErr } = await _db('quotes').insert([{
-      user_id: _userId, project_id: projectId,
+      user_id: uid, project_id: projectId,
       notes: tag,
       status: 'draft',
       date: cqp.date || new Date().toLocaleDateString()
@@ -362,7 +385,7 @@ async function _migrateCQProjects(log) {
     quotesCreated++;
     const lines = cqp.lines || [];
     if (lines.length > 0) {
-      const lineRows = lines.map((l, i) => _cqLineToRow(l, i, quoteId));
+      const lineRows = lines.map(/** @param {any} l @param {number} i */ (l, i) => _cqLineToRow(l, i, quoteId));
       const { error: lErr } = await _db('quote_lines').insert(lineRows);
       if (lErr) { _migLog(log, sub, 'WARN', 'Lines for "' + name + '": ' + lErr.message); continue; }
       linesCreated += lines.length;
@@ -372,6 +395,7 @@ async function _migrateCQProjects(log) {
 }
 
 // ── 7. Saved quotes from pc_cq_saved ──
+/** @param {MigLog} log */
 async function _migrateSavedQuotes(log) {
   const sub = 'saved_quotes';
   const saved = _migReadLS('pc_cq_saved') || [];
@@ -379,16 +403,18 @@ async function _migrateSavedQuotes(log) {
     _migLog(log, sub, 'SKIP', 'No saved quotes in localStorage');
     return;
   }
+  if (!_userId) return;
+  const uid = _userId;
   let quotesCreated = 0, linesCreated = 0;
   // Get all existing quotes once
-  const { data: existQ } = await _db('quotes').select('id,notes').eq('user_id', _userId);
+  const { data: existQ } = await _db('quotes').select('id,notes').eq('user_id', uid);
   const existingNotes = (existQ || []).map(q => q.notes || '');
   for (const sq of saved) {
     const tag = '[SAVEDMIG:' + sq.id + ']';
     if (existingNotes.some(n => n.includes(tag))) continue;
     const settings = sq.settings || {};
     const { data: createdQ, error: qErr } = await _db('quotes').insert([{
-      user_id: _userId,
+      user_id: uid,
       notes: ((sq.notes || '') + '\n' + tag).trim(),
       quote_number: sq.quoteNum || null,
       markup: parseFloat(settings.markup) || 0,
@@ -402,7 +428,7 @@ async function _migrateSavedQuotes(log) {
     quotesCreated++;
     const lines = sq.lines || [];
     if (lines.length > 0) {
-      const lineRows = lines.map((l, i) => _cqLineToRow(l, i, quoteId));
+      const lineRows = lines.map(/** @param {any} l @param {number} i */ (l, i) => _cqLineToRow(l, i, quoteId));
       const { error: lErr } = await _db('quote_lines').insert(lineRows);
       if (lErr) { _migLog(log, sub, 'WARN', 'Lines for "' + (sq.project || '?') + '": ' + lErr.message); continue; }
       linesCreated += lines.length;
@@ -412,6 +438,7 @@ async function _migrateSavedQuotes(log) {
 }
 
 // ── 8. Order refs (UPDATE existing order rows) ──
+/** @param {MigLog} log */
 async function _migrateOrderRefs(log) {
   const sub = 'order_refs';
   const qref = _migReadLS('pc_order_quote_ref') || {};
@@ -424,6 +451,7 @@ async function _migrateOrderRefs(log) {
   }
   let updated = 0;
   for (const id of ids) {
+    /** @type {any} */
     const fields = {};
     if (qref[id]) fields.quote_id = parseInt(qref[id], 10);
     if (notes[id]) fields.notes = notes[id];
@@ -438,6 +466,7 @@ async function _migrateOrderRefs(log) {
 }
 
 // ── 9. Drop pc_stock_libraries (no migration target per resolved decision) ──
+/** @param {MigLog} log */
 function _dropStockLibraries(log) {
   const sub = 'drop_stock_libraries';
   const had = localStorage.getItem('pc_stock_libraries') !== null;
@@ -452,8 +481,10 @@ function _dropStockLibraries(log) {
 // ── Orchestrator ──
 async function migrateLocalToDB() {
   if (!_userId) { _toast('Please sign in before running migration', 'error'); return null; }
+  /** @type {MigLog} */
   const log = [];
   _migLog(log, 'orchestrator', 'OK', 'Starting migration for user_id=' + _userId);
+  /** @type {[string, (log: MigLog) => Promise<void>][]} */
   const subs = [
     ['business_info', _migrateBizInfo],
     ['catalog_items', _migrateCatalog],
@@ -465,8 +496,8 @@ async function migrateLocalToDB() {
     ['order_refs', _migrateOrderRefs],
   ];
   for (const [name, fn] of subs) {
-    try { await /** @type {(log: any) => Promise<void>} */ (fn)(log); }
-    catch(e) { _migLog(log, name, 'ERR', 'Exception: ' + (e.message || e)); }
+    try { await fn(log); }
+    catch(e) { _migLog(log, name, 'ERR', 'Exception: ' + (/** @type {any} */(e).message || e)); }
   }
   try { _dropStockLibraries(log); }
   catch(e) { _migLog(log, 'drop_stock_libraries', 'ERR', e.message || e); }
@@ -490,6 +521,7 @@ function _runMigration() {
 }
 
 // ── UI: show log modal ──
+/** @param {MigLog} log */
 function _showMigrationLog(log) {
   const rows = log.map(e => {
     const color = e.status === 'ERR' ? '#c44' : e.status === 'WARN' ? '#c80' : e.status === 'SKIP' ? '#888' : '#2a7';
