@@ -61,11 +61,11 @@ async function _saveProjectScoped({ name, scope, payload }) {
   // 2. Replace the scope's child-table rows with the current payload.
   if (scope === 'cutlist' && projectId) {
     try { await _replaceCutListChildTables(projectId, payload); }
-    catch(e) { console.warn('[saveProjectScoped] child-table sync failed:', e.message || e); }
+    catch(e) { console.warn('[saveProjectScoped] child-table sync failed:', (/** @type {any} */ (e)).message || e); }
   }
   if (scope === 'quote' && projectId) {
     try { await _replaceQuoteLinesChildTable(projectId, payload); }
-    catch(e) { console.warn('[saveProjectScoped] quote_lines sync failed:', e.message || e); }
+    catch(e) { console.warn('[saveProjectScoped] quote_lines sync failed:', (/** @type {any} */ (e)).message || e); }
   }
 
   return { projectId, isNew };

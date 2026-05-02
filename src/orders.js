@@ -103,7 +103,7 @@ async function duplicateOrder(id) {
       const newLines = oldLines.map(l => { const nl = /** @type {any} */ ({ ...l, order_id: data.id }); delete nl.id; return nl; });
       await _db('order_lines').insert(newLines);
     }
-  } catch(e) { console.warn('[duplicateOrder] copy lines failed:', e.message || e); }
+  } catch(e) { console.warn('[duplicateOrder] copy lines failed:', (/** @type {any} */ (e)).message || e); }
   orders.unshift(data);
   _oBadge();
   _toast('Order duplicated', 'success');

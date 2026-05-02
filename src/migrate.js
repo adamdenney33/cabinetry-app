@@ -60,7 +60,7 @@ async function _migrateBizInfo(log) {
           _migLog(log, sub, 'OK', 'Logo uploaded to ' + path);
         }
       }
-    } catch(e) { _migLog(log, sub, 'WARN', 'Logo upload exception: ' + (e.message || e)); }
+    } catch(e) { _migLog(log, sub, 'WARN', 'Logo upload exception: ' + ((/** @type {any} */ (e)).message || e)); }
   }
   if (!_userId) return;
   const uid = _userId;
@@ -500,7 +500,7 @@ async function migrateLocalToDB() {
     catch(e) { _migLog(log, name, 'ERR', 'Exception: ' + (/** @type {any} */(e).message || e)); }
   }
   try { _dropStockLibraries(log); }
-  catch(e) { _migLog(log, 'drop_stock_libraries', 'ERR', e.message || e); }
+  catch(e) { _migLog(log, 'drop_stock_libraries', 'ERR', (/** @type {any} */ (e)).message || e); }
   _migLog(log, 'orchestrator', 'OK', 'Migration complete');
   return log;
 }

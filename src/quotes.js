@@ -79,7 +79,7 @@ async function _hydrateQuoteTotals() {
       const t = await quoteTotalsFromLines(q.id);
       if (t) q._totals = t;
     } catch (e) {
-      console.warn('[quote totals] hydrate failed for', q.id, e.message || e);
+      console.warn('[quote totals] hydrate failed for', q.id, (/** @type {any} */ (e)).message || e);
     }
   }
 }
@@ -186,7 +186,7 @@ async function convertQuoteToOrder(id) {
         });
         await _db('order_lines').insert(olines);
       }
-    } catch(e) { console.warn('[convertQuoteToOrder] copy lines failed:', e.message || e); }
+    } catch(e) { console.warn('[convertQuoteToOrder] copy lines failed:', (/** @type {any} */ (e)).message || e); }
   }
   orders.unshift(data);
   /** @type {HTMLElement} */ (_byId('orders-badge')).textContent = String(orders.filter(o => o.status !== 'complete').length);
@@ -914,7 +914,7 @@ async function duplicateQuote(id) {
       await _db('quote_lines').insert(newLines);
       await _refreshQuoteTotals(data.id);
     }
-  } catch(e) { console.warn('[duplicateQuote] copy lines failed:', e.message || e); }
+  } catch(e) { console.warn('[duplicateQuote] copy lines failed:', (/** @type {any} */ (e)).message || e); }
   _toast('Quote duplicated', 'success');
   renderQuoteMain();
 }

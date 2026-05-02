@@ -100,7 +100,7 @@ function handleLogoUpload(input) {
             return;
           }
         }
-      } catch(err) { console.warn('[logo] Sync exception:', err.message || err); }
+      } catch(err) { console.warn('[logo] Sync exception:', (/** @type {any} */ (err)).message || err); }
     }
     _toast('Logo saved', 'success');
   };
