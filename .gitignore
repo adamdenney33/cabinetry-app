@@ -14,6 +14,9 @@ node_modules/
 # Vite build output
 dist/
 
+# Vite dev cache
+.vite/
+
 # Local env (publishable Supabase keys live here in dev)
 .env
 .env.local
