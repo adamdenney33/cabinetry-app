@@ -20,6 +20,10 @@ declare global {
   interface Window {
     supabase: { createClient: typeof SupabaseCreateClient };
     jspdf: { jsPDF: typeof JsPDFConstructor };
+    /** Supabase URL — set by src/main.js from import.meta.env.VITE_SUPABASE_URL. */
+    _SBURL: string;
+    /** Supabase publishable (anon) key — set by src/main.js from import.meta.env.VITE_SUPABASE_ANON_KEY. */
+    _SBKEY: string;
     /** App-wide currency symbol — assigned by src/settings.js GLOBALS section. */
     currency: string;
     /** App-wide units mode ('imperial' | 'metric') — set by src/settings.js. */

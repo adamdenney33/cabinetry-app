@@ -8,14 +8,15 @@
 // ══════════════════════════════════════════
 // SUPABASE
 // ══════════════════════════════════════════
-const _sb = window.supabase.createClient(
-  'https://mhzneruvlfmhnsohfrdo.supabase.co',
-  'sb_publishable_4lHAEgWPQz8DX8TH2KnuiA_oimj8J__'
-);
+// _SBURL / _SBKEY are populated by src/main.js from import.meta.env at startup
+// (Vite inlines them at build time from .env.local in dev / Cloudflare Pages
+// env vars in prod). main.js is a <script type="module"> that runs before
+// this classic-defer script per HTML spec.
+const _sb = window.supabase.createClient(window._SBURL, window._SBKEY);
 
 // ── Raw-fetch DB helper (replaces _db() for queries — SDK hangs with sb_publishable keys) ──
-const _SBURL = 'https://mhzneruvlfmhnsohfrdo.supabase.co';
-const _SBKEY = 'sb_publishable_4lHAEgWPQz8DX8TH2KnuiA_oimj8J__';
+const _SBURL = window._SBURL;
+const _SBKEY = window._SBKEY;
 /** @returns {Record<string, string>} */
 function _dbHeaders() {
   try {

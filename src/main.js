@@ -13,5 +13,11 @@ import { createClient } from '@supabase/supabase-js';
 import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';
 
+if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
+  throw new Error('Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY — copy .env.example to .env.local and fill in values.');
+}
+
 window.supabase = { createClient };
 window.jspdf = { jsPDF };
+window._SBURL = import.meta.env.VITE_SUPABASE_URL;
+window._SBKEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
