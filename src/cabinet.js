@@ -20,11 +20,9 @@
 //     (src/settings.js), stockItems (src/stock.js)
 //
 // Symbol-name note: the `cb*` prefix (cbLines / cbSettings / cbLibrary /
-// cbSavedQuotes) is a historical artefact from the cabinet-quote half of
-// the originally-planned cabinet-builder vs cabinet-quote split. SPEC.md
-// § 13 (2026-04-30 cabinet ghost-removal entry) records why the rename
-// was deferred — it would touch ~150 inline-handler call sites, so the
-// rename runs as a separate cosmetic pass after Phase F.
+// cbSavedQuotes) was renamed from `cq*` (Cabinet Quote) on 2026-05-02.
+// See SPEC.md § 13 for the rename entry. localStorage keys (`pc_cq_*`)
+// kept unchanged to preserve existing user data.
 
 // ══════════════════════════════════════════
 // CABINET BUILDER — line-based cabinet quoting
