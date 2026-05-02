@@ -199,18 +199,18 @@
           <div class="form-group" style="margin-bottom:6px;position:relative">
             <label style="font-size:10px">Client</label>
             <div class="smart-input-wrap">
-              <input type="text" id="cq-client" placeholder="Search or add client..." autocomplete="off" oninput="_smartClientSuggest(this,'cq-client-suggest')" onfocus="_smartClientSuggest(this,'cq-client-suggest')" onblur="setTimeout(()=>document.getElementById('cq-client-suggest').style.display='none',150)">
-              <div class="smart-input-add" onclick="_openNewClientPopup('cq-client')" title="Add new client">+</div>
+              <input type="text" id="cb-client" placeholder="Search or add client..." autocomplete="off" oninput="_smartClientSuggest(this,'cb-client-suggest')" onfocus="_smartClientSuggest(this,'cb-client-suggest')" onblur="setTimeout(()=>document.getElementById('cb-client-suggest').style.display='none',150)">
+              <div class="smart-input-add" onclick="_openNewClientPopup('cb-client')" title="Add new client">+</div>
             </div>
-            <div id="cq-client-suggest" class="client-suggest-list" style="display:none"></div>
+            <div id="cb-client-suggest" class="client-suggest-list" style="display:none"></div>
           </div>
           <div class="form-group" style="margin-bottom:0;position:relative">
             <label style="font-size:10px">Project</label>
             <div class="smart-input-wrap">
-              <input type="text" id="cq-project" placeholder="Search or add project..." autocomplete="off" oninput="_smartProjectSuggest(this,'cq-project-suggest')" onfocus="_smartProjectSuggest(this,'cq-project-suggest')" onblur="setTimeout(()=>document.getElementById('cq-project-suggest').style.display='none',150)">
-              <div class="smart-input-add" onclick="_openNewProjectPopup('cq-project')" title="Add new project">+</div>
+              <input type="text" id="cb-project" placeholder="Search or add project..." autocomplete="off" oninput="_smartProjectSuggest(this,'cb-project-suggest')" onfocus="_smartProjectSuggest(this,'cb-project-suggest')" onblur="setTimeout(()=>document.getElementById('cb-project-suggest').style.display='none',150)">
+              <div class="smart-input-add" onclick="_openNewProjectPopup('cb-project')" title="Add new project">+</div>
             </div>
-            <div id="cq-project-suggest" class="client-suggest-list" style="display:none"></div>
+            <div id="cb-project-suggest" class="client-suggest-list" style="display:none"></div>
           </div>
         </div>
         <!-- Tabs inside sidebar -->
@@ -218,30 +218,30 @@
           <div id="cab-tab-builder" onclick="switchCabTab('builder')" style="flex:1;padding:10px 16px;font-size:13px;font-weight:700;text-align:center;cursor:pointer;border-bottom:2px solid var(--accent);margin-bottom:-2px;color:var(--text)">Cabinet Builder</div>
           <div id="cab-tab-rates" onclick="switchCabTab('rates')" style="flex:1;padding:10px 16px;font-size:13px;font-weight:500;text-align:center;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-2px">My Rates</div>
         </div>
-        <div class="sidebar-scroll" id="cq-sidebar">
+        <div class="sidebar-scroll" id="cb-sidebar">
 
           <!-- Cabinet Library smart search -->
           <div style="padding:10px 14px 4px;position:relative">
             <div class="smart-input-wrap">
-              <input type="text" id="cq-cabinet-search" placeholder="Search or add cabinet..." autocomplete="off" oninput="_cqCabinetSearchInput(this)" onfocus="_smartCQLibrarySuggest(this,'cq-cabinet-suggest')" onblur="setTimeout(()=>document.getElementById('cq-cabinet-suggest').style.display='none',150)">
-              <div class="smart-input-add" onclick="addCQLine()" title="Add new cabinet">+</div>
+              <input type="text" id="cb-cabinet-search" placeholder="Search or add cabinet..." autocomplete="off" oninput="_cbCabinetSearchInput(this)" onfocus="_smartCBLibrarySuggest(this,'cb-cabinet-suggest')" onblur="setTimeout(()=>document.getElementById('cb-cabinet-suggest').style.display='none',150)">
+              <div class="smart-input-add" onclick="addCBLine()" title="Add new cabinet">+</div>
             </div>
-            <div id="cq-cabinet-suggest" class="client-suggest-list" style="display:none"></div>
+            <div id="cb-cabinet-suggest" class="client-suggest-list" style="display:none"></div>
           </div>
 
-          <div id="cq-cab-list" style="display:none"></div>
+          <div id="cb-cab-list" style="display:none"></div>
 
           <!-- Active Cabinet Editor -->
-          <div id="cq-cab-editor" style="padding:0 14px 14px"></div>
+          <div id="cb-cab-editor" style="padding:0 14px 14px"></div>
 
           <!-- MY RATES (shown when rates tab active) -->
           <div id="cab-view-rates" style="display:none;padding:14px">
-            <div id="cq-rates-content"></div>
+            <div id="cb-rates-content"></div>
           </div>
         </div>
       </div>
       <div class="main-content">
-        <div class="main-scroll" id="cq-results" style="padding:20px"></div>
+        <div class="main-scroll" id="cb-results" style="padding:20px"></div>
       </div>
     </div>
   </div>

@@ -22,7 +22,7 @@
 //     renderOrdersMain (src/orders.js), renderDashboard / drawRevenueChart
 //     (src/dashboard.js), renderSchedule (src/schedule.js),
 //     renderProjectsMain (src/projects.js), renderClientsMain
-//     (src/clients.js), renderCQPanel (app.js CABINET BUILDER) — all
+//     (src/clients.js), renderCBPanel (app.js CABINET BUILDER) — all
 //     called only at runtime via switchSection or user-triggered settings
 //     changes.
 
@@ -183,7 +183,7 @@ function switchSection(name) {
   document.querySelectorAll('.section-panel').forEach(p => {
     p.classList.toggle('active', p.id === 'panel-' + name);
   });
-  if (name === 'cabinet') { try { renderCQPanel(); } catch(e) {} }
+  if (name === 'cabinet') { try { renderCBPanel(); } catch(e) {} }
   if (name === 'stock') { renderStockMain(); }
   if (name === 'quote') renderQuoteMain();
   if (name === 'orders') renderOrdersMain();

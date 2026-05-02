@@ -245,7 +245,7 @@ function _openQuotePopup(id) {
   const afterMarkup = sub + markupAmt;
   const taxAmt = afterMarkup * (q.tax || 0) / 100;
   const total = afterMarkup + taxAmt;
-  const rate = (typeof cqSettings !== 'undefined' && cqSettings.labourRate) ? cqSettings.labourRate : 65;
+  const rate = (typeof cbSettings !== 'undefined' && cbSettings.labourRate) ? cbSettings.labourRate : 65;
   const hrs = labVal > 0 ? (labVal / Math.max(1, rate)).toFixed(1) : '0';
 
   const statusBadge = q.status === 'approved' ? 'badge-green' : q.status === 'sent' ? 'badge-blue' : 'badge-gray';
@@ -329,7 +329,7 @@ function _updateQuotePopupTotals() {
   /** @param {any} v */
   const fmt = v => cur + Number(v).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0});
   const mat = parseFloat(_popupVal('pq-materials')) || 0;
-  const rate = (typeof cqSettings !== 'undefined' && cqSettings.labourRate) ? cqSettings.labourRate : 65;
+  const rate = (typeof cbSettings !== 'undefined' && cbSettings.labourRate) ? cbSettings.labourRate : 65;
   const hrs = parseFloat(_popupVal('pq-hours')) || 0;
   const labour = rate * hrs;
   const markup = parseFloat(_popupVal('pq-markup')) || 0;
@@ -789,26 +789,26 @@ async function _saveNewStockPopup() {
 // ── Cabinet Popup ──
 /** @param {number} idx */
 function _openCabinetPopup(idx) {
-  const line = cqLines[idx];
+  const line = cbLines[idx];
   if (!line) return;
-  const c = calcCQLine(line);
+  const c = calcCBLine(line);
   const cur = window.currency;
   /** @param {number} v */
   const fmt0 = v => cur + Math.round(v).toLocaleString();
-  const cabMarkup = c.lineSubtotal * cqSettings.markup / 100;
-  const cabTotal = (c.lineSubtotal + cabMarkup) * (1 + cqSettings.tax / 100);
+  const cabMarkup = c.lineSubtotal * cbSettings.markup / 100;
+  const cabTotal = (c.lineSubtotal + cabMarkup) * (1 + cbSettings.tax / 100);
 
   // Material options
-  const matOpts = cqSettings.materials.map(/** @param {any} m */ m =>
+  const matOpts = cbSettings.materials.map(/** @param {any} m */ m =>
     `<option value="${m.name}" ${m.name===line.material?'selected':''}>${m.name}</option>`
   ).join('');
-  const finishOpts = (cqSettings.finishes||[]).map(/** @param {any} f */ f =>
+  const finishOpts = (cbSettings.finishes||[]).map(/** @param {any} f */ f =>
     `<option value="${f.name}" ${f.name===(line.finish||'None')?'selected':''}>${f.name}</option>`
   ).join('');
-  const constOpts = (cqSettings.constructions||[]).map(/** @param {any} co */ co =>
+  const constOpts = (cbSettings.constructions||[]).map(/** @param {any} co */ co =>
     `<option value="${co.name}" ${co.name===line.construction?'selected':''}>${co.name}</option>`
   ).join('');
-  const baseOpts = (cqSettings.baseTypes||[]).map(/** @param {any} b */ b =>
+  const baseOpts = (cbSettings.baseTypes||[]).map(/** @param {any} b */ b =>
     `<option value="${b.name}" ${b.name===line.baseType?'selected':''}>${b.name}</option>`
   ).join('');
 
@@ -859,14 +859,14 @@ function _openCabinetPopup(idx) {
         <div class="pf-total-row"><span>Labour (${c.labourHrs.toFixed(1)} hrs)</span><span>${fmt0(c.labourCost)}</span></div>
         <div class="pf-total-row"><span>Hardware</span><span>${fmt0(c.hwCost)}</span></div>
         <div class="pf-total-row"><span style="color:var(--muted)">Subtotal</span><span>${fmt0(c.lineSubtotal)}</span></div>
-        ${cqSettings.markup>0?`<div class="pf-total-row"><span style="color:var(--muted)">Markup (${cqSettings.markup}%)</span><span>+${fmt0(cabMarkup)}</span></div>`:''}
+        ${cbSettings.markup>0?`<div class="pf-total-row"><span style="color:var(--muted)">Markup (${cbSettings.markup}%)</span><span>+${fmt0(cabMarkup)}</span></div>`:''}
         <div class="pf-total-row" style="font-weight:700;font-size:14px;color:var(--accent);border-top:1px solid var(--border);padding-top:6px;margin-top:4px"><span>Total</span><span>${fmt0(cabTotal)}</span></div>
       </div>
     </div>
     <div class="popup-footer">
-      <button class="btn btn-outline" style="color:var(--danger);margin-right:auto" onclick="_confirm('Delete this cabinet?',()=>{cqLines.splice(${idx},1);saveCQLines();_closePopup();renderCQPanel()})">Delete</button>
+      <button class="btn btn-outline" style="color:var(--danger);margin-right:auto" onclick="_confirm('Delete this cabinet?',()=>{cbLines.splice(${idx},1);saveCBLines();_closePopup();renderCBPanel()})">Delete</button>
       <button class="btn btn-outline" onclick="_duplicateCabinet(${idx})">Duplicate</button>
-      <button class="btn btn-outline" onclick="_closePopup();cqEditCabinetFromOutput(${idx})">Full Editor</button>
+      <button class="btn btn-outline" onclick="_closePopup();cbEditCabinetFromOutput(${idx})">Full Editor</button>
       <button class="btn btn-accent" onclick="_saveCabinetPopup(${idx})">Save</button>
     </div>`;
   _openPopup(html, 'md');
@@ -874,21 +874,21 @@ function _openCabinetPopup(idx) {
 
 /** @param {number} idx */
 function _duplicateCabinet(idx) {
-  const line = cqLines[idx];
+  const line = cbLines[idx];
   if (!line) return;
   const copy = JSON.parse(JSON.stringify(line));
-  copy.id = cqNextId++;
+  copy.id = cbNextId++;
   copy.name = (copy.name || 'Cabinet') + ' (copy)';
-  cqLines.splice(idx + 1, 0, copy);
-  saveCQLines();
+  cbLines.splice(idx + 1, 0, copy);
+  saveCBLines();
   _closePopup();
-  renderCQPanel();
+  renderCBPanel();
   _toast('Cabinet duplicated', 'success');
 }
 
 /** @param {number} idx */
 function _saveCabinetPopup(idx) {
-  const line = cqLines[idx];
+  const line = cbLines[idx];
   if (!line) return;
   line.name = _popupVal('pcab-name') || '';
   line.w = parseFloat(_popupVal('pcab-w')) || line.w;
@@ -907,9 +907,9 @@ function _saveCabinetPopup(idx) {
   line.partitions = Math.max(0, parseInt(_popupVal('pcab-partitions')) || 0);
   line.endPanels = Math.max(0, parseInt(_popupVal('pcab-endpanels')) || 0);
   line.notes = _popupVal('pcab-notes') || '';
-  saveCQLines();
+  saveCBLines();
   _closePopup();
-  renderCQPanel();
+  renderCBPanel();
   _toast('Cabinet updated', 'success');
 }
 
@@ -969,9 +969,9 @@ async function loadAllData() {
     _db('stock_items').select('*').order('created_at', { ascending: true }),
     _db('clients').select('*').order('name', { ascending: true }).then(r => r).catch(() => ({data:[]})),
     _db('projects').select('*').order('created_at', { ascending: false }).then(r => r).catch(() => ({data:[]})),
-    // Phase 3: catalog_items overlays cqSettings arrays
+    // Phase 3: catalog_items overlays cbSettings arrays
     _db('catalog_items').select('*').eq('user_id', _userId).then(r => r).catch(() => ({data:[]})),
-    // Phase 3: business_info overlays pc_biz / pc_biz_logo / pc_cq_settings rates
+    // Phase 3: business_info overlays pc_biz / pc_biz_logo / pc_cb_settings rates
     _db('business_info').select('*').eq('user_id', _userId).then(r => r).catch(() => ({data:[]})),
   ]);
   orders = ord || [];
@@ -1005,7 +1005,7 @@ async function loadAllData() {
   renderOrdersMain();
 }
 
-// Phase 3.2: overlay catalog_items rows onto in-memory cqSettings.
+// Phase 3.2: overlay catalog_items rows onto in-memory cbSettings.
 // If DB has no rows, the existing localStorage-loaded arrays remain untouched.
 /** @param {any[]} rows */
 function _applyCatalogFromDB(rows) {
@@ -1015,9 +1015,9 @@ function _applyCatalogFromDB(rows) {
   for (const r of rows) {
     if (byType[r.type]) byType[r.type].push({ name: r.name, price: parseFloat(r.price) || 0 });
   }
-  if (byType.material.length && typeof cqSettings !== 'undefined') cqSettings.materials = byType.material;
-  if (byType.finish.length && typeof cqSettings !== 'undefined') cqSettings.finishes = byType.finish;
-  if (byType.hardware.length && typeof cqSettings !== 'undefined') cqSettings.hardware = byType.hardware;
+  if (byType.material.length && typeof cbSettings !== 'undefined') cbSettings.materials = byType.material;
+  if (byType.finish.length && typeof cbSettings !== 'undefined') cbSettings.finishes = byType.finish;
+  if (byType.hardware.length && typeof cbSettings !== 'undefined') cbSettings.hardware = byType.hardware;
 }
 
 // Phase 3.3: overlay business_info row onto pc_biz fields and form inputs.
@@ -1048,16 +1048,16 @@ function _applyBizInfoFromDB(rows) {
       address: b.address || '', abn: b.abn || ''
     }));
   } catch(e) {}
-  // Default rates (only if cqSettings hasn't been customised)
-  if (typeof cqSettings !== 'undefined') {
-    if (b.default_labour_rate != null && (!cqSettings.labourRate || cqSettings.labourRate === 65)) {
-      cqSettings.labourRate = parseFloat(b.default_labour_rate);
+  // Default rates (only if cbSettings hasn't been customised)
+  if (typeof cbSettings !== 'undefined') {
+    if (b.default_labour_rate != null && (!cbSettings.labourRate || cbSettings.labourRate === 65)) {
+      cbSettings.labourRate = parseFloat(b.default_labour_rate);
     }
-    if (b.default_markup_pct != null && (!cqSettings.markup || cqSettings.markup === 20)) {
-      cqSettings.markup = parseFloat(b.default_markup_pct);
+    if (b.default_markup_pct != null && (!cbSettings.markup || cbSettings.markup === 20)) {
+      cbSettings.markup = parseFloat(b.default_markup_pct);
     }
-    if (b.default_tax_pct != null && (!cqSettings.tax || cqSettings.tax === 13)) {
-      cqSettings.tax = parseFloat(b.default_tax_pct);
+    if (b.default_tax_pct != null && (!cbSettings.tax || cbSettings.tax === 13)) {
+      cbSettings.tax = parseFloat(b.default_tax_pct);
     }
   }
 }

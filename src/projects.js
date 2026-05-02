@@ -9,7 +9,7 @@
 //   - _db / _dbInsertSafe (src/db.js)
 //   - _userId / _toast / _confirm / _openPopup / _closePopup / _popupVal
 //     / _escHtml / switchSection (app.js / ui.js)
-//   - cqLines, cqSettings, sheets, pieces, edgeBands, stockItems, etc.
+//   - cbLines, cbSettings, sheets, pieces, edgeBands, stockItems, etc.
 //     (state held in their respective sections of app.js)
 
 // ══════════════════════════════════════════
@@ -71,13 +71,13 @@ async function _saveProjectScoped({ name, scope, payload }) {
   return { projectId, isNew };
 }
 
-// Phase 3.6: replace quote_lines for the project's "default" cabinet-quote (tagged [CQ_DEFAULT]).
+// Phase 3.6: replace quote_lines for the project's "default" cabinet-quote (tagged [CB_DEFAULT]).
 // Idempotent: finds existing tagged quote or creates one, then deletes old lines and inserts new.
 /** @param {number} projectId @param {any} payload */
 async function _replaceQuoteLinesChildTable(projectId, payload) {
   if (!projectId) return;
   const lines = payload.lines || [];
-  const tag = '[CQ_DEFAULT]';
+  const tag = '[CB_DEFAULT]';
   if (!_userId) return;
   const uid = _userId;
   // Find existing default quote for this project
@@ -101,8 +101,8 @@ async function _replaceQuoteLinesChildTable(projectId, payload) {
   if (!quoteId) return;
   // Replace lines
   await _db('quote_lines').delete().eq('quote_id', quoteId);
-  if (lines.length > 0 && typeof _cqLineToRow === 'function') {
-    const rows = lines.map(/** @param {any} l @param {number} i */ (l, i) => _cqLineToRow(l, i, quoteId));
+  if (lines.length > 0 && typeof _cbLineToRow === 'function') {
+    const rows = lines.map(/** @param {any} l @param {number} i */ (l, i) => _cbLineToRow(l, i, quoteId));
     await _db('quote_lines').insert(rows);
   }
 }

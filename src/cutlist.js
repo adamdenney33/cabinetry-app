@@ -20,7 +20,7 @@
 //   - window.units / window.currency (src/settings.js)
 //   - stockItems (src/stock.js, used by `useStockInCutList` callers and
 //     stock-derived sheet creation)
-//   - calcCQLine / cqSettings (src/cabinet.js — for line-pricing
+//   - calcCBLine / cbSettings (src/cabinet.js — for line-pricing
 //     conversions in CSV import/export paths)
 
 // ══════════════════════════════════════════

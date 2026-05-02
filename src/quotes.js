@@ -8,7 +8,7 @@
 // Cross-file dependencies referenced from this file's functions: clients,
 // projects, orders, _db, _dbInsertSafe, _userId, _requireAuth, _toast,
 // _escHtml, _onSet, _oqSet, resolveClient, resolveProject, _openQuotePopup,
-// _writeManualTotalsLine, _quoteLineRowToCQ, calcCQLine, markQuoteSent,
+// _writeManualTotalsLine, _quoteLineRowToCB, calcCBLine, markQuoteSent,
 // duplicateQuote, printQuote, exportQuotesCSV, importQuotesCSV,
 // renderOrdersMain, switchSection — all globals defined in app.js,
 // src/orders.js, or src/db.js.
@@ -63,9 +63,9 @@ async function quoteTotalsFromLines(quoteId) {
   if (error || !lines || lines.length === 0) return null;
   let materials = 0, labour = 0;
   for (const row of lines) {
-    const cq = _quoteLineRowToCQ(row);
-    const c = calcCQLine(cq);
-    const qty = cq.qty || 1;
+    const cb = _quoteLineRowToCB(row);
+    const c = calcCBLine(cb);
+    const qty = cb.qty || 1;
     materials += (c.matCost + c.hwCost) * qty;
     labour += c.labourCost * qty;
   }

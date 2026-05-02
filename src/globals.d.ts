@@ -49,7 +49,7 @@ declare global {
     _saveStock?: () => void;
     /** Cabinet-panel UI stash slots. */
     _ratesOpen?: any;
-    _cqBlankLine?: any;
+    _cbBlankLine?: any;
     _currentProjectId?: number | null;
     saveCurrentProject?: () => void;
     /** Cutlist edge-band drafting stash slots. */

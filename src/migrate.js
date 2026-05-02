@@ -33,11 +33,11 @@ function _migLog(log, sub, status, msg, count) {
 async function _migrateBizInfo(log) {
   const sub = 'business_info';
   const biz = _migReadLS('pc_biz') || {};
-  const cqSettings = _migReadLS('pc_cq_settings') || {};
+  const cbSettings = _migReadLS('pc_cq_settings') || {};
   const logoB64 = _migReadLS('pc_biz_logo', false);
   const currency = _migReadLS('pcCurrency', false) || '£';
   const units = (_migReadLS('pcUnits', false) === 'metric') ? 'mm' : 'inches';
-  if (!biz.name && !logoB64 && !cqSettings.labourRate) {
+  if (!biz.name && !logoB64 && !cbSettings.labourRate) {
     _migLog(log, sub, 'SKIP', 'No business info in localStorage');
     return;
   }
@@ -75,9 +75,9 @@ async function _migrateBizInfo(log) {
     logo_url: logoUrl,
     default_currency: currency,
     default_units: units,
-    default_labour_rate: parseFloat(cqSettings.labourRate) || 50,
-    default_markup_pct: parseFloat(cqSettings.markup) || 20,
-    default_tax_pct: parseFloat(cqSettings.tax) || 13,
+    default_labour_rate: parseFloat(cbSettings.labourRate) || 50,
+    default_markup_pct: parseFloat(cbSettings.markup) || 20,
+    default_tax_pct: parseFloat(cbSettings.tax) || 13,
     updated_at: new Date().toISOString()
   };
   const { data: existing } = await _db('business_info').select('id').eq('user_id', uid);
@@ -97,7 +97,7 @@ async function _migrateBizInfo(log) {
 async function _migrateCatalog(log) {
   const sub = 'catalog_items';
   const cab = _migReadLS('pc_cab_settings') || {};
-  const cq = _migReadLS('pc_cq_settings') || {};
+  const cb = _migReadLS('pc_cq_settings') || {};
   /** @type {any[]} */
   const items = [];
   const seen = new Set();
@@ -115,11 +115,11 @@ async function _migrateCatalog(log) {
     });
   }
   (cab.materials || []).forEach(/** @param {any} m */ m => add('material', m.name, m.price, 'sheet', m.specs || {}));
-  (cq.materials || []).forEach(/** @param {any} m */ m => add('material', m.name, m.price, 'sheet', m.specs || {}));
+  (cb.materials || []).forEach(/** @param {any} m */ m => add('material', m.name, m.price, 'sheet', m.specs || {}));
   (cab.handles || []).forEach(/** @param {any} h */ h => add('handle', h.name, h.price, 'each'));
-  (cq.handles || []).forEach(/** @param {any} h */ h => add('handle', h.name, h.price, 'each'));
-  (cq.hardware || []).forEach(/** @param {any} h */ h => add('hardware', h.name, h.price, 'each'));
-  (cq.finishes || []).forEach(/** @param {any} f */ f => add('finish', f.name, f.price, 'm²'));
+  (cb.handles || []).forEach(/** @param {any} h */ h => add('handle', h.name, h.price, 'each'));
+  (cb.hardware || []).forEach(/** @param {any} h */ h => add('hardware', h.name, h.price, 'each'));
+  (cb.finishes || []).forEach(/** @param {any} f */ f => add('finish', f.name, f.price, 'm²'));
   if (items.length === 0) {
     _migLog(log, sub, 'SKIP', 'No catalog items in localStorage');
     return;
@@ -265,10 +265,10 @@ async function _migrateCutListProjects(log) {
   _migLog(log, sub, 'OK', 'Migrated ' + totalSheets + ' sheets + ' + totalPieces + ' pieces across ' + projectsTouched + ' projects', projectsTouched);
 }
 
-// Inverse of _cqLineToRow — map a quote_lines row back to the cqLines shape calcCQLine expects.
-// backMat / doorMat default to carcass material (legacy cqLines convention; quote_lines schema only stores `material`).
+// Inverse of _cbLineToRow — map a quote_lines row back to the cbLines shape calcCBLine expects.
+// backMat / doorMat default to carcass material (legacy cbLines convention; quote_lines schema only stores `material`).
 /** @param {any} row */
-function _quoteLineRowToCQ(row) {
+function _quoteLineRowToCB(row) {
   return {
     name: row.name || '',
     type: row.type || null,
@@ -304,9 +304,9 @@ function _quoteLineRowToCQ(row) {
   };
 }
 
-// Helper: convert legacy cqLines line object to a quote_lines row
+// Helper: convert legacy cbLines line object to a quote_lines row
 /** @param {any} l @param {number} position @param {number} quoteId */
-function _cqLineToRow(l, position, quoteId) {
+function _cbLineToRow(l, position, quoteId) {
   return {
     quote_id: quoteId, user_id: _userId, position,
     name: l.name || '',
@@ -340,20 +340,20 @@ function _cqLineToRow(l, position, quoteId) {
   };
 }
 
-// ── 6. CQ projects -> projects + quotes + quote_lines ──
+// ── 6. CB projects -> projects + quotes + quote_lines ──
 /** @param {MigLog} log */
-async function _migrateCQProjects(log) {
-  const sub = 'cq_projects';
+async function _migrateCBProjects(log) {
+  const sub = 'cb_projects';
   const projs = _migReadLS('pc_cq_projects') || [];
   if (projs.length === 0) {
-    _migLog(log, sub, 'SKIP', 'No CQ projects in localStorage');
+    _migLog(log, sub, 'SKIP', 'No CB projects in localStorage');
     return;
   }
   if (!_userId) return;
   const uid = _userId;
   let projectsCreated = 0, quotesCreated = 0, linesCreated = 0;
-  for (const cqp of projs) {
-    const name = cqp.name || cqp.projectName;
+  for (const cbp of projs) {
+    const name = cbp.name || cbp.projectName;
     if (!name) continue;
     // Find or create projects row
     const { data: existing } = await _db('projects').select('id').eq('user_id', uid).eq('name', name);
@@ -368,8 +368,8 @@ async function _migrateCQProjects(log) {
       if (!projectId) continue;
       projectsCreated++;
     }
-    // Tag quotes with CQ-source-id to avoid double-migration
-    const tag = '[CQMIG:' + cqp.id + ']';
+    // Tag quotes with CB-source-id to avoid double-migration
+    const tag = '[CBMIG:' + cbp.id + ']';
     const { data: existQ } = await _db('quotes').select('id,notes').eq('project_id', projectId).eq('user_id', uid);
     let alreadyMigrated = (existQ || []).some(q => (q.notes || '').includes(tag));
     if (alreadyMigrated) continue;
@@ -377,15 +377,15 @@ async function _migrateCQProjects(log) {
       user_id: uid, project_id: projectId,
       notes: tag,
       status: 'draft',
-      date: cqp.date || new Date().toLocaleDateString()
+      date: cbp.date || new Date().toLocaleDateString()
     }]);
     if (qErr) { _migLog(log, sub, 'WARN', 'Quote create for "' + name + '": ' + qErr.message); continue; }
     const quoteId = (createdQ && createdQ[0]) ? createdQ[0].id : null;
     if (!quoteId) continue;
     quotesCreated++;
-    const lines = cqp.lines || [];
+    const lines = cbp.lines || [];
     if (lines.length > 0) {
-      const lineRows = lines.map(/** @param {any} l @param {number} i */ (l, i) => _cqLineToRow(l, i, quoteId));
+      const lineRows = lines.map(/** @param {any} l @param {number} i */ (l, i) => _cbLineToRow(l, i, quoteId));
       const { error: lErr } = await _db('quote_lines').insert(lineRows);
       if (lErr) { _migLog(log, sub, 'WARN', 'Lines for "' + name + '": ' + lErr.message); continue; }
       linesCreated += lines.length;
@@ -428,7 +428,7 @@ async function _migrateSavedQuotes(log) {
     quotesCreated++;
     const lines = sq.lines || [];
     if (lines.length > 0) {
-      const lineRows = lines.map(/** @param {any} l @param {number} i */ (l, i) => _cqLineToRow(l, i, quoteId));
+      const lineRows = lines.map(/** @param {any} l @param {number} i */ (l, i) => _cbLineToRow(l, i, quoteId));
       const { error: lErr } = await _db('quote_lines').insert(lineRows);
       if (lErr) { _migLog(log, sub, 'WARN', 'Lines for "' + (sq.project || '?') + '": ' + lErr.message); continue; }
       linesCreated += lines.length;
@@ -491,7 +491,7 @@ async function migrateLocalToDB() {
     ['stock_metadata', _migrateStock],
     ['cabinet_templates', _migrateCabinets],
     ['cutlist_projects', _migrateCutListProjects],
-    ['cq_projects', _migrateCQProjects],
+    ['cb_projects', _migrateCBProjects],
     ['saved_quotes', _migrateSavedQuotes],
     ['order_refs', _migrateOrderRefs],
   ];
