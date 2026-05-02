@@ -304,7 +304,7 @@ function setStockCatInline(id, tagEl) {
 let stockItems = [];
 /** @type {import('./database.types').Tables<'clients'>[]} */
 let clients = [];
-/** @type {(import('./database.types').Tables<'projects'> & {status?: string})[]} */
+/** @type {import('./database.types').Tables<'projects'>[]} */
 let projects = [];
 let stockNextId = 1;
 const STOCK_CATS = ['Sheet Goods','Solid Timber','Edge Banding','Hardware','Finishing','Other'];

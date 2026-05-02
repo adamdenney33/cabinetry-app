@@ -190,6 +190,11 @@ No changes proposed.
 Existing table, but `data jsonb` is replaced by `ui_prefs jsonb`. All real
 data moves to the new child tables (cabinets, sheets, pieces, etc.).
 
+H0.1 (post-Phase-G) added `status text not null default 'active'` and
+`description text`. These were previously in-memory shadow fields that
+the codebase wrote on insert/update but the DB silently dropped (see
+SPEC § 13 for context).
+
 ```sql
 -- Modify existing table:
 alter table public.projects
@@ -198,6 +203,11 @@ alter table public.projects
 -- After migration, ui_prefs holds only:
 -- { layoutZoom, layoutColor, layoutGrain, layoutRotate, fontScale,
 --   colsVisible, currentTab, ... }
+
+-- H0.1: promote in-memory shadow fields to real columns
+alter table public.projects
+  add column status      text not null default 'active',
+  add column description text;
 ```
 
 ---
