@@ -1,0 +1,46 @@
+name: Deploy to Cloudflare Pages
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      deployments: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Build
+        run: npm run build
+        env:
+          # Publishable Supabase keys — safe for client-side exposure (RLS
+          # enforces access). Same values as .env.local. Vite inlines these
+          # at build time via import.meta.env.
+          VITE_SUPABASE_URL: https://mhzneruvlfmhnsohfrdo.supabase.co
+          VITE_SUPABASE_ANON_KEY: sb_publishable_4lHAEgWPQz8DX8TH2KnuiA_oimj8J__
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy dist --project-name=cabinetry-app --branch=main
