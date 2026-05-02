@@ -20,7 +20,12 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          # 'lts/*' tracks the current Node LTS automatically — Node 22
+          # today, becomes Node 24 in October 2025, etc. Avoids the
+          # need to manually bump major versions ahead of GitHub's
+          # action-runtime deprecation deadlines (which retire old
+          # Node majors every ~12 months).
+          node-version: 'lts/*'
           cache: npm
 
       - name: Install dependencies
