@@ -44,6 +44,7 @@ let layoutGrain = true;
 let layoutFontScale = parseFloat(localStorage.getItem('pc_font_scale') ?? '') || 1.0;
 let layoutCutOrder = localStorage.getItem('pc_cut_order') === '1';
 let layoutSheetCutList = localStorage.getItem('pc_sheet_cutlist') === '1';
+/** @type {Record<string, boolean>} */
 let colsVisible = { grain: false, material: false, label: true, notes: false, edgeband: false };
 /** @type {any[]} */
 let edgeBands = [];
@@ -51,7 +52,10 @@ let _edgeBandId = 1;
 let layoutRotate = false;
 let clShowSummary = localStorage.getItem('pc_show_summary') === '1';
 let clShowCutList = clShowSummary;  // cut list is part of the Summary tile
-let _dragSrc = null, _dragTable = null;
+/** @type {any} */
+let _dragSrc = null;
+/** @type {any} */
+let _dragTable = null;
 
 const COLORS = [
   '#4a90d9','#d4763b','#4caf50','#9c27b0','#e53935',
@@ -73,10 +77,13 @@ const EYE_ON  = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" str
 const EYE_OFF = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`;
 const DEL_SVG = `<svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="1" y1="1" x2="11" y2="11"/><line x1="11" y1="1" x2="1" y2="11"/></svg>`;
 
-function grainIcon(g) { return GRAIN_ICONS[g] || GRAIN_ICONS['none']; }
+/** @param {string} g */
+function grainIcon(g) { return (/** @type {Record<string,string>} */(GRAIN_ICONS))[g] || GRAIN_ICONS['none']; }
 
+/** @param {any} p */
 function _trimmedDims(p) {
   const e = p.edges || {};
+  /** @param {string} side */
   const thk = side => {
     const s = e[side];
     if (!s || !s.trim) return 0;
@@ -87,6 +94,7 @@ function _trimmedDims(p) {
 }
 
 // ── VALUE PARSER (fractions + math) ──
+/** @param {string | number} str */
 function parseVal(str) {
   if (typeof str === 'number') return str;
   str = String(str).trim();
@@ -101,6 +109,7 @@ function parseVal(str) {
 }
 
 // ── CYCLE GRAIN ──
+/** @param {number} id @param {string} type */
 function cycleGrain(id, type) {
   const arr = type === 'sheet' ? sheets : pieces;
   const item = arr.find(x => x.id === id);
@@ -111,11 +120,13 @@ function cycleGrain(id, type) {
 }
 
 // ── TOGGLE ENABLE ──
+/** @param {number} id */
 function toggleSheet(id) {
   const s = sheets.find(x => x.id === id);
   if (s) { s.enabled = s.enabled === false ? true : false; renderSheets(); }
 }
 let _lastToggleIdx = -1;
+/** @param {number} id @param {number} idx @param {boolean} checked @param {MouseEvent} [ev] */
 function _clCheckboxClick(id, idx, checked, ev) {
   if (ev && ev.shiftKey && _lastToggleIdx >= 0) {
     const from = Math.min(_lastToggleIdx, idx);
@@ -128,16 +139,19 @@ function _clCheckboxClick(id, idx, checked, ev) {
   renderPieces();
   _saveCutList();
 }
+/** @param {number} id */
 function togglePiece(id) {
   const p = pieces.find(x => x.id === id);
   if (p) { p.enabled = !(p.enabled !== false); renderPieces(); _saveCutList(); }
 }
+/** @param {boolean} checked */
 function _clToggleAll(checked) {
   pieces.forEach(p => p.enabled = checked);
   renderPieces();
 }
 
 // ── STEP QTY ──
+/** @param {string} type @param {number} id @param {number} delta */
 function stepQty(type, id, delta) {
   const arr = type === 'sheet' ? sheets : pieces;
   const item = arr.find(x => x.id === id);
@@ -158,6 +172,7 @@ function initColVisibility() {
   const ebSec = _byId('cl-edgeband-section');
   if (ebSec) ebSec.style.display = colsVisible.edgeband ? '' : 'none';
 }
+/** @param {string} col */
 function toggleCol(col) {
   colsVisible[col] = !colsVisible[col];
   _saveCutList();
@@ -201,19 +216,23 @@ function toggleEdgeBandCol() {
   if (section) section.style.display = turning_on ? '' : 'none';
 }
 
+/** @param {any} p */
 function hasAnyEdge(p) {
   const e = p.edges || {};
   return !!(e.L1 || e.W2 || e.L3 || e.W4);
 }
 
+/** @param {any} p */
 function _ebIcon(p) {
   const e = p.edges || {};
+  /** @param {string} side */
   const c = side => {
     const s = e[side];
     if (!s) return null;
     const mat = edgeBands.find(x => x.id === s.id);
     return mat ? mat.color : null;
   };
+  /** @param {number} x1 @param {number} y1 @param {number} x2 @param {number} y2 @param {string | null} col */
   const seg = (x1,y1,x2,y2,col) => col
     ? `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${col}" stroke-width="2.5" stroke-linecap="round"/>`
     : `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" opacity="0.25"/>`;
@@ -269,6 +288,7 @@ function renderEdgeBands() {
   </tr>`).join('');
 }
 
+/** @param {number} id @param {number} delta */
 function stepEbLength(id, delta) {
   const eb = edgeBands.find(x => x.id === id);
   if (!eb) return;
@@ -277,14 +297,16 @@ function stepEbLength(id, delta) {
   _saveCutList();
 }
 
+/** @param {number} id @param {string | number} text */
 function updateEbLength(id, text) {
   const eb = edgeBands.find(x => x.id === id);
   if (!eb) return;
-  eb.length = Math.max(0, parseFloat(text) || 0);
+  eb.length = Math.max(0, parseFloat(String(text)) || 0);
   renderEdgeBands();
   _saveCutList();
 }
 
+/** @param {string} name @param {number} [thickness] @param {number} [width] @param {string | null} [color] @param {number} [length] @param {string} [glue] */
 function addEdgeBand(name, thickness, width, color, length, glue) {
   const eb = {
     id: _edgeBandId++,
@@ -302,6 +324,7 @@ function addEdgeBand(name, thickness, width, color, length, glue) {
   return eb;
 }
 
+/** @param {number} id @param {string} field @param {any} val */
 function updateEdgeBand(id, field, val) {
   const eb = edgeBands.find(x => x.id === id);
   if (!eb) return;
@@ -311,6 +334,7 @@ function updateEdgeBand(id, field, val) {
   _saveCutList();
 }
 
+/** @param {number} id */
 function removeEdgeBand(id) {
   const eb = edgeBands.find(x => x.id === id);
   if (!eb) return;
@@ -328,6 +352,7 @@ function removeEdgeBand(id) {
   });
 }
 
+/** @param {number} pieceId */
 function openEdgePopup(pieceId) {
   const p = pieces.find(x => x.id === pieceId);
   if (!p) return;
@@ -343,14 +368,17 @@ function openEdgePopup(pieceId) {
   // Panel SVG dimensions
   const maxW = 190, maxH = 230, svgPad = 38;
   const aspect = p.w / p.h;
-  let rw, rh;
+  /** @type {number} */ let rw;
+  /** @type {number} */ let rh;
   if (aspect >= 1) { rw = maxW; rh = Math.round(maxW / aspect); }
   else { rh = maxH; rw = Math.round(maxH * aspect); }
   const svgW = rw + svgPad*2, svgH = rh + svgPad*2;
   const rx = svgPad, ry = svgPad;
   const pColor = toPastel ? toPastel(p.color) : '#e8f0fe';
 
+  /** @param {any} ed */
   function buildSVG(ed) {
+    /** @param {string} side */
     const thk = side => {
       const s = ed[side];
       if (!s || !s.trim) return 0;
@@ -391,6 +419,7 @@ function openEdgePopup(pieceId) {
     });
 
     // Dim labels (cut dims, gold when trimmed)
+    /** @param {number} cut @param {number} fin @param {string} lbl */
     const fmtDim = (cut, fin, lbl) => {
       const trimmed = cut !== fin;
       const numColor = trimmed ? accent : '#888';
@@ -411,7 +440,9 @@ function openEdgePopup(pieceId) {
     </svg>`;
   }
 
+  /** @param {any} ed */
   function buildTable(ed) {
+    /** @param {string} side */
     const thk = side => {
       const s = ed[side];
       if (!s || !s.trim) return 0;
@@ -420,7 +451,9 @@ function openEdgePopup(pieceId) {
     };
     const cutW = p.w - thk('W2') - thk('W4');
     const cutH = p.h - thk('L1') - thk('L3');
+    /** @type {Record<string, number>} */
     const tapeDim = {L1:cutW, W2:cutH, L3:cutW, W4:cutH};
+    /** @type {Record<string, number>} */
     const finDim  = {L1:p.w,  W2:p.h,  L3:p.w,  W4:p.h};
     const accent2 = '#c9962b';
 
@@ -428,7 +461,7 @@ function openEdgePopup(pieceId) {
       `<option value="${eb.id}">${_escHtml(eb.name)}</option>`
     ).join('');
 
-    return ['L1','W2','L3','W4'].map(side => {
+    return ['L1','W2','L3','W4'].map(/** @param {string} side */ side => {
       const s = ed[side];
       const selId = s ? s.id : '';
       const mat = selId ? edgeBands.find(x => x.id === selId) : null;
@@ -486,6 +519,7 @@ function openEdgePopup(pieceId) {
   _openPopup(html, 'md');
 }
 
+/** @param {string} side @param {any} val @param {number} pieceId */
 function _ebUpdateSide(side, val, pieceId) {
   const d = window._ebDraft;
   if (!d) return;
@@ -502,6 +536,7 @@ function _ebUpdateSide(side, val, pieceId) {
   if (tb && window._ebBuildTable) tb.innerHTML = window._ebBuildTable(d);
 }
 
+/** @param {string} side @param {boolean} checked @param {number} pieceId */
 function _ebUpdateTrim(side, checked, pieceId) {
   const d = window._ebDraft;
   if (!d || !d[side]) return;
@@ -512,6 +547,7 @@ function _ebUpdateTrim(side, checked, pieceId) {
   if (tb && window._ebBuildTable) tb.innerHTML = window._ebBuildTable(d);
 }
 
+/** @param {number} pieceId */
 function _ebSave(pieceId) {
   const p = pieces.find(x => x.id === pieceId);
   if (!p || !window._ebDraft) return;
@@ -653,15 +689,18 @@ function _doSaveProject() {
 }
 
 // ── DRAG REORDER ──
+/** @param {DragEvent} e @param {string} table @param {number} idx */
 function onDragStart(e, table, idx) {
   _dragSrc = idx; _dragTable = table;
-  e.dataTransfer.effectAllowed = 'move';
+  if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
 }
+/** @param {DragEvent} e @param {HTMLElement} row */
 function onDragOver(e, row) {
   e.preventDefault();
   document.querySelectorAll('.cl-drag-over').forEach(r => r.classList.remove('cl-drag-over'));
   row.classList.add('cl-drag-over');
 }
+/** @param {DragEvent} e @param {string} table @param {number} idx */
 function onDrop(e, table, idx) {
   e.preventDefault();
   document.querySelectorAll('.cl-drag-over').forEach(r => r.classList.remove('cl-drag-over'));
@@ -693,7 +732,9 @@ function _doClearAll() {
     const handle = _byId('cl-resize-handle');
     const left   = /** @type {HTMLElement | null} */ (document.querySelector('.cl-left'));
     if (!handle || !left) return;
-    let dragging = false, startX, startW;
+    let dragging = false;
+    /** @type {number} */ let startX = 0;
+    /** @type {number} */ let startW = 0;
     handle.addEventListener('mousedown', e => {
       dragging = true; startX = e.clientX; startW = left.offsetWidth;
       handle.classList.add('dragging');
@@ -713,6 +754,7 @@ function _doClearAll() {
 })();
 
 // ── SHEETS ──
+/** @param {string} [name] @param {number} [w] @param {number} [h] @param {number} [qty] */
 function addSheet(name, w, h, qty) {
   const m = window.units === 'metric';
   sheets.push({
@@ -730,6 +772,7 @@ function addSheet(name, w, h, qty) {
   renderPieces(); // refresh material dropdowns
 }
 
+/** @param {number} id */
 function removeSheet(id) {
   const s = sheets.find(x => x.id === id);
   if (!s) return;
@@ -741,6 +784,7 @@ function removeSheet(id) {
   });
 }
 
+/** @param {number} id */
 function duplicateSheet(id) {
   const s = sheets.find(s => s.id === id);
   if (!s) return;
@@ -751,6 +795,7 @@ function duplicateSheet(id) {
   renderPieces();
 }
 
+/** @param {number} id @param {string} field @param {any} val */
 function updateSheet(id, field, val) {
   const s = sheets.find(s => s.id === id);
   if (!s) return;
@@ -896,6 +941,7 @@ function _loadCutList() {
 }
 
 // ── PIECES ──
+/** @param {string} [label] @param {number} [w] @param {number} [h] @param {number} [qty] @param {string} [grain] */
 function addPiece(label, w, h, qty, grain) {
   const m = window.units === 'metric';
   const color = COLORS[pieceColorIdx++ % COLORS.length];
@@ -906,7 +952,7 @@ function addPiece(label, w, h, qty, grain) {
     w:        w     !== undefined ? w     : (m ? 300 : 12),
     h:        h     !== undefined ? h     : (m ? 600 : 24),
     qty:      qty   !== undefined ? qty   : 1,
-    grain:    (grain !== undefined && grain !== false) ? grain : 'none',
+    grain:    (grain !== undefined && grain !== '') ? grain : 'none',
     material: prevMat,
     notes:    '',
     enabled:  true,
@@ -916,6 +962,7 @@ function addPiece(label, w, h, qty, grain) {
   renderPieces();
 }
 
+/** @param {number} id */
 function removePiece(id) {
   const p = pieces.find(x => x.id === id);
   if (!p) return;
@@ -926,6 +973,7 @@ function removePiece(id) {
   });
 }
 
+/** @param {number} id */
 function duplicatePiece(id) {
   const p = pieces.find(p => p.id === id);
   if (!p) return;
@@ -951,6 +999,7 @@ function duplicatePiece(id) {
   renderPieces();
 }
 
+/** @param {number} id @param {string} field @param {any} val */
 function updatePiece(id, field, val) {
   const p = pieces.find(p => p.id === id);
   if (!p) return;
@@ -967,6 +1016,7 @@ function renderPieces() {
     tbody.innerHTML = `<tr><td colspan="11" style="color:var(--muted);font-size:11px;padding:10px 14px;text-align:center">No parts — click "+ Add part"</td></tr>`;
     return;
   }
+  /** @param {string} sel */
   const makeOpts = (sel) => {
     let o = `<option value="">— any —</option>`;
     sheets.forEach(s => { o += `<option value="${s.name.replace(/"/g,'&quot;')}"${s.name===sel?' selected':''}>${s.name}</option>`; });
@@ -1054,7 +1104,9 @@ function renderPieces() {
 }
 
 // ── KEYBOARD NAV ──
+/** @type {Record<string, string[]>} */
 const CL_COLS = { pieces: ['label','w','h','qty'], sheets: ['name','w','h','qty'] };
+/** @param {KeyboardEvent} event @param {string} tableId @param {number} rowIdx @param {string} colName */
 function clKeydown(event, tableId, rowIdx, colName) {
   if (event.key !== 'Tab' && event.key !== 'Enter') return;
   event.preventDefault();
@@ -1067,7 +1119,7 @@ function clKeydown(event, tableId, rowIdx, colName) {
   // updatePiece/updateSheet → renderPieces/renderSheets, which rebuilds the
   // entire tbody and destroys the input we're about to focus, causing the
   // browser to drop focus outside the table.
-  const curEl = event.target;
+  const curEl = /** @type {HTMLInputElement | null} */ (event.target);
   if (curEl && 'value' in curEl) {
     const item = arr[rowIdx];
     if (item) {
@@ -1101,6 +1153,7 @@ function clKeydown(event, tableId, rowIdx, colName) {
     }
   }
 }
+/** @param {string} tableId @param {number} rowIdx @param {string} colName */
 function focusClCell(tableId, rowIdx, colName) {
   const el = /** @type {HTMLInputElement | null} */ (document.querySelector(`[data-table="${tableId}"][data-row="${rowIdx}"][data-col="${colName}"]`));
   if (el) { el.focus(); try { el.select(); } catch(e) {} }
@@ -1110,7 +1163,8 @@ function focusClCell(tableId, rowIdx, colName) {
 document.addEventListener('paste', function(e) {
   const target = /** @type {HTMLElement | null} */ (e.target);
   if (!target || !target.dataset || !target.dataset.table) return;
-  const text = (e.clipboardData || window.clipboardData).getData('text');
+  const cd = e.clipboardData || /** @type {any} */ (window).clipboardData;
+  const text = cd ? cd.getData('text') : '';
   const rows = text.trim().split(/\r?\n/);
   if (rows.length <= 1 && !text.includes('\t')) return;
   e.preventDefault();
@@ -1118,12 +1172,12 @@ document.addEventListener('paste', function(e) {
   const rowIdx  = parseInt(target.dataset.row ?? '') || 0;
   const cols    = CL_COLS[tableId];
   const startCI = cols.indexOf(target.dataset.col ?? '');
-  rows.forEach((row, ri) => {
+  rows.forEach(/** @param {string} row @param {number} ri */ (row, ri) => {
     const cells = row.split('\t');
     const ai = rowIdx + ri;
     const arr = tableId === 'pieces' ? pieces : sheets;
     while (arr.length <= ai) tableId === 'pieces' ? addPiece() : addSheet();
-    cells.forEach((cell, ci) => {
+    cells.forEach(/** @param {string} cell @param {number} ci */ (cell, ci) => {
       const coli = startCI + ci;
       if (coli >= cols.length) return;
       const cn = cols[coli];
@@ -1139,6 +1193,7 @@ document.addEventListener('paste', function(e) {
 });
 
 // ── CSV ──
+/** @param {string} type */
 function exportCSV(type) {
   let csv, fn;
   if (type === 'pieces') {
@@ -1153,6 +1208,7 @@ function exportCSV(type) {
   const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([csv],{type:'text/csv'})), download: fn });
   a.click();
 }
+/** @param {string} type */
 function downloadTemplate(type) {
   const csv = type === 'pieces'
     ? 'Label,W,H,Qty,Grain,Material\nSide Panel,23.25,30,2,none,3/4" Plywood'
@@ -1160,14 +1216,16 @@ function downloadTemplate(type) {
   const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([csv],{type:'text/csv'})), download: type==='pieces'?'parts-template.csv':'panels-template.csv' });
   a.click();
 }
+/** @param {string} type */
 function triggerImportCSV(type) {
   _csvImportTarget = type;
   const inp = _byId('csv-import-input');
   if (!inp) return;
   inp.value = ''; inp.click();
 }
+/** @param {HTMLInputElement} input */
 function handleCSVImport(input) {
-  const file = input.files[0]; if (!file) return;
+  const file = input.files?.[0]; if (!file) return;
   const reader = new FileReader();
   reader.onload = e => {
     const text = /** @type {string} */ (/** @type {FileReader} */ (e.target).result);
@@ -1207,7 +1265,9 @@ function toggleSheetCutList() {
   const b = _byId('lt-sheetcl'); if (b) b.classList.toggle('active', layoutSheetCutList);
   renderResults();
 }
+/** @param {number} d */
 function adjustFontScale(d) { layoutFontScale = Math.max(0.5, Math.min(2.5, layoutFontScale + d)); localStorage.setItem('pc_font_scale', String(layoutFontScale)); renderResults(); }
+/** @param {string} [mode] */
 function printLayout(mode='print') {
   if (!results || !results.layouts || !results.layouts.length) { _toast('Run the optimiser first', 'info'); return; }
   // Brief delay so canvases finish rendering before capture
@@ -1215,20 +1275,20 @@ function printLayout(mode='print') {
     const biz = getBizInfo();
     const u = window.units === 'metric' ? 'mm' : 'in';
     const cur = window.currency;
-    const totalArea = results.layouts.reduce((s,l) => s + l.sheet.w * l.sheet.h, 0);
-    const usedArea  = results.layouts.reduce((s,l) => s + l.placed.reduce((a,p) => a + p.w * p.h, 0), 0);
+    const totalArea = results.layouts.reduce(/** @param {number} s @param {any} l */ (s,l) => s + l.sheet.w * l.sheet.h, 0);
+    const usedArea  = results.layouts.reduce(/** @param {number} s @param {any} l */ (s,l) => s + l.placed.reduce(/** @param {number} a @param {any} p */ (a,p) => a + p.w * p.h, 0), 0);
     const avgUtil   = totalArea ? (usedArea / totalArea * 100).toFixed(1) : '0';
     const totalPieces = results.placed;
-    const matCost = results.layouts.reduce((s,l) => { const si = stockItems.find(i => i.name === l.sheet.name); return s + (si ? si.cost : 0); }, 0);
+    const matCost = results.layouts.reduce(/** @param {number} s @param {any} l */ (s,l) => { const si = stockItems.find(i => i.name === l.sheet.name); return s + (si ? (si.cost ?? 0) : 0); }, 0);
 
     // Capture canvas images
     const canvases = /** @type {NodeListOf<HTMLCanvasElement>} */ (document.querySelectorAll('.canvas-wrap canvas'));
     const imgs = [...canvases].map(c => { try { return c.toDataURL('image/png'); } catch(e) { return ''; } });
 
-    const sheetSections = results.layouts.map((layout, i) => {
+    const sheetSections = results.layouts.map(/** @param {any} layout @param {number} i */ (layout, i) => {
       const util = (layout.util * 100).toFixed(0);
       const imgTag = imgs[i] ? `<img src="${imgs[i]}" class="sheet-img">` : '';
-      const pieceRows = layout.placed.map(p => `
+      const pieceRows = layout.placed.map(/** @param {any} p */ p => `
         <tr>
           <td style="width:16px"><div style="width:12px;height:12px;border-radius:2px;background:${p.item.color};opacity:.7"></div></td>
           <td><strong>${p.item.label}</strong></td>
@@ -1346,6 +1406,7 @@ ${combinedPageHTML}
   }, 400);
 }
 
+/** @param {string} html */
 function _printInFrame(html) {
   // Use a hidden iframe — avoids popup blockers entirely
   const old = _byId('_print_frame');
@@ -1372,6 +1433,7 @@ function _printInFrame(html) {
   }, 600);
 }
 
+/** @param {string} html */
 function _saveAsPDF(html) {
   // Open HTML in a new browser tab — user can print/save from there
   const w = window.open('', '_blank');
@@ -1390,6 +1452,7 @@ function _saveAsPDF(html) {
 
 
 // ── Build a real PDF for quotes using jsPDF ──
+/** @param {any} q */
 function _buildQuotePDF(q) {
   if (!window.jspdf) { _toast('PDF library not loaded yet — try again', 'error'); return; }
   const { jsPDF } = window.jspdf;
@@ -1400,11 +1463,13 @@ function _buildQuotePDF(q) {
   const matVal = q._totals ? q._totals.materials : (q.materials || 0);
   const labVal = q._totals ? q._totals.labour    : (q.labour    || 0);
   const sub = matVal + labVal;
-  const markupAmt = sub * q.markup / 100;
+  const markupAmt = sub * (q.markup ?? 0) / 100;
   const afterMarkup = sub + markupAmt;
-  const taxAmt = afterMarkup * q.tax / 100;
+  const taxAmt = afterMarkup * (q.tax ?? 0) / 100;
   const total = afterMarkup + taxAmt;
+  /** @param {any} v */
   const fmt = v => cur + Number(v).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+  /** @param {number} v */
   const fmt0 = v => cur + Math.round(v).toLocaleString();
 
   // Portrait A4
@@ -1442,8 +1507,8 @@ function _buildQuotePDF(q) {
 
   // ── Cabinet Line Items (from notes) ──
   const noteLines = (q.notes||'').split(/\r?\n/).filter(Boolean);
-  const cabLines = noteLines.filter(l => l.includes('\u2014') || l.includes('—'));
-  const plainNotes = noteLines.filter(l => !l.includes('\u2014') && !l.includes('—')).join('\n').trim();
+  const cabLines = noteLines.filter(/** @param {string} l */ l => l.includes('\u2014') || l.includes('—'));
+  const plainNotes = noteLines.filter(/** @param {string} l */ l => !l.includes('\u2014') && !l.includes('—')).join('\n').trim();
 
   if (cabLines.length > 0) {
     // Table header
@@ -1453,7 +1518,7 @@ function _buildQuotePDF(q) {
     pdf.setDrawColor(17); pdf.setLineWidth(0.4); pdf.line(M, y, PW-M, y);
     y += 6;
 
-    cabLines.forEach(cl => {
+    cabLines.forEach(/** @param {string} cl */ cl => {
       const parts = cl.split(/\u2014|—/).map(s => s.trim());
       const name = parts[0] || 'Cabinet';
       const details = parts.slice(1).join(' — ').trim();
@@ -1464,7 +1529,7 @@ function _buildQuotePDF(q) {
       if (details) {
         pdf.setFontSize(8.5); pdf.setFont('helvetica','normal'); pdf.setTextColor(130);
         const detailLines = pdf.splitTextToSize(details, W - 10);
-        detailLines.forEach(dl => { pdf.text(dl, M + 4, y); y += 4; });
+        detailLines.forEach(/** @param {string} dl */ dl => { pdf.text(dl, M + 4, y); y += 4; });
       }
       y += 3;
 
@@ -1479,17 +1544,17 @@ function _buildQuotePDF(q) {
   const totalsX = PW - M;
   const labelX = PW - M - 80;
 
-  if (q.markup > 0 || q.tax > 0) {
+  if ((q.markup ?? 0) > 0 || (q.tax ?? 0) > 0) {
     pdf.setFontSize(9); pdf.setFont('helvetica','normal'); pdf.setTextColor(140);
     pdf.text('Subtotal', labelX, y); pdf.text(fmt(sub), totalsX, y, { align:'right' });
     y += 6;
   }
-  if (q.markup > 0) {
+  if ((q.markup ?? 0) > 0) {
     pdf.setFontSize(8.5); pdf.setTextColor(140);
     pdf.text('Markup (' + q.markup + '%)', labelX, y); pdf.text('+ ' + fmt(markupAmt), totalsX, y, { align:'right' });
     y += 5;
   }
-  if (q.tax > 0) {
+  if ((q.tax ?? 0) > 0) {
     pdf.setFontSize(8.5); pdf.setTextColor(140);
     pdf.text('Tax (' + q.tax + '%)', labelX, y); pdf.text('+ ' + fmt(taxAmt), totalsX, y, { align:'right' });
     y += 5;
@@ -1510,7 +1575,7 @@ function _buildQuotePDF(q) {
     pdf.text('NOTES', M, y); y += 5;
     pdf.setFontSize(9); pdf.setFont('helvetica','normal'); pdf.setTextColor(60);
     const noteWrapped = pdf.splitTextToSize(plainNotes, W);
-    noteWrapped.forEach(nl => { pdf.text(nl, M, y); y += 4.5; });
+    noteWrapped.forEach(/** @param {string} nl */ nl => { pdf.text(nl, M, y); y += 4.5; });
     y += 6;
   }
 
@@ -1556,7 +1621,7 @@ function _buildStockPDF() {
   const cur = window.currency;
   const u = window.units === 'metric' ? 'mm' : 'in';
   const dateStr = new Date().toLocaleDateString('en-GB', { day:'numeric', month:'long', year:'numeric' });
-  const totalValue = stockItems.reduce((s,i) => s+i.qty*i.cost, 0);
+  const totalValue = stockItems.reduce((s,i) => s+(i.qty ?? 0)*(i.cost ?? 0), 0);
 
   const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const PW = 210, PH = 297, M = 14;
@@ -1585,7 +1650,7 @@ function _buildStockPDF() {
   // Rows
   stockItems.forEach(item => {
     if (y > PH - 20) { pdf.addPage(); y = M + 10; }
-    const isLow = item.qty <= item.low;
+    const isLow = (item.qty ?? 0) <= (item.low ?? 0);
     const sup = _ssGet(item.id);
     pdf.setFontSize(9); pdf.setFont('helvetica', isLow?'bold':'normal');
     pdf.setTextColor(isLow ? 192 : 40, isLow ? 50 : 40, isLow ? 50 : 40);
@@ -1599,7 +1664,7 @@ function _buildStockPDF() {
     pdf.text(String(item.qty), cols[4], y);
     pdf.setTextColor(120); pdf.setFont('helvetica','normal');
     pdf.text(String(item.low), cols[5], y);
-    pdf.text(cur + (item.qty*item.cost).toFixed(0), cols[6], y);
+    pdf.text(cur + ((item.qty ?? 0)*(item.cost ?? 0)).toFixed(0), cols[6], y);
     y += 5;
   });
 
@@ -1615,14 +1680,18 @@ function _buildStockPDF() {
   setTimeout(() => URL.revokeObjectURL(url), 60000);
 }
 
+/** @param {any} o */
 function _buildWorkOrderPDF(o) {
   if (!window.jspdf) { _toast('PDF library not loaded yet', 'error'); return; }
   const { jsPDF } = window.jspdf;
   const biz = getBizInfo();
   const cur = window.currency;
+  /** @param {number} v */
   const fmt = v => cur + Math.round(v).toLocaleString();
   const dateStr = new Date().toLocaleDateString('en-GB', { day:'numeric', month:'long', year:'numeric' });
-  const statusLabel = { quote:'Quote Sent', confirmed:'Confirmed', production:'In Production', delivery:'Ready for Delivery', complete:'Complete' }[o.status] || o.status;
+  /** @type {Record<string, string>} */
+  const statusLabelMap = { quote:'Quote Sent', confirmed:'Confirmed', production:'In Production', delivery:'Ready for Delivery', complete:'Complete' };
+  const statusLabel = statusLabelMap[o.status||''] || o.status;
 
   const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const PW = 210, PH = 297, M = 18;
@@ -1643,9 +1712,10 @@ function _buildWorkOrderPDF(o) {
   y += 10;
 
   // Project info
+  /** @type {Array<[string, string]>} */
   const infoItems = [
     ['Client', orderClient(o)], ['Project', orderProject(o)],
-    ['Order Value', fmt(o.value)], ['Status', statusLabel],
+    ['Order Value', fmt(o.value ?? 0)], ['Status', statusLabel||''],
     ['Due Date', o.due || 'TBD']
   ];
   infoItems.forEach(([label, val]) => {
@@ -1664,7 +1734,7 @@ function _buildWorkOrderPDF(o) {
     pdf.text('NOTES', M, y); y += 5;
     pdf.setFontSize(10); pdf.setFont('helvetica','normal'); pdf.setTextColor(40);
     const noteLines = pdf.splitTextToSize(o.notes, W);
-    noteLines.forEach(nl => { pdf.text(nl, M, y); y += 5; });
+    noteLines.forEach(/** @param {string} nl */ nl => { pdf.text(nl, M, y); y += 5; });
     y += 5;
   }
 
@@ -1701,6 +1771,7 @@ function _buildWorkOrderPDF(o) {
   setTimeout(() => URL.revokeObjectURL(url), 60000);
 }
 
+/** @param {{biz: any, layouts: any[], imgs: string[], pieces: any[], u: string, cur: string, totalPieces: number, avgUtil: string, matCost: number}} arg */
 async function _buildCutListPDF({ biz, layouts, imgs, pieces, u, cur, totalPieces, avgUtil, matCost }) {
   if (!window.jspdf) { _toast('PDF library not loaded yet — try again', 'error'); return; }
   _toast('Building PDF\u2026', 'info', 8000);
@@ -1712,6 +1783,7 @@ async function _buildCutListPDF({ biz, layouts, imgs, pieces, u, cur, totalPiece
     const dateStr = new Date().toLocaleDateString('en-GB', { day:'numeric', month:'long', year:'numeric' });
 
     // ── safe hex → [r,g,b] ──
+    /** @param {string} hex */
     function hexRgb(hex) {
       if (!hex || hex.length < 7) return [180,180,180];
       return [parseInt(hex.slice(1,3),16), parseInt(hex.slice(3,5),16), parseInt(hex.slice(5,7),16)];
@@ -1751,7 +1823,7 @@ async function _buildCutListPDF({ biz, layouts, imgs, pieces, u, cur, totalPiece
     const hdgH   = 9;                     // heading bar height
     const titleBarH = 9;                  // compact title bar height
 
-    layouts.forEach((layout, i) => {
+    layouts.forEach(/** @param {any} layout @param {number} i */ (layout, i) => {
       if (i > 0) pdf.addPage();           // first sheet on page 1, rest add pages
       titleBar();
       const util = (layout.util*100).toFixed(0);
@@ -1784,13 +1856,13 @@ async function _buildCutListPDF({ biz, layouts, imgs, pieces, u, cur, totalPiece
         margin: { left: rightX, right: M },
         tableWidth: rightW,
         head: [['', 'Label', `W (${u})`, `H (${u})`, 'Rot', 'Notes']],
-        body: layout.placed.map(p => ['', p.item.label, p.item.w, p.item.h, p.rotated?'Y':'--', p.item.notes||'']),
+        body: layout.placed.map(/** @param {any} p */ p => ['', p.item.label, p.item.w, p.item.h, p.rotated?'Y':'--', p.item.notes||'']),
         styles: { fontSize: 7.5, cellPadding: 1.8, overflow:'ellipsize', textColor:[17,17,17] },
         headStyles: { fillColor:[250,250,250], textColor:[140,140,140], fontStyle:'normal', fontSize:6.5, lineWidth:0 },
         columnStyles: { 0:{cellWidth:5}, 2:{halign:'right'}, 3:{halign:'right'}, 4:{halign:'center',cellWidth:7} },
         theme: 'plain',
         tableLineColor: [224,224,224], tableLineWidth: 0.2,
-        didDrawCell(data) {
+        didDrawCell(/** @type {any} */ data) {
           if (data.column.index===0 && data.section==='body') {
             const p = layout.placed[data.row.index];
             if (p) { const [r,g,b]=hexRgb(p.item.color); pdf.setFillColor(r,g,b); pdf.roundedRect(data.cell.x+1,data.cell.y+1.5,3,3,0.5,0.5,'F'); }
@@ -1834,12 +1906,12 @@ async function _buildCutListPDF({ biz, layouts, imgs, pieces, u, cur, totalPiece
         /** @type {any} */ (pdf).autoTable({
           startY: cy, margin: { left:M, right:M },
           head: [['','Label',`W (${u})`,`H (${u})`,'Qty','Material','Grain','Notes']],
-          body: pieces.map(p => ['',p.label,p.w,p.h,p.qty,p.material||'--',p.grain==='h'?'Horiz':p.grain==='v'?'Vert':'--',p.notes||'']),
+          body: pieces.map(/** @param {any} p */ p => ['',p.label,p.w,p.h,p.qty,p.material||'--',p.grain==='h'?'Horiz':p.grain==='v'?'Vert':'--',p.notes||'']),
           styles: { fontSize:8, cellPadding:2, overflow:'ellipsize', textColor:[17,17,17] },
           headStyles: { fillColor:[250,250,250], textColor:[140,140,140], fontStyle:'normal', fontSize:7, lineWidth:0 },
           columnStyles: { 0:{cellWidth:6}, 2:{halign:'right'}, 3:{halign:'right'}, 4:{halign:'right',cellWidth:10} },
           theme: 'plain', tableLineColor:[224,224,224], tableLineWidth:0.2,
-          didDrawCell(data) {
+          didDrawCell(/** @type {any} */ data) {
             if (data.column.index===0 && data.section==='body') {
               const p = pieces[data.row.index];
               if (p) { const [r,g,b]=hexRgb(p.color); pdf.setFillColor(r,g,b); pdf.roundedRect(data.cell.x+1,data.cell.y+1.5,3,3,0.5,0.5,'F'); }
@@ -1863,7 +1935,7 @@ async function _buildCutListPDF({ biz, layouts, imgs, pieces, u, cur, totalPiece
     _toast('PDF opened in new tab', 'success', 3000);
   } catch(err) {
     console.error(err);
-    _toast('PDF generation failed: '+err.message, 'error');
+    _toast('PDF generation failed: '+(/** @type {any} */ (err).message), 'error');
   }
 }
 
@@ -1884,10 +1956,11 @@ function toggleClCutList() {
   // Legacy — routed through the combined Summary toggle
   toggleClSummary();
 }
+/** @param {string | number} n */
 function setPagesPerSheet(n) {
   let s = /** @type {HTMLStyleElement | null} */ (document.getElementById('print-pages-style'));
   if (!s) { s = document.createElement('style'); s.id = 'print-pages-style'; document.head.appendChild(s); }
-  n = parseInt(n);
+  n = parseInt(String(n));
   if (n === 2) s.textContent = `@media print{.canvas-wrap{display:inline-block;width:48%;margin:0 1% 2%;vertical-align:top}}`;
   else if (n === 4) s.textContent = `@media print{.canvas-wrap{display:inline-block;width:23%;margin:0 1% 2%;vertical-align:top}}`;
   else s.textContent = '';
@@ -1897,7 +1970,9 @@ function setPagesPerSheet(n) {
 // Options A+B: tournament over several starting orderings × best-short-side-fit
 // pick at each region × shorter-axis-first split preference. Every layout is
 // pure guillotine by construction — edge-to-edge cuts per region.
+/** @param {number} sheetW @param {number} sheetH @param {string} sheetGrain @param {any[]} items @param {number} kerf */
 function packSheetRecGuillotine(sheetW, sheetH, sheetGrain, items, kerf) {
+  /** @param {any} it */
   const orientOf = (it) => {
     const pg = it.grain || 'none', sg = sheetGrain || 'none';
     const mustRot = pg !== 'none' && sg !== 'none' && pg !== sg;
@@ -1908,7 +1983,9 @@ function packSheetRecGuillotine(sheetW, sheetH, sheetGrain, items, kerf) {
     if (canRot)  return [nat, rot];
     return [nat];
   };
-  const areaOf = (pcs) => pcs.reduce((s, p) => s + p.w * p.h, 0);
+  /** @param {any[]} pcs */
+  const areaOf = (pcs) => pcs.reduce(/** @param {number} s @param {any} p */ (s, p) => s + p.w * p.h, 0);
+  /** @param {any} a @param {any} b */
   const betterThan = (a, b) => {
     if (!b) return true;
     if (a.placed.length !== b.placed.length) return a.placed.length > b.placed.length;
@@ -1918,7 +1995,9 @@ function packSheetRecGuillotine(sheetW, sheetH, sheetGrain, items, kerf) {
   // Inner packer: given a pre-sorted item list, recursively fill regions using
   // best-short-side-fit picks. Orderings is the tiebreak when multiple items
   // tie on BSSF score — earlier-in-list wins.
+  /** @param {any[]} orderedItems */
   function packOrdered(orderedItems) {
+    /** @param {number} x0 @param {number} y0 @param {number} x1 @param {number} y1 @param {any[]} items @returns {any} */
     function packRegion(x0, y0, x1, y1, items) {
       const rw = x1 - x0, rh = y1 - y0;
       if (rw < 1 || rh < 1 || !items.length) return { placed: [], leftover: items };
@@ -1938,7 +2017,7 @@ function packSheetRecGuillotine(sheetW, sheetH, sheetGrain, items, kerf) {
       if (pickIdx < 0) return { placed: [], leftover: items };
 
       const it = items[pickIdx];
-      const remaining = items.filter((_, i) => i !== pickIdx);
+      const remaining = items.filter(/** @param {any} _ @param {number} i */ (_, i) => i !== pickIdx);
 
       // Branch on every fitting orientation × both guillotine splits.
       // Split A (row-first): RIGHT = (x0+w+k, y0, x1, y0+h), BELOW = (x0, y0+h+k, x1, y1)
@@ -1946,17 +2025,20 @@ function packSheetRecGuillotine(sheetW, sheetH, sheetGrain, items, kerf) {
       // SAS preference: when leftover RIGHT arm is narrower than BELOW arm, prefer
       // Split B (keep the wider BELOW arm intact); else Split A. Still try both —
       // this only affects tie-breaking when both pack the same # of pieces.
+      /** @type {any} */
       let best = null;
       for (const o of orientOf(it)) {
         if (o.w > rw + 0.5 || o.h > rh + 0.5) continue;
         const placed0 = { x: x0, y: y0, w: o.w, h: o.h, item: it, rotated: o.rotated };
         const preferA = (rw - o.w) >= (rh - o.h);  // wider right arm → preserve it via split A
 
+        /** @returns {any} */
         const tryA = () => {
           const rA1 = packRegion(x0 + o.w + kerf, y0, x1, y0 + o.h, remaining);
           const rA2 = packRegion(x0, y0 + o.h + kerf, x1, y1, rA1.leftover);
           return { placed: [placed0, ...rA1.placed, ...rA2.placed], leftover: rA2.leftover };
         };
+        /** @returns {any} */
         const tryB = () => {
           const rB1 = packRegion(x0, y0 + o.h + kerf, x0 + o.w, y1, remaining);
           const rB2 = packRegion(x0 + o.w + kerf, y0, x1, y1, rB1.leftover);
@@ -2033,12 +2115,12 @@ function optimize() {
     const chosen = recR;
     const { placed, leftover } = chosen;
     if (!placed.length) continue;
-    const usedArea = placed.reduce((s, p) => s + p.w * p.h, 0);
+    const usedArea = placed.reduce(/** @param {number} s @param {any} p */ (s, p) => s + p.w * p.h, 0);
     layouts.push({ sheet: si, placed, util: usedArea / (si.w * si.h), waste: 1 - usedArea / (si.w * si.h) });
-    const placedKeys = new Set(placed.map(p => `${p.item.id}_${p.item._inst}`));
-    remaining = remaining.filter(p => !placedKeys.has(`${p.id}_${p._inst}`));
+    const placedKeys = new Set(placed.map(/** @param {any} p */ p => `${p.item.id}_${p.item._inst}`));
+    remaining = remaining.filter(/** @param {any} p */ p => !placedKeys.has(`${p.id}_${p._inst}`));
   }
-  results = { layouts, unplaced: remaining, total: activePieces.reduce((s,p) => s+p.qty, 0), placed: activePieces.reduce((s,p) => s+p.qty, 0) - remaining.length };
+  results = { layouts, unplaced: remaining, total: activePieces.reduce(/** @param {number} s @param {any} p */ (s,p) => s+p.qty, 0), placed: activePieces.reduce(/** @param {number} s @param {any} p */ (s,p) => s+p.qty, 0) - remaining.length };
   if (!_userId) _incOptCount();
   activeSheetIdx = 0;
   renderResults();
@@ -2052,6 +2134,7 @@ function optimize() {
   }, 80);
 }
 
+/** @param {string} tab */
 function switchTab(tab) {
   activeTab = tab;
   /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('.inner-tab')).forEach(el => el.classList.toggle('active', el.dataset.tab === tab));
@@ -2065,23 +2148,24 @@ function renderResults() {
   const btnSum = _byId('lt-pg-summary'); if (btnSum) btnSum.classList.toggle('active', clShowSummary);
   const btnScl = _byId('lt-sheetcl'); if (btnScl) btnScl.classList.toggle('active', layoutSheetCutList);
   const area = _byId('results-area');
-  renderLayout(area);  // inner tabs removed; layout view is the only view
+  if (area) renderLayout(area);  // inner tabs removed; layout view is the only view
 }
 
+/** @param {HTMLElement} area */
 function renderLayout(area) {
   if (!results.layouts.length) {
     area.innerHTML = '<div class="empty-state"><h3>No layouts generated</h3><p>Check that your pieces fit within your sheet dimensions.</p></div>';
     return;
   }
   const u = window.units === 'metric' ? 'mm' : 'in';
-  const totalArea = results.layouts.reduce((s,l) => s + l.sheet.w * l.sheet.h, 0);
-  const usedArea  = results.layouts.reduce((s,l) => s + l.placed.reduce((a,p) => a + p.w * p.h, 0), 0);
+  const totalArea = results.layouts.reduce(/** @param {number} s @param {any} l */ (s,l) => s + l.sheet.w * l.sheet.h, 0);
+  const usedArea  = results.layouts.reduce(/** @param {number} s @param {any} l */ (s,l) => s + l.placed.reduce(/** @param {number} a @param {any} p */ (a,p) => a + p.w * p.h, 0), 0);
   const avgUtil   = totalArea ? (usedArea / totalArea * 100).toFixed(1) : '0.0';
 
   // Material cost estimate — match sheet name to stock items
-  const matCost = results.layouts.reduce((s, l) => {
+  const matCost = results.layouts.reduce(/** @param {number} s @param {any} l */ (s, l) => {
     const stock = stockItems.find(si => si.name === l.sheet.name);
-    return s + (stock ? stock.cost : 0);
+    return s + (stock ? (stock.cost ?? 0) : 0);
   }, 0);
   const cur = window.currency;
 
@@ -2124,7 +2208,7 @@ function renderLayout(area) {
   }
 
   // Sheets
-  results.layouts.forEach((layout, i) => {
+  results.layouts.forEach(/** @param {any} layout @param {number} i */ (layout, i) => {
     const lbl = document.createElement('div');
     lbl.className = 'sheet-block-label';
     lbl.innerHTML = `<span><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${layout.sheet.color || 'var(--muted)'};margin-right:6px;vertical-align:middle"></span>Sheet ${i+1}</span><span style="font-weight:400;color:var(--muted)">${layout.sheet.name} &nbsp;·&nbsp; ${(layout.util*100).toFixed(0)}% used</span>`;
@@ -2162,29 +2246,34 @@ function renderLayout(area) {
   });
 }
 
+/** @param {number} i */
 function selectSheet(i) { activeSheetIdx = i; renderResults(); }
 
 // Pastel color helpers
+/** @param {string} hex */
 function toPastel(hex) {
   // Panel parts: moderate tint — blend 16% color with 84% white
   const r=parseInt(hex.slice(1,3),16), g=parseInt(hex.slice(3,5),16), b=parseInt(hex.slice(5,7),16);
   return `rgb(${Math.round(r*.16+255*.84)},${Math.round(g*.16+255*.84)},${Math.round(b*.16+255*.84)})`;
 }
+/** @param {string} hex */
 function toPaleSheet(hex) {
   // Sheet background: very pale (lighter than parts) — 4% tint
   const r=parseInt(hex.slice(1,3),16), g=parseInt(hex.slice(3,5),16), b=parseInt(hex.slice(5,7),16);
   return `rgb(${Math.round(r*.04+255*.96)},${Math.round(g*.04+255*.96)},${Math.round(b*.04+255*.96)})`;
 }
+/** @param {string} hex */
 function toPastelDark(hex) {
   const r=parseInt(hex.slice(1,3),16), g=parseInt(hex.slice(3,5),16), b=parseInt(hex.slice(5,7),16);
   return `rgb(${Math.round(r*.45+180*.55)},${Math.round(g*.45+180*.55)},${Math.round(b*.45+180*.55)})`;
 }
 
+/** @param {HTMLElement} container @param {any} layout @param {string} units */
 function drawCanvas(container, layout, units) {
   const { sheet, placed } = layout;
   const sW = layoutRotate ? sheet.h : sheet.w;
   const sH = layoutRotate ? sheet.w : sheet.h;
-  const rotPieces = placed.map(p => layoutRotate
+  const rotPieces = placed.map(/** @param {any} p */ p => layoutRotate
     ? { ...p, x: p.y, y: p.x, w: p.h, h: p.w } : p);
 
   // Gutters — small margin for overall sheet dim arrows only (part/offcut dims are now inside)
@@ -2262,6 +2351,7 @@ function drawCanvas(container, layout, units) {
   const origRipIsH = sheetGrain === 'h' ? true : sheetGrain === 'v' ? false : (sW0 >= sH0);
   const ripIsH = origRipIsH;  // used inside buildGuillotinePlan helpers below
   const ripPass = 1, crossPass = 2;
+  /** @param {any} isH */
   const ripPassOf = isH => (isH === ripIsH) ? ripPass : crossPass;
 
   // ── 4-PHASE cut ordering (rip-cross-rip-cross) ──
@@ -2273,12 +2363,14 @@ function drawCanvas(container, layout, units) {
   // 'rL', 'rR') uniquely identifying its tree position. Rip phase is known at
   // emit time. Cross phase is finalized post-build by searching for any later
   // rip whose `_path` starts with this cross's `_path` (a true descendant).
-  const ripPhaseFor = (pathDirs) => pathDirs.some(d => d[0] === 'c') ? 3 : 1;
+  /** @param {any} pathDirs */
+  const ripPhaseFor = (pathDirs) => pathDirs.some(/** @param {any} d */ (d ) => d[0] === 'c') ? 3 : 1;
 
   // ── Recursive guillotine decomposition ──
   // Prefer interior rips first at each region. If none is possible, try outer
   // strips, then an interior cross. Each cut carries a `_path` snapshot of its
   // ancestor direction chain so phases can be finalized in a post-pass.
+  /** @param {any} x0 @param {any} y0 @param {any} x1 @param {any} y1 @param {any} pcs @param {any} pathDirs */
   function buildGuillotinePlan(x0, y0, x1, y1, pcs, pathDirs) {
     pathDirs = pathDirs || [];
     /** @type {{ cuts: any[], offcuts: any[] }} */
@@ -2297,15 +2389,21 @@ function drawCanvas(container, layout, units) {
     const stripRight = () => { const { mX } = bounds(); if (mX < x1 - 0.5) { out.cuts.push({ x1: mX, y1: y0, x2: mX, y2: y1, pass: ripPassOf(false), phase: 2, _path: pathDirs, outer: true }); out.offcuts.push({ x: mX, y: y0, w: x1 - mX, h: y1 - y0 }); x1 = mX; } };
     const stripLeft  = () => { const { nX } = bounds(); if (nX > x0 + 0.5) { out.cuts.push({ x1: nX, y1: y0, x2: nX, y2: y1, pass: ripPassOf(false), phase: 2, _path: pathDirs, outer: true }); out.offcuts.push({ x: x0, y: y0, w: nX - x0, h: y1 - y0 }); x0 = nX; } };
 
-    const spans = (v, axis) => pcs.some(p => (axis === 'h' ? (p.y < v - 0.5 && p.y + p.h > v + 0.5) : (p.x < v - 0.5 && p.x + p.w > v + 0.5)));
+    /** @param {any} v @param {any} axis */
+    const spans = (v, axis) => pcs.some(/** @param {any} p */ (p ) => (axis === 'h' ? (p.y < v - 0.5 && p.y + p.h > v + 0.5) : (p.x < v - 0.5 && p.x + p.w > v + 0.5)));
+    /** @param {any} cands @param {any} axis */
     const pickFrom = (cands, axis) => {
+      /** @type {any} */
       let best = null;
+      /** @param {any} p @param {any} v */
       const onSideA = (p, v) => (axis === 'h' ? (p.y + p.h <= v + 0.5) : (p.x + p.w <= v + 0.5));
       // Perpendicular extent: for a vertical cut (axis='v'), sub-regions get stripped
       // in the y-direction, so pieces' y+h matters. For a horizontal cut, x+w matters.
+      /** @param {any} p */
       const perpEnd = p => axis === 'v' ? (p.y + p.h) : (p.x + p.w);
       // Count pieces on a side that don't reach the side's max perpendicular extent.
       // Each such piece forces an extra outer strip after recursion, fragmenting waste.
+      /** @param {any} side */
       const shortCount = side => {
         if (!side.length) return 0;
         let M = -Infinity;
@@ -2315,8 +2413,10 @@ function drawCanvas(container, layout, units) {
         return n;
       };
       for (const v of cands) {
-        const sideA = pcs.filter(p => onSideA(p, v));
-        const sideB = pcs.filter(p => !onSideA(p, v));
+        /** @param {any} p */
+        const sideA = pcs.filter(/** @param {any} p */ (p ) => onSideA(p, v));
+        /** @param {any} p */
+        const sideB = pcs.filter(/** @param {any} p */ (p ) => !onSideA(p, v));
         if (!sideA.length || !sideB.length) continue;
         const bal = Math.abs(sideA.length - sideB.length);
         const spread = shortCount(sideA) + shortCount(sideB);
@@ -2330,23 +2430,29 @@ function drawCanvas(container, layout, units) {
     // ──── Interior RIP (structural split in rip direction) ────
     if (pcs.length > 1) {
       const ripCands = (ripIsH
-        ? [...new Set(pcs.flatMap(p => [p.y, p.y + p.h]))].filter(y => y > y0 + 0.5 && y < y1 - 0.5 && !spans(y, 'h'))
-        : [...new Set(pcs.flatMap(p => [p.x, p.x + p.w]))].filter(x => x > x0 + 0.5 && x < x1 - 0.5 && !spans(x, 'v')));
+        /** @param {any} p */
+        ? [...new Set(pcs.flatMap(/** @param {any} p */ (p ) => [p.y, p.y + p.h]))].filter(y => y > y0 + 0.5 && y < y1 - 0.5 && !spans(y, 'h'))
+        /** @param {any} p */
+        : [...new Set(pcs.flatMap(/** @param {any} p */ (p ) => [p.x, p.x + p.w]))].filter(x => x > x0 + 0.5 && x < x1 - 0.5 && !spans(x, 'v')));
       const ripBest = pickFrom(ripCands, ripIsH ? 'h' : 'v');
       if (ripBest) {
         const v = ripBest.v;
         if (ripIsH) {
           out.cuts.push({ x1: x0, y1: v, x2: x1, y2: v, pass: ripPassOf(true), phase: ripPhase, _path: pathDirs });
-          const above = pcs.filter(p => p.y + p.h <= v + 0.5);
-          const below = pcs.filter(p => p.y >= v - 0.5);
+          /** @param {any} p */
+          const above = pcs.filter(/** @param {any} p */ (p ) => p.y + p.h <= v + 0.5);
+          /** @param {any} p */
+          const below = pcs.filter(/** @param {any} p */ (p ) => p.y >= v - 0.5);
           const a = buildGuillotinePlan(x0, y0, x1, v, above, [...pathDirs, 'rL']);
           const b = buildGuillotinePlan(x0, v, x1, y1, below, [...pathDirs, 'rR']);
           out.cuts.push(...a.cuts, ...b.cuts);
           out.offcuts.push(...a.offcuts, ...b.offcuts);
         } else {
           out.cuts.push({ x1: v, y1: y0, x2: v, y2: y1, pass: ripPassOf(false), phase: ripPhase, _path: pathDirs });
-          const left  = pcs.filter(p => p.x + p.w <= v + 0.5);
-          const right = pcs.filter(p => p.x >= v - 0.5);
+          /** @param {any} p */
+          const left  = pcs.filter(/** @param {any} p */ (p ) => p.x + p.w <= v + 0.5);
+          /** @param {any} p */
+          const right = pcs.filter(/** @param {any} p */ (p ) => p.x >= v - 0.5);
           const l = buildGuillotinePlan(x0, y0, v, y1, left,  [...pathDirs, 'rL']);
           const r = buildGuillotinePlan(v, y0, x1, y1, right, [...pathDirs, 'rR']);
           out.cuts.push(...l.cuts, ...r.cuts);
@@ -2372,23 +2478,29 @@ function drawCanvas(container, layout, units) {
     // ──── Interior CROSS (structural split in cross direction) ────
     if (pcs.length > 1) {
       const crossCands = (ripIsH
-        ? [...new Set(pcs.flatMap(p => [p.x, p.x + p.w]))].filter(x => x > x0 + 0.5 && x < x1 - 0.5 && !spans(x, 'v'))
-        : [...new Set(pcs.flatMap(p => [p.y, p.y + p.h]))].filter(y => y > y0 + 0.5 && y < y1 - 0.5 && !spans(y, 'h')));
+        /** @param {any} p */
+        ? [...new Set(pcs.flatMap(/** @param {any} p */ (p ) => [p.x, p.x + p.w]))].filter(x => x > x0 + 0.5 && x < x1 - 0.5 && !spans(x, 'v'))
+        /** @param {any} p */
+        : [...new Set(pcs.flatMap(/** @param {any} p */ (p ) => [p.y, p.y + p.h]))].filter(y => y > y0 + 0.5 && y < y1 - 0.5 && !spans(y, 'h')));
       const crossBest = pickFrom(crossCands, ripIsH ? 'v' : 'h');
       if (crossBest) {
         const v = crossBest.v;
         if (ripIsH) {
           out.cuts.push({ x1: v, y1: y0, x2: v, y2: y1, pass: ripPassOf(false), phase: 2, _path: pathDirs });
-          const left  = pcs.filter(p => p.x + p.w <= v + 0.5);
-          const right = pcs.filter(p => p.x >= v - 0.5);
+          /** @param {any} p */
+          const left  = pcs.filter(/** @param {any} p */ (p ) => p.x + p.w <= v + 0.5);
+          /** @param {any} p */
+          const right = pcs.filter(/** @param {any} p */ (p ) => p.x >= v - 0.5);
           const l = buildGuillotinePlan(x0, y0, v, y1, left,  [...pathDirs, 'cL']);
           const r = buildGuillotinePlan(v, y0, x1, y1, right, [...pathDirs, 'cR']);
           out.cuts.push(...l.cuts, ...r.cuts);
           out.offcuts.push(...l.offcuts, ...r.offcuts);
         } else {
           out.cuts.push({ x1: x0, y1: v, x2: x1, y2: v, pass: ripPassOf(true), phase: 2, _path: pathDirs });
-          const above = pcs.filter(p => p.y + p.h <= v + 0.5);
-          const below = pcs.filter(p => p.y >= v - 0.5);
+          /** @param {any} p */
+          const above = pcs.filter(/** @param {any} p */ (p ) => p.y + p.h <= v + 0.5);
+          /** @param {any} p */
+          const below = pcs.filter(/** @param {any} p */ (p ) => p.y >= v - 0.5);
           const a = buildGuillotinePlan(x0, y0, x1, v, above, [...pathDirs, 'cL']);
           const b = buildGuillotinePlan(x0, v, x1, y1, below, [...pathDirs, 'cR']);
           out.cuts.push(...a.cuts, ...b.cuts);
@@ -2403,7 +2515,7 @@ function drawCanvas(container, layout, units) {
     return out;
   }
 
-  const plan = buildGuillotinePlan(0, 0, sW0, sH0, origPieces);
+  const plan = buildGuillotinePlan(0, 0, sW0, sH0, origPieces, []);
 
   // Transform cuts + offcuts into display coordinates if the layout is rotated.
   // The transform is a transposition (x↔y, w↔h) — it matches the same transform
@@ -2417,6 +2529,7 @@ function drawCanvas(container, layout, units) {
   // ── Finalize cross phases: 2 if a rip follows somewhere in this cut's subtree,
   // else 4. "Subtree" = cuts emitted LATER in DFS order whose path starts with
   // this cut's path (same region or any descendant region).
+  /** @param {any} path @param {any} prefix */
   const pathStartsWith = (path, prefix) => {
     if (path.length < prefix.length) return false;
     for (let i = 0; i < prefix.length; i++) if (path[i] !== prefix[i]) return false;
@@ -2483,9 +2596,11 @@ function drawCanvas(container, layout, units) {
   // region it crosses is already separated — so the single planned cut is in
   // fact multiple physical saw passes, one per still-connected sub-piece.
   // Replace each such cut with a segment for each sub-piece.
+  /** @type {any[]} */
   const finalCuts = [];
   for (const c of cutLines) {
     const isH = c.y1 === c.y2;
+    /** @type {number[]} */
     const cuts = [];
     for (const prior of finalCuts) {
       const priorIsH = prior.y1 === prior.y2;
@@ -2524,6 +2639,7 @@ function drawCanvas(container, layout, units) {
   // passes created by the segmentation logic when a prior perpendicular cut
   // pre-separated the region the cut was planned through.
   const adjTol = kerfTol;  // allow for kerf offset between piece edge and cut line
+  /** @param {any} c */
   const segmentTouchesPiece = (c) => {
     const isH = c.y1 === c.y2;
     for (const p of rotPieces) {
@@ -2639,23 +2755,32 @@ function drawCanvas(container, layout, units) {
   ctx.fillStyle = '#8a8a8a';
   ctx.font = dimFont;
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  /** @param {any} a @param {any} b */
   const eq = (a, b) => Math.abs(a - b) < 1;
   for (const oc of offcutRects) {
     const oW = Math.round(oc.w), oH = Math.round(oc.h);
     // Touching pieces on each side (edge-shared)
-    const touchLeft  = rotPieces.filter(p => eq(p.x + p.w, oc.x) && p.y < oc.y + oc.h && p.y + p.h > oc.y);
-    const touchRight = rotPieces.filter(p => eq(p.x, oc.x + oc.w) && p.y < oc.y + oc.h && p.y + p.h > oc.y);
-    const touchTop   = rotPieces.filter(p => eq(p.y + p.h, oc.y) && p.x < oc.x + oc.w && p.x + p.w > oc.x);
-    const touchBot   = rotPieces.filter(p => eq(p.y, oc.y + oc.h) && p.x < oc.x + oc.w && p.x + p.w > oc.x);
+    /** @param {any} p */
+    const touchLeft  = rotPieces.filter(/** @param {any} p */ (p ) => eq(p.x + p.w, oc.x) && p.y < oc.y + oc.h && p.y + p.h > oc.y);
+    /** @param {any} p */
+    const touchRight = rotPieces.filter(/** @param {any} p */ (p ) => eq(p.x, oc.x + oc.w) && p.y < oc.y + oc.h && p.y + p.h > oc.y);
+    /** @param {any} p */
+    const touchTop   = rotPieces.filter(/** @param {any} p */ (p ) => eq(p.y + p.h, oc.y) && p.x < oc.x + oc.w && p.x + p.w > oc.x);
+    /** @param {any} p */
+    const touchBot   = rotPieces.filter(/** @param {any} p */ (p ) => eq(p.y, oc.y + oc.h) && p.x < oc.x + oc.w && p.x + p.w > oc.x);
 
     // Skip height if it matches sheet height OR matches an adjacent piece's height
     const skipH = eq(oc.h, sH)
-      || touchLeft.some(p => eq(p.h, oc.h))
-      || touchRight.some(p => eq(p.h, oc.h));
+      /** @param {any} p */
+      || touchLeft.some(/** @param {any} p */ (p ) => eq(p.h, oc.h))
+      /** @param {any} p */
+      || touchRight.some(/** @param {any} p */ (p ) => eq(p.h, oc.h));
     // Skip width if it matches sheet width OR matches an adjacent piece's width
     const skipW = eq(oc.w, sW)
-      || touchTop.some(p => eq(p.w, oc.w))
-      || touchBot.some(p => eq(p.w, oc.w));
+      /** @param {any} p */
+      || touchTop.some(/** @param {any} p */ (p ) => eq(p.w, oc.w))
+      /** @param {any} p */
+      || touchBot.some(/** @param {any} p */ (p ) => eq(p.w, oc.w));
 
     const oxo = OX + oc.x * scale;
     const oyo = OY + oc.y * scale;
@@ -2740,6 +2865,7 @@ function drawCanvas(container, layout, units) {
   }
 }
 
+/** @param {HTMLElement} area */
 function renderSummary(area) {
   if (!results || !results.layouts.length) {
     area.innerHTML = '<p style="color:#94a3b8;font-size:13px;padding:20px">No results. Click Optimize first.</p>';
@@ -2756,7 +2882,7 @@ function renderSummary(area) {
     </div>
   </div>`;
 
-  results.layouts.forEach((layout, si) => {
+  results.layouts.forEach(/** @param {any} layout @param {number} si */ (layout, si) => {
     const pct = (layout.util * 100).toFixed(0);
     const wasteColor = layout.util > 0.7 ? 'var(--success)' : layout.util > 0.4 ? 'var(--accent)' : 'var(--danger)';
     html += `
@@ -2781,7 +2907,7 @@ function renderSummary(area) {
           </tr>
         </thead>
         <tbody>
-          ${layout.placed.map((p, i) => {
+          ${layout.placed.map(/** @param {any} p @param {number} i */ (p, i) => {
             const baseGrain = layout.sheet.grain || 'none';
             const cutW = p.rotated ? p.item.h : p.item.w;
             const cutH = p.rotated ? p.item.w : p.item.h;
@@ -2809,7 +2935,8 @@ function renderSummary(area) {
       </div>
       <table class="cutsheet-table">
         <thead><tr><th>Label</th><th style="text-align:right">W (${u})</th><th style="text-align:right">H (${u})</th></tr></thead>
-        <tbody>${results.unplaced.map(p=>`<tr><td>${p.label}</td><td class="cutsheet-dim">${p.w}</td><td class="cutsheet-dim">${p.h}</td></tr>`).join('')}</tbody>
+        /** @param {any} p */
+        <tbody>${results.unplaced.map(/** @param {any} p */ (p) =>`<tr><td>${p.label}</td><td class="cutsheet-dim">${p.w}</td><td class="cutsheet-dim">${p.h}</td></tr>`).join('')}</tbody>
       </table>
     </div>`;
   }

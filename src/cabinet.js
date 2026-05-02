@@ -1944,7 +1944,7 @@ function _smartCLStockSuggest(input, boxId) {
 }
 
 /** @param {number} idx */
-function _clAddPanelFromStock(idx) { const item = stockItems[idx]; if (!item) return; addSheet(item.name, item.w, item.h, Math.max(1, item.qty ?? 0)); _toast('"'+item.name+'" added to panels', 'success'); }
+function _clAddPanelFromStock(idx) { const item = stockItems[idx]; if (!item) return; addSheet(item.name, item.w ?? undefined, item.h ?? undefined, Math.max(1, item.qty ?? 0)); _toast('"'+item.name+'" added to panels', 'success'); }
 
 /** @param {number} idx */
 function _clAddEdgeBandFromStockIdx(idx) {

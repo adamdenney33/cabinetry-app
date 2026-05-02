@@ -52,7 +52,7 @@ function removeUsedSheets() {
 function useStockInCutList(id) {
   const item = stockItems.find(s => s.id === id);
   if (!item) return;
-  addSheet(item.name, item.w, item.h, Math.max(1, item.qty ?? 0));
+  addSheet(item.name, item.w ?? undefined, item.h ?? undefined, Math.max(1, item.qty ?? 0));
   _toast(`"${item.name}" added to cut list`, 'success');
   switchSection('cutlist');
 }

@@ -801,16 +801,16 @@ function _openCabinetPopup(idx) {
   const cabTotal = (c.lineSubtotal + cabMarkup) * (1 + cqSettings.tax / 100);
 
   // Material options
-  const matOpts = cqSettings.materials.map(m =>
+  const matOpts = cqSettings.materials.map(/** @param {any} m */ m =>
     `<option value="${m.name}" ${m.name===line.material?'selected':''}>${m.name}</option>`
   ).join('');
-  const finishOpts = (cqSettings.finishes||[]).map(f =>
+  const finishOpts = (cqSettings.finishes||[]).map(/** @param {any} f */ f =>
     `<option value="${f.name}" ${f.name===(line.finish||'None')?'selected':''}>${f.name}</option>`
   ).join('');
-  const constOpts = (cqSettings.constructions||[]).map(co =>
+  const constOpts = (cqSettings.constructions||[]).map(/** @param {any} co */ co =>
     `<option value="${co.name}" ${co.name===line.construction?'selected':''}>${co.name}</option>`
   ).join('');
-  const baseOpts = (cqSettings.baseTypes||[]).map(b =>
+  const baseOpts = (cqSettings.baseTypes||[]).map(/** @param {any} b */ b =>
     `<option value="${b.name}" ${b.name===line.baseType?'selected':''}>${b.name}</option>`
   ).join('');
 
