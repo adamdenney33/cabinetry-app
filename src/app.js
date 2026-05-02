@@ -978,7 +978,16 @@ async function loadAllData() {
   _onRestore(orders);  // merge locally-stored notes (notes col may not be in DB schema yet)
   _restoreProdStarts(orders);  // merge locally-stored production start dates
   quotes = quo || [];
-  stockItems = stk || [];
+  // H0.2: hydrate shadow fields (thickness/width/length) from DB columns
+  // (thickness_mm/width_mm/length_m). Cut-list and edge-band UI consumers
+  // read the short names; load-time map closes the desync after reload.
+  stockItems = (stk || []).map(s => {
+    const out = /** @type {any} */ ({ ...s });
+    if (s.thickness_mm != null) out.thickness = s.thickness_mm;
+    if (s.width_mm != null)     out.width = s.width_mm;
+    if (s.length_m != null)     out.length = s.length_m;
+    return out;
+  });
   clients = cli || [];
   projects = prj || [];
   if (orders.length) orderNextId = Math.max(...orders.map(o => o.id)) + 1;
