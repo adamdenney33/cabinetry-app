@@ -12,15 +12,23 @@ Read these before making structural decisions or schema changes:
 When making non-obvious decisions during work, append a one-line entry to `SPEC.md § 13 Decisions log`.
 
 ## Stack
-- `index.html` — markup shell (~800 lines)
+- `index.html` — markup shell (~800 lines), single `<script type="module" src="/src/main.js">` bridge entry plus 18 classic `<script defer>` tags for the carved domain files
 - `styles.css` — extracted in Phase 4
-- `src/app.js` — main app logic (~10k lines), extracted in Phase 5
-- `src/db.js` — Supabase client wrapper
-- `src/ui.js` — small UI helpers
-- `src/migrate.js` — one-time localStorage→DB migration, extracted in Phase 6
-- No build step; vanilla ES with classic `<script>` tags
+- `src/main.js` — ES module bridge: imports `@supabase/supabase-js` + `jspdf` + `jspdf-autotable` from npm and re-exposes them on `window`. Also reads `import.meta.env.VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` and stashes them on `window._SBURL` / `window._SBKEY`
+- `src/app.js` — bootstrap entry (~1.1k lines after Phase E carving; was ~10k pre-Phase-E)
+- `src/{auth,backup,business,cabinet,clients,cutlist,dashboard,db,forms,migrate,orders,projects,quotes,schedule,settings,stock,ui}.js` — domain files split out via Phase E (16 carves). All classic-script-loaded; cross-file references work through the global lexical environment
+- `src/database.types.ts` — Supabase row types, generated via the Supabase MCP `generate_typescript_types` tool. Regenerate after schema migrations
+- `src/globals.d.ts` — ambient type declarations for `window.*` slots and cross-file globals
 - Auth/DB: Supabase (PostgreSQL)
-- No frameworks
+- No frameworks; no ESM in source files (the `main.js` bridge is the only module)
+- TypeScript strict mode via `checkJs: true` + JSDoc; `npm run typecheck` is `tsc --noEmit`
+
+## Build & deploy
+- `npm run dev` — Vite dev server on port 3000 (auto-loads `.env.local`)
+- `npm run build` — produces hashed bundles in `dist/`
+- `npm run typecheck` — `tsc --noEmit` under `strict: true` (all 19 src files clean)
+- Production hosted on Cloudflare Pages, auto-deploys on push to `main`. Env vars (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`) configured in the Cloudflare dashboard
+- Local env: copy `.env.example` to `.env.local` (gitignored) and fill in Supabase URL + publishable key
 
 ## Library / Data Inputs Pattern
 
