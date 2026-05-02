@@ -23,22 +23,34 @@
 // ══════════════════════════════════════════
 
 // ── Safe insert — retries by stripping columns the schema doesn't have yet ──
+/**
+ * Insert a row, retrying with stripped columns if the schema rejects unknown
+ * fields. Returns `data` typed as `any` because the table param is
+ * polymorphic; callers narrow at the use site (the in-memory shape of each
+ * collection includes ad-hoc fields beyond the DB row).
+ *
+ * @param {keyof import('./database.types').Database['public']['Tables']} table
+ * @param {Record<string, any>} row
+ * @returns {Promise<{data: any, error: any}>}
+ */
 async function _dbInsertSafe(table, row) {
-  let { data, error } = await _db(table).insert(row).select().single();
+  let { data, error } = await _db(table).insert(/** @type {any} */ (row)).select().single();
   while (error && error.message) {
     const m = error.message.match(/Could not find the '(\w+)' column/);
     if (!m) break;
     delete row[m[1]];
-    ({ data, error } = await _db(table).insert(row).select().single());
+    ({ data, error } = await _db(table).insert(/** @type {any} */ (row)).select().single());
   }
   return { data, error };
 }
 
 // ── Resolve-or-create helpers ──
+/** @param {string} name */
 async function resolveClient(name) {
   if (!name) return null;
   const existing = clients.find(c => c.name.toLowerCase() === name.toLowerCase());
   if (existing) return existing.id;
+  /** @type {any} */
   const row = { user_id: _userId, name };
   const { data, error } = await _db('clients').insert(row).select().single();
   if (error || !data) return null;
@@ -47,10 +59,12 @@ async function resolveClient(name) {
   return data.id;
 }
 
+/** @param {string} name @param {number | null} [clientId] */
 async function resolveProject(name, clientId) {
   if (!name) return null;
   const existing = projects.find(p => p.name.toLowerCase() === name.toLowerCase() && (p.client_id === clientId || !clientId));
   if (existing) return existing.id;
+  /** @type {any} */
   const row = { user_id: _userId, name, status: 'active' };
   if (clientId) row.client_id = clientId;
   const { data, error } = await _dbInsertSafe('projects', row);
@@ -67,6 +81,7 @@ async function createClient() {
   const name = _clInput('cl-name')?.value.trim() || '';
   if (!name) { _toast('Enter a client name.', 'error'); return; }
   if (!_requireAuth()) return;
+  /** @type {any} */
   const row = {
     user_id: _userId, name,
     email: _clInput('cl-email')?.value.trim() || null,
@@ -75,7 +90,7 @@ async function createClient() {
     notes: _clInput('cl-notes')?.value.trim() || null,
   };
   const { data, error } = await _dbInsertSafe('clients', row);
-  if (error) { _toast('Could not save client — ' + (error.message || JSON.stringify(error)), 'error'); return; }
+  if (error || !data) { _toast('Could not save client — ' + (error?.message || JSON.stringify(error)), 'error'); return; }
   clients.push(data);
   clients.sort((a,b) => a.name.localeCompare(b.name));
   _toast('Client added', 'success');
@@ -85,13 +100,15 @@ async function createClient() {
   renderClientsMain();
 }
 
+/** @param {number} id @param {string} field @param {any} value */
 async function updateClient(id, field, value) {
   const c = clients.find(c => c.id === id);
   if (!c) return;
-  c[field] = value;
-  await _db('clients').update({ [field]: value }).eq('id', id);
+  /** @type {any} */ (c)[field] = value;
+  await _db('clients').update(/** @type {any} */ ({ [field]: value })).eq('id', id);
 }
 
+/** @param {number} id */
 async function removeClient(id) {
   if (!_requireAuth()) return;
   await _db('clients').delete().eq('id', id);
@@ -107,6 +124,7 @@ async function createProject() {
   if (!_requireAuth()) return;
   const clientName = _clInput('pj-client')?.value.trim() || '';
   const clientId = clientName ? await resolveClient(clientName) : null;
+  /** @type {any} */
   const row = {
     user_id: _userId, name,
     description: _clInput('pj-desc')?.value.trim() || null,
@@ -114,7 +132,7 @@ async function createProject() {
   };
   if (clientId) row.client_id = clientId;
   let { data, error } = await _dbInsertSafe('projects', row);
-  if (error) { _toast('Could not save project — ' + (error.message || JSON.stringify(error)), 'error'); return; }
+  if (error || !data) { _toast('Could not save project — ' + (error?.message || JSON.stringify(error)), 'error'); return; }
   data.status = data.status || 'active';
   projects.unshift(data);
   _toast('Project created', 'success');
@@ -127,13 +145,15 @@ async function createProject() {
   setTimeout(() => _highlightProject(data.id), 100);
 }
 
+/** @param {number} id @param {string} field @param {any} value */
 async function updateProject(id, field, value) {
   const p = projects.find(p => p.id === id);
   if (!p) return;
-  p[field] = value;
-  await _db('projects').update({ [field]: value }).eq('id', id);
+  /** @type {any} */ (p)[field] = value;
+  await _db('projects').update(/** @type {any} */ ({ [field]: value })).eq('id', id);
 }
 
+/** @param {number} id */
 async function removeProject(id) {
   if (!_requireAuth()) return;
   await _db('projects').delete().eq('id', id);
@@ -143,16 +163,21 @@ async function removeProject(id) {
 }
 
 // ── Client name helper ──
+/** @param {number | null | undefined} id */
 function _clientName(id) {
+  if (id == null) return '';
   const c = clients.find(c => c.id === id);
   return c ? c.name : '';
 }
+/** @param {number | null | undefined} id */
 function _projectName(id) {
+  if (id == null) return '';
   const p = projects.find(p => p.id === id);
   return p ? p.name : '';
 }
 
 // ── Client suggest for Projects sidebar ──
+/** @param {HTMLInputElement} input */
 function _pjClientSuggest(input) {
   const val = input.value.toLowerCase().trim();
   const list = document.getElementById('pj-client-suggest');
@@ -174,11 +199,13 @@ function renderClientsMain() {
   if (!el) return;
   const cur = window.currency;
 
+  /** @param {any} c */
   const clientCard = c => {
     const cQuotes = quotes.filter(q => q.client_id === c.id || (!q.client_id && quoteClient(q) === c.name));
     const cOrders = orders.filter(o => o.client_id === c.id || (!o.client_id && orderClient(o) === c.name));
     const cProjects = projects.filter(p => p.client_id === c.id);
-    const totalValue = cOrders.reduce((s,o) => s + o.value, 0) + cQuotes.reduce((s,q) => s + quoteTotal(q), 0);
+    const totalValue = cOrders.reduce((s,o) => s + (o.value ?? 0), 0) + cQuotes.reduce((s,q) => s + quoteTotal(q), 0);
+    /** @param {number} v */
     const fmt = v => cur + v.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0});
 
     return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;margin-bottom:6px;cursor:pointer;transition:box-shadow .15s" onclick="_openClientPopup(${c.id})" onmouseover="this.style.boxShadow='var(--shadow-md)'" onmouseout="this.style.boxShadow=''">
@@ -200,14 +227,15 @@ function renderClientsMain() {
   const sortBy = window._clientSort || 'name';
   let filtered = search ? clients.filter(c => c.name.toLowerCase().includes(search)) : [...clients];
   if (sortBy === 'value') filtered.sort((a,b) => {
-    const va = orders.filter(o=>o.client_id===a.id||orderClient(o)===a.name).reduce((s,o)=>s+o.value,0) + quotes.filter(q=>q.client_id===a.id||quoteClient(q)===a.name).reduce((s,q)=>s+quoteTotal(q),0);
-    const vb = orders.filter(o=>o.client_id===b.id||orderClient(o)===b.name).reduce((s,o)=>s+o.value,0) + quotes.filter(q=>q.client_id===b.id||quoteClient(q)===b.name).reduce((s,q)=>s+quoteTotal(q),0);
+    const va = orders.filter(o=>o.client_id===a.id||orderClient(o)===a.name).reduce((s,o)=>s+(o.value??0),0) + quotes.filter(q=>q.client_id===a.id||quoteClient(q)===a.name).reduce((s,q)=>s+quoteTotal(q),0);
+    const vb = orders.filter(o=>o.client_id===b.id||orderClient(o)===b.name).reduce((s,o)=>s+(o.value??0),0) + quotes.filter(q=>q.client_id===b.id||quoteClient(q)===b.name).reduce((s,q)=>s+quoteTotal(q),0);
     return vb - va;
   });
   else if (sortBy === 'orders') filtered.sort((a,b) => orders.filter(o=>o.client_id===b.id||orderClient(o)===b.name).length - orders.filter(o=>o.client_id===a.id||orderClient(o)===a.name).length);
   else filtered.sort((a,b) => a.name.localeCompare(b.name));
 
-  const totalClientValue = clients.reduce((s,c) => s + orders.filter(o=>o.client_id===c.id||orderClient(o)===c.name).reduce((t,o)=>t+o.value,0), 0);
+  const totalClientValue = clients.reduce((s,c) => s + orders.filter(o=>o.client_id===c.id||orderClient(o)===c.name).reduce((t,o)=>t+(o.value??0),0), 0);
+  /** @param {number} v */
   const fmt = v => cur + v.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0});
 
   el.innerHTML = `<div style="padding:24px;max-width:900px">
@@ -229,6 +257,7 @@ function renderClientsMain() {
   </div>`;
 }
 
+/** @param {number} id */
 function _highlightProject(id) {
   setTimeout(() => {
     const el = document.getElementById('project-card-'+id);
@@ -242,18 +271,21 @@ function renderProjectsMain() {
   if (!el) return;
   const cur = window.currency;
 
+  /** @param {string} s */
   const statusBadge = s => {
     if (s === 'complete') return '<span class="badge badge-green">Complete</span>';
     if (s === 'on-hold') return '<span class="badge badge-gray">On Hold</span>';
     return '<span class="badge badge-blue">Active</span>';
   };
 
+  /** @param {any} p */
   const projectCard = p => {
     const client = p.client_id ? clients.find(c => c.id === p.client_id) : null;
     const pQuotes = quotes.filter(q => q.project_id === p.id || (!q.project_id && quoteProject(q) === p.name));
     const pOrders = orders.filter(o => o.project_id === p.id || (!o.project_id && orderProject(o) === p.name));
-    const totalValue = pOrders.reduce((s,o) => s + o.value, 0);
+    const totalValue = pOrders.reduce((s,o) => s + (o.value ?? 0), 0);
     const quoteValue = pQuotes.reduce((s,q) => s + quoteTotal(q), 0);
+    /** @param {number} v */
     const fmt = v => cur + v.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0});
     const created = p.created_at ? new Date(p.created_at).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : '';
 
@@ -280,8 +312,8 @@ function renderProjectsMain() {
   if (sortBy === 'name') filtered.sort((a,b) => a.name.localeCompare(b.name));
   else if (sortBy === 'client') filtered.sort((a,b) => (_clientName(a.client_id)||'').localeCompare(_clientName(b.client_id)||''));
   else if (sortBy === 'value') filtered.sort((a,b) => {
-    const va = orders.filter(o=>o.project_id===a.id||orderProject(o)===a.name).reduce((s,o)=>s+o.value,0);
-    const vb = orders.filter(o=>o.project_id===b.id||orderProject(o)===b.name).reduce((s,o)=>s+o.value,0);
+    const va = orders.filter(o=>o.project_id===a.id||orderProject(o)===a.name).reduce((s,o)=>s+(o.value??0),0);
+    const vb = orders.filter(o=>o.project_id===b.id||orderProject(o)===b.name).reduce((s,o)=>s+(o.value??0),0);
     return vb - va;
   });
 
@@ -319,14 +351,15 @@ try { renderDashboard(); setTimeout(drawRevenueChart, 0); } catch(e) {}
 function exportClientsCSV() {
   const allClients = [...new Set([...quotes.map(q=>quoteClient(q)), ...orders.map(o=>orderClient(o))].filter(Boolean))].sort();
   if (!allClients.length) { _toast('No clients to export', 'error'); return; }
+  /** @type {any[][]} */
   const rows = [['Client Name','Quotes','Orders','Total Value']];
   allClients.forEach(c => {
     const qCount = quotes.filter(q=>quoteClient(q)===c).length;
     const oCount = orders.filter(o=>orderClient(o)===c).length;
-    const totalVal = quotes.filter(q=>quoteClient(q)===c).reduce((s,q)=>s+quoteTotal(q),0) + orders.filter(o=>orderClient(o)===c).reduce((s,o)=>s+o.value,0);
+    const totalVal = quotes.filter(q=>quoteClient(q)===c).reduce((s,q)=>s+quoteTotal(q),0) + orders.filter(o=>orderClient(o)===c).reduce((s,o)=>s+(o.value??0),0);
     rows.push([c, qCount, oCount, totalVal.toFixed(2)]);
   });
-  const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const csv = rows.map(r => r.map(/** @param {any} v */ v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
   const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([csv],{type:'text/csv'})), download: `clients-${new Date().toISOString().slice(0,10)}.csv` });
   a.click(); URL.revokeObjectURL(a.href);
   _toast('Clients exported', 'success');
