@@ -22,10 +22,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           # 'lts/*' tracks the current Node LTS automatically — Node 22
           # today, becomes Node 24 in October 2025, etc. Avoids the
