@@ -27,6 +27,7 @@ function showAuthFromPaywall() {
 document.addEventListener('keydown', e => {
   // Ctrl/Cmd + number: switch tabs
   if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey) {
+    /** @type {Record<string, string>} */
     const tabMap = {'1':'dashboard','2':'cutlist','3':'stock','4':'cabinet','5':'quote','6':'orders','7':'schedule','8':'projects','9':'clients'};
     if (tabMap[e.key]) { e.preventDefault(); switchSection(tabMap[e.key]); return; }
   }

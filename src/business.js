@@ -26,13 +26,16 @@ function saveBizInfo() {
   _syncBizInfoToDB(payload);
 }
 
+/** @type {ReturnType<typeof setTimeout> | null} */
 let _bizInfoSyncTimer = null;
+/** @param {{name?: string, phone?: string, email?: string, address?: string, abn?: string}} payload */
 function _syncBizInfoToDB(payload) {
   if (!_userId) return;
   if (_bizInfoSyncTimer) clearTimeout(_bizInfoSyncTimer);
+  const uid = _userId;
   _bizInfoSyncTimer = setTimeout(async () => {
     const fields = {
-      user_id: _userId,
+      user_id: uid,
       name: payload.name || '',
       phone: payload.phone || null,
       email: payload.email || null,
@@ -40,9 +43,9 @@ function _syncBizInfoToDB(payload) {
       abn: payload.abn || null,
       updated_at: new Date().toISOString()
     };
-    const { data: existing } = await _db('business_info').select('id').eq('user_id', _userId);
+    const { data: existing } = await _db('business_info').select('id').eq('user_id', uid);
     if (existing && existing.length > 0) {
-      const { error } = await _db('business_info').update(fields).eq('user_id', _userId);
+      const { error } = await _db('business_info').update(fields).eq('user_id', uid);
       if (error) console.warn('[biz_info] DB sync failed:', error.message);
     } else {
       const { error } = await _db('business_info').insert([fields]);
@@ -62,8 +65,9 @@ function loadBizInfo() {
     if (b.abn)     { const el = input('biz-abn');     if (el) el.value = b.abn; }
   } catch(e) {}
 }
+/** @param {HTMLInputElement} input */
 function handleLogoUpload(input) {
-  const file = input.files[0];
+  const file = input.files?.[0];
   if (!file) return;
   if (file.size > 500000) { _toast('Logo too large (max 500KB)', 'error'); return; }
   const reader = new FileReader();

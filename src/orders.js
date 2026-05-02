@@ -13,7 +13,10 @@
 // ══════════════════════════════════════════
 // ORDERS
 // ══════════════════════════════════════════
-/** @type {import('./database.types').Tables<'orders'>[]} */
+// In-memory shadow fields beyond the DB schema: `prodStart` (mirrors
+// `production_start_date`), `notes` (mirrors), and a few legacy fields
+// retained from pre-Phase-7 days.
+/** @type {(import('./database.types').Tables<'orders'> & { prodStart?: string })[]} */
 let orders = [];
 let orderNextId = 1;
 

@@ -31,10 +31,12 @@
   _updateQuotePreview();
 })();
 
+/** @param {string} str */
 function _orderDateToISO(str) {
   if (!str || str === 'TBD') return '';
   const p = str.match(/(\d{1,2})\s+(\w+)\s+(\d{4})/);
   if (p) {
+    /** @type {Record<string, string>} */
     const m = {jan:'01',feb:'02',mar:'03',apr:'04',may:'05',jun:'06',jul:'07',aug:'08',sep:'09',oct:'10',nov:'11',dec:'12'};
     const mo = m[p[2].toLowerCase().substring(0,3)];
     if (mo) return p[3]+'-'+mo+'-'+p[1].padStart(2,'0');
@@ -42,6 +44,7 @@ function _orderDateToISO(str) {
   try { const d = new Date(str); return !isNaN(+d) ? d.toISOString().split('T')[0] : ''; } catch(e) { return ''; }
 }
 
+/** @param {string} dateStr */
 function _relativeDate(dateStr) {
   if (!dateStr || dateStr === 'TBD') return null;
   const d = new Date(dateStr);
@@ -58,6 +61,7 @@ function _relativeDate(dateStr) {
 
 function _updateQuotePreview() {
   const cur = window.currency;
+  /** @param {number} v */
   const fmt = v => cur + v.toLocaleString('en-US', {minimumFractionDigits:0, maximumFractionDigits:0});
   /** @param {string} id */
   const inputVal = id => /** @type {HTMLInputElement | null} */ (document.getElementById(id))?.value ?? '';

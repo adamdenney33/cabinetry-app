@@ -17,6 +17,7 @@
  */
 function _byId(id) { return /** @type {HTMLInputElement | null} */ (document.getElementById(id)); }
 
+/** @param {string} msg @param {string} [type] @param {number} [duration] */
 function _toast(msg, type = 'info', duration = 3500) {
   const c = document.getElementById('toast-container');
   if (!c) return;
@@ -31,6 +32,7 @@ function _toast(msg, type = 'info', duration = 3500) {
   }, duration);
 }
 
+/** @param {string} msg @param {() => void} onConfirm @param {boolean} [danger] */
 function _confirm(msg, onConfirm, danger = true) {
   const id = '_confirm_' + Date.now();
   const overlay = document.createElement('div');
@@ -59,6 +61,7 @@ function _confirm(msg, onConfirm, danger = true) {
 
 /** @typedef {HTMLDivElement & { _escHandler?: (e: KeyboardEvent) => void }} PopupOverlay */
 
+/** @param {string} html @param {string} [size] */
 function _openPopup(html, size = 'sm') {
   _closePopup();
   /** @type {PopupOverlay} */
@@ -84,6 +87,7 @@ function _closePopup() {
     el.remove();
   }
 }
+/** @param {string} id */
 function _popupVal(id) {
   const el = /** @type {HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement | null} */ (document.getElementById(id));
   return el ? el.value.trim() : '';

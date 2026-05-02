@@ -21,15 +21,23 @@ function renderSchedule() {
   while (calStart.getDay() !== 1) calStart.setDate(calStart.getDate() - 1);
   const calEnd = new Date(today); calEnd.setDate(calEnd.getDate() + 84);
 
+  /** @param {string | null | undefined} str */
   function parseDate(str) {
     if (!str || str === 'TBD') return null;
     const p = str.match(/(\d{1,2})\s+(\w+)\s+(\d{4})/);
-    if (p) { const m={jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11}; const mo=m[p[2].toLowerCase().substring(0,3)]; if(mo!==undefined) return new Date(parseInt(p[3]),mo,parseInt(p[1])); }
+    if (p) {
+      /** @type {Record<string, number>} */
+      const m = {jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
+      const mo = m[p[2].toLowerCase().substring(0,3)];
+      if(mo!==undefined) return new Date(parseInt(p[3]),mo,parseInt(p[1]));
+    }
     const iso = str.match(/(\d{4})-(\d{2})-(\d{2})/);
     if (iso) return new Date(parseInt(iso[1]),parseInt(iso[2])-1,parseInt(iso[3]));
     const d = new Date(str); return isNaN(+d)?null:new Date(d.getFullYear(),d.getMonth(),d.getDate());
   }
+  /** @param {Date} a @param {Date} b */
   function sameDay(a,b){return a.getFullYear()===b.getFullYear()&&a.getMonth()===b.getMonth()&&a.getDate()===b.getDate();}
+  /** @param {Date} d */
   function dayIdx(d){return Math.round((+d-+calStart)/86400000);}
 
   /** @typedef {{id:any,project:string,client:string,start:Date|null,due:Date|null,color:string}} SchedEvent */
@@ -50,7 +58,7 @@ function renderSchedule() {
     <div style="font-size:14px;font-weight:800;color:var(--text)">Jobs</div>
     <button class="btn btn-outline" onclick="document.getElementById('schedule-today-marker')?.scrollIntoView({behavior:'smooth',block:'center'})" style="font-size:10px;padding:3px 8px;width:auto">Today</button>
   </div>`;
-  events.forEach(e=>{const o=orders.find(x=>x.id===e.id);const st=o?STATUS_LABELS[o.status]||o.status:'';sidebarHTML+=`<div style="display:flex;align-items:center;gap:8px;padding:5px 8px;margin-bottom:2px;border-radius:6px;cursor:pointer" onclick="_scrollToSchedBar(${e.id})" ondblclick="_openOrderPopup(${e.id})" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''"><div style="width:8px;height:8px;border-radius:2px;background:${e.color};flex-shrink:0"></div><div style="flex:1;min-width:0"><div style="font-size:11px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_escHtml(e.project)}</div><div style="font-size:9px;color:var(--muted)">${_escHtml(e.client)}${st?' · '+st:''}</div></div><div onclick="event.stopPropagation();_openOrderPopup(${e.id})" style="color:var(--muted);font-size:10px;opacity:0.5;padding:2px 4px" title="Edit order">✎</div></div>`;});
+  events.forEach(e=>{const o=orders.find(x=>x.id===e.id);const st=o?(o.status?(/** @type {Record<string,string>} */ (STATUS_LABELS))[o.status]||o.status:''):''; sidebarHTML+=`<div style="display:flex;align-items:center;gap:8px;padding:5px 8px;margin-bottom:2px;border-radius:6px;cursor:pointer" onclick="_scrollToSchedBar(${e.id})" ondblclick="_openOrderPopup(${e.id})" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''"><div style="width:8px;height:8px;border-radius:2px;background:${e.color};flex-shrink:0"></div><div style="flex:1;min-width:0"><div style="font-size:11px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_escHtml(e.project)}</div><div style="font-size:9px;color:var(--muted)">${_escHtml(e.client)}${st?' · '+st:''}</div></div><div onclick="event.stopPropagation();_openOrderPopup(${e.id})" style="color:var(--muted);font-size:10px;opacity:0.5;padding:2px 4px" title="Edit order">✎</div></div>`;});
   if(!events.length)sidebarHTML+=`<div style="font-size:12px;color:var(--muted)">No active orders</div>`;
   const sidebarEl = document.getElementById('schedule-sidebar');
   if (sidebarEl) sidebarEl.innerHTML = sidebarHTML;
@@ -119,6 +127,7 @@ function renderSchedule() {
   }, 100);
 }
 
+/** @param {number} orderId */
 function _scrollToSchedBar(orderId) {
   const bar = document.querySelector('.sched-bar-' + orderId);
   if (bar) {
@@ -128,6 +137,7 @@ function _scrollToSchedBar(orderId) {
   }
 }
 
+/** @param {number} id @param {string} val */
 function setOrderProdStart(id, val) {
   const o = orders.find(o => o.id === id);
   if (!o) return;
@@ -148,8 +158,10 @@ function setOrderProdStart(id, val) {
 }
 
 // ── Restore prodStart: prefer DB column, fall back to localStorage ──
+/** @param {(import('./database.types').Tables<'orders'> & { prodStart?: string })[]} ordersList */
 function _restoreProdStarts(ordersList) {
   try {
+    /** @type {Record<string, string>} */
     const stored = JSON.parse(localStorage.getItem('pc_order_prodstarts') || '{}');
     ordersList.forEach(o => {
       // Phase 3.8: orders.production_start_date is now the source of truth

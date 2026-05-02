@@ -57,6 +57,7 @@ document.addEventListener('click', function(e) {
 // ══════════════════════════════════════════
 let darkMode = false;
 
+/** @param {boolean} dark */
 function setTheme(dark) {
   darkMode = dark;
   document.documentElement.classList.toggle('dark', darkMode);
@@ -81,6 +82,7 @@ function toggleTheme() {
 // ══════════════════════════════════════════
 // UNITS
 // ══════════════════════════════════════════
+/** @param {string} u */
 function setUnits(u) {
   const prevUnits = window.units;
   window.units = u;
@@ -141,6 +143,7 @@ function setUnits(u) {
 // ══════════════════════════════════════════
 const EURO_LOCALES = ['de','fr','es','it','nl','pt','fi','el','cs','sk','sl','hr','bg','ro','hu','lv','lt','et','mt','ga'];
 
+/** @param {string} c */
 function setCurrency(c) {
   window.currency = c;
   localStorage.setItem('pcCurrency', c);
@@ -171,6 +174,7 @@ function setCurrency(c) {
 // ══════════════════════════════════════════
 // SECTION NAVIGATION
 // ══════════════════════════════════════════
+/** @param {string} name */
 function switchSection(name) {
   document.querySelectorAll('.nav-tab').forEach((t,i) => {
     const sections = ['dashboard','cutlist','stock','cabinet','quote','orders','schedule','projects','clients'];
