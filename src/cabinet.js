@@ -31,6 +31,9 @@
 // ══════════════════════════════════════════
 
 // ── CQ Settings State ──
+// `any`-typed because the codebase mutates it dynamically (adds edgeBanding,
+// labourTimes sub-keys, etc.) — stricter typing would force a giant union.
+/** @type {any} */
 let cqSettings = {
   labourRate: 65, markup: 20, tax: 13, deposit: 50, edgingPerM: 3,
   materials: [
@@ -88,6 +91,7 @@ let cqSettings = {
 // (_loadCabinetTemplatesFromDB) and stays in-memory; saves go straight to DB.
 /** @type {any[]} */
 let cqLibrary = [];
+/** @param {any} entry */
 async function _saveCabinetToDB(entry) {
   if (!_userId) return null;
   try {
@@ -104,6 +108,7 @@ async function _saveCabinetToDB(entry) {
     return data?.id || null;
   } catch(e) { console.warn('[cabinet-template save]', e.message || e); return null; }
 }
+/** @param {number | null} dbId */
 async function _deleteCabinetFromDB(dbId) {
   if (!_userId || !dbId) return;
   try {
@@ -162,6 +167,7 @@ function loadCQSettings() {
   localStorage.setItem('pc_cq_settings', JSON.stringify(cqSettings));
 }
 function saveCQSettings() {
+  /** @param {string} id */
   const g = id => parseFloat(_byId(id)?.value ?? '');
   cqSettings.labourRate = g('cq-labour-rate') || 65;
   cqSettings.markup = g('cq-markup') || 20;
@@ -196,6 +202,7 @@ function toggleCQSettings() {
   switchCabTab('rates');
 }
 
+/** @param {string} tab */
 function switchCabTab(tab) {
   const rates = _byId('cab-view-rates');
   const tabBuilder = _byId('cab-tab-builder');
@@ -221,9 +228,10 @@ function switchCabTab(tab) {
 
 // ── Settings Lists Render ──
 // ── Render editable list helper ──
+/** @param {any[]} arr @param {string} path @param {string} [unitLabel] */
 function _cqListHTML(arr, path, unitLabel) {
   const cur = window.currency;
-  return arr.map((item, i) => `<div class="cq-mat-row">
+  return arr.map(/** @param {any} item @param {number} i */ (item, i) => `<div class="cq-mat-row">
     <input value="${item.name}" placeholder="Name" onblur="${path}[${i}].name=this.value;saveCQSettings();renderCQPanel()">
     <div style="display:flex;align-items:center;border:1px solid var(--border);border-radius:4px;overflow:hidden;background:var(--surface2)">
       <span style="font-size:10px;color:var(--muted);padding:3px 4px 3px 6px;background:var(--surface)">${unitLabel||cur}</span>
@@ -241,9 +249,12 @@ function renderCQRates() {
   const lt = cqSettings.labourTimes || {};
   if (!window._ratesOpen) window._ratesOpen = {};
   const ro = window._ratesOpen;
+  /** @param {string} k */
   const isOpen = k => ro[k] === true;
+  /** @param {string} k */
   const chev = k => `<span style="font-size:10px;color:var(--muted);display:inline-block;transition:transform .2s;${isOpen(k)?'transform:rotate(90deg)':''}">&#9654;</span>`;
 
+  /** @param {string} key @param {string} title @param {string | number} count @param {string} content */
   function section(key, title, count, content) {
     return `<div style="border:1px solid var(--border);border-radius:8px;margin-bottom:8px;overflow:hidden">
       <div style="display:flex;align-items:center;gap:8px;padding:10px 12px;cursor:pointer;user-select:none" onclick="window._ratesOpen.${key}=!window._ratesOpen.${key};renderCQRates()">
@@ -255,8 +266,9 @@ function renderCQRates() {
     </div>`;
   }
 
+  /** @param {any[]} arr @param {string} path @param {string} [unit] */
   function listItems(arr, path, unit) {
-    return arr.map((item,i) => `<div class="cq-mat-row" style="margin-top:4px">
+    return arr.map(/** @param {any} item @param {number} i */ (item,i) => `<div class="cq-mat-row" style="margin-top:4px">
       <input value="${item.name}" placeholder="Name" onblur="${path}[${i}].name=this.value;saveCQSettings();renderCQPanel()">
       <div style="display:flex;align-items:center;border:1px solid var(--border);border-radius:4px;overflow:hidden;background:var(--surface2)">
         <span style="font-size:10px;color:var(--muted);padding:3px 4px 3px 6px;background:var(--surface)">${unit||cur}</span>
@@ -322,6 +334,7 @@ function addCQHardware() { cqSettings.hardware.push({name:'New Hardware',price:0
 function addCQFinish() { if (!cqSettings.finishes) cqSettings.finishes = []; cqSettings.finishes.push({name:'New Finish',price:0}); saveCQSettings(); renderCQRates(); }
 
 // ── Cabinet Library ──
+/** @param {string} panel */
 function toggleCabPanel(panel) {
   const projects = _byId('cq-projects-panel');
   const library = _byId('cq-library-panel');
@@ -342,20 +355,24 @@ let cqProjectLibrary = [];
 function loadCQProjectLibrary() { try { cqProjectLibrary = JSON.parse(localStorage.getItem('pc_cq_projects')||'[]'); } catch(e) { cqProjectLibrary=[]; } }
 function saveCQProjectLibrary() { localStorage.setItem('pc_cq_projects', JSON.stringify(cqProjectLibrary)); }
 
+/** @param {string} name */
 function _cqSaveProjectByName(name) {
   if (!name || !name.trim()) { _toast('Enter a project name', 'error'); return; }
   cqSaveProject(name.trim());
 }
+/** @param {string} name */
 function _cqSaveCabByName(name) {
   if (!name || !name.trim()) { _toast('Enter a cabinet name', 'error'); return; }
   const line = cqLines[cqActiveLineIdx];
   if (line) line.name = name.trim();
   cqSaveToLibrary();
 }
+/** @param {string} name */
 function _saveStockLibByName(name) {
   if (!name || !name.trim()) { _toast('Enter a library name', 'error'); return; }
   saveStockLibrary(name.trim());
 }
+/** @param {string} [nameOverride] */
 function cqSaveProject(nameOverride) {
   const name = nameOverride || '';
   if (!name) { _toast('Enter a project name first', 'error'); return; }
@@ -386,6 +403,7 @@ function cqSaveProject(nameOverride) {
   _toast(`Project "${name}" saved`, 'success');
 }
 
+/** @param {number} idx */
 function cqLoadProject(idx) {
   const p = cqProjectLibrary[idx];
   if (!p) return;
@@ -400,6 +418,7 @@ function cqLoadProject(idx) {
   _toast(`Loaded "${p.name}"`, 'success');
 }
 
+/** @param {number} idx */
 function cqDeleteProject(idx) {
   _confirm('Delete this project?', () => {
     cqProjectLibrary.splice(idx, 1);
@@ -429,9 +448,10 @@ function renderCQProjects() {
 }
 function cqExportProjects() {
   if (!cqProjectLibrary.length) { _toast('No projects to export', 'error'); return; }
+  /** @type {any[][]} */
   const rows = [['Project Name','Date','Cabinet Count']];
   cqProjectLibrary.forEach(p => rows.push([p.name, p.date, (p.lines||[]).length]));
-  const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const csv = rows.map(r => r.map(/** @param {any} v */ v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
   const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([csv],{type:'text/csv'})), download: 'cabinet-projects.csv' });
   a.click(); URL.revokeObjectURL(a.href);
   // Also export full data as JSON for re-import
@@ -449,7 +469,7 @@ function cqImportProjects() {
       const text = await file.text();
       if (file.name.endsWith('.json')) {
         const data = JSON.parse(text);
-        if (Array.isArray(data)) { data.forEach(p => { p.id = Date.now() + Math.random(); cqProjectLibrary.push(p); }); saveCQProjectLibrary(); renderCQProjects(); _toast(data.length + ' projects imported', 'success'); }
+        if (Array.isArray(data)) { data.forEach(/** @param {any} p */ p => { p.id = Date.now() + Math.random(); cqProjectLibrary.push(p); }); saveCQProjectLibrary(); renderCQProjects(); _toast(data.length + ' projects imported', 'success'); }
       } else { _toast('Use the JSON file for project import (CSV is summary only)', 'info'); }
     } catch(e) { _toast('Could not read file', 'error'); }
   };
@@ -459,11 +479,12 @@ function cqImportProjects() {
 function cqExportLibrary() {
   if (!cqLibrary.length) { _toast('No cabinets in library', 'error'); return; }
   const headers = ['Name','Width','Height','Depth','Qty','Material','Back Material','Finish','Construction','Base','Doors','Door Material','Door %','Drawers','Front Material','Inner Material','Drawer %','Fixed Shelves','Adj Shelves','Loose Shelves','Partitions','End Panels'];
+  /** @type {any[][]} */
   const rows = [headers];
   cqLibrary.forEach(c => {
     rows.push([c._libName||c.name||'Cabinet',c.w,c.h,c.d,c.qty||1,c.material||'',c.backMat||'',c.finish||'None',c.construction||'Overlay',c.baseType||'None',c.doors||0,c.doorMat||'',c.doorPct||95,c.drawers||0,c.drawerFrontMat||'',c.drawerInnerMat||'',c.drawerPct||85,c.shelves||0,c.adjShelves||0,c.looseShelves||0,c.partitions||0,c.endPanels||0]);
   });
-  const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const csv = rows.map(r => r.map(/** @param {any} v */ v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
   const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([csv],{type:'text/csv'})), download: 'cabinet-library.csv' });
   a.click(); URL.revokeObjectURL(a.href);
   _toast('Library exported as CSV', 'success');
@@ -480,6 +501,7 @@ function cqImportLibrary() {
       let imported = 0;
       for (let i = 1; i < rows.length; i++) {
         const r = rows[i]; if (r.length < 4 || !r[0]) continue;
+        /** @type {any} */
         const cab = cqDefaultLine();
         cab.id = Date.now() + Math.random();
         cab._libName = r[0]; cab.name = r[0];
@@ -514,6 +536,7 @@ function cqSaveToLibrary() {
   _toast(`"${copy._libName}" saved to library`, 'success');
   _saveCabinetToDB(copy).then(id => { if (id) copy.db_id = id; });
 }
+/** @param {number} idx */
 function cqLoadFromLibrary(idx) {
   const src = cqLibrary[idx];
   if (!src) return;
@@ -526,6 +549,7 @@ function cqLoadFromLibrary(idx) {
   renderCQPanel();
   _toast(`"${src._libName}" added to quote`, 'success');
 }
+/** @param {number} idx */
 function cqRemoveFromLibrary(idx) {
   const removed = cqLibrary[idx];
   cqLibrary.splice(idx, 1);
@@ -534,6 +558,7 @@ function cqRemoveFromLibrary(idx) {
 }
 function renderCQLibrary() {} // Library now via smart search dropdown
 
+/** @param {HTMLInputElement} input */
 function _cqCabinetSearchInput(input) {
   // Update the active cabinet name as the user types
   if (cqActiveLineIdx >= 0 && cqLines[cqActiveLineIdx]) {
@@ -545,6 +570,7 @@ function _cqCabinetSearchInput(input) {
   _smartCQLibrarySuggest(input, 'cq-cabinet-suggest');
 }
 
+/** @param {HTMLInputElement} input @param {string} boxId */
 function _smartCQLibrarySuggest(input, boxId) {
   const box = _byId(boxId);
   if (!box) return;
@@ -585,6 +611,7 @@ const CQ_PRESETS = {
 };
 
 // ── Default Line Item ──
+/** @param {string} [type] */
 function cqDefaultLine(type) {
   return {
     id: cqNextId++, name: '',
@@ -592,13 +619,13 @@ function cqDefaultLine(type) {
     construction: 'overlay', // overlay, inset, face frame
     baseType: 'plinth', // plinth, feet, castors, frame, none
     material: cqSettings.materials[0]?.name || '',
-    backMat: (cqSettings.materials.find(m=>m.name.toLowerCase().includes('3mm') || m.name.toLowerCase().includes('back')) || cqSettings.materials[0])?.name || '',
+    backMat: (cqSettings.materials.find(/** @param {any} m */ m=>m.name.toLowerCase().includes('3mm') || m.name.toLowerCase().includes('back')) || cqSettings.materials[0])?.name || '',
     finish: cqSettings.finishes?.[0]?.name || 'None',
     doors: 0, doorPct: 95,
     doorMat: cqSettings.materials[0]?.name || '',
     drawers: 0, drawerPct: 85,
     drawerFrontMat: cqSettings.materials[0]?.name || '',
-    drawerInnerMat: (cqSettings.materials.find(m=>m.name.toLowerCase().includes('3mm') || m.name.toLowerCase().includes('back')) || cqSettings.materials[0])?.name || '',
+    drawerInnerMat: (cqSettings.materials.find(/** @param {any} m */ m=>m.name.toLowerCase().includes('3mm') || m.name.toLowerCase().includes('back')) || cqSettings.materials[0])?.name || '',
     shelves: 0, adjShelves: 0, looseShelves: 0, partitions: 0, endPanels: 0,
     hwItems: [],
     extras: [], // [{label, cost}]
@@ -609,6 +636,7 @@ function cqDefaultLine(type) {
 }
 
 // ── Add / Remove / Duplicate Lines ──
+/** @param {string} [type] */
 function addCQLine(type) {
   // If we have a blank line with user edits, use that instead of a fresh default
   let line;
@@ -622,6 +650,7 @@ function addCQLine(type) {
   cqLines.push(line);
   saveCQLines(); renderCQPanel();
 }
+/** @param {string} type */
 function addCQLineFromPreset(type) {
   const line = cqDefaultLine(type);
   line.name = type;
@@ -629,10 +658,12 @@ function addCQLineFromPreset(type) {
   saveCQLines(); renderCQPanel();
   setTimeout(() => { const el = _byId('cq-table-area'); if (el) el.scrollTop = el.scrollHeight; }, 50);
 }
+/** @param {number} id */
 function removeCQLine(id) {
   cqLines = cqLines.filter(l => l.id !== id);
   saveCQLines(); renderCQPanel();
 }
+/** @param {number} id */
 function dupCQLine(id) {
   const src = cqLines.find(l => l.id === id);
   if (!src) return;
@@ -644,6 +675,7 @@ function dupCQLine(id) {
 }
 
 // ── Update a field on a line ──
+/** @param {number} id @param {string} field @param {any} val */
 function updateCQLine(id, field, val) {
   const line = cqLines.find(l => l.id === id);
   if (!line) return;
@@ -663,7 +695,7 @@ function updateCQLine(id, field, val) {
   } else if (field === 'type') {
     line.type = val;
     // Apply preset dimensions if type changed
-    const preset = CQ_PRESETS[val];
+    const preset = (/** @type {Record<string, any>} */ (CQ_PRESETS))[val];
     if (preset) {
       line.w = preset.w; line.h = preset.h; line.d = preset.d;
       line.doors = preset.doors; line.drawers = preset.drawers; line.shelves = preset.shelves;
@@ -675,18 +707,21 @@ function updateCQLine(id, field, val) {
 }
 
 // ── Add hardware item to a line ──
+/** @param {number} id */
 function addCQHwToLine(id) {
   const line = cqLines.find(l => l.id === id);
   if (!line) return;
   line.hwItems.push({ name: cqSettings.hardware[0]?.name || '', qty: 1 });
   saveCQLines(); renderCQPanel();
 }
+/** @param {number} lineId @param {number} hwIdx @param {string} field @param {any} val */
 function updateCQHw(lineId, hwIdx, field, val) {
   const line = cqLines.find(l => l.id === lineId);
   if (!line || !line.hwItems[hwIdx]) return;
   if (field === 'qty') { line.hwItems[hwIdx].qty = parseInt(val) || 1; saveCQLines(); renderCQPanel(); }
   else { line.hwItems[hwIdx].name = val; saveCQLines(); renderCQCabList(); renderCQResults(); }
 }
+/** @param {number} lineId @param {number} hwIdx */
 function removeCQHw(lineId, hwIdx) {
   const line = cqLines.find(l => l.id === lineId);
   if (!line) return;
@@ -695,6 +730,7 @@ function removeCQHw(lineId, hwIdx) {
 }
 
 // ── Move rows up/down ──
+/** @param {number} id @param {number} dir */
 function moveCQLine(id, dir) {
   const idx = cqLines.findIndex(l => l.id === id);
   if (idx < 0) return;
@@ -706,6 +742,7 @@ function moveCQLine(id, dir) {
 
 // ── Toggle expanded detail for a row ──
 let cqExpandedRows = new Set();
+/** @param {number} id */
 function toggleCQExpand(id) {
   if (cqExpandedRows.has(id)) cqExpandedRows.delete(id);
   else cqExpandedRows.add(id);
@@ -714,6 +751,7 @@ function toggleCQExpand(id) {
 
 // ── Toggle individual sections within a cabinet card ──
 let cqOpenSections = new Set();
+/** @param {number} lineId @param {string} section */
 function toggleCQSection(lineId, section) {
   const key = lineId + '-' + section;
   if (cqOpenSections.has(key)) cqOpenSections.delete(key);
@@ -731,20 +769,23 @@ function cqCollapseAll() {
 }
 
 // ── Calculate a single line item ──
+/** @param {any} line */
 function calcCQLine(line) {
   const W = line.w / 1000, H = line.h / 1000, D = line.d / 1000;
   const T = 0.018;
   const innerW = Math.max(0, W - 2 * T);
 
   // Material price per m2 — checks stockItems first, then cqSettings.materials as fallback
+  /** @param {string} matName */
   function mp(matName) {
     const s = stockItems.find(s => s.name === matName);
-    if (s) return s.cost / (s.w && s.h ? (s.w/1000)*(s.h/1000) : SHEET_M2);
-    const m = cqSettings.materials.find(m => m.name === matName);
+    if (s) return (s.cost ?? 0) / (s.w && s.h ? (s.w/1000)*(s.h/1000) : SHEET_M2);
+    const m = cqSettings.materials.find(/** @param {any} m */ m => m.name === matName);
     return m ? m.price / SHEET_M2 : 0;
   }
+  /** @param {string} hwName */
   function hwp(hwName) {
-    const h = cqSettings.hardware.find(h => h.name === hwName);
+    const h = cqSettings.hardware.find(/** @param {any} h */ h => h.name === hwName);
     return h ? h.price : 0;
   }
 
@@ -778,12 +819,12 @@ function calcCQLine(line) {
   // Finishing cost (from finish presets in settings)
   const allSurface = 2*H*D + 2*innerW*D + W*H;
   const _fs = stockItems.find(s => s.name === line.finish && s.category === 'Finishing');
-  const finishPricePerM2 = _fs ? _fs.cost : ((cqSettings.finishes||[]).find(f => f.name === line.finish)?.price || 0);
+  const finishPricePerM2 = _fs ? (_fs.cost ?? 0) : ((cqSettings.finishes||[]).find(/** @param {any} f */ f => f.name === line.finish)?.price || 0);
   const finishCost = allSurface * finishPricePerM2;
   matCost += finishCost;
 
   // Extras cost
-  const extrasCost = (line.extras||[]).reduce((s, e) => s + (parseFloat(e.cost)||0), 0);
+  const extrasCost = (line.extras||[]).reduce(/** @param {number} s @param {any} e */ (s, e) => s + (parseFloat(e.cost)||0), 0);
   matCost += extrasCost;
 
   // Edge banding (exposed edges: front edges of sides, shelves, top, bottom)
@@ -795,12 +836,12 @@ function calcCQLine(line) {
   const finalMatCost = (line.matCostOverride !== null && line.matCostOverride !== undefined) ? line.matCostOverride : matCost;
 
   // Base type cost
-  const basePrice = (cqSettings.baseTypes||[]).find(b => b.name === line.baseType)?.price || 0;
+  const basePrice = (cqSettings.baseTypes||[]).find(/** @param {any} b */ b => b.name === line.baseType)?.price || 0;
   matCost += basePrice;
 
   // Construction type cost — frontal area based (price per m2 of front face)
   const frontArea = W * H;
-  const constPrice = (cqSettings.constructions||[]).find(c => c.name === line.construction)?.price || 0;
+  const constPrice = (cqSettings.constructions||[]).find(/** @param {any} c */ c => c.name === line.construction)?.price || 0;
   matCost += constPrice * frontArea;
 
   // Auto labour estimate (hours) — from configurable rates
@@ -848,10 +889,13 @@ function calcCQLine(line) {
 // ── Render the sidebar: cabinet list + active editor ──
 function renderCQPanel() {
   const cur = window.currency;
+  /** @param {any} v */
   const fmt = v => cur + Number(v).toFixed(2);
+  /** @param {number} v */
   const fmt0 = v => cur + Math.round(v).toLocaleString();
 
   // Sync settings form values
+  /** @type {Record<string, string>} */
   const fields = {labourRate:'cq-labour-rate', markup:'cq-markup', tax:'cq-tax', deposit:'cq-deposit', edgingPerM:'cq-edging-m'};
   Object.entries(fields).forEach(([k, id]) => { const el = _byId(id); if (el && el !== document.activeElement) el.value = cqSettings[k]; });
 
@@ -867,6 +911,7 @@ function renderCQCabList() {
   const el = _byId('cq-cab-list');
   if (!el) return;
   const cur = window.currency;
+  /** @param {number} v */
   const fmt0 = v => cur + Math.round(v).toLocaleString();
 
   if (!cqLines.length) {
@@ -891,6 +936,7 @@ function renderCQCabList() {
 
 // ── Active line index ──
 let cqActiveLineIdx = 0;
+/** @param {number} idx */
 function cqSelectLine(idx) {
   cqActiveLineIdx = idx;
   renderCQPanel();
@@ -914,35 +960,43 @@ function renderCQEditor() {
 
   const cur = window.currency;
   const c = calcCQLine(line);
+  /** @param {string} field @param {any} val */
   const matSmart = (field, val) => `<div style="position:relative"><div class="smart-input-wrap"><input type="text" id="cq-mat-${field}" value="${_escHtml(val||'')}" autocomplete="off" style="font-size:13px" oninput="_smartCQMaterialSuggest(this,'cq-mat-suggest-${field}','${field}')" onfocus="_smartCQMaterialSuggest(this,'cq-mat-suggest-${field}','${field}')" onblur="setTimeout(()=>{_byId('cq-mat-suggest-${field}').style.display='none';cqUpdateField('${field}',this.value)},150)"><div class="smart-input-add" onclick="_openNewStockPopup()" title="Add new material">+</div></div><div id="cq-mat-suggest-${field}" class="client-suggest-list" style="display:none"></div></div>`;
   const finishSmart = () => `<div style="position:relative"><div class="smart-input-wrap"><input type="text" id="cq-mat-finish" value="${_escHtml(line.finish||'None')}" autocomplete="off" style="font-size:13px" oninput="_smartCQFinishSuggest(this,'cq-mat-suggest-finish')" onfocus="_smartCQFinishSuggest(this,'cq-mat-suggest-finish')" onblur="setTimeout(()=>{_byId('cq-mat-suggest-finish').style.display='none';cqUpdateField('finish',this.value)},150)"><div class="smart-input-add" onclick="_openNewStockPopup()" title="Add new finish">+</div></div><div id="cq-mat-suggest-finish" class="client-suggest-list" style="display:none"></div></div>`;
+  /** @param {string} field @param {any} val @param {number} [min] */
   const stepper = (field, val, min) => `<div class="cl-stepper"><button class="cl-step-btn" onclick="cqStepField('${field}',-1)">−</button><input type="number" class="cl-input cl-qty-input" value="${val}" min="${min||0}" style="font-size:14px;width:42px" onchange="cqUpdateField('${field}',this.value)"><button class="cl-step-btn" onclick="cqStepField('${field}',1)">+</button></div>`;
+  /** @param {string} sec */
   const so = sec => cqOpenSections.has(line.id + '-' + sec);
+  /** @param {string} sec */
   const chev = sec => `<span style="font-size:10px;color:var(--muted);transition:transform .2s;display:inline-block;${so(sec)?'transform:rotate(90deg)':''}">&#9654;</span>`;
   const SB = 'border:1px solid var(--border);border-radius:8px;margin-bottom:8px;overflow:hidden;background:var(--surface)';
   const SH = 'display:flex;align-items:center;gap:8px;padding:10px 12px;cursor:pointer;user-select:none';
   const ST = 'font-size:13px;font-weight:600;color:var(--text);flex:1';
   const SS = 'font-size:11px;color:var(--muted)';
+  /** @param {string} sec */
   const SC = sec => `style="padding:10px 12px;border-top:1px solid var(--border);${so(sec)?'':'display:none'}"`;
   const FM = 'margin:0';
   const LB = 'font-size:12px';
   const IS = 'font-size:14px';
   const SL = 'font-size:13px';
+  /** @param {string} c */
   const dot = c => `<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--${c});margin-right:4px"></span>`;
+  /** @param {number} v */
   const liveCost = v => `<span style="font-size:12px;font-weight:700;color:var(--accent);white-space:nowrap">${cur}${Math.round(v)}</span>`;
 
   // Calculate per-section costs
   const W=line.w/1000, H=line.h/1000, D=line.d/1000, T=0.018, iW=Math.max(0,W-2*T);
-  function mp(n){ const s=stockItems.find(s=>s.name===n); if(s) return s.cost/(s.w&&s.h?(s.w/1000)*(s.h/1000):2.9768); const m=cqSettings.materials.find(m=>m.name===n); return m?m.price/2.9768:0; }
+  /** @param {string} n */
+  function mp(n){ const s=stockItems.find(s=>s.name===n); if(s) return (s.cost ?? 0)/(s.w&&s.h?(s.w/1000)*(s.h/1000):2.9768); const m=cqSettings.materials.find(/** @param {any} m */ m=>m.name===n); return m?m.price/2.9768:0; }
   const carcassCost = (2*H*D + 2*iW*D)*mp(line.material) + W*H*mp(line.backMat);
   const _fss = stockItems.find(s => s.name === line.finish && s.category === 'Finishing');
-  const finishPrice = _fss ? _fss.cost : ((cqSettings.finishes||[]).find(f=>f.name===line.finish)?.price || 0);
+  const finishPrice = _fss ? (_fss.cost ?? 0) : ((cqSettings.finishes||[]).find(/** @param {any} f */ f=>f.name===line.finish)?.price || 0);
   const surfArea = 2*H*D + 2*iW*D + W*H;
   const finishCostVal = surfArea * finishPrice;
   const doorCost = line.doors > 0 ? line.doors*(iW/Math.max(1,line.doors))*(H*(line.doorPct||95)/100)*mp(line.doorMat||line.material) : 0;
   const drwFrontCost = line.drawers > 0 ? line.drawers*iW*((H*(line.drawerPct||85)/100)/line.drawers)*mp(line.drawerFrontMat||line.material) : 0;
   const shelfCost = (line.shelves+line.adjShelves)*iW*(D-T)*mp(line.material) + (line.endPanels||0)*H*D*mp(line.material);
-  const extrasCost = (line.extras||[]).reduce((s,e)=>s+(parseFloat(e.cost)||0),0);
+  const extrasCost = (line.extras||[]).reduce(/** @param {number} s @param {any} e */ (s,e)=>s+(parseFloat(e.cost)||0),0);
 
   el.innerHTML = `
     <div style="border-top:1px solid var(--border);padding-top:10px;margin-top:6px">
@@ -967,12 +1021,12 @@ function renderCQEditor() {
           <div style="margin-bottom:8px"><label style="${LB}">Finish</label>${finishSmart()}</div>
           <div style="margin-bottom:8px"><label style="${LB}">Construction</label>
             <select style="${SL};width:100%" onchange="cqUpdateField('construction',this.value)">
-              ${(cqSettings.constructions||[]).map(c=>`<option value="${c.name}" ${c.name===line.construction?'selected':''}>${c.name}${c.price?' (+'+cur+c.price+'/m²)':''}</option>`).join('')}
+              ${(cqSettings.constructions||[]).map(/** @param {any} c */ c=>`<option value="${c.name}" ${c.name===line.construction?'selected':''}>${c.name}${c.price?' (+'+cur+c.price+'/m²)':''}</option>`).join('')}
             </select>
           </div>
           <div style="margin-bottom:0"><label style="${LB}">Base</label>
             <select style="${SL};width:100%" onchange="cqUpdateField('baseType',this.value)">
-              ${(cqSettings.baseTypes||[]).map(b=>`<option value="${b.name}" ${b.name===line.baseType?'selected':''}>${b.name}${b.price?' (+'+cur+b.price+')':''}</option>`).join('')}
+              ${(cqSettings.baseTypes||[]).map(/** @param {any} b */ b=>`<option value="${b.name}" ${b.name===line.baseType?'selected':''}>${b.name}${b.price?' (+'+cur+b.price+')':''}</option>`).join('')}
             </select>
           </div>
         </div>
@@ -1039,7 +1093,7 @@ function renderCQEditor() {
         </div>
         <div ${SC('hw')}>
           <div style="font-size:12px;color:var(--muted);margin-bottom:8px">Auto: ${line.doors>0?line.doors*2+' hinges':''}${line.doors>0&&line.drawers>0?', ':''}${line.drawers>0?line.drawers+' slides':''}${line.doors===0&&line.drawers===0?'None':''}</div>
-          ${line.hwItems.map((hw, hi) => `<div style="display:flex;gap:4px;align-items:center;margin-bottom:6px;position:relative">
+          ${line.hwItems.map(/** @param {any} hw @param {number} hi */ (hw, hi) => `<div style="display:flex;gap:4px;align-items:center;margin-bottom:6px;position:relative">
             <div style="flex:1;position:relative"><div class="smart-input-wrap"><input type="text" id="cq-hw-${line.id}-${hi}" value="${_escHtml(hw.name)}" style="font-size:12px" autocomplete="off" oninput="_smartCQHwSuggest(this,'cq-hw-suggest-${line.id}-${hi}',${line.id},${hi})" onfocus="_smartCQHwSuggest(this,'cq-hw-suggest-${line.id}-${hi}',${line.id},${hi})" onblur="setTimeout(()=>{_byId('cq-hw-suggest-${line.id}-${hi}').style.display='none';updateCQHw(${line.id},${hi},'name',this.value)},150)"><div class="smart-input-add" onclick="_openNewCQHardwarePopup(${line.id},${hi})" title="Add new hardware type">+</div></div><div id="cq-hw-suggest-${line.id}-${hi}" class="client-suggest-list" style="display:none"></div></div>
             <span style="font-size:10px;color:var(--muted)">×</span>
             <input type="number" style="width:40px;text-align:center;padding:5px;font-size:12px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text)" value="${hw.qty}" min="1" onchange="updateCQHw(${line.id},${hi},'qty',this.value)">
@@ -1066,7 +1120,7 @@ function renderCQEditor() {
         </div>
         <div ${SC('extras')}>
           <div style="font-size:12px;color:var(--muted);margin-bottom:6px">Add custom items like cable holes, lighting cutouts, etc.</div>
-          ${(line.extras||[]).map((ex, ei) => `<div style="display:flex;gap:4px;align-items:center;margin-bottom:6px">
+          ${(line.extras||[]).map(/** @param {any} ex @param {number} ei */ (ex, ei) => `<div style="display:flex;gap:4px;align-items:center;margin-bottom:6px">
             <input style="flex:1;font-size:13px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);font-family:inherit" value="${ex.label||''}" placeholder="Item name" onblur="cqUpdateExtra(${line.id},${ei},'label',this.value)">
             <div style="display:flex;align-items:center;border:1px solid var(--border);border-radius:6px;overflow:hidden;background:var(--surface2)">
               <span style="font-size:11px;color:var(--muted);padding:4px 4px 4px 8px;background:var(--surface)">${cur}</span>
@@ -1105,6 +1159,7 @@ function renderCQEditor() {
 }
 
 // ── Extras CRUD ──
+/** @param {number} lineId */
 function cqAddExtra(lineId) {
   const line = cqLines.find(l=>l.id===lineId);
   if (!line) return;
@@ -1112,6 +1167,7 @@ function cqAddExtra(lineId) {
   line.extras.push({label:'',cost:0});
   saveCQLines(); renderCQEditor();
 }
+/** @param {number} lineId @param {number} idx @param {string} field @param {any} val */
 function cqUpdateExtra(lineId, idx, field, val) {
   const line = cqLines.find(l=>l.id===lineId);
   if (!line || !line.extras || !line.extras[idx]) return;
@@ -1119,6 +1175,7 @@ function cqUpdateExtra(lineId, idx, field, val) {
   else line.extras[idx].label = val;
   saveCQLines(); renderCQResults();
 }
+/** @param {number} lineId @param {number} idx */
 function cqRemoveExtra(lineId, idx) {
   const line = cqLines.find(l=>l.id===lineId);
   if (!line || !line.extras) return;
@@ -1143,6 +1200,7 @@ function cqAddOrUpdateCabinet() {
   }
 }
 
+/** @param {number} idx */
 function cqEditCabinetFromOutput(idx) {
   cqActiveLineIdx = idx;
   renderCQCabList();
@@ -1153,6 +1211,7 @@ function cqEditCabinetFromOutput(idx) {
   if (sidebar) sidebar.scrollTop = sidebar.scrollHeight;
 }
 
+/** @param {string} field @param {number} dir */
 function cqStepField(field, dir) {
   const isEditing = cqActiveLineIdx >= 0 && cqLines[cqActiveLineIdx];
   const line = isEditing ? cqLines[cqActiveLineIdx] : window._cqBlankLine;
@@ -1164,6 +1223,7 @@ function cqStepField(field, dir) {
   renderCQCabList(); renderCQResults(); renderCQEditor();
 }
 
+/** @param {string} field @param {any} val */
 function cqUpdateField(field, val) {
   const isEditing = cqActiveLineIdx >= 0 && cqLines[cqActiveLineIdx];
   const line = isEditing ? cqLines[cqActiveLineIdx] : window._cqBlankLine;
@@ -1182,9 +1242,10 @@ function cqUpdateField(field, val) {
 }
 
 // ── Position suggest box as fixed overlay (avoids overflow clipping) ──
+/** @param {HTMLElement | null} input @param {HTMLElement | null} box */
 function _posSuggest(input, box) {
   if (!input || !box) return;
-  const r = input.parentElement.getBoundingClientRect();
+  const r = (input.parentElement || input).getBoundingClientRect();
   box.style.position = 'fixed';
   box.style.left = r.left + 'px';
   box.style.width = r.width + 'px';
@@ -1202,18 +1263,19 @@ function _posSuggest(input, box) {
 }
 
 // ── Rates Stock Smart Suggest (opens stock edit popup on click) ──
+/** @param {HTMLInputElement} input @param {string} boxId */
 function _smartRatesStockSuggest(input, boxId) {
   const box = _byId(boxId);
   if (!box) return;
   _posSuggest(input, box);
   const q = input.value.trim().toLowerCase();
   const cur = window.currency;
-  const pool = stockItems.filter(s => s.category === 'Sheet Goods' || s.category === 'Solid Timber' || s.category === 'Edge Banding' || (s.w > 0 && s.h > 0));
+  const pool = stockItems.filter(s => s.category === 'Sheet Goods' || s.category === 'Solid Timber' || s.category === 'Edge Banding' || ((s.w ?? 0) > 0 && (s.h ?? 0) > 0));
   const matches = q ? pool.filter(s => s.name.toLowerCase().includes(q)) : pool;
   let html = '';
   matches.slice(0, 10).forEach(s => {
     const dims = s.w && s.h ? `${s.w}×${s.h}` : '';
-    const qtyColor = s.qty <= (s.low || 3) ? '#ef4444' : '#22c55e';
+    const qtyColor = (s.qty ?? 0) <= (s.low || 3) ? '#ef4444' : '#22c55e';
     html += `<div class="client-suggest-item" onmousedown="_byId('rates-stock-search').value='';_byId('${boxId}').style.display='none';_openStockPopup(${s.id})">
       <span class="suggest-icon" style="background:${qtyColor}20;color:${qtyColor}">${s.qty}</span>
       <span style="flex:1">${_escHtml(s.name)}</span>
@@ -1226,6 +1288,7 @@ function _smartRatesStockSuggest(input, boxId) {
 }
 
 // ── Rates Finish Smart Suggest ──
+/** @param {HTMLInputElement} input @param {string} boxId */
 function _smartRatesFinishSuggest(input, boxId) {
   const box = _byId(boxId);
   if (!box) return;
@@ -1236,7 +1299,7 @@ function _smartRatesFinishSuggest(input, boxId) {
   const matches = q ? pool.filter(s => s.name.toLowerCase().includes(q)) : pool;
   let html = '';
   matches.slice(0, 10).forEach(s => {
-    const qtyColor = s.qty <= (s.low || 3) ? '#ef4444' : '#22c55e';
+    const qtyColor = (s.qty ?? 0) <= (s.low || 3) ? '#ef4444' : '#22c55e';
     html += `<div class="client-suggest-item" onmousedown="_byId('rates-finish-search').value='';_byId('${boxId}').style.display='none';_openStockPopup(${s.id})">
       <span class="suggest-icon" style="background:${qtyColor}20;color:${qtyColor}">${s.qty}</span>
       <span style="flex:1">${_escHtml(s.name)}</span>
@@ -1249,6 +1312,7 @@ function _smartRatesFinishSuggest(input, boxId) {
 }
 
 // ── Rates Edge Banding Smart Suggest ──
+/** @param {HTMLInputElement} input @param {string} boxId */
 function _smartRatesEdgeSuggest(input, boxId) {
   const box = _byId(boxId);
   if (!box) return;
@@ -1259,7 +1323,7 @@ function _smartRatesEdgeSuggest(input, boxId) {
   const matches = q ? pool.filter(s => s.name.toLowerCase().includes(q)) : pool;
   let html = '';
   matches.slice(0, 10).forEach(s => {
-    const qtyColor = s.qty <= (s.low || 3) ? '#ef4444' : '#22c55e';
+    const qtyColor = (s.qty ?? 0) <= (s.low || 3) ? '#ef4444' : '#22c55e';
     html += `<div class="client-suggest-item" onmousedown="_byId('rates-edge-search').value='';_byId('${boxId}').style.display='none';_openStockPopup(${s.id})">
       <span class="suggest-icon" style="background:${qtyColor}20;color:${qtyColor}">${s.qty}</span>
       <span style="flex:1">${_escHtml(s.name)}</span>
@@ -1272,6 +1336,7 @@ function _smartRatesEdgeSuggest(input, boxId) {
 }
 
 // ── Cabinet Material Smart Suggest ──
+/** @param {HTMLInputElement} input @param {string} boxId @param {string} fieldName */
 function _smartCQMaterialSuggest(input, boxId, fieldName) {
   const box = _byId(boxId);
   if (!box) return;
@@ -1279,12 +1344,12 @@ function _smartCQMaterialSuggest(input, boxId, fieldName) {
   const q = input.value.trim().toLowerCase();
   const cur = window.currency;
   // Search from shared stockItems library (Sheet Goods + items with dimensions)
-  const pool = stockItems.filter(s => s.category === 'Sheet Goods' || s.category === 'Solid Timber' || s.category === 'Edge Banding' || (s.w > 0 && s.h > 0));
+  const pool = stockItems.filter(s => s.category === 'Sheet Goods' || s.category === 'Solid Timber' || s.category === 'Edge Banding' || ((s.w ?? 0) > 0 && (s.h ?? 0) > 0));
   const matches = q ? pool.filter(s => s.name.toLowerCase().includes(q)) : pool;
   let html = '';
   matches.slice(0, 8).forEach(s => {
     const dims = s.w && s.h ? `${s.w}×${s.h}` : '';
-    const qtyColor = s.qty <= (s.low || 3) ? '#ef4444' : '#22c55e';
+    const qtyColor = (s.qty ?? 0) <= (s.low || 3) ? '#ef4444' : '#22c55e';
     html += `<div class="client-suggest-item" onmousedown="_byId('cq-mat-${fieldName}').value='${_escHtml(s.name)}';cqUpdateField('${fieldName}','${_escHtml(s.name)}');_byId('${boxId}').style.display='none'">
       <span class="suggest-icon" style="background:${qtyColor}20;color:${qtyColor}">${s.qty}</span>
       <span style="flex:1">${_escHtml(s.name)}</span>
@@ -1296,6 +1361,7 @@ function _smartCQMaterialSuggest(input, boxId, fieldName) {
   box.style.display = matches.length || q ? '' : 'none';
 }
 
+/** @param {HTMLInputElement} input @param {string} boxId */
 function _smartCQFinishSuggest(input, boxId) {
   const box = _byId(boxId);
   if (!box) return;
@@ -1306,7 +1372,7 @@ function _smartCQFinishSuggest(input, boxId) {
   const matches = q ? pool.filter(s => s.name.toLowerCase().includes(q)) : pool;
   let html = '';
   matches.slice(0, 8).forEach(s => {
-    const qtyColor = s.qty <= (s.low || 3) ? '#ef4444' : '#22c55e';
+    const qtyColor = (s.qty ?? 0) <= (s.low || 3) ? '#ef4444' : '#22c55e';
     html += `<div class="client-suggest-item" onmousedown="_byId('cq-mat-finish').value='${_escHtml(s.name)}';cqUpdateField('finish','${_escHtml(s.name)}');_byId('${boxId}').style.display='none'">
       <span class="suggest-icon" style="background:${qtyColor}20;color:${qtyColor}">${s.qty}</span>
       <span style="flex:1">${_escHtml(s.name)}</span>
@@ -1318,6 +1384,7 @@ function _smartCQFinishSuggest(input, boxId) {
   box.style.display = matches.length || q ? '' : 'none';
 }
 
+/** @param {string} fieldName */
 function _openNewCQMaterialPopup(fieldName) {
   const existing = _byId('cq-mat-' + fieldName)?.value || '';
   _openPopup(`
@@ -1337,11 +1404,12 @@ function _openNewCQMaterialPopup(fieldName) {
   setTimeout(() => _byId('pnm-name')?.focus(), 50);
 }
 
+/** @param {string} fieldName */
 function _saveNewCQMaterial(fieldName) {
   const name = _popupVal('pnm-name');
   if (!name) { _toast('Name is required', 'error'); return; }
   const price = parseFloat(_popupVal('pnm-price')) || 0;
-  if (!cqSettings.materials.some(m => m.name === name)) {
+  if (!cqSettings.materials.some(/** @param {any} m */ m => m.name === name)) {
     cqSettings.materials.push({ name, price });
     saveCQSettings();
   }
@@ -1376,7 +1444,7 @@ function _saveNewCQFinish() {
   if (!name) { _toast('Name is required', 'error'); return; }
   const price = parseFloat(_popupVal('pnf-price')) || 0;
   if (!cqSettings.finishes) cqSettings.finishes = [];
-  if (!cqSettings.finishes.some(f => f.name === name)) {
+  if (!cqSettings.finishes.some(/** @param {any} f */ f => f.name === name)) {
     cqSettings.finishes.push({ name, price });
     saveCQSettings();
   }
@@ -1388,15 +1456,16 @@ function _saveNewCQFinish() {
 }
 
 // ── Cabinet Hardware Smart Suggest ──
+/** @param {HTMLInputElement} input @param {string} boxId @param {number} lineId @param {number} hwIdx */
 function _smartCQHwSuggest(input, boxId, lineId, hwIdx) {
   const box = _byId(boxId);
   if (!box) return;
   _posSuggest(input, box);
   const q = input.value.trim().toLowerCase();
   const cur = window.currency;
-  const matches = q ? cqSettings.hardware.filter(h => h.name.toLowerCase().includes(q)) : cqSettings.hardware;
+  const matches = q ? cqSettings.hardware.filter(/** @param {any} h */ h => h.name.toLowerCase().includes(q)) : cqSettings.hardware;
   let html = '';
-  matches.slice(0, 8).forEach(h => {
+  matches.slice(0, 8).forEach(/** @param {any} h */ h => {
     html += `<div class="client-suggest-item" onmousedown="_byId('cq-hw-${lineId}-${hwIdx}').value='${_escHtml(h.name)}';updateCQHw(${lineId},${hwIdx},'name','${_escHtml(h.name)}');_byId('${boxId}').style.display='none'">
       <span class="suggest-icon" style="background:#6b8aff20;color:#6b8aff">H</span>
       <span style="flex:1">${_escHtml(h.name)}</span>
@@ -1408,15 +1477,16 @@ function _smartCQHwSuggest(input, boxId, lineId, hwIdx) {
   box.style.display = matches.length || q ? '' : 'none';
 }
 
+/** @param {HTMLInputElement} input @param {string} boxId @param {number} lineId */
 function _smartCQHwAddSuggest(input, boxId, lineId) {
   const box = _byId(boxId);
   if (!box) return;
   _posSuggest(input, box);
   const q = input.value.trim().toLowerCase();
   const cur = window.currency;
-  const matches = q ? cqSettings.hardware.filter(h => h.name.toLowerCase().includes(q)) : cqSettings.hardware;
+  const matches = q ? cqSettings.hardware.filter(/** @param {any} h */ h => h.name.toLowerCase().includes(q)) : cqSettings.hardware;
   let html = '';
-  matches.slice(0, 8).forEach(h => {
+  matches.slice(0, 8).forEach(/** @param {any} h */ h => {
     html += `<div class="client-suggest-item" onmousedown="_addCQHwByName(${lineId},'${_escHtml(h.name)}');_byId('cq-hw-add-${lineId}').value='';_byId('${boxId}').style.display='none'">
       <span class="suggest-icon" style="background:#6b8aff20;color:#6b8aff">H</span>
       <span style="flex:1">${_escHtml(h.name)}</span>
@@ -1428,6 +1498,7 @@ function _smartCQHwAddSuggest(input, boxId, lineId) {
   box.style.display = matches.length || q ? '' : 'none';
 }
 
+/** @param {number} lineId @param {string} hwName */
 function _addCQHwByName(lineId, hwName) {
   const line = cqLines.find(l => l.id === lineId);
   if (!line) return;
@@ -1436,6 +1507,7 @@ function _addCQHwByName(lineId, hwName) {
   _toast('"' + hwName + '" added', 'success');
 }
 
+/** @param {number} lineId @param {number} hwIdx */
 function _openNewCQHardwarePopup(lineId, hwIdx) {
   const existing = hwIdx >= 0 ? (_byId('cq-hw-' + lineId + '-' + hwIdx)?.value || '') : (_byId('cq-hw-add-' + lineId)?.value || '');
   _openPopup(`
@@ -1455,11 +1527,12 @@ function _openNewCQHardwarePopup(lineId, hwIdx) {
   setTimeout(() => _byId('pnh-name')?.focus(), 50);
 }
 
+/** @param {number} lineId @param {number} hwIdx */
 function _saveNewCQHardware(lineId, hwIdx) {
   const name = _popupVal('pnh-name');
   if (!name) { _toast('Name is required', 'error'); return; }
   const price = parseFloat(_popupVal('pnh-price')) || 0;
-  if (!cqSettings.hardware.some(h => h.name === name)) {
+  if (!cqSettings.hardware.some(/** @param {any} h */ h => h.name === name)) {
     cqSettings.hardware.push({ name, price });
     saveCQSettings();
   }
@@ -1479,7 +1552,9 @@ function renderCQResults() {
   const el = _byId('cq-results');
   if (!el) return;
   const cur = window.currency;
+  /** @param {any} v */
   const fmt = v => cur + Number(v).toFixed(2);
+  /** @param {number} v */
   const fmt0 = v => cur + Math.round(v).toLocaleString();
   const projName = _byId('cq-project')?.value || '';
 
@@ -1636,6 +1711,7 @@ function cqAddToExistingQuote() {
     </div>
   </div>`;
 }
+/** @param {number} qi */
 async function _cqApplyToQuote(qi) {
   const q = quotes[qi];
   if (!q) return;
@@ -1652,8 +1728,8 @@ async function _cqApplyToQuote(qi) {
     // Append cabinet specs as quote_lines rows so totals aggregate from the schema source of truth
     const { data: existing } = await _db('quote_lines').select('position').eq('quote_id', q.id);
     const startPos = (existing && existing.length) ? Math.max(...existing.map(r => r.position || 0)) + 1 : 1;
-    const rows = cqLines.map((l, i) => _cqLineToRow(l, startPos + i, q.id));
-    if (rows.length) await _db('quote_lines').insert(rows);
+    const rows = cqLines.map(/** @param {any} l @param {number} i */ (l, i) => _cqLineToRow(l, startPos + i, q.id));
+    if (rows.length) await _db('quote_lines').insert(/** @type {any} */ (rows));
     await _db('quotes').update({ notes: q.notes, updated_at: new Date().toISOString() }).eq('id', q.id);
     await _refreshQuoteTotals(q.id);
   }
@@ -1690,6 +1766,7 @@ function saveCQQuote() {
   renderCQSavedShelf();
 }
 
+/** @param {number} idx */
 function loadCQQuote(idx) {
   const q = cqSavedQuotes[idx];
   if (!q) return;
@@ -1720,6 +1797,7 @@ function newCQQuote() {
   renderCQPanel();
 }
 
+/** @param {number} idx */
 function deleteCQQuote(idx) {
   _confirm('Delete this saved quote?', () => {
     cqSavedQuotes.splice(idx, 1);
@@ -1738,7 +1816,7 @@ function renderCQSavedShelf() {
   shelf.style.display = '';
   const cur = window.currency;
   pills.innerHTML = cqSavedQuotes.map((q, i) => {
-    const total = q.lines.reduce((s, l) => {
+    const total = q.lines.reduce(/** @param {number} s @param {any} l */ (s, l) => {
       const c = calcCQLine(l);
       return s + c.lineSubtotal;
     }, 0);
@@ -1764,10 +1842,11 @@ function cqConvertToOrder() {
   const grandTotal = grandSubtotal * (1 + cqSettings.markup/100) * (1 + cqSettings.tax/100);
 
   // Create via the existing quote system
+  /** @type {any} */
   const row = {
     user_id: _userId, client, project,
-    materials: cqLines.reduce((s, l) => s + calcCQLine(l).matCost * l.qty, 0),
-    labour: cqLines.reduce((s, l) => s + calcCQLine(l).labourCost * l.qty, 0),
+    materials: cqLines.reduce(/** @param {number} s @param {any} l */ (s, l) => s + calcCQLine(l).matCost * l.qty, 0),
+    labour: cqLines.reduce(/** @param {number} s @param {any} l */ (s, l) => s + calcCQLine(l).labourCost * l.qty, 0),
     markup: cqSettings.markup, tax: cqSettings.tax,
     status: 'draft',
     date: new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short'}),
@@ -1776,7 +1855,7 @@ function cqConvertToOrder() {
 
   if (_userId) {
     _db('quotes').insert(row).select().single().then(({data, error}) => {
-      if (error) { _toast('Could not save quote: ' + (error.message||''), 'error'); return; }
+      if (error || !data) { _toast('Could not save quote: ' + (error?.message||''), 'error'); return; }
       quotes.unshift(data);
       _toast('Quote created from cabinet quote', 'success');
       renderQuoteMain();
@@ -1793,6 +1872,7 @@ function cqConvertToOrder() {
 let _clProjectCache = [];
 
 // ── Cut List smart search: Projects ──
+/** @param {HTMLInputElement} input @param {string} boxId */
 function _smartCLProjectSuggest(input, boxId) {
   const box = _byId(boxId);
   if (!box) return;
@@ -1816,6 +1896,7 @@ function _smartCLProjectSuggest(input, boxId) {
 }
 
 // ── Cut List smart search: Stock Materials ──
+/** @param {HTMLInputElement} input @param {string} boxId */
 function _smartCLStockSuggest(input, boxId) {
   const box = _byId(boxId);
   if (!box) return;
@@ -1823,19 +1904,20 @@ function _smartCLStockSuggest(input, boxId) {
   const q = input.value.trim().toLowerCase();
   const ebOn = typeof colsVisible !== 'undefined' && !!colsVisible.edgeband;
   // Panels: Sheet Goods or anything with dims (but not Edge Banding)
-  const panelItems = stockItems.filter(s => (_scGet(s.id)||s.category) !== 'Edge Banding' && ((_scGet(s.id)||s.category) === 'Sheet Goods' || (s.w > 0 && s.h > 0)));
+  const panelItems = stockItems.filter(s => (_scGet(s.id)||s.category) !== 'Edge Banding' && ((_scGet(s.id)||s.category) === 'Sheet Goods' || ((s.w ?? 0) > 0 && (s.h ?? 0) > 0)));
   // When edgeband column is on, also include Edge Banding items
   const ebItems = ebOn ? stockItems.filter(s => (_scGet(s.id)||s.category) === 'Edge Banding') : [];
   const pool = panelItems.concat(ebItems);
   const matches = q ? pool.filter(s => s.name.toLowerCase().includes(q)) : pool;
   if (matches.length === 0 && !q) { box.style.display = 'none'; return; }
   let html = '';
-  matches.slice(0, 10).forEach(s => {
+  matches.slice(0, 10).forEach(/** @param {any} s */ s => {
     const origIdx = stockItems.indexOf(s);
     const isEB = (_scGet(s.id)||s.category) === 'Edge Banding';
-    const qtyColor = s.qty <= (s.lowAlert || 3) ? '#ef4444' : '#22c55e';
+    const qtyColor = (s.qty ?? 0) <= (s.lowAlert || s.low || 3) ? '#ef4444' : '#22c55e';
     let meta = '';
     if (isEB) {
+      /** @type {any} */
       const vd = _svGet(s.id) || {};
       const t = vd.thickness ?? s.thickness;
       const w = vd.width ?? s.width ?? s.h;
@@ -1861,13 +1943,17 @@ function _smartCLStockSuggest(input, boxId) {
   box.style.display = '';
 }
 
-function _clAddPanelFromStock(idx) { const item = stockItems[idx]; if (!item) return; addSheet(item.name, item.w, item.h, Math.max(1, item.qty)); _toast('"'+item.name+'" added to panels', 'success'); }
+/** @param {number} idx */
+function _clAddPanelFromStock(idx) { const item = stockItems[idx]; if (!item) return; addSheet(item.name, item.w, item.h, Math.max(1, item.qty ?? 0)); _toast('"'+item.name+'" added to panels', 'success'); }
 
+/** @param {number} idx */
 function _clAddEdgeBandFromStockIdx(idx) {
+  /** @type {any} */
   const s = stockItems[idx];
   if (!s) return;
   const exists = edgeBands.find(eb => eb.name === s.name);
   if (exists) { _toast(`${s.name} already in project`, 'error'); return; }
+  /** @type {any} */
   const vd = _svGet(s.id) || {};
   const thickness = vd.thickness ?? s.thickness ?? 0;
   const width = vd.width ?? s.width ?? s.h ?? 0;
@@ -1878,6 +1964,7 @@ function _clAddEdgeBandFromStockIdx(idx) {
 }
 
 // ── Cut List Cabinet Library ──
+/** @param {HTMLInputElement} input @param {string} boxId */
 function _smartCLCabinetSuggest(input, boxId) {
   const box = _byId(boxId);
   if (!box) return;
@@ -1901,6 +1988,7 @@ function _smartCLCabinetSuggest(input, boxId) {
 }
 
 // Count how many cut parts a cabinet would produce
+/** @param {any} cab */
 function _cabinetPartCount(cab) {
   let n = 4; // 2 sides + top + bottom
   if (cab.backMat) n++; // back panel
@@ -1912,6 +2000,7 @@ function _cabinetPartCount(cab) {
 }
 
 // Build the list of parts a cabinet explodes into — pure data, no side effects.
+/** @param {any} cab */
 function _cabinetPartsList(cab) {
   const W = cab.w, H = cab.h, D = cab.d;
   const T = 18;
@@ -1919,7 +2008,9 @@ function _cabinetPartsList(cab) {
   const mat = cab.material || '';
   const backMat = cab.backMat || mat;
   const name = cab._libName || cab.name || 'Cabinet';
+  /** @type {Array<{label: string, w: number, h: number, qty: number, grain: string}>} */
   const parts = [];
+  /** @param {string} label @param {number} w @param {number} h @param {number} qty */
   const add = (label, w, h, qty) => parts.push({ label, w, h, qty, grain: 'none' });
 
   add(name + ' — Side', H, D, 2);
@@ -1954,8 +2045,11 @@ function _cabinetPartsList(cab) {
 //             non-matching parts are appended as new rows.
 //   'new'   — every part becomes a new row (prior behaviour).
 // Extra fields on the part (material, notes, edgeBand) are carried onto newly-added pieces.
+/** @param {any[]} parts @param {string} mode */
 function _applyCabinetParts(parts, mode) {
+  /** @param {any} p */
   const key = p => `${p.label}|${p.w}|${p.h}|${p.grain||'none'}`;
+  /** @param {any} src */
   const applyExtras = (src) => {
     const last = pieces[pieces.length - 1];
     if (!last) return;
@@ -1981,11 +2075,14 @@ function _applyCabinetParts(parts, mode) {
 
 // Prompt user to merge or add-as-new when a parts list has duplicates in the cut list.
 // If there are no duplicates, parts are added straight away with no prompt.
+/** @param {any[]} parts @param {string} name */
 function _clPromptMergeOrNew(parts, name) {
+  /** @param {any} p */
   const key = p => `${p.label}|${p.w}|${p.h}|${p.grain||'none'}`;
   const existing = new Set(pieces.map(key));
-  const dupCount = parts.filter(c => existing.has(key(c))).length;
+  const dupCount = parts.filter(/** @param {any} c */ c => existing.has(key(c))).length;
 
+  /** @param {string} mode */
   const finish = (mode) => {
     const r = _applyCabinetParts(parts, mode);
     const suffix = r.merged
@@ -2023,6 +2120,7 @@ function _clPromptMergeOrNew(parts, name) {
 
 // Explode a saved cabinet into individual cut list pieces.
 // If any parts match existing cut-list rows, prompt the user to merge or add as new.
+/** @param {number} libIdx */
 function _clLoadCabinetParts(libIdx) {
   const cab = cqLibrary[libIdx];
   if (!cab) return;
@@ -2056,6 +2154,7 @@ function _confirmSaveCLToCabLib() {
   const name = _popupVal('pcl-name');
   if (!name) { _toast('Name is required', 'error'); return; }
   // Create a lightweight cabinet library entry that stores cut parts directly
+  /** @type {any} */
   const entry = cqDefaultLine();
   entry.id = Date.now();
   entry._libName = name;
@@ -2089,8 +2188,10 @@ _clLoadCabinetParts = function(libIdx) {
   _clLoadCabinetParts_orig(libIdx);
 };
 
+/** @param {any} s */
 function _escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 
+/** @param {string} [mode] */
 function printCQQuote(mode) {
   if (!cqLines.length) { _toast('Add cabinet lines first.', 'error'); return; }
   if (mode === 'pdf') {
@@ -2115,7 +2216,9 @@ function printCQQuote(mode) {
     return;
   }
   const cur = window.currency;
+  /** @param {any} v */
   const fmt = v => cur + Number(v).toFixed(2);
+  /** @param {number} v */
   const fmt0 = v => cur + Math.round(v).toLocaleString();
   const biz = getBizInfo();
   const client = _byId('cq-client')?.value?.trim() || '';
@@ -2124,9 +2227,11 @@ function printCQQuote(mode) {
   const quoteNum = _byId('cq-quote-num')?.value?.trim() || ('CQ-' + Date.now().toString(36).toUpperCase());
 
   let grandMat = 0, grandLabour = 0, grandHw = 0, grandSub = 0;
-  let lineNum = 0, lastRoom = null;
+  /** @type {string | null} */
+  let lastRoom = null;
+  let lineNum = 0;
   const hasRooms = cqLines.some(l => l.room);
-  const lineRows = cqLines.map((line) => {
+  const lineRows = cqLines.map(/** @param {any} line */ (line) => {
     const c = calcCQLine(line);
     grandMat += c.matCost * line.qty;
     grandLabour += c.labourCost * line.qty;
@@ -2144,7 +2249,7 @@ function printCQQuote(mode) {
       ${line.doors>0?'<br><span style="font-size:10px;color:#999">'+line.doors+' door(s)</span>':''}
       ${line.drawers>0?'<br><span style="font-size:10px;color:#999">'+line.drawers+' drawer(s)</span>':''}
       ${line.shelves+line.adjShelves>0?'<br><span style="font-size:10px;color:#999">'+(line.shelves+line.adjShelves)+' shelf/shelves</span>':''}
-      ${line.hwItems.length>0?'<br><span style="font-size:10px;color:#999">HW: '+line.hwItems.map(h=>_escHtml(h.name)+' x'+h.qty).join(', ')+'</span>':''}</td>
+      ${line.hwItems.length>0?'<br><span style="font-size:10px;color:#999">HW: '+line.hwItems.map(/** @param {any} h */ h=>_escHtml(h.name)+' x'+h.qty).join(', ')+'</span>':''}</td>
       <td style="padding:8px 10px;border-bottom:1px solid #f0f0f0;text-align:center">${line.qty}</td>
       <td style="padding:8px 10px;border-bottom:1px solid #f0f0f0;text-align:right;font-variant-numeric:tabular-nums">${fmt(c.matCost + c.labourCost + c.hwCost)}</td>
       <td style="padding:8px 10px;border-bottom:1px solid #f0f0f0;text-align:right;font-weight:600;font-variant-numeric:tabular-nums">${fmt0(c.lineSubtotal)}</td>
@@ -2290,6 +2395,7 @@ function cqSendToQuickQuote() {
 }
 
 // ── Duplicate saved quote ──
+/** @param {number} idx */
 function dupCQSavedQuote(idx) {
   const src = cqSavedQuotes[idx];
   if (!src) return;
