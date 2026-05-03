@@ -54,6 +54,57 @@ function orderProject(o) {
   return p ? p.name : '';
 }
 
+// ── Cabinet Builder draft-quote helpers (Item 2 Phase 1.1) ──
+// Each (user, project) pair has at most one draft quote, used by the Cabinet
+// Builder tab as the live workspace. Drafts are excluded from the Quotes tab,
+// dashboard counts, and CSV exports. The tag is a notes-prefix convention —
+// schema-free, swap for a real `is_draft` column if it becomes load-bearing.
+const CB_DRAFT_TAG = '[CB_DRAFT]';
+
+/** @param {{notes?: string | null} | null | undefined} q */
+function _isDraftQuote(q) {
+  return !!q && typeof q.notes === 'string' && q.notes.startsWith(CB_DRAFT_TAG);
+}
+
+/**
+ * Find or create the Cabinet Builder draft quote for a given project.
+ * Returns null if no user is signed in or no project id is supplied.
+ * @param {number | null | undefined} projectId
+ */
+async function _findOrCreateDraftQuote(projectId) {
+  if (!_userId || !projectId) return null;
+  let draft = quotes.find(q => q.project_id === projectId && _isDraftQuote(q));
+  if (draft) return draft;
+  const { data: existing } = await _db('quotes')
+    .select('*')
+    .eq('user_id', _userId)
+    .eq('project_id', projectId)
+    .order('created_at', { ascending: false });
+  if (existing && existing.length) {
+    const found = existing.find(q => _isDraftQuote(q));
+    if (found) {
+      if (!quotes.find(q => q.id === found.id)) quotes.unshift(found);
+      return found;
+    }
+  }
+  const insertBody = {
+    user_id: _userId,
+    project_id: projectId,
+    notes: CB_DRAFT_TAG,
+    status: 'draft',
+    markup: (typeof cbSettings !== 'undefined' && cbSettings && cbSettings.markup) ?? 0,
+    tax: (typeof cbSettings !== 'undefined' && cbSettings && cbSettings.tax) ?? 0,
+    date: new Date().toISOString().slice(0, 10),
+  };
+  const { data, error } = await _db('quotes').insert(insertBody).select().single();
+  if (error || !data) {
+    _toast('Could not create draft quote.', 'error');
+    return null;
+  }
+  quotes.unshift(data);
+  return data;
+}
+
 // Aggregate materials/labour for a quote from its `quote_lines` rows.
 // Returns null if no lines exist; callers should treat null as zero totals.
 /** @param {number} quoteId */
@@ -222,10 +273,12 @@ function renderQuoteMain() {
   if (!el) return;
   /** @param {number} v */
   const fmt = v => cur + v.toLocaleString('en-US', {minimumFractionDigits:0, maximumFractionDigits:0});
-  const totalValue = quotes.reduce((s,q) => s + quoteTotal(q), 0);
-  const approved = quotes.filter(q => q.status === 'approved').length;
-  const sent = quotes.filter(q => q.status === 'sent').length;
-  const draft = quotes.filter(q => q.status === 'draft').length;
+  // Hide CB drafts — they're Cabinet Builder workspace state, not customer quotes.
+  const customerQuotes = quotes.filter(q => !_isDraftQuote(q));
+  const totalValue = customerQuotes.reduce((s,q) => s + quoteTotal(q), 0);
+  const approved = customerQuotes.filter(q => q.status === 'approved').length;
+  const sent = customerQuotes.filter(q => q.status === 'sent').length;
+  const draft = customerQuotes.filter(q => q.status === 'draft').length;
 
   /** @param {string} s */
   const statusBadge = s => {
@@ -286,7 +339,7 @@ function renderQuoteMain() {
   const qFilter = window._quoteFilter || 'all';
   const qSearch = (window._quoteSearch || '').toLowerCase().trim();
   const qSort = window._quoteSort || 'newest';
-  let filteredQ = [...quotes];
+  let filteredQ = [...customerQuotes];
   if (qFilter !== 'all') filteredQ = filteredQ.filter(q => q.status === qFilter);
   if (qSearch) filteredQ = filteredQ.filter(q => (quoteClient(q) + ' ' + quoteProject(q)).toLowerCase().includes(qSearch));
   if (qSort === 'value') filteredQ.sort((a,b) => quoteTotal(b) - quoteTotal(a));
@@ -294,7 +347,7 @@ function renderQuoteMain() {
 
   const filterBar = `<div class="order-filter-tabs" style="align-items:center">
     <input class="order-search-input" type="search" placeholder="Search client or project…" value="${window._quoteSearch||''}" oninput="window._quoteSearch=this.value;renderQuoteMain()">
-    <button class="ofilter-tab ${qFilter==='all'?'active':''}" onclick="window._quoteFilter='all';renderQuoteMain()">All (${quotes.length})</button>
+    <button class="ofilter-tab ${qFilter==='all'?'active':''}" onclick="window._quoteFilter='all';renderQuoteMain()">All (${customerQuotes.length})</button>
     <button class="ofilter-tab ${qFilter==='draft'?'active':''}" onclick="window._quoteFilter='draft';renderQuoteMain()">Draft (${draft})</button>
     <button class="ofilter-tab ${qFilter==='sent'?'active':''}" onclick="window._quoteFilter='sent';renderQuoteMain()">Sent (${sent})</button>
     <button class="ofilter-tab ${qFilter==='approved'?'active':''}" onclick="window._quoteFilter='approved';renderQuoteMain()">Approved (${approved})</button>
@@ -309,22 +362,23 @@ function renderQuoteMain() {
 
   el.innerHTML = `<div style="max-width:800px;margin:0 auto">
     <div class="stats-grid">
-      <div class="stat-card accent"><div class="stat-label">Total Quotes</div><div class="stat-value">${quotes.length}</div><div class="stat-sub">${draft} draft · ${sent} sent</div></div>
+      <div class="stat-card accent"><div class="stat-label">Total Quotes</div><div class="stat-value">${customerQuotes.length}</div><div class="stat-sub">${draft} draft · ${sent} sent</div></div>
       <div class="stat-card success"><div class="stat-label">Approved</div><div class="stat-value">${approved}</div><div class="stat-sub">ready to start</div></div>
       <div class="stat-card warn"><div class="stat-label">Pipeline Value</div><div class="stat-value">${fmt(totalValue)}</div><div class="stat-sub">total quoted</div></div>
     </div>
-    ${quotes.length === 0 ? emptyState : filterBar + `<div class="quote-list">${filteredQ.map(qCard).join('')}${filteredQ.length === 0 ? '<div class="empty-state" style="padding:40px 0"><p style="color:var(--muted)">No quotes match this filter.</p></div>' : ''}</div>`}
+    ${customerQuotes.length === 0 ? emptyState : filterBar + `<div class="quote-list">${filteredQ.map(qCard).join('')}${filteredQ.length === 0 ? '<div class="empty-state" style="padding:40px 0"><p style="color:var(--muted)">No quotes match this filter.</p></div>' : ''}</div>`}
   </div>`;
 }
 
 
 // ── CSV import / export ──
 function exportQuotesCSV() {
-  if (!quotes.length) { _toast('No quotes to export', 'error'); return; }
+  const customerQuotes = quotes.filter(q => !_isDraftQuote(q));
+  if (!customerQuotes.length) { _toast('No quotes to export', 'error'); return; }
   const cur = window.currency;
   /** @type {any[][]} */
   const rows = [['Client','Project','Materials','Labour','Markup %','Tax %','Status','Date','Notes']];
-  quotes.forEach(q => {
+  customerQuotes.forEach(q => {
     const matVal = q._totals ? q._totals.materials : (q.materials || 0);
     const labVal = q._totals ? q._totals.labour    : (q.labour    || 0);
     rows.push([quoteClient(q),quoteProject(q),matVal,labVal,q.markup,q.tax,q.status,q.date,q.notes||'']);

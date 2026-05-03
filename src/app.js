@@ -19,7 +19,7 @@ function _openClientPopup(id) {
   const cur = window.currency;
   /** @param {number} v */
   const fmt = v => cur + v.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0});
-  const cQuotes = quotes.filter(q => q.client_id === c.id || (!q.client_id && quoteClient(q) === c.name));
+  const cQuotes = quotes.filter(q => !_isDraftQuote(q) && (q.client_id === c.id || (!q.client_id && quoteClient(q) === c.name)));
   const cOrders = orders.filter(o => o.client_id === c.id || (!o.client_id && orderClient(o) === c.name));
   const cProjects = projects.filter(p => p.client_id === c.id);
 
@@ -417,7 +417,7 @@ function _openProjectPopup(id) {
   /** @param {number} v */
   const fmt = v => cur + v.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0});
   const clientName = p.client_id ? (clients.find(c=>c.id===p.client_id)||{}).name||'' : '';
-  const pQuotes = quotes.filter(q => q.project_id === p.id || (!q.project_id && quoteProject(q) === p.name));
+  const pQuotes = quotes.filter(q => !_isDraftQuote(q) && (q.project_id === p.id || (!q.project_id && quoteProject(q) === p.name)));
   const pOrders = orders.filter(o => o.project_id === p.id || (!o.project_id && orderProject(o) === p.name));
   const statusBadge = p.status==='complete'?'badge-green':p.status==='on-hold'?'badge-gray':'badge-blue';
 

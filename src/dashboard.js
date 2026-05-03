@@ -18,8 +18,9 @@ function renderDashboard() {
   const overdueOrders = activeOrders.filter(o => { if (!o.due || o.due === 'TBD') return false; const d = new Date(o.due); return !isNaN(+d) && d < new Date(); });
   const pipeline      = activeOrders.reduce((s,o) => s+(o.value ?? 0), 0);
   const revenue       = doneOrders.reduce((s,o) => s+(o.value ?? 0), 0);
-  const approvedQ     = quotes.filter(q => q.status === 'approved').length;
-  const quoteValue    = quotes.reduce((s,q) => s+quoteTotal(q), 0);
+  const customerQuotes = quotes.filter(q => !_isDraftQuote(q));
+  const approvedQ     = customerQuotes.filter(q => q.status === 'approved').length;
+  const quoteValue    = customerQuotes.reduce((s,q) => s+quoteTotal(q), 0);
   const lowStock      = stockItems.filter(i => (i.qty ?? 0) <= (i.low ?? 0));
   const stockValue    = stockItems.reduce((s,i) => s+(i.qty ?? 0)*(i.cost ?? 0), 0);
   const totalSheets   = stockItems.reduce((s,i) => s+(i.qty ?? 0), 0);
@@ -60,7 +61,7 @@ function renderDashboard() {
       </div>
 
       <!-- Getting started guide — only when everything is empty -->
-      ${orders.length === 0 && quotes.length === 0 && stockItems.length === 0 && !localStorage.getItem('pc_hide_guide') ? `
+      ${orders.length === 0 && customerQuotes.length === 0 && stockItems.length === 0 && !localStorage.getItem('pc_hide_guide') ? `
       <div id="getting-started-guide" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px 24px;margin-bottom:20px;position:relative">
         <button onclick="localStorage.setItem('pc_hide_guide','1');this.parentElement.remove()" style="position:absolute;top:8px;right:8px;background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:4px 8px;border-radius:4px" title="Dismiss">&times;</button>
         <div style="font-size:13px;font-weight:700;margin-bottom:12px;color:var(--text)">Getting Started</div>
