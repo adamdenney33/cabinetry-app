@@ -239,6 +239,34 @@ async function _syncCBLinesToDB() {
     console.warn('[cb dual-write]', (/** @type {any} */ (e)).message || e);
   }
 }
+
+// Item 2 phase 1.3: load cbLines from the project's draft quote.
+// Called from loadAllData after auth + projects + quotes are populated.
+// REPLACES localStorage-loaded cbLines if the DB has any lines for this
+// project's draft. Otherwise no-op — LS data stays as fallback.
+async function _loadCBLinesFromDB() {
+  if (!_userId) return;
+  const savedName = localStorage.getItem('pc_cq_project_name');
+  if (!savedName) return;
+  const proj = projects.find(p => p.name === savedName);
+  if (!proj) return;
+  const draft = quotes.find(q => q.project_id === proj.id && _isDraftQuote(q));
+  if (!draft) return;
+  try {
+    const { data: lines, error } = await _db('quote_lines').select('*').eq('quote_id', draft.id).order('position');
+    if (error || !lines || lines.length === 0) return;
+    cbLines = lines.map(/** @param {any} row @param {number} i */ (row, i) => {
+      const cb = /** @type {any} */ (_quoteLineRowToCB(row));
+      cb.id = i + 1;
+      return cb;
+    });
+    cbNextId = cbLines.length + 1;
+    if (typeof renderCBPanel === 'function') renderCBPanel();
+  } catch (e) {
+    console.warn('[cb db-load]', (/** @type {any} */ (e)).message || e);
+  }
+}
+
 function loadCBSaved() {
   try { const s = localStorage.getItem('pc_cq_saved'); if (s) cbSavedQuotes = JSON.parse(s); } catch(e) {}
 }

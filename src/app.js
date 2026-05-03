@@ -1003,6 +1003,9 @@ async function loadAllData() {
   renderStockMain();
   renderQuoteMain();
   renderOrdersMain();
+  // Item 2 phase 1.3: pull Cabinet Builder lines from the project's draft quote.
+  // No-op without auth, without a saved project name, or when the DB draft is empty.
+  _loadCBLinesFromDB().catch(e => console.warn('[cb db-load]', e.message || e));
 }
 
 // Phase 3.2: overlay catalog_items rows onto in-memory cbSettings.
