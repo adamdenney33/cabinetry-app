@@ -190,6 +190,54 @@ function saveCBLines() {
   if (pn) localStorage.setItem('pc_cq_project_name', pn.value);
   const cn = _byId('cb-client');
   if (cn) localStorage.setItem('pc_cq_client_name', cn.value);
+  // Item 2 phase 1.2: dual-write to the project's draft quote in DB.
+  // No-op without auth or a real (non-typed-string) project. Debounced
+  // 800ms so a flurry of keystroke saves coalesces into one DB round trip.
+  _scheduleCBLinesSync();
+}
+
+// Resolve the active Cabinet Builder project_id from the cb-project input.
+// Returns null when there's no auth, no input, no value, or no matching projects row.
+function _getCBProjectId() {
+  if (!_userId) return null;
+  const pn = _byId('cb-project');
+  if (!pn) return null;
+  const name = pn.value.trim();
+  if (!name) return null;
+  const proj = projects.find(p => p.name === name);
+  return proj ? proj.id : null;
+}
+
+/** @type {ReturnType<typeof setTimeout> | null} */
+let _cbLinesSyncTimer = null;
+
+function _scheduleCBLinesSync() {
+  if (_cbLinesSyncTimer) clearTimeout(_cbLinesSyncTimer);
+  _cbLinesSyncTimer = setTimeout(() => {
+    _cbLinesSyncTimer = null;
+    _syncCBLinesToDB();
+  }, 800);
+}
+
+// Replace all quote_lines on the project's draft quote with the current cbLines.
+// REPLACE semantics (delete-then-insert) match _replaceQuoteLinesChildTable.
+// Fire-and-forget — failures log but never block the user; localStorage stays
+// the source of truth until phase 1.4.
+async function _syncCBLinesToDB() {
+  const projectId = _getCBProjectId();
+  if (!projectId) return;
+  try {
+    const draft = await _findOrCreateDraftQuote(projectId);
+    if (!draft) return;
+    await _db('quote_lines').delete().eq('quote_id', draft.id);
+    if (cbLines.length > 0) {
+      /** @type {any[]} */
+      const rows = cbLines.map((l, i) => _cbLineToRow(l, i, draft.id));
+      await _db('quote_lines').insert(rows);
+    }
+  } catch (e) {
+    console.warn('[cb dual-write]', (/** @type {any} */ (e)).message || e);
+  }
 }
 function loadCBSaved() {
   try { const s = localStorage.getItem('pc_cq_saved'); if (s) cbSavedQuotes = JSON.parse(s); } catch(e) {}

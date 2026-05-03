@@ -77,32 +77,15 @@ async function _saveProjectScoped({ name, scope, payload }) {
 async function _replaceQuoteLinesChildTable(projectId, payload) {
   if (!projectId) return;
   const lines = payload.lines || [];
-  const tag = '[CB_DEFAULT]';
   if (!_userId) return;
-  const uid = _userId;
-  // Find existing default quote for this project
-  const { data: existing } = await _db('quotes').select('id,notes').eq('project_id', projectId).eq('user_id', uid);
-  /** @type {number | null} */
-  let quoteId = null;
-  if (existing) {
-    const found = existing.find(q => (q.notes || '').includes(tag));
-    if (found) quoteId = found.id;
-  }
-  if (!quoteId) {
-    const { data: created, error } = await _db('quotes').insert([{
-      user_id: uid, project_id: projectId,
-      notes: tag, status: 'draft',
-      date: payload.date || new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}),
-      markup: 0, tax: 0,
-    }]);
-    if (error) { console.warn('[saveProjectScoped] quote create failed:', error.message); return; }
-    quoteId = (created && created[0]) ? created[0].id : null;
-  }
-  if (!quoteId) return;
-  // Replace lines
-  await _db('quote_lines').delete().eq('quote_id', quoteId);
+  // Item 2 phase 1.2: route through the shared draft-quote helper so the
+  // explicit "Save Project" button and the auto dual-write target the same
+  // row per project. Single source of truth.
+  const draft = await _findOrCreateDraftQuote(projectId);
+  if (!draft) return;
+  await _db('quote_lines').delete().eq('quote_id', draft.id);
   if (lines.length > 0 && typeof _cbLineToRow === 'function') {
-    const rows = lines.map(/** @param {any} l @param {number} i */ (l, i) => _cbLineToRow(l, i, quoteId));
+    const rows = lines.map(/** @param {any} l @param {number} i */ (l, i) => _cbLineToRow(l, i, draft.id));
     await _db('quote_lines').insert(rows);
   }
 }
