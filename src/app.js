@@ -1081,6 +1081,11 @@ _sb.auth.onAuthStateChange(async (event, session) => {
     /** @type {HTMLElement} */ (document.getElementById('account-guest-view')).style.display = '';
     /** @type {HTMLElement} */ (document.getElementById('account-user-view')).style.display = 'none';
     _clProjectCache = [];
+    // Item 2 phase 1.4: clear in-memory Cabinet Builder state and re-render
+    // so the auth gate shows immediately on sign-out (otherwise the panel
+    // keeps rendering the previous user's cabinets until the next tab switch).
+    cbLines = [];
+    if (typeof renderCBPanel === 'function') { try { renderCBPanel(); } catch(e){} }
   }
 });
 

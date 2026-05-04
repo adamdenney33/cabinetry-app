@@ -962,6 +962,11 @@ function calcCBLine(line) {
 
 // ── Render the sidebar: cabinet list + active editor ──
 function renderCBPanel() {
+  // Item 2 phase 1.4: auth gate. Cabinet Builder requires sign-in — guests
+  // see a prompt instead of the workspace. The gate is rendered into the
+  // panel root and the builder view is hidden until auth.
+  if (!_renderCBAuthGate()) return;
+
   const cur = window.currency;
   /** @param {any} v */
   const fmt = v => cur + Number(v).toFixed(2);
@@ -978,6 +983,38 @@ function renderCBPanel() {
   renderCBCabList();
   renderCBEditor();
   renderCBResults();
+}
+
+// Render the sign-in gate when unauthenticated. Returns true when the
+// builder should render (authed), false when the gate took over.
+function _renderCBAuthGate() {
+  const builder = document.getElementById('cab-view-builder');
+  let gate = document.getElementById('cb-auth-gate');
+  if (_userId) {
+    if (gate) gate.style.display = 'none';
+    if (builder) builder.style.display = '';
+    return true;
+  }
+  if (builder) builder.style.display = 'none';
+  if (!gate) {
+    const panel = document.getElementById('panel-cabinet');
+    if (!panel) return false;
+    gate = document.createElement('div');
+    gate.id = 'cb-auth-gate';
+    gate.style.cssText = 'flex:1;display:flex;align-items:center;justify-content:center;padding:40px 20px';
+    gate.innerHTML = `
+      <div style="max-width:420px;text-align:center;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:32px 28px;box-shadow:var(--shadow)">
+        <div style="font-size:32px;margin-bottom:12px">🔒</div>
+        <div style="font-size:18px;font-weight:700;margin-bottom:8px;color:var(--text)">Sign in to use Cabinet Builder</div>
+        <div style="font-size:13px;color:var(--text2);margin-bottom:20px;line-height:1.5">
+          Cabinet Builder saves your work to the cloud so you can pick up where you left off on any device. An account is required.
+        </div>
+        <button class="btn btn-primary" onclick="document.getElementById('auth-screen').classList.remove('hidden')" style="padding:10px 24px;font-size:14px">Sign In / Create Account</button>
+      </div>`;
+    panel.appendChild(gate);
+  }
+  gate.style.display = '';
+  return false;
 }
 
 // ── Render cabinet list in sidebar ──
