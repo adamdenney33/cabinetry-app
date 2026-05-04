@@ -185,14 +185,14 @@ function loadCBLines() {
   }, 100);
 }
 function saveCBLines() {
-  localStorage.setItem('pc_cq_lines', JSON.stringify(cbLines));
+  // Item 2 phase 1.5: cabinet data persists to DB only (via the debounced
+  // sync below). Project/client *navigation* state — which project the user
+  // last had selected — stays in localStorage so the next page load can
+  // re-resolve the project and pull its draft quote.
   const pn = _byId('cb-project');
   if (pn) localStorage.setItem('pc_cq_project_name', pn.value);
   const cn = _byId('cb-client');
   if (cn) localStorage.setItem('pc_cq_client_name', cn.value);
-  // Item 2 phase 1.2: dual-write to the project's draft quote in DB.
-  // No-op without auth or a real (non-typed-string) project. Debounced
-  // 800ms so a flurry of keystroke saves coalesces into one DB round trip.
   _scheduleCBLinesSync();
 }
 
@@ -246,6 +246,10 @@ async function _syncCBLinesToDB() {
 // project's draft. Otherwise no-op — LS data stays as fallback.
 async function _loadCBLinesFromDB() {
   if (!_userId) return;
+  // Phase 1.5 guard: don't clobber unsaved in-memory edits. loadAllData re-runs
+  // on every auth event including TOKEN_REFRESHED (~hourly). If a sync is
+  // pending, the user has edits the DB doesn't yet have — leave cbLines alone.
+  if (_cbLinesSyncTimer) return;
   const savedName = localStorage.getItem('pc_cq_project_name');
   if (!savedName) return;
   const proj = projects.find(p => p.name === savedName);
@@ -261,6 +265,9 @@ async function _loadCBLinesFromDB() {
       return cb;
     });
     cbNextId = cbLines.length + 1;
+    // Phase 1.5 cleanup: DB is now the source of truth. Clear the legacy
+    // pc_cq_lines key so it can't shadow the DB load on a future session.
+    localStorage.removeItem('pc_cq_lines');
     if (typeof renderCBPanel === 'function') renderCBPanel();
   } catch (e) {
     console.warn('[cb db-load]', (/** @type {any} */ (e)).message || e);
