@@ -112,3 +112,18 @@ class _DBBuilder {
  * @returns {_DBBuilder<K>}
  */
 function _db(table) { return new _DBBuilder(table); }
+
+// Dev-only: assistant-driven test signin. main.js stashes _isDev + creds on
+// window (production builds skip the gate). Run window._signInForTesting()
+// from the browser console to authenticate via VITE_TEST_EMAIL/PASSWORD.
+if (window._isDev && window._TEST_EMAIL && window._TEST_PASSWORD) {
+  window._signInForTesting = async function() {
+    const { data, error } = await _sb.auth.signInWithPassword({
+      email: /** @type {string} */ (window._TEST_EMAIL),
+      password: /** @type {string} */ (window._TEST_PASSWORD),
+    });
+    if (error) { console.error('[test-signin] failed:', error.message); return { ok: false, error: error.message }; }
+    console.log('[test-signin] OK — onAuthStateChange will load data');
+    return { ok: true, userId: data.user?.id };
+  };
+}

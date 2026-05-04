@@ -21,3 +21,13 @@ window.supabase = { createClient };
 window.jspdf = { jsPDF };
 window._SBURL = import.meta.env.VITE_SUPABASE_URL;
 window._SBKEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+// Dev-only: stash test credentials for window._signInForTesting() (defined in db.js).
+// Production builds (`import.meta.env.DEV === false`) leave these undefined.
+if (import.meta.env.DEV) {
+  window._isDev = true;
+  if (import.meta.env.VITE_TEST_EMAIL && import.meta.env.VITE_TEST_PASSWORD) {
+    window._TEST_EMAIL = import.meta.env.VITE_TEST_EMAIL;
+    window._TEST_PASSWORD = import.meta.env.VITE_TEST_PASSWORD;
+  }
+}

@@ -24,6 +24,14 @@ declare global {
     _SBURL: string;
     /** Supabase publishable (anon) key — set by src/main.js from import.meta.env.VITE_SUPABASE_ANON_KEY. */
     _SBKEY: string;
+    /** Dev-mode flag set by src/main.js when import.meta.env.DEV is true. */
+    _isDev?: boolean;
+    /** Test email for window._signInForTesting (dev-only). */
+    _TEST_EMAIL?: string;
+    /** Test password for window._signInForTesting (dev-only). */
+    _TEST_PASSWORD?: string;
+    /** Dev-only: sign in via VITE_TEST_* creds. Defined in src/db.js. */
+    _signInForTesting?: () => Promise<{ ok: boolean, error?: string, userId?: string }>;
     /** App-wide currency symbol — assigned by src/settings.js GLOBALS section. */
     currency: string;
     /** App-wide units mode ('imperial' | 'metric') — set by src/settings.js. */
