@@ -4,12 +4,13 @@
 
 Read these before making structural decisions or schema changes:
 
-- **`SPEC.md`** — pre-launch refactor spec (problem, goals, non-goals, scope, success criteria, phases, decisions log). The contract for what "done" means.
+- **`PLAN.md`** — **central planning doc.** All pending work, sub-steps, and status live here. Read first when starting a session.
+- **`SPEC.md`** — historical pre-launch refactor spec + decisions log (`§ 13`). Append a one-line entry to `§ 13` for non-obvious mid-task decisions.
 - **`SCHEMA.md`** — full database schema with DDL, RLS patterns, and migration order. Source of truth for all tables, columns, and FKs.
-- **`PLAN.md`** — launch-level stack/hosting/payments plan.
+- **`~/.claude/plans/item-2-cabinet-quote-unification.md`** — detailed architecture and decision rationale for the in-progress Cabinet Builder/Quote unification (`PLAN.md` references this for sub-step context).
 - **`Building Docs/Database_Visual_Guide.docx`** — plain-English version of the schema for non-technical reading.
 
-When making non-obvious decisions during work, append a one-line entry to `SPEC.md § 13 Decisions log`.
+When a sub-step from `PLAN.md` is completed, mark it ✅ in `PLAN.md` and append a brief summary to `SPEC.md § 13`. When introducing a new pending change, add it to `PLAN.md` with sub-steps before starting work.
 
 ## Stack
 - `index.html` — markup shell (~800 lines), single `<script type="module" src="/src/main.js">` bridge entry plus 18 classic `<script defer>` tags for the carved domain files
