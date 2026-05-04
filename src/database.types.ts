@@ -26,8 +26,14 @@ export type Database = {
           abn: string | null
           address: string | null
           created_at: string
+          default_base_types: Json
+          default_constructions: Json
           default_currency: string
+          default_deposit_pct: number
+          default_edge_banding: Json
+          default_edging_per_m: number
           default_labour_rate: number
+          default_labour_times: Json
           default_markup_pct: number
           default_tax_pct: number
           default_units: string
@@ -43,8 +49,14 @@ export type Database = {
           abn?: string | null
           address?: string | null
           created_at?: string
+          default_base_types?: Json
+          default_constructions?: Json
           default_currency?: string
+          default_deposit_pct?: number
+          default_edge_banding?: Json
+          default_edging_per_m?: number
           default_labour_rate?: number
+          default_labour_times?: Json
           default_markup_pct?: number
           default_tax_pct?: number
           default_units?: string
@@ -60,8 +72,14 @@ export type Database = {
           abn?: string | null
           address?: string | null
           created_at?: string
+          default_base_types?: Json
+          default_constructions?: Json
           default_currency?: string
+          default_deposit_pct?: number
+          default_edge_banding?: Json
+          default_edging_per_m?: number
           default_labour_rate?: number
+          default_labour_times?: Json
           default_markup_pct?: number
           default_tax_pct?: number
           default_units?: string

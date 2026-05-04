@@ -137,6 +137,9 @@ const SHEET_W = 2.44, SHEET_H = 1.22, SHEET_M2 = SHEET_W * SHEET_H;
 
 // ── Load / Save Settings ──
 function loadCBSettings() {
+  // Phase 3: business_info is the source of truth. Try LS once for backwards
+  // compat with sessions that haven't yet auth'd into the new DB schema, then
+  // _applyBizInfoFromDB hard-overlays whatever DB has.
   try { const s = localStorage.getItem('pc_cq_settings'); if (s) cbSettings = JSON.parse(s); } catch(e) {}
   // Ensure defaults exist for all list fields
   if (!cbSettings.baseTypes || !cbSettings.baseTypes.length) cbSettings.baseTypes = [
@@ -161,8 +164,8 @@ function loadCBSettings() {
   if (!_lt.endPanel) _lt.endPanel = 0.3;
   if (!_lt.finishPerM2) _lt.finishPerM2 = 0.5;
   if (!cbSettings.edgeBanding) cbSettings.edgeBanding = [{name:'Iron-on Veneer',price:3},{name:'PVC 1mm',price:4},{name:'PVC 2mm',price:5},{name:'Solid Timber',price:8}];
-  // Persist defaults back so they stick
-  localStorage.setItem('pc_cq_settings', JSON.stringify(cbSettings));
+  // Phase 3: defaults are bootstrap-only — DB overlay (post-auth) is canonical.
+  // No LS write here; see saveCBSettings() comment.
 }
 function saveCBSettings() {
   /** @param {string} id */
@@ -173,8 +176,11 @@ function saveCBSettings() {
   cbSettings.deposit = g('cb-deposit') || 50;
   cbSettings.edgingPerM = g('cb-edging-m') || 0;
   // labourTimes, materials, hardware, finishes, baseTypes, constructions
-  // are updated inline via onblur handlers
-  localStorage.setItem('pc_cq_settings', JSON.stringify(cbSettings));
+  // are updated inline via onblur handlers.
+  // Item 2 phase 3: business_info is the source of truth — pc_cq_settings
+  // localStorage is no longer written. Hardcoded defaults in loadCBSettings
+  // bootstrap pre-auth state until _applyBizInfoFromDB hard-overlays from DB.
+  if (typeof _syncCBSettingsToDB === 'function') _syncCBSettingsToDB();
 }
 function loadCBLines() {
   try { const s = localStorage.getItem('pc_cq_lines'); if (s) { cbLines = JSON.parse(s); cbNextId = Math.max(0, ...cbLines.map(l=>l.id)) + 1; } } catch(e) {}

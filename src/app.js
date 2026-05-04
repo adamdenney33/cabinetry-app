@@ -1051,17 +1051,27 @@ function _applyBizInfoFromDB(rows) {
       address: b.address || '', abn: b.abn || ''
     }));
   } catch(e) {}
-  // Default rates (only if cbSettings hasn't been customised)
-  if (typeof cbSettings !== 'undefined') {
-    if (b.default_labour_rate != null && (!cbSettings.labourRate || cbSettings.labourRate === 65)) {
-      cbSettings.labourRate = parseFloat(b.default_labour_rate);
+  // Phase 3: business_info is the source of truth for all cbSettings scalars
+  // and labour/list defaults. Hard overlay — DB always wins. Hardcoded defaults
+  // in cabinet.js still apply for new users with no business_info row.
+  // Race guard (mirrors _loadCBLinesFromDB): _applyBizInfoFromDB re-runs on
+  // every auth event including hourly TOKEN_REFRESHED. If a sync is pending,
+  // the user has unsaved cbSettings edits — leave them alone.
+  if (typeof cbSettings !== 'undefined' && (typeof _cbSettingsSyncTimer === 'undefined' || !_cbSettingsSyncTimer)) {
+    if (b.default_labour_rate != null) cbSettings.labourRate = parseFloat(b.default_labour_rate);
+    if (b.default_markup_pct  != null) cbSettings.markup     = parseFloat(b.default_markup_pct);
+    if (b.default_tax_pct     != null) cbSettings.tax        = parseFloat(b.default_tax_pct);
+    if (b.default_deposit_pct  != null) cbSettings.deposit    = parseFloat(b.default_deposit_pct);
+    if (b.default_edging_per_m != null) cbSettings.edgingPerM = parseFloat(b.default_edging_per_m);
+    if (b.default_labour_times && typeof b.default_labour_times === 'object' && Object.keys(b.default_labour_times).length > 0) {
+      cbSettings.labourTimes = b.default_labour_times;
     }
-    if (b.default_markup_pct != null && (!cbSettings.markup || cbSettings.markup === 20)) {
-      cbSettings.markup = parseFloat(b.default_markup_pct);
-    }
-    if (b.default_tax_pct != null && (!cbSettings.tax || cbSettings.tax === 13)) {
-      cbSettings.tax = parseFloat(b.default_tax_pct);
-    }
+    if (Array.isArray(b.default_base_types)    && b.default_base_types.length    > 0) cbSettings.baseTypes    = b.default_base_types;
+    if (Array.isArray(b.default_constructions) && b.default_constructions.length > 0) cbSettings.constructions = b.default_constructions;
+    if (Array.isArray(b.default_edge_banding)  && b.default_edge_banding.length  > 0) cbSettings.edgeBanding   = b.default_edge_banding;
+    // Phase 3 cleanup: DB is authoritative; drop the legacy LS key so it
+    // can't shadow on a future session.
+    localStorage.removeItem('pc_cq_settings');
   }
 }
 

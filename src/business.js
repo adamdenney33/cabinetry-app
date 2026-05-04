@@ -53,6 +53,44 @@ function _syncBizInfoToDB(payload) {
     }
   }, 800);
 }
+
+// Item 2 phase 3: write cbSettings (rates, markup, tax, deposit, edging,
+// labour_times, base_types, constructions, edge_banding) to business_info.
+// Materials/hardware/finishes live in catalog_items — handled separately.
+/** @type {ReturnType<typeof setTimeout> | null} */
+let _cbSettingsSyncTimer = null;
+function _syncCBSettingsToDB() {
+  if (!_userId) return;
+  if (typeof cbSettings === 'undefined' || !cbSettings) return;
+  if (_cbSettingsSyncTimer) clearTimeout(_cbSettingsSyncTimer);
+  const uid = _userId;
+  _cbSettingsSyncTimer = setTimeout(async () => {
+    /** @type {any} */
+    const fields = {
+      user_id: uid,
+      default_labour_rate: parseFloat(cbSettings.labourRate) || 0,
+      default_markup_pct:  parseFloat(cbSettings.markup)     || 0,
+      default_tax_pct:     parseFloat(cbSettings.tax)        || 0,
+      default_deposit_pct:  parseFloat(cbSettings.deposit)    || 0,
+      default_edging_per_m: parseFloat(cbSettings.edgingPerM) || 0,
+      default_labour_times:  cbSettings.labourTimes  || {},
+      default_base_types:    cbSettings.baseTypes    || [],
+      default_constructions: cbSettings.constructions || [],
+      default_edge_banding:  cbSettings.edgeBanding  || [],
+      updated_at: new Date().toISOString()
+    };
+    const { data: existing } = await _db('business_info').select('id').eq('user_id', uid);
+    if (existing && existing.length > 0) {
+      const { error } = await _db('business_info').update(fields).eq('user_id', uid);
+      if (error) console.warn('[cb_settings] DB sync failed:', error.message);
+    } else {
+      // Need name (NOT NULL) — ensure baseline before insert
+      fields.name = '';
+      const { error } = await _db('business_info').insert([fields]);
+      if (error) console.warn('[cb_settings] DB sync failed:', error.message);
+    }
+  }, 800);
+}
 function loadBizInfo() {
   try {
     /** @param {string} id */
