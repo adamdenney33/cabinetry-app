@@ -93,6 +93,18 @@ function setUnits(u) {
 
   const m = u === 'metric';
 
+  // Reset format mode to match the new unit system
+  if (prevUnits !== u) {
+    const mode = window.unitFormat.mode;
+    if (m && (mode === 'decimal' || mode === 'fractional' || mode === 'feetInches')) {
+      window.unitFormat.mode = 'mm';
+      _saveUnitFormat();
+    } else if (!m && (mode === 'mm' || mode === 'cm')) {
+      window.unitFormat.mode = 'decimal';
+      _saveUnitFormat();
+    }
+  }
+
   // Sync unit pills (settings bar + layout toolbar)
   document.querySelectorAll('#cl-unit-in').forEach(el => el.classList.toggle('active', !m));
   document.querySelectorAll('#cl-unit-mm').forEach(el => el.classList.toggle('active', m));
@@ -109,20 +121,21 @@ function setUnits(u) {
   if (prevUnits && prevUnits !== u) {
     try {
       sheets.forEach(s => {
-        if (m) { s.w = Math.round(s.w * 25.4); s.h = Math.round(s.h * 25.4); }
-        else   { s.w = Math.round(s.w / 25.4 * 100) / 100; s.h = Math.round(s.h / 25.4 * 100) / 100; }
+        s.w = convertDim(s.w, prevUnits, u);
+        s.h = convertDim(s.h, prevUnits, u);
       });
       renderSheets();
     } catch(e) {}
     try {
       pieces.forEach(p => {
-        if (m) { p.w = Math.round(p.w * 25.4); p.h = Math.round(p.h * 25.4); }
-        else   { p.w = Math.round(p.w / 25.4 * 100) / 100; p.h = Math.round(p.h / 25.4 * 100) / 100; }
+        p.w = convertDim(p.w, prevUnits, u);
+        p.h = convertDim(p.h, prevUnits, u);
       });
       renderPieces();
     } catch(e) {}
   }
 
+  _syncUnitFormatUI();
   try { renderStockMain(); renderQuoteMain(); renderOrdersMain(); } catch(e) {}
 }
 
@@ -137,6 +150,94 @@ function setUnits(u) {
     setUnits(isImperial ? 'imperial' : 'metric');
   }
 })();
+
+// ══════════════════════════════════════════
+// UNIT FORMAT
+// ══════════════════════════════════════════
+/** @param {string} mode */
+function setUnitFormat(mode) {
+  window.unitFormat.mode = mode;
+  _saveUnitFormat();
+  _syncUnitFormatUI();
+  _rerenderAll();
+}
+/** @param {number} n */
+function setUnitDecimals(n) {
+  window.unitFormat.decimals = n;
+  _saveUnitFormat();
+  _syncUnitFormatUI();
+  _rerenderAll();
+}
+/** @param {number} d */
+function setUnitDenom(d) {
+  window.unitFormat.denominator = d;
+  _saveUnitFormat();
+  _syncUnitFormatUI();
+  _rerenderAll();
+}
+
+function _saveUnitFormat() {
+  localStorage.setItem('pcUnitFormat', JSON.stringify(window.unitFormat));
+  try { saveBizInfo(); } catch(e) {}
+}
+function _loadUnitFormat() {
+  try {
+    const saved = JSON.parse(localStorage.getItem('pcUnitFormat') || '');
+    if (saved) Object.assign(window.unitFormat, saved);
+  } catch(e) {}
+}
+function _syncUnitFormatUI() {
+  const sec = document.getElementById('unit-format-section');
+  if (!sec) return;
+  sec.style.display = '';
+
+  const isMetric = window.units === 'metric';
+  const mode = window.unitFormat.mode;
+
+  const impRow = document.getElementById('uf-imperial-row');
+  const metRow = document.getElementById('uf-metric-row');
+  if (impRow) impRow.style.display = isMetric ? 'none' : '';
+  if (metRow) metRow.style.display = isMetric ? '' : 'none';
+
+  // Imperial format pills
+  /** @type {Record<string, string>} */
+  const impIds = { decimal: 'uf-decimal', fractional: 'uf-frac', feetInches: 'uf-ft' };
+  Object.entries(impIds).forEach(([m, id]) => {
+    const el = document.getElementById(id);
+    if (el) el.classList.toggle('active', mode === m);
+  });
+
+  // Metric format pills
+  /** @type {Record<string, string>} */
+  const metIds = { mm: 'uf-mm', cm: 'uf-cm' };
+  Object.entries(metIds).forEach(([m, id]) => {
+    const el = document.getElementById(id);
+    if (el) el.classList.toggle('active', mode === m);
+  });
+
+  const showDecimals = mode === 'decimal' || mode === 'mm' || mode === 'cm';
+  const dpRow = document.getElementById('uf-decimals-row');
+  const dnRow = document.getElementById('uf-denom-row');
+  if (dpRow) dpRow.style.display = showDecimals ? '' : 'none';
+  if (dnRow) dnRow.style.display = showDecimals ? 'none' : '';
+
+  [0, 1].forEach(n => {
+    const el = document.getElementById('uf-dp' + n);
+    if (el) el.classList.toggle('active', window.unitFormat.decimals === n);
+  });
+  [4, 8, 16, 32, 64].forEach(d => {
+    const el = document.getElementById('uf-d' + d);
+    if (el) el.classList.toggle('active', window.unitFormat.denominator === d);
+  });
+}
+
+function _rerenderAll() {
+  try { renderSheets(); renderPieces(); } catch(e) {}
+  try { renderStockMain(); renderQuoteMain(); renderOrdersMain(); } catch(e) {}
+  try { renderCBPanel(); } catch(e) {}
+}
+
+(function() { _loadUnitFormat(); _syncUnitFormatUI(); })();
 
 // ══════════════════════════════════════════
 // CURRENCY

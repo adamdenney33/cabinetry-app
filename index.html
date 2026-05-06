@@ -72,6 +72,41 @@
             </div>
           </div>
         </div>
+        <!-- Unit Format -->
+        <div class="sd-section" id="unit-format-section" style="display:none;padding:4px 16px 8px">
+          <div class="sd-row" id="uf-imperial-row" style="margin-bottom:4px">
+            <span class="sd-row-label" style="font-size:11px">Format</span>
+            <div class="sd-pill">
+              <button class="sd-pill-btn active" id="uf-decimal" onclick="setUnitFormat('decimal')">0.0</button>
+              <button class="sd-pill-btn" id="uf-frac" onclick="setUnitFormat('fractional')">3/8</button>
+              <button class="sd-pill-btn" id="uf-ft" onclick="setUnitFormat('feetInches')">1' 3"</button>
+            </div>
+          </div>
+          <div class="sd-row" id="uf-metric-row" style="margin-bottom:4px;display:none">
+            <span class="sd-row-label" style="font-size:11px">Format</span>
+            <div class="sd-pill">
+              <button class="sd-pill-btn active" id="uf-mm" onclick="setUnitFormat('mm')">mm</button>
+              <button class="sd-pill-btn" id="uf-cm" onclick="setUnitFormat('cm')">cm</button>
+            </div>
+          </div>
+          <div class="sd-row" id="uf-decimals-row" style="margin-bottom:4px">
+            <span class="sd-row-label" style="font-size:11px">Decimals</span>
+            <div class="sd-pill">
+              <button class="sd-pill-btn" id="uf-dp0" onclick="setUnitDecimals(0)">0</button>
+              <button class="sd-pill-btn active" id="uf-dp1" onclick="setUnitDecimals(1)">1</button>
+            </div>
+          </div>
+          <div class="sd-row" id="uf-denom-row" style="display:none;margin-bottom:4px">
+            <span class="sd-row-label" style="font-size:11px">Precision</span>
+            <div class="sd-pill">
+              <button class="sd-pill-btn" id="uf-d4" onclick="setUnitDenom(4)">1/4</button>
+              <button class="sd-pill-btn" id="uf-d8" onclick="setUnitDenom(8)">1/8</button>
+              <button class="sd-pill-btn active" id="uf-d16" onclick="setUnitDenom(16)">1/16</button>
+              <button class="sd-pill-btn" id="uf-d32" onclick="setUnitDenom(32)">1/32</button>
+              <button class="sd-pill-btn" id="uf-d64" onclick="setUnitDenom(64)">1/64</button>
+            </div>
+          </div>
+        </div>
         <!-- Currency -->
         <div class="sd-section">
           <div class="sd-row">
@@ -798,6 +833,7 @@
 <script defer src="src/business.js"></script>
 <script defer src="src/stock.js"></script>
 <script defer src="src/cabinet.js"></script>
+<script defer src="src/units.js"></script>
 <script defer src="src/cutlist.js"></script>
 <script defer src="src/settings.js"></script>
 <script defer src="src/app.js"></script>

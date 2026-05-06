@@ -424,7 +424,7 @@ function openEdgePopup(pieceId) {
       const trimmed = cut !== fin;
       const numColor = trimmed ? accent : '#888';
       const numWeight = trimmed ? '700' : '400';
-      return `<tspan fill="${numColor}" font-weight="${numWeight}">${cut}</tspan><tspan fill="#aaa"> [${lbl}]</tspan>`;
+      return `<tspan fill="${numColor}" font-weight="${numWeight}">${formatDim(cut)}</tspan><tspan fill="#aaa"> [${lbl}]</tspan>`;
     };
 
     const dimLabels = `
@@ -799,7 +799,7 @@ function duplicateSheet(id) {
 function updateSheet(id, field, val) {
   const s = sheets.find(s => s.id === id);
   if (!s) return;
-  if (field === 'w' || field === 'h') { const v = parseVal(val); s[field] = v; }
+  if (field === 'w' || field === 'h') { const v = parseDim(val); s[field] = v; }
   else if (field === 'qty') s[field] = Math.max(1, parseInt(val) || 1);
   else s[field] = val;
   renderSheets();
@@ -834,12 +834,12 @@ function renderSheets() {
         onblur="updateSheet(${s.id},'name',this.value)"
         onkeydown="clKeydown(event,'sheets',${i},'name')"
         ${dis ? 'disabled' : ''} placeholder="Material"></td>
-      <td><input class="cl-input cl-dim-input" value="${s.w}"
+      <td><input class="cl-input cl-dim-input" value="${formatDim(s.w)}"
         data-table="sheets" data-row="${i}" data-col="w"
         onblur="updateSheet(${s.id},'w',this.value)"
         onkeydown="clKeydown(event,'sheets',${i},'w')"
         ${dis ? 'disabled' : ''}></td>
-      <td><input class="cl-input cl-dim-input" value="${s.h}"
+      <td><input class="cl-input cl-dim-input" value="${formatDim(s.h)}"
         data-table="sheets" data-row="${i}" data-col="h"
         onblur="updateSheet(${s.id},'h',this.value)"
         onkeydown="clKeydown(event,'sheets',${i},'h')"
@@ -1003,7 +1003,7 @@ function duplicatePiece(id) {
 function updatePiece(id, field, val) {
   const p = pieces.find(p => p.id === id);
   if (!p) return;
-  if (field === 'w' || field === 'h') { const v = parseVal(val); p[field] = v; }
+  if (field === 'w' || field === 'h') { const v = parseDim(val); p[field] = v; }
   else if (field === 'qty') p[field] = Math.max(1, parseInt(val) || 1);
   else p[field] = val;
   renderPieces();
@@ -1046,12 +1046,12 @@ function renderPieces() {
           onkeydown="clKeydown(event,'pieces',${i},'label')"
           ${dis ? 'disabled' : ''} placeholder="Label">
       </td>
-      <td><input class="cl-input cl-dim-input" value="${p.w}"
+      <td><input class="cl-input cl-dim-input" value="${formatDim(p.w)}"
         data-table="pieces" data-row="${i}" data-col="w"
         onblur="updatePiece(${p.id},'w',this.value)"
         onkeydown="clKeydown(event,'pieces',${i},'w')"
         ${dis ? 'disabled' : ''}></td>
-      <td><input class="cl-input cl-dim-input" value="${p.h}"
+      <td><input class="cl-input cl-dim-input" value="${formatDim(p.h)}"
         data-table="pieces" data-row="${i}" data-col="h"
         onblur="updatePiece(${p.id},'h',this.value)"
         onkeydown="clKeydown(event,'pieces',${i},'h')"
@@ -1123,7 +1123,7 @@ function clKeydown(event, tableId, rowIdx, colName) {
   if (curEl && 'value' in curEl) {
     const item = arr[rowIdx];
     if (item) {
-      if (colName === 'w' || colName === 'h') item[colName] = parseVal(curEl.value);
+      if (colName === 'w' || colName === 'h') item[colName] = parseDim(curEl.value);
       else if (colName === 'qty') item[colName] = Math.max(1, parseInt(curEl.value) || 1);
       else item[colName] = curEl.value;
     }
@@ -1183,7 +1183,7 @@ document.addEventListener('paste', function(e) {
       const cn = cols[coli];
       const item = arr[ai];
       if (!item) return;
-      if (cn === 'w' || cn === 'h') item[cn] = parseVal(cell.trim());
+      if (cn === 'w' || cn === 'h') item[cn] = parseDim(cell.trim());
       else if (cn === 'qty') item[cn] = Math.max(1, parseInt(cell.trim()) || 1);
       else item[cn] = cell.trim();
     });
@@ -1232,8 +1232,8 @@ function handleCSVImport(input) {
     const lines = text.trim().split(/\r?\n/).slice(1);
     lines.forEach(line => {
       const c = line.split(',').map(x => x.trim().replace(/^"|"$/g,''));
-      if (_csvImportTarget === 'pieces') addPiece(c[0]||`Part ${pieces.length+1}`, parseVal(c[1]), parseVal(c[2]), parseInt(c[3])||1, c[4]||'none');
-      else addSheet(c[0]||'Sheet', parseVal(c[1]), parseVal(c[2]), parseInt(c[3])||1);
+      if (_csvImportTarget === 'pieces') addPiece(c[0]||`Part ${pieces.length+1}`, parseDim(c[1]), parseDim(c[2]), parseInt(c[3])||1, c[4]||'none');
+      else addSheet(c[0]||'Sheet', parseDim(c[1]), parseDim(c[2]), parseInt(c[3])||1);
     });
   };
   reader.readAsText(file);
@@ -1292,8 +1292,8 @@ function printLayout(mode='print') {
         <tr>
           <td style="width:16px"><div style="width:12px;height:12px;border-radius:2px;background:${p.item.color};opacity:.7"></div></td>
           <td><strong>${p.item.label}</strong></td>
-          <td class="num">${p.item.w}</td>
-          <td class="num">${p.item.h}</td>
+          <td class="num">${formatDim(p.item.w)}</td>
+          <td class="num">${formatDim(p.item.h)}</td>
           <td class="num">${p.rotated ? '↺ Yes' : '—'}</td>
           <td>${p.item.notes || ''}</td>
         </tr>`).join('');
@@ -1301,7 +1301,7 @@ function printLayout(mode='print') {
       <div class="sheet-section">
         <div class="sheet-heading">
           <span class="sheet-title">Sheet ${i+1} &mdash; ${layout.sheet.name}</span>
-          <span class="sheet-meta">${layout.sheet.w}&times;${layout.sheet.h}${u} &nbsp;&bull;&nbsp; ${layout.placed.length} piece${layout.placed.length!==1?'s':''} &nbsp;&bull;&nbsp; ${util}% used</span>
+          <span class="sheet-meta">${formatDim(layout.sheet.w)}&times;${formatDim(layout.sheet.h)}${u} &nbsp;&bull;&nbsp; ${layout.placed.length} piece${layout.placed.length!==1?'s':''} &nbsp;&bull;&nbsp; ${util}% used</span>
         </div>
         <div class="sheet-body">
           <div class="sheet-left">${imgTag}</div>
@@ -1657,7 +1657,7 @@ function _buildStockPDF() {
     pdf.text(item.name.substring(0,22), cols[0], y);
     pdf.setTextColor(120); pdf.setFont('helvetica','normal');
     pdf.text((item.sku||'').substring(0,10), cols[1], y);
-    pdf.text(item.w+'×'+item.h+u, cols[2], y);
+    pdf.text(formatDim(item.w)+'×'+formatDim(item.h)+u, cols[2], y);
     pdf.text((sup.supplier||'').substring(0,14), cols[3], y);
     pdf.setTextColor(isLow?192:40, isLow?50:40, isLow?50:40);
     pdf.setFont('helvetica', isLow?'bold':'normal');
@@ -1835,7 +1835,7 @@ async function _buildCutListPDF({ biz, layouts, imgs, pieces, u, cur, totalPiece
       pdf.setFontSize(9.5); pdf.setFont('helvetica','bold'); pdf.setTextColor(17);
       pdf.text(`Sheet ${i+1}  \u2014  ${layout.sheet.name}`, M+4, sheetHdgY+6);
       pdf.setFontSize(7.5); pdf.setFont('helvetica','normal'); pdf.setTextColor(110);
-      pdf.text(`${layout.sheet.w}\u00d7${layout.sheet.h} ${u}    ${layout.placed.length} piece${layout.placed.length!==1?'s':''}    ${util}% used`, PW-M-2, sheetHdgY+6, { align:'right' });
+      pdf.text(`${formatDim(layout.sheet.w)}\u00d7${formatDim(layout.sheet.h)} ${u}    ${layout.placed.length} piece${layout.placed.length!==1?'s':''}    ${util}% used`, PW-M-2, sheetHdgY+6, { align:'right' });
       pdf.setTextColor(17);
 
       // panel image — left 2/3, aspect-correct
@@ -1856,7 +1856,7 @@ async function _buildCutListPDF({ biz, layouts, imgs, pieces, u, cur, totalPiece
         margin: { left: rightX, right: M },
         tableWidth: rightW,
         head: [['', 'Label', `W (${u})`, `H (${u})`, 'Rot', 'Notes']],
-        body: layout.placed.map(/** @param {any} p */ p => ['', p.item.label, p.item.w, p.item.h, p.rotated?'Y':'--', p.item.notes||'']),
+        body: layout.placed.map(/** @param {any} p */ p => ['', p.item.label, formatDim(p.item.w), formatDim(p.item.h), p.rotated?'Y':'--', p.item.notes||'']),
         styles: { fontSize: 7.5, cellPadding: 1.8, overflow:'ellipsize', textColor:[17,17,17] },
         headStyles: { fillColor:[250,250,250], textColor:[140,140,140], fontStyle:'normal', fontSize:6.5, lineWidth:0 },
         columnStyles: { 0:{cellWidth:5}, 2:{halign:'right'}, 3:{halign:'right'}, 4:{halign:'center',cellWidth:7} },
@@ -2197,7 +2197,7 @@ function renderLayout(area) {
         <tbody>${pieces.map(p => `<tr>
           <td><div style="width:10px;height:10px;border-radius:2px;background:${p.color};opacity:.8;display:inline-block"></div></td>
           <td>${p.label}</td>
-          <td style="text-align:right">${p.w}</td><td style="text-align:right">${p.h}</td>
+          <td style="text-align:right">${formatDim(p.w)}</td><td style="text-align:right">${formatDim(p.h)}</td>
           <td style="text-align:right">${p.qty}</td>
           <td>${p.material || '—'}</td>
           <td>${p.grain === 'h' ? 'Horiz' : p.grain === 'v' ? 'Vert' : '—'}</td>
@@ -2235,7 +2235,7 @@ function renderLayout(area) {
         <tbody>${rows.map(r => `<tr>
           <td><div style="width:10px;height:10px;border-radius:2px;background:${r.color};opacity:.8;display:inline-block"></div></td>
           <td>${r.label}</td>
-          <td style="text-align:right">${r.w}</td><td style="text-align:right">${r.h}</td>
+          <td style="text-align:right">${formatDim(r.w)}</td><td style="text-align:right">${formatDim(r.h)}</td>
           <td style="text-align:right">${r.qty}</td>
           <td>${r.material || '—'}</td>
           <td>${r.grain === 'h' ? 'Horiz' : r.grain === 'v' ? 'Vert' : '—'}</td>
@@ -2717,8 +2717,8 @@ function drawCanvas(container, layout, units) {
     }
 
     // ── Label + dims inside part ──
-    const pW = Math.round(p.rotated ? p.item.h : p.item.w);
-    const pH = Math.round(p.rotated ? p.item.w : p.item.h);
+    const pW = formatDim(p.rotated ? p.item.h : p.item.w);
+    const pH = formatDim(p.rotated ? p.item.w : p.item.h);
 
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
 
@@ -2736,7 +2736,7 @@ function drawCanvas(container, layout, units) {
     ctx.font = dimFont;
     if (w > 30) {
       // Width near top, clear of the label
-      ctx.fillText(`${pW}`, x + w/2, y + Math.min(fs + 4, h * 0.22));
+      ctx.fillText(pW, x + w/2, y + Math.min(fs + 4, h * 0.22));
     }
     if (h > 30) {
       // Height rotated on left side, clear of the label
@@ -2744,7 +2744,7 @@ function drawCanvas(container, layout, units) {
       ctx.translate(x + Math.min(fs + 4, w * 0.22), y + h/2);
       ctx.rotate(-Math.PI / 2);
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText(`${pH}`, 0, 0);
+      ctx.fillText(pH, 0, 0);
       ctx.restore();
     }
   }
@@ -2758,7 +2758,7 @@ function drawCanvas(container, layout, units) {
   /** @param {any} a @param {any} b */
   const eq = (a, b) => Math.abs(a - b) < 1;
   for (const oc of offcutRects) {
-    const oW = Math.round(oc.w), oH = Math.round(oc.h);
+    const oW = formatDim(oc.w), oH = formatDim(oc.h);
     // Touching pieces on each side (edge-shared)
     /** @param {any} p */
     const touchLeft  = rotPieces.filter(/** @param {any} p */ (p ) => eq(p.x + p.w, oc.x) && p.y < oc.y + oc.h && p.y + p.h > oc.y);
@@ -2787,14 +2787,14 @@ function drawCanvas(container, layout, units) {
     const owo = oc.w * scale;
     const oho = oc.h * scale;
     if (!skipW && owo > 24 && oho > 14) {
-      ctx.fillText(`${oW}`, oxo + owo / 2, oyo + Math.min(fs + 4, oho * 0.22));
+      ctx.fillText(oW, oxo + owo / 2, oyo + Math.min(fs + 4, oho * 0.22));
     }
     if (!skipH && oho > 30 && owo > 14) {
       ctx.save();
       ctx.translate(oxo + Math.min(fs + 4, owo * 0.22), oyo + oho / 2);
       ctx.rotate(-Math.PI / 2);
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText(`${oH}`, 0, 0);
+      ctx.fillText(oH, 0, 0);
       ctx.restore();
     }
   }
@@ -2812,7 +2812,7 @@ function drawCanvas(container, layout, units) {
   ctx.beginPath(); ctx.moveTo(OX, by); ctx.lineTo(OX + cw, by); ctx.stroke();
   ctx.beginPath(); ctx.moveTo(OX, by - 4); ctx.lineTo(OX, by + 4); ctx.stroke();
   ctx.beginPath(); ctx.moveTo(OX + cw, by - 4); ctx.lineTo(OX + cw, by + 4); ctx.stroke();
-  const swText = `${sW}`;
+  const swText = formatDim(sW);
   const swW = ctx.measureText(swText).width;
   ctx.fillStyle = '#fff';
   ctx.fillRect(OX + cw / 2 - swW / 2 - 4, by - fs / 2 - 1, swW + 8, fs + 2);
@@ -2827,7 +2827,7 @@ function drawCanvas(container, layout, units) {
   ctx.beginPath(); ctx.moveTo(-ch / 2, 0); ctx.lineTo(ch / 2, 0); ctx.stroke();
   ctx.beginPath(); ctx.moveTo(-ch / 2, -4); ctx.lineTo(-ch / 2, 4); ctx.stroke();
   ctx.beginPath(); ctx.moveTo(ch / 2, -4); ctx.lineTo(ch / 2, 4); ctx.stroke();
-  const shText = `${sH}`;
+  const shText = formatDim(sH);
   const shW = ctx.measureText(shText).width;
   ctx.fillStyle = '#fff';
   ctx.fillRect(-shW / 2 - 4, -fs / 2 - 1, shW + 8, fs + 2);
@@ -2890,7 +2890,7 @@ function renderSummary(area) {
       <div class="cutsheet-header">
         <div style="display:flex;align-items:center;gap:10px">
           <span class="cutsheet-title">Sheet ${si + 1}</span>
-          <span class="cutsheet-sub">${layout.sheet.name} &nbsp;·&nbsp; ${layout.sheet.w}×${layout.sheet.h} ${u}</span>
+          <span class="cutsheet-sub">${layout.sheet.name} &nbsp;·&nbsp; ${formatDim(layout.sheet.w)}×${formatDim(layout.sheet.h)} ${u}</span>
         </div>
         <span style="font-size:12px;font-weight:700;color:${wasteColor}">${pct}% used &nbsp;·&nbsp; ${(layout.waste*100).toFixed(0)}% waste</span>
       </div>
@@ -2915,8 +2915,8 @@ function renderSummary(area) {
             return `<tr>
               <td class="cutsheet-num">${i + 1}</td>
               <td><span class="color-dot" style="background:${p.item.color};margin-right:6px;display:inline-block;vertical-align:middle"></span>${p.item.label}</td>
-              <td class="cutsheet-dim">${cutW}</td>
-              <td class="cutsheet-dim">${cutH}</td>
+              <td class="cutsheet-dim">${formatDim(cutW)}</td>
+              <td class="cutsheet-dim">${formatDim(cutH)}</td>
               <td style="text-align:center;font-size:15px;color:var(--muted)">${grainDir}</td>
               <td>${p.rotated ? '<span class="badge badge-orange" style="font-size:9px">rotated</span>' : ''}</td>
               <td style="text-align:center"><span class="cut-checkbox" onclick="this.classList.toggle(\'checked\')"></span></td>
@@ -2936,7 +2936,7 @@ function renderSummary(area) {
       <table class="cutsheet-table">
         <thead><tr><th>Label</th><th style="text-align:right">W (${u})</th><th style="text-align:right">H (${u})</th></tr></thead>
         /** @param {any} p */
-        <tbody>${results.unplaced.map(/** @param {any} p */ (p) =>`<tr><td>${p.label}</td><td class="cutsheet-dim">${p.w}</td><td class="cutsheet-dim">${p.h}</td></tr>`).join('')}</tbody>
+        <tbody>${results.unplaced.map(/** @param {any} p */ (p) =>`<tr><td>${p.label}</td><td class="cutsheet-dim">${formatDim(p.w)}</td><td class="cutsheet-dim">${formatDim(p.h)}</td></tr>`).join('')}</tbody>
       </table>
     </div>`;
   }

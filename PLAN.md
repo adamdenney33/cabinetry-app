@@ -18,6 +18,18 @@ Companion docs: `SPEC.md` (refactor history), `SCHEMA.md` (DB schema),
 
 ## Active Work
 
+### Multi-Unit Format System ✅ Done 2026-05-06
+
+Added rich dimension formatting inspired by CutListOptimizer.com. New `src/units.js`
+library provides `formatDim()` / `parseDim()` / `convertDim()` / `unitLabel()`.
+Imperial modes: decimal (0.0), fractional (12 3/8), feet-inches (1' 3 3/8").
+Metric modes: mm, cm. Configurable decimal places (0–1) and fraction precision
+(1/4 through 1/64). Internal storage keeps full precision — formatting is
+display-only, enabling lossless imperial↔metric round-trips. Settings UI added
+to gear dropdown. Persisted to localStorage + `business_info.unit_format` (jsonb).
+~40 dimension display points updated across cutlist, stock, cabinet, quotes.
+DB migration applied: `unit_format jsonb` column on `business_info`.
+
 ### Item 2 — Cabinet Builder ↔ Quote Unification
 
 Goal: one editing surface for cabinet specs, one storage backend, clear flow from

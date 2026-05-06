@@ -36,6 +36,8 @@ declare global {
     currency: string;
     /** App-wide units mode ('imperial' | 'metric') — set by src/settings.js. */
     units: string;
+    /** Unit display format — set by src/units.js, managed by src/settings.js. */
+    unitFormat: { mode: string; decimals: number; denominator: number };
     /** Supabase Auth-state subscription captured in src/db.js for cleanup. */
     _authSub?: unknown;
     /** Various render-state stash slots used by inline-handler `oninput=` etc. */
@@ -73,6 +75,18 @@ declare global {
     /** Cutlist clipboard support — assigned in some browsers' paste handler. */
     clipboardData?: any;
   }
+
+  // ── units.js globals ──
+  function formatDim(val: number | null | undefined, opts?: { showUnit?: boolean }): string;
+  function parseDim(str: string | number): number;
+  function convertDim(val: number, from: string, to: string): number;
+  function unitLabel(): string;
+
+  // ── settings.js unit-format globals ──
+  function setUnitFormat(mode: string): void;
+  function setUnitDecimals(n: number): void;
+  function setUnitDenom(d: number): void;
+  function _syncUnitFormatUI(): void;
 
   // Phase G.2 removed the Element/EventTarget transition augmentations from
   // Phase F. Properties like .value / .checked / .files now require an

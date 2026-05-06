@@ -202,7 +202,7 @@ function printStockList(mode='print') {
       return `<tr style="${isLow?'background:#fff5f5':''}">
         <td>${i.name}</td>
         <td>${i.sku||'—'}</td>
-        <td>${i.w}×${i.h}${u}</td>
+        <td>${formatDim(i.w)}×${formatDim(i.h)}${u}</td>
         <td style="font-size:10px;color:#666">${sup.supplier||''}</td>
         <td style="text-align:right;${isLow?'color:#c0392b;font-weight:700':''}">${i.qty}</td>
         <td style="text-align:right">${i.low}</td>
@@ -728,7 +728,7 @@ function renderStockMain() {
       dims = (w && l) ? `${w}mm × ${l}m` : (w ? `${w}mm` : '');
       glue = vd.glue || item.glue || '';
     } else if (sheetCat) {
-      dims = `${item.w}×${item.h}${u}`;
+      dims = `${formatDim(item.w)}×${formatDim(item.h)}${u}`;
       thk = vd.thickness ? `${vd.thickness}mm` : '';
     } else {
       thk = vd.thickness ? `${vd.thickness}mm` : '';

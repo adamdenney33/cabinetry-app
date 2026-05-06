@@ -196,6 +196,7 @@ header {
   display: flex; align-items: center; gap: 5px;
 }
 .sd-pill-btn.active { background: var(--surface); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,0.15); }
+#uf-denom-row .sd-pill-btn { padding: 5px 6px; font-size: 11px; }
 .sd-row-label { font-size: 13px; color: var(--text); font-weight: 600; display: flex; align-items: center; gap: 6px; }
 
 /* ── NAV TABS (Chrome-style) ── */
@@ -370,7 +371,7 @@ textarea { resize: vertical; min-height: 70px; }
 .cl-settings-bar input[type=number]::-webkit-inner-spin-button,
 .cl-settings-bar input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 .cl-settings-bar input[type=number] { -moz-appearance: textfield; }
-.cl-dim-input { text-align: left; }
+.cl-dim-input { text-align: left; min-width: 72px; }
 .cl-qty-input { text-align: left; }
 .cl-num-cell { font-size: 11px; color: var(--muted); text-align: center; padding: 0 6px; user-select: none; }
 .cl-grain-cell { text-align: center; padding: 0; }

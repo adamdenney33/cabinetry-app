@@ -41,6 +41,7 @@ function _syncBizInfoToDB(payload) {
       email: payload.email || null,
       address: payload.address || null,
       abn: payload.abn || null,
+      unit_format: JSON.stringify(window.unitFormat),
       updated_at: new Date().toISOString()
     };
     const { data: existing } = await _db('business_info').select('id').eq('user_id', uid);

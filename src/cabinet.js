@@ -1398,7 +1398,7 @@ function _smartRatesStockSuggest(input, boxId) {
   const matches = q ? pool.filter(s => s.name.toLowerCase().includes(q)) : pool;
   let html = '';
   matches.slice(0, 10).forEach(s => {
-    const dims = s.w && s.h ? `${s.w}×${s.h}` : '';
+    const dims = s.w && s.h ? `${formatDim(s.w)}×${formatDim(s.h)}` : '';
     const qtyColor = (s.qty ?? 0) <= (s.low || 3) ? '#ef4444' : '#22c55e';
     html += `<div class="client-suggest-item" onmousedown="_byId('rates-stock-search').value='';_byId('${boxId}').style.display='none';_openStockPopup(${s.id})">
       <span class="suggest-icon" style="background:${qtyColor}20;color:${qtyColor}">${s.qty}</span>
@@ -1472,7 +1472,7 @@ function _smartCBMaterialSuggest(input, boxId, fieldName) {
   const matches = q ? pool.filter(s => s.name.toLowerCase().includes(q)) : pool;
   let html = '';
   matches.slice(0, 8).forEach(s => {
-    const dims = s.w && s.h ? `${s.w}×${s.h}` : '';
+    const dims = s.w && s.h ? `${formatDim(s.w)}×${formatDim(s.h)}` : '';
     const qtyColor = (s.qty ?? 0) <= (s.low || 3) ? '#ef4444' : '#22c55e';
     html += `<div class="client-suggest-item" onmousedown="_byId('cb-mat-${fieldName}').value='${_escHtml(s.name)}';cbUpdateField('${fieldName}','${_escHtml(s.name)}');_byId('${boxId}').style.display='none'">
       <span class="suggest-icon" style="background:${qtyColor}20;color:${qtyColor}">${s.qty}</span>
@@ -2048,7 +2048,7 @@ function _smartCLStockSuggest(input, boxId) {
       const l = vd.length ?? s.length ?? s.w;
       meta = [t?`${t}mm`:'', w?`${w}mm`:'', l?`${l}m`:''].filter(Boolean).join(' · ');
     } else {
-      meta = (s.w && s.h ? `${s.w}×${s.h}` : '');
+      meta = (s.w && s.h ? `${formatDim(s.w)}×${formatDim(s.h)}` : '');
     }
     const handler = isEB
       ? `_clAddEdgeBandFromStockIdx(${origIdx})`

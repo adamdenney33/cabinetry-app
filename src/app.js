@@ -1044,6 +1044,13 @@ function _applyBizInfoFromDB(rows) {
     if (img) { img.src = b.logo_url; img.style.display = ''; }
     if (btn) btn.style.display = '';
   }
+  // Unit format from DB overrides localStorage
+  if (b.unit_format) {
+    try {
+      var uf = typeof b.unit_format === 'string' ? JSON.parse(b.unit_format) : b.unit_format;
+      if (uf) { Object.assign(window.unitFormat, uf); _syncUnitFormatUI(); }
+    } catch(e) {}
+  }
   // Persist back to localStorage so other reads pick it up (legacy compatibility)
   try {
     localStorage.setItem('pc_biz', JSON.stringify({
