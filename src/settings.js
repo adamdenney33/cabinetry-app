@@ -99,7 +99,7 @@ function setUnits(u) {
     if (m && (mode === 'decimal' || mode === 'fractional' || mode === 'feetInches')) {
       window.unitFormat.mode = 'mm';
       _saveUnitFormat();
-    } else if (!m && (mode === 'mm' || mode === 'cm')) {
+    } else if (!m && (mode === 'mm' || mode === 'cm' || mode === 'm')) {
       window.unitFormat.mode = 'decimal';
       _saveUnitFormat();
     }
@@ -209,19 +209,19 @@ function _syncUnitFormatUI() {
 
   // Metric format pills
   /** @type {Record<string, string>} */
-  const metIds = { mm: 'uf-mm', cm: 'uf-cm' };
+  const metIds = { mm: 'uf-mm', cm: 'uf-cm', m: 'uf-m' };
   Object.entries(metIds).forEach(([m, id]) => {
     const el = document.getElementById(id);
     if (el) el.classList.toggle('active', mode === m);
   });
 
-  const showDecimals = mode === 'decimal' || mode === 'mm' || mode === 'cm';
+  const showDecimals = mode === 'decimal' || mode === 'mm' || mode === 'cm' || mode === 'm';
   const dpRow = document.getElementById('uf-decimals-row');
   const dnRow = document.getElementById('uf-denom-row');
   if (dpRow) dpRow.style.display = showDecimals ? '' : 'none';
   if (dnRow) dnRow.style.display = showDecimals ? 'none' : '';
 
-  [0, 1].forEach(n => {
+  [0, 1, 2].forEach(n => {
     const el = document.getElementById('uf-dp' + n);
     if (el) el.classList.toggle('active', window.unitFormat.decimals === n);
   });

@@ -26,6 +26,10 @@ function formatDim(val, opts) {
       var s = (val / 10).toFixed(fmt.decimals);
       return showUnit ? s + 'cm' : s;
     }
+    if (fmt.mode === 'm') {
+      var s = (val / 1000).toFixed(fmt.decimals);
+      return showUnit ? s + 'm' : s;
+    }
     var s = Number(val).toFixed(fmt.decimals);
     return showUnit ? s + 'mm' : s;
   }
@@ -60,7 +64,7 @@ function parseDim(str) {
     return feet * 12 + (inchPart ? parseDim(inchPart) : 0);
   }
 
-  str = str.replace(/["″]/g, '').replace(/\s*(?:mm|cm|in)$/i, '').trim();
+  str = str.replace(/["″]/g, '').replace(/\s*(?:mm|cm|in|m)$/i, '').trim();
 
   var mixed = str.match(/^(-?\d+)\s+(\d+)\/(\d+)$/);
   if (mixed) return parseFloat(mixed[1]) + parseFloat(mixed[2]) / parseFloat(mixed[3]);
@@ -93,7 +97,10 @@ function convertDim(val, from, to) {
  */
 function unitLabel() {
   if (window.units === 'metric') {
-    return window.unitFormat.mode === 'cm' ? 'cm' : 'mm';
+    var m = window.unitFormat.mode;
+    if (m === 'cm') return 'cm';
+    if (m === 'm') return 'm';
+    return 'mm';
   }
   if (window.unitFormat.mode === 'feetInches') return 'ft/in';
   return 'in';
