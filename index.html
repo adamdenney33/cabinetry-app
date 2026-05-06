@@ -21,7 +21,6 @@
     <input type="password" id="auth-password" class="auth-input" placeholder="Password" autocomplete="current-password">
     <button class="auth-btn" id="auth-btn" onclick="authSubmit()">Sign In</button>
     <div class="auth-toggle" id="auth-toggle">No account? <span onclick="toggleAuthMode()">Create one</span></div>
-    <div class="auth-guest" id="auth-guest-link"><span onclick="dismissAuth()">Continue as guest</span></div>
   </div>
 </div>
 
@@ -119,39 +118,6 @@
             </div>
           </div>
         </div>
-        <!-- Business Info -->
-        <div class="sd-section">
-          <div class="sd-label">Business Info</div>
-          <input class="sd-text-input" id="biz-name" placeholder="Business name" oninput="saveBizInfo()">
-          <input class="sd-text-input" id="biz-phone" placeholder="Phone" oninput="saveBizInfo()" style="margin-top:5px">
-          <input class="sd-text-input" id="biz-email" placeholder="Email" oninput="saveBizInfo()" style="margin-top:5px">
-          <input class="sd-text-input" id="biz-address" placeholder="Address (optional)" oninput="saveBizInfo()" style="margin-top:5px">
-          <input class="sd-text-input" id="biz-abn" placeholder="ABN / Tax No. (optional)" oninput="saveBizInfo()" style="margin-top:5px">
-          <div style="margin-top:8px;display:flex;align-items:center;gap:8px">
-            <img id="biz-logo-preview" style="width:40px;height:40px;object-fit:contain;border-radius:4px;border:1px solid var(--border);display:none">
-            <div style="flex:1">
-              <label style="font-size:10px;cursor:pointer;color:var(--accent);font-weight:600" onclick="document.getElementById('biz-logo-input').click()">Upload Logo</label>
-              <input type="file" id="biz-logo-input" accept="image/*" style="display:none" onchange="handleLogoUpload(this)">
-              <button id="biz-logo-remove" style="display:none;font-size:9px;color:var(--muted);background:none;border:none;cursor:pointer;margin-left:4px" onclick="removeLogo()">Remove</button>
-            </div>
-          </div>
-        </div>
-        <!-- Backup & Migration -->
-        <div class="sd-section">
-          <div class="sd-label">Backup &amp; Migration</div>
-          <button onclick="_exportLocal()" style="width:100%;padding:8px 12px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:6px;font-size:12px;font-weight:600;cursor:pointer">
-            Export Local Backup
-          </button>
-          <div style="font-size:10px;color:var(--muted);margin-top:6px;line-height:1.4">
-            Downloads all browser-stored data as a JSON file. Run this before any data migration.
-          </div>
-          <button onclick="_runMigration()" style="width:100%;padding:8px 12px;background:var(--accent);color:white;border:1px solid var(--accent);border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;margin-top:10px">
-            Run Migration to Database
-          </button>
-          <div style="font-size:10px;color:var(--muted);margin-top:6px;line-height:1.4">
-            One-time migration of localStorage data into Postgres. Idempotent — safe to run multiple times.
-          </div>
-        </div>
       </div>
     </div>
     <div class="account-wrap">
@@ -164,9 +130,22 @@
           <div class="account-menu-item" onclick="toggleAccount();_showAuth()" style="color:var(--accent);font-weight:600">Sign In / Create Account</div>
         </div>
         <div id="account-user-view" style="display:none">
-          <div class="account-plan-row">
-            <span class="account-plan-name">Pro Plan</span>
-            <span class="badge badge-green">Active</span>
+          <div id="account-subscription-content"></div>
+          <div class="sd-section">
+            <div class="sd-label">Business Info</div>
+            <input class="sd-text-input" id="biz-name" placeholder="Business name" oninput="saveBizInfo()">
+            <input class="sd-text-input" id="biz-phone" placeholder="Phone" oninput="saveBizInfo()" style="margin-top:5px">
+            <input class="sd-text-input" id="biz-email" placeholder="Email" oninput="saveBizInfo()" style="margin-top:5px">
+            <input class="sd-text-input" id="biz-address" placeholder="Address (optional)" oninput="saveBizInfo()" style="margin-top:5px">
+            <input class="sd-text-input" id="biz-abn" placeholder="ABN / Tax No. (optional)" oninput="saveBizInfo()" style="margin-top:5px">
+            <div style="margin-top:8px;display:flex;align-items:center;gap:8px">
+              <img id="biz-logo-preview" style="width:40px;height:40px;object-fit:contain;border-radius:4px;border:1px solid var(--border);display:none">
+              <div style="flex:1">
+                <label style="font-size:10px;cursor:pointer;color:var(--accent);font-weight:600" onclick="document.getElementById('biz-logo-input').click()">Upload Logo</label>
+                <input type="file" id="biz-logo-input" accept="image/*" style="display:none" onchange="handleLogoUpload(this)">
+                <button id="biz-logo-remove" style="display:none;font-size:9px;color:var(--muted);background:none;border:none;cursor:pointer;margin-left:4px" onclick="removeLogo()">Remove</button>
+              </div>
+            </div>
           </div>
           <div class="account-menu-item" id="account-email-item" style="color:var(--muted);font-size:11px;cursor:default"></div>
           <div class="account-menu-item" onclick="signOut()">Sign Out</div>
@@ -246,6 +225,7 @@
               <div class="smart-input-add" onclick="_openNewProjectPopup('cb-project')" title="Add new project">+</div>
             </div>
             <div id="cb-project-suggest" class="client-suggest-list" style="display:none"></div>
+            <div id="cb-project-status" style="font-size:10px;color:var(--muted);margin-top:4px;min-height:12px"></div>
           </div>
         </div>
         <!-- Tabs inside sidebar -->
@@ -264,7 +244,7 @@
             <div id="cb-cabinet-suggest" class="client-suggest-list" style="display:none"></div>
           </div>
 
-          <div id="cb-cab-list" style="display:none"></div>
+          <div id="cb-cab-list" style="padding:6px 14px"></div>
 
           <!-- Active Cabinet Editor -->
           <div id="cb-cab-editor" style="padding:0 14px 14px"></div>
@@ -275,8 +255,13 @@
           </div>
         </div>
       </div>
-      <div class="main-content">
-        <div class="main-scroll" id="cb-results" style="padding:20px"></div>
+      <div class="main-content" style="display:flex;flex-direction:column">
+        <div style="display:flex;border-bottom:2px solid var(--border);flex-shrink:0">
+          <div id="cb-main-tab-results" onclick="switchCBMainView('results')" style="flex:1;padding:10px 16px;font-size:13px;font-weight:700;text-align:center;cursor:pointer;border-bottom:2px solid var(--accent);margin-bottom:-2px;color:var(--text)">Results</div>
+          <div id="cb-main-tab-library" onclick="switchCBMainView('library')" style="flex:1;padding:10px 16px;font-size:13px;font-weight:500;text-align:center;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-2px">Library</div>
+        </div>
+        <div class="main-scroll" id="cb-results" style="padding:20px;flex:1"></div>
+        <div class="main-scroll" id="cb-library-view" style="padding:20px;flex:1;display:none"></div>
       </div>
     </div>
   </div>
@@ -828,10 +813,15 @@
 <!-- Module load order matters: db.js + ui.js define globals app.js depends on. -->
 <script defer src="src/db.js"></script>
 <script defer src="src/ui.js"></script>
+<script defer src="src/limits.js"></script>
+<script defer src="src/stripe.js"></script>
 <script defer src="src/orders.js"></script>
 <script defer src="src/quotes.js"></script>
 <script defer src="src/business.js"></script>
 <script defer src="src/stock.js"></script>
+<script defer src="src/cabinet-calc.js"></script>
+<script defer src="src/cabinet-library.js"></script>
+<script defer src="src/cabinet-render.js"></script>
 <script defer src="src/cabinet.js"></script>
 <script defer src="src/units.js"></script>
 <script defer src="src/cutlist.js"></script>

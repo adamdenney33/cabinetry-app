@@ -57,6 +57,8 @@ class _DBBuilder {
   delete()           { const b = this._clone(); b._method = 'delete'; return /** @type {any} */ (b); }
   /** @param {keyof _Tables[K]['Row']} col @param {any} val @returns {_DBBuilder<K, Single>} */
   eq(col, val)       { const b = this._clone(); b._where[/** @type {string} */ (col)] = `eq.${val}`; return /** @type {any} */ (b); }
+  /** @param {keyof _Tables[K]['Row']} col @param {any[]} vals @returns {_DBBuilder<K, Single>} */
+  in(col, vals)      { const b = this._clone(); b._where[/** @type {string} */ (col)] = `in.(${vals.map(v => String(v)).join(',')})`; return /** @type {any} */ (b); }
   /** @param {keyof _Tables[K]['Row']} col @returns {_DBBuilder<K, Single>} */
   order(col, { ascending = true } = {}) { const b = this._clone(); b._orderBy = /** @type {string} */ (col); b._orderAsc = ascending; return /** @type {any} */ (b); }
   /** @param {number} n @returns {_DBBuilder<K, Single>} */

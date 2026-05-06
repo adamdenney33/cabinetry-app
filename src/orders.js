@@ -40,6 +40,7 @@ async function addOrder() {
   const project = _oInput('o-project')?.value.trim() || '';
   if (!client || !project) { _toast('Enter client name and project.', 'error'); return; }
   if (!_requireAuth()) return;
+  if (!_enforceFreeLimit('orders', orders.length)) return;
   const dueRaw = _oInput('o-due')?.value || '';
   const due = dueRaw ? new Date(dueRaw + 'T12:00:00').toLocaleDateString('en-GB', {day:'numeric', month:'short', year:'numeric'}) : 'TBD';
   const clientId = await resolveClient(client);
@@ -85,6 +86,7 @@ async function removeOrder(id) {
 /** @param {number} id */
 async function duplicateOrder(id) {
   if (!_requireAuth()) return;
+  if (!_enforceFreeLimit('orders', orders.length)) return;
   const o = orders.find(o => o.id === id);
   if (!o) return;
   /** @type {any} */

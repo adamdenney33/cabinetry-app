@@ -944,10 +944,16 @@ async function authSubmit() {
   if (!email || !password) { if (msgEl) msgEl.innerHTML = '<div class="auth-error">Email and password required.</div>'; return; }
   if (btn) { btn.disabled = true; btn.textContent = '…'; }
   let error;
-  if (_authMode === 'signin') {
-    ({ error } = await _sb.auth.signInWithPassword({ email, password }));
-  } else {
-    ({ error } = await _sb.auth.signUp({ email, password }));
+  try {
+    if (_authMode === 'signin') {
+      ({ error } = await _sb.auth.signInWithPassword({ email, password }));
+    } else {
+      ({ error } = await _sb.auth.signUp({ email, password }));
+    }
+  } catch (e) {
+    if (btn) { btn.disabled = false; btn.textContent = _authMode === 'signin' ? 'Sign In' : 'Create Account'; }
+    if (msgEl) msgEl.innerHTML = '<div class="auth-error">Unable to connect. Please run the app via the dev server (npm run dev).</div>';
+    return;
   }
   if (btn) { btn.disabled = false; btn.textContent = _authMode === 'signin' ? 'Sign In' : 'Create Account'; }
   if (error) { if (msgEl) msgEl.innerHTML = `<div class="auth-error">${error.message}</div>`; return; }
@@ -958,11 +964,16 @@ async function signOut() {
   await _sb.auth.signOut();
   orders = []; quotes = []; stockItems = []; clients = []; projects = [];
   _userId = null;
+  _subscription = null;
   toggleAccount();
   renderStockMain(); renderQuoteMain(); renderOrdersMain();
+  if (typeof renderSubscriptionSection === 'function') renderSubscriptionSection();
 }
 
 async function loadAllData() {
+  // F.1: kick off subscription load in parallel — updates global `_subscription`
+  // via side effect; we don't need its return value in the destructure below.
+  const subPromise = loadSubscription().catch(() => null);
   const [{ data: ord }, { data: quo }, { data: stk }, { data: cli }, { data: prj }, { data: cat }, { data: biz }] = await Promise.all([
     _db('orders').select('*').order('created_at', { ascending: false }),
     _db('quotes').select('*').order('created_at', { ascending: false }),
@@ -974,6 +985,7 @@ async function loadAllData() {
     // Phase 3: business_info overlays pc_biz / pc_biz_logo / pc_cb_settings rates
     _db('business_info').select('*').eq('user_id', _userId).then(r => r).catch(() => ({data:[]})),
   ]);
+  await subPromise;
   orders = ord || [];
   _onRestore(orders);  // merge locally-stored notes (notes col may not be in DB schema yet)
   _restoreProdStarts(orders);  // merge locally-stored production start dates
@@ -995,8 +1007,8 @@ async function loadAllData() {
   if (stockItems.length) stockNextId = Math.max(...stockItems.map(s => s.id)) + 1;
   // Phase 7 step 1: hydrate quote totals from quote_lines (fire and forget; renders re-run when ready)
   _hydrateQuoteTotals().then(() => { try { renderQuoteMain(); } catch(e){} }).catch(e => console.warn('[quote totals] hydrate failed:', e.message || e));
-  // Phase 3.2 — overlay catalog from DB (only if rows exist; otherwise leave localStorage defaults)
-  _applyCatalogFromDB(/** @type {any[]} */ (cat || []));
+  // catalog_items deprecated — stock_items is now the single source of truth
+  // for material/hardware/finish prices. _applyCatalogFromDB call removed.
   // Phase 3.3 — overlay business_info from DB (only if a row exists)
   _applyBizInfoFromDB(/** @type {any[]} */ (biz || []));
   /** @type {HTMLElement} */ (document.getElementById('orders-badge')).textContent = String(orders.filter(o => o.status !== 'complete').length);
@@ -1010,8 +1022,11 @@ async function loadAllData() {
 
 // Phase 3.2: overlay catalog_items rows onto in-memory cbSettings.
 // If DB has no rows, the existing localStorage-loaded arrays remain untouched.
+// Phase 4.1: race guard — bail when a catalog sync is pending so a TOKEN_REFRESHED
+// during the 800ms debounce window doesn't clobber unsaved rates-panel edits.
 /** @param {any[]} rows */
 function _applyCatalogFromDB(rows) {
+  if (typeof _catalogSyncTimer !== 'undefined' && _catalogSyncTimer) return;
   if (!rows || rows.length === 0) return;
   /** @type {Record<string, {name: string, price: number}[]>} */
   const byType = { material: [], handle: [], finish: [], hardware: [] };
@@ -1071,11 +1086,18 @@ function _applyBizInfoFromDB(rows) {
     if (b.default_deposit_pct  != null) cbSettings.deposit    = parseFloat(b.default_deposit_pct);
     if (b.default_edging_per_m != null) cbSettings.edgingPerM = parseFloat(b.default_edging_per_m);
     if (b.default_labour_times && typeof b.default_labour_times === 'object' && Object.keys(b.default_labour_times).length > 0) {
-      cbSettings.labourTimes = b.default_labour_times;
+      // Merge: DB values override defaults for known keys; new defaults fill in
+      // for keys not yet present in the DB row (e.g. carcass power-law fields
+      // added 2026-05-05). Wholesale replace would wipe forward-compat defaults.
+      cbSettings.labourTimes = { ...cbSettings.labourTimes, ...b.default_labour_times };
     }
-    if (Array.isArray(b.default_base_types)    && b.default_base_types.length    > 0) cbSettings.baseTypes    = b.default_base_types;
-    if (Array.isArray(b.default_constructions) && b.default_constructions.length > 0) cbSettings.constructions = b.default_constructions;
-    if (Array.isArray(b.default_edge_banding)  && b.default_edge_banding.length  > 0) cbSettings.edgeBanding   = b.default_edge_banding;
+    if (Array.isArray(b.default_base_types)         && b.default_base_types.length         > 0) cbSettings.baseTypes         = b.default_base_types;
+    if (Array.isArray(b.default_constructions)      && b.default_constructions.length      > 0) cbSettings.constructions     = b.default_constructions;
+    if (Array.isArray(b.default_edge_banding)       && b.default_edge_banding.length       > 0) cbSettings.edgeBanding       = b.default_edge_banding;
+    if (Array.isArray(b.default_carcass_types)      && b.default_carcass_types.length      > 0) cbSettings.carcassTypes      = b.default_carcass_types;
+    if (Array.isArray(b.default_door_types)         && b.default_door_types.length         > 0) cbSettings.doorTypes         = b.default_door_types;
+    if (Array.isArray(b.default_drawer_front_types) && b.default_drawer_front_types.length > 0) cbSettings.drawerFrontTypes  = b.default_drawer_front_types;
+    if (Array.isArray(b.default_drawer_box_types)   && b.default_drawer_box_types.length   > 0) cbSettings.drawerBoxTypes    = b.default_drawer_box_types;
     // Phase 3 cleanup: DB is authoritative; drop the legacy LS key so it
     // can't shadow on a future session.
     localStorage.removeItem('pc_cq_settings');
@@ -1095,6 +1117,8 @@ _sb.auth.onAuthStateChange(async (event, session) => {
     _clLoadProjectList();
   } else {
     _userId = null;
+    _subscription = null;
+    if (typeof renderSubscriptionSection === 'function') renderSubscriptionSection();
     /** @type {HTMLElement} */ (document.getElementById('account-guest-view')).style.display = '';
     /** @type {HTMLElement} */ (document.getElementById('account-user-view')).style.display = 'none';
     _clProjectCache = [];
@@ -1137,6 +1161,10 @@ function trunc(s, n) { return s.length <= n ? s : s.slice(0, n-1) + '…'; }
 // ══════════════════════════════════════════
 // INIT
 // ══════════════════════════════════════════
+// Show a toast on Stripe Checkout return (?upgrade=success / cancelled),
+// then strip the query param so a refresh doesn't re-toast.
+if (typeof handleCheckoutReturn === 'function') handleCheckoutReturn();
+if (typeof handlePortalReturn === 'function') handlePortalReturn();
 loadBizInfo();
 loadLogoPreview();
 // Restore kerf

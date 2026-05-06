@@ -27,9 +27,13 @@ export type Database = {
           address: string | null
           created_at: string
           default_base_types: Json
+          default_carcass_types: Json
           default_constructions: Json
           default_currency: string
           default_deposit_pct: number
+          default_door_types: Json
+          default_drawer_box_types: Json
+          default_drawer_front_types: Json
           default_edge_banding: Json
           default_edging_per_m: number
           default_labour_rate: number
@@ -50,9 +54,13 @@ export type Database = {
           address?: string | null
           created_at?: string
           default_base_types?: Json
+          default_carcass_types?: Json
           default_constructions?: Json
           default_currency?: string
           default_deposit_pct?: number
+          default_door_types?: Json
+          default_drawer_box_types?: Json
+          default_drawer_front_types?: Json
           default_edge_banding?: Json
           default_edging_per_m?: number
           default_labour_rate?: number
@@ -73,9 +81,13 @@ export type Database = {
           address?: string | null
           created_at?: string
           default_base_types?: Json
+          default_carcass_types?: Json
           default_constructions?: Json
           default_currency?: string
           default_deposit_pct?: number
+          default_door_types?: Json
+          default_drawer_box_types?: Json
+          default_drawer_front_types?: Json
           default_edge_banding?: Json
           default_edging_per_m?: number
           default_labour_rate?: number
@@ -1025,6 +1037,54 @@ export type Database = {
           variant?: string | null
           w?: number | null
           width_mm?: number | null
+        }
+        Relationships: []
+      }
+      subscriptions: {
+        Row: {
+          cancel_at_period_end: boolean
+          canceled_at: string | null
+          created_at: string
+          current_period_end: string | null
+          current_period_start: string | null
+          id: number
+          plan: string | null
+          status: string | null
+          stripe_customer_id: string
+          stripe_price_id: string | null
+          stripe_subscription_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          cancel_at_period_end?: boolean
+          canceled_at?: string | null
+          created_at?: string
+          current_period_end?: string | null
+          current_period_start?: string | null
+          id?: number
+          plan?: string | null
+          status?: string | null
+          stripe_customer_id: string
+          stripe_price_id?: string | null
+          stripe_subscription_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          cancel_at_period_end?: boolean
+          canceled_at?: string | null
+          created_at?: string
+          current_period_end?: string | null
+          current_period_start?: string | null
+          id?: number
+          plan?: string | null
+          status?: string | null
+          stripe_customer_id?: string
+          stripe_price_id?: string | null
+          stripe_subscription_id?: string | null
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }

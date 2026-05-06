@@ -50,6 +50,8 @@ async function resolveClient(name) {
   if (!name) return null;
   const existing = clients.find(c => c.name.toLowerCase() === name.toLowerCase());
   if (existing) return existing.id;
+  // Auto-creating a new client — gate on free-tier cap.
+  if (!_enforceFreeLimit('clients', clients.length)) return null;
   /** @type {any} */
   const row = { user_id: _userId, name };
   const { data, error } = await _db('clients').insert(row).select().single();
@@ -64,6 +66,8 @@ async function resolveProject(name, clientId) {
   if (!name) return null;
   const existing = projects.find(p => p.name.toLowerCase() === name.toLowerCase() && (p.client_id === clientId || !clientId));
   if (existing) return existing.id;
+  // Auto-creating a new project — gate on free-tier cap.
+  if (!_enforceFreeLimit('projects', projects.length)) return null;
   /** @type {any} */
   const row = { user_id: _userId, name, status: 'active' };
   if (clientId) row.client_id = clientId;
@@ -81,6 +85,7 @@ async function createClient() {
   const name = _clInput('cl-name')?.value.trim() || '';
   if (!name) { _toast('Enter a client name.', 'error'); return; }
   if (!_requireAuth()) return;
+  if (!_enforceFreeLimit('clients', clients.length)) return;
   /** @type {any} */
   const row = {
     user_id: _userId, name,
@@ -122,6 +127,7 @@ async function createProject() {
   const name = _clInput('pj-name')?.value.trim() || '';
   if (!name) { _toast('Enter a project name.', 'error'); return; }
   if (!_requireAuth()) return;
+  if (!_enforceFreeLimit('projects', projects.length)) return;
   const clientName = _clInput('pj-client')?.value.trim() || '';
   const clientId = clientName ? await resolveClient(clientName) : null;
   /** @type {any} */

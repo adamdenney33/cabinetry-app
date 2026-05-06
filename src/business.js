@@ -55,9 +55,45 @@ function _syncBizInfoToDB(payload) {
   }, 800);
 }
 
+// Phase 4.1: write cbSettings.materials / cbSettings.hardware / cbSettings.finishes
+// to the catalog_items table. REPLACE semantics — delete all rows of these
+// three types for the user, then re-insert from in-memory state. Mirrors the
+// _syncCBLinesToDB / _syncCBSettingsToDB pattern (debounced 800ms, fire-and-forget).
+/** @type {ReturnType<typeof setTimeout> | null} */
+let _catalogSyncTimer = null;
+function _syncCatalogToDB() {
+  if (!_userId) return;
+  if (typeof cbSettings === 'undefined' || !cbSettings) return;
+  if (_catalogSyncTimer) clearTimeout(_catalogSyncTimer);
+  const uid = _userId;
+  _catalogSyncTimer = setTimeout(async () => {
+    _catalogSyncTimer = null;
+    /** @type {any[]} */
+    const rows = [];
+    (cbSettings.materials || []).forEach(/** @param {any} m */ m => {
+      if (m && m.name) rows.push({ user_id: uid, type: 'material', name: m.name, price: parseFloat(m.price) || 0, unit: 'sheet', specs: m.specs || {} });
+    });
+    (cbSettings.hardware || []).forEach(/** @param {any} h */ h => {
+      if (h && h.name) rows.push({ user_id: uid, type: 'hardware', name: h.name, price: parseFloat(h.price) || 0, unit: 'each', specs: {} });
+    });
+    (cbSettings.finishes || []).forEach(/** @param {any} f */ f => {
+      if (f && f.name) rows.push({ user_id: uid, type: 'finish', name: f.name, price: parseFloat(f.price) || 0, unit: 'm²', specs: {} });
+    });
+    try {
+      await _db('catalog_items').delete().eq('user_id', uid).in('type', ['material', 'hardware', 'finish']);
+      if (rows.length > 0) {
+        const { error } = await _db('catalog_items').insert(rows);
+        if (error) console.warn('[catalog] DB sync failed:', error.message);
+      }
+    } catch (e) {
+      console.warn('[catalog] DB sync exception:', (/** @type {any} */ (e)).message || e);
+    }
+  }, 800);
+}
+
 // Item 2 phase 3: write cbSettings (rates, markup, tax, deposit, edging,
 // labour_times, base_types, constructions, edge_banding) to business_info.
-// Materials/hardware/finishes live in catalog_items — handled separately.
+// Materials/hardware/finishes live in catalog_items — handled by _syncCatalogToDB above.
 /** @type {ReturnType<typeof setTimeout> | null} */
 let _cbSettingsSyncTimer = null;
 function _syncCBSettingsToDB() {
@@ -74,10 +110,14 @@ function _syncCBSettingsToDB() {
       default_tax_pct:     parseFloat(cbSettings.tax)        || 0,
       default_deposit_pct:  parseFloat(cbSettings.deposit)    || 0,
       default_edging_per_m: parseFloat(cbSettings.edgingPerM) || 0,
-      default_labour_times:  cbSettings.labourTimes  || {},
-      default_base_types:    cbSettings.baseTypes    || [],
-      default_constructions: cbSettings.constructions || [],
-      default_edge_banding:  cbSettings.edgeBanding  || [],
+      default_labour_times:        cbSettings.labourTimes       || {},
+      default_base_types:          cbSettings.baseTypes         || [],
+      default_constructions:       cbSettings.constructions     || [],
+      default_edge_banding:        cbSettings.edgeBanding       || [],
+      default_carcass_types:       cbSettings.carcassTypes      || [],
+      default_door_types:          cbSettings.doorTypes         || [],
+      default_drawer_front_types:  cbSettings.drawerFrontTypes  || [],
+      default_drawer_box_types:    cbSettings.drawerBoxTypes    || [],
       updated_at: new Date().toISOString()
     };
     const { data: existing } = await _db('business_info').select('id').eq('user_id', uid);

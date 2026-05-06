@@ -1,39 +1,15 @@
-// ProCabinet — Cabinet Builder / line-based cabinet quoting (carved out of
-// src/app.js in phase E carve 15 — the largest carve of phase E).
-//
-// Loaded as a classic <script defer> BEFORE src/app.js, AFTER src/stock.js.
-// State-bearing (5 top-level `let` bindings — cbSettings, cbLibrary,
-// cbLines, cbSavedQuotes, _clProjectCache). The trailing init block at
-// the bottom of the section runs at script-load time and calls
-// loadStockLibraries() defined in src/stock.js — hence stock.js must
-// load first.
-//
-// Cross-file dependencies (runtime, resolved through the global lexical
-// environment):
-//   - state used by quotes.js: cbLines / cbSettings / cbLibrary referenced
-//     in _quoteLineRowToCB, calcCBLine and friends
-//   - _clProjectCache referenced by src/projects.js
-//   - _db / _dbInsertSafe (src/db.js / src/clients.js), _userId (src/db.js
-//     auth state), _toast / _confirm / _openPopup / _closePopup /
-//     _popupVal / _escHtml (src/app.js / src/ui.js), renderQuoteMain
-//     (src/quotes.js), switchSection / window.currency / window.units
-//     (src/settings.js), stockItems (src/stock.js)
-//
-// Symbol-name note: the `cb*` prefix (cbLines / cbSettings / cbLibrary /
-// cbSavedQuotes) was renamed from `cq*` (Cabinet Quote) on 2026-05-02.
-// See SPEC.md § 13 for the rename entry. localStorage keys (`pc_cq_*`)
-// kept unchanged to preserve existing user data.
+// ProCabinet — Cabinet Builder core (state, CRUD, persistence, quotes, print)
+// Split R.1: calc in cabinet-calc.js, render in cabinet-render.js, library in cabinet-library.js.
+// Loaded as the LAST of the four cabinet scripts (its init block calls into the others).
 
 // ══════════════════════════════════════════
-// CABINET BUILDER — line-based cabinet quoting
+// CABINET BUILDER — State & Core Logic
 // ══════════════════════════════════════════
 
 // ── CB Settings State ──
-// `any`-typed because the codebase mutates it dynamically (adds edgeBanding,
-// labourTimes sub-keys, etc.) — stricter typing would force a giant union.
 /** @type {any} */
 let cbSettings = {
-  labourRate: 65, markup: 20, tax: 13, deposit: 50, edgingPerM: 3,
+  labourRate: 65, markup: 20, tax: 13, deposit: 50, edgingPerM: 3, materialMarkup: 0,
   materials: [
     { name: 'Birch Ply 18mm', price: 72 },
     { name: 'Birch Ply 12mm', price: 58 },
@@ -57,7 +33,7 @@ let cbSettings = {
   finishes: [
     { name: 'None', price: 0 },
     { name: 'Oil (Osmo/Rubio)', price: 12 },
-    { name: 'Lacbuer', price: 18 },
+    { name: 'Lacquer', price: 18 },
     { name: 'Paint', price: 22 },
     { name: 'Stain + Oil', price: 15 },
     { name: 'Wax', price: 8 },
@@ -76,17 +52,11 @@ let cbSettings = {
     { name: 'Face Frame', price: 35 },
   ],
   labourTimes: {
-    carcass: 1.5,
-    door: 0.4,
-    drawer: 0.6,
-    shelf: 0.25,
-    finishPerM2: 0.5,
+    carcass: 1.5, door: 0.4, drawer: 0.6, shelf: 0.25, finishPerM2: 0.5,
   }
 };
 
 // ── Cabinet Library ──
-// Backed by the cabinet_templates DB table. Library is loaded on auth
-// (_loadCabinetTemplatesFromDB) and stays in-memory; saves go straight to DB.
 /** @type {any[]} */
 let cbLibrary = [];
 /** @param {any} entry */
@@ -128,561 +98,19 @@ async function _loadCabinetTemplatesFromDB() {
 /** @type {any[]} */
 let cbLines = [];
 let cbNextId = 1;
-/** @type {any[]} */
-let cbSavedQuotes = [];
-let cbActiveQuoteIdx = -1;
+
+// Scratchpad: ephemeral cabinet being configured (not yet in project)
+/** @type {any} */
+let cbScratchpad = null; // initialized in init block after cbDefaultLine is defined
+let cbEditingLineIdx = -1; // -1 = new cabinet, >=0 = editing existing line
+
+// Editing context for quote editing
+/** @type {number|null} */
+let cbEditingQuoteId = null;
+/** @type {any[]|null} */
+let cbEditingOriginalLines = null;
 
 const CB_TYPES = ['Base Cabinet','Wall Cabinet','Tall Cabinet','Drawer Unit','Shelf Unit','Vanity','Island','Pantry','Custom'];
-const SHEET_W = 2.44, SHEET_H = 1.22, SHEET_M2 = SHEET_W * SHEET_H;
-
-// ── Load / Save Settings ──
-function loadCBSettings() {
-  // Phase 3: business_info is the source of truth. Try LS once for backwards
-  // compat with sessions that haven't yet auth'd into the new DB schema, then
-  // _applyBizInfoFromDB hard-overlays whatever DB has.
-  try { const s = localStorage.getItem('pc_cq_settings'); if (s) cbSettings = JSON.parse(s); } catch(e) {}
-  // Ensure defaults exist for all list fields
-  if (!cbSettings.baseTypes || !cbSettings.baseTypes.length) cbSettings.baseTypes = [
-    {name:'None',price:0},{name:'Plinth',price:20},{name:'Feet / Legs',price:40},{name:'Castors',price:60},{name:'Frame',price:30}
-  ];
-  if (!cbSettings.constructions || !cbSettings.constructions.length) cbSettings.constructions = [
-    {name:'Overlay',price:0},{name:'Inset',price:25},{name:'Face Frame',price:35}
-  ];
-  if (!cbSettings.finishes || !cbSettings.finishes.length) cbSettings.finishes = [
-    {name:'None',price:0},{name:'Oil (Osmo/Rubio)',price:12},{name:'Lacbuer',price:18},{name:'Paint',price:22},{name:'Stain + Oil',price:15},{name:'Wax',price:8},{name:'2-Pack Spray',price:35}
-  ];
-  if (!cbSettings.labourTimes) cbSettings.labourTimes = /** @type {any} */ ({});
-  /** @type {any} */
-  const _lt = cbSettings.labourTimes;
-  if (!_lt.carcass) _lt.carcass = 1.5;
-  if (!_lt.door) _lt.door = 0.4;
-  if (!_lt.drawer) _lt.drawer = 0.6;
-  if (!_lt.fixedShelf) _lt.fixedShelf = 0.3;
-  if (!_lt.adjShelfHoles) _lt.adjShelfHoles = 0.4;
-  if (!_lt.looseShelf) _lt.looseShelf = 0.2;
-  if (!_lt.partition) _lt.partition = 0.5;
-  if (!_lt.endPanel) _lt.endPanel = 0.3;
-  if (!_lt.finishPerM2) _lt.finishPerM2 = 0.5;
-  if (!cbSettings.edgeBanding) cbSettings.edgeBanding = [{name:'Iron-on Veneer',price:3},{name:'PVC 1mm',price:4},{name:'PVC 2mm',price:5},{name:'Solid Timber',price:8}];
-  // Phase 3: defaults are bootstrap-only — DB overlay (post-auth) is canonical.
-  // No LS write here; see saveCBSettings() comment.
-}
-function saveCBSettings() {
-  /** @param {string} id */
-  const g = id => parseFloat(_byId(id)?.value ?? '');
-  cbSettings.labourRate = g('cb-labour-rate') || 65;
-  cbSettings.markup = g('cb-markup') || 20;
-  cbSettings.tax = g('cb-tax') || 13;
-  cbSettings.deposit = g('cb-deposit') || 50;
-  cbSettings.edgingPerM = g('cb-edging-m') || 0;
-  // labourTimes, materials, hardware, finishes, baseTypes, constructions
-  // are updated inline via onblur handlers.
-  // Item 2 phase 3: business_info is the source of truth — pc_cq_settings
-  // localStorage is no longer written. Hardcoded defaults in loadCBSettings
-  // bootstrap pre-auth state until _applyBizInfoFromDB hard-overlays from DB.
-  if (typeof _syncCBSettingsToDB === 'function') _syncCBSettingsToDB();
-}
-function loadCBLines() {
-  try { const s = localStorage.getItem('pc_cq_lines'); if (s) { cbLines = JSON.parse(s); cbNextId = Math.max(0, ...cbLines.map(l=>l.id)) + 1; } } catch(e) {}
-  // Restore project + client names
-  setTimeout(() => {
-    const pn = _byId('cb-project'); const saved = localStorage.getItem('pc_cq_project_name'); if (pn && saved) pn.value = saved;
-    const cn = _byId('cb-client'); const savedC = localStorage.getItem('pc_cq_client_name'); if (cn && savedC) cn.value = savedC;
-  }, 100);
-}
-function saveCBLines() {
-  // Item 2 phase 1.5: cabinet data persists to DB only (via the debounced
-  // sync below). Project/client *navigation* state — which project the user
-  // last had selected — stays in localStorage so the next page load can
-  // re-resolve the project and pull its draft quote.
-  const pn = _byId('cb-project');
-  if (pn) localStorage.setItem('pc_cq_project_name', pn.value);
-  const cn = _byId('cb-client');
-  if (cn) localStorage.setItem('pc_cq_client_name', cn.value);
-  _scheduleCBLinesSync();
-}
-
-// Resolve the active Cabinet Builder project_id from the cb-project input.
-// Returns null when there's no auth, no input, no value, or no matching projects row.
-function _getCBProjectId() {
-  if (!_userId) return null;
-  const pn = _byId('cb-project');
-  if (!pn) return null;
-  const name = pn.value.trim();
-  if (!name) return null;
-  const proj = projects.find(p => p.name === name);
-  return proj ? proj.id : null;
-}
-
-/** @type {ReturnType<typeof setTimeout> | null} */
-let _cbLinesSyncTimer = null;
-
-function _scheduleCBLinesSync() {
-  if (_cbLinesSyncTimer) clearTimeout(_cbLinesSyncTimer);
-  _cbLinesSyncTimer = setTimeout(() => {
-    _cbLinesSyncTimer = null;
-    _syncCBLinesToDB();
-  }, 800);
-}
-
-// Replace all quote_lines on the project's draft quote with the current cbLines.
-// REPLACE semantics (delete-then-insert) match _replaceQuoteLinesChildTable.
-// Fire-and-forget — failures log but never block the user; localStorage stays
-// the source of truth until phase 1.4.
-async function _syncCBLinesToDB() {
-  const projectId = _getCBProjectId();
-  if (!projectId) return;
-  try {
-    const draft = await _findOrCreateDraftQuote(projectId);
-    if (!draft) return;
-    await _db('quote_lines').delete().eq('quote_id', draft.id);
-    if (cbLines.length > 0) {
-      /** @type {any[]} */
-      const rows = cbLines.map((l, i) => _cbLineToRow(l, i, draft.id));
-      await _db('quote_lines').insert(rows);
-    }
-  } catch (e) {
-    console.warn('[cb dual-write]', (/** @type {any} */ (e)).message || e);
-  }
-}
-
-// Item 2 phase 1.3: load cbLines from the project's draft quote.
-// Called from loadAllData after auth + projects + quotes are populated.
-// REPLACES localStorage-loaded cbLines if the DB has any lines for this
-// project's draft. Otherwise no-op — LS data stays as fallback.
-async function _loadCBLinesFromDB() {
-  if (!_userId) return;
-  // Phase 1.5 guard: don't clobber unsaved in-memory edits. loadAllData re-runs
-  // on every auth event including TOKEN_REFRESHED (~hourly). If a sync is
-  // pending, the user has edits the DB doesn't yet have — leave cbLines alone.
-  if (_cbLinesSyncTimer) return;
-  const savedName = localStorage.getItem('pc_cq_project_name');
-  if (!savedName) return;
-  const proj = projects.find(p => p.name === savedName);
-  if (!proj) return;
-  const draft = quotes.find(q => q.project_id === proj.id && _isDraftQuote(q));
-  if (!draft) return;
-  try {
-    const { data: lines, error } = await _db('quote_lines').select('*').eq('quote_id', draft.id).order('position');
-    if (error || !lines || lines.length === 0) return;
-    cbLines = lines.map(/** @param {any} row @param {number} i */ (row, i) => {
-      const cb = /** @type {any} */ (_quoteLineRowToCB(row));
-      cb.id = i + 1;
-      return cb;
-    });
-    cbNextId = cbLines.length + 1;
-    // Phase 1.5 cleanup: DB is now the source of truth. Clear the legacy
-    // pc_cq_lines key so it can't shadow the DB load on a future session.
-    localStorage.removeItem('pc_cq_lines');
-    if (typeof renderCBPanel === 'function') renderCBPanel();
-  } catch (e) {
-    console.warn('[cb db-load]', (/** @type {any} */ (e)).message || e);
-  }
-}
-
-function loadCBSaved() {
-  try { const s = localStorage.getItem('pc_cq_saved'); if (s) cbSavedQuotes = JSON.parse(s); } catch(e) {}
-}
-function saveCBSaved() { localStorage.setItem('pc_cq_saved', JSON.stringify(cbSavedQuotes)); }
-
-function toggleCBSettings() {
-  switchCabTab('rates');
-}
-
-/** @param {string} tab */
-function switchCabTab(tab) {
-  const rates = _byId('cab-view-rates');
-  const tabBuilder = _byId('cab-tab-builder');
-  const tabRates = _byId('cab-tab-rates');
-  // Get all builder content divs (everything in sidebar except the rates div and the tabs)
-  const sidebar = _byId('cb-sidebar');
-  if (!sidebar) return;
-  const builderDivs = /** @type {HTMLElement[]} */ (Array.from(sidebar.children).filter(el => el.id !== 'cab-view-rates'));
-
-  if (tab === 'rates') {
-    builderDivs.forEach(el => el.style.display = 'none');
-    if (rates) rates.style.display = '';
-    if (tabBuilder) { tabBuilder.style.borderBottomColor = 'transparent'; tabBuilder.style.fontWeight = '500'; tabBuilder.style.color = 'var(--muted)'; }
-    if (tabRates) { tabRates.style.borderBottomColor = 'var(--accent)'; tabRates.style.fontWeight = '700'; tabRates.style.color = 'var(--text)'; }
-    renderCBRates();
-  } else {
-    builderDivs.forEach(el => el.style.display = '');
-    if (rates) rates.style.display = 'none';
-    if (tabBuilder) { tabBuilder.style.borderBottomColor = 'var(--accent)'; tabBuilder.style.fontWeight = '700'; tabBuilder.style.color = 'var(--text)'; }
-    if (tabRates) { tabRates.style.borderBottomColor = 'transparent'; tabRates.style.fontWeight = '500'; tabRates.style.color = 'var(--muted)'; }
-  }
-}
-
-// ── Settings Lists Render ──
-// ── Render editable list helper ──
-/** @param {any[]} arr @param {string} path @param {string} [unitLabel] */
-function _cbListHTML(arr, path, unitLabel) {
-  const cur = window.currency;
-  return arr.map(/** @param {any} item @param {number} i */ (item, i) => `<div class="cb-mat-row">
-    <input value="${item.name}" placeholder="Name" onblur="${path}[${i}].name=this.value;saveCBSettings();renderCBPanel()">
-    <div style="display:flex;align-items:center;border:1px solid var(--border);border-radius:4px;overflow:hidden;background:var(--surface2)">
-      <span style="font-size:10px;color:var(--muted);padding:3px 4px 3px 6px;background:var(--surface)">${unitLabel||cur}</span>
-      <input type="number" value="${item.price}" style="border:none;border-radius:0;padding:3px 6px 3px 2px;width:55px" onblur="${path}[${i}].price=parseFloat(this.value)||0;saveCBSettings();renderCBPanel()">
-    </div>
-    <button onclick="${path}.splice(${i},1);saveCBSettings();renderCBRates();renderCBPanel()" style="font-size:16px">&times;</button>
-  </div>`).join('');
-}
-
-function renderCBRates() {
-  const el = _byId('cb-rates-content');
-  if (!el) return;
-  const cur = window.currency;
-  /** @type {any} */
-  const lt = cbSettings.labourTimes || {};
-  if (!window._ratesOpen) window._ratesOpen = {};
-  const ro = window._ratesOpen;
-  /** @param {string} k */
-  const isOpen = k => ro[k] === true;
-  /** @param {string} k */
-  const chev = k => `<span style="font-size:10px;color:var(--muted);display:inline-block;transition:transform .2s;${isOpen(k)?'transform:rotate(90deg)':''}">&#9654;</span>`;
-
-  /** @param {string} key @param {string} title @param {string | number} count @param {string} content */
-  function section(key, title, count, content) {
-    return `<div style="border:1px solid var(--border);border-radius:8px;margin-bottom:8px;overflow:hidden">
-      <div style="display:flex;align-items:center;gap:8px;padding:10px 12px;cursor:pointer;user-select:none" onclick="window._ratesOpen.${key}=!window._ratesOpen.${key};renderCBRates()">
-        ${chev(key)}
-        <span style="font-size:13px;font-weight:600;color:var(--text);flex:1">${title}</span>
-        <span style="font-size:11px;color:var(--muted)">${count}</span>
-      </div>
-      ${isOpen(key)?`<div style="padding:0 12px 10px;border-top:1px solid var(--border)">${content}</div>`:''}
-    </div>`;
-  }
-
-  /** @param {any[]} arr @param {string} path @param {string} [unit] */
-  function listItems(arr, path, unit) {
-    return arr.map(/** @param {any} item @param {number} i */ (item,i) => `<div class="cb-mat-row" style="margin-top:4px">
-      <input value="${item.name}" placeholder="Name" onblur="${path}[${i}].name=this.value;saveCBSettings();renderCBPanel()">
-      <div style="display:flex;align-items:center;border:1px solid var(--border);border-radius:4px;overflow:hidden;background:var(--surface2)">
-        <span style="font-size:10px;color:var(--muted);padding:3px 4px 3px 6px;background:var(--surface)">${unit||cur}</span>
-        <input type="number" value="${item.price}" style="border:none;border-radius:0;padding:3px 6px 3px 2px;width:55px" onblur="${path}[${i}].price=parseFloat(this.value)||0;saveCBSettings();renderCBPanel()">
-      </div>
-      <button onclick="${path}.splice(${i},1);saveCBSettings();renderCBRates()" style="font-size:16px;background:none;border:none;color:var(--muted);cursor:pointer">&times;</button>
-    </div>`).join('') + `<button class="cl-add-btn" onclick="${path}.push({name:'New',price:0});saveCBSettings();renderCBRates()" style="font-size:11px;padding:4px 8px;margin:6px 0 0">+ Add</button>`;
-  }
-
-  // Core Rates as list
-  const coreItems = [
-    {name:'Labour Rate',price:cbSettings.labourRate,path:'cbSettings.labourRate',unit:'per hour'},
-    {name:'Markup',price:cbSettings.markup,path:'cbSettings.markup',unit:'%'},
-    {name:'Tax / GST',price:cbSettings.tax,path:'cbSettings.tax',unit:'%'},
-  ];
-  const coreContent = coreItems.map(item => `<div class="cb-mat-row" style="margin-top:4px">
-    <input value="${item.name}" disabled style="opacity:.7;cursor:default">
-    <div style="display:flex;align-items:center;border:1px solid var(--border);border-radius:4px;overflow:hidden;background:var(--surface2)">
-      <span style="font-size:10px;color:var(--muted);padding:3px 4px 3px 6px;background:var(--surface)">${item.unit}</span>
-      <input type="number" value="${item.price}" style="border:none;border-radius:0;padding:3px 6px 3px 2px;width:55px" onblur="${item.path}=parseFloat(this.value)||0;saveCBSettings();renderCBPanel()">
-    </div>
-  </div>`).join('');
-
-  // Labour Times as list
-  const labourItems = [
-    {name:'Carcass (volume)',val:lt.carcass||1.5,path:'cbSettings.labourTimes.carcass',unit:'hrs/m³'},
-    {name:'Per Door',val:lt.door||0.4,path:'cbSettings.labourTimes.door',unit:'hrs'},
-    {name:'Per Drawer',val:lt.drawer||0.6,path:'cbSettings.labourTimes.drawer',unit:'hrs'},
-    {name:'Fixed Shelf',val:lt.fixedShelf||0.3,path:'cbSettings.labourTimes.fixedShelf',unit:'hrs'},
-    {name:'Adj. Shelf Holes',val:lt.adjShelfHoles||0.4,path:'cbSettings.labourTimes.adjShelfHoles',unit:'hrs'},
-    {name:'Loose Shelf',val:lt.looseShelf||0.2,path:'cbSettings.labourTimes.looseShelf',unit:'hrs'},
-    {name:'Partition',val:lt.partition||0.5,path:'cbSettings.labourTimes.partition',unit:'hrs'},
-    {name:'End Panel',val:lt.endPanel||0.3,path:'cbSettings.labourTimes.endPanel',unit:'hrs'},
-    {name:'Finish',val:lt.finishPerM2||0.5,path:'cbSettings.labourTimes.finishPerM2',unit:'hrs/m²'},
-  ];
-  const labourContent = labourItems.map(item => `<div class="cb-mat-row" style="margin-top:4px">
-    <input value="${item.name}" disabled style="opacity:.7;cursor:default">
-    <div style="display:flex;align-items:center;border:1px solid var(--border);border-radius:4px;overflow:hidden;background:var(--surface2)">
-      <span style="font-size:10px;color:var(--muted);padding:3px 4px 3px 6px;background:var(--surface)">${item.unit}</span>
-      <input type="number" value="${item.val}" step="0.05" style="border:none;border-radius:0;padding:3px 6px 3px 2px;width:55px" onblur="${item.path}=parseFloat(this.value)||0;saveCBSettings();renderCBPanel()">
-    </div>
-  </div>`).join('');
-
-  // Edge Banding
-  if (!cbSettings.edgeBanding) cbSettings.edgeBanding = [{name:'Iron-on Veneer',price:3},{name:'PVC 1mm',price:4},{name:'PVC 2mm',price:5},{name:'Solid Timber',price:8}];
-  const edgeBandContent = listItems(cbSettings.edgeBanding, 'cbSettings.edgeBanding', cur+'/m');
-
-  el.innerHTML = `
-    ${section('core', 'Core Rates', '3 rates', coreContent)}
-    ${section('labour', 'Labour Times', '9 rates', labourContent)}
-    ${section('materials', 'Stock Materials', '('+stockItems.length+' in stock)', `<div style="position:relative;margin-top:6px"><div class="smart-input-wrap"><input type="text" id="rates-stock-search" placeholder="Search stock materials..." autocomplete="off" style="font-size:12px" oninput="_smartRatesStockSuggest(this,'rates-stock-suggest')" onfocus="_smartRatesStockSuggest(this,'rates-stock-suggest')" onblur="setTimeout(()=>_byId('rates-stock-suggest').style.display='none',150)"><div class="smart-input-add" onclick="_openNewStockPopup()" title="Add new stock material">+</div></div><div id="rates-stock-suggest" class="client-suggest-list" style="display:none"></div></div>`)}
-    ${section('hardware', 'Hardware', '('+cbSettings.hardware.length+' items)', listItems(cbSettings.hardware, 'cbSettings.hardware', cur))}
-    ${section('finishes', 'Finishes', '('+stockItems.filter(s=>s.category==='Finishing').length+' in stock)', `<div style="position:relative;margin-top:6px"><div class="smart-input-wrap"><input type="text" id="rates-finish-search" placeholder="Search finishing products..." autocomplete="off" style="font-size:12px" oninput="_smartRatesFinishSuggest(this,'rates-finish-suggest')" onfocus="_smartRatesFinishSuggest(this,'rates-finish-suggest')" onblur="setTimeout(()=>_byId('rates-finish-suggest').style.display='none',150)"><div class="smart-input-add" onclick="_openNewStockPopup()" title="Add new finish to stock">+</div></div><div id="rates-finish-suggest" class="client-suggest-list" style="display:none"></div></div>`)}
-    ${section('edgebanding', 'Edge Banding', '('+stockItems.filter(s=>s.category==='Edge Banding').length+' in stock)', `<div style="position:relative;margin-top:6px"><div class="smart-input-wrap"><input type="text" id="rates-edge-search" placeholder="Search edge banding..." autocomplete="off" style="font-size:12px" oninput="_smartRatesEdgeSuggest(this,'rates-edge-suggest')" onfocus="_smartRatesEdgeSuggest(this,'rates-edge-suggest')" onblur="setTimeout(()=>_byId('rates-edge-suggest').style.display='none',150)"><div class="smart-input-add" onclick="_openNewStockPopup()" title="Add new edge banding to stock">+</div></div><div id="rates-edge-suggest" class="client-suggest-list" style="display:none"></div></div>`)}
-    ${section('basetypes', 'Base Types', '('+(cbSettings.baseTypes||[]).length+' types)', listItems(cbSettings.baseTypes||[], 'cbSettings.baseTypes', cur))}
-    ${section('constructions', 'Construction Types', '('+(cbSettings.constructions||[]).length+' types)', listItems(cbSettings.constructions||[], 'cbSettings.constructions', cur+'/m²'))}
-  `;
-}
-
-function renderCBSettingsLists() { renderCBRates(); }
-function addCBMaterial() { cbSettings.materials.push({name:'New Material',price:0}); saveCBSettings(); renderCBRates(); }
-function addCBHardware() { cbSettings.hardware.push({name:'New Hardware',price:0}); saveCBSettings(); renderCBRates(); }
-function addCBFinish() { if (!cbSettings.finishes) cbSettings.finishes = []; cbSettings.finishes.push({name:'New Finish',price:0}); saveCBSettings(); renderCBRates(); }
-
-// ── Cabinet Library ──
-/** @param {string} panel */
-function toggleCabPanel(panel) {
-  const projects = _byId('cb-projects-panel');
-  const library = _byId('cb-library-panel');
-  if (panel === 'projects') {
-    if (projects) projects.style.display = projects.style.display === 'none' ? '' : 'none';
-    if (library) library.style.display = 'none';
-    renderCBProjects();
-  } else {
-    if (library) library.style.display = library.style.display === 'none' ? '' : 'none';
-    if (projects) projects.style.display = 'none';
-  }
-}
-function toggleCabLibrary() { toggleCabPanel('library'); }
-
-// ── Project Library (saves project name + all cabinets) ──
-/** @type {any[]} */
-let cbProjectLibrary = [];
-function loadCBProjectLibrary() { try { cbProjectLibrary = JSON.parse(localStorage.getItem('pc_cq_projects')||'[]'); } catch(e) { cbProjectLibrary=[]; } }
-function saveCBProjectLibrary() { localStorage.setItem('pc_cq_projects', JSON.stringify(cbProjectLibrary)); }
-
-/** @param {string} name */
-function _cbSaveProjectByName(name) {
-  if (!name || !name.trim()) { _toast('Enter a project name', 'error'); return; }
-  cbSaveProject(name.trim());
-}
-/** @param {string} name */
-function _cbSaveCabByName(name) {
-  if (!name || !name.trim()) { _toast('Enter a cabinet name', 'error'); return; }
-  const line = cbLines[cbActiveLineIdx];
-  if (line) line.name = name.trim();
-  cbSaveToLibrary();
-}
-/** @param {string} name */
-function _saveStockLibByName(name) {
-  if (!name || !name.trim()) { _toast('Enter a library name', 'error'); return; }
-  saveStockLibrary(name.trim());
-}
-/** @param {string} [nameOverride] */
-function cbSaveProject(nameOverride) {
-  const name = nameOverride || '';
-  if (!name) { _toast('Enter a project name first', 'error'); return; }
-  const project = {
-    id: Date.now(), name,
-    date: new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}),
-    lines: JSON.parse(JSON.stringify(cbLines)),
-    projectName: name
-  };
-  // Phase 1.5: also persist to the unified projects table so Cut List + Cabinet Quote
-  // share one canonical row per (user, name). This converges both subsystems before the
-  // Phase 2 data migration runs. localStorage write below stays as fallback.
-  if (_userId) {
-    _saveProjectScoped({
-      name,
-      scope: 'quote',
-      payload: { lines: project.lines, date: project.date }
-    }).then(({ error }) => {
-      if (error) console.warn('CB project DB save failed:', error);
-    });
-  }
-  cbProjectLibrary.unshift(project);
-  saveCBProjectLibrary();
-  renderCBProjects();
-  // Open projects panel to show saved
-  const p = _byId('cb-projects-panel');
-  if (p) p.style.display = '';
-  _toast(`Project "${name}" saved`, 'success');
-}
-
-/** @param {number} idx */
-function cbLoadProject(idx) {
-  const p = cbProjectLibrary[idx];
-  if (!p) return;
-  cbLines = JSON.parse(JSON.stringify(p.lines || []));
-  cbNextId = cbLines.length > 0 ? Math.max(...cbLines.map(l=>l.id)) + 1 : 1;
-  const nameEl = _byId('cb-project');
-  if (nameEl) nameEl.value = p.projectName || p.name || '';
-  cbActiveLineIdx = 0;
-  saveCBLines();
-  renderCBPanel();
-  toggleCabPanel('projects'); // close panel
-  _toast(`Loaded "${p.name}"`, 'success');
-}
-
-/** @param {number} idx */
-function cbDeleteProject(idx) {
-  _confirm('Delete this project?', () => {
-    cbProjectLibrary.splice(idx, 1);
-    saveCBProjectLibrary();
-    renderCBProjects();
-  });
-}
-
-function renderCBProjects() {
-  const el = _byId('cb-projects-list');
-  if (!el) return;
-  const cur = window.currency;
-  if (!cbProjectLibrary.length) {
-    el.innerHTML = `<div style="color:var(--muted);font-size:11px;padding:8px 10px;border-radius:5px;border:1px solid var(--border);background:var(--surface);text-align:center">${_userId ? 'No saved projects yet. Enter a project name and click Save Project.' : '<div class="projects-signin">Sign in to save & load projects. <span onclick="dismissAuth();_showAuth()">Sign in</span></div>'}</div>`;
-    return;
-  }
-  el.innerHTML = cbProjectLibrary.map((p, i) => {
-    const count = (p.lines||[]).length;
-    return `<div style="display:flex;align-items:center;gap:6px;padding:6px 8px;margin-bottom:3px;border-radius:6px;border:1px solid var(--border);background:var(--surface);cursor:pointer" onclick="cbLoadProject(${i})">
-      <div style="flex:1;min-width:0">
-        <div style="font-size:12px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_escHtml(p.name)}</div>
-        <div style="font-size:10px;color:var(--muted)">${p.date} · ${count} cabinet${count!==1?'s':''}</div>
-      </div>
-      <button style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:0 2px" onclick="event.stopPropagation();cbDeleteProject(${i})">×</button>
-    </div>`;
-  }).join('');
-}
-function cbExportProjects() {
-  if (!cbProjectLibrary.length) { _toast('No projects to export', 'error'); return; }
-  /** @type {any[][]} */
-  const rows = [['Project Name','Date','Cabinet Count']];
-  cbProjectLibrary.forEach(p => rows.push([p.name, p.date, (p.lines||[]).length]));
-  const csv = rows.map(r => r.map(/** @param {any} v */ v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
-  const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([csv],{type:'text/csv'})), download: 'cabinet-projects.csv' });
-  a.click(); URL.revokeObjectURL(a.href);
-  // Also export full data as JSON for re-import
-  const json = JSON.stringify(cbProjectLibrary);
-  const a2 = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([json],{type:'application/json'})), download: 'cabinet-projects-data.json' });
-  a2.click(); URL.revokeObjectURL(a2.href);
-  _toast('Projects exported (CSV summary + JSON data)', 'success');
-}
-function cbImportProjects() {
-  const input = document.createElement('input');
-  input.type = 'file'; input.accept = '.json,.csv';
-  input.onchange = async e => {
-    const file = /** @type {HTMLInputElement} */ (e.target).files?.[0]; if (!file) return;
-    try {
-      const text = await file.text();
-      if (file.name.endsWith('.json')) {
-        const data = JSON.parse(text);
-        if (Array.isArray(data)) { data.forEach(/** @param {any} p */ p => { p.id = Date.now() + Math.random(); cbProjectLibrary.push(p); }); saveCBProjectLibrary(); renderCBProjects(); _toast(data.length + ' projects imported', 'success'); }
-      } else { _toast('Use the JSON file for project import (CSV is summary only)', 'info'); }
-    } catch(e) { _toast('Could not read file', 'error'); }
-  };
-  input.click();
-}
-
-function cbExportLibrary() {
-  if (!cbLibrary.length) { _toast('No cabinets in library', 'error'); return; }
-  const headers = ['Name','Width','Height','Depth','Qty','Material','Back Material','Finish','Construction','Base','Doors','Door Material','Door %','Drawers','Front Material','Inner Material','Drawer %','Fixed Shelves','Adj Shelves','Loose Shelves','Partitions','End Panels'];
-  /** @type {any[][]} */
-  const rows = [headers];
-  cbLibrary.forEach(c => {
-    rows.push([c._libName||c.name||'Cabinet',c.w,c.h,c.d,c.qty||1,c.material||'',c.backMat||'',c.finish||'None',c.construction||'Overlay',c.baseType||'None',c.doors||0,c.doorMat||'',c.doorPct||95,c.drawers||0,c.drawerFrontMat||'',c.drawerInnerMat||'',c.drawerPct||85,c.shelves||0,c.adjShelves||0,c.looseShelves||0,c.partitions||0,c.endPanels||0]);
-  });
-  const csv = rows.map(r => r.map(/** @param {any} v */ v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
-  const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([csv],{type:'text/csv'})), download: 'cabinet-library.csv' });
-  a.click(); URL.revokeObjectURL(a.href);
-  _toast('Library exported as CSV', 'success');
-}
-function cbImportLibrary() {
-  const input = document.createElement('input');
-  input.type = 'file'; input.accept = '.csv';
-  input.onchange = async e => {
-    const file = /** @type {HTMLInputElement} */ (e.target).files?.[0]; if (!file) return;
-    try {
-      const text = await file.text();
-      const rows = text.split(/\r?\n/).map(r => r.split(',').map(c => c.replace(/^"|"$/g,'').trim()));
-      if (rows.length < 2) { _toast('CSV has no data rows', 'error'); return; }
-      let imported = 0;
-      for (let i = 1; i < rows.length; i++) {
-        const r = rows[i]; if (r.length < 4 || !r[0]) continue;
-        /** @type {any} */
-        const cab = cbDefaultLine();
-        cab.id = Date.now() + Math.random();
-        cab._libName = r[0]; cab.name = r[0];
-        cab.w = parseFloat(r[1])||600; cab.h = parseFloat(r[2])||720; cab.d = parseFloat(r[3])||560;
-        cab.qty = parseInt(r[4])||1; cab.material = r[5]||cab.material; cab.backMat = r[6]||cab.backMat;
-        cab.finish = r[7]||'None'; cab.construction = r[8]||'Overlay'; cab.baseType = r[9]||'None';
-        cab.doors = parseInt(r[10])||0; cab.doorMat = r[11]||cab.material; cab.doorPct = parseInt(r[12])||95;
-        cab.drawers = parseInt(r[13])||0; cab.drawerFrontMat = r[14]||cab.material; cab.drawerInnerMat = r[15]||cab.backMat;
-        cab.drawerPct = parseInt(r[16])||85; cab.shelves = parseInt(r[17])||0; cab.adjShelves = parseInt(r[18])||0;
-        cab.looseShelves = parseInt(r[19])||0; cab.partitions = parseInt(r[20])||0; cab.endPanels = parseInt(r[21])||0;
-        cbLibrary.push(cab); imported++;
-      }
-      renderCBLibrary();
-      _toast(imported + ' cabinets imported', 'success');
-      const p = _byId('cb-library-panel'); if (p) p.style.display = '';
-      // Cloud sync: push the just-imported entries to DB and capture db_ids
-      const newEntries = cbLibrary.slice(-imported);
-      Promise.all(newEntries.map(e => _saveCabinetToDB(e).then(id => { if (id) e.db_id = id; })))
-        .catch(err => console.warn('[cabinet-template bulk save]', err.message || err));
-    } catch(e) { _toast('Could not read CSV: ' + (/** @type {any} */ (e)).message, 'error'); }
-  };
-  input.click();
-}
-function cbSaveToLibrary() {
-  const line = cbLines[cbActiveLineIdx];
-  if (!line) { _toast('Select a cabinet first', 'error'); return; }
-  const copy = JSON.parse(JSON.stringify(line));
-  copy.id = Date.now();
-  copy._libName = copy.name || copy.type || 'Cabinet';
-  cbLibrary.push(copy);
-  renderCBLibrary();
-  _toast(`"${copy._libName}" saved to library`, 'success');
-  _saveCabinetToDB(copy).then(id => { if (id) copy.db_id = id; });
-}
-/** @param {number} idx */
-function cbLoadFromLibrary(idx) {
-  const src = cbLibrary[idx];
-  if (!src) return;
-  const copy = JSON.parse(JSON.stringify(src));
-  copy.id = cbNextId++;
-  delete copy._libName;
-  cbLines.push(copy);
-  cbActiveLineIdx = cbLines.length - 1;
-  saveCBLines();
-  renderCBPanel();
-  _toast(`"${src._libName}" added to quote`, 'success');
-}
-/** @param {number} idx */
-function cbRemoveFromLibrary(idx) {
-  const removed = cbLibrary[idx];
-  cbLibrary.splice(idx, 1);
-  renderCBLibrary();
-  if (removed?.db_id) _deleteCabinetFromDB(removed.db_id);
-}
-function renderCBLibrary() {} // Library now via smart search dropdown
-
-/** @param {HTMLInputElement} input */
-function _cbCabinetSearchInput(input) {
-  // Update the active cabinet name as the user types
-  if (cbActiveLineIdx >= 0 && cbLines[cbActiveLineIdx]) {
-    cbLines[cbActiveLineIdx].name = input.value;
-    saveCBLines();
-    renderCBCabList();
-    renderCBResults();
-  }
-  _smartCBLibrarySuggest(input, 'cb-cabinet-suggest');
-}
-
-/** @param {HTMLInputElement} input @param {string} boxId */
-function _smartCBLibrarySuggest(input, boxId) {
-  const box = _byId(boxId);
-  if (!box) return;
-  _posSuggest(input, box);
-  const q = input.value.trim().toLowerCase();
-  const cur = window.currency;
-  const matches = q ? cbLibrary.filter(c => (c._libName||c.name||'').toLowerCase().includes(q)) : cbLibrary;
-  if (matches.length === 0 && !q) { box.style.display = 'none'; return; }
-  let html = '';
-  matches.slice(0, 8).forEach(c => {
-    const idx = cbLibrary.indexOf(c);
-    const calc = calcCBLine(c);
-    html += `<div class="client-suggest-item" onmousedown="cbLoadFromLibrary(${idx});_byId('cb-cabinet-search').value='';_byId('${boxId}').style.display='none'">
-      <span class="suggest-icon" style="background:var(--accent-dim);color:var(--accent)">C</span>
-      <span style="flex:1">${_escHtml(c._libName||c.name||'Cabinet')}</span>
-      <span style="font-size:10px;color:var(--muted)">${c.w}×${c.h}</span>
-      <span style="font-size:10px;font-weight:700;color:var(--accent)">${cur}${Math.round(calc.lineSubtotal)}</span>
-    </div>`;
-  });
-  if (matches.length === 0) {
-    html += `<div class="client-suggest-add" style="color:var(--muted)">No matching templates in library</div>`;
-  }
-  box.innerHTML = html;
-  box.style.display = '';
-}
 
 // ── Type Presets ──
 const CB_PRESETS = {
@@ -700,54 +128,288 @@ const CB_PRESETS = {
 // ── Default Line Item ──
 /** @param {string} [type] */
 function cbDefaultLine(type) {
+  const preset = type ? /** @type {any} */ (CB_PRESETS)[type] : null;
   return {
-    id: cbNextId++, name: '',
-    w: 600, h: 720, d: 560, qty: 1,
-    construction: 'overlay', // overlay, inset, face frame
-    baseType: 'plinth', // plinth, feet, castors, frame, none
+    id: cbNextId++, name: type || '',
+    w: preset?.w || 600, h: preset?.h || 720, d: preset?.d || 560, qty: 1,
+    construction: 'overlay',
+    baseType: 'plinth',
     material: cbSettings.materials[0]?.name || '',
     backMat: (cbSettings.materials.find(/** @param {any} m */ m=>m.name.toLowerCase().includes('3mm') || m.name.toLowerCase().includes('back')) || cbSettings.materials[0])?.name || '',
     finish: cbSettings.finishes?.[0]?.name || 'None',
-    doors: 0, doorPct: 95,
+    carcassType: cbSettings.carcassTypes?.[0]?.name || 'Standard',
+    doors: preset?.doors || 0, doorPct: 95,
     doorMat: cbSettings.materials[0]?.name || '',
-    drawers: 0, drawerPct: 85,
+    doorType: cbSettings.doorTypes?.[0]?.name || 'Slab',
+    drawers: preset?.drawers || 0, drawerPct: 0,
     drawerFrontMat: cbSettings.materials[0]?.name || '',
+    drawerFrontType: cbSettings.drawerFrontTypes?.[0]?.name || 'Slab',
+    drawerBoxType: cbSettings.drawerBoxTypes?.[0]?.name || 'Standard',
     drawerInnerMat: (cbSettings.materials.find(/** @param {any} m */ m=>m.name.toLowerCase().includes('3mm') || m.name.toLowerCase().includes('back')) || cbSettings.materials[0])?.name || '',
-    shelves: 0, adjShelves: 0, looseShelves: 0, partitions: 0, endPanels: 0,
+    shelves: preset?.shelves || 0, adjShelves: 0, looseShelves: 0, partitions: 0, endPanels: 0,
     hwItems: [],
-    extras: [], // [{label, cost}]
+    extras: [],
     labourHrs: 0, labourOverride: false,
     matCostOverride: null,
     notes: '', room: ''
   };
 }
 
-// ── Add / Remove / Duplicate Lines ──
-/** @param {string} [type] */
-function addCBLine(type) {
-  // If we have a blank line with user edits, use that instead of a fresh default
-  let line;
-  if (!type && window._cbBlankLine && window._cbBlankLine.name) {
-    line = JSON.parse(JSON.stringify(window._cbBlankLine));
-    line.id = cbNextId++;
-    window._cbBlankLine = cbDefaultLine(); // reset blank
-  } else {
-    line = cbDefaultLine(type);
+// ── Load / Save Settings ──
+function loadCBSettings() {
+  try { const s = localStorage.getItem('pc_cq_settings'); if (s) cbSettings = JSON.parse(s); } catch(e) {}
+  if (!cbSettings.baseTypes || !cbSettings.baseTypes.length) cbSettings.baseTypes = [
+    {name:'None',price:0},{name:'Plinth',price:20},{name:'Feet / Legs',price:40},{name:'Castors',price:60},{name:'Frame',price:30}
+  ];
+  if (!cbSettings.constructions || !cbSettings.constructions.length) cbSettings.constructions = [
+    {name:'Overlay',price:0},{name:'Inset',price:25},{name:'Face Frame',price:35}
+  ];
+  // Power-law labour types — refHours per fixed reference geometry.
+  // Reference units (constants in cabinet-calc.js): carcass 0.25 m³, door 0.216 m²,
+  // drawer front 0.1296 m², drawer box 0.0752 m³ — all derived from a 600×720×580
+  // standard cabinet at 50% door / 30% drawer pct.
+  if (!cbSettings.carcassTypes || !cbSettings.carcassTypes.length) cbSettings.carcassTypes = [
+    {name:'Standard',refHours:0.4}
+  ];
+  if (!cbSettings.doorTypes || !cbSettings.doorTypes.length) cbSettings.doorTypes = [
+    {name:'Slab',refHours:0.4},{name:'Shaker',refHours:0.7},{name:'Vinyl-Wrapped',refHours:0.5},{name:'Integrated Handle',refHours:0.6}
+  ];
+  if (!cbSettings.drawerFrontTypes || !cbSettings.drawerFrontTypes.length) cbSettings.drawerFrontTypes = [
+    {name:'Slab',refHours:0.3},{name:'Shaker',refHours:0.5}
+  ];
+  if (!cbSettings.drawerBoxTypes || !cbSettings.drawerBoxTypes.length) cbSettings.drawerBoxTypes = [
+    {name:'Standard',refHours:0.8},{name:'Dovetail',refHours:1.2}
+  ];
+  if (!cbSettings.finishes || !cbSettings.finishes.length) cbSettings.finishes = [
+    {name:'None',price:0},{name:'Oil (Osmo/Rubio)',price:12},{name:'Lacquer',price:18},{name:'Paint',price:22},{name:'Stain + Oil',price:15},{name:'Wax',price:8},{name:'2-Pack Spray',price:35}
+  ];
+  if (cbSettings.materialMarkup == null) cbSettings.materialMarkup = 0;
+  if (!cbSettings.labourTimes) cbSettings.labourTimes = /** @type {any} */ ({});
+  /** @type {any} */
+  const _lt = cbSettings.labourTimes;
+  if (!_lt.carcass) _lt.carcass = 1.5;
+  // Power-law carcass scaling: hrs = refHours × (volume / refVolume)^exponent.
+  // Sub-linear because most cabinet labour is surface work (cuts/edges/joints),
+  // and surface scales as V^(2/3) for similar shapes.
+  if (_lt.carcassRefVolume == null) _lt.carcassRefVolume = 0.25;
+  if (_lt.carcassRefHours == null) _lt.carcassRefHours = 0.4;
+  if (_lt.carcassExponent == null) _lt.carcassExponent = 0.7;
+  if (!_lt.door) _lt.door = 0.4;
+  if (!_lt.drawer) _lt.drawer = 0.6;
+  if (!_lt.fixedShelf) _lt.fixedShelf = 0.3;
+  if (!_lt.adjShelfHoles) _lt.adjShelfHoles = 0.4;
+  if (!_lt.looseShelf) _lt.looseShelf = 0.2;
+  if (!_lt.partition) _lt.partition = 0.5;
+  if (!_lt.endPanel) _lt.endPanel = 0.3;
+  if (!_lt.finishPerM2) _lt.finishPerM2 = 0.5;
+  if (!cbSettings.edgeBanding) cbSettings.edgeBanding = [{name:'Iron-on Veneer',price:3},{name:'PVC 1mm',price:4},{name:'PVC 2mm',price:5},{name:'Solid Timber',price:8}];
+}
+function saveCBSettings() {
+  // Rate inputs in My Rates panel mutate cbSettings directly via inline onblur
+  // handlers (e.g. cbSettings.labourRate=parseFloat(this.value)). This function
+  // persists the in-memory object to DB and a localStorage cache (the cache
+  // covers fields not yet mirrored as business_info columns, e.g. materialMarkup).
+  // Note: catalog_items sync removed — stock_items is now the single source of
+  // truth for material/hardware/finish prices. cbSettings.materials/hardware/
+  // finishes remain as in-memory fallbacks for items not yet in stock.
+  try { localStorage.setItem('pc_cq_settings', JSON.stringify(cbSettings)); } catch(e) {}
+  if (typeof _syncCBSettingsToDB === 'function') _syncCBSettingsToDB();
+}
+
+function addCBMaterial() { cbSettings.materials.push({name:'New Material',price:0}); saveCBSettings(); renderCBRates(); }
+function addCBHardware() { cbSettings.hardware.push({name:'New Hardware',price:0}); saveCBSettings(); renderCBRates(); }
+function addCBFinish() { if (!cbSettings.finishes) cbSettings.finishes = []; cbSettings.finishes.push({name:'New Finish',price:0}); saveCBSettings(); renderCBRates(); }
+
+// ── Line Persistence ──
+function loadCBLines() {
+  try { const s = localStorage.getItem('pc_cq_lines'); if (s) { cbLines = JSON.parse(s); cbNextId = Math.max(0, ...cbLines.map(l=>l.id)) + 1; } } catch(e) {}
+  setTimeout(() => {
+    const pn = _byId('cb-project'); const saved = localStorage.getItem('pc_cq_project_name'); if (pn && saved) pn.value = saved;
+    const cn = _byId('cb-client'); const savedC = localStorage.getItem('pc_cq_client_name'); if (cn && savedC) cn.value = savedC;
+  }, 100);
+  const eqId = localStorage.getItem('pc_cb_editing_quote_id');
+  if (eqId) cbEditingQuoteId = parseInt(eqId, 10);
+}
+function saveCBLines() {
+  const pn = _byId('cb-project');
+  if (pn) localStorage.setItem('pc_cq_project_name', pn.value);
+  const cn = _byId('cb-client');
+  if (cn) localStorage.setItem('pc_cq_client_name', cn.value);
+  _scheduleCBLinesSync();
+}
+
+function _getCBProjectId() {
+  if (!_userId) return null;
+  const pn = _byId('cb-project');
+  if (!pn) return null;
+  const name = pn.value.trim();
+  if (!name) return null;
+  const proj = projects.find(p => p.name === name);
+  return proj ? proj.id : null;
+}
+
+async function _ensureCBProject() {
+  const projId = _getCBProjectId();
+  if (projId) return projId;
+  if (!_userId) { _toast('Sign in to save cabinets', 'error'); return null; }
+  const name = _byId('cb-project')?.value?.trim();
+  if (!name) { _toast('Enter a project name first', 'error'); return null; }
+  const clientName = _byId('cb-client')?.value?.trim() || '';
+  const clientId = clientName ? await resolveClient(clientName) : null;
+  const newId = await resolveProject(name, clientId);
+  if (newId) _toast('Project "' + name + '" created', 'success');
+  return newId;
+}
+
+/** @type {ReturnType<typeof setTimeout> | null} */
+let _cbLinesSyncTimer = null;
+
+function _scheduleCBLinesSync() {
+  if (_cbLinesSyncTimer) clearTimeout(_cbLinesSyncTimer);
+  _cbLinesSyncTimer = setTimeout(() => {
+    _cbLinesSyncTimer = null;
+    _syncCBLinesToDB();
+  }, 800);
+}
+
+async function _syncCBLinesToDB() {
+  if (cbEditingQuoteId) return _syncCBLinesToQuote(cbEditingQuoteId);
+  const projectId = _getCBProjectId();
+  if (!projectId) return;
+  try {
+    const draft = await _findOrCreateDraftQuote(projectId);
+    if (!draft) return;
+    await _db('quote_lines').delete().eq('quote_id', draft.id);
+    if (cbLines.length > 0) {
+      /** @type {any[]} */
+      const rows = cbLines.map((l, i) => _cbLineToRow(l, i, draft.id));
+      await _db('quote_lines').insert(rows);
+    }
+  } catch (e) {
+    console.warn('[cb dual-write]', (/** @type {any} */ (e)).message || e);
   }
-  cbLines.push(line);
-  saveCBLines(); renderCBPanel();
+}
+
+/** @param {number} quoteId */
+async function _syncCBLinesToQuote(quoteId) {
+  try {
+    await _db('quote_lines').delete().eq('quote_id', quoteId);
+    if (cbLines.length > 0) {
+      /** @type {any[]} */
+      const rows = cbLines.map((l, i) => _cbLineToRow(l, i, quoteId));
+      await _db('quote_lines').insert(rows);
+    }
+    if (typeof _refreshQuoteTotals === 'function') await _refreshQuoteTotals(quoteId);
+  } catch (e) {
+    console.warn('[cb edit-quote sync]', (/** @type {any} */ (e)).message || e);
+  }
+}
+
+async function _loadCBLinesFromDB() {
+  if (!_userId) return;
+  if (_cbLinesSyncTimer) return;
+  if (cbEditingQuoteId && cbLines.length > 0) return;
+  const editingId = localStorage.getItem('pc_cb_editing_quote_id');
+  if (editingId) {
+    const qId = parseInt(editingId, 10);
+    const q = quotes.find(x => x.id === qId);
+    if (q) {
+      cbEditingQuoteId = qId;
+      try {
+        const { data: lines } = await _db('quote_lines').select('*').eq('quote_id', qId).order('position');
+        if (lines && lines.length) {
+          cbLines = lines.map(/** @param {any} row @param {number} i */ (row, i) => {
+            const cb = /** @type {any} */ (_quoteLineRowToCB(row));
+            cb.id = i + 1;
+            return cb;
+          });
+          cbNextId = cbLines.length + 1;
+          cbEditingOriginalLines = JSON.parse(JSON.stringify(cbLines));
+        }
+      } catch (e) {
+        console.warn('[cb edit-restore]', (/** @type {any} */ (e)).message || e);
+      }
+      localStorage.removeItem('pc_cq_lines');
+      if (typeof renderCBPanel === 'function') renderCBPanel();
+      return;
+    }
+    localStorage.removeItem('pc_cb_editing_quote_id');
+    cbEditingQuoteId = null;
+  }
+  const savedName = localStorage.getItem('pc_cq_project_name');
+  if (!savedName) return;
+  const proj = projects.find(p => p.name === savedName);
+  if (!proj) return;
+  const draft = quotes.find(q => q.project_id === proj.id && _isDraftQuote(q));
+  if (!draft) return;
+  try {
+    const { data: lines, error } = await _db('quote_lines').select('*').eq('quote_id', draft.id).order('position');
+    if (error || !lines || lines.length === 0) return;
+    cbLines = lines.map(/** @param {any} row @param {number} i */ (row, i) => {
+      const cb = /** @type {any} */ (_quoteLineRowToCB(row));
+      cb.id = i + 1;
+      return cb;
+    });
+    cbNextId = cbLines.length + 1;
+    localStorage.removeItem('pc_cq_lines');
+    if (typeof renderCBPanel === 'function') renderCBPanel();
+  } catch (e) {
+    console.warn('[cb db-load]', (/** @type {any} */ (e)).message || e);
+  }
+}
+
+// ── Scratchpad + CRUD ──
+// The "+" button resets the scratchpad for a new cabinet
+function addCBLine() {
+  cbScratchpad = cbDefaultLine();
+  cbEditingLineIdx = -1;
+  renderCBEditor();
 }
 /** @param {string} type */
 function addCBLineFromPreset(type) {
-  const line = cbDefaultLine(type);
-  line.name = type;
-  cbLines.push(line);
-  saveCBLines(); renderCBPanel();
-  setTimeout(() => { const el = _byId('cb-table-area'); if (el) el.scrollTop = el.scrollHeight; }, 50);
+  cbScratchpad = cbDefaultLine(type);
+  cbEditingLineIdx = -1;
+  renderCBEditor();
 }
+
+// Commit scratchpad to project (Add to Project / Save Changes)
+async function cbCommitToProject() {
+  if (!cbScratchpad) return;
+  if (!await _ensureCBProject()) return;
+
+  if (cbEditingLineIdx >= 0 && cbLines[cbEditingLineIdx]) {
+    // Save changes to existing line
+    cbLines[cbEditingLineIdx] = JSON.parse(JSON.stringify(cbScratchpad));
+    cbEditingLineIdx = -1;
+    cbScratchpad = cbDefaultLine();
+    saveCBLines();
+    renderCBPanel();
+    _toast('Cabinet updated', 'success');
+  } else {
+    // Add new cabinet to project
+    const copy = JSON.parse(JSON.stringify(cbScratchpad));
+    copy.id = cbNextId++;
+    cbLines.push(copy);
+    cbEditingLineIdx = -1;
+    cbScratchpad = cbDefaultLine();
+    saveCBLines();
+    renderCBPanel();
+    _toast('Cabinet added to project', 'success');
+  }
+}
+
+function cbCancelEdit() {
+  cbEditingLineIdx = -1;
+  cbScratchpad = cbDefaultLine();
+  renderCBCabList();
+  renderCBEditor();
+  renderCBResults();
+}
+
 /** @param {number} id */
 function removeCBLine(id) {
   cbLines = cbLines.filter(l => l.id !== id);
+  if (cbEditingLineIdx >= cbLines.length) cbEditingLineIdx = -1;
   saveCBLines(); renderCBPanel();
 }
 /** @param {number} id */
@@ -756,67 +418,9 @@ function dupCBLine(id) {
   if (!src) return;
   const copy = JSON.parse(JSON.stringify(src));
   copy.id = cbNextId++;
-  copy.name = src.name ? src.name + ' (copy)' : '';
   cbLines.push(copy);
   saveCBLines(); renderCBPanel();
 }
-
-// ── Update a field on a line ──
-/** @param {number} id @param {string} field @param {any} val */
-function updateCBLine(id, field, val) {
-  const line = cbLines.find(l => l.id === id);
-  if (!line) return;
-  const numFields = ['w','h','d','qty','doors','drawers','adjShelves','labourHrs','doorPct','drawerPct'];
-  if (numFields.includes(field)) {
-    line[field] = parseFloat(val) || 0;
-  } else if (field === 'shelves') {
-    // The main table shows combined shelves - update shelves, keep adjShelves separate
-    const total = parseFloat(val) || 0;
-    line.shelves = total;
-    line.adjShelves = 0;
-  } else if (field === 'labourOverride') {
-    line.labourOverride = val === 'true' || val === true;
-  } else if (field === 'matCostOverride') {
-    const v = parseFloat(val);
-    line.matCostOverride = (val === '' || val === null || isNaN(v)) ? null : v;
-  } else if (field === 'type') {
-    line.type = val;
-    // Apply preset dimensions if type changed
-    const preset = (/** @type {Record<string, any>} */ (CB_PRESETS))[val];
-    if (preset) {
-      line.w = preset.w; line.h = preset.h; line.d = preset.d;
-      line.doors = preset.doors; line.drawers = preset.drawers; line.shelves = preset.shelves;
-    }
-  } else {
-    line[field] = val;
-  }
-  saveCBLines(); renderCBPanel();
-}
-
-// ── Add hardware item to a line ──
-/** @param {number} id */
-function addCBHwToLine(id) {
-  const line = cbLines.find(l => l.id === id);
-  if (!line) return;
-  line.hwItems.push({ name: cbSettings.hardware[0]?.name || '', qty: 1 });
-  saveCBLines(); renderCBPanel();
-}
-/** @param {number} lineId @param {number} hwIdx @param {string} field @param {any} val */
-function updateCBHw(lineId, hwIdx, field, val) {
-  const line = cbLines.find(l => l.id === lineId);
-  if (!line || !line.hwItems[hwIdx]) return;
-  if (field === 'qty') { line.hwItems[hwIdx].qty = parseInt(val) || 1; saveCBLines(); renderCBPanel(); }
-  else { line.hwItems[hwIdx].name = val; saveCBLines(); renderCBCabList(); renderCBResults(); }
-}
-/** @param {number} lineId @param {number} hwIdx */
-function removeCBHw(lineId, hwIdx) {
-  const line = cbLines.find(l => l.id === lineId);
-  if (!line) return;
-  line.hwItems.splice(hwIdx, 1);
-  saveCBLines(); renderCBPanel();
-}
-
-// ── Move rows up/down ──
 /** @param {number} id @param {number} dir */
 function moveCBLine(id, dir) {
   const idx = cbLines.findIndex(l => l.id === id);
@@ -827,1156 +431,236 @@ function moveCBLine(id, dir) {
   saveCBLines(); renderCBPanel();
 }
 
-// ── Toggle expanded detail for a row ──
-let cbExpandedRows = new Set();
-/** @param {number} id */
-function toggleCBExpand(id) {
-  if (cbExpandedRows.has(id)) cbExpandedRows.delete(id);
-  else cbExpandedRows.add(id);
-  renderCBPanel();
-}
-
-// ── Toggle individual sections within a cabinet card ──
-let cbOpenSections = new Set();
-/** @param {number} lineId @param {string} section */
-function toggleCBSection(lineId, section) {
-  const key = lineId + '-' + section;
-  if (cbOpenSections.has(key)) cbOpenSections.delete(key);
-  else cbOpenSections.add(key);
-  renderCBPanel();
-}
-function cbExpandAll() {
-  const secs = ['dims','doors','drawers','shelves','hw','extras'];
-  cbLines.forEach(l => secs.forEach(s => cbOpenSections.add(l.id + '-' + s)));
-  renderCBPanel();
-}
-function cbCollapseAll() {
-  cbOpenSections.clear();
-  renderCBPanel();
-}
-
-// ── Calculate a single line item ──
-/** @param {any} line */
-function calcCBLine(line) {
-  const W = line.w / 1000, H = line.h / 1000, D = line.d / 1000;
-  const T = 0.018;
-  const innerW = Math.max(0, W - 2 * T);
-
-  // Material price per m2 — checks stockItems first, then cbSettings.materials as fallback
-  /** @param {string} matName */
-  function mp(matName) {
-    const s = stockItems.find(s => s.name === matName);
-    if (s) return (s.cost ?? 0) / (s.w && s.h ? (s.w/1000)*(s.h/1000) : SHEET_M2);
-    const m = cbSettings.materials.find(/** @param {any} m */ m => m.name === matName);
-    return m ? m.price / SHEET_M2 : 0;
-  }
-  /** @param {string} hwName */
-  function hwp(hwName) {
-    const h = cbSettings.hardware.find(/** @param {any} h */ h => h.name === hwName);
-    return h ? h.price : 0;
-  }
-
-  // Auto material cost: carcass panels
-  let matCost = 0;
-  // Sides (2)
-  matCost += 2 * H * D * mp(line.material);
-  // Top + bottom
-  matCost += 2 * innerW * D * mp(line.material);
-  // Back
-  matCost += W * H * mp(line.backMat);
-  // Doors (using % of front area, separate door material)
-  const doorPct = (line.doorPct || 95) / 100;
-  if (line.doors > 0) {
-    const doorH = H * doorPct, doorW = innerW / Math.max(1, line.doors);
-    matCost += line.doors * doorW * doorH * mp(line.doorMat || line.material);
-  }
-  // Drawers (fronts + boxes, using % of front area, separate materials)
-  const drawerPct = (line.drawerPct || 85) / 100;
-  if (line.drawers > 0) {
-    const drwH = (H * drawerPct) / line.drawers;
-    matCost += line.drawers * innerW * drwH * mp(line.drawerFrontMat || line.material); // fronts
-    matCost += line.drawers * (2 * D * drwH + 2 * innerW * drwH + innerW * D) * mp(line.drawerInnerMat || line.backMat); // boxes
-  }
-  // Shelves
-  const shelfArea = innerW * (D - T);
-  matCost += (line.shelves + line.adjShelves) * shelfArea * mp(line.material);
-  // End panels
-  matCost += (line.endPanels || 0) * H * D * mp(line.material);
-
-  // Finishing cost (from finish presets in settings)
-  const allSurface = 2*H*D + 2*innerW*D + W*H;
-  const _fs = stockItems.find(s => s.name === line.finish && s.category === 'Finishing');
-  const finishPricePerM2 = _fs ? (_fs.cost ?? 0) : ((cbSettings.finishes||[]).find(/** @param {any} f */ f => f.name === line.finish)?.price || 0);
-  const finishCost = allSurface * finishPricePerM2;
-  matCost += finishCost;
-
-  // Extras cost
-  const extrasCost = (line.extras||[]).reduce(/** @param {number} s @param {any} e */ (s, e) => s + (parseFloat(e.cost)||0), 0);
-  matCost += extrasCost;
-
-  // Edge banding (exposed edges: front edges of sides, shelves, top, bottom)
-  const edgingLength = 2*H + 2*innerW + (line.shelves + line.adjShelves) * innerW; // front edges
-  const edgingCost = edgingLength * (cbSettings.edgingPerM || 0);
-  matCost += edgingCost;
-
-  // Use override if set
-  const finalMatCost = (line.matCostOverride !== null && line.matCostOverride !== undefined) ? line.matCostOverride : matCost;
-
-  // Base type cost
-  const basePrice = (cbSettings.baseTypes||[]).find(/** @param {any} b */ b => b.name === line.baseType)?.price || 0;
-  matCost += basePrice;
-
-  // Construction type cost — frontal area based (price per m2 of front face)
-  const frontArea = W * H;
-  const constPrice = (cbSettings.constructions||[]).find(/** @param {any} c */ c => c.name === line.construction)?.price || 0;
-  matCost += constPrice * frontArea;
-
-  // Auto labour estimate (hours) — from configurable rates
-  /** @type {any} */
-  const lt = cbSettings.labourTimes || {};
-  let autoLabour = 0;
-  // Carcass — volume based (hrs per m3)
-  const volume = W * H * D;
-  autoLabour += (lt.carcass || 1.5) * volume;
-  autoLabour += line.doors * (lt.door || 0.4);
-  autoLabour += line.drawers * (lt.drawer || 0.6);
-  // Split shelf/partition labour
-  autoLabour += (line.shelves || 0) * (lt.fixedShelf || 0.3);
-  autoLabour += (line.adjShelves || 0) * (lt.adjShelfHoles || 0.4);
-  autoLabour += (line.looseShelves || 0) * (lt.looseShelf || 0.2);
-  autoLabour += (line.partitions || 0) * (lt.partition || 0.5);
-  autoLabour += (line.endPanels || 0) * (lt.endPanel || 0.3);
-  const surfaceArea = 2*H*D + 2*innerW*D + W*H;
-  autoLabour += surfaceArea * (lt.finishPerM2 || 0.5);
-
-  const labourHrs = line.labourOverride ? line.labourHrs : autoLabour;
-  const labourCost = labourHrs * cbSettings.labourRate;
-
-  // Hardware
-  let hwCost = 0;
-  // Auto hardware for doors/drawers
-  if (line.doors > 0) hwCost += line.doors * 2 * 6;
-  if (line.drawers > 0) hwCost += line.drawers * 24;
-  // Manual hardware items
-  for (const hw of line.hwItems) {
-    hwCost += hwp(hw.name) * hw.qty;
-  }
-
-  const lineSubtotal = (finalMatCost + labourCost + hwCost) * line.qty;
-
-  return {
-    matCost: finalMatCost, matCostAuto: matCost,
-    labourHrs, labourHrsAuto: autoLabour, labourCost,
-    hwCost, lineSubtotal,
-    qty: line.qty
-  };
-}
-
-
-// ── Render the sidebar: cabinet list + active editor ──
-function renderCBPanel() {
-  // Item 2 phase 1.4: auth gate. Cabinet Builder requires sign-in — guests
-  // see a prompt instead of the workspace. The gate is rendered into the
-  // panel root and the builder view is hidden until auth.
-  if (!_renderCBAuthGate()) return;
-
-  const cur = window.currency;
-  /** @param {any} v */
-  const fmt = v => cur + Number(v).toFixed(2);
-  /** @param {number} v */
-  const fmt0 = v => cur + Math.round(v).toLocaleString();
-
-  // Sync settings form values
-  /** @type {Record<string, string>} */
-  const fields = {labourRate:'cb-labour-rate', markup:'cb-markup', tax:'cb-tax', deposit:'cb-deposit', edgingPerM:'cb-edging-m'};
-  Object.entries(fields).forEach(([k, id]) => { const el = _byId(id); if (el && el !== document.activeElement) el.value = cbSettings[k]; });
-
-  renderCBRates();
-  renderCBLibrary();
-  renderCBCabList();
+// ── Field updates (scratchpad only — no DB sync) ──
+/** @param {string} field @param {number} dir */
+function cbStepField(field, dir) {
+  if (!cbScratchpad) return;
+  const cur = parseFloat(cbScratchpad[field]) || 0;
+  const min = (field === 'qty') ? 1 : 0;
+  cbScratchpad[field] = Math.max(min, cur + dir);
+  // Steppers can change door/drawer/shelf counts which restructure the editor body
   renderCBEditor();
   renderCBResults();
 }
 
-// Render the sign-in gate when unauthenticated. Returns true when the
-// builder should render (authed), false when the gate took over.
-function _renderCBAuthGate() {
-  const builder = document.getElementById('cab-view-builder');
-  let gate = document.getElementById('cb-auth-gate');
-  if (_userId) {
-    if (gate) gate.style.display = 'none';
-    if (builder) builder.style.display = '';
-    return true;
+/** @param {string} field @param {any} val */
+function cbUpdateField(field, val) {
+  if (!cbScratchpad) return;
+  const numFields = ['w','h','d','qty','doors','drawers','shelves','adjShelves','endPanels','looseShelves','partitions','labourHrs','doorPct','drawerPct'];
+  if (numFields.includes(field)) {
+    cbScratchpad[field] = parseFloat(val) || 0;
+  } else {
+    cbScratchpad[field] = val;
   }
-  if (builder) builder.style.display = 'none';
-  if (!gate) {
-    const panel = document.getElementById('panel-cabinet');
-    if (!panel) return false;
-    gate = document.createElement('div');
-    gate.id = 'cb-auth-gate';
-    gate.style.cssText = 'flex:1;display:flex;align-items:center;justify-content:center;padding:40px 20px';
-    gate.innerHTML = `
-      <div style="max-width:420px;text-align:center;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:32px 28px;box-shadow:var(--shadow)">
-        <div style="font-size:32px;margin-bottom:12px">🔒</div>
-        <div style="font-size:18px;font-weight:700;margin-bottom:8px;color:var(--text)">Sign in to use Cabinet Builder</div>
-        <div style="font-size:13px;color:var(--text2);margin-bottom:20px;line-height:1.5">
-          Cabinet Builder saves your work to the cloud so you can pick up where you left off on any device. An account is required.
-        </div>
-        <button class="btn btn-primary" onclick="document.getElementById('auth-screen').classList.remove('hidden')" style="padding:10px 24px;font-size:14px">Sign In / Create Account</button>
-      </div>`;
-    panel.appendChild(gate);
-  }
-  gate.style.display = '';
-  return false;
+  // Targeted update of section header live costs (preserves input focus)
+  _refreshCBLiveCosts();
+  renderCBResults();
+  // Re-render editor only when the change restructures the body
+  if (['doors','drawers','construction','baseType','finish'].includes(field)) renderCBEditor();
 }
 
-// ── Render cabinet list in sidebar ──
-function renderCBCabList() {
-  const el = _byId('cb-cab-list');
-  if (!el) return;
-  const cur = window.currency;
-  /** @param {number} v */
-  const fmt0 = v => cur + Math.round(v).toLocaleString();
-
-  if (!cbLines.length) {
-    el.innerHTML = `<div style="color:var(--muted);font-size:11px;padding:8px 10px;border-radius:5px;border:1px solid var(--border);background:var(--surface);text-align:center">No cabinets yet. Click "+ Add Cabinet" above.</div>`;
-    return;
-  }
-  el.innerHTML = cbLines.map((c, i) => {
-    const calc = calcCBLine(c);
-    const active = i === cbActiveLineIdx;
-    return `<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;margin-bottom:4px;border-radius:8px;border:1.5px solid ${active?'var(--accent)':'var(--border)'};background:${active?'var(--accent-dim)':'var(--surface)'};cursor:pointer;transition:border-color .15s" onclick="cbSelectLine(${i})">
-      <div style="flex:1;min-width:0">
-        <div style="font-size:13px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.name || 'Cabinet'}${c.qty > 1 ? ' <span style="color:var(--muted);font-weight:400">x'+c.qty+'</span>' : ''}</div>
-        <div style="font-size:11px;color:var(--muted)">${c.w}×${c.h}×${c.d}mm</div>
-      </div>
-      <div style="font-size:13px;font-weight:700;color:var(--accent);white-space:nowrap">${fmt0(calc.lineSubtotal)}</div>
-      <button style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:12px;padding:2px" onclick="event.stopPropagation();_openCabinetPopup(${i})" title="Edit in popup">✎</button>
-      <button style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:12px;padding:2px" onclick="event.stopPropagation();dupCBLine(${c.id})" title="Duplicate">⧉</button>
-      <button style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:15px;padding:2px" onclick="event.stopPropagation();removeCBLine(${c.id})" title="Remove">×</button>
-    </div>`;
-  }).join('');
+// Clamp doorPct + drawerPct ≤ 100. Updates the OTHER pct to preserve the constraint
+// without surprising the user (just trims headroom on the partner section).
+/** @param {string} field @param {any} val */
+function cbUpdatePct(field, val) {
+  if (!cbScratchpad) return;
+  const v = Math.max(0, Math.min(100, parseFloat(val) || 0));
+  cbScratchpad[field] = v;
+  const partner = field === 'doorPct' ? 'drawerPct' : 'doorPct';
+  const partnerVal = parseFloat(cbScratchpad[partner]) || 0;
+  if (v + partnerVal > 100) cbScratchpad[partner] = 100 - v;
+  _refreshCBLiveCosts();
+  renderCBResults();
+  renderCBEditor();
 }
 
-// ── Active line index ──
-let cbActiveLineIdx = 0;
-/** @param {number} idx */
-function cbSelectLine(idx) {
-  cbActiveLineIdx = idx;
-  renderCBPanel();
+// ── Hardware CRUD on scratchpad ──
+/** @param {number} lineId @param {number} idx @param {string} field @param {any} val */
+function updateCBHw(lineId, idx, field, val) {
+  const line = cbScratchpad && cbScratchpad.id === lineId ? cbScratchpad : cbLines.find(l => l.id === lineId);
+  if (!line || !line.hwItems[idx]) return;
+  if (field === 'qty') line.hwItems[idx].qty = parseInt(val) || 1;
+  else line.hwItems[idx].name = val;
+  if (cbEditingLineIdx >= 0) saveCBLines();
+  renderCBEditor(); renderCBResults();
 }
-
-// ── Render the active cabinet editor in sidebar ──
-function renderCBEditor() {
-  // Hide any open fixed suggest dropdowns
-  /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('.client-suggest-list')).forEach(b => { b.style.display = 'none'; b.style.position = ''; });
-  const el = _byId('cb-cab-editor');
-  if (!el) return;
-  // Use active line or a blank default for "Add" mode
-  const isEditing = cbActiveLineIdx >= 0 && cbLines[cbActiveLineIdx];
-  // Sync cabinet library search box with active cabinet name
-  const searchInp = _byId('cb-cabinet-search');
-  if (searchInp && document.activeElement !== searchInp) {
-    searchInp.value = isEditing ? (cbLines[cbActiveLineIdx].name || '') : '';
-  }
-  if (!window._cbBlankLine) window._cbBlankLine = cbDefaultLine();
-  const line = isEditing ? cbLines[cbActiveLineIdx] : window._cbBlankLine;
-
-  const cur = window.currency;
-  const c = calcCBLine(line);
-  /** @param {string} field @param {any} val */
-  const matSmart = (field, val) => `<div style="position:relative"><div class="smart-input-wrap"><input type="text" id="cb-mat-${field}" value="${_escHtml(val||'')}" autocomplete="off" style="font-size:13px" oninput="_smartCBMaterialSuggest(this,'cb-mat-suggest-${field}','${field}')" onfocus="_smartCBMaterialSuggest(this,'cb-mat-suggest-${field}','${field}')" onblur="setTimeout(()=>{_byId('cb-mat-suggest-${field}').style.display='none';cbUpdateField('${field}',this.value)},150)"><div class="smart-input-add" onclick="_openNewStockPopup()" title="Add new material">+</div></div><div id="cb-mat-suggest-${field}" class="client-suggest-list" style="display:none"></div></div>`;
-  const finishSmart = () => `<div style="position:relative"><div class="smart-input-wrap"><input type="text" id="cb-mat-finish" value="${_escHtml(line.finish||'None')}" autocomplete="off" style="font-size:13px" oninput="_smartCBFinishSuggest(this,'cb-mat-suggest-finish')" onfocus="_smartCBFinishSuggest(this,'cb-mat-suggest-finish')" onblur="setTimeout(()=>{_byId('cb-mat-suggest-finish').style.display='none';cbUpdateField('finish',this.value)},150)"><div class="smart-input-add" onclick="_openNewStockPopup()" title="Add new finish">+</div></div><div id="cb-mat-suggest-finish" class="client-suggest-list" style="display:none"></div></div>`;
-  /** @param {string} field @param {any} val @param {number} [min] */
-  const stepper = (field, val, min) => `<div class="cl-stepper"><button class="cl-step-btn" onclick="cbStepField('${field}',-1)">−</button><input type="number" class="cl-input cl-qty-input" value="${val}" min="${min||0}" style="font-size:14px;width:42px" onchange="cbUpdateField('${field}',this.value)"><button class="cl-step-btn" onclick="cbStepField('${field}',1)">+</button></div>`;
-  /** @param {string} sec */
-  const so = sec => cbOpenSections.has(line.id + '-' + sec);
-  /** @param {string} sec */
-  const chev = sec => `<span style="font-size:10px;color:var(--muted);transition:transform .2s;display:inline-block;${so(sec)?'transform:rotate(90deg)':''}">&#9654;</span>`;
-  const SB = 'border:1px solid var(--border);border-radius:8px;margin-bottom:8px;overflow:hidden;background:var(--surface)';
-  const SH = 'display:flex;align-items:center;gap:8px;padding:10px 12px;cursor:pointer;user-select:none';
-  const ST = 'font-size:13px;font-weight:600;color:var(--text);flex:1';
-  const SS = 'font-size:11px;color:var(--muted)';
-  /** @param {string} sec */
-  const SC = sec => `style="padding:10px 12px;border-top:1px solid var(--border);${so(sec)?'':'display:none'}"`;
-  const FM = 'margin:0';
-  const LB = 'font-size:12px';
-  const IS = 'font-size:14px';
-  const SL = 'font-size:13px';
-  /** @param {string} c */
-  const dot = c => `<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--${c});margin-right:4px"></span>`;
-  /** @param {number} v */
-  const liveCost = v => `<span style="font-size:12px;font-weight:700;color:var(--accent);white-space:nowrap">${cur}${Math.round(v)}</span>`;
-
-  // Calculate per-section costs
-  const W=line.w/1000, H=line.h/1000, D=line.d/1000, T=0.018, iW=Math.max(0,W-2*T);
-  /** @param {string} n */
-  function mp(n){ const s=stockItems.find(s=>s.name===n); if(s) return (s.cost ?? 0)/(s.w&&s.h?(s.w/1000)*(s.h/1000):2.9768); const m=cbSettings.materials.find(/** @param {any} m */ m=>m.name===n); return m?m.price/2.9768:0; }
-  const carcassCost = (2*H*D + 2*iW*D)*mp(line.material) + W*H*mp(line.backMat);
-  const _fss = stockItems.find(s => s.name === line.finish && s.category === 'Finishing');
-  const finishPrice = _fss ? (_fss.cost ?? 0) : ((cbSettings.finishes||[]).find(/** @param {any} f */ f=>f.name===line.finish)?.price || 0);
-  const surfArea = 2*H*D + 2*iW*D + W*H;
-  const finishCostVal = surfArea * finishPrice;
-  const doorCost = line.doors > 0 ? line.doors*(iW/Math.max(1,line.doors))*(H*(line.doorPct||95)/100)*mp(line.doorMat||line.material) : 0;
-  const drwFrontCost = line.drawers > 0 ? line.drawers*iW*((H*(line.drawerPct||85)/100)/line.drawers)*mp(line.drawerFrontMat||line.material) : 0;
-  const shelfCost = (line.shelves+line.adjShelves)*iW*(D-T)*mp(line.material) + (line.endPanels||0)*H*D*mp(line.material);
-  const extrasCost = (line.extras||[]).reduce(/** @param {number} s @param {any} e */ (s,e)=>s+(parseFloat(e.cost)||0),0);
-
-  el.innerHTML = `
-    <div style="border-top:1px solid var(--border);padding-top:10px;margin-top:6px">
-
-      <!-- CABINET (dims + material + finish + construction + base) -->
-      <div style="${SB}">
-        <div style="${SH}" onclick="toggleCBSection(${line.id},'cab')">
-          ${chev('cab')}
-          <span style="${ST}">Cabinet</span>
-          ${liveCost(carcassCost + finishCostVal)}
-          <span style="${SS}">${line.w}×${line.h}×${line.d}</span>
-        </div>
-        <div ${SC('cab')}>
-          <div class="form-row" style="margin-bottom:8px">
-            <div class="form-group" style="${FM}"><label style="${LB}">Width (mm)</label><input type="number" value="${line.w}" style="${IS}" oninput="cbUpdateField('w',this.value)"></div>
-            <div class="form-group" style="${FM}"><label style="${LB}">Height (mm)</label><input type="number" value="${line.h}" style="${IS}" oninput="cbUpdateField('h',this.value)"></div>
-            <div class="form-group" style="${FM}"><label style="${LB}">Depth (mm)</label><input type="number" value="${line.d}" style="${IS}" oninput="cbUpdateField('d',this.value)"></div>
-            <div class="form-group" style="flex:0 0 auto;${FM}"><label style="${LB}">Qty</label>${stepper('qty', line.qty, 1)}</div>
-          </div>
-          <div style="margin-bottom:8px"><label style="${LB}">Carcass Material</label>${matSmart('material', line.material)}</div>
-          <div style="margin-bottom:8px"><label style="${LB}">Back Panel</label>${matSmart('backMat', line.backMat)}</div>
-          <div style="margin-bottom:8px"><label style="${LB}">Finish</label>${finishSmart()}</div>
-          <div style="margin-bottom:8px"><label style="${LB}">Construction</label>
-            <select style="${SL};width:100%" onchange="cbUpdateField('construction',this.value)">
-              ${(cbSettings.constructions||[]).map(/** @param {any} c */ c=>`<option value="${c.name}" ${c.name===line.construction?'selected':''}>${c.name}${c.price?' (+'+cur+c.price+'/m²)':''}</option>`).join('')}
-            </select>
-          </div>
-          <div style="margin-bottom:0"><label style="${LB}">Base</label>
-            <select style="${SL};width:100%" onchange="cbUpdateField('baseType',this.value)">
-              ${(cbSettings.baseTypes||[]).map(/** @param {any} b */ b=>`<option value="${b.name}" ${b.name===line.baseType?'selected':''}>${b.name}${b.price?' (+'+cur+b.price+')':''}</option>`).join('')}
-            </select>
-          </div>
-        </div>
-      </div>
-
-      <!-- DOORS -->
-      <div style="${SB}">
-        <div style="${SH}" onclick="toggleCBSection(${line.id},'doors')">
-          ${chev('doors')}
-          <span style="${ST}">Doors</span>
-          ${line.doors > 0 ? liveCost(doorCost) : ''}
-          <span style="${SS}">${line.doors>0?line.doors+' door'+(line.doors!==1?'s':''):'None'}</span>
-        </div>
-        <div ${SC('doors')}>
-          <div style="margin-bottom:8px"><label style="${LB}">Count</label>${stepper('doors', line.doors, 0)}</div>
-          <div style="margin-bottom:8px"><label style="${LB}">Door Material</label>${matSmart('doorMat', line.doorMat||line.material)}</div>
-          ${line.doors>0?`<label style="font-size:11px;color:var(--muted)">% of front area</label><div class="cb-pct-row"><input type="range" class="cb-pct-slider" min="50" max="100" value="${line.doorPct||95}" oninput="this.nextElementSibling.textContent=this.value+'%'" onchange="cbUpdateField('doorPct',this.value)"><span class="cb-pct-val">${line.doorPct||95}%</span></div>`:''}
-        </div>
-      </div>
-
-      <!-- DRAWERS -->
-      <div style="${SB}">
-        <div style="${SH}" onclick="toggleCBSection(${line.id},'drawers')">
-          ${chev('drawers')}
-          <span style="${ST}">Drawers</span>
-          ${line.drawers > 0 ? liveCost(drwFrontCost) : ''}
-          <span style="${SS}">${line.drawers>0?line.drawers+' drawer'+(line.drawers!==1?'s':''):'None'}</span>
-        </div>
-        <div ${SC('drawers')}>
-          <div style="margin-bottom:8px"><label style="${LB}">Count</label>${stepper('drawers', line.drawers, 0)}</div>
-          <div style="margin-bottom:8px"><label style="${LB}">Front Material</label>${matSmart('drawerFrontMat', line.drawerFrontMat||line.material)}</div>
-          ${line.drawers>0?`<div style="margin-bottom:8px"><label style="${LB}">Inner Box Material</label>${matSmart('drawerInnerMat', line.drawerInnerMat||line.backMat)}</div>
-          <label style="font-size:11px;color:var(--muted)">% of front area</label><div class="cb-pct-row"><input type="range" class="cb-pct-slider" min="30" max="100" value="${line.drawerPct||85}" oninput="this.nextElementSibling.textContent=this.value+'%'" onchange="cbUpdateField('drawerPct',this.value)"><span class="cb-pct-val">${line.drawerPct||85}%</span></div>`:''}
-        </div>
-      </div>
-
-      <!-- SHELVES & PARTITIONS -->
-      <div style="${SB}">
-        <div style="${SH}" onclick="toggleCBSection(${line.id},'shelves')">
-          ${chev('shelves')}
-          <span style="${ST}">Shelves & Partitions</span>
-          ${(line.shelves+(line.adjShelves||0)+(line.looseShelves||0)+(line.partitions||0)+(line.endPanels||0))>0 ? liveCost(shelfCost) : ''}
-          <span style="${SS}">${(line.shelves+(line.adjShelves||0)+(line.looseShelves||0)+(line.partitions||0)+(line.endPanels||0))>0?(line.shelves+(line.adjShelves||0)+(line.looseShelves||0)+(line.partitions||0)+(line.endPanels||0))+' total':'None'}</span>
-        </div>
-        <div ${SC('shelves')}>
-          <div class="form-row" style="margin-bottom:6px;align-items:flex-end">
-            <div class="form-group" style="flex:0 0 auto;${FM}"><label style="${LB}">Fixed Shelf</label>${stepper('shelves', line.shelves, 0)}</div>
-            <div class="form-group" style="flex:0 0 auto;${FM}"><label style="${LB}">Adj. Holes</label>${stepper('adjShelves', line.adjShelves, 0)}</div>
-            <div class="form-group" style="flex:0 0 auto;${FM}"><label style="${LB}">Loose Shelf</label>${stepper('looseShelves', line.looseShelves||0, 0)}</div>
-          </div>
-          <div class="form-row" style="margin-bottom:0;align-items:flex-end">
-            <div class="form-group" style="flex:0 0 auto;${FM}"><label style="${LB}">Partition</label>${stepper('partitions', line.partitions||0, 0)}</div>
-            <div class="form-group" style="flex:0 0 auto;${FM}"><label style="${LB}">End Panel</label>${stepper('endPanels', line.endPanels||0, 0)}</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- HARDWARE -->
-      <div style="${SB}">
-        <div style="${SH}" onclick="toggleCBSection(${line.id},'hw')">
-          ${chev('hw')}
-          <span style="${ST}">Hardware</span>
-          ${liveCost(c.hwCost)}
-        </div>
-        <div ${SC('hw')}>
-          <div style="font-size:12px;color:var(--muted);margin-bottom:8px">Auto: ${line.doors>0?line.doors*2+' hinges':''}${line.doors>0&&line.drawers>0?', ':''}${line.drawers>0?line.drawers+' slides':''}${line.doors===0&&line.drawers===0?'None':''}</div>
-          ${line.hwItems.map(/** @param {any} hw @param {number} hi */ (hw, hi) => `<div style="display:flex;gap:4px;align-items:center;margin-bottom:6px;position:relative">
-            <div style="flex:1;position:relative"><div class="smart-input-wrap"><input type="text" id="cb-hw-${line.id}-${hi}" value="${_escHtml(hw.name)}" style="font-size:12px" autocomplete="off" oninput="_smartCBHwSuggest(this,'cb-hw-suggest-${line.id}-${hi}',${line.id},${hi})" onfocus="_smartCBHwSuggest(this,'cb-hw-suggest-${line.id}-${hi}',${line.id},${hi})" onblur="setTimeout(()=>{_byId('cb-hw-suggest-${line.id}-${hi}').style.display='none';updateCBHw(${line.id},${hi},'name',this.value)},150)"><div class="smart-input-add" onclick="_openNewCBHardwarePopup(${line.id},${hi})" title="Add new hardware type">+</div></div><div id="cb-hw-suggest-${line.id}-${hi}" class="client-suggest-list" style="display:none"></div></div>
-            <span style="font-size:10px;color:var(--muted)">×</span>
-            <input type="number" style="width:40px;text-align:center;padding:5px;font-size:12px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text)" value="${hw.qty}" min="1" onchange="updateCBHw(${line.id},${hi},'qty',this.value)">
-            <button class="cb-del-btn" style="font-size:16px" onclick="removeCBHw(${line.id},${hi})">×</button>
-          </div>`).join('')}
-          <div style="position:relative;margin-top:4px">
-            <label style="font-size:10px;font-weight:600;color:var(--muted)">Add Hardware</label>
-            <div class="smart-input-wrap">
-              <input type="text" id="cb-hw-add-${line.id}" placeholder="Search hardware..." style="font-size:12px" autocomplete="off" oninput="_smartCBHwAddSuggest(this,'cb-hw-add-suggest-${line.id}',${line.id})" onfocus="_smartCBHwAddSuggest(this,'cb-hw-add-suggest-${line.id}',${line.id})" onblur="setTimeout(()=>_byId('cb-hw-add-suggest-${line.id}').style.display='none',150)">
-              <div class="smart-input-add" onclick="_openNewCBHardwarePopup(${line.id},-1)" title="Add new hardware type">+</div>
-            </div>
-            <div id="cb-hw-add-suggest-${line.id}" class="client-suggest-list" style="display:none"></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- EXTRAS (custom items with label + cost) -->
-      <div style="${SB}">
-        <div style="${SH}" onclick="toggleCBSection(${line.id},'extras')">
-          ${chev('extras')}
-          <span style="${ST}">Extras</span>
-          ${extrasCost > 0 ? liveCost(extrasCost) : ''}
-          <span style="${SS}">${(line.extras||[]).length>0?(line.extras.length)+' item'+(line.extras.length!==1?'s':''):'None'}</span>
-        </div>
-        <div ${SC('extras')}>
-          <div style="font-size:12px;color:var(--muted);margin-bottom:6px">Add custom items like cable holes, lighting cutouts, etc.</div>
-          ${(line.extras||[]).map(/** @param {any} ex @param {number} ei */ (ex, ei) => `<div style="display:flex;gap:4px;align-items:center;margin-bottom:6px">
-            <input style="flex:1;font-size:13px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);font-family:inherit" value="${ex.label||''}" placeholder="Item name" onblur="cbUpdateExtra(${line.id},${ei},'label',this.value)">
-            <div style="display:flex;align-items:center;border:1px solid var(--border);border-radius:6px;overflow:hidden;background:var(--surface2)">
-              <span style="font-size:11px;color:var(--muted);padding:4px 4px 4px 8px;background:var(--surface)">${cur}</span>
-              <input type="number" style="width:60px;border:none;padding:6px 6px 6px 2px;font-size:13px;background:transparent;color:var(--text)" value="${ex.cost||0}" onblur="cbUpdateExtra(${line.id},${ei},'cost',this.value)">
-            </div>
-            <button class="cb-del-btn" style="font-size:16px" onclick="cbRemoveExtra(${line.id},${ei})">×</button>
-          </div>`).join('')}
-          <button class="cl-add-btn" onclick="cbAddExtra(${line.id})" style="font-size:12px;padding:5px 10px;margin:4px 0 0">+ Add Extra</button>
-        </div>
-      </div>
-
-      <!-- NOTES -->
-      <div style="${SB}">
-        <div style="${SH}" onclick="toggleCBSection(${line.id},'notes')">
-          ${chev('notes')}
-          <span style="${ST}">Notes</span>
-          <span style="${SS}">${line.notes?'✓':''} ${line.room||''}</span>
-        </div>
-        <div ${SC('notes')}>
-          <div class="form-row" style="margin-bottom:8px">
-            <div class="form-group" style="${FM}"><label style="${LB}">Room / Area</label><input type="text" value="${line.room||''}" placeholder="e.g. Kitchen" style="${SL}" list="cb-room-list" onchange="cbUpdateField('room',this.value)"></div>
-          </div>
-          <div class="form-group" style="${FM}"><label style="${LB}">Notes</label><textarea style="${SL};min-height:60px;resize:vertical" onblur="cbUpdateField('notes',this.value)">${line.notes||''}</textarea></div>
-        </div>
-      </div>
-
-      <!-- Sidebar Actions -->
-      <div style="padding-top:8px;display:flex;gap:6px">
-        <button class="btn btn-primary" onclick="cbAddOrUpdateCabinet()" id="cb-add-btn" style="flex:1;font-size:13px;padding:10px 12px">${cbActiveLineIdx >= 0 && cbLines[cbActiveLineIdx] ? 'Update Cabinet' : 'Add to Project'}</button>
-        <button class="btn btn-outline" onclick="cbSaveToLibrary()" style="flex:1;font-size:12px;padding:10px 12px">Save to Library</button>
-      </div>
-
-    </div>
-    <datalist id="cb-room-list">${['Kitchen','Bathroom','Bedroom','Living Room','Laundry','Garage','Office','Pantry'].map(r=>'<option value="'+r+'">').join('')}</datalist>
-  `;
+/** @param {number} lineId @param {number} idx */
+function removeCBHw(lineId, idx) {
+  const line = cbScratchpad && cbScratchpad.id === lineId ? cbScratchpad : cbLines.find(l => l.id === lineId);
+  if (!line) return;
+  line.hwItems.splice(idx, 1);
+  if (cbEditingLineIdx >= 0) saveCBLines();
+  renderCBEditor(); renderCBResults();
 }
 
 // ── Extras CRUD ──
 /** @param {number} lineId */
 function cbAddExtra(lineId) {
-  const line = cbLines.find(l=>l.id===lineId);
+  const line = cbScratchpad && cbScratchpad.id === lineId ? cbScratchpad : cbLines.find(l=>l.id===lineId);
   if (!line) return;
   if (!line.extras) line.extras = [];
   line.extras.push({label:'',cost:0});
-  saveCBLines(); renderCBEditor();
+  renderCBEditor();
 }
 /** @param {number} lineId @param {number} idx @param {string} field @param {any} val */
 function cbUpdateExtra(lineId, idx, field, val) {
-  const line = cbLines.find(l=>l.id===lineId);
+  const line = cbScratchpad && cbScratchpad.id === lineId ? cbScratchpad : cbLines.find(l=>l.id===lineId);
   if (!line || !line.extras || !line.extras[idx]) return;
   if (field==='cost') line.extras[idx].cost = parseFloat(val)||0;
   else line.extras[idx].label = val;
-  saveCBLines(); renderCBResults();
+  renderCBResults();
 }
 /** @param {number} lineId @param {number} idx */
 function cbRemoveExtra(lineId, idx) {
-  const line = cbLines.find(l=>l.id===lineId);
+  const line = cbScratchpad && cbScratchpad.id === lineId ? cbScratchpad : cbLines.find(l=>l.id===lineId);
   if (!line || !line.extras) return;
   line.extras.splice(idx,1);
-  saveCBLines(); renderCBEditor(); renderCBResults();
+  renderCBEditor(); renderCBResults();
 }
 
-function cbAddOrUpdateCabinet() {
-  if (cbActiveLineIdx >= 0 && cbLines[cbActiveLineIdx]) {
-    // Was editing — save and deselect
-    cbActiveLineIdx = -1;
-    saveCBLines();
-    renderCBPanel();
-    _toast('Cabinet updated', 'success');
-  } else {
-    // Add new cabinet from current form data
-    addCBLine();
-    // Deselect so form resets to blank
-    cbActiveLineIdx = -1;
-    renderCBEditor();
-    renderCBResults();
-  }
-}
-
-/** @param {number} idx */
-function cbEditCabinetFromOutput(idx) {
-  cbActiveLineIdx = idx;
-  renderCBCabList();
-  renderCBEditor();
-  renderCBResults();
-  // Scroll sidebar to editor
-  const sidebar = _byId('cb-sidebar');
-  if (sidebar) sidebar.scrollTop = sidebar.scrollHeight;
-}
-
-/** @param {string} field @param {number} dir */
-function cbStepField(field, dir) {
-  const isEditing = cbActiveLineIdx >= 0 && cbLines[cbActiveLineIdx];
-  const line = isEditing ? cbLines[cbActiveLineIdx] : window._cbBlankLine;
-  if (!line) return;
-  const cur = parseFloat(line[field]) || 0;
-  const min = (field === 'qty') ? 1 : 0;
-  line[field] = Math.max(min, cur + dir);
-  saveCBLines();
-  renderCBCabList(); renderCBResults(); renderCBEditor();
-}
-
-/** @param {string} field @param {any} val */
-function cbUpdateField(field, val) {
-  const isEditing = cbActiveLineIdx >= 0 && cbLines[cbActiveLineIdx];
-  const line = isEditing ? cbLines[cbActiveLineIdx] : window._cbBlankLine;
-  if (!line) return;
-  const numFields = ['w','h','d','qty','doors','drawers','shelves','adjShelves','endPanels','looseShelves','partitions','labourHrs','doorPct','drawerPct'];
-  if (numFields.includes(field)) {
-    line[field] = parseFloat(val) || 0;
-  } else {
-    line[field] = val;
-  }
-  saveCBLines();
-  renderCBCabList();
-  renderCBResults();
-  // Re-render editor when structural fields change
-  if (['doors','drawers','construction','baseType','finish'].includes(field)) renderCBEditor();
-}
-
-// ── Position suggest box as fixed overlay (avoids overflow clipping) ──
-/** @param {HTMLElement | null} input @param {HTMLElement | null} box */
-function _posSuggest(input, box) {
-  if (!input || !box) return;
-  const r = (input.parentElement || input).getBoundingClientRect();
-  box.style.position = 'fixed';
-  box.style.left = r.left + 'px';
-  box.style.width = r.width + 'px';
-  box.style.right = 'auto';
-  const spaceBelow = window.innerHeight - r.bottom;
-  if (spaceBelow < 220) {
-    box.style.top = 'auto';
-    box.style.bottom = (window.innerHeight - r.top) + 'px';
-    box.style.borderRadius = '8px 8px 0 0';
-  } else {
-    box.style.top = r.bottom + 'px';
-    box.style.bottom = 'auto';
-    box.style.borderRadius = '0 0 8px 8px';
-  }
-}
-
-// ── Rates Stock Smart Suggest (opens stock edit popup on click) ──
-/** @param {HTMLInputElement} input @param {string} boxId */
-function _smartRatesStockSuggest(input, boxId) {
-  const box = _byId(boxId);
-  if (!box) return;
-  _posSuggest(input, box);
-  const q = input.value.trim().toLowerCase();
-  const cur = window.currency;
-  const pool = stockItems.filter(s => s.category === 'Sheet Goods' || s.category === 'Solid Timber' || s.category === 'Edge Banding' || ((s.w ?? 0) > 0 && (s.h ?? 0) > 0));
-  const matches = q ? pool.filter(s => s.name.toLowerCase().includes(q)) : pool;
-  let html = '';
-  matches.slice(0, 10).forEach(s => {
-    const dims = s.w && s.h ? `${formatDim(s.w)}×${formatDim(s.h)}` : '';
-    const qtyColor = (s.qty ?? 0) <= (s.low || 3) ? '#ef4444' : '#22c55e';
-    html += `<div class="client-suggest-item" onmousedown="_byId('rates-stock-search').value='';_byId('${boxId}').style.display='none';_openStockPopup(${s.id})">
-      <span class="suggest-icon" style="background:${qtyColor}20;color:${qtyColor}">${s.qty}</span>
-      <span style="flex:1">${_escHtml(s.name)}</span>
-      <span style="font-size:10px;color:var(--muted)">${dims ? dims + ' · ' : ''}${cur}${s.cost}/sheet</span>
-    </div>`;
-  });
-  html += `<div class="client-suggest-add" onmousedown="_openNewStockPopup()">+ Add new stock material</div>`;
-  box.innerHTML = html;
-  box.style.display = matches.length || q ? '' : 'none';
-}
-
-// ── Rates Finish Smart Suggest ──
-/** @param {HTMLInputElement} input @param {string} boxId */
-function _smartRatesFinishSuggest(input, boxId) {
-  const box = _byId(boxId);
-  if (!box) return;
-  _posSuggest(input, box);
-  const q = input.value.trim().toLowerCase();
-  const cur = window.currency;
-  const pool = stockItems.filter(s => s.category === 'Finishing');
-  const matches = q ? pool.filter(s => s.name.toLowerCase().includes(q)) : pool;
-  let html = '';
-  matches.slice(0, 10).forEach(s => {
-    const qtyColor = (s.qty ?? 0) <= (s.low || 3) ? '#ef4444' : '#22c55e';
-    html += `<div class="client-suggest-item" onmousedown="_byId('rates-finish-search').value='';_byId('${boxId}').style.display='none';_openStockPopup(${s.id})">
-      <span class="suggest-icon" style="background:${qtyColor}20;color:${qtyColor}">${s.qty}</span>
-      <span style="flex:1">${_escHtml(s.name)}</span>
-      <span style="font-size:10px;color:var(--muted)">${cur}${s.cost}/m²</span>
-    </div>`;
-  });
-  html += `<div class="client-suggest-add" onmousedown="_openNewStockPopup()">+ Add new finish to stock</div>`;
-  box.innerHTML = html;
-  box.style.display = matches.length || q ? '' : 'none';
-}
-
-// ── Rates Edge Banding Smart Suggest ──
-/** @param {HTMLInputElement} input @param {string} boxId */
-function _smartRatesEdgeSuggest(input, boxId) {
-  const box = _byId(boxId);
-  if (!box) return;
-  _posSuggest(input, box);
-  const q = input.value.trim().toLowerCase();
-  const cur = window.currency;
-  const pool = stockItems.filter(s => s.category === 'Edge Banding');
-  const matches = q ? pool.filter(s => s.name.toLowerCase().includes(q)) : pool;
-  let html = '';
-  matches.slice(0, 10).forEach(s => {
-    const qtyColor = (s.qty ?? 0) <= (s.low || 3) ? '#ef4444' : '#22c55e';
-    html += `<div class="client-suggest-item" onmousedown="_byId('rates-edge-search').value='';_byId('${boxId}').style.display='none';_openStockPopup(${s.id})">
-      <span class="suggest-icon" style="background:${qtyColor}20;color:${qtyColor}">${s.qty}</span>
-      <span style="flex:1">${_escHtml(s.name)}</span>
-      <span style="font-size:10px;color:var(--muted)">${cur}${s.cost}/m</span>
-    </div>`;
-  });
-  html += `<div class="client-suggest-add" onmousedown="_openNewStockPopup()">+ Add new edge banding to stock</div>`;
-  box.innerHTML = html;
-  box.style.display = matches.length || q ? '' : 'none';
-}
-
-// ── Cabinet Material Smart Suggest ──
-/** @param {HTMLInputElement} input @param {string} boxId @param {string} fieldName */
-function _smartCBMaterialSuggest(input, boxId, fieldName) {
-  const box = _byId(boxId);
-  if (!box) return;
-  _posSuggest(input, box);
-  const q = input.value.trim().toLowerCase();
-  const cur = window.currency;
-  // Search from shared stockItems library (Sheet Goods + items with dimensions)
-  const pool = stockItems.filter(s => s.category === 'Sheet Goods' || s.category === 'Solid Timber' || s.category === 'Edge Banding' || ((s.w ?? 0) > 0 && (s.h ?? 0) > 0));
-  const matches = q ? pool.filter(s => s.name.toLowerCase().includes(q)) : pool;
-  let html = '';
-  matches.slice(0, 8).forEach(s => {
-    const dims = s.w && s.h ? `${formatDim(s.w)}×${formatDim(s.h)}` : '';
-    const qtyColor = (s.qty ?? 0) <= (s.low || 3) ? '#ef4444' : '#22c55e';
-    html += `<div class="client-suggest-item" onmousedown="_byId('cb-mat-${fieldName}').value='${_escHtml(s.name)}';cbUpdateField('${fieldName}','${_escHtml(s.name)}');_byId('${boxId}').style.display='none'">
-      <span class="suggest-icon" style="background:${qtyColor}20;color:${qtyColor}">${s.qty}</span>
-      <span style="flex:1">${_escHtml(s.name)}</span>
-      <span style="font-size:10px;color:var(--muted)">${dims ? dims + ' · ' : ''}${cur}${s.cost}/sheet</span>
-    </div>`;
-  });
-  html += `<div class="client-suggest-add" onmousedown="_openNewStockPopup()">+ Add new stock material</div>`;
-  box.innerHTML = html;
-  box.style.display = matches.length || q ? '' : 'none';
-}
-
-/** @param {HTMLInputElement} input @param {string} boxId */
-function _smartCBFinishSuggest(input, boxId) {
-  const box = _byId(boxId);
-  if (!box) return;
-  _posSuggest(input, box);
-  const q = input.value.trim().toLowerCase();
-  const cur = window.currency;
-  const pool = stockItems.filter(s => s.category === 'Finishing');
-  const matches = q ? pool.filter(s => s.name.toLowerCase().includes(q)) : pool;
-  let html = '';
-  matches.slice(0, 8).forEach(s => {
-    const qtyColor = (s.qty ?? 0) <= (s.low || 3) ? '#ef4444' : '#22c55e';
-    html += `<div class="client-suggest-item" onmousedown="_byId('cb-mat-finish').value='${_escHtml(s.name)}';cbUpdateField('finish','${_escHtml(s.name)}');_byId('${boxId}').style.display='none'">
-      <span class="suggest-icon" style="background:${qtyColor}20;color:${qtyColor}">${s.qty}</span>
-      <span style="flex:1">${_escHtml(s.name)}</span>
-      <span style="font-size:10px;color:var(--muted)">${cur}${s.cost}/unit</span>
-    </div>`;
-  });
-  html += `<div class="client-suggest-add" onmousedown="_openNewStockPopup()">+ Add new finish to stock</div>`;
-  box.innerHTML = html;
-  box.style.display = matches.length || q ? '' : 'none';
-}
-
-/** @param {string} fieldName */
-function _openNewCBMaterialPopup(fieldName) {
-  const existing = _byId('cb-mat-' + fieldName)?.value || '';
-  _openPopup(`
-    <div class="popup-header">
-      <div class="popup-title">New Material</div>
-      <button class="popup-close" onclick="_closePopup()">×</button>
-    </div>
-    <div class="popup-body">
-      <div class="pf"><label class="pf-label">Material Name</label><input class="pf-input pf-input-lg" id="pnm-name" value="${_escHtml(existing)}"></div>
-      <div class="pf"><label class="pf-label">Price per Sheet</label><input class="pf-input" id="pnm-price" type="number" value="0" step="0.01"></div>
-    </div>
-    <div class="popup-footer">
-      <button class="btn btn-outline" onclick="_closePopup()">Cancel</button>
-      <button class="btn btn-accent" onclick="_saveNewCBMaterial('${fieldName}')">Add Material</button>
-    </div>
-  `, 'sm');
-  setTimeout(() => _byId('pnm-name')?.focus(), 50);
-}
-
-/** @param {string} fieldName */
-function _saveNewCBMaterial(fieldName) {
-  const name = _popupVal('pnm-name');
-  if (!name) { _toast('Name is required', 'error'); return; }
-  const price = parseFloat(_popupVal('pnm-price')) || 0;
-  if (!cbSettings.materials.some(/** @param {any} m */ m => m.name === name)) {
-    cbSettings.materials.push({ name, price });
-    saveCBSettings();
-  }
-  cbUpdateField(fieldName, name);
-  const inp = _byId('cb-mat-' + fieldName);
-  if (inp) inp.value = name;
-  _closePopup();
-  _toast('"' + name + '" added to materials', 'success');
-}
-
-function _openNewStockPopup() {
-  const existing = _byId('cb-mat-finish')?.value || '';
-  _openPopup(`
-    <div class="popup-header">
-      <div class="popup-title">New Finish</div>
-      <button class="popup-close" onclick="_closePopup()">×</button>
-    </div>
-    <div class="popup-body">
-      <div class="pf"><label class="pf-label">Finish Name</label><input class="pf-input pf-input-lg" id="pnf-name" value="${_escHtml(existing)}"></div>
-      <div class="pf"><label class="pf-label">Price per m²</label><input class="pf-input" id="pnf-price" type="number" value="0" step="0.01"></div>
-    </div>
-    <div class="popup-footer">
-      <button class="btn btn-outline" onclick="_closePopup()">Cancel</button>
-      <button class="btn btn-accent" onclick="_saveNewCBFinish()">Add Finish</button>
-    </div>
-  `, 'sm');
-  setTimeout(() => _byId('pnf-name')?.focus(), 50);
-}
-
-function _saveNewCBFinish() {
-  const name = _popupVal('pnf-name');
-  if (!name) { _toast('Name is required', 'error'); return; }
-  const price = parseFloat(_popupVal('pnf-price')) || 0;
-  if (!cbSettings.finishes) cbSettings.finishes = [];
-  if (!cbSettings.finishes.some(/** @param {any} f */ f => f.name === name)) {
-    cbSettings.finishes.push({ name, price });
-    saveCBSettings();
-  }
-  cbUpdateField('finish', name);
-  const inp = _byId('cb-mat-finish');
-  if (inp) inp.value = name;
-  _closePopup();
-  _toast('"' + name + '" added to finishes', 'success');
-}
-
-// ── Cabinet Hardware Smart Suggest ──
-/** @param {HTMLInputElement} input @param {string} boxId @param {number} lineId @param {number} hwIdx */
-function _smartCBHwSuggest(input, boxId, lineId, hwIdx) {
-  const box = _byId(boxId);
-  if (!box) return;
-  _posSuggest(input, box);
-  const q = input.value.trim().toLowerCase();
-  const cur = window.currency;
-  const matches = q ? cbSettings.hardware.filter(/** @param {any} h */ h => h.name.toLowerCase().includes(q)) : cbSettings.hardware;
-  let html = '';
-  matches.slice(0, 8).forEach(/** @param {any} h */ h => {
-    html += `<div class="client-suggest-item" onmousedown="_byId('cb-hw-${lineId}-${hwIdx}').value='${_escHtml(h.name)}';updateCBHw(${lineId},${hwIdx},'name','${_escHtml(h.name)}');_byId('${boxId}').style.display='none'">
-      <span class="suggest-icon" style="background:#6b8aff20;color:#6b8aff">H</span>
-      <span style="flex:1">${_escHtml(h.name)}</span>
-      <span style="font-size:10px;color:var(--muted)">${cur}${h.price}/unit</span>
-    </div>`;
-  });
-  if (q) html += `<div class="client-suggest-add" onmousedown="_openNewCBHardwarePopup(${lineId},${hwIdx})">+ Add "${_escHtml(input.value.trim())}" as new hardware</div>`;
-  box.innerHTML = html;
-  box.style.display = matches.length || q ? '' : 'none';
-}
-
-/** @param {HTMLInputElement} input @param {string} boxId @param {number} lineId */
-function _smartCBHwAddSuggest(input, boxId, lineId) {
-  const box = _byId(boxId);
-  if (!box) return;
-  _posSuggest(input, box);
-  const q = input.value.trim().toLowerCase();
-  const cur = window.currency;
-  const matches = q ? cbSettings.hardware.filter(/** @param {any} h */ h => h.name.toLowerCase().includes(q)) : cbSettings.hardware;
-  let html = '';
-  matches.slice(0, 8).forEach(/** @param {any} h */ h => {
-    html += `<div class="client-suggest-item" onmousedown="_addCBHwByName(${lineId},'${_escHtml(h.name)}');_byId('cb-hw-add-${lineId}').value='';_byId('${boxId}').style.display='none'">
-      <span class="suggest-icon" style="background:#6b8aff20;color:#6b8aff">H</span>
-      <span style="flex:1">${_escHtml(h.name)}</span>
-      <span style="font-size:10px;color:var(--muted)">${cur}${h.price}/unit</span>
-    </div>`;
-  });
-  if (q) html += `<div class="client-suggest-add" onmousedown="_openNewCBHardwarePopup(${lineId},-1)">+ Add "${_escHtml(input.value.trim())}" as new hardware</div>`;
-  box.innerHTML = html;
-  box.style.display = matches.length || q ? '' : 'none';
-}
-
-/** @param {number} lineId @param {string} hwName */
-function _addCBHwByName(lineId, hwName) {
-  const line = cbLines.find(l => l.id === lineId);
-  if (!line) return;
-  line.hwItems.push({ name: hwName, qty: 1 });
-  saveCBLines(); renderCBPanel();
-  _toast('"' + hwName + '" added', 'success');
-}
-
-/** @param {number} lineId @param {number} hwIdx */
-function _openNewCBHardwarePopup(lineId, hwIdx) {
-  const existing = hwIdx >= 0 ? (_byId('cb-hw-' + lineId + '-' + hwIdx)?.value || '') : (_byId('cb-hw-add-' + lineId)?.value || '');
-  _openPopup(`
-    <div class="popup-header">
-      <div class="popup-title">New Hardware</div>
-      <button class="popup-close" onclick="_closePopup()">×</button>
-    </div>
-    <div class="popup-body">
-      <div class="pf"><label class="pf-label">Hardware Name</label><input class="pf-input pf-input-lg" id="pnh-name" value="${_escHtml(existing)}"></div>
-      <div class="pf"><label class="pf-label">Price per Unit</label><input class="pf-input" id="pnh-price" type="number" value="0" step="0.01"></div>
-    </div>
-    <div class="popup-footer">
-      <button class="btn btn-outline" onclick="_closePopup()">Cancel</button>
-      <button class="btn btn-accent" onclick="_saveNewCBHardware(${lineId},${hwIdx})">Add Hardware</button>
-    </div>
-  `, 'sm');
-  setTimeout(() => _byId('pnh-name')?.focus(), 50);
-}
-
-/** @param {number} lineId @param {number} hwIdx */
-function _saveNewCBHardware(lineId, hwIdx) {
-  const name = _popupVal('pnh-name');
-  if (!name) { _toast('Name is required', 'error'); return; }
-  const price = parseFloat(_popupVal('pnh-price')) || 0;
-  if (!cbSettings.hardware.some(/** @param {any} h */ h => h.name === name)) {
-    cbSettings.hardware.push({ name, price });
-    saveCBSettings();
-  }
-  if (hwIdx >= 0) {
-    updateCBHw(lineId, hwIdx, 'name', name);
-    const inp = _byId('cb-hw-' + lineId + '-' + hwIdx);
-    if (inp) inp.value = name;
-  } else {
-    _addCBHwByName(lineId, name);
-  }
-  _closePopup();
-  _toast('"' + name + '" added to hardware', 'success');
-}
-
-// ── Render right panel: cost breakdown ──
-function renderCBResults() {
-  const el = _byId('cb-results');
-  if (!el) return;
-  const cur = window.currency;
-  /** @param {any} v */
-  const fmt = v => cur + Number(v).toFixed(2);
-  /** @param {number} v */
-  const fmt0 = v => cur + Math.round(v).toLocaleString();
-  const projName = _byId('cb-project')?.value || '';
-
-  if (!cbLines.length) {
-    el.innerHTML = `<div class="empty-state">
-      <div class="empty-icon" style="opacity:.18"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="12" y1="3" x2="12" y2="12"/></svg></div>
-      <h3>Cabinet Builder</h3>
-      <p>Add cabinets using the sidebar to start building your project.</p>
-    </div>`;
-    return;
-  }
-
-  // Totals
-  let gMat=0,gLabour=0,gHw=0,gSub=0;
-  const calcs = cbLines.map(l => { const c=calcCBLine(l); gMat+=c.matCost*l.qty; gLabour+=c.labourCost*l.qty; gHw+=c.hwCost*l.qty; gSub+=c.lineSubtotal; return c; });
-  const totalHrs = cbLines.reduce((s,l,i)=>s+calcs[i].labourHrs*l.qty,0);
-  const gMarkup = gSub * cbSettings.markup/100;
-  const gTotal = (gSub+gMarkup)*(1+cbSettings.tax/100);
-
-  let html = `<div style="max-width:700px">`;
-
-  // ── Top buttons bar ──
-  html += `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;align-items:center">
-    <button class="btn btn-primary" onclick="cbAddToExistingQuote()" style="font-size:12px;padding:8px 14px">Add to Existing Quote</button>
-    <div id="cb-quote-picker" style="display:none"></div>
-    <button class="btn btn-outline" onclick="cbAddToNewQuote()" style="font-size:12px;padding:8px 14px;width:auto">+ New Quote</button>
-    <span style="flex:1"></span>
-    <button class="btn btn-outline" onclick="printCBQuote('pdf')" style="font-size:12px;padding:8px 12px;width:auto">&darr; PDF</button>
-    <button class="btn btn-outline" onclick="printCBQuote('print')" style="font-size:12px;padding:8px 12px;width:auto">&oplus; Print</button>
-    <button class="btn btn-outline" onclick="cbExportLibrary()" style="font-size:12px;padding:8px 12px;width:auto">&darr; Export</button>
-    <button class="btn btn-outline" onclick="cbImportLibrary()" style="font-size:12px;padding:8px 12px;width:auto">&uarr; Import</button>
-  </div>`;
-
-  // ── Project header ──
-  if (projName) html += `<h2 style="font-size:18px;font-weight:800;margin:0 0 4px">${_escHtml(projName)}</h2>`;
-  html += `<div style="font-size:12px;color:var(--muted);margin-bottom:16px">${cbLines.length} cabinet${cbLines.length!==1?'s':''} · ${cbLines.reduce((s,l)=>s+l.qty,0)} units</div>`;
-
-  // ── Individual cabinet cards ──
-  cbLines.forEach((line, idx) => {
-    const c = calcs[idx];
-    const isActive = idx === cbActiveLineIdx;
-    const cabMarkup = c.lineSubtotal * cbSettings.markup / 100;
-    const cabTotal = (c.lineSubtotal + cabMarkup) * (1 + cbSettings.tax / 100);
-    html += `<div style="background:var(--surface);border:${isActive?'2px solid var(--accent)':'1px solid var(--border)'};border-radius:var(--radius);margin-bottom:10px;overflow:hidden;cursor:pointer;box-shadow:var(--shadow);transition:box-shadow .15s" onclick="_openCabinetPopup(${idx})" onmouseover="this.style.boxShadow='var(--shadow-md)'" onmouseout="this.style.boxShadow='var(--shadow)'">
-      <!-- Header -->
-      <div style="display:flex;align-items:center;gap:10px;padding:12px 16px;background:${isActive?'var(--accent-dim)':'var(--surface2)'}">
-        <div style="flex:1;min-width:0">
-          <div style="font-size:14px;font-weight:700;color:var(--text)">${_escHtml(line.name||'Cabinet '+(idx+1))}</div>
-          <div style="font-size:11px;color:var(--muted)">${line.w} × ${line.h} × ${line.d} mm · ${_escHtml(line.material)}${line.qty>1?' · x'+line.qty:''}</div>
-        </div>
-        <div style="font-size:16px;font-weight:800;color:var(--accent)">${fmt0(cabTotal)}</div>
-      </div>
-      <!-- Details -->
-      <div style="padding:10px 16px;font-size:12px;color:var(--text2)">
-        <div style="display:grid;grid-template-columns:1fr auto;gap:2px 16px">
-          <span>Materials</span><span style="text-align:right;font-weight:600;color:var(--text)">${fmt(c.matCost)}</span>
-          <span>Labour (${c.labourHrs.toFixed(1)} hrs @ ${cur}${cbSettings.labourRate}/hr)</span><span style="text-align:right;font-weight:600;color:var(--text)">${fmt(c.labourCost)}</span>
-          <span>Hardware</span><span style="text-align:right;font-weight:600;color:var(--text)">${fmt0(c.hwCost)}</span>
-          <span style="color:var(--muted)">Subtotal</span><span style="text-align:right;font-weight:600">${fmt0(c.lineSubtotal)}</span>
-          ${cbSettings.markup>0?`<span style="color:var(--muted)">Markup (${cbSettings.markup}%)</span><span style="text-align:right;color:var(--muted)">+${fmt0(cabMarkup)}</span>`:''}
-          ${cbSettings.tax>0?`<span style="color:var(--muted)">Tax (${cbSettings.tax}%)</span><span style="text-align:right;color:var(--muted)">+${fmt0(cabTotal-c.lineSubtotal-cabMarkup)}</span>`:''}
-        </div>
-        <!-- Sub details -->
-        <div style="margin-top:6px;padding-top:6px;border-top:1px solid var(--border2);font-size:11px;color:var(--muted);display:flex;gap:8px;flex-wrap:wrap">
-          ${line.finish&&line.finish!=='None'?`<span>${_escHtml(line.finish)}</span>`:''}\
-          ${line.construction?`<span>${_escHtml(line.construction)}</span>`:''}\
-          ${line.baseType&&line.baseType!=='None'?`<span>${_escHtml(line.baseType)}</span>`:''}\
-          ${line.doors>0?`<span>${line.doors} door${line.doors!==1?'s':''}</span>`:''}\
-          ${line.drawers>0?`<span>${line.drawers} drawer${line.drawers!==1?'s':''}</span>`:''}\
-          ${(line.shelves||0)+(line.adjShelves||0)+(line.looseShelves||0)>0?`<span>${(line.shelves||0)+(line.adjShelves||0)+(line.looseShelves||0)} shelves</span>`:''}\
-          ${(line.partitions||0)>0?`<span>${line.partitions} partition${line.partitions!==1?'s':''}</span>`:''}\
-          ${(line.endPanels||0)>0?`<span>${line.endPanels} end panel${line.endPanels!==1?'s':''}</span>`:''}\
-          ${line.room?`<span>${_escHtml(line.room)}</span>`:''}
-        </div>
-      </div>
-    </div>`;
-  });
-
-  // ── All Cabinets Total card ──
-  html += `<div style="background:var(--surface);border:2px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow)">
-    <div style="padding:12px 16px;background:var(--surface2);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)">All Cabinets (${cbLines.length})</div>
-    <div style="padding:12px 16px">
-      <div style="display:grid;grid-template-columns:1fr auto;gap:3px 16px;font-size:13px">
-        <span style="color:var(--text2)">Materials</span><span style="text-align:right;font-weight:600">${fmt0(gMat)}</span>
-        <span style="color:var(--text2)">Labour (${totalHrs.toFixed(1)} hrs)</span><span style="text-align:right;font-weight:600">${fmt0(gLabour)}</span>
-        <span style="color:var(--text2)">Hardware</span><span style="text-align:right;font-weight:600">${fmt0(gHw)}</span>
-      </div>
-      <div style="border-top:1px solid var(--border);margin-top:6px;padding-top:6px;display:grid;grid-template-columns:1fr auto;gap:3px 16px;font-size:13px">
-        <span style="font-weight:700">Subtotal</span><span style="text-align:right;font-weight:700">${fmt0(gSub)}</span>
-        ${cbSettings.markup>0?`<span style="color:var(--muted)">Markup (${cbSettings.markup}%)</span><span style="text-align:right;color:var(--muted)">+${fmt0(gMarkup)}</span>`:''}
-        ${cbSettings.tax>0?`<span style="color:var(--muted)">Tax (${cbSettings.tax}%)</span><span style="text-align:right;color:var(--muted)">+${fmt0(gTotal-gSub-gMarkup)}</span>`:''}
-      </div>
-      <div style="border-top:2px solid var(--accent);margin-top:6px;padding-top:8px;display:flex;justify-content:space-between;font-size:16px">
-        <span style="font-weight:700;color:var(--accent)">Quote Total</span>
-        <span style="font-weight:800;color:var(--accent)">${fmt0(gTotal)}</span>
-      </div>
-    </div>
-  </div>`;
-
-  html += `</div>`;
-  el.innerHTML = html;
-}
-
-function cbAddToNewQuote() {
+// ── Quote Creation & Editing ──
+async function cbCreateQuoteFromDraft() {
   if (!cbLines.length) { _toast('Add cabinets first.', 'error'); return; }
-  const gMat = cbLines.reduce((s, l) => s + calcCBLine(l).matCost * l.qty, 0);
-  const gLabour = cbLines.reduce((s, l) => s + calcCBLine(l).labourCost * l.qty, 0);
-  const totalHrs = cbLines.reduce((s, l) => s + calcCBLine(l).labourHrs * l.qty, 0);
+  if (!_userId) { _toast('Sign in to create a quote', 'error'); return; }
+  // Free-tier cap: count only customer-facing quotes (drafts don't count).
+  const customerQuotes = quotes.filter(q => typeof _isDraftQuote === 'function' ? !_isDraftQuote(q) : true);
+  if (!_enforceFreeLimit('quotes', customerQuotes.length)) return;
+  const projectId = await _ensureCBProject();
+  if (!projectId) return;
 
-  // Pre-fill the quote form
-  /** @param {string} id */
-  const inp = id => /** @type {HTMLInputElement} */ (_byId(id));
-  const projName = _byId('cb-project')?.value?.trim() || '';
   const clientName = _byId('cb-client')?.value?.trim() || '';
-  if (projName) inp('q-project').value = projName;
-  if (clientName) inp('q-client').value = clientName;
-  inp('q-materials').value = gMat.toFixed(2);
-  inp('q-labour-rate').value = String(cbSettings.labourRate);
-  inp('q-hours').value = totalHrs.toFixed(1);
-  inp('q-markup').value = String(cbSettings.markup);
-  inp('q-tax').value = String(cbSettings.tax);
-  inp('q-notes').value = cbLines.map(l => {
+  const clientId = clientName ? await resolveClient(clientName) : null;
+  const projName = _byId('cb-project')?.value?.trim() || '';
+
+  const notes = cbLines.map(l => {
     const desc = l.name || 'Cabinet';
-    const details = [l.w+'×'+l.h+'×'+l.d+'mm', l.material];
-    if (l.doors > 0) details.push(l.doors + ' door' + (l.doors!==1?'s':''));
-    if (l.drawers > 0) details.push(l.drawers + ' drawer' + (l.drawers!==1?'s':''));
+    const details = [l.w + 'x' + l.h + 'x' + l.d + 'mm', l.material].filter(Boolean);
+    if (l.doors > 0) details.push(l.doors + ' door' + (l.doors !== 1 ? 's' : ''));
+    if (l.drawers > 0) details.push(l.drawers + ' drawer' + (l.drawers !== 1 ? 's' : ''));
     if (l.qty > 1) details.push('x' + l.qty);
-    return desc + ' — ' + details.join(', ');
+    return desc + ' - ' + details.join(', ');
   }).join('\n');
 
-  switchSection('quote');
-  try { _updateQuotePreview(); } catch(e) {}
-  _toast('Quote form pre-filled — enter client details and create', 'success');
-}
-
-// ── Add to existing quote (show picker) ──
-function cbAddToExistingQuote() {
-  if (!cbLines.length) { _toast('Add cabinets first.', 'error'); return; }
-  if (!quotes.length) { _toast('No existing quotes. Use "Create New Quote" instead.', 'info'); cbAddToNewQuote(); return; }
-
-  // Show picker inline below button
-  const picker = _byId('cb-quote-picker');
-  if (!picker) return;
-  if (picker.style.display !== 'none') { picker.style.display = 'none'; return; }
-  const cur = window.currency;
-  picker.style.display = 'block';
-  picker.innerHTML = `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:8px">
-    <select id="_cb_qsel" style="width:100%;padding:8px 10px;font-size:13px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);font-family:inherit;margin-bottom:8px">
-      ${quotes.map((q,i) => `<option value="${i}">${quoteClient(q) || 'No client'} — ${quoteProject(q) || 'No project'} (${cur}${Math.round(quoteTotal(q))})</option>`).join('')}
-    </select>
-    <div style="display:flex;gap:6px">
-      <button class="btn btn-primary" onclick="const qi=parseInt(_byId('_cb_qsel').value);_byId('cb-quote-picker').style.display='none';_cbApplyToQuote(qi)" style="flex:1;font-size:12px;padding:7px 10px">Add</button>
-      <button class="btn btn-outline" onclick="_byId('cb-quote-picker').style.display='none'" style="width:auto;font-size:12px;padding:7px 10px">Cancel</button>
-    </div>
-  </div>`;
-}
-/** @param {number} qi */
-async function _cbApplyToQuote(qi) {
-  const q = quotes[qi];
-  if (!q) return;
-  const cabNotes = cbLines.map(l => {
-    const desc = l.name || 'Cabinet';
-    const details = [l.w+'\u00d7'+l.h+'\u00d7'+l.d+'mm', l.material];
-    if (l.doors > 0) details.push(l.doors + ' door' + (l.doors!==1?'s':''));
-    if (l.drawers > 0) details.push(l.drawers + ' drawer' + (l.drawers!==1?'s':''));
-    if (l.qty > 1) details.push('x' + l.qty);
-    return desc + ' \u2014 ' + details.join(', ');
-  }).join('\n');
-  q.notes = ((q.notes || '') + '\n' + cabNotes).trim();
-  if (_userId) {
-    // Append cabinet specs as quote_lines rows so totals aggregate from the schema source of truth
-    const { data: existing } = await _db('quote_lines').select('position').eq('quote_id', q.id);
-    const startPos = (existing && existing.length) ? Math.max(...existing.map(r => r.position || 0)) + 1 : 1;
-    const rows = cbLines.map(/** @param {any} l @param {number} i */ (l, i) => _cbLineToRow(l, startPos + i, q.id));
-    if (rows.length) await _db('quote_lines').insert(/** @type {any} */ (rows));
-    await _db('quotes').update({ notes: q.notes, updated_at: new Date().toISOString() }).eq('id', q.id);
-    await _refreshQuoteTotals(q.id);
-  }
-  switchSection('quote');
-  renderQuoteMain();
-  _toast(`Added to "${quoteProject(q)}" — quote lines added`, 'success');
-}
-
-// ── Save / Load / New Quotes ──
-function saveCBQuote() {
-  const client = _byId('cb-client')?.value?.trim() || '';
-  const project = _byId('cb-project')?.value?.trim() || '';
-  const notes = _byId('cb-notes')?.value?.trim() || '';
-  const quoteNum = _byId('cb-quote-num')?.value?.trim() || '';
-  if (!client && !project) { _toast('Enter a client or project name first.', 'error'); return; }
-
-  const quote = {
-    id: Date.now(), client, project, notes, quoteNum,
-    lines: JSON.parse(JSON.stringify(cbLines)),
-    date: new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}),
-    settings: { labourRate: cbSettings.labourRate, markup: cbSettings.markup, tax: cbSettings.tax }
+  /** @type {any} */
+  const insertBody = {
+    user_id: _userId, project_id: projectId, client_id: clientId,
+    markup: cbSettings.markup ?? 0, tax: cbSettings.tax ?? 0,
+    status: 'draft', date: new Date().toISOString().slice(0, 10), notes
   };
+  const { data, error } = await _db('quotes').insert(insertBody).select().single();
+  if (error || !data) { _toast('Could not create quote: ' + (error?.message || ''), 'error'); return; }
+  quotes.unshift(data);
 
-  if (cbActiveQuoteIdx >= 0 && cbSavedQuotes[cbActiveQuoteIdx]) {
-    quote.id = cbSavedQuotes[cbActiveQuoteIdx].id;
-    cbSavedQuotes[cbActiveQuoteIdx] = quote;
-    _toast('Quote updated', 'success');
-  } else {
-    cbSavedQuotes.unshift(quote);
-    cbActiveQuoteIdx = 0;
-    _toast('Quote saved', 'success');
-  }
-  saveCBSaved();
-  renderCBSavedShelf();
-}
+  /** @type {any[]} */
+  const lineRows = cbLines.map((l, i) => _cbLineToRow(l, i, data.id));
+  if (lineRows.length) await _db('quote_lines').insert(lineRows);
+  if (typeof _refreshQuoteTotals === 'function') await _refreshQuoteTotals(data.id);
 
-/** @param {number} idx */
-function loadCBQuote(idx) {
-  const q = cbSavedQuotes[idx];
-  if (!q) return;
-  cbActiveQuoteIdx = idx;
-  cbLines = JSON.parse(JSON.stringify(q.lines || []));
-  cbNextId = cbLines.length > 0 ? Math.max(...cbLines.map(l=>l.id)) + 1 : 1;
-  /** @param {string} id */
-  const inp = id => /** @type {HTMLInputElement} */ (_byId(id));
-  inp('cb-client').value = quoteClient(q) || '';
-  inp('cb-project').value = quoteProject(q) || '';
-  inp('cb-notes').value = q.notes || '';
-  inp('cb-quote-num').value = q.quoteNum || '';
-  saveCBLines();
+  _toast('Quote created for "' + projName + '" - view in Quotes tab', 'success');
+  if (typeof renderQuoteMain === 'function') renderQuoteMain();
   renderCBPanel();
 }
 
-function newCBQuote() {
-  cbActiveQuoteIdx = -1;
+/** @param {number} quoteId */
+async function editQuoteInCB(quoteId) {
+  if (!_userId) { _toast('Sign in to edit a quote', 'error'); return; }
+  const q = quotes.find(x => x.id === quoteId);
+  if (!q) { _toast('Quote not found', 'error'); return; }
+
+  const { data: lines, error } = await _db('quote_lines')
+    .select('*').eq('quote_id', quoteId).order('position');
+  if (error) { _toast('Could not load quote lines', 'error'); return; }
+
+  if (_cbLinesSyncTimer) { clearTimeout(_cbLinesSyncTimer); _cbLinesSyncTimer = null; }
+
+  cbLines = (lines || []).map(/** @param {any} row @param {number} i */ (row, i) => {
+    const cb = /** @type {any} */ (_quoteLineRowToCB(row));
+    cb.id = i + 1;
+    return cb;
+  });
+  cbNextId = cbLines.length + 1;
+
+  cbEditingQuoteId = quoteId;
+  cbEditingOriginalLines = JSON.parse(JSON.stringify(cbLines));
+  localStorage.setItem('pc_cb_editing_quote_id', String(quoteId));
+
+  const projName = quoteProject(q);
+  const clientName = quoteClient(q);
+  const pn = _byId('cb-project'); if (pn) pn.value = projName;
+  const cn = _byId('cb-client'); if (cn) cn.value = clientName;
+  if (projName) localStorage.setItem('pc_cq_project_name', projName);
+  if (clientName) localStorage.setItem('pc_cq_client_name', clientName);
+
+  cbEditingLineIdx = -1;
+  cbScratchpad = cbDefaultLine();
+  switchSection('cabinet');
+  renderCBPanel();
+  _toast('Editing quote - changes save automatically', 'info');
+}
+
+async function finishEditingQuote() {
+  if (_cbLinesSyncTimer) { clearTimeout(_cbLinesSyncTimer); _cbLinesSyncTimer = null; }
+  if (cbEditingQuoteId) await _syncCBLinesToQuote(cbEditingQuoteId);
+  cbEditingQuoteId = null;
+  cbEditingOriginalLines = null;
+  localStorage.removeItem('pc_cb_editing_quote_id');
   cbLines = [];
   cbNextId = 1;
-  /** @param {string} id */
-  const inp = id => /** @type {HTMLInputElement} */ (_byId(id));
-  inp('cb-client').value = '';
-  inp('cb-project').value = '';
-  inp('cb-notes').value = '';
-  inp('cb-quote-num').value = '';
-  saveCBLines();
+  await _loadCBLinesFromDB();
   renderCBPanel();
+  _toast('Quote saved', 'success');
 }
 
-/** @param {number} idx */
-function deleteCBQuote(idx) {
-  _confirm('Delete this saved quote?', () => {
-    cbSavedQuotes.splice(idx, 1);
-    if (cbActiveQuoteIdx === idx) { cbActiveQuoteIdx = -1; newCBQuote(); }
-    else if (cbActiveQuoteIdx > idx) cbActiveQuoteIdx--;
-    saveCBSaved();
-    renderCBSavedShelf();
+function discardQuoteEdits() {
+  if (cbEditingQuoteId == null) return;
+  /** @type {number} */
+  const qId = cbEditingQuoteId;
+  /** @type {any[]} */
+  const orig = cbEditingOriginalLines || [];
+  _confirm('Discard changes to this quote?', async () => {
+    if (_cbLinesSyncTimer) { clearTimeout(_cbLinesSyncTimer); _cbLinesSyncTimer = null; }
+    try {
+      await _db('quote_lines').delete().eq('quote_id', qId);
+      if (orig.length > 0) {
+        /** @type {any[]} */
+        const rows = orig.map((l, i) => _cbLineToRow(l, i, qId));
+        await _db('quote_lines').insert(rows);
+      }
+      if (typeof _refreshQuoteTotals === 'function') await _refreshQuoteTotals(qId);
+    } catch (e) {
+      console.warn('[cb discard]', (/** @type {any} */ (e)).message || e);
+    }
+    cbEditingQuoteId = null;
+    cbEditingOriginalLines = null;
+    localStorage.removeItem('pc_cb_editing_quote_id');
+    cbLines = [];
+    cbNextId = 1;
+    await _loadCBLinesFromDB();
+    renderCBPanel();
+    _toast('Changes discarded', 'info');
   });
 }
 
-function renderCBSavedShelf() {
-  const shelf = _byId('cb-saved-shelf');
-  const pills = _byId('cb-saved-pills');
-  if (!shelf || !pills) return;
-  if (cbSavedQuotes.length === 0) { shelf.style.display = 'none'; return; }
-  shelf.style.display = '';
-  const cur = window.currency;
-  pills.innerHTML = cbSavedQuotes.map((q, i) => {
-    const total = q.lines.reduce(/** @param {number} s @param {any} l */ (s, l) => {
-      const c = calcCBLine(l);
-      return s + c.lineSubtotal;
-    }, 0);
-    const gt = total * (1 + (q.settings?.markup||0)/100) * (1 + (q.settings?.tax||0)/100);
-    const active = i === cbActiveQuoteIdx;
-    return `<div style="display:flex;align-items:center;gap:6px;padding:5px 10px;border-radius:6px;border:1px solid ${active?'var(--accent)':'var(--border)'};background:${active?'var(--accent-dim)':'var(--surface)'};cursor:pointer;flex-shrink:0;white-space:nowrap" onclick="loadCBQuote(${i})">
-      <div style="font-size:11px;font-weight:600;color:var(--text)">${quoteClient(q)||quoteProject(q)}</div>
-      <div style="font-size:10px;color:var(--muted)">${q.date}</div>
-      <div style="font-size:11px;font-weight:700;color:var(--accent)">${cur}${Math.round(gt).toLocaleString()}</div>
-      <button style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:11px;padding:0" onclick="event.stopPropagation();dupCBSavedQuote(${i})" title="Duplicate">&#10697;</button>
-      <button style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;padding:0" onclick="event.stopPropagation();deleteCBQuote(${i})">&times;</button>
-    </div>`;
-  }).join('');
-}
+// Legacy stubs
+function cbAddToNewQuote() { cbCreateQuoteFromDraft(); }
+function cbAddToExistingQuote() { cbCreateQuoteFromDraft(); }
+/** @param {number} _qi */
+async function _cbApplyToQuote(_qi) { return; }
 
-// ── Convert to Order ──
 function cbConvertToOrder() {
   const client = _byId('cb-client')?.value?.trim() || 'Cabinet Client';
   const project = _byId('cb-project')?.value?.trim() || 'Cabinet Project';
   if (!cbLines.length) { _toast('Add cabinet lines first.', 'error'); return; }
-
   const grandSubtotal = cbLines.reduce((s, l) => s + calcCBLine(l).lineSubtotal, 0);
-  const grandTotal = grandSubtotal * (1 + cbSettings.markup/100) * (1 + cbSettings.tax/100);
-
-  // Create via the existing quote system
   /** @type {any} */
   const row = {
     user_id: _userId, client, project,
     materials: cbLines.reduce(/** @param {number} s @param {any} l */ (s, l) => s + calcCBLine(l).matCost * l.qty, 0),
     labour: cbLines.reduce(/** @param {number} s @param {any} l */ (s, l) => s + calcCBLine(l).labourCost * l.qty, 0),
     markup: cbSettings.markup, tax: cbSettings.tax,
-    status: 'draft',
-    date: new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short'}),
+    status: 'draft', date: new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short'}),
     notes: 'Cabinet Quote: ' + cbLines.map(l => l.name || 'Cabinet').filter(Boolean).join(', '),
   };
-
   if (_userId) {
     _db('quotes').insert(row).select().single().then(({data, error}) => {
       if (error || !data) { _toast('Could not save quote: ' + (error?.message||''), 'error'); return; }
@@ -1991,326 +675,8 @@ function cbConvertToOrder() {
 }
 
 // ── PDF / Print ──
-
 /** @type {any[]} */
 let _clProjectCache = [];
-
-// ── Cut List smart search: Projects ──
-/** @param {HTMLInputElement} input @param {string} boxId */
-function _smartCLProjectSuggest(input, boxId) {
-  const box = _byId(boxId);
-  if (!box) return;
-  _posSuggest(input, box);
-  const q = input.value.trim().toLowerCase();
-  const matches = q ? _clProjectCache.filter(p => p.name.toLowerCase().includes(q)).slice(0, 8) : _clProjectCache.slice(0, 8);
-  if (matches.length === 0 && !q) { box.style.display = 'none'; return; }
-  let html = '';
-  matches.forEach((p, i) => {
-    const idx = _clProjectCache.indexOf(p);
-    const date = p.updated_at ? new Date(p.updated_at).toLocaleDateString() : '';
-    html += `<div class="client-suggest-item" onmousedown="_clLoadProjectByIdx(${idx});_byId('cl-project').value='${_escHtml(p.name)}';_byId('${boxId}').style.display='none'">
-      <span class="suggest-icon">P</span>
-      <span style="flex:1">${_escHtml(p.name)}</span>
-      <span style="font-size:10px;color:var(--muted)">${date}</span>
-    </div>`;
-  });
-  html += `<div class="client-suggest-add" onmousedown="showSaveProjectForm()">+ Save current cut list as "${_escHtml(input.value.trim())}"</div>`;
-  box.innerHTML = html;
-  box.style.display = '';
-}
-
-// ── Cut List smart search: Stock Materials ──
-/** @param {HTMLInputElement} input @param {string} boxId */
-function _smartCLStockSuggest(input, boxId) {
-  const box = _byId(boxId);
-  if (!box) return;
-  _posSuggest(input, box);
-  const q = input.value.trim().toLowerCase();
-  const ebOn = typeof colsVisible !== 'undefined' && !!colsVisible.edgeband;
-  // Panels: Sheet Goods or anything with dims (but not Edge Banding)
-  const panelItems = stockItems.filter(s => (_scGet(s.id)||s.category) !== 'Edge Banding' && ((_scGet(s.id)||s.category) === 'Sheet Goods' || ((s.w ?? 0) > 0 && (s.h ?? 0) > 0)));
-  // When edgeband column is on, also include Edge Banding items
-  const ebItems = ebOn ? stockItems.filter(s => (_scGet(s.id)||s.category) === 'Edge Banding') : [];
-  const pool = panelItems.concat(ebItems);
-  const matches = q ? pool.filter(s => s.name.toLowerCase().includes(q)) : pool;
-  if (matches.length === 0 && !q) { box.style.display = 'none'; return; }
-  let html = '';
-  matches.slice(0, 10).forEach(/** @param {any} s */ s => {
-    const origIdx = stockItems.indexOf(s);
-    const isEB = (_scGet(s.id)||s.category) === 'Edge Banding';
-    const qtyColor = (s.qty ?? 0) <= (s.lowAlert || s.low || 3) ? '#ef4444' : '#22c55e';
-    let meta = '';
-    if (isEB) {
-      /** @type {any} */
-      const vd = _svGet(s.id) || {};
-      const t = vd.thickness ?? s.thickness;
-      const w = vd.width ?? s.width ?? s.h;
-      const l = vd.length ?? s.length ?? s.w;
-      meta = [t?`${t}mm`:'', w?`${w}mm`:'', l?`${l}m`:''].filter(Boolean).join(' · ');
-    } else {
-      meta = (s.w && s.h ? `${formatDim(s.w)}×${formatDim(s.h)}` : '');
-    }
-    const handler = isEB
-      ? `_clAddEdgeBandFromStockIdx(${origIdx})`
-      : `_clAddPanelFromStock(${origIdx})`;
-    const badge = isEB ? `<span style="font-size:9px;font-weight:600;color:var(--muted);background:var(--border);padding:1px 5px;border-radius:3px;margin-right:4px">EB</span>` : '';
-    html += `<div class="client-suggest-item" onmousedown="${handler};_byId('cl-stock').value='';_byId('${boxId}').style.display='none'">
-      <span class="suggest-icon" style="background:${qtyColor}20;color:${qtyColor}">${s.qty}</span>
-      <span style="flex:1">${badge}${_escHtml(s.name)}</span>
-      <span style="font-size:10px;color:var(--muted)">${meta}</span>
-    </div>`;
-  });
-  if (matches.length === 0) {
-    html += `<div class="client-suggest-add" onmousedown="switchSection('stock')">No matches — go to Stock to add materials</div>`;
-  }
-  box.innerHTML = html;
-  box.style.display = '';
-}
-
-/** @param {number} idx */
-function _clAddPanelFromStock(idx) { const item = stockItems[idx]; if (!item) return; addSheet(item.name, item.w ?? undefined, item.h ?? undefined, Math.max(1, item.qty ?? 0)); _toast('"'+item.name+'" added to panels', 'success'); }
-
-/** @param {number} idx */
-function _clAddEdgeBandFromStockIdx(idx) {
-  /** @type {any} */
-  const s = stockItems[idx];
-  if (!s) return;
-  const exists = edgeBands.find(eb => eb.name === s.name);
-  if (exists) { _toast(`${s.name} already in project`, 'error'); return; }
-  /** @type {any} */
-  const vd = _svGet(s.id) || {};
-  const thickness = vd.thickness ?? s.thickness ?? 0;
-  const width = vd.width ?? s.width ?? s.h ?? 0;
-  const length = vd.length ?? s.length ?? s.w ?? 0;
-  const glue = vd.glue || s.glue || '';
-  addEdgeBand(s.name, thickness, width, null, length, glue);
-  _toast(`Added ${s.name}`, 'success');
-}
-
-// ── Cut List Cabinet Library ──
-/** @param {HTMLInputElement} input @param {string} boxId */
-function _smartCLCabinetSuggest(input, boxId) {
-  const box = _byId(boxId);
-  if (!box) return;
-  _posSuggest(input, box);
-  const q = input.value.trim().toLowerCase();
-  const cur = window.currency;
-  const matches = q ? cbLibrary.filter(c => (c._libName||c.name||'').toLowerCase().includes(q)) : cbLibrary;
-  let html = '';
-  matches.slice(0, 8).forEach(c => {
-    const idx = cbLibrary.indexOf(c);
-    const partCount = _cabinetPartCount(c);
-    html += `<div class="client-suggest-item" onmousedown="_clLoadCabinetParts(${idx});_byId('cl-cabinet-search').value='';_byId('${boxId}').style.display='none'">
-      <span class="suggest-icon" style="background:var(--accent-dim);color:var(--accent)">C</span>
-      <span style="flex:1">${_escHtml(c._libName||c.name||'Cabinet')}</span>
-      <span style="font-size:10px;color:var(--muted)">${c.w}×${c.h} · ${partCount} parts</span>
-    </div>`;
-  });
-  html += `<div class="client-suggest-add" onmousedown="_clSaveToCabinetLibrary()">+ Save current cut parts to library</div>`;
-  box.innerHTML = html;
-  box.style.display = matches.length || q ? '' : 'none';
-}
-
-// Count how many cut parts a cabinet would produce
-/** @param {any} cab */
-function _cabinetPartCount(cab) {
-  let n = 4; // 2 sides + top + bottom
-  if (cab.backMat) n++; // back panel
-  n += (cab.doors || 0);
-  n += (cab.drawers || 0) * 2; // front + box per drawer
-  n += (cab.shelves || 0) + (cab.adjShelves || 0) + (cab.looseShelves || 0);
-  n += (cab.partitions || 0) + (cab.endPanels || 0);
-  return n;
-}
-
-// Build the list of parts a cabinet explodes into — pure data, no side effects.
-/** @param {any} cab */
-function _cabinetPartsList(cab) {
-  const W = cab.w, H = cab.h, D = cab.d;
-  const T = 18;
-  const iW = Math.max(0, W - 2*T);
-  const mat = cab.material || '';
-  const backMat = cab.backMat || mat;
-  const name = cab._libName || cab.name || 'Cabinet';
-  /** @type {Array<{label: string, w: number, h: number, qty: number, grain: string}>} */
-  const parts = [];
-  /** @param {string} label @param {number} w @param {number} h @param {number} qty */
-  const add = (label, w, h, qty) => parts.push({ label, w, h, qty, grain: 'none' });
-
-  add(name + ' — Side', H, D, 2);
-  add(name + ' — Top/Bottom', iW, D, 2);
-  if (backMat) add(name + ' — Back', W, H, 1);
-
-  if (cab.doors > 0) {
-    const doorPct = (cab.doorPct || 95) / 100;
-    const doorH = Math.round(H * doorPct);
-    const doorW = Math.round(iW / Math.max(1, cab.doors));
-    add(name + ' — Door', doorW, doorH, cab.doors);
-  }
-  if (cab.drawers > 0) {
-    const drwPct = (cab.drawerPct || 85) / 100;
-    const drwH = Math.round((H * drwPct) / cab.drawers);
-    add(name + ' — Drawer Front', iW, drwH, cab.drawers);
-    const boxH = drwH - 20;
-    const boxD = D - 40;
-    add(name + ' — Drawer Side', boxD, boxH, cab.drawers * 2);
-    add(name + ' — Drawer F/B', Math.max(0, iW - 2*T), boxH, cab.drawers * 2);
-    add(name + ' — Drawer Base', Math.max(0, iW - 2*T), boxD, cab.drawers);
-  }
-  const shelfCount = (cab.shelves||0) + (cab.adjShelves||0) + (cab.looseShelves||0);
-  if (shelfCount > 0) add(name + ' — Shelf', iW, D - T, shelfCount);
-  if (cab.partitions > 0) add(name + ' — Partition', H, D, cab.partitions);
-  if (cab.endPanels > 0) add(name + ' — End Panel', H, D, cab.endPanels);
-  return parts;
-}
-
-// Apply a built parts list to the cut list under a chosen merge strategy:
-//   'merge' — identical parts (same label + w + h + grain) bump existing qty;
-//             non-matching parts are appended as new rows.
-//   'new'   — every part becomes a new row (prior behaviour).
-// Extra fields on the part (material, notes, edgeBand) are carried onto newly-added pieces.
-/** @param {any[]} parts @param {string} mode */
-function _applyCabinetParts(parts, mode) {
-  /** @param {any} p */
-  const key = p => `${p.label}|${p.w}|${p.h}|${p.grain||'none'}`;
-  /** @param {any} src */
-  const applyExtras = (src) => {
-    const last = pieces[pieces.length - 1];
-    if (!last) return;
-    if (src.material !== undefined) last.material = src.material || '';
-    if (src.notes    !== undefined) last.notes    = src.notes    || '';
-    if (src.edgeBand !== undefined) last.edgeBand = src.edgeBand || 'none';
-  };
-  let merged = 0, added = 0;
-  if (mode === 'merge') {
-    const idx = new Map();
-    pieces.forEach(p => idx.set(key(p), p));
-    for (const c of parts) {
-      const hit = idx.get(key(c));
-      if (hit) { hit.qty = (hit.qty || 0) + c.qty; merged++; }
-      else { addPiece(c.label, c.w, c.h, c.qty, c.grain); applyExtras(c); added++; }
-    }
-  } else {
-    for (const c of parts) { addPiece(c.label, c.w, c.h, c.qty, c.grain); applyExtras(c); added++; }
-  }
-  renderPieces();
-  return { merged, added };
-}
-
-// Prompt user to merge or add-as-new when a parts list has duplicates in the cut list.
-// If there are no duplicates, parts are added straight away with no prompt.
-/** @param {any[]} parts @param {string} name */
-function _clPromptMergeOrNew(parts, name) {
-  /** @param {any} p */
-  const key = p => `${p.label}|${p.w}|${p.h}|${p.grain||'none'}`;
-  const existing = new Set(pieces.map(key));
-  const dupCount = parts.filter(/** @param {any} c */ c => existing.has(key(c))).length;
-
-  /** @param {string} mode */
-  const finish = (mode) => {
-    const r = _applyCabinetParts(parts, mode);
-    const suffix = r.merged
-      ? `${r.merged} merged, ${r.added} added`
-      : `${r.added} parts added`;
-    _toast(`"${name}" — ${suffix}`, 'success');
-  };
-
-  if (dupCount === 0) { finish('new'); return; }
-
-  _openPopup(`
-    <div class="popup-header">
-      <div class="popup-title">Identical parts already in cut list</div>
-      <button class="popup-close" onclick="_closePopup()">×</button>
-    </div>
-    <div class="popup-body">
-      <p style="margin:0 0 10px 0;line-height:1.5">
-        <strong>${dupCount}</strong> of the ${parts.length} parts in <strong>${_escHtml(name)}</strong>
-        match existing rows in your cut list (same label &amp; dimensions).
-      </p>
-      <p style="margin:0;color:var(--muted);font-size:12px;line-height:1.5">
-        Merging bumps the quantity on existing rows. Adding as new keeps them separate.
-      </p>
-    </div>
-    <div class="popup-footer">
-      <button class="btn btn-outline" id="cl-cab-cancel">Cancel</button>
-      <button class="btn btn-outline" id="cl-cab-new">Add as new</button>
-      <button class="btn btn-primary" id="cl-cab-merge">Merge quantities</button>
-    </div>
-  `, 'sm');
-  /** @type {HTMLElement} */ (_byId('cl-cab-cancel')).onclick = () => _closePopup();
-  /** @type {HTMLElement} */ (_byId('cl-cab-new')).onclick   = () => { _closePopup(); finish('new');   };
-  /** @type {HTMLElement} */ (_byId('cl-cab-merge')).onclick = () => { _closePopup(); finish('merge'); };
-}
-
-// Explode a saved cabinet into individual cut list pieces.
-// If any parts match existing cut-list rows, prompt the user to merge or add as new.
-/** @param {number} libIdx */
-function _clLoadCabinetParts(libIdx) {
-  const cab = cbLibrary[libIdx];
-  if (!cab) return;
-  const name = cab._libName || cab.name || 'Cabinet';
-  _clPromptMergeOrNew(_cabinetPartsList(cab), name);
-}
-
-// Save current cut parts as a cabinet library entry
-function _clSaveToCabinetLibrary() {
-  if (!pieces.length) { _toast('No cut parts to save', 'error'); return; }
-  const projName = _byId('cl-project')?.value?.trim() || '';
-  const defaultName = projName || `Cut List ${new Date().toLocaleDateString()}`;
-  _openPopup(`
-    <div class="popup-header">
-      <div class="popup-title">Save to Cabinet Library</div>
-      <button class="popup-close" onclick="_closePopup()">×</button>
-    </div>
-    <div class="popup-body">
-      <div class="pf"><label class="pf-label">Template Name</label><input class="pf-input pf-input-lg" id="pcl-name" value="${_escHtml(defaultName)}"></div>
-      <div style="font-size:11px;color:var(--muted);margin-top:4px">${pieces.length} cut parts will be saved as a reusable template.</div>
-    </div>
-    <div class="popup-footer">
-      <button class="btn btn-outline" onclick="_closePopup()">Cancel</button>
-      <button class="btn btn-accent" onclick="_confirmSaveCLToCabLib()">Save Template</button>
-    </div>
-  `, 'sm');
-  setTimeout(() => { const i = _byId('pcl-name'); if (i) { i.focus(); i.select(); } }, 50);
-}
-
-function _confirmSaveCLToCabLib() {
-  const name = _popupVal('pcl-name');
-  if (!name) { _toast('Name is required', 'error'); return; }
-  // Create a lightweight cabinet library entry that stores cut parts directly
-  /** @type {any} */
-  const entry = cbDefaultLine();
-  entry.id = Date.now();
-  entry._libName = name;
-  entry.name = name;
-  // Store cut parts snapshot
-  entry._cutParts = pieces.filter(p => p.enabled !== false).map(p => ({
-    label: p.label, w: p.w, h: p.h, qty: p.qty, grain: p.grain || 'none', material: p.material || '', notes: p.notes || '', edgeBand: p.edgeBand || 'none'
-  }));
-  // Estimate dims from largest part
-  const maxW = Math.max(...pieces.map(p => Math.max(p.w, p.h)), 600);
-  const maxD = Math.max(...pieces.map(p => Math.min(p.w, p.h)), 560);
-  entry.w = maxW; entry.h = maxW; entry.d = maxD;
-  cbLibrary.push(entry);
-  _closePopup();
-  _toast(`"${name}" saved to cabinet library`, 'success');
-  _saveCabinetToDB(entry).then(id => { if (id) entry.db_id = id; });
-}
-
-// Override _clLoadCabinetParts to also handle entries with _cutParts
-const _clLoadCabinetParts_orig = _clLoadCabinetParts;
-// @ts-expect-error reassigning a function-declared global to extend its behaviour
-_clLoadCabinetParts = function(libIdx) {
-  const cab = cbLibrary[libIdx];
-  if (!cab) return;
-  if (cab._cutParts && cab._cutParts.length) {
-    const name = cab._libName || cab.name || 'Cabinet';
-    _clPromptMergeOrNew(cab._cutParts, name);
-    return;
-  }
-  // Otherwise explode from cabinet dimensions
-  _clLoadCabinetParts_orig(libIdx);
-};
 
 /** @param {any} s */
 function _escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
@@ -2319,16 +685,15 @@ function _escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'
 function printCBQuote(mode) {
   if (!cbLines.length) { _toast('Add cabinet lines first.', 'error'); return; }
   if (mode === 'pdf') {
-    // Build a synthetic quote object for the jsPDF builder
     const gMat = cbLines.reduce((s, l) => s + calcCBLine(l).matCost * l.qty, 0);
     const gLabour = cbLines.reduce((s, l) => s + calcCBLine(l).labourCost * l.qty, 0);
     const cabNotes = cbLines.map(l => {
       const desc = l.name || 'Cabinet';
-      const details = [l.w+'\u00d7'+l.h+'\u00d7'+l.d+'mm', l.material];
+      const details = [l.w+'×'+l.h+'×'+l.d+'mm', l.material];
       if (l.doors > 0) details.push(l.doors + ' door' + (l.doors!==1?'s':''));
       if (l.drawers > 0) details.push(l.drawers + ' drawer' + (l.drawers!==1?'s':''));
       if (l.qty > 1) details.push('x' + l.qty);
-      return desc + ' \u2014 ' + details.join(', ');
+      return desc + ' — ' + details.join(', ');
     }).join('\n');
     _buildQuotePDF({
       id: Date.now(), client: '', project: 'Cabinet Quote',
@@ -2357,10 +722,7 @@ function printCBQuote(mode) {
   const hasRooms = cbLines.some(l => l.room);
   const lineRows = cbLines.map(/** @param {any} line */ (line) => {
     const c = calcCBLine(line);
-    grandMat += c.matCost * line.qty;
-    grandLabour += c.labourCost * line.qty;
-    grandHw += c.hwCost * line.qty;
-    grandSub += c.lineSubtotal;
+    grandMat += c.matCost * line.qty; grandLabour += c.labourCost * line.qty; grandHw += c.hwCost * line.qty; grandSub += c.lineSubtotal;
     lineNum++;
     let roomHeader = '';
     if (hasRooms && line.room !== lastRoom) {
@@ -2386,81 +748,22 @@ function printCBQuote(mode) {
   const grandTotal = afterMarkup + taxAmt;
 
   const pdfHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Quote ${quoteNum} - ${project}</title>
-<style>
-  @page { size:A4; margin:14mm 16mm; }
-  * { margin:0;padding:0;box-sizing:border-box; }
-  body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; color:#111; font-size:12px; line-height:1.5; }
-  .hdr { display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:12px;border-bottom:3px solid #111;margin-bottom:24px; }
-  .biz-name { font-size:18px;font-weight:800;letter-spacing:-.3px; }
-  .biz-contact { font-size:10px;color:#777;margin-top:4px;line-height:1.7; }
-  .doc-right { text-align:right; }
-  .doc-word { font-size:26px;font-weight:200;letter-spacing:3px;text-transform:uppercase;color:#222; }
-  .doc-num { font-size:11px;color:#888;margin-top:4px; }
-  .bill-row { display:flex;gap:40px;margin-bottom:22px; }
-  .bill-block label { font-size:8px;text-transform:uppercase;letter-spacing:.7px;color:#bbb;display:block;margin-bottom:4px;border-bottom:1px solid #eee;padding-bottom:3px; }
-  .bill-block .name { font-size:15px;font-weight:700; }
-  table { width:100%;border-collapse:collapse;margin-bottom:4px; }
-  thead tr { border-bottom:1.5px solid #111; }
-  thead th { font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:#888;padding:6px 10px;text-align:left; }
-  thead th.r { text-align:right; }
-  .total-box { display:flex;justify-content:space-between;align-items:center;background:#111;color:#fff;padding:12px 16px;border-radius:6px;margin-top:8px; }
-  .total-label { font-size:10px;text-transform:uppercase;letter-spacing:1.2px;font-weight:600;opacity:.7; }
-  .total-amount { font-size:24px;font-weight:800;letter-spacing:-.4px; }
-  .breakdown { display:flex;gap:24px;margin-top:14px;padding:12px 16px;background:#f8f8f8;border-radius:6px; }
-  .bd-item { flex:1; }
-  .bd-label { font-size:8px;text-transform:uppercase;letter-spacing:.6px;color:#aaa;margin-bottom:2px; }
-  .bd-val { font-size:14px;font-weight:700; }
-  .notes-box { margin-top:18px;background:#f8f8f8;border-radius:6px;padding:14px 16px; }
-  .notes-box label { font-size:8px;text-transform:uppercase;letter-spacing:.7px;color:#aaa;display:block;margin-bottom:6px; }
-  .notes-box p { font-size:12px;color:#333;line-height:1.6; }
-  .validity { margin-top:16px;font-size:10px;color:#aaa; }
-  .acceptance { margin-top:28px;padding-top:16px;border-top:1px solid #e0e0e0; }
-  .acceptance-title { font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:#555;margin-bottom:10px; }
-  .acceptance-text { font-size:11px;color:#777;margin-bottom:18px;line-height:1.5; }
-  .sig-grid { display:grid;grid-template-columns:2fr 1fr;gap:28px; }
-  .sig-field { border-bottom:1.5px solid #ccc;padding-top:28px; }
-  .sig-label { font-size:8px;text-transform:uppercase;letter-spacing:.5px;color:#bbb;margin-top:4px; }
-  .footer { margin-top:30px;display:flex;justify-content:space-between;font-size:8px;color:#ccc;border-top:1px solid #f0f0f0;padding-top:8px; }
-</style></head><body>
-<div class="hdr">
-  <div><div class="biz-name">${biz.name||'Your Business'}</div><div class="biz-contact">${[biz.phone,biz.email,biz.address,biz.abn?'ABN: '+biz.abn:''].filter(Boolean).join('<br>')}</div></div>
-  <div class="doc-right"><div class="doc-word">Quotation</div><div class="doc-num">#${quoteNum} &bull; ${new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}</div></div>
-</div>
-<div class="bill-row">
-  <div class="bill-block"><label>Prepared for</label><div class="name">${_escHtml(client)||'—'}</div></div>
-  <div class="bill-block"><label>Project</label><div class="name" style="font-size:14px">${_escHtml(project)||'—'}</div></div>
-</div>
-<table>
-  <thead><tr><th>#</th><th>Description</th><th style="text-align:center">Qty</th><th class="r">Unit Price</th><th class="r">Total</th></tr></thead>
-  <tbody>${lineRows}</tbody>
-</table>
-<div class="breakdown">
-  <div class="bd-item"><div class="bd-label">Materials</div><div class="bd-val">${fmt0(grandMat)}</div></div>
-  <div class="bd-item"><div class="bd-label">Labour</div><div class="bd-val">${fmt0(grandLabour)}</div></div>
-  <div class="bd-item"><div class="bd-label">Hardware</div><div class="bd-val">${fmt0(grandHw)}</div></div>
-  <div class="bd-item"><div class="bd-label">Subtotal</div><div class="bd-val">${fmt0(grandSub)}</div></div>
-  ${cbSettings.markup>0?'<div class="bd-item"><div class="bd-label">Markup ('+cbSettings.markup+'%)</div><div class="bd-val">+'+fmt0(markupAmt)+'</div></div>':''}
-  ${cbSettings.tax>0?'<div class="bd-item"><div class="bd-label">Tax ('+cbSettings.tax+'%)</div><div class="bd-val">+'+fmt0(taxAmt)+'</div></div>':''}
-</div>
+<style>@page{size:A4;margin:14mm 16mm}*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#111;font-size:12px;line-height:1.5}.hdr{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:12px;border-bottom:3px solid #111;margin-bottom:24px}.biz-name{font-size:18px;font-weight:800;letter-spacing:-.3px}.biz-contact{font-size:10px;color:#777;margin-top:4px;line-height:1.7}.doc-right{text-align:right}.doc-word{font-size:26px;font-weight:200;letter-spacing:3px;text-transform:uppercase;color:#222}.doc-num{font-size:11px;color:#888;margin-top:4px}.bill-row{display:flex;gap:40px;margin-bottom:22px}.bill-block label{font-size:8px;text-transform:uppercase;letter-spacing:.7px;color:#bbb;display:block;margin-bottom:4px;border-bottom:1px solid #eee;padding-bottom:3px}.bill-block .name{font-size:15px;font-weight:700}table{width:100%;border-collapse:collapse;margin-bottom:4px}thead tr{border-bottom:1.5px solid #111}thead th{font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:#888;padding:6px 10px;text-align:left}thead th.r{text-align:right}.total-box{display:flex;justify-content:space-between;align-items:center;background:#111;color:#fff;padding:12px 16px;border-radius:6px;margin-top:8px}.total-label{font-size:10px;text-transform:uppercase;letter-spacing:1.2px;font-weight:600;opacity:.7}.total-amount{font-size:24px;font-weight:800;letter-spacing:-.4px}.breakdown{display:flex;gap:24px;margin-top:14px;padding:12px 16px;background:#f8f8f8;border-radius:6px}.bd-item{flex:1}.bd-label{font-size:8px;text-transform:uppercase;letter-spacing:.6px;color:#aaa;margin-bottom:2px}.bd-val{font-size:14px;font-weight:700}.validity{margin-top:16px;font-size:10px;color:#aaa}.acceptance{margin-top:28px;padding-top:16px;border-top:1px solid #e0e0e0}.acceptance-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:#555;margin-bottom:10px}.acceptance-text{font-size:11px;color:#777;margin-bottom:18px;line-height:1.5}.sig-grid{display:grid;grid-template-columns:2fr 1fr;gap:28px}.sig-field{border-bottom:1.5px solid #ccc;padding-top:28px}.sig-label{font-size:8px;text-transform:uppercase;letter-spacing:.5px;color:#bbb;margin-top:4px}.footer{margin-top:30px;display:flex;justify-content:space-between;font-size:8px;color:#ccc;border-top:1px solid #f0f0f0;padding-top:8px}</style></head><body>
+<div class="hdr"><div><div class="biz-name">${biz.name||'Your Business'}</div><div class="biz-contact">${[biz.phone,biz.email,biz.address,biz.abn?'ABN: '+biz.abn:''].filter(Boolean).join('<br>')}</div></div><div class="doc-right"><div class="doc-word">Quotation</div><div class="doc-num">#${quoteNum} &bull; ${new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}</div></div></div>
+<div class="bill-row"><div class="bill-block"><label>Prepared for</label><div class="name">${_escHtml(client)||'—'}</div></div><div class="bill-block"><label>Project</label><div class="name" style="font-size:14px">${_escHtml(project)||'—'}</div></div></div>
+<table><thead><tr><th>#</th><th>Description</th><th style="text-align:center">Qty</th><th class="r">Unit Price</th><th class="r">Total</th></tr></thead><tbody>${lineRows}</tbody></table>
+<div class="breakdown"><div class="bd-item"><div class="bd-label">Materials</div><div class="bd-val">${fmt0(grandMat)}</div></div><div class="bd-item"><div class="bd-label">Labour</div><div class="bd-val">${fmt0(grandLabour)}</div></div><div class="bd-item"><div class="bd-label">Hardware</div><div class="bd-val">${fmt0(grandHw)}</div></div><div class="bd-item"><div class="bd-label">Subtotal</div><div class="bd-val">${fmt0(grandSub)}</div></div>${cbSettings.markup>0?'<div class="bd-item"><div class="bd-label">Markup ('+cbSettings.markup+'%)</div><div class="bd-val">+'+fmt0(markupAmt)+'</div></div>':''}${cbSettings.tax>0?'<div class="bd-item"><div class="bd-label">Tax ('+cbSettings.tax+'%)</div><div class="bd-val">+'+fmt0(taxAmt)+'</div></div>':''}</div>
 <div class="total-box"><div class="total-label">Total Amount Due</div><div class="total-amount">${fmt0(grandTotal)}</div></div>
-${cbSettings.deposit > 0 && cbSettings.deposit < 100 ? `<div style="display:flex;gap:20px;margin-top:8px;padding:10px 16px;background:#f0f7ff;border:1px solid #c8ddf5;border-radius:6px">
-  <div><div style="font-size:8px;text-transform:uppercase;letter-spacing:.6px;color:#6b8db5;margin-bottom:1px">Deposit Required (${cbSettings.deposit}%)</div><div style="font-size:16px;font-weight:800">${fmt0(grandTotal * cbSettings.deposit / 100)}</div></div>
-  <div><div style="font-size:8px;text-transform:uppercase;letter-spacing:.6px;color:#6b8db5;margin-bottom:1px">Balance on Completion</div><div style="font-size:16px;font-weight:800">${fmt0(grandTotal * (1 - cbSettings.deposit / 100))}</div></div>
-</div>` : ''}
+${cbSettings.deposit > 0 && cbSettings.deposit < 100 ? `<div style="display:flex;gap:20px;margin-top:8px;padding:10px 16px;background:#f0f7ff;border:1px solid #c8ddf5;border-radius:6px"><div><div style="font-size:8px;text-transform:uppercase;letter-spacing:.6px;color:#6b8db5;margin-bottom:1px">Deposit Required (${cbSettings.deposit}%)</div><div style="font-size:16px;font-weight:800">${fmt0(grandTotal * cbSettings.deposit / 100)}</div></div><div><div style="font-size:8px;text-transform:uppercase;letter-spacing:.6px;color:#6b8db5;margin-bottom:1px">Balance on Completion</div><div style="font-size:16px;font-weight:800">${fmt0(grandTotal * (1 - cbSettings.deposit / 100))}</div></div></div>` : ''}
 ${notes?'<div class="notes-box"><label>Scope &amp; Notes</label><p>'+_escHtml(notes).replace(/\\n/g,'<br>')+'</p></div>':''}
-<div class="validity">This quote is valid for 30 days from the date of issue. Prices are subject to change after this period.${cbSettings.deposit > 0 && cbSettings.deposit < 100 ? ' A deposit of ' + cbSettings.deposit + '% is required upon acceptance to commence work.' : ''}</div>
-<div class="acceptance">
-  <div class="acceptance-title">Acceptance</div>
-  <div class="acceptance-text">To accept this quotation, please sign below and return a copy to ${biz.name||'us'}${biz.email?' at '+biz.email:''}.</div>
-  <div class="sig-grid"><div><div class="sig-field"></div><div class="sig-label">Client Signature</div></div><div><div class="sig-field"></div><div class="sig-label">Date</div></div></div>
-</div>
+<div class="validity">This quote is valid for 30 days from the date of issue.${cbSettings.deposit > 0 && cbSettings.deposit < 100 ? ' A deposit of ' + cbSettings.deposit + '% is required upon acceptance.' : ''}</div>
+<div class="acceptance"><div class="acceptance-title">Acceptance</div><div class="acceptance-text">To accept this quotation, please sign below and return a copy to ${biz.name||'us'}${biz.email?' at '+biz.email:''}.</div><div class="sig-grid"><div><div class="sig-field"></div><div class="sig-label">Client Signature</div></div><div><div class="sig-field"></div><div class="sig-label">Date</div></div></div></div>
 <div class="footer"><span>${biz.name||'ProCabinet'} — Generated by ProCabinet.App</span><span>${new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})}</span></div>
 </body></html>`;
 
   _saveAsPDF(pdfHtml);
 }
 
-// ── Copy summary to clipboard ──
 function copyCBSummary() {
   if (!cbLines.length) { _toast('No items to copy.', 'error'); return; }
   const cur = window.currency;
@@ -2479,9 +782,7 @@ function copyCBSummary() {
 
   const text = [
     client || project ? `${client}${project ? ' — ' + project : ''}` : 'Cabinet Quote',
-    '─'.repeat(30),
-    ...lineTexts,
-    '─'.repeat(30),
+    '─'.repeat(30), ...lineTexts, '─'.repeat(30),
     `Subtotal: ${cur}${Math.round(grandSub)}`,
     cbSettings.markup > 0 ? `Markup (${cbSettings.markup}%): +${cur}${Math.round(markupAmt)}` : '',
     cbSettings.tax > 0 ? `Tax (${cbSettings.tax}%): +${cur}${Math.round(taxAmt)}` : '',
@@ -2492,7 +793,6 @@ function copyCBSummary() {
   navigator.clipboard.writeText(text).then(() => _toast('Summary copied to clipboard', 'success')).catch(() => _toast('Copy failed', 'error'));
 }
 
-// ── Send to Quick Quote ──
 function cbSendToQuickQuote() {
   if (!cbLines.length) { _toast('Add cabinet lines first.', 'error'); return; }
   const grandSub = cbLines.reduce((s, l) => s + calcCBLine(l).lineSubtotal, 0);
@@ -2500,7 +800,6 @@ function cbSendToQuickQuote() {
   const labourTotal = cbLines.reduce((s, l) => s + calcCBLine(l).labourCost * l.qty, 0);
   const client = _byId('cb-client')?.value?.trim() || '';
   const project = _byId('cb-project')?.value?.trim() || '';
-
   /** @param {string} id */
   const inp = id => /** @type {HTMLInputElement} */ (_byId(id));
   inp('q-client').value = client;
@@ -2512,32 +811,13 @@ function cbSendToQuickQuote() {
   inp('q-markup').value = String(cbSettings.markup);
   inp('q-tax').value = String(cbSettings.tax);
   inp('q-notes').value = 'Cabinet Quote: ' + cbLines.map(l => (l.name || 'Cabinet') + (l.qty > 1 ? ' x' + l.qty : '')).join(', ');
-
   switchSection('quote');
   try { _updateQuotePreview(); } catch(e) {}
   _toast('Sent to Quote — review and create', 'success');
 }
 
-// ── Duplicate saved quote ──
-/** @param {number} idx */
-function dupCBSavedQuote(idx) {
-  const src = cbSavedQuotes[idx];
-  if (!src) return;
-  const copy = JSON.parse(JSON.stringify(src));
-  copy.id = Date.now();
-  copy.client = src.client + ' (copy)';
-  copy.date = new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
-  cbSavedQuotes.unshift(copy);
-  saveCBSaved();
-  renderCBSavedShelf();
-  _toast('Quote duplicated', 'success');
-}
-
-
 // ── Init CB ──
 loadCBSettings();
 loadCBLines();
-loadCBSaved();
-loadCBProjectLibrary();
 loadStockLibraries();
-
+cbScratchpad = cbDefaultLine();

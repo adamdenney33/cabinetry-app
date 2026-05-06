@@ -168,6 +168,10 @@ async function createQuote() {
   const project = inp('q-project').value.trim();
   if (!client || !project) { _toast('Enter client name and project.', 'error'); return; }
   if (!_requireAuth()) return;
+  // Free-tier cap: count only customer-facing quotes (drafts are auto-generated
+  // by the Cabinet Builder and don't count toward the limit).
+  const customerQuotes = quotes.filter(q => !_isDraftQuote(q));
+  if (!_enforceFreeLimit('quotes', customerQuotes.length)) return;
   const hours = parseFloat(inp('q-hours').value) || 0;
   const materials = parseFloat(inp('q-materials').value) || 0;
   const clientId = await resolveClient(client);
@@ -203,12 +207,23 @@ async function removeQuote(id) {
   if (!_requireAuth()) return;
   await _db('quotes').delete().eq('id', id);
   quotes = quotes.filter(q => q.id !== id);
+  // Phase 2 (2.2): if the deleted quote was being edited in the Cabinet Builder,
+  // clear that editing state so the next CB load falls back to the project draft.
+  const editingId = localStorage.getItem('pc_cb_editing_quote_id');
+  if (editingId && parseInt(editingId, 10) === id) {
+    localStorage.removeItem('pc_cb_editing_quote_id');
+    if (typeof cbEditingQuoteId !== 'undefined') {
+      cbEditingQuoteId = null;
+      cbEditingOriginalLines = null;
+    }
+  }
   renderQuoteMain();
 }
 
 /** @param {number} id */
 async function convertQuoteToOrder(id) {
   if (!_requireAuth()) return;
+  if (!_enforceFreeLimit('orders', orders.length)) return;
   const q = quotes.find(q => q.id === id);
   if (!q) return;
   const { error: qErr } = await _db('quotes').update({ status: 'approved' }).eq('id', id);
@@ -325,6 +340,7 @@ function renderQuoteMain() {
         ${q.status !== 'draft' ? `<button class="btn btn-outline" onclick="revertQuoteToDraft(${q.id})" style="color:var(--muted)">↩ Draft</button>` : ''}
         ${(() => { const hasOrder = q.client_id && q.project_id && orders.some(o => o.client_id === q.client_id && o.project_id === q.project_id); return hasOrder ? `<button class="btn btn-outline" onclick="switchSection('orders');window._orderSearch='${_escHtml(quoteProject(q))}';renderOrdersMain()" style="color:var(--success)">✓ View Order</button>` : `<button class="btn btn-outline" onclick="convertQuoteToOrder(${q.id})">→ Order</button>`; })()}
         <span style="flex:1"></span>
+        <button class="btn btn-outline" onclick="editQuoteInCB(${q.id})">Edit</button>
         <button class="btn btn-outline" onclick="duplicateQuote(${q.id})">Copy</button>
         <button class="btn btn-outline" onclick="printQuote(${q.id},'print')">Print</button>
         <button class="btn btn-outline" onclick="printQuote(${q.id},'pdf')">PDF</button>
@@ -948,6 +964,8 @@ ${(() => {
 /** @param {number} id */
 async function duplicateQuote(id) {
   if (!_requireAuth()) return;
+  const customerQuotes = quotes.filter(q => !_isDraftQuote(q));
+  if (!_enforceFreeLimit('quotes', customerQuotes.length)) return;
   const q = quotes.find(q => q.id === id);
   if (!q) return;
   /** @type {any} */

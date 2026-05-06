@@ -265,9 +265,24 @@ async function _migrateCutListProjects(log) {
   _migLog(log, sub, 'OK', 'Migrated ' + totalSheets + ' sheets + ' + totalPieces + ' pieces across ' + projectsTouched + ' projects', projectsTouched);
 }
 
-// Inverse of _cbLineToRow — map a quote_lines row back to the cbLines shape calcCBLine expects.
-// backMat / doorMat default to carcass material (legacy cbLines convention; quote_lines schema only stores `material`).
-/** @param {any} row */
+// ── cbLines ↔ quote_lines boundary converters ──
+//
+// cbLines (in-memory editing shape) and quote_lines (DB row shape) use
+// different field names: camelCase + abbreviated dimensions in cb form,
+// snake_case + `_mm`/`_count`/etc. in DB form. These two functions are the
+// single boundary between the two shapes.
+//
+// Round-trip caveat — cb-only fields lost on save:
+//   • `id`           — local numeric handle, separate from DB primary key
+//   • `backMat`      — back-panel material; DB only stores `material`, so on
+//                      reload backMat falls back to material (carcass)
+//   • `doorMat`      — door material; same fallback pattern as backMat
+// The matching renderCBEditor inputs ("Back Panel", "Door Material") let the
+// user pick distinct values in-session; saving and reloading collapses them
+// to `material`. Future fix would be schema columns `back_material` /
+// `door_material`; not done as part of Phase 4.4.
+
+/** @param {any} row → cbLines line shape */
 function _quoteLineRowToCB(row) {
   return {
     name: row.name || '',
@@ -304,8 +319,7 @@ function _quoteLineRowToCB(row) {
   };
 }
 
-// Helper: convert legacy cbLines line object to a quote_lines row
-/** @param {any} l @param {number} position @param {number} quoteId */
+/** @param {any} l cbLines line @param {number} position @param {number} quoteId → quote_lines row */
 function _cbLineToRow(l, position, quoteId) {
   return {
     quote_id: quoteId, user_id: _userId, position,

@@ -496,6 +496,7 @@ async function addStockItem() {
   const name = inp('stock-name').value.trim();
   if (!name) { _toast('Enter a material name.', 'error'); return; }
   if (!_requireAuth()) return;
+  if (!_enforceFreeLimit('stock', stockItems.length)) return;
   const cat = inp('stock-cat').value.trim();
   const variant = inp('stock-variant').value.trim();
   const isEB = cat === 'Edge Banding';
@@ -684,6 +685,29 @@ function _updateStockBadge() {
   if (low > 0) { badge.textContent = String(low); badge.style.display = ''; }
   else { badge.style.display = 'none'; }
 }
+
+// Per-user collapsed-group state (localStorage; promote to DB if cross-device sync is wanted)
+function _stockGetCollapsed() {
+  try {
+    const key = 'pc_stock_groups_collapsed_' + ((typeof _userId !== 'undefined' && _userId) || '_');
+    return new Set(JSON.parse(localStorage.getItem(key) || '[]'));
+  } catch (e) { return new Set(); }
+}
+/** @param {Set<string>} set */
+function _stockSetCollapsed(set) {
+  try {
+    const key = 'pc_stock_groups_collapsed_' + ((typeof _userId !== 'undefined' && _userId) || '_');
+    localStorage.setItem(key, JSON.stringify([...set]));
+  } catch (e) {}
+}
+/** @param {string} cat */
+function _stockToggleGroup(cat) {
+  const s = _stockGetCollapsed();
+  if (s.has(cat)) s.delete(cat); else s.add(cat);
+  _stockSetCollapsed(s);
+  renderStockMain();
+}
+
 function renderStockMain() {
   _updateStockBadge();
   const cur = window.currency;
@@ -709,7 +733,7 @@ function renderStockMain() {
   filtered.sort((a,b) => ((a.qty ?? 0)<=(a.low ?? 0) ? 0 : 1) - ((b.qty ?? 0)<=(b.low ?? 0) ? 0 : 1));
 
   /** @param {any} item */
-  const stockCardHTML = (item) => {
+  const stockRowHTML = (item) => {
     const isLow = (item.qty ?? 0) <= (item.low ?? 0);
     const u = window.units === 'metric' ? 'mm' : '"';
     const cat = _scGet(item.id);
@@ -717,9 +741,7 @@ function renderStockMain() {
     const vd = _svGet(item.id);
     const isEB = cat === 'Edge Banding';
     const sheetCat = ['Sheet Goods','Solid Timber'].includes(cat);
-    let dims = '';
-    let thk = '';
-    let glue = '';
+    let dims = ''; let thk = ''; let glue = '';
     if (isEB) {
       const t = vd.thickness ?? item.thickness;
       const w = vd.width ?? item.width ?? item.h;
@@ -733,59 +755,88 @@ function renderStockMain() {
     } else {
       thk = vd.thickness ? `${vd.thickness}mm` : '';
     }
-    const subtitle = [vd.variant, thk, item.sku !== '—' ? item.sku : '', dims, glue].filter(Boolean).join(' · ');
+    const variant = vd.variant || glue || '';
+    const sku = item.sku && item.sku !== '—' ? item.sku : '';
+    const unit = isEB ? 'm' : (sheetCat ? 'sheet' : 'unit');
+    return `<tr class="stock-row" onclick="_openStockPopup(${item.id})">
+      <td>
+        <div style="font-weight:600;color:var(--text)">${_escHtml(item.name)}</div>
+        ${sku ? `<div style="font-size:9px;color:var(--muted);margin-top:1px">${_escHtml(sku)}</div>` : ''}
+      </td>
+      <td style="color:var(--text2)">${_escHtml(variant) || '—'}</td>
+      <td style="color:var(--text2)">${_escHtml(dims) || '—'}</td>
+      <td style="color:var(--text2)">${_escHtml(thk) || '—'}</td>
+      <td onclick="event.stopPropagation()">
+        <span class="stock-qpill ${isLow?'low':'ok'}">
+          <input type="text" value="${item.qty}" onclick="this.select()" onblur="setStockQty(${item.id}, this.value)" onkeydown="if(event.key==='Enter')this.blur()">
+        </span>
+      </td>
+      <td style="color:var(--muted)">${item.low ?? 0}</td>
+      <td style="text-align:right;color:var(--text2)">${cur}${item.cost.toFixed(2)}<span style="font-size:9px;color:var(--muted)">/${unit}</span></td>
+      <td style="text-align:right;font-weight:700">${cur}${(item.qty * item.cost).toFixed(0)}</td>
+      <td style="color:var(--text2)">${_escHtml(sup.supplier || '—')}</td>
+      <td onclick="event.stopPropagation()" style="text-align:right;width:90px">
+        <div class="stock-row-actions">
+          <span class="stock-icon-btn" onclick="_openStockPopup(${item.id})" title="Edit">✎</span>
+          <span class="stock-icon-btn" onclick="useStockInCutList(${item.id})" title="+ Cut List">+</span>
+          ${sup.url ? `<a class="stock-icon-btn" href="${_escHtml(sup.url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Reorder${isLow?' (low stock)':''}" style="${isLow?'color:var(--accent);border-color:var(--accent)':''}">↗</a>` : ''}
+        </div>
+      </td>
+    </tr>`;
+  };
+
+  const theadHTML = `<thead><tr>
+    <th style="min-width:160px">Material</th>
+    <th>Variant</th>
+    <th>Dimensions</th>
+    <th>Thickness</th>
+    <th style="width:80px">Qty</th>
+    <th>Low</th>
+    <th style="text-align:right">Unit Cost</th>
+    <th style="text-align:right">Value</th>
+    <th>Supplier</th>
+    <th></th>
+  </tr></thead>`;
+
+  /** @param {string} cat @param {any[]} items @param {boolean} collapsed */
+  const sectionHTML = (cat, items, collapsed) => {
+    const stock = items.reduce((s, i) => s + (i.qty ?? 0), 0);
+    const value = items.reduce((s, i) => s + (i.qty ?? 0) * (i.cost ?? 0), 0);
+    const lowCount = items.filter(i => (i.qty ?? 0) <= (i.low ?? 0)).length;
+    const isEB = cat === 'Edge Banding';
+    const sheetCat = ['Sheet Goods','Solid Timber'].includes(cat);
     const unitLabel = isEB ? 'metres' : (sheetCat ? 'sheets' : 'units');
-    return `
-    <div class="stock-card" style="display:flex;flex-direction:column;gap:0;padding:0;cursor:pointer;transition:box-shadow .15s${isLow?';border-color:var(--danger);border-left:3px solid var(--danger)':''}" onclick="_openStockPopup(${item.id})" onmouseover="this.style.boxShadow='var(--shadow-md)'" onmouseout="this.style.boxShadow=''">
-      <div style="padding:10px 12px">
-        <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px">
-          <div style="font-size:13px;font-weight:700;color:var(--text);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_escHtml(item.name)}</div>
-          <span class="badge ${isLow ? 'badge-red' : 'badge-green'}" style="flex-shrink:0;font-size:9px;padding:2px 6px">${isLow ? 'Low' : 'OK'}</span>
-        </div>
-        ${subtitle ? `<div style="font-size:10px;color:var(--muted);margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_escHtml(subtitle)}</div>` : ''}
-        ${sup.supplier ? `<div style="font-size:10px;color:var(--text2);margin-bottom:4px">${_escHtml(sup.supplier)}${sup.url ? ' ↗' : ''}</div>` : ''}
-        <div style="display:flex;justify-content:space-between;align-items:center">
-          <div style="display:flex;align-items:center;gap:6px" onclick="event.stopPropagation()">
-            <button class="btn btn-outline" onclick="adjustStock(${item.id},-1)" style="padding:2px 8px;font-size:14px;font-weight:700;line-height:1">−</button>
-            <div style="text-align:center;min-width:32px">
-              <div style="font-size:20px;font-weight:800;color:${isLow?'var(--danger)':'var(--text)'};line-height:1">${item.qty}</div>
-              <div style="font-size:9px;color:var(--muted)">${unitLabel}</div>
-            </div>
-            <button class="btn btn-outline" onclick="adjustStock(${item.id},1)" style="padding:2px 8px;font-size:14px;font-weight:700;line-height:1">+</button>
-          </div>
-          <div style="text-align:right">
-            <div style="font-size:13px;font-weight:700;color:var(--text)">${cur}${(item.qty * item.cost).toFixed(0)}</div>
-            <div style="font-size:9px;color:var(--muted)">${cur}${item.cost.toFixed(2)}/${isEB?'m':(sheetCat?'sheet':'unit')}</div>
-          </div>
+    return `<div class="stock-sheet-wrap${collapsed ? ' collapsed' : ''}">
+      <div class="stock-cat-header" onclick="_stockToggleGroup('${cat.replace(/'/g,"\\'")}')">
+        <span class="stock-grp-chevron">▼</span>
+        <span class="stock-grp-name">${_escHtml(cat)}</span>
+        <span class="stock-grp-count">${items.length} item${items.length !== 1 ? 's' : ''}</span>
+        <div class="stock-grp-stats">
+          ${lowCount ? `<span class="lo">Low: <b>${lowCount} item${lowCount !== 1 ? 's' : ''}</b></span>` : ''}
+          <span>Stock: <b>${stock}</b> ${unitLabel}</span>
+          <span>Value: <b>${cur}${value.toLocaleString('en-US',{maximumFractionDigits:0})}</b></span>
         </div>
       </div>
-      <div style="display:flex;border-top:1px solid var(--border2)" onclick="event.stopPropagation()">
-        <button class="btn btn-outline" onclick="_openStockPopup(${item.id})" style="flex:1;border:0;border-radius:0;padding:6px;font-size:11px;border-right:1px solid var(--border2)">Edit</button>
-        <button class="btn btn-outline" onclick="useStockInCutList(${item.id})" style="flex:1;border:0;border-radius:0;padding:6px;font-size:11px;border-right:1px solid var(--border2)">+ Cut List</button>
-        ${sup.url ? `<a href="${_escHtml(sup.url)}" target="_blank" rel="noopener" class="btn btn-outline" style="flex:1;border:0;border-radius:0;padding:6px;font-size:11px;text-decoration:none;text-align:center;${isLow?'color:var(--accent);font-weight:700':''}">Reorder${isLow?' ↗':''}</a>` : `<button class="btn btn-outline" onclick="_openStockPopup(${item.id})" style="flex:1;border:0;border-radius:0;padding:6px;font-size:11px;opacity:.5">+ Reorder</button>`}
-      </div>
+      ${collapsed ? '' : `<table class="stock-sheet">${theadHTML}<tbody>${items.map(stockRowHTML).join('')}</tbody></table>`}
     </div>`;
   };
 
-  // When viewing "All" and categories exist, group by category
-  const shouldGroup = activeCat === 'All' && usedCats.length > 0 && !q;
-  let cardsHTML = '';
-  if (shouldGroup) {
-    /** @type {Record<string, any[]>} */
-    const grouped = {};
-    filtered.forEach(i => {
-      const c = _scGet(i.id) || 'Uncategorised';
-      if (!grouped[c]) grouped[c] = [];
-      grouped[c].push(i);
-    });
-    const catOrder = [...STOCK_CATS, ...Object.keys(grouped).filter(k => !STOCK_CATS.includes(k) && k !== 'Uncategorised'), 'Uncategorised'];
-    catOrder.forEach(cat => {
-      if (!grouped[cat]) return;
-      cardsHTML += `<div class="stock-cat-group-header">${cat} <span style="font-weight:400;color:var(--muted)">(${grouped[cat].length})</span></div>`;
-      cardsHTML += grouped[cat].map(stockCardHTML).join('');
-    });
-  } else {
-    cardsHTML = filtered.map(stockCardHTML).join('');
+  // Always group by category (each category gets its own table)
+  /** @type {Record<string, any[]>} */
+  const grouped = {};
+  filtered.forEach(i => {
+    const c = _scGet(i.id) || 'Uncategorised';
+    (grouped[c] ||= []).push(i);
+  });
+  const collapsedSet = _stockGetCollapsed();
+  const catOrder = [...STOCK_CATS, ...Object.keys(grouped).filter(k => !STOCK_CATS.includes(k) && k !== 'Uncategorised'), 'Uncategorised'];
+  let sectionsHTML = '';
+  catOrder.forEach(cat => {
+    if (!grouped[cat]) return;
+    sectionsHTML += sectionHTML(cat, grouped[cat], collapsedSet.has(cat));
+  });
+  if (filtered.length === 0 && stockItems.length > 0) {
+    sectionsHTML = `<div style="padding:32px 24px;text-align:center;color:var(--muted);font-size:12px">No items match the current filters.</div>`;
   }
 
   const allCatPills = ['All', ...usedCats, ...(stockItems.some(i => !_scGet(i.id)) ? ['Uncategorised'] : [])];
@@ -812,8 +863,8 @@ function renderStockMain() {
       </div>
     </div>
     ${showCatFilter ? `<div class="stock-cat-filter-bar">${allCatPills.map(c => `<span class="stock-cat-pill${c===activeCat?' active':''}" onclick="window._stockCatFilter='${c}';renderStockMain()">${c}</span>`).join('')}</div>` : ''}
+    <div style="padding:0 24px">${sectionsHTML}</div>
     `}
-    <div class="stock-grid">${cardsHTML}</div>
   </div>`;
 }
 

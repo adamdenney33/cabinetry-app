@@ -342,4 +342,170 @@ See `PLAN.md` for the full build plan and `SPEC.md` for the pre-launch refactor.
 - Auth: email + password via Supabase Auth
 
 
-<!-- last_commit: 278342f -->
+
+---
+
+## [Auto] Session ending 2026-04-30
+
+### Commits
+- Add pre-launch refactor specs and database design docs
+- Pre-launch refactor: migrate data layer to Postgres + split god file
+- Add .gitignore and relocate visual guide build script
+- Tidy: stop tracking .DS_Store, update session log
+- Phase 7 step 1: FK lookup helpers + quote_lines aggregation cache
+- Phase 7 step 2: replace bare client/project text refs with FK lookups
+- Phase 7 step 3: manual quote totals via quote_lines override stub
+- Phase 7 step 4: copy quote_lines to order_lines on convert + duplicate
+- Phase 7 step 5: drop projects.data jsonb fallback path
+- Phase 7 step 6: drop legacy columns, rename projects.data → ui_prefs (irreversible)
+- Phase 7 step 7: SPEC.md and SCHEMA.md status → Implemented
+
+_Auto-logged by SessionEnd hook. Flesh out with context next session if useful._
+
+
+---
+
+## [Auto] Session ending 2026-05-02
+
+### Commits
+- Cleanup step 1: simplify Phase 7 transition fallbacks
+- Cleanup step 2: remove v0.11 library-system stubs and call sites
+- Cleanup step 3: drop _renderLibUI_OLD commented-out block
+- Cleanup step 4: drop unused saveData() no-op
+- Cleanup step 5: refresh CLAUDE.md Stack section post-Phase-6
+- Cleanup step 6: SPEC.md decisions-log entry for dead-code sweep
+- Cabinet cleanup step 1: delete orphan cabItems system
+- Cabinet cleanup step 2: cloud-sync the saved-cabinet library
+- Cabinet cleanup step 3: repoint _migrateCabinets at pc_cq_library
+- Cabinet cleanup step 5: drop pc_cq_library localStorage path
+- Cabinet cleanup step 6: SPEC.md decisions-log entry
+- Item 3 phase A: Vite scaffold (dev server + deployable dist/)
+- Item 3 phase B: replace CDN tags with npm-bundled deps
+- Item 3 phase D: TypeScript toolchain (allowJs, tc-noEmit pass)
+- SPEC.md: log item 3 phases A/B/D
+- Item 3 phase E carve 1: extract Schedule view to src/schedule.js
+- Item 3 phase E carve 2: extract Dashboard view to src/dashboard.js
+- Item 3 phase E carve 3: extract Orders state + view to src/orders.js
+- SPEC.md: log item 3 phase E partial (3 classic-script carves)
+- Item 3 phase E carve 4: extract Quotes state + view to src/quotes.js
+- Item 3 phase E carve 5: extract Local Backup to src/backup.js
+- Item 3 phase E: delete dead ORDER HELPERS stubs
+- Item 3 phase E: move Quote CSV helpers to quotes.js
+- Item 3 phase E: move Order helpers to orders.js
+- Item 3 phase E: dissolve ORDER HELPERS banner
+- Item 3 phase E carve 6: extract Auth helpers to src/auth.js
+- Item 3 phase E carve 7: extract Business info to src/business.js
+- SPEC.md: log item 3 phase E batch (4 carves + dissolve, 12 commits)
+- Item 3 phase E carve 8: extract Stock helpers to src/stock.js
+- Item 3 phase E carve 9: extract Projects panel to src/projects.js
+- Item 3 phase E carve 10: extract Quote form helpers to src/forms.js
+- Item 3 phase E carve 11: extract Clients & projects to src/clients.js
+- SPEC.md: log item 3 phase E v2 batch (4 carves, 4 commits)
+- Item 3 phase E carve 12: extract Settings cluster to src/settings.js
+- Item 3 phase E carve 13: extract STOCK section to src/stock.js
+- Item 3 phase E carve 14: extract QUOTE HELPERS, dissolve into quotes.js + clients.js
+- Item 3 phase E carve 15: extract Cabinet Builder to src/cabinet.js
+- Item 3 phase E carve 16: extract Cutlist to src/cutlist.js
+- SPEC.md: log item 3 phase E v3 batch (5 carves, phase essentially complete)
+- Item 3 phase F.1: enable checkJs + add @ts-nocheck on every src/*.js
+- Item 3 phase F.2: peel back @ts-nocheck on 6 small files + add globals.d.ts
+- Item 3 phase F.3: type _DBBuilder.then() + peel business.js
+- Item 3 phase F.4: peel @ts-nocheck on schedule.js + settings.js
+- Item 3 phase F.5: peel @ts-nocheck on orders, projects, dashboard, migrate
+- Item 3 phase F.6: peel @ts-nocheck on clients.js
+- Item 3 phase F.7: peel app.js + db.js then() returns Promise<T>
+- SPEC.md: log item 3 phase F partial (15/19 files type-checked, 7 commits)
+- Item 3 phase F.8: peel @ts-nocheck on stock/quotes/cabinet/cutlist
+- SPEC.md: log item 3 phase F complete (19/19 files, 8 commits)
+- Item 3 phase G.1: enable strictNullChecks (zero-DOM files clean)
+- Item 3 phase G.1.A.1: peel strictNullChecks on business.js
+- Item 3 phase G.1.A.2: peel strictNullChecks on projects.js
+- Item 3 phase G.1.A.3: peel strictNullChecks on ui.js (non-_byId)
+- Item 3 phase G.1.A.4: peel strictNullChecks on auth.js
+- Item 3 phase G.1.A.5: peel strictNullChecks on settings.js
+- Item 3 phase G.1.A.6: peel strictNullChecks on forms.js
+- Item 3 phase G.1.A.7: peel strictNullChecks on app.js
+- Item 3 phase G.1.A.8: peel strictNullChecks on dashboard.js
+- Item 3 phase G.1.A.9: peel strictNullChecks on schedule.js
+- SPEC.md: log item 3 phase G.1 sub-pass A complete (10 commits)
+- Item 3 phase G.1.B.1: peel e.target.files null in stock/cabinet/quotes
+- Item 3 phase G.1.B.2: peel non-_byId strictNullChecks on cutlist.js
+- Item 3 phase G.1.B.3: narrow _byId + peel cutlist callers
+- Item 3 phase G.1.B.4: peel _byId in quotes.js
+- Item 3 phase G.1.B.5: peel _byId in cabinet.js
+- Item 3 phase G.1.B.6: peel _byId in stock.js
+- SPEC.md: log item 3 phase G.1 sub-pass B complete (G.1 closed)
+- Item 3 phase G.4: Supabase row types via MCP, _DBBuilder<K,Single>
+- Item 3 phase G.2: tighten globals.d.ts Element/EventTarget augs
+- Item 3 phase G.3.1: enable noImplicitAny + annotate cross-file globals
+
+_Auto-logged by SessionEnd hook. Flesh out with context next session if useful._
+
+
+---
+
+## [Auto] Session ending 2026-05-02
+
+### Commits
+- Item 3 phase G.3.2 (1/N): annotate small files for noImplicitAny
+- Item 3 phase G.3.2 (2/N): annotate projects/orders/dashboard
+- Item 3 phase G.3.2 (3/N): annotate clients.js for noImplicitAny
+- Item 3 phase G.3.2 (4/N): annotate migrate.js for noImplicitAny
+- Item 3 phase G.3.2 (5/N): annotate app.js for noImplicitAny
+- Item 3 phase G.3.2 (6/N): annotate quotes.js for noImplicitAny
+- Item 3 phase G.3.2 (7/N): annotate stock.js for noImplicitAny
+- Item 3 phase G.3.2 (8/N): annotate cabinet.js for noImplicitAny
+- Item 3 phase G.3.2 (9/N): annotate cutlist.js for noImplicitAny — clean
+- Item 3 phase G.3.3: flip strict:true + final SPEC § 13 entries
+- Schema-divergence H0.1: add projects.status + projects.description columns
+- Schema-divergence H0.2: hydrate stock_items shadow fields on load
+- Schema-divergence H0.3: drop Date.now() ids from quotes popup inserts
+- Phase H0.4: extract Supabase keys to import.meta.env
+- Phase H0.4: delete dead server.py + npx-serve helper
+- Phase H0.4: refresh CLAUDE.md Stack section with current state
+- Phase H0.4: append SPEC § 13 entry covering all three preflight commits
+- Delete CNAME
+- Phase H1: production cutover to Cloudflare Pages — plan-3 complete
+- Phase H1 follow-up: GitHub Actions auto-deploy to Cloudflare Pages
+- Merge remote-tracking branch 'origin/main'
+- SPEC § 13: log GitHub Actions auto-deploy wiring + gotchas
+- ci: enable Dependabot for actions + use lts/* for Node version
+- ci: opt into Node 24 for action runtimes ahead of GitHub deadline
+- chore: gitignore .vite/ dev cache
+- Cabinet Builder: + button on cabinet-search adds new line, not save-to-library
+- refactor: rename cq* → cb* (Cabinet Builder) across entire codebase
+- SPEC § 13: log cq* → cb* rename decision
+- chore: update cabinet.js header comment — rename is done, not deferred
+
+_Auto-logged by SessionEnd hook. Flesh out with context next session if useful._
+
+
+---
+
+## [Auto] Session ending 2026-05-05
+
+### Commits
+- Item 2 phase 1.1: add draft-quote helpers, hide CB drafts from views
+- Item 2 phase 1.2: dual-write cbLines to draft quote in DB
+- SPEC § 13: log Item 2 phase 1.1 + 1.2
+- Item 2 phase 1.3: load cbLines from DB draft quote on auth
+- dev: add window._signInForTesting() helper for assistant-driven testing
+- Item 2 phase 1.4: auth-gate Cabinet Builder, drop guest support
+- Item 2 phase 1.5: drop localStorage writes for cbLines, DB only
+- SPEC § 13: log Item 2 phase 1.3 + 1.4 + 1.5 (Phase 1 complete)
+- Item 2 phase 3: cbSettings → business_info migration
+- docs: PLAN.md becomes central planning doc
+
+_Auto-logged by SessionEnd hook. Flesh out with context next session if useful._
+
+
+---
+
+## [Auto] Session ending 2026-05-06
+
+### Commits
+- feat: multi-unit format system (decimal, fractional, feet-inches, mm, cm)
+
+_Auto-logged by SessionEnd hook. Flesh out with context next session if useful._
+
+<!-- last_commit: a419aff -->
