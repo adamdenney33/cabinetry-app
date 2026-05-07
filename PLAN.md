@@ -13,7 +13,7 @@ Companion docs: `SPEC.md` (refactor history), `SCHEMA.md` (DB schema),
 - **App is live** at [procabinet.app](https://procabinet.app) (Cloudflare Pages, auto-deploy on push to `main`)
 - **Pre-launch refactor (SPEC.md Phases 0–7)** complete — modular files, TypeScript strict mode, schema normalised
 - **Cabinet Builder unification** (Item 2): all 4 phases done — pre-launch refactor closed
-- **Stripe payments**: not started — blocks free-tier gating + soft launch
+- **Stripe payments**: S.2–S.7 done in test mode (Checkout + Portal + Webhook + DB schema); S.8 verification + S.9 live-mode flip remain
 - **Mobile / responsive**: not started
 - **UI polish + design finalisation**: not started
 - **Launch target:** mid-May 2026 (per Business Plan)
@@ -749,7 +749,7 @@ for visibility.
 | Hosting | Cloudflare Pages — auto-deploy via GitHub Actions on push to `main` (~40s build) | ✅ Done |
 | Domain | procabinet.app (DNS via Cloudflare nameservers; Bot Fight + leaked-creds mitigation on) | ✅ Done |
 | Storage | Supabase Storage (`business-assets` bucket for logos) | ✅ Done |
-| Payments | Stripe | ⬜ Not started |
+| Payments | Stripe | ✅ Test mode shipped (S.2–S.7); live-mode flip pending (S.9) |
 | Email | Supabase auth defaults | ⬜ Needs branding |
 | Analytics | PostHog (in-app) + Cloudflare Web Analytics (marketing) | ⬜ Not started |
 | Error logging | Sentry (free Developer plan) | ⬜ Not started |
