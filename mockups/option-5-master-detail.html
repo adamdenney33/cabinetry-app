@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Option 5 — Master + Detail Pane</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background:#f2f2f2; color:#111; padding:24px; }
+
+  .title-bar { font-size:11px; font-weight:700; color:#888; text-transform:uppercase; letter-spacing:1px; margin-bottom:16px; }
+  .title-bar span { color:#e8a838; }
+
+  .summary { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:16px; }
+  .stat { background:#fff; border:1px solid #e0e0e0; border-radius:10px; padding:12px 16px; }
+  .stat .lbl { font-size:10px; color:#888; text-transform:uppercase; font-weight:700; letter-spacing:.5px; }
+  .stat .val { font-size:22px; font-weight:800; color:#111; margin-top:2px; }
+  .stat .sub { font-size:11px; color:#888; margin-top:1px; }
+  .stat .val.gold { color:#e8a838; }
+
+  /* Two-column workspace */
+  .workspace {
+    display:grid; grid-template-columns: 38% 1fr;
+    gap:14px;
+    background:transparent;
+  }
+
+  /* LEFT: list */
+  .left {
+    background:#fff; border:1px solid #e0e0e0; border-radius:10px;
+    overflow:hidden; box-shadow:0 1px 4px rgba(0,0,0,.04);
+    display:flex; flex-direction:column;
+  }
+  .left-tools {
+    padding:10px 12px;
+    border-bottom:1px solid #ebebeb;
+    display:flex; gap:6px; align-items:center;
+  }
+  .search { padding:6px 10px; border:1px solid #e0e0e0; border-radius:7px; font-size:12px; flex:1; background:#fafafa; }
+  .new-proj-btn {
+    font-size:11px; font-weight:700; padding:6px 12px; border-radius:7px;
+    background:#e8a838; color:#fff; border:none; cursor:pointer;
+  }
+  .filter-row { display:flex; gap:4px; padding:8px 12px; border-bottom:1px solid #ebebeb; flex-wrap:wrap; }
+  .pill { font-size:10px; font-weight:700; padding:3px 9px; border-radius:14px; border:1px solid #e0e0e0; background:#fff; color:#666; cursor:pointer; }
+  .pill.active { background:#111; color:#fff; border-color:#111; }
+
+  .lrow {
+    display:grid;
+    grid-template-columns: 1fr 26px;
+    gap:8px;
+    padding:11px 14px;
+    border-bottom:1px solid #ebebeb;
+    cursor:pointer;
+    transition: background .12s;
+  }
+  .lrow:hover { background:#fafafa; }
+  .lrow.selected { background:#fff8e7; box-shadow: inset 3px 0 0 #e8a838; }
+  .lrow.selected .pname { color:#a87a1f; }
+
+  .lrow-top { display:flex; align-items:center; gap:6px; }
+  .pname { font-size:13px; font-weight:600; color:#111; flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .badge { display:inline-flex; font-size:9px; font-weight:700; padding:2px 7px; border-radius:14px; text-transform:uppercase; letter-spacing:.4px; }
+  .b-active { background:rgba(80,140,220,.12); color:#3878c4; }
+  .b-hold { background:#f0f0f0; color:#666; }
+  .b-done { background:rgba(61,153,112,.14); color:#2c7956; }
+
+  .lrow-bot { font-size:11px; color:#888; display:flex; align-items:center; gap:6px; }
+  .lrow-total { font-size:12px; font-weight:700; color:#111; align-self:center; text-align:right; font-variant-numeric:tabular-nums; }
+  .lrow-total.zero { color:#bbb; font-weight:500; }
+
+  .mini-dots { display:inline-flex; gap:3px; margin-left:auto; }
+  .md { width:6px; height:6px; border-radius:50%; background:#e0e0e0; }
+  .md.on { background:#0d9488; }
+
+  /* RIGHT: detail */
+  .right {
+    background:#fff; border:1px solid #e0e0e0; border-radius:10px;
+    overflow:hidden; box-shadow:0 1px 4px rgba(0,0,0,.04);
+    display:flex; flex-direction:column;
+  }
+
+  .det-head {
+    padding:14px 18px 10px;
+    border-bottom:1px solid #ebebeb;
+    background:linear-gradient(180deg, #fffaf0 0%, #fff 100%);
+  }
+  .det-bc { font-size:10px; color:#888; text-transform:uppercase; font-weight:700; letter-spacing:.5px; margin-bottom:4px; }
+  .det-bc span { color:#e8a838; }
+  .det-title { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .det-name { font-size:18px; font-weight:800; color:#111; }
+  .det-meta { font-size:11px; color:#666; margin-top:6px; display:flex; gap:8px; flex-wrap:wrap; }
+  .det-meta span::after { content:'·'; margin-left:8px; color:#ccc; }
+  .det-meta span:last-child::after { display:none; }
+
+  .det-stats { display:flex; gap:10px; margin-top:12px; }
+  .det-stat {
+    flex:1;
+    border:1px solid #ebebeb; border-radius:7px;
+    padding:8px 12px;
+    background:#fff;
+  }
+  .det-stat .l { font-size:9px; color:#888; text-transform:uppercase; font-weight:700; letter-spacing:.4px; }
+  .det-stat .v { font-size:15px; font-weight:800; color:#111; margin-top:1px; }
+
+  /* Tab strip */
+  .tabs {
+    display:flex; gap:0;
+    padding:0 18px;
+    border-bottom:1px solid #ebebeb;
+    background:#fff;
+  }
+  .tab {
+    padding:10px 14px;
+    font-size:12px; font-weight:700;
+    color:#888;
+    border-bottom:2px solid transparent;
+    cursor:pointer;
+    display:flex; align-items:center; gap:6px;
+    margin-bottom:-1px;
+    transition: all .12s;
+  }
+  .tab svg { width:13px; height:13px; }
+  .tab .ct {
+    font-size:10px; color:#666;
+    background:#f0f0f0;
+    padding:1px 7px; border-radius:10px;
+    font-weight:700;
+  }
+  .tab:hover { color:#111; }
+  .tab.active { color:#e8a838; border-bottom-color:#e8a838; }
+  .tab.active .ct { color:#a87a1f; background:rgba(232,168,56,.18); }
+
+  /* Tab body */
+  .tab-body { padding:14px 18px; flex:1; overflow:auto; }
+  .body-head {
+    display:flex; align-items:center; gap:8px; margin-bottom:10px;
+  }
+  .body-title { font-size:12px; font-weight:800; color:#111; text-transform:uppercase; letter-spacing:.5px; }
+  .body-sub { font-size:11px; color:#888; }
+  .new-btn {
+    margin-left:auto;
+    display:inline-flex; align-items:center; gap:5px;
+    padding:6px 12px;
+    background:#0d9488; color:#fff; border:none; border-radius:6px;
+    font-size:11px; font-weight:700; cursor:pointer;
+    transition: background .12s;
+  }
+  .new-btn:hover { background:#0a7a70; }
+  .new-btn svg { width:11px; height:11px; }
+
+  .item-list { display:flex; flex-direction:column; gap:6px; }
+  .li-row {
+    display:grid; grid-template-columns: 1fr 110px 90px 24px;
+    gap:10px; align-items:center;
+    padding:8px 10px;
+    background:#fafafa;
+    border:1px solid #ebebeb;
+    border-radius:7px;
+    cursor:pointer;
+    transition: all .12s;
+  }
+  .li-row:hover { background:#fff; border-color:#d4d4d4; }
+  .li-name { font-size:12px; font-weight:600; color:#111; }
+  .li-meta { font-size:10px; color:#888; }
+  .li-sub { font-size:10px; color:#888; }
+  .li-val { font-size:12px; font-weight:700; color:#111; text-align:right; font-variant-numeric:tabular-nums; }
+  .li-status { font-size:9px; padding:2px 7px; border-radius:3px; font-weight:700; text-transform:uppercase; letter-spacing:.4px; text-align:center; }
+  .st-sent { background:rgba(232,168,56,.18); color:#a87a1f; }
+  .st-acc  { background:rgba(61,153,112,.18); color:#2c7956; }
+  .st-prog { background:rgba(80,140,220,.18); color:#3878c4; }
+  .li-arrow { color:#bbb; text-align:center; }
+
+  .legend { font-size:10px; color:#aaa; margin-top:10px; padding-left:4px; }
+  .legend .lk { color:#e8a838; font-weight:600; }
+</style>
+</head>
+<body>
+
+<div class="title-bar"><span>Option 5</span> — Master list + detail pane</div>
+
+<div class="summary">
+  <div class="stat"><div class="lbl">Projects</div><div class="val">6</div><div class="sub">4 active · 1 on hold · 1 complete</div></div>
+  <div class="stat"><div class="lbl">Open Quotes</div><div class="val">6</div><div class="sub">across 5 projects</div></div>
+  <div class="stat"><div class="lbl">Quote Value</div><div class="val gold">$170,250</div><div class="sub">5 projects with active quotes</div></div>
+  <div class="stat"><div class="lbl">Booked Orders</div><div class="val">$117,800</div><div class="sub">3 active · 0 pending</div></div>
+</div>
+
+<div class="workspace">
+
+  <!-- LEFT: project list -->
+  <div class="left">
+    <div class="left-tools">
+      <input class="search" placeholder="Search projects…">
+      <button class="new-proj-btn">+ New</button>
+    </div>
+    <div class="filter-row">
+      <button class="pill active">All 6</button>
+      <button class="pill">Active 4</button>
+      <button class="pill">On Hold 1</button>
+      <button class="pill">Complete 1</button>
+    </div>
+
+    <div class="lrow">
+      <div class="lrow-top"><span class="pname">Kitchen Remodel</span><span class="badge b-active">Active</span></div>
+      <div class="lrow-bot">Smith
+        <span class="mini-dots"><span class="md on"></span><span class="md on"></span><span class="md on"></span><span class="md"></span></span>
+      </div>
+      <div class="lrow-total">$42,800</div>
+      <div class="lrow-total" style="color:#bbb">›</div>
+    </div>
+
+    <div class="lrow selected">
+      <div class="lrow-top"><span class="pname">Office Built-ins</span><span class="badge b-active">Active</span></div>
+      <div class="lrow-bot">Acme Corp
+        <span class="mini-dots"><span class="md on"></span><span class="md on"></span><span class="md on"></span><span class="md on"></span></span>
+      </div>
+      <div class="lrow-total">$68,400</div>
+      <div class="lrow-total" style="color:#e8a838">›</div>
+    </div>
+
+    <div class="lrow">
+      <div class="lrow-top"><span class="pname">Master Bath</span><span class="badge b-active">Active</span></div>
+      <div class="lrow-bot">Garcia
+        <span class="mini-dots"><span class="md on"></span><span class="md"></span><span class="md on"></span><span class="md"></span></span>
+      </div>
+      <div class="lrow-total">$18,200</div>
+      <div class="lrow-total" style="color:#bbb">›</div>
+    </div>
+
+    <div class="lrow">
+      <div class="lrow-top"><span class="pname">Pantry Refresh</span><span class="badge b-active">Active</span></div>
+      <div class="lrow-bot">Patel
+        <span class="mini-dots"><span class="md on"></span><span class="md on"></span><span class="md on"></span><span class="md"></span></span>
+      </div>
+      <div class="lrow-total">$9,650</div>
+      <div class="lrow-total" style="color:#bbb">›</div>
+    </div>
+
+    <div class="lrow">
+      <div class="lrow-top"><span class="pname">Bar Cabinet</span><span class="badge b-hold">On Hold</span></div>
+      <div class="lrow-bot">Lee
+        <span class="mini-dots"><span class="md"></span><span class="md"></span><span class="md"></span><span class="md"></span></span>
+      </div>
+      <div class="lrow-total zero">—</div>
+      <div class="lrow-total" style="color:#bbb">›</div>
+    </div>
+
+    <div class="lrow">
+      <div class="lrow-top"><span class="pname">Wine Cellar</span><span class="badge b-done">Done</span></div>
+      <div class="lrow-bot">Brown
+        <span class="mini-dots"><span class="md on"></span><span class="md on"></span><span class="md on"></span><span class="md on"></span></span>
+      </div>
+      <div class="lrow-total">$31,200</div>
+      <div class="lrow-total" style="color:#bbb">›</div>
+    </div>
+  </div>
+
+  <!-- RIGHT: detail pane -->
+  <div class="right">
+    <div class="det-head">
+      <div class="det-bc">Projects <span>›</span> Office Built-ins</div>
+      <div class="det-title">
+        <span class="det-name">Office Built-ins</span>
+        <span class="badge b-active">Active</span>
+      </div>
+      <div class="det-meta">
+        <span>Acme Corp</span>
+        <span>Created Mar 22, 2026</span>
+        <span>Last updated 2 days ago</span>
+        <span>Wall-to-wall executive office storage</span>
+      </div>
+      <div class="det-stats">
+        <div class="det-stat"><div class="l">Cabinets</div><div class="v">12</div></div>
+        <div class="det-stat"><div class="l">Cut Lists</div><div class="v">1</div></div>
+        <div class="det-stat"><div class="l">Quote Value</div><div class="v" style="color:#e8a838">$50,200</div></div>
+        <div class="det-stat"><div class="l">Order Value</div><div class="v">$68,400</div></div>
+      </div>
+    </div>
+
+    <div class="tabs">
+      <div class="tab">
+        <svg viewBox="0 0 16 16"><path d="M2 3h12v10H2z" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="6" cy="8" r="1" fill="currentColor"/><path d="M9 6h3M9 9h3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+        Overview
+      </div>
+      <div class="tab">
+        <svg viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M2 6h12M2 10h12" stroke="currentColor" stroke-width="1.6"/></svg>
+        Cabinets <span class="ct">12</span>
+      </div>
+      <div class="tab">
+        <svg viewBox="0 0 16 16"><circle cx="4" cy="11.5" r="2" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="11.5" r="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M5.5 10L13 2M10.5 10L3 2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        Cut Lists <span class="ct">1</span>
+      </div>
+      <div class="tab active">
+        <svg viewBox="0 0 16 16"><path d="M3 1.5h7l3 3v10H3z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M5 6h6M5 9h6M5 12h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        Quotes <span class="ct">1</span>
+      </div>
+      <div class="tab">
+        <svg viewBox="0 0 16 16"><path d="M2.5 4.5l5.5-2.5 5.5 2.5v7L8 14 2.5 11.5z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M2.5 4.5L8 7l5.5-2.5M8 7v7" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+        Orders <span class="ct">1</span>
+      </div>
+    </div>
+
+    <div class="tab-body">
+      <div class="body-head">
+        <div class="body-title">Quotes</div>
+        <div class="body-sub">1 quote · $50,200 estimated</div>
+        <button class="new-btn">
+          <svg viewBox="0 0 16 16"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          New Quote
+        </button>
+      </div>
+      <div class="item-list">
+        <div class="li-row">
+          <div>
+            <div class="li-name">Q-1042 — Office Built-ins estimate</div>
+            <div class="li-meta">Created Apr 8 · Sent Apr 10 · 12 line items</div>
+          </div>
+          <div class="li-status st-acc">Accepted</div>
+          <div class="li-val">$50,200</div>
+          <div class="li-arrow">›</div>
+        </div>
+      </div>
+
+      <div class="body-head" style="margin-top:18px">
+        <div class="body-title">Recent activity on this project</div>
+      </div>
+      <div class="item-list">
+        <div class="li-row" style="grid-template-columns: 110px 1fr 80px">
+          <div class="li-meta">2 days ago</div>
+          <div class="li-name" style="font-weight:500">Order PO-1042-A status changed to <b>In progress</b></div>
+          <div class="li-val" style="font-weight:500;color:#888">View</div>
+        </div>
+        <div class="li-row" style="grid-template-columns: 110px 1fr 80px">
+          <div class="li-meta">5 days ago</div>
+          <div class="li-name" style="font-weight:500">Quote Q-1042 was <b>accepted</b> by Acme Corp</div>
+          <div class="li-val" style="font-weight:500;color:#888">View</div>
+        </div>
+        <div class="li-row" style="grid-template-columns: 110px 1fr 80px">
+          <div class="li-meta">1 week ago</div>
+          <div class="li-name" style="font-weight:500">Cut list <b>Sheet plan v2</b> exported (PDF)</div>
+          <div class="li-val" style="font-weight:500;color:#888">View</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="legend">Master list on the left, full detail pane on the right with tab strip (Overview · Cabinets · Cut Lists · Quotes · Orders). Each tab body contains the project's items + a prominent <span class="lk">+ New X</span> button. Mini-dots in the list rows preview which artifacts each project has.</div>
+
+</body>
+</html>

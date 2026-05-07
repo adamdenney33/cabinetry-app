@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Option E: Grouped Accordion Rows</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f2f2f2; color: #111; padding: 24px; }
+  .title-bar { font-size: 11px; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px; }
+  .title-bar span { color: #e8a838; }
+
+  .summary { display: flex; gap: 12px; margin-bottom: 16px; }
+  .summary-card { background: #fff; border: 1px solid #e0e0e0; border-radius: 10px; padding: 10px 16px; flex: 1; }
+  .summary-card .label { font-size: 10px; color: #888; text-transform: uppercase; font-weight: 600; }
+  .summary-card .val { font-size: 20px; font-weight: 800; color: #111; }
+  .summary-card .val.warn { color: #e05252; }
+
+  .filters { display: flex; gap: 8px; align-items: center; margin-bottom: 16px; }
+  .search { padding: 6px 12px; border: 1px solid #e0e0e0; border-radius: 8px; font-size: 12px; width: 220px; background: #fff; }
+
+  /* Groups */
+  .group { background: #fff; border: 1px solid #e0e0e0; border-radius: 10px; margin-bottom: 10px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.07); }
+
+  /* Group header */
+  .group-head {
+    display: flex; align-items: center; padding: 10px 14px; gap: 10px;
+    background: #f7f7f7; cursor: pointer; user-select: none; transition: background .1s;
+  }
+  .group-head:hover { background: #f0f0f0; }
+  .group-chevron { font-size: 10px; color: #888; transition: transform .2s; width: 12px; }
+  .group.collapsed .group-chevron { transform: rotate(-90deg); }
+  .group-name { font-size: 12px; font-weight: 700; color: #111; }
+  .group-count { font-size: 10px; color: #888; font-weight: 600; }
+  .group-stats { margin-left: auto; display: flex; gap: 16px; }
+  .group-stat { font-size: 10px; color: #888; }
+  .group-stat b { color: #111; font-weight: 700; }
+  .group-stat.low b { color: #e05252; }
+
+  /* Rows */
+  .group-body { }
+  .group.collapsed .group-body { display: none; }
+
+  .item-row {
+    display: flex; align-items: center; padding: 7px 14px; gap: 8px;
+    border-top: 1px solid #ebebeb; cursor: pointer; transition: background .1s;
+  }
+  .item-row:hover { background: rgba(232,168,56,0.04); }
+
+  /* Status dot */
+  .dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  .dot.ok { background: #3d9970; }
+  .dot.low { background: #e05252; }
+
+  /* Name */
+  .ir-name { font-size: 12px; font-weight: 600; color: #111; width: 160px; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  /* Variant */
+  .ir-variant { font-size: 11px; color: #888; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  /* Qty pill */
+  .ir-qty { display: flex; align-items: center; gap: 3px; flex-shrink: 0; }
+  .qty-pill { font-size: 11px; font-weight: 700; padding: 2px 10px; border-radius: 10px; min-width: 32px; text-align: center; }
+  .qty-pill.ok { background: rgba(61,153,112,0.08); color: #3d9970; }
+  .qty-pill.low { background: rgba(224,82,82,0.08); color: #e05252; }
+  .qty-label { font-size: 9px; color: #aaa; }
+
+  /* Cost */
+  .ir-cost { font-size: 12px; font-weight: 700; color: #111; width: 70px; text-align: right; flex-shrink: 0; }
+
+  /* Expand indicator */
+  .ir-expand { font-size: 10px; color: #ccc; flex-shrink: 0; transition: color .1s; }
+  .item-row:hover .ir-expand { color: #e8a838; }
+
+  /* Expanded detail */
+  .item-detail {
+    display: none; padding: 0 14px 10px 36px;
+    border-top: 1px solid #f0f0f0; background: #fafafa;
+  }
+  .item-detail.open { display: block; }
+  .detail-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px 16px; padding: 10px 0; }
+  .detail-field .df-label { font-size: 9px; color: #888; text-transform: uppercase; font-weight: 600; letter-spacing: .3px; }
+  .detail-field .df-val { font-size: 12px; color: #111; font-weight: 500; margin-top: 1px; }
+  .detail-actions { display: flex; gap: 6px; padding-top: 8px; border-top: 1px solid #ebebeb; }
+  .da-btn { font-size: 11px; font-weight: 600; padding: 5px 14px; border: 1px solid #e0e0e0; border-radius: 6px; background: #fff; color: #444; cursor: pointer; }
+  .da-btn:hover { border-color: #e8a838; color: #e8a838; }
+  .da-btn.primary { background: #e8a838; color: #fff; border-color: #e8a838; }
+  .da-btn.primary:hover { background: #d4962f; }
+</style>
+</head>
+<body>
+<div class="title-bar"><span>Option E</span> — Grouped Accordion Rows</div>
+
+<div class="summary">
+  <div class="summary-card"><div class="label">Materials</div><div class="val">24</div></div>
+  <div class="summary-card"><div class="label">In Stock</div><div class="val">187</div></div>
+  <div class="summary-card"><div class="label">Low Stock</div><div class="val warn">4</div></div>
+  <div class="summary-card"><div class="label">Total Value</div><div class="val">£12,480</div></div>
+</div>
+
+<div class="filters">
+  <input class="search" placeholder="Search materials...">
+</div>
+
+<!-- Sheet Goods -->
+<div class="group">
+  <div class="group-head">
+    <span class="group-chevron">▼</span>
+    <span class="group-name">Sheet Goods</span>
+    <span class="group-count">6 items</span>
+    <div class="group-stats">
+      <span class="group-stat">Stock: <b>57</b> sheets</span>
+      <span class="group-stat">Value: <b>£3,124</b></span>
+    </div>
+  </div>
+  <div class="group-body">
+    <div class="item-row">
+      <span class="dot ok"></span>
+      <span class="ir-name">Birch Plywood</span>
+      <span class="ir-variant">18mm · 2440×1220mm · PLY-18-B</span>
+      <div class="ir-qty"><span class="qty-pill ok">12</span><span class="qty-label">sheets</span></div>
+      <span class="ir-cost">£780</span>
+      <span class="ir-expand">›</span>
+    </div>
+    <div class="item-row">
+      <span class="dot low"></span>
+      <span class="ir-name">Oak Veneer MDF</span>
+      <span class="ir-variant">18mm Oak · 2440×1220mm · MDF-OV-18</span>
+      <div class="ir-qty"><span class="qty-pill low">2</span><span class="qty-label">sheets</span></div>
+      <span class="ir-cost">£170</span>
+      <span class="ir-expand">›</span>
+    </div>
+
+    <!-- Expanded example -->
+    <div class="item-row" style="background:rgba(232,168,56,0.04)">
+      <span class="dot ok"></span>
+      <span class="ir-name">Walnut Plywood</span>
+      <span class="ir-variant">18mm Walnut · 2440×1220mm · PLY-WN-18</span>
+      <div class="ir-qty"><span class="qty-pill ok">8</span><span class="qty-label">sheets</span></div>
+      <span class="ir-cost">£896</span>
+      <span class="ir-expand" style="color:#e8a838;transform:rotate(90deg);display:inline-block">›</span>
+    </div>
+    <div class="item-detail open">
+      <div class="detail-grid">
+        <div class="detail-field"><div class="df-label">Dimensions</div><div class="df-val">2440 × 1220mm</div></div>
+        <div class="detail-field"><div class="df-label">Thickness</div><div class="df-val">18mm</div></div>
+        <div class="detail-field"><div class="df-label">Unit Cost</div><div class="df-val">£112.00/sheet</div></div>
+        <div class="detail-field"><div class="df-label">Low Alert</div><div class="df-val">3 sheets</div></div>
+        <div class="detail-field"><div class="df-label">SKU</div><div class="df-val">PLY-WN-18</div></div>
+        <div class="detail-field"><div class="df-label">Supplier</div><div class="df-val">Premier Panels</div></div>
+        <div class="detail-field"><div class="df-label">Reorder Link</div><div class="df-val" style="color:#e8a838">premierpanels.co.uk ↗</div></div>
+        <div class="detail-field"><div class="df-label">Total Value</div><div class="df-val" style="font-weight:700">£896.00</div></div>
+      </div>
+      <div class="detail-actions">
+        <span class="da-btn">Edit</span>
+        <span class="da-btn">+ Cut List</span>
+        <span class="da-btn primary">Reorder ↗</span>
+      </div>
+    </div>
+
+    <div class="item-row">
+      <span class="dot ok"></span>
+      <span class="ir-name">White Melamine</span>
+      <span class="ir-variant">16mm White · 2440×1220mm · MEL-W-16</span>
+      <div class="ir-qty"><span class="qty-pill ok">15</span><span class="qty-label">sheets</span></div>
+      <span class="ir-cost">£570</span>
+      <span class="ir-expand">›</span>
+    </div>
+    <div class="item-row">
+      <span class="dot ok"></span>
+      <span class="ir-name">Sapele Plywood</span>
+      <span class="ir-variant">12mm · 2440×1220mm · PLY-SAP-12</span>
+      <div class="ir-qty"><span class="qty-pill ok">6</span><span class="qty-label">sheets</span></div>
+      <span class="ir-cost">£288</span>
+      <span class="ir-expand">›</span>
+    </div>
+    <div class="item-row">
+      <span class="dot ok"></span>
+      <span class="ir-name">Anthracite Laminate</span>
+      <span class="ir-variant">18mm U963 · 2440×1220mm · LAM-ANT-18</span>
+      <div class="ir-qty"><span class="qty-pill ok">10</span><span class="qty-label">sheets</span></div>
+      <span class="ir-cost">£420</span>
+      <span class="ir-expand">›</span>
+    </div>
+  </div>
+</div>
+
+<!-- Edge Banding -->
+<div class="group">
+  <div class="group-head">
+    <span class="group-chevron">▼</span>
+    <span class="group-name">Edge Banding</span>
+    <span class="group-count">3 items</span>
+    <div class="group-stats">
+      <span class="group-stat low">Low: <b>2 items</b></span>
+      <span class="group-stat">Value: <b>£76</b></span>
+    </div>
+  </div>
+  <div class="group-body">
+    <div class="item-row">
+      <span class="dot low"></span>
+      <span class="ir-name">Maple Edge Band</span>
+      <span class="ir-variant">1mm × 22mm EVA · 50m roll · EB-MPL-22</span>
+      <div class="ir-qty"><span class="qty-pill low">8</span><span class="qty-label">metres</span></div>
+      <span class="ir-cost">£22</span>
+      <span class="ir-expand">›</span>
+    </div>
+    <div class="item-row">
+      <span class="dot low"></span>
+      <span class="ir-name">Oak Edge Band</span>
+      <span class="ir-variant">0.5mm × 22mm PUR · 100m roll · EB-OAK-22</span>
+      <div class="ir-qty"><span class="qty-pill low">5</span><span class="qty-label">metres</span></div>
+      <span class="ir-cost">£38</span>
+      <span class="ir-expand">›</span>
+    </div>
+    <div class="item-row">
+      <span class="dot ok"></span>
+      <span class="ir-name">White Edge Band</span>
+      <span class="ir-variant">1mm × 22mm EVA · 50m roll · EB-WHT-22</span>
+      <div class="ir-qty"><span class="qty-pill ok">45</span><span class="qty-label">metres</span></div>
+      <span class="ir-cost">£16</span>
+      <span class="ir-expand">›</span>
+    </div>
+  </div>
+</div>
+
+<!-- Hardware -->
+<div class="group">
+  <div class="group-head">
+    <span class="group-chevron">▼</span>
+    <span class="group-name">Hardware</span>
+    <span class="group-count">3 items</span>
+    <div class="group-stats">
+      <span class="group-stat">Stock: <b>268</b> units</span>
+      <span class="group-stat">Value: <b>£434</b></span>
+    </div>
+  </div>
+  <div class="group-body">
+    <div class="item-row">
+      <span class="dot ok"></span>
+      <span class="ir-name">Soft Close Hinges</span>
+      <span class="ir-variant">110° Full Overlay · HW-SC-110</span>
+      <div class="ir-qty"><span class="qty-pill ok">48</span><span class="qty-label">units</span></div>
+      <span class="ir-cost">£154</span>
+      <span class="ir-expand">›</span>
+    </div>
+    <div class="item-row">
+      <span class="dot ok"></span>
+      <span class="ir-name">Drawer Runners</span>
+      <span class="ir-variant">500mm Soft Close · HW-DR-500</span>
+      <div class="ir-qty"><span class="qty-pill ok">20</span><span class="qty-label">units</span></div>
+      <span class="ir-cost">£250</span>
+      <span class="ir-expand">›</span>
+    </div>
+    <div class="item-row">
+      <span class="dot ok"></span>
+      <span class="ir-name">Shelf Supports</span>
+      <span class="ir-variant">5mm Pin, Nickel · HW-SS-5N</span>
+      <div class="ir-qty"><span class="qty-pill ok">200</span><span class="qty-label">units</span></div>
+      <span class="ir-cost">£30</span>
+      <span class="ir-expand">›</span>
+    </div>
+  </div>
+</div>
+
+<!-- Finishing (collapsed example) -->
+<div class="group collapsed">
+  <div class="group-head">
+    <span class="group-chevron">▼</span>
+    <span class="group-name">Finishing</span>
+    <span class="group-count">2 items</span>
+    <div class="group-stats">
+      <span class="group-stat low">Low: <b>1 item</b></span>
+      <span class="group-stat">Value: <b>£237</b></span>
+    </div>
+  </div>
+  <div class="group-body">
+    <div class="item-row">
+      <span class="dot low"></span>
+      <span class="ir-name">Osmo Polyx Oil</span>
+      <span class="ir-variant">Clear Satin 2.5L · FIN-OSMO-3032</span>
+      <div class="ir-qty"><span class="qty-pill low">1</span><span class="qty-label">tin</span></div>
+      <span class="ir-cost">£72</span>
+      <span class="ir-expand">›</span>
+    </div>
+    <div class="item-row">
+      <span class="dot ok"></span>
+      <span class="ir-name">Rubio Monocoat</span>
+      <span class="ir-variant">Pure 350ml · FIN-RMC-350</span>
+      <div class="ir-qty"><span class="qty-pill ok">3</span><span class="qty-label">tins</span></div>
+      <span class="ir-cost">£165</span>
+      <span class="ir-expand">›</span>
+    </div>
+  </div>
+</div>
+</body>
+</html>

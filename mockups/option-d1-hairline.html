@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Option D1 Hairline: Grouped Spreadsheet (Thin Lines)</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f2f2f2; color: #111; padding: 24px; }
+  .title-bar { font-size: 11px; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px; }
+  .title-bar span { color: #e8a838; }
+
+  .summary { display: flex; gap: 12px; margin-bottom: 16px; }
+  .summary-card { background: #fff; border: 1px solid #ededed; border-radius: 10px; padding: 10px 16px; flex: 1; }
+  .summary-card .label { font-size: 10px; color: #888; text-transform: uppercase; font-weight: 600; }
+  .summary-card .val { font-size: 20px; font-weight: 800; color: #111; }
+  .summary-card .val.warn { color: #e05252; }
+
+  .toolbar { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
+  .search { padding: 6px 12px; border: 1px solid #ededed; border-radius: 8px; font-size: 12px; width: 220px; background: #fff; }
+  .tb-btn { font-size: 11px; font-weight: 600; padding: 5px 12px; border: 1px solid #ededed; border-radius: 8px; background: #fff; color: #444; cursor: pointer; }
+  .tb-btn:hover { border-color: #e8a838; color: #e8a838; }
+  .tb-btn.primary { background: #e8a838; color: #fff; border-color: #e8a838; }
+  .tb-sep { width: 1px; height: 20px; background: #ededed; }
+  .pill { font-size: 11px; font-weight: 600; padding: 4px 12px; border-radius: 20px; border: 1px solid #ededed; background: #f7f7f7; color: #444; cursor: pointer; }
+  .pill.active { background: #e8a838; color: #fff; border-color: #e8a838; }
+
+  /* Hairline sheet — matches D3 Hairline */
+  .sheet-wrap {
+    background: #fff; border: 1px solid #ededed; border-radius: 10px; overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+  .sheet { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 12px; }
+  .sheet thead th {
+    background: #fafafa; font-weight: 700; font-size: 10px; text-transform: uppercase;
+    letter-spacing: .5px; color: #666; padding: 10px 10px; text-align: left;
+    border-bottom: 1px solid #f0f0f0; cursor: pointer; user-select: none; white-space: nowrap;
+    transition: background .1s, color .1s;
+  }
+  .sheet thead th:hover { background: #f5edd9; color: #e8a838; }
+  .sheet thead th .sort { font-size: 8px; margin-left: 3px; opacity: 0.5; }
+
+  /* Group header row inside table — softer borders */
+  .grp-row td {
+    background: #f7f7f7 !important; padding: 8px 12px !important;
+    border-bottom: 1px solid #ededed; border-top: 1px solid #ededed;
+    font-weight: 700;
+  }
+  .grp-row .grp-head { display: flex; align-items: center; gap: 8px; }
+  .grp-chevron { font-size: 9px; color: #888; transition: transform .2s; cursor: pointer; }
+  .grp-name { font-size: 11px; color: #111; text-transform: uppercase; letter-spacing: .5px; }
+  .grp-count { font-size: 10px; color: #888; font-weight: 600; }
+  .grp-stats { margin-left: auto; display: flex; gap: 14px; font-size: 10px; color: #888; font-weight: 500; }
+  .grp-stats b { color: #111; font-weight: 700; }
+  .grp-stats .lo b { color: #e05252; }
+
+  .sheet tbody tr.data-row { transition: background .1s; }
+  .sheet tbody tr.data-row:nth-child(even) { background: #fbfbfb; }
+  .sheet tbody tr.data-row:hover { background: rgba(232,168,56,0.05); }
+  .sheet tbody td {
+    padding: 7px 10px; border-bottom: 1px solid #f3f3f3;
+    vertical-align: middle; white-space: nowrap;
+  }
+
+  .chk { width: 14px; height: 14px; accent-color: #e8a838; cursor: pointer; }
+  .chk-col { width: 36px; text-align: center; }
+
+  .qty-pill {
+    font-size: 12px; font-weight: 700; padding: 3px 12px; border-radius: 12px;
+    min-width: 44px; display: inline-block; text-align: center;
+    border: 1px solid transparent; transition: all .1s;
+  }
+  .qty-pill.ok { background: rgba(61,153,112,0.12); color: #3d9970; }
+  .qty-pill.low { background: rgba(224,82,82,0.12); color: #e05252; }
+  .qty-pill:hover { border-color: rgba(0,0,0,0.12); }
+  .qty-pill input { background: transparent; border: none; width: 30px; font-size: 12px; font-weight: 700; color: inherit; text-align: center; font-family: inherit; outline: none; }
+
+  .fw600 { font-weight: 600; }
+  .fw700 { font-weight: 700; }
+  .text-right { text-align: right; }
+  .text-center { text-align: center; }
+  .muted { color: #888; }
+  .row-num { color: #bbb; font-size: 10px; text-align: center; width: 32px; font-variant-numeric: tabular-nums; }
+
+  /* Hover-revealed icon actions */
+  .row-actions-cell { width: 100px; text-align: right; }
+  .row-actions { display: inline-flex; gap: 3px; opacity: 0; transition: opacity .15s; }
+  .data-row:hover .row-actions { opacity: 1; }
+  .icon-btn {
+    width: 26px; height: 26px; border: 1px solid #ededed; border-radius: 6px;
+    background: #fff; font-size: 12px; cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center; color: #666;
+    transition: all .1s;
+  }
+  .icon-btn:hover { border-color: #e8a838; color: #e8a838; background: rgba(232,168,56,0.06); }
+
+  .sheet-footer {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 10px 14px; background: #fbfbfb; font-size: 11px; color: #666;
+    border-top: 1px solid #f3f3f3;
+  }
+  .sheet-footer b { color: #111; font-weight: 700; }
+</style>
+</head>
+<body>
+<div class="title-bar"><span>Option D1 Hairline</span> — Grouped spreadsheet with thin borders (consistent with D3 Hairline)</div>
+
+<div class="summary">
+  <div class="summary-card"><div class="label">Materials</div><div class="val">24</div></div>
+  <div class="summary-card"><div class="label">In Stock</div><div class="val">187</div></div>
+  <div class="summary-card"><div class="label">Low Stock</div><div class="val warn">4</div></div>
+  <div class="summary-card"><div class="label">Total Value</div><div class="val">£12,480</div></div>
+</div>
+
+<div class="toolbar">
+  <input class="search" placeholder="Search materials...">
+  <div class="tb-sep"></div>
+  <span class="pill active">All</span>
+  <span class="pill">Sheet Goods</span>
+  <span class="pill">Edge Banding</span>
+  <span class="pill">Hardware</span>
+  <span class="pill">Finishing</span>
+  <div class="tb-sep"></div>
+  <span class="tb-btn">Export CSV</span>
+  <span class="tb-btn">Import</span>
+  <span class="tb-btn">Print</span>
+  <div style="flex:1"></div>
+  <span class="tb-btn primary">+ Add Material</span>
+</div>
+
+<div class="sheet-wrap">
+<table class="sheet">
+  <thead>
+    <tr>
+      <th class="chk-col"><input type="checkbox" class="chk"></th>
+      <th class="row-num">#</th>
+      <th style="min-width:160px">Material <span class="sort">▼</span></th>
+      <th>SKU</th>
+      <th>Variant / Spec</th>
+      <th>Dimensions</th>
+      <th>Thickness</th>
+      <th class="text-center" style="width:70px">Qty</th>
+      <th>Low</th>
+      <th class="text-right">Unit Cost</th>
+      <th class="text-right">Value</th>
+      <th>Supplier</th>
+      <th class="row-actions-cell"></th>
+    </tr>
+  </thead>
+  <tbody>
+    <!-- Sheet Goods group -->
+    <tr class="grp-row">
+      <td colspan="13">
+        <div class="grp-head">
+          <span class="grp-chevron">▼</span>
+          <span class="grp-name">Sheet Goods</span>
+          <span class="grp-count">6 items</span>
+          <div class="grp-stats">
+            <span>Stock: <b>57</b> sheets</span>
+            <span>Value: <b>£3,124</b></span>
+          </div>
+        </div>
+      </td>
+    </tr>
+    <tr class="data-row">
+      <td class="chk-col"><input type="checkbox" class="chk"></td>
+      <td class="row-num">1</td>
+      <td class="fw600">Birch Plywood</td>
+      <td class="muted">PLY-18-B</td>
+      <td>—</td>
+      <td>2440×1220mm</td>
+      <td>18mm</td>
+      <td class="text-center"><span class="qty-pill ok"><input type="text" value="12"></span></td>
+      <td class="muted">3</td>
+      <td class="text-right">£65.00</td>
+      <td class="text-right fw700">£780</td>
+      <td>Timber Merchant Ltd</td>
+      <td class="row-actions-cell"><div class="row-actions"><span class="icon-btn">✎</span><span class="icon-btn">⊞</span><span class="icon-btn">↗</span></div></td>
+    </tr>
+    <tr class="data-row">
+      <td class="chk-col"><input type="checkbox" class="chk"></td>
+      <td class="row-num">2</td>
+      <td class="fw600">Oak Veneer MDF</td>
+      <td class="muted">MDF-OV-18</td>
+      <td>Oak</td>
+      <td>2440×1220mm</td>
+      <td>18mm</td>
+      <td class="text-center"><span class="qty-pill low"><input type="text" value="2"></span></td>
+      <td class="muted">5</td>
+      <td class="text-right">£85.00</td>
+      <td class="text-right fw700">£170</td>
+      <td>Wood Supplies Co</td>
+      <td class="row-actions-cell"><div class="row-actions"><span class="icon-btn">✎</span><span class="icon-btn">⊞</span><span class="icon-btn">↗</span></div></td>
+    </tr>
+    <tr class="data-row">
+      <td class="chk-col"><input type="checkbox" class="chk"></td>
+      <td class="row-num">3</td>
+      <td class="fw600">Walnut Plywood</td>
+      <td class="muted">PLY-WN-18</td>
+      <td>Walnut</td>
+      <td>2440×1220mm</td>
+      <td>18mm</td>
+      <td class="text-center"><span class="qty-pill ok"><input type="text" value="8"></span></td>
+      <td class="muted">3</td>
+      <td class="text-right">£112.00</td>
+      <td class="text-right fw700">£896</td>
+      <td>Premier Panels</td>
+      <td class="row-actions-cell"><div class="row-actions"><span class="icon-btn">✎</span><span class="icon-btn">⊞</span><span class="icon-btn">↗</span></div></td>
+    </tr>
+    <tr class="data-row">
+      <td class="chk-col"><input type="checkbox" class="chk"></td>
+      <td class="row-num">4</td>
+      <td class="fw600">White Melamine</td>
+      <td class="muted">MEL-W-16</td>
+      <td>White</td>
+      <td>2440×1220mm</td>
+      <td>16mm</td>
+      <td class="text-center"><span class="qty-pill ok"><input type="text" value="15"></span></td>
+      <td class="muted">4</td>
+      <td class="text-right">£38.00</td>
+      <td class="text-right fw700">£570</td>
+      <td>Board Baron</td>
+      <td class="row-actions-cell"><div class="row-actions"><span class="icon-btn">✎</span><span class="icon-btn">⊞</span><span class="icon-btn">↗</span></div></td>
+    </tr>
+    <tr class="data-row">
+      <td class="chk-col"><input type="checkbox" class="chk"></td>
+      <td class="row-num">5</td>
+      <td class="fw600">Sapele Plywood</td>
+      <td class="muted">PLY-SAP-12</td>
+      <td>—</td>
+      <td>2440×1220mm</td>
+      <td>12mm</td>
+      <td class="text-center"><span class="qty-pill ok"><input type="text" value="6"></span></td>
+      <td class="muted">3</td>
+      <td class="text-right">£48.00</td>
+      <td class="text-right fw700">£288</td>
+      <td>Timber Merchant Ltd</td>
+      <td class="row-actions-cell"><div class="row-actions"><span class="icon-btn">✎</span><span class="icon-btn">⊞</span><span class="icon-btn">↗</span></div></td>
+    </tr>
+    <tr class="data-row">
+      <td class="chk-col"><input type="checkbox" class="chk"></td>
+      <td class="row-num">6</td>
+      <td class="fw600">Anthracite Laminate</td>
+      <td class="muted">LAM-ANT-18</td>
+      <td>U963</td>
+      <td>2440×1220mm</td>
+      <td>18mm</td>
+      <td class="text-center"><span class="qty-pill ok"><input type="text" value="10"></span></td>
+      <td class="muted">3</td>
+      <td class="text-right">£42.00</td>
+      <td class="text-right fw700">£420</td>
+      <td>Board Baron</td>
+      <td class="row-actions-cell"><div class="row-actions"><span class="icon-btn">✎</span><span class="icon-btn">⊞</span><span class="icon-btn">↗</span></div></td>
+    </tr>
+
+    <!-- Edge Banding group -->
+    <tr class="grp-row">
+      <td colspan="13">
+        <div class="grp-head">
+          <span class="grp-chevron">▼</span>
+          <span class="grp-name">Edge Banding</span>
+          <span class="grp-count">3 items</span>
+          <div class="grp-stats">
+            <span class="lo">Low: <b>2 items</b></span>
+            <span>Value: <b>£76</b></span>
+          </div>
+        </div>
+      </td>
+    </tr>
+    <tr class="data-row">
+      <td class="chk-col"><input type="checkbox" class="chk"></td>
+      <td class="row-num">7</td>
+      <td class="fw600">Maple Edge Band</td>
+      <td class="muted">EB-MPL-22</td>
+      <td>1mm × 22mm EVA</td>
+      <td>50m roll</td>
+      <td>1mm</td>
+      <td class="text-center"><span class="qty-pill low"><input type="text" value="8"></span></td>
+      <td class="muted">10</td>
+      <td class="text-right">£0.45/m</td>
+      <td class="text-right fw700">£22</td>
+      <td>Edge Supply UK</td>
+      <td class="row-actions-cell"><div class="row-actions"><span class="icon-btn">✎</span><span class="icon-btn">⊞</span><span class="icon-btn">↗</span></div></td>
+    </tr>
+    <tr class="data-row">
+      <td class="chk-col"><input type="checkbox" class="chk"></td>
+      <td class="row-num">8</td>
+      <td class="fw600">Oak Edge Band</td>
+      <td class="muted">EB-OAK-22</td>
+      <td>0.5mm × 22mm PUR</td>
+      <td>100m roll</td>
+      <td>0.5mm</td>
+      <td class="text-center"><span class="qty-pill low"><input type="text" value="5"></span></td>
+      <td class="muted">10</td>
+      <td class="text-right">£0.38/m</td>
+      <td class="text-right fw700">£38</td>
+      <td>Edge Supply UK</td>
+      <td class="row-actions-cell"><div class="row-actions"><span class="icon-btn">✎</span><span class="icon-btn">⊞</span><span class="icon-btn">↗</span></div></td>
+    </tr>
+    <tr class="data-row">
+      <td class="chk-col"><input type="checkbox" class="chk"></td>
+      <td class="row-num">9</td>
+      <td class="fw600">White Edge Band</td>
+      <td class="muted">EB-WHT-22</td>
+      <td>1mm × 22mm EVA</td>
+      <td>50m roll</td>
+      <td>1mm</td>
+      <td class="text-center"><span class="qty-pill ok"><input type="text" value="45"></span></td>
+      <td class="muted">10</td>
+      <td class="text-right">£0.35/m</td>
+      <td class="text-right fw700">£16</td>
+      <td>Edge Supply UK</td>
+      <td class="row-actions-cell"><div class="row-actions"><span class="icon-btn">✎</span><span class="icon-btn">⊞</span><span class="icon-btn">↗</span></div></td>
+    </tr>
+
+    <!-- Hardware group -->
+    <tr class="grp-row">
+      <td colspan="13">
+        <div class="grp-head">
+          <span class="grp-chevron">▼</span>
+          <span class="grp-name">Hardware</span>
+          <span class="grp-count">3 items</span>
+          <div class="grp-stats">
+            <span>Stock: <b>268</b> units</span>
+            <span>Value: <b>£434</b></span>
+          </div>
+        </div>
+      </td>
+    </tr>
+    <tr class="data-row">
+      <td class="chk-col"><input type="checkbox" class="chk"></td>
+      <td class="row-num">10</td>
+      <td class="fw600">Soft Close Hinges</td>
+      <td class="muted">HW-SC-110</td>
+      <td>110° Full Overlay</td>
+      <td>—</td>
+      <td>—</td>
+      <td class="text-center"><span class="qty-pill ok"><input type="text" value="48"></span></td>
+      <td class="muted">10</td>
+      <td class="text-right">£3.20</td>
+      <td class="text-right fw700">£154</td>
+      <td>Hardware Direct</td>
+      <td class="row-actions-cell"><div class="row-actions"><span class="icon-btn">✎</span><span class="icon-btn">⊞</span><span class="icon-btn">↗</span></div></td>
+    </tr>
+    <tr class="data-row">
+      <td class="chk-col"><input type="checkbox" class="chk"></td>
+      <td class="row-num">11</td>
+      <td class="fw600">Drawer Runners</td>
+      <td class="muted">HW-DR-500</td>
+      <td>500mm Soft Close</td>
+      <td>—</td>
+      <td>—</td>
+      <td class="text-center"><span class="qty-pill ok"><input type="text" value="20"></span></td>
+      <td class="muted">5</td>
+      <td class="text-right">£12.50</td>
+      <td class="text-right fw700">£250</td>
+      <td>Hardware Direct</td>
+      <td class="row-actions-cell"><div class="row-actions"><span class="icon-btn">✎</span><span class="icon-btn">⊞</span><span class="icon-btn">↗</span></div></td>
+    </tr>
+    <tr class="data-row">
+      <td class="chk-col"><input type="checkbox" class="chk"></td>
+      <td class="row-num">12</td>
+      <td class="fw600">Shelf Supports</td>
+      <td class="muted">HW-SS-5N</td>
+      <td>5mm Pin, Nickel</td>
+      <td>—</td>
+      <td>—</td>
+      <td class="text-center"><span class="qty-pill ok"><input type="text" value="200"></span></td>
+      <td class="muted">20</td>
+      <td class="text-right">£0.15</td>
+      <td class="text-right fw700">£30</td>
+      <td>Hardware Direct</td>
+      <td class="row-actions-cell"><div class="row-actions"><span class="icon-btn">✎</span><span class="icon-btn">⊞</span><span class="icon-btn">↗</span></div></td>
+    </tr>
+
+    <!-- Finishing group -->
+    <tr class="grp-row">
+      <td colspan="13">
+        <div class="grp-head">
+          <span class="grp-chevron">▼</span>
+          <span class="grp-name">Finishing</span>
+          <span class="grp-count">2 items</span>
+          <div class="grp-stats">
+            <span class="lo">Low: <b>1 item</b></span>
+            <span>Value: <b>£237</b></span>
+          </div>
+        </div>
+      </td>
+    </tr>
+    <tr class="data-row">
+      <td class="chk-col"><input type="checkbox" class="chk"></td>
+      <td class="row-num">13</td>
+      <td class="fw600">Osmo Polyx Oil</td>
+      <td class="muted">FIN-OSMO-3032</td>
+      <td>Clear Satin 2.5L</td>
+      <td>—</td>
+      <td>—</td>
+      <td class="text-center"><span class="qty-pill low"><input type="text" value="1"></span></td>
+      <td class="muted">2</td>
+      <td class="text-right">£72.00</td>
+      <td class="text-right fw700">£72</td>
+      <td>Finishers Ltd</td>
+      <td class="row-actions-cell"><div class="row-actions"><span class="icon-btn">✎</span><span class="icon-btn">⊞</span><span class="icon-btn">↗</span></div></td>
+    </tr>
+    <tr class="data-row">
+      <td class="chk-col"><input type="checkbox" class="chk"></td>
+      <td class="row-num">14</td>
+      <td class="fw600">Rubio Monocoat</td>
+      <td class="muted">FIN-RMC-350</td>
+      <td>Pure 350ml</td>
+      <td>—</td>
+      <td>—</td>
+      <td class="text-center"><span class="qty-pill ok"><input type="text" value="3"></span></td>
+      <td class="muted">1</td>
+      <td class="text-right">£55.00</td>
+      <td class="text-right fw700">£165</td>
+      <td>Finishers Ltd</td>
+      <td class="row-actions-cell"><div class="row-actions"><span class="icon-btn">✎</span><span class="icon-btn">⊞</span><span class="icon-btn">↗</span></div></td>
+    </tr>
+  </tbody>
+</table>
+<div class="sheet-footer">
+  <span><b>14</b> items · 0 selected</span>
+  <span>4 categories · click ▼ to collapse</span>
+  <span>Total Value: <b>£12,480</b></span>
+</div>
+</div>
+</body>
+</html>

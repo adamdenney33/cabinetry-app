@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Option 1 — Compact Rows + Hover Toolbar</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background:#f2f2f2; color:#111; padding:24px; }
+
+  .title-bar { font-size:11px; font-weight:700; color:#888; text-transform:uppercase; letter-spacing:1px; margin-bottom:16px; }
+  .title-bar span { color:#e8a838; }
+
+  .summary { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:16px; }
+  .stat { background:#fff; border:1px solid #e0e0e0; border-radius:10px; padding:12px 16px; }
+  .stat .lbl { font-size:10px; color:#888; text-transform:uppercase; font-weight:700; letter-spacing:.5px; }
+  .stat .val { font-size:22px; font-weight:800; color:#111; margin-top:2px; }
+  .stat .sub { font-size:11px; color:#888; margin-top:1px; }
+  .stat .val.gold { color:#e8a838; }
+
+  .toolbar { display:flex; gap:8px; align-items:center; margin-bottom:14px; flex-wrap:wrap; }
+  .search { padding:7px 12px; border:1px solid #e0e0e0; border-radius:8px; font-size:12px; width:240px; background:#fff; }
+  .pill { font-size:11px; font-weight:600; padding:5px 12px; border-radius:20px; border:1px solid #e0e0e0; background:#fff; color:#444; cursor:pointer; }
+  .pill.active { background:#111; color:#fff; border-color:#111; }
+  .sort { margin-left:auto; font-size:11px; padding:5px 10px; border:1px solid #e0e0e0; border-radius:8px; background:#fff; color:#444; cursor:pointer; }
+
+  .list { background:#fff; border:1px solid #e0e0e0; border-radius:10px; overflow:hidden; box-shadow:0 1px 4px rgba(0,0,0,.05); }
+  .row {
+    display:grid;
+    grid-template-columns: 1.6fr 1fr 90px 110px 120px 28px;
+    align-items:center; gap:14px;
+    padding:11px 16px;
+    border-bottom:1px solid #ebebeb;
+    cursor:pointer;
+    position:relative;
+    transition: background .12s;
+  }
+  .row:last-child { border-bottom:none; }
+  .row:hover { background:#fafafa; }
+
+  .pname { font-size:13px; font-weight:600; color:#111; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .pclient { font-size:12px; color:#666; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .pclient::before { content:'·'; margin-right:6px; color:#ccc; }
+
+  .badge { display:inline-flex; align-items:center; font-size:10px; font-weight:700; padding:3px 9px; border-radius:20px; text-transform:uppercase; letter-spacing:.4px; }
+  .b-active { background:rgba(80,140,220,.12); color:#3878c4; }
+  .b-hold { background:#f0f0f0; color:#666; }
+  .b-done { background:rgba(61,153,112,.14); color:#2c7956; }
+
+  .dots { display:flex; gap:5px; align-items:center; }
+  .dot {
+    width:14px; height:14px; border-radius:4px;
+    display:inline-flex; align-items:center; justify-content:center;
+    color:#cfcfcf; background:#f4f4f4;
+    transition: all .12s;
+  }
+  .dot.on { color:#fff; background:#0d9488; }
+  .dot svg { width:10px; height:10px; }
+
+  .total { font-size:13px; font-weight:700; color:#111; text-align:right; font-variant-numeric:tabular-nums; }
+  .total.zero { color:#bbb; font-weight:500; }
+
+  .chev { color:#bbb; font-size:14px; text-align:center; }
+
+  /* Hover-revealed toolbar slides over the dots column */
+  .actions {
+    position:absolute;
+    right:54px;
+    top:50%;
+    transform: translateY(-50%) translateX(8px);
+    display:flex; gap:4px;
+    background:#fff;
+    padding:4px;
+    border-radius:8px;
+    box-shadow:0 4px 16px rgba(0,0,0,.12);
+    border:1px solid #e0e0e0;
+    opacity:0;
+    pointer-events:none;
+    transition: all .15s;
+  }
+  .row:hover .actions, .row.is-hover .actions { opacity:1; transform: translateY(-50%) translateX(0); pointer-events:auto; }
+  .row:hover .dots, .row.is-hover .dots { opacity:0; }
+
+  .iconbtn {
+    width:28px; height:28px;
+    border:1px solid #e0e0e0; border-radius:6px; background:#fff;
+    display:inline-flex; align-items:center; justify-content:center;
+    color:#666; cursor:pointer; position:relative;
+    transition: all .12s;
+  }
+  .iconbtn:hover { border-color:#e8a838; color:#e8a838; background:#fff8e7; }
+  .iconbtn svg { width:14px; height:14px; }
+  .iconbtn .plus {
+    position:absolute; top:-4px; right:-4px;
+    width:13px; height:13px; border-radius:50%;
+    background:#e8a838; color:#fff;
+    font-size:10px; font-weight:800; line-height:13px; text-align:center;
+  }
+
+  /* Tooltip on hover (title attr would work, but let's keep static visual) */
+  .iconbtn::after {
+    content: attr(data-tip);
+    position:absolute; top:-26px; left:50%; transform:translateX(-50%);
+    background:#111; color:#fff; font-size:10px; font-weight:600;
+    padding:3px 8px; border-radius:4px; white-space:nowrap;
+    opacity:0; pointer-events:none; transition:opacity .1s;
+  }
+  .iconbtn:hover::after { opacity:1; }
+
+  .row .new-pill {
+    position:absolute; left:16px; top:50%; transform:translateY(-50%);
+    background:#e8a838; color:#fff; font-size:9px; font-weight:800;
+    padding:1px 5px; border-radius:3px; opacity:0;
+  }
+
+  .legend { font-size:10px; color:#aaa; margin-top:10px; padding-left:4px; }
+  .legend .lk { color:#0d9488; font-weight:600; }
+</style>
+</head>
+<body>
+
+<div class="title-bar"><span>Option 1</span> — Compact rows + hover-revealed action toolbar</div>
+
+<div class="summary">
+  <div class="stat"><div class="lbl">Projects</div><div class="val">6</div><div class="sub">4 active · 1 on hold · 1 complete</div></div>
+  <div class="stat"><div class="lbl">Open Quotes</div><div class="val">6</div><div class="sub">across 5 projects</div></div>
+  <div class="stat"><div class="lbl">Quote Value</div><div class="val gold">$170,250</div><div class="sub">5 projects with active quotes</div></div>
+  <div class="stat"><div class="lbl">Booked Orders</div><div class="val">$117,800</div><div class="sub">3 active · 0 pending</div></div>
+</div>
+
+<div class="toolbar">
+  <input class="search" placeholder="Search projects…">
+  <button class="pill active">All (6)</button>
+  <button class="pill">Active (4)</button>
+  <button class="pill">On Hold (1)</button>
+  <button class="pill">Complete (1)</button>
+  <select class="sort"><option>Sort: Newest</option><option>Name</option><option>Client</option><option>Value</option></select>
+</div>
+
+<div class="list">
+
+  <!-- Row 1: hover state shown -->
+  <div class="row is-hover">
+    <div>
+      <div class="pname">Kitchen Remodel</div>
+    </div>
+    <div class="pclient">Smith</div>
+    <span class="badge b-active">Active</span>
+    <div class="dots">
+      <span class="dot on" title="8 cabinets"><svg viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M2 6h12M2 10h12" stroke="currentColor" stroke-width="1.6"/></svg></span>
+      <span class="dot on" title="1 cut list"><svg viewBox="0 0 16 16"><circle cx="4" cy="11.5" r="2" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="11.5" r="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M5.5 10L13 2M10.5 10L3 2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span>
+      <span class="dot on" title="2 quotes"><svg viewBox="0 0 16 16"><path d="M3 1.5h7l3 3v10H3z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M5 6h6M5 9h6M5 12h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span>
+      <span class="dot" title="0 orders"><svg viewBox="0 0 16 16"><path d="M2.5 4.5l5.5-2.5 5.5 2.5v7L8 14 2.5 11.5z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M2.5 4.5L8 7l5.5-2.5M8 7v7" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg></span>
+    </div>
+    <div class="total">$42,800</div>
+    <div class="chev">›</div>
+
+    <div class="actions">
+      <button class="iconbtn" data-tip="+ Cabinet"><svg viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M2 6h12M2 10h12" stroke="currentColor" stroke-width="1.6"/></svg><span class="plus">+</span></button>
+      <button class="iconbtn" data-tip="+ Cut List"><svg viewBox="0 0 16 16"><circle cx="4" cy="11.5" r="2" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="11.5" r="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M5.5 10L13 2M10.5 10L3 2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span class="plus">+</span></button>
+      <button class="iconbtn" data-tip="+ Quote"><svg viewBox="0 0 16 16"><path d="M3 1.5h7l3 3v10H3z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M5 6h6M5 9h6M5 12h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span class="plus">+</span></button>
+      <button class="iconbtn" data-tip="+ Order"><svg viewBox="0 0 16 16"><path d="M2.5 4.5l5.5-2.5 5.5 2.5v7L8 14 2.5 11.5z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M2.5 4.5L8 7l5.5-2.5M8 7v7" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg><span class="plus">+</span></button>
+    </div>
+  </div>
+
+  <!-- Row 2 -->
+  <div class="row">
+    <div class="pname">Master Bath</div>
+    <div class="pclient">Garcia</div>
+    <span class="badge b-active">Active</span>
+    <div class="dots">
+      <span class="dot on"><svg viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M2 6h12M2 10h12" stroke="currentColor" stroke-width="1.6"/></svg></span>
+      <span class="dot"><svg viewBox="0 0 16 16"><circle cx="4" cy="11.5" r="2" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="11.5" r="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M5.5 10L13 2M10.5 10L3 2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span>
+      <span class="dot on"><svg viewBox="0 0 16 16"><path d="M3 1.5h7l3 3v10H3z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M5 6h6M5 9h6M5 12h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span>
+      <span class="dot"><svg viewBox="0 0 16 16"><path d="M2.5 4.5l5.5-2.5 5.5 2.5v7L8 14 2.5 11.5z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M2.5 4.5L8 7l5.5-2.5M8 7v7" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg></span>
+    </div>
+    <div class="total">$18,200</div>
+    <div class="chev">›</div>
+  </div>
+
+  <!-- Row 3 -->
+  <div class="row">
+    <div class="pname">Office Built-ins</div>
+    <div class="pclient">Acme Corp</div>
+    <span class="badge b-active">Active</span>
+    <div class="dots">
+      <span class="dot on"><svg viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M2 6h12M2 10h12" stroke="currentColor" stroke-width="1.6"/></svg></span>
+      <span class="dot on"><svg viewBox="0 0 16 16"><circle cx="4" cy="11.5" r="2" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="11.5" r="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M5.5 10L13 2M10.5 10L3 2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span>
+      <span class="dot on"><svg viewBox="0 0 16 16"><path d="M3 1.5h7l3 3v10H3z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M5 6h6M5 9h6M5 12h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span>
+      <span class="dot on"><svg viewBox="0 0 16 16"><path d="M2.5 4.5l5.5-2.5 5.5 2.5v7L8 14 2.5 11.5z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M2.5 4.5L8 7l5.5-2.5M8 7v7" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg></span>
+    </div>
+    <div class="total">$68,400</div>
+    <div class="chev">›</div>
+  </div>
+
+  <!-- Row 4 -->
+  <div class="row">
+    <div class="pname">Bar Cabinet</div>
+    <div class="pclient">Lee</div>
+    <span class="badge b-hold">On Hold</span>
+    <div class="dots">
+      <span class="dot"><svg viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M2 6h12M2 10h12" stroke="currentColor" stroke-width="1.6"/></svg></span>
+      <span class="dot"><svg viewBox="0 0 16 16"><circle cx="4" cy="11.5" r="2" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="11.5" r="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M5.5 10L13 2M10.5 10L3 2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span>
+      <span class="dot"><svg viewBox="0 0 16 16"><path d="M3 1.5h7l3 3v10H3z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M5 6h6M5 9h6M5 12h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span>
+      <span class="dot"><svg viewBox="0 0 16 16"><path d="M2.5 4.5l5.5-2.5 5.5 2.5v7L8 14 2.5 11.5z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M2.5 4.5L8 7l5.5-2.5M8 7v7" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg></span>
+    </div>
+    <div class="total zero">—</div>
+    <div class="chev">›</div>
+  </div>
+
+  <!-- Row 5 -->
+  <div class="row">
+    <div class="pname">Pantry Refresh</div>
+    <div class="pclient">Patel</div>
+    <span class="badge b-active">Active</span>
+    <div class="dots">
+      <span class="dot on"><svg viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M2 6h12M2 10h12" stroke="currentColor" stroke-width="1.6"/></svg></span>
+      <span class="dot on"><svg viewBox="0 0 16 16"><circle cx="4" cy="11.5" r="2" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="11.5" r="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M5.5 10L13 2M10.5 10L3 2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span>
+      <span class="dot on"><svg viewBox="0 0 16 16"><path d="M3 1.5h7l3 3v10H3z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M5 6h6M5 9h6M5 12h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span>
+      <span class="dot"><svg viewBox="0 0 16 16"><path d="M2.5 4.5l5.5-2.5 5.5 2.5v7L8 14 2.5 11.5z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M2.5 4.5L8 7l5.5-2.5M8 7v7" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg></span>
+    </div>
+    <div class="total">$9,650</div>
+    <div class="chev">›</div>
+  </div>
+
+  <!-- Row 6 -->
+  <div class="row">
+    <div class="pname">Wine Cellar</div>
+    <div class="pclient">Brown</div>
+    <span class="badge b-done">Complete</span>
+    <div class="dots">
+      <span class="dot on"><svg viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M2 6h12M2 10h12" stroke="currentColor" stroke-width="1.6"/></svg></span>
+      <span class="dot on"><svg viewBox="0 0 16 16"><circle cx="4" cy="11.5" r="2" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="11.5" r="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M5.5 10L13 2M10.5 10L3 2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span>
+      <span class="dot on"><svg viewBox="0 0 16 16"><path d="M3 1.5h7l3 3v10H3z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M5 6h6M5 9h6M5 12h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span>
+      <span class="dot on"><svg viewBox="0 0 16 16"><path d="M2.5 4.5l5.5-2.5 5.5 2.5v7L8 14 2.5 11.5z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M2.5 4.5L8 7l5.5-2.5M8 7v7" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg></span>
+    </div>
+    <div class="total">$31,200</div>
+    <div class="chev">›</div>
+  </div>
+
+</div>
+
+<div class="legend">Teal squares = artifact exists for project (cabinet · cut list · quote · order). On <span class="lk">hover</span>, dots are replaced by 4 quick-create buttons. Static demo: row 1 shown in hover state.</div>
+
+</body>
+</html>

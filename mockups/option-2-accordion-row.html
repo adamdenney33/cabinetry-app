@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Option 2 — Expandable Row with 4-Section Drawer</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background:#f2f2f2; color:#111; padding:24px; }
+
+  .title-bar { font-size:11px; font-weight:700; color:#888; text-transform:uppercase; letter-spacing:1px; margin-bottom:16px; }
+  .title-bar span { color:#e8a838; }
+
+  .summary { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:16px; }
+  .stat { background:#fff; border:1px solid #e0e0e0; border-radius:10px; padding:12px 16px; }
+  .stat .lbl { font-size:10px; color:#888; text-transform:uppercase; font-weight:700; letter-spacing:.5px; }
+  .stat .val { font-size:22px; font-weight:800; color:#111; margin-top:2px; }
+  .stat .sub { font-size:11px; color:#888; margin-top:1px; }
+  .stat .val.gold { color:#e8a838; }
+
+  .toolbar { display:flex; gap:8px; align-items:center; margin-bottom:14px; flex-wrap:wrap; }
+  .search { padding:7px 12px; border:1px solid #e0e0e0; border-radius:8px; font-size:12px; width:240px; background:#fff; }
+  .pill { font-size:11px; font-weight:600; padding:5px 12px; border-radius:20px; border:1px solid #e0e0e0; background:#fff; color:#444; cursor:pointer; }
+  .pill.active { background:#111; color:#fff; border-color:#111; }
+  .sort { margin-left:auto; font-size:11px; padding:5px 10px; border:1px solid #e0e0e0; border-radius:8px; background:#fff; color:#444; cursor:pointer; }
+
+  .list { background:#fff; border:1px solid #e0e0e0; border-radius:10px; overflow:hidden; box-shadow:0 1px 4px rgba(0,0,0,.05); }
+  .row {
+    display:grid;
+    grid-template-columns: 22px 1.6fr 1fr 90px 110px 120px;
+    align-items:center; gap:14px;
+    padding:11px 16px;
+    border-bottom:1px solid #ebebeb;
+    cursor:pointer;
+    transition: background .12s;
+  }
+  .row:hover { background:#fafafa; }
+
+  .caret { color:#bbb; font-size:11px; transition:transform .15s; user-select:none; }
+  .row.open .caret { transform: rotate(90deg); color:#e8a838; }
+
+  .pname { font-size:13px; font-weight:600; color:#111; }
+  .pclient { font-size:12px; color:#666; }
+
+  .badge { display:inline-flex; font-size:10px; font-weight:700; padding:3px 9px; border-radius:20px; text-transform:uppercase; letter-spacing:.4px; }
+  .b-active { background:rgba(80,140,220,.12); color:#3878c4; }
+  .b-hold { background:#f0f0f0; color:#666; }
+  .b-done { background:rgba(61,153,112,.14); color:#2c7956; }
+
+  .counts { display:flex; gap:8px; font-size:11px; color:#777; align-items:center; }
+  .counts .c { display:inline-flex; align-items:center; gap:4px; }
+  .counts svg { width:11px; height:11px; }
+
+  .total { font-size:13px; font-weight:700; color:#111; text-align:right; font-variant-numeric:tabular-nums; }
+  .total.zero { color:#bbb; font-weight:500; }
+
+  /* DRAWER */
+  .drawer {
+    background:#fafafa;
+    border-bottom:1px solid #ebebeb;
+    border-top:1px solid #ebebeb;
+    display:none;
+  }
+  .row.open + .drawer { display:block; }
+
+  .drawer-grid {
+    display:grid; grid-template-columns:repeat(4,1fr); gap:0;
+    padding:14px 16px;
+  }
+  .col { border-right:1px solid #ebebeb; padding:0 16px; }
+  .col:first-child { padding-left:0; }
+  .col:last-child { border-right:none; padding-right:0; }
+  .col-head {
+    display:flex; align-items:center; gap:6px;
+    font-size:10px; font-weight:800; text-transform:uppercase;
+    letter-spacing:.6px; color:#444; margin-bottom:8px;
+  }
+  .col-head svg { width:12px; height:12px; color:#0d9488; }
+  .col-head .ct { color:#888; font-weight:600; margin-left:auto; }
+
+  .item {
+    display:flex; justify-content:space-between; align-items:center;
+    padding:6px 8px; border-radius:6px;
+    font-size:12px; color:#111; cursor:pointer;
+    margin-bottom:2px;
+  }
+  .item:hover { background:#fff; box-shadow:0 0 0 1px #e0e0e0 inset; }
+  .item .nm { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:140px; }
+  .item .vl { font-size:11px; color:#888; font-variant-numeric:tabular-nums; }
+  .item .st { font-size:9px; padding:1px 5px; border-radius:3px; font-weight:700; text-transform:uppercase; letter-spacing:.4px; }
+  .st-draft { background:#f0f0f0; color:#666; }
+  .st-sent { background:rgba(232,168,56,.18); color:#a87a1f; }
+  .st-paid { background:rgba(61,153,112,.18); color:#2c7956; }
+  .st-prog { background:rgba(80,140,220,.18); color:#3878c4; }
+
+  .empty { font-size:11px; color:#aaa; padding:8px; font-style:italic; }
+
+  .new-btn {
+    display:flex; align-items:center; justify-content:center; gap:6px;
+    width:100%; margin-top:8px;
+    padding:7px 10px;
+    background:#fff; border:1px dashed #d0d0d0; border-radius:6px;
+    font-size:11px; font-weight:700; color:#0d9488;
+    cursor:pointer;
+    transition: all .12s;
+  }
+  .new-btn:hover { border-color:#0d9488; background:#f0fbf9; border-style:solid; }
+  .new-btn svg { width:11px; height:11px; }
+
+  .legend { font-size:10px; color:#aaa; margin-top:10px; padding-left:4px; }
+  .legend .lk { color:#e8a838; font-weight:600; }
+</style>
+</head>
+<body>
+
+<div class="title-bar"><span>Option 2</span> — Expandable row with inline 4-section drawer</div>
+
+<div class="summary">
+  <div class="stat"><div class="lbl">Projects</div><div class="val">6</div><div class="sub">4 active · 1 on hold · 1 complete</div></div>
+  <div class="stat"><div class="lbl">Open Quotes</div><div class="val">6</div><div class="sub">across 5 projects</div></div>
+  <div class="stat"><div class="lbl">Quote Value</div><div class="val gold">$170,250</div><div class="sub">5 projects with active quotes</div></div>
+  <div class="stat"><div class="lbl">Booked Orders</div><div class="val">$117,800</div><div class="sub">3 active · 0 pending</div></div>
+</div>
+
+<div class="toolbar">
+  <input class="search" placeholder="Search projects…">
+  <button class="pill active">All (6)</button>
+  <button class="pill">Active (4)</button>
+  <button class="pill">On Hold (1)</button>
+  <button class="pill">Complete (1)</button>
+  <select class="sort"><option>Sort: Newest</option><option>Name</option><option>Client</option><option>Value</option></select>
+</div>
+
+<div class="list">
+
+  <!-- Row 1: COLLAPSED -->
+  <div class="row">
+    <span class="caret">▸</span>
+    <div><span class="pname">Kitchen Remodel</span></div>
+    <div class="pclient">Smith</div>
+    <span class="badge b-active">Active</span>
+    <div class="counts">
+      <span class="c">8 cab</span><span style="color:#ddd">·</span>
+      <span class="c">1 cl</span><span style="color:#ddd">·</span>
+      <span class="c">2 q</span><span style="color:#ddd">·</span>
+      <span class="c" style="color:#bbb">0 ord</span>
+    </div>
+    <div class="total">$42,800</div>
+  </div>
+
+  <!-- Row 2: OPEN with drawer -->
+  <div class="row open">
+    <span class="caret">▸</span>
+    <div><span class="pname">Office Built-ins</span></div>
+    <div class="pclient">Acme Corp</div>
+    <span class="badge b-active">Active</span>
+    <div class="counts">
+      <span class="c">12 cab</span><span style="color:#ddd">·</span>
+      <span class="c">1 cl</span><span style="color:#ddd">·</span>
+      <span class="c">1 q</span><span style="color:#ddd">·</span>
+      <span class="c">1 ord</span>
+    </div>
+    <div class="total">$68,400</div>
+  </div>
+  <div class="drawer">
+    <div class="drawer-grid">
+      <!-- Cabinets -->
+      <div class="col">
+        <div class="col-head">
+          <svg viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M2 6h12M2 10h12" stroke="currentColor" stroke-width="1.6"/></svg>
+          Cabinets <span class="ct">12</span>
+        </div>
+        <div class="item"><span class="nm">Lower 24" × 4</span><span class="vl">B24</span></div>
+        <div class="item"><span class="nm">Upper 30" × 6</span><span class="vl">W3630</span></div>
+        <div class="item"><span class="nm">Tall pantry × 2</span><span class="vl">T84</span></div>
+        <button class="new-btn"><svg viewBox="0 0 16 16"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> New cabinet</button>
+      </div>
+      <!-- Cut Lists -->
+      <div class="col">
+        <div class="col-head">
+          <svg viewBox="0 0 16 16"><circle cx="4" cy="11.5" r="2" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="11.5" r="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M5.5 10L13 2M10.5 10L3 2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          Cut Lists <span class="ct">1</span>
+        </div>
+        <div class="item"><span class="nm">Sheet plan v2</span><span class="vl">86 pcs</span></div>
+        <div class="empty">No additional plans yet.</div>
+        <button class="new-btn"><svg viewBox="0 0 16 16"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> New cut list</button>
+      </div>
+      <!-- Quotes -->
+      <div class="col">
+        <div class="col-head">
+          <svg viewBox="0 0 16 16"><path d="M3 1.5h7l3 3v10H3z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M5 6h6M5 9h6M5 12h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          Quotes <span class="ct">1</span>
+        </div>
+        <div class="item"><span class="nm">Q-1042 estimate</span><span class="st st-sent">Sent</span></div>
+        <div class="empty">Awaiting client signoff.</div>
+        <button class="new-btn"><svg viewBox="0 0 16 16"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> New quote</button>
+      </div>
+      <!-- Orders -->
+      <div class="col">
+        <div class="col-head">
+          <svg viewBox="0 0 16 16"><path d="M2.5 4.5l5.5-2.5 5.5 2.5v7L8 14 2.5 11.5z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M2.5 4.5L8 7l5.5-2.5M8 7v7" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+          Orders <span class="ct">1</span>
+        </div>
+        <div class="item"><span class="nm">PO-1042-A</span><span class="st st-prog">In prog</span></div>
+        <div class="empty">Delivery week of Jun 12.</div>
+        <button class="new-btn"><svg viewBox="0 0 16 16"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> New order</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Row 3 -->
+  <div class="row">
+    <span class="caret">▸</span>
+    <div><span class="pname">Master Bath</span></div>
+    <div class="pclient">Garcia</div>
+    <span class="badge b-active">Active</span>
+    <div class="counts">
+      <span class="c">4 cab</span><span style="color:#ddd">·</span>
+      <span class="c" style="color:#bbb">0 cl</span><span style="color:#ddd">·</span>
+      <span class="c">1 q</span><span style="color:#ddd">·</span>
+      <span class="c" style="color:#bbb">0 ord</span>
+    </div>
+    <div class="total">$18,200</div>
+  </div>
+
+  <!-- Row 4 -->
+  <div class="row">
+    <span class="caret">▸</span>
+    <div><span class="pname">Bar Cabinet</span></div>
+    <div class="pclient">Lee</div>
+    <span class="badge b-hold">On Hold</span>
+    <div class="counts">
+      <span class="c" style="color:#bbb">0 cab</span><span style="color:#ddd">·</span>
+      <span class="c" style="color:#bbb">0 cl</span><span style="color:#ddd">·</span>
+      <span class="c" style="color:#bbb">0 q</span><span style="color:#ddd">·</span>
+      <span class="c" style="color:#bbb">0 ord</span>
+    </div>
+    <div class="total zero">—</div>
+  </div>
+
+  <!-- Row 5 -->
+  <div class="row">
+    <span class="caret">▸</span>
+    <div><span class="pname">Pantry Refresh</span></div>
+    <div class="pclient">Patel</div>
+    <span class="badge b-active">Active</span>
+    <div class="counts">
+      <span class="c">3 cab</span><span style="color:#ddd">·</span>
+      <span class="c">1 cl</span><span style="color:#ddd">·</span>
+      <span class="c">1 q</span><span style="color:#ddd">·</span>
+      <span class="c" style="color:#bbb">0 ord</span>
+    </div>
+    <div class="total">$9,650</div>
+  </div>
+
+  <!-- Row 6 -->
+  <div class="row">
+    <span class="caret">▸</span>
+    <div><span class="pname">Wine Cellar</span></div>
+    <div class="pclient">Brown</div>
+    <span class="badge b-done">Complete</span>
+    <div class="counts">
+      <span class="c">6 cab</span><span style="color:#ddd">·</span>
+      <span class="c">1 cl</span><span style="color:#ddd">·</span>
+      <span class="c">1 q</span><span style="color:#ddd">·</span>
+      <span class="c">1 ord</span>
+    </div>
+    <div class="total">$31,200</div>
+  </div>
+
+</div>
+
+<div class="legend">Click any row to expand inline. The drawer below shows all cabinets, cut lists, quotes & orders for that project, each with a <span class="lk">+ New</span> button at the bottom of its column. Multiple rows can be open at once.</div>
+
+</body>
+</html>
