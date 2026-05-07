@@ -144,6 +144,8 @@ function renderCBRates() {
     {name:'Material Markup',price:cbSettings.materialMarkup||0,path:'cbSettings.materialMarkup',unit:'%'},
     {name:'Quote Markup',price:cbSettings.markup,path:'cbSettings.markup',unit:'%'},
     {name:'Tax / GST',price:cbSettings.tax,path:'cbSettings.tax',unit:'%'},
+    {name:'Packaging Time',price:cbSettings.packagingHours||0,path:'cbSettings.packagingHours',unit:'hrs'},
+    {name:'Contingency Time',price:cbSettings.contingencyHours||0,path:'cbSettings.contingencyHours',unit:'hrs'},
   ];
   const coreContent = coreItems.map(item => `<div class="cb-mat-row" style="margin-top:4px">
     <input value="${item.name}" disabled style="opacity:.7;cursor:default">
@@ -189,7 +191,7 @@ function renderCBRates() {
 
   el.innerHTML = `
     ${stockLink}
-    ${section('core', 'Core Rates', '4 rates', coreContent)}
+    ${section('core', 'Core Rates', '6 rates', coreContent)}
     ${section('carcassTypes', 'Carcass', '('+carcassTypes.length+')', typeListItems(carcassTypes, 'cbSettings.carcassTypes', 0.4))}
     ${section('doorTypes', 'Door', '('+doorTypes.length+')', typeListItems(doorTypes, 'cbSettings.doorTypes', 0.4))}
     ${section('drawerFrontTypes', 'Drawer Front', '('+drawerFrontTypes.length+')', typeListItems(drawerFrontTypes, 'cbSettings.drawerFrontTypes', 0.3))}
@@ -205,7 +207,6 @@ function renderCBSettingsLists() { renderCBRates(); }
 function renderCBPanel() {
   if (!_renderCBAuthGate()) return;
   renderCBRates();
-  renderCBCabList();
   renderCBEditor();
   if (cbMainView === 'results') renderCBResults();
   else renderCBLibraryView();
@@ -250,39 +251,10 @@ function _renderCBAuthGate() {
   return false;
 }
 
-// ── Render cabinet list in sidebar ──
-function renderCBCabList() {
-  const el = _byId('cb-cab-list');
-  if (!el) return;
-  const cur = window.currency;
-  /** @param {number} v */
-  const fmt0 = v => cur + Math.round(v).toLocaleString();
-
-  if (!cbLines.length) {
-    el.style.display = 'none';
-    return;
-  }
-  el.style.display = '';
-  el.innerHTML = cbLines.map((c, i) => {
-    const calc = calcCBLine(c);
-    const active = i === cbEditingLineIdx;
-    return `<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;margin-bottom:4px;border-radius:8px;border:1.5px solid ${active?'var(--accent)':'var(--border)'};background:${active?'var(--accent-dim)':'var(--surface)'};cursor:pointer;transition:border-color .15s" onclick="cbSelectLine(${i})">
-      <div style="flex:1;min-width:0">
-        <div style="font-size:13px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_escHtml(c.name || 'Cabinet')}${c.qty > 1 ? ' <span style="color:var(--muted);font-weight:400">x'+c.qty+'</span>' : ''}</div>
-        <div style="font-size:11px;color:var(--muted)">${c.w}×${c.h}×${c.d}mm</div>
-      </div>
-      <div style="font-size:13px;font-weight:700;color:var(--accent);white-space:nowrap">${fmt0(calc.lineSubtotal)}</div>
-      <button style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:12px;padding:2px" onclick="event.stopPropagation();dupCBLine(${c.id})" title="Duplicate">⧉</button>
-      <button style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:15px;padding:2px" onclick="event.stopPropagation();removeCBLine(${c.id})" title="Remove">×</button>
-    </div>`;
-  }).join('');
-}
-
 /** @param {number} idx */
 function cbSelectLine(idx) {
   cbEditingLineIdx = idx;
   cbScratchpad = JSON.parse(JSON.stringify(cbLines[idx]));
-  renderCBCabList();
   renderCBEditor();
 }
 
@@ -302,10 +274,23 @@ function renderCBEditor() {
   const line = cbScratchpad;
   if (!line) return;
 
-  // Sync cabinet library search box
+  // Sync cabinet library search box. Mirror the viewer card's display fallback
+  // so cabinets without an explicit name still show "Cabinet N" in the search.
+  const displayedName = line.name || (cbEditingLineIdx >= 0 ? 'Cabinet ' + (cbEditingLineIdx + 1) : '');
   const searchInp = _byId('cb-cabinet-search');
   if (searchInp && document.activeElement !== searchInp) {
-    searchInp.value = line.name || '';
+    searchInp.value = displayedName;
+  }
+  // "Editing: <name>" indicator (mirrors cut list's cl-current-project pattern)
+  const editIndicator = _byId('cb-current-cabinet');
+  if (editIndicator) {
+    if (cbEditingLineIdx >= 0) {
+      editIndicator.innerHTML = `<span class="cl-cp-label">Editing:</span> <span class="cl-cp-name">${_escHtml(displayedName)}</span>`;
+      editIndicator.style.display = '';
+    } else {
+      editIndicator.style.display = 'none';
+      editIndicator.innerHTML = '';
+    }
   }
 
   const cur = window.currency;
@@ -626,7 +611,12 @@ function renderCBResults() {
       <div style="display:flex;align-items:center;gap:10px;padding:12px 16px;background:${isActive?'var(--accent-dim)':'var(--surface2)'}">
         <div style="flex:1;min-width:0">
           <div style="font-size:14px;font-weight:700;color:var(--text)">${_escHtml(line.name||'Cabinet '+(idx+1))}</div>
-          <div style="font-size:11px;color:var(--muted)">${line.w} × ${line.h} × ${line.d} mm · ${_escHtml(line.material)}${line.qty>1?' · x'+line.qty:''}</div>
+          <div style="font-size:11px;color:var(--muted)">${line.w} × ${line.h} × ${line.d} mm · ${_escHtml(line.material)}</div>
+        </div>
+        <div class="cl-stepper" style="flex:0 0 auto" onclick="event.stopPropagation()">
+          <button class="cl-step-btn" onclick="event.stopPropagation();cbStepLineQty(${idx},-1)" title="Decrease quantity">−</button>
+          <input type="number" class="cl-input cl-qty-input" value="${line.qty}" min="1" style="font-size:14px;width:42px" onclick="event.stopPropagation()" onchange="event.stopPropagation();cbSetLineQty(${idx},this.value)">
+          <button class="cl-step-btn" onclick="event.stopPropagation();cbStepLineQty(${idx},1)" title="Increase quantity">+</button>
         </div>
         <div style="font-size:16px;font-weight:800;color:var(--accent)">${fmt0(cabTotal)}</div>
       </div>

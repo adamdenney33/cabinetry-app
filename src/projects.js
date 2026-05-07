@@ -31,12 +31,15 @@ async function _clLoadProjectList() {
 // payload: free-form scope-specific blob (cutlist: {sheets, pieces, settings}; quote: {lines, date})
 // Returns: { projectId, isNew, error }
 // ──────────────────────────────────────────────
-/** @param {{name: string, scope: 'cutlist' | 'quote', payload: any}} arg */
-async function _saveProjectScoped({ name, scope, payload }) {
+/** @param {{name: string, scope: 'cutlist' | 'quote', payload: any, meta?: {client_id?: number|null, description?: string|null}}} arg */
+async function _saveProjectScoped({ name, scope, payload, meta }) {
   if (!_userId) return { error: 'Not authenticated' };
   if (!name || !name.trim()) return { error: 'Project name required' };
   if (scope !== 'cutlist' && scope !== 'quote') return { error: 'Invalid scope: ' + scope };
   const trimmed = name.trim();
+  const metaFields = /** @type {Record<string, any>} */ ({});
+  if (meta && meta.client_id !== undefined) metaFields.client_id = meta.client_id;
+  if (meta && meta.description !== undefined) metaFields.description = meta.description;
 
   // 1. Find-or-create the projects row for (user, name). The row itself stores
   //    nothing scope-specific anymore — child tables hold the data.
@@ -49,10 +52,10 @@ async function _saveProjectScoped({ name, scope, payload }) {
   let projectId, isNew;
   if (existing && existing.length > 0) {
     projectId = existing[0].id; isNew = false;
-    await _db('projects').update({ updated_at: new Date().toISOString() }).eq('id', projectId);
+    await _db('projects').update({ updated_at: new Date().toISOString(), ...metaFields }).eq('id', projectId);
   } else {
     const { data: created, error: insertErr } = await _db('projects')
-      .insert([{ name: trimmed, user_id: _userId }]);
+      .insert([{ name: trimmed, user_id: _userId, ...metaFields }]);
     if (insertErr) return { error: 'Insert failed: ' + insertErr.message };
     projectId = (created && created[0]) ? created[0].id : null;
     isNew = true;
@@ -141,8 +144,8 @@ async function _replaceCutListChildTables(projectId, payload) {
   }
 }
 
-/** @param {string} name */
-function _clSaveProjectByName(name) {
+/** @param {string} name @param {{clientName?: string, description?: string}} [opts] */
+function _clSaveProjectByName(name, opts) {
   if (!name) return;
   if (!_requireAuth()) return;
   const payload = {
@@ -151,18 +154,43 @@ function _clSaveProjectByName(name) {
     edgeBands: JSON.parse(JSON.stringify(edgeBands || [])),
     settings:  { units: window.units },
   };
-  _saveProjectScoped({ name, scope: 'cutlist', payload }).then(({ projectId, error }) => {
+  /** @type {{client_id?: number|null, description?: string|null}} */
+  const meta = {};
+  if (opts && opts.clientName !== undefined) {
+    const cn = (opts.clientName || '').trim();
+    if (cn) {
+      const cli = (typeof clients !== 'undefined' ? clients : []).find(/** @param {any} c */ c => c.name === cn);
+      meta.client_id = cli ? cli.id : null;
+    } else {
+      meta.client_id = null;
+    }
+  }
+  if (opts && opts.description !== undefined) {
+    meta.description = opts.description ? opts.description : null;
+  }
+  _saveProjectScoped({ name, scope: 'cutlist', payload, meta }).then(({ projectId, error }) => {
     if (error) { _toast('Save failed: ' + error, 'error'); return; }
     _toast(`"${name}" saved`, 'success');
+    if (projectId != null) {
+      _clCurrentProjectId = projectId;
+      _clCurrentProjectName = name;
+      _setClDirty(false);
+    }
     _clLoadProjectList();
   });
 }
+// Expose for cross-file callers (cutlist.js handlers).
+/** @type {any} */ (window)._clSaveProjectByName = _clSaveProjectByName;
 
 /** @param {number} idx */
 function _clLoadProjectByIdx(idx) {
   const p = _clProjectCache[idx];
   if (!p) return;
-  loadProject(p.id);
+  if (_clDirty) {
+    _confirm(`You have unsaved changes. Load "${p.name}" anyway? Current work will be lost.`, () => loadProject(p.id));
+  } else {
+    loadProject(p.id);
+  }
 }
 
 /** @param {number} idx */
@@ -254,8 +282,18 @@ async function loadProject(id) {
   const prefs = /** @type {any} */ (data.ui_prefs || {});
   if (prefs.settings && prefs.settings.units) setUnits(prefs.settings.units);
   results = null;
+  // Track this as the current loaded project — set BEFORE renders so any
+  // _saveCutList() calls triggered during render don't flip dirty.
+  _clCurrentProjectId = id;
+  _clCurrentProjectName = data.name || '';
+  _clDirty = false;
+  const inp = /** @type {HTMLInputElement|null} */ (document.getElementById('cl-project'));
+  if (inp) inp.value = _clCurrentProjectName;
   renderSheets(); renderPieces();
   if (typeof renderEdgeBands === 'function') { try { renderEdgeBands(); } catch(e) {} }
+  // Render indicator after pieces/sheets so dirty stays false (the renders
+  // call _saveCutList which would normally flip dirty).
+  _setClDirty(false);
   const resArea = document.getElementById('results-area');
   if (resArea) resArea.innerHTML = '<div class="empty-state"><h3>Project loaded</h3><p>Click Optimize to generate layouts.</p></div>';
   _toast('Project loaded — click Optimize to generate layouts', 'success');

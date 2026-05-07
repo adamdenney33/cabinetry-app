@@ -31,6 +31,16 @@ When a sub-step from `PLAN.md` is completed, mark it ✅ in `PLAN.md` and append
 - Production hosted on Cloudflare Pages, auto-deploys on push to `main`. Env vars (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`) configured in the Cloudflare dashboard
 - Local env: copy `.env.example` to `.env.local` (gitignored) and fill in Supabase URL + publishable key
 
+## Session workflow — commits
+
+**Pre-authorized:** create a git commit at the end of every plan's implementation, and another commit for each discrete feature/update completed afterward in the same session. No need to ask first — commits are local and safe.
+
+- One logical change per commit; don't bundle unrelated work into a single commit.
+- Use the existing message style: lowercase `type(scope):` prefix where it fits (`feat`, `fix`, `docs`, `refactor`), or `WIP preserve:` for mid-flight checkpoints.
+- Always include the `Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>` trailer.
+- Skip local-only artifacts when staging: `supabase/.temp/`, `dist/`, `.env*`, editor caches. Stage explicit paths instead of `git add -A` when in doubt.
+- **Never push without explicit confirmation in chat.** Push to `main` triggers a Cloudflare production deploy. Commits stay on the laptop until the user says "push".
+
 ## Library / Data Inputs Pattern
 
 All entity inputs (clients, projects, stock materials) follow a **smart search input** pattern. Never use tabbed library panels, collapsible lists, or inline item lists.

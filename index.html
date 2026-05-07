@@ -244,9 +244,8 @@
               <div class="smart-input-add" onclick="addCBLine()" title="Add new cabinet">+</div>
             </div>
             <div id="cb-cabinet-suggest" class="client-suggest-list" style="display:none"></div>
+            <div id="cb-current-cabinet" class="cl-current-project" style="display:none"></div>
           </div>
-
-          <div id="cb-cab-list" style="padding:6px 14px"></div>
 
           <!-- Active Cabinet Editor -->
           <div id="cb-cab-editor" style="padding:0 14px 14px"></div>
@@ -401,10 +400,11 @@
         <div style="padding:8px 14px 6px;position:relative">
           <span class="cl-section-title" style="display:block;margin-bottom:4px">Project Library</span>
           <div class="smart-input-wrap">
-            <input type="text" id="cl-project" placeholder="Load or save project parts..." autocomplete="off" style="font-size:12px" oninput="_smartCLProjectSuggest(this,'cl-project-suggest')" onfocus="_smartCLProjectSuggest(this,'cl-project-suggest')" onblur="setTimeout(()=>document.getElementById('cl-project-suggest').style.display='none',150)">
-            <div class="smart-input-add" onclick="_openNewProjectPopup('cl-project')" title="Add new project">+</div>
+            <input type="text" id="cl-project" placeholder="Search or add project..." autocomplete="off" style="font-size:12px" oninput="_smartCLProjectSuggest(this,'cl-project-suggest')" onfocus="_smartCLProjectSuggest(this,'cl-project-suggest')" onblur="setTimeout(()=>document.getElementById('cl-project-suggest').style.display='none',150)">
+            <div class="smart-input-add" onclick="_clNewProject()" title="Start a new project">+</div>
           </div>
           <div id="cl-project-suggest" class="client-suggest-list" style="display:none"></div>
+          <div id="cl-current-project" class="cl-current-project" style="display:none"></div>
         </div>
 
         <!-- Cut Parts table -->
@@ -416,7 +416,9 @@
             <button class="cl-col-pill" id="pill-material" onclick="toggleCol('material')" title="Show/hide material column">Panel</button>
             <button class="cl-col-pill" id="pill-edgeband" onclick="toggleEdgeBandCol()" title="Show/hide edge banding column">Edge Band</button>
           </div>
-          <button class="cl-csv-btn" onclick="clearCutList()" title="Clear all parts and panels" style="padding:3px 8px;margin-left:4px;font-size:10px;color:var(--muted)">Clear</button>
+          <button class="cl-csv-btn" onclick="triggerImportCSV('pieces')" title="Import parts from CSV" style="padding:3px 8px;margin-left:4px;font-size:10px;color:var(--muted)">Import</button>
+          <button class="cl-csv-btn" onclick="exportCSV('pieces')" title="Export parts to CSV" style="padding:3px 8px;margin-left:2px;font-size:10px;color:var(--muted)">Export</button>
+          <button class="cl-csv-btn" onclick="clearCutList()" title="Clear all parts and panels" style="padding:3px 8px;margin-left:2px;font-size:10px;color:var(--muted)">Clear</button>
         </div>
         <table class="cl-table" id="pieces-table">
           <thead>
@@ -429,7 +431,6 @@
               <th style="width:72px">Qty</th>
               <th class="cl-col-grain" style="width:48px" title="Grain direction"></th>
               <th class="cl-col-edgeband" style="width:30px" id="th-edgeband"></th>
-              <th style="width:52px"></th>
               <th style="width:86px" class="cl-col-material" id="th-material">Panel</th>
               <th style="width:36px"></th>
             </tr>
@@ -515,6 +516,7 @@
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
           Optimize Cut Layout
         </button>
+        <button class="btn btn-outline btn-lg" onclick="_clSaveProject()" style="margin-top:6px" title="Save the current cut list to its project">Save Project</button>
         <div id="opt-counter" style="display:none;font-size:11px;margin-top:6px;text-align:center;color:var(--muted)"></div>
       </div>
     </div>
@@ -528,16 +530,8 @@
         <button class="layout-tool-btn" id="lt-pg-summary" onclick="toggleClSummary()" title="Show summary, stats &amp; full cut list">Summary</button>
         <div class="layout-tool-sep"></div>
         <button class="layout-tool-btn" onclick="removeUsedSheets()" title="Deduct used sheets from stock quantities">Deduct from Stock</button>
-        <button class="layout-tool-btn" onclick="_clSaveProject()" title="Save project">Save Project</button>
         <div class="layout-tool-sep"></div>
-        <button class="layout-tool-btn" onclick="printLayout('print')" title="Send to printer">Print</button>
         <button class="layout-tool-btn" onclick="printLayout('pdf')" title="Save as PDF file">PDF</button>
-        <div class="layout-tool-sep"></div>
-        <select class="layout-tool-btn lt-pages-select" id="lt-pages" onchange="setPagesPerSheet(this.value)" title="Sheets per page when printing">
-          <option value="1">1 per page</option>
-          <option value="2">2 per page</option>
-          <option value="4">4 per page</option>
-        </select>
       </div>
       <div class="layout-toolbar layout-toolbar-bot" id="layout-toolbar">
         <button class="layout-tool-btn" id="lt-cutorder" onclick="toggleCutOrder()" title="Show numbered cut sequence">Cut order</button>
@@ -593,21 +587,7 @@
           </div>
           <div class="form-group" style="margin-bottom:8px">
             <label>Notes</label>
-            <textarea id="q-notes" placeholder="Project details..."></textarea>
-          </div>
-          <div class="form-group" style="margin-bottom:8px">
-            <label>Materials Cost</label>
-            <input type="number" id="q-materials" placeholder="0.00" min="0" step="0.01">
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label>Labour Rate (/hr)</label>
-              <input type="number" id="q-labour-rate" value="65" min="0">
-            </div>
-            <div class="form-group">
-              <label>Hours</label>
-              <input type="number" id="q-hours" value="8" min="0" step="0.5">
-            </div>
+            <textarea id="q-notes" placeholder="Customer-facing notes..."></textarea>
           </div>
           <div class="form-row">
             <div class="form-group">
@@ -619,13 +599,8 @@
               <input type="number" id="q-tax" value="13" min="0">
             </div>
           </div>
-          <div id="quote-form-preview" style="background:var(--surface2);border-radius:8px;padding:10px 12px;margin-top:8px">
-            <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:4px"><span>Labour</span><span id="qfp-labour">—</span></div>
-            <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:4px"><span>Materials</span><span id="qfp-materials">—</span></div>
-            <div id="qfp-markup-row" style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:2px"><span id="qfp-markup-label">Markup</span><span id="qfp-markup">—</span></div>
-            <div id="qfp-tax-row" style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:2px"><span id="qfp-tax-label">Tax</span><span id="qfp-tax">—</span></div>
-            <div style="border-top:1px solid var(--border);margin:4px 0"></div>
-            <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;color:var(--text)"><span>Total</span><span id="qfp-total">—</span></div>
+          <div style="font-size:11px;color:var(--muted);margin-top:8px;padding:8px 10px;background:var(--surface2);border-radius:6px;line-height:1.5">
+            Add line items (cabinets, materials, labour) after creating the quote.
           </div>
           <button class="btn btn-primary" onclick="createQuote()" style="margin-top:8px;width:100%">+ Create Quote</button>
         </div>
@@ -662,9 +637,15 @@
             </div>
             <div id="o-project-suggest" class="client-suggest-list" style="display:none"></div>
           </div>
-          <div class="form-group" style="margin-bottom:6px">
-            <label>Order Value</label>
-            <input type="number" id="o-value" placeholder="0.00" min="0" step="0.01">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Markup %</label>
+              <input type="number" id="o-markup" value="0" min="0">
+            </div>
+            <div class="form-group">
+              <label>Tax %</label>
+              <input type="number" id="o-tax" value="0" min="0">
+            </div>
           </div>
           <div class="form-row">
             <div class="form-group">
@@ -830,6 +811,7 @@
 <script defer src="src/settings.js"></script>
 <script defer src="src/app.js"></script>
 <script defer src="src/dashboard.js"></script>
+<script defer src="src/scheduler.js"></script>
 <script defer src="src/schedule.js"></script>
 <script defer src="src/backup.js"></script>
 <script defer src="src/auth.js"></script>

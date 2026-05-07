@@ -57,6 +57,12 @@ let _dragSrc = null;
 /** @type {any} */
 let _dragTable = null;
 
+// Project-state tracking — set by loadProject / _clSaveProjectByName, cleared by _doClearAll.
+/** @type {number | null} */
+let _clCurrentProjectId = null;
+let _clCurrentProjectName = '';
+let _clDirty = false;
+
 const COLORS = [
   '#4a90d9','#d4763b','#4caf50','#9c27b0','#e53935',
   '#00acc1','#f9a825','#7cb342','#5c6bc0','#e91e63',
@@ -114,7 +120,16 @@ function cycleGrain(id, type) {
   const arr = type === 'sheet' ? sheets : pieces;
   const item = arr.find(x => x.id === id);
   if (!item) return;
-  item.grain = item.grain === 'none' ? 'h' : item.grain === 'h' ? 'v' : 'none';
+  const nextGrain = item.grain === 'none' ? 'h' : item.grain === 'h' ? 'v' : 'none';
+  if (type === 'piece') {
+    // Bulk-apply: set every selected piece (or just this one) to the same next value.
+    for (const targetId of _bulkSelectedIds(id)) {
+      const p = pieces.find(x => x.id === targetId);
+      if (p) p.grain = nextGrain;
+    }
+  } else {
+    item.grain = nextGrain;
+  }
   type === 'sheet' ? renderSheets() : renderPieces();
   if (results) optimize();
 }
@@ -126,9 +141,76 @@ function toggleSheet(id) {
   if (s) { s.enabled = s.enabled === false ? true : false; renderSheets(); }
 }
 let _lastToggleIdx = -1;
+
+// ── ROW SELECTION (multi-row Excel-like edit) ──
+// Keyed by piece.id (stable across drag-reorder, add, delete) — NOT by row index.
+/** @type {Set<number>} */
+let _clSelectedIds = new Set();
+/** @type {number | null} */
+let _clSelectionAnchorId = null;
+
+/**
+ * Returns the list of piece IDs to apply a mutation to. When the originating
+ * piece is part of a multi-row selection, the change fans out to every selected
+ * piece. Otherwise it stays scoped to the originating piece.
+ * @param {number} id
+ * @returns {number[]}
+ */
+function _bulkSelectedIds(id) {
+  if (_clSelectedIds.has(id) && _clSelectedIds.size > 1) {
+    return Array.from(_clSelectedIds);
+  }
+  return [id];
+}
+
+/**
+ * Click handler attached to each piece <tr>. Bails if the click landed on an
+ * input, button, dropdown, drag handle, or the right-side checkbox/delete cell
+ * (those own their own clicks).
+ * @param {number} id
+ * @param {MouseEvent} ev
+ */
+function _clRowClick(id, ev) {
+  const t = /** @type {HTMLElement} */ (ev.target);
+  if (t.closest('input, select, button, textarea, .cl-drag-handle, .cl-del-cell')) return;
+  if (ev.shiftKey && _clSelectionAnchorId !== null) {
+    const aIdx = pieces.findIndex(p => p.id === _clSelectionAnchorId);
+    const cIdx = pieces.findIndex(p => p.id === id);
+    if (aIdx >= 0 && cIdx >= 0) {
+      const from = Math.min(aIdx, cIdx), to = Math.max(aIdx, cIdx);
+      _clSelectedIds = new Set();
+      for (let i = from; i <= to; i++) _clSelectedIds.add(pieces[i].id);
+    } else {
+      _clSelectedIds = new Set([id]);
+      _clSelectionAnchorId = id;
+    }
+  } else if (ev.ctrlKey || ev.metaKey) {
+    if (_clSelectedIds.has(id)) _clSelectedIds.delete(id);
+    else _clSelectedIds.add(id);
+    _clSelectionAnchorId = id;
+  } else {
+    _clSelectedIds = new Set([id]);
+    _clSelectionAnchorId = id;
+  }
+  renderPieces();
+}
+
+function _clClearSelection() {
+  if (_clSelectedIds.size === 0 && _clSelectionAnchorId === null) return;
+  _clSelectedIds = new Set();
+  _clSelectionAnchorId = null;
+  renderPieces();
+}
+
 /** @param {number} id @param {number} idx @param {boolean} checked @param {MouseEvent} [ev] */
 function _clCheckboxClick(id, idx, checked, ev) {
-  if (ev && ev.shiftKey && _lastToggleIdx >= 0) {
+  if (_clSelectedIds.has(id) && _clSelectedIds.size > 1) {
+    // Bulk-apply checkbox toggle to all selected rows.
+    for (const targetId of _clSelectedIds) {
+      const p = pieces.find(x => x.id === targetId);
+      if (p) p.enabled = checked;
+    }
+  } else if (ev && ev.shiftKey && _lastToggleIdx >= 0) {
     const from = Math.min(_lastToggleIdx, idx);
     const to = Math.max(_lastToggleIdx, idx);
     for (let i = from; i <= to; i++) pieces[i].enabled = checked;
@@ -142,7 +224,14 @@ function _clCheckboxClick(id, idx, checked, ev) {
 /** @param {number} id */
 function togglePiece(id) {
   const p = pieces.find(x => x.id === id);
-  if (p) { p.enabled = !(p.enabled !== false); renderPieces(); _saveCutList(); }
+  if (!p) return;
+  const nextEnabled = !(p.enabled !== false);
+  for (const targetId of _bulkSelectedIds(id)) {
+    const tp = pieces.find(x => x.id === targetId);
+    if (tp) tp.enabled = nextEnabled;
+  }
+  renderPieces();
+  _saveCutList();
 }
 /** @param {boolean} checked */
 function _clToggleAll(checked) {
@@ -157,7 +246,15 @@ function stepQty(type, id, delta) {
   const item = arr.find(x => x.id === id);
   if (!item) return;
   const max = type === 'sheet' ? 99 : 999;
-  item.qty = Math.max(1, Math.min(max, (item.qty || 1) + delta));
+  if (type === 'piece') {
+    // Bulk-apply: each selected piece increments/decrements relative to its own qty.
+    for (const targetId of _bulkSelectedIds(id)) {
+      const p = pieces.find(x => x.id === targetId);
+      if (p) p.qty = Math.max(1, Math.min(max, (p.qty || 1) + delta));
+    }
+  } else {
+    item.qty = Math.max(1, Math.min(max, (item.qty || 1) + delta));
+  }
   type === 'sheet' ? renderSheets() : renderPieces();
 }
 
@@ -551,7 +648,11 @@ function _ebUpdateTrim(side, checked, pieceId) {
 function _ebSave(pieceId) {
   const p = pieces.find(x => x.id === pieceId);
   if (!p || !window._ebDraft) return;
-  p.edges = { ...window._ebDraft };
+  // Bulk-apply edge band assignments to every selected piece.
+  for (const targetId of _bulkSelectedIds(pieceId)) {
+    const tp = pieces.find(x => x.id === targetId);
+    if (tp) tp.edges = { ...window._ebDraft };
+  }
   _closePopup();
   renderPieces();
   _saveCutList();
@@ -632,17 +733,43 @@ function _saveNewEdgeBandMaterial() {
   _toast(`Added ${name}`, 'success');
 }
 
-function _clSaveProject() {
-  // If there's a live project already loaded, save silently
-  // Otherwise open the save dialog
-  const liveId = window._currentProjectId || null;
-  if (liveId) {
-    // save silently
-    if (window.saveCurrentProject) window.saveCurrentProject();
-    else _toast('Project saved', 'success');
+// Guard for any flow that would replace the current cut list state. Always
+// confirms when there are unsaved changes; runs `proceed` once the user has
+// agreed (or immediately, when nothing is dirty).
+/** @param {string} actionLabel @param {() => void} proceed */
+function _clConfirmDiscardIfDirty(actionLabel, proceed) {
+  if (_clDirty) {
+    _confirm(`You have unsaved changes. Discard and ${actionLabel}?`, proceed);
   } else {
-    _openSaveProjectPopup();
+    proceed();
   }
+}
+
+// Sidebar `+` button — start a new project. Confirms before discarding
+// unsaved changes, clears state, then opens the standard New Project popup.
+function _clNewProject() {
+  _clConfirmDiscardIfDirty('start a new project', () => {
+    _doClearAll();
+    _openNewProjectPopup('cl-project');
+  });
+}
+
+function _clSaveProject() {
+  // Already-loaded project → silent overwrite. No popup.
+  if (_clCurrentProjectId && _clCurrentProjectName) {
+    /** @type {any} */ (window)._clSaveProjectByName?.(_clCurrentProjectName);
+    return;
+  }
+  // Cabinet-builder pattern: when nothing is loaded, the input value IS the
+  // project name. Save under that name (find-or-create handled by save layer).
+  const inp = /** @type {HTMLInputElement|null} */ (_byId('cl-project'));
+  const typed = inp ? inp.value.trim() : '';
+  if (typed) {
+    /** @type {any} */ (window)._clSaveProjectByName?.(typed);
+    return;
+  }
+  // Empty input + no project loaded → open popup to collect Name/Client/Notes.
+  _openSaveProjectPopup();
 }
 
 function _openSaveProjectPopup() {
@@ -681,11 +808,29 @@ function _openSaveProjectPopup() {
   setTimeout(() => _byId('save-proj-name')?.focus(), 50);
 }
 
-function _doSaveProject() {
+async function _doSaveProject() {
   const name = (_popupVal('save-proj-name') || '').trim();
   if (!name) { _toast('Please enter a project name', 'error'); return; }
+  const clientName = (_popupVal('save-proj-client') || '').trim();
+  const description = (_popupVal('save-proj-notes') || '').trim();
   _closePopup();
-  _toast(`Project "${name}" saved`, 'success');
+  /** @type {any} */ (window)._clSaveProjectByName?.(name, { clientName, description });
+}
+
+// ── PROJECT-STATE TRACKING ──
+/** @param {boolean} dirty */
+function _setClDirty(dirty) {
+  _clDirty = !!dirty;
+  _renderClCurrentProject();
+}
+
+function _renderClCurrentProject() {
+  const el = _byId('cl-current-project');
+  if (!el) return;
+  if (!_clCurrentProjectId) { el.style.display = 'none'; el.innerHTML = ''; return; }
+  const pill = _clDirty ? `<span class="cl-unsaved-pill">unsaved</span>` : '';
+  el.innerHTML = `<span class="cl-cp-label">Editing:</span> <span class="cl-cp-name">${_escHtml(_clCurrentProjectName)}</span>${pill}`;
+  el.style.display = '';
 }
 
 // ── DRAG REORDER ──
@@ -716,14 +861,42 @@ function onDragEnd() {
 }
 
 function clearCutList() {
-  _confirm('Clear all parts and panels? This cannot be undone.', () => _doClearAll()); return;
+  _confirm('Start a new cut list? Current parts and panels will be cleared.', () => _doClearAll()); return;
 }
 function _doClearAll() {
-  pieces = []; sheets = []; _pieceId = 1; _sheetId = 1; pieceColorIdx = 0; results = null;
-  ['pc_cl_pieces','pc_cl_sheets','pc_cl_pid','pc_cl_sid','pc_cl_colorIdx','pc_cl_sheetColorIdx'].forEach(k => localStorage.removeItem(k));
+  pieces = []; sheets = []; edgeBands = []; _pieceId = 1; _sheetId = 1; _edgeBandId = 1; pieceColorIdx = 0; results = null;
+  _clSelectedIds = new Set(); _clSelectionAnchorId = null;
+  ['pc_cl_pieces','pc_cl_sheets','pc_cl_pid','pc_cl_sid','pc_cl_colorIdx','pc_cl_sheetColorIdx','pc_cl_edgebands','pc_cl_ebid'].forEach(k => localStorage.removeItem(k));
+  // Reset project tracking — clearing means a fresh, unloaded cut list.
+  _clCurrentProjectId = null;
+  _clCurrentProjectName = '';
+  _clDirty = false;
+  const inp = /** @type {HTMLInputElement|null} */ (_byId('cl-project'));
+  if (inp) inp.value = '';
+  _renderClCurrentProject();
   renderPieces(); renderSheets();
+  if (typeof renderEdgeBands === 'function') { try { renderEdgeBands(); } catch(e) {} }
   /** @type {HTMLElement} */ (_byId('results-area')).innerHTML = '<div class="empty-state"><div class="empty-icon" style="opacity:.18"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg></div><h3>Ready to Optimize</h3><p>Add stock panels and cut pieces, then click "Optimize Cut Layout"</p></div>';
 }
+
+// ── ROW SELECTION — click-outside to clear ──
+// Mousedown on anything outside the pieces table clears the selection. Wired
+// once at boot to avoid duplicate listeners on re-render.
+(function() {
+  const wire = () => {
+    document.addEventListener('mousedown', (e) => {
+      if (_clSelectedIds.size === 0) return;
+      const t = /** @type {HTMLElement} */ (e.target);
+      if (!t || !t.closest) return;
+      // Stay selected when interacting with the pieces table itself, popups
+      // (where edge band edits happen), or any cl-* surface.
+      if (t.closest('#pieces-table, .popup-overlay, .popup, .cl-toolbar, .cl-pill, .layout-toolbar')) return;
+      _clClearSelection();
+    });
+  };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', wire);
+  else wire();
+})();
 
 // ── PANEL RESIZE ──
 (function() {
@@ -889,6 +1062,8 @@ function _saveCutList() {
     localStorage.setItem('pc_cl_ebid', String(_edgeBandId));
     localStorage.setItem('pc_cl_colsVisible', JSON.stringify(colsVisible));
   } catch(e) {}
+  // Any local-state mutation flips dirty when a project is loaded.
+  if (_clCurrentProjectId && !_clDirty) _setClDirty(true);
 }
 
 function _loadCutList() {
@@ -968,6 +1143,9 @@ function removePiece(id) {
   if (!p) return;
   _confirm(`Delete part <strong>${_escHtml(p.label || 'Untitled')}</strong>?`, () => {
     pieces = pieces.filter(x => x.id !== id);
+    // Drop the deleted id from the selection set (keeps remaining selection valid).
+    if (_clSelectedIds.has(id)) _clSelectedIds.delete(id);
+    if (_clSelectionAnchorId === id) _clSelectionAnchorId = null;
     renderPieces();
     _saveCutList();
   });
@@ -1003,9 +1181,16 @@ function duplicatePiece(id) {
 function updatePiece(id, field, val) {
   const p = pieces.find(p => p.id === id);
   if (!p) return;
-  if (field === 'w' || field === 'h') { const v = parseDim(val); p[field] = v; }
-  else if (field === 'qty') p[field] = Math.max(1, parseInt(val) || 1);
-  else p[field] = val;
+  // Process the value once, then fan out to every selected piece (or just this one).
+  /** @type {any} */
+  let processed;
+  if (field === 'w' || field === 'h') processed = parseDim(val);
+  else if (field === 'qty') processed = Math.max(1, parseInt(val) || 1);
+  else processed = val;
+  for (const targetId of _bulkSelectedIds(id)) {
+    const tp = pieces.find(x => x.id === targetId);
+    if (tp) tp[field] = processed;
+  }
   renderPieces();
 }
 
@@ -1013,7 +1198,7 @@ function renderPieces() {
   const tbody = _byId('pieces-body');
   if (!tbody) return;
   if (!pieces.length) {
-    tbody.innerHTML = `<tr><td colspan="11" style="color:var(--muted);font-size:11px;padding:10px 14px;text-align:center">No parts — click "+ Add part"</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="10" style="color:var(--muted);font-size:11px;padding:10px 14px;text-align:center">No parts — click "+ Add part"</td></tr>`;
     return;
   }
   /** @param {string} sel */
@@ -1024,8 +1209,11 @@ function renderPieces() {
   };
   tbody.innerHTML = pieces.map((p, i) => {
     const dis = p.enabled === false;
-    return `<tr class="${dis ? 'cl-row-disabled' : ''}"
+    const sel = _clSelectedIds.has(p.id);
+    const rowClasses = [dis ? 'cl-row-disabled' : '', sel ? 'cl-row-selected' : ''].filter(Boolean).join(' ');
+    return `<tr class="${rowClasses}"
       draggable="true"
+      onclick="_clRowClick(${p.id}, event)"
       ondragstart="onDragStart(event,'pieces',${i})"
       ondragover="onDragOver(event,this)"
       ondrop="onDrop(event,'pieces',${i})"
@@ -1074,14 +1262,13 @@ function renderPieces() {
       <td class="cl-col-edgeband" style="${colsVisible.edgeband?'':'display:none'}">
         <button class="cl-grain-btn${hasAnyEdge(p) ? ' active' : ''}" tabindex="-1" onclick="openEdgePopup(${p.id})" title="Edge banding">${_ebIcon(p)}</button>
       </td>
-      <td></td>
       <td class="cl-col-material" style="${colsVisible.material?'':'display:none'}">
         <select class="cl-input" tabindex="-1" style="font-size:11px;padding:3px 4px;border-radius:3px"
           onchange="updatePiece(${p.id},'material',this.value)" ${dis ? 'disabled' : ''}>
           ${makeOpts(p.material)}
         </select>
       </td>
-      <td class="cl-del-cell" style="white-space:nowrap;display:flex;align-items:center;gap:2px">
+      <td class="cl-del-cell">
         <input type="checkbox" class="cl-check" tabindex="-1" ${dis ? '' : 'checked'} onclick="_clCheckboxClick(${p.id},${i},this.checked,event)" title="Include in layout&#10;Shift+click to select range">
         <button class="cl-del-btn" tabindex="-1" onclick="removePiece(${p.id})" title="Remove">${DEL_SVG}</button>
       </td>
@@ -1398,7 +1585,9 @@ ${sheetSections}
 ${combinedPageHTML}
 </body></html>`;
     if (mode === 'pdf') {
-      _buildCutListPDF({ biz, layouts: results.layouts, imgs, pieces, u, cur,
+      // Pass uniqueLayouts so the PDF renders one page per unique packing,
+      // matching the on-screen viewer (canvases were captured 1:1 with it).
+      _buildCutListPDF({ biz, layouts: results.uniqueLayouts || results.layouts, imgs, pieces, u, cur,
         totalPieces, avgUtil, matCost });
     } else {
       _printInFrame(html);
@@ -1453,16 +1642,31 @@ function _saveAsPDF(html) {
 
 // ── Build a real PDF for quotes using jsPDF ──
 /** @param {any} q */
-function _buildQuotePDF(q) {
+/**
+ * @param {any} q quote row
+ * @param {any[]} [lineRows] quote_lines rows; when omitted, uses cached totals
+ *                           (so legacy callers like cabinet.js's preview path
+ *                           keep working without an extra fetch).
+ */
+function _buildQuotePDF(q, lineRows) {
   if (!window.jspdf) { _toast('PDF library not loaded yet — try again', 'error'); return; }
   const { jsPDF } = window.jspdf;
   const cur = window.currency;
   const biz = getBizInfo();
   const logo = getBizLogo();
   const dateStr = new Date().toLocaleDateString('en-GB', { day:'numeric', month:'long', year:'numeric' });
-  const matVal = q._totals ? q._totals.materials : (q.materials || 0);
-  const labVal = q._totals ? q._totals.labour    : (q.labour    || 0);
-  const sub = matVal + labVal;
+  // If lines were passed, recompute from them (source of truth). Otherwise
+  // fall back to the in-memory _totals cache.
+  let sub;
+  if (Array.isArray(lineRows)) {
+    let matSum = 0, labSum = 0;
+    for (const row of lineRows) { const s = _lineSubtotal(row); matSum += s.materials; labSum += s.labour; }
+    sub = matSum + labSum;
+  } else {
+    const matVal = q._totals ? q._totals.materials : (q.materials || 0);
+    const labVal = q._totals ? q._totals.labour    : (q.labour    || 0);
+    sub = matVal + labVal;
+  }
   const markupAmt = sub * (q.markup ?? 0) / 100;
   const afterMarkup = sub + markupAmt;
   const taxAmt = afterMarkup * (q.tax ?? 0) / 100;
@@ -1505,34 +1709,40 @@ function _buildQuotePDF(q) {
   pdf.text(quoteProject(q) || '—', M + 70, y);
   y += 12;
 
-  // ── Cabinet Line Items (from notes) ──
-  const noteLines = (q.notes||'').split(/\r?\n/).filter(Boolean);
-  const cabLines = noteLines.filter(/** @param {string} l */ l => l.includes('\u2014') || l.includes('—'));
-  const plainNotes = noteLines.filter(/** @param {string} l */ l => !l.includes('\u2014') && !l.includes('—')).join('\n').trim();
+  // ── Line items ──
+  const plainNotes = (q.notes||'').trim();
+  const rows = Array.isArray(lineRows) ? lineRows : [];
 
-  if (cabLines.length > 0) {
+  if (rows.length > 0) {
     // Table header
     pdf.setFontSize(7); pdf.setFont('helvetica','bold'); pdf.setTextColor(140);
-    pdf.text('DESCRIPTION', M, y); pdf.text('', PW-M, y, { align:'right' });
+    pdf.text('DESCRIPTION', M, y); pdf.text('AMOUNT', PW-M, y, { align:'right' });
     y += 2;
     pdf.setDrawColor(17); pdf.setLineWidth(0.4); pdf.line(M, y, PW-M, y);
     y += 6;
 
-    cabLines.forEach(/** @param {string} cl */ cl => {
-      const parts = cl.split(/\u2014|—/).map(s => s.trim());
-      const name = parts[0] || 'Cabinet';
-      const details = parts.slice(1).join(' — ').trim();
-
+    let lastKind = '';
+    rows.forEach(/** @param {any} row */ row => {
+      const d = _lineDisplay(row);
+      // Group header when the kind changes
+      if (d.kind !== lastKind) {
+        pdf.setFontSize(7); pdf.setFont('helvetica','bold'); pdf.setTextColor(160);
+        const groupLabel = { cabinet: 'CABINETS', item: 'ITEMS', labour: 'LABOUR' };
+        pdf.text((/** @type {any} */ (groupLabel))[d.kind] || d.kind.toUpperCase(), M, y);
+        y += 4;
+        lastKind = d.kind;
+      }
       pdf.setFontSize(11); pdf.setFont('helvetica','bold'); pdf.setTextColor(17);
-      pdf.text(name, M, y);
+      const headerText = d.qtyText ? d.name + '  ' + d.qtyText : d.name;
+      pdf.text(headerText, M, y);
+      pdf.text(fmt(d.total), PW - M, y, { align: 'right' });
       y += 5;
-      if (details) {
+      if (d.detail) {
         pdf.setFontSize(8.5); pdf.setFont('helvetica','normal'); pdf.setTextColor(130);
-        const detailLines = pdf.splitTextToSize(details, W - 10);
+        const detailLines = pdf.splitTextToSize(d.detail, W - 30);
         detailLines.forEach(/** @param {string} dl */ dl => { pdf.text(dl, M + 4, y); y += 4; });
       }
       y += 3;
-
       if (y > PH - 60) { pdf.addPage(); y = M + 10; }
     });
 
@@ -1771,6 +1981,222 @@ function _buildWorkOrderPDF(o) {
   setTimeout(() => URL.revokeObjectURL(url), 60000);
 }
 
+/**
+ * Client-facing order document PDF — Order Confirmation, Pro-forma, or Invoice.
+ * Modelled on _buildQuotePDF: same header, same line-items grouping, same
+ * subtotal/markup/tax/total stack. Type drives the title, ref prefix,
+ * addressee label, payment block, and closing line.
+ *
+ * The work_order variant is intentionally NOT routed through this builder —
+ * _buildWorkOrderPDF stays as the workshop document so its production-note
+ * lines and sign-off block don't bleed into client-facing outputs.
+ *
+ * @param {any} o the order row
+ * @param {any[]} lines order_lines rows (may be empty for legacy orders)
+ * @param {'order_confirmation'|'proforma'|'invoice'} type
+ */
+function _buildOrderDocPDF(o, lines, type) {
+  if (!window.jspdf) { _toast('PDF library not loaded yet — try again', 'error'); return; }
+  const { jsPDF } = window.jspdf;
+  const cur = window.currency;
+  const biz = getBizInfo();
+  const dateStr = new Date().toLocaleDateString('en-GB', { day:'numeric', month:'long', year:'numeric' });
+  const refNum = String(o.id).padStart(4,'0');
+  const dueLabel = (o.due && o.due !== 'TBD') ? o.due : 'On receipt';
+
+  /** @type {Record<string, {title: string, prefix: string, addresseeLabel: string, totalLabel: string, closing: string, showPaymentBlock: boolean, showDueInHeader: boolean}>} */
+  const cfg = {
+    order_confirmation: {
+      title: 'ORDER CONFIRMATION', prefix: 'OC', addresseeLabel: 'PREPARED FOR',
+      totalLabel: 'ORDER TOTAL',
+      closing: 'Thank you for confirming your order. We will keep you updated as your job progresses.',
+      showPaymentBlock: false, showDueInHeader: false,
+    },
+    proforma: {
+      title: 'PRO FORMA INVOICE', prefix: 'PF', addresseeLabel: 'BILL TO',
+      totalLabel: 'AMOUNT DUE',
+      closing: 'Pro forma invoice — not a tax invoice. Goods/services not yet supplied.',
+      showPaymentBlock: true, showDueInHeader: true,
+    },
+    invoice: {
+      title: 'TAX INVOICE', prefix: 'INV', addresseeLabel: 'BILL TO',
+      totalLabel: 'TOTAL DUE',
+      closing: 'Payment due by ' + dueLabel + '. Please reference #INV-' + refNum + ' on remittance.',
+      showPaymentBlock: true, showDueInHeader: true,
+    },
+  };
+  const c = cfg[type];
+  if (!c) { _toast('Unknown document type: ' + type, 'error'); return; }
+
+  // Compute totals from order_lines. If no lines (legacy orders), invert
+  // o.value back through markup+tax so the breakdown still adds up.
+  const rows = Array.isArray(lines) ? lines : [];
+  let sub;
+  if (rows.length > 0) {
+    let matSum = 0, labSum = 0;
+    for (const row of rows) { const s = _lineSubtotal(row); matSum += s.materials; labSum += s.labour; }
+    sub = matSum + labSum;
+  } else {
+    const mFrac = (o.markup ?? 0) / 100;
+    const tFrac = (o.tax ?? 0) / 100;
+    const denom = (1 + mFrac) * (1 + tFrac);
+    sub = denom > 0 ? (o.value ?? 0) / denom : (o.value ?? 0);
+  }
+  const markupAmt = sub * (o.markup ?? 0) / 100;
+  const afterMarkup = sub + markupAmt;
+  const taxAmt = afterMarkup * (o.tax ?? 0) / 100;
+  const total = afterMarkup + taxAmt;
+
+  /** @param {number} v */
+  const fmt = v => cur + Number(v).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+
+  const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const PW = 210, PH = 297, M = 18;
+  const W = PW - 2*M;
+  let y = M;
+
+  // ── Header ──
+  pdf.setFontSize(16); pdf.setFont('helvetica','bold'); pdf.setTextColor(17);
+  pdf.text(biz.name || 'Your Business', M, y + 6);
+  const bizSub = [biz.phone, biz.email, biz.address].filter(Boolean).join('  ·  ');
+  if (bizSub) { pdf.setFontSize(8); pdf.setFont('helvetica','normal'); pdf.setTextColor(120); pdf.text(bizSub, M, y + 11); }
+  if (biz.abn) { pdf.setFontSize(7); pdf.text('ABN: ' + biz.abn, M, y + 15); }
+
+  pdf.setFontSize(22); pdf.setFont('helvetica','normal'); pdf.setTextColor(50);
+  pdf.text(c.title, PW - M, y + 7, { align:'right' });
+  pdf.setFontSize(8); pdf.setTextColor(140);
+  pdf.text('#' + c.prefix + '-' + refNum + '  ·  ' + dateStr, PW - M, y + 12, { align:'right' });
+  if (c.showDueInHeader) {
+    pdf.setFontSize(8); pdf.setTextColor(140);
+    pdf.text('Due: ' + dueLabel, PW - M, y + 16, { align:'right' });
+  }
+
+  y += 20;
+  pdf.setDrawColor(17); pdf.setLineWidth(0.6); pdf.line(M, y, PW-M, y);
+  y += 10;
+
+  // ── Addressee ──
+  pdf.setFontSize(7); pdf.setFont('helvetica','normal'); pdf.setTextColor(170);
+  pdf.text(c.addresseeLabel, M, y);
+  pdf.text('PROJECT', M + 70, y);
+  y += 5;
+  pdf.setFontSize(13); pdf.setFont('helvetica','bold'); pdf.setTextColor(17);
+  pdf.text(orderClient(o) || '—', M, y);
+  pdf.setFontSize(12); pdf.setFont('helvetica','bold');
+  pdf.text(orderProject(o) || '—', M + 70, y);
+  y += 12;
+
+  // ── Line items ──
+  if (rows.length > 0) {
+    pdf.setFontSize(7); pdf.setFont('helvetica','bold'); pdf.setTextColor(140);
+    pdf.text('DESCRIPTION', M, y); pdf.text('AMOUNT', PW-M, y, { align:'right' });
+    y += 2;
+    pdf.setDrawColor(17); pdf.setLineWidth(0.4); pdf.line(M, y, PW-M, y);
+    y += 6;
+
+    let lastKind = '';
+    rows.forEach(/** @param {any} row */ row => {
+      const d = _lineDisplay(row);
+      if (d.kind !== lastKind) {
+        pdf.setFontSize(7); pdf.setFont('helvetica','bold'); pdf.setTextColor(160);
+        const groupLabel = { cabinet: 'CABINETS', item: 'ITEMS', labour: 'LABOUR' };
+        pdf.text((/** @type {any} */ (groupLabel))[d.kind] || d.kind.toUpperCase(), M, y);
+        y += 4;
+        lastKind = d.kind;
+      }
+      pdf.setFontSize(11); pdf.setFont('helvetica','bold'); pdf.setTextColor(17);
+      const headerText = d.qtyText ? d.name + '  ' + d.qtyText : d.name;
+      pdf.text(headerText, M, y);
+      pdf.text(fmt(d.total), PW - M, y, { align: 'right' });
+      y += 5;
+      if (d.detail) {
+        pdf.setFontSize(8.5); pdf.setFont('helvetica','normal'); pdf.setTextColor(130);
+        const detailLines = pdf.splitTextToSize(d.detail, W - 30);
+        detailLines.forEach(/** @param {string} dl */ dl => { pdf.text(dl, M + 4, y); y += 4; });
+      }
+      y += 3;
+      if (y > PH - 60) { pdf.addPage(); y = M + 10; }
+    });
+
+    pdf.setDrawColor(210); pdf.setLineWidth(0.25); pdf.line(M, y, PW-M, y);
+    y += 8;
+  }
+
+  // ── Totals ──
+  const totalsX = PW - M;
+  const labelX = PW - M - 80;
+
+  if ((o.markup ?? 0) > 0 || (o.tax ?? 0) > 0) {
+    pdf.setFontSize(9); pdf.setFont('helvetica','normal'); pdf.setTextColor(140);
+    pdf.text('Subtotal', labelX, y); pdf.text(fmt(sub), totalsX, y, { align:'right' });
+    y += 6;
+  }
+  if ((o.markup ?? 0) > 0) {
+    pdf.setFontSize(8.5); pdf.setTextColor(140);
+    pdf.text('Markup (' + o.markup + '%)', labelX, y); pdf.text('+ ' + fmt(markupAmt), totalsX, y, { align:'right' });
+    y += 5;
+  }
+  if ((o.tax ?? 0) > 0) {
+    pdf.setFontSize(8.5); pdf.setTextColor(140);
+    pdf.text('Tax (' + o.tax + '%)', labelX, y); pdf.text('+ ' + fmt(taxAmt), totalsX, y, { align:'right' });
+    y += 5;
+  }
+
+  // ── Total box ──
+  y += 3;
+  if (y > PH - 40) { pdf.addPage(); y = M + 10; }
+  pdf.setFillColor(17,17,17); pdf.roundedRect(M, y, W, 14, 3, 3, 'F');
+  pdf.setFontSize(8); pdf.setFont('helvetica','bold'); pdf.setTextColor(255);
+  pdf.text(c.totalLabel, M + 8, y + 9);
+  pdf.setFontSize(18); pdf.setFont('helvetica','bold');
+  pdf.text(fmt(total), PW - M - 8, y + 9.5, { align:'right' });
+  y += 22;
+
+  // ── Notes ──
+  if (o.notes) {
+    if (y > PH - 50) { pdf.addPage(); y = M + 10; }
+    pdf.setFontSize(8); pdf.setFont('helvetica','bold'); pdf.setTextColor(100);
+    pdf.text('NOTES', M, y); y += 5;
+    pdf.setFontSize(10); pdf.setFont('helvetica','normal'); pdf.setTextColor(40);
+    const noteLines = pdf.splitTextToSize(o.notes, W);
+    noteLines.forEach(/** @param {string} nl */ nl => {
+      if (y > PH - 30) { pdf.addPage(); y = M + 10; }
+      pdf.text(nl, M, y); y += 5;
+    });
+    y += 5;
+  }
+
+  // ── Payment block (proforma + invoice) ──
+  if (c.showPaymentBlock) {
+    if (y > PH - 40) { pdf.addPage(); y = M + 10; }
+    pdf.setFontSize(8); pdf.setFont('helvetica','bold'); pdf.setTextColor(100);
+    pdf.text('PAYMENT', M, y); y += 5;
+    pdf.setFontSize(9); pdf.setFont('helvetica','normal'); pdf.setTextColor(140);
+    pdf.text('[Bank details — configure in Business settings]', M, y);
+    y += 8;
+  }
+
+  // ── Closing line ──
+  if (y > PH - 30) { pdf.addPage(); y = M + 10; }
+  pdf.setFontSize(8.5); pdf.setFont('helvetica','italic'); pdf.setTextColor(120);
+  const closingLines = pdf.splitTextToSize(c.closing, W);
+  closingLines.forEach(/** @param {string} cl */ cl => {
+    if (y > PH - 25) { pdf.addPage(); y = M + 10; }
+    pdf.text(cl, M, y); y += 5;
+  });
+
+  // ── Footer ──
+  pdf.setFontSize(6.5); pdf.setFont('helvetica','normal'); pdf.setTextColor(190);
+  pdf.text((biz.name || 'ProCabinet') + ' — ProCabinet.App', M, PH - M);
+  pdf.text(dateStr, PW - M, PH - M, { align:'right' });
+
+  const blob = pdf.output('blob');
+  const url = URL.createObjectURL(blob);
+  const a = Object.assign(document.createElement('a'), { href:url, target:'_blank', rel:'noopener' });
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+}
+
 /** @param {{biz: any, layouts: any[], imgs: string[], pieces: any[], u: string, cur: string, totalPieces: number, avgUtil: string, matCost: number}} arg */
 async function _buildCutListPDF({ biz, layouts, imgs, pieces, u, cur, totalPieces, avgUtil, matCost }) {
   if (!window.jspdf) { _toast('PDF library not loaded yet — try again', 'error'); return; }
@@ -1790,14 +2216,24 @@ async function _buildCutListPDF({ biz, layouts, imgs, pieces, u, cur, totalPiece
     }
 
     // ── compact title bar drawn at top of each sheet page ──
+    // Stacked layout: name + sub on left (two lines), CUT LIST + date on right (two lines).
+    // Eliminates horizontal collision when business contact info is long.
     function titleBar() {
       const sub = [biz.phone, biz.email].filter(Boolean).join(' · ');
+      // Left side — name top, sub bottom
       pdf.setFontSize(9); pdf.setFont('helvetica','bold'); pdf.setTextColor(17);
-      pdf.text(biz.name || 'ProCabinet', M, M+5);
-      if (sub) { pdf.setFontSize(7); pdf.setFont('helvetica','normal'); pdf.setTextColor(136); pdf.text(sub, M+pdf.getTextWidth(biz.name||'ProCabinet')+3, M+5); }
-      pdf.setFontSize(7.5); pdf.setFont('helvetica','normal'); pdf.setTextColor(136);
-      pdf.text('CUT LIST  ·  '+dateStr, PW-M, M+5, { align:'right' });
-      pdf.setDrawColor(200); pdf.setLineWidth(0.25); pdf.line(M, M+7, PW-M, M+7);
+      pdf.text(biz.name || 'ProCabinet', M, M+4);
+      if (sub) {
+        pdf.setFontSize(7); pdf.setFont('helvetica','normal'); pdf.setTextColor(136);
+        pdf.text(sub, M, M+8);
+      }
+      // Right side — CUT LIST top, date bottom
+      pdf.setFontSize(8); pdf.setFont('helvetica','bold'); pdf.setTextColor(110);
+      pdf.text('CUT LIST', PW-M, M+4, { align:'right' });
+      pdf.setFontSize(7); pdf.setFont('helvetica','normal'); pdf.setTextColor(136);
+      pdf.text(dateStr, PW-M, M+8, { align:'right' });
+      // Divider
+      pdf.setDrawColor(200); pdf.setLineWidth(0.25); pdf.line(M, M+10, PW-M, M+10);
       pdf.setTextColor(17);
     }
 
@@ -1821,28 +2257,42 @@ async function _buildCutListPDF({ biz, layouts, imgs, pieces, u, cur, totalPiece
     const rightX = M + leftW + gap;
     const rightW = W - leftW - gap;       // ~85 mm
     const hdgH   = 9;                     // heading bar height
-    const titleBarH = 9;                  // compact title bar height
+    const titleBarH = 12;                 // stacked title bar height
 
     layouts.forEach(/** @param {any} layout @param {number} i */ (layout, i) => {
       if (i > 0) pdf.addPage();           // first sheet on page 1, rest add pages
       titleBar();
       const util = (layout.util*100).toFixed(0);
 
+      // Effective sheet dims — swap when the on-screen viewer is rotated, so the
+      // captured (rotated) PNG and the displayed dims agree on aspect & values.
+      const sw = layoutRotate ? layout.sheet.h : layout.sheet.w;
+      const sh = layoutRotate ? layout.sheet.w : layout.sheet.h;
+
       // sheet heading bar (sits below title bar)
       const sheetHdgY = M + titleBarH + 2;
       pdf.setFillColor(245,245,245); pdf.rect(M, sheetHdgY, W, hdgH, 'F');
       pdf.setDrawColor(210); pdf.setLineWidth(0.25); pdf.rect(M, sheetHdgY, W, hdgH, 'S');
       pdf.setFontSize(9.5); pdf.setFont('helvetica','bold'); pdf.setTextColor(17);
-      pdf.text(`Sheet ${i+1}  \u2014  ${layout.sheet.name}`, M+4, sheetHdgY+6);
+      // Sheet label: physical-sheet numbers (e.g. "Sheet 1", "Sheets 2-4 (\u00d73)")
+      // when this entry collapses multiple identical physical sheets.
+      const lqty = layout.qty || 1;
+      const lphys = layout.physIndexes || [i];
+      const lLabel = lqty > 1
+        ? (lphys[0] === lphys[lphys.length-1]
+            ? `Sheet ${lphys[0]+1} (\u00d7${lqty})`
+            : `Sheets ${lphys[0]+1}\u2013${lphys[lphys.length-1]+1} (\u00d7${lqty})`)
+        : `Sheet ${lphys[0]+1}`;
+      pdf.text(`${lLabel}  \u2014  ${layout.sheet.name}`, M+4, sheetHdgY+6);
       pdf.setFontSize(7.5); pdf.setFont('helvetica','normal'); pdf.setTextColor(110);
-      pdf.text(`${formatDim(layout.sheet.w)}\u00d7${formatDim(layout.sheet.h)} ${u}    ${layout.placed.length} piece${layout.placed.length!==1?'s':''}    ${util}% used`, PW-M-2, sheetHdgY+6, { align:'right' });
+      pdf.text(`${formatDim(sw)}\u00d7${formatDim(sh)} ${u}    ${layout.placed.length} piece${layout.placed.length!==1?'s':''}    ${util}% used`, PW-M-2, sheetHdgY+6, { align:'right' });
       pdf.setTextColor(17);
 
       // panel image — left 2/3, aspect-correct
       if (imgs[i]) {
         const imgX = M+2, imgY = sheetHdgY + hdgH + 3;
         const maxW = leftW-4, maxH = PH-imgY-M-2;
-        const aspect = layout.sheet.w / layout.sheet.h;
+        const aspect = sw / sh;
         let iw, ih;
         if (aspect >= maxW/maxH) { iw = maxW; ih = iw/aspect; }
         else                      { ih = maxH; iw = ih*aspect; }
@@ -1956,16 +2406,6 @@ function toggleClCutList() {
   // Legacy — routed through the combined Summary toggle
   toggleClSummary();
 }
-/** @param {string | number} n */
-function setPagesPerSheet(n) {
-  let s = /** @type {HTMLStyleElement | null} */ (document.getElementById('print-pages-style'));
-  if (!s) { s = document.createElement('style'); s.id = 'print-pages-style'; document.head.appendChild(s); }
-  n = parseInt(String(n));
-  if (n === 2) s.textContent = `@media print{.canvas-wrap{display:inline-block;width:48%;margin:0 1% 2%;vertical-align:top}}`;
-  else if (n === 4) s.textContent = `@media print{.canvas-wrap{display:inline-block;width:23%;margin:0 1% 2%;vertical-align:top}}`;
-  else s.textContent = '';
-}
-
 // Recursive guillotine packer (multi-start best-fit).
 // Options A+B: tournament over several starting orderings × best-short-side-fit
 // pick at each region × shorter-axis-first split preference. Every layout is
@@ -2072,6 +2512,39 @@ function packSheetRecGuillotine(sheetW, sheetH, sheetGrain, items, kerf) {
   return best || { placed: [], leftover: items };
 }
 
+// Groups physical-sheet layouts that pack identical pieces in identical
+// positions/orientations into a single unique-layout entry with a `qty` count
+// and `physIndexes` (the positions in the flat results.layouts array that
+// collapsed into this entry). Stats keep iterating the flat array; the viewer
+// and PDF iterate the unique array for one canvas/page per unique packing.
+/**
+ * @param {any[]} flatLayouts
+ * @returns {any[]}
+ */
+function _groupUniqueLayouts(flatLayouts) {
+  /** @param {any} l */
+  const layoutKey = (l) => [
+    l.sheet.name, l.sheet.w, l.sheet.h, l.sheet.grain || 'none', l.sheet.kerf ?? 0,
+    l.placed.map(/** @param {any} p */ p => `${p.item.id}:${p.x}:${p.y}:${p.rotated?1:0}:${p.w}:${p.h}`).sort().join(',')
+  ].join('|');
+  /** @type {any[]} */
+  const unique = [];
+  /** @type {Map<string, number>} */
+  const keyToIdx = new Map();
+  flatLayouts.forEach(/** @param {any} l @param {number} i */ (l, i) => {
+    const k = layoutKey(l);
+    if (keyToIdx.has(k)) {
+      const u = unique[/** @type {number} */ (keyToIdx.get(k))];
+      u.qty++;
+      u.physIndexes.push(i);
+    } else {
+      keyToIdx.set(k, unique.length);
+      unique.push({ ...l, qty: 1, physIndexes: [i] });
+    }
+  });
+  return unique;
+}
+
 function optimize() {
   if (!_userId && _getOptCount() >= FREE_LIMIT) {
     /** @type {HTMLElement} */ (_byId('paywall-modal')).classList.remove('hidden');
@@ -2121,6 +2594,12 @@ function optimize() {
     remaining = remaining.filter(/** @param {any} p */ p => !placedKeys.has(`${p.id}_${p._inst}`));
   }
   results = { layouts, unplaced: remaining, total: activePieces.reduce(/** @param {number} s @param {any} p */ (s,p) => s+p.qty, 0), placed: activePieces.reduce(/** @param {number} s @param {any} p */ (s,p) => s+p.qty, 0) - remaining.length };
+
+  // Group identical layouts so the viewer/PDF render one canvas per unique
+  // packing with a ×N badge, while results.layouts stays flat for stats and
+  // for downstream consumers (stock.js, quotes.js).
+  results.uniqueLayouts = _groupUniqueLayouts(results.layouts);
+
   if (!_userId) _incOptCount();
   activeSheetIdx = 0;
   renderResults();
@@ -2207,11 +2686,21 @@ function renderLayout(area) {
     area.appendChild(card);
   }
 
-  // Sheets
-  results.layouts.forEach(/** @param {any} layout @param {number} i */ (layout, i) => {
+  // Sheets — iterate the grouped uniqueLayouts so identical packings collapse
+  // to one canvas with a ×N badge. Falls back to the flat layouts if grouping
+  // hasn't been computed yet (defensive — optimize() always populates it).
+  const renderLayouts = results.uniqueLayouts || results.layouts;
+  renderLayouts.forEach(/** @param {any} layout @param {number} i */ (layout, i) => {
+    const qty = layout.qty || 1;
+    const physIdxs = layout.physIndexes || [i];
+    const sheetLabel = qty > 1
+      ? (physIdxs[0] === physIdxs[physIdxs.length-1]
+          ? `Sheet ${physIdxs[0]+1} (×${qty})`
+          : `Sheets ${physIdxs[0]+1}–${physIdxs[physIdxs.length-1]+1} (×${qty})`)
+      : `Sheet ${physIdxs[0]+1}`;
     const lbl = document.createElement('div');
     lbl.className = 'sheet-block-label';
-    lbl.innerHTML = `<span><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${layout.sheet.color || 'var(--muted)'};margin-right:6px;vertical-align:middle"></span>Sheet ${i+1}</span><span style="font-weight:400;color:var(--muted)">${layout.sheet.name} &nbsp;·&nbsp; ${(layout.util*100).toFixed(0)}% used</span>`;
+    lbl.innerHTML = `<span><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${layout.sheet.color || 'var(--muted)'};margin-right:6px;vertical-align:middle"></span>${sheetLabel}</span><span style="font-weight:400;color:var(--muted)">${layout.sheet.name} &nbsp;·&nbsp; ${(layout.util*100).toFixed(0)}% used</span>`;
     area.appendChild(lbl);
     drawCanvas(area, layout, u);
 
@@ -2877,7 +3366,6 @@ function renderSummary(area) {
     <div style="font-size:14px;font-weight:700;color:var(--text)">Workshop Cut Sheet</div>
     <div style="display:flex;gap:8px">
       <span style="font-size:12px;color:var(--muted);align-self:center">${results.placed} pieces · ${results.layouts.length} sheet${results.layouts.length!==1?'s':''}</span>
-      <button class="btn btn-outline" onclick="printLayout('print')" style="font-size:11px;padding:5px 10px" title="Send to printer">Print</button>
       <button class="btn btn-outline" onclick="printLayout('pdf')" style="font-size:11px;padding:5px 10px" title="Save as PDF">PDF</button>
     </div>
   </div>`;

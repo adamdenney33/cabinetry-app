@@ -1,10 +1,3 @@
-// ProCabinet — Supabase row types
-// Generated via the Supabase MCP `generate_typescript_types` tool. Project:
-// mhzneruvlfmhnsohfrdo. Regenerate after schema migrations:
-//   mcp__supabase__generate_typescript_types(project_id: 'mhzneruvlfmhnsohfrdo')
-// then save the output here. The file is checked into git so the types
-// are reproducible without an MCP round-trip.
-
 export type Json =
   | string
   | number
@@ -29,6 +22,7 @@ export type Database = {
           default_base_types: Json
           default_carcass_types: Json
           default_constructions: Json
+          default_contingency_hours: number
           default_currency: string
           default_deposit_pct: number
           default_door_types: Json
@@ -39,13 +33,18 @@ export type Database = {
           default_labour_rate: number
           default_labour_times: Json
           default_markup_pct: number
+          default_packaging_hours: number
           default_tax_pct: number
           default_units: string
+          default_weekday_hours: Json
+          default_workday_hours: number
           email: string | null
           id: number
           logo_url: string | null
           name: string
           phone: string | null
+          production_queue_start_date: string | null
+          unit_format: Json | null
           updated_at: string
           user_id: string
         }
@@ -56,6 +55,7 @@ export type Database = {
           default_base_types?: Json
           default_carcass_types?: Json
           default_constructions?: Json
+          default_contingency_hours?: number
           default_currency?: string
           default_deposit_pct?: number
           default_door_types?: Json
@@ -66,13 +66,18 @@ export type Database = {
           default_labour_rate?: number
           default_labour_times?: Json
           default_markup_pct?: number
+          default_packaging_hours?: number
           default_tax_pct?: number
           default_units?: string
+          default_weekday_hours?: Json
+          default_workday_hours?: number
           email?: string | null
           id?: number
           logo_url?: string | null
           name?: string
           phone?: string | null
+          production_queue_start_date?: string | null
+          unit_format?: Json | null
           updated_at?: string
           user_id: string
         }
@@ -83,6 +88,7 @@ export type Database = {
           default_base_types?: Json
           default_carcass_types?: Json
           default_constructions?: Json
+          default_contingency_hours?: number
           default_currency?: string
           default_deposit_pct?: number
           default_door_types?: Json
@@ -93,13 +99,18 @@ export type Database = {
           default_labour_rate?: number
           default_labour_times?: Json
           default_markup_pct?: number
+          default_packaging_hours?: number
           default_tax_pct?: number
           default_units?: string
+          default_weekday_hours?: Json
+          default_workday_hours?: number
           email?: string | null
           id?: number
           logo_url?: string | null
           name?: string
           phone?: string | null
+          production_queue_start_date?: string | null
+          unit_format?: Json | null
           updated_at?: string
           user_id?: string
         }
@@ -434,6 +445,7 @@ export type Database = {
           id: number
           labour_hours: number | null
           labour_override: boolean
+          line_kind: string
           loose_shelves: number
           material: string | null
           material_cost_override: number | null
@@ -444,7 +456,9 @@ export type Database = {
           position: number
           qty: number
           room: string | null
+          schedule_hours: number | null
           type: string | null
+          unit_price: number | null
           updated_at: string
           user_id: string
           w_mm: number | null
@@ -471,6 +485,7 @@ export type Database = {
           id?: number
           labour_hours?: number | null
           labour_override?: boolean
+          line_kind?: string
           loose_shelves?: number
           material?: string | null
           material_cost_override?: number | null
@@ -481,7 +496,9 @@ export type Database = {
           position?: number
           qty?: number
           room?: string | null
+          schedule_hours?: number | null
           type?: string | null
+          unit_price?: number | null
           updated_at?: string
           user_id: string
           w_mm?: number | null
@@ -508,6 +525,7 @@ export type Database = {
           id?: number
           labour_hours?: number | null
           labour_override?: boolean
+          line_kind?: string
           loose_shelves?: number
           material?: string | null
           material_cost_override?: number | null
@@ -518,7 +536,9 @@ export type Database = {
           position?: number
           qty?: number
           room?: string | null
+          schedule_hours?: number | null
           type?: string | null
+          unit_price?: number | null
           updated_at?: string
           user_id?: string
           w_mm?: number | null
@@ -535,43 +555,70 @@ export type Database = {
       }
       orders: {
         Row: {
+          auto_schedule: boolean
           client_id: number | null
+          contingency_hours: number | null
           created_at: string | null
           due: string | null
           id: number
+          manual_end_date: string | null
+          manual_start_date: string | null
+          markup: number
           notes: string | null
+          packaging_hours: number | null
+          priority: number
           production_start_date: string | null
           project_id: number | null
           quote_id: number | null
+          run_over_hours: number
           status: string | null
+          tax: number
           updated_at: string
           user_id: string
           value: number | null
         }
         Insert: {
+          auto_schedule?: boolean
           client_id?: number | null
+          contingency_hours?: number | null
           created_at?: string | null
           due?: string | null
           id?: never
+          manual_end_date?: string | null
+          manual_start_date?: string | null
+          markup?: number
           notes?: string | null
+          packaging_hours?: number | null
+          priority?: number
           production_start_date?: string | null
           project_id?: number | null
           quote_id?: number | null
+          run_over_hours?: number
           status?: string | null
+          tax?: number
           updated_at?: string
           user_id: string
           value?: number | null
         }
         Update: {
+          auto_schedule?: boolean
           client_id?: number | null
+          contingency_hours?: number | null
           created_at?: string | null
           due?: string | null
           id?: never
+          manual_end_date?: string | null
+          manual_start_date?: string | null
+          markup?: number
           notes?: string | null
+          packaging_hours?: number | null
+          priority?: number
           production_start_date?: string | null
           project_id?: number | null
           quote_id?: number | null
+          run_over_hours?: number
           status?: string | null
+          tax?: number
           updated_at?: string
           user_id?: string
           value?: number | null
@@ -759,6 +806,7 @@ export type Database = {
           id: number
           labour_hours: number | null
           labour_override: boolean
+          line_kind: string
           loose_shelves: number
           material: string | null
           material_cost_override: number | null
@@ -770,6 +818,7 @@ export type Database = {
           quote_id: number
           room: string | null
           type: string | null
+          unit_price: number | null
           updated_at: string
           user_id: string
           w_mm: number | null
@@ -796,6 +845,7 @@ export type Database = {
           id?: number
           labour_hours?: number | null
           labour_override?: boolean
+          line_kind?: string
           loose_shelves?: number
           material?: string | null
           material_cost_override?: number | null
@@ -807,6 +857,7 @@ export type Database = {
           quote_id: number
           room?: string | null
           type?: string | null
+          unit_price?: number | null
           updated_at?: string
           user_id: string
           w_mm?: number | null
@@ -833,6 +884,7 @@ export type Database = {
           id?: number
           labour_hours?: number | null
           labour_override?: boolean
+          line_kind?: string
           loose_shelves?: number
           material?: string | null
           material_cost_override?: number | null
@@ -844,6 +896,7 @@ export type Database = {
           quote_id?: number
           room?: string | null
           type?: string | null
+          unit_price?: number | null
           updated_at?: string
           user_id?: string
           w_mm?: number | null
@@ -917,6 +970,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      schedule_day_overrides: {
+        Row: {
+          created_at: string
+          date: string
+          hours: number
+          id: number
+          label: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          hours: number
+          id?: number
+          label?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          hours?: number
+          id?: number
+          label?: string | null
+          user_id?: string
+        }
+        Relationships: []
       }
       sheets: {
         Row: {

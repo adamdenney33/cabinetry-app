@@ -290,7 +290,12 @@ function switchSection(name) {
   if (name === 'orders') renderOrdersMain();
   if (name === 'schedule') renderSchedule();
   if (name === 'dashboard') { renderDashboard(); setTimeout(drawRevenueChart, 0); }
-  if (name === 'projects') renderProjectsMain();
+  if (name === 'projects') {
+    // U.9: refresh cut-list project membership so counts stay fresh after
+    // saving/clearing a cut list elsewhere in the session.
+    if (typeof _loadCutListProjectIds === 'function') _loadCutListProjectIds();
+    renderProjectsMain();
+  }
   if (name === 'clients') renderClientsMain();
 }
 

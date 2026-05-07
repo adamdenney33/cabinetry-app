@@ -118,6 +118,14 @@ function _syncCBSettingsToDB() {
       default_door_types:          cbSettings.doorTypes         || [],
       default_drawer_front_types:  cbSettings.drawerFrontTypes  || [],
       default_drawer_box_types:    cbSettings.drawerBoxTypes    || [],
+      // Production scheduler defaults (S.2):
+      default_workday_hours:        parseFloat(cbSettings.workdayHours)     || 8,
+      default_weekday_hours:        Array.isArray(cbSettings.weekdayHours) && cbSettings.weekdayHours.length === 7
+                                      ? cbSettings.weekdayHours.map(/** @param {any} h */ h => parseFloat(h) || 0)
+                                      : [8, 8, 8, 8, 8, 0, 0],
+      default_packaging_hours:      parseFloat(cbSettings.packagingHours)   || 0,
+      default_contingency_hours:    parseFloat(cbSettings.contingencyHours) || 0,
+      production_queue_start_date:  cbSettings.queueStartDate || null,
       updated_at: new Date().toISOString()
     };
     const { data: existing } = await _db('business_info').select('id').eq('user_id', uid);
@@ -200,5 +208,84 @@ function getBizLogo() { return localStorage.getItem('pc_biz_logo') || ''; }
 
 function getBizInfo() {
   try { return JSON.parse(localStorage.getItem('pc_biz') || '{}'); } catch(e) { return {}; }
+}
+
+// ══════════════════════════════════════════
+// SCHEDULE DAY OVERRIDES (S.2)
+// ══════════════════════════════════════════
+// In-memory mirror of public.schedule_day_overrides. Sorted by date asc.
+/** @type {Array<{ id: number|null, date: string, hours: number, label: string|null }>} */
+let dayOverrides = [];
+
+async function loadDayOverrides() {
+  if (!_userId) return;
+  try {
+    const { data, error } = await _db('schedule_day_overrides')
+      .select('id, date, hours, label')
+      .eq('user_id', _userId)
+      .order('date');
+    if (error) { console.warn('[day_overrides] load failed:', error.message); return; }
+    dayOverrides = (data || []).map(/** @param {any} r */ r => ({
+      id: r.id,
+      date: r.date,
+      hours: parseFloat(r.hours) || 0,
+      label: r.label || null,
+    }));
+  } catch (e) {
+    console.warn('[day_overrides] load exception:', (/** @type {any} */ (e)).message || e);
+  }
+}
+
+/** @param {string} date  YYYY-MM-DD
+ *  @param {number} hours
+ *  @param {string|null} [label] */
+async function upsertDayOverride(date, hours, label) {
+  if (!_userId) return null;
+  if (!date) return null;
+  const hoursNum = parseFloat(String(hours)) || 0;
+  const labelVal = label || null;
+  try {
+    // _db() lacks upsert; use find-or-insert via the unique (user_id, date) constraint.
+    const existing = dayOverrides.find(o => o.date === date);
+    if (existing && existing.id != null) {
+      const { data, error } = await _db('schedule_day_overrides')
+        .update({ hours: hoursNum, label: labelVal })
+        .eq('id', existing.id)
+        .select('id, date, hours, label')
+        .single();
+      if (error || !data) { if (error) console.warn('[day_overrides] update failed:', error.message); return null; }
+      const next = { id: data.id, date: data.date, hours: parseFloat(String(data.hours)) || 0, label: data.label || null };
+      const idx = dayOverrides.findIndex(o => o.id === existing.id);
+      if (idx >= 0) dayOverrides[idx] = next;
+      dayOverrides.sort((a, b) => a.date.localeCompare(b.date));
+      return next;
+    }
+    const { data, error } = await _db('schedule_day_overrides')
+      .insert({ user_id: _userId, date, hours: hoursNum, label: labelVal })
+      .select('id, date, hours, label')
+      .single();
+    if (error || !data) { if (error) console.warn('[day_overrides] insert failed:', error.message); return null; }
+    const next = { id: data.id, date: data.date, hours: parseFloat(String(data.hours)) || 0, label: data.label || null };
+    dayOverrides.push(next);
+    dayOverrides.sort((a, b) => a.date.localeCompare(b.date));
+    return next;
+  } catch (e) {
+    console.warn('[day_overrides] upsert exception:', (/** @type {any} */ (e)).message || e);
+    return null;
+  }
+}
+
+/** @param {number} id */
+async function deleteDayOverride(id) {
+  if (!_userId || !id) return false;
+  try {
+    const { error } = await _db('schedule_day_overrides').delete().eq('id', id);
+    if (error) { console.warn('[day_overrides] delete failed:', error.message); return false; }
+    dayOverrides = dayOverrides.filter(o => o.id !== id);
+    return true;
+  } catch (e) {
+    console.warn('[day_overrides] delete exception:', (/** @type {any} */ (e)).message || e);
+    return false;
+  }
 }
 

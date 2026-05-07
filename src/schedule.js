@@ -37,29 +37,99 @@ function renderSchedule() {
   }
   /** @param {Date} a @param {Date} b */
   function sameDay(a,b){return a.getFullYear()===b.getFullYear()&&a.getMonth()===b.getMonth()&&a.getDate()===b.getDate();}
-  /** @param {Date} d */
-  function dayIdx(d){return Math.round((+d-+calStart)/86400000);}
 
-  /** @typedef {{id:any,project:string,client:string,start:Date|null,due:Date|null,color:string}} SchedEvent */
+  // S.4: Run the auto-scheduler. Manual orders use their pinned dates;
+  // auto orders are placed by priority + working-hours config.
+  const biz = {
+    workdayHours: cbSettings.workdayHours,
+    weekdayHours: cbSettings.weekdayHours,
+    packagingHours: cbSettings.packagingHours,
+    contingencyHours: cbSettings.contingencyHours,
+    queueStartDate: cbSettings.queueStartDate,
+  };
+  const overrides = (typeof dayOverrides !== 'undefined' && Array.isArray(dayOverrides)) ? dayOverrides : [];
+  const computed = computeSchedule(orders, biz, overrides, today);
+
+  /** @typedef {{id:any,project:string,client:string,start:Date|null,end:Date|null,color:string,lane:number,isManual:boolean,isMissingDates:boolean}} SchedEvent */
   /** @type {SchedEvent[]} */
   const events = /** @type {any} */ (orders.filter(o=>o.status!=='complete').map((o,idx)=>{
-    const due=parseDate(o.due), start=parseDate(o.prodStart);
-    if(!due&&!start)return null;
-    return{id:o.id,project:orderProject(o),client:orderClient(o),start,due,color:palette[idx%palette.length]};
+    const sched = computed.get(o.id);
+    let start = null, end = null;
+    if (sched && sched.startISO) {
+      start = parseDate(sched.startISO);
+      end = parseDate(sched.endISO) || start;
+    }
+    // Fall back to legacy due/prodStart for orders the scheduler couldn't place
+    // (e.g. manual orders with no dates or status=complete escapees).
+    if (!start && !end) {
+      const due = parseDate(o.due), prod = parseDate(o.prodStart);
+      if (!due && !prod) return null;
+      start = prod || due;
+      end = due || prod;
+    }
+    return {
+      id: o.id,
+      project: orderProject(o),
+      client: orderClient(o),
+      start, end,
+      color: palette[idx % palette.length],
+      lane: sched ? sched.lane : 0,
+      isManual: o.auto_schedule === false,
+      isMissingDates: !!(sched && sched.isMissingDates),
+    };
   }).filter(Boolean));
+
+  // Build override map for cell tinting (avoid linear scans inside the day loop).
+  /** @type {Record<string, number>} */
+  const overrideByDate = {};
+  for (const ov of overrides) overrideByDate[ov.date] = ov.hours;
+
+  // Per-event slack (working days from scheduled end → due). Stored on the
+  // event so both the sidebar entry and the calendar bar can render the same
+  // chip without recomputing. Suppressed for missing-dates manual orders
+  // (no scheduled end to compare against).
+  for (const e of events) {
+    const o = orders.find(x => x.id === e.id);
+    const dueISO = o ? _orderDateToISO(o.due || '') : '';
+    const endISO = (!e.isMissingDates && e.end) ? `${e.end.getFullYear()}-${String(e.end.getMonth()+1).padStart(2,'0')}-${String(e.end.getDate()).padStart(2,'0')}` : '';
+    /** @type {any} */ (e).slack = (endISO && dueISO)
+      ? slackDays(endISO, dueISO, cbSettings.weekdayHours || [8,8,8,8,8,0,0], overrideByDate, biz)
+      : null;
+  }
+  /** @param {Date} d */
+  const dayHours = d => {
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    const iso = `${d.getFullYear()}-${m}-${dd}`;
+    if (Object.prototype.hasOwnProperty.call(overrideByDate, iso)) return overrideByDate[iso];
+    const wd = (d.getDay() + 6) % 7; // Mon=0..Sun=6
+    if (Array.isArray(cbSettings.weekdayHours) && cbSettings.weekdayHours.length === 7) {
+      return parseFloat(cbSettings.weekdayHours[wd]) || 0;
+    }
+    return parseFloat(cbSettings.workdayHours) || 8;
+  };
+  const defaultDayHours = parseFloat(cbSettings.workdayHours) || 8;
 
   const weeks = [];
   let ws = new Date(calStart);
   while(ws<=calEnd){const w=[];for(let d=0;d<7;d++){const day=new Date(ws);day.setDate(day.getDate()+d);w.push(day);}weeks.push(w);ws.setDate(ws.getDate()+7);}
 
-  // Sidebar
-  // Sidebar: job list (rendered into separate sidebar element)
-  let sidebarHTML = `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-    <div style="font-size:14px;font-weight:800;color:var(--text)">Jobs</div>
-    <button class="btn btn-outline" onclick="document.getElementById('schedule-today-marker')?.scrollIntoView({behavior:'smooth',block:'center'})" style="font-size:10px;padding:3px 8px;width:auto">Today</button>
+  // Sidebar: settings button + Jobs list. Hours config lives in a popup
+  // opened via _openScheduleSettingsPopup; packaging/contingency live in
+  // Cabinet Builder Core Rates.
+  const overrideCount = (typeof dayOverrides !== 'undefined' && Array.isArray(dayOverrides)) ? dayOverrides.length : 0;
+  let sidebarHTML = `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:6px">
+    <div style="font-size:14px;font-weight:800;color:var(--text)">Schedule</div>
+    <div style="display:flex;gap:4px">
+      <button class="btn btn-outline" onclick="_openScheduleSettingsPopup()" style="font-size:10px;padding:3px 8px;width:auto" title="Working hours and holidays">⚙ Hours${overrideCount?` <span style="opacity:.7">(${overrideCount})</span>`:''}</button>
+      <button class="btn btn-outline" onclick="document.getElementById('schedule-today-marker')?.scrollIntoView({behavior:'smooth',block:'center'})" style="font-size:10px;padding:3px 8px;width:auto">Today</button>
+    </div>
   </div>`;
-  events.forEach(e=>{const o=orders.find(x=>x.id===e.id);const st=o?(o.status?(/** @type {Record<string,string>} */ (STATUS_LABELS))[o.status]||o.status:''):''; sidebarHTML+=`<div style="display:flex;align-items:center;gap:8px;padding:5px 8px;margin-bottom:2px;border-radius:6px;cursor:pointer" onclick="_scrollToSchedBar(${e.id})" ondblclick="_openOrderPopup(${e.id})" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''"><div style="width:8px;height:8px;border-radius:2px;background:${e.color};flex-shrink:0"></div><div style="flex:1;min-width:0"><div style="font-size:11px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_escHtml(e.project)}</div><div style="font-size:9px;color:var(--muted)">${_escHtml(e.client)}${st?' · '+st:''}</div></div><div onclick="event.stopPropagation();_openOrderPopup(${e.id})" style="color:var(--muted);font-size:10px;opacity:0.5;padding:2px 4px" title="Edit order">✎</div></div>`;});
+  sidebarHTML += `<div class="sched-section-header" onclick="_toggleSchedSection('jobs', this)"><span class="sched-caret">▾</span> Jobs (${events.length})</div>`;
+  sidebarHTML += `<div id="sched-jobs-body">`;
+  events.forEach(e=>{const o=orders.find(x=>x.id===e.id);const st=o?(o.status?(/** @type {Record<string,string>} */ (STATUS_LABELS))[o.status]||o.status:''):''; const chip=slackChipHTML(/** @type {any} */ (e).slack); const meta = e.isMissingDates ? '<span style="color:#f87171;font-weight:600">Manual: no dates set</span>' : (st ? _escHtml(st) : ''); sidebarHTML+=`<div style="display:flex;align-items:center;gap:8px;padding:5px 8px;margin-bottom:2px;border-radius:6px;cursor:pointer" onclick="_scrollToSchedBar(${e.id})" ondblclick="_openOrderPopup(${e.id})" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''"><div style="width:8px;height:8px;border-radius:2px;background:${e.color};flex-shrink:0"></div><div style="flex:1;min-width:0"><div style="font-size:11px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e.isManual?'🔒 ':''}${_escHtml(e.project)} — ${_escHtml(e.client)}</div>${(meta||chip)?`<div style="font-size:9px;color:var(--muted);display:flex;align-items:center;gap:4px;margin-top:1px">${meta}${chip}</div>`:''}</div><div onclick="event.stopPropagation();_openOrderPopup(${e.id})" style="color:var(--muted);font-size:10px;opacity:0.5;padding:2px 4px" title="Edit order">✎</div></div>`;});
   if(!events.length)sidebarHTML+=`<div style="font-size:12px;color:var(--muted)">No active orders</div>`;
+  sidebarHTML += `</div>`;
   const sidebarEl = document.getElementById('schedule-sidebar');
   if (sidebarEl) sidebarEl.innerHTML = sidebarHTML;
 
@@ -80,40 +150,71 @@ function renderSchedule() {
     // Week container with grid overlay
     cal += `<div style="position:relative;display:grid;grid-template-columns:repeat(7,1fr);min-height:90px">`;
 
-    // Day cells (background grid)
+    // Day cells (background grid). Tinting: today > holiday > partial > weekend.
     week.forEach((day,di) => {
       const td = sameDay(day,today);
       const we = di>=5;
-      const bg = td?'rgba(232,168,56,0.06)':we?'rgba(255,255,255,0.015)':'';
-      cal += `<div style="border:1px solid var(--border2);padding:3px;${bg?'background:'+bg:''}"${td?' id="schedule-today-marker"':''}>
+      const dh = dayHours(day);
+      const isHoliday = dh === 0;
+      const isPartial = dh > 0 && dh < defaultDayHours;
+      const dayISO = `${day.getFullYear()}-${String(day.getMonth()+1).padStart(2,'0')}-${String(day.getDate()).padStart(2,'0')}`;
+      const hasOverride = Object.prototype.hasOwnProperty.call(overrideByDate, dayISO);
+      let cellBg = '';
+      let cellExtra = '';
+      if (td) {
+        cellBg = 'rgba(232,168,56,0.06)';
+      } else if (isHoliday) {
+        cellBg = 'var(--surface2)';
+        cellExtra = 'background-image:repeating-linear-gradient(-45deg,transparent 0 6px,rgba(255,255,255,0.04) 6px 12px)';
+      } else if (isPartial) {
+        cellBg = 'rgba(232,168,56,0.05)';
+      } else if (we) {
+        cellBg = 'rgba(255,255,255,0.015)';
+      }
+      const styleParts = ['border:1px solid var(--border2)','padding:3px'];
+      if (cellBg) styleParts.push('background:' + cellBg);
+      if (cellExtra) styleParts.push(cellExtra);
+      // Hours chip — visible on every cell next to the date, clickable to override.
+      const chipColor = hasOverride ? 'var(--accent)' : (isHoliday ? '#f87171' : (isPartial ? '#fbbf24' : 'var(--muted)'));
+      const chipBg = hasOverride ? 'rgba(232,168,56,0.18)' : 'rgba(255,255,255,0.04)';
+      const hoursChip = `<div class="sched-day-hours" onclick="event.stopPropagation();_quickOverrideDate('${dayISO}')" title="Click to override hours for this date" style="position:absolute;top:3px;right:3px;font-size:9px;font-weight:700;color:${chipColor};background:${chipBg};padding:1px 4px;border-radius:3px;cursor:pointer;pointer-events:auto;z-index:3">${dh}h</div>`;
+      cal += `<div style="${styleParts.join(';')};position:relative;min-height:90px"${td?' id="schedule-today-marker"':''}>
         <div style="font-size:${td?'12':'11'}px;font-weight:${td?'800':'500'};color:${td?'#fff':we?'var(--muted)':'var(--text2)'};${td?'background:var(--accent);border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center':'padding:1px 3px'}">${day.getDate()}</div>
+        ${hoursChip}
       </div>`;
     });
 
-    // Event bars overlaid using absolute positioning
+    // Event bars overlaid using absolute positioning. Lane comes from
+    // computeSchedule, so a long bar keeps its row across week boundaries.
     const weekStart = week[0], weekEnd = week[6];
     const weekEvents = events.filter(e => {
-      // map() invariant: at least one of e.start / e.due is non-null
-      const s = /** @type {Date} */ (e.start||e.due), d = /** @type {Date} */ (e.due||e.start);
+      // events array invariant: at least one of e.start / e.end is non-null
+      const s = /** @type {Date} */ (e.start||e.end), d = /** @type {Date} */ (e.end||e.start);
       return d >= weekStart && s <= weekEnd;
     });
 
-    let barTop = 28; // below day numbers
     weekEvents.forEach(e => {
-      // map() invariant: at least one of e.start / e.due is non-null
-      const s = /** @type {Date} */ (e.start||e.due), d = /** @type {Date} */ (e.due||e.start);
+      const s = /** @type {Date} */ (e.start||e.end), d = /** @type {Date} */ (e.end||e.start);
       const startInWeek = s < weekStart ? 0 : s.getDay() === 0 ? 6 : s.getDay() - 1; // Mon=0
       const endInWeek = d > weekEnd ? 6 : d.getDay() === 0 ? 6 : d.getDay() - 1;
       const left = (startInWeek / 7 * 100).toFixed(2);
       const width = ((endInWeek - startInWeek + 1) / 7 * 100).toFixed(2);
       const isRealStart = e.start && s >= weekStart && s <= weekEnd;
-      const isRealEnd = e.due && d >= weekStart && d <= weekEnd;
+      const isRealEnd = e.end && d >= weekStart && d <= weekEnd;
       const radius = (isRealStart&&isRealEnd)?'4px':isRealStart?'4px 0 0 4px':isRealEnd?'0 4px 4px 0':'0';
+      // Lane top: 28px below day numbers, 20px per lane.
+      const barTop = 28 + e.lane * 20;
+      const labelText = _escHtml(e.project) + ' — ' + _escHtml(e.client);
+      const showLabel = isRealStart || startInWeek === 0;
+      const manualStyle = e.isManual ? 'border:1px dashed rgba(255,255,255,0.5);' : '';
+      const lockIcon = e.isManual ? '🔒 ' : '';
+      // Show slack chip on the bar's last visible week (where the end edge is rendered).
+      const chipHTML = isRealEnd ? slackChipHTML(/** @type {any} */ (e).slack) : '';
 
-      cal += `<div class="sched-bar-${e.id}" style="position:absolute;top:${barTop}px;left:${left}%;width:${width}%;height:18px;padding:0 2px;z-index:2;pointer-events:auto" onclick="_openOrderPopup(${e.id})">
-        <div style="background:${e.color};color:#fff;font-size:10px;font-weight:600;padding:1px 6px;border-radius:${radius};height:16px;line-height:16px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;cursor:pointer" title="${_escHtml(e.project)} — ${_escHtml(e.client)}">${isRealStart||startInWeek===0?_escHtml(e.project):''}</div>
+      cal += `<div class="sched-bar sched-bar-${e.id}" style="position:absolute;top:${barTop}px;left:${left}%;width:${width}%;height:18px;padding:0 2px;z-index:2;pointer-events:auto;display:flex;align-items:center;gap:3px" onclick="_openOrderPopup(${e.id})">
+        <div style="background:${e.color};${manualStyle}color:#fff;font-size:10px;font-weight:600;padding:1px 6px;border-radius:${radius};height:16px;line-height:16px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;cursor:pointer;flex:1;min-width:0" title="${labelText}${e.isManual?' (manual)':''}">${showLabel?lockIcon+labelText:''}</div>
+        ${chipHTML}
       </div>`;
-      barTop += 20;
     });
 
     cal += `</div>`; // close week container
@@ -170,4 +271,187 @@ function _restoreProdStarts(ordersList) {
       if (val) o.prodStart = val;
     });
   } catch(e) {}
+}
+
+// ══════════════════════════════════════════
+// SCHEDULE SIDEBAR — Defaults + Day Overrides (S.2)
+// ══════════════════════════════════════════
+// State: collapsed/expanded sections persist across re-renders via localStorage.
+/** @type {Record<string, boolean>} */
+let _schedSectionState = (function(){
+  try { return JSON.parse(localStorage.getItem('pc_sched_sections') || '{}'); } catch(e) { return {}; }
+})();
+function _persistSchedSections() {
+  try { localStorage.setItem('pc_sched_sections', JSON.stringify(_schedSectionState)); } catch(e) {}
+}
+/** @param {string} key  @param {HTMLElement} headerEl */
+function _toggleSchedSection(key, headerEl) {
+  const collapsed = !_schedSectionState[key];
+  _schedSectionState[key] = collapsed;
+  _persistSchedSections();
+  const body = document.getElementById('sched-' + key + '-body');
+  if (body) body.style.display = collapsed ? 'none' : '';
+  const caret = headerEl.querySelector('.sched-caret');
+  if (caret) caret.textContent = collapsed ? '▸' : '▾';
+}
+/** @param {string} key */
+function _isSchedCollapsed(key) { return !!_schedSectionState[key]; }
+
+// ── Schedule Settings Popup (working hours + holidays) ──
+// Replaces the inline sidebar panels: a single ⚙ Hours button opens this.
+// Packaging / Contingency live in Cabinet Builder Core Rates, not here.
+function _openScheduleSettingsPopup() {
+  if (typeof _openPopup !== 'function') return;
+  _openPopup(_scheduleSettingsPopupHTML(), 'md');
+}
+
+function _scheduleSettingsPopupHTML() {
+  const wd = Array.isArray(cbSettings.weekdayHours) && cbSettings.weekdayHours.length === 7
+    ? cbSettings.weekdayHours
+    : [8, 8, 8, 8, 8, 0, 0];
+  const dayLetters = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+  const dayNamesFull = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+  const weekdayInputs = wd.map(/** @param {number} h @param {number} i */ (h, i) => `<div class="sched-wd-cell">
+    <div class="sched-wd-letter" title="${dayNamesFull[i]}">${dayLetters[i]}</div>
+    <input type="number" min="0" max="24" step="0.5" value="${h}" class="sched-wd-input" oninput="_updateWeekdayHour(${i}, this.value)">
+  </div>`).join('');
+
+  return `<div class="popup-header">
+  <div class="popup-title">Working Hours &amp; Holidays</div>
+  <button class="popup-close" onclick="_closePopup()">×</button>
+</div>
+<div class="popup-body">
+  <div class="pf"><label class="pf-label">Default workday hours</label>
+    <input class="pf-input" type="number" min="0" max="24" step="0.5" value="${cbSettings.workdayHours ?? 8}" oninput="_updateSchedDefault('workdayHours', this.value)">
+  </div>
+  <div class="pf"><label class="pf-label">Hours per weekday</label>
+    <div class="sched-wd-grid">${weekdayInputs}</div>
+    <div style="font-size:10px;color:var(--muted);margin-top:4px">Mon–Sun. Set Sat/Sun to 0 for a 5-day workweek; reduce one day for a recurring half-day.</div>
+  </div>
+  <div class="pf"><label class="pf-label">Production queue start</label>
+    <input class="pf-input" type="date" value="${cbSettings.queueStartDate || ''}" oninput="_updateSchedDefault('queueStartDate', this.value)">
+    <div style="font-size:10px;color:var(--muted);margin-top:4px">Anchor for auto-scheduled orders. Leave blank to use today.</div>
+  </div>
+  <div class="pf-divider"></div>
+  <div class="pf-label" style="margin-bottom:6px;display:flex;align-items:center;justify-content:space-between">
+    <span>Holidays &amp; one-off overrides</span>
+    <button class="btn btn-outline" onclick="_holidayAdd()" style="font-size:11px;padding:3px 8px;width:auto">+ Add</button>
+  </div>
+  <div id="sched-holidays-list" class="sched-overrides-list">${_holidaysListHTML()}</div>
+</div>
+<div class="popup-footer">
+  <div class="popup-footer-right"><button class="btn btn-primary" onclick="_closePopup()">Done</button></div>
+</div>`;
+}
+
+function _holidaysListHTML() {
+  const list = (typeof dayOverrides !== 'undefined' && Array.isArray(dayOverrides)) ? dayOverrides : [];
+  if (!list.length) return `<div style="font-size:11px;color:var(--muted);padding:8px 0">No holidays set. Add a date or click any date in the calendar to override its hours.</div>`;
+  return list.map(o => {
+    const idAttr = o.id != null ? String(o.id) : 'null';
+    return `<div class="sched-override-row" data-id="${o.id || ''}">
+  <input type="date" value="${o.date}" onchange="_holidayEditDate(${idAttr}, this.value)" class="sched-override-date">
+  <input type="number" min="0" max="24" step="0.5" value="${o.hours}" onchange="_holidayEditHours(${idAttr}, this.value)" class="sched-override-hours" title="Hours (0 = full day off)">
+  <input type="text" value="${(o.label || '').replace(/"/g,'&quot;')}" placeholder="Label" onchange="_holidayEditLabel(${idAttr}, this.value)" class="sched-override-label">
+  <button onclick="_holidayDelete(${idAttr})" class="sched-override-x" title="Remove">✕</button>
+</div>`;
+  }).join('');
+}
+
+function _refreshHolidaysList() {
+  const host = document.getElementById('sched-holidays-list');
+  if (host) host.innerHTML = _holidaysListHTML();
+}
+
+/** @param {string} key  @param {string} val */
+function _updateSchedDefault(key, val) {
+  if (key === 'queueStartDate') {
+    cbSettings.queueStartDate = val || null;
+  } else {
+    const n = parseFloat(val);
+    cbSettings[key] = isFinite(n) ? n : 0;
+  }
+  if (typeof _syncCBSettingsToDB === 'function') _syncCBSettingsToDB();
+  renderSchedule();
+}
+
+/** @param {number} idx  @param {string} val */
+function _updateWeekdayHour(idx, val) {
+  if (!Array.isArray(cbSettings.weekdayHours) || cbSettings.weekdayHours.length !== 7) {
+    cbSettings.weekdayHours = [8, 8, 8, 8, 8, 0, 0];
+  }
+  const n = parseFloat(val);
+  cbSettings.weekdayHours[idx] = isFinite(n) ? n : 0;
+  if (typeof _syncCBSettingsToDB === 'function') _syncCBSettingsToDB();
+  renderSchedule();
+}
+
+async function _holidayAdd() {
+  const today = new Date();
+  const iso = today.toISOString().slice(0, 10);
+  let target = iso;
+  if (Array.isArray(dayOverrides) && dayOverrides.find(o => o.date === target)) {
+    const t = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+    target = t.toISOString().slice(0, 10);
+  }
+  await upsertDayOverride(target, 0, '');
+  _refreshHolidaysList();
+  renderSchedule();
+}
+/** @param {number|null} id @param {string} val */
+async function _holidayEditDate(id, val) {
+  if (!val || !Array.isArray(dayOverrides)) return;
+  const o = dayOverrides.find(x => x.id === id);
+  if (!o) return;
+  if (o.id != null) await deleteDayOverride(o.id);
+  await upsertDayOverride(val, o.hours, o.label);
+  _refreshHolidaysList();
+  renderSchedule();
+}
+/** @param {number|null} id @param {string} val */
+async function _holidayEditHours(id, val) {
+  if (!Array.isArray(dayOverrides)) return;
+  const o = dayOverrides.find(x => x.id === id);
+  if (!o) return;
+  await upsertDayOverride(o.date, parseFloat(val) || 0, o.label);
+  _refreshHolidaysList();
+  renderSchedule();
+}
+/** @param {number|null} id @param {string} val */
+async function _holidayEditLabel(id, val) {
+  if (!Array.isArray(dayOverrides)) return;
+  const o = dayOverrides.find(x => x.id === id);
+  if (!o) return;
+  await upsertDayOverride(o.date, o.hours, val || null);
+  _refreshHolidaysList();
+}
+/** @param {number|null} id */
+async function _holidayDelete(id) {
+  if (id == null) return;
+  await deleteDayOverride(id);
+  _refreshHolidaysList();
+  renderSchedule();
+}
+
+// Quick-override flow from clicking a calendar cell's hours indicator.
+// Prompts for a new hour value; saves as a same-date override (creates one
+// if missing, updates if existing).
+/** @param {string} iso  YYYY-MM-DD */
+async function _quickOverrideDate(iso) {
+  if (!iso) return;
+  const existing = (typeof dayOverrides !== 'undefined' && Array.isArray(dayOverrides))
+    ? dayOverrides.find(o => o.date === iso) : null;
+  const cur = existing ? String(existing.hours) : '';
+  const v = prompt('Hours for ' + iso + ' (0 = holiday, leave blank to clear)', cur);
+  if (v === null) return;
+  const trimmed = v.trim();
+  if (trimmed === '') {
+    if (existing && existing.id) await deleteDayOverride(existing.id);
+    renderSchedule();
+    return;
+  }
+  const n = parseFloat(trimmed);
+  if (!isFinite(n) || n < 0) return;
+  await upsertDayOverride(iso, n, existing ? existing.label : null);
+  renderSchedule();
 }

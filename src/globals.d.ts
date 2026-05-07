@@ -50,6 +50,8 @@ declare global {
     _projFilter?: string;
     _projSearch?: string;
     _projSort?: string;
+    /** U.9: Set of project IDs with any cut-list rows (sheets or pieces). */
+    _projectsWithCutLists?: Set<number>;
     _clientSearch?: string;
     _clientSort?: string;
     /** Stock-panel UI stash slots — used by inline oninput / onchange / onclick handlers. */

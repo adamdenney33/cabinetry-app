@@ -190,7 +190,6 @@ function _pjClientSuggest(input) {
   if (!list) return;
   _posSuggest(input, list);
   const matches = val ? clients.filter(c => c.name.toLowerCase().includes(val)).slice(0, 8) : clients.slice(0, 8);
-  if (!matches.length && !val) { list.style.display = 'none'; return; }
   list.innerHTML = matches.map(c => `<div class="client-suggest-item" onmousedown="document.getElementById('pj-client').value='${_escHtml(c.name)}';document.getElementById('pj-client-suggest').style.display='none'">
     <span class="suggest-icon">${c.name.charAt(0).toUpperCase()}</span>
     <span>${_escHtml(c.name)}</span>
@@ -284,28 +283,80 @@ function renderProjectsMain() {
     return '<span class="badge badge-blue">Active</span>';
   };
 
+  /**
+   * Compact-money formatter for chip-sized labels: $42.8k, $1.2M, $850.
+   * @param {number} v
+   */
+  const fmtShort = v => {
+    if (!v) return '';
+    if (v >= 1_000_000) return cur + (v/1_000_000).toFixed(1).replace(/\.0$/,'') + 'M';
+    if (v >= 1_000) return cur + (v/1_000).toFixed(1).replace(/\.0$/,'') + 'k';
+    return cur + Math.round(v).toLocaleString('en-US');
+  };
+
+  // Inline SVG icons (stroke style — match the rest of the app)
+  const iconCabinet = `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="2" width="12" height="12" rx="1.5"/><path d="M2 6h12M2 10h12"/></svg>`;
+  const iconCutlist = `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="4" cy="11.5" r="2"/><circle cx="12" cy="11.5" r="2"/><path d="M5.5 10L13 2M10.5 10L3 2" stroke-linecap="round"/></svg>`;
+  const iconQuote = `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M3 1.5h7l3 3v10H3z"/><path d="M5 6h6M5 9h6M5 12h4" stroke-linecap="round"/></svg>`;
+  const iconOrder = `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M2.5 4.5l5.5-2.5 5.5 2.5v7L8 14 2.5 11.5z"/><path d="M2.5 4.5L8 7l5.5-2.5M8 7v7"/></svg>`;
+
   /** @param {any} p */
   const projectCard = p => {
     const client = p.client_id ? clients.find(c => c.id === p.client_id) : null;
-    const pQuotes = quotes.filter(q => q.project_id === p.id || (!q.project_id && quoteProject(q) === p.name));
+    // Cabinet count = `cabinet`-kind lines summed across ALL of the project's
+    // quotes (drafts included — drafts are the in-progress builder workspace).
+    const allProjectQuotes = quotes.filter(q => q.project_id === p.id || (!q.project_id && quoteProject(q) === p.name));
+    const pQuotes = allProjectQuotes.filter(q => !_isDraftQuote(q));
     const pOrders = orders.filter(o => o.project_id === p.id || (!o.project_id && orderProject(o) === p.name));
-    const totalValue = pOrders.reduce((s,o) => s + (o.value ?? 0), 0);
+    const orderValue = pOrders.reduce((s,o) => s + (o.value ?? 0), 0);
     const quoteValue = pQuotes.reduce((s,q) => s + quoteTotal(q), 0);
-    /** @param {number} v */
-    const fmt = v => cur + v.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0});
-    const created = p.created_at ? new Date(p.created_at).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : '';
+    const totalShown = orderValue || quoteValue;
+    const cabinetCount = allProjectQuotes.reduce((s,q) => s + ((/** @type {any[]} */ (q._lines || [])).filter(l => (l.line_kind || 'cabinet') === 'cabinet').length), 0);
+    const cutListCount = (window._projectsWithCutLists && window._projectsWithCutLists.has(p.id)) ? 1 : 0;
 
-    const statusBadge = p.status==='complete'?'badge-green':p.status==='on-hold'?'badge-gray':'badge-blue';
+    const statusBadgeCls = p.status==='complete'?'badge-green':p.status==='on-hold'?'badge-gray':'badge-blue';
     const statusText = p.status==='complete'?'Complete':p.status==='on-hold'?'On Hold':'Active';
-    return `<div id="project-card-${p.id}" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;margin-bottom:6px;cursor:pointer;transition:box-shadow .15s" onclick="_openProjectPopup(${p.id})" onmouseover="this.style.boxShadow='var(--shadow-md)'" onmouseout="this.style.boxShadow=''">
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px">
-        <div style="font-size:14px;font-weight:700;color:var(--text)">${_escHtml(p.name)}</div>
-        <span class="badge ${statusBadge}" style="font-size:9px;padding:1px 6px">${statusText}</span>
+    const nameSafe = _escHtml(p.name);
+    const nameJs = _escHtml(p.name).replace(/'/g, "\\'");
+
+    /**
+     * Render one of the 4 strip actions.
+     * @param {string} label
+     * @param {string} icon - inline SVG markup
+     * @param {number|null} count - null when count is not tracked yet (cabinets / cut lists in v1)
+     * @param {string} moneyLabel - e.g. "$42.8k"; pass '' to omit
+     * @param {string} drillCall - JS expression to drill into existing items (no-op if count is 0/null)
+     * @param {string} createCall - JS expression to create a new item
+     */
+    const act = (label, icon, count, moneyLabel, drillCall, createCall) => {
+      const isEmpty = count === 0;
+      const showCount = count !== null;
+      const drill = (showCount && !isEmpty) ? `event.stopPropagation();${drillCall}` : `event.stopPropagation();${createCall}`;
+      return `<div class="proj-act${isEmpty?' empty':''}">
+        <div class="proj-act-main" onclick="${drill}" title="${isEmpty?'Create first '+label.toLowerCase():'View '+label.toLowerCase()}">
+          ${icon}
+          <span class="proj-act-label">${label}</span>
+          ${showCount ? `<span class="proj-act-count">${count}</span>` : ''}
+          ${moneyLabel ? `<span class="proj-act-money">${moneyLabel}</span>` : ''}
+        </div>
+        <div class="proj-act-add" onclick="event.stopPropagation();${createCall}" title="New ${label.toLowerCase()}">+</div>
+      </div>`;
+    };
+
+    return `<div class="proj-card" id="project-card-${p.id}" onclick="_openProjectPopup(${p.id})">
+      <div class="proj-card-top">
+        <span class="proj-name" onclick="event.stopPropagation();_openProjectPopup(${p.id})">${nameSafe}</span>
+        ${client ? `<span class="proj-client">${_escHtml(client.name)}</span>` : ''}
+        <span class="badge ${statusBadgeCls}" style="font-size:9px;padding:1px 6px">${statusText}</span>
+        ${p.description ? `<span class="proj-desc">${_escHtml(p.description)}</span>` : '<span class="proj-desc"></span>'}
+        <span class="proj-total${totalShown?'':' zero'}">${totalShown ? fmtShort(totalShown) : '—'}</span>
       </div>
-      <div style="font-size:10px;color:var(--muted)">
-        ${client ? _escHtml(client.name) + ' · ' : ''}${created} · ${pQuotes.length} quote${pQuotes.length!==1?'s':''} (${fmt(quoteValue)}) · ${pOrders.length} order${pOrders.length!==1?'s':''} (${fmt(totalValue)})
+      <div class="proj-strip">
+        ${act('Cabinets', iconCabinet, cabinetCount, '', `_newCabinetForProject(${p.id})`, `_newCabinetForProject(${p.id})`)}
+        ${act('Cut Lists', iconCutlist, cutListCount, '', `_newCutListForProject(${p.id})`, `_newCutListForProject(${p.id})`)}
+        ${act('Quotes', iconQuote, pQuotes.length, pQuotes.length ? fmtShort(quoteValue) : '', `_drillQuotesForProject('${nameJs}')`, `_newQuoteForProject(${p.id})`)}
+        ${act('Orders', iconOrder, pOrders.length, pOrders.length ? fmtShort(orderValue) : '', `_drillOrdersForProject('${nameJs}')`, `_newOrderForProject(${p.id})`)}
       </div>
-      ${p.description ? `<div style="font-size:11px;color:var(--text2);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_escHtml(p.description)}</div>` : ''}
     </div>`;
   };
 
@@ -346,6 +397,126 @@ function renderProjectsMain() {
     </div>
     ${filtered.length ? filtered.map(projectCard).join('') : `<div style="color:var(--muted);font-size:13px;text-align:center;padding:40px 20px;border:1px dashed var(--border);border-radius:var(--radius)">${(search || filter !== 'all') ? 'No projects match this filter.' : 'No projects yet. Create one using the form on the left.'}</div>`}
   </div>`;
+}
+
+// ── Project counts cache (U.9) ──
+// Cabinet counts derive from cached q._lines (populated by _hydrateQuoteTotals).
+// Cut-list counts need a separate query because pieces/sheets aren't in memory
+// — fetch DISTINCT project_id once at boot.
+
+/** @type {Set<number>} projects that have any cut-list rows (sheets or pieces) */
+window._projectsWithCutLists = new Set();
+
+async function _loadCutListProjectIds() {
+  if (typeof _userId === 'undefined' || !_userId) return;
+  try {
+    const [{ data: pieceRows }, { data: sheetRows }] = await Promise.all([
+      _db('pieces').select('project_id').eq('user_id', _userId),
+      _db('sheets').select('project_id').eq('user_id', _userId),
+    ]);
+    const set = new Set();
+    for (const r of (pieceRows || [])) if (r.project_id) set.add(r.project_id);
+    for (const r of (sheetRows || [])) if (r.project_id) set.add(r.project_id);
+    window._projectsWithCutLists = set;
+    // Re-render if Projects tab is currently visible
+    if (document.getElementById('panel-projects')?.classList.contains('active')) {
+      try { renderProjectsMain(); } catch(e) {}
+    }
+  } catch (e) {
+    console.warn('[cutlist project ids] load failed:', /** @type {any} */ (e).message || e);
+  }
+}
+
+// ── Project → Tab bridges (U.9) ──
+// Each helper switches to a producing tab with the project preselected. For
+// quotes/orders, "drill" filters the existing tab by project name; for
+// cabinet/cut-list, "create" pre-fills the project smart-input so the user
+// starts working in context.
+
+/** @param {string} inputId @param {string} value */
+function _prefillSmartInput(inputId, value) {
+  const inp = /** @type {HTMLInputElement|null} */ (document.getElementById(inputId));
+  if (!inp) return;
+  inp.value = value;
+  // Hide the matching suggest dropdown so the prefill doesn't open it.
+  const suggest = document.getElementById(inputId + '-suggest');
+  if (suggest) suggest.style.display = 'none';
+}
+
+/** @param {string} name */
+function _drillQuotesForProject(name) {
+  switchSection('quote');
+  window._quoteSearch = name;
+  if (typeof renderQuoteMain === 'function') renderQuoteMain();
+}
+
+/** @param {string} name */
+function _drillOrdersForProject(name) {
+  switchSection('orders');
+  window._orderSearch = name;
+  if (typeof renderOrdersMain === 'function') renderOrdersMain();
+}
+
+/** @param {number} projectId */
+function _newCabinetForProject(projectId) {
+  const p = projects.find(x => x.id === projectId);
+  if (!p) return;
+  switchSection('cabinet');
+  _prefillSmartInput('cb-project', p.name);
+  _toast(`Project "${p.name}" set — add cabinets to build a quote`, 'success');
+}
+
+/** @param {number} projectId */
+function _newCutListForProject(projectId) {
+  const p = projects.find(x => x.id === projectId);
+  if (!p) return;
+  const proceed = () => {
+    _doClearAll();
+    switchSection('cutlist');
+    // If the project already has cut list data saved, load it; otherwise
+    // start fresh and link the project so a Save Project click overwrites it.
+    if (window._projectsWithCutLists && window._projectsWithCutLists.has(p.id)) {
+      loadProject(p.id);
+      return;
+    }
+    _prefillSmartInput('cl-project', p.name);
+    _clCurrentProjectId = p.id;
+    _clCurrentProjectName = p.name;
+    if (typeof _setClDirty === 'function') _setClDirty(false);
+    _toast(`Project "${p.name}" loaded — add pieces and sheets`, 'success');
+  };
+  if (typeof _clConfirmDiscardIfDirty === 'function') {
+    _clConfirmDiscardIfDirty(`open cut list for "${p.name}"`, proceed);
+  } else {
+    proceed();
+  }
+}
+
+/** @param {number} projectId */
+function _newQuoteForProject(projectId) {
+  const p = projects.find(x => x.id === projectId);
+  if (!p) return;
+  switchSection('quote');
+  _prefillSmartInput('q-project', p.name);
+  if (p.client_id) {
+    const client = clients.find(c => c.id === p.client_id);
+    if (client) _prefillSmartInput('q-client', client.name);
+  }
+  setTimeout(() => { /** @type {HTMLTextAreaElement|null} */ (document.getElementById('q-notes'))?.focus(); }, 50);
+  _toast(`Project & client filled — complete the quote and click Create`, 'success');
+}
+
+/** @param {number} projectId */
+function _newOrderForProject(projectId) {
+  const p = projects.find(x => x.id === projectId);
+  if (!p) return;
+  switchSection('orders');
+  _prefillSmartInput('o-project', p.name);
+  if (p.client_id) {
+    const client = clients.find(c => c.id === p.client_id);
+    if (client) _prefillSmartInput('o-client', client.name);
+  }
+  _toast(`Project & client filled — complete the order and click Add`, 'success');
 }
 
 // Default library panels to open

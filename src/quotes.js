@@ -8,10 +8,9 @@
 // Cross-file dependencies referenced from this file's functions: clients,
 // projects, orders, _db, _dbInsertSafe, _userId, _requireAuth, _toast,
 // _escHtml, _onSet, _oqSet, resolveClient, resolveProject, _openQuotePopup,
-// _writeManualTotalsLine, _quoteLineRowToCB, calcCBLine, markQuoteSent,
-// duplicateQuote, printQuote, exportQuotesCSV, importQuotesCSV,
-// renderOrdersMain, switchSection — all globals defined in app.js,
-// src/orders.js, or src/db.js.
+// _quoteLineRowToCB, calcCBLine, markQuoteSent, duplicateQuote, printQuote,
+// exportQuotesCSV, importQuotesCSV, renderOrdersMain, switchSection — all
+// globals defined in app.js, src/orders.js, or src/db.js.
 
 // ══════════════════════════════════════════
 // QUOTES
@@ -21,6 +20,7 @@
 // pre-Phase-7 fields retained for fallback rendering.
 /** @type {(import('./database.types').Tables<'quotes'> & {
  *    _totals?: {materials: number, labour: number},
+ *    _lines?: any[],
  *    client?: string, project?: string,
  *    materials?: number, labour?: number
  * })[]} */
@@ -105,34 +105,96 @@ async function _findOrCreateDraftQuote(projectId) {
   return data;
 }
 
-// Aggregate materials/labour for a quote from its `quote_lines` rows.
-// Returns null if no lines exist; callers should treat null as zero totals.
+// Per-line subtotal across all kinds. `cabinet` runs the full calcCBLine
+// pipeline; `item` and `labour` are simple qty/hours × unit_price products.
+// Cabinet results are memoised on the row (`row._sub`) since their inputs
+// only change in the Cabinet Builder, not in the quote/order popup —
+// recomputing per keystroke for an item edit was the main slowness vector.
+/** @param {any} row a quote_lines / order_lines row */
+function _lineSubtotal(row) {
+  const kind = row.line_kind || 'cabinet';
+  if (kind === 'item') {
+    const qty = parseFloat(row.qty) || 1;
+    const price = parseFloat(row.unit_price) || 0;
+    return { materials: qty * price, labour: 0 };
+  }
+  if (kind === 'labour') {
+    const hrs = parseFloat(row.labour_hours) || 0;
+    const rate = parseFloat(row.unit_price);
+    const fallback = (typeof cbSettings !== 'undefined' && cbSettings.labourRate) ? cbSettings.labourRate : 65;
+    const r = isFinite(rate) ? rate : fallback;
+    return { materials: 0, labour: hrs * r };
+  }
+  // cabinet — cached on the row
+  if (row._sub) return row._sub;
+  const cb = _quoteLineRowToCB(row);
+  const c = calcCBLine(cb);
+  const qty = cb.qty || 1;
+  const out = { materials: (c.matCost + c.hwCost) * qty, labour: c.labourCost * qty };
+  Object.defineProperty(row, '_sub', { value: out, writable: true, enumerable: false, configurable: true });
+  return out;
+}
+
+// Aggregate materials/labour for a quote from its `quote_lines` rows. Side
+// effect: caches the rows on the quote (`q._lines`) so popups can open
+// synchronously without a fresh fetch. Returns null if no lines exist.
 /** @param {number} quoteId */
 async function quoteTotalsFromLines(quoteId) {
   if (!quoteId) return null;
-  const { data: lines, error } = await _db('quote_lines').select('*').eq('quote_id', quoteId);
-  if (error || !lines || lines.length === 0) return null;
+  const { data: lines, error } = await _db('quote_lines').select('*').eq('quote_id', quoteId).order('position');
+  if (error || !lines) return null;
+  // Cache the rows on the quote object for popup open
+  const q = quotes.find(x => x.id === quoteId);
+  if (q) q._lines = lines.map(/** @param {any} r */ r => ({ ...r }));
+  if (lines.length === 0) return null;
   let materials = 0, labour = 0;
   for (const row of lines) {
-    const cb = _quoteLineRowToCB(row);
-    const c = calcCBLine(cb);
-    const qty = cb.qty || 1;
-    materials += (c.matCost + c.hwCost) * qty;
-    labour += c.labourCost * qty;
+    const sub = _lineSubtotal(row);
+    materials += sub.materials;
+    labour += sub.labour;
+  }
+  return { materials, labour };
+}
+
+// Same shape as quoteTotalsFromLines, against order_lines. Caches lines on
+// the order (`o._lines`) so popups can open synchronously.
+/** @param {number} orderId */
+async function orderTotalsFromLines(orderId) {
+  if (!orderId) return null;
+  const { data: lines, error } = await _db('order_lines').select('*').eq('order_id', orderId).order('position');
+  if (error || !lines) return null;
+  const o = orders.find(x => x.id === orderId);
+  if (o) /** @type {any} */ (o)._lines = lines.map(/** @param {any} r */ r => ({ ...r }));
+  if (lines.length === 0) return null;
+  let materials = 0, labour = 0;
+  for (const row of lines) {
+    const sub = _lineSubtotal(row);
+    materials += sub.materials;
+    labour += sub.labour;
   }
   return { materials, labour };
 }
 
 async function _hydrateQuoteTotals() {
-  for (const q of quotes) {
-    if (q._totals) continue;
+  // Run in parallel; each call also caches q._lines as a side effect.
+  await Promise.all(quotes.map(async q => {
+    if (q._totals) return;
     try {
       const t = await quoteTotalsFromLines(q.id);
       if (t) q._totals = t;
     } catch (e) {
       console.warn('[quote totals] hydrate failed for', q.id, (/** @type {any} */ (e)).message || e);
     }
-  }
+  }));
+}
+
+async function _hydrateOrderLines() {
+  // Pre-cache order lines so the order popup opens without a network wait.
+  await Promise.all(orders.map(async o => {
+    if (/** @type {any} */ (o)._lines) return;
+    try { await orderTotalsFromLines(o.id); }
+    catch (e) { console.warn('[order lines] hydrate failed for', o.id, (/** @type {any} */ (e)).message || e); }
+  }));
 }
 
 /** @param {number} quoteId */
@@ -172,8 +234,6 @@ async function createQuote() {
   // by the Cabinet Builder and don't count toward the limit).
   const customerQuotes = quotes.filter(q => !_isDraftQuote(q));
   if (!_enforceFreeLimit('quotes', customerQuotes.length)) return;
-  const hours = parseFloat(inp('q-hours').value) || 0;
-  const materials = parseFloat(inp('q-materials').value) || 0;
   const clientId = await resolveClient(client);
   const projectId = await resolveProject(project, clientId);
   /** @type {any} */
@@ -189,17 +249,13 @@ async function createQuote() {
   const { data, error } = await _dbInsertSafe('quotes', row);
   if (error || !data) { _toast('Could not save quote — ' + (error?.message || JSON.stringify(error)), 'error'); console.error(error); return; }
   quotes.unshift(data);
-  // Manual-totals quote: stash entered materials/hours on a quote_lines stub so quoteTotal aggregates correctly
-  if (materials > 0 || hours > 0) {
-    await _writeManualTotalsLine(data.id, materials, hours);
-    await _refreshQuoteTotals(data.id);
-  }
-  _toast('Quote created', 'success');
+  _toast('Quote created — add line items', 'success');
   inp('q-client').value = '';
   inp('q-project').value = '';
   inp('q-notes').value = '';
-  inp('q-materials').value = '';
   renderQuoteMain();
+  // Open the new quote so the user can immediately add line items.
+  if (typeof _openQuotePopup === 'function') _openQuotePopup(data.id);
 }
 
 /** @param {number} id */
@@ -230,7 +286,14 @@ async function convertQuoteToOrder(id) {
   if (qErr) { _toast('Could not update quote — ' + (qErr.message || JSON.stringify(qErr)), 'error'); console.error(qErr); return; }
   q.status = 'approved';
   /** @type {any} */
-  const orderRow = { user_id: _userId, value: Math.round(quoteTotal(q)), status: 'confirmed', due: 'TBD' };
+  const orderRow = {
+    user_id: _userId,
+    value: Math.round(quoteTotal(q)),
+    markup: q.markup ?? 0,
+    tax: q.tax ?? 0,
+    status: 'confirmed',
+    due: 'TBD',
+  };
   if (q.client_id) orderRow.client_id = q.client_id;
   if (q.project_id) orderRow.project_id = q.project_id;
   const { data, error: oErr } = await _dbInsertSafe('orders', orderRow);
@@ -313,6 +376,15 @@ function renderQuoteMain() {
     const total = afterMarkup + taxAmt;
     const statusBadge = q.status === 'approved' ? 'badge-green' : q.status === 'sent' ? 'badge-blue' : 'badge-gray';
     const statusText = q.status === 'approved' ? 'Approved' : q.status === 'sent' ? 'Sent' : 'Draft';
+    const lines = /** @type {any[]} */ (q._lines || []);
+    const cabCount  = lines.filter(/** @param {any} l */ l => (l.line_kind || 'cabinet') === 'cabinet').length;
+    const itemCount = lines.filter(/** @param {any} l */ l => l.line_kind === 'item').length;
+    const labCount  = lines.filter(/** @param {any} l */ l => l.line_kind === 'labour').length;
+    const pills = [];
+    if (cabCount)  pills.push(`<span class="qc-count-pill">Cabinets: <strong>${cabCount}</strong></span>`);
+    if (itemCount) pills.push(`<span class="qc-count-pill">Items: <strong>${itemCount}</strong></span>`);
+    if (labCount)  pills.push(`<span class="qc-count-pill">Labour: <strong>${labCount}</strong></span>`);
+    const countsRow = pills.length ? `<div class="qc-counts">${pills.join('')}</div>` : '';
     return `
     <div class="quote-card" style="cursor:pointer" onclick="_openQuotePopup(${q.id})">
       <div class="qc-header">
@@ -320,20 +392,15 @@ function renderQuoteMain() {
           <div class="qc-title">${quoteProject(q)}</div>
           <div class="qc-meta">${quoteClient(q)} &nbsp;·&nbsp; ${q.date} &nbsp;·&nbsp; <span class="badge ${statusBadge}" style="font-size:9px;padding:1px 6px">${statusText}</span></div>
         </div>
+        <span class="qc-total">${fmt(total)}</span>
       </div>
       ${q.notes ? `<div style="border-top:1px solid var(--border2);padding:8px 16px;background:var(--surface)">
-        ${q.notes.split(/\r?\n/).filter(Boolean).slice(0,3).map(/** @param {string} line */ line => {
-          if (line.includes('\u2014') || line.includes('—')) {
-            const parts = line.split(/\u2014|—/);
-            return '<div style="font-size:11px;color:var(--text2);margin-bottom:2px"><strong>' + _escHtml(parts[0].trim()) + '</strong></div>';
-          }
-          return '<div style="font-size:11px;color:var(--text2);margin-bottom:2px">' + _escHtml(line) + '</div>';
-        }).join('')}
+        ${q.notes.split(/\r?\n/).filter(Boolean).slice(0,3).map(/** @param {string} line */ line =>
+          '<div style="font-size:11px;color:var(--text2);margin-bottom:2px">' + _escHtml(line) + '</div>'
+        ).join('')}
         ${q.notes.split(/\r?\n/).filter(Boolean).length > 3 ? '<div style="font-size:10px;color:var(--muted)">…</div>' : ''}
       </div>` : ''}
-      <div class="qc-breakdown">
-        <div class="qb-row qb-total"><span>Total</span><span>${fmt(total)}</span></div>
-      </div>
+      ${countsRow}
       <div class="qc-footer" onclick="event.stopPropagation()">
         ${q.status === 'draft' ? `<button class="btn btn-outline" onclick="markQuoteSent(${q.id})">Mark Sent</button>` : ''}
         ${q.status === 'sent' ? `<button class="btn btn-success" onclick="approveQuote(${q.id})">Approve</button>` : ''}
@@ -442,7 +509,6 @@ function _smartClientSuggest(input, boxId) {
   _posSuggest(input, box);
   const allClients = [...new Set([...clients.map(c => c.name), ...quotes.map(q => quoteClient(q)), ...orders.map(o => orderClient(o))].filter(Boolean))];
   const matches = val ? allClients.filter(c => c.toLowerCase().includes(val) && c.toLowerCase() !== val) : allClients;
-  if (!matches.length && !val) { box.style.display = 'none'; return; }
   const inputId = input.id;
   let html = matches.slice(0,8).map(c => {
     const initial = c.charAt(0).toUpperCase();
@@ -464,7 +530,6 @@ function _smartProjectSuggest(input, boxId) {
   _posSuggest(input, box);
   const allProjects = [...new Set([...projects.map(p => p.name), ...quotes.map(q => quoteProject(q)), ...orders.map(o => orderProject(o))].filter(Boolean))];
   const matches = val ? allProjects.filter(p => p.toLowerCase().includes(val) && p.toLowerCase() !== val) : allProjects;
-  if (!matches.length && !val) { box.style.display = 'none'; return; }
   const inputId = input.id;
   let html = matches.slice(0,8).map(p => {
     const proj = /** @type {any} */ (projects.find(px => px.name === p));
@@ -582,12 +647,15 @@ async function _saveNewProjectPopup(targetInputId) {
   const name = _popupVal('pnp-name');
   if (!name) { _toast('Project name is required', 'error'); return; }
   const clientName = _popupVal('pnp-client') || '';
+  const isCutList = targetInputId === 'cl-project';
   // Check for duplicate
-  if (projects.some(p => p.name.toLowerCase() === name.toLowerCase())) {
+  const dupe = projects.find(p => p.name.toLowerCase() === name.toLowerCase());
+  if (dupe) {
     /** @type {HTMLInputElement} */ (_byId(targetInputId)).value = name;
     const clientInputId = targetInputId.replace('-project', '-client');
     const ci = _byId(clientInputId);
     if (ci && clientName && !ci.value) ci.value = clientName;
+    if (isCutList) _setClLoadedProject(dupe.id, dupe.name);
     _closePopup();
     _toast('Project already exists — selected', 'info');
     return;
@@ -608,9 +676,22 @@ async function _saveNewProjectPopup(targetInputId) {
   const clientInputId = targetInputId.replace('-project', '-client');
   const ci2 = _byId(clientInputId);
   if (ci2 && clientName && !ci2.value) ci2.value = clientName;
+  if (isCutList) _setClLoadedProject(data.id, data.name);
   _closePopup();
   renderProjectsMain();
   _toast(`Project "${name}" added`, 'success');
+}
+
+// Set the cut list's "currently loaded" project tracking. Used by the
+// New Project popup when invoked from the Cut List sidebar so subsequent
+// saves overwrite this project instead of opening another popup.
+/** @param {number} id @param {string} name */
+function _setClLoadedProject(id, name) {
+  if (typeof _clCurrentProjectId === 'undefined') return;
+  _clCurrentProjectId = id;
+  _clCurrentProjectName = name;
+  if (typeof _setClDirty === 'function') _setClDirty(false);
+  if (typeof _clLoadProjectList === 'function') _clLoadProjectList();
 }
 
 // Close suggest on blur
@@ -621,146 +702,32 @@ document.addEventListener('click', e => {
   });
 });
 
-/** @param {number} id @param {string} [mode] */
-function printWorkOrder(id, mode='print') {
+/**
+ * Generate one of four order PDFs. Replaces the old printWorkOrder dispatcher
+ * that produced an HTML-print Work Order or a clean PDF Work Order — the HTML
+ * variant is gone.
+ *
+ *  - work_order:        workshop document (notes + production-note ruled lines + sign-off)
+ *  - order_confirmation:client-facing acknowledgement with line items + totals
+ *  - proforma:          preliminary invoice (no tax-invoice claim)
+ *  - invoice:           final tax invoice
+ *
+ * @param {number} id
+ * @param {'work_order'|'order_confirmation'|'proforma'|'invoice'} type
+ */
+async function printOrderDoc(id, type) {
   const o = orders.find(o => o.id === id);
   if (!o) return;
-  if (mode === 'pdf') { _buildWorkOrderPDF(o); return; }
-  const biz = getBizInfo();
-  const cur = window.currency;
-  const rel = _relativeDate(o.due || '');
-  /** @type {Record<string, string>} */
-  const statusColMap = { quote:'#6b7280', confirmed:'#2563eb', production:'#d97706', delivery:'#0891b2', complete:'#16a34a' };
-  const statusCol = statusColMap[o.status || ''] || '#6b7280';
-  const stageLabels = ['Quote Sent','Confirmed','In Production','Ready for Delivery','Complete'];
-  const stageKeys   = ['quote','confirmed','production','delivery','complete'];
-  const currentIdx  = stageKeys.indexOf(o.status || '');
-
-  const stageRows = stageKeys.map((s, i) => {
-    const done = i < currentIdx;
-    const active = i === currentIdx;
-    return `<tr style="background:${active ? '#fffbeb' : 'transparent'}">
-      <td style="width:22px;padding:8px 6px 8px 12px">
-        <div style="width:18px;height:18px;border-radius:50%;border:2px solid ${done?statusCol:active?statusCol:'#ddd'};background:${done?statusCol:'transparent'};display:flex;align-items:center;justify-content:center">
-          ${done ? '<span style="color:#fff;font-size:11px;font-weight:700">✓</span>' : active ? '<div style="width:8px;height:8px;border-radius:50%;background:'+statusCol+'"></div>' : ''}
-        </div>
-      </td>
-      <td style="padding:8px 12px;font-size:14px;font-weight:${active?700:400};color:${active?'#111':'#555'}">${stageLabels[i]}</td>
-      <td style="padding:8px 12px;width:140px;border-bottom:1px solid #e8e8e8"></td>
-      <td style="padding:8px 12px;width:100px;border-bottom:1px solid #e8e8e8;font-size:11px;color:#bbb">Initials</td>
-    </tr>`;
-  }).join('');
-
-  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Work Order #WO-${String(o.id).padStart(4,'0')}</title>
-<style>
-  @page { size:A4; margin:12mm 14mm; }
-  * { margin:0; padding:0; box-sizing:border-box; }
-  body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; color:#111; background:#fff; font-size:13px; }
-  /* Top bar */
-  .top-bar { background:${statusCol}; color:#fff; display:flex; justify-content:space-between; align-items:center; padding:10px 16px; border-radius:6px 6px 0 0; }
-  .top-bar-left { font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:1px; opacity:.9; }
-  .top-bar-right { font-size:13px; font-weight:800; letter-spacing:.5px; }
-  /* Header */
-  .hdr { border:1.5px solid #ddd; border-top:none; padding:16px; border-radius:0 0 6px 6px; margin-bottom:18px; display:flex; justify-content:space-between; align-items:flex-start; }
-  .biz-name { font-size:14px; font-weight:800; }
-  .biz-contact { font-size:10px; color:#888; margin-top:3px; line-height:1.7; }
-  .wo-ref { text-align:right; }
-  .wo-ref-num { font-size:28px; font-weight:800; letter-spacing:-1px; color:#111; }
-  .wo-date { font-size:10px; color:#aaa; margin-top:3px; }
-  /* Job details */
-  .job-block { margin-bottom:18px; }
-  .job-client { font-size:26px; font-weight:800; letter-spacing:-.5px; line-height:1.1; }
-  .job-project { font-size:16px; color:#444; margin-top:4px; font-weight:400; }
-  /* Info strip */
-  .info-strip { display:grid; grid-template-columns:repeat(3,1fr); border:1.5px solid #e0e0e0; border-radius:6px; overflow:hidden; margin-bottom:18px; }
-  .info-cell { padding:12px 14px; border-right:1px solid #e0e0e0; }
-  .info-cell:last-child { border-right:none; }
-  .info-lbl { font-size:9px; text-transform:uppercase; letter-spacing:.8px; color:#aaa; margin-bottom:4px; }
-  .info-val { font-size:17px; font-weight:800; }
-  .info-sub { font-size:10px; color:#888; margin-top:1px; }
-  /* Notes */
-  .section-label { font-size:9px; text-transform:uppercase; letter-spacing:.8px; color:#aaa; margin-bottom:6px; margin-top:16px; }
-  .notes-content { border:1.5px solid #e0e0e0; border-radius:6px; padding:14px; font-size:14px; color:#222; line-height:1.75; min-height:60px; }
-  /* Production checklist */
-  .stages-table { width:100%; border-collapse:collapse; border:1.5px solid #e0e0e0; border-radius:6px; overflow:hidden; margin-top:6px; }
-  .stages-table td { border-bottom:1px solid #eee; vertical-align:middle; }
-  .stages-table tr:last-child td { border-bottom:none; }
-  .col-hdr { font-size:9px; text-transform:uppercase; letter-spacing:.7px; color:#bbb; padding:6px 12px; background:#f8f8f8; border-bottom:1.5px solid #e0e0e0; }
-  /* Production notes lines */
-  .note-line { border-bottom:1px solid #e0e0e0; height:28px; margin-bottom:2px; }
-  /* Sign-off */
-  .signoff { display:grid; grid-template-columns:1fr 1fr 1fr; gap:20px; margin-top:6px; }
-  .signoff-field { border-top:1.5px solid #555; padding-top:6px; }
-  .signoff-label { font-size:9px; text-transform:uppercase; letter-spacing:.7px; color:#888; }
-  .footer { margin-top:24px; border-top:1px solid #eee; padding-top:8px; display:flex; justify-content:space-between; font-size:9px; color:#ccc; }
-</style></head><body>
-
-<div class="top-bar">
-  <div class="top-bar-left">Work Order &nbsp;&bull;&nbsp; ${(/** @type {Record<string,string>} */(STATUS_LABELS))[o.status||''] || o.status}</div>
-  <div class="top-bar-right">#WO-${String(o.id).padStart(4,'0')}</div>
-</div>
-<div class="hdr">
-  <div>
-    <div class="biz-name">${biz.name || 'ProCabinet'}</div>
-    <div class="biz-contact">${[biz.phone, biz.email, biz.address, biz.abn ? 'ABN: ' + biz.abn : ''].filter(Boolean).join('<br>')}</div>
-  </div>
-  <div class="wo-ref">
-    <div class="wo-ref-num">#WO-${String(o.id).padStart(4,'0')}</div>
-    <div class="wo-date">Issued ${new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}</div>
-  </div>
-</div>
-
-<div class="job-block">
-  <div class="job-client">${orderClient(o)}</div>
-  <div class="job-project">${orderProject(o)}</div>
-</div>
-
-<div class="info-strip">
-  <div class="info-cell">
-    <div class="info-lbl">Due Date</div>
-    <div class="info-val" style="font-size:15px">${o.due || 'TBD'}</div>
-    ${rel ? `<div class="info-sub" style="color:${rel.color}">${rel.label}</div>` : ''}
-  </div>
-  <div class="info-cell">
-    <div class="info-lbl">Job Value</div>
-    <div class="info-val">${cur}${(o.value||0).toLocaleString('en-US',{minimumFractionDigits:0})}</div>
-  </div>
-  <div class="info-cell">
-    <div class="info-lbl">Stage</div>
-    <div class="info-val" style="font-size:14px;color:${statusCol}">${(/** @type {Record<string,string>} */(STATUS_LABELS))[o.status||''] || o.status}</div>
-  </div>
-</div>
-
-${o.notes ? `<div class="section-label">Job Notes &amp; Instructions</div><div class="notes-content">${(o.notes||'').replace(/\n/g,'<br>')}</div>` : ''}
-
-<div class="section-label" style="margin-top:18px">Production Stages</div>
-<table class="stages-table">
-  <thead><tr>
-    <td class="col-hdr" style="width:32px"></td>
-    <td class="col-hdr">Stage</td>
-    <td class="col-hdr">Completed (date)</td>
-    <td class="col-hdr">Sign off</td>
-  </tr></thead>
-  <tbody>${stageRows}</tbody>
-</table>
-
-<div class="section-label" style="margin-top:18px">Production Notes</div>
-${[1,2,3,4,5].map(() => `<div class="note-line"></div>`).join('')}
-
-<div class="section-label" style="margin-top:18px">Sign-off</div>
-<div class="signoff">
-  <div class="signoff-field"><div class="signoff-label">Prepared by</div></div>
-  <div class="signoff-field"><div class="signoff-label">Date started</div></div>
-  <div class="signoff-field"><div class="signoff-label">Date completed</div></div>
-</div>
-
-<div class="footer">
-  <span>${biz.name || 'ProCabinet'} — ProCabinet.App</span>
-  <span>Printed ${new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})}</span>
-</div>
-</body></html>`;
-
-  _saveAsPDF(html);
+  if (type === 'work_order') { _buildWorkOrderPDF(o); return; }
+  // Prefer cached lines (set by orderTotalsFromLines / popup state) so the
+  // PDF opens instantly when available; fall back to a fresh fetch.
+  /** @type {any[]} */
+  let rows = (/** @type {any} */ (o))._lines || [];
+  if (!rows.length) {
+    const { data } = await _db('order_lines').select('*').eq('order_id', id).order('position');
+    rows = data || [];
+  }
+  _buildOrderDocPDF(o, rows, type);
 }
 
 async function deductStockFromCutList() {
@@ -790,15 +757,19 @@ async function deductStockFromCutList() {
   }
 }
 
-/** @param {number} matCost */
+/**
+ * Send a cut-list materials cost to the Quotes tab. The legacy aggregate
+ * "Materials Cost" input is gone; we now switch to the tab, prefill the
+ * project name if empty, and toast the figure for the user to add as a
+ * line item once the quote is created.
+ * @param {number} matCost
+ */
 function quoteFromCutList(matCost) {
   switchSection('quote');
-  const el = _byId('q-materials');
-  if (el) { el.value = matCost.toFixed(2); el.focus(); }
   const pn = _byId('q-project');
   if (pn && !pn.value) pn.value = 'Untitled Job';
-  // Subtle flash to draw attention to the pre-filled field
-  if (el) { el.style.background = 'rgba(232,168,56,0.2)'; setTimeout(() => el.style.background = '', 1200); }
+  const cur = window.currency;
+  _toast('Cut list materials: ' + cur + matCost.toFixed(2) + ' — add as item line after creating the quote', 'info');
 }
 
 /** @param {number} id */
@@ -811,20 +782,59 @@ async function markQuoteSent(id) {
   renderQuoteMain();
 }
 
+/** Build a flat per-line summary from a quote_lines / order_lines row.
+ *  Returns { kind, name, qtyText, total } for printing/PDF.
+ *  @param {any} row
+ */
+function _lineDisplay(row) {
+  const kind = row.line_kind || 'cabinet';
+  const sub = _lineSubtotal(row);
+  const total = sub.materials + sub.labour;
+  if (kind === 'cabinet') {
+    const dims = [row.w_mm, row.h_mm, row.d_mm].filter(Boolean).join('×');
+    const parts = [];
+    if (dims) parts.push(dims + 'mm');
+    if (row.material) parts.push(row.material);
+    if ((row.door_count || 0) > 0) parts.push(row.door_count + ' door' + (row.door_count !== 1 ? 's' : ''));
+    if ((row.drawer_count || 0) > 0) parts.push(row.drawer_count + ' drawer' + (row.drawer_count !== 1 ? 's' : ''));
+    return {
+      kind, name: row.name || 'Cabinet',
+      detail: parts.join(', '),
+      qtyText: (row.qty || 1) > 1 ? '×' + row.qty : '',
+      total,
+    };
+  }
+  if (kind === 'item') {
+    const qty = row.qty || 1;
+    const price = row.unit_price || 0;
+    return { kind, name: row.name || 'Item', detail: qty + ' × ' + price, qtyText: '', total };
+  }
+  // labour
+  const hrs = row.labour_hours || 0;
+  const rate = row.unit_price ?? ((typeof cbSettings !== 'undefined' && cbSettings.labourRate) ? cbSettings.labourRate : 65);
+  return { kind, name: row.name || 'Labour', detail: hrs + 'h @ ' + rate + '/hr', qtyText: '', total };
+}
+
 /** @param {number} id @param {string} [mode] */
-function printQuote(id, mode='print') {
+async function printQuote(id, mode='print') {
   const q = quotes.find(q => q.id === id);
   if (!q) return;
-  if (mode === 'pdf') { _buildQuotePDF(q); return; }
+  const { data: lines } = await _db('quote_lines').select('*').eq('quote_id', id).order('position');
+  const rows = lines || [];
+  if (mode === 'pdf') { _buildQuotePDF(q, rows); return; }
   const cur = window.currency;
   /** @param {any} v */
   const fmt  = v => cur + Number(v).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
   /** @param {any} v */
   const fmt0 = v => cur + Number(v).toLocaleString('en-US', {minimumFractionDigits:0, maximumFractionDigits:0});
   const logo = getBizLogo();
-  const matVal = q._totals ? q._totals.materials : (q.materials || 0);
-  const labVal = q._totals ? q._totals.labour    : (q.labour    || 0);
-  const sub = matVal + labVal;
+  // Compute totals from the real line items rather than the in-memory cache,
+  // so printed output always matches what the DB returns.
+  const subParts = rows.reduce(
+    (acc, row) => { const s = _lineSubtotal(row); acc.materials += s.materials; acc.labour += s.labour; return acc; },
+    { materials: 0, labour: 0 }
+  );
+  const sub = subParts.materials + subParts.labour;
   const markupAmt = sub * (q.markup ?? 0) / 100;
   const afterMarkup = sub + markupAmt;
   const taxAmt = afterMarkup * (q.tax ?? 0) / 100;
@@ -914,11 +924,15 @@ function printQuote(id, mode='print') {
 <table>
   <thead><tr><th>Description</th><th class="r">Amount</th></tr></thead>
   <tbody>
-    ${(q.notes||'').split(/\r?\n/).filter(l => l.includes('\u2014') || l.includes('—')).map(cl => {
-      const parts = cl.split(/\u2014|—/).map(s=>s.trim());
-      return '<tr><td style="padding:10px"><strong style="font-size:14px">'+_escHtml(parts[0])+'</strong><br><span style="font-size:11px;color:#888;padding-left:14px">'+_escHtml(parts.slice(1).join(' — ').trim())+'</span></td><td class="r"></td></tr>';
+    ${rows.map(/** @param {any} row */ row => {
+      const d = _lineDisplay(row);
+      return '<tr><td style="padding:10px"><strong style="font-size:14px">' + _escHtml(d.name)
+        + (d.qtyText ? ' <span style="font-weight:400;color:#888">' + d.qtyText + '</span>' : '')
+        + '</strong>'
+        + (d.detail ? '<br><span style="font-size:11px;color:#888;padding-left:14px">' + _escHtml(d.detail) + '</span>' : '')
+        + '</td><td class="r">' + fmt(d.total) + '</td></tr>';
     }).join('')}
-    ${(q.notes||'').split(/\r?\n/).some(l => l.includes('\u2014') || l.includes('—')) ? '<tr><td colspan="2" style="border-bottom:1.5px solid #ddd;padding:0"></td></tr>' : ''}
+    ${rows.length ? '<tr><td colspan="2" style="border-bottom:1.5px solid #ddd;padding:0"></td></tr>' : ''}
     ${(q.markup ?? 0) > 0 || (q.tax ?? 0) > 0 ? `<tr class="subtotal"><td style="color:#aaa">Subtotal</td><td class="r">${fmt(sub)}</td></tr>` : ''}
     ${(q.markup ?? 0) > 0 ? `<tr class="subtotal"><td style="padding-left:20px">Markup &nbsp;<span style="color:#bbb">(${q.markup}%)</span></td><td class="r">+ ${fmt(markupAmt)}</td></tr>` : ''}
     ${(q.tax ?? 0) > 0 ? `<tr class="subtotal"><td style="padding-left:20px">Tax &nbsp;<span style="color:#bbb">(${q.tax}%)</span></td><td class="r">+ ${fmt(taxAmt)}</td></tr>` : ''}

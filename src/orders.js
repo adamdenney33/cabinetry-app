@@ -47,8 +47,10 @@ async function addOrder() {
   const projectId = await resolveProject(project, clientId);
   /** @type {any} */
   const row = {
-    user_id: _userId, client, project,
-    value: parseFloat(_oInput('o-value')?.value || '') || 0,
+    user_id: _userId,
+    value: 0, // computed from order_lines once any are added
+    markup: parseFloat(_oInput('o-markup')?.value || '') || 0,
+    tax: parseFloat(_oInput('o-tax')?.value || '') || 0,
     status: _oInput('o-status')?.value || 'quote',
     due,
   };
@@ -65,13 +67,14 @@ async function addOrder() {
     if (prodStart) { data.prodStart = prodStart; const ps = JSON.parse(localStorage.getItem('pc_order_prodstarts')||'{}'); ps[String(data.id)] = prodStart; localStorage.setItem('pc_order_prodstarts', JSON.stringify(ps)); }
   }
   orders.unshift(data);
-  _toast('Order created', 'success');
-  for (const id of ['o-client','o-project','o-value','o-start','o-due','o-notes']) {
+  _toast('Order created — add line items', 'success');
+  for (const id of ['o-client','o-project','o-start','o-due','o-notes']) {
     const el = _oInput(id); if (el) el.value = '';
   }
   const status = _oInput('o-status'); if (status) status.value = 'quote';
   _oBadge();
   renderOrdersMain();
+  if (data && typeof _openOrderPopup === 'function') _openOrderPopup(data.id);
 }
 
 /** @param {number} id */
@@ -188,8 +191,10 @@ function renderOrdersMain() {
         ${o.status !== 'complete' ? `<button class="btn btn-success" onclick="advanceOrder(${o.id})" style="font-size:11px;padding:5px 10px;display:inline-flex;align-items:center;gap:4px">Next Stage ${ARROW_SVG}</button>` : '<span class="badge badge-green" style="align-self:center">Complete</span>'}
         <span style="flex:1"></span>
         <button class="btn btn-outline" onclick="duplicateOrder(${o.id})" style="font-size:11px;padding:5px 10px;width:auto">Copy</button>
-        <button class="btn btn-outline" onclick="printWorkOrder(${o.id},'print')" style="font-size:11px;padding:5px 10px;width:auto">Work Order</button>
-        <button class="btn btn-outline" onclick="printWorkOrder(${o.id},'pdf')" style="font-size:11px;padding:5px 10px;width:auto">PDF</button>
+        <button class="btn btn-outline" onclick="printOrderDoc(${o.id},'work_order')" style="font-size:11px;padding:5px 8px;width:auto">Work Order</button>
+        <button class="btn btn-outline" onclick="printOrderDoc(${o.id},'order_confirmation')" style="font-size:11px;padding:5px 8px;width:auto">Confirmation</button>
+        <button class="btn btn-outline" onclick="printOrderDoc(${o.id},'proforma')" style="font-size:11px;padding:5px 8px;width:auto">Pro-forma</button>
+        <button class="btn btn-outline" onclick="printOrderDoc(${o.id},'invoice')" style="font-size:11px;padding:5px 8px;width:auto">Invoice</button>
       </div>
     </div>`;
   };

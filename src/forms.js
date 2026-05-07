@@ -1,34 +1,24 @@
 // ProCabinet — Quote-form defaults + date helpers (carved out of src/app.js
 // in phase E carve 10).
 //
-// Loaded as a classic <script defer> AFTER src/app.js. The top-level IIFE
-// wires up localStorage persistence + input listeners on the quote-form
-// inputs (#q-labour-rate, #q-hours, #q-markup, #q-tax) and calls
-// _updateQuotePreview once at load time — it returns early because
-// #quote-form-preview is not in the DOM until the Quote tab renders.
+// Loaded as a classic <script defer> AFTER src/app.js.
 //
-// Cross-file dependencies: _updateQuotePreview (defined in this file —
-// classic-script hoisting handles the IIFE-then-function order),
-// window.currency (assigned by app.js's GLOBALS section).
+// The legacy aggregate quote-form preview (Materials Cost / Labour Rate /
+// Hours fed `_updateQuotePreview`) was removed in the line-items rewrite.
+// Itemisation now happens entirely in the quote popup; the sidebar form is
+// just client / project / notes / markup / tax.
 
-// ══════════════════════════════════════════
-// FORM DEFAULTS (persist across sessions)
-// ══════════════════════════════════════════
 (function() {
-  const defs = { 'q-labour-rate': 65, 'q-hours': 8, 'q-markup': 20, 'q-tax': 13 };
+  // Persist markup + tax defaults across sessions so each new user keeps
+  // their preferred values.
+  const defs = { 'q-markup': 20, 'q-tax': 13 };
   Object.entries(defs).forEach(([id, fallback]) => {
     const el = /** @type {HTMLInputElement | null} */ (document.getElementById(id));
     if (!el) return;
     const saved = localStorage.getItem('pc_' + id);
     if (saved !== null) el.value = saved;
-    el.addEventListener('change', () => { localStorage.setItem('pc_' + id, el.value); _updateQuotePreview(); });
+    el.addEventListener('change', () => { localStorage.setItem('pc_' + id, el.value); });
   });
-  // Also update preview on input to these fields
-  ['q-labour-rate','q-hours','q-materials','q-markup','q-tax'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.addEventListener('input', _updateQuotePreview);
-  });
-  _updateQuotePreview();
 })();
 
 /** @param {string} str */
@@ -58,37 +48,3 @@ function _relativeDate(dateStr) {
   if (diff < 0) return { label: `${Math.abs(diff)}d overdue`, color: 'var(--danger)' };
   return null;
 }
-
-function _updateQuotePreview() {
-  const cur = window.currency;
-  /** @param {number} v */
-  const fmt = v => cur + v.toLocaleString('en-US', {minimumFractionDigits:0, maximumFractionDigits:0});
-  /** @param {string} id */
-  const inputVal = id => /** @type {HTMLInputElement | null} */ (document.getElementById(id))?.value ?? '';
-  const rate = parseFloat(inputVal('q-labour-rate')) || 0;
-  const hrs  = parseFloat(inputVal('q-hours'))       || 0;
-  const mat  = parseFloat(inputVal('q-materials'))   || 0;
-  const mkp  = parseFloat(inputVal('q-markup'))      || 0;
-  const tax  = parseFloat(inputVal('q-tax'))         || 0;
-  const labour = rate * hrs;
-  const sub    = labour + mat;
-  const total  = sub * (1 + mkp/100) * (1 + tax/100);
-  const prev   = document.getElementById('quote-form-preview');
-  if (!prev) return;
-  if (sub === 0) { prev.style.display = 'none'; return; }
-  prev.style.display = '';
-  const markupAmt = sub * mkp / 100;
-  const afterMarkup = sub + markupAmt;
-  const taxAmt = afterMarkup * tax / 100;
-  // #qfp-* elements are descendants of #quote-form-preview (asserted non-null on line 73)
-  /** @param {string} id */
-  const out = id => /** @type {HTMLElement} */ (document.getElementById(id));
-  out('qfp-labour').textContent    = `${hrs}h @ ${cur}${rate}/hr = ${fmt(labour)}`;
-  out('qfp-materials').textContent = fmt(mat);
-  out('qfp-markup-label').textContent = `Markup (${mkp}%)`;
-  out('qfp-markup').textContent = `+${fmt(markupAmt)}`;
-  out('qfp-tax-label').textContent = `Tax (${tax}%)`;
-  out('qfp-tax').textContent = `+${fmt(taxAmt)}`;
-  out('qfp-total').textContent     = fmt(afterMarkup + taxAmt);
-}
-

@@ -22,6 +22,21 @@ Companion docs: `SPEC.md` (refactor history), `SCHEMA.md` (DB schema),
 
 ## Active Work
 
+### Quotes & Orders — Real Line Items ✅ Done 2026-05-06
+
+Quotes and orders previously edited a free-form notes textarea plus aggregate
+Materials/Labour-Rate/Hours fields; the `quote_lines` schema was already
+row-per-cabinet but the UI didn't show it. Both popups now render structured
+line items with three kinds — `cabinet` (read-only, edited via the Cabinet
+Builder), `item` (qty × unit_price), and `labour` (hours × rate). The legacy
+aggregate inputs and the em-dash notes parsing in the PDF are gone; PDF and
+print-HTML render real line items. Migration adds `line_kind` + `unit_price`
+to `quote_lines` / `order_lines` and `markup` + `tax` to `orders` (resolves
+the `orders.value` workaround tracked in the backlog). `_syncCBLinesToQuote`
+filters its delete to `line_kind = 'cabinet'` so item/labour lines survive
+builder edits. One-shot `_migrateManualStubLines` converts pre-rewrite
+"Manual Quote" stubs into real Item + Labour rows.
+
 ### Multi-Unit Format System ✅ Done 2026-05-06
 
 Added rich dimension formatting inspired by CutListOptimizer.com. New `src/units.js`
@@ -155,17 +170,16 @@ free tier is the trial.
     `sk_test_…` (secret — store in Supabase Edge Function env, never client)
   - **No free trial** (free tier IS the trial)
 
-- **S.2 — Stripe products + Adaptive Pricing** *(Prices created 2026-05-05; Adaptive Pricing toggle pending)*
+- **S.2 — Stripe products + Adaptive Pricing** ✅ Done 2026-05-06
   - Product: "ProCabinet.App"
   - Test-mode Price IDs:
     | Cadence | USD | Stripe Price ID |
     |---------|-----|-----------------|
     | Monthly | $35 | `price_1TTpOa91y9TVyA6ME8hBDoCL` |
     | Annual  | $299 | `price_1TTpPx91y9TVyA6Mh3OTz56x` |
-  - **Still TODO**: enable Adaptive Pricing in
-    [Stripe Dashboard → Settings → Currency settings](https://dashboard.stripe.com/test/settings/currency)
-    so non-US customers see local currency at Checkout
-  - Live-mode Prices created later by re-running the same flow with live keys
+  - Adaptive Pricing enabled in Stripe Dashboard — non-US customers see
+    Checkout in their local currency, Stripe handles FX
+  - Live-mode Prices to be recreated at launch (S.9) — same SKUs, live keys
   - Optional: Shop tier placeholder for May 2027 milestone
 
 - **S.3 — Database schema for subscriptions** ✅ Done 2026-05-05
@@ -220,12 +234,14 @@ free tier is the trial.
   - Customer Portal surfaces invoice history natively; "View invoices" row
     in the active-state Manage popup routes there. No extra build.
 
-- **S.8 — End-to-end manual test** *(partial)*
+- **S.8 — End-to-end manual test** *(partial — pre-launch smoke pass)*
   - ✅ Sign up → free tier → upgrade via Checkout → Pro features unlock
-  - ⬜ Verify Adaptive Pricing once toggle is enabled (test from non-US IP
-    or Stripe test-mode currency override)
-  - ⬜ Cancel via portal → verify downgrade at period end (blocked on S.5)
-  - ⬜ Trigger failed-payment webhook in Stripe Dashboard → verify status
+  - ⬜ Verify Adaptive Pricing — open Checkout from a non-US IP (Stripe test
+    cards 4242… work in any currency) or use Stripe's test-mode locale override
+  - ⬜ Cancel via Manage popup → portal → verify `cancel_at_period_end=true` in DB
+  - ⬜ Resume from Cancelling state → verify back to active
+  - ⬜ Trigger `invoice.payment_failed` from Stripe Dashboard test event →
+    verify status flips to `past_due` and Manage popup shows the red branch
 
 - **S.9 — Live-mode flip** *(pending — pre-launch only)*
   - Activate Stripe account (full business + bank details) to unlock live keys
@@ -498,6 +514,27 @@ From `Building Docs/ProCabinet_Outstanding_Features.docx`. Run before launch.
     treatment to Clients / Projects / Quotes / Orders / Cutlist in a
     follow-up.
 
+- **U.9 — Projects tab: cross-tab action strip** ✅ Done 2026-05-06
+  Replace the thin project card in `renderProjectsMain()` (`src/clients.js:274`)
+  with a per-project always-visible 4-button action strip (Cabinets · Cut Lists
+  · Quotes · Orders) so the project line connects outward to the producing
+  tabs. Mockup approved: `mockups/option-3-row-action-strip.html`.
+  - Each button: icon + label + count (when in-memory) + `+` segment.
+  - `+` segment → `_newCabinetForProject` / `_newCutListForProject` /
+    `_newQuoteForProject` / `_newOrderForProject` — each calls
+    `switchSection()` and pre-fills the destination tab's project smart-input.
+  - Body click on quote/order buttons drills into that tab via
+    `window._quoteSearch` / `window._orderSearch` (same pattern already used in
+    `_openProjectPopup` at `src/app.js:838`).
+  - All 4 counts wired: Quotes/Orders from in-memory arrays; Cabinets from
+    cached `q._lines` (populated by `_hydrateQuoteTotals`); Cut Lists from
+    `_projectsWithCutLists` Set populated by a one-shot parallel query of
+    `pieces` + `sheets` `project_id` columns in `_loadCutListProjectIds()`.
+    Refreshed on every Projects-tab visit via `switchSection`.
+  - CSS: new `.proj-card` / `.proj-strip` / `.proj-act` etc. classes added to
+    `styles.css` using `var(--*)` tokens so dark mode works automatically.
+    Replaces the inline-style template in `clients.js:299`.
+
 ---
 
 ## Backlog
@@ -570,10 +607,10 @@ or before specific features that touch these areas.
   Content-Security-Policy enforcement, accessibility audit, or team-size
   increase forces it.
 
-- **`orders.value` workaround** — kept the column because `order_lines`
-  aggregation can't reconstruct markup + tax (per SPEC § 13 2026-04-29).
-  Long-term fix: add `markup` + `tax` columns to `orders`. Not blocking;
-  current behaviour is correct, just a schema deviation noted in code comment.
+- **`orders.value` workaround** ✅ *(resolved 2026-05-06 by line-items rewrite)*
+  Added `markup` + `tax` columns to `orders`; `value` is now recomputed from
+  `order_lines` on every save. Column kept as a denormalised snapshot for
+  fast dashboard queries.
 
 ---
 

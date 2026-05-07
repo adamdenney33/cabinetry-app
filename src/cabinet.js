@@ -10,6 +10,12 @@
 /** @type {any} */
 let cbSettings = {
   labourRate: 65, markup: 20, tax: 13, deposit: 50, edgingPerM: 3, materialMarkup: 0,
+  // Production scheduler defaults (mirrors business_info.default_*)
+  workdayHours: 8,
+  weekdayHours: [8, 8, 8, 8, 8, 0, 0],   // Mon..Sun
+  packagingHours: 0,
+  contingencyHours: 0,
+  queueStartDate: null,                   // ISO date string or null (= today)
   materials: [
     { name: 'Birch Ply 18mm', price: 72 },
     { name: 'Birch Ply 12mm', price: 58 },
@@ -279,7 +285,9 @@ async function _syncCBLinesToDB() {
   try {
     const draft = await _findOrCreateDraftQuote(projectId);
     if (!draft) return;
-    await _db('quote_lines').delete().eq('quote_id', draft.id);
+    // Only delete cabinet-kind rows; preserve any item/labour lines added
+    // directly in the quote popup.
+    await _db('quote_lines').delete().eq('quote_id', draft.id).eq('line_kind', 'cabinet');
     if (cbLines.length > 0) {
       /** @type {any[]} */
       const rows = cbLines.map((l, i) => _cbLineToRow(l, i, draft.id));
@@ -293,7 +301,8 @@ async function _syncCBLinesToDB() {
 /** @param {number} quoteId */
 async function _syncCBLinesToQuote(quoteId) {
   try {
-    await _db('quote_lines').delete().eq('quote_id', quoteId);
+    // Only delete cabinet-kind rows; item/labour lines live alongside.
+    await _db('quote_lines').delete().eq('quote_id', quoteId).eq('line_kind', 'cabinet');
     if (cbLines.length > 0) {
       /** @type {any[]} */
       const rows = cbLines.map((l, i) => _cbLineToRow(l, i, quoteId));
@@ -343,7 +352,7 @@ async function _loadCBLinesFromDB() {
   const draft = quotes.find(q => q.project_id === proj.id && _isDraftQuote(q));
   if (!draft) return;
   try {
-    const { data: lines, error } = await _db('quote_lines').select('*').eq('quote_id', draft.id).order('position');
+    const { data: lines, error } = await _db('quote_lines').select('*').eq('quote_id', draft.id).eq('line_kind', 'cabinet').order('position');
     if (error || !lines || lines.length === 0) return;
     cbLines = lines.map(/** @param {any} row @param {number} i */ (row, i) => {
       const cb = /** @type {any} */ (_quoteLineRowToCB(row));
@@ -359,17 +368,29 @@ async function _loadCBLinesFromDB() {
 }
 
 // ── Scratchpad + CRUD ──
-// The "+" button resets the scratchpad for a new cabinet
+// The "+" button resets the scratchpad to a fresh cabinet in the sidebar editor.
+// Cabinets only enter the project (viewer) when "Add to Project" is pressed.
 function addCBLine() {
   cbScratchpad = cbDefaultLine();
   cbEditingLineIdx = -1;
+  cbOpenSections.add(cbScratchpad.id + '-cab');
   renderCBEditor();
+  _scrollCBEditorIntoView();
 }
 /** @param {string} type */
 function addCBLineFromPreset(type) {
   cbScratchpad = cbDefaultLine(type);
   cbEditingLineIdx = -1;
+  cbOpenSections.add(cbScratchpad.id + '-cab');
   renderCBEditor();
+  _scrollCBEditorIntoView();
+}
+
+function _scrollCBEditorIntoView() {
+  const el = document.getElementById('cb-cab-editor');
+  if (!el) return;
+  const sidebar = /** @type {HTMLElement|null} */ (el.closest('.sidebar-scroll'));
+  if (sidebar) sidebar.scrollTop = el.offsetTop - sidebar.offsetTop;
 }
 
 // Commit scratchpad to project (Add to Project / Save Changes)
@@ -401,9 +422,28 @@ async function cbCommitToProject() {
 function cbCancelEdit() {
   cbEditingLineIdx = -1;
   cbScratchpad = cbDefaultLine();
-  renderCBCabList();
   renderCBEditor();
   renderCBResults();
+}
+
+/** @param {number} idx @param {number} dir */
+function cbStepLineQty(idx, dir) {
+  const line = cbLines[idx];
+  if (!line) return;
+  line.qty = Math.max(1, (parseFloat(line.qty) || 1) + dir);
+  if (cbEditingLineIdx === idx && cbScratchpad) cbScratchpad.qty = line.qty;
+  saveCBLines();
+  renderCBPanel();
+}
+
+/** @param {number} idx @param {any} val */
+function cbSetLineQty(idx, val) {
+  const line = cbLines[idx];
+  if (!line) return;
+  line.qty = Math.max(1, parseFloat(val) || 1);
+  if (cbEditingLineIdx === idx && cbScratchpad) cbScratchpad.qty = line.qty;
+  saveCBLines();
+  renderCBPanel();
 }
 
 /** @param {number} id */
@@ -532,20 +572,13 @@ async function cbCreateQuoteFromDraft() {
   const clientId = clientName ? await resolveClient(clientName) : null;
   const projName = _byId('cb-project')?.value?.trim() || '';
 
-  const notes = cbLines.map(l => {
-    const desc = l.name || 'Cabinet';
-    const details = [l.w + 'x' + l.h + 'x' + l.d + 'mm', l.material].filter(Boolean);
-    if (l.doors > 0) details.push(l.doors + ' door' + (l.doors !== 1 ? 's' : ''));
-    if (l.drawers > 0) details.push(l.drawers + ' drawer' + (l.drawers !== 1 ? 's' : ''));
-    if (l.qty > 1) details.push('x' + l.qty);
-    return desc + ' - ' + details.join(', ');
-  }).join('\n');
-
+  // Line items are stored as real quote_lines rows; no need to mirror the
+  // cabinet specs into a notes blob (the popup renders rows directly).
   /** @type {any} */
   const insertBody = {
     user_id: _userId, project_id: projectId, client_id: clientId,
     markup: cbSettings.markup ?? 0, tax: cbSettings.tax ?? 0,
-    status: 'draft', date: new Date().toISOString().slice(0, 10), notes
+    status: 'draft', date: new Date().toISOString().slice(0, 10), notes: ''
   };
   const { data, error } = await _db('quotes').insert(insertBody).select().single();
   if (error || !data) { _toast('Could not create quote: ' + (error?.message || ''), 'error'); return; }
@@ -568,7 +601,7 @@ async function editQuoteInCB(quoteId) {
   if (!q) { _toast('Quote not found', 'error'); return; }
 
   const { data: lines, error } = await _db('quote_lines')
-    .select('*').eq('quote_id', quoteId).order('position');
+    .select('*').eq('quote_id', quoteId).eq('line_kind', 'cabinet').order('position');
   if (error) { _toast('Could not load quote lines', 'error'); return; }
 
   if (_cbLinesSyncTimer) { clearTimeout(_cbLinesSyncTimer); _cbLinesSyncTimer = null; }
@@ -685,23 +718,15 @@ function _escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'
 function printCBQuote(mode) {
   if (!cbLines.length) { _toast('Add cabinet lines first.', 'error'); return; }
   if (mode === 'pdf') {
-    const gMat = cbLines.reduce((s, l) => s + calcCBLine(l).matCost * l.qty, 0);
-    const gLabour = cbLines.reduce((s, l) => s + calcCBLine(l).labourCost * l.qty, 0);
-    const cabNotes = cbLines.map(l => {
-      const desc = l.name || 'Cabinet';
-      const details = [l.w+'×'+l.h+'×'+l.d+'mm', l.material];
-      if (l.doors > 0) details.push(l.doors + ' door' + (l.doors!==1?'s':''));
-      if (l.drawers > 0) details.push(l.drawers + ' drawer' + (l.drawers!==1?'s':''));
-      if (l.qty > 1) details.push('x' + l.qty);
-      return desc + ' — ' + details.join(', ');
-    }).join('\n');
+    // Build pseudo quote_lines rows so the PDF renders proper line items
+    // even from the in-memory cabinet builder preview path.
+    const previewRows = cbLines.map((l, i) => Object.assign(_cbLineToRow(l, i, 0), { line_kind: 'cabinet' }));
     _buildQuotePDF({
       id: Date.now(), client: '', project: 'Cabinet Quote',
-      materials: gMat, labour: gLabour,
       markup: cbSettings.markup, tax: cbSettings.tax,
       status: 'draft', date: new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short'}),
-      notes: cabNotes
-    });
+      notes: ''
+    }, previewRows);
     return;
   }
   const cur = window.currency;
@@ -793,28 +818,9 @@ function copyCBSummary() {
   navigator.clipboard.writeText(text).then(() => _toast('Summary copied to clipboard', 'success')).catch(() => _toast('Copy failed', 'error'));
 }
 
-function cbSendToQuickQuote() {
-  if (!cbLines.length) { _toast('Add cabinet lines first.', 'error'); return; }
-  const grandSub = cbLines.reduce((s, l) => s + calcCBLine(l).lineSubtotal, 0);
-  const matTotal = cbLines.reduce((s, l) => s + calcCBLine(l).matCost * l.qty, 0);
-  const labourTotal = cbLines.reduce((s, l) => s + calcCBLine(l).labourCost * l.qty, 0);
-  const client = _byId('cb-client')?.value?.trim() || '';
-  const project = _byId('cb-project')?.value?.trim() || '';
-  /** @param {string} id */
-  const inp = id => /** @type {HTMLInputElement} */ (_byId(id));
-  inp('q-client').value = client;
-  inp('q-project').value = project;
-  inp('q-materials').value = matTotal.toFixed(2);
-  inp('q-labour-rate').value = String(cbSettings.labourRate);
-  const totalHrs = cbLines.reduce((s, l) => s + calcCBLine(l).labourHrs * l.qty, 0);
-  inp('q-hours').value = totalHrs.toFixed(1);
-  inp('q-markup').value = String(cbSettings.markup);
-  inp('q-tax').value = String(cbSettings.tax);
-  inp('q-notes').value = 'Cabinet Quote: ' + cbLines.map(l => (l.name || 'Cabinet') + (l.qty > 1 ? ' x' + l.qty : '')).join(', ');
-  switchSection('quote');
-  try { _updateQuotePreview(); } catch(e) {}
-  _toast('Sent to Quote — review and create', 'success');
-}
+// (cbSendToQuickQuote was removed alongside the aggregate Materials/Labour
+// inputs on the quote sidebar. Use cbCreateQuoteFromDraft() to materialise
+// the current cabinet lines as a real quote.)
 
 // ── Init CB ──
 loadCBSettings();

@@ -508,4 +508,24 @@ _Auto-logged by SessionEnd hook. Flesh out with context next session if useful._
 
 _Auto-logged by SessionEnd hook. Flesh out with context next session if useful._
 
-<!-- last_commit: a419aff -->
+
+---
+
+## [Auto] Session ending 2026-05-06
+
+### Commits
+- WIP preserve: Stripe + free-tier limits + Cabinet Builder split (R.1)
+
+_Auto-logged by SessionEnd hook. Flesh out with context next session if useful._
+
+
+---
+
+## [Auto] Session ending 2026-05-06
+
+### Commits
+- feat(units): add metres mode and 2-decimal-places option
+
+_Auto-logged by SessionEnd hook. Flesh out with context next session if useful._
+
+<!-- last_commit: 0a9034e -->

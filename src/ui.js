@@ -59,7 +59,7 @@ function _confirm(msg, onConfirm, danger = true) {
 // POPUP MODAL SYSTEM
 // ══════════════════════════════════════════
 
-/** @typedef {HTMLDivElement & { _escHandler?: (e: KeyboardEvent) => void }} PopupOverlay */
+/** @typedef {HTMLDivElement & { _escHandler?: (e: KeyboardEvent) => void, _mouseDownOnOverlay?: boolean }} PopupOverlay */
 
 /** @param {string} html @param {string} [size] */
 function _openPopup(html, size = 'sm') {
@@ -68,7 +68,14 @@ function _openPopup(html, size = 'sm') {
   const overlay = document.createElement('div');
   overlay.className = 'popup-overlay';
   overlay.id = 'popup-overlay';
-  overlay.onclick = e => { if (e.target === overlay) _closePopup(); };
+  // Only close on click when BOTH the mousedown started on the overlay AND the click
+  // target is the overlay. Prevents text-selection drags ending outside the popup
+  // (which fire `click` on the overlay) from closing it.
+  overlay.onmousedown = e => { overlay._mouseDownOnOverlay = (e.target === overlay); };
+  overlay.onclick = e => {
+    if (e.target === overlay && overlay._mouseDownOnOverlay) _closePopup();
+    overlay._mouseDownOnOverlay = false;
+  };
   overlay.innerHTML = `<div class="popup-modal popup-${size}">${html}</div>`;
   document.body.appendChild(overlay);
   // Focus first input
@@ -91,5 +98,18 @@ function _closePopup() {
 function _popupVal(id) {
   const el = /** @type {HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement | null} */ (document.getElementById(id));
   return el ? el.value.trim() : '';
+}
+
+/**
+ * Normalise a URL so bare domains (e.g. `amazon.co.uk`) become absolute.
+ * Display-time only — DB values are kept as the user typed them.
+ * @param {string | null | undefined} u
+ */
+function _normalizeUrl(u) {
+  const s = String(u || '').trim();
+  if (!s) return '';
+  if (/^https?:\/\//i.test(s)) return s;
+  if (s.startsWith('//')) return 'https:' + s;
+  return 'https://' + s;
 }
 

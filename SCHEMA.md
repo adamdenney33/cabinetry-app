@@ -76,6 +76,12 @@ create table public.business_info (
   logo_url        text,                              -- Supabase Storage URL, not base64
   default_currency text not null default '£',
   default_units   text not null default 'mm',       -- 'mm' | 'inches'
+  -- Production scheduler defaults (added 2026-05-06):
+  default_workday_hours       numeric not null default 8,
+  default_weekday_hours       jsonb   not null default '[8,8,8,8,8,0,0]'::jsonb,  -- Mon..Sun
+  default_packaging_hours     numeric not null default 0,
+  default_contingency_hours   numeric not null default 0,
+  production_queue_start_date date,                                                -- nullable; null = use today
   created_at      timestamptz not null default now(),
   updated_at      timestamptz not null default now()
 );
@@ -84,6 +90,12 @@ create index on public.business_info(user_id);
 ```
 
 **Replaces:** localStorage keys `pc_biz` and `pc_biz_logo`.
+
+**Scheduler defaults (added 2026-05-06):**
+- `default_weekday_hours` is a 7-element array indexed Mon=0..Sun=6, used by the auto-scheduler when no specific date override exists.
+- `default_workday_hours` is a defensive fallback if the weekday array is malformed.
+- `default_packaging_hours` and `default_contingency_hours` are inherited by orders when their per-order override is `NULL`.
+- `production_queue_start_date` anchors the auto-scheduler's "day 1"; `NULL` means "today".
 
 ---
 
@@ -413,6 +425,9 @@ create table public.quote_lines (
   quote_id              bigint not null references public.quotes(id) on delete cascade,
   user_id               uuid not null references auth.users(id) on delete cascade,
   position              integer not null default 0,
+  line_kind             text not null default 'cabinet'
+    check (line_kind in ('cabinet','item','labour')),
+  unit_price            numeric,                     -- per-unit price for `item` lines, hourly rate for `labour` lines
   name                  text not null default '',
   type                  text,                        -- 'base' | 'wall' | 'tall' | 'custom'
   room                  text,
@@ -436,7 +451,7 @@ create table public.quote_lines (
   loose_shelves         integer not null default 0,
   partitions            integer not null default 0,
   end_panels            integer not null default 0,
-  labour_hours          numeric,
+  labour_hours          numeric,                     -- also: hours field for `labour` lines
   labour_override       boolean not null default false,
   material_cost_override numeric,
   hardware              jsonb not null default '[]'::jsonb,  -- [{name, qty, price}]
@@ -448,6 +463,17 @@ create table public.quote_lines (
 
 create index on public.quote_lines(quote_id, position);
 ```
+
+`line_kind` distinguishes three kinds of line item, set when each row is
+inserted by either the Cabinet Builder sync or the quote popup's "+ Add Item"
+/ "+ Add Labour" buttons:
+
+- `cabinet` — full cabinet spec; cost from `calcCBLine()`. Fed by the
+  Cabinet Builder sync. Existing rows default to this kind.
+- `item` — generic line; cost = `qty * unit_price`. Used for handles, fees,
+  delivery, anything ad-hoc.
+- `labour` — labour line; cost = `labour_hours * unit_price` (rate). Stored
+  per-row so a quote stays a snapshot when the business labour rate changes.
 
 **Replaces:** localStorage `pc_cq_lines` and `pc_cq_saved` (the saved quotes
 were just snapshots of `cqLines` — they become rows in this table).
@@ -465,12 +491,26 @@ alter table public.orders
   drop column project,
   add column quote_id bigint references public.quotes(id) on delete set null,
   add column notes text,
+  add column markup numeric not null default 0,
+  add column tax    numeric not null default 0,
   add column updated_at timestamptz not null default now();
 
--- Kept: id, user_id, client_id, project_id, value, status, due, created_at
+-- Production scheduler fields (added 2026-05-06):
+alter table public.orders
+  add column priority           integer  not null default 0,
+  add column auto_schedule      boolean  not null default true,
+  add column manual_start_date  date,                  -- used when auto_schedule=false
+  add column manual_end_date    date,                  -- used when auto_schedule=false
+  add column packaging_hours    numeric,               -- null = inherit business_info.default_packaging_hours
+  add column contingency_hours  numeric,               -- null = inherit business_info.default_contingency_hours
+  add column run_over_hours     numeric  not null default 0;
+
+-- Kept: id, user_id, client_id, project_id, value, status, due, created_at, production_start_date
 ```
 
-> **`value` retained (deviation, 2026-04-29).** Originally this section said `drop column value, -- derived from order_lines`. During Phase 7 we found that `order_lines` aggregation only reproduces materials+labour, but `orders.value` is a snapshot of the customer-paid total at conversion time (post-markup, post-tax). Without markup/tax columns on `orders` and with the parent quote potentially editable or deletable, derivation isn't safe. `value` stays as the source of truth for dashboard pipeline/revenue, and `order_lines` is purely itemisation. See SPEC.md § 13 (2026-04-29).
+**Scheduler fields (added 2026-05-06):** `priority` drives auto-scheduler ordering (higher = first). `auto_schedule = true` (default) means the scheduler computes and writes `production_start_date`; `false` means `manual_start_date` / `manual_end_date` drive the layout instead. `packaging_hours` and `contingency_hours` are per-order overrides of business defaults (NULL inherits). `run_over_hours` is added when a project takes longer than scheduled and pushes subsequent priority groups back. See SPEC.md § 13.
+
+> **`value` retained (deviation, 2026-04-29; resolved 2026-05-06).** Originally this section said `drop column value, -- derived from order_lines`. During Phase 7 we found that `order_lines` aggregation only reproduces materials+labour, but `orders.value` is a snapshot of the customer-paid total at conversion time (post-markup, post-tax). Without markup/tax columns on `orders` and with the parent quote potentially editable or deletable, derivation isn't safe. The line-items rewrite (2026-05-06) added `markup` and `tax` columns, so `value` is now recomputed on every save from `order_lines × markup × tax`. The column is retained as a denormalised cache for fast dashboard queries (no aggregation per row). See SPEC.md § 13.
 
 `status` values: `'confirmed' | 'production' | 'delivery' | 'done' | 'cancelled'`.
 
@@ -488,6 +528,10 @@ create table public.order_lines (
   order_id              bigint not null references public.orders(id) on delete cascade,
   user_id               uuid not null references auth.users(id) on delete cascade,
   position              integer not null default 0,
+  line_kind             text not null default 'cabinet'
+    check (line_kind in ('cabinet','item','labour')),
+  unit_price            numeric,
+  schedule_hours        numeric,                       -- workshop hours, scheduler-only, hidden from PDFs
   -- ... same columns as quote_lines (skip listing for brevity) ...
   notes                 text,
   created_at            timestamptz not null default now(),
@@ -500,6 +544,8 @@ create index on public.order_lines(order_id, position);
 When a quote is confirmed into an order, copy `quote_lines` rows to
 `order_lines` and set `orders.quote_id`. The lines are then independent —
 edits on the order don't affect the original quote.
+
+**`schedule_hours` (added 2026-05-06):** Workshop time for this line. Used **only** by the production scheduler for hours rollup; never appears on quote/order/work PDFs. Meaningful only on `line_kind='item'` rows — cabinet hours come from `calcCBLine().labourHrs`, labour hours come from the existing `labour_hours` column. `_lineSubtotal()` must NEVER read `schedule_hours`. There is no equivalent column on `quote_lines` (scheduling is order-only).
 
 ---
 
@@ -539,6 +585,36 @@ RLS). This prevents users from forging subscription rows for themselves.
 `stripe_price_id` (each Stripe Price has a fixed currency). Don't denormalise
 it onto this table. To display, look up the Price via Stripe API or via the
 `stripe_price_id` → currency map in the app config.
+
+---
+
+### 3.18 `schedule_day_overrides`
+
+Per-date hours overrides for the production scheduler. Lets a user mark
+specific dates as holidays (`hours = 0`), half-days (`hours = 4`), or any
+non-default capacity.
+
+```sql
+create table public.schedule_day_overrides (
+  id          bigint generated by default as identity primary key,
+  user_id     uuid not null references auth.users(id) on delete cascade,
+  date        date not null,
+  hours       numeric not null,          -- 0 = holiday, partial = half-day, etc.
+  label       text,                      -- e.g. "Christmas Day", "Half-day Friday"
+  created_at  timestamptz not null default now(),
+  unique (user_id, date)
+);
+
+create index on public.schedule_day_overrides(user_id, date);
+
+alter table public.schedule_day_overrides enable row level security;
+-- Pattern A policies (read/insert/update/delete by owner) — see § 4
+```
+
+**Precedence used by the scheduler:**
+`getWorkdayHours(date) = override.hours ?? business_info.default_weekday_hours[Mon=0..Sun=6] ?? business_info.default_workday_hours`
+
+No recurrence model — each date is an explicit row. Recurring weekday hours are handled by `business_info.default_weekday_hours`.
 
 ---
 

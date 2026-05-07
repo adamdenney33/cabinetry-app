@@ -162,7 +162,6 @@ function _smartCBLibrarySuggest(input, boxId) {
   const q = input.value.trim().toLowerCase();
   const cur = window.currency;
   const matches = q ? cbLibrary.filter(c => (c._libName||c.name||'').toLowerCase().includes(q)) : cbLibrary;
-  if (matches.length === 0 && !q) { box.style.display = 'none'; return; }
   let html = '';
   matches.slice(0, 8).forEach(c => {
     const idx = cbLibrary.indexOf(c);
@@ -203,7 +202,7 @@ function _smartRatesStockSuggest(input, boxId) {
   });
   html += `<div class="client-suggest-add" onmousedown="_openNewStockPopup()">+ Add new stock material</div>`;
   box.innerHTML = html;
-  box.style.display = matches.length || q ? '' : 'none';
+  box.style.display = '';
 }
 
 // ── Rates Finish Smart Suggest ──
@@ -227,7 +226,7 @@ function _smartRatesFinishSuggest(input, boxId) {
   });
   html += `<div class="client-suggest-add" onmousedown="_openNewStockPopup()">+ Add new finish to stock</div>`;
   box.innerHTML = html;
-  box.style.display = matches.length || q ? '' : 'none';
+  box.style.display = '';
 }
 
 // ── Rates Edge Banding Smart Suggest ──
@@ -251,7 +250,7 @@ function _smartRatesEdgeSuggest(input, boxId) {
   });
   html += `<div class="client-suggest-add" onmousedown="_openNewStockPopup()">+ Add new edge banding to stock</div>`;
   box.innerHTML = html;
-  box.style.display = matches.length || q ? '' : 'none';
+  box.style.display = '';
 }
 
 // ── Cabinet Material Smart Suggest ──
@@ -276,7 +275,7 @@ function _smartCBMaterialSuggest(input, boxId, fieldName) {
   });
   html += `<div class="client-suggest-add" onmousedown="_openNewStockPopup()">+ Add new stock material</div>`;
   box.innerHTML = html;
-  box.style.display = matches.length || q ? '' : 'none';
+  box.style.display = '';
 }
 
 /** @param {HTMLInputElement} input @param {string} boxId */
@@ -302,7 +301,7 @@ function _smartCBFinishSuggest(input, boxId) {
   });
   html += `<div class="client-suggest-add" onmousedown="_openNewStockPopup()">+ Add new finish to stock</div>`;
   box.innerHTML = html;
-  box.style.display = matches.length || q ? '' : 'none';
+  box.style.display = '';
 }
 
 /** @param {string} fieldName */
@@ -393,9 +392,9 @@ function _smartCBHwSuggest(input, boxId, lineId, hwIdx) {
       <span style="font-size:10px;color:var(--muted)">${cur}${h.price}/unit</span>
     </div>`;
   });
-  if (q) html += `<div class="client-suggest-add" onmousedown="_openNewCBHardwarePopup(${lineId},${hwIdx})">+ Add "${_escHtml(input.value.trim())}" as new hardware</div>`;
+  html += `<div class="client-suggest-add" onmousedown="_openNewCBHardwarePopup(${lineId},${hwIdx})">+ Add${q ? ' "'+_escHtml(input.value.trim())+'" as' : ''} new hardware</div>`;
   box.innerHTML = html;
-  box.style.display = matches.length || q ? '' : 'none';
+  box.style.display = '';
 }
 
 /** @param {HTMLInputElement} input @param {string} boxId @param {number} lineId */
@@ -414,9 +413,9 @@ function _smartCBHwAddSuggest(input, boxId, lineId) {
       <span style="font-size:10px;color:var(--muted)">${cur}${h.price}/unit</span>
     </div>`;
   });
-  if (q) html += `<div class="client-suggest-add" onmousedown="_openNewCBHardwarePopup(${lineId},-1)">+ Add "${_escHtml(input.value.trim())}" as new hardware</div>`;
+  html += `<div class="client-suggest-add" onmousedown="_openNewCBHardwarePopup(${lineId},-1)">+ Add${q ? ' "'+_escHtml(input.value.trim())+'" as' : ''} new hardware</div>`;
   box.innerHTML = html;
-  box.style.display = matches.length || q ? '' : 'none';
+  box.style.display = '';
 }
 
 /** @param {number} lineId @param {string} hwName */
@@ -475,9 +474,9 @@ function _smartCLProjectSuggest(input, boxId) {
   const box = _byId(boxId);
   if (!box) return;
   _posSuggest(input, box);
-  const q = input.value.trim().toLowerCase();
+  const raw = input.value.trim();
+  const q = raw.toLowerCase();
   const matches = q ? _clProjectCache.filter(p => p.name.toLowerCase().includes(q)).slice(0, 8) : _clProjectCache.slice(0, 8);
-  if (matches.length === 0 && !q) { box.style.display = 'none'; return; }
   let html = '';
   matches.forEach((p, i) => {
     const idx = _clProjectCache.indexOf(p);
@@ -488,52 +487,46 @@ function _smartCLProjectSuggest(input, boxId) {
       <span style="font-size:10px;color:var(--muted)">${date}</span>
     </div>`;
   });
-  html += `<div class="client-suggest-add" onmousedown="showSaveProjectForm()">+ Save current cut list as "${_escHtml(input.value.trim())}"</div>`;
+  // Only show inline "Save as" when user has typed a brand-new name (non-empty
+  // and doesn't exactly match an existing project — prevents accidental overwrite).
+  const exactExists = !!raw && _clProjectCache.some(p => p.name.toLowerCase() === q);
+  if (raw && !exactExists) {
+    const escName = _escHtml(raw).replace(/'/g, '&#39;');
+    html += `<div class="client-suggest-add" onmousedown="_clSaveProjectByName('${escName}');_byId('${boxId}').style.display='none'">+ Save current cut list as "${_escHtml(raw)}"</div>`;
+  }
   box.innerHTML = html;
   box.style.display = '';
 }
 
-// ── Cut List smart search: Stock Materials ──
+// ── Cut List smart search: Stock Materials (panels only) ──
 /** @param {HTMLInputElement} input @param {string} boxId */
 function _smartCLStockSuggest(input, boxId) {
   const box = _byId(boxId);
   if (!box) return;
   _posSuggest(input, box);
   const q = input.value.trim().toLowerCase();
-  const ebOn = typeof colsVisible !== 'undefined' && !!colsVisible.edgeband;
-  const panelItems = stockItems.filter(s => (_scGet(s.id)||s.category) !== 'Edge Banding' && ((_scGet(s.id)||s.category) === 'Sheet Goods' || ((s.w ?? 0) > 0 && (s.h ?? 0) > 0)));
-  const ebItems = ebOn ? stockItems.filter(s => (_scGet(s.id)||s.category) === 'Edge Banding') : [];
-  const pool = panelItems.concat(ebItems);
+  // Panel materials only: explicit Sheet Goods, plus legacy items with no
+  // category set but dimensions (back-compat for pre-category stock rows).
+  const pool = stockItems.filter(/** @param {any} s */ s => {
+    const cat = _scGet(s.id) || s.category;
+    if (cat === 'Sheet Goods') return true;
+    if (!cat && (s.w ?? 0) > 0 && (s.h ?? 0) > 0) return true;
+    return false;
+  });
   const matches = q ? pool.filter(s => s.name.toLowerCase().includes(q)) : pool;
-  if (matches.length === 0 && !q) { box.style.display = 'none'; return; }
   let html = '';
   matches.slice(0, 10).forEach(/** @param {any} s */ s => {
     const origIdx = stockItems.indexOf(s);
-    const isEB = (_scGet(s.id)||s.category) === 'Edge Banding';
     const qtyColor = (s.qty ?? 0) <= (s.lowAlert || s.low || 3) ? '#ef4444' : '#22c55e';
-    let meta = '';
-    if (isEB) {
-      /** @type {any} */
-      const vd = _svGet(s.id) || {};
-      const t = vd.thickness ?? s.thickness;
-      const w = vd.width ?? s.width ?? s.h;
-      const l = vd.length ?? s.length ?? s.w;
-      meta = [t?`${t}mm`:'', w?`${w}mm`:'', l?`${l}m`:''].filter(Boolean).join(' · ');
-    } else {
-      meta = (s.w && s.h ? `${s.w}×${s.h}` : '');
-    }
-    const handler = isEB
-      ? `_clAddEdgeBandFromStockIdx(${origIdx})`
-      : `_clAddPanelFromStock(${origIdx})`;
-    const badge = isEB ? `<span style="font-size:9px;font-weight:600;color:var(--muted);background:var(--border);padding:1px 5px;border-radius:3px;margin-right:4px">EB</span>` : '';
-    html += `<div class="client-suggest-item" onmousedown="${handler};_byId('cl-stock').value='';_byId('${boxId}').style.display='none'">
+    const meta = (s.w && s.h ? `${s.w}×${s.h}` : '');
+    html += `<div class="client-suggest-item" onmousedown="_clAddPanelFromStock(${origIdx});_byId('cl-stock').value='';_byId('${boxId}').style.display='none'">
       <span class="suggest-icon" style="background:${qtyColor}20;color:${qtyColor}">${s.qty}</span>
-      <span style="flex:1">${badge}${_escHtml(s.name)}</span>
+      <span style="flex:1">${_escHtml(s.name)}</span>
       <span style="font-size:10px;color:var(--muted)">${meta}</span>
     </div>`;
   });
   if (matches.length === 0) {
-    html += `<div class="client-suggest-add" onmousedown="switchSection('stock')">No matches — go to Stock to add materials</div>`;
+    html += `<div class="client-suggest-add" onmousedown="switchSection('stock')">No panel materials — go to Stock to add</div>`;
   }
   box.innerHTML = html;
   box.style.display = '';
@@ -580,7 +573,7 @@ function _smartCLCabinetSuggest(input, boxId) {
   });
   html += `<div class="client-suggest-add" onmousedown="_clSaveToCabinetLibrary()">+ Save current cut parts to library</div>`;
   box.innerHTML = html;
-  box.style.display = matches.length || q ? '' : 'none';
+  box.style.display = '';
 }
 
 /** @param {any[]} parts @param {string} mode */

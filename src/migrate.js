@@ -323,6 +323,7 @@ function _quoteLineRowToCB(row) {
 function _cbLineToRow(l, position, quoteId) {
   return {
     quote_id: quoteId, user_id: _userId, position,
+    line_kind: 'cabinet',
     name: l.name || '',
     type: l.type || null, room: l.room || null,
     w_mm: parseFloat(l.w) || null,
@@ -479,7 +480,56 @@ async function _migrateOrderRefs(log) {
   _migLog(log, sub, 'OK', 'Updated ' + updated + ' orders', updated);
 }
 
-// ── 9. Drop pc_stock_libraries (no migration target per resolved decision) ──
+// ── 9. Migrate legacy "Manual Quote" stub rows into Item + Labour lines ──
+// Pre-line-items quotes created via the simplified form had a single
+// quote_lines row called "Manual Quote" with material_cost_override +
+// labour_hours filled in. Split them into one item line ("Materials") and
+// one labour line ("Labour"). Idempotent: rows are deleted as they're
+// converted, so re-running the migration becomes a no-op.
+/** @param {MigLog} log */
+async function _migrateManualStubLines(log) {
+  const sub = 'manual_quote_stubs';
+  if (!_userId) { _migLog(log, sub, 'SKIP', 'Not signed in'); return; }
+  const { data: stubs, error } = await _db('quote_lines')
+    .select('*').eq('user_id', _userId).eq('name', 'Manual Quote');
+  if (error) { _migLog(log, sub, 'WARN', 'Stub query: ' + error.message); return; }
+  if (!stubs || stubs.length === 0) {
+    _migLog(log, sub, 'SKIP', 'No legacy Manual Quote stubs to convert');
+    return;
+  }
+  const businessRate = (typeof cbSettings !== 'undefined' && cbSettings && cbSettings.labourRate) ? cbSettings.labourRate : 65;
+  let converted = 0;
+  for (const stub of stubs) {
+    /** @type {any} */
+    const s = stub;
+    /** @type {any[]} */
+    const replacements = [];
+    const mat = parseFloat(s.material_cost_override) || 0;
+    const hrs = parseFloat(s.labour_hours) || 0;
+    if (mat > 0) {
+      replacements.push({
+        quote_id: s.quote_id, user_id: _userId, position: 0,
+        line_kind: 'item', name: 'Materials', qty: 1, unit_price: mat,
+      });
+    }
+    if (hrs > 0) {
+      replacements.push({
+        quote_id: s.quote_id, user_id: _userId, position: replacements.length,
+        line_kind: 'labour', name: 'Labour', labour_hours: hrs, unit_price: businessRate,
+      });
+    }
+    if (replacements.length) {
+      const { error: insErr } = await _db('quote_lines').insert(replacements);
+      if (insErr) { _migLog(log, sub, 'WARN', 'Insert for quote ' + s.quote_id + ': ' + insErr.message); continue; }
+    }
+    const { error: delErr } = await _db('quote_lines').delete().eq('id', s.id);
+    if (delErr) { _migLog(log, sub, 'WARN', 'Delete stub ' + s.id + ': ' + delErr.message); continue; }
+    converted++;
+  }
+  _migLog(log, sub, 'OK', 'Converted ' + converted + ' Manual Quote stubs into item/labour lines', converted);
+}
+
+// ── 10. Drop pc_stock_libraries (no migration target per resolved decision) ──
 /** @param {MigLog} log */
 function _dropStockLibraries(log) {
   const sub = 'drop_stock_libraries';
@@ -508,6 +558,7 @@ async function migrateLocalToDB() {
     ['cb_projects', _migrateCBProjects],
     ['saved_quotes', _migrateSavedQuotes],
     ['order_refs', _migrateOrderRefs],
+    ['manual_quote_stubs', _migrateManualStubLines],
   ];
   for (const [name, fn] of subs) {
     try { await fn(log); }

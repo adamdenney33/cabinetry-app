@@ -774,12 +774,16 @@ function renderStockMain() {
       <td style="color:var(--muted)">${item.low ?? 0}</td>
       <td style="text-align:right;color:var(--text2)">${cur}${item.cost.toFixed(2)}<span style="font-size:9px;color:var(--muted)">/${unit}</span></td>
       <td style="text-align:right;font-weight:700">${cur}${(item.qty * item.cost).toFixed(0)}</td>
-      <td style="color:var(--text2)">${_escHtml(sup.supplier || '—')}</td>
-      <td onclick="event.stopPropagation()" style="text-align:right;width:90px">
+      <td style="color:var(--text2)">${
+        sup.supplier && sup.url
+          ? `<a class="stock-supplier-link" href="${_escHtml(_normalizeUrl(sup.url))}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${_escHtml(sup.supplier)}</a>`
+          : _escHtml(sup.supplier || '—')
+      }</td>
+      <td onclick="event.stopPropagation()" style="text-align:right;width:40px">
         <div class="stock-row-actions">
-          <span class="stock-icon-btn" onclick="_openStockPopup(${item.id})" title="Edit">✎</span>
-          <span class="stock-icon-btn" onclick="useStockInCutList(${item.id})" title="+ Cut List">+</span>
-          ${sup.url ? `<a class="stock-icon-btn" href="${_escHtml(sup.url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Reorder${isLow?' (low stock)':''}" style="${isLow?'color:var(--accent);border-color:var(--accent)':''}">↗</a>` : ''}
+          <span class="stock-icon-btn" onclick="useStockInCutList(${item.id})" title="Add to Cut List">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.8,5.1 L12,2 L12.6,5 L14.4,5.4 L17,3.3 L16,6.3 L17.4,7.5 L20.7,7 L18.3,9 L18.9,10.8 L22,12 L19,12.6 L18.6,14.4 L20.7,17 L17.7,16 L16.5,17.4 L17,20.7 L15,18.3 L13.2,18.9 L12,22 L11.4,19 L9.6,18.6 L7,20.7 L8,17.7 L6.6,16.5 L3.3,17 L5.7,15 L5.1,13.2 L2,12 L5,11.4 L5.4,9.6 L3.3,7 L6.3,8 L7.5,6.6 L7,3.3 L9,5.7 Z"/><circle cx="12" cy="12" r="2.5"/></svg>
+          </span>
         </div>
       </td>
     </tr>`;
