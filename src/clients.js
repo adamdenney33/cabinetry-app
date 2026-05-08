@@ -234,6 +234,15 @@ function _projectsRevealForm() {
 }
 /** @type {any} */ (window)._projectsRevealForm = _projectsRevealForm;
 
+/** Revert to gate on tab re-entry if the form was opened but never engaged. */
+function _projectsMaybeResetFormFlag() {
+  if (!_projectsShowForm) return;
+  const nameInput = /** @type {HTMLInputElement|null} */ (document.getElementById('pj-name'));
+  if (nameInput && nameInput.value.trim()) return;
+  _projectsShowForm = false;
+}
+/** @type {any} */ (window)._projectsMaybeResetFormFlag = _projectsMaybeResetFormFlag;
+
 function _renderClientsSidebarGate() {
   const gate = document.getElementById('clients-gate');
   const form = document.getElementById('clients-form-section');
@@ -261,6 +270,15 @@ function _clientsRevealForm() {
   if (first) /** @type {HTMLInputElement} */ (first).focus();
 }
 /** @type {any} */ (window)._clientsRevealForm = _clientsRevealForm;
+
+/** Revert to gate on tab re-entry if the form was opened but never engaged. */
+function _clientsMaybeResetFormFlag() {
+  if (!_clientsShowForm) return;
+  const nameInput = /** @type {HTMLInputElement|null} */ (document.getElementById('cl-name'));
+  if (nameInput && nameInput.value.trim()) return;
+  _clientsShowForm = false;
+}
+/** @type {any} */ (window)._clientsMaybeResetFormFlag = _clientsMaybeResetFormFlag;
 
 // ── Render Clients Tab ──
 function renderClientsMain() {

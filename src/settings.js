@@ -285,7 +285,10 @@ function switchSection(name) {
     p.classList.toggle('active', p.id === 'panel-' + name);
   });
   if (name === 'cabinet') { try { renderCBPanel(); } catch(e) {} }
-  if (name === 'stock') { renderStockMain(); }
+  if (name === 'stock') {
+    if (typeof _stockMaybeResetFormFlag === 'function') _stockMaybeResetFormFlag();
+    renderStockMain();
+  }
   if (name === 'quote') { renderQuoteMain(); if (typeof renderQuoteEditor === 'function') renderQuoteEditor(); }
   if (name === 'orders') { renderOrdersMain(); if (typeof renderOrderEditor === 'function') renderOrderEditor(); }
   if (name === 'schedule') renderSchedule();
@@ -294,8 +297,12 @@ function switchSection(name) {
     // U.9: refresh cut-list project membership so counts stay fresh after
     // saving/clearing a cut list elsewhere in the session.
     if (typeof _loadCutListProjectIds === 'function') _loadCutListProjectIds();
+    if (typeof _projectsMaybeResetFormFlag === 'function') _projectsMaybeResetFormFlag();
     renderProjectsMain();
   }
-  if (name === 'clients') renderClientsMain();
+  if (name === 'clients') {
+    if (typeof _clientsMaybeResetFormFlag === 'function') _clientsMaybeResetFormFlag();
+    renderClientsMain();
+  }
 }
 

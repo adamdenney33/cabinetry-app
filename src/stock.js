@@ -743,6 +743,17 @@ function _stockRevealForm() {
 }
 /** @type {any} */ (window)._stockRevealForm = _stockRevealForm;
 
+/** Reset _stockShowForm when re-entering Stock if nothing was typed and
+ *  no item is being edited — so abandoned reveals revert to the gate. */
+function _stockMaybeResetFormFlag() {
+  if (!_stockShowForm) return;
+  if (window._editingStockId) return;
+  const nameInput = /** @type {HTMLInputElement|null} */ (_byId('stock-name'));
+  if (nameInput && nameInput.value.trim()) return;
+  _stockShowForm = false;
+}
+/** @type {any} */ (window)._stockMaybeResetFormFlag = _stockMaybeResetFormFlag;
+
 function renderStockMain() {
   _updateStockBadge();
   _renderStockSidebarGate();
