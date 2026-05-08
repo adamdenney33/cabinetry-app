@@ -253,6 +253,28 @@ function _renderProjectEmpty(opts) {
 }
 
 /**
+ * Render a simple list-empty gated entry — icon + title + subtitle + primary button.
+ * Used by Stock / Projects / Clients sidebars on first arrival when the list is empty.
+ * @param {{
+ *   iconSvg: string,
+ *   title: string,
+ *   subtitle: string,
+ *   btnLabel: string,
+ *   btnOnclick: string,
+ * }} opts
+ */
+function _renderListEmpty(opts) {
+  const { iconSvg, title, subtitle, btnLabel, btnOnclick } = opts;
+  return `<div class="project-empty">
+    ${iconSvg}
+    <h3>${_escHtml(title)}</h3>
+    <p>${_escHtml(subtitle)}</p>
+    <button class="btn btn-primary" onclick="${btnOnclick}" style="width:100%;justify-content:center">${_escHtml(btnLabel)}</button>
+  </div>`;
+}
+/** @type {any} */ (window)._renderListEmpty = _renderListEmpty;
+
+/**
  * Normalise a URL so bare domains (e.g. `amazon.co.uk`) become absolute.
  * Display-time only — DB values are kept as the user typed them.
  * @param {string | null | undefined} u

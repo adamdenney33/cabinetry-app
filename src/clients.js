@@ -198,8 +198,71 @@ function _pjClientSuggest(input) {
   input.onblur = () => setTimeout(() => list.style.display = 'none', 150);
 }
 
+// ── Sidebar gates: simple icon + title + subtitle + button shown when the
+//    list is empty and the user hasn't engaged. Once revealed, the existing
+//    inline form replaces the gate.
+let _projectsShowForm = false;
+let _clientsShowForm = false;
+
+function _renderProjectsSidebarGate() {
+  const gate = document.getElementById('projects-gate');
+  const form = document.getElementById('projects-form-section');
+  if (!gate || !form) return;
+  if ((projects?.length ?? 0) === 0 && !_projectsShowForm) {
+    gate.innerHTML = _renderListEmpty({
+      iconSvg: '<svg class="pe-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>',
+      title: 'Projects',
+      subtitle: 'Organise work into projects. Each project ties together quotes, orders, and cut lists for a single job.',
+      btnLabel: '+ Create Project',
+      btnOnclick: '_projectsRevealForm()',
+    });
+    gate.style.display = '';
+    form.style.display = 'none';
+  } else {
+    gate.innerHTML = '';
+    gate.style.display = 'none';
+    form.style.display = '';
+  }
+}
+function _projectsRevealForm() {
+  _projectsShowForm = true;
+  _renderProjectsSidebarGate();
+  const first = document.getElementById('pj-name');
+  if (first) /** @type {HTMLInputElement} */ (first).focus();
+}
+/** @type {any} */ (window)._projectsRevealForm = _projectsRevealForm;
+
+function _renderClientsSidebarGate() {
+  const gate = document.getElementById('clients-gate');
+  const form = document.getElementById('clients-form-section');
+  if (!gate || !form) return;
+  if ((clients?.length ?? 0) === 0 && !_clientsShowForm) {
+    gate.innerHTML = _renderListEmpty({
+      iconSvg: '<svg class="pe-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>',
+      title: 'Clients',
+      subtitle: 'Add clients to assign them to projects, quotes, and orders.',
+      btnLabel: '+ Add Client',
+      btnOnclick: '_clientsRevealForm()',
+    });
+    gate.style.display = '';
+    form.style.display = 'none';
+  } else {
+    gate.innerHTML = '';
+    gate.style.display = 'none';
+    form.style.display = '';
+  }
+}
+function _clientsRevealForm() {
+  _clientsShowForm = true;
+  _renderClientsSidebarGate();
+  const first = document.getElementById('cl-name');
+  if (first) /** @type {HTMLInputElement} */ (first).focus();
+}
+/** @type {any} */ (window)._clientsRevealForm = _clientsRevealForm;
+
 // ── Render Clients Tab ──
 function renderClientsMain() {
+  _renderClientsSidebarGate();
   const el = document.getElementById('clients-main');
   if (!el) return;
   const cur = window.currency;
@@ -272,6 +335,7 @@ function _highlightProject(id) {
 
 // ── Render Projects Tab ──
 function renderProjectsMain() {
+  _renderProjectsSidebarGate();
   const el = document.getElementById('projects-main');
   if (!el) return;
   const cur = window.currency;
