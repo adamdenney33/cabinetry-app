@@ -172,6 +172,10 @@ header {
 .client-suggest-item:last-child { border-bottom: none; }
 .client-suggest-item:hover { background: var(--accent-dim); color: var(--accent); }
 .client-suggest-item .suggest-icon { width: 22px; height: 22px; border-radius: 50%; background: var(--surface2); color: var(--muted); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; }
+.client-suggest-item .csi-icon { width: 16px; height: 16px; flex-shrink: 0; color: var(--muted); display: inline-flex; align-items: center; justify-content: center; }
+.client-suggest-item .csi-icon svg { width: 14px; height: 14px; }
+.client-suggest-item .csi-name { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500; }
+.client-suggest-item .csi-meta { font-size: 10px; color: var(--muted); padding: 1px 6px; background: var(--surface2); border-radius: 999px; flex-shrink: 0; }
 .client-suggest-add { padding: 8px 12px; font-size: 12px; cursor: pointer; color: var(--accent); font-weight: 600; display: flex; align-items: center; gap: 6px; border-top: 1px solid var(--border); }
 .client-suggest-add:hover { background: var(--accent-dim); }
 .smart-input-wrap { position: relative; display: flex; gap: 0; border: 1px solid var(--border); border-radius: 7px; background: var(--surface2); overflow: hidden; transition: border-color .15s, box-shadow .15s; }
@@ -263,6 +267,31 @@ header {
   padding: 1px 6px; border-radius: 10px;
 }
 /* Chrome wing pseudo-elements — disabled for cleaner look */
+
+/* Icon-only mode at narrow viewports — tabs fill the bar evenly */
+@media (max-width: 1240px) {
+  .nav-tabs {
+    padding-left: 0;
+    padding-right: 0;
+    overflow-x: visible;
+    gap: 0;
+  }
+  .nav-tab {
+    min-width: 0 !important;
+    width: auto !important;
+    max-width: none !important;
+    flex: 1 1 0 !important;
+    padding: 8px 0 10px;
+    gap: 0;
+  }
+  .nav-tab-label { display: none; }
+  .nav-tab svg { width: 18px; height: 18px; }
+  .nav-tab .tab-badge {
+    position: absolute;
+    top: 4px;
+    right: calc(50% - 16px);
+  }
+}
 
 /* ── MAIN BODY ── */
 .app-body { flex: 1; overflow: hidden; display: flex; justify-content: center; background: var(--bg); }
@@ -356,7 +385,9 @@ textarea { resize: vertical; min-height: 70px; }
 .cl-settings-bar .form-group { margin: 0; }
 .cl-settings-bar label { font-size: 10px; margin-bottom: 3px; display: block; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; }
 .cl-settings-bar select, .cl-settings-bar input { padding: 5px 8px; font-size: 13px; }
-.cl-section-header { padding: 14px 14px 6px; display: flex; align-items: center; justify-content: space-between; }
+.cl-section-header { padding: 8px 14px 4px; display: flex; align-items: center; justify-content: space-between; flex-wrap: nowrap; white-space: nowrap; gap: 4px; min-width: 0; }
+.cl-section-header > * { white-space: nowrap; flex-shrink: 0; }
+.cl-section-header > div { min-width: 0; flex-shrink: 1; overflow: hidden; }
 .cl-section-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: var(--muted); }
 .cl-table { width: 100%; border-collapse: collapse; }
 .cl-table th {
@@ -907,6 +938,16 @@ tr:hover .cl-drag-handle { color: var(--muted); }
 .cl-grain-btn:hover { background: var(--surface2); }
 
 /* Toggle enable button */
+/* Visual-only colored dot in column 2. Has no own onclick, so clicks bubble up
+   to the row's onclick — the dot is a valid row-selection target. */
+.cl-piece-dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  cursor: pointer;
+}
 .cl-toggle-btn {
   width: 24px; height: 24px; border: none; background: none; cursor: pointer;
   border-radius: 4px; display: flex; align-items: center; justify-content: center;
@@ -1287,13 +1328,13 @@ input.li-qty:focus, input.li-price:focus { outline: none; border-color: var(--ac
 .proj-total.zero { color: var(--muted); font-weight: 500; }
 
 .proj-strip {
-  display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;
-  padding-top: 10px; border-top: 1px dashed var(--border2);
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px;
+  padding-top: 8px; border-top: 1px dashed var(--border2);
 }
 .proj-act {
   display: flex; align-items: stretch;
   border: 1px solid var(--border);
-  border-radius: 7px;
+  border-radius: 6px;
   background: var(--surface2);
   overflow: hidden;
   transition: border-color .12s, background .12s;
@@ -1301,8 +1342,8 @@ input.li-qty:focus, input.li-price:focus { outline: none; border-color: var(--ac
 .proj-act:hover { border-color: var(--text2); background: var(--surface); }
 .proj-act-main {
   flex: 1; min-width: 0;
-  display: flex; align-items: center; gap: 8px;
-  padding: 7px 10px;
+  display: flex; align-items: center; gap: 7px;
+  padding: 4px 9px;
   cursor: pointer;
   color: var(--text2);
 }
@@ -1322,11 +1363,11 @@ input.li-qty:focus, input.li-price:focus { outline: none; border-color: var(--ac
 .proj-act.empty .proj-act-main { color: var(--muted); }
 
 .proj-act-add {
-  width: 32px; flex-shrink: 0;
+  width: 26px; flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
   background: var(--surface);
   border-left: 1px solid var(--border);
-  color: var(--muted); font-size: 14px; font-weight: 700;
+  color: var(--muted); font-size: 13px; font-weight: 700;
   cursor: pointer;
   transition: background .12s, color .12s, border-color .12s;
 }
@@ -1336,6 +1377,32 @@ input.li-qty:focus, input.li-price:focus { outline: none; border-color: var(--ac
 
 html.dark .proj-act-count { background: rgba(13,148,136,.18); color: #5dbf90; }
 html.dark .proj-act.empty .proj-act-add { background: rgba(13,148,136,.12); }
+
+/* ── Schedule sidebar layout: head + scrollable body + fixed footer ── */
+.sched-sidebar { display: flex; flex-direction: column; height: 100%; padding: 0; overflow: hidden; }
+.sched-sidebar-head { padding: 16px 16px 8px; flex: 0 0 auto; }
+.sched-sidebar-body { padding: 0 16px 8px; flex: 1 1 auto; overflow-y: auto; }
+.sched-sidebar-foot {
+  padding: 8px 12px;
+  flex: 0 0 auto;
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: 6px;
+  background: var(--surface);
+}
+.sched-sidebar-foot .btn { flex: 1; }
+.sched-sort-row { display: flex; align-items: center; gap: 6px; margin: 4px 0 6px; padding: 0 4px; }
+.sched-sort-row select {
+  flex: 1;
+  font-size: 10px;
+  padding: 3px 6px;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.cl-drag-over { background: var(--surface2) !important; }
 
 /* ── Schedule sidebar (Defaults + Date overrides + Jobs) ── */
 .sched-section-header {
@@ -1487,4 +1554,160 @@ html.dark .proj-act.empty .proj-act-add { background: rgba(13,148,136,.12); }
 .sched-due-green { background: rgba(5,150,105,0.18); color: #34d399; }
 .sched-due-amber { background: rgba(232,168,56,0.20); color: #fbbf24; }
 .sched-due-red   { background: rgba(220,38,38,0.22); color: #f87171; }
+
+/* ══════════════════════════════════════════
+   QUOTE / ORDER UNIFIED SIDEBAR EDITOR
+   ══════════════════════════════════════════ */
+
+/* Wider sidebar used by the Quote and Order tabs to host the full editor. */
+.sidebar.sidebar-wide { width: 440px; }
+@media (max-width: 1100px) {
+  .sidebar.sidebar-wide { width: 360px; }
+}
+
+.editor-shell {
+  margin-bottom: 14px;
+}
+.editor-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border2);
+}
+.editor-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+}
+.editor-project-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+  padding: 8px 10px;
+  background: var(--surface2);
+  border-radius: 6px;
+}
+.editor-client-line {
+  font-size: 11px;
+  color: var(--text2);
+  padding: 2px 4px 10px;
+}
+.editor-section {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border2);
+}
+.editor-section:first-of-type { border-top: none; padding-top: 0; }
+.editor-section-title {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+
+/* Cabinet / Item / Labour add tiles — proj-act-inspired */
+.editor-add-tiles {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.editor-add-tile {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  cursor: pointer;
+  transition: border-color .15s, background .15s;
+  user-select: none;
+}
+.editor-add-tile:hover {
+  border-color: var(--accent);
+  background: var(--surface);
+}
+.editor-add-tile .tile-icon {
+  display: inline-flex;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  color: var(--accent2);
+}
+.editor-add-tile .tile-icon svg { width: 16px; height: 16px; }
+.editor-add-tile .tile-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text);
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.editor-add-tile .tile-count {
+  font-size: 10px;
+  font-weight: 700;
+  background: rgba(13,148,136,.15);
+  color: var(--accent2);
+  padding: 1px 6px;
+  border-radius: 999px;
+  min-width: 18px;
+  text-align: center;
+}
+.editor-add-tile .tile-add {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--accent);
+  width: 18px;
+  text-align: center;
+  flex-shrink: 0;
+}
+.editor-add-tile:hover .tile-add { color: var(--accent2); }
+
+/* Sticky footer for the editor */
+.editor-footer {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 14px;
+  padding: 10px 0 4px;
+  background: var(--surface);
+  border-top: 1px solid var(--border2);
+  flex-wrap: wrap;
+}
+.editor-footer .btn { font-size: 11px; padding: 6px 10px; width: auto; }
+
+/* Tiny link-style button for "change project" action */
+.btn-link {
+  background: none;
+  border: none;
+  color: var(--accent2);
+  font-size: 11px;
+  cursor: pointer;
+  padding: 2px 4px;
+  text-decoration: underline;
+}
+.btn-link:hover { color: var(--accent); }
+
+/* Suggest list rows used by the editor's project picker */
+.client-suggest-empty {
+  padding: 10px 12px;
+  font-size: 11px;
+  color: var(--muted);
+  font-style: italic;
+}
+.client-suggest-add {
+  border-top: 1px solid var(--border2);
+  color: var(--accent2);
+  font-weight: 600;
+}
 

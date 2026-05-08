@@ -104,168 +104,19 @@ async function _saveClientPopup(id) {
 // ── Order Popup ──
 // Mirror of the quote popup's line-items state.
 /** @type {{orderId: number|null, lines: any[]}} */
-let _opState = { orderId: null, lines: [] };
+/** Sidebar editor state for the Orders tab (replaces former popup state).
+ *  - orderId: null until a row is created/loaded
+ *  - lines: in-memory editable copies of order_lines rows
+ *  - dirty: true when fields have been edited but not saved
+ *  - projectId: working project id (used in the empty/new state before orderId exists) */
+let _opState = /** @type {{orderId: number|null, lines: any[], dirty: boolean, projectId: number|null}} */ ({ orderId: null, lines: [], dirty: false, projectId: null });
 
-/** @param {number} id */
+/** Compatibility alias: routes to the Orders sidebar editor.
+ *  Kept so external callers (schedule.js, dashboard.js) continue to work.
+ *  @param {number} id */
 function _openOrderPopup(id) {
-  const o = /** @type {any} */ (orders.find(x => x.id === id));
-  if (!o) return;
-  if (Array.isArray(o._lines)) {
-    _opState = { orderId: id, lines: o._lines.map(/** @param {any} r */ r => ({ ...r })) };
-    _renderOrderPopup(o);
-    return;
-  }
-  _opState = { orderId: id, lines: [] };
-  _renderOrderPopup(o);
-  _db('order_lines').select('*').eq('order_id', id).order('position').then(/** @param {any} res */ res => {
-    if (!res || res.error || !res.data) return;
-    if (_opState.orderId !== id) return;
-    o._lines = res.data.map(/** @param {any} row */ row => ({ ...row }));
-    _opState.lines = res.data.map(/** @param {any} row */ row => ({ ...row }));
-    _renderOrderLines();
-    _renderOrderLineTotals();
-    _renderOrderHoursBreakdown();
-  });
-}
-
-/** @param {any} o */
-function _renderOrderPopup(o) {
-  const pipelineSteps = ORDER_STATUSES;
-  const stepLabels = ['Quote','Confirmed','Production','Delivery','Done'];
-  const curIdx = pipelineSteps.indexOf(o.status || '');
-
-  const pipe = pipelineSteps.map((s,i) => {
-    const done = i < curIdx;
-    const active = i === curIdx;
-    return `<div class="pp-step" onclick="document.getElementById('po-status').value='${s}'">
-      <div class="pp-dot ${active?'active':done?'done':''}"></div>
-      <div class="pp-label ${active?'active':done?'done':''}">${stepLabels[i]}</div>
-    </div>${i < pipelineSteps.length-1 ? `<div class="pp-line ${done?'done':''}"></div>` : ''}`;
-  }).join('');
-
-  const qRef = _oqGet(o.id);
-  const fromQuote = qRef ? quotes.find(q => q.id === qRef) : null;
-  const quoteChip = fromQuote ? `<div class="pf" style="margin-bottom:0"><label class="pf-label">From Quote</label><div class="pf-chips"><span class="pf-chip" style="border-color:rgba(37,99,235,0.3);color:#6b9bf4" onclick="_closePopup();switchSection('quote');window._quoteSearch='${_escHtml(quoteProject(fromQuote))}';renderQuoteMain()">Q-${String(fromQuote.id).padStart(4,'0')} · ${_escHtml(quoteProject(fromQuote))}</span></div></div>` : '';
-
-  // Overdue detection
-  let isOverdue = false;
-  if (o.status !== 'complete' && o.due && o.due !== 'TBD') {
-    const parsed = new Date(o.due); if (!isNaN(+parsed) && parsed < new Date()) isOverdue = true;
-  }
-
-  _openPopup(`
-    <div class="popup-header">
-      <div class="popup-title">
-        Edit Order
-        <span class="badge ${(/** @type {Record<string,string>} */(STATUS_BADGES))[o.status||'']||'badge-gray'}" style="font-size:10px">${(/** @type {Record<string,string>} */(STATUS_LABELS))[o.status||'']||o.status}</span>
-        ${isOverdue ? '<span class="badge badge-red" style="font-size:9px">Overdue</span>' : ''}
-      </div>
-      <button class="popup-close" onclick="_closePopup()">×</button>
-    </div>
-    <div class="popup-body">
-      <div class="pf">
-        <label class="pf-label">Project</label>
-        <input class="pf-input pf-input-lg" id="po-project" value="${_escHtml(orderProject(o))}">
-      </div>
-      <div class="pf-row">
-        <div class="pf">
-          <label class="pf-label">Client</label>
-          <input class="pf-input" id="po-client" value="${_escHtml(orderClient(o))}">
-        </div>
-        <div class="pf">
-          <label class="pf-label">Status</label>
-          <select class="pf-select" id="po-status" style="height:42px">
-            ${pipelineSteps.map(s=>`<option value="${s}" ${o.status===s?'selected':''}>${(/** @type {Record<string,string>} */(STATUS_LABELS))[s]}</option>`).join('')}
-          </select>
-        </div>
-      </div>
-      <div class="pf" style="margin-bottom:8px">
-        <label class="pf-label">Status Pipeline</label>
-        <div class="pp-pipeline">${pipe}</div>
-      </div>
-      <div class="pf-divider"></div>
-      <div class="pf-label" style="margin-bottom:6px">Line Items</div>
-      <div id="po-lines" class="li-list"></div>
-      <div class="li-add-row">
-        <button type="button" class="btn btn-outline btn-sm" onclick="_orderLineAdd('item')">+ Add Item</button>
-        <button type="button" class="btn btn-outline btn-sm" onclick="_orderLineAdd('labour')">+ Add Labour</button>
-        ${fromQuote ? `<span style="font-size:10px;color:var(--muted);align-self:center;margin-left:8px">Cabinet lines copied from Q-${String(fromQuote.id).padStart(4,'0')}</span>` : ''}
-      </div>
-      <div class="pf-divider"></div>
-      <div class="pf-row">
-        <div class="pf"><label class="pf-label">Markup %</label><input class="pf-input" id="po-markup" value="${o.markup ?? 0}" oninput="_renderOrderLineTotals()"></div>
-        <div class="pf"><label class="pf-label">Tax %</label><input class="pf-input" id="po-tax" value="${o.tax ?? 0}" oninput="_renderOrderLineTotals()"></div>
-        <div class="pf" style="flex:0.5"></div>
-      </div>
-      <div class="pf-divider"></div>
-      <div class="pf-label" style="margin-bottom:6px">Scheduling</div>
-      <div class="pf-row">
-        <div class="pf" style="flex:1.5">
-          <label class="pf-label" style="display:flex;align-items:center;gap:6px">
-            <input type="checkbox" id="po-auto-schedule" ${o.auto_schedule !== false ? 'checked' : ''} oninput="_orderAutoScheduleToggle(this.checked)" style="width:14px;height:14px;margin:0">
-            Auto schedule
-          </label>
-        </div>
-        <div class="pf">
-          <label class="pf-label">Priority</label>
-          <input class="pf-input" type="number" id="po-priority" value="${o.priority ?? 0}" step="1" title="Higher number = scheduled first">
-        </div>
-      </div>
-      <div class="pf-row" id="po-manual-dates" style="${o.auto_schedule === false ? '' : 'display:none'}">
-        <div class="pf">
-          <label class="pf-label">Manual start</label>
-          <input class="pf-input" type="date" id="po-manual-start" value="${o.manual_start_date || ''}">
-        </div>
-        <div class="pf">
-          <label class="pf-label">Manual end</label>
-          <input class="pf-input" type="date" id="po-manual-end" value="${o.manual_end_date || ''}">
-        </div>
-      </div>
-      <div class="pf-row">
-        <div class="pf">
-          <label class="pf-label">Packaging (h)</label>
-          <input class="pf-input" type="number" min="0" step="0.5" id="po-packaging" value="${o.packaging_hours ?? ''}" placeholder="default ${cbSettings.packagingHours ?? 0}" oninput="_renderOrderHoursBreakdown()">
-        </div>
-        <div class="pf">
-          <label class="pf-label">Contingency (h)</label>
-          <input class="pf-input" type="number" min="0" step="0.5" id="po-contingency" value="${o.contingency_hours ?? ''}" placeholder="default ${cbSettings.contingencyHours ?? 0}" oninput="_renderOrderHoursBreakdown()">
-        </div>
-        <div class="pf">
-          <label class="pf-label">Run-over (h)</label>
-          <input class="pf-input" type="number" min="0" step="0.5" id="po-run-over" value="${o.run_over_hours ?? 0}" oninput="_renderOrderHoursBreakdown()">
-        </div>
-      </div>
-      <div class="pf-hours-readout" id="po-hours-breakdown" style="margin-bottom:12px"></div>
-      <div class="pf-divider"></div>
-      <div class="pf-row">
-        <div class="pf">
-          <label class="pf-label">Production Start ${o.auto_schedule !== false ? '<span style="color:var(--muted);font-size:10px">(auto)</span>' : ''}</label>
-          <input class="pf-input" type="date" id="po-start" value="${_orderDateToISO(o.prodStart||'')}" ${o.auto_schedule !== false ? 'disabled title="Auto-scheduled — toggle off to set manually"' : ''}>
-        </div>
-        <div class="pf">
-          <label class="pf-label">Due Date</label>
-          <input class="pf-input" type="date" id="po-due" value="${_orderDateToISO(o.due||'')}">
-        </div>
-      </div>
-      <div class="pf">
-        <label class="pf-label">Production Notes</label>
-        <textarea class="pf-textarea" id="po-notes" rows="2" placeholder="Production notes...">${_escHtml(o.notes||'')}</textarea>
-      </div>
-      ${quoteChip}
-      <div class="pf-totals" id="po-totals" style="margin-top:8px"></div>
-    </div>
-    <div class="popup-footer">
-      <div class="popup-footer-left">
-        <button class="btn btn-danger" onclick="_confirm('Delete order for <strong>${_escHtml(orderClient(o))}</strong>?',()=>{_closePopup();removeOrder(${o.id})})">Delete</button>
-      </div>
-      <div class="popup-footer-right">
-        <button class="btn btn-primary" onclick="_saveOrderPopup(${o.id})">Save</button>
-      </div>
-    </div>
-  `, 'md');
-  _renderOrderLines();
-  _renderOrderLineTotals();
-  _renderOrderHoursBreakdown();
+  switchSection('orders');
+  if (typeof loadOrderIntoSidebar === 'function') loadOrderIntoSidebar(id);
 }
 
 function _renderOrderLines() {
@@ -325,15 +176,15 @@ function _orderLineRowHtml(row, i) {
 // in hours; total is the sum used by the production scheduler.
 // Mirrors the formula documented in the plan; will move to src/scheduler.js
 // in S.4 alongside computeSchedule().
-/** @param {any[]} lines @param {{packagingHours?: number, contingencyHours?: number, runOverHours?: number}} [overrides] */
+/** @param {any[]} lines @param {{packagingHours?: number, runOverHours?: number}} [overrides] */
 function _orderHoursBreakdown(lines, overrides) {
   let cabinetHrs = 0, labourHrs = 0, itemHrs = 0;
   for (const r of lines || []) {
     const kind = r.line_kind || 'cabinet';
     if (kind === 'cabinet') {
       // Use cached _hrs if present; otherwise compute via calcCBLine and cache.
-      // Cabinets in a popup are bounded (typically <30); recomputing is cheap
-      // but we cache to avoid repeating work on every keystroke elsewhere.
+      // calcCBLine bakes contingency (cbSettings.contingencyPct) into the labour
+      // hours, so the cabinet line below already includes contingency time.
       let hrs = r._hrs;
       if (typeof hrs !== 'number') {
         try {
@@ -352,16 +203,14 @@ function _orderHoursBreakdown(lines, overrides) {
   }
   const o = overrides || {};
   const pack = o.packagingHours != null ? o.packagingHours : (cbSettings.packagingHours ?? 0);
-  const cont = o.contingencyHours != null ? o.contingencyHours : (cbSettings.contingencyHours ?? 0);
   const over = o.runOverHours != null ? o.runOverHours : 0;
   return {
     cabinet: cabinetHrs,
     labour: labourHrs,
     item: itemHrs,
     packaging: pack,
-    contingency: cont,
     runOver: over,
-    total: cabinetHrs + labourHrs + itemHrs + pack + cont + over,
+    total: cabinetHrs + labourHrs + itemHrs + pack + over,
   };
 }
 
@@ -377,17 +226,17 @@ function _renderOrderHoursBreakdown() {
   };
   const b = _orderHoursBreakdown(_opState.lines, {
     packagingHours:  popupVal('po-packaging'),
-    contingencyHours: popupVal('po-contingency'),
     runOverHours:    popupVal('po-run-over'),
   });
   /** @param {number} v */
   const h = v => Number(v).toFixed(1) + ' h';
+  const contPct = cbSettings.contingencyPct ?? 0;
+  const contLabel = contPct > 0 ? ` <span class="pf-hours-tag">incl. ${contPct}% contingency</span>` : '';
   el.innerHTML = `<div class="pf-hours-row pf-hours-total"><span>Hours required</span><span>${h(b.total)}</span></div>
-    <div class="pf-hours-row"><span class="pf-hours-sub">• Cabinet labour <span class="pf-hours-tag">auto</span></span><span>${h(b.cabinet)}</span></div>
+    <div class="pf-hours-row"><span class="pf-hours-sub">• Cabinet labour <span class="pf-hours-tag">auto</span>${contLabel}</span><span>${h(b.cabinet)}</span></div>
     <div class="pf-hours-row"><span class="pf-hours-sub">• Labour lines</span><span>${h(b.labour)}</span></div>
     <div class="pf-hours-row"><span class="pf-hours-sub">• Item lines</span><span>${h(b.item)}</span></div>
     <div class="pf-hours-row"><span class="pf-hours-sub">• Packaging</span><span>${h(b.packaging)}</span></div>
-    <div class="pf-hours-row"><span class="pf-hours-sub">• Contingency</span><span>${h(b.contingency)}</span></div>
     <div class="pf-hours-row"><span class="pf-hours-sub">• Run-over</span><span>${h(b.runOver)}</span></div>`;
 }
 
@@ -413,7 +262,7 @@ function _orderAutoScheduleToggle(on) {
             workdayHours: cbSettings.workdayHours,
             weekdayHours: cbSettings.weekdayHours,
             packagingHours: cbSettings.packagingHours,
-            contingencyHours: cbSettings.contingencyHours,
+            contingencyPct: cbSettings.contingencyPct,
             queueStartDate: cbSettings.queueStartDate,
           }, dayOverrides || [], new Date()).get(_opState.orderId)
         : null;
@@ -550,202 +399,23 @@ function _scheduleOrderLineUpsert(idx) {
   _orderLineUpsertTimers.set(idx, t);
 }
 
-/** @param {number} id */
-async function _saveOrderPopup(id) {
-  const o = orders.find(x => x.id === id);
-  if (!o) return;
-  const projectName = _popupVal('po-project');
-  const clientName = _popupVal('po-client');
-  const status = _popupVal('po-status');
-  const notes = _popupVal('po-notes');
-  const dueRaw = _popupVal('po-due');
-  const due = dueRaw ? new Date(dueRaw+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : 'TBD';
-  const startRaw = _popupVal('po-start');
-  const markup = parseFloat(_popupVal('po-markup')) || 0;
-  const tax = parseFloat(_popupVal('po-tax')) || 0;
-
-  // Resolve client/project FKs (find-or-create) so writes don't depend on the legacy text columns
-  const client_id = clientName ? await resolveClient(clientName) : null;
-  const project_id = projectName ? await resolveProject(projectName, client_id) : null;
-
-  // Flush pending line edits in parallel so we don't pay N round-trips.
-  for (const t of _orderLineUpsertTimers.values()) clearTimeout(t);
-  _orderLineUpsertTimers.clear();
-  /** @type {Promise<any>[]} */
-  const lineWrites = [];
-  for (const row of _opState.lines) {
-    if (!row.id) continue;
-    /** @type {any} */
-    const u = {
-      name: row.name || '',
-      qty: row.qty || 0,
-      unit_price: row.unit_price ?? null,
-      labour_hours: row.labour_hours ?? null,
-      schedule_hours: row.schedule_hours ?? null,
-    };
-    lineWrites.push(/** @type {any} */ (_db('order_lines').update(u).eq('id', row.id)));
-  }
-  await Promise.all(lineWrites);
-
-  // Recompute the order total from order_lines + this popup's markup / tax.
-  const totals = await orderTotalsFromLines(id);
-  const subParts = totals || { materials: 0, labour: 0 };
-  const sub = subParts.materials + subParts.labour;
-  const value = Math.round(sub * (1 + markup / 100) * (1 + tax / 100));
-
-  // Scheduler fields (S.3)
-  /** @param {string} id */
-  const popupNum = id => {
-    const v = _popupVal(id);
-    return v === '' || v == null ? null : parseFloat(v);
-  };
-  const autoSchedule = !!(/** @type {HTMLInputElement|null} */ (document.getElementById('po-auto-schedule'))?.checked);
-  const priority = parseInt(_popupVal('po-priority') || '0', 10) || 0;
-  const manualStart = _popupVal('po-manual-start') || null;
-  const manualEnd = _popupVal('po-manual-end') || null;
-  // S.6 edge case: warn when manual start > end. Save still proceeds (user
-  // may be intentionally fixing one side) but the toast surfaces the issue.
-  if (!autoSchedule && manualStart && manualEnd && manualStart > manualEnd) {
-    _toast('Manual start date is after end date', 'error');
-  }
-  const packagingHours = popupNum('po-packaging');
-  const contingencyHours = popupNum('po-contingency');
-  const runOverHours = parseFloat(_popupVal('po-run-over') || '0') || 0;
-
-  /** @type {any} */
-  const update = {
-    value, status, due, markup, tax,
-    auto_schedule: autoSchedule,
-    priority,
-    manual_start_date: manualStart,
-    manual_end_date: manualEnd,
-    packaging_hours: packagingHours,
-    contingency_hours: contingencyHours,
-    run_over_hours: runOverHours,
-  };
-  if (client_id) update.client_id = client_id;
-  if (project_id) update.project_id = project_id;
-  Object.assign(o, update, { notes });
-  if (startRaw) setOrderProdStart(o.id, startRaw);
-  _onSet(o.id, notes);
-
-  // Close the popup before the final orders.update — feels instant to the user.
-  _closePopup();
-  await _db('orders').update(update).eq('id', id);
-  const ob = document.getElementById('orders-badge');
-  if (ob) ob.textContent = String(orders.filter(o => o.status !== 'complete').length);
-  renderOrdersMain();
-  renderSchedule();
-  renderDashboard();
-  setTimeout(drawRevenueChart, 0);
-  _toast('Order updated', 'success');
-}
+// _saveOrderPopup was replaced by saveOrderEditor() in src/orders.js.
 
 // ── Quote Popup ──
 // In-memory cache of the quote_lines for the open popup. Each open populates
 // it; line CRUD operations mutate it locally then debounce-write to the DB,
 // keeping the UI snappy and avoiding a refetch per edit.
 /** @type {{quoteId: number|null, lines: any[]}} */
-let _qpState = { quoteId: null, lines: [] };
+/** Sidebar editor state for the Quotes tab (replaces former popup state).
+ *  Same shape as _opState but for quotes. */
+let _qpState = /** @type {{quoteId: number|null, lines: any[], dirty: boolean, projectId: number|null}} */ ({ quoteId: null, lines: [], dirty: false, projectId: null });
 
-/** @param {number} id */
+/** Compatibility alias: routes to the Quotes sidebar editor.
+ *  Kept so external callers (dashboard.js) continue to work.
+ *  @param {number} id */
 function _openQuotePopup(id) {
-  const q = /** @type {any} */ (quotes.find(x => x.id === id));
-  if (!q) return;
-  // Use cached lines (populated by quoteTotalsFromLines on hydrate + on save);
-  // fall back to a one-shot fetch only when the cache hasn't been built yet.
-  if (Array.isArray(q._lines)) {
-    _qpState = { quoteId: id, lines: q._lines.map(/** @param {any} r */ r => ({ ...r })) };
-    _renderQuotePopup(q);
-    return;
-  }
-  _qpState = { quoteId: id, lines: [] };
-  _renderQuotePopup(q);
-  _db('quote_lines').select('*').eq('quote_id', id).order('position').then(/** @param {any} res */ res => {
-    if (!res || res.error || !res.data) return;
-    if (_qpState.quoteId !== id) return;
-    q._lines = res.data.map(/** @param {any} row */ row => ({ ...row }));
-    _qpState.lines = res.data.map(/** @param {any} row */ row => ({ ...row }));
-    _renderQuoteLines();
-    _renderQuoteLineTotals();
-  });
-}
-
-/** @param {any} q */
-function _renderQuotePopup(q) {
-  const statusBadge = q.status === 'approved' ? 'badge-green' : q.status === 'sent' ? 'badge-blue' : 'badge-gray';
-
-  _openPopup(`
-    <div class="popup-header">
-      <div class="popup-title">
-        Edit Quote
-        <span class="badge ${statusBadge}" style="font-size:10px">${q.status === 'approved' ? 'Approved' : q.status === 'sent' ? 'Sent' : 'Draft'}</span>
-      </div>
-      <button class="popup-close" onclick="_closePopup()">×</button>
-    </div>
-    <div class="popup-body">
-      <div class="pf-row">
-        <div class="pf" style="flex:2">
-          <label class="pf-label">Project</label>
-          <input class="pf-input pf-input-lg" id="pq-project" value="${_escHtml(quoteProject(q))}">
-        </div>
-        <div class="pf" style="flex:1">
-          <label class="pf-label">Status</label>
-          <select class="pf-select" id="pq-status" style="height:42px">
-            <option value="draft" ${q.status==='draft'?'selected':''}>Draft</option>
-            <option value="sent" ${q.status==='sent'?'selected':''}>Sent</option>
-            <option value="approved" ${q.status==='approved'?'selected':''}>Approved</option>
-          </select>
-        </div>
-      </div>
-      <div class="pf-row">
-        <div class="pf">
-          <label class="pf-label">Client</label>
-          <input class="pf-input" id="pq-client" value="${_escHtml(quoteClient(q))}">
-        </div>
-        <div class="pf">
-          <label class="pf-label">Quote Number</label>
-          <input class="pf-input" id="pq-quote-number" value="${_escHtml(q.quote_number||'')}" placeholder="Q-${String(q.id).padStart(4,'0')}">
-        </div>
-        <div class="pf">
-          <label class="pf-label">Date</label>
-          <div class="pf-static">${q.date}</div>
-        </div>
-      </div>
-      <div class="pf-divider"></div>
-      <div class="pf-label" style="margin-bottom:6px">Line Items</div>
-      <div id="pq-lines" class="li-list"></div>
-      <div class="li-add-row">
-        <button type="button" class="btn btn-outline btn-sm" onclick="_lineEditCabinet(${q.id})">+ Add Cabinet</button>
-        <button type="button" class="btn btn-outline btn-sm" onclick="_lineAdd('item')">+ Add Item</button>
-        <button type="button" class="btn btn-outline btn-sm" onclick="_lineAdd('labour')">+ Add Labour</button>
-      </div>
-      <div class="pf-divider"></div>
-      <div class="pf-row">
-        <div class="pf"><label class="pf-label">Markup %</label><input class="pf-input" id="pq-markup" value="${q.markup ?? 0}" oninput="_renderQuoteLineTotals()"></div>
-        <div class="pf"><label class="pf-label">Tax %</label><input class="pf-input" id="pq-tax" value="${q.tax ?? 0}" oninput="_renderQuoteLineTotals()"></div>
-        <div class="pf" style="flex:0.5"></div>
-      </div>
-      <div class="pf" style="margin-top:10px">
-        <label class="pf-label">Customer-facing notes (optional)</label>
-        <textarea class="pf-textarea" id="pq-notes" rows="2" placeholder="Notes shown on the quote PDF...">${_escHtml(q.notes||'')}</textarea>
-      </div>
-      <div class="pf-totals" id="pq-totals" style="margin-top:8px"></div>
-    </div>
-    <div class="popup-footer">
-      <div class="popup-footer-left">
-        <button class="btn btn-danger" onclick="_confirm('Delete quote for <strong>${_escHtml(quoteClient(q))}</strong>?',()=>{_closePopup();removeQuote(${q.id})})">Delete</button>
-        <button class="btn btn-outline" onclick="_closePopup();printQuote(${q.id},'print')">Print</button>
-        <button class="btn btn-outline" onclick="_closePopup();printQuote(${q.id},'pdf')">PDF</button>
-      </div>
-      <div class="popup-footer-right">
-        ${(() => { const hasOrder = q.client_id && q.project_id && orders.some(ox => ox.client_id === q.client_id && ox.project_id === q.project_id); return hasOrder ? `<button class="btn btn-outline" style="color:var(--success)" onclick="_closePopup();switchSection('orders');window._orderSearch='${_escHtml(quoteProject(q))}';renderOrdersMain()">✓ View Order</button>` : `<button class="btn btn-outline" onclick="_closePopup();convertQuoteToOrder(${q.id})">→ Order</button>`; })()}
-        <button class="btn btn-primary" onclick="_saveQuotePopup(${q.id})">Save</button>
-      </div>
-    </div>
-  `, 'md');
-  _renderQuoteLines();
-  _renderQuoteLineTotals();
+  switchSection('quote');
+  if (typeof loadQuoteIntoSidebar === 'function') loadQuoteIntoSidebar(id);
 }
 
 // Render the line-item rows inside the open quote popup.
@@ -909,14 +579,12 @@ async function _lineRemove(idx) {
   _renderQuoteLineTotals();
 }
 
-/** Open the cabinet builder pointed at this quote. The popup is closed and
- *  the user is taken to the builder where they can add a new cabinet via the
- *  scratchpad.
+/** Save the editor's current state and switch into Cabinet Builder pointed at
+ *  this quote, where the user can add or edit a cabinet on the workspace.
  *  @param {number} quoteId */
 function _lineEditCabinet(quoteId) {
-  _saveQuotePopup(quoteId).then(() => {
-    if (typeof editQuoteInCB === 'function') editQuoteInCB(quoteId);
-  });
+  const after = () => { if (typeof editQuoteInCB === 'function') editQuoteInCB(quoteId); };
+  if (typeof saveQuoteEditor === 'function') saveQuoteEditor().then(after); else after();
 }
 
 /** Edit an existing cabinet line — same as Add Cabinet but the builder
@@ -925,9 +593,17 @@ function _lineEditCabinet(quoteId) {
 function _lineEditCabinetRow(idx) {
   const row = _qpState.lines[idx];
   if (!row || !_qpState.quoteId) return;
-  _saveQuotePopup(_qpState.quoteId).then(() => {
-    if (typeof editQuoteInCB === 'function') editQuoteInCB(/** @type {number} */ (_qpState.quoteId));
-  });
+  const qId = /** @type {number} */ (_qpState.quoteId);
+  const after = () => { if (typeof editQuoteInCB === 'function') editQuoteInCB(qId); };
+  if (typeof saveQuoteEditor === 'function') saveQuoteEditor().then(after); else after();
+}
+
+/** Order analog of _lineEditCabinet — saves the current order editor and
+ *  jumps into Cabinet Builder pointed at this order.
+ *  @param {number} orderId */
+function _orderLineEditCabinet(orderId) {
+  const after = () => { if (typeof editOrderInCB === 'function') editOrderInCB(orderId); };
+  if (typeof saveOrderEditor === 'function') saveOrderEditor().then(after); else after();
 }
 
 // Debounced per-line upsert: each edit waits 600ms before writing to the DB,
@@ -956,51 +632,7 @@ function _scheduleLineUpsert(idx) {
   _lineUpsertTimers.set(idx, t);
 }
 
-/** @param {number} id */
-async function _saveQuotePopup(id) {
-  const q = quotes.find(x => x.id === id);
-  if (!q) return;
-  const projectName = _popupVal('pq-project');
-  const clientName = _popupVal('pq-client');
-  const status = _popupVal('pq-status');
-  const notes = _popupVal('pq-notes');
-  const quote_number = _popupVal('pq-quote-number') || null;
-  const markup = parseFloat(_popupVal('pq-markup')) || 0;
-  const tax = parseFloat(_popupVal('pq-tax')) || 0;
-
-  // Resolve client/project FKs from the popup's text inputs (find-or-create)
-  const client_id = clientName ? await resolveClient(clientName) : null;
-  const project_id = projectName ? await resolveProject(projectName, client_id) : null;
-
-  /** @type {any} */
-  const update = { status, notes, quote_number, markup, tax, updated_at: new Date().toISOString() };
-  if (client_id) update.client_id = client_id;
-  if (project_id) update.project_id = project_id;
-  Object.assign(q, update);
-  // Close the popup immediately — saves run in the background. The user
-  // doesn't wait for N+1 round-trips before regaining control.
-  _closePopup();
-  // Flush any pending line edits in parallel (was sequential — N round-trips).
-  for (const t of _lineUpsertTimers.values()) clearTimeout(t);
-  _lineUpsertTimers.clear();
-  /** @type {Promise<any>[]} */
-  const writes = [/** @type {any} */ (_db('quotes').update(update).eq('id', id))];
-  for (const row of _qpState.lines) {
-    if (!row.id) continue;
-    /** @type {any} */
-    const u = {
-      name: row.name || '',
-      qty: row.qty || 0,
-      unit_price: row.unit_price ?? null,
-      labour_hours: row.labour_hours ?? null,
-    };
-    writes.push(/** @type {any} */ (_db('quote_lines').update(u).eq('id', row.id)));
-  }
-  await Promise.all(writes);
-  await _refreshQuoteTotals(id);
-  renderQuoteMain();
-  _toast('Quote updated', 'success');
-}
+// _saveQuotePopup was replaced by saveQuoteEditor() in src/quotes.js.
 
 // ── Project Popup ──
 /** @param {number} id */
@@ -1742,7 +1374,7 @@ function _applyBizInfoFromDB(rows) {
     // Production scheduler defaults (S.2):
     if (b.default_workday_hours     != null) cbSettings.workdayHours     = parseFloat(b.default_workday_hours);
     if (b.default_packaging_hours   != null) cbSettings.packagingHours   = parseFloat(b.default_packaging_hours);
-    if (b.default_contingency_hours != null) cbSettings.contingencyHours = parseFloat(b.default_contingency_hours);
+    if (b.default_contingency_pct   != null) cbSettings.contingencyPct   = parseFloat(b.default_contingency_pct);
     if (Array.isArray(b.default_weekday_hours) && b.default_weekday_hours.length === 7) {
       cbSettings.weekdayHours = b.default_weekday_hours.map(/** @param {any} h */ h => parseFloat(h) || 0);
     }

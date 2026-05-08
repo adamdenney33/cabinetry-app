@@ -7,7 +7,7 @@
 //
 // Cross-file dependencies (all globals defined in earlier scripts):
 //   cbSettings (cabinet.js) — workdayHours, weekdayHours, packagingHours,
-//                              contingencyHours, queueStartDate
+//                              contingencyPct, queueStartDate
 //   dayOverrides (business.js) — global per-date hours overrides
 //   _quoteLineRowToCB (migrate.js) — converts cabinet-kind lines back into
 //                                     cabinet objects for calcCBLine()
@@ -77,7 +77,7 @@ function buildOverrideMap(list) {
 // Used by the scheduler when laying out bars. Reads o._lines (cached on
 // the order object by _hydrateOrderLines or _openOrderPopup).
 /** @param {any} o
- *  @param {{ packagingHours?: number, contingencyHours?: number }} biz */
+ *  @param {{ packagingHours?: number }} biz */
 function orderHoursRequired(o, biz) {
   if (!o) return 0;
   const lines = Array.isArray(o._lines) ? o._lines : [];
@@ -88,7 +88,9 @@ function orderHoursRequired(o, biz) {
       let hrs = r._hrs;
       if (typeof hrs !== 'number') {
         try {
-          // _quoteLineRowToCB and calcCBLine are globals from earlier-loaded scripts
+          // _quoteLineRowToCB and calcCBLine are globals from earlier-loaded scripts.
+          // calcCBLine bakes contingency (cbSettings.contingencyPct) into labour
+          // hours, so we don't add a separate contingency block here.
           const cb = _quoteLineRowToCB(r);
           const c = calcCBLine(cb);
           hrs = c.labourHrs || 0;
@@ -102,11 +104,10 @@ function orderHoursRequired(o, biz) {
       itemHrs += (parseFloat(r.schedule_hours) || 0) * (parseFloat(r.qty) || 1);
     }
   }
-  // Order-level overrides fall back to business defaults.
-  const pack = (o.packaging_hours   != null) ? parseFloat(o.packaging_hours)   : (biz?.packagingHours   ?? 0);
-  const cont = (o.contingency_hours != null) ? parseFloat(o.contingency_hours) : (biz?.contingencyHours ?? 0);
+  // Order-level packaging override falls back to business default.
+  const pack = (o.packaging_hours != null) ? parseFloat(o.packaging_hours) : (biz?.packagingHours ?? 0);
   const over = parseFloat(o.run_over_hours) || 0;
-  return cabinetHrs + labourHrs + itemHrs + pack + cont + over;
+  return cabinetHrs + labourHrs + itemHrs + pack + over;
 }
 
 // ══════════════════════════════════════════
@@ -115,7 +116,7 @@ function orderHoursRequired(o, biz) {
 /** @typedef {{ id: any, startISO: string, endISO: string, lane: number, hoursRequired: number, isManual: boolean, isMissingDates?: boolean }} ScheduledOrder */
 
 /** @param {any[]} ordersList
- *  @param {{ workdayHours?: number, weekdayHours?: number[], packagingHours?: number, contingencyHours?: number, queueStartDate?: string|null }} biz
+ *  @param {{ workdayHours?: number, weekdayHours?: number[], packagingHours?: number, contingencyPct?: number, queueStartDate?: string|null }} biz
  *  @param {Array<{ date: string, hours: number }>} overrides
  *  @param {Date} today
  *  @returns {Map<any, ScheduledOrder>} */

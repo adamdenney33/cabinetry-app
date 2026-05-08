@@ -528,4 +528,16 @@ _Auto-logged by SessionEnd hook. Flesh out with context next session if useful._
 
 _Auto-logged by SessionEnd hook. Flesh out with context next session if useful._
 
-<!-- last_commit: 0a9034e -->
+
+---
+
+## [Auto] Session ending 2026-05-07
+
+### Commits
+- WIP preserve: scheduler module + cross-module sync + project docs
+- feat(stripe): add checkout + webhook edge functions; reference docs, mockups, agent hooks
+- docs(plan): unstale Stripe status — S.2–S.7 shipped (test mode), S.8/S.9 outstanding
+
+_Auto-logged by SessionEnd hook. Flesh out with context next session if useful._
+
+<!-- last_commit: 4d042fc -->

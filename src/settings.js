@@ -286,8 +286,8 @@ function switchSection(name) {
   });
   if (name === 'cabinet') { try { renderCBPanel(); } catch(e) {} }
   if (name === 'stock') { renderStockMain(); }
-  if (name === 'quote') renderQuoteMain();
-  if (name === 'orders') renderOrdersMain();
+  if (name === 'quote') { renderQuoteMain(); if (typeof renderQuoteEditor === 'function') renderQuoteEditor(); }
+  if (name === 'orders') { renderOrdersMain(); if (typeof renderOrderEditor === 'function') renderOrderEditor(); }
   if (name === 'schedule') renderSchedule();
   if (name === 'dashboard') { renderDashboard(); setTimeout(drawRevenueChart, 0); }
   if (name === 'projects') {

@@ -296,6 +296,9 @@ function _quoteLineRowToCB(row) {
     backMat: row.material || null,
     doorMat: row.material || null,
     finish: row.finish || null,
+    doorFinish: row.door_finish || null,
+    drawerFrontFinish: row.drawer_front_finish || null,
+    drawerBoxFinish: row.drawer_box_finish || null,
     construction: row.construction || null,
     baseType: row.base_type || null,
     doors: parseInt(row.door_count, 10) || 0,
@@ -313,7 +316,9 @@ function _quoteLineRowToCB(row) {
     labourHrs: parseFloat(row.labour_hours) || 0,
     labourOverride: !!row.labour_override,
     matCostOverride: row.material_cost_override != null ? parseFloat(row.material_cost_override) : null,
-    hwItems: row.hardware || [],
+    hwItems: Array.isArray(row.hardware) ? row.hardware : [],
+    doorHwItems: Array.isArray(row.door_hardware) ? row.door_hardware : [],
+    drawerHwItems: Array.isArray(row.drawer_hardware) ? row.drawer_hardware : [],
     extras: row.extras || [],
     notes: row.notes || ''
   };
@@ -332,6 +337,9 @@ function _cbLineToRow(l, position, quoteId) {
     qty: parseInt(l.qty, 10) || 1,
     material: l.material || null,
     finish: l.finish || null,
+    door_finish: l.doorFinish || null,
+    drawer_front_finish: l.drawerFrontFinish || null,
+    drawer_box_finish: l.drawerBoxFinish || null,
     construction: l.construction || null,
     base_type: l.baseType || null,
     door_count: parseInt(l.doors, 10) || 0,
@@ -350,6 +358,8 @@ function _cbLineToRow(l, position, quoteId) {
     labour_override: !!l.labourOverride,
     material_cost_override: parseFloat(l.matCostOverride) || null,
     hardware: l.hwItems || [],
+    door_hardware: l.doorHwItems || [],
+    drawer_hardware: l.drawerHwItems || [],
     extras: l.extras || [],
     notes: l.notes || null
   };

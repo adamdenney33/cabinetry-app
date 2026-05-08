@@ -23,6 +23,7 @@ export type Database = {
           default_carcass_types: Json
           default_constructions: Json
           default_contingency_hours: number
+          default_contingency_pct: number | null
           default_currency: string
           default_deposit_pct: number
           default_door_types: Json
@@ -56,6 +57,7 @@ export type Database = {
           default_carcass_types?: Json
           default_constructions?: Json
           default_contingency_hours?: number
+          default_contingency_pct?: number | null
           default_currency?: string
           default_deposit_pct?: number
           default_door_types?: Json
@@ -89,6 +91,7 @@ export type Database = {
           default_carcass_types?: Json
           default_constructions?: Json
           default_contingency_hours?: number
+          default_contingency_pct?: number | null
           default_currency?: string
           default_deposit_pct?: number
           default_door_types?: Json
@@ -558,6 +561,7 @@ export type Database = {
           auto_schedule: boolean
           client_id: number | null
           contingency_hours: number | null
+          contingency_pct: number | null
           created_at: string | null
           due: string | null
           id: number
@@ -571,6 +575,7 @@ export type Database = {
           project_id: number | null
           quote_id: number | null
           run_over_hours: number
+          sidebar_order_index: number
           status: string | null
           tax: number
           updated_at: string
@@ -581,6 +586,7 @@ export type Database = {
           auto_schedule?: boolean
           client_id?: number | null
           contingency_hours?: number | null
+          contingency_pct?: number | null
           created_at?: string | null
           due?: string | null
           id?: never
@@ -594,6 +600,7 @@ export type Database = {
           project_id?: number | null
           quote_id?: number | null
           run_over_hours?: number
+          sidebar_order_index?: number
           status?: string | null
           tax?: number
           updated_at?: string
@@ -604,6 +611,7 @@ export type Database = {
           auto_schedule?: boolean
           client_id?: number | null
           contingency_hours?: number | null
+          contingency_pct?: number | null
           created_at?: string | null
           due?: string | null
           id?: never
@@ -617,6 +625,7 @@ export type Database = {
           project_id?: number | null
           quote_id?: number | null
           run_over_hours?: number
+          sidebar_order_index?: number
           status?: string | null
           tax?: number
           updated_at?: string
@@ -791,10 +800,15 @@ export type Database = {
           created_at: string
           d_mm: number | null
           door_count: number
+          door_finish: string | null
           door_handle: string | null
+          door_hardware: Json | null
           door_pct: number | null
+          drawer_box_finish: string | null
           drawer_count: number
+          drawer_front_finish: string | null
           drawer_front_material: string | null
+          drawer_hardware: Json | null
           drawer_inner_material: string | null
           drawer_pct: number | null
           end_panels: number
@@ -830,10 +844,15 @@ export type Database = {
           created_at?: string
           d_mm?: number | null
           door_count?: number
+          door_finish?: string | null
           door_handle?: string | null
+          door_hardware?: Json | null
           door_pct?: number | null
+          drawer_box_finish?: string | null
           drawer_count?: number
+          drawer_front_finish?: string | null
           drawer_front_material?: string | null
+          drawer_hardware?: Json | null
           drawer_inner_material?: string | null
           drawer_pct?: number | null
           end_panels?: number
@@ -869,10 +888,15 @@ export type Database = {
           created_at?: string
           d_mm?: number | null
           door_count?: number
+          door_finish?: string | null
           door_handle?: string | null
+          door_hardware?: Json | null
           door_pct?: number | null
+          drawer_box_finish?: string | null
           drawer_count?: number
+          drawer_front_finish?: string | null
           drawer_front_material?: string | null
+          drawer_hardware?: Json | null
           drawer_inner_material?: string | null
           drawer_pct?: number | null
           end_panels?: number

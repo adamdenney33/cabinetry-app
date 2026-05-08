@@ -109,6 +109,7 @@ function cbSaveToLibrary() {
   copy.id = Date.now();
   copy._libName = copy.name || copy.type || 'Cabinet';
   cbLibrary.push(copy);
+  if (typeof switchCBMainView === 'function') switchCBMainView('library');
   renderCBLibraryView();
   _toast(`"${copy._libName}" saved to library`, 'success');
   _saveCabinetToDB(copy).then(id => { if (id) copy.db_id = id; });
@@ -278,8 +279,9 @@ function _smartCBMaterialSuggest(input, boxId, fieldName) {
   box.style.display = '';
 }
 
-/** @param {HTMLInputElement} input @param {string} boxId */
-function _smartCBFinishSuggest(input, boxId) {
+/** @param {HTMLInputElement} input @param {string} boxId @param {string} [fieldName] */
+function _smartCBFinishSuggest(input, boxId, fieldName) {
+  const field = fieldName || 'finish';
   const box = _byId(boxId);
   if (!box) return;
   _posSuggest(input, box);
@@ -293,13 +295,13 @@ function _smartCBFinishSuggest(input, boxId) {
   let html = '';
   matches.slice(0, 8).forEach(s => {
     const qtyColor = (s.qty ?? 0) <= (s.low || 3) ? '#ef4444' : '#22c55e';
-    html += `<div class="client-suggest-item" onmousedown="_byId('cb-mat-finish').value='${_escHtml(s.name)}';cbUpdateField('finish','${_escHtml(s.name)}');_byId('${boxId}').style.display='none'">
+    html += `<div class="client-suggest-item" onmousedown="_byId('cb-mat-${field}').value='${_escHtml(s.name)}';cbUpdateField('${field}','${_escHtml(s.name)}');_byId('${boxId}').style.display='none'">
       <span class="suggest-icon" style="background:${qtyColor}20;color:${qtyColor}">${s.qty}</span>
       <span style="flex:1">${_escHtml(s.name)}</span>
       <span style="font-size:10px;color:var(--muted)">${cur}${s.cost}/unit</span>
     </div>`;
   });
-  html += `<div class="client-suggest-add" onmousedown="_openNewStockPopup()">+ Add new finish to stock</div>`;
+  html += `<div class="client-suggest-add" onmousedown="_openNewStockPopup('${field}')">+ Add new finish to stock</div>`;
   box.innerHTML = html;
   box.style.display = '';
 }
@@ -340,8 +342,10 @@ function _saveNewCBMaterial(fieldName) {
   _toast('"' + name + '" added to materials', 'success');
 }
 
-function _openNewStockPopup() {
-  const existing = _byId('cb-mat-finish')?.value || '';
+/** @param {string} [fieldName] */
+function _openNewStockPopup(fieldName) {
+  const field = fieldName || 'finish';
+  const existing = _byId('cb-mat-' + field)?.value || '';
   _openPopup(`
     <div class="popup-header">
       <div class="popup-title">New Finish</div>
@@ -353,13 +357,15 @@ function _openNewStockPopup() {
     </div>
     <div class="popup-footer">
       <button class="btn btn-outline" onclick="_closePopup()">Cancel</button>
-      <button class="btn btn-accent" onclick="_saveNewCBFinish()">Add Finish</button>
+      <button class="btn btn-accent" onclick="_saveNewCBFinish('${field}')">Add Finish</button>
     </div>
   `, 'sm');
   setTimeout(() => _byId('pnf-name')?.focus(), 50);
 }
 
-function _saveNewCBFinish() {
+/** @param {string} [fieldName] */
+function _saveNewCBFinish(fieldName) {
+  const field = fieldName || 'finish';
   const name = _popupVal('pnf-name');
   if (!name) { _toast('Name is required', 'error'); return; }
   const price = parseFloat(_popupVal('pnf-price')) || 0;
@@ -368,16 +374,18 @@ function _saveNewCBFinish() {
     cbSettings.finishes.push({ name, price });
     saveCBSettings();
   }
-  cbUpdateField('finish', name);
-  const inp = _byId('cb-mat-finish');
+  cbUpdateField(field, name);
+  const inp = _byId('cb-mat-' + field);
   if (inp) inp.value = name;
   _closePopup();
   _toast('"' + name + '" added to finishes', 'success');
 }
 
 // ── Cabinet Hardware Smart Suggest ──
-/** @param {HTMLInputElement} input @param {string} boxId @param {number} lineId @param {number} hwIdx */
-function _smartCBHwSuggest(input, boxId, lineId, hwIdx) {
+// scope = 'cabinet' | 'door' | 'drawer'. Defaults to 'cabinet' for back-compat.
+/** @param {HTMLInputElement} input @param {string} boxId @param {number} lineId @param {number} hwIdx @param {string} [scope] */
+function _smartCBHwSuggest(input, boxId, lineId, hwIdx, scope) {
+  const sc = scope || 'cabinet';
   const box = _byId(boxId);
   if (!box) return;
   _posSuggest(input, box);
@@ -386,19 +394,20 @@ function _smartCBHwSuggest(input, boxId, lineId, hwIdx) {
   const matches = q ? cbSettings.hardware.filter(/** @param {any} h */ h => h.name.toLowerCase().includes(q)) : cbSettings.hardware;
   let html = '';
   matches.slice(0, 8).forEach(/** @param {any} h */ h => {
-    html += `<div class="client-suggest-item" onmousedown="_byId('cb-hw-${lineId}-${hwIdx}').value='${_escHtml(h.name)}';updateCBHw(${lineId},${hwIdx},'name','${_escHtml(h.name)}');_byId('${boxId}').style.display='none'">
+    html += `<div class="client-suggest-item" onmousedown="_byId('cb-hw-${sc}-${lineId}-${hwIdx}').value='${_escHtml(h.name)}';updateCBHw(${lineId},${hwIdx},'name','${_escHtml(h.name)}','${sc}');_byId('${boxId}').style.display='none'">
       <span class="suggest-icon" style="background:#6b8aff20;color:#6b8aff">H</span>
       <span style="flex:1">${_escHtml(h.name)}</span>
       <span style="font-size:10px;color:var(--muted)">${cur}${h.price}/unit</span>
     </div>`;
   });
-  html += `<div class="client-suggest-add" onmousedown="_openNewCBHardwarePopup(${lineId},${hwIdx})">+ Add${q ? ' "'+_escHtml(input.value.trim())+'" as' : ''} new hardware</div>`;
+  html += `<div class="client-suggest-add" onmousedown="_openNewCBHardwarePopup(${lineId},${hwIdx},'${sc}')">+ Add${q ? ' "'+_escHtml(input.value.trim())+'" as' : ''} new hardware</div>`;
   box.innerHTML = html;
   box.style.display = '';
 }
 
-/** @param {HTMLInputElement} input @param {string} boxId @param {number} lineId */
-function _smartCBHwAddSuggest(input, boxId, lineId) {
+/** @param {HTMLInputElement} input @param {string} boxId @param {number} lineId @param {string} [scope] */
+function _smartCBHwAddSuggest(input, boxId, lineId, scope) {
+  const sc = scope || 'cabinet';
   const box = _byId(boxId);
   if (!box) return;
   _posSuggest(input, box);
@@ -407,30 +416,33 @@ function _smartCBHwAddSuggest(input, boxId, lineId) {
   const matches = q ? cbSettings.hardware.filter(/** @param {any} h */ h => h.name.toLowerCase().includes(q)) : cbSettings.hardware;
   let html = '';
   matches.slice(0, 8).forEach(/** @param {any} h */ h => {
-    html += `<div class="client-suggest-item" onmousedown="_addCBHwByName(${lineId},'${_escHtml(h.name)}');_byId('cb-hw-add-${lineId}').value='';_byId('${boxId}').style.display='none'">
+    html += `<div class="client-suggest-item" onmousedown="_addCBHwByName(${lineId},'${_escHtml(h.name)}','${sc}');_byId('cb-hw-add-${sc}-${lineId}').value='';_byId('${boxId}').style.display='none'">
       <span class="suggest-icon" style="background:#6b8aff20;color:#6b8aff">H</span>
       <span style="flex:1">${_escHtml(h.name)}</span>
       <span style="font-size:10px;color:var(--muted)">${cur}${h.price}/unit</span>
     </div>`;
   });
-  html += `<div class="client-suggest-add" onmousedown="_openNewCBHardwarePopup(${lineId},-1)">+ Add${q ? ' "'+_escHtml(input.value.trim())+'" as' : ''} new hardware</div>`;
+  html += `<div class="client-suggest-add" onmousedown="_openNewCBHardwarePopup(${lineId},-1,'${sc}')">+ Add${q ? ' "'+_escHtml(input.value.trim())+'" as' : ''} new hardware</div>`;
   box.innerHTML = html;
   box.style.display = '';
 }
 
-/** @param {number} lineId @param {string} hwName */
-function _addCBHwByName(lineId, hwName) {
+/** @param {number} lineId @param {string} hwName @param {string} [scope] */
+function _addCBHwByName(lineId, hwName, scope) {
+  const sc = scope || 'cabinet';
   const line = cbScratchpad && cbScratchpad.id === lineId ? cbScratchpad : cbLines.find(l => l.id === lineId);
   if (!line) return;
-  line.hwItems.push({ name: hwName, qty: 1 });
+  const list = _hwList(line, sc);
+  list.push({ name: hwName, qty: 1 });
   if (cbEditingLineIdx >= 0) saveCBLines();
   renderCBPanel();
   _toast('"' + hwName + '" added', 'success');
 }
 
-/** @param {number} lineId @param {number} hwIdx */
-function _openNewCBHardwarePopup(lineId, hwIdx) {
-  const existing = hwIdx >= 0 ? (_byId('cb-hw-' + lineId + '-' + hwIdx)?.value || '') : (_byId('cb-hw-add-' + lineId)?.value || '');
+/** @param {number} lineId @param {number} hwIdx @param {string} [scope] */
+function _openNewCBHardwarePopup(lineId, hwIdx, scope) {
+  const sc = scope || 'cabinet';
+  const existing = hwIdx >= 0 ? (_byId('cb-hw-' + sc + '-' + lineId + '-' + hwIdx)?.value || '') : (_byId('cb-hw-add-' + sc + '-' + lineId)?.value || '');
   _openPopup(`
     <div class="popup-header">
       <div class="popup-title">New Hardware</div>
@@ -442,14 +454,15 @@ function _openNewCBHardwarePopup(lineId, hwIdx) {
     </div>
     <div class="popup-footer">
       <button class="btn btn-outline" onclick="_closePopup()">Cancel</button>
-      <button class="btn btn-accent" onclick="_saveNewCBHardware(${lineId},${hwIdx})">Add Hardware</button>
+      <button class="btn btn-accent" onclick="_saveNewCBHardware(${lineId},${hwIdx},'${sc}')">Add Hardware</button>
     </div>
   `, 'sm');
   setTimeout(() => _byId('pnh-name')?.focus(), 50);
 }
 
-/** @param {number} lineId @param {number} hwIdx */
-function _saveNewCBHardware(lineId, hwIdx) {
+/** @param {number} lineId @param {number} hwIdx @param {string} [scope] */
+function _saveNewCBHardware(lineId, hwIdx, scope) {
+  const sc = scope || 'cabinet';
   const name = _popupVal('pnh-name');
   if (!name) { _toast('Name is required', 'error'); return; }
   const price = parseFloat(_popupVal('pnh-price')) || 0;
@@ -458,11 +471,11 @@ function _saveNewCBHardware(lineId, hwIdx) {
     saveCBSettings();
   }
   if (hwIdx >= 0) {
-    updateCBHw(lineId, hwIdx, 'name', name);
-    const inp = _byId('cb-hw-' + lineId + '-' + hwIdx);
+    updateCBHw(lineId, hwIdx, 'name', name, sc);
+    const inp = _byId('cb-hw-' + sc + '-' + lineId + '-' + hwIdx);
     if (inp) inp.value = name;
   } else {
-    _addCBHwByName(lineId, name);
+    _addCBHwByName(lineId, name, sc);
   }
   _closePopup();
   _toast('"' + name + '" added to hardware', 'success');
@@ -498,35 +511,80 @@ function _smartCLProjectSuggest(input, boxId) {
   box.style.display = '';
 }
 
-// ── Cut List smart search: Stock Materials (panels only) ──
+// ── Cabinet Builder smart search: Project Library ──
+// Mirrors _smartCLProjectSuggest but loads cabinet draft for the picked project.
+/** @param {HTMLInputElement} input @param {string} boxId */
+function _smartCBProjectSuggest(input, boxId) {
+  const box = _byId(boxId);
+  if (!box) return;
+  _posSuggest(input, box);
+  const raw = input.value.trim();
+  const q = raw.toLowerCase();
+  const matches = q ? _clProjectCache.filter(p => p.name.toLowerCase().includes(q)).slice(0, 8) : _clProjectCache.slice(0, 8);
+  let html = '';
+  matches.forEach((p) => {
+    const date = p.updated_at ? new Date(p.updated_at).toLocaleDateString() : '';
+    const escName = _escHtml(p.name).replace(/'/g, '&#39;');
+    html += `<div class="client-suggest-item" onmousedown="_cbPickProject(${p.id},'${escName}');_byId('${boxId}').style.display='none'">
+      <span class="suggest-icon">P</span>
+      <span style="flex:1">${_escHtml(p.name)}</span>
+      <span style="font-size:10px;color:var(--muted)">${date}</span>
+    </div>`;
+  });
+  const exactExists = !!raw && _clProjectCache.some(p => p.name.toLowerCase() === q);
+  if (raw && !exactExists) {
+    const escName = _escHtml(raw).replace(/'/g, '&#39;');
+    html += `<div class="client-suggest-add" onmousedown="_cbSaveProjectByName('${escName}');_byId('${boxId}').style.display='none'">+ Save current cabinet build as "${_escHtml(raw)}"</div>`;
+  }
+  box.innerHTML = html;
+  box.style.display = '';
+}
+
+// ── Cut List smart search: Stock Materials (panels + edge banding when on) ──
 /** @param {HTMLInputElement} input @param {string} boxId */
 function _smartCLStockSuggest(input, boxId) {
   const box = _byId(boxId);
   if (!box) return;
   _posSuggest(input, box);
   const q = input.value.trim().toLowerCase();
-  // Panel materials only: explicit Sheet Goods, plus legacy items with no
-  // category set but dimensions (back-compat for pre-category stock rows).
-  const pool = stockItems.filter(/** @param {any} s */ s => {
+  // Sheet Goods always; Edge Banding only when its column is enabled in the
+  // cut list. Legacy items with no category but dimensions are treated as
+  // panels for back-compat.
+  const includeEdgeBanding = (typeof colsVisible !== 'undefined' && !!colsVisible.edgeband);
+  /** @param {any} s @returns {boolean} */
+  const isPanel = (s) => {
     const cat = _scGet(s.id) || s.category;
     if (cat === 'Sheet Goods') return true;
     if (!cat && (s.w ?? 0) > 0 && (s.h ?? 0) > 0) return true;
     return false;
-  });
-  const matches = q ? pool.filter(s => s.name.toLowerCase().includes(q)) : pool;
+  };
+  /** @param {any} s @returns {boolean} */
+  const isEdge = (s) => {
+    const cat = _scGet(s.id) || s.category;
+    return cat === 'Edge Banding';
+  };
+  const pool = stockItems.filter(/** @param {any} s */ s => isPanel(s) || (includeEdgeBanding && isEdge(s)));
+  const matches = q ? pool.filter(/** @param {any} s */ s => s.name.toLowerCase().includes(q)) : pool;
   let html = '';
-  matches.slice(0, 10).forEach(/** @param {any} s */ s => {
+  matches.slice(0, 12).forEach(/** @param {any} s */ s => {
     const origIdx = stockItems.indexOf(s);
     const qtyColor = (s.qty ?? 0) <= (s.lowAlert || s.low || 3) ? '#ef4444' : '#22c55e';
-    const meta = (s.w && s.h ? `${s.w}×${s.h}` : '');
-    html += `<div class="client-suggest-item" onmousedown="_clAddPanelFromStock(${origIdx});_byId('cl-stock').value='';_byId('${boxId}').style.display='none'">
+    const edge = isEdge(s);
+    const meta = edge
+      ? `Edge${s.thickness ? ' · ' + s.thickness + 'mm' : ''}`
+      : (s.w && s.h ? `${s.w}×${s.h}` : '');
+    const onClick = edge
+      ? `_clAddEdgeBandFromStockIdx(${origIdx})`
+      : `_clAddPanelFromStock(${origIdx})`;
+    html += `<div class="client-suggest-item" onmousedown="${onClick};_byId('cl-stock').value='';_byId('${boxId}').style.display='none'">
       <span class="suggest-icon" style="background:${qtyColor}20;color:${qtyColor}">${s.qty}</span>
       <span style="flex:1">${_escHtml(s.name)}</span>
       <span style="font-size:10px;color:var(--muted)">${meta}</span>
     </div>`;
   });
   if (matches.length === 0) {
-    html += `<div class="client-suggest-add" onmousedown="switchSection('stock')">No panel materials — go to Stock to add</div>`;
+    const what = includeEdgeBanding ? 'panels or edge banding' : 'panel materials';
+    html += `<div class="client-suggest-add" onmousedown="switchSection('stock')">No ${what} — go to Stock to add</div>`;
   }
   box.innerHTML = html;
   box.style.display = '';
@@ -571,7 +629,7 @@ function _smartCLCabinetSuggest(input, boxId) {
       <span style="font-size:10px;color:var(--muted)">${c.w}×${c.h} · ${partCount} parts</span>
     </div>`;
   });
-  html += `<div class="client-suggest-add" onmousedown="_clSaveToCabinetLibrary()">+ Save current cut parts to library</div>`;
+  html += `<div class="client-suggest-add" onmousedown="_clSaveToCabinetLibrary()">+ Save selected cut parts as cabinet</div>`;
   box.innerHTML = html;
   box.style.display = '';
 }
@@ -662,20 +720,26 @@ function _clLoadCabinetParts(libIdx) {
 
 function _clSaveToCabinetLibrary() {
   if (!pieces.length) { _toast('No cut parts to save', 'error'); return; }
+  if (!_clSelectedIds || _clSelectedIds.size === 0) {
+    _toast('Select parts in the list first', 'error');
+    return;
+  }
+  const selectedPieces = pieces.filter(p => _clSelectedIds.has(p.id) && p.enabled !== false);
+  if (!selectedPieces.length) { _toast('No enabled parts selected', 'error'); return; }
   const projName = _byId('cl-project')?.value?.trim() || '';
-  const defaultName = projName || `Cut List ${new Date().toLocaleDateString()}`;
+  const defaultName = projName || `Cabinet ${new Date().toLocaleDateString()}`;
   _openPopup(`
     <div class="popup-header">
-      <div class="popup-title">Save to Cabinet Library</div>
+      <div class="popup-title">Save Selected Parts as Cabinet</div>
       <button class="popup-close" onclick="_closePopup()">×</button>
     </div>
     <div class="popup-body">
-      <div class="pf"><label class="pf-label">Template Name</label><input class="pf-input pf-input-lg" id="pcl-name" value="${_escHtml(defaultName)}"></div>
-      <div style="font-size:11px;color:var(--muted);margin-top:4px">${pieces.length} cut parts will be saved as a reusable template.</div>
+      <div class="pf"><label class="pf-label">Cabinet Name</label><input class="pf-input pf-input-lg" id="pcl-name" value="${_escHtml(defaultName)}"></div>
+      <div style="font-size:11px;color:var(--muted);margin-top:4px">${selectedPieces.length} selected cut part${selectedPieces.length===1?'':'s'} will be saved as a reusable cabinet.</div>
     </div>
     <div class="popup-footer">
       <button class="btn btn-outline" onclick="_closePopup()">Cancel</button>
-      <button class="btn btn-accent" onclick="_confirmSaveCLToCabLib()">Save Template</button>
+      <button class="btn btn-accent" onclick="_confirmSaveCLToCabLib()">Save Cabinet</button>
     </div>
   `, 'sm');
   setTimeout(() => { const i = _byId('pcl-name'); if (i) { i.focus(); i.select(); } }, 50);
@@ -684,17 +748,19 @@ function _clSaveToCabinetLibrary() {
 function _confirmSaveCLToCabLib() {
   const name = _popupVal('pcl-name');
   if (!name) { _toast('Name is required', 'error'); return; }
+  const selectedPieces = pieces.filter(p => _clSelectedIds.has(p.id) && p.enabled !== false);
+  if (!selectedPieces.length) { _toast('No enabled parts selected', 'error'); _closePopup(); return; }
   if (!_enforceFreeLimit('cabinet_templates', cbLibrary.length)) { _closePopup(); return; }
   /** @type {any} */
   const entry = cbDefaultLine();
   entry.id = Date.now();
   entry._libName = name;
   entry.name = name;
-  entry._cutParts = pieces.filter(p => p.enabled !== false).map(p => ({
+  entry._cutParts = selectedPieces.map(p => ({
     label: p.label, w: p.w, h: p.h, qty: p.qty, grain: p.grain || 'none', material: p.material || '', notes: p.notes || '', edgeBand: p.edgeBand || 'none'
   }));
-  const maxW = Math.max(...pieces.map(p => Math.max(p.w, p.h)), 600);
-  const maxD = Math.max(...pieces.map(p => Math.min(p.w, p.h)), 560);
+  const maxW = Math.max(...selectedPieces.map(p => Math.max(p.w, p.h)), 600);
+  const maxD = Math.max(...selectedPieces.map(p => Math.min(p.w, p.h)), 560);
   entry.w = maxW; entry.h = maxW; entry.d = maxD;
   cbLibrary.push(entry);
   _closePopup();

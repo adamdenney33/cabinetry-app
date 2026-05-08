@@ -45,7 +45,7 @@ let layoutFontScale = parseFloat(localStorage.getItem('pc_font_scale') ?? '') ||
 let layoutCutOrder = localStorage.getItem('pc_cut_order') === '1';
 let layoutSheetCutList = localStorage.getItem('pc_sheet_cutlist') === '1';
 /** @type {Record<string, boolean>} */
-let colsVisible = { grain: false, material: false, label: true, notes: false, edgeband: false };
+let colsVisible = { grain: false, material: true, label: true, notes: false, edgeband: false };
 /** @type {any[]} */
 let edgeBands = [];
 let _edgeBandId = 1;
@@ -164,16 +164,29 @@ function _bulkSelectedIds(id) {
 }
 
 /**
- * Click handler attached to each piece <tr>. Bails if the click landed on an
- * input, button, dropdown, drag handle, or the right-side checkbox/delete cell
- * (those own their own clicks).
+ * MOUSEDOWN handler on each piece <tr>. Mousedown (not click) is critical:
+ * when the user has focus in an input and shift-clicks another row, the input's
+ * onblur fires *before* the click event would. The blur calls renderPieces(),
+ * rebuilding the DOM between mousedown and mouseup, which can swallow the
+ * click entirely — so the first shift-click would be lost. mousedown fires
+ * first, so selection updates before blur cascades into a re-render.
+ *
+ * Click ANYWHERE on the row (including over an input) selects that row —
+ * the input still gets focus from the browser default. Only buttons, the
+ * include-checkbox, and the drag handle are excluded so their own handlers
+ * stay the source of truth for those interactions.
+ *
+ * Updates CSS classes directly instead of re-rendering, preserving input focus.
  * @param {number} id
  * @param {MouseEvent} ev
  */
-function _clRowClick(id, ev) {
+function _clRowMouseDown(id, ev) {
+  if (ev.button !== 0) return; // ignore right/middle clicks
   const t = /** @type {HTMLElement} */ (ev.target);
-  if (t.closest('input, select, button, textarea, .cl-drag-handle, .cl-del-cell')) return;
+  if (t.closest('button, .cl-drag-handle, .cl-check')) return;
   if (ev.shiftKey && _clSelectionAnchorId !== null) {
+    // Suppress focus shift + text-selection on shift+mousedown in inputs.
+    ev.preventDefault();
     const aIdx = pieces.findIndex(p => p.id === _clSelectionAnchorId);
     const cIdx = pieces.findIndex(p => p.id === id);
     if (aIdx >= 0 && cIdx >= 0) {
@@ -185,21 +198,43 @@ function _clRowClick(id, ev) {
       _clSelectionAnchorId = id;
     }
   } else if (ev.ctrlKey || ev.metaKey) {
+    ev.preventDefault();
     if (_clSelectedIds.has(id)) _clSelectedIds.delete(id);
     else _clSelectedIds.add(id);
     _clSelectionAnchorId = id;
   } else {
-    _clSelectedIds = new Set([id]);
+    // Plain mousedown: only replace selection when the clicked row isn't already
+    // part of a multi-selection. Lets the user multi-select first, then click
+    // into any selected row's input to edit + bulk-apply.
+    if (!_clSelectedIds.has(id)) _clSelectedIds = new Set([id]);
     _clSelectionAnchorId = id;
   }
-  renderPieces();
+  _updateRowSelectionClasses();
 }
 
+// Toggles the cl-row-selected class on each row in place so input focus
+// survives selection changes (no full innerHTML re-render).
+function _updateRowSelectionClasses() {
+  const tbody = _byId('pieces-body');
+  if (!tbody) return;
+  const trs = tbody.querySelectorAll('tr');
+  pieces.forEach(/** @param {any} p @param {number} i */ (p, i) => {
+    const tr = /** @type {HTMLElement | undefined} */ (trs[i]);
+    if (!tr) return;
+    if (_clSelectedIds.has(p.id)) tr.classList.add('cl-row-selected');
+    else tr.classList.remove('cl-row-selected');
+  });
+}
+
+// Clears the visible selection but KEEPS the anchor so the next shift+click
+// has something to extend from. The anchor is only reset when the anchor piece
+// itself is deleted or the list is cleared. Without this, the user's first
+// shift+click after clicking outside the table would silently fall through to
+// a plain single-row select.
 function _clClearSelection() {
-  if (_clSelectedIds.size === 0 && _clSelectionAnchorId === null) return;
+  if (_clSelectedIds.size === 0) return;
   _clSelectedIds = new Set();
-  _clSelectionAnchorId = null;
-  renderPieces();
+  _updateRowSelectionClasses();
 }
 
 /** @param {number} id @param {number} idx @param {boolean} checked @param {MouseEvent} [ev] */
@@ -268,6 +303,12 @@ function initColVisibility() {
   });
   const ebSec = _byId('cl-edgeband-section');
   if (ebSec) ebSec.style.display = colsVisible.edgeband ? '' : 'none';
+  // Stock library placeholder mirrors the edge-band column state so the
+  // search hint stays accurate after reload.
+  const stockInp = /** @type {HTMLInputElement | null} */ (_byId('cl-stock'));
+  if (stockInp) stockInp.placeholder = colsVisible.edgeband
+    ? 'Load or add Sheet goods and Edge banding...'
+    : 'Load or add Sheet goods...';
 }
 /** @param {string} col */
 function toggleCol(col) {
@@ -311,6 +352,12 @@ function toggleEdgeBandCol() {
   });
   const section = _byId('cl-edgeband-section');
   if (section) section.style.display = turning_on ? '' : 'none';
+  // Reflect the new scope in the stock library search placeholder so users
+  // know edge banding is now searchable from the same box.
+  const stockInp = /** @type {HTMLInputElement | null} */ (_byId('cl-stock'));
+  if (stockInp) stockInp.placeholder = turning_on
+    ? 'Load or add Sheet goods and Edge banding...'
+    : 'Load or add Sheet goods...';
 }
 
 /** @param {any} p */
@@ -342,7 +389,7 @@ function renderEdgeBands() {
   const tbody = _byId('edgebands-body');
   if (!tbody) return;
   if (!edgeBands.length) {
-    tbody.innerHTML = `<tr><td colspan="11" style="color:var(--muted);font-size:11px;padding:8px 14px;text-align:center">No edge bands — click "+ Add edge band"</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="10" style="color:var(--muted);font-size:11px;padding:8px 14px;text-align:center">No edge bands — click "+ Add edge band"</td></tr>`;
     return;
   }
   tbody.innerHTML = edgeBands.map(eb => `<tr>
@@ -377,7 +424,6 @@ function renderEdgeBands() {
         onkeydown="if(event.key==='Enter')this.blur()"
         placeholder="0">
     </td>
-    <td class="cl-col-material" style="${colsVisible.material?'':'display:none'}"></td>
     <td class="cl-col-notes" style="${colsVisible.notes?'':'display:none'}"></td>
     <td class="cl-del-cell" style="padding:2px 4px;text-align:right">
       <button class="cl-del-btn" onclick="removeEdgeBand(${eb.id})" title="Remove">${DEL_SVG}</button>
@@ -985,7 +1031,7 @@ function renderSheets() {
   const tbody = _byId('sheets-body');
   if (!tbody) return;
   if (!sheets.length) {
-    tbody.innerHTML = `<tr><td colspan="12" style="color:var(--muted);font-size:11px;padding:10px 14px;text-align:center">No panels — click "+ Add panel"</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="11" style="color:var(--muted);font-size:11px;padding:10px 14px;text-align:center">No panels — click "+ Add panel"</td></tr>`;
     return;
   }
   tbody.innerHTML = sheets.map((s, i) => {
@@ -1039,7 +1085,6 @@ function renderSheets() {
           onkeydown="if(event.key==='Enter')this.blur()"
           ${dis ? 'disabled' : ''} placeholder="0">
       </td>
-      <td class="cl-col-material" style="${colsVisible.material?'':'display:none'}"></td>
       <td class="cl-col-notes" style="${colsVisible.notes?'':'display:none'}"></td>
       <td class="cl-del-cell" style="white-space:nowrap">
         <button class="cl-del-btn" onclick="duplicateSheet(${s.id})" title="Duplicate sheet" style="opacity:.6;margin-right:2px">⧉</button>
@@ -1107,6 +1152,8 @@ function _loadCutList() {
     const ebid = localStorage.getItem('pc_cl_ebid'); if (ebid) _edgeBandId = parseInt(ebid);
     const cv = localStorage.getItem('pc_cl_colsVisible');
     if (cv) { try { Object.assign(colsVisible, JSON.parse(cv)); } catch(e) {} }
+    // Panel column is now always visible — no toggle UI exists for it
+    colsVisible.material = true;
     // Sync grain data with column visibility — clear stale grain values if column is hidden
     if (!colsVisible.grain) {
       pieces.forEach(p => { p.grain = 'none'; });
@@ -1198,12 +1245,12 @@ function renderPieces() {
   const tbody = _byId('pieces-body');
   if (!tbody) return;
   if (!pieces.length) {
-    tbody.innerHTML = `<tr><td colspan="10" style="color:var(--muted);font-size:11px;padding:10px 14px;text-align:center">No parts — click "+ Add part"</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="11" style="color:var(--muted);font-size:11px;padding:10px 14px;text-align:center">No parts — click "+ Add part"</td></tr>`;
     return;
   }
   /** @param {string} sel */
   const makeOpts = (sel) => {
-    let o = `<option value="">— any —</option>`;
+    let o = '';
     sheets.forEach(s => { o += `<option value="${s.name.replace(/"/g,'&quot;')}"${s.name===sel?' selected':''}>${s.name}</option>`; });
     return o;
   };
@@ -1213,7 +1260,7 @@ function renderPieces() {
     const rowClasses = [dis ? 'cl-row-disabled' : '', sel ? 'cl-row-selected' : ''].filter(Boolean).join(' ');
     return `<tr class="${rowClasses}"
       draggable="true"
-      onclick="_clRowClick(${p.id}, event)"
+      onmousedown="_clRowMouseDown(${p.id}, event)"
       ondragstart="onDragStart(event,'pieces',${i})"
       ondragover="onDragOver(event,this)"
       ondrop="onDrop(event,'pieces',${i})"
@@ -1222,10 +1269,9 @@ function renderPieces() {
         <span class="cl-drag-handle" title="Drag to reorder">${DRAG_HANDLE}</span>
       </td>
       <td class="cl-del-cell">
-        <button class="cl-toggle-btn" tabindex="-1" onclick="togglePiece(${p.id})" title="${dis ? 'Enable' : 'Disable'}"
-          style="background:none;border:none;padding:2px;cursor:pointer;border-radius:4px;display:flex;align-items:center;justify-content:center;width:22px;height:22px">
+        <span class="cl-piece-dot" title="${dis ? 'Disabled' : 'Enabled'}">
           <span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${dis?'var(--muted)':p.color};flex-shrink:0"></span>
-        </button>
+        </span>
       </td>
       <td class="cl-col-label" style="${colsVisible.label?'':'display:none'}">
         <input class="cl-input" value="${p.label.replace(/"/g,'&quot;')}"
@@ -1255,21 +1301,23 @@ function renderPieces() {
           <button class="cl-step-btn" tabindex="-1" onclick="stepQty('piece',${p.id},1)">+</button>
         </div>
       </td>
-      <td class="cl-grain-cell cl-col-grain" style="${colsVisible.grain?'':'display:none'}">
-        <button class="cl-grain-btn${p.grain !== 'none' ? ' active' : ''}" tabindex="-1"
-          onclick="cycleGrain(${p.id},'piece')" title="Grain: ${p.grain}">${grainIcon(p.grain)}</button>
-      </td>
-      <td class="cl-col-edgeband" style="${colsVisible.edgeband?'':'display:none'}">
-        <button class="cl-grain-btn${hasAnyEdge(p) ? ' active' : ''}" tabindex="-1" onclick="openEdgePopup(${p.id})" title="Edge banding">${_ebIcon(p)}</button>
-      </td>
       <td class="cl-col-material" style="${colsVisible.material?'':'display:none'}">
         <select class="cl-input" tabindex="-1" style="font-size:11px;padding:3px 4px;border-radius:3px"
           onchange="updatePiece(${p.id},'material',this.value)" ${dis ? 'disabled' : ''}>
           ${makeOpts(p.material)}
         </select>
       </td>
+      <td class="cl-col-edgeband" style="${colsVisible.edgeband?'':'display:none'}">
+        <button class="cl-grain-btn${hasAnyEdge(p) ? ' active' : ''}" tabindex="-1" onclick="openEdgePopup(${p.id})" title="Edge banding">${_ebIcon(p)}</button>
+      </td>
+      <td class="cl-grain-cell cl-col-grain" style="${colsVisible.grain?'':'display:none'}">
+        <button class="cl-grain-btn${p.grain !== 'none' ? ' active' : ''}" tabindex="-1"
+          onclick="cycleGrain(${p.id},'piece')" title="Grain: ${p.grain}">${grainIcon(p.grain)}</button>
+      </td>
       <td class="cl-del-cell">
         <input type="checkbox" class="cl-check" tabindex="-1" ${dis ? '' : 'checked'} onclick="_clCheckboxClick(${p.id},${i},this.checked,event)" title="Include in layout&#10;Shift+click to select range">
+      </td>
+      <td class="cl-del-cell">
         <button class="cl-del-btn" tabindex="-1" onclick="removePiece(${p.id})" title="Remove">${DEL_SVG}</button>
       </td>
     </tr>`;
@@ -3195,7 +3243,10 @@ function drawCanvas(container, layout, units) {
     // Grain lines
     const pGrain = p.item.grain || 'none';
     if (pGrain !== 'none' && layoutGrain) {
-      const gdir = p.rotated ? (pGrain==='h'?'v':'h') : pGrain;
+      // Screen-space grain = part grain flipped by p.rotated XOR layoutRotate
+      // (optimizer rotation and view rotation each swap the grain axis once)
+      const screenRotated = !!p.rotated !== !!layoutRotate;
+      const gdir = screenRotated ? (pGrain==='h'?'v':'h') : pGrain;
       ctx.save();
       ctx.beginPath(); ctx.rect(x+1,y+1,w-2,h-2); ctx.clip();
       ctx.strokeStyle = 'rgba(0,0,0,0.08)'; ctx.lineWidth = 0.65;
@@ -3211,13 +3262,26 @@ function drawCanvas(container, layout, units) {
 
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
 
-    // Centered label (if there's room)
-    const labelRoom = w > 30 && h > 18;
+    // Centered label — runs along the part's longest side, so on tall narrow
+    // parts the text rotates to vertical and stays clear of the side dim
+    // drawn on the left edge.
+    const longSide = Math.max(w, h);
+    const shortSide = Math.min(w, h);
+    const labelRoom = longSide > 30 && shortSide > 18;
     if (labelRoom && p.item.label) {
       ctx.fillStyle = txtColor;
       ctx.font = labelFont;
-      const lbl = trunc(p.item.label, Math.floor(w / (fs * 0.58)));
-      ctx.fillText(lbl, x + w/2, y + h/2);
+      const lbl = trunc(p.item.label, Math.floor(longSide / (fs * 0.58)));
+      if (h > w) {
+        // tall part — rotate label along the height, centred in the part
+        ctx.save();
+        ctx.translate(x + w / 2, y + h / 2);
+        ctx.rotate(-Math.PI / 2);
+        ctx.fillText(lbl, 0, 0);
+        ctx.restore();
+      } else {
+        ctx.fillText(lbl, x + w / 2, y + h / 2);
+      }
     }
 
     // Width dim at top-inside, height dim at left-inside (rotated) — both inside part

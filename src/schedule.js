@@ -114,22 +114,57 @@ function renderSchedule() {
   let ws = new Date(calStart);
   while(ws<=calEnd){const w=[];for(let d=0;d<7;d++){const day=new Date(ws);day.setDate(day.getDate()+d);w.push(day);}weeks.push(w);ws.setDate(ws.getDate()+7);}
 
-  // Sidebar: settings button + Jobs list. Hours config lives in a popup
-  // opened via _openScheduleSettingsPopup; packaging/contingency live in
-  // Cabinet Builder Core Rates.
+  // Sidebar: head + scrollable body (sort + jobs) + fixed footer (actions).
   const overrideCount = (typeof dayOverrides !== 'undefined' && Array.isArray(dayOverrides)) ? dayOverrides.length : 0;
-  let sidebarHTML = `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:6px">
+  const sortMode = _getSchedSortMode();
+  const sortedEvents = _sortSchedEvents(events, sortMode);
+  const isManualMode = sortMode === 'manual';
+  /** @type {any} */ (window)._lastSchedSidebarEvents = sortedEvents;
+
+  let sidebarHTML = '';
+  // HEAD
+  sidebarHTML += `<div class="sched-sidebar-head">
     <div style="font-size:14px;font-weight:800;color:var(--text)">Schedule</div>
-    <div style="display:flex;gap:4px">
-      <button class="btn btn-outline" onclick="_openScheduleSettingsPopup()" style="font-size:10px;padding:3px 8px;width:auto" title="Working hours and holidays">⚙ Hours${overrideCount?` <span style="opacity:.7">(${overrideCount})</span>`:''}</button>
-      <button class="btn btn-outline" onclick="document.getElementById('schedule-today-marker')?.scrollIntoView({behavior:'smooth',block:'center'})" style="font-size:10px;padding:3px 8px;width:auto">Today</button>
-    </div>
   </div>`;
-  sidebarHTML += `<div class="sched-section-header" onclick="_toggleSchedSection('jobs', this)"><span class="sched-caret">▾</span> Jobs (${events.length})</div>`;
+  // BODY
+  sidebarHTML += `<div class="sched-sidebar-body">`;
+  sidebarHTML += `<div class="sched-section-header" onclick="_toggleSchedSection('jobs', this)"><span class="sched-caret">▾</span> Jobs (${sortedEvents.length})</div>`;
   sidebarHTML += `<div id="sched-jobs-body">`;
-  events.forEach(e=>{const o=orders.find(x=>x.id===e.id);const st=o?(o.status?(/** @type {Record<string,string>} */ (STATUS_LABELS))[o.status]||o.status:''):''; const chip=slackChipHTML(/** @type {any} */ (e).slack); const meta = e.isMissingDates ? '<span style="color:#f87171;font-weight:600">Manual: no dates set</span>' : (st ? _escHtml(st) : ''); sidebarHTML+=`<div style="display:flex;align-items:center;gap:8px;padding:5px 8px;margin-bottom:2px;border-radius:6px;cursor:pointer" onclick="_scrollToSchedBar(${e.id})" ondblclick="_openOrderPopup(${e.id})" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''"><div style="width:8px;height:8px;border-radius:2px;background:${e.color};flex-shrink:0"></div><div style="flex:1;min-width:0"><div style="font-size:11px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e.isManual?'🔒 ':''}${_escHtml(e.project)} — ${_escHtml(e.client)}</div>${(meta||chip)?`<div style="font-size:9px;color:var(--muted);display:flex;align-items:center;gap:4px;margin-top:1px">${meta}${chip}</div>`:''}</div><div onclick="event.stopPropagation();_openOrderPopup(${e.id})" style="color:var(--muted);font-size:10px;opacity:0.5;padding:2px 4px" title="Edit order">✎</div></div>`;});
-  if(!events.length)sidebarHTML+=`<div style="font-size:12px;color:var(--muted)">No active orders</div>`;
-  sidebarHTML += `</div>`;
+  sidebarHTML += `<div class="sched-sort-row" title="Sort orders">
+    <select onchange="_setSchedSortMode(this.value)">
+      <option value="start" ${sortMode==='start'?'selected':''}>Start date</option>
+      <option value="due" ${sortMode==='due'?'selected':''}>Due date</option>
+      <option value="priority" ${sortMode==='priority'?'selected':''}>Priority</option>
+      <option value="manual" ${sortMode==='manual'?'selected':''}>Manual</option>
+      <option value="created" ${sortMode==='created'?'selected':''}>Order placed</option>
+    </select>
+  </div>`;
+  sortedEvents.forEach((e, idx) => {
+    const o = orders.find(x => x.id === e.id);
+    const st = o ? (o.status ? (/** @type {Record<string,string>} */ (STATUS_LABELS))[o.status] || o.status : '') : '';
+    const chip = slackChipHTML(/** @type {any} */ (e).slack);
+    const dueText = (o && o.due && o.due !== 'TBD') ? `Due ${_escHtml(o.due)}` : '';
+    const metaParts = [];
+    if (e.isMissingDates) metaParts.push('<span style="color:#f87171;font-weight:600">Manual: no dates set</span>');
+    else if (st) metaParts.push(_escHtml(st));
+    if (dueText) metaParts.push(dueText);
+    const meta = metaParts.join(' · ');
+    const dragAttr = isManualMode
+      ? ` draggable="true" ondragstart="_schedDragStart(event,${idx})" ondragover="_schedDragOver(event,this)" ondrop="_schedDrop(event,${idx})" ondragend="_schedDragEnd()"`
+      : '';
+    const dragHandle = isManualMode
+      ? `<span class="cl-drag-handle" title="Drag to reorder" style="cursor:grab;color:var(--muted);display:inline-flex;align-items:center;flex-shrink:0">${SCHED_DRAG_HANDLE}</span>`
+      : '';
+    sidebarHTML += `<div style="display:flex;align-items:center;gap:8px;padding:5px 8px;margin-bottom:2px;border-radius:6px;cursor:pointer"${dragAttr} onclick="_scrollToSchedBar(${e.id})" ondblclick="_openOrderPopup(${e.id})" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">${dragHandle}<div style="width:8px;height:8px;border-radius:2px;background:${e.color};flex-shrink:0"></div><div style="flex:1;min-width:0"><div style="font-size:11px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e.isManual?'🔒 ':''}${_escHtml(e.project)} — ${_escHtml(e.client)}</div>${(meta||chip)?`<div style="font-size:9px;color:var(--muted);display:flex;align-items:center;gap:4px;margin-top:1px">${meta}${chip}</div>`:''}</div></div>`;
+  });
+  if(!sortedEvents.length)sidebarHTML+=`<div style="font-size:12px;color:var(--muted)">No active orders</div>`;
+  sidebarHTML += `</div>`; // close sched-jobs-body
+  sidebarHTML += `</div>`; // close sched-sidebar-body
+  // FOOT
+  sidebarHTML += `<div class="sched-sidebar-foot">
+    <button class="btn btn-outline" onclick="_openScheduleSettingsPopup()" title="Working hours and holidays" style="font-size:10px;padding:4px 6px">⚙ Hours${overrideCount?` <span style="opacity:.7">(${overrideCount})</span>`:''}</button>
+    <button class="btn btn-outline" onclick="document.getElementById('schedule-today-marker')?.scrollIntoView({behavior:'smooth',block:'center'})" style="font-size:10px;padding:4px 6px">Today</button>
+  </div>`;
   const sidebarEl = document.getElementById('schedule-sidebar');
   if (sidebarEl) sidebarEl.innerHTML = sidebarHTML;
 
@@ -140,15 +175,27 @@ function renderSchedule() {
   </div>`;
 
   let prevMonth = -1;
-  weeks.forEach(week => {
+  weeks.forEach((week, weekIdx) => {
     const wm = week[0].getMonth();
     if (wm !== prevMonth) {
       prevMonth = wm;
       cal += `<div style="padding:16px 8px 4px;font-size:18px;font-weight:800;color:var(--text)">${monthNames[wm]} ${week[0].getFullYear()}</div>`;
     }
 
+    // Compute lane layout for the week. Cells always grow to fit all stacked
+    // bars at the normal 20px stride — no overlap.
+    const weekStart = week[0], weekEnd = week[6];
+    const weekEvents = events.filter(e => {
+      // events array invariant: at least one of e.start / e.end is non-null
+      const s = /** @type {Date} */ (e.start||e.end), d = /** @type {Date} */ (e.end||e.start);
+      return d >= weekStart && s <= weekEnd;
+    });
+    const maxLane = weekEvents.length ? Math.max(0, ...weekEvents.map(e => e.lane)) : 0;
+    const stride = 20;
+    const cellMinHeight = Math.max(90, 28 + (maxLane + 1) * stride + 4);
+
     // Week container with grid overlay
-    cal += `<div style="position:relative;display:grid;grid-template-columns:repeat(7,1fr);min-height:90px">`;
+    cal += `<div data-week-idx="${weekIdx}" style="position:relative;display:grid;grid-template-columns:repeat(7,1fr);min-height:${cellMinHeight}px">`;
 
     // Day cells (background grid). Tinting: today > holiday > partial > weekend.
     week.forEach((day,di) => {
@@ -178,43 +225,57 @@ function renderSchedule() {
       const chipColor = hasOverride ? 'var(--accent)' : (isHoliday ? '#f87171' : (isPartial ? '#fbbf24' : 'var(--muted)'));
       const chipBg = hasOverride ? 'rgba(232,168,56,0.18)' : 'rgba(255,255,255,0.04)';
       const hoursChip = `<div class="sched-day-hours" onclick="event.stopPropagation();_quickOverrideDate('${dayISO}')" title="Click to override hours for this date" style="position:absolute;top:3px;right:3px;font-size:9px;font-weight:700;color:${chipColor};background:${chipBg};padding:1px 4px;border-radius:3px;cursor:pointer;pointer-events:auto;z-index:3">${dh}h</div>`;
-      cal += `<div style="${styleParts.join(';')};position:relative;min-height:90px"${td?' id="schedule-today-marker"':''}>
+      cal += `<div style="${styleParts.join(';')};position:relative;min-height:${cellMinHeight}px"${td?' id="schedule-today-marker"':''}>
         <div style="font-size:${td?'12':'11'}px;font-weight:${td?'800':'500'};color:${td?'#fff':we?'var(--muted)':'var(--text2)'};${td?'background:var(--accent);border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center':'padding:1px 3px'}">${day.getDate()}</div>
         ${hoursChip}
       </div>`;
     });
 
-    // Event bars overlaid using absolute positioning. Lane comes from
-    // computeSchedule, so a long bar keeps its row across week boundaries.
-    const weekStart = week[0], weekEnd = week[6];
-    const weekEvents = events.filter(e => {
-      // events array invariant: at least one of e.start / e.end is non-null
-      const s = /** @type {Date} */ (e.start||e.end), d = /** @type {Date} */ (e.end||e.start);
-      return d >= weekStart && s <= weekEnd;
-    });
-
+    // Event bars overlaid using absolute positioning. Each event is sliced into
+    // runs of consecutive working days so holidays / 0-hour days leave a gap.
     weekEvents.forEach(e => {
       const s = /** @type {Date} */ (e.start||e.end), d = /** @type {Date} */ (e.end||e.start);
       const startInWeek = s < weekStart ? 0 : s.getDay() === 0 ? 6 : s.getDay() - 1; // Mon=0
       const endInWeek = d > weekEnd ? 6 : d.getDay() === 0 ? 6 : d.getDay() - 1;
-      const left = (startInWeek / 7 * 100).toFixed(2);
-      const width = ((endInWeek - startInWeek + 1) / 7 * 100).toFixed(2);
-      const isRealStart = e.start && s >= weekStart && s <= weekEnd;
-      const isRealEnd = e.end && d >= weekStart && d <= weekEnd;
-      const radius = (isRealStart&&isRealEnd)?'4px':isRealStart?'4px 0 0 4px':isRealEnd?'0 4px 4px 0':'0';
-      // Lane top: 28px below day numbers, 20px per lane.
-      const barTop = 28 + e.lane * 20;
+      const isRealStart = !!e.start && s >= weekStart && s <= weekEnd;
+      const isRealEnd = !!e.end && d >= weekStart && d <= weekEnd;
+
+      // Build runs of consecutive working days within [startInWeek..endInWeek]
+      /** @type {[number, number][]} */
+      const runs = [];
+      let runStart = -1;
+      for (let di = startInWeek; di <= endInWeek; di++) {
+        const isWorking = dayHours(week[di]) > 0;
+        if (isWorking && runStart === -1) runStart = di;
+        else if (!isWorking && runStart !== -1) { runs.push([runStart, di - 1]); runStart = -1; }
+      }
+      if (runStart !== -1) runs.push([runStart, endInWeek]);
+      if (!runs.length) return; // entire span lands on holidays
+
       const labelText = _escHtml(e.project) + ' — ' + _escHtml(e.client);
-      const showLabel = isRealStart || startInWeek === 0;
       const manualStyle = e.isManual ? 'border:1px dashed rgba(255,255,255,0.5);' : '';
       const lockIcon = e.isManual ? '🔒 ' : '';
-      // Show slack chip on the bar's last visible week (where the end edge is rendered).
-      const chipHTML = isRealEnd ? slackChipHTML(/** @type {any} */ (e).slack) : '';
+      const barTop = 28 + e.lane * stride;
 
-      cal += `<div class="sched-bar sched-bar-${e.id}" style="position:absolute;top:${barTop}px;left:${left}%;width:${width}%;height:18px;padding:0 2px;z-index:2;pointer-events:auto;display:flex;align-items:center;gap:3px" onclick="_openOrderPopup(${e.id})">
-        <div style="background:${e.color};${manualStyle}color:#fff;font-size:10px;font-weight:600;padding:1px 6px;border-radius:${radius};height:16px;line-height:16px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;cursor:pointer;flex:1;min-width:0" title="${labelText}${e.isManual?' (manual)':''}">${showLabel?lockIcon+labelText:''}</div>
-        ${chipHTML}
-      </div>`;
+      runs.forEach((run, runIdx) => {
+        const rs = run[0], re = run[1];
+        const isFirstRun = runIdx === 0;
+        const isLastRun = runIdx === runs.length - 1;
+        const segIsRealStart = isFirstRun && isRealStart;
+        const segIsRealEnd = isLastRun && isRealEnd;
+        const radius = (segIsRealStart && segIsRealEnd) ? '4px' :
+                       segIsRealStart ? '4px 0 0 4px' :
+                       segIsRealEnd ? '0 4px 4px 0' : '0';
+        const left = (rs / 7 * 100).toFixed(2);
+        const width = ((re - rs + 1) / 7 * 100).toFixed(2);
+        const segShowLabel = isFirstRun && (isRealStart || startInWeek === 0);
+        const segChipHTML = segIsRealEnd ? slackChipHTML(/** @type {any} */ (e).slack) : '';
+
+        cal += `<div class="sched-bar sched-bar-${e.id}" style="position:absolute;top:${barTop}px;left:${left}%;width:${width}%;height:18px;padding:0 2px;z-index:2;pointer-events:auto;display:flex;align-items:center;gap:3px" onclick="_openOrderPopup(${e.id})">
+          <div style="background:${e.color};${manualStyle}color:#fff;font-size:10px;font-weight:600;padding:1px 6px;border-radius:${radius};height:16px;line-height:16px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;cursor:pointer;flex:1;min-width:0" title="${labelText}${e.isManual?' (manual)':''}">${segShowLabel?lockIcon+labelText:''}</div>
+          ${segChipHTML}
+        </div>`;
+      });
     });
 
     cal += `</div>`; // close week container
@@ -236,6 +297,118 @@ function _scrollToSchedBar(orderId) {
     const inner = /** @type {HTMLElement | null} */ (bar.firstElementChild);
     if (inner) { inner.style.outline = '2px solid #fff'; inner.style.boxShadow = '0 0 8px rgba(255,255,255,0.5)'; setTimeout(() => { inner.style.outline = ''; inner.style.boxShadow = ''; }, 1500); }
   }
+}
+
+// ── Sidebar sort: persisted sort mode + drag-reorder for manual mode ──
+const SCHED_DRAG_HANDLE = `<svg width="10" height="14" viewBox="0 0 10 14" fill="currentColor"><circle cx="3" cy="2.5" r="1.2"/><circle cx="7" cy="2.5" r="1.2"/><circle cx="3" cy="7" r="1.2"/><circle cx="7" cy="7" r="1.2"/><circle cx="3" cy="11.5" r="1.2"/><circle cx="7" cy="11.5" r="1.2"/></svg>`;
+
+function _getSchedSortMode() {
+  try {
+    const v = localStorage.getItem('pc_sched_sort');
+    if (v === 'start' || v === 'due' || v === 'priority' || v === 'manual' || v === 'created') return v;
+  } catch(e) {}
+  return 'start';
+}
+
+/** @param {string} mode */
+function _setSchedSortMode(mode) {
+  try { localStorage.setItem('pc_sched_sort', mode); } catch(e) {}
+  if (typeof renderSchedule === 'function') renderSchedule();
+}
+
+/** @param {any[]} events @param {string} mode */
+function _sortSchedEvents(events, mode) {
+  const arr = events.slice();
+  if (mode === 'start') {
+    arr.sort((a, b) => {
+      const av = a.start ? +a.start : Infinity;
+      const bv = b.start ? +b.start : Infinity;
+      return av - bv;
+    });
+  } else if (mode === 'due') {
+    arr.sort((a, b) => {
+      const ao = orders.find(x => x.id === a.id);
+      const bo = orders.find(x => x.id === b.id);
+      const ad = (ao && _orderDateToISO(ao.due || '')) || '9999-12-31';
+      const bd = (bo && _orderDateToISO(bo.due || '')) || '9999-12-31';
+      return ad.localeCompare(bd);
+    });
+  } else if (mode === 'priority') {
+    arr.sort((a, b) => {
+      const ao = orders.find(x => x.id === a.id);
+      const bo = orders.find(x => x.id === b.id);
+      const ap = (ao && /** @type {any} */ (ao).priority) || 0;
+      const bp = (bo && /** @type {any} */ (bo).priority) || 0;
+      if (bp !== ap) return bp - ap;
+      const av = a.start ? +a.start : Infinity;
+      const bv = b.start ? +b.start : Infinity;
+      return av - bv;
+    });
+  } else if (mode === 'manual') {
+    arr.sort((a, b) => {
+      const ao = orders.find(x => x.id === a.id);
+      const bo = orders.find(x => x.id === b.id);
+      const ai = (ao && /** @type {any} */ (ao).sidebar_order_index) || 0;
+      const bi = (bo && /** @type {any} */ (bo).sidebar_order_index) || 0;
+      return ai - bi;
+    });
+  } else if (mode === 'created') {
+    arr.sort((a, b) => {
+      const ao = orders.find(x => x.id === a.id);
+      const bo = orders.find(x => x.id === b.id);
+      const ac = (ao && ao.created_at) || '';
+      const bc = (bo && bo.created_at) || '';
+      return ac.localeCompare(bc);
+    });
+  }
+  return arr;
+}
+
+/** @type {number} */
+let _schedDragSrcIdx = -1;
+
+/** @param {DragEvent} ev @param {number} idx */
+function _schedDragStart(ev, idx) {
+  _schedDragSrcIdx = idx;
+  if (ev.dataTransfer) ev.dataTransfer.effectAllowed = 'move';
+}
+
+/** @param {DragEvent} ev @param {HTMLElement} row */
+function _schedDragOver(ev, row) {
+  ev.preventDefault();
+  if (ev.dataTransfer) ev.dataTransfer.dropEffect = 'move';
+  document.querySelectorAll('.cl-drag-over').forEach(r => r.classList.remove('cl-drag-over'));
+  row.classList.add('cl-drag-over');
+}
+
+/** @param {DragEvent} ev @param {number} idx */
+async function _schedDrop(ev, idx) {
+  ev.preventDefault();
+  document.querySelectorAll('.cl-drag-over').forEach(r => r.classList.remove('cl-drag-over'));
+  if (_schedDragSrcIdx === -1 || _schedDragSrcIdx === idx) return;
+  const sortMode = _getSchedSortMode();
+  if (sortMode !== 'manual') return;
+  // Re-sort events client-side then persist new sidebar_order_index for each.
+  /** @type {any[]} */
+  const events = (/** @type {any} */ (window))._lastSchedSidebarEvents || [];
+  if (!events.length) return;
+  const moved = events.splice(_schedDragSrcIdx, 1)[0];
+  events.splice(idx, 0, moved);
+  _schedDragSrcIdx = -1;
+  // Apply gap-spaced indices and persist
+  const updates = events.map((e, i) => {
+    const o = orders.find(x => x.id === e.id);
+    const newIdx = i * 10;
+    if (o) /** @type {any} */ (o).sidebar_order_index = newIdx;
+    return _userId ? _db('orders').update({ sidebar_order_index: newIdx }).eq('id', e.id) : null;
+  }).filter(Boolean);
+  if (typeof renderSchedule === 'function') renderSchedule();
+  try { await Promise.all(updates); } catch(err) { console.warn('[schedule] manual reorder save failed:', err); }
+}
+
+function _schedDragEnd() {
+  _schedDragSrcIdx = -1;
+  document.querySelectorAll('.cl-drag-over').forEach(r => r.classList.remove('cl-drag-over'));
 }
 
 /** @param {number} id @param {string} val */

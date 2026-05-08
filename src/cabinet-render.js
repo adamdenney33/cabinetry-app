@@ -144,8 +144,7 @@ function renderCBRates() {
     {name:'Material Markup',price:cbSettings.materialMarkup||0,path:'cbSettings.materialMarkup',unit:'%'},
     {name:'Quote Markup',price:cbSettings.markup,path:'cbSettings.markup',unit:'%'},
     {name:'Tax / GST',price:cbSettings.tax,path:'cbSettings.tax',unit:'%'},
-    {name:'Packaging Time',price:cbSettings.packagingHours||0,path:'cbSettings.packagingHours',unit:'hrs'},
-    {name:'Contingency Time',price:cbSettings.contingencyHours||0,path:'cbSettings.contingencyHours',unit:'hrs'},
+    {name:'Contingency',price:cbSettings.contingencyPct ?? 5,path:'cbSettings.contingencyPct',unit:'%'},
   ];
   const coreContent = coreItems.map(item => `<div class="cb-mat-row" style="margin-top:4px">
     <input value="${item.name}" disabled style="opacity:.7;cursor:default">
@@ -163,6 +162,7 @@ function renderCBRates() {
     {name:'Loose Shelf',val:lt.looseShelf||0.2,path:'cbSettings.labourTimes.looseShelf',unit:'hrs'},
     {name:'Partition',val:lt.partition||0.5,path:'cbSettings.labourTimes.partition',unit:'hrs'},
     {name:'End Panel',val:lt.endPanel||0.3,path:'cbSettings.labourTimes.endPanel',unit:'hrs'},
+    {name:'Packaging',val:cbSettings.packagingHours||0,path:'cbSettings.packagingHours',unit:'hrs'},
   ];
   const labourContent = labourItems.map(item => `<div class="cb-mat-row" style="margin-top:4px">
     <input value="${item.name}" disabled style="opacity:.7;cursor:default">
@@ -191,12 +191,12 @@ function renderCBRates() {
 
   el.innerHTML = `
     ${stockLink}
-    ${section('core', 'Core Rates', '6 rates', coreContent)}
+    ${section('core', 'Core Rates', '5 rates', coreContent)}
     ${section('carcassTypes', 'Carcass', '('+carcassTypes.length+')', typeListItems(carcassTypes, 'cbSettings.carcassTypes', 0.4))}
     ${section('doorTypes', 'Door', '('+doorTypes.length+')', typeListItems(doorTypes, 'cbSettings.doorTypes', 0.4))}
     ${section('drawerFrontTypes', 'Drawer Front', '('+drawerFrontTypes.length+')', typeListItems(drawerFrontTypes, 'cbSettings.drawerFrontTypes', 0.3))}
     ${section('drawerBoxTypes', 'Drawer Box', '('+drawerBoxTypes.length+')', typeListItems(drawerBoxTypes, 'cbSettings.drawerBoxTypes', 0.8))}
-    ${section('labour', 'Other Labour Times', '5 rates', labourContent)}
+    ${section('labour', 'Other Labour Times', '6 rates', labourContent)}
     ${section('basetypes', 'Base', '('+(cbSettings.baseTypes||[]).length+')', listItems(cbSettings.baseTypes||[], 'cbSettings.baseTypes', cur))}
   `;
 }
@@ -210,15 +210,7 @@ function renderCBPanel() {
   renderCBEditor();
   if (cbMainView === 'results') renderCBResults();
   else renderCBLibraryView();
-  _renderProjectStatus();
-}
-
-function _renderProjectStatus() {
-  const el = _byId('cb-project-status');
-  if (!el) return;
-  if (!_userId) { el.textContent = ''; return; }
-  el.textContent = _getCBProjectId() ? '' : '⚠ Select or create a project to save';
-  el.style.color = _getCBProjectId() ? 'var(--muted)' : 'var(--warn)';
+  if (typeof _renderCbCurrentProject === 'function') _renderCbCurrentProject();
 }
 
 function _renderCBAuthGate() {
@@ -297,7 +289,30 @@ function renderCBEditor() {
   const c = calcCBLine(line);
   /** @param {string} field @param {any} val */
   const matSmart = (field, val) => `<div style="position:relative"><div class="smart-input-wrap"><input type="text" id="cb-mat-${field}" value="${_escHtml(val||'')}" autocomplete="off" style="font-size:13px" oninput="_smartCBMaterialSuggest(this,'cb-mat-suggest-${field}','${field}')" onfocus="_smartCBMaterialSuggest(this,'cb-mat-suggest-${field}','${field}')" onblur="setTimeout(()=>{_byId('cb-mat-suggest-${field}').style.display='none';cbUpdateField('${field}',this.value)},150)"><div class="smart-input-add" onclick="_openNewStockPopup()" title="Add new material">+</div></div><div id="cb-mat-suggest-${field}" class="client-suggest-list" style="display:none"></div></div>`;
-  const finishSmart = () => `<div style="position:relative"><div class="smart-input-wrap"><input type="text" id="cb-mat-finish" value="${_escHtml(line.finish||'None')}" autocomplete="off" style="font-size:13px" oninput="_smartCBFinishSuggest(this,'cb-mat-suggest-finish')" onfocus="_smartCBFinishSuggest(this,'cb-mat-suggest-finish')" onblur="setTimeout(()=>{_byId('cb-mat-suggest-finish').style.display='none';cbUpdateField('finish',this.value)},150)"><div class="smart-input-add" onclick="_openNewStockPopup()" title="Add new finish">+</div></div><div id="cb-mat-suggest-finish" class="client-suggest-list" style="display:none"></div></div>`;
+  // Per-component finish picker. `field` is the line property name
+  // (`finish` | `doorFinish` | `drawerFrontFinish` | `drawerBoxFinish`).
+  /** @param {string} field */
+  const finishSmart = (field) => `<div style="position:relative"><div class="smart-input-wrap"><input type="text" id="cb-mat-${field}" value="${_escHtml(line[field]||'None')}" autocomplete="off" style="font-size:13px" oninput="_smartCBFinishSuggest(this,'cb-mat-suggest-${field}','${field}')" onfocus="_smartCBFinishSuggest(this,'cb-mat-suggest-${field}','${field}')" onblur="setTimeout(()=>{_byId('cb-mat-suggest-${field}').style.display='none';cbUpdateField('${field}',this.value)},150)"><div class="smart-input-add" onclick="_openNewStockPopup('${field}')" title="Add new finish">+</div></div><div id="cb-mat-suggest-${field}" class="client-suggest-list" style="display:none"></div></div>`;
+  // Per-component hardware list. `scope` ∈ {'cabinet','door','drawer'} maps
+  // to line.hwItems / line.doorHwItems / line.drawerHwItems respectively.
+  /** @param {string} scope */
+  const hwListUI = (scope) => {
+    const list = scope === 'door' ? (line.doorHwItems || []) : scope === 'drawer' ? (line.drawerHwItems || []) : (line.hwItems || []);
+    const rows = list.map(/** @param {any} hw @param {number} hi */ (hw, hi) => `<div style="display:flex;gap:4px;align-items:center;margin-bottom:6px;position:relative">
+            <div style="flex:1;position:relative"><div class="smart-input-wrap"><input type="text" id="cb-hw-${scope}-${line.id}-${hi}" value="${_escHtml(hw.name)}" style="font-size:12px" autocomplete="off" oninput="_smartCBHwSuggest(this,'cb-hw-suggest-${scope}-${line.id}-${hi}',${line.id},${hi},'${scope}')" onfocus="_smartCBHwSuggest(this,'cb-hw-suggest-${scope}-${line.id}-${hi}',${line.id},${hi},'${scope}')" onblur="setTimeout(()=>{_byId('cb-hw-suggest-${scope}-${line.id}-${hi}').style.display='none';updateCBHw(${line.id},${hi},'name',this.value,'${scope}')},150)"><div class="smart-input-add" onclick="_openNewCBHardwarePopup(${line.id},${hi},'${scope}')" title="Add new hardware type">+</div></div><div id="cb-hw-suggest-${scope}-${line.id}-${hi}" class="client-suggest-list" style="display:none"></div></div>
+            <span style="font-size:10px;color:var(--muted)">×</span>
+            <input type="number" style="width:40px;text-align:center;padding:5px;font-size:12px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text)" value="${hw.qty}" min="1" onchange="updateCBHw(${line.id},${hi},'qty',this.value,'${scope}')">
+            <button class="cb-del-btn" style="font-size:16px" onclick="removeCBHw(${line.id},${hi},'${scope}')">×</button>
+          </div>`).join('');
+    return `${rows}<div style="position:relative;margin-top:4px">
+            <label style="font-size:10px;font-weight:600;color:var(--muted)">Add Hardware</label>
+            <div class="smart-input-wrap">
+              <input type="text" id="cb-hw-add-${scope}-${line.id}" placeholder="Search hardware..." style="font-size:12px" autocomplete="off" oninput="_smartCBHwAddSuggest(this,'cb-hw-add-suggest-${scope}-${line.id}',${line.id},'${scope}')" onfocus="_smartCBHwAddSuggest(this,'cb-hw-add-suggest-${scope}-${line.id}',${line.id},'${scope}')" onblur="setTimeout(()=>_byId('cb-hw-add-suggest-${scope}-${line.id}').style.display='none',150)">
+              <div class="smart-input-add" onclick="_openNewCBHardwarePopup(${line.id},-1,'${scope}')" title="Add new hardware type">+</div>
+            </div>
+            <div id="cb-hw-add-suggest-${scope}-${line.id}" class="client-suggest-list" style="display:none"></div>
+          </div>`;
+  };
   /** @param {string} field @param {any} val @param {number} [min] */
   const stepper = (field, val, min) => `<div class="cl-stepper"><button class="cl-step-btn" onclick="cbStepField('${field}',-1)">−</button><input type="number" class="cl-input cl-qty-input" value="${val}" min="${min||0}" style="font-size:14px;width:42px" onchange="cbUpdateField('${field}',this.value)"><button class="cl-step-btn" onclick="cbStepField('${field}',1)">+</button></div>`;
   /** @param {string} sec */
@@ -340,7 +355,6 @@ function renderCBEditor() {
             <div class="form-group" style="${FM}"><label style="${LB}">Width (mm)</label><input type="number" value="${line.w}" style="${IS}" oninput="cbUpdateField('w',this.value)"></div>
             <div class="form-group" style="${FM}"><label style="${LB}">Height (mm)</label><input type="number" value="${line.h}" style="${IS}" oninput="cbUpdateField('h',this.value)"></div>
             <div class="form-group" style="${FM}"><label style="${LB}">Depth (mm)</label><input type="number" value="${line.d}" style="${IS}" oninput="cbUpdateField('d',this.value)"></div>
-            <div class="form-group" style="flex:0 0 auto;${FM}"><label style="${LB}">Qty</label>${stepper('qty', line.qty, 1)}</div>
           </div>
           <div style="margin-bottom:8px"><label style="${LB}">Carcass Material</label>${matSmart('material', line.material)}</div>
           <div style="margin-bottom:8px"><label style="${LB}">Back Panel</label>${matSmart('backMat', line.backMat)}</div>
@@ -349,11 +363,13 @@ function renderCBEditor() {
               ${(cbSettings.carcassTypes||[]).map(/** @param {any} t */ t=>`<option value="${t.name}" ${t.name===line.carcassType?'selected':''}>${t.name}</option>`).join('')}
             </select>
           </div>
-          <div style="margin-bottom:0"><label style="${LB}">Base</label>
+          <div style="margin-bottom:8px"><label style="${LB}">Base</label>
             <select style="${SL};width:100%" onchange="cbUpdateField('baseType',this.value)">
               ${(cbSettings.baseTypes||[]).map(/** @param {any} b */ b=>`<option value="${b.name}" ${b.name===line.baseType?'selected':''}>${b.name}${b.price?' (+'+cur+b.price+')':''}</option>`).join('')}
             </select>
           </div>
+          <div style="margin-bottom:8px"><label style="${LB}">Finish</label>${finishSmart('finish')}</div>
+          <div style="margin-bottom:0"><label style="${LB}">Hardware</label>${hwListUI('cabinet')}</div>
         </div>
       </div>
 
@@ -374,19 +390,21 @@ function renderCBEditor() {
             </select>
           </div>
           <label style="font-size:11px;color:var(--muted)">% of front area</label><div class="cb-pct-row"><input type="range" class="cb-pct-slider" min="0" max="100" value="${line.doorPct||0}" oninput="this.nextElementSibling.textContent=this.value+'%'" onchange="cbUpdatePct('doorPct',this.value)"><span class="cb-pct-val">${line.doorPct||0}%</span></div>
-          <div style="font-size:10px;color:var(--muted);margin-top:2px">Open: ${Math.max(0, 100 - (line.doorPct||0) - (line.drawerPct||0))}%</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:6px">Open: ${Math.max(0, 100 - (line.doorPct||0) - (line.drawerPct||0))}%</div>
+          <div style="margin-top:10px"><label style="${LB}">Finish</label>${finishSmart('doorFinish')}</div>
+          <div style="margin-top:8px"><label style="${LB}">Hardware</label>${hwListUI('door')}</div>
         </div>
       </div>
 
-      <!-- DRAWERS -->
+      <!-- DRAWER FRONTS -->
       <div style="${SB}">
-        <div style="${SH}" onclick="toggleCBSection(${line.id},'drawers')">
-          ${chev('drawers')}
-          <span style="${ST}">Drawers</span>
-          <span id="cb-live-drawers">${line.drawers > 0 ? liveCost(sec.drawers) : ''}</span>
-          <span id="cb-live-drawers-count" style="${SS}">${line.drawers>0?line.drawers+' drawer'+(line.drawers!==1?'s':''):'None'}</span>
+        <div style="${SH}" onclick="toggleCBSection(${line.id},'drawerFronts')">
+          ${chev('drawerFronts')}
+          <span style="${ST}">Drawer Fronts</span>
+          <span id="cb-live-drawer-fronts">${line.drawers > 0 ? liveCost(sec.drawerFronts) : ''}</span>
+          <span id="cb-live-drawer-fronts-count" style="${SS}">${line.drawers>0?line.drawers+' front'+(line.drawers!==1?'s':''):'None'}</span>
         </div>
-        <div ${SC('drawers')}>
+        <div ${SC('drawerFronts')}>
           <div style="margin-bottom:8px"><label style="${LB}">Count</label>${stepper('drawers', line.drawers, 0)}</div>
           <div style="margin-bottom:8px"><label style="${LB}">Front Material</label>${matSmart('drawerFrontMat', line.drawerFrontMat||line.material)}</div>
           <div style="margin-bottom:8px"><label style="${LB}">Front Type</label>
@@ -394,26 +412,29 @@ function renderCBEditor() {
               ${(cbSettings.drawerFrontTypes||[]).map(/** @param {any} t */ t=>`<option value="${t.name}" ${t.name===line.drawerFrontType?'selected':''}>${t.name}</option>`).join('')}
             </select>
           </div>
+          <label style="font-size:11px;color:var(--muted)">% of front area</label><div class="cb-pct-row"><input type="range" class="cb-pct-slider" min="0" max="100" value="${line.drawerPct||0}" oninput="this.nextElementSibling.textContent=this.value+'%'" onchange="cbUpdatePct('drawerPct',this.value)"><span class="cb-pct-val">${line.drawerPct||0}%</span></div>
+          <div style="font-size:10px;color:var(--muted);margin-top:6px">Open: ${Math.max(0, 100 - (line.doorPct||0) - (line.drawerPct||0))}%</div>
+          <div style="margin-top:10px"><label style="${LB}">Finish</label>${finishSmart('drawerFrontFinish')}</div>
+        </div>
+      </div>
+
+      <!-- DRAWER BOXES -->
+      <div style="${SB}">
+        <div style="${SH}" onclick="toggleCBSection(${line.id},'drawerBoxes')">
+          ${chev('drawerBoxes')}
+          <span style="${ST}">Drawer Boxes</span>
+          <span id="cb-live-drawer-boxes">${line.drawers > 0 ? liveCost(sec.drawerBoxes) : ''}</span>
+          <span id="cb-live-drawer-boxes-count" style="${SS}">${line.drawers>0?line.drawers+' box'+(line.drawers!==1?'es':''):'None'}</span>
+        </div>
+        <div ${SC('drawerBoxes')}>
           <div style="margin-bottom:8px"><label style="${LB}">Inner Box Material</label>${matSmart('drawerInnerMat', line.drawerInnerMat||line.backMat)}</div>
           <div style="margin-bottom:8px"><label style="${LB}">Box Type</label>
             <select style="${SL};width:100%" onchange="cbUpdateField('drawerBoxType',this.value)">
               ${(cbSettings.drawerBoxTypes||[]).map(/** @param {any} t */ t=>`<option value="${t.name}" ${t.name===line.drawerBoxType?'selected':''}>${t.name}</option>`).join('')}
             </select>
           </div>
-          <label style="font-size:11px;color:var(--muted)">% of front area</label><div class="cb-pct-row"><input type="range" class="cb-pct-slider" min="0" max="100" value="${line.drawerPct||0}" oninput="this.nextElementSibling.textContent=this.value+'%'" onchange="cbUpdatePct('drawerPct',this.value)"><span class="cb-pct-val">${line.drawerPct||0}%</span></div>
-          <div style="font-size:10px;color:var(--muted);margin-top:2px">Open: ${Math.max(0, 100 - (line.doorPct||0) - (line.drawerPct||0))}%</div>
-        </div>
-      </div>
-
-      <!-- FINISH -->
-      <div style="${SB}">
-        <div style="${SH}" onclick="toggleCBSection(${line.id},'finish')">
-          ${chev('finish')}
-          <span style="${ST}">Finish</span>
-          <span id="cb-live-finish-name" style="${SS}">${line.finish || 'None'}</span>
-        </div>
-        <div ${SC('finish')}>
-          <div style="margin-bottom:0"><label style="${LB}">Finish</label>${finishSmart()}</div>
+          <div style="margin-bottom:8px"><label style="${LB}">Finish</label>${finishSmart('drawerBoxFinish')}</div>
+          <div style="margin-bottom:0"><label style="${LB}">Hardware</label>${hwListUI('drawer')}</div>
         </div>
       </div>
 
@@ -438,31 +459,6 @@ function renderCBEditor() {
         </div>
       </div>
 
-      <!-- HARDWARE -->
-      <div style="${SB}">
-        <div style="${SH}" onclick="toggleCBSection(${line.id},'hw')">
-          ${chev('hw')}
-          <span style="${ST}">Hardware</span>
-          <span id="cb-live-hw">${sec.hardware > 0 ? liveCost(sec.hardware) : ''}</span>
-        </div>
-        <div ${SC('hw')}>
-          <div style="font-size:12px;color:var(--muted);margin-bottom:8px">Auto: ${line.doors>0?line.doors*2+' hinges':''}${line.doors>0&&line.drawers>0?', ':''}${line.drawers>0?line.drawers+' slides':''}${line.doors===0&&line.drawers===0?'None':''}</div>
-          ${line.hwItems.map(/** @param {any} hw @param {number} hi */ (hw, hi) => `<div style="display:flex;gap:4px;align-items:center;margin-bottom:6px;position:relative">
-            <div style="flex:1;position:relative"><div class="smart-input-wrap"><input type="text" id="cb-hw-${line.id}-${hi}" value="${_escHtml(hw.name)}" style="font-size:12px" autocomplete="off" oninput="_smartCBHwSuggest(this,'cb-hw-suggest-${line.id}-${hi}',${line.id},${hi})" onfocus="_smartCBHwSuggest(this,'cb-hw-suggest-${line.id}-${hi}',${line.id},${hi})" onblur="setTimeout(()=>{_byId('cb-hw-suggest-${line.id}-${hi}').style.display='none';updateCBHw(${line.id},${hi},'name',this.value)},150)"><div class="smart-input-add" onclick="_openNewCBHardwarePopup(${line.id},${hi})" title="Add new hardware type">+</div></div><div id="cb-hw-suggest-${line.id}-${hi}" class="client-suggest-list" style="display:none"></div></div>
-            <span style="font-size:10px;color:var(--muted)">×</span>
-            <input type="number" style="width:40px;text-align:center;padding:5px;font-size:12px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text)" value="${hw.qty}" min="1" onchange="updateCBHw(${line.id},${hi},'qty',this.value)">
-            <button class="cb-del-btn" style="font-size:16px" onclick="removeCBHw(${line.id},${hi})">×</button>
-          </div>`).join('')}
-          <div style="position:relative;margin-top:4px">
-            <label style="font-size:10px;font-weight:600;color:var(--muted)">Add Hardware</label>
-            <div class="smart-input-wrap">
-              <input type="text" id="cb-hw-add-${line.id}" placeholder="Search hardware..." style="font-size:12px" autocomplete="off" oninput="_smartCBHwAddSuggest(this,'cb-hw-add-suggest-${line.id}',${line.id})" onfocus="_smartCBHwAddSuggest(this,'cb-hw-add-suggest-${line.id}',${line.id})" onblur="setTimeout(()=>_byId('cb-hw-add-suggest-${line.id}').style.display='none',150)">
-              <div class="smart-input-add" onclick="_openNewCBHardwarePopup(${line.id},-1)" title="Add new hardware type">+</div>
-            </div>
-            <div id="cb-hw-add-suggest-${line.id}" class="client-suggest-list" style="display:none"></div>
-          </div>
-        </div>
-      </div>
 
       <!-- EXTRAS -->
       <div style="${SB}">
@@ -531,12 +527,13 @@ function _refreshCBLiveCosts() {
   set('cb-live-cab-dims', `${line.w}×${line.h}×${line.d}`);
   set('cb-live-doors', line.doors > 0 ? liveCost(sec.doors) : '');
   set('cb-live-doors-count', line.doors>0?line.doors+' door'+(line.doors!==1?'s':''):'None');
-  set('cb-live-drawers', line.drawers > 0 ? liveCost(sec.drawers) : '');
-  set('cb-live-drawers-count', line.drawers>0?line.drawers+' drawer'+(line.drawers!==1?'s':''):'None');
+  set('cb-live-drawer-fronts', line.drawers > 0 ? liveCost(sec.drawerFronts) : '');
+  set('cb-live-drawer-fronts-count', line.drawers>0?line.drawers+' front'+(line.drawers!==1?'s':''):'None');
+  set('cb-live-drawer-boxes', line.drawers > 0 ? liveCost(sec.drawerBoxes) : '');
+  set('cb-live-drawer-boxes-count', line.drawers>0?line.drawers+' box'+(line.drawers!==1?'es':''):'None');
   const shelfTotal = (line.shelves||0)+(line.adjShelves||0)+(line.looseShelves||0)+(line.partitions||0)+(line.endPanels||0);
   set('cb-live-shelves', shelfTotal > 0 ? liveCost(sec.shelves) : '');
   set('cb-live-shelves-count', shelfTotal > 0 ? shelfTotal + ' total' : 'None');
-  set('cb-live-hw', sec.hardware > 0 ? liveCost(sec.hardware) : '');
   set('cb-live-extras', sec.extras > 0 ? liveCost(sec.extras) : '');
   set('cb-live-extras-count', (line.extras||[]).length>0 ? line.extras.length+' item'+(line.extras.length!==1?'s':''):'None');
   set('cb-live-notes', (line.notes?'✓':'') + ' ' + (line.room||''));
@@ -639,6 +636,11 @@ function renderCBResults() {
         <div style="margin-top:6px;padding-top:6px;border-top:1px solid var(--border2);font-size:11px;color:var(--muted);display:flex;gap:8px;flex-wrap:wrap">
           ${line.finish&&line.finish!=='None'?`<span>${_escHtml(line.finish)}</span>`:''}${line.construction?`<span>${_escHtml(line.construction)}</span>`:''}${line.baseType&&line.baseType!=='None'?`<span>${_escHtml(line.baseType)}</span>`:''}${line.doors>0?`<span>${line.doors} door${line.doors!==1?'s':''}</span>`:''}${line.drawers>0?`<span>${line.drawers} drawer${line.drawers!==1?'s':''}</span>`:''}${(line.shelves||0)+(line.adjShelves||0)+(line.looseShelves||0)>0?`<span>${(line.shelves||0)+(line.adjShelves||0)+(line.looseShelves||0)} shelves</span>`:''}${(line.partitions||0)>0?`<span>${line.partitions} partition${line.partitions!==1?'s':''}</span>`:''}${(line.endPanels||0)>0?`<span>${line.endPanels} end panel${line.endPanels!==1?'s':''}</span>`:''}${line.room?`<span>${_escHtml(line.room)}</span>`:''}
         </div>
+      </div>
+      <!-- Actions -->
+      <div style="padding:6px 12px;border-top:1px solid var(--border2);display:flex;gap:6px;justify-content:flex-end;background:var(--surface2)">
+        <button class="btn btn-outline" style="font-size:11px;padding:4px 10px;width:auto" onclick="event.stopPropagation();_duplicateCabinet(${idx})" title="Duplicate cabinet">Duplicate</button>
+        <button class="btn btn-outline" style="font-size:11px;padding:4px 10px;width:auto;color:var(--danger)" onclick="event.stopPropagation();_confirm('Delete this cabinet?',()=>{cbLines.splice(${idx},1);saveCBLines();renderCBPanel();_toast('Cabinet deleted','success')})" title="Delete cabinet">Delete</button>
       </div>
     </div>`;
   });

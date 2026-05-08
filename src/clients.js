@@ -294,11 +294,12 @@ function renderProjectsMain() {
     return cur + Math.round(v).toLocaleString('en-US');
   };
 
-  // Inline SVG icons (stroke style — match the rest of the app)
-  const iconCabinet = `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="2" width="12" height="12" rx="1.5"/><path d="M2 6h12M2 10h12"/></svg>`;
-  const iconCutlist = `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="4" cy="11.5" r="2"/><circle cx="12" cy="11.5" r="2"/><path d="M5.5 10L13 2M10.5 10L3 2" stroke-linecap="round"/></svg>`;
-  const iconQuote = `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M3 1.5h7l3 3v10H3z"/><path d="M5 6h6M5 9h6M5 12h4" stroke-linecap="round"/></svg>`;
-  const iconOrder = `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M2.5 4.5l5.5-2.5 5.5 2.5v7L8 14 2.5 11.5z"/><path d="M2.5 4.5L8 7l5.5-2.5M8 7v7"/></svg>`;
+  // Inline SVG icons — match the main nav-tab set (index.html:163-200) so the
+  // action strip's iconography is consistent with the destination tabs.
+  const iconCabinet = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="12" y1="3" x2="12" y2="12"/></svg>`;
+  const iconCutlist = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.8,5.1 L12,2 L12.6,5 L14.4,5.4 L17,3.3 L16,6.3 L17.4,7.5 L20.7,7 L18.3,9 L18.9,10.8 L22,12 L19,12.6 L18.6,14.4 L20.7,17 L17.7,16 L16.5,17.4 L17,20.7 L15,18.3 L13.2,18.9 L12,22 L11.4,19 L9.6,18.6 L7,20.7 L8,17.7 L6.6,16.5 L3.3,17 L5.7,15 L5.1,13.2 L2,12 L5,11.4 L5.4,9.6 L3.3,7 L6.3,8 L7.5,6.6 L7,3.3 L9,5.7 Z"/><circle cx="12" cy="12" r="2.5"/></svg>`;
+  const iconQuote = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>`;
+  const iconOrder = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/></svg>`;
 
   /** @param {any} p */
   const projectCard = p => {

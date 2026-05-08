@@ -80,7 +80,8 @@ create table public.business_info (
   default_workday_hours       numeric not null default 8,
   default_weekday_hours       jsonb   not null default '[8,8,8,8,8,0,0]'::jsonb,  -- Mon..Sun
   default_packaging_hours     numeric not null default 0,
-  default_contingency_hours   numeric not null default 0,
+  default_contingency_hours   numeric not null default 0,                          -- deprecated 2026-05-07; kept as legacy column, no longer read
+  default_contingency_pct     numeric,                                             -- added 2026-05-07; % of cabinet labour time
   production_queue_start_date date,                                                -- nullable; null = use today
   created_at      timestamptz not null default now(),
   updated_at      timestamptz not null default now()
@@ -454,7 +455,13 @@ create table public.quote_lines (
   labour_hours          numeric,                     -- also: hours field for `labour` lines
   labour_override       boolean not null default false,
   material_cost_override numeric,
-  hardware              jsonb not null default '[]'::jsonb,  -- [{name, qty, price}]
+  hardware              jsonb not null default '[]'::jsonb,  -- [{name, qty, price}] — cabinet-scope hardware (added 2026-05-07: see door_hardware / drawer_hardware below)
+  -- Per-component finish + hardware (added 2026-05-07; cabinet finish stays in `finish`):
+  door_finish           text,                                 -- finish picked in the Doors section
+  drawer_front_finish   text,                                 -- finish picked in the Drawer Fronts section
+  drawer_box_finish     text,                                 -- finish picked in the Drawer Boxes section
+  door_hardware         jsonb default '[]'::jsonb,            -- [{name, qty}] hardware attached to doors
+  drawer_hardware       jsonb default '[]'::jsonb,            -- [{name, qty}] hardware attached to drawers (slides etc.)
   extras                jsonb not null default '[]'::jsonb,  -- [{label, cost}]
   notes                 text,
   created_at            timestamptz not null default now(),
@@ -502,13 +509,21 @@ alter table public.orders
   add column manual_start_date  date,                  -- used when auto_schedule=false
   add column manual_end_date    date,                  -- used when auto_schedule=false
   add column packaging_hours    numeric,               -- null = inherit business_info.default_packaging_hours
-  add column contingency_hours  numeric,               -- null = inherit business_info.default_contingency_hours
+  add column contingency_hours  numeric,               -- deprecated 2026-05-07; legacy column, no longer read
+  add column contingency_pct    numeric,               -- added 2026-05-07; reserved for future per-order override (currently unused; calcCBLine uses cbSettings.contingencyPct globally)
   add column run_over_hours     numeric  not null default 0;
+
+-- Schedule-sidebar manual sort (added 2026-05-07):
+alter table public.orders
+  add column sidebar_order_index integer not null default 0;
+create index orders_sidebar_order_idx on public.orders(user_id, sidebar_order_index);
 
 -- Kept: id, user_id, client_id, project_id, value, status, due, created_at, production_start_date
 ```
 
 **Scheduler fields (added 2026-05-06):** `priority` drives auto-scheduler ordering (higher = first). `auto_schedule = true` (default) means the scheduler computes and writes `production_start_date`; `false` means `manual_start_date` / `manual_end_date` drive the layout instead. `packaging_hours` and `contingency_hours` are per-order overrides of business defaults (NULL inherits). `run_over_hours` is added when a project takes longer than scheduled and pushes subsequent priority groups back. See SPEC.md § 13.
+
+**`sidebar_order_index` (added 2026-05-07):** integer used only when the schedule-sidebar sort selector is set to "Manual" — gap-spaced (`i * 10`) so re-orders only need a single row write. Has no effect on the calendar layout or the auto-scheduler. Indexed by `(user_id, sidebar_order_index)` for fast per-user sorted reads.
 
 > **`value` retained (deviation, 2026-04-29; resolved 2026-05-06).** Originally this section said `drop column value, -- derived from order_lines`. During Phase 7 we found that `order_lines` aggregation only reproduces materials+labour, but `orders.value` is a snapshot of the customer-paid total at conversion time (post-markup, post-tax). Without markup/tax columns on `orders` and with the parent quote potentially editable or deletable, derivation isn't safe. The line-items rewrite (2026-05-06) added `markup` and `tax` columns, so `value` is now recomputed on every save from `order_lines × markup × tax`. The column is retained as a denormalised cache for fast dashboard queries (no aggregation per row). See SPEC.md § 13.
 

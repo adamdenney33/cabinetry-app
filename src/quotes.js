@@ -223,40 +223,9 @@ function orderTotal(o) {
   return o ? (o.value || 0) : 0;
 }
 
-async function createQuote() {
-  /** @param {string} id */
-  const inp = id => /** @type {HTMLInputElement} */ (_byId(id));
-  const client = inp('q-client').value.trim();
-  const project = inp('q-project').value.trim();
-  if (!client || !project) { _toast('Enter client name and project.', 'error'); return; }
-  if (!_requireAuth()) return;
-  // Free-tier cap: count only customer-facing quotes (drafts are auto-generated
-  // by the Cabinet Builder and don't count toward the limit).
-  const customerQuotes = quotes.filter(q => !_isDraftQuote(q));
-  if (!_enforceFreeLimit('quotes', customerQuotes.length)) return;
-  const clientId = await resolveClient(client);
-  const projectId = await resolveProject(project, clientId);
-  /** @type {any} */
-  const row = {
-    user_id: _userId,
-    markup: parseFloat(inp('q-markup').value) || 20,
-    tax: parseFloat(inp('q-tax').value) || 13,
-    status: 'draft', date: new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short'}),
-    notes: inp('q-notes').value.trim(),
-  };
-  if (clientId) row.client_id = clientId;
-  if (projectId) row.project_id = projectId;
-  const { data, error } = await _dbInsertSafe('quotes', row);
-  if (error || !data) { _toast('Could not save quote — ' + (error?.message || JSON.stringify(error)), 'error'); console.error(error); return; }
-  quotes.unshift(data);
-  _toast('Quote created — add line items', 'success');
-  inp('q-client').value = '';
-  inp('q-project').value = '';
-  inp('q-notes').value = '';
-  renderQuoteMain();
-  // Open the new quote so the user can immediately add line items.
-  if (typeof _openQuotePopup === 'function') _openQuotePopup(data.id);
-}
+// Quote creation flow lives in the sidebar editor (createQuoteFromEditor).
+// The legacy createQuote() that read from q-client / q-project sidebar inputs
+// was removed when the sidebar became the editor.
 
 /** @param {number} id */
 async function removeQuote(id) {
@@ -386,7 +355,7 @@ function renderQuoteMain() {
     if (labCount)  pills.push(`<span class="qc-count-pill">Labour: <strong>${labCount}</strong></span>`);
     const countsRow = pills.length ? `<div class="qc-counts">${pills.join('')}</div>` : '';
     return `
-    <div class="quote-card" style="cursor:pointer" onclick="_openQuotePopup(${q.id})">
+    <div class="quote-card" style="cursor:pointer" onclick="loadQuoteIntoSidebar(${q.id})">
       <div class="qc-header">
         <div style="flex:1;min-width:0;overflow:hidden">
           <div class="qc-title">${quoteProject(q)}</div>
@@ -407,9 +376,8 @@ function renderQuoteMain() {
         ${q.status !== 'draft' ? `<button class="btn btn-outline" onclick="revertQuoteToDraft(${q.id})" style="color:var(--muted)">↩ Draft</button>` : ''}
         ${(() => { const hasOrder = q.client_id && q.project_id && orders.some(o => o.client_id === q.client_id && o.project_id === q.project_id); return hasOrder ? `<button class="btn btn-outline" onclick="switchSection('orders');window._orderSearch='${_escHtml(quoteProject(q))}';renderOrdersMain()" style="color:var(--success)">✓ View Order</button>` : `<button class="btn btn-outline" onclick="convertQuoteToOrder(${q.id})">→ Order</button>`; })()}
         <span style="flex:1"></span>
-        <button class="btn btn-outline" onclick="editQuoteInCB(${q.id})">Edit</button>
-        <button class="btn btn-outline" onclick="duplicateQuote(${q.id})">Copy</button>
-        <button class="btn btn-outline" onclick="printQuote(${q.id},'print')">Print</button>
+        <button class="btn btn-outline" onclick="duplicateQuote(${q.id})">Duplicate</button>
+        <button class="btn btn-outline" style="color:var(--danger)" onclick="_confirm('Delete quote for <strong>${_escHtml(quoteClient(q))}</strong>?',()=>removeQuote(${q.id}))">Delete</button>
         <button class="btn btn-outline" onclick="printQuote(${q.id},'pdf')">PDF</button>
       </div>
     </div>`;
@@ -648,14 +616,21 @@ async function _saveNewProjectPopup(targetInputId) {
   if (!name) { _toast('Project name is required', 'error'); return; }
   const clientName = _popupVal('pnp-client') || '';
   const isCutList = targetInputId === 'cl-project';
+  const isCabBuilder = targetInputId === 'cb-project';
+  const isQuoteEditor = targetInputId === 'qe-project-picker';
+  const isOrderEditor = targetInputId === 'oe-project-picker';
   // Check for duplicate
   const dupe = projects.find(p => p.name.toLowerCase() === name.toLowerCase());
   if (dupe) {
-    /** @type {HTMLInputElement} */ (_byId(targetInputId)).value = name;
+    const tInput = _byId(targetInputId);
+    if (tInput) tInput.value = name;
     const clientInputId = targetInputId.replace('-project', '-client');
     const ci = _byId(clientInputId);
     if (ci && clientName && !ci.value) ci.value = clientName;
     if (isCutList) _setClLoadedProject(dupe.id, dupe.name);
+    if (isCabBuilder) _setCbLoadedProject(dupe.id, dupe.name);
+    if (isQuoteEditor) _qPickProject(dupe.id);
+    if (isOrderEditor && typeof _oPickProject === 'function') _oPickProject(dupe.id);
     _closePopup();
     _toast('Project already exists — selected', 'info');
     return;
@@ -671,12 +646,16 @@ async function _saveNewProjectPopup(targetInputId) {
   const { data, error } = await _db('projects').insert(insertBody).select().single();
   if (error || !data) { _toast('Could not save project — ' + (error?.message || ''), 'error'); console.error(error); return; }
   projects.push(data);
-  /** @type {HTMLInputElement} */ (_byId(targetInputId)).value = name;
-  // Also fill client input
+  const tInput2 = _byId(targetInputId);
+  if (tInput2) tInput2.value = name;
+  // Also fill client input (for sidebars that have one)
   const clientInputId = targetInputId.replace('-project', '-client');
   const ci2 = _byId(clientInputId);
   if (ci2 && clientName && !ci2.value) ci2.value = clientName;
   if (isCutList) _setClLoadedProject(data.id, data.name);
+  if (isCabBuilder) _setCbLoadedProject(data.id, data.name);
+  if (isQuoteEditor) _qPickProject(data.id);
+  if (isOrderEditor && typeof _oPickProject === 'function') _oPickProject(data.id);
   _closePopup();
   renderProjectsMain();
   _toast(`Project "${name}" added`, 'success');
@@ -691,6 +670,19 @@ function _setClLoadedProject(id, name) {
   _clCurrentProjectId = id;
   _clCurrentProjectName = name;
   if (typeof _setClDirty === 'function') _setClDirty(false);
+  if (typeof _clLoadProjectList === 'function') _clLoadProjectList();
+}
+
+// Cabinet Builder counterpart — wires the new project into _cbCurrentProjectId
+// so the dirty-pill tracker recognises the project and subsequent saves go
+// straight to its draft quote.
+/** @param {number} id @param {string} name */
+function _setCbLoadedProject(id, name) {
+  if (typeof _cbCurrentProjectId === 'undefined') return;
+  _cbCurrentProjectId = id;
+  _cbCurrentProjectName = name;
+  localStorage.setItem('pc_cq_project_name', name);
+  if (typeof _setCbDirty === 'function') _setCbDirty(false);
   if (typeof _clLoadProjectList === 'function') _clLoadProjectList();
 }
 
@@ -1012,4 +1004,337 @@ async function updateQuoteField(id, field, val) {
   /** @type {any} */ (q)[field] = v;
   await _db('quotes').update(/** @type {any} */ ({ [field]: v })).eq('id', id);
   renderQuoteMain();
+}
+
+// ══════════════════════════════════════════
+// QUOTE SIDEBAR EDITOR
+// (replaces the former popup — sidebar IS the editor now)
+// ══════════════════════════════════════════
+
+const _Q_ICON_CABINET = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="12" y1="3" x2="12" y2="12"/></svg>';
+const _Q_ICON_ITEM = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>';
+const _Q_ICON_LABOUR = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>';
+
+/** Top-level render for the Quote sidebar editor.
+ *  Reads _qpState; renders empty (project picker), in-progress (no row yet),
+ *  or active-edit (existing quote loaded). */
+function renderQuoteEditor() {
+  const host = document.getElementById('quote-editor-host');
+  if (!host) return;
+
+  const q = _qpState.quoteId ? quotes.find(qx => qx.id === _qpState.quoteId) : null;
+  const projectId = _qpState.projectId || (q ? q.project_id : null);
+  const project = projectId ? projects.find(p => p.id === projectId) : null;
+  const projectName = q ? quoteProject(q) : (project ? project.name : '');
+  const clientName = q ? quoteClient(q) : (project && project.client_id ? (clients.find(c => c.id === project.client_id) || {}).name || '' : '');
+
+  // ── Empty state: project picker only ──
+  if (!q && !project) {
+    host.innerHTML = `
+      <div class="form-section">
+        <div class="form-section-title">New Quote</div>
+        <div class="form-group" style="position:relative;margin-bottom:8px">
+          <label>Project</label>
+          <div class="smart-input-wrap">
+            <input type="text" id="qe-project-picker" placeholder="Search or add project..." autocomplete="off"
+              oninput="_smartQProjectSuggest(this,'qe-project-suggest')"
+              onfocus="_smartQProjectSuggest(this,'qe-project-suggest')"
+              onblur="setTimeout(()=>{const b=document.getElementById('qe-project-suggest'); if(b)b.style.display='none'},150)">
+            <div class="smart-input-add" onclick="_openNewProjectPopup('qe-project-picker')" title="New project">+</div>
+          </div>
+          <div id="qe-project-suggest" class="client-suggest-list" style="display:none"></div>
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-top:8px;padding:8px 10px;background:var(--surface2);border-radius:6px;line-height:1.5">
+          Pick or create a project to start a new quote. The client is set on the project.
+        </div>
+      </div>`;
+    return;
+  }
+
+  // ── Active editor (project picked, with or without saved row) ──
+  const status = q ? q.status : 'draft';
+  const statusBadge = status === 'approved' ? 'badge-green' : status === 'sent' ? 'badge-blue' : 'badge-gray';
+  const statusLabel = status === 'approved' ? 'Approved' : status === 'sent' ? 'Sent' : 'Draft';
+  const isExisting = !!q;
+  const dirtyPill = _qpState.dirty ? '<span class="cl-unsaved-pill">unsaved</span>' : '';
+  const hasOrder = q && q.client_id && q.project_id && orders.some(o => o.client_id === q.client_id && o.project_id === q.project_id);
+
+  let cabCount=0, itemCount=0, labCount=0;
+  for (const r of _qpState.lines) {
+    const k = r.line_kind || 'cabinet';
+    if (k === 'cabinet') cabCount++;
+    else if (k === 'item') itemCount++;
+    else if (k === 'labour') labCount++;
+  }
+
+  const dateStr = q ? q.date : new Date().toLocaleDateString('en-GB', { day:'numeric', month:'short' });
+
+  host.innerHTML = `<div class="form-section editor-shell">
+    <div class="editor-header">
+      <span class="editor-title">${isExisting ? 'Edit Quote' : 'New Quote'}</span>
+      ${isExisting ? `<span class="badge ${statusBadge}" style="font-size:10px">${statusLabel}</span>` : ''}
+      <span style="flex:1"></span>
+      <button class="btn-link" onclick="_qChangeProject()" title="Pick a different project">change</button>
+    </div>
+
+    <div class="cl-current-project editor-project-chip">
+      <span class="cl-cp-label">Editing:</span>
+      <span class="cl-cp-name">${_escHtml(projectName || 'Untitled project')}</span>
+      <span id="qe-dirty-pill">${dirtyPill}</span>
+    </div>
+    <div class="editor-client-line">${clientName ? 'Client: ' + _escHtml(clientName) : '<span style="color:var(--muted);font-style:italic">No client on this project</span>'}</div>
+
+    <div class="editor-section">
+      <div class="pf-row">
+        <div class="pf"><label class="pf-label">Status</label>
+          <select class="pf-select" id="pq-status" oninput="_qMarkDirty()">
+            <option value="draft" ${status==='draft'?'selected':''}>Draft</option>
+            <option value="sent" ${status==='sent'?'selected':''}>Sent</option>
+            <option value="approved" ${status==='approved'?'selected':''}>Approved</option>
+          </select>
+        </div>
+        <div class="pf"><label class="pf-label">Quote #</label>
+          <input class="pf-input" id="pq-quote-number" value="${_escHtml((q && q.quote_number)||'')}" placeholder="${q ? 'Q-'+String(q.id).padStart(4,'0') : 'auto'}" oninput="_qMarkDirty()">
+        </div>
+        <div class="pf"><label class="pf-label">Date</label><div class="pf-static">${dateStr}</div></div>
+      </div>
+    </div>
+
+    <div class="editor-section">
+      <div class="editor-section-title">Line Items</div>
+      <div class="editor-add-tiles">
+        <div class="editor-add-tile" onclick="_qAddLine('cabinet')" title="Add cabinet">
+          <span class="tile-icon">${_Q_ICON_CABINET}</span>
+          <span class="tile-label">Cabinets</span>
+          <span class="tile-count">${cabCount}</span>
+          <span class="tile-add">+</span>
+        </div>
+        <div class="editor-add-tile" onclick="_qAddLine('item')" title="Add item">
+          <span class="tile-icon">${_Q_ICON_ITEM}</span>
+          <span class="tile-label">Items</span>
+          <span class="tile-count">${itemCount}</span>
+          <span class="tile-add">+</span>
+        </div>
+        <div class="editor-add-tile" onclick="_qAddLine('labour')" title="Add labour">
+          <span class="tile-icon">${_Q_ICON_LABOUR}</span>
+          <span class="tile-label">Labour</span>
+          <span class="tile-count">${labCount}</span>
+          <span class="tile-add">+</span>
+        </div>
+      </div>
+      <div id="pq-lines" class="li-list"></div>
+    </div>
+
+    <div class="editor-section">
+      <div class="editor-section-title">Pricing</div>
+      <div class="pf-row">
+        <div class="pf"><label class="pf-label">Markup %</label><input class="pf-input" type="number" id="pq-markup" value="${(q && q.markup) ?? 20}" oninput="_renderQuoteLineTotals();_qMarkDirty()"></div>
+        <div class="pf"><label class="pf-label">Tax %</label><input class="pf-input" type="number" id="pq-tax" value="${(q && q.tax) ?? 13}" oninput="_renderQuoteLineTotals();_qMarkDirty()"></div>
+      </div>
+    </div>
+
+    <div class="editor-section">
+      <div class="editor-section-title">Notes</div>
+      <textarea class="pf-textarea" id="pq-notes" rows="3" placeholder="Customer-facing notes shown on the PDF..." oninput="_qMarkDirty()">${_escHtml((q && q.notes)||'')}</textarea>
+    </div>
+
+    <div class="pf-totals" id="pq-totals" style="margin-top:10px"></div>
+
+    <div class="editor-footer">
+      ${isExisting ? `<button class="btn btn-outline" style="color:var(--danger)" onclick="_confirm('Delete quote?',()=>{removeQuote(${q.id});_qClearEditor()})">Delete</button>` : ''}
+      <span style="flex:1"></span>
+      ${isExisting ? `<button class="btn btn-outline" onclick="printQuote(${q.id},'pdf')">PDF</button>` : ''}
+      ${isExisting ? (hasOrder
+        ? `<button class="btn btn-outline" style="color:var(--success)" onclick="switchSection('orders');window._orderSearch='${_escHtml(projectName).replace(/'/g,"\\'")}';renderOrdersMain()">✓ View Order</button>`
+        : `<button class="btn btn-outline" onclick="convertQuoteToOrder(${q.id})">→ Order</button>`) : ''}
+      <button class="btn btn-primary" onclick="${isExisting ? 'saveQuoteEditor()' : 'createQuoteFromEditor()'}">${isExisting ? 'Save' : '+ Create Quote'}</button>
+    </div>
+  </div>`;
+
+  // After render, populate line list and totals if there's anything to show.
+  if (q || _qpState.lines.length > 0) {
+    if (typeof _renderQuoteLines === 'function') _renderQuoteLines();
+    if (typeof _renderQuoteLineTotals === 'function') _renderQuoteLineTotals();
+  }
+}
+
+/** Update the unsaved pill in place without re-rendering the whole editor. */
+function _qMarkDirty() {
+  if (_qpState.dirty) return;
+  _qpState.dirty = true;
+  const pill = document.getElementById('qe-dirty-pill');
+  if (pill) pill.innerHTML = '<span class="cl-unsaved-pill">unsaved</span>';
+}
+
+/** Reset editor to empty state. */
+function _qClearEditor() {
+  _qpState = { quoteId: null, lines: [], dirty: false, projectId: null };
+  renderQuoteEditor();
+}
+
+/** Switch project mid-edit (with discard prompt if dirty). */
+function _qChangeProject() {
+  if (_qpState.dirty) {
+    if (!confirm('Discard unsaved changes?')) return;
+  }
+  _qClearEditor();
+}
+
+/** Load an existing quote into the sidebar editor.
+ *  Replaces the former _openQuotePopup. Hydrates lines from cache or DB.
+ *  @param {number} id */
+async function loadQuoteIntoSidebar(id) {
+  const q = quotes.find(qx => qx.id === id);
+  if (!q) return;
+  if (_qpState.dirty && _qpState.quoteId !== id) {
+    if (!confirm('Discard unsaved changes?')) return;
+  }
+  _qpState = {
+    quoteId: id,
+    lines: Array.isArray(q._lines) ? q._lines.map(/** @param {any} r */ r => ({ ...r })) : [],
+    dirty: false,
+    projectId: q.project_id || null,
+  };
+  renderQuoteEditor();
+  if (!Array.isArray(q._lines)) {
+    const { data } = await _db('quote_lines').select('*').eq('quote_id', id).order('position');
+    if (_qpState.quoteId !== id) return;
+    if (data) {
+      q._lines = data.map(/** @param {any} r */ r => ({ ...r }));
+      _qpState.lines = data.map(/** @param {any} r */ r => ({ ...r }));
+      renderQuoteEditor();
+    }
+  }
+}
+
+/** Smart-suggest for project picker in the empty-state editor.
+ *  Mirrors _smartCBProjectSuggest from cabinet-library.js.
+ *  @param {HTMLInputElement} input @param {string} boxId */
+function _smartQProjectSuggest(input, boxId) {
+  const val = input.value.toLowerCase().trim();
+  const box = _byId(boxId);
+  if (!box) return;
+  if (typeof _posSuggest === 'function') _posSuggest(input, box);
+  const matches = projects
+    .filter(p => !val || p.name.toLowerCase().includes(val))
+    .slice(0, 8);
+  /** @param {string} s */
+  const esc = s => _escHtml(s).replace(/'/g, '&#39;');
+  let html = '';
+  for (const p of matches) {
+    const clientName = p.client_id ? (clients.find(c => c.id === p.client_id) || {}).name || '' : '';
+    html += `<div class="client-suggest-item" onmousedown="_qPickProject(${p.id})">
+      <span class="csi-icon">${_Q_ICON_CABINET}</span>
+      <span class="csi-name">${esc(p.name)}</span>
+      ${clientName ? `<span class="csi-meta">${esc(clientName)}</span>` : ''}
+    </div>`;
+  }
+  if (val && !matches.some(p => p.name.toLowerCase() === val)) {
+    html += `<div class="client-suggest-item client-suggest-add" onmousedown="_openNewProjectPopup('qe-project-picker')">
+      <span class="csi-icon">+</span>
+      <span class="csi-name">Create project "${esc(input.value.trim())}"</span>
+    </div>`;
+  }
+  if (!html) {
+    html = '<div class="client-suggest-empty">No projects yet — click + to create one.</div>';
+  }
+  box.innerHTML = html;
+  box.style.display = 'block';
+}
+
+/** @param {number} projectId */
+function _qPickProject(projectId) {
+  const p = projects.find(pp => pp.id === projectId);
+  if (!p) return;
+  _qpState = { quoteId: null, lines: [], dirty: false, projectId: p.id };
+  renderQuoteEditor();
+}
+
+/** Add a line to the current quote. Auto-creates the quote row if it doesn't exist.
+ *  @param {'cabinet'|'item'|'labour'} kind */
+async function _qAddLine(kind) {
+  if (!_qpState.quoteId) {
+    if (!_qpState.projectId) { _toast('Pick or create a project first.', 'error'); return; }
+    const ok = await createQuoteFromEditor(/* silent */ true);
+    if (!ok) return;
+  }
+  if (kind === 'cabinet') {
+    if (typeof _lineEditCabinet === 'function') _lineEditCabinet(/** @type {number} */ (_qpState.quoteId));
+    return;
+  }
+  if (typeof _lineAdd === 'function') _lineAdd(kind);
+  // Re-render editor so tile counts update
+  renderQuoteEditor();
+}
+
+/** Create a new quote row from current editor state. Returns true on success.
+ *  @param {boolean} [silent] suppress toast (used when auto-creating from line add) */
+async function createQuoteFromEditor(silent) {
+  if (!_userId) { _toast('Sign in first.', 'error'); return false; }
+  if (!_qpState.projectId) { _toast('Pick a project first.', 'error'); return false; }
+  const customerQuotes = quotes.filter(q => !_isDraftQuote(q));
+  if (!_enforceFreeLimit('quotes', customerQuotes.length)) return false;
+  const project = projects.find(p => p.id === _qpState.projectId);
+  if (!project) { _toast('Project not found.', 'error'); return false; }
+  /** @type {any} */
+  const row = {
+    user_id: _userId,
+    project_id: project.id,
+    status: _popupVal('pq-status') || 'draft',
+    notes: _popupVal('pq-notes') || '',
+    markup: parseFloat(_popupVal('pq-markup')) || 20,
+    tax: parseFloat(_popupVal('pq-tax')) || 13,
+    quote_number: _popupVal('pq-quote-number') || null,
+    date: new Date().toLocaleDateString('en-GB', { day:'numeric', month:'short' }),
+  };
+  if (project.client_id) row.client_id = project.client_id;
+  const { data, error } = await _dbInsertSafe('quotes', row);
+  if (error || !data) { _toast('Could not create quote — ' + ((error && error.message) || ''), 'error'); return false; }
+  quotes.unshift(data);
+  _qpState.quoteId = data.id;
+  _qpState.dirty = false;
+  renderQuoteMain();
+  renderQuoteEditor();
+  if (!silent) _toast('Quote created', 'success');
+  return true;
+}
+
+/** Save current editor state for the loaded quote. */
+async function saveQuoteEditor() {
+  if (!_qpState.quoteId) return createQuoteFromEditor();
+  const id = /** @type {number} */ (_qpState.quoteId);
+  const q = quotes.find(qx => qx.id === id);
+  if (!q) return;
+  const status = _popupVal('pq-status');
+  const notes = _popupVal('pq-notes');
+  const quote_number = _popupVal('pq-quote-number') || null;
+  const markup = parseFloat(_popupVal('pq-markup')) || 0;
+  const tax = parseFloat(_popupVal('pq-tax')) || 0;
+  /** @type {any} */
+  const update = { status, notes, quote_number, markup, tax, updated_at: new Date().toISOString() };
+  Object.assign(q, update);
+  // Flush pending line edits in parallel
+  if (typeof _lineUpsertTimers !== 'undefined') {
+    for (const t of _lineUpsertTimers.values()) clearTimeout(t);
+    _lineUpsertTimers.clear();
+  }
+  /** @type {Promise<any>[]} */
+  const writes = [/** @type {any} */ (_db('quotes').update(update).eq('id', id))];
+  for (const row of _qpState.lines) {
+    if (!row.id) continue;
+    /** @type {any} */
+    const u = {
+      name: row.name || '',
+      qty: row.qty || 0,
+      unit_price: row.unit_price ?? null,
+      labour_hours: row.labour_hours ?? null,
+    };
+    writes.push(/** @type {any} */ (_db('quote_lines').update(u).eq('id', row.id)));
+  }
+  await Promise.all(writes);
+  await _refreshQuoteTotals(id);
+  _qpState.dirty = false;
+  renderQuoteEditor();
+  renderQuoteMain();
+  _toast('Quote saved', 'success');
 }

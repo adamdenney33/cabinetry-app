@@ -18,6 +18,24 @@ function _typeRefHours(list, name) {
   return (list.find(t => t.name === name) || list[0])?.refHours ?? 0;
 }
 
+// Look up a finish's per-m² price by name. Stock items take precedence over
+// cbSettings.finishes (so user-edited stock always wins). Returns 0 for 'None'
+// or unknown names.
+/** @param {string} finishName */
+function _finishPricePerM2(finishName) {
+  if (!finishName || finishName === 'None') return 0;
+  const s = stockItems.find(it => it.name === finishName && it.category === 'Finishing');
+  if (s) return s.cost ?? 0;
+  return (cbSettings.finishes || []).find(/** @param {any} f */ f => f.name === finishName)?.price || 0;
+}
+
+// Contingency multiplier applied to autoLabour BEFORE conversion to cost.
+// Driven by cbSettings.contingencyPct (% of labour time), so both labourHrs
+// and labourCost reflect it.
+function _contingencyMult() {
+  return 1 + (cbSettings.contingencyPct || 0) / 100;
+}
+
 // Per-section cost breakdown for the editor's live displays.
 // Each section's total = material (with materialMarkup) + labour (× labourRate)
 //                       + hardware specific to that section.
@@ -46,58 +64,71 @@ function calcCBSections(line) {
     return h ? h.price : 0;
   }
 
-  // ── Cabinet (carcass body + back + finish + edging + base + construction) ──
+  const cont = _contingencyMult();
+  const front = W * H;
+
+  // ── Cabinet (carcass body + back + carcass finish + edging + base + construction) ──
   let cabinetMat = 2 * H * D * mp(line.material);             // sides
   cabinetMat += 2 * innerW * D * mp(line.material);            // top + bottom
   cabinetMat += W * H * mp(line.backMat);                      // back
-  const surfArea = 2*H*D + 2*innerW*D + W*H;
-  const _fs = stockItems.find(s => s.name === line.finish && s.category === 'Finishing');
-  const finishPerM2 = _fs ? (_fs.cost ?? 0) : ((cbSettings.finishes||[]).find(/** @param {any} f */ f => f.name === line.finish)?.price || 0);
-  cabinetMat += surfArea * finishPerM2;                        // finish
+  const carcassSurfArea = 2*H*D + 2*innerW*D + W*H;
+  cabinetMat += carcassSurfArea * _finishPricePerM2(line.finish);  // carcass finish
   const edgingLength = 2*H + 2*innerW + (line.shelves + line.adjShelves) * innerW;
   cabinetMat += edgingLength * (cbSettings.edgingPerM || 0);   // edge banding
   cabinetMat += (cbSettings.baseTypes||[]).find(/** @param {any} b */ b => b.name === line.baseType)?.price || 0;
-  const frontArea = W * H;
   const constPrice = (cbSettings.constructions||[]).find(/** @param {any} c */ c => c.name === line.construction)?.price || 0;
-  cabinetMat += constPrice * frontArea;
+  cabinetMat += constPrice * front;
   cabinetMat *= matMarkupMult;
   const carcassRefH = _typeRefHours(cbSettings.carcassTypes, line.carcassType) || lt.carcassRefHours || 0.4;
   const carcassHrs = carcassRefH * Math.pow((W*H*D) / CARCASS_REF_VOLUME, LABOUR_EXPONENT);
-  const cabinetLabour = (carcassHrs + surfArea * (lt.finishPerM2 || 0.5)) * labourRate;
+  const cabinetLabour = (carcassHrs + carcassSurfArea * (lt.finishPerM2 || 0.5)) * cont * labourRate;
   const cabinet = cabinetMat + cabinetLabour;
 
-  // ── Doors (material + labour + auto hinges) ──
+  // ── Doors (material + door finish + labour) ──
   // doorPct = % of FRONT FACE AREA. Door labour scales by power-law on total area.
-  const front = W * H;
   let doors = 0;
+  let doorTotalArea = 0;
   if (line.doors > 0) {
-    const doorTotalArea = (line.doorPct || 0) / 100 * front;
-    const doorMat = doorTotalArea * mp(line.doorMat || line.material) * matMarkupMult;
+    doorTotalArea = (line.doorPct || 0) / 100 * front;
+    let doorMat = doorTotalArea * mp(line.doorMat || line.material);
+    doorMat += doorTotalArea * _finishPricePerM2(line.doorFinish || line.finish);
+    doorMat *= matMarkupMult;
     const doorRefH = _typeRefHours(cbSettings.doorTypes, line.doorType) || lt.door || 0.4;
     const doorHrs = doorTotalArea > 0 ? doorRefH * Math.pow(doorTotalArea / DOOR_REF_AREA, LABOUR_EXPONENT) : 0;
-    const doorLabour = doorHrs * labourRate;
-    const doorHw = line.doors * 2 * 6; // 2 hinges per door @ £6 each
-    doors = doorMat + doorLabour + doorHw;
+    const doorLabour = doorHrs * cont * labourRate;
+    doors = doorMat + doorLabour;
   }
 
-  // ── Drawers (front + box material + labour + auto slides) ──
-  // drawerPct = % of FRONT FACE AREA. Front labour scales on m², box labour on m³.
-  let drawers = 0;
+  // ── Drawer Fronts (material + finish + labour) ──
+  let drawerFronts = 0;
+  let drawerFrontTotalArea = 0;
+  let drwH = 0;
   if (line.drawers > 0) {
-    const drawerFrontTotalArea = (line.drawerPct || 0) / 100 * front;
-    const drwH = drawerFrontTotalArea / line.drawers / Math.max(0.001, innerW);
-    const drwFront = drawerFrontTotalArea * mp(line.drawerFrontMat || line.material);
-    const drwBox = line.drawers * (2 * D * drwH + 2 * innerW * drwH + innerW * D) * mp(line.drawerInnerMat || line.backMat);
-    const drwMat = (drwFront + drwBox) * matMarkupMult;
+    drawerFrontTotalArea = (line.drawerPct || 0) / 100 * front;
+    drwH = drawerFrontTotalArea / line.drawers / Math.max(0.001, innerW);
+    let frontMat = drawerFrontTotalArea * mp(line.drawerFrontMat || line.material);
+    frontMat += drawerFrontTotalArea * _finishPricePerM2(line.drawerFrontFinish || line.finish);
+    frontMat *= matMarkupMult;
     const drwFrontRefH = _typeRefHours(cbSettings.drawerFrontTypes, line.drawerFrontType) || 0.3;
-    const drwBoxRefH = _typeRefHours(cbSettings.drawerBoxTypes, line.drawerBoxType) || 0.8;
     const drwFrontHrs = drawerFrontTotalArea > 0 ? drwFrontRefH * Math.pow(drawerFrontTotalArea / DRAWER_FRONT_REF_AREA, LABOUR_EXPONENT) : 0;
+    drawerFronts = frontMat + drwFrontHrs * cont * labourRate;
+  }
+
+  // ── Drawer Boxes (material + finish + labour) ──
+  let drawerBoxes = 0;
+  if (line.drawers > 0) {
+    const boxSurfArea = line.drawers * (2 * D * drwH + 2 * innerW * drwH + innerW * D);
+    let boxMat = boxSurfArea * mp(line.drawerInnerMat || line.backMat);
+    boxMat += boxSurfArea * _finishPricePerM2(line.drawerBoxFinish || line.finish);
+    boxMat *= matMarkupMult;
+    const drwBoxRefH = _typeRefHours(cbSettings.drawerBoxTypes, line.drawerBoxType) || 0.8;
     const drwBoxVol = innerW * D * drwH * line.drawers;
     const drwBoxHrs = drwBoxVol > 0 ? drwBoxRefH * Math.pow(drwBoxVol / DRAWER_BOX_REF_VOLUME, LABOUR_EXPONENT) : 0;
-    const drwLabour = (drwFrontHrs + drwBoxHrs) * labourRate;
-    const drwHw = line.drawers * 24; // soft-close slide pair
-    drawers = drwMat + drwLabour + drwHw;
+    drawerBoxes = boxMat + drwBoxHrs * cont * labourRate;
   }
+
+  // Combined drawers (legacy key, sum of fronts + boxes)
+  const drawers = drawerFronts + drawerBoxes;
 
   // ── Shelves & Partitions (material + labour for all shelf/partition/end-panel kinds) ──
   const shelfArea = innerW * (D - T);
@@ -110,17 +141,21 @@ function calcCBSections(line) {
     + (line.looseShelves || 0)* (lt.looseShelf || 0.2)
     + (line.partitions || 0)  * (lt.partition || 0.5)
     + (line.endPanels || 0)   * (lt.endPanel || 0.3)
-  ) * labourRate;
+  ) * cont * labourRate;
   const shelves = shelvesMat + shelvesLabour;
 
-  // ── Hardware (manual items only — auto hinges/slides belong to Doors/Drawers) ──
-  let hardware = 0;
-  for (const hw of line.hwItems) hardware += hwp(hw.name) * hw.qty;
+  // ── Hardware (per-component manual items — no auto hinges/slides) ──
+  /** @param {any[]} list */
+  const hwSum = (list) => (Array.isArray(list) ? list : []).reduce((s, hw) => s + hwp(hw.name) * hw.qty, 0);
+  const cabinetHardware = hwSum(line.hwItems);
+  const doorHardware    = hwSum(line.doorHwItems);
+  const drawerHardware  = hwSum(line.drawerHwItems);
+  const hardware = cabinetHardware + doorHardware + drawerHardware;
 
   // ── Extras (custom add-ons; markup applies since they're material-side) ──
   const extras = (line.extras || []).reduce(/** @param {number} s @param {any} e */ (s, e) => s + (parseFloat(e.cost) || 0), 0) * matMarkupMult;
 
-  return { cabinet, doors, drawers, shelves, hardware, extras };
+  return { cabinet, doors, drawers, drawerFronts, drawerBoxes, shelves, hardware, cabinetHardware, doorHardware, drawerHardware, extras };
 }
 
 /** @param {any} line */
@@ -158,10 +193,12 @@ function calcCBLine(line) {
   const drawerPct = (line.drawerPct || 0) / 100;
   const drawerFrontTotalArea = drawerPct * front;
   let drwH = 0;
+  let drawerBoxSurfArea = 0;
   if (line.drawers > 0) {
     drwH = drawerFrontTotalArea / line.drawers / Math.max(0.001, innerW);
     matCost += drawerFrontTotalArea * mp(line.drawerFrontMat || line.material);
-    matCost += line.drawers * (2 * D * drwH + 2 * innerW * drwH + innerW * D) * mp(line.drawerInnerMat || line.backMat);
+    drawerBoxSurfArea = line.drawers * (2 * D * drwH + 2 * innerW * drwH + innerW * D);
+    matCost += drawerBoxSurfArea * mp(line.drawerInnerMat || line.backMat);
   }
   // Shelves
   const shelfArea = innerW * (D - T);
@@ -169,12 +206,12 @@ function calcCBLine(line) {
   // End panels
   matCost += (line.endPanels || 0) * H * D * mp(line.material);
 
-  // Finishing cost
-  const allSurface = 2*H*D + 2*innerW*D + W*H;
-  const _fs = stockItems.find(s => s.name === line.finish && s.category === 'Finishing');
-  const finishPricePerM2 = _fs ? (_fs.cost ?? 0) : ((cbSettings.finishes||[]).find(/** @param {any} f */ f => f.name === line.finish)?.price || 0);
-  const finishCost = allSurface * finishPricePerM2;
-  matCost += finishCost;
+  // Finishing cost — per-component, fall back to line.finish for legacy data.
+  const carcassSurfArea = 2*H*D + 2*innerW*D + W*H;
+  matCost += carcassSurfArea       * _finishPricePerM2(line.finish);
+  if (line.doors > 0)   matCost += doorTotalArea         * _finishPricePerM2(line.doorFinish        || line.finish);
+  if (line.drawers > 0) matCost += drawerFrontTotalArea  * _finishPricePerM2(line.drawerFrontFinish || line.finish);
+  if (line.drawers > 0) matCost += drawerBoxSurfArea     * _finishPricePerM2(line.drawerBoxFinish   || line.finish);
 
   // Extras cost
   const extrasCost = (line.extras||[]).reduce(/** @param {number} s @param {any} e */ (s, e) => s + (parseFloat(e.cost)||0), 0);
@@ -229,16 +266,18 @@ function calcCBLine(line) {
   const surfaceArea = 2*H*D + 2*innerW*D + W*H;
   autoLabour += surfaceArea * (lt.finishPerM2 || 0.5);
 
+  // Contingency: multiplies the auto-computed labour so both labourHrs AND
+  // labourCost reflect the user's chosen %. User-overridden labourHrs are
+  // taken as-is (the user already accounts for contingency themselves).
+  autoLabour *= _contingencyMult();
+
   const labourHrs = line.labourOverride ? line.labourHrs : autoLabour;
   const labourCost = labourHrs * cbSettings.labourRate;
 
-  // Hardware
-  let hwCost = 0;
-  if (line.doors > 0) hwCost += line.doors * 2 * 6;
-  if (line.drawers > 0) hwCost += line.drawers * 24;
-  for (const hw of line.hwItems) {
-    hwCost += hwp(hw.name) * hw.qty;
-  }
+  // Hardware — sum across cabinet/door/drawer scopes. No auto hinges/slides.
+  /** @param {any[]} list */
+  const hwSum = (list) => (Array.isArray(list) ? list : []).reduce((s, hw) => s + hwp(hw.name) * hw.qty, 0);
+  const hwCost = hwSum(line.hwItems) + hwSum(line.doorHwItems) + hwSum(line.drawerHwItems);
 
   const lineSubtotal = (finalMatCost + labourCost + hwCost) * line.qty;
 

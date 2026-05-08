@@ -22,6 +22,28 @@ Companion docs: `SPEC.md` (refactor history), `SCHEMA.md` (DB schema),
 
 ## Active Work
 
+### Cabinet Builder UX & Pricing Refactor (Batch 1) ✅ Done 2026-05-07
+
+Eight tightly-scoped UX/pricing changes to the Cabinet Builder. Contingency
+became a per-cabinet % of labour time (replaces the legacy global `contingencyHours`),
+flowing through `calcCBLine` so it scales both labour hours AND price; per-order
+contingency overrides removed from the Order popup and from the schedule breakdown
+(now an "incl. N% contingency" tag on the Cabinet Labour line). Standalone
+Finish + Hardware sections in the cabinet editor removed in favour of per-component
+pickers — cabinet/doors/drawer-fronts/drawer-boxes each get their own finish;
+cabinet/doors/drawer-boxes each get their own multi-item hardware list with
+quantities. The hardcoded auto-hardware (2 hinges/door + 1 slide-pair/drawer)
+is gone. Drawers section split into Drawer Fronts + Drawer Boxes for visual
+parity with the Cabinet section (matching the existing per-type power-law math).
+"Results" tab → "Project". Add to Library / Add to Project buttons now switch
+the main view to the corresponding tab. Cabinet qty stepper removed from the
+sidebar (qty already lives in the Project view's cabinet card). Packaging Time
+moved from Core Rates to Other Labour Times. Migrations: 5 cols on `quote_lines`
+(`door_finish` / `drawer_front_finish` / `drawer_box_finish` / `door_hardware`
+/ `drawer_hardware`), 1 col on `orders` (`contingency_pct`, reserved for future
+per-order override), 1 col on `business_info` (`default_contingency_pct`).
+Detail in SPEC.md § 13 (entry dated 2026-05-07).
+
 ### Quotes & Orders — Real Line Items ✅ Done 2026-05-06
 
 Quotes and orders previously edited a free-form notes textarea plus aggregate
