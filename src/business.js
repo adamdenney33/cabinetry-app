@@ -22,6 +22,10 @@ function saveBizInfo() {
     abn:     inputVal('biz-abn')     || '',
   };
   localStorage.setItem('pc_biz', JSON.stringify(payload));
+  // Strategy C: surface dirty hint only when there is a user to sync to.
+  // (When not signed in, the localStorage write is the save and there's
+  // nothing pending — showing 'unsaved' would lie.)
+  if (_userId && typeof _setSaveStatus === 'function') _setSaveStatus('business', 'dirty');
   // Phase 3.3: debounced dual-write to business_info table
   _syncBizInfoToDB(payload);
 }
@@ -34,6 +38,10 @@ function _syncBizInfoToDB(payload) {
   if (_bizInfoSyncTimer) clearTimeout(_bizInfoSyncTimer);
   const uid = _userId;
   _bizInfoSyncTimer = setTimeout(async () => {
+    /** @type {any} */ const w = window;
+    if (!w._saveInFlight) w._saveInFlight = new Set();
+    w._saveInFlight.add('business');
+    if (typeof _setSaveStatus === 'function') _setSaveStatus('business', 'saving');
     const fields = {
       user_id: uid,
       name: payload.name || '',
@@ -44,13 +52,18 @@ function _syncBizInfoToDB(payload) {
       unit_format: JSON.stringify(window.unitFormat),
       updated_at: new Date().toISOString()
     };
+    let failed = false;
     const { data: existing } = await _db('business_info').select('id').eq('user_id', uid);
     if (existing && existing.length > 0) {
       const { error } = await _db('business_info').update(fields).eq('user_id', uid);
-      if (error) console.warn('[biz_info] DB sync failed:', error.message);
+      if (error) { console.warn('[biz_info] DB sync failed:', error.message); failed = true; }
     } else {
       const { error } = await _db('business_info').insert([fields]);
-      if (error) console.warn('[biz_info] DB sync failed:', error.message);
+      if (error) { console.warn('[biz_info] DB sync failed:', error.message); failed = true; }
+    }
+    w._saveInFlight.delete('business');
+    if (typeof _setSaveStatus === 'function') {
+      _setSaveStatus('business', failed ? 'failed' : 'saved', failed ? { retry: () => _syncBizInfoToDB(payload) } : undefined);
     }
   }, 800);
 }
@@ -101,6 +114,9 @@ function _syncCBSettingsToDB() {
   if (typeof cbSettings === 'undefined' || !cbSettings) return;
   if (_cbSettingsSyncTimer) clearTimeout(_cbSettingsSyncTimer);
   const uid = _userId;
+  // Strategy C: surface 'dirty' immediately; pill flips to saving when the
+  // 800 ms debounce timer fires.
+  if (typeof _setSaveStatus === 'function') _setSaveStatus('cabinet', 'dirty');
   _cbSettingsSyncTimer = setTimeout(async () => {
     /** @type {any} */
     const fields = {
@@ -128,16 +144,26 @@ function _syncCBSettingsToDB() {
       production_queue_start_date:  cbSettings.queueStartDate || null,
       updated_at: new Date().toISOString()
     };
+    /** @type {any} */ const w = window;
+    if (!w._saveInFlight) w._saveInFlight = new Set();
+    w._saveInFlight.add('cabinet-settings');
+    if (typeof _setSaveStatus === 'function') _setSaveStatus('cabinet', 'saving');
+    let failed = false;
     const { data: existing } = await _db('business_info').select('id').eq('user_id', uid);
     if (existing && existing.length > 0) {
       const { error } = await _db('business_info').update(fields).eq('user_id', uid);
-      if (error) console.warn('[cb_settings] DB sync failed:', error.message);
+      if (error) { console.warn('[cb_settings] DB sync failed:', error.message); failed = true; }
     } else {
       // Need name (NOT NULL) — ensure baseline before insert
       fields.name = '';
       const { error } = await _db('business_info').insert([fields]);
-      if (error) console.warn('[cb_settings] DB sync failed:', error.message);
+      if (error) { console.warn('[cb_settings] DB sync failed:', error.message); failed = true; }
     }
+    w._saveInFlight.delete('cabinet-settings');
+    if (typeof _setSaveStatus === 'function') {
+      _setSaveStatus('cabinet', failed ? 'failed' : 'saved', failed ? { retry: _syncCBSettingsToDB } : undefined);
+    }
+    if (failed) _toast('Save failed — check connection', 'error');
   }, 800);
 }
 function loadBizInfo() {

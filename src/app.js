@@ -31,36 +31,41 @@ function _openClientPopup(id) {
     `<span class="pf-chip" onclick="_closePopup();switchSection('orders');window._orderSearch='${_escHtml(orderProject(o))}';renderOrdersMain()">${_escHtml(orderProject(o))} — ${fmt(o.value ?? 0)}</span>`
   ).join('') || '<span style="font-size:10px;color:var(--muted)">None</span>';
 
+  // Strategy C: editing an existing client uses autosave-on-blur with a
+  // status pill in the popup header. The footer keeps Delete + Close — no
+  // explicit Save button.
+  const blur = `onblur="_clientAutoSave(${c.id})"`;
   _openPopup(`
     <div class="popup-header">
       <div class="popup-title">
         <div style="width:32px;height:32px;border-radius:50%;background:var(--accent-dim);color:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px">${c.name.charAt(0).toUpperCase()}</div>
         Edit Client
+        <span class="cl-unsaved-pill" data-save-pill="client" style="display:none;margin-left:8px"></span>
       </div>
       <button class="popup-close" onclick="_closePopup()">×</button>
     </div>
     <div class="popup-body">
       <div class="pf">
         <label class="pf-label">Name</label>
-        <input class="pf-input pf-input-lg" id="pc-name" value="${_escHtml(c.name)}">
+        <input class="pf-input pf-input-lg" id="pc-name" value="${_escHtml(c.name)}" ${blur}>
       </div>
       <div class="pf-row">
         <div class="pf">
           <label class="pf-label">Email</label>
-          <input class="pf-input" id="pc-email" value="${_escHtml(c.email||'')}" placeholder="client@email.com">
+          <input class="pf-input" id="pc-email" value="${_escHtml(c.email||'')}" placeholder="client@email.com" ${blur}>
         </div>
         <div class="pf">
           <label class="pf-label">Phone</label>
-          <input class="pf-input" id="pc-phone" value="${_escHtml(c.phone||'')}" placeholder="07700 000000">
+          <input class="pf-input" id="pc-phone" value="${_escHtml(c.phone||'')}" placeholder="07700 000000" ${blur}>
         </div>
       </div>
       <div class="pf">
         <label class="pf-label">Address</label>
-        <input class="pf-input" id="pc-address" value="${_escHtml(c.address||'')}" placeholder="123 Street, City">
+        <input class="pf-input" id="pc-address" value="${_escHtml(c.address||'')}" placeholder="123 Street, City" ${blur}>
       </div>
       <div class="pf">
         <label class="pf-label">Notes</label>
-        <textarea class="pf-textarea" id="pc-notes" placeholder="Client notes...">${_escHtml(c.notes||'')}</textarea>
+        <textarea class="pf-textarea" id="pc-notes" placeholder="Client notes..." ${blur}>${_escHtml(c.notes||'')}</textarea>
       </div>
       <div class="pf-divider"></div>
       <div class="pf" style="margin-bottom:4px">
@@ -75,15 +80,14 @@ function _openClientPopup(id) {
     <div class="popup-footer">
       <button class="btn btn-danger" onclick="_confirm('Delete client <strong>${_escHtml(c.name)}</strong>?',()=>{_closePopup();removeClient(${c.id})})">Delete</button>
       <div class="popup-footer-right">
-        <button class="btn btn-outline" onclick="_closePopup()">Cancel</button>
-        <button class="btn btn-primary" onclick="_saveClientPopup(${c.id})">Save Changes</button>
+        <button class="btn btn-outline" onclick="_closePopup()">Close</button>
       </div>
     </div>
   `, 'sm');
 }
 
-/** @param {number} id */
-async function _saveClientPopup(id) {
+/** Strategy C autosave for the client edit popup. Called on input blur. @param {number} id */
+async function _clientAutoSave(id) {
   const c = clients.find(x => x.id === id);
   if (!c) return;
   const updates = {
@@ -94,11 +98,26 @@ async function _saveClientPopup(id) {
     notes: _popupVal('pc-notes') || null,
   };
   if (!updates.name) { _toast('Name is required', 'error'); return; }
-  Object.assign(c, updates);
-  await _db('clients').update(/** @type {any} */ (updates)).eq('id', id);
-  _closePopup();
-  renderClientsMain();
-  _toast('Client updated', 'success');
+  // Only save if something actually changed.
+  const changed = ['name','email','phone','address','notes'].some(k => /** @type {any} */(c)[k] !== /** @type {any} */(updates)[k]);
+  if (!changed) return;
+  /** @type {any} */ const w = window;
+  if (!w._saveInFlight) w._saveInFlight = new Set();
+  w._saveInFlight.add('client');
+  if (typeof _setSaveStatus === 'function') _setSaveStatus('client', 'saving');
+  try {
+    Object.assign(c, updates);
+    const { error } = await _db('clients').update(/** @type {any} */ (updates)).eq('id', id);
+    if (error) throw error;
+    renderClientsMain();
+    if (typeof _setSaveStatus === 'function') _setSaveStatus('client', 'saved');
+  } catch (e) {
+    console.warn('[client save]', (/** @type {any} */ (e)).message || e);
+    if (typeof _setSaveStatus === 'function') _setSaveStatus('client', 'failed', { retry: () => _clientAutoSave(id) });
+    _toast('Save failed — check connection', 'error');
+  } finally {
+    w._saveInFlight.delete('client');
+  }
 }
 
 // ── Order Popup ──
@@ -654,18 +673,21 @@ function _openProjectPopup(id) {
     `<span class="pf-chip" onclick="_closePopup();switchSection('orders');window._orderSearch='${_escHtml(orderProject(o))}';renderOrdersMain()">${_escHtml(orderProject(o))} · ${fmt(o.value ?? 0)} · ${(/** @type {Record<string,string>} */(STATUS_LABELS))[o.status||'']||o.status}</span>`
   ).join('') || '<span style="font-size:10px;color:var(--muted)">None</span>';
 
+  // Strategy C: autosave-on-blur for the existing project; no Save button.
+  const blur = `onblur="_projectAutoSave(${p.id})"`;
   _openPopup(`
     <div class="popup-header">
       <div class="popup-title">
         Edit Project
         <span class="badge ${statusBadge}" style="font-size:10px">${p.status==='complete'?'Complete':p.status==='on-hold'?'On Hold':'Active'}</span>
+        <span class="cl-unsaved-pill" data-save-pill="project" style="display:none;margin-left:8px"></span>
       </div>
       <button class="popup-close" onclick="_closePopup()">×</button>
     </div>
     <div class="popup-body">
       <div class="pf">
         <label class="pf-label">Project Name</label>
-        <input class="pf-input pf-input-lg" id="pp-name" value="${_escHtml(p.name)}">
+        <input class="pf-input pf-input-lg" id="pp-name" value="${_escHtml(p.name)}" ${blur}>
       </div>
       <div class="pf-row">
         <div class="pf">
@@ -674,7 +696,7 @@ function _openProjectPopup(id) {
         </div>
         <div class="pf">
           <label class="pf-label">Status</label>
-          <select class="pf-select" id="pp-status">
+          <select class="pf-select" id="pp-status" onchange="_projectAutoSave(${p.id})">
             <option value="active" ${p.status==='active'?'selected':''}>Active</option>
             <option value="on-hold" ${p.status==='on-hold'?'selected':''}>On Hold</option>
             <option value="complete" ${p.status==='complete'?'selected':''}>Complete</option>
@@ -683,7 +705,7 @@ function _openProjectPopup(id) {
       </div>
       <div class="pf">
         <label class="pf-label">Notes</label>
-        <textarea class="pf-textarea" id="pp-desc" placeholder="Project notes...">${_escHtml(p.description||'')}</textarea>
+        <textarea class="pf-textarea" id="pp-desc" placeholder="Project notes..." ${blur}>${_escHtml(p.description||'')}</textarea>
       </div>
       <div class="pf-divider"></div>
       <div class="pf" style="margin-bottom:4px">
@@ -698,26 +720,39 @@ function _openProjectPopup(id) {
     <div class="popup-footer">
       <button class="btn btn-danger" onclick="_confirm('Delete project <strong>${_escHtml(p.name)}</strong>?',()=>{_closePopup();removeProject(${p.id})})">Delete</button>
       <div class="popup-footer-right">
-        <button class="btn btn-outline" onclick="_closePopup()">Cancel</button>
-        <button class="btn btn-primary" onclick="_saveProjectPopup(${p.id})">Save Changes</button>
+        <button class="btn btn-outline" onclick="_closePopup()">Close</button>
       </div>
     </div>
   `, 'sm');
 }
 
-/** @param {number} id */
-async function _saveProjectPopup(id) {
+/** Strategy C autosave for the project edit popup. @param {number} id */
+async function _projectAutoSave(id) {
   const p = projects.find(x => x.id === id);
   if (!p) return;
   const name = _popupVal('pp-name');
   const status = _popupVal('pp-status');
   const description = _popupVal('pp-desc') || null;
   if (!name) { _toast('Name is required', 'error'); return; }
-  Object.assign(p, { name, status, description });
-  await _db('projects').update({ name, status, description }).eq('id', id);
-  _closePopup();
-  renderProjectsMain();
-  _toast('Project updated', 'success');
+  /** @type {any} */ const cur = p;
+  if (cur.name === name && cur.status === status && (cur.description || null) === description) return;
+  /** @type {any} */ const w = window;
+  if (!w._saveInFlight) w._saveInFlight = new Set();
+  w._saveInFlight.add('project');
+  if (typeof _setSaveStatus === 'function') _setSaveStatus('project', 'saving');
+  try {
+    Object.assign(p, { name, status, description });
+    const { error } = await _db('projects').update({ name, status, description }).eq('id', id);
+    if (error) throw error;
+    renderProjectsMain();
+    if (typeof _setSaveStatus === 'function') _setSaveStatus('project', 'saved');
+  } catch (e) {
+    console.warn('[project save]', (/** @type {any} */ (e)).message || e);
+    if (typeof _setSaveStatus === 'function') _setSaveStatus('project', 'failed', { retry: () => _projectAutoSave(id) });
+    _toast('Save failed — check connection', 'error');
+  } finally {
+    w._saveInFlight.delete('project');
+  }
 }
 
 // ── Stock Popup ──
@@ -754,71 +789,76 @@ function _openStockPopup(id) {
   const ebGlue = vd.glue || item.glue || 'EVA';
   const isLow = (item.qty ?? 0) <= (item.low ?? 0);
 
+  // Strategy C: autosave-on-blur for the Stock popup. Inputs trigger
+  // _stockAutoSave; status pill in header reflects state. Steppers dispatch
+  // an 'input' event which we capture via a delegated listener after open.
+  const blur = `onblur="_stockAutoSave(${id})"`;
   _openPopup(`
     <div class="popup-header">
       <div class="popup-title">
         Edit Material
         <span class="badge ${isLow ? 'badge-red' : 'badge-green'}" style="font-size:10px">${isLow ? 'Low Stock' : 'OK'}</span>
+        <span class="cl-unsaved-pill" data-save-pill="stock" style="display:none;margin-left:8px"></span>
       </div>
       <button class="popup-close" onclick="_closePopup()">×</button>
     </div>
     <div class="popup-body">
       <div class="pf">
         <label class="pf-label">Name</label>
-        <input class="pf-input pf-input-lg" id="ps-name" value="${_escHtml(item.name)}">
+        <input class="pf-input pf-input-lg" id="ps-name" value="${_escHtml(item.name)}" ${blur}>
       </div>
       <div class="pf">
         <label class="pf-label">Variant / Spec</label>
-        <input class="pf-input" id="ps-variant" value="${_escHtml(vd.variant||item.variant||'')}" placeholder="e.g. BP-18, 500mm depth">
+        <input class="pf-input" id="ps-variant" value="${_escHtml(vd.variant||item.variant||'')}" placeholder="e.g. BP-18, 500mm depth" ${blur}>
       </div>
       ${isEB ? `
       <div class="pf-row">
-        <div class="pf"><label class="pf-label">Thickness (mm)</label><input class="pf-input" id="ps-eb-thick" type="number" step="0.1" value="${ebThick}"></div>
-        <div class="pf"><label class="pf-label">Width (mm)</label><input class="pf-input" id="ps-eb-width" type="number" value="${ebWidth}"></div>
-        <div class="pf"><label class="pf-label">Length (m)</label><input class="pf-input" id="ps-eb-length" type="number" step="0.1" value="${ebLength}"></div>
+        <div class="pf"><label class="pf-label">Thickness (mm)</label><input class="pf-input" id="ps-eb-thick" type="number" step="0.1" value="${ebThick}" ${blur}></div>
+        <div class="pf"><label class="pf-label">Width (mm)</label><input class="pf-input" id="ps-eb-width" type="number" value="${ebWidth}" ${blur}></div>
+        <div class="pf"><label class="pf-label">Length (m)</label><input class="pf-input" id="ps-eb-length" type="number" step="0.1" value="${ebLength}" ${blur}></div>
       </div>
       <div class="pf-row">
         <div class="pf"><label class="pf-label">Glue Type</label>
-          <select class="pf-select" id="ps-eb-glue">
+          <select class="pf-select" id="ps-eb-glue" onchange="_stockAutoSave(${id})">
             ${['EVA','PUR','Laser','Hot Melt','Pre-glued','None'].map(g=>`<option value="${g}" ${ebGlue===g?'selected':''}>${g}</option>`).join('')}
           </select>
         </div>
         <div class="pf"><label class="pf-label">Low Alert (m)</label>
           <div class="pf-stepper">
-            <button type="button" class="pf-step-btn" onclick="_stepInput('ps-low',-1,0.1)">−</button>
-            <input class="pf-input" id="ps-low" type="number" step="0.1" value="${item.low}">
-            <button type="button" class="pf-step-btn" onclick="_stepInput('ps-low',1,0.1)">+</button>
+            <button type="button" class="pf-step-btn" onclick="_stepInput('ps-low',-1,0.1);_stockAutoSave(${id})">−</button>
+            <input class="pf-input" id="ps-low" type="number" step="0.1" value="${item.low}" ${blur}>
+            <button type="button" class="pf-step-btn" onclick="_stepInput('ps-low',1,0.1);_stockAutoSave(${id})">+</button>
           </div>
         </div>
-        <div class="pf"><label class="pf-label">Cost / m</label><input class="pf-input" id="ps-cost" type="number" step="0.01" value="${item.cost}" style="text-align:right"></div>
+        <div class="pf"><label class="pf-label">Cost / m</label><input class="pf-input" id="ps-cost" type="number" step="0.01" value="${item.cost}" style="text-align:right" ${blur}></div>
       </div>
       ` : `
       <div class="pf-row">
-        <div class="pf"><label class="pf-label">Length</label><input class="pf-input" id="ps-length" value="${item.w}"></div>
-        <div class="pf"><label class="pf-label">Width</label><input class="pf-input" id="ps-width" value="${item.h}"></div>
-        <div class="pf"><label class="pf-label">Thickness</label><input class="pf-input" id="ps-thick" value="${vd.thickness||item.thick||''}"></div>
+        <div class="pf"><label class="pf-label">Length</label><input class="pf-input" id="ps-length" value="${item.w}" ${blur}></div>
+        <div class="pf"><label class="pf-label">Width</label><input class="pf-input" id="ps-width" value="${item.h}" ${blur}></div>
+        <div class="pf"><label class="pf-label">Thickness</label><input class="pf-input" id="ps-thick" value="${vd.thickness||item.thick||''}" ${blur}></div>
       </div>
       <div class="pf-row">
         <div class="pf"><label class="pf-label">Qty in Stock</label>
           <div class="pf-stepper">
-            <button type="button" class="pf-step-btn" onclick="_stepInput('ps-qty',-1)">−</button>
-            <input class="pf-input" id="ps-qty" type="number" min="0" value="${item.qty}" style="font-weight:700">
-            <button type="button" class="pf-step-btn" onclick="_stepInput('ps-qty',1)">+</button>
+            <button type="button" class="pf-step-btn" onclick="_stepInput('ps-qty',-1);_stockAutoSave(${id})">−</button>
+            <input class="pf-input" id="ps-qty" type="number" min="0" value="${item.qty}" style="font-weight:700" ${blur}>
+            <button type="button" class="pf-step-btn" onclick="_stepInput('ps-qty',1);_stockAutoSave(${id})">+</button>
           </div>
         </div>
         <div class="pf"><label class="pf-label">Low Alert</label>
           <div class="pf-stepper">
-            <button type="button" class="pf-step-btn" onclick="_stepInput('ps-low',-1)">−</button>
-            <input class="pf-input" id="ps-low" type="number" min="0" value="${item.low}">
-            <button type="button" class="pf-step-btn" onclick="_stepInput('ps-low',1)">+</button>
+            <button type="button" class="pf-step-btn" onclick="_stepInput('ps-low',-1);_stockAutoSave(${id})">−</button>
+            <input class="pf-input" id="ps-low" type="number" min="0" value="${item.low}" ${blur}>
+            <button type="button" class="pf-step-btn" onclick="_stepInput('ps-low',1);_stockAutoSave(${id})">+</button>
           </div>
         </div>
-        <div class="pf"><label class="pf-label">Cost / Unit</label><input class="pf-input" id="ps-cost" value="${item.cost}" style="text-align:right"></div>
+        <div class="pf"><label class="pf-label">Cost / Unit</label><input class="pf-input" id="ps-cost" value="${item.cost}" style="text-align:right" ${blur}></div>
       </div>
       `}
       <div class="pf">
         <label class="pf-label">Category</label>
-        <select class="pf-select" id="ps-cat">
+        <select class="pf-select" id="ps-cat" onchange="_stockAutoSave(${id})">
           <option value="Sheet Goods" ${cat==='Sheet Goods'?'selected':''}>Sheet Goods</option>
           <option value="Solid Timber" ${cat==='Solid Timber'?'selected':''}>Solid Timber</option>
           <option value="Edge Banding" ${cat==='Edge Banding'?'selected':''}>Edge Banding</option>
@@ -831,11 +871,11 @@ function _openStockPopup(id) {
       <div class="pf-divider"></div>
       <div class="pf">
         <label class="pf-label">Supplier</label>
-        <input class="pf-input" id="ps-supplier" value="${_escHtml(sup.supplier||'')}" placeholder="Supplier name">
+        <input class="pf-input" id="ps-supplier" value="${_escHtml(sup.supplier||'')}" placeholder="Supplier name" ${blur}>
       </div>
       <div class="pf" style="margin-bottom:0">
         <label class="pf-label">Reorder Link</label>
-        <input class="pf-input" id="ps-url" value="${_escHtml(sup.url||'')}" placeholder="https://...">
+        <input class="pf-input" id="ps-url" value="${_escHtml(sup.url||'')}" placeholder="https://..." ${blur}>
       </div>
     </div>
     <div class="popup-footer">
@@ -844,21 +884,34 @@ function _openStockPopup(id) {
       </div>
       <div class="popup-footer-right">
         ${sup.url ? `<button class="btn btn-outline" style="color:var(--accent)" onclick="window.open('${_escHtml(_normalizeUrl(sup.url))}','_blank')">Reorder ↗</button>` : ''}
-        <button class="btn btn-primary" onclick="_saveStockPopup(${item.id})">Save</button>
+        <button class="btn btn-outline" onclick="_closePopup()">Close</button>
       </div>
     </div>
   `, 'sm');
 }
 
-/** @param {number} id */
-async function _saveStockPopup(id) {
+/** Strategy C autosave for the stock popup. Calls the existing save flow but
+ *  skips popup close + success toast (status pill carries that signal).
+ *  @param {number} id */
+async function _stockAutoSave(id) {
+  await _saveStockPopup(id, { silent: true, keepOpen: true });
+}
+
+/** @param {number} id @param {{silent?: boolean, keepOpen?: boolean}} [opts] */
+async function _saveStockPopup(id, opts) {
+  const silent = !!(opts && opts.silent);
+  const keepOpen = !!(opts && opts.keepOpen);
   const item = /** @type {any} */ (stockItems.find(x => x.id === id));
   if (!item) return;
   const name = _popupVal('ps-name');
-  if (!name) { _toast('Name is required', 'error'); return; }
+  if (!name) { if (!silent) _toast('Name is required', 'error'); return; }
   const cat = _popupVal('ps-cat') || '';
   const isEB = cat === 'Edge Banding';
   const variant = _popupVal('ps-variant') || '';
+  /** @type {any} */ const w = window;
+  if (!w._saveInFlight) w._saveInFlight = new Set();
+  w._saveInFlight.add('stock');
+  if (typeof _setSaveStatus === 'function') _setSaveStatus('stock', 'saving');
   /** @type {any} */
   let updates;
   let thick = 0, ebWidth = 0, ebLength = 0, ebGlue = '';
@@ -899,10 +952,19 @@ async function _saveStockPopup(id) {
   sup.supplier = _popupVal('ps-supplier');
   sup.url = _popupVal('ps-url');
   _ssSet(id, sup);
-  if (_userId) await _db('stock_items').update(updates).eq('id', id);
-  _closePopup();
+  let failed = false;
+  if (_userId) {
+    const { error } = await _db('stock_items').update(updates).eq('id', id);
+    if (error) { failed = true; console.warn('[stock save]', error.message); }
+  }
+  if (!keepOpen) _closePopup();
   renderStockMain();
-  _toast('Material updated', 'success');
+  w._saveInFlight.delete('stock');
+  if (typeof _setSaveStatus === 'function') {
+    _setSaveStatus('stock', failed ? 'failed' : 'saved', failed ? { retry: () => _saveStockPopup(id, opts) } : undefined);
+  }
+  if (failed && !silent) _toast('Save failed — check connection', 'error');
+  if (!failed && !silent) _toast('Material updated', 'success');
 }
 
 // ── New Stock Popup (for adding from Cut List) ──
@@ -1478,4 +1540,28 @@ if (pieces.length === 0 && sheets.length === 0) {
   renderPieces();
 }
 initColVisibility();
+
+// ── Strategy C: global beforeunload guard ──
+// Block tab close while any sidebar / editor is dirty or has a save in flight.
+// Surfaces register intent via these globals (already present pre-Strategy-C):
+//   _cbDirty (cabinet.js), _clDirty (cutlist.js),
+//   _qpState.dirty (quotes.js), _opState.dirty (orders.js)
+// Plus the in-flight set populated by debounced autosaves in business.js etc.
+window.addEventListener('beforeunload', (e) => {
+  /** @type {any} */
+  const w = window;
+  const dirty =
+    !!w._cbDirty ||
+    !!w._clDirty ||
+    !!(w._qpState && w._qpState.dirty) ||
+    !!(w._opState && w._opState.dirty) ||
+    !!(w._saveInFlight && w._saveInFlight.size > 0);
+  if (dirty) {
+    e.preventDefault();
+    // Modern browsers ignore the message string but still show their own prompt
+    // when preventDefault() is called and returnValue is set.
+    e.returnValue = '';
+    return '';
+  }
+});
 

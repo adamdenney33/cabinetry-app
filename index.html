@@ -134,7 +134,10 @@
         <div id="account-user-view" style="display:none">
           <div id="account-subscription-content"></div>
           <div class="sd-section">
-            <div class="sd-label">Business Info</div>
+            <div class="sd-label" style="display:flex;align-items:center;gap:6px">
+              <span>Business Info</span>
+              <span class="cl-unsaved-pill" data-save-pill="business" style="display:none"></span>
+            </div>
             <input class="sd-text-input" id="biz-name" placeholder="Business name" oninput="saveBizInfo()">
             <input class="sd-text-input" id="biz-phone" placeholder="Phone" oninput="saveBizInfo()" style="margin-top:5px">
             <input class="sd-text-input" id="biz-email" placeholder="Email" oninput="saveBizInfo()" style="margin-top:5px">

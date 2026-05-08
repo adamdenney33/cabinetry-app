@@ -76,6 +76,12 @@ declare global {
     saveStockItems?: () => void;
     /** Cutlist clipboard support — assigned in some browsers' paste handler. */
     clipboardData?: any;
+    /** Strategy C: dirty flags + in-flight save set, watched by beforeunload guard. */
+    _cbDirty?: boolean;
+    _clDirty?: boolean;
+    _qpState?: { dirty?: boolean };
+    _opState?: { dirty?: boolean };
+    _saveInFlight?: Set<string>;
   }
 
   // ── units.js globals ──
@@ -83,6 +89,13 @@ declare global {
   function parseDim(str: string | number): number;
   function convertDim(val: number, from: string, to: string): number;
   function unitLabel(): string;
+
+  // ── ui.js save-status pill global ──
+  function _setSaveStatus(
+    domain: string,
+    state: 'dirty' | 'saving' | 'saved' | 'failed' | 'clean',
+    opts?: { retry?: () => void }
+  ): void;
 
   // ── settings.js unit-format globals ──
   function setUnitFormat(mode: string): void;

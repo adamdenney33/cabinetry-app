@@ -100,6 +100,66 @@ function _popupVal(id) {
   return el ? el.value.trim() : '';
 }
 
+// ══════════════════════════════════════════
+// SAVE STATUS PILL — Strategy C
+// ══════════════════════════════════════════
+// Each domain (cabinet / cutlist / quote / order / business / settings) renders
+// a `<span class="cl-unsaved-pill" data-save-pill="<domain>">` somewhere in its
+// header. Call `_setSaveStatus('cabinet', 'saving')` to flip the pill through
+// dirty / saving / saved / failed states. Pills not in the DOM are no-ops, so
+// callers don't have to pre-check.
+
+/** @type {Record<string, ReturnType<typeof setTimeout>>} */
+const _savePillTimers = {};
+
+/**
+ * Update the save-status pill for a domain.
+ * @param {string} domain  e.g. 'cabinet', 'cutlist', 'quote', 'order', 'business', 'settings'
+ * @param {'dirty'|'saving'|'saved'|'failed'|'clean'} state
+ * @param {{ retry?: () => void }} [opts]
+ */
+function _setSaveStatus(domain, state, opts) {
+  const pill = /** @type {HTMLElement | null} */ (document.querySelector(`[data-save-pill="${domain}"]`));
+  if (!pill) return;
+  // clear any pending revert
+  if (_savePillTimers[domain]) { clearTimeout(_savePillTimers[domain]); delete _savePillTimers[domain]; }
+  pill.classList.remove('is-saving', 'is-saved', 'is-failed');
+  pill.onclick = null;
+  switch (state) {
+    case 'clean':
+      pill.style.display = 'none';
+      pill.textContent = '';
+      return;
+    case 'dirty':
+      pill.style.display = '';
+      pill.textContent = 'unsaved';
+      return;
+    case 'saving':
+      pill.style.display = '';
+      pill.classList.add('is-saving');
+      pill.textContent = 'Saving…';
+      return;
+    case 'saved':
+      pill.style.display = '';
+      pill.classList.add('is-saved');
+      pill.textContent = 'Saved';
+      // fade to clean after 2s
+      _savePillTimers[domain] = setTimeout(() => {
+        if (pill.classList.contains('is-saved')) {
+          pill.style.display = 'none';
+          pill.classList.remove('is-saved');
+        }
+      }, 2000);
+      return;
+    case 'failed':
+      pill.style.display = '';
+      pill.classList.add('is-failed');
+      pill.textContent = 'Save failed · Retry';
+      if (opts && typeof opts.retry === 'function') pill.onclick = opts.retry;
+      return;
+  }
+}
+
 /**
  * Normalise a URL so bare domains (e.g. `amazon.co.uk`) become absolute.
  * Display-time only — DB values are kept as the user typed them.

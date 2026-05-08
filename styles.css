@@ -188,7 +188,15 @@ header {
 .cl-current-project { font-size: 11px; color: var(--muted); padding: 4px 2px 0; display: flex; align-items: center; gap: 6px; }
 .cl-current-project .cl-cp-label { opacity: 0.7; }
 .cl-current-project .cl-cp-name { color: var(--text); font-weight: 600; }
-.cl-unsaved-pill { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; color: var(--accent); background: var(--accent-dim); padding: 1px 6px; border-radius: 3px; margin-left: 4px; }
+.cl-unsaved-pill { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; color: var(--accent); background: var(--accent-dim); padding: 1px 6px; border-radius: 3px; margin-left: 4px; display: inline-flex; align-items: center; gap: 4px; }
+.cl-unsaved-pill.is-saving { color: var(--accent); background: var(--accent-dim); }
+.cl-unsaved-pill.is-saving::before { content: '●'; font-size: 8px; animation: pillPulse 1.4s ease-in-out infinite; }
+.cl-unsaved-pill.is-saved { color: var(--success); background: rgba(61,153,112,0.14); }
+.cl-unsaved-pill.is-saved::before { content: '✓'; font-size: 9px; }
+.cl-unsaved-pill.is-failed { color: var(--danger); background: rgba(224,82,82,0.14); cursor: pointer; }
+.cl-unsaved-pill.is-failed::before { content: '!'; font-size: 9px; font-weight: 800; }
+.cl-unsaved-pill.is-failed:hover { background: rgba(224,82,82,0.22); }
+@keyframes pillPulse { 0%, 100% { opacity: 0.4 } 50% { opacity: 1 } }
 .sd-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--muted); margin-bottom: 10px; }
 .sd-row { display: flex; align-items: center; justify-content: space-between; }
 .sd-row-label { font-size: 13px; color: var(--text); font-weight: 500; }

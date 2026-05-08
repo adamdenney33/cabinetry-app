@@ -168,14 +168,27 @@ function _clSaveProjectByName(name, opts) {
   if (opts && opts.description !== undefined) {
     meta.description = opts.description ? opts.description : null;
   }
+  // Strategy C: surface saving → saved/failed on the cutlist save pill.
+  /** @type {any} */ const w = window;
+  if (!w._saveInFlight) w._saveInFlight = new Set();
+  w._saveInFlight.add('cutlist');
+  if (typeof _setSaveStatus === 'function') _setSaveStatus('cutlist', 'saving');
   _saveProjectScoped({ name, scope: 'cutlist', payload, meta }).then(({ projectId, error }) => {
-    if (error) { _toast('Save failed: ' + error, 'error'); return; }
+    w._saveInFlight.delete('cutlist');
+    if (error) {
+      _toast('Save failed: ' + error, 'error');
+      if (typeof _setSaveStatus === 'function') {
+        _setSaveStatus('cutlist', 'failed', { retry: () => _clSaveProjectByName(name, opts) });
+      }
+      return;
+    }
     _toast(`"${name}" saved`, 'success');
     if (projectId != null) {
       _clCurrentProjectId = projectId;
       _clCurrentProjectName = name;
       _setClDirty(false);
     }
+    if (typeof _setSaveStatus === 'function') _setSaveStatus('cutlist', 'saved');
     _clLoadProjectList();
   });
 }

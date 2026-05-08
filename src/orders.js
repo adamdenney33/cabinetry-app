@@ -315,7 +315,11 @@ function renderOrderEditor() {
   const statusBadgeCls = (/** @type {Record<string,string>} */ (STATUS_BADGES))[status] || 'badge-gray';
   const statusLabel = (/** @type {Record<string,string>} */ (STATUS_LABELS))[status] || status;
   const isExisting = !!o;
-  const dirtyPill = _opState.dirty ? '<span class="cl-unsaved-pill">unsaved</span>' : '';
+  // Strategy C: show the multi-state save pill (dirty/saving/saved/failed)
+  // instead of the legacy static "unsaved" pill. _setSaveStatus drives state.
+  const initialPill = _opState.dirty
+    ? '<span class="cl-unsaved-pill" data-save-pill="order">unsaved</span>'
+    : '<span class="cl-unsaved-pill" data-save-pill="order" style="display:none"></span>';
 
   // Pipeline visualization
   const curIdx = ORDER_STATUSES.indexOf(status);
@@ -364,7 +368,7 @@ function renderOrderEditor() {
     <div class="cl-current-project editor-project-chip">
       <span class="cl-cp-label">Editing:</span>
       <span class="cl-cp-name">${_escHtml(projectName || 'Untitled project')}</span>
-      <span id="oe-dirty-pill">${dirtyPill}</span>
+      <span id="oe-dirty-pill">${initialPill}</span>
     </div>
     <div class="editor-client-line">${clientName ? 'Client: ' + _escHtml(clientName) : '<span style="color:var(--muted);font-style:italic">No client on this project</span>'}</div>
 
@@ -474,7 +478,7 @@ function renderOrderEditor() {
       <span style="flex:1"></span>
       ${isExisting ? `<button class="btn btn-outline" onclick="printOrderDoc(${o.id},'work_order')">Work Order</button>` : ''}
       ${isExisting ? `<button class="btn btn-outline" onclick="printOrderDoc(${o.id},'invoice')">Invoice</button>` : ''}
-      <button class="btn btn-primary" onclick="${isExisting ? 'saveOrderEditor()' : 'createOrderFromEditor()'}">${isExisting ? 'Save' : '+ Create Order'}</button>
+      ${isExisting ? '' : `<button class="btn btn-primary" onclick="createOrderFromEditor()">+ Create Order</button>`}
     </div>
   </div>`;
 
@@ -497,11 +501,20 @@ function _oSetPopupStatus(s) {
   }
 }
 
+/** @type {ReturnType<typeof setTimeout> | null} */
+let _oAutoSaveTimer = null;
 function _oMarkDirty() {
-  if (_opState.dirty) return;
-  _opState.dirty = true;
-  const pill = document.getElementById('oe-dirty-pill');
-  if (pill) pill.innerHTML = '<span class="cl-unsaved-pill">unsaved</span>';
+  if (!_opState.dirty) {
+    _opState.dirty = true;
+    const pill = document.getElementById('oe-dirty-pill');
+    if (pill) pill.outerHTML = '<span id="oe-dirty-pill"><span class="cl-unsaved-pill" data-save-pill="order">unsaved</span></span>';
+    if (typeof _setSaveStatus === 'function') _setSaveStatus('order', 'dirty');
+  }
+  // Strategy C: only existing orders autosave; new orders need explicit + Create.
+  if (_opState.orderId) {
+    if (_oAutoSaveTimer) clearTimeout(_oAutoSaveTimer);
+    _oAutoSaveTimer = setTimeout(() => { _oAutoSaveTimer = null; saveOrderEditor(); }, 600);
+  }
 }
 
 function _oClearEditor() {
@@ -511,7 +524,8 @@ function _oClearEditor() {
 
 function _oChangeProject() {
   if (_opState.dirty) {
-    if (!confirm('Discard unsaved changes?')) return;
+    _confirm('Discard unsaved changes?', () => _oClearEditor());
+    return;
   }
   _oClearEditor();
 }
@@ -521,7 +535,8 @@ async function loadOrderIntoSidebar(id) {
   const o = orders.find(ox => ox.id === id);
   if (!o) return;
   if (_opState.dirty && _opState.orderId !== id) {
-    if (!confirm('Discard unsaved changes?')) return;
+    _confirm('Discard unsaved changes?', () => { _opState.dirty = false; loadOrderIntoSidebar(id); });
+    return;
   }
   _opState = {
     orderId: id,
@@ -637,6 +652,12 @@ async function saveOrderEditor() {
   const id = /** @type {number} */ (_opState.orderId);
   const o = orders.find(ox => ox.id === id);
   if (!o) return;
+  // Strategy C: surface saving status + track in-flight for beforeunload.
+  /** @type {any} */ const w = window;
+  if (!w._saveInFlight) w._saveInFlight = new Set();
+  w._saveInFlight.add('order');
+  if (typeof _setSaveStatus === 'function') _setSaveStatus('order', 'saving');
+  try {
   const status = _popupVal('po-status');
   const markup = parseFloat(_popupVal('po-markup')) || 0;
   const tax = parseFloat(_popupVal('po-tax')) || 0;
@@ -695,5 +716,12 @@ async function saveOrderEditor() {
   renderOrdersMain();
   renderOrderEditor();
   if (typeof renderSchedule === 'function') renderSchedule();
-  _toast('Order saved', 'success');
+  if (typeof _setSaveStatus === 'function') _setSaveStatus('order', 'saved');
+  } catch (e) {
+    console.warn('[order save]', (/** @type {any} */ (e)).message || e);
+    if (typeof _setSaveStatus === 'function') _setSaveStatus('order', 'failed', { retry: saveOrderEditor });
+    _toast('Save failed — check connection', 'error');
+  } finally {
+    w._saveInFlight.delete('order');
+  }
 }

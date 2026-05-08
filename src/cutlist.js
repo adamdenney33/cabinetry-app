@@ -868,14 +868,21 @@ async function _doSaveProject() {
 function _setClDirty(dirty) {
   _clDirty = !!dirty;
   _renderClCurrentProject();
+  // Strategy C: surface dirty state on the cutlist save pill.
+  if (typeof _setSaveStatus === 'function') {
+    _setSaveStatus('cutlist', _clDirty ? 'dirty' : 'clean');
+  }
 }
 
 function _renderClCurrentProject() {
   const el = _byId('cl-current-project');
   if (!el) return;
   if (!_clCurrentProjectId) { el.style.display = 'none'; el.innerHTML = ''; return; }
-  const pill = _clDirty ? `<span class="cl-unsaved-pill">unsaved</span>` : '';
-  el.innerHTML = `<span class="cl-cp-label">Editing:</span> <span class="cl-cp-name">${_escHtml(_clCurrentProjectName)}</span>${pill}`;
+  // Strategy C: pill always present; visibility/state managed by _setSaveStatus.
+  const initial = _clDirty
+    ? '<span class="cl-unsaved-pill" data-save-pill="cutlist">unsaved</span>'
+    : '<span class="cl-unsaved-pill" data-save-pill="cutlist" style="display:none"></span>';
+  el.innerHTML = `<span class="cl-cp-label">Editing:</span> <span class="cl-cp-name">${_escHtml(_clCurrentProjectName)}</span>${initial}`;
   el.style.display = '';
 }
 

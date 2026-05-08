@@ -298,23 +298,42 @@ function _scheduleCBLinesSync() {
 }
 
 async function _syncCBLinesToDB() {
-  if (cbEditingOrderId) return _syncCBLinesToOrder(cbEditingOrderId);
-  if (cbEditingQuoteId) return _syncCBLinesToQuote(cbEditingQuoteId);
-  const projectId = _getCBProjectId();
-  if (!projectId) return;
+  // Strategy C: wrap all three dispatch paths so the save pill cycles
+  // through saving → saved/failed regardless of which target the cabinet
+  // editor is bound to (project draft, an open quote, or an open order).
+  /** @type {any} */ const w = window;
+  if (!w._saveInFlight) w._saveInFlight = new Set();
+  w._saveInFlight.add('cabinet');
+  if (typeof _setSaveStatus === 'function') _setSaveStatus('cabinet', 'saving');
   try {
-    const draft = await _findOrCreateDraftQuote(projectId);
-    if (!draft) return;
-    // Only delete cabinet-kind rows; preserve any item/labour lines added
-    // directly in the quote popup.
-    await _db('quote_lines').delete().eq('quote_id', draft.id).eq('line_kind', 'cabinet');
-    if (cbLines.length > 0) {
-      /** @type {any[]} */
-      const rows = cbLines.map((l, i) => _cbLineToRow(l, i, draft.id));
-      await _db('quote_lines').insert(rows);
+    if (cbEditingOrderId) {
+      await _syncCBLinesToOrder(cbEditingOrderId);
+    } else if (cbEditingQuoteId) {
+      await _syncCBLinesToQuote(cbEditingQuoteId);
+    } else {
+      const projectId = _getCBProjectId();
+      if (projectId) {
+        const draft = await _findOrCreateDraftQuote(projectId);
+        if (draft) {
+          // Only delete cabinet-kind rows; preserve any item/labour lines added
+          // directly in the quote popup.
+          await _db('quote_lines').delete().eq('quote_id', draft.id).eq('line_kind', 'cabinet');
+          if (cbLines.length > 0) {
+            /** @type {any[]} */
+            const rows = cbLines.map((l, i) => _cbLineToRow(l, i, draft.id));
+            await _db('quote_lines').insert(rows);
+          }
+        }
+      }
     }
+    _cbDirty = false;
+    if (typeof _setSaveStatus === 'function') _setSaveStatus('cabinet', 'saved');
   } catch (e) {
     console.warn('[cb dual-write]', (/** @type {any} */ (e)).message || e);
+    if (typeof _setSaveStatus === 'function') _setSaveStatus('cabinet', 'failed', { retry: _syncCBLinesToDB });
+    _toast('Save failed — check connection', 'error');
+  } finally {
+    w._saveInFlight.delete('cabinet');
   }
 }
 
@@ -973,14 +992,24 @@ function _cbClientIdForProject() {
 function _setCbDirty(dirty) {
   _cbDirty = !!dirty;
   _renderCbCurrentProject();
+  // Strategy C: surface dirty state immediately; the 800 ms debounced sync
+  // will overwrite it with 'saving' once it fires.
+  if (typeof _setSaveStatus === 'function') {
+    _setSaveStatus('cabinet', _cbDirty ? 'dirty' : 'clean');
+  }
 }
 
 function _renderCbCurrentProject() {
   const el = _byId('cb-current-project');
   if (!el) return;
   if (!_cbCurrentProjectId) { el.style.display = 'none'; el.innerHTML = ''; return; }
-  const pill = _cbDirty ? `<span class="cl-unsaved-pill">unsaved</span>` : '';
-  el.innerHTML = `<span class="cl-cp-label">Editing:</span> <span class="cl-cp-name">${_escHtml(_cbCurrentProjectName)}</span>${pill}`;
+  // Strategy C: always render the pill element so _setSaveStatus can find it
+  // via [data-save-pill="cabinet"]. The pill is hidden by default and surfaces
+  // saving/saved/failed states as autosave runs.
+  const initial = _cbDirty
+    ? '<span class="cl-unsaved-pill" data-save-pill="cabinet">unsaved</span>'
+    : '<span class="cl-unsaved-pill" data-save-pill="cabinet" style="display:none"></span>';
+  el.innerHTML = `<span class="cl-cp-label">Editing:</span> <span class="cl-cp-name">${_escHtml(_cbCurrentProjectName)}</span>${initial}`;
   el.style.display = '';
 }
 

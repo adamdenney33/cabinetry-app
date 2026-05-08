@@ -994,16 +994,31 @@ async function duplicateQuote(id) {
   renderQuoteMain();
 }
 
+/** @type {Map<string, ReturnType<typeof setTimeout>>} */
+const _qFieldDebounceTimers = new Map();
 /** @param {number} id @param {string} field @param {any} val */
-async function updateQuoteField(id, field, val) {
+function updateQuoteField(id, field, val) {
   if (!_requireAuth()) return;
   const q = quotes.find(q => q.id === id);
   if (!q) return;
   const numFields = ['materials','labour','markup','tax'];
   const v = numFields.includes(field) ? (parseFloat(val) || 0) : val;
+  // Optimistic in-memory update + immediate re-render.
   /** @type {any} */ (q)[field] = v;
-  await _db('quotes').update(/** @type {any} */ ({ [field]: v })).eq('id', id);
   renderQuoteMain();
+  // Strategy C: debounce DB writes so a fast typist doesn't fire one per keystroke.
+  const key = id + ':' + field;
+  const prev = _qFieldDebounceTimers.get(key);
+  if (prev) clearTimeout(prev);
+  _qFieldDebounceTimers.set(key, setTimeout(async () => {
+    _qFieldDebounceTimers.delete(key);
+    try {
+      await _db('quotes').update(/** @type {any} */ ({ [field]: v })).eq('id', id);
+    } catch (e) {
+      console.warn('[updateQuoteField]', (/** @type {any} */ (e)).message || e);
+      _toast('Save failed — check connection', 'error');
+    }
+  }, 600));
 }
 
 // ══════════════════════════════════════════
@@ -1056,7 +1071,10 @@ function renderQuoteEditor() {
   const statusBadge = status === 'approved' ? 'badge-green' : status === 'sent' ? 'badge-blue' : 'badge-gray';
   const statusLabel = status === 'approved' ? 'Approved' : status === 'sent' ? 'Sent' : 'Draft';
   const isExisting = !!q;
-  const dirtyPill = _qpState.dirty ? '<span class="cl-unsaved-pill">unsaved</span>' : '';
+  // Strategy C: multi-state save pill driven by _setSaveStatus.
+  const initialPill = _qpState.dirty
+    ? '<span class="cl-unsaved-pill" data-save-pill="quote">unsaved</span>'
+    : '<span class="cl-unsaved-pill" data-save-pill="quote" style="display:none"></span>';
   const hasOrder = q && q.client_id && q.project_id && orders.some(o => o.client_id === q.client_id && o.project_id === q.project_id);
 
   let cabCount=0, itemCount=0, labCount=0;
@@ -1080,7 +1098,7 @@ function renderQuoteEditor() {
     <div class="cl-current-project editor-project-chip">
       <span class="cl-cp-label">Editing:</span>
       <span class="cl-cp-name">${_escHtml(projectName || 'Untitled project')}</span>
-      <span id="qe-dirty-pill">${dirtyPill}</span>
+      <span id="qe-dirty-pill">${initialPill}</span>
     </div>
     <div class="editor-client-line">${clientName ? 'Client: ' + _escHtml(clientName) : '<span style="color:var(--muted);font-style:italic">No client on this project</span>'}</div>
 
@@ -1147,7 +1165,7 @@ function renderQuoteEditor() {
       ${isExisting ? (hasOrder
         ? `<button class="btn btn-outline" style="color:var(--success)" onclick="switchSection('orders');window._orderSearch='${_escHtml(projectName).replace(/'/g,"\\'")}';renderOrdersMain()">✓ View Order</button>`
         : `<button class="btn btn-outline" onclick="convertQuoteToOrder(${q.id})">→ Order</button>`) : ''}
-      <button class="btn btn-primary" onclick="${isExisting ? 'saveQuoteEditor()' : 'createQuoteFromEditor()'}">${isExisting ? 'Save' : '+ Create Quote'}</button>
+      ${isExisting ? '' : `<button class="btn btn-primary" onclick="createQuoteFromEditor()">+ Create Quote</button>`}
     </div>
   </div>`;
 
@@ -1158,12 +1176,21 @@ function renderQuoteEditor() {
   }
 }
 
-/** Update the unsaved pill in place without re-rendering the whole editor. */
+/** Update the save-status pill + schedule autosave (Strategy C). */
+/** @type {ReturnType<typeof setTimeout> | null} */
+let _qAutoSaveTimer = null;
 function _qMarkDirty() {
-  if (_qpState.dirty) return;
-  _qpState.dirty = true;
-  const pill = document.getElementById('qe-dirty-pill');
-  if (pill) pill.innerHTML = '<span class="cl-unsaved-pill">unsaved</span>';
+  if (!_qpState.dirty) {
+    _qpState.dirty = true;
+    const pill = document.getElementById('qe-dirty-pill');
+    if (pill) pill.outerHTML = '<span id="qe-dirty-pill"><span class="cl-unsaved-pill" data-save-pill="quote">unsaved</span></span>';
+    if (typeof _setSaveStatus === 'function') _setSaveStatus('quote', 'dirty');
+  }
+  // Strategy C: only existing quotes autosave; new quotes need explicit + Create.
+  if (_qpState.quoteId) {
+    if (_qAutoSaveTimer) clearTimeout(_qAutoSaveTimer);
+    _qAutoSaveTimer = setTimeout(() => { _qAutoSaveTimer = null; saveQuoteEditor(); }, 600);
+  }
 }
 
 /** Reset editor to empty state. */
@@ -1175,7 +1202,8 @@ function _qClearEditor() {
 /** Switch project mid-edit (with discard prompt if dirty). */
 function _qChangeProject() {
   if (_qpState.dirty) {
-    if (!confirm('Discard unsaved changes?')) return;
+    _confirm('Discard unsaved changes?', () => _qClearEditor());
+    return;
   }
   _qClearEditor();
 }
@@ -1187,7 +1215,8 @@ async function loadQuoteIntoSidebar(id) {
   const q = quotes.find(qx => qx.id === id);
   if (!q) return;
   if (_qpState.dirty && _qpState.quoteId !== id) {
-    if (!confirm('Discard unsaved changes?')) return;
+    _confirm('Discard unsaved changes?', () => { _qpState.dirty = false; loadQuoteIntoSidebar(id); });
+    return;
   }
   _qpState = {
     quoteId: id,
@@ -1305,36 +1334,49 @@ async function saveQuoteEditor() {
   const id = /** @type {number} */ (_qpState.quoteId);
   const q = quotes.find(qx => qx.id === id);
   if (!q) return;
-  const status = _popupVal('pq-status');
-  const notes = _popupVal('pq-notes');
-  const quote_number = _popupVal('pq-quote-number') || null;
-  const markup = parseFloat(_popupVal('pq-markup')) || 0;
-  const tax = parseFloat(_popupVal('pq-tax')) || 0;
-  /** @type {any} */
-  const update = { status, notes, quote_number, markup, tax, updated_at: new Date().toISOString() };
-  Object.assign(q, update);
-  // Flush pending line edits in parallel
-  if (typeof _lineUpsertTimers !== 'undefined') {
-    for (const t of _lineUpsertTimers.values()) clearTimeout(t);
-    _lineUpsertTimers.clear();
-  }
-  /** @type {Promise<any>[]} */
-  const writes = [/** @type {any} */ (_db('quotes').update(update).eq('id', id))];
-  for (const row of _qpState.lines) {
-    if (!row.id) continue;
+  // Strategy C: surface saving status + track in-flight for beforeunload.
+  /** @type {any} */ const w = window;
+  if (!w._saveInFlight) w._saveInFlight = new Set();
+  w._saveInFlight.add('quote');
+  if (typeof _setSaveStatus === 'function') _setSaveStatus('quote', 'saving');
+  try {
+    const status = _popupVal('pq-status');
+    const notes = _popupVal('pq-notes');
+    const quote_number = _popupVal('pq-quote-number') || null;
+    const markup = parseFloat(_popupVal('pq-markup')) || 0;
+    const tax = parseFloat(_popupVal('pq-tax')) || 0;
     /** @type {any} */
-    const u = {
-      name: row.name || '',
-      qty: row.qty || 0,
-      unit_price: row.unit_price ?? null,
-      labour_hours: row.labour_hours ?? null,
-    };
-    writes.push(/** @type {any} */ (_db('quote_lines').update(u).eq('id', row.id)));
+    const update = { status, notes, quote_number, markup, tax, updated_at: new Date().toISOString() };
+    Object.assign(q, update);
+    // Flush pending line edits in parallel
+    if (typeof _lineUpsertTimers !== 'undefined') {
+      for (const t of _lineUpsertTimers.values()) clearTimeout(t);
+      _lineUpsertTimers.clear();
+    }
+    /** @type {Promise<any>[]} */
+    const writes = [/** @type {any} */ (_db('quotes').update(update).eq('id', id))];
+    for (const row of _qpState.lines) {
+      if (!row.id) continue;
+      /** @type {any} */
+      const u = {
+        name: row.name || '',
+        qty: row.qty || 0,
+        unit_price: row.unit_price ?? null,
+        labour_hours: row.labour_hours ?? null,
+      };
+      writes.push(/** @type {any} */ (_db('quote_lines').update(u).eq('id', row.id)));
+    }
+    await Promise.all(writes);
+    await _refreshQuoteTotals(id);
+    _qpState.dirty = false;
+    renderQuoteEditor();
+    renderQuoteMain();
+    if (typeof _setSaveStatus === 'function') _setSaveStatus('quote', 'saved');
+  } catch (e) {
+    console.warn('[quote save]', (/** @type {any} */ (e)).message || e);
+    if (typeof _setSaveStatus === 'function') _setSaveStatus('quote', 'failed', { retry: saveQuoteEditor });
+    _toast('Save failed — check connection', 'error');
+  } finally {
+    w._saveInFlight.delete('quote');
   }
-  await Promise.all(writes);
-  await _refreshQuoteTotals(id);
-  _qpState.dirty = false;
-  renderQuoteEditor();
-  renderQuoteMain();
-  _toast('Quote saved', 'success');
 }

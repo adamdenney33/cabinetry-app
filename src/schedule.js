@@ -490,7 +490,10 @@ function _scheduleSettingsPopupHTML() {
   </div>`).join('');
 
   return `<div class="popup-header">
-  <div class="popup-title">Working Hours &amp; Holidays</div>
+  <div class="popup-title">
+    Working Hours &amp; Holidays
+    <span class="cl-unsaved-pill" data-save-pill="cabinet" style="display:none;margin-left:8px"></span>
+  </div>
   <button class="popup-close" onclick="_closePopup()">×</button>
 </div>
 <div class="popup-body">
@@ -511,9 +514,7 @@ function _scheduleSettingsPopupHTML() {
     <button class="btn btn-outline" onclick="_holidayAdd()" style="font-size:11px;padding:3px 8px;width:auto">+ Add</button>
   </div>
   <div id="sched-holidays-list" class="sched-overrides-list">${_holidaysListHTML()}</div>
-</div>
-<div class="popup-footer">
-  <div class="popup-footer-right"><button class="btn btn-primary" onclick="_closePopup()">Done</button></div>
+  <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">Changes save automatically.</div>
 </div>`;
 }
 
