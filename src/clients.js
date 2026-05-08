@@ -211,12 +211,21 @@ function _renderProjectsSidebarGate() {
   const form = document.getElementById('projects-form-section');
   if (!gate || !form) return;
   if (!_projectsShowForm) {
+    const recents = (projects || []).slice().sort(/** @param {any} a @param {any} b */ (a, b) => {
+      const av = a.updated_at ? +new Date(a.updated_at) : (a.id || 0);
+      const bv = b.updated_at ? +new Date(b.updated_at) : (b.id || 0);
+      return bv - av;
+    }).map(/** @param {any} p */ p => {
+      const cName = p.client_id ? (clients.find(/** @param {any} c */ c => c.id === p.client_id) || /** @type {any} */ ({})).name || '' : '';
+      return { id: p.id, name: p.name, meta: cName, onClick: `_openProjectPopup(${p.id})` };
+    });
     gate.innerHTML = _renderListEmpty({
       iconSvg: '<svg class="pe-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>',
       title: 'Projects',
       subtitle: 'Organise work into projects. Each project ties together quotes, orders, and cut lists for a single job.',
       btnLabel: '+ Create Project',
       btnOnclick: '_projectsRevealForm()',
+      recentItems: recents,
     });
     gate.style.display = '';
     form.style.display = 'none';
@@ -248,12 +257,23 @@ function _renderClientsSidebarGate() {
   const form = document.getElementById('clients-form-section');
   if (!gate || !form) return;
   if (!_clientsShowForm) {
+    const recents = (clients || []).slice().sort(/** @param {any} a @param {any} b */ (a, b) => {
+      const av = a.updated_at ? +new Date(a.updated_at) : (a.id || 0);
+      const bv = b.updated_at ? +new Date(b.updated_at) : (b.id || 0);
+      return bv - av;
+    }).map(/** @param {any} c */ c => ({
+      id: c.id,
+      name: c.name,
+      meta: c.email || c.phone || '',
+      onClick: `_openClientPopup(${c.id})`,
+    }));
     gate.innerHTML = _renderListEmpty({
       iconSvg: '<svg class="pe-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>',
       title: 'Clients',
       subtitle: 'Add clients to assign them to projects, quotes, and orders.',
       btnLabel: '+ Add Client',
       btnOnclick: '_clientsRevealForm()',
+      recentItems: recents,
     });
     gate.style.display = '';
     form.style.display = 'none';

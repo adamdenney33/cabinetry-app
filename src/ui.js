@@ -253,23 +253,41 @@ function _renderProjectEmpty(opts) {
 }
 
 /**
- * Render a simple list-empty gated entry — icon + title + subtitle + primary button.
- * Used by Stock / Projects / Clients sidebars on first arrival when the list is empty.
+ * Render a simple list-empty gated entry — icon + title + subtitle + primary
+ * button, plus an optional Recent list. Used by Stock / Projects / Clients
+ * sidebars when there's no active edit.
  * @param {{
  *   iconSvg: string,
  *   title: string,
  *   subtitle: string,
  *   btnLabel: string,
  *   btnOnclick: string,
+ *   recentItems?: Array<{ id: number, name: string, meta?: string, onClick: string }>,
+ *   recentLabel?: string,
  * }} opts
  */
 function _renderListEmpty(opts) {
-  const { iconSvg, title, subtitle, btnLabel, btnOnclick } = opts;
+  const { iconSvg, title, subtitle, btnLabel, btnOnclick, recentItems, recentLabel } = opts;
+  const recents = (recentItems || []).slice(0, 5);
+  const recentHTML = recents.length
+    ? `<div class="pe-recent-list">
+        <div class="pe-recent-label">${_escHtml(recentLabel || 'Recent')}</div>
+        ${recents.map(r => {
+          const initial = (r.name || '?').trim().charAt(0).toUpperCase() || '?';
+          return `<div class="pe-recent-item" onclick="${r.onClick}">
+            <span class="pe-ri-icon">${_escHtml(initial)}</span>
+            <span>${_escHtml(r.name)}</span>
+            ${r.meta ? `<span class="pe-ri-meta">${_escHtml(r.meta)}</span>` : ''}
+          </div>`;
+        }).join('')}
+      </div>`
+    : '';
   return `<div class="project-empty">
     ${iconSvg}
     <h3>${_escHtml(title)}</h3>
     <p>${_escHtml(subtitle)}</p>
     <button class="btn btn-primary" onclick="${btnOnclick}" style="width:100%;justify-content:center">${_escHtml(btnLabel)}</button>
+    ${recentHTML}
   </div>`;
 }
 /** @type {any} */ (window)._renderListEmpty = _renderListEmpty;

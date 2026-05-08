@@ -720,12 +720,23 @@ function _renderStockSidebarGate() {
   const form = _byId('stock-form-section');
   if (!gate || !form) return;
   if (!_stockShowForm) {
+    const recents = stockItems.slice().sort(/** @param {any} a @param {any} b */ (a, b) => {
+      const av = a.updated_at ? +new Date(a.updated_at) : (a.id || 0);
+      const bv = b.updated_at ? +new Date(b.updated_at) : (b.id || 0);
+      return bv - av;
+    }).map(/** @param {any} s */ s => ({
+      id: s.id,
+      name: s.name,
+      meta: _scGet(s.id) || '',
+      onClick: `editStockItem(${s.id})`,
+    }));
     gate.innerHTML = _renderListEmpty({
       iconSvg: '<svg class="pe-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>',
       title: 'Stock',
       subtitle: 'Track sheet goods, hardware, and consumables. Add your first material to get started.',
       btnLabel: '+ Add Stock Item',
       btnOnclick: '_stockRevealForm()',
+      recentItems: recents,
     });
     gate.style.display = '';
     form.style.display = 'none';
