@@ -194,11 +194,12 @@ header {
 .project-header .ph-row1 { display: flex; align-items: center; gap: 8px; }
 .project-header .ph-back { width: 24px; height: 24px; border-radius: 5px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--muted); flex-shrink: 0; background: none; border: none; padding: 0; }
 .project-header .ph-back:hover { background: rgba(0,0,0,0.06); color: var(--text); }
+.project-header .ph-icon { width: 16px; height: 16px; color: var(--text2); flex-shrink: 0; }
 .project-header .ph-title { font-size: 16px; font-weight: 800; flex: 1; min-width: 0; letter-spacing: -0.3px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.project-header .ph-meta-row { display: flex; align-items: center; gap: 8px; margin-top: 4px; padding-left: 32px; flex-wrap: wrap; }
+.project-header .ph-meta-row { display: flex; align-items: center; gap: 8px; margin-top: 4px; padding-left: 56px; flex-wrap: wrap; }
 .project-header .ph-meta { font-size: 11px; color: var(--muted); }
 .project-header .ph-badge-active { font-size: 9px; font-weight: 700; padding: 2px 6px; border-radius: 3px; color: #5b8fc5; background: rgba(80,140,220,0.15); letter-spacing: 0.4px; text-transform: uppercase; }
-.project-header .ph-client { font-size: 11px; color: var(--text2); margin-top: 4px; padding-left: 32px; }
+.project-header .ph-client { font-size: 11px; color: var(--text2); margin-top: 4px; padding-left: 56px; }
 .project-header .ph-client b { color: var(--text); font-weight: 600; }
 
 /* ── Project empty state (no project active) ── */
