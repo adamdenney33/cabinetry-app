@@ -487,6 +487,7 @@ function cancelStockEdit() {
   inp('stock-submit-btn').textContent = '+ Add to Stock';
   inp('stock-cancel-btn').style.display = 'none';
   inp('stock-form-title').textContent = 'Add Material';
+  _stockShowForm = false;
   renderStockMain();
 }
 
@@ -550,6 +551,7 @@ async function addStockItem() {
   const sup = _byId('stock-supplier'); if (sup) sup.value = '';
   const reord = _byId('stock-reorder-url'); if (reord) reord.value = '';
   window._editingStockId = null;
+  _stockShowForm = false;
   renderStockMain();
 }
 
@@ -558,6 +560,8 @@ function editStockItem(id) {
   const item = stockItems.find(s => s.id === id);
   if (!item) return;
   window._editingStockId = id;
+  _stockShowForm = true;
+  _renderStockSidebarGate();
   /** @param {string} id */
   const inp = id => /** @type {HTMLInputElement} */ (_byId(id));
   const cat = _scGet(id) || 'Sheet Goods';
@@ -709,13 +713,13 @@ function _stockToggleGroup(cat) {
 }
 
 /** Strategy 2: render the Stock sidebar gate (icon + title + subtitle + button)
- *  when the list is empty and the user hasn't engaged. */
+ *  whenever there's no active add/edit. Hides only while the form is in use. */
 let _stockShowForm = false;
 function _renderStockSidebarGate() {
   const gate = _byId('stock-gate');
   const form = _byId('stock-form-section');
   if (!gate || !form) return;
-  if (stockItems.length === 0 && !_stockShowForm) {
+  if (!_stockShowForm) {
     gate.innerHTML = _renderListEmpty({
       iconSvg: '<svg class="pe-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>',
       title: 'Stock',

@@ -102,6 +102,7 @@ async function createClient() {
   for (const id of ['cl-name','cl-email','cl-phone','cl-address','cl-notes']) {
     const el = _clInput(id); if (el) el.value = '';
   }
+  _clientsShowForm = false;
   renderClientsMain();
 }
 
@@ -146,6 +147,7 @@ async function createProject() {
     const el = _clInput(id); if (el) el.value = '';
   }
   const status = _clInput('pj-status'); if (status) status.value = 'active';
+  _projectsShowForm = false;
   renderProjectsMain();
   // Scroll to the newly created project
   setTimeout(() => _highlightProject(data.id), 100);
@@ -208,7 +210,7 @@ function _renderProjectsSidebarGate() {
   const gate = document.getElementById('projects-gate');
   const form = document.getElementById('projects-form-section');
   if (!gate || !form) return;
-  if ((projects?.length ?? 0) === 0 && !_projectsShowForm) {
+  if (!_projectsShowForm) {
     gate.innerHTML = _renderListEmpty({
       iconSvg: '<svg class="pe-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>',
       title: 'Projects',
@@ -236,7 +238,7 @@ function _renderClientsSidebarGate() {
   const gate = document.getElementById('clients-gate');
   const form = document.getElementById('clients-form-section');
   if (!gate || !form) return;
-  if ((clients?.length ?? 0) === 0 && !_clientsShowForm) {
+  if (!_clientsShowForm) {
     gate.innerHTML = _renderListEmpty({
       iconSvg: '<svg class="pe-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>',
       title: 'Clients',
