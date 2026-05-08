@@ -1030,6 +1030,9 @@ const _Q_ICON_CABINET = '<svg viewBox="0 0 24 24" fill="none" stroke="currentCol
 const _Q_ICON_ITEM = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>';
 const _Q_ICON_LABOUR = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>';
 
+// 48px-friendly version of the Quotes nav icon for the empty-state hero.
+const _Q_EMPTY_ICON = '<svg class="pe-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>';
+
 /** Top-level render for the Quote sidebar editor.
  *  Reads _qpState; renders empty (project picker), in-progress (no row yet),
  *  or active-edit (existing quote loaded). */
@@ -1043,8 +1046,29 @@ function renderQuoteEditor() {
   const projectName = q ? quoteProject(q) : (project ? project.name : '');
   const clientName = q ? quoteClient(q) : (project && project.client_id ? (clients.find(c => c.id === project.client_id) || {}).name || '' : '');
 
-  // ── Empty state: project picker only ──
+  // ── Empty state ──
   if (!q && !project) {
+    if (!_qpState.startingNew) {
+      // Idle: logo + Recent Projects + "+ New Quote" button
+      const recents = (typeof projects !== 'undefined' ? projects : [])
+        .slice()
+        .sort(/** @param {any} a @param {any} b */ (a, b) => {
+          const av = a.updated_at ? +new Date(a.updated_at) : 0;
+          const bv = b.updated_at ? +new Date(b.updated_at) : 0;
+          return bv - av;
+        });
+      host.innerHTML = _renderProjectEmpty({
+        title: 'Quotes',
+        subtitle: 'Pick a project to start a new quote.',
+        pickFnName: '_qPickProjectFromEmpty',
+        newFnName: '_qNewQuote',
+        recentProjects: recents,
+        iconSvg: _Q_EMPTY_ICON,
+        newButtonLabel: '+ New Quote',
+      });
+      return;
+    }
+    // Drafting: project-picker form (reached by clicking "+ New Quote")
     host.innerHTML = `
       <div class="form-section">
         <div class="form-section-title">New Quote</div>
@@ -1187,8 +1211,26 @@ function _qMarkDirty() {
 
 /** Reset editor to empty state. */
 function _qClearEditor() {
-  _qpState = { quoteId: null, lines: [], dirty: false, projectId: null };
+  _qpState = { quoteId: null, lines: [], dirty: false, projectId: null, startingNew: false };
   renderQuoteEditor();
+}
+
+/** Idle-state click handler: pick a recent project to start a new quote on it.
+ *  @param {number} id @param {string} _name */
+function _qPickProjectFromEmpty(id, _name) {
+  _qpState.projectId = id;
+  _qpState.startingNew = false;
+  renderQuoteEditor();
+}
+
+/** Idle-state click handler: reveal the project-picker form. */
+function _qNewQuote() {
+  _qpState.startingNew = true;
+  renderQuoteEditor();
+  setTimeout(() => {
+    const el = document.getElementById('qe-project-picker');
+    if (el) /** @type {HTMLInputElement} */ (el).focus();
+  }, 0);
 }
 
 /** Switch project mid-edit (with discard prompt if dirty). */
@@ -1215,6 +1257,7 @@ async function loadQuoteIntoSidebar(id) {
     lines: Array.isArray(q._lines) ? q._lines.map(/** @param {any} r */ r => ({ ...r })) : [],
     dirty: false,
     projectId: q.project_id || null,
+    startingNew: false,
   };
   renderQuoteEditor();
   if (!Array.isArray(q._lines)) {
@@ -1267,7 +1310,7 @@ function _smartQProjectSuggest(input, boxId) {
 function _qPickProject(projectId) {
   const p = projects.find(pp => pp.id === projectId);
   if (!p) return;
-  _qpState = { quoteId: null, lines: [], dirty: false, projectId: p.id };
+  _qpState = { quoteId: null, lines: [], dirty: false, projectId: p.id, startingNew: false };
   renderQuoteEditor();
 }
 

@@ -128,7 +128,7 @@ async function _clientAutoSave(id) {
  *  - lines: in-memory editable copies of order_lines rows
  *  - dirty: true when fields have been edited but not saved
  *  - projectId: working project id (used in the empty/new state before orderId exists) */
-let _opState = /** @type {{orderId: number|null, lines: any[], dirty: boolean, projectId: number|null}} */ ({ orderId: null, lines: [], dirty: false, projectId: null });
+let _opState = /** @type {{orderId: number|null, lines: any[], dirty: boolean, projectId: number|null, startingNew: boolean}} */ ({ orderId: null, lines: [], dirty: false, projectId: null, startingNew: false });
 
 /** Compatibility alias: routes to the Orders sidebar editor.
  *  Kept so external callers (schedule.js, dashboard.js) continue to work.
@@ -427,7 +427,7 @@ function _scheduleOrderLineUpsert(idx) {
 /** @type {{quoteId: number|null, lines: any[]}} */
 /** Sidebar editor state for the Quotes tab (replaces former popup state).
  *  Same shape as _opState but for quotes. */
-let _qpState = /** @type {{quoteId: number|null, lines: any[], dirty: boolean, projectId: number|null}} */ ({ quoteId: null, lines: [], dirty: false, projectId: null });
+let _qpState = /** @type {{quoteId: number|null, lines: any[], dirty: boolean, projectId: number|null, startingNew: boolean}} */ ({ quoteId: null, lines: [], dirty: false, projectId: null, startingNew: false });
 
 /** Compatibility alias: routes to the Quotes sidebar editor.
  *  Kept so external callers (dashboard.js) continue to work.

@@ -275,6 +275,9 @@ const _O_ICON_CABINET = '<svg viewBox="0 0 24 24" fill="none" stroke="currentCol
 const _O_ICON_ITEM = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>';
 const _O_ICON_LABOUR = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>';
 
+// 48px-friendly version of the Orders nav icon for the empty-state hero.
+const _O_EMPTY_ICON = '<svg class="pe-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/></svg>';
+
 /** Top-level render for the Order sidebar editor.
  *  Reads _opState; renders empty (project picker) or active-edit. */
 function renderOrderEditor() {
@@ -289,6 +292,27 @@ function renderOrderEditor() {
 
   // ── Empty state ──
   if (!o && !project) {
+    if (!_opState.startingNew) {
+      // Idle: logo + Recent Projects + "+ New Order" button
+      const recents = (typeof projects !== 'undefined' ? projects : [])
+        .slice()
+        .sort(/** @param {any} a @param {any} b */ (a, b) => {
+          const av = a.updated_at ? +new Date(a.updated_at) : 0;
+          const bv = b.updated_at ? +new Date(b.updated_at) : 0;
+          return bv - av;
+        });
+      host.innerHTML = _renderProjectEmpty({
+        title: 'Orders',
+        subtitle: 'Pick a project to start a new order.',
+        pickFnName: '_oPickProjectFromEmpty',
+        newFnName: '_oNewOrder',
+        recentProjects: recents,
+        iconSvg: _O_EMPTY_ICON,
+        newButtonLabel: '+ New Order',
+      });
+      return;
+    }
+    // Drafting: project-picker form (reached by clicking "+ New Order")
     host.innerHTML = `
       <div class="form-section">
         <div class="form-section-title">New Order</div>
@@ -507,8 +531,26 @@ function _oMarkDirty() {
 }
 
 function _oClearEditor() {
-  _opState = { orderId: null, lines: [], dirty: false, projectId: null };
+  _opState = { orderId: null, lines: [], dirty: false, projectId: null, startingNew: false };
   renderOrderEditor();
+}
+
+/** Idle-state click handler: pick a recent project to start a new order on it.
+ *  @param {number} id @param {string} _name */
+function _oPickProjectFromEmpty(id, _name) {
+  _opState.projectId = id;
+  _opState.startingNew = false;
+  renderOrderEditor();
+}
+
+/** Idle-state click handler: reveal the project-picker form. */
+function _oNewOrder() {
+  _opState.startingNew = true;
+  renderOrderEditor();
+  setTimeout(() => {
+    const el = document.getElementById('oe-project-picker');
+    if (el) /** @type {HTMLInputElement} */ (el).focus();
+  }, 0);
 }
 
 function _oChangeProject() {
@@ -532,6 +574,7 @@ async function loadOrderIntoSidebar(id) {
     lines: Array.isArray(/** @type {any} */ (o)._lines) ? /** @type {any} */ (o)._lines.map(/** @param {any} r */ r => ({ ...r })) : [],
     dirty: false,
     projectId: o.project_id || null,
+    startingNew: false,
   };
   renderOrderEditor();
   if (!Array.isArray(/** @type {any} */ (o)._lines)) {
@@ -580,7 +623,7 @@ function _smartOProjectSuggest(input, boxId) {
 function _oPickProject(projectId) {
   const p = projects.find(pp => pp.id === projectId);
   if (!p) return;
-  _opState = { orderId: null, lines: [], dirty: false, projectId: p.id };
+  _opState = { orderId: null, lines: [], dirty: false, projectId: p.id, startingNew: false };
   renderOrderEditor();
 }
 
