@@ -97,6 +97,15 @@ declare global {
     opts?: { retry?: () => void }
   ): void;
 
+  // ── ui.js project-context globals (Strategy 2 + Idea 3) ──
+  function _renderProjectHeader(
+    domain: string,
+    opts: { name: string; exitFn: string; status?: string; summary?: string; clientName?: string }
+  ): string;
+  function _renderProjectEmpty(
+    opts: { title: string; subtitle: string; pickFnName: string; newFnName: string; recentProjects: Array<{ id: number; name: string; updated_at?: string | null }> }
+  ): string;
+
   // ── settings.js unit-format globals ──
   function setUnitFormat(mode: string): void;
   function setUnitDecimals(n: number): void;

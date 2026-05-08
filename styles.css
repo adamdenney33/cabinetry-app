@@ -188,6 +188,30 @@ header {
 .cl-current-project { font-size: 11px; color: var(--muted); padding: 4px 2px 0; display: flex; align-items: center; gap: 6px; }
 .cl-current-project .cl-cp-label { opacity: 0.7; }
 .cl-current-project .cl-cp-name { color: var(--text); font-weight: 600; }
+/* ── Project header (Strategy 2 / Idea 3) ── */
+.project-header { padding: 10px 14px 10px; background: linear-gradient(180deg, var(--accent-dim), transparent); border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.project-header .ph-row1 { display: flex; align-items: center; gap: 8px; }
+.project-header .ph-back { width: 24px; height: 24px; border-radius: 5px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--muted); flex-shrink: 0; background: none; border: none; padding: 0; }
+.project-header .ph-back:hover { background: rgba(0,0,0,0.06); color: var(--text); }
+.project-header .ph-title { font-size: 16px; font-weight: 800; flex: 1; min-width: 0; letter-spacing: -0.3px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.project-header .ph-meta-row { display: flex; align-items: center; gap: 8px; margin-top: 4px; padding-left: 32px; flex-wrap: wrap; }
+.project-header .ph-meta { font-size: 11px; color: var(--muted); }
+.project-header .ph-badge-active { font-size: 9px; font-weight: 700; padding: 2px 6px; border-radius: 3px; color: #5b8fc5; background: rgba(80,140,220,0.15); letter-spacing: 0.4px; text-transform: uppercase; }
+.project-header .ph-client { font-size: 11px; color: var(--text2); margin-top: 4px; padding-left: 32px; }
+.project-header .ph-client b { color: var(--text); font-weight: 600; }
+
+/* ── Project empty state (no project active) ── */
+.project-empty { padding: 32px 16px; text-align: center; }
+.project-empty .pe-icon { width: 48px; height: 48px; margin: 0 auto 12px; opacity: 0.25; color: var(--muted); }
+.project-empty h3 { font-size: 14px; font-weight: 700; margin-bottom: 4px; color: var(--text); }
+.project-empty p { font-size: 12px; color: var(--muted); margin-bottom: 16px; line-height: 1.5; }
+.project-empty .pe-recent-list { text-align: left; margin-top: 16px; }
+.project-empty .pe-recent-label { font-size: 10px; color: var(--muted); text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 6px; }
+.project-empty .pe-recent-item { padding: 6px 8px; font-size: 12px; cursor: pointer; border-radius: 4px; display: flex; align-items: center; gap: 8px; }
+.project-empty .pe-recent-item:hover { background: var(--accent-dim); color: var(--accent); }
+.project-empty .pe-recent-item .pe-ri-icon { width: 22px; height: 22px; border-radius: 4px; background: var(--accent-dim); color: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; flex-shrink: 0; }
+.project-empty .pe-recent-item .pe-ri-meta { font-size: 9px; color: var(--muted); margin-left: auto; }
+
 .cl-unsaved-pill { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; color: var(--accent); background: var(--accent-dim); padding: 1px 6px; border-radius: 3px; margin-left: 4px; display: inline-flex; align-items: center; gap: 4px; }
 .cl-unsaved-pill.is-saving { color: var(--accent); background: var(--accent-dim); }
 .cl-unsaved-pill.is-saving::before { content: '●'; font-size: 8px; animation: pillPulse 1.4s ease-in-out infinite; }

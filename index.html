@@ -213,22 +213,15 @@
     <!-- BUILDER view (default) -->
     <div id="cab-view-builder" style="flex:1;display:flex;overflow:hidden">
       <div class="sidebar" style="width:440px;min-width:380px">
-        <!-- Project smart input -->
-        <div style="padding:10px 14px 8px;border-bottom:1px solid var(--border);flex-shrink:0">
-          <div class="form-group" style="margin-bottom:0;position:relative">
-            <label style="font-size:10px">Project</label>
-            <div class="smart-input-wrap">
-              <input type="text" id="cb-project" placeholder="Search or add project..." autocomplete="off" oninput="_smartCBProjectSuggest(this,'cb-project-suggest')" onfocus="_smartCBProjectSuggest(this,'cb-project-suggest')" onblur="setTimeout(()=>document.getElementById('cb-project-suggest').style.display='none',150)">
-              <div class="smart-input-add" onclick="_cbNewProject()" title="Start a new project">+</div>
-            </div>
-            <div id="cb-project-suggest" class="client-suggest-list" style="display:none"></div>
-            <div id="cb-current-project" class="cl-current-project" style="display:none"></div>
+        <!-- Strategy 2: project context lives here. Either renders the empty
+             state (no project active) or the Idea-3 header + tabs (in-project). -->
+        <div id="cb-context"></div>
+        <!-- Tabs inside sidebar (only shown in-project; toggled by _cbRenderContext) -->
+        <div id="cb-tabs-wrap" style="display:none;flex-shrink:0">
+          <div style="display:flex;border-bottom:2px solid var(--border)">
+            <div id="cab-tab-builder" onclick="switchCabTab('builder')" style="flex:1;padding:10px 16px;font-size:13px;font-weight:700;text-align:center;cursor:pointer;border-bottom:2px solid var(--accent);margin-bottom:-2px;color:var(--text)">Cabinet Builder</div>
+            <div id="cab-tab-rates" onclick="switchCabTab('rates')" style="flex:1;padding:10px 16px;font-size:13px;font-weight:500;text-align:center;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-2px">My Rates</div>
           </div>
-        </div>
-        <!-- Tabs inside sidebar -->
-        <div style="display:flex;border-bottom:2px solid var(--border);flex-shrink:0">
-          <div id="cab-tab-builder" onclick="switchCabTab('builder')" style="flex:1;padding:10px 16px;font-size:13px;font-weight:700;text-align:center;cursor:pointer;border-bottom:2px solid var(--accent);margin-bottom:-2px;color:var(--text)">Cabinet Builder</div>
-          <div id="cab-tab-rates" onclick="switchCabTab('rates')" style="flex:1;padding:10px 16px;font-size:13px;font-weight:500;text-align:center;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-2px">My Rates</div>
         </div>
         <div class="sidebar-scroll" id="cb-sidebar">
 
@@ -389,18 +382,10 @@
 
     <!-- LEFT: Inputs -->
     <div class="cl-left">
-      <!-- Projects panel (existing, toggle via library) -->
-      <div class="cl-scroll">
-        <!-- Project Library -->
-        <div style="padding:8px 14px 6px;position:relative">
-          <span class="cl-section-title" style="display:block;margin-bottom:4px">Project Library</span>
-          <div class="smart-input-wrap">
-            <input type="text" id="cl-project" placeholder="Search or add project..." autocomplete="off" style="font-size:12px" oninput="_smartCLProjectSuggest(this,'cl-project-suggest')" onfocus="_smartCLProjectSuggest(this,'cl-project-suggest')" onblur="setTimeout(()=>document.getElementById('cl-project-suggest').style.display='none',150)">
-            <div class="smart-input-add" onclick="_clNewProject()" title="Start a new project">+</div>
-          </div>
-          <div id="cl-project-suggest" class="client-suggest-list" style="display:none"></div>
-          <div id="cl-current-project" class="cl-current-project" style="display:none"></div>
-        </div>
+      <!-- Strategy 2: project context replaces the inline picker. Empty state
+           or Idea-3 header lives at the top; project-scoped tools below. -->
+      <div id="cl-context"></div>
+      <div class="cl-scroll" id="cl-scroll-body">
 
         <!-- Cut Parts table -->
         <div class="cl-section-header" style="padding-bottom:4px">
@@ -504,7 +489,7 @@
         </div>
 
       </div>
-      <div class="action-bar">
+      <div class="action-bar" id="cl-action-bar">
         <button class="btn btn-primary btn-lg" onclick="optimize()">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
           Optimize Cut Layout

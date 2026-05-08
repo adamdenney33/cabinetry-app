@@ -1071,10 +1071,6 @@ function renderQuoteEditor() {
   const statusBadge = status === 'approved' ? 'badge-green' : status === 'sent' ? 'badge-blue' : 'badge-gray';
   const statusLabel = status === 'approved' ? 'Approved' : status === 'sent' ? 'Sent' : 'Draft';
   const isExisting = !!q;
-  // Strategy C: multi-state save pill driven by _setSaveStatus.
-  const initialPill = _qpState.dirty
-    ? '<span class="cl-unsaved-pill" data-save-pill="quote">unsaved</span>'
-    : '<span class="cl-unsaved-pill" data-save-pill="quote" style="display:none"></span>';
   const hasOrder = q && q.client_id && q.project_id && orders.some(o => o.client_id === q.client_id && o.project_id === q.project_id);
 
   let cabCount=0, itemCount=0, labCount=0;
@@ -1087,20 +1083,18 @@ function renderQuoteEditor() {
 
   const dateStr = q ? q.date : new Date().toLocaleDateString('en-GB', { day:'numeric', month:'short' });
 
+  // Strategy 2 + Idea 3: project header (← + title + status + meta) replaces
+  // the legacy editor-header / chip / client-line trio.
+  const phSummary = `${isExisting ? 'Q-' + String(q.id).padStart(4, '0') : 'New quote'} · ${statusLabel}`;
+  const headerHTML = _renderProjectHeader('quote', {
+    name: projectName || 'Untitled project',
+    exitFn: '_qChangeProject',
+    status: statusLabel,
+    summary: phSummary,
+    clientName: clientName || undefined,
+  });
   host.innerHTML = `<div class="form-section editor-shell">
-    <div class="editor-header">
-      <span class="editor-title">${isExisting ? 'Edit Quote' : 'New Quote'}</span>
-      ${isExisting ? `<span class="badge ${statusBadge}" style="font-size:10px">${statusLabel}</span>` : ''}
-      <span style="flex:1"></span>
-      <button class="btn-link" onclick="_qChangeProject()" title="Pick a different project">change</button>
-    </div>
-
-    <div class="cl-current-project editor-project-chip">
-      <span class="cl-cp-label">Editing:</span>
-      <span class="cl-cp-name">${_escHtml(projectName || 'Untitled project')}</span>
-      <span id="qe-dirty-pill">${initialPill}</span>
-    </div>
-    <div class="editor-client-line">${clientName ? 'Client: ' + _escHtml(clientName) : '<span style="color:var(--muted);font-style:italic">No client on this project</span>'}</div>
+    ${headerHTML}
 
     <div class="editor-section">
       <div class="pf-row">
@@ -1182,8 +1176,6 @@ let _qAutoSaveTimer = null;
 function _qMarkDirty() {
   if (!_qpState.dirty) {
     _qpState.dirty = true;
-    const pill = document.getElementById('qe-dirty-pill');
-    if (pill) pill.outerHTML = '<span id="qe-dirty-pill"><span class="cl-unsaved-pill" data-save-pill="quote">unsaved</span></span>';
     if (typeof _setSaveStatus === 'function') _setSaveStatus('quote', 'dirty');
   }
   // Strategy C: only existing quotes autosave; new quotes need explicit + Create.

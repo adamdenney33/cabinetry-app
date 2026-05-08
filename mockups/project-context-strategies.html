@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1440">
+<title>Project Context — Strategy Comparison</title>
+<style>
+  :root {
+    --accent:   #e8a838;
+    --accent-dim: rgba(232,168,56,0.12);
+    --accent2:  #0d9488;
+    --danger:   #e05252;
+    --success:  #3d9970;
+    --bg:       #f2f2f2;
+    --surface:  #ffffff;
+    --surface2: #f7f7f7;
+    --border:   #e0e0e0;
+    --border2:  #ebebeb;
+    --text:     #111111;
+    --text2:    #444444;
+    --muted:    #888888;
+    --header-bg:#111111;
+    --header-fg:#ffffff;
+    --radius: 10px;
+    --shadow: 0 1px 4px rgba(0,0,0,0.07);
+    --shadow-md: 0 4px 16px rgba(0,0,0,0.10);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); padding: 32px 28px 56px; }
+
+  .page-h1 { font-size: 22px; font-weight: 800; letter-spacing: -0.4px; margin-bottom: 4px; }
+  .page-sub { font-size: 13px; color: var(--muted); margin-bottom: 24px; max-width: 1100px; line-height: 1.55; }
+  .page-sub b { color: var(--text); font-weight: 600; }
+  .page-sub code { background: var(--surface2); padding: 1px 6px; border-radius: 4px; font-size: 12px; }
+
+  .strategy { margin-bottom: 36px; }
+  .strategy-header { margin-bottom: 14px; padding-bottom: 10px; border-bottom: 2px solid var(--border); }
+  .strategy-tag { display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: 1px; padding: 3px 10px; border-radius: 4px; background: var(--text); color: var(--surface); text-transform: uppercase; margin-right: 10px; vertical-align: middle; }
+  .strategy-tag.recommended { background: var(--success); }
+  .strategy-tag.heavy { background: #6b46c1; }
+  .strategy-title { display: inline-block; font-size: 18px; font-weight: 700; vertical-align: middle; }
+  .strategy-desc { margin-top: 8px; font-size: 13px; color: var(--text2); line-height: 1.55; max-width: 1100px; }
+  .strategy-pros { margin-top: 6px; font-size: 12px; color: var(--muted); }
+  .strategy-pros b { color: var(--success); font-weight: 600; }
+  .strategy-cons { font-size: 12px; color: var(--muted); }
+  .strategy-cons b { color: var(--danger); font-weight: 600; }
+
+  .grid4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 14px; }
+  .panel-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow); overflow: hidden; display: flex; flex-direction: column; }
+  .panel-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); padding: 8px 12px 6px; background: var(--surface2); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+  .panel-label .var-tag { color: var(--accent); font-weight: 700; font-size: 9px; }
+
+  /* Sidebar mock chrome */
+  .sb-mock { display: flex; flex-direction: column; height: 580px; background: var(--surface); }
+  .sb-head { padding: 10px 12px 8px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  .sb-tabs { display: flex; border-bottom: 2px solid var(--border); flex-shrink: 0; }
+  .sb-tab { flex: 1; padding: 8px 10px; font-size: 11px; font-weight: 600; text-align: center; cursor: pointer; color: var(--muted); border-bottom: 2px solid transparent; margin-bottom: -2px; }
+  .sb-tab.active { color: var(--text); border-bottom-color: var(--accent); }
+  .sb-body { flex: 1; overflow: hidden; padding: 10px 12px; font-size: 11.5px; }
+  .sb-foot { border-top: 1px solid var(--border); padding: 8px 12px; background: var(--surface); flex-shrink: 0; }
+
+  /* Project chip (Strategy 1) */
+  .proj-chip { display: flex; align-items: center; gap: 8px; padding: 8px 10px; background: linear-gradient(180deg, var(--accent-dim), transparent); border: 1px solid var(--accent); border-radius: 8px; cursor: pointer; transition: background .15s; }
+  .proj-chip:hover { background: var(--accent-dim); }
+  .proj-chip .icon { width: 24px; height: 24px; border-radius: 6px; background: var(--accent); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; }
+  .proj-chip .pn { font-size: 13px; font-weight: 700; color: var(--text); flex: 1; }
+  .proj-chip .meta { font-size: 9px; color: var(--muted); }
+  .proj-chip .caret { color: var(--muted); font-size: 10px; }
+  .proj-chip .pill { font-size: 8px; font-weight: 700; padding: 1px 6px; border-radius: 3px; color: var(--success); background: rgba(61,153,112,0.14); display: inline-flex; align-items: center; gap: 3px; }
+  .proj-chip .pill::before { content: '✓'; font-size: 8px; }
+
+  /* Project header (Strategy 2 / 4) */
+  .proj-header { padding: 10px 12px 8px; }
+  .proj-header .back { font-size: 10px; color: var(--muted); margin-bottom: 6px; cursor: pointer; }
+  .proj-header .back:hover { color: var(--text); }
+  .proj-header .title-row { display: flex; align-items: center; gap: 8px; }
+  .proj-header .title { font-size: 16px; font-weight: 800; color: var(--text); flex: 1; letter-spacing: -0.3px; }
+  .proj-header .meta-row { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+  .proj-header .meta { font-size: 10px; color: var(--muted); }
+  .proj-header .badge { font-size: 9px; font-weight: 700; text-transform: uppercase; padding: 1px 6px; border-radius: 3px; background: rgba(80,140,220,0.15); color: #5b8fc5; }
+  .proj-header .pill { font-size: 9px; font-weight: 700; padding: 1px 6px; border-radius: 3px; color: var(--success); background: rgba(61,153,112,0.14); display: inline-flex; align-items: center; gap: 3px; }
+  .proj-header .pill::before { content: '✓'; font-size: 8px; }
+  .proj-header .x { font-size: 14px; color: var(--muted); cursor: pointer; padding: 4px 6px; border-radius: 4px; }
+  .proj-header .x:hover { background: var(--surface2); color: var(--text); }
+
+  /* App header (Strategy 3) */
+  .app-bar { background: var(--header-bg); color: var(--header-fg); padding: 10px 16px; display: flex; align-items: center; gap: 12px; border-radius: 8px 8px 0 0; }
+  .app-bar .logo { font-weight: 800; font-size: 12px; letter-spacing: -0.3px; }
+  .app-bar .logo .badge { font-size: 8px; font-weight: 700; background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.5); padding: 1px 5px; border-radius: 3px; margin-left: 4px; vertical-align: middle; }
+  .app-bar .sep { color: rgba(255,255,255,0.2); font-size: 12px; }
+  .app-bar .ws-switcher { display: flex; align-items: center; gap: 6px; padding: 4px 10px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; cursor: pointer; }
+  .app-bar .ws-switcher:hover { background: rgba(255,255,255,0.12); }
+  .app-bar .ws-icon { width: 18px; height: 18px; border-radius: 4px; background: var(--accent); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; }
+  .app-bar .ws-name { font-size: 12px; font-weight: 700; color: #fff; }
+  .app-bar .ws-meta { font-size: 9px; color: rgba(255,255,255,0.5); }
+  .app-bar .ws-caret { color: rgba(255,255,255,0.6); font-size: 9px; }
+  .app-bar .save-pill { font-size: 9px; font-weight: 700; padding: 1px 6px; border-radius: 3px; color: #5dbf90; background: rgba(61,153,112,0.16); display: inline-flex; align-items: center; gap: 3px; }
+  .app-bar .save-pill::before { content: '✓'; font-size: 8px; }
+  .app-bar .right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+  .app-bar .nav-tab { font-size: 11px; color: rgba(255,255,255,0.65); padding: 3px 8px; border-radius: 4px; cursor: pointer; }
+  .app-bar .nav-tab.active { color: #fff; background: rgba(255,255,255,0.08); }
+
+  /* Form bits */
+  .label { display: block; font-size: 9px; font-weight: 700; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; letter-spacing: 0.5px; }
+  .field { width: 100%; padding: 5px 8px; border: 1px solid var(--border); border-radius: 5px; font-size: 11px; background: var(--surface2); color: var(--text); margin-bottom: 6px; font-family: inherit; }
+  .smart-input { display: flex; border: 1px solid var(--border); border-radius: 5px; background: var(--surface2); overflow: hidden; margin-bottom: 6px; }
+  .smart-input.focus { border-color: var(--accent); }
+  .smart-input input { flex: 1; padding: 5px 8px; border: none; background: transparent; font-size: 11px; outline: none; color: var(--text); font-family: inherit; }
+  .smart-input .plus { width: 24px; background: transparent; border-left: 1px solid var(--border); display: flex; align-items: center; justify-content: center; color: var(--accent); font-size: 13px; font-weight: 700; cursor: pointer; }
+
+  .scoped-section { margin-bottom: 10px; }
+  .scoped-section .sec-label { font-size: 9px; font-weight: 700; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px; }
+  .scoped-section .sec-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  /* Buttons */
+  .btn { padding: 5px 10px; border: none; border-radius: 5px; font-size: 11px; font-weight: 600; cursor: pointer; font-family: inherit; }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-outline { background: transparent; color: var(--text2); border: 1px solid var(--border); }
+  .btn-outline:hover { background: var(--surface2); }
+  .btn-lg { padding: 8px 12px; font-size: 12px; width: 100%; }
+  .btn-row { display: flex; gap: 6px; }
+
+  /* Cabinet rows */
+  .cab-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 8px; background: var(--surface2); border: 1px solid var(--border); border-radius: 5px; margin-bottom: 4px; }
+  .cab-row .name { font-size: 11px; font-weight: 600; color: var(--text); }
+  .cab-row .meta { font-size: 9px; color: var(--muted); }
+  .cab-row .price { font-size: 11px; font-weight: 700; color: var(--text); }
+
+  /* Cut List mini-table */
+  .mini-table { width: 100%; border-collapse: collapse; font-size: 10px; margin-bottom: 6px; }
+  .mini-table th { text-align: left; padding: 3px 5px; font-size: 8px; color: var(--muted); text-transform: uppercase; font-weight: 700; letter-spacing: 0.4px; background: var(--surface2); border-bottom: 1px solid var(--border); }
+  .mini-table td { padding: 4px 5px; border-bottom: 1px solid var(--border2); }
+  .mini-table .qty { text-align: right; color: var(--muted); }
+  .add-btn { color: var(--muted); font-size: 10px; padding: 4px 6px; cursor: pointer; }
+
+  /* Order/Quote rows */
+  .ol-row { display: grid; grid-template-columns: 1fr 38px 56px; gap: 4px; padding: 4px 6px; align-items: center; font-size: 11px; border-bottom: 1px solid var(--border2); }
+  .ol-row .name { color: var(--text); font-weight: 500; }
+  .ol-row .qty  { color: var(--muted); text-align: right; font-size: 10px; }
+  .ol-row .price { font-weight: 700; text-align: right; }
+  .ol-section { font-size: 8px; font-weight: 700; text-transform: uppercase; color: var(--muted); letter-spacing: 0.5px; padding: 6px 6px 3px; }
+
+  /* Library drawer indicator (Strategy 4) */
+  .drawer-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; background: var(--surface2); border: 1px solid var(--border); border-radius: 5px; margin-bottom: 4px; cursor: pointer; transition: background .15s; }
+  .drawer-row:hover { background: var(--accent-dim); }
+  .drawer-row .label { font-size: 11px; font-weight: 600; color: var(--text); display: flex; align-items: center; gap: 6px; }
+  .drawer-row .icon { color: var(--muted); }
+  .drawer-row .caret { color: var(--muted); }
+
+  /* Empty state callout (Strategy 2) */
+  .empty-callout { padding: 32px 16px; text-align: center; }
+  .empty-callout .empty-icon { width: 48px; height: 48px; margin: 0 auto 12px; opacity: 0.25; }
+  .empty-callout h3 { font-size: 13px; font-weight: 700; margin-bottom: 4px; }
+  .empty-callout p { font-size: 11px; color: var(--muted); margin-bottom: 12px; line-height: 1.5; }
+  .empty-callout .recent-list { text-align: left; margin-top: 16px; }
+  .empty-callout .recent-list .label { margin-bottom: 6px; }
+  .empty-callout .recent-item { padding: 6px 8px; font-size: 11px; cursor: pointer; border-radius: 4px; display: flex; align-items: center; gap: 6px; }
+  .empty-callout .recent-item:hover { background: var(--surface2); }
+  .empty-callout .recent-item .ri-icon { width: 18px; height: 18px; border-radius: 4px; background: var(--accent-dim); color: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 700; }
+
+  hr.fade { border: none; height: 1px; background: linear-gradient(to right, transparent, var(--border), transparent); margin: 8px 0; }
+
+  /* Today/Baseline callout */
+  .baseline { background: var(--surface); border: 1px dashed var(--border); border-radius: 10px; padding: 14px 18px; margin-bottom: 28px; }
+  .baseline h3 { font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--muted); letter-spacing: 1px; margin-bottom: 8px; }
+  .baseline .desc { font-size: 13px; color: var(--text2); line-height: 1.55; }
+  .baseline .desc b { color: var(--text); }
+
+  /* Recommendation banner */
+  .rec-banner { background: rgba(61,153,112,0.06); border: 1px solid rgba(61,153,112,0.25); border-radius: 8px; padding: 10px 14px; margin-top: 8px; font-size: 12px; color: var(--text2); line-height: 1.5; }
+  .rec-banner b { color: var(--success); }
+</style>
+</head>
+<body>
+
+<div class="page-h1">Project Context — Strategy Comparison</div>
+<div class="page-sub">
+  Today the Project field competes for visual hierarchy with Cabinet, Stock, and Edge-Banding libraries on the same sidebar — it looks like one input among many. The four strategies below explore <b>how "being inside a project" feels</b>, biased toward the Quotes/Orders "in-a-folder" pattern you flagged as the strongest model. Each strategy is shown across the four affected tabs: <b>Cabinet Builder</b>, <b>Cut List</b>, <b>Quotes</b>, and <b>Orders</b>.
+</div>
+
+<div class="baseline">
+  <h3>Baseline · Today</h3>
+  <div class="desc">
+    Cabinet Builder and Cut List sidebars stack a Project smart-input alongside Cabinet/Stock/Edge libraries with similar visual weight. Quotes and Orders already break this pattern — they swap the picker for an "Editing: <b>Project Name</b>" chip + dirty pill once a project is loaded, and the rest of the sidebar becomes a project-scoped editor. The strategies below borrow from that and apply it back to Cabinet Builder and Cut List, with four levels of commitment.
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!--                   STRATEGY 1 — Project Chip Header                       -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<div class="strategy">
+  <div class="strategy-header">
+    <span class="strategy-tag">Strategy 1</span>
+    <span class="strategy-title">Project Chip Header (lightest touch)</span>
+    <div class="strategy-desc">When a project resolves, the Project smart-input <b>collapses into a chip</b> with the project name + meta + save status. Clicking the chip opens a dropdown to switch / exit. Other libraries stay inline below the chip with a clear visual demotion (smaller labels, scoped-section dividers).</div>
+    <div class="strategy-pros"><b>Pros:</b> Smallest delta from current layout; preserves all existing inline tools; chip is visually distinct from input fields so the "muddy waters" problem is partly solved.</div>
+    <div class="strategy-cons"><b>Cons:</b> Libraries still compete for attention below the chip; doesn't fully feel like you're "inside" the project.</div>
+  </div>
+
+  <div class="grid4">
+
+    <!-- 1 · Cabinet Builder -->
+    <div class="panel-card">
+      <div class="panel-label"><span>Cabinet Builder</span><span class="var-tag">CHIP</span></div>
+      <div class="sb-mock">
+        <div class="sb-head">
+          <div class="proj-chip">
+            <span class="icon">K</span>
+            <div style="flex:1;min-width:0">
+              <div class="pn">Kitchen Reno</div>
+              <div class="meta">3 cabinets · Active</div>
+            </div>
+            <span class="pill">Saved</span>
+            <span class="caret">▾</span>
+          </div>
+        </div>
+        <div class="sb-tabs">
+          <div class="sb-tab active">Cabinet Builder</div>
+          <div class="sb-tab">My Rates</div>
+        </div>
+        <div class="sb-body">
+          <div class="scoped-section">
+            <div class="sec-label">Cabinet Library</div>
+            <div class="smart-input"><input value="Search cabinets..." /><div class="plus">+</div></div>
+          </div>
+          <div class="scoped-section">
+            <div class="sec-label">In this project</div>
+            <div class="cab-row"><div><div class="name">Base 600 mm</div><div class="meta">Body · Doors × 2</div></div><div class="price">$348</div></div>
+            <div class="cab-row"><div><div class="name">Wall 800 mm</div><div class="meta">Body · Doors × 2</div></div><div class="price">$412</div></div>
+            <div class="cab-row"><div><div class="name">Drawer 450 mm</div><div class="meta">Body · Drawers × 3</div></div><div class="price">$284</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 1 · Cut List -->
+    <div class="panel-card">
+      <div class="panel-label"><span>Cut List</span><span class="var-tag">CHIP</span></div>
+      <div class="sb-mock">
+        <div class="sb-head">
+          <div class="proj-chip">
+            <span class="icon">K</span>
+            <div style="flex:1;min-width:0">
+              <div class="pn">Kitchen Reno</div>
+              <div class="meta">12 parts · 4 sheets</div>
+            </div>
+            <span class="pill">Saved</span>
+            <span class="caret">▾</span>
+          </div>
+        </div>
+        <div class="sb-body">
+          <div class="scoped-section">
+            <div class="sec-label">Cut Parts</div>
+            <table class="mini-table"><thead><tr><th>Label</th><th>L</th><th>W</th><th class="qty">Qty</th></tr></thead>
+              <tbody>
+                <tr><td>Side L</td><td>720</td><td>560</td><td class="qty">2</td></tr>
+                <tr><td>Top</td><td>568</td><td>560</td><td class="qty">1</td></tr>
+                <tr><td>Shelf</td><td>568</td><td>540</td><td class="qty">1</td></tr>
+                <tr><td>Door</td><td>716</td><td>296</td><td class="qty">2</td></tr>
+              </tbody>
+            </table>
+            <div class="add-btn">+ Add part</div>
+          </div>
+          <hr class="fade"/>
+          <div class="scoped-section">
+            <div class="sec-label">Cabinet Library</div>
+            <div class="smart-input"><input placeholder="Load or save cabinet..." /><div class="plus">+</div></div>
+          </div>
+          <div class="scoped-section">
+            <div class="sec-label">Stock Library</div>
+            <div class="smart-input"><input placeholder="Load panels..." /><div class="plus">+</div></div>
+          </div>
+        </div>
+        <div class="sb-foot">
+          <button class="btn btn-primary btn-lg">⚡ Optimize Cut Layout</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 1 · Quotes -->
+    <div class="panel-card">
+      <div class="panel-label"><span>Quotes</span><span class="var-tag">CHIP</span></div>
+      <div class="sb-mock">
+        <div class="sb-head">
+          <div class="proj-chip">
+            <span class="icon">K</span>
+            <div style="flex:1;min-width:0">
+              <div class="pn">Kitchen Reno</div>
+              <div class="meta">Q-0042 · Draft · $4,820</div>
+            </div>
+            <span class="pill">Saved</span>
+            <span class="caret">▾</span>
+          </div>
+        </div>
+        <div class="sb-body">
+          <div class="scoped-section">
+            <div class="sec-label">Status &amp; Number</div>
+            <select class="field"><option>Draft</option><option>Sent</option><option>Approved</option></select>
+          </div>
+          <div class="scoped-section">
+            <div class="sec-label">Line Items</div>
+            <div class="ol-section">Cabinets (3)</div>
+            <div class="ol-row"><span class="name">Base 600 mm</span><span class="qty">×2</span><span class="price">$696</span></div>
+            <div class="ol-row"><span class="name">Wall 800 mm</span><span class="qty">×2</span><span class="price">$824</span></div>
+            <div class="ol-section">Items (1)</div>
+            <div class="ol-row"><span class="name">Hinges (soft-close)</span><span class="qty">24</span><span class="price">$57</span></div>
+            <div class="ol-section">Labour (1)</div>
+            <div class="ol-row"><span class="name">Install</span><span class="qty">8h</span><span class="price">$640</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 1 · Orders -->
+    <div class="panel-card">
+      <div class="panel-label"><span>Orders</span><span class="var-tag">CHIP</span></div>
+      <div class="sb-mock">
+        <div class="sb-head">
+          <div class="proj-chip">
+            <span class="icon">K</span>
+            <div style="flex:1;min-width:0">
+              <div class="pn">Kitchen Reno</div>
+              <div class="meta">#1042 · Production · Due 22 May</div>
+            </div>
+            <span class="pill">Saved</span>
+            <span class="caret">▾</span>
+          </div>
+        </div>
+        <div class="sb-body">
+          <div class="scoped-section">
+            <div class="sec-label">Status &amp; Pipeline</div>
+            <select class="field"><option>Production</option></select>
+          </div>
+          <div class="scoped-section">
+            <div class="sec-label">Line Items</div>
+            <div class="ol-section">Cabinets</div>
+            <div class="ol-row"><span class="name">Base 600 mm</span><span class="qty">×2</span><span class="price">$696</span></div>
+            <div class="ol-row"><span class="name">Wall 800 mm</span><span class="qty">×2</span><span class="price">$824</span></div>
+            <div class="ol-section">Schedule</div>
+            <div class="ol-row"><span class="name">Production start</span><span class="qty"></span><span class="price">15 May</span></div>
+            <div class="ol-row"><span class="name">Due</span><span class="qty"></span><span class="price">22 May</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!--                   STRATEGY 2 — Gated Sidebar                             -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<div class="strategy">
+  <div class="strategy-header">
+    <span class="strategy-tag">Strategy 2</span>
+    <span class="strategy-title">Gated Sidebar — empty state vs in-project state</span>
+    <div class="strategy-desc">The sidebar has <b>two modes</b>. Empty: a centered project picker + recent-project list with no other libraries showing. In-project: a project header with a <code>← Back</code> link and project-scoped tools below. The libraries don't appear until you've committed to a project, so they can't compete for attention.</div>
+    <div class="strategy-pros"><b>Pros:</b> Strongest "inside vs outside" feel; libraries are clearly scoped to the active project; matches mental model of "open a project, work in it, close it."</div>
+    <div class="strategy-cons"><b>Cons:</b> Empty state takes a click to escape (back to picker); slightly heavier modal-feel; existing Cabinet Builder users used to typing the project inline lose that.</div>
+  </div>
+
+  <div class="grid4">
+
+    <!-- 2 · Cabinet Builder -->
+    <div class="panel-card">
+      <div class="panel-label"><span>Cabinet Builder · in-project</span><span class="var-tag">GATED</span></div>
+      <div class="sb-mock">
+        <div class="proj-header">
+          <div class="back">← Back to projects</div>
+          <div class="title-row">
+            <span class="title">Kitchen Reno</span>
+            <span class="x" title="Close project">×</span>
+          </div>
+          <div class="meta-row">
+            <span class="meta">3 cabinets</span>
+            <span class="badge">Active</span>
+            <span class="pill">Saved</span>
+          </div>
+        </div>
+        <div class="sb-tabs">
+          <div class="sb-tab active">Cabinet Builder</div>
+          <div class="sb-tab">My Rates</div>
+        </div>
+        <div class="sb-body">
+          <div class="scoped-section">
+            <div class="sec-label">Add cabinet</div>
+            <div class="smart-input"><input placeholder="Search library or type name..." /><div class="plus">+</div></div>
+          </div>
+          <div class="scoped-section">
+            <div class="sec-label">In this project</div>
+            <div class="cab-row"><div><div class="name">Base 600 mm</div><div class="meta">Body · Doors × 2</div></div><div class="price">$348</div></div>
+            <div class="cab-row"><div><div class="name">Wall 800 mm</div><div class="meta">Body · Doors × 2</div></div><div class="price">$412</div></div>
+            <div class="cab-row"><div><div class="name">Drawer 450 mm</div><div class="meta">Body · Drawers × 3</div></div><div class="price">$284</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2 · Cut List -->
+    <div class="panel-card">
+      <div class="panel-label"><span>Cut List · in-project</span><span class="var-tag">GATED</span></div>
+      <div class="sb-mock">
+        <div class="proj-header">
+          <div class="back">← Back to projects</div>
+          <div class="title-row">
+            <span class="title">Kitchen Reno</span>
+            <span class="x" title="Close project">×</span>
+          </div>
+          <div class="meta-row">
+            <span class="meta">12 parts · 4 sheets</span>
+            <span class="pill">Saved</span>
+          </div>
+        </div>
+        <div class="sb-body">
+          <div class="scoped-section">
+            <div class="sec-label">Cut Parts</div>
+            <table class="mini-table"><thead><tr><th>Label</th><th>L</th><th>W</th><th class="qty">Qty</th></tr></thead>
+              <tbody>
+                <tr><td>Side L</td><td>720</td><td>560</td><td class="qty">2</td></tr>
+                <tr><td>Top</td><td>568</td><td>560</td><td class="qty">1</td></tr>
+                <tr><td>Shelf</td><td>568</td><td>540</td><td class="qty">1</td></tr>
+                <tr><td>Door</td><td>716</td><td>296</td><td class="qty">2</td></tr>
+              </tbody>
+            </table>
+            <div class="add-btn">+ Add part</div>
+          </div>
+          <hr class="fade"/>
+          <div class="scoped-section">
+            <div class="sec-label">Add to project</div>
+            <div class="smart-input"><input placeholder="Cabinet from library..." /><div class="plus">+</div></div>
+            <div class="smart-input"><input placeholder="Stock material..." /><div class="plus">+</div></div>
+          </div>
+        </div>
+        <div class="sb-foot">
+          <button class="btn btn-primary btn-lg">⚡ Optimize Cut Layout</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2 · Empty state (Cabinet Builder shown as example) -->
+    <div class="panel-card">
+      <div class="panel-label"><span>Cabinet Builder · empty state</span><span class="var-tag">PICKER</span></div>
+      <div class="sb-mock">
+        <div class="sb-head">
+          <div style="font-size:13px;font-weight:700">Cabinet Builder</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:2px">Pick a project to start designing</div>
+        </div>
+        <div class="sb-body">
+          <div class="empty-callout">
+            <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+            <h3>No project open</h3>
+            <p>Choose an existing project or start a new one. Cabinets, rates, and quotes all live inside a project.</p>
+            <div class="smart-input"><input placeholder="Search projects..." /><div class="plus">+</div></div>
+            <div class="recent-list">
+              <div class="label">Recent</div>
+              <div class="recent-item"><span class="ri-icon">K</span><span>Kitchen Reno</span></div>
+              <div class="recent-item"><span class="ri-icon">O</span><span>Office Fitout</span></div>
+              <div class="recent-item"><span class="ri-icon">L</span><span>Lake House</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2 · Quotes / Orders abbreviated -->
+    <div class="panel-card">
+      <div class="panel-label"><span>Quotes &amp; Orders</span><span class="var-tag">ALREADY GATED</span></div>
+      <div class="sb-mock">
+        <div class="proj-header">
+          <div class="back">← Back to projects</div>
+          <div class="title-row">
+            <span class="title">Kitchen Reno</span>
+            <span class="x" title="Close project">×</span>
+          </div>
+          <div class="meta-row">
+            <span class="meta">Q-0042 · Draft</span>
+            <span class="pill">Saved</span>
+          </div>
+        </div>
+        <div class="sb-body">
+          <div style="font-size:11px;color:var(--muted);padding:8px;background:var(--surface2);border-radius:6px;margin-bottom:8px;line-height:1.5">
+            Quotes/Orders already follow this gated pattern: pick a project, then the rest of the sidebar is the project-scoped editor. Strategy 2 brings the same shape to Cabinet Builder &amp; Cut List.
+          </div>
+          <div class="ol-section">Line Items</div>
+          <div class="ol-row"><span class="name">Base 600 mm</span><span class="qty">×2</span><span class="price">$696</span></div>
+          <div class="ol-row"><span class="name">Wall 800 mm</span><span class="qty">×2</span><span class="price">$824</span></div>
+          <div class="ol-row"><span class="name">Hinges</span><span class="qty">24</span><span class="price">$57</span></div>
+          <div class="ol-row"><span class="name">Install</span><span class="qty">8h</span><span class="price">$640</span></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!--                STRATEGY 3 — Workspace-level Project (RECOMMENDED)        -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<div class="strategy">
+  <div class="strategy-header">
+    <span class="strategy-tag recommended">Strategy 3 · Recommended</span>
+    <span class="strategy-title">Workspace-level Project — project lives in the app header</span>
+    <div class="strategy-desc">Lifts the project picker out of every sidebar and into the <b>app header</b>, alongside the logo. Like Linear's workspace switcher: pick a project once and every tab (Cabinet Builder, Cut List, Quotes, Orders) operates within that project's context. Each tab's sidebar drops the project field entirely and is left with just its own libraries / tools.</div>
+    <div class="strategy-pros"><b>Pros:</b> Cleanly solves the "muddy waters" problem — project is hierarchically <b>above</b> libraries, not next to them; tab-switching keeps the same project (huge usability win); matches mental model of established multi-tab project tools.</div>
+    <div class="strategy-cons"><b>Cons:</b> Heaviest reshape — touches app shell + every tab; user-level data (Stock, Settings) needs a clear "no project" or "all-projects" distinction; existing keyboard muscle memory of typing project name on each tab is gone.</div>
+    <div class="rec-banner">
+      <b>Why we recommend it:</b> the user-noted issue isn't just visual fidelity — it's that <i>the project keeps showing up as a peer of libraries on every tab.</i> The cleanest answer is to lift project up one level so it stops being a tab-local concept. This also matches how Quotes and Orders <i>already</i> imply the project is a containing context.
+    </div>
+  </div>
+
+  <!-- App-bar showcase -->
+  <div class="panel-card" style="margin-bottom:14px">
+    <div class="panel-label"><span>App header — workspace switcher</span><span class="var-tag">SHARED</span></div>
+    <div class="app-bar">
+      <span class="logo">ProCabinet<span class="badge">APP</span></span>
+      <span class="sep">·</span>
+      <div class="ws-switcher">
+        <span class="ws-icon">K</span>
+        <div>
+          <div class="ws-name">Kitchen Reno</div>
+          <div class="ws-meta">Active · 3 cabinets · 4 sheets</div>
+        </div>
+        <span class="ws-caret">▾</span>
+      </div>
+      <span class="save-pill">Saved</span>
+      <div class="right">
+        <span class="nav-tab active">Cabinet Builder</span>
+        <span class="nav-tab">Cut List</span>
+        <span class="nav-tab">Quotes</span>
+        <span class="nav-tab">Orders</span>
+        <span class="sep">·</span>
+        <span class="nav-tab">Stock</span>
+        <span class="nav-tab">Schedule</span>
+      </div>
+    </div>
+    <div style="font-size:11px;color:var(--muted);padding:10px 14px;background:var(--surface2)">
+      Click the project switcher to pick a different project, browse recents, or start a new one. Stock &amp; Schedule are user-level and ignore the project context.
+    </div>
+  </div>
+
+  <div class="grid4">
+
+    <!-- 3 · Cabinet Builder -->
+    <div class="panel-card">
+      <div class="panel-label"><span>Cabinet Builder</span><span class="var-tag">NO PROJECT FIELD</span></div>
+      <div class="sb-mock">
+        <div class="sb-tabs">
+          <div class="sb-tab active">Cabinet Builder</div>
+          <div class="sb-tab">My Rates</div>
+        </div>
+        <div class="sb-body">
+          <div class="scoped-section">
+            <div class="sec-label">Cabinet Library</div>
+            <div class="smart-input"><input placeholder="Search cabinets..." /><div class="plus">+</div></div>
+          </div>
+          <div class="scoped-section">
+            <div class="sec-label">In this project</div>
+            <div class="cab-row"><div><div class="name">Base 600 mm</div><div class="meta">Body · Doors × 2</div></div><div class="price">$348</div></div>
+            <div class="cab-row"><div><div class="name">Wall 800 mm</div><div class="meta">Body · Doors × 2</div></div><div class="price">$412</div></div>
+            <div class="cab-row"><div><div class="name">Drawer 450 mm</div><div class="meta">Body · Drawers × 3</div></div><div class="price">$284</div></div>
+            <hr class="fade"/>
+            <div style="font-size:10px;color:var(--muted);text-align:center;padding:4px">Total: $1,044 · 8h labour</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3 · Cut List -->
+    <div class="panel-card">
+      <div class="panel-label"><span>Cut List</span><span class="var-tag">NO PROJECT FIELD</span></div>
+      <div class="sb-mock">
+        <div class="sb-body">
+          <div class="scoped-section">
+            <div class="sec-label">Cut Parts</div>
+            <table class="mini-table"><thead><tr><th>Label</th><th>L</th><th>W</th><th class="qty">Qty</th></tr></thead>
+              <tbody>
+                <tr><td>Side L</td><td>720</td><td>560</td><td class="qty">2</td></tr>
+                <tr><td>Top</td><td>568</td><td>560</td><td class="qty">1</td></tr>
+                <tr><td>Bottom</td><td>568</td><td>560</td><td class="qty">1</td></tr>
+                <tr><td>Shelf</td><td>568</td><td>540</td><td class="qty">1</td></tr>
+                <tr><td>Door</td><td>716</td><td>296</td><td class="qty">2</td></tr>
+              </tbody>
+            </table>
+            <div class="add-btn">+ Add part</div>
+          </div>
+          <hr class="fade"/>
+          <div class="scoped-section">
+            <div class="sec-label">Project Panels</div>
+            <table class="mini-table"><thead><tr><th>Material</th><th>L</th><th>W</th><th class="qty">Qty</th></tr></thead>
+              <tbody><tr><td>18 mm Birch Ply</td><td>2440</td><td>1220</td><td class="qty">2</td></tr></tbody>
+            </table>
+            <div class="add-btn">+ Add panel</div>
+          </div>
+          <hr class="fade"/>
+          <div class="scoped-section">
+            <div class="sec-label">Libraries</div>
+            <div class="smart-input"><input placeholder="Cabinet library..." /><div class="plus">+</div></div>
+            <div class="smart-input"><input placeholder="Stock library..." /><div class="plus">+</div></div>
+          </div>
+        </div>
+        <div class="sb-foot">
+          <button class="btn btn-primary btn-lg">⚡ Optimize Cut Layout</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3 · Quotes -->
+    <div class="panel-card">
+      <div class="panel-label"><span>Quotes</span><span class="var-tag">NO PROJECT FIELD</span></div>
+      <div class="sb-mock">
+        <div class="sb-head">
+          <div style="font-size:12px;font-weight:700">Quote Q-0042</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:2px">Draft · $4,820</div>
+        </div>
+        <div class="sb-body">
+          <div class="scoped-section">
+            <div class="sec-label">Status</div>
+            <select class="field"><option>Draft</option><option>Sent</option><option>Approved</option></select>
+          </div>
+          <div class="scoped-section">
+            <div class="sec-label">Line Items</div>
+            <div class="ol-section">Cabinets (3)</div>
+            <div class="ol-row"><span class="name">Base 600 mm</span><span class="qty">×2</span><span class="price">$696</span></div>
+            <div class="ol-row"><span class="name">Wall 800 mm</span><span class="qty">×2</span><span class="price">$824</span></div>
+            <div class="ol-section">Items (1)</div>
+            <div class="ol-row"><span class="name">Hinges (soft-close)</span><span class="qty">24</span><span class="price">$57</span></div>
+            <div class="ol-section">Labour (1)</div>
+            <div class="ol-row"><span class="name">Install</span><span class="qty">8h</span><span class="price">$640</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3 · Orders -->
+    <div class="panel-card">
+      <div class="panel-label"><span>Orders</span><span class="var-tag">NO PROJECT FIELD</span></div>
+      <div class="sb-mock">
+        <div class="sb-head">
+          <div style="font-size:12px;font-weight:700">Order #1042</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:2px">Production · Due 22 May</div>
+        </div>
+        <div class="sb-body">
+          <div class="scoped-section">
+            <div class="sec-label">Status &amp; Pipeline</div>
+            <select class="field"><option>Production</option></select>
+          </div>
+          <div class="scoped-section">
+            <div class="sec-label">Line Items</div>
+            <div class="ol-section">Cabinets</div>
+            <div class="ol-row"><span class="name">Base 600 mm</span><span class="qty">×2</span><span class="price">$696</span></div>
+            <div class="ol-row"><span class="name">Wall 800 mm</span><span class="qty">×2</span><span class="price">$824</span></div>
+          </div>
+          <div class="scoped-section">
+            <div class="sec-label">Schedule</div>
+            <div class="ol-row"><span class="name">Production start</span><span class="qty"></span><span class="price">15 May</span></div>
+            <div class="ol-row"><span class="name">Due</span><span class="qty"></span><span class="price">22 May</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!--                STRATEGY 4 — Project Containment (Quotes pattern)         -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<div class="strategy">
+  <div class="strategy-header">
+    <span class="strategy-tag heavy">Strategy 4</span>
+    <span class="strategy-title">Project Containment — sidebar = project header + tools</span>
+    <div class="strategy-desc">Mirrors the Quotes/Orders pattern wholesale. The sidebar becomes a <b>project header + add-tools panel</b>; libraries (Cabinet, Stock, Edge) become <b>collapsible drawer rows</b> instead of inline smart-inputs. The main content area is the project's actual data (cabinets list, cut layout) — feels most "you are inside the project."</div>
+    <div class="strategy-pros"><b>Pros:</b> Strongest "in-a-folder" feel; libraries are visually demoted to single-line drawer entries; main content area becomes the focal point.</div>
+    <div class="strategy-cons"><b>Cons:</b> Drawer pattern adds a click to access libraries that were previously inline; bigger jump for Cut List which currently has libraries as primary tools.</div>
+  </div>
+
+  <div class="grid4">
+
+    <!-- 4 · Cabinet Builder -->
+    <div class="panel-card">
+      <div class="panel-label"><span>Cabinet Builder</span><span class="var-tag">CONTAINMENT</span></div>
+      <div class="sb-mock">
+        <div class="proj-header" style="background:linear-gradient(180deg, var(--accent-dim), transparent);border-bottom:1px solid var(--border)">
+          <div class="title-row">
+            <span class="title">Kitchen Reno</span>
+            <span class="x" title="Close project">×</span>
+          </div>
+          <div class="meta-row">
+            <span class="meta">3 cabinets · $1,044</span>
+            <span class="pill">Saved</span>
+          </div>
+        </div>
+        <div class="sb-tabs">
+          <div class="sb-tab active">Builder</div>
+          <div class="sb-tab">Rates</div>
+        </div>
+        <div class="sb-body">
+          <div class="scoped-section">
+            <div class="sec-label">Add to project</div>
+            <div class="drawer-row"><span class="label"><span class="icon">▸</span>Cabinet library</span><span class="caret">▾</span></div>
+            <div class="drawer-row"><span class="label"><span class="icon">+</span>Custom cabinet</span><span class="caret"></span></div>
+          </div>
+          <div class="scoped-section">
+            <div class="sec-label">Quick stats</div>
+            <div style="font-size:11px;color:var(--muted);padding:8px;background:var(--surface2);border-radius:6px;line-height:1.5">
+              <div style="display:flex;justify-content:space-between;margin-bottom:3px"><span>Cabinets</span><b style="color:var(--text)">3</b></div>
+              <div style="display:flex;justify-content:space-between;margin-bottom:3px"><span>Materials</span><b style="color:var(--text)">$522</b></div>
+              <div style="display:flex;justify-content:space-between"><span>Labour</span><b style="color:var(--text)">8h · $522</b></div>
+            </div>
+          </div>
+        </div>
+        <div style="font-size:10px;color:var(--muted);text-align:center;padding:6px;background:var(--surface2);border-top:1px solid var(--border)">Cabinets render in the main content area →</div>
+      </div>
+    </div>
+
+    <!-- 4 · Cut List -->
+    <div class="panel-card">
+      <div class="panel-label"><span>Cut List</span><span class="var-tag">CONTAINMENT</span></div>
+      <div class="sb-mock">
+        <div class="proj-header" style="background:linear-gradient(180deg, var(--accent-dim), transparent);border-bottom:1px solid var(--border)">
+          <div class="title-row">
+            <span class="title">Kitchen Reno</span>
+            <span class="x" title="Close project">×</span>
+          </div>
+          <div class="meta-row">
+            <span class="meta">12 parts · 4 sheets</span>
+            <span class="pill">Saved</span>
+          </div>
+        </div>
+        <div class="sb-body">
+          <div class="scoped-section">
+            <div class="sec-label">Add to project</div>
+            <div class="drawer-row"><span class="label"><span class="icon">▸</span>Cabinet library</span><span class="caret">▾</span></div>
+            <div class="drawer-row"><span class="label"><span class="icon">▸</span>Stock library</span><span class="caret">▾</span></div>
+            <div class="drawer-row"><span class="label"><span class="icon">▸</span>Edge banding</span><span class="caret">▾</span></div>
+            <div class="drawer-row"><span class="label"><span class="icon">+</span>Custom part</span><span class="caret"></span></div>
+          </div>
+          <div class="scoped-section">
+            <div class="sec-label">Quick stats</div>
+            <div style="font-size:11px;color:var(--muted);padding:8px;background:var(--surface2);border-radius:6px;line-height:1.5">
+              <div style="display:flex;justify-content:space-between;margin-bottom:3px"><span>Cut parts</span><b style="color:var(--text)">12</b></div>
+              <div style="display:flex;justify-content:space-between;margin-bottom:3px"><span>Sheets</span><b style="color:var(--text)">4</b></div>
+              <div style="display:flex;justify-content:space-between"><span>Yield</span><b style="color:var(--text)">82%</b></div>
+            </div>
+          </div>
+        </div>
+        <div class="sb-foot">
+          <button class="btn btn-primary btn-lg">⚡ Optimize Cut Layout</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4 · Quotes -->
+    <div class="panel-card">
+      <div class="panel-label"><span>Quotes</span><span class="var-tag">CONTAINMENT</span></div>
+      <div class="sb-mock">
+        <div class="proj-header" style="background:linear-gradient(180deg, var(--accent-dim), transparent);border-bottom:1px solid var(--border)">
+          <div class="title-row">
+            <span class="title">Kitchen Reno</span>
+            <span class="x" title="Close project">×</span>
+          </div>
+          <div class="meta-row">
+            <span class="meta">Q-0042 · Draft · $4,820</span>
+            <span class="pill">Saved</span>
+          </div>
+        </div>
+        <div class="sb-body">
+          <div class="scoped-section">
+            <div class="sec-label">Quote setup</div>
+            <select class="field"><option>Draft</option></select>
+            <input class="field" value="Q-0042" placeholder="Quote #" />
+          </div>
+          <div class="scoped-section">
+            <div class="sec-label">Add line item</div>
+            <div class="drawer-row"><span class="label"><span class="icon">+</span>Cabinet</span><span class="caret"></span></div>
+            <div class="drawer-row"><span class="label"><span class="icon">+</span>Item</span><span class="caret"></span></div>
+            <div class="drawer-row"><span class="label"><span class="icon">+</span>Labour</span><span class="caret"></span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4 · Orders -->
+    <div class="panel-card">
+      <div class="panel-label"><span>Orders</span><span class="var-tag">CONTAINMENT</span></div>
+      <div class="sb-mock">
+        <div class="proj-header" style="background:linear-gradient(180deg, var(--accent-dim), transparent);border-bottom:1px solid var(--border)">
+          <div class="title-row">
+            <span class="title">Kitchen Reno</span>
+            <span class="x" title="Close project">×</span>
+          </div>
+          <div class="meta-row">
+            <span class="meta">#1042 · Production</span>
+            <span class="pill">Saved</span>
+          </div>
+        </div>
+        <div class="sb-body">
+          <div class="scoped-section">
+            <div class="sec-label">Order setup</div>
+            <select class="field"><option>Production</option></select>
+            <input class="field" type="date" value="2026-05-22" />
+          </div>
+          <div class="scoped-section">
+            <div class="sec-label">Add line item</div>
+            <div class="drawer-row"><span class="label"><span class="icon">+</span>Cabinet</span><span class="caret"></span></div>
+            <div class="drawer-row"><span class="label"><span class="icon">+</span>Item</span><span class="caret"></span></div>
+            <div class="drawer-row"><span class="label"><span class="icon">+</span>Labour</span><span class="caret"></span></div>
+          </div>
+          <div class="scoped-section">
+            <div class="sec-label">Quick stats</div>
+            <div style="font-size:11px;color:var(--muted);padding:8px;background:var(--surface2);border-radius:6px;line-height:1.5">
+              <div style="display:flex;justify-content:space-between"><span>Total</span><b style="color:var(--text)">$2,217</b></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!--                       Recommendation summary                              -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<div class="strategy">
+  <div class="strategy-header" style="border-bottom:none;padding-bottom:0">
+    <span class="strategy-tag recommended">Pick</span>
+    <span class="strategy-title">Recommendation</span>
+  </div>
+  <div class="rec-banner" style="margin-top:0">
+    <b>Strategy 3 (Workspace-level Project)</b> is the cleanest fit for what you described. The reason: lifting project up one level out of the sidebar means it stops being <i>a peer of libraries</i> and becomes <i>the container they live inside</i>. Cabinet Builder, Cut List, Quotes, and Orders all become "tabs of a project" rather than "tabs that each pick a project independently" — and tab-switching keeps the same project, which today requires re-typing it on every tab.<br><br>
+    If Strategy 3's app-shell change is too much, <b>Strategy 1 (Chip)</b> is the safe minimum-delta version: same architecture, just makes the project look like a header chip instead of a peer input. <b>Strategy 4 (Containment)</b> is the most "Quotes/Orders-faithful" but adds a click to reach libraries.
+  </div>
+</div>
+
+</body>
+</html>

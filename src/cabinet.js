@@ -1000,18 +1000,83 @@ function _setCbDirty(dirty) {
 }
 
 function _renderCbCurrentProject() {
-  const el = _byId('cb-current-project');
-  if (!el) return;
-  if (!_cbCurrentProjectId) { el.style.display = 'none'; el.innerHTML = ''; return; }
-  // Strategy C: always render the pill element so _setSaveStatus can find it
-  // via [data-save-pill="cabinet"]. The pill is hidden by default and surfaces
-  // saving/saved/failed states as autosave runs.
-  const initial = _cbDirty
-    ? '<span class="cl-unsaved-pill" data-save-pill="cabinet">unsaved</span>'
-    : '<span class="cl-unsaved-pill" data-save-pill="cabinet" style="display:none"></span>';
-  el.innerHTML = `<span class="cl-cp-label">Editing:</span> <span class="cl-cp-name">${_escHtml(_cbCurrentProjectName)}</span>${initial}`;
-  el.style.display = '';
+  // Strategy 2: project context block now owns the empty/in-project rendering.
+  // Delegating keeps the dirty-pill update path identical to before.
+  _cbRenderContext();
 }
+
+/**
+ * Strategy 2: render either the project-empty state or the Idea-3 project
+ * header into #cb-context, and toggle the tabs (Builder / My Rates) which
+ * are only visible when a project is active.
+ */
+function _cbRenderContext() {
+  const ctx = _byId('cb-context');
+  const tabsWrap = _byId('cb-tabs-wrap');
+  const sb = _byId('cb-sidebar');
+  if (!ctx) return;
+  if (!_cbCurrentProjectId) {
+    if (tabsWrap) tabsWrap.style.display = 'none';
+    if (sb) sb.style.display = 'none';
+    const recents = (typeof projects !== 'undefined' ? projects : [])
+      .slice()
+      .sort(/** @param {any} a @param {any} b */ (a, b) => {
+        const av = a.updated_at ? +new Date(a.updated_at) : 0;
+        const bv = b.updated_at ? +new Date(b.updated_at) : 0;
+        return bv - av;
+      });
+    ctx.innerHTML = _renderProjectEmpty({
+      title: 'Cabinet Builder',
+      subtitle: 'Pick a project to start designing cabinets.',
+      pickFnName: '_cbPickProject',
+      newFnName: '_cbNewProject',
+      recentProjects: recents,
+    });
+    return;
+  }
+  if (tabsWrap) tabsWrap.style.display = '';
+  if (sb) sb.style.display = '';
+  const proj = (typeof projects !== 'undefined' ? projects : []).find(/** @param {any} p */ p => p.id === _cbCurrentProjectId);
+  const clientName = proj && proj.client_id
+    ? ((typeof clients !== 'undefined' ? clients : []).find(/** @param {any} c */ c => c.id === proj.client_id) || /** @type {any} */ ({})).name
+    : '';
+  const cabCount = (typeof cbLines !== 'undefined' ? cbLines.length : 0);
+  const summary = cabCount === 1 ? '1 cabinet' : `${cabCount} cabinets`;
+  ctx.innerHTML = _renderProjectHeader('cabinet', {
+    name: _cbCurrentProjectName,
+    exitFn: '_exitProject_cabinet',
+    status: proj && proj.status ? String(proj.status) : 'Active',
+    summary,
+    clientName: clientName || undefined,
+  });
+  // If we entered with dirty=true, surface the pill state immediately.
+  if (typeof _setSaveStatus === 'function') {
+    if (_cbDirty) _setSaveStatus('cabinet', 'dirty');
+  }
+}
+
+/** Strategy 2: clear the active Cabinet Builder project and return to empty state. */
+function _exitProject_cabinet() {
+  _cbConfirmDiscardIfDirty('exit project', () => {
+    _cbSuppressDirty = true;
+    cbLines = [];
+    cbNextId = 1;
+    cbScratchpad = cbDefaultLine();
+    cbEditingLineIdx = -1;
+    cbEditingQuoteId = null;
+    cbEditingOriginalLines = null;
+    localStorage.removeItem('pc_cq_lines');
+    localStorage.removeItem('pc_cq_project_name');
+    localStorage.removeItem('pc_cb_editing_quote_id');
+    _cbCurrentProjectId = null;
+    _cbCurrentProjectName = '';
+    _setCbDirty(false);
+    _cbSuppressDirty = false;
+    if (typeof renderCBPanel === 'function') renderCBPanel();
+    _cbRenderContext();
+  });
+}
+/** @type {any} */ (window)._exitProject_cabinet = _exitProject_cabinet;
 
 /** @param {string} actionLabel @param {() => void} proceed */
 function _cbConfirmDiscardIfDirty(actionLabel, proceed) {

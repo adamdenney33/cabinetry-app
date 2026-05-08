@@ -315,11 +315,6 @@ function renderOrderEditor() {
   const statusBadgeCls = (/** @type {Record<string,string>} */ (STATUS_BADGES))[status] || 'badge-gray';
   const statusLabel = (/** @type {Record<string,string>} */ (STATUS_LABELS))[status] || status;
   const isExisting = !!o;
-  // Strategy C: show the multi-state save pill (dirty/saving/saved/failed)
-  // instead of the legacy static "unsaved" pill. _setSaveStatus drives state.
-  const initialPill = _opState.dirty
-    ? '<span class="cl-unsaved-pill" data-save-pill="order">unsaved</span>'
-    : '<span class="cl-unsaved-pill" data-save-pill="order" style="display:none"></span>';
 
   // Pipeline visualization
   const curIdx = ORDER_STATUSES.indexOf(status);
@@ -356,21 +351,17 @@ function renderOrderEditor() {
 
   const auto = o ? (o.auto_schedule !== false) : true;
 
+  // Strategy 2 + Idea 3: project header replaces editor-header / chip / client-line.
+  const phSummary = `${isExisting ? 'Order #' + o.id : 'New order'} · ${statusLabel}${isOverdue ? ' · Overdue' : ''}`;
+  const headerHTML = _renderProjectHeader('order', {
+    name: projectName || 'Untitled project',
+    exitFn: '_oChangeProject',
+    status: statusLabel,
+    summary: phSummary,
+    clientName: clientName || undefined,
+  });
   host.innerHTML = `<div class="form-section editor-shell">
-    <div class="editor-header">
-      <span class="editor-title">${isExisting ? 'Edit Order' : 'New Order'}</span>
-      ${isExisting ? `<span class="badge ${statusBadgeCls}" style="font-size:10px">${statusLabel}</span>` : ''}
-      ${isOverdue ? '<span class="badge badge-red" style="font-size:9px">Overdue</span>' : ''}
-      <span style="flex:1"></span>
-      <button class="btn-link" onclick="_oChangeProject()" title="Pick a different project">change</button>
-    </div>
-
-    <div class="cl-current-project editor-project-chip">
-      <span class="cl-cp-label">Editing:</span>
-      <span class="cl-cp-name">${_escHtml(projectName || 'Untitled project')}</span>
-      <span id="oe-dirty-pill">${initialPill}</span>
-    </div>
-    <div class="editor-client-line">${clientName ? 'Client: ' + _escHtml(clientName) : '<span style="color:var(--muted);font-style:italic">No client on this project</span>'}</div>
+    ${headerHTML}
 
     <div class="editor-section">
       <div class="pf-row">
@@ -506,8 +497,6 @@ let _oAutoSaveTimer = null;
 function _oMarkDirty() {
   if (!_opState.dirty) {
     _opState.dirty = true;
-    const pill = document.getElementById('oe-dirty-pill');
-    if (pill) pill.outerHTML = '<span id="oe-dirty-pill"><span class="cl-unsaved-pill" data-save-pill="order">unsaved</span></span>';
     if (typeof _setSaveStatus === 'function') _setSaveStatus('order', 'dirty');
   }
   // Strategy C: only existing orders autosave; new orders need explicit + Create.

@@ -160,6 +160,72 @@ function _setSaveStatus(domain, state, opts) {
   }
 }
 
+// ══════════════════════════════════════════
+// PROJECT CONTEXT (Strategy 2 + Idea 3)
+// ══════════════════════════════════════════
+// Each affected tab (Cabinet Builder, Cut List, Quotes, Orders) renders one of
+// two views in its sidebar:
+//   - empty state when no project is active (centered picker + recent list)
+//   - project header (Idea 3: ← icon + title + meta) when one is active
+// These two helpers produce the markup. Visibility / state is owned by each
+// tab's own renderContext function; ui.js just hands back HTML.
+
+/**
+ * Render the Idea-3 project header.
+ * @param {string} domain  matches `data-save-pill` slot ('cabinet'|'cutlist'|'quote'|'order')
+ * @param {{ name: string, exitFn: string, status?: string, summary?: string, clientName?: string }} opts
+ */
+function _renderProjectHeader(domain, opts) {
+  const { name, exitFn, status, summary, clientName } = opts;
+  const statusBadge = status ? `<span class="ph-badge-active">${_escHtml(status)}</span>` : '';
+  const summarySpan = summary ? `<span class="ph-meta">${_escHtml(summary)}</span>` : '';
+  const metaRow = (statusBadge || summarySpan)
+    ? `<div class="ph-meta-row">${statusBadge}${summarySpan}<span class="cl-unsaved-pill" data-save-pill="${domain}" style="display:none"></span></div>`
+    : '';
+  const clientLine = clientName ? `<div class="ph-client">Client: <b>${_escHtml(clientName)}</b></div>` : '';
+  return `<div class="project-header">
+    <div class="ph-row1">
+      <button class="ph-back" onclick="${exitFn}()" title="Back to projects" aria-label="Back to projects">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      </button>
+      <span class="ph-title">${_escHtml(name)}</span>
+    </div>
+    ${metaRow}
+    ${clientLine}
+  </div>`;
+}
+
+/**
+ * Render the "no project open" empty state — picker + recent-projects list.
+ * @param {{ title: string, subtitle: string, pickFnName: string, newFnName: string, recentProjects: Array<{id: number, name: string, updated_at?: string|null}> }} opts
+ */
+function _renderProjectEmpty(opts) {
+  const { title, subtitle, pickFnName, newFnName, recentProjects } = opts;
+  const recents = (recentProjects || []).slice(0, 5);
+  const recentHTML = recents.length
+    ? `<div class="pe-recent-list">
+        <div class="pe-recent-label">Recent</div>
+        ${recents.map(p => {
+          const initial = (p.name || '?').trim().charAt(0).toUpperCase() || '?';
+          const date = p.updated_at ? new Date(p.updated_at).toLocaleDateString() : '';
+          const escName = _escHtml(p.name).replace(/'/g, '&#39;');
+          return `<div class="pe-recent-item" onclick="${pickFnName}(${p.id},'${escName}')">
+            <span class="pe-ri-icon">${_escHtml(initial)}</span>
+            <span>${_escHtml(p.name)}</span>
+            <span class="pe-ri-meta">${_escHtml(date)}</span>
+          </div>`;
+        }).join('')}
+      </div>`
+    : `<div style="font-size:11px;color:var(--muted);padding:8px 0">No projects yet.</div>`;
+  return `<div class="project-empty">
+    <svg class="pe-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+    <h3>${_escHtml(title)}</h3>
+    <p>${_escHtml(subtitle)}</p>
+    <button class="btn btn-primary" onclick="${newFnName}()" style="width:100%;justify-content:center">+ New Project</button>
+    ${recentHTML}
+  </div>`;
+}
+
 /**
  * Normalise a URL so bare domains (e.g. `amazon.co.uk`) become absolute.
  * Display-time only — DB values are kept as the user typed them.

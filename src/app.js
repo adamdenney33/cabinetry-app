@@ -1350,6 +1350,10 @@ async function loadAllData() {
   renderStockMain();
   renderQuoteMain();
   renderOrdersMain();
+  // Strategy 2: re-render project contexts now that projects[] is populated.
+  // Initial top-level calls fire before loadAllData resolves, so this catches up.
+  if (typeof _clRenderContext === 'function') _clRenderContext();
+  if (typeof _cbRenderContext === 'function') _cbRenderContext();
   // Item 2 phase 1.3: pull Cabinet Builder lines from the project's draft quote.
   // No-op without auth, without a saved project name, or when the DB draft is empty.
   _loadCBLinesFromDB().catch(e => console.warn('[cb db-load]', e.message || e));
@@ -1540,6 +1544,10 @@ if (pieces.length === 0 && sheets.length === 0) {
   renderPieces();
 }
 initColVisibility();
+// Strategy 2 + Idea 3: render the project context (empty state or header)
+// for Cut List on init. Cabinet Builder is rendered through renderCBPanel.
+if (typeof _clRenderContext === 'function') _clRenderContext();
+if (typeof _cbRenderContext === 'function') _cbRenderContext();
 
 // ── Strategy C: global beforeunload guard ──
 // Block tab close while any sidebar / editor is dirty or has a save in flight.

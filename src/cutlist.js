@@ -875,16 +875,92 @@ function _setClDirty(dirty) {
 }
 
 function _renderClCurrentProject() {
-  const el = _byId('cl-current-project');
-  if (!el) return;
-  if (!_clCurrentProjectId) { el.style.display = 'none'; el.innerHTML = ''; return; }
-  // Strategy C: pill always present; visibility/state managed by _setSaveStatus.
-  const initial = _clDirty
-    ? '<span class="cl-unsaved-pill" data-save-pill="cutlist">unsaved</span>'
-    : '<span class="cl-unsaved-pill" data-save-pill="cutlist" style="display:none"></span>';
-  el.innerHTML = `<span class="cl-cp-label">Editing:</span> <span class="cl-cp-name">${_escHtml(_clCurrentProjectName)}</span>${initial}`;
-  el.style.display = '';
+  // Strategy 2: delegate to _clRenderContext which manages empty/in-project states.
+  _clRenderContext();
 }
+
+/** Strategy 2: render either empty state or Idea-3 header into #cl-context. */
+function _clRenderContext() {
+  const ctx = _byId('cl-context');
+  const scroll = _byId('cl-scroll-body');
+  const actionBar = _byId('cl-action-bar');
+  if (!ctx) return;
+  if (!_clCurrentProjectId) {
+    if (scroll) scroll.style.display = 'none';
+    if (actionBar) actionBar.style.display = 'none';
+    const recents = (typeof projects !== 'undefined' ? projects : [])
+      .slice()
+      .sort(/** @param {any} a @param {any} b */ (a, b) => {
+        const av = a.updated_at ? +new Date(a.updated_at) : 0;
+        const bv = b.updated_at ? +new Date(b.updated_at) : 0;
+        return bv - av;
+      });
+    ctx.innerHTML = _renderProjectEmpty({
+      title: 'Cut List',
+      subtitle: 'Pick a project to load its cut parts and panels.',
+      pickFnName: '_clPickProjectByIdSafe',
+      newFnName: '_clNewProject',
+      recentProjects: recents,
+    });
+    return;
+  }
+  if (scroll) scroll.style.display = '';
+  if (actionBar) actionBar.style.display = '';
+  const proj = (typeof projects !== 'undefined' ? projects : []).find(/** @param {any} p */ p => p.id === _clCurrentProjectId);
+  const clientName = proj && proj.client_id
+    ? ((typeof clients !== 'undefined' ? clients : []).find(/** @param {any} c */ c => c.id === proj.client_id) || /** @type {any} */ ({})).name
+    : '';
+  const partsCount = (typeof pieces !== 'undefined' ? pieces.length : 0);
+  const sheetsCount = (typeof sheets !== 'undefined' ? sheets.length : 0);
+  const summary = `${partsCount} part${partsCount===1?'':'s'} · ${sheetsCount} sheet${sheetsCount===1?'':'s'}`;
+  ctx.innerHTML = _renderProjectHeader('cutlist', {
+    name: _clCurrentProjectName,
+    exitFn: '_exitProject_cutlist',
+    status: proj && proj.status ? String(proj.status) : 'Active',
+    summary,
+    clientName: clientName || undefined,
+  });
+  if (typeof _setSaveStatus === 'function') {
+    if (_clDirty) _setSaveStatus('cutlist', 'dirty');
+  }
+}
+
+/** Pick-by-id wrapper for the empty-state recent list. Uses the existing loadProject. */
+/** @param {number} id @param {string} _name */
+function _clPickProjectByIdSafe(id, _name) {
+  /** @type {any} */ const w = window;
+  if (typeof w.loadProject === 'function') {
+    if (_clDirty) {
+      _confirm('You have unsaved changes. Load this project anyway? Current work will be lost.', () => w.loadProject(id));
+    } else {
+      w.loadProject(id);
+    }
+  }
+}
+/** @type {any} */ (window)._clPickProjectByIdSafe = _clPickProjectByIdSafe;
+
+/** Strategy 2: clear active Cut List project and return to empty state. */
+function _exitProject_cutlist() {
+  if (_clDirty) {
+    _confirm('You have unsaved changes. Discard and exit?', () => _doExitClProject());
+  } else {
+    _doExitClProject();
+  }
+}
+function _doExitClProject() {
+  pieces = []; sheets = []; edgeBands = []; _pieceId = 1; _sheetId = 1; _edgeBandId = 1;
+  pieceColorIdx = 0;
+  results = null;
+  _clSelectedIds = new Set(); _clSelectionAnchorId = null;
+  ['pc_cl_pieces','pc_cl_sheets','pc_cl_pid','pc_cl_sid','pc_cl_colorIdx','pc_cl_sheetColorIdx','pc_cl_edgebands','pc_cl_ebid'].forEach(k => localStorage.removeItem(k));
+  _clCurrentProjectId = null;
+  _clCurrentProjectName = '';
+  _clDirty = false;
+  renderPieces(); renderSheets();
+  if (typeof renderEdgeBands === 'function') { try { renderEdgeBands(); } catch(e) {} }
+  _clRenderContext();
+}
+/** @type {any} */ (window)._exitProject_cutlist = _exitProject_cutlist;
 
 // ── DRAG REORDER ──
 /** @param {DragEvent} e @param {string} table @param {number} idx */
