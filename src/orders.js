@@ -396,7 +396,7 @@ function renderOrderEditor() {
           </select>
         </div>
       </div>
-      <div class="pf" style="margin-top:6px"><label class="pf-label">Pipeline</label><div class="pp-pipeline">${pipe}</div></div>
+      <div class="pp-pipeline">${pipe}</div>
     </div>
 
     ${quoteChip}
@@ -447,6 +447,10 @@ function renderOrderEditor() {
           <label class="pf-label">Priority</label>
           <input class="pf-input" type="number" id="po-priority" value="${(o && o.priority) ?? 0}" step="1" oninput="_oMarkDirty()" title="Higher = scheduled first">
         </div>
+        <div class="pf">
+          <label class="pf-label">Run-over (h)</label>
+          <input class="pf-input" type="number" min="0" step="0.5" id="po-run-over" value="${(o && o.run_over_hours) ?? 0}" oninput="_renderOrderHoursBreakdown();_oMarkDirty()">
+        </div>
       </div>
       <div class="pf-row" id="po-manual-dates" style="${auto ? 'display:none' : ''}">
         <div class="pf">
@@ -458,18 +462,7 @@ function renderOrderEditor() {
           <input class="pf-input" type="date" id="po-manual-end" value="${(o && o.manual_end_date) || ''}" oninput="_oMarkDirty()">
         </div>
       </div>
-      <div class="pf-row">
-        <div class="pf">
-          <label class="pf-label">Packaging (h)</label>
-          <input class="pf-input" type="number" min="0" step="0.5" id="po-packaging" value="${(o && o.packaging_hours) ?? ''}" placeholder="default ${(typeof cbSettings!=='undefined' && cbSettings.packagingHours) ?? 0}" oninput="_renderOrderHoursBreakdown();_oMarkDirty()">
-        </div>
-        <div class="pf">
-          <label class="pf-label">Run-over (h)</label>
-          <input class="pf-input" type="number" min="0" step="0.5" id="po-run-over" value="${(o && o.run_over_hours) ?? 0}" oninput="_renderOrderHoursBreakdown();_oMarkDirty()">
-        </div>
-      </div>
-      <div style="font-size:10px;color:var(--muted);margin:-4px 0 8px 2px">Contingency is set in Cabinet Builder → My Rates as a % of cabinet labour time.</div>
-      <div class="pf-hours-readout" id="po-hours-breakdown" style="margin-bottom:10px"></div>
+      <div class="pf-hours-readout" id="po-hours-breakdown"></div>
       <div class="pf-row">
         <div class="pf">
           <label class="pf-label">Production Start ${auto ? '<span style="color:var(--muted);font-size:10px">(auto)</span>' : ''}</label>
@@ -699,13 +692,11 @@ async function saveOrderEditor() {
   const auto_schedule = autoEl ? autoEl.checked : true;
   const manual_start = _popupVal('po-manual-start') || null;
   const manual_end = _popupVal('po-manual-end') || null;
-  const packagingRaw = _popupVal('po-packaging');
-  const packaging_hours = packagingRaw === '' ? null : (parseFloat(packagingRaw) || 0);
   const run_over_hours = parseFloat(_popupVal('po-run-over')) || 0;
   const startISO = _popupVal('po-start');
   const dueISO = _popupVal('po-due');
   /** @type {any} */
-  const update = { status, markup, tax, priority, auto_schedule, manual_start_date: manual_start, manual_end_date: manual_end, packaging_hours, run_over_hours, updated_at: new Date().toISOString() };
+  const update = { status, markup, tax, priority, auto_schedule, manual_start_date: manual_start, manual_end_date: manual_end, run_over_hours, updated_at: new Date().toISOString() };
   if (dueISO) update.due = new Date(dueISO + 'T12:00:00').toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' });
   if (startISO) update.production_start_date = startISO;
   Object.assign(o, update);

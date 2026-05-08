@@ -244,19 +244,20 @@ function _renderOrderHoursBreakdown() {
     return v && v.value !== '' ? parseFloat(v.value) : undefined;
   };
   const b = _orderHoursBreakdown(_opState.lines, {
-    packagingHours:  popupVal('po-packaging'),
-    runOverHours:    popupVal('po-run-over'),
+    runOverHours: popupVal('po-run-over'),
   });
   /** @param {number} v */
   const h = v => Number(v).toFixed(1) + ' h';
   const contPct = cbSettings.contingencyPct ?? 0;
   const contLabel = contPct > 0 ? ` <span class="pf-hours-tag">incl. ${contPct}% contingency</span>` : '';
-  el.innerHTML = `<div class="pf-hours-row pf-hours-total"><span>Hours required</span><span>${h(b.total)}</span></div>
-    <div class="pf-hours-row"><span class="pf-hours-sub">• Cabinet labour <span class="pf-hours-tag">auto</span>${contLabel}</span><span>${h(b.cabinet)}</span></div>
-    <div class="pf-hours-row"><span class="pf-hours-sub">• Labour lines</span><span>${h(b.labour)}</span></div>
-    <div class="pf-hours-row"><span class="pf-hours-sub">• Item lines</span><span>${h(b.item)}</span></div>
-    <div class="pf-hours-row"><span class="pf-hours-sub">• Packaging</span><span>${h(b.packaging)}</span></div>
-    <div class="pf-hours-row"><span class="pf-hours-sub">• Run-over</span><span>${h(b.runOver)}</span></div>`;
+  /** @type {string[]} */
+  const rows = [];
+  if (b.cabinet > 0)   rows.push(`<div class="pf-hours-row"><span class="pf-hours-sub">• Cabinet labour <span class="pf-hours-tag">auto</span>${contLabel}</span><span>${h(b.cabinet)}</span></div>`);
+  if (b.labour  > 0)   rows.push(`<div class="pf-hours-row"><span class="pf-hours-sub">• Labour lines</span><span>${h(b.labour)}</span></div>`);
+  if (b.item    > 0)   rows.push(`<div class="pf-hours-row"><span class="pf-hours-sub">• Item lines</span><span>${h(b.item)}</span></div>`);
+  if (b.packaging > 0) rows.push(`<div class="pf-hours-row"><span class="pf-hours-sub">• Packaging</span><span>${h(b.packaging)}</span></div>`);
+  if (b.runOver  > 0)  rows.push(`<div class="pf-hours-row"><span class="pf-hours-sub">• Run-over</span><span>${h(b.runOver)}</span></div>`);
+  el.innerHTML = `<div class="pf-hours-row pf-hours-total"><span>Hours required</span><span>${h(b.total)}</span></div>${rows.join('')}`;
 }
 
 // S.3 + S.6: when the auto-schedule checkbox toggles, show/hide the manual
