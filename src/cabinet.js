@@ -1029,7 +1029,9 @@ function _cbRenderContext() {
       title: 'Cabinet Builder',
       subtitle: 'Pick a project to start designing cabinets.',
       pickFnName: '_cbPickProject',
-      newFnName: '_cbNewProject',
+      pickerInputId: 'cb-empty-picker',
+      pickerSuggestId: 'cb-empty-suggest',
+      pickerSuggestFn: '_smartCBEmptyProjectSuggest',
       recentProjects: recents,
     });
     return;
@@ -1116,6 +1118,39 @@ function _cbPickProject(projectId, projectName) {
     _loadCBProjectById(projectId, projectName);
   });
 }
+
+/** Smart-suggest for the Cabinet Builder gated-entry project picker.
+ *  @param {HTMLInputElement} input @param {string} boxId */
+function _smartCBEmptyProjectSuggest(input, boxId) {
+  const val = input.value.toLowerCase().trim();
+  const box = _byId(boxId);
+  if (!box) return;
+  if (typeof _posSuggest === 'function') _posSuggest(input, box);
+  const matches = projects
+    .filter(/** @param {any} p */ p => !val || p.name.toLowerCase().includes(val))
+    .slice(0, 8);
+  /** @param {string} s */
+  const esc = s => _escHtml(s).replace(/'/g, '&#39;');
+  let html = '';
+  for (const p of matches) {
+    const cName = p.client_id ? (clients.find(/** @param {any} c */ c => c.id === p.client_id) || /** @type {any} */ ({})).name || '' : '';
+    html += `<div class="client-suggest-item" onmousedown="_cbPickProject(${p.id},'${esc(p.name)}')">
+      <span class="suggest-icon">P</span>
+      <span class="csi-name">${esc(p.name)}</span>
+      ${cName ? `<span class="csi-meta">${esc(cName)}</span>` : ''}
+    </div>`;
+  }
+  if (val && !matches.some(/** @param {any} p */ p => p.name.toLowerCase() === val)) {
+    html += `<div class="client-suggest-item client-suggest-add" onmousedown="_openNewProjectPopup('cb-empty-picker')">
+      <span class="csi-icon">+</span>
+      <span class="csi-name">Create project "${esc(input.value.trim())}"</span>
+    </div>`;
+  }
+  if (!html) html = '<div class="client-suggest-empty">No projects yet — click + to create one.</div>';
+  box.innerHTML = html;
+  box.style.display = 'block';
+}
+/** @type {any} */ (window)._smartCBEmptyProjectSuggest = _smartCBEmptyProjectSuggest;
 
 /** @param {string} name */
 async function _cbSaveProjectByName(name) {

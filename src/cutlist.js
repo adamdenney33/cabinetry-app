@@ -899,8 +899,11 @@ function _clRenderContext() {
       title: 'Cut List',
       subtitle: 'Pick a project to load its cut parts and panels.',
       pickFnName: '_clPickProjectByIdSafe',
-      newFnName: '_clNewProject',
+      pickerInputId: 'cl-empty-picker',
+      pickerSuggestId: 'cl-empty-suggest',
+      pickerSuggestFn: '_smartCLEmptyProjectSuggest',
       recentProjects: recents,
+      iconSvg: '<svg class="pe-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12.00 1.70 L12.90 3.45 L15.94 2.48 L16.10 4.44 L19.28 4.72 L18.68 6.59 L21.52 8.06 L20.25 9.56 L22.30 12.00 L20.55 12.90 L21.52 15.94 L19.56 16.10 L19.28 19.28 L17.41 18.68 L15.94 21.52 L14.44 20.25 L12.00 22.30 L11.10 20.55 L8.06 21.52 L7.90 19.56 L4.72 19.28 L5.32 17.41 L2.48 15.94 L3.75 14.44 L1.70 12.00 L3.45 11.10 L2.48 8.06 L4.44 7.90 L4.72 4.72 L6.59 5.32 L8.06 2.48 L9.56 3.75 Z"/><circle cx="12" cy="12" r="1.5"/></svg>',
     });
     return;
   }
@@ -938,6 +941,39 @@ function _clPickProjectByIdSafe(id, _name) {
   }
 }
 /** @type {any} */ (window)._clPickProjectByIdSafe = _clPickProjectByIdSafe;
+
+/** Smart-suggest for the Cut List gated-entry project picker.
+ *  @param {HTMLInputElement} input @param {string} boxId */
+function _smartCLEmptyProjectSuggest(input, boxId) {
+  const val = input.value.toLowerCase().trim();
+  const box = _byId(boxId);
+  if (!box) return;
+  if (typeof _posSuggest === 'function') _posSuggest(input, box);
+  const matches = projects
+    .filter(/** @param {any} p */ p => !val || p.name.toLowerCase().includes(val))
+    .slice(0, 8);
+  /** @param {string} s */
+  const esc = s => _escHtml(s).replace(/'/g, '&#39;');
+  let html = '';
+  for (const p of matches) {
+    const cName = p.client_id ? (clients.find(/** @param {any} c */ c => c.id === p.client_id) || /** @type {any} */ ({})).name || '' : '';
+    html += `<div class="client-suggest-item" onmousedown="_clPickProjectByIdSafe(${p.id},'${esc(p.name)}')">
+      <span class="suggest-icon">P</span>
+      <span class="csi-name">${esc(p.name)}</span>
+      ${cName ? `<span class="csi-meta">${esc(cName)}</span>` : ''}
+    </div>`;
+  }
+  if (val && !matches.some(/** @param {any} p */ p => p.name.toLowerCase() === val)) {
+    html += `<div class="client-suggest-item client-suggest-add" onmousedown="_openNewProjectPopup('cl-empty-picker')">
+      <span class="csi-icon">+</span>
+      <span class="csi-name">Create project "${esc(input.value.trim())}"</span>
+    </div>`;
+  }
+  if (!html) html = '<div class="client-suggest-empty">No projects yet — click + to create one.</div>';
+  box.innerHTML = html;
+  box.style.display = 'block';
+}
+/** @type {any} */ (window)._smartCLEmptyProjectSuggest = _smartCLEmptyProjectSuggest;
 
 /** Strategy 2: clear active Cut List project and return to empty state. */
 function _exitProject_cutlist() {

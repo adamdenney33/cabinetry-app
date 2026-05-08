@@ -615,8 +615,8 @@ async function _saveNewProjectPopup(targetInputId) {
   const name = _popupVal('pnp-name');
   if (!name) { _toast('Project name is required', 'error'); return; }
   const clientName = _popupVal('pnp-client') || '';
-  const isCutList = targetInputId === 'cl-project';
-  const isCabBuilder = targetInputId === 'cb-project';
+  const isCutList = targetInputId === 'cl-project' || targetInputId === 'cl-empty-picker';
+  const isCabBuilder = targetInputId === 'cb-project' || targetInputId === 'cb-empty-picker';
   const isQuoteEditor = targetInputId === 'qe-project-picker';
   const isOrderEditor = targetInputId === 'oe-project-picker';
   // Check for duplicate
@@ -1061,10 +1061,11 @@ function renderQuoteEditor() {
         title: 'Quotes',
         subtitle: 'Pick a project to start a new quote.',
         pickFnName: '_qPickProjectFromEmpty',
-        newFnName: '_qNewQuote',
+        pickerInputId: 'qe-project-picker',
+        pickerSuggestId: 'qe-project-suggest',
+        pickerSuggestFn: '_smartQProjectSuggest',
         recentProjects: recents,
         iconSvg: _Q_EMPTY_ICON,
-        newButtonLabel: '+ New Quote',
       });
       return;
     }

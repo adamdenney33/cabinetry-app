@@ -305,10 +305,11 @@ function renderOrderEditor() {
         title: 'Orders',
         subtitle: 'Pick a project to start a new order.',
         pickFnName: '_oPickProjectFromEmpty',
-        newFnName: '_oNewOrder',
+        pickerInputId: 'oe-project-picker',
+        pickerSuggestId: 'oe-project-suggest',
+        pickerSuggestFn: '_smartOProjectSuggest',
         recentProjects: recents,
         iconSvg: _O_EMPTY_ICON,
-        newButtonLabel: '+ New Order',
       });
       return;
     }

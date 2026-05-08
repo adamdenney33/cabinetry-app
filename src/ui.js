@@ -196,20 +196,24 @@ function _renderProjectHeader(domain, opts) {
 }
 
 /**
- * Render the "no project open" empty state — picker + recent-projects list.
+ * Render the "no project open" empty state — smart-input project picker + recent-projects list.
  * @param {{
  *   title: string,
  *   subtitle: string,
  *   pickFnName: string,
- *   newFnName: string,
+ *   pickerInputId: string,
+ *   pickerSuggestId: string,
+ *   pickerSuggestFn: string,
  *   recentProjects: Array<{id: number, name: string, updated_at?: string|null}>,
  *   iconSvg?: string,
- *   newButtonLabel?: string,
+ *   newPopupTargetId?: string,
+ *   pickerPlaceholder?: string,
  *   emptyMessage?: string,
  * }} opts
  */
 function _renderProjectEmpty(opts) {
-  const { title, subtitle, pickFnName, newFnName, recentProjects, iconSvg, newButtonLabel, emptyMessage } = opts;
+  const { title, subtitle, pickFnName, pickerInputId, pickerSuggestId, pickerSuggestFn,
+    recentProjects, iconSvg, newPopupTargetId, pickerPlaceholder, emptyMessage } = opts;
   const recents = (recentProjects || []).slice(0, 5);
   const noneMsg = emptyMessage || 'No projects yet.';
   const recentHTML = recents.length
@@ -228,12 +232,22 @@ function _renderProjectEmpty(opts) {
       </div>`
     : `<div style="font-size:11px;color:var(--muted);padding:8px 0">${_escHtml(noneMsg)}</div>`;
   const icon = iconSvg || `<svg class="pe-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>`;
-  const btnLabel = newButtonLabel || '+ New Project';
+  const popupTarget = newPopupTargetId || pickerInputId;
+  const placeholder = pickerPlaceholder || 'Search or add project...';
   return `<div class="project-empty">
     ${icon}
     <h3>${_escHtml(title)}</h3>
     <p>${_escHtml(subtitle)}</p>
-    <button class="btn btn-primary" onclick="${newFnName}()" style="width:100%;justify-content:center">${_escHtml(btnLabel)}</button>
+    <div style="position:relative;text-align:left">
+      <div class="smart-input-wrap">
+        <input type="text" id="${pickerInputId}" placeholder="${_escHtml(placeholder)}" autocomplete="off"
+          oninput="${pickerSuggestFn}(this,'${pickerSuggestId}')"
+          onfocus="${pickerSuggestFn}(this,'${pickerSuggestId}')"
+          onblur="setTimeout(()=>{const b=document.getElementById('${pickerSuggestId}'); if(b)b.style.display='none'},150)">
+        <div class="smart-input-add" onclick="_openNewProjectPopup('${popupTarget}')" title="New project">+</div>
+      </div>
+      <div id="${pickerSuggestId}" class="client-suggest-list" style="display:none"></div>
+    </div>
     ${recentHTML}
   </div>`;
 }
