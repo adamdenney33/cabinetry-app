@@ -2487,7 +2487,7 @@ async function _buildCutListPDF({ biz, layouts, imgs, pieces, u, cur, totalPiece
         didDrawCell(/** @type {any} */ data) {
           if (data.column.index===0 && data.section==='body') {
             const p = layout.placed[data.row.index];
-            if (p) { const [r,g,b]=hexRgb(p.item.color); pdf.setFillColor(r,g,b); pdf.roundedRect(data.cell.x+1,data.cell.y+1.5,3,3,0.5,0.5,'F'); }
+            if (p) { const [r,g,b]=hexRgb(p.item.color); pdf.setFillColor(r,g,b); pdf.circle(data.cell.x+2.5, data.cell.y+3, 1.5, 'F'); }
           }
         }
       });
@@ -2536,7 +2536,7 @@ async function _buildCutListPDF({ biz, layouts, imgs, pieces, u, cur, totalPiece
           didDrawCell(/** @type {any} */ data) {
             if (data.column.index===0 && data.section==='body') {
               const p = pieces[data.row.index];
-              if (p) { const [r,g,b]=hexRgb(p.color); pdf.setFillColor(r,g,b); pdf.roundedRect(data.cell.x+1,data.cell.y+1.5,3,3,0.5,0.5,'F'); }
+              if (p) { const [r,g,b]=hexRgb(p.color); pdf.setFillColor(r,g,b); pdf.circle(data.cell.x+2.5, data.cell.y+3, 1.5, 'F'); }
             }
           }
         });
