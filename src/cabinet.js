@@ -267,6 +267,7 @@ function saveCBLines() {
 
 function _getCBProjectId() {
   if (!_userId) return null;
+  if (_cbCurrentProjectId) return _cbCurrentProjectId;
   const pn = _byId('cb-project');
   if (!pn) return null;
   const name = pn.value.trim();
@@ -279,8 +280,8 @@ async function _ensureCBProject() {
   const projId = _getCBProjectId();
   if (projId) return projId;
   if (!_userId) { _toast('Sign in to save cabinets', 'error'); return null; }
-  const name = /** @type {HTMLInputElement|null} */ (_byId('cb-project'))?.value?.trim();
-  if (!name) { _toast('Enter a project name first', 'error'); return null; }
+  const name = _cbCurrentProjectName || (/** @type {HTMLInputElement|null} */ (_byId('cb-project'))?.value?.trim() || '');
+  if (!name) { _toast('Pick a project first', 'error'); return null; }
   const newId = await resolveProject(name, null);
   if (newId) _toast('Project "' + name + '" created', 'success');
   return newId;
@@ -669,8 +670,10 @@ function cbSendToQuote() {
   if (!cbLines.length) { _toast('Add cabinets first.', 'error'); return; }
   if (!_userId) { _toast('Sign in to save', 'error'); return; }
 
-  const projName = /** @type {HTMLInputElement|null} */ (_byId('cb-project'))?.value?.trim() || '';
-  const proj = projects.find(p => p.name === projName);
+  const projName = _cbCurrentProjectName || (/** @type {HTMLInputElement|null} */ (_byId('cb-project'))?.value?.trim() || '');
+  const proj = _cbCurrentProjectId
+    ? projects.find(p => p.id === _cbCurrentProjectId)
+    : projects.find(p => p.name === projName);
   const existing = proj
     ? quotes.filter(q => q.project_id === proj.id && !_isDraftQuote(q))
     : [];
@@ -734,7 +737,7 @@ async function cbCreateQuoteFromDraft() {
   if (!projectId) return;
 
   const clientId = _cbClientIdForProject();
-  const projName = /** @type {HTMLInputElement|null} */ (_byId('cb-project'))?.value?.trim() || '';
+  const projName = _cbCurrentProjectName || (/** @type {HTMLInputElement|null} */ (_byId('cb-project'))?.value?.trim() || '');
 
   // Line items are stored as real quote_lines rows; no need to mirror the
   // cabinet specs into a notes blob (the popup renders rows directly).
@@ -968,15 +971,26 @@ function copyCBSummary() {
 // has its own client input. These helpers walk projects → clients to recover
 // the legacy "client" string/id used by quote, order, PDF and copy paths.
 function _cbClientNameForProject() {
-  const projName = /** @type {HTMLInputElement|null} */ (_byId('cb-project'))?.value?.trim() || '';
-  const proj = projects.find(p => p.name === projName);
+  let proj = _cbCurrentProjectId
+    ? projects.find(p => p.id === _cbCurrentProjectId)
+    : null;
+  if (!proj) {
+    const projName = /** @type {HTMLInputElement|null} */ (_byId('cb-project'))?.value?.trim() || '';
+    proj = projects.find(p => p.name === projName);
+  }
   if (!proj?.client_id) return '';
   return clients.find(c => c.id === proj.client_id)?.name || '';
 }
 
 function _cbClientIdForProject() {
-  const projName = /** @type {HTMLInputElement|null} */ (_byId('cb-project'))?.value?.trim() || '';
-  return projects.find(p => p.name === projName)?.client_id ?? null;
+  let proj = _cbCurrentProjectId
+    ? projects.find(p => p.id === _cbCurrentProjectId)
+    : null;
+  if (!proj) {
+    const projName = /** @type {HTMLInputElement|null} */ (_byId('cb-project'))?.value?.trim() || '';
+    proj = projects.find(p => p.name === projName);
+  }
+  return proj?.client_id ?? null;
 }
 
 /** @param {boolean} dirty */
