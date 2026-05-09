@@ -715,16 +715,18 @@ function _renderLibraryCards(items) {
     const shelfTotal = (c.shelves||0) + (c.adjShelves||0) + (c.looseShelves||0);
     if (shelfTotal > 0) details.push(shelfTotal + ' shelves');
 
-    html += `<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:6px;overflow:hidden;box-shadow:var(--shadow);transition:box-shadow .15s" onmouseover="this.style.boxShadow='var(--shadow-md)'" onmouseout="this.style.boxShadow='var(--shadow)'">
-      <div style="display:flex;align-items:center;gap:8px;padding:8px 12px">
+    html += `<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:6px;box-shadow:var(--shadow);transition:box-shadow .15s" onmouseover="this.style.boxShadow='var(--shadow-md)'" onmouseout="this.style.boxShadow='var(--shadow)'">
+      <div style="display:flex;align-items:flex-start;gap:8px;padding:10px 12px 6px">
         <div style="flex:1;min-width:0">
           <div style="font-size:13px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_escHtml(c._libName||c.name||'Cabinet')}</div>
           <div style="font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.w} × ${c.h} × ${c.d} mm · ${_escHtml(c.material||'')}${details.length?' · '+details.join(', '):''}</div>
         </div>
-        <div style="font-size:14px;font-weight:800;color:var(--accent);flex-shrink:0">${fmt0(calc.lineSubtotal)}</div>
-        <button class="btn btn-primary" onclick="event.stopPropagation();cbLoadFromLibrary(${idx})" style="font-size:11px;padding:5px 10px;flex-shrink:0">Load</button>
-        <button class="btn btn-outline" onclick="event.stopPropagation();cbAddFromLibrary(${idx})" style="font-size:11px;padding:5px 10px;flex-shrink:0">+ Project</button>
-        <button class="btn btn-outline" title="Delete" onclick="event.stopPropagation();_confirm('Remove from library?',()=>cbRemoveFromLibrary(${idx}))" style="font-size:13px;padding:5px 9px;color:var(--muted);flex-shrink:0">×</button>
+        <div style="font-size:14px;font-weight:800;color:var(--accent);flex-shrink:0;white-space:nowrap">${fmt0(calc.lineSubtotal)}</div>
+      </div>
+      <div style="display:flex;gap:6px;padding:0 12px 10px;justify-content:flex-end">
+        <button class="btn btn-primary" onclick="cbLoadFromLibrary(${idx})" style="font-size:11px;padding:5px 10px;width:auto">Load</button>
+        <button class="btn btn-outline" onclick="cbAddFromLibrary(${idx})" style="font-size:11px;padding:5px 10px;width:auto">+ Project</button>
+        <button class="btn btn-outline" title="Delete" onclick="_confirm('Remove from library?',()=>cbRemoveFromLibrary(${idx}))" style="font-size:13px;padding:5px 9px;color:var(--muted);width:auto">×</button>
       </div>
     </div>`;
   });
