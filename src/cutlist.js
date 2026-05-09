@@ -61,7 +61,12 @@ let _dragTable = null;
 /** @type {number | null} */
 let _clCurrentProjectId = null;
 let _clCurrentProjectName = '';
+/** @type {number | null} */
+let _clCurrentCutlistId = null;
+let _clCurrentCutlistName = '';
 let _clDirty = false;
+/** @type {string} */
+let _clMainView = 'cutlists';
 
 const COLORS = [
   '#4a90d9','#d4763b','#4caf50','#9c27b0','#e53935',
@@ -73,7 +78,7 @@ const COLORS = [
 // ── GRAIN ICONS ──
 const GRAIN_ICONS = {
   // none: faint equal lines — no constraint
-  'none': `<svg width="14" height="12" viewBox="0 0 14 12" fill="none" stroke="currentColor" stroke-width="1.4" opacity="0.25"><line x1="1" y1="2.5" x2="13" y2="2.5"/><line x1="1" y1="6" x2="13" y2="6"/><line x1="1" y1="9.5" x2="13" y2="9.5"/></svg>`,
+  'none': `<svg width="14" height="12" viewBox="0 0 14 12" fill="none" stroke="currentColor" stroke-width="1.4" opacity="0.5"><line x1="1" y1="2.5" x2="13" y2="2.5"/><line x1="1" y1="6" x2="13" y2="6"/><line x1="1" y1="9.5" x2="13" y2="9.5"/></svg>`,
   // h: horizontal lines — grain runs the length of the board
   'h':    `<svg width="14" height="12" viewBox="0 0 14 12" fill="none" stroke="currentColor" stroke-width="1.6"><line x1="0" y1="2.5" x2="14" y2="2.5"/><line x1="0" y1="6" x2="14" y2="6"/><line x1="0" y1="9.5" x2="14" y2="9.5"/></svg>`,
   // v: vertical lines — cross grain
@@ -379,7 +384,7 @@ function _ebIcon(p) {
   /** @param {number} x1 @param {number} y1 @param {number} x2 @param {number} y2 @param {string | null} col */
   const seg = (x1,y1,x2,y2,col) => col
     ? `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${col}" stroke-width="2.5" stroke-linecap="round"/>`
-    : `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" opacity="0.25"/>`;
+    : `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-dasharray="2 2" opacity="0.55"/>`;
   return `<svg width="16" height="12" viewBox="0 0 16 12" fill="none">
     ${seg(1,1,15,1,c('L1'))}${seg(15,1,15,11,c('W2'))}${seg(15,11,1,11,c('L3'))}${seg(1,11,1,1,c('W4'))}
   </svg>`;
@@ -389,7 +394,7 @@ function renderEdgeBands() {
   const tbody = _byId('edgebands-body');
   if (!tbody) return;
   if (!edgeBands.length) {
-    tbody.innerHTML = `<tr><td colspan="10" style="color:var(--muted);font-size:11px;padding:8px 14px;text-align:center">No edge bands — click "+ Add edge band"</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="11" style="color:var(--muted);font-size:11px;padding:8px 14px;text-align:center">No edge bands — click "+ Add edge band"</td></tr>`;
     return;
   }
   tbody.innerHTML = edgeBands.map(eb => `<tr>
@@ -404,28 +409,26 @@ function renderEdgeBands() {
         onkeydown="if(event.key==='Enter')this.blur()"
         ${eb.glue?`title="Glue: ${_escHtml(eb.glue)}"`:''}>
     </td>
+    <td><input class="cl-input cl-dim-input" value="${eb.length||''}" inputmode="decimal"
+      onblur="updateEbLength(${eb.id},this.value)"
+      onkeydown="if(event.key==='Enter')this.blur()"
+      placeholder="m" title="Total length (m)"></td>
+    <td><input class="cl-input cl-dim-input" value="${eb.width||''}" inputmode="decimal"
+      onblur="updateEdgeBand(${eb.id},'width',parseFloat(this.value)||0)"
+      onkeydown="if(event.key==='Enter')this.blur()"
+      placeholder="mm" title="Strip width (mm)"></td>
     <td></td>
     <td></td>
-    <td>
-      <div class="cl-stepper">
-        <button class="cl-step-btn" onclick="stepEbLength(${eb.id},-10)">−</button>
-        <input class="cl-input cl-qty-input" value="${(eb.length||0)}" inputmode="decimal"
-          style="border:0;background:transparent;box-shadow:none"
-          onblur="updateEbLength(${eb.id},this.value)"
-          onkeydown="if(event.key==='Enter')this.blur()">
-        <button class="cl-step-btn" onclick="stepEbLength(${eb.id},10)">+</button>
-      </div>
-    </td>
-    <td class="cl-col-grain" style="${colsVisible.grain?'':'display:none'}"></td>
-    <td style="text-align:center">
-      <input class="cl-input cl-dim-input" value="${eb.thickness||''}" inputmode="decimal"
-        style="width:32px;text-align:center;padding:2px 2px;border:0;background:transparent;box-shadow:none"
+    <td style="padding:0 2px;text-align:center">
+      <input class="cl-input" value="${eb.thickness||''}" inputmode="decimal"
+        style="width:28px;text-align:center;padding:2px 2px;border:0;background:transparent;box-shadow:none"
         onblur="updateEdgeBand(${eb.id},'thickness',parseFloat(this.value)||0)"
         onkeydown="if(event.key==='Enter')this.blur()"
         placeholder="0">
     </td>
-    <td class="cl-col-notes" style="${colsVisible.notes?'':'display:none'}"></td>
-    <td class="cl-del-cell" style="padding:2px 4px;text-align:right">
+    <td class="cl-col-grain" style="${colsVisible.grain?'':'display:none'}"></td>
+    <td></td>
+    <td class="cl-del-cell">
       <button class="cl-del-btn" onclick="removeEdgeBand(${eb.id})" title="Remove">${DEL_SVG}</button>
     </td>
   </tr>`).join('');
@@ -801,34 +804,33 @@ function _clNewProject() {
 }
 
 function _clSaveProject() {
-  // Already-loaded project → silent overwrite. No popup.
-  if (_clCurrentProjectId && _clCurrentProjectName) {
-    /** @type {any} */ (window)._clSaveProjectByName?.(_clCurrentProjectName);
+  // Already-loaded project + cutlist → silent overwrite. No popup.
+  if (_clCurrentProjectId && _clCurrentProjectName && _clCurrentCutlistId && _clCurrentCutlistName) {
+    /** @type {any} */ (window)._clSaveProjectByName?.(_clCurrentProjectName, { cutlistName: _clCurrentCutlistName });
     return;
   }
-  // Cabinet-builder pattern: when nothing is loaded, the input value IS the
-  // project name. Save under that name (find-or-create handled by save layer).
-  const inp = /** @type {HTMLInputElement|null} */ (_byId('cl-project'));
-  const typed = inp ? inp.value.trim() : '';
-  if (typed) {
-    /** @type {any} */ (window)._clSaveProjectByName?.(typed);
-    return;
-  }
-  // Empty input + no project loaded → open popup to collect Name/Client/Notes.
+  // Always go through the popup when project or cutlist isn't fully resolved —
+  // user must name the cutlist explicitly so it's discoverable in the library.
   _openSaveProjectPopup();
 }
 
 function _openSaveProjectPopup() {
-  const defaultName = pieces.length > 0 ? (pieces[0].label.split(' ')[0] + ' Build') : '';
+  const defaultProjectName = _clCurrentProjectName || (pieces.length > 0 ? (pieces[0].label.split(' ')[0] + ' Build') : '');
+  const defaultCutlistName = _clCurrentCutlistName || 'Main';
+  const projectLocked = !!(_clCurrentProjectId && _clCurrentProjectName);
   const h = `
     <div class="popup-header">
-      <div class="popup-title">Save Project</div>
+      <div class="popup-title">Save cut list to project</div>
       <div class="popup-close" onclick="_closePopup()">×</div>
     </div>
     <div class="popup-body">
       <div class="pf">
         <label>Project Name</label>
-        <input type="text" id="save-proj-name" class="form-control" placeholder="e.g. Kitchen Cabinet Build" value="${_escHtml(defaultName)}">
+        <input type="text" id="save-proj-name" class="form-control" placeholder="e.g. Kitchen Cabinet Build" value="${_escHtml(defaultProjectName)}"${projectLocked ? ' readonly style="opacity:.7"' : ''}>
+      </div>
+      <div class="pf">
+        <label>Cut List Name</label>
+        <input type="text" id="save-cutlist-name" class="form-control" placeholder="e.g. Bases, Wall units, Doors" value="${_escHtml(defaultCutlistName)}">
       </div>
       <div class="pf">
         <label>Client</label>
@@ -848,19 +850,24 @@ function _openSaveProjectPopup() {
     </div>
     <div class="popup-footer">
       <button class="btn btn-outline" onclick="_closePopup()">Cancel</button>
-      <button class="btn btn-primary" onclick="_doSaveProject()">Save Project</button>
+      <button class="btn btn-primary" onclick="_doSaveProject()">Save cut list</button>
     </div>`;
   _openPopup(h, 'sm');
-  setTimeout(() => _byId('save-proj-name')?.focus(), 50);
+  setTimeout(() => {
+    const focusId = projectLocked ? 'save-cutlist-name' : 'save-proj-name';
+    const el = /** @type {HTMLInputElement|null} */ (_byId(focusId));
+    if (el) { el.focus(); el.select(); }
+  }, 50);
 }
 
 async function _doSaveProject() {
   const name = (_popupVal('save-proj-name') || '').trim();
   if (!name) { _toast('Please enter a project name', 'error'); return; }
+  const cutlistName = (_popupVal('save-cutlist-name') || '').trim() || 'Main';
   const clientName = (_popupVal('save-proj-client') || '').trim();
   const description = (_popupVal('save-proj-notes') || '').trim();
   _closePopup();
-  /** @type {any} */ (window)._clSaveProjectByName?.(name, { clientName, description });
+  /** @type {any} */ (window)._clSaveProjectByName?.(name, { clientName, description, cutlistName });
 }
 
 // ── PROJECT-STATE TRACKING ──
@@ -881,6 +888,9 @@ function _renderClCurrentProject() {
 
 /** Strategy 2: render either empty state or Idea-3 header into #cl-context. */
 function _clRenderContext() {
+  // Render whatever main-view tab is currently active (default: cutlists).
+  // Idempotent: switchCLMainView keeps display state in sync each call.
+  if (typeof switchCLMainView === 'function') switchCLMainView(_clMainView || 'cutlists');
   const ctx = _byId('cl-context');
   const scroll = _byId('cl-scroll-body');
   const actionBar = _byId('cl-action-bar');
@@ -1035,13 +1045,15 @@ function _doClearAll() {
   // Reset project tracking — clearing means a fresh, unloaded cut list.
   _clCurrentProjectId = null;
   _clCurrentProjectName = '';
+  _clCurrentCutlistId = null;
+  _clCurrentCutlistName = '';
   _clDirty = false;
   const inp = /** @type {HTMLInputElement|null} */ (_byId('cl-project'));
   if (inp) inp.value = '';
   _renderClCurrentProject();
   renderPieces(); renderSheets();
   if (typeof renderEdgeBands === 'function') { try { renderEdgeBands(); } catch(e) {} }
-  /** @type {HTMLElement} */ (_byId('results-area')).innerHTML = '<div class="empty-state"><div class="empty-icon" style="opacity:.18"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg></div><h3>Ready to Optimize</h3><p>Add stock panels and cut pieces, then click "Optimize Cut Layout"</p></div>';
+  /** @type {HTMLElement} */ (_byId('results-area')).innerHTML = '<div class="empty-state"><div class="empty-icon" style="opacity:.18"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12.00 1.70 L12.90 3.45 L15.94 2.48 L16.10 4.44 L19.28 4.72 L18.68 6.59 L21.52 8.06 L20.25 9.56 L22.30 12.00 L20.55 12.90 L21.52 15.94 L19.56 16.10 L19.28 19.28 L17.41 18.68 L15.94 21.52 L14.44 20.25 L12.00 22.30 L11.10 20.55 L8.06 21.52 L7.90 19.56 L4.72 19.28 L5.32 17.41 L2.48 15.94 L3.75 14.44 L1.70 12.00 L3.45 11.10 L2.48 8.06 L4.44 7.90 L4.72 4.72 L6.59 5.32 L8.06 2.48 L9.56 3.75 Z"/><circle cx="12" cy="12" r="1.5"/></svg></div><h3>Ready to Optimize</h3><p>Add stock panels and cut pieces, then click "Optimize Cut Layout"</p></div>';
 }
 
 // ── ROW SELECTION — click-outside to clear ──
@@ -1061,34 +1073,6 @@ function _doClearAll() {
   };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', wire);
   else wire();
-})();
-
-// ── PANEL RESIZE ──
-(function() {
-  document.addEventListener('DOMContentLoaded', () => {});
-  const init = () => {
-    const handle = _byId('cl-resize-handle');
-    const left   = /** @type {HTMLElement | null} */ (document.querySelector('.cl-left'));
-    if (!handle || !left) return;
-    let dragging = false;
-    /** @type {number} */ let startX = 0;
-    /** @type {number} */ let startW = 0;
-    handle.addEventListener('mousedown', e => {
-      dragging = true; startX = e.clientX; startW = left.offsetWidth;
-      handle.classList.add('dragging');
-      document.body.style.cssText += 'cursor:col-resize!important;user-select:none';
-    });
-    document.addEventListener('mousemove', e => {
-      if (!dragging) return;
-      left.style.width = Math.max(260, Math.min(680, startW + e.clientX - startX)) + 'px';
-    });
-    document.addEventListener('mouseup', () => {
-      dragging = false; handle.classList.remove('dragging');
-      document.body.style.cursor = ''; document.body.style.userSelect = '';
-    });
-  };
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
-  else init();
 })();
 
 // ── SHEETS ──
@@ -1193,20 +1177,20 @@ function renderSheets() {
           <button class="cl-step-btn" onclick="stepQty('sheet',${s.id},1)">+</button>
         </div>
       </td>
-      <td class="cl-grain-cell cl-col-grain" style="${colsVisible.grain?'':'display:none'}">
-        <button class="cl-grain-btn${s.grain !== 'none' ? ' active' : ''}"
-          onclick="cycleGrain(${s.id},'sheet')" title="Grain: ${s.grain}">${grainIcon(s.grain)}</button>
-      </td>
-      <td style="padding:0 4px;text-align:center">
-        <input class="cl-input cl-dim-input" value="${s.kerf ?? (window.units==='metric'?3:0.125)}"
-          style="width:32px;text-align:center;padding:2px 2px;border:0;background:transparent;box-shadow:none" inputmode="decimal"
+      <td></td>
+      <td style="padding:0 2px;text-align:center">
+        <input class="cl-input" value="${s.kerf ?? (window.units==='metric'?3:0.125)}"
+          style="width:28px;text-align:center;padding:2px 2px;border:0;background:transparent;box-shadow:none" inputmode="decimal"
           onblur="updateSheet(${s.id},'kerf',parseFloat(this.value)||0)"
           onkeydown="if(event.key==='Enter')this.blur()"
           ${dis ? 'disabled' : ''} placeholder="0">
       </td>
-      <td class="cl-col-notes" style="${colsVisible.notes?'':'display:none'}"></td>
-      <td class="cl-del-cell" style="white-space:nowrap">
-        <button class="cl-del-btn" onclick="duplicateSheet(${s.id})" title="Duplicate sheet" style="opacity:.6;margin-right:2px">⧉</button>
+      <td class="cl-grain-cell cl-col-grain" style="${colsVisible.grain?'':'display:none'}">
+        <button class="cl-grain-btn${s.grain !== 'none' ? ' active' : ''}"
+          onclick="cycleGrain(${s.id},'sheet')" title="Grain: ${s.grain}">${grainIcon(s.grain)}</button>
+      </td>
+      <td></td>
+      <td class="cl-del-cell">
         <button class="cl-del-btn" onclick="removeSheet(${s.id})" title="Remove">${DEL_SVG}</button>
       </td>
     </tr>`;
@@ -1433,10 +1417,10 @@ function renderPieces() {
         <button class="cl-grain-btn${p.grain !== 'none' ? ' active' : ''}" tabindex="-1"
           onclick="cycleGrain(${p.id},'piece')" title="Grain: ${p.grain}">${grainIcon(p.grain)}</button>
       </td>
-      <td class="cl-del-cell">
-        <input type="checkbox" class="cl-check" tabindex="-1" ${dis ? '' : 'checked'} onclick="_clCheckboxClick(${p.id},${i},this.checked,event)" title="Include in layout&#10;Shift+click to select range">
+      <td class="cl-del-cell" style="text-align:center">
+        <span class="cl-check-wrap"><input type="checkbox" class="cl-check" tabindex="-1" ${dis ? '' : 'checked'} onclick="_clCheckboxClick(${p.id},${i},this.checked,event)" title="Include in layout&#10;Shift+click to select range"></span>
       </td>
-      <td class="cl-del-cell">
+      <td class="cl-del-cell" style="text-align:center">
         <button class="cl-del-btn" tabindex="-1" onclick="removePiece(${p.id})" title="Remove">${DEL_SVG}</button>
       </td>
     </tr>`;
@@ -2477,11 +2461,11 @@ async function _buildCutListPDF({ biz, layouts, imgs, pieces, u, cur, totalPiece
         startY: sheetHdgY + hdgH + 3,
         margin: { left: rightX, right: M },
         tableWidth: rightW,
-        head: [['', 'Label', `W (${u})`, `H (${u})`, 'Rot']],
-        body: layout.placed.map(/** @param {any} p */ p => ['', p.item.label, formatDim(p.item.w), formatDim(p.item.h), p.rotated?'Y':'--']),
+        head: [['', 'Label', `W (${u})`, `H (${u})`]],
+        body: layout.placed.map(/** @param {any} p */ p => ['', p.item.label, formatDim(p.item.w), formatDim(p.item.h)]),
         styles: { fontSize: 7.5, cellPadding: 1.8, overflow:'ellipsize', textColor:[17,17,17] },
         headStyles: { fillColor:[250,250,250], textColor:[140,140,140], fontStyle:'normal', fontSize:6.5, lineWidth:0 },
-        columnStyles: { 0:{cellWidth:5}, 2:{halign:'right'}, 3:{halign:'right'}, 4:{halign:'center',cellWidth:7} },
+        columnStyles: { 0:{cellWidth:5}, 2:{halign:'right'}, 3:{halign:'right'} },
         theme: 'plain',
         tableLineColor: [224,224,224], tableLineWidth: 0.2,
         didDrawCell(/** @type {any} */ data) {
@@ -2738,6 +2722,7 @@ function optimize() {
   for (const si of sheetInsts) {
     if (!remaining.length) break;
     const fittable = remaining.filter(p => {
+      if (p.material && p.material !== si.name) return false;
       const pGrain = p.grain || 'none';
       const sGrain = si.grain || 'none';
       const mustRotate = pGrain !== 'none' && sGrain !== 'none' && pGrain !== sGrain;
@@ -2774,6 +2759,7 @@ function optimize() {
 
   if (!_userId) _incOptCount();
   activeSheetIdx = 0;
+  if (typeof switchCLMainView === 'function') switchCLMainView('layout');
   renderResults();
   // Scroll results into view
   setTimeout(() => {
@@ -3619,4 +3605,200 @@ function renderSummary(area) {
 
   area.innerHTML = html;
 }
+
+// ── Main content tabs (Cut Layout / Project Cut Lists / Cabinet Library) ──
+/** @param {string} view */
+function switchCLMainView(view) {
+  _clMainView = view;
+  const layout   = _byId('cl-view-layout');
+  const cutlists = _byId('cl-view-cutlists');
+  const library  = _byId('cl-view-library');
+  if (layout)   layout.style.display   = view === 'layout'   ? 'flex' : 'none';
+  if (cutlists) cutlists.style.display = view === 'cutlists' ? ''     : 'none';
+  if (library)  library.style.display  = view === 'library'  ? ''     : 'none';
+  /** @param {string} id @param {boolean} active */
+  const setTab = (id, active) => {
+    const el = _byId(id);
+    if (!el) return;
+    el.style.borderBottomColor = active ? 'var(--accent)' : 'transparent';
+    el.style.fontWeight        = active ? '700' : '500';
+    el.style.color             = active ? 'var(--text)' : 'var(--muted)';
+  };
+  setTab('cl-tab-layout',   view === 'layout');
+  setTab('cl-tab-cutlists', view === 'cutlists');
+  setTab('cl-tab-library',  view === 'library');
+  if (view === 'cutlists') renderCLCutListsView();
+  else if (view === 'library') renderCLCabinetLibraryView();
+}
+/** @type {any} */ (window).switchCLMainView = switchCLMainView;
+
+/** Format a date for cutlist card display. @param {string|null|undefined} iso */
+function _clFormatDate(iso) {
+  if (!iso) return '';
+  try {
+    const d = new Date(iso);
+    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+  } catch (e) { return ''; }
+}
+
+async function renderCLCutListsView() {
+  const host = _byId('cl-view-cutlists');
+  if (!host) return;
+  const filterByProject = _clCurrentProjectId != null;
+  const projectLabel = filterByProject ? _clCurrentProjectName : 'All projects';
+  host.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <div>
+        <div style="font-size:18px;font-weight:700;color:var(--text)">Project Cut Lists</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px">${_escHtml(projectLabel)}</div>
+      </div>
+      <div style="display:flex;gap:6px">
+        ${filterByProject ? `<button class="btn btn-outline" onclick="_clViewAllCutlists()">View all projects</button>` : ''}
+        <button class="btn btn-primary" onclick="_clNewCutlistFromHere()">+ New cut list</button>
+      </div>
+    </div>
+    <div id="cl-cutlists-grid" style="display:flex;flex-direction:column;gap:8px">
+      <div style="font-size:12px;color:var(--muted);text-align:center;padding:20px">Loading…</div>
+    </div>`;
+
+  if (typeof _userId === 'undefined' || !_userId) {
+    /** @type {HTMLElement} */ (_byId('cl-cutlists-grid')).innerHTML = `<div style="font-size:13px;color:var(--muted);text-align:center;padding:30px">Sign in to see your saved cut lists.</div>`;
+    return;
+  }
+
+  let q = _db('cutlists').select('id, name, position, project_id, updated_at, projects(name)').order('updated_at', { ascending: false });
+  if (filterByProject) q = q.eq('project_id', _clCurrentProjectId);
+  const { data: rows, error } = await q;
+  if (error) {
+    /** @type {HTMLElement} */ (_byId('cl-cutlists-grid')).innerHTML = `<div style="font-size:13px;color:var(--danger);text-align:center;padding:30px">Failed to load: ${_escHtml(error.message)}</div>`;
+    return;
+  }
+  const list = rows || [];
+  const grid = _byId('cl-cutlists-grid');
+  if (!grid) return;
+  if (!list.length) {
+    grid.innerHTML = `<div style="font-size:13px;color:var(--muted);text-align:center;padding:30px;border:1px dashed var(--border);border-radius:var(--radius)">
+      ${filterByProject ? `No cut lists in <strong>${_escHtml(projectLabel)}</strong> yet. Add parts and click "Save cut list to project".` : 'No cut lists saved yet. Open a project (or start a new one) to begin.'}
+    </div>`;
+    return;
+  }
+
+  // Fetch piece counts per cutlist (best-effort; render placeholder if it fails).
+  const ids = list.map(/** @param {any} r */ r => r.id);
+  /** @type {Record<number, number>} */
+  const counts = {};
+  try {
+    const { data: pcs } = await _db('pieces').select('cutlist_id').in('cutlist_id', ids);
+    for (const p of (pcs || [])) {
+      const cid = /** @type {any} */ (p).cutlist_id;
+      if (cid != null) counts[cid] = (counts[cid] || 0) + 1;
+    }
+  } catch (e) { /* counts stay empty */ }
+
+  grid.innerHTML = list.map(/** @param {any} r */ (r) => {
+    const isActive = r.id === _clCurrentCutlistId;
+    const projName = r.projects ? r.projects.name : '';
+    const partCount = counts[r.id] != null ? counts[r.id] : '–';
+    const date = _clFormatDate(r.updated_at);
+    return `<div style="background:var(--surface);border:1px solid ${isActive ? 'var(--accent)' : 'var(--border)'};border-radius:var(--radius);box-shadow:var(--shadow);transition:box-shadow .15s,border-color .15s;cursor:pointer"
+      onmouseover="this.style.boxShadow='var(--shadow-md)';this.style.borderColor='var(--accent)'"
+      onmouseout="this.style.boxShadow='var(--shadow)';this.style.borderColor='${isActive ? 'var(--accent)' : 'var(--border)'}'"
+      onclick="_clLoadCutlist(${r.id})">
+      <div style="display:flex;align-items:flex-start;gap:8px;padding:10px 12px 6px">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:700;color:var(--text)">${_escHtml(r.name||'(untitled)')}${isActive ? ' <span style="font-weight:500;color:var(--accent);font-size:11px">· editing</span>' : ''}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">
+            ${filterByProject ? '' : `<span>${_escHtml(projName)}</span> · `}
+            <span>${partCount} part${partCount === 1 ? '' : 's'}</span>
+            ${date ? ` · <span>${_escHtml(date)}</span>` : ''}
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;padding:0 12px 10px;justify-content:flex-end">
+        <button class="btn btn-outline" style="font-size:11px;padding:4px 10px;width:auto" onclick="event.stopPropagation();_clRenameCutlist(${r.id})">Rename</button>
+        <button class="btn btn-outline" style="font-size:11px;padding:4px 10px;width:auto" onclick="event.stopPropagation();_clDuplicateCutlist(${r.id})">Duplicate</button>
+        <button class="btn btn-outline" style="font-size:11px;padding:4px 10px;width:auto;color:var(--danger)" onclick="event.stopPropagation();_clDeleteCutlist(${r.id})">Delete</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+/** @type {any} */ (window).renderCLCutListsView = renderCLCutListsView;
+
+function _clViewAllCutlists() {
+  // Clear project filter so user can browse all cutlists; keeps any in-memory edits.
+  _clCurrentProjectId = null;
+  _clCurrentProjectName = '';
+  const inp = /** @type {HTMLInputElement|null} */ (_byId('cl-project'));
+  if (inp) inp.value = '';
+  _clRenderContext();
+  renderCLCutListsView();
+}
+/** @type {any} */ (window)._clViewAllCutlists = _clViewAllCutlists;
+
+function _clNewCutlistFromHere() {
+  // Clear in-memory cutlist and open the save popup so user names a new one.
+  _clCurrentCutlistId = null;
+  _clCurrentCutlistName = '';
+  pieces = []; sheets = []; edgeBands = [];
+  _pieceId = 1; _sheetId = 1; _edgeBandId = 1; pieceColorIdx = 0;
+  results = null;
+  renderSheets(); renderPieces();
+  if (typeof renderEdgeBands === 'function') { try { renderEdgeBands(); } catch(e) {} }
+  _toast('Add parts then click Save cut list to project', 'success');
+}
+/** @type {any} */ (window)._clNewCutlistFromHere = _clNewCutlistFromHere;
+
+function renderCLCabinetLibraryView() {
+  const host = _byId('cl-view-library');
+  if (!host) return;
+  const lib = (typeof cbLibrary !== 'undefined' && cbLibrary) ? cbLibrary : [];
+  const filterEl = /** @type {HTMLInputElement|null} */ (_byId('cl-lib-filter'));
+  const q = (filterEl && filterEl.value) ? filterEl.value.trim().toLowerCase() : '';
+  const filtered = q ? lib.filter(/** @param {any} c */ c => (c._libName||c.name||'').toLowerCase().includes(q)) : lib;
+  const cur = (typeof window !== 'undefined' && /** @type {any} */ (window).currency) || '';
+
+  host.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:12px">
+      <div>
+        <div style="font-size:18px;font-weight:700;color:var(--text)">Cabinet Library</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px">Click a cabinet to load its parts into the current cut list.</div>
+      </div>
+      <input type="text" id="cl-lib-filter" placeholder="Filter by name..." value="${_escHtml(q)}" oninput="renderCLCabinetLibraryView()" style="font-size:12px;padding:6px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);width:200px">
+    </div>
+    <div id="cl-lib-grid" style="display:flex;flex-direction:column;gap:8px"></div>`;
+
+  const grid = _byId('cl-lib-grid');
+  if (!grid) return;
+  if (!filtered.length) {
+    grid.innerHTML = `<div style="font-size:13px;color:var(--muted);text-align:center;padding:30px;border:1px dashed var(--border);border-radius:var(--radius)">
+      ${lib.length ? 'No cabinets match this filter.' : 'No cabinets saved yet. Select parts in the cut list and click "Save selected parts to cabinet library".'}
+    </div>`;
+    return;
+  }
+
+  grid.innerHTML = filtered.map(/** @param {any} c */ (c) => {
+    const idx = lib.indexOf(c);
+    const name = c._libName || c.name || 'Cabinet';
+    const partCount = (typeof _cabinetPartCount === 'function') ? _cabinetPartCount(c) : ((c._cutParts && c._cutParts.length) || 0);
+    const dims = (c.w && c.h) ? `${c.w}×${c.h}` : '';
+    return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);transition:box-shadow .15s,border-color .15s;cursor:pointer"
+      onmouseover="this.style.boxShadow='var(--shadow-md)';this.style.borderColor='var(--accent)'"
+      onmouseout="this.style.boxShadow='var(--shadow)';this.style.borderColor='var(--border)'"
+      onclick="_clLoadCabinetParts(${idx})">
+      <div style="display:flex;align-items:flex-start;gap:8px;padding:10px 12px 6px">
+        <span style="display:inline-block;width:22px;height:22px;border-radius:5px;background:var(--accent-dim);color:var(--accent);text-align:center;line-height:22px;font-size:12px;font-weight:700;flex-shrink:0">C</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:700;color:var(--text)">${_escHtml(name)}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">${dims ? dims + ' · ' : ''}${partCount} part${partCount === 1 ? '' : 's'}</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;padding:0 12px 10px;justify-content:flex-end">
+        <button class="btn btn-outline" style="font-size:11px;padding:4px 10px;width:auto" onclick="event.stopPropagation();_clLoadCabinetParts(${idx})">Load into cutlist</button>
+        ${typeof cbDuplicateLibraryEntry === 'function' ? `<button class="btn btn-outline" style="font-size:11px;padding:4px 10px;width:auto" onclick="event.stopPropagation();cbDuplicateLibraryEntry(${idx});renderCLCabinetLibraryView()">Duplicate</button>` : ''}
+        ${typeof cbRemoveFromLibrary === 'function' ? `<button class="btn btn-outline" style="font-size:11px;padding:4px 10px;width:auto;color:var(--danger)" onclick="event.stopPropagation();cbRemoveFromLibrary(${idx});renderCLCabinetLibraryView()">Delete</button>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+/** @type {any} */ (window).renderCLCabinetLibraryView = renderCLCabinetLibraryView;
 

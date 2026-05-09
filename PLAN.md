@@ -22,6 +22,44 @@ Companion docs: `SPEC.md` (refactor history), `SCHEMA.md` (DB schema),
 
 ## Active Work
 
+### Cut List multi-cutlist + 3-tab refactor 🚧 In Progress 2026-05-09
+
+Adds support for **multiple named cutlists per project** (currently 1-per-project, overwritten on save) and reorganises the Cut List main view into 3 tabs: **Cut Layout / Project Cut Lists / Cabinet Library**.
+
+**Code changes (committed):**
+- New `cutlists` table planned: `id, user_id, project_id (FK), name, position, ui_prefs jsonb, created_at, updated_at`. RLS as Pattern A (4 policies). New nullable `cutlist_id` column on `sheets / pieces / edge_bands` with FK + index. Backfill creates a "Main" cutlist per project that has child rows.
+- Sidebar: button label `Save Project` → `Save cut list to project`. Cabinet Library smart-search dropdown replaced by a single **"Save selected parts to cabinet library"** button (existing `_clSaveToCabinetLibrary()` requires the user to select pieces first via row checkboxes).
+- Save flow: `_saveProjectScoped` now also find-or-creates a cutlist by `(project_id, lower(trim(name)))` via new `_findOrCreateCutlist()`. `_replaceCutListChildTables` rescoped to delete-and-replace by `cutlist_id` (other cutlists in the same project are untouched). Save popup gains a Cut List Name field (default "Main" or current).
+- New helpers in `src/projects.js`: `_clLoadCutlist(id)`, `_clDuplicateCutlist(id)`, `_clDeleteCutlist(id)`, `_clRenameCutlist(id)`. `loadProject(id)` no longer auto-loads child rows — sets project state, clears in-memory arrays, and switches to Project Cut Lists tab; the user picks a cutlist to load.
+- Main view: tab strip + 3 sibling containers in `index.html`. New `switchCLMainView(view)`, `renderCLCutListsView()`, `renderCLCabinetLibraryView()` in `src/cutlist.js`. Project Cut Lists tab shows ALL cutlists across projects when no project is loaded; filters to current project when one is. Cabinet Library tab is a card-grid view of `cbLibrary` (shared with Cabinet Builder); click loads parts via existing `_clLoadCabinetParts()` flow.
+- Auto-tab-switching: `optimize()` switches to Cut Layout on success; `_confirmSaveCLToCabLib()` switches to Cabinet Library after saving.
+- Removed orphaned `_smartCLCabinetSuggest()` (the deleted smart-search's only consumer).
+- `database.types.ts` hand-updated to include `cutlists` table + `cutlist_id` columns. `npm run typecheck` passes clean.
+
+**Sub-step pending: schema migration is not yet applied.** The Supabase MCP `apply_migration` was blocked by harness permissions. SQL is staged in `~/.claude/plans/currently-i-can-only-abstract-raccoon.md` (Phase 1, Migrations 1 & 2). User will apply manually via Supabase SQL editor; once applied, regenerate `database.types.ts` to verify the hand-written types match.
+
+**Remaining:**
+- Apply both migrations (`add_cutlists_table`, `backfill_cutlists_main`).
+- Smoke check: `select count(*) from pieces where cutlist_id is null` → 0.
+- RLS check: query `cutlists` as user A → no user B rows.
+- Browser end-to-end: load project → pick cutlist → edit → save under new name → verify second cutlist row → optimize (auto-switch) → save selected parts (auto-switch) → load from library.
+- Append entry to SPEC.md § 13 once smoke-tested.
+
+### Orders auto-numbering ✅ Done 2026-05-09
+
+Mirrors the existing `quote_number` affordance for orders. New nullable
+`orders.order_number` column (plain 4-digit zero-padded `NNNN`, no prefix,
+per user preference); existing orders backfilled per-user in id-ascending
+order via the migration. New `_nextOrderNumber()` in `src/orders.js`
+computes the next sequential value from the in-memory `orders` array (max
+of trailing-digits of existing `order_number` and `id`). Order editor
+gains an Order # input next to Status; create/save/quote→order convert
+paths persist it. Quote→order conversion produces a fresh O-NNNN
+(independent series from `quote_number`). Order cards prepend `#NNNN ·`
+to the project/client title; editor header summary swaps `Order #<id>`
+for `#<order_number>` when present. CSV export gains an `Order #`
+column. Detail in SPEC.md § 13 (entry dated 2026-05-09).
+
 ### Cabinet Builder UX & Pricing Refactor (Batch 1) ✅ Done 2026-05-07
 
 Eight tightly-scoped UX/pricing changes to the Cabinet Builder. Contingency

@@ -166,7 +166,6 @@ function cbRemoveFromLibrary(idx) {
 function cbEditLibraryEntry(idx) {
   const src = cbLibrary[idx];
   if (!src) return;
-  if (!_cbCurrentProjectId) { _toast('Pick a project first to edit templates', 'error'); return; }
   const copy = JSON.parse(JSON.stringify(src));
   copy.id = cbNextId++;
   cbScratchpad = copy;
@@ -630,8 +629,11 @@ function _smartCLStockSuggest(input, boxId) {
   };
   const pool = stockItems.filter(/** @param {any} s */ s => isPanel(s) || (includeEdgeBanding && isEdge(s)));
   const matches = q ? pool.filter(/** @param {any} s */ s => s.name.toLowerCase().includes(q)) : pool;
-  let html = '';
-  matches.slice(0, 12).forEach(/** @param {any} s */ s => {
+  const panelMatches = matches.filter(/** @param {any} s */ s => !isEdge(s));
+  const edgeMatches = matches.filter(/** @param {any} s */ s => isEdge(s));
+  const showHeaders = panelMatches.length > 0 && edgeMatches.length > 0;
+  /** @param {any} s */
+  const renderItem = (s) => {
     const origIdx = stockItems.indexOf(s);
     const qtyColor = (s.qty ?? 0) <= (s.lowAlert || s.low || 3) ? '#ef4444' : '#22c55e';
     const edge = isEdge(s);
@@ -641,12 +643,24 @@ function _smartCLStockSuggest(input, boxId) {
     const onClick = edge
       ? `_clAddEdgeBandFromStockIdx(${origIdx})`
       : `_clAddPanelFromStock(${origIdx})`;
-    html += `<div class="client-suggest-item" onmousedown="${onClick};_byId('cl-stock').value='';_byId('${boxId}').style.display='none'">
+    return `<div class="client-suggest-item" onmousedown="${onClick};_byId('cl-stock').value='';_byId('${boxId}').style.display='none'">
       <span class="suggest-icon" style="background:${qtyColor}20;color:${qtyColor}">${s.qty}</span>
       <span style="flex:1">${_escHtml(s.name)}</span>
       <span style="font-size:10px;color:var(--muted)">${meta}</span>
     </div>`;
-  });
+  };
+  let html = '';
+  let remaining = 12;
+  if (panelMatches.length) {
+    if (showHeaders) html += `<div class="suggest-group-header">Sheet Goods</div>`;
+    const slice = panelMatches.slice(0, remaining);
+    html += slice.map(renderItem).join('');
+    remaining -= slice.length;
+  }
+  if (edgeMatches.length && remaining > 0) {
+    if (showHeaders) html += `<div class="suggest-group-header">Edge Banding</div>`;
+    html += edgeMatches.slice(0, remaining).map(renderItem).join('');
+  }
   if (matches.length === 0) {
     const what = includeEdgeBanding ? 'panels or edge banding' : 'panel materials';
     html += `<div class="client-suggest-add" onmousedown="switchSection('stock')">No ${what} — go to Stock to add</div>`;
@@ -676,29 +690,6 @@ function _clAddEdgeBandFromStockIdx(idx) {
 }
 
 // ── Cut List Cabinet Library ──
-/** @param {HTMLInputElement} input @param {string} boxId */
-function _smartCLCabinetSuggest(input, boxId) {
-  const box = _byId(boxId);
-  if (!box) return;
-  _posSuggest(input, box);
-  const q = input.value.trim().toLowerCase();
-  const cur = window.currency;
-  const matches = q ? cbLibrary.filter(c => (c._libName||c.name||'').toLowerCase().includes(q)) : cbLibrary;
-  let html = '';
-  matches.slice(0, 8).forEach(c => {
-    const idx = cbLibrary.indexOf(c);
-    const partCount = _cabinetPartCount(c);
-    html += `<div class="client-suggest-item" onmousedown="_clLoadCabinetParts(${idx});_byId('cl-cabinet-search').value='';_byId('${boxId}').style.display='none'">
-      <span class="suggest-icon" style="background:var(--accent-dim);color:var(--accent)">C</span>
-      <span style="flex:1">${_escHtml(c._libName||c.name||'Cabinet')}</span>
-      <span style="font-size:10px;color:var(--muted)">${c.w}×${c.h} · ${partCount} parts</span>
-    </div>`;
-  });
-  html += `<div class="client-suggest-add" onmousedown="_clSaveToCabinetLibrary()">+ Save selected cut parts as cabinet</div>`;
-  box.innerHTML = html;
-  box.style.display = '';
-}
-
 /** @param {any[]} parts @param {string} mode */
 function _applyCabinetParts(parts, mode) {
   /** @param {any} p */
@@ -831,4 +822,5 @@ function _confirmSaveCLToCabLib() {
   _closePopup();
   _toast(`"${name}" saved to cabinet library`, 'success');
   _saveCabinetToDB(entry).then(id => { if (id) entry.db_id = id; });
+  if (typeof switchCLMainView === 'function') switchCLMainView('library');
 }

@@ -375,10 +375,52 @@ export type Database = {
         }
         Relationships: []
       }
+      cutlists: {
+        Row: {
+          created_at: string
+          id: number
+          name: string
+          position: number
+          project_id: number
+          ui_prefs: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+          name: string
+          position?: number
+          project_id: number
+          ui_prefs?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          name?: string
+          position?: number
+          project_id?: number
+          ui_prefs?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cutlists_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       edge_bands: {
         Row: {
           color: string | null
           created_at: string
+          cutlist_id: number | null
           glue: string | null
           id: number
           length_m: number
@@ -392,6 +434,7 @@ export type Database = {
         Insert: {
           color?: string | null
           created_at?: string
+          cutlist_id?: number | null
           glue?: string | null
           id?: number
           length_m?: number
@@ -405,6 +448,7 @@ export type Database = {
         Update: {
           color?: string | null
           created_at?: string
+          cutlist_id?: number | null
           glue?: string | null
           id?: number
           length_m?: number
@@ -416,6 +460,13 @@ export type Database = {
           width_mm?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "edge_bands_cutlist_id_fkey"
+            columns: ["cutlist_id"]
+            isOneToOne: false
+            referencedRelation: "cutlists"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "edge_bands_project_id_fkey"
             columns: ["project_id"]
@@ -569,6 +620,7 @@ export type Database = {
           manual_start_date: string | null
           markup: number
           notes: string | null
+          order_number: string | null
           packaging_hours: number | null
           priority: number
           production_start_date: string | null
@@ -594,6 +646,7 @@ export type Database = {
           manual_start_date?: string | null
           markup?: number
           notes?: string | null
+          order_number?: string | null
           packaging_hours?: number | null
           priority?: number
           production_start_date?: string | null
@@ -619,6 +672,7 @@ export type Database = {
           manual_start_date?: string | null
           markup?: number
           notes?: string | null
+          order_number?: string | null
           packaging_hours?: number | null
           priority?: number
           production_start_date?: string | null
@@ -693,6 +747,7 @@ export type Database = {
         Row: {
           color: string | null
           created_at: string
+          cutlist_id: number | null
           enabled: boolean
           grain: string
           h_mm: number
@@ -709,6 +764,7 @@ export type Database = {
         Insert: {
           color?: string | null
           created_at?: string
+          cutlist_id?: number | null
           enabled?: boolean
           grain?: string
           h_mm: number
@@ -725,6 +781,7 @@ export type Database = {
         Update: {
           color?: string | null
           created_at?: string
+          cutlist_id?: number | null
           enabled?: boolean
           grain?: string
           h_mm?: number
@@ -739,6 +796,13 @@ export type Database = {
           w_mm?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "pieces_cutlist_id_fkey"
+            columns: ["cutlist_id"]
+            isOneToOne: false
+            referencedRelation: "cutlists"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "pieces_project_id_fkey"
             columns: ["project_id"]
@@ -1026,6 +1090,7 @@ export type Database = {
         Row: {
           color: string | null
           created_at: string
+          cutlist_id: number | null
           enabled: boolean
           grain: string
           h_mm: number
@@ -1041,6 +1106,7 @@ export type Database = {
         Insert: {
           color?: string | null
           created_at?: string
+          cutlist_id?: number | null
           enabled?: boolean
           grain?: string
           h_mm: number
@@ -1056,6 +1122,7 @@ export type Database = {
         Update: {
           color?: string | null
           created_at?: string
+          cutlist_id?: number | null
           enabled?: boolean
           grain?: string
           h_mm?: number
@@ -1069,6 +1136,13 @@ export type Database = {
           w_mm?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "sheets_cutlist_id_fkey"
+            columns: ["cutlist_id"]
+            isOneToOne: false
+            referencedRelation: "cutlists"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "sheets_project_id_fkey"
             columns: ["project_id"]
