@@ -390,6 +390,18 @@
       <div id="cl-context"></div>
       <div class="cl-scroll" id="cl-scroll-body">
 
+        <!-- Cut List smart library -->
+        <div style="padding:10px 14px 4px;position:relative">
+          <div class="smart-input-wrap">
+            <input type="text" id="cl-cutlist-search" placeholder="Search or name cut list..." autocomplete="off"
+              oninput="_clCutlistSearchInput(this)"
+              onfocus="_smartCLLibrarySuggest(this,'cl-cutlist-suggest')"
+              onblur="setTimeout(()=>document.getElementById('cl-cutlist-suggest').style.display='none',150)">
+            <div class="smart-input-add" onclick="_clNewCutlistFromInput()" title="Start a new cut list">+</div>
+          </div>
+          <div id="cl-cutlist-suggest" class="client-suggest-list" style="display:none"></div>
+        </div>
+
         <!-- Cut Parts table -->
         <div class="cl-section-header" style="padding-bottom:4px">
           <span class="cl-section-title">Cut Parts</span>

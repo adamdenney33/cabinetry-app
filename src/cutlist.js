@@ -933,6 +933,9 @@ function _clRenderContext() {
     summary,
     clientName: clientName || undefined,
   });
+  // Sync the sidebar smart-library input with the active cut list's name.
+  const sInp = /** @type {HTMLInputElement|null} */ (_byId('cl-cutlist-search'));
+  if (sInp) sInp.value = _clCurrentCutlistName || '';
   if (typeof _setSaveStatus === 'function') {
     if (_clDirty) _setSaveStatus('cutlist', 'dirty');
   }
@@ -984,6 +987,96 @@ function _smartCLEmptyProjectSuggest(input, boxId) {
   box.style.display = 'block';
 }
 /** @type {any} */ (window)._smartCLEmptyProjectSuggest = _smartCLEmptyProjectSuggest;
+
+// ── CUT LIST SMART LIBRARY (sidebar top) ──
+// Mirrors Cabinet Builder's #cb-cabinet-search pattern: one input that doubles
+// as the current cut list's name AND filters/loads saved cut lists for the
+// current project. Backed by the existing _clLoadCutlist / _clSaveProject flow.
+
+/** Oninput handler for #cl-cutlist-search. Live-updates _clCurrentCutlistName
+ *  and refreshes the suggest dropdown.
+ *  @param {HTMLInputElement} input */
+function _clCutlistSearchInput(input) {
+  _clCurrentCutlistName = input.value.trim();
+  _smartCLLibrarySuggest(input, 'cl-cutlist-suggest');
+}
+/** @type {any} */ (window)._clCutlistSearchInput = _clCutlistSearchInput;
+
+/** Smart suggest for the cut-list library input. Lists cut lists for the
+ *  current project, with click-to-load and a "+ Start new" footer.
+ *  @param {HTMLInputElement} input @param {string} boxId */
+async function _smartCLLibrarySuggest(input, boxId) {
+  const box = _byId(boxId);
+  if (!box) return;
+  if (typeof _posSuggest === 'function') _posSuggest(input, box);
+  if (!_clCurrentProjectId) {
+    box.innerHTML = `<div class="client-suggest-add" style="color:var(--muted)">Open a project to use cut lists</div>`;
+    box.style.display = 'block';
+    return;
+  }
+  const q = input.value.trim().toLowerCase();
+  /** @type {any[]} */
+  let rows = [];
+  try {
+    const { data } = await _db('cutlists')
+      .select('id, name, updated_at')
+      .eq('project_id', _clCurrentProjectId)
+      .order('updated_at', { ascending: false });
+    rows = /** @type {any[]} */ (data || []);
+  } catch (e) { rows = []; }
+  const matches = q ? rows.filter(r => (r.name || '').toLowerCase().includes(q)) : rows;
+  const exact = q && rows.some(r => (r.name || '').toLowerCase() === q);
+  /** @param {string} s */
+  const esc = s => _escHtml(s).replace(/'/g, '&#39;');
+  let html = '';
+  matches.slice(0, 8).forEach(r => {
+    const isActive = r.id === _clCurrentCutlistId;
+    const date = _clFormatDate(r.updated_at);
+    html += `<div class="client-suggest-item" onmousedown="_clLoadCutlist(${r.id});_byId('${boxId}').style.display='none'">
+      <span class="suggest-icon" style="background:var(--accent-dim);color:var(--accent)">C</span>
+      <span style="flex:1">${esc(r.name || '(untitled)')}${isActive ? ' <span style="font-weight:500;color:var(--accent);font-size:11px">· editing</span>' : ''}</span>
+      ${date ? `<span style="font-size:10px;color:var(--muted)">${esc(date)}</span>` : ''}
+    </div>`;
+  });
+  if (matches.length === 0 && rows.length > 0) {
+    html += `<div class="client-suggest-add" style="color:var(--muted)">No matching cut lists</div>`;
+  } else if (rows.length === 0 && !q) {
+    html += `<div class="client-suggest-add" style="color:var(--muted)">No saved cut lists yet</div>`;
+  }
+  if (q && !exact) {
+    html += `<div class="client-suggest-item client-suggest-add" onmousedown="_clNewCutlistFromInput()">
+      <span class="csi-icon">+</span>
+      <span class="csi-name">Start new "${esc(input.value.trim())}"</span>
+    </div>`;
+  }
+  box.innerHTML = html;
+  box.style.display = 'block';
+}
+/** @type {any} */ (window)._smartCLLibrarySuggest = _smartCLLibrarySuggest;
+
+/** "+" button handler for the smart library input. Reads the typed name from
+ *  #cl-cutlist-search and starts a fresh blank cut list. Dirty-checks first. */
+function _clNewCutlistFromInput() {
+  if (!_clCurrentProjectId) { _toast('Open a project first', 'error'); return; }
+  const inp = /** @type {HTMLInputElement|null} */ (_byId('cl-cutlist-search'));
+  const typed = (inp && inp.value ? inp.value : '').trim();
+  const startNew = () => {
+    _clCurrentCutlistId = null;
+    _clCurrentCutlistName = typed || 'Untitled';
+    pieces = []; sheets = []; edgeBands = [];
+    _pieceId = 1; _sheetId = 1; _edgeBandId = 1; pieceColorIdx = 0;
+    results = null;
+    if (inp) inp.value = _clCurrentCutlistName;
+    renderSheets(); renderPieces();
+    if (typeof renderEdgeBands === 'function') { try { renderEdgeBands(); } catch(e) {} }
+    _setClDirty(false);
+    const box = _byId('cl-cutlist-suggest'); if (box) box.style.display = 'none';
+    _toast(`New cut list "${_clCurrentCutlistName}" — add parts then save`, 'success');
+  };
+  if (_clDirty) _confirm('Discard unsaved changes and start a new cut list?', startNew);
+  else startNew();
+}
+/** @type {any} */ (window)._clNewCutlistFromInput = _clNewCutlistFromInput;
 
 /** Strategy 2: clear active Cut List project and return to empty state. */
 function _exitProject_cutlist() {

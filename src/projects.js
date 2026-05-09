@@ -376,6 +376,7 @@ async function _clLoadCutlist(cutlistId) {
   const resArea = document.getElementById('results-area');
   if (resArea) resArea.innerHTML = '<div class="empty-state"><h3>Cut list loaded</h3><p>Click Optimize to generate layouts.</p></div>';
   _toast(`"${_clCurrentCutlistName}" loaded`, 'success');
+  if (typeof _clRenderContext === 'function') _clRenderContext();
   if (typeof renderCLCutListsView === 'function') renderCLCutListsView();
 }
 /** @type {any} */ (window)._clLoadCutlist = _clLoadCutlist;
