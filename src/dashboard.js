@@ -219,7 +219,7 @@ function renderDashboard() {
 
       </div>
 
-      <!-- Schedule (this week) — mirrors the Schedule tab calendar overlap rule -->
+      <!-- Schedule (next 7 days) — mini-calendar slice mirroring the Schedule tab -->
       ${(() => {
         /** @param {string | null | undefined} str */
         const parseDate = (str) => {
@@ -235,18 +235,39 @@ function renderDashboard() {
           if (iso) return new Date(parseInt(iso[1]), parseInt(iso[2]) - 1, parseInt(iso[3]));
           const d = new Date(str); return isNaN(+d) ? null : new Date(d.getFullYear(), d.getMonth(), d.getDate());
         };
+        const palette = ['#e8a838','#2563eb','#0d9488','#9333ea','#dc2626','#059669','#d97706','#6366f1','#ec4899','#14b8a6'];
+        const dayShort = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
         const today = _schedToday;
-        const dow = (today.getDay() + 6) % 7; // Mon=0..Sun=6
-        const weekStart = new Date(today); weekStart.setDate(today.getDate() - dow);
-        const weekEnd = new Date(weekStart); weekEnd.setDate(weekStart.getDate() + 6); weekEnd.setHours(23,59,59,999);
-        const dows = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
-        /** @typedef {{id:any,o:any,start:Date,end:Date,due:Date|null}} WeekEvent */
-        /** @type {WeekEvent[]} */
+        /** @type {Date[]} */
+        const days = [];
+        for (let i = 0; i < 7; i++) { const d = new Date(today); d.setDate(today.getDate() + i); days.push(d); }
+        const winStart = days[0];
+        const winEnd = new Date(days[6]); winEnd.setHours(23,59,59,999);
+
+        /** @type {Record<string, number>} */
+        const overrideByDate = {};
+        for (const ov of _schedOverrides) overrideByDate[ov.date] = ov.hours;
+        const defaultDayHours = parseFloat(cbSettings.workdayHours) || 8;
+        /** @param {Date} d */
+        const dayHours = (d) => {
+          const iso = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+          if (Object.prototype.hasOwnProperty.call(overrideByDate, iso)) return overrideByDate[iso];
+          const wd = (d.getDay() + 6) % 7;
+          if (Array.isArray(cbSettings.weekdayHours) && cbSettings.weekdayHours.length === 7) {
+            return parseFloat(cbSettings.weekdayHours[wd]) || 0;
+          }
+          return parseFloat(cbSettings.workdayHours) || 8;
+        };
+
+        // Build events with the same shape and palette indexing as src/schedule.js
+        /** @typedef {{id:any,project:string,client:string,start:Date,end:Date,color:string,lane:number,isManual:boolean}} CalEvent */
+        /** @type {CalEvent[]} */
         const events = [];
-        for (const o of activeOrders) {
+        const allActive = orders.filter(o => o.status !== 'complete');
+        allActive.forEach((o, idx) => {
           const sched = _schedComputed.get(o.id);
-          if (sched && sched.isMissingDates) continue; // no date to render; visible on Schedule tab only
+          if (sched && sched.isMissingDates) return;
           let start = null, end = null;
           if (sched && sched.startISO) {
             start = parseDate(sched.startISO);
@@ -254,49 +275,107 @@ function renderDashboard() {
           }
           if (!start && !end) {
             const due = parseDate(o.due), prod = parseDate(o.prodStart);
-            if (!due && !prod) continue;
+            if (!due && !prod) return;
             start = prod || due;
             end = due || prod;
           }
-          if (!start || !end) continue;
-          const s = start, d = end;
-          if (d < weekStart || s > weekEnd) continue;
-          events.push({ id: o.id, o, start: s, end: d, due: parseDate(o.due) });
-        }
-        events.sort((a, b) => (+a.start - +b.start) || (a.id - b.id));
+          if (!start || !end) return;
+          events.push({
+            id: o.id,
+            project: orderProject(o),
+            client: orderClient(o),
+            start, end,
+            color: palette[idx % palette.length],
+            lane: sched ? sched.lane : 0,
+            isManual: o.auto_schedule === false,
+          });
+        });
+
+        const winEvents = events.filter(e => e.end >= winStart && e.start <= winEnd);
+        const maxLane = winEvents.length ? Math.max(0, ...winEvents.map(e => e.lane)) : 0;
+        const stride = 20;
+        const cellMinHeight = Math.max(80, 28 + (maxLane + 1) * stride + 4);
+
+        // Header row: weekday names matching the actual 7-day window
+        const header = `<div style="display:grid;grid-template-columns:repeat(7,1fr);border-bottom:1px solid var(--border)">
+          ${days.map(d => {
+            const we = d.getDay() === 0 || d.getDay() === 6;
+            return `<div style="padding:6px 4px;font-size:11px;font-weight:600;color:${we?'var(--muted)':'var(--text2)'};text-align:center">${dayShort[d.getDay()]}</div>`;
+          }).join('')}
+        </div>`;
+
+        // Day cells
+        let row = `<div style="position:relative;display:grid;grid-template-columns:repeat(7,1fr);min-height:${cellMinHeight}px">`;
+        days.forEach((day) => {
+          const td = +day === +today;
+          const we = day.getDay() === 0 || day.getDay() === 6;
+          const dh = dayHours(day);
+          const isHoliday = dh === 0;
+          const isPartial = dh > 0 && dh < defaultDayHours;
+          const dayISO = `${day.getFullYear()}-${String(day.getMonth()+1).padStart(2,'0')}-${String(day.getDate()).padStart(2,'0')}`;
+          const hasOverride = Object.prototype.hasOwnProperty.call(overrideByDate, dayISO);
+          let cellBg = '';
+          let cellExtra = '';
+          if (td) cellBg = 'rgba(232,168,56,0.06)';
+          else if (isHoliday) { cellBg = 'var(--surface2)'; cellExtra = 'background-image:repeating-linear-gradient(-45deg,transparent 0 6px,rgba(255,255,255,0.04) 6px 12px)'; }
+          else if (isPartial) cellBg = 'rgba(232,168,56,0.05)';
+          else if (we) cellBg = 'rgba(255,255,255,0.015)';
+          const styleParts = ['border:1px solid var(--border2)','padding:3px'];
+          if (cellBg) styleParts.push('background:' + cellBg);
+          if (cellExtra) styleParts.push(cellExtra);
+          const chipColor = hasOverride ? 'var(--accent)' : (isHoliday ? '#f87171' : (isPartial ? '#fbbf24' : 'var(--muted)'));
+          const chipBg = hasOverride ? 'rgba(232,168,56,0.18)' : 'rgba(255,255,255,0.04)';
+          const hoursChip = `<div style="position:absolute;top:3px;right:3px;font-size:9px;font-weight:700;color:${chipColor};background:${chipBg};padding:1px 4px;border-radius:3px">${dh}h</div>`;
+          row += `<div style="${styleParts.join(';')};position:relative;min-height:${cellMinHeight}px">
+            <div style="font-size:${td?'12':'11'}px;font-weight:${td?'800':'500'};color:${td?'#fff':we?'var(--muted)':'var(--text2)'};${td?'background:var(--accent);border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center':'padding:1px 3px'}">${day.getDate()}</div>
+            ${hoursChip}
+          </div>`;
+        });
+
+        // Bars overlaid (clipped to the 7-day window; sliced around 0-hour days)
+        winEvents.forEach(e => {
+          const startIdx = e.start < winStart ? 0 : Math.round((+e.start - +winStart) / 86400000);
+          const endIdx = e.end > winEnd ? 6 : Math.round((+e.end - +winStart) / 86400000);
+          const isRealStart = e.start >= winStart && e.start <= winEnd;
+          const isRealEnd = e.end >= winStart && e.end <= winEnd;
+          /** @type {[number, number][]} */
+          const runs = [];
+          let runStart = -1;
+          for (let di = startIdx; di <= endIdx; di++) {
+            const isWorking = dayHours(days[di]) > 0;
+            if (isWorking && runStart === -1) runStart = di;
+            else if (!isWorking && runStart !== -1) { runs.push([runStart, di - 1]); runStart = -1; }
+          }
+          if (runStart !== -1) runs.push([runStart, endIdx]);
+          if (!runs.length) return;
+          const labelText = _escHtml(e.project) + ' — ' + _escHtml(e.client);
+          const manualStyle = e.isManual ? 'border:1px dashed rgba(255,255,255,0.5);' : '';
+          const lockIcon = e.isManual ? '🔒 ' : '';
+          const barTop = 28 + e.lane * stride;
+          runs.forEach((run, runIdx) => {
+            const rs = run[0], re = run[1];
+            const isFirstRun = runIdx === 0;
+            const isLastRun = runIdx === runs.length - 1;
+            const segIsRealStart = isFirstRun && isRealStart;
+            const segIsRealEnd = isLastRun && isRealEnd;
+            const radius = (segIsRealStart && segIsRealEnd) ? '4px' :
+                           segIsRealStart ? '4px 0 0 4px' :
+                           segIsRealEnd ? '0 4px 4px 0' : '0';
+            const left = (rs / 7 * 100).toFixed(2);
+            const width = ((re - rs + 1) / 7 * 100).toFixed(2);
+            const segShowLabel = isFirstRun && (isRealStart || startIdx === 0);
+            row += `<div style="position:absolute;top:${barTop}px;left:${left}%;width:${width}%;height:18px;padding:0 2px;z-index:2;display:flex;align-items:center;cursor:pointer" onclick="_openOrderPopup(${e.id})">
+              <div style="background:${e.color};${manualStyle}color:#fff;font-size:10px;font-weight:600;padding:1px 6px;border-radius:${radius};height:16px;line-height:16px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;flex:1;min-width:0" title="${labelText}${e.isManual?' (manual)':''}">${segShowLabel?lockIcon+labelText:''}</div>
+            </div>`;
+          });
+        });
+        row += `</div>`;
 
         return `<div class="card" style="margin-bottom:18px">
-          <div class="card-header" style="justify-content:space-between"><span class="card-title">Schedule <span style="font-weight:400;color:var(--muted);margin-left:4px">this week</span></span><button class="btn btn-outline" style="padding:3px 10px;font-size:11px" onclick="switchSection('schedule')">Open</button></div>
-          <div class="card-body" style="padding:0">
-            ${events.length === 0
-              ? `<div style="padding:20px;text-align:center;color:var(--muted);font-size:13px">Nothing scheduled this week</div>`
-              : events.map(e => {
-                const o = e.o;
-                const slipped = e.end < today;
-                const inProgress = e.start <= today && today <= e.end;
-                const pillBg = slipped ? 'var(--danger)' : inProgress ? 'var(--accent)' : 'var(--surface2)';
-                const pillFg = (slipped || inProgress) ? '#fff' : 'var(--text)';
-                const pillDate = e.start < weekStart ? weekStart : e.start;
-                const continuation = e.start < weekStart;
-                let metaTail;
-                if (e.due) {
-                  const dueDay = new Date(e.due.getFullYear(), e.due.getMonth(), e.due.getDate());
-                  const days = Math.round((+dueDay - +today) / 86400000);
-                  metaTail = days < 0 ? 'overdue' : days === 0 ? 'due today' : 'due in ' + days + ' day' + (days !== 1 ? 's' : '');
-                } else {
-                  metaTail = 'no due date';
-                }
-                return `<div style="display:flex;align-items:center;gap:12px;padding:8px 18px;border-bottom:1px solid var(--border2);cursor:pointer" onclick="_openOrderPopup(${e.id})">
-                  <div style="width:36px;height:36px;border-radius:8px;background:${pillBg};color:${pillFg};display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:800;flex-shrink:0;line-height:1">
-                    <span style="font-size:9px;font-weight:600;text-transform:uppercase;opacity:0.85">${continuation?'→ ':''}${dows[pillDate.getDay()]}</span>
-                    <span style="font-size:13px">${pillDate.getDate()}</span>
-                  </div>
-                  <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;color:var(--text)">${orderProject(o)}</div><div style="font-size:11px;color:var(--muted)">${orderClient(o)} · ${metaTail}</div></div>
-                  <span class="badge ${(/** @type {Record<string,string>} */(STATUS_BADGES))[o.status||'']||'badge-gray'}" style="font-size:10px">${(/** @type {Record<string,string>} */(STATUS_LABELS))[o.status||'']||o.status}</span>
-                  ${o.status !== 'complete' ? `<button class="btn btn-outline" onclick="event.stopPropagation();advanceOrder(${e.id});renderDashboard();setTimeout(drawRevenueChart,0)" style="font-size:10px;padding:3px 8px;width:auto;flex-shrink:0">Next →</button>` : ''}
-                </div>`;
-              }).join('')}
-          </div>
+          <div class="card-header" style="justify-content:space-between"><span class="card-title">Schedule <span style="font-weight:400;color:var(--muted);margin-left:4px">next 7 days</span></span><button class="btn btn-outline" style="padding:3px 10px;font-size:11px" onclick="switchSection('schedule')">Open</button></div>
+          ${header}
+          ${row}
+          ${winEvents.length === 0 ? `<div style="padding:10px;text-align:center;color:var(--muted);font-size:11px;border-top:1px solid var(--border2)">Nothing scheduled in the next 7 days</div>` : ''}
         </div>`;
       })()}
 
