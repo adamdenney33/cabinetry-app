@@ -27,6 +27,22 @@ function renderDashboard() {
   const activeProjects = projects.filter(p => p.status === 'active').length;
   const totalClients   = clients.length;
 
+  // Schedule data — mirror the Schedule tab so the dashboard "this week" card
+  // shows the same events as the calendar. See src/schedule.js:43-80.
+  if (typeof _restoreProdStarts === 'function') _restoreProdStarts(orders);
+  const _schedBiz = {
+    workdayHours: cbSettings.workdayHours,
+    weekdayHours: cbSettings.weekdayHours,
+    packagingHours: cbSettings.packagingHours,
+    contingencyHours: cbSettings.contingencyHours,
+    queueStartDate: cbSettings.queueStartDate,
+  };
+  const _schedOverrides = (typeof dayOverrides !== 'undefined' && Array.isArray(dayOverrides)) ? dayOverrides : [];
+  const _schedToday = new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
+  const _schedComputed = (typeof computeSchedule === 'function')
+    ? computeSchedule(orders, _schedBiz, _schedOverrides, _schedToday)
+    : new Map();
+
   /** @param {number} v */
   const fmt = v => v.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0});
 
@@ -203,26 +219,83 @@ function renderDashboard() {
 
       </div>
 
-      <!-- Upcoming Deadlines -->
+      <!-- Schedule (this week) — mirrors the Schedule tab calendar overlap rule -->
       ${(() => {
-        /** @typedef {(typeof orders)[number] & {_due: Date, _days: number}} UpcomingOrder */
-        const upcoming = /** @type {UpcomingOrder[]} */ (activeOrders.filter(o => o.due && o.due !== 'TBD').map(o => {
-          const d = new Date(o.due || ''); if (isNaN(+d)) return null; d.setHours(0,0,0,0);
-          return {...o, _due: d, _days: Math.round((+d - new Date().setHours(0,0,0,0)) / 86400000)};
-        }).filter(Boolean)).sort((a,b) => +a._due - +b._due).slice(0, 5);
-        if (!upcoming.length) return '';
+        /** @param {string | null | undefined} str */
+        const parseDate = (str) => {
+          if (!str || str === 'TBD') return null;
+          const p = str.match(/(\d{1,2})\s+(\w+)\s+(\d{4})/);
+          if (p) {
+            /** @type {Record<string, number>} */
+            const m = {jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
+            const mo = m[p[2].toLowerCase().substring(0,3)];
+            if (mo !== undefined) return new Date(parseInt(p[3]), mo, parseInt(p[1]));
+          }
+          const iso = str.match(/(\d{4})-(\d{2})-(\d{2})/);
+          if (iso) return new Date(parseInt(iso[1]), parseInt(iso[2]) - 1, parseInt(iso[3]));
+          const d = new Date(str); return isNaN(+d) ? null : new Date(d.getFullYear(), d.getMonth(), d.getDate());
+        };
+        const today = _schedToday;
+        const dow = (today.getDay() + 6) % 7; // Mon=0..Sun=6
+        const weekStart = new Date(today); weekStart.setDate(today.getDate() - dow);
+        const weekEnd = new Date(weekStart); weekEnd.setDate(weekStart.getDate() + 6); weekEnd.setHours(23,59,59,999);
+        const dows = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+        /** @typedef {{id:any,o:any,start:Date,end:Date,due:Date|null}} WeekEvent */
+        /** @type {WeekEvent[]} */
+        const events = [];
+        for (const o of activeOrders) {
+          const sched = _schedComputed.get(o.id);
+          if (sched && sched.isMissingDates) continue; // no date to render; visible on Schedule tab only
+          let start = null, end = null;
+          if (sched && sched.startISO) {
+            start = parseDate(sched.startISO);
+            end = parseDate(sched.endISO) || start;
+          }
+          if (!start && !end) {
+            const due = parseDate(o.due), prod = parseDate(o.prodStart);
+            if (!due && !prod) continue;
+            start = prod || due;
+            end = due || prod;
+          }
+          if (!start || !end) continue;
+          const s = start, d = end;
+          if (d < weekStart || s > weekEnd) continue;
+          events.push({ id: o.id, o, start: s, end: d, due: parseDate(o.due) });
+        }
+        events.sort((a, b) => (+a.start - +b.start) || (a.id - b.id));
+
         return `<div class="card" style="margin-bottom:18px">
-          <div class="card-header" style="justify-content:space-between"><span class="card-title">Upcoming Deadlines</span><button class="btn btn-outline" style="padding:3px 10px;font-size:11px" onclick="switchSection('schedule')">Schedule</button></div>
+          <div class="card-header" style="justify-content:space-between"><span class="card-title">Schedule <span style="font-weight:400;color:var(--muted);margin-left:4px">this week</span></span><button class="btn btn-outline" style="padding:3px 10px;font-size:11px" onclick="switchSection('schedule')">Open</button></div>
           <div class="card-body" style="padding:0">
-            ${upcoming.map(o => {
-              const urgent = o._days <= 3; const overdue = o._days < 0;
-              return `<div style="display:flex;align-items:center;gap:12px;padding:8px 18px;border-bottom:1px solid var(--border2);cursor:pointer" onclick="_openOrderPopup(${o.id})">
-                <div style="width:36px;height:36px;border-radius:8px;background:${overdue?'var(--danger)':urgent?'var(--accent)':'var(--surface2)'};color:${overdue||urgent?'#fff':'var(--text)'};display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;flex-shrink:0">${Math.abs(o._days)}</div>
-                <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;color:var(--text)">${orderProject(o)}</div><div style="font-size:11px;color:var(--muted)">${orderClient(o)} · ${overdue?'overdue':'day'+(o._days!==1?'s':'')+' left'}</div></div>
-                <span class="badge ${(/** @type {Record<string,string>} */(STATUS_BADGES))[o.status||'']||'badge-gray'}" style="font-size:10px">${(/** @type {Record<string,string>} */(STATUS_LABELS))[o.status||'']||o.status}</span>
-                ${o.status !== 'complete' ? `<button class="btn btn-outline" onclick="event.stopPropagation();advanceOrder(${o.id});renderDashboard();setTimeout(drawRevenueChart,0)" style="font-size:10px;padding:3px 8px;width:auto;flex-shrink:0">Next →</button>` : ''}
-              </div>`;
-            }).join('')}
+            ${events.length === 0
+              ? `<div style="padding:20px;text-align:center;color:var(--muted);font-size:13px">Nothing scheduled this week</div>`
+              : events.map(e => {
+                const o = e.o;
+                const slipped = e.end < today;
+                const inProgress = e.start <= today && today <= e.end;
+                const pillBg = slipped ? 'var(--danger)' : inProgress ? 'var(--accent)' : 'var(--surface2)';
+                const pillFg = (slipped || inProgress) ? '#fff' : 'var(--text)';
+                const pillDate = e.start < weekStart ? weekStart : e.start;
+                const continuation = e.start < weekStart;
+                let metaTail;
+                if (e.due) {
+                  const dueDay = new Date(e.due.getFullYear(), e.due.getMonth(), e.due.getDate());
+                  const days = Math.round((+dueDay - +today) / 86400000);
+                  metaTail = days < 0 ? 'overdue' : days === 0 ? 'due today' : 'due in ' + days + ' day' + (days !== 1 ? 's' : '');
+                } else {
+                  metaTail = 'no due date';
+                }
+                return `<div style="display:flex;align-items:center;gap:12px;padding:8px 18px;border-bottom:1px solid var(--border2);cursor:pointer" onclick="_openOrderPopup(${e.id})">
+                  <div style="width:36px;height:36px;border-radius:8px;background:${pillBg};color:${pillFg};display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:800;flex-shrink:0;line-height:1">
+                    <span style="font-size:9px;font-weight:600;text-transform:uppercase;opacity:0.85">${continuation?'→ ':''}${dows[pillDate.getDay()]}</span>
+                    <span style="font-size:13px">${pillDate.getDate()}</span>
+                  </div>
+                  <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;color:var(--text)">${orderProject(o)}</div><div style="font-size:11px;color:var(--muted)">${orderClient(o)} · ${metaTail}</div></div>
+                  <span class="badge ${(/** @type {Record<string,string>} */(STATUS_BADGES))[o.status||'']||'badge-gray'}" style="font-size:10px">${(/** @type {Record<string,string>} */(STATUS_LABELS))[o.status||'']||o.status}</span>
+                  ${o.status !== 'complete' ? `<button class="btn btn-outline" onclick="event.stopPropagation();advanceOrder(${e.id});renderDashboard();setTimeout(drawRevenueChart,0)" style="font-size:10px;padding:3px 8px;width:auto;flex-shrink:0">Next →</button>` : ''}
+                </div>`;
+              }).join('')}
           </div>
         </div>`;
       })()}
