@@ -1708,8 +1708,8 @@ function printLayout(mode='print') {
 
     const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Cut List — ${new Date().toLocaleDateString('en-GB')}</title>
 <style>
-  /* A4 landscape — 10mm margins → 190mm usable height, 277mm usable width */
-  @page { size: A4 landscape; margin: 10mm 10mm; }
+  /* A4 — 10mm margins; orientation follows the on-screen Rotate toggle */
+  @page { size: A4 ${layoutRotate ? 'portrait' : 'landscape'}; margin: 10mm 10mm; }
   * { margin:0; padding:0; box-sizing:border-box; }
   body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; color:#111; font-size:12px; background:#fff; }
   /* Compact title bar — sits above first sheet on page 1 */
@@ -2370,9 +2370,12 @@ async function _buildCutListPDF({ biz, layouts, imgs, pieces, u, cur, totalPiece
   _toast('Building PDF\u2026', 'info', 8000);
   try {
     const { jsPDF } = window.jspdf;
-    const PW = 297, PH = 210, M = 10;
-    const W = PW - 2*M, H = PH - 2*M;  // 277 x 190 mm usable
-    const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+    const isPortrait = layoutRotate;
+    const PW = isPortrait ? 210 : 297;
+    const PH = isPortrait ? 297 : 210;
+    const M = 10;
+    const W = PW - 2*M, H = PH - 2*M;
+    const pdf = new jsPDF({ orientation: isPortrait ? 'portrait' : 'landscape', unit: 'mm', format: 'a4' });
     const dateStr = new Date().toLocaleDateString('en-GB', { day:'numeric', month:'long', year:'numeric' });
 
     // ── safe hex → [r,g,b] ──
