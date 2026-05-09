@@ -163,7 +163,6 @@ function renderOrdersMain() {
       </div>
       <div class="oc-pipeline">${pipe}</div>
       <div class="oc-footer" onclick="event.stopPropagation()">
-        ${o.status !== 'complete' ? `<button class="btn btn-success" onclick="advanceOrder(${o.id})" style="font-size:11px;padding:5px 10px;display:inline-flex;align-items:center;gap:4px">Next Stage ${ARROW_SVG}</button>` : '<span class="badge badge-green" style="align-self:center">Complete</span>'}
         <span style="flex:1"></span>
         <button class="btn btn-outline" onclick="printOrderDoc(${o.id},'order_confirmation')" style="font-size:11px;padding:5px 8px;width:auto">Confirmation</button>
         <button class="btn btn-outline" onclick="printOrderDoc(${o.id},'proforma')" style="font-size:11px;padding:5px 8px;width:auto">Pro-forma</button>
