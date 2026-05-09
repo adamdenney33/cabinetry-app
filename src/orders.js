@@ -146,8 +146,10 @@ function renderOrdersMain() {
     <div class="order-card${isOverdue ? ' order-overdue' : ''}" style="cursor:pointer" onclick="loadOrderIntoSidebar(${o.id})">
       <div class="oc-header">
         <div class="oc-info">
-          <div class="oc-title">${orderProject(o)}</div>
-          <div class="oc-meta">${orderClient(o)}</div>
+          <div class="oc-title-row">
+            <div class="oc-title">${orderProject(o)}${orderClient(o) ? ' - ' + orderClient(o) : ''}</div>
+            <span class="badge ${(/** @type {Record<string,string>} */(STATUS_BADGES))[o.status]||'badge-gray'}" style="font-size:10px" onclick="event.stopPropagation()">${(/** @type {Record<string,string>} */(STATUS_LABELS))[o.status]||o.status}</span>
+          </div>
           <div style="display:flex;gap:6px;align-items:center;margin-top:3px;font-size:11px;color:var(--muted)">
             <span>Due: ${o.due || 'TBD'}</span>
             ${relDate ? `<span style="font-size:9px;font-weight:700;color:${relDate.color}">${relDate.label}</span>` : ''}
@@ -161,15 +163,14 @@ function renderOrdersMain() {
       </div>
       <div class="oc-pipeline">${pipe}</div>
       <div class="oc-footer" onclick="event.stopPropagation()">
-        <span class="badge ${(/** @type {Record<string,string>} */(STATUS_BADGES))[o.status]||'badge-gray'}" style="font-size:10px">${(/** @type {Record<string,string>} */(STATUS_LABELS))[o.status]||o.status}</span>
         ${o.status !== 'complete' ? `<button class="btn btn-success" onclick="advanceOrder(${o.id})" style="font-size:11px;padding:5px 10px;display:inline-flex;align-items:center;gap:4px">Next Stage ${ARROW_SVG}</button>` : '<span class="badge badge-green" style="align-self:center">Complete</span>'}
         <span style="flex:1"></span>
-        <button class="btn btn-outline" onclick="duplicateOrder(${o.id})" style="font-size:11px;padding:5px 10px;width:auto">Duplicate</button>
-        <button class="btn btn-outline" style="color:var(--danger);font-size:11px;padding:5px 10px;width:auto" onclick="_confirm('Delete order for <strong>${_escHtml(orderClient(o))}</strong>?',()=>removeOrder(${o.id}))">Delete</button>
-        <button class="btn btn-outline" onclick="printOrderDoc(${o.id},'work_order')" style="font-size:11px;padding:5px 8px;width:auto">Work Order</button>
         <button class="btn btn-outline" onclick="printOrderDoc(${o.id},'order_confirmation')" style="font-size:11px;padding:5px 8px;width:auto">Confirmation</button>
         <button class="btn btn-outline" onclick="printOrderDoc(${o.id},'proforma')" style="font-size:11px;padding:5px 8px;width:auto">Pro-forma</button>
         <button class="btn btn-outline" onclick="printOrderDoc(${o.id},'invoice')" style="font-size:11px;padding:5px 8px;width:auto">Invoice</button>
+        <button class="btn btn-outline" onclick="printOrderDoc(${o.id},'work_order')" style="font-size:11px;padding:5px 8px;width:auto">Work Order</button>
+        <button class="btn btn-outline" onclick="duplicateOrder(${o.id})" style="font-size:11px;padding:5px 10px;width:auto">Duplicate</button>
+        <button class="btn btn-outline" style="color:var(--danger);font-size:11px;padding:5px 10px;width:auto" onclick="_confirm('Delete order for <strong>${_escHtml(orderClient(o))}</strong>?',()=>removeOrder(${o.id}))">Delete</button>
       </div>
     </div>`;
   };
