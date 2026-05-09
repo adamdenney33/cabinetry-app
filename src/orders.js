@@ -35,6 +35,23 @@ const _oBadge = () => {
   if (el) el.textContent = String(orders.filter(o => o.status !== 'complete').length);
 };
 
+// Compute the next sequential order number. Scans trailing digits of any
+// existing `order_number` and returns the next 4-digit zero-padded value.
+// Plain `NNNN` (no prefix). Unlike `_nextQuoteNumber()` we do NOT compare
+// against `id` — the backfill migration guarantees every existing order has
+// a number, so the `id` fallback would only inject gaps from the row-id
+// counter and surprise the user (`0007` → `0022` instead of `0008`).
+function _nextOrderNumber() {
+  let max = 0;
+  for (const o of orders) {
+    if (o.order_number) {
+      const m = String(o.order_number).match(/(\d+)/);
+      if (m) max = Math.max(max, parseInt(m[1], 10));
+    }
+  }
+  return String(max + 1).padStart(4, '0');
+}
+
 // Order creation flow lives in the sidebar editor (createOrderFromEditor).
 // The legacy addOrder() that read from o-client / o-project sidebar inputs
 // was removed when the sidebar became the editor.
@@ -147,7 +164,7 @@ function renderOrdersMain() {
       <div class="oc-header">
         <div class="oc-info">
           <div class="oc-title-row">
-            <div class="oc-title">${orderProject(o)}${orderClient(o) ? ' - ' + orderClient(o) : ''}</div>
+            <div class="oc-title">${o.order_number ? `#${o.order_number} · ` : ''}${orderProject(o)}${orderClient(o) ? ' - ' + orderClient(o) : ''}</div>
             <span class="badge ${(/** @type {Record<string,string>} */(STATUS_BADGES))[o.status]||'badge-gray'}" style="font-size:10px" onclick="event.stopPropagation()">${(/** @type {Record<string,string>} */(STATUS_LABELS))[o.status]||o.status}</span>
           </div>
           <div style="display:flex;gap:6px;align-items:center;margin-top:3px;font-size:11px;color:var(--muted)">
@@ -233,8 +250,8 @@ async function setOrderStatus(id, status) {
 function exportOrdersCSV() {
   if (!orders.length) { _toast('No orders to export', 'error'); return; }
   /** @type {any[][]} */
-  const rows = [['Client','Project','Value','Status','Due','Notes']];
-  orders.forEach(o => rows.push([orderClient(o),orderProject(o),o.value,o.status,o.due||'TBD',o.notes||'']));
+  const rows = [['Order #','Client','Project','Value','Status','Due','Notes']];
+  orders.forEach(o => rows.push([o.order_number||'',orderClient(o),orderProject(o),o.value,o.status,o.due||'TBD',o.notes||'']));
   const csv = rows.map(r => r.map(/** @param {any} v */ v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
   const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([csv],{type:'text/csv'})), download: `orders-${new Date().toISOString().slice(0,10)}.csv` });
   a.click(); URL.revokeObjectURL(a.href);
@@ -376,15 +393,21 @@ function renderOrderEditor() {
 
   const auto = o ? (o.auto_schedule !== false) : true;
 
-  // Strategy 2 + Idea 3: project header replaces editor-header / chip / client-line.
-  const phSummary = `${isExisting ? 'Order #' + o.id : 'New order'} · ${statusLabel}${isOverdue ? ' · Overdue' : ''}`;
+  // Header: project name + client only (status/order# live in editor-section
+  // below — duplication would just clutter the title row).
   const headerHTML = _renderProjectHeader('order', {
     name: projectName || 'Untitled project',
     exitFn: '_oChangeProject',
-    status: statusLabel,
-    summary: phSummary,
     clientName: clientName || undefined,
   });
+
+  // Hours-allocated override: NULL on the order = use computed; non-null = pinned manual value.
+  const hoursOverride = !!(o && /** @type {any} */ (o).hours_allocated != null);
+  const hoursAllocVal = hoursOverride ? /** @type {any} */ (o).hours_allocated : '';
+
+  // Schedule section open/closed: persisted per-tab in localStorage.
+  const schedOpen = localStorage.getItem('pc_order_sched_open') === 'true';
+
   host.innerHTML = `<div class="form-section editor-shell">
     ${headerHTML}
 
@@ -394,6 +417,9 @@ function renderOrderEditor() {
           <select class="pf-select" id="po-status" oninput="_oMarkDirty()">
             ${ORDER_STATUSES.map(/** @param {string} s */ s => `<option value="${s}" ${status===s?'selected':''}>${(/** @type {Record<string,string>} */ (STATUS_LABELS))[s]}</option>`).join('')}
           </select>
+        </div>
+        <div class="pf"><label class="pf-label">Order #</label>
+          <input class="pf-input" id="po-order-number" value="${_escHtml((o && o.order_number) || (o ? String(o.id).padStart(4,'0') : _nextOrderNumber()))}" oninput="_oMarkDirty()">
         </div>
       </div>
       <div class="pp-pipeline">${pipe}</div>
@@ -428,59 +454,39 @@ function renderOrderEditor() {
 
     <div class="editor-section">
       <div class="editor-section-title">Pricing</div>
-      <div class="pf-row">
-        <div class="pf"><label class="pf-label">Markup %</label><input class="pf-input" type="number" id="po-markup" value="${(o && o.markup) ?? 0}" oninput="_renderOrderLineTotals();_oMarkDirty()"></div>
-        <div class="pf"><label class="pf-label">Tax %</label><input class="pf-input" type="number" id="po-tax" value="${(o && o.tax) ?? 0}" oninput="_renderOrderLineTotals();_oMarkDirty()"></div>
+      <div class="pf-row-inline">
+        <label class="pf-inline"><span class="pf-inline-label">Markup</span><input class="pf-input pf-input-compact" type="number" id="po-markup" value="${(o && o.markup) ?? 0}" oninput="_renderOrderLineTotals();_oMarkDirty()"><span class="pf-inline-suffix">%</span></label>
+        <label class="pf-inline"><span class="pf-inline-label">Tax</span><input class="pf-input pf-input-compact" type="number" id="po-tax" value="${(o && o.tax) ?? 0}" oninput="_renderOrderLineTotals();_oMarkDirty()"><span class="pf-inline-suffix">%</span></label>
       </div>
     </div>
 
-    <div class="editor-section">
-      <div class="editor-section-title">Schedule</div>
-      <div class="pf-row">
-        <div class="pf" style="flex:1.5">
-          <label class="pf-label" style="display:flex;align-items:center;gap:6px">
-            <input type="checkbox" id="po-auto-schedule" ${auto ? 'checked' : ''} oninput="_orderAutoScheduleToggle(this.checked);_oMarkDirty()" style="width:14px;height:14px;margin:0">
-            Auto schedule
-          </label>
-        </div>
-        <div class="pf">
-          <label class="pf-label">Priority</label>
-          <input class="pf-input" type="number" id="po-priority" value="${(o && o.priority) ?? 0}" step="1" oninput="_oMarkDirty()" title="Higher = scheduled first">
-        </div>
-        <div class="pf">
-          <label class="pf-label">Run-over (h)</label>
-          <input class="pf-input" type="number" min="0" step="0.5" id="po-run-over" value="${(o && o.run_over_hours) ?? 0}" oninput="_renderOrderHoursBreakdown();_oMarkDirty()">
-        </div>
+    <div class="pf-totals" id="po-totals" style="margin-top:10px"></div>
+
+    <details class="editor-section editor-section--collapsible" id="po-sched-details" ${schedOpen ? 'open' : ''} ontoggle="_orderSchedToggle(this)">
+      <summary class="editor-section-title">
+        <span>Schedule</span>
+        <span class="editor-section-summary" id="po-sched-summary"></span>
+      </summary>
+      <div class="pf-row-inline">
+        <label class="pf-inline"><input type="checkbox" id="po-auto-schedule" ${auto ? 'checked' : ''} oninput="_orderAutoScheduleToggle(this.checked);_oMarkDirty()"><span class="pf-inline-label">Auto schedule</span></label>
+        <label class="pf-inline"><span class="pf-inline-label">Priority</span><input class="pf-input pf-input-compact" type="number" id="po-priority" value="${(o && o.priority) ?? 0}" step="1" oninput="_oMarkDirty();_renderOrderSchedSummary()" title="Higher = scheduled first"></label>
+        <label class="pf-inline"><span class="pf-inline-label">Run-over</span><input class="pf-input pf-input-compact" type="number" min="0" step="0.5" id="po-run-over" value="${(o && o.run_over_hours) ?? 0}" oninput="_renderOrderHoursBreakdown();_oMarkDirty();_renderOrderSchedSummary()"><span class="pf-inline-suffix">h</span></label>
       </div>
-      <div class="pf-row" id="po-manual-dates" style="${auto ? 'display:none' : ''}">
-        <div class="pf">
-          <label class="pf-label">Manual start</label>
-          <input class="pf-input" type="date" id="po-manual-start" value="${(o && o.manual_start_date) || ''}" oninput="_oMarkDirty()">
-        </div>
-        <div class="pf">
-          <label class="pf-label">Manual end</label>
-          <input class="pf-input" type="date" id="po-manual-end" value="${(o && o.manual_end_date) || ''}" oninput="_oMarkDirty()">
-        </div>
+      <div class="pf-row-inline" style="margin-top:6px">
+        <label class="pf-inline"><input type="checkbox" id="po-hours-override" ${hoursOverride ? 'checked' : ''} oninput="_orderHoursOverrideToggle(this.checked);_oMarkDirty();_renderOrderSchedSummary()"><span class="pf-inline-label">Override hours</span></label>
+        <label class="pf-inline" id="po-hours-alloc-wrap" style="${hoursOverride ? '' : 'display:none'}"><span class="pf-inline-label">Allocated</span><input class="pf-input pf-input-compact" type="number" min="0" step="0.5" id="po-hours-allocated" value="${hoursAllocVal}" oninput="_oMarkDirty();_renderOrderSchedSummary()"><span class="pf-inline-suffix">h</span></label>
       </div>
-      <div class="pf-hours-readout" id="po-hours-breakdown"></div>
-      <div class="pf-row">
-        <div class="pf">
-          <label class="pf-label">Production Start ${auto ? '<span style="color:var(--muted);font-size:10px">(auto)</span>' : ''}</label>
-          <input class="pf-input" type="date" id="po-start" value="${o ? _orderDateToISO(o.prodStart||'') : ''}" ${auto ? 'disabled title="Auto-scheduled — toggle off to set manually"' : ''} oninput="_oMarkDirty()">
-        </div>
-        <div class="pf">
-          <label class="pf-label">Due Date</label>
-          <input class="pf-input" type="date" id="po-due" value="${o ? _orderDateToISO(o.due||'') : ''}" oninput="_oMarkDirty()">
-        </div>
+      <div class="pf-hours-readout" id="po-hours-breakdown" style="${hoursOverride ? 'display:none' : ''}"></div>
+      <div class="pf-row-inline" style="margin-top:6px">
+        <label class="pf-inline pf-inline-grow"><span class="pf-inline-label">Production Start ${auto ? '<span class="pf-inline-hint">(auto)</span>' : ''}</span><input class="pf-input pf-input-compact" type="date" id="po-start" value="${o ? _orderDateToISO(o.prodStart||'') : ''}" ${auto ? 'disabled title="Auto-scheduled — toggle off to set manually"' : ''} oninput="_oMarkDirty();_renderOrderSchedSummary()"></label>
+        <label class="pf-inline pf-inline-grow"><span class="pf-inline-label">Due</span><input class="pf-input pf-input-compact" type="date" id="po-due" value="${o ? _orderDateToISO(o.due||'') : ''}" oninput="_oMarkDirty();_renderOrderSchedSummary()"></label>
       </div>
-    </div>
+    </details>
 
     <div class="editor-section">
       <div class="editor-section-title">Notes</div>
       <textarea class="pf-textarea" id="po-notes" rows="3" placeholder="Production notes..." oninput="_oMarkDirty()">${_escHtml((o && o.notes)||'')}</textarea>
     </div>
-
-    <div class="pf-totals" id="po-totals" style="margin-top:10px"></div>
 
     <div class="editor-footer">
       ${isExisting ? `<button class="btn btn-outline" style="color:var(--danger)" onclick="_confirm('Delete order?',()=>{removeOrder(${o.id});_oClearEditor()})">Delete</button>` : ''}
@@ -496,6 +502,64 @@ function renderOrderEditor() {
     if (typeof _renderOrderLineTotals === 'function') _renderOrderLineTotals();
     if (typeof _renderOrderHoursBreakdown === 'function') _renderOrderHoursBreakdown();
   }
+  if (typeof _renderOrderSchedSummary === 'function') _renderOrderSchedSummary();
+}
+
+/** Persist the Schedule section's open/closed state.
+ *  @param {HTMLDetailsElement} el */
+function _orderSchedToggle(el) {
+  try { localStorage.setItem('pc_order_sched_open', String(el.open)); } catch (e) {}
+}
+
+/** Show/hide the allocated-hours input + breakdown panel when override toggles.
+ *  @param {boolean} on */
+function _orderHoursOverrideToggle(on) {
+  const wrap = document.getElementById('po-hours-alloc-wrap');
+  if (wrap) wrap.style.display = on ? '' : 'none';
+  const breakdown = document.getElementById('po-hours-breakdown');
+  if (breakdown) breakdown.style.display = on ? 'none' : '';
+  if (on) {
+    const input = /** @type {HTMLInputElement|null} */ (document.getElementById('po-hours-allocated'));
+    if (input && !input.value) {
+      // Seed with current computed total so the user can adjust from there.
+      const b = (typeof _orderHoursBreakdown === 'function')
+        ? _orderHoursBreakdown(_opState.lines, {})
+        : null;
+      if (b) input.value = String(b.total);
+    }
+  }
+}
+
+/** Render the 1-line summary shown next to the "Schedule" title when the
+ *  section is collapsed. Reads live values from inputs so it stays current. */
+function _renderOrderSchedSummary() {
+  const el = document.getElementById('po-sched-summary');
+  if (!el) return;
+  const auto = /** @type {HTMLInputElement|null} */ (document.getElementById('po-auto-schedule'));
+  const start = /** @type {HTMLInputElement|null} */ (document.getElementById('po-start'));
+  const override = /** @type {HTMLInputElement|null} */ (document.getElementById('po-hours-override'));
+  const allocated = /** @type {HTMLInputElement|null} */ (document.getElementById('po-hours-allocated'));
+  /** @param {string} iso */
+  const fmtDate = iso => {
+    if (!iso) return 'TBD';
+    try {
+      const d = new Date(iso + 'T12:00:00');
+      return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+    } catch (e) { return iso; }
+  };
+  let hoursVal;
+  if (override && override.checked) {
+    hoursVal = (parseFloat((allocated && allocated.value) || '0') || 0).toFixed(1);
+  } else {
+    const b = (typeof _orderHoursBreakdown === 'function')
+      ? _orderHoursBreakdown(_opState.lines, {
+          runOverHours: parseFloat(/** @type {any} */ (document.getElementById('po-run-over'))?.value) || undefined,
+        })
+      : { total: 0 };
+    hoursVal = (b.total || 0).toFixed(1);
+  }
+  const mode = (auto && auto.checked) ? 'Auto' : 'Manual';
+  el.textContent = `${mode} · Start ${fmtDate(start ? start.value : '')} · ${hoursVal} h`;
 }
 
 /** Helper used by pipeline-step click in the editor. Sets the visible status select to s and marks dirty.
@@ -655,6 +719,7 @@ async function createOrderFromEditor(silent) {
     status: _popupVal('po-status') || 'quote',
     markup: parseFloat(_popupVal('po-markup')) || 0,
     tax: parseFloat(_popupVal('po-tax')) || 0,
+    order_number: _popupVal('po-order-number') || null,
     due: 'TBD',
   };
   if (project.client_id) row.client_id = project.client_id;
@@ -685,18 +750,27 @@ async function saveOrderEditor() {
   if (typeof _setSaveStatus === 'function') _setSaveStatus('order', 'saving');
   try {
   const status = _popupVal('po-status');
+  const order_number = _popupVal('po-order-number') || null;
   const markup = parseFloat(_popupVal('po-markup')) || 0;
   const tax = parseFloat(_popupVal('po-tax')) || 0;
   const priority = parseFloat(_popupVal('po-priority')) || 0;
   const autoEl = /** @type {HTMLInputElement|null} */ (document.getElementById('po-auto-schedule'));
   const auto_schedule = autoEl ? autoEl.checked : true;
-  const manual_start = _popupVal('po-manual-start') || null;
-  const manual_end = _popupVal('po-manual-end') || null;
   const run_over_hours = parseFloat(_popupVal('po-run-over')) || 0;
   const startISO = _popupVal('po-start');
   const dueISO = _popupVal('po-due');
+  // Manual start/end inputs are gone — when auto is off, production_start_date
+  // doubles as the manual anchor (mirrored to manual_start_date for scheduler
+  // compatibility), and end is computed from hours by the scheduler walk.
+  const manual_start = auto_schedule ? null : (startISO || null);
+  const manual_end = null;
+  // Hours-allocated override: NULL = use computed; non-null = pinned manual.
+  const hoursOverrideEl = /** @type {HTMLInputElement|null} */ (document.getElementById('po-hours-override'));
+  const hours_allocated = (hoursOverrideEl && hoursOverrideEl.checked)
+    ? (parseFloat(_popupVal('po-hours-allocated')) || 0)
+    : null;
   /** @type {any} */
-  const update = { status, markup, tax, priority, auto_schedule, manual_start_date: manual_start, manual_end_date: manual_end, run_over_hours, updated_at: new Date().toISOString() };
+  const update = { status, order_number, markup, tax, priority, auto_schedule, manual_start_date: manual_start, manual_end_date: manual_end, run_over_hours, hours_allocated, updated_at: new Date().toISOString() };
   if (dueISO) update.due = new Date(dueISO + 'T12:00:00').toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' });
   if (startISO) update.production_start_date = startISO;
   Object.assign(o, update);

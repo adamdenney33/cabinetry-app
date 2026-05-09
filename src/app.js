@@ -170,21 +170,31 @@ function _orderLineRowHtml(row, i) {
     </div>`;
   }
   if (kind === 'item') {
-    return `<div class="li-row">
-      <div class="li-head">${kindBadge}<input class="li-name" value="${_escHtml(row.name || '')}" placeholder="Item name" oninput="_orderLineUpdate(${i}, 'name', this.value)"></div>
-      <input class="li-qty" type="number" min="0" step="1" value="${row.qty ?? 1}" oninput="_orderLineUpdate(${i}, 'qty', this.value)" title="Qty">
-      <input class="li-price" type="number" min="0" step="0.01" value="${row.unit_price ?? 0}" oninput="_orderLineUpdate(${i}, 'unit_price', this.value)" title="Unit price">
-      <input class="li-hrs" type="number" min="0" step="0.5" value="${row.schedule_hours ?? 0}" oninput="_orderLineUpdate(${i}, 'schedule_hours', this.value)" title="Schedule hours (workshop time, not on PDF)" placeholder="hrs">
-      <div class="li-amt">${fmt(total)}</div>
-      <button class="li-action" title="Remove" onclick="_orderLineRemove(${i})">✕</button>
+    return `<div class="li-row li-row-stacked">
+      <div class="li-top">
+        ${kindBadge}
+        <input class="li-name" value="${_escHtml(row.name || '')}" placeholder="Item name" oninput="_orderLineUpdate(${i}, 'name', this.value)">
+        <div class="li-amt">${fmt(total)}</div>
+        <button class="li-action" title="Remove" onclick="_orderLineRemove(${i})">✕</button>
+      </div>
+      <div class="li-fields">
+        <label class="li-field"><span class="li-field-label">Qty</span><input class="li-num" type="number" min="0" step="1" value="${row.qty ?? 1}" oninput="_orderLineUpdate(${i}, 'qty', this.value)"></label>
+        <label class="li-field"><span class="li-field-label">Price</span><input class="li-num" type="number" min="0" step="0.01" value="${row.unit_price ?? 0}" oninput="_orderLineUpdate(${i}, 'unit_price', this.value)"></label>
+        <label class="li-field" title="Workshop time, not on PDF"><span class="li-field-label">Hrs</span><input class="li-num" type="number" min="0" step="0.5" value="${row.schedule_hours ?? 0}" oninput="_orderLineUpdate(${i}, 'schedule_hours', this.value)"></label>
+      </div>
     </div>`;
   }
-  return `<div class="li-row">
-    <div class="li-head">${kindBadge}<input class="li-name" value="${_escHtml(row.name || '')}" placeholder="Labour description" oninput="_orderLineUpdate(${i}, 'name', this.value)"></div>
-    <input class="li-qty" type="number" min="0" step="0.5" value="${row.labour_hours ?? 0}" oninput="_orderLineUpdate(${i}, 'labour_hours', this.value)" title="Hours">
-    <input class="li-price" type="number" min="0" step="0.01" value="${row.unit_price ?? ''}" oninput="_orderLineUpdate(${i}, 'unit_price', this.value)" title="Rate /hr" placeholder="rate">
-    <div class="li-amt">${fmt(total)}</div>
-    <button class="li-action" title="Remove" onclick="_orderLineRemove(${i})">✕</button>
+  return `<div class="li-row li-row-stacked">
+    <div class="li-top">
+      ${kindBadge}
+      <input class="li-name" value="${_escHtml(row.name || '')}" placeholder="Labour description" oninput="_orderLineUpdate(${i}, 'name', this.value)">
+      <div class="li-amt">${fmt(total)}</div>
+      <button class="li-action" title="Remove" onclick="_orderLineRemove(${i})">✕</button>
+    </div>
+    <div class="li-fields">
+      <label class="li-field"><span class="li-field-label">Hours</span><input class="li-num" type="number" min="0" step="0.5" value="${row.labour_hours ?? 0}" oninput="_orderLineUpdate(${i}, 'labour_hours', this.value)"></label>
+      <label class="li-field"><span class="li-field-label">Rate /hr</span><input class="li-num" type="number" min="0" step="0.01" value="${row.unit_price ?? ''}" oninput="_orderLineUpdate(${i}, 'unit_price', this.value)"></label>
+    </div>
   </div>`;
 }
 
@@ -192,8 +202,14 @@ function _orderLineRowHtml(row, i) {
 // in hours; total is the sum used by the production scheduler.
 // Mirrors the formula documented in the plan; will move to src/scheduler.js
 // in S.4 alongside computeSchedule().
-/** @param {any[]} lines @param {{packagingHours?: number, runOverHours?: number}} [overrides] */
+/** @param {any[]} lines @param {{packagingHours?: number, runOverHours?: number, allocatedHours?: number|null}} [overrides] */
 function _orderHoursBreakdown(lines, overrides) {
+  // When the order has a manual hours_allocated override, the auto components
+  // are bypassed entirely — the scheduler reserves exactly the override value.
+  const ovr = overrides || {};
+  if (ovr.allocatedHours != null) {
+    return { cabinet: 0, labour: 0, item: 0, packaging: 0, runOver: 0, total: parseFloat(String(ovr.allocatedHours)) || 0 };
+  }
   let cabinetHrs = 0, labourHrs = 0, itemHrs = 0;
   for (const r of lines || []) {
     const kind = r.line_kind || 'cabinet';
@@ -217,9 +233,8 @@ function _orderHoursBreakdown(lines, overrides) {
       itemHrs += (parseFloat(r.schedule_hours) || 0) * (parseFloat(r.qty) || 1);
     }
   }
-  const o = overrides || {};
-  const pack = o.packagingHours != null ? o.packagingHours : (cbSettings.packagingHours ?? 0);
-  const over = o.runOverHours != null ? o.runOverHours : 0;
+  const pack = ovr.packagingHours != null ? ovr.packagingHours : (cbSettings.packagingHours ?? 0);
+  const over = ovr.runOverHours != null ? ovr.runOverHours : 0;
   return {
     cabinet: cabinetHrs,
     labour: labourHrs,
@@ -240,6 +255,10 @@ function _renderOrderHoursBreakdown() {
     const v = /** @type {HTMLInputElement|null} */ (document.getElementById(id));
     return v && v.value !== '' ? parseFloat(v.value) : undefined;
   };
+  // Skip the breakdown computation entirely when the override is on — the
+  // panel is hidden in that mode anyway.
+  const overrideEl = /** @type {HTMLInputElement|null} */ (document.getElementById('po-hours-override'));
+  if (overrideEl && overrideEl.checked) { el.innerHTML = ''; return; }
   const b = _orderHoursBreakdown(_opState.lines, {
     runOverHours: popupVal('po-run-over'),
   });
@@ -257,23 +276,19 @@ function _renderOrderHoursBreakdown() {
   el.innerHTML = `<div class="pf-hours-row pf-hours-total"><span>Hours required</span><span>${h(b.total)}</span></div>${rows.join('')}`;
 }
 
-// S.3 + S.6: when the auto-schedule checkbox toggles, show/hide the manual
-// date inputs and enable/disable the (now derived) Production Start input.
-// On toggle-OFF, snapshot the currently-computed start/end into the manual
-// date inputs so the bar doesn't jump positions when the user switches modes.
+// When auto-schedule toggles, enable/disable the Production Start input.
+// Manual start/end inputs no longer exist — production_start_date is the
+// single anchor when auto is off, end is computed by the scheduler from
+// hoursRequired (or hours_allocated override).
 /** @param {boolean} on */
 function _orderAutoScheduleToggle(on) {
-  const manualRow = document.getElementById('po-manual-dates');
-  if (manualRow) manualRow.style.display = on ? 'none' : '';
   const startInput = /** @type {HTMLInputElement|null} */ (document.getElementById('po-start'));
   if (startInput) {
     startInput.disabled = on;
     startInput.title = on ? 'Auto-scheduled — toggle off to set manually' : '';
-  }
-  if (!on && _opState.orderId != null) {
-    const manualStart = /** @type {HTMLInputElement|null} */ (document.getElementById('po-manual-start'));
-    const manualEnd   = /** @type {HTMLInputElement|null} */ (document.getElementById('po-manual-end'));
-    if (manualStart && !manualStart.value) {
+    if (!on && !startInput.value && _opState.orderId != null) {
+      // Seed with the current scheduler-computed start so the bar doesn't
+      // jump on toggle.
       const sched = (typeof computeSchedule === 'function')
         ? computeSchedule(orders, {
             workdayHours: cbSettings.workdayHours,
@@ -284,12 +299,11 @@ function _orderAutoScheduleToggle(on) {
           }, dayOverrides || [], new Date()).get(_opState.orderId)
         : null;
       const o = orders.find(x => x.id === _opState.orderId);
-      manualStart.value = (sched && sched.startISO) || (o ? _orderDateToISO(o.prodStart || '') : '') || '';
-      if (manualEnd && !manualEnd.value) {
-        manualEnd.value = (sched && sched.endISO) || manualStart.value || '';
-      }
+      startInput.value = (sched && sched.startISO) || (o ? _orderDateToISO(o.prodStart || '') : '') || '';
     }
   }
+  // Update the auto/manual hint label and the schedule summary line.
+  if (typeof _renderOrderSchedSummary === 'function') _renderOrderSchedSummary();
 }
 
 function _renderOrderLineTotals() {
@@ -470,21 +484,31 @@ function _lineRowHtml(row, i) {
     </div>`;
   }
   if (kind === 'item') {
-    return `<div class="li-row">
-      <div class="li-head">${kindBadge}<input class="li-name" value="${_escHtml(row.name || '')}" placeholder="Item name" oninput="_lineUpdate(${i}, 'name', this.value)"></div>
-      <input class="li-qty" type="number" min="0" step="1" value="${row.qty ?? 1}" oninput="_lineUpdate(${i}, 'qty', this.value)" title="Qty">
-      <input class="li-price" type="number" min="0" step="0.01" value="${row.unit_price ?? 0}" oninput="_lineUpdate(${i}, 'unit_price', this.value)" title="Unit price">
-      <div class="li-amt">${fmt(total)}</div>
-      <button class="li-action" title="Remove" onclick="_lineRemove(${i})">✕</button>
+    return `<div class="li-row li-row-stacked">
+      <div class="li-top">
+        ${kindBadge}
+        <input class="li-name" value="${_escHtml(row.name || '')}" placeholder="Item name" oninput="_lineUpdate(${i}, 'name', this.value)">
+        <div class="li-amt">${fmt(total)}</div>
+        <button class="li-action" title="Remove" onclick="_lineRemove(${i})">✕</button>
+      </div>
+      <div class="li-fields">
+        <label class="li-field"><span class="li-field-label">Qty</span><input class="li-num" type="number" min="0" step="1" value="${row.qty ?? 1}" oninput="_lineUpdate(${i}, 'qty', this.value)"></label>
+        <label class="li-field"><span class="li-field-label">Price</span><input class="li-num" type="number" min="0" step="0.01" value="${row.unit_price ?? 0}" oninput="_lineUpdate(${i}, 'unit_price', this.value)"></label>
+      </div>
     </div>`;
   }
   // labour
-  return `<div class="li-row">
-    <div class="li-head">${kindBadge}<input class="li-name" value="${_escHtml(row.name || '')}" placeholder="Labour description" oninput="_lineUpdate(${i}, 'name', this.value)"></div>
-    <input class="li-qty" type="number" min="0" step="0.5" value="${row.labour_hours ?? 0}" oninput="_lineUpdate(${i}, 'labour_hours', this.value)" title="Hours">
-    <input class="li-price" type="number" min="0" step="0.01" value="${row.unit_price ?? ''}" oninput="_lineUpdate(${i}, 'unit_price', this.value)" title="Rate /hr" placeholder="rate">
-    <div class="li-amt">${fmt(total)}</div>
-    <button class="li-action" title="Remove" onclick="_lineRemove(${i})">✕</button>
+  return `<div class="li-row li-row-stacked">
+    <div class="li-top">
+      ${kindBadge}
+      <input class="li-name" value="${_escHtml(row.name || '')}" placeholder="Labour description" oninput="_lineUpdate(${i}, 'name', this.value)">
+      <div class="li-amt">${fmt(total)}</div>
+      <button class="li-action" title="Remove" onclick="_lineRemove(${i})">✕</button>
+    </div>
+    <div class="li-fields">
+      <label class="li-field"><span class="li-field-label">Hours</span><input class="li-num" type="number" min="0" step="0.5" value="${row.labour_hours ?? 0}" oninput="_lineUpdate(${i}, 'labour_hours', this.value)"></label>
+      <label class="li-field"><span class="li-field-label">Rate /hr</span><input class="li-num" type="number" min="0" step="0.01" value="${row.unit_price ?? ''}" oninput="_lineUpdate(${i}, 'unit_price', this.value)"></label>
+    </div>
   </div>`;
 }
 

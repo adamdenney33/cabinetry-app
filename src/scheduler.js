@@ -80,6 +80,11 @@ function buildOverrideMap(list) {
  *  @param {{ packagingHours?: number }} biz */
 function orderHoursRequired(o, biz) {
   if (!o) return 0;
+  // Manual override: bypasses line-item computation. NULL = use auto sum.
+  if (o.hours_allocated != null) {
+    const v = parseFloat(String(o.hours_allocated));
+    return Number.isFinite(v) && v >= 0 ? v : 0;
+  }
   const lines = Array.isArray(o._lines) ? o._lines : [];
   let cabinetHrs = 0, labourHrs = 0, itemHrs = 0;
   for (const r of lines) {
@@ -201,15 +206,44 @@ function computeSchedule(ordersList, biz, overrides, today) {
     if (required > 0 && (!groupMaxEnd || +end > +groupMaxEnd)) groupMaxEnd = end;
   }
 
-  // Manual orders: use the user-pinned dates as-is. If neither is set, mark
-  // missing so the renderer can flag it in the sidebar.
+  // Manual orders: user pins start; end is computed from hoursRequired by
+  // walking the calendar (same algo as auto orders). When a legacy explicit
+  // manual_end_date is present, it's still honoured for backwards compat.
   for (const o of manualOrders) {
     const required = orderHoursRequired(o, biz);
-    const startISO = o.manual_start_date || '';
-    const endISO = o.manual_end_date || o.manual_start_date || '';
-    if (!startISO && !endISO) {
+    const startISO = o.manual_start_date || o.production_start_date || '';
+    if (!startISO) {
       out.set(o.id, { id: o.id, startISO: '', endISO: '', lane: 0, hoursRequired: required, isManual: true, isMissingDates: true });
       continue;
+    }
+    let endISO;
+    if (o.manual_end_date) {
+      endISO = o.manual_end_date;
+    } else {
+      // Walk forward consuming workday capacity until hours are exhausted.
+      const startDate = _schedFromISO(startISO);
+      if (!startDate) {
+        endISO = startISO;
+      } else {
+        let cursor = startDate;
+        let end = startDate;
+        let remaining = required;
+        if (remaining > 0) {
+          let safety = 365 * 5;
+          while (remaining > 0 && safety-- > 0) {
+            const h = getWorkdayHours(cursor, weekdayDefaults, overrideMap, biz);
+            if (h > 0) {
+              const consume = Math.min(h, remaining);
+              remaining -= consume;
+              end = cursor;
+              if (remaining > 0 || consume === h) cursor = _schedNextDay(cursor);
+            } else {
+              cursor = _schedNextDay(cursor);
+            }
+          }
+        }
+        endISO = _schedISO(end);
+      }
     }
     placements.push({ id: o.id, startISO, endISO: endISO || startISO, hoursRequired: required, isManual: true });
   }
@@ -271,15 +305,25 @@ function slackDays(scheduledEndISO, dueISO, weekdayDefaults, overrideMap, biz) {
   return forward ? count : -count;
 }
 
+// Format a non-negative day count as "Xw Yd" (omitting zero parts).
+/** @param {number} days */
+function fmtSchedDays(days) {
+  const w = Math.floor(days / 7);
+  const d = days % 7;
+  if (w === 0) return `${d}d`;
+  if (d === 0) return `${w}w`;
+  return `${w}w ${d}d`;
+}
+
 // Render a slack chip given a working-day delta. Returns HTML or '' if null.
 /** @param {number|null} slack */
 function slackChipHTML(slack) {
   if (slack == null) return '';
   let cls = 'sched-due-amber';
   let text = '';
-  if (slack >= 2) { cls = 'sched-due-green'; text = `due ${slack}d`; }
-  else if (slack >= 0) { cls = 'sched-due-amber'; text = slack === 0 ? 'on time' : `due ${slack}d`; }
-  else { cls = 'sched-due-red'; text = `${Math.abs(slack)}d late`; }
+  if (slack >= 2) { cls = 'sched-due-green'; text = `Due ${fmtSchedDays(slack)}`; }
+  else if (slack >= 0) { cls = 'sched-due-amber'; text = slack === 0 ? 'on time' : `Due ${fmtSchedDays(slack)}`; }
+  else { cls = 'sched-due-red'; text = `${fmtSchedDays(Math.abs(slack))} late`; }
   return `<span class="sched-due-chip ${cls}">${text}</span>`;
 }
 

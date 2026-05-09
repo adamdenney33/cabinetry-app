@@ -502,12 +502,14 @@ textarea { resize: vertical; min-height: 70px; }
   overflow: hidden;
 }
 .card-header {
-  padding: 14px 18px;
+  padding: 8px 16px;
+  min-height: 38px;
   border-bottom: 1px solid var(--border);
   display: flex; align-items: center; justify-content: space-between;
   background: var(--surface2);
 }
-.card-title { font-size: 13px; font-weight: 700; color: var(--text); }
+.card-title { font-size: 13px; font-weight: 700; color: var(--text); white-space: nowrap; }
+.card-header .btn-outline { width: auto; margin-left: 16px; }
 .card-body { padding: 16px 18px; }
 
 /* ── BADGE / PILL ── */
@@ -926,17 +928,18 @@ canvas { display: block; }
 .cut-checkbox.checked { background: var(--success); border-color: var(--success); color: #fff; }
 .cut-checkbox.checked::after { content: '✓'; }
 
-/* ── RESIZE HANDLE ── */
-.cl-resize-handle {
+/* ── RESIZE HANDLE (shared) ── */
+.resize-handle {
   width: 5px; flex-shrink: 0; cursor: col-resize;
   background: var(--border);
   transition: background 0.15s;
   position: relative;
 }
-.cl-resize-handle:hover, .cl-resize-handle.dragging { background: var(--accent); }
-.cl-resize-handle::after {
+.resize-handle:hover, .resize-handle.dragging { background: var(--accent); }
+.resize-handle::after {
   content: ''; position: absolute; inset: 0 -4px;
 }
+@media (max-width: 768px) { .resize-handle { display: none; } }
 
 /* ── DRAG HANDLE ── */
 .cl-drag-handle {
@@ -1123,7 +1126,7 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
 @media print {
   /* Hide everything by default */
   header, .nav-tabs, .tab-bar, .cl-left, .inner-tabs, .sheet-tabs, .layout-toolbar,
-  .sidebar, nav, button, .form-section, #toast-container,
+  .sidebar, nav, button, .form-section, #toast-container, .resize-handle,
   .stats-grid, .order-filter-tabs, .stock-cat-filter-bar,
   .section-panel { display: none !important; }
   /* Only show the active cut-list right panel */
@@ -1247,6 +1250,8 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
 .li-empty { padding: 14px 12px; font-size: 11px; color: var(--muted); text-align: center; }
 .li-row { display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-bottom: 1px solid var(--border); }
 .li-row:last-child { border-bottom: none; }
+.li-row-stacked { display: block; padding: 8px; }
+.li-row-stacked .li-top { display: flex; align-items: center; gap: 6px; }
 .li-head { display: flex; align-items: center; gap: 6px; flex: 1 1 0; min-width: 0; }
 .li-kind { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; min-width: 44px; flex-shrink: 0; }
 .li-desc { flex: 1; font-size: 12px; color: var(--text); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -1260,6 +1265,12 @@ input.li-qty:focus, input.li-price:focus, input.li-hrs:focus { outline: none; bo
 .li-amt { width: 64px; text-align: right; font-size: 12px; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; flex-shrink: 0; }
 .li-action { width: 24px; height: 24px; padding: 0; border: 1px solid transparent; background: transparent; border-radius: 4px; color: var(--muted); cursor: pointer; font-size: 12px; flex-shrink: 0; }
 .li-action:hover { border-color: var(--border); color: var(--text); background: var(--surface); }
+/* Stacked-row labelled fields (item / labour). Cabinet rows skip this. */
+.li-fields { display: flex; gap: 8px; margin-top: 6px; padding-left: 50px; }
+.li-field { display: flex; flex-direction: column; gap: 2px; flex: 1 1 0; min-width: 0; cursor: text; }
+.li-field-label { font-size: 9px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+input.li-num { width: 100%; font-size: 12px; padding: 4px 6px; border: 1px solid var(--border); border-radius: 4px; background: var(--surface); color: var(--text); font-variant-numeric: tabular-nums; text-align: right; font-family: inherit; }
+input.li-num:focus { outline: none; border-color: var(--accent); }
 .li-add-row { display: flex; gap: 6px; margin-top: 8px; }
 .btn-sm { font-size: 11px; padding: 5px 10px; width: auto; }
 /* Pipeline in popup */
@@ -1368,6 +1379,7 @@ input.li-qty:focus, input.li-price:focus, input.li-hrs:focus { outline: none; bo
   display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px;
   padding-top: 8px; border-top: 1px dashed var(--border2);
 }
+.proj-strip.cols-3 { grid-template-columns: repeat(3, 1fr); }
 .proj-act {
   display: flex; align-items: stretch;
   border: 1px solid var(--border);
@@ -1589,9 +1601,9 @@ html.dark .proj-act.empty .proj-act-add { background: rgba(13,148,136,.12); }
   letter-spacing: 0.02em;
   flex-shrink: 0;
 }
-.sched-due-green { background: rgba(5,150,105,0.18); color: #34d399; }
-.sched-due-amber { background: rgba(232,168,56,0.20); color: #fbbf24; }
-.sched-due-red   { background: rgba(220,38,38,0.22); color: #f87171; }
+.sched-due-green,
+.sched-due-amber,
+.sched-due-red { background: #000; color: #fff; }
 
 /* ══════════════════════════════════════════
    QUOTE / ORDER UNIFIED SIDEBAR EDITOR
@@ -1652,6 +1664,70 @@ html.dark .proj-act.empty .proj-act-add { background: rgba(13,148,136,.12); }
   color: var(--muted);
   margin-bottom: 6px;
 }
+
+/* Collapsible <details>-based editor section (Schedule). The summary line
+   doubles as the section title plus a 1-line state readout, so users can
+   scan the collapsed sidebar at a glance. */
+.editor-section--collapsible { padding-top: 8px; }
+.editor-section--collapsible > summary {
+  display: flex; align-items: baseline; justify-content: space-between;
+  cursor: pointer; list-style: none; gap: 8px;
+  margin-bottom: 0;
+  padding: 2px 0;
+}
+.editor-section--collapsible > summary::-webkit-details-marker { display: none; }
+.editor-section--collapsible > summary::after {
+  content: '▾'; color: var(--muted); font-size: 9px;
+  margin-left: 4px; transition: transform .15s;
+}
+.editor-section--collapsible[open] > summary { margin-bottom: 8px; }
+.editor-section--collapsible[open] > summary::after { transform: rotate(180deg); }
+.editor-section-summary {
+  font-size: 10px; color: var(--muted);
+  font-weight: 400; text-transform: none; letter-spacing: 0;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  flex: 1; text-align: right;
+}
+
+/* Compact inline label-input rows used for Pricing + Schedule meta.
+   Replaces the chunky pf-row stack (label-above) with a tight single-line
+   rhythm that matches the rest of the editor. */
+.pf-row-inline {
+  display: flex; flex-wrap: wrap; align-items: center;
+  gap: 10px;
+  font-size: 11px;
+}
+.pf-inline {
+  display: inline-flex; align-items: center; gap: 5px;
+  flex: 0 0 auto; min-width: 0; cursor: text;
+}
+.pf-inline-grow { flex: 1 1 0; min-width: 0; }
+.pf-inline-grow .pf-input { width: 100%; min-width: 0; }
+.pf-inline-label {
+  font-size: 10px; font-weight: 600;
+  color: var(--muted); text-transform: uppercase; letter-spacing: 0.4px;
+  white-space: nowrap;
+}
+.pf-inline-suffix {
+  font-size: 10px; color: var(--muted);
+  margin-left: -2px;
+}
+.pf-inline-hint { color: var(--muted); font-size: 9px; font-weight: 500; margin-left: 4px; text-transform: none; letter-spacing: 0; }
+.pf-inline input[type="checkbox"] { width: 14px; height: 14px; margin: 0; cursor: pointer; }
+.pf-inline-grow .pf-input[type="date"] { flex: 1 1 auto; }
+.pf-input-compact {
+  width: 64px; padding: 0 6px; font-size: 11px;
+  height: 24px; box-sizing: border-box; line-height: 22px;
+}
+.pf-input-compact[type="date"] { width: auto; min-width: 130px; }
+.pf-input:disabled,
+.pf-input-compact:disabled {
+  color: var(--muted);
+  cursor: not-allowed;
+  background: var(--surface2);
+}
+.pf-input[type="date"]:disabled::-webkit-calendar-picker-indicator,
+.pf-input-compact[type="date"]:disabled::-webkit-calendar-picker-indicator { opacity: 0.35; }
 
 /* Cabinet / Item / Labour add tiles — proj-act-inspired */
 .editor-add-tiles {

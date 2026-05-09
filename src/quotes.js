@@ -277,6 +277,7 @@ async function convertQuoteToOrder(id) {
     markup: q.markup ?? 0,
     tax: q.tax ?? 0,
     status: 'confirmed',
+    order_number: typeof _nextOrderNumber === 'function' ? _nextOrderNumber() : null,
     due: 'TBD',
   };
   if (q.client_id) orderRow.client_id = q.client_id;
@@ -365,17 +366,30 @@ function renderQuoteMain() {
     const cabCount  = lines.filter(/** @param {any} l */ l => (l.line_kind || 'cabinet') === 'cabinet').length;
     const itemCount = lines.filter(/** @param {any} l */ l => l.line_kind === 'item').length;
     const labCount  = lines.filter(/** @param {any} l */ l => l.line_kind === 'labour').length;
-    const pills = [];
-    if (cabCount)  pills.push(`<span class="qc-count-pill">Cabinets: <strong>${cabCount}</strong></span>`);
-    if (itemCount) pills.push(`<span class="qc-count-pill">Items: <strong>${itemCount}</strong></span>`);
-    if (labCount)  pills.push(`<span class="qc-count-pill">Labour: <strong>${labCount}</strong></span>`);
-    const countsRow = pills.length ? `<div class="qc-counts">${pills.join('')}</div>` : '';
+    const pName = quoteProject(q);
+    const cName = quoteClient(q);
+    const titleText = pName && cName
+      ? `${_escHtml(pName)} - ${_escHtml(cName)}`
+      : _escHtml(pName || cName || '');
+    /** @param {string} label @param {string} kind @param {number} count @param {string} icon */
+    const stripCell = (label, kind, count, icon) => `
+        <div class="proj-act${count ? '' : ' empty'}">
+          <div class="proj-act-main" onclick="event.stopPropagation();loadQuoteIntoSidebar(${q.id})" title="Open quote">
+            ${icon}
+            <span class="proj-act-label">${label}</span>
+            <span class="proj-act-count">${count}</span>
+          </div>
+          <div class="proj-act-add" onclick="event.stopPropagation();loadQuoteIntoSidebar(${q.id});_qAddLine('${kind}')" title="Add ${label.toLowerCase()}">+</div>
+        </div>`;
     return `
     <div class="quote-card" style="cursor:pointer" onclick="loadQuoteIntoSidebar(${q.id})">
       <div class="qc-header">
         <div style="flex:1;min-width:0;overflow:hidden">
-          <div class="qc-title">${quoteProject(q)}</div>
-          <div class="qc-meta">${quoteClient(q)} &nbsp;·&nbsp; ${q.date} &nbsp;·&nbsp; <span class="badge ${statusBadge}" style="font-size:9px;padding:1px 6px">${statusText}</span></div>
+          <div class="qc-title" style="display:flex;align-items:center;gap:8px;min-width:0">
+            <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1">${titleText}</span>
+            <span class="badge ${statusBadge}" style="font-size:9px;padding:1px 6px;flex-shrink:0">${statusText}</span>
+          </div>
+          ${q.date ? `<div class="qc-meta">${q.date}</div>` : ''}
         </div>
         <span class="qc-total">${fmt(total)}</span>
       </div>
@@ -385,16 +399,20 @@ function renderQuoteMain() {
         ).join('')}
         ${q.notes.split(/\r?\n/).filter(Boolean).length > 3 ? '<div style="font-size:10px;color:var(--muted)">…</div>' : ''}
       </div>` : ''}
-      ${countsRow}
+      <div class="proj-strip cols-3" style="padding:8px 16px" onclick="event.stopPropagation()">
+        ${stripCell('Cabinets', 'cabinet', cabCount, _Q_ICON_CABINET)}
+        ${stripCell('Items', 'item', itemCount, _Q_ICON_ITEM)}
+        ${stripCell('Labour', 'labour', labCount, _Q_ICON_LABOUR)}
+      </div>
       <div class="qc-footer" onclick="event.stopPropagation()">
         ${q.status === 'draft' ? `<button class="btn btn-outline" onclick="markQuoteSent(${q.id})">Mark Sent</button>` : ''}
         ${q.status === 'sent' ? `<button class="btn btn-success" onclick="approveQuote(${q.id})">Approve</button>` : ''}
         ${q.status !== 'draft' ? `<button class="btn btn-outline" onclick="revertQuoteToDraft(${q.id})" style="color:var(--muted)">↩ Draft</button>` : ''}
         ${(() => { const hasOrder = q.client_id && q.project_id && orders.some(o => o.client_id === q.client_id && o.project_id === q.project_id); return hasOrder ? `<button class="btn btn-outline" onclick="switchSection('orders');window._orderSearch='${_escHtml(quoteProject(q))}';renderOrdersMain()" style="color:var(--success)">✓ View Order</button>` : `<button class="btn btn-outline" onclick="convertQuoteToOrder(${q.id})">→ Order</button>`; })()}
         <span style="flex:1"></span>
+        <button class="btn btn-outline" onclick="printQuote(${q.id},'pdf')">PDF</button>
         <button class="btn btn-outline" onclick="duplicateQuote(${q.id})">Duplicate</button>
         <button class="btn btn-outline" style="color:var(--danger)" onclick="_confirm('Delete quote for <strong>${_escHtml(quoteClient(q))}</strong>?',()=>removeQuote(${q.id}))">Delete</button>
-        <button class="btn btn-outline" onclick="printQuote(${q.id},'pdf')">PDF</button>
       </div>
     </div>`;
   };
@@ -1124,14 +1142,11 @@ function renderQuoteEditor() {
 
   const dateStr = q ? q.date : new Date().toLocaleDateString('en-GB', { day:'numeric', month:'short' });
 
-  // Strategy 2 + Idea 3: project header (← + title + status + meta) replaces
-  // the legacy editor-header / chip / client-line trio.
-  const phSummary = `${isExisting ? 'Q-' + String(q.id).padStart(4, '0') : 'New quote'} · ${statusLabel}`;
+  // Header: project name + client only. Status + quote # live in the editor
+  // section below — duplication in the title row is just visual noise.
   const headerHTML = _renderProjectHeader('quote', {
     name: projectName || 'Untitled project',
     exitFn: '_qChangeProject',
-    status: statusLabel,
-    summary: phSummary,
     clientName: clientName || undefined,
   });
   host.innerHTML = `<div class="form-section editor-shell">
@@ -1180,18 +1195,18 @@ function renderQuoteEditor() {
 
     <div class="editor-section">
       <div class="editor-section-title">Pricing</div>
-      <div class="pf-row">
-        <div class="pf"><label class="pf-label">Markup %</label><input class="pf-input" type="number" id="pq-markup" value="${(q && q.markup) ?? 20}" oninput="_renderQuoteLineTotals();_qMarkDirty()"></div>
-        <div class="pf"><label class="pf-label">Tax %</label><input class="pf-input" type="number" id="pq-tax" value="${(q && q.tax) ?? 13}" oninput="_renderQuoteLineTotals();_qMarkDirty()"></div>
+      <div class="pf-row-inline">
+        <label class="pf-inline"><span class="pf-inline-label">Markup</span><input class="pf-input pf-input-compact" type="number" id="pq-markup" value="${(q && q.markup) ?? 20}" oninput="_renderQuoteLineTotals();_qMarkDirty()"><span class="pf-inline-suffix">%</span></label>
+        <label class="pf-inline"><span class="pf-inline-label">Tax</span><input class="pf-input pf-input-compact" type="number" id="pq-tax" value="${(q && q.tax) ?? 13}" oninput="_renderQuoteLineTotals();_qMarkDirty()"><span class="pf-inline-suffix">%</span></label>
       </div>
     </div>
+
+    <div class="pf-totals" id="pq-totals" style="margin-top:10px"></div>
 
     <div class="editor-section">
       <div class="editor-section-title">Notes</div>
       <textarea class="pf-textarea" id="pq-notes" rows="3" placeholder="Customer-facing notes shown on the PDF..." oninput="_qMarkDirty()">${_escHtml((q && q.notes)||'')}</textarea>
     </div>
-
-    <div class="pf-totals" id="pq-totals" style="margin-top:10px"></div>
 
     <div class="editor-footer">
       ${isExisting ? `<button class="btn btn-outline" style="color:var(--danger)" onclick="_confirm('Delete quote?',()=>{removeQuote(${q.id});_qClearEditor()})">Delete</button>` : ''}

@@ -555,14 +555,20 @@ create index orders_sidebar_order_idx on public.orders(user_id, sidebar_order_in
 alter table public.orders
   add column order_number text;        -- plain 4-digit zero-padded NNNN, set client-side at create
 
+-- Manual hours-allocated override (added 2026-05-09):
+alter table public.orders
+  add column hours_allocated numeric;  -- NULL = use scheduler computation; non-null = fixed hours value the scheduler reserves on the calendar
+
 -- Kept: id, user_id, client_id, project_id, value, status, due, created_at, production_start_date
 ```
 
-**Scheduler fields (added 2026-05-06):** `priority` drives auto-scheduler ordering (higher = first). `auto_schedule = true` (default) means the scheduler computes and writes `production_start_date`; `false` means `manual_start_date` / `manual_end_date` drive the layout instead. `packaging_hours` and `contingency_hours` are per-order overrides of business defaults (NULL inherits). `run_over_hours` is added when a project takes longer than scheduled and pushes subsequent priority groups back. See SPEC.md § 13.
+**Scheduler fields (added 2026-05-06):** `priority` drives auto-scheduler ordering (higher = first). `auto_schedule = true` (default) means the scheduler computes and writes `production_start_date`; `false` means the user pins `production_start_date` and the scheduler walks forward from it consuming `hoursRequired` (legacy `manual_start_date` / `manual_end_date` are still honoured for back-compat but no longer set by the editor). `packaging_hours` and `contingency_hours` are per-order overrides of business defaults (NULL inherits). `run_over_hours` is added when a project takes longer than scheduled and pushes subsequent priority groups back. See SPEC.md § 13.
 
 **`sidebar_order_index` (added 2026-05-07):** integer used only when the schedule-sidebar sort selector is set to "Manual" — gap-spaced (`i * 10`) so re-orders only need a single row write. Has no effect on the calendar layout or the auto-scheduler. Indexed by `(user_id, sidebar_order_index)` for fast per-user sorted reads.
 
 **`order_number` (added 2026-05-09):** human-friendly per-user identifier, mirrors `quotes.quote_number`. Format: plain 4-digit zero-padded `NNNN` (no prefix); set by `_nextOrderNumber()` in [src/orders.js](src/orders.js) on create / quote→order convert and editable in the order editor. Existing rows were backfilled per-user in `id`-ascending order. Independent series from `quotes.quote_number` — converting Q-0042 yields a fresh `0008`, not `0042`. See SPEC.md § 13.
+
+**`hours_allocated` (added 2026-05-09):** optional manual override of the auto-computed hours-required total. NULL (default) = the scheduler uses `orderHoursRequired()` which sums cabinet + labour + item + packaging + run-over hours from `order_lines`. Non-null = the scheduler reserves exactly this value on the calendar regardless of line-item content. Toggled via the "Override hours" checkbox in the order editor's Schedule section. See SPEC.md § 13.
 
 > **`value` retained (deviation, 2026-04-29; resolved 2026-05-06).** Originally this section said `drop column value, -- derived from order_lines`. During Phase 7 we found that `order_lines` aggregation only reproduces materials+labour, but `orders.value` is a snapshot of the customer-paid total at conversion time (post-markup, post-tax). Without markup/tax columns on `orders` and with the parent quote potentially editable or deletable, derivation isn't safe. The line-items rewrite (2026-05-06) added `markup` and `tax` columns, so `value` is now recomputed on every save from `order_lines × markup × tax`. The column is retained as a denormalised cache for fast dashboard queries (no aggregation per row). See SPEC.md § 13.
 

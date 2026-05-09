@@ -22,6 +22,29 @@ Companion docs: `SPEC.md` (refactor history), `SCHEMA.md` (DB schema),
 
 ## Active Work
 
+### Orders / Quotes sidebar redesign 🚧 In Progress 2026-05-09
+
+Eight-point overhaul of the order + quote editor sidebars: line-item inputs got proper labels, schedule became a single collapsible block driven by Production Start + a hours-allocated override, totals moved above the schedule, status/order# repetition removed from the project header. Detail in `~/.claude/plans/orders-quotes-sidebar-1-line-glimmering-kay.md`.
+
+**Code changes (in this commit):**
+- Line-item rows (`_orderLineRowHtml` / `_lineRowHtml` in `src/app.js`): two-line `.li-row-stacked` layout with labelled `Qty / Price / Hrs` (item) or `Hours / Rate /hr` (labour) fields. Cabinet rows unchanged.
+- Pricing + Schedule meta switched to compact inline rows via new `.pf-row-inline` / `.pf-inline` / `.pf-input-compact` utilities in `styles.css`.
+- Manual start/end date inputs deleted from the order editor; Production Start is the single editable date when auto-schedule is off. `saveOrderEditor` mirrors `production_start_date` into `manual_start_date` for back-compat.
+- Scheduler manual-orders branch (`src/scheduler.js`) computes `endISO` by walking workdays consuming `hoursRequired` when `manual_end_date` is null.
+- New "Override hours" checkbox + Allocated input inside the Schedule section. `orderHoursRequired()` and `_orderHoursBreakdown()` early-return the override value when set.
+- Schedule section wrapped in `<details class="editor-section--collapsible">`, default collapsed, persists via `localStorage['pc_order_sched_open']`. Summary line shows `Auto · Start 12 May · 12.5 h`.
+- Totals (`pf-totals`) moved from below Notes to between Pricing and Schedule (orders + quotes).
+- `status` / `summary` fields dropped from the `_renderProjectHeader` calls in both editors — header is now project name + client only. Status select / Order# input / pipeline / overdue badge stay in the editor section below.
+- `npm run typecheck` clean.
+
+**Sub-step pending: `orders.hours_allocated` migration not yet applied.** Supabase MCP `apply_migration` was blocked by harness permissions. SQL staged in the plan file's "DB migration order" section. User to apply manually via Supabase SQL editor; once applied, regenerate `database.types.ts` and the override feature lights up. Without the migration, code paths still work — `o.hours_allocated` reads return `undefined`, override checkbox stays unchecked.
+
+**Remaining:**
+- Apply migration `add_orders_hours_allocated`.
+- Regenerate `database.types.ts`.
+- Browser smoke per the plan's Verification section (8 steps).
+- Mark ✅ in this section + append SPEC.md § 13 entry once verified.
+
 ### Cut List multi-cutlist + 3-tab refactor 🚧 In Progress 2026-05-09
 
 Adds support for **multiple named cutlists per project** (currently 1-per-project, overwritten on save) and reorganises the Cut List main view into 3 tabs: **Cut Layout / Project Cut Lists / Cabinet Library**.
