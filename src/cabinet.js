@@ -661,6 +661,69 @@ function cbRemoveExtra(lineId, idx) {
 }
 
 // ── Quote Creation & Editing ──
+
+/** Entry point for the "Send to Quote" button. If existing customer-facing
+ *  quotes exist for the current project, prompts the user to pick one (or
+ *  create a new quote). If none exist, creates a new quote directly. */
+function cbSendToQuote() {
+  if (!cbLines.length) { _toast('Add cabinets first.', 'error'); return; }
+  if (!_userId) { _toast('Sign in to save', 'error'); return; }
+
+  const projName = /** @type {HTMLInputElement|null} */ (_byId('cb-project'))?.value?.trim() || '';
+  const proj = projects.find(p => p.name === projName);
+  const existing = proj
+    ? quotes.filter(q => q.project_id === proj.id && !_isDraftQuote(q))
+    : [];
+
+  if (existing.length === 0) { cbCreateQuoteFromDraft(); return; }
+
+  const rows = existing.map(q => `
+    <div onclick="cbSendCabinetsToExistingQuote(${q.id})"
+         style="padding:10px 12px;border:1px solid var(--border);border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:10px"
+         onmouseover="this.style.background='var(--accent-dim)';this.style.borderColor='var(--accent)'"
+         onmouseout="this.style.background='';this.style.borderColor='var(--border)'">
+      <div style="flex:1">
+        <div style="font-weight:600">${_escHtml(quoteClient(q) || 'No client')}</div>
+        <div style="font-size:11px;color:var(--muted)">${_escHtml(q.status || 'draft')} · ${_escHtml(q.date || '')}</div>
+      </div>
+      <div style="font-size:18px;color:var(--muted)">→</div>
+    </div>
+  `).join('');
+
+  const html = `
+    <div class="popup-header">
+      <div class="popup-title">Send to Quote</div>
+      <div class="popup-close" onclick="_closePopup()">×</div>
+    </div>
+    <div class="popup-body">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:10px">
+        ${existing.length} existing quote${existing.length===1?'':'s'} for "${_escHtml(projName)}". Choose one to update, or create a new quote.
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px">${rows}</div>
+      <div onclick="_closePopup();cbCreateQuoteFromDraft()"
+           style="margin-top:10px;padding:10px 12px;border:2px dashed var(--accent);border-radius:6px;cursor:pointer;text-align:center;color:var(--accent);font-weight:600">
+        + Create New Quote
+      </div>
+    </div>
+    <div class="popup-footer">
+      <button class="btn btn-outline" onclick="_closePopup()">Cancel</button>
+    </div>
+  `;
+  _openPopup(html, 'sm');
+}
+
+/** @param {number} quoteId */
+async function cbSendCabinetsToExistingQuote(quoteId) {
+  _closePopup();
+  const q = quotes.find(x => x.id === quoteId);
+  if (!q) { _toast('Quote not found', 'error'); return; }
+  await _syncCBLinesToQuote(quoteId);
+  if (typeof _refreshQuoteTotals === 'function') await _refreshQuoteTotals(quoteId);
+  if (typeof renderQuoteMain === 'function') renderQuoteMain();
+  switchSection('quote');
+  _toast(`Cabinets sent to quote for "${quoteClient(q) || 'client'}"`, 'success');
+}
+
 async function cbCreateQuoteFromDraft() {
   if (!cbLines.length) { _toast('Add cabinets first.', 'error'); return; }
   if (!_userId) { _toast('Sign in to create a quote', 'error'); return; }
@@ -690,10 +753,11 @@ async function cbCreateQuoteFromDraft() {
   if (lineRows.length) await _db('quote_lines').insert(lineRows);
   if (typeof _refreshQuoteTotals === 'function') await _refreshQuoteTotals(data.id);
 
-  _toast('Quote created for "' + projName + '" - view in Quotes tab', 'success');
+  _toast('Quote created for "' + projName + '"', 'success');
   _setCbDirty(false);
   if (typeof renderQuoteMain === 'function') renderQuoteMain();
   renderCBPanel();
+  switchSection('quote');
 }
 
 /** @param {number} quoteId */
@@ -865,81 +929,6 @@ let _clProjectCache = [];
 
 /** @param {any} s */
 function _escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
-
-/** @param {string} [mode] */
-function printCBQuote(mode) {
-  if (!cbLines.length) { _toast('Add cabinet lines first.', 'error'); return; }
-  if (mode === 'pdf') {
-    // Build pseudo quote_lines rows so the PDF renders proper line items
-    // even from the in-memory cabinet builder preview path.
-    const previewRows = cbLines.map((l, i) => Object.assign(_cbLineToRow(l, i, 0), { line_kind: 'cabinet' }));
-    _buildQuotePDF({
-      id: Date.now(), client: '', project: 'Cabinet Quote',
-      markup: cbSettings.markup, tax: cbSettings.tax,
-      status: 'draft', date: new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short'}),
-      notes: ''
-    }, previewRows);
-    return;
-  }
-  const cur = window.currency;
-  /** @param {any} v */
-  const fmt = v => cur + Number(v).toFixed(2);
-  /** @param {number} v */
-  const fmt0 = v => cur + Math.round(v).toLocaleString();
-  const biz = getBizInfo();
-  const client = _cbClientNameForProject();
-  const project = /** @type {HTMLInputElement|null} */ (_byId('cb-project'))?.value?.trim() || '';
-  const notes = /** @type {HTMLTextAreaElement|null} */ (_byId('cb-notes'))?.value?.trim() || '';
-  const quoteNum = /** @type {HTMLInputElement|null} */ (_byId('cb-quote-num'))?.value?.trim() || ('CB-' + Date.now().toString(36).toUpperCase());
-
-  let grandMat = 0, grandLabour = 0, grandHw = 0, grandSub = 0;
-  /** @type {string | null} */
-  let lastRoom = null;
-  let lineNum = 0;
-  const hasRooms = cbLines.some(l => l.room);
-  const lineRows = cbLines.map(/** @param {any} line */ (line) => {
-    const c = calcCBLine(line);
-    grandMat += c.matCost * line.qty; grandLabour += c.labourCost * line.qty; grandHw += c.hwCost * line.qty; grandSub += c.lineSubtotal;
-    lineNum++;
-    let roomHeader = '';
-    if (hasRooms && line.room !== lastRoom) {
-      lastRoom = line.room;
-      roomHeader = `<tr><td colspan="5" style="padding:10px 10px 4px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:#888;background:#f8f8f8;border-bottom:1px solid #e0e0e0">${_escHtml(line.room || 'Other')}</td></tr>`;
-    }
-    return roomHeader + `<tr>
-      <td style="padding:8px 10px;border-bottom:1px solid #f0f0f0;font-size:12px;color:#555">${lineNum}</td>
-      <td style="padding:8px 10px;border-bottom:1px solid #f0f0f0"><strong>${_escHtml(line.name || 'Cabinet')}</strong><br><span style="font-size:10px;color:#999">${line.w}&times;${line.h}&times;${line.d}mm &middot; ${_escHtml(line.material)}</span>
-      ${line.doors>0?'<br><span style="font-size:10px;color:#999">'+line.doors+' door(s)</span>':''}
-      ${line.drawers>0?'<br><span style="font-size:10px;color:#999">'+line.drawers+' drawer(s)</span>':''}
-      ${line.shelves+line.adjShelves>0?'<br><span style="font-size:10px;color:#999">'+(line.shelves+line.adjShelves)+' shelf/shelves</span>':''}
-      ${line.hwItems.length>0?'<br><span style="font-size:10px;color:#999">HW: '+line.hwItems.map(/** @param {any} h */ h=>_escHtml(h.name)+' x'+h.qty).join(', ')+'</span>':''}</td>
-      <td style="padding:8px 10px;border-bottom:1px solid #f0f0f0;text-align:center">${line.qty}</td>
-      <td style="padding:8px 10px;border-bottom:1px solid #f0f0f0;text-align:right;font-variant-numeric:tabular-nums">${fmt(c.matCost + c.labourCost + c.hwCost)}</td>
-      <td style="padding:8px 10px;border-bottom:1px solid #f0f0f0;text-align:right;font-weight:600;font-variant-numeric:tabular-nums">${fmt0(c.lineSubtotal)}</td>
-    </tr>`;
-  }).join('');
-
-  const markupAmt = grandSub * cbSettings.markup / 100;
-  const afterMarkup = grandSub + markupAmt;
-  const taxAmt = afterMarkup * cbSettings.tax / 100;
-  const grandTotal = afterMarkup + taxAmt;
-
-  const pdfHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Quote ${quoteNum} - ${project}</title>
-<style>@page{size:A4;margin:14mm 16mm}*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#111;font-size:12px;line-height:1.5}.hdr{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:12px;border-bottom:3px solid #111;margin-bottom:24px}.biz-name{font-size:18px;font-weight:800;letter-spacing:-.3px}.biz-contact{font-size:10px;color:#777;margin-top:4px;line-height:1.7}.doc-right{text-align:right}.doc-word{font-size:26px;font-weight:200;letter-spacing:3px;text-transform:uppercase;color:#222}.doc-num{font-size:11px;color:#888;margin-top:4px}.bill-row{display:flex;gap:40px;margin-bottom:22px}.bill-block label{font-size:8px;text-transform:uppercase;letter-spacing:.7px;color:#bbb;display:block;margin-bottom:4px;border-bottom:1px solid #eee;padding-bottom:3px}.bill-block .name{font-size:15px;font-weight:700}table{width:100%;border-collapse:collapse;margin-bottom:4px}thead tr{border-bottom:1.5px solid #111}thead th{font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:#888;padding:6px 10px;text-align:left}thead th.r{text-align:right}.total-box{display:flex;justify-content:space-between;align-items:center;background:#111;color:#fff;padding:12px 16px;border-radius:6px;margin-top:8px}.total-label{font-size:10px;text-transform:uppercase;letter-spacing:1.2px;font-weight:600;opacity:.7}.total-amount{font-size:24px;font-weight:800;letter-spacing:-.4px}.breakdown{display:flex;gap:24px;margin-top:14px;padding:12px 16px;background:#f8f8f8;border-radius:6px}.bd-item{flex:1}.bd-label{font-size:8px;text-transform:uppercase;letter-spacing:.6px;color:#aaa;margin-bottom:2px}.bd-val{font-size:14px;font-weight:700}.validity{margin-top:16px;font-size:10px;color:#aaa}.acceptance{margin-top:28px;padding-top:16px;border-top:1px solid #e0e0e0}.acceptance-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:#555;margin-bottom:10px}.acceptance-text{font-size:11px;color:#777;margin-bottom:18px;line-height:1.5}.sig-grid{display:grid;grid-template-columns:2fr 1fr;gap:28px}.sig-field{border-bottom:1.5px solid #ccc;padding-top:28px}.sig-label{font-size:8px;text-transform:uppercase;letter-spacing:.5px;color:#bbb;margin-top:4px}.footer{margin-top:30px;display:flex;justify-content:space-between;font-size:8px;color:#ccc;border-top:1px solid #f0f0f0;padding-top:8px}</style></head><body>
-<div class="hdr"><div><div class="biz-name">${biz.name||'Your Business'}</div><div class="biz-contact">${[biz.phone,biz.email,biz.address,biz.abn?'ABN: '+biz.abn:''].filter(Boolean).join('<br>')}</div></div><div class="doc-right"><div class="doc-word">Quotation</div><div class="doc-num">#${quoteNum} &bull; ${new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}</div></div></div>
-<div class="bill-row"><div class="bill-block"><label>Prepared for</label><div class="name">${_escHtml(client)||'—'}</div></div><div class="bill-block"><label>Project</label><div class="name" style="font-size:14px">${_escHtml(project)||'—'}</div></div></div>
-<table><thead><tr><th>#</th><th>Description</th><th style="text-align:center">Qty</th><th class="r">Unit Price</th><th class="r">Total</th></tr></thead><tbody>${lineRows}</tbody></table>
-<div class="breakdown"><div class="bd-item"><div class="bd-label">Materials</div><div class="bd-val">${fmt0(grandMat)}</div></div><div class="bd-item"><div class="bd-label">Labour</div><div class="bd-val">${fmt0(grandLabour)}</div></div><div class="bd-item"><div class="bd-label">Hardware</div><div class="bd-val">${fmt0(grandHw)}</div></div><div class="bd-item"><div class="bd-label">Subtotal</div><div class="bd-val">${fmt0(grandSub)}</div></div>${cbSettings.markup>0?'<div class="bd-item"><div class="bd-label">Markup ('+cbSettings.markup+'%)</div><div class="bd-val">+'+fmt0(markupAmt)+'</div></div>':''}${cbSettings.tax>0?'<div class="bd-item"><div class="bd-label">Tax ('+cbSettings.tax+'%)</div><div class="bd-val">+'+fmt0(taxAmt)+'</div></div>':''}</div>
-<div class="total-box"><div class="total-label">Total Amount Due</div><div class="total-amount">${fmt0(grandTotal)}</div></div>
-${cbSettings.deposit > 0 && cbSettings.deposit < 100 ? `<div style="display:flex;gap:20px;margin-top:8px;padding:10px 16px;background:#f0f7ff;border:1px solid #c8ddf5;border-radius:6px"><div><div style="font-size:8px;text-transform:uppercase;letter-spacing:.6px;color:#6b8db5;margin-bottom:1px">Deposit Required (${cbSettings.deposit}%)</div><div style="font-size:16px;font-weight:800">${fmt0(grandTotal * cbSettings.deposit / 100)}</div></div><div><div style="font-size:8px;text-transform:uppercase;letter-spacing:.6px;color:#6b8db5;margin-bottom:1px">Balance on Completion</div><div style="font-size:16px;font-weight:800">${fmt0(grandTotal * (1 - cbSettings.deposit / 100))}</div></div></div>` : ''}
-${notes?'<div class="notes-box"><label>Scope &amp; Notes</label><p>'+_escHtml(notes).replace(/\\n/g,'<br>')+'</p></div>':''}
-<div class="validity">This quote is valid for 30 days from the date of issue.${cbSettings.deposit > 0 && cbSettings.deposit < 100 ? ' A deposit of ' + cbSettings.deposit + '% is required upon acceptance.' : ''}</div>
-<div class="acceptance"><div class="acceptance-title">Acceptance</div><div class="acceptance-text">To accept this quotation, please sign below and return a copy to ${biz.name||'us'}${biz.email?' at '+biz.email:''}.</div><div class="sig-grid"><div><div class="sig-field"></div><div class="sig-label">Client Signature</div></div><div><div class="sig-field"></div><div class="sig-label">Date</div></div></div></div>
-<div class="footer"><span>${biz.name||'ProCabinet'} — Generated by ProCabinet.App</span><span>${new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})}</span></div>
-</body></html>`;
-
-  _saveAsPDF(pdfHtml);
-}
 
 function copyCBSummary() {
   if (!cbLines.length) { _toast('No items to copy.', 'error'); return; }

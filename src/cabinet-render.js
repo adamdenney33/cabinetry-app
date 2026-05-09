@@ -583,11 +583,9 @@ function renderCBResults() {
   // Top buttons bar
   html += `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;align-items:center">`;
   if (!cbEditingQuoteId) {
-    html += `<button class="btn btn-primary" onclick="cbCreateQuoteFromDraft()" style="font-size:12px;padding:8px 14px">Create Quote</button>`;
+    html += `<button class="btn btn-primary" onclick="cbSendToQuote()" style="font-size:12px;padding:8px 14px">Send to Quote &rarr;</button>`;
   }
   html += `<span style="flex:1"></span>
-    <button class="btn btn-outline" onclick="printCBQuote('pdf')" style="font-size:12px;padding:8px 12px;width:auto">&darr; PDF</button>
-    <button class="btn btn-outline" onclick="printCBQuote('print')" style="font-size:12px;padding:8px 12px;width:auto">&oplus; Print</button>
     <button class="btn btn-outline" onclick="cbExportLibrary()" style="font-size:12px;padding:8px 12px;width:auto">&darr; Export</button>
     <button class="btn btn-outline" onclick="cbImportLibrary()" style="font-size:12px;padding:8px 12px;width:auto">&uarr; Import</button>
   </div>`;
@@ -609,11 +607,6 @@ function renderCBResults() {
         <div style="flex:1;min-width:0">
           <div style="font-size:14px;font-weight:700;color:var(--text)">${_escHtml(line.name||'Cabinet '+(idx+1))}</div>
           <div style="font-size:11px;color:var(--muted)">${line.w} × ${line.h} × ${line.d} mm · ${_escHtml(line.material)}</div>
-        </div>
-        <div class="cl-stepper" style="flex:0 0 auto" onclick="event.stopPropagation()">
-          <button class="cl-step-btn" onclick="event.stopPropagation();cbStepLineQty(${idx},-1)" title="Decrease quantity">−</button>
-          <input type="number" class="cl-input cl-qty-input" value="${line.qty}" min="1" style="font-size:14px;width:42px" onclick="event.stopPropagation()" onchange="event.stopPropagation();cbSetLineQty(${idx},this.value)">
-          <button class="cl-step-btn" onclick="event.stopPropagation();cbStepLineQty(${idx},1)" title="Increase quantity">+</button>
         </div>
         <div style="font-size:16px;font-weight:800;color:var(--accent)">${fmt0(cabTotal)}</div>
       </div>
@@ -638,7 +631,12 @@ function renderCBResults() {
         </div>
       </div>
       <!-- Actions -->
-      <div style="padding:6px 12px;border-top:1px solid var(--border2);display:flex;gap:6px;justify-content:flex-end;background:var(--surface2)">
+      <div style="padding:6px 12px;border-top:1px solid var(--border2);display:flex;gap:6px;align-items:center;justify-content:flex-end;background:var(--surface2)">
+        <div class="cl-stepper" style="flex:0 0 auto" onclick="event.stopPropagation()">
+          <button class="cl-step-btn" style="padding:0 6px" onclick="event.stopPropagation();cbStepLineQty(${idx},-1)" title="Decrease quantity">−</button>
+          <input type="number" class="cl-input cl-qty-input" value="${line.qty}" min="1" style="font-size:11px;width:32px;padding:4px 2px" onclick="event.stopPropagation()" onchange="event.stopPropagation();cbSetLineQty(${idx},this.value)">
+          <button class="cl-step-btn" style="padding:0 6px" onclick="event.stopPropagation();cbStepLineQty(${idx},1)" title="Increase quantity">+</button>
+        </div>
         <button class="btn btn-outline" style="font-size:11px;padding:4px 10px;width:auto" onclick="event.stopPropagation();_duplicateCabinet(${idx})" title="Duplicate cabinet">Duplicate</button>
         <button class="btn btn-outline" style="font-size:11px;padding:4px 10px;width:auto;color:var(--danger)" onclick="event.stopPropagation();_confirm('Delete this cabinet?',()=>{cbLines.splice(${idx},1);saveCBLines();renderCBPanel();_toast('Cabinet deleted','success')})" title="Delete cabinet">Delete</button>
       </div>
