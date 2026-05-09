@@ -208,8 +208,13 @@ function renderCBPanel() {
   if (!_renderCBAuthGate()) return;
   renderCBRates();
   renderCBEditor();
-  if (cbMainView === 'results') renderCBResults();
-  else renderCBLibraryView();
+  if (!_cbCurrentProjectId && cbMainView !== 'library') {
+    switchCBMainView('library');
+  } else if (cbMainView === 'results') {
+    renderCBResults();
+  } else {
+    renderCBLibraryView();
+  }
   if (typeof _renderCbCurrentProject === 'function') _renderCbCurrentProject();
 }
 
@@ -584,6 +589,7 @@ function renderCBResults() {
   html += `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;align-items:center">`;
   if (!cbEditingQuoteId) {
     html += `<button class="btn btn-primary" onclick="cbSendToQuote()" style="font-size:12px;padding:8px 14px">Send to Quote &rarr;</button>`;
+    html += `<button class="btn btn-primary" onclick="cbSendToOrder()" style="font-size:12px;padding:8px 14px">Send to Order &rarr;</button>`;
   }
   html += `<span style="flex:1"></span>
     <button class="btn btn-outline" onclick="cbExportLibrary()" style="font-size:12px;padding:8px 12px;width:auto">&darr; Export</button>
@@ -687,6 +693,7 @@ function renderCBLibraryView() {
 
   let html = `<div style="max-width:700px">`;
   html += `<div style="margin-bottom:16px;display:flex;align-items:center;gap:12px">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--accent);flex-shrink:0"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
     <h2 style="font-size:18px;font-weight:800;margin:0;flex:1">Cabinet Library</h2>
     <span style="font-size:12px;color:var(--muted)">${cbLibrary.length} template${cbLibrary.length!==1?'s':''}</span>
   </div>`;

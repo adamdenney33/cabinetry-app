@@ -547,6 +547,7 @@ function dupCBLine(id) {
   copy.id = cbNextId++;
   cbLines.push(copy);
   saveCBLines(); renderCBPanel();
+  if (typeof switchCBMainView === 'function') switchCBMainView('results');
 }
 /** @param {number} id @param {number} dir */
 function moveCBLine(id, dir) {
@@ -761,6 +762,105 @@ async function cbCreateQuoteFromDraft() {
   if (typeof renderQuoteMain === 'function') renderQuoteMain();
   renderCBPanel();
   switchSection('quote');
+}
+
+// ── Order Creation (mirror of Quote flow) ──
+
+/** Entry point for the "Send to Order" button. If existing orders exist for
+ *  the current project, prompts the user to pick one (or create a new order).
+ *  If none exist, creates a new order directly. */
+function cbSendToOrder() {
+  if (!cbLines.length) { _toast('Add cabinets first.', 'error'); return; }
+  if (!_userId) { _toast('Sign in to save', 'error'); return; }
+
+  const projName = _cbCurrentProjectName || (/** @type {HTMLInputElement|null} */ (_byId('cb-project'))?.value?.trim() || '');
+  const proj = _cbCurrentProjectId
+    ? projects.find(p => p.id === _cbCurrentProjectId)
+    : projects.find(p => p.name === projName);
+  const existing = proj
+    ? orders.filter(o => o.project_id === proj.id)
+    : [];
+
+  if (existing.length === 0) { cbCreateOrderFromDraft(); return; }
+
+  const rows = existing.map(o => `
+    <div onclick="cbSendCabinetsToExistingOrder(${o.id})"
+         style="padding:10px 12px;border:1px solid var(--border);border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:10px"
+         onmouseover="this.style.background='var(--accent-dim)';this.style.borderColor='var(--accent)'"
+         onmouseout="this.style.background='';this.style.borderColor='var(--border)'">
+      <div style="flex:1">
+        <div style="font-weight:600">${o.order_number ? '#' + _escHtml(String(o.order_number)) + ' · ' : ''}${_escHtml(orderClient(o) || 'No client')}</div>
+        <div style="font-size:11px;color:var(--muted)">${_escHtml(o.status || 'quote')} · due ${_escHtml(o.due || 'TBD')}</div>
+      </div>
+      <div style="font-size:18px;color:var(--muted)">→</div>
+    </div>
+  `).join('');
+
+  const html = `
+    <div class="popup-header">
+      <div class="popup-title">Send to Order</div>
+      <div class="popup-close" onclick="_closePopup()">×</div>
+    </div>
+    <div class="popup-body">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:10px">
+        ${existing.length} existing order${existing.length===1?'':'s'} for "${_escHtml(projName)}". Choose one to update, or create a new order.
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px">${rows}</div>
+      <div onclick="_closePopup();cbCreateOrderFromDraft()"
+           style="margin-top:10px;padding:10px 12px;border:2px dashed var(--accent);border-radius:6px;cursor:pointer;text-align:center;color:var(--accent);font-weight:600">
+        + Create New Order
+      </div>
+    </div>
+    <div class="popup-footer">
+      <button class="btn btn-outline" onclick="_closePopup()">Cancel</button>
+    </div>
+  `;
+  _openPopup(html, 'sm');
+}
+
+/** @param {number} orderId */
+async function cbSendCabinetsToExistingOrder(orderId) {
+  _closePopup();
+  const o = orders.find(x => x.id === orderId);
+  if (!o) { _toast('Order not found', 'error'); return; }
+  await _syncCBLinesToOrder(orderId);
+  if (typeof renderOrdersMain === 'function') renderOrdersMain();
+  switchSection('orders');
+  _toast(`Cabinets sent to order for "${orderClient(o) || 'client'}"`, 'success');
+}
+
+async function cbCreateOrderFromDraft() {
+  if (!cbLines.length) { _toast('Add cabinets first.', 'error'); return; }
+  if (!_userId) { _toast('Sign in to create an order', 'error'); return; }
+  if (!_enforceFreeLimit('orders', orders.length)) return;
+  const projectId = await _ensureCBProject();
+  if (!projectId) return;
+
+  const clientId = _cbClientIdForProject();
+  const projName = _cbCurrentProjectName || (/** @type {HTMLInputElement|null} */ (_byId('cb-project'))?.value?.trim() || '');
+
+  /** @type {any} */
+  const insertBody = {
+    user_id: _userId, project_id: projectId,
+    value: 0,
+    status: 'quote',
+    markup: cbSettings.markup ?? 0,
+    tax: cbSettings.tax ?? 0,
+    due: 'TBD',
+    order_number: typeof _nextOrderNumber === 'function' ? _nextOrderNumber() : null,
+  };
+  if (clientId) insertBody.client_id = clientId;
+  const { data, error } = await _dbInsertSafe('orders', insertBody);
+  if (error || !data) { _toast('Could not create order: ' + (error?.message || ''), 'error'); return; }
+  orders.unshift(data);
+
+  await _syncCBLinesToOrder(data.id);
+
+  _toast('Order created for "' + projName + '"', 'success');
+  if (typeof _oBadge === 'function') _oBadge();
+  if (typeof renderOrdersMain === 'function') renderOrdersMain();
+  renderCBPanel();
+  switchSection('orders');
 }
 
 /** @param {number} quoteId */
@@ -1230,7 +1330,7 @@ async function _loadCBProjectById(projectId, projectName) {
   _setCbDirty(false);
   _cbSuppressDirty = false;
   if (typeof renderCBPanel === 'function') renderCBPanel();
-  if (typeof switchCBMainView === 'function') switchCBMainView('library');
+  if (typeof switchCBMainView === 'function') switchCBMainView(cbLines.length ? 'results' : 'library');
 }
 
 // ── Init CB ──
