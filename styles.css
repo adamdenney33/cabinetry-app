@@ -1186,7 +1186,7 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
 .pf:last-child { margin-bottom: 0; }
 .pf-label { font-size: 10px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 3px; display: block; }
 .pf-input {
-  width: 100%; font-size: 12px; padding: 6px 8px; border: 1px solid var(--border); border-radius: 6px;
+  width: 100%; font-size: 12px; padding: 4px 8px; border: 1px solid var(--border); border-radius: 6px;
   background: var(--surface2); color: var(--text); font-family: inherit; outline: none;
 }
 .pf-input:focus { border-color: var(--accent); }
@@ -1198,7 +1198,7 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
 }
 .pf-textarea:focus { border-color: var(--accent); }
 .pf-select {
-  width: 100%; font-size: 12px; padding: 6px 8px; border: 1px solid var(--border); border-radius: 6px;
+  width: 100%; font-size: 12px; padding: 4px 8px; border: 1px solid var(--border); border-radius: 6px;
   background: var(--surface2); color: var(--text); font-family: inherit; cursor: pointer;
 }
 .pf-row { display: flex; gap: 8px; }
@@ -1250,6 +1250,7 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
 .li-empty { padding: 14px 12px; font-size: 11px; color: var(--muted); text-align: center; }
 .li-row { display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-bottom: 1px solid var(--border); }
 .li-row:last-child { border-bottom: none; }
+.li-head { display: flex; align-items: center; gap: 6px; flex: 1 1 0; min-width: 0; }
 .li-kind { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; min-width: 44px; flex-shrink: 0; }
 .li-desc { flex: 1; font-size: 12px; color: var(--text); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .li-meta { color: var(--muted); font-weight: 600; margin-left: 4px; }
@@ -1603,11 +1604,11 @@ html.dark .proj-act.empty .proj-act-add { background: rgba(13,148,136,.12); }
 .sidebar.sidebar-wide { width: 440px; }
 @media (max-width: 1100px) {
   .sidebar.sidebar-wide { width: 360px; }
-  /* Line-item rows wrap the name input to its own top line so the numeric
-     inputs + amount + remove can sit cleanly on a second line. Cabinet rows
-     have no inputs and stay single-line via .li-desc taking flex:1. */
-  .li-row { flex-wrap: wrap; row-gap: 4px; }
-  .li-row > input.li-name { flex: 1 1 100%; order: -1; }
+  /* Item / Labour rows: the kind badge + name input takes the full top line,
+     so numeric inputs + amount + remove sit cleanly on a second line. Cabinet
+     rows (which have .li-desc, not an input) stay single-line via flex:1. */
+  .li-row:has(input.li-name) { flex-wrap: wrap; row-gap: 4px; }
+  .li-row:has(input.li-name) > .li-head { flex: 1 1 100%; order: -1; }
 }
 
 .editor-shell {
@@ -1658,14 +1659,14 @@ html.dark .proj-act.empty .proj-act-add { background: rgba(13,148,136,.12); }
 /* Cabinet / Item / Labour add tiles — proj-act-inspired */
 .editor-add-tiles {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 6px;
   margin-bottom: 10px;
 }
 .editor-add-tile {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   padding: 6px 8px;
   background: var(--surface2);
   border: 1px solid var(--border);
@@ -1680,12 +1681,12 @@ html.dark .proj-act.empty .proj-act-add { background: rgba(13,148,136,.12); }
 }
 .editor-add-tile .tile-icon {
   display: inline-flex;
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
   flex-shrink: 0;
   color: var(--accent2);
 }
-.editor-add-tile .tile-icon svg { width: 16px; height: 16px; }
+.editor-add-tile .tile-icon svg { width: 14px; height: 14px; }
 .editor-add-tile .tile-label {
   font-size: 11px;
   font-weight: 600;
@@ -1715,6 +1716,15 @@ html.dark .proj-act.empty .proj-act-add { background: rgba(13,148,136,.12); }
   flex-shrink: 0;
 }
 .editor-add-tile:hover .tile-add { color: var(--accent2); }
+
+/* At narrow widths the icon eats space the label needs — hide it and tighten
+   the tile padding so "Cabinets" / "Items" / "Labour" don't truncate. */
+@media (max-width: 1100px) {
+  .editor-add-tile { padding: 5px 6px; gap: 3px; }
+  .editor-add-tile .tile-icon { display: none; }
+  .editor-add-tile .tile-count { padding: 1px 4px; min-width: 14px; }
+  .editor-add-tile .tile-add { width: 14px; font-size: 13px; }
+}
 
 /* Sticky footer for the editor */
 .editor-footer {

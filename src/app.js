@@ -164,16 +164,14 @@ function _orderLineRowHtml(row, i) {
     const dims = [row.w_mm, row.h_mm, row.d_mm].filter(Boolean).join('×') + (row.w_mm ? 'mm' : '');
     const desc = (row.name || 'Cabinet') + (dims && dims !== 'mm' ? ' — ' + dims : '');
     return `<div class="li-row">
-      ${kindBadge}
-      <div class="li-desc">${_escHtml(desc)}${(row.qty || 1) > 1 ? ' <span class="li-meta">×' + row.qty + '</span>' : ''}</div>
+      <div class="li-head">${kindBadge}<div class="li-desc">${_escHtml(desc)}${(row.qty || 1) > 1 ? ' <span class="li-meta">×' + row.qty + '</span>' : ''}</div></div>
       <div class="li-amt">${fmt(total)}</div>
       <button class="li-action" title="Remove" onclick="_orderLineRemove(${i})">✕</button>
     </div>`;
   }
   if (kind === 'item') {
     return `<div class="li-row">
-      ${kindBadge}
-      <input class="li-name" value="${_escHtml(row.name || '')}" placeholder="Item name" oninput="_orderLineUpdate(${i}, 'name', this.value)">
+      <div class="li-head">${kindBadge}<input class="li-name" value="${_escHtml(row.name || '')}" placeholder="Item name" oninput="_orderLineUpdate(${i}, 'name', this.value)"></div>
       <input class="li-qty" type="number" min="0" step="1" value="${row.qty ?? 1}" oninput="_orderLineUpdate(${i}, 'qty', this.value)" title="Qty">
       <input class="li-price" type="number" min="0" step="0.01" value="${row.unit_price ?? 0}" oninput="_orderLineUpdate(${i}, 'unit_price', this.value)" title="Unit price">
       <input class="li-hrs" type="number" min="0" step="0.5" value="${row.schedule_hours ?? 0}" oninput="_orderLineUpdate(${i}, 'schedule_hours', this.value)" title="Schedule hours (workshop time, not on PDF)" placeholder="hrs">
@@ -182,8 +180,7 @@ function _orderLineRowHtml(row, i) {
     </div>`;
   }
   return `<div class="li-row">
-    ${kindBadge}
-    <input class="li-name" value="${_escHtml(row.name || '')}" placeholder="Labour description" oninput="_orderLineUpdate(${i}, 'name', this.value)">
+    <div class="li-head">${kindBadge}<input class="li-name" value="${_escHtml(row.name || '')}" placeholder="Labour description" oninput="_orderLineUpdate(${i}, 'name', this.value)"></div>
     <input class="li-qty" type="number" min="0" step="0.5" value="${row.labour_hours ?? 0}" oninput="_orderLineUpdate(${i}, 'labour_hours', this.value)" title="Hours">
     <input class="li-price" type="number" min="0" step="0.01" value="${row.unit_price ?? ''}" oninput="_orderLineUpdate(${i}, 'unit_price', this.value)" title="Rate /hr" placeholder="rate">
     <div class="li-amt">${fmt(total)}</div>
@@ -466,8 +463,7 @@ function _lineRowHtml(row, i) {
     const dims = [row.w_mm, row.h_mm, row.d_mm].filter(Boolean).join('×') + (row.w_mm ? 'mm' : '');
     const desc = (row.name || 'Cabinet') + (dims && dims !== 'mm' ? ' — ' + dims : '');
     return `<div class="li-row">
-      ${kindBadge}
-      <div class="li-desc">${_escHtml(desc)}${(row.qty || 1) > 1 ? ' <span class="li-meta">×' + row.qty + '</span>' : ''}</div>
+      <div class="li-head">${kindBadge}<div class="li-desc">${_escHtml(desc)}${(row.qty || 1) > 1 ? ' <span class="li-meta">×' + row.qty + '</span>' : ''}</div></div>
       <div class="li-amt">${fmt(total)}</div>
       <button class="li-action" title="Edit in Cabinet Builder" onclick="_lineEditCabinetRow(${i})">✎</button>
       <button class="li-action" title="Remove" onclick="_lineRemove(${i})">✕</button>
@@ -475,8 +471,7 @@ function _lineRowHtml(row, i) {
   }
   if (kind === 'item') {
     return `<div class="li-row">
-      ${kindBadge}
-      <input class="li-name" value="${_escHtml(row.name || '')}" placeholder="Item name" oninput="_lineUpdate(${i}, 'name', this.value)">
+      <div class="li-head">${kindBadge}<input class="li-name" value="${_escHtml(row.name || '')}" placeholder="Item name" oninput="_lineUpdate(${i}, 'name', this.value)"></div>
       <input class="li-qty" type="number" min="0" step="1" value="${row.qty ?? 1}" oninput="_lineUpdate(${i}, 'qty', this.value)" title="Qty">
       <input class="li-price" type="number" min="0" step="0.01" value="${row.unit_price ?? 0}" oninput="_lineUpdate(${i}, 'unit_price', this.value)" title="Unit price">
       <div class="li-amt">${fmt(total)}</div>
@@ -485,8 +480,7 @@ function _lineRowHtml(row, i) {
   }
   // labour
   return `<div class="li-row">
-    ${kindBadge}
-    <input class="li-name" value="${_escHtml(row.name || '')}" placeholder="Labour description" oninput="_lineUpdate(${i}, 'name', this.value)">
+    <div class="li-head">${kindBadge}<input class="li-name" value="${_escHtml(row.name || '')}" placeholder="Labour description" oninput="_lineUpdate(${i}, 'name', this.value)"></div>
     <input class="li-qty" type="number" min="0" step="0.5" value="${row.labour_hours ?? 0}" oninput="_lineUpdate(${i}, 'labour_hours', this.value)" title="Hours">
     <input class="li-price" type="number" min="0" step="0.01" value="${row.unit_price ?? ''}" oninput="_lineUpdate(${i}, 'unit_price', this.value)" title="Rate /hr" placeholder="rate">
     <div class="li-amt">${fmt(total)}</div>

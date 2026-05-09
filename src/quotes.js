@@ -105,6 +105,22 @@ async function _findOrCreateDraftQuote(projectId) {
   return data;
 }
 
+// Compute the next sequential quote number. Looks at both the trailing
+// integer in any existing `quote_number` strings and the DB `id` values, so
+// the new number stays ahead of both. Format: `Q-NNNN` (4-digit padded).
+function _nextQuoteNumber() {
+  let max = 0;
+  for (const q of quotes) {
+    if (_isDraftQuote(q)) continue;
+    if (q.quote_number) {
+      const m = String(q.quote_number).match(/(\d+)/);
+      if (m) max = Math.max(max, parseInt(m[1], 10));
+    }
+    if (q.id) max = Math.max(max, q.id);
+  }
+  return 'Q-' + String(max + 1).padStart(4, '0');
+}
+
 // Per-line subtotal across all kinds. `cabinet` runs the full calcCBLine
 // pipeline; `item` and `labour` are simple qty/hours × unit_price products.
 // Cabinet results are memoised on the row (`row._sub`) since their inputs
@@ -1131,7 +1147,7 @@ function renderQuoteEditor() {
           </select>
         </div>
         <div class="pf"><label class="pf-label">Quote #</label>
-          <input class="pf-input" id="pq-quote-number" value="${_escHtml((q && q.quote_number)||'')}" placeholder="${q ? 'Q-'+String(q.id).padStart(4,'0') : 'auto'}" oninput="_qMarkDirty()">
+          <input class="pf-input" id="pq-quote-number" value="${_escHtml((q && q.quote_number) || (q ? 'Q-'+String(q.id).padStart(4,'0') : _nextQuoteNumber()))}" oninput="_qMarkDirty()">
         </div>
         <div class="pf"><label class="pf-label">Date</label><div class="pf-static">${dateStr}</div></div>
       </div>
