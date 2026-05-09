@@ -2421,11 +2421,13 @@ async function _buildCutListPDF({ biz, layouts, imgs, pieces, u, cur, totalPiece
       pdf.setTextColor(17);
     }
 
-    // ── one landscape page per sheet — sheets start on page 1 ──
-    const leftW  = Math.floor(W * 2/3);   // ~184 mm (2/3)
+    // ── one page per sheet — sheets start on page 1 ──
+    // Wider image column in landscape (3/4) than portrait (2/3) — portrait's
+    // table can't take any more squeeze, but landscape has room to spare.
+    const leftW  = Math.floor(W * (isPortrait ? 2/3 : 3/4));
     const gap    = 8;
     const rightX = M + leftW + gap;
-    const rightW = W - leftW - gap;       // ~85 mm
+    const rightW = W - leftW - gap;
     const hdgH   = 9;                     // heading bar height
     const titleBarH = 12;                 // stacked title bar height
 
