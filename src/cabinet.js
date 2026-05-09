@@ -458,6 +458,7 @@ function addCBLine() {
   cbOpenSections.add(cbScratchpad.id + '-cab');
   renderCBEditor();
   _scrollCBEditorIntoView();
+  if (typeof switchCBMainView === 'function') switchCBMainView('results');
 }
 /** @param {string} type */
 function addCBLineFromPreset(type) {
@@ -466,6 +467,7 @@ function addCBLineFromPreset(type) {
   cbOpenSections.add(cbScratchpad.id + '-cab');
   renderCBEditor();
   _scrollCBEditorIntoView();
+  if (typeof switchCBMainView === 'function') switchCBMainView('results');
 }
 
 function _scrollCBEditorIntoView() {
@@ -1225,6 +1227,7 @@ async function _loadCBProjectById(projectId, projectName) {
   _setCbDirty(false);
   _cbSuppressDirty = false;
   if (typeof renderCBPanel === 'function') renderCBPanel();
+  if (typeof switchCBMainView === 'function') switchCBMainView('library');
 }
 
 // ── Init CB ──

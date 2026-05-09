@@ -552,7 +552,7 @@ function renderCBResults() {
 
   if (!cbLines.length) {
     el.innerHTML = `<div class="empty-state">
-      <div class="empty-icon" style="opacity:.18"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="12" y1="3" x2="12" y2="12"/></svg></div>
+      <div class="empty-icon" style="opacity:.18"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg></div>
       <h3>Cabinet Builder</h3>
       <p>Configure a cabinet in the editor and click "Add to Project" to start building your quote.</p>
     </div>`;
@@ -717,19 +717,16 @@ function _renderLibraryCards(items) {
     const shelfTotal = (c.shelves||0) + (c.adjShelves||0) + (c.looseShelves||0);
     if (shelfTotal > 0) details.push(shelfTotal + ' shelves');
 
-    html += `<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:10px;overflow:hidden;box-shadow:var(--shadow);transition:box-shadow .15s" onmouseover="this.style.boxShadow='var(--shadow-md)'" onmouseout="this.style.boxShadow='var(--shadow)'">
-      <div style="display:flex;align-items:center;gap:10px;padding:12px 16px;background:var(--surface2)">
+    html += `<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:6px;overflow:hidden;box-shadow:var(--shadow);transition:box-shadow .15s" onmouseover="this.style.boxShadow='var(--shadow-md)'" onmouseout="this.style.boxShadow='var(--shadow)'">
+      <div style="display:flex;align-items:center;gap:8px;padding:8px 12px">
         <div style="flex:1;min-width:0">
-          <div style="font-size:14px;font-weight:700;color:var(--text)">${_escHtml(c._libName||c.name||'Cabinet')}</div>
-          <div style="font-size:11px;color:var(--muted)">${c.w} × ${c.h} × ${c.d} mm · ${_escHtml(c.material||'')}${details.length?' · '+details.join(', '):''}</div>
+          <div style="font-size:13px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_escHtml(c._libName||c.name||'Cabinet')}</div>
+          <div style="font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.w} × ${c.h} × ${c.d} mm · ${_escHtml(c.material||'')}${details.length?' · '+details.join(', '):''}</div>
         </div>
-        <div style="font-size:16px;font-weight:800;color:var(--accent)">${fmt0(calc.lineSubtotal)}</div>
-      </div>
-      <div style="padding:10px 16px;display:flex;gap:6px;flex-wrap:wrap">
-        <button class="btn btn-primary" onclick="event.stopPropagation();cbLoadFromLibrary(${idx})" style="font-size:11px;padding:6px 12px">Load to Editor</button>
-        <button class="btn btn-outline" onclick="event.stopPropagation();cbAddFromLibrary(${idx})" style="font-size:11px;padding:6px 12px">Add to Project</button>
-        <span style="flex:1"></span>
-        <button class="btn btn-outline" onclick="event.stopPropagation();_confirm('Remove from library?',()=>cbRemoveFromLibrary(${idx}))" style="font-size:11px;padding:6px 10px;color:var(--muted)">× Delete</button>
+        <div style="font-size:14px;font-weight:800;color:var(--accent);flex-shrink:0">${fmt0(calc.lineSubtotal)}</div>
+        <button class="btn btn-primary" onclick="event.stopPropagation();cbLoadFromLibrary(${idx})" style="font-size:11px;padding:5px 10px;flex-shrink:0">Load</button>
+        <button class="btn btn-outline" onclick="event.stopPropagation();cbAddFromLibrary(${idx})" style="font-size:11px;padding:5px 10px;flex-shrink:0">+ Project</button>
+        <button class="btn btn-outline" title="Delete" onclick="event.stopPropagation();_confirm('Remove from library?',()=>cbRemoveFromLibrary(${idx}))" style="font-size:13px;padding:5px 9px;color:var(--muted);flex-shrink:0">×</button>
       </div>
     </div>`;
   });
