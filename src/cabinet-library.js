@@ -139,6 +139,7 @@ function cbAddFromLibrary(idx) {
   cbLines.push(copy);
   saveCBLines();
   renderCBPanel();
+  if (typeof switchCBMainView === 'function') switchCBMainView('results');
   _toast(`"${src._libName}" added to project`, 'success');
 }
 
@@ -146,8 +147,71 @@ function cbAddFromLibrary(idx) {
 function cbRemoveFromLibrary(idx) {
   const removed = cbLibrary[idx];
   cbLibrary.splice(idx, 1);
-  renderCBLibraryView();
+  if (cbEditingLibraryIdx === idx) {
+    cbEditingLibraryIdx = -1;
+    cbScratchpad = cbDefaultLine();
+    renderCBPanel();
+  } else {
+    if (cbEditingLibraryIdx > idx) cbEditingLibraryIdx--;
+    renderCBLibraryView();
+  }
   if (removed?.db_id) _deleteCabinetFromDB(removed.db_id);
+}
+
+/** Click-to-edit handler for library cards. Loads the entry into the
+ *  sidebar editor in library-edit mode (cbEditingLibraryIdx tracks the
+ *  target). The right pane stays on the library tab so the user keeps
+ *  context on neighbouring templates.
+ *  @param {number} idx */
+function cbEditLibraryEntry(idx) {
+  const src = cbLibrary[idx];
+  if (!src) return;
+  if (!_cbCurrentProjectId) { _toast('Pick a project first to edit templates', 'error'); return; }
+  const copy = JSON.parse(JSON.stringify(src));
+  copy.id = cbNextId++;
+  cbScratchpad = copy;
+  cbEditingLineIdx = -1;
+  cbEditingLibraryIdx = idx;
+  renderCBPanel();
+  _scrollCBEditorIntoView();
+}
+
+/** Save scratchpad back to the library entry being edited (and DB). */
+async function cbSaveLibraryChanges() {
+  if (cbEditingLibraryIdx < 0) return;
+  const idx = cbEditingLibraryIdx;
+  const target = cbLibrary[idx];
+  if (!target) { _toast('Library entry not found', 'error'); cbEditingLibraryIdx = -1; renderCBPanel(); return; }
+  const updated = JSON.parse(JSON.stringify(cbScratchpad));
+  updated._libName = cbScratchpad._libName || target._libName || updated.name || 'Cabinet';
+  if (target.db_id) updated.db_id = target.db_id;
+  cbLibrary[idx] = updated;
+  cbEditingLibraryIdx = -1;
+  cbScratchpad = cbDefaultLine();
+  renderCBPanel();
+  if (updated.db_id) await _updateCabinetInDB(updated.db_id, updated);
+  _toast(`"${updated._libName}" updated`, 'success');
+}
+
+function cbCancelLibraryEdit() {
+  cbEditingLibraryIdx = -1;
+  cbScratchpad = cbDefaultLine();
+  renderCBPanel();
+}
+
+/** @param {number} idx */
+function cbDuplicateLibraryEntry(idx) {
+  const src = cbLibrary[idx];
+  if (!src) return;
+  if (!_enforceFreeLimit('cabinet_templates', cbLibrary.length)) return;
+  const copy = JSON.parse(JSON.stringify(src));
+  copy.id = Date.now();
+  copy._libName = (src._libName || src.name || 'Cabinet') + ' (copy)';
+  delete copy.db_id;
+  cbLibrary.push(copy);
+  renderCBLibraryView();
+  _saveCabinetToDB(copy).then(id => { if (id) copy.db_id = id; });
+  _toast(`"${copy._libName}" added to library`, 'success');
 }
 
 /** @param {HTMLInputElement} input */

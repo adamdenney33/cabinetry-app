@@ -504,9 +504,13 @@ function renderCBEditor() {
 
       <!-- Sidebar Actions -->
       <div style="padding-top:8px;display:flex;gap:6px;flex-wrap:wrap">
-        <button class="btn btn-primary" onclick="${btnAction}" style="flex:1;font-size:13px;padding:10px 12px">${btnLabel}</button>
-        ${isEditing ? `<button class="btn btn-outline" onclick="cbCancelEdit()" style="font-size:12px;padding:10px 12px">Cancel</button>` : ''}
-        <button class="btn btn-outline" onclick="cbSaveToLibrary()" style="font-size:12px;padding:10px 12px">Save to Library</button>
+        ${cbEditingLibraryIdx >= 0
+          ? `<button class="btn btn-primary" onclick="cbSaveLibraryChanges()" style="flex:1;font-size:13px;padding:10px 12px">Save Library Changes</button>
+             <button class="btn btn-outline" onclick="cbCancelLibraryEdit()" style="font-size:12px;padding:10px 12px">Cancel</button>`
+          : `<button class="btn btn-primary" onclick="${btnAction}" style="flex:1;font-size:13px;padding:10px 12px">${btnLabel}</button>
+             ${isEditing ? `<button class="btn btn-outline" onclick="cbCancelEdit()" style="font-size:12px;padding:10px 12px">Cancel</button>` : ''}
+             <button class="btn btn-outline" onclick="cbSaveToLibrary()" style="font-size:12px;padding:10px 12px">Save to Library</button>`
+        }
       </div>
 
     </div>
@@ -722,18 +726,23 @@ function _renderLibraryCards(items) {
     const shelfTotal = (c.shelves||0) + (c.adjShelves||0) + (c.looseShelves||0);
     if (shelfTotal > 0) details.push(shelfTotal + ' shelves');
 
-    html += `<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:6px;box-shadow:var(--shadow);transition:box-shadow .15s" onmouseover="this.style.boxShadow='var(--shadow-md)'" onmouseout="this.style.boxShadow='var(--shadow)'">
+    const isEditingThis = cbEditingLibraryIdx === idx;
+    const borderColor = isEditingThis ? 'var(--accent)' : 'var(--border)';
+    html += `<div style="background:var(--surface);border:1px solid ${borderColor};border-radius:var(--radius);margin-bottom:6px;box-shadow:var(--shadow);transition:box-shadow .15s,border-color .15s;cursor:pointer"
+      onmouseover="this.style.boxShadow='var(--shadow-md)';this.style.borderColor='var(--accent)'"
+      onmouseout="this.style.boxShadow='var(--shadow)';this.style.borderColor='${borderColor}'"
+      onclick="cbEditLibraryEntry(${idx})">
       <div style="display:flex;align-items:flex-start;gap:8px;padding:10px 12px 6px">
         <div style="flex:1;min-width:0">
-          <div style="font-size:13px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_escHtml(c._libName||c.name||'Cabinet')}</div>
+          <div style="font-size:13px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_escHtml(c._libName||c.name||'Cabinet')}${isEditingThis?' <span style="font-size:10px;font-weight:600;color:var(--accent);margin-left:4px">· editing</span>':''}</div>
           <div style="font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.w} × ${c.h} × ${c.d} mm · ${_escHtml(c.material||'')}${details.length?' · '+details.join(', '):''}</div>
         </div>
         <div style="font-size:14px;font-weight:800;color:var(--accent);flex-shrink:0;white-space:nowrap">${fmt0(calc.lineSubtotal)}</div>
       </div>
       <div style="display:flex;gap:6px;padding:0 12px 10px;justify-content:flex-end">
-        <button class="btn btn-primary" onclick="cbLoadFromLibrary(${idx})" style="font-size:11px;padding:5px 10px;width:auto">Load</button>
-        <button class="btn btn-outline" onclick="cbAddFromLibrary(${idx})" style="font-size:11px;padding:5px 10px;width:auto">+ Project</button>
-        <button class="btn btn-outline" title="Delete" onclick="_confirm('Remove from library?',()=>cbRemoveFromLibrary(${idx}))" style="font-size:13px;padding:5px 9px;color:var(--muted);width:auto">×</button>
+        <button class="btn btn-outline" onclick="event.stopPropagation();cbAddFromLibrary(${idx})" style="font-size:11px;padding:5px 10px;width:auto">+ Project</button>
+        <button class="btn btn-outline" onclick="event.stopPropagation();cbDuplicateLibraryEntry(${idx})" style="font-size:11px;padding:5px 10px;width:auto">Duplicate</button>
+        <button class="btn btn-outline" onclick="event.stopPropagation();_confirm('Delete this template?',()=>cbRemoveFromLibrary(${idx}))" style="font-size:11px;padding:5px 10px;width:auto;color:var(--danger)">Delete</button>
       </div>
     </div>`;
   });

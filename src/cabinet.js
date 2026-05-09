@@ -90,6 +90,20 @@ async function _deleteCabinetFromDB(dbId) {
     if (error) console.warn('[cabinet-template delete]', error.message);
   } catch(e) { console.warn('[cabinet-template delete]', (/** @type {any} */ (e)).message || e); }
 }
+/** @param {number | null} dbId @param {any} entry */
+async function _updateCabinetInDB(dbId, entry) {
+  if (!_userId || !dbId) return;
+  try {
+    const { error } = await _db('cabinet_templates').update({
+      name: entry._libName || entry.name || 'Cabinet',
+      default_w_mm: entry.w || null,
+      default_h_mm: entry.h || null,
+      default_d_mm: entry.d || null,
+      default_specs: entry,
+    }).eq('id', dbId);
+    if (error) console.warn('[cabinet-template update]', error.message);
+  } catch(e) { console.warn('[cabinet-template update]', (/** @type {any} */ (e)).message || e); }
+}
 async function _loadCabinetTemplatesFromDB() {
   if (!_userId) return;
   try {
@@ -109,6 +123,7 @@ let cbNextId = 1;
 /** @type {any} */
 let cbScratchpad = null; // initialized in init block after cbDefaultLine is defined
 let cbEditingLineIdx = -1; // -1 = new cabinet, >=0 = editing existing line
+let cbEditingLibraryIdx = -1; // -1 = not editing library entry, >=0 = editing cbLibrary[idx]
 
 // Editing context for quote editing
 /** @type {number|null} */
