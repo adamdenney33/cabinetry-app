@@ -2477,8 +2477,8 @@ async function _buildCutListPDF({ biz, layouts, imgs, pieces, u, cur, totalPiece
         startY: sheetHdgY + hdgH + 3,
         margin: { left: rightX, right: M },
         tableWidth: rightW,
-        head: [['', 'Label', `W (${u})`, `H (${u})`, 'Rot', 'Notes']],
-        body: layout.placed.map(/** @param {any} p */ p => ['', p.item.label, formatDim(p.item.w), formatDim(p.item.h), p.rotated?'Y':'--', p.item.notes||'']),
+        head: [['', 'Label', `W (${u})`, `H (${u})`, 'Rot']],
+        body: layout.placed.map(/** @param {any} p */ p => ['', p.item.label, formatDim(p.item.w), formatDim(p.item.h), p.rotated?'Y':'--']),
         styles: { fontSize: 7.5, cellPadding: 1.8, overflow:'ellipsize', textColor:[17,17,17] },
         headStyles: { fillColor:[250,250,250], textColor:[140,140,140], fontStyle:'normal', fontSize:6.5, lineWidth:0 },
         columnStyles: { 0:{cellWidth:5}, 2:{halign:'right'}, 3:{halign:'right'}, 4:{halign:'center',cellWidth:7} },
@@ -2527,8 +2527,8 @@ async function _buildCutListPDF({ biz, layouts, imgs, pieces, u, cur, totalPiece
         cy += 5;
         /** @type {any} */ (pdf).autoTable({
           startY: cy, margin: { left:M, right:M },
-          head: [['','Label',`W (${u})`,`H (${u})`,'Qty','Material','Grain','Notes']],
-          body: pieces.map(/** @param {any} p */ p => ['',p.label,p.w,p.h,p.qty,p.material||'--',p.grain==='h'?'Horiz':p.grain==='v'?'Vert':'--',p.notes||'']),
+          head: [['','Label',`W (${u})`,`H (${u})`,'Qty','Material','Grain']],
+          body: pieces.map(/** @param {any} p */ p => ['',p.label,p.w,p.h,p.qty,p.material||'--',p.grain==='h'?'Horiz':p.grain==='v'?'Vert':'--']),
           styles: { fontSize:8, cellPadding:2, overflow:'ellipsize', textColor:[17,17,17] },
           headStyles: { fillColor:[250,250,250], textColor:[140,140,140], fontStyle:'normal', fontSize:7, lineWidth:0 },
           columnStyles: { 0:{cellWidth:6}, 2:{halign:'right'}, 3:{halign:'right'}, 4:{halign:'right',cellWidth:10} },
