@@ -152,6 +152,7 @@ function cbRemoveFromLibrary(idx) {
 
 /** @param {HTMLInputElement} input */
 function _cbCabinetSearchInput(input) {
+  if (cbScratchpad) cbScratchpad.name = input.value.trim();
   _smartCBLibrarySuggest(input, 'cb-cabinet-suggest');
 }
 
