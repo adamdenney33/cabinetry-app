@@ -2166,7 +2166,11 @@ function _buildQuotePDF(q, lineRows) {
   const markupAmt = sub * (q.markup ?? 0) / 100;
   const afterMarkup = sub + markupAmt;
   const taxAmt = afterMarkup * (q.tax ?? 0) / 100;
-  const total = afterMarkup + taxAmt;
+  const afterTax = afterMarkup + taxAmt;
+  const orderDiscPct = /** @type {any} */ (q).discount ?? 0;
+  const orderDiscAmt = afterTax * orderDiscPct / 100;
+  const total = afterTax - orderDiscAmt;
+  const anyLineDisc = Array.isArray(lineRows) && lineRows.some(/** @param {any} r */ r => (parseFloat(r.discount) || 0) > 0);
   /** @param {any} v */
   const fmt = v => cur + Number(v).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
   /** @param {number} v */
@@ -2210,9 +2214,11 @@ function _buildQuotePDF(q, lineRows) {
   const rows = Array.isArray(lineRows) ? lineRows : [];
 
   if (rows.length > 0) {
-    // Table header
+    // Table header — add a "DISC" column only when at least one line has a discount.
     pdf.setFontSize(7); pdf.setFont('helvetica','bold'); pdf.setTextColor(140);
-    pdf.text('DESCRIPTION', M, y); pdf.text('AMOUNT', PW-M, y, { align:'right' });
+    pdf.text('DESCRIPTION', M, y);
+    if (anyLineDisc) pdf.text('DISC', PW - M - 28, y, { align: 'right' });
+    pdf.text('AMOUNT', PW-M, y, { align:'right' });
     y += 2;
     pdf.setDrawColor(17); pdf.setLineWidth(0.4); pdf.line(M, y, PW-M, y);
     y += 6;
@@ -2231,6 +2237,12 @@ function _buildQuotePDF(q, lineRows) {
       pdf.setFontSize(11); pdf.setFont('helvetica','bold'); pdf.setTextColor(17);
       const headerText = d.qtyText ? d.name + '  ' + d.qtyText : d.name;
       pdf.text(headerText, M, y);
+      if (anyLineDisc) {
+        const rowDisc = parseFloat(row.discount) || 0;
+        pdf.setFont('helvetica','normal'); pdf.setTextColor(130); pdf.setFontSize(9);
+        pdf.text(rowDisc > 0 ? rowDisc + '%' : '—', PW - M - 28, y, { align: 'right' });
+        pdf.setFont('helvetica','bold'); pdf.setTextColor(17); pdf.setFontSize(11);
+      }
       pdf.text(fmt(d.total), PW - M, y, { align: 'right' });
       y += 5;
       if (d.detail) {
@@ -2250,7 +2262,7 @@ function _buildQuotePDF(q, lineRows) {
   const totalsX = PW - M;
   const labelX = PW - M - 80;
 
-  if ((q.markup ?? 0) > 0 || (q.tax ?? 0) > 0) {
+  if ((q.markup ?? 0) > 0 || (q.tax ?? 0) > 0 || orderDiscPct > 0) {
     pdf.setFontSize(9); pdf.setFont('helvetica','normal'); pdf.setTextColor(140);
     pdf.text('Subtotal', labelX, y); pdf.text(fmt(sub), totalsX, y, { align:'right' });
     y += 6;
@@ -2263,6 +2275,12 @@ function _buildQuotePDF(q, lineRows) {
   if ((q.tax ?? 0) > 0) {
     pdf.setFontSize(8.5); pdf.setTextColor(140);
     pdf.text('Tax (' + q.tax + '%)', labelX, y); pdf.text('+ ' + fmt(taxAmt), totalsX, y, { align:'right' });
+    y += 5;
+  }
+  if (orderDiscPct > 0) {
+    pdf.setFontSize(8.5); pdf.setTextColor(196, 68, 68);
+    pdf.text('Discount (' + orderDiscPct + '%)', labelX, y); pdf.text('− ' + fmt(orderDiscAmt), totalsX, y, { align:'right' });
+    pdf.setTextColor(140);
     y += 5;
   }
 
@@ -2541,7 +2559,11 @@ function _buildOrderDocPDF(o, lines, type) {
   const markupAmt = sub * (o.markup ?? 0) / 100;
   const afterMarkup = sub + markupAmt;
   const taxAmt = afterMarkup * (o.tax ?? 0) / 100;
-  const total = afterMarkup + taxAmt;
+  const afterTax = afterMarkup + taxAmt;
+  const orderDiscPct = /** @type {any} */ (o).discount ?? 0;
+  const orderDiscAmt = afterTax * orderDiscPct / 100;
+  const total = afterTax - orderDiscAmt;
+  const anyLineDisc = rows.some(/** @param {any} r */ r => (parseFloat(r.discount) || 0) > 0);
 
   /** @param {number} v */
   const fmt = v => cur + Number(v).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
@@ -2585,7 +2607,9 @@ function _buildOrderDocPDF(o, lines, type) {
   // ── Line items ──
   if (rows.length > 0) {
     pdf.setFontSize(7); pdf.setFont('helvetica','bold'); pdf.setTextColor(140);
-    pdf.text('DESCRIPTION', M, y); pdf.text('AMOUNT', PW-M, y, { align:'right' });
+    pdf.text('DESCRIPTION', M, y);
+    if (anyLineDisc) pdf.text('DISC', PW - M - 28, y, { align: 'right' });
+    pdf.text('AMOUNT', PW-M, y, { align:'right' });
     y += 2;
     pdf.setDrawColor(17); pdf.setLineWidth(0.4); pdf.line(M, y, PW-M, y);
     y += 6;
@@ -2603,6 +2627,12 @@ function _buildOrderDocPDF(o, lines, type) {
       pdf.setFontSize(11); pdf.setFont('helvetica','bold'); pdf.setTextColor(17);
       const headerText = d.qtyText ? d.name + '  ' + d.qtyText : d.name;
       pdf.text(headerText, M, y);
+      if (anyLineDisc) {
+        const rowDisc = parseFloat(row.discount) || 0;
+        pdf.setFont('helvetica','normal'); pdf.setTextColor(130); pdf.setFontSize(9);
+        pdf.text(rowDisc > 0 ? rowDisc + '%' : '—', PW - M - 28, y, { align: 'right' });
+        pdf.setFont('helvetica','bold'); pdf.setTextColor(17); pdf.setFontSize(11);
+      }
       pdf.text(fmt(d.total), PW - M, y, { align: 'right' });
       y += 5;
       if (d.detail) {
@@ -2622,7 +2652,7 @@ function _buildOrderDocPDF(o, lines, type) {
   const totalsX = PW - M;
   const labelX = PW - M - 80;
 
-  if ((o.markup ?? 0) > 0 || (o.tax ?? 0) > 0) {
+  if ((o.markup ?? 0) > 0 || (o.tax ?? 0) > 0 || orderDiscPct > 0) {
     pdf.setFontSize(9); pdf.setFont('helvetica','normal'); pdf.setTextColor(140);
     pdf.text('Subtotal', labelX, y); pdf.text(fmt(sub), totalsX, y, { align:'right' });
     y += 6;
@@ -2635,6 +2665,12 @@ function _buildOrderDocPDF(o, lines, type) {
   if ((o.tax ?? 0) > 0) {
     pdf.setFontSize(8.5); pdf.setTextColor(140);
     pdf.text('Tax (' + o.tax + '%)', labelX, y); pdf.text('+ ' + fmt(taxAmt), totalsX, y, { align:'right' });
+    y += 5;
+  }
+  if (orderDiscPct > 0) {
+    pdf.setFontSize(8.5); pdf.setTextColor(196, 68, 68);
+    pdf.text('Discount (' + orderDiscPct + '%)', labelX, y); pdf.text('− ' + fmt(orderDiscAmt), totalsX, y, { align:'right' });
+    pdf.setTextColor(140);
     y += 5;
   }
 

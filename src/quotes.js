@@ -126,27 +126,33 @@ function _nextQuoteNumber() {
 // Cabinet results are memoised on the row (`row._sub`) since their inputs
 // only change in the Cabinet Builder, not in the quote/order popup —
 // recomputing per keystroke for an item edit was the main slowness vector.
+//
+// Per-line `discount` (percentage 0-100) is applied to both materials AND
+// labour proportionally so totals downstream stay simple sums.
 /** @param {any} row a quote_lines / order_lines row */
 function _lineSubtotal(row) {
   const kind = row.line_kind || 'cabinet';
+  const disc = parseFloat(row.discount) || 0;
+  const discMult = 1 - (disc / 100);
   if (kind === 'item') {
     const qty = parseFloat(row.qty) || 1;
     const price = parseFloat(row.unit_price) || 0;
-    return { materials: qty * price, labour: 0 };
+    return { materials: qty * price * discMult, labour: 0 };
   }
   if (kind === 'labour') {
     const hrs = parseFloat(row.labour_hours) || 0;
     const rate = parseFloat(row.unit_price);
     const fallback = (typeof cbSettings !== 'undefined' && cbSettings.labourRate) ? cbSettings.labourRate : 65;
     const r = isFinite(rate) ? rate : fallback;
-    return { materials: 0, labour: hrs * r };
+    return { materials: 0, labour: hrs * r * discMult };
   }
-  // cabinet — cached on the row
+  // cabinet — cached on the row. Cache key includes discount so editing it
+  // in the editor invalidates the cache (see _orderLineUpdate / _lineUpdate).
   if (row._sub) return row._sub;
   const cb = _quoteLineRowToCB(row);
   const c = calcCBLine(cb);
   const qty = cb.qty || 1;
-  const out = { materials: (c.matCost + c.hwCost) * qty, labour: c.labourCost * qty };
+  const out = { materials: (c.matCost + c.hwCost) * qty * discMult, labour: c.labourCost * qty * discMult };
   Object.defineProperty(row, '_sub', { value: out, writable: true, enumerable: false, configurable: true });
   return out;
 }
@@ -228,7 +234,8 @@ function quoteTotal(q) {
   const lab = q._totals ? q._totals.labour    : (q.labour    || 0);
   const sub = mat + lab;
   const marked = sub * (1 + (q.markup || 0) / 100);
-  return marked * (1 + (q.tax || 0) / 100);
+  const taxed = marked * (1 + (q.tax || 0) / 100);
+  return taxed * (1 - (q.discount || 0) / 100);
 }
 
 // orders.value is the customer-paid snapshot at conversion time (post-markup,
@@ -276,6 +283,7 @@ async function convertQuoteToOrder(id) {
     value: Math.round(quoteTotal(q)),
     markup: q.markup ?? 0,
     tax: q.tax ?? 0,
+    discount: /** @type {any} */ (q).discount ?? 0,
     status: 'confirmed',
     order_number: typeof _nextOrderNumber === 'function' ? _nextOrderNumber() : null,
     due: 'TBD',
@@ -457,11 +465,11 @@ function exportQuotesCSV() {
   if (!customerQuotes.length) { _toast('No quotes to export', 'error'); return; }
   const cur = window.currency;
   /** @type {any[][]} */
-  const rows = [['Client','Project','Materials','Labour','Markup %','Tax %','Status','Date','Notes']];
+  const rows = [['Client','Project','Materials','Labour','Markup %','Tax %','Discount %','Status','Date','Notes']];
   customerQuotes.forEach(q => {
     const matVal = q._totals ? q._totals.materials : (q.materials || 0);
     const labVal = q._totals ? q._totals.labour    : (q.labour    || 0);
-    rows.push([quoteClient(q),quoteProject(q),matVal,labVal,q.markup,q.tax,q.status,q.date,q.notes||'']);
+    rows.push([quoteClient(q),quoteProject(q),matVal,labVal,q.markup,q.tax,/** @type {any} */ (q).discount ?? 0,q.status,q.date,q.notes||'']);
   });
   const csv = rows.map(r => r.map(/** @param {any} v */ v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
   const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([csv],{type:'text/csv'})), download: `quotes-${new Date().toISOString().slice(0,10)}.csv` });
@@ -482,7 +490,7 @@ function importQuotesCSV() {
       const client_id = r[0] ? await resolveClient(r[0]) : null;
       const project_id = r[1] ? await resolveProject(r[1], client_id) : null;
       /** @type {any} */
-      const row = { user_id: _userId, materials: parseFloat(r[2])||0, labour: parseFloat(r[3])||0, markup: parseFloat(r[4])||20, tax: parseFloat(r[5])||13, status: r[6]||'draft', date: r[7]||new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short'}), notes: r[8]||'' };
+      const row = { user_id: _userId, materials: parseFloat(r[2])||0, labour: parseFloat(r[3])||0, markup: parseFloat(r[4])||20, tax: parseFloat(r[5])||13, discount: parseFloat(r[6])||0, status: r[7]||'draft', date: r[8]||new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short'}), notes: r[9]||'' };
       if (client_id) row.client_id = client_id;
       if (project_id) row.project_id = project_id;
       if (_userId) { const{data}=await _db('quotes').insert(row).select().single(); if(data){quotes.unshift(data);imported++;} }
@@ -859,7 +867,11 @@ async function printQuote(id, mode='print') {
   const markupAmt = sub * (q.markup ?? 0) / 100;
   const afterMarkup = sub + markupAmt;
   const taxAmt = afterMarkup * (q.tax ?? 0) / 100;
-  const total = afterMarkup + taxAmt;
+  const afterTax = afterMarkup + taxAmt;
+  const orderDiscPct = /** @type {any} */ (q).discount ?? 0;
+  const orderDiscAmt = afterTax * orderDiscPct / 100;
+  const total = afterTax - orderDiscAmt;
+  const anyLineDisc = rows.some(/** @param {any} r */ r => (parseFloat(r.discount) || 0) > 0);
   const biz = getBizInfo();
   /** @type {Record<string, string>} */
   const statusColMap = { draft:'#888', sent:'#2563eb', approved:'#16a34a' };
@@ -943,20 +955,25 @@ async function printQuote(id, mode='print') {
 </div>
 
 <table>
-  <thead><tr><th>Description</th><th class="r">Amount</th></tr></thead>
+  <thead><tr><th>Description</th>${anyLineDisc ? '<th class="r">Disc</th>' : ''}<th class="r">Amount</th></tr></thead>
   <tbody>
     ${rows.map(/** @param {any} row */ row => {
       const d = _lineDisplay(row);
+      const rowDisc = parseFloat(row.discount) || 0;
+      const discCell = anyLineDisc
+        ? '<td class="r" style="color:#888;font-size:12px">' + (rowDisc > 0 ? rowDisc + '%' : '—') + '</td>'
+        : '';
       return '<tr><td style="padding:10px"><strong style="font-size:14px">' + _escHtml(d.name)
         + (d.qtyText ? ' <span style="font-weight:400;color:#888">' + d.qtyText + '</span>' : '')
         + '</strong>'
         + (d.detail ? '<br><span style="font-size:11px;color:#888;padding-left:14px">' + _escHtml(d.detail) + '</span>' : '')
-        + '</td><td class="r">' + fmt(d.total) + '</td></tr>';
+        + '</td>' + discCell + '<td class="r">' + fmt(d.total) + '</td></tr>';
     }).join('')}
-    ${rows.length ? '<tr><td colspan="2" style="border-bottom:1.5px solid #ddd;padding:0"></td></tr>' : ''}
-    ${(q.markup ?? 0) > 0 || (q.tax ?? 0) > 0 ? `<tr class="subtotal"><td style="color:#aaa">Subtotal</td><td class="r">${fmt(sub)}</td></tr>` : ''}
-    ${(q.markup ?? 0) > 0 ? `<tr class="subtotal"><td style="padding-left:20px">Markup &nbsp;<span style="color:#bbb">(${q.markup}%)</span></td><td class="r">+ ${fmt(markupAmt)}</td></tr>` : ''}
-    ${(q.tax ?? 0) > 0 ? `<tr class="subtotal"><td style="padding-left:20px">Tax &nbsp;<span style="color:#bbb">(${q.tax}%)</span></td><td class="r">+ ${fmt(taxAmt)}</td></tr>` : ''}
+    ${rows.length ? `<tr><td colspan="${anyLineDisc ? 3 : 2}" style="border-bottom:1.5px solid #ddd;padding:0"></td></tr>` : ''}
+    ${(q.markup ?? 0) > 0 || (q.tax ?? 0) > 0 || orderDiscPct > 0 ? `<tr class="subtotal"><td style="color:#aaa"${anyLineDisc ? ' colspan="2"' : ''}>Subtotal</td><td class="r">${fmt(sub)}</td></tr>` : ''}
+    ${(q.markup ?? 0) > 0 ? `<tr class="subtotal"><td style="padding-left:20px"${anyLineDisc ? ' colspan="2"' : ''}>Markup &nbsp;<span style="color:#bbb">(${q.markup}%)</span></td><td class="r">+ ${fmt(markupAmt)}</td></tr>` : ''}
+    ${(q.tax ?? 0) > 0 ? `<tr class="subtotal"><td style="padding-left:20px"${anyLineDisc ? ' colspan="2"' : ''}>Tax &nbsp;<span style="color:#bbb">(${q.tax}%)</span></td><td class="r">+ ${fmt(taxAmt)}</td></tr>` : ''}
+    ${orderDiscPct > 0 ? `<tr class="subtotal"><td style="padding-left:20px;color:#c44"${anyLineDisc ? ' colspan="2"' : ''}>Discount &nbsp;<span style="color:#bbb">(${orderDiscPct}%)</span></td><td class="r" style="color:#c44">− ${fmt(orderDiscAmt)}</td></tr>` : ''}
   </tbody>
 </table>
 <div class="total-box">
@@ -1030,7 +1047,7 @@ function updateQuoteField(id, field, val) {
   if (!_requireAuth()) return;
   const q = quotes.find(q => q.id === id);
   if (!q) return;
-  const numFields = ['materials','labour','markup','tax'];
+  const numFields = ['materials','labour','markup','tax','discount'];
   const v = numFields.includes(field) ? (parseFloat(val) || 0) : val;
   // Optimistic in-memory update + immediate re-render.
   /** @type {any} */ (q)[field] = v;
@@ -1160,7 +1177,7 @@ function renderQuoteEditor() {
 
     <div class="editor-section">
       <div class="editor-section-title">Line Items</div>
-      <div id="pq-lines" class="li-list"></div>
+      <div id="pq-lines" class="editor-li-list"></div>
       <div class="editor-add-tiles">
         <div class="editor-add-tile" onclick="_qAddLine('cabinet')" title="Add cabinet">
           <span class="tile-icon">${_Q_ICON_CABINET}</span>
@@ -1172,19 +1189,15 @@ function renderQuoteEditor() {
           <span class="tile-label">Items</span>
           <span class="tile-add">+</span>
         </div>
-        <div class="editor-add-tile" onclick="_qAddLine('labour')" title="Add labour">
-          <span class="tile-icon">${_Q_ICON_LABOUR}</span>
-          <span class="tile-label">Labour</span>
-          <span class="tile-add">+</span>
-        </div>
       </div>
     </div>
 
     <div class="editor-section">
       <div class="editor-section-title">Pricing</div>
-      <div class="pf-row-inline">
-        <label class="pf-inline"><span class="pf-inline-label">Markup</span><input class="pf-input pf-input-compact" type="number" id="pq-markup" value="${(q && q.markup) ?? 20}" oninput="_renderQuoteLineTotals();_qMarkDirty()"><span class="pf-inline-suffix">%</span></label>
-        <label class="pf-inline"><span class="pf-inline-label">Tax</span><input class="pf-input pf-input-compact" type="number" id="pq-tax" value="${(q && q.tax) ?? 13}" oninput="_renderQuoteLineTotals();_qMarkDirty()"><span class="pf-inline-suffix">%</span></label>
+      <div class="rates-chips">
+        <div class="rate-chip"><span class="chip-label">Markup</span><input type="number" id="pq-markup" value="${(q && q.markup) ?? 20}" oninput="_renderQuoteLineTotals();_qMarkDirty()"><span class="chip-unit">%</span></div>
+        <div class="rate-chip"><span class="chip-label">Tax</span><input type="number" id="pq-tax" value="${(q && q.tax) ?? 13}" oninput="_renderQuoteLineTotals();_qMarkDirty()"><span class="chip-unit">%</span></div>
+        <div class="rate-chip"><span class="chip-label">Disc</span><input type="number" id="pq-discount" value="${(q && /** @type {any} */ (q).discount) ?? 0}" oninput="_renderQuoteLineTotals();_qMarkDirty()"><span class="chip-unit">%</span></div>
       </div>
     </div>
 
@@ -1367,6 +1380,7 @@ async function createQuoteFromEditor(silent) {
     notes: _popupVal('pq-notes') || '',
     markup: parseFloat(_popupVal('pq-markup')) || 20,
     tax: parseFloat(_popupVal('pq-tax')) || 13,
+    discount: parseFloat(_popupVal('pq-discount')) || 0,
     quote_number: _popupVal('pq-quote-number') || null,
     date: new Date().toLocaleDateString('en-GB', { day:'numeric', month:'short' }),
   };
@@ -1399,8 +1413,9 @@ async function saveQuoteEditor() {
     const quote_number = _popupVal('pq-quote-number') || null;
     const markup = parseFloat(_popupVal('pq-markup')) || 0;
     const tax = parseFloat(_popupVal('pq-tax')) || 0;
+    const discount = parseFloat(_popupVal('pq-discount')) || 0;
     /** @type {any} */
-    const update = { status, notes, quote_number, markup, tax, updated_at: new Date().toISOString() };
+    const update = { status, notes, quote_number, markup, tax, discount, updated_at: new Date().toISOString() };
     Object.assign(q, update);
     // Flush pending line edits in parallel
     if (typeof _lineUpsertTimers !== 'undefined') {
@@ -1417,6 +1432,8 @@ async function saveQuoteEditor() {
         qty: row.qty || 0,
         unit_price: row.unit_price ?? null,
         labour_hours: row.labour_hours ?? null,
+        schedule_hours: row.schedule_hours ?? null,
+        discount: row.discount ?? 0,
       };
       writes.push(/** @type {any} */ (_db('quote_lines').update(u).eq('id', row.id)));
     }

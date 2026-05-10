@@ -50,13 +50,29 @@ function _renderOrderLines() {
   const host = document.getElementById('po-lines');
   if (!host) return;
   if (!_opState.lines.length) {
-    host.innerHTML = '<div class="li-empty">No line items yet — add an item or labour line below.</div>';
+    host.innerHTML = '<div class="li-empty">No line items yet — add a cabinet or item below.</div>';
     return;
   }
   _opState.lines.sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
-  host.innerHTML = _opState.lines.map((row, i) => _orderLineRowHtml(row, i)).join('');
+  const head = `<thead><tr>
+    <th class="eli-handle"></th>
+    <th class="eli-dot"></th>
+    <th>Description</th>
+    <th class="num">Qty</th>
+    <th class="num">Price</th>
+    <th class="num">Hrs</th>
+    <th class="num">Disc%</th>
+    <th class="num">Total</th>
+    <th></th>
+  </tr></thead>`;
+  const body = '<tbody>' + _opState.lines.map((row, i) => _orderLineRowHtml(row, i)).join('') + '</tbody>';
+  host.innerHTML = `<table class="editor-li-table">${head}${body}</table>`;
 }
 
+// Render a single row as a <tr> in the zebra-striped table. Unified shape:
+// cabinet rows show computed price + auto hours read-only; item rows are
+// fully editable. Legacy `labour` rows render in-place as item-style rows
+// (we kept the kind in the data; the UI just stopped adding new ones).
 /** @param {any} row @param {number} i */
 function _orderLineRowHtml(row, i) {
   const cur = window.currency;
@@ -65,46 +81,56 @@ function _orderLineRowHtml(row, i) {
   const sub = _lineSubtotal(row);
   const total = sub.materials + sub.labour;
   const kind = row.line_kind || 'cabinet';
-  const labelMap = { cabinet: 'Cabinet', item: 'Item', labour: 'Labour' };
-  const kindLabel = (/** @type {any} */ (labelMap))[kind] || kind;
-  const kindIcon = (/** @type {any} */ (_LI_KIND_ICON))[kind] || '';
-  const kindBadge = `<span class="li-kind" title="${kindLabel}">${kindIcon}</span>`;
+  const disc = parseFloat(row.discount) || 0;
+  const discCell = `<td class="eli-num col-disc${disc > 0 ? '' : ' zero'}"><input class="eli-input" type="number" min="0" max="100" step="1" value="${disc || ''}" placeholder="—" oninput="_orderLineUpdate(${i}, 'discount', this.value)"></td>`;
   if (kind === 'cabinet') {
     const dims = [row.w_mm, row.h_mm, row.d_mm].filter(Boolean).join('×') + (row.w_mm ? 'mm' : '');
-    const desc = (row.name || 'Cabinet') + (dims && dims !== 'mm' ? ' — ' + dims : '');
-    return `<div class="li-row">
-      <div class="li-head">${kindBadge}<div class="li-desc">${_escHtml(desc)}${(row.qty || 1) > 1 ? ' <span class="li-meta">×' + row.qty + '</span>' : ''}</div></div>
-      <div class="li-amt">${fmt(total)}</div>
-      <button class="li-action" title="Remove" onclick="_orderLineRemove(${i})">✕</button>
-    </div>`;
+    const meta = dims && dims !== 'mm' ? `<div class="meta">${_escHtml(dims)}</div>` : '';
+    // Cabinet hours = cached calcCBLine().labourHrs × qty; fall back to
+    // computing on demand if the cache hasn't been populated yet (this
+    // happens before _orderHoursBreakdown runs on first load).
+    let hrs = row._hrs;
+    if (typeof hrs !== 'number') {
+      try {
+        const cb = _quoteLineRowToCB(row);
+        const c = calcCBLine(cb);
+        hrs = c.labourHrs || 0;
+        Object.defineProperty(row, '_hrs', { value: hrs, writable: true, enumerable: false, configurable: true });
+      } catch (e) { hrs = 0; }
+    }
+    const hrsTotal = hrs * (parseFloat(row.qty) || 1);
+    const unitPrice = (parseFloat(row.qty) || 1) > 0 ? (sub.materials + sub.labour) / (parseFloat(row.qty) || 1) : 0;
+    return `<tr>
+      <td class="eli-handle" title="Drag to reorder (coming soon)">⋮</td>
+      <td class="eli-dot"><span></span></td>
+      <td class="eli-desc"><div class="name">${_escHtml(row.name || 'Cabinet')}</div>${meta}</td>
+      <td class="eli-num col-qty"><input class="eli-input" type="number" min="1" step="1" value="${row.qty ?? 1}" oninput="_orderLineUpdate(${i}, 'qty', this.value)"></td>
+      <td class="eli-num col-price">${fmt(unitPrice)}</td>
+      <td class="eli-num col-hrs" title="Computed from cabinet labour">${hrsTotal.toFixed(1)}</td>
+      ${discCell}
+      <td class="eli-num col-total">${fmt(total)}</td>
+      <td class="eli-x" title="Remove" onclick="_orderLineRemove(${i})">✕</td>
+    </tr>`;
   }
-  if (kind === 'item') {
-    return `<div class="li-row li-row-stacked">
-      <div class="li-top">
-        ${kindBadge}
-        <input class="li-name" value="${_escHtml(row.name || '')}" placeholder="Item name" oninput="_orderLineUpdate(${i}, 'name', this.value)">
-        <div class="li-amt">${fmt(total)}</div>
-        <button class="li-action" title="Remove" onclick="_orderLineRemove(${i})">✕</button>
-      </div>
-      <div class="li-fields">
-        <label class="li-field"><span class="li-field-label">Qty</span><input class="li-num" type="number" min="0" step="1" value="${row.qty ?? 1}" oninput="_orderLineUpdate(${i}, 'qty', this.value)"></label>
-        <label class="li-field"><span class="li-field-label">Price</span><input class="li-num" type="number" min="0" step="0.01" value="${row.unit_price ?? 0}" oninput="_orderLineUpdate(${i}, 'unit_price', this.value)"></label>
-        <label class="li-field" title="Workshop time, not on PDF"><span class="li-field-label">Hrs</span><input class="li-num" type="number" min="0" step="0.5" value="${row.schedule_hours ?? 0}" oninput="_orderLineUpdate(${i}, 'schedule_hours', this.value)"></label>
-      </div>
-    </div>`;
-  }
-  return `<div class="li-row li-row-stacked">
-    <div class="li-top">
-      ${kindBadge}
-      <input class="li-name" value="${_escHtml(row.name || '')}" placeholder="Labour description" oninput="_orderLineUpdate(${i}, 'name', this.value)">
-      <div class="li-amt">${fmt(total)}</div>
-      <button class="li-action" title="Remove" onclick="_orderLineRemove(${i})">✕</button>
-    </div>
-    <div class="li-fields">
-      <label class="li-field"><span class="li-field-label">Hours</span><input class="li-num" type="number" min="0" step="0.5" value="${row.labour_hours ?? 0}" oninput="_orderLineUpdate(${i}, 'labour_hours', this.value)"></label>
-      <label class="li-field"><span class="li-field-label">Rate /hr</span><input class="li-num" type="number" min="0" step="0.01" value="${row.unit_price ?? ''}" oninput="_orderLineUpdate(${i}, 'unit_price', this.value)"></label>
-    </div>
-  </div>`;
+  // item or legacy labour: unified item-style row. For legacy labour rows,
+  // map labour_hours into the Hrs cell and unit_price into Price (the row's
+  // total still calculates correctly via _lineSubtotal's labour branch:
+  // labour_hours × unit_price).
+  const isLegacyLabour = kind === 'labour';
+  const dotClass = isLegacyLabour ? 'is-labour' : 'is-item';
+  const hoursField = isLegacyLabour ? 'labour_hours' : 'schedule_hours';
+  const hoursVal = isLegacyLabour ? (row.labour_hours ?? 0) : (row.schedule_hours ?? 0);
+  return `<tr>
+    <td class="eli-handle" title="Drag to reorder (coming soon)">⋮</td>
+    <td class="eli-dot ${dotClass}"><span></span></td>
+    <td class="eli-desc"><input class="eli-name" value="${_escHtml(row.name || '')}" placeholder="Item name" oninput="_orderLineUpdate(${i}, 'name', this.value)"></td>
+    <td class="eli-num col-qty"><input class="eli-input" type="number" min="0" step="1" value="${row.qty ?? 1}" oninput="_orderLineUpdate(${i}, 'qty', this.value)"></td>
+    <td class="eli-num col-price"><input class="eli-input" type="number" min="0" step="0.01" value="${row.unit_price ?? 0}" oninput="_orderLineUpdate(${i}, 'unit_price', this.value)"></td>
+    <td class="eli-num col-hrs" title="Workshop time, not on PDF"><input class="eli-input" type="number" min="0" step="0.5" value="${hoursVal}" oninput="_orderLineUpdate(${i}, '${hoursField}', this.value)"></td>
+    ${discCell}
+    <td class="eli-num col-total">${fmt(total)}</td>
+    <td class="eli-x" title="Remove" onclick="_orderLineRemove(${i})">✕</td>
+  </tr>`;
 }
 
 // S.3: Per-order hours breakdown for the popup readout. Returns components
@@ -219,6 +245,9 @@ function _renderOrderLineTotals() {
   const cur = window.currency;
   /** @param {number} v */
   const fmt = v => cur + Number(v).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+  // Subtotal is the sum of per-line _lineSubtotal results, which already have
+  // the per-line discount applied. Order-level markup is added, then tax,
+  // then whole-order discount comes off last.
   const subParts = _opState.lines.reduce(
     (acc, row) => {
       const s = _lineSubtotal(row);
@@ -231,16 +260,23 @@ function _renderOrderLineTotals() {
   const sub = subParts.materials + subParts.labour;
   const markup = parseFloat(_popupVal('po-markup')) || 0;
   const tax = parseFloat(_popupVal('po-tax')) || 0;
+  const discount = parseFloat(_popupVal('po-discount')) || 0;
   const markupAmt = sub * markup / 100;
   const afterMarkup = sub + markupAmt;
   const taxAmt = afterMarkup * tax / 100;
-  const total = afterMarkup + taxAmt;
+  const afterTax = afterMarkup + taxAmt;
+  const discountAmt = afterTax * discount / 100;
+  const total = afterTax - discountAmt;
   const el = document.getElementById('po-totals');
   if (!el) return;
+  const discRow = discount > 0
+    ? `<div class="pf-total-row discount"><span class="t-label">Discount (${discount}%)</span><span class="t-val">−${fmt(discountAmt)}</span></div>`
+    : '';
   el.innerHTML = `
     <div class="pf-total-row"><span class="t-label">Subtotal</span><span class="t-val">${fmt(sub)}</span></div>
     <div class="pf-total-row"><span class="t-label">Markup (${markup}%)</span><span class="t-val">+${fmt(markupAmt)}</span></div>
     <div class="pf-total-row"><span class="t-label">Tax (${tax}%)</span><span class="t-val">+${fmt(taxAmt)}</span></div>
+    ${discRow}
     <div class="pf-total-row t-main"><span class="t-label">Order Total</span><span class="t-val">${fmt(total)}</span></div>`;
 }
 
@@ -248,27 +284,30 @@ function _renderOrderLineTotals() {
 function _orderLineUpdate(idx, field, val) {
   const row = _opState.lines[idx];
   if (!row) return;
-  const numeric = ['qty', 'unit_price', 'labour_hours', 'schedule_hours'];
+  const numeric = ['qty', 'unit_price', 'labour_hours', 'schedule_hours', 'discount'];
   row[field] = numeric.includes(field) ? (parseFloat(val) || 0) : val;
+  // Per-line discount changes the cached subtotal; bust the cabinet cache
+  // so the next _lineSubtotal call recomputes.
+  if (field === 'discount' || field === 'qty') delete row._sub;
   _renderOrderLineTotals();
   _renderOrderHoursBreakdown();
-  // Touch only the affected row's amount so input focus is preserved
+  // Touch only the affected row's total cell so input focus is preserved.
   const host = document.getElementById('po-lines');
   if (host) {
-    const rowEls = host.querySelectorAll('.li-row');
+    const rowEls = host.querySelectorAll('tbody tr');
     const rowEl = rowEls[idx];
     if (rowEl) {
       const cur = window.currency;
       const sub = _lineSubtotal(row);
       const total = sub.materials + sub.labour;
-      const amt = rowEl.querySelector('.li-amt');
+      const amt = rowEl.querySelector('.col-total');
       if (amt) amt.textContent = cur + Number(total).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
     }
   }
   _scheduleOrderLineUpsert(idx);
 }
 
-/** @param {string} kind 'item' | 'labour' */
+/** @param {string} kind 'item' | 'labour' (labour kept for back-compat; UI no longer adds it) */
 function _orderLineAdd(kind) {
   if (!_opState.orderId || !_userId) return;
   const position = _opState.lines.reduce((m, r) => Math.max(m, (r.position ?? 0) + 1), 0);
@@ -283,6 +322,7 @@ function _orderLineAdd(kind) {
     qty: kind === 'item' ? 1 : 0,
     labour_hours: kind === 'labour' ? 0 : null,
     unit_price: kind === 'labour' ? businessRate : 0,
+    discount: 0,
   };
   _opState.lines.push(row);
   _renderOrderLines();
@@ -331,6 +371,7 @@ function _scheduleOrderLineUpsert(idx) {
       unit_price: row.unit_price ?? null,
       labour_hours: row.labour_hours ?? null,
       schedule_hours: row.schedule_hours ?? null,
+      discount: row.discount ?? 0,
     };
     _db('order_lines').update(update).eq('id', row.id).then(/** @param {any} r */ (r) => {
       if (r && r.error) console.warn('[order line upsert]', r.error.message);
@@ -358,19 +399,33 @@ function _openQuotePopup(id) {
   if (typeof loadQuoteIntoSidebar === 'function') loadQuoteIntoSidebar(id);
 }
 
-// Render the line-item rows inside the open quote popup.
+// Render the line-item rows inside the open quote editor.
 function _renderQuoteLines() {
   const host = document.getElementById('pq-lines');
   if (!host) return;
   if (!_qpState.lines.length) {
-    host.innerHTML = '<div class="li-empty">No line items yet — add a cabinet, item, or labour line below.</div>';
+    host.innerHTML = '<div class="li-empty">No line items yet — add a cabinet or item below.</div>';
     return;
   }
   // Sort by position so reorders persist between opens.
   _qpState.lines.sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
-  host.innerHTML = _qpState.lines.map((row, i) => _lineRowHtml(row, i)).join('');
+  const head = `<thead><tr>
+    <th class="eli-handle"></th>
+    <th class="eli-dot"></th>
+    <th>Description</th>
+    <th class="num">Qty</th>
+    <th class="num">Price</th>
+    <th class="num">Hrs</th>
+    <th class="num">Disc%</th>
+    <th class="num">Total</th>
+    <th></th>
+  </tr></thead>`;
+  const body = '<tbody>' + _qpState.lines.map((row, i) => _lineRowHtml(row, i)).join('') + '</tbody>';
+  host.innerHTML = `<table class="editor-li-table">${head}${body}</table>`;
 }
 
+// Render a single quote_lines row as a <tr> in the zebra-striped table. Same
+// shape as the order editor's row template (see _orderLineRowHtml in app.js).
 /** @param {any} row @param {number} i */
 function _lineRowHtml(row, i) {
   const cur = window.currency;
@@ -379,47 +434,49 @@ function _lineRowHtml(row, i) {
   const sub = _lineSubtotal(row);
   const total = (sub.materials + sub.labour);
   const kind = row.line_kind || 'cabinet';
-  const labelMap = { cabinet: 'Cabinet', item: 'Item', labour: 'Labour' };
-  const kindLabel = (/** @type {any} */ (labelMap))[kind] || kind;
-  const kindIcon = (/** @type {any} */ (_LI_KIND_ICON))[kind] || '';
-  const kindBadge = `<span class="li-kind" title="${kindLabel}">${kindIcon}</span>`;
+  const disc = parseFloat(row.discount) || 0;
+  const discCell = `<td class="eli-num col-disc${disc > 0 ? '' : ' zero'}"><input class="eli-input" type="number" min="0" max="100" step="1" value="${disc || ''}" placeholder="—" oninput="_lineUpdate(${i}, 'discount', this.value)"></td>`;
   if (kind === 'cabinet') {
     const dims = [row.w_mm, row.h_mm, row.d_mm].filter(Boolean).join('×') + (row.w_mm ? 'mm' : '');
-    const desc = (row.name || 'Cabinet') + (dims && dims !== 'mm' ? ' — ' + dims : '');
-    return `<div class="li-row">
-      <div class="li-head">${kindBadge}<div class="li-desc">${_escHtml(desc)}${(row.qty || 1) > 1 ? ' <span class="li-meta">×' + row.qty + '</span>' : ''}</div></div>
-      <div class="li-amt">${fmt(total)}</div>
-      <button class="li-action" title="Edit in Cabinet Builder" onclick="_lineEditCabinetRow(${i})">✎</button>
-      <button class="li-action" title="Remove" onclick="_lineRemove(${i})">✕</button>
-    </div>`;
+    const meta = dims && dims !== 'mm' ? `<div class="meta">${_escHtml(dims)}</div>` : '';
+    // Cabinet hours come from calcCBLine; quotes don't have a Schedule
+    // section, so this is purely informational here, but we surface it for
+    // parity with the order editor.
+    let hrs = 0;
+    try {
+      const cb = _quoteLineRowToCB(row);
+      const c = calcCBLine(cb);
+      hrs = (c.labourHrs || 0) * (parseFloat(row.qty) || 1);
+    } catch (e) { hrs = 0; }
+    const unitPrice = (parseFloat(row.qty) || 1) > 0 ? (sub.materials + sub.labour) / (parseFloat(row.qty) || 1) : 0;
+    return `<tr>
+      <td class="eli-handle" title="Drag to reorder (coming soon)">⋮</td>
+      <td class="eli-dot"><span></span></td>
+      <td class="eli-desc"><div class="name">${_escHtml(row.name || 'Cabinet')}</div>${meta}<div class="meta" style="cursor:pointer;color:var(--accent)" onclick="_lineEditCabinetRow(${i})">Edit in Cabinet Builder</div></td>
+      <td class="eli-num col-qty"><input class="eli-input" type="number" min="1" step="1" value="${row.qty ?? 1}" oninput="_lineUpdate(${i}, 'qty', this.value)"></td>
+      <td class="eli-num col-price">${fmt(unitPrice)}</td>
+      <td class="eli-num col-hrs" title="Computed from cabinet labour">${hrs.toFixed(1)}</td>
+      ${discCell}
+      <td class="eli-num col-total">${fmt(total)}</td>
+      <td class="eli-x" title="Remove" onclick="_lineRemove(${i})">✕</td>
+    </tr>`;
   }
-  if (kind === 'item') {
-    return `<div class="li-row li-row-stacked">
-      <div class="li-top">
-        ${kindBadge}
-        <input class="li-name" value="${_escHtml(row.name || '')}" placeholder="Item name" oninput="_lineUpdate(${i}, 'name', this.value)">
-        <div class="li-amt">${fmt(total)}</div>
-        <button class="li-action" title="Remove" onclick="_lineRemove(${i})">✕</button>
-      </div>
-      <div class="li-fields">
-        <label class="li-field"><span class="li-field-label">Qty</span><input class="li-num" type="number" min="0" step="1" value="${row.qty ?? 1}" oninput="_lineUpdate(${i}, 'qty', this.value)"></label>
-        <label class="li-field"><span class="li-field-label">Price</span><input class="li-num" type="number" min="0" step="0.01" value="${row.unit_price ?? 0}" oninput="_lineUpdate(${i}, 'unit_price', this.value)"></label>
-      </div>
-    </div>`;
-  }
-  // labour
-  return `<div class="li-row li-row-stacked">
-    <div class="li-top">
-      ${kindBadge}
-      <input class="li-name" value="${_escHtml(row.name || '')}" placeholder="Labour description" oninput="_lineUpdate(${i}, 'name', this.value)">
-      <div class="li-amt">${fmt(total)}</div>
-      <button class="li-action" title="Remove" onclick="_lineRemove(${i})">✕</button>
-    </div>
-    <div class="li-fields">
-      <label class="li-field"><span class="li-field-label">Hours</span><input class="li-num" type="number" min="0" step="0.5" value="${row.labour_hours ?? 0}" oninput="_lineUpdate(${i}, 'labour_hours', this.value)"></label>
-      <label class="li-field"><span class="li-field-label">Rate /hr</span><input class="li-num" type="number" min="0" step="0.01" value="${row.unit_price ?? ''}" oninput="_lineUpdate(${i}, 'unit_price', this.value)"></label>
-    </div>
-  </div>`;
+  // item or legacy labour: same unified item-style row as the order editor.
+  const isLegacyLabour = kind === 'labour';
+  const dotClass = isLegacyLabour ? 'is-labour' : 'is-item';
+  const hoursField = isLegacyLabour ? 'labour_hours' : 'schedule_hours';
+  const hoursVal = isLegacyLabour ? (row.labour_hours ?? 0) : (row.schedule_hours ?? 0);
+  return `<tr>
+    <td class="eli-handle" title="Drag to reorder (coming soon)">⋮</td>
+    <td class="eli-dot ${dotClass}"><span></span></td>
+    <td class="eli-desc"><input class="eli-name" value="${_escHtml(row.name || '')}" placeholder="Item name" oninput="_lineUpdate(${i}, 'name', this.value)"></td>
+    <td class="eli-num col-qty"><input class="eli-input" type="number" min="0" step="1" value="${row.qty ?? 1}" oninput="_lineUpdate(${i}, 'qty', this.value)"></td>
+    <td class="eli-num col-price"><input class="eli-input" type="number" min="0" step="0.01" value="${row.unit_price ?? 0}" oninput="_lineUpdate(${i}, 'unit_price', this.value)"></td>
+    <td class="eli-num col-hrs" title="Workshop time, not on PDF"><input class="eli-input" type="number" min="0" step="0.5" value="${hoursVal}" oninput="_lineUpdate(${i}, '${hoursField}', this.value)"></td>
+    ${discCell}
+    <td class="eli-num col-total">${fmt(total)}</td>
+    <td class="eli-x" title="Remove" onclick="_lineRemove(${i})">✕</td>
+  </tr>`;
 }
 
 function _renderQuoteLineTotals() {
@@ -438,16 +495,23 @@ function _renderQuoteLineTotals() {
   const sub = subParts.materials + subParts.labour;
   const markup = parseFloat(_popupVal('pq-markup')) || 0;
   const tax = parseFloat(_popupVal('pq-tax')) || 0;
+  const discount = parseFloat(_popupVal('pq-discount')) || 0;
   const markupAmt = sub * markup / 100;
   const afterMarkup = sub + markupAmt;
   const taxAmt = afterMarkup * tax / 100;
-  const total = afterMarkup + taxAmt;
+  const afterTax = afterMarkup + taxAmt;
+  const discountAmt = afterTax * discount / 100;
+  const total = afterTax - discountAmt;
   const el = document.getElementById('pq-totals');
   if (!el) return;
+  const discRow = discount > 0
+    ? `<div class="pf-total-row discount"><span class="t-label">Discount (${discount}%)</span><span class="t-val">−${fmt(discountAmt)}</span></div>`
+    : '';
   el.innerHTML = `
     <div class="pf-total-row"><span class="t-label">Subtotal</span><span class="t-val">${fmt(sub)}</span></div>
     <div class="pf-total-row"><span class="t-label">Markup (${markup}%)</span><span class="t-val">+${fmt(markupAmt)}</span></div>
     <div class="pf-total-row"><span class="t-label">Tax (${tax}%)</span><span class="t-val">+${fmt(taxAmt)}</span></div>
+    ${discRow}
     <div class="pf-total-row t-main"><span class="t-label">Total</span><span class="t-val">${fmt(total)}</span></div>`;
 }
 
@@ -457,27 +521,28 @@ function _renderQuoteLineTotals() {
 function _lineUpdate(idx, field, val) {
   const row = _qpState.lines[idx];
   if (!row) return;
-  const numeric = ['qty', 'unit_price', 'labour_hours'];
+  const numeric = ['qty', 'unit_price', 'labour_hours', 'schedule_hours', 'discount'];
   row[field] = numeric.includes(field) ? (parseFloat(val) || 0) : val;
+  if (field === 'discount' || field === 'qty') delete row._sub;
   _renderQuoteLineTotals();
   // Update only the affected row's total without a full re-render so input
   // focus is preserved.
   const host = document.getElementById('pq-lines');
   if (host) {
-    const rowEls = host.querySelectorAll('.li-row');
+    const rowEls = host.querySelectorAll('tbody tr');
     const rowEl = rowEls[idx];
     if (rowEl) {
       const cur = window.currency;
       const sub = _lineSubtotal(row);
       const total = sub.materials + sub.labour;
-      const amt = rowEl.querySelector('.li-amt');
+      const amt = rowEl.querySelector('.col-total');
       if (amt) amt.textContent = cur + Number(total).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
     }
   }
   _scheduleLineUpsert(idx);
 }
 
-/** @param {string} kind 'item' | 'labour' */
+/** @param {string} kind 'item' | 'labour' (labour kept for back-compat; UI no longer adds it) */
 function _lineAdd(kind) {
   if (!_qpState.quoteId || !_userId) return;
   const position = _qpState.lines.reduce((m, r) => Math.max(m, (r.position ?? 0) + 1), 0);
@@ -492,6 +557,7 @@ function _lineAdd(kind) {
     qty: kind === 'item' ? 1 : 0,
     labour_hours: kind === 'labour' ? 0 : null,
     unit_price: kind === 'labour' ? businessRate : 0,
+    discount: 0,
   };
   // Optimistic insert: render immediately with no id, then replace with the
   // real id once the DB returns. The user can keep typing — the upsert
@@ -572,6 +638,8 @@ function _scheduleLineUpsert(idx) {
       qty: row.qty || 0,
       unit_price: row.unit_price ?? null,
       labour_hours: row.labour_hours ?? null,
+      schedule_hours: row.schedule_hours ?? null,
+      discount: row.discount ?? 0,
     };
     _db('quote_lines').update(update).eq('id', row.id).then(/** @param {any} r */ (r) => {
       if (r && r.error) console.warn('[line upsert]', r.error.message);

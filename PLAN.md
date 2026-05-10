@@ -22,6 +22,29 @@ Companion docs: `SPEC.md` (refactor history), `SCHEMA.md` (DB schema),
 
 ## Active Work
 
+### Orders / Quotes editor cleanup pass 🚧 In Progress 2026-05-10
+
+Four-point UI cleanup on the order + quote editor sidebars, ported from the user's `mockups/orders-redesign-B-zebra-cutlist.html` mockup. Plan at `~/.claude/plans/clean-up-orders-dapper-yao.md`.
+
+**Code changes (in this commit):**
+- **Pricing chips** — `Markup · Tax · Disc` on one line via new `.rates-chips` / `.rate-chip` / `.chip-label` / `.chip-unit` CSS (replaces the stacked `.pf-row-inline` block). New `po-discount` + `pq-discount` inputs wired to totals re-render + dirty flag.
+- **Schedule chevron** — chunky 28×28 SVG chevron prepended LEFT of the "Schedule" summary text (was a 9px `▾` glyph on the right). Hover `var(--accent-dim)`; `details[open]` rotates 180°.
+- **Line items zebra-cutlist table** — `_renderOrderLines` / `_renderQuoteLines` and their row builders rewritten to emit a single `<table class="editor-li-table">` with columns: handle / kind-dot / Description / Qty / Price / Hrs / Disc% / Total / remove. Description cell wraps for long names; nth-child(even) zebra; hover overlays accent-dim. Cabinet rows show qty editable, Price + Hrs read-only (Hrs from `calcCBLine().labourHrs × qty`, cached). Item rows fully editable.
+- **Per-line + whole-order discount** — new `discount` (numeric percentage) column on `quotes` / `orders` / `quote_lines` / `order_lines`, plus `schedule_hours` on `quote_lines` for Hrs-column parity. `_lineSubtotal` multiplies materials+labour by `(1 - discount/100)`. Order-level discount applied after tax, rendered as a red `Discount (N%)` row in totals (hidden when zero). PDFs gain a `Disc%` column only when at least one line has a discount, and the same discount totals row only when whole-order discount > 0.
+- **Labour line type dropped from UI** — Labour add-tile removed from both editors (`editor-add-tiles` grid switched to `repeat(2, ...)`). Existing `line_kind='labour'` rows still render in-place as item-style; `_lineSubtotal`'s labour branch keeps the hours × rate math for back-compat. New rows are always `kind='item'`.
+- CSV: Quote export adds `Discount %` column; importer reads `r[6]` as discount, shifts later columns. `updateQuoteField`'s `numFields` adds `discount`.
+- `convertQuoteToOrder` copies `q.discount` into the new order's `discount` field. `orders.value` post-save now reflects the discounted total.
+
+**Sub-step pending: migration not yet applied.** Supabase MCP `apply_migration` was blocked by harness permissions. SQL file staged at `supabase/migrations/20260510233952_add_discount_columns.sql` (5 columns: 4× `discount`, 1× `quote_lines.schedule_hours`). User to apply via Supabase SQL editor. Code is migration-tolerant — reads use `(x.discount ?? 0)`, save paths include the field but a write against missing columns will fail at DB level. After applying, regenerate `database.types.ts`.
+
+**Remaining:**
+- Apply migration `add_discount_columns` via Supabase SQL editor.
+- Regenerate `database.types.ts` via Supabase MCP.
+- Browser smoke per the plan's Verification section (9 steps).
+- Mark ✅ in this section + append final tick to SPEC.md § 13 entry.
+
+---
+
 ### Cutlists & Cabinets library-pattern refresh ✅ Done 2026-05-10
 
 Eight-point overhaul of the Cutlist + Cabinet flows around a shared smart-library pattern. Plan at `~/.claude/plans/in-cutlists-and-cabinets-cheeky-glade.md`. SPEC.md § 13 entry covers the full scope. Highlights:

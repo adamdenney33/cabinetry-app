@@ -518,6 +518,15 @@ inserted by either the Cabinet Builder sync or the quote popup's "+ Add Item"
 **Replaces:** localStorage `pc_cq_lines` and `pc_cq_saved` (the saved quotes
 were just snapshots of `cqLines` — they become rows in this table).
 
+**`discount` (added 2026-05-10):** numeric percentage 0-100, default 0. Per-line discount applied
+inside `_lineSubtotal()` (`src/quotes.js:130`) — multiplies materials and labour by `(1 - discount/100)`
+before order-level markup/tax. Surfaced in editor as the `Disc%` column of the line-items table; on
+PDFs the Disc% column appears only when at least one line has a non-zero value.
+
+**`schedule_hours` (added 2026-05-10):** numeric default 0. Workshop time for the line; mirrors the
+existing `order_lines.schedule_hours` column. Scheduler input only — never on PDFs. Wired through to
+order_lines on quote→order conversion so hours estimates from the quote stage carry forward.
+
 ---
 
 ### 3.15 `orders`
@@ -570,6 +579,8 @@ alter table public.orders
 
 **`hours_allocated` (added 2026-05-09):** optional manual override of the auto-computed hours-required total. NULL (default) = the scheduler uses `orderHoursRequired()` which sums cabinet + labour + item + packaging + run-over hours from `order_lines`. Non-null = the scheduler reserves exactly this value on the calendar regardless of line-item content. Toggled via the "Override hours" checkbox in the order editor's Schedule section. See SPEC.md § 13.
 
+**`discount` (added 2026-05-10):** numeric percentage 0-100, default 0. Whole-order discount applied **after** markup and tax (`((sub + markup) × (1 + tax)) × (1 - discount/100)`). Surfaced in the editor as the `Disc` chip and as a red `Discount (N%)` row in totals between Tax and Order Total; on PDFs the same row appears only when non-zero. `orders.value` (the cached customer-paid total) reflects the post-discount amount on save.
+
 > **`value` retained (deviation, 2026-04-29; resolved 2026-05-06).** Originally this section said `drop column value, -- derived from order_lines`. During Phase 7 we found that `order_lines` aggregation only reproduces materials+labour, but `orders.value` is a snapshot of the customer-paid total at conversion time (post-markup, post-tax). Without markup/tax columns on `orders` and with the parent quote potentially editable or deletable, derivation isn't safe. The line-items rewrite (2026-05-06) added `markup` and `tax` columns, so `value` is now recomputed on every save from `order_lines × markup × tax`. The column is retained as a denormalised cache for fast dashboard queries (no aggregation per row). See SPEC.md § 13.
 
 `status` values: `'confirmed' | 'production' | 'delivery' | 'done' | 'cancelled'`.
@@ -605,7 +616,11 @@ When a quote is confirmed into an order, copy `quote_lines` rows to
 `order_lines` and set `orders.quote_id`. The lines are then independent —
 edits on the order don't affect the original quote.
 
-**`schedule_hours` (added 2026-05-06):** Workshop time for this line. Used **only** by the production scheduler for hours rollup; never appears on quote/order/work PDFs. Meaningful only on `line_kind='item'` rows — cabinet hours come from `calcCBLine().labourHrs`, labour hours come from the existing `labour_hours` column. `_lineSubtotal()` must NEVER read `schedule_hours`. There is no equivalent column on `quote_lines` (scheduling is order-only).
+**`schedule_hours` (added 2026-05-06):** Workshop time for this line. Used **only** by the production scheduler for hours rollup; never appears on quote/order/work PDFs. Meaningful only on `line_kind='item'` rows — cabinet hours come from `calcCBLine().labourHrs`, labour hours come from the existing `labour_hours` column. `_lineSubtotal()` must NEVER read `schedule_hours`. **Update (2026-05-10):** `quote_lines.schedule_hours` was added for parity so the new unified Hrs column in the editor table can write at the quote stage and have the value survive quote→order conversion.
+
+**`discount` (added 2026-05-10):** numeric percentage 0-100, default 0. Per-line discount applied inside `_lineSubtotal()` before any order-level math. Surfaced in the editor as the `Disc%` column and in PDFs as a column that materialises only when at least one row has a non-zero value. Cabinet rows can have a discount too — the discount multiplier is applied uniformly to materials and labour so the cached `row._sub` stays a single number pair.
+
+**`line_kind = 'labour'` (deprecated 2026-05-10):** the UI no longer adds new labour-kind rows; the labour add-tile was removed from both editor sidebars. Existing rows still render in-place as item-style rows (Hrs cell reads `labour_hours`, totals still use the labour branch in `_lineSubtotal`). The check constraint allows the value indefinitely for back-compat — no destructive migration planned.
 
 ---
 

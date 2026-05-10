@@ -217,6 +217,7 @@ header {
 .project-empty .pe-recent-label { font-size: 10px; color: var(--muted); text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 6px; }
 .project-empty .pe-recent-item { padding: 6px 8px; font-size: 12px; cursor: pointer; border-radius: 4px; display: flex; align-items: center; gap: 8px; }
 .project-empty .pe-recent-item:hover { background: var(--accent-dim); color: var(--accent); }
+.project-empty .pe-recent-item.active { background: var(--accent-dim); color: var(--accent); outline: 1px solid var(--accent); }
 .project-empty .pe-recent-item .pe-ri-icon { width: 22px; height: 22px; color: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; flex-shrink: 0; }
 .project-empty .pe-recent-item .pe-ri-icon svg { width: 14px; height: 14px; }
 .project-empty .pe-recent-item .pe-ri-meta { font-size: 9px; color: var(--muted); margin-left: auto; }
@@ -1405,8 +1406,20 @@ input.li-num:focus { outline: none; border-color: var(--accent); }
 .proj-card-top { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; flex-wrap: wrap; }
 .proj-name { font-size: 14px; font-weight: 700; color: var(--text); cursor: pointer; }
 .proj-name:hover { color: var(--accent); }
-.proj-client { font-size: 14px; font-weight: 700; color: var(--text); }
-.proj-client::before { content: '- '; color: var(--text); }
+.proj-client-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface2);
+  color: var(--text2);
+  padding: 3px 9px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color .12s, background .12s, color .12s;
+}
+.proj-client-btn:hover { border-color: var(--text2); background: var(--surface); color: var(--accent2); }
+.proj-client-btn svg { width: 13px; height: 13px; flex-shrink: 0; }
 .proj-desc { font-size: 11px; color: var(--muted); flex: 1; min-width: 80px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .proj-total { font-size: 13px; font-weight: 800; color: var(--text); font-variant-numeric: tabular-nums; margin-left: auto; }
 .proj-total.zero { color: var(--muted); font-weight: 500; }
@@ -1714,21 +1727,32 @@ html.dark .proj-act.empty .proj-act-add { background: rgba(13,148,136,.12); }
 
 /* Collapsible <details>-based editor section (Schedule). The summary line
    doubles as the section title plus a 1-line state readout, so users can
-   scan the collapsed sidebar at a glance. */
+   scan the collapsed sidebar at a glance. Chevron lives on the LEFT as a
+   chunky 28px button — much bigger hit target than the old 9px ::after. */
 .editor-section--collapsible { padding-top: 8px; }
 .editor-section--collapsible > summary {
-  display: flex; align-items: baseline; justify-content: space-between;
-  cursor: pointer; list-style: none; gap: 8px;
+  display: flex; align-items: center;
+  cursor: pointer; list-style: none; gap: 10px;
   margin-bottom: 0;
   padding: 2px 0;
 }
 .editor-section--collapsible > summary::-webkit-details-marker { display: none; }
-.editor-section--collapsible > summary::after {
-  content: '▾'; color: var(--muted); font-size: 9px;
-  margin-left: 4px; transition: transform .15s;
-}
 .editor-section--collapsible[open] > summary { margin-bottom: 8px; }
-.editor-section--collapsible[open] > summary::after { transform: rotate(180deg); }
+.ed-chev {
+  flex: 0 0 auto;
+  width: 28px; height: 28px;
+  display: inline-flex; align-items: center; justify-content: center;
+  color: var(--text2);
+  border-radius: 6px;
+  transition: transform .18s ease, background .12s, color .12s;
+}
+.ed-chev svg { width: 16px; height: 16px; }
+.editor-section--collapsible > summary:hover .ed-chev {
+  background: var(--accent-dim); color: var(--accent);
+}
+.editor-section--collapsible[open] > summary .ed-chev {
+  transform: rotate(180deg);
+}
 .editor-section-summary {
   font-size: 10px; color: var(--muted);
   font-weight: 400; text-transform: none; letter-spacing: 0;
@@ -1776,10 +1800,156 @@ html.dark .proj-act.empty .proj-act-add { background: rgba(13,148,136,.12); }
 .pf-input[type="date"]:disabled::-webkit-calendar-picker-indicator,
 .pf-input-compact[type="date"]:disabled::-webkit-calendar-picker-indicator { opacity: 0.35; }
 
-/* Cabinet / Item / Labour add tiles — proj-act-inspired */
+/* Pricing chips — Markup / Tax / Discount on a single line. Three equal-flex
+   chip wrappers each combining a label, an inline number input, and a unit
+   badge (%). Same visual family as cabinet-render.js's .cb-mat-row but tuned
+   for the editor sidebar's tighter type. */
+.rates-chips {
+  display: flex; gap: 6px; align-items: stretch;
+}
+.rate-chip {
+  flex: 1 1 0; min-width: 0;
+  display: flex; align-items: stretch;
+  border: 1px solid var(--border); border-radius: 6px;
+  background: var(--surface2);
+  overflow: hidden;
+}
+.rate-chip .chip-label {
+  font-size: 10px; color: var(--muted); font-weight: 700;
+  padding: 5px 6px 5px 8px;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  text-transform: uppercase; letter-spacing: 0.4px;
+  display: flex; align-items: center;
+  white-space: nowrap;
+}
+.rate-chip input {
+  flex: 1 1 0; min-width: 0; width: 100%;
+  border: none; background: transparent;
+  padding: 4px 4px;
+  font-size: 13px; font-weight: 600; color: var(--text);
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  outline: none;
+}
+.rate-chip .chip-unit {
+  font-size: 11px; color: var(--muted); font-weight: 600;
+  padding: 4px 8px 4px 2px;
+  display: flex; align-items: center;
+}
+
+/* Discount totals row uses the danger color so it reads as a deduction
+   alongside the +Markup / +Tax rows. */
+.pf-total-row.discount .t-val { color: var(--danger); }
+
+/* Line items table — zebra-striped, full sidebar width. Extends .cl-table
+   from cutlist.js with sidebar-tuned padding/font-size. Description cell
+   wraps onto multiple lines for long names. */
+.editor-li-list {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+  min-height: 36px;
+}
+.editor-li-list .li-empty {
+  padding: 14px 12px; font-size: 11px; color: var(--muted); text-align: center;
+}
+.editor-li-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  table-layout: fixed;
+}
+.editor-li-table thead th {
+  background: var(--surface);
+  font-size: 9px; font-weight: 700; color: var(--muted);
+  text-transform: uppercase; letter-spacing: 0.6px;
+  padding: 6px 4px; text-align: left;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+.editor-li-table thead th.num { text-align: right; }
+.editor-li-table tbody td {
+  padding: 5px 4px;
+  vertical-align: top;
+  color: var(--text);
+  line-height: 1.35;
+  border-bottom: 1px solid var(--border2);
+}
+.editor-li-table tbody tr:last-child td { border-bottom: none; }
+.editor-li-table tbody tr:nth-child(even) td { background: rgba(0,0,0,0.025); }
+html.dark .editor-li-table tbody tr:nth-child(even) td { background: rgba(255,255,255,0.03); }
+.editor-li-table tbody tr:hover td { background: var(--accent-dim) !important; }
+
+.editor-li-table .eli-handle {
+  width: 14px; padding-left: 2px; padding-right: 0;
+  color: var(--muted); cursor: grab;
+  text-align: center; font-size: 12px;
+  user-select: none;
+}
+.editor-li-table .eli-dot {
+  width: 14px; padding-left: 0; padding-right: 4px;
+}
+.editor-li-table .eli-dot span {
+  display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+  background: var(--accent); margin-top: 5px;
+}
+.editor-li-table .eli-dot.is-item span { background: var(--accent2); }
+.editor-li-table .eli-dot.is-labour span { background: var(--success); }
+.editor-li-table .eli-desc { white-space: normal; word-break: break-word; min-width: 0; }
+.editor-li-table .eli-desc .name { font-weight: 600; color: var(--text); }
+.editor-li-table .eli-desc .meta { font-size: 10px; color: var(--muted); margin-top: 1px; }
+.editor-li-table .eli-desc input.eli-name {
+  width: 100%; box-sizing: border-box;
+  border: 1px solid transparent; background: transparent;
+  padding: 2px 4px; margin: -2px 0;
+  font-family: inherit; font-size: 12px; color: var(--text);
+  font-weight: 600;
+  border-radius: 3px;
+}
+.editor-li-table .eli-desc input.eli-name:hover { border-color: var(--border); }
+.editor-li-table .eli-desc input.eli-name:focus { outline: none; border-color: var(--accent); background: var(--surface); }
+.editor-li-table .eli-num { text-align: right; white-space: nowrap; }
+.editor-li-table .eli-num.col-qty   { width: 36px; }
+.editor-li-table .eli-num.col-price { width: 56px; color: var(--text2); }
+.editor-li-table .eli-num.col-hrs   { width: 42px; color: var(--text2); }
+.editor-li-table .eli-num.col-disc  { width: 38px; color: var(--text2); }
+.editor-li-table .eli-num.col-total { width: 64px; font-weight: 600; }
+.editor-li-table .eli-num.zero { color: var(--muted); opacity: 0.45; }
+.editor-li-table .eli-num input.eli-input {
+  width: 100%; box-sizing: border-box;
+  border: 1px solid transparent; background: transparent;
+  padding: 2px 4px; margin: -2px 0;
+  font-family: inherit; font-size: 12px; color: var(--text);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  border-radius: 3px;
+}
+.editor-li-table .eli-num input.eli-input:hover { border-color: var(--border); }
+.editor-li-table .eli-num input.eli-input:focus { outline: none; border-color: var(--accent); background: var(--surface); }
+.editor-li-table .eli-num input.eli-input:disabled,
+.editor-li-table .eli-num input.eli-input[readonly] {
+  cursor: default; opacity: 0.65;
+}
+.editor-li-table .eli-num input.eli-input::-webkit-outer-spin-button,
+.editor-li-table .eli-num input.eli-input::-webkit-inner-spin-button {
+  -webkit-appearance: none; margin: 0;
+}
+.editor-li-table .eli-x {
+  width: 20px; text-align: center; padding-right: 2px;
+  color: var(--muted); cursor: pointer; font-size: 13px;
+  user-select: none;
+}
+.editor-li-table .eli-x:hover { color: var(--danger); }
+
+/* Cabinet / Item add tiles — proj-act-inspired (Labour merged into Item via
+   the new Hrs column). */
 .editor-add-tiles {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 6px;
   margin-top: 8px;
 }

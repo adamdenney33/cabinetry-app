@@ -417,7 +417,7 @@ function renderOrderEditor() {
 
     <div class="editor-section">
       <div class="editor-section-title">Line Items</div>
-      <div id="po-lines" class="li-list"></div>
+      <div id="po-lines" class="editor-li-list"></div>
       <div class="editor-add-tiles">
         <div class="editor-add-tile" onclick="_oAddLine('cabinet')" title="Add cabinet">
           <span class="tile-icon">${_O_ICON_CABINET}</span>
@@ -429,19 +429,15 @@ function renderOrderEditor() {
           <span class="tile-label">Items</span>
           <span class="tile-add">+</span>
         </div>
-        <div class="editor-add-tile" onclick="_oAddLine('labour')" title="Add labour">
-          <span class="tile-icon">${_O_ICON_LABOUR}</span>
-          <span class="tile-label">Labour</span>
-          <span class="tile-add">+</span>
-        </div>
       </div>
     </div>
 
     <div class="editor-section">
       <div class="editor-section-title">Pricing</div>
-      <div class="pf-row-inline">
-        <label class="pf-inline"><span class="pf-inline-label">Markup</span><input class="pf-input pf-input-compact" type="number" id="po-markup" value="${(o && o.markup) ?? 0}" oninput="_renderOrderLineTotals();_oMarkDirty()"><span class="pf-inline-suffix">%</span></label>
-        <label class="pf-inline"><span class="pf-inline-label">Tax</span><input class="pf-input pf-input-compact" type="number" id="po-tax" value="${(o && o.tax) ?? 0}" oninput="_renderOrderLineTotals();_oMarkDirty()"><span class="pf-inline-suffix">%</span></label>
+      <div class="rates-chips">
+        <div class="rate-chip"><span class="chip-label">Markup</span><input type="number" id="po-markup" value="${(o && o.markup) ?? 0}" oninput="_renderOrderLineTotals();_oMarkDirty()"><span class="chip-unit">%</span></div>
+        <div class="rate-chip"><span class="chip-label">Tax</span><input type="number" id="po-tax" value="${(o && o.tax) ?? 0}" oninput="_renderOrderLineTotals();_oMarkDirty()"><span class="chip-unit">%</span></div>
+        <div class="rate-chip"><span class="chip-label">Disc</span><input type="number" id="po-discount" value="${(o && /** @type {any} */ (o).discount) ?? 0}" oninput="_renderOrderLineTotals();_oMarkDirty()"><span class="chip-unit">%</span></div>
       </div>
     </div>
 
@@ -449,6 +445,7 @@ function renderOrderEditor() {
 
     <details class="editor-section editor-section--collapsible" id="po-sched-details" ${schedOpen ? 'open' : ''} ontoggle="_orderSchedToggle(this)">
       <summary class="editor-section-title">
+        <span class="ed-chev"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
         <span>Schedule</span>
         <span class="editor-section-summary" id="po-sched-summary"></span>
       </summary>
@@ -704,6 +701,7 @@ async function createOrderFromEditor(silent) {
     status: _popupVal('po-status') || 'quote',
     markup: parseFloat(_popupVal('po-markup')) || 0,
     tax: parseFloat(_popupVal('po-tax')) || 0,
+    discount: parseFloat(_popupVal('po-discount')) || 0,
     order_number: _popupVal('po-order-number') || null,
     due: 'TBD',
   };
@@ -738,6 +736,7 @@ async function saveOrderEditor() {
   const order_number = _popupVal('po-order-number') || null;
   const markup = parseFloat(_popupVal('po-markup')) || 0;
   const tax = parseFloat(_popupVal('po-tax')) || 0;
+  const discount = parseFloat(_popupVal('po-discount')) || 0;
   const priority = parseFloat(_popupVal('po-priority')) || 0;
   const autoEl = /** @type {HTMLInputElement|null} */ (document.getElementById('po-auto-schedule'));
   const auto_schedule = autoEl ? autoEl.checked : true;
@@ -755,7 +754,7 @@ async function saveOrderEditor() {
     ? (parseFloat(_popupVal('po-hours-allocated')) || 0)
     : null;
   /** @type {any} */
-  const update = { status, order_number, markup, tax, priority, auto_schedule, manual_start_date: manual_start, manual_end_date: manual_end, run_over_hours, hours_allocated, updated_at: new Date().toISOString() };
+  const update = { status, order_number, markup, tax, discount, priority, auto_schedule, manual_start_date: manual_start, manual_end_date: manual_end, run_over_hours, hours_allocated, updated_at: new Date().toISOString() };
   if (dueISO) update.due = new Date(dueISO + 'T12:00:00').toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' });
   if (startISO) update.production_start_date = startISO;
   Object.assign(o, update);
@@ -785,6 +784,7 @@ async function saveOrderEditor() {
       unit_price: row.unit_price ?? null,
       labour_hours: row.labour_hours ?? null,
       schedule_hours: row.schedule_hours ?? null,
+      discount: row.discount ?? 0,
     };
     writes.push(/** @type {any} */ (_db('order_lines').update(u).eq('id', row.id)));
   }
@@ -792,7 +792,12 @@ async function saveOrderEditor() {
   // Refresh totals if helper exists
   if (typeof orderTotalsFromLines === 'function') {
     const t = await orderTotalsFromLines(id);
-    if (t) /** @type {any} */ (o).value = Math.round((t.materials + t.labour) * (1 + (markup||0)/100) * (1 + (tax||0)/100));
+    if (t) {
+      const subPostLine = (t.materials + t.labour);
+      const afterMarkup = subPostLine * (1 + (markup||0)/100);
+      const afterTax = afterMarkup * (1 + (tax||0)/100);
+      /** @type {any} */ (o).value = Math.round(afterTax * (1 - (discount||0)/100));
+    }
   }
   _opState.dirty = false;
   _oBadge();
