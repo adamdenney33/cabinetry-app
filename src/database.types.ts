@@ -377,36 +377,46 @@ export type Database = {
       }
       cutlists: {
         Row: {
+          cabinet_id: number | null
           created_at: string
           id: number
           name: string
           position: number
-          project_id: number
+          project_id: number | null
           ui_prefs: Json
           updated_at: string
           user_id: string
         }
         Insert: {
+          cabinet_id?: number | null
           created_at?: string
           id?: number
           name: string
           position?: number
-          project_id: number
+          project_id?: number | null
           ui_prefs?: Json
           updated_at?: string
           user_id: string
         }
         Update: {
+          cabinet_id?: number | null
           created_at?: string
           id?: number
           name?: string
           position?: number
-          project_id?: number
+          project_id?: number | null
           ui_prefs?: Json
           updated_at?: string
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "cutlists_cabinet_id_fkey"
+            columns: ["cabinet_id"]
+            isOneToOne: false
+            referencedRelation: "cabinets"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "cutlists_project_id_fkey"
             columns: ["project_id"]
@@ -426,7 +436,7 @@ export type Database = {
           length_m: number
           name: string
           position: number
-          project_id: number
+          project_id: number | null
           thickness_mm: number
           user_id: string
           width_mm: number
@@ -440,7 +450,7 @@ export type Database = {
           length_m?: number
           name?: string
           position?: number
-          project_id: number
+          project_id?: number | null
           thickness_mm?: number
           user_id: string
           width_mm?: number
@@ -454,7 +464,7 @@ export type Database = {
           length_m?: number
           name?: string
           position?: number
-          project_id?: number
+          project_id?: number | null
           thickness_mm?: number
           user_id?: string
           width_mm?: number
@@ -756,7 +766,7 @@ export type Database = {
           material: string | null
           notes: string | null
           position: number
-          project_id: number
+          project_id: number | null
           qty: number
           user_id: string
           w_mm: number
@@ -773,7 +783,7 @@ export type Database = {
           material?: string | null
           notes?: string | null
           position?: number
-          project_id: number
+          project_id?: number | null
           qty?: number
           user_id: string
           w_mm: number
@@ -790,7 +800,7 @@ export type Database = {
           material?: string | null
           notes?: string | null
           position?: number
-          project_id?: number
+          project_id?: number | null
           qty?: number
           user_id?: string
           w_mm?: number
@@ -1098,7 +1108,7 @@ export type Database = {
           kerf_mm: number
           name: string
           position: number
-          project_id: number
+          project_id: number | null
           qty: number
           user_id: string
           w_mm: number
@@ -1114,7 +1124,7 @@ export type Database = {
           kerf_mm?: number
           name?: string
           position?: number
-          project_id: number
+          project_id?: number | null
           qty?: number
           user_id: string
           w_mm: number
@@ -1130,7 +1140,7 @@ export type Database = {
           kerf_mm?: number
           name?: string
           position?: number
-          project_id?: number
+          project_id?: number | null
           qty?: number
           user_id?: string
           w_mm?: number
@@ -1398,6 +1408,12 @@ export type CompositeTypes<
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
     ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never
+
+export const Relationships = {
+  public: {
+    Relationships: {},
+  },
+} as const
 
 export const Constants = {
   public: {

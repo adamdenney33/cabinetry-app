@@ -57,6 +57,9 @@ class _DBBuilder {
   delete()           { const b = this._clone(); b._method = 'delete'; return /** @type {any} */ (b); }
   /** @param {keyof _Tables[K]['Row']} col @param {any} val @returns {_DBBuilder<K, Single>} */
   eq(col, val)       { const b = this._clone(); b._where[/** @type {string} */ (col)] = `eq.${val}`; return /** @type {any} */ (b); }
+  /** PostgREST `is` operator (e.g. `is.null`, `is.not.null`).
+   *  @param {keyof _Tables[K]['Row']} col @param {any} val @returns {_DBBuilder<K, Single>} */
+  is(col, val)       { const b = this._clone(); b._where[/** @type {string} */ (col)] = `is.${val}`; return /** @type {any} */ (b); }
   /** @param {keyof _Tables[K]['Row']} col @param {any[]} vals @returns {_DBBuilder<K, Single>} */
   in(col, vals)      { const b = this._clone(); b._where[/** @type {string} */ (col)] = `in.(${vals.map(v => String(v)).join(',')})`; return /** @type {any} */ (b); }
   /** @param {keyof _Tables[K]['Row']} col @returns {_DBBuilder<K, Single>} */

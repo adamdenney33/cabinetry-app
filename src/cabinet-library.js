@@ -103,11 +103,13 @@ function cbImportLibrary() {
 
 function cbSaveToLibrary() {
   const line = cbScratchpad;
-  if (!line || !line.name) { _toast('Name the cabinet first', 'error'); return; }
+  if (!line) { _toast('Open a cabinet first', 'error'); return; }
   if (!_enforceFreeLimit('cabinet_templates', cbLibrary.length)) return;
   const copy = JSON.parse(JSON.stringify(line));
   copy.id = Date.now();
-  copy._libName = copy.name || copy.type || 'Cabinet';
+  const libName = copy.name || copy.type || (typeof _cbNextCabinetName === 'function' ? _cbNextCabinetName(true) : 'Cabinet');
+  copy._libName = libName;
+  copy.name = libName;
   cbLibrary.push(copy);
   if (typeof switchCBMainView === 'function') switchCBMainView('library');
   renderCBLibraryView();
@@ -122,8 +124,11 @@ function cbLoadFromLibrary(idx) {
   const copy = JSON.parse(JSON.stringify(src));
   copy.id = cbNextId++;
   delete copy._libName;
+  if (typeof _cbNextCabinetName === 'function' && !copy.name) copy.name = _cbNextCabinetName(false);
+  cbLines.push(copy);
+  cbEditingLineIdx = cbLines.length - 1;
   cbScratchpad = copy;
-  cbEditingLineIdx = -1;
+  saveCBLines();
   renderCBPanel();
   switchCBMainView('results');
   _toast(`"${src._libName}" loaded to editor`, 'success');
@@ -136,6 +141,7 @@ function cbAddFromLibrary(idx) {
   const copy = JSON.parse(JSON.stringify(src));
   copy.id = cbNextId++;
   delete copy._libName;
+  if (typeof _cbNextCabinetName === 'function' && !copy.name) copy.name = _cbNextCabinetName(false);
   cbLines.push(copy);
   saveCBLines();
   renderCBPanel();
@@ -149,7 +155,7 @@ function cbRemoveFromLibrary(idx) {
   cbLibrary.splice(idx, 1);
   if (cbEditingLibraryIdx === idx) {
     cbEditingLibraryIdx = -1;
-    cbScratchpad = cbDefaultLine();
+    cbScratchpad = null;
     renderCBPanel();
   } else {
     if (cbEditingLibraryIdx > idx) cbEditingLibraryIdx--;
@@ -158,45 +164,64 @@ function cbRemoveFromLibrary(idx) {
   if (removed?.db_id) _deleteCabinetFromDB(removed.db_id);
 }
 
-/** Click-to-edit handler for library cards. Loads the entry into the
- *  sidebar editor in library-edit mode (cbEditingLibraryIdx tracks the
- *  target). The right pane stays on the library tab so the user keeps
- *  context on neighbouring templates.
+/** Click-to-edit handler for library cards. Points the editor at the live
+ *  cbLibrary[idx] entry — edits autosave to cabinet_templates via the
+ *  _cbScheduleAutosave routing.
  *  @param {number} idx */
 function cbEditLibraryEntry(idx) {
   const src = cbLibrary[idx];
   if (!src) return;
-  const copy = JSON.parse(JSON.stringify(src));
-  copy.id = cbNextId++;
-  cbScratchpad = copy;
+  cbScratchpad = src; // reference, NOT a copy
   cbEditingLineIdx = -1;
   cbEditingLibraryIdx = idx;
   renderCBPanel();
   _scrollCBEditorIntoView();
 }
 
-/** Save scratchpad back to the library entry being edited (and DB). */
-async function cbSaveLibraryChanges() {
-  if (cbEditingLibraryIdx < 0) return;
-  const idx = cbEditingLibraryIdx;
-  const target = cbLibrary[idx];
-  if (!target) { _toast('Library entry not found', 'error'); cbEditingLibraryIdx = -1; renderCBPanel(); return; }
-  const updated = JSON.parse(JSON.stringify(cbScratchpad));
-  updated._libName = cbScratchpad._libName || target._libName || updated.name || 'Cabinet';
-  if (target.db_id) updated.db_id = target.db_id;
-  cbLibrary[idx] = updated;
+/** Exit library-edit mode. Clears the active library reference and returns
+ *  the editor to a fresh blank scratchpad. */
+function _cbExitLibraryEdit() {
   cbEditingLibraryIdx = -1;
-  cbScratchpad = cbDefaultLine();
+  cbScratchpad = null;
   renderCBPanel();
-  if (updated.db_id) await _updateCabinetInDB(updated.db_id, updated);
-  _toast(`"${updated._libName}" updated`, 'success');
+  if (typeof switchCBMainView === 'function') switchCBMainView('library');
 }
+/** @type {any} */ (window)._cbExitLibraryEdit = _cbExitLibraryEdit;
 
-function cbCancelLibraryEdit() {
-  cbEditingLibraryIdx = -1;
-  cbScratchpad = cbDefaultLine();
-  renderCBPanel();
+/** Create a blank library cut list linked to this library cabinet, then
+ *  switch to the Cut List Library tab. The cabinet must be persisted so we
+ *  have a db_id to link against — if not, save it first. (Item 7.)
+ *  @param {number} libIdx */
+async function _cbAddCutListForLibrary(libIdx) {
+  if (!_userId) { _toast('Sign in to link cut lists', 'error'); return; }
+  const cab = cbLibrary[libIdx];
+  if (!cab) return;
+  if (!cab.db_id) {
+    try {
+      const newId = await _saveCabinetToDB(cab);
+      if (newId) cab.db_id = newId;
+    } catch (e) { /* tolerate */ }
+  }
+  if (!cab.db_id) { _toast('Save the cabinet first', 'error'); return; }
+  const name = (typeof _clNextCutlistName === 'function') ? await _clNextCutlistName(null) : 'Cutlist 1';
+  try {
+    const { data, error } = await _db('cutlists').insert(/** @type {any} */ ({
+      user_id: _userId,
+      project_id: null,
+      cabinet_id: cab.db_id,
+      name,
+      position: 0,
+      ui_prefs: {}
+    })).select().single();
+    if (error || !data) { _toast('Could not create cut list', 'error'); return; }
+    _toast(`"${name}" created and linked to "${cab._libName || cab.name || 'cabinet'}"`, 'success');
+    if (typeof switchSection === 'function') switchSection('cutlist');
+    if (typeof switchCLMainView === 'function') switchCLMainView('library');
+  } catch (e) {
+    _toast('Could not create cut list', 'error');
+  }
 }
+/** @type {any} */ (window)._cbAddCutListForLibrary = _cbAddCutListForLibrary;
 
 /** @param {number} idx */
 function cbDuplicateLibraryEntry(idx) {
@@ -215,7 +240,11 @@ function cbDuplicateLibraryEntry(idx) {
 
 /** @param {HTMLInputElement} input */
 function _cbCabinetSearchInput(input) {
-  if (cbScratchpad) cbScratchpad.name = input.value.trim();
+  if (cbScratchpad) {
+    cbScratchpad.name = input.value.trim();
+    if (cbEditingLibraryIdx >= 0) cbScratchpad._libName = cbScratchpad.name;
+    if (typeof _cbScheduleAutosave === 'function') _cbScheduleAutosave();
+  }
   _smartCBLibrarySuggest(input, 'cb-cabinet-suggest');
 }
 

@@ -157,6 +157,23 @@ const CB_PRESETS = {
   'Custom':         { w:600, h:720, d:560, doors:0, drawers:0, shelves:0 },
 };
 
+// ── Auto-name helper ──
+/** Compute the next sequential "Cabinet N" name for the active scope.
+ *  @param {boolean} [libraryMode] true = scan cbLibrary; false = scan cbLines.
+ *  @returns {string} */
+function _cbNextCabinetName(libraryMode) {
+  /** @type {any[]} */
+  const scope = libraryMode ? (typeof cbLibrary !== 'undefined' ? cbLibrary : []) : cbLines;
+  let max = 0;
+  for (const c of scope) {
+    const n = libraryMode ? (c._libName || c.name || '') : (c.name || '');
+    const m = String(n).match(/(\d+)/);
+    if (m) max = Math.max(max, parseInt(m[1], 10));
+  }
+  return 'Cabinet ' + (max + 1);
+}
+/** @type {any} */ (window)._cbNextCabinetName = _cbNextCabinetName;
+
 // ── Default Line Item ──
 /** @param {string} [type] */
 function cbDefaultLine(type) {
@@ -465,23 +482,32 @@ async function _loadCBLinesFromDB() {
   }
 }
 
-// ── Scratchpad + CRUD ──
-// The "+" button resets the scratchpad to a fresh cabinet in the sidebar editor.
-// Cabinets only enter the project (viewer) when "Add to Project" is pressed.
+// ── CRUD ──
+// The "+" button creates a new cabinet directly in cbLines (live row, no
+// scratchpad staging) and points the editor at it. Edits autosave via the
+// 800 ms debounced sync in saveCBLines().
 function addCBLine() {
-  cbScratchpad = cbDefaultLine();
-  cbEditingLineIdx = -1;
-  cbOpenSections.add(cbScratchpad.id + '-cab');
-  renderCBEditor();
+  const fresh = cbDefaultLine();
+  fresh.name = _cbNextCabinetName(false);
+  cbLines.push(fresh);
+  cbEditingLineIdx = cbLines.length - 1;
+  cbScratchpad = fresh; // reference into cbLines, NOT a copy
+  cbOpenSections.add(fresh.id + '-cab');
+  saveCBLines();
+  renderCBPanel();
   _scrollCBEditorIntoView();
   if (typeof switchCBMainView === 'function') switchCBMainView('results');
 }
 /** @param {string} type */
 function addCBLineFromPreset(type) {
-  cbScratchpad = cbDefaultLine(type);
-  cbEditingLineIdx = -1;
-  cbOpenSections.add(cbScratchpad.id + '-cab');
-  renderCBEditor();
+  const fresh = cbDefaultLine(type);
+  fresh.name = _cbNextCabinetName(false);
+  cbLines.push(fresh);
+  cbEditingLineIdx = cbLines.length - 1;
+  cbScratchpad = fresh;
+  cbOpenSections.add(fresh.id + '-cab');
+  saveCBLines();
+  renderCBPanel();
   _scrollCBEditorIntoView();
   if (typeof switchCBMainView === 'function') switchCBMainView('results');
 }
@@ -493,40 +519,8 @@ function _scrollCBEditorIntoView() {
   if (sidebar) sidebar.scrollTop = el.offsetTop - sidebar.offsetTop;
 }
 
-// Commit scratchpad to project (Add to Project / Save Changes)
-async function cbCommitToProject() {
-  if (!cbScratchpad) return;
-  if (!await _ensureCBProject()) return;
-
-  if (cbEditingLineIdx >= 0 && cbLines[cbEditingLineIdx]) {
-    // Save changes to existing line
-    cbLines[cbEditingLineIdx] = JSON.parse(JSON.stringify(cbScratchpad));
-    cbEditingLineIdx = -1;
-    cbScratchpad = cbDefaultLine();
-    saveCBLines();
-    if (typeof switchCBMainView === 'function') switchCBMainView('results');
-    renderCBPanel();
-    _toast('Cabinet updated', 'success');
-  } else {
-    // Add new cabinet to project
-    const copy = JSON.parse(JSON.stringify(cbScratchpad));
-    copy.id = cbNextId++;
-    cbLines.push(copy);
-    cbEditingLineIdx = -1;
-    cbScratchpad = cbDefaultLine();
-    saveCBLines();
-    if (typeof switchCBMainView === 'function') switchCBMainView('results');
-    renderCBPanel();
-    _toast('Cabinet added to project', 'success');
-  }
-}
-
-function cbCancelEdit() {
-  cbEditingLineIdx = -1;
-  cbScratchpad = cbDefaultLine();
-  renderCBEditor();
-  renderCBResults();
-}
+// (cbCommitToProject / cbCancelEdit removed — autosave makes them obsolete.
+// Edits flow live to cbLines[cbEditingLineIdx] via cbUpdateField.)
 
 /** @param {number} idx @param {number} dir */
 function cbStepLineQty(idx, dir) {
@@ -547,6 +541,27 @@ function cbSetLineQty(idx, val) {
   saveCBLines();
   renderCBPanel();
 }
+
+/** Wrapped delete-by-index used from cabinet card buttons. Resets the
+ *  active editor reference if the deleted row was the one being edited.
+ *  @param {number} idx */
+function _cbConfirmDeleteLine(idx) {
+  _confirm('Delete this cabinet?', () => {
+    if (idx < 0 || idx >= cbLines.length) return;
+    cbLines.splice(idx, 1);
+    if (cbEditingLineIdx === idx) {
+      cbEditingLineIdx = -1;
+      cbScratchpad = null;
+    } else if (cbEditingLineIdx > idx) {
+      cbEditingLineIdx--;
+      cbScratchpad = cbLines[cbEditingLineIdx] || null;
+    }
+    saveCBLines();
+    renderCBPanel();
+    _toast('Cabinet deleted', 'success');
+  });
+}
+/** @type {any} */ (window)._cbConfirmDeleteLine = _cbConfirmDeleteLine;
 
 /** @param {number} id */
 function removeCBLine(id) {
@@ -574,7 +589,9 @@ function moveCBLine(id, dir) {
   saveCBLines(); renderCBPanel();
 }
 
-// ── Field updates (scratchpad only — no DB sync) ──
+// ── Field updates ──
+// cbScratchpad references the active live row (cbLines[i] or cbLibrary[i]).
+// Mutations flow straight to that row; autosave fires via _cbScheduleAutosave.
 /** @param {string} field @param {number} dir */
 function cbStepField(field, dir) {
   if (!cbScratchpad) return;
@@ -584,6 +601,7 @@ function cbStepField(field, dir) {
   // Steppers can change door/drawer/shelf counts which restructure the editor body
   renderCBEditor();
   renderCBResults();
+  _cbScheduleAutosave();
 }
 
 /** @param {string} field @param {any} val */
@@ -600,7 +618,35 @@ function cbUpdateField(field, val) {
   renderCBResults();
   // Re-render editor only when the change restructures the body
   if (['doors','drawers','construction','baseType','finish'].includes(field)) renderCBEditor();
+  _cbScheduleAutosave();
 }
+
+/** Route autosave to either the project sync (cbLines) or the library DB
+ *  (cabinet_templates), depending on whether the active line is a library
+ *  entry or a project row. */
+function _cbScheduleAutosave() {
+  if (cbEditingLibraryIdx >= 0 && cbScratchpad) {
+    // Library editing: debounced write to cabinet_templates row.
+    const target = /** @type {any} */ (cbScratchpad);
+    if (_cbLibSaveTimer) clearTimeout(_cbLibSaveTimer);
+    _cbLibSaveTimer = setTimeout(() => {
+      _cbLibSaveTimer = null;
+      // Keep _libName in sync with name when the user edits the search input.
+      if (target.name && !target._libName) target._libName = target.name;
+      if (target.db_id && typeof _updateCabinetInDB === 'function') {
+        /** @type {any} */ (window)._updateCabinetInDB(target.db_id, target);
+      } else if (typeof _saveCabinetToDB === 'function') {
+        /** @type {any} */ (window)._saveCabinetToDB(target).then((/** @type {any} */ id) => { if (id) target.db_id = id; });
+      }
+    }, 800);
+    return;
+  }
+  // Project editing: existing dirty-flag path triggers _scheduleCBLinesSync.
+  if (typeof saveCBLines === 'function') saveCBLines();
+}
+
+/** @type {ReturnType<typeof setTimeout> | null} */
+let _cbLibSaveTimer = null;
 
 // Clamp doorPct + drawerPct ≤ 100. Updates the OTHER pct to preserve the constraint
 // without surprising the user (just trims headroom on the partner section).
@@ -615,6 +661,7 @@ function cbUpdatePct(field, val) {
   _refreshCBLiveCosts();
   renderCBResults();
   renderCBEditor();
+  _cbScheduleAutosave();
 }
 
 // ── Hardware CRUD on scratchpad ──
@@ -639,7 +686,7 @@ function updateCBHw(lineId, idx, field, val, scope) {
   if (!list[idx]) return;
   if (field === 'qty') list[idx].qty = parseInt(val) || 1;
   else list[idx].name = val;
-  if (cbEditingLineIdx >= 0) saveCBLines();
+  _cbScheduleAutosave();
   renderCBEditor(); renderCBResults();
 }
 /** @param {number} lineId @param {number} idx @param {string} [scope] */
@@ -648,7 +695,7 @@ function removeCBHw(lineId, idx, scope) {
   if (!line) return;
   const list = _hwList(line, scope || 'cabinet');
   list.splice(idx, 1);
-  if (cbEditingLineIdx >= 0) saveCBLines();
+  _cbScheduleAutosave();
   renderCBEditor(); renderCBResults();
 }
 
@@ -660,6 +707,7 @@ function cbAddExtra(lineId) {
   if (!line.extras) line.extras = [];
   line.extras.push({label:'',cost:0});
   renderCBEditor();
+  _cbScheduleAutosave();
 }
 /** @param {number} lineId @param {number} idx @param {string} field @param {any} val */
 function cbUpdateExtra(lineId, idx, field, val) {
@@ -668,6 +716,7 @@ function cbUpdateExtra(lineId, idx, field, val) {
   if (field==='cost') line.extras[idx].cost = parseFloat(val)||0;
   else line.extras[idx].label = val;
   renderCBResults();
+  _cbScheduleAutosave();
 }
 /** @param {number} lineId @param {number} idx */
 function cbRemoveExtra(lineId, idx) {
@@ -906,7 +955,7 @@ async function editQuoteInCB(quoteId) {
   if (projName) localStorage.setItem('pc_cq_project_name', projName);
 
   cbEditingLineIdx = -1;
-  cbScratchpad = cbDefaultLine();
+  cbScratchpad = null;
   switchSection('cabinet');
   renderCBPanel();
   _toast('Editing quote - changes save automatically', 'info');
@@ -958,7 +1007,7 @@ async function editOrderInCB(orderId) {
   if (projName) localStorage.setItem('pc_cq_project_name', projName);
 
   cbEditingLineIdx = -1;
-  cbScratchpad = cbDefaultLine();
+  cbScratchpad = null;
   switchSection('cabinet');
   renderCBPanel();
   _toast('Editing order — cabinets save automatically', 'info');
@@ -1125,6 +1174,9 @@ function _renderCbCurrentProject() {
   _cbRenderContext();
 }
 
+// SVG icon for the Cabinet Library project-style header (item 8).
+const _CB_LIBRARY_ICON = '<svg class="ph-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M2 10h20"/><path d="M6 6V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v2"/></svg>';
+
 /**
  * Strategy 2: render either the project-empty state or the Idea-3 project
  * header into #cb-context, and toggle the tabs (Builder / My Rates) which
@@ -1136,8 +1188,20 @@ function _cbRenderContext() {
   const sb = _byId('cb-sidebar');
   if (!ctx) return;
   if (!_cbCurrentProjectId) {
+    // Library editing works without a project — when the user is mid-edit,
+    // surface a project-style header reading "Cabinet Library" with the
+    // cabinet icon (item 8). The sidebar editor stays open.
+    const editingLib = (typeof cbEditingLibraryIdx !== 'undefined' && cbEditingLibraryIdx >= 0);
     if (tabsWrap) tabsWrap.style.display = 'none';
-    if (sb) sb.style.display = 'none';
+    if (sb) sb.style.display = editingLib ? '' : 'none';
+    if (editingLib) {
+      ctx.innerHTML = _renderProjectHeader('cabinet', {
+        name: 'Cabinet Library',
+        exitFn: '_cbExitLibraryEdit',
+        iconSvg: _CB_LIBRARY_ICON,
+      });
+      return;
+    }
     const recents = (typeof projects !== 'undefined' ? projects : [])
       .slice()
       .sort(/** @param {any} a @param {any} b */ (a, b) => {
@@ -1158,18 +1222,9 @@ function _cbRenderContext() {
   }
   if (tabsWrap) tabsWrap.style.display = '';
   if (sb) sb.style.display = '';
-  const proj = (typeof projects !== 'undefined' ? projects : []).find(/** @param {any} p */ p => p.id === _cbCurrentProjectId);
-  const clientName = proj && proj.client_id
-    ? ((typeof clients !== 'undefined' ? clients : []).find(/** @param {any} c */ c => c.id === proj.client_id) || /** @type {any} */ ({})).name
-    : '';
-  const cabCount = (typeof cbLines !== 'undefined' ? cbLines.length : 0);
-  const summary = cabCount === 1 ? '1 cabinet' : `${cabCount} cabinets`;
   ctx.innerHTML = _renderProjectHeader('cabinet', {
     name: _cbCurrentProjectName,
     exitFn: '_exitProject_cabinet',
-    status: proj && proj.status ? String(proj.status) : 'Active',
-    summary,
-    clientName: clientName || undefined,
   });
   // If we entered with dirty=true, surface the pill state immediately.
   if (typeof _setSaveStatus === 'function') {
@@ -1183,7 +1238,7 @@ function _exitProject_cabinet() {
     _cbSuppressDirty = true;
     cbLines = [];
     cbNextId = 1;
-    cbScratchpad = cbDefaultLine();
+    cbScratchpad = null;
     cbEditingLineIdx = -1;
     cbEditingQuoteId = null;
     cbEditingOriginalLines = null;
@@ -1214,7 +1269,7 @@ function _cbNewProject() {
     _cbSuppressDirty = true;
     cbLines = [];
     cbNextId = 1;
-    cbScratchpad = cbDefaultLine();
+    cbScratchpad = null;
     cbEditingLineIdx = -1;
     cbEditingQuoteId = null;
     cbEditingOriginalLines = null;
@@ -1315,7 +1370,7 @@ async function _loadCBProjectById(projectId, projectName) {
   localStorage.removeItem('pc_cb_editing_quote_id');
   cbLines = [];
   cbNextId = 1;
-  cbScratchpad = cbDefaultLine();
+  cbScratchpad = null;
   cbEditingLineIdx = -1;
 
   const draft = quotes.find(q => q.project_id === projectId && _isDraftQuote(q));
@@ -1352,4 +1407,6 @@ async function _loadCBProjectById(projectId, projectName) {
 loadCBSettings();
 loadCBLines();
 loadStockLibraries();
-cbScratchpad = cbDefaultLine();
+// Editor starts empty — clicking "+" pushes a fresh row to cbLines and points
+// the scratchpad at it.
+cbScratchpad = null;

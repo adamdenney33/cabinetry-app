@@ -22,6 +22,24 @@ Companion docs: `SPEC.md` (refactor history), `SCHEMA.md` (DB schema),
 
 ## Active Work
 
+### Cutlists & Cabinets library-pattern refresh ✅ Done 2026-05-10
+
+Eight-point overhaul of the Cutlist + Cabinet flows around a shared smart-library pattern. Plan at `~/.claude/plans/in-cutlists-and-cabinets-cheeky-glade.md`. SPEC.md § 13 entry covers the full scope. Highlights:
+
+- **Auto-named entries** — `Cutlist N` / `Cabinet N` sequential per project (or per library). New `_clNextCutlistName(projectId)` + `_cbNextCabinetName(libraryMode)` helpers.
+- **Scratchpad dropped + autosave** — Cabinet editor now mutates the active live row directly (no staged copy). 800 ms debounced sync via `_cbScheduleAutosave()` routes to project (`saveCBLines`) or library (`_updateCabinetInDB`/`_saveCabinetToDB`) automatically. `cbCommitToProject` / `cbCancelEdit` / `cbSaveLibraryChanges` / `cbCancelLibraryEdit` deleted along with their UI buttons. Cutlist autosave wired into `_setClDirty(true)`.
+- **Header cleanup** — `_renderProjectHeader` strips the status-badge / parts-summary / save-pill metaRow plus the client line. New optional `iconSvg` param.
+- **Cutlist tab-2 renamed `Project`** — single-project filter only; `View all projects` view, `+ New cut list` button, and viewer header all removed. `_clViewAllCutlists` / `_clNewCutlistFromHere` deleted.
+- **Cut List Library tab (cutlist tab-3)** — replaces the old Cabinet Library shortcut. Backed by `cutlists` rows where `project_id IS NULL`. Per-row actions: Open / Link to Cabinet / Duplicate / Delete. New `Add to Library` button under Optimize. `+ Cut List` button on each Cabinet Library row creates a blank linked cutlist (FK only, no parts copy).
+- **Import/Export** moved from cutlist sidebar to the Project viewer toolbar (mirroring cabinet builder).
+- **Library editing headers** — `Cabinet Library` (cabinet icon) and `Cut List Library` (multi-pointed star icon) render as project-style headers when editing a library entry.
+
+**Schema** — 2 migrations: `cutlists_library_support` (`cutlists.project_id` nullable + new `cabinet_id` FK with index) and `cutlist_children_project_nullable` (drop NOT NULL on `pieces.project_id` / `sheets.project_id` / `edge_bands.project_id`). RLS already keyed on `user_id` so library cutlists with NULL `project_id` work without policy changes. `database.types.ts` regenerated.
+
+**Verified** in dev preview: tab labels correct, project header reduced to back+icon+name, autosave persists library cabinet edits to DB end-to-end, library headers render with the right icons, all old Save / Add / Cancel buttons gone from the cabinet sidebar except `Save to Library`.
+
+---
+
 ### Orders / Quotes sidebar redesign 🚧 In Progress 2026-05-09
 
 Eight-point overhaul of the order + quote editor sidebars: line-item inputs got proper labels, schedule became a single collapsible block driven by Production Start + a hours-allocated override, totals moved above the schedule, status/order# repetition removed from the project header. Detail in `~/.claude/plans/orders-quotes-sidebar-1-line-glimmering-kay.md`.

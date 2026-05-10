@@ -251,7 +251,9 @@ function _renderCBAuthGate() {
 /** @param {number} idx */
 function cbSelectLine(idx) {
   cbEditingLineIdx = idx;
-  cbScratchpad = JSON.parse(JSON.stringify(cbLines[idx]));
+  // Reference the live row, not a copy — edits flow straight to cbLines[idx]
+  // and the 800 ms debounced sync persists them.
+  cbScratchpad = cbLines[idx];
   renderCBEditor();
 }
 
@@ -339,10 +341,6 @@ function renderCBEditor() {
 
   // Per-section cost breakdown (material + labour + section-specific hardware)
   const sec = calcCBSections(line);
-
-  const isEditing = cbEditingLineIdx >= 0;
-  const btnLabel = isEditing ? 'Save Changes' : 'Add to Project';
-  const btnAction = 'cbCommitToProject()';
 
   el.innerHTML = `
     <div style="border-top:1px solid var(--border);padding-top:10px;margin-top:6px">
@@ -502,16 +500,13 @@ function renderCBEditor() {
         </div>
       </div>
 
-      <!-- Sidebar Actions -->
+      <!-- Sidebar Actions: Save to Library is the only verb left.
+           All edits autosave; Add/Save/Cancel/Save-Library-Changes were
+           removed when the scratchpad model was dropped. -->
+      ${cbEditingLibraryIdx >= 0 ? '' : `
       <div style="padding-top:8px;display:flex;gap:6px;flex-wrap:wrap">
-        ${cbEditingLibraryIdx >= 0
-          ? `<button class="btn btn-primary" onclick="cbSaveLibraryChanges()" style="flex:1;font-size:13px;padding:10px 12px">Save Library Changes</button>
-             <button class="btn btn-outline" onclick="cbCancelLibraryEdit()" style="font-size:12px;padding:10px 12px">Cancel</button>`
-          : `<button class="btn btn-primary" onclick="${btnAction}" style="flex:1;font-size:13px;padding:10px 12px">${btnLabel}</button>
-             ${isEditing ? `<button class="btn btn-outline" onclick="cbCancelEdit()" style="font-size:12px;padding:10px 12px">Cancel</button>` : ''}
-             <button class="btn btn-outline" onclick="cbSaveToLibrary()" style="font-size:12px;padding:10px 12px">Save to Library</button>`
-        }
-      </div>
+        <button class="btn btn-outline" onclick="cbSaveToLibrary()" style="flex:1;font-size:12px;padding:10px 12px">Save to Library</button>
+      </div>`}
 
     </div>
     <datalist id="cb-room-list">${['Kitchen','Bathroom','Bedroom','Living Room','Laundry','Garage','Office','Pantry'].map(r=>'<option value="'+r+'">').join('')}</datalist>
@@ -648,7 +643,7 @@ function renderCBResults() {
           <button class="cl-step-btn" style="padding:0 6px" onclick="event.stopPropagation();cbStepLineQty(${idx},1)" title="Increase quantity">+</button>
         </div>
         <button class="btn btn-outline" style="font-size:11px;padding:4px 10px;width:auto" onclick="event.stopPropagation();_duplicateCabinet(${idx})" title="Duplicate cabinet">Duplicate</button>
-        <button class="btn btn-outline" style="font-size:11px;padding:4px 10px;width:auto;color:var(--danger)" onclick="event.stopPropagation();_confirm('Delete this cabinet?',()=>{cbLines.splice(${idx},1);saveCBLines();renderCBPanel();_toast('Cabinet deleted','success')})" title="Delete cabinet">Delete</button>
+        <button class="btn btn-outline" style="font-size:11px;padding:4px 10px;width:auto;color:var(--danger)" onclick="event.stopPropagation();_cbConfirmDeleteLine(${idx})" title="Delete cabinet">Delete</button>
       </div>
     </div>`;
   });
@@ -739,7 +734,8 @@ function _renderLibraryCards(items) {
         </div>
         <div style="font-size:14px;font-weight:800;color:var(--accent);flex-shrink:0;white-space:nowrap">${fmt0(calc.lineSubtotal)}</div>
       </div>
-      <div style="display:flex;gap:6px;padding:0 12px 10px;justify-content:flex-end">
+      <div style="display:flex;gap:6px;padding:0 12px 10px;justify-content:flex-end;flex-wrap:wrap">
+        <button class="btn btn-outline" onclick="event.stopPropagation();_cbAddCutListForLibrary(${idx})" style="font-size:11px;padding:5px 10px;width:auto">+ Cut List</button>
         <button class="btn btn-outline" onclick="event.stopPropagation();cbAddFromLibrary(${idx})" style="font-size:11px;padding:5px 10px;width:auto">+ Project</button>
         <button class="btn btn-outline" onclick="event.stopPropagation();cbDuplicateLibraryEntry(${idx})" style="font-size:11px;padding:5px 10px;width:auto">Duplicate</button>
         <button class="btn btn-outline" onclick="event.stopPropagation();_confirm('Delete this template?',()=>cbRemoveFromLibrary(${idx}))" style="font-size:11px;padding:5px 10px;width:auto;color:var(--danger)">Delete</button>

@@ -172,29 +172,33 @@ function _setSaveStatus(domain, state, opts) {
 
 /**
  * Render the Idea-3 project header.
- * @param {string} domain  matches `data-save-pill` slot ('cabinet'|'cutlist'|'quote'|'order')
- * @param {{ name: string, exitFn: string, status?: string, summary?: string, clientName?: string }} opts
+ * @param {string} _domain  retained for back-compat (was the data-save-pill slot)
+ * @param {{ name: string, exitFn: string, status?: string, summary?: string, clientName?: string, iconSvg?: string }} opts
  */
-function _renderProjectHeader(domain, opts) {
-  const { name, exitFn, status, summary, clientName } = opts;
-  const statusBadge = status ? `<span class="ph-badge-active">${_escHtml(status)}</span>` : '';
-  const summarySpan = summary ? `<span class="ph-meta">${_escHtml(summary)}</span>` : '';
-  const metaRow = (statusBadge || summarySpan)
-    ? `<div class="ph-meta-row">${statusBadge}${summarySpan}<span class="cl-unsaved-pill" data-save-pill="${domain}" style="display:none"></span></div>`
-    : '';
-  const clientLine = clientName ? `<div class="ph-client">Client: <b>${_escHtml(clientName)}</b></div>` : '';
+function _renderProjectHeader(_domain, opts) {
+  const { name, exitFn, iconSvg } = opts;
+  const defaultIcon = '<svg class="ph-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>';
   return `<div class="project-header">
     <div class="ph-row1">
-      <button class="ph-back" onclick="${exitFn}()" title="Back to projects" aria-label="Back to projects">
+      <button class="ph-back" onclick="${exitFn}()" title="Back" aria-label="Back">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
       </button>
-      <svg class="ph-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
+      ${iconSvg || defaultIcon}
       <span class="ph-title">${_escHtml(name)}</span>
     </div>
-    ${metaRow}
-    ${clientLine}
   </div>`;
 }
+
+// Type icons used inside .pe-ri-icon badges in gated-sidebar Recent lists.
+// Same SVG paths as the gate hero icons (folder / person / box) — kept here
+// so all callers point at one source of truth. CSS sizes them to 14×14 inside
+// the 22×22 accent-tinted square; stroke colour is inherited via currentColor.
+const _TYPE_ICON_PROJECT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>';
+const _TYPE_ICON_CLIENT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>';
+const _TYPE_ICON_STOCK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>';
+/** @type {any} */ (window)._TYPE_ICON_PROJECT = _TYPE_ICON_PROJECT;
+/** @type {any} */ (window)._TYPE_ICON_CLIENT = _TYPE_ICON_CLIENT;
+/** @type {any} */ (window)._TYPE_ICON_STOCK = _TYPE_ICON_STOCK;
 
 /**
  * Render the "no project open" empty state — smart-input project picker + recent-projects list.
@@ -205,7 +209,7 @@ function _renderProjectHeader(domain, opts) {
  *   pickerInputId: string,
  *   pickerSuggestId: string,
  *   pickerSuggestFn: string,
- *   recentProjects: Array<{id: number, name: string, updated_at?: string|null}>,
+ *   recentProjects: Array<{id: number, name: string, client_id?: number|null, updated_at?: string|null}>,
  *   iconSvg?: string,
  *   newPopupTargetId?: string,
  *   pickerPlaceholder?: string,
@@ -221,12 +225,15 @@ function _renderProjectEmpty(opts) {
     ? `<div class="pe-recent-list">
         <div class="pe-recent-label">Recent</div>
         ${recents.map(p => {
-          const initial = (p.name || '?').trim().charAt(0).toUpperCase() || '?';
           const date = p.updated_at ? new Date(p.updated_at).toLocaleDateString() : '';
           const escName = _escHtml(p.name).replace(/'/g, '&#39;');
+          const cName = (typeof clients !== 'undefined' && p.client_id)
+            ? (/** @type {any} */ (clients.find(/** @param {any} c */ c => c.id === p.client_id)) || {}).name || ''
+            : '';
+          const display = cName ? `${p.name} - ${cName}` : p.name;
           return `<div class="pe-recent-item" onclick="${pickFnName}(${p.id},'${escName}')">
-            <span class="pe-ri-icon">${_escHtml(initial)}</span>
-            <span>${_escHtml(p.name)}</span>
+            <span class="pe-ri-icon">${_TYPE_ICON_PROJECT}</span>
+            <span>${_escHtml(display)}</span>
             <span class="pe-ri-meta">${_escHtml(date)}</span>
           </div>`;
         }).join('')}
@@ -257,6 +264,11 @@ function _renderProjectEmpty(opts) {
  * Render a simple list-empty gated entry — icon + title + subtitle + primary
  * button, plus an optional Recent list. Used by Stock / Projects / Clients
  * sidebars when there's no active edit.
+ *
+ * `itemIconSvg` controls what's rendered inside each Recent row's badge. If
+ * provided (e.g. `_TYPE_ICON_PROJECT`), the SVG is shown; otherwise we fall
+ * back to a single-letter initial so legacy callers keep working.
+ *
  * @param {{
  *   iconSvg: string,
  *   title: string,
@@ -265,18 +277,21 @@ function _renderProjectEmpty(opts) {
  *   btnOnclick: string,
  *   recentItems?: Array<{ id: number, name: string, meta?: string, onClick: string }>,
  *   recentLabel?: string,
+ *   itemIconSvg?: string,
  * }} opts
  */
 function _renderListEmpty(opts) {
-  const { iconSvg, title, subtitle, btnLabel, btnOnclick, recentItems, recentLabel } = opts;
+  const { iconSvg, title, subtitle, btnLabel, btnOnclick, recentItems, recentLabel, itemIconSvg } = opts;
   const recents = (recentItems || []).slice(0, 5);
   const recentHTML = recents.length
     ? `<div class="pe-recent-list">
         <div class="pe-recent-label">${_escHtml(recentLabel || 'Recent')}</div>
         ${recents.map(r => {
-          const initial = (r.name || '?').trim().charAt(0).toUpperCase() || '?';
+          const badge = itemIconSvg
+            ? itemIconSvg
+            : _escHtml((r.name || '?').trim().charAt(0).toUpperCase() || '?');
           return `<div class="pe-recent-item" onclick="${r.onClick}">
-            <span class="pe-ri-icon">${_escHtml(initial)}</span>
+            <span class="pe-ri-icon">${badge}</span>
             <span>${_escHtml(r.name)}</span>
             ${r.meta ? `<span class="pe-ri-meta">${_escHtml(r.meta)}</span>` : ''}
           </div>`;
@@ -305,4 +320,60 @@ function _normalizeUrl(u) {
   if (s.startsWith('//')) return 'https:' + s;
   return 'https://' + s;
 }
+
+// ══════════════════════════════════════════
+// SIDEBAR RESIZE — shared draggable boundary
+// ══════════════════════════════════════════
+// Wires every `[data-sidebar-resize]` handle in the DOM. Each handle resizes
+// its previous sibling (the sidebar), clamps the width to [data-min, data-max],
+// and persists to localStorage under `procab.sidebar.<key>`. Idempotent.
+//
+// Markup contract (per panel):
+//   <div class="sidebar">…</div>
+//   <div class="resize-handle"
+//        data-sidebar-resize="<key>"
+//        data-min="260"
+//        data-max="520"></div>
+//   <div class="main-content">…</div>
+function _initSidebarResize() {
+  document.querySelectorAll('[data-sidebar-resize]').forEach(/** @param {Element} h */ h => {
+    const handle = /** @type {HTMLElement} */ (h);
+    if (handle.dataset.sidebarResizeWired) return;
+    handle.dataset.sidebarResizeWired = '1';
+    const sidebar = /** @type {HTMLElement | null} */ (handle.previousElementSibling);
+    if (!sidebar) return;
+    const minW = Number(handle.dataset.min) || 200;
+    const maxW = Number(handle.dataset.max) || 720;
+    const key  = handle.dataset.sidebarResize ? `procab.sidebar.${handle.dataset.sidebarResize}` : '';
+    if (key) {
+      const saved = Number(localStorage.getItem(key));
+      if (saved >= minW && saved <= maxW) sidebar.style.width = saved + 'px';
+    }
+    let dragging = false;
+    /** @type {number} */ let startX = 0;
+    /** @type {number} */ let startW = 0;
+    handle.addEventListener('pointerdown', /** @param {PointerEvent} e */ e => {
+      dragging = true; startX = e.clientX; startW = sidebar.offsetWidth;
+      handle.classList.add('dragging');
+      handle.setPointerCapture(e.pointerId);
+      document.body.style.userSelect = 'none';
+      e.preventDefault();
+    });
+    handle.addEventListener('pointermove', /** @param {PointerEvent} e */ e => {
+      if (!dragging) return;
+      sidebar.style.width = Math.max(minW, Math.min(maxW, startW + e.clientX - startX)) + 'px';
+    });
+    const end = () => {
+      if (!dragging) return;
+      dragging = false;
+      handle.classList.remove('dragging');
+      document.body.style.userSelect = '';
+      if (key) localStorage.setItem(key, String(Math.max(minW, Math.min(maxW, sidebar.offsetWidth))));
+    };
+    handle.addEventListener('pointerup', end);
+    handle.addEventListener('pointercancel', end);
+  });
+}
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', _initSidebarResize);
+else _initSidebarResize();
 
