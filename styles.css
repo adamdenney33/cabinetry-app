@@ -1253,7 +1253,7 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
 .li-row-stacked { display: block; padding: 8px; }
 .li-row-stacked .li-top { display: flex; align-items: center; gap: 6px; }
 .li-head { display: flex; align-items: center; gap: 6px; flex: 1 1 0; min-width: 0; }
-.li-kind { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; flex-shrink: 0; }
+.li-kind { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; flex-shrink: 0; color: var(--text2); }
 .li-kind svg { width: 16px; height: 16px; }
 .li-desc { flex: 1; font-size: 12px; color: var(--text); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .li-meta { color: var(--muted); font-weight: 600; margin-left: 4px; }
@@ -1758,7 +1758,7 @@ html.dark .proj-act.empty .proj-act-add { background: rgba(13,148,136,.12); }
   width: 14px;
   height: 14px;
   flex-shrink: 0;
-  color: var(--accent2);
+  color: var(--text2);
 }
 .editor-add-tile .tile-icon svg { width: 14px; height: 14px; }
 .editor-add-tile .tile-label {

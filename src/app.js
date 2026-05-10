@@ -167,10 +167,9 @@ function _orderLineRowHtml(row, i) {
   const total = sub.materials + sub.labour;
   const kind = row.line_kind || 'cabinet';
   const labelMap = { cabinet: 'Cabinet', item: 'Item', labour: 'Labour' };
-  const colorMap = { cabinet: 'var(--accent)', item: 'var(--text2)', labour: 'var(--accent2)' };
   const kindLabel = (/** @type {any} */ (labelMap))[kind] || kind;
   const kindIcon = (/** @type {any} */ (_LI_KIND_ICON))[kind] || '';
-  const kindBadge = `<span class="li-kind" title="${kindLabel}" style="color:${(/** @type {any} */ (colorMap))[kind] || 'var(--muted)'}">${kindIcon}</span>`;
+  const kindBadge = `<span class="li-kind" title="${kindLabel}">${kindIcon}</span>`;
   if (kind === 'cabinet') {
     const dims = [row.w_mm, row.h_mm, row.d_mm].filter(Boolean).join('×') + (row.w_mm ? 'mm' : '');
     const desc = (row.name || 'Cabinet') + (dims && dims !== 'mm' ? ' — ' + dims : '');
@@ -482,10 +481,9 @@ function _lineRowHtml(row, i) {
   const total = (sub.materials + sub.labour);
   const kind = row.line_kind || 'cabinet';
   const labelMap = { cabinet: 'Cabinet', item: 'Item', labour: 'Labour' };
-  const colorMap = { cabinet: 'var(--accent)', item: 'var(--text2)', labour: 'var(--accent2)' };
   const kindLabel = (/** @type {any} */ (labelMap))[kind] || kind;
   const kindIcon = (/** @type {any} */ (_LI_KIND_ICON))[kind] || '';
-  const kindBadge = `<span class="li-kind" title="${kindLabel}" style="color:${(/** @type {any} */ (colorMap))[kind] || 'var(--muted)'}">${kindIcon}</span>`;
+  const kindBadge = `<span class="li-kind" title="${kindLabel}">${kindIcon}</span>`;
   if (kind === 'cabinet') {
     const dims = [row.w_mm, row.h_mm, row.d_mm].filter(Boolean).join('×') + (row.w_mm ? 'mm' : '');
     const desc = (row.name || 'Cabinet') + (dims && dims !== 'mm' ? ' — ' + dims : '');
