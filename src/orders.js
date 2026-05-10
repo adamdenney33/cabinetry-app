@@ -382,15 +382,6 @@ function renderOrderEditor() {
     if (!isNaN(+parsed) && parsed < new Date()) isOverdue = true;
   }
 
-  // Cabinet/item/labour counts
-  let cabCount=0, itemCount=0, labCount=0;
-  for (const r of _opState.lines) {
-    const k = r.line_kind || 'cabinet';
-    if (k === 'cabinet') cabCount++;
-    else if (k === 'item') itemCount++;
-    else if (k === 'labour') labCount++;
-  }
-
   const auto = o ? (o.auto_schedule !== false) : true;
 
   // Header: project name + client only (status/order# live in editor-section
@@ -429,27 +420,24 @@ function renderOrderEditor() {
 
     <div class="editor-section">
       <div class="editor-section-title">Line Items</div>
+      <div id="po-lines" class="li-list"></div>
       <div class="editor-add-tiles">
         <div class="editor-add-tile" onclick="_oAddLine('cabinet')" title="Add cabinet">
           <span class="tile-icon">${_O_ICON_CABINET}</span>
           <span class="tile-label">Cabinets</span>
-          <span class="tile-count">${cabCount}</span>
           <span class="tile-add">+</span>
         </div>
         <div class="editor-add-tile" onclick="_oAddLine('item')" title="Add item">
           <span class="tile-icon">${_O_ICON_ITEM}</span>
           <span class="tile-label">Items</span>
-          <span class="tile-count">${itemCount}</span>
           <span class="tile-add">+</span>
         </div>
         <div class="editor-add-tile" onclick="_oAddLine('labour')" title="Add labour">
           <span class="tile-icon">${_O_ICON_LABOUR}</span>
           <span class="tile-label">Labour</span>
-          <span class="tile-count">${labCount}</span>
           <span class="tile-add">+</span>
         </div>
       </div>
-      <div id="po-lines" class="li-list"></div>
     </div>
 
     <div class="editor-section">

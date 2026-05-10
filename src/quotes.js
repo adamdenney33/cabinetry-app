@@ -1132,14 +1132,6 @@ function renderQuoteEditor() {
   const isExisting = !!q;
   const hasOrder = q && q.client_id && q.project_id && orders.some(o => o.client_id === q.client_id && o.project_id === q.project_id);
 
-  let cabCount=0, itemCount=0, labCount=0;
-  for (const r of _qpState.lines) {
-    const k = r.line_kind || 'cabinet';
-    if (k === 'cabinet') cabCount++;
-    else if (k === 'item') itemCount++;
-    else if (k === 'labour') labCount++;
-  }
-
   const dateStr = q ? q.date : new Date().toLocaleDateString('en-GB', { day:'numeric', month:'short' });
 
   // Header: project name + client only. Status + quote # live in the editor
@@ -1170,27 +1162,24 @@ function renderQuoteEditor() {
 
     <div class="editor-section">
       <div class="editor-section-title">Line Items</div>
+      <div id="pq-lines" class="li-list"></div>
       <div class="editor-add-tiles">
         <div class="editor-add-tile" onclick="_qAddLine('cabinet')" title="Add cabinet">
           <span class="tile-icon">${_Q_ICON_CABINET}</span>
           <span class="tile-label">Cabinets</span>
-          <span class="tile-count">${cabCount}</span>
           <span class="tile-add">+</span>
         </div>
         <div class="editor-add-tile" onclick="_qAddLine('item')" title="Add item">
           <span class="tile-icon">${_Q_ICON_ITEM}</span>
           <span class="tile-label">Items</span>
-          <span class="tile-count">${itemCount}</span>
           <span class="tile-add">+</span>
         </div>
         <div class="editor-add-tile" onclick="_qAddLine('labour')" title="Add labour">
           <span class="tile-icon">${_Q_ICON_LABOUR}</span>
           <span class="tile-label">Labour</span>
-          <span class="tile-count">${labCount}</span>
           <span class="tile-add">+</span>
         </div>
       </div>
-      <div id="pq-lines" class="li-list"></div>
     </div>
 
     <div class="editor-section">

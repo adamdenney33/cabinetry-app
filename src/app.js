@@ -138,6 +138,15 @@ function _openOrderPopup(id) {
   if (typeof loadOrderIntoSidebar === 'function') loadOrderIntoSidebar(id);
 }
 
+// SVG icons for the line-item kind badge. Identical to the tile icons in
+// orders.js / quotes.js — kept here as a separate map because app.js is the
+// only file that renders the rows themselves.
+const _LI_KIND_ICON = {
+  cabinet: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="12" y1="3" x2="12" y2="12"/></svg>',
+  item:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>',
+  labour:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>',
+};
+
 function _renderOrderLines() {
   const host = document.getElementById('po-lines');
   if (!host) return;
@@ -159,7 +168,9 @@ function _orderLineRowHtml(row, i) {
   const kind = row.line_kind || 'cabinet';
   const labelMap = { cabinet: 'Cabinet', item: 'Item', labour: 'Labour' };
   const colorMap = { cabinet: 'var(--accent)', item: 'var(--text2)', labour: 'var(--accent2)' };
-  const kindBadge = `<span class="li-kind" style="color:${(/** @type {any} */ (colorMap))[kind] || 'var(--muted)'}">${(/** @type {any} */ (labelMap))[kind] || kind}</span>`;
+  const kindLabel = (/** @type {any} */ (labelMap))[kind] || kind;
+  const kindIcon = (/** @type {any} */ (_LI_KIND_ICON))[kind] || '';
+  const kindBadge = `<span class="li-kind" title="${kindLabel}" style="color:${(/** @type {any} */ (colorMap))[kind] || 'var(--muted)'}">${kindIcon}</span>`;
   if (kind === 'cabinet') {
     const dims = [row.w_mm, row.h_mm, row.d_mm].filter(Boolean).join('×') + (row.w_mm ? 'mm' : '');
     const desc = (row.name || 'Cabinet') + (dims && dims !== 'mm' ? ' — ' + dims : '');
@@ -472,7 +483,9 @@ function _lineRowHtml(row, i) {
   const kind = row.line_kind || 'cabinet';
   const labelMap = { cabinet: 'Cabinet', item: 'Item', labour: 'Labour' };
   const colorMap = { cabinet: 'var(--accent)', item: 'var(--text2)', labour: 'var(--accent2)' };
-  const kindBadge = `<span class="li-kind" style="color:${(/** @type {any} */ (colorMap))[kind] || 'var(--muted)'}">${(/** @type {any} */ (labelMap))[kind] || kind}</span>`;
+  const kindLabel = (/** @type {any} */ (labelMap))[kind] || kind;
+  const kindIcon = (/** @type {any} */ (_LI_KIND_ICON))[kind] || '';
+  const kindBadge = `<span class="li-kind" title="${kindLabel}" style="color:${(/** @type {any} */ (colorMap))[kind] || 'var(--muted)'}">${kindIcon}</span>`;
   if (kind === 'cabinet') {
     const dims = [row.w_mm, row.h_mm, row.d_mm].filter(Boolean).join('×') + (row.w_mm ? 'mm' : '');
     const desc = (row.name || 'Cabinet') + (dims && dims !== 'mm' ? ' — ' + dims : '');

@@ -1253,7 +1253,8 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
 .li-row-stacked { display: block; padding: 8px; }
 .li-row-stacked .li-top { display: flex; align-items: center; gap: 6px; }
 .li-head { display: flex; align-items: center; gap: 6px; flex: 1 1 0; min-width: 0; }
-.li-kind { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; min-width: 44px; flex-shrink: 0; }
+.li-kind { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; flex-shrink: 0; }
+.li-kind svg { width: 16px; height: 16px; }
 .li-desc { flex: 1; font-size: 12px; color: var(--text); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .li-meta { color: var(--muted); font-weight: 600; margin-left: 4px; }
 /* Specificity bump: the base `input[type="text"], input[type="number"], …`
@@ -1266,7 +1267,7 @@ input.li-qty:focus, input.li-price:focus, input.li-hrs:focus { outline: none; bo
 .li-action { width: 24px; height: 24px; padding: 0; border: 1px solid transparent; background: transparent; border-radius: 4px; color: var(--muted); cursor: pointer; font-size: 12px; flex-shrink: 0; }
 .li-action:hover { border-color: var(--border); color: var(--text); background: var(--surface); }
 /* Stacked-row labelled fields (item / labour). Cabinet rows skip this. */
-.li-fields { display: flex; gap: 8px; margin-top: 6px; padding-left: 50px; }
+.li-fields { display: flex; gap: 8px; margin-top: 6px; padding-left: 24px; }
 .li-field { display: flex; flex-direction: column; gap: 2px; flex: 1 1 0; min-width: 0; cursor: text; }
 .li-field-label { font-size: 9px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
 input.li-num { width: 100%; font-size: 12px; padding: 4px 6px; border: 1px solid var(--border); border-radius: 4px; background: var(--surface); color: var(--text); font-variant-numeric: tabular-nums; text-align: right; font-family: inherit; }
@@ -1734,7 +1735,7 @@ html.dark .proj-act.empty .proj-act-add { background: rgba(13,148,136,.12); }
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 6px;
-  margin-bottom: 10px;
+  margin-top: 8px;
 }
 .editor-add-tile {
   display: flex;
