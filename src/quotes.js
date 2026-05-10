@@ -339,7 +339,6 @@ function renderQuoteMain() {
   const fmt = v => cur + v.toLocaleString('en-US', {minimumFractionDigits:0, maximumFractionDigits:0});
   // Hide CB drafts — they're Cabinet Builder workspace state, not customer quotes.
   const customerQuotes = quotes.filter(q => !_isDraftQuote(q));
-  const totalValue = customerQuotes.reduce((s,q) => s + quoteTotal(q), 0);
   const approved = customerQuotes.filter(q => q.status === 'approved').length;
   const sent = customerQuotes.filter(q => q.status === 'sent').length;
   const draft = customerQuotes.filter(q => q.status === 'draft').length;
@@ -446,11 +445,6 @@ function renderQuoteMain() {
   </div>`;
 
   el.innerHTML = `<div style="max-width:800px;margin:0 auto">
-    <div class="stats-grid">
-      <div class="stat-card accent"><div class="stat-label">Total Quotes</div><div class="stat-value">${customerQuotes.length}</div><div class="stat-sub">${draft} draft · ${sent} sent</div></div>
-      <div class="stat-card success"><div class="stat-label">Approved</div><div class="stat-value">${approved}</div><div class="stat-sub">ready to start</div></div>
-      <div class="stat-card warn"><div class="stat-label">Pipeline Value</div><div class="stat-value">${fmt(totalValue)}</div><div class="stat-sub">total quoted</div></div>
-    </div>
     ${customerQuotes.length === 0 ? emptyState : filterBar + `<div class="quote-list">${filteredQ.map(qCard).join('')}${filteredQ.length === 0 ? '<div class="empty-state" style="padding:40px 0"><p style="color:var(--muted)">No quotes match this filter.</p></div>' : ''}</div>`}
   </div>`;
 }

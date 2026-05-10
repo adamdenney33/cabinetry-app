@@ -475,26 +475,6 @@ textarea { resize: vertical; min-height: 70px; }
 .data-table tr:last-child td { border-bottom: none; }
 .data-table tr:hover td { background: var(--surface2); }
 
-/* ── CARDS & STATS ── */
-.stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px; margin-bottom: 14px; }
-.stat-card {
-  background: var(--surface);
-  border-radius: var(--radius);
-  border: 1px solid var(--border);
-  padding: 8px 10px;
-  box-shadow: var(--shadow);
-  transition: box-shadow 0.15s, transform 0.15s;
-}
-.stat-card[onclick]:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
-.stat-card[style*="cursor:pointer"]:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
-.stat-card.accent { border-top: 2px solid var(--accent); }
-.stat-card.success { border-top: 2px solid var(--success); }
-.stat-card.warn { border-top: 2px solid var(--warn); }
-.stat-card.danger { border-top: 2px solid var(--danger); }
-.stat-label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: var(--muted); }
-.stat-value { font-size: 18px; font-weight: 800; color: var(--text); margin: 2px 0 1px; line-height: 1; }
-.stat-sub { font-size: 10px; color: var(--muted); }
-
 .card {
   background: var(--surface);
   border-radius: var(--radius);
@@ -1169,7 +1149,7 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
   /* Hide everything by default */
   header, .nav-tabs, .tab-bar, .cl-left, .inner-tabs, .sheet-tabs, .layout-toolbar,
   .sidebar, nav, button, .form-section, #toast-container, .resize-handle,
-  .stats-grid, .order-filter-tabs, .stock-cat-filter-bar,
+  .order-filter-tabs, .stock-cat-filter-bar,
   .section-panel { display: none !important; }
   /* Only show the active cut-list right panel */
   .section-panel#panel-cutlist { display: block !important; width: 100% !important; }

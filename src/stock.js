@@ -772,9 +772,6 @@ function renderStockMain() {
   const cur = window.currency;
   const el = _byId('stock-main');
   if (!el) return;
-  const totalSheets = stockItems.reduce((s, i) => s + (i.qty ?? 0), 0);
-  const totalValue = stockItems.reduce((s, i) => s + (i.qty ?? 0) * (i.cost ?? 0), 0);
-  const lowItems = stockItems.filter(i => (i.qty ?? 0) <= (i.low ?? 0)).length;
   const activeCat = window._stockCatFilter || 'All';
   const q = (window._stockSearch || '').toLowerCase();
 
@@ -905,13 +902,6 @@ function renderStockMain() {
   const allCatPills = ['All', ...usedCats, ...(stockItems.some(i => !_scGet(i.id)) ? ['Uncategorised'] : [])];
 
   el.innerHTML = `<div>
-    <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:nowrap">
-      <div class="stat-card accent" style="flex:1;padding:10px 14px"><div class="stat-label">Materials</div><div class="stat-value">${stockItems.length}</div></div>
-      <div class="stat-card success" style="flex:1;padding:10px 14px"><div class="stat-label">In Stock</div><div class="stat-value">${totalSheets}</div></div>
-      <div class="stat-card ${lowItems ? 'danger' : 'success'}" style="flex:1;padding:10px 14px"><div class="stat-label">Low Stock</div><div class="stat-value">${lowItems}</div></div>
-      <div class="stat-card warn" style="flex:1;padding:10px 14px"><div class="stat-label">Value</div><div class="stat-value">${cur}${totalValue.toLocaleString('en-US',{maximumFractionDigits:0})}</div></div>
-    </div>
-
     ${stockItems.length === 0 ? `<div class="empty-state">
       <div class="empty-icon" style="opacity:.18"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg></div>
       <h3>No stock items yet</h3><p>Add your first material using the form on the left.</p></div>` : `

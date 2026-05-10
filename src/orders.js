@@ -131,8 +131,6 @@ function renderOrdersMain() {
   const fmt = v => cur + v.toLocaleString('en-US', {minimumFractionDigits:0, maximumFractionDigits:0});
   const active = orders.filter(o => o.status !== 'complete');
   const complete = orders.filter(o => o.status === 'complete');
-  const totalRevenue = complete.reduce((s,o) => s+(o.value ?? 0), 0);
-  const pipeline = active.reduce((s,o) => s+(o.value ?? 0), 0);
 
   /** @type {string[]} */
   const pipelineSteps = ['quote','confirmed','production','delivery','complete'];
@@ -221,12 +219,6 @@ function renderOrdersMain() {
   </div>`;
 
   el.innerHTML = `<div style="max-width:800px;margin:0 auto">
-    <div class="stats-grid">
-      <div class="stat-card accent"><div class="stat-label">Active Orders</div><div class="stat-value">${active.length}</div><div class="stat-sub">in progress</div></div>
-      <div class="stat-card success"><div class="stat-label">Completed</div><div class="stat-value">${complete.length}</div><div class="stat-sub">this period</div></div>
-      <div class="stat-card warn"><div class="stat-label">Pipeline</div><div class="stat-value">${fmt(pipeline)}</div><div class="stat-sub">active order value</div></div>
-      <div class="stat-card success"><div class="stat-label">Revenue</div><div class="stat-value">${fmt(totalRevenue)}</div><div class="stat-sub">completed orders</div></div>
-    </div>
     ${orders.length === 0 ? emptyState : filterTabs + `<div class="orders-list">${filtered.map(orderCard).join('')}</div>`}
   </div>`;
 }
