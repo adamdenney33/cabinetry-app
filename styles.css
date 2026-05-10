@@ -992,7 +992,7 @@ tr:hover .cl-drag-handle { color: var(--muted); }
   color: var(--muted); transition: all 0.15s; padding: 0; vertical-align: middle;
 }
 .cl-grain-btn.active { color: var(--accent); }
-.cl-grain-btn:hover { background: var(--surface2); }
+.cl-grain-btn:hover { color: var(--accent); }
 
 /* Toggle enable button */
 /* Visual-only colored dot in column 2. Has no own onclick, so clicks bubble up
