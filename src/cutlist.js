@@ -384,7 +384,7 @@ function _ebIcon(p) {
   /** @param {number} x1 @param {number} y1 @param {number} x2 @param {number} y2 @param {string | null} col */
   const seg = (x1,y1,x2,y2,col) => col
     ? `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${col}" stroke-width="2.5" stroke-linecap="round"/>`
-    : `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-dasharray="2 2" opacity="0.55"/>`;
+    : `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-dasharray="2 2"/>`;
   return `<svg width="16" height="12" viewBox="0 0 16 12" fill="none">
     ${seg(1,1,15,1,c('L1'))}${seg(15,1,15,11,c('W2'))}${seg(15,11,1,11,c('L3'))}${seg(1,11,1,1,c('W4'))}
   </svg>`;
