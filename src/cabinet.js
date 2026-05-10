@@ -728,6 +728,11 @@ function cbRemoveExtra(lineId, idx) {
 
 // ── Quote Creation & Editing ──
 
+// Picker icons mirror the top nav-tab SVGs (kept in sync with index.html).
+const _PICKER_ICON_QUOTE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>';
+const _PICKER_ICON_ORDER = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/></svg>';
+const _PICKER_ICON_CABINET = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>';
+
 /** Entry point for the "Send to Quote" button. If existing customer-facing
  *  quotes exist for the current project, prompts the user to pick one (or
  *  create a new quote). If none exist, creates a new quote directly. */
@@ -745,39 +750,22 @@ function cbSendToQuote() {
 
   if (existing.length === 0) { cbCreateQuoteFromDraft(); return; }
 
-  const rows = existing.map(q => `
-    <div onclick="cbSendCabinetsToExistingQuote(${q.id})"
-         style="padding:10px 12px;border:1px solid var(--border);border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:10px"
-         onmouseover="this.style.background='var(--accent-dim)';this.style.borderColor='var(--accent)'"
-         onmouseout="this.style.background='';this.style.borderColor='var(--border)'">
-      <div style="flex:1">
-        <div style="font-weight:600">${_escHtml(quoteClient(q) || 'No client')}</div>
-        <div style="font-size:11px;color:var(--muted)">${_escHtml(q.status || 'draft')} · ${_escHtml(q.date || '')}</div>
-      </div>
-      <div style="font-size:18px;color:var(--muted)">→</div>
-    </div>
-  `).join('');
+  const items = existing.map(q => ({
+    title: quoteClient(q) || 'No client',
+    icon: _PICKER_ICON_QUOTE,
+    metaPills: [{ label: q.status || 'draft', tone: q.status || 'draft' }],
+    metaText: q.date ? '· ' + q.date : '',
+    onPick: `cbSendCabinetsToExistingQuote(${q.id})`,
+  }));
 
-  const html = `
-    <div class="popup-header">
-      <div class="popup-title">Send to Quote</div>
-      <div class="popup-close" onclick="_closePopup()">×</div>
-    </div>
-    <div class="popup-body">
-      <div style="font-size:12px;color:var(--muted);margin-bottom:10px">
-        ${existing.length} existing quote${existing.length===1?'':'s'} for "${_escHtml(projName)}". Choose one to update, or create a new quote.
-      </div>
-      <div style="display:flex;flex-direction:column;gap:6px">${rows}</div>
-      <div onclick="_closePopup();cbCreateQuoteFromDraft()"
-           style="margin-top:10px;padding:10px 12px;border:2px dashed var(--accent);border-radius:6px;cursor:pointer;text-align:center;color:var(--accent);font-weight:600">
-        + Create New Quote
-      </div>
-    </div>
-    <div class="popup-footer">
-      <button class="btn btn-outline" onclick="_closePopup()">Cancel</button>
-    </div>
-  `;
-  _openPopup(html, 'sm');
+  _openPickerPopup({
+    title: 'Send to Quote',
+    hint: `${existing.length} existing quote${existing.length===1?'':'s'} for &ldquo;${_escHtml(projName)}&rdquo;. Choose one to update, or create a new quote.`,
+    items,
+    createLabel: '+ Create New Quote',
+    onCreate: '_closePopup();cbCreateQuoteFromDraft()',
+    size: 'md',
+  });
 }
 
 /** @param {number} quoteId */
@@ -847,39 +835,25 @@ function cbSendToOrder() {
 
   if (existing.length === 0) { cbCreateOrderFromDraft(); return; }
 
-  const rows = existing.map(o => `
-    <div onclick="cbSendCabinetsToExistingOrder(${o.id})"
-         style="padding:10px 12px;border:1px solid var(--border);border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:10px"
-         onmouseover="this.style.background='var(--accent-dim)';this.style.borderColor='var(--accent)'"
-         onmouseout="this.style.background='';this.style.borderColor='var(--border)'">
-      <div style="flex:1">
-        <div style="font-weight:600">${o.order_number ? '#' + _escHtml(String(o.order_number)) + ' · ' : ''}${_escHtml(orderClient(o) || 'No client')}</div>
-        <div style="font-size:11px;color:var(--muted)">${_escHtml(o.status || 'quote')} · due ${_escHtml(o.due || 'TBD')}</div>
-      </div>
-      <div style="font-size:18px;color:var(--muted)">→</div>
-    </div>
-  `).join('');
+  const items = existing.map(o => {
+    const num = o.order_number ? '#' + o.order_number + ' · ' : '';
+    return {
+      title: num + (orderClient(o) || 'No client'),
+      icon: _PICKER_ICON_ORDER,
+      metaPills: [{ label: o.status || 'quote', tone: o.status || 'quote' }],
+      metaText: 'due ' + (o.due || 'TBD'),
+      onPick: `cbSendCabinetsToExistingOrder(${o.id})`,
+    };
+  });
 
-  const html = `
-    <div class="popup-header">
-      <div class="popup-title">Send to Order</div>
-      <div class="popup-close" onclick="_closePopup()">×</div>
-    </div>
-    <div class="popup-body">
-      <div style="font-size:12px;color:var(--muted);margin-bottom:10px">
-        ${existing.length} existing order${existing.length===1?'':'s'} for "${_escHtml(projName)}". Choose one to update, or create a new order.
-      </div>
-      <div style="display:flex;flex-direction:column;gap:6px">${rows}</div>
-      <div onclick="_closePopup();cbCreateOrderFromDraft()"
-           style="margin-top:10px;padding:10px 12px;border:2px dashed var(--accent);border-radius:6px;cursor:pointer;text-align:center;color:var(--accent);font-weight:600">
-        + Create New Order
-      </div>
-    </div>
-    <div class="popup-footer">
-      <button class="btn btn-outline" onclick="_closePopup()">Cancel</button>
-    </div>
-  `;
-  _openPopup(html, 'sm');
+  _openPickerPopup({
+    title: 'Send to Order',
+    hint: `${existing.length} existing order${existing.length===1?'':'s'} for &ldquo;${_escHtml(projName)}&rdquo;. Choose one to update, or create a new order.`,
+    items,
+    createLabel: '+ Create New Order',
+    onCreate: '_closePopup();cbCreateOrderFromDraft()',
+    size: 'md',
+  });
 }
 
 /** @param {number} orderId */

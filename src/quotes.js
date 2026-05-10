@@ -407,7 +407,7 @@ function renderQuoteMain() {
         ${q.status === 'draft' ? `<button class="btn btn-outline" onclick="markQuoteSent(${q.id})">Mark Sent</button>` : ''}
         ${q.status === 'sent' ? `<button class="btn btn-success" onclick="approveQuote(${q.id})">Approve</button>` : ''}
         ${q.status !== 'draft' ? `<button class="btn btn-outline" onclick="revertQuoteToDraft(${q.id})" style="color:var(--muted)">↩ Draft</button>` : ''}
-        ${(() => { const hasOrder = q.client_id && q.project_id && orders.some(o => o.client_id === q.client_id && o.project_id === q.project_id); return hasOrder ? `<button class="btn btn-outline" onclick="switchSection('orders');window._orderSearch='${_escHtml(quoteProject(q))}';renderOrdersMain()" style="color:var(--success)">✓ View Order</button>` : `<button class="btn btn-outline" onclick="convertQuoteToOrder(${q.id})">→ Order</button>`; })()}
+        ${(() => { const matchingOrder = orders.find(o => o.quote_id === q.id); return matchingOrder ? `<button class="btn btn-outline" onclick="_openOrderPopup(${matchingOrder.id})" style="color:var(--success)">✓ View Order</button>` : `<button class="btn btn-outline" onclick="convertQuoteToOrder(${q.id})">→ Order</button>`; })()}
         <span style="flex:1"></span>
         <button class="btn btn-outline" onclick="printQuote(${q.id},'pdf')">PDF</button>
         <button class="btn btn-outline" onclick="duplicateQuote(${q.id})">Duplicate</button>
@@ -445,6 +445,7 @@ function renderQuoteMain() {
   </div>`;
 
   el.innerHTML = `<div style="max-width:800px;margin:0 auto">
+    ${_renderContentHeader({ iconSvg: _CH_ICON_QUOTE, title: 'Quotes' })}
     ${customerQuotes.length === 0 ? emptyState : filterBar + `<div class="quote-list">${filteredQ.map(qCard).join('')}${filteredQ.length === 0 ? '<div class="empty-state" style="padding:40px 0"><p style="color:var(--muted)">No quotes match this filter.</p></div>' : ''}</div>`}
   </div>`;
 }
@@ -1126,7 +1127,8 @@ function renderQuoteEditor() {
   const statusBadge = status === 'approved' ? 'badge-green' : status === 'sent' ? 'badge-blue' : 'badge-gray';
   const statusLabel = status === 'approved' ? 'Approved' : status === 'sent' ? 'Sent' : 'Draft';
   const isExisting = !!q;
-  const hasOrder = q && q.client_id && q.project_id && orders.some(o => o.client_id === q.client_id && o.project_id === q.project_id);
+  const matchingOrder = q ? orders.find(o => o.quote_id === q.id) : null;
+  const hasOrder = !!matchingOrder;
 
   const dateStr = q ? q.date : new Date().toLocaleDateString('en-GB', { day:'numeric', month:'short' });
 
@@ -1197,8 +1199,8 @@ function renderQuoteEditor() {
       ${isExisting ? `<button class="btn btn-outline" style="color:var(--danger)" onclick="_confirm('Delete quote?',()=>{removeQuote(${q.id});_qClearEditor()})">Delete</button>` : ''}
       <span style="flex:1"></span>
       ${isExisting ? `<button class="btn btn-outline" onclick="printQuote(${q.id},'pdf')">PDF</button>` : ''}
-      ${isExisting ? (hasOrder
-        ? `<button class="btn btn-outline" style="color:var(--success)" onclick="switchSection('orders');window._orderSearch='${_escHtml(projectName).replace(/'/g,"\\'")}';renderOrdersMain()">✓ View Order</button>`
+      ${isExisting ? (matchingOrder
+        ? `<button class="btn btn-outline" style="color:var(--success)" onclick="_openOrderPopup(${matchingOrder.id})">✓ View Order</button>`
         : `<button class="btn btn-outline" onclick="convertQuoteToOrder(${q.id})">→ Order</button>`) : ''}
       ${isExisting ? '' : `<button class="btn btn-primary" onclick="createQuoteFromEditor()">+ Create Quote</button>`}
     </div>

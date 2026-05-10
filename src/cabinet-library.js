@@ -188,41 +188,6 @@ function _cbExitLibraryEdit() {
 }
 /** @type {any} */ (window)._cbExitLibraryEdit = _cbExitLibraryEdit;
 
-/** Create a blank library cut list linked to this library cabinet, then
- *  switch to the Cut List Library tab. The cabinet must be persisted so we
- *  have a db_id to link against — if not, save it first. (Item 7.)
- *  @param {number} libIdx */
-async function _cbAddCutListForLibrary(libIdx) {
-  if (!_userId) { _toast('Sign in to link cut lists', 'error'); return; }
-  const cab = cbLibrary[libIdx];
-  if (!cab) return;
-  if (!cab.db_id) {
-    try {
-      const newId = await _saveCabinetToDB(cab);
-      if (newId) cab.db_id = newId;
-    } catch (e) { /* tolerate */ }
-  }
-  if (!cab.db_id) { _toast('Save the cabinet first', 'error'); return; }
-  const name = (typeof _clNextCutlistName === 'function') ? await _clNextCutlistName(null) : 'Cutlist 1';
-  try {
-    const { data, error } = await _db('cutlists').insert(/** @type {any} */ ({
-      user_id: _userId,
-      project_id: null,
-      cabinet_id: cab.db_id,
-      name,
-      position: 0,
-      ui_prefs: {}
-    })).select().single();
-    if (error || !data) { _toast('Could not create cut list', 'error'); return; }
-    _toast(`"${name}" created and linked to "${cab._libName || cab.name || 'cabinet'}"`, 'success');
-    if (typeof switchSection === 'function') switchSection('cutlist');
-    if (typeof switchCLMainView === 'function') switchCLMainView('library');
-  } catch (e) {
-    _toast('Could not create cut list', 'error');
-  }
-}
-/** @type {any} */ (window)._cbAddCutListForLibrary = _cbAddCutListForLibrary;
-
 /** @param {number} idx */
 function cbDuplicateLibraryEntry(idx) {
   const src = cbLibrary[idx];
@@ -719,87 +684,122 @@ function _clAddEdgeBandFromStockIdx(idx) {
 }
 
 // ── Cut List Cabinet Library ──
-/** @param {any[]} parts @param {string} mode */
-function _applyCabinetParts(parts, mode) {
-  /** @param {any} p */
-  const key = p => `${p.label}|${p.w}|${p.h}|${p.grain||'none'}`;
-  /** @param {any} src */
-  const applyExtras = (src) => {
-    const last = pieces[pieces.length - 1];
-    if (!last) return;
-    if (src.material !== undefined) last.material = src.material || '';
-    if (src.notes    !== undefined) last.notes    = src.notes    || '';
-    if (src.edgeBand !== undefined) last.edgeBand = src.edgeBand || 'none';
-  };
-  let merged = 0, added = 0;
-  if (mode === 'merge') {
-    const idx = new Map();
-    pieces.forEach(p => idx.set(key(p), p));
-    for (const c of parts) {
-      const hit = idx.get(key(c));
-      if (hit) { hit.qty = (hit.qty || 0) + c.qty; merged++; }
-      else { addPiece(c.label, c.w, c.h, c.qty, c.grain); applyExtras(c); added++; }
+
+/** Cut-list / list-of-rows icon used in the .proj-act-style "Cut List" button. */
+const _CB_CUTLIST_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>';
+/** @type {any} */ (window)._CB_CUTLIST_ICON = _CB_CUTLIST_ICON;
+
+/** Markup for the .proj-act-style "Cut List" widget on cabinet cards.
+ *  Mirrors the Cabinets/Items/Labour strip cells in quote cards.
+ *  @param {string} mainOnclick @param {string} addOnclick @param {number|string} cabid */
+function _cbCutListProjActHtml(mainOnclick, addOnclick, cabid) {
+  return `<div class="proj-act _cbct-btn empty" data-cabid="${cabid}" onclick="event.stopPropagation()">
+    <div class="proj-act-main" onclick="event.stopPropagation();${mainOnclick}" title="Open this cabinet's cut lists">
+      ${_CB_CUTLIST_ICON}
+      <span class="proj-act-label">Cut List</span>
+      <span class="proj-act-count _cbct-label">0</span>
+    </div>
+    <div class="proj-act-add" onclick="event.stopPropagation();${addOnclick}" title="New cut list">+</div>
+  </div>`;
+}
+/** @type {any} */ (window)._cbCutListProjActHtml = _cbCutListProjActHtml;
+
+/** Patches every `._cbct-btn` in the DOM with the count of library cut lists
+ *  linked to its `data-cabid` cabinet, and toggles the `.empty` class so the
+ *  pill picks up muted styling when 0. Best-effort: silent on auth or query errors. */
+async function _cbApplyCutListCounts() {
+  if (!_userId) return;
+  const buttons = /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('._cbct-btn'));
+  if (!buttons.length) return;
+  /** @type {Set<number>} */
+  const ids = new Set();
+  buttons.forEach(b => {
+    const v = parseInt(b.getAttribute('data-cabid') || '', 10);
+    if (Number.isFinite(v)) ids.add(v);
+  });
+  if (!ids.size) return;
+  /** @type {Record<number, number>} */
+  const counts = {};
+  try {
+    const { data } = await _db('cutlists')
+      .select('cabinet_id')
+      .is('project_id', null)
+      .in('cabinet_id', Array.from(ids));
+    for (const r of (data || [])) {
+      const cid = /** @type {any} */ (r).cabinet_id;
+      if (cid != null) counts[cid] = (counts[cid] || 0) + 1;
     }
-  } else {
-    for (const c of parts) { addPiece(c.label, c.w, c.h, c.qty, c.grain); applyExtras(c); added++; }
-  }
-  renderPieces();
-  return { merged, added };
+  } catch (e) { return; }
+  buttons.forEach(b => {
+    const v = parseInt(b.getAttribute('data-cabid') || '', 10);
+    const n = Number.isFinite(v) ? (counts[v] || 0) : 0;
+    const lbl = b.querySelector('._cbct-label');
+    if (lbl) lbl.textContent = String(n);
+    b.classList.toggle('empty', n === 0);
+  });
 }
+/** @type {any} */ (window)._cbApplyCutListCounts = _cbApplyCutListCounts;
 
-/** @param {any[]} parts @param {string} name */
-function _clPromptMergeOrNew(parts, name) {
-  /** @param {any} p */
-  const key = p => `${p.label}|${p.w}|${p.h}|${p.grain||'none'}`;
-  const existing = new Set(pieces.map(key));
-  const dupCount = parts.filter(/** @param {any} c */ c => existing.has(key(c))).length;
-
-  /** @param {string} mode */
-  const finish = (mode) => {
-    const r = _applyCabinetParts(parts, mode);
-    const suffix = r.merged
-      ? `${r.merged} merged, ${r.added} added`
-      : `${r.added} parts added`;
-    _toast(`"${name}" — ${suffix}`, 'success');
-  };
-
-  if (dupCount === 0) { finish('new'); return; }
-
-  _openPopup(`
-    <div class="popup-header">
-      <div class="popup-title">Identical parts already in cut list</div>
-      <button class="popup-close" onclick="_closePopup()">×</button>
-    </div>
-    <div class="popup-body">
-      <p style="margin:0 0 10px 0;line-height:1.5">
-        <strong>${dupCount}</strong> of the ${parts.length} parts in <strong>${_escHtml(name)}</strong>
-        match existing rows in your cut list (same label &amp; dimensions).
-      </p>
-      <p style="margin:0;color:var(--muted);font-size:12px;line-height:1.5">
-        Merging bumps the quantity on existing rows. Adding as new keeps them separate.
-      </p>
-    </div>
-    <div class="popup-footer">
-      <button class="btn btn-outline" id="cl-cab-cancel">Cancel</button>
-      <button class="btn btn-outline" id="cl-cab-new">Add as new</button>
-      <button class="btn btn-primary" id="cl-cab-merge">Merge quantities</button>
-    </div>
-  `, 'sm');
-  /** @type {HTMLElement} */ (_byId('cl-cab-cancel')).onclick = () => _closePopup();
-  /** @type {HTMLElement} */ (_byId('cl-cab-new')).onclick   = () => { _closePopup(); finish('new');   };
-  /** @type {HTMLElement} */ (_byId('cl-cab-merge')).onclick = () => { _closePopup(); finish('merge'); };
-}
-
-/** @param {number} libIdx */
-function _clLoadCabinetParts(libIdx) {
+/** Open this cabinet's cut-list view in the Cut List tab. Ensures the cabinet
+ *  is persisted (saves to cabinet_templates if no db_id yet) so we have an id
+ *  to link cut lists against.
+ *  @param {number} libIdx */
+async function _cbOpenCabinetCutLists(libIdx) {
   const cab = cbLibrary[libIdx];
   if (!cab) return;
-  if (cab._cutParts && cab._cutParts.length) {
-    const name = cab._libName || cab.name || 'Cabinet';
-    _clPromptMergeOrNew(cab._cutParts, name);
-    return;
+  if (!cab.db_id) {
+    if (typeof _saveCabinetToDB === 'function') {
+      try {
+        const newId = await _saveCabinetToDB(cab);
+        if (newId) cab.db_id = newId;
+      } catch (e) { /* tolerate */ }
+    }
   }
+  if (!cab.db_id) { _toast('Save the cabinet first', 'error'); return; }
   const name = cab._libName || cab.name || 'Cabinet';
-  _clPromptMergeOrNew(_cabinetPartsList(cab), name);
+  if (typeof _clOpenCabinet === 'function') _clOpenCabinet(cab.db_id, name);
 }
+/** @type {any} */ (window)._cbOpenCabinetCutLists = _cbOpenCabinetCutLists;
+
+/** "+" half of the cabinet card's Cut List widget — opens the cabinet view
+ *  AND immediately creates a new linked cut list with parts pre-populated.
+ *  @param {number} libIdx */
+async function _cbNewCutListForLibrary(libIdx) {
+  await _cbOpenCabinetCutLists(libIdx);
+  if (typeof _clNewCabinetLinkedCutlist === 'function') {
+    /** @type {any} */ (window)._clNewCabinetLinkedCutlist();
+  }
+}
+/** @type {any} */ (window)._cbNewCutListForLibrary = _cbNewCutListForLibrary;
+
+/** Open the cabinet's cut-list view from a project-line cabinet (cbLines).
+ *  Resolves the line's `db_id` (the underlying template), saving as a
+ *  template first if necessary.
+ *  @param {number} lineIdx */
+async function _cbOpenCabinetCutListsForLine(lineIdx) {
+  const line = cbLines[lineIdx];
+  if (!line) return;
+  if (!line.db_id) {
+    if (typeof _saveCabinetToDB === 'function') {
+      try {
+        const newId = await _saveCabinetToDB(line);
+        if (newId) line.db_id = newId;
+      } catch (e) { /* tolerate */ }
+    }
+  }
+  if (!line.db_id) { _toast('Save the cabinet first', 'error'); return; }
+  const name = line.name || 'Cabinet';
+  if (typeof _clOpenCabinet === 'function') _clOpenCabinet(line.db_id, name);
+}
+/** @type {any} */ (window)._cbOpenCabinetCutListsForLine = _cbOpenCabinetCutListsForLine;
+
+/** "+" half for project-line cards — open + create new linked cut list.
+ *  @param {number} lineIdx */
+async function _cbNewCutListForLine(lineIdx) {
+  await _cbOpenCabinetCutListsForLine(lineIdx);
+  if (typeof _clNewCabinetLinkedCutlist === 'function') {
+    /** @type {any} */ (window)._clNewCabinetLinkedCutlist();
+  }
+}
+/** @type {any} */ (window)._cbNewCutListForLine = _cbNewCutListForLine;
 

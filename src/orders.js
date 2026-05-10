@@ -219,6 +219,7 @@ function renderOrdersMain() {
   </div>`;
 
   el.innerHTML = `<div style="max-width:800px;margin:0 auto">
+    ${_renderContentHeader({ iconSvg: _CH_ICON_ORDER, title: 'Orders' })}
     ${orders.length === 0 ? emptyState : filterTabs + `<div class="orders-list">${filtered.map(orderCard).join('')}</div>`}
   </div>`;
 }
@@ -364,8 +365,10 @@ function renderOrderEditor() {
     </div>${i < ORDER_STATUSES.length-1 ? `<div class="pp-line ${done?'done':''}"></div>` : ''}`;
   }).join('');
 
-  // Optional from-quote chip
-  const qRef = o ? _oqGet(o.id) : null;
+  // Optional from-quote chip — prefer the DB column (order.quote_id) and fall
+  // back to the legacy localStorage map (_oqGet) for orders converted before
+  // the column was added.
+  const qRef = o ? (/** @type {any} */ (o).quote_id ?? _oqGet(o.id)) : null;
   const fromQuote = qRef ? quotes.find(q => q.id === qRef) : null;
   const quoteChip = fromQuote ? `<div class="pf" style="margin:8px 0"><label class="pf-label">From Quote</label><div class="pf-chips"><span class="pf-chip" style="border-color:rgba(37,99,235,0.3);color:#6b9bf4" onclick="switchSection('quote');window._quoteSearch='${_escHtml(quoteProject(fromQuote)).replace(/'/g,"\\'")}';renderQuoteMain()">Q-${String(fromQuote.id).padStart(4,'0')} · ${_escHtml(quoteProject(fromQuote))}</span></div></div>` : '';
 

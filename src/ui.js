@@ -101,6 +101,111 @@ function _popupVal(id) {
 }
 
 // ══════════════════════════════════════════
+// TARGET-PICKER POPUP — shared list pattern
+// ══════════════════════════════════════════
+// Used by Send to Quote, Send to Order, Link to Cabinet. Keeps row markup,
+// search behaviour, and empty-state consistent. CSS lives under .picker-* in
+// styles.css.
+
+/**
+ * @typedef {Object} PickerItem
+ * @property {string} title
+ * @property {string} onPick    Inline JS executed on row click (onmousedown).
+ * @property {string} [icon]    SVG markup or inline HTML (rendered inside .picker-item-icon).
+ * @property {string} [metaText]  Optional secondary line text (e.g. dimensions, due date).
+ * @property {Array<{label:string,tone?:string}>} [metaPills]  Status pills (.picker-item-pill).
+ * @property {string} [searchKey]  Override searchable string (defaults to title + metaText).
+ */
+
+/**
+ * Render a target-picker popup.
+ *
+ * @param {Object} cfg
+ * @param {string} cfg.title
+ * @param {string} [cfg.hint]            Muted text above the list.
+ * @param {Array<PickerItem>} cfg.items
+ * @param {string} [cfg.emptyText]       Shown inside .picker-empty when items is empty.
+ * @param {string} [cfg.createLabel]     Renders dashed "Create new" footer card.
+ * @param {string} [cfg.onCreate]        Inline JS for the create CTA (onmousedown).
+ * @param {'sm'|'md'|'lg'} [cfg.size]    Defaults to 'md'.
+ * @param {number} [cfg.searchThreshold] Show search input when items.length >= this. Default 6.
+ */
+function _openPickerPopup(cfg) {
+  const size = cfg.size || 'md';
+  const items = cfg.items || [];
+  const threshold = cfg.searchThreshold == null ? 6 : cfg.searchThreshold;
+  const showSearch = items.length >= threshold;
+
+  const rowsHtml = items.map((it, i) => {
+    const searchKey = (it.searchKey != null ? it.searchKey : `${it.title} ${it.metaText || ''}`)
+      .toLowerCase();
+    const pills = (it.metaPills || []).map(p =>
+      `<span class="picker-item-pill tone-${_escHtml(String(p.tone || 'default'))}">${_escHtml(p.label)}</span>`
+    ).join('');
+    const metaHtml = (pills || it.metaText)
+      ? `<div class="picker-item-meta">${pills}${it.metaText ? `<span>${_escHtml(it.metaText)}</span>` : ''}</div>`
+      : '';
+    const iconHtml = it.icon ? `<div class="picker-item-icon">${it.icon}</div>` : '';
+    return `<div class="picker-item" data-search="${_escHtml(searchKey)}" data-idx="${i}" onmousedown="${it.onPick}">
+      ${iconHtml}
+      <div class="picker-item-body">
+        <div class="picker-item-title">${_escHtml(it.title)}</div>
+        ${metaHtml}
+      </div>
+      <div class="picker-item-arrow">&rarr;</div>
+    </div>`;
+  }).join('');
+
+  const listOrEmpty = items.length
+    ? `<div class="picker-list" id="_picker-list">${rowsHtml}</div>`
+    : `<div class="picker-empty">${cfg.emptyText || 'Nothing here yet.'}</div>`;
+
+  const searchHtml = (showSearch && items.length)
+    ? `<input type="text" class="picker-search" id="_picker-search" placeholder="Filter…" autocomplete="off" oninput="_pickerFilter(this)">`
+    : '';
+
+  const createHtml = cfg.createLabel
+    ? `<div class="picker-create" onmousedown="${cfg.onCreate || ''}">${_escHtml(cfg.createLabel)}</div>`
+    : '';
+
+  const html = `
+    <div class="popup-header">
+      <div class="popup-title">${_escHtml(cfg.title)}</div>
+      <button class="popup-close" onclick="_closePopup()">&times;</button>
+    </div>
+    <div class="popup-body">
+      ${cfg.hint ? `<div class="picker-hint">${cfg.hint}</div>` : ''}
+      ${searchHtml}
+      ${listOrEmpty}
+      ${createHtml}
+    </div>
+    <div class="popup-footer">
+      <button class="btn btn-outline" onclick="_closePopup()">Cancel</button>
+    </div>
+  `;
+  _openPopup(html, size);
+  // Auto-focus search input when present.
+  if (showSearch) {
+    setTimeout(() => { const s = document.getElementById('_picker-search'); if (s) /** @type {HTMLInputElement} */ (s).focus(); }, 60);
+  }
+}
+/** @type {any} */ (window)._openPickerPopup = _openPickerPopup;
+
+/** Live-filter picker rows by their data-search attribute.
+ *  @param {HTMLInputElement} input */
+function _pickerFilter(input) {
+  const q = (input.value || '').toLowerCase().trim();
+  const list = document.getElementById('_picker-list');
+  if (!list) return;
+  const rows = /** @type {NodeListOf<HTMLElement>} */ (list.querySelectorAll('.picker-item'));
+  rows.forEach(r => {
+    const key = r.getAttribute('data-search') || '';
+    r.style.display = (!q || key.indexOf(q) !== -1) ? '' : 'none';
+  });
+}
+/** @type {any} */ (window)._pickerFilter = _pickerFilter;
+
+// ══════════════════════════════════════════
 // SAVE STATUS PILL — Strategy C
 // ══════════════════════════════════════════
 // Each domain (cabinet / cutlist / quote / order / business / settings) renders
@@ -188,6 +293,37 @@ function _renderProjectHeader(_domain, opts) {
     </div>
   </div>`;
 }
+
+// Content-area section header icons (20×20) — match the nav-tab SVG paths in
+// index.html so each section header echoes its top-level tab icon.
+const _CH_ICON_CABINET = '<svg class="ch-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>';
+const _CH_ICON_PROJECT = '<svg class="ch-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>';
+const _CH_ICON_CUTLIST = '<svg class="ch-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.00 1.70 L12.90 3.45 L15.94 2.48 L16.10 4.44 L19.28 4.72 L18.68 6.59 L21.52 8.06 L20.25 9.56 L22.30 12.00 L20.55 12.90 L21.52 15.94 L19.56 16.10 L19.28 19.28 L17.41 18.68 L15.94 21.52 L14.44 20.25 L12.00 22.30 L11.10 20.55 L8.06 21.52 L7.90 19.56 L4.72 19.28 L5.32 17.41 L2.48 15.94 L3.75 14.44 L1.70 12.00 L3.45 11.10 L2.48 8.06 L4.44 7.90 L4.72 4.72 L6.59 5.32 L8.06 2.48 L9.56 3.75 Z"/><circle cx="12" cy="12" r="1.5"/></svg>';
+const _CH_ICON_STOCK = '<svg class="ch-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>';
+const _CH_ICON_QUOTE = '<svg class="ch-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>';
+const _CH_ICON_ORDER = '<svg class="ch-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/></svg>';
+const _CH_ICON_CLIENT = '<svg class="ch-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>';
+/** @type {any} */ (window)._CH_ICON_CABINET = _CH_ICON_CABINET;
+/** @type {any} */ (window)._CH_ICON_PROJECT = _CH_ICON_PROJECT;
+/** @type {any} */ (window)._CH_ICON_CUTLIST = _CH_ICON_CUTLIST;
+/** @type {any} */ (window)._CH_ICON_STOCK = _CH_ICON_STOCK;
+/** @type {any} */ (window)._CH_ICON_QUOTE = _CH_ICON_QUOTE;
+/** @type {any} */ (window)._CH_ICON_ORDER = _CH_ICON_ORDER;
+/** @type {any} */ (window)._CH_ICON_CLIENT = _CH_ICON_CLIENT;
+
+/**
+ * Content-area section header: icon + bold title, optional " — client" suffix.
+ * @param {{ iconSvg: string, title: string, clientName?: string }} opts
+ * @returns {string}
+ */
+function _renderContentHeader(opts) {
+  const { iconSvg, title, clientName } = opts;
+  const clientHtml = clientName
+    ? ` <span class="ch-client">— ${_escHtml(clientName)}</span>`
+    : '';
+  return `<div class="content-header">${iconSvg}<h2 class="ch-title">${_escHtml(title)}${clientHtml}</h2></div>`;
+}
+/** @type {any} */ (window)._renderContentHeader = _renderContentHeader;
 
 // Type icons used inside .pe-ri-icon badges in gated-sidebar Recent lists.
 // Same SVG paths as the gate hero icons (folder / person / box) — kept here

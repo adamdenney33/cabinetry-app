@@ -902,6 +902,7 @@ function renderStockMain() {
   const allCatPills = ['All', ...usedCats, ...(stockItems.some(i => !_scGet(i.id)) ? ['Uncategorised'] : [])];
 
   el.innerHTML = `<div>
+    <div style="padding:16px 24px 0">${_renderContentHeader({ iconSvg: _CH_ICON_STOCK, title: 'Stock Library' })}</div>
     ${stockItems.length === 0 ? `<div class="empty-state">
       <div class="empty-icon" style="opacity:.18"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg></div>
       <h3>No stock items yet</h3><p>Add your first material using the form on the left.</p></div>` : `

@@ -61,6 +61,11 @@ let _dragTable = null;
 /** @type {number | null} */
 let _clCurrentProjectId = null;
 let _clCurrentProjectName = '';
+// Cabinet-scope tracking — set by _clOpenCabinet, cleared by _exitCabinet_cutlist.
+// Mutually exclusive with _clCurrentProjectId.
+/** @type {number | null} */
+let _clCurrentCabinetId = null;
+let _clCurrentCabinetName = '';
 /** @type {number | null} */
 let _clCurrentCutlistId = null;
 let _clCurrentCutlistName = '';
@@ -951,6 +956,7 @@ function _renderClCurrentProject() {
 
 // SVG icons for the project-style headers (item 8).
 const _CL_LIBRARY_ICON = '<svg class="ph-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 1.7 L12.9 3.45 L15.94 2.48 L16.1 4.44 L19.28 4.72 L18.68 6.59 L21.52 8.06 L20.25 9.56 L22.3 12 L20.55 12.9 L21.52 15.94 L19.56 16.1 L19.28 19.28 L17.41 18.68 L15.94 21.52 L14.44 20.25 L12 22.3 L11.1 20.55 L8.06 21.52 L7.9 19.56 L4.72 19.28 L5.32 17.41 L2.48 15.94 L3.75 14.44 L1.7 12 L3.45 11.1 L2.48 8.06 L4.44 7.9 L4.72 4.72 L6.59 5.32 L8.06 2.48 L9.56 3.75 Z"/><circle cx="12" cy="12" r="1.5"/></svg>';
+const _CL_CABINET_ICON = '<svg class="ph-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>';
 
 /** Strategy 2: render either empty state or Idea-3 header into #cl-context. */
 function _clRenderContext() {
@@ -961,6 +967,23 @@ function _clRenderContext() {
   const scroll = _byId('cl-scroll-body');
   const actionBar = _byId('cl-action-bar');
   if (!ctx) return;
+  // Cabinet-scope: a cabinet is open and we're either listing its cut lists
+  // or editing one of them. Show a cabinet-flavoured header.
+  if (_clCurrentCabinetId) {
+    if (scroll) scroll.style.display = '';
+    if (actionBar) actionBar.style.display = '';
+    ctx.innerHTML = _renderProjectHeader('cutlist', {
+      name: _clCurrentCabinetName || 'Cabinet',
+      exitFn: '_exitCabinet_cutlist',
+      iconSvg: _CL_CABINET_ICON,
+    });
+    const sInp = /** @type {HTMLInputElement|null} */ (_byId('cl-cutlist-search'));
+    if (sInp) sInp.value = _clCurrentCutlistName || '';
+    if (typeof _setSaveStatus === 'function') {
+      if (_clDirty) _setSaveStatus('cutlist', 'dirty');
+    }
+    return;
+  }
   // Library-cutlist editing (item 8): _clCurrentProjectId is null but a
   // _clCurrentCutlistId is set (loaded from Cut List Library).
   if (!_clCurrentProjectId && _clCurrentCutlistId) {
@@ -1146,8 +1169,11 @@ async function _clNextCutlistName(projectId) {
 /** @type {any} */ (window)._clNextCutlistName = _clNextCutlistName;
 
 /** "+" button handler for the smart library input. Reads the typed name from
- *  #cl-cutlist-search and starts a fresh blank cut list. Dirty-checks first. */
+ *  #cl-cutlist-search and starts a fresh blank cut list. Dirty-checks first.
+ *  In cabinet-scope, persists a new linked cut list (cabinet_id set, parts
+ *  pre-populated from the cabinet) and opens it in edit state. */
 async function _clNewCutlistFromInput() {
+  if (_clCurrentCabinetId) { return _clNewCabinetLinkedCutlist(); }
   if (!_clCurrentProjectId) { _toast('Open a project first', 'error'); return; }
   const inp = /** @type {HTMLInputElement|null} */ (_byId('cl-cutlist-search'));
   const typed = (inp && inp.value ? inp.value : '').trim();
@@ -1169,6 +1195,69 @@ async function _clNewCutlistFromInput() {
   else startNew();
 }
 /** @type {any} */ (window)._clNewCutlistFromInput = _clNewCutlistFromInput;
+
+/** Cabinet-scope branch of "+" creation. Inserts a library cut list with
+ *  cabinet_id set, copies the cabinet's cut parts into pieces rows, then
+ *  opens the new cut list in edit state. */
+async function _clNewCabinetLinkedCutlist() {
+  if (!_userId) { _toast('Sign in to create cut lists', 'error'); return; }
+  if (!_clCurrentCabinetId) return;
+  const w = /** @type {any} */ (window);
+  const lib = (typeof cbLibrary !== 'undefined' && cbLibrary) ? cbLibrary : [];
+  const cab = lib.find(/** @param {any} c */ c => c.db_id === _clCurrentCabinetId);
+  if (!cab) { _toast('Cabinet not found', 'error'); return; }
+  const parts = (cab._cutParts && cab._cutParts.length)
+    ? cab._cutParts
+    : (typeof w._cabinetPartsList === 'function' ? w._cabinetPartsList(cab) : []);
+  if (!parts || !parts.length) { _toast('Cabinet has no cut parts to copy', 'error'); return; }
+
+  const inp = /** @type {HTMLInputElement|null} */ (_byId('cl-cutlist-search'));
+  const typed = (inp && inp.value ? inp.value : '').trim();
+  const name = typed || await _clNextCutlistName(null);
+  const insertCutlist = async () => {
+    try {
+      const { data, error } = await _db('cutlists').insert(/** @type {any} */ ({
+        user_id: _userId,
+        project_id: null,
+        cabinet_id: _clCurrentCabinetId,
+        name,
+        position: 0,
+        ui_prefs: {}
+      })).select().single();
+      if (error || !data) { _toast('Could not create cut list', 'error'); return; }
+      const newId = /** @type {any} */ (data).id;
+      const rows = parts.map(/** @param {any} p @param {number} i */ (p, i) => /** @type {any} */ ({
+        user_id: _userId,
+        project_id: null,
+        cutlist_id: newId,
+        label: p.label || '',
+        w_mm: p.w,
+        h_mm: p.h,
+        qty: p.qty || 1,
+        grain: p.grain || 'none',
+        material: p.material || '',
+        notes: p.notes || '',
+        enabled: true,
+        color: COLORS[i % COLORS.length],
+        position: i,
+      }));
+      try { await _db('pieces').insert(rows); } catch (e) { /* tolerate */ }
+      _toast(`"${name}" created and linked`, 'success');
+      if (inp) inp.value = name;
+      const box = _byId('cl-cutlist-suggest'); if (box) box.style.display = 'none';
+      if (typeof w._clDoOpenLibraryCutlist === 'function') {
+        await w._clDoOpenLibraryCutlist(newId);
+      }
+      // Refresh the grid so the new card appears under the cabinet.
+      if (typeof renderCLCutListsView === 'function') renderCLCutListsView();
+    } catch (e) {
+      _toast('Could not create cut list', 'error');
+    }
+  };
+  if (_clDirty) _confirm('Discard unsaved changes and start a new cut list?', insertCutlist);
+  else insertCutlist();
+}
+/** @type {any} */ (window)._clNewCabinetLinkedCutlist = _clNewCabinetLinkedCutlist;
 
 /** Exit library-cutlist editing mode. Clears active library cutlist and
  *  returns the right pane to the Cut List Library tab. */
@@ -1210,6 +1299,59 @@ function _doExitClProject() {
   _clRenderContext();
 }
 /** @type {any} */ (window)._exitProject_cutlist = _exitProject_cutlist;
+
+/** Open the Cut List tab in cabinet-scope: lists all library cut lists with
+ *  cabinet_id == cabinetDbId. Mirrors loadProject() → switchCLMainView('cutlists').
+ *  @param {number} cabinetDbId @param {string} cabinetName */
+function _clOpenCabinet(cabinetDbId, cabinetName) {
+  if (_clDirty) {
+    _confirm('You have unsaved changes. Switch cabinets anyway?', () => _doOpenCabinet(cabinetDbId, cabinetName));
+    return;
+  }
+  _doOpenCabinet(cabinetDbId, cabinetName);
+}
+/** @param {number} cabinetDbId @param {string} cabinetName */
+function _doOpenCabinet(cabinetDbId, cabinetName) {
+  _clCurrentProjectId = null; _clCurrentProjectName = '';
+  _clCurrentCabinetId = cabinetDbId;
+  _clCurrentCabinetName = cabinetName || '';
+  _clCurrentCutlistId = null; _clCurrentCutlistName = '';
+  pieces = []; sheets = []; edgeBands = [];
+  _pieceId = 1; _sheetId = 1; _edgeBandId = 1; pieceColorIdx = 0;
+  results = null;
+  _clSelectedIds = new Set(); _clSelectionAnchorId = null;
+  _clDirty = false;
+  if (typeof switchSection === 'function') switchSection('cutlist');
+  renderPieces(); renderSheets();
+  if (typeof renderEdgeBands === 'function') { try { renderEdgeBands(); } catch(e) {} }
+  _clRenderContext();
+  if (typeof switchCLMainView === 'function') switchCLMainView('cutlists');
+}
+/** @type {any} */ (window)._clOpenCabinet = _clOpenCabinet;
+
+/** Exit cabinet-scope and return to the empty cut-list state. */
+function _exitCabinet_cutlist() {
+  if (_clDirty) {
+    _confirm('You have unsaved changes. Discard and exit?', () => _doExitCabinet());
+  } else {
+    _doExitCabinet();
+  }
+}
+function _doExitCabinet() {
+  pieces = []; sheets = []; edgeBands = []; _pieceId = 1; _sheetId = 1; _edgeBandId = 1;
+  pieceColorIdx = 0;
+  results = null;
+  _clSelectedIds = new Set(); _clSelectionAnchorId = null;
+  _clCurrentCabinetId = null;
+  _clCurrentCabinetName = '';
+  _clCurrentCutlistId = null;
+  _clCurrentCutlistName = '';
+  _clDirty = false;
+  renderPieces(); renderSheets();
+  if (typeof renderEdgeBands === 'function') { try { renderEdgeBands(); } catch(e) {} }
+  _clRenderContext();
+}
+/** @type {any} */ (window)._exitCabinet_cutlist = _exitCabinet_cutlist;
 
 // ── DRAG REORDER ──
 /** @param {DragEvent} e @param {string} table @param {number} idx */
@@ -3830,6 +3972,10 @@ function switchCLMainView(view) {
   setTab('cl-tab-layout',   view === 'layout');
   setTab('cl-tab-cutlists', view === 'cutlists');
   setTab('cl-tab-library',  view === 'library');
+  // Reflect the current scope in the middle tab label: "Cabinet" when a
+  // cabinet is open, otherwise the default "Project".
+  const cutlistsTab = _byId('cl-tab-cutlists');
+  if (cutlistsTab) cutlistsTab.textContent = _clCurrentCabinetId ? 'Cabinet' : 'Project';
   if (view === 'cutlists') renderCLCutListsView();
   else if (view === 'library') renderCLCutListLibraryView();
 }
@@ -3847,9 +3993,18 @@ function _clFormatDate(iso) {
 async function renderCLCutListsView() {
   const host = _byId('cl-view-cutlists');
   if (!host) return;
-  // Top toolbar — Import/Export mirror cabinet builder (item 6).
-  // No header — the project header above already labels this pane (item 4).
+  // Content header — cabinet icon + cabinet name when in a linked cabinet,
+  // otherwise project icon + project name (with client suffix when known).
+  let headerHtml = '';
+  if (_clCurrentCabinetId) {
+    headerHtml = _renderContentHeader({ iconSvg: _CH_ICON_CABINET, title: _clCurrentCabinetName || 'Cabinet' });
+  } else if (_clCurrentProjectId) {
+    const proj = (typeof projects !== 'undefined' ? projects : []).find(/** @param {any} p */ p => p.id === _clCurrentProjectId);
+    const cName = (proj && proj.client_id) ? (clients.find(/** @param {any} c */ c => c.id === proj.client_id)?.name || '') : '';
+    headerHtml = _renderContentHeader({ iconSvg: _CH_ICON_PROJECT, title: _clCurrentProjectName || 'Project', clientName: cName || undefined });
+  }
   host.innerHTML = `
+    ${headerHtml}
     <div style="display:flex;gap:6px;justify-content:flex-end;margin-bottom:12px">
       <button class="btn btn-outline" onclick="triggerImportCSV('pieces')" style="font-size:12px;padding:8px 12px;width:auto" title="Import parts from CSV">↑ Import</button>
       <button class="btn btn-outline" onclick="exportCSV('pieces')" style="font-size:12px;padding:8px 12px;width:auto" title="Export parts to CSV">↓ Export</button>
@@ -3862,16 +4017,24 @@ async function renderCLCutListsView() {
     /** @type {HTMLElement} */ (_byId('cl-cutlists-grid')).innerHTML = `<div style="font-size:13px;color:var(--muted);text-align:center;padding:30px">Sign in to see your saved cut lists.</div>`;
     return;
   }
-  if (!_clCurrentProjectId) {
-    /** @type {HTMLElement} */ (_byId('cl-cutlists-grid')).innerHTML = `<div style="font-size:13px;color:var(--muted);text-align:center;padding:30px;border:1px dashed var(--border);border-radius:var(--radius)">Pick a project to see its cut lists.</div>`;
+  if (!_clCurrentProjectId && !_clCurrentCabinetId) {
+    /** @type {HTMLElement} */ (_byId('cl-cutlists-grid')).innerHTML = `<div style="font-size:13px;color:var(--muted);text-align:center;padding:30px;border:1px dashed var(--border);border-radius:var(--radius)">Pick a project or open a cabinet to see its cut lists.</div>`;
     return;
   }
 
-  // Single-project filter only (item 4 — All-projects view removed).
-  const { data: rows, error } = await _db('cutlists')
-    .select('id, name, position, project_id, updated_at')
-    .eq('project_id', _clCurrentProjectId)
-    .order('updated_at', { ascending: false });
+  // Branch on scope: cabinet (project_id IS NULL + cabinet_id match) vs project.
+  const isCabinet = !!_clCurrentCabinetId;
+  const query = isCabinet
+    ? _db('cutlists')
+        .select('id, name, position, project_id, cabinet_id, updated_at')
+        .is('project_id', null)
+        .eq('cabinet_id', _clCurrentCabinetId)
+        .order('updated_at', { ascending: false })
+    : _db('cutlists')
+        .select('id, name, position, project_id, updated_at')
+        .eq('project_id', _clCurrentProjectId)
+        .order('updated_at', { ascending: false });
+  const { data: rows, error } = await query;
   if (error) {
     /** @type {HTMLElement} */ (_byId('cl-cutlists-grid')).innerHTML = `<div style="font-size:13px;color:var(--danger);text-align:center;padding:30px">Failed to load: ${_escHtml(error.message)}</div>`;
     return;
@@ -3880,9 +4043,11 @@ async function renderCLCutListsView() {
   const grid = _byId('cl-cutlists-grid');
   if (!grid) return;
   if (!list.length) {
-    grid.innerHTML = `<div style="font-size:13px;color:var(--muted);text-align:center;padding:30px;border:1px dashed var(--border);border-radius:var(--radius)">
-      No cut lists in <strong>${_escHtml(_clCurrentProjectName)}</strong> yet. Add parts in the sidebar — they autosave.
-    </div>`;
+    const scopeLabel = isCabinet ? _clCurrentCabinetName : _clCurrentProjectName;
+    const emptyMsg = isCabinet
+      ? `No cut lists linked to <strong>${_escHtml(scopeLabel)}</strong> yet. Type a name in the sidebar and click <strong>+</strong> to create one.`
+      : `No cut lists in <strong>${_escHtml(scopeLabel)}</strong> yet. Add parts in the sidebar — they autosave.`;
+    grid.innerHTML = `<div style="font-size:13px;color:var(--muted);text-align:center;padding:30px;border:1px dashed var(--border);border-radius:var(--radius)">${emptyMsg}</div>`;
     return;
   }
 
@@ -3898,6 +4063,7 @@ async function renderCLCutListsView() {
     }
   } catch (e) { /* counts stay empty */ }
 
+  const cardClickFn = isCabinet ? '_clDoOpenLibraryCutlist' : '_clLoadCutlist';
   grid.innerHTML = list.map(/** @param {any} r */ (r) => {
     const isActive = r.id === _clCurrentCutlistId;
     const partCount = counts[r.id] != null ? counts[r.id] : '–';
@@ -3905,7 +4071,7 @@ async function renderCLCutListsView() {
     return `<div style="background:var(--surface);border:1px solid ${isActive ? 'var(--accent)' : 'var(--border)'};border-radius:var(--radius);box-shadow:var(--shadow);transition:box-shadow .15s,border-color .15s;cursor:pointer"
       onmouseover="this.style.boxShadow='var(--shadow-md)';this.style.borderColor='var(--accent)'"
       onmouseout="this.style.boxShadow='var(--shadow)';this.style.borderColor='${isActive ? 'var(--accent)' : 'var(--border)'}'"
-      onclick="_clLoadCutlist(${r.id})">
+      onclick="${cardClickFn}(${r.id})">
       <div style="display:flex;align-items:flex-start;gap:8px;padding:10px 12px 6px">
         <div style="flex:1;min-width:0">
           <div style="font-size:13px;font-weight:700;color:var(--text)">${_escHtml(r.name||'(untitled)')}${isActive ? ' <span style="font-weight:500;color:var(--accent);font-size:11px">· editing</span>' : ''}</div>
@@ -3935,6 +4101,7 @@ async function renderCLCutListLibraryView() {
   const q = (filterEl && filterEl.value) ? filterEl.value.trim().toLowerCase() : '';
 
   host.innerHTML = `
+    ${_renderContentHeader({ iconSvg: _CH_ICON_CUTLIST, title: 'Cut List Library' })}
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:12px">
       <input type="text" id="cl-lib-filter" placeholder="Filter by name..." value="${_escHtml(q)}" oninput="renderCLCutListLibraryView()" style="font-size:12px;padding:6px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);width:200px;margin-left:auto">
     </div>
@@ -4107,48 +4274,43 @@ async function _clAddToCutlistLibrary() {
 /** @type {any} */ (window)._clAddToCutlistLibrary = _clAddToCutlistLibrary;
 
 /** Open a popup listing cabinet library entries; on pick, set
- *  cutlists.cabinet_id for the given cutlist row.
+ *  cutlists.cabinet_id for the given cutlist row. Only shows persisted
+ *  cabinets (db_id present) — unsaved cabinets in the in-memory library
+ *  can't be linked.
  *  @param {number} cutlistId */
 function _clLinkToCabinet(cutlistId) {
   const lib = (typeof cbLibrary !== 'undefined' && cbLibrary) ? cbLibrary : [];
-  if (!lib.length) { _toast('No cabinets in your library yet', 'error'); return; }
-  const rows = lib.map((c, idx) => {
-    const name = c._libName || c.name || `Cabinet ${idx+1}`;
-    const dims = (c.w && c.h) ? `${c.w}×${c.h}` : '';
-    const dbId = c.db_id != null ? c.db_id : 'null';
-    return `<div onclick="_clConfirmLinkToCabinet(${cutlistId},${dbId})"
-       style="padding:10px 12px;border:1px solid var(--border);border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:10px"
-       onmouseover="this.style.background='var(--accent-dim)';this.style.borderColor='var(--accent)'"
-       onmouseout="this.style.background='';this.style.borderColor='var(--border)'">
-      <div style="flex:1">
-        <div style="font-weight:600">${_escHtml(name)}</div>
-        <div style="font-size:11px;color:var(--muted)">${dims}</div>
-      </div>
-      <div style="font-size:18px;color:var(--muted)">→</div>
-    </div>`;
-  }).join('');
-  const html = `
-    <div class="popup-header">
-      <div class="popup-title">Link to Cabinet</div>
-      <div class="popup-close" onclick="_closePopup()">×</div>
-    </div>
-    <div class="popup-body">
-      <div style="font-size:12px;color:var(--muted);margin-bottom:10px">
-        Pick a cabinet from your library to link this cut list to.
-      </div>
-      <div style="display:flex;flex-direction:column;gap:6px">${rows}</div>
-    </div>
-    <div class="popup-footer">
-      <button class="btn btn-outline" onclick="_closePopup()">Cancel</button>
-    </div>`;
-  _openPopup(html, 'sm');
+  const persisted = lib.filter(/** @param {any} c */ c => c.db_id != null);
+
+  const cabinetIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>';
+
+  const items = persisted.map((c, idx) => {
+    const name = c._libName || c.name || ('Cabinet ' + (idx+1));
+    const dims = (c.w && c.h && c.d) ? `${c.w}×${c.h}×${c.d} mm` : (c.w && c.h ? `${c.w}×${c.h}` : '');
+    const meta = [dims, c.material].filter(Boolean).join(' · ');
+    return {
+      title: name,
+      icon: cabinetIcon,
+      metaText: meta,
+      onPick: `_clConfirmLinkToCabinet(${cutlistId},${c.db_id})`,
+    };
+  });
+
+  _openPickerPopup({
+    title: 'Link to Cabinet',
+    hint: 'Pick a cabinet from your library to link this cut list to.',
+    items,
+    emptyText: lib.length === 0
+      ? 'No saved cabinets yet. Create one in the <strong>Cabinet Builder</strong>, then come back here to link.'
+      : 'Your cabinets aren&rsquo;t saved to the database yet. Open each one in the <strong>Cabinet Builder</strong> so it autosaves, then return here.',
+    size: 'md',
+  });
 }
 /** @type {any} */ (window)._clLinkToCabinet = _clLinkToCabinet;
 
-/** @param {number} cutlistId @param {number|null} cabinetDbId */
+/** @param {number} cutlistId @param {number} cabinetDbId */
 async function _clConfirmLinkToCabinet(cutlistId, cabinetDbId) {
   _closePopup();
-  if (!cabinetDbId) { _toast('Cabinet not yet persisted — open it once to save then retry', 'error'); return; }
   try {
     const { error } = await _db('cutlists').update(/** @type {any} */ ({ cabinet_id: cabinetDbId })).eq('id', cutlistId);
     if (error) { _toast('Link failed', 'error'); return; }

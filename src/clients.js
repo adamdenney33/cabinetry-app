@@ -479,11 +479,12 @@ function renderClientsMain() {
   const fmt = v => cur + v.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0});
 
   el.innerHTML = `<div style="padding:24px;max-width:900px">
-    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap">
-      <div style="font-size:18px;font-weight:800;color:var(--text);flex:1">Clients <span style="font-size:13px;font-weight:400;color:var(--muted)">(${clients.length})</span></div>
+    ${_renderContentHeader({ iconSvg: _CH_ICON_CLIENT, title: 'Clients' })}
+    <div style="display:flex;align-items:center;gap:6px;margin-bottom:16px;flex-wrap:wrap">
       <input type="text" placeholder="Search clients..." value="${_escHtml(window._clientSearch||'')}" oninput="window._clientSearch=this.value;renderClientsMain()" style="font-size:12px;padding:6px 12px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);width:200px;font-family:inherit">
-      <button class="btn" onclick="exportClientsCSV()" style="font-size:11px;padding:5px 10px">Export</button>
-      <button class="btn" onclick="importClientsCSV()" style="font-size:11px;padding:5px 10px">Import</button>
+      <span style="flex:1"></span>
+      <button class="btn btn-outline" onclick="exportClientsCSV()" style="font-size:10px;padding:4px 8px;width:auto">Export</button>
+      <button class="btn btn-outline" onclick="importClientsCSV()" style="font-size:10px;padding:4px 8px;width:auto">Import</button>
     </div>
     ${clients.length > 1 ? `<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
       <select style="font-size:11px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--muted);font-family:inherit;cursor:pointer" onchange="window._clientSort=this.value;renderClientsMain()">
@@ -616,11 +617,9 @@ function renderProjectsMain() {
   const doneCount = projects.filter(p => p.status === 'complete').length;
 
   el.innerHTML = `<div style="padding:24px;max-width:900px">
-    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap">
-      <div style="font-size:18px;font-weight:800;color:var(--text);flex:1">Projects <span style="font-size:13px;font-weight:400;color:var(--muted)">(${projects.length})</span></div>
-      <input type="text" placeholder="Search projects..." value="${_escHtml(window._projSearch||'')}" oninput="window._projSearch=this.value;renderProjectsMain()" style="font-size:12px;padding:6px 12px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);width:200px;font-family:inherit">
-    </div>
+    ${_renderContentHeader({ iconSvg: _CH_ICON_PROJECT, title: 'Projects' })}
     <div style="display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap;align-items:center">
+      <input type="text" placeholder="Search projects..." value="${_escHtml(window._projSearch||'')}" oninput="window._projSearch=this.value;renderProjectsMain()" style="font-size:12px;padding:6px 12px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);width:200px;font-family:inherit;margin-right:6px">
       <button class="ofilter-tab ${filter==='all'?'active':''}" onclick="window._projFilter='all';renderProjectsMain()">All (${projects.length})</button>
       <button class="ofilter-tab ${filter==='active'?'active':''}" onclick="window._projFilter='active';renderProjectsMain()">Active (${activeCount})</button>
       <button class="ofilter-tab ${filter==='on-hold'?'active':''}" onclick="window._projFilter='on-hold';renderProjectsMain()">On Hold (${holdCount})</button>

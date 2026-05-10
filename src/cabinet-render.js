@@ -552,10 +552,15 @@ function renderCBResults() {
   const fmt = v => cur + Number(v).toFixed(2);
   /** @param {number} v */
   const fmt0 = v => cur + Math.round(v).toLocaleString();
-  const projName = _byId('cb-project')?.value || '';
+  const projName = (typeof _cbCurrentProjectName !== 'undefined' && _cbCurrentProjectName) ? _cbCurrentProjectName : (_byId('cb-project')?.value || '');
 
   if (!cbLines.length) {
-    el.innerHTML = `<div class="empty-state">
+    let emptyHeader = '';
+    if (projName) {
+      const cName = (typeof _cbClientNameForProject === 'function') ? _cbClientNameForProject() : '';
+      emptyHeader = _renderContentHeader({ iconSvg: _CH_ICON_PROJECT, title: projName, clientName: cName || undefined });
+    }
+    el.innerHTML = `${emptyHeader}<div class="empty-state">
       <div class="empty-icon" style="opacity:.18"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg></div>
       <h3>Cabinet Builder</h3>
       <p>Configure a cabinet in the editor and click "Add to Project" to start building your quote.</p>
@@ -577,16 +582,33 @@ function renderCBResults() {
     const eq = quotes.find(x => x.id === cbEditingQuoteId);
     const eqLabel = eq ? (quoteProject(eq) || quoteClient(eq) || 'Quote') : 'Quote';
     html += `<div style="background:var(--accent-dim);border:2px solid var(--accent);border-radius:8px;padding:10px 16px;margin-bottom:12px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-      <span style="font-size:13px;font-weight:600;color:var(--accent)">Editing: ${_escHtml(eqLabel)}</span>
+      <span style="font-size:13px;font-weight:600;color:var(--accent)">Editing quote: ${_escHtml(eqLabel)}</span>
       <span style="flex:1"></span>
       <button class="btn btn-primary" onclick="finishEditingQuote()" style="font-size:12px;padding:6px 14px">Done</button>
       <button class="btn btn-outline" onclick="discardQuoteEdits()" style="font-size:12px;padding:6px 14px">Discard</button>
     </div>`;
+  } else if (cbEditingOrderId) {
+    // Editing order banner — mirror of quote banner. No Discard yet (no
+    // discardOrderEdits handler); Done auto-syncs cabinets back to order_lines.
+    const eo = orders.find(x => x.id === cbEditingOrderId);
+    const eoLabel = eo ? ((typeof orderProject === 'function' ? orderProject(eo) : '') || (typeof orderClient === 'function' ? orderClient(eo) : '') || ('Order #' + (eo.order_number || eo.id))) : 'Order';
+    html += `<div style="background:var(--accent-dim);border:2px solid var(--accent);border-radius:8px;padding:10px 16px;margin-bottom:12px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <span style="font-size:13px;font-weight:600;color:var(--accent)">Editing order: ${_escHtml(eoLabel)}</span>
+      <span style="flex:1"></span>
+      <button class="btn btn-primary" onclick="finishEditingOrder()" style="font-size:12px;padding:6px 14px">Done</button>
+    </div>`;
   }
+
+  // Project header
+  if (projName) {
+    const cName = (typeof _cbClientNameForProject === 'function') ? _cbClientNameForProject() : '';
+    html += _renderContentHeader({ iconSvg: _CH_ICON_PROJECT, title: projName, clientName: cName || undefined });
+  }
+  html += `<div style="font-size:12px;color:var(--muted);margin: -8px 0 16px">${cbLines.length} cabinet${cbLines.length!==1?'s':''} · ${cbLines.reduce((s,l)=>s+l.qty,0)} units</div>`;
 
   // Top buttons bar
   html += `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;align-items:center">`;
-  if (!cbEditingQuoteId) {
+  if (!cbEditingQuoteId && !cbEditingOrderId) {
     html += `<button class="btn btn-primary" onclick="cbSendToQuote()" style="font-size:12px;padding:8px 14px">Send to Quote &rarr;</button>`;
     html += `<button class="btn btn-primary" onclick="cbSendToOrder()" style="font-size:12px;padding:8px 14px">Send to Order &rarr;</button>`;
   }
@@ -594,10 +616,6 @@ function renderCBResults() {
     <button class="btn btn-outline" onclick="cbExportLibrary()" style="font-size:12px;padding:8px 12px;width:auto">&darr; Export</button>
     <button class="btn btn-outline" onclick="cbImportLibrary()" style="font-size:12px;padding:8px 12px;width:auto">&uarr; Import</button>
   </div>`;
-
-  // Project header
-  if (projName) html += `<h2 style="font-size:18px;font-weight:800;margin:0 0 4px">${_escHtml(projName)}</h2>`;
-  html += `<div style="font-size:12px;color:var(--muted);margin-bottom:16px">${cbLines.length} cabinet${cbLines.length!==1?'s':''} · ${cbLines.reduce((s,l)=>s+l.qty,0)} units</div>`;
 
   // Individual cabinet cards
   cbLines.forEach((line, idx) => {
@@ -636,12 +654,13 @@ function renderCBResults() {
         </div>
       </div>
       <!-- Actions -->
-      <div style="padding:6px 12px;border-top:1px solid var(--border2);display:flex;gap:6px;align-items:center;justify-content:flex-end;background:var(--surface2)">
+      <div style="padding:6px 12px;border-top:1px solid var(--border2);display:flex;gap:6px;align-items:stretch;justify-content:flex-end;background:var(--surface2)">
         <div class="cl-stepper" style="flex:0 0 auto" onclick="event.stopPropagation()">
           <button class="cl-step-btn" style="padding:0 6px" onclick="event.stopPropagation();cbStepLineQty(${idx},-1)" title="Decrease quantity">−</button>
           <input type="number" class="cl-input cl-qty-input" value="${line.qty}" min="1" style="font-size:11px;width:32px;padding:4px 2px" onclick="event.stopPropagation()" onchange="event.stopPropagation();cbSetLineQty(${idx},this.value)">
           <button class="cl-step-btn" style="padding:0 6px" onclick="event.stopPropagation();cbStepLineQty(${idx},1)" title="Increase quantity">+</button>
         </div>
+        ${_cbCutListProjActHtml(`_cbOpenCabinetCutListsForLine(${idx})`, `_cbNewCutListForLine(${idx})`, line.db_id||'')}
         <button class="btn btn-outline" style="font-size:11px;padding:4px 10px;width:auto" onclick="event.stopPropagation();_duplicateCabinet(${idx})" title="Duplicate cabinet">Duplicate</button>
         <button class="btn btn-outline" style="font-size:11px;padding:4px 10px;width:auto;color:var(--danger)" onclick="event.stopPropagation();_cbConfirmDeleteLine(${idx})" title="Delete cabinet">Delete</button>
       </div>
@@ -671,6 +690,7 @@ function renderCBResults() {
 
   html += `</div>`;
   el.innerHTML = html;
+  if (typeof _cbApplyCutListCounts === 'function') _cbApplyCutListCounts();
 }
 
 // ── Library View (main content area) ──
@@ -691,11 +711,7 @@ function renderCBLibraryView() {
   }
 
   let html = `<div style="max-width:700px">`;
-  html += `<div style="margin-bottom:16px;display:flex;align-items:center;gap:12px">
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--accent);flex-shrink:0"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
-    <h2 style="font-size:18px;font-weight:800;margin:0;flex:1">Cabinet Library</h2>
-    <span style="font-size:12px;color:var(--muted)">${cbLibrary.length} template${cbLibrary.length!==1?'s':''}</span>
-  </div>`;
+  html += _renderContentHeader({ iconSvg: _CH_ICON_CABINET, title: 'Cabinet Library' });
 
   // Filter input
   html += `<div style="margin-bottom:16px"><input type="text" id="cb-lib-filter" placeholder="Filter templates..." style="width:100%;font-size:13px;padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface2);color:var(--text)" oninput="filterCBLibraryView(this.value)"></div>`;
@@ -704,6 +720,7 @@ function renderCBLibraryView() {
   html += _renderLibraryCards(cbLibrary);
   html += `</div></div>`;
   el.innerHTML = html;
+  if (typeof _cbApplyCutListCounts === 'function') _cbApplyCutListCounts();
 }
 
 /** @param {any[]} items */
@@ -734,8 +751,8 @@ function _renderLibraryCards(items) {
         </div>
         <div style="font-size:14px;font-weight:800;color:var(--accent);flex-shrink:0;white-space:nowrap">${fmt0(calc.lineSubtotal)}</div>
       </div>
-      <div style="display:flex;gap:6px;padding:0 12px 10px;justify-content:flex-end;flex-wrap:wrap">
-        <button class="btn btn-outline" onclick="event.stopPropagation();_cbAddCutListForLibrary(${idx})" style="font-size:11px;padding:5px 10px;width:auto">+ Cut List</button>
+      <div style="display:flex;gap:6px;padding:0 12px 10px;justify-content:flex-end;flex-wrap:wrap;align-items:stretch">
+        ${_cbCutListProjActHtml(`_cbOpenCabinetCutLists(${idx})`, `_cbNewCutListForLibrary(${idx})`, c.db_id||'')}
         <button class="btn btn-outline" onclick="event.stopPropagation();cbAddFromLibrary(${idx})" style="font-size:11px;padding:5px 10px;width:auto">+ Project</button>
         <button class="btn btn-outline" onclick="event.stopPropagation();cbDuplicateLibraryEntry(${idx})" style="font-size:11px;padding:5px 10px;width:auto">Duplicate</button>
         <button class="btn btn-outline" onclick="event.stopPropagation();_confirm('Delete this template?',()=>cbRemoveFromLibrary(${idx}))" style="font-size:11px;padding:5px 10px;width:auto;color:var(--danger)">Delete</button>
@@ -752,4 +769,5 @@ function filterCBLibraryView(q) {
   const query = q.trim().toLowerCase();
   const filtered = query ? cbLibrary.filter(c => (c._libName||c.name||'').toLowerCase().includes(query)) : cbLibrary;
   grid.innerHTML = _renderLibraryCards(filtered);
+  if (typeof _cbApplyCutListCounts === 'function') _cbApplyCutListCounts();
 }
