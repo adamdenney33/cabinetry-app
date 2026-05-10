@@ -13,19 +13,18 @@ function renderDashboard() {
   const el = document.getElementById('dashboard-main');
   if (!el) return;
 
-  const activeOrders  = orders.filter(o => o.status !== 'complete');
-  const doneOrders    = orders.filter(o => o.status === 'complete');
+  const _dueRank = (/** @type {any} */ o) => {
+    if (!o.due || o.due === 'TBD') return Infinity;
+    const t = +new Date(o.due);
+    return isNaN(t) ? Infinity : t;
+  };
+  const activeOrders = orders
+    .filter(o => o.status !== 'complete')
+    .sort((a, b) => _dueRank(a) - _dueRank(b));
   const overdueOrders = activeOrders.filter(o => { if (!o.due || o.due === 'TBD') return false; const d = new Date(o.due); return !isNaN(+d) && d < new Date(); });
-  const pipeline      = activeOrders.reduce((s,o) => s+(o.value ?? 0), 0);
-  const revenue       = doneOrders.reduce((s,o) => s+(o.value ?? 0), 0);
   const customerQuotes = quotes.filter(q => !_isDraftQuote(q));
-  const approvedQ     = customerQuotes.filter(q => q.status === 'approved').length;
-  const quoteValue    = customerQuotes.reduce((s,q) => s+quoteTotal(q), 0);
   const lowStock      = stockItems.filter(i => (i.qty ?? 0) <= (i.low ?? 0));
-  const stockValue    = stockItems.reduce((s,i) => s+(i.qty ?? 0)*(i.cost ?? 0), 0);
-  const totalSheets   = stockItems.reduce((s,i) => s+(i.qty ?? 0), 0);
-  const activeProjects = projects.filter(p => p.status === 'active').length;
-  const totalClients   = clients.length;
+  const DASH_CARD_ROWS = 5;
 
   // Schedule data — mirror the Schedule tab so the dashboard "this week" card
   // shows the same events as the calendar. See src/schedule.js:43-80.
@@ -46,19 +45,18 @@ function renderDashboard() {
   /** @param {number} v */
   const fmt = v => v.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0});
 
-  /** @param {string} label @param {number} pct @param {string} color */
-  const statusBar = (label, pct, color) => `
-    <div style="margin-bottom:10px">
-      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:3px">
-        <span>${label}</span><span>${pct.toFixed(0)}%</span>
-      </div>
-      <div class="progress-bg" style="height:6px">
-        <div class="progress-fill" style="width:${Math.min(100,pct)}%;background:${color}"></div>
-      </div>
-    </div>`;
+  // Pipeline window: last 90 days including today (today + 89 prior days)
+  const _pipelineCutoff = new Date();
+  _pipelineCutoff.setHours(0, 0, 0, 0);
+  _pipelineCutoff.setDate(_pipelineCutoff.getDate() - 89);
+  const _pipelineOrders = orders.filter(o => {
+    if (!o.created_at) return false;
+    const d = new Date(o.created_at);
+    return !isNaN(+d) && d >= _pipelineCutoff;
+  });
 
   const ordersByStatus = ORDER_STATUSES.map(s => ({
-    status: s, label: (/** @type {Record<string,string>} */(STATUS_LABELS))[s], count: orders.filter(o=>o.status===s).length,
+    status: s, label: (/** @type {Record<string,string>} */(STATUS_LABELS))[s], count: _pipelineOrders.filter(o=>o.status===s).length,
     color: (/** @type {Record<string,string>} */(STATUS_COLORS))[s], badge: (/** @type {Record<string,string>} */(STATUS_BADGES))[s]
   }));
 
@@ -67,12 +65,14 @@ function renderDashboard() {
 
       <!-- Quick actions -->
       <div style="display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap;align-items:center">
-        <button class="btn btn-primary" onclick="switchSection('quote');setTimeout(()=>document.getElementById('q-client')?.focus(),100)" style="font-size:11px;padding:6px 12px">+ Quote</button>
+        <button class="btn btn-primary" onclick="switchSection('schedule')" style="font-size:11px;padding:6px 12px;width:auto">Schedule</button>
+        <button class="btn btn-outline" onclick="switchSection('cutlist')" style="font-size:11px;padding:6px 12px;width:auto">+ Cut List</button>
+        <button class="btn btn-outline" onclick="switchSection('stock');setTimeout(()=>document.getElementById('stock-name')?.focus(),100)" style="font-size:11px;padding:6px 12px;width:auto">+ Stock</button>
+        <button class="btn btn-outline" onclick="switchSection('cabinet')" style="font-size:11px;padding:6px 12px;width:auto">+ Cabinet</button>
+        <button class="btn btn-outline" onclick="switchSection('quote');setTimeout(()=>document.getElementById('q-client')?.focus(),100)" style="font-size:11px;padding:6px 12px;width:auto">+ Quote</button>
         <button class="btn btn-outline" onclick="switchSection('orders');setTimeout(()=>document.getElementById('o-client')?.focus(),100)" style="font-size:11px;padding:6px 12px;width:auto">+ Order</button>
         <button class="btn btn-outline" onclick="switchSection('projects');setTimeout(()=>document.getElementById('pj-name')?.focus(),100)" style="font-size:11px;padding:6px 12px;width:auto">+ Project</button>
-        <button class="btn btn-outline" onclick="switchSection('cabinet')" style="font-size:11px;padding:6px 12px;width:auto">+ Cabinet</button>
-        <button class="btn btn-outline" onclick="switchSection('cutlist')" style="font-size:11px;padding:6px 12px;width:auto">Cut List</button>
-        <button class="btn btn-outline" onclick="switchSection('schedule')" style="font-size:11px;padding:6px 12px;width:auto">Schedule</button>
+        <button class="btn btn-outline" onclick="switchSection('clients');setTimeout(()=>document.getElementById('cl-name')?.focus(),100)" style="font-size:11px;padding:6px 12px;width:auto">+ Client</button>
         ${overdueOrders.length ? `<span class="badge badge-red" style="font-size:11px;padding:5px 10px;margin-left:4px;cursor:pointer" onclick="switchSection('orders');window._orderFilter='active';renderOrdersMain()">${overdueOrders.length} overdue</span>` : ''}
       </div>
 
@@ -100,56 +100,7 @@ function renderDashboard() {
         </div>
       </div>` : ''}
 
-      <!-- KPI Row -->
-      <div class="stats-grid" style="grid-template-columns:repeat(auto-fit,minmax(130px,1fr));margin-bottom:18px;gap:10px">
-        <div class="stat-card accent" style="padding:10px 14px;cursor:pointer" onclick="switchSection('orders');window._orderFilter='active';renderOrdersMain()">
-          <div class="stat-label">Pipeline</div>
-          <div class="stat-value">${cur}${fmt(pipeline)}</div>
-          <div class="stat-sub">${activeOrders.length} active</div>
-        </div>
-        <div class="stat-card success" style="padding:10px 14px;cursor:pointer" onclick="switchSection('orders');window._orderFilter='complete';renderOrdersMain()">
-          <div class="stat-label">Revenue</div>
-          <div class="stat-value">${cur}${fmt(revenue)}</div>
-          <div class="stat-sub">${doneOrders.length} completed</div>
-        </div>
-        <div class="stat-card warn" style="padding:10px 14px;cursor:pointer" onclick="switchSection('quote')">
-          <div class="stat-label">Quoted</div>
-          <div class="stat-value">${cur}${fmt(quoteValue)}</div>
-          <div class="stat-sub">${approvedQ} approved</div>
-        </div>
-        <div class="stat-card ${lowStock.length ? 'danger' : 'success'}" style="padding:10px 14px;cursor:pointer" onclick="switchSection('stock')">
-          <div class="stat-label">Stock</div>
-          <div class="stat-value">${cur}${fmt(stockValue)}</div>
-          <div class="stat-sub">${lowStock.length ? lowStock.length+' low' : totalSheets+' sheets'}</div>
-        </div>
-        <div class="stat-card" style="padding:10px 14px;cursor:pointer" onclick="switchSection('projects')">
-          <div class="stat-label">Projects</div>
-          <div class="stat-value">${activeProjects}</div>
-          <div class="stat-sub">${projects.length} total</div>
-        </div>
-        <div class="stat-card" style="padding:10px 14px;cursor:pointer" onclick="switchSection('clients')">
-          <div class="stat-label">Clients</div>
-          <div class="stat-value">${totalClients}</div>
-          <div class="stat-sub">${orders.length ? [...new Set(orders.map(o=>orderClient(o)))].length + ' with orders' : ''}</div>
-        </div>
-      </div>
-
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin-bottom:14px">
-
-        <!-- Orders by status -->
-        <div class="card">
-          <div class="card-header"><span class="card-title">Orders by Status</span></div>
-          <div class="card-body" style="padding:14px 18px">
-            ${ordersByStatus.map(s => `
-              <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border2)">
-                <div style="display:flex;align-items:center;gap:8px">
-                  <span style="width:8px;height:8px;border-radius:50%;background:${s.color};display:inline-block;flex-shrink:0"></span>
-                  <span style="font-size:13px;color:var(--text)">${s.label}</span>
-                </div>
-                <span style="font-size:13px;font-weight:700;color:var(--text)">${s.count}</span>
-              </div>`).join('')}
-          </div>
-        </div>
 
         <!-- Active Orders -->
         <div class="card">
@@ -160,60 +111,59 @@ function renderDashboard() {
           <div class="card-body" style="padding:0">
             ${activeOrders.length === 0
               ? `<div style="padding:20px;text-align:center;color:var(--muted);font-size:13px">No active orders</div>`
-              : activeOrders.slice(0,5).map(o => {
+              : activeOrders.slice(0, DASH_CARD_ROWS).map(o => {
                 const isOD = o.due && o.due !== 'TBD' && !isNaN(+new Date(o.due)) && new Date(o.due) < new Date();
-                return `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 18px;border-bottom:1px solid var(--border2);cursor:pointer;${isOD?'border-left:3px solid var(--danger);':''}" onclick="_openOrderPopup(${o.id})">
+                return `<div class="dash-row${isOD ? ' is-overdue' : ''}" onclick="_openOrderPopup(${o.id})">
                 <div style="flex:1;min-width:0">
-                  <div style="font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${orderProject(o)}</div>
-                  <div style="font-size:11px;color:${isOD?'var(--danger)':'var(--muted)'}">${orderClient(o)} · Due ${o.due}${isOD?' ⚠':''}
-                  </div>
+                  <div style="font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${o.order_number ? `#${o.order_number}` : `#${String(o.id).padStart(4,'0')}`} - ${orderProject(o)}</div>
+                  <div style="font-size:11px;color:${isOD?'var(--danger)':'var(--muted)'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${orderClient(o)} · Due ${o.due}${isOD?' ⚠':''}</div>
                 </div>
                 <div style="text-align:right;margin-left:12px;flex-shrink:0">
-                  <div style="font-size:13px;font-weight:700">${cur}${fmt(o.value ?? 0)}</div>
+                  <div style="font-size:12px;font-weight:700">${cur}${fmt(o.value ?? 0)}</div>
                   <span class="badge ${(/** @type {Record<string,string>} */(STATUS_BADGES))[o.status||''] || 'badge-gray'}" style="font-size:9px">${(/** @type {Record<string,string>} */(STATUS_LABELS))[o.status||''] || o.status || 'Unknown'}</span>
                 </div>
               </div>`;}).join('')}
           </div>
         </div>
 
-        <!-- Stock Alerts + Quotes -->
-        <div style="display:flex;flex-direction:column;gap:18px">
-          <div class="card" style="flex:1">
-            <div class="card-header" style="justify-content:space-between">
-              <span class="card-title">Stock Alerts</span>
-              <button class="btn btn-outline" style="padding:3px 10px;font-size:11px" onclick="switchSection('stock')">View stock</button>
-            </div>
-            <div class="card-body" style="padding:0">
-              ${lowStock.length === 0
-                ? `<div style="padding:16px;text-align:center;color:var(--muted);font-size:13px">All materials well stocked</div>`
-                : lowStock.slice(0,4).map(i => `
-                <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 18px;border-bottom:1px solid var(--border2);cursor:pointer" onclick="_openStockPopup(${i.id})">
-                  <div>
-                    <div style="font-size:12px;font-weight:600;color:var(--text)">${i.name}</div>
-                    <div style="font-size:11px;color:var(--danger)">${i.qty} left · reorder at ${i.low}</div>
-                  </div>
-                  <span class="badge badge-red">Low</span>
-                </div>`).join('')}
-            </div>
+        <!-- Recent Quotes -->
+        <div class="card">
+          <div class="card-header" style="justify-content:space-between">
+            <span class="card-title">Recent Quotes</span>
+            <button class="btn btn-outline" style="padding:3px 10px;font-size:11px" onclick="switchSection('quote')">View all</button>
           </div>
-          <div class="card" style="flex:1">
-            <div class="card-header" style="justify-content:space-between">
-              <span class="card-title">Recent Quotes</span>
-              <button class="btn btn-outline" style="padding:3px 10px;font-size:11px" onclick="switchSection('quote')">View all</button>
-            </div>
-            <div class="card-body" style="padding:0">
-              ${quotes.slice(0,3).map(q => `
-                <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 18px;border-bottom:1px solid var(--border2);cursor:pointer" onclick="_openQuotePopup(${q.id})">
-                  <div style="flex:1;min-width:0">
-                    <div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${quoteProject(q)}</div>
-                    <div style="font-size:11px;color:var(--muted)">${quoteClient(q)}</div>
-                  </div>
-                  <div style="text-align:right;margin-left:8px;flex-shrink:0">
-                    <div style="font-size:12px;font-weight:700">${cur}${fmt(quoteTotal(q))}</div>
-                    <div style="font-size:10px;color:var(--muted)">${q.date}</div>
-                  </div>
-                </div>`).join('')}
-            </div>
+          <div class="card-body" style="padding:0">
+            ${quotes.slice(0, DASH_CARD_ROWS).map(q => `
+              <div class="dash-row" onclick="_openQuotePopup(${q.id})">
+                <div style="flex:1;min-width:0">
+                  <div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${q.quote_number ? `Q-${q.quote_number}` : `Q-${String(q.id).padStart(4,'0')}`} - ${quoteProject(q)}</div>
+                  <div style="font-size:11px;color:var(--muted)">${quoteClient(q)}</div>
+                </div>
+                <div style="text-align:right;margin-left:8px;flex-shrink:0">
+                  <div style="font-size:12px;font-weight:700">${cur}${fmt(quoteTotal(q))}</div>
+                  <div style="font-size:10px;color:var(--muted)">${q.date}</div>
+                </div>
+              </div>`).join('')}
+          </div>
+        </div>
+
+        <!-- Stock Alerts -->
+        <div class="card">
+          <div class="card-header" style="justify-content:space-between">
+            <span class="card-title">Stock Alerts</span>
+            <button class="btn btn-outline" style="padding:3px 10px;font-size:11px" onclick="switchSection('stock')">View stock</button>
+          </div>
+          <div class="card-body" style="padding:0">
+            ${lowStock.length === 0
+              ? `<div style="padding:16px;text-align:center;color:var(--muted);font-size:13px">All materials well stocked</div>`
+              : lowStock.slice(0, DASH_CARD_ROWS).map(i => `
+              <div class="dash-row" onclick="_openStockPopup(${i.id})">
+                <div>
+                  <div style="font-size:12px;font-weight:600;color:var(--text)">${i.name}</div>
+                  <div style="font-size:11px;color:var(--danger)">${i.qty} left · reorder at ${i.low}</div>
+                </div>
+                <span class="badge badge-red">Low</span>
+              </div>`).join('')}
           </div>
         </div>
 
@@ -261,7 +211,7 @@ function renderDashboard() {
         };
 
         // Build events with the same shape and palette indexing as src/schedule.js
-        /** @typedef {{id:any,project:string,client:string,start:Date,end:Date,color:string,lane:number,isManual:boolean}} CalEvent */
+        /** @typedef {{id:any,numberLabel:string,project:string,client:string,start:Date,end:Date,color:string,lane:number,isManual:boolean}} CalEvent */
         /** @type {CalEvent[]} */
         const events = [];
         const allActive = orders.filter(o => o.status !== 'complete');
@@ -282,6 +232,7 @@ function renderDashboard() {
           if (!start || !end) return;
           events.push({
             id: o.id,
+            numberLabel: o.order_number ? `#${o.order_number}` : `#${String(o.id).padStart(4,'0')}`,
             project: orderProject(o),
             client: orderClient(o),
             start, end,
@@ -290,6 +241,18 @@ function renderDashboard() {
             isManual: o.auto_schedule === false,
           });
         });
+
+        // Per-event slack (working days from scheduled end → due) — mirrors
+        // src/schedule.js so the dashboard shows the same end-of-bar chip
+        // ("1w 1d", "Late", etc.) as the full Schedule tab.
+        for (const e of events) {
+          const o = orders.find(x => x.id === e.id);
+          const dueISO = o ? _orderDateToISO(o.due || '') : '';
+          const endISO = e.end ? `${e.end.getFullYear()}-${String(e.end.getMonth()+1).padStart(2,'0')}-${String(e.end.getDate()).padStart(2,'0')}` : '';
+          /** @type {any} */ (e).slack = (endISO && dueISO)
+            ? slackDays(endISO, dueISO, cbSettings.weekdayHours || [8,8,8,8,8,0,0], overrideByDate, _schedBiz)
+            : null;
+        }
 
         const winEvents = events.filter(e => e.end >= winStart && e.start <= winEnd);
         const maxLane = winEvents.length ? Math.max(0, ...winEvents.map(e => e.lane)) : 0;
@@ -348,7 +311,7 @@ function renderDashboard() {
           }
           if (runStart !== -1) runs.push([runStart, endIdx]);
           if (!runs.length) return;
-          const labelText = _escHtml(e.project) + ' — ' + _escHtml(e.client);
+          const labelText = _escHtml(e.numberLabel) + ' - ' + _escHtml(e.project) + ' — ' + _escHtml(e.client);
           const manualStyle = e.isManual ? 'border:1px dashed rgba(255,255,255,0.5);' : '';
           const lockIcon = e.isManual ? '🔒 ' : '';
           const barTop = 28 + e.lane * stride;
@@ -364,8 +327,11 @@ function renderDashboard() {
             const left = (rs / 7 * 100).toFixed(2);
             const width = ((re - rs + 1) / 7 * 100).toFixed(2);
             const segShowLabel = isFirstRun && (isRealStart || startIdx === 0);
-            row += `<div style="position:absolute;top:${barTop}px;left:${left}%;width:${width}%;height:18px;padding:0 2px;z-index:2;display:flex;align-items:center;cursor:pointer" onclick="_openOrderPopup(${e.id})">
-              <div style="background:${e.color};${manualStyle}color:#fff;font-size:10px;font-weight:600;padding:1px 6px;border-radius:${radius};height:16px;line-height:16px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;flex:1;min-width:0" title="${labelText}${e.isManual?' (manual)':''}">${segShowLabel?lockIcon+labelText:''}</div>
+            const segChipHTML = segIsRealEnd ? slackChipHTML(/** @type {any} */ (e).slack) : '';
+            const barText = segShowLabel ? lockIcon + labelText : '';
+            row += `<div class="dash-event-bar" style="position:absolute;top:${barTop}px;left:${left}%;width:${width}%;height:18px;padding:0 2px;z-index:2;display:flex;align-items:center;gap:3px;cursor:pointer" onclick="_openOrderPopup(${e.id})">
+              <div style="background:${e.color};${manualStyle}color:#fff;font-size:10px;font-weight:600;padding:1px 6px;border-radius:${radius};height:16px;line-height:16px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;flex:1;min-width:0" title="${labelText}${e.isManual?' (manual)':''}">${barText}</div>
+              ${segChipHTML}
             </div>`;
           });
         });
@@ -382,18 +348,22 @@ function renderDashboard() {
       <!-- Revenue chart + Pipeline -->
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:18px;margin-bottom:0">
         <div class="card">
-          <div class="card-header"><span class="card-title">Monthly Revenue</span><span style="font-size:11px;color:var(--muted)">completed orders</span></div>
+          <div class="card-header"><span class="card-title">Monthly Revenue <span style="font-weight:400;color:var(--muted);margin-left:4px">completed orders</span></span></div>
           <div class="card-body" style="padding:12px 18px">
             <canvas id="revenue-chart" height="120" style="width:100%;display:block"></canvas>
           </div>
         </div>
         <div class="card">
-          <div class="card-header"><span class="card-title">Pipeline</span></div>
+          <div class="card-header"><span class="card-title">Pipeline <span style="font-weight:400;color:var(--muted);margin-left:4px">last 90 days</span></span></div>
           <div class="card-body" style="padding:14px 18px">
-            ${ordersByStatus.filter(s=>s.status!=='complete').map(s =>
-              statusBar(s.label + (s.count ? ` (${s.count})` : ''), orders.length ? s.count/orders.length*100 : 0, s.color)
-            ).join('')}
-            ${orders.length === 0 ? `<div style="color:var(--muted);font-size:13px;text-align:center;padding:8px">No orders yet</div>` : ''}
+            ${ordersByStatus.map(s => `
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border2)">
+                <div style="display:flex;align-items:center;gap:8px">
+                  <span style="width:8px;height:8px;border-radius:50%;background:${s.color};display:inline-block;flex-shrink:0"></span>
+                  <span style="font-size:13px;color:var(--text)">${s.label}</span>
+                </div>
+                <span style="font-size:13px;font-weight:700;color:var(--text)">${s.count}</span>
+              </div>`).join('')}
           </div>
         </div>
       </div>

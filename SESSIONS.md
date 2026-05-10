@@ -540,4 +540,110 @@ _Auto-logged by SessionEnd hook. Flesh out with context next session if useful._
 
 _Auto-logged by SessionEnd hook. Flesh out with context next session if useful._
 
-<!-- last_commit: 4d042fc -->
+
+---
+
+## [Auto] Session ending 2026-05-08
+
+### Commits
+- feat(cabinet): UX & pricing refactor (Batch 1) — per-component finishes, % contingency
+- docs: update Building Docs/Notepad.rtf working notes
+
+_Auto-logged by SessionEnd hook. Flesh out with context next session if useful._
+
+
+---
+
+## [Auto] Session ending 2026-05-08
+
+### Commits
+- feat(cabinet): UX & pricing refactor (Batch 1) — per-component finishes, % contingency
+- docs: update Building Docs/Notepad.rtf working notes
+
+_Auto-logged by SessionEnd hook. Flesh out with context next session if useful._
+
+
+---
+
+## [Auto] Session ending 2026-05-09
+
+### Commits
+- feat(save-ux): Strategy C — autosave-for-edit, explicit-for-create
+- feat(ui): Strategy 2 + Idea 3 — gated sidebars with compact project header
+- feat(ui): apply Cabinet Builder empty-state pattern to Quotes and Orders sidebars
+- feat(ui): replace gated-entry primary button with project smart library
+- feat(ui): add list-empty sidebar gates for Stock, Projects, Clients
+- fix(ui): show Stock/Projects/Clients gates whenever there is no active edit
+- fix(ui): treat untouched form as no active edit
+- feat(ui): add Recent list to Stock/Projects/Clients gated entries
+- refactor(ui): tighten Quote and Order sidebars
+- feat(ui): show project folder icon in active-project sidebar header
+- feat(ui): inline kind badge with name, fit add-tiles, auto-fill Quote #
+- feat(ui): land on Library after picking project; compact saved-cabinet rows
+- feat(ui): inline status pill, flat pipeline, reorder order-row buttons
+- fix(ui): remove divider borders around order pipeline strip
+- fix(ui): remove Next Stage button from order rows
+- fix(ui): left-align doc buttons in order row footer
+- feat(cabinet): replace Create Quote with Send-to-Quote picker; tidy card actions
+- fix(cabinet): sync cabinet-search input value to cbScratchpad.name
+- fix(cabinet): use project-state globals when in-project (cb-project input gone)
+- fix(cabinet): split library card into info row + action footer
+- fix(dashboard): mirror Schedule tab in "this week" card
+- feat(dashboard): replace schedule list with 7-day mini-calendar slice
+- fix(cutlist): switch PDF + print to portrait when viewer is rotated
+
+_Auto-logged by SessionEnd hook. Flesh out with context next session if useful._
+
+
+---
+
+## [Auto] Session ending 2026-05-09
+
+### Commits
+- fix(cutlist): widen image column to 3/4 page in landscape PDF
+- fix(cutlist): render PDF colour markers as circles to match cut-list tab
+- fix(cutlist): drop Notes column from PDF tables
+- feat(cabinet): library icon, smart view defaults, send-to-order button
+- feat(cabinet): library card click-to-edit + duplicate/delete buttons
+
+_Auto-logged by SessionEnd hook. Flesh out with context next session if useful._
+
+
+---
+
+## [Auto] Session ending 2026-05-10
+
+### Commits
+- feat(cutlist): multiple cutlists per project + 3-tab main view
+- feat(orders/quotes): redesign editor sidebar — labelled line items, hours override, collapsible schedule
+- feat(cutlist): smart library at top of sidebar — search, name, load
+
+_Auto-logged by SessionEnd hook. Flesh out with context next session if useful._
+
+<!-- last_commit: b47bafd -->
+
+---
+
+
+## [Auto] Session ending 2026-05-10
+
+---
+
+### Commits
+## [Auto] Session ending 2026-05-10
+
+### Commits
+- feat(cutlist): multiple cutlists per project + 3-tab main view
+- feat(orders/quotes): redesign editor sidebar — labelled line items, hours override, collapsible schedule
+- feat(cutlist): smart library at top of sidebar — search, name, load
+
+_Auto-logged by SessionEnd hook. Flesh out with context next session if useful._
+
+<!-- last_commit: b47bafd -->
+- feat(cutlist): multiple cutlists per project + 3-tab main view
+- feat(orders/quotes): redesign editor sidebar — labelled line items, hours override, collapsible schedule
+- feat(cutlist): smart library at top of sidebar — search, name, load
+
+_Auto-logged by SessionEnd hook. Flesh out with context next session if useful._
+
+<!-- last_commit: b47bafd -->

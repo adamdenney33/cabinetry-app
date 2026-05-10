@@ -737,6 +737,7 @@ function _renderStockSidebarGate() {
       btnLabel: '+ Add Stock Item',
       btnOnclick: '_stockRevealForm()',
       recentItems: recents,
+      itemIconSvg: _TYPE_ICON_STOCK,
     });
     gate.style.display = '';
     form.style.display = 'none';

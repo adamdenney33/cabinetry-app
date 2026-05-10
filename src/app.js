@@ -11,113 +11,12 @@ function _requireAuth() {
   return false;
 }
 
-// ── Client Popup ──
-/** @param {number} id */
+// ── Client edit: routes to sidebar editor (replaces former popup) ──
+/** Compatibility alias — keeps existing call sites working.
+ *  @param {number} id */
 function _openClientPopup(id) {
-  const c = clients.find(x => x.id === id);
-  if (!c) return;
-  const cur = window.currency;
-  /** @param {number} v */
-  const fmt = v => cur + v.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0});
-  const cQuotes = quotes.filter(q => !_isDraftQuote(q) && (q.client_id === c.id || (!q.client_id && quoteClient(q) === c.name)));
-  const cOrders = orders.filter(o => o.client_id === c.id || (!o.client_id && orderClient(o) === c.name));
-  const cProjects = projects.filter(p => p.client_id === c.id);
-
-  const projectChips = cProjects.map(p => {
-    const badge = p.status==='complete'?'badge-green':p.status==='on-hold'?'badge-gray':'badge-blue';
-    return `<span class="pf-chip badge ${badge}" onclick="_closePopup();switchSection('projects');_highlightProject(${p.id})">${_escHtml(p.name)}</span>`;
-  }).join('') || '<span style="font-size:10px;color:var(--muted)">None</span>';
-  const orderChips = cOrders.map(o =>
-    `<span class="pf-chip" onclick="_closePopup();switchSection('orders');window._orderSearch='${_escHtml(orderProject(o))}';renderOrdersMain()">${_escHtml(orderProject(o))} — ${fmt(o.value ?? 0)}</span>`
-  ).join('') || '<span style="font-size:10px;color:var(--muted)">None</span>';
-
-  // Strategy C: editing an existing client uses autosave-on-blur with a
-  // status pill in the popup header. The footer keeps Delete + Close — no
-  // explicit Save button.
-  const blur = `onblur="_clientAutoSave(${c.id})"`;
-  _openPopup(`
-    <div class="popup-header">
-      <div class="popup-title">
-        <div style="width:32px;height:32px;border-radius:50%;background:var(--accent-dim);color:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px">${c.name.charAt(0).toUpperCase()}</div>
-        Edit Client
-        <span class="cl-unsaved-pill" data-save-pill="client" style="display:none;margin-left:8px"></span>
-      </div>
-      <button class="popup-close" onclick="_closePopup()">×</button>
-    </div>
-    <div class="popup-body">
-      <div class="pf">
-        <label class="pf-label">Name</label>
-        <input class="pf-input pf-input-lg" id="pc-name" value="${_escHtml(c.name)}" ${blur}>
-      </div>
-      <div class="pf-row">
-        <div class="pf">
-          <label class="pf-label">Email</label>
-          <input class="pf-input" id="pc-email" value="${_escHtml(c.email||'')}" placeholder="client@email.com" ${blur}>
-        </div>
-        <div class="pf">
-          <label class="pf-label">Phone</label>
-          <input class="pf-input" id="pc-phone" value="${_escHtml(c.phone||'')}" placeholder="07700 000000" ${blur}>
-        </div>
-      </div>
-      <div class="pf">
-        <label class="pf-label">Address</label>
-        <input class="pf-input" id="pc-address" value="${_escHtml(c.address||'')}" placeholder="123 Street, City" ${blur}>
-      </div>
-      <div class="pf">
-        <label class="pf-label">Notes</label>
-        <textarea class="pf-textarea" id="pc-notes" placeholder="Client notes..." ${blur}>${_escHtml(c.notes||'')}</textarea>
-      </div>
-      <div class="pf-divider"></div>
-      <div class="pf" style="margin-bottom:4px">
-        <label class="pf-label">Projects (${cProjects.length})</label>
-        <div class="pf-chips">${projectChips}</div>
-      </div>
-      <div class="pf" style="margin-bottom:0">
-        <label class="pf-label">Orders (${cOrders.length})</label>
-        <div class="pf-chips">${orderChips}</div>
-      </div>
-    </div>
-    <div class="popup-footer">
-      <button class="btn btn-danger" onclick="_confirm('Delete client <strong>${_escHtml(c.name)}</strong>?',()=>{_closePopup();removeClient(${c.id})})">Delete</button>
-      <div class="popup-footer-right">
-        <button class="btn btn-outline" onclick="_closePopup()">Close</button>
-      </div>
-    </div>
-  `, 'sm');
-}
-
-/** Strategy C autosave for the client edit popup. Called on input blur. @param {number} id */
-async function _clientAutoSave(id) {
-  const c = clients.find(x => x.id === id);
-  if (!c) return;
-  const updates = {
-    name: _popupVal('pc-name'),
-    email: _popupVal('pc-email') || null,
-    phone: _popupVal('pc-phone') || null,
-    address: _popupVal('pc-address') || null,
-    notes: _popupVal('pc-notes') || null,
-  };
-  if (!updates.name) { _toast('Name is required', 'error'); return; }
-  // Only save if something actually changed.
-  const changed = ['name','email','phone','address','notes'].some(k => /** @type {any} */(c)[k] !== /** @type {any} */(updates)[k]);
-  if (!changed) return;
-  /** @type {any} */ const w = window;
-  if (!w._saveInFlight) w._saveInFlight = new Set();
-  w._saveInFlight.add('client');
-  if (typeof _setSaveStatus === 'function') _setSaveStatus('client', 'saving');
-  try {
-    Object.assign(c, updates);
-    const { error } = await _db('clients').update(/** @type {any} */ (updates)).eq('id', id);
-    if (error) throw error;
-    renderClientsMain();
-    if (typeof _setSaveStatus === 'function') _setSaveStatus('client', 'saved');
-  } catch (e) {
-    console.warn('[client save]', (/** @type {any} */ (e)).message || e);
-    if (typeof _setSaveStatus === 'function') _setSaveStatus('client', 'failed', { retry: () => _clientAutoSave(id) });
-    _toast('Save failed — check connection', 'error');
-  } finally {
-    w._saveInFlight.delete('client');
-  }
+  switchSection('clients');
+  if (typeof editClient === 'function') editClient(id);
 }
 
 // ── Order Popup ──
@@ -683,318 +582,20 @@ function _scheduleLineUpsert(idx) {
 
 // _saveQuotePopup was replaced by saveQuoteEditor() in src/quotes.js.
 
-// ── Project Popup ──
-/** @param {number} id */
-function _openProjectPopup(id) {
-  const p = /** @type {any} */ (projects.find(x => x.id === id));
-  if (!p) return;
-  const cur = window.currency;
-  /** @param {number} v */
-  const fmt = v => cur + v.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0});
-  const clientName = p.client_id ? (clients.find(c=>c.id===p.client_id)||{}).name||'' : '';
-  const pQuotes = quotes.filter(q => !_isDraftQuote(q) && (q.project_id === p.id || (!q.project_id && quoteProject(q) === p.name)));
-  const pOrders = orders.filter(o => o.project_id === p.id || (!o.project_id && orderProject(o) === p.name));
-  const statusBadge = p.status==='complete'?'badge-green':p.status==='on-hold'?'badge-gray':'badge-blue';
-
-  const quoteChips = pQuotes.map(q =>
-    `<span class="pf-chip" onclick="_closePopup();switchSection('quote');window._quoteSearch='${_escHtml(quoteProject(q))}';renderQuoteMain()">Q-${String(q.id).padStart(4,'0')} · ${fmt(quoteTotal(q))} · ${q.status}</span>`
-  ).join('') || '<span style="font-size:10px;color:var(--muted)">None</span>';
-  const orderChips = pOrders.map(o =>
-    `<span class="pf-chip" onclick="_closePopup();switchSection('orders');window._orderSearch='${_escHtml(orderProject(o))}';renderOrdersMain()">${_escHtml(orderProject(o))} · ${fmt(o.value ?? 0)} · ${(/** @type {Record<string,string>} */(STATUS_LABELS))[o.status||'']||o.status}</span>`
-  ).join('') || '<span style="font-size:10px;color:var(--muted)">None</span>';
-
-  // Strategy C: autosave-on-blur for the existing project; no Save button.
-  const blur = `onblur="_projectAutoSave(${p.id})"`;
-  _openPopup(`
-    <div class="popup-header">
-      <div class="popup-title">
-        Edit Project
-        <span class="badge ${statusBadge}" style="font-size:10px">${p.status==='complete'?'Complete':p.status==='on-hold'?'On Hold':'Active'}</span>
-        <span class="cl-unsaved-pill" data-save-pill="project" style="display:none;margin-left:8px"></span>
-      </div>
-      <button class="popup-close" onclick="_closePopup()">×</button>
-    </div>
-    <div class="popup-body">
-      <div class="pf">
-        <label class="pf-label">Project Name</label>
-        <input class="pf-input pf-input-lg" id="pp-name" value="${_escHtml(p.name)}" ${blur}>
-      </div>
-      <div class="pf-row">
-        <div class="pf">
-          <label class="pf-label">Client</label>
-          <div class="pf-static"><div class="pf-dot" style="background:var(--success)"></div> ${_escHtml(clientName || 'No client')}</div>
-        </div>
-        <div class="pf">
-          <label class="pf-label">Status</label>
-          <select class="pf-select" id="pp-status" onchange="_projectAutoSave(${p.id})">
-            <option value="active" ${p.status==='active'?'selected':''}>Active</option>
-            <option value="on-hold" ${p.status==='on-hold'?'selected':''}>On Hold</option>
-            <option value="complete" ${p.status==='complete'?'selected':''}>Complete</option>
-          </select>
-        </div>
-      </div>
-      <div class="pf">
-        <label class="pf-label">Notes</label>
-        <textarea class="pf-textarea" id="pp-desc" placeholder="Project notes..." ${blur}>${_escHtml(p.description||'')}</textarea>
-      </div>
-      <div class="pf-divider"></div>
-      <div class="pf" style="margin-bottom:4px">
-        <label class="pf-label">Quotes (${pQuotes.length})</label>
-        <div class="pf-chips">${quoteChips}</div>
-      </div>
-      <div class="pf" style="margin-bottom:0">
-        <label class="pf-label">Orders (${pOrders.length})</label>
-        <div class="pf-chips">${orderChips}</div>
-      </div>
-    </div>
-    <div class="popup-footer">
-      <button class="btn btn-danger" onclick="_confirm('Delete project <strong>${_escHtml(p.name)}</strong>?',()=>{_closePopup();removeProject(${p.id})})">Delete</button>
-      <div class="popup-footer-right">
-        <button class="btn btn-outline" onclick="_closePopup()">Close</button>
-      </div>
-    </div>
-  `, 'sm');
-}
-
-/** Strategy C autosave for the project edit popup. @param {number} id */
-async function _projectAutoSave(id) {
-  const p = projects.find(x => x.id === id);
-  if (!p) return;
-  const name = _popupVal('pp-name');
-  const status = _popupVal('pp-status');
-  const description = _popupVal('pp-desc') || null;
-  if (!name) { _toast('Name is required', 'error'); return; }
-  /** @type {any} */ const cur = p;
-  if (cur.name === name && cur.status === status && (cur.description || null) === description) return;
-  /** @type {any} */ const w = window;
-  if (!w._saveInFlight) w._saveInFlight = new Set();
-  w._saveInFlight.add('project');
-  if (typeof _setSaveStatus === 'function') _setSaveStatus('project', 'saving');
-  try {
-    Object.assign(p, { name, status, description });
-    const { error } = await _db('projects').update({ name, status, description }).eq('id', id);
-    if (error) throw error;
-    renderProjectsMain();
-    if (typeof _setSaveStatus === 'function') _setSaveStatus('project', 'saved');
-  } catch (e) {
-    console.warn('[project save]', (/** @type {any} */ (e)).message || e);
-    if (typeof _setSaveStatus === 'function') _setSaveStatus('project', 'failed', { retry: () => _projectAutoSave(id) });
-    _toast('Save failed — check connection', 'error');
-  } finally {
-    w._saveInFlight.delete('project');
-  }
-}
-
-// ── Stock Popup ──
-/**
- * Increment/decrement a numeric input by `delta * step`, clamped to `min`.
- * Used by the +/− stepper buttons in the stock edit popup.
- * @param {string} id @param {number} delta @param {number} [step] @param {number} [min]
- */
-function _stepInput(id, delta, step = 1, min = 0) {
-  const el = /** @type {HTMLInputElement | null} */ (document.getElementById(id));
-  if (!el) return;
-  const cur = parseFloat(el.value) || 0;
-  let next = cur + delta * step;
-  if (next < min) next = min;
-  if (step < 1) {
-    const decimals = (String(step).split('.')[1] || '').length;
-    next = parseFloat(next.toFixed(decimals));
-  }
-  el.value = String(next);
-  el.dispatchEvent(new Event('input', { bubbles: true }));
-}
-
-/** @param {number} id */
-function _openStockPopup(id) {
-  const item = /** @type {any} */ (stockItems.find(x => x.id === id));
-  if (!item) return;
-  const sup = _ssGet(id);
-  const vd = _svGet(id);
-  const cat = _scGet(id) || item.category || '';
-  const isEB = cat === 'Edge Banding';
-  const ebThick = vd.thickness ?? item.thickness ?? '';
-  const ebWidth = vd.width ?? item.width ?? item.h ?? '';
-  const ebLength = vd.length ?? item.length ?? item.w ?? '';
-  const ebGlue = vd.glue || item.glue || 'EVA';
-  const isLow = (item.qty ?? 0) <= (item.low ?? 0);
-
-  // Strategy C: autosave-on-blur for the Stock popup. Inputs trigger
-  // _stockAutoSave; status pill in header reflects state. Steppers dispatch
-  // an 'input' event which we capture via a delegated listener after open.
-  const blur = `onblur="_stockAutoSave(${id})"`;
-  _openPopup(`
-    <div class="popup-header">
-      <div class="popup-title">
-        Edit Material
-        <span class="badge ${isLow ? 'badge-red' : 'badge-green'}" style="font-size:10px">${isLow ? 'Low Stock' : 'OK'}</span>
-        <span class="cl-unsaved-pill" data-save-pill="stock" style="display:none;margin-left:8px"></span>
-      </div>
-      <button class="popup-close" onclick="_closePopup()">×</button>
-    </div>
-    <div class="popup-body">
-      <div class="pf">
-        <label class="pf-label">Name</label>
-        <input class="pf-input pf-input-lg" id="ps-name" value="${_escHtml(item.name)}" ${blur}>
-      </div>
-      <div class="pf">
-        <label class="pf-label">Variant / Spec</label>
-        <input class="pf-input" id="ps-variant" value="${_escHtml(vd.variant||item.variant||'')}" placeholder="e.g. BP-18, 500mm depth" ${blur}>
-      </div>
-      ${isEB ? `
-      <div class="pf-row">
-        <div class="pf"><label class="pf-label">Thickness (mm)</label><input class="pf-input" id="ps-eb-thick" type="number" step="0.1" value="${ebThick}" ${blur}></div>
-        <div class="pf"><label class="pf-label">Width (mm)</label><input class="pf-input" id="ps-eb-width" type="number" value="${ebWidth}" ${blur}></div>
-        <div class="pf"><label class="pf-label">Length (m)</label><input class="pf-input" id="ps-eb-length" type="number" step="0.1" value="${ebLength}" ${blur}></div>
-      </div>
-      <div class="pf-row">
-        <div class="pf"><label class="pf-label">Glue Type</label>
-          <select class="pf-select" id="ps-eb-glue" onchange="_stockAutoSave(${id})">
-            ${['EVA','PUR','Laser','Hot Melt','Pre-glued','None'].map(g=>`<option value="${g}" ${ebGlue===g?'selected':''}>${g}</option>`).join('')}
-          </select>
-        </div>
-        <div class="pf"><label class="pf-label">Low Alert (m)</label>
-          <div class="pf-stepper">
-            <button type="button" class="pf-step-btn" onclick="_stepInput('ps-low',-1,0.1);_stockAutoSave(${id})">−</button>
-            <input class="pf-input" id="ps-low" type="number" step="0.1" value="${item.low}" ${blur}>
-            <button type="button" class="pf-step-btn" onclick="_stepInput('ps-low',1,0.1);_stockAutoSave(${id})">+</button>
-          </div>
-        </div>
-        <div class="pf"><label class="pf-label">Cost / m</label><input class="pf-input" id="ps-cost" type="number" step="0.01" value="${item.cost}" style="text-align:right" ${blur}></div>
-      </div>
-      ` : `
-      <div class="pf-row">
-        <div class="pf"><label class="pf-label">Length</label><input class="pf-input" id="ps-length" value="${item.w}" ${blur}></div>
-        <div class="pf"><label class="pf-label">Width</label><input class="pf-input" id="ps-width" value="${item.h}" ${blur}></div>
-        <div class="pf"><label class="pf-label">Thickness</label><input class="pf-input" id="ps-thick" value="${vd.thickness||item.thick||''}" ${blur}></div>
-      </div>
-      <div class="pf-row">
-        <div class="pf"><label class="pf-label">Qty in Stock</label>
-          <div class="pf-stepper">
-            <button type="button" class="pf-step-btn" onclick="_stepInput('ps-qty',-1);_stockAutoSave(${id})">−</button>
-            <input class="pf-input" id="ps-qty" type="number" min="0" value="${item.qty}" style="font-weight:700" ${blur}>
-            <button type="button" class="pf-step-btn" onclick="_stepInput('ps-qty',1);_stockAutoSave(${id})">+</button>
-          </div>
-        </div>
-        <div class="pf"><label class="pf-label">Low Alert</label>
-          <div class="pf-stepper">
-            <button type="button" class="pf-step-btn" onclick="_stepInput('ps-low',-1);_stockAutoSave(${id})">−</button>
-            <input class="pf-input" id="ps-low" type="number" min="0" value="${item.low}" ${blur}>
-            <button type="button" class="pf-step-btn" onclick="_stepInput('ps-low',1);_stockAutoSave(${id})">+</button>
-          </div>
-        </div>
-        <div class="pf"><label class="pf-label">Cost / Unit</label><input class="pf-input" id="ps-cost" value="${item.cost}" style="text-align:right" ${blur}></div>
-      </div>
-      `}
-      <div class="pf">
-        <label class="pf-label">Category</label>
-        <select class="pf-select" id="ps-cat" onchange="_stockAutoSave(${id})">
-          <option value="Sheet Goods" ${cat==='Sheet Goods'?'selected':''}>Sheet Goods</option>
-          <option value="Solid Timber" ${cat==='Solid Timber'?'selected':''}>Solid Timber</option>
-          <option value="Edge Banding" ${cat==='Edge Banding'?'selected':''}>Edge Banding</option>
-          <option value="Hardware" ${cat==='Hardware'?'selected':''}>Hardware</option>
-          <option value="Finishing" ${cat==='Finishing'?'selected':''}>Finishing</option>
-          <option value="Other" ${cat==='Other'?'selected':''}>Other</option>
-          <option value="" ${!cat||cat==='Uncategorised'?'selected':''}>Uncategorised</option>
-        </select>
-      </div>
-      <div class="pf-divider"></div>
-      <div class="pf">
-        <label class="pf-label">Supplier</label>
-        <input class="pf-input" id="ps-supplier" value="${_escHtml(sup.supplier||'')}" placeholder="Supplier name" ${blur}>
-      </div>
-      <div class="pf" style="margin-bottom:0">
-        <label class="pf-label">Reorder Link</label>
-        <input class="pf-input" id="ps-url" value="${_escHtml(sup.url||'')}" placeholder="https://..." ${blur}>
-      </div>
-    </div>
-    <div class="popup-footer">
-      <div class="popup-footer-left">
-        <button class="btn btn-danger" onclick="_confirm('Remove <strong>${_escHtml(item.name)}</strong>?',()=>{_closePopup();removeStock(${item.id})})">Delete</button>
-      </div>
-      <div class="popup-footer-right">
-        ${sup.url ? `<button class="btn btn-outline" style="color:var(--accent)" onclick="window.open('${_escHtml(_normalizeUrl(sup.url))}','_blank')">Reorder ↗</button>` : ''}
-        <button class="btn btn-outline" onclick="_closePopup()">Close</button>
-      </div>
-    </div>
-  `, 'sm');
-}
-
-/** Strategy C autosave for the stock popup. Calls the existing save flow but
- *  skips popup close + success toast (status pill carries that signal).
+// ── Project edit: routes to sidebar editor (replaces former popup) ──
+/** Compatibility alias — keeps existing call sites working.
  *  @param {number} id */
-async function _stockAutoSave(id) {
-  await _saveStockPopup(id, { silent: true, keepOpen: true });
+function _openProjectPopup(id) {
+  switchSection('projects');
+  if (typeof editProject === 'function') editProject(id);
 }
 
-/** @param {number} id @param {{silent?: boolean, keepOpen?: boolean}} [opts] */
-async function _saveStockPopup(id, opts) {
-  const silent = !!(opts && opts.silent);
-  const keepOpen = !!(opts && opts.keepOpen);
-  const item = /** @type {any} */ (stockItems.find(x => x.id === id));
-  if (!item) return;
-  const name = _popupVal('ps-name');
-  if (!name) { if (!silent) _toast('Name is required', 'error'); return; }
-  const cat = _popupVal('ps-cat') || '';
-  const isEB = cat === 'Edge Banding';
-  const variant = _popupVal('ps-variant') || '';
-  /** @type {any} */ const w = window;
-  if (!w._saveInFlight) w._saveInFlight = new Set();
-  w._saveInFlight.add('stock');
-  if (typeof _setSaveStatus === 'function') _setSaveStatus('stock', 'saving');
-  /** @type {any} */
-  let updates;
-  let thick = 0, ebWidth = 0, ebLength = 0, ebGlue = '';
-  if (isEB) {
-    thick = parseFloat(_popupVal('ps-eb-thick')) || 0;
-    ebWidth = parseFloat(_popupVal('ps-eb-width')) || 0;
-    ebLength = parseFloat(_popupVal('ps-eb-length')) || 0;
-    ebGlue = _popupVal('ps-eb-glue') || '';
-    updates = {
-      name,
-      w: ebLength,
-      h: ebWidth,
-      qty: Math.round(ebLength),
-      low: Math.round(parseFloat(_popupVal('ps-low')) || 0),
-      cost: parseFloat(_popupVal('ps-cost')) || 0,
-    };
-  } else {
-    thick = parseFloat(_popupVal('ps-thick')) || 0;
-    updates = {
-      name,
-      w: parseFloat(_popupVal('ps-length')) || item.w,
-      h: parseFloat(_popupVal('ps-width')) || item.h,
-      qty: parseInt(_popupVal('ps-qty')) || 0,
-      low: parseInt(_popupVal('ps-low')) || 0,
-      cost: parseFloat(_popupVal('ps-cost')) || 0,
-    };
-  }
-  Object.assign(item, updates);
-  if (isEB) { item.thickness = thick; item.width = ebWidth; item.length = ebLength; item.glue = ebGlue; }
-  else { delete item.thickness; delete item.width; delete item.length; delete item.glue; }
-  _scSet(id, cat);
-  /** @type {{variant: string, thickness: number, width?: number, length?: number, glue?: string}} */
-  const meta = { variant, thickness: thick };
-  if (isEB) { meta.width = ebWidth; meta.length = ebLength; meta.glue = ebGlue; }
-  _svSet(id, meta);
-  // Save supplier info
-  const sup = _ssGet(id);
-  sup.supplier = _popupVal('ps-supplier');
-  sup.url = _popupVal('ps-url');
-  _ssSet(id, sup);
-  let failed = false;
-  if (_userId) {
-    const { error } = await _db('stock_items').update(updates).eq('id', id);
-    if (error) { failed = true; console.warn('[stock save]', error.message); }
-  }
-  if (!keepOpen) _closePopup();
-  renderStockMain();
-  w._saveInFlight.delete('stock');
-  if (typeof _setSaveStatus === 'function') {
-    _setSaveStatus('stock', failed ? 'failed' : 'saved', failed ? { retry: () => _saveStockPopup(id, opts) } : undefined);
-  }
-  if (failed && !silent) _toast('Save failed — check connection', 'error');
-  if (!failed && !silent) _toast('Material updated', 'success');
+// ── Stock edit: routes to sidebar editor (replaces former popup) ──
+/** Compatibility alias — keeps existing call sites working.
+ *  @param {number} id */
+function _openStockPopup(id) {
+  switchSection('stock');
+  if (typeof editStockItem === 'function') editStockItem(id);
 }
 
 // ── New Stock Popup (for adding from Cut List) ──
@@ -1366,10 +967,22 @@ async function loadAllData() {
     try { renderQuoteMain(); } catch(e){}
     try { renderProjectsMain(); } catch(e){}
   }).catch(e => console.warn('[quote totals] hydrate failed:', e.message || e));
-  // Pre-cache order_lines too so order popups open without a network wait
-  _hydrateOrderLines().catch(e => console.warn('[order lines] hydrate failed:', e.message || e));
-  // U.9: load DISTINCT project_id from sheets/pieces for the per-project cut-list count
-  _loadCutListProjectIds().catch(e => console.warn('[cutlist project ids]', e.message || e));
+  // Pre-cache order_lines too so order popups open without a network wait.
+  // Re-render the dashboard once order_lines land — the Schedule mini-calendar
+  // sizes bars by `orderHoursRequired`, which reads `o._lines`. Without this,
+  // the first render places every multi-day auto-scheduled order as a single-
+  // day block on today.
+  _hydrateOrderLines().then(() => {
+    try { renderDashboard(); setTimeout(drawRevenueChart, 0); } catch(e){}
+  }).catch(e => console.warn('[order lines] hydrate failed:', e.message || e));
+  // U.9: load DISTINCT project_id from sheets/pieces for the per-project cut-list count.
+  // Guarded with `typeof` because clients.js (where this is defined) loads after app.js,
+  // and Supabase's _emitInitialSession can fire this auth callback as a microtask before
+  // clients.js has parsed. switchSection('projects') re-hydrates via settings.js when
+  // the user reaches the tab.
+  if (typeof _loadCutListProjectIds === 'function') {
+    _loadCutListProjectIds().catch(e => console.warn('[cutlist project ids]', e.message || e));
+  }
   // catalog_items deprecated — stock_items is now the single source of truth
   // for material/hardware/finish prices. _applyCatalogFromDB call removed.
   // Phase 3.3 — overlay business_info from DB (only if a row exists)
@@ -1380,6 +993,10 @@ async function loadAllData() {
   renderStockMain();
   renderQuoteMain();
   renderOrdersMain();
+  // Dashboard renders once at script-load before data arrives, so refresh it now
+  // that orders/quotes/stockItems are populated. Safe to call even when another
+  // panel is active — innerHTML update is invisible until the user navigates back.
+  try { renderDashboard(); setTimeout(drawRevenueChart, 0); } catch(e) {}
   // Strategy 2: re-render project contexts now that projects[] is populated.
   // Initial top-level calls fire before loadAllData resolves, so this catches up.
   if (typeof _clRenderContext === 'function') _clRenderContext();

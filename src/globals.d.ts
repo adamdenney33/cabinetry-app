@@ -58,6 +58,8 @@ declare global {
     _stockSearch?: string;
     _stockCatFilter?: string;
     _editingStockId?: number | null;
+    _editingClientId?: number | null;
+    _editingProjectId?: number | null;
     _saveStock?: () => void;
     /** Cabinet-panel UI stash slots. */
     _ratesOpen?: any;
@@ -96,6 +98,9 @@ declare global {
     state: 'dirty' | 'saving' | 'saved' | 'failed' | 'clean',
     opts?: { retry?: () => void }
   ): void;
+
+  // ── ui.js sidebar resize global ──
+  function _initSidebarResize(): void;
 
   // ── ui.js project-context globals (Strategy 2 + Idea 3) ──
   function _renderProjectHeader(

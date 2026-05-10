@@ -211,7 +211,8 @@ header {
 .project-empty .pe-recent-label { font-size: 10px; color: var(--muted); text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 6px; }
 .project-empty .pe-recent-item { padding: 6px 8px; font-size: 12px; cursor: pointer; border-radius: 4px; display: flex; align-items: center; gap: 8px; }
 .project-empty .pe-recent-item:hover { background: var(--accent-dim); color: var(--accent); }
-.project-empty .pe-recent-item .pe-ri-icon { width: 22px; height: 22px; border-radius: 4px; background: var(--accent-dim); color: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; flex-shrink: 0; }
+.project-empty .pe-recent-item .pe-ri-icon { width: 22px; height: 22px; color: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; flex-shrink: 0; }
+.project-empty .pe-recent-item .pe-ri-icon svg { width: 14px; height: 14px; }
 .project-empty .pe-recent-item .pe-ri-meta { font-size: 9px; color: var(--muted); margin-left: auto; }
 
 .cl-unsaved-pill { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; color: var(--accent); background: var(--accent-dim); padding: 1px 6px; border-radius: 3px; margin-left: 4px; display: inline-flex; align-items: center; gap: 4px; }
@@ -511,6 +512,47 @@ textarea { resize: vertical; min-height: 70px; }
 .card-title { font-size: 13px; font-weight: 700; color: var(--text); white-space: nowrap; }
 .card-header .btn-outline { width: auto; margin-left: 16px; }
 .card-body { padding: 16px 18px; }
+
+/* ── DASHBOARD INTERACTIVITY ── */
+.dash-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-sizing: border-box;
+  height: 48px;
+  padding: 0 18px;
+  border-bottom: 1px solid var(--border2);
+  cursor: pointer;
+  transition: background 0.12s ease, padding-left 0.12s ease;
+}
+.dash-row:last-child { border-bottom: none; }
+.dash-row:hover { background: var(--surface2); padding-left: 22px; }
+.dash-row.is-overdue { border-left: 3px solid var(--danger); }
+.dash-row.is-overdue:hover { background: rgba(220,38,38,0.06); }
+
+/* Card elevation — scoped to dashboard so other panels stay unchanged. */
+#panel-dashboard .card {
+  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+}
+#panel-dashboard .card:hover {
+  box-shadow: var(--shadow-md);
+  border-color: var(--accent-dim);
+}
+
+/* Schedule event bars — outer wrapper holds onclick, inner colored
+   div is the visual bar. Lift + brighten on hover; bump z-index so a
+   hovered bar sits above neighbors in the same lane. */
+.dash-event-bar {
+  transition: transform 0.12s ease;
+}
+.dash-event-bar:hover {
+  transform: translateY(-1px);
+  z-index: 3 !important;
+}
+.dash-event-bar:hover > div:first-child {
+  filter: brightness(1.1);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.18);
+}
 
 /* ── BADGE / PILL ── */
 .badge {
@@ -1370,8 +1412,8 @@ input.li-num:focus { outline: none; border-color: var(--accent); }
 .proj-card-top { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; flex-wrap: wrap; }
 .proj-name { font-size: 14px; font-weight: 700; color: var(--text); cursor: pointer; }
 .proj-name:hover { color: var(--accent); }
-.proj-client { font-size: 12px; color: var(--text2); }
-.proj-client::before { content: '·'; margin-right: 6px; color: var(--border); }
+.proj-client { font-size: 14px; font-weight: 700; color: var(--text); }
+.proj-client::before { content: '- '; color: var(--text); }
 .proj-desc { font-size: 11px; color: var(--muted); flex: 1; min-width: 80px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .proj-total { font-size: 13px; font-weight: 800; color: var(--text); font-variant-numeric: tabular-nums; margin-left: auto; }
 .proj-total.zero { color: var(--muted); font-weight: 500; }
@@ -1427,6 +1469,17 @@ input.li-num:focus { outline: none; border-color: var(--accent); }
 
 html.dark .proj-act-count { background: rgba(13,148,136,.18); color: #5dbf90; }
 html.dark .proj-act.empty .proj-act-add { background: rgba(13,148,136,.12); }
+
+/* At narrow widths the project / quote card action strip drops the text labels
+   and shows icon-only buttons — same pattern as the top nav-tab icon-only mode. */
+@media (max-width: 1100px) {
+  .proj-act-main { gap: 5px; padding: 4px 7px; }
+  .proj-act-main svg { width: 16px; height: 16px; }
+  .proj-act-label { display: none; }
+  .proj-act-money { display: none; }
+  .proj-act-count { padding: 1px 5px; font-size: 10px; }
+  .proj-act-add { width: 22px; }
+}
 
 /* ── Schedule sidebar layout: head + scrollable body + fixed footer ── */
 .sched-sidebar { display: flex; flex-direction: column; height: 100%; padding: 0; overflow: hidden; }

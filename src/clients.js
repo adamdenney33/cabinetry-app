@@ -123,6 +123,70 @@ async function removeClient(id) {
   _toast('Client removed', 'success');
 }
 
+// ── Client edit (sidebar) ──
+/** Populate the Clients sidebar form with an existing client and switch into
+ *  edit mode. Mirrors the Stock pattern (editStockItem). @param {number} id */
+function editClient(id) {
+  const c = /** @type {any} */ (clients.find(x => x.id === id));
+  if (!c) return;
+  /** @type {any} */ (window)._editingClientId = id;
+  _clientsShowForm = true;
+  _renderClientsSidebarGate();
+  const set = /** @param {string} elId @param {string} val */ (elId, val) => {
+    const el = _clInput(elId); if (el) el.value = val;
+  };
+  set('cl-name', c.name || '');
+  set('cl-email', c.email || '');
+  set('cl-phone', c.phone || '');
+  set('cl-address', c.address || '');
+  set('cl-notes', c.notes || '');
+  const sb = document.getElementById('cl-submit-btn');
+  const cb = document.getElementById('cl-cancel-btn');
+  const ft = document.getElementById('cl-form-title');
+  if (sb) sb.textContent = 'Save Changes';
+  if (cb) /** @type {HTMLElement} */ (cb).style.display = '';
+  if (ft) ft.textContent = 'Edit Client';
+  const sidebar = document.querySelector('#panel-clients .sidebar-scroll');
+  if (sidebar) /** @type {HTMLElement} */ (sidebar).scrollTop = 0;
+}
+
+async function saveClientEdit() {
+  const id = /** @type {any} */ (window)._editingClientId;
+  if (!id) { createClient(); return; }
+  const c = /** @type {any} */ (clients.find(x => x.id === id));
+  if (!c) return;
+  const name = _clInput('cl-name')?.value.trim() || '';
+  if (!name) { _toast('Enter a client name.', 'error'); return; }
+  /** @type {any} */
+  const updates = {
+    name,
+    email: _clInput('cl-email')?.value.trim() || null,
+    phone: _clInput('cl-phone')?.value.trim() || null,
+    address: _clInput('cl-address')?.value.trim() || null,
+    notes: _clInput('cl-notes')?.value.trim() || null,
+  };
+  Object.assign(c, updates);
+  const { error } = await _db('clients').update(/** @type {any} */ (updates)).eq('id', id);
+  if (error) { _toast('Could not save client — ' + (error.message || JSON.stringify(error)), 'error'); return; }
+  _toast('Client updated', 'success');
+  cancelClientEdit();
+}
+
+function cancelClientEdit() {
+  /** @type {any} */ (window)._editingClientId = null;
+  for (const id of ['cl-name','cl-email','cl-phone','cl-address','cl-notes']) {
+    const el = _clInput(id); if (el) el.value = '';
+  }
+  const sb = document.getElementById('cl-submit-btn');
+  const cb = document.getElementById('cl-cancel-btn');
+  const ft = document.getElementById('cl-form-title');
+  if (sb) sb.textContent = '+ Add Client';
+  if (cb) /** @type {HTMLElement} */ (cb).style.display = 'none';
+  if (ft) ft.textContent = 'New Client';
+  _clientsShowForm = false;
+  renderClientsMain();
+}
+
 // ── Project CRUD ──
 async function createProject() {
   const name = _clInput('pj-name')?.value.trim() || '';
@@ -168,6 +232,72 @@ async function removeProject(id) {
   projects = projects.filter(p => p.id !== id);
   renderProjectsMain();
   _toast('Project removed', 'success');
+}
+
+// ── Project edit (sidebar) ──
+/** Populate the Projects sidebar form with an existing project and switch into
+ *  edit mode. Mirrors the Stock pattern (editStockItem). @param {number} id */
+function editProject(id) {
+  const p = /** @type {any} */ (projects.find(x => x.id === id));
+  if (!p) return;
+  /** @type {any} */ (window)._editingProjectId = id;
+  _projectsShowForm = true;
+  _renderProjectsSidebarGate();
+  const set = /** @param {string} elId @param {string} val */ (elId, val) => {
+    const el = _clInput(elId); if (el) el.value = val;
+  };
+  const clientName = p.client_id ? (clients.find(/** @param {any} c */ c => c.id === p.client_id) || /** @type {any} */ ({})).name || '' : '';
+  set('pj-name', p.name || '');
+  set('pj-client', clientName);
+  set('pj-desc', p.description || '');
+  set('pj-status', p.status || 'active');
+  const sb = document.getElementById('pj-submit-btn');
+  const cb = document.getElementById('pj-cancel-btn');
+  const ft = document.getElementById('pj-form-title');
+  if (sb) sb.textContent = 'Save Changes';
+  if (cb) /** @type {HTMLElement} */ (cb).style.display = '';
+  if (ft) ft.textContent = 'Edit Project';
+  const sidebar = document.querySelector('#panel-projects .sidebar-scroll');
+  if (sidebar) /** @type {HTMLElement} */ (sidebar).scrollTop = 0;
+}
+
+async function saveProjectEdit() {
+  const id = /** @type {any} */ (window)._editingProjectId;
+  if (!id) { createProject(); return; }
+  const p = /** @type {any} */ (projects.find(x => x.id === id));
+  if (!p) return;
+  const name = _clInput('pj-name')?.value.trim() || '';
+  if (!name) { _toast('Enter a project name.', 'error'); return; }
+  const clientName = _clInput('pj-client')?.value.trim() || '';
+  const clientId = clientName ? await resolveClient(clientName) : null;
+  /** @type {any} */
+  const updates = {
+    name,
+    description: _clInput('pj-desc')?.value.trim() || null,
+    status: _clInput('pj-status')?.value || 'active',
+    client_id: clientId,
+  };
+  Object.assign(p, updates);
+  const { error } = await _db('projects').update(/** @type {any} */ (updates)).eq('id', id);
+  if (error) { _toast('Could not save project — ' + (error.message || JSON.stringify(error)), 'error'); return; }
+  _toast('Project updated', 'success');
+  cancelProjectEdit();
+}
+
+function cancelProjectEdit() {
+  /** @type {any} */ (window)._editingProjectId = null;
+  for (const id of ['pj-name','pj-client','pj-desc']) {
+    const el = _clInput(id); if (el) el.value = '';
+  }
+  const stat = _clInput('pj-status'); if (stat) stat.value = 'active';
+  const sb = document.getElementById('pj-submit-btn');
+  const cb = document.getElementById('pj-cancel-btn');
+  const ft = document.getElementById('pj-form-title');
+  if (sb) sb.textContent = '+ Create Project';
+  if (cb) /** @type {HTMLElement} */ (cb).style.display = 'none';
+  if (ft) ft.textContent = 'New Project';
+  _projectsShowForm = false;
+  renderProjectsMain();
 }
 
 // ── Client name helper ──
@@ -217,7 +347,7 @@ function _renderProjectsSidebarGate() {
       return bv - av;
     }).map(/** @param {any} p */ p => {
       const cName = p.client_id ? (clients.find(/** @param {any} c */ c => c.id === p.client_id) || /** @type {any} */ ({})).name || '' : '';
-      return { id: p.id, name: p.name, meta: cName, onClick: `_openProjectPopup(${p.id})` };
+      return { id: p.id, name: cName ? `${p.name} - ${cName}` : p.name, onClick: `_openProjectPopup(${p.id})` };
     });
     gate.innerHTML = _renderListEmpty({
       iconSvg: '<svg class="pe-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>',
@@ -226,6 +356,7 @@ function _renderProjectsSidebarGate() {
       btnLabel: '+ Create Project',
       btnOnclick: '_projectsRevealForm()',
       recentItems: recents,
+      itemIconSvg: _TYPE_ICON_PROJECT,
     });
     gate.style.display = '';
     form.style.display = 'none';
@@ -274,6 +405,7 @@ function _renderClientsSidebarGate() {
       btnLabel: '+ Add Client',
       btnOnclick: '_clientsRevealForm()',
       recentItems: recents,
+      itemIconSvg: _TYPE_ICON_CLIENT,
     });
     gate.style.display = '';
     form.style.display = 'none';
@@ -400,8 +532,8 @@ function renderProjectsMain() {
 
   // Inline SVG icons — match the main nav-tab set (index.html:163-200) so the
   // action strip's iconography is consistent with the destination tabs.
-  const iconCabinet = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="12" y1="3" x2="12" y2="12"/></svg>`;
-  const iconCutlist = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.8,5.1 L12,2 L12.6,5 L14.4,5.4 L17,3.3 L16,6.3 L17.4,7.5 L20.7,7 L18.3,9 L18.9,10.8 L22,12 L19,12.6 L18.6,14.4 L20.7,17 L17.7,16 L16.5,17.4 L17,20.7 L15,18.3 L13.2,18.9 L12,22 L11.4,19 L9.6,18.6 L7,20.7 L8,17.7 L6.6,16.5 L3.3,17 L5.7,15 L5.1,13.2 L2,12 L5,11.4 L5.4,9.6 L3.3,7 L6.3,8 L7.5,6.6 L7,3.3 L9,5.7 Z"/><circle cx="12" cy="12" r="2.5"/></svg>`;
+  const iconCabinet = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>`;
+  const iconCutlist = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12.00 1.70 L12.90 3.45 L15.94 2.48 L16.10 4.44 L19.28 4.72 L18.68 6.59 L21.52 8.06 L20.25 9.56 L22.30 12.00 L20.55 12.90 L21.52 15.94 L19.56 16.10 L19.28 19.28 L17.41 18.68 L15.94 21.52 L14.44 20.25 L12.00 22.30 L11.10 20.55 L8.06 21.52 L7.90 19.56 L4.72 19.28 L5.32 17.41 L2.48 15.94 L3.75 14.44 L1.70 12.00 L3.45 11.10 L2.48 8.06 L4.44 7.90 L4.72 4.72 L6.59 5.32 L8.06 2.48 L9.56 3.75 Z"/><circle cx="12" cy="12" r="1.5"/></svg>`;
   const iconQuote = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>`;
   const iconOrder = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/></svg>`;
 

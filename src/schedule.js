@@ -50,7 +50,7 @@ function renderSchedule() {
   const overrides = (typeof dayOverrides !== 'undefined' && Array.isArray(dayOverrides)) ? dayOverrides : [];
   const computed = computeSchedule(orders, biz, overrides, today);
 
-  /** @typedef {{id:any,project:string,client:string,start:Date|null,end:Date|null,color:string,lane:number,isManual:boolean,isMissingDates:boolean}} SchedEvent */
+  /** @typedef {{id:any,numberLabel:string,project:string,client:string,start:Date|null,end:Date|null,color:string,lane:number,isManual:boolean,isMissingDates:boolean}} SchedEvent */
   /** @type {SchedEvent[]} */
   const events = /** @type {any} */ (orders.filter(o=>o.status!=='complete').map((o,idx)=>{
     const sched = computed.get(o.id);
@@ -69,6 +69,7 @@ function renderSchedule() {
     }
     return {
       id: o.id,
+      numberLabel: o.order_number ? `#${o.order_number}` : `#${String(o.id).padStart(4,'0')}`,
       project: orderProject(o),
       client: orderClient(o),
       start, end,
@@ -117,37 +118,52 @@ function renderSchedule() {
   // Sidebar: head + scrollable body (sort + jobs) + fixed footer (actions).
   const overrideCount = (typeof dayOverrides !== 'undefined' && Array.isArray(dayOverrides)) ? dayOverrides.length : 0;
   const sortMode = _getSchedSortMode();
-  const sortedEvents = _sortSchedEvents(events, sortMode);
+  const filterStatus = _getSchedFilterStatus();
+  const visibleEvents = filterStatus === 'all'
+    ? events
+    : events.filter(e => {
+        const o = orders.find(x => x.id === e.id);
+        return !!(o && o.status === filterStatus);
+      });
+  const sortedEvents = _sortSchedEvents(visibleEvents, sortMode);
   const isManualMode = sortMode === 'manual';
   /** @type {any} */ (window)._lastSchedSidebarEvents = sortedEvents;
 
   let sidebarHTML = '';
   // HEAD
   sidebarHTML += `<div class="sched-sidebar-head">
-    <div style="font-size:14px;font-weight:800;color:var(--text)">Schedule</div>
+    <div style="display:flex;align-items:center;gap:8px;font-size:18px;font-weight:800;color:var(--text)">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      <span>Schedule</span>
+    </div>
   </div>`;
   // BODY
   sidebarHTML += `<div class="sched-sidebar-body">`;
-  sidebarHTML += `<div class="sched-section-header" onclick="_toggleSchedSection('jobs', this)"><span class="sched-caret">▾</span> Jobs (${sortedEvents.length})</div>`;
-  sidebarHTML += `<div id="sched-jobs-body">`;
   sidebarHTML += `<div class="sched-sort-row" title="Sort orders">
     <select onchange="_setSchedSortMode(this.value)">
-      <option value="start" ${sortMode==='start'?'selected':''}>Start date</option>
-      <option value="due" ${sortMode==='due'?'selected':''}>Due date</option>
-      <option value="priority" ${sortMode==='priority'?'selected':''}>Priority</option>
-      <option value="manual" ${sortMode==='manual'?'selected':''}>Manual</option>
-      <option value="created" ${sortMode==='created'?'selected':''}>Order placed</option>
+      <option value="start" ${sortMode==='start'?'selected':''}>Sort by: Start date</option>
+      <option value="due" ${sortMode==='due'?'selected':''}>Sort by: Due date</option>
+      <option value="priority" ${sortMode==='priority'?'selected':''}>Sort by: Priority</option>
+      <option value="manual" ${sortMode==='manual'?'selected':''}>Sort by: Manual</option>
+      <option value="created" ${sortMode==='created'?'selected':''}>Sort by: Order placed</option>
+    </select>
+  </div>`;
+  sidebarHTML += `<div class="sched-sort-row" title="Filter orders by status">
+    <select onchange="_setSchedFilterStatus(this.value)">
+      <option value="all" ${filterStatus==='all'?'selected':''}>Filter by: All</option>
+      <option value="quote" ${filterStatus==='quote'?'selected':''}>Filter by: Quote Sent</option>
+      <option value="confirmed" ${filterStatus==='confirmed'?'selected':''}>Filter by: Confirmed</option>
+      <option value="production" ${filterStatus==='production'?'selected':''}>Filter by: In Production</option>
+      <option value="delivery" ${filterStatus==='delivery'?'selected':''}>Filter by: Ready for Delivery</option>
     </select>
   </div>`;
   sortedEvents.forEach((e, idx) => {
     const o = orders.find(x => x.id === e.id);
     const st = o ? (o.status ? (/** @type {Record<string,string>} */ (STATUS_LABELS))[o.status] || o.status : '') : '';
-    const chip = slackChipHTML(/** @type {any} */ (e).slack);
     const dueText = (o && o.due && o.due !== 'TBD') ? `Due ${_escHtml(o.due)}` : '';
     const metaParts = [];
     if (e.isMissingDates) metaParts.push('<span style="color:#f87171;font-weight:600">Manual: no dates set</span>');
     else if (st) metaParts.push(_escHtml(st));
-    if (dueText) metaParts.push(dueText);
     const meta = metaParts.join(' · ');
     const dragAttr = isManualMode
       ? ` draggable="true" ondragstart="_schedDragStart(event,${idx})" ondragover="_schedDragOver(event,this)" ondrop="_schedDrop(event,${idx})" ondragend="_schedDragEnd()"`
@@ -155,10 +171,9 @@ function renderSchedule() {
     const dragHandle = isManualMode
       ? `<span class="cl-drag-handle" title="Drag to reorder" style="cursor:grab;color:var(--muted);display:inline-flex;align-items:center;flex-shrink:0">${SCHED_DRAG_HANDLE}</span>`
       : '';
-    sidebarHTML += `<div style="display:flex;align-items:center;gap:8px;padding:5px 8px;margin-bottom:2px;border-radius:6px;cursor:pointer"${dragAttr} onclick="_scrollToSchedBar(${e.id})" ondblclick="_openOrderPopup(${e.id})" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">${dragHandle}<div style="width:8px;height:8px;border-radius:2px;background:${e.color};flex-shrink:0"></div><div style="flex:1;min-width:0"><div style="font-size:11px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e.isManual?'🔒 ':''}${_escHtml(e.project)} — ${_escHtml(e.client)}</div>${(meta||chip)?`<div style="font-size:9px;color:var(--muted);display:flex;align-items:center;gap:4px;margin-top:1px">${meta}${chip}</div>`:''}</div></div>`;
+    sidebarHTML += `<div style="display:flex;align-items:center;gap:8px;padding:5px 8px;margin-bottom:2px;border-radius:6px;cursor:pointer;background:var(--surface2)"${dragAttr} onclick="_scrollToSchedBar(${e.id})" ondblclick="_openOrderPopup(${e.id})" onmouseover="this.style.background='${e.color}33'" onmouseout="this.style.background='var(--surface2)'">${dragHandle}<div style="width:9px;height:9px;border-radius:50%;background:${e.color};flex-shrink:0"></div><div style="flex:1;min-width:0"><div style="font-size:11px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e.isManual?'🔒 ':''}${_escHtml(e.numberLabel)} - ${_escHtml(e.project)} — ${_escHtml(e.client)}</div>${meta?`<div style="font-size:9px;color:var(--muted);display:flex;align-items:center;gap:4px;margin-top:1px">${meta}</div>`:''}${dueText?`<div style="font-size:9px;color:var(--muted);margin-top:1px">${dueText}</div>`:''}</div></div>`;
   });
   if(!sortedEvents.length)sidebarHTML+=`<div style="font-size:12px;color:var(--muted)">No active orders</div>`;
-  sidebarHTML += `</div>`; // close sched-jobs-body
   sidebarHTML += `</div>`; // close sched-sidebar-body
   // FOOT
   sidebarHTML += `<div class="sched-sidebar-foot">
@@ -185,7 +200,7 @@ function renderSchedule() {
     // Compute lane layout for the week. Cells always grow to fit all stacked
     // bars at the normal 20px stride — no overlap.
     const weekStart = week[0], weekEnd = week[6];
-    const weekEvents = events.filter(e => {
+    const weekEvents = visibleEvents.filter(e => {
       // events array invariant: at least one of e.start / e.end is non-null
       const s = /** @type {Date} */ (e.start||e.end), d = /** @type {Date} */ (e.end||e.start);
       return d >= weekStart && s <= weekEnd;
@@ -252,7 +267,7 @@ function renderSchedule() {
       if (runStart !== -1) runs.push([runStart, endInWeek]);
       if (!runs.length) return; // entire span lands on holidays
 
-      const labelText = _escHtml(e.project) + ' — ' + _escHtml(e.client);
+      const labelText = _escHtml(e.numberLabel) + ' - ' + _escHtml(e.project) + ' — ' + _escHtml(e.client);
       const manualStyle = e.isManual ? 'border:1px dashed rgba(255,255,255,0.5);' : '';
       const lockIcon = e.isManual ? '🔒 ' : '';
       const barTop = 28 + e.lane * stride;
@@ -313,6 +328,20 @@ function _getSchedSortMode() {
 /** @param {string} mode */
 function _setSchedSortMode(mode) {
   try { localStorage.setItem('pc_sched_sort', mode); } catch(e) {}
+  if (typeof renderSchedule === 'function') renderSchedule();
+}
+
+function _getSchedFilterStatus() {
+  try {
+    const v = localStorage.getItem('pc_sched_filter');
+    if (v === 'all' || v === 'quote' || v === 'confirmed' || v === 'production' || v === 'delivery') return v;
+  } catch(e) {}
+  return 'all';
+}
+
+/** @param {string} status */
+function _setSchedFilterStatus(status) {
+  try { localStorage.setItem('pc_sched_filter', status); } catch(e) {}
   if (typeof renderSchedule === 'function') renderSchedule();
 }
 
