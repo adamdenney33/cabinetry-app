@@ -134,7 +134,11 @@ function _lineSubtotal(row) {
   const kind = row.line_kind || 'cabinet';
   const disc = parseFloat(row.discount) || 0;
   const discMult = 1 - (disc / 100);
-  if (kind === 'item') {
+  if (kind === 'item' || kind === 'stock') {
+    // Stock lines have the same per-line math as items. The order/quote's
+    // stock_markup is applied later in the totals calc (one rate × the sum
+    // of all stock-kind materials), not per-line — that's why it's a single
+    // input below the stock library rather than a per-row column.
     const qty = parseFloat(row.qty) || 1;
     const price = parseFloat(row.unit_price) || 0;
     return { materials: qty * price * discMult, labour: 0 };
@@ -169,17 +173,20 @@ async function quoteTotalsFromLines(quoteId) {
   const q = quotes.find(x => x.id === quoteId);
   if (q) q._lines = lines.map(/** @param {any} r */ r => ({ ...r }));
   if (lines.length === 0) return null;
-  let materials = 0, labour = 0;
+  let materials = 0, labour = 0, stockMat = 0;
   for (const row of lines) {
     const sub = _lineSubtotal(row);
     materials += sub.materials;
     labour += sub.labour;
+    if (row.line_kind === 'stock') stockMat += sub.materials;
   }
-  return { materials, labour };
+  return { materials, labour, stockMat };
 }
 
 // Same shape as quoteTotalsFromLines, against order_lines. Caches lines on
-// the order (`o._lines`) so popups can open synchronously.
+// the order (`o._lines`) so popups can open synchronously. stockMat is the
+// sum of stock-kind line materials, broken out so the caller can apply the
+// per-order stock_markup separately.
 /** @param {number} orderId */
 async function orderTotalsFromLines(orderId) {
   if (!orderId) return null;
@@ -188,13 +195,14 @@ async function orderTotalsFromLines(orderId) {
   const o = orders.find(x => x.id === orderId);
   if (o) /** @type {any} */ (o)._lines = lines.map(/** @param {any} r */ r => ({ ...r }));
   if (lines.length === 0) return null;
-  let materials = 0, labour = 0;
+  let materials = 0, labour = 0, stockMat = 0;
   for (const row of lines) {
     const sub = _lineSubtotal(row);
     materials += sub.materials;
     labour += sub.labour;
+    if (row.line_kind === 'stock') stockMat += sub.materials;
   }
-  return { materials, labour };
+  return { materials, labour, stockMat };
 }
 
 async function _hydrateQuoteTotals() {
@@ -232,7 +240,11 @@ async function _refreshQuoteTotals(quoteId) {
 function quoteTotal(q) {
   const mat = q._totals ? q._totals.materials : (q.materials || 0);
   const lab = q._totals ? q._totals.labour    : (q.labour    || 0);
-  const sub = mat + lab;
+  const stockMat = q._totals ? (q._totals.stockMat || 0) : 0;
+  const nonStockMat = mat - stockMat;
+  const stockMarkup = parseFloat(q.stock_markup) || 0;
+  const stockSub = stockMat * (1 + stockMarkup / 100);
+  const sub = nonStockMat + lab + stockSub;
   const marked = sub * (1 + (q.markup || 0) / 100);
   const taxed = marked * (1 + (q.tax || 0) / 100);
   return taxed * (1 - (q.discount || 0) / 100);
@@ -284,6 +296,7 @@ async function convertQuoteToOrder(id) {
     markup: q.markup ?? 0,
     tax: q.tax ?? 0,
     discount: /** @type {any} */ (q).discount ?? 0,
+    stock_markup: /** @type {any} */ (q).stock_markup ?? 0,
     status: 'confirmed',
     order_number: typeof _nextOrderNumber === 'function' ? _nextOrderNumber() : null,
     due: 'TBD',
@@ -833,10 +846,11 @@ function _lineDisplay(row) {
       total,
     };
   }
-  if (kind === 'item') {
+  if (kind === 'item' || kind === 'stock') {
     const qty = row.qty || 1;
     const price = row.unit_price || 0;
-    return { kind, name: row.name || 'Item', detail: qty + ' × ' + price, qtyText: '', total };
+    const fallbackName = kind === 'stock' ? 'Stock item' : 'Item';
+    return { kind, name: row.name || fallbackName, detail: qty + ' × ' + price, qtyText: '', total };
   }
   // labour
   const hrs = row.labour_hours || 0;
@@ -860,12 +874,21 @@ async function printQuote(id, mode='print') {
   // Compute totals from the real line items rather than the in-memory cache,
   // so printed output always matches what the DB returns.
   const subParts = rows.reduce(
-    (acc, row) => { const s = _lineSubtotal(row); acc.materials += s.materials; acc.labour += s.labour; return acc; },
-    { materials: 0, labour: 0 }
+    (acc, row) => {
+      const s = _lineSubtotal(row);
+      acc.materials += s.materials;
+      acc.labour += s.labour;
+      if (row.line_kind === 'stock') acc.stockMat += s.materials;
+      return acc;
+    },
+    { materials: 0, labour: 0, stockMat: 0 }
   );
   const sub = subParts.materials + subParts.labour;
-  const markupAmt = sub * (q.markup ?? 0) / 100;
-  const afterMarkup = sub + markupAmt;
+  const stockMarkupPct = /** @type {any} */ (q).stock_markup ?? 0;
+  const stockMarkupAmt = subParts.stockMat * stockMarkupPct / 100;
+  const subWithStock = sub + stockMarkupAmt;
+  const markupAmt = subWithStock * (q.markup ?? 0) / 100;
+  const afterMarkup = subWithStock + markupAmt;
   const taxAmt = afterMarkup * (q.tax ?? 0) / 100;
   const afterTax = afterMarkup + taxAmt;
   const orderDiscPct = /** @type {any} */ (q).discount ?? 0;
@@ -970,7 +993,8 @@ async function printQuote(id, mode='print') {
         + '</td>' + discCell + '<td class="r">' + fmt(d.total) + '</td></tr>';
     }).join('')}
     ${rows.length ? `<tr><td colspan="${anyLineDisc ? 3 : 2}" style="border-bottom:1.5px solid #ddd;padding:0"></td></tr>` : ''}
-    ${(q.markup ?? 0) > 0 || (q.tax ?? 0) > 0 || orderDiscPct > 0 ? `<tr class="subtotal"><td style="color:#aaa"${anyLineDisc ? ' colspan="2"' : ''}>Subtotal</td><td class="r">${fmt(sub)}</td></tr>` : ''}
+    ${(q.markup ?? 0) > 0 || (q.tax ?? 0) > 0 || orderDiscPct > 0 || stockMarkupAmt > 0 ? `<tr class="subtotal"><td style="color:#aaa"${anyLineDisc ? ' colspan="2"' : ''}>Subtotal</td><td class="r">${fmt(sub)}</td></tr>` : ''}
+    ${stockMarkupAmt > 0 ? `<tr class="subtotal"><td style="padding-left:20px"${anyLineDisc ? ' colspan="2"' : ''}>Stock markup &nbsp;<span style="color:#bbb">(${stockMarkupPct}%)</span></td><td class="r">+ ${fmt(stockMarkupAmt)}</td></tr>` : ''}
     ${(q.markup ?? 0) > 0 ? `<tr class="subtotal"><td style="padding-left:20px"${anyLineDisc ? ' colspan="2"' : ''}>Markup &nbsp;<span style="color:#bbb">(${q.markup}%)</span></td><td class="r">+ ${fmt(markupAmt)}</td></tr>` : ''}
     ${(q.tax ?? 0) > 0 ? `<tr class="subtotal"><td style="padding-left:20px"${anyLineDisc ? ' colspan="2"' : ''}>Tax &nbsp;<span style="color:#bbb">(${q.tax}%)</span></td><td class="r">+ ${fmt(taxAmt)}</td></tr>` : ''}
     ${orderDiscPct > 0 ? `<tr class="subtotal"><td style="padding-left:20px;color:#c44"${anyLineDisc ? ' colspan="2"' : ''}>Discount &nbsp;<span style="color:#bbb">(${orderDiscPct}%)</span></td><td class="r" style="color:#c44">− ${fmt(orderDiscAmt)}</td></tr>` : ''}
@@ -1149,74 +1173,86 @@ function renderQuoteEditor() {
 
   const dateStr = q ? q.date : new Date().toLocaleDateString('en-GB', { day:'numeric', month:'short' });
 
-  // Header: project name + client only. Status + quote # live in the editor
-  // section below — duplication in the title row is just visual noise.
-  const headerHTML = _renderProjectHeader('quote', {
-    name: projectName || 'Untitled project',
-    exitFn: '_qChangeProject',
-    clientName: clientName || undefined,
-  });
-  host.innerHTML = `<div class="form-section editor-shell">
-    ${headerHTML}
+  const colDiscOff = localStorage.getItem('pc_quote_col_disc') === 'off';
+  const colHrsOff  = localStorage.getItem('pc_quote_col_hrs')  === 'off';
+  const colStockOn = localStorage.getItem('pc_quote_col_stock') === 'on';
 
-    <div class="editor-section">
-      <div class="pf-row">
-        <div class="pf"><label class="pf-label">Status</label>
-          <select class="pf-select" id="pq-status" oninput="_qMarkDirty()">
+  const quoteNum = (q && q.quote_number) || (q ? 'Q-'+String(q.id).padStart(4,'0') : _nextQuoteNumber());
+  // quote_number stored without the "Q-" prefix in some cases — strip it for the
+  // header input so the user just edits the digits.
+  const quoteNumStripped = String(quoteNum).replace(/^Q-/i, '');
+
+  host.innerHTML = `<div class="form-section editor-shell">
+    <div class="ed-head">
+      <button class="back-btn" onclick="_qChangeProject()" title="Back to quotes" aria-label="Back">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+      </button>
+      <div class="head-icon">${_CH_ICON_QUOTE}</div>
+      <div class="head-text">
+        <div class="ed-title-row">
+          <span class="order-num" style="font-weight:700;color:var(--text)">#Q-</span><input class="order-num-input" id="pq-quote-number" value="${_escHtml(quoteNumStripped)}" oninput="_qMarkDirty()" aria-label="Quote number">
+          <span class="ed-project-name">${_escHtml(projectName || 'Untitled project')}</span>
+        </div>
+        <div class="ed-sub">
+          <span class="ed-client">${_escHtml(clientName || '—')}</span>
+          <select class="ed-status" id="pq-status" data-status="${status}" oninput="_qSetStatusBadge(this);_qMarkDirty()">
             <option value="draft" ${status==='draft'?'selected':''}>Draft</option>
             <option value="sent" ${status==='sent'?'selected':''}>Sent</option>
             <option value="approved" ${status==='approved'?'selected':''}>Approved</option>
           </select>
         </div>
-        <div class="pf"><label class="pf-label">Quote #</label>
-          <input class="pf-input" id="pq-quote-number" value="${_escHtml((q && q.quote_number) || (q ? 'Q-'+String(q.id).padStart(4,'0') : _nextQuoteNumber()))}" oninput="_qMarkDirty()">
-        </div>
-        <div class="pf"><label class="pf-label">Date</label><div class="pf-static">${dateStr}</div></div>
       </div>
     </div>
 
-    <div class="editor-section">
-      <div class="editor-section-title">Line Items</div>
-      <div id="pq-lines" class="editor-li-list"></div>
-      <div class="editor-add-tiles">
-        <div class="editor-add-tile" onclick="_qAddLine('cabinet')" title="Add cabinet">
-          <span class="tile-icon">${_Q_ICON_CABINET}</span>
-          <span class="tile-label">Cabinets</span>
-          <span class="tile-add">+</span>
-        </div>
-        <div class="editor-add-tile" onclick="_qAddLine('item')" title="Add item">
-          <span class="tile-icon">${_Q_ICON_ITEM}</span>
-          <span class="tile-label">Items</span>
-          <span class="tile-add">+</span>
-        </div>
+    <div class="cl-section-header">
+      <span class="cl-section-title">Line Items</span>
+      <div class="pill-group">
+        <button class="cl-col-pill ${colDiscOff ? '' : 'active'}" data-col="disc" onclick="_qToggleColumn('disc',this)">Discount</button>
+        <button class="cl-col-pill ${colHrsOff ? '' : 'active'}" data-col="hrs" onclick="_qToggleColumn('hrs',this)">Hours</button>
+        <button class="cl-col-pill ${colStockOn ? 'active' : ''}" data-col="stock" onclick="_qToggleColumn('stock',this)">Stock</button>
       </div>
     </div>
 
-    <div class="editor-section">
+    <div id="pq-lines" class="editor-li-list"></div>
+
+    <div class="cl-add-row">
+      <button class="cl-add-btn" onclick="_qAddLine('cabinet')">+ Cabinet</button>
+      <button class="cl-add-btn" onclick="_qAddLine('item')">+ Item</button>
+    </div>
+
+    <div class="stock-library ${colStockOn ? 'visible' : ''}" id="pq-stock-library">
+      <div class="smart-input-wrap">
+        <input type="search" id="pq-stock-search" class="stock-search" placeholder="Search or add stock…" autocomplete="off"
+          oninput="_qStockSearch(this.value)" onfocus="_qStockSearch(this.value)">
+        <div class="smart-input-add" onclick="_openNewStockPopup()" title="Add new stock item">+</div>
+        <div id="pq-stock-suggest" class="stock-suggest"></div>
+      </div>
+      <div class="stock-markup-row">
+        <label>Stock Markup</label>
+        <div class="markup-wrap">
+          <input type="number" id="pq-stock-markup" value="${(q && /** @type {any} */ (q).stock_markup) ?? 0}" oninput="_renderQuoteLineTotals();_qMarkDirty()">
+          <span class="markup-unit">%</span>
+        </div>
+        <span class="stock-markup-hint">applied to all stock lines</span>
+      </div>
+    </div>
+
+    <div class="editor-section" style="margin-top:10px;border-top:1px solid var(--border);border-bottom:none;padding-top:10px">
       <div class="editor-section-title">Pricing</div>
       <div class="rates-chips">
-        <div class="rate-chip"><span class="chip-label">Markup</span><input type="number" id="pq-markup" value="${(q && q.markup) ?? 20}" oninput="_renderQuoteLineTotals();_qMarkDirty()"><span class="chip-unit">%</span></div>
         <div class="rate-chip"><span class="chip-label">Tax</span><input type="number" id="pq-tax" value="${(q && q.tax) ?? 13}" oninput="_renderQuoteLineTotals();_qMarkDirty()"><span class="chip-unit">%</span></div>
         <div class="rate-chip"><span class="chip-label">Disc</span><input type="number" id="pq-discount" value="${(q && /** @type {any} */ (q).discount) ?? 0}" oninput="_renderQuoteLineTotals();_qMarkDirty()"><span class="chip-unit">%</span></div>
       </div>
     </div>
 
-    <div class="pf-totals" id="pq-totals" style="margin-top:10px"></div>
+    <div class="pf-totals" id="pq-totals" style="margin: 6px 14px 10px"></div>
 
     <div class="editor-section">
       <div class="editor-section-title">Notes</div>
       <textarea class="pf-textarea" id="pq-notes" rows="3" placeholder="Customer-facing notes shown on the PDF..." oninput="_qMarkDirty()">${_escHtml((q && q.notes)||'')}</textarea>
     </div>
 
-    <div class="editor-footer">
-      ${isExisting ? `<button class="btn btn-outline" style="color:var(--danger)" onclick="_confirm('Delete quote?',()=>{removeQuote(${q.id});_qClearEditor()})">Delete</button>` : ''}
-      <span style="flex:1"></span>
-      ${isExisting ? `<button class="btn btn-outline" onclick="printQuote(${q.id},'pdf')">PDF</button>` : ''}
-      ${isExisting ? (matchingOrder
-        ? `<button class="btn btn-outline" style="color:var(--success)" onclick="_openOrderPopup(${matchingOrder.id})">✓ View Order</button>`
-        : `<button class="btn btn-outline" onclick="convertQuoteToOrder(${q.id})">→ Order</button>`) : ''}
-      ${isExisting ? '' : `<button class="btn btn-primary" onclick="createQuoteFromEditor()">+ Create Quote</button>`}
-    </div>
+    ${isExisting ? '' : `<div class="editor-footer"><span style="flex:1"></span><button class="btn btn-primary" onclick="createQuoteFromEditor()">+ Create Quote</button></div>`}
   </div>`;
 
   // After render, populate line list and totals if there's anything to show.
@@ -1224,6 +1260,40 @@ function renderQuoteEditor() {
     if (typeof _renderQuoteLines === 'function') _renderQuoteLines();
     if (typeof _renderQuoteLineTotals === 'function') _renderQuoteLineTotals();
   }
+}
+
+/** Reflect the picked status into the badge's data-status attribute.
+ *  @param {HTMLSelectElement} el */
+function _qSetStatusBadge(el) { el.setAttribute('data-status', el.value); }
+
+/** Toggle a line-items column (or the stock library) in the quote editor.
+ *  Persists state per-tab in localStorage.
+ *  @param {string} col @param {HTMLElement} btn */
+function _qToggleColumn(col, btn) {
+  const table = document.getElementById('pq-lines-table');
+  const lib = document.getElementById('pq-stock-library');
+  const wasActive = btn.classList.contains('active');
+  btn.classList.toggle('active', !wasActive);
+  const nowActive = !wasActive;
+  if (col === 'stock') {
+    if (lib) lib.classList.toggle('visible', nowActive);
+    try { localStorage.setItem('pc_quote_col_stock', nowActive ? 'on' : 'off'); } catch (e) {}
+    if (!nowActive) {
+      const sugg = document.getElementById('pq-stock-suggest');
+      if (sugg) sugg.classList.remove('open');
+    }
+  } else {
+    if (table) table.classList.toggle('hide-' + col, !nowActive);
+    try { localStorage.setItem('pc_quote_col_' + col, nowActive ? 'on' : 'off'); } catch (e) {}
+  }
+}
+
+/** Render the stock smart-library suggestions for the quote editor.
+ *  @param {string} q */
+function _qStockSearch(q) {
+  _stockSearchRender(q, 'pq-stock-suggest', /** @param {any} item */ item => {
+    _qAddStockLineFromLibrary(item);
+  });
 }
 
 /** Update the save-status pill + schedule autosave (Strategy C). */
@@ -1373,15 +1443,20 @@ async function createQuoteFromEditor(silent) {
   const project = projects.find(p => p.id === _qpState.projectId);
   if (!project) { _toast('Project not found.', 'error'); return false; }
   /** @type {any} */
+  const qnRaw = _popupVal('pq-quote-number') || '';
+  const qnSaved = qnRaw ? (/^Q-/i.test(qnRaw) ? qnRaw : 'Q-' + qnRaw) : null;
+  /** @type {any} */
   const row = {
     user_id: _userId,
     project_id: project.id,
     status: _popupVal('pq-status') || 'draft',
     notes: _popupVal('pq-notes') || '',
-    markup: parseFloat(_popupVal('pq-markup')) || 20,
+    // Legacy order-level markup column kept for back-compat; UI no longer exposes it.
+    markup: 0,
     tax: parseFloat(_popupVal('pq-tax')) || 13,
     discount: parseFloat(_popupVal('pq-discount')) || 0,
-    quote_number: _popupVal('pq-quote-number') || null,
+    stock_markup: parseFloat(_popupVal('pq-stock-markup')) || 0,
+    quote_number: qnSaved,
     date: new Date().toLocaleDateString('en-GB', { day:'numeric', month:'short' }),
   };
   if (project.client_id) row.client_id = project.client_id;
@@ -1410,12 +1485,15 @@ async function saveQuoteEditor() {
   try {
     const status = _popupVal('pq-status');
     const notes = _popupVal('pq-notes');
-    const quote_number = _popupVal('pq-quote-number') || null;
-    const markup = parseFloat(_popupVal('pq-markup')) || 0;
+    const qnRaw = _popupVal('pq-quote-number') || '';
+    const quote_number = qnRaw ? (/^Q-/i.test(qnRaw) ? qnRaw : 'Q-' + qnRaw) : null;
+    // Legacy markup column not surfaced in the new editor — preserve the existing value.
+    const markup = /** @type {any} */ (q).markup ?? 0;
     const tax = parseFloat(_popupVal('pq-tax')) || 0;
     const discount = parseFloat(_popupVal('pq-discount')) || 0;
+    const stock_markup = parseFloat(_popupVal('pq-stock-markup')) || 0;
     /** @type {any} */
-    const update = { status, notes, quote_number, markup, tax, discount, updated_at: new Date().toISOString() };
+    const update = { status, notes, quote_number, markup, tax, discount, stock_markup, updated_at: new Date().toISOString() };
     Object.assign(q, update);
     // Flush pending line edits in parallel
     if (typeof _lineUpsertTimers !== 'undefined') {

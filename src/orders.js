@@ -381,14 +381,6 @@ function renderOrderEditor() {
 
   const auto = o ? (o.auto_schedule !== false) : true;
 
-  // Header: project name + client only (status/order# live in editor-section
-  // below — duplication would just clutter the title row).
-  const headerHTML = _renderProjectHeader('order', {
-    name: projectName || 'Untitled project',
-    exitFn: '_oChangeProject',
-    clientName: clientName || undefined,
-  });
-
   // Hours-allocated override: NULL on the order = use computed; non-null = pinned manual value.
   const hoursOverride = !!(o && /** @type {any} */ (o).hours_allocated != null);
   const hoursAllocVal = hoursOverride ? /** @type {any} */ (o).hours_allocated : '';
@@ -396,52 +388,80 @@ function renderOrderEditor() {
   // Schedule section open/closed: persisted per-tab in localStorage.
   const schedOpen = localStorage.getItem('pc_order_sched_open') === 'true';
 
-  host.innerHTML = `<div class="form-section editor-shell">
-    ${headerHTML}
+  // Column-toggle pill state — Disc + Hours default to on; Stock = library toggle.
+  const colDiscOff  = localStorage.getItem('pc_order_col_disc')  === 'off';
+  const colHrsOff   = localStorage.getItem('pc_order_col_hrs')   === 'off';
+  const colStockOn  = localStorage.getItem('pc_order_col_stock') === 'on';
 
-    <div class="editor-section">
-      <div class="pf-row">
-        <div class="pf"><label class="pf-label">Status</label>
-          <select class="pf-select" id="po-status" oninput="_oMarkDirty()">
-            ${ORDER_STATUSES.map(/** @param {string} s */ s => `<option value="${s}" ${status===s?'selected':''}>${(/** @type {Record<string,string>} */ (STATUS_LABELS))[s]}</option>`).join('')}
+  // Status badge select — styled to look like a pill. Click reveals native select options.
+  const statusOptions = ORDER_STATUSES.map(/** @param {string} s */ s =>
+    `<option value="${s}" ${status===s?'selected':''}>${(/** @type {Record<string,string>} */ (STATUS_LABELS))[s]}</option>`
+  ).join('');
+
+  host.innerHTML = `<div class="form-section editor-shell">
+    <div class="ed-head">
+      <button class="back-btn" onclick="_oChangeProject()" title="Back to orders" aria-label="Back">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+      </button>
+      <div class="head-icon">${_CH_ICON_ORDER}</div>
+      <div class="head-text">
+        <div class="ed-title-row">
+          <span class="order-num" style="font-weight:700;color:var(--text)">#</span><input class="order-num-input" id="po-order-number" value="${_escHtml((o && o.order_number) || (o ? String(o.id).padStart(4,'0') : _nextOrderNumber()))}" oninput="_oMarkDirty()" aria-label="Order number">
+          <span class="ed-project-name">${_escHtml(projectName || 'Untitled project')}</span>
+        </div>
+        <div class="ed-sub">
+          <span class="ed-client">${_escHtml(clientName || '—')}</span>
+          <select class="ed-status" id="po-status" data-status="${status}" oninput="_oSetStatusBadge(this);_oMarkDirty()">
+            ${statusOptions}
           </select>
         </div>
-        <div class="pf"><label class="pf-label">Order #</label>
-          <input class="pf-input" id="po-order-number" value="${_escHtml((o && o.order_number) || (o ? String(o.id).padStart(4,'0') : _nextOrderNumber()))}" oninput="_oMarkDirty()">
-        </div>
       </div>
-      <div class="pp-pipeline">${pipe}</div>
     </div>
 
     ${quoteChip}
 
-    <div class="editor-section">
-      <div class="editor-section-title">Line Items</div>
-      <div id="po-lines" class="editor-li-list"></div>
-      <div class="editor-add-tiles">
-        <div class="editor-add-tile" onclick="_oAddLine('cabinet')" title="Add cabinet">
-          <span class="tile-icon">${_O_ICON_CABINET}</span>
-          <span class="tile-label">Cabinets</span>
-          <span class="tile-add">+</span>
-        </div>
-        <div class="editor-add-tile" onclick="_oAddLine('item')" title="Add item">
-          <span class="tile-icon">${_O_ICON_ITEM}</span>
-          <span class="tile-label">Items</span>
-          <span class="tile-add">+</span>
-        </div>
+    <div class="cl-section-header">
+      <span class="cl-section-title">Line Items</span>
+      <div class="pill-group">
+        <button class="cl-col-pill ${colDiscOff ? '' : 'active'}" data-col="disc" onclick="_oToggleColumn('disc',this)">Discount</button>
+        <button class="cl-col-pill ${colHrsOff ? '' : 'active'}" data-col="hrs" onclick="_oToggleColumn('hrs',this)">Hours</button>
+        <button class="cl-col-pill ${colStockOn ? 'active' : ''}" data-col="stock" onclick="_oToggleColumn('stock',this)">Stock</button>
       </div>
     </div>
 
-    <div class="editor-section">
+    <div id="po-lines" class="editor-li-list"></div>
+
+    <div class="cl-add-row">
+      <button class="cl-add-btn" onclick="_oAddLine('cabinet')">+ Cabinet</button>
+      <button class="cl-add-btn" onclick="_oAddLine('item')">+ Item</button>
+    </div>
+
+    <div class="stock-library ${colStockOn ? 'visible' : ''}" id="po-stock-library">
+      <div class="smart-input-wrap">
+        <input type="search" id="po-stock-search" class="stock-search" placeholder="Search or add stock…" autocomplete="off"
+          oninput="_oStockSearch(this.value)" onfocus="_oStockSearch(this.value)">
+        <div class="smart-input-add" onclick="_openNewStockPopup('po-stock-search')" title="Add new stock item">+</div>
+        <div id="po-stock-suggest" class="stock-suggest"></div>
+      </div>
+      <div class="stock-markup-row">
+        <label>Stock Markup</label>
+        <div class="markup-wrap">
+          <input type="number" id="po-stock-markup" value="${(o && /** @type {any} */ (o).stock_markup) ?? 0}" oninput="_renderOrderLineTotals();_oMarkDirty()">
+          <span class="markup-unit">%</span>
+        </div>
+        <span class="stock-markup-hint">applied to all stock lines</span>
+      </div>
+    </div>
+
+    <div class="editor-section" style="margin-top:10px;border-top:1px solid var(--border);border-bottom:none;padding-top:10px">
       <div class="editor-section-title">Pricing</div>
       <div class="rates-chips">
-        <div class="rate-chip"><span class="chip-label">Markup</span><input type="number" id="po-markup" value="${(o && o.markup) ?? 0}" oninput="_renderOrderLineTotals();_oMarkDirty()"><span class="chip-unit">%</span></div>
         <div class="rate-chip"><span class="chip-label">Tax</span><input type="number" id="po-tax" value="${(o && o.tax) ?? 0}" oninput="_renderOrderLineTotals();_oMarkDirty()"><span class="chip-unit">%</span></div>
         <div class="rate-chip"><span class="chip-label">Disc</span><input type="number" id="po-discount" value="${(o && /** @type {any} */ (o).discount) ?? 0}" oninput="_renderOrderLineTotals();_oMarkDirty()"><span class="chip-unit">%</span></div>
       </div>
     </div>
 
-    <div class="pf-totals" id="po-totals" style="margin-top:10px"></div>
+    <div class="pf-totals" id="po-totals" style="margin: 6px 14px 10px"></div>
 
     <details class="editor-section editor-section--collapsible" id="po-sched-details" ${schedOpen ? 'open' : ''} ontoggle="_orderSchedToggle(this)">
       <summary class="editor-section-title">
@@ -470,13 +490,7 @@ function renderOrderEditor() {
       <textarea class="pf-textarea" id="po-notes" rows="3" placeholder="Production notes..." oninput="_oMarkDirty()">${_escHtml((o && o.notes)||'')}</textarea>
     </div>
 
-    <div class="editor-footer">
-      ${isExisting ? `<button class="btn btn-outline" style="color:var(--danger)" onclick="_confirm('Delete order?',()=>{removeOrder(${o.id});_oClearEditor()})">Delete</button>` : ''}
-      <span style="flex:1"></span>
-      ${isExisting ? `<button class="btn btn-outline" onclick="printOrderDoc(${o.id},'work_order')">Work Order</button>` : ''}
-      ${isExisting ? `<button class="btn btn-outline" onclick="printOrderDoc(${o.id},'invoice')">Invoice</button>` : ''}
-      ${isExisting ? '' : `<button class="btn btn-primary" onclick="createOrderFromEditor()">+ Create Order</button>`}
-    </div>
+    ${isExisting ? '' : `<div class="editor-footer"><span style="flex:1"></span><button class="btn btn-primary" onclick="createOrderFromEditor()">+ Create Order</button></div>`}
   </div>`;
 
   if (o || _opState.lines.length > 0) {
@@ -491,6 +505,46 @@ function renderOrderEditor() {
  *  @param {HTMLDetailsElement} el */
 function _orderSchedToggle(el) {
   try { localStorage.setItem('pc_order_sched_open', String(el.open)); } catch (e) {}
+}
+
+/** Reflect the picked status into the badge's data-status attribute so the
+ *  CSS-driven background colour follows. The native select element provides
+ *  the dropdown UI; we just style its host as a coloured pill.
+ *  @param {HTMLSelectElement} el */
+function _oSetStatusBadge(el) {
+  el.setAttribute('data-status', el.value);
+}
+
+/** Toggle a line-items column (or the stock library). Persists state per-tab.
+ *  @param {string} col @param {HTMLElement} btn */
+function _oToggleColumn(col, btn) {
+  const table = document.getElementById('po-lines-table');
+  const lib = document.getElementById('po-stock-library');
+  const wasActive = btn.classList.contains('active');
+  btn.classList.toggle('active', !wasActive);
+  const nowActive = !wasActive;
+  if (col === 'stock') {
+    if (lib) lib.classList.toggle('visible', nowActive);
+    try { localStorage.setItem('pc_order_col_stock', nowActive ? 'on' : 'off'); } catch (e) {}
+    // Hide the suggest dropdown if we just closed the library.
+    if (!nowActive) {
+      const sugg = document.getElementById('po-stock-suggest');
+      if (sugg) sugg.classList.remove('open');
+    }
+  } else {
+    if (table) table.classList.toggle('hide-' + col, !nowActive);
+    try { localStorage.setItem('pc_order_col_' + col, nowActive ? 'on' : 'off'); } catch (e) {}
+  }
+}
+
+/** Open the stock-library smart-search dropdown filtered by the typed query.
+ *  Suggestions are grouped by stock_type / category (sticky section labels).
+ *  Click a row to add it as a stock-kind line.
+ *  @param {string} q */
+function _oStockSearch(q) {
+  _stockSearchRender(q, 'po-stock-suggest', /** @param {any} item */ item => {
+    _oAddStockLineFromLibrary(item);
+  });
 }
 
 /** Show/hide the allocated-hours input + breakdown panel when override toggles.
@@ -699,9 +753,10 @@ async function createOrderFromEditor(silent) {
     project_id: project.id,
     value: 0,
     status: _popupVal('po-status') || 'quote',
-    markup: parseFloat(_popupVal('po-markup')) || 0,
+    markup: 0,
     tax: parseFloat(_popupVal('po-tax')) || 0,
     discount: parseFloat(_popupVal('po-discount')) || 0,
+    stock_markup: parseFloat(_popupVal('po-stock-markup')) || 0,
     order_number: _popupVal('po-order-number') || null,
     due: 'TBD',
   };
@@ -734,9 +789,12 @@ async function saveOrderEditor() {
   try {
   const status = _popupVal('po-status');
   const order_number = _popupVal('po-order-number') || null;
-  const markup = parseFloat(_popupVal('po-markup')) || 0;
+  // Legacy order-level markup column is no longer surfaced in the editor; we
+  // preserve whatever the row already has so existing non-zero values are kept.
+  const markup = /** @type {any} */ (o).markup ?? 0;
   const tax = parseFloat(_popupVal('po-tax')) || 0;
   const discount = parseFloat(_popupVal('po-discount')) || 0;
+  const stock_markup = parseFloat(_popupVal('po-stock-markup')) || 0;
   const priority = parseFloat(_popupVal('po-priority')) || 0;
   const autoEl = /** @type {HTMLInputElement|null} */ (document.getElementById('po-auto-schedule'));
   const auto_schedule = autoEl ? autoEl.checked : true;
@@ -754,7 +812,7 @@ async function saveOrderEditor() {
     ? (parseFloat(_popupVal('po-hours-allocated')) || 0)
     : null;
   /** @type {any} */
-  const update = { status, order_number, markup, tax, discount, priority, auto_schedule, manual_start_date: manual_start, manual_end_date: manual_end, run_over_hours, hours_allocated, updated_at: new Date().toISOString() };
+  const update = { status, order_number, markup, tax, discount, stock_markup, priority, auto_schedule, manual_start_date: manual_start, manual_end_date: manual_end, run_over_hours, hours_allocated, updated_at: new Date().toISOString() };
   if (dueISO) update.due = new Date(dueISO + 'T12:00:00').toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' });
   if (startISO) update.production_start_date = startISO;
   Object.assign(o, update);
@@ -789,11 +847,15 @@ async function saveOrderEditor() {
     writes.push(/** @type {any} */ (_db('order_lines').update(u).eq('id', row.id)));
   }
   await Promise.all(writes);
-  // Refresh totals if helper exists
+  // Refresh totals if helper exists. Stock-kind materials are isolated as
+  // t.stockMat and re-priced via stock_markup; everything else flows through
+  // the legacy markup → tax → discount chain.
   if (typeof orderTotalsFromLines === 'function') {
     const t = await orderTotalsFromLines(id);
     if (t) {
-      const subPostLine = (t.materials + t.labour);
+      const nonStockMat = t.materials - (t.stockMat || 0);
+      const stockSub = (t.stockMat || 0) * (1 + (stock_markup||0)/100);
+      const subPostLine = nonStockMat + t.labour + stockSub;
       const afterMarkup = subPostLine * (1 + (markup||0)/100);
       const afterTax = afterMarkup * (1 + (tax||0)/100);
       /** @type {any} */ (o).value = Math.round(afterTax * (1 - (discount||0)/100));

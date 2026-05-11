@@ -1406,6 +1406,8 @@ input.li-num:focus { outline: none; border-color: var(--accent); }
 .proj-card-top { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; flex-wrap: wrap; }
 .proj-name { font-size: 14px; font-weight: 700; color: var(--text); cursor: pointer; }
 .proj-name:hover { color: var(--accent); }
+.proj-client { font-size: 14px; font-weight: 700; color: var(--text); }
+.proj-client::before { content: '- '; color: var(--text); }
 .proj-client-btn {
   display: inline-flex; align-items: center; gap: 6px;
   border: 1px solid var(--border);
@@ -1843,25 +1845,105 @@ html.dark .proj-act.empty .proj-act-add { background: rgba(13,148,136,.12); }
    alongside the +Markup / +Tax rows. */
 .pf-total-row.discount .t-val { color: var(--danger); }
 
-/* Line items table — zebra-striped, full sidebar width. Extends .cl-table
-   from cutlist.js with sidebar-tuned padding/font-size. Description cell
-   wraps onto multiple lines for long names. */
+/* ──────────────────────────────────────────────────────────────────
+   J-mockup editor: rich header (back+icon+title+sub), column-toggle
+   pills, zebra line-items table with auto-grow description textareas,
+   split add buttons, stock smart-library + per-order stock markup.
+   ────────────────────────────────────────────────────────────────── */
+
+/* Sidebar editor header — back arrow + tab icon + order/quote # + project name + status badge. */
+.ed-head {
+  padding: 12px 14px; border-bottom: 1px solid var(--border);
+  display: grid; grid-template-columns: 28px 20px 1fr; gap: 8px; align-items: start;
+}
+.ed-head .back-btn {
+  width: 28px; height: 28px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 6px;
+  color: var(--text2); cursor: pointer;
+  margin-top: 2px;
+  border: none; background: transparent; padding: 0;
+}
+.ed-head .back-btn:hover { background: var(--accent-dim); color: var(--accent); }
+.ed-head .head-icon { width: 20px; height: 20px; color: var(--text); margin-top: 6px; flex-shrink: 0; }
+.ed-head .head-icon svg { width: 100%; height: 100%; display: block; }
+.ed-head .head-text { min-width: 0; }
+.ed-head .ed-title-row { display: flex; align-items: baseline; gap: 4px; margin-bottom: 2px; flex-wrap: wrap; }
+.ed-head .order-num-input {
+  font-size: 15px; font-weight: 700; color: var(--text);
+  border: none; background: transparent; padding: 0;
+  width: auto; min-width: 60px; max-width: 110px;
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
+}
+.ed-head .order-num-input:focus { outline: 1px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
+.ed-head .ed-project-name {
+  font-size: 15px; font-weight: 700; color: var(--text);
+  flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis;
+}
+.ed-head .ed-sub {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 15px; font-weight: 700; color: var(--text);
+}
+.ed-head .ed-client { color: var(--text); }
+.ed-head .ed-status {
+  font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 10px;
+  text-transform: uppercase; letter-spacing: 0.4px;
+  border: none; cursor: pointer; font-family: inherit;
+  background: rgba(61,153,112,0.12); color: var(--success);
+  -webkit-appearance: none; -moz-appearance: none; appearance: none;
+}
+.ed-head .ed-status[data-status="draft"]      { background: var(--surface2); color: var(--muted); }
+.ed-head .ed-status[data-status="sent"]       { background: rgba(80,140,220,0.12); color: #5b8fc5; }
+.ed-head .ed-status[data-status="quote"]      { background: var(--surface2); color: var(--muted); }
+.ed-head .ed-status[data-status="approved"]   { background: rgba(61,153,112,0.12); color: var(--success); }
+.ed-head .ed-status[data-status="confirmed"]  { background: rgba(61,153,112,0.12); color: var(--success); }
+.ed-head .ed-status[data-status="production"] { background: rgba(80,140,220,0.12); color: #5b8fc5; }
+.ed-head .ed-status[data-status="delivery"]   { background: rgba(232,168,56,0.18); color: var(--accent); }
+.ed-head .ed-status[data-status="complete"]   { background: var(--surface2); color: var(--text2); }
+
+/* Section header with column-toggle pills (Discount / Hours / Stock). */
+.cl-section-header {
+  padding: 8px 14px 6px;
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+}
+.cl-section-title {
+  font-size: 11px; font-weight: 700; color: var(--text2);
+  text-transform: uppercase; letter-spacing: 0.6px;
+}
+.cl-section-header .pill-group {
+  display: flex; gap: 3px; margin-left: 8px; flex: 1; justify-content: flex-end;
+}
+.cl-col-pill {
+  font-size: 10px; font-weight: 600;
+  padding: 3px 9px; border-radius: 12px;
+  border: 1px solid var(--border); background: var(--surface);
+  color: var(--muted); cursor: pointer; font-family: inherit;
+  display: inline-flex; align-items: center; gap: 4px;
+}
+.cl-col-pill:hover { border-color: var(--accent); color: var(--accent); }
+.cl-col-pill.active { background: var(--text); color: var(--surface); border-color: var(--text); }
+.cl-col-pill.active:hover { background: var(--text2); color: var(--surface); border-color: var(--text2); }
+
+/* Line items list container. */
 .editor-li-list {
   background: var(--surface2);
   border: 1px solid var(--border);
   border-radius: 6px;
   overflow: hidden;
   min-height: 36px;
+  margin: 0 14px;
 }
 .editor-li-list .li-empty {
   padding: 14px 12px; font-size: 11px; color: var(--muted); text-align: center;
 }
+
+/* The line-items table proper. */
 .editor-li-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 12px;
   font-variant-numeric: tabular-nums;
-  table-layout: fixed;
 }
 .editor-li-table thead th {
   background: var(--surface);
@@ -1873,7 +1955,7 @@ html.dark .proj-act.empty .proj-act-add { background: rgba(13,148,136,.12); }
 }
 .editor-li-table thead th.num { text-align: right; }
 .editor-li-table tbody td {
-  padding: 5px 4px;
+  padding: 0;
   vertical-align: top;
   color: var(--text);
   line-height: 1.35;
@@ -1884,128 +1966,162 @@ html.dark .proj-act.empty .proj-act-add { background: rgba(13,148,136,.12); }
 html.dark .editor-li-table tbody tr:nth-child(even) td { background: rgba(255,255,255,0.03); }
 .editor-li-table tbody tr:hover td { background: var(--accent-dim) !important; }
 
-.editor-li-table .eli-handle {
-  width: 14px; padding-left: 2px; padding-right: 0;
+/* Column-toggle hide rules. Stock is a library toggle, not a column. */
+.editor-li-table.hide-disc .col-disc, .editor-li-table.hide-disc th.col-disc { display: none; }
+.editor-li-table.hide-hrs  .col-hrs,  .editor-li-table.hide-hrs  th.col-hrs  { display: none; }
+
+.editor-li-table .col-handle {
+  width: 14px; padding: 0 2px;
   color: var(--muted); cursor: grab;
   text-align: center; font-size: 12px;
   user-select: none;
 }
-.editor-li-table .eli-dot {
-  width: 14px; padding-left: 0; padding-right: 4px;
+.editor-li-table .col-dot {
+  width: 14px; padding: 0;
 }
-.editor-li-table .eli-dot span {
+.editor-li-table .col-dot span {
   display: inline-block; width: 6px; height: 6px; border-radius: 50%;
-  background: var(--accent); margin-top: 5px;
+  background: var(--accent); margin-top: 9px;
 }
-.editor-li-table .eli-dot.is-item span { background: var(--accent2); }
-.editor-li-table .eli-dot.is-labour span { background: var(--success); }
-.editor-li-table .eli-desc { white-space: normal; word-break: break-word; min-width: 0; }
-.editor-li-table .eli-desc .name { font-weight: 600; color: var(--text); }
-.editor-li-table .eli-desc .meta { font-size: 10px; color: var(--muted); margin-top: 1px; }
-.editor-li-table .eli-desc input.eli-name {
-  width: 100%; box-sizing: border-box;
-  border: 1px solid transparent; background: transparent;
-  padding: 2px 4px; margin: -2px 0;
-  font-family: inherit; font-size: 12px; color: var(--text);
-  font-weight: 600;
-  border-radius: 3px;
-}
-.editor-li-table .eli-desc input.eli-name:hover { border-color: var(--border); }
-.editor-li-table .eli-desc input.eli-name:focus { outline: none; border-color: var(--accent); background: var(--surface); }
-.editor-li-table .eli-num { text-align: right; white-space: nowrap; }
-.editor-li-table .eli-num.col-qty   { width: 36px; }
-.editor-li-table .eli-num.col-price { width: 56px; color: var(--text2); }
-.editor-li-table .eli-num.col-hrs   { width: 42px; color: var(--text2); }
-.editor-li-table .eli-num.col-disc  { width: 38px; color: var(--text2); }
-.editor-li-table .eli-num.col-total { width: 64px; font-weight: 600; }
-.editor-li-table .eli-num.zero { color: var(--muted); opacity: 0.45; }
-.editor-li-table .eli-num input.eli-input {
-  width: 100%; box-sizing: border-box;
-  border: 1px solid transparent; background: transparent;
-  padding: 2px 4px; margin: -2px 0;
-  font-family: inherit; font-size: 12px; color: var(--text);
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-  border-radius: 3px;
-}
-.editor-li-table .eli-num input.eli-input:hover { border-color: var(--border); }
-.editor-li-table .eli-num input.eli-input:focus { outline: none; border-color: var(--accent); background: var(--surface); }
-.editor-li-table .eli-num input.eli-input:disabled,
-.editor-li-table .eli-num input.eli-input[readonly] {
-  cursor: default; opacity: 0.65;
-}
-.editor-li-table .eli-num input.eli-input::-webkit-outer-spin-button,
-.editor-li-table .eli-num input.eli-input::-webkit-inner-spin-button {
-  -webkit-appearance: none; margin: 0;
-}
-.editor-li-table .eli-x {
-  width: 20px; text-align: center; padding-right: 2px;
+.editor-li-table .col-dot.is-item span   { background: var(--accent2); }
+.editor-li-table .col-dot.is-stock span  { background: var(--success); }
+.editor-li-table .col-dot.is-labour span { background: var(--success); }
+.editor-li-table .col-desc  { min-width: 0; }
+.editor-li-table .col-qty   { width: 38px; }
+.editor-li-table .col-price { width: 60px; text-align: right; }
+.editor-li-table .col-hrs   { width: 44px; text-align: right; }
+.editor-li-table .col-disc  { width: 42px; text-align: right; }
+.editor-li-table .col-total { width: 64px; text-align: right; }
+.editor-li-table .col-x {
+  width: 20px; text-align: center;
   color: var(--muted); cursor: pointer; font-size: 13px;
   user-select: none;
 }
-.editor-li-table .eli-x:hover { color: var(--danger); }
+.editor-li-table .col-x:hover { color: var(--danger); }
+.editor-li-table .col-total .total-val {
+  padding: 5px 4px; text-align: right;
+  font-weight: 600; font-variant-numeric: tabular-nums; font-size: 12px;
+}
+.editor-li-table .col-disc.zero .cl-input { color: var(--muted); opacity: 0.55; }
 
-/* Cabinet / Item add tiles — proj-act-inspired (Labour merged into Item via
-   the new Hrs column). */
-.editor-add-tiles {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 6px;
-  margin-top: 8px;
+/* Universal cell input. */
+.editor-li-table .cl-input {
+  width: 100%; box-sizing: border-box;
+  padding: 5px 4px;
+  border: none; background: transparent;
+  color: var(--text); font-size: 12px;
+  font-family: inherit; outline: none;
+  font-variant-numeric: tabular-nums;
 }
-.editor-add-tile {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 6px 8px;
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  border-radius: 7px;
-  cursor: pointer;
-  transition: border-color .15s, background .15s;
-  user-select: none;
+.editor-li-table .cl-input:focus { background: var(--accent-dim); border-radius: 3px; }
+.editor-li-table .cl-input.right { text-align: right; }
+
+/* Description column: textarea so long names wrap onto multiple lines and the row grows.
+   Regular weight, always black. Cabinet rows are prepopulated but freely editable. */
+.editor-li-table textarea.cl-input.desc {
+  font-weight: 400; color: var(--text);
+  resize: none; overflow: hidden;
+  line-height: 1.35;
+  min-height: 22px;
+  padding: 4px 4px;
+  display: block;
 }
-.editor-add-tile:hover {
-  border-color: var(--accent);
+
+/* Hrs is workshop-only — never on PDFs. Lighter grey to telegraph that. */
+.editor-li-table th.col-hrs { color: var(--muted); opacity: 0.7; }
+.editor-li-table .col-hrs .cl-input { color: var(--muted); }
+.editor-li-table .col-hrs .cl-input:focus { color: var(--text); }
+.editor-li-table .col-hrs .cl-input.is-computed {
+  color: var(--muted); opacity: 0.75; font-style: italic;
+}
+.editor-li-table .col-hrs .cl-input.is-computed:focus {
+  color: var(--text); font-style: normal; opacity: 1;
+}
+
+/* Disable native number spinners inside the table. */
+.editor-li-table .cl-input::-webkit-outer-spin-button,
+.editor-li-table .cl-input::-webkit-inner-spin-button {
+  -webkit-appearance: none; margin: 0;
+}
+
+/* Split add buttons (replaces the old editor-add-tiles grid). */
+.cl-add-row { display: flex; gap: 6px; padding: 8px 14px 0; }
+.cl-add-btn {
+  flex: 1; padding: 7px 10px;
+  border: 1px dashed var(--border); border-radius: 6px;
+  background: transparent;
+  color: var(--text2); font-size: 11px; font-weight: 600;
+  font-family: inherit; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.cl-add-btn:hover { color: var(--accent); border-color: var(--accent); background: var(--surface2); }
+
+/* Stock smart-library — revealed when the Stock pill is ON. Matches the project's
+   smart-input pattern (CLAUDE.md): search input + `+` button; dropdown opens on
+   focus with sectioned suggestions; `+` opens a full popup to create a stock item. */
+.stock-library { padding: 8px 14px 4px; display: none; position: relative; }
+.stock-library.visible { display: block; }
+.stock-library .smart-input-wrap { border-radius: 6px; }
+.stock-suggest {
+  display: none;
+  position: absolute; top: 100%; left: 14px; right: 14px;
+  margin-top: 4px;
+  border: 1px solid var(--border); border-radius: 6px;
   background: var(--surface);
+  box-shadow: var(--shadow-md);
+  max-height: 240px; overflow-y: auto;
+  z-index: 50;
 }
-.editor-add-tile .tile-icon {
-  display: inline-flex;
-  width: 14px;
-  height: 14px;
-  flex-shrink: 0;
-  color: var(--text2);
+.stock-suggest.open { display: block; }
+.stock-suggest .stock-section-label {
+  font-size: 9px; font-weight: 700; color: var(--muted);
+  text-transform: uppercase; letter-spacing: 0.6px;
+  padding: 6px 10px 3px; background: var(--surface2);
+  border-bottom: 1px solid var(--border2);
+  position: sticky; top: 0;
 }
-.editor-add-tile .tile-icon svg { width: 14px; height: 14px; }
-.editor-add-tile .tile-label {
+.stock-suggest .stock-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 10px; cursor: pointer;
+  border-bottom: 1px solid var(--border2);
   font-size: 11px;
-  font-weight: 600;
-  color: var(--text);
-  flex: 1;
-  min-width: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
-.editor-add-tile .tile-count {
-  font-size: 10px;
-  font-weight: 700;
-  background: rgba(13,148,136,.15);
-  color: var(--accent2);
-  padding: 1px 6px;
-  border-radius: 999px;
-  min-width: 18px;
-  text-align: center;
+.stock-suggest .stock-row:last-child { border-bottom: none; }
+.stock-suggest .stock-row:hover { background: var(--accent-dim); }
+.stock-suggest .stock-row .stock-name { flex: 1; color: var(--text); }
+.stock-suggest .stock-row .stock-qty { font-size: 10px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.stock-suggest .stock-row .stock-price {
+  font-size: 11px; color: var(--text2); font-variant-numeric: tabular-nums;
+  font-weight: 600; min-width: 50px; text-align: right;
 }
-.editor-add-tile .tile-add {
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--accent);
-  width: 18px;
-  text-align: center;
-  flex-shrink: 0;
+.stock-suggest .stock-suggest-empty {
+  padding: 14px 12px; font-size: 11px; color: var(--muted); text-align: center;
 }
-.editor-add-tile:hover .tile-add { color: var(--accent2); }
+.stock-markup-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 0 2px;
+  font-size: 11px; color: var(--text2);
+}
+.stock-markup-row label {
+  font-size: 10px; color: var(--muted); font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.4px; white-space: nowrap;
+}
+.stock-markup-row .markup-wrap {
+  flex: 1; display: flex; align-items: stretch;
+  border: 1px solid var(--border); border-radius: 5px;
+  background: var(--surface2); overflow: hidden; max-width: 140px;
+}
+.stock-markup-row input {
+  flex: 1; min-width: 0; border: none; background: transparent;
+  padding: 4px 6px; font-size: 12px; font-weight: 500; color: var(--text);
+  font-family: inherit; font-variant-numeric: tabular-nums; text-align: right; outline: none;
+}
+.stock-markup-row input:focus { background: var(--accent-dim); }
+.stock-markup-row .markup-unit {
+  font-size: 10px; color: var(--muted); font-weight: 600;
+  padding: 0 6px 0 0; display: flex; align-items: center;
+}
+.stock-markup-hint { font-size: 10px; color: var(--muted); margin-left: auto; }
 
 /* At narrow widths the icon eats space the label needs — hide it and tighten
    the tile padding so "Cabinets" / "Items" / "Labour" don't truncate. */

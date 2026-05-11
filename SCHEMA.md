@@ -527,6 +527,8 @@ PDFs the Disc% column appears only when at least one line has a non-zero value.
 existing `order_lines.schedule_hours` column. Scheduler input only — never on PDFs. Wired through to
 order_lines on quote→order conversion so hours estimates from the quote stage carry forward.
 
+**`stock_markup` (added 2026-05-11):** numeric percentage 0-100, default 0. Mirror of `orders.stock_markup` — single rate applied to all `line_kind='stock'` line materials before legacy markup/tax/discount. Carried over to the order at quote→order conversion (see `convertQuoteToOrder` in `src/quotes.js`).
+
 ---
 
 ### 3.15 `orders`
@@ -581,6 +583,8 @@ alter table public.orders
 
 **`discount` (added 2026-05-10):** numeric percentage 0-100, default 0. Whole-order discount applied **after** markup and tax (`((sub + markup) × (1 + tax)) × (1 - discount/100)`). Surfaced in the editor as the `Disc` chip and as a red `Discount (N%)` row in totals between Tax and Order Total; on PDFs the same row appears only when non-zero. `orders.value` (the cached customer-paid total) reflects the post-discount amount on save.
 
+**`stock_markup` (added 2026-05-11):** numeric percentage 0-100, default 0. Single rate applied to the materials sum of all `line_kind='stock'` lines on this order before the order-level `markup` → `tax` → `discount` chain. Surfaced in the editor below the stock smart-library when the Stock toggle pill is on. On PDFs a "Stock markup (N%)" row appears in the totals block when `stock_markup × stockMat > 0`. The legacy order-level `markup` column is no longer surfaced in the editor UI — `stock_markup` is the only user-facing markup input — but `markup` stays in the DB; existing non-zero values still apply in totals math.
+
 > **`value` retained (deviation, 2026-04-29; resolved 2026-05-06).** Originally this section said `drop column value, -- derived from order_lines`. During Phase 7 we found that `order_lines` aggregation only reproduces materials+labour, but `orders.value` is a snapshot of the customer-paid total at conversion time (post-markup, post-tax). Without markup/tax columns on `orders` and with the parent quote potentially editable or deletable, derivation isn't safe. The line-items rewrite (2026-05-06) added `markup` and `tax` columns, so `value` is now recomputed on every save from `order_lines × markup × tax`. The column is retained as a denormalised cache for fast dashboard queries (no aggregation per row). See SPEC.md § 13.
 
 `status` values: `'confirmed' | 'production' | 'delivery' | 'done' | 'cancelled'`.
@@ -621,6 +625,8 @@ edits on the order don't affect the original quote.
 **`discount` (added 2026-05-10):** numeric percentage 0-100, default 0. Per-line discount applied inside `_lineSubtotal()` before any order-level math. Surfaced in the editor as the `Disc%` column and in PDFs as a column that materialises only when at least one row has a non-zero value. Cabinet rows can have a discount too — the discount multiplier is applied uniformly to materials and labour so the cached `row._sub` stays a single number pair.
 
 **`line_kind = 'labour'` (deprecated 2026-05-10):** the UI no longer adds new labour-kind rows; the labour add-tile was removed from both editor sidebars. Existing rows still render in-place as item-style rows (Hrs cell reads `labour_hours`, totals still use the labour branch in `_lineSubtotal`). The check constraint allows the value indefinitely for back-compat — no destructive migration planned.
+
+**`line_kind = 'stock'` (added 2026-05-11):** new kind alongside `cabinet`/`item`/`labour`. Stock-kind rows are added from the stock smart-library in the editor sidebar (when the Stock pill is toggled on). Same shape as item rows (`name`, `qty`, `unit_price`, `discount`), with the per-line math going through `_lineSubtotal`'s item branch (`qty × unit_price × (1 - discount/100)` into `materials`). Totals math splits stock materials out and applies the parent's `stock_markup` percentage before the legacy `markup` → `tax` → `discount` chain. The check constraint was extended to allow `'stock'` in migration `20260511015625_stock_kind_and_markup`.
 
 ---
 

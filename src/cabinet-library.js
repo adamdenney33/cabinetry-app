@@ -283,7 +283,7 @@ function _smartRatesFinishSuggest(input, boxId) {
       <span style="font-size:10px;color:var(--muted)">${cur}${s.cost}/m²</span>
     </div>`;
   });
-  html += `<div class="client-suggest-add" onmousedown="_openNewStockPopup()">+ Add new finish to stock</div>`;
+  html += `<div class="client-suggest-add" onmousedown="_openNewCBFinishPopup()">+ Add new finish to stock</div>`;
   box.innerHTML = html;
   box.style.display = '';
 }
@@ -359,7 +359,7 @@ function _smartCBFinishSuggest(input, boxId, fieldName) {
       <span style="font-size:10px;color:var(--muted)">${cur}${s.cost}/unit</span>
     </div>`;
   });
-  html += `<div class="client-suggest-add" onmousedown="_openNewStockPopup('${field}')">+ Add new finish to stock</div>`;
+  html += `<div class="client-suggest-add" onmousedown="_openNewCBFinishPopup('${field}')">+ Add new finish to stock</div>`;
   box.innerHTML = html;
   box.style.display = '';
 }
@@ -400,8 +400,11 @@ function _saveNewCBMaterial(fieldName) {
   _toast('"' + name + '" added to materials', 'success');
 }
 
-/** @param {string} [fieldName] */
-function _openNewStockPopup(fieldName) {
+/** Open the "New Finish" popup used by cabinet-builder material/finish smart-inputs.
+ *  Historically misnamed `_openNewStockPopup` — that name now belongs to the
+ *  real new-stock popup in app.js.
+ *  @param {string} [fieldName] */
+function _openNewCBFinishPopup(fieldName) {
   const field = fieldName || 'finish';
   const existing = _byId('cb-mat-' + field)?.value || '';
   _openPopup(`

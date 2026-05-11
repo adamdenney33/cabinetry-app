@@ -54,25 +54,39 @@ function _renderOrderLines() {
     return;
   }
   _opState.lines.sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+  const tableClasses = _orderTableToggleClasses();
   const head = `<thead><tr>
-    <th class="eli-handle"></th>
-    <th class="eli-dot"></th>
+    <th class="col-handle"></th>
+    <th class="col-dot"></th>
     <th>Description</th>
-    <th class="num">Qty</th>
-    <th class="num">Price</th>
-    <th class="num">Hrs</th>
-    <th class="num">Disc%</th>
-    <th class="num">Total</th>
-    <th></th>
+    <th class="num col-qty">Qty</th>
+    <th class="num col-price">Price</th>
+    <th class="num col-hrs">Hrs</th>
+    <th class="num col-disc">Disc%</th>
+    <th class="num col-total">Total</th>
+    <th class="col-x"></th>
   </tr></thead>`;
   const body = '<tbody>' + _opState.lines.map((row, i) => _orderLineRowHtml(row, i)).join('') + '</tbody>';
-  host.innerHTML = `<table class="editor-li-table">${head}${body}</table>`;
+  host.innerHTML = `<table class="editor-li-table ${tableClasses}" id="po-lines-table">${head}${body}</table>`;
+  _autoGrowDescTextareas(host);
 }
 
-// Render a single row as a <tr> in the zebra-striped table. Unified shape:
-// cabinet rows show computed price + auto hours read-only; item rows are
-// fully editable. Legacy `labour` rows render in-place as item-style rows
-// (we kept the kind in the data; the UI just stopped adding new ones).
+// Build the class string for `.editor-li-table` reflecting which optional
+// columns are hidden. Column-toggle state is persisted in localStorage so it
+// survives sidebar reloads. Stock is a library toggle, not a column.
+function _orderTableToggleClasses() {
+  const cols = ['disc', 'hrs'];
+  return cols
+    .filter(c => localStorage.getItem('pc_order_col_' + c) === 'off')
+    .map(c => 'hide-' + c)
+    .join(' ');
+}
+
+// Render a single row as a <tr> in the zebra-striped table. Three kinds:
+// cabinet (read-only price + auto hours, editable qty/disc), item (fully
+// editable), stock (item-style but tied to a stock library entry — same
+// editable fields). Legacy `labour` rows render as item-style rows (the
+// labour math still works through _lineSubtotal's labour branch).
 /** @param {any} row @param {number} i */
 function _orderLineRowHtml(row, i) {
   const cur = window.currency;
@@ -82,13 +96,10 @@ function _orderLineRowHtml(row, i) {
   const total = sub.materials + sub.labour;
   const kind = row.line_kind || 'cabinet';
   const disc = parseFloat(row.discount) || 0;
-  const discCell = `<td class="eli-num col-disc${disc > 0 ? '' : ' zero'}"><input class="eli-input" type="number" min="0" max="100" step="1" value="${disc || ''}" placeholder="—" oninput="_orderLineUpdate(${i}, 'discount', this.value)"></td>`;
+  const discCell = `<td class="col-disc${disc > 0 ? '' : ' zero'}"><input class="cl-input right" type="number" min="0" max="100" step="1" value="${disc || ''}" placeholder="—" oninput="_orderLineUpdate(${i}, 'discount', this.value)"></td>`;
   if (kind === 'cabinet') {
-    const dims = [row.w_mm, row.h_mm, row.d_mm].filter(Boolean).join('×') + (row.w_mm ? 'mm' : '');
-    const meta = dims && dims !== 'mm' ? `<div class="meta">${_escHtml(dims)}</div>` : '';
     // Cabinet hours = cached calcCBLine().labourHrs × qty; fall back to
-    // computing on demand if the cache hasn't been populated yet (this
-    // happens before _orderHoursBreakdown runs on first load).
+    // computing on demand if the cache hasn't been populated yet.
     let hrs = row._hrs;
     if (typeof hrs !== 'number') {
       try {
@@ -100,37 +111,107 @@ function _orderLineRowHtml(row, i) {
     }
     const hrsTotal = hrs * (parseFloat(row.qty) || 1);
     const unitPrice = (parseFloat(row.qty) || 1) > 0 ? (sub.materials + sub.labour) / (parseFloat(row.qty) || 1) : 0;
+    const descDefault = row.name || 'Cabinet';
     return `<tr>
-      <td class="eli-handle" title="Drag to reorder (coming soon)">⋮</td>
-      <td class="eli-dot"><span></span></td>
-      <td class="eli-desc"><div class="name">${_escHtml(row.name || 'Cabinet')}</div>${meta}</td>
-      <td class="eli-num col-qty"><input class="eli-input" type="number" min="1" step="1" value="${row.qty ?? 1}" oninput="_orderLineUpdate(${i}, 'qty', this.value)"></td>
-      <td class="eli-num col-price">${fmt(unitPrice)}</td>
-      <td class="eli-num col-hrs" title="Computed from cabinet labour">${hrsTotal.toFixed(1)}</td>
+      <td class="col-handle" title="Drag to reorder (coming soon)">⋮</td>
+      <td class="col-dot"><span></span></td>
+      <td class="col-desc"><textarea class="cl-input desc" rows="1" oninput="_orderLineUpdate(${i}, 'name', this.value);_autoGrowTextarea(this)">${_escHtml(descDefault)}</textarea></td>
+      <td class="col-qty"><input class="cl-input right" type="number" min="1" step="1" value="${row.qty ?? 1}" oninput="_orderLineUpdate(${i}, 'qty', this.value)"></td>
+      <td class="col-price"><div class="total-val" style="font-weight:400;color:var(--text2)">${fmt(unitPrice)}</div></td>
+      <td class="col-hrs" title="Computed from cabinet labour"><div class="cl-input right is-computed" style="padding:5px 4px">${hrsTotal.toFixed(1)}</div></td>
       ${discCell}
-      <td class="eli-num col-total">${fmt(total)}</td>
-      <td class="eli-x" title="Remove" onclick="_orderLineRemove(${i})">✕</td>
+      <td class="col-total"><div class="total-val">${fmt(total)}</div></td>
+      <td class="col-x" title="Remove" onclick="_orderLineRemove(${i})">✕</td>
     </tr>`;
   }
-  // item or legacy labour: unified item-style row. For legacy labour rows,
-  // map labour_hours into the Hrs cell and unit_price into Price (the row's
-  // total still calculates correctly via _lineSubtotal's labour branch:
-  // labour_hours × unit_price).
+  // Item / stock / legacy labour: same editable shape. Stock rows link to a
+  // stock_items row via row.stock_id (kept in shadow state; persisted to DB).
+  // Legacy labour rows write to labour_hours; everything else writes to
+  // schedule_hours (workshop time, scheduler-only, PDF-hidden).
   const isLegacyLabour = kind === 'labour';
-  const dotClass = isLegacyLabour ? 'is-labour' : 'is-item';
+  const isStock = kind === 'stock';
+  const dotClass = isStock ? 'is-stock' : (isLegacyLabour ? 'is-labour' : 'is-item');
   const hoursField = isLegacyLabour ? 'labour_hours' : 'schedule_hours';
   const hoursVal = isLegacyLabour ? (row.labour_hours ?? 0) : (row.schedule_hours ?? 0);
+  const placeholder = isStock ? 'Stock item description…' : 'Item description…';
   return `<tr>
-    <td class="eli-handle" title="Drag to reorder (coming soon)">⋮</td>
-    <td class="eli-dot ${dotClass}"><span></span></td>
-    <td class="eli-desc"><input class="eli-name" value="${_escHtml(row.name || '')}" placeholder="Item name" oninput="_orderLineUpdate(${i}, 'name', this.value)"></td>
-    <td class="eli-num col-qty"><input class="eli-input" type="number" min="0" step="1" value="${row.qty ?? 1}" oninput="_orderLineUpdate(${i}, 'qty', this.value)"></td>
-    <td class="eli-num col-price"><input class="eli-input" type="number" min="0" step="0.01" value="${row.unit_price ?? 0}" oninput="_orderLineUpdate(${i}, 'unit_price', this.value)"></td>
-    <td class="eli-num col-hrs" title="Workshop time, not on PDF"><input class="eli-input" type="number" min="0" step="0.5" value="${hoursVal}" oninput="_orderLineUpdate(${i}, '${hoursField}', this.value)"></td>
+    <td class="col-handle" title="Drag to reorder (coming soon)">⋮</td>
+    <td class="col-dot ${dotClass}"><span></span></td>
+    <td class="col-desc"><textarea class="cl-input desc" rows="1" placeholder="${placeholder}" oninput="_orderLineUpdate(${i}, 'name', this.value);_autoGrowTextarea(this)">${_escHtml(row.name || '')}</textarea></td>
+    <td class="col-qty"><input class="cl-input right" type="number" min="0" step="1" value="${row.qty ?? 1}" oninput="_orderLineUpdate(${i}, 'qty', this.value)"></td>
+    <td class="col-price"><input class="cl-input right" type="number" min="0" step="0.01" value="${row.unit_price ?? 0}" oninput="_orderLineUpdate(${i}, 'unit_price', this.value)"></td>
+    <td class="col-hrs" title="Workshop time, not on PDF"><input class="cl-input right" type="number" min="0" step="0.5" value="${hoursVal}" oninput="_orderLineUpdate(${i}, '${hoursField}', this.value)"></td>
     ${discCell}
-    <td class="eli-num col-total">${fmt(total)}</td>
-    <td class="eli-x" title="Remove" onclick="_orderLineRemove(${i})">✕</td>
+    <td class="col-total"><div class="total-val">${fmt(total)}</div></td>
+    <td class="col-x" title="Remove" onclick="_orderLineRemove(${i})">✕</td>
   </tr>`;
+}
+
+// Auto-grow a textarea to fit its content so multi-line descriptions wrap
+// onto extra lines and the row grows.
+/** @param {HTMLTextAreaElement} ta */
+function _autoGrowTextarea(ta) {
+  ta.style.height = 'auto';
+  ta.style.height = ta.scrollHeight + 'px';
+}
+/** @param {Element} host */
+function _autoGrowDescTextareas(host) {
+  host.querySelectorAll('textarea.cl-input.desc').forEach(ta => _autoGrowTextarea(/** @type {HTMLTextAreaElement} */ (ta)));
+}
+
+/** Render the stock library smart-search dropdown for the order/quote editor.
+ *  Filters `window.stockItems` by name (substring match), groups by category,
+ *  and renders sticky-header sections. Each row click calls `onPick(item)`
+ *  and clears the search input.
+ *  @param {string} q query string
+ *  @param {string} suggestId id of the .stock-suggest container
+ *  @param {(item: any) => void} onPick called with the picked stockItems row */
+function _stockSearchRender(q, suggestId, onPick) {
+  const box = document.getElementById(suggestId);
+  if (!box || typeof stockItems === 'undefined' || !Array.isArray(stockItems)) return;
+  const cur = window.currency;
+  const ql = (q || '').trim().toLowerCase();
+  const matches = stockItems.filter(s => !ql || (s.name || '').toLowerCase().includes(ql));
+  if (matches.length === 0) {
+    box.innerHTML = '<div class="stock-suggest-empty">No matching stock — click + to add a new item.</div>';
+    box.classList.add('open');
+    return;
+  }
+  /** @type {Record<string, any[]>} */
+  const grouped = {};
+  for (const s of matches) {
+    const cat = (s.category || _scGet(s.id) || 'Other');
+    if (!grouped[cat]) grouped[cat] = [];
+    grouped[cat].push(s);
+  }
+  /** @type {string[]} */
+  const html = [];
+  Object.keys(grouped).sort().forEach(cat => {
+    html.push(`<div class="stock-section-label">${_escHtml(cat)}</div>`);
+    grouped[cat].forEach(s => {
+      const dims = (s.w && s.h) ? `${s.w}×${s.h}` : '';
+      const qty = s.qty != null ? `${s.qty}${dims ? ' · ' + dims : ''}` : (dims || '');
+      const cost = s.cost != null ? cur + Number(s.cost).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '';
+      html.push(`<div class="stock-row" data-stock-id="${s.id}">
+        <span class="stock-name">${_escHtml(s.name || '')}</span>
+        <span class="stock-qty">${_escHtml(qty)}</span>
+        <span class="stock-price">${cost}</span>
+      </div>`);
+    });
+  });
+  box.innerHTML = html.join('');
+  box.classList.add('open');
+  // Wire click handlers (single delegation rather than per-row to keep DOM lean).
+  box.onmousedown = (e) => {
+    const target = /** @type {HTMLElement} */ (e.target);
+    const rowEl = target.closest('.stock-row');
+    if (!rowEl) return;
+    e.preventDefault();
+    const sid = parseInt(/** @type {HTMLElement} */ (rowEl).dataset.stockId || '0', 10);
+    const picked = stockItems.find(s => s.id === sid);
+    if (picked) onPick(picked);
+    box.classList.remove('open');
+  };
 }
 
 // S.3: Per-order hours breakdown for the popup readout. Returns components
@@ -251,14 +332,25 @@ function _renderOrderLineTotals() {
   const subParts = _opState.lines.reduce(
     (acc, row) => {
       const s = _lineSubtotal(row);
-      acc.materials += s.materials;
-      acc.labour += s.labour;
+      if (row.line_kind === 'stock') {
+        acc.stockMat += s.materials;
+      } else {
+        acc.materials += s.materials;
+        acc.labour += s.labour;
+      }
       return acc;
     },
-    { materials: 0, labour: 0 }
+    { materials: 0, labour: 0, stockMat: 0 }
   );
-  const sub = subParts.materials + subParts.labour;
-  const markup = parseFloat(_popupVal('po-markup')) || 0;
+  // Stock markup is a single rate applied to all stock-kind lines (set in the
+  // editor below the stock library). The legacy order-level markup column
+  // (orders.markup) stays in the DB for back-compat — existing rows with a
+  // non-zero markup still apply it here, but the UI no longer exposes it.
+  const stockMarkup = parseFloat(_popupVal('po-stock-markup')) || 0;
+  const stockMarkupAmt = subParts.stockMat * stockMarkup / 100;
+  const sub = subParts.materials + subParts.labour + stockMarkupAmt;
+  const o = _opState.orderId ? orders.find(x => x.id === _opState.orderId) : null;
+  const markup = o ? (parseFloat(/** @type {any} */ (o).markup) || 0) : 0;
   const tax = parseFloat(_popupVal('po-tax')) || 0;
   const discount = parseFloat(_popupVal('po-discount')) || 0;
   const markupAmt = sub * markup / 100;
@@ -269,12 +361,19 @@ function _renderOrderLineTotals() {
   const total = afterTax - discountAmt;
   const el = document.getElementById('po-totals');
   if (!el) return;
+  const markupRow = markup > 0
+    ? `<div class="pf-total-row"><span class="t-label">Markup (${markup}%)</span><span class="t-val">+${fmt(markupAmt)}</span></div>`
+    : '';
+  const stockMarkupRow = stockMarkupAmt > 0
+    ? `<div class="pf-total-row"><span class="t-label">Stock markup (${stockMarkup}%)</span><span class="t-val">+${fmt(stockMarkupAmt)}</span></div>`
+    : '';
   const discRow = discount > 0
     ? `<div class="pf-total-row discount"><span class="t-label">Discount (${discount}%)</span><span class="t-val">−${fmt(discountAmt)}</span></div>`
     : '';
   el.innerHTML = `
-    <div class="pf-total-row"><span class="t-label">Subtotal</span><span class="t-val">${fmt(sub)}</span></div>
-    <div class="pf-total-row"><span class="t-label">Markup (${markup}%)</span><span class="t-val">+${fmt(markupAmt)}</span></div>
+    <div class="pf-total-row"><span class="t-label">Subtotal</span><span class="t-val">${fmt(subParts.materials + subParts.labour)}</span></div>
+    ${stockMarkupRow}
+    ${markupRow}
     <div class="pf-total-row"><span class="t-label">Tax (${tax}%)</span><span class="t-val">+${fmt(taxAmt)}</span></div>
     ${discRow}
     <div class="pf-total-row t-main"><span class="t-label">Order Total</span><span class="t-val">${fmt(total)}</span></div>`;
@@ -300,14 +399,14 @@ function _orderLineUpdate(idx, field, val) {
       const cur = window.currency;
       const sub = _lineSubtotal(row);
       const total = sub.materials + sub.labour;
-      const amt = rowEl.querySelector('.col-total');
+      const amt = rowEl.querySelector('.col-total .total-val');
       if (amt) amt.textContent = cur + Number(total).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
     }
   }
   _scheduleOrderLineUpsert(idx);
 }
 
-/** @param {string} kind 'item' | 'labour' (labour kept for back-compat; UI no longer adds it) */
+/** @param {string} kind 'item' | 'labour' | 'stock' (labour kept for back-compat; UI no longer adds it) */
 function _orderLineAdd(kind) {
   if (!_opState.orderId || !_userId) return;
   const position = _opState.lines.reduce((m, r) => Math.max(m, (r.position ?? 0) + 1), 0);
@@ -319,7 +418,7 @@ function _orderLineAdd(kind) {
     position,
     line_kind: kind,
     name: '',
-    qty: kind === 'item' ? 1 : 0,
+    qty: (kind === 'item' || kind === 'stock') ? 1 : 0,
     labour_hours: kind === 'labour' ? 0 : null,
     unit_price: kind === 'labour' ? businessRate : 0,
     discount: 0,
@@ -338,6 +437,36 @@ function _orderLineAdd(kind) {
       _scheduleOrderLineUpsert(idx);
     }
   });
+}
+
+/** Add a stock-kind line to the open order from a picked stockItems row.
+ *  Pre-fills name + unit_price from the stock library; the user adjusts qty.
+ *  @param {any} stockItem */
+function _oAddStockLineFromLibrary(stockItem) {
+  if (!_opState.orderId || !_userId) return;
+  const position = _opState.lines.reduce((m, r) => Math.max(m, (r.position ?? 0) + 1), 0);
+  /** @type {any} */
+  const row = {
+    order_id: _opState.orderId,
+    user_id: _userId,
+    position,
+    line_kind: 'stock',
+    name: stockItem.name || '',
+    qty: 1,
+    unit_price: parseFloat(stockItem.cost) || 0,
+    discount: 0,
+  };
+  _opState.lines.push(row);
+  _renderOrderLines();
+  _renderOrderLineTotals();
+  _db('order_lines').insert([row]).select().single().then(/** @param {any} r */ r => {
+    if (r.error || !r.data) { _toast('Could not add stock line — ' + (r.error?.message || ''), 'error'); return; }
+    const idx = _opState.lines.findIndex(x => x === row);
+    if (idx >= 0) _opState.lines[idx].id = r.data.id;
+  });
+  // Clear the search input so the next pick starts fresh.
+  const inp = /** @type {HTMLInputElement|null} */ (document.getElementById('po-stock-search'));
+  if (inp) inp.value = '';
 }
 
 /** @param {number} idx */
@@ -407,25 +536,33 @@ function _renderQuoteLines() {
     host.innerHTML = '<div class="li-empty">No line items yet — add a cabinet or item below.</div>';
     return;
   }
-  // Sort by position so reorders persist between opens.
   _qpState.lines.sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+  const tableClasses = _quoteTableToggleClasses();
   const head = `<thead><tr>
-    <th class="eli-handle"></th>
-    <th class="eli-dot"></th>
+    <th class="col-handle"></th>
+    <th class="col-dot"></th>
     <th>Description</th>
-    <th class="num">Qty</th>
-    <th class="num">Price</th>
-    <th class="num">Hrs</th>
-    <th class="num">Disc%</th>
-    <th class="num">Total</th>
-    <th></th>
+    <th class="num col-qty">Qty</th>
+    <th class="num col-price">Price</th>
+    <th class="num col-hrs">Hrs</th>
+    <th class="num col-disc">Disc%</th>
+    <th class="num col-total">Total</th>
+    <th class="col-x"></th>
   </tr></thead>`;
   const body = '<tbody>' + _qpState.lines.map((row, i) => _lineRowHtml(row, i)).join('') + '</tbody>';
-  host.innerHTML = `<table class="editor-li-table">${head}${body}</table>`;
+  host.innerHTML = `<table class="editor-li-table ${tableClasses}" id="pq-lines-table">${head}${body}</table>`;
+  _autoGrowDescTextareas(host);
 }
 
-// Render a single quote_lines row as a <tr> in the zebra-striped table. Same
-// shape as the order editor's row template (see _orderLineRowHtml in app.js).
+function _quoteTableToggleClasses() {
+  const cols = ['disc', 'hrs'];
+  return cols
+    .filter(c => localStorage.getItem('pc_quote_col_' + c) === 'off')
+    .map(c => 'hide-' + c)
+    .join(' ');
+}
+
+// Render a single quote_lines row as a <tr>. Same shape as _orderLineRowHtml.
 /** @param {any} row @param {number} i */
 function _lineRowHtml(row, i) {
   const cur = window.currency;
@@ -435,13 +572,8 @@ function _lineRowHtml(row, i) {
   const total = (sub.materials + sub.labour);
   const kind = row.line_kind || 'cabinet';
   const disc = parseFloat(row.discount) || 0;
-  const discCell = `<td class="eli-num col-disc${disc > 0 ? '' : ' zero'}"><input class="eli-input" type="number" min="0" max="100" step="1" value="${disc || ''}" placeholder="—" oninput="_lineUpdate(${i}, 'discount', this.value)"></td>`;
+  const discCell = `<td class="col-disc${disc > 0 ? '' : ' zero'}"><input class="cl-input right" type="number" min="0" max="100" step="1" value="${disc || ''}" placeholder="—" oninput="_lineUpdate(${i}, 'discount', this.value)"></td>`;
   if (kind === 'cabinet') {
-    const dims = [row.w_mm, row.h_mm, row.d_mm].filter(Boolean).join('×') + (row.w_mm ? 'mm' : '');
-    const meta = dims && dims !== 'mm' ? `<div class="meta">${_escHtml(dims)}</div>` : '';
-    // Cabinet hours come from calcCBLine; quotes don't have a Schedule
-    // section, so this is purely informational here, but we surface it for
-    // parity with the order editor.
     let hrs = 0;
     try {
       const cb = _quoteLineRowToCB(row);
@@ -449,33 +581,35 @@ function _lineRowHtml(row, i) {
       hrs = (c.labourHrs || 0) * (parseFloat(row.qty) || 1);
     } catch (e) { hrs = 0; }
     const unitPrice = (parseFloat(row.qty) || 1) > 0 ? (sub.materials + sub.labour) / (parseFloat(row.qty) || 1) : 0;
-    return `<tr>
-      <td class="eli-handle" title="Drag to reorder (coming soon)">⋮</td>
-      <td class="eli-dot"><span></span></td>
-      <td class="eli-desc"><div class="name">${_escHtml(row.name || 'Cabinet')}</div>${meta}<div class="meta" style="cursor:pointer;color:var(--accent)" onclick="_lineEditCabinetRow(${i})">Edit in Cabinet Builder</div></td>
-      <td class="eli-num col-qty"><input class="eli-input" type="number" min="1" step="1" value="${row.qty ?? 1}" oninput="_lineUpdate(${i}, 'qty', this.value)"></td>
-      <td class="eli-num col-price">${fmt(unitPrice)}</td>
-      <td class="eli-num col-hrs" title="Computed from cabinet labour">${hrs.toFixed(1)}</td>
+    const descDefault = row.name || 'Cabinet';
+    return `<tr ondblclick="_lineEditCabinetRow(${i})" title="Double-click to edit in Cabinet Builder">
+      <td class="col-handle">⋮</td>
+      <td class="col-dot"><span></span></td>
+      <td class="col-desc"><textarea class="cl-input desc" rows="1" oninput="_lineUpdate(${i}, 'name', this.value);_autoGrowTextarea(this)">${_escHtml(descDefault)}</textarea></td>
+      <td class="col-qty"><input class="cl-input right" type="number" min="1" step="1" value="${row.qty ?? 1}" oninput="_lineUpdate(${i}, 'qty', this.value)"></td>
+      <td class="col-price"><div class="total-val" style="font-weight:400;color:var(--text2)">${fmt(unitPrice)}</div></td>
+      <td class="col-hrs" title="Computed from cabinet labour"><div class="cl-input right is-computed" style="padding:5px 4px">${hrs.toFixed(1)}</div></td>
       ${discCell}
-      <td class="eli-num col-total">${fmt(total)}</td>
-      <td class="eli-x" title="Remove" onclick="_lineRemove(${i})">✕</td>
+      <td class="col-total"><div class="total-val">${fmt(total)}</div></td>
+      <td class="col-x" title="Remove" onclick="event.stopPropagation();_lineRemove(${i})">✕</td>
     </tr>`;
   }
-  // item or legacy labour: same unified item-style row as the order editor.
   const isLegacyLabour = kind === 'labour';
-  const dotClass = isLegacyLabour ? 'is-labour' : 'is-item';
+  const isStock = kind === 'stock';
+  const dotClass = isStock ? 'is-stock' : (isLegacyLabour ? 'is-labour' : 'is-item');
   const hoursField = isLegacyLabour ? 'labour_hours' : 'schedule_hours';
   const hoursVal = isLegacyLabour ? (row.labour_hours ?? 0) : (row.schedule_hours ?? 0);
+  const placeholder = isStock ? 'Stock item description…' : 'Item description…';
   return `<tr>
-    <td class="eli-handle" title="Drag to reorder (coming soon)">⋮</td>
-    <td class="eli-dot ${dotClass}"><span></span></td>
-    <td class="eli-desc"><input class="eli-name" value="${_escHtml(row.name || '')}" placeholder="Item name" oninput="_lineUpdate(${i}, 'name', this.value)"></td>
-    <td class="eli-num col-qty"><input class="eli-input" type="number" min="0" step="1" value="${row.qty ?? 1}" oninput="_lineUpdate(${i}, 'qty', this.value)"></td>
-    <td class="eli-num col-price"><input class="eli-input" type="number" min="0" step="0.01" value="${row.unit_price ?? 0}" oninput="_lineUpdate(${i}, 'unit_price', this.value)"></td>
-    <td class="eli-num col-hrs" title="Workshop time, not on PDF"><input class="eli-input" type="number" min="0" step="0.5" value="${hoursVal}" oninput="_lineUpdate(${i}, '${hoursField}', this.value)"></td>
+    <td class="col-handle">⋮</td>
+    <td class="col-dot ${dotClass}"><span></span></td>
+    <td class="col-desc"><textarea class="cl-input desc" rows="1" placeholder="${placeholder}" oninput="_lineUpdate(${i}, 'name', this.value);_autoGrowTextarea(this)">${_escHtml(row.name || '')}</textarea></td>
+    <td class="col-qty"><input class="cl-input right" type="number" min="0" step="1" value="${row.qty ?? 1}" oninput="_lineUpdate(${i}, 'qty', this.value)"></td>
+    <td class="col-price"><input class="cl-input right" type="number" min="0" step="0.01" value="${row.unit_price ?? 0}" oninput="_lineUpdate(${i}, 'unit_price', this.value)"></td>
+    <td class="col-hrs" title="Workshop time, not on PDF"><input class="cl-input right" type="number" min="0" step="0.5" value="${hoursVal}" oninput="_lineUpdate(${i}, '${hoursField}', this.value)"></td>
     ${discCell}
-    <td class="eli-num col-total">${fmt(total)}</td>
-    <td class="eli-x" title="Remove" onclick="_lineRemove(${i})">✕</td>
+    <td class="col-total"><div class="total-val">${fmt(total)}</div></td>
+    <td class="col-x" title="Remove" onclick="_lineRemove(${i})">✕</td>
   </tr>`;
 }
 
@@ -486,14 +620,23 @@ function _renderQuoteLineTotals() {
   const subParts = _qpState.lines.reduce(
     (acc, row) => {
       const s = _lineSubtotal(row);
-      acc.materials += s.materials;
-      acc.labour += s.labour;
+      if (row.line_kind === 'stock') {
+        acc.stockMat += s.materials;
+      } else {
+        acc.materials += s.materials;
+        acc.labour += s.labour;
+      }
       return acc;
     },
-    { materials: 0, labour: 0 }
+    { materials: 0, labour: 0, stockMat: 0 }
   );
-  const sub = subParts.materials + subParts.labour;
-  const markup = parseFloat(_popupVal('pq-markup')) || 0;
+  const stockMarkup = parseFloat(_popupVal('pq-stock-markup')) || 0;
+  const stockMarkupAmt = subParts.stockMat * stockMarkup / 100;
+  const sub = subParts.materials + subParts.labour + subParts.stockMat + stockMarkupAmt;
+  // Legacy `markup` column kept for back-compat — existing quotes with a
+  // non-zero markup still apply it here, but the UI no longer exposes it.
+  const q = _qpState.quoteId ? quotes.find(x => x.id === _qpState.quoteId) : null;
+  const markup = q ? (parseFloat(/** @type {any} */ (q).markup) || 0) : 0;
   const tax = parseFloat(_popupVal('pq-tax')) || 0;
   const discount = parseFloat(_popupVal('pq-discount')) || 0;
   const markupAmt = sub * markup / 100;
@@ -504,12 +647,19 @@ function _renderQuoteLineTotals() {
   const total = afterTax - discountAmt;
   const el = document.getElementById('pq-totals');
   if (!el) return;
+  const markupRow = markup > 0
+    ? `<div class="pf-total-row"><span class="t-label">Markup (${markup}%)</span><span class="t-val">+${fmt(markupAmt)}</span></div>`
+    : '';
+  const stockMarkupRow = stockMarkupAmt > 0
+    ? `<div class="pf-total-row"><span class="t-label">Stock markup (${stockMarkup}%)</span><span class="t-val">+${fmt(stockMarkupAmt)}</span></div>`
+    : '';
   const discRow = discount > 0
     ? `<div class="pf-total-row discount"><span class="t-label">Discount (${discount}%)</span><span class="t-val">−${fmt(discountAmt)}</span></div>`
     : '';
   el.innerHTML = `
-    <div class="pf-total-row"><span class="t-label">Subtotal</span><span class="t-val">${fmt(sub)}</span></div>
-    <div class="pf-total-row"><span class="t-label">Markup (${markup}%)</span><span class="t-val">+${fmt(markupAmt)}</span></div>
+    <div class="pf-total-row"><span class="t-label">Subtotal</span><span class="t-val">${fmt(subParts.materials + subParts.labour + subParts.stockMat)}</span></div>
+    ${stockMarkupRow}
+    ${markupRow}
     <div class="pf-total-row"><span class="t-label">Tax (${tax}%)</span><span class="t-val">+${fmt(taxAmt)}</span></div>
     ${discRow}
     <div class="pf-total-row t-main"><span class="t-label">Total</span><span class="t-val">${fmt(total)}</span></div>`;
@@ -535,14 +685,14 @@ function _lineUpdate(idx, field, val) {
       const cur = window.currency;
       const sub = _lineSubtotal(row);
       const total = sub.materials + sub.labour;
-      const amt = rowEl.querySelector('.col-total');
+      const amt = rowEl.querySelector('.col-total .total-val');
       if (amt) amt.textContent = cur + Number(total).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
     }
   }
   _scheduleLineUpsert(idx);
 }
 
-/** @param {string} kind 'item' | 'labour' (labour kept for back-compat; UI no longer adds it) */
+/** @param {string} kind 'item' | 'labour' | 'stock' (labour kept for back-compat; UI no longer adds it) */
 function _lineAdd(kind) {
   if (!_qpState.quoteId || !_userId) return;
   const position = _qpState.lines.reduce((m, r) => Math.max(m, (r.position ?? 0) + 1), 0);
@@ -554,30 +704,52 @@ function _lineAdd(kind) {
     position,
     line_kind: kind,
     name: '',
-    qty: kind === 'item' ? 1 : 0,
+    qty: (kind === 'item' || kind === 'stock') ? 1 : 0,
     labour_hours: kind === 'labour' ? 0 : null,
     unit_price: kind === 'labour' ? businessRate : 0,
     discount: 0,
   };
-  // Optimistic insert: render immediately with no id, then replace with the
-  // real id once the DB returns. The user can keep typing — the upsert
-  // scheduler waits for an id before writing.
   _qpState.lines.push(row);
   _renderQuoteLines();
   _renderQuoteLineTotals();
   _db('quote_lines').insert([row]).select().single().then(/** @param {any} r */ r => {
     if (r.error || !r.data) { _toast('Could not add line — ' + (r.error?.message || ''), 'error'); return; }
-    // Find the still-id-less row and stamp the real id onto it.
     const idx = _qpState.lines.findIndex(x => x === row);
     if (idx < 0) return;
     _qpState.lines[idx].id = r.data.id;
-    // If the user typed into this row before the insert returned, flush
-    // those edits now (the debounce was a no-op because there was no id).
     const cur = _qpState.lines[idx];
     if (cur.name || cur.qty || cur.labour_hours || (cur.unit_price !== row.unit_price)) {
       _scheduleLineUpsert(idx);
     }
   });
+}
+
+/** Add a stock-kind line to the open quote from a picked stockItems row.
+ *  @param {any} stockItem */
+function _qAddStockLineFromLibrary(stockItem) {
+  if (!_qpState.quoteId || !_userId) return;
+  const position = _qpState.lines.reduce((m, r) => Math.max(m, (r.position ?? 0) + 1), 0);
+  /** @type {any} */
+  const row = {
+    quote_id: _qpState.quoteId,
+    user_id: _userId,
+    position,
+    line_kind: 'stock',
+    name: stockItem.name || '',
+    qty: 1,
+    unit_price: parseFloat(stockItem.cost) || 0,
+    discount: 0,
+  };
+  _qpState.lines.push(row);
+  _renderQuoteLines();
+  _renderQuoteLineTotals();
+  _db('quote_lines').insert([row]).select().single().then(/** @param {any} r */ r => {
+    if (r.error || !r.data) { _toast('Could not add stock line — ' + (r.error?.message || ''), 'error'); return; }
+    const idx = _qpState.lines.findIndex(x => x === row);
+    if (idx >= 0) _qpState.lines[idx].id = r.data.id;
+  });
+  const inp = /** @type {HTMLInputElement|null} */ (document.getElementById('pq-stock-search'));
+  if (inp) inp.value = '';
 }
 
 /** @param {number} idx */

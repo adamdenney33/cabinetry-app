@@ -22,9 +22,36 @@ Companion docs: `SPEC.md` (refactor history), `SCHEMA.md` (DB schema),
 
 ## Active Work
 
-### Orders / Quotes editor cleanup pass 🚧 In Progress 2026-05-10
+### Orders / Quotes editor — mockup-J port 🚧 In Progress 2026-05-11
 
-Four-point UI cleanup on the order + quote editor sidebars, ported from the user's `mockups/orders-redesign-B-zebra-cutlist.html` mockup. Plan at `~/.claude/plans/clean-up-orders-dapper-yao.md`.
+Second-pass redesign on top of the 2026-05-10 mockup-B work. Implements the user's refined J mockup (`mockups/orders-redesign-J-column-toggles.html` + `mockups/quotes-redesign-J-column-toggles.html`) — new `.ed-head` header (back arrow + tab icon + editable order# prefix + project name + clickable status badge), column-toggle pills (Discount/Hours/Stock), split `+ Cabinet` / `+ Item` add buttons, stock smart-library + per-order `stock_markup` input, divider above Pricing, footer buttons dropped. Stock is a 3rd `line_kind` with the same per-line math as items; its materials get re-priced via `stock_markup` at totals time.
+
+**Code changes (in this commit):**
+- New `.ed-head` layout in both editors. Status moves to a `<select>` styled as a colored badge (`data-status` drives the bg). Order# is a small inline input prefixed by a `#` span; quote# similarly prefixed by `#Q-` (and re-prepended on save).
+- Column-toggle pills (`.cl-col-pill`) above the line-items table; state persisted in localStorage. `.editor-li-table.hide-disc` / `.hide-hrs` hide columns via CSS.
+- Description cells switched to auto-growing `<textarea class="cl-input desc">` with `_autoGrowTextarea` so long names wrap.
+- Hrs column header + cells rendered in muted grey to telegraph PDF-hidden; cabinet rows seed with `calcCBLine().labourHrs × qty` and render italic via `.is-computed` until edited.
+- Stock kind added: `_orderLineAdd('stock')` / `_lineAdd('stock')` accept the new kind; `_oAddStockLineFromLibrary` / `_qAddStockLineFromLibrary` push a stock row pre-filled from a picked stockItems entry. New `_stockSearchRender` (app.js) renders sectioned suggestions grouped by stock category.
+- New `_oToggleColumn` / `_qToggleColumn` / `_oSetStatusBadge` / `_qSetStatusBadge` / `_oStockSearch` / `_qStockSearch` helpers.
+- Stock smart-library `+` button calls the canonical `_openNewStockPopup()` (app.js). Resolved a long-standing shadow: `cabinet-library.js` had a function with the same name that actually opens a "New Finish" popup — renamed to `_openNewCBFinishPopup` and 3 legitimate finish-popup callers updated.
+- Pricing chips reduced to Tax + Disc. Order-level `markup` column kept in DB for back-compat (existing non-zero values still apply); UI no longer surfaces it. Stock markup is the only user-facing markup field, applied to stock-line materials only.
+- Totals math (`_renderOrderLineTotals` / `_renderQuoteLineTotals` / `quoteTotal`) split `stockMat` from non-stock materials and apply `stock_markup` before the legacy markup→tax→discount chain. `orderTotalsFromLines` / `quoteTotalsFromLines` extended to return `stockMat`.
+- Editor footer (Delete / Work Order / Invoice / PDF / → Order) removed — these actions live on the order/quote CARD in the main list. Single `+ Create` button stays for the new-row flow.
+- PDFs (HTML print + jspdf builders) gain a "Stock markup (N%)" row in the totals block when `stock_markup × stockMat > 0`. `_lineDisplay` handles stock kind same as item.
+
+**Sub-step pending: migration not yet applied.** Supabase MCP `apply_migration` was blocked by harness permissions. SQL staged at `supabase/migrations/20260511015625_stock_kind_and_markup.sql`: extend `line_kind` check constraints on `quote_lines` / `order_lines` to allow `'stock'`; add `stock_markup numeric default 0` to `quotes` + `orders`. Code is migration-tolerant — reads default to 0, no rows visible as kind=stock yet. Apply via the Supabase SQL editor before exercising stock-library lines.
+
+**Remaining:**
+- Apply migration `stock_kind_and_markup` via Supabase SQL editor.
+- Regenerate `database.types.ts` via Supabase MCP.
+- Browser smoke per `~/.claude/plans/clean-up-orders-dapper-yao.md` Phase 2 Verification.
+- Mark ✅ in this section + append final tick to SPEC.md § 13 entry.
+
+---
+
+### Orders / Quotes editor cleanup pass (mockup B) ✅ Done 2026-05-10
+
+Four-point UI cleanup on the order + quote editor sidebars, ported from the user's `mockups/orders-redesign-B-zebra-cutlist.html` mockup. Plan at `~/.claude/plans/clean-up-orders-dapper-yao.md`. **Superseded by the 2026-05-11 mockup-J port above** — that pass replaced the line-items table renderer, dropped the order-level Markup chip, and added column-toggle pills + stock kind / library / per-order stock_markup. The B-mockup migration (`20260510233952_add_discount_columns.sql`) still needs to be applied alongside the new J migration.
 
 **Code changes (in this commit):**
 - **Pricing chips** — `Markup · Tax · Disc` on one line via new `.rates-chips` / `.rate-chip` / `.chip-label` / `.chip-unit` CSS (replaces the stacked `.pf-row-inline` block). New `po-discount` + `pq-discount` inputs wired to totals re-render + dirty flag.

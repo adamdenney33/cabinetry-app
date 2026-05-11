@@ -2153,18 +2153,27 @@ function _buildQuotePDF(q, lineRows) {
   const dateStr = new Date().toLocaleDateString('en-GB', { day:'numeric', month:'long', year:'numeric' });
   // If lines were passed, recompute from them (source of truth). Otherwise
   // fall back to the in-memory _totals cache.
-  let sub;
+  let sub, stockMat = 0;
   if (Array.isArray(lineRows)) {
     let matSum = 0, labSum = 0;
-    for (const row of lineRows) { const s = _lineSubtotal(row); matSum += s.materials; labSum += s.labour; }
+    for (const row of lineRows) {
+      const s = _lineSubtotal(row);
+      matSum += s.materials;
+      labSum += s.labour;
+      if (row.line_kind === 'stock') stockMat += s.materials;
+    }
     sub = matSum + labSum;
   } else {
     const matVal = q._totals ? q._totals.materials : (q.materials || 0);
     const labVal = q._totals ? q._totals.labour    : (q.labour    || 0);
+    stockMat = q._totals ? (q._totals.stockMat || 0) : 0;
     sub = matVal + labVal;
   }
-  const markupAmt = sub * (q.markup ?? 0) / 100;
-  const afterMarkup = sub + markupAmt;
+  const stockMarkupPct = /** @type {any} */ (q).stock_markup ?? 0;
+  const stockMarkupAmt = stockMat * stockMarkupPct / 100;
+  const subWithStock = sub + stockMarkupAmt;
+  const markupAmt = subWithStock * (q.markup ?? 0) / 100;
+  const afterMarkup = subWithStock + markupAmt;
   const taxAmt = afterMarkup * (q.tax ?? 0) / 100;
   const afterTax = afterMarkup + taxAmt;
   const orderDiscPct = /** @type {any} */ (q).discount ?? 0;
@@ -2262,10 +2271,15 @@ function _buildQuotePDF(q, lineRows) {
   const totalsX = PW - M;
   const labelX = PW - M - 80;
 
-  if ((q.markup ?? 0) > 0 || (q.tax ?? 0) > 0 || orderDiscPct > 0) {
+  if ((q.markup ?? 0) > 0 || (q.tax ?? 0) > 0 || orderDiscPct > 0 || stockMarkupAmt > 0) {
     pdf.setFontSize(9); pdf.setFont('helvetica','normal'); pdf.setTextColor(140);
     pdf.text('Subtotal', labelX, y); pdf.text(fmt(sub), totalsX, y, { align:'right' });
     y += 6;
+  }
+  if (stockMarkupAmt > 0) {
+    pdf.setFontSize(8.5); pdf.setTextColor(140);
+    pdf.text('Stock markup (' + stockMarkupPct + '%)', labelX, y); pdf.text('+ ' + fmt(stockMarkupAmt), totalsX, y, { align:'right' });
+    y += 5;
   }
   if ((q.markup ?? 0) > 0) {
     pdf.setFontSize(8.5); pdf.setTextColor(140);
@@ -2545,10 +2559,15 @@ function _buildOrderDocPDF(o, lines, type) {
   // Compute totals from order_lines. If no lines (legacy orders), invert
   // o.value back through markup+tax so the breakdown still adds up.
   const rows = Array.isArray(lines) ? lines : [];
-  let sub;
+  let sub, stockMat = 0;
   if (rows.length > 0) {
     let matSum = 0, labSum = 0;
-    for (const row of rows) { const s = _lineSubtotal(row); matSum += s.materials; labSum += s.labour; }
+    for (const row of rows) {
+      const s = _lineSubtotal(row);
+      matSum += s.materials;
+      labSum += s.labour;
+      if (row.line_kind === 'stock') stockMat += s.materials;
+    }
     sub = matSum + labSum;
   } else {
     const mFrac = (o.markup ?? 0) / 100;
@@ -2556,8 +2575,11 @@ function _buildOrderDocPDF(o, lines, type) {
     const denom = (1 + mFrac) * (1 + tFrac);
     sub = denom > 0 ? (o.value ?? 0) / denom : (o.value ?? 0);
   }
-  const markupAmt = sub * (o.markup ?? 0) / 100;
-  const afterMarkup = sub + markupAmt;
+  const stockMarkupPct = /** @type {any} */ (o).stock_markup ?? 0;
+  const stockMarkupAmt = stockMat * stockMarkupPct / 100;
+  const subWithStock = sub + stockMarkupAmt;
+  const markupAmt = subWithStock * (o.markup ?? 0) / 100;
+  const afterMarkup = subWithStock + markupAmt;
   const taxAmt = afterMarkup * (o.tax ?? 0) / 100;
   const afterTax = afterMarkup + taxAmt;
   const orderDiscPct = /** @type {any} */ (o).discount ?? 0;
@@ -2652,10 +2674,15 @@ function _buildOrderDocPDF(o, lines, type) {
   const totalsX = PW - M;
   const labelX = PW - M - 80;
 
-  if ((o.markup ?? 0) > 0 || (o.tax ?? 0) > 0 || orderDiscPct > 0) {
+  if ((o.markup ?? 0) > 0 || (o.tax ?? 0) > 0 || orderDiscPct > 0 || stockMarkupAmt > 0) {
     pdf.setFontSize(9); pdf.setFont('helvetica','normal'); pdf.setTextColor(140);
     pdf.text('Subtotal', labelX, y); pdf.text(fmt(sub), totalsX, y, { align:'right' });
     y += 6;
+  }
+  if (stockMarkupAmt > 0) {
+    pdf.setFontSize(8.5); pdf.setTextColor(140);
+    pdf.text('Stock markup (' + stockMarkupPct + '%)', labelX, y); pdf.text('+ ' + fmt(stockMarkupAmt), totalsX, y, { align:'right' });
+    y += 5;
   }
   if ((o.markup ?? 0) > 0) {
     pdf.setFontSize(8.5); pdf.setTextColor(140);
