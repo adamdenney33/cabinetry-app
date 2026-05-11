@@ -814,12 +814,22 @@ function _scheduleLineUpsert(idx) {
 
 // _saveQuotePopup was replaced by saveQuoteEditor() in src/quotes.js.
 
-// ── Project edit: routes to sidebar editor (replaces former popup) ──
-/** Compatibility alias — keeps existing call sites working.
+// ── Project edit: routes to sidebar editor (autosave) ──
+/** Drill into the project's client and load it into the sidebar form. All
+ *  edits autosave — no Save/Cancel buttons.
  *  @param {number} id */
 function _openProjectPopup(id) {
+  const p = projects.find(/** @param {any} x */ x => x.id === id);
+  if (!p) return;
   switchSection('projects');
-  if (typeof editProject === 'function') editProject(id);
+  if (p.client_id) {
+    if (typeof _setProjectsActiveClient === 'function') _setProjectsActiveClient(p.client_id);
+  } else {
+    _toast('This project has no client — assign one from the Clients tab first.', 'error');
+    return;
+  }
+  if (typeof _renderProjectsSidebarGate === 'function') _renderProjectsSidebarGate();
+  if (typeof _pjLoadProject === 'function') _pjLoadProject(id);
 }
 
 // ── Stock edit: routes to sidebar editor (replaces former popup) ──

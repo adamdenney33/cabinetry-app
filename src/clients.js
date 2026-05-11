@@ -123,6 +123,29 @@ async function removeClient(id) {
   _toast('Client removed', 'success');
 }
 
+/** @param {number} id */
+async function duplicateClient(id) {
+  if (!_requireAuth()) return;
+  if (!_enforceFreeLimit('clients', clients.length)) return;
+  const c = /** @type {any} */ (clients.find(c => c.id === id));
+  if (!c) return;
+  /** @type {any} */
+  const row = {
+    user_id: _userId,
+    name: c.name + ' (copy)',
+    email: c.email || null,
+    phone: c.phone || null,
+    address: c.address || null,
+    notes: c.notes || null,
+  };
+  const { data, error } = await _dbInsertSafe('clients', row);
+  if (error || !data) { _toast('Could not duplicate — ' + (error?.message || JSON.stringify(error)), 'error'); return; }
+  clients.push(data);
+  clients.sort((a,b) => a.name.localeCompare(b.name));
+  _toast('Client duplicated', 'success');
+  renderClientsMain();
+}
+
 // ── Client edit (sidebar) ──
 /** Populate the Clients sidebar form with an existing client and switch into
  *  edit mode. Mirrors the Stock pattern (editStockItem). @param {number} id */
@@ -188,35 +211,6 @@ function cancelClientEdit() {
 }
 
 // ── Project CRUD ──
-async function createProject() {
-  const name = _clInput('pj-name')?.value.trim() || '';
-  if (!name) { _toast('Enter a project name.', 'error'); return; }
-  if (!_requireAuth()) return;
-  if (!_enforceFreeLimit('projects', projects.length)) return;
-  const clientName = _clInput('pj-client')?.value.trim() || '';
-  const clientId = clientName ? await resolveClient(clientName) : null;
-  /** @type {any} */
-  const row = {
-    user_id: _userId, name,
-    description: _clInput('pj-desc')?.value.trim() || null,
-    status: _clInput('pj-status')?.value || 'active',
-  };
-  if (clientId) row.client_id = clientId;
-  let { data, error } = await _dbInsertSafe('projects', row);
-  if (error || !data) { _toast('Could not save project — ' + (error?.message || JSON.stringify(error)), 'error'); return; }
-  data.status = data.status || 'active';
-  projects.unshift(data);
-  _toast('Project created', 'success');
-  for (const id of ['pj-name','pj-client','pj-desc']) {
-    const el = _clInput(id); if (el) el.value = '';
-  }
-  const status = _clInput('pj-status'); if (status) status.value = 'active';
-  _projectsShowForm = false;
-  renderProjectsMain();
-  // Scroll to the newly created project
-  setTimeout(() => _highlightProject(data.id), 100);
-}
-
 /** @param {number} id @param {string} field @param {any} value */
 async function updateProject(id, field, value) {
   const p = projects.find(p => p.id === id);
@@ -230,75 +224,104 @@ async function removeProject(id) {
   if (!_requireAuth()) return;
   await _db('projects').delete().eq('id', id);
   projects = projects.filter(p => p.id !== id);
+  if (_pjCurrentProjectId === id) {
+    _pjCurrentProjectId = null;
+    if (typeof _pjPrepareFormForDraft === 'function') _pjPrepareFormForDraft();
+  }
   renderProjectsMain();
   _toast('Project removed', 'success');
 }
 
-// ── Project edit (sidebar) ──
-/** Populate the Projects sidebar form with an existing project and switch into
- *  edit mode. Mirrors the Stock pattern (editStockItem). @param {number} id */
-function editProject(id) {
-  const p = /** @type {any} */ (projects.find(x => x.id === id));
-  if (!p) return;
-  /** @type {any} */ (window)._editingProjectId = id;
-  _projectsShowForm = true;
-  _renderProjectsSidebarGate();
-  const set = /** @param {string} elId @param {string} val */ (elId, val) => {
-    const el = _clInput(elId); if (el) el.value = val;
-  };
-  const clientName = p.client_id ? (clients.find(/** @param {any} c */ c => c.id === p.client_id) || /** @type {any} */ ({})).name || '' : '';
-  set('pj-name', p.name || '');
-  set('pj-client', clientName);
-  set('pj-desc', p.description || '');
-  set('pj-status', p.status || 'active');
-  const sb = document.getElementById('pj-submit-btn');
-  const cb = document.getElementById('pj-cancel-btn');
-  const ft = document.getElementById('pj-form-title');
-  if (sb) sb.textContent = 'Save Changes';
-  if (cb) /** @type {HTMLElement} */ (cb).style.display = '';
-  if (ft) ft.textContent = 'Edit Project';
-  const sidebar = document.querySelector('#panel-projects .sidebar-scroll');
-  if (sidebar) /** @type {HTMLElement} */ (sidebar).scrollTop = 0;
-}
+/** Duplicate a project + all child entities (cabinets, cutlists with their
+ *  sheets/pieces/edge_bands, quotes with quote_lines, orders with order_lines).
+ *  @param {number} id */
+async function duplicateProject(id) {
+  if (!_requireAuth()) return;
+  if (!_enforceFreeLimit('projects', projects.length)) return;
+  const src = /** @type {any} */ (projects.find(x => x.id === id));
+  if (!src) return;
 
-async function saveProjectEdit() {
-  const id = /** @type {any} */ (window)._editingProjectId;
-  if (!id) { createProject(); return; }
-  const p = /** @type {any} */ (projects.find(x => x.id === id));
-  if (!p) return;
-  const name = _clInput('pj-name')?.value.trim() || '';
-  if (!name) { _toast('Enter a project name.', 'error'); return; }
-  const clientName = _clInput('pj-client')?.value.trim() || '';
-  const clientId = clientName ? await resolveClient(clientName) : null;
   /** @type {any} */
-  const updates = {
-    name,
-    description: _clInput('pj-desc')?.value.trim() || null,
-    status: _clInput('pj-status')?.value || 'active',
-    client_id: clientId,
+  const projRow = {
+    user_id: _userId,
+    name: (src.name || 'Project') + ' Copy',
+    description: src.description || null,
+    status: src.status || 'active',
+    client_id: src.client_id || null,
   };
-  Object.assign(p, updates);
-  const { error } = await _db('projects').update(/** @type {any} */ (updates)).eq('id', id);
-  if (error) { _toast('Could not save project — ' + (error.message || JSON.stringify(error)), 'error'); return; }
-  _toast('Project updated', 'success');
-  cancelProjectEdit();
-}
+  const { data: newProj, error: pErr } = await _dbInsertSafe('projects', projRow);
+  if (pErr || !newProj) { _toast('Duplicate failed — ' + (pErr?.message || ''), 'error'); return; }
+  /** @type {any} */ (newProj).status = newProj.status || 'active';
+  const newPid = newProj.id;
 
-function cancelProjectEdit() {
-  /** @type {any} */ (window)._editingProjectId = null;
-  for (const id of ['pj-name','pj-client','pj-desc']) {
-    const el = _clInput(id); if (el) el.value = '';
+  /** @param {any} r @param {object} extra */
+  const strip = (r, extra) => {
+    const o = { ...r, ...(extra || {}) };
+    delete o.id; delete o.created_at; delete o.updated_at;
+    return o;
+  };
+
+  try {
+    const { data: cabs } = await _db('cabinets').select('*').eq('project_id', id);
+    if (cabs && cabs.length) {
+      await _db('cabinets').insert(cabs.map(/** @param {any} r */ r => strip(r, { project_id: newPid })));
+    }
+  } catch (e) { console.warn('[duplicateProject] cabinets failed:', e); }
+
+  try {
+    const { data: cls } = await _db('cutlists').select('*').eq('project_id', id);
+    for (const cl of (cls || [])) {
+      const { data: newCl } = await _db('cutlists')
+        .insert([strip(cl, { project_id: newPid })])
+        .select('id').single();
+      if (!newCl) continue;
+      const ncid = newCl.id;
+      const [{ data: sh }, { data: pc }, { data: eb }] = await Promise.all([
+        _db('sheets').select('*').eq('cutlist_id', cl.id),
+        _db('pieces').select('*').eq('cutlist_id', cl.id),
+        _db('edge_bands').select('*').eq('cutlist_id', cl.id),
+      ]);
+      if (sh && sh.length) await _db('sheets').insert(sh.map(/** @param {any} r */ r => strip(r, { project_id: newPid, cutlist_id: ncid })));
+      if (pc && pc.length) await _db('pieces').insert(pc.map(/** @param {any} r */ r => strip(r, { project_id: newPid, cutlist_id: ncid })));
+      if (eb && eb.length) await _db('edge_bands').insert(eb.map(/** @param {any} r */ r => strip(r, { project_id: newPid, cutlist_id: ncid })));
+    }
+  } catch (e) { console.warn('[duplicateProject] cutlists failed:', e); }
+
+  try {
+    const { data: qs } = await _db('quotes').select('*').eq('project_id', id);
+    for (const q of (qs || [])) {
+      const { data: newQ } = await _db('quotes')
+        .insert([strip(q, { project_id: newPid })])
+        .select('*').single();
+      if (!newQ) continue;
+      const { data: ql } = await _db('quote_lines').select('*').eq('quote_id', q.id);
+      if (ql && ql.length) await _db('quote_lines').insert(ql.map(/** @param {any} r */ r => strip(r, { quote_id: newQ.id })));
+      quotes.unshift(/** @type {any} */ (newQ));
+    }
+  } catch (e) { console.warn('[duplicateProject] quotes failed:', e); }
+
+  try {
+    const { data: os } = await _db('orders').select('*').eq('project_id', id);
+    for (const o of (os || [])) {
+      const { data: newO } = await _db('orders')
+        .insert([strip(o, { project_id: newPid })])
+        .select('*').single();
+      if (!newO) continue;
+      const { data: ol } = await _db('order_lines').select('*').eq('order_id', o.id);
+      if (ol && ol.length) await _db('order_lines').insert(ol.map(/** @param {any} r */ r => strip(r, { order_id: newO.id })));
+      orders.unshift(/** @type {any} */ (newO));
+    }
+  } catch (e) { console.warn('[duplicateProject] orders failed:', e); }
+
+  projects.unshift(/** @type {any} */ (newProj));
+  if (window._projectsWithCutLists && window._projectsWithCutLists.has(id)) {
+    window._projectsWithCutLists.add(newPid);
   }
-  const stat = _clInput('pj-status'); if (stat) stat.value = 'active';
-  const sb = document.getElementById('pj-submit-btn');
-  const cb = document.getElementById('pj-cancel-btn');
-  const ft = document.getElementById('pj-form-title');
-  if (sb) sb.textContent = '+ Create Project';
-  if (cb) /** @type {HTMLElement} */ (cb).style.display = 'none';
-  if (ft) ft.textContent = 'New Project';
-  _projectsShowForm = false;
+  _toast('Project duplicated', 'success');
   renderProjectsMain();
+  setTimeout(() => _highlightProject(newPid), 100);
 }
+/** @type {any} */ (window).duplicateProject = duplicateProject;
 
 // ── Client name helper ──
 /** @param {number | null | undefined} id */
@@ -331,57 +354,372 @@ function _pjClientSuggest(input) {
 }
 
 // ── Sidebar gates: simple icon + title + subtitle + button shown when the
-//    list is empty and the user hasn't engaged. Once revealed, the existing
-//    inline form replaces the gate.
-let _projectsShowForm = false;
+//    list is empty and the user hasn't engaged. Once revealed, the drill
+//    section replaces the gate (Projects tab) or the inline form replaces
+//    the gate (Clients tab).
 let _clientsShowForm = false;
+/**
+ * @type {number | null} The client the user is currently drilled INTO on the
+ * Projects tab. Null = empty state (sidebar shows the client picker, main
+ * panel shows a prompt). Set = sidebar shows drill header + smart library +
+ * always-visible autosaving form.
+ */
+let _projectsActiveClientId = null;
+
+// ── Projects autosave state ──
+/** @type {number | null} Currently-loaded project (null = draft → INSERT on first save). */
+let _pjCurrentProjectId = null;
+/** @type {ReturnType<typeof setTimeout> | null} */
+let _pjAutosaveTimer = null;
+/** True between user edit and successful save. */
+let _pjDirty = false;
 
 function _renderProjectsSidebarGate() {
   const gate = document.getElementById('projects-gate');
-  const form = document.getElementById('projects-form-section');
-  if (!gate || !form) return;
-  if (!_projectsShowForm) {
-    const recents = (projects || []).slice().sort(/** @param {any} a @param {any} b */ (a, b) => {
-      const av = a.updated_at ? +new Date(a.updated_at) : (a.id || 0);
-      const bv = b.updated_at ? +new Date(b.updated_at) : (b.id || 0);
-      return bv - av;
-    }).map(/** @param {any} p */ p => {
-      const cName = p.client_id ? (clients.find(/** @param {any} c */ c => c.id === p.client_id) || /** @type {any} */ ({})).name || '' : '';
-      return { id: p.id, name: cName ? `${p.name} - ${cName}` : p.name, onClick: `_openProjectPopup(${p.id})` };
-    });
-    gate.innerHTML = _renderListEmpty({
-      iconSvg: '<svg class="pe-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>',
-      title: 'Projects',
-      subtitle: 'Organise work into projects. Each project ties together quotes, orders, and cut lists for a single job.',
-      btnLabel: '+ Create Project',
-      btnOnclick: '_projectsRevealForm()',
-      recentItems: recents,
-      itemIconSvg: _TYPE_ICON_PROJECT,
-    });
-    gate.style.display = '';
-    form.style.display = 'none';
-  } else {
+  const drill = document.getElementById('projects-drill-section');
+  if (!gate || !drill) return;
+
+  // STATE B: drilled into a client → drill section visible (header + library + form)
+  if (_projectsActiveClientId) {
     gate.innerHTML = '';
     gate.style.display = 'none';
-    form.style.display = '';
+    /** @type {HTMLElement} */ (drill).style.display = '';
+    _pjRenderDrillHeader();
+    _pjPrepareFormForDraft();
+    return;
   }
+
+  // STATE A: no client picked → smart-input client picker + recent clients
+  /** @type {HTMLElement} */ (drill).style.display = 'none';
+  const recents = (clients || []).slice().sort(/** @param {any} a @param {any} b */ (a, b) => {
+    const av = a.updated_at ? +new Date(a.updated_at) : (a.id || 0);
+    const bv = b.updated_at ? +new Date(b.updated_at) : (b.id || 0);
+    return bv - av;
+  }).slice(0, 5);
+  const recentHTML = recents.length
+    ? `<div class="pe-recent-list">
+        <div class="pe-recent-label">Recent clients</div>
+        ${recents.map(/** @param {any} c */ c => {
+          const count = projects.filter(/** @param {any} p */ p => p.client_id === c.id).length;
+          return `<div class="pe-recent-item" onclick="_pickClientForProjects(${c.id})">
+            <span class="pe-ri-icon">${_TYPE_ICON_CLIENT}</span>
+            <span>${_escHtml(c.name)}</span>
+            ${count ? `<span class="pe-ri-meta">${count} project${count!==1?'s':''}</span>` : ''}
+          </div>`;
+        }).join('')}
+      </div>`
+    : '<div style="font-size:11px;color:var(--muted);padding:8px 0;text-align:left">No clients yet — use + to create one.</div>';
+
+  gate.innerHTML = `<div class="project-empty">
+    <svg class="pe-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
+    <h3>Projects</h3>
+    <p>Pick a client to see their projects.</p>
+    <div style="position:relative;text-align:left">
+      <div class="smart-input-wrap">
+        <input type="text" id="projects-empty-picker" placeholder="Search or add client..." autocomplete="off"
+          oninput="_smartProjectsClientSuggest(this,'projects-empty-suggest')"
+          onfocus="_smartProjectsClientSuggest(this,'projects-empty-suggest')"
+          onblur="setTimeout(()=>{const b=document.getElementById('projects-empty-suggest'); if(b)b.style.display='none'},150)">
+        <div class="smart-input-add" onclick="_openNewClientPopup('projects-empty-picker')" title="New client">+</div>
+      </div>
+      <div id="projects-empty-suggest" class="client-suggest-list" style="display:none"></div>
+    </div>
+    ${recentHTML}
+  </div>`;
+  gate.style.display = '';
 }
+
+/** Drill into a client — set the active id, refresh sidebar + main panel. @param {number} id */
+function _pickClientForProjects(id) {
+  if (_projectsActiveClientId !== id) {
+    _pjCurrentProjectId = null;
+    _pjDirty = false;
+    if (_pjAutosaveTimer) { clearTimeout(_pjAutosaveTimer); _pjAutosaveTimer = null; }
+  }
+  _projectsActiveClientId = id;
+  renderProjectsMain();
+}
+/** @type {any} */ (window)._pickClientForProjects = _pickClientForProjects;
+
+/** Exit drill-in — clear active client, refresh both panels. */
+function _exitClient_projects() {
+  // Flush any pending autosave before tearing down state.
+  if (_pjAutosaveTimer) { clearTimeout(_pjAutosaveTimer); _pjAutosaveTimer = null; _pjRunAutosave(); }
+  _pjCurrentProjectId = null;
+  _pjDirty = false;
+  _projectsActiveClientId = null;
+  renderProjectsMain();
+}
+/** @type {any} */ (window)._exitClient_projects = _exitClient_projects;
+
+/**
+ * Smart-input dropdown for the projects-tab empty-state client picker.
+ * Mirrors _smartCLEmptyProjectSuggest in cutlist.js, but for clients.
+ * @param {HTMLInputElement} input
+ * @param {string} boxId
+ */
+function _smartProjectsClientSuggest(input, boxId) {
+  const val = input.value.toLowerCase().trim();
+  const box = document.getElementById(boxId);
+  if (!box) return;
+  if (typeof _posSuggest === 'function') _posSuggest(input, box);
+  const matches = clients
+    .filter(/** @param {any} c */ c => !val || c.name.toLowerCase().includes(val))
+    .slice(0, 8);
+  /** @param {string} s */
+  const esc = s => _escHtml(s).replace(/'/g, '&#39;');
+  let html = '';
+  for (const c of matches) {
+    const count = projects.filter(/** @param {any} p */ p => p.client_id === c.id).length;
+    html += `<div class="client-suggest-item" onmousedown="_pickClientForProjects(${c.id})">
+      <span class="suggest-icon">${_TYPE_ICON_CLIENT}</span>
+      <span class="csi-name">${esc(c.name)}</span>
+      ${count ? `<span class="csi-meta">${count} project${count!==1?'s':''}</span>` : ''}
+    </div>`;
+  }
+  if (val && !matches.some(/** @param {any} c */ c => c.name.toLowerCase() === val)) {
+    html += `<div class="client-suggest-item client-suggest-add" onmousedown="_openNewClientPopup('projects-empty-picker')">
+      <span class="csi-icon">+</span>
+      <span class="csi-name">Create client "${esc(input.value.trim())}"</span>
+    </div>`;
+  }
+  if (!html) html = '<div class="client-suggest-empty" style="padding:8px 12px;font-size:12px;color:var(--muted)">No clients yet — click + to create one.</div>';
+  box.innerHTML = html;
+  box.style.display = 'block';
+}
+/** @type {any} */ (window)._smartProjectsClientSuggest = _smartProjectsClientSuggest;
+
+/**
+ * Force-set the active client (used by client-card project shortcuts).
+ * Unlike a toggle, this never clears — exit is via the back arrow.
+ * @param {number} id
+ */
+function _setProjectsActiveClient(id) {
+  if (_projectsActiveClientId !== id) {
+    _pjCurrentProjectId = null;
+    _pjDirty = false;
+    if (_pjAutosaveTimer) { clearTimeout(_pjAutosaveTimer); _pjAutosaveTimer = null; }
+  }
+  _projectsActiveClientId = id;
+  renderProjectsMain();
+}
+/** @type {any} */ (window)._setProjectsActiveClient = _setProjectsActiveClient;
+
+/**
+ * Jump from a Clients-tab project tag to the Projects tab: switch section,
+ * drill into the client, and highlight the specific project card.
+ * @param {number} projectId
+ * @param {number} clientId
+ */
+function _gotoProjectFromClient(projectId, clientId) {
+  _setProjectsActiveClient(clientId);
+  switchSection('projects');
+  _highlightProject(projectId);
+}
+/** @type {any} */ (window)._gotoProjectFromClient = _gotoProjectFromClient;
+
+/** Focus the name input in the drill form. Drill section is auto-rendered by
+ *  _renderProjectsSidebarGate when a client is active. */
 function _projectsRevealForm() {
-  _projectsShowForm = true;
-  _renderProjectsSidebarGate();
   const first = document.getElementById('pj-name');
   if (first) /** @type {HTMLInputElement} */ (first).focus();
 }
 /** @type {any} */ (window)._projectsRevealForm = _projectsRevealForm;
 
-/** Revert to gate on tab re-entry if the form was opened but never engaged. */
-function _projectsMaybeResetFormFlag() {
-  if (!_projectsShowForm) return;
-  const nameInput = /** @type {HTMLInputElement|null} */ (document.getElementById('pj-name'));
-  if (nameInput && nameInput.value.trim()) return;
-  _projectsShowForm = false;
-}
+/** No-op kept for backward compatibility with external callers. */
+function _projectsMaybeResetFormFlag() { /* no-op after autosave refactor */ }
 /** @type {any} */ (window)._projectsMaybeResetFormFlag = _projectsMaybeResetFormFlag;
+
+// ── Projects sidebar drill helpers (Cutlist-parity autosave) ──
+
+/** Render the drill header (back arrow + client name) into #pj-drill-header. */
+function _pjRenderDrillHeader() {
+  const host = document.getElementById('pj-drill-header');
+  if (!host) return;
+  const client = clients.find(/** @param {any} c */ c => c.id === _projectsActiveClientId);
+  const cName = client ? client.name : 'Client';
+  host.innerHTML = _renderProjectHeader('projects', {
+    name: cName,
+    exitFn: '_exitClient_projects',
+    iconSvg: '<svg class="ph-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>',
+  });
+}
+
+/** Clear the form to draft state. Only resets when no project is loaded —
+ *  preserves the edit view when re-rendering during typing. */
+function _pjPrepareFormForDraft() {
+  if (_pjCurrentProjectId != null) return;
+  for (const id of ['pj-name','pj-desc','pj-library-search']) {
+    const el = _clInput(id); if (el) /** @type {HTMLInputElement|HTMLTextAreaElement} */ (el).value = '';
+  }
+  const st = /** @type {HTMLSelectElement|null} */ (_clInput('pj-status')); if (st) st.value = 'active';
+  _pjDirty = false;
+  if (_pjAutosaveTimer) { clearTimeout(_pjAutosaveTimer); _pjAutosaveTimer = null; }
+  if (typeof _setSaveStatus === 'function') _setSaveStatus('project', 'clean');
+}
+
+/** Wired to oninput/onchange on every form field. Marks dirty + schedules save. */
+function _pjFormChanged() {
+  if (!_projectsActiveClientId) return;
+  _pjDirty = true;
+  if (typeof _setSaveStatus === 'function') _setSaveStatus('project', 'dirty');
+  _pjScheduleAutosave();
+}
+/** @type {any} */ (window)._pjFormChanged = _pjFormChanged;
+
+/** Debounced 800ms autosave (matches Cutlist's _clScheduleAutosave). */
+function _pjScheduleAutosave() {
+  if (_pjAutosaveTimer) clearTimeout(_pjAutosaveTimer);
+  _pjAutosaveTimer = setTimeout(() => { _pjAutosaveTimer = null; _pjRunAutosave(); }, 800);
+}
+
+/** Persist the current form state. INSERT on first save (with non-empty name),
+ *  UPDATE thereafter. */
+async function _pjRunAutosave() {
+  if (!_userId || !_projectsActiveClientId) return;
+  const name = _clInput('pj-name')?.value.trim() || '';
+  if (!name && _pjCurrentProjectId == null) {
+    _pjDirty = false;
+    if (typeof _setSaveStatus === 'function') _setSaveStatus('project', 'clean');
+    return;
+  }
+  const desc = _clInput('pj-desc')?.value.trim() || null;
+  const status = _clInput('pj-status')?.value || 'active';
+  if (typeof _setSaveStatus === 'function') _setSaveStatus('project', 'saving');
+
+  if (_pjCurrentProjectId == null) {
+    if (!_enforceFreeLimit('projects', projects.length)) {
+      if (typeof _setSaveStatus === 'function') _setSaveStatus('project', 'clean');
+      return;
+    }
+    /** @type {any} */
+    const row = { user_id: _userId, name, description: desc, status, client_id: _projectsActiveClientId };
+    const { data, error } = await _dbInsertSafe('projects', row);
+    if (error || !data) {
+      if (typeof _setSaveStatus === 'function') _setSaveStatus('project', 'failed', { retry: _pjRunAutosave });
+      return;
+    }
+    /** @type {any} */ (data).status = data.status || 'active';
+    projects.unshift(/** @type {any} */ (data));
+    _pjCurrentProjectId = data.id;
+    _pjDirty = false;
+    if (typeof _setSaveStatus === 'function') _setSaveStatus('project', 'saved');
+    renderProjectsMain();
+  } else {
+    const p = /** @type {any} */ (projects.find(x => x.id === _pjCurrentProjectId));
+    if (!p) { _pjCurrentProjectId = null; return _pjRunAutosave(); }
+    /** @type {any} */
+    const updates = { name, description: desc, status };
+    Object.assign(p, updates);
+    const { error } = await _db('projects').update(/** @type {any} */ (updates)).eq('id', _pjCurrentProjectId);
+    if (error) {
+      if (typeof _setSaveStatus === 'function') _setSaveStatus('project', 'failed', { retry: _pjRunAutosave });
+      return;
+    }
+    _pjDirty = false;
+    if (typeof _setSaveStatus === 'function') _setSaveStatus('project', 'saved');
+    renderProjectsMain();
+  }
+}
+/** @type {any} */ (window)._pjRunAutosave = _pjRunAutosave;
+
+/** Smart library search input handler. Mirrors typed text into name field
+ *  while drafting; otherwise just filters the dropdown.
+ *  @param {HTMLInputElement} input */
+function _pjLibrarySearchInput(input) {
+  if (_pjCurrentProjectId == null) {
+    const nameEl = /** @type {HTMLInputElement|null} */ (_clInput('pj-name'));
+    if (nameEl) { nameEl.value = input.value; _pjFormChanged(); }
+  }
+  _pjLibrarySuggest(input, 'pj-library-suggest');
+}
+/** @type {any} */ (window)._pjLibrarySearchInput = _pjLibrarySearchInput;
+
+/** Render the smart-library suggest dropdown (scoped to the active client).
+ *  @param {HTMLInputElement} input @param {string} boxId */
+function _pjLibrarySuggest(input, boxId) {
+  const box = document.getElementById(boxId);
+  if (!box) return;
+  if (typeof _posSuggest === 'function') _posSuggest(input, box);
+  const q = input.value.trim().toLowerCase();
+  const scoped = projects.filter(/** @param {any} p */ p => p.client_id === _projectsActiveClientId)
+    .sort(/** @param {any} a @param {any} b */ (a, b) =>
+      +new Date(b.updated_at || 0) - +new Date(a.updated_at || 0));
+  const matches = q ? scoped.filter(/** @param {any} p */ p => (p.name || '').toLowerCase().includes(q)) : scoped;
+  const exact = q && scoped.some(/** @param {any} p */ p => (p.name || '').toLowerCase() === q);
+  /** @param {string} s */
+  const esc = s => _escHtml(s).replace(/'/g, '&#39;');
+  let html = '';
+  matches.slice(0, 8).forEach(/** @param {any} p */ p => {
+    const editing = p.id === _pjCurrentProjectId;
+    html += `<div class="client-suggest-item" onmousedown="_pjLoadProject(${p.id})">
+      <span class="suggest-icon" style="background:var(--accent-dim);color:var(--accent)">P</span>
+      <span style="flex:1">${esc(p.name || '(untitled)')}${editing ? ' <span style="color:var(--accent);font-size:11px">· editing</span>' : ''}</span>
+      <span style="font-size:10px;color:var(--muted)">${esc(p.status || 'active')}</span>
+    </div>`;
+  });
+  if (matches.length === 0 && scoped.length > 0) {
+    html += `<div class="client-suggest-add" style="color:var(--muted)">No matching projects</div>`;
+  } else if (scoped.length === 0 && !q) {
+    html += `<div class="client-suggest-add" style="color:var(--muted)">No projects yet for this client</div>`;
+  }
+  if (q && !exact) {
+    html += `<div class="client-suggest-item client-suggest-add" onmousedown="_pjNewProjectFromInput()">
+      <span class="csi-icon">+</span>
+      <span class="csi-name">Start new "${esc(input.value.trim())}"</span>
+    </div>`;
+  }
+  box.innerHTML = html;
+  box.style.display = 'block';
+}
+/** @type {any} */ (window)._pjLibrarySuggest = _pjLibrarySuggest;
+
+/** "+" button / "Start new" handler. Clears form to a fresh draft. No confirm
+ *  — autosave means there are no unsaved changes to discard. */
+function _pjNewProjectFromInput() {
+  if (!_projectsActiveClientId) { _toast('Pick a client first', 'error'); return; }
+  if (_pjAutosaveTimer) { clearTimeout(_pjAutosaveTimer); _pjAutosaveTimer = null; _pjRunAutosave(); }
+  const inp = /** @type {HTMLInputElement|null} */ (_clInput('pj-library-search'));
+  const typed = (inp && inp.value ? inp.value : '').trim();
+  _pjCurrentProjectId = null;
+  _pjDirty = false;
+  for (const id of ['pj-name','pj-desc']) {
+    const el = _clInput(id); if (el) /** @type {HTMLInputElement|HTMLTextAreaElement} */ (el).value = '';
+  }
+  const st = /** @type {HTMLSelectElement|null} */ (_clInput('pj-status')); if (st) st.value = 'active';
+  if (inp) inp.value = typed;
+  if (typed) {
+    const nameEl = /** @type {HTMLInputElement|null} */ (_clInput('pj-name'));
+    if (nameEl) nameEl.value = typed;
+    _pjFormChanged();
+  } else if (typeof _setSaveStatus === 'function') {
+    _setSaveStatus('project', 'clean');
+  }
+  const box = document.getElementById('pj-library-suggest'); if (box) box.style.display = 'none';
+  const focus = /** @type {HTMLInputElement|null} */ (_clInput('pj-name')); if (focus) focus.focus();
+}
+/** @type {any} */ (window)._pjNewProjectFromInput = _pjNewProjectFromInput;
+
+/** Load an existing project into the sidebar form for autosave editing.
+ *  @param {number} id */
+function _pjLoadProject(id) {
+  if (_pjAutosaveTimer) { clearTimeout(_pjAutosaveTimer); _pjAutosaveTimer = null; _pjRunAutosave(); }
+  const p = /** @type {any} */ (projects.find(x => x.id === id));
+  if (!p) return;
+  _pjCurrentProjectId = id;
+  _pjDirty = false;
+  /** @param {string} elId @param {string} val */
+  const set = (elId, val) => {
+    const el = _clInput(elId); if (el) /** @type {HTMLInputElement|HTMLTextAreaElement|HTMLSelectElement} */ (el).value = val;
+  };
+  set('pj-library-search', p.name || '');
+  set('pj-name', p.name || '');
+  set('pj-desc', p.description || '');
+  set('pj-status', p.status || 'active');
+  if (typeof _setSaveStatus === 'function') _setSaveStatus('project', 'clean');
+  const box = document.getElementById('pj-library-suggest'); if (box) box.style.display = 'none';
+}
+/** @type {any} */ (window)._pjLoadProject = _pjLoadProject;
 
 function _renderClientsSidebarGate() {
   const gate = document.getElementById('clients-gate');
@@ -459,7 +797,21 @@ function renderClientsMain() {
           </div>
         </div>
       </div>
-      ${cProjects.length ? `<div style="display:flex;gap:3px;flex-wrap:wrap;margin-top:6px">${cProjects.map(p => `<span class="badge ${p.status==='complete'?'badge-green':p.status==='on-hold'?'badge-gray':'badge-blue'}" style="font-size:9px;padding:1px 6px">${_escHtml(p.name)}</span>`).join('')}</div>` : ''}
+      <div style="margin-top:8px;display:grid;grid-template-columns:repeat(4,1fr);gap:5px">
+        <div class="proj-act${cProjects.length===0?' empty':''}">
+          <div class="proj-act-main" onclick="event.stopPropagation();_setProjectsActiveClient(${c.id});switchSection('projects')${cProjects.length===0?';_projectsRevealForm()':''}" title="${cProjects.length===0?'Create first project':'View projects'}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
+            <span class="proj-act-label">Projects</span>
+            <span class="proj-act-count">${cProjects.length}</span>
+          </div>
+          <div class="proj-act-add" onclick="event.stopPropagation();_setProjectsActiveClient(${c.id});switchSection('projects');_projectsRevealForm()" title="New project">+</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:4px;margin-top:8px;padding-top:8px;border-top:1px solid var(--border2)" onclick="event.stopPropagation()">
+        <span style="flex:1"></span>
+        <button class="btn btn-outline" style="font-size:11px;padding:4px 8px;width:auto" onclick="duplicateClient(${c.id})">Duplicate</button>
+        <button class="btn btn-outline" style="color:var(--danger);font-size:11px;padding:4px 8px;width:auto" onclick="_confirm('Delete <strong>${_escHtml(c.name)}</strong>?',()=>removeClient(${c.id}))">Delete</button>
+      </div>
     </div>`;
   };
 
@@ -473,10 +825,6 @@ function renderClientsMain() {
   });
   else if (sortBy === 'orders') filtered.sort((a,b) => orders.filter(o=>o.client_id===b.id||orderClient(o)===b.name).length - orders.filter(o=>o.client_id===a.id||orderClient(o)===a.name).length);
   else filtered.sort((a,b) => a.name.localeCompare(b.name));
-
-  const totalClientValue = clients.reduce((s,c) => s + orders.filter(o=>o.client_id===c.id||orderClient(o)===c.name).reduce((t,o)=>t+(o.value??0),0), 0);
-  /** @param {number} v */
-  const fmt = v => cur + v.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0});
 
   el.innerHTML = `<div style="padding:24px;max-width:900px">
     ${_renderContentHeader({ iconSvg: _CH_ICON_CLIENT, title: 'Clients' })}
@@ -492,7 +840,6 @@ function renderClientsMain() {
         <option value="value" ${sortBy==='value'?'selected':''}>Sort by value</option>
         <option value="orders" ${sortBy==='orders'?'selected':''}>Sort by orders</option>
       </select>
-      <span style="font-size:11px;color:var(--muted);margin-left:auto">Total order value: <strong style="color:var(--text)">${fmt(totalClientValue)}</strong></span>
     </div>` : ''}
     ${filtered.length ? filtered.map(clientCard).join('') : `<div style="color:var(--muted);font-size:13px;text-align:center;padding:40px 20px;border:1px dashed var(--border);border-radius:var(--radius)">${search ? 'No clients match your search.' : 'No clients yet. Add one using the form on the left.'}</div>`}
   </div>`;
@@ -595,43 +942,64 @@ function renderProjectsMain() {
         ${act('Quotes', iconQuote, pQuotes.length, pQuotes.length ? fmtShort(quoteValue) : '', `_drillQuotesForProject('${nameJs}')`, `_newQuoteForProject(${p.id})`)}
         ${act('Orders', iconOrder, pOrders.length, pOrders.length ? fmtShort(orderValue) : '', `_drillOrdersForProject('${nameJs}')`, `_newOrderForProject(${p.id})`)}
       </div>
+      <div class="proj-footer" style="display:flex;gap:6px;padding:6px 12px 10px;justify-content:flex-end" onclick="event.stopPropagation()">
+        <button class="btn btn-outline" style="font-size:11px;padding:4px 10px;width:auto" onclick="event.stopPropagation();duplicateProject(${p.id})">Duplicate</button>
+        <button class="btn btn-outline" style="font-size:11px;padding:4px 10px;width:auto;color:var(--danger)" onclick="event.stopPropagation();_confirm('Delete project <strong>${nameJs}</strong>? This will also delete its cabinets, cut lists, quotes, and orders.',()=>removeProject(${p.id}))">Delete</button>
+      </div>
     </div>`;
   };
 
+  const hasClient = !!_projectsActiveClientId;
   const filter = window._projFilter || 'all';
   const search = (window._projSearch || '').toLowerCase();
   const sortBy = window._projSort || 'newest';
-  let filtered = [...projects];
+  const activeClientName = hasClient ? (_clientName(_projectsActiveClientId) || '') : '';
+  const scopedProjects = hasClient ? projects.filter(p => p.client_id === _projectsActiveClientId) : [...projects];
+  let filtered = [...scopedProjects];
   if (filter !== 'all') filtered = filtered.filter(p => p.status === filter);
-  if (search) filtered = filtered.filter(p => p.name.toLowerCase().includes(search) || (_clientName(p.client_id)||'').toLowerCase().includes(search));
+  if (search) filtered = filtered.filter(p => hasClient
+    ? p.name.toLowerCase().includes(search)
+    : (p.name.toLowerCase().includes(search) || (_clientName(p.client_id)||'').toLowerCase().includes(search)));
   if (sortBy === 'name') filtered.sort((a,b) => a.name.localeCompare(b.name));
-  else if (sortBy === 'client') filtered.sort((a,b) => (_clientName(a.client_id)||'').localeCompare(_clientName(b.client_id)||''));
+  else if (!hasClient && sortBy === 'client') filtered.sort((a,b) => (_clientName(a.client_id)||'').localeCompare(_clientName(b.client_id)||''));
   else if (sortBy === 'value') filtered.sort((a,b) => {
     const va = orders.filter(o=>o.project_id===a.id||orderProject(o)===a.name).reduce((s,o)=>s+(o.value??0),0);
     const vb = orders.filter(o=>o.project_id===b.id||orderProject(o)===b.name).reduce((s,o)=>s+(o.value??0),0);
     return vb - va;
   });
 
-  const activeCount = projects.filter(p => p.status === 'active').length;
-  const holdCount = projects.filter(p => p.status === 'on-hold').length;
-  const doneCount = projects.filter(p => p.status === 'complete').length;
+  const activeCount = scopedProjects.filter(p => p.status === 'active').length;
+  const holdCount = scopedProjects.filter(p => p.status === 'on-hold').length;
+  const doneCount = scopedProjects.filter(p => p.status === 'complete').length;
+
+  const headerOpts = hasClient
+    ? { iconSvg: _CH_ICON_PROJECT, title: 'Projects', clientName: activeClientName }
+    : { iconSvg: _CH_ICON_PROJECT, title: 'Projects' };
+  const emptyMsg = (search || filter !== 'all')
+    ? 'No projects match this filter.'
+    : (hasClient
+      ? `No projects yet for ${_escHtml(activeClientName)}. Use + New Project on the left to add one.`
+      : 'No projects yet. Create one using the form on the left.');
 
   el.innerHTML = `<div style="padding:24px;max-width:900px">
-    ${_renderContentHeader({ iconSvg: _CH_ICON_PROJECT, title: 'Projects' })}
-    <div style="display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap;align-items:center">
-      <input type="text" placeholder="Search projects..." value="${_escHtml(window._projSearch||'')}" oninput="window._projSearch=this.value;renderProjectsMain()" style="font-size:12px;padding:6px 12px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);width:200px;font-family:inherit;margin-right:6px">
-      <button class="ofilter-tab ${filter==='all'?'active':''}" onclick="window._projFilter='all';renderProjectsMain()">All (${projects.length})</button>
-      <button class="ofilter-tab ${filter==='active'?'active':''}" onclick="window._projFilter='active';renderProjectsMain()">Active (${activeCount})</button>
-      <button class="ofilter-tab ${filter==='on-hold'?'active':''}" onclick="window._projFilter='on-hold';renderProjectsMain()">On Hold (${holdCount})</button>
-      <button class="ofilter-tab ${filter==='complete'?'active':''}" onclick="window._projFilter='complete';renderProjectsMain()">Complete (${doneCount})</button>
-      <select style="font-size:11px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--muted);font-family:inherit;cursor:pointer;margin-left:auto" onchange="window._projSort=this.value;renderProjectsMain()">
+    ${_renderContentHeader(headerOpts)}
+    <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;align-items:center">
+      <input type="text" placeholder="Search projects..." value="${_escHtml(window._projSearch||'')}" oninput="window._projSearch=this.value;renderProjectsMain()" style="font-size:12px;padding:6px 12px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);width:200px;font-family:inherit">
+      <span style="flex:1"></span>
+      <select style="font-size:11px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--muted);font-family:inherit;cursor:pointer" onchange="window._projSort=this.value;renderProjectsMain()">
         <option value="newest" ${sortBy==='newest'?'selected':''}>Newest first</option>
         <option value="name" ${sortBy==='name'?'selected':''}>Name</option>
-        <option value="client" ${sortBy==='client'?'selected':''}>Client</option>
+        ${hasClient ? '' : `<option value="client" ${sortBy==='client'?'selected':''}>Client</option>`}
         <option value="value" ${sortBy==='value'?'selected':''}>Value</option>
       </select>
     </div>
-    ${filtered.length ? filtered.map(projectCard).join('') : `<div style="color:var(--muted);font-size:13px;text-align:center;padding:40px 20px;border:1px dashed var(--border);border-radius:var(--radius)">${(search || filter !== 'all') ? 'No projects match this filter.' : 'No projects yet. Create one using the form on the left.'}</div>`}
+    <div style="display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap;align-items:center">
+      <button class="ofilter-tab ${filter==='all'?'active':''}" onclick="window._projFilter='all';renderProjectsMain()">All (${scopedProjects.length})</button>
+      <button class="ofilter-tab ${filter==='active'?'active':''}" onclick="window._projFilter='active';renderProjectsMain()">Active (${activeCount})</button>
+      <button class="ofilter-tab ${filter==='on-hold'?'active':''}" onclick="window._projFilter='on-hold';renderProjectsMain()">On Hold (${holdCount})</button>
+      <button class="ofilter-tab ${filter==='complete'?'active':''}" onclick="window._projFilter='complete';renderProjectsMain()">Complete (${doneCount})</button>
+    </div>
+    ${filtered.length ? filtered.map(projectCard).join('') : `<div style="color:var(--muted);font-size:13px;text-align:center;padding:40px 20px;border:1px dashed var(--border);border-radius:var(--radius)">${emptyMsg}</div>`}
   </div>`;
 }
 
