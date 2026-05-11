@@ -413,10 +413,7 @@ function renderOrderEditor() {
   const colHrsOff   = localStorage.getItem('pc_order_col_hrs')   === 'off';
   const colStockOn  = localStorage.getItem('pc_order_col_stock') === 'on';
 
-  // Status badge select — styled to look like a pill. Click reveals native select options.
-  const statusOptions = ORDER_STATUSES.map(/** @param {string} s */ s =>
-    `<option value="${s}" ${status===s?'selected':''}>${(/** @type {Record<string,string>} */ (STATUS_LABELS))[s]}</option>`
-  ).join('');
+  const orderNumberValue = _escHtml((o && o.order_number) || (o ? String(o.id).padStart(4,'0') : _nextOrderNumber()));
 
   host.innerHTML = `<div class="form-section editor-shell">
     <div class="ed-head">
@@ -426,16 +423,22 @@ function renderOrderEditor() {
       <div class="head-icon">${_CH_ICON_ORDER}</div>
       <div class="head-text">
         <div class="title">
-          <span class="order-num">#</span><input class="order-num-input" id="po-order-number" size="5" value="${_escHtml((o && o.order_number) || (o ? String(o.id).padStart(4,'0') : _nextOrderNumber()))}" oninput="_oMarkDirty()" aria-label="Order number">
-          <span class="ed-project-name">${_escHtml(projectName || 'Untitled project')}</span>
-        </div>
-        <div class="sub">
-          ${clientName ? `<span class="ed-client">${_escHtml(clientName)}</span>` : ''}
-          <select class="ed-status" id="po-status" data-status="${status}" oninput="_oSetStatusBadge(this);_oMarkDirty()">
-            ${statusOptions}
-          </select>
+          <span class="ed-project-name">${_escHtml(projectName || 'Untitled project')}</span>${clientName ? `<span class="ed-head-sep"> · </span><span class="ed-client">${_escHtml(clientName)}</span>` : ''}
         </div>
       </div>
+    </div>
+
+    <!-- Smart library for order number (same UX as cutlist tab). -->
+    <div class="ed-libsearch">
+      <div class="smart-input-wrap">
+        <input type="text" id="po-order-number" placeholder="Order number..." autocomplete="off"
+          value="${orderNumberValue}"
+          oninput="_oOrderSearchInput(this)"
+          onfocus="_oOrderSuggest(this,'po-order-suggest')"
+          onblur="setTimeout(()=>{const b=document.getElementById('po-order-suggest'); if(b)b.style.display='none'},150)">
+        <div class="smart-input-add" onclick="_oNewOrderFromInput()" title="Start a new order">+</div>
+      </div>
+      <div id="po-order-suggest" class="client-suggest-list" style="display:none"></div>
     </div>
 
     ${quoteChip}
@@ -540,6 +543,82 @@ function _orderSchedToggle(el) {
  *  @param {HTMLSelectElement} el */
 function _oSetStatusBadge(el) {
   el.setAttribute('data-status', el.value);
+}
+
+/** Oninput handler for #po-order-number. Marks dirty (so autosave picks up the
+ *  renamed order_number) and refreshes the suggest dropdown.
+ *  @param {HTMLInputElement} input */
+function _oOrderSearchInput(input) {
+  _oMarkDirty();
+  _oOrderSuggest(input, 'po-order-suggest');
+}
+
+/** Smart suggest for the order-number input. Lists orders for the current
+ *  project with click-to-load and a "+ Start new" footer when the typed
+ *  number isn't an existing match — mirrors the cutlist library pattern.
+ *  @param {HTMLInputElement} input @param {string} boxId */
+function _oOrderSuggest(input, boxId) {
+  const box = document.getElementById(boxId);
+  if (!box) return;
+  if (!_opState.projectId) {
+    box.innerHTML = `<div class="client-suggest-add" style="color:var(--muted)">Pick a project first</div>`;
+    box.style.display = 'block';
+    return;
+  }
+  const q = input.value.trim().toLowerCase();
+  const rows = orders
+    .filter(o => o.project_id === _opState.projectId)
+    .slice()
+    .sort(/** @param {any} a @param {any} b */ (a, b) => (+new Date(b.updated_at || 0)) - (+new Date(a.updated_at || 0)));
+  /** @param {any} o */
+  const numFor = o => String(o.order_number || String(o.id).padStart(4, '0'));
+  const matches = q ? rows.filter(o => numFor(o).toLowerCase().includes(q)) : rows;
+  const exact = q && rows.some(o => numFor(o).toLowerCase() === q);
+  /** @param {string} s */
+  const esc = s => _escHtml(s).replace(/'/g, '&#39;');
+  let html = '';
+  matches.slice(0, 8).forEach(o => {
+    const isActive = o.id === _opState.orderId;
+    const num = numFor(o);
+    const meta = o.status ? `<span class="csi-meta">${esc(o.status)}</span>` : '';
+    html += `<div class="client-suggest-item" onmousedown="loadOrderIntoSidebar(${o.id});document.getElementById('${boxId}').style.display='none'">
+      <span class="suggest-icon" style="background:var(--accent-dim);color:var(--accent)">#</span>
+      <span class="csi-name">${esc(num)}${isActive ? ' <span style="font-weight:500;color:var(--accent);font-size:11px">· editing</span>' : ''}</span>
+      ${meta}
+    </div>`;
+  });
+  if (matches.length === 0 && rows.length > 0) {
+    html += `<div class="client-suggest-add" style="color:var(--muted)">No matching orders</div>`;
+  } else if (rows.length === 0 && !q) {
+    html += `<div class="client-suggest-add" style="color:var(--muted)">No orders in this project yet</div>`;
+  }
+  if (q && !exact) {
+    html += `<div class="client-suggest-item client-suggest-add" onmousedown="_oNewOrderFromInput()">
+      <span class="csi-icon">+</span>
+      <span class="csi-name">Start new order #${esc(input.value.trim())}</span>
+    </div>`;
+  }
+  box.innerHTML = html;
+  box.style.display = 'block';
+}
+
+/** "+" button handler for the order-number smart library. Starts a fresh draft
+ *  order in the current project, pre-filling the typed number when present.
+ *  Dirty-checks first. */
+function _oNewOrderFromInput() {
+  if (!_opState.projectId) { _toast('Pick a project first', 'error'); return; }
+  const inp = /** @type {HTMLInputElement|null} */ (document.getElementById('po-order-number'));
+  const typed = inp ? inp.value.trim() : '';
+  const startNew = () => {
+    _opState = { orderId: null, lines: [], dirty: false, projectId: _opState.projectId, startingNew: false };
+    renderOrderEditor();
+    const newInp = /** @type {HTMLInputElement|null} */ (document.getElementById('po-order-number'));
+    if (newInp && typed) newInp.value = typed;
+    const box = document.getElementById('po-order-suggest'); if (box) box.style.display = 'none';
+    _toast(`New draft order #${typed || _nextOrderNumber()} — add lines then save`, 'success');
+  };
+  if (_opState.dirty) _confirm('Discard unsaved changes and start a new order?', startNew);
+  else startNew();
 }
 
 /** Toggle a line-items column (or the stock library). Persists state per-tab.

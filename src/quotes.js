@@ -1155,18 +1155,22 @@ function renderQuoteEditor() {
       <div class="head-icon">${_CH_ICON_QUOTE}</div>
       <div class="head-text">
         <div class="title">
-          <span class="order-num">#Q-</span><input class="order-num-input" id="pq-quote-number" size="5" value="${_escHtml(quoteNumStripped)}" oninput="_qMarkDirty()" aria-label="Quote number">
-          <span class="ed-project-name">${_escHtml(projectName || 'Untitled project')}</span>
-        </div>
-        <div class="sub">
-          ${clientName ? `<span class="ed-client">${_escHtml(clientName)}</span>` : ''}
-          <select class="ed-status" id="pq-status" data-status="${status}" oninput="_qSetStatusBadge(this);_qMarkDirty()">
-            <option value="draft" ${status==='draft'?'selected':''}>Draft</option>
-            <option value="sent" ${status==='sent'?'selected':''}>Sent</option>
-            <option value="approved" ${status==='approved'?'selected':''}>Approved</option>
-          </select>
+          <span class="ed-project-name">${_escHtml(projectName || 'Untitled project')}</span>${clientName ? `<span class="ed-head-sep"> · </span><span class="ed-client">${_escHtml(clientName)}</span>` : ''}
         </div>
       </div>
+    </div>
+
+    <!-- Smart library for quote number (same UX as cutlist tab). -->
+    <div class="ed-libsearch">
+      <div class="smart-input-wrap">
+        <input type="text" id="pq-quote-number" placeholder="Quote number..." autocomplete="off"
+          value="${_escHtml(quoteNumStripped)}"
+          oninput="_qQuoteSearchInput(this)"
+          onfocus="_qQuoteSuggest(this,'pq-quote-suggest')"
+          onblur="setTimeout(()=>{const b=document.getElementById('pq-quote-suggest'); if(b)b.style.display='none'},150)">
+        <div class="smart-input-add" onclick="_qNewQuoteFromInput()" title="Start a new quote">+</div>
+      </div>
+      <div id="pq-quote-suggest" class="client-suggest-list" style="display:none"></div>
     </div>
 
     <div class="cl-section-header">
@@ -1235,6 +1239,80 @@ function renderQuoteEditor() {
 /** Reflect the picked status into the badge's data-status attribute.
  *  @param {HTMLSelectElement} el */
 function _qSetStatusBadge(el) { el.setAttribute('data-status', el.value); }
+
+/** Oninput handler for #pq-quote-number. Marks dirty and refreshes the dropdown.
+ *  @param {HTMLInputElement} input */
+function _qQuoteSearchInput(input) {
+  _qMarkDirty();
+  _qQuoteSuggest(input, 'pq-quote-suggest');
+}
+
+/** Smart suggest for the quote-number input. Lists quotes for the current
+ *  project with click-to-load and "+ Start new" footer when the typed number
+ *  isn't an existing match — mirrors the cutlist library pattern.
+ *  @param {HTMLInputElement} input @param {string} boxId */
+function _qQuoteSuggest(input, boxId) {
+  const box = document.getElementById(boxId);
+  if (!box) return;
+  if (!_qpState.projectId) {
+    box.innerHTML = `<div class="client-suggest-add" style="color:var(--muted)">Pick a project first</div>`;
+    box.style.display = 'block';
+    return;
+  }
+  const q = input.value.trim().toLowerCase();
+  const rows = quotes
+    .filter(x => x.project_id === _qpState.projectId)
+    .slice()
+    .sort(/** @param {any} a @param {any} b */ (a, b) => (+new Date(b.updated_at || 0)) - (+new Date(a.updated_at || 0)));
+  /** @param {any} x */
+  const numFor = x => String(x.quote_number || ('Q-' + String(x.id).padStart(4, '0'))).replace(/^Q-/i, '');
+  const matches = q ? rows.filter(x => numFor(x).toLowerCase().includes(q)) : rows;
+  const exact = q && rows.some(x => numFor(x).toLowerCase() === q);
+  /** @param {string} s */
+  const esc = s => _escHtml(s).replace(/'/g, '&#39;');
+  let html = '';
+  matches.slice(0, 8).forEach(x => {
+    const isActive = x.id === _qpState.quoteId;
+    const num = numFor(x);
+    const meta = x.status ? `<span class="csi-meta">${esc(x.status)}</span>` : '';
+    html += `<div class="client-suggest-item" onmousedown="loadQuoteIntoSidebar(${x.id});document.getElementById('${boxId}').style.display='none'">
+      <span class="suggest-icon" style="background:var(--accent-dim);color:var(--accent)">Q</span>
+      <span class="csi-name">${esc(num)}${isActive ? ' <span style="font-weight:500;color:var(--accent);font-size:11px">· editing</span>' : ''}</span>
+      ${meta}
+    </div>`;
+  });
+  if (matches.length === 0 && rows.length > 0) {
+    html += `<div class="client-suggest-add" style="color:var(--muted)">No matching quotes</div>`;
+  } else if (rows.length === 0 && !q) {
+    html += `<div class="client-suggest-add" style="color:var(--muted)">No quotes in this project yet</div>`;
+  }
+  if (q && !exact) {
+    html += `<div class="client-suggest-item client-suggest-add" onmousedown="_qNewQuoteFromInput()">
+      <span class="csi-icon">+</span>
+      <span class="csi-name">Start new quote #Q-${esc(input.value.trim())}</span>
+    </div>`;
+  }
+  box.innerHTML = html;
+  box.style.display = 'block';
+}
+
+/** "+" button handler for the quote-number smart library. Starts a fresh
+ *  draft quote in the current project, pre-filling the typed number. */
+function _qNewQuoteFromInput() {
+  if (!_qpState.projectId) { _toast('Pick a project first', 'error'); return; }
+  const inp = /** @type {HTMLInputElement|null} */ (document.getElementById('pq-quote-number'));
+  const typed = inp ? inp.value.trim() : '';
+  const startNew = () => {
+    _qpState = { quoteId: null, lines: [], dirty: false, projectId: _qpState.projectId, startingNew: false };
+    renderQuoteEditor();
+    const newInp = /** @type {HTMLInputElement|null} */ (document.getElementById('pq-quote-number'));
+    if (newInp && typed) newInp.value = typed;
+    const box = document.getElementById('pq-quote-suggest'); if (box) box.style.display = 'none';
+    _toast(`New draft quote #Q-${typed || _nextQuoteNumber()} — add lines then save`, 'success');
+  };
+  if (_qpState.dirty) _confirm('Discard unsaved changes and start a new quote?', startNew);
+  else startNew();
+}
 
 /** Toggle a line-items column (or the stock library) in the quote editor.
  *  Persists state per-tab in localStorage.

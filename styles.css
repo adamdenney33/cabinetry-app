@@ -464,6 +464,9 @@ textarea { resize: vertical; min-height: 70px; }
 #pieces-table .cl-del-cell,
 #pieces-table .cl-col-edgeband,
 #pieces-table .cl-col-grain { padding: 0 1px; }
+#pieces-table .cl-grain-btn,
+#pieces-table .cl-del-btn,
+#pieces-table .cl-check-wrap { width: 22px; height: 22px; }
 .cl-grain-cell, .cl-col-edgeband, .cl-col-grain { text-align: center; vertical-align: middle; }
 .cl-del-btn {
   width: 28px; height: 28px; border: none; background: none; color: var(--muted);
@@ -1937,7 +1940,12 @@ details.sched .sched-body { padding: 4px 14px 12px; display: flex; flex-directio
   width: -moz-fit-content; width: fit-content;
   flex: 0 0 auto;
 }
-.ed-head .ed-client { white-space: nowrap; }
+.ed-head .ed-client { white-space: nowrap; color: var(--text2); font-weight: 500; }
+.ed-head .ed-head-sep { color: var(--muted); font-weight: 400; }
+
+/* Smart library row below the editor header — order/quote number picker.
+   Same UX as the cutlist tab's #cl-cutlist-search input. */
+.ed-libsearch { padding: 10px 14px 4px; position: relative; }
 .ed-head .ed-status[data-status="draft"]      { background: var(--surface2); color: var(--muted); }
 .ed-head .ed-status[data-status="sent"]       { background: rgba(80,140,220,0.12); color: #5b8fc5; }
 .ed-head .ed-status[data-status="quote"]      { background: var(--surface2); color: var(--muted); }
