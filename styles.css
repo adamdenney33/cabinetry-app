@@ -929,33 +929,6 @@ canvas { display: block; }
 .oc-right { display: flex; align-items: center; gap: 6px; flex-shrink: 0; text-align: right; }
 .oc-value { font-size: 18px; font-weight: 800; color: var(--text); padding: 0 4px; border-radius: 3px; }
 .oc-meta { display: flex; gap: 8px; align-items: center; margin-top: 3px; font-size: 11px; color: var(--muted); }
-/* Card 3-dot actions menu (replaces the old expanded oc-pipeline + oc-footer). */
-.oc-menu-btn {
-  width: 28px; height: 28px; padding: 0;
-  border: 1px solid transparent; border-radius: 6px;
-  background: transparent; color: var(--muted);
-  font-size: 18px; line-height: 1; cursor: pointer;
-  font-family: inherit;
-  display: inline-flex; align-items: center; justify-content: center;
-}
-.oc-menu-btn:hover { background: var(--surface2); border-color: var(--border); color: var(--text); }
-.oc-card-menu {
-  position: fixed; z-index: 100;
-  background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
-  box-shadow: var(--shadow-md);
-  padding: 4px; min-width: 160px;
-  display: flex; flex-direction: column; gap: 1px;
-}
-.oc-card-menu button {
-  display: flex; align-items: center; gap: 8px;
-  padding: 7px 10px;
-  background: transparent; border: none; border-radius: 5px;
-  font-size: 12px; font-weight: 500; color: var(--text);
-  font-family: inherit; cursor: pointer; text-align: left;
-}
-.oc-card-menu button:hover { background: var(--surface2); }
-.oc-card-menu button.danger { color: var(--danger); }
-.oc-card-menu hr { border: none; border-top: 1px solid var(--border2); margin: 3px 0; }
 .oc-pipeline { display: flex; align-items: center; padding: 6px 16px; overflow-x: auto; }
 .pipe-step { display: flex; flex-direction: column; align-items: center; flex-shrink: 0; min-width: 50px; transition: opacity 0.15s; }
 .pipe-step:hover { opacity: 0.7; }
@@ -1926,51 +1899,46 @@ input.pf-input-compact[type="date"]:disabled::-webkit-calendar-picker-indicator 
 .sched-stepper .step-btn:hover { background: var(--accent-dim); color: var(--accent); border-color: var(--accent); }
 .sched-stepper .step-btn:active { background: var(--accent); color: #fff; }
 
-/* Pricing chips — Markup / Tax / Discount on a single line. Three equal-flex
-   chip wrappers each combining a label, an inline number input, and a unit
-   badge (%). Same visual family as cabinet-render.js's .cb-mat-row but tuned
-   for the editor sidebar's tighter type. */
+/* Pricing rate fields — Tax + Discount. Same label-outside-input pattern
+   as .stock-markup-row (a plain uppercase muted heading, then a bordered
+   wrap with the number input + .markup-unit suffix). Each field locks to
+   1/3 of the row so it aligns visually with the schedule cells above. */
 .rates-chips {
-  display: flex; gap: 10px; align-items: stretch; justify-content: flex-start;
+  display: flex; gap: 10px; align-items: center; justify-content: flex-start;
 }
-/* Match the schedule field width: 1/3 of the row (same calc as .sched-field). */
-.rate-chip {
+.rate-field {
   flex: 0 0 calc((100% - 20px) / 3); min-width: 0;
-  display: flex; align-items: stretch;
-  border: 1px solid var(--border); border-radius: 6px;
-  background: var(--surface2);
-  overflow: hidden;
+  display: flex; align-items: center; gap: 8px; margin: 0;
 }
-.rate-chip .chip-label {
+.rate-label {
   font-size: 10px; color: var(--muted); font-weight: 700;
-  padding: 5px 6px 5px 8px;
-  background: var(--surface);
-  border-right: 1px solid var(--border);
-  text-transform: uppercase; letter-spacing: 0.4px;
-  display: flex; align-items: center;
-  white-space: nowrap;
+  text-transform: uppercase; letter-spacing: 0.4px; white-space: nowrap;
 }
-.rate-chip input {
-  flex: 1 1 0; min-width: 0; width: 100%;
+.rate-field .markup-wrap {
+  flex: 1; min-width: 0; max-width: none;
+  display: flex; align-items: stretch;
+  border: 1px solid var(--border); border-radius: 5px;
+  background: var(--surface2); overflow: hidden;
+}
+.rate-field .markup-wrap input {
+  flex: 1; min-width: 0;
   border: none; background: transparent;
-  padding: 4px 4px;
+  padding: 4px 6px;
   font-size: 12px; font-weight: 500; color: var(--text);
-  font-family: inherit;
-  font-variant-numeric: tabular-nums;
-  text-align: right;
-  outline: none;
+  font-family: inherit; font-variant-numeric: tabular-nums;
+  text-align: right; outline: none;
   -moz-appearance: textfield;
 }
-.rate-chip input::-webkit-outer-spin-button,
-.rate-chip input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.rate-field .markup-wrap input:focus { background: var(--accent-dim); }
+.rate-field .markup-wrap input::-webkit-outer-spin-button,
+.rate-field .markup-wrap input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.rate-field .markup-wrap .markup-unit {
+  font-size: 10px; color: var(--muted); font-weight: 600;
+  padding: 0 6px 0 0; display: flex; align-items: center;
+}
 .stock-markup-row input { -moz-appearance: textfield; }
 .stock-markup-row input::-webkit-outer-spin-button,
 .stock-markup-row input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-.rate-chip .chip-unit {
-  font-size: 11px; color: var(--muted); font-weight: 600;
-  padding: 4px 8px 4px 2px;
-  display: flex; align-items: center;
-}
 
 /* Discount totals row uses the danger color so it reads as a deduction
    alongside the +Markup / +Tax rows. */

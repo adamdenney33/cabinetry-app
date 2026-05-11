@@ -132,8 +132,21 @@ function renderOrdersMain() {
   const active = orders.filter(o => o.status !== 'complete');
   const complete = orders.filter(o => o.status === 'complete');
 
+  const stepLabels = ['Quote','Confirmed','Production','Delivery','Done'];
+
   /** @param {any} o */
   const orderCard = o => {
+    const curIdx = ORDER_STATUSES.indexOf(o.status);
+    const pipe = ORDER_STATUSES.map((s, i) => {
+      const done = i < curIdx;
+      const active = i === curIdx;
+      const color = active ? (/** @type {Record<string,string>} */ (STATUS_COLORS))[s] : done ? 'var(--success)' : 'var(--border)';
+      return `<div class="pipe-step ${active?'pipe-active':''}${done?' pipe-done':''}" onclick="event.stopPropagation();setOrderStatus(${o.id},'${s}')" style="cursor:pointer" title="Set to ${stepLabels[i]}">
+        <div class="pipe-dot" style="background:${color};border-color:${color}"></div>
+        <div class="pipe-label">${stepLabels[i]}</div>
+      </div>${i < ORDER_STATUSES.length-1 ? `<div class="pipe-line ${done?'pipe-line-done':''}"></div>` : ''}`;
+    }).join('');
+
     let isOverdue = false;
     if (o.status !== 'complete' && o.due && o.due !== 'TBD') {
       const parsed = new Date(o.due);
@@ -150,18 +163,28 @@ function renderOrdersMain() {
         <div class="oc-info">
           <div class="oc-title-row">
             <div class="oc-title">${titleNum}${orderProject(o)}${titleClient}</div>
-            <span class="badge ${statusBadgeCls}" style="font-size:10px">${statusLabel}</span>
+            <span class="badge ${statusBadgeCls}" style="font-size:10px" onclick="event.stopPropagation()">${statusLabel}</span>
           </div>
           <div class="oc-meta">
             <span>Due: ${o.due || 'TBD'}</span>
             ${relDate ? `<span style="font-size:9px;font-weight:700;color:${relDate.color}">${relDate.label}</span>` : ''}
             ${isOverdue ? '<span class="badge badge-red" style="font-size:8px;padding:1px 5px">Overdue</span>' : ''}
           </div>
+          ${o.notes ? `<div class="oc-notes" style="cursor:default">${_escHtml(o.notes)}</div>` : ''}
         </div>
         <div class="oc-right">
-          <div class="oc-value">${fmt(o.value)}</div>
-          <button class="oc-menu-btn" onclick="event.stopPropagation();_oOpenCardMenu(event,${o.id})" title="Actions" aria-label="Order actions">⋯</button>
+          <div class="oc-value" style="cursor:default;border-bottom:none">${fmt(o.value)}</div>
         </div>
+      </div>
+      <div class="oc-pipeline">${pipe}</div>
+      <div class="oc-footer" onclick="event.stopPropagation()">
+        <button class="btn btn-outline" onclick="printOrderDoc(${o.id},'order_confirmation')" style="font-size:11px;padding:5px 8px;width:auto">Confirmation</button>
+        <button class="btn btn-outline" onclick="printOrderDoc(${o.id},'proforma')" style="font-size:11px;padding:5px 8px;width:auto">Pro-forma</button>
+        <button class="btn btn-outline" onclick="printOrderDoc(${o.id},'invoice')" style="font-size:11px;padding:5px 8px;width:auto">Invoice</button>
+        <button class="btn btn-outline" onclick="printOrderDoc(${o.id},'work_order')" style="font-size:11px;padding:5px 8px;width:auto">Work Order</button>
+        <span style="flex:1"></span>
+        <button class="btn btn-outline" onclick="duplicateOrder(${o.id})" style="font-size:11px;padding:5px 10px;width:auto">Duplicate</button>
+        <button class="btn btn-outline" style="color:var(--danger);font-size:11px;padding:5px 10px;width:auto" onclick="_confirm('Delete order for <strong>${_escHtml(orderClient(o))}</strong>?',()=>removeOrder(${o.id}))">Delete</button>
       </div>
     </div>`;
   };
@@ -201,49 +224,6 @@ function renderOrdersMain() {
   </div>`;
 }
 
-
-/** Open the order-card actions menu near the clicked `⋯` button. Replaces the
- *  per-card row of action buttons with a compact dropdown.
- *  @param {Event} e @param {number} id */
-function _oOpenCardMenu(e, id) {
-  // Close any existing menu
-  const existing = document.querySelector('.oc-card-menu');
-  if (existing) existing.remove();
-  const o = orders.find(ox => ox.id === id);
-  if (!o) return;
-  const btn = /** @type {HTMLElement} */ (e.currentTarget || e.target);
-  const r = btn.getBoundingClientRect();
-  const menu = document.createElement('div');
-  menu.className = 'oc-card-menu';
-  menu.innerHTML = `
-    <button onclick="printOrderDoc(${id},'order_confirmation');_oCloseCardMenus()">Confirmation</button>
-    <button onclick="printOrderDoc(${id},'proforma');_oCloseCardMenus()">Pro-forma</button>
-    <button onclick="printOrderDoc(${id},'invoice');_oCloseCardMenus()">Invoice</button>
-    <button onclick="printOrderDoc(${id},'work_order');_oCloseCardMenus()">Work Order</button>
-    <hr>
-    <button onclick="duplicateOrder(${id});_oCloseCardMenus()">Duplicate</button>
-    <button class="danger" onclick="_confirm('Delete order?',()=>{removeOrder(${id});_oCloseCardMenus()})">Delete</button>
-  `;
-  document.body.appendChild(menu);
-  // Position below the button, right-aligned.
-  const mw = 200;
-  menu.style.top = (r.bottom + 4) + 'px';
-  menu.style.left = Math.max(8, r.right - mw) + 'px';
-  // Dismiss on outside click.
-  setTimeout(() => {
-    const closeOnClick = (/** @type {MouseEvent} */ ev) => {
-      if (!menu.contains(/** @type {Node} */ (ev.target))) {
-        _oCloseCardMenus();
-        document.removeEventListener('mousedown', closeOnClick);
-      }
-    };
-    document.addEventListener('mousedown', closeOnClick);
-  }, 0);
-}
-
-function _oCloseCardMenus() {
-  document.querySelectorAll('.oc-card-menu').forEach(m => m.remove());
-}
 
 // ── Filter & status helpers ──
 /** @param {string} f */
@@ -482,8 +462,20 @@ function renderOrderEditor() {
     <div class="editor-section" style="margin-top:10px;border-top:1px solid var(--border);border-bottom:none;padding-top:10px">
       <div class="editor-section-title">Pricing</div>
       <div class="rates-chips">
-        <div class="rate-chip"><span class="chip-label">Tax</span><input type="number" id="po-tax" value="${(o && o.tax) ?? 0}" oninput="_renderOrderLineTotals();_oMarkDirty()"><span class="chip-unit">%</span></div>
-        <div class="rate-chip"><span class="chip-label">Disc</span><input type="number" id="po-discount" value="${(o && /** @type {any} */ (o).discount) ?? 0}" oninput="_renderOrderLineTotals();_oMarkDirty()"><span class="chip-unit">%</span></div>
+        <label class="rate-field">
+          <span class="rate-label">Tax</span>
+          <span class="markup-wrap">
+            <input type="number" id="po-tax" value="${(o && o.tax) ?? 0}" oninput="_renderOrderLineTotals();_oMarkDirty()">
+            <span class="markup-unit">%</span>
+          </span>
+        </label>
+        <label class="rate-field">
+          <span class="rate-label">Discount</span>
+          <span class="markup-wrap">
+            <input type="number" id="po-discount" value="${(o && /** @type {any} */ (o).discount) ?? 0}" oninput="_renderOrderLineTotals();_oMarkDirty()">
+            <span class="markup-unit">%</span>
+          </span>
+        </label>
       </div>
     </div>
 

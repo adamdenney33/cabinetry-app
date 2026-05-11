@@ -376,28 +376,58 @@ function renderQuoteMain() {
     const total = quoteTotal(q);
     const statusBadge = q.status === 'approved' ? 'badge-green' : q.status === 'sent' ? 'badge-blue' : 'badge-gray';
     const statusText = q.status === 'approved' ? 'Approved' : q.status === 'sent' ? 'Sent' : 'Draft';
+    const lines = /** @type {any[]} */ (q._lines || []);
+    const cabCount  = lines.filter(/** @param {any} l */ l => (l.line_kind || 'cabinet') === 'cabinet').length;
+    const itemCount = lines.filter(/** @param {any} l */ l => l.line_kind === 'item').length;
+    const labCount  = lines.filter(/** @param {any} l */ l => l.line_kind === 'labour').length;
     const pName = quoteProject(q);
     const cName = quoteClient(q);
     const qNum = q.quote_number ? `${q.quote_number} · ` : '';
     const titleText = pName && cName
       ? `${qNum}${_escHtml(pName)} - ${_escHtml(cName)}`
       : `${qNum}${_escHtml(pName || cName || '')}`;
+    /** @param {string} label @param {string} kind @param {number} count @param {string} icon */
+    const stripCell = (label, kind, count, icon) => `
+        <div class="proj-act${count ? '' : ' empty'}">
+          <div class="proj-act-main" onclick="event.stopPropagation();loadQuoteIntoSidebar(${q.id})" title="Open quote">
+            ${icon}
+            <span class="proj-act-label">${label}</span>
+            <span class="proj-act-count">${count}</span>
+          </div>
+          <div class="proj-act-add" onclick="event.stopPropagation();loadQuoteIntoSidebar(${q.id});_qAddLine('${kind}')" title="Add ${label.toLowerCase()}">+</div>
+        </div>`;
     return `
-    <div class="order-card" style="cursor:pointer" onclick="loadQuoteIntoSidebar(${q.id})">
-      <div class="oc-header">
-        <div class="oc-info">
-          <div class="oc-title-row">
-            <div class="oc-title">${titleText}</div>
-            <span class="badge ${statusBadge}" style="font-size:10px">${statusText}</span>
+    <div class="quote-card" style="cursor:pointer" onclick="loadQuoteIntoSidebar(${q.id})">
+      <div class="qc-header">
+        <div style="flex:1;min-width:0;overflow:hidden">
+          <div class="qc-title" style="display:flex;align-items:center;gap:8px;min-width:0">
+            <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1">${titleText}</span>
+            <span class="badge ${statusBadge}" style="font-size:9px;padding:1px 6px;flex-shrink:0">${statusText}</span>
           </div>
-          <div class="oc-meta">
-            ${q.date ? `<span>Issued: ${q.date}</span>` : ''}
-          </div>
+          ${q.date ? `<div class="qc-meta">${q.date}</div>` : ''}
         </div>
-        <div class="oc-right">
-          <div class="oc-value">${fmt(total)}</div>
-          <button class="oc-menu-btn" onclick="event.stopPropagation();_qOpenCardMenu(event,${q.id})" title="Actions" aria-label="Quote actions">⋯</button>
-        </div>
+        <span class="qc-total">${fmt(total)}</span>
+      </div>
+      ${q.notes ? `<div style="border-top:1px solid var(--border2);padding:8px 16px;background:var(--surface)">
+        ${q.notes.split(/\r?\n/).filter(/** @param {string} l */ l => l).slice(0,3).map(/** @param {string} line */ line =>
+          '<div style="font-size:11px;color:var(--text2);margin-bottom:2px">' + _escHtml(line) + '</div>'
+        ).join('')}
+        ${q.notes.split(/\r?\n/).filter(/** @param {string} l */ l => l).length > 3 ? '<div style="font-size:10px;color:var(--muted)">…</div>' : ''}
+      </div>` : ''}
+      <div class="proj-strip cols-3" style="padding:8px 16px" onclick="event.stopPropagation()">
+        ${stripCell('Cabinets', 'cabinet', cabCount, _Q_ICON_CABINET)}
+        ${stripCell('Items', 'item', itemCount, _Q_ICON_ITEM)}
+        ${stripCell('Labour', 'labour', labCount, _Q_ICON_LABOUR)}
+      </div>
+      <div class="qc-footer" onclick="event.stopPropagation()">
+        ${q.status === 'draft' ? `<button class="btn btn-outline" onclick="markQuoteSent(${q.id})">Mark Sent</button>` : ''}
+        ${q.status === 'sent' ? `<button class="btn btn-success" onclick="approveQuote(${q.id})">Approve</button>` : ''}
+        ${q.status !== 'draft' ? `<button class="btn btn-outline" onclick="revertQuoteToDraft(${q.id})" style="color:var(--muted)">↩ Draft</button>` : ''}
+        ${(() => { const matchingOrder = orders.find(o => o.quote_id === q.id); return matchingOrder ? `<button class="btn btn-outline" onclick="_openOrderPopup(${matchingOrder.id})" style="color:var(--success)">✓ View Order</button>` : `<button class="btn btn-outline" onclick="convertQuoteToOrder(${q.id})">→ Order</button>`; })()}
+        <span style="flex:1"></span>
+        <button class="btn btn-outline" onclick="printQuote(${q.id},'pdf')">PDF</button>
+        <button class="btn btn-outline" onclick="duplicateQuote(${q.id})">Duplicate</button>
+        <button class="btn btn-outline" style="color:var(--danger)" onclick="_confirm('Delete quote for <strong>${_escHtml(quoteClient(q))}</strong>?',()=>removeQuote(${q.id}))">Delete</button>
       </div>
     </div>`;
   };
@@ -1212,8 +1242,20 @@ function renderQuoteEditor() {
     <div class="editor-section" style="margin-top:10px;border-top:1px solid var(--border);border-bottom:none;padding-top:10px">
       <div class="editor-section-title">Pricing</div>
       <div class="rates-chips">
-        <div class="rate-chip"><span class="chip-label">Tax</span><input type="number" id="pq-tax" value="${(q && q.tax) ?? 13}" oninput="_renderQuoteLineTotals();_qMarkDirty()"><span class="chip-unit">%</span></div>
-        <div class="rate-chip"><span class="chip-label">Disc</span><input type="number" id="pq-discount" value="${(q && /** @type {any} */ (q).discount) ?? 0}" oninput="_renderQuoteLineTotals();_qMarkDirty()"><span class="chip-unit">%</span></div>
+        <label class="rate-field">
+          <span class="rate-label">Tax</span>
+          <span class="markup-wrap">
+            <input type="number" id="pq-tax" value="${(q && q.tax) ?? 13}" oninput="_renderQuoteLineTotals();_qMarkDirty()">
+            <span class="markup-unit">%</span>
+          </span>
+        </label>
+        <label class="rate-field">
+          <span class="rate-label">Discount</span>
+          <span class="markup-wrap">
+            <input type="number" id="pq-discount" value="${(q && /** @type {any} */ (q).discount) ?? 0}" oninput="_renderQuoteLineTotals();_qMarkDirty()">
+            <span class="markup-unit">%</span>
+          </span>
+        </label>
       </div>
     </div>
 
@@ -1357,48 +1399,6 @@ function _qMarkDirty() {
     if (_qAutoSaveTimer) clearTimeout(_qAutoSaveTimer);
     _qAutoSaveTimer = setTimeout(() => { _qAutoSaveTimer = null; saveQuoteEditor(); }, 600);
   }
-}
-
-/** Open the quote-card actions menu near the clicked `⋯` button.
- *  @param {Event} e @param {number} id */
-function _qOpenCardMenu(e, id) {
-  const existing = document.querySelector('.oc-card-menu');
-  if (existing) existing.remove();
-  const q = quotes.find(x => x.id === id);
-  if (!q) return;
-  const btn = /** @type {HTMLElement} */ (e.currentTarget || e.target);
-  const r = btn.getBoundingClientRect();
-  const matchingOrder = orders.find(o => o.quote_id === id);
-  const statusActions = [];
-  if (q.status === 'draft')    statusActions.push(`<button onclick="markQuoteSent(${id});_qCloseCardMenus()">Mark Sent</button>`);
-  if (q.status === 'sent')     statusActions.push(`<button onclick="approveQuote(${id});_qCloseCardMenus()">Approve</button>`);
-  if (q.status !== 'draft')    statusActions.push(`<button onclick="revertQuoteToDraft(${id});_qCloseCardMenus()">Revert to Draft</button>`);
-  if (matchingOrder)           statusActions.push(`<button onclick="_openOrderPopup(${matchingOrder.id});_qCloseCardMenus()">View Order</button>`);
-  else                          statusActions.push(`<button onclick="convertQuoteToOrder(${id});_qCloseCardMenus()">Convert to Order</button>`);
-  const menu = document.createElement('div');
-  menu.className = 'oc-card-menu';
-  menu.innerHTML = `
-    ${statusActions.join('')}
-    <hr>
-    <button onclick="printQuote(${id},'pdf');_qCloseCardMenus()">PDF</button>
-    <button onclick="duplicateQuote(${id});_qCloseCardMenus()">Duplicate</button>
-    <button class="danger" onclick="_confirm('Delete quote?',()=>{removeQuote(${id});_qCloseCardMenus()})">Delete</button>
-  `;
-  document.body.appendChild(menu);
-  menu.style.top = (r.bottom + 4) + 'px';
-  menu.style.left = Math.max(8, r.right - 200) + 'px';
-  setTimeout(() => {
-    const closeOnClick = (/** @type {MouseEvent} */ ev) => {
-      if (!menu.contains(/** @type {Node} */ (ev.target))) {
-        _qCloseCardMenus();
-        document.removeEventListener('mousedown', closeOnClick);
-      }
-    };
-    document.addEventListener('mousedown', closeOnClick);
-  }, 0);
-}
-function _qCloseCardMenus() {
-  document.querySelectorAll('.oc-card-menu').forEach(m => m.remove());
 }
 
 /** Reset editor to empty state. */
