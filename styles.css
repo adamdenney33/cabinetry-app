@@ -1708,6 +1708,12 @@ html.dark .proj-act.empty .proj-act-add { background: rgba(13,148,136,.12); }
 
 /* Wider sidebar used by the Quote and Order tabs to host the full editor. */
 .sidebar.sidebar-wide { width: 480px; }
+/* Editor sidebars manage their own per-section padding (.ed-head, .editor-section,
+   .stock-library, .cl-add-row, .cl-section-header all include 14px x-padding).
+   Drop the generic .sidebar-scroll padding so the line-items table + smart-input
+   wraps span the sidebar edge-to-edge, matching the mockup. */
+.sidebar.sidebar-wide > .sidebar-scroll { padding: 0; }
+.sidebar.sidebar-wide > .sidebar-scroll > .editor-shell { margin-bottom: 0; }
 @media (max-width: 1100px) {
   .sidebar.sidebar-wide { width: 360px; }
   /* Item / Labour rows: the kind badge + name input takes the full top line,
