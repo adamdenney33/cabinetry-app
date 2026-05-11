@@ -498,19 +498,40 @@ function renderOrderEditor() {
         <span class="sched-summary" id="po-sched-summary"></span>
       </summary>
       <div class="sched-body">
-        <div class="pf-row-inline">
-          <label class="pf-inline"><input type="checkbox" id="po-auto-schedule" ${auto ? 'checked' : ''} oninput="_orderAutoScheduleToggle(this.checked);_oMarkDirty()"><span class="pf-inline-label">Auto schedule</span></label>
-          <label class="pf-inline"><span class="pf-inline-label">Priority</span><input class="pf-input-compact" type="number" id="po-priority" value="${(o && o.priority) ?? 0}" step="1" oninput="_oMarkDirty();_renderOrderSchedSummary()" title="Higher = scheduled first"></label>
-          <label class="pf-inline"><span class="pf-inline-label">Run-over</span><input class="pf-input-compact" type="number" min="0" step="0.5" id="po-run-over" value="${(o && o.run_over_hours) ?? 0}" oninput="_renderOrderHoursBreakdown();_oMarkDirty();_renderOrderSchedSummary()"><span class="pf-inline-suffix">h</span></label>
+        <div class="sched-toggles">
+          <label><input type="checkbox" id="po-auto-schedule" ${auto ? 'checked' : ''} oninput="_orderAutoScheduleToggle(this.checked);_oMarkDirty()">Auto schedule</label>
+          <label><input type="checkbox" id="po-hours-override" ${hoursOverride ? 'checked' : ''} oninput="_orderHoursOverrideToggle(this.checked);_oMarkDirty();_renderOrderSchedSummary()">Override hours</label>
         </div>
-        <div class="pf-row-inline">
-          <label class="pf-inline"><input type="checkbox" id="po-hours-override" ${hoursOverride ? 'checked' : ''} oninput="_orderHoursOverrideToggle(this.checked);_oMarkDirty();_renderOrderSchedSummary()"><span class="pf-inline-label">Override hours</span></label>
-          <label class="pf-inline" id="po-hours-alloc-wrap" style="${hoursOverride ? '' : 'display:none'}"><span class="pf-inline-label">Allocated</span><input class="pf-input-compact" type="number" min="0" step="0.5" id="po-hours-allocated" value="${hoursAllocVal}" oninput="_oMarkDirty();_renderOrderSchedSummary()"><span class="pf-inline-suffix">h</span></label>
+        <div class="sched-fields">
+          <label class="sched-field">
+            <span class="sched-field-label">Priority</span>
+            <input class="pf-input-compact" type="number" id="po-priority" value="${(o && o.priority) ?? 0}" step="1" oninput="_oMarkDirty();_renderOrderSchedSummary()" title="Higher = scheduled first">
+          </label>
+          <label class="sched-field">
+            <span class="sched-field-label">Run-over</span>
+            <span class="sched-input-suffix">
+              <input class="pf-input-compact" type="number" min="0" step="0.5" id="po-run-over" value="${(o && o.run_over_hours) ?? 0}" oninput="_renderOrderHoursBreakdown();_oMarkDirty();_renderOrderSchedSummary()">
+              <span class="suffix">h</span>
+            </span>
+          </label>
+          <label class="sched-field" id="po-hours-alloc-wrap" style="${hoursOverride ? '' : 'display:none'}">
+            <span class="sched-field-label">Allocated</span>
+            <span class="sched-input-suffix">
+              <input class="pf-input-compact" type="number" min="0" step="0.5" id="po-hours-allocated" value="${hoursAllocVal}" oninput="_oMarkDirty();_renderOrderSchedSummary()">
+              <span class="suffix">h</span>
+            </span>
+          </label>
         </div>
         <div class="pf-hours-readout" id="po-hours-breakdown" style="${hoursOverride ? 'display:none' : ''}"></div>
-        <div class="pf-row-inline">
-          <label class="pf-inline pf-inline-grow"><span class="pf-inline-label">Production Start ${auto ? '<span class="pf-inline-hint">(auto)</span>' : ''}</span><input class="pf-input-compact" type="date" id="po-start" value="${o ? _orderDateToISO(o.prodStart||'') : ''}" ${auto ? 'disabled title="Auto-scheduled — toggle off to set manually"' : ''} oninput="_oMarkDirty();_renderOrderSchedSummary()"></label>
-          <label class="pf-inline pf-inline-grow"><span class="pf-inline-label">Due</span><input class="pf-input-compact" type="date" id="po-due" value="${o ? _orderDateToISO(o.due||'') : ''}" oninput="_oMarkDirty();_renderOrderSchedSummary()"></label>
+        <div class="sched-fields is-dates">
+          <label class="sched-field">
+            <span class="sched-field-label">Production Start${auto ? ' <span class="sched-field-hint">(auto)</span>' : ''}</span>
+            <input class="pf-input-compact" type="date" id="po-start" value="${o ? _orderDateToISO(o.prodStart||'') : ''}" ${auto ? 'disabled title="Auto-scheduled — toggle off to set manually"' : ''} oninput="_oMarkDirty();_renderOrderSchedSummary()">
+          </label>
+          <label class="sched-field">
+            <span class="sched-field-label">Due</span>
+            <input class="pf-input-compact" type="date" id="po-due" value="${o ? _orderDateToISO(o.due||'') : ''}" oninput="_oMarkDirty();_renderOrderSchedSummary()">
+          </label>
         </div>
       </div>
     </details>
@@ -611,6 +632,9 @@ function _oNewOrderFromInput() {
   const typed = inp ? inp.value.trim() : '';
   const startNew = () => {
     _opState = { orderId: null, lines: [], dirty: false, projectId: _opState.projectId, startingNew: false };
+    if (typeof /** @type {any} */ (window)._pcSaveOpenOrderId === 'function') {
+      /** @type {any} */ (window)._pcSaveOpenOrderId(null);
+    }
     renderOrderEditor();
     const newInp = /** @type {HTMLInputElement|null} */ (document.getElementById('po-order-number'));
     if (newInp && typed) newInp.value = typed;
@@ -732,6 +756,9 @@ function _oMarkDirty() {
 
 function _oClearEditor() {
   _opState = { orderId: null, lines: [], dirty: false, projectId: null, startingNew: false };
+  if (typeof /** @type {any} */ (window)._pcSaveOpenOrderId === 'function') {
+    /** @type {any} */ (window)._pcSaveOpenOrderId(null);
+  }
   renderOrderEditor();
 }
 
@@ -776,6 +803,9 @@ async function loadOrderIntoSidebar(id) {
     projectId: o.project_id || null,
     startingNew: false,
   };
+  if (typeof /** @type {any} */ (window)._pcSaveOpenOrderId === 'function') {
+    /** @type {any} */ (window)._pcSaveOpenOrderId(id);
+  }
   renderOrderEditor();
   if (!Array.isArray(/** @type {any} */ (o)._lines)) {
     const { data } = await _db('order_lines').select('*').eq('order_id', id).order('position');
@@ -824,6 +854,9 @@ function _oPickProject(projectId) {
   const p = projects.find(pp => pp.id === projectId);
   if (!p) return;
   _opState = { orderId: null, lines: [], dirty: false, projectId: p.id, startingNew: false };
+  if (typeof /** @type {any} */ (window)._pcSaveOpenOrderId === 'function') {
+    /** @type {any} */ (window)._pcSaveOpenOrderId(null);
+  }
   renderOrderEditor();
 }
 
@@ -875,6 +908,9 @@ async function createOrderFromEditor(silent) {
   orders.unshift(data);
   _opState.orderId = data.id;
   _opState.dirty = false;
+  if (typeof /** @type {any} */ (window)._pcSaveOpenOrderId === 'function') {
+    /** @type {any} */ (window)._pcSaveOpenOrderId(data.id);
+  }
   _oBadge();
   renderOrdersMain();
   renderOrderEditor();
