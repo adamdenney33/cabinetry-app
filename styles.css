@@ -1832,6 +1832,11 @@ input.pf-input-compact {
 }
 input.pf-input-compact:focus { border-color: var(--accent); background: var(--surface); box-shadow: none; }
 input.pf-input-compact[type="date"] { width: auto; min-width: 110px; }
+/* Drop native number spinners on the compact number inputs — the stepper
+   buttons replace them. */
+input.pf-input-compact { -moz-appearance: textfield; }
+input.pf-input-compact::-webkit-outer-spin-button,
+input.pf-input-compact::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 .pf-input:disabled,
 input.pf-input-compact:disabled {
   color: var(--muted);
@@ -1855,11 +1860,19 @@ input.pf-input-compact[type="date"]:disabled::-webkit-calendar-picker-indicator 
   width: 13px; height: 13px; margin: 0; accent-color: var(--accent);
 }
 .sched-body .sched-fields {
-  display: flex; gap: 10px;
+  display: flex; gap: 10px; justify-content: flex-start;
 }
+/* Priority line: each cell is fixed at 1/3 of the row width (minus 2 × gap).
+   When fewer than three are visible (e.g. Allocated hidden until Override
+   hours), the visible cells keep this width and left-align — no expansion. */
 .sched-body .sched-field {
-  flex: 1; min-width: 0;
+  flex: 0 0 calc((100% - 20px) / 3); min-width: 0;
   display: flex; flex-direction: column; gap: 3px; margin: 0;
+}
+/* Dates row: two cells fill the row equally (the fixed-width rule is
+   specific to the priority line). */
+.sched-body .sched-fields.is-dates .sched-field {
+  flex: 1 1 0;
 }
 .sched-body .sched-field-label {
   font-size: 9px; font-weight: 700; color: var(--muted);
@@ -1870,16 +1883,9 @@ input.pf-input-compact[type="date"]:disabled::-webkit-calendar-picker-indicator 
   font-size: 9px; font-weight: 600; color: var(--accent);
   text-transform: none; letter-spacing: 0;
 }
-.sched-body .sched-input-suffix {
-  display: inline-flex; align-items: center; gap: 4px;
-}
-.sched-body .sched-input-suffix > input.pf-input-compact { flex: 1; min-width: 0; }
-.sched-body .sched-input-suffix > .sched-stepper { flex: 1; min-width: 0; }
-.sched-body .sched-input-suffix > .suffix {
-  font-size: 10px; color: var(--muted); font-weight: 600;
-}
-
-/* −/+ stepper around schedule inputs (Priority / Allocated / Run-over). */
+/* −/+ stepper around schedule inputs (Priority / Allocated / Run-over).
+   The input + (optional unit suffix) sit between two step buttons; they
+   share a unified border so the whole thing reads as one chip. */
 .sched-stepper {
   display: inline-flex; align-items: stretch;
   width: 100%; min-width: 0;
@@ -1893,6 +1899,19 @@ input.pf-input-compact[type="date"]:disabled::-webkit-calendar-picker-indicator 
   border-radius: 0;
   border-color: var(--accent); border-left: none; border-right: none;
   box-shadow: none;
+}
+.sched-stepper .step-unit {
+  display: inline-flex; align-items: center;
+  padding: 0 5px 0 1px;
+  font-size: 10px; color: var(--muted); font-weight: 600;
+  background: var(--surface2);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  user-select: none;
+}
+.sched-stepper > input.pf-input-compact:focus + .step-unit {
+  background: var(--surface);
+  border-top-color: var(--accent); border-bottom-color: var(--accent);
 }
 .sched-stepper .step-btn {
   width: 22px; height: 24px; flex-shrink: 0;
@@ -1912,10 +1931,11 @@ input.pf-input-compact[type="date"]:disabled::-webkit-calendar-picker-indicator 
    badge (%). Same visual family as cabinet-render.js's .cb-mat-row but tuned
    for the editor sidebar's tighter type. */
 .rates-chips {
-  display: flex; gap: 6px; align-items: stretch;
+  display: flex; gap: 10px; align-items: stretch; justify-content: flex-start;
 }
+/* Match the schedule field width: 1/3 of the row (same calc as .sched-field). */
 .rate-chip {
-  flex: 1 1 0; min-width: 0;
+  flex: 0 0 calc((100% - 20px) / 3); min-width: 0;
   display: flex; align-items: stretch;
   border: 1px solid var(--border); border-radius: 6px;
   background: var(--surface2);
@@ -2191,9 +2211,10 @@ input.pf-input-compact[type="date"]:disabled::-webkit-calendar-picker-indicator 
   text-transform: uppercase; letter-spacing: 0.4px; white-space: nowrap;
 }
 .stock-markup-row .markup-wrap {
-  flex: 1; display: flex; align-items: stretch;
+  flex: 0 0 calc((100% - 20px) / 3); min-width: 0; max-width: none;
+  display: flex; align-items: stretch;
   border: 1px solid var(--border); border-radius: 5px;
-  background: var(--surface2); overflow: hidden; max-width: 140px;
+  background: var(--surface2); overflow: hidden;
 }
 .stock-markup-row input {
   flex: 1; min-width: 0; border: none; background: transparent;

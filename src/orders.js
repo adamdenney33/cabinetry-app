@@ -513,25 +513,21 @@ function renderOrderEditor() {
           </label>
           <label class="sched-field" id="po-hours-alloc-wrap" style="${hoursOverride ? '' : 'display:none'}">
             <span class="sched-field-label">Allocated</span>
-            <span class="sched-input-suffix">
-              <div class="sched-stepper">
-                <button type="button" class="step-btn" onclick="_oStep('po-hours-allocated',-1)" tabindex="-1" aria-label="Decrease">−</button>
-                <input class="pf-input-compact" type="number" min="0" step="0.5" id="po-hours-allocated" value="${hoursAllocVal}" oninput="_oMarkDirty();_renderOrderSchedSummary()">
-                <button type="button" class="step-btn" onclick="_oStep('po-hours-allocated',1)" tabindex="-1" aria-label="Increase">+</button>
-              </div>
-              <span class="suffix">h</span>
-            </span>
+            <div class="sched-stepper">
+              <button type="button" class="step-btn" onclick="_oStep('po-hours-allocated',-1)" tabindex="-1" aria-label="Decrease">−</button>
+              <input class="pf-input-compact" type="number" min="0" step="0.5" id="po-hours-allocated" value="${hoursAllocVal}" oninput="_oMarkDirty();_renderOrderSchedSummary()">
+              <span class="step-unit">h</span>
+              <button type="button" class="step-btn" onclick="_oStep('po-hours-allocated',1)" tabindex="-1" aria-label="Increase">+</button>
+            </div>
           </label>
           <label class="sched-field">
             <span class="sched-field-label">Run-over</span>
-            <span class="sched-input-suffix">
-              <div class="sched-stepper">
-                <button type="button" class="step-btn" onclick="_oStep('po-run-over',-1)" tabindex="-1" aria-label="Decrease">−</button>
-                <input class="pf-input-compact" type="number" min="0" step="0.5" id="po-run-over" value="${(o && o.run_over_hours) ?? 0}" oninput="_renderOrderHoursBreakdown();_oMarkDirty();_renderOrderSchedSummary()">
-                <button type="button" class="step-btn" onclick="_oStep('po-run-over',1)" tabindex="-1" aria-label="Increase">+</button>
-              </div>
-              <span class="suffix">h</span>
-            </span>
+            <div class="sched-stepper">
+              <button type="button" class="step-btn" onclick="_oStep('po-run-over',-1)" tabindex="-1" aria-label="Decrease">−</button>
+              <input class="pf-input-compact" type="number" min="0" step="0.5" id="po-run-over" value="${(o && o.run_over_hours) ?? 0}" oninput="_renderOrderHoursBreakdown();_oMarkDirty();_renderOrderSchedSummary()">
+              <span class="step-unit">h</span>
+              <button type="button" class="step-btn" onclick="_oStep('po-run-over',1)" tabindex="-1" aria-label="Increase">+</button>
+            </div>
           </label>
         </div>
         <div class="pf-hours-readout" id="po-hours-breakdown" style="${hoursOverride ? 'display:none' : ''}"></div>
