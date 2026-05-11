@@ -2083,17 +2083,19 @@ details.sched .sched-body { padding: 4px 14px 12px; display: flex; flex-directio
   -webkit-appearance: none; margin: 0;
 }
 
-/* Split add buttons (replaces the old editor-add-tiles grid). */
+/* Split add buttons (replaces the old editor-add-tiles grid). Scoped to
+   .cl-add-row so flex: 1 fills the row edge-to-edge — overrides the cutlist's
+   freestanding .cl-add-btn margin/width without disturbing it. */
 .cl-add-row { display: flex; gap: 6px; padding: 8px 14px 0; }
-.cl-add-btn {
-  flex: 1; padding: 7px 10px;
+.cl-add-row .cl-add-btn {
+  flex: 1 1 0; width: auto; margin: 0; padding: 7px 10px;
   border: 1px dashed var(--border); border-radius: 6px;
   background: transparent;
   color: var(--text2); font-size: 11px; font-weight: 600;
   font-family: inherit; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
 }
-.cl-add-btn:hover { color: var(--accent); border-color: var(--accent); background: var(--surface2); }
+.cl-add-row .cl-add-btn:hover { color: var(--accent); border-color: var(--accent); background: var(--surface2); }
 
 /* Stock smart-library — revealed when the Stock pill is ON. Uses the project's
    smart-input pattern (CLAUDE.md): .smart-input-wrap + sibling .client-suggest-list.
