@@ -406,11 +406,11 @@ function renderOrderEditor() {
       <div class="head-icon">${_CH_ICON_ORDER}</div>
       <div class="head-text">
         <div class="ed-title-row">
-          <span class="order-num" style="font-weight:700;color:var(--text)">#</span><input class="order-num-input" id="po-order-number" value="${_escHtml((o && o.order_number) || (o ? String(o.id).padStart(4,'0') : _nextOrderNumber()))}" oninput="_oMarkDirty()" aria-label="Order number">
+          <span class="order-num" style="font-weight:700;color:var(--text)">#</span><input class="order-num-input" id="po-order-number" size="5" value="${_escHtml((o && o.order_number) || (o ? String(o.id).padStart(4,'0') : _nextOrderNumber()))}" oninput="_oMarkDirty()" aria-label="Order number">
           <span class="ed-project-name">${_escHtml(projectName || 'Untitled project')}</span>
         </div>
         <div class="ed-sub">
-          <span class="ed-client">${_escHtml(clientName || '—')}</span>
+          ${clientName ? `<span class="ed-client">${_escHtml(clientName)}</span>` : ''}
           <select class="ed-status" id="po-status" data-status="${status}" oninput="_oSetStatusBadge(this);_oMarkDirty()">
             ${statusOptions}
           </select>

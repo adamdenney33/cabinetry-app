@@ -1190,11 +1190,11 @@ function renderQuoteEditor() {
       <div class="head-icon">${_CH_ICON_QUOTE}</div>
       <div class="head-text">
         <div class="ed-title-row">
-          <span class="order-num" style="font-weight:700;color:var(--text)">#Q-</span><input class="order-num-input" id="pq-quote-number" value="${_escHtml(quoteNumStripped)}" oninput="_qMarkDirty()" aria-label="Quote number">
+          <span class="order-num" style="font-weight:700;color:var(--text)">#Q-</span><input class="order-num-input" id="pq-quote-number" size="5" value="${_escHtml(quoteNumStripped)}" oninput="_qMarkDirty()" aria-label="Quote number">
           <span class="ed-project-name">${_escHtml(projectName || 'Untitled project')}</span>
         </div>
         <div class="ed-sub">
-          <span class="ed-client">${_escHtml(clientName || '—')}</span>
+          ${clientName ? `<span class="ed-client">${_escHtml(clientName)}</span>` : ''}
           <select class="ed-status" id="pq-status" data-status="${status}" oninput="_qSetStatusBadge(this);_qMarkDirty()">
             <option value="draft" ${status==='draft'?'selected':''}>Draft</option>
             <option value="sent" ${status==='sent'?'selected':''}>Sent</option>

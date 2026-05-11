@@ -1868,13 +1868,19 @@ html.dark .proj-act.empty .proj-act-add { background: rgba(13,148,136,.12); }
 .ed-head .head-icon { width: 20px; height: 20px; color: var(--text); margin-top: 6px; flex-shrink: 0; }
 .ed-head .head-icon svg { width: 100%; height: 100%; display: block; }
 .ed-head .head-text { min-width: 0; }
-.ed-head .ed-title-row { display: flex; align-items: baseline; gap: 4px; margin-bottom: 2px; flex-wrap: wrap; }
+.ed-head .ed-title-row { display: flex; align-items: baseline; gap: 6px; margin-bottom: 2px; flex-wrap: wrap; }
 .ed-head .order-num-input {
   font-size: 15px; font-weight: 700; color: var(--text);
   border: none; background: transparent; padding: 0;
-  width: auto; min-width: 60px; max-width: 110px;
+  width: auto; min-width: 0;
   font-family: inherit;
   font-variant-numeric: tabular-nums;
+}
+/* `field-sizing: content` shrinks the input to fit its value where supported
+   (Chrome 123+, Safari 18+). Fallback `size` attribute on the input handles
+   older browsers reasonably (~6 chars wide). */
+@supports (field-sizing: content) {
+  .ed-head .order-num-input { field-sizing: content; }
 }
 .ed-head .order-num-input:focus { outline: 1px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
 .ed-head .ed-project-name {

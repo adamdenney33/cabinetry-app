@@ -346,24 +346,21 @@ function _renderOrderLineTotals() {
   // editor below the stock library). The legacy order-level markup column
   // (orders.markup) stays in the DB for back-compat — existing rows with a
   // non-zero markup still apply it here, but the UI no longer exposes it.
+  // The legacy order-level `markup` column is no longer applied — stock_markup
+  // is the only markup concept in the new editor (per mockup J). Existing
+  // orders with a non-zero `markup` value will see a lower total; the column
+  // stays in the DB so historical data isn't lost.
   const stockMarkup = parseFloat(_popupVal('po-stock-markup')) || 0;
   const stockMarkupAmt = subParts.stockMat * stockMarkup / 100;
   const sub = subParts.materials + subParts.labour + stockMarkupAmt;
-  const o = _opState.orderId ? orders.find(x => x.id === _opState.orderId) : null;
-  const markup = o ? (parseFloat(/** @type {any} */ (o).markup) || 0) : 0;
   const tax = parseFloat(_popupVal('po-tax')) || 0;
   const discount = parseFloat(_popupVal('po-discount')) || 0;
-  const markupAmt = sub * markup / 100;
-  const afterMarkup = sub + markupAmt;
-  const taxAmt = afterMarkup * tax / 100;
-  const afterTax = afterMarkup + taxAmt;
+  const taxAmt = sub * tax / 100;
+  const afterTax = sub + taxAmt;
   const discountAmt = afterTax * discount / 100;
   const total = afterTax - discountAmt;
   const el = document.getElementById('po-totals');
   if (!el) return;
-  const markupRow = markup > 0
-    ? `<div class="pf-total-row"><span class="t-label">Markup (${markup}%)</span><span class="t-val">+${fmt(markupAmt)}</span></div>`
-    : '';
   const stockMarkupRow = stockMarkupAmt > 0
     ? `<div class="pf-total-row"><span class="t-label">Stock markup (${stockMarkup}%)</span><span class="t-val">+${fmt(stockMarkupAmt)}</span></div>`
     : '';
@@ -373,7 +370,6 @@ function _renderOrderLineTotals() {
   el.innerHTML = `
     <div class="pf-total-row"><span class="t-label">Subtotal</span><span class="t-val">${fmt(subParts.materials + subParts.labour)}</span></div>
     ${stockMarkupRow}
-    ${markupRow}
     <div class="pf-total-row"><span class="t-label">Tax (${tax}%)</span><span class="t-val">+${fmt(taxAmt)}</span></div>
     ${discRow}
     <div class="pf-total-row t-main"><span class="t-label">Order Total</span><span class="t-val">${fmt(total)}</span></div>`;
@@ -630,26 +626,19 @@ function _renderQuoteLineTotals() {
     },
     { materials: 0, labour: 0, stockMat: 0 }
   );
+  // Same simplification as the order side: legacy `markup` is no longer
+  // applied in totals math. Stock markup is the only markup concept.
   const stockMarkup = parseFloat(_popupVal('pq-stock-markup')) || 0;
   const stockMarkupAmt = subParts.stockMat * stockMarkup / 100;
   const sub = subParts.materials + subParts.labour + subParts.stockMat + stockMarkupAmt;
-  // Legacy `markup` column kept for back-compat — existing quotes with a
-  // non-zero markup still apply it here, but the UI no longer exposes it.
-  const q = _qpState.quoteId ? quotes.find(x => x.id === _qpState.quoteId) : null;
-  const markup = q ? (parseFloat(/** @type {any} */ (q).markup) || 0) : 0;
   const tax = parseFloat(_popupVal('pq-tax')) || 0;
   const discount = parseFloat(_popupVal('pq-discount')) || 0;
-  const markupAmt = sub * markup / 100;
-  const afterMarkup = sub + markupAmt;
-  const taxAmt = afterMarkup * tax / 100;
-  const afterTax = afterMarkup + taxAmt;
+  const taxAmt = sub * tax / 100;
+  const afterTax = sub + taxAmt;
   const discountAmt = afterTax * discount / 100;
   const total = afterTax - discountAmt;
   const el = document.getElementById('pq-totals');
   if (!el) return;
-  const markupRow = markup > 0
-    ? `<div class="pf-total-row"><span class="t-label">Markup (${markup}%)</span><span class="t-val">+${fmt(markupAmt)}</span></div>`
-    : '';
   const stockMarkupRow = stockMarkupAmt > 0
     ? `<div class="pf-total-row"><span class="t-label">Stock markup (${stockMarkup}%)</span><span class="t-val">+${fmt(stockMarkupAmt)}</span></div>`
     : '';
@@ -659,7 +648,6 @@ function _renderQuoteLineTotals() {
   el.innerHTML = `
     <div class="pf-total-row"><span class="t-label">Subtotal</span><span class="t-val">${fmt(subParts.materials + subParts.labour + subParts.stockMat)}</span></div>
     ${stockMarkupRow}
-    ${markupRow}
     <div class="pf-total-row"><span class="t-label">Tax (${tax}%)</span><span class="t-val">+${fmt(taxAmt)}</span></div>
     ${discRow}
     <div class="pf-total-row t-main"><span class="t-label">Total</span><span class="t-val">${fmt(total)}</span></div>`;
