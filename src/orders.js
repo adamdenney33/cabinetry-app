@@ -415,16 +415,16 @@ function renderOrderEditor() {
 
   const orderNumberValue = _escHtml((o && o.order_number) || (o ? String(o.id).padStart(4,'0') : _nextOrderNumber()));
 
+  const headerName = (projectName || 'Untitled project') + (clientName ? ' · ' + clientName : '');
+
   host.innerHTML = `<div class="form-section editor-shell">
-    <div class="ed-head">
-      <button class="back-btn" onclick="_oChangeProject()" title="Back to orders" aria-label="Back">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
-      </button>
-      <div class="head-icon">${_CH_ICON_ORDER}</div>
-      <div class="head-text">
-        <div class="title">
-          <span class="ed-project-name">${_escHtml(projectName || 'Untitled project')}</span>${clientName ? `<span class="ed-head-sep"> · </span><span class="ed-client">${_escHtml(clientName)}</span>` : ''}
-        </div>
+    <div class="project-header">
+      <div class="ph-row1">
+        <button class="ph-back" onclick="_oChangeProject()" title="Back to orders" aria-label="Back">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+        </button>
+        <svg class="ph-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/></svg>
+        <span class="ph-title">${_escHtml(headerName)}</span>
       </div>
     </div>
 
