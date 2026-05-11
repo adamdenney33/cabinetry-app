@@ -84,6 +84,19 @@ declare global {
     _qpState?: { dirty?: boolean };
     _opState?: { dirty?: boolean };
     _saveInFlight?: Set<string>;
+    /** persist.js — refresh-state helpers. */
+    _pcSaveSection?: (name: string) => void;
+    _pcLoadSection?: () => string | null;
+    _pcSaveOpenQuoteId?: (id: number | null) => void;
+    _pcLoadOpenQuoteId?: () => number | null;
+    _pcSaveOpenOrderId?: (id: number | null) => void;
+    _pcLoadOpenOrderId?: () => number | null;
+    _pcSaveOpenCutlistCtx?: (ctx: { projectId?: number | null; cabinetId?: number | null; cutlistId?: number | null; mainView?: string } | null) => void;
+    _pcLoadOpenCutlistCtx?: () => { projectId?: number | null; cabinetId?: number | null; cutlistId?: number | null; mainView?: string } | null;
+    _pcClearAllOpenKeys?: () => void;
+    _restoreAppState?: () => Promise<void>;
+    /** Set while restore runs so load functions can skip success toasts. */
+    _pcSuppressToasts?: boolean;
   }
 
   // ── units.js globals ──

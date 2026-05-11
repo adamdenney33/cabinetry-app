@@ -309,7 +309,9 @@ async function loadProject(id) {
   // Switch to Project Cut Lists tab (now filtered to this project).
   if (typeof switchCLMainView === 'function') switchCLMainView('cutlists');
   else if (typeof renderCLCutListsView === 'function') renderCLCutListsView();
-  _toast(`"${_clCurrentProjectName}" loaded — pick a cut list`, 'success');
+  if (!(/** @type {any} */ (window))._pcSuppressToasts) {
+    _toast(`"${_clCurrentProjectName}" loaded — pick a cut list`, 'success');
+  }
 }
 
 // Load a single cutlist's sheets/pieces/edge_bands into the live arrays. Sets
@@ -375,7 +377,9 @@ async function _clLoadCutlist(cutlistId) {
   _setClDirty(false);
   const resArea = document.getElementById('results-area');
   if (resArea) resArea.innerHTML = '<div class="empty-state"><h3>Cut list loaded</h3><p>Click Optimize to generate layouts.</p></div>';
-  _toast(`"${_clCurrentCutlistName}" loaded`, 'success');
+  if (!(/** @type {any} */ (window))._pcSuppressToasts) {
+    _toast(`"${_clCurrentCutlistName}" loaded`, 'success');
+  }
   if (typeof _clRenderContext === 'function') _clRenderContext();
   if (typeof renderCLCutListsView === 'function') renderCLCutListsView();
 }

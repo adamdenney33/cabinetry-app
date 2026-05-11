@@ -73,6 +73,18 @@ let _clDirty = false;
 /** @type {string} */
 let _clMainView = 'cutlists';
 
+/** Persist the cutlist editor's open context so refresh can restore it. */
+function _persistCutlistCtx() {
+  const w = /** @type {any} */ (window);
+  if (typeof w._pcSaveOpenCutlistCtx !== 'function') return;
+  w._pcSaveOpenCutlistCtx({
+    projectId: _clCurrentProjectId,
+    cabinetId: _clCurrentCabinetId,
+    cutlistId: _clCurrentCutlistId,
+    mainView: _clMainView,
+  });
+}
+
 const COLORS = [
   '#4a90d9','#d4763b','#4caf50','#9c27b0','#e53935',
   '#00acc1','#f9a825','#7cb342','#5c6bc0','#e91e63',
@@ -960,6 +972,7 @@ const _CL_CABINET_ICON = '<svg class="ph-icon" width="16" height="16" viewBox="0
 
 /** Strategy 2: render either empty state or Idea-3 header into #cl-context. */
 function _clRenderContext() {
+  _persistCutlistCtx();
   // Render whatever main-view tab is currently active (default: cutlists).
   // Idempotent: switchCLMainView keeps display state in sync each call.
   if (typeof switchCLMainView === 'function') switchCLMainView(_clMainView || 'cutlists');
@@ -4018,6 +4031,7 @@ function renderSummary(area) {
 /** @param {string} view */
 function switchCLMainView(view) {
   _clMainView = view;
+  _persistCutlistCtx();
   const layout   = _byId('cl-view-layout');
   const cutlists = _byId('cl-view-cutlists');
   const library  = _byId('cl-view-library');
@@ -4289,7 +4303,9 @@ async function _clDoOpenLibraryCutlist(id) {
     if (typeof renderEdgeBands === 'function') { try { renderEdgeBands(); } catch(e) {} }
     _setClDirty(false);
     _clRenderContext();
-    _toast(`Opened "${_clCurrentCutlistName}"`, 'success');
+    if (!(/** @type {any} */ (window))._pcSuppressToasts) {
+      _toast(`Opened "${_clCurrentCutlistName}"`, 'success');
+    }
   } catch (e) {
     _toast('Failed to load cut list', 'error');
   }

@@ -1339,6 +1339,13 @@ _sb.auth.onAuthStateChange(async (event, session) => {
     await loadAllData();
     await _loadCabinetTemplatesFromDB();
     _clLoadProjectList();
+    // Restore the active section and any open editor entity from the previous
+    // session. Runs after data hydrates so entity-lookup .find() guards have
+    // something to match against; missed lookups silently clear their key.
+    if (typeof /** @type {any} */ (window)._restoreAppState === 'function') {
+      try { await /** @type {any} */ (window)._restoreAppState(); }
+      catch (e) { console.warn('restoreAppState failed', e); }
+    }
   } else {
     _userId = null;
     _subscription = null;
@@ -1346,11 +1353,27 @@ _sb.auth.onAuthStateChange(async (event, session) => {
     /** @type {HTMLElement} */ (document.getElementById('account-guest-view')).style.display = '';
     /** @type {HTMLElement} */ (document.getElementById('account-user-view')).style.display = 'none';
     _clProjectCache = [];
+    // Clear "what was open" keys only on explicit sign-out, so the next user
+    // on this browser doesn't inherit the previous user's entity IDs. The
+    // INITIAL_SESSION event fires on every guest page load and must NOT
+    // clear these — otherwise guest mode loses its restore state.
+    // pcCurrentPage is kept regardless — it's a UI preference, not user data.
+    if (event === 'SIGNED_OUT'
+        && typeof /** @type {any} */ (window)._pcClearAllOpenKeys === 'function') {
+      /** @type {any} */ (window)._pcClearAllOpenKeys();
+    }
     // Item 2 phase 1.4: clear in-memory Cabinet Builder state and re-render
     // so the auth gate shows immediately on sign-out (otherwise the panel
     // keeps rendering the previous user's cabinets until the next tab switch).
     cbLines = [];
     if (typeof renderCBPanel === 'function') { try { renderCBPanel(); } catch(e){} }
+    // Restore last-active section for guest/free-tier users too. Entity restore
+    // safely no-ops because the DB-backed arrays (quotes/orders/projects) are
+    // empty for guests, so the .find() guards in _restoreAppState skip them.
+    if (typeof /** @type {any} */ (window)._restoreAppState === 'function') {
+      try { await /** @type {any} */ (window)._restoreAppState(); }
+      catch (e) { console.warn('restoreAppState failed', e); }
+    }
   }
 });
 

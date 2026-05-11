@@ -277,6 +277,9 @@ function setCurrency(c) {
 // ══════════════════════════════════════════
 /** @param {string} name */
 function switchSection(name) {
+  if (typeof /** @type {any} */ (window)._pcSaveSection === 'function') {
+    /** @type {any} */ (window)._pcSaveSection(name);
+  }
   document.querySelectorAll('.nav-tab').forEach((t,i) => {
     const sections = ['dashboard','cutlist','stock','cabinet','quote','orders','schedule','projects','clients'];
     t.classList.toggle('active', sections[i] === name);

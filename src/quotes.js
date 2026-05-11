@@ -1404,6 +1404,9 @@ function _qCloseCardMenus() {
 /** Reset editor to empty state. */
 function _qClearEditor() {
   _qpState = { quoteId: null, lines: [], dirty: false, projectId: null, startingNew: false };
+  if (typeof /** @type {any} */ (window)._pcSaveOpenQuoteId === 'function') {
+    /** @type {any} */ (window)._pcSaveOpenQuoteId(null);
+  }
   renderQuoteEditor();
 }
 
@@ -1451,6 +1454,9 @@ async function loadQuoteIntoSidebar(id) {
     projectId: q.project_id || null,
     startingNew: false,
   };
+  if (typeof /** @type {any} */ (window)._pcSaveOpenQuoteId === 'function') {
+    /** @type {any} */ (window)._pcSaveOpenQuoteId(id);
+  }
   renderQuoteEditor();
   if (!Array.isArray(q._lines)) {
     const { data } = await _db('quote_lines').select('*').eq('quote_id', id).order('position');
@@ -1555,6 +1561,9 @@ async function createQuoteFromEditor(silent) {
   quotes.unshift(data);
   _qpState.quoteId = data.id;
   _qpState.dirty = false;
+  if (typeof /** @type {any} */ (window)._pcSaveOpenQuoteId === 'function') {
+    /** @type {any} */ (window)._pcSaveOpenQuoteId(data.id);
+  }
   renderQuoteMain();
   renderQuoteEditor();
   if (!silent) _toast('Quote created', 'success');
