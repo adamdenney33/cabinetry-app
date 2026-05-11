@@ -457,11 +457,14 @@ function renderOrderEditor() {
     </div>
 
     <div class="stock-library ${colStockOn ? 'visible' : ''}" id="po-stock-library">
-      <div class="smart-input-wrap">
-        <input type="search" id="po-stock-search" class="stock-search" placeholder="Search or add stock…" autocomplete="off"
-          oninput="_oStockSearch(this.value)" onfocus="_oStockSearch(this.value)">
-        <div class="smart-input-add" onclick="_openNewStockPopup('po-stock-search')" title="Add new stock item">+</div>
-        <div id="po-stock-suggest" class="stock-suggest"></div>
+      <div style="position:relative">
+        <div class="smart-input-wrap">
+          <input type="text" id="po-stock-search" placeholder="Search or add stock..." autocomplete="off"
+            oninput="_oStockSearch(this.value)" onfocus="_oStockSearch(this.value)"
+            onblur="setTimeout(()=>{const b=document.getElementById('po-stock-suggest'); if(b)b.style.display='none'},150)">
+          <div class="smart-input-add" onclick="_openNewStockPopup('po-stock-search')" title="Add new stock item">+</div>
+        </div>
+        <div id="po-stock-suggest" class="client-suggest-list" style="display:none"></div>
       </div>
       <div class="stock-markup-row">
         <label>Stock Markup</label>

@@ -2081,47 +2081,13 @@ details.sched .sched-body { padding: 4px 14px 12px; display: flex; flex-directio
 }
 .cl-add-btn:hover { color: var(--accent); border-color: var(--accent); background: var(--surface2); }
 
-/* Stock smart-library — revealed when the Stock pill is ON. Matches the project's
-   smart-input pattern (CLAUDE.md): search input + `+` button; dropdown opens on
-   focus with sectioned suggestions; `+` opens a full popup to create a stock item. */
-.stock-library { padding: 8px 14px 4px; display: none; position: relative; }
+/* Stock smart-library — revealed when the Stock pill is ON. Uses the project's
+   smart-input pattern (CLAUDE.md): .smart-input-wrap + sibling .client-suggest-list.
+   Stock-specific extras: per-order markup row, sticky group headers in the dropdown. */
+.stock-library { padding: 8px 14px 4px; display: none; }
 .stock-library.visible { display: block; }
-.stock-library .smart-input-wrap { border-radius: 6px; }
-.stock-suggest {
-  display: none;
-  position: absolute; top: 100%; left: 14px; right: 14px;
-  margin-top: 4px;
-  border: 1px solid var(--border); border-radius: 6px;
-  background: var(--surface);
-  box-shadow: var(--shadow-md);
-  max-height: 240px; overflow-y: auto;
-  z-index: 50;
-}
-.stock-suggest.open { display: block; }
-.stock-suggest .stock-section-label {
-  font-size: 9px; font-weight: 700; color: var(--muted);
-  text-transform: uppercase; letter-spacing: 0.6px;
-  padding: 6px 10px 3px; background: var(--surface2);
-  border-bottom: 1px solid var(--border2);
-  position: sticky; top: 0;
-}
-.stock-suggest .stock-row {
-  display: flex; align-items: center; gap: 8px;
-  padding: 6px 10px; cursor: pointer;
-  border-bottom: 1px solid var(--border2);
-  font-size: 11px;
-}
-.stock-suggest .stock-row:last-child { border-bottom: none; }
-.stock-suggest .stock-row:hover { background: var(--accent-dim); }
-.stock-suggest .stock-row .stock-name { flex: 1; color: var(--text); }
-.stock-suggest .stock-row .stock-qty { font-size: 10px; color: var(--muted); font-variant-numeric: tabular-nums; }
-.stock-suggest .stock-row .stock-price {
-  font-size: 11px; color: var(--text2); font-variant-numeric: tabular-nums;
-  font-weight: 600; min-width: 50px; text-align: right;
-}
-.stock-suggest .stock-suggest-empty {
-  padding: 14px 12px; font-size: 11px; color: var(--muted); text-align: center;
-}
+.stock-library .client-suggest-list { max-height: 240px; }
+.stock-library .suggest-group-header { position: sticky; top: 0; z-index: 1; }
 .stock-markup-row {
   display: flex; align-items: center; gap: 8px;
   padding: 6px 0 2px;

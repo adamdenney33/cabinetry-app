@@ -1186,11 +1186,14 @@ function renderQuoteEditor() {
     </div>
 
     <div class="stock-library ${colStockOn ? 'visible' : ''}" id="pq-stock-library">
-      <div class="smart-input-wrap">
-        <input type="search" id="pq-stock-search" class="stock-search" placeholder="Search or add stock…" autocomplete="off"
-          oninput="_qStockSearch(this.value)" onfocus="_qStockSearch(this.value)">
-        <div class="smart-input-add" onclick="_openNewStockPopup()" title="Add new stock item">+</div>
-        <div id="pq-stock-suggest" class="stock-suggest"></div>
+      <div style="position:relative">
+        <div class="smart-input-wrap">
+          <input type="text" id="pq-stock-search" placeholder="Search or add stock..." autocomplete="off"
+            oninput="_qStockSearch(this.value)" onfocus="_qStockSearch(this.value)"
+            onblur="setTimeout(()=>{const b=document.getElementById('pq-stock-suggest'); if(b)b.style.display='none'},150)">
+          <div class="smart-input-add" onclick="_openNewStockPopup()" title="Add new stock item">+</div>
+        </div>
+        <div id="pq-stock-suggest" class="client-suggest-list" style="display:none"></div>
       </div>
       <div class="stock-markup-row">
         <label>Stock Markup</label>

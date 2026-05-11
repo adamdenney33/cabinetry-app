@@ -172,45 +172,47 @@ function _stockSearchRender(q, suggestId, onPick) {
   const cur = window.currency;
   const ql = (q || '').trim().toLowerCase();
   const matches = stockItems.filter(s => !ql || (s.name || '').toLowerCase().includes(ql));
-  if (matches.length === 0) {
-    box.innerHTML = '<div class="stock-suggest-empty">No matching stock — click + to add a new item.</div>';
-    box.classList.add('open');
-    return;
-  }
-  /** @type {Record<string, any[]>} */
-  const grouped = {};
-  for (const s of matches) {
-    const cat = (s.category || _scGet(s.id) || 'Other');
-    if (!grouped[cat]) grouped[cat] = [];
-    grouped[cat].push(s);
-  }
   /** @type {string[]} */
   const html = [];
-  Object.keys(grouped).sort().forEach(cat => {
-    html.push(`<div class="stock-section-label">${_escHtml(cat)}</div>`);
-    grouped[cat].forEach(s => {
-      const dims = (s.w && s.h) ? `${s.w}×${s.h}` : '';
-      const qty = s.qty != null ? `${s.qty}${dims ? ' · ' + dims : ''}` : (dims || '');
-      const cost = s.cost != null ? cur + Number(s.cost).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '';
-      html.push(`<div class="stock-row" data-stock-id="${s.id}">
-        <span class="stock-name">${_escHtml(s.name || '')}</span>
-        <span class="stock-qty">${_escHtml(qty)}</span>
-        <span class="stock-price">${cost}</span>
-      </div>`);
+  if (matches.length === 0) {
+    html.push('<div style="padding:14px 12px;font-size:11px;color:var(--muted);text-align:center">No matching stock</div>');
+  } else {
+    /** @type {Record<string, any[]>} */
+    const grouped = {};
+    for (const s of matches) {
+      const cat = (s.category || _scGet(s.id) || 'Other');
+      if (!grouped[cat]) grouped[cat] = [];
+      grouped[cat].push(s);
+    }
+    Object.keys(grouped).sort().forEach(cat => {
+      html.push(`<div class="suggest-group-header">${_escHtml(cat)}</div>`);
+      grouped[cat].forEach(s => {
+        const dims = (s.w && s.h) ? `${s.w}×${s.h}` : '';
+        const qty = s.qty != null ? `${s.qty}${dims ? ' · ' + dims : ''}` : (dims || '');
+        const cost = s.cost != null ? cur + Number(s.cost).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '';
+        const metas = [];
+        if (qty)  metas.push(`<span class="csi-meta">${_escHtml(qty)}</span>`);
+        if (cost) metas.push(`<span class="csi-meta">${cost}</span>`);
+        html.push(`<div class="client-suggest-item" data-stock-id="${s.id}">
+          <span class="csi-name">${_escHtml(s.name || '')}</span>
+          ${metas.join('')}
+        </div>`);
+      });
     });
-  });
+  }
+  html.push('<div class="client-suggest-add" onmousedown="_openNewStockPopup()">+ Add new stock item</div>');
   box.innerHTML = html.join('');
-  box.classList.add('open');
-  // Wire click handlers (single delegation rather than per-row to keep DOM lean).
+  box.style.display = 'block';
+  // Wire click handler via delegation (mousedown fires before input blur).
   box.onmousedown = (e) => {
     const target = /** @type {HTMLElement} */ (e.target);
-    const rowEl = target.closest('.stock-row');
+    const rowEl = target.closest('.client-suggest-item');
     if (!rowEl) return;
     e.preventDefault();
     const sid = parseInt(/** @type {HTMLElement} */ (rowEl).dataset.stockId || '0', 10);
     const picked = stockItems.find(s => s.id === sid);
     if (picked) onPick(picked);
-    box.classList.remove('open');
+    box.style.display = 'none';
   };
 }
 
