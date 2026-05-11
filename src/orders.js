@@ -129,8 +129,16 @@ function renderOrdersMain() {
   if (!el) return;
   /** @param {number} v */
   const fmt = v => cur + v.toLocaleString('en-US', {minimumFractionDigits:0, maximumFractionDigits:0});
-  const active = orders.filter(o => o.status !== 'complete');
-  const complete = orders.filter(o => o.status === 'complete');
+  // Drill-down: when the sidebar editor has a project picked, scope this list
+  // to that project. If the project has been deleted, clear the stale state.
+  const drillProjectId = (typeof _opState !== 'undefined' && _opState) ? _opState.projectId : null;
+  let drillProject = drillProjectId ? projects.find(p => p.id === drillProjectId) : null;
+  if (drillProjectId && !drillProject) { _opState.projectId = null; drillProject = null; }
+  const scopedOrders = drillProject
+    ? orders.filter(o => o.project_id === drillProject.id)
+    : orders;
+  const active = scopedOrders.filter(o => o.status !== 'complete');
+  const complete = scopedOrders.filter(o => o.status === 'complete');
 
   const stepLabels = ['Quote','Confirmed','Production','Delivery','Done'];
 
@@ -183,6 +191,7 @@ function renderOrdersMain() {
         <button class="btn btn-outline" onclick="printOrderDoc(${o.id},'invoice')" style="font-size:11px;padding:5px 8px;width:auto">Invoice</button>
         <button class="btn btn-outline" onclick="printOrderDoc(${o.id},'work_order')" style="font-size:11px;padding:5px 8px;width:auto">Work Order</button>
         <span style="flex:1"></span>
+        <span class="btn-hairline" aria-hidden="true"></span>
         <button class="btn btn-outline" onclick="duplicateOrder(${o.id})" style="font-size:11px;padding:5px 10px;width:auto">Duplicate</button>
         <button class="btn btn-outline" style="color:var(--danger);font-size:11px;padding:5px 10px;width:auto" onclick="_confirm('Delete order for <strong>${_escHtml(orderClient(o))}</strong>?',()=>removeOrder(${o.id}))">Delete</button>
       </div>
@@ -192,7 +201,7 @@ function renderOrdersMain() {
   const filterVal = window._orderFilter || 'active';
   const filterSearch = (window._orderSearch || '').toLowerCase().trim();
   const sortBy = window._orderSort || 'newest';
-  let pool = filterVal === 'all' ? orders : filterVal === 'active' ? active : complete;
+  let pool = filterVal === 'all' ? scopedOrders : filterVal === 'active' ? active : complete;
   let filtered = filterSearch ? pool.filter(o => (orderClient(o)+' '+orderProject(o)).toLowerCase().includes(filterSearch)) : [...pool];
   // Sort
   if (sortBy === 'due') filtered.sort((a,b) => { const da=_orderDateToISO(a.due||'')||'9999', db=_orderDateToISO(b.due||'')||'9999'; return da.localeCompare(db); });
@@ -206,7 +215,7 @@ function renderOrdersMain() {
   const filterTabs = `<div class="order-filter-tabs" style="align-items:center">
     <input class="order-search-input" type="search" placeholder="Search client or project…" value="${window._orderSearch||''}" oninput="window._orderSearch=this.value;renderOrdersMain()">
     <button class="ofilter-tab ${filterVal==='active'?'active':''}" onclick="setOrderFilter('active')">Active (${active.length})</button>
-    <button class="ofilter-tab ${filterVal==='all'?'active':''}" onclick="setOrderFilter('all')">All (${orders.length})</button>
+    <button class="ofilter-tab ${filterVal==='all'?'active':''}" onclick="setOrderFilter('all')">All (${scopedOrders.length})</button>
     <button class="ofilter-tab ${filterVal==='complete'?'active':''}" onclick="setOrderFilter('complete')">Completed (${complete.length})</button>
     <select style="font-size:11px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--muted);font-family:inherit;cursor:pointer;margin-left:auto" onchange="window._orderSort=this.value;renderOrdersMain()">
       <option value="newest" ${sortBy==='newest'?'selected':''}>Newest first</option>
@@ -218,9 +227,19 @@ function renderOrdersMain() {
     <button class="btn btn-outline" onclick="event.stopPropagation();importOrdersCSV()" style="font-size:10px;padding:4px 8px;width:auto">Import</button>
   </div>`;
 
+  const header = drillProject
+    ? _renderProjectHeader('orders', {
+        name: drillProject.name,
+        exitFn: '_oChangeProject',
+        iconSvg: _CH_ICON_ORDER.replace('ch-icon', 'ph-icon'),
+      })
+    : _renderContentHeader({ iconSvg: _CH_ICON_ORDER, title: 'Orders' });
+
+  const drillEmpty = `<div class="empty-state" style="padding:40px 0"><p style="color:var(--muted)">No orders for this project yet.</p></div>`;
+
   el.innerHTML = `<div style="max-width:800px;margin:0 auto">
-    ${_renderContentHeader({ iconSvg: _CH_ICON_ORDER, title: 'Orders' })}
-    ${orders.length === 0 ? emptyState : filterTabs + `<div class="orders-list">${filtered.map(orderCard).join('')}</div>`}
+    ${header}
+    ${scopedOrders.length === 0 && !drillProject ? emptyState : filterTabs + `<div class="orders-list">${filtered.length === 0 && drillProject ? drillEmpty : filtered.map(orderCard).join('')}</div>`}
   </div>`;
 }
 
@@ -370,7 +389,7 @@ function renderOrderEditor() {
   // the column was added.
   const qRef = o ? (/** @type {any} */ (o).quote_id ?? _oqGet(o.id)) : null;
   const fromQuote = qRef ? quotes.find(q => q.id === qRef) : null;
-  const quoteChip = fromQuote ? `<div class="pf" style="margin:8px 0"><label class="pf-label">From Quote</label><div class="pf-chips"><span class="pf-chip" style="border-color:rgba(37,99,235,0.3);color:#6b9bf4" onclick="switchSection('quote');window._quoteSearch='${_escHtml(quoteProject(fromQuote)).replace(/'/g,"\\'")}';renderQuoteMain()">Q-${String(fromQuote.id).padStart(4,'0')} · ${_escHtml(quoteProject(fromQuote))}</span></div></div>` : '';
+  const quoteChip = fromQuote ? `<div class="pf" style="margin:8px 0"><label class="pf-label">From Quote</label><div class="pf-chips"><span class="pf-chip" style="border-color:rgba(37,99,235,0.3);color:#6b9bf4" onclick="switchSection('quote');loadQuoteIntoSidebar(${fromQuote.id})">Q-${String(fromQuote.id).padStart(4,'0')} · ${_escHtml(quoteProject(fromQuote))}</span></div></div>` : '';
 
   // Overdue badge
   let isOverdue = false;
@@ -780,6 +799,7 @@ function _oClearEditor() {
     /** @type {any} */ (window)._pcSaveOpenOrderId(null);
   }
   renderOrderEditor();
+  renderOrdersMain();
 }
 
 /** Idle-state click handler: pick a recent project to start a new order on it.
@@ -788,6 +808,7 @@ function _oPickProjectFromEmpty(id, _name) {
   _opState.projectId = id;
   _opState.startingNew = false;
   renderOrderEditor();
+  renderOrdersMain();
 }
 
 /** Idle-state click handler: reveal the project-picker form. */
@@ -827,6 +848,7 @@ async function loadOrderIntoSidebar(id) {
     /** @type {any} */ (window)._pcSaveOpenOrderId(id);
   }
   renderOrderEditor();
+  renderOrdersMain();
   if (!Array.isArray(/** @type {any} */ (o)._lines)) {
     const { data } = await _db('order_lines').select('*').eq('order_id', id).order('position');
     if (_opState.orderId !== id) return;
@@ -878,6 +900,7 @@ function _oPickProject(projectId) {
     /** @type {any} */ (window)._pcSaveOpenOrderId(null);
   }
   renderOrderEditor();
+  renderOrdersMain();
 }
 
 /** @param {'cabinet'|'item'|'labour'} kind */

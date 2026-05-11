@@ -353,8 +353,15 @@ function renderQuoteMain() {
   if (!el) return;
   /** @param {number} v */
   const fmt = v => cur + v.toLocaleString('en-US', {minimumFractionDigits:0, maximumFractionDigits:0});
+  // Drill-down: when the sidebar editor has a project picked, scope this list
+  // to that project. If the project has been deleted, clear the stale state.
+  const drillProjectId = (typeof _qpState !== 'undefined' && _qpState) ? _qpState.projectId : null;
+  let drillProject = drillProjectId ? projects.find(p => p.id === drillProjectId) : null;
+  if (drillProjectId && !drillProject) { _qpState.projectId = null; drillProject = null; }
   // Hide CB drafts — they're Cabinet Builder workspace state, not customer quotes.
-  const customerQuotes = quotes.filter(q => !_isDraftQuote(q));
+  const customerQuotes = quotes
+    .filter(q => !_isDraftQuote(q))
+    .filter(q => !drillProject || q.project_id === drillProject.id);
   const approved = customerQuotes.filter(q => q.status === 'approved').length;
   const sent = customerQuotes.filter(q => q.status === 'sent').length;
   const draft = customerQuotes.filter(q => q.status === 'draft').length;
@@ -465,9 +472,21 @@ function renderQuoteMain() {
     <button class="btn btn-outline" onclick="event.stopPropagation();importQuotesCSV()" style="font-size:10px;padding:4px 8px;width:auto">Import</button>
   </div>`;
 
+  const header = drillProject
+    ? _renderProjectHeader('quotes', {
+        name: drillProject.name,
+        exitFn: '_qChangeProject',
+        iconSvg: _CH_ICON_QUOTE.replace('ch-icon', 'ph-icon'),
+      })
+    : _renderContentHeader({ iconSvg: _CH_ICON_QUOTE, title: 'Quotes' });
+
+  const noMatchMsg = drillProject
+    ? '<div class="empty-state" style="padding:40px 0"><p style="color:var(--muted)">No quotes for this project yet.</p></div>'
+    : '<div class="empty-state" style="padding:40px 0"><p style="color:var(--muted)">No quotes match this filter.</p></div>';
+
   el.innerHTML = `<div style="max-width:800px;margin:0 auto">
-    ${_renderContentHeader({ iconSvg: _CH_ICON_QUOTE, title: 'Quotes' })}
-    ${customerQuotes.length === 0 ? emptyState : filterBar + `<div class="quote-list">${filteredQ.map(qCard).join('')}${filteredQ.length === 0 ? '<div class="empty-state" style="padding:40px 0"><p style="color:var(--muted)">No quotes match this filter.</p></div>' : ''}</div>`}
+    ${header}
+    ${customerQuotes.length === 0 && !drillProject ? emptyState : filterBar + `<div class="quote-list">${filteredQ.map(qCard).join('')}${filteredQ.length === 0 ? noMatchMsg : ''}</div>`}
   </div>`;
 }
 
@@ -1403,6 +1422,7 @@ function _qClearEditor() {
     /** @type {any} */ (window)._pcSaveOpenQuoteId(null);
   }
   renderQuoteEditor();
+  renderQuoteMain();
 }
 
 /** Idle-state click handler: pick a recent project to start a new quote on it.
@@ -1411,6 +1431,7 @@ function _qPickProjectFromEmpty(id, _name) {
   _qpState.projectId = id;
   _qpState.startingNew = false;
   renderQuoteEditor();
+  renderQuoteMain();
 }
 
 /** Idle-state click handler: reveal the project-picker form. */
@@ -1453,6 +1474,7 @@ async function loadQuoteIntoSidebar(id) {
     /** @type {any} */ (window)._pcSaveOpenQuoteId(id);
   }
   renderQuoteEditor();
+  renderQuoteMain();
   if (!Array.isArray(q._lines)) {
     const { data } = await _db('quote_lines').select('*').eq('quote_id', id).order('position');
     if (_qpState.quoteId !== id) return;
@@ -1505,6 +1527,7 @@ function _qPickProject(projectId) {
   if (!p) return;
   _qpState = { quoteId: null, lines: [], dirty: false, projectId: p.id, startingNew: false };
   renderQuoteEditor();
+  renderQuoteMain();
 }
 
 /** Add a line to the current quote. Auto-creates the quote row if it doesn't exist.

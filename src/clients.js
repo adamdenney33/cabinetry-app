@@ -939,8 +939,8 @@ function renderProjectsMain() {
       <div class="proj-strip">
         ${act('Cabinets', iconCabinet, cabinetCount, '', `_newCabinetForProject(${p.id})`, `_newCabinetForProject(${p.id})`)}
         ${act('Cut Lists', iconCutlist, cutListCount, '', `_newCutListForProject(${p.id})`, `_newCutListForProject(${p.id})`)}
-        ${act('Quotes', iconQuote, pQuotes.length, pQuotes.length ? fmtShort(quoteValue) : '', `_drillQuotesForProject('${nameJs}')`, `_newQuoteForProject(${p.id})`)}
-        ${act('Orders', iconOrder, pOrders.length, pOrders.length ? fmtShort(orderValue) : '', `_drillOrdersForProject('${nameJs}')`, `_newOrderForProject(${p.id})`)}
+        ${act('Quotes', iconQuote, pQuotes.length, pQuotes.length ? fmtShort(quoteValue) : '', `_drillQuotesForProject(${p.id})`, `_newQuoteForProject(${p.id})`)}
+        ${act('Orders', iconOrder, pOrders.length, pOrders.length ? fmtShort(orderValue) : '', `_drillOrdersForProject(${p.id})`, `_newOrderForProject(${p.id})`)}
       </div>
       <div class="proj-footer" style="display:flex;gap:6px;padding:6px 12px 10px;justify-content:flex-end" onclick="event.stopPropagation()">
         <button class="btn btn-outline" style="font-size:11px;padding:4px 10px;width:auto" onclick="event.stopPropagation();duplicateProject(${p.id})">Duplicate</button>
@@ -1047,18 +1047,20 @@ function _prefillSmartInput(inputId, value) {
   if (suggest) suggest.style.display = 'none';
 }
 
-/** @param {string} name */
-function _drillQuotesForProject(name) {
+/** @param {number} projectId */
+function _drillQuotesForProject(projectId) {
+  const p = projects.find(x => x.id === projectId);
+  if (!p) return;
   switchSection('quote');
-  window._quoteSearch = name;
-  if (typeof renderQuoteMain === 'function') renderQuoteMain();
+  if (typeof _qPickProject === 'function') _qPickProject(projectId);
 }
 
-/** @param {string} name */
-function _drillOrdersForProject(name) {
+/** @param {number} projectId */
+function _drillOrdersForProject(projectId) {
+  const p = projects.find(x => x.id === projectId);
+  if (!p) return;
   switchSection('orders');
-  window._orderSearch = name;
-  if (typeof renderOrdersMain === 'function') renderOrdersMain();
+  if (typeof _oPickProject === 'function') _oPickProject(projectId);
 }
 
 /** @param {number} projectId */
