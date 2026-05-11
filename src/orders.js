@@ -132,59 +132,36 @@ function renderOrdersMain() {
   const active = orders.filter(o => o.status !== 'complete');
   const complete = orders.filter(o => o.status === 'complete');
 
-  /** @type {string[]} */
-  const pipelineSteps = ['quote','confirmed','production','delivery','complete'];
-  const stepLabels = ['Quote','Confirmed','Production','Delivery','Done'];
-
   /** @param {any} o */
   const orderCard = o => {
-    const curIdx = pipelineSteps.indexOf(o.status);
-    const pipe = pipelineSteps.map((s,i) => {
-      const done = i < curIdx;
-      const active = i === curIdx;
-      const color = active ? (/** @type {Record<string,string>} */ (STATUS_COLORS))[s] : done ? 'var(--success)' : 'var(--border)';
-      return `<div class="pipe-step ${active?'pipe-active':''}${done?' pipe-done':''}" onclick="setOrderStatus(${o.id},'${s}')" style="cursor:pointer" title="Set to ${stepLabels[i]}">
-        <div class="pipe-dot" style="background:${color};border-color:${color}"></div>
-        <div class="pipe-label">${stepLabels[i]}</div>
-      </div>${i < pipelineSteps.length-1 ? `<div class="pipe-line ${done?'pipe-line-done':''}"></div>` : ''}`;
-    }).join('');
-
-    // Overdue detection — parse due date and compare to today
     let isOverdue = false;
     if (o.status !== 'complete' && o.due && o.due !== 'TBD') {
       const parsed = new Date(o.due);
       if (!isNaN(+parsed) && parsed < new Date()) isOverdue = true;
     }
-
     const relDate = _relativeDate(o.due);
+    const titleNum = o.order_number ? `#${o.order_number} · ` : '';
+    const titleClient = orderClient(o) ? ' - ' + orderClient(o) : '';
+    const statusBadgeCls = (/** @type {Record<string,string>} */(STATUS_BADGES))[o.status]||'badge-gray';
+    const statusLabel = (/** @type {Record<string,string>} */(STATUS_LABELS))[o.status]||o.status;
     return `
     <div class="order-card${isOverdue ? ' order-overdue' : ''}" style="cursor:pointer" onclick="loadOrderIntoSidebar(${o.id})">
       <div class="oc-header">
         <div class="oc-info">
           <div class="oc-title-row">
-            <div class="oc-title">${o.order_number ? `#${o.order_number} · ` : ''}${orderProject(o)}${orderClient(o) ? ' - ' + orderClient(o) : ''}</div>
-            <span class="badge ${(/** @type {Record<string,string>} */(STATUS_BADGES))[o.status]||'badge-gray'}" style="font-size:10px" onclick="event.stopPropagation()">${(/** @type {Record<string,string>} */(STATUS_LABELS))[o.status]||o.status}</span>
+            <div class="oc-title">${titleNum}${orderProject(o)}${titleClient}</div>
+            <span class="badge ${statusBadgeCls}" style="font-size:10px">${statusLabel}</span>
           </div>
-          <div style="display:flex;gap:6px;align-items:center;margin-top:3px;font-size:11px;color:var(--muted)">
+          <div class="oc-meta">
             <span>Due: ${o.due || 'TBD'}</span>
             ${relDate ? `<span style="font-size:9px;font-weight:700;color:${relDate.color}">${relDate.label}</span>` : ''}
             ${isOverdue ? '<span class="badge badge-red" style="font-size:8px;padding:1px 5px">Overdue</span>' : ''}
           </div>
-          ${o.notes ? `<div class="oc-notes" style="cursor:default">${o.notes}</div>` : ''}
         </div>
         <div class="oc-right">
-          <div class="oc-value" style="cursor:default;border-bottom:none">${fmt(o.value)}</div>
+          <div class="oc-value">${fmt(o.value)}</div>
+          <button class="oc-menu-btn" onclick="event.stopPropagation();_oOpenCardMenu(event,${o.id})" title="Actions" aria-label="Order actions">⋯</button>
         </div>
-      </div>
-      <div class="oc-pipeline">${pipe}</div>
-      <div class="oc-footer" onclick="event.stopPropagation()">
-        <button class="btn btn-outline" onclick="printOrderDoc(${o.id},'order_confirmation')" style="font-size:11px;padding:5px 8px;width:auto">Confirmation</button>
-        <button class="btn btn-outline" onclick="printOrderDoc(${o.id},'proforma')" style="font-size:11px;padding:5px 8px;width:auto">Pro-forma</button>
-        <button class="btn btn-outline" onclick="printOrderDoc(${o.id},'invoice')" style="font-size:11px;padding:5px 8px;width:auto">Invoice</button>
-        <button class="btn btn-outline" onclick="printOrderDoc(${o.id},'work_order')" style="font-size:11px;padding:5px 8px;width:auto">Work Order</button>
-        <span style="flex:1"></span>
-        <button class="btn btn-outline" onclick="duplicateOrder(${o.id})" style="font-size:11px;padding:5px 10px;width:auto">Duplicate</button>
-        <button class="btn btn-outline" style="color:var(--danger);font-size:11px;padding:5px 10px;width:auto" onclick="_confirm('Delete order for <strong>${_escHtml(orderClient(o))}</strong>?',()=>removeOrder(${o.id}))">Delete</button>
       </div>
     </div>`;
   };
@@ -224,6 +201,49 @@ function renderOrdersMain() {
   </div>`;
 }
 
+
+/** Open the order-card actions menu near the clicked `⋯` button. Replaces the
+ *  per-card row of action buttons with a compact dropdown.
+ *  @param {Event} e @param {number} id */
+function _oOpenCardMenu(e, id) {
+  // Close any existing menu
+  const existing = document.querySelector('.oc-card-menu');
+  if (existing) existing.remove();
+  const o = orders.find(ox => ox.id === id);
+  if (!o) return;
+  const btn = /** @type {HTMLElement} */ (e.currentTarget || e.target);
+  const r = btn.getBoundingClientRect();
+  const menu = document.createElement('div');
+  menu.className = 'oc-card-menu';
+  menu.innerHTML = `
+    <button onclick="printOrderDoc(${id},'order_confirmation');_oCloseCardMenus()">Confirmation</button>
+    <button onclick="printOrderDoc(${id},'proforma');_oCloseCardMenus()">Pro-forma</button>
+    <button onclick="printOrderDoc(${id},'invoice');_oCloseCardMenus()">Invoice</button>
+    <button onclick="printOrderDoc(${id},'work_order');_oCloseCardMenus()">Work Order</button>
+    <hr>
+    <button onclick="duplicateOrder(${id});_oCloseCardMenus()">Duplicate</button>
+    <button class="danger" onclick="_confirm('Delete order?',()=>{removeOrder(${id});_oCloseCardMenus()})">Delete</button>
+  `;
+  document.body.appendChild(menu);
+  // Position below the button, right-aligned.
+  const mw = 200;
+  menu.style.top = (r.bottom + 4) + 'px';
+  menu.style.left = Math.max(8, r.right - mw) + 'px';
+  // Dismiss on outside click.
+  setTimeout(() => {
+    const closeOnClick = (/** @type {MouseEvent} */ ev) => {
+      if (!menu.contains(/** @type {Node} */ (ev.target))) {
+        _oCloseCardMenus();
+        document.removeEventListener('mousedown', closeOnClick);
+      }
+    };
+    document.addEventListener('mousedown', closeOnClick);
+  }, 0);
+}
+
+function _oCloseCardMenus() {
+  document.querySelectorAll('.oc-card-menu').forEach(m => m.remove());
+}
 
 // ── Filter & status helpers ──
 /** @param {string} f */

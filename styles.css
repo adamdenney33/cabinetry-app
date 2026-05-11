@@ -921,10 +921,36 @@ canvas { display: block; }
 .oc-edit:focus { outline: none; border-bottom-color: var(--accent); }
 [data-placeholder]:empty:not(:focus)::before { content: attr(data-placeholder); color: var(--muted); font-style: italic; opacity: 0.5; }
 [contenteditable]:focus { outline: none; }
-.oc-right { display: flex; align-items: center; flex-shrink: 0; }
-.oc-value { font-size: 18px; font-weight: 800; color: var(--text); cursor: text; border-bottom: 1px dashed transparent; padding: 0 4px; border-radius: 3px; }
-.oc-value:hover { border-bottom-color: var(--muted); }
-.oc-value:focus { outline: none; border-bottom-color: var(--accent); background: var(--surface2); }
+.oc-right { display: flex; align-items: center; gap: 6px; flex-shrink: 0; text-align: right; }
+.oc-value { font-size: 18px; font-weight: 800; color: var(--text); padding: 0 4px; border-radius: 3px; }
+.oc-meta { display: flex; gap: 8px; align-items: center; margin-top: 3px; font-size: 11px; color: var(--muted); }
+/* Card 3-dot actions menu (replaces the old expanded oc-pipeline + oc-footer). */
+.oc-menu-btn {
+  width: 28px; height: 28px; padding: 0;
+  border: 1px solid transparent; border-radius: 6px;
+  background: transparent; color: var(--muted);
+  font-size: 18px; line-height: 1; cursor: pointer;
+  font-family: inherit;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.oc-menu-btn:hover { background: var(--surface2); border-color: var(--border); color: var(--text); }
+.oc-card-menu {
+  position: fixed; z-index: 100;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+  box-shadow: var(--shadow-md);
+  padding: 4px; min-width: 160px;
+  display: flex; flex-direction: column; gap: 1px;
+}
+.oc-card-menu button {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 10px;
+  background: transparent; border: none; border-radius: 5px;
+  font-size: 12px; font-weight: 500; color: var(--text);
+  font-family: inherit; cursor: pointer; text-align: left;
+}
+.oc-card-menu button:hover { background: var(--surface2); }
+.oc-card-menu button.danger { color: var(--danger); }
+.oc-card-menu hr { border: none; border-top: 1px solid var(--border2); margin: 3px 0; }
 .oc-pipeline { display: flex; align-items: center; padding: 6px 16px; overflow-x: auto; }
 .pipe-step { display: flex; flex-direction: column; align-items: center; flex-shrink: 0; min-width: 50px; transition: opacity 0.15s; }
 .pipe-step:hover { opacity: 0.7; }
