@@ -507,7 +507,7 @@ function renderOrderEditor() {
             <span class="sched-field-label">Priority</span>
             <div class="sched-stepper">
               <button type="button" class="step-btn" onclick="_oStep('po-priority',-1)" tabindex="-1" aria-label="Decrease">−</button>
-              <input class="pf-input-compact" type="number" id="po-priority" value="${(o && o.priority) ?? 0}" step="1" oninput="_oMarkDirty();_renderOrderSchedSummary()" title="Higher = scheduled first">
+              <input class="pf-input-compact" type="number" min="0" id="po-priority" value="${(o && o.priority) ?? 0}" step="1" oninput="_oMarkDirty();_renderOrderSchedSummary()" title="1 = highest priority. 0 = no priority (FIFO)">
               <button type="button" class="step-btn" onclick="_oStep('po-priority',1)" tabindex="-1" aria-label="Increase">+</button>
             </div>
           </label>

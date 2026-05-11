@@ -142,11 +142,15 @@ function computeSchedule(ordersList, biz, overrides, today) {
   /** @type {any[]} */
   const autoOrders = live.filter(o => o.auto_schedule !== false);
 
-  // Sort auto orders by priority desc, then id asc for determinism.
+  // Sort auto orders by priority asc (1 = highest), with 0 meaning "no
+  // priority" (sorted to end). Ties broken by id asc for determinism.
   autoOrders.sort((a, b) => {
     const pa = parseInt(String(a.priority || 0), 10);
     const pb = parseInt(String(b.priority || 0), 10);
-    if (pa !== pb) return pb - pa;
+    // 0 means unset → goes after all explicit priorities.
+    if (pa === 0 && pb !== 0) return 1;
+    if (pb === 0 && pa !== 0) return -1;
+    if (pa !== pb) return pa - pb;
     return (a.id || 0) - (b.id || 0);
   });
 
