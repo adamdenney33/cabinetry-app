@@ -620,7 +620,6 @@ _Auto-logged by SessionEnd hook. Flesh out with context next session if useful._
 
 _Auto-logged by SessionEnd hook. Flesh out with context next session if useful._
 
-<!-- last_commit: b47bafd -->
 
 ---
 
@@ -639,11 +638,37 @@ _Auto-logged by SessionEnd hook. Flesh out with context next session if useful._
 
 _Auto-logged by SessionEnd hook. Flesh out with context next session if useful._
 
-<!-- last_commit: b47bafd -->
 - feat(cutlist): multiple cutlists per project + 3-tab main view
 - feat(orders/quotes): redesign editor sidebar — labelled line items, hours override, collapsible schedule
 - feat(cutlist): smart library at top of sidebar — search, name, load
 
 _Auto-logged by SessionEnd hook. Flesh out with context next session if useful._
 
-<!-- last_commit: b47bafd -->
+
+---
+
+## [Auto] Session ending 2026-05-11
+
+### Commits
+- feat(orders/quotes): tiles below line items, icon-only kind badges
+- feat(cutlist+cabinet): library-pattern refresh — autosave, auto-names, Cut List Library
+- refactor(orders/quotes): neutral kind icons, no per-kind colour
+- refactor(orders/quotes): align kind icons with top nav-tab SVGs
+- WIP preserve: src/app.js slim-down + cross-module sync
+- refactor(stock/quotes/orders): drop tab-level summary cards
+- refactor(cutlist): remove "save selected parts to cabinet library" button
+- fix(cutlist): keep edgebanding icon dashes visible on hover
+- fix(cutlist): drop grey hover backdrop on edgebanding icon button
+- fix(cutlist): widen dash gap on edgebanding icon (2 2 → 3 3)
+- feat(ui): unified content-area header across all main tabs
+- feat(orders/quotes): chip pricing, prepended chevron, zebra-cutlist line items + discounts
+- feat(orders/quotes): port mockup-J editor — column toggles, stock kind/library, per-order stock_markup
+- fix(orders/quotes editor): tight order# input, drop em-dash client placeholder, drop legacy markup from totals
+- fix(orders/quotes): simplify order + quote cards to match mockup J
+- refactor(orders/quotes editor): rebuild sidebar from scratch to match mockup-J
+- fix(orders/quotes editor): stock search uses smart-library UI pattern
+- fix(orders/quotes editor): drop .sidebar-scroll padding so content spans full sidebar width
+
+_Auto-logged by SessionEnd hook. Flesh out with context next session if useful._
+
+<!-- last_commit: 763f042 -->

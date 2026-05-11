@@ -414,10 +414,11 @@ function _renderProjectEmpty(opts) {
  *   recentItems?: Array<{ id: number, name: string, meta?: string, onClick: string }>,
  *   recentLabel?: string,
  *   itemIconSvg?: string,
+ *   activeId?: number | null,
  * }} opts
  */
 function _renderListEmpty(opts) {
-  const { iconSvg, title, subtitle, btnLabel, btnOnclick, recentItems, recentLabel, itemIconSvg } = opts;
+  const { iconSvg, title, subtitle, btnLabel, btnOnclick, recentItems, recentLabel, itemIconSvg, activeId } = opts;
   const recents = (recentItems || []).slice(0, 5);
   const recentHTML = recents.length
     ? `<div class="pe-recent-list">
@@ -426,7 +427,8 @@ function _renderListEmpty(opts) {
           const badge = itemIconSvg
             ? itemIconSvg
             : _escHtml((r.name || '?').trim().charAt(0).toUpperCase() || '?');
-          return `<div class="pe-recent-item" onclick="${r.onClick}">
+          const isActive = activeId != null && r.id === activeId;
+          return `<div class="pe-recent-item${isActive?' active':''}" onclick="${r.onClick}">
             <span class="pe-ri-icon">${badge}</span>
             <span>${_escHtml(r.name)}</span>
             ${r.meta ? `<span class="pe-ri-meta">${_escHtml(r.meta)}</span>` : ''}

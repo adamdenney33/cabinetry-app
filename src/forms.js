@@ -1,7 +1,11 @@
 // ProCabinet — Quote-form defaults + date helpers (carved out of src/app.js
 // in phase E carve 10).
 //
-// Loaded as a classic <script defer> AFTER src/app.js.
+// Loaded as a classic <script defer> BEFORE src/orders.js (and therefore
+// before src/app.js). The Supabase initial-session microtask fires between
+// app.js and the defer scripts that follow it, so `_relativeDate` and
+// `_orderDateToISO` must already be defined when loadAllData → renderOrdersMain
+// runs from that callback.
 //
 // The legacy aggregate quote-form preview (Materials Cost / Labour Rate /
 // Hours fed `_updateQuotePreview`) was removed in the line-items rewrite.

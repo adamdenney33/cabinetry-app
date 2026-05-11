@@ -281,7 +281,7 @@ function switchSection(name) {
     /** @type {any} */ (window)._pcSaveSection(name);
   }
   document.querySelectorAll('.nav-tab').forEach((t,i) => {
-    const sections = ['dashboard','cutlist','stock','cabinet','quote','orders','schedule','projects','clients'];
+    const sections = ['dashboard','cutlist','cabinet','stock','quote','orders','schedule','projects','clients'];
     t.classList.toggle('active', sections[i] === name);
   });
   document.querySelectorAll('.section-panel').forEach(p => {

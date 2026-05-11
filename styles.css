@@ -466,7 +466,7 @@ textarea { resize: vertical; min-height: 70px; }
 #pieces-table .cl-col-grain { padding: 0 1px; }
 #pieces-table .cl-grain-btn,
 #pieces-table .cl-del-btn,
-#pieces-table .cl-check-wrap { width: 22px; height: 22px; }
+#pieces-table .cl-check-wrap { width: 16px; height: 16px; }
 .cl-grain-cell, .cl-col-edgeband, .cl-col-grain { text-align: center; vertical-align: middle; }
 .cl-del-btn {
   width: 28px; height: 28px; border: none; background: none; color: var(--muted);
@@ -771,6 +771,7 @@ canvas { display: block; }
 .qc-breakdown { border-top: 1px solid var(--border2); padding: 8px 16px; background: var(--surface2); }
 .qc-footer { display: flex; gap: 4px; padding: 8px 16px; border-top: 1px solid var(--border2); flex-wrap: wrap; align-items: center; }
 .qc-footer .btn { width: auto; font-size: 11px; padding: 4px 8px; }
+.btn-hairline { align-self: stretch; width: 1px; background: var(--border); margin: 4px 2px; }
 .qb-row { display: flex; justify-content: space-between; font-size: 12px; color: var(--text2); padding: 2px 0; }
 .qb-row:last-child { padding-bottom: 0; }
 .qb-muted { color: var(--muted); font-size: 11px; }
@@ -1419,20 +1420,6 @@ input.li-num:focus { outline: none; border-color: var(--accent); }
 .proj-name:hover { color: var(--accent); }
 .proj-client { font-size: 14px; font-weight: 700; color: var(--text); }
 .proj-client::before { content: '- '; color: var(--text); }
-.proj-client-btn {
-  display: inline-flex; align-items: center; gap: 6px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--surface2);
-  color: var(--text2);
-  padding: 3px 9px;
-  font-size: 11px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: border-color .12s, background .12s, color .12s;
-}
-.proj-client-btn:hover { border-color: var(--text2); background: var(--surface); color: var(--accent2); }
-.proj-client-btn svg { width: 13px; height: 13px; flex-shrink: 0; }
 .proj-desc { font-size: 11px; color: var(--muted); flex: 1; min-width: 80px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .proj-total { font-size: 13px; font-weight: 800; color: var(--text); font-variant-numeric: tabular-nums; margin-left: auto; }
 .proj-total.zero { color: var(--muted); font-weight: 500; }
