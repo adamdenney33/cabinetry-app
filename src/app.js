@@ -287,7 +287,6 @@ function _renderOrderHoursBreakdown() {
   /** @type {string[]} */
   const rows = [];
   if (b.cabinet > 0)   rows.push(`<div class="pf-hours-row"><span class="pf-hours-sub">• Cabinet labour <span class="pf-hours-tag">auto</span>${contLabel}</span><span>${h(b.cabinet)}</span></div>`);
-  if (b.labour  > 0)   rows.push(`<div class="pf-hours-row"><span class="pf-hours-sub">• Labour lines</span><span>${h(b.labour)}</span></div>`);
   if (b.item    > 0)   rows.push(`<div class="pf-hours-row"><span class="pf-hours-sub">• Item lines</span><span>${h(b.item)}</span></div>`);
   if (b.packaging > 0) rows.push(`<div class="pf-hours-row"><span class="pf-hours-sub">• Packaging</span><span>${h(b.packaging)}</span></div>`);
   if (b.runOver  > 0)  rows.push(`<div class="pf-hours-row"><span class="pf-hours-sub">• Run-over</span><span>${h(b.runOver)}</span></div>`);
@@ -300,6 +299,9 @@ function _renderOrderHoursBreakdown() {
 // hoursRequired (or hours_allocated override).
 /** @param {boolean} on */
 function _orderAutoScheduleToggle(on) {
+  // Priority only applies when auto-scheduling — hide the field when off.
+  const prioWrap = document.getElementById('po-priority-wrap');
+  if (prioWrap) prioWrap.style.display = on ? '' : 'none';
   const startInput = /** @type {HTMLInputElement|null} */ (document.getElementById('po-start'));
   if (startInput) {
     startInput.disabled = on;

@@ -503,21 +503,21 @@ function renderOrderEditor() {
           <label><input type="checkbox" id="po-hours-override" ${hoursOverride ? 'checked' : ''} oninput="_orderHoursOverrideToggle(this.checked);_oMarkDirty();_renderOrderSchedSummary()">Override hours</label>
         </div>
         <div class="sched-fields">
-          <label class="sched-field">
+          <label class="sched-field" id="po-priority-wrap" style="${auto ? '' : 'display:none'}">
             <span class="sched-field-label">Priority</span>
             <input class="pf-input-compact" type="number" id="po-priority" value="${(o && o.priority) ?? 0}" step="1" oninput="_oMarkDirty();_renderOrderSchedSummary()" title="Higher = scheduled first">
-          </label>
-          <label class="sched-field">
-            <span class="sched-field-label">Run-over</span>
-            <span class="sched-input-suffix">
-              <input class="pf-input-compact" type="number" min="0" step="0.5" id="po-run-over" value="${(o && o.run_over_hours) ?? 0}" oninput="_renderOrderHoursBreakdown();_oMarkDirty();_renderOrderSchedSummary()">
-              <span class="suffix">h</span>
-            </span>
           </label>
           <label class="sched-field" id="po-hours-alloc-wrap" style="${hoursOverride ? '' : 'display:none'}">
             <span class="sched-field-label">Allocated</span>
             <span class="sched-input-suffix">
               <input class="pf-input-compact" type="number" min="0" step="0.5" id="po-hours-allocated" value="${hoursAllocVal}" oninput="_oMarkDirty();_renderOrderSchedSummary()">
+              <span class="suffix">h</span>
+            </span>
+          </label>
+          <label class="sched-field">
+            <span class="sched-field-label">Run-over</span>
+            <span class="sched-input-suffix">
+              <input class="pf-input-compact" type="number" min="0" step="0.5" id="po-run-over" value="${(o && o.run_over_hours) ?? 0}" oninput="_renderOrderHoursBreakdown();_oMarkDirty();_renderOrderSchedSummary()">
               <span class="suffix">h</span>
             </span>
           </label>
