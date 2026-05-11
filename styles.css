@@ -1874,9 +1874,38 @@ input.pf-input-compact[type="date"]:disabled::-webkit-calendar-picker-indicator 
   display: inline-flex; align-items: center; gap: 4px;
 }
 .sched-body .sched-input-suffix > input.pf-input-compact { flex: 1; min-width: 0; }
+.sched-body .sched-input-suffix > .sched-stepper { flex: 1; min-width: 0; }
 .sched-body .sched-input-suffix > .suffix {
   font-size: 10px; color: var(--muted); font-weight: 600;
 }
+
+/* −/+ stepper around schedule inputs (Priority / Allocated / Run-over). */
+.sched-stepper {
+  display: inline-flex; align-items: stretch;
+  width: 100%; min-width: 0;
+}
+.sched-stepper > input.pf-input-compact {
+  flex: 1 1 0; min-width: 0; width: auto;
+  border-radius: 0; border-left: none; border-right: none;
+  text-align: center;
+}
+.sched-stepper > input.pf-input-compact:focus {
+  border-radius: 0;
+  border-color: var(--accent); border-left: none; border-right: none;
+  box-shadow: none;
+}
+.sched-stepper .step-btn {
+  width: 22px; height: 24px; flex-shrink: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid var(--border); background: var(--surface2);
+  color: var(--text2); font-size: 14px; font-weight: 600; line-height: 1;
+  cursor: pointer; padding: 0; font-family: inherit;
+  user-select: none;
+}
+.sched-stepper .step-btn:first-child { border-radius: 4px 0 0 4px; border-right: 0; }
+.sched-stepper .step-btn:last-child  { border-radius: 0 4px 4px 0; border-left: 0; }
+.sched-stepper .step-btn:hover { background: var(--accent-dim); color: var(--accent); border-color: var(--accent); }
+.sched-stepper .step-btn:active { background: var(--accent); color: #fff; }
 
 /* Pricing chips — Markup / Tax / Discount on a single line. Three equal-flex
    chip wrappers each combining a label, an inline number input, and a unit

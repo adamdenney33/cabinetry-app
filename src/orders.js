@@ -505,19 +505,31 @@ function renderOrderEditor() {
         <div class="sched-fields">
           <label class="sched-field" id="po-priority-wrap" style="${auto ? '' : 'display:none'}">
             <span class="sched-field-label">Priority</span>
-            <input class="pf-input-compact" type="number" id="po-priority" value="${(o && o.priority) ?? 0}" step="1" oninput="_oMarkDirty();_renderOrderSchedSummary()" title="Higher = scheduled first">
+            <div class="sched-stepper">
+              <button type="button" class="step-btn" onclick="_oStep('po-priority',-1)" tabindex="-1" aria-label="Decrease">−</button>
+              <input class="pf-input-compact" type="number" id="po-priority" value="${(o && o.priority) ?? 0}" step="1" oninput="_oMarkDirty();_renderOrderSchedSummary()" title="Higher = scheduled first">
+              <button type="button" class="step-btn" onclick="_oStep('po-priority',1)" tabindex="-1" aria-label="Increase">+</button>
+            </div>
           </label>
           <label class="sched-field" id="po-hours-alloc-wrap" style="${hoursOverride ? '' : 'display:none'}">
             <span class="sched-field-label">Allocated</span>
             <span class="sched-input-suffix">
-              <input class="pf-input-compact" type="number" min="0" step="0.5" id="po-hours-allocated" value="${hoursAllocVal}" oninput="_oMarkDirty();_renderOrderSchedSummary()">
+              <div class="sched-stepper">
+                <button type="button" class="step-btn" onclick="_oStep('po-hours-allocated',-1)" tabindex="-1" aria-label="Decrease">−</button>
+                <input class="pf-input-compact" type="number" min="0" step="0.5" id="po-hours-allocated" value="${hoursAllocVal}" oninput="_oMarkDirty();_renderOrderSchedSummary()">
+                <button type="button" class="step-btn" onclick="_oStep('po-hours-allocated',1)" tabindex="-1" aria-label="Increase">+</button>
+              </div>
               <span class="suffix">h</span>
             </span>
           </label>
           <label class="sched-field">
             <span class="sched-field-label">Run-over</span>
             <span class="sched-input-suffix">
-              <input class="pf-input-compact" type="number" min="0" step="0.5" id="po-run-over" value="${(o && o.run_over_hours) ?? 0}" oninput="_renderOrderHoursBreakdown();_oMarkDirty();_renderOrderSchedSummary()">
+              <div class="sched-stepper">
+                <button type="button" class="step-btn" onclick="_oStep('po-run-over',-1)" tabindex="-1" aria-label="Decrease">−</button>
+                <input class="pf-input-compact" type="number" min="0" step="0.5" id="po-run-over" value="${(o && o.run_over_hours) ?? 0}" oninput="_renderOrderHoursBreakdown();_oMarkDirty();_renderOrderSchedSummary()">
+                <button type="button" class="step-btn" onclick="_oStep('po-run-over',1)" tabindex="-1" aria-label="Increase">+</button>
+              </div>
               <span class="suffix">h</span>
             </span>
           </label>
@@ -564,6 +576,26 @@ function _orderSchedToggle(el) {
  *  @param {HTMLSelectElement} el */
 function _oSetStatusBadge(el) {
   el.setAttribute('data-status', el.value);
+}
+
+/** Stepper button handler for the schedule fields (Priority / Allocated /
+ *  Run-over). Uses the input's own min/max/step via stepUp/stepDown, then
+ *  dispatches an 'input' event so the existing oninput chain (dirty +
+ *  breakdown + summary) re-runs.
+ *  @param {string} id @param {number} dir */
+function _oStep(id, dir) {
+  const input = /** @type {HTMLInputElement|null} */ (document.getElementById(id));
+  if (!input) return;
+  try {
+    if (dir > 0) input.stepUp(); else input.stepDown();
+  } catch (e) {
+    // stepUp/Down can throw if value is non-numeric — fall back to manual.
+    const step = parseFloat(input.step || '1') || 1;
+    const cur = parseFloat(input.value || '0') || 0;
+    const min = input.min !== '' ? parseFloat(input.min) : -Infinity;
+    input.value = String(Math.max(min, cur + dir * step));
+  }
+  input.dispatchEvent(new Event('input', { bubbles: true }));
 }
 
 /** Oninput handler for #po-order-number. Marks dirty (so autosave picks up the
