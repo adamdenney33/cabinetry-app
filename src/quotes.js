@@ -8,7 +8,7 @@
 // Cross-file dependencies referenced from this file's functions: clients,
 // projects, orders, _db, _dbInsertSafe, _userId, _requireAuth, _toast,
 // _escHtml, _onSet, _oqSet, resolveClient, resolveProject, _openQuotePopup,
-// _quoteLineRowToCB, calcCBLine, markQuoteSent, duplicateQuote, printQuote,
+// _quoteLineRowToCB, calcCBLine, duplicateQuote, printQuote,
 // exportQuotesCSV, importQuotesCSV, renderOrdersMain, switchSection — all
 // globals defined in app.js, src/orders.js, or src/db.js.
 
@@ -26,6 +26,10 @@
  * })[]} */
 let quotes = [];
 let quoteNextId = 1;
+
+const QUOTE_STATUSES = ['draft','sent','approved'];
+const QUOTE_STATUS_LABELS = { draft:'Draft', sent:'Sent', approved:'Approved' };
+const QUOTE_STATUS_COLORS = { draft:'#94a3b8', sent:'#1565c0', approved:'var(--success)' };
 
 // FK-resolving display helpers. After Phase 7 the legacy text columns are gone,
 // so an unresolved FK simply returns ''.
@@ -331,24 +335,15 @@ async function convertQuoteToOrder(id) {
   switchSection('orders');
 }
 
-/** @param {number} id */
-async function approveQuote(id) {
+/** @param {number} id @param {string} status */
+async function setQuoteStatus(id, status) {
   if (!_requireAuth()) return;
   const q = quotes.find(q => q.id === id);
   if (!q) return;
-  await _db('quotes').update({ status: 'approved' }).eq('id', id);
-  q.status = 'approved';
-  _toast('Quote marked as approved', 'success');
-  renderQuoteMain();
-}
-
-/** @param {number} id */
-async function revertQuoteToDraft(id) {
-  if (!_requireAuth()) return;
-  const q = quotes.find(q => q.id === id);
-  if (!q) return;
-  await _db('quotes').update({ status: 'draft' }).eq('id', id);
-  q.status = 'draft';
+  if (q.status === status) return;
+  await _db('quotes').update({ status }).eq('id', id);
+  q.status = status;
+  if (status === 'approved') _toast('Quote marked as approved', 'success');
   renderQuoteMain();
 }
 
@@ -396,6 +391,17 @@ function renderQuoteMain() {
           </div>
           <div class="proj-act-add" onclick="event.stopPropagation();loadQuoteIntoSidebar(${q.id});_qAddLine('${kind}')" title="Add ${label.toLowerCase()}">+</div>
         </div>`;
+    const curIdx = QUOTE_STATUSES.indexOf(q.status || 'draft');
+    const pipe = QUOTE_STATUSES.map((s, i) => {
+      const done = i < curIdx;
+      const active = i === curIdx;
+      const color = active ? (/** @type {Record<string,string>} */ (QUOTE_STATUS_COLORS))[s] : done ? 'var(--success)' : 'var(--border)';
+      const label = (/** @type {Record<string,string>} */ (QUOTE_STATUS_LABELS))[s];
+      return `<div class="pipe-step ${active?'pipe-active':''}${done?' pipe-done':''}" onclick="event.stopPropagation();setQuoteStatus(${q.id},'${s}')" style="cursor:pointer" title="Set to ${label}">
+        <div class="pipe-dot" style="background:${color};border-color:${color}"></div>
+        <div class="pipe-label">${label}</div>
+      </div>${i < QUOTE_STATUSES.length-1 ? `<div class="pipe-line ${done?'pipe-line-done':''}"></div>` : ''}`;
+    }).join('');
     return `
     <div class="quote-card" style="cursor:pointer" onclick="loadQuoteIntoSidebar(${q.id})">
       <div class="qc-header">
@@ -414,18 +420,17 @@ function renderQuoteMain() {
         ).join('')}
         ${q.notes.split(/\r?\n/).filter(/** @param {string} l */ l => l).length > 3 ? '<div style="font-size:10px;color:var(--muted)">…</div>' : ''}
       </div>` : ''}
+      <div class="oc-pipeline">${pipe}</div>
       <div class="proj-strip cols-3" style="padding:8px 16px" onclick="event.stopPropagation()">
         ${stripCell('Cabinets', 'cabinet', cabCount, _Q_ICON_CABINET)}
         ${stripCell('Items', 'item', itemCount, _Q_ICON_ITEM)}
         ${stripCell('Labour', 'labour', labCount, _Q_ICON_LABOUR)}
       </div>
       <div class="qc-footer" onclick="event.stopPropagation()">
-        ${q.status === 'draft' ? `<button class="btn btn-outline" onclick="markQuoteSent(${q.id})">Mark Sent</button>` : ''}
-        ${q.status === 'sent' ? `<button class="btn btn-success" onclick="approveQuote(${q.id})">Approve</button>` : ''}
-        ${q.status !== 'draft' ? `<button class="btn btn-outline" onclick="revertQuoteToDraft(${q.id})" style="color:var(--muted)">↩ Draft</button>` : ''}
         ${(() => { const matchingOrder = orders.find(o => o.quote_id === q.id); return matchingOrder ? `<button class="btn btn-outline" onclick="_openOrderPopup(${matchingOrder.id})" style="color:var(--success)">✓ View Order</button>` : `<button class="btn btn-outline" onclick="convertQuoteToOrder(${q.id})">→ Order</button>`; })()}
-        <span style="flex:1"></span>
         <button class="btn btn-outline" onclick="printQuote(${q.id},'pdf')">PDF</button>
+        <span style="flex:1"></span>
+        <span class="btn-hairline" aria-hidden="true"></span>
         <button class="btn btn-outline" onclick="duplicateQuote(${q.id})">Duplicate</button>
         <button class="btn btn-outline" style="color:var(--danger)" onclick="_confirm('Delete quote for <strong>${_escHtml(quoteClient(q))}</strong>?',()=>removeQuote(${q.id}))">Delete</button>
       </div>
@@ -807,16 +812,6 @@ function quoteFromCutList(matCost) {
   if (pn && !pn.value) pn.value = 'Untitled Job';
   const cur = window.currency;
   _toast('Cut list materials: ' + cur + matCost.toFixed(2) + ' — add as item line after creating the quote', 'info');
-}
-
-/** @param {number} id */
-async function markQuoteSent(id) {
-  if (!_requireAuth()) return;
-  const q = quotes.find(q => q.id === id);
-  if (!q) return;
-  await _db('quotes').update({ status: 'sent' }).eq('id', id);
-  q.status = 'sent';
-  renderQuoteMain();
 }
 
 /** Build a flat per-line summary from a quote_lines / order_lines row.
