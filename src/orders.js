@@ -425,11 +425,11 @@ function renderOrderEditor() {
       </button>
       <div class="head-icon">${_CH_ICON_ORDER}</div>
       <div class="head-text">
-        <div class="ed-title-row">
-          <span class="order-num" style="font-weight:700;color:var(--text)">#</span><input class="order-num-input" id="po-order-number" size="5" value="${_escHtml((o && o.order_number) || (o ? String(o.id).padStart(4,'0') : _nextOrderNumber()))}" oninput="_oMarkDirty()" aria-label="Order number">
+        <div class="title">
+          <span class="order-num">#</span><input class="order-num-input" id="po-order-number" size="5" value="${_escHtml((o && o.order_number) || (o ? String(o.id).padStart(4,'0') : _nextOrderNumber()))}" oninput="_oMarkDirty()" aria-label="Order number">
           <span class="ed-project-name">${_escHtml(projectName || 'Untitled project')}</span>
         </div>
-        <div class="ed-sub">
+        <div class="sub">
           ${clientName ? `<span class="ed-client">${_escHtml(clientName)}</span>` : ''}
           <select class="ed-status" id="po-status" data-status="${status}" oninput="_oSetStatusBadge(this);_oMarkDirty()">
             ${statusOptions}
@@ -449,7 +449,7 @@ function renderOrderEditor() {
       </div>
     </div>
 
-    <div id="po-lines" class="editor-li-list"></div>
+    <div id="po-lines"></div>
 
     <div class="cl-add-row">
       <button class="cl-add-btn" onclick="_oAddLine('cabinet')">+ Cabinet</button>
@@ -481,27 +481,31 @@ function renderOrderEditor() {
       </div>
     </div>
 
-    <div class="pf-totals" id="po-totals" style="margin: 6px 14px 10px"></div>
+    <div class="editor-section" style="border-top:none;border-bottom:none;padding-top:0">
+      <div class="pf-totals" id="po-totals"></div>
+    </div>
 
-    <details class="editor-section editor-section--collapsible" id="po-sched-details" ${schedOpen ? 'open' : ''} ontoggle="_orderSchedToggle(this)">
-      <summary class="editor-section-title">
-        <span class="ed-chev"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-        <span>Schedule</span>
-        <span class="editor-section-summary" id="po-sched-summary"></span>
+    <details class="sched editor-section" id="po-sched-details" style="padding:0;border-bottom:1px solid var(--border)" ${schedOpen ? 'open' : ''} ontoggle="_orderSchedToggle(this)">
+      <summary>
+        <span class="chev"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        <span class="sched-label">Schedule</span>
+        <span class="sched-summary" id="po-sched-summary"></span>
       </summary>
-      <div class="pf-row-inline">
-        <label class="pf-inline"><input type="checkbox" id="po-auto-schedule" ${auto ? 'checked' : ''} oninput="_orderAutoScheduleToggle(this.checked);_oMarkDirty()"><span class="pf-inline-label">Auto schedule</span></label>
-        <label class="pf-inline"><span class="pf-inline-label">Priority</span><input class="pf-input pf-input-compact" type="number" id="po-priority" value="${(o && o.priority) ?? 0}" step="1" oninput="_oMarkDirty();_renderOrderSchedSummary()" title="Higher = scheduled first"></label>
-        <label class="pf-inline"><span class="pf-inline-label">Run-over</span><input class="pf-input pf-input-compact" type="number" min="0" step="0.5" id="po-run-over" value="${(o && o.run_over_hours) ?? 0}" oninput="_renderOrderHoursBreakdown();_oMarkDirty();_renderOrderSchedSummary()"><span class="pf-inline-suffix">h</span></label>
-      </div>
-      <div class="pf-row-inline" style="margin-top:6px">
-        <label class="pf-inline"><input type="checkbox" id="po-hours-override" ${hoursOverride ? 'checked' : ''} oninput="_orderHoursOverrideToggle(this.checked);_oMarkDirty();_renderOrderSchedSummary()"><span class="pf-inline-label">Override hours</span></label>
-        <label class="pf-inline" id="po-hours-alloc-wrap" style="${hoursOverride ? '' : 'display:none'}"><span class="pf-inline-label">Allocated</span><input class="pf-input pf-input-compact" type="number" min="0" step="0.5" id="po-hours-allocated" value="${hoursAllocVal}" oninput="_oMarkDirty();_renderOrderSchedSummary()"><span class="pf-inline-suffix">h</span></label>
-      </div>
-      <div class="pf-hours-readout" id="po-hours-breakdown" style="${hoursOverride ? 'display:none' : ''}"></div>
-      <div class="pf-row-inline" style="margin-top:6px">
-        <label class="pf-inline pf-inline-grow"><span class="pf-inline-label">Production Start ${auto ? '<span class="pf-inline-hint">(auto)</span>' : ''}</span><input class="pf-input pf-input-compact" type="date" id="po-start" value="${o ? _orderDateToISO(o.prodStart||'') : ''}" ${auto ? 'disabled title="Auto-scheduled — toggle off to set manually"' : ''} oninput="_oMarkDirty();_renderOrderSchedSummary()"></label>
-        <label class="pf-inline pf-inline-grow"><span class="pf-inline-label">Due</span><input class="pf-input pf-input-compact" type="date" id="po-due" value="${o ? _orderDateToISO(o.due||'') : ''}" oninput="_oMarkDirty();_renderOrderSchedSummary()"></label>
+      <div class="sched-body">
+        <div class="pf-row-inline">
+          <label class="pf-inline"><input type="checkbox" id="po-auto-schedule" ${auto ? 'checked' : ''} oninput="_orderAutoScheduleToggle(this.checked);_oMarkDirty()"><span class="pf-inline-label">Auto schedule</span></label>
+          <label class="pf-inline"><span class="pf-inline-label">Priority</span><input class="pf-input-compact" type="number" id="po-priority" value="${(o && o.priority) ?? 0}" step="1" oninput="_oMarkDirty();_renderOrderSchedSummary()" title="Higher = scheduled first"></label>
+          <label class="pf-inline"><span class="pf-inline-label">Run-over</span><input class="pf-input-compact" type="number" min="0" step="0.5" id="po-run-over" value="${(o && o.run_over_hours) ?? 0}" oninput="_renderOrderHoursBreakdown();_oMarkDirty();_renderOrderSchedSummary()"><span class="pf-inline-suffix">h</span></label>
+        </div>
+        <div class="pf-row-inline">
+          <label class="pf-inline"><input type="checkbox" id="po-hours-override" ${hoursOverride ? 'checked' : ''} oninput="_orderHoursOverrideToggle(this.checked);_oMarkDirty();_renderOrderSchedSummary()"><span class="pf-inline-label">Override hours</span></label>
+          <label class="pf-inline" id="po-hours-alloc-wrap" style="${hoursOverride ? '' : 'display:none'}"><span class="pf-inline-label">Allocated</span><input class="pf-input-compact" type="number" min="0" step="0.5" id="po-hours-allocated" value="${hoursAllocVal}" oninput="_oMarkDirty();_renderOrderSchedSummary()"><span class="pf-inline-suffix">h</span></label>
+        </div>
+        <div class="pf-hours-readout" id="po-hours-breakdown" style="${hoursOverride ? 'display:none' : ''}"></div>
+        <div class="pf-row-inline">
+          <label class="pf-inline pf-inline-grow"><span class="pf-inline-label">Production Start ${auto ? '<span class="pf-inline-hint">(auto)</span>' : ''}</span><input class="pf-input-compact" type="date" id="po-start" value="${o ? _orderDateToISO(o.prodStart||'') : ''}" ${auto ? 'disabled title="Auto-scheduled — toggle off to set manually"' : ''} oninput="_oMarkDirty();_renderOrderSchedSummary()"></label>
+          <label class="pf-inline pf-inline-grow"><span class="pf-inline-label">Due</span><input class="pf-input-compact" type="date" id="po-due" value="${o ? _orderDateToISO(o.due||'') : ''}" oninput="_oMarkDirty();_renderOrderSchedSummary()"></label>
+        </div>
       </div>
     </details>
 

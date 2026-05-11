@@ -1154,11 +1154,11 @@ function renderQuoteEditor() {
       </button>
       <div class="head-icon">${_CH_ICON_QUOTE}</div>
       <div class="head-text">
-        <div class="ed-title-row">
-          <span class="order-num" style="font-weight:700;color:var(--text)">#Q-</span><input class="order-num-input" id="pq-quote-number" size="5" value="${_escHtml(quoteNumStripped)}" oninput="_qMarkDirty()" aria-label="Quote number">
+        <div class="title">
+          <span class="order-num">#Q-</span><input class="order-num-input" id="pq-quote-number" size="5" value="${_escHtml(quoteNumStripped)}" oninput="_qMarkDirty()" aria-label="Quote number">
           <span class="ed-project-name">${_escHtml(projectName || 'Untitled project')}</span>
         </div>
-        <div class="ed-sub">
+        <div class="sub">
           ${clientName ? `<span class="ed-client">${_escHtml(clientName)}</span>` : ''}
           <select class="ed-status" id="pq-status" data-status="${status}" oninput="_qSetStatusBadge(this);_qMarkDirty()">
             <option value="draft" ${status==='draft'?'selected':''}>Draft</option>
@@ -1178,7 +1178,7 @@ function renderQuoteEditor() {
       </div>
     </div>
 
-    <div id="pq-lines" class="editor-li-list"></div>
+    <div id="pq-lines"></div>
 
     <div class="cl-add-row">
       <button class="cl-add-btn" onclick="_qAddLine('cabinet')">+ Cabinet</button>
@@ -1210,7 +1210,9 @@ function renderQuoteEditor() {
       </div>
     </div>
 
-    <div class="pf-totals" id="pq-totals" style="margin: 6px 14px 10px"></div>
+    <div class="editor-section" style="border-top:none;border-bottom:none;padding-top:0">
+      <div class="pf-totals" id="pq-totals"></div>
+    </div>
 
     <div class="editor-section">
       <div class="editor-section-title">Notes</div>
