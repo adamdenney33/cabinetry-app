@@ -832,9 +832,9 @@ function renderStockMain() {
       <input class="order-search-input" type="search" placeholder="Search…" value="${window._stockSearch||''}" oninput="window._stockSearch=this.value;renderStockMain()" style="max-width:180px">
       <span style="font-size:11px;color:var(--muted)">${filtered.length} of ${stockItems.length}</span>
       <div style="margin-left:auto;display:flex;gap:4px">
+        <button class="btn btn-outline" onclick="_buildStockPDF()" style="width:auto;padding:4px 10px;font-size:11px" title="PDF">PDF</button>
         <button class="btn btn-outline" onclick="exportStockCSV()" style="width:auto;padding:4px 10px;font-size:11px" title="Export CSV">Export</button>
         <button class="btn btn-outline" onclick="importStockCSV()" style="width:auto;padding:4px 10px;font-size:11px" title="Import CSV">Import</button>
-        <button class="btn btn-outline" onclick="_buildStockPDF()" style="width:auto;padding:4px 10px;font-size:11px" title="PDF">PDF</button>
       </div>
     </div>
     ${showCatFilter ? `<div class="stock-cat-filter-bar">${allCatPills.map(c => `<span class="stock-cat-pill${c===activeCat?' active':''}" onclick="window._stockCatFilter='${c}';renderStockMain()">${c}</span>`).join('')}</div>` : ''}
