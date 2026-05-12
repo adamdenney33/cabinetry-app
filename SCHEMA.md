@@ -476,6 +476,10 @@ alter table public.quotes
 
 `status` values: `'draft' | 'sent' | 'accepted' | 'declined' | 'expired'`.
 
+**`discount` (added 2026-05-10):** numeric percentage 0-100, default 0. Whole-quote discount applied **after** markup and tax, mirroring `orders.discount`. Carried into the order at quote→order conversion.
+
+**`stock_markup` (added 2026-05-11):** numeric percentage 0-100, default 0. Mirror of `orders.stock_markup` — single rate applied to all `line_kind='stock'` line materials before legacy markup/tax/discount. Carried over to the order at quote→order conversion (see `convertQuoteToOrder` in `src/quotes.js`).
+
 ---
 
 ### 3.14 `quote_lines`
@@ -557,7 +561,7 @@ PDFs the Disc% column appears only when at least one line has a non-zero value.
 existing `order_lines.schedule_hours` column. Scheduler input only — never on PDFs. Wired through to
 order_lines on quote→order conversion so hours estimates from the quote stage carry forward.
 
-**`stock_markup` (added 2026-05-11):** numeric percentage 0-100, default 0. Mirror of `orders.stock_markup` — single rate applied to all `line_kind='stock'` line materials before legacy markup/tax/discount. Carried over to the order at quote→order conversion (see `convertQuoteToOrder` in `src/quotes.js`).
+**`line_kind = 'stock'` (added 2026-05-11):** new kind alongside `cabinet`/`item`/`labour`, mirroring the change to `order_lines`. The check constraint was extended to allow `'stock'` in migration `20260511015625_stock_kind_and_markup`. Carried over to `order_lines` at quote→order conversion. See the equivalent annotation under `order_lines` (§ 3.16) for math and UI details.
 
 ---
 

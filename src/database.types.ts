@@ -519,6 +519,7 @@ export type Database = {
           construction: string | null
           created_at: string
           d_mm: number | null
+          discount: number
           door_count: number
           door_handle: string | null
           door_pct: number | null
@@ -559,6 +560,7 @@ export type Database = {
           construction?: string | null
           created_at?: string
           d_mm?: number | null
+          discount?: number
           door_count?: number
           door_handle?: string | null
           door_pct?: number | null
@@ -599,6 +601,7 @@ export type Database = {
           construction?: string | null
           created_at?: string
           d_mm?: number | null
+          discount?: number
           door_count?: number
           door_handle?: string | null
           door_pct?: number | null
@@ -650,6 +653,7 @@ export type Database = {
           contingency_hours: number | null
           contingency_pct: number | null
           created_at: string | null
+          discount: number
           due: string | null
           id: number
           manual_end_date: string | null
@@ -665,6 +669,7 @@ export type Database = {
           run_over_hours: number
           sidebar_order_index: number
           status: string | null
+          stock_markup: number
           tax: number
           updated_at: string
           user_id: string
@@ -676,6 +681,7 @@ export type Database = {
           contingency_hours?: number | null
           contingency_pct?: number | null
           created_at?: string | null
+          discount?: number
           due?: string | null
           id?: never
           manual_end_date?: string | null
@@ -691,6 +697,7 @@ export type Database = {
           run_over_hours?: number
           sidebar_order_index?: number
           status?: string | null
+          stock_markup?: number
           tax?: number
           updated_at?: string
           user_id: string
@@ -702,6 +709,7 @@ export type Database = {
           contingency_hours?: number | null
           contingency_pct?: number | null
           created_at?: string | null
+          discount?: number
           due?: string | null
           id?: never
           manual_end_date?: string | null
@@ -717,6 +725,7 @@ export type Database = {
           run_over_hours?: number
           sidebar_order_index?: number
           status?: string | null
+          stock_markup?: number
           tax?: number
           updated_at?: string
           user_id?: string
@@ -899,6 +908,7 @@ export type Database = {
           construction: string | null
           created_at: string
           d_mm: number | null
+          discount: number
           door_count: number
           door_finish: string | null
           door_handle: string | null
@@ -931,6 +941,7 @@ export type Database = {
           qty: number
           quote_id: number
           room: string | null
+          schedule_hours: number
           type: string | null
           unit_price: number | null
           updated_at: string
@@ -943,6 +954,7 @@ export type Database = {
           construction?: string | null
           created_at?: string
           d_mm?: number | null
+          discount?: number
           door_count?: number
           door_finish?: string | null
           door_handle?: string | null
@@ -975,6 +987,7 @@ export type Database = {
           qty?: number
           quote_id: number
           room?: string | null
+          schedule_hours?: number
           type?: string | null
           unit_price?: number | null
           updated_at?: string
@@ -987,6 +1000,7 @@ export type Database = {
           construction?: string | null
           created_at?: string
           d_mm?: number | null
+          discount?: number
           door_count?: number
           door_finish?: string | null
           door_handle?: string | null
@@ -1019,6 +1033,7 @@ export type Database = {
           qty?: number
           quote_id?: number
           room?: string | null
+          schedule_hours?: number
           type?: string | null
           unit_price?: number | null
           updated_at?: string
@@ -1040,12 +1055,14 @@ export type Database = {
           client_id: number | null
           created_at: string | null
           date: string | null
+          discount: number
           id: number
           markup: number | null
           notes: string | null
           project_id: number | null
           quote_number: string | null
           status: string | null
+          stock_markup: number
           tax: number | null
           updated_at: string
           user_id: string
@@ -1054,12 +1071,14 @@ export type Database = {
           client_id?: number | null
           created_at?: string | null
           date?: string | null
+          discount?: number
           id?: never
           markup?: number | null
           notes?: string | null
           project_id?: number | null
           quote_number?: string | null
           status?: string | null
+          stock_markup?: number
           tax?: number | null
           updated_at?: string
           user_id: string
@@ -1068,12 +1087,14 @@ export type Database = {
           client_id?: number | null
           created_at?: string | null
           date?: string | null
+          discount?: number
           id?: never
           markup?: number | null
           notes?: string | null
           project_id?: number | null
           quote_number?: string | null
           status?: string | null
+          stock_markup?: number
           tax?: number | null
           updated_at?: string
           user_id?: string
