@@ -111,7 +111,7 @@ async function _findOrCreateDraftQuote(projectId) {
 
 // Compute the next sequential quote number. Looks at both the trailing
 // integer in any existing `quote_number` strings and the DB `id` values, so
-// the new number stays ahead of both. Format: `Q-NNNN` (4-digit padded).
+// the new number stays ahead of both. Format: `QUO-NNNN` (4-digit padded).
 function _nextQuoteNumber() {
   let max = 0;
   for (const q of quotes) {
@@ -122,7 +122,7 @@ function _nextQuoteNumber() {
     }
     if (q.id) max = Math.max(max, q.id);
   }
-  return 'Q-' + String(max + 1).padStart(4, '0');
+  return 'QUO-' + String(max + 1).padStart(4, '0');
 }
 
 // Per-line subtotal across all kinds. `cabinet` runs the full calcCBLine
@@ -434,9 +434,9 @@ function renderQuoteMain() {
         ${stripCell('Labour', 'labour', labCount, _Q_ICON_LABOUR)}
       </div>
       <div class="qc-footer" onclick="event.stopPropagation()">
-        ${(() => { const matchingOrder = orders.find(o => o.quote_id === q.id); return matchingOrder ? `<button class="btn btn-outline" onclick="_openOrderPopup(${matchingOrder.id})" style="color:var(--success)">✓ View Order</button>` : `<button class="btn btn-outline" onclick="convertQuoteToOrder(${q.id})">→ Order</button>`; })()}
         <button class="btn btn-outline" onclick="printQuote(${q.id},'pdf')">PDF</button>
         <span style="flex:1"></span>
+        ${(() => { const matchingOrder = orders.find(o => o.quote_id === q.id); return matchingOrder ? `<button class="btn btn-outline" onclick="_openOrderPopup(${matchingOrder.id})" style="color:var(--success)">✓ View Order</button>` : `<button class="btn btn-outline" onclick="convertQuoteToOrder(${q.id})">Create Order</button>`; })()}
         <button class="btn btn-outline" onclick="duplicateQuote(${q.id})">Duplicate</button>
         <button class="btn btn-outline" style="color:var(--danger)" onclick="_confirm('Delete quote for <strong>${_escHtml(quoteClient(q))}</strong>?',()=>removeQuote(${q.id}))">Delete</button>
       </div>
@@ -912,7 +912,8 @@ async function printQuote(id, mode='print') {
   const statusCol = statusColMap[q.status||''] || '#888';
   const statusTxt = statusTxtMap[q.status||''] || q.status;
 
-  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Quote #Q-${String(q.id).padStart(4,'0')} — ${quoteProject(q)}</title>
+  const quoteRef = q.quote_number || ('QUO-' + String(q.id).padStart(4,'0'));
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Quote #${quoteRef} — ${quoteProject(q)}</title>
 <style>
   @page { size:A4; margin:15mm 18mm; }
   * { margin:0; padding:0; box-sizing:border-box; }
@@ -971,7 +972,7 @@ async function printQuote(id, mode='print') {
   </div>
   <div class="doc-right">
     <div class="doc-word">Quotation</div>
-    <div class="doc-num">#Q-${String(q.id).padStart(4,'0')} &nbsp;&bull;&nbsp; ${q.date} &nbsp;&bull;&nbsp; <span class="status-dot"></span>${statusTxt}</div>
+    <div class="doc-num">#${quoteRef} &nbsp;&bull;&nbsp; ${q.date} &nbsp;&bull;&nbsp; <span class="status-dot"></span>${statusTxt}</div>
   </div>
 </div>
 
@@ -1186,10 +1187,10 @@ function renderQuoteEditor() {
   const colHrsOff  = localStorage.getItem('pc_quote_col_hrs')  === 'off';
   const colStockOn = localStorage.getItem('pc_quote_col_stock') === 'on';
 
-  const quoteNum = (q && q.quote_number) || (q ? 'Q-'+String(q.id).padStart(4,'0') : _nextQuoteNumber());
-  // quote_number stored without the "Q-" prefix in some cases — strip it for the
-  // header input so the user just edits the digits.
-  const quoteNumStripped = String(quoteNum).replace(/^Q-/i, '');
+  const quoteNum = (q && q.quote_number) || (q ? 'QUO-'+String(q.id).padStart(4,'0') : _nextQuoteNumber());
+  // Strip the QUO- prefix (or legacy Q-) so the editor input shows just the
+  // digits — the prefix is re-applied on save.
+  const quoteNumStripped = String(quoteNum).replace(/^(QUO|Q)-/i, '');
 
   const headerName = (projectName || 'Untitled project') + (clientName ? ' · ' + clientName : '');
 
@@ -1321,7 +1322,7 @@ function _qQuoteSuggest(input, boxId) {
     .slice()
     .sort(/** @param {any} a @param {any} b */ (a, b) => (+new Date(b.updated_at || 0)) - (+new Date(a.updated_at || 0)));
   /** @param {any} x */
-  const numFor = x => String(x.quote_number || ('Q-' + String(x.id).padStart(4, '0'))).replace(/^Q-/i, '');
+  const numFor = x => String(x.quote_number || ('QUO-' + String(x.id).padStart(4, '0'))).replace(/^(QUO|Q)-/i, '');
   const matches = q ? rows.filter(x => numFor(x).toLowerCase().includes(q)) : rows;
   const exact = q && rows.some(x => numFor(x).toLowerCase() === q);
   /** @param {string} s */
@@ -1345,7 +1346,7 @@ function _qQuoteSuggest(input, boxId) {
   if (q && !exact) {
     html += `<div class="client-suggest-item client-suggest-add" onmousedown="_qNewQuoteFromInput()">
       <span class="csi-icon">+</span>
-      <span class="csi-name">Start new quote #Q-${esc(input.value.trim())}</span>
+      <span class="csi-name">Start new quote #QUO-${esc(input.value.trim())}</span>
     </div>`;
   }
   box.innerHTML = html;
@@ -1364,7 +1365,8 @@ function _qNewQuoteFromInput() {
     const newInp = /** @type {HTMLInputElement|null} */ (document.getElementById('pq-quote-number'));
     if (newInp && typed) newInp.value = typed;
     const box = document.getElementById('pq-quote-suggest'); if (box) box.style.display = 'none';
-    _toast(`New draft quote #Q-${typed || _nextQuoteNumber()} — add lines then save`, 'success');
+    const toastNum = typed ? typed.replace(/^(QUO|Q)-/i, '') : _nextQuoteNumber().replace(/^QUO-/i, '');
+    _toast(`New draft quote #QUO-${toastNum} — add lines then save`, 'success');
   };
   if (_qpState.dirty) _confirm('Discard unsaved changes and start a new quote?', startNew);
   else startNew();
@@ -1558,7 +1560,7 @@ async function createQuoteFromEditor(silent) {
   if (!project) { _toast('Project not found.', 'error'); return false; }
   /** @type {any} */
   const qnRaw = _popupVal('pq-quote-number') || '';
-  const qnSaved = qnRaw ? (/^Q-/i.test(qnRaw) ? qnRaw : 'Q-' + qnRaw) : null;
+  const qnSaved = qnRaw ? ('QUO-' + qnRaw.replace(/^(QUO|Q)-/i, '')) : null;
   /** @type {any} */
   const row = {
     user_id: _userId,
@@ -1603,7 +1605,7 @@ async function saveQuoteEditor() {
     const status = _popupVal('pq-status');
     const notes = _popupVal('pq-notes');
     const qnRaw = _popupVal('pq-quote-number') || '';
-    const quote_number = qnRaw ? (/^Q-/i.test(qnRaw) ? qnRaw : 'Q-' + qnRaw) : null;
+    const quote_number = qnRaw ? ('QUO-' + qnRaw.replace(/^(QUO|Q)-/i, '')) : null;
     // Legacy markup column not surfaced in the new editor — preserve the existing value.
     const markup = /** @type {any} */ (q).markup ?? 0;
     const tax = parseFloat(_popupVal('pq-tax')) || 0;

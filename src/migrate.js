@@ -441,7 +441,7 @@ async function _migrateSavedQuotes(log) {
     const { data: createdQ, error: qErr } = await _db('quotes').insert([{
       user_id: uid,
       notes: ((sq.notes || '') + '\n' + tag).trim(),
-      quote_number: sq.quoteNum || null,
+      quote_number: sq.quoteNum ? ('QUO-' + String(sq.quoteNum).replace(/^(QUO|Q)-/i, '')) : null,
       markup: parseFloat(settings.markup) || 0,
       tax: parseFloat(settings.tax) || 0,
       status: 'draft',

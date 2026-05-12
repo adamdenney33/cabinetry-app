@@ -671,4 +671,142 @@ _Auto-logged by SessionEnd hook. Flesh out with context next session if useful._
 
 _Auto-logged by SessionEnd hook. Flesh out with context next session if useful._
 
-<!-- last_commit: 763f042 -->
+
+---
+
+## [Auto] Session ending 2026-05-12
+
+### Commits
+- feat(orders/quotes editor): one-line heading + order/quote number smart library
+- refactor(orders/quotes editor): heading uses .project-header markup like cut list
+- fix(orders/quotes editor): +Cabinet / +Item buttons fill the row width
+- fix(orders editor): shrink schedule input height + reorganise schedule layout
+- feat(app): restore active section and open editor entities across refresh
+- fix(orders editor): tighter rate chips, conditional priority, drop labour breakdown
+- feat(orders editor): −/+ stepper UI on Priority / Allocated / Run-over
+- fix(orders editor): drop spinners, inline h, lock cell width to 1/3 of row
+- fix(scheduler): priority 1 is highest (was: higher number = higher priority)
+- fix(orders/quotes editor): Tax / Discount headings match Stock Markup
+- feat(quotes): clickable status timeline on quote cards
+- refactor(projects): autosave sidebar + Duplicate/Delete on cards
+- feat(quotes/orders): project drill-down in main window
+- chore: small UI tweaks + design mockups + working notes
+
+_Auto-logged by SessionEnd hook. Flesh out with context next session if useful._
+
+
+---
+
+## [Auto] Session ending 2026-05-12
+
+### Commits
+- feat(orders/quotes editor): one-line heading + order/quote number smart library
+- refactor(orders/quotes editor): heading uses .project-header markup like cut list
+- fix(orders/quotes editor): +Cabinet / +Item buttons fill the row width
+- fix(orders editor): shrink schedule input height + reorganise schedule layout
+- feat(app): restore active section and open editor entities across refresh
+- fix(orders editor): tighter rate chips, conditional priority, drop labour breakdown
+- feat(orders editor): −/+ stepper UI on Priority / Allocated / Run-over
+- fix(orders editor): drop spinners, inline h, lock cell width to 1/3 of row
+- fix(scheduler): priority 1 is highest (was: higher number = higher priority)
+- fix(orders/quotes editor): Tax / Discount headings match Stock Markup
+- feat(quotes): clickable status timeline on quote cards
+- refactor(projects): autosave sidebar + Duplicate/Delete on cards
+- feat(quotes/orders): project drill-down in main window
+- chore: small UI tweaks + design mockups + working notes
+
+_Auto-logged by SessionEnd hook. Flesh out with context next session if useful._
+
+
+---
+
+## [Auto] Session ending 2026-05-12
+
+### Commits
+- feat(orders/quotes editor): one-line heading + order/quote number smart library
+- refactor(orders/quotes editor): heading uses .project-header markup like cut list
+- fix(orders/quotes editor): +Cabinet / +Item buttons fill the row width
+- fix(orders editor): shrink schedule input height + reorganise schedule layout
+- feat(app): restore active section and open editor entities across refresh
+- fix(orders editor): tighter rate chips, conditional priority, drop labour breakdown
+- feat(orders editor): −/+ stepper UI on Priority / Allocated / Run-over
+- fix(orders editor): drop spinners, inline h, lock cell width to 1/3 of row
+- fix(scheduler): priority 1 is highest (was: higher number = higher priority)
+- fix(orders/quotes editor): Tax / Discount headings match Stock Markup
+- feat(quotes): clickable status timeline on quote cards
+- refactor(projects): autosave sidebar + Duplicate/Delete on cards
+- feat(quotes/orders): project drill-down in main window
+- chore: small UI tweaks + design mockups + working notes
+
+_Auto-logged by SessionEnd hook. Flesh out with context next session if useful._
+
+
+---
+
+## [Auto] Session ending 2026-05-12
+
+### Commits
+- feat(orders/quotes editor): one-line heading + order/quote number smart library
+- refactor(orders/quotes editor): heading uses .project-header markup like cut list
+- fix(orders/quotes editor): +Cabinet / +Item buttons fill the row width
+- fix(orders editor): shrink schedule input height + reorganise schedule layout
+- feat(app): restore active section and open editor entities across refresh
+- fix(orders editor): tighter rate chips, conditional priority, drop labour breakdown
+- feat(orders editor): −/+ stepper UI on Priority / Allocated / Run-over
+- fix(orders editor): drop spinners, inline h, lock cell width to 1/3 of row
+- fix(scheduler): priority 1 is highest (was: higher number = higher priority)
+- fix(orders/quotes editor): Tax / Discount headings match Stock Markup
+- feat(quotes): clickable status timeline on quote cards
+- refactor(projects): autosave sidebar + Duplicate/Delete on cards
+- feat(quotes/orders): project drill-down in main window
+- chore: small UI tweaks + design mockups + working notes
+
+_Auto-logged by SessionEnd hook. Flesh out with context next session if useful._
+
+
+---
+
+## [Auto] Session ending 2026-05-12
+
+### Commits
+- feat(orders/quotes editor): one-line heading + order/quote number smart library
+- refactor(orders/quotes editor): heading uses .project-header markup like cut list
+- fix(orders/quotes editor): +Cabinet / +Item buttons fill the row width
+- fix(orders editor): shrink schedule input height + reorganise schedule layout
+- feat(app): restore active section and open editor entities across refresh
+- fix(orders editor): tighter rate chips, conditional priority, drop labour breakdown
+- feat(orders editor): −/+ stepper UI on Priority / Allocated / Run-over
+- fix(orders editor): drop spinners, inline h, lock cell width to 1/3 of row
+- fix(scheduler): priority 1 is highest (was: higher number = higher priority)
+- fix(orders/quotes editor): Tax / Discount headings match Stock Markup
+- feat(quotes): clickable status timeline on quote cards
+- refactor(projects): autosave sidebar + Duplicate/Delete on cards
+- feat(quotes/orders): project drill-down in main window
+- chore: small UI tweaks + design mockups + working notes
+
+_Auto-logged by SessionEnd hook. Flesh out with context next session if useful._
+
+
+---
+
+## [Auto] Session ending 2026-05-12
+
+### Commits
+- feat(orders/quotes editor): one-line heading + order/quote number smart library
+- refactor(orders/quotes editor): heading uses .project-header markup like cut list
+- fix(orders/quotes editor): +Cabinet / +Item buttons fill the row width
+- fix(orders editor): shrink schedule input height + reorganise schedule layout
+- feat(app): restore active section and open editor entities across refresh
+- fix(orders editor): tighter rate chips, conditional priority, drop labour breakdown
+- feat(orders editor): −/+ stepper UI on Priority / Allocated / Run-over
+- fix(orders editor): drop spinners, inline h, lock cell width to 1/3 of row
+- fix(scheduler): priority 1 is highest (was: higher number = higher priority)
+- fix(orders/quotes editor): Tax / Discount headings match Stock Markup
+- feat(quotes): clickable status timeline on quote cards
+- refactor(projects): autosave sidebar + Duplicate/Delete on cards
+- feat(quotes/orders): project drill-down in main window
+- chore: small UI tweaks + design mockups + working notes
+
+_Auto-logged by SessionEnd hook. Flesh out with context next session if useful._
+
+<!-- last_commit: ca2d320 -->

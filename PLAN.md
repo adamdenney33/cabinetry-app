@@ -22,6 +22,40 @@ Companion docs: `SPEC.md` (refactor history), `SCHEMA.md` (DB schema),
 
 ## Active Work
 
+### Quote / Order / Invoice number-format unification 🚧 In Progress 2026-05-12
+
+Three-prefix unification: quotes `Q-NNNN` → `QUO-NNNN`, orders `NNNN` (no
+prefix) → `ORD-NNNN`, order-PDF per-doc prefixes `OC` / `PF` → `ORC` / `PRO`
+(Tax Invoice `INV` unchanged). All five PDF prefixes (`QUO`, `ORD`, `ORC`,
+`PRO`, `INV`, plus `WO` on Work Order) are now 3-letter. Quote / Order /
+Work Order PDFs now derive the digit portion from the stored `quote_number`
+/ `order_number` instead of the raw DB row id, so screen and paper agree.
+
+Code changes shipped: generation fns (`_nextQuoteNumber` / `_nextOrderNumber`),
+3 PDF builders in `src/cutlist.js`, every fallback display site (`quotes.js`,
+`orders.js`, `dashboard.js`, `schedule.js`, `cabinet-render.js`), the order
+editor's strip-on-display / prepend-on-save pair (mirroring the existing
+quote pattern), and `src/migrate.js`'s legacy LS normalization. Editor
+input strip regex broadened to `/^(QUO|Q)-/i` so existing `Q-NNNN` rows show
+just digits in the input through the transition. `npm run typecheck` clean.
+
+**Sub-step pending: migration not yet applied.** Supabase MCP
+`apply_migration` blocked by harness permissions. SQL staged at
+`supabase/migrations/20260512175008_renumber_prefixes.sql` — one-shot
+rewrite of stored values. Apply via the Supabase SQL editor before
+existing cards/dashboards/PDFs flip over to the new prefixes. Code is
+migration-tolerant — every save migrates that single row, and every new
+entry uses the new format already.
+
+**Remaining:**
+- Apply migration `renumber_prefixes` via Supabase SQL editor.
+- Browser smoke: existing cards display `QUO-NNNN` / `#ORD-NNNN` post-migration;
+  new quote / new order use next sequential `QUO-` / `ORD-`; PDF spot-check
+  (`#QUO-NNNN`, `#ORC-NNNN`, `#PRO-NNNN`, `#INV-NNNN`, `#WO-NNNN`).
+- Mark ✅ once verified.
+
+---
+
 ### Orders / Quotes editor — mockup-J port 🚧 In Progress 2026-05-11
 
 Second-pass redesign on top of the 2026-05-10 mockup-B work. Implements the user's refined J mockup (`mockups/orders-redesign-J-column-toggles.html` + `mockups/quotes-redesign-J-column-toggles.html`) — new `.ed-head` header (back arrow + tab icon + editable order# prefix + project name + clickable status badge), column-toggle pills (Discount/Hours/Stock), split `+ Cabinet` / `+ Item` add buttons, stock smart-library + per-order `stock_markup` input, divider above Pricing, footer buttons dropped. Stock is a 3rd `line_kind` with the same per-line math as items; its materials get re-priced via `stock_markup` at totals time.

@@ -36,11 +36,11 @@ const _oBadge = () => {
 };
 
 // Compute the next sequential order number. Scans trailing digits of any
-// existing `order_number` and returns the next 4-digit zero-padded value.
-// Plain `NNNN` (no prefix). Unlike `_nextQuoteNumber()` we do NOT compare
-// against `id` — the backfill migration guarantees every existing order has
-// a number, so the `id` fallback would only inject gaps from the row-id
-// counter and surprise the user (`0007` → `0022` instead of `0008`).
+// existing `order_number` and returns the next as `ORD-NNNN`. Unlike
+// `_nextQuoteNumber()` we do NOT compare against `id` — the backfill
+// migration guarantees every existing order has a number, so the `id`
+// fallback would only inject gaps from the row-id counter and surprise the
+// user (`ORD-0007` → `ORD-0022` instead of `ORD-0008`).
 function _nextOrderNumber() {
   let max = 0;
   for (const o of orders) {
@@ -49,7 +49,7 @@ function _nextOrderNumber() {
       if (m) max = Math.max(max, parseInt(m[1], 10));
     }
   }
-  return String(max + 1).padStart(4, '0');
+  return 'ORD-' + String(max + 1).padStart(4, '0');
 }
 
 // Order creation flow lives in the sidebar editor (createOrderFromEditor).
@@ -389,7 +389,7 @@ function renderOrderEditor() {
   // the column was added.
   const qRef = o ? (/** @type {any} */ (o).quote_id ?? _oqGet(o.id)) : null;
   const fromQuote = qRef ? quotes.find(q => q.id === qRef) : null;
-  const quoteChip = fromQuote ? `<div class="pf" style="margin:8px 0"><label class="pf-label">From Quote</label><div class="pf-chips"><span class="pf-chip" style="border-color:rgba(37,99,235,0.3);color:#6b9bf4" onclick="switchSection('quote');loadQuoteIntoSidebar(${fromQuote.id})">Q-${String(fromQuote.id).padStart(4,'0')} · ${_escHtml(quoteProject(fromQuote))}</span></div></div>` : '';
+  const quoteChip = fromQuote ? `<div class="pf" style="margin:8px 0"><label class="pf-label">From Quote</label><div class="pf-chips"><span class="pf-chip" style="border-color:rgba(37,99,235,0.3);color:#6b9bf4" onclick="switchSection('quote');loadQuoteIntoSidebar(${fromQuote.id})">${_escHtml(fromQuote.quote_number || ('QUO-' + String(fromQuote.id).padStart(4,'0')))} · ${_escHtml(quoteProject(fromQuote))}</span></div></div>` : '';
 
   // Overdue badge
   let isOverdue = false;
@@ -412,7 +412,10 @@ function renderOrderEditor() {
   const colHrsOff   = localStorage.getItem('pc_order_col_hrs')   === 'off';
   const colStockOn  = localStorage.getItem('pc_order_col_stock') === 'on';
 
-  const orderNumberValue = _escHtml((o && o.order_number) || (o ? String(o.id).padStart(4,'0') : _nextOrderNumber()));
+  const orderNumFull = (o && o.order_number) || (o ? 'ORD-'+String(o.id).padStart(4,'0') : _nextOrderNumber());
+  // Strip the ORD- prefix so the editor input shows just the digits — the
+  // prefix is re-applied on save.
+  const orderNumberValue = _escHtml(String(orderNumFull).replace(/^ORD-/i, ''));
 
   const headerName = (projectName || 'Untitled project') + (clientName ? ' · ' + clientName : '');
 
@@ -631,7 +634,7 @@ function _oOrderSuggest(input, boxId) {
     .slice()
     .sort(/** @param {any} a @param {any} b */ (a, b) => (+new Date(b.updated_at || 0)) - (+new Date(a.updated_at || 0)));
   /** @param {any} o */
-  const numFor = o => String(o.order_number || String(o.id).padStart(4, '0'));
+  const numFor = o => String(o.order_number || ('ORD-' + String(o.id).padStart(4, '0'))).replace(/^ORD-/i, '');
   const matches = q ? rows.filter(o => numFor(o).toLowerCase().includes(q)) : rows;
   const exact = q && rows.some(o => numFor(o).toLowerCase() === q);
   /** @param {string} s */
@@ -655,7 +658,7 @@ function _oOrderSuggest(input, boxId) {
   if (q && !exact) {
     html += `<div class="client-suggest-item client-suggest-add" onmousedown="_oNewOrderFromInput()">
       <span class="csi-icon">+</span>
-      <span class="csi-name">Start new order #${esc(input.value.trim())}</span>
+      <span class="csi-name">Start new order #ORD-${esc(input.value.trim())}</span>
     </div>`;
   }
   box.innerHTML = html;
@@ -678,7 +681,8 @@ function _oNewOrderFromInput() {
     const newInp = /** @type {HTMLInputElement|null} */ (document.getElementById('po-order-number'));
     if (newInp && typed) newInp.value = typed;
     const box = document.getElementById('po-order-suggest'); if (box) box.style.display = 'none';
-    _toast(`New draft order #${typed || _nextOrderNumber()} — add lines then save`, 'success');
+    const toastNum = typed ? typed.replace(/^ORD-/i, '') : _nextOrderNumber().replace(/^ORD-/i, '');
+    _toast(`New draft order #ORD-${toastNum} — add lines then save`, 'success');
   };
   if (_opState.dirty) _confirm('Discard unsaved changes and start a new order?', startNew);
   else startNew();
@@ -939,7 +943,7 @@ async function createOrderFromEditor(silent) {
     tax: parseFloat(_popupVal('po-tax')) || 0,
     discount: parseFloat(_popupVal('po-discount')) || 0,
     stock_markup: parseFloat(_popupVal('po-stock-markup')) || 0,
-    order_number: _popupVal('po-order-number') || null,
+    order_number: (() => { const v = _popupVal('po-order-number') || ''; return v ? ('ORD-' + v.replace(/^ORD-/i, '')) : null; })(),
     due: 'TBD',
   };
   if (project.client_id) row.client_id = project.client_id;
@@ -973,7 +977,8 @@ async function saveOrderEditor() {
   if (typeof _setSaveStatus === 'function') _setSaveStatus('order', 'saving');
   try {
   const status = _popupVal('po-status');
-  const order_number = _popupVal('po-order-number') || null;
+  const onRaw = _popupVal('po-order-number') || '';
+  const order_number = onRaw ? ('ORD-' + onRaw.replace(/^ORD-/i, '')) : null;
   // Legacy order-level markup column is no longer surfaced in the editor; we
   // preserve whatever the row already has so existing non-zero values are kept.
   const markup = /** @type {any} */ (o).markup ?? 0;

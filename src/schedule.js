@@ -69,7 +69,7 @@ function renderSchedule() {
     }
     return {
       id: o.id,
-      numberLabel: o.order_number ? `#${o.order_number}` : `#${String(o.id).padStart(4,'0')}`,
+      numberLabel: o.order_number ? `#${o.order_number}` : `#ORD-${String(o.id).padStart(4,'0')}`,
       project: orderProject(o),
       client: orderClient(o),
       start, end,

@@ -362,6 +362,24 @@ header {
   display: flex; align-items: center; gap: 8px;
 }
 .form-section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+.form-section-title .ph-back {
+  width: 22px; height: 22px; border-radius: 5px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; color: var(--muted); flex-shrink: 0;
+  background: none; border: none; padding: 0;
+}
+.form-section-title .ph-back:hover { background: rgba(0,0,0,0.06); color: var(--text); }
+.save-indicator {
+  font-size: 9px; font-weight: 700;
+  letter-spacing: 0.6px; text-transform: uppercase;
+  color: var(--muted);
+  display: inline-flex; align-items: center; gap: 4px;
+  white-space: nowrap;
+}
+.save-indicator.is-saving { color: var(--muted); opacity: 0.75; }
+.save-indicator.is-saved { color: #2e7d32; }
+.save-indicator.is-saved::before { content: '✓'; font-weight: 700; }
+.save-indicator.is-error { color: #c62828; }
 
 .form-row { display: flex; gap: 8px; margin-bottom: 8px; align-items: flex-end; }
 .form-group { flex: 1; }

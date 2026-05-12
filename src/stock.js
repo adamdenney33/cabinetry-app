@@ -400,15 +400,17 @@ function stockCatChanged() {
   if (ebQtyEl) ebQtyEl.style.display = isEB ? '' : 'none';
 }
 function cancelStockEdit() {
+  if (_stockAutosaveTimer) { clearTimeout(_stockAutosaveTimer); _stockAutosaveTimer = null; }
   window._editingStockId = null;
   /** @param {string} id */
   const inp = id => /** @type {HTMLInputElement} */ (_byId(id));
   inp('stock-name').value = '';
   inp('stock-variant').value = '';
   inp('stock-sku').value = '';
-  inp('stock-submit-btn').textContent = '+ Add to Stock';
-  inp('stock-cancel-btn').style.display = 'none';
-  inp('stock-form-title').textContent = 'Add Material';
+  const sb = /** @type {HTMLElement} */ (_byId('stock-submit-btn'));
+  if (sb) { sb.textContent = '+ Add to Stock'; sb.style.display = ''; }
+  inp('stock-form-title-text').textContent = 'Add Material';
+  _stockSetSaveState(null);
   _stockShowForm = false;
   renderStockMain();
 }
@@ -514,9 +516,10 @@ function editStockItem(id) {
   // Scroll sidebar to top and change button/title text
   const sidebar = document.querySelector('#panel-stock .sidebar-scroll');
   if (sidebar) sidebar.scrollTop = 0;
-  inp('stock-submit-btn').textContent = 'Save Changes';
-  inp('stock-cancel-btn').style.display = '';
-  inp('stock-form-title').textContent = 'Edit Material';
+  const sb = /** @type {HTMLElement} */ (_byId('stock-submit-btn'));
+  if (sb) sb.style.display = 'none';
+  inp('stock-form-title-text').textContent = 'Edit Material';
+  _stockSetSaveState('saved');
 }
 
 async function saveStockEdit() {
@@ -575,6 +578,104 @@ async function saveStockEdit() {
   cancelStockEdit();
   _toast('Stock item updated', 'success');
 }
+
+/** @type {ReturnType<typeof setTimeout>|null} */
+let _stockAutosaveTimer = null;
+
+/** @param {'saving'|'saved'|'error'|null} state */
+function _stockSetSaveState(state) {
+  const el = document.getElementById('stock-save-indicator');
+  if (!el) return;
+  el.classList.remove('is-saving','is-saved','is-error');
+  if (!state) { /** @type {HTMLElement} */ (el).style.display = 'none'; el.textContent = ''; return; }
+  /** @type {HTMLElement} */ (el).style.display = '';
+  if (state === 'saving') { el.textContent = 'Saving…'; el.classList.add('is-saving'); }
+  else if (state === 'saved') { el.textContent = 'Saved'; el.classList.add('is-saved'); }
+  else if (state === 'error') { el.textContent = 'Save failed'; el.classList.add('is-error'); }
+}
+
+function _stockScheduleAutosave() {
+  if (!window._editingStockId) return;
+  if (_stockAutosaveTimer) clearTimeout(_stockAutosaveTimer);
+  _stockSetSaveState('saving');
+  _stockAutosaveTimer = setTimeout(_stockAutosaveRun, 500);
+}
+/** @type {any} */ (window)._stockScheduleAutosave = _stockScheduleAutosave;
+
+async function _stockAutosaveRun() {
+  _stockAutosaveTimer = null;
+  const id = window._editingStockId;
+  if (!id) return;
+  const item = /** @type {any} */ (stockItems.find(s => s.id === id));
+  if (!item) return;
+  /** @param {string} id */
+  const inp = id => /** @type {HTMLInputElement} */ (_byId(id));
+  const name = inp('stock-name')?.value?.trim() || '';
+  if (!name) { _stockSetSaveState('error'); return; }
+  const cat = inp('stock-cat').value.trim();
+  const isEB = cat === 'Edge Banding';
+  const variant = _byId('stock-variant')?.value?.trim() || '';
+  /** @type {any} */
+  let updates;
+  let thick = 0, ebWidth = 0, ebLength = 0, ebGlue = '';
+  if (isEB) {
+    thick = parseFloat(_byId('stock-eb-thick')?.value ?? '') || 0;
+    ebWidth = parseFloat(_byId('stock-eb-width')?.value ?? '') || 0;
+    ebLength = parseFloat(_byId('stock-eb-length')?.value ?? '') || 0;
+    ebGlue = _byId('stock-eb-glue')?.value || '';
+    updates = {
+      name, sku: inp('stock-sku').value.trim(),
+      w: ebLength, h: ebWidth,
+      qty: Math.round(ebLength),
+      low: Math.round(parseFloat(_byId('stock-eb-low')?.value ?? '') || 0),
+      cost: parseFloat(_byId('stock-eb-cost')?.value ?? '') || 0,
+    };
+  } else {
+    thick = parseFloat(_byId('stock-thick')?.value ?? '') || 0;
+    updates = {
+      name, sku: inp('stock-sku').value.trim(),
+      w: parseFloat(inp('stock-w').value) || item.w,
+      h: parseFloat(inp('stock-h').value) || item.h,
+      qty: parseInt(inp('stock-qty').value) || 0,
+      low: parseInt(inp('stock-low').value) || 3,
+      cost: parseFloat(inp('stock-cost').value) || 0,
+    };
+  }
+  Object.assign(item, updates);
+  if (isEB) { item.thickness = thick; item.width = ebWidth; item.length = ebLength; item.glue = ebGlue; }
+  else { delete item.thickness; delete item.width; delete item.length; delete item.glue; }
+  if (_userId) {
+    const { error } = await _db('stock_items').update(updates).eq('id', id);
+    if (error) { _stockSetSaveState('error'); return; }
+  }
+  _scSet(id, cat);
+  /** @type {{variant: string, thickness: number, width?: number, length?: number, glue?: string}} */
+  const meta = { variant, thickness: thick };
+  if (isEB) { meta.width = ebWidth; meta.length = ebLength; meta.glue = ebGlue; }
+  _svSet(id, meta);
+  const supplier = _byId('stock-supplier')?.value?.trim() || '';
+  const reorderUrl = _byId('stock-reorder-url')?.value?.trim() || '';
+  _ssSet(id, {supplier, url: reorderUrl});
+  _stockSetSaveState('saved');
+  renderStockMain();
+}
+
+(function _wireStockAutosave() {
+  const inputs = ['stock-name','stock-variant','stock-sku',
+    'stock-w','stock-h','stock-thick',
+    'stock-eb-thick','stock-eb-width','stock-eb-length',
+    'stock-qty','stock-low','stock-cost',
+    'stock-eb-low','stock-eb-cost',
+    'stock-supplier','stock-reorder-url'];
+  for (const id of inputs) {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('input', _stockScheduleAutosave);
+  }
+  for (const id of ['stock-cat','stock-eb-glue']) {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('change', _stockScheduleAutosave);
+  }
+})();
 
 /** @param {number} id */
 async function removeStock(id) {

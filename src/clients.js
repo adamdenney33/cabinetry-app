@@ -164,11 +164,10 @@ function editClient(id) {
   set('cl-address', c.address || '');
   set('cl-notes', c.notes || '');
   const sb = document.getElementById('cl-submit-btn');
-  const cb = document.getElementById('cl-cancel-btn');
-  const ft = document.getElementById('cl-form-title');
-  if (sb) sb.textContent = 'Save Changes';
-  if (cb) /** @type {HTMLElement} */ (cb).style.display = '';
+  const ft = document.getElementById('cl-form-title-text');
+  if (sb) /** @type {HTMLElement} */ (sb).style.display = 'none';
   if (ft) ft.textContent = 'Edit Client';
+  _clSetSaveState('saved');
   const sidebar = document.querySelector('#panel-clients .sidebar-scroll');
   if (sidebar) /** @type {HTMLElement} */ (sidebar).scrollTop = 0;
 }
@@ -196,19 +195,72 @@ async function saveClientEdit() {
 }
 
 function cancelClientEdit() {
+  if (_clientsAutosaveTimer) { clearTimeout(_clientsAutosaveTimer); _clientsAutosaveTimer = null; }
   /** @type {any} */ (window)._editingClientId = null;
   for (const id of ['cl-name','cl-email','cl-phone','cl-address','cl-notes']) {
     const el = _clInput(id); if (el) el.value = '';
   }
   const sb = document.getElementById('cl-submit-btn');
-  const cb = document.getElementById('cl-cancel-btn');
-  const ft = document.getElementById('cl-form-title');
-  if (sb) sb.textContent = '+ Add Client';
-  if (cb) /** @type {HTMLElement} */ (cb).style.display = 'none';
+  const ft = document.getElementById('cl-form-title-text');
+  if (sb) { sb.textContent = '+ Add Client'; /** @type {HTMLElement} */ (sb).style.display = ''; }
   if (ft) ft.textContent = 'New Client';
+  _clSetSaveState(null);
   _clientsShowForm = false;
   renderClientsMain();
 }
+
+/** @type {ReturnType<typeof setTimeout>|null} */
+let _clientsAutosaveTimer = null;
+
+/** @param {'saving'|'saved'|'error'|null} state */
+function _clSetSaveState(state) {
+  const el = document.getElementById('cl-save-indicator');
+  if (!el) return;
+  el.classList.remove('is-saving','is-saved','is-error');
+  if (!state) { /** @type {HTMLElement} */ (el).style.display = 'none'; el.textContent = ''; return; }
+  /** @type {HTMLElement} */ (el).style.display = '';
+  if (state === 'saving') { el.textContent = 'Saving…'; el.classList.add('is-saving'); }
+  else if (state === 'saved') { el.textContent = 'Saved'; el.classList.add('is-saved'); }
+  else if (state === 'error') { el.textContent = 'Save failed'; el.classList.add('is-error'); }
+}
+
+function _clScheduleAutosave() {
+  if (!(/** @type {any} */ (window)._editingClientId)) return;
+  if (_clientsAutosaveTimer) clearTimeout(_clientsAutosaveTimer);
+  _clSetSaveState('saving');
+  _clientsAutosaveTimer = setTimeout(_clAutosaveRun, 500);
+}
+/** @type {any} */ (window)._clScheduleAutosave = _clScheduleAutosave;
+
+async function _clAutosaveRun() {
+  _clientsAutosaveTimer = null;
+  const id = /** @type {any} */ (window)._editingClientId;
+  if (!id) return;
+  const c = /** @type {any} */ (clients.find(x => x.id === id));
+  if (!c) return;
+  const name = _clInput('cl-name')?.value.trim() || '';
+  if (!name) { _clSetSaveState('error'); return; }
+  /** @type {any} */
+  const updates = {
+    name,
+    email: _clInput('cl-email')?.value.trim() || null,
+    phone: _clInput('cl-phone')?.value.trim() || null,
+    address: _clInput('cl-address')?.value.trim() || null,
+    notes: _clInput('cl-notes')?.value.trim() || null,
+  };
+  Object.assign(c, updates);
+  const { error } = await _db('clients').update(/** @type {any} */ (updates)).eq('id', id);
+  if (error) { _clSetSaveState('error'); return; }
+  _clSetSaveState('saved');
+  renderClientsMain();
+}
+
+(function _wireClientsAutosave() {
+  for (const id of ['cl-name','cl-email','cl-phone','cl-address','cl-notes']) {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('input', _clScheduleAutosave);
+  }
+})();
 
 // ── Project CRUD ──
 /** @param {number} id @param {string} field @param {any} value */
@@ -933,8 +985,8 @@ function renderProjectsMain() {
         <span class="proj-name" onclick="event.stopPropagation();_openProjectPopup(${p.id})">${nameSafe}</span>
         ${client ? `<span class="proj-client">${_escHtml(client.name)}</span>` : ''}
         <span class="badge ${statusBadgeCls}" style="font-size:9px;padding:1px 6px">${statusText}</span>
-        ${p.description ? `<span class="proj-desc">${_escHtml(p.description)}</span>` : '<span class="proj-desc"></span>'}
-        <span class="proj-total${totalShown?'':' zero'}">${totalShown ? fmtShort(totalShown) : '—'}</span>
+        ${p.description ? `<span class="proj-desc">${_escHtml(p.description)}</span>` : ''}
+        ${totalShown ? `<span class="proj-total">${fmtShort(totalShown)}</span>` : ''}
       </div>
       <div class="proj-strip">
         ${act('Cabinets', iconCabinet, cabinetCount, '', `_newCabinetForProject(${p.id})`, `_newCabinetForProject(${p.id})`)}
@@ -942,9 +994,10 @@ function renderProjectsMain() {
         ${act('Quotes', iconQuote, pQuotes.length, pQuotes.length ? fmtShort(quoteValue) : '', `_drillQuotesForProject(${p.id})`, `_newQuoteForProject(${p.id})`)}
         ${act('Orders', iconOrder, pOrders.length, pOrders.length ? fmtShort(orderValue) : '', `_drillOrdersForProject(${p.id})`, `_newOrderForProject(${p.id})`)}
       </div>
-      <div class="proj-footer" style="display:flex;gap:6px;padding:8px 12px 10px;border-top:1px solid var(--border2);justify-content:flex-end" onclick="event.stopPropagation()">
-        <button class="btn btn-outline" style="font-size:11px;padding:4px 10px;width:auto" onclick="event.stopPropagation();duplicateProject(${p.id})">Duplicate</button>
-        <button class="btn btn-outline" style="font-size:11px;padding:4px 10px;width:auto;color:var(--danger)" onclick="event.stopPropagation();_confirm('Delete project <strong>${nameJs}</strong>? This will also delete its cabinets, cut lists, quotes, and orders.',()=>removeProject(${p.id}))">Delete</button>
+      <div style="display:flex;align-items:center;gap:4px;margin-top:8px;padding-top:8px;border-top:1px solid var(--border2)" onclick="event.stopPropagation()">
+        <span style="flex:1"></span>
+        <button class="btn btn-outline" style="font-size:11px;padding:4px 8px;width:auto" onclick="event.stopPropagation();duplicateProject(${p.id})">Duplicate</button>
+        <button class="btn btn-outline" style="color:var(--danger);font-size:11px;padding:4px 8px;width:auto" onclick="event.stopPropagation();_confirm('Delete project <strong>${nameJs}</strong>? This will also delete its cabinets, cut lists, quotes, and orders.',()=>removeProject(${p.id}))">Delete</button>
       </div>
     </div>`;
   };

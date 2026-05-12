@@ -2223,7 +2223,8 @@ function _buildQuotePDF(q, lineRows) {
   pdf.setFontSize(22); pdf.setFont('helvetica','normal'); pdf.setTextColor(50);
   pdf.text('QUOTATION', PW - M, y + 7, { align:'right' });
   pdf.setFontSize(8); pdf.setTextColor(140);
-  pdf.text('#Q-' + String(q.id).padStart(4,'0') + '  ·  ' + (q.date||dateStr), PW - M, y + 12, { align:'right' });
+  const quoteRef = q.quote_number || ('QUO-' + String(q.id).padStart(4,'0'));
+  pdf.text('#' + quoteRef + '  ·  ' + (q.date||dateStr), PW - M, y + 12, { align:'right' });
 
   y += 20;
   pdf.setDrawColor(17); pdf.setLineWidth(0.6); pdf.line(M, y, PW-M, y);
@@ -2466,7 +2467,8 @@ function _buildWorkOrderPDF(o) {
   pdf.setFontSize(20); pdf.setFont('helvetica','normal'); pdf.setTextColor(50);
   pdf.text('WORK ORDER', PW - M, y + 7, { align:'right' });
   pdf.setFontSize(8); pdf.setTextColor(140);
-  pdf.text('#WO-' + String(o.id).padStart(4,'0') + '  ·  ' + dateStr, PW - M, y + 12, { align:'right' });
+  const woRef = String(o.order_number || ('ORD-' + String(o.id).padStart(4,'0'))).replace(/^ORD-/i, '');
+  pdf.text('#WO-' + woRef + '  ·  ' + dateStr, PW - M, y + 12, { align:'right' });
   y += 18;
   pdf.setDrawColor(17); pdf.setLineWidth(0.6); pdf.line(M, y, PW-M, y);
   y += 10;
@@ -2551,19 +2553,21 @@ function _buildOrderDocPDF(o, lines, type) {
   const cur = window.currency;
   const biz = getBizInfo();
   const dateStr = new Date().toLocaleDateString('en-GB', { day:'numeric', month:'long', year:'numeric' });
-  const refNum = String(o.id).padStart(4,'0');
+  // Strip ORD- since the per-doc prefix (ORC / PRO / INV) replaces it on the
+  // PDF — refNum is the digit portion only.
+  const refNum = String(o.order_number || ('ORD-' + String(o.id).padStart(4,'0'))).replace(/^ORD-/i, '');
   const dueLabel = (o.due && o.due !== 'TBD') ? o.due : 'On receipt';
 
   /** @type {Record<string, {title: string, prefix: string, addresseeLabel: string, totalLabel: string, closing: string, showPaymentBlock: boolean, showDueInHeader: boolean}>} */
   const cfg = {
     order_confirmation: {
-      title: 'ORDER CONFIRMATION', prefix: 'OC', addresseeLabel: 'PREPARED FOR',
+      title: 'ORDER CONFIRMATION', prefix: 'ORC', addresseeLabel: 'PREPARED FOR',
       totalLabel: 'ORDER TOTAL',
       closing: 'Thank you for confirming your order. We will keep you updated as your job progresses.',
       showPaymentBlock: false, showDueInHeader: false,
     },
     proforma: {
-      title: 'PRO FORMA INVOICE', prefix: 'PF', addresseeLabel: 'BILL TO',
+      title: 'PRO FORMA INVOICE', prefix: 'PRO', addresseeLabel: 'BILL TO',
       totalLabel: 'AMOUNT DUE',
       closing: 'Pro forma invoice — not a tax invoice. Goods/services not yet supplied.',
       showPaymentBlock: true, showDueInHeader: true,

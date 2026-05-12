@@ -591,7 +591,7 @@ function renderCBResults() {
     // Editing order banner — mirror of quote banner. No Discard yet (no
     // discardOrderEdits handler); Done auto-syncs cabinets back to order_lines.
     const eo = orders.find(x => x.id === cbEditingOrderId);
-    const eoLabel = eo ? ((typeof orderProject === 'function' ? orderProject(eo) : '') || (typeof orderClient === 'function' ? orderClient(eo) : '') || ('Order #' + (eo.order_number || eo.id))) : 'Order';
+    const eoLabel = eo ? ((typeof orderProject === 'function' ? orderProject(eo) : '') || (typeof orderClient === 'function' ? orderClient(eo) : '') || ('Order #' + (eo.order_number || ('ORD-' + String(eo.id).padStart(4,'0'))))) : 'Order';
     html += `<div style="background:var(--accent-dim);border:2px solid var(--accent);border-radius:8px;padding:10px 16px;margin-bottom:12px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
       <span style="font-size:13px;font-weight:600;color:var(--accent)">Editing order: ${_escHtml(eoLabel)}</span>
       <span style="flex:1"></span>
@@ -751,9 +751,11 @@ function _renderLibraryCards(items) {
         </div>
         <div style="font-size:14px;font-weight:800;color:var(--accent);flex-shrink:0;white-space:nowrap">${fmt0(calc.lineSubtotal)}</div>
       </div>
-      <div style="display:flex;gap:6px;padding:8px 12px 10px;border-top:1px solid var(--border2);justify-content:flex-end;flex-wrap:wrap;align-items:stretch">
+      <div style="display:flex;padding:4px 12px 6px">
         ${_cbCutListProjActHtml(`_cbOpenLinkedCutLists(${idx})`, `_cbLinkToCutList(${idx})`, c.db_id||'')}
-        <button class="btn btn-outline" onclick="event.stopPropagation();cbAddFromLibrary(${idx})" style="font-size:11px;padding:5px 10px;width:auto">+ Project</button>
+      </div>
+      <div style="display:flex;gap:6px;padding:8px 12px 10px;border-top:1px solid var(--border2);justify-content:flex-end;flex-wrap:wrap;align-items:stretch">
+        <button class="btn btn-outline" onclick="event.stopPropagation();cbAddFromLibrary(${idx})" style="font-size:11px;padding:5px 10px;width:auto">Add to Project</button>
         <button class="btn btn-outline" onclick="event.stopPropagation();cbDuplicateLibraryEntry(${idx})" style="font-size:11px;padding:5px 10px;width:auto">Duplicate</button>
         <button class="btn btn-outline" onclick="event.stopPropagation();_confirm('Delete this template?',()=>cbRemoveFromLibrary(${idx}))" style="font-size:11px;padding:5px 10px;width:auto;color:var(--danger)">Delete</button>
       </div>
