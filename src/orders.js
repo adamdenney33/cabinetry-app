@@ -191,8 +191,8 @@ function renderOrdersMain() {
         <button class="btn btn-outline" onclick="printOrderDoc(${o.id},'invoice')" style="font-size:11px;padding:5px 8px;width:auto">Invoice</button>
         <button class="btn btn-outline" onclick="printOrderDoc(${o.id},'work_order')" style="font-size:11px;padding:5px 8px;width:auto">Work Order</button>
         <span style="flex:1"></span>
-        <button class="btn btn-outline" onclick="duplicateOrder(${o.id})" style="font-size:11px;padding:5px 10px;width:auto">Duplicate</button>
-        <button class="btn btn-outline" style="color:var(--danger);font-size:11px;padding:5px 10px;width:auto" onclick="_confirm('Delete order for <strong>${_escHtml(orderClient(o))}</strong>?',()=>removeOrder(${o.id}))">Delete</button>
+        <button class="btn btn-outline" onclick="duplicateOrder(${o.id})" style="font-size:11px;padding:4px 8px;width:auto">Duplicate</button>
+        <button class="btn btn-outline" style="color:var(--danger);font-size:11px;padding:4px 8px;width:auto" onclick="_confirm('Delete order for <strong>${_escHtml(orderClient(o))}</strong>?',()=>removeOrder(${o.id}))">Delete</button>
       </div>
     </div>`;
   };

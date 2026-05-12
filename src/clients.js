@@ -943,8 +943,8 @@ function renderProjectsMain() {
         ${act('Orders', iconOrder, pOrders.length, pOrders.length ? fmtShort(orderValue) : '', `_drillOrdersForProject(${p.id})`, `_newOrderForProject(${p.id})`)}
       </div>
       <div class="proj-footer" style="display:flex;gap:6px;padding:6px 12px 10px;justify-content:flex-end" onclick="event.stopPropagation()">
-        <button class="btn btn-outline" style="font-size:11px;padding:4px 10px;width:auto" onclick="event.stopPropagation();duplicateProject(${p.id})">Duplicate</button>
-        <button class="btn btn-outline" style="font-size:11px;padding:4px 10px;width:auto;color:var(--danger)" onclick="event.stopPropagation();_confirm('Delete project <strong>${nameJs}</strong>? This will also delete its cabinets, cut lists, quotes, and orders.',()=>removeProject(${p.id}))">Delete</button>
+        <button class="btn btn-outline" style="font-size:11px;padding:4px 8px;width:auto" onclick="event.stopPropagation();duplicateProject(${p.id})">Duplicate</button>
+        <button class="btn btn-outline" style="color:var(--danger);font-size:11px;padding:4px 8px;width:auto" onclick="event.stopPropagation();_confirm('Delete project <strong>${nameJs}</strong>? This will also delete its cabinets, cut lists, quotes, and orders.',()=>removeProject(${p.id}))">Delete</button>
       </div>
     </div>`;
   };

@@ -661,8 +661,8 @@ function renderCBResults() {
           <button class="cl-step-btn" style="padding:0 6px" onclick="event.stopPropagation();cbStepLineQty(${idx},1)" title="Increase quantity">+</button>
         </div>
         ${_cbCutListProjActHtml(`_cbOpenCabinetCutListsForLine(${idx})`, `_cbNewCutListForLine(${idx})`, line.db_id||'')}
-        <button class="btn btn-outline" style="font-size:11px;padding:4px 10px;width:auto" onclick="event.stopPropagation();_duplicateCabinet(${idx})" title="Duplicate cabinet">Duplicate</button>
-        <button class="btn btn-outline" style="font-size:11px;padding:4px 10px;width:auto;color:var(--danger)" onclick="event.stopPropagation();_cbConfirmDeleteLine(${idx})" title="Delete cabinet">Delete</button>
+        <button class="btn btn-outline" style="font-size:11px;padding:4px 8px;width:auto" onclick="event.stopPropagation();_duplicateCabinet(${idx})" title="Duplicate cabinet">Duplicate</button>
+        <button class="btn btn-outline" style="color:var(--danger);font-size:11px;padding:4px 8px;width:auto" onclick="event.stopPropagation();_cbConfirmDeleteLine(${idx})" title="Delete cabinet">Delete</button>
       </div>
     </div>`;
   });
@@ -754,8 +754,8 @@ function _renderLibraryCards(items) {
       <div style="display:flex;gap:6px;padding:0 12px 10px;justify-content:flex-end;flex-wrap:wrap;align-items:stretch">
         ${_cbCutListProjActHtml(`_cbOpenCabinetCutLists(${idx})`, `_cbNewCutListForLibrary(${idx})`, c.db_id||'')}
         <button class="btn btn-outline" onclick="event.stopPropagation();cbAddFromLibrary(${idx})" style="font-size:11px;padding:5px 10px;width:auto">+ Project</button>
-        <button class="btn btn-outline" onclick="event.stopPropagation();cbDuplicateLibraryEntry(${idx})" style="font-size:11px;padding:5px 10px;width:auto">Duplicate</button>
-        <button class="btn btn-outline" onclick="event.stopPropagation();_confirm('Delete this template?',()=>cbRemoveFromLibrary(${idx}))" style="font-size:11px;padding:5px 10px;width:auto;color:var(--danger)">Delete</button>
+        <button class="btn btn-outline" onclick="event.stopPropagation();cbDuplicateLibraryEntry(${idx})" style="font-size:11px;padding:4px 8px;width:auto">Duplicate</button>
+        <button class="btn btn-outline" onclick="event.stopPropagation();_confirm('Delete this template?',()=>cbRemoveFromLibrary(${idx}))" style="color:var(--danger);font-size:11px;padding:4px 8px;width:auto">Delete</button>
       </div>
     </div>`;
   });
