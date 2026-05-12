@@ -939,7 +939,7 @@ canvas { display: block; }
 .pipe-done .pipe-label { color: var(--text2); }
 .pipe-line { flex: 1; height: 2px; background: var(--border); min-width: 12px; margin-bottom: 12px; transition: background 0.2s; }
 .pipe-line-done { background: var(--success); }
-.oc-footer { display: flex; align-items: center; gap: 6px; padding: 8px 16px; }
+.oc-footer { display: flex; align-items: center; gap: 6px; padding: 8px 16px; border-top: 1px solid var(--border2); }
 .oc-status-select { font-size: 12px; padding: 5px 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); font-family: inherit; cursor: pointer; }
 .order-filter-tabs { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
 .order-search-input { flex: 1; min-width: 140px; font-size: 12px; padding: 5px 10px; border-radius: 20px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); font-family: inherit; }

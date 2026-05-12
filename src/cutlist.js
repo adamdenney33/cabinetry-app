@@ -4158,7 +4158,7 @@ async function renderCLCutListsView() {
           </div>
         </div>
       </div>
-      <div style="display:flex;gap:6px;padding:0 12px 10px;justify-content:flex-end">
+      <div style="display:flex;gap:6px;padding:8px 12px 10px;border-top:1px solid var(--border2);justify-content:flex-end">
         <button class="btn btn-outline" style="font-size:11px;padding:4px 10px;width:auto" onclick="event.stopPropagation();_clRenameCutlist(${r.id})">Rename</button>
         <button class="btn btn-outline" style="font-size:11px;padding:4px 10px;width:auto" onclick="event.stopPropagation();_clDuplicateCutlist(${r.id})">Duplicate</button>
         <button class="btn btn-outline" style="font-size:11px;padding:4px 10px;width:auto;color:var(--danger)" onclick="event.stopPropagation();_clDeleteCutlist(${r.id})">Delete</button>
@@ -4241,7 +4241,7 @@ async function renderCLCutListLibraryView() {
           </div>
         </div>
       </div>
-      <div style="display:flex;gap:6px;padding:0 12px 10px;justify-content:flex-end;flex-wrap:wrap">
+      <div style="display:flex;gap:6px;padding:8px 12px 10px;border-top:1px solid var(--border2);justify-content:flex-end;flex-wrap:wrap">
         <button class="btn btn-outline" style="font-size:11px;padding:4px 10px;width:auto" onclick="event.stopPropagation();_clLinkToCabinet(${r.id})">Link to Cabinet</button>
         <button class="btn btn-outline" style="font-size:11px;padding:4px 10px;width:auto" onclick="event.stopPropagation();_clDuplicateLibraryCutlist(${r.id})">Duplicate</button>
         <button class="btn btn-outline" style="font-size:11px;padding:4px 10px;width:auto;color:var(--danger)" onclick="event.stopPropagation();_clDeleteLibraryCutlist(${r.id})">Delete</button>

@@ -751,7 +751,7 @@ function _renderLibraryCards(items) {
         </div>
         <div style="font-size:14px;font-weight:800;color:var(--accent);flex-shrink:0;white-space:nowrap">${fmt0(calc.lineSubtotal)}</div>
       </div>
-      <div style="display:flex;gap:6px;padding:0 12px 10px;justify-content:flex-end;flex-wrap:wrap;align-items:stretch">
+      <div style="display:flex;gap:6px;padding:8px 12px 10px;border-top:1px solid var(--border2);justify-content:flex-end;flex-wrap:wrap;align-items:stretch">
         ${_cbCutListProjActHtml(`_cbOpenCabinetCutLists(${idx})`, `_cbNewCutListForLibrary(${idx})`, c.db_id||'')}
         <button class="btn btn-outline" onclick="event.stopPropagation();cbAddFromLibrary(${idx})" style="font-size:11px;padding:5px 10px;width:auto">+ Project</button>
         <button class="btn btn-outline" onclick="event.stopPropagation();cbDuplicateLibraryEntry(${idx})" style="font-size:11px;padding:5px 10px;width:auto">Duplicate</button>
