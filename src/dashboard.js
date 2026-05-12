@@ -311,7 +311,7 @@ function renderDashboard() {
           }
           if (runStart !== -1) runs.push([runStart, endIdx]);
           if (!runs.length) return;
-          const labelText = _escHtml(e.numberLabel) + ' - ' + _escHtml(e.project) + ' — ' + _escHtml(e.client);
+          const labelText = _escHtml(e.numberLabel) + ' · ' + _escHtml(e.project) + (e.client ? ' · ' + _escHtml(e.client) : '');
           const manualStyle = e.isManual ? 'border:1px dashed rgba(255,255,255,0.5);' : '';
           const lockIcon = e.isManual ? '🔒 ' : '';
           const barTop = 28 + e.lane * stride;

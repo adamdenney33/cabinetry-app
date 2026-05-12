@@ -171,7 +171,7 @@ function renderSchedule() {
     const dragHandle = isManualMode
       ? `<span class="cl-drag-handle" title="Drag to reorder" style="cursor:grab;color:var(--muted);display:inline-flex;align-items:center;flex-shrink:0">${SCHED_DRAG_HANDLE}</span>`
       : '';
-    sidebarHTML += `<div style="display:flex;align-items:center;gap:8px;padding:5px 8px;margin-bottom:2px;border-radius:6px;cursor:pointer;background:var(--surface2)"${dragAttr} onclick="_scrollToSchedBar(${e.id})" ondblclick="_openOrderPopup(${e.id})" onmouseover="this.style.background='${e.color}33'" onmouseout="this.style.background='var(--surface2)'">${dragHandle}<div style="width:9px;height:9px;border-radius:50%;background:${e.color};flex-shrink:0"></div><div style="flex:1;min-width:0"><div style="font-size:11px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e.isManual?'🔒 ':''}${_escHtml(e.numberLabel)} - ${_escHtml(e.project)} — ${_escHtml(e.client)}</div>${meta?`<div style="font-size:9px;color:var(--muted);display:flex;align-items:center;gap:4px;margin-top:1px">${meta}</div>`:''}${dueText?`<div style="font-size:9px;color:var(--muted);margin-top:1px">${dueText}</div>`:''}</div></div>`;
+    sidebarHTML += `<div style="display:flex;align-items:center;gap:8px;padding:5px 8px;margin-bottom:2px;border-radius:6px;cursor:pointer;background:var(--surface2)"${dragAttr} onclick="_scrollToSchedBar(${e.id})" ondblclick="_openOrderPopup(${e.id})" onmouseover="this.style.background='${e.color}33'" onmouseout="this.style.background='var(--surface2)'">${dragHandle}<div style="width:9px;height:9px;border-radius:50%;background:${e.color};flex-shrink:0"></div><div style="flex:1;min-width:0"><div style="font-size:11px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e.isManual?'🔒 ':''}${_escHtml(e.numberLabel)} · ${_escHtml(e.project)}${e.client ? ' · ' + _escHtml(e.client) : ''}</div>${meta?`<div style="font-size:9px;color:var(--muted);display:flex;align-items:center;gap:4px;margin-top:1px">${meta}</div>`:''}${dueText?`<div style="font-size:9px;color:var(--muted);margin-top:1px">${dueText}</div>`:''}</div></div>`;
   });
   if(!sortedEvents.length)sidebarHTML+=`<div style="font-size:12px;color:var(--muted)">No active orders</div>`;
   sidebarHTML += `</div>`; // close sched-sidebar-body
@@ -267,7 +267,7 @@ function renderSchedule() {
       if (runStart !== -1) runs.push([runStart, endInWeek]);
       if (!runs.length) return; // entire span lands on holidays
 
-      const labelText = _escHtml(e.numberLabel) + ' - ' + _escHtml(e.project) + ' — ' + _escHtml(e.client);
+      const labelText = _escHtml(e.numberLabel) + ' · ' + _escHtml(e.project) + (e.client ? ' · ' + _escHtml(e.client) : '');
       const manualStyle = e.isManual ? 'border:1px dashed rgba(255,255,255,0.5);' : '';
       const lockIcon = e.isManual ? '🔒 ' : '';
       const barTop = 28 + e.lane * stride;

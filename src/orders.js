@@ -162,7 +162,7 @@ function renderOrdersMain() {
     }
     const relDate = _relativeDate(o.due);
     const titleNum = o.order_number ? `#${o.order_number} · ` : '';
-    const titleClient = orderClient(o) ? ' - ' + orderClient(o) : '';
+    const titleClient = orderClient(o) ? ' · ' + orderClient(o) : '';
     const statusBadgeCls = (/** @type {Record<string,string>} */(STATUS_BADGES))[o.status]||'badge-gray';
     const statusLabel = (/** @type {Record<string,string>} */(STATUS_LABELS))[o.status]||o.status;
     return `

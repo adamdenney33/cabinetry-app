@@ -386,7 +386,7 @@ function renderQuoteMain() {
     const cName = quoteClient(q);
     const qNum = q.quote_number ? `${q.quote_number} · ` : '';
     const titleText = pName && cName
-      ? `${qNum}${_escHtml(pName)} - ${_escHtml(cName)}`
+      ? `${qNum}${_escHtml(pName)} · ${_escHtml(cName)}`
       : `${qNum}${_escHtml(pName || cName || '')}`;
     /** @param {string} label @param {string} kind @param {number} count @param {string} icon */
     const stripCell = (label, kind, count, icon) => `

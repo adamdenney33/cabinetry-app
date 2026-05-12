@@ -367,7 +367,7 @@ function _renderProjectEmpty(opts) {
           const cName = (typeof clients !== 'undefined' && p.client_id)
             ? (/** @type {any} */ (clients.find(/** @param {any} c */ c => c.id === p.client_id)) || {}).name || ''
             : '';
-          const display = cName ? `${p.name} - ${cName}` : p.name;
+          const display = cName ? `${p.name} · ${cName}` : p.name;
           return `<div class="pe-recent-item" onclick="${pickFnName}(${p.id},'${escName}')">
             <span class="pe-ri-icon">${_TYPE_ICON_PROJECT}</span>
             <span>${_escHtml(display)}</span>
