@@ -177,84 +177,6 @@ function importStockCSV() {
   input.click();
 }
 
-/** @param {string} [mode] */
-function printStockList(mode='print') {
-  if (mode === 'pdf') { _buildStockPDF(); return; }
-  const cur = window.currency;
-  const u = window.units === 'metric' ? 'mm' : 'in';
-  const biz = getBizInfo();
-  const usedCats = [...new Set(stockItems.map(i => _scGet(i.id)).filter(Boolean))].sort();
-  const totalValue = stockItems.reduce((s,i) => s + (i.qty ?? 0)*(i.cost ?? 0), 0);
-  const totalSheets = stockItems.reduce((s,i) => s + (i.qty ?? 0), 0);
-  const lowItems = stockItems.filter(i => (i.qty ?? 0) <= (i.low ?? 0));
-
-  // Group by category
-  /** @type {Record<string, any[]>} */
-  const grouped = {};
-  stockItems.forEach(i => { const c = _scGet(i.id) || 'Uncategorised'; if (!grouped[c]) grouped[c] = []; grouped[c].push(i); });
-  const catOrder = [...STOCK_CATS, ...Object.keys(grouped).filter(k => !STOCK_CATS.includes(k) && k !== 'Uncategorised'), 'Uncategorised'];
-
-  const rows = catOrder.filter(c => grouped[c]).map(cat => `
-    <tr><td colspan="7" style="background:#f5f5f5;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#888;padding:6px 10px">${cat}</td></tr>
-    ${grouped[cat].map(/** @param {any} i */ i => {
-      const isLow = (i.qty ?? 0) <= (i.low ?? 0);
-      const sup = _ssGet(i.id);
-      return `<tr style="${isLow?'background:#fff5f5':''}">
-        <td>${i.name}</td>
-        <td>${i.sku||'—'}</td>
-        <td>${formatDim(i.w)}×${formatDim(i.h)}${u}</td>
-        <td style="font-size:10px;color:#666">${sup.supplier||''}</td>
-        <td style="text-align:right;${isLow?'color:#c0392b;font-weight:700':''}">${i.qty}</td>
-        <td style="text-align:right">${i.low}</td>
-        <td style="text-align:right">${cur}${((i.qty ?? 0)*(i.cost ?? 0)).toFixed(0)}</td>
-      </tr>`;
-    }).join('')}`).join('');
-
-  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Stock Inventory</title>
-<style>
-  @page { size:A4; margin:14mm 16mm; }
-  * { margin:0; padding:0; box-sizing:border-box; }
-  body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; color:#111; font-size:12px; }
-  .hdr { display:flex; justify-content:space-between; align-items:flex-end; border-bottom:2.5px solid #111; padding-bottom:10px; margin-bottom:18px; }
-  .biz { font-size:16px; font-weight:800; }
-  .biz-sub { font-size:10px; color:#888; margin-top:2px; }
-  .doc-right { text-align:right; }
-  .doc-title { font-size:20px; font-weight:300; letter-spacing:3px; text-transform:uppercase; color:#333; }
-  .doc-meta { font-size:10px; color:#999; margin-top:3px; }
-  .summary { display:flex; gap:0; border:1px solid #e0e0e0; border-radius:6px; overflow:hidden; margin-bottom:20px; }
-  .sstat { flex:1; padding:10px 14px; border-right:1px solid #e0e0e0; }
-  .sstat:last-child { border-right:none; }
-  .sstat-val { font-size:18px; font-weight:800; }
-  .sstat-lbl { font-size:9px; text-transform:uppercase; letter-spacing:.7px; color:#888; margin-top:1px; }
-  table { width:100%; border-collapse:collapse; }
-  thead tr { border-bottom:1.5px solid #111; }
-  thead th { font-size:9px; text-transform:uppercase; letter-spacing:.5px; color:#999; padding:6px 10px; text-align:left; }
-  thead th.r { text-align:right; }
-  tbody td { padding:7px 10px; border-bottom:1px solid #f3f3f3; font-size:11px; }
-  .footer { margin-top:24px; border-top:1px solid #eee; padding-top:8px; display:flex; justify-content:space-between; font-size:9px; color:#bbb; }
-  .low-note { background:#fff5f5; border:1px solid #fca5a5; border-radius:4px; padding:6px 10px; margin-bottom:14px; font-size:11px; color:#c0392b; }
-</style></head><body>
-<div class="hdr">
-  <div><div class="biz">${biz.name||'ProCabinet'}</div><div class="biz-sub">${[biz.phone,biz.email].filter(Boolean).join(' · ')||'Cabinetry'}</div></div>
-  <div class="doc-right"><div class="doc-title">Stock Inventory</div><div class="doc-meta">${new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})}</div></div>
-</div>
-<div class="summary">
-  <div class="sstat"><div class="sstat-val">${stockItems.length}</div><div class="sstat-lbl">Materials</div></div>
-  <div class="sstat"><div class="sstat-val">${totalSheets}</div><div class="sstat-lbl">Total Sheets</div></div>
-  <div class="sstat"><div class="sstat-val">${cur}${totalValue.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0})}</div><div class="sstat-lbl">Total Value</div></div>
-  <div class="sstat"><div class="sstat-val" style="${lowItems.length?'color:#c0392b':''}">${lowItems.length}</div><div class="sstat-lbl">Low Stock</div></div>
-</div>
-${lowItems.length ? `<div class="low-note">⚠ Low stock: ${lowItems.map(i=>i.name).join(', ')}</div>` : ''}
-<table>
-  <thead><tr><th>Material</th><th>SKU</th><th>Size</th><th>Supplier</th><th class="r">Qty</th><th class="r">Alert</th><th class="r">Value</th></tr></thead>
-  <tbody>${rows}</tbody>
-</table>
-<div class="footer"><span>${biz.name||'ProCabinet'} — ProCabinet.App</span><span>Printed ${new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})}</span></div>
-</body></html>`;
-
-  _saveAsPDF(html);
-}
-
 /** @param {number} id @param {any} val */
 async function setStockQty(id, val) {
   const item = stockItems.find(s => s.id === id);
@@ -912,8 +834,7 @@ function renderStockMain() {
       <div style="margin-left:auto;display:flex;gap:4px">
         <button class="btn btn-outline" onclick="exportStockCSV()" style="width:auto;padding:4px 10px;font-size:11px" title="Export CSV">Export</button>
         <button class="btn btn-outline" onclick="importStockCSV()" style="width:auto;padding:4px 10px;font-size:11px" title="Import CSV">Import</button>
-        <button class="btn btn-outline" onclick="printStockList('print')" style="width:auto;padding:4px 10px;font-size:11px" title="Print">Print</button>
-        <button class="btn btn-outline" onclick="printStockList('pdf')" style="width:auto;padding:4px 10px;font-size:11px" title="PDF">PDF</button>
+        <button class="btn btn-outline" onclick="_buildStockPDF()" style="width:auto;padding:4px 10px;font-size:11px" title="PDF">PDF</button>
       </div>
     </div>
     ${showCatFilter ? `<div class="stock-cat-filter-bar">${allCatPills.map(c => `<span class="stock-cat-pill${c===activeCat?' active':''}" onclick="window._stockCatFilter='${c}';renderStockMain()">${c}</span>`).join('')}</div>` : ''}
