@@ -742,13 +742,12 @@ async function _cbApplyCutListCounts() {
 }
 /** @type {any} */ (window)._cbApplyCutListCounts = _cbApplyCutListCounts;
 
-/** Open this cabinet's cut-list view in the Cut List tab. Ensures the cabinet
- *  is persisted (saves to cabinet_templates if no db_id yet) so we have an id
- *  to link cut lists against.
+/** Ensure the cabinet at cbLibrary[libIdx] has a db_id (persists to
+ *  cabinet_templates if needed). Returns the db_id or null on failure.
  *  @param {number} libIdx */
-async function _cbOpenCabinetCutLists(libIdx) {
+async function _cbEnsureCabinetSaved(libIdx) {
   const cab = cbLibrary[libIdx];
-  if (!cab) return;
+  if (!cab) return null;
   if (!cab.db_id) {
     if (typeof _saveCabinetToDB === 'function') {
       try {
@@ -757,22 +756,141 @@ async function _cbOpenCabinetCutLists(libIdx) {
       } catch (e) { /* tolerate */ }
     }
   }
-  if (!cab.db_id) { _toast('Save the cabinet first', 'error'); return; }
-  const name = cab._libName || cab.name || 'Cabinet';
-  if (typeof _clOpenCabinet === 'function') _clOpenCabinet(cab.db_id, name);
+  return cab.db_id || null;
 }
-/** @type {any} */ (window)._cbOpenCabinetCutLists = _cbOpenCabinetCutLists;
 
-/** "+" half of the cabinet card's Cut List widget — opens the cabinet view
- *  AND immediately creates a new linked cut list with parts pre-populated.
+/** Main pill click: open a picker of cut lists currently linked to this
+ *  cabinet; clicking one navigates to the Cut List Library and opens it
+ *  in the editor. Mirrors `_clOpenLinkedCabinets` on the cut-list side.
  *  @param {number} libIdx */
-async function _cbNewCutListForLibrary(libIdx) {
-  await _cbOpenCabinetCutLists(libIdx);
-  if (typeof _clNewCabinetLinkedCutlist === 'function') {
-    /** @type {any} */ (window)._clNewCabinetLinkedCutlist();
+async function _cbOpenLinkedCutLists(libIdx) {
+  const cabinetDbId = await _cbEnsureCabinetSaved(libIdx);
+  if (!cabinetDbId) { _toast('Save the cabinet first', 'error'); return; }
+
+  /** @type {number[]} */ let linkedIds = [];
+  try {
+    const { data } = await _db('cutlist_cabinets').select('cutlist_id').eq('cabinet_id', cabinetDbId);
+    linkedIds = (data || []).map(/** @param {any} r */ r => r.cutlist_id).filter(/** @param {any} v */ v => v != null);
+  } catch (e) { linkedIds = []; }
+
+  /** @type {any[]} */ let cls = [];
+  if (linkedIds.length) {
+    try {
+      const { data } = await _db('cutlists').select('id, name, updated_at').in('id', linkedIds).order('updated_at', { ascending: false });
+      cls = /** @type {any[]} */ (data || []);
+    } catch (e) { cls = []; }
   }
+
+  const cutlistIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12.00 1.70 L12.90 3.45 L15.94 2.48 L16.10 4.44 L19.28 4.72 L18.68 6.59 L21.52 8.06 L20.25 9.56 L22.30 12.00 L20.55 12.90 L21.52 15.94 L19.56 16.10 L19.28 19.28 L17.41 18.68 L15.94 21.52 L14.44 20.25 L12.00 22.30 L11.10 20.55 L8.06 21.52 L7.90 19.56 L4.72 19.28 L5.32 17.41 L2.48 15.94 L3.75 14.44 L1.70 12.00 L3.45 11.10 L2.48 8.06 L4.44 7.90 L4.72 4.72 L6.59 5.32 L8.06 2.48 L9.56 3.75 Z"/><circle cx="12" cy="12" r="1.5"/></svg>';
+
+  const items = cls.map(/** @param {any} c */ c => ({
+    title: c.name || '(untitled)',
+    icon: cutlistIcon,
+    metaText: c.updated_at ? _clFormatDate(c.updated_at) : '',
+    onPick: `_cbOpenCutlistFromPicker(${c.id})`,
+  }));
+
+  _openPickerPopup({
+    title: 'Linked Cut Lists',
+    hint: 'Pick a cut list to open it in the Cut List editor.',
+    items,
+    emptyText: 'No cut lists linked yet.',
+    createLabel: '+ Add Cut List',
+    onCreate: `_cbLinkToCutList(${libIdx})`,
+    createClass: 'subtle',
+    size: 'md',
+  });
 }
-/** @type {any} */ (window)._cbNewCutListForLibrary = _cbNewCutListForLibrary;
+/** @type {any} */ (window)._cbOpenLinkedCutLists = _cbOpenLinkedCutLists;
+
+/** "+" pill click: open a multi-toggle picker listing every library cut
+ *  list (project_id IS NULL); rows marked Linked indicate the current join,
+ *  clicking toggles the link via `_cbToggleCutListLink`. Mirrors
+ *  `_clLinkToCabinet` on the cut-list side.
+ *  @param {number} libIdx */
+async function _cbLinkToCutList(libIdx) {
+  const cabinetDbId = await _cbEnsureCabinetSaved(libIdx);
+  if (!cabinetDbId) { _toast('Save the cabinet first', 'error'); return; }
+
+  /** @type {Set<number>} */ const linkedIds = new Set();
+  try {
+    const { data } = await _db('cutlist_cabinets').select('cutlist_id').eq('cabinet_id', cabinetDbId);
+    for (const r of (data || [])) {
+      const cid = /** @type {any} */ (r).cutlist_id;
+      if (cid != null) linkedIds.add(cid);
+    }
+  } catch (e) { /* tolerate */ }
+
+  /** @type {any[]} */ let cls = [];
+  try {
+    const { data } = await _db('cutlists').select('id, name, updated_at').is('project_id', null).order('updated_at', { ascending: false });
+    cls = /** @type {any[]} */ (data || []);
+  } catch (e) { cls = []; }
+
+  const cutlistIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12.00 1.70 L12.90 3.45 L15.94 2.48 L16.10 4.44 L19.28 4.72 L18.68 6.59 L21.52 8.06 L20.25 9.56 L22.30 12.00 L20.55 12.90 L21.52 15.94 L19.56 16.10 L19.28 19.28 L17.41 18.68 L15.94 21.52 L14.44 20.25 L12.00 22.30 L11.10 20.55 L8.06 21.52 L7.90 19.56 L4.72 19.28 L5.32 17.41 L2.48 15.94 L3.75 14.44 L1.70 12.00 L3.45 11.10 L2.48 8.06 L4.44 7.90 L4.72 4.72 L6.59 5.32 L8.06 2.48 L9.56 3.75 Z"/><circle cx="12" cy="12" r="1.5"/></svg>';
+
+  const items = cls.map(/** @param {any} c */ c => {
+    const linked = linkedIds.has(c.id);
+    return {
+      title: c.name || '(untitled)',
+      icon: cutlistIcon,
+      metaText: c.updated_at ? _clFormatDate(c.updated_at) : '',
+      metaPills: linked ? [{ label: 'Linked', tone: 'approved' }] : [],
+      onPick: `_cbToggleCutListLink(${libIdx},${c.id})`,
+    };
+  });
+
+  _openPickerPopup({
+    title: 'Link to Cut Lists',
+    hint: 'Click a cut list to add or remove its link. Close when done.',
+    items,
+    emptyText: 'No cut lists in your library yet. Create one in <strong>Cut List</strong> &rarr; <strong>Add to Library</strong>.',
+    size: 'md',
+  });
+}
+/** @type {any} */ (window)._cbLinkToCutList = _cbLinkToCutList;
+
+/** Toggle a single `cutlist_cabinets` row for this cabinet/cutlist pair.
+ *  Re-renders the toggle picker after each click so the user can keep
+ *  going; refreshes the cabinet-card pill counts.
+ *  @param {number} libIdx @param {number} cutlistId */
+async function _cbToggleCutListLink(libIdx, cutlistId) {
+  const cab = cbLibrary[libIdx];
+  if (!cab || !cab.db_id) { _toast('Save the cabinet first', 'error'); return; }
+  const cabinetDbId = cab.db_id;
+  try {
+    const { data: existing } = await _db('cutlist_cabinets')
+      .select('cutlist_id')
+      .eq('cutlist_id', cutlistId)
+      .eq('cabinet_id', cabinetDbId);
+    const isLinked = !!(existing && existing.length);
+    if (isLinked) {
+      const { error } = await _db('cutlist_cabinets').delete().eq('cutlist_id', cutlistId).eq('cabinet_id', cabinetDbId);
+      if (error) { _toast('Unlink failed', 'error'); return; }
+      _toast('Unlinked', 'success');
+    } else {
+      if (!_userId) { _toast('Sign in to link', 'error'); return; }
+      const { error } = await _db('cutlist_cabinets').insert(/** @type {any} */ ({ cutlist_id: cutlistId, cabinet_id: cabinetDbId, user_id: _userId }));
+      if (error) { _toast('Link failed', 'error'); return; }
+      _toast('Linked', 'success');
+    }
+    _cbApplyCutListCounts();
+    _cbLinkToCutList(libIdx);
+  } catch (e) { _toast('Link toggle failed', 'error'); }
+}
+/** @type {any} */ (window)._cbToggleCutListLink = _cbToggleCutListLink;
+
+/** Picker-row callback: close the popup, switch to the Cut List tab &
+ *  Library view, and open the picked cut list in the editor.
+ *  @param {number} cutlistId */
+function _cbOpenCutlistFromPicker(cutlistId) {
+  _closePopup();
+  const w = /** @type {any} */ (window);
+  if (typeof switchSection === 'function') switchSection('cutlist');
+  if (typeof w.switchCLMainView === 'function') w.switchCLMainView('library');
+  if (typeof w._clOpenLibraryCutlist === 'function') w._clOpenLibraryCutlist(cutlistId);
+}
+/** @type {any} */ (window)._cbOpenCutlistFromPicker = _cbOpenCutlistFromPicker;
 
 /** Open the cabinet's cut-list view from a project-line cabinet (cbLines).
  *  Resolves the line's `db_id` (the underlying template), saving as a
