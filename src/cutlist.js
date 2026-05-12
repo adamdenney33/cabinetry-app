@@ -4472,7 +4472,10 @@ async function _clOpenLinkedCabinets(cutlistId) {
     title: 'Linked Cabinets',
     hint: 'Pick a cabinet to open it in the Cabinet Builder.',
     items,
-    emptyText: 'No cabinets linked yet. Use the + button to add a link.',
+    emptyText: 'No cabinets linked yet.',
+    createLabel: '+ Add Cabinet',
+    onCreate: `_clLinkToCabinet(${cutlistId})`,
+    createClass: 'subtle',
     size: 'md',
   });
 }

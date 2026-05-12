@@ -2363,6 +2363,15 @@ input.pf-input-compact[type="date"]:disabled::-webkit-calendar-picker-indicator 
   transition: background .12s;
 }
 .picker-create:hover { background: var(--accent-dim); }
+/* Subtle dashed-button variant — matches the .cl-add-btn look in the cutlist
+   sidebar: 1px dashed border, text2 color, accent on hover. Opted into per
+   call via _openPickerPopup({ createClass: 'subtle' }). */
+.picker-create.subtle {
+  border: 1px dashed var(--border);
+  color: var(--text2);
+  font-size: 11px;
+}
+.picker-create.subtle:hover { color: var(--accent); border-color: var(--accent); background: var(--surface2); }
 .picker-empty {
   padding: 24px 12px;
   text-align: center;

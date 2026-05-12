@@ -127,6 +127,7 @@ function _popupVal(id) {
  * @param {string} [cfg.emptyText]       Shown inside .picker-empty when items is empty.
  * @param {string} [cfg.createLabel]     Renders dashed "Create new" footer card.
  * @param {string} [cfg.onCreate]        Inline JS for the create CTA (onmousedown).
+ * @param {string} [cfg.createClass]     Extra class on `.picker-create` (e.g. 'subtle').
  * @param {'sm'|'md'|'lg'} [cfg.size]    Defaults to 'md'.
  * @param {number} [cfg.searchThreshold] Show search input when items.length >= this. Default 6.
  */
@@ -165,7 +166,7 @@ function _openPickerPopup(cfg) {
     : '';
 
   const createHtml = cfg.createLabel
-    ? `<div class="picker-create" onmousedown="${cfg.onCreate || ''}">${_escHtml(cfg.createLabel)}</div>`
+    ? `<div class="picker-create${cfg.createClass ? ' ' + _escHtml(cfg.createClass) : ''}" onmousedown="${cfg.onCreate || ''}">${_escHtml(cfg.createLabel)}</div>`
     : '';
 
   const html = `
