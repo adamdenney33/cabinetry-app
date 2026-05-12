@@ -1182,15 +1182,28 @@ function _cbRenderContext() {
         const av = a.updated_at ? +new Date(a.updated_at) : 0;
         const bv = b.updated_at ? +new Date(b.updated_at) : 0;
         return bv - av;
+      })
+      .slice(0, 5)
+      .map(/** @param {any} p */ p => {
+        const cName = p.client_id && typeof clients !== 'undefined'
+          ? ((clients.find(/** @param {any} c */ c => c.id === p.client_id) || /** @type {any} */ ({})).name || '')
+          : '';
+        return {
+          id: p.id,
+          name: p.name,
+          meta: cName,
+          onClick: `_cbPickProject(${p.id},'${_escHtml(p.name).replace(/'/g, '&#39;')}')`,
+        };
       });
-    ctx.innerHTML = _renderProjectEmpty({
+    ctx.innerHTML = _renderListEmpty({
+      iconSvg: '<svg class="pe-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>',
       title: 'Cabinet Builder',
       subtitle: 'Pick a project to start designing cabinets.',
-      pickFnName: '_cbPickProject',
-      pickerInputId: 'cb-empty-picker',
-      pickerSuggestId: 'cb-empty-suggest',
-      pickerSuggestFn: '_smartCBEmptyProjectSuggest',
-      recentProjects: recents,
+      btnLabel: '+ Add Project',
+      btnOnclick: '_openNewProjectPopup(\'cb-empty-picker\')',
+      recentItems: recents,
+      recentLabel: 'Recent',
+      itemIconSvg: _TYPE_ICON_PROJECT,
     });
     return;
   }
@@ -1208,6 +1221,54 @@ function _cbRenderContext() {
     if (_cbDirty) _setSaveStatus('cabinet', 'dirty');
   }
 }
+
+/** Exit the open cabinet editor back to the cabinet sub-gate (recent + Add).
+ *  In library-edit mode, defers to _cbExitLibraryEdit (which exits library
+ *  mode entirely — there is no library sub-gate). */
+function _cbExitCabinet() {
+  if (typeof cbEditingLibraryIdx !== 'undefined' && cbEditingLibraryIdx >= 0
+      && typeof /** @type {any} */ (window)._cbExitLibraryEdit === 'function') {
+    /** @type {any} */ (window)._cbExitLibraryEdit();
+    return;
+  }
+  cbEditingLineIdx = -1;
+  cbScratchpad = null;
+  if (typeof renderCBEditor === 'function') renderCBEditor();
+}
+/** @type {any} */ (window)._cbExitCabinet = _cbExitCabinet;
+
+/** Render the project-scoped cabinet sub-gate (no cabinet open) into
+ *  #cb-cab-editor: "+ Add Cabinet" + recent cabinets in this project. */
+function _cbRenderCabinetSubGate() {
+  const el = _byId('cb-cab-editor');
+  if (!el) return;
+  // Sorted by most recent (cbLines is in insertion order; reverse → newest first).
+  const recents = cbLines
+    .slice()
+    .reverse()
+    .slice(0, 5)
+    .map(/** @param {any} c @param {number} i */ (c, i) => {
+      // Map reverse index back to the actual cbLines index for cbSelectLine.
+      const realIdx = cbLines.length - 1 - i;
+      return {
+        id: c.id || realIdx,
+        name: c.name || ('Cabinet ' + (realIdx + 1)),
+        meta: `${c.w}×${c.h}`,
+        onClick: `cbSelectLine(${realIdx})`,
+      };
+    });
+  el.innerHTML = _renderListEmpty({
+    iconSvg: '<svg class="pe-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>',
+    title: 'Cabinets',
+    subtitle: 'Add a cabinet to this project. New cabinets autosave as you edit.',
+    btnLabel: '+ Add Cabinet',
+    btnOnclick: 'addCBLine()',
+    recentItems: recents,
+    recentLabel: 'Recent',
+    itemIconSvg: _TYPE_ICON_CABINET,
+  });
+}
+/** @type {any} */ (window)._cbRenderCabinetSubGate = _cbRenderCabinetSubGate;
 
 /** Strategy 2: clear the active Cabinet Builder project and return to empty state. */
 function _exitProject_cabinet() {

@@ -226,42 +226,62 @@ const _savePillTimers = {};
  */
 function _setSaveStatus(domain, state, opts) {
   const pill = /** @type {HTMLElement | null} */ (document.querySelector(`[data-save-pill="${domain}"]`));
-  if (!pill) return;
+  const indicator = /** @type {HTMLElement | null} */ (document.querySelector(`[data-save-indicator="${domain}"]`));
+  if (!pill && !indicator) return;
   // clear any pending revert
   if (_savePillTimers[domain]) { clearTimeout(_savePillTimers[domain]); delete _savePillTimers[domain]; }
-  pill.classList.remove('is-saving', 'is-saved', 'is-failed');
-  pill.onclick = null;
+  if (pill) {
+    pill.classList.remove('is-saving', 'is-saved', 'is-failed');
+    pill.onclick = null;
+  }
+  if (indicator) {
+    indicator.classList.remove('is-saving', 'is-saved', 'is-error');
+    indicator.onclick = null;
+  }
   switch (state) {
     case 'clean':
-      pill.style.display = 'none';
-      pill.textContent = '';
+      if (pill) { pill.style.display = 'none'; pill.textContent = ''; }
+      if (indicator) { indicator.style.display = ''; indicator.textContent = 'Autosave'; }
       return;
     case 'dirty':
-      pill.style.display = '';
-      pill.textContent = 'unsaved';
+      if (pill) { pill.style.display = ''; pill.textContent = 'unsaved'; }
+      if (indicator) { indicator.style.display = ''; indicator.textContent = 'Autosave'; }
       return;
     case 'saving':
-      pill.style.display = '';
-      pill.classList.add('is-saving');
-      pill.textContent = 'Saving…';
+      if (pill) { pill.style.display = ''; pill.classList.add('is-saving'); pill.textContent = 'Saving…'; }
+      if (indicator) { indicator.style.display = ''; indicator.classList.add('is-saving'); indicator.textContent = 'Saving…'; }
       return;
     case 'saved':
-      pill.style.display = '';
-      pill.classList.add('is-saved');
-      pill.textContent = 'Saved';
-      // fade to clean after 2s
+      if (pill) { pill.style.display = ''; pill.classList.add('is-saved'); pill.textContent = 'Saved'; }
+      if (indicator) { indicator.style.display = ''; indicator.classList.add('is-saved'); indicator.textContent = 'Saved'; }
+      // fade pill back to clean after 2s; indicator reverts to 'Autosave' label.
       _savePillTimers[domain] = setTimeout(() => {
-        if (pill.classList.contains('is-saved')) {
+        if (pill && pill.classList.contains('is-saved')) {
           pill.style.display = 'none';
           pill.classList.remove('is-saved');
+        }
+        if (indicator && indicator.classList.contains('is-saved')) {
+          indicator.classList.remove('is-saved');
+          indicator.textContent = 'Autosave';
         }
       }, 2000);
       return;
     case 'failed':
-      pill.style.display = '';
-      pill.classList.add('is-failed');
-      pill.textContent = 'Save failed · Retry';
-      if (opts && typeof opts.retry === 'function') pill.onclick = opts.retry;
+      if (pill) {
+        pill.style.display = '';
+        pill.classList.add('is-failed');
+        pill.textContent = 'Save failed · Retry';
+        if (opts && typeof opts.retry === 'function') pill.onclick = opts.retry;
+      }
+      if (indicator) {
+        indicator.style.display = '';
+        indicator.classList.add('is-error');
+        indicator.textContent = 'Save failed';
+        if (opts && typeof opts.retry === 'function') {
+          indicator.onclick = opts.retry;
+          indicator.style.cursor = 'pointer';
+        }
+      }
       return;
   }
 }
@@ -336,9 +356,13 @@ function _renderContentHeader(opts) {
 const _TYPE_ICON_PROJECT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>';
 const _TYPE_ICON_CLIENT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>';
 const _TYPE_ICON_STOCK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>';
+const _TYPE_ICON_CABINET = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>';
+const _TYPE_ICON_CUTLIST = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12.00 1.70 L12.90 3.45 L15.94 2.48 L16.10 4.44 L19.28 4.72 L18.68 6.59 L21.52 8.06 L20.25 9.56 L22.30 12.00 L20.55 12.90 L21.52 15.94 L19.56 16.10 L19.28 19.28 L17.41 18.68 L15.94 21.52 L14.44 20.25 L12.00 22.30 L11.10 20.55 L8.06 21.52 L7.90 19.56 L4.72 19.28 L5.32 17.41 L2.48 15.94 L3.75 14.44 L1.70 12.00 L3.45 11.10 L2.48 8.06 L4.44 7.90 L4.72 4.72 L6.59 5.32 L8.06 2.48 L9.56 3.75 Z"/><circle cx="12" cy="12" r="1.5"/></svg>';
 /** @type {any} */ (window)._TYPE_ICON_PROJECT = _TYPE_ICON_PROJECT;
 /** @type {any} */ (window)._TYPE_ICON_CLIENT = _TYPE_ICON_CLIENT;
 /** @type {any} */ (window)._TYPE_ICON_STOCK = _TYPE_ICON_STOCK;
+/** @type {any} */ (window)._TYPE_ICON_CABINET = _TYPE_ICON_CABINET;
+/** @type {any} */ (window)._TYPE_ICON_CUTLIST = _TYPE_ICON_CUTLIST;
 
 /**
  * Render the "no project open" empty state — smart-input project picker + recent-projects list.

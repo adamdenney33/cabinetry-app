@@ -271,26 +271,18 @@ function renderCBEditor() {
   if (!el) return;
 
   const line = cbScratchpad;
-  if (!line) return;
-
-  // Sync cabinet library search box. Mirror the viewer card's display fallback
-  // so cabinets without an explicit name still show "Cabinet N" in the search.
-  const displayedName = line.name || (cbEditingLineIdx >= 0 ? 'Cabinet ' + (cbEditingLineIdx + 1) : '');
-  const searchInp = _byId('cb-cabinet-search');
-  if (searchInp && document.activeElement !== searchInp) {
-    searchInp.value = displayedName;
-  }
-  // "Editing: <name>" indicator (mirrors cut list's cl-current-project pattern)
-  const editIndicator = _byId('cb-current-cabinet');
-  if (editIndicator) {
-    if (cbEditingLineIdx >= 0) {
-      editIndicator.innerHTML = `<span class="cl-cp-label">Editing:</span> <span class="cl-cp-name">${_escHtml(displayedName)}</span>`;
-      editIndicator.style.display = '';
+  // No cabinet open → render the cabinet sub-gate (only meaningful when a
+  // project is active; library mode without a selection just shows empty).
+  if (!line) {
+    if (_cbCurrentProjectId && typeof _cbRenderCabinetSubGate === 'function') {
+      _cbRenderCabinetSubGate();
     } else {
-      editIndicator.style.display = 'none';
-      editIndicator.innerHTML = '';
+      el.innerHTML = '';
     }
+    return;
   }
+
+  const displayedName = line.name || (cbEditingLineIdx >= 0 ? 'Cabinet ' + (cbEditingLineIdx + 1) : 'Cabinet');
 
   const cur = window.currency;
   const c = calcCBLine(line);
@@ -343,6 +335,17 @@ function renderCBEditor() {
   const sec = calcCBSections(line);
 
   el.innerHTML = `
+    <div class="form-section-title">
+      <button class="ph-back" onclick="_cbExitCabinet()" title="Back" aria-label="Back">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      </button>
+      <span>${_escHtml(displayedName)}</span>
+      <span class="save-indicator" data-save-indicator="cabinet" style="display:none">Autosave</span>
+    </div>
+    <div class="form-group" style="margin-bottom:10px">
+      <label>Name</label>
+      <input type="text" id="cb-name" value="${_escHtml(line.name||'')}" oninput="cbUpdateField('name',this.value)">
+    </div>
     <div style="border-top:1px solid var(--border);padding-top:10px;margin-top:6px">
 
       <!-- CABINET (dims + material + finish + construction + base) -->

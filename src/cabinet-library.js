@@ -225,7 +225,7 @@ function _smartCBLibrarySuggest(input, boxId) {
   matches.slice(0, 8).forEach(c => {
     const idx = cbLibrary.indexOf(c);
     const calc = calcCBLine(c);
-    html += `<div class="client-suggest-item" onmousedown="cbLoadFromLibrary(${idx});_byId('cb-cabinet-search').value='';_byId('${boxId}').style.display='none'">
+    html += `<div class="client-suggest-item" onmousedown="cbLoadFromLibrary(${idx});_byId('${boxId}').style.display='none'">
       <span class="suggest-icon" style="background:var(--accent-dim);color:var(--accent)">C</span>
       <span style="flex:1">${_escHtml(c._libName||c.name||'Cabinet')}</span>
       <span style="font-size:10px;color:var(--muted)">${c.w}×${c.h}</span>

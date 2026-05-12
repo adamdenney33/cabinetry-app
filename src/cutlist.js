@@ -980,9 +980,11 @@ function _clRenderContext() {
   const scroll = _byId('cl-scroll-body');
   const actionBar = _byId('cl-action-bar');
   if (!ctx) return;
+  const subGate = _byId('cl-sub-gate');
   // Cabinet-scope: a cabinet is open and we're either listing its cut lists
   // or editing one of them. Show a cabinet-flavoured header.
   if (_clCurrentCabinetId) {
+    if (subGate) { subGate.innerHTML = ''; subGate.style.display = 'none'; }
     if (scroll) scroll.style.display = '';
     if (actionBar) actionBar.style.display = '';
     ctx.innerHTML = _renderProjectHeader('cutlist', {
@@ -990,8 +992,7 @@ function _clRenderContext() {
       exitFn: '_exitCabinet_cutlist',
       iconSvg: _CL_CABINET_ICON,
     });
-    const sInp = /** @type {HTMLInputElement|null} */ (_byId('cl-cutlist-search'));
-    if (sInp) sInp.value = _clCurrentCutlistName || '';
+    _clSyncDrillInputs();
     if (typeof _setSaveStatus === 'function') {
       if (_clDirty) _setSaveStatus('cutlist', 'dirty');
     }
@@ -1000,6 +1001,7 @@ function _clRenderContext() {
   // Library-cutlist editing (item 8): _clCurrentProjectId is null but a
   // _clCurrentCutlistId is set (loaded from Cut List Library).
   if (!_clCurrentProjectId && _clCurrentCutlistId) {
+    if (subGate) { subGate.innerHTML = ''; subGate.style.display = 'none'; }
     if (scroll) scroll.style.display = '';
     if (actionBar) actionBar.style.display = '';
     ctx.innerHTML = _renderProjectHeader('cutlist', {
@@ -1007,11 +1009,11 @@ function _clRenderContext() {
       exitFn: '_clExitLibraryEdit',
       iconSvg: _CL_LIBRARY_ICON,
     });
-    const sInp = /** @type {HTMLInputElement|null} */ (_byId('cl-cutlist-search'));
-    if (sInp) sInp.value = _clCurrentCutlistName || '';
+    _clSyncDrillInputs();
     return;
   }
   if (!_clCurrentProjectId) {
+    if (subGate) { subGate.innerHTML = ''; subGate.style.display = 'none'; }
     if (scroll) scroll.style.display = 'none';
     if (actionBar) actionBar.style.display = 'none';
     const recents = (typeof projects !== 'undefined' ? projects : [])
@@ -1020,21 +1022,32 @@ function _clRenderContext() {
         const av = a.updated_at ? +new Date(a.updated_at) : 0;
         const bv = b.updated_at ? +new Date(b.updated_at) : 0;
         return bv - av;
+      })
+      .slice(0, 5)
+      .map(/** @param {any} p */ p => {
+        const cName = p.client_id && typeof clients !== 'undefined'
+          ? ((clients.find(/** @param {any} c */ c => c.id === p.client_id) || /** @type {any} */ ({})).name || '')
+          : '';
+        return {
+          id: p.id,
+          name: p.name,
+          meta: cName,
+          onClick: `_clPickProjectByIdSafe(${p.id},'${_escHtml(p.name).replace(/'/g, '&#39;')}')`,
+        };
       });
-    ctx.innerHTML = _renderProjectEmpty({
+    ctx.innerHTML = _renderListEmpty({
+      iconSvg: '<svg class="pe-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12.00 1.70 L12.90 3.45 L15.94 2.48 L16.10 4.44 L19.28 4.72 L18.68 6.59 L21.52 8.06 L20.25 9.56 L22.30 12.00 L20.55 12.90 L21.52 15.94 L19.56 16.10 L19.28 19.28 L17.41 18.68 L15.94 21.52 L14.44 20.25 L12.00 22.30 L11.10 20.55 L8.06 21.52 L7.90 19.56 L4.72 19.28 L5.32 17.41 L2.48 15.94 L3.75 14.44 L1.70 12.00 L3.45 11.10 L2.48 8.06 L4.44 7.90 L4.72 4.72 L6.59 5.32 L8.06 2.48 L9.56 3.75 Z"/><circle cx="12" cy="12" r="1.5"/></svg>',
       title: 'Cut List',
       subtitle: 'Pick a project to load its cut parts and panels.',
-      pickFnName: '_clPickProjectByIdSafe',
-      pickerInputId: 'cl-empty-picker',
-      pickerSuggestId: 'cl-empty-suggest',
-      pickerSuggestFn: '_smartCLEmptyProjectSuggest',
-      recentProjects: recents,
-      iconSvg: '<svg class="pe-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12.00 1.70 L12.90 3.45 L15.94 2.48 L16.10 4.44 L19.28 4.72 L18.68 6.59 L21.52 8.06 L20.25 9.56 L22.30 12.00 L20.55 12.90 L21.52 15.94 L19.56 16.10 L19.28 19.28 L17.41 18.68 L15.94 21.52 L14.44 20.25 L12.00 22.30 L11.10 20.55 L8.06 21.52 L7.90 19.56 L4.72 19.28 L5.32 17.41 L2.48 15.94 L3.75 14.44 L1.70 12.00 L3.45 11.10 L2.48 8.06 L4.44 7.90 L4.72 4.72 L6.59 5.32 L8.06 2.48 L9.56 3.75 Z"/><circle cx="12" cy="12" r="1.5"/></svg>',
+      btnLabel: '+ Add Project',
+      btnOnclick: '_openNewProjectPopup(\'cl-empty-picker\')',
+      recentItems: recents,
+      recentLabel: 'Recent',
+      itemIconSvg: _TYPE_ICON_PROJECT,
     });
     return;
   }
-  if (scroll) scroll.style.display = '';
-  if (actionBar) actionBar.style.display = '';
+  // Project active. Decide between sub-gate (no cut list open) and editor.
   const _clProj = (typeof projects !== 'undefined' ? projects : []).find(/** @param {any} p */ p => p.id === _clCurrentProjectId);
   const _clCName = (_clProj && _clProj.client_id) ? ((typeof clients !== 'undefined' && clients ? clients : []).find(/** @param {any} c */ c => c.id === _clProj.client_id)?.name || '') : '';
   ctx.innerHTML = _renderProjectHeader('cutlist', {
@@ -1042,13 +1055,69 @@ function _clRenderContext() {
     exitFn: '_exitProject_cutlist',
     clientName: _clCName || undefined,
   });
-  // Sync the sidebar smart-library input with the active cut list's name.
-  const sInp = /** @type {HTMLInputElement|null} */ (_byId('cl-cutlist-search'));
-  if (sInp) sInp.value = _clCurrentCutlistName || '';
+  if (!_clCurrentCutlistId) {
+    // Sub-gate: show "+ Add Cut List" + recent cut lists for this project.
+    if (scroll) scroll.style.display = 'none';
+    if (actionBar) actionBar.style.display = 'none';
+    _clRenderCutlistSubGate();
+    return;
+  }
+  // Drill-in: hide sub-gate, show editor body + header.
+  if (subGate) { subGate.innerHTML = ''; subGate.style.display = 'none'; }
+  if (scroll) scroll.style.display = '';
+  if (actionBar) actionBar.style.display = '';
+  _clSyncDrillInputs();
   if (typeof _setSaveStatus === 'function') {
     if (_clDirty) _setSaveStatus('cutlist', 'dirty');
   }
 }
+
+/** Mirror the in-memory _clCurrentCutlistName into the drill-in name input
+ *  and the title display. Skips writing while the input is focused so the
+ *  user's typing isn't clobbered by other renders. */
+function _clSyncDrillInputs() {
+  const nameInp = /** @type {HTMLInputElement|null} */ (_byId('cl-name'));
+  if (nameInp && document.activeElement !== nameInp) {
+    nameInp.value = _clCurrentCutlistName || '';
+  }
+  const disp = _byId('cl-name-display');
+  if (disp) disp.textContent = _clCurrentCutlistName || 'Cut List';
+}
+/** @type {any} */ (window)._clSyncDrillInputs = _clSyncDrillInputs;
+
+/** Render the cut list sub-gate (no cut list open) into #cl-sub-gate: shows
+ *  "+ Add Cut List" + recent cut lists for the active project. */
+async function _clRenderCutlistSubGate() {
+  const el = _byId('cl-sub-gate');
+  if (!el) return;
+  /** @type {any[]} */
+  let rows = [];
+  try {
+    const { data } = await _db('cutlists')
+      .select('id, name, updated_at')
+      .eq('project_id', _clCurrentProjectId)
+      .order('updated_at', { ascending: false });
+    rows = /** @type {any[]} */ (data || []);
+  } catch (e) { rows = []; }
+  const recents = rows.slice(0, 5).map(/** @param {any} r */ r => ({
+    id: r.id,
+    name: r.name || '(untitled)',
+    meta: _clFormatDate(r.updated_at) || '',
+    onClick: `_clLoadCutlist(${r.id})`,
+  }));
+  el.innerHTML = _renderListEmpty({
+    iconSvg: '<svg class="pe-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12.00 1.70 L12.90 3.45 L15.94 2.48 L16.10 4.44 L19.28 4.72 L18.68 6.59 L21.52 8.06 L20.25 9.56 L22.30 12.00 L20.55 12.90 L21.52 15.94 L19.56 16.10 L19.28 19.28 L17.41 18.68 L15.94 21.52 L14.44 20.25 L12.00 22.30 L11.10 20.55 L8.06 21.52 L7.90 19.56 L4.72 19.28 L5.32 17.41 L2.48 15.94 L3.75 14.44 L1.70 12.00 L3.45 11.10 L2.48 8.06 L4.44 7.90 L4.72 4.72 L6.59 5.32 L8.06 2.48 L9.56 3.75 Z"/><circle cx="12" cy="12" r="1.5"/></svg>',
+    title: 'Cut Lists',
+    subtitle: 'Add a cut list for this project. New cut lists autosave as you edit.',
+    btnLabel: '+ Add Cut List',
+    btnOnclick: '_clStartNewCutlist()',
+    recentItems: recents,
+    recentLabel: 'Recent',
+    itemIconSvg: _TYPE_ICON_CUTLIST,
+  });
+  el.style.display = '';
+}
+/** @type {any} */ (window)._clRenderCutlistSubGate = _clRenderCutlistSubGate;
 
 /** Pick-by-id wrapper for the empty-state recent list. Uses the existing loadProject. */
 /** @param {number} id @param {string} _name */
@@ -1097,71 +1166,42 @@ function _smartCLEmptyProjectSuggest(input, boxId) {
 }
 /** @type {any} */ (window)._smartCLEmptyProjectSuggest = _smartCLEmptyProjectSuggest;
 
-// ── CUT LIST SMART LIBRARY (sidebar top) ──
-// Mirrors Cabinet Builder's #cb-cabinet-search pattern: one input that doubles
-// as the current cut list's name AND filters/loads saved cut lists for the
-// current project. Backed by the existing _clLoadCutlist / _clSaveProject flow.
+// ── CUT LIST DRILL-IN (sidebar) ──
+// The sub-gate (in _clRenderContext) gives "+ Add Cut List" and a recent list.
+// Once a cut list is open the drill-in header (#cl-editor-header in
+// index.html) hosts the back button, name input, and Autosave indicator —
+// equivalent to Clients/Stock's pattern.
 
-/** Oninput handler for #cl-cutlist-search. Live-updates _clCurrentCutlistName
- *  and refreshes the suggest dropdown.
- *  @param {HTMLInputElement} input */
-function _clCutlistSearchInput(input) {
-  _clCurrentCutlistName = input.value.trim();
-  _smartCLLibrarySuggest(input, 'cl-cutlist-suggest');
+/** Drill-in name input handler. Live-updates _clCurrentCutlistName,
+ *  refreshes the title display, and marks the cut list dirty so the
+ *  debounced autosave persists the rename.
+ *  @param {string} val */
+function _clRenameCutlist(val) {
+  _clCurrentCutlistName = String(val || '').trim();
+  const disp = _byId('cl-name-display');
+  if (disp) disp.textContent = _clCurrentCutlistName || 'Cut List';
+  _setClDirty(true);
 }
-/** @type {any} */ (window)._clCutlistSearchInput = _clCutlistSearchInput;
+/** @type {any} */ (window)._clRenameCutlist = _clRenameCutlist;
 
-/** Smart suggest for the cut-list library input. Lists cut lists for the
- *  current project, with click-to-load and a "+ Start new" footer.
- *  @param {HTMLInputElement} input @param {string} boxId */
-async function _smartCLLibrarySuggest(input, boxId) {
-  const box = _byId(boxId);
-  if (!box) return;
-  if (typeof _posSuggest === 'function') _posSuggest(input, box);
-  if (!_clCurrentProjectId) {
-    box.innerHTML = `<div class="client-suggest-add" style="color:var(--muted)">Open a project to use cut lists</div>`;
-    box.style.display = 'block';
-    return;
-  }
-  const q = input.value.trim().toLowerCase();
-  /** @type {any[]} */
-  let rows = [];
-  try {
-    const { data } = await _db('cutlists')
-      .select('id, name, updated_at')
-      .eq('project_id', _clCurrentProjectId)
-      .order('updated_at', { ascending: false });
-    rows = /** @type {any[]} */ (data || []);
-  } catch (e) { rows = []; }
-  const matches = q ? rows.filter(r => (r.name || '').toLowerCase().includes(q)) : rows;
-  const exact = q && rows.some(r => (r.name || '').toLowerCase() === q);
-  /** @param {string} s */
-  const esc = s => _escHtml(s).replace(/'/g, '&#39;');
-  let html = '';
-  matches.slice(0, 8).forEach(r => {
-    const isActive = r.id === _clCurrentCutlistId;
-    const date = _clFormatDate(r.updated_at);
-    html += `<div class="client-suggest-item" onmousedown="_clLoadCutlist(${r.id});_byId('${boxId}').style.display='none'">
-      <span class="suggest-icon" style="background:var(--accent-dim);color:var(--accent)">C</span>
-      <span style="flex:1">${esc(r.name || '(untitled)')}${isActive ? ' <span style="font-weight:500;color:var(--accent);font-size:11px">· editing</span>' : ''}</span>
-      ${date ? `<span style="font-size:10px;color:var(--muted)">${esc(date)}</span>` : ''}
-    </div>`;
-  });
-  if (matches.length === 0 && rows.length > 0) {
-    html += `<div class="client-suggest-add" style="color:var(--muted)">No matching cut lists</div>`;
-  } else if (rows.length === 0 && !q) {
-    html += `<div class="client-suggest-add" style="color:var(--muted)">No saved cut lists yet</div>`;
-  }
-  if (q && !exact) {
-    html += `<div class="client-suggest-item client-suggest-add" onmousedown="_clNewCutlistFromInput()">
-      <span class="csi-icon">+</span>
-      <span class="csi-name">Start new "${esc(input.value.trim())}"</span>
-    </div>`;
-  }
-  box.innerHTML = html;
-  box.style.display = 'block';
+/** Exit the open cut list back to the cut list sub-gate. */
+function _clExitCutlist() {
+  const proceed = () => {
+    _clCurrentCutlistId = null;
+    _clCurrentCutlistName = '';
+    pieces = []; sheets = []; edgeBands = [];
+    _pieceId = 1; _sheetId = 1; _edgeBandId = 1; pieceColorIdx = 0;
+    results = null;
+    _setClDirty(false);
+    if (typeof renderSheets === 'function') renderSheets();
+    if (typeof renderPieces === 'function') renderPieces();
+    if (typeof renderEdgeBands === 'function') { try { renderEdgeBands(); } catch(e) {} }
+    _clRenderContext();
+  };
+  if (_clDirty) _confirm('Discard unsaved changes and close this cut list?', proceed);
+  else proceed();
 }
-/** @type {any} */ (window)._smartCLLibrarySuggest = _smartCLLibrarySuggest;
+/** @type {any} */ (window)._clExitCutlist = _clExitCutlist;
 
 /** Compute the next sequential "Cutlist N" name for a given scope.
  *  When projectId is null, scopes to library cutlists (project_id IS NULL).
@@ -1179,38 +1219,60 @@ async function _clNextCutlistName(projectId) {
       const m = String(/** @type {any} */ (r).name || '').match(/(\d+)/);
       if (m) max = Math.max(max, parseInt(m[1], 10));
     }
-    return 'Cutlist ' + (max + 1);
-  } catch (e) { return 'Cutlist 1'; }
+    return 'Cut List ' + (max + 1);
+  } catch (e) { return 'Cut List 1'; }
 }
 /** @type {any} */ (window)._clNextCutlistName = _clNextCutlistName;
 
-/** "+" button handler for the smart library input. Reads the typed name from
- *  #cl-cutlist-search and starts a fresh blank cut list. Dirty-checks first.
- *  In cabinet-scope, persists a new linked cut list (cabinet_id set, parts
- *  pre-populated from the cabinet) and opens it in edit state. */
-async function _clNewCutlistFromInput() {
+/** "+ Add Cut List" handler. Inserts a fresh cut list row in the DB
+ *  immediately (with a sequential default name), then drills in. Mirrors
+ *  Clients/Stock — the row exists by the time the user starts editing, so
+ *  back→recent picks up the new entry without further user input.
+ *  In cabinet-scope, defers to _clNewCabinetLinkedCutlist which copies
+ *  cabinet cut parts into the new row. */
+async function _clStartNewCutlist() {
   if (_clCurrentCabinetId) { return _clNewCabinetLinkedCutlist(); }
+  if (!_userId) { _toast('Sign in to create cut lists', 'error'); return; }
   if (!_clCurrentProjectId) { _toast('Open a project first', 'error'); return; }
-  const inp = /** @type {HTMLInputElement|null} */ (_byId('cl-cutlist-search'));
-  const typed = (inp && inp.value ? inp.value : '').trim();
-  const fallbackName = typed || await _clNextCutlistName(_clCurrentProjectId);
-  const startNew = () => {
-    _clCurrentCutlistId = null;
-    _clCurrentCutlistName = fallbackName;
-    pieces = []; sheets = []; edgeBands = [];
-    _pieceId = 1; _sheetId = 1; _edgeBandId = 1; pieceColorIdx = 0;
-    results = null;
-    if (inp) inp.value = _clCurrentCutlistName;
-    renderSheets(); renderPieces();
-    if (typeof renderEdgeBands === 'function') { try { renderEdgeBands(); } catch(e) {} }
-    _setClDirty(false);
-    const box = _byId('cl-cutlist-suggest'); if (box) box.style.display = 'none';
-    _toast(`New cut list "${_clCurrentCutlistName}" — add parts then save`, 'success');
+  const insertNew = async () => {
+    const name = await _clNextCutlistName(_clCurrentProjectId);
+    if (typeof _setSaveStatus === 'function') _setSaveStatus('cutlist', 'saving');
+    try {
+      const { data, error } = await _db('cutlists').insert(/** @type {any} */ ({
+        user_id: _userId,
+        project_id: _clCurrentProjectId,
+        name,
+        position: 0,
+        ui_prefs: {},
+      })).select().single();
+      if (error || !data) {
+        if (typeof _setSaveStatus === 'function') _setSaveStatus('cutlist', 'failed', { retry: _clStartNewCutlist });
+        _toast('Could not create cut list', 'error');
+        return;
+      }
+      const newId = /** @type {any} */ (data).id;
+      _clCurrentCutlistId = newId;
+      _clCurrentCutlistName = name;
+      pieces = []; sheets = []; edgeBands = [];
+      _pieceId = 1; _sheetId = 1; _edgeBandId = 1; pieceColorIdx = 0;
+      results = null;
+      _setClDirty(false);
+      if (typeof _setSaveStatus === 'function') _setSaveStatus('cutlist', 'saved');
+      if (typeof renderSheets === 'function') renderSheets();
+      if (typeof renderPieces === 'function') renderPieces();
+      if (typeof renderEdgeBands === 'function') { try { renderEdgeBands(); } catch(e) {} }
+      _clRenderContext();
+      const focus = /** @type {HTMLInputElement|null} */ (_byId('cl-name'));
+      if (focus) focus.focus();
+    } catch (e) {
+      if (typeof _setSaveStatus === 'function') _setSaveStatus('cutlist', 'failed', { retry: _clStartNewCutlist });
+      _toast('Could not create cut list', 'error');
+    }
   };
-  if (_clDirty) _confirm('Discard unsaved changes and start a new cut list?', startNew);
-  else startNew();
+  if (_clDirty) _confirm('Discard unsaved changes and start a new cut list?', insertNew);
+  else insertNew();
 }
-/** @type {any} */ (window)._clNewCutlistFromInput = _clNewCutlistFromInput;
+/** @type {any} */ (window)._clStartNewCutlist = _clStartNewCutlist;
 
 /** Cabinet-scope branch of "+" creation. Inserts a library cut list with
  *  cabinet_id set, copies the cabinet's cut parts into pieces rows, then
@@ -1227,9 +1289,7 @@ async function _clNewCabinetLinkedCutlist() {
     : (typeof w._cabinetPartsList === 'function' ? w._cabinetPartsList(cab) : []);
   if (!parts || !parts.length) { _toast('Cabinet has no cut parts to copy', 'error'); return; }
 
-  const inp = /** @type {HTMLInputElement|null} */ (_byId('cl-cutlist-search'));
-  const typed = (inp && inp.value ? inp.value : '').trim();
-  const name = typed || await _clNextCutlistName(null);
+  const name = await _clNextCutlistName(null);
   const insertCutlist = async () => {
     try {
       const { data, error } = await _db('cutlists').insert(/** @type {any} */ ({
@@ -1265,8 +1325,6 @@ async function _clNewCabinetLinkedCutlist() {
       }));
       try { await _db('pieces').insert(rows); } catch (e) { /* tolerate */ }
       _toast(`"${name}" created and linked`, 'success');
-      if (inp) inp.value = name;
-      const box = _byId('cl-cutlist-suggest'); if (box) box.style.display = 'none';
       if (typeof w._clDoOpenLibraryCutlist === 'function') {
         await w._clDoOpenLibraryCutlist(newId);
       }

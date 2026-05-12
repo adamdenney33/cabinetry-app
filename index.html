@@ -225,18 +225,8 @@
         </div>
         <div class="sidebar-scroll" id="cb-sidebar">
 
-          <!-- Cabinet Library smart search -->
-          <div style="padding:10px 14px 4px;position:relative">
-            <div class="smart-input-wrap">
-              <input type="text" id="cb-cabinet-search" placeholder="Search or add cabinet..." autocomplete="off" oninput="_cbCabinetSearchInput(this)" onfocus="_smartCBLibrarySuggest(this,'cb-cabinet-suggest')" onblur="setTimeout(()=>document.getElementById('cb-cabinet-suggest').style.display='none',150)">
-              <div class="smart-input-add" onclick="addCBLine()" title="Add new cabinet">+</div>
-            </div>
-            <div id="cb-cabinet-suggest" class="client-suggest-list" style="display:none"></div>
-            <div id="cb-current-cabinet" class="cl-current-project" style="display:none"></div>
-          </div>
-
-          <!-- Active Cabinet Editor -->
-          <div id="cb-cab-editor" style="padding:0 14px 14px"></div>
+          <!-- Active Cabinet Editor (also renders sub-gate when no cabinet open) -->
+          <div id="cb-cab-editor" style="padding:14px"></div>
 
           <!-- MY RATES (shown when rates tab active) -->
           <div id="cab-view-rates" style="display:none;padding:14px">
@@ -393,18 +383,22 @@
       <!-- Strategy 2: project context replaces the inline picker. Empty state
            or Idea-3 header lives at the top; project-scoped tools below. -->
       <div id="cl-context"></div>
-      <div class="cl-scroll" id="cl-scroll-body">
+      <div id="cl-sub-gate" style="padding:14px"></div>
+      <div class="cl-scroll" id="cl-scroll-body" style="display:none">
 
-        <!-- Cut List smart library -->
-        <div style="padding:10px 14px 4px;position:relative">
-          <div class="smart-input-wrap">
-            <input type="text" id="cl-cutlist-search" placeholder="Search or name cut list..." autocomplete="off"
-              oninput="_clCutlistSearchInput(this)"
-              onfocus="_smartCLLibrarySuggest(this,'cl-cutlist-suggest')"
-              onblur="setTimeout(()=>document.getElementById('cl-cutlist-suggest').style.display='none',150)">
-            <div class="smart-input-add" onclick="_clNewCutlistFromInput()" title="Start a new cut list">+</div>
+        <!-- Drill-in editor header -->
+        <div id="cl-editor-header" style="padding:10px 14px 8px">
+          <div class="form-section-title">
+            <button class="ph-back" onclick="_clExitCutlist()" title="Back" aria-label="Back">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+            </button>
+            <span id="cl-name-display">Cut List</span>
+            <span class="save-indicator" data-save-indicator="cutlist" style="display:none">Autosave</span>
           </div>
-          <div id="cl-cutlist-suggest" class="client-suggest-list" style="display:none"></div>
+          <div class="form-group" style="margin-bottom:6px">
+            <label>Name</label>
+            <input type="text" id="cl-name" placeholder="Cut List name" oninput="_clRenameCutlist(this.value)">
+          </div>
         </div>
 
         <!-- Cut Parts table -->
@@ -634,18 +628,15 @@
         <div id="projects-gate"></div>
         <div id="projects-drill-section" style="display:none">
           <div id="pj-drill-header"></div>
-          <div style="padding:10px 14px 4px;position:relative">
-            <div class="smart-input-wrap">
-              <input type="text" id="pj-library-search"
-                placeholder="Search or name project..." autocomplete="off"
-                oninput="_pjLibrarySearchInput(this)"
-                onfocus="_pjLibrarySuggest(this,'pj-library-suggest')"
-                onblur="setTimeout(()=>{const b=document.getElementById('pj-library-suggest');if(b)b.style.display='none'},150)">
-              <div class="smart-input-add" onclick="_pjNewProjectFromInput()" title="Start a new project">+</div>
+          <div id="projects-sub-gate"></div>
+          <div class="form-section" id="projects-form-section" style="display:none">
+            <div class="form-section-title" id="pj-form-title">
+              <button class="ph-back" id="pj-back-btn" onclick="_pjExitProject()" title="Back" aria-label="Back">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+              </button>
+              <span id="pj-form-title-text">New Project</span>
+              <span class="save-indicator" data-save-indicator="project" style="display:none">Autosave</span>
             </div>
-            <div id="pj-library-suggest" class="client-suggest-list" style="display:none"></div>
-          </div>
-          <div class="form-section" id="projects-form-section">
             <div class="form-group" style="margin-bottom:8px">
               <label>Project Name</label>
               <input type="text" id="pj-name" placeholder="e.g. Kitchen Remodel" oninput="_pjFormChanged()">
@@ -670,9 +661,7 @@
                 <option value="complete">Complete</option>
               </select>
             </div>
-            <div style="display:flex;align-items:center;justify-content:flex-end;margin-top:6px">
-              <span class="cl-unsaved-pill" data-save-pill="project" style="display:none"></span>
-            </div>
+            <span class="cl-unsaved-pill" data-save-pill="project" style="display:none"></span>
           </div>
         </div>
       </div>

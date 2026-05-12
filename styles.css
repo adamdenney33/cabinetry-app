@@ -228,7 +228,6 @@ header {
 .cl-unsaved-pill.is-saving { color: var(--accent); background: var(--accent-dim); }
 .cl-unsaved-pill.is-saving::before { content: '●'; font-size: 8px; animation: pillPulse 1.4s ease-in-out infinite; }
 .cl-unsaved-pill.is-saved { color: var(--success); background: rgba(61,153,112,0.14); }
-.cl-unsaved-pill.is-saved::before { content: '✓'; font-size: 9px; }
 .cl-unsaved-pill.is-failed { color: var(--danger); background: rgba(224,82,82,0.14); cursor: pointer; }
 .cl-unsaved-pill.is-failed::before { content: '!'; font-size: 9px; font-weight: 800; }
 .cl-unsaved-pill.is-failed:hover { background: rgba(224,82,82,0.22); }
@@ -378,7 +377,6 @@ header {
 }
 .save-indicator.is-saving { color: var(--muted); opacity: 0.75; }
 .save-indicator.is-saved { color: #2e7d32; }
-.save-indicator.is-saved::before { content: '✓'; font-weight: 700; }
 .save-indicator.is-error { color: #c62828; }
 
 .form-row { display: flex; gap: 8px; margin-bottom: 8px; align-items: flex-end; }

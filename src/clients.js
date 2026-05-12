@@ -278,7 +278,10 @@ async function removeProject(id) {
   projects = projects.filter(p => p.id !== id);
   if (_pjCurrentProjectId === id) {
     _pjCurrentProjectId = null;
-    if (typeof _pjPrepareFormForDraft === 'function') _pjPrepareFormForDraft();
+    _pjDirty = false;
+    if (_pjAutosaveTimer) { clearTimeout(_pjAutosaveTimer); _pjAutosaveTimer = null; }
+    if (typeof _setSaveStatus === 'function') _setSaveStatus('project', 'clean');
+    if (typeof _pjRenderProjectSubGate === 'function') _pjRenderProjectSubGate();
   }
   renderProjectsMain();
   _toast('Project removed', 'success');
@@ -431,13 +434,15 @@ function _renderProjectsSidebarGate() {
   const drill = document.getElementById('projects-drill-section');
   if (!gate || !drill) return;
 
-  // STATE B: drilled into a client → drill section visible (header + library + form)
+  // STATE B: drilled into a client → drill section visible
+  // Sub-state B1: no project open → sub-gate (+ Add Project + recent projects).
+  // Sub-state B2: project open    → drill-in form with autosave indicator.
   if (_projectsActiveClientId) {
     gate.innerHTML = '';
     gate.style.display = 'none';
     /** @type {HTMLElement} */ (drill).style.display = '';
     _pjRenderDrillHeader();
-    _pjPrepareFormForDraft();
+    _pjRenderProjectSubGate();
     return;
   }
 
@@ -570,11 +575,10 @@ function _gotoProjectFromClient(projectId, clientId) {
 }
 /** @type {any} */ (window)._gotoProjectFromClient = _gotoProjectFromClient;
 
-/** Focus the name input in the drill form. Drill section is auto-rendered by
- *  _renderProjectsSidebarGate when a client is active. */
+/** Backward-compat shim — used by client-card "+ new project" buttons to
+ *  drop straight into a fresh project draft once the client is active. */
 function _projectsRevealForm() {
-  const first = document.getElementById('pj-name');
-  if (first) /** @type {HTMLInputElement} */ (first).focus();
+  if (typeof _pjStartNewProject === 'function') _pjStartNewProject();
 }
 /** @type {any} */ (window)._projectsRevealForm = _projectsRevealForm;
 
@@ -597,18 +601,98 @@ function _pjRenderDrillHeader() {
   });
 }
 
-/** Clear the form to draft state. Only resets when no project is loaded —
- *  preserves the edit view when re-rendering during typing. */
-function _pjPrepareFormForDraft() {
-  if (_pjCurrentProjectId != null) return;
-  for (const id of ['pj-name','pj-desc','pj-library-search']) {
+/** Toggle between the sub-gate (recent projects) and the drill-in form,
+ *  based on whether a project is currently loaded. */
+function _pjRenderProjectSubGate() {
+  const sub = document.getElementById('projects-sub-gate');
+  const form = document.getElementById('projects-form-section');
+  if (!sub || !form) return;
+  if (_pjCurrentProjectId == null) {
+    // Sub-gate: + Add Project + recent projects scoped to active client.
+    /** @type {HTMLElement} */ (form).style.display = 'none';
+    const recents = projects
+      .filter(/** @param {any} p */ p => p.client_id === _projectsActiveClientId)
+      .slice()
+      .sort(/** @param {any} a @param {any} b */ (a, b) => {
+        const av = a.updated_at ? +new Date(a.updated_at) : (a.id || 0);
+        const bv = b.updated_at ? +new Date(b.updated_at) : (b.id || 0);
+        return bv - av;
+      })
+      .slice(0, 5)
+      .map(/** @param {any} p */ p => ({
+        id: p.id,
+        name: p.name,
+        meta: p.status && p.status !== 'active' ? p.status : '',
+        onClick: `_pjLoadProject(${p.id})`,
+      }));
+    sub.innerHTML = _renderListEmpty({
+      iconSvg: '<svg class="pe-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>',
+      title: 'Projects',
+      subtitle: 'Add a project for this client. New projects autosave as you type.',
+      btnLabel: '+ Add Project',
+      btnOnclick: '_pjStartNewProject()',
+      recentItems: recents,
+      recentLabel: 'Recent',
+      itemIconSvg: _TYPE_ICON_PROJECT,
+    });
+    sub.style.display = '';
+    return;
+  }
+  // Drill-in: hide sub-gate, reveal form.
+  sub.innerHTML = '';
+  sub.style.display = 'none';
+  /** @type {HTMLElement} */ (form).style.display = '';
+}
+/** @type {any} */ (window)._pjRenderProjectSubGate = _pjRenderProjectSubGate;
+
+/** Compute the next sequential "Project N" name for the active client. */
+function _pjNextProjectName() {
+  let max = 0;
+  for (const p of projects) {
+    if (p.client_id !== _projectsActiveClientId) continue;
+    const m = String(p.name || '').match(/(\d+)/);
+    if (m) max = Math.max(max, parseInt(m[1], 10));
+  }
+  return 'Project ' + (max + 1);
+}
+/** @type {any} */ (window)._pjNextProjectName = _pjNextProjectName;
+
+/** "+ Add Project" handler. Pre-populates the form with a sequential default
+ *  name and marks dirty so the first autosave INSERTs the row immediately. */
+function _pjStartNewProject() {
+  if (!_projectsActiveClientId) { _toast('Pick a client first', 'error'); return; }
+  if (_pjAutosaveTimer) { clearTimeout(_pjAutosaveTimer); _pjAutosaveTimer = null; }
+  _pjCurrentProjectId = null;
+  _pjDirty = false;
+  const defaultName = _pjNextProjectName();
+  for (const id of ['pj-desc']) {
     const el = _clInput(id); if (el) /** @type {HTMLInputElement|HTMLTextAreaElement} */ (el).value = '';
   }
+  const nameEl = /** @type {HTMLInputElement|null} */ (_clInput('pj-name'));
+  if (nameEl) nameEl.value = defaultName;
+  const titleEl = document.getElementById('pj-form-title-text');
+  if (titleEl) titleEl.textContent = defaultName;
   const st = /** @type {HTMLSelectElement|null} */ (_clInput('pj-status')); if (st) st.value = 'active';
-  _pjDirty = false;
-  if (_pjAutosaveTimer) { clearTimeout(_pjAutosaveTimer); _pjAutosaveTimer = null; }
-  if (typeof _setSaveStatus === 'function') _setSaveStatus('project', 'clean');
+  // Reveal the form, hide the sub-gate.
+  const sub = document.getElementById('projects-sub-gate');
+  const form = document.getElementById('projects-form-section');
+  if (sub) { sub.innerHTML = ''; sub.style.display = 'none'; }
+  if (form) /** @type {HTMLElement} */ (form).style.display = '';
+  // Mark dirty + schedule autosave so the row is INSERTed without further user input.
+  _pjFormChanged();
+  if (nameEl) nameEl.focus();
 }
+/** @type {any} */ (window)._pjStartNewProject = _pjStartNewProject;
+
+/** Exit drill-in to the project sub-gate (without exiting the client). */
+function _pjExitProject() {
+  if (_pjAutosaveTimer) { clearTimeout(_pjAutosaveTimer); _pjAutosaveTimer = null; _pjRunAutosave(); }
+  _pjCurrentProjectId = null;
+  _pjDirty = false;
+  if (typeof _setSaveStatus === 'function') _setSaveStatus('project', 'clean');
+  _pjRenderProjectSubGate();
+}
+/** @type {any} */ (window)._pjExitProject = _pjExitProject;
 
 /** Wired to oninput/onchange on every form field. Marks dirty + schedules save. */
 function _pjFormChanged() {
@@ -655,6 +739,8 @@ async function _pjRunAutosave() {
     projects.unshift(/** @type {any} */ (data));
     _pjCurrentProjectId = data.id;
     _pjDirty = false;
+    const titleNew = document.getElementById('pj-form-title-text');
+    if (titleNew) titleNew.textContent = name;
     if (typeof _setSaveStatus === 'function') _setSaveStatus('project', 'saved');
     renderProjectsMain();
   } else {
@@ -669,107 +755,38 @@ async function _pjRunAutosave() {
       return;
     }
     _pjDirty = false;
+    const titleUpd = document.getElementById('pj-form-title-text');
+    if (titleUpd) titleUpd.textContent = name;
     if (typeof _setSaveStatus === 'function') _setSaveStatus('project', 'saved');
     renderProjectsMain();
   }
 }
 /** @type {any} */ (window)._pjRunAutosave = _pjRunAutosave;
 
-/** Smart library search input handler. Mirrors typed text into name field
- *  while drafting; otherwise just filters the dropdown.
- *  @param {HTMLInputElement} input */
-function _pjLibrarySearchInput(input) {
-  if (_pjCurrentProjectId == null) {
-    const nameEl = /** @type {HTMLInputElement|null} */ (_clInput('pj-name'));
-    if (nameEl) { nameEl.value = input.value; _pjFormChanged(); }
-  }
-  _pjLibrarySuggest(input, 'pj-library-suggest');
-}
-/** @type {any} */ (window)._pjLibrarySearchInput = _pjLibrarySearchInput;
-
-/** Render the smart-library suggest dropdown (scoped to the active client).
- *  @param {HTMLInputElement} input @param {string} boxId */
-function _pjLibrarySuggest(input, boxId) {
-  const box = document.getElementById(boxId);
-  if (!box) return;
-  if (typeof _posSuggest === 'function') _posSuggest(input, box);
-  const q = input.value.trim().toLowerCase();
-  const scoped = projects.filter(/** @param {any} p */ p => p.client_id === _projectsActiveClientId)
-    .sort(/** @param {any} a @param {any} b */ (a, b) =>
-      +new Date(b.updated_at || 0) - +new Date(a.updated_at || 0));
-  const matches = q ? scoped.filter(/** @param {any} p */ p => (p.name || '').toLowerCase().includes(q)) : scoped;
-  const exact = q && scoped.some(/** @param {any} p */ p => (p.name || '').toLowerCase() === q);
-  /** @param {string} s */
-  const esc = s => _escHtml(s).replace(/'/g, '&#39;');
-  let html = '';
-  matches.slice(0, 8).forEach(/** @param {any} p */ p => {
-    const editing = p.id === _pjCurrentProjectId;
-    html += `<div class="client-suggest-item" onmousedown="_pjLoadProject(${p.id})">
-      <span class="suggest-icon" style="background:var(--accent-dim);color:var(--accent)">P</span>
-      <span style="flex:1">${esc(p.name || '(untitled)')}${editing ? ' <span style="color:var(--accent);font-size:11px">· editing</span>' : ''}</span>
-      <span style="font-size:10px;color:var(--muted)">${esc(p.status || 'active')}</span>
-    </div>`;
-  });
-  if (matches.length === 0 && scoped.length > 0) {
-    html += `<div class="client-suggest-add" style="color:var(--muted)">No matching projects</div>`;
-  } else if (scoped.length === 0 && !q) {
-    html += `<div class="client-suggest-add" style="color:var(--muted)">No projects yet for this client</div>`;
-  }
-  if (q && !exact) {
-    html += `<div class="client-suggest-item client-suggest-add" onmousedown="_pjNewProjectFromInput()">
-      <span class="csi-icon">+</span>
-      <span class="csi-name">Start new "${esc(input.value.trim())}"</span>
-    </div>`;
-  }
-  box.innerHTML = html;
-  box.style.display = 'block';
-}
-/** @type {any} */ (window)._pjLibrarySuggest = _pjLibrarySuggest;
-
-/** "+" button / "Start new" handler. Clears form to a fresh draft. No confirm
- *  — autosave means there are no unsaved changes to discard. */
-function _pjNewProjectFromInput() {
-  if (!_projectsActiveClientId) { _toast('Pick a client first', 'error'); return; }
-  if (_pjAutosaveTimer) { clearTimeout(_pjAutosaveTimer); _pjAutosaveTimer = null; _pjRunAutosave(); }
-  const inp = /** @type {HTMLInputElement|null} */ (_clInput('pj-library-search'));
-  const typed = (inp && inp.value ? inp.value : '').trim();
-  _pjCurrentProjectId = null;
-  _pjDirty = false;
-  for (const id of ['pj-name','pj-desc']) {
-    const el = _clInput(id); if (el) /** @type {HTMLInputElement|HTMLTextAreaElement} */ (el).value = '';
-  }
-  const st = /** @type {HTMLSelectElement|null} */ (_clInput('pj-status')); if (st) st.value = 'active';
-  if (inp) inp.value = typed;
-  if (typed) {
-    const nameEl = /** @type {HTMLInputElement|null} */ (_clInput('pj-name'));
-    if (nameEl) nameEl.value = typed;
-    _pjFormChanged();
-  } else if (typeof _setSaveStatus === 'function') {
-    _setSaveStatus('project', 'clean');
-  }
-  const box = document.getElementById('pj-library-suggest'); if (box) box.style.display = 'none';
-  const focus = /** @type {HTMLInputElement|null} */ (_clInput('pj-name')); if (focus) focus.focus();
-}
-/** @type {any} */ (window)._pjNewProjectFromInput = _pjNewProjectFromInput;
-
 /** Load an existing project into the sidebar form for autosave editing.
+ *  Flips the projects sidebar from sub-gate → drill-in.
  *  @param {number} id */
 function _pjLoadProject(id) {
   if (_pjAutosaveTimer) { clearTimeout(_pjAutosaveTimer); _pjAutosaveTimer = null; _pjRunAutosave(); }
   const p = /** @type {any} */ (projects.find(x => x.id === id));
   if (!p) return;
+  // If the project belongs to a different client, switch active client first.
+  if (p.client_id && p.client_id !== _projectsActiveClientId) {
+    _projectsActiveClientId = p.client_id;
+  }
   _pjCurrentProjectId = id;
   _pjDirty = false;
   /** @param {string} elId @param {string} val */
   const set = (elId, val) => {
     const el = _clInput(elId); if (el) /** @type {HTMLInputElement|HTMLTextAreaElement|HTMLSelectElement} */ (el).value = val;
   };
-  set('pj-library-search', p.name || '');
   set('pj-name', p.name || '');
   set('pj-desc', p.description || '');
   set('pj-status', p.status || 'active');
+  const titleEl = document.getElementById('pj-form-title-text');
+  if (titleEl) titleEl.textContent = p.name || 'Project';
   if (typeof _setSaveStatus === 'function') _setSaveStatus('project', 'clean');
-  const box = document.getElementById('pj-library-suggest'); if (box) box.style.display = 'none';
+  _pjRenderProjectSubGate();
 }
 /** @type {any} */ (window)._pjLoadProject = _pjLoadProject;
 
