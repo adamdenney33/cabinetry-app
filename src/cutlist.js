@@ -4242,11 +4242,13 @@ async function renderCLCutListLibraryView() {
         </div>
       </div>
       <div style="display:flex;gap:6px;padding:8px 12px 10px;border-top:1px solid var(--border2);justify-content:flex-end;flex-wrap:wrap;align-items:stretch">
-        <div class="proj-act empty" onclick="event.stopPropagation()">
-          <div class="proj-act-main" onclick="event.stopPropagation();_clLinkToCabinet(${r.id})" title="Link this cut list to a cabinet">
+        <div class="proj-act${linkedCab ? '' : ' empty'}" onclick="event.stopPropagation()">
+          <div class="proj-act-main" onclick="event.stopPropagation();_clLinkToCabinet(${r.id})" title="${linkedCab ? 'Linked to ' + _escHtml(linkedCab) + ' — click to change' : 'Link this cut list to a cabinet'}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
-            <span class="proj-act-label">Link to Cabinet</span>
+            <span class="proj-act-label">Cabinet</span>
+            <span class="proj-act-count">${linkedCab ? 1 : 0}</span>
           </div>
+          <div class="proj-act-add" onclick="event.stopPropagation();_clLinkToCabinet(${r.id})" title="Link to a cabinet">+</div>
         </div>
         <button class="btn btn-outline" style="font-size:11px;padding:4px 10px;width:auto" onclick="event.stopPropagation();_clDuplicateLibraryCutlist(${r.id})">Duplicate</button>
         <button class="btn btn-outline" style="font-size:11px;padding:4px 10px;width:auto;color:var(--danger)" onclick="event.stopPropagation();_clDeleteLibraryCutlist(${r.id})">Delete</button>
