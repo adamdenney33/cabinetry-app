@@ -1182,28 +1182,15 @@ function _cbRenderContext() {
         const av = a.updated_at ? +new Date(a.updated_at) : 0;
         const bv = b.updated_at ? +new Date(b.updated_at) : 0;
         return bv - av;
-      })
-      .slice(0, 5)
-      .map(/** @param {any} p */ p => {
-        const cName = p.client_id && typeof clients !== 'undefined'
-          ? ((clients.find(/** @param {any} c */ c => c.id === p.client_id) || /** @type {any} */ ({})).name || '')
-          : '';
-        return {
-          id: p.id,
-          name: p.name,
-          meta: cName,
-          onClick: `_cbPickProject(${p.id},'${_escHtml(p.name).replace(/'/g, '&#39;')}')`,
-        };
       });
-    ctx.innerHTML = _renderListEmpty({
-      iconSvg: '<svg class="pe-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>',
+    ctx.innerHTML = _renderProjectEmpty({
       title: 'Cabinet Builder',
       subtitle: 'Pick a project to start designing cabinets.',
-      btnLabel: '+ Add Project',
-      btnOnclick: '_openNewProjectPopup(\'cb-empty-picker\')',
-      recentItems: recents,
-      recentLabel: 'Recent',
-      itemIconSvg: _TYPE_ICON_PROJECT,
+      pickFnName: '_cbPickProject',
+      pickerInputId: 'cb-empty-picker',
+      pickerSuggestId: 'cb-empty-suggest',
+      pickerSuggestFn: '_smartCBEmptyProjectSuggest',
+      recentProjects: recents,
     });
     return;
   }
