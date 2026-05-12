@@ -4175,6 +4175,14 @@ async function renderCLCutListsView() {
   } catch (e) { /* counts stay empty */ }
 
   const cardClickFn = isCabinet ? '_clDoOpenLibraryCutlist' : '_clLoadCutlist';
+  let projectSuffix = '';
+  if (!isCabinet && _clCurrentProjectId) {
+    const _curProj = (typeof projects !== 'undefined' ? projects : []).find(/** @param {any} p */ p => p.id === _clCurrentProjectId);
+    const _curClient = (_curProj && _curProj.client_id) ? ((typeof clients !== 'undefined' && clients ? clients : []).find(/** @param {any} c */ c => c.id === _curProj.client_id)?.name || '') : '';
+    const projTxt = _clCurrentProjectName || (_curProj && _curProj.name) || '';
+    if (projTxt) projectSuffix += ` · ${_escHtml(projTxt)}`;
+    if (_curClient) projectSuffix += ` · ${_escHtml(_curClient)}`;
+  }
   grid.innerHTML = list.map(/** @param {any} r */ (r) => {
     const isActive = r.id === _clCurrentCutlistId;
     const partCount = counts[r.id] != null ? counts[r.id] : '–';
@@ -4185,7 +4193,7 @@ async function renderCLCutListsView() {
       onclick="${cardClickFn}(${r.id})">
       <div style="display:flex;align-items:flex-start;gap:8px;padding:10px 12px 6px">
         <div style="flex:1;min-width:0">
-          <div style="font-size:13px;font-weight:700;color:var(--text)">${_escHtml(r.name||'(untitled)')}${isActive ? ' <span style="font-weight:500;color:var(--accent);font-size:11px">· editing</span>' : ''}</div>
+          <div style="font-size:13px;font-weight:700;color:var(--text)">${_escHtml(r.name||'(untitled)')}${projectSuffix}${isActive ? ' <span style="font-weight:500;color:var(--accent);font-size:11px">· editing</span>' : ''}</div>
           <div style="font-size:11px;color:var(--muted);margin-top:2px">
             <span>${partCount} part${partCount === 1 ? '' : 's'}</span>
             ${date ? ` · <span>${_escHtml(date)}</span>` : ''}
