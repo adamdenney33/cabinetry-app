@@ -4194,7 +4194,7 @@ async function renderCLCutListLibraryView() {
   /** @type {any[]} */ let rows = [];
   try {
     const { data } = await _db('cutlists')
-      .select('id, name, updated_at, cabinet_id, cabinets(name)')
+      .select('id, name, updated_at, cabinet_id, cabinet_templates(name)')
       .is('project_id', null)
       .order('updated_at', { ascending: false });
     rows = /** @type {any[]} */ (data || []);
@@ -4226,7 +4226,7 @@ async function renderCLCutListLibraryView() {
     const isActive = r.id === _clCurrentCutlistId;
     const partCount = counts[r.id] != null ? counts[r.id] : '–';
     const date = _clFormatDate(r.updated_at);
-    const linkedCab = r.cabinets ? r.cabinets.name : '';
+    const linkedCab = r.cabinet_templates ? r.cabinet_templates.name : '';
     return `<div style="background:var(--surface);border:1px solid ${isActive ? 'var(--accent)' : 'var(--border)'};border-radius:var(--radius);box-shadow:var(--shadow);transition:box-shadow .15s,border-color .15s;cursor:pointer"
       onmouseover="this.style.boxShadow='var(--shadow-md)';this.style.borderColor='var(--accent)'"
       onmouseout="this.style.boxShadow='var(--shadow)';this.style.borderColor='${isActive ? 'var(--accent)' : 'var(--border)'}'"
