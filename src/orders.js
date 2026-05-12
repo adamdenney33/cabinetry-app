@@ -231,6 +231,7 @@ function renderOrdersMain() {
         name: drillProject.name,
         exitFn: '_oChangeProject',
         iconSvg: _CH_ICON_ORDER.replace('ch-icon', 'ph-icon'),
+        clientName: (drillProject.client_id ? (typeof clients !== 'undefined' && clients ? clients : []).find(/** @param {any} c */ c => c.id === drillProject.client_id)?.name : '') || undefined,
       })
     : _renderContentHeader({ iconSvg: _CH_ICON_ORDER, title: 'Orders' });
 

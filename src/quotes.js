@@ -476,6 +476,7 @@ function renderQuoteMain() {
         name: drillProject.name,
         exitFn: '_qChangeProject',
         iconSvg: _CH_ICON_QUOTE.replace('ch-icon', 'ph-icon'),
+        clientName: (drillProject.client_id ? (typeof clients !== 'undefined' && clients ? clients : []).find(/** @param {any} c */ c => c.id === drillProject.client_id)?.name : '') || undefined,
       })
     : _renderContentHeader({ iconSvg: _CH_ICON_QUOTE, title: 'Quotes' });
 

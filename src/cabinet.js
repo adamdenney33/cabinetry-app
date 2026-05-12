@@ -1196,9 +1196,12 @@ function _cbRenderContext() {
   }
   if (tabsWrap) tabsWrap.style.display = '';
   if (sb) sb.style.display = '';
+  const _cbProj = (typeof projects !== 'undefined' ? projects : []).find(/** @param {any} p */ p => p.id === _cbCurrentProjectId);
+  const _cbCName = (_cbProj && _cbProj.client_id) ? ((typeof clients !== 'undefined' && clients ? clients : []).find(/** @param {any} c */ c => c.id === _cbProj.client_id)?.name || '') : '';
   ctx.innerHTML = _renderProjectHeader('cabinet', {
     name: _cbCurrentProjectName,
     exitFn: '_exitProject_cabinet',
+    clientName: _cbCName || undefined,
   });
   // If we entered with dirty=true, surface the pill state immediately.
   if (typeof _setSaveStatus === 'function') {

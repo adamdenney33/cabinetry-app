@@ -115,7 +115,7 @@ function renderDashboard() {
                 const isOD = o.due && o.due !== 'TBD' && !isNaN(+new Date(o.due)) && new Date(o.due) < new Date();
                 return `<div class="dash-row${isOD ? ' is-overdue' : ''}" onclick="_openOrderPopup(${o.id})">
                 <div style="flex:1;min-width:0">
-                  <div style="font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${o.order_number ? `#${o.order_number}` : `#${String(o.id).padStart(4,'0')}`} - ${orderProject(o)}</div>
+                  <div style="font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${o.order_number ? `#${o.order_number}` : `#${String(o.id).padStart(4,'0')}`} · ${orderProject(o)}</div>
                   <div style="font-size:11px;color:${isOD?'var(--danger)':'var(--muted)'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${orderClient(o)} · Due ${o.due}${isOD?' ⚠':''}</div>
                 </div>
                 <div style="text-align:right;margin-left:12px;flex-shrink:0">
@@ -136,7 +136,7 @@ function renderDashboard() {
             ${quotes.slice(0, DASH_CARD_ROWS).map(q => `
               <div class="dash-row" onclick="_openQuotePopup(${q.id})">
                 <div style="flex:1;min-width:0">
-                  <div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${q.quote_number ? `Q-${q.quote_number}` : `Q-${String(q.id).padStart(4,'0')}`} - ${quoteProject(q)}</div>
+                  <div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${q.quote_number ? `${q.quote_number}` : `Q-${String(q.id).padStart(4,'0')}`} · ${quoteProject(q)}</div>
                   <div style="font-size:11px;color:var(--muted)">${quoteClient(q)}</div>
                 </div>
                 <div style="text-align:right;margin-left:8px;flex-shrink:0">

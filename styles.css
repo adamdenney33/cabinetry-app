@@ -208,7 +208,7 @@ header {
 .content-header { margin-bottom: 16px; display: flex; align-items: center; gap: 12px; }
 .content-header .ch-icon { width: 20px; height: 20px; color: var(--accent); flex-shrink: 0; }
 .content-header .ch-title { font-size: 18px; font-weight: 800; margin: 0; flex: 1; min-width: 0; letter-spacing: -0.3px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.content-header .ch-client { color: var(--muted); font-weight: 600; font-size: 14px; }
+.content-header .ch-client { color: var(--text); font-weight: 800; font-size: 18px; }
 
 /* ── Project empty state (no project active) ── */
 .project-empty { padding: 32px 16px; text-align: center; }
@@ -1418,7 +1418,7 @@ input.li-num:focus { outline: none; border-color: var(--accent); }
 .proj-name { font-size: 14px; font-weight: 700; color: var(--text); cursor: pointer; }
 .proj-name:hover { color: var(--accent); }
 .proj-client { font-size: 14px; font-weight: 700; color: var(--text); }
-.proj-client::before { content: '- '; color: var(--text); }
+.proj-client::before { content: '· '; color: var(--text); }
 .proj-desc { font-size: 11px; color: var(--muted); flex: 1; min-width: 80px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .proj-total { font-size: 13px; font-weight: 800; color: var(--text); font-variant-numeric: tabular-nums; margin-left: auto; }
 .proj-total.zero { color: var(--muted); font-weight: 500; }

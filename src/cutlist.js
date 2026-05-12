@@ -1035,9 +1035,12 @@ function _clRenderContext() {
   }
   if (scroll) scroll.style.display = '';
   if (actionBar) actionBar.style.display = '';
+  const _clProj = (typeof projects !== 'undefined' ? projects : []).find(/** @param {any} p */ p => p.id === _clCurrentProjectId);
+  const _clCName = (_clProj && _clProj.client_id) ? ((typeof clients !== 'undefined' && clients ? clients : []).find(/** @param {any} c */ c => c.id === _clProj.client_id)?.name || '') : '';
   ctx.innerHTML = _renderProjectHeader('cutlist', {
     name: _clCurrentProjectName,
     exitFn: '_exitProject_cutlist',
+    clientName: _clCName || undefined,
   });
   // Sync the sidebar smart-library input with the active cut list's name.
   const sInp = /** @type {HTMLInputElement|null} */ (_byId('cl-cutlist-search'));

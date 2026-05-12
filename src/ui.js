@@ -282,15 +282,18 @@ function _setSaveStatus(domain, state, opts) {
  * @param {{ name: string, exitFn: string, status?: string, summary?: string, clientName?: string, iconSvg?: string }} opts
  */
 function _renderProjectHeader(_domain, opts) {
-  const { name, exitFn, iconSvg } = opts;
+  const { name, exitFn, iconSvg, clientName } = opts;
   const defaultIcon = '<svg class="ph-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>';
+  const titleHtml = clientName
+    ? `${_escHtml(name)} · ${_escHtml(clientName)}`
+    : _escHtml(name);
   return `<div class="project-header">
     <div class="ph-row1">
       <button class="ph-back" onclick="${exitFn}()" title="Back" aria-label="Back">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
       </button>
       ${iconSvg || defaultIcon}
-      <span class="ph-title">${_escHtml(name)}</span>
+      <span class="ph-title">${titleHtml}</span>
     </div>
   </div>`;
 }
@@ -320,7 +323,7 @@ const _CH_ICON_CLIENT = '<svg class="ch-icon" viewBox="0 0 24 24" fill="none" st
 function _renderContentHeader(opts) {
   const { iconSvg, title, clientName } = opts;
   const clientHtml = clientName
-    ? ` <span class="ch-client">— ${_escHtml(clientName)}</span>`
+    ? ` · <span class="ch-client">${_escHtml(clientName)}</span>`
     : '';
   return `<div class="content-header">${iconSvg}<h2 class="ch-title">${_escHtml(title)}${clientHtml}</h2></div>`;
 }
