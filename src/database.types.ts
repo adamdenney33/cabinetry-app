@@ -375,9 +375,44 @@ export type Database = {
         }
         Relationships: []
       }
+      cutlist_cabinets: {
+        Row: {
+          cabinet_id: number
+          created_at: string
+          cutlist_id: number
+          user_id: string
+        }
+        Insert: {
+          cabinet_id: number
+          created_at?: string
+          cutlist_id: number
+          user_id: string
+        }
+        Update: {
+          cabinet_id?: number
+          created_at?: string
+          cutlist_id?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cutlist_cabinets_cabinet_id_fkey"
+            columns: ["cabinet_id"]
+            isOneToOne: false
+            referencedRelation: "cabinet_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cutlist_cabinets_cutlist_id_fkey"
+            columns: ["cutlist_id"]
+            isOneToOne: false
+            referencedRelation: "cutlists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cutlists: {
         Row: {
-          cabinet_id: number | null
           created_at: string
           id: number
           name: string
@@ -388,7 +423,6 @@ export type Database = {
           user_id: string
         }
         Insert: {
-          cabinet_id?: number | null
           created_at?: string
           id?: number
           name: string
@@ -399,7 +433,6 @@ export type Database = {
           user_id: string
         }
         Update: {
-          cabinet_id?: number | null
           created_at?: string
           id?: number
           name?: string
@@ -410,13 +443,6 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "cutlists_cabinet_id_fkey"
-            columns: ["cabinet_id"]
-            isOneToOne: false
-            referencedRelation: "cabinets"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "cutlists_project_id_fkey"
             columns: ["project_id"]
@@ -1408,12 +1434,6 @@ export type CompositeTypes<
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
     ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never
-
-export const Relationships = {
-  public: {
-    Relationships: {},
-  },
-} as const
 
 export const Constants = {
   public: {

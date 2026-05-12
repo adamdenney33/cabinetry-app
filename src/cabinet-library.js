@@ -724,9 +724,8 @@ async function _cbApplyCutListCounts() {
   /** @type {Record<number, number>} */
   const counts = {};
   try {
-    const { data } = await _db('cutlists')
+    const { data } = await _db('cutlist_cabinets')
       .select('cabinet_id')
-      .is('project_id', null)
       .in('cabinet_id', Array.from(ids));
     for (const r of (data || [])) {
       const cid = /** @type {any} */ (r).cabinet_id;
