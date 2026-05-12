@@ -4113,8 +4113,7 @@ async function renderCLCutListsView() {
         onmouseover="this.style.boxShadow='var(--shadow-md)';this.style.borderColor='var(--accent)'"
         onmouseout="this.style.boxShadow='var(--shadow)';this.style.borderColor='var(--border)'"
         onclick="loadProject(${p.id})">
-        <div style="font-size:13px;font-weight:700;color:var(--text)">${_escHtml(p.name || '(untitled)')}</div>
-        ${cName ? `<div style="font-size:11px;color:var(--muted);margin-top:2px">${_escHtml(cName)}</div>` : ''}
+        <div style="font-size:13px;color:var(--text)"><span style="font-weight:700">${_escHtml(p.name || '(untitled)')}</span>${cName ? ` · <span style="color:var(--muted)">${_escHtml(cName)}</span>` : ''}</div>
       </div>`;
     }).join('');
     return;
