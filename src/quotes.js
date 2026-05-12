@@ -437,7 +437,6 @@ function renderQuoteMain() {
         ${(() => { const matchingOrder = orders.find(o => o.quote_id === q.id); return matchingOrder ? `<button class="btn btn-outline" onclick="_openOrderPopup(${matchingOrder.id})" style="color:var(--success)">✓ View Order</button>` : `<button class="btn btn-outline" onclick="convertQuoteToOrder(${q.id})">→ Order</button>`; })()}
         <button class="btn btn-outline" onclick="printQuote(${q.id},'pdf')">PDF</button>
         <span style="flex:1"></span>
-        <span class="btn-hairline" aria-hidden="true"></span>
         <button class="btn btn-outline" onclick="duplicateQuote(${q.id})">Duplicate</button>
         <button class="btn btn-outline" style="color:var(--danger)" onclick="_confirm('Delete quote for <strong>${_escHtml(quoteClient(q))}</strong>?',()=>removeQuote(${q.id}))">Delete</button>
       </div>
