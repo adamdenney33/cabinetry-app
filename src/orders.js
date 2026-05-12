@@ -366,7 +366,42 @@ function renderOrderEditor() {
     return;
   }
 
-  // ── Active editor ──
+  // ── Sub-gate: project picked, no order open → "+ Add Order" + recent orders
+  if (project && !o) {
+    const recents = orders
+      .filter(ox => ox.project_id === project.id)
+      .slice()
+      .sort(/** @param {any} a @param {any} b */ (a, b) => (+new Date(b.updated_at || 0)) - (+new Date(a.updated_at || 0)))
+      .slice(0, 5)
+      .map(/** @param {any} ox */ ox => ({
+        id: ox.id,
+        name: ox.order_number || ('ORD-' + String(ox.id).padStart(4, '0')),
+        meta: ox.status || '',
+        onClick: `loadOrderIntoSidebar(${ox.id})`,
+      }));
+    const projHeader = _renderProjectHeader('order', {
+      name: project.name || 'Untitled project',
+      exitFn: '_oChangeProject',
+      clientName: clientName || undefined,
+      iconSvg: _O_EMPTY_ICON.replace('class="pe-icon"', 'class="ph-icon" width="16" height="16"'),
+    });
+    host.innerHTML = `${projHeader}
+      <div id="order-sub-gate" style="padding:14px">
+        ${_renderListEmpty({
+          iconSvg: _O_EMPTY_ICON,
+          title: 'Orders',
+          subtitle: 'Add an order for this project. New orders autosave as you edit.',
+          btnLabel: '+ Add Order',
+          btnOnclick: '_oStartNewOrder()',
+          recentItems: recents,
+          recentLabel: 'Recent',
+          itemIconSvg: _CH_ICON_ORDER,
+        })}
+      </div>`;
+    return;
+  }
+
+  // ── Active editor (order open) ──
   const status = o ? (o.status || 'quote') : 'quote';
   const statusBadgeCls = (/** @type {Record<string,string>} */ (STATUS_BADGES))[status] || 'badge-gray';
   const statusLabel = (/** @type {Record<string,string>} */ (STATUS_LABELS))[status] || status;
@@ -430,17 +465,18 @@ function renderOrderEditor() {
       </div>
     </div>
 
-    <!-- Smart library for order number (same UX as cutlist tab). -->
-    <div class="ed-libsearch">
-      <div class="smart-input-wrap">
-        <input type="text" id="po-order-number" placeholder="Order number..." autocomplete="off"
-          value="${orderNumberValue}"
-          oninput="_oOrderSearchInput(this)"
-          onfocus="_oOrderSuggest(this,'po-order-suggest')"
-          onblur="setTimeout(()=>{const b=document.getElementById('po-order-suggest'); if(b)b.style.display='none'},150)">
-        <div class="smart-input-add" onclick="_oNewOrderFromInput()" title="Start a new order">+</div>
-      </div>
-      <div id="po-order-suggest" class="client-suggest-list" style="display:none"></div>
+    <div class="form-section-title">
+      <button class="ph-back" onclick="_oExitOrder()" title="Back" aria-label="Back">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      </button>
+      <span>ORD-${orderNumberValue}</span>
+      <span class="save-indicator" data-save-indicator="order" style="display:none">Autosave</span>
+    </div>
+    <div class="form-group" style="margin-bottom:10px">
+      <label>Order Number</label>
+      <input type="text" id="po-order-number" placeholder="Order number..." autocomplete="off"
+        value="${orderNumberValue}"
+        oninput="_oMarkDirty()">
     </div>
 
     ${quoteChip}
@@ -665,28 +701,63 @@ function _oOrderSuggest(input, boxId) {
   box.style.display = 'block';
 }
 
-/** "+" button handler for the order-number smart library. Starts a fresh draft
- *  order in the current project, pre-filling the typed number when present.
- *  Dirty-checks first. */
-function _oNewOrderFromInput() {
+/** "+ Add Order" handler. Inserts a fresh order row in the DB immediately
+ *  (with the next sequential order number). Mirrors quotes / cabinets. */
+async function _oStartNewOrder() {
+  if (!_userId) { _toast('Sign in to create orders', 'error'); return; }
   if (!_opState.projectId) { _toast('Pick a project first', 'error'); return; }
-  const inp = /** @type {HTMLInputElement|null} */ (document.getElementById('po-order-number'));
-  const typed = inp ? inp.value.trim() : '';
-  const startNew = () => {
-    _opState = { orderId: null, lines: [], dirty: false, projectId: _opState.projectId, startingNew: false };
+  const insertNew = async () => {
+    const orderNum = _nextOrderNumber();
+    if (typeof _setSaveStatus === 'function') _setSaveStatus('order', 'saving');
+    try {
+      const { data, error } = await _dbInsertSafe('orders', /** @type {any} */ ({
+        user_id: _userId,
+        project_id: _opState.projectId,
+        order_number: orderNum,
+        status: 'quote',
+        due: 'TBD',
+        value: 0,
+      }));
+      if (error || !data) {
+        if (typeof _setSaveStatus === 'function') _setSaveStatus('order', 'failed', { retry: _oStartNewOrder });
+        _toast('Could not create order', 'error');
+        return;
+      }
+      const newId = /** @type {any} */ (data).id;
+      orders.unshift(/** @type {any} */ (data));
+      _opState = { orderId: newId, lines: [], dirty: false, projectId: _opState.projectId, startingNew: false };
+      if (typeof /** @type {any} */ (window)._pcSaveOpenOrderId === 'function') {
+        /** @type {any} */ (window)._pcSaveOpenOrderId(newId);
+      }
+      if (typeof _setSaveStatus === 'function') _setSaveStatus('order', 'saved');
+      renderOrderEditor();
+      renderOrdersMain();
+    } catch (e) {
+      if (typeof _setSaveStatus === 'function') _setSaveStatus('order', 'failed', { retry: _oStartNewOrder });
+      _toast('Could not create order', 'error');
+    }
+  };
+  if (_opState.dirty) _confirm('Discard unsaved changes and start a new order?', insertNew);
+  else insertNew();
+}
+/** @type {any} */ (window)._oStartNewOrder = _oStartNewOrder;
+
+/** Exit the open order back to the order sub-gate (stays in the project). */
+function _oExitOrder() {
+  const proceed = () => {
+    _opState.orderId = null;
+    _opState.lines = [];
+    _opState.dirty = false;
     if (typeof /** @type {any} */ (window)._pcSaveOpenOrderId === 'function') {
       /** @type {any} */ (window)._pcSaveOpenOrderId(null);
     }
+    if (typeof _setSaveStatus === 'function') _setSaveStatus('order', 'clean');
     renderOrderEditor();
-    const newInp = /** @type {HTMLInputElement|null} */ (document.getElementById('po-order-number'));
-    if (newInp && typed) newInp.value = typed;
-    const box = document.getElementById('po-order-suggest'); if (box) box.style.display = 'none';
-    const toastNum = typed ? typed.replace(/^ORD-/i, '') : _nextOrderNumber().replace(/^ORD-/i, '');
-    _toast(`New draft order #ORD-${toastNum} — add lines then save`, 'success');
   };
-  if (_opState.dirty) _confirm('Discard unsaved changes and start a new order?', startNew);
-  else startNew();
+  if (_opState.dirty) _confirm('Discard unsaved changes and close this order?', proceed);
+  else proceed();
 }
+/** @type {any} */ (window)._oExitOrder = _oExitOrder;
 
 /** Toggle a line-items column (or the stock library). Persists state per-tab.
  *  @param {string} col @param {HTMLElement} btn */

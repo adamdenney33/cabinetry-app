@@ -1173,7 +1173,42 @@ function renderQuoteEditor() {
     return;
   }
 
-  // ── Active editor (project picked, with or without saved row) ──
+  // ── Sub-gate: project picked, no quote open → "+ Add Quote" + recent quotes
+  if (project && !q) {
+    const recents = quotes
+      .filter(qx => qx.project_id === project.id)
+      .slice()
+      .sort(/** @param {any} a @param {any} b */ (a, b) => (+new Date(b.updated_at || 0)) - (+new Date(a.updated_at || 0)))
+      .slice(0, 5)
+      .map(/** @param {any} qx */ qx => ({
+        id: qx.id,
+        name: qx.quote_number || ('QUO-' + String(qx.id).padStart(4, '0')),
+        meta: qx.status || '',
+        onClick: `loadQuoteIntoSidebar(${qx.id})`,
+      }));
+    const projHeader = _renderProjectHeader('quote', {
+      name: project.name || 'Untitled project',
+      exitFn: '_qChangeProject',
+      clientName: clientName || undefined,
+      iconSvg: _Q_EMPTY_ICON.replace('class="pe-icon"', 'class="ph-icon" width="16" height="16"'),
+    });
+    host.innerHTML = `${projHeader}
+      <div id="quote-sub-gate" style="padding:14px">
+        ${_renderListEmpty({
+          iconSvg: _Q_EMPTY_ICON,
+          title: 'Quotes',
+          subtitle: 'Add a quote for this project. New quotes autosave as you edit.',
+          btnLabel: '+ Add Quote',
+          btnOnclick: '_qStartNewQuote()',
+          recentItems: recents,
+          recentLabel: 'Recent',
+          itemIconSvg: _CH_ICON_QUOTE,
+        })}
+      </div>`;
+    return;
+  }
+
+  // ── Active editor (quote open) ──
   const status = q ? q.status : 'draft';
   const statusBadge = status === 'approved' ? 'badge-green' : status === 'sent' ? 'badge-blue' : 'badge-gray';
   const statusLabel = status === 'approved' ? 'Approved' : status === 'sent' ? 'Sent' : 'Draft';
@@ -1205,17 +1240,18 @@ function renderQuoteEditor() {
       </div>
     </div>
 
-    <!-- Smart library for quote number (same UX as cutlist tab). -->
-    <div class="ed-libsearch">
-      <div class="smart-input-wrap">
-        <input type="text" id="pq-quote-number" placeholder="Quote number..." autocomplete="off"
-          value="${_escHtml(quoteNumStripped)}"
-          oninput="_qQuoteSearchInput(this)"
-          onfocus="_qQuoteSuggest(this,'pq-quote-suggest')"
-          onblur="setTimeout(()=>{const b=document.getElementById('pq-quote-suggest'); if(b)b.style.display='none'},150)">
-        <div class="smart-input-add" onclick="_qNewQuoteFromInput()" title="Start a new quote">+</div>
-      </div>
-      <div id="pq-quote-suggest" class="client-suggest-list" style="display:none"></div>
+    <div class="form-section-title">
+      <button class="ph-back" onclick="_qExitQuote()" title="Back" aria-label="Back">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      </button>
+      <span>QUO-${_escHtml(quoteNumStripped)}</span>
+      <span class="save-indicator" data-save-indicator="quote" style="display:none">Autosave</span>
+    </div>
+    <div class="form-group" style="margin-bottom:10px">
+      <label>Quote Number</label>
+      <input type="text" id="pq-quote-number" placeholder="Quote number..." autocomplete="off"
+        value="${_escHtml(quoteNumStripped)}"
+        oninput="_qMarkDirty()">
     </div>
 
     <div class="cl-section-header">
@@ -1353,24 +1389,66 @@ function _qQuoteSuggest(input, boxId) {
   box.style.display = 'block';
 }
 
-/** "+" button handler for the quote-number smart library. Starts a fresh
- *  draft quote in the current project, pre-filling the typed number. */
-function _qNewQuoteFromInput() {
+/** "+ Add Quote" handler. Inserts a fresh quote row in the DB immediately
+ *  (with the next sequential quote number) so back→recent picks it up
+ *  without further user input. Mirrors Clients/Stock + cabinets/cutlists. */
+async function _qStartNewQuote() {
+  if (!_userId) { _toast('Sign in to create quotes', 'error'); return; }
   if (!_qpState.projectId) { _toast('Pick a project first', 'error'); return; }
-  const inp = /** @type {HTMLInputElement|null} */ (document.getElementById('pq-quote-number'));
-  const typed = inp ? inp.value.trim() : '';
-  const startNew = () => {
-    _qpState = { quoteId: null, lines: [], dirty: false, projectId: _qpState.projectId, startingNew: false };
-    renderQuoteEditor();
-    const newInp = /** @type {HTMLInputElement|null} */ (document.getElementById('pq-quote-number'));
-    if (newInp && typed) newInp.value = typed;
-    const box = document.getElementById('pq-quote-suggest'); if (box) box.style.display = 'none';
-    const toastNum = typed ? typed.replace(/^(QUO|Q)-/i, '') : _nextQuoteNumber().replace(/^QUO-/i, '');
-    _toast(`New draft quote #QUO-${toastNum} — add lines then save`, 'success');
+  const insertNew = async () => {
+    const quoteNum = _nextQuoteNumber();
+    if (typeof _setSaveStatus === 'function') _setSaveStatus('quote', 'saving');
+    try {
+      const { data, error } = await _dbInsertSafe('quotes', /** @type {any} */ ({
+        user_id: _userId,
+        project_id: _qpState.projectId,
+        quote_number: quoteNum,
+        status: 'draft',
+        date: new Date().toISOString().slice(0, 10),
+        subtotal: 0,
+        tax: 0,
+        total: 0,
+      }));
+      if (error || !data) {
+        if (typeof _setSaveStatus === 'function') _setSaveStatus('quote', 'failed', { retry: _qStartNewQuote });
+        _toast('Could not create quote', 'error');
+        return;
+      }
+      const newId = /** @type {any} */ (data).id;
+      quotes.unshift(/** @type {any} */ (data));
+      _qpState = { quoteId: newId, lines: [], dirty: false, projectId: _qpState.projectId, startingNew: false };
+      if (typeof /** @type {any} */ (window)._pcSaveOpenQuoteId === 'function') {
+        /** @type {any} */ (window)._pcSaveOpenQuoteId(newId);
+      }
+      if (typeof _setSaveStatus === 'function') _setSaveStatus('quote', 'saved');
+      renderQuoteEditor();
+      renderQuoteMain();
+    } catch (e) {
+      if (typeof _setSaveStatus === 'function') _setSaveStatus('quote', 'failed', { retry: _qStartNewQuote });
+      _toast('Could not create quote', 'error');
+    }
   };
-  if (_qpState.dirty) _confirm('Discard unsaved changes and start a new quote?', startNew);
-  else startNew();
+  if (_qpState.dirty) _confirm('Discard unsaved changes and start a new quote?', insertNew);
+  else insertNew();
 }
+/** @type {any} */ (window)._qStartNewQuote = _qStartNewQuote;
+
+/** Exit the open quote back to the quote sub-gate (stays in the project). */
+function _qExitQuote() {
+  const proceed = () => {
+    _qpState.quoteId = null;
+    _qpState.lines = [];
+    _qpState.dirty = false;
+    if (typeof /** @type {any} */ (window)._pcSaveOpenQuoteId === 'function') {
+      /** @type {any} */ (window)._pcSaveOpenQuoteId(null);
+    }
+    if (typeof _setSaveStatus === 'function') _setSaveStatus('quote', 'clean');
+    renderQuoteEditor();
+  };
+  if (_qpState.dirty) _confirm('Discard unsaved changes and close this quote?', proceed);
+  else proceed();
+}
+/** @type {any} */ (window)._qExitQuote = _qExitQuote;
 
 /** Toggle a line-items column (or the stock library) in the quote editor.
  *  Persists state per-tab in localStorage.
