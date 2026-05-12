@@ -4470,7 +4470,7 @@ async function _clOpenLinkedCabinets(cutlistId) {
 
   _openPickerPopup({
     title: 'Linked Cabinets',
-    hint: 'Pick a cabinet to open its cut-list view.',
+    hint: 'Pick a cabinet to open it in the Cabinet Builder.',
     items,
     emptyText: 'No cabinets linked yet. Use the + button to add a link.',
     size: 'md',
@@ -4478,14 +4478,18 @@ async function _clOpenLinkedCabinets(cutlistId) {
 }
 /** @type {any} */ (window)._clOpenLinkedCabinets = _clOpenLinkedCabinets;
 
-/** Picker-row callback: close the popup and navigate to the picked cabinet.
+/** Picker-row callback: close the popup, switch to the Cabinet tab, and open
+ *  the picked template in the Cabinet Builder via cbEditLibraryEntry.
  *  @param {number} cabinetDbId */
 function _clOpenCabinetFromPicker(cabinetDbId) {
   _closePopup();
   const lib = (typeof cbLibrary !== 'undefined' && cbLibrary) ? cbLibrary : [];
-  const cab = lib.find(/** @param {any} c */ c => c.db_id === cabinetDbId);
-  const name = cab ? (cab._libName || cab.name || 'Cabinet') : 'Cabinet';
-  if (typeof _clOpenCabinet === 'function') _clOpenCabinet(cabinetDbId, name);
+  const idx = lib.findIndex(/** @param {any} c */ c => c.db_id === cabinetDbId);
+  if (idx < 0) { _toast('Cabinet not found in library', 'error'); return; }
+  const w = /** @type {any} */ (window);
+  if (typeof switchSection === 'function') switchSection('cabinet');
+  if (typeof w.switchCBMainView === 'function') w.switchCBMainView('library');
+  if (typeof w.cbEditLibraryEntry === 'function') w.cbEditLibraryEntry(idx);
 }
 /** @type {any} */ (window)._clOpenCabinetFromPicker = _clOpenCabinetFromPicker;
 
