@@ -4107,13 +4107,24 @@ async function renderCLCutListsView() {
       grid.innerHTML = `<div style="font-size:13px;color:var(--muted);text-align:center;padding:30px;border:1px dashed var(--border);border-radius:var(--radius)">No projects yet. Create one in the <strong>Projects</strong> section to get started.</div>`;
       return;
     }
+    /** @type {Record<number, number>} */ const cutlistCounts = {};
+    try {
+      const pids = allProjects.map(/** @param {any} p */ p => p.id);
+      const { data: cls } = await _db('cutlists').select('project_id').in('project_id', pids);
+      for (const r of (cls || [])) {
+        const pid = /** @type {any} */ (r).project_id;
+        if (pid != null) cutlistCounts[pid] = (cutlistCounts[pid] || 0) + 1;
+      }
+    } catch (e) { /* leave empty */ }
     grid.innerHTML = allProjects.map(/** @param {any} p */ p => {
       const cName = p.client_id ? ((typeof clients !== 'undefined' && clients ? clients : []).find(/** @param {any} c */ c => c.id === p.client_id)?.name || '') : '';
+      const n = cutlistCounts[p.id] || 0;
       return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);transition:box-shadow .15s,border-color .15s;cursor:pointer;padding:12px 14px"
         onmouseover="this.style.boxShadow='var(--shadow-md)';this.style.borderColor='var(--accent)'"
         onmouseout="this.style.boxShadow='var(--shadow)';this.style.borderColor='var(--border)'"
         onclick="loadProject(${p.id})">
-        <div style="font-size:13px;color:var(--text)"><span style="font-weight:700">${_escHtml(p.name || '(untitled)')}</span>${cName ? ` · <span style="color:var(--muted)">${_escHtml(cName)}</span>` : ''}</div>
+        <div style="font-size:13px;font-weight:700;color:var(--text)">${_escHtml(p.name || '(untitled)')}${cName ? ` · ${_escHtml(cName)}` : ''}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">${n} cut list${n === 1 ? '' : 's'}</div>
       </div>`;
     }).join('');
     return;
