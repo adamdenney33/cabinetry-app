@@ -4101,7 +4101,22 @@ async function renderCLCutListsView() {
     return;
   }
   if (!_clCurrentProjectId && !_clCurrentCabinetId) {
-    /** @type {HTMLElement} */ (_byId('cl-cutlists-grid')).innerHTML = `<div style="font-size:13px;color:var(--muted);text-align:center;padding:30px;border:1px dashed var(--border);border-radius:var(--radius)">Pick a project or open a cabinet to see its cut lists.</div>`;
+    const allProjects = /** @type {any[]} */ (typeof projects !== 'undefined' && projects ? projects : []);
+    const grid = /** @type {HTMLElement} */ (_byId('cl-cutlists-grid'));
+    if (!allProjects.length) {
+      grid.innerHTML = `<div style="font-size:13px;color:var(--muted);text-align:center;padding:30px;border:1px dashed var(--border);border-radius:var(--radius)">No projects yet. Create one in the <strong>Projects</strong> section to get started.</div>`;
+      return;
+    }
+    grid.innerHTML = allProjects.map(/** @param {any} p */ p => {
+      const cName = p.client_id ? ((typeof clients !== 'undefined' && clients ? clients : []).find(/** @param {any} c */ c => c.id === p.client_id)?.name || '') : '';
+      return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);transition:box-shadow .15s,border-color .15s;cursor:pointer;padding:12px 14px"
+        onmouseover="this.style.boxShadow='var(--shadow-md)';this.style.borderColor='var(--accent)'"
+        onmouseout="this.style.boxShadow='var(--shadow)';this.style.borderColor='var(--border)'"
+        onclick="loadProject(${p.id})">
+        <div style="font-size:13px;font-weight:700;color:var(--text)">${_escHtml(p.name || '(untitled)')}</div>
+        ${cName ? `<div style="font-size:11px;color:var(--muted);margin-top:2px">${_escHtml(cName)}</div>` : ''}
+      </div>`;
+    }).join('');
     return;
   }
 
