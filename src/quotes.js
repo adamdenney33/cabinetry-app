@@ -58,16 +58,24 @@ function orderProject(o) {
   return p ? p.name : '';
 }
 
-// ── Cabinet Builder draft-quote helpers (Item 2 Phase 1.1) ──
+// ── Cabinet Builder draft-quote helpers (Item 2 Phase 1.1; F3 2026-05-13) ──
 // Each (user, project) pair has at most one draft quote, used by the Cabinet
 // Builder tab as the live workspace. Drafts are excluded from the Quotes tab,
-// dashboard counts, and CSV exports. The tag is a notes-prefix convention —
-// schema-free, swap for a real `is_draft` column if it becomes load-bearing.
+// dashboard counts, and CSV exports.
+//
+// F3 (2026-05-13): The marker moved from a notes-prefix workaround
+// ([CB_DRAFT]) to a real status value ('designing'). _isDraftQuote now checks
+// q.status === 'designing'. The notes field is back to pure free-text.
+// CB_DRAFT_TAG is retained only to detect any unmigrated legacy rows that
+// might land in memory before the next refresh — belt-and-braces.
 const CB_DRAFT_TAG = '[CB_DRAFT]';
 
-/** @param {{notes?: string | null} | null | undefined} q */
+/** @param {{notes?: string | null, status?: string | null} | null | undefined} q */
 function _isDraftQuote(q) {
-  return !!q && typeof q.notes === 'string' && q.notes.startsWith(CB_DRAFT_TAG);
+  if (!q) return false;
+  if (q.status === 'designing') return true;
+  // Legacy guard — should be zero rows after F3 migration applied 2026-05-13.
+  return typeof q.notes === 'string' && q.notes.startsWith(CB_DRAFT_TAG);
 }
 
 /**
@@ -94,8 +102,7 @@ async function _findOrCreateDraftQuote(projectId) {
   const insertBody = {
     user_id: _userId,
     project_id: projectId,
-    notes: CB_DRAFT_TAG,
-    status: 'draft',
+    status: 'designing', // F3: was notes: CB_DRAFT_TAG + status: 'draft'
     markup: (typeof cbSettings !== 'undefined' && cbSettings && cbSettings.markup) ?? 0,
     tax: (typeof cbSettings !== 'undefined' && cbSettings && cbSettings.tax) ?? 0,
     date: new Date().toISOString().slice(0, 10),
