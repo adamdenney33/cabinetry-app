@@ -22,7 +22,7 @@ Companion docs: `SPEC.md` (refactor history), `SCHEMA.md` (DB schema),
 
 ## Active Work
 
-### Remove Projects entity · adopt library-first / Cabinet-IS-Quote 🚧 In Progress 2026-05-13
+### Remove Projects entity · adopt library-first / Cabinet-IS-Quote ✅ Done 2026-05-13
 
 Foundational refactor toward the new architecture designed across
 `mockups/option-d-flat-files-flow.html` (flat files, no project hub),
@@ -58,40 +58,51 @@ groups everything; library items snapshot into quotes via attribution chip.
   schema never had that column — the relationship was always via the
   join table.
 
-**Pending — F5 / F6 (deferred to a dedicated follow-up session):**
+**Phases F5–F6 done in a single follow-up session:**
 
-This is where the real complexity lives. **94 references to `project_id`
-across 9 source files** (cutlist.js:22, clients.js:19, quotes.js:18,
-orders.js:10, projects.js:9, migrate.js:6, cabinet.js:6,
-cabinet-library.js:2, app.js:1). Doing F5 in a single stroke would risk
-silent filter-semantics changes (`q.project_id === undefined` becoming
-trivially true everywhere).
+- `bb4e5b1` **F5** — All 94 `project_id` references stripped from
+  `src/*.js`. Cabinet Builder workspace re-keyed from project_id to
+  client_id with a "most recent designing-status quote per client"
+  semantic via the rewritten `_findOrCreateDraftQuote(clientId)`. Quote
+  and Order sidebar editors collapse `_qpState.projectId` /
+  `_opState.projectId` into `clientId`; empty-state pickers swap to
+  client smart-inputs with Recent Clients lists. Cut List middle tab
+  ("Project Cut Lists") dropped per the locked decision — Cut List goes
+  from 3 tabs to 2 (Cut Layout + Cabinet Library). `duplicateProject`
+  flow deleted entirely per locked decision. `quoteProject` / `orderProject`
+  helpers repurposed to read `quotes.name` / `orders.name` so the ~25
+  cross-file display sites stay valid. Schema migration drops
+  `project_id` from quotes, orders, cutlists, pieces, sheets, edge_bands,
+  cabinets. `database.types.ts` regenerated. Browser smoke confirmed all
+  tabs load with no console errors.
+- `2b909c6` **F6** — `public.projects` table dropped. `renderProjectsMain`,
+  `_renderProjectInlineCard`, the `_pj*` autosave/state machinery, the
+  projects-tab gate (`_pickClientForProjects`, `_smartProjectsClientSuggest`,
+  etc.), per-project drill helpers (`_drill*ForProject`, `_new*ForProject`),
+  and the project CRUD all removed from `src/clients.js`. `#panel-projects`
+  + the sidebar form deleted from `index.html`. `renderClientsMain`'s
+  client card rewritten with three flat collapsible sections — Quotes /
+  Orders / Cut Lists — clicking a row jumps into the entity's editor.
+  New `window._cutListsByClient` cache + `_loadCutListsByClient` boot
+  hydrator powers the Cut Lists section. `src/projects.js` collapsed to
+  just the per-cutlist helpers (~165 lines, down from ~480). Dead chains
+  removed: `_openNewProjectPopup` / `_saveNewProjectPopup` /
+  `_setClLoadedProject` / `_setCbLoadedProject` (`src/quotes.js`),
+  `_smartCLProjectSuggest` / `_smartCBProjectSuggest` (`src/cabinet-library.js`),
+  `_clProjectCache` (`src/cabinet.js`), `_renderProjectEmpty` (`src/ui.js`),
+  `_clSaveProject` / `_openSaveProjectPopup` / `_doSaveProject` /
+  `_clPickProjectByIdSafe` / `_smartCLEmptyProjectSuggest` (`src/cutlist.js`),
+  `_openProjectPopup` (`src/app.js`). Settings.js `switchSection`
+  branches and migrate.js legacy LS migrations neutered. `database.types.ts`
+  regenerated without `projects`. Typecheck clean, browser smoke confirms
+  all 8 nav tabs load with no console errors.
 
-- **F5** — Drop `project_id` reads/writes from code; drop `project_id`
-  columns from quotes / orders / cutlists / pieces / sheets / edge_bands /
-  cabinets. Recommended phasing: launch an Explore agent to categorise
-  every reference into 5 buckets (filter-replaceable, write-strip,
-  display-read, Cabinet-Builder-workspace-lookup, projects.js dead-code),
-  then per-file refactor with typecheck + smoke test between each. Apply
-  schema drop after the code sweep verifies clean.
-- **F6** — Drop `public.projects` table itself; delete `renderProjectsMain`
-  + `panel-projects` element from `index.html` + projects-related sidebar
-  form + `_pjLoadProject` / autosave state in `clients.js`. Trim or
-  remove `src/projects.js` entirely.
-
-**Handoff prompt for the F5/F6 session is in the F1–F4 chat transcript.**
-Key constraints: Cabinet Builder's `_findOrCreateDraftQuote` (quotes.js:78)
-re-keys workspaces by project today and needs to re-key on client_id with
-a "most recent designing-status quote" semantic. `npm run typecheck` must
-stay clean at every commit boundary. Migrations staged under
-`supabase/migrations/<timestamp>_f5_drop_project_id.sql` and
-`<timestamp>_f6_drop_projects_table.sql`. Supabase project ID
-`mhzneruvlfmhnsohfrdo`.
-
-**Migration files staged so far** (all applied to the dev project via MCP):
+**Migration files staged** (all applied to the dev project via MCP):
 - `supabase/migrations/20260513120000_f2_add_name_and_tags_columns.sql`
 - `supabase/migrations/20260513140000_f3_designing_status.sql`
 - `supabase/migrations/20260513150000_f4_cutlists_quote_id.sql`
+- `supabase/migrations/20260513160000_f5_drop_project_id.sql`
+- `supabase/migrations/20260513170000_f6_drop_projects_table.sql`
 
 ---
 
