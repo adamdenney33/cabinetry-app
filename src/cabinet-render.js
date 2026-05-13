@@ -208,7 +208,7 @@ function renderCBPanel() {
   if (!_renderCBAuthGate()) return;
   renderCBRates();
   renderCBEditor();
-  if (!_cbCurrentProjectId && cbMainView !== 'library') {
+  if (!_cbCurrentClientId && cbMainView !== 'library') {
     switchCBMainView('library');
   } else if (cbMainView === 'results') {
     renderCBResults();
@@ -274,7 +274,7 @@ function renderCBEditor() {
   // No cabinet open → render the cabinet sub-gate (only meaningful when a
   // project is active; library mode without a selection just shows empty).
   if (!line) {
-    if (_cbCurrentProjectId && typeof _cbRenderCabinetSubGate === 'function') {
+    if (_cbCurrentClientId && typeof _cbRenderCabinetSubGate === 'function') {
       _cbRenderCabinetSubGate();
     } else {
       el.innerHTML = '';
@@ -555,7 +555,7 @@ function renderCBResults() {
   const fmt = v => cur + Number(v).toFixed(2);
   /** @param {number} v */
   const fmt0 = v => cur + Math.round(v).toLocaleString();
-  const projName = (typeof _cbCurrentProjectName !== 'undefined' && _cbCurrentProjectName) ? _cbCurrentProjectName : (_byId('cb-project')?.value || '');
+  const projName = (typeof _cbCurrentClientName !== 'undefined' && _cbCurrentClientName) ? _cbCurrentClientName : (_byId('cb-client')?.value || '');
 
   if (!cbLines.length) {
     let emptyHeader = '';

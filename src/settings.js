@@ -300,11 +300,11 @@ function switchSection(name) {
   if (name === 'schedule') renderSchedule();
   if (name === 'dashboard') { renderDashboard(); setTimeout(drawRevenueChart, 0); }
   if (name === 'projects') {
-    // U.9: refresh cut-list project membership so counts stay fresh after
-    // saving/clearing a cut list elsewhere in the session.
-    if (typeof _loadCutListProjectIds === 'function') _loadCutListProjectIds();
+    // F5 (2026-05-13): the Projects nav tab is hidden but the switch still
+    // gets reached via legacy callers. Render the panel for now; F6 deletes
+    // both the panel and this branch.
     if (typeof _projectsMaybeResetFormFlag === 'function') _projectsMaybeResetFormFlag();
-    renderProjectsMain();
+    if (typeof renderProjectsMain === 'function') renderProjectsMain();
   }
   if (name === 'clients') {
     if (typeof _clientsMaybeResetFormFlag === 'function') _clientsMaybeResetFormFlag();

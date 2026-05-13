@@ -803,10 +803,9 @@ async function _cbOpenLinkedCutLists(libIdx) {
 }
 /** @type {any} */ (window)._cbOpenLinkedCutLists = _cbOpenLinkedCutLists;
 
-/** "+" pill click: open a multi-toggle picker listing every library cut
- *  list (project_id IS NULL); rows marked Linked indicate the current join,
- *  clicking toggles the link via `_cbToggleCutListLink`. Mirrors
- *  `_clLinkToCabinet` on the cut-list side.
+/** "+" pill click: open a multi-toggle picker listing every cut list;
+ *  rows marked Linked indicate the current join, clicking toggles the link
+ *  via `_cbToggleCutListLink`. Mirrors `_clLinkToCabinet` on the cut-list side.
  *  @param {number} libIdx */
 async function _cbLinkToCutList(libIdx) {
   const cabinetDbId = await _cbEnsureCabinetSaved(libIdx);
@@ -823,7 +822,7 @@ async function _cbLinkToCutList(libIdx) {
 
   /** @type {any[]} */ let cls = [];
   try {
-    const { data } = await _db('cutlists').select('id, name, updated_at').is('project_id', null).order('updated_at', { ascending: false });
+    const { data } = await _db('cutlists').select('id, name, updated_at').order('updated_at', { ascending: false });
     cls = /** @type {any[]} */ (data || []);
   } catch (e) { cls = []; }
 

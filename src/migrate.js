@@ -208,61 +208,13 @@ async function _migrateCabinets(log) {
 }
 
 // ── 5. Cut list data from existing projects.ui_prefs (formerly `data`) jsonb ──
+// F5 (2026-05-13): legacy migration neutered. project_id is gone from sheets/
+// pieces, so this path can no longer rehome jsonb cutlist data from the old
+// projects.ui_prefs blob. Migration left as a SKIP for any straggler installs.
 /** @param {MigLog} log */
 async function _migrateCutListProjects(log) {
   const sub = 'cutlist_projects';
-  const { data: projects } = await _db('projects').select('id,name,ui_prefs').eq('user_id', _userId);
-  if (!projects || projects.length === 0) {
-    _migLog(log, sub, 'SKIP', 'No projects to migrate');
-    return;
-  }
-  let totalSheets = 0, totalPieces = 0, projectsTouched = 0;
-  for (const p of projects) {
-    const { data: existingSheets } = await _db('sheets').select('id').eq('project_id', p.id).limit(1);
-    const { data: existingPieces } = await _db('pieces').select('id').eq('project_id', p.id).limit(1);
-    if ((existingSheets && existingSheets.length) || (existingPieces && existingPieces.length)) continue;
-    const blob = /** @type {any} */ (p.ui_prefs);
-    const cl = (blob && blob.cutlist) || (blob && (blob.sheets || blob.pieces) ? blob : null);
-    if (!cl) continue;
-    const sheets = cl.sheets || [];
-    const pieces = cl.pieces || [];
-    if (sheets.length === 0 && pieces.length === 0) continue;
-    if (sheets.length) {
-      const sheetRows = sheets.map(/** @param {any} s @param {number} i */ (s, i) => ({
-        project_id: p.id, user_id: _userId, position: i,
-        name: s.name || 'Sheet',
-        w_mm: parseFloat(s.w) || 0,
-        h_mm: parseFloat(s.h) || 0,
-        qty: parseInt(s.qty, 10) || 1,
-        kerf_mm: parseFloat(s.kerf) || 3,
-        grain: s.grain || 'none',
-        color: s.color || null,
-        enabled: s.enabled !== false
-      }));
-      const { error } = await _db('sheets').insert(sheetRows);
-      if (error) { _migLog(log, sub, 'WARN', 'Sheets for "' + p.name + '": ' + error.message); continue; }
-      totalSheets += sheets.length;
-    }
-    if (pieces.length) {
-      const pieceRows = pieces.map(/** @param {any} pc @param {number} i */ (pc, i) => ({
-        project_id: p.id, user_id: _userId, position: i,
-        label: pc.label || 'Part',
-        w_mm: parseFloat(pc.w) || 0,
-        h_mm: parseFloat(pc.h) || 0,
-        qty: parseInt(pc.qty, 10) || 1,
-        grain: pc.grain || 'none',
-        material: pc.material || null,
-        notes: pc.notes || null,
-        color: pc.color || null,
-        enabled: pc.enabled !== false
-      }));
-      const { error } = await _db('pieces').insert(pieceRows);
-      if (error) { _migLog(log, sub, 'WARN', 'Pieces for "' + p.name + '": ' + error.message); continue; }
-      totalPieces += pieces.length;
-    }
-    projectsTouched++;
-  }
-  _migLog(log, sub, 'OK', 'Migrated ' + totalSheets + ' sheets + ' + totalPieces + ' pieces across ' + projectsTouched + ' projects', projectsTouched);
+  _migLog(log, sub, 'SKIP', 'Disabled in F5 — projects entity retired');
 }
 
 // ── cbLines ↔ quote_lines boundary converters ──
@@ -366,57 +318,14 @@ function _cbLineToRow(l, position, quoteId) {
 }
 
 // ── 6. CB projects -> projects + quotes + quote_lines ──
+// F5 (2026-05-13): legacy LS-to-DB CB-projects path neutered. With project_id
+// gone from quotes, the find-or-create-project layer no longer connects to
+// the new client-keyed quotes flow. Stragglers can re-enter their lines in
+// the new Cabinet Builder (client-keyed) directly.
 /** @param {MigLog} log */
 async function _migrateCBProjects(log) {
   const sub = 'cb_projects';
-  const projs = _migReadLS('pc_cq_projects') || [];
-  if (projs.length === 0) {
-    _migLog(log, sub, 'SKIP', 'No CB projects in localStorage');
-    return;
-  }
-  if (!_userId) return;
-  const uid = _userId;
-  let projectsCreated = 0, quotesCreated = 0, linesCreated = 0;
-  for (const cbp of projs) {
-    const name = cbp.name || cbp.projectName;
-    if (!name) continue;
-    // Find or create projects row
-    const { data: existing } = await _db('projects').select('id').eq('user_id', uid).eq('name', name);
-    /** @type {number | null} */
-    let projectId;
-    if (existing && existing.length > 0) {
-      projectId = existing[0].id;
-    } else {
-      const { data: created, error } = await _db('projects').insert([{ user_id: uid, name }]);
-      if (error) { _migLog(log, sub, 'WARN', 'Project create: ' + error.message); continue; }
-      projectId = (created && created[0]) ? created[0].id : null;
-      if (!projectId) continue;
-      projectsCreated++;
-    }
-    // Tag quotes with CB-source-id to avoid double-migration
-    const tag = '[CBMIG:' + cbp.id + ']';
-    const { data: existQ } = await _db('quotes').select('id,notes').eq('project_id', projectId).eq('user_id', uid);
-    let alreadyMigrated = (existQ || []).some(q => (q.notes || '').includes(tag));
-    if (alreadyMigrated) continue;
-    const { data: createdQ, error: qErr } = await _db('quotes').insert([{
-      user_id: uid, project_id: projectId,
-      notes: tag,
-      status: 'draft',
-      date: cbp.date || new Date().toLocaleDateString()
-    }]);
-    if (qErr) { _migLog(log, sub, 'WARN', 'Quote create for "' + name + '": ' + qErr.message); continue; }
-    const quoteId = (createdQ && createdQ[0]) ? createdQ[0].id : null;
-    if (!quoteId) continue;
-    quotesCreated++;
-    const lines = cbp.lines || [];
-    if (lines.length > 0) {
-      const lineRows = lines.map(/** @param {any} l @param {number} i */ (l, i) => _cbLineToRow(l, i, quoteId));
-      const { error: lErr } = await _db('quote_lines').insert(lineRows);
-      if (lErr) { _migLog(log, sub, 'WARN', 'Lines for "' + name + '": ' + lErr.message); continue; }
-      linesCreated += lines.length;
-    }
-  }
-  _migLog(log, sub, 'OK', 'Created ' + projectsCreated + ' projects, ' + quotesCreated + ' quotes, ' + linesCreated + ' quote_lines', projectsCreated + quotesCreated + linesCreated);
+  _migLog(log, sub, 'SKIP', 'Disabled in F5 — projects entity retired');
 }
 
 // ── 7. Saved quotes from pc_cq_saved ──

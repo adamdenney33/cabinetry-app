@@ -506,11 +506,10 @@
 
     <!-- RIGHT: Results -->
     <div class="cl-right">
-      <!-- Main content tabs -->
+      <!-- Main content tabs (F5: middle "Project" tab removed) -->
       <div style="display:flex;border-bottom:2px solid var(--border);flex-shrink:0">
-        <div id="cl-tab-layout"   onclick="switchCLMainView('layout')"   style="flex:1;padding:10px 16px;font-size:13px;font-weight:500;text-align:center;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-2px">Cut Layout</div>
-        <div id="cl-tab-cutlists" onclick="switchCLMainView('cutlists')" style="flex:1;padding:10px 16px;font-size:13px;font-weight:700;text-align:center;cursor:pointer;border-bottom:2px solid var(--accent);margin-bottom:-2px;color:var(--text)">Project</div>
-        <div id="cl-tab-library"  onclick="switchCLMainView('library')"  style="flex:1;padding:10px 16px;font-size:13px;font-weight:500;text-align:center;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-2px">Cut List Library</div>
+        <div id="cl-tab-layout"  onclick="switchCLMainView('layout')"  style="flex:1;padding:10px 16px;font-size:13px;font-weight:500;text-align:center;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-2px">Cut Layout</div>
+        <div id="cl-tab-library" onclick="switchCLMainView('library')" style="flex:1;padding:10px 16px;font-size:13px;font-weight:700;text-align:center;cursor:pointer;border-bottom:2px solid var(--accent);margin-bottom:-2px;color:var(--text)">Cut List Library</div>
       </div>
 
       <!-- Cut Layout view (existing toolbars + results) -->
@@ -548,11 +547,8 @@
         </div>
       </div>
 
-      <!-- Project Cut Lists view (default) -->
-      <div class="main-scroll" id="cl-view-cutlists" style="padding:20px;flex:1"></div>
-
-      <!-- Cabinet Library view -->
-      <div class="main-scroll" id="cl-view-library" style="padding:20px;flex:1;display:none"></div>
+      <!-- Cut List Library view (default after F5 — middle tab dropped) -->
+      <div class="main-scroll" id="cl-view-library" style="padding:20px;flex:1"></div>
     </div>
 
   </div>

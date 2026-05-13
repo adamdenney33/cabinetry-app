@@ -135,10 +135,12 @@ let cbEditingOriginalLines = null;
 /** @type {number|null} */
 let cbEditingOrderId = null;
 
-// Project-state tracking — mirrors cutlist's _clCurrentProjectId/_clDirty pattern.
+// Client-state tracking — F5: re-keyed from project_id to client_id.
+// _cbCurrentClientId scopes the active design canvas to a client; the
+// workspace quote is the most recent 'designing' status quote for this client.
 /** @type {number | null} */
-let _cbCurrentProjectId = null;
-let _cbCurrentProjectName = '';
+let _cbCurrentClientId = null;
+let _cbCurrentClientName = '';
 let _cbDirty = false;
 let _cbSuppressDirty = false;
 
@@ -282,40 +284,40 @@ function loadCBLines() {
   // readers can't accidentally pick up the orphan key.
   localStorage.removeItem('pc_cq_client_name');
   setTimeout(() => {
-    const pn = _byId('cb-project'); const saved = localStorage.getItem('pc_cq_project_name');
+    const pn = _byId('cb-client'); const saved = localStorage.getItem('pc_cq_client_name');
     if (pn && saved) /** @type {HTMLInputElement} */ (pn).value = saved;
   }, 100);
   const eqId = localStorage.getItem('pc_cb_editing_quote_id');
   if (eqId) cbEditingQuoteId = parseInt(eqId, 10);
 }
 function saveCBLines() {
-  const pn = _byId('cb-project');
-  if (pn) localStorage.setItem('pc_cq_project_name', /** @type {HTMLInputElement} */ (pn).value);
+  const pn = _byId('cb-client');
+  if (pn) localStorage.setItem('pc_cq_client_name', /** @type {HTMLInputElement} */ (pn).value);
   _scheduleCBLinesSync();
-  if (_cbCurrentProjectId && !_cbDirty && !_cbSuppressDirty && !cbEditingQuoteId) {
+  if (_cbCurrentClientId && !_cbDirty && !_cbSuppressDirty && !cbEditingQuoteId) {
     _setCbDirty(true);
   }
 }
 
-function _getCBProjectId() {
+function _getCBClientId() {
   if (!_userId) return null;
-  if (_cbCurrentProjectId) return _cbCurrentProjectId;
-  const pn = _byId('cb-project');
+  if (_cbCurrentClientId) return _cbCurrentClientId;
+  const pn = _byId('cb-client');
   if (!pn) return null;
   const name = pn.value.trim();
   if (!name) return null;
-  const proj = projects.find(p => p.name === name);
-  return proj ? proj.id : null;
+  const cli = clients.find(c => c.name === name);
+  return cli ? cli.id : null;
 }
 
-async function _ensureCBProject() {
-  const projId = _getCBProjectId();
-  if (projId) return projId;
+async function _ensureCBClient() {
+  const cliId = _getCBClientId();
+  if (cliId) return cliId;
   if (!_userId) { _toast('Sign in to save cabinets', 'error'); return null; }
-  const name = _cbCurrentProjectName || (/** @type {HTMLInputElement|null} */ (_byId('cb-project'))?.value?.trim() || '');
-  if (!name) { _toast('Pick a project first', 'error'); return null; }
-  const newId = await resolveProject(name, null);
-  if (newId) _toast('Project "' + name + '" created', 'success');
+  const name = _cbCurrentClientName || (/** @type {HTMLInputElement|null} */ (_byId('cb-client'))?.value?.trim() || '');
+  if (!name) { _toast('Pick a client first', 'error'); return null; }
+  const newId = await resolveClient(name);
+  if (newId) _toast('Client "' + name + '" created', 'success');
   return newId;
 }
 
@@ -344,9 +346,9 @@ async function _syncCBLinesToDB() {
     } else if (cbEditingQuoteId) {
       await _syncCBLinesToQuote(cbEditingQuoteId);
     } else {
-      const projectId = _getCBProjectId();
-      if (projectId) {
-        const draft = await _findOrCreateDraftQuote(projectId);
+      const clientId = _getCBClientId();
+      if (clientId) {
+        const draft = await _findOrCreateDraftQuote(clientId);
         if (draft) {
           // Only delete cabinet-kind rows; preserve any item/labour lines added
           // directly in the quote popup.
@@ -447,18 +449,20 @@ async function _loadCBLinesFromDB() {
     localStorage.removeItem('pc_cb_editing_quote_id');
     cbEditingQuoteId = null;
   }
-  const savedName = localStorage.getItem('pc_cq_project_name');
+  // F5: localStorage workspace key migrated from project name to client name.
+  const savedName = localStorage.getItem('pc_cq_client_name') || localStorage.getItem('pc_cq_client_name');
   if (!savedName) return;
-  const proj = projects.find(p => p.name === savedName);
-  if (!proj) {
-    localStorage.removeItem('pc_cq_project_name');
-    _cbCurrentProjectId = null;
-    _cbCurrentProjectName = '';
+  const cli = clients.find(c => c.name === savedName);
+  if (!cli) {
+    localStorage.removeItem('pc_cq_client_name');
+    localStorage.removeItem('pc_cq_client_name');
+    _cbCurrentClientId = null;
+    _cbCurrentClientName = '';
     return;
   }
-  _cbCurrentProjectId = proj.id;
-  _cbCurrentProjectName = proj.name;
-  const draft = quotes.find(q => q.project_id === proj.id && _isDraftQuote(q));
+  _cbCurrentClientId = cli.id;
+  _cbCurrentClientName = cli.name;
+  const draft = quotes.find(q => q.client_id === cli.id && _isDraftQuote(q));
   if (!draft) {
     if (typeof renderCBPanel === 'function') renderCBPanel();
     return;
@@ -734,24 +738,24 @@ const _PICKER_ICON_ORDER = '<svg viewBox="0 0 24 24" fill="none" stroke="current
 const _PICKER_ICON_CABINET = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>';
 
 /** Entry point for the "Send to Quote" button. If existing customer-facing
- *  quotes exist for the current project, prompts the user to pick one (or
+ *  quotes exist for the current client, prompts the user to pick one (or
  *  create a new quote). If none exist, creates a new quote directly. */
 function cbSendToQuote() {
   if (!cbLines.length) { _toast('Add cabinets first.', 'error'); return; }
   if (!_userId) { _toast('Sign in to save', 'error'); return; }
 
-  const projName = _cbCurrentProjectName || (/** @type {HTMLInputElement|null} */ (_byId('cb-project'))?.value?.trim() || '');
-  const proj = _cbCurrentProjectId
-    ? projects.find(p => p.id === _cbCurrentProjectId)
-    : projects.find(p => p.name === projName);
-  const existing = proj
-    ? quotes.filter(q => q.project_id === proj.id && !_isDraftQuote(q))
+  const cliName = _cbCurrentClientName || (/** @type {HTMLInputElement|null} */ (_byId('cb-client'))?.value?.trim() || '');
+  const cli = _cbCurrentClientId
+    ? clients.find(c => c.id === _cbCurrentClientId)
+    : clients.find(c => c.name === cliName);
+  const existing = cli
+    ? quotes.filter(q => q.client_id === cli.id && !_isDraftQuote(q))
     : [];
 
   if (existing.length === 0) { cbCreateQuoteFromDraft(); return; }
 
   const items = existing.map(q => ({
-    title: quoteClient(q) || 'No client',
+    title: q.name || quoteClient(q) || 'No name',
     icon: _PICKER_ICON_QUOTE,
     metaPills: [{ label: q.status || 'draft', tone: q.status || 'draft' }],
     metaText: q.date ? '· ' + q.date : '',
@@ -760,7 +764,7 @@ function cbSendToQuote() {
 
   _openPickerPopup({
     title: 'Send to Quote',
-    hint: `${existing.length} existing quote${existing.length===1?'':'s'} for &ldquo;${_escHtml(projName)}&rdquo;. Choose one to update, or create a new quote.`,
+    hint: `${existing.length} existing quote${existing.length===1?'':'s'} for &ldquo;${_escHtml(cliName)}&rdquo;. Choose one to update, or create a new quote.`,
     items,
     createLabel: '+ Create New Quote',
     onCreate: '_closePopup();cbCreateQuoteFromDraft()',
@@ -786,17 +790,16 @@ async function cbCreateQuoteFromDraft() {
   // Free-tier cap: count only customer-facing quotes (drafts don't count).
   const customerQuotes = quotes.filter(q => typeof _isDraftQuote === 'function' ? !_isDraftQuote(q) : true);
   if (!_enforceFreeLimit('quotes', customerQuotes.length)) return;
-  const projectId = await _ensureCBProject();
-  if (!projectId) return;
+  const clientId = await _ensureCBClient();
+  if (!clientId) return;
 
-  const clientId = _cbClientIdForProject();
-  const projName = _cbCurrentProjectName || (/** @type {HTMLInputElement|null} */ (_byId('cb-project'))?.value?.trim() || '');
+  const cliName = _cbCurrentClientName || (/** @type {HTMLInputElement|null} */ (_byId('cb-client'))?.value?.trim() || '');
 
   // Line items are stored as real quote_lines rows; no need to mirror the
   // cabinet specs into a notes blob (the popup renders rows directly).
   /** @type {any} */
   const insertBody = {
-    user_id: _userId, project_id: projectId, client_id: clientId,
+    user_id: _userId, client_id: clientId,
     markup: cbSettings.markup ?? 0, tax: cbSettings.tax ?? 0,
     status: 'draft', date: new Date().toISOString().slice(0, 10), notes: ''
   };
@@ -809,7 +812,7 @@ async function cbCreateQuoteFromDraft() {
   if (lineRows.length) await _db('quote_lines').insert(lineRows);
   if (typeof _refreshQuoteTotals === 'function') await _refreshQuoteTotals(data.id);
 
-  _toast('Quote created for "' + projName + '"', 'success');
+  _toast('Quote created for "' + cliName + '"', 'success');
   _setCbDirty(false);
   if (typeof renderQuoteMain === 'function') renderQuoteMain();
   renderCBPanel();
@@ -825,12 +828,12 @@ function cbSendToOrder() {
   if (!cbLines.length) { _toast('Add cabinets first.', 'error'); return; }
   if (!_userId) { _toast('Sign in to save', 'error'); return; }
 
-  const projName = _cbCurrentProjectName || (/** @type {HTMLInputElement|null} */ (_byId('cb-project'))?.value?.trim() || '');
-  const proj = _cbCurrentProjectId
-    ? projects.find(p => p.id === _cbCurrentProjectId)
-    : projects.find(p => p.name === projName);
-  const existing = proj
-    ? orders.filter(o => o.project_id === proj.id)
+  const cliName = _cbCurrentClientName || (/** @type {HTMLInputElement|null} */ (_byId('cb-client'))?.value?.trim() || '');
+  const cli = _cbCurrentClientId
+    ? clients.find(c => c.id === _cbCurrentClientId)
+    : clients.find(c => c.name === cliName);
+  const existing = cli
+    ? orders.filter(o => o.client_id === cli.id)
     : [];
 
   if (existing.length === 0) { cbCreateOrderFromDraft(); return; }
@@ -848,7 +851,7 @@ function cbSendToOrder() {
 
   _openPickerPopup({
     title: 'Send to Order',
-    hint: `${existing.length} existing order${existing.length===1?'':'s'} for &ldquo;${_escHtml(projName)}&rdquo;. Choose one to update, or create a new order.`,
+    hint: `${existing.length} existing order${existing.length===1?'':'s'} for &ldquo;${_escHtml(cliName)}&rdquo;. Choose one to update, or create a new order.`,
     items,
     createLabel: '+ Create New Order',
     onCreate: '_closePopup();cbCreateOrderFromDraft()',
@@ -871,15 +874,14 @@ async function cbCreateOrderFromDraft() {
   if (!cbLines.length) { _toast('Add cabinets first.', 'error'); return; }
   if (!_userId) { _toast('Sign in to create an order', 'error'); return; }
   if (!_enforceFreeLimit('orders', orders.length)) return;
-  const projectId = await _ensureCBProject();
-  if (!projectId) return;
+  const clientId = await _ensureCBClient();
+  if (!clientId) return;
 
-  const clientId = _cbClientIdForProject();
-  const projName = _cbCurrentProjectName || (/** @type {HTMLInputElement|null} */ (_byId('cb-project'))?.value?.trim() || '');
+  const cliName = _cbCurrentClientName || (/** @type {HTMLInputElement|null} */ (_byId('cb-client'))?.value?.trim() || '');
 
   /** @type {any} */
   const insertBody = {
-    user_id: _userId, project_id: projectId,
+    user_id: _userId, client_id: clientId,
     value: 0,
     status: 'quote',
     markup: cbSettings.markup ?? 0,
@@ -887,14 +889,13 @@ async function cbCreateOrderFromDraft() {
     due: 'TBD',
     order_number: typeof _nextOrderNumber === 'function' ? _nextOrderNumber() : null,
   };
-  if (clientId) insertBody.client_id = clientId;
   const { data, error } = await _dbInsertSafe('orders', insertBody);
   if (error || !data) { _toast('Could not create order: ' + (error?.message || ''), 'error'); return; }
   orders.unshift(data);
 
   await _syncCBLinesToOrder(data.id);
 
-  _toast('Order created for "' + projName + '"', 'success');
+  _toast('Order created for "' + cliName + '"', 'success');
   if (typeof _oBadge === 'function') _oBadge();
   if (typeof renderOrdersMain === 'function') renderOrdersMain();
   renderCBPanel();
@@ -925,8 +926,8 @@ async function editQuoteInCB(quoteId) {
   localStorage.setItem('pc_cb_editing_quote_id', String(quoteId));
 
   const projName = quoteProject(q);
-  const pn = _byId('cb-project'); if (pn) /** @type {HTMLInputElement} */ (pn).value = projName;
-  if (projName) localStorage.setItem('pc_cq_project_name', projName);
+  const pn = _byId('cb-client'); if (pn) /** @type {HTMLInputElement} */ (pn).value = projName;
+  if (projName) localStorage.setItem('pc_cq_client_name', projName);
 
   cbEditingLineIdx = -1;
   cbScratchpad = null;
@@ -977,8 +978,8 @@ async function editOrderInCB(orderId) {
   localStorage.removeItem('pc_cb_editing_quote_id');
 
   const projName = (typeof orderProject === 'function') ? orderProject(o) : '';
-  const pn = _byId('cb-project'); if (pn) /** @type {HTMLInputElement} */ (pn).value = projName;
-  if (projName) localStorage.setItem('pc_cq_project_name', projName);
+  const pn = _byId('cb-client'); if (pn) /** @type {HTMLInputElement} */ (pn).value = projName;
+  if (projName) localStorage.setItem('pc_cq_client_name', projName);
 
   cbEditingLineIdx = -1;
   cbScratchpad = null;
@@ -1039,7 +1040,7 @@ async function _cbApplyToQuote(_qi) { return; }
 
 function cbConvertToOrder() {
   const client = _cbClientNameForProject() || 'Cabinet Client';
-  const project = /** @type {HTMLInputElement|null} */ (_byId('cb-project'))?.value?.trim() || 'Cabinet Project';
+  const project = /** @type {HTMLInputElement|null} */ (_byId('cb-client'))?.value?.trim() || 'Cabinet Project';
   if (!cbLines.length) { _toast('Add cabinet lines first.', 'error'); return; }
   const grandSubtotal = cbLines.reduce((s, l) => s + calcCBLine(l).lineSubtotal, 0);
   /** @type {any} */
@@ -1075,7 +1076,7 @@ function copyCBSummary() {
   if (!cbLines.length) { _toast('No items to copy.', 'error'); return; }
   const cur = window.currency;
   const client = _cbClientNameForProject();
-  const project = /** @type {HTMLInputElement|null} */ (_byId('cb-project'))?.value?.trim() || '';
+  const project = /** @type {HTMLInputElement|null} */ (_byId('cb-client'))?.value?.trim() || '';
   let grandSub = 0;
   const lineTexts = cbLines.map((line, i) => {
     const c = calcCBLine(line);
@@ -1104,31 +1105,22 @@ function copyCBSummary() {
 // inputs on the quote sidebar. Use cbCreateQuoteFromDraft() to materialise
 // the current cabinet lines as a real quote.)
 
-// ── PROJECT-STATE TRACKING ──
-// Client info is derived from the picked project; cabinet builder no longer
-// has its own client input. These helpers walk projects → clients to recover
-// the legacy "client" string/id used by quote, order, PDF and copy paths.
+// ── CLIENT-STATE TRACKING (F5: was project-keyed) ──
+// The cabinet builder's workspace is keyed to the active client directly.
+// These helpers just resolve _cbCurrentClientId (or the input value) to a
+// client name / id, kept under their legacy names for caller back-compat.
 function _cbClientNameForProject() {
-  let proj = _cbCurrentProjectId
-    ? projects.find(p => p.id === _cbCurrentProjectId)
-    : null;
-  if (!proj) {
-    const projName = /** @type {HTMLInputElement|null} */ (_byId('cb-project'))?.value?.trim() || '';
-    proj = projects.find(p => p.name === projName);
-  }
-  if (!proj?.client_id) return '';
-  return clients.find(c => c.id === proj.client_id)?.name || '';
+  if (_cbCurrentClientName) return _cbCurrentClientName;
+  const name = /** @type {HTMLInputElement|null} */ (_byId('cb-client'))?.value?.trim() || '';
+  return name;
 }
 
 function _cbClientIdForProject() {
-  let proj = _cbCurrentProjectId
-    ? projects.find(p => p.id === _cbCurrentProjectId)
-    : null;
-  if (!proj) {
-    const projName = /** @type {HTMLInputElement|null} */ (_byId('cb-project'))?.value?.trim() || '';
-    proj = projects.find(p => p.name === projName);
-  }
-  return proj?.client_id ?? null;
+  if (_cbCurrentClientId) return _cbCurrentClientId;
+  const name = /** @type {HTMLInputElement|null} */ (_byId('cb-client'))?.value?.trim() || '';
+  if (!name) return null;
+  const cli = clients.find(c => c.name === name);
+  return cli ? cli.id : null;
 }
 
 /** @param {boolean} dirty */
@@ -1161,10 +1153,10 @@ function _cbRenderContext() {
   const tabsWrap = _byId('cb-tabs-wrap');
   const sb = _byId('cb-sidebar');
   if (!ctx) return;
-  if (!_cbCurrentProjectId) {
-    // Library editing works without a project — when the user is mid-edit,
-    // surface a project-style header reading "Cabinet Library" with the
-    // cabinet icon (item 8). The sidebar editor stays open.
+  if (!_cbCurrentClientId) {
+    // Library editing works without a client — when the user is mid-edit,
+    // surface a header reading "Cabinet Library" with the cabinet icon.
+    // The sidebar editor stays open.
     const editingLib = (typeof cbEditingLibraryIdx !== 'undefined' && cbEditingLibraryIdx >= 0);
     if (tabsWrap) tabsWrap.style.display = 'none';
     if (sb) sb.style.display = editingLib ? '' : 'none';
@@ -1176,32 +1168,44 @@ function _cbRenderContext() {
       });
       return;
     }
-    const recents = (typeof projects !== 'undefined' ? projects : [])
+    // Empty state — pick a client to start designing.
+    const recents = (typeof clients !== 'undefined' ? clients : [])
       .slice()
       .sort(/** @param {any} a @param {any} b */ (a, b) => {
-        const av = a.updated_at ? +new Date(a.updated_at) : 0;
-        const bv = b.updated_at ? +new Date(b.updated_at) : 0;
+        const av = a.updated_at ? +new Date(a.updated_at) : (a.id || 0);
+        const bv = b.updated_at ? +new Date(b.updated_at) : (b.id || 0);
         return bv - av;
-      });
-    ctx.innerHTML = _renderProjectEmpty({
-      title: 'Cabinet Builder',
-      subtitle: 'Pick a project to start designing cabinets.',
-      pickFnName: '_cbPickProject',
-      pickerInputId: 'cb-empty-picker',
-      pickerSuggestId: 'cb-empty-suggest',
-      pickerSuggestFn: '_smartCBEmptyProjectSuggest',
-      recentProjects: recents,
-    });
+      })
+      .slice(0, 5);
+    ctx.innerHTML = `<div class="project-empty">
+      <svg class="pe-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+      <h3>Cabinet Builder</h3>
+      <p>Pick a client to start designing cabinets.</p>
+      <div style="position:relative;text-align:left">
+        <div class="smart-input-wrap">
+          <input type="text" id="cb-empty-picker" placeholder="Search or add client..." autocomplete="off"
+            oninput="_smartCBEmptyClientSuggest(this,'cb-empty-suggest')"
+            onfocus="_smartCBEmptyClientSuggest(this,'cb-empty-suggest')"
+            onblur="setTimeout(()=>{const b=document.getElementById('cb-empty-suggest'); if(b)b.style.display='none'},150)">
+          <div class="smart-input-add" onclick="_openNewClientPopup('cb-empty-picker')" title="New client">+</div>
+        </div>
+        <div id="cb-empty-suggest" class="client-suggest-list" style="display:none"></div>
+      </div>
+      ${recents.length ? `<div class="pe-recent-list">
+        <div class="pe-recent-label">Recent clients</div>
+        ${recents.map(/** @param {any} c */ c => `<div class="pe-recent-item" onclick="_cbPickClient(${c.id})">
+          <span class="pe-ri-icon">${_TYPE_ICON_CLIENT}</span>
+          <span>${_escHtml(c.name)}</span>
+        </div>`).join('')}
+      </div>` : ''}
+    </div>`;
     return;
   }
   if (tabsWrap) tabsWrap.style.display = '';
   if (sb) sb.style.display = '';
-  const _cbProj = (typeof projects !== 'undefined' ? projects : []).find(/** @param {any} p */ p => p.id === _cbCurrentProjectId);
-  const _cbCName = (_cbProj && _cbProj.client_id) ? ((typeof clients !== 'undefined' && clients ? clients : []).find(/** @param {any} c */ c => c.id === _cbProj.client_id)?.name || '') : '';
   ctx.innerHTML = _renderProjectHeader('cabinet', {
-    name: _cbCurrentProjectName,
-    exitFn: '_exitProject_cabinet',
-    clientName: _cbCName || undefined,
+    name: _cbCurrentClientName,
+    exitFn: '_exitClient_cabinet',
   });
   // If we entered with dirty=true, surface the pill state immediately.
   if (typeof _setSaveStatus === 'function') {
@@ -1257,9 +1261,9 @@ function _cbRenderCabinetSubGate() {
 }
 /** @type {any} */ (window)._cbRenderCabinetSubGate = _cbRenderCabinetSubGate;
 
-/** Strategy 2: clear the active Cabinet Builder project and return to empty state. */
-function _exitProject_cabinet() {
-  _cbConfirmDiscardIfDirty('exit project', () => {
+/** Strategy 2: clear the active Cabinet Builder client and return to empty state. */
+function _exitClient_cabinet() {
+  _cbConfirmDiscardIfDirty('exit client', () => {
     _cbSuppressDirty = true;
     cbLines = [];
     cbNextId = 1;
@@ -1268,17 +1272,17 @@ function _exitProject_cabinet() {
     cbEditingQuoteId = null;
     cbEditingOriginalLines = null;
     localStorage.removeItem('pc_cq_lines');
-    localStorage.removeItem('pc_cq_project_name');
+    localStorage.removeItem('pc_cq_client_name');
     localStorage.removeItem('pc_cb_editing_quote_id');
-    _cbCurrentProjectId = null;
-    _cbCurrentProjectName = '';
+    _cbCurrentClientId = null;
+    _cbCurrentClientName = '';
     _setCbDirty(false);
     _cbSuppressDirty = false;
     if (typeof renderCBPanel === 'function') renderCBPanel();
     _cbRenderContext();
   });
 }
-/** @type {any} */ (window)._exitProject_cabinet = _exitProject_cabinet;
+/** @type {any} */ (window)._exitClient_cabinet = _exitClient_cabinet;
 
 /** @param {string} actionLabel @param {() => void} proceed */
 function _cbConfirmDiscardIfDirty(actionLabel, proceed) {
@@ -1289,8 +1293,8 @@ function _cbConfirmDiscardIfDirty(actionLabel, proceed) {
   }
 }
 
-function _cbNewProject() {
-  _cbConfirmDiscardIfDirty('start a new project', () => {
+function _cbNewClient() {
+  _cbConfirmDiscardIfDirty('start a new design', () => {
     _cbSuppressDirty = true;
     cbLines = [];
     cbNextId = 1;
@@ -1299,76 +1303,79 @@ function _cbNewProject() {
     cbEditingQuoteId = null;
     cbEditingOriginalLines = null;
     localStorage.removeItem('pc_cq_lines');
-    localStorage.removeItem('pc_cq_project_name');
+    localStorage.removeItem('pc_cq_client_name');
     localStorage.removeItem('pc_cb_editing_quote_id');
-    _cbCurrentProjectId = null;
-    _cbCurrentProjectName = '';
-    const pn = _byId('cb-project');
+    _cbCurrentClientId = null;
+    _cbCurrentClientName = '';
+    const pn = _byId('cb-client');
     if (pn) /** @type {HTMLInputElement} */ (pn).value = '';
     _setCbDirty(false);
     _cbSuppressDirty = false;
     if (typeof renderCBPanel === 'function') renderCBPanel();
-    _openNewProjectPopup('cb-project');
+    _openNewClientPopup('cb-client');
   });
 }
 
-/** @param {number} projectId @param {string} projectName */
-function _cbPickProject(projectId, projectName) {
-  _cbConfirmDiscardIfDirty(`load "${projectName}"`, () => {
-    _loadCBProjectById(projectId, projectName);
+/** @param {number} clientId */
+function _cbPickClient(clientId) {
+  const cli = clients.find(c => c.id === clientId);
+  if (!cli) return;
+  _cbConfirmDiscardIfDirty(`load "${cli.name}"`, () => {
+    _loadCBClientById(clientId, cli.name);
   });
 }
+/** @type {any} */ (window)._cbPickClient = _cbPickClient;
 
-/** Smart-suggest for the Cabinet Builder gated-entry project picker.
+/** Smart-suggest for the Cabinet Builder gated-entry client picker.
  *  @param {HTMLInputElement} input @param {string} boxId */
-function _smartCBEmptyProjectSuggest(input, boxId) {
+function _smartCBEmptyClientSuggest(input, boxId) {
   const val = input.value.toLowerCase().trim();
   const box = _byId(boxId);
   if (!box) return;
   if (typeof _posSuggest === 'function') _posSuggest(input, box);
-  const matches = projects
-    .filter(/** @param {any} p */ p => !val || p.name.toLowerCase().includes(val))
+  const matches = clients
+    .filter(/** @param {any} c */ c => !val || c.name.toLowerCase().includes(val))
     .slice(0, 8);
   /** @param {string} s */
   const esc = s => _escHtml(s).replace(/'/g, '&#39;');
   let html = '';
-  for (const p of matches) {
-    const cName = p.client_id ? (clients.find(/** @param {any} c */ c => c.id === p.client_id) || /** @type {any} */ ({})).name || '' : '';
-    html += `<div class="client-suggest-item" onmousedown="_cbPickProject(${p.id},'${esc(p.name)}')">
-      <span class="suggest-icon">P</span>
-      <span class="csi-name">${esc(p.name)}</span>
-      ${cName ? `<span class="csi-meta">${esc(cName)}</span>` : ''}
+  for (const c of matches) {
+    const designingCount = quotes.filter(/** @param {any} q */ q => q.client_id === c.id && _isDraftQuote(q)).length;
+    html += `<div class="client-suggest-item" onmousedown="_cbPickClient(${c.id})">
+      <span class="suggest-icon">${esc(c.name).charAt(0).toUpperCase()}</span>
+      <span class="csi-name">${esc(c.name)}</span>
+      ${designingCount ? `<span class="csi-meta">${designingCount} draft${designingCount!==1?'s':''}</span>` : ''}
     </div>`;
   }
-  if (val && !matches.some(/** @param {any} p */ p => p.name.toLowerCase() === val)) {
-    html += `<div class="client-suggest-item client-suggest-add" onmousedown="_openNewProjectPopup('cb-empty-picker')">
+  if (val && !matches.some(/** @param {any} c */ c => c.name.toLowerCase() === val)) {
+    html += `<div class="client-suggest-item client-suggest-add" onmousedown="_openNewClientPopup('cb-empty-picker')">
       <span class="csi-icon">+</span>
-      <span class="csi-name">Create project "${esc(input.value.trim())}"</span>
+      <span class="csi-name">Create client "${esc(input.value.trim())}"</span>
     </div>`;
   }
-  if (!html) html = '<div class="client-suggest-empty">No projects yet — click + to create one.</div>';
+  if (!html) html = '<div class="client-suggest-empty">No clients yet — click + to create one.</div>';
   box.innerHTML = html;
   box.style.display = 'block';
 }
-/** @type {any} */ (window)._smartCBEmptyProjectSuggest = _smartCBEmptyProjectSuggest;
+/** @type {any} */ (window)._smartCBEmptyClientSuggest = _smartCBEmptyClientSuggest;
 
 /** @param {string} name */
-async function _cbSaveProjectByName(name) {
+async function _cbSaveClientByName(name) {
   if (!name) return;
   if (!_userId) { _toast('Sign in to save', 'error'); return; }
-  const existing = projects.find(p => p.name === name);
-  let projectId = existing ? existing.id : null;
-  if (!projectId) {
-    projectId = await resolveProject(name, null);
-    if (!projectId) { _toast('Could not save project', 'error'); return; }
+  const existing = clients.find(c => c.name === name);
+  let clientId = existing ? existing.id : null;
+  if (!clientId) {
+    clientId = await resolveClient(name);
+    if (!clientId) { _toast('Could not save client', 'error'); return; }
   }
-  _cbCurrentProjectId = projectId;
-  _cbCurrentProjectName = name;
-  const pn = _byId('cb-project');
+  _cbCurrentClientId = clientId;
+  _cbCurrentClientName = name;
+  const pn = _byId('cb-client');
   if (pn) /** @type {HTMLInputElement} */ (pn).value = name;
-  localStorage.setItem('pc_cq_project_name', name);
+  localStorage.setItem('pc_cq_client_name', name);
   try {
-    const draft = await _findOrCreateDraftQuote(projectId);
+    const draft = await _findOrCreateDraftQuote(clientId);
     if (draft) {
       await _db('quote_lines').delete().eq('quote_id', draft.id).eq('line_kind', 'cabinet');
       if (cbLines.length) {
@@ -1386,8 +1393,8 @@ async function _cbSaveProjectByName(name) {
   if (typeof renderCBPanel === 'function') renderCBPanel();
 }
 
-/** @param {number} projectId @param {string} projectName */
-async function _loadCBProjectById(projectId, projectName) {
+/** @param {number} clientId @param {string} clientName */
+async function _loadCBClientById(clientId, clientName) {
   if (_cbLinesSyncTimer) { clearTimeout(_cbLinesSyncTimer); _cbLinesSyncTimer = null; }
   _cbSuppressDirty = true;
   cbEditingQuoteId = null;
@@ -1398,7 +1405,11 @@ async function _loadCBProjectById(projectId, projectName) {
   cbScratchpad = null;
   cbEditingLineIdx = -1;
 
-  const draft = quotes.find(q => q.project_id === projectId && _isDraftQuote(q));
+  // Pick the most-recent designing quote for this client (mirror _findOrCreateDraftQuote).
+  const drafts = quotes
+    .filter(q => q.client_id === clientId && _isDraftQuote(q))
+    .sort((a, b) => (+new Date(b.updated_at || b.created_at || 0)) - (+new Date(a.updated_at || a.created_at || 0)));
+  const draft = drafts[0];
   if (draft) {
     try {
       const { data: lines } = await _db('quote_lines')
@@ -1412,15 +1423,15 @@ async function _loadCBProjectById(projectId, projectName) {
         cbNextId = cbLines.length + 1;
       }
     } catch (e) {
-      console.warn('[cb load-project]', (/** @type {any} */ (e)).message || e);
+      console.warn('[cb load-client]', (/** @type {any} */ (e)).message || e);
     }
   }
 
-  _cbCurrentProjectId = projectId;
-  _cbCurrentProjectName = projectName;
-  const pn = _byId('cb-project');
-  if (pn) /** @type {HTMLInputElement} */ (pn).value = projectName;
-  localStorage.setItem('pc_cq_project_name', projectName);
+  _cbCurrentClientId = clientId;
+  _cbCurrentClientName = clientName;
+  const pn = _byId('cb-client');
+  if (pn) /** @type {HTMLInputElement} */ (pn).value = clientName;
+  localStorage.setItem('pc_cq_client_name', clientName);
   localStorage.removeItem('pc_cq_lines');
   _setCbDirty(false);
   _cbSuppressDirty = false;

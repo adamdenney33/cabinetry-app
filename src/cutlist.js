@@ -71,7 +71,7 @@ let _clCurrentCutlistId = null;
 let _clCurrentCutlistName = '';
 let _clDirty = false;
 /** @type {string} */
-let _clMainView = 'cutlists';
+let _clMainView = 'library';
 
 /** Persist the cutlist editor's open context so refresh can restore it. */
 function _persistCutlistCtx() {
@@ -917,16 +917,8 @@ function _clScheduleAutosave() {
 
 async function _clRunAutosave() {
   if (!_userId) return;
-  // Project-scoped cut list — reuse the existing save path.
-  if (_clCurrentProjectId && _clCurrentProjectName) {
-    /** @type {any} */ (window)._clSaveProjectByName?.(
-      _clCurrentProjectName,
-      { cutlistName: _clCurrentCutlistName }
-    );
-    return;
-  }
-  // Library cut list — direct write to the cutlists row, then re-sync children
-  // via delete-then-insert (mirrors how _clSaveProjectByName persists rows).
+  // Post-F5: every cut list is its own row (no project wrapper). Direct
+  // write to the cutlists row, then re-sync sheets/pieces/edge_bands children.
   if (_clCurrentCutlistId) {
     try {
       await _db('cutlists').update(/** @type {any} */ ({
@@ -938,7 +930,7 @@ async function _clRunAutosave() {
       await _db('edge_bands').delete().eq('cutlist_id', _clCurrentCutlistId);
       if (pieces.length) {
         const rows = pieces.map((p, i) => /** @type {any} */ ({
-          user_id: _userId, project_id: null, cutlist_id: _clCurrentCutlistId,
+          user_id: _userId, cutlist_id: _clCurrentCutlistId,
           label: p.label || '', w_mm: p.w, h_mm: p.h, qty: p.qty || 1,
           grain: p.grain || 'none', material: p.material || '', notes: p.notes || '',
           enabled: p.enabled !== false, color: p.color, position: i
@@ -947,7 +939,7 @@ async function _clRunAutosave() {
       }
       if (sheets.length) {
         const rows = sheets.map((s, i) => /** @type {any} */ ({
-          user_id: _userId, project_id: null, cutlist_id: _clCurrentCutlistId,
+          user_id: _userId, cutlist_id: _clCurrentCutlistId,
           name: s.name || 'Sheet', w_mm: s.w, h_mm: s.h, qty: s.qty || 1,
           grain: s.grain || 'none', kerf_mm: s.kerf || 3,
           enabled: s.enabled !== false, color: s.color, position: i
@@ -975,7 +967,7 @@ function _clRenderContext() {
   _persistCutlistCtx();
   // Render whatever main-view tab is currently active (default: cutlists).
   // Idempotent: switchCLMainView keeps display state in sync each call.
-  if (typeof switchCLMainView === 'function') switchCLMainView(_clMainView || 'cutlists');
+  if (typeof switchCLMainView === 'function') switchCLMainView(_clMainView || 'library');
   const ctx = _byId('cl-context');
   const scroll = _byId('cl-scroll-body');
   const actionBar = _byId('cl-action-bar');
@@ -1074,7 +1066,8 @@ function _clSyncDrillInputs() {
 /** @type {any} */ (window)._clSyncDrillInputs = _clSyncDrillInputs;
 
 /** Render the cut list sub-gate (no cut list open) into #cl-sub-gate: shows
- *  "+ Add Cut List" + recent cut lists for the active project. */
+ *  "+ Add Cut List" + recent cut lists. Post-F5: no project filter; RLS bounds
+ *  to the current user. */
 async function _clRenderCutlistSubGate() {
   const el = _byId('cl-sub-gate');
   if (!el) return;
@@ -1083,7 +1076,6 @@ async function _clRenderCutlistSubGate() {
   try {
     const { data } = await _db('cutlists')
       .select('id, name, updated_at')
-      .eq('project_id', _clCurrentProjectId)
       .order('updated_at', { ascending: false });
     rows = /** @type {any[]} */ (data || []);
   } catch (e) { rows = []; }
@@ -1096,7 +1088,7 @@ async function _clRenderCutlistSubGate() {
   el.innerHTML = _renderListEmpty({
     iconSvg: '<svg class="pe-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12.00 1.70 L12.90 3.45 L15.94 2.48 L16.10 4.44 L19.28 4.72 L18.68 6.59 L21.52 8.06 L20.25 9.56 L22.30 12.00 L20.55 12.90 L21.52 15.94 L19.56 16.10 L19.28 19.28 L17.41 18.68 L15.94 21.52 L14.44 20.25 L12.00 22.30 L11.10 20.55 L8.06 21.52 L7.90 19.56 L4.72 19.28 L5.32 17.41 L2.48 15.94 L3.75 14.44 L1.70 12.00 L3.45 11.10 L2.48 8.06 L4.44 7.90 L4.72 4.72 L6.59 5.32 L8.06 2.48 L9.56 3.75 Z"/><circle cx="12" cy="12" r="1.5"/></svg>',
     title: 'Cut Lists',
-    subtitle: 'Add a cut list for this project. New cut lists autosave as you edit.',
+    subtitle: 'Add a cut list. New cut lists autosave as you edit.',
     btnLabel: '+ Add Cut List',
     btnOnclick: '_clStartNewCutlist()',
     recentItems: recents,
@@ -1191,17 +1183,14 @@ function _clExitCutlist() {
 }
 /** @type {any} */ (window)._clExitCutlist = _clExitCutlist;
 
-/** Compute the next sequential "Cutlist N" name for a given scope.
- *  When projectId is null, scopes to library cutlists (project_id IS NULL).
- *  Falls back to "Cutlist 1" if the lookup fails or returns no rows.
- *  @param {number|null} projectId
+/** Compute the next sequential "Cut List N" name across the user's cutlists.
+ *  Post-F5: no project scope — just walks the user's cutlists (RLS bounds them).
+ *  Falls back to "Cut List 1" if the lookup fails or returns no rows.
+ *  @param {number|null} _scopeId unused — kept for caller back-compat
  *  @returns {Promise<string>} */
-async function _clNextCutlistName(projectId) {
+async function _clNextCutlistName(_scopeId) {
   try {
-    let q = _db('cutlists').select('name');
-    if (projectId == null) q = q.is('project_id', null);
-    else q = q.eq('project_id', projectId);
-    const { data } = await q;
+    const { data } = await _db('cutlists').select('name');
     let max = 0;
     for (const r of (data || [])) {
       const m = String(/** @type {any} */ (r).name || '').match(/(\d+)/);
@@ -1221,14 +1210,12 @@ async function _clNextCutlistName(projectId) {
 async function _clStartNewCutlist() {
   if (_clCurrentCabinetId) { return _clNewCabinetLinkedCutlist(); }
   if (!_userId) { _toast('Sign in to create cut lists', 'error'); return; }
-  if (!_clCurrentProjectId) { _toast('Open a project first', 'error'); return; }
   const insertNew = async () => {
-    const name = await _clNextCutlistName(_clCurrentProjectId);
+    const name = await _clNextCutlistName(null);
     if (typeof _setSaveStatus === 'function') _setSaveStatus('cutlist', 'saving');
     try {
       const { data, error } = await _db('cutlists').insert(/** @type {any} */ ({
         user_id: _userId,
-        project_id: _clCurrentProjectId,
         name,
         position: 0,
         ui_prefs: {},
@@ -1282,7 +1269,6 @@ async function _clNewCabinetLinkedCutlist() {
     try {
       const { data, error } = await _db('cutlists').insert(/** @type {any} */ ({
         user_id: _userId,
-        project_id: null,
         name,
         position: 0,
         ui_prefs: {}
@@ -1298,7 +1284,6 @@ async function _clNewCabinetLinkedCutlist() {
       } catch (e) { /* tolerate — cut list exists, link can be added manually */ }
       const rows = parts.map(/** @param {any} p @param {number} i */ (p, i) => /** @type {any} */ ({
         user_id: _userId,
-        project_id: null,
         cutlist_id: newId,
         label: p.label || '',
         w_mm: p.w,
@@ -1316,8 +1301,8 @@ async function _clNewCabinetLinkedCutlist() {
       if (typeof w._clDoOpenLibraryCutlist === 'function') {
         await w._clDoOpenLibraryCutlist(newId);
       }
-      // Refresh the grid so the new card appears under the cabinet.
-      if (typeof renderCLCutListsView === 'function') renderCLCutListsView();
+      // Refresh the library grid so the new card appears.
+      if (typeof renderCLCutListLibraryView === 'function') renderCLCutListLibraryView();
     } catch (e) {
       _toast('Could not create cut list', 'error');
     }
@@ -4086,17 +4071,18 @@ function renderSummary(area) {
   area.innerHTML = html;
 }
 
-// ── Main content tabs (Cut Layout / Project Cut Lists / Cabinet Library) ──
+// ── Main content tabs (Cut Layout / Cabinet Library — F5 dropped middle tab) ──
 /** @param {string} view */
 function switchCLMainView(view) {
+  // Post-F5: only 'layout' and 'library' are valid. Legacy 'cutlists' callers
+  // route to 'library' so the auto-switch on optimize/save still lands somewhere.
+  if (view === 'cutlists') view = 'library';
   _clMainView = view;
   _persistCutlistCtx();
-  const layout   = _byId('cl-view-layout');
-  const cutlists = _byId('cl-view-cutlists');
-  const library  = _byId('cl-view-library');
-  if (layout)   layout.style.display   = view === 'layout'   ? 'flex' : 'none';
-  if (cutlists) cutlists.style.display = view === 'cutlists' ? ''     : 'none';
-  if (library)  library.style.display  = view === 'library'  ? ''     : 'none';
+  const layout  = _byId('cl-view-layout');
+  const library = _byId('cl-view-library');
+  if (layout)  layout.style.display  = view === 'layout'  ? 'flex' : 'none';
+  if (library) library.style.display = view === 'library' ? ''     : 'none';
   /** @param {string} id @param {boolean} active */
   const setTab = (id, active) => {
     const el = _byId(id);
@@ -4105,15 +4091,9 @@ function switchCLMainView(view) {
     el.style.fontWeight        = active ? '700' : '500';
     el.style.color             = active ? 'var(--text)' : 'var(--muted)';
   };
-  setTab('cl-tab-layout',   view === 'layout');
-  setTab('cl-tab-cutlists', view === 'cutlists');
-  setTab('cl-tab-library',  view === 'library');
-  // Reflect the current scope in the middle tab label: "Cabinet" when a
-  // cabinet is open, otherwise the default "Project".
-  const cutlistsTab = _byId('cl-tab-cutlists');
-  if (cutlistsTab) cutlistsTab.textContent = _clCurrentCabinetId ? 'Cabinet' : 'Project';
-  if (view === 'cutlists') renderCLCutListsView();
-  else if (view === 'library') renderCLCutListLibraryView();
+  setTab('cl-tab-layout',  view === 'layout');
+  setTab('cl-tab-library', view === 'library');
+  if (view === 'library') renderCLCutListLibraryView();
 }
 /** @type {any} */ (window).switchCLMainView = switchCLMainView;
 
@@ -4126,143 +4106,13 @@ function _clFormatDate(iso) {
   } catch (e) { return ''; }
 }
 
-async function renderCLCutListsView() {
-  const host = _byId('cl-view-cutlists');
-  if (!host) return;
-  // Content header — cabinet icon + cabinet name when in a linked cabinet,
-  // otherwise project icon + project name (with client suffix when known).
-  let headerHtml = '';
-  if (_clCurrentCabinetId) {
-    headerHtml = _renderContentHeader({ iconSvg: _CH_ICON_CABINET, title: _clCurrentCabinetName || 'Cabinet' });
-  } else if (_clCurrentProjectId) {
-    const proj = (typeof projects !== 'undefined' ? projects : []).find(/** @param {any} p */ p => p.id === _clCurrentProjectId);
-    const cName = (proj && proj.client_id) ? (clients.find(/** @param {any} c */ c => c.id === proj.client_id)?.name || '') : '';
-    headerHtml = _renderContentHeader({ iconSvg: _CH_ICON_PROJECT, title: _clCurrentProjectName || 'Project', clientName: cName || undefined });
-  }
-  host.innerHTML = `
-    ${headerHtml}
-    <div style="display:flex;gap:6px;justify-content:flex-end;margin-bottom:12px">
-      <button class="btn btn-outline" onclick="triggerImportCSV('pieces')" style="font-size:12px;padding:8px 12px;width:auto" title="Import parts from CSV">↑ Import</button>
-      <button class="btn btn-outline" onclick="exportCSV('pieces')" style="font-size:12px;padding:8px 12px;width:auto" title="Export parts to CSV">↓ Export</button>
-    </div>
-    <div id="cl-cutlists-grid" style="display:flex;flex-direction:column;gap:8px">
-      <div style="font-size:12px;color:var(--muted);text-align:center;padding:20px">Loading…</div>
-    </div>`;
+// F5 (2026-05-13): renderCLCutListsView removed — the "Project Cut Lists"
+// middle tab is gone. Cut lists are now accessed via the Cut List Library tab
+// (renderCLCutListLibraryView) or via Client cards in the Clients tab.
 
-  if (typeof _userId === 'undefined' || !_userId) {
-    /** @type {HTMLElement} */ (_byId('cl-cutlists-grid')).innerHTML = `<div style="font-size:13px;color:var(--muted);text-align:center;padding:30px">Sign in to see your saved cut lists.</div>`;
-    return;
-  }
-  if (!_clCurrentProjectId && !_clCurrentCabinetId) {
-    const allProjects = /** @type {any[]} */ (typeof projects !== 'undefined' && projects ? projects : []);
-    const grid = /** @type {HTMLElement} */ (_byId('cl-cutlists-grid'));
-    if (!allProjects.length) {
-      grid.innerHTML = `<div style="font-size:13px;color:var(--muted);text-align:center;padding:30px;border:1px dashed var(--border);border-radius:var(--radius)">No projects yet. Create one in the <strong>Projects</strong> section to get started.</div>`;
-      return;
-    }
-    /** @type {Record<number, number>} */ const cutlistCounts = {};
-    try {
-      const pids = allProjects.map(/** @param {any} p */ p => p.id);
-      const { data: cls } = await _db('cutlists').select('project_id').in('project_id', pids);
-      for (const r of (cls || [])) {
-        const pid = /** @type {any} */ (r).project_id;
-        if (pid != null) cutlistCounts[pid] = (cutlistCounts[pid] || 0) + 1;
-      }
-    } catch (e) { /* leave empty */ }
-    grid.innerHTML = allProjects.map(/** @param {any} p */ p => {
-      const cName = p.client_id ? ((typeof clients !== 'undefined' && clients ? clients : []).find(/** @param {any} c */ c => c.id === p.client_id)?.name || '') : '';
-      const n = cutlistCounts[p.id] || 0;
-      return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);transition:box-shadow .15s,border-color .15s;cursor:pointer;padding:12px 14px"
-        onmouseover="this.style.boxShadow='var(--shadow-md)';this.style.borderColor='var(--accent)'"
-        onmouseout="this.style.boxShadow='var(--shadow)';this.style.borderColor='var(--border)'"
-        onclick="loadProject(${p.id})">
-        <div style="font-size:13px;font-weight:700;color:var(--text)">${_escHtml(p.name || '(untitled)')}${cName ? ` · ${_escHtml(cName)}` : ''}</div>
-        <div style="font-size:11px;color:var(--muted);margin-top:2px">${n} cut list${n === 1 ? '' : 's'}</div>
-      </div>`;
-    }).join('');
-    return;
-  }
-
-  // Branch on scope: cabinet (project_id IS NULL + join-table link) vs project.
-  const isCabinet = !!_clCurrentCabinetId;
-  const query = isCabinet
-    ? _db('cutlists')
-        .select('id, name, position, project_id, updated_at, cutlist_cabinets!inner(cabinet_id)')
-        .is('project_id', null)
-        .eq(/** @type {any} */ ('cutlist_cabinets.cabinet_id'), _clCurrentCabinetId)
-        .order('updated_at', { ascending: false })
-    : _db('cutlists')
-        .select('id, name, position, project_id, updated_at')
-        .eq('project_id', _clCurrentProjectId)
-        .order('updated_at', { ascending: false });
-  const { data: rows, error } = await query;
-  if (error) {
-    /** @type {HTMLElement} */ (_byId('cl-cutlists-grid')).innerHTML = `<div style="font-size:13px;color:var(--danger);text-align:center;padding:30px">Failed to load: ${_escHtml(error.message)}</div>`;
-    return;
-  }
-  const list = rows || [];
-  const grid = _byId('cl-cutlists-grid');
-  if (!grid) return;
-  if (!list.length) {
-    const scopeLabel = isCabinet ? _clCurrentCabinetName : _clCurrentProjectName;
-    const emptyMsg = isCabinet
-      ? `No cut lists linked to <strong>${_escHtml(scopeLabel)}</strong> yet. Type a name in the sidebar and click <strong>+</strong> to create one.`
-      : `No cut lists in <strong>${_escHtml(scopeLabel)}</strong> yet. Add parts in the sidebar — they autosave.`;
-    grid.innerHTML = `<div style="font-size:13px;color:var(--muted);text-align:center;padding:30px;border:1px dashed var(--border);border-radius:var(--radius)">${emptyMsg}</div>`;
-    return;
-  }
-
-  // Fetch piece counts per cutlist (best-effort; render placeholder if it fails).
-  const ids = list.map(/** @param {any} r */ r => r.id);
-  /** @type {Record<number, number>} */
-  const counts = {};
-  try {
-    const { data: pcs } = await _db('pieces').select('cutlist_id').in('cutlist_id', ids);
-    for (const p of (pcs || [])) {
-      const cid = /** @type {any} */ (p).cutlist_id;
-      if (cid != null) counts[cid] = (counts[cid] || 0) + 1;
-    }
-  } catch (e) { /* counts stay empty */ }
-
-  const cardClickFn = isCabinet ? '_clDoOpenLibraryCutlist' : '_clLoadCutlist';
-  let projectSuffix = '';
-  if (!isCabinet && _clCurrentProjectId) {
-    const _curProj = (typeof projects !== 'undefined' ? projects : []).find(/** @param {any} p */ p => p.id === _clCurrentProjectId);
-    const _curClient = (_curProj && _curProj.client_id) ? ((typeof clients !== 'undefined' && clients ? clients : []).find(/** @param {any} c */ c => c.id === _curProj.client_id)?.name || '') : '';
-    const projTxt = _clCurrentProjectName || (_curProj && _curProj.name) || '';
-    if (projTxt) projectSuffix += ` · ${_escHtml(projTxt)}`;
-    if (_curClient) projectSuffix += ` · ${_escHtml(_curClient)}`;
-  }
-  grid.innerHTML = list.map(/** @param {any} r */ (r) => {
-    const isActive = r.id === _clCurrentCutlistId;
-    const partCount = counts[r.id] != null ? counts[r.id] : '–';
-    const date = _clFormatDate(r.updated_at);
-    return `<div style="background:var(--surface);border:1px solid ${isActive ? 'var(--accent)' : 'var(--border)'};border-radius:var(--radius);box-shadow:var(--shadow);transition:box-shadow .15s,border-color .15s;cursor:pointer"
-      onmouseover="this.style.boxShadow='var(--shadow-md)';this.style.borderColor='var(--accent)'"
-      onmouseout="this.style.boxShadow='var(--shadow)';this.style.borderColor='${isActive ? 'var(--accent)' : 'var(--border)'}'"
-      onclick="${cardClickFn}(${r.id})">
-      <div style="display:flex;align-items:flex-start;gap:8px;padding:10px 12px 6px">
-        <div style="flex:1;min-width:0">
-          <div style="font-size:13px;font-weight:700;color:var(--text)">${_escHtml(r.name||'(untitled)')}${projectSuffix}${isActive ? ' <span style="font-weight:500;color:var(--accent);font-size:11px">· editing</span>' : ''}</div>
-          <div style="font-size:11px;color:var(--muted);margin-top:2px">
-            <span>${partCount} part${partCount === 1 ? '' : 's'}</span>
-            ${date ? ` · <span>${_escHtml(date)}</span>` : ''}
-          </div>
-        </div>
-      </div>
-      <div style="display:flex;gap:6px;padding:8px 12px 10px;border-top:1px solid var(--border2);justify-content:flex-end">
-        <button class="btn btn-outline" style="font-size:11px;padding:4px 10px;width:auto" onclick="event.stopPropagation();_clRenameCutlist(${r.id})">Rename</button>
-        <button class="btn btn-outline" style="font-size:11px;padding:4px 10px;width:auto" onclick="event.stopPropagation();_clDuplicateCutlist(${r.id})">Duplicate</button>
-        <button class="btn btn-outline" style="font-size:11px;padding:4px 10px;width:auto;color:var(--danger)" onclick="event.stopPropagation();_clDeleteCutlist(${r.id})">Delete</button>
-      </div>
-    </div>`;
-  }).join('');
-}
-/** @type {any} */ (window).renderCLCutListsView = renderCLCutListsView;
-
-/** Render the Cut List Library tab — project-less cutlists from the
- *  cutlists table where project_id IS NULL. Each row has Open / Link to
- *  Cabinet / Duplicate / Delete actions. */
+/** Render the Cut List Library tab — every cutlist the user owns
+ *  (post-F5: no project scope; RLS bounds to current user). Each row has
+ *  Open / Link to Cabinet / Duplicate / Delete actions. */
 async function renderCLCutListLibraryView() {
   const host = _byId('cl-view-library');
   if (!host) return;
@@ -4287,7 +4137,6 @@ async function renderCLCutListLibraryView() {
   try {
     const { data } = await _db('cutlists')
       .select('id, name, updated_at, cutlist_cabinets(cabinet_id, cabinet_templates(name))')
-      .is('project_id', null)
       .order('updated_at', { ascending: false });
     rows = /** @type {any[]} */ (data || []);
   } catch (e) { rows = []; }
@@ -4418,7 +4267,6 @@ async function _clAddToCutlistLibrary() {
   try {
     const { data, error } = await _db('cutlists').insert(/** @type {any} */ ({
       user_id: _userId,
-      project_id: null,
       name,
       position: 0,
       ui_prefs: {}
@@ -4428,7 +4276,7 @@ async function _clAddToCutlistLibrary() {
     // Copy pieces/sheets/edge_bands.
     if (pieces.length) {
       const rows = pieces.map((p, i) => /** @type {any} */ ({
-        user_id: _userId, project_id: null, cutlist_id: newId, label: p.label || '',
+        user_id: _userId, cutlist_id: newId, label: p.label || '',
         w_mm: p.w, h_mm: p.h, qty: p.qty || 1, grain: p.grain || 'none',
         material: p.material || '', notes: p.notes || '', enabled: p.enabled !== false,
         color: p.color, position: i
@@ -4437,7 +4285,7 @@ async function _clAddToCutlistLibrary() {
     }
     if (sheets.length) {
       const rows = sheets.map((s, i) => /** @type {any} */ ({
-        user_id: _userId, project_id: null, cutlist_id: newId, name: s.name || 'Sheet',
+        user_id: _userId, cutlist_id: newId, name: s.name || 'Sheet',
         w_mm: s.w, h_mm: s.h, qty: s.qty || 1, grain: s.grain || 'none',
         kerf_mm: s.kerf || 3, enabled: s.enabled !== false, color: s.color, position: i
       }));
@@ -4590,7 +4438,7 @@ async function _clDuplicateLibraryCutlist(id) {
     if (!src) return;
     const newName = (/** @type {any} */ (src).name || 'Cutlist') + ' (copy)';
     const { data: ins, error } = await _db('cutlists').insert(/** @type {any} */ ({
-      user_id: _userId, project_id: null, name: newName, position: 0, ui_prefs: {}
+      user_id: _userId, name: newName, position: 0, ui_prefs: {}
     })).select().single();
     if (error || !ins) return;
     const newId = /** @type {any} */ (ins).id;

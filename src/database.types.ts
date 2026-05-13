@@ -225,7 +225,6 @@ export type Database = {
           name: string
           notes: string | null
           position: number
-          project_id: number
           qty: number
           top_material: string | null
           updated_at: string
@@ -257,7 +256,6 @@ export type Database = {
           name?: string
           notes?: string | null
           position?: number
-          project_id: number
           qty?: number
           top_material?: string | null
           updated_at?: string
@@ -289,22 +287,13 @@ export type Database = {
           name?: string
           notes?: string | null
           position?: number
-          project_id?: number
           qty?: number
           top_material?: string | null
           updated_at?: string
           user_id?: string
           w_mm?: number
         }
-        Relationships: [
-          {
-            foreignKeyName: "cabinets_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       catalog_items: {
         Row: {
@@ -420,7 +409,6 @@ export type Database = {
           id: number
           name: string
           position: number
-          project_id: number | null
           quote_id: number | null
           tags: Json
           ui_prefs: Json
@@ -432,7 +420,6 @@ export type Database = {
           id?: number
           name: string
           position?: number
-          project_id?: number | null
           quote_id?: number | null
           tags?: Json
           ui_prefs?: Json
@@ -444,7 +431,6 @@ export type Database = {
           id?: number
           name?: string
           position?: number
-          project_id?: number | null
           quote_id?: number | null
           tags?: Json
           ui_prefs?: Json
@@ -452,13 +438,6 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "cutlists_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "cutlists_quote_id_fkey"
             columns: ["quote_id"]
@@ -478,7 +457,6 @@ export type Database = {
           length_m: number
           name: string
           position: number
-          project_id: number | null
           thickness_mm: number
           user_id: string
           width_mm: number
@@ -492,7 +470,6 @@ export type Database = {
           length_m?: number
           name?: string
           position?: number
-          project_id?: number | null
           thickness_mm?: number
           user_id: string
           width_mm?: number
@@ -506,7 +483,6 @@ export type Database = {
           length_m?: number
           name?: string
           position?: number
-          project_id?: number | null
           thickness_mm?: number
           user_id?: string
           width_mm?: number
@@ -517,13 +493,6 @@ export type Database = {
             columns: ["cutlist_id"]
             isOneToOne: false
             referencedRelation: "cutlists"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "edge_bands_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
         ]
@@ -681,7 +650,6 @@ export type Database = {
           packaging_hours: number | null
           priority: number
           production_start_date: string | null
-          project_id: number | null
           quote_id: number | null
           run_over_hours: number
           sidebar_order_index: number
@@ -710,7 +678,6 @@ export type Database = {
           packaging_hours?: number | null
           priority?: number
           production_start_date?: string | null
-          project_id?: number | null
           quote_id?: number | null
           run_over_hours?: number
           sidebar_order_index?: number
@@ -739,7 +706,6 @@ export type Database = {
           packaging_hours?: number | null
           priority?: number
           production_start_date?: string | null
-          project_id?: number | null
           quote_id?: number | null
           run_over_hours?: number
           sidebar_order_index?: number
@@ -756,13 +722,6 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "orders_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
           {
@@ -820,7 +779,6 @@ export type Database = {
           material: string | null
           notes: string | null
           position: number
-          project_id: number | null
           qty: number
           user_id: string
           w_mm: number
@@ -837,7 +795,6 @@ export type Database = {
           material?: string | null
           notes?: string | null
           position?: number
-          project_id?: number | null
           qty?: number
           user_id: string
           w_mm: number
@@ -854,7 +811,6 @@ export type Database = {
           material?: string | null
           notes?: string | null
           position?: number
-          project_id?: number | null
           qty?: number
           user_id?: string
           w_mm?: number
@@ -865,13 +821,6 @@ export type Database = {
             columns: ["cutlist_id"]
             isOneToOne: false
             referencedRelation: "cutlists"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "pieces_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
         ]
@@ -1079,7 +1028,6 @@ export type Database = {
           markup: number | null
           name: string | null
           notes: string | null
-          project_id: number | null
           quote_number: string | null
           status: string | null
           stock_markup: number
@@ -1096,7 +1044,6 @@ export type Database = {
           markup?: number | null
           name?: string | null
           notes?: string | null
-          project_id?: number | null
           quote_number?: string | null
           status?: string | null
           stock_markup?: number
@@ -1113,7 +1060,6 @@ export type Database = {
           markup?: number | null
           name?: string | null
           notes?: string | null
-          project_id?: number | null
           quote_number?: string | null
           status?: string | null
           stock_markup?: number
@@ -1127,13 +1073,6 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "quotes_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
         ]
@@ -1177,7 +1116,6 @@ export type Database = {
           kerf_mm: number
           name: string
           position: number
-          project_id: number | null
           qty: number
           user_id: string
           w_mm: number
@@ -1193,7 +1131,6 @@ export type Database = {
           kerf_mm?: number
           name?: string
           position?: number
-          project_id?: number | null
           qty?: number
           user_id: string
           w_mm: number
@@ -1209,7 +1146,6 @@ export type Database = {
           kerf_mm?: number
           name?: string
           position?: number
-          project_id?: number | null
           qty?: number
           user_id?: string
           w_mm?: number
@@ -1220,13 +1156,6 @@ export type Database = {
             columns: ["cutlist_id"]
             isOneToOne: false
             referencedRelation: "cutlists"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "sheets_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
         ]

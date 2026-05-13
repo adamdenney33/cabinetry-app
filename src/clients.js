@@ -287,97 +287,6 @@ async function removeProject(id) {
   _toast('Project removed', 'success');
 }
 
-/** Duplicate a project + all child entities (cabinets, cutlists with their
- *  sheets/pieces/edge_bands, quotes with quote_lines, orders with order_lines).
- *  @param {number} id */
-async function duplicateProject(id) {
-  if (!_requireAuth()) return;
-  if (!_enforceFreeLimit('projects', projects.length)) return;
-  const src = /** @type {any} */ (projects.find(x => x.id === id));
-  if (!src) return;
-
-  /** @type {any} */
-  const projRow = {
-    user_id: _userId,
-    name: (src.name || 'Project') + ' Copy',
-    description: src.description || null,
-    status: src.status || 'active',
-    client_id: src.client_id || null,
-  };
-  const { data: newProj, error: pErr } = await _dbInsertSafe('projects', projRow);
-  if (pErr || !newProj) { _toast('Duplicate failed — ' + (pErr?.message || ''), 'error'); return; }
-  /** @type {any} */ (newProj).status = newProj.status || 'active';
-  const newPid = newProj.id;
-
-  /** @param {any} r @param {object} extra */
-  const strip = (r, extra) => {
-    const o = { ...r, ...(extra || {}) };
-    delete o.id; delete o.created_at; delete o.updated_at;
-    return o;
-  };
-
-  try {
-    const { data: cabs } = await _db('cabinets').select('*').eq('project_id', id);
-    if (cabs && cabs.length) {
-      await _db('cabinets').insert(cabs.map(/** @param {any} r */ r => strip(r, { project_id: newPid })));
-    }
-  } catch (e) { console.warn('[duplicateProject] cabinets failed:', e); }
-
-  try {
-    const { data: cls } = await _db('cutlists').select('*').eq('project_id', id);
-    for (const cl of (cls || [])) {
-      const { data: newCl } = await _db('cutlists')
-        .insert([strip(cl, { project_id: newPid })])
-        .select('id').single();
-      if (!newCl) continue;
-      const ncid = newCl.id;
-      const [{ data: sh }, { data: pc }, { data: eb }] = await Promise.all([
-        _db('sheets').select('*').eq('cutlist_id', cl.id),
-        _db('pieces').select('*').eq('cutlist_id', cl.id),
-        _db('edge_bands').select('*').eq('cutlist_id', cl.id),
-      ]);
-      if (sh && sh.length) await _db('sheets').insert(sh.map(/** @param {any} r */ r => strip(r, { project_id: newPid, cutlist_id: ncid })));
-      if (pc && pc.length) await _db('pieces').insert(pc.map(/** @param {any} r */ r => strip(r, { project_id: newPid, cutlist_id: ncid })));
-      if (eb && eb.length) await _db('edge_bands').insert(eb.map(/** @param {any} r */ r => strip(r, { project_id: newPid, cutlist_id: ncid })));
-    }
-  } catch (e) { console.warn('[duplicateProject] cutlists failed:', e); }
-
-  try {
-    const { data: qs } = await _db('quotes').select('*').eq('project_id', id);
-    for (const q of (qs || [])) {
-      const { data: newQ } = await _db('quotes')
-        .insert([strip(q, { project_id: newPid })])
-        .select('*').single();
-      if (!newQ) continue;
-      const { data: ql } = await _db('quote_lines').select('*').eq('quote_id', q.id);
-      if (ql && ql.length) await _db('quote_lines').insert(ql.map(/** @param {any} r */ r => strip(r, { quote_id: newQ.id })));
-      quotes.unshift(/** @type {any} */ (newQ));
-    }
-  } catch (e) { console.warn('[duplicateProject] quotes failed:', e); }
-
-  try {
-    const { data: os } = await _db('orders').select('*').eq('project_id', id);
-    for (const o of (os || [])) {
-      const { data: newO } = await _db('orders')
-        .insert([strip(o, { project_id: newPid })])
-        .select('*').single();
-      if (!newO) continue;
-      const { data: ol } = await _db('order_lines').select('*').eq('order_id', o.id);
-      if (ol && ol.length) await _db('order_lines').insert(ol.map(/** @param {any} r */ r => strip(r, { order_id: newO.id })));
-      orders.unshift(/** @type {any} */ (newO));
-    }
-  } catch (e) { console.warn('[duplicateProject] orders failed:', e); }
-
-  projects.unshift(/** @type {any} */ (newProj));
-  if (window._projectsWithCutLists && window._projectsWithCutLists.has(id)) {
-    window._projectsWithCutLists.add(newPid);
-  }
-  _toast('Project duplicated', 'success');
-  renderProjectsMain();
-  setTimeout(() => _highlightProject(newPid), 100);
-}
-/** @type {any} */ (window).duplicateProject = duplicateProject;
-
 // ── Client name helper ──
 /** @param {number | null | undefined} id */
 function _clientName(id) {
@@ -960,16 +869,16 @@ function _projFmtShort(v) {
 function _renderProjectInlineCard(p, opts) {
   const showClient = opts?.showClient !== false;
   const client = (showClient && p.client_id) ? clients.find(/** @param {any} c */ c => c.id === p.client_id) : null;
-  // Cabinet count = `cabinet`-kind lines summed across ALL of the project's
-  // quotes (drafts included — drafts are the in-progress builder workspace).
-  const allProjectQuotes = quotes.filter(/** @param {any} q */ q => q.project_id === p.id || (!q.project_id && quoteProject(q) === p.name));
-  const pQuotes = allProjectQuotes.filter(/** @param {any} q */ q => !_isDraftQuote(q));
-  const pOrders = orders.filter(/** @param {any} o */ o => o.project_id === p.id || (!o.project_id && orderProject(o) === p.name));
-  const orderValue = pOrders.reduce(/** @param {number} s @param {any} o */ (s,o) => s + (o.value ?? 0), 0);
-  const quoteValue = pQuotes.reduce(/** @param {number} s @param {any} q */ (s,q) => s + quoteTotal(q), 0);
-  const totalShown = orderValue || quoteValue;
-  const cabinetCount = allProjectQuotes.reduce(/** @param {number} s @param {any} q */ (s,q) => s + ((/** @type {any[]} */ (q._lines || [])).filter(/** @param {any} l */ l => (l.line_kind || 'cabinet') === 'cabinet').length), 0);
-  const cutListCount = (/** @type {any} */ (window)._projectsWithCutLists && /** @type {any} */ (window)._projectsWithCutLists.has(p.id)) ? 1 : 0;
+  // Per-project counts no longer derivable post-F5 (quotes/orders are keyed by
+  // client, not project). The Projects panel is hidden by F1 and goes away in
+  // F6 — these zeros keep the (invisible) cards rendering cleanly until then.
+  /** @type {any[]} */ const pQuotes = [];
+  /** @type {any[]} */ const pOrders = [];
+  const orderValue = 0;
+  const quoteValue = 0;
+  const totalShown = 0;
+  const cabinetCount = 0;
+  const cutListCount = 0;
 
   const statusBadgeCls = p.status==='complete'?'badge-green':p.status==='on-hold'?'badge-gray':'badge-blue';
   const statusText = p.status==='complete'?'Complete':p.status==='on-hold'?'On Hold':'Active';
@@ -1016,7 +925,6 @@ function _renderProjectInlineCard(p, opts) {
     </div>
     <div style="display:flex;align-items:center;gap:4px;margin-top:8px;padding-top:8px;border-top:1px solid var(--border2)" onclick="event.stopPropagation()">
       <span style="flex:1"></span>
-      <button class="btn btn-outline" style="font-size:11px;padding:4px 8px;width:auto" onclick="event.stopPropagation();duplicateProject(${p.id})">Duplicate</button>
       <button class="btn btn-outline" style="color:var(--danger);font-size:11px;padding:4px 8px;width:auto" onclick="event.stopPropagation();_confirm('Delete project <strong>${nameJs}</strong>? This will also delete its cabinets, cut lists, quotes, and orders.',()=>removeProject(${p.id}))">Delete</button>
     </div>
   </div>`;
@@ -1066,11 +974,9 @@ function renderProjectsMain() {
     : (p.name.toLowerCase().includes(search) || (_clientName(p.client_id)||'').toLowerCase().includes(search)));
   if (sortBy === 'name') filtered.sort((a,b) => a.name.localeCompare(b.name));
   else if (!hasClient && sortBy === 'client') filtered.sort((a,b) => (_clientName(a.client_id)||'').localeCompare(_clientName(b.client_id)||''));
-  else if (sortBy === 'value') filtered.sort((a,b) => {
-    const va = orders.filter(o=>o.project_id===a.id||orderProject(o)===a.name).reduce((s,o)=>s+(o.value??0),0);
-    const vb = orders.filter(o=>o.project_id===b.id||orderProject(o)===b.name).reduce((s,o)=>s+(o.value??0),0);
-    return vb - va;
-  });
+  // 'value' sort dropped post-F5 — per-project order totals are not derivable
+  // without project_id on orders. Selector still allows the option but it's a
+  // no-op until F6 deletes this whole renderer.
 
   const activeCount = scopedProjects.filter(p => p.status === 'active').length;
   const holdCount = scopedProjects.filter(p => p.status === 'on-hold').length;
@@ -1107,34 +1013,6 @@ function renderProjectsMain() {
   </div>`;
 }
 
-// ── Project counts cache (U.9) ──
-// Cabinet counts derive from cached q._lines (populated by _hydrateQuoteTotals).
-// Cut-list counts need a separate query because pieces/sheets aren't in memory
-// — fetch DISTINCT project_id once at boot.
-
-/** @type {Set<number>} projects that have any cut-list rows (sheets or pieces) */
-window._projectsWithCutLists = new Set();
-
-async function _loadCutListProjectIds() {
-  if (typeof _userId === 'undefined' || !_userId) return;
-  try {
-    const [{ data: pieceRows }, { data: sheetRows }] = await Promise.all([
-      _db('pieces').select('project_id').eq('user_id', _userId),
-      _db('sheets').select('project_id').eq('user_id', _userId),
-    ]);
-    const set = new Set();
-    for (const r of (pieceRows || [])) if (r.project_id) set.add(r.project_id);
-    for (const r of (sheetRows || [])) if (r.project_id) set.add(r.project_id);
-    window._projectsWithCutLists = set;
-    // Re-render if Projects tab is currently visible
-    if (document.getElementById('panel-projects')?.classList.contains('active')) {
-      try { renderProjectsMain(); } catch(e) {}
-    }
-  } catch (e) {
-    console.warn('[cutlist project ids] load failed:', /** @type {any} */ (e).message || e);
-  }
-}
-
 // ── Project → Tab bridges (U.9) ──
 // Each helper switches to a producing tab with the project preselected. For
 // quotes/orders, "drill" filters the existing tab by project name; for
@@ -1156,7 +1034,9 @@ function _drillQuotesForProject(projectId) {
   const p = projects.find(x => x.id === projectId);
   if (!p) return;
   switchSection('quote');
-  if (typeof _qPickProject === 'function') _qPickProject(projectId);
+  // Post-F5: drill to the project's CLIENT instead — projects no longer
+  // scope quotes. Goes away with the project card itself in F6.
+  if (p.client_id && typeof _qPickClient === 'function') _qPickClient(p.client_id);
 }
 
 /** @param {number} projectId */
@@ -1164,7 +1044,7 @@ function _drillOrdersForProject(projectId) {
   const p = projects.find(x => x.id === projectId);
   if (!p) return;
   switchSection('orders');
-  if (typeof _oPickProject === 'function') _oPickProject(projectId);
+  if (p.client_id && typeof _oPickClient === 'function') _oPickClient(p.client_id);
 }
 
 /** @param {number} projectId */
@@ -1172,8 +1052,9 @@ function _newCabinetForProject(projectId) {
   const p = projects.find(x => x.id === projectId);
   if (!p) return;
   switchSection('cabinet');
-  _prefillSmartInput('cb-project', p.name);
-  _toast(`Project "${p.name}" set — add cabinets to build a quote`, 'success');
+  // Post-F5: cabinet builder is client-keyed. Pick the project's client.
+  if (p.client_id && typeof _cbPickClient === 'function') _cbPickClient(p.client_id);
+  _toast(`Cabinet builder opened for "${p.name}"'s client`, 'success');
 }
 
 /** @param {number} projectId */
@@ -1183,12 +1064,9 @@ function _newCutListForProject(projectId) {
   const proceed = () => {
     _doClearAll();
     switchSection('cutlist');
-    // If the project already has cut list data saved, load it; otherwise
-    // start fresh and link the project so a Save Project click overwrites it.
-    if (window._projectsWithCutLists && window._projectsWithCutLists.has(p.id)) {
-      loadProject(p.id);
-      return;
-    }
+    // Post-F5: no per-project cutlist load — cutlists are accessed via the
+    // Cut List Library tab and edited in place. The project-link form below
+    // is the last legacy affordance and will be removed in F6.
     _prefillSmartInput('cl-project', p.name);
     _clCurrentProjectId = p.id;
     _clCurrentProjectName = p.name;

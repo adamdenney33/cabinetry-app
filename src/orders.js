@@ -85,7 +85,7 @@ async function duplicateOrder(id) {
     contingency_pct: o.contingency_pct ?? null,
   };
   if (o.client_id) row.client_id = o.client_id;
-  if (o.project_id) row.project_id = o.project_id;
+  if (o.name) row.name = o.name;
   const { data, error } = await _dbInsertSafe('orders', row);
   if (error || !data) { _toast('Could not duplicate — ' + (error?.message || JSON.stringify(error)), 'error'); return; }
   if (o.notes) { data.notes = o.notes; _onSet(data.id, o.notes); }
@@ -129,13 +129,13 @@ function renderOrdersMain() {
   if (!el) return;
   /** @param {number} v */
   const fmt = v => cur + v.toLocaleString('en-US', {minimumFractionDigits:0, maximumFractionDigits:0});
-  // Drill-down: when the sidebar editor has a project picked, scope this list
-  // to that project. If the project has been deleted, clear the stale state.
-  const drillProjectId = (typeof _opState !== 'undefined' && _opState) ? _opState.projectId : null;
-  let drillProject = drillProjectId ? projects.find(p => p.id === drillProjectId) : null;
-  if (drillProjectId && !drillProject) { _opState.projectId = null; drillProject = null; }
-  const scopedOrders = drillProject
-    ? orders.filter(o => o.project_id === drillProject.id)
+  // Drill-down: when the sidebar editor has a client picked, scope this list
+  // to that client. If the client has been deleted, clear the stale state.
+  const drillClientId = (typeof _opState !== 'undefined' && _opState) ? _opState.clientId : null;
+  let drillClient = drillClientId ? clients.find(c => c.id === drillClientId) : null;
+  if (drillClientId && !drillClient) { _opState.clientId = null; drillClient = null; }
+  const scopedOrders = drillClient
+    ? orders.filter(o => o.client_id === drillClient.id)
     : orders;
   const active = scopedOrders.filter(o => o.status !== 'complete');
   const complete = scopedOrders.filter(o => o.status === 'complete');
@@ -226,20 +226,20 @@ function renderOrdersMain() {
     <button class="btn btn-outline" onclick="event.stopPropagation();importOrdersCSV()" style="font-size:10px;padding:4px 8px;width:auto">Import</button>
   </div>`;
 
-  const header = drillProject
+  const header = drillClient
     ? _renderProjectHeader('orders', {
-        name: drillProject.name,
-        exitFn: '_oChangeProject',
+        name: drillClient.name,
+        exitFn: '_oChangeClient',
         iconSvg: _CH_ICON_ORDER.replace('ch-icon', 'ph-icon'),
-        clientName: (drillProject.client_id ? (typeof clients !== 'undefined' && clients ? clients : []).find(/** @param {any} c */ c => c.id === drillProject.client_id)?.name : '') || undefined,
+        clientName: undefined,
       })
     : _renderContentHeader({ iconSvg: _CH_ICON_ORDER, title: 'Orders' });
 
-  const drillEmpty = `<div class="empty-state" style="padding:40px 0"><p style="color:var(--muted)">No orders for this project yet.</p></div>`;
+  const drillEmpty = `<div class="empty-state" style="padding:40px 0"><p style="color:var(--muted)">No orders for this client yet.</p></div>`;
 
   el.innerHTML = `<div style="max-width:800px;margin:0 auto">
     ${header}
-    ${scopedOrders.length === 0 && !drillProject ? emptyState : filterTabs + `<div class="orders-list">${filtered.length === 0 && drillProject ? drillEmpty : filtered.map(orderCard).join('')}</div>`}
+    ${scopedOrders.length === 0 && !drillClient ? emptyState : filterTabs + `<div class="orders-list">${filtered.length === 0 && drillClient ? drillEmpty : filtered.map(orderCard).join('')}</div>`}
   </div>`;
 }
 
@@ -282,11 +282,11 @@ function importOrdersCSV() {
     for (let i = 1; i < rows.length; i++) {
       const r = rows[i]; if (r.length < 2 || !r[0]) continue;
       const client_id = r[0] ? await resolveClient(r[0]) : null;
-      const project_id = r[1] ? await resolveProject(r[1], client_id) : null;
       /** @type {any} */
       const row = { user_id: _userId, value: parseFloat(r[2])||0, status: r[3]||'quote', due: r[4]||'TBD' };
       if (client_id) row.client_id = client_id;
-      if (project_id) row.project_id = project_id;
+      // r[1] historically held the project name — written into orders.name now.
+      if (r[1]) row.name = r[1];
       if (_userId) { const{data}=await _db('orders').insert(row).select().single(); if(data){data.notes=r[5]||'';_onSet(data.id,data.notes);orders.unshift(data);imported++;} }
     }
     _toast(imported+' orders imported','success'); renderOrdersMain();
@@ -310,66 +310,84 @@ const _O_ICON_LABOUR = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColo
 const _O_EMPTY_ICON = '<svg class="pe-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/></svg>';
 
 /** Top-level render for the Order sidebar editor.
- *  Reads _opState; renders empty (project picker) or active-edit. */
+ *  Reads _opState; renders empty (client picker) or active-edit. */
 function renderOrderEditor() {
   const host = document.getElementById('order-editor-host');
   if (!host) return;
 
   const o = _opState.orderId ? orders.find(ox => ox.id === _opState.orderId) : null;
-  const projectId = _opState.projectId || (o ? o.project_id : null);
-  const project = projectId ? projects.find(p => p.id === projectId) : null;
-  const projectName = o ? orderProject(o) : (project ? project.name : '');
-  const clientName = o ? orderClient(o) : (project && project.client_id ? (clients.find(c => c.id === project.client_id) || {}).name || '' : '');
+  const clientId = _opState.clientId || (o ? o.client_id : null);
+  const client = clientId ? clients.find(c => c.id === clientId) : null;
+  const projectName = o ? orderProject(o) : '';
+  const clientName = o ? orderClient(o) : (client ? client.name : '');
 
   // ── Empty state ──
-  if (!o && !project) {
+  if (!o && !client) {
     if (!_opState.startingNew) {
-      // Idle: logo + Recent Projects + "+ New Order" button
-      const recents = (typeof projects !== 'undefined' ? projects : [])
+      // Idle: logo + Recent Clients + smart-input picker
+      const recents = (typeof clients !== 'undefined' ? clients : [])
         .slice()
         .sort(/** @param {any} a @param {any} b */ (a, b) => {
-          const av = a.updated_at ? +new Date(a.updated_at) : 0;
-          const bv = b.updated_at ? +new Date(b.updated_at) : 0;
+          const av = a.updated_at ? +new Date(a.updated_at) : (a.id || 0);
+          const bv = b.updated_at ? +new Date(b.updated_at) : (b.id || 0);
           return bv - av;
-        });
-      host.innerHTML = _renderProjectEmpty({
-        title: 'Orders',
-        subtitle: 'Pick a project to start a new order.',
-        pickFnName: '_oPickProjectFromEmpty',
-        pickerInputId: 'oe-project-picker',
-        pickerSuggestId: 'oe-project-suggest',
-        pickerSuggestFn: '_smartOProjectSuggest',
-        recentProjects: recents,
-        iconSvg: _O_EMPTY_ICON,
-      });
+        })
+        .slice(0, 5)
+        .map(/** @param {any} c */ c => ({
+          id: c.id,
+          name: c.name,
+          onClick: `_oPickClient(${c.id})`,
+        }));
+      host.innerHTML = `<div class="project-empty">
+        ${_O_EMPTY_ICON}
+        <h3>Orders</h3>
+        <p>Pick a client to start a new order.</p>
+        <div style="position:relative;text-align:left">
+          <div class="smart-input-wrap">
+            <input type="text" id="oe-client-picker" placeholder="Search or add client..." autocomplete="off"
+              oninput="_smartOClientSuggest(this,'oe-client-suggest')"
+              onfocus="_smartOClientSuggest(this,'oe-client-suggest')"
+              onblur="setTimeout(()=>{const b=document.getElementById('oe-client-suggest'); if(b)b.style.display='none'},150)">
+            <div class="smart-input-add" onclick="_openNewClientPopup('oe-client-picker')" title="New client">+</div>
+          </div>
+          <div id="oe-client-suggest" class="client-suggest-list" style="display:none"></div>
+        </div>
+        ${recents.length ? `<div class="pe-recent-list">
+          <div class="pe-recent-label">Recent clients</div>
+          ${recents.map(/** @param {{id:number,name:string,onClick:string}} r */ r => `<div class="pe-recent-item" onclick="${r.onClick}">
+            <span class="pe-ri-icon">${_TYPE_ICON_CLIENT}</span>
+            <span>${_escHtml(r.name)}</span>
+          </div>`).join('')}
+        </div>` : ''}
+      </div>`;
       return;
     }
-    // Drafting: project-picker form (reached by clicking "+ New Order")
+    // Drafting: client-picker form (reached by clicking "+ New Order")
     host.innerHTML = `
       <div class="form-section">
         <div class="form-section-title">New Order</div>
         <div class="form-group" style="position:relative;margin-bottom:8px">
-          <label>Project</label>
+          <label>Client</label>
           <div class="smart-input-wrap">
-            <input type="text" id="oe-project-picker" placeholder="Search or add project..." autocomplete="off"
-              oninput="_smartOProjectSuggest(this,'oe-project-suggest')"
-              onfocus="_smartOProjectSuggest(this,'oe-project-suggest')"
-              onblur="setTimeout(()=>{const b=document.getElementById('oe-project-suggest'); if(b)b.style.display='none'},150)">
-            <div class="smart-input-add" onclick="_openNewProjectPopup('oe-project-picker')" title="New project">+</div>
+            <input type="text" id="oe-client-picker" placeholder="Search or add client..." autocomplete="off"
+              oninput="_smartOClientSuggest(this,'oe-client-suggest')"
+              onfocus="_smartOClientSuggest(this,'oe-client-suggest')"
+              onblur="setTimeout(()=>{const b=document.getElementById('oe-client-suggest'); if(b)b.style.display='none'},150)">
+            <div class="smart-input-add" onclick="_openNewClientPopup('oe-client-picker')" title="New client">+</div>
           </div>
-          <div id="oe-project-suggest" class="client-suggest-list" style="display:none"></div>
+          <div id="oe-client-suggest" class="client-suggest-list" style="display:none"></div>
         </div>
         <div style="font-size:11px;color:var(--muted);margin-top:8px;padding:8px 10px;background:var(--surface2);border-radius:6px;line-height:1.5">
-          Pick or create a project to start a new order. The client is set on the project.
+          Pick or create a client to start a new order.
         </div>
       </div>`;
     return;
   }
 
-  // ── Sub-gate: project picked, no order open → "+ Add Order" + recent orders
-  if (project && !o) {
+  // ── Sub-gate: client picked, no order open → "+ Add Order" + recent orders
+  if (client && !o) {
     const recents = orders
-      .filter(ox => ox.project_id === project.id)
+      .filter(ox => ox.client_id === client.id)
       .slice()
       .sort(/** @param {any} a @param {any} b */ (a, b) => (+new Date(b.updated_at || 0)) - (+new Date(a.updated_at || 0)))
       .slice(0, 5)
@@ -380,9 +398,8 @@ function renderOrderEditor() {
         onClick: `loadOrderIntoSidebar(${ox.id})`,
       }));
     const projHeader = _renderProjectHeader('order', {
-      name: project.name || 'Untitled project',
-      exitFn: '_oChangeProject',
-      clientName: clientName || undefined,
+      name: client.name || 'Client',
+      exitFn: '_oChangeClient',
       iconSvg: _O_EMPTY_ICON.replace('class="pe-icon"', 'class="ph-icon" width="16" height="16"'),
     });
     host.innerHTML = `${projHeader}
@@ -390,7 +407,7 @@ function renderOrderEditor() {
         ${_renderListEmpty({
           iconSvg: _O_EMPTY_ICON,
           title: 'Orders',
-          subtitle: 'Add an order for this project. New orders autosave as you edit.',
+          subtitle: 'Add an order for this client. New orders autosave as you edit.',
           btnLabel: '+ Add Order',
           btnOnclick: '_oStartNewOrder()',
           recentItems: recents,
@@ -457,7 +474,7 @@ function renderOrderEditor() {
   host.innerHTML = `<div class="form-section editor-shell">
     <div class="project-header">
       <div class="ph-row1">
-        <button class="ph-back" onclick="_oChangeProject()" title="Back to orders" aria-label="Back">
+        <button class="ph-back" onclick="_oChangeClient()" title="Back to orders" aria-label="Back">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
         </button>
         <svg class="ph-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/></svg>
@@ -653,20 +670,20 @@ function _oOrderSearchInput(input) {
 }
 
 /** Smart suggest for the order-number input. Lists orders for the current
- *  project with click-to-load and a "+ Start new" footer when the typed
+ *  client with click-to-load and a "+ Start new" footer when the typed
  *  number isn't an existing match — mirrors the cutlist library pattern.
  *  @param {HTMLInputElement} input @param {string} boxId */
 function _oOrderSuggest(input, boxId) {
   const box = document.getElementById(boxId);
   if (!box) return;
-  if (!_opState.projectId) {
-    box.innerHTML = `<div class="client-suggest-add" style="color:var(--muted)">Pick a project first</div>`;
+  if (!_opState.clientId) {
+    box.innerHTML = `<div class="client-suggest-add" style="color:var(--muted)">Pick a client first</div>`;
     box.style.display = 'block';
     return;
   }
   const q = input.value.trim().toLowerCase();
   const rows = orders
-    .filter(o => o.project_id === _opState.projectId)
+    .filter(o => o.client_id === _opState.clientId)
     .slice()
     .sort(/** @param {any} a @param {any} b */ (a, b) => (+new Date(b.updated_at || 0)) - (+new Date(a.updated_at || 0)));
   /** @param {any} o */
@@ -689,7 +706,7 @@ function _oOrderSuggest(input, boxId) {
   if (matches.length === 0 && rows.length > 0) {
     html += `<div class="client-suggest-add" style="color:var(--muted)">No matching orders</div>`;
   } else if (rows.length === 0 && !q) {
-    html += `<div class="client-suggest-add" style="color:var(--muted)">No orders in this project yet</div>`;
+    html += `<div class="client-suggest-add" style="color:var(--muted)">No orders for this client yet</div>`;
   }
   if (q && !exact) {
     html += `<div class="client-suggest-item client-suggest-add" onmousedown="_oNewOrderFromInput()">
@@ -705,14 +722,14 @@ function _oOrderSuggest(input, boxId) {
  *  (with the next sequential order number). Mirrors quotes / cabinets. */
 async function _oStartNewOrder() {
   if (!_userId) { _toast('Sign in to create orders', 'error'); return; }
-  if (!_opState.projectId) { _toast('Pick a project first', 'error'); return; }
+  if (!_opState.clientId) { _toast('Pick a client first', 'error'); return; }
   const insertNew = async () => {
     const orderNum = _nextOrderNumber();
     if (typeof _setSaveStatus === 'function') _setSaveStatus('order', 'saving');
     try {
       const { data, error } = await _dbInsertSafe('orders', /** @type {any} */ ({
         user_id: _userId,
-        project_id: _opState.projectId,
+        client_id: _opState.clientId,
         order_number: orderNum,
         status: 'quote',
         due: 'TBD',
@@ -725,7 +742,7 @@ async function _oStartNewOrder() {
       }
       const newId = /** @type {any} */ (data).id;
       orders.unshift(/** @type {any} */ (data));
-      _opState = { orderId: newId, lines: [], dirty: false, projectId: _opState.projectId, startingNew: false };
+      _opState = { orderId: newId, lines: [], dirty: false, clientId: _opState.clientId, startingNew: false };
       if (typeof /** @type {any} */ (window)._pcSaveOpenOrderId === 'function') {
         /** @type {any} */ (window)._pcSaveOpenOrderId(newId);
       }
@@ -869,7 +886,7 @@ function _oMarkDirty() {
 }
 
 function _oClearEditor() {
-  _opState = { orderId: null, lines: [], dirty: false, projectId: null, startingNew: false };
+  _opState = { orderId: null, lines: [], dirty: false, clientId: null, startingNew: false };
   if (typeof /** @type {any} */ (window)._pcSaveOpenOrderId === 'function') {
     /** @type {any} */ (window)._pcSaveOpenOrderId(null);
   }
@@ -877,32 +894,24 @@ function _oClearEditor() {
   renderOrdersMain();
 }
 
-/** Idle-state click handler: pick a recent project to start a new order on it.
- *  @param {number} id @param {string} _name */
-function _oPickProjectFromEmpty(id, _name) {
-  _opState.projectId = id;
-  _opState.startingNew = false;
-  renderOrderEditor();
-  renderOrdersMain();
-}
-
-/** Idle-state click handler: reveal the project-picker form. */
+/** Idle-state click handler: reveal the client-picker form. */
 function _oNewOrder() {
   _opState.startingNew = true;
   renderOrderEditor();
   setTimeout(() => {
-    const el = document.getElementById('oe-project-picker');
+    const el = document.getElementById('oe-client-picker');
     if (el) /** @type {HTMLInputElement} */ (el).focus();
   }, 0);
 }
 
-function _oChangeProject() {
+function _oChangeClient() {
   if (_opState.dirty) {
     _confirm('Discard unsaved changes?', () => _oClearEditor());
     return;
   }
   _oClearEditor();
 }
+/** @type {any} */ (window)._oChangeClient = _oChangeClient;
 
 /** @param {number} id */
 async function loadOrderIntoSidebar(id) {
@@ -916,7 +925,7 @@ async function loadOrderIntoSidebar(id) {
     orderId: id,
     lines: Array.isArray(/** @type {any} */ (o)._lines) ? /** @type {any} */ (o)._lines.map(/** @param {any} r */ r => ({ ...r })) : [],
     dirty: false,
-    projectId: o.project_id || null,
+    clientId: o.client_id || null,
     startingNew: false,
   };
   if (typeof /** @type {any} */ (window)._pcSaveOpenOrderId === 'function') {
@@ -936,52 +945,54 @@ async function loadOrderIntoSidebar(id) {
 }
 
 /** @param {HTMLInputElement} input @param {string} boxId */
-function _smartOProjectSuggest(input, boxId) {
+function _smartOClientSuggest(input, boxId) {
   const val = input.value.toLowerCase().trim();
   const box = _byId(boxId);
   if (!box) return;
   if (typeof _posSuggest === 'function') _posSuggest(input, box);
-  const matches = projects
-    .filter(p => !val || p.name.toLowerCase().includes(val))
+  const matches = clients
+    .filter(c => !val || c.name.toLowerCase().includes(val))
     .slice(0, 8);
   /** @param {string} s */
   const esc = s => _escHtml(s).replace(/'/g, '&#39;');
   let html = '';
-  for (const p of matches) {
-    const cName = p.client_id ? (clients.find(c => c.id === p.client_id) || {}).name || '' : '';
-    html += `<div class="client-suggest-item" onmousedown="_oPickProject(${p.id})">
-      <span class="csi-icon">${_O_ICON_CABINET}</span>
-      <span class="csi-name">${esc(p.name)}</span>
-      ${cName ? `<span class="csi-meta">${esc(cName)}</span>` : ''}
+  for (const c of matches) {
+    const ocount = orders.filter(/** @param {any} o */ o => o.client_id === c.id).length;
+    html += `<div class="client-suggest-item" onmousedown="_oPickClient(${c.id})">
+      <span class="suggest-icon">${esc(c.name).charAt(0).toUpperCase()}</span>
+      <span class="csi-name">${esc(c.name)}</span>
+      ${ocount ? `<span class="csi-meta">${ocount} order${ocount!==1?'s':''}</span>` : ''}
     </div>`;
   }
-  if (val && !matches.some(p => p.name.toLowerCase() === val)) {
-    html += `<div class="client-suggest-item client-suggest-add" onmousedown="_openNewProjectPopup('oe-project-picker')">
+  if (val && !matches.some(c => c.name.toLowerCase() === val)) {
+    html += `<div class="client-suggest-item client-suggest-add" onmousedown="_openNewClientPopup('oe-client-picker')">
       <span class="csi-icon">+</span>
-      <span class="csi-name">Create project "${esc(input.value.trim())}"</span>
+      <span class="csi-name">Create client "${esc(input.value.trim())}"</span>
     </div>`;
   }
-  if (!html) html = '<div class="client-suggest-empty">No projects yet — click + to create one.</div>';
+  if (!html) html = '<div class="client-suggest-empty">No clients yet — click + to create one.</div>';
   box.innerHTML = html;
   box.style.display = 'block';
 }
+/** @type {any} */ (window)._smartOClientSuggest = _smartOClientSuggest;
 
-/** @param {number} projectId */
-function _oPickProject(projectId) {
-  const p = projects.find(pp => pp.id === projectId);
-  if (!p) return;
-  _opState = { orderId: null, lines: [], dirty: false, projectId: p.id, startingNew: false };
+/** @param {number} clientId */
+function _oPickClient(clientId) {
+  const c = clients.find(cc => cc.id === clientId);
+  if (!c) return;
+  _opState = { orderId: null, lines: [], dirty: false, clientId: c.id, startingNew: false };
   if (typeof /** @type {any} */ (window)._pcSaveOpenOrderId === 'function') {
     /** @type {any} */ (window)._pcSaveOpenOrderId(null);
   }
   renderOrderEditor();
   renderOrdersMain();
 }
+/** @type {any} */ (window)._oPickClient = _oPickClient;
 
 /** @param {'cabinet'|'item'|'labour'} kind */
 async function _oAddLine(kind) {
   if (!_opState.orderId) {
-    if (!_opState.projectId) { _toast('Pick or create a project first.', 'error'); return; }
+    if (!_opState.clientId) { _toast('Pick or create a client first.', 'error'); return; }
     const ok = await createOrderFromEditor(/* silent */ true);
     if (!ok) return;
   }
@@ -1000,14 +1011,14 @@ async function _oAddLine(kind) {
 /** @param {boolean} [silent] */
 async function createOrderFromEditor(silent) {
   if (!_userId) { _toast('Sign in first.', 'error'); return false; }
-  if (!_opState.projectId) { _toast('Pick a project first.', 'error'); return false; }
+  if (!_opState.clientId) { _toast('Pick a client first.', 'error'); return false; }
   if (!_enforceFreeLimit('orders', orders.length)) return false;
-  const project = projects.find(p => p.id === _opState.projectId);
-  if (!project) { _toast('Project not found.', 'error'); return false; }
+  const client = clients.find(c => c.id === _opState.clientId);
+  if (!client) { _toast('Client not found.', 'error'); return false; }
   /** @type {any} */
   const row = {
     user_id: _userId,
-    project_id: project.id,
+    client_id: client.id,
     value: 0,
     status: _popupVal('po-status') || 'quote',
     markup: 0,
@@ -1017,7 +1028,8 @@ async function createOrderFromEditor(silent) {
     order_number: (() => { const v = _popupVal('po-order-number') || ''; return v ? ('ORD-' + v.replace(/^ORD-/i, '')) : null; })(),
     due: 'TBD',
   };
-  if (project.client_id) row.client_id = project.client_id;
+  // client_id already set on the row above (line "client_id: client.id"); no
+  // secondary lookup needed post-F5.
   const { data, error } = await _dbInsertSafe('orders', row);
   if (error || !data) { _toast('Could not create order — ' + ((error && error.message) || ''), 'error'); return false; }
   // Save notes locally

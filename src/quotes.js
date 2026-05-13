@@ -39,12 +39,12 @@ function quoteClient(q) {
   const c = clients.find(x => x.id === q.client_id);
   return c ? c.name : '';
 }
+// F5 (2026-05-13): The "project name" that used to come from a projects-table
+// lookup is now stored directly on the quote/order row as `name` (backfilled
+// from projects.name in F2). The legacy function names are kept so the ~25
+// call sites across cabinet/dashboard/cutlist/schedule don't churn.
 /** @param {any} q */
-function quoteProject(q) {
-  if (!q || !q.project_id) return '';
-  const p = projects.find(x => x.id === q.project_id);
-  return p ? p.name : '';
-}
+function quoteProject(q) { return q && q.name ? q.name : ''; }
 /** @param {any} o */
 function orderClient(o) {
   if (!o || !o.client_id) return '';
@@ -52,22 +52,18 @@ function orderClient(o) {
   return c ? c.name : '';
 }
 /** @param {any} o */
-function orderProject(o) {
-  if (!o || !o.project_id) return '';
-  const p = projects.find(x => x.id === o.project_id);
-  return p ? p.name : '';
-}
+function orderProject(o) { return o && o.name ? o.name : ''; }
 
-// ── Cabinet Builder draft-quote helpers (Item 2 Phase 1.1; F3 2026-05-13) ──
-// Each (user, project) pair has at most one draft quote, used by the Cabinet
-// Builder tab as the live workspace. Drafts are excluded from the Quotes tab,
-// dashboard counts, and CSV exports.
+// ── Cabinet Builder draft-quote helpers (Item 2 Phase 1.1; F3/F5 2026-05-13) ──
+// Each client may have many draft (designing-status) quotes — one per design
+// the user is exploring. The Cabinet Builder workspace picks the most recent
+// designing quote for the active client; "Create Quote" status-flips it to
+// 'draft' and starts a fresh designing quote on the next add. Drafts are
+// excluded from the Quotes tab, dashboard counts, and CSV exports.
 //
-// F3 (2026-05-13): The marker moved from a notes-prefix workaround
-// ([CB_DRAFT]) to a real status value ('designing'). _isDraftQuote now checks
-// q.status === 'designing'. The notes field is back to pure free-text.
-// CB_DRAFT_TAG is retained only to detect any unmigrated legacy rows that
-// might land in memory before the next refresh — belt-and-braces.
+// F3 (2026-05-13): the marker moved from a notes-prefix workaround ([CB_DRAFT])
+// to a real status value ('designing'). F5 (2026-05-13): re-keyed from
+// project_id to client_id when the projects entity was retired.
 const CB_DRAFT_TAG = '[CB_DRAFT]';
 
 /** @param {{notes?: string | null, status?: string | null} | null | undefined} q */
@@ -79,19 +75,22 @@ function _isDraftQuote(q) {
 }
 
 /**
- * Find or create the Cabinet Builder draft quote for a given project.
- * Returns null if no user is signed in or no project id is supplied.
- * @param {number | null | undefined} projectId
+ * Find the most-recent designing-status quote for a client, or create a fresh
+ * one. Returns null if no user is signed in or no client id is supplied.
+ * @param {number | null | undefined} clientId
  */
-async function _findOrCreateDraftQuote(projectId) {
-  if (!_userId || !projectId) return null;
-  let draft = quotes.find(q => q.project_id === projectId && _isDraftQuote(q));
-  if (draft) return draft;
+async function _findOrCreateDraftQuote(clientId) {
+  if (!_userId || !clientId) return null;
+  // Pick the most-recently-updated designing quote for this client.
+  const inMemory = quotes
+    .filter(q => q.client_id === clientId && _isDraftQuote(q))
+    .sort((a, b) => (+new Date(b.updated_at || b.created_at || 0)) - (+new Date(a.updated_at || a.created_at || 0)));
+  if (inMemory.length) return inMemory[0];
   const { data: existing } = await _db('quotes')
     .select('*')
     .eq('user_id', _userId)
-    .eq('project_id', projectId)
-    .order('created_at', { ascending: false });
+    .eq('client_id', clientId)
+    .order('updated_at', { ascending: false });
   if (existing && existing.length) {
     const found = existing.find(q => _isDraftQuote(q));
     if (found) {
@@ -101,8 +100,8 @@ async function _findOrCreateDraftQuote(projectId) {
   }
   const insertBody = {
     user_id: _userId,
-    project_id: projectId,
-    status: 'designing', // F3: was notes: CB_DRAFT_TAG + status: 'draft'
+    client_id: clientId,
+    status: 'designing',
     markup: (typeof cbSettings !== 'undefined' && cbSettings && cbSettings.markup) ?? 0,
     tax: (typeof cbSettings !== 'undefined' && cbSettings && cbSettings.tax) ?? 0,
     date: new Date().toISOString().slice(0, 10),
@@ -313,7 +312,7 @@ async function convertQuoteToOrder(id) {
     due: 'TBD',
   };
   if (q.client_id) orderRow.client_id = q.client_id;
-  if (q.project_id) orderRow.project_id = q.project_id;
+  if (q.name) orderRow.name = q.name;
   const { data, error: oErr } = await _dbInsertSafe('orders', orderRow);
   if (oErr || !data) { _toast('Could not create order — ' + (oErr?.message || JSON.stringify(oErr)), 'error'); console.error(oErr); return; }
   // Carry quote notes to order notes & store quote reference
@@ -360,15 +359,15 @@ function renderQuoteMain() {
   if (!el) return;
   /** @param {number} v */
   const fmt = v => cur + v.toLocaleString('en-US', {minimumFractionDigits:0, maximumFractionDigits:0});
-  // Drill-down: when the sidebar editor has a project picked, scope this list
-  // to that project. If the project has been deleted, clear the stale state.
-  const drillProjectId = (typeof _qpState !== 'undefined' && _qpState) ? _qpState.projectId : null;
-  let drillProject = drillProjectId ? projects.find(p => p.id === drillProjectId) : null;
-  if (drillProjectId && !drillProject) { _qpState.projectId = null; drillProject = null; }
+  // Drill-down: when the sidebar editor has a client picked, scope this list
+  // to that client. If the client has been deleted, clear the stale state.
+  const drillClientId = (typeof _qpState !== 'undefined' && _qpState) ? _qpState.clientId : null;
+  let drillClient = drillClientId ? clients.find(c => c.id === drillClientId) : null;
+  if (drillClientId && !drillClient) { _qpState.clientId = null; drillClient = null; }
   // Hide CB drafts — they're Cabinet Builder workspace state, not customer quotes.
   const customerQuotes = quotes
     .filter(q => !_isDraftQuote(q))
-    .filter(q => !drillProject || q.project_id === drillProject.id);
+    .filter(q => !drillClient || q.client_id === drillClient.id);
   const approved = customerQuotes.filter(q => q.status === 'approved').length;
   const sent = customerQuotes.filter(q => q.status === 'sent').length;
   const draft = customerQuotes.filter(q => q.status === 'draft').length;
@@ -478,22 +477,21 @@ function renderQuoteMain() {
     <button class="btn btn-outline" onclick="event.stopPropagation();importQuotesCSV()" style="font-size:10px;padding:4px 8px;width:auto">Import</button>
   </div>`;
 
-  const header = drillProject
+  const header = drillClient
     ? _renderProjectHeader('quotes', {
-        name: drillProject.name,
-        exitFn: '_qChangeProject',
+        name: drillClient.name,
+        exitFn: '_qChangeClient',
         iconSvg: _CH_ICON_QUOTE.replace('ch-icon', 'ph-icon'),
-        clientName: (drillProject.client_id ? (typeof clients !== 'undefined' && clients ? clients : []).find(/** @param {any} c */ c => c.id === drillProject.client_id)?.name : '') || undefined,
       })
     : _renderContentHeader({ iconSvg: _CH_ICON_QUOTE, title: 'Quotes' });
 
-  const noMatchMsg = drillProject
-    ? '<div class="empty-state" style="padding:40px 0"><p style="color:var(--muted)">No quotes for this project yet.</p></div>'
+  const noMatchMsg = drillClient
+    ? '<div class="empty-state" style="padding:40px 0"><p style="color:var(--muted)">No quotes for this client yet.</p></div>'
     : '<div class="empty-state" style="padding:40px 0"><p style="color:var(--muted)">No quotes match this filter.</p></div>';
 
   el.innerHTML = `<div style="max-width:800px;margin:0 auto">
     ${header}
-    ${customerQuotes.length === 0 && !drillProject ? emptyState : filterBar + `<div class="quote-list">${filteredQ.map(qCard).join('')}${filteredQ.length === 0 ? noMatchMsg : ''}</div>`}
+    ${customerQuotes.length === 0 && !drillClient ? emptyState : filterBar + `<div class="quote-list">${filteredQ.map(qCard).join('')}${filteredQ.length === 0 ? noMatchMsg : ''}</div>`}
   </div>`;
 }
 
@@ -527,11 +525,13 @@ function importQuotesCSV() {
     for (let i = 1; i < rows.length; i++) {
       const r = rows[i]; if (r.length < 4 || !r[0]) continue;
       const client_id = r[0] ? await resolveClient(r[0]) : null;
-      const project_id = r[1] ? await resolveProject(r[1], client_id) : null;
       /** @type {any} */
       const row = { user_id: _userId, materials: parseFloat(r[2])||0, labour: parseFloat(r[3])||0, markup: parseFloat(r[4])||20, tax: parseFloat(r[5])||13, discount: parseFloat(r[6])||0, status: r[7]||'draft', date: r[8]||new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short'}), notes: r[9]||'' };
       if (client_id) row.client_id = client_id;
-      if (project_id) row.project_id = project_id;
+      // r[1] historically held the project name — kept in the CSV header for
+      // round-trip compatibility but written into quotes.name now that the
+      // projects entity is gone.
+      if (r[1]) row.name = r[1];
       if (_userId) { const{data}=await _db('quotes').insert(row).select().single(); if(data){quotes.unshift(data);imported++;} }
     }
     _toast(imported+' quotes imported','success'); renderQuoteMain();
@@ -693,8 +693,6 @@ async function _saveNewProjectPopup(targetInputId) {
   const clientName = _popupVal('pnp-client') || '';
   const isCutList = targetInputId === 'cl-project' || targetInputId === 'cl-empty-picker';
   const isCabBuilder = targetInputId === 'cb-project' || targetInputId === 'cb-empty-picker';
-  const isQuoteEditor = targetInputId === 'qe-project-picker';
-  const isOrderEditor = targetInputId === 'oe-project-picker';
   // Check for duplicate
   const dupe = projects.find(p => p.name.toLowerCase() === name.toLowerCase());
   if (dupe) {
@@ -705,8 +703,6 @@ async function _saveNewProjectPopup(targetInputId) {
     if (ci && clientName && !ci.value) ci.value = clientName;
     if (isCutList) _setClLoadedProject(dupe.id, dupe.name);
     if (isCabBuilder) _setCbLoadedProject(dupe.id, dupe.name);
-    if (isQuoteEditor) _qPickProject(dupe.id);
-    if (isOrderEditor && typeof _oPickProject === 'function') _oPickProject(dupe.id);
     _closePopup();
     _toast('Project already exists — selected', 'info');
     return;
@@ -730,8 +726,6 @@ async function _saveNewProjectPopup(targetInputId) {
   if (ci2 && clientName && !ci2.value) ci2.value = clientName;
   if (isCutList) _setClLoadedProject(data.id, data.name);
   if (isCabBuilder) _setCbLoadedProject(data.id, data.name);
-  if (isQuoteEditor) _qPickProject(data.id);
-  if (isOrderEditor && typeof _oPickProject === 'function') _oPickProject(data.id);
   _closePopup();
   renderProjectsMain();
   _toast(`Project "${name}" added`, 'success');
@@ -749,17 +743,20 @@ function _setClLoadedProject(id, name) {
   if (typeof _clLoadProjectList === 'function') _clLoadProjectList();
 }
 
-// Cabinet Builder counterpart — wires the new project into _cbCurrentProjectId
-// so the dirty-pill tracker recognises the project and subsequent saves go
-// straight to its draft quote.
+// Cabinet Builder counterpart — wires the popup-created project into the
+// Cabinet Builder's client slot. After F5 the cabinet builder is client-keyed,
+// so we derive the client from the new project row's client_id.
 /** @param {number} id @param {string} name */
 function _setCbLoadedProject(id, name) {
-  if (typeof _cbCurrentProjectId === 'undefined') return;
-  _cbCurrentProjectId = id;
-  _cbCurrentProjectName = name;
-  localStorage.setItem('pc_cq_project_name', name);
+  if (typeof _cbCurrentClientId === 'undefined') return;
+  const proj = projects.find(p => p.id === id);
+  if (!proj || !proj.client_id) return;
+  const cli = clients.find(c => c.id === proj.client_id);
+  if (!cli) return;
+  _cbCurrentClientId = cli.id;
+  _cbCurrentClientName = cli.name;
+  localStorage.setItem('pc_cq_client_name', cli.name);
   if (typeof _setCbDirty === 'function') _setCbDirty(false);
-  if (typeof _clLoadProjectList === 'function') _clLoadProjectList();
 }
 
 // Close suggest on blur
@@ -1064,7 +1061,7 @@ async function duplicateQuote(id) {
   /** @type {any} */
   const row = { user_id: _userId, markup: q.markup, tax: q.tax, status: 'draft', date: new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short'}), notes: q.notes || '' };
   if (q.client_id) row.client_id = q.client_id;
-  if (q.project_id) row.project_id = q.project_id;
+  if (q.name) row.name = q.name;
   const { data, error } = await _db('quotes').insert(row).select().single();
   if (error || !data) { _toast('Could not duplicate quote — ' + (error?.message || JSON.stringify(error)), 'error'); console.error(error); return; }
   quotes.unshift(data);
@@ -1123,67 +1120,86 @@ const _Q_ICON_LABOUR = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColo
 const _Q_EMPTY_ICON = '<svg class="pe-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>';
 
 /** Top-level render for the Quote sidebar editor.
- *  Reads _qpState; renders empty (project picker), in-progress (no row yet),
+ *  Reads _qpState; renders empty (client picker), in-progress (no row yet),
  *  or active-edit (existing quote loaded). */
 function renderQuoteEditor() {
   const host = document.getElementById('quote-editor-host');
   if (!host) return;
 
   const q = _qpState.quoteId ? quotes.find(qx => qx.id === _qpState.quoteId) : null;
-  const projectId = _qpState.projectId || (q ? q.project_id : null);
-  const project = projectId ? projects.find(p => p.id === projectId) : null;
-  const projectName = q ? quoteProject(q) : (project ? project.name : '');
-  const clientName = q ? quoteClient(q) : (project && project.client_id ? (clients.find(c => c.id === project.client_id) || {}).name || '' : '');
+  const clientId = _qpState.clientId || (q ? q.client_id : null);
+  const client = clientId ? clients.find(c => c.id === clientId) : null;
+  const projectName = q ? quoteProject(q) : '';
+  const clientName = q ? quoteClient(q) : (client ? client.name : '');
 
   // ── Empty state ──
-  if (!q && !project) {
+  if (!q && !client) {
     if (!_qpState.startingNew) {
-      // Idle: logo + Recent Projects + "+ New Quote" button
-      const recents = (typeof projects !== 'undefined' ? projects : [])
+      // Idle: logo + Recent Clients + smart-input picker
+      const recents = (typeof clients !== 'undefined' ? clients : [])
         .slice()
         .sort(/** @param {any} a @param {any} b */ (a, b) => {
-          const av = a.updated_at ? +new Date(a.updated_at) : 0;
-          const bv = b.updated_at ? +new Date(b.updated_at) : 0;
+          const av = a.updated_at ? +new Date(a.updated_at) : (a.id || 0);
+          const bv = b.updated_at ? +new Date(b.updated_at) : (b.id || 0);
           return bv - av;
-        });
-      host.innerHTML = _renderProjectEmpty({
-        title: 'Quotes',
-        subtitle: 'Pick a project to start a new quote.',
-        pickFnName: '_qPickProjectFromEmpty',
-        pickerInputId: 'qe-project-picker',
-        pickerSuggestId: 'qe-project-suggest',
-        pickerSuggestFn: '_smartQProjectSuggest',
-        recentProjects: recents,
-        iconSvg: _Q_EMPTY_ICON,
-      });
+        })
+        .slice(0, 5)
+        .map(/** @param {any} c */ c => ({
+          id: c.id,
+          name: c.name,
+          meta: '',
+          onClick: `_qPickClient(${c.id})`,
+        }));
+      host.innerHTML = `<div class="project-empty">
+        ${_Q_EMPTY_ICON}
+        <h3>Quotes</h3>
+        <p>Pick a client to start a new quote.</p>
+        <div style="position:relative;text-align:left">
+          <div class="smart-input-wrap">
+            <input type="text" id="qe-client-picker" placeholder="Search or add client..." autocomplete="off"
+              oninput="_smartQClientSuggest(this,'qe-client-suggest')"
+              onfocus="_smartQClientSuggest(this,'qe-client-suggest')"
+              onblur="setTimeout(()=>{const b=document.getElementById('qe-client-suggest'); if(b)b.style.display='none'},150)">
+            <div class="smart-input-add" onclick="_openNewClientPopup('qe-client-picker')" title="New client">+</div>
+          </div>
+          <div id="qe-client-suggest" class="client-suggest-list" style="display:none"></div>
+        </div>
+        ${recents.length ? `<div class="pe-recent-list">
+          <div class="pe-recent-label">Recent clients</div>
+          ${recents.map(r => `<div class="pe-recent-item" onclick="${r.onClick}">
+            <span class="pe-ri-icon">${_TYPE_ICON_CLIENT}</span>
+            <span>${_escHtml(r.name)}</span>
+          </div>`).join('')}
+        </div>` : ''}
+      </div>`;
       return;
     }
-    // Drafting: project-picker form (reached by clicking "+ New Quote")
+    // Drafting: client-picker form (reached by clicking "+ New Quote")
     host.innerHTML = `
       <div class="form-section">
         <div class="form-section-title">New Quote</div>
         <div class="form-group" style="position:relative;margin-bottom:8px">
-          <label>Project</label>
+          <label>Client</label>
           <div class="smart-input-wrap">
-            <input type="text" id="qe-project-picker" placeholder="Search or add project..." autocomplete="off"
-              oninput="_smartQProjectSuggest(this,'qe-project-suggest')"
-              onfocus="_smartQProjectSuggest(this,'qe-project-suggest')"
-              onblur="setTimeout(()=>{const b=document.getElementById('qe-project-suggest'); if(b)b.style.display='none'},150)">
-            <div class="smart-input-add" onclick="_openNewProjectPopup('qe-project-picker')" title="New project">+</div>
+            <input type="text" id="qe-client-picker" placeholder="Search or add client..." autocomplete="off"
+              oninput="_smartQClientSuggest(this,'qe-client-suggest')"
+              onfocus="_smartQClientSuggest(this,'qe-client-suggest')"
+              onblur="setTimeout(()=>{const b=document.getElementById('qe-client-suggest'); if(b)b.style.display='none'},150)">
+            <div class="smart-input-add" onclick="_openNewClientPopup('qe-client-picker')" title="New client">+</div>
           </div>
-          <div id="qe-project-suggest" class="client-suggest-list" style="display:none"></div>
+          <div id="qe-client-suggest" class="client-suggest-list" style="display:none"></div>
         </div>
         <div style="font-size:11px;color:var(--muted);margin-top:8px;padding:8px 10px;background:var(--surface2);border-radius:6px;line-height:1.5">
-          Pick or create a project to start a new quote. The client is set on the project.
+          Pick or create a client to start a new quote.
         </div>
       </div>`;
     return;
   }
 
-  // ── Sub-gate: project picked, no quote open → "+ Add Quote" + recent quotes
-  if (project && !q) {
+  // ── Sub-gate: client picked, no quote open → "+ Add Quote" + recent quotes
+  if (client && !q) {
     const recents = quotes
-      .filter(qx => qx.project_id === project.id)
+      .filter(qx => qx.client_id === client.id && !_isDraftQuote(qx))
       .slice()
       .sort(/** @param {any} a @param {any} b */ (a, b) => (+new Date(b.updated_at || 0)) - (+new Date(a.updated_at || 0)))
       .slice(0, 5)
@@ -1194,9 +1210,8 @@ function renderQuoteEditor() {
         onClick: `loadQuoteIntoSidebar(${qx.id})`,
       }));
     const projHeader = _renderProjectHeader('quote', {
-      name: project.name || 'Untitled project',
-      exitFn: '_qChangeProject',
-      clientName: clientName || undefined,
+      name: client.name || 'Client',
+      exitFn: '_qChangeClient',
       iconSvg: _Q_EMPTY_ICON.replace('class="pe-icon"', 'class="ph-icon" width="16" height="16"'),
     });
     host.innerHTML = `${projHeader}
@@ -1204,7 +1219,7 @@ function renderQuoteEditor() {
         ${_renderListEmpty({
           iconSvg: _Q_EMPTY_ICON,
           title: 'Quotes',
-          subtitle: 'Add a quote for this project. New quotes autosave as you edit.',
+          subtitle: 'Add a quote for this client. New quotes autosave as you edit.',
           btnLabel: '+ Add Quote',
           btnOnclick: '_qStartNewQuote()',
           recentItems: recents,
@@ -1239,7 +1254,7 @@ function renderQuoteEditor() {
   host.innerHTML = `<div class="form-section editor-shell">
     <div class="project-header">
       <div class="ph-row1">
-        <button class="ph-back" onclick="_qChangeProject()" title="Back to quotes" aria-label="Back">
+        <button class="ph-back" onclick="_qChangeClient()" title="Back to quotes" aria-label="Back">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
         </button>
         <svg class="ph-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
@@ -1348,20 +1363,20 @@ function _qQuoteSearchInput(input) {
 }
 
 /** Smart suggest for the quote-number input. Lists quotes for the current
- *  project with click-to-load and "+ Start new" footer when the typed number
+ *  client with click-to-load and "+ Start new" footer when the typed number
  *  isn't an existing match — mirrors the cutlist library pattern.
  *  @param {HTMLInputElement} input @param {string} boxId */
 function _qQuoteSuggest(input, boxId) {
   const box = document.getElementById(boxId);
   if (!box) return;
-  if (!_qpState.projectId) {
-    box.innerHTML = `<div class="client-suggest-add" style="color:var(--muted)">Pick a project first</div>`;
+  if (!_qpState.clientId) {
+    box.innerHTML = `<div class="client-suggest-add" style="color:var(--muted)">Pick a client first</div>`;
     box.style.display = 'block';
     return;
   }
   const q = input.value.trim().toLowerCase();
   const rows = quotes
-    .filter(x => x.project_id === _qpState.projectId)
+    .filter(x => x.client_id === _qpState.clientId && !_isDraftQuote(x))
     .slice()
     .sort(/** @param {any} a @param {any} b */ (a, b) => (+new Date(b.updated_at || 0)) - (+new Date(a.updated_at || 0)));
   /** @param {any} x */
@@ -1384,7 +1399,7 @@ function _qQuoteSuggest(input, boxId) {
   if (matches.length === 0 && rows.length > 0) {
     html += `<div class="client-suggest-add" style="color:var(--muted)">No matching quotes</div>`;
   } else if (rows.length === 0 && !q) {
-    html += `<div class="client-suggest-add" style="color:var(--muted)">No quotes in this project yet</div>`;
+    html += `<div class="client-suggest-add" style="color:var(--muted)">No quotes for this client yet</div>`;
   }
   if (q && !exact) {
     html += `<div class="client-suggest-item client-suggest-add" onmousedown="_qNewQuoteFromInput()">
@@ -1401,14 +1416,14 @@ function _qQuoteSuggest(input, boxId) {
  *  without further user input. Mirrors Clients/Stock + cabinets/cutlists. */
 async function _qStartNewQuote() {
   if (!_userId) { _toast('Sign in to create quotes', 'error'); return; }
-  if (!_qpState.projectId) { _toast('Pick a project first', 'error'); return; }
+  if (!_qpState.clientId) { _toast('Pick a client first', 'error'); return; }
   const insertNew = async () => {
     const quoteNum = _nextQuoteNumber();
     if (typeof _setSaveStatus === 'function') _setSaveStatus('quote', 'saving');
     try {
       const { data, error } = await _dbInsertSafe('quotes', /** @type {any} */ ({
         user_id: _userId,
-        project_id: _qpState.projectId,
+        client_id: _qpState.clientId,
         quote_number: quoteNum,
         status: 'draft',
         date: new Date().toISOString().slice(0, 10),
@@ -1423,7 +1438,7 @@ async function _qStartNewQuote() {
       }
       const newId = /** @type {any} */ (data).id;
       quotes.unshift(/** @type {any} */ (data));
-      _qpState = { quoteId: newId, lines: [], dirty: false, projectId: _qpState.projectId, startingNew: false };
+      _qpState = { quoteId: newId, lines: [], dirty: false, clientId: _qpState.clientId, startingNew: false };
       if (typeof /** @type {any} */ (window)._pcSaveOpenQuoteId === 'function') {
         /** @type {any} */ (window)._pcSaveOpenQuoteId(newId);
       }
@@ -1504,7 +1519,7 @@ function _qMarkDirty() {
 
 /** Reset editor to empty state. */
 function _qClearEditor() {
-  _qpState = { quoteId: null, lines: [], dirty: false, projectId: null, startingNew: false };
+  _qpState = { quoteId: null, lines: [], dirty: false, clientId: null, startingNew: false };
   if (typeof /** @type {any} */ (window)._pcSaveOpenQuoteId === 'function') {
     /** @type {any} */ (window)._pcSaveOpenQuoteId(null);
   }
@@ -1512,27 +1527,18 @@ function _qClearEditor() {
   renderQuoteMain();
 }
 
-/** Idle-state click handler: pick a recent project to start a new quote on it.
- *  @param {number} id @param {string} _name */
-function _qPickProjectFromEmpty(id, _name) {
-  _qpState.projectId = id;
-  _qpState.startingNew = false;
-  renderQuoteEditor();
-  renderQuoteMain();
-}
-
-/** Idle-state click handler: reveal the project-picker form. */
+/** Idle-state click handler: reveal the client-picker form. */
 function _qNewQuote() {
   _qpState.startingNew = true;
   renderQuoteEditor();
   setTimeout(() => {
-    const el = document.getElementById('qe-project-picker');
+    const el = document.getElementById('qe-client-picker');
     if (el) /** @type {HTMLInputElement} */ (el).focus();
   }, 0);
 }
 
-/** Switch project mid-edit (with discard prompt if dirty). */
-function _qChangeProject() {
+/** Switch client mid-edit (with discard prompt if dirty). */
+function _qChangeClient() {
   if (_qpState.dirty) {
     _confirm('Discard unsaved changes?', () => _qClearEditor());
     return;
@@ -1554,7 +1560,7 @@ async function loadQuoteIntoSidebar(id) {
     quoteId: id,
     lines: Array.isArray(q._lines) ? q._lines.map(/** @param {any} r */ r => ({ ...r })) : [],
     dirty: false,
-    projectId: q.project_id || null,
+    clientId: q.client_id || null,
     startingNew: false,
   };
   if (typeof /** @type {any} */ (window)._pcSaveOpenQuoteId === 'function') {
@@ -1573,55 +1579,56 @@ async function loadQuoteIntoSidebar(id) {
   }
 }
 
-/** Smart-suggest for project picker in the empty-state editor.
- *  Mirrors _smartCBProjectSuggest from cabinet-library.js.
+/** Smart-suggest for client picker in the empty-state quote editor.
  *  @param {HTMLInputElement} input @param {string} boxId */
-function _smartQProjectSuggest(input, boxId) {
+function _smartQClientSuggest(input, boxId) {
   const val = input.value.toLowerCase().trim();
   const box = _byId(boxId);
   if (!box) return;
   if (typeof _posSuggest === 'function') _posSuggest(input, box);
-  const matches = projects
-    .filter(p => !val || p.name.toLowerCase().includes(val))
+  const matches = clients
+    .filter(c => !val || c.name.toLowerCase().includes(val))
     .slice(0, 8);
   /** @param {string} s */
   const esc = s => _escHtml(s).replace(/'/g, '&#39;');
   let html = '';
-  for (const p of matches) {
-    const clientName = p.client_id ? (clients.find(c => c.id === p.client_id) || {}).name || '' : '';
-    html += `<div class="client-suggest-item" onmousedown="_qPickProject(${p.id})">
-      <span class="csi-icon">${_Q_ICON_CABINET}</span>
-      <span class="csi-name">${esc(p.name)}</span>
-      ${clientName ? `<span class="csi-meta">${esc(clientName)}</span>` : ''}
+  for (const c of matches) {
+    const qcount = quotes.filter(/** @param {any} q */ q => q.client_id === c.id && !_isDraftQuote(q)).length;
+    html += `<div class="client-suggest-item" onmousedown="_qPickClient(${c.id})">
+      <span class="suggest-icon">${esc(c.name).charAt(0).toUpperCase()}</span>
+      <span class="csi-name">${esc(c.name)}</span>
+      ${qcount ? `<span class="csi-meta">${qcount} quote${qcount!==1?'s':''}</span>` : ''}
     </div>`;
   }
-  if (val && !matches.some(p => p.name.toLowerCase() === val)) {
-    html += `<div class="client-suggest-item client-suggest-add" onmousedown="_openNewProjectPopup('qe-project-picker')">
+  if (val && !matches.some(c => c.name.toLowerCase() === val)) {
+    html += `<div class="client-suggest-item client-suggest-add" onmousedown="_openNewClientPopup('qe-client-picker')">
       <span class="csi-icon">+</span>
-      <span class="csi-name">Create project "${esc(input.value.trim())}"</span>
+      <span class="csi-name">Create client "${esc(input.value.trim())}"</span>
     </div>`;
   }
   if (!html) {
-    html = '<div class="client-suggest-empty">No projects yet — click + to create one.</div>';
+    html = '<div class="client-suggest-empty">No clients yet — click + to create one.</div>';
   }
   box.innerHTML = html;
   box.style.display = 'block';
 }
+/** @type {any} */ (window)._smartQClientSuggest = _smartQClientSuggest;
 
-/** @param {number} projectId */
-function _qPickProject(projectId) {
-  const p = projects.find(pp => pp.id === projectId);
-  if (!p) return;
-  _qpState = { quoteId: null, lines: [], dirty: false, projectId: p.id, startingNew: false };
+/** @param {number} clientId */
+function _qPickClient(clientId) {
+  const c = clients.find(cc => cc.id === clientId);
+  if (!c) return;
+  _qpState = { quoteId: null, lines: [], dirty: false, clientId: c.id, startingNew: false };
   renderQuoteEditor();
   renderQuoteMain();
 }
+/** @type {any} */ (window)._qPickClient = _qPickClient;
 
 /** Add a line to the current quote. Auto-creates the quote row if it doesn't exist.
  *  @param {'cabinet'|'item'|'labour'} kind */
 async function _qAddLine(kind) {
   if (!_qpState.quoteId) {
-    if (!_qpState.projectId) { _toast('Pick or create a project first.', 'error'); return; }
+    if (!_qpState.clientId) { _toast('Pick or create a client first.', 'error'); return; }
     const ok = await createQuoteFromEditor(/* silent */ true);
     if (!ok) return;
   }
@@ -1638,18 +1645,18 @@ async function _qAddLine(kind) {
  *  @param {boolean} [silent] suppress toast (used when auto-creating from line add) */
 async function createQuoteFromEditor(silent) {
   if (!_userId) { _toast('Sign in first.', 'error'); return false; }
-  if (!_qpState.projectId) { _toast('Pick a project first.', 'error'); return false; }
+  if (!_qpState.clientId) { _toast('Pick a client first.', 'error'); return false; }
   const customerQuotes = quotes.filter(q => !_isDraftQuote(q));
   if (!_enforceFreeLimit('quotes', customerQuotes.length)) return false;
-  const project = projects.find(p => p.id === _qpState.projectId);
-  if (!project) { _toast('Project not found.', 'error'); return false; }
+  const client = clients.find(c => c.id === _qpState.clientId);
+  if (!client) { _toast('Client not found.', 'error'); return false; }
   /** @type {any} */
   const qnRaw = _popupVal('pq-quote-number') || '';
   const qnSaved = qnRaw ? ('QUO-' + qnRaw.replace(/^(QUO|Q)-/i, '')) : null;
   /** @type {any} */
   const row = {
     user_id: _userId,
-    project_id: project.id,
+    client_id: client.id,
     status: _popupVal('pq-status') || 'draft',
     notes: _popupVal('pq-notes') || '',
     // Legacy order-level markup column kept for back-compat; UI no longer exposes it.
@@ -1660,7 +1667,6 @@ async function createQuoteFromEditor(silent) {
     quote_number: qnSaved,
     date: new Date().toLocaleDateString('en-GB', { day:'numeric', month:'short' }),
   };
-  if (project.client_id) row.client_id = project.client_id;
   const { data, error } = await _dbInsertSafe('quotes', row);
   if (error || !data) { _toast('Could not create quote — ' + ((error && error.message) || ''), 'error'); return false; }
   quotes.unshift(data);

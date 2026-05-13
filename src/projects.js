@@ -79,15 +79,17 @@ async function _saveProjectScoped({ name, scope, payload, meta }) {
   return { projectId, isNew, cutlistId: cutlist ? cutlist.id : null, cutlistName: cutlist ? cutlist.name : null };
 }
 
-// Find-or-create a cutlist row by (user, project, case-insensitive name).
-/** @param {number} projectId @param {string} cutlistName */
-async function _findOrCreateCutlist(projectId, cutlistName) {
-  if (!_userId || !projectId) return null;
+// Find-or-create a cutlist row by (user, case-insensitive name).
+// F5 (2026-05-13): dropped projectId scope — cutlists are no longer
+// project-scoped. The name match is per-user (RLS bounds it).
+/** @param {number} _projectId unused — kept for caller back-compat
+ *  @param {string} cutlistName */
+async function _findOrCreateCutlist(_projectId, cutlistName) {
+  if (!_userId) return null;
   const trimmed = (cutlistName || 'Main').trim() || 'Main';
   const { data: existing } = await _db('cutlists')
     .select('id, name, position')
-    .eq('user_id', _userId)
-    .eq('project_id', projectId);
+    .eq('user_id', _userId);
   const list = /** @type {any[]} */ (existing || []);
   const hit = list.find(/** @param {any} c */ c => (c.name||'').toLowerCase() === trimmed.toLowerCase());
   if (hit) {
@@ -96,7 +98,7 @@ async function _findOrCreateCutlist(projectId, cutlistName) {
   }
   const maxPos = list.reduce(/** @param {number} m @param {any} c */ (m, c) => Math.max(m, c.position || 0), -1);
   const { data: created, error: insertErr } = await _db('cutlists')
-    .insert([{ user_id: _userId, project_id: projectId, name: trimmed, position: maxPos + 1 }])
+    .insert([{ user_id: _userId, name: trimmed, position: maxPos + 1 }])
     .select('id, name')
     .single();
   if (insertErr) { console.warn('[findOrCreateCutlist] insert failed:', insertErr.message); return null; }
@@ -124,9 +126,9 @@ async function _replaceQuoteLinesChildTable(projectId, payload) {
 
 // Replace sheets/pieces/edge_bands rows scoped to a single cutlist with the current payload.
 // Idempotent: deletes existing rows for this cutlist_id then inserts new ones. piece_edges
-// cascade-deletes via FK on pieces. Other cutlists in the same project are untouched.
-/** @param {number} cutlistId @param {number} projectId @param {any} payload */
-async function _replaceCutListChildTables(cutlistId, projectId, payload) {
+// cascade-deletes via FK on pieces. F5: project_id field stripped.
+/** @param {number} cutlistId @param {number} _projectId unused — kept for caller back-compat @param {any} payload */
+async function _replaceCutListChildTables(cutlistId, _projectId, payload) {
   if (!cutlistId) return;
   await Promise.all([
     _db('sheets').delete().eq('cutlist_id', cutlistId),
@@ -138,7 +140,7 @@ async function _replaceCutListChildTables(cutlistId, projectId, payload) {
   const ebs = payload.edgeBands || [];
   if (sheets.length) {
     const rows = sheets.map(/** @param {any} s @param {number} i */ (s, i) => ({
-      project_id: projectId, cutlist_id: cutlistId, user_id: _userId, position: i,
+      cutlist_id: cutlistId, user_id: _userId, position: i,
       name: s.name || 'Sheet',
       w_mm: parseFloat(s.w) || 0, h_mm: parseFloat(s.h) || 0,
       qty: parseInt(s.qty, 10) || 1, kerf_mm: parseFloat(s.kerf) || 3,
@@ -149,7 +151,7 @@ async function _replaceCutListChildTables(cutlistId, projectId, payload) {
   }
   if (pieces.length) {
     const rows = pieces.map(/** @param {any} pc @param {number} i */ (pc, i) => ({
-      project_id: projectId, cutlist_id: cutlistId, user_id: _userId, position: i,
+      cutlist_id: cutlistId, user_id: _userId, position: i,
       label: pc.label || 'Part',
       w_mm: parseFloat(pc.w) || 0, h_mm: parseFloat(pc.h) || 0,
       qty: parseInt(pc.qty, 10) || 1,
@@ -161,7 +163,7 @@ async function _replaceCutListChildTables(cutlistId, projectId, payload) {
   }
   if (ebs.length) {
     const rows = ebs.map(/** @param {any} eb @param {number} i */ (eb, i) => ({
-      project_id: projectId, cutlist_id: cutlistId, user_id: _userId, position: i,
+      cutlist_id: cutlistId, user_id: _userId, position: i,
       name: eb.name || 'Edge Band',
       thickness_mm: parseFloat(eb.thickness) || 0,
       width_mm: parseFloat(eb.width) || 0,
@@ -225,7 +227,7 @@ function _clSaveProjectByName(name, opts) {
     }
     if (typeof _setSaveStatus === 'function') _setSaveStatus('cutlist', 'saved');
     _clLoadProjectList();
-    if (typeof renderCLCutListsView === 'function') renderCLCutListsView();
+    if (typeof renderCLCutListLibraryView === 'function') renderCLCutListLibraryView();
   });
 }
 // Expose for cross-file callers (cutlist.js handlers).
@@ -308,7 +310,7 @@ async function loadProject(id) {
   _setClDirty(false);
   // Switch to Project Cut Lists tab (now filtered to this project).
   if (typeof switchCLMainView === 'function') switchCLMainView('cutlists');
-  else if (typeof renderCLCutListsView === 'function') renderCLCutListsView();
+  else if (typeof renderCLCutListLibraryView === 'function') renderCLCutListLibraryView();
   if (!(/** @type {any} */ (window))._pcSuppressToasts) {
     _toast(`"${_clCurrentProjectName}" loaded — pick a cut list`, 'success');
   }
@@ -319,20 +321,11 @@ async function loadProject(id) {
 /** @param {number} cutlistId */
 async function _clLoadCutlist(cutlistId) {
   if (!cutlistId) return;
-  const { data: cl, error } = await _db('cutlists').select('id, name, project_id').eq('id', cutlistId).single();
+  const { data: cl, error } = await _db('cutlists').select('id, name').eq('id', cutlistId).single();
   if (error || !cl) { _toast('Could not load cut list.', 'error'); return; }
 
-  // Make sure the parent project is also tracked (so Save uses the right project).
-  if (cl.project_id && cl.project_id !== _clCurrentProjectId) {
-    const { data: proj } = await _db('projects').select('id, name').eq('id', cl.project_id).single();
-    if (proj) {
-      _clCurrentProjectId = proj.id;
-      _clCurrentProjectName = proj.name || '';
-      const inp = /** @type {HTMLInputElement|null} */ (document.getElementById('cl-project'));
-      if (inp) inp.value = _clCurrentProjectName;
-    }
-  }
-
+  // F5 (2026-05-13): project scope tracking removed — cutlists no longer
+  // have a parent project.
   sheets = []; pieces = []; edgeBands = []; _sheetId = 1; _pieceId = 1; _edgeBandId = 1; pieceColorIdx = 0;
   const [{ data: dbSheets }, { data: dbPieces }, { data: dbEdges }] = await Promise.all([
     _db('sheets').select('*').eq('cutlist_id', cutlistId).order('position', { ascending: true }),
@@ -381,7 +374,7 @@ async function _clLoadCutlist(cutlistId) {
     _toast(`"${_clCurrentCutlistName}" loaded`, 'success');
   }
   if (typeof _clRenderContext === 'function') _clRenderContext();
-  if (typeof renderCLCutListsView === 'function') renderCLCutListsView();
+  if (typeof renderCLCutListLibraryView === 'function') renderCLCutListLibraryView();
 }
 /** @type {any} */ (window)._clLoadCutlist = _clLoadCutlist;
 
@@ -393,7 +386,7 @@ async function _clDuplicateCutlist(cutlistId) {
   if (!cl) return;
   const newName = `${cl.name} (copy)`;
   const { data: created, error } = await _db('cutlists')
-    .insert([{ user_id: _userId, project_id: cl.project_id, name: newName, position: (cl.position || 0) + 1, ui_prefs: cl.ui_prefs || {} }])
+    .insert([{ user_id: _userId, name: newName, position: (cl.position || 0) + 1, ui_prefs: cl.ui_prefs || {} }])
     .select('id')
     .single();
   if (error || !created) { _toast('Duplicate failed', 'error'); return; }
@@ -409,7 +402,7 @@ async function _clDuplicateCutlist(cutlistId) {
   if (srcPieces && srcPieces.length) await _db('pieces').insert(srcPieces.map(strip));
   if (srcEdges  && srcEdges.length)  await _db('edge_bands').insert(srcEdges.map(strip));
   _toast(`"${newName}" created`, 'success');
-  if (typeof renderCLCutListsView === 'function') renderCLCutListsView();
+  if (typeof renderCLCutListLibraryView === 'function') renderCLCutListLibraryView();
 }
 /** @type {any} */ (window)._clDuplicateCutlist = _clDuplicateCutlist;
 
@@ -428,7 +421,7 @@ function _clDeleteCutlist(cutlistId) {
       if (typeof renderEdgeBands === 'function') { try { renderEdgeBands(); } catch(e) {} }
     }
     _toast('Cut list deleted', 'success');
-    if (typeof renderCLCutListsView === 'function') renderCLCutListsView();
+    if (typeof renderCLCutListLibraryView === 'function') renderCLCutListLibraryView();
   });
 }
 /** @type {any} */ (window)._clDeleteCutlist = _clDeleteCutlist;
@@ -465,7 +458,7 @@ async function _clConfirmRenameCutlist(cutlistId) {
   if (cutlistId === _clCurrentCutlistId) _clCurrentCutlistName = newName;
   _closePopup();
   _toast('Renamed', 'success');
-  if (typeof renderCLCutListsView === 'function') renderCLCutListsView();
+  if (typeof renderCLCutListLibraryView === 'function') renderCLCutListLibraryView();
 }
 /** @type {any} */ (window)._clConfirmRenameCutlist = _clConfirmRenameCutlist;
 

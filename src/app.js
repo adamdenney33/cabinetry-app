@@ -26,8 +26,8 @@ function _openClientPopup(id) {
  *  - orderId: null until a row is created/loaded
  *  - lines: in-memory editable copies of order_lines rows
  *  - dirty: true when fields have been edited but not saved
- *  - projectId: working project id (used in the empty/new state before orderId exists) */
-let _opState = /** @type {{orderId: number|null, lines: any[], dirty: boolean, projectId: number|null, startingNew: boolean}} */ ({ orderId: null, lines: [], dirty: false, projectId: null, startingNew: false });
+ *  - clientId: working client id (used in the empty/new state before orderId exists) */
+let _opState = /** @type {{orderId: number|null, lines: any[], dirty: boolean, clientId: number|null, startingNew: boolean}} */ ({ orderId: null, lines: [], dirty: false, clientId: null, startingNew: false });
 
 /** Compatibility alias: routes to the Orders sidebar editor.
  *  Kept so external callers (schedule.js, dashboard.js) continue to work.
@@ -518,7 +518,7 @@ function _scheduleOrderLineUpsert(idx) {
 /** @type {{quoteId: number|null, lines: any[]}} */
 /** Sidebar editor state for the Quotes tab (replaces former popup state).
  *  Same shape as _opState but for quotes. */
-let _qpState = /** @type {{quoteId: number|null, lines: any[], dirty: boolean, projectId: number|null, startingNew: boolean}} */ ({ quoteId: null, lines: [], dirty: false, projectId: null, startingNew: false });
+let _qpState = /** @type {{quoteId: number|null, lines: any[], dirty: boolean, clientId: number|null, startingNew: boolean}} */ ({ quoteId: null, lines: [], dirty: false, clientId: null, startingNew: false });
 
 /** Compatibility alias: routes to the Quotes sidebar editor.
  *  Kept so external callers (dashboard.js) continue to work.
@@ -1217,14 +1217,9 @@ async function loadAllData() {
   _hydrateOrderLines().then(() => {
     try { renderDashboard(); setTimeout(drawRevenueChart, 0); } catch(e){}
   }).catch(e => console.warn('[order lines] hydrate failed:', e.message || e));
-  // U.9: load DISTINCT project_id from sheets/pieces for the per-project cut-list count.
-  // Guarded with `typeof` because clients.js (where this is defined) loads after app.js,
-  // and Supabase's _emitInitialSession can fire this auth callback as a microtask before
-  // clients.js has parsed. switchSection('projects') re-hydrates via settings.js when
-  // the user reaches the tab.
-  if (typeof _loadCutListProjectIds === 'function') {
-    _loadCutListProjectIds().catch(e => console.warn('[cutlist project ids]', e.message || e));
-  }
+  // F5 (2026-05-13): _loadCutListProjectIds was the per-project cut-list count
+  // cache. Removed alongside the Projects panel — cutlists are accessed via
+  // the Cut List Library tab now, no per-project rollup needed.
   // catalog_items deprecated — stock_items is now the single source of truth
   // for material/hardware/finish prices. _applyCatalogFromDB call removed.
   // Phase 3.3 — overlay business_info from DB (only if a row exists)
