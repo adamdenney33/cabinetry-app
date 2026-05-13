@@ -855,7 +855,26 @@ function renderClientsMain() {
     /** @param {number} v */
     const fmt = v => cur + v.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0});
 
-    return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;margin-bottom:6px;cursor:pointer;transition:box-shadow .15s" onclick="_openClientPopup(${c.id})" onmouseover="this.style.boxShadow='var(--shadow-md)'" onmouseout="this.style.boxShadow=''">
+    // F1 (2026-05-13): projects render inline within the Client card.
+    // The old 1-cell "Projects" action strip is replaced by a per-project
+    // list using the shared _renderProjectInlineCard component.
+    const projectsForClient = projects.filter(/** @param {any} p */ p => p.client_id === c.id);
+    const projectsBlock = projectsForClient.length
+      ? `<div style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--border2)" onclick="event.stopPropagation()">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+            <span style="font-size:10px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:0.6px">Projects (${projectsForClient.length})</span>
+            <span style="flex:1"></span>
+            <button class="btn btn-outline" style="font-size:10px;padding:3px 9px;width:auto" onclick="event.stopPropagation();_setProjectsActiveClient(${c.id});switchSection('projects');_projectsRevealForm()" title="New project">+ New project</button>
+          </div>
+          ${projectsForClient.map(/** @param {any} p */ p => _renderProjectInlineCard(p, { showClient: false })).join('')}
+        </div>`
+      : `<div style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--border2);display:flex;align-items:center;gap:8px" onclick="event.stopPropagation()">
+          <span style="font-size:11px;color:var(--muted)">No projects yet</span>
+          <span style="flex:1"></span>
+          <button class="btn btn-outline" style="font-size:11px;padding:4px 10px;width:auto" onclick="event.stopPropagation();_setProjectsActiveClient(${c.id});switchSection('projects');_projectsRevealForm()" title="New project">+ New project</button>
+        </div>`;
+
+    return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;margin-bottom:10px;cursor:pointer;transition:box-shadow .15s" onclick="_openClientPopup(${c.id})" onmouseover="this.style.boxShadow='var(--shadow-md)'" onmouseout="this.style.boxShadow=''">
       <div style="display:flex;align-items:center;gap:10px">
         <div style="width:30px;height:30px;border-radius:50%;background:var(--accent-dim);color:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;flex-shrink:0">${c.name.charAt(0).toUpperCase()}</div>
         <div style="flex:1;min-width:0">
@@ -866,17 +885,8 @@ function renderClientsMain() {
           </div>
         </div>
       </div>
-      <div style="margin-top:8px;display:grid;grid-template-columns:repeat(4,1fr);gap:5px">
-        <div class="proj-act${cProjects.length===0?' empty':''}">
-          <div class="proj-act-main" onclick="event.stopPropagation();_setProjectsActiveClient(${c.id});switchSection('projects')${cProjects.length===0?';_projectsRevealForm()':''}" title="${cProjects.length===0?'Create first project':'View projects'}">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
-            <span class="proj-act-label">Projects</span>
-            <span class="proj-act-count">${cProjects.length}</span>
-          </div>
-          <div class="proj-act-add" onclick="event.stopPropagation();_setProjectsActiveClient(${c.id});switchSection('projects');_projectsRevealForm()" title="New project">+</div>
-        </div>
-      </div>
-      <div style="display:flex;align-items:center;gap:4px;margin-top:8px;padding-top:8px;border-top:1px solid var(--border2)" onclick="event.stopPropagation()">
+      ${projectsBlock}
+      <div style="display:flex;align-items:center;gap:4px;margin-top:10px;padding-top:8px;border-top:1px solid var(--border2)" onclick="event.stopPropagation()">
         <span style="flex:1"></span>
         <button class="btn btn-outline" style="font-size:11px;padding:4px 8px;width:auto" onclick="duplicateClient(${c.id})">Duplicate</button>
         <button class="btn btn-outline" style="color:var(--danger);font-size:11px;padding:4px 8px;width:auto" onclick="_confirm('Delete <strong>${_escHtml(c.name)}</strong>?',()=>removeClient(${c.id}))">Delete</button>
@@ -922,6 +932,96 @@ function _highlightProject(id) {
   }, 100);
 }
 
+// ── Shared project-card render (used by Projects tab AND inline in Client cards) ──
+// F1 (2026-05-13): Projects no longer have their own nav tab — they render inline
+// inside each Client card. Lifting projectCard to module scope so renderClientsMain
+// can reuse the same component without duplicating the action-strip logic.
+
+const _PROJ_ICON_CABINET = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>`;
+const _PROJ_ICON_CUTLIST = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12.00 1.70 L12.90 3.45 L15.94 2.48 L16.10 4.44 L19.28 4.72 L18.68 6.59 L21.52 8.06 L20.25 9.56 L22.30 12.00 L20.55 12.90 L21.52 15.94 L19.56 16.10 L19.28 19.28 L17.41 18.68 L15.94 21.52 L14.44 20.25 L12.00 22.30 L11.10 20.55 L8.06 21.52 L7.90 19.56 L4.72 19.28 L5.32 17.41 L2.48 15.94 L3.75 14.44 L1.70 12.00 L3.45 11.10 L2.48 8.06 L4.44 7.90 L4.72 4.72 L6.59 5.32 L8.06 2.48 L9.56 3.75 Z"/><circle cx="12" cy="12" r="1.5"/></svg>`;
+const _PROJ_ICON_QUOTE = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>`;
+const _PROJ_ICON_ORDER = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/></svg>`;
+
+/** Compact-money formatter for chip-sized labels: $42.8k, $1.2M, $850.
+ * @param {number} v */
+function _projFmtShort(v) {
+  if (!v) return '';
+  const cur = /** @type {any} */ (window).currency || '$';
+  if (v >= 1_000_000) return cur + (v/1_000_000).toFixed(1).replace(/\.0$/,'') + 'M';
+  if (v >= 1_000) return cur + (v/1_000).toFixed(1).replace(/\.0$/,'') + 'k';
+  return cur + Math.round(v).toLocaleString('en-US');
+}
+
+/**
+ * Render a single project as a card.
+ * @param {any} p Project row
+ * @param {{showClient?: boolean}} [opts] showClient defaults to true; pass false when rendering inside a Client card
+ */
+function _renderProjectInlineCard(p, opts) {
+  const showClient = opts?.showClient !== false;
+  const client = (showClient && p.client_id) ? clients.find(/** @param {any} c */ c => c.id === p.client_id) : null;
+  // Cabinet count = `cabinet`-kind lines summed across ALL of the project's
+  // quotes (drafts included — drafts are the in-progress builder workspace).
+  const allProjectQuotes = quotes.filter(/** @param {any} q */ q => q.project_id === p.id || (!q.project_id && quoteProject(q) === p.name));
+  const pQuotes = allProjectQuotes.filter(/** @param {any} q */ q => !_isDraftQuote(q));
+  const pOrders = orders.filter(/** @param {any} o */ o => o.project_id === p.id || (!o.project_id && orderProject(o) === p.name));
+  const orderValue = pOrders.reduce(/** @param {number} s @param {any} o */ (s,o) => s + (o.value ?? 0), 0);
+  const quoteValue = pQuotes.reduce(/** @param {number} s @param {any} q */ (s,q) => s + quoteTotal(q), 0);
+  const totalShown = orderValue || quoteValue;
+  const cabinetCount = allProjectQuotes.reduce(/** @param {number} s @param {any} q */ (s,q) => s + ((/** @type {any[]} */ (q._lines || [])).filter(/** @param {any} l */ l => (l.line_kind || 'cabinet') === 'cabinet').length), 0);
+  const cutListCount = (/** @type {any} */ (window)._projectsWithCutLists && /** @type {any} */ (window)._projectsWithCutLists.has(p.id)) ? 1 : 0;
+
+  const statusBadgeCls = p.status==='complete'?'badge-green':p.status==='on-hold'?'badge-gray':'badge-blue';
+  const statusText = p.status==='complete'?'Complete':p.status==='on-hold'?'On Hold':'Active';
+  const nameSafe = _escHtml(p.name);
+  const nameJs = _escHtml(p.name).replace(/'/g, "\\'");
+
+  /**
+   * Render one of the 4 strip actions.
+   * @param {string} label
+   * @param {string} icon
+   * @param {number|null} count
+   * @param {string} moneyLabel
+   * @param {string} drillCall
+   * @param {string} createCall
+   */
+  const act = (label, icon, count, moneyLabel, drillCall, createCall) => {
+    const isEmpty = count === 0;
+    const showCount = count !== null;
+    const drill = (showCount && !isEmpty) ? `event.stopPropagation();${drillCall}` : `event.stopPropagation();${createCall}`;
+    return `<div class="proj-act${isEmpty?' empty':''}">
+      <div class="proj-act-main" onclick="${drill}" title="${isEmpty?'Create first '+label.toLowerCase():'View '+label.toLowerCase()}">
+        ${icon}
+        <span class="proj-act-label">${label}</span>
+        ${showCount ? `<span class="proj-act-count">${count}</span>` : ''}
+        ${moneyLabel ? `<span class="proj-act-money">${moneyLabel}</span>` : ''}
+      </div>
+      <div class="proj-act-add" onclick="event.stopPropagation();${createCall}" title="New ${label.toLowerCase()}">+</div>
+    </div>`;
+  };
+
+  return `<div class="proj-card" id="project-card-${p.id}" onclick="event.stopPropagation();_openProjectPopup(${p.id})">
+    <div class="proj-card-top">
+      <span class="proj-name" onclick="event.stopPropagation();_openProjectPopup(${p.id})">${nameSafe}</span>
+      ${client ? `<span class="proj-client">${_escHtml(client.name)}</span>` : ''}
+      <span class="badge ${statusBadgeCls}" style="font-size:9px;padding:1px 6px">${statusText}</span>
+      ${p.description ? `<span class="proj-desc">${_escHtml(p.description)}</span>` : ''}
+      ${totalShown ? `<span class="proj-total">${_projFmtShort(totalShown)}</span>` : ''}
+    </div>
+    <div class="proj-strip">
+      ${act('Cabinets', _PROJ_ICON_CABINET, cabinetCount, '', `_newCabinetForProject(${p.id})`, `_newCabinetForProject(${p.id})`)}
+      ${act('Cut Lists', _PROJ_ICON_CUTLIST, cutListCount, '', `_newCutListForProject(${p.id})`, `_newCutListForProject(${p.id})`)}
+      ${act('Quotes', _PROJ_ICON_QUOTE, pQuotes.length, pQuotes.length ? _projFmtShort(quoteValue) : '', `_drillQuotesForProject(${p.id})`, `_newQuoteForProject(${p.id})`)}
+      ${act('Orders', _PROJ_ICON_ORDER, pOrders.length, pOrders.length ? _projFmtShort(orderValue) : '', `_drillOrdersForProject(${p.id})`, `_newOrderForProject(${p.id})`)}
+    </div>
+    <div style="display:flex;align-items:center;gap:4px;margin-top:8px;padding-top:8px;border-top:1px solid var(--border2)" onclick="event.stopPropagation()">
+      <span style="flex:1"></span>
+      <button class="btn btn-outline" style="font-size:11px;padding:4px 8px;width:auto" onclick="event.stopPropagation();duplicateProject(${p.id})">Duplicate</button>
+      <button class="btn btn-outline" style="color:var(--danger);font-size:11px;padding:4px 8px;width:auto" onclick="event.stopPropagation();_confirm('Delete project <strong>${nameJs}</strong>? This will also delete its cabinets, cut lists, quotes, and orders.',()=>removeProject(${p.id}))">Delete</button>
+    </div>
+  </div>`;
+}
+
 // ── Render Projects Tab ──
 function renderProjectsMain() {
   _renderProjectsSidebarGate();
@@ -947,77 +1047,11 @@ function renderProjectsMain() {
     return cur + Math.round(v).toLocaleString('en-US');
   };
 
-  // Inline SVG icons — match the main nav-tab set (index.html:163-200) so the
-  // action strip's iconography is consistent with the destination tabs.
-  const iconCabinet = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>`;
-  const iconCutlist = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12.00 1.70 L12.90 3.45 L15.94 2.48 L16.10 4.44 L19.28 4.72 L18.68 6.59 L21.52 8.06 L20.25 9.56 L22.30 12.00 L20.55 12.90 L21.52 15.94 L19.56 16.10 L19.28 19.28 L17.41 18.68 L15.94 21.52 L14.44 20.25 L12.00 22.30 L11.10 20.55 L8.06 21.52 L7.90 19.56 L4.72 19.28 L5.32 17.41 L2.48 15.94 L3.75 14.44 L1.70 12.00 L3.45 11.10 L2.48 8.06 L4.44 7.90 L4.72 4.72 L6.59 5.32 L8.06 2.48 L9.56 3.75 Z"/><circle cx="12" cy="12" r="1.5"/></svg>`;
-  const iconQuote = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>`;
-  const iconOrder = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/></svg>`;
-
+  // F1 (2026-05-13): projectCard lifted to module-level _renderProjectInlineCard
+  // so renderClientsMain can reuse it without duplicating the action-strip logic.
+  // The arrow wrapper drops the extra `index` arg that Array.map passes.
   /** @param {any} p */
-  const projectCard = p => {
-    const client = p.client_id ? clients.find(c => c.id === p.client_id) : null;
-    // Cabinet count = `cabinet`-kind lines summed across ALL of the project's
-    // quotes (drafts included — drafts are the in-progress builder workspace).
-    const allProjectQuotes = quotes.filter(q => q.project_id === p.id || (!q.project_id && quoteProject(q) === p.name));
-    const pQuotes = allProjectQuotes.filter(q => !_isDraftQuote(q));
-    const pOrders = orders.filter(o => o.project_id === p.id || (!o.project_id && orderProject(o) === p.name));
-    const orderValue = pOrders.reduce((s,o) => s + (o.value ?? 0), 0);
-    const quoteValue = pQuotes.reduce((s,q) => s + quoteTotal(q), 0);
-    const totalShown = orderValue || quoteValue;
-    const cabinetCount = allProjectQuotes.reduce((s,q) => s + ((/** @type {any[]} */ (q._lines || [])).filter(l => (l.line_kind || 'cabinet') === 'cabinet').length), 0);
-    const cutListCount = (window._projectsWithCutLists && window._projectsWithCutLists.has(p.id)) ? 1 : 0;
-
-    const statusBadgeCls = p.status==='complete'?'badge-green':p.status==='on-hold'?'badge-gray':'badge-blue';
-    const statusText = p.status==='complete'?'Complete':p.status==='on-hold'?'On Hold':'Active';
-    const nameSafe = _escHtml(p.name);
-    const nameJs = _escHtml(p.name).replace(/'/g, "\\'");
-
-    /**
-     * Render one of the 4 strip actions.
-     * @param {string} label
-     * @param {string} icon - inline SVG markup
-     * @param {number|null} count - null when count is not tracked yet (cabinets / cut lists in v1)
-     * @param {string} moneyLabel - e.g. "$42.8k"; pass '' to omit
-     * @param {string} drillCall - JS expression to drill into existing items (no-op if count is 0/null)
-     * @param {string} createCall - JS expression to create a new item
-     */
-    const act = (label, icon, count, moneyLabel, drillCall, createCall) => {
-      const isEmpty = count === 0;
-      const showCount = count !== null;
-      const drill = (showCount && !isEmpty) ? `event.stopPropagation();${drillCall}` : `event.stopPropagation();${createCall}`;
-      return `<div class="proj-act${isEmpty?' empty':''}">
-        <div class="proj-act-main" onclick="${drill}" title="${isEmpty?'Create first '+label.toLowerCase():'View '+label.toLowerCase()}">
-          ${icon}
-          <span class="proj-act-label">${label}</span>
-          ${showCount ? `<span class="proj-act-count">${count}</span>` : ''}
-          ${moneyLabel ? `<span class="proj-act-money">${moneyLabel}</span>` : ''}
-        </div>
-        <div class="proj-act-add" onclick="event.stopPropagation();${createCall}" title="New ${label.toLowerCase()}">+</div>
-      </div>`;
-    };
-
-    return `<div class="proj-card" id="project-card-${p.id}" onclick="_openProjectPopup(${p.id})">
-      <div class="proj-card-top">
-        <span class="proj-name" onclick="event.stopPropagation();_openProjectPopup(${p.id})">${nameSafe}</span>
-        ${client ? `<span class="proj-client">${_escHtml(client.name)}</span>` : ''}
-        <span class="badge ${statusBadgeCls}" style="font-size:9px;padding:1px 6px">${statusText}</span>
-        ${p.description ? `<span class="proj-desc">${_escHtml(p.description)}</span>` : ''}
-        ${totalShown ? `<span class="proj-total">${fmtShort(totalShown)}</span>` : ''}
-      </div>
-      <div class="proj-strip">
-        ${act('Cabinets', iconCabinet, cabinetCount, '', `_newCabinetForProject(${p.id})`, `_newCabinetForProject(${p.id})`)}
-        ${act('Cut Lists', iconCutlist, cutListCount, '', `_newCutListForProject(${p.id})`, `_newCutListForProject(${p.id})`)}
-        ${act('Quotes', iconQuote, pQuotes.length, pQuotes.length ? fmtShort(quoteValue) : '', `_drillQuotesForProject(${p.id})`, `_newQuoteForProject(${p.id})`)}
-        ${act('Orders', iconOrder, pOrders.length, pOrders.length ? fmtShort(orderValue) : '', `_drillOrdersForProject(${p.id})`, `_newOrderForProject(${p.id})`)}
-      </div>
-      <div style="display:flex;align-items:center;gap:4px;margin-top:8px;padding-top:8px;border-top:1px solid var(--border2)" onclick="event.stopPropagation()">
-        <span style="flex:1"></span>
-        <button class="btn btn-outline" style="font-size:11px;padding:4px 8px;width:auto" onclick="event.stopPropagation();duplicateProject(${p.id})">Duplicate</button>
-        <button class="btn btn-outline" style="color:var(--danger);font-size:11px;padding:4px 8px;width:auto" onclick="event.stopPropagation();_confirm('Delete project <strong>${nameJs}</strong>? This will also delete its cabinets, cut lists, quotes, and orders.',()=>removeProject(${p.id}))">Delete</button>
-      </div>
-    </div>`;
-  };
+  const projectCard = (p) => _renderProjectInlineCard(p);
 
   const hasClient = !!_projectsActiveClientId;
   const filter = window._projFilter || 'all';

@@ -281,7 +281,10 @@ function switchSection(name) {
     /** @type {any} */ (window)._pcSaveSection(name);
   }
   document.querySelectorAll('.nav-tab').forEach((t,i) => {
-    const sections = ['dashboard','cutlist','cabinet','stock','quote','orders','schedule','projects','clients'];
+    // F1 (2026-05-13): Projects nav tab removed; sections array no longer
+    // includes 'projects'. The Projects panel still exists (reachable via
+    // _openProjectPopup from inline project cards) but has no nav tab.
+    const sections = ['dashboard','cutlist','cabinet','stock','quote','orders','schedule','clients'];
     t.classList.toggle('active', sections[i] === name);
   });
   document.querySelectorAll('.section-panel').forEach(p => {
