@@ -421,6 +421,7 @@ export type Database = {
           name: string
           position: number
           project_id: number | null
+          quote_id: number | null
           tags: Json
           ui_prefs: Json
           updated_at: string
@@ -432,6 +433,7 @@ export type Database = {
           name: string
           position?: number
           project_id?: number | null
+          quote_id?: number | null
           tags?: Json
           ui_prefs?: Json
           updated_at?: string
@@ -443,6 +445,7 @@ export type Database = {
           name?: string
           position?: number
           project_id?: number | null
+          quote_id?: number | null
           tags?: Json
           ui_prefs?: Json
           updated_at?: string
@@ -454,6 +457,13 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cutlists_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
             referencedColumns: ["id"]
           },
         ]
