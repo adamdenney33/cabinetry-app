@@ -825,50 +825,6 @@ export type Database = {
           },
         ]
       }
-      projects: {
-        Row: {
-          client_id: number | null
-          created_at: string | null
-          description: string | null
-          id: number
-          name: string
-          status: string
-          ui_prefs: Json
-          updated_at: string | null
-          user_id: string
-        }
-        Insert: {
-          client_id?: number | null
-          created_at?: string | null
-          description?: string | null
-          id?: never
-          name?: string
-          status?: string
-          ui_prefs?: Json
-          updated_at?: string | null
-          user_id: string
-        }
-        Update: {
-          client_id?: number | null
-          created_at?: string | null
-          description?: string | null
-          id?: never
-          name?: string
-          status?: string
-          ui_prefs?: Json
-          updated_at?: string | null
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "projects_client_id_fkey"
-            columns: ["client_id"]
-            isOneToOne: false
-            referencedRelation: "clients"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       quote_lines: {
         Row: {
           adj_shelves: number

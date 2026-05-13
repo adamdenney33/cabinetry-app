@@ -566,41 +566,8 @@ function _smartClientSuggest(input, boxId) {
   box.style.display = '';
 }
 
-/** @param {HTMLInputElement} input @param {string} boxId */
-function _smartProjectSuggest(input, boxId) {
-  const val = input.value.toLowerCase().trim();
-  const box = _byId(boxId);
-  if (!box) return;
-  _posSuggest(input, box);
-  const allProjects = [...new Set([...projects.map(p => p.name), ...quotes.map(q => quoteProject(q)), ...orders.map(o => orderProject(o))].filter(Boolean))];
-  const matches = val ? allProjects.filter(p => p.toLowerCase().includes(val) && p.toLowerCase() !== val) : allProjects;
-  const inputId = input.id;
-  let html = matches.slice(0,8).map(p => {
-    const proj = /** @type {any} */ (projects.find(px => px.name === p));
-    const clientName = proj ? proj.client : '';
-    return `<div class="client-suggest-item" onmousedown="_byId('${inputId}').value='${p.replace(/'/g,'&#39;')}';_byId('${boxId}').style.display='none';_autoFillClientFromProject('${p.replace(/'/g,'&#39;')}','${inputId}')">
-      <span class="suggest-icon">P</span>
-      <span style="flex:1">${_escHtml(p)}</span>
-      ${clientName ? `<span style="font-size:11px;color:var(--muted)">${_escHtml(clientName)}</span>` : ''}
-    </div>`;
-  }).join('');
-  html += `<div class="client-suggest-add" onmousedown="_openNewProjectPopup('${inputId}')">+ Add${val ? ' "'+_escHtml(input.value.trim())+'" as' : ''} new project</div>`;
-  box.innerHTML = html;
-  box.style.display = '';
-}
-
-// Auto-fill client when selecting a project that has a known client
-/** @param {string} projName @param {string} projInputId */
-function _autoFillClientFromProject(projName, projInputId) {
-  const proj = projects.find(p => p.name === projName);
-  if (!proj || proj.client_id == null) return;
-  const cli = clients.find(c => c.id === proj.client_id);
-  if (!cli) return;
-  // Determine which client input to fill based on the project input
-  const clientInputId = projInputId.replace('-project', '-client');
-  const clientInput = _byId(clientInputId);
-  if (clientInput && !clientInput.value) clientInput.value = cli.name;
-}
+// F6 (2026-05-13): _smartProjectSuggest + _autoFillClientFromProject removed.
+// Smart-input pickers across the app now select clients directly.
 
 // ── New Client/Project Popup (inline creation) ──
 /** @param {string} targetInputId */
@@ -659,105 +626,9 @@ async function _saveNewClientPopup(targetInputId) {
   _toast(`Client "${name}" added`, 'success');
 }
 
-/** @param {string} targetInputId */
-function _openNewProjectPopup(targetInputId) {
-  /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('.client-suggest-list')).forEach(b => b.style.display = 'none');
-  const existing = _byId(targetInputId)?.value || '';
-  // Get client from the corresponding client input
-  const clientInputId = targetInputId.replace('-project', '-client');
-  const clientVal = _byId(clientInputId)?.value || '';
-  const html = `
-    <div class="popup-header">
-      <div class="popup-title"><div style="font-size:16px;font-weight:700">New Project</div></div>
-      <span class="popup-close" onclick="_closePopup()">&times;</span>
-    </div>
-    <div class="popup-body">
-      <div class="pf"><label class="pf-label">PROJECT NAME</label><input class="pf-input pf-input-lg" id="pnp-name" value="${_escHtml(existing)}"></div>
-      <div class="pf" style="position:relative"><label class="pf-label">CLIENT</label>
-        <div class="smart-input-wrap"><input class="pf-input" id="pnp-client" value="${_escHtml(clientVal)}" placeholder="Search or add client..." autocomplete="off" oninput="_smartClientSuggest(this,'pnp-client-suggest')" onfocus="_smartClientSuggest(this,'pnp-client-suggest')" onblur="setTimeout(()=>_byId('pnp-client-suggest').style.display='none',150)"><div class="smart-input-add" onclick="_openNewClientPopup('pnp-client')" title="Add new client">+</div></div>
-        <div id="pnp-client-suggest" class="client-suggest-list" style="display:none"></div>
-      </div>
-      <div class="pf"><label class="pf-label">DESCRIPTION</label><textarea class="pf-textarea" id="pnp-desc" rows="2" placeholder="Project details..."></textarea></div>
-    </div>
-    <div class="popup-footer">
-      <button class="btn btn-outline" onclick="_closePopup()">Cancel</button>
-      <button class="btn btn-accent" onclick="_saveNewProjectPopup('${targetInputId}')">Add Project</button>
-    </div>`;
-  _openPopup(html, 'sm');
-}
-
-/** @param {string} targetInputId */
-async function _saveNewProjectPopup(targetInputId) {
-  const name = _popupVal('pnp-name');
-  if (!name) { _toast('Project name is required', 'error'); return; }
-  const clientName = _popupVal('pnp-client') || '';
-  const isCutList = targetInputId === 'cl-project' || targetInputId === 'cl-empty-picker';
-  const isCabBuilder = targetInputId === 'cb-project' || targetInputId === 'cb-empty-picker';
-  // Check for duplicate
-  const dupe = projects.find(p => p.name.toLowerCase() === name.toLowerCase());
-  if (dupe) {
-    const tInput = _byId(targetInputId);
-    if (tInput) tInput.value = name;
-    const clientInputId = targetInputId.replace('-project', '-client');
-    const ci = _byId(clientInputId);
-    if (ci && clientName && !ci.value) ci.value = clientName;
-    if (isCutList) _setClLoadedProject(dupe.id, dupe.name);
-    if (isCabBuilder) _setCbLoadedProject(dupe.id, dupe.name);
-    _closePopup();
-    _toast('Project already exists — selected', 'info');
-    return;
-  }
-  const cli = clientName ? clients.find(c => c.name === clientName) : null;
-  const insertBody = {
-    name,
-    client_id: cli?.id ?? null,
-    user_id: /** @type {string} */ (_userId),
-    status: 'active',
-    description: _popupVal('pnp-desc') || null,
-  };
-  const { data, error } = await _db('projects').insert(insertBody).select().single();
-  if (error || !data) { _toast('Could not save project — ' + (error?.message || ''), 'error'); console.error(error); return; }
-  projects.push(data);
-  const tInput2 = _byId(targetInputId);
-  if (tInput2) tInput2.value = name;
-  // Also fill client input (for sidebars that have one)
-  const clientInputId = targetInputId.replace('-project', '-client');
-  const ci2 = _byId(clientInputId);
-  if (ci2 && clientName && !ci2.value) ci2.value = clientName;
-  if (isCutList) _setClLoadedProject(data.id, data.name);
-  if (isCabBuilder) _setCbLoadedProject(data.id, data.name);
-  _closePopup();
-  renderProjectsMain();
-  _toast(`Project "${name}" added`, 'success');
-}
-
-// Set the cut list's "currently loaded" project tracking. Used by the
-// New Project popup when invoked from the Cut List sidebar so subsequent
-// saves overwrite this project instead of opening another popup.
-/** @param {number} id @param {string} name */
-function _setClLoadedProject(id, name) {
-  if (typeof _clCurrentProjectId === 'undefined') return;
-  _clCurrentProjectId = id;
-  _clCurrentProjectName = name;
-  if (typeof _setClDirty === 'function') _setClDirty(false);
-  if (typeof _clLoadProjectList === 'function') _clLoadProjectList();
-}
-
-// Cabinet Builder counterpart — wires the popup-created project into the
-// Cabinet Builder's client slot. After F5 the cabinet builder is client-keyed,
-// so we derive the client from the new project row's client_id.
-/** @param {number} id @param {string} name */
-function _setCbLoadedProject(id, name) {
-  if (typeof _cbCurrentClientId === 'undefined') return;
-  const proj = projects.find(p => p.id === id);
-  if (!proj || !proj.client_id) return;
-  const cli = clients.find(c => c.id === proj.client_id);
-  if (!cli) return;
-  _cbCurrentClientId = cli.id;
-  _cbCurrentClientName = cli.name;
-  localStorage.setItem('pc_cq_client_name', cli.name);
-  if (typeof _setCbDirty === 'function') _setCbDirty(false);
-}
+// F6 (2026-05-13): _openNewProjectPopup / _saveNewProjectPopup +
+// _setClLoadedProject / _setCbLoadedProject bridges removed alongside the
+// projects entity. Client creation uses _openNewClientPopup directly.
 
 // Close suggest on blur
 document.addEventListener('click', e => {

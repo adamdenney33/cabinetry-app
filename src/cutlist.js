@@ -812,80 +812,8 @@ function _clConfirmDiscardIfDirty(actionLabel, proceed) {
 }
 
 // Sidebar `+` button — start a new project. Confirms before discarding
-// unsaved changes, clears state, then opens the standard New Project popup.
-function _clNewProject() {
-  _clConfirmDiscardIfDirty('start a new project', () => {
-    _doClearAll();
-    _openNewProjectPopup('cl-project');
-  });
-}
+// F6 (2026-05-13): _clNewProject removed alongside the projects entity.
 
-function _clSaveProject() {
-  // Already-loaded project + cutlist → silent overwrite. No popup.
-  if (_clCurrentProjectId && _clCurrentProjectName && _clCurrentCutlistId && _clCurrentCutlistName) {
-    /** @type {any} */ (window)._clSaveProjectByName?.(_clCurrentProjectName, { cutlistName: _clCurrentCutlistName });
-    return;
-  }
-  // Always go through the popup when project or cutlist isn't fully resolved —
-  // user must name the cutlist explicitly so it's discoverable in the library.
-  _openSaveProjectPopup();
-}
-
-function _openSaveProjectPopup() {
-  const defaultProjectName = _clCurrentProjectName || (pieces.length > 0 ? (pieces[0].label.split(' ')[0] + ' Build') : '');
-  const defaultCutlistName = _clCurrentCutlistName || 'Main';
-  const projectLocked = !!(_clCurrentProjectId && _clCurrentProjectName);
-  const h = `
-    <div class="popup-header">
-      <div class="popup-title">Save cut list to project</div>
-      <div class="popup-close" onclick="_closePopup()">×</div>
-    </div>
-    <div class="popup-body">
-      <div class="pf">
-        <label>Project Name</label>
-        <input type="text" id="save-proj-name" class="form-control" placeholder="e.g. Kitchen Cabinet Build" value="${_escHtml(defaultProjectName)}"${projectLocked ? ' readonly style="opacity:.7"' : ''}>
-      </div>
-      <div class="pf">
-        <label>Cut List Name</label>
-        <input type="text" id="save-cutlist-name" class="form-control" placeholder="e.g. Bases, Wall units, Doors" value="${_escHtml(defaultCutlistName)}">
-      </div>
-      <div class="pf">
-        <label>Client</label>
-        <div class="smart-input-wrap">
-          <input type="text" id="save-proj-client" placeholder="Search or add client..." autocomplete="off"
-            oninput="_smartClientSuggest(this,'save-proj-client-suggest')"
-            onfocus="_smartClientSuggest(this,'save-proj-client-suggest')"
-            onblur="setTimeout(()=>_byId('save-proj-client-suggest').style.display='none',150)">
-          <div class="smart-input-add" onclick="_openNewClientPopup('save-proj-client')" title="Add new client">+</div>
-        </div>
-        <div id="save-proj-client-suggest" class="client-suggest-list" style="display:none"></div>
-      </div>
-      <div class="pf">
-        <label>Notes</label>
-        <textarea id="save-proj-notes" placeholder="Optional notes..." style="width:100%;height:56px;font-size:13px;resize:none;border:1px solid var(--border);border-radius:6px;padding:6px 8px;background:var(--input-bg,#fff);color:var(--text)"></textarea>
-      </div>
-    </div>
-    <div class="popup-footer">
-      <button class="btn btn-outline" onclick="_closePopup()">Cancel</button>
-      <button class="btn btn-primary" onclick="_doSaveProject()">Save cut list</button>
-    </div>`;
-  _openPopup(h, 'sm');
-  setTimeout(() => {
-    const focusId = projectLocked ? 'save-cutlist-name' : 'save-proj-name';
-    const el = /** @type {HTMLInputElement|null} */ (_byId(focusId));
-    if (el) { el.focus(); el.select(); }
-  }, 50);
-}
-
-async function _doSaveProject() {
-  const name = (_popupVal('save-proj-name') || '').trim();
-  if (!name) { _toast('Please enter a project name', 'error'); return; }
-  const cutlistName = (_popupVal('save-cutlist-name') || '').trim() || 'Main';
-  const clientName = (_popupVal('save-proj-client') || '').trim();
-  const description = (_popupVal('save-proj-notes') || '').trim();
-  _closePopup();
-  /** @type {any} */ (window)._clSaveProjectByName?.(name, { clientName, description, cutlistName });
-}
 
 // ── PROJECT-STATE TRACKING ──
 /** @type {ReturnType<typeof setTimeout> | null} */
@@ -1004,39 +932,28 @@ function _clRenderContext() {
     _clSyncDrillInputs();
     return;
   }
-  if (!_clCurrentProjectId) {
+  // F6 (2026-05-13): no project scope. Empty state prompts the user to pick
+  // a cut list from the library or create one.
+  if (!_clCurrentCutlistId) {
     if (subGate) { subGate.innerHTML = ''; subGate.style.display = 'none'; }
     if (scroll) scroll.style.display = 'none';
     if (actionBar) actionBar.style.display = 'none';
-    const recents = (typeof projects !== 'undefined' ? projects : [])
-      .slice()
-      .sort(/** @param {any} a @param {any} b */ (a, b) => {
-        const av = a.updated_at ? +new Date(a.updated_at) : 0;
-        const bv = b.updated_at ? +new Date(b.updated_at) : 0;
-        return bv - av;
-      });
-    ctx.innerHTML = _renderProjectEmpty({
-      title: 'Cut List',
-      subtitle: 'Pick a project to load its cut parts and panels.',
-      pickFnName: '_clPickProjectByIdSafe',
-      pickerInputId: 'cl-empty-picker',
-      pickerSuggestId: 'cl-empty-suggest',
-      pickerSuggestFn: '_smartCLEmptyProjectSuggest',
-      recentProjects: recents,
-      iconSvg: '<svg class="pe-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12.00 1.70 L12.90 3.45 L15.94 2.48 L16.10 4.44 L19.28 4.72 L18.68 6.59 L21.52 8.06 L20.25 9.56 L22.30 12.00 L20.55 12.90 L21.52 15.94 L19.56 16.10 L19.28 19.28 L17.41 18.68 L15.94 21.52 L14.44 20.25 L12.00 22.30 L11.10 20.55 L8.06 21.52 L7.90 19.56 L4.72 19.28 L5.32 17.41 L2.48 15.94 L3.75 14.44 L1.70 12.00 L3.45 11.10 L2.48 8.06 L4.44 7.90 L4.72 4.72 L6.59 5.32 L8.06 2.48 L9.56 3.75 Z"/><circle cx="12" cy="12" r="1.5"/></svg>',
-    });
+    ctx.innerHTML = `<div class="project-empty">
+      <svg class="pe-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12.00 1.70 L12.90 3.45 L15.94 2.48 L16.10 4.44 L19.28 4.72 L18.68 6.59 L21.52 8.06 L20.25 9.56 L22.30 12.00 L20.55 12.90 L21.52 15.94 L19.56 16.10 L19.28 19.28 L17.41 18.68 L15.94 21.52 L14.44 20.25 L12.00 22.30 L11.10 20.55 L8.06 21.52 L7.90 19.56 L4.72 19.28 L5.32 17.41 L2.48 15.94 L3.75 14.44 L1.70 12.00 L3.45 11.10 L2.48 8.06 L4.44 7.90 L4.72 4.72 L6.59 5.32 L8.06 2.48 L9.56 3.75 Z"/><circle cx="12" cy="12" r="1.5"/></svg>
+      <h3>Cut List</h3>
+      <p>Open a cut list from the <strong>Cut List Library</strong> tab on the right, or click <strong>+ Add Cut List</strong> to start a fresh one.</p>
+      <button class="btn btn-primary" onclick="_clStartNewCutlist()" style="width:100%;justify-content:center">+ Add Cut List</button>
+    </div>`;
     return;
   }
-  // Project active. Decide between sub-gate (no cut list open) and editor.
-  const _clProj = (typeof projects !== 'undefined' ? projects : []).find(/** @param {any} p */ p => p.id === _clCurrentProjectId);
-  const _clCName = (_clProj && _clProj.client_id) ? ((typeof clients !== 'undefined' && clients ? clients : []).find(/** @param {any} c */ c => c.id === _clProj.client_id)?.name || '') : '';
+  // Cut list active. Render its header.
   ctx.innerHTML = _renderProjectHeader('cutlist', {
-    name: _clCurrentProjectName,
-    exitFn: '_exitProject_cutlist',
-    clientName: _clCName || undefined,
+    name: _clCurrentCutlistName || 'Cut List',
+    exitFn: '_clExitLibraryEdit',
+    iconSvg: _CL_LIBRARY_ICON,
   });
   if (!_clCurrentCutlistId) {
-    // Sub-gate: show "+ Add Cut List" + recent cut lists for this project.
+    // Sub-gate: show "+ Add Cut List" + recent cut lists.
     if (scroll) scroll.style.display = 'none';
     if (actionBar) actionBar.style.display = 'none';
     _clRenderCutlistSubGate();
@@ -1099,52 +1016,9 @@ async function _clRenderCutlistSubGate() {
 }
 /** @type {any} */ (window)._clRenderCutlistSubGate = _clRenderCutlistSubGate;
 
-/** Pick-by-id wrapper for the empty-state recent list. Uses the existing loadProject. */
-/** @param {number} id @param {string} _name */
-function _clPickProjectByIdSafe(id, _name) {
-  /** @type {any} */ const w = window;
-  if (typeof w.loadProject === 'function') {
-    if (_clDirty) {
-      _confirm('You have unsaved changes. Load this project anyway? Current work will be lost.', () => w.loadProject(id));
-    } else {
-      w.loadProject(id);
-    }
-  }
-}
-/** @type {any} */ (window)._clPickProjectByIdSafe = _clPickProjectByIdSafe;
-
-/** Smart-suggest for the Cut List gated-entry project picker.
- *  @param {HTMLInputElement} input @param {string} boxId */
-function _smartCLEmptyProjectSuggest(input, boxId) {
-  const val = input.value.toLowerCase().trim();
-  const box = _byId(boxId);
-  if (!box) return;
-  if (typeof _posSuggest === 'function') _posSuggest(input, box);
-  const matches = projects
-    .filter(/** @param {any} p */ p => !val || p.name.toLowerCase().includes(val))
-    .slice(0, 8);
-  /** @param {string} s */
-  const esc = s => _escHtml(s).replace(/'/g, '&#39;');
-  let html = '';
-  for (const p of matches) {
-    const cName = p.client_id ? (clients.find(/** @param {any} c */ c => c.id === p.client_id) || /** @type {any} */ ({})).name || '' : '';
-    html += `<div class="client-suggest-item" onmousedown="_clPickProjectByIdSafe(${p.id},'${esc(p.name)}')">
-      <span class="suggest-icon">P</span>
-      <span class="csi-name">${esc(p.name)}</span>
-      ${cName ? `<span class="csi-meta">${esc(cName)}</span>` : ''}
-    </div>`;
-  }
-  if (val && !matches.some(/** @param {any} p */ p => p.name.toLowerCase() === val)) {
-    html += `<div class="client-suggest-item client-suggest-add" onmousedown="_openNewProjectPopup('cl-empty-picker')">
-      <span class="csi-icon">+</span>
-      <span class="csi-name">Create project "${esc(input.value.trim())}"</span>
-    </div>`;
-  }
-  if (!html) html = '<div class="client-suggest-empty">No projects yet — click + to create one.</div>';
-  box.innerHTML = html;
-  box.style.display = 'block';
-}
-/** @type {any} */ (window)._smartCLEmptyProjectSuggest = _smartCLEmptyProjectSuggest;
+// F6 (2026-05-13): _clPickProjectByIdSafe + _smartCLEmptyProjectSuggest
+// removed alongside the projects entity. Cut lists open via _clLoadCutlist
+// from the Cut List Library tab or Client cards.
 
 // ── CUT LIST DRILL-IN (sidebar) ──
 // The sub-gate (in _clRenderContext) gives "+ Add Cut List" and a recent list.

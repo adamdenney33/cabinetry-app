@@ -542,64 +542,8 @@ function _saveNewCBHardware(lineId, hwIdx, scope) {
   _toast('"' + name + '" added to hardware', 'success');
 }
 
-// ── Cut List smart search: Projects ──
-/** @param {HTMLInputElement} input @param {string} boxId */
-function _smartCLProjectSuggest(input, boxId) {
-  const box = _byId(boxId);
-  if (!box) return;
-  _posSuggest(input, box);
-  const raw = input.value.trim();
-  const q = raw.toLowerCase();
-  const matches = q ? _clProjectCache.filter(p => p.name.toLowerCase().includes(q)).slice(0, 8) : _clProjectCache.slice(0, 8);
-  let html = '';
-  matches.forEach((p, i) => {
-    const idx = _clProjectCache.indexOf(p);
-    const date = p.updated_at ? new Date(p.updated_at).toLocaleDateString() : '';
-    html += `<div class="client-suggest-item" onmousedown="_clLoadProjectByIdx(${idx});_byId('cl-project').value='${_escHtml(p.name)}';_byId('${boxId}').style.display='none'">
-      <span class="suggest-icon">P</span>
-      <span style="flex:1">${_escHtml(p.name)}</span>
-      <span style="font-size:10px;color:var(--muted)">${date}</span>
-    </div>`;
-  });
-  // Only show inline "Save as" when user has typed a brand-new name (non-empty
-  // and doesn't exactly match an existing project — prevents accidental overwrite).
-  const exactExists = !!raw && _clProjectCache.some(p => p.name.toLowerCase() === q);
-  if (raw && !exactExists) {
-    const escName = _escHtml(raw).replace(/'/g, '&#39;');
-    html += `<div class="client-suggest-add" onmousedown="_clSaveProjectByName('${escName}');_byId('${boxId}').style.display='none'">+ Save current cut list as "${_escHtml(raw)}"</div>`;
-  }
-  box.innerHTML = html;
-  box.style.display = '';
-}
-
-// ── Cabinet Builder smart search: Project Library ──
-// Mirrors _smartCLProjectSuggest but loads cabinet draft for the picked project.
-/** @param {HTMLInputElement} input @param {string} boxId */
-function _smartCBProjectSuggest(input, boxId) {
-  const box = _byId(boxId);
-  if (!box) return;
-  _posSuggest(input, box);
-  const raw = input.value.trim();
-  const q = raw.toLowerCase();
-  const matches = q ? _clProjectCache.filter(p => p.name.toLowerCase().includes(q)).slice(0, 8) : _clProjectCache.slice(0, 8);
-  let html = '';
-  matches.forEach((p) => {
-    const date = p.updated_at ? new Date(p.updated_at).toLocaleDateString() : '';
-    const escName = _escHtml(p.name).replace(/'/g, '&#39;');
-    html += `<div class="client-suggest-item" onmousedown="_cbPickProject(${p.id},'${escName}');_byId('${boxId}').style.display='none'">
-      <span class="suggest-icon">P</span>
-      <span style="flex:1">${_escHtml(p.name)}</span>
-      <span style="font-size:10px;color:var(--muted)">${date}</span>
-    </div>`;
-  });
-  const exactExists = !!raw && _clProjectCache.some(p => p.name.toLowerCase() === q);
-  if (raw && !exactExists) {
-    const escName = _escHtml(raw).replace(/'/g, '&#39;');
-    html += `<div class="client-suggest-add" onmousedown="_cbSaveProjectByName('${escName}');_byId('${boxId}').style.display='none'">+ Save current cabinet build as "${_escHtml(raw)}"</div>`;
-  }
-  box.innerHTML = html;
-  box.style.display = '';
-}
+// F6 (2026-05-13): _smartCLProjectSuggest + _smartCBProjectSuggest removed
+// alongside the projects entity. _clProjectCache is also gone from cabinet.js.
 
 // ── Cut List smart search: Stock Materials (panels + edge banding when on) ──
 /** @param {HTMLInputElement} input @param {string} boxId */

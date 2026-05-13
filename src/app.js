@@ -814,23 +814,7 @@ function _scheduleLineUpsert(idx) {
 
 // _saveQuotePopup was replaced by saveQuoteEditor() in src/quotes.js.
 
-// ── Project edit: routes to sidebar editor (autosave) ──
-/** Drill into the project's client and load it into the sidebar form. All
- *  edits autosave — no Save/Cancel buttons.
- *  @param {number} id */
-function _openProjectPopup(id) {
-  const p = projects.find(/** @param {any} x */ x => x.id === id);
-  if (!p) return;
-  switchSection('projects');
-  if (p.client_id) {
-    if (typeof _setProjectsActiveClient === 'function') _setProjectsActiveClient(p.client_id);
-  } else {
-    _toast('This project has no client — assign one from the Clients tab first.', 'error');
-    return;
-  }
-  if (typeof _renderProjectsSidebarGate === 'function') _renderProjectsSidebarGate();
-  if (typeof _pjLoadProject === 'function') _pjLoadProject(id);
-}
+// F6 (2026-05-13): _openProjectPopup removed alongside the projects entity.
 
 // ── Stock edit: routes to sidebar editor (replaces former popup) ──
 /** Compatibility alias — keeps existing call sites working.
@@ -1172,12 +1156,11 @@ async function loadAllData() {
   // F.1: kick off subscription load in parallel — updates global `_subscription`
   // via side effect; we don't need its return value in the destructure below.
   const subPromise = loadSubscription().catch(() => null);
-  const [{ data: ord }, { data: quo }, { data: stk }, { data: cli }, { data: prj }, { data: cat }, { data: biz }] = await Promise.all([
+  const [{ data: ord }, { data: quo }, { data: stk }, { data: cli }, { data: cat }, { data: biz }] = await Promise.all([
     _db('orders').select('*').order('created_at', { ascending: false }),
     _db('quotes').select('*').order('created_at', { ascending: false }),
     _db('stock_items').select('*').order('created_at', { ascending: true }),
     _db('clients').select('*').order('name', { ascending: true }).then(r => r).catch(() => ({data:[]})),
-    _db('projects').select('*').order('created_at', { ascending: false }).then(r => r).catch(() => ({data:[]})),
     // Phase 3: catalog_items overlays cbSettings arrays
     _db('catalog_items').select('*').eq('user_id', _userId).then(r => r).catch(() => ({data:[]})),
     // Phase 3: business_info overlays pc_biz / pc_biz_logo / pc_cb_settings rates
@@ -1199,15 +1182,15 @@ async function loadAllData() {
     return out;
   });
   clients = cli || [];
-  projects = prj || [];
+  // F6 (2026-05-13): projects table dropped — variable kept declared for
+  // back-compat with any legacy reads that linger as null-state markers.
+  projects = [];
   if (orders.length) orderNextId = Math.max(...orders.map(o => o.id)) + 1;
   if (quotes.length) quoteNextId = Math.max(...quotes.map(q => q.id)) + 1;
   if (stockItems.length) stockNextId = Math.max(...stockItems.map(s => s.id)) + 1;
-  // Phase 7 step 1: hydrate quote totals from quote_lines (fire and forget; renders re-run when ready)
-  // U.9: re-render Projects too so cabinet counts (derived from quote_lines) appear once hydrated.
+  // Phase 7 step 1: hydrate quote totals from quote_lines (fire and forget; renders re-run when ready).
   _hydrateQuoteTotals().then(() => {
     try { renderQuoteMain(); } catch(e){}
-    try { renderProjectsMain(); } catch(e){}
   }).catch(e => console.warn('[quote totals] hydrate failed:', e.message || e));
   // Pre-cache order_lines too so order popups open without a network wait.
   // Re-render the dashboard once order_lines land — the Schedule mini-calendar
@@ -1217,9 +1200,10 @@ async function loadAllData() {
   _hydrateOrderLines().then(() => {
     try { renderDashboard(); setTimeout(drawRevenueChart, 0); } catch(e){}
   }).catch(e => console.warn('[order lines] hydrate failed:', e.message || e));
-  // F5 (2026-05-13): _loadCutListProjectIds was the per-project cut-list count
-  // cache. Removed alongside the Projects panel — cutlists are accessed via
-  // the Cut List Library tab now, no per-project rollup needed.
+  // F6 (2026-05-13): hydrate client→cutlists map for Client card flat sections.
+  if (typeof _loadCutListsByClient === 'function') {
+    _loadCutListsByClient().catch(/** @param {any} e */ e => console.warn('[cutlists by client] load:', e.message || e));
+  }
   // catalog_items deprecated — stock_items is now the single source of truth
   // for material/hardware/finish prices. _applyCatalogFromDB call removed.
   // Phase 3.3 — overlay business_info from DB (only if a row exists)
@@ -1345,7 +1329,7 @@ _sb.auth.onAuthStateChange(async (event, session) => {
     _showApp();
     await loadAllData();
     await _loadCabinetTemplatesFromDB();
-    _clLoadProjectList();
+    // F6 (2026-05-13): _clLoadProjectList removed alongside the projects entity.
     // Restore the active section and any open editor entity from the previous
     // session. Runs after data hydrates so entity-lookup .find() guards have
     // something to match against; missed lookups silently clear their key.
@@ -1359,7 +1343,7 @@ _sb.auth.onAuthStateChange(async (event, session) => {
     if (typeof renderSubscriptionSection === 'function') renderSubscriptionSection();
     /** @type {HTMLElement} */ (document.getElementById('account-guest-view')).style.display = '';
     /** @type {HTMLElement} */ (document.getElementById('account-user-view')).style.display = 'none';
-    _clProjectCache = [];
+    /** @type {any} */ (window)._cutListsByClient = {};
     // Clear "what was open" keys only on explicit sign-out, so the next user
     // on this browser doesn't inherit the previous user's entity IDs. The
     // INITIAL_SESSION event fires on every guest page load and must NOT

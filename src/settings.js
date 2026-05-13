@@ -281,9 +281,7 @@ function switchSection(name) {
     /** @type {any} */ (window)._pcSaveSection(name);
   }
   document.querySelectorAll('.nav-tab').forEach((t,i) => {
-    // F1 (2026-05-13): Projects nav tab removed; sections array no longer
-    // includes 'projects'. The Projects panel still exists (reachable via
-    // _openProjectPopup from inline project cards) but has no nav tab.
+    // F1/F6 (2026-05-13): Projects nav tab + panel both gone.
     const sections = ['dashboard','cutlist','cabinet','stock','quote','orders','schedule','clients'];
     t.classList.toggle('active', sections[i] === name);
   });
@@ -299,13 +297,7 @@ function switchSection(name) {
   if (name === 'orders') { renderOrdersMain(); if (typeof renderOrderEditor === 'function') renderOrderEditor(); }
   if (name === 'schedule') renderSchedule();
   if (name === 'dashboard') { renderDashboard(); setTimeout(drawRevenueChart, 0); }
-  if (name === 'projects') {
-    // F5 (2026-05-13): the Projects nav tab is hidden but the switch still
-    // gets reached via legacy callers. Render the panel for now; F6 deletes
-    // both the panel and this branch.
-    if (typeof _projectsMaybeResetFormFlag === 'function') _projectsMaybeResetFormFlag();
-    if (typeof renderProjectsMain === 'function') renderProjectsMain();
-  }
+  // F6 (2026-05-13): 'projects' branch removed alongside the panel + entity.
   if (name === 'clients') {
     if (typeof _clientsMaybeResetFormFlag === 'function') _clientsMaybeResetFormFlag();
     renderClientsMain();

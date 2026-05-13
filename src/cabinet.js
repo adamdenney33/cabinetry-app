@@ -1066,8 +1066,7 @@ function cbConvertToOrder() {
 }
 
 // ── PDF / Print ──
-/** @type {any[]} */
-let _clProjectCache = [];
+// F6 (2026-05-13): _clProjectCache removed alongside the projects entity.
 
 /** @param {any} s */
 function _escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
