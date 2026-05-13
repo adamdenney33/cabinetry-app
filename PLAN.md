@@ -22,6 +22,79 @@ Companion docs: `SPEC.md` (refactor history), `SCHEMA.md` (DB schema),
 
 ## Active Work
 
+### Remove Projects entity · adopt library-first / Cabinet-IS-Quote 🚧 In Progress 2026-05-13
+
+Foundational refactor toward the new architecture designed across
+`mockups/option-d-flat-files-flow.html` (flat files, no project hub),
+`mockups/option-e-cabinet-is-quote-flow.html` (Cabinet view = a view of Quote
+with `status='designing'`), and `mockups/top-level-architecture-flow.html`
+(library tier with 3 tables + tags; client tier; derived views). Client
+groups everything; library items snapshot into quotes via attribution chip.
+
+**Phases F1–F4 done (commits on `main`):**
+
+- `69ff6d4` **F1** — Projects nav tab removed; projects render inline in
+  Client cards. `_renderProjectInlineCard` lifted to module scope in
+  `clients.js` so both the (now-hidden) Projects panel and the Clients tab
+  share the same component. `settings.js` `switchSection` sections array
+  updated. No schema change.
+- `e77282a` **F2** — Schema additive: `quotes.name` + `orders.name` (backfilled
+  from associated `projects.name`); `tags jsonb` + GIN indexes on
+  `cabinet_templates` / `stock_items` / `cutlists`. Tags are a UX-layer
+  filter convention; storage stays purpose-built per table (decided
+  against unifying into one `library_items` table — different shapes,
+  lifecycles, FK children). Migration applied via Supabase MCP; types
+  regenerated.
+- `b5d8990` **F3** — `[CB_DRAFT]` notes-tag → `quotes.status='designing'`.
+  `_isDraftQuote()` now checks `status === 'designing'` first; legacy
+  notes-prefix check kept as belt-and-braces fallback. `_findOrCreateDraftQuote`
+  inserts with `status: 'designing'` instead of `notes: CB_DRAFT_TAG`. 1
+  existing draft migrated.
+- `8cb87cb` **F4** — Added `cutlists.quote_id` (nullable FK, `on delete set
+  null`) as the per-quote bookmark for the new architecture. Pure bookmark
+  — no part data copied (confirmed: cabinets don't export parts to cut
+  lists). Existing `cutlist_cabinets` many-to-many join table unchanged.
+  Originally specced as a rename of `cutlists.cabinet_id`, but the live
+  schema never had that column — the relationship was always via the
+  join table.
+
+**Pending — F5 / F6 (deferred to a dedicated follow-up session):**
+
+This is where the real complexity lives. **94 references to `project_id`
+across 9 source files** (cutlist.js:22, clients.js:19, quotes.js:18,
+orders.js:10, projects.js:9, migrate.js:6, cabinet.js:6,
+cabinet-library.js:2, app.js:1). Doing F5 in a single stroke would risk
+silent filter-semantics changes (`q.project_id === undefined` becoming
+trivially true everywhere).
+
+- **F5** — Drop `project_id` reads/writes from code; drop `project_id`
+  columns from quotes / orders / cutlists / pieces / sheets / edge_bands /
+  cabinets. Recommended phasing: launch an Explore agent to categorise
+  every reference into 5 buckets (filter-replaceable, write-strip,
+  display-read, Cabinet-Builder-workspace-lookup, projects.js dead-code),
+  then per-file refactor with typecheck + smoke test between each. Apply
+  schema drop after the code sweep verifies clean.
+- **F6** — Drop `public.projects` table itself; delete `renderProjectsMain`
+  + `panel-projects` element from `index.html` + projects-related sidebar
+  form + `_pjLoadProject` / autosave state in `clients.js`. Trim or
+  remove `src/projects.js` entirely.
+
+**Handoff prompt for the F5/F6 session is in the F1–F4 chat transcript.**
+Key constraints: Cabinet Builder's `_findOrCreateDraftQuote` (quotes.js:78)
+re-keys workspaces by project today and needs to re-key on client_id with
+a "most recent designing-status quote" semantic. `npm run typecheck` must
+stay clean at every commit boundary. Migrations staged under
+`supabase/migrations/<timestamp>_f5_drop_project_id.sql` and
+`<timestamp>_f6_drop_projects_table.sql`. Supabase project ID
+`mhzneruvlfmhnsohfrdo`.
+
+**Migration files staged so far** (all applied to the dev project via MCP):
+- `supabase/migrations/20260513120000_f2_add_name_and_tags_columns.sql`
+- `supabase/migrations/20260513140000_f3_designing_status.sql`
+- `supabase/migrations/20260513150000_f4_cutlists_quote_id.sql`
+
+---
+
 ### Quote / Order / Invoice number-format unification 🚧 In Progress 2026-05-12
 
 Three-prefix unification: quotes `Q-NNNN` → `QUO-NNNN`, orders `NNNN` (no
