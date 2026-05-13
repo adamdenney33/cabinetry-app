@@ -166,6 +166,7 @@ export type Database = {
           default_w_mm: number | null
           id: number
           name: string
+          tags: Json
           type: string
           updated_at: string
           user_id: string
@@ -178,6 +179,7 @@ export type Database = {
           default_w_mm?: number | null
           id?: number
           name: string
+          tags?: Json
           type?: string
           updated_at?: string
           user_id: string
@@ -190,6 +192,7 @@ export type Database = {
           default_w_mm?: number | null
           id?: number
           name?: string
+          tags?: Json
           type?: string
           updated_at?: string
           user_id?: string
@@ -418,6 +421,7 @@ export type Database = {
           name: string
           position: number
           project_id: number | null
+          tags: Json
           ui_prefs: Json
           updated_at: string
           user_id: string
@@ -428,6 +432,7 @@ export type Database = {
           name: string
           position?: number
           project_id?: number | null
+          tags?: Json
           ui_prefs?: Json
           updated_at?: string
           user_id: string
@@ -438,6 +443,7 @@ export type Database = {
           name?: string
           position?: number
           project_id?: number | null
+          tags?: Json
           ui_prefs?: Json
           updated_at?: string
           user_id?: string
@@ -659,6 +665,7 @@ export type Database = {
           manual_end_date: string | null
           manual_start_date: string | null
           markup: number
+          name: string | null
           notes: string | null
           order_number: string | null
           packaging_hours: number | null
@@ -687,6 +694,7 @@ export type Database = {
           manual_end_date?: string | null
           manual_start_date?: string | null
           markup?: number
+          name?: string | null
           notes?: string | null
           order_number?: string | null
           packaging_hours?: number | null
@@ -715,6 +723,7 @@ export type Database = {
           manual_end_date?: string | null
           manual_start_date?: string | null
           markup?: number
+          name?: string | null
           notes?: string | null
           order_number?: string | null
           packaging_hours?: number | null
@@ -1058,6 +1067,7 @@ export type Database = {
           discount: number
           id: number
           markup: number | null
+          name: string | null
           notes: string | null
           project_id: number | null
           quote_number: string | null
@@ -1074,6 +1084,7 @@ export type Database = {
           discount?: number
           id?: never
           markup?: number | null
+          name?: string | null
           notes?: string | null
           project_id?: number | null
           quote_number?: string | null
@@ -1090,6 +1101,7 @@ export type Database = {
           discount?: number
           id?: never
           markup?: number | null
+          name?: string | null
           notes?: string | null
           project_id?: number | null
           quote_number?: string | null
@@ -1224,6 +1236,7 @@ export type Database = {
           sku: string | null
           supplier: string | null
           supplier_url: string | null
+          tags: Json
           thickness_mm: number | null
           updated_at: string
           user_id: string
@@ -1245,6 +1258,7 @@ export type Database = {
           sku?: string | null
           supplier?: string | null
           supplier_url?: string | null
+          tags?: Json
           thickness_mm?: number | null
           updated_at?: string
           user_id: string
@@ -1266,6 +1280,7 @@ export type Database = {
           sku?: string | null
           supplier?: string | null
           supplier_url?: string | null
+          tags?: Json
           thickness_mm?: number | null
           updated_at?: string
           user_id?: string
