@@ -60,17 +60,56 @@ function switchCabTab(tab) {
 }
 
 // ── Main content view toggle (Results / Library) ──
-/** @param {string} view */
-function switchCBMainView(view) {
-  cbMainView = view;
+/** Sync sidebar wrappers + tab-strip styling to the current cbMainView and
+ *  edit state. Pure render — does NOT mutate scratchpad / editing indices. */
+function _syncCBMainViewChrome() {
+  const view = cbMainView;
   const results = _byId('cb-results');
   const library = _byId('cb-library-view');
   const tabR = _byId('cb-main-tab-results');
   const tabL = _byId('cb-main-tab-library');
+  const sbB = _byId('cb-sidebar-builder');
+  const sbL = _byId('cb-sidebar-library');
   if (results) results.style.display = view === 'results' ? '' : 'none';
   if (library) library.style.display = view === 'library' ? '' : 'none';
   if (tabR) { tabR.style.borderBottomColor = view === 'results' ? 'var(--accent)' : 'transparent'; tabR.style.fontWeight = view === 'results' ? '700' : '500'; tabR.style.color = view === 'results' ? 'var(--text)' : 'var(--muted)'; }
   if (tabL) { tabL.style.borderBottomColor = view === 'library' ? 'var(--accent)' : 'transparent'; tabL.style.fontWeight = view === 'library' ? '700' : '500'; tabL.style.color = view === 'library' ? 'var(--text)' : 'var(--muted)'; }
+  // Sidebar wrapper visibility. The builder wrapper houses the cabinet editor,
+  // which is reused for in-quote AND library-template edits. So it stays
+  // visible whenever something is being edited, regardless of sub-tab.
+  const showBuilder = view === 'results' || (cbEditingLibraryIdx >= 0 && !!cbScratchpad);
+  if (sbB) sbB.style.display = showBuilder ? 'flex' : 'none';
+  if (sbL) sbL.style.display = (view === 'library' && !showBuilder) ? 'flex' : 'none';
+  if (view === 'library' && !showBuilder
+      && typeof /** @type {any} */ (window)._renderCBLibSidebarGate === 'function') {
+    /** @type {any} */ (window)._renderCBLibSidebarGate();
+  }
+}
+/** @type {any} */ (window)._syncCBMainViewChrome = _syncCBMainViewChrome;
+
+/** @param {string} view */
+function switchCBMainView(view) {
+  // Cross-sub-tab cleanup: each sub-tab has its own active-edit semantics.
+  // Switching tabs drops the OTHER tab's open scratchpad so the receiving
+  // tab starts in a clean state.
+  if (view === 'library' && cbEditingLibraryIdx < 0 && cbScratchpad) {
+    cbScratchpad = null;
+    cbEditingLineIdx = -1;
+  }
+  if (view === 'results' && cbEditingLibraryIdx >= 0) {
+    cbEditingLibraryIdx = -1;
+    cbScratchpad = null;
+    cbEditingLineIdx = -1;
+    if (typeof renderCBEditor === 'function') renderCBEditor();
+    // Refresh the sidebar context (#cb-context) so the "Cabinet Library"
+    // header is replaced with the appropriate Quote Builder gate (either
+    // client-picker empty state or in-project header).
+    if (typeof /** @type {any} */ (window)._cbRenderContext === 'function') {
+      /** @type {any} */ (window)._cbRenderContext();
+    }
+  }
+  cbMainView = view;
+  _syncCBMainViewChrome();
   if (view === 'results') renderCBResults();
   else renderCBLibraryView();
 }
@@ -208,13 +247,15 @@ function renderCBPanel() {
   if (!_renderCBAuthGate()) return;
   renderCBRates();
   renderCBEditor();
-  if (!_cbCurrentClientId && cbMainView !== 'library') {
-    switchCBMainView('library');
-  } else if (cbMainView === 'results') {
+  // F7 (2026-05-13): Library sub-tab is now self-sufficient via its own
+  // sidebar gate (#cb-sidebar-library). No auto-flip — the Quote Builder
+  // sub-tab keeps its existing client-picker empty state in _cbRenderContext.
+  if (cbMainView === 'results') {
     renderCBResults();
   } else {
     renderCBLibraryView();
   }
+  _syncCBMainViewChrome();
   if (typeof _renderCbCurrentProject === 'function') _renderCbCurrentProject();
 }
 
@@ -336,9 +377,6 @@ function renderCBEditor() {
 
   el.innerHTML = `
     <div class="form-section-title">
-      <button class="ph-back" onclick="_cbExitCabinet()" title="Back" aria-label="Back">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-      </button>
       <span>${_escHtml(displayedName)}</span>
       <span class="save-indicator" data-save-indicator="cabinet" style="display:none">Autosave</span>
     </div>
@@ -566,7 +604,7 @@ function renderCBResults() {
     el.innerHTML = `${emptyHeader}<div class="empty-state">
       <div class="empty-icon" style="opacity:.18"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg></div>
       <h3>Cabinet Builder</h3>
-      <p>Configure a cabinet in the editor and click "Add to Project" to start building your quote.</p>
+      <p>Configure a cabinet in the editor and click "Add to Quote" to start building your quote.</p>
     </div>`;
     return;
   }
@@ -615,10 +653,7 @@ function renderCBResults() {
     html += `<button class="btn btn-primary" onclick="cbSendToQuote()" style="font-size:12px;padding:8px 14px">Send to Quote &rarr;</button>`;
     html += `<button class="btn btn-primary" onclick="cbSendToOrder()" style="font-size:12px;padding:8px 14px">Send to Order &rarr;</button>`;
   }
-  html += `<span style="flex:1"></span>
-    <button class="btn btn-outline" onclick="cbExportLibrary()" style="font-size:12px;padding:8px 12px;width:auto">&darr; Export</button>
-    <button class="btn btn-outline" onclick="cbImportLibrary()" style="font-size:12px;padding:8px 12px;width:auto">&uarr; Import</button>
-  </div>`;
+  html += `</div>`;
 
   // Individual cabinet cards
   cbLines.forEach((line, idx) => {
@@ -708,7 +743,8 @@ function renderCBLibraryView() {
     el.innerHTML = `<div class="empty-state">
       <div class="empty-icon" style="opacity:.18"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M2 10h20"/><path d="M6 6V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v2"/></svg></div>
       <h3>Cabinet Library</h3>
-      <p>No saved templates yet. Use "Save to Library" in the editor to save reusable cabinet templates.</p>
+      <p>No saved templates yet. Use the sidebar to add a template, or import a CSV.</p>
+      <button class="btn btn-outline" onclick="cbImportLibrary()" style="font-size:12px;padding:8px 14px;width:auto;margin-top:8px">&uarr; Import CSV</button>
     </div>`;
     return;
   }
@@ -716,8 +752,13 @@ function renderCBLibraryView() {
   let html = `<div style="max-width:700px">`;
   html += _renderContentHeader({ iconSvg: _CH_ICON_CABINET, title: 'Cabinet Library' });
 
-  // Filter input
-  html += `<div style="margin-bottom:16px"><input type="text" id="cb-lib-filter" placeholder="Filter templates..." style="width:100%;font-size:13px;padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface2);color:var(--text)" oninput="filterCBLibraryView(this.value)"></div>`;
+  // Filter input + Import/Export buttons (CLAUDE.md convention: I/E lives in
+  // the main content area filter bar, not in sidebars).
+  html += `<div style="display:flex;gap:8px;margin-bottom:16px;align-items:center">
+    <input type="text" id="cb-lib-filter" placeholder="Filter templates..." style="flex:1;font-size:13px;padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface2);color:var(--text)" oninput="filterCBLibraryView(this.value)">
+    <button class="btn btn-outline" onclick="cbExportLibrary()" style="font-size:12px;padding:8px 12px;width:auto;flex:0 0 auto">&darr; Export</button>
+    <button class="btn btn-outline" onclick="cbImportLibrary()" style="font-size:12px;padding:8px 12px;width:auto;flex:0 0 auto">&uarr; Import</button>
+  </div>`;
 
   html += `<div id="cb-lib-grid">`;
   html += _renderLibraryCards(cbLibrary);
@@ -758,7 +799,7 @@ function _renderLibraryCards(items) {
         ${_cbCutListProjActHtml(`_cbOpenLinkedCutLists(${idx})`, `_cbLinkToCutList(${idx})`, c.db_id||'')}
       </div>
       <div style="display:flex;gap:6px;padding:8px 12px 10px;border-top:1px solid var(--border2);justify-content:flex-end;flex-wrap:wrap;align-items:stretch">
-        <button class="btn btn-outline" onclick="event.stopPropagation();cbAddFromLibrary(${idx})" style="font-size:11px;padding:5px 10px;width:auto">Add to Project</button>
+        <button class="btn btn-outline" onclick="event.stopPropagation();cbAddFromLibrary(${idx})" style="font-size:11px;padding:5px 10px;width:auto">Add to Quote</button>
         <button class="btn btn-outline" onclick="event.stopPropagation();cbDuplicateLibraryEntry(${idx})" style="font-size:11px;padding:5px 10px;width:auto">Duplicate</button>
         <button class="btn btn-outline" onclick="event.stopPropagation();_confirm('Delete this template?',()=>cbRemoveFromLibrary(${idx}))" style="font-size:11px;padding:5px 10px;width:auto;color:var(--danger)">Delete</button>
       </div>

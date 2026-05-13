@@ -72,7 +72,7 @@ async function _saveCabinetToDB(entry) {
     const { data, error } = await _db('cabinet_templates').insert({
       user_id: _userId,
       name: entry._libName || entry.name || 'Cabinet',
-      type: 'base',
+      type: entry.cabType || entry.type || 'base',
       default_w_mm: entry.w || null,
       default_h_mm: entry.h || null,
       default_d_mm: entry.d || null,
@@ -96,6 +96,7 @@ async function _updateCabinetInDB(dbId, entry) {
   try {
     const { error } = await _db('cabinet_templates').update({
       name: entry._libName || entry.name || 'Cabinet',
+      type: entry.cabType || entry.type || 'base',
       default_w_mm: entry.w || null,
       default_h_mm: entry.h || null,
       default_d_mm: entry.d || null,

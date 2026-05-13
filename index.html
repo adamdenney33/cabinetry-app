@@ -211,31 +211,43 @@
     <!-- BUILDER view (default) -->
     <div id="cab-view-builder" style="flex:1;display:flex;overflow:hidden">
       <div class="sidebar" style="width:440px;min-width:380px">
-        <!-- Strategy 2: project context lives here. Either renders the empty
-             state (no project active) or the Idea-3 header + tabs (in-project). -->
-        <div id="cb-context"></div>
-        <!-- Tabs inside sidebar (only shown in-project; toggled by _cbRenderContext) -->
-        <div id="cb-tabs-wrap" style="display:none;flex-shrink:0">
-          <div style="display:flex;border-bottom:2px solid var(--border)">
-            <div id="cab-tab-builder" onclick="switchCabTab('builder')" style="flex:1;padding:10px 16px;font-size:13px;font-weight:700;text-align:center;cursor:pointer;border-bottom:2px solid var(--accent);margin-bottom:-2px;color:var(--text)">Cabinet Builder</div>
-            <div id="cab-tab-rates" onclick="switchCabTab('rates')" style="flex:1;padding:10px 16px;font-size:13px;font-weight:500;text-align:center;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-2px">My Rates</div>
+        <!-- Quote Builder sidebar wrapper: client-picker empty state OR
+             in-project header + cabinet editor. Default visible. -->
+        <div id="cb-sidebar-builder" style="display:flex;flex-direction:column;flex:1;overflow:hidden">
+          <!-- Strategy 2: project context lives here. Either renders the empty
+               state (no project active) or the Idea-3 header + tabs (in-project). -->
+          <div id="cb-context"></div>
+          <!-- Tabs inside sidebar (only shown in-project; toggled by _cbRenderContext) -->
+          <div id="cb-tabs-wrap" style="display:none;flex-shrink:0">
+            <div style="display:flex;border-bottom:2px solid var(--border)">
+              <div id="cab-tab-builder" onclick="switchCabTab('builder')" style="flex:1;padding:10px 16px;font-size:13px;font-weight:700;text-align:center;cursor:pointer;border-bottom:2px solid var(--accent);margin-bottom:-2px;color:var(--text)">Cabinet Builder</div>
+              <div id="cab-tab-rates" onclick="switchCabTab('rates')" style="flex:1;padding:10px 16px;font-size:13px;font-weight:500;text-align:center;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-2px">My Rates</div>
+            </div>
+          </div>
+          <div class="sidebar-scroll" id="cb-sidebar">
+
+            <!-- Active Cabinet Editor (also renders sub-gate when no cabinet open) -->
+            <div id="cb-cab-editor" style="padding:14px"></div>
+
+            <!-- MY RATES (shown when rates tab active) -->
+            <div id="cab-view-rates" style="display:none;padding:14px">
+              <div id="cb-rates-content"></div>
+            </div>
           </div>
         </div>
-        <div class="sidebar-scroll" id="cb-sidebar">
-
-          <!-- Active Cabinet Editor (also renders sub-gate when no cabinet open) -->
-          <div id="cb-cab-editor" style="padding:14px"></div>
-
-          <!-- MY RATES (shown when rates tab active) -->
-          <div id="cab-view-rates" style="display:none;padding:14px">
-            <div id="cb-rates-content"></div>
+        <!-- Cabinet Library sidebar wrapper: standalone gate for managing
+             templates without a client. Hidden by default; toggled by
+             switchCBMainView('library'). -->
+        <div id="cb-sidebar-library" style="display:none;flex-direction:column;flex:1;overflow:hidden">
+          <div class="sidebar-scroll">
+            <div id="cb-lib-gate" style="padding:14px"></div>
           </div>
         </div>
       </div>
       <div class="resize-handle" data-sidebar-resize="cabinet" data-min="380" data-max="720"></div>
       <div class="main-content" style="display:flex;flex-direction:column">
         <div style="display:flex;border-bottom:2px solid var(--border);flex-shrink:0">
-          <div id="cb-main-tab-results" onclick="switchCBMainView('results')" style="flex:1;padding:10px 16px;font-size:13px;font-weight:700;text-align:center;cursor:pointer;border-bottom:2px solid var(--accent);margin-bottom:-2px;color:var(--text)">Project</div>
+          <div id="cb-main-tab-results" onclick="switchCBMainView('results')" style="flex:1;padding:10px 16px;font-size:13px;font-weight:700;text-align:center;cursor:pointer;border-bottom:2px solid var(--accent);margin-bottom:-2px;color:var(--text)">Quote Builder</div>
           <div id="cb-main-tab-library" onclick="switchCBMainView('library')" style="flex:1;padding:10px 16px;font-size:13px;font-weight:500;text-align:center;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-2px">Cabinet Library</div>
         </div>
         <div class="main-scroll" id="cb-results" style="padding:20px;flex:1"></div>
@@ -253,9 +265,6 @@
         <div id="stock-gate"></div>
         <div class="form-section" id="stock-form-section">
           <div class="form-section-title" id="stock-form-title">
-            <button class="ph-back" id="stock-back-btn" onclick="cancelStockEdit()" title="Back" aria-label="Back">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-            </button>
             <span id="stock-form-title-text">Add Material</span>
             <span id="stock-save-indicator" class="save-indicator" style="display:none"></span>
           </div>
@@ -387,9 +396,6 @@
         <!-- Drill-in editor header -->
         <div id="cl-editor-header" style="padding:10px 14px 8px">
           <div class="form-section-title">
-            <button class="ph-back" onclick="_clExitCutlist()" title="Back" aria-label="Back">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-            </button>
             <span id="cl-name-display">Cut List</span>
             <span class="save-indicator" data-save-indicator="cutlist" style="display:none">Autosave</span>
           </div>
@@ -624,9 +630,6 @@
         <div id="clients-gate"></div>
         <div class="form-section" id="clients-form-section">
           <div class="form-section-title" id="cl-form-title">
-            <button class="ph-back" id="cl-back-btn" onclick="cancelClientEdit()" title="Back" aria-label="Back">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-            </button>
             <span id="cl-form-title-text">New Client</span>
             <span id="cl-save-indicator" class="save-indicator" style="display:none"></span>
           </div>
@@ -677,6 +680,7 @@
 <script defer src="src/stock.js"></script>
 <script defer src="src/cabinet-calc.js"></script>
 <script defer src="src/cabinet-library.js"></script>
+<script defer src="src/cabinet-library-sidebar.js"></script>
 <script defer src="src/cabinet-render.js"></script>
 <script defer src="src/cabinet.js"></script>
 <script defer src="src/units.js"></script>

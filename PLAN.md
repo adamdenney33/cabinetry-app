@@ -58,6 +58,10 @@ groups everything; library items snapshot into quotes via attribution chip.
   schema never had that column — the relationship was always via the
   join table.
 
+**Phase F7 done in a follow-up session:**
+
+- **F7** — Cabinet Library sub-tab gets its own sidebar gate (`#cb-sidebar-library`) for a standalone, out-of-client template workflow. `#panel-cabinet` now hosts two sibling sidebar wrappers inside the same `<aside>`: `#cb-sidebar-builder` (existing client-picker + cabinet editor) and `#cb-sidebar-library` (new gate with Recent templates + "+ Add Template"). `switchCBMainView()` toggles between them and cleans up cross-sub-tab edit state (drops in-quote scratchpad on switch-to-library; drops template-edit scratchpad on switch-to-builder). `renderCBPanel`'s auto-flip-to-Library when no client (lines 211–213) removed — the Quote Builder sub-tab now correctly shows its existing "Pick a client" empty state. New file `src/cabinet-library-sidebar.js` mirrors the Clients/Stock gate pattern via `_renderListEmpty()`. `cbStartNewLibraryEntry()` creates a fresh template entry, drills into the existing cabinet editor (reusing `_cbScheduleAutosave`'s `cabEditingLibraryIdx >= 0` route to `cabinet_templates`), and back-fills `db_id` on first save. Import/Export buttons moved from the Quote Builder results header to the Library grid's filter bar per `CLAUDE.md` convention. `_saveCabinetToDB` / `_updateCabinetInDB` relaxed to write `entry.cabType || entry.type || 'base'` instead of hardcoding `'base'`. Verified end-to-end in the Vite dev preview: clean reload lands on Quote Builder (no auto-flip); Cabinet Library tab shows the new gate without requiring a client; "+ Add Template" creates a row in `cabinet_templates` (POST, not to `quote_lines`); switching sub-tabs mid-edit cleans up correctly and the sidebar context refreshes to the right empty state.
+
 **Phases F5–F6 done in a single follow-up session:**
 
 - `bb4e5b1` **F5** — All 94 `project_id` references stripped from
