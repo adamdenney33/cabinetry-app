@@ -22,6 +22,18 @@ Companion docs: `SPEC.md` (refactor history), `SCHEMA.md` (DB schema),
 
 ## Active Work
 
+### Business Details popup + logos on PDFs + bank details + Pro/free branding ✅ Done 2026-05-14
+
+Plan: `~/.claude/plans/i-want-the-business-rustling-aurora.md`.
+
+- ✅ **Mockup** — `mockups/pdf-branding-options.html` shows the three branding intensities side-by-side (free vs Pro pairs). Variant 2 (footer band) chosen as default.
+- ⚠️ **Migration** — `ALTER TABLE business_info ADD COLUMN IF NOT EXISTS bank_details text;` **not yet applied**. Supabase MCP `apply_migration` blocked by harness permission classifier. User to authorize the MCP call or run the SQL manually in the Supabase dashboard. Code is migration-tolerant: localStorage handles bank details until the column lands; `_syncBizInfoToDB` then starts persisting on the next save.
+- ✅ **Popup** — `_openBusinessDetailsPopup` in `src/business.js` replaces the inline form at `index.html:141-153`. Logo upload + name + address + phone/email row + ABN + bank-details textarea.
+- ✅ **Logo on every PDF** — new `_drawBizHeader` helper at top of `src/cutlist.js` wires logo + reordered caption (name → address → phone → email) into all 5 PDF builders. Logo replaces the big bold business-name when present.
+- ✅ **Bank details on quote + order PDFs** — `_buildOrderDocPDF` placeholder replaced with `biz.bank_details`; `_buildQuotePDF` gains a new PAYMENT DETAILS block between Validity and Acceptance.
+- ✅ **Conditional ProCabinet branding** — `_drawPdfFooter` gates branding on `!isPro()`. Pro users get a clean footer; free users get the accent footer band. Variant flip lives in the `_PROCAB_FOOTER_VARIANT` module constant.
+- ✅ **Boot hydration** — `_applyBizInfoFromDB` (`src/app.js`) extended to mirror `bank_details` into `pc_biz` localStorage so `getBizInfo()` returns it on subsequent reads.
+
 ### Remove Projects entity · adopt library-first / Cabinet-IS-Quote ✅ Done 2026-05-13
 
 Foundational refactor toward the new architecture designed across

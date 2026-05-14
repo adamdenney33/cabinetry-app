@@ -13,13 +13,23 @@
 // ══════════════════════════════════════════
 function saveBizInfo() {
   /** @param {string} id */
-  const inputVal = id => /** @type {HTMLInputElement | null} */ (document.getElementById(id))?.value;
+  const inputVal = id => /** @type {HTMLInputElement | HTMLTextAreaElement | null} */ (document.getElementById(id))?.value;
+  // Merge into the existing payload so a popup that only renders some fields
+  // (or a future settings panel that owns only one of them) can't blank-out
+  // the others. Important now that bank_details lives in the popup only.
+  const prev = (() => { try { return JSON.parse(localStorage.getItem('pc_biz') || '{}'); } catch { return {}; } })();
+  /** @param {string} id @param {string} key */
+  const merge = (id, key) => {
+    const el = document.getElementById(id);
+    return el ? (inputVal(id) || '') : (prev[key] || '');
+  };
   const payload = {
-    name:    inputVal('biz-name')    || '',
-    phone:   inputVal('biz-phone')   || '',
-    email:   inputVal('biz-email')   || '',
-    address: inputVal('biz-address') || '',
-    abn:     inputVal('biz-abn')     || '',
+    name:         merge('biz-name', 'name'),
+    phone:        merge('biz-phone', 'phone'),
+    email:        merge('biz-email', 'email'),
+    address:      merge('biz-address', 'address'),
+    abn:          merge('biz-abn', 'abn'),
+    bank_details: merge('biz-bank-details', 'bank_details'),
   };
   localStorage.setItem('pc_biz', JSON.stringify(payload));
   // Strategy C: surface dirty hint only when there is a user to sync to.
@@ -32,7 +42,7 @@ function saveBizInfo() {
 
 /** @type {ReturnType<typeof setTimeout> | null} */
 let _bizInfoSyncTimer = null;
-/** @param {{name?: string, phone?: string, email?: string, address?: string, abn?: string}} payload */
+/** @param {{name?: string, phone?: string, email?: string, address?: string, abn?: string, bank_details?: string}} payload */
 function _syncBizInfoToDB(payload) {
   if (!_userId) return;
   if (_bizInfoSyncTimer) clearTimeout(_bizInfoSyncTimer);
@@ -49,6 +59,7 @@ function _syncBizInfoToDB(payload) {
       email: payload.email || null,
       address: payload.address || null,
       abn: payload.abn || null,
+      bank_details: payload.bank_details || null,
       unit_format: JSON.stringify(window.unitFormat),
       updated_at: new Date().toISOString()
     };
@@ -169,15 +180,65 @@ function _syncCBSettingsToDB() {
 function loadBizInfo() {
   try {
     /** @param {string} id */
-    const input = id => /** @type {HTMLInputElement | null} */ (document.getElementById(id));
+    const input = id => /** @type {HTMLInputElement | HTMLTextAreaElement | null} */ (document.getElementById(id));
     const b = JSON.parse(localStorage.getItem('pc_biz') || '{}');
-    if (b.name)    { const el = input('biz-name');    if (el) el.value = b.name; }
-    if (b.phone)   { const el = input('biz-phone');   if (el) el.value = b.phone; }
-    if (b.email)   { const el = input('biz-email');   if (el) el.value = b.email; }
-    if (b.address) { const el = input('biz-address'); if (el) el.value = b.address; }
-    if (b.abn)     { const el = input('biz-abn');     if (el) el.value = b.abn; }
+    if (b.name)         { const el = input('biz-name');         if (el) el.value = b.name; }
+    if (b.phone)        { const el = input('biz-phone');        if (el) el.value = b.phone; }
+    if (b.email)        { const el = input('biz-email');        if (el) el.value = b.email; }
+    if (b.address)      { const el = input('biz-address');      if (el) el.value = b.address; }
+    if (b.abn)          { const el = input('biz-abn');          if (el) el.value = b.abn; }
+    if (b.bank_details) { const el = input('biz-bank-details'); if (el) el.value = b.bank_details; }
   } catch(e) {}
 }
+
+// ══════════════════════════════════════════
+// BUSINESS DETAILS POPUP
+// ══════════════════════════════════════════
+// All business-identity fields (name / address / phone / email / ABN / logo /
+// bank details) edited in one modal. Mounted from the account dropdown via
+// the "Edit business details" button; replaces the older inline sidebar form.
+function _openBusinessDetailsPopup() {
+  const b = getBizInfo();
+  const logo = getBizLogo();
+  /** @param {any} s */
+  const esc = s => /** @type {(v:any)=>string} */ (/** @type {any} */ (window)._escHtml)(s);
+  const html = `
+    <div class="popup-header">
+      <div class="popup-title">Business details</div>
+      <button class="popup-close" onclick="_closePopup()">&times;</button>
+    </div>
+    <div class="popup-body">
+      <div class="pf">
+        <label class="pf-label">Logo (appears on PDFs)</label>
+        <div style="display:flex;align-items:center;gap:12px">
+          <img id="biz-logo-preview" alt="" style="width:64px;height:64px;object-fit:contain;border-radius:6px;border:1px solid var(--border);background:var(--surface2);${logo ? '' : 'display:none'}" ${logo ? `src="${esc(logo)}"` : ''}>
+          <div style="flex:1">
+            <button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById('biz-logo-input').click()">Upload logo</button>
+            <input type="file" id="biz-logo-input" accept="image/*" style="display:none" onchange="handleLogoUpload(this)">
+            <button type="button" id="biz-logo-remove" class="btn btn-outline btn-sm" style="${logo ? '' : 'display:none'};margin-left:6px" onclick="removeLogo()">Remove</button>
+            <div style="font-size:10px;color:var(--muted);margin-top:6px">Max 500KB. PNG / JPG / SVG. Replaces the business-name text in the top-left of every PDF.</div>
+          </div>
+        </div>
+      </div>
+      <div class="pf"><label class="pf-label">Business name</label><input class="pf-input pf-input-lg" id="biz-name" value="${esc(b.name)}" oninput="saveBizInfo()" placeholder="Your business name"></div>
+      <div class="pf"><label class="pf-label">Address</label><input class="pf-input" id="biz-address" value="${esc(b.address)}" oninput="saveBizInfo()" placeholder="Street, city, postcode"></div>
+      <div class="pf-row">
+        <div class="pf"><label class="pf-label">Phone</label><input class="pf-input" id="biz-phone" value="${esc(b.phone)}" oninput="saveBizInfo()"></div>
+        <div class="pf"><label class="pf-label">Email</label><input class="pf-input" id="biz-email" value="${esc(b.email)}" oninput="saveBizInfo()"></div>
+      </div>
+      <div class="pf"><label class="pf-label">ABN / Tax number (optional)</label><input class="pf-input" id="biz-abn" value="${esc(b.abn)}" oninput="saveBizInfo()"></div>
+      <div class="pf">
+        <label class="pf-label">Bank details (printed on quotes &amp; invoices)</label>
+        <textarea class="pf-input" id="biz-bank-details" rows="5" oninput="saveBizInfo()" placeholder="Account Name: Acme Cabinetry Ltd&#10;Sort Code: 12-34-56&#10;Account #: 12345678&#10;IBAN / SWIFT / Routing # as needed.">${esc(b.bank_details)}</textarea>
+      </div>
+    </div>
+    <div class="popup-footer">
+      <button class="btn btn-accent" onclick="_closePopup()">Done</button>
+    </div>
+  `;
+  _openPopup(html, 'md');
+}
+/** @type {any} */ (window)._openBusinessDetailsPopup = _openBusinessDetailsPopup;
 /** @param {HTMLInputElement} input */
 function handleLogoUpload(input) {
   const file = input.files?.[0];

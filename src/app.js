@@ -117,7 +117,7 @@ function _orderLineRowHtml(row, i) {
       <td class="col-dot"><span></span></td>
       <td class="col-desc"><textarea class="cl-input desc" rows="1" oninput="_orderLineUpdate(${i}, 'name', this.value);_autoGrowTextarea(this)">${_escHtml(descDefault)}</textarea></td>
       <td class="col-qty"><input class="cl-input right" type="number" min="1" step="1" value="${row.qty ?? 1}" oninput="_orderLineUpdate(${i}, 'qty', this.value)"></td>
-      <td class="col-price"><div class="total-val" style="font-weight:400;color:var(--text2)">${fmt(unitPrice)}</div></td>
+      <td class="col-price"><div class="cl-input right is-computed" style="padding:5px 4px">${Number(unitPrice || 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</div></td>
       <td class="col-hrs" title="Computed from cabinet labour"><div class="cl-input right is-computed" style="padding:5px 4px">${hrsTotal.toFixed(1)}</div></td>
       ${discCell}
       <td class="col-total"><div class="total-val">${fmt(total)}</div></td>
@@ -587,7 +587,7 @@ function _lineRowHtml(row, i) {
       <td class="col-dot"><span></span></td>
       <td class="col-desc"><textarea class="cl-input desc" rows="1" oninput="_lineUpdate(${i}, 'name', this.value);_autoGrowTextarea(this)">${_escHtml(descDefault)}</textarea></td>
       <td class="col-qty"><input class="cl-input right" type="number" min="1" step="1" value="${row.qty ?? 1}" oninput="_lineUpdate(${i}, 'qty', this.value)"></td>
-      <td class="col-price"><div class="total-val" style="font-weight:400;color:var(--text2)">${fmt(unitPrice)}</div></td>
+      <td class="col-price"><div class="cl-input right is-computed" style="padding:5px 4px">${Number(unitPrice || 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</div></td>
       <td class="col-hrs" title="Computed from cabinet labour"><div class="cl-input right is-computed" style="padding:5px 4px">${hrs.toFixed(1)}</div></td>
       ${discCell}
       <td class="col-total"><div class="total-val">${fmt(total)}</div></td>
@@ -1259,6 +1259,7 @@ function _applyBizInfoFromDB(rows) {
   set('biz-email', b.email);
   set('biz-address', b.address);
   set('biz-abn', b.abn);
+  set('biz-bank-details', b.bank_details);
   // Logo: if DB has a public URL, use it; otherwise fall through to localStorage base64
   if (b.logo_url) {
     const img = /** @type {HTMLImageElement | null} */ (document.getElementById('biz-logo-preview'));
@@ -1277,7 +1278,8 @@ function _applyBizInfoFromDB(rows) {
   try {
     localStorage.setItem('pc_biz', JSON.stringify({
       name: b.name || '', phone: b.phone || '', email: b.email || '',
-      address: b.address || '', abn: b.abn || ''
+      address: b.address || '', abn: b.abn || '',
+      bank_details: b.bank_details || ''
     }));
   } catch(e) {}
   // Phase 3: business_info is the source of truth for all cbSettings scalars

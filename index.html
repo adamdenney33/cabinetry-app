@@ -42,6 +42,29 @@
     <div class="logo-badge">BETA v0.12.0</div>
   </div>
   <div class="header-right">
+    <div class="help-wrap">
+      <button class="help-btn" onclick="toggleHelp()" id="help-btn" title="Help">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      </button>
+      <div class="help-dropdown" id="help-dropdown">
+        <div class="help-menu-item" onclick="_openUserGuide()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>
+          <span>User Guide</span>
+        </div>
+        <div class="help-menu-item" onclick="_openBugReport()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="6" width="8" height="14" rx="4"/><path d="M19 7l-3 2"/><path d="M5 7l3 2"/><path d="M19 13h-3"/><path d="M8 13H5"/><path d="M19 19l-3-2"/><path d="M5 19l3-2"/><path d="M9 6V4a3 3 0 016 0v2"/></svg>
+          <span>Report a Bug</span>
+        </div>
+        <div class="help-menu-item" onclick="_openSuggestion()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 00-4 12.74V17h8v-2.26A7 7 0 0012 2z"/></svg>
+          <span>Make a Suggestion</span>
+        </div>
+        <div class="help-menu-item" onclick="_openSupport()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+          <span>Contact Support</span>
+        </div>
+      </div>
+    </div>
     <div class="settings-wrap">
       <button class="settings-btn" onclick="toggleSettings()" id="settings-btn" title="Settings">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
@@ -124,7 +147,7 @@
     </div>
     <div class="account-wrap">
       <div class="user-avatar" id="account-btn" title="Account" onclick="toggleAccount()">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>
       </div>
       <div class="account-dropdown" id="account-dropdown">
         <div id="account-guest-view">
@@ -138,19 +161,10 @@
               <span>Business Info</span>
               <span class="cl-unsaved-pill" data-save-pill="business" style="display:none"></span>
             </div>
-            <input class="sd-text-input" id="biz-name" placeholder="Business name" oninput="saveBizInfo()">
-            <input class="sd-text-input" id="biz-phone" placeholder="Phone" oninput="saveBizInfo()" style="margin-top:5px">
-            <input class="sd-text-input" id="biz-email" placeholder="Email" oninput="saveBizInfo()" style="margin-top:5px">
-            <input class="sd-text-input" id="biz-address" placeholder="Address (optional)" oninput="saveBizInfo()" style="margin-top:5px">
-            <input class="sd-text-input" id="biz-abn" placeholder="ABN / Tax No. (optional)" oninput="saveBizInfo()" style="margin-top:5px">
-            <div style="margin-top:8px;display:flex;align-items:center;gap:8px">
-              <img id="biz-logo-preview" style="width:40px;height:40px;object-fit:contain;border-radius:4px;border:1px solid var(--border);display:none">
-              <div style="flex:1">
-                <label style="font-size:10px;cursor:pointer;color:var(--accent);font-weight:600" onclick="document.getElementById('biz-logo-input').click()">Upload Logo</label>
-                <input type="file" id="biz-logo-input" accept="image/*" style="display:none" onchange="handleLogoUpload(this)">
-                <button id="biz-logo-remove" style="display:none;font-size:9px;color:var(--muted);background:none;border:none;cursor:pointer;margin-left:4px" onclick="removeLogo()">Remove</button>
-              </div>
-            </div>
+            <button class="btn btn-outline btn-sm" style="width:100%;justify-content:center"
+                    onclick="toggleAccount();_openBusinessDetailsPopup()">
+              Edit business details
+            </button>
           </div>
           <div class="account-menu-item" id="account-email-item" style="color:var(--muted);font-size:11px;cursor:default"></div>
           <div class="account-menu-item" onclick="signOut()">Sign Out</div>
@@ -161,7 +175,7 @@
 </header>
 
 <!-- NAV TABS -->
-<div style="background:var(--tabbar);border-bottom:1px solid var(--border);flex-shrink:0">
+<div class="nav-tabs-wrap">
 <div class="nav-tabs">
   <div class="nav-tab active" title="Dashboard" onclick="switchSection('dashboard')">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
@@ -264,9 +278,15 @@
       <div class="sidebar-scroll">
         <div id="stock-gate"></div>
         <div class="form-section" id="stock-form-section">
-          <div class="form-section-title" id="stock-form-title">
-            <span id="stock-form-title-text">Add Material</span>
-            <span id="stock-save-indicator" class="save-indicator" style="display:none"></span>
+          <div class="project-header" id="stock-form-title">
+            <div class="ph-row1">
+              <button class="ph-back" id="stock-back-btn" onclick="cancelStockEdit()" title="Back" aria-label="Back">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+              </button>
+              <svg class="ph-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+              <span class="ph-title" id="stock-form-title-text">Add Material</span>
+              <span id="stock-save-indicator" class="save-indicator" style="display:none">Autosave</span>
+            </div>
           </div>
           <div class="form-group" style="margin-bottom:6px">
             <label>Category</label>
@@ -394,14 +414,12 @@
       <div class="cl-scroll" id="cl-scroll-body" style="display:none">
 
         <!-- Drill-in editor header -->
-        <div id="cl-editor-header" style="padding:10px 14px 8px">
-          <div class="form-section-title">
-            <span id="cl-name-display">Cut List</span>
-            <span class="save-indicator" data-save-indicator="cutlist" style="display:none">Autosave</span>
-          </div>
-          <div class="form-group" style="margin-bottom:6px">
+        <div id="cl-editor-header">
+          <div class="form-group" style="padding:10px 14px">
             <label>Name</label>
-            <input type="text" id="cl-name" placeholder="Cut List name" oninput="_clRenameCutlist(this.value)">
+            <div class="prefixed-input">
+              <input type="text" id="cl-name" placeholder="Cut List name" oninput="_clRenameCutlist(this.value)">
+            </div>
           </div>
         </div>
 
@@ -500,8 +518,6 @@
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
           Optimize Cut Layout
         </button>
-        <button class="btn btn-outline btn-lg" onclick="_clAddToCutlistLibrary()" style="margin-top:6px" title="Save the current cut list to the Cut List Library">Add to Library</button>
-        <div id="opt-counter" style="display:none;font-size:11px;margin-top:6px;text-align:center;color:var(--muted)"></div>
       </div>
     </div>
 
@@ -512,8 +528,8 @@
     <div class="cl-right">
       <!-- Main content tabs (F5: middle "Project" tab removed) -->
       <div style="display:flex;border-bottom:2px solid var(--border);flex-shrink:0">
-        <div id="cl-tab-layout"  onclick="switchCLMainView('layout')"  style="flex:1;padding:10px 16px;font-size:13px;font-weight:500;text-align:center;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-2px">Cut Layout</div>
         <div id="cl-tab-library" onclick="switchCLMainView('library')" style="flex:1;padding:10px 16px;font-size:13px;font-weight:700;text-align:center;cursor:pointer;border-bottom:2px solid var(--accent);margin-bottom:-2px;color:var(--text)">Cut List Library</div>
+        <div id="cl-tab-layout"  onclick="switchCLMainView('layout')"  style="flex:1;padding:10px 16px;font-size:13px;font-weight:500;text-align:center;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-2px">Cut Layout</div>
       </div>
 
       <!-- Cut Layout view (existing toolbars + results) -->
@@ -629,9 +645,15 @@
       <div class="sidebar-scroll">
         <div id="clients-gate"></div>
         <div class="form-section" id="clients-form-section">
-          <div class="form-section-title" id="cl-form-title">
-            <span id="cl-form-title-text">New Client</span>
-            <span id="cl-save-indicator" class="save-indicator" style="display:none"></span>
+          <div class="project-header" id="cl-form-title">
+            <div class="ph-row1">
+              <button class="ph-back" id="cl-back-btn" onclick="cancelClientEdit()" title="Back" aria-label="Back">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+              </button>
+              <svg class="ph-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+              <span class="ph-title" id="cl-form-title-text">New Client</span>
+              <span id="cl-save-indicator" class="save-indicator" style="display:none">Autosave</span>
+            </div>
           </div>
           <div class="form-group" style="margin-bottom:8px">
             <label>Name</label>
@@ -695,5 +717,6 @@
 <script defer src="src/projects.js"></script>
 <script defer src="src/clients.js"></script>
 <script defer src="src/migrate.js"></script>
+<script defer src="src/help.js"></script>
 </body>
 </html>

@@ -74,6 +74,7 @@ create table public.business_info (
   email           text,
   address         text,
   abn             text,                              -- tax/business number
+  bank_details    text,                              -- freeform payment instructions printed on quote + order-doc PDFs (added 2026-05-14)
   logo_url        text,                              -- Supabase Storage URL, not base64
   default_currency text not null default '£',
   default_units   text not null default 'mm',       -- 'mm' | 'inches'

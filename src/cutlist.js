@@ -925,11 +925,15 @@ function _clRenderContext() {
     if (scroll) scroll.style.display = '';
     if (actionBar) actionBar.style.display = '';
     ctx.innerHTML = _renderProjectHeader('cutlist', {
-      name: 'Cut List Library',
+      name: _clCurrentCutlistName || 'Cut List',
       exitFn: '_clExitLibraryEdit',
       iconSvg: _CL_LIBRARY_ICON,
+      saveIndicator: 'cutlist',
     });
     _clSyncDrillInputs();
+    if (typeof _setSaveStatus === 'function') {
+      _setSaveStatus('cutlist', _clDirty ? 'dirty' : 'clean');
+    }
     return;
   }
   // F6 (2026-05-13): no project scope. Empty state prompts the user to pick
@@ -951,6 +955,7 @@ function _clRenderContext() {
     name: _clCurrentCutlistName || 'Cut List',
     exitFn: '_clExitLibraryEdit',
     iconSvg: _CL_LIBRARY_ICON,
+    saveIndicator: 'cutlist',
   });
   if (!_clCurrentCutlistId) {
     // Sub-gate: show "+ Add Cut List" + recent cut lists.
@@ -2063,6 +2068,133 @@ function _saveAsPDF(html) {
 }
 
 
+// ══════════════════════════════════════════
+// PDF HEADER / FOOTER HELPERS — shared by every builder below.
+// ══════════════════════════════════════════
+// _drawBizHeader: top-left identity block.
+//   - If a logo data URL is supplied, the logo replaces the big bold business
+//     name. The business name then appears in the caption beneath the logo,
+//     followed by address, phone, email (in that order), then ABN.
+//   - If no logo, the caption falls back to today's layout (big bold name on
+//     top, contact subline below) with address / phone / email reordered.
+// Returns the vertical space consumed (mm) so callers can advance `y`.
+/**
+ * @param {any} pdf jsPDF instance
+ * @param {{name?:string,address?:string,phone?:string,email?:string,abn?:string}} biz
+ * @param {string} logoDataUrl  data URL from getBizLogo(), or '' if none
+ * @param {number} x  left margin
+ * @param {number} y  top of block
+ * @param {{nameSize?:number}} [opts]  override caption font size (defaults 16/9)
+ * @returns {number}  vertical space consumed (mm)
+ */
+function _drawBizHeader(pdf, biz, logoDataUrl, x, y, opts) {
+  const nameSize = (opts && opts.nameSize) || 16;
+  let cursor = 0;
+  let renderedLogo = false;
+  if (logoDataUrl) {
+    try {
+      const props = pdf.getImageProperties(logoDataUrl);
+      const maxW = 35, maxH = 18;
+      const ratio = (props.width || 1) / (props.height || 1);
+      let w = maxW, h = maxW / ratio;
+      if (h > maxH) { h = maxH; w = maxH * ratio; }
+      pdf.addImage(logoDataUrl, props.fileType || 'PNG', x, y, w, h);
+      cursor = h + 2;
+      renderedLogo = true;
+    } catch (_e) {
+      // Fall through to text-only header on bad image data.
+    }
+  }
+  if (renderedLogo) {
+    // Caption mode: small bold name, then contact line, then ABN line.
+    pdf.setFontSize(9); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(17);
+    pdf.text(biz.name || 'Your Business', x, y + cursor + 3);
+    cursor += 5;
+  } else {
+    pdf.setFontSize(nameSize); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(17);
+    pdf.text(biz.name || 'Your Business', x, y + 6);
+    cursor = 8;
+  }
+  const subline = [biz.address, biz.phone, biz.email].filter(Boolean).join('  ·  ');
+  if (subline) {
+    pdf.setFontSize(renderedLogo ? 7.5 : 8); pdf.setFont('helvetica', 'normal'); pdf.setTextColor(120);
+    pdf.text(subline, x, y + cursor + 2);
+    cursor += 5;
+  }
+  if (biz.abn) {
+    pdf.setFontSize(7); pdf.setTextColor(120);
+    pdf.text('ABN: ' + biz.abn, x, y + cursor + 1);
+    cursor += 4;
+  }
+  // Reset text colour to default-dark so callers don't inherit our grey.
+  pdf.setTextColor(17);
+  return cursor;
+}
+
+// _drawPdfFooter: footer line at the bottom of every page.
+//   - Pro tier (paid subscription) → business name only.
+//   - Free tier → business name + ProCabinet.app branding.
+// Variant of the branding is controlled by _PROCAB_FOOTER_VARIANT below — flip
+// to switch between subtle / band / band+strip without touching call sites.
+/** @type {1|2|3} */
+const _PROCAB_FOOTER_VARIANT = 2;
+/**
+ * @param {any} pdf jsPDF instance
+ * @param {{name?:string}} biz
+ * @param {string} dateStr
+ * @param {number} PW
+ * @param {number} PH
+ * @param {number} M
+ */
+function _drawPdfFooter(pdf, biz, dateStr, PW, PH, M) {
+  const pro = (typeof isPro === 'function') ? isPro() : false;
+  const name = biz.name || '';
+  if (pro) {
+    pdf.setFontSize(6.5); pdf.setFont('helvetica', 'normal'); pdf.setTextColor(190);
+    if (name) pdf.text(name, M, PH - M);
+    pdf.text(dateStr, PW - M, PH - M, { align: 'right' });
+    return;
+  }
+  // Free tier — variant selection. Variant 2 (band) is the default per mockup.
+  if (_PROCAB_FOOTER_VARIANT === 1) {
+    pdf.setFontSize(6.5); pdf.setFont('helvetica', 'normal'); pdf.setTextColor(190);
+    const left = name ? (name + '  ·  Made with ProCabinet.app') : 'Made with ProCabinet.app';
+    pdf.text(left, M, PH - M);
+    pdf.text(dateStr, PW - M, PH - M, { align: 'right' });
+    return;
+  }
+  // Variants 2 & 3 — coloured band along the bottom.
+  const bandH = 6;
+  pdf.setFillColor(247, 250, 255);
+  pdf.rect(0, PH - bandH, PW, bandH, 'F');
+  pdf.setDrawColor(74, 158, 255); pdf.setLineWidth(0.4);
+  pdf.line(0, PH - bandH, PW, PH - bandH);
+  pdf.setFontSize(7.5); pdf.setFont('helvetica', 'normal'); pdf.setTextColor(85);
+  const leftText = name ? (name + '  ·  ' + dateStr) : dateStr;
+  pdf.text(leftText, M, PH - 2);
+  pdf.setFont('helvetica', 'bold'); pdf.setTextColor(74, 158, 255);
+  pdf.text('Made with ProCabinet.app', PW - M, PH - 2, { align: 'right' });
+  pdf.setTextColor(17);
+}
+
+// _drawPdfBrandingStrip: variant-3-only corner badge on page 1.
+//   Called from the build functions only when _PROCAB_FOOTER_VARIANT === 3 and
+//   !isPro(). Keeps the per-builder code untouched for variants 1/2.
+/**
+ * @param {any} pdf
+ * @param {number} PW
+ */
+function _drawPdfBrandingStrip(pdf, PW) {
+  if (_PROCAB_FOOTER_VARIANT !== 3) return;
+  if ((typeof isPro === 'function') && isPro()) return;
+  pdf.setFillColor(74, 158, 255);
+  pdf.rect(PW - 56, 0, 56, 6, 'F');
+  pdf.setFontSize(7); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(255);
+  pdf.text('Made with ProCabinet.app', PW - 4, 4.2, { align: 'right' });
+  pdf.setTextColor(17);
+}
+
+
 // ── Build a real PDF for quotes using jsPDF ──
 /** @param {any} q */
 /**
@@ -2119,11 +2251,8 @@ function _buildQuotePDF(q, lineRows) {
   let y = M;
 
   // ── Header ──
-  pdf.setFontSize(16); pdf.setFont('helvetica','bold'); pdf.setTextColor(17);
-  pdf.text(biz.name || 'Your Business', M, y + 6);
-  const bizSub = [biz.phone, biz.email, biz.address].filter(Boolean).join('  ·  ');
-  if (bizSub) { pdf.setFontSize(8); pdf.setFont('helvetica','normal'); pdf.setTextColor(120); pdf.text(bizSub, M, y + 11); }
-  if (biz.abn) { pdf.setFontSize(7); pdf.text('ABN: ' + biz.abn, M, y + 15); }
+  _drawBizHeader(pdf, biz, logo, M, y);
+  _drawPdfBrandingStrip(pdf, PW);
 
   pdf.setFontSize(22); pdf.setFont('helvetica','normal'); pdf.setTextColor(50);
   pdf.text('QUOTATION', PW - M, y + 7, { align:'right' });
@@ -2250,6 +2379,21 @@ function _buildQuotePDF(q, lineRows) {
   pdf.text('This quote is valid for 30 days from the date of issue.', M, y);
   y += 12;
 
+  // ── Bank details (when configured) ──
+  const bankDetails = (biz.bank_details || '').trim();
+  if (bankDetails) {
+    if (y > PH - 50) { pdf.addPage(); y = M + 10; }
+    pdf.setFontSize(7); pdf.setFont('helvetica','bold'); pdf.setTextColor(170);
+    pdf.text('PAYMENT DETAILS', M, y); y += 5;
+    pdf.setFontSize(9); pdf.setFont('helvetica','normal'); pdf.setTextColor(60);
+    const bankLines = pdf.splitTextToSize(bankDetails, W);
+    bankLines.forEach(/** @param {string} bl */ bl => {
+      if (y > PH - 30) { pdf.addPage(); y = M + 10; }
+      pdf.text(bl, M, y); y += 4.5;
+    });
+    y += 6;
+  }
+
   // ── Acceptance ──
   if (y > PH - 60) { pdf.addPage(); y = M + 10; }
   pdf.setFontSize(8); pdf.setFont('helvetica','bold'); pdf.setTextColor(80);
@@ -2267,9 +2411,7 @@ function _buildQuotePDF(q, lineRows) {
   pdf.text('Date', M + 120, y + 20);
 
   // ── Footer ──
-  pdf.setFontSize(6.5); pdf.setTextColor(190);
-  pdf.text((biz.name || 'ProCabinet') + ' — Generated by ProCabinet.App', M, PH - M);
-  pdf.text(dateStr, PW - M, PH - M, { align:'right' });
+  _drawPdfFooter(pdf, biz, dateStr, PW, PH, M);
 
   // Output
   const blob = pdf.output('blob');
@@ -2295,8 +2437,9 @@ function _buildStockPDF() {
   let y = M;
 
   // Header
-  pdf.setFontSize(14); pdf.setFont('helvetica','bold'); pdf.setTextColor(17);
-  pdf.text(biz.name || 'ProCabinet', M, y + 6);
+  const stockLogo = getBizLogo();
+  _drawBizHeader(pdf, biz, stockLogo, M, y, { nameSize: 14 });
+  _drawPdfBrandingStrip(pdf, PW);
   pdf.setFontSize(18); pdf.setFont('helvetica','normal'); pdf.setTextColor(50);
   pdf.text('STOCK INVENTORY', PW - M, y + 7, { align:'right' });
   pdf.setFontSize(8); pdf.setTextColor(140);
@@ -2335,9 +2478,7 @@ function _buildStockPDF() {
   });
 
   // Footer
-  pdf.setFontSize(6.5); pdf.setTextColor(190);
-  pdf.text((biz.name || 'ProCabinet') + ' — ProCabinet.App', M, PH - M);
-  pdf.text(dateStr, PW - M, PH - M, { align:'right' });
+  _drawPdfFooter(pdf, biz, dateStr, PW, PH, M);
 
   const blob = pdf.output('blob');
   const url = URL.createObjectURL(blob);
@@ -2365,10 +2506,9 @@ function _buildWorkOrderPDF(o) {
   let y = M;
 
   // Header
-  pdf.setFontSize(14); pdf.setFont('helvetica','bold'); pdf.setTextColor(17);
-  pdf.text(biz.name || 'ProCabinet', M, y + 6);
-  const bizSub = [biz.phone, biz.email].filter(Boolean).join('  ·  ');
-  if (bizSub) { pdf.setFontSize(8); pdf.setFont('helvetica','normal'); pdf.setTextColor(120); pdf.text(bizSub, M, y + 11); }
+  const woLogo = getBizLogo();
+  _drawBizHeader(pdf, biz, woLogo, M, y, { nameSize: 14 });
+  _drawPdfBrandingStrip(pdf, PW);
   pdf.setFontSize(20); pdf.setFont('helvetica','normal'); pdf.setTextColor(50);
   pdf.text('WORK ORDER', PW - M, y + 7, { align:'right' });
   pdf.setFontSize(8); pdf.setTextColor(140);
@@ -2427,9 +2567,7 @@ function _buildWorkOrderPDF(o) {
   });
 
   // Footer
-  pdf.setFontSize(6.5); pdf.setTextColor(190);
-  pdf.text((biz.name || 'ProCabinet') + ' — ProCabinet.App', M, PH - M);
-  pdf.text(dateStr, PW - M, PH - M, { align:'right' });
+  _drawPdfFooter(pdf, biz, dateStr, PW, PH, M);
 
   const blob = pdf.output('blob');
   const url = URL.createObjectURL(blob);
@@ -2527,11 +2665,9 @@ function _buildOrderDocPDF(o, lines, type) {
   let y = M;
 
   // ── Header ──
-  pdf.setFontSize(16); pdf.setFont('helvetica','bold'); pdf.setTextColor(17);
-  pdf.text(biz.name || 'Your Business', M, y + 6);
-  const bizSub = [biz.phone, biz.email, biz.address].filter(Boolean).join('  ·  ');
-  if (bizSub) { pdf.setFontSize(8); pdf.setFont('helvetica','normal'); pdf.setTextColor(120); pdf.text(bizSub, M, y + 11); }
-  if (biz.abn) { pdf.setFontSize(7); pdf.text('ABN: ' + biz.abn, M, y + 15); }
+  const orderLogo = getBizLogo();
+  _drawBizHeader(pdf, biz, orderLogo, M, y);
+  _drawPdfBrandingStrip(pdf, PW);
 
   pdf.setFontSize(22); pdf.setFont('helvetica','normal'); pdf.setTextColor(50);
   pdf.text(c.title, PW - M, y + 7, { align:'right' });
@@ -2661,9 +2797,20 @@ function _buildOrderDocPDF(o, lines, type) {
     if (y > PH - 40) { pdf.addPage(); y = M + 10; }
     pdf.setFontSize(8); pdf.setFont('helvetica','bold'); pdf.setTextColor(100);
     pdf.text('PAYMENT', M, y); y += 5;
-    pdf.setFontSize(9); pdf.setFont('helvetica','normal'); pdf.setTextColor(140);
-    pdf.text('[Bank details — configure in Business settings]', M, y);
-    y += 8;
+    const odBank = (biz.bank_details || '').trim();
+    if (odBank) {
+      pdf.setFontSize(9); pdf.setFont('helvetica','normal'); pdf.setTextColor(60);
+      const odBankLines = pdf.splitTextToSize(odBank, W);
+      odBankLines.forEach(/** @param {string} bl */ bl => {
+        if (y > PH - 30) { pdf.addPage(); y = M + 10; }
+        pdf.text(bl, M, y); y += 4.5;
+      });
+    } else {
+      pdf.setFontSize(9); pdf.setFont('helvetica','italic'); pdf.setTextColor(150);
+      pdf.text('Bank details not yet configured. Add them in account → business details.', M, y);
+      y += 5;
+    }
+    y += 6;
   }
 
   // ── Closing line ──
@@ -2676,9 +2823,7 @@ function _buildOrderDocPDF(o, lines, type) {
   });
 
   // ── Footer ──
-  pdf.setFontSize(6.5); pdf.setFont('helvetica','normal'); pdf.setTextColor(190);
-  pdf.text((biz.name || 'ProCabinet') + ' — ProCabinet.App', M, PH - M);
-  pdf.text(dateStr, PW - M, PH - M, { align:'right' });
+  _drawPdfFooter(pdf, biz, dateStr, PW, PH, M);
 
   const blob = pdf.output('blob');
   const url = URL.createObjectURL(blob);
@@ -2712,8 +2857,9 @@ async function _buildCutListPDF({ biz, layouts, imgs, pieces, u, cur, totalPiece
     // Stacked layout: name + sub on left (two lines), CUT LIST + date on right (two lines).
     // Eliminates horizontal collision when business contact info is long.
     function titleBar() {
-      const sub = [biz.phone, biz.email].filter(Boolean).join(' · ');
-      // Left side — name top, sub bottom
+      // Per plan §4c: text-only on the compact bar (logos would crowd the
+      // 12mm strip). Reordered subline: address · phone · email.
+      const sub = [biz.address, biz.phone, biz.email].filter(Boolean).join(' · ');
       pdf.setFontSize(9); pdf.setFont('helvetica','bold'); pdf.setTextColor(17);
       pdf.text(biz.name || 'ProCabinet', M, M+4);
       if (sub) {
@@ -2732,10 +2878,9 @@ async function _buildCutListPDF({ biz, layouts, imgs, pieces, u, cur, totalPiece
 
     // ── full-page header used on the combined summary/cutlist page ──
     function pageHeader() {
-      pdf.setFontSize(14); pdf.setFont('helvetica','bold'); pdf.setTextColor(17,17,17);
-      pdf.text(biz.name || 'ProCabinet', M, M+7);
-      const sub = [biz.phone, biz.email].filter(Boolean).join('  \u00b7  ');
-      if (sub) { pdf.setFontSize(7.5); pdf.setFont('helvetica','normal'); pdf.setTextColor(136); pdf.text(sub, M, M+12); }
+      const clLogo = getBizLogo();
+      _drawBizHeader(pdf, biz, clLogo, M, M, { nameSize: 14 });
+      _drawPdfBrandingStrip(pdf, PW);
       pdf.setFontSize(20); pdf.setFont('helvetica','normal'); pdf.setTextColor(51);
       pdf.text('CUT LIST', PW-M, M+9, { align:'right' });
       pdf.setFontSize(7.5); pdf.setFont('helvetica','normal'); pdf.setTextColor(153);
@@ -2866,9 +3011,7 @@ async function _buildCutListPDF({ biz, layouts, imgs, pieces, u, cur, totalPiece
       }
 
       // footer
-      pdf.setFontSize(7); pdf.setFont('helvetica','normal'); pdf.setTextColor(187);
-      pdf.text((biz.name||'ProCabinet')+' \u2014 ProCabinet.App', M, PH-M+4);
-      pdf.text('Printed '+dateStr, PW-M, PH-M+4, { align:'right' });
+      _drawPdfFooter(pdf, biz, 'Printed ' + dateStr, PW, PH, M);
     }
 
     // output as real PDF blob → opens in browser PDF viewer
@@ -4060,7 +4203,7 @@ async function renderCLCutListLibraryView() {
         <div class="proj-act${linkCount ? '' : ' empty'}" onclick="event.stopPropagation()">
           <div class="proj-act-main" onclick="event.stopPropagation();_clOpenLinkedCabinets(${r.id})" title="${linkCount ? 'Open a linked cabinet' : 'No cabinets linked yet — use + to add'}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
-            <span class="proj-act-label">Cabinet</span>
+            <span class="proj-act-label">Link to Cabinet</span>
             <span class="proj-act-count">${linkCount}</span>
           </div>
           <div class="proj-act-add" onclick="event.stopPropagation();_clLinkToCabinet(${r.id})" title="Link to a cabinet">+</div>
