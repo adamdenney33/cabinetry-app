@@ -133,6 +133,8 @@ BEGIN
               (user_id, name, type, default_w_mm, default_h_mm, default_d_mm, default_specs)
        VALUES (uid, 'Base 600', 'base', 600, 720, 560,
                jsonb_build_object(
+                 'w', 600, 'h', 720, 'd', 560, 'qty', 1,
+                 'material', '18mm Birch Plywood',
                  'doors', 2, 'drawers', 0, 'shelves', 1,
                  'doorPct', 95, 'construction', 'overlay', 'baseType', 'plinth'))
     RETURNING id INTO tpl_base600;
@@ -141,6 +143,8 @@ BEGIN
               (user_id, name, type, default_w_mm, default_h_mm, default_d_mm, default_specs)
        VALUES (uid, 'Wall 600', 'wall', 600, 720, 330,
                jsonb_build_object(
+                 'w', 600, 'h', 720, 'd', 330, 'qty', 1,
+                 'material', '18mm Birch Plywood',
                  'doors', 2, 'drawers', 0, 'shelves', 2,
                  'doorPct', 95, 'construction', 'overlay', 'baseType', 'none'))
     RETURNING id INTO tpl_wall600;
@@ -149,6 +153,8 @@ BEGIN
               (user_id, name, type, default_w_mm, default_h_mm, default_d_mm, default_specs)
        VALUES (uid, 'Drawer 800', 'custom', 800, 720, 560,
                jsonb_build_object(
+                 'w', 800, 'h', 720, 'd', 560, 'qty', 1,
+                 'material', '18mm Birch Plywood',
                  'doors', 0, 'drawers', 3, 'shelves', 0,
                  'drawerPct', 33, 'construction', 'overlay', 'baseType', 'plinth'))
     RETURNING id INTO tpl_drawer800;
@@ -157,6 +163,8 @@ BEGIN
               (user_id, name, type, default_w_mm, default_h_mm, default_d_mm, default_specs)
        VALUES (uid, 'Tall Larder 600', 'tall', 600, 2100, 560,
                jsonb_build_object(
+                 'w', 600, 'h', 2100, 'd', 560, 'qty', 1,
+                 'material', '18mm Birch Plywood',
                  'doors', 2, 'drawers', 0, 'shelves', 4,
                  'doorPct', 95, 'construction', 'overlay', 'baseType', 'plinth'))
     RETURNING id INTO tpl_tall600;
@@ -165,6 +173,8 @@ BEGIN
               (user_id, name, type, default_w_mm, default_h_mm, default_d_mm, default_specs)
        VALUES (uid, 'Corner Base 900', 'base', 900, 720, 900,
                jsonb_build_object(
+                 'w', 900, 'h', 720, 'd', 900, 'qty', 1,
+                 'material', '18mm Birch Plywood',
                  'doors', 1, 'drawers', 0, 'shelves', 1,
                  'doorPct', 95, 'construction', 'overlay', 'baseType', 'plinth',
                  'corner', true))
@@ -246,7 +256,7 @@ BEGIN
   INSERT INTO public.quotes
               (user_id, client_id, name, status, date,
                markup, tax, discount, stock_markup, quote_number, notes)
-       VALUES (uid, harring_id, 'Harrington Library Fit-out', 'accepted',
+       VALUES (uid, harring_id, 'Harrington Library Fit-out', 'approved',
                to_char(CURRENT_DATE - 14, 'YYYY-MM-DD'),
                30, 20, 0, 15, 'QUO-0003',
                'Floor-to-ceiling library — 5 tall larder units, walnut veneer.')

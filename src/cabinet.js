@@ -111,7 +111,17 @@ async function _loadCabinetTemplatesFromDB() {
     const { data, error } = await _db('cabinet_templates').select('*').eq('user_id', _userId).order('name');
     if (error) { console.warn('[cabinet-template load]', error.message); return; }
     if (!data) return;
-    cbLibrary = data.map(row => ({ .../** @type {Record<string, any>} */ (row.default_specs || {}), _libName: row.name, db_id: row.id }));
+    cbLibrary = data.map(row => {
+      const specs = /** @type {Record<string, any>} */ (row.default_specs || {});
+      return {
+        ...specs,
+        w: specs.w ?? row.default_w_mm,
+        h: specs.h ?? row.default_h_mm,
+        d: specs.d ?? row.default_d_mm,
+        _libName: row.name,
+        db_id: row.id,
+      };
+    });
   } catch(e) { console.warn('[cabinet-template load]', (/** @type {any} */ (e)).message || e); }
 }
 

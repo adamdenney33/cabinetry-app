@@ -13,10 +13,9 @@
 // ══════════════════════════════════════════
 // FREE TIER CAPS
 // ══════════════════════════════════════════
-/** @type {Readonly<Record<'clients'|'projects'|'quotes'|'orders'|'cabinet_templates'|'stock'|'cutlists', number>>} */
+/** @type {Readonly<Record<'clients'|'quotes'|'orders'|'cabinet_templates'|'stock'|'cutlists', number>>} */
 const FREE_LIMITS = Object.freeze({
   clients: 5,
-  projects: 5,
   quotes: 5,
   orders: 5,
   cabinet_templates: 5,

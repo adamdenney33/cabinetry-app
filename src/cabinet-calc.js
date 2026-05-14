@@ -73,7 +73,7 @@ function calcCBSections(line) {
   cabinetMat += W * H * mp(line.backMat);                      // back
   const carcassSurfArea = 2*H*D + 2*innerW*D + W*H;
   cabinetMat += carcassSurfArea * _finishPricePerM2(line.finish);  // carcass finish
-  const edgingLength = 2*H + 2*innerW + (line.shelves + line.adjShelves) * innerW;
+  const edgingLength = 2*H + 2*innerW + ((line.shelves || 0) + (line.adjShelves || 0)) * innerW;
   cabinetMat += edgingLength * (cbSettings.edgingPerM || 0);   // edge banding
   cabinetMat += (cbSettings.baseTypes||[]).find(/** @param {any} b */ b => b.name === line.baseType)?.price || 0;
   const constPrice = (cbSettings.constructions||[]).find(/** @param {any} c */ c => c.name === line.construction)?.price || 0;
@@ -202,7 +202,7 @@ function calcCBLine(line) {
   }
   // Shelves
   const shelfArea = innerW * (D - T);
-  matCost += (line.shelves + line.adjShelves) * shelfArea * mp(line.material);
+  matCost += ((line.shelves || 0) + (line.adjShelves || 0)) * shelfArea * mp(line.material);
   // End panels
   matCost += (line.endPanels || 0) * H * D * mp(line.material);
 
@@ -218,7 +218,7 @@ function calcCBLine(line) {
   matCost += extrasCost;
 
   // Edge banding
-  const edgingLength = 2*H + 2*innerW + (line.shelves + line.adjShelves) * innerW;
+  const edgingLength = 2*H + 2*innerW + ((line.shelves || 0) + (line.adjShelves || 0)) * innerW;
   const edgingCost = edgingLength * (cbSettings.edgingPerM || 0);
   matCost += edgingCost;
 
