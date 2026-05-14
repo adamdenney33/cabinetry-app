@@ -27,7 +27,7 @@ Companion docs: `SPEC.md` (refactor history), `SCHEMA.md` (DB schema),
 Plan: `~/.claude/plans/i-want-the-business-rustling-aurora.md`.
 
 - ✅ **Mockup** — `mockups/pdf-branding-options.html` shows the three branding intensities side-by-side (free vs Pro pairs). Variant 2 (footer band) chosen as default.
-- ⚠️ **Migration** — `ALTER TABLE business_info ADD COLUMN IF NOT EXISTS bank_details text;` **not yet applied**. Supabase MCP `apply_migration` blocked by harness permission classifier. User to authorize the MCP call or run the SQL manually in the Supabase dashboard. Code is migration-tolerant: localStorage handles bank details until the column lands; `_syncBizInfoToDB` then starts persisting on the next save.
+- ✅ **Migration** — `ALTER TABLE business_info ADD COLUMN IF NOT EXISTS bank_details text;` applied via Supabase MCP `apply_migration` on 2026-05-14 (migration name `add_bank_details_to_business_info`). `src/database.types.ts` regenerated; `business_info.bank_details: string | null` now visible in the generated Row/Insert/Update types. `get_advisors` clean (only pre-existing leaked-password-protection warning, unrelated).
 - ✅ **Popup** — `_openBusinessDetailsPopup` in `src/business.js` replaces the inline form at `index.html:141-153`. Logo upload + name + address + phone/email row + ABN + bank-details textarea.
 - ✅ **Logo on every PDF** — new `_drawBizHeader` helper at top of `src/cutlist.js` wires logo + reordered caption (name → address → phone → email) into all 5 PDF builders. Logo replaces the big bold business-name when present.
 - ✅ **Bank details on quote + order PDFs** — `_buildOrderDocPDF` placeholder replaced with `biz.bank_details`; `_buildQuotePDF` gains a new PAYMENT DETAILS block between Validity and Acceptance.

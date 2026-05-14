@@ -18,6 +18,7 @@ export type Database = {
         Row: {
           abn: string | null
           address: string | null
+          bank_details: string | null
           created_at: string
           default_base_types: Json
           default_carcass_types: Json
@@ -52,6 +53,7 @@ export type Database = {
         Insert: {
           abn?: string | null
           address?: string | null
+          bank_details?: string | null
           created_at?: string
           default_base_types?: Json
           default_carcass_types?: Json
@@ -86,6 +88,7 @@ export type Database = {
         Update: {
           abn?: string | null
           address?: string | null
+          bank_details?: string | null
           created_at?: string
           default_base_types?: Json
           default_carcass_types?: Json
