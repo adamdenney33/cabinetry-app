@@ -74,6 +74,8 @@ async function _clLoadCutlist(cutlistId) {
  *  @param {number} cutlistId */
 async function _clDuplicateCutlist(cutlistId) {
   if (!cutlistId || !_userId) return;
+  const { data: _clCountRows } = await _db('cutlists').select('id').eq('user_id', _userId);
+  if (!_enforceFreeLimit('cutlists', (_clCountRows || []).length)) return;
   const { data: cl } = await _db('cutlists').select('*').eq('id', cutlistId).single();
   if (!cl) return;
   const newName = `${cl.name} (copy)`;

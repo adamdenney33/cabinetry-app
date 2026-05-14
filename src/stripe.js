@@ -334,7 +334,7 @@ function _openManagePopupPastDue(sub) {
  * Modal shown when a free-tier user tries to create a 6th item in a capped
  * library. Tailored heading per library; reuses the upgrade CTAs.
  *
- * @param {'clients'|'projects'|'quotes'|'orders'|'cabinet_templates'|'stock'} library
+ * @param {'clients'|'projects'|'quotes'|'orders'|'cabinet_templates'|'stock'|'cutlists'} library
  */
 function _openLimitHitModal(library) {
   /** @type {Record<string, {label: string, verb: string}>} */
@@ -345,6 +345,7 @@ function _openLimitHitModal(library) {
     orders:            { label: 'orders',            verb: 'track' },
     cabinet_templates: { label: 'cabinet templates', verb: 'save' },
     stock:             { label: 'stock items',       verb: 'track' },
+    cutlists:          { label: 'cut lists',         verb: 'track' },
   };
   const { label, verb } = labels[library];
   const cap = FREE_LIMITS[library];
