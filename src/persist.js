@@ -10,7 +10,7 @@
 // loadProject, _clLoadCutlist, _clDoOpenLibraryCutlist, _doOpenCabinet).
 
 (function () {
-  const SECTIONS = ['dashboard','cutlist','stock','cabinet','quote','orders','schedule','projects','clients'];
+  const SECTIONS = ['dashboard','cutlist','stock','cabinet','quote','orders','clients','schedule'];
 
   // Suppresses writes from _persistCutlistCtx until the auth handler's
   // restoreAppState() has had a chance to read the saved value. Without

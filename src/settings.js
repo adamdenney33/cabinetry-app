@@ -282,7 +282,7 @@ function switchSection(name) {
   }
   document.querySelectorAll('.nav-tab').forEach((t,i) => {
     // F1/F6 (2026-05-13): Projects nav tab + panel both gone.
-    const sections = ['dashboard','cutlist','cabinet','stock','quote','orders','schedule','clients'];
+    const sections = ['dashboard','cutlist','stock','cabinet','quote','orders','clients','schedule'];
     t.classList.toggle('active', sections[i] === name);
   });
   document.querySelectorAll('.section-panel').forEach(p => {
