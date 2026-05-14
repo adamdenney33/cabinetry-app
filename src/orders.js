@@ -393,7 +393,7 @@ function renderOrderEditor() {
       .slice(0, 5)
       .map(/** @param {any} ox */ ox => ({
         id: ox.id,
-        name: ox.order_number || ('ORD-' + String(ox.id).padStart(4, '0')),
+        name: _orderLabel(ox, { client: false }),
         meta: ox.status || '',
         onClick: `loadOrderIntoSidebar(${ox.id})`,
       }));
@@ -695,11 +695,11 @@ function _oOrderSuggest(input, boxId) {
   let html = '';
   matches.slice(0, 8).forEach(o => {
     const isActive = o.id === _opState.orderId;
-    const num = numFor(o);
+    const label = _orderLabel(o, { client: false });
     const meta = o.status ? `<span class="csi-meta">${esc(o.status)}</span>` : '';
     html += `<div class="client-suggest-item" onmousedown="loadOrderIntoSidebar(${o.id});document.getElementById('${boxId}').style.display='none'">
       <span class="suggest-icon" style="background:var(--accent-dim);color:var(--accent)">#</span>
-      <span class="csi-name">${esc(num)}${isActive ? ' <span style="font-weight:500;color:var(--accent);font-size:11px">· editing</span>' : ''}</span>
+      <span class="csi-name">${esc(label)}${isActive ? ' <span style="font-weight:500;color:var(--accent);font-size:11px">· editing</span>' : ''}</span>
       ${meta}
     </div>`;
   });

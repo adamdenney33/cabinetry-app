@@ -54,6 +54,29 @@ function orderClient(o) {
 /** @param {any} o */
 function orderProject(o) { return o && o.name ? o.name : ''; }
 
+// Format helpers for any place a quote/order number is shown alongside an
+// identifier — recents lists, smart-suggest dropdowns, picker items, client
+// card rows. Pass `{ client: false }` when client context is already implied
+// (e.g. inside a client-scoped card or a client-filtered dropdown).
+/** @param {any} q @param {{client?: boolean}} [opts] */
+function _quoteLabel(q, opts) {
+  if (!q) return '';
+  const o = opts || {};
+  const num = q.quote_number || ('QUO-' + String(q.id || 0).padStart(4, '0'));
+  const proj = quoteProject(q) || '';
+  const cli = o.client === false ? '' : (quoteClient(q) || '');
+  return [num, proj, cli].filter(Boolean).join(' · ');
+}
+/** @param {any} o @param {{client?: boolean}} [opts] */
+function _orderLabel(o, opts) {
+  if (!o) return '';
+  const opt = opts || {};
+  const num = o.order_number || ('ORD-' + String(o.id || 0).padStart(4, '0'));
+  const proj = orderProject(o) || '';
+  const cli = opt.client === false ? '' : (orderClient(o) || '');
+  return [num, proj, cli].filter(Boolean).join(' · ');
+}
+
 // ── Cabinet Builder draft-quote helpers (Item 2 Phase 1.1; F3/F5 2026-05-13) ──
 // Each client may have many draft (designing-status) quotes — one per design
 // the user is exploring. The Cabinet Builder workspace picks the most recent
@@ -1076,7 +1099,7 @@ function renderQuoteEditor() {
       .slice(0, 5)
       .map(/** @param {any} qx */ qx => ({
         id: qx.id,
-        name: qx.quote_number || ('QUO-' + String(qx.id).padStart(4, '0')),
+        name: _quoteLabel(qx, { client: false }),
         meta: qx.status || '',
         onClick: `loadQuoteIntoSidebar(${qx.id})`,
       }));

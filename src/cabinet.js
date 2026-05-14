@@ -756,7 +756,7 @@ function cbSendToQuote() {
   if (existing.length === 0) { cbCreateQuoteFromDraft(); return; }
 
   const items = existing.map(q => ({
-    title: q.name || quoteClient(q) || 'No name',
+    title: _quoteLabel(q) || 'No quote',
     icon: _PICKER_ICON_QUOTE,
     metaPills: [{ label: q.status || 'draft', tone: q.status || 'draft' }],
     metaText: q.date ? '· ' + q.date : '',
@@ -840,9 +840,8 @@ function cbSendToOrder() {
   if (existing.length === 0) { cbCreateOrderFromDraft(); return; }
 
   const items = existing.map(o => {
-    const num = o.order_number ? '#' + o.order_number + ' · ' : '';
     return {
-      title: num + (orderClient(o) || 'No client'),
+      title: _orderLabel(o) || 'No order',
       icon: _PICKER_ICON_ORDER,
       metaPills: [{ label: o.status || 'quote', tone: o.status || 'quote' }],
       metaText: 'due ' + (o.due || 'TBD'),

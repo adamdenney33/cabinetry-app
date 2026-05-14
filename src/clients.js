@@ -341,21 +341,21 @@ function renderClientsMain() {
       : '';
 
     const quoteRows = section('Quotes', cQuotes, /** @param {any} q */ q => {
-      const num = q.quote_number ? q.quote_number : ('QUO-' + String(q.id).padStart(4, '0'));
+      const label = _quoteLabel(q, { client: false });
       const status = q.status ? ` · ${_escHtml(q.status)}` : '';
       const money = quoteTotal(q) ? ` · ${fmt(quoteTotal(q))}` : '';
       return `<div style="font-size:11.5px;padding:4px 6px;border-radius:4px;cursor:pointer" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='transparent'"
         onclick="event.stopPropagation();switchSection('quote');loadQuoteIntoSidebar(${q.id})">
-        ${_escHtml(num)}${status}${money}
+        ${_escHtml(label)}${status}${money}
       </div>`;
     });
     const orderRows = section('Orders', cOrders, /** @param {any} o */ o => {
-      const num = o.order_number ? ('#' + o.order_number) : ('#ORD-' + String(o.id).padStart(4, '0'));
+      const label = _orderLabel(o, { client: false });
       const status = o.status ? ` · ${_escHtml(o.status)}` : '';
       const money = o.value ? ` · ${fmt(o.value)}` : '';
       return `<div style="font-size:11.5px;padding:4px 6px;border-radius:4px;cursor:pointer" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='transparent'"
         onclick="event.stopPropagation();switchSection('orders');loadOrderIntoSidebar(${o.id})">
-        ${_escHtml(num)}${status}${money}
+        ${_escHtml(label)}${status}${money}
       </div>`;
     });
     const cutListRows = section('Cut Lists', cCutLists, /** @param {any} cl */ cl => {
