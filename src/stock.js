@@ -404,6 +404,9 @@ function stockCatChanged() {
 function cancelStockEdit() {
   if (_stockAutosaveTimer) { clearTimeout(_stockAutosaveTimer); _stockAutosaveTimer = null; }
   window._editingStockId = null;
+  if (typeof /** @type {any} */ (window)._pcSaveOpenStockId === 'function') {
+    /** @type {any} */ (window)._pcSaveOpenStockId(null);
+  }
   /** @param {string} id */
   const inp = id => /** @type {HTMLInputElement} */ (_byId(id));
   inp('stock-name').value = '';
@@ -412,10 +415,44 @@ function cancelStockEdit() {
   const sb = /** @type {HTMLElement} */ (_byId('stock-submit-btn'));
   if (sb) { sb.textContent = '+ Add to Stock'; sb.style.display = ''; }
   inp('stock-form-title-text').textContent = 'Add Material';
-  _stockSetSaveState(null);
+  if (typeof _setSaveStatus === 'function') _setSaveStatus('stock', 'clean');
   _stockShowForm = false;
   renderStockMain();
 }
+
+/** Duplicate an existing stock item — copies all row fields + per-item local
+ *  metadata (category, variant/thickness, supplier/reorder-url) into a new row.
+ *  @param {number} id */
+async function duplicateStockItem(id) {
+  const src = stockItems.find(s => s.id === id);
+  if (!src) return;
+  if (!_requireAuth()) return;
+  if (!_enforceFreeLimit('stock', stockItems.length)) return;
+  const row = {
+    user_id: _userId,
+    name: (src.name || 'Material') + ' (Copy)',
+    sku: src.sku || '—',
+    w: src.w,
+    h: src.h,
+    qty: src.qty,
+    low: src.low,
+    cost: src.cost,
+  };
+  const { data, error } = await _db('stock_items').insert(/** @type {any} */ (row)).select().single();
+  if (error || !data) { _toast('Could not duplicate stock item', 'error'); return; }
+  // Carry over edge-band shadow fields so cut-list dropdowns see them this session.
+  /** @type {any} */ (data).thickness = /** @type {any} */ (src).thickness;
+  /** @type {any} */ (data).width     = /** @type {any} */ (src).width;
+  /** @type {any} */ (data).length    = /** @type {any} */ (src).length;
+  /** @type {any} */ (data).glue      = /** @type {any} */ (src).glue;
+  stockItems.push(data);
+  const cat = _scGet(src.id);  if (cat) _scSet(data.id, cat);
+  const meta = _svGet(src.id); if (meta) _svSet(data.id, meta);
+  const supp = _ssGet(src.id); if (supp) _ssSet(data.id, supp);
+  _toast(`"${row.name}" duplicated`, 'success');
+  if (typeof renderStockMain === 'function') renderStockMain();
+}
+/** @type {any} */ (window).duplicateStockItem = duplicateStockItem;
 
 async function addStockItem() {
   /** @param {string} id */
@@ -477,6 +514,9 @@ async function addStockItem() {
   const sup = _byId('stock-supplier'); if (sup) sup.value = '';
   const reord = _byId('stock-reorder-url'); if (reord) reord.value = '';
   window._editingStockId = null;
+  if (typeof /** @type {any} */ (window)._pcSaveOpenStockId === 'function') {
+    /** @type {any} */ (window)._pcSaveOpenStockId(null);
+  }
   _stockShowForm = false;
   renderStockMain();
 }
@@ -487,6 +527,9 @@ function editStockItem(id) {
   if (!item) return;
   window._editingStockId = id;
   _stockShowForm = true;
+  if (typeof /** @type {any} */ (window)._pcSaveOpenStockId === 'function') {
+    /** @type {any} */ (window)._pcSaveOpenStockId(id);
+  }
   _renderStockSidebarGate();
   /** @param {string} id */
   const inp = id => /** @type {HTMLInputElement} */ (_byId(id));
@@ -521,7 +564,7 @@ function editStockItem(id) {
   const sb = /** @type {HTMLElement} */ (_byId('stock-submit-btn'));
   if (sb) sb.style.display = 'none';
   inp('stock-form-title-text').textContent = 'Edit Material';
-  _stockSetSaveState('saved');
+  if (typeof _setSaveStatus === 'function') _setSaveStatus('stock', 'clean');
 }
 
 async function saveStockEdit() {
@@ -584,22 +627,10 @@ async function saveStockEdit() {
 /** @type {ReturnType<typeof setTimeout>|null} */
 let _stockAutosaveTimer = null;
 
-/** @param {'saving'|'saved'|'error'|null} state */
-function _stockSetSaveState(state) {
-  const el = document.getElementById('stock-save-indicator');
-  if (!el) return;
-  el.classList.remove('is-saving','is-saved','is-error');
-  if (!state) { /** @type {HTMLElement} */ (el).style.display = 'none'; el.textContent = ''; return; }
-  /** @type {HTMLElement} */ (el).style.display = '';
-  if (state === 'saving') { el.textContent = 'Saving…'; el.classList.add('is-saving'); }
-  else if (state === 'saved') { el.textContent = 'Saved'; el.classList.add('is-saved'); }
-  else if (state === 'error') { el.textContent = 'Save failed'; el.classList.add('is-error'); }
-}
-
 function _stockScheduleAutosave() {
   if (!window._editingStockId) return;
   if (_stockAutosaveTimer) clearTimeout(_stockAutosaveTimer);
-  _stockSetSaveState('saving');
+  if (typeof _setSaveStatus === 'function') _setSaveStatus('stock', 'dirty');
   _stockAutosaveTimer = setTimeout(_stockAutosaveRun, 500);
 }
 /** @type {any} */ (window)._stockScheduleAutosave = _stockScheduleAutosave;
@@ -613,7 +644,10 @@ async function _stockAutosaveRun() {
   /** @param {string} id */
   const inp = id => /** @type {HTMLInputElement} */ (_byId(id));
   const name = inp('stock-name')?.value?.trim() || '';
-  if (!name) { _stockSetSaveState('error'); return; }
+  if (!name) {
+    if (typeof _setSaveStatus === 'function') _setSaveStatus('stock', 'failed', { retry: _stockAutosaveRun });
+    return;
+  }
   const cat = inp('stock-cat').value.trim();
   const isEB = cat === 'Edge Banding';
   const variant = _byId('stock-variant')?.value?.trim() || '';
@@ -647,8 +681,12 @@ async function _stockAutosaveRun() {
   if (isEB) { item.thickness = thick; item.width = ebWidth; item.length = ebLength; item.glue = ebGlue; }
   else { delete item.thickness; delete item.width; delete item.length; delete item.glue; }
   if (_userId) {
+    if (typeof _setSaveStatus === 'function') _setSaveStatus('stock', 'saving');
     const { error } = await _db('stock_items').update(updates).eq('id', id);
-    if (error) { _stockSetSaveState('error'); return; }
+    if (error) {
+      if (typeof _setSaveStatus === 'function') _setSaveStatus('stock', 'failed', { retry: _stockAutosaveRun });
+      return;
+    }
   }
   _scSet(id, cat);
   /** @type {{variant: string, thickness: number, width?: number, length?: number, glue?: string}} */
@@ -658,7 +696,7 @@ async function _stockAutosaveRun() {
   const supplier = _byId('stock-supplier')?.value?.trim() || '';
   const reorderUrl = _byId('stock-reorder-url')?.value?.trim() || '';
   _ssSet(id, {supplier, url: reorderUrl});
-  _stockSetSaveState('saved');
+  if (typeof _setSaveStatus === 'function') _setSaveStatus('stock', 'saved');
   renderStockMain();
 }
 
@@ -862,8 +900,8 @@ function renderStockMain() {
       }</td>
       <td onclick="event.stopPropagation()" style="text-align:right;width:40px">
         <div class="stock-row-actions">
-          <span class="stock-icon-btn" onclick="useStockInCutList(${item.id})" title="Add to Cut List">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.8,5.1 L12,2 L12.6,5 L14.4,5.4 L17,3.3 L16,6.3 L17.4,7.5 L20.7,7 L18.3,9 L18.9,10.8 L22,12 L19,12.6 L18.6,14.4 L20.7,17 L17.7,16 L16.5,17.4 L17,20.7 L15,18.3 L13.2,18.9 L12,22 L11.4,19 L9.6,18.6 L7,20.7 L8,17.7 L6.6,16.5 L3.3,17 L5.7,15 L5.1,13.2 L2,12 L5,11.4 L5.4,9.6 L3.3,7 L6.3,8 L7.5,6.6 L7,3.3 L9,5.7 Z"/><circle cx="12" cy="12" r="2.5"/></svg>
+          <span class="stock-icon-btn" onclick="duplicateStockItem(${item.id})" title="Duplicate">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
           </span>
         </div>
       </td>

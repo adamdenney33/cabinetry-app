@@ -38,10 +38,17 @@ window.units = 'imperial';
 function toggleSettings() {
   /** @type {HTMLElement} */ (document.getElementById('settings-dropdown')).classList.toggle('open');
   /** @type {HTMLElement} */ (document.getElementById('account-dropdown')).classList.remove('open');
+  document.getElementById('help-dropdown')?.classList.remove('open');
 }
 function toggleAccount() {
   /** @type {HTMLElement} */ (document.getElementById('account-dropdown')).classList.toggle('open');
   /** @type {HTMLElement} */ (document.getElementById('settings-dropdown')).classList.remove('open');
+  document.getElementById('help-dropdown')?.classList.remove('open');
+}
+function toggleHelp() {
+  document.getElementById('help-dropdown')?.classList.toggle('open');
+  document.getElementById('settings-dropdown')?.classList.remove('open');
+  document.getElementById('account-dropdown')?.classList.remove('open');
 }
 
 document.addEventListener('click', function(e) {
@@ -50,6 +57,8 @@ document.addEventListener('click', function(e) {
     document.getElementById('settings-dropdown')?.classList.remove('open');
   if (target && !document.querySelector('.account-wrap')?.contains(target))
     document.getElementById('account-dropdown')?.classList.remove('open');
+  if (target && !document.querySelector('.help-wrap')?.contains(target))
+    document.getElementById('help-dropdown')?.classList.remove('open');
 });
 
 // ══════════════════════════════════════════

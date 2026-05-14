@@ -809,4 +809,280 @@ _Auto-logged by SessionEnd hook. Flesh out with context next session if useful._
 
 _Auto-logged by SessionEnd hook. Flesh out with context next session if useful._
 
-<!-- last_commit: ca2d320 -->
+
+---
+
+## [Auto] Session ending 2026-05-13
+
+### Commits
+- refactor(quotes/orders): drop btn-hairline separator from card footers
+- refactor(ui): normalize Duplicate/Delete button styling across cards
+- Revert "refactor(ui): normalize Duplicate/Delete button styling across cards"
+- refactor(ui): add hairline above footer on every Duplicate/Delete card
+- refactor(cutlist): "Link to Cabinet" uses .proj-act pill style
+- refactor(cutlist): Link-to-Cabinet pill adds count + plus segment
+- chore(ui): match cabinet-card Cut List pill icon to sidebar nav-tab
+- fix(cutlists): repoint cabinet_id FK to cabinet_templates
+- fix(cutlists): update library view's embedded join to cabinet_templates
+- feat(cutlists): allow linking to multiple cabinets
+- fix(cutlists): Linked Cabinets picker opens template in Cabinet Builder
+- feat(cutlists): + Add Cabinet button in Linked Cabinets picker
+- feat(cabinets): mirror Link-to-Cabinet pill behavior on Cabinet Library card
+- feat(cutlists): show all projects in empty Project view as clickable cards
+- refactor(cutlists): project cards show name + client on one line
+- feat(cutlists): show cut-list count + match project/client font weight
+- refactor(ui): normalize project · client separator across the app
+- refactor(ui): normalize project · client formatting in headers + dashboard
+- feat(cutlists): show cutlist · project · client on project-scope cards
+- refactor(stock): drop Print button + orphan printStockList helper
+- refactor(stock): move PDF to left end of filter-bar button row
+- chore(seed): one-shot demo-data reset SQL
+- WIP preserve: 3-letter prefix migration + multi-module updates
+- docs(schema): apply discount + stock pricing migrations; sync types + docs
+- refactor(sidebars): drill-in pattern for Projects, Cabinets, Cutlists
+- fix(sidebars): keep project-picker smart library before drilling in
+- refactor(sidebars): apply drill-in pattern to Quotes + Orders
+
+_Auto-logged by SessionEnd hook. Flesh out with context next session if useful._
+
+
+---
+
+## [Auto] Session ending 2026-05-13
+
+### Commits
+- refactor(quotes/orders): drop btn-hairline separator from card footers
+- refactor(ui): normalize Duplicate/Delete button styling across cards
+- Revert "refactor(ui): normalize Duplicate/Delete button styling across cards"
+- refactor(ui): add hairline above footer on every Duplicate/Delete card
+- refactor(cutlist): "Link to Cabinet" uses .proj-act pill style
+- refactor(cutlist): Link-to-Cabinet pill adds count + plus segment
+- chore(ui): match cabinet-card Cut List pill icon to sidebar nav-tab
+- fix(cutlists): repoint cabinet_id FK to cabinet_templates
+- fix(cutlists): update library view's embedded join to cabinet_templates
+- feat(cutlists): allow linking to multiple cabinets
+- fix(cutlists): Linked Cabinets picker opens template in Cabinet Builder
+- feat(cutlists): + Add Cabinet button in Linked Cabinets picker
+- feat(cabinets): mirror Link-to-Cabinet pill behavior on Cabinet Library card
+- feat(cutlists): show all projects in empty Project view as clickable cards
+- refactor(cutlists): project cards show name + client on one line
+- feat(cutlists): show cut-list count + match project/client font weight
+- refactor(ui): normalize project · client separator across the app
+- refactor(ui): normalize project · client formatting in headers + dashboard
+- feat(cutlists): show cutlist · project · client on project-scope cards
+- refactor(stock): drop Print button + orphan printStockList helper
+- refactor(stock): move PDF to left end of filter-bar button row
+- chore(seed): one-shot demo-data reset SQL
+- WIP preserve: 3-letter prefix migration + multi-module updates
+- docs(schema): apply discount + stock pricing migrations; sync types + docs
+- refactor(sidebars): drill-in pattern for Projects, Cabinets, Cutlists
+- fix(sidebars): keep project-picker smart library before drilling in
+- refactor(sidebars): apply drill-in pattern to Quotes + Orders
+
+_Auto-logged by SessionEnd hook. Flesh out with context next session if useful._
+
+
+---
+
+## [Auto] Session ending 2026-05-13
+
+### Commits
+- refactor(quotes/orders): drop btn-hairline separator from card footers
+- refactor(ui): normalize Duplicate/Delete button styling across cards
+- Revert "refactor(ui): normalize Duplicate/Delete button styling across cards"
+- refactor(ui): add hairline above footer on every Duplicate/Delete card
+- refactor(cutlist): "Link to Cabinet" uses .proj-act pill style
+- refactor(cutlist): Link-to-Cabinet pill adds count + plus segment
+- chore(ui): match cabinet-card Cut List pill icon to sidebar nav-tab
+- fix(cutlists): repoint cabinet_id FK to cabinet_templates
+- fix(cutlists): update library view's embedded join to cabinet_templates
+- feat(cutlists): allow linking to multiple cabinets
+- fix(cutlists): Linked Cabinets picker opens template in Cabinet Builder
+- feat(cutlists): + Add Cabinet button in Linked Cabinets picker
+- feat(cabinets): mirror Link-to-Cabinet pill behavior on Cabinet Library card
+- feat(cutlists): show all projects in empty Project view as clickable cards
+- refactor(cutlists): project cards show name + client on one line
+- feat(cutlists): show cut-list count + match project/client font weight
+- refactor(ui): normalize project · client separator across the app
+- refactor(ui): normalize project · client formatting in headers + dashboard
+- feat(cutlists): show cutlist · project · client on project-scope cards
+- refactor(stock): drop Print button + orphan printStockList helper
+- refactor(stock): move PDF to left end of filter-bar button row
+- chore(seed): one-shot demo-data reset SQL
+- WIP preserve: 3-letter prefix migration + multi-module updates
+- docs(schema): apply discount + stock pricing migrations; sync types + docs
+- refactor(sidebars): drill-in pattern for Projects, Cabinets, Cutlists
+- fix(sidebars): keep project-picker smart library before drilling in
+- refactor(sidebars): apply drill-in pattern to Quotes + Orders
+
+_Auto-logged by SessionEnd hook. Flesh out with context next session if useful._
+
+
+---
+
+## [Auto] Session ending 2026-05-13
+
+### Commits
+- refactor(quotes/orders): drop btn-hairline separator from card footers
+- refactor(ui): normalize Duplicate/Delete button styling across cards
+- Revert "refactor(ui): normalize Duplicate/Delete button styling across cards"
+- refactor(ui): add hairline above footer on every Duplicate/Delete card
+- refactor(cutlist): "Link to Cabinet" uses .proj-act pill style
+- refactor(cutlist): Link-to-Cabinet pill adds count + plus segment
+- chore(ui): match cabinet-card Cut List pill icon to sidebar nav-tab
+- fix(cutlists): repoint cabinet_id FK to cabinet_templates
+- fix(cutlists): update library view's embedded join to cabinet_templates
+- feat(cutlists): allow linking to multiple cabinets
+- fix(cutlists): Linked Cabinets picker opens template in Cabinet Builder
+- feat(cutlists): + Add Cabinet button in Linked Cabinets picker
+- feat(cabinets): mirror Link-to-Cabinet pill behavior on Cabinet Library card
+- feat(cutlists): show all projects in empty Project view as clickable cards
+- refactor(cutlists): project cards show name + client on one line
+- feat(cutlists): show cut-list count + match project/client font weight
+- refactor(ui): normalize project · client separator across the app
+- refactor(ui): normalize project · client formatting in headers + dashboard
+- feat(cutlists): show cutlist · project · client on project-scope cards
+- refactor(stock): drop Print button + orphan printStockList helper
+- refactor(stock): move PDF to left end of filter-bar button row
+- chore(seed): one-shot demo-data reset SQL
+- WIP preserve: 3-letter prefix migration + multi-module updates
+- docs(schema): apply discount + stock pricing migrations; sync types + docs
+- refactor(sidebars): drill-in pattern for Projects, Cabinets, Cutlists
+- fix(sidebars): keep project-picker smart library before drilling in
+- refactor(sidebars): apply drill-in pattern to Quotes + Orders
+
+_Auto-logged by SessionEnd hook. Flesh out with context next session if useful._
+
+
+---
+
+## [Auto] Session ending 2026-05-13
+
+### Commits
+- refactor(quotes/orders): drop btn-hairline separator from card footers
+- refactor(ui): normalize Duplicate/Delete button styling across cards
+- Revert "refactor(ui): normalize Duplicate/Delete button styling across cards"
+- refactor(ui): add hairline above footer on every Duplicate/Delete card
+- refactor(cutlist): "Link to Cabinet" uses .proj-act pill style
+- refactor(cutlist): Link-to-Cabinet pill adds count + plus segment
+- chore(ui): match cabinet-card Cut List pill icon to sidebar nav-tab
+- fix(cutlists): repoint cabinet_id FK to cabinet_templates
+- fix(cutlists): update library view's embedded join to cabinet_templates
+- feat(cutlists): allow linking to multiple cabinets
+- fix(cutlists): Linked Cabinets picker opens template in Cabinet Builder
+- feat(cutlists): + Add Cabinet button in Linked Cabinets picker
+- feat(cabinets): mirror Link-to-Cabinet pill behavior on Cabinet Library card
+- feat(cutlists): show all projects in empty Project view as clickable cards
+- refactor(cutlists): project cards show name + client on one line
+- feat(cutlists): show cut-list count + match project/client font weight
+- refactor(ui): normalize project · client separator across the app
+- refactor(ui): normalize project · client formatting in headers + dashboard
+- feat(cutlists): show cutlist · project · client on project-scope cards
+- refactor(stock): drop Print button + orphan printStockList helper
+- refactor(stock): move PDF to left end of filter-bar button row
+- chore(seed): one-shot demo-data reset SQL
+- WIP preserve: 3-letter prefix migration + multi-module updates
+- docs(schema): apply discount + stock pricing migrations; sync types + docs
+- refactor(sidebars): drill-in pattern for Projects, Cabinets, Cutlists
+- fix(sidebars): keep project-picker smart library before drilling in
+- refactor(sidebars): apply drill-in pattern to Quotes + Orders
+
+_Auto-logged by SessionEnd hook. Flesh out with context next session if useful._
+
+
+---
+
+## [Auto] Session ending 2026-05-13
+
+### Commits
+- refactor(quotes/orders): drop btn-hairline separator from card footers
+- refactor(ui): normalize Duplicate/Delete button styling across cards
+- Revert "refactor(ui): normalize Duplicate/Delete button styling across cards"
+- refactor(ui): add hairline above footer on every Duplicate/Delete card
+- refactor(cutlist): "Link to Cabinet" uses .proj-act pill style
+- refactor(cutlist): Link-to-Cabinet pill adds count + plus segment
+- chore(ui): match cabinet-card Cut List pill icon to sidebar nav-tab
+- fix(cutlists): repoint cabinet_id FK to cabinet_templates
+- fix(cutlists): update library view's embedded join to cabinet_templates
+- feat(cutlists): allow linking to multiple cabinets
+- fix(cutlists): Linked Cabinets picker opens template in Cabinet Builder
+- feat(cutlists): + Add Cabinet button in Linked Cabinets picker
+- feat(cabinets): mirror Link-to-Cabinet pill behavior on Cabinet Library card
+- feat(cutlists): show all projects in empty Project view as clickable cards
+- refactor(cutlists): project cards show name + client on one line
+- feat(cutlists): show cut-list count + match project/client font weight
+- refactor(ui): normalize project · client separator across the app
+- refactor(ui): normalize project · client formatting in headers + dashboard
+- feat(cutlists): show cutlist · project · client on project-scope cards
+- refactor(stock): drop Print button + orphan printStockList helper
+- refactor(stock): move PDF to left end of filter-bar button row
+- chore(seed): one-shot demo-data reset SQL
+- WIP preserve: 3-letter prefix migration + multi-module updates
+- docs(schema): apply discount + stock pricing migrations; sync types + docs
+- refactor(sidebars): drill-in pattern for Projects, Cabinets, Cutlists
+- fix(sidebars): keep project-picker smart library before drilling in
+- refactor(sidebars): apply drill-in pattern to Quotes + Orders
+
+_Auto-logged by SessionEnd hook. Flesh out with context next session if useful._
+
+
+---
+
+## [Auto] Session ending 2026-05-14
+
+### Commits
+- refactor(clients): F1 · collapse Projects tab into Client cards
+- feat(schema): F2 · add name to quotes/orders, tags jsonb to library tables
+- refactor(quotes): F3 · replace [CB_DRAFT] notes-tag with status='designing'
+- feat(schema): F4 · add cutlists.quote_id bookmark FK
+- docs: F1-F4 architecture refactor logged in PLAN.md + SPEC.md § 13
+- refactor(projects): F5 · drop project_id reads/writes + schema columns
+- refactor(projects): F6 · drop projects table + panel-projects + renderProjectsMain
+- docs: mark F5/F6 ✅ done in PLAN.md + log decisions in SPEC.md § 13
+- feat(cabinet): F7 · Cabinet Library sub-tab gets its own sidebar gate
+- feat(business): popup edit + logos & bank details on PDFs + Pro/free branding
+- chore(schema): apply bank_details migration + regen types
+
+_Auto-logged by SessionEnd hook. Flesh out with context next session if useful._
+
+
+---
+
+## [Auto] Session ending 2026-05-14
+
+### Commits
+- refactor(clients): F1 · collapse Projects tab into Client cards
+- feat(schema): F2 · add name to quotes/orders, tags jsonb to library tables
+- refactor(quotes): F3 · replace [CB_DRAFT] notes-tag with status='designing'
+- feat(schema): F4 · add cutlists.quote_id bookmark FK
+- docs: F1-F4 architecture refactor logged in PLAN.md + SPEC.md § 13
+- refactor(projects): F5 · drop project_id reads/writes + schema columns
+- refactor(projects): F6 · drop projects table + panel-projects + renderProjectsMain
+- docs: mark F5/F6 ✅ done in PLAN.md + log decisions in SPEC.md § 13
+- feat(cabinet): F7 · Cabinet Library sub-tab gets its own sidebar gate
+- feat(business): popup edit + logos & bank details on PDFs + Pro/free branding
+- chore(schema): apply bank_details migration + regen types
+
+_Auto-logged by SessionEnd hook. Flesh out with context next session if useful._
+
+
+---
+
+## [Auto] Session ending 2026-05-14
+
+### Commits
+- refactor(clients): F1 · collapse Projects tab into Client cards
+- feat(schema): F2 · add name to quotes/orders, tags jsonb to library tables
+- refactor(quotes): F3 · replace [CB_DRAFT] notes-tag with status='designing'
+- feat(schema): F4 · add cutlists.quote_id bookmark FK
+- docs: F1-F4 architecture refactor logged in PLAN.md + SPEC.md § 13
+- refactor(projects): F5 · drop project_id reads/writes + schema columns
+- refactor(projects): F6 · drop projects table + panel-projects + renderProjectsMain
+- docs: mark F5/F6 ✅ done in PLAN.md + log decisions in SPEC.md § 13
+- feat(cabinet): F7 · Cabinet Library sub-tab gets its own sidebar gate
+- feat(business): popup edit + logos & bank details on PDFs + Pro/free branding
+- chore(schema): apply bank_details migration + regen types
+
+_Auto-logged by SessionEnd hook. Flesh out with context next session if useful._
+
+<!-- last_commit: f013eed -->

@@ -144,6 +144,9 @@ let _cbCurrentClientId = null;
 let _cbCurrentClientName = '';
 let _cbDirty = false;
 let _cbSuppressDirty = false;
+// Toggles the gated-entry empty state between the quote-picker (default) and the
+// client-picker sub-flow used to seed a new quote.
+let _cbStartingNewQuote = false;
 
 const CB_TYPES = ['Base Cabinet','Wall Cabinet','Tall Cabinet','Drawer Unit','Shelf Unit','Vanity','Island','Pantry','Custom'];
 
@@ -383,7 +386,22 @@ async function _syncCBLinesToQuote(quoteId) {
       const rows = cbLines.map((l, i) => _cbLineToRow(l, i, quoteId));
       await _db('quote_lines').insert(rows);
     }
+    // Refresh the Quote tab's cached lines + totals via quoteTotalsFromLines
+    // (called from _refreshQuoteTotals). That repopulates q._lines from the DB
+    // so a subsequent loadQuoteIntoSidebar sees fresh data.
     if (typeof _refreshQuoteTotals === 'function') await _refreshQuoteTotals(quoteId);
+    // If the Quote tab is currently editing this same quote, _qpState.lines is
+    // a stale snapshot taken at load time — update it from the now-fresh cache
+    // and re-render the lines table + totals so the user sees the new cabinets
+    // without re-opening the quote.
+    if (typeof _qpState !== 'undefined' && _qpState && _qpState.quoteId === quoteId) {
+      const q = /** @type {any} */ (quotes.find(/** @param {any} x */ x => x.id === quoteId));
+      if (q && Array.isArray(q._lines)) {
+        _qpState.lines = q._lines.map(/** @param {any} r */ r => ({ ...r }));
+        if (typeof _renderQuoteLines === 'function') _renderQuoteLines();
+        if (typeof _renderQuoteLineTotals === 'function') _renderQuoteLineTotals();
+      }
+    }
   } catch (e) {
     console.warn('[cb edit-quote sync]', (/** @type {any} */ (e)).message || e);
   }
@@ -405,6 +423,14 @@ async function _syncCBLinesToOrder(orderId) {
       });
       await _db('order_lines').insert(rows);
     }
+    // Refresh the Orders tab's cached line list via orderTotalsFromLines (called
+    // below). Then, if the Orders tab is currently editing this same order, sync
+    // _opState.lines and re-render so the user sees the new cabinets without
+    // re-opening the order.
+    if (typeof orders !== 'undefined' && Array.isArray(orders)) {
+      const o = /** @type {any} */ (orders.find(x => x.id === orderId));
+      if (o) delete o._lines;
+    }
     if (typeof orderTotalsFromLines === 'function') {
       const t = await orderTotalsFromLines(orderId);
       const o = orders.find(x => x.id === orderId);
@@ -412,6 +438,16 @@ async function _syncCBLinesToOrder(orderId) {
         const value = Math.round((t.materials + t.labour) * (1 + (o.markup || 0) / 100) * (1 + (o.tax || 0) / 100));
         /** @type {any} */ (o).value = value;
         await _db('orders').update(/** @type {any} */ ({ value })).eq('id', orderId);
+      }
+    }
+    // If the Orders tab is currently editing this same order, _opState.lines is
+    // stale — sync it from the freshly-cached o._lines and re-render the table.
+    if (typeof _opState !== 'undefined' && _opState && _opState.orderId === orderId) {
+      const o = /** @type {any} */ (orders.find(x => x.id === orderId));
+      if (o && Array.isArray(o._lines)) {
+        _opState.lines = o._lines.map(/** @param {any} r */ r => ({ ...r }));
+        if (typeof _renderOrderLines === 'function') _renderOrderLines();
+        if (typeof _renderOrderLineTotals === 'function') _renderOrderLineTotals();
       }
     }
   } catch (e) {
@@ -429,6 +465,16 @@ async function _loadCBLinesFromDB() {
     const q = quotes.find(x => x.id === qId);
     if (q) {
       cbEditingQuoteId = qId;
+      // Restore the client context from the quote so the project header and
+      // sidebar editor render with the correct title on refresh. Without this
+      // the ph-title span stays empty and renderCBEditor's client check fails.
+      if (q.client_id) {
+        const cli = clients.find(c => c.id === q.client_id);
+        if (cli) {
+          _cbCurrentClientId = cli.id;
+          _cbCurrentClientName = cli.name;
+        }
+      }
       try {
         const { data: lines } = await _db('quote_lines').select('*').eq('quote_id', qId).order('position');
         if (lines && lines.length) {
@@ -630,18 +676,36 @@ function cbUpdateField(field, val) {
  *  (cabinet_templates), depending on whether the active line is a library
  *  entry or a project row. */
 function _cbScheduleAutosave() {
+  // Surface "Autosave" state immediately on every edit, regardless of whether
+  // the active target is the client draft, an open quote, or a library entry.
+  // The "saving" / "saved" transitions are driven by the actual DB write.
+  if (typeof _setSaveStatus === 'function') _setSaveStatus('cabinet', 'dirty');
   if (cbEditingLibraryIdx >= 0 && cbScratchpad) {
+    // Live-refresh the library cards so name/dimensions/price reflect the
+    // in-progress edit immediately (cbScratchpad is the same reference as
+    // cbLibrary[cbEditingLibraryIdx], so mutations are already applied).
+    if (typeof filterCBLibraryView === 'function') {
+      const filterEl = _byId('cb-lib-filter');
+      filterCBLibraryView(filterEl ? /** @type {HTMLInputElement} */ (filterEl).value : '');
+    }
     // Library editing: debounced write to cabinet_templates row.
     const target = /** @type {any} */ (cbScratchpad);
     if (_cbLibSaveTimer) clearTimeout(_cbLibSaveTimer);
-    _cbLibSaveTimer = setTimeout(() => {
+    _cbLibSaveTimer = setTimeout(async () => {
       _cbLibSaveTimer = null;
+      if (typeof _setSaveStatus === 'function') _setSaveStatus('cabinet', 'saving');
       // Keep _libName in sync with name when the user edits the search input.
       if (target.name && !target._libName) target._libName = target.name;
-      if (target.db_id && typeof _updateCabinetInDB === 'function') {
-        /** @type {any} */ (window)._updateCabinetInDB(target.db_id, target);
-      } else if (typeof _saveCabinetToDB === 'function') {
-        /** @type {any} */ (window)._saveCabinetToDB(target).then((/** @type {any} */ id) => { if (id) target.db_id = id; });
+      try {
+        if (target.db_id && typeof _updateCabinetInDB === 'function') {
+          await /** @type {any} */ (window)._updateCabinetInDB(target.db_id, target);
+        } else if (typeof _saveCabinetToDB === 'function') {
+          const id = await /** @type {any} */ (window)._saveCabinetToDB(target);
+          if (id) target.db_id = id;
+        }
+        if (typeof _setSaveStatus === 'function') _setSaveStatus('cabinet', 'saved');
+      } catch (e) {
+        if (typeof _setSaveStatus === 'function') _setSaveStatus('cabinet', 'failed', { retry: _cbScheduleAutosave });
       }
     }, 800);
     return;
@@ -771,6 +835,26 @@ function cbSendToQuote() {
     onCreate: '_closePopup();cbCreateQuoteFromDraft()',
     size: 'md',
   });
+}
+
+// Jump from the Cabinet Builder to the underlying quote — either the one
+// being explicitly edited (cbEditingQuoteId) or the auto-managed draft for the
+// current client. Looks up the draft synchronously from the in-memory `quotes`
+// array; doesn't create one (the autosave path already handles that on first
+// cabinet add).
+async function cbGoToQuote() {
+  let quoteId = cbEditingQuoteId;
+  if (!quoteId) {
+    const clientId = _cbCurrentClientId;
+    if (!clientId) { _toast('Pick a client first.', 'error'); return; }
+    const draft = quotes
+      .filter(q => q.client_id === clientId && _isDraftQuote(q))
+      .sort((a, b) => (+new Date(b.updated_at || b.created_at || 0)) - (+new Date(a.updated_at || a.created_at || 0)))[0];
+    if (!draft) { _toast('No quote linked yet — add a cabinet to start one.', 'error'); return; }
+    quoteId = draft.id;
+  }
+  if (typeof switchSection === 'function') switchSection('quote');
+  if (typeof loadQuoteIntoSidebar === 'function') loadQuoteIntoSidebar(quoteId);
 }
 
 /** @param {number} quoteId */
@@ -1140,7 +1224,7 @@ function _renderCbCurrentProject() {
 }
 
 // SVG icon for the Cabinet Library project-style header (item 8).
-const _CB_LIBRARY_ICON = '<svg class="ph-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M2 10h20"/><path d="M6 6V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v2"/></svg>';
+const _CB_LIBRARY_ICON = '<svg class="ph-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>';
 
 /**
  * Strategy 2: render either the project-empty state or the Idea-3 project
@@ -1152,49 +1236,81 @@ function _cbRenderContext() {
   const tabsWrap = _byId('cb-tabs-wrap');
   const sb = _byId('cb-sidebar');
   if (!ctx) return;
-  if (!_cbCurrentClientId) {
-    // Library editing works without a client — when the user is mid-edit,
-    // surface a header reading "Cabinet Library" with the cabinet icon.
-    // The sidebar editor stays open.
-    const editingLib = (typeof cbEditingLibraryIdx !== 'undefined' && cbEditingLibraryIdx >= 0);
+  // Editing a library template always shows the "Cabinet Library" header
+  // regardless of any open quote/client context — the template is owned by
+  // the library, not the project. Without this check, opening a template
+  // while a quote is loaded leaves the client name in the header.
+  const editingLib = (typeof cbEditingLibraryIdx !== 'undefined' && cbEditingLibraryIdx >= 0);
+  if (editingLib) {
     if (tabsWrap) tabsWrap.style.display = 'none';
-    if (sb) sb.style.display = editingLib ? '' : 'none';
-    if (editingLib) {
-      ctx.innerHTML = _renderProjectHeader('cabinet', {
-        name: 'Cabinet Library',
-        exitFn: '_cbExitLibraryEdit',
-        iconSvg: _CB_LIBRARY_ICON,
-      });
+    if (sb) sb.style.display = '';
+    ctx.innerHTML = _renderProjectHeader('cabinet', {
+      name: 'Cabinet Library',
+      exitFn: '_cbExitLibraryEdit',
+      iconSvg: _CB_LIBRARY_ICON,
+    });
+    return;
+  }
+  if (!_cbCurrentClientId && !cbEditingQuoteId) {
+    if (tabsWrap) tabsWrap.style.display = 'none';
+    if (sb) sb.style.display = 'none';
+    if (_cbStartingNewQuote) {
+      // Sub-flow: pick the client that will own the new quote. Same client
+      // smart-search as before, with a back link to return to the quote picker.
+      ctx.innerHTML = `<div class="project-empty">
+        <svg class="pe-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+        <h3>New Quote</h3>
+        <p>Pick a client to start a new quote.</p>
+        <div style="position:relative;text-align:left">
+          <div class="smart-input-wrap">
+            <input type="text" id="cb-empty-picker" placeholder="Search or add client..." autocomplete="off"
+              oninput="_smartCBEmptyClientSuggest(this,'cb-empty-suggest')"
+              onfocus="_smartCBEmptyClientSuggest(this,'cb-empty-suggest')"
+              onblur="setTimeout(()=>{const b=document.getElementById('cb-empty-suggest'); if(b)b.style.display='none'},150)">
+            <div class="smart-input-add" onclick="_openNewClientPopup('cb-empty-picker')" title="New client">+</div>
+          </div>
+          <div id="cb-empty-suggest" class="client-suggest-list" style="display:none"></div>
+        </div>
+        <div style="margin-top:14px;font-size:11px"><a href="javascript:_cbCancelNewQuote()" style="color:var(--muted);text-decoration:none">← Back to quotes</a></div>
+      </div>`;
       return;
     }
-    // Empty state — pick a client to start designing.
-    const recents = (typeof clients !== 'undefined' ? clients : [])
+
+    // Empty state — pick a quote to start building cabinets, or add a new one.
+    const recents = (typeof quotes !== 'undefined' ? quotes : [])
       .slice()
       .sort(/** @param {any} a @param {any} b */ (a, b) => {
         const av = a.updated_at ? +new Date(a.updated_at) : (a.id || 0);
         const bv = b.updated_at ? +new Date(b.updated_at) : (b.id || 0);
         return bv - av;
       })
-      .slice(0, 5);
+      .slice(0, 5)
+      .map(/** @param {any} qx */ qx => {
+        const num = qx.quote_number || ('QUO-' + String(qx.id).padStart(4, '0'));
+        const proj = (typeof quoteProject === 'function' ? quoteProject(qx) : '') || '';
+        const cli = (typeof quoteClient === 'function' ? quoteClient(qx) : '') || '';
+        const meta = [proj, cli].filter(Boolean).join(' · ');
+        return { id: qx.id, name: num, meta };
+      });
     ctx.innerHTML = `<div class="project-empty">
       <svg class="pe-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
-      <h3>Cabinet Builder</h3>
-      <p>Pick a client to start designing cabinets.</p>
+      <h3>Quote Builder</h3>
+      <p>Pick a quote to start designing cabinets — quotes are shared with the <strong>Quote</strong> tab.</p>
       <div style="position:relative;text-align:left">
         <div class="smart-input-wrap">
-          <input type="text" id="cb-empty-picker" placeholder="Search or add client..." autocomplete="off"
-            oninput="_smartCBEmptyClientSuggest(this,'cb-empty-suggest')"
-            onfocus="_smartCBEmptyClientSuggest(this,'cb-empty-suggest')"
-            onblur="setTimeout(()=>{const b=document.getElementById('cb-empty-suggest'); if(b)b.style.display='none'},150)">
-          <div class="smart-input-add" onclick="_openNewClientPopup('cb-empty-picker')" title="New client">+</div>
+          <input type="text" id="cb-empty-quote-picker" placeholder="Search or add quote..." autocomplete="off"
+            oninput="_smartCBQuoteSuggest(this,'cb-empty-quote-suggest')"
+            onfocus="_smartCBQuoteSuggest(this,'cb-empty-quote-suggest')"
+            onblur="setTimeout(()=>{const b=document.getElementById('cb-empty-quote-suggest'); if(b)b.style.display='none'},150)">
+          <div class="smart-input-add" onclick="_cbBeginNewQuote()" title="New quote">+</div>
         </div>
-        <div id="cb-empty-suggest" class="client-suggest-list" style="display:none"></div>
+        <div id="cb-empty-quote-suggest" class="client-suggest-list" style="display:none"></div>
       </div>
       ${recents.length ? `<div class="pe-recent-list">
-        <div class="pe-recent-label">Recent clients</div>
-        ${recents.map(/** @param {any} c */ c => `<div class="pe-recent-item" onclick="_cbPickClient(${c.id})">
-          <span class="pe-ri-icon">${_TYPE_ICON_CLIENT}</span>
-          <span>${_escHtml(c.name)}</span>
+        <div class="pe-recent-label">Recent quotes</div>
+        ${recents.map(/** @param {any} r */ r => `<div class="pe-recent-item" onclick="_cbPickQuote(${r.id})">
+          <span class="pe-ri-icon">${_CH_ICON_QUOTE.replace('class="ch-icon"', '')}</span>
+          <span>${_escHtml(r.name)}${r.meta ? ` <span style="color:var(--muted);font-weight:400">· ${_escHtml(r.meta)}</span>` : ''}</span>
         </div>`).join('')}
       </div>` : ''}
     </div>`;
@@ -1205,9 +1321,12 @@ function _cbRenderContext() {
   ctx.innerHTML = _renderProjectHeader('cabinet', {
     name: _cbCurrentClientName,
     exitFn: '_exitClient_cabinet',
+    iconSvg: _CH_ICON_QUOTE.replace('class="ch-icon"', 'class="ph-icon" width="16" height="16"'),
+    saveIndicator: 'cabinet',
   });
-  // If we entered with dirty=true, surface the pill state immediately.
+  // Initialise the save indicator (defaults to clean = "Saved" green).
   if (typeof _setSaveStatus === 'function') {
+    _setSaveStatus('cabinet', _cbDirty ? 'dirty' : 'clean');
     if (_cbDirty) _setSaveStatus('cabinet', 'dirty');
   }
 }
@@ -1249,8 +1368,8 @@ function _cbRenderCabinetSubGate() {
     });
   el.innerHTML = _renderListEmpty({
     iconSvg: '<svg class="pe-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>',
-    title: 'Cabinets',
-    subtitle: 'Add a cabinet to this project. New cabinets autosave as you edit.',
+    title: 'Quote Builder',
+    subtitle: 'Add a cabinet to this quote, or pick a saved one from the Cabinet Library tab.',
     btnLabel: '+ Add Cabinet',
     btnOnclick: 'addCBLine()',
     recentItems: recents,
@@ -1275,6 +1394,7 @@ function _exitClient_cabinet() {
     localStorage.removeItem('pc_cb_editing_quote_id');
     _cbCurrentClientId = null;
     _cbCurrentClientName = '';
+    _cbStartingNewQuote = false;
     _setCbDirty(false);
     _cbSuppressDirty = false;
     if (typeof renderCBPanel === 'function') renderCBPanel();
@@ -1357,6 +1477,113 @@ function _smartCBEmptyClientSuggest(input, boxId) {
   box.style.display = 'block';
 }
 /** @type {any} */ (window)._smartCBEmptyClientSuggest = _smartCBEmptyClientSuggest;
+
+/** Smart-suggest for the Cabinet Builder gated-entry quote picker. Searches by
+ *  quote number, project name, or client name; clicking a match opens that
+ *  quote in the cabinet builder; the footer row jumps to the "+ New Quote"
+ *  client-picker sub-flow.
+ *  @param {HTMLInputElement} input @param {string} boxId */
+function _smartCBQuoteSuggest(input, boxId) {
+  const val = (input.value || '').toLowerCase().trim();
+  const box = _byId(boxId);
+  if (!box) return;
+  if (typeof _posSuggest === 'function') _posSuggest(input, box);
+  /** @param {string} s */
+  const esc = s => _escHtml(s).replace(/'/g, '&#39;');
+  const matches = quotes
+    .filter(/** @param {any} qx */ qx => {
+      if (!val) return true;
+      const num = (qx.quote_number || ('QUO-' + String(qx.id).padStart(4, '0'))).toLowerCase();
+      const proj = ((typeof quoteProject === 'function' ? quoteProject(qx) : '') || '').toLowerCase();
+      const cli = ((typeof quoteClient === 'function' ? quoteClient(qx) : '') || '').toLowerCase();
+      return num.includes(val) || proj.includes(val) || cli.includes(val);
+    })
+    .slice()
+    .sort(/** @param {any} a @param {any} b */ (a, b) => (+new Date(b.updated_at || 0)) - (+new Date(a.updated_at || 0)))
+    .slice(0, 8);
+  let html = '';
+  for (const qx of matches) {
+    const num = qx.quote_number || ('QUO-' + String(qx.id).padStart(4, '0'));
+    const proj = (typeof quoteProject === 'function' ? quoteProject(qx) : '') || '';
+    const cli = (typeof quoteClient === 'function' ? quoteClient(qx) : '') || '';
+    const meta = [proj, cli].filter(Boolean).join(' · ');
+    html += `<div class="client-suggest-item" onmousedown="_cbPickQuote(${qx.id})">
+      <span class="suggest-icon">${esc(num).charAt(0).toUpperCase()}</span>
+      <span class="csi-name">${esc(num)}</span>
+      ${meta ? `<span class="csi-meta">${esc(meta)}</span>` : ''}
+    </div>`;
+  }
+  html += `<div class="client-suggest-item client-suggest-add" onmousedown="_cbBeginNewQuote()">
+    <span class="csi-icon">+</span>
+    <span class="csi-name">${val ? `Add new quote for "${esc(input.value.trim())}"` : 'Add new quote'}</span>
+  </div>`;
+  if (!matches.length && !val) {
+    html = '<div class="client-suggest-empty">No quotes yet — click + to add one.</div>' + html;
+  }
+  box.innerHTML = html;
+  box.style.display = 'block';
+}
+/** @type {any} */ (window)._smartCBQuoteSuggest = _smartCBQuoteSuggest;
+
+/** Pick an existing quote and load its cabinet lines into the Cabinet Builder.
+ *  Sets both the client context (so the editor shows the project header) and
+ *  cbEditingQuoteId (so autosave writes back to this quote).
+ *  @param {number} quoteId */
+async function _cbPickQuote(quoteId) {
+  const q = quotes.find(qx => qx.id === quoteId);
+  if (!q) { if (typeof _toast === 'function') _toast('Quote not found', 'error'); return; }
+  _cbConfirmDiscardIfDirty(`open ${q.quote_number || ('QUO-' + String(q.id).padStart(4, '0'))}`, async () => {
+    if (_cbLinesSyncTimer) { clearTimeout(_cbLinesSyncTimer); _cbLinesSyncTimer = null; }
+    _cbSuppressDirty = true;
+    try {
+      const { data: lines, error } = await _db('quote_lines')
+        .select('*').eq('quote_id', quoteId).eq('line_kind', 'cabinet').order('position');
+      if (error) { if (typeof _toast === 'function') _toast('Could not load quote lines', 'error'); _cbSuppressDirty = false; return; }
+      cbLines = (lines || []).map(/** @param {any} row @param {number} i */ (row, i) => {
+        const cb = /** @type {any} */ (_quoteLineRowToCB(row));
+        cb.id = i + 1;
+        return cb;
+      });
+      cbNextId = cbLines.length + 1;
+    } catch (e) {
+      console.warn('[cb pick-quote]', (/** @type {any} */ (e)).message || e);
+      cbLines = [];
+      cbNextId = 1;
+    }
+    cbEditingQuoteId = quoteId;
+    cbEditingOriginalLines = JSON.parse(JSON.stringify(cbLines));
+    localStorage.setItem('pc_cb_editing_quote_id', String(quoteId));
+    const cli = clients.find(c => c.id === q.client_id);
+    _cbCurrentClientId = q.client_id || null;
+    const cliName = (cli && cli.name) || (typeof quoteClient === 'function' ? quoteClient(q) : '') || '';
+    const projName = (typeof quoteProject === 'function' ? quoteProject(q) : '') || '';
+    const qNum = q.quote_number || ('QUO-' + String(q.id).padStart(4, '0'));
+    _cbCurrentClientName = [projName, cliName].filter(Boolean).join(' · ') || qNum;
+    if (_cbCurrentClientName) localStorage.setItem('pc_cq_client_name', _cbCurrentClientName);
+    cbEditingLineIdx = -1;
+    cbScratchpad = null;
+    _setCbDirty(false);
+    _cbSuppressDirty = false;
+    _cbStartingNewQuote = false;
+    if (typeof renderCBPanel === 'function') renderCBPanel();
+    if (typeof switchCBMainView === 'function') switchCBMainView('results');
+  });
+}
+/** @type {any} */ (window)._cbPickQuote = _cbPickQuote;
+
+/** Transition the empty state to the "pick a client for the new quote" sub-flow. */
+function _cbBeginNewQuote() {
+  _cbStartingNewQuote = true;
+  _cbRenderContext();
+}
+/** @type {any} */ (window)._cbBeginNewQuote = _cbBeginNewQuote;
+
+/** Cancel the new-quote client-picker sub-flow and return to the quote picker. */
+function _cbCancelNewQuote() {
+  _cbStartingNewQuote = false;
+  _cbRenderContext();
+}
+/** @type {any} */ (window)._cbCancelNewQuote = _cbCancelNewQuote;
 
 /** @param {string} name */
 async function _cbSaveClientByName(name) {

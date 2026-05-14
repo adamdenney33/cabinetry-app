@@ -96,6 +96,9 @@
         </div>
         <!-- Unit Format -->
         <div class="sd-section" id="unit-format-section" style="display:none;padding:4px 16px 8px">
+          <div class="sd-row" style="margin-bottom:4px;justify-content:flex-end">
+            <span class="cl-unsaved-pill" data-save-pill="business" style="display:none"></span>
+          </div>
           <div class="sd-row" id="uf-imperial-row" style="margin-bottom:4px">
             <span class="sd-row-label" style="font-size:11px">Format</span>
             <div class="sd-pill">
@@ -228,9 +231,6 @@
         <!-- Quote Builder sidebar wrapper: client-picker empty state OR
              in-project header + cabinet editor. Default visible. -->
         <div id="cb-sidebar-builder" style="display:flex;flex-direction:column;flex:1;overflow:hidden">
-          <!-- Strategy 2: project context lives here. Either renders the empty
-               state (no project active) or the Idea-3 header + tabs (in-project). -->
-          <div id="cb-context"></div>
           <!-- Tabs inside sidebar (only shown in-project; toggled by _cbRenderContext) -->
           <div id="cb-tabs-wrap" style="display:none;flex-shrink:0">
             <div style="display:flex;border-bottom:2px solid var(--border)">
@@ -238,13 +238,16 @@
               <div id="cab-tab-rates" onclick="switchCabTab('rates')" style="flex:1;padding:10px 16px;font-size:13px;font-weight:500;text-align:center;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-2px">My Rates</div>
             </div>
           </div>
+          <!-- Strategy 2: project context lives here. Either renders the empty
+               state (no project active) or the Idea-3 header + tabs (in-project). -->
+          <div id="cb-context"></div>
           <div class="sidebar-scroll" id="cb-sidebar">
 
             <!-- Active Cabinet Editor (also renders sub-gate when no cabinet open) -->
-            <div id="cb-cab-editor" style="padding:14px"></div>
+            <div id="cb-cab-editor" style="padding:0 14px 14px"></div>
 
             <!-- MY RATES (shown when rates tab active) -->
-            <div id="cab-view-rates" style="display:none;padding:14px">
+            <div id="cab-view-rates" style="display:none;padding:0 14px 14px">
               <div id="cb-rates-content"></div>
             </div>
           </div>
@@ -285,7 +288,7 @@
               </button>
               <svg class="ph-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
               <span class="ph-title" id="stock-form-title-text">Add Material</span>
-              <span id="stock-save-indicator" class="save-indicator" style="display:none">Autosave</span>
+              <span class="cl-unsaved-pill" data-save-pill="stock" style="display:none"></span>
             </div>
           </div>
           <div class="form-group" style="margin-bottom:6px">
@@ -418,7 +421,7 @@
           <div class="form-group" style="padding:10px 14px">
             <label>Name</label>
             <div class="prefixed-input">
-              <input type="text" id="cl-name" placeholder="Cut List name" oninput="_clRenameCutlist(this.value)">
+              <input type="text" id="cutlist-name" placeholder="Cut List name" oninput="_clRenameCutlist(this.value)">
             </div>
           </div>
         </div>
@@ -512,12 +515,13 @@
           <div id="cl-stock-suggest" class="client-suggest-list suggest-up" style="display:none"></div>
         </div>
 
-      </div>
-      <div class="action-bar" id="cl-action-bar">
-        <button class="btn btn-primary btn-lg" onclick="optimize()">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-          Optimize Cut Layout
-        </button>
+        <div class="action-bar" id="cl-action-bar">
+          <button class="btn btn-primary btn-lg" onclick="optimize()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+            Optimize Cut Layout
+          </button>
+        </div>
+
       </div>
     </div>
 
@@ -652,7 +656,7 @@
               </button>
               <svg class="ph-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
               <span class="ph-title" id="cl-form-title-text">New Client</span>
-              <span id="cl-save-indicator" class="save-indicator" style="display:none">Autosave</span>
+              <span class="cl-unsaved-pill" data-save-pill="client" style="display:none"></span>
             </div>
           </div>
           <div class="form-group" style="margin-bottom:8px">

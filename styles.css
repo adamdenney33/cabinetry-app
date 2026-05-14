@@ -42,8 +42,10 @@ html.dark {
   --header-bg:#0a0a0a;
   --header-fg:#f0f0f0;
   --tabbar:   #161616;
-  --shadow: 0 1px 4px rgba(0,0,0,0.3);
-  --shadow-md: 0 4px 16px rgba(0,0,0,0.4);
+  /* Dark-mode elevation: pure-black shadows blend into the dark surface.
+     Use a soft white glow instead so cards visibly lift off the background. */
+  --shadow: 0 2px 8px rgba(255,255,255,0.08);
+  --shadow-md: 0 6px 24px rgba(255,255,255,0.14);
   --zebra:    rgba(255,255,255,0.03);
 }
 
@@ -57,7 +59,8 @@ html.dark .badge-blue { background: rgba(80,140,220,0.15); color: #7ab4f5; }
 html.dark .badge-red { background: rgba(224,82,82,0.15); color: #f08080; }
 html.dark .badge-teal { background: rgba(61,153,112,0.15); color: #5dbf90; }
 html.dark .lock-overlay { background: rgba(20,20,20,0.88); }
-html.dark .canvas-wrap { background: var(--surface); }
+html.dark .canvas-wrap { background: #cccccc; }
+html.dark .sheet-cutlist { background: var(--surface); }
 html.dark .sum-table th { background: var(--surface2); }
 
 body {
@@ -137,6 +140,41 @@ header {
 .account-menu-item:hover { background: var(--surface2); }
 .account-menu-item:last-child { border-radius: 0 0 var(--radius) var(--radius); }
 
+/* ── HELP BUTTON & DROPDOWN ── */
+.help-wrap { position: relative; }
+.help-btn {
+  width: 32px; height: 32px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 7px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; color: #aaa;
+  transition: all 0.15s;
+  position: relative;
+}
+.help-btn:hover { background: rgba(255,255,255,0.14); color: #fff; }
+.help-dropdown {
+  position: absolute; top: calc(100% + 8px); right: 0;
+  width: 220px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+  z-index: 1000;
+  overflow: hidden;
+  display: none;
+}
+.help-dropdown.open { display: block; }
+.help-menu-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 14px;
+  font-size: 13px; color: var(--text2);
+  cursor: pointer; transition: background 0.15s;
+}
+.help-menu-item:hover { background: var(--surface2); color: var(--text); }
+.help-menu-item svg { color: var(--muted); flex-shrink: 0; }
+.help-menu-item:hover svg { color: var(--accent); }
+
 /* ── SETTINGS BUTTON & DROPDOWN ── */
 .settings-wrap {
   position: relative;
@@ -188,11 +226,33 @@ header {
 .smart-input-wrap > input[type="text"]:focus { box-shadow: none; background: transparent; border: none; }
 .smart-input-add { width: 34px; background: transparent; border: none; border-left: 1px solid var(--border); border-radius: 0; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--accent); font-size: 16px; font-weight: 700; transition: background .15s; flex-shrink: 0; }
 .smart-input-add:hover { background: var(--accent-dim); }
+.prefixed-input { display: flex; align-items: center; gap: 8px; }
+.prefixed-input > input { flex: 1; min-width: 0; }
+.input-prefix { font-size: 11px; color: var(--muted); font-weight: 700; letter-spacing: 0.4px; white-space: nowrap; user-select: none; flex-shrink: 0; }
+.form-group:has(> .prefixed-input) > label { font-size: 11px; color: var(--text2); font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; }
 .cl-current-project { font-size: 11px; color: var(--muted); padding: 4px 2px 0; display: flex; align-items: center; gap: 6px; }
 .cl-current-project .cl-cp-label { opacity: 0.7; }
 .cl-current-project .cl-cp-name { color: var(--text); font-weight: 600; }
 /* ── Project header (Strategy 2 / Idea 3) ── */
-.project-header { padding: 10px 14px 10px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.project-header { padding: 10px 14px 10px; flex-shrink: 0; }
+/* Stock & Clients render their .project-header inside a 16px-padded
+   .sidebar-scroll, while Cut List / Cabinet place it outside the scroll.
+   Cancel the scroll padding for these two so the header sits flush at the
+   top and its 14px horizontal padding lines up with form-group labels
+   (which inherit the form-section padding below). */
+#panel-stock > .sidebar > .sidebar-scroll,
+#panel-clients > .sidebar > .sidebar-scroll { padding: 0; }
+/* Replace the scroll padding inside the form-section: the header keeps its
+   own 14px horizontal padding, and form-groups / form-rows / explicit
+   bottom-action wrappers get matching 14px so labels line up at the same
+   x position as the header text. */
+#panel-stock .form-section > .form-group,
+#panel-stock .form-section > .form-row,
+#panel-clients .form-section > .form-group,
+#panel-clients .form-section > .form-row { padding-left: 14px; padding-right: 14px; }
+/* Pad the gate (empty state) wrapper too so the recent-list / button align
+   with the form-section content underneath. */
+#stock-gate, #clients-gate { padding: 16px 0; }
 .project-header .ph-row1 { display: flex; align-items: center; gap: 8px; }
 .project-header .ph-back { width: 24px; height: 24px; border-radius: 5px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--muted); flex-shrink: 0; background: none; border: none; padding: 0; }
 .project-header .ph-back:hover { background: rgba(0,0,0,0.06); color: var(--text); }
@@ -255,14 +315,30 @@ header {
 .sd-row-label { font-size: 13px; color: var(--text); font-weight: 600; display: flex; align-items: center; gap: 6px; }
 
 /* ── NAV TABS (Chrome-style) ── */
+.nav-tabs-wrap {
+  background: var(--tabbar);
+  flex-shrink: 0;
+  position: relative;
+}
+.nav-tabs-wrap::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: var(--border);
+  pointer-events: none;
+}
 .nav-tabs {
   background: transparent;
   border-bottom: none;
   display: flex;
   align-items: flex-end;
-  padding: 8px 0 0 50px;
+  padding: 8px 50px 0 50px;
   gap: 2px;
   flex-shrink: 0;
+  position: relative;
   z-index: 99;
   overflow-x: auto;
   overflow-y: visible;
@@ -276,10 +352,8 @@ header {
 .nav-tab {
   display: flex !important; align-items: center; justify-content: center; gap: 7px;
   padding: 8px 0 10px;
-  min-width: 130px !important;
-  width: 130px !important;
-  max-width: 130px !important;
-  flex: 0 0 130px !important;
+  flex: 1 1 0 !important;
+  min-width: 0 !important;
   box-sizing: border-box;
   font-size: 13px; font-weight: 500;
   color: var(--muted);
@@ -348,6 +422,10 @@ header {
   flex-shrink: 0;
 }
 .sidebar-scroll { overflow-y: auto; flex: 1; padding: 16px; }
+/* Cabinet sidebar: inner editor + rates view supply their own padding, so
+   the scroll wrapper itself stays unpadded. Without this override the
+   project-header → first form-group gap was 30px vs Cut List's 0px. */
+#cb-sidebar.sidebar-scroll { padding: 0; }
 .main-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
 .main-scroll { flex: 1; overflow: auto; padding: 20px; }
 
@@ -361,23 +439,6 @@ header {
   display: flex; align-items: center; gap: 8px;
 }
 .form-section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
-.form-section-title .ph-back {
-  width: 22px; height: 22px; border-radius: 5px;
-  display: flex; align-items: center; justify-content: center;
-  cursor: pointer; color: var(--muted); flex-shrink: 0;
-  background: none; border: none; padding: 0;
-}
-.form-section-title .ph-back:hover { background: rgba(0,0,0,0.06); color: var(--text); }
-.save-indicator {
-  font-size: 9px; font-weight: 700;
-  letter-spacing: 0.6px; text-transform: uppercase;
-  color: var(--muted);
-  display: inline-flex; align-items: center; gap: 4px;
-  white-space: nowrap;
-}
-.save-indicator.is-saving { color: var(--muted); opacity: 0.75; }
-.save-indicator.is-saved { color: #2e7d32; }
-.save-indicator.is-error { color: #c62828; }
 
 .form-row { display: flex; gap: 8px; margin-bottom: 8px; align-items: flex-end; }
 .form-group { flex: 1; }
@@ -1439,11 +1500,6 @@ input.li-num:focus { outline: none; border-color: var(--accent); }
 .proj-total { font-size: 13px; font-weight: 800; color: var(--text); font-variant-numeric: tabular-nums; margin-left: auto; }
 .proj-total.zero { color: var(--muted); font-weight: 500; }
 
-.proj-strip {
-  display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px;
-  padding-top: 8px; border-top: 1px dashed var(--border2);
-}
-.proj-strip.cols-3 { grid-template-columns: repeat(3, 1fr); }
 .proj-act {
   display: flex; align-items: stretch;
   border: 1px solid var(--border);
@@ -1474,7 +1530,6 @@ input.li-num:focus { outline: none; border-color: var(--accent); }
 .proj-act-money { font-size: 10px; color: var(--muted); font-weight: 600; }
 .proj-act.empty .proj-act-count { color: var(--muted); background: var(--surface2); }
 .proj-act.empty .proj-act-main { color: var(--muted); }
-
 .proj-act-add {
   width: 26px; flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
@@ -1487,12 +1542,8 @@ input.li-num:focus { outline: none; border-color: var(--accent); }
 .proj-act-add:hover { background: var(--accent); color: #fff; border-left-color: var(--accent); }
 .proj-act.empty .proj-act-add { color: var(--accent2); background: rgba(13,148,136,.08); }
 .proj-act.empty .proj-act-add:hover { background: var(--accent2); color: #fff; border-left-color: var(--accent2); }
-
 html.dark .proj-act-count { background: rgba(13,148,136,.18); color: #5dbf90; }
 html.dark .proj-act.empty .proj-act-add { background: rgba(13,148,136,.12); }
-
-/* At narrow widths the project / quote card action strip drops the text labels
-   and shows icon-only buttons — same pattern as the top nav-tab icon-only mode. */
 @media (max-width: 1100px) {
   .proj-act-main { gap: 5px; padding: 4px 7px; }
   .proj-act-main svg { width: 16px; height: 16px; }
@@ -2089,7 +2140,7 @@ input.pf-input-compact[type="date"]:disabled::-webkit-calendar-picker-indicator 
   display: inline-block; width: 6px; height: 6px; border-radius: 50%;
   background: var(--accent); margin-top: 9px;
 }
-.editor-li-table .col-dot.is-item span   { background: var(--accent2); }
+.editor-li-table .col-dot.is-item span   { background: #3b82f6; }
 .editor-li-table .col-dot.is-stock span  { background: var(--success); }
 .editor-li-table .col-dot.is-labour span { background: var(--success); }
 .editor-li-table .col-desc  { min-width: 0; }
@@ -2137,10 +2188,10 @@ input.pf-input-compact[type="date"]:disabled::-webkit-calendar-picker-indicator 
 .editor-li-table th.col-hrs { color: var(--muted); opacity: 0.7; }
 .editor-li-table .col-hrs .cl-input { color: var(--muted); }
 .editor-li-table .col-hrs .cl-input:focus { color: var(--text); }
-.editor-li-table .col-hrs .cl-input.is-computed {
+.editor-li-table .cl-input.is-computed {
   color: var(--muted); opacity: 0.75; font-style: italic;
 }
-.editor-li-table .col-hrs .cl-input.is-computed:focus {
+.editor-li-table .cl-input.is-computed:focus {
   color: var(--text); font-style: normal; opacity: 1;
 }
 

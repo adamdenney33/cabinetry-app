@@ -71,7 +71,6 @@ function renderDashboard() {
         <button class="btn btn-outline" onclick="switchSection('cabinet')" style="font-size:11px;padding:6px 12px;width:auto">+ Cabinet</button>
         <button class="btn btn-outline" onclick="switchSection('quote');setTimeout(()=>document.getElementById('q-client')?.focus(),100)" style="font-size:11px;padding:6px 12px;width:auto">+ Quote</button>
         <button class="btn btn-outline" onclick="switchSection('orders');setTimeout(()=>document.getElementById('o-client')?.focus(),100)" style="font-size:11px;padding:6px 12px;width:auto">+ Order</button>
-        <button class="btn btn-outline" onclick="switchSection('projects');setTimeout(()=>document.getElementById('pj-name')?.focus(),100)" style="font-size:11px;padding:6px 12px;width:auto">+ Project</button>
         <button class="btn btn-outline" onclick="switchSection('clients');setTimeout(()=>document.getElementById('cl-name')?.focus(),100)" style="font-size:11px;padding:6px 12px;width:auto">+ Client</button>
         ${overdueOrders.length ? `<span class="badge badge-red" style="font-size:11px;padding:5px 10px;margin-left:4px;cursor:pointer" onclick="switchSection('orders');window._orderFilter='active';renderOrdersMain()">${overdueOrders.length} overdue</span>` : ''}
       </div>
@@ -113,10 +112,15 @@ function renderDashboard() {
               ? `<div style="padding:20px;text-align:center;color:var(--muted);font-size:13px">No active orders</div>`
               : activeOrders.slice(0, DASH_CARD_ROWS).map(o => {
                 const isOD = o.due && o.due !== 'TBD' && !isNaN(+new Date(o.due)) && new Date(o.due) < new Date();
+                const oNum = o.order_number || ('ORD-' + String(o.id).padStart(4,'0'));
+                const oCli = orderClient(o);
+                const oProj = orderProject(o);
+                const oTopLine = [oNum, oCli].filter(Boolean).join(' · ');
+                const oCaption = [oProj, o.due ? `Due ${String(o.due).slice(0, 10)}${isOD ? ' ⚠' : ''}` : null].filter(Boolean).join(' · ');
                 return `<div class="dash-row${isOD ? ' is-overdue' : ''}" onclick="_openOrderPopup(${o.id})">
                 <div style="flex:1;min-width:0">
-                  <div style="font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${o.order_number ? `#${o.order_number}` : `#ORD-${String(o.id).padStart(4,'0')}`} · ${orderProject(o)}</div>
-                  <div style="font-size:11px;color:${isOD?'var(--danger)':'var(--muted)'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${orderClient(o)} · Due ${o.due}${isOD?' ⚠':''}</div>
+                  <div style="font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_escHtml(oTopLine)}</div>
+                  <div style="font-size:11px;color:${isOD?'var(--danger)':'var(--muted)'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_escHtml(oCaption)}</div>
                 </div>
                 <div style="text-align:right;margin-left:12px;flex-shrink:0">
                   <div style="font-size:12px;font-weight:700">${cur}${fmt(o.value ?? 0)}</div>
@@ -133,17 +137,26 @@ function renderDashboard() {
             <button class="btn btn-outline" style="padding:3px 10px;font-size:11px" onclick="switchSection('quote')">View all</button>
           </div>
           <div class="card-body" style="padding:0">
-            ${quotes.slice(0, DASH_CARD_ROWS).map(q => `
+            ${quotes.slice(0, DASH_CARD_ROWS).map(q => {
+              const qNum = q.quote_number || ('QUO-' + String(q.id).padStart(4, '0'));
+              const qCli = quoteClient(q);
+              const qProj = quoteProject(q);
+              const qTopLine = [qNum, qCli].filter(Boolean).join(' · ');
+              const qStatus = q.status || 'draft';
+              const qStatusBadge = qStatus === 'approved' ? 'badge-green' : qStatus === 'sent' ? 'badge-blue' : 'badge-gray';
+              const qStatusText = qStatus === 'approved' ? 'Approved' : qStatus === 'sent' ? 'Sent' : 'Draft';
+              return `
               <div class="dash-row" onclick="_openQuotePopup(${q.id})">
                 <div style="flex:1;min-width:0">
-                  <div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${q.quote_number ? `${q.quote_number}` : `QUO-${String(q.id).padStart(4,'0')}`} · ${quoteProject(q)}</div>
-                  <div style="font-size:11px;color:var(--muted)">${quoteClient(q)}</div>
+                  <div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_escHtml(qTopLine)}</div>
+                  ${qProj ? `<div style="font-size:11px;color:var(--muted)">${_escHtml(qProj)}</div>` : ''}
                 </div>
                 <div style="text-align:right;margin-left:8px;flex-shrink:0">
                   <div style="font-size:12px;font-weight:700">${cur}${fmt(quoteTotal(q))}</div>
-                  <div style="font-size:10px;color:var(--muted)">${q.date}</div>
+                  <span class="badge ${qStatusBadge}" style="font-size:9px">${qStatusText}</span>
                 </div>
-              </div>`).join('')}
+              </div>`;
+            }).join('')}
           </div>
         </div>
 
@@ -232,7 +245,7 @@ function renderDashboard() {
           if (!start || !end) return;
           events.push({
             id: o.id,
-            numberLabel: o.order_number ? `#${o.order_number}` : `#ORD-${String(o.id).padStart(4,'0')}`,
+            numberLabel: o.order_number || ('ORD-' + String(o.id).padStart(4,'0')),
             project: orderProject(o),
             client: orderClient(o),
             start, end,
@@ -311,7 +324,7 @@ function renderDashboard() {
           }
           if (runStart !== -1) runs.push([runStart, endIdx]);
           if (!runs.length) return;
-          const labelText = _escHtml(e.numberLabel) + ' · ' + _escHtml(e.project) + (e.client ? ' · ' + _escHtml(e.client) : '');
+          const labelText = [e.numberLabel, e.project, e.client].filter(Boolean).map(_escHtml).join(' · ');
           const manualStyle = e.isManual ? 'border:1px dashed rgba(255,255,255,0.5);' : '';
           const lockIcon = e.isManual ? '🔒 ' : '';
           const barTop = 28 + e.lane * stride;

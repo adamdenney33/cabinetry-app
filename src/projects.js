@@ -118,38 +118,8 @@ function _clDeleteCutlist(cutlistId) {
 }
 /** @type {any} */ (window)._clDeleteCutlist = _clDeleteCutlist;
 
-/** Rename a cutlist via popup.
- *  @param {number} cutlistId */
-async function _clRenameCutlist(cutlistId) {
-  if (!cutlistId) return;
-  const { data: cl } = await _db('cutlists').select('id, name').eq('id', cutlistId).single();
-  if (!cl) return;
-  _openPopup(`
-    <div class="popup-header">
-      <div class="popup-title">Rename Cut List</div>
-      <button class="popup-close" onclick="_closePopup()">×</button>
-    </div>
-    <div class="popup-body">
-      <div class="pf"><label class="pf-label">Cut list name</label><input class="pf-input pf-input-lg" id="cl-rename-input" value="${_escHtml(cl.name||'')}"></div>
-    </div>
-    <div class="popup-footer">
-      <button class="btn btn-outline" onclick="_closePopup()">Cancel</button>
-      <button class="btn btn-primary" onclick="_clConfirmRenameCutlist(${cutlistId})">Rename</button>
-    </div>
-  `, 'sm');
-  setTimeout(() => { const i = _byId('cl-rename-input'); if (i) { i.focus(); i.select(); } }, 50);
-}
-/** @type {any} */ (window)._clRenameCutlist = _clRenameCutlist;
-
-/** @param {number} cutlistId */
-async function _clConfirmRenameCutlist(cutlistId) {
-  const newName = (_popupVal('cl-rename-input') || '').trim();
-  if (!newName) { _toast('Name is required', 'error'); return; }
-  const { error } = await _db('cutlists').update({ name: newName, updated_at: new Date().toISOString() }).eq('id', cutlistId);
-  if (error) { _toast('Rename failed', 'error'); return; }
-  if (cutlistId === _clCurrentCutlistId) _clCurrentCutlistName = newName;
-  _closePopup();
-  _toast('Renamed', 'success');
-  if (typeof renderCLCutListLibraryView === 'function') renderCLCutListLibraryView();
-}
-/** @type {any} */ (window)._clConfirmRenameCutlist = _clConfirmRenameCutlist;
+// _clRenameCutlist / _clConfirmRenameCutlist popup helpers removed 2026-05-14.
+// They were dead orphans from the pre-F6 projects-tab UI (no remaining callers)
+// AND their window.* assignments were clobbering cutlist.js's editor live-
+// rename handler (same name, different signature), which silently broke cut
+// list rename autosave. The cutlist.js version is the canonical one.

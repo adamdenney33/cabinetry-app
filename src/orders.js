@@ -161,8 +161,10 @@ function renderOrdersMain() {
       if (!isNaN(+parsed) && parsed < new Date()) isOverdue = true;
     }
     const relDate = _relativeDate(o.due);
-    const titleNum = o.order_number ? `#${o.order_number} · ` : '';
-    const titleClient = orderClient(o) ? ' · ' + orderClient(o) : '';
+    const titleNum = o.order_number || '';
+    const titleProj = orderProject(o) || '';
+    const titleCli = orderClient(o) || '';
+    const titleText = [titleNum, titleProj, titleCli].filter(Boolean).join(' · ');
     const statusBadgeCls = (/** @type {Record<string,string>} */(STATUS_BADGES))[o.status]||'badge-gray';
     const statusLabel = (/** @type {Record<string,string>} */(STATUS_LABELS))[o.status]||o.status;
     return `
@@ -170,13 +172,14 @@ function renderOrdersMain() {
       <div class="oc-header">
         <div class="oc-info">
           <div class="oc-title-row">
-            <div class="oc-title">${titleNum}${orderProject(o)}${titleClient}</div>
+            <div class="oc-title">${titleText}</div>
             <span class="badge ${statusBadgeCls}" style="font-size:10px" onclick="event.stopPropagation()">${statusLabel}</span>
           </div>
           <div class="oc-meta">
-            <span>Due: ${o.due || 'TBD'}</span>
+            <span>Due: ${o.due ? String(o.due).slice(0, 10) : 'TBD'}</span>
             ${relDate ? `<span style="font-size:9px;font-weight:700;color:${relDate.color}">${relDate.label}</span>` : ''}
             ${isOverdue ? '<span class="badge badge-red" style="font-size:8px;padding:1px 5px">Overdue</span>' : ''}
+            ${(() => { const lc = _lineKindCountsLabel(/** @type {any} */ (o)._lines); return lc ? `<span>· ${lc}</span>` : ''; })()}
           </div>
           ${o.notes ? `<div class="oc-notes" style="cursor:default">${_escHtml(o.notes)}</div>` : ''}
         </div>
@@ -469,7 +472,7 @@ function renderOrderEditor() {
   // prefix is re-applied on save.
   const orderNumberValue = _escHtml(String(orderNumFull).replace(/^ORD-/i, ''));
 
-  const headerName = (projectName || 'Untitled project') + (clientName ? ' · ' + clientName : '');
+  const headerName = clientName || 'Untitled order';
 
   host.innerHTML = `<div class="form-section editor-shell">
     <div class="project-header">
@@ -479,21 +482,27 @@ function renderOrderEditor() {
         </button>
         <svg class="ph-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/></svg>
         <span class="ph-title">${_escHtml(headerName)}</span>
+        <span class="cl-unsaved-pill" data-save-pill="order" style="display:none"></span>
       </div>
     </div>
 
-    <div class="form-section-title">
-      <button class="ph-back" onclick="_oExitOrder()" title="Back" aria-label="Back">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-      </button>
-      <span>ORD-${orderNumberValue}</span>
-      <span class="save-indicator" data-save-indicator="order" style="display:none">Autosave</span>
-    </div>
-    <div class="form-group" style="margin-bottom:10px">
+    <div class="form-group" style="padding:10px 14px">
       <label>Order Number</label>
-      <input type="text" id="po-order-number" placeholder="Order number..." autocomplete="off"
-        value="${orderNumberValue}"
-        oninput="_oMarkDirty()">
+      <div class="prefixed-input">
+        <span class="input-prefix">ORD-</span>
+        <input type="text" id="po-order-number" placeholder="Order number..." autocomplete="off"
+          value="${orderNumberValue}"
+          oninput="_oMarkDirty()">
+      </div>
+    </div>
+
+    <div class="form-group" style="padding:0 14px 10px">
+      <label>Project Name</label>
+      <div class="prefixed-input">
+        <input type="text" id="po-project-name" placeholder="e.g. Kitchen Renovation" autocomplete="off"
+          value="${_escHtml((o && o.name) || '')}"
+          oninput="_oMarkDirty()">
+      </div>
     </div>
 
     ${quoteChip}
@@ -503,7 +512,6 @@ function renderOrderEditor() {
       <div class="pill-group">
         <button class="cl-col-pill ${colDiscOff ? '' : 'active'}" data-col="disc" onclick="_oToggleColumn('disc',this)">Discount</button>
         <button class="cl-col-pill ${colHrsOff ? '' : 'active'}" data-col="hrs" onclick="_oToggleColumn('hrs',this)">Hours</button>
-        <button class="cl-col-pill ${colStockOn ? 'active' : ''}" data-col="stock" onclick="_oToggleColumn('stock',this)">Stock</button>
       </div>
     </div>
 
@@ -512,6 +520,7 @@ function renderOrderEditor() {
     <div class="cl-add-row">
       <button class="cl-add-btn" onclick="_oAddLine('cabinet')">+ Cabinet</button>
       <button class="cl-add-btn" onclick="_oAddLine('item')">+ Item</button>
+      <button class="cl-add-btn" onclick="_oToggleStockLibrary()">+ Stock</button>
     </div>
 
     <div class="stock-library ${colStockOn ? 'visible' : ''}" id="po-stock-library">
@@ -558,7 +567,12 @@ function renderOrderEditor() {
       <div class="pf-totals" id="po-totals"></div>
     </div>
 
-    <details class="sched editor-section" id="po-sched-details" style="padding:0;border-bottom:1px solid var(--border)" ${schedOpen ? 'open' : ''} ontoggle="_orderSchedToggle(this)">
+    <div class="editor-section" style="border-top:1px solid var(--border);border-bottom:none">
+      <div class="editor-section-title">Notes</div>
+      <textarea class="pf-textarea" id="po-notes" rows="3" placeholder="Production notes..." oninput="_oMarkDirty()">${_escHtml((o && o.notes)||'')}</textarea>
+    </div>
+
+    <details class="sched editor-section" id="po-sched-details" style="padding:0;border-top:1px solid var(--border);border-bottom:none" ${schedOpen ? 'open' : ''} ontoggle="_orderSchedToggle(this)">
       <summary>
         <span class="chev"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
         <span class="sched-label">Schedule</span>
@@ -611,11 +625,6 @@ function renderOrderEditor() {
       </div>
     </details>
 
-    <div class="editor-section">
-      <div class="editor-section-title">Notes</div>
-      <textarea class="pf-textarea" id="po-notes" rows="3" placeholder="Production notes..." oninput="_oMarkDirty()">${_escHtml((o && o.notes)||'')}</textarea>
-    </div>
-
     ${isExisting ? '' : `<div class="editor-footer"><span style="flex:1"></span><button class="btn btn-primary" onclick="createOrderFromEditor()">+ Create Order</button></div>`}
   </div>`;
 
@@ -625,6 +634,9 @@ function renderOrderEditor() {
     if (typeof _renderOrderHoursBreakdown === 'function') _renderOrderHoursBreakdown();
   }
   if (typeof _renderOrderSchedSummary === 'function') _renderOrderSchedSummary();
+  if (o && typeof _setSaveStatus === 'function') {
+    _setSaveStatus('order', _opState.dirty ? 'dirty' : 'clean');
+  }
 }
 
 /** Persist the Schedule section's open/closed state.
@@ -711,7 +723,7 @@ function _oOrderSuggest(input, boxId) {
   if (q && !exact) {
     html += `<div class="client-suggest-item client-suggest-add" onmousedown="_oNewOrderFromInput()">
       <span class="csi-icon">+</span>
-      <span class="csi-name">Start new order #ORD-${esc(input.value.trim())}</span>
+      <span class="csi-name">Start new order ORD-${esc(input.value.trim())}</span>
     </div>`;
   }
   box.innerHTML = html;
@@ -725,6 +737,11 @@ async function _oStartNewOrder() {
   if (!_opState.clientId) { _toast('Pick a client first', 'error'); return; }
   const insertNew = async () => {
     const orderNum = _nextOrderNumber();
+    // Pre-populate Project Name with "Project N" where N = existing-orders-
+    // for-this-client + 1. User overwrites as they wish; the field is editable.
+    const clientId = _opState.clientId;
+    const existingForClient = orders.filter(o => o.client_id === clientId).length;
+    const autoName = 'Project ' + (existingForClient + 1);
     if (typeof _setSaveStatus === 'function') _setSaveStatus('order', 'saving');
     try {
       const { data, error } = await _dbInsertSafe('orders', /** @type {any} */ ({
@@ -734,6 +751,7 @@ async function _oStartNewOrder() {
         status: 'quote',
         due: 'TBD',
         value: 0,
+        name: autoName,
       }));
       if (error || !data) {
         if (typeof _setSaveStatus === 'function') _setSaveStatus('order', 'failed', { retry: _oStartNewOrder });
@@ -797,6 +815,26 @@ function _oToggleColumn(col, btn) {
     try { localStorage.setItem('pc_order_col_' + col, nowActive ? 'on' : 'off'); } catch (e) {}
   }
 }
+
+/** Toggle the stock-library section from the "+ Stock" button in the add-row.
+ *  Persists state and focuses the search input when opening. */
+function _oToggleStockLibrary() {
+  const lib = document.getElementById('po-stock-library');
+  if (!lib) return;
+  const willShow = !lib.classList.contains('visible');
+  lib.classList.toggle('visible', willShow);
+  try { localStorage.setItem('pc_order_col_stock', willShow ? 'on' : 'off'); } catch (e) {}
+  if (willShow) {
+    setTimeout(() => {
+      const search = document.getElementById('po-stock-search');
+      if (search) /** @type {HTMLInputElement} */ (search).focus();
+    }, 50);
+  } else {
+    const sugg = document.getElementById('po-stock-suggest');
+    if (sugg) sugg.classList.remove('open');
+  }
+}
+/** @type {any} */ (window)._oToggleStockLibrary = _oToggleStockLibrary;
 
 /** Open the stock-library smart-search dropdown filtered by the typed query.
  *  Suggestions are grouped by stock_type / category (sticky section labels).
@@ -1084,8 +1122,9 @@ async function saveOrderEditor() {
   const hours_allocated = (hoursOverrideEl && hoursOverrideEl.checked)
     ? (parseFloat(_popupVal('po-hours-allocated')) || 0)
     : null;
+  const name = (_popupVal('po-project-name') || '').trim() || null;
   /** @type {any} */
-  const update = { status, order_number, markup, tax, discount, stock_markup, priority, auto_schedule, manual_start_date: manual_start, manual_end_date: manual_end, run_over_hours, hours_allocated, updated_at: new Date().toISOString() };
+  const update = { status, order_number, name, markup, tax, discount, stock_markup, priority, auto_schedule, manual_start_date: manual_start, manual_end_date: manual_end, run_over_hours, hours_allocated, updated_at: new Date().toISOString() };
   if (dueISO) update.due = new Date(dueISO + 'T12:00:00').toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' });
   if (startISO) update.production_start_date = startISO;
   Object.assign(o, update);

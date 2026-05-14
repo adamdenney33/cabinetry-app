@@ -50,18 +50,53 @@
     return Number.isFinite(n) ? n : null;
   }
 
+  /** @param {number | null} id */
+  function saveOpenClientId(id) {
+    if (!_initComplete) return;
+    if (id == null) localStorage.removeItem('pc_open_client_id');
+    else localStorage.setItem('pc_open_client_id', String(id));
+  }
+  function loadOpenClientId() {
+    const v = localStorage.getItem('pc_open_client_id');
+    const n = v == null ? NaN : parseInt(v, 10);
+    return Number.isFinite(n) ? n : null;
+  }
+
+  /** @param {number | null} id */
+  function saveOpenStockId(id) {
+    if (!_initComplete) return;
+    if (id == null) localStorage.removeItem('pc_open_stock_id');
+    else localStorage.setItem('pc_open_stock_id', String(id));
+  }
+  function loadOpenStockId() {
+    const v = localStorage.getItem('pc_open_stock_id');
+    const n = v == null ? NaN : parseInt(v, 10);
+    return Number.isFinite(n) ? n : null;
+  }
+
+  /** @param {string | null} view */
+  function saveCabinetMainView(view) {
+    if (!_initComplete) return;
+    if (!view) localStorage.removeItem('pc_cb_main_view');
+    else localStorage.setItem('pc_cb_main_view', view);
+  }
+  function loadCabinetMainView() {
+    return localStorage.getItem('pc_cb_main_view');
+  }
+
   /** @param {{projectId?: number|null, cabinetId?: number|null, cutlistId?: number|null, mainView?: string} | null} ctx */
   function saveOpenCutlistCtx(ctx) {
+    // Block ALL writes until restoreAppState has finished — INIT-time renders
+    // (loadAllData + the cutlist.js INIT block) call _clRenderContext with empty
+    // in-memory state and would otherwise overwrite the saved key (with junk
+    // like {cutlistId: null, mainView: 'library'}) before restore can read it.
+    if (!_initComplete) return;
     const empty = !ctx
       || (ctx.projectId == null
           && ctx.cabinetId == null
           && ctx.cutlistId == null
           && (!ctx.mainView || ctx.mainView === 'cutlists'));
     if (empty) {
-      // Suppress removes until restoreAppState has run — INIT-time renders
-      // call _clRenderContext with empty in-memory state and would otherwise
-      // wipe the saved key before restore can read it.
-      if (!_initComplete) return;
       localStorage.removeItem('pc_open_cutlist_ctx');
       return;
     }
@@ -76,6 +111,9 @@
     localStorage.removeItem('pc_open_quote_id');
     localStorage.removeItem('pc_open_order_id');
     localStorage.removeItem('pc_open_cutlist_ctx');
+    localStorage.removeItem('pc_open_client_id');
+    localStorage.removeItem('pc_open_stock_id');
+    localStorage.removeItem('pc_cb_main_view');
   }
 
   async function restoreAppState() {
@@ -160,10 +198,60 @@
           }
           if (restored && ctx.mainView && typeof w.switchCLMainView === 'function') {
             w.switchCLMainView(ctx.mainView);
+            // If restoring the Cut Layout view, auto-run the optimizer so the
+            // user sees the previously-computed packing without having to
+            // re-click Optimize. _clLoadCutlist clears results=null on load.
+            if (ctx.mainView === 'layout' && typeof w.optimize === 'function') {
+              // @ts-ignore - pieces/sheets are top-level lets from cutlist.js
+              const piecesArr = typeof pieces !== 'undefined' ? pieces : [];
+              // @ts-ignore
+              const sheetsArr = typeof sheets !== 'undefined' ? sheets : [];
+              if (piecesArr.length && sheetsArr.length) {
+                try { w.optimize(); } catch (e) { /* tolerate */ }
+              }
+            }
           }
         } catch (e) {
           if (canValidate) localStorage.removeItem('pc_open_cutlist_ctx');
         }
+      }
+
+      // Clients drill-in editor.
+      const cId = loadOpenClientId();
+      if (cId != null) {
+        // @ts-ignore - clients is a top-level let from clients.js
+        const cArr = typeof clients !== 'undefined' ? clients : null;
+        if (Array.isArray(cArr) && cArr.length > 0) {
+          if (cArr.find(/** @param {any} c */ c => c.id === cId)) {
+            if (typeof w.editClient === 'function') {
+              try { w.editClient(cId); } catch (e) { saveOpenClientId(null); }
+            }
+          } else {
+            saveOpenClientId(null);
+          }
+        }
+      }
+
+      // Stock drill-in editor.
+      const sId = loadOpenStockId();
+      if (sId != null) {
+        // @ts-ignore - stockItems is a top-level let from stock.js
+        const sArr = typeof stockItems !== 'undefined' ? stockItems : null;
+        if (Array.isArray(sArr) && sArr.length > 0) {
+          if (sArr.find(/** @param {any} s */ s => s.id === sId)) {
+            if (typeof w.editStockItem === 'function') {
+              try { w.editStockItem(sId); } catch (e) { saveOpenStockId(null); }
+            }
+          } else {
+            saveOpenStockId(null);
+          }
+        }
+      }
+
+      // Cabinet Builder sub-tab (library / results / rates).
+      const cbView = loadCabinetMainView();
+      if (cbView && typeof w.switchCBMainView === 'function') {
+        try { w.switchCBMainView(cbView); } catch (e) { /* tolerate */ }
       }
     } finally {
       w._pcSuppressToasts = false;
@@ -180,6 +268,12 @@
   W._pcLoadOpenOrderId = loadOpenOrderId;
   W._pcSaveOpenCutlistCtx = saveOpenCutlistCtx;
   W._pcLoadOpenCutlistCtx = loadOpenCutlistCtx;
+  W._pcSaveOpenClientId = saveOpenClientId;
+  W._pcLoadOpenClientId = loadOpenClientId;
+  W._pcSaveOpenStockId = saveOpenStockId;
+  W._pcLoadOpenStockId = loadOpenStockId;
+  W._pcSaveCabinetMainView = saveCabinetMainView;
+  W._pcLoadCabinetMainView = loadCabinetMainView;
   W._pcClearAllOpenKeys = clearAllOpenKeys;
   W._restoreAppState = restoreAppState;
 })();

@@ -260,6 +260,28 @@ async function _hydrateOrderLines() {
   }));
 }
 
+/** Build a "2 cabinets · 1 item · 3 stock" caption from a quote/order's
+ *  cached line rows. Returns empty string when the cache is missing or empty.
+ *  @param {any[] | undefined} lines */
+function _lineKindCountsLabel(lines) {
+  if (!Array.isArray(lines) || !lines.length) return '';
+  let cab = 0, item = 0, stock = 0;
+  for (const l of lines) {
+    if (!l) continue;
+    const k = l.line_kind;
+    const qty = Math.max(1, parseInt(l.qty, 10) || 1);
+    if (k === 'stock') stock += qty;
+    else if (k === 'item') item += qty;
+    else cab += qty;
+  }
+  const parts = [];
+  if (cab) parts.push(`${cab} cabinet${cab !== 1 ? 's' : ''}`);
+  if (item) parts.push(`${item} item${item !== 1 ? 's' : ''}`);
+  if (stock) parts.push(`${stock} stock`);
+  return parts.join(' · ');
+}
+/** @type {any} */ (window)._lineKindCountsLabel = _lineKindCountsLabel;
+
 /** @param {number} quoteId */
 async function _refreshQuoteTotals(quoteId) {
   const q = quotes.find(x => x.id === quoteId);
@@ -407,26 +429,13 @@ function renderQuoteMain() {
     const total = quoteTotal(q);
     const statusBadge = q.status === 'approved' ? 'badge-green' : q.status === 'sent' ? 'badge-blue' : 'badge-gray';
     const statusText = q.status === 'approved' ? 'Approved' : q.status === 'sent' ? 'Sent' : 'Draft';
-    const lines = /** @type {any[]} */ (q._lines || []);
-    const cabCount  = lines.filter(/** @param {any} l */ l => (l.line_kind || 'cabinet') === 'cabinet').length;
-    const itemCount = lines.filter(/** @param {any} l */ l => l.line_kind === 'item').length;
-    const labCount  = lines.filter(/** @param {any} l */ l => l.line_kind === 'labour').length;
     const pName = quoteProject(q);
     const cName = quoteClient(q);
     const qNum = q.quote_number ? `${q.quote_number} · ` : '';
     const titleText = pName && cName
       ? `${qNum}${_escHtml(pName)} · ${_escHtml(cName)}`
       : `${qNum}${_escHtml(pName || cName || '')}`;
-    /** @param {string} label @param {string} kind @param {number} count @param {string} icon */
-    const stripCell = (label, kind, count, icon) => `
-        <div class="proj-act${count ? '' : ' empty'}">
-          <div class="proj-act-main" onclick="event.stopPropagation();loadQuoteIntoSidebar(${q.id})" title="Open quote">
-            ${icon}
-            <span class="proj-act-label">${label}</span>
-            <span class="proj-act-count">${count}</span>
-          </div>
-          <div class="proj-act-add" onclick="event.stopPropagation();loadQuoteIntoSidebar(${q.id});_qAddLine('${kind}')" title="Add ${label.toLowerCase()}">+</div>
-        </div>`;
+    const lineCounts = _lineKindCountsLabel(q._lines);
     const curIdx = QUOTE_STATUSES.indexOf(q.status || 'draft');
     const pipe = QUOTE_STATUSES.map((s, i) => {
       const done = i < curIdx;
@@ -441,14 +450,16 @@ function renderQuoteMain() {
     return `
     <div class="quote-card" style="cursor:pointer" onclick="loadQuoteIntoSidebar(${q.id})">
       <div class="qc-header">
-        <div style="flex:1;min-width:0;overflow:hidden">
-          <div class="qc-title" style="display:flex;align-items:center;gap:8px;min-width:0">
-            <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1">${titleText}</span>
-            <span class="badge ${statusBadge}" style="font-size:9px;padding:1px 6px;flex-shrink:0">${statusText}</span>
+        <div class="oc-info">
+          <div class="oc-title-row">
+            <div class="qc-title">${titleText}</div>
+            <span class="badge ${statusBadge}" style="font-size:10px" onclick="event.stopPropagation()">${statusText}</span>
           </div>
-          ${q.date ? `<div class="qc-meta">${q.date}</div>` : ''}
+          ${(q.date || lineCounts) ? `<div class="qc-meta">${[q.date, lineCounts].filter(Boolean).join(' · ')}</div>` : ''}
         </div>
-        <span class="qc-total">${fmt(total)}</span>
+        <div class="oc-right">
+          <div class="oc-value" style="cursor:default;border-bottom:none">${fmt(total)}</div>
+        </div>
       </div>
       ${q.notes ? `<div style="border-top:1px solid var(--border2);padding:8px 16px;background:var(--surface)">
         ${q.notes.split(/\r?\n/).filter(/** @param {string} l */ l => l).slice(0,3).map(/** @param {string} line */ line =>
@@ -457,11 +468,6 @@ function renderQuoteMain() {
         ${q.notes.split(/\r?\n/).filter(/** @param {string} l */ l => l).length > 3 ? '<div style="font-size:10px;color:var(--muted)">…</div>' : ''}
       </div>` : ''}
       <div class="oc-pipeline">${pipe}</div>
-      <div class="proj-strip cols-3" style="padding:8px 16px" onclick="event.stopPropagation()">
-        ${stripCell('Cabinets', 'cabinet', cabCount, _Q_ICON_CABINET)}
-        ${stripCell('Items', 'item', itemCount, _Q_ICON_ITEM)}
-        ${stripCell('Labour', 'labour', labCount, _Q_ICON_LABOUR)}
-      </div>
       <div class="qc-footer" onclick="event.stopPropagation()">
         <button class="btn btn-outline" onclick="printQuote(${q.id},'pdf')">PDF</button>
         <span style="flex:1"></span>
@@ -1006,9 +1012,6 @@ function updateQuoteField(id, field, val) {
 
 // Cabinets/Items/Labour icons mirror the top nav-tab SVGs:
 // Cabinet ← Cabinet nav-tab, Item ← Stock nav-tab (3D box), Labour ← Schedule nav-tab (calendar).
-const _Q_ICON_CABINET = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>';
-const _Q_ICON_ITEM = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>';
-const _Q_ICON_LABOUR = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>';
 
 // 48px-friendly version of the Quotes nav icon for the empty-state hero.
 const _Q_EMPTY_ICON = '<svg class="pe-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>';
@@ -1143,7 +1146,7 @@ function renderQuoteEditor() {
   // digits — the prefix is re-applied on save.
   const quoteNumStripped = String(quoteNum).replace(/^(QUO|Q)-/i, '');
 
-  const headerName = (projectName || 'Untitled project') + (clientName ? ' · ' + clientName : '');
+  const headerName = clientName || 'Untitled quote';
 
   host.innerHTML = `<div class="form-section editor-shell">
     <div class="project-header">
@@ -1153,21 +1156,27 @@ function renderQuoteEditor() {
         </button>
         <svg class="ph-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
         <span class="ph-title">${_escHtml(headerName)}</span>
+        <span class="cl-unsaved-pill" data-save-pill="quote" style="display:none"></span>
       </div>
     </div>
 
-    <div class="form-section-title">
-      <button class="ph-back" onclick="_qExitQuote()" title="Back" aria-label="Back">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-      </button>
-      <span>QUO-${_escHtml(quoteNumStripped)}</span>
-      <span class="save-indicator" data-save-indicator="quote" style="display:none">Autosave</span>
-    </div>
-    <div class="form-group" style="margin-bottom:10px">
+    <div class="form-group" style="padding:10px 14px">
       <label>Quote Number</label>
-      <input type="text" id="pq-quote-number" placeholder="Quote number..." autocomplete="off"
-        value="${_escHtml(quoteNumStripped)}"
-        oninput="_qMarkDirty()">
+      <div class="prefixed-input">
+        <span class="input-prefix">QUO-</span>
+        <input type="text" id="pq-quote-number" placeholder="Quote number..." autocomplete="off"
+          value="${_escHtml(quoteNumStripped)}"
+          oninput="_qMarkDirty()">
+      </div>
+    </div>
+
+    <div class="form-group" style="padding:0 14px 10px">
+      <label>Project Name</label>
+      <div class="prefixed-input">
+        <input type="text" id="pq-project-name" placeholder="e.g. Kitchen Renovation" autocomplete="off"
+          value="${_escHtml((q && q.name) || '')}"
+          oninput="_qMarkDirty()">
+      </div>
     </div>
 
     <div class="cl-section-header">
@@ -1175,7 +1184,6 @@ function renderQuoteEditor() {
       <div class="pill-group">
         <button class="cl-col-pill ${colDiscOff ? '' : 'active'}" data-col="disc" onclick="_qToggleColumn('disc',this)">Discount</button>
         <button class="cl-col-pill ${colHrsOff ? '' : 'active'}" data-col="hrs" onclick="_qToggleColumn('hrs',this)">Hours</button>
-        <button class="cl-col-pill ${colStockOn ? 'active' : ''}" data-col="stock" onclick="_qToggleColumn('stock',this)">Stock</button>
       </div>
     </div>
 
@@ -1184,6 +1192,7 @@ function renderQuoteEditor() {
     <div class="cl-add-row">
       <button class="cl-add-btn" onclick="_qAddLine('cabinet')">+ Cabinet</button>
       <button class="cl-add-btn" onclick="_qAddLine('item')">+ Item</button>
+      <button class="cl-add-btn" onclick="_qToggleStockLibrary()">+ Stock</button>
     </div>
 
     <div class="stock-library ${colStockOn ? 'visible' : ''}" id="pq-stock-library">
@@ -1230,7 +1239,7 @@ function renderQuoteEditor() {
       <div class="pf-totals" id="pq-totals"></div>
     </div>
 
-    <div class="editor-section">
+    <div class="editor-section" style="border-top:1px solid var(--border)">
       <div class="editor-section-title">Notes</div>
       <textarea class="pf-textarea" id="pq-notes" rows="3" placeholder="Customer-facing notes shown on the PDF..." oninput="_qMarkDirty()">${_escHtml((q && q.notes)||'')}</textarea>
     </div>
@@ -1242,6 +1251,9 @@ function renderQuoteEditor() {
   if (q || _qpState.lines.length > 0) {
     if (typeof _renderQuoteLines === 'function') _renderQuoteLines();
     if (typeof _renderQuoteLineTotals === 'function') _renderQuoteLineTotals();
+  }
+  if (q && typeof _setSaveStatus === 'function') {
+    _setSaveStatus('quote', _qpState.dirty ? 'dirty' : 'clean');
   }
 }
 
@@ -1298,7 +1310,7 @@ function _qQuoteSuggest(input, boxId) {
   if (q && !exact) {
     html += `<div class="client-suggest-item client-suggest-add" onmousedown="_qNewQuoteFromInput()">
       <span class="csi-icon">+</span>
-      <span class="csi-name">Start new quote #QUO-${esc(input.value.trim())}</span>
+      <span class="csi-name">Start new quote QUO-${esc(input.value.trim())}</span>
     </div>`;
   }
   box.innerHTML = html;
@@ -1387,6 +1399,26 @@ function _qToggleColumn(col, btn) {
     try { localStorage.setItem('pc_quote_col_' + col, nowActive ? 'on' : 'off'); } catch (e) {}
   }
 }
+
+/** Toggle the stock-library section from the "+ Stock" button in the add-row.
+ *  Persists state and focuses the search input when opening. */
+function _qToggleStockLibrary() {
+  const lib = document.getElementById('pq-stock-library');
+  if (!lib) return;
+  const willShow = !lib.classList.contains('visible');
+  lib.classList.toggle('visible', willShow);
+  try { localStorage.setItem('pc_quote_col_stock', willShow ? 'on' : 'off'); } catch (e) {}
+  if (willShow) {
+    setTimeout(() => {
+      const search = document.getElementById('pq-stock-search');
+      if (search) /** @type {HTMLInputElement} */ (search).focus();
+    }, 50);
+  } else {
+    const sugg = document.getElementById('pq-stock-suggest');
+    if (sugg) sugg.classList.remove('open');
+  }
+}
+/** @type {any} */ (window)._qToggleStockLibrary = _qToggleStockLibrary;
 
 /** Render the stock smart-library suggestions for the quote editor.
  *  @param {string} q */
@@ -1591,13 +1623,14 @@ async function saveQuoteEditor() {
     const notes = _popupVal('pq-notes');
     const qnRaw = _popupVal('pq-quote-number') || '';
     const quote_number = qnRaw ? ('QUO-' + qnRaw.replace(/^(QUO|Q)-/i, '')) : null;
+    const name = (_popupVal('pq-project-name') || '').trim() || null;
     // Legacy markup column not surfaced in the new editor — preserve the existing value.
     const markup = /** @type {any} */ (q).markup ?? 0;
     const tax = parseFloat(_popupVal('pq-tax')) || 0;
     const discount = parseFloat(_popupVal('pq-discount')) || 0;
     const stock_markup = parseFloat(_popupVal('pq-stock-markup')) || 0;
     /** @type {any} */
-    const update = { status, notes, quote_number, markup, tax, discount, stock_markup, updated_at: new Date().toISOString() };
+    const update = { status, notes, quote_number, name, markup, tax, discount, stock_markup, updated_at: new Date().toISOString() };
     Object.assign(q, update);
     // Flush pending line edits in parallel
     if (typeof _lineUpsertTimers !== 'undefined') {

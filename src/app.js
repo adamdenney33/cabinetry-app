@@ -383,6 +383,7 @@ function _renderOrderLineTotals() {
 function _orderLineUpdate(idx, field, val) {
   const row = _opState.lines[idx];
   if (!row) return;
+  if (typeof _setSaveStatus === 'function') _setSaveStatus('order', 'dirty');
   const numeric = ['qty', 'unit_price', 'labour_hours', 'schedule_hours', 'discount'];
   row[field] = numeric.includes(field) ? (parseFloat(val) || 0) : val;
   // Per-line discount changes the cached subtotal; bust the cabinet cache
@@ -427,11 +428,17 @@ function _orderLineAdd(kind) {
   _renderOrderLines();
   _renderOrderLineTotals();
   _renderOrderHoursBreakdown();
+  if (typeof _setSaveStatus === 'function') _setSaveStatus('order', 'saving');
   _db('order_lines').insert([row]).select().single().then(/** @param {any} r */ r => {
-    if (r.error || !r.data) { _toast('Could not add line — ' + (r.error?.message || ''), 'error'); return; }
+    if (r.error || !r.data) {
+      _toast('Could not add line — ' + (r.error?.message || ''), 'error');
+      if (typeof _setSaveStatus === 'function') _setSaveStatus('order', 'failed', { retry: () => _orderLineAdd(kind) });
+      return;
+    }
     const idx = _opState.lines.findIndex(x => x === row);
     if (idx < 0) return;
     _opState.lines[idx].id = r.data.id;
+    if (typeof _setSaveStatus === 'function') _setSaveStatus('order', 'saved');
     const cur = _opState.lines[idx];
     if (cur.name || cur.qty || cur.labour_hours || (cur.unit_price !== row.unit_price)) {
       _scheduleOrderLineUpsert(idx);
@@ -459,10 +466,16 @@ function _oAddStockLineFromLibrary(stockItem) {
   _opState.lines.push(row);
   _renderOrderLines();
   _renderOrderLineTotals();
+  if (typeof _setSaveStatus === 'function') _setSaveStatus('order', 'saving');
   _db('order_lines').insert([row]).select().single().then(/** @param {any} r */ r => {
-    if (r.error || !r.data) { _toast('Could not add stock line — ' + (r.error?.message || ''), 'error'); return; }
+    if (r.error || !r.data) {
+      _toast('Could not add stock line — ' + (r.error?.message || ''), 'error');
+      if (typeof _setSaveStatus === 'function') _setSaveStatus('order', 'failed', { retry: () => _oAddStockLineFromLibrary(stockItem) });
+      return;
+    }
     const idx = _opState.lines.findIndex(x => x === row);
     if (idx >= 0) _opState.lines[idx].id = r.data.id;
+    if (typeof _setSaveStatus === 'function') _setSaveStatus('order', 'saved');
   });
   // Clear the search input so the next pick starts fresh.
   const inp = /** @type {HTMLInputElement|null} */ (document.getElementById('po-stock-search'));
@@ -476,11 +489,18 @@ async function _orderLineRemove(idx) {
   if (row.line_kind === 'cabinet') {
     if (!confirm('Remove this cabinet line from the order? (Original quote unchanged.)')) return;
   }
-  await _db('order_lines').delete().eq('id', row.id);
+  if (typeof _setSaveStatus === 'function') _setSaveStatus('order', 'saving');
+  const { error } = await _db('order_lines').delete().eq('id', row.id);
+  if (error) {
+    if (typeof _setSaveStatus === 'function') _setSaveStatus('order', 'failed', { retry: () => _orderLineRemove(idx) });
+    _toast('Could not remove line — ' + (error.message || ''), 'error');
+    return;
+  }
   _opState.lines.splice(idx, 1);
   _renderOrderLines();
   _renderOrderLineTotals();
   _renderOrderHoursBreakdown();
+  if (typeof _setSaveStatus === 'function') _setSaveStatus('order', 'saved');
 }
 
 /** @type {Map<number, ReturnType<typeof setTimeout>>} */
@@ -502,8 +522,14 @@ function _scheduleOrderLineUpsert(idx) {
       schedule_hours: row.schedule_hours ?? null,
       discount: row.discount ?? 0,
     };
+    if (typeof _setSaveStatus === 'function') _setSaveStatus('order', 'saving');
     _db('order_lines').update(update).eq('id', row.id).then(/** @param {any} r */ (r) => {
-      if (r && r.error) console.warn('[order line upsert]', r.error.message);
+      if (r && r.error) {
+        console.warn('[order line upsert]', r.error.message);
+        if (typeof _setSaveStatus === 'function') _setSaveStatus('order', 'failed', { retry: () => _scheduleOrderLineUpsert(idx) });
+        return;
+      }
+      if (typeof _setSaveStatus === 'function') _setSaveStatus('order', 'saved');
     });
   }, 600);
   _orderLineUpsertTimers.set(idx, t);
@@ -663,6 +689,7 @@ function _renderQuoteLineTotals() {
 function _lineUpdate(idx, field, val) {
   const row = _qpState.lines[idx];
   if (!row) return;
+  if (typeof _setSaveStatus === 'function') _setSaveStatus('quote', 'dirty');
   const numeric = ['qty', 'unit_price', 'labour_hours', 'schedule_hours', 'discount'];
   row[field] = numeric.includes(field) ? (parseFloat(val) || 0) : val;
   if (field === 'discount' || field === 'qty') delete row._sub;
@@ -704,11 +731,17 @@ function _lineAdd(kind) {
   _qpState.lines.push(row);
   _renderQuoteLines();
   _renderQuoteLineTotals();
+  if (typeof _setSaveStatus === 'function') _setSaveStatus('quote', 'saving');
   _db('quote_lines').insert([row]).select().single().then(/** @param {any} r */ r => {
-    if (r.error || !r.data) { _toast('Could not add line — ' + (r.error?.message || ''), 'error'); return; }
+    if (r.error || !r.data) {
+      _toast('Could not add line — ' + (r.error?.message || ''), 'error');
+      if (typeof _setSaveStatus === 'function') _setSaveStatus('quote', 'failed', { retry: () => _lineAdd(kind) });
+      return;
+    }
     const idx = _qpState.lines.findIndex(x => x === row);
     if (idx < 0) return;
     _qpState.lines[idx].id = r.data.id;
+    if (typeof _setSaveStatus === 'function') _setSaveStatus('quote', 'saved');
     const cur = _qpState.lines[idx];
     if (cur.name || cur.qty || cur.labour_hours || (cur.unit_price !== row.unit_price)) {
       _scheduleLineUpsert(idx);
@@ -735,10 +768,16 @@ function _qAddStockLineFromLibrary(stockItem) {
   _qpState.lines.push(row);
   _renderQuoteLines();
   _renderQuoteLineTotals();
+  if (typeof _setSaveStatus === 'function') _setSaveStatus('quote', 'saving');
   _db('quote_lines').insert([row]).select().single().then(/** @param {any} r */ r => {
-    if (r.error || !r.data) { _toast('Could not add stock line — ' + (r.error?.message || ''), 'error'); return; }
+    if (r.error || !r.data) {
+      _toast('Could not add stock line — ' + (r.error?.message || ''), 'error');
+      if (typeof _setSaveStatus === 'function') _setSaveStatus('quote', 'failed', { retry: () => _qAddStockLineFromLibrary(stockItem) });
+      return;
+    }
     const idx = _qpState.lines.findIndex(x => x === row);
     if (idx >= 0) _qpState.lines[idx].id = r.data.id;
+    if (typeof _setSaveStatus === 'function') _setSaveStatus('quote', 'saved');
   });
   const inp = /** @type {HTMLInputElement|null} */ (document.getElementById('pq-stock-search'));
   if (inp) inp.value = '';
@@ -751,10 +790,17 @@ async function _lineRemove(idx) {
   if (row.line_kind === 'cabinet') {
     if (!confirm('Remove this cabinet line? This will also delete it from the project.')) return;
   }
-  await _db('quote_lines').delete().eq('id', row.id);
+  if (typeof _setSaveStatus === 'function') _setSaveStatus('quote', 'saving');
+  const { error } = await _db('quote_lines').delete().eq('id', row.id);
+  if (error) {
+    if (typeof _setSaveStatus === 'function') _setSaveStatus('quote', 'failed', { retry: () => _lineRemove(idx) });
+    _toast('Could not remove line — ' + (error.message || ''), 'error');
+    return;
+  }
   _qpState.lines.splice(idx, 1);
   _renderQuoteLines();
   _renderQuoteLineTotals();
+  if (typeof _setSaveStatus === 'function') _setSaveStatus('quote', 'saved');
 }
 
 /** Save the editor's current state and switch into Cabinet Builder pointed at
@@ -805,8 +851,14 @@ function _scheduleLineUpsert(idx) {
       schedule_hours: row.schedule_hours ?? null,
       discount: row.discount ?? 0,
     };
+    if (typeof _setSaveStatus === 'function') _setSaveStatus('quote', 'saving');
     _db('quote_lines').update(update).eq('id', row.id).then(/** @param {any} r */ (r) => {
-      if (r && r.error) console.warn('[line upsert]', r.error.message);
+      if (r && r.error) {
+        console.warn('[line upsert]', r.error.message);
+        if (typeof _setSaveStatus === 'function') _setSaveStatus('quote', 'failed', { retry: () => _scheduleLineUpsert(idx) });
+        return;
+      }
+      if (typeof _setSaveStatus === 'function') _setSaveStatus('quote', 'saved');
     });
   }, 600);
   _lineUpsertTimers.set(idx, t);

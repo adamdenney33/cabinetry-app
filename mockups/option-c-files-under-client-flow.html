@@ -1,0 +1,566 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ProCabinet.App — Option C · Files-under-client model · Flow Diagram</title>
+<style>
+  :root {
+    --accent: #e8a838;
+    --accent-dim: rgba(232,168,56,0.12);
+    --accent2: #0d9488;
+    --accent2-dim: rgba(13,148,136,0.12);
+    --danger: #e05252;
+    --danger-dim: rgba(224,82,82,0.12);
+    --success: #3d9970;
+    --success-dim: rgba(61,153,112,0.14);
+    --info: #5b8fc5;
+    --info-dim: rgba(80,140,220,0.12);
+    --bg: #f2f2f2;
+    --surface: #ffffff;
+    --surface2: #f7f7f7;
+    --border: #e0e0e0;
+    --border2: #ebebeb;
+    --text: #111111;
+    --text2: #444444;
+    --muted: #888888;
+    --radius: 8px;
+    --shadow: 0 1px 4px rgba(0,0,0,.04);
+    --shadow-md: 0 2px 8px rgba(0,0,0,.08);
+  }
+  html.dark {
+    --bg: #141414;
+    --surface: #1e1e1e;
+    --surface2: #252525;
+    --border: #2e2e2e;
+    --border2: #282828;
+    --text: #f0f0f0;
+    --text2: #bbbbbb;
+    --muted: #666666;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, sans-serif; font-size: 14px; line-height: 1.5; background: var(--bg); color: var(--text); }
+  code, .mono { font-family: 'SF Mono', Menlo, Consolas, monospace; font-size: 0.9em; }
+
+  .doc { max-width: 1280px; margin: 0 auto; padding: 32px 28px 80px; }
+  .doc-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; padding-bottom: 20px; border-bottom: 1px solid var(--border); margin-bottom: 32px; }
+  .doc-head h1 { font-size: 24px; font-weight: 800; margin: 0 0 4px; letter-spacing: -0.3px; }
+  .doc-head .subtitle { color: var(--muted); font-size: 13px; }
+  .theme-toggle { border: 1px solid var(--border); background: var(--surface); color: var(--text2); padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600; }
+
+  .lede { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px 20px; margin-bottom: 32px; color: var(--text2); }
+  .lede strong { color: var(--text); }
+
+  section.section { margin-top: 48px; }
+  .sec-num { font-size: 10px; color: var(--accent); font-weight: 800; letter-spacing: 2px; text-transform: uppercase; }
+  .sec-h { font-size: 20px; font-weight: 800; margin: 6px 0 6px; letter-spacing: -0.3px; }
+  .sec-lede { color: var(--text2); max-width: 760px; margin: 0 0 24px; }
+
+  /* ── Entity Model (two versions side-by-side) ── */
+  .model-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .model-frame { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 18px; }
+  .model-tag { display: inline-flex; align-items: center; gap: 7px; padding: 3px 10px; border-radius: 999px; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 14px; }
+  .model-tag.before { background: var(--danger-dim);  color: var(--danger); }
+  .model-tag.after  { background: var(--success-dim); color: var(--success); }
+  .model-tag::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+  .ent-row { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
+  .ent-row .lvl-label { font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 1.2px; color: var(--muted); width: 60px; text-align: right; flex-shrink: 0; }
+  .ent { border: 2px solid var(--border); border-radius: 8px; padding: 7px 12px; min-width: 88px; text-align: center; background: var(--surface); position: relative; box-shadow: var(--shadow); }
+  .ent .ent-name { font-size: 12px; font-weight: 800; color: var(--text); }
+  .ent .ent-sub  { font-size: 9.5px; color: var(--muted); margin-top: 1px; }
+  .ent.client   { border-color: var(--accent2); background: var(--accent2-dim); }
+  .ent.project  { border-color: var(--accent);  background: var(--accent-dim); }
+  .ent.workspace{ border-color: #6366f1;        background: rgba(99,102,241,0.10); }
+  .ent.workitem { border-color: var(--border); }
+  .ent .tag {
+    position: absolute; top: -8px; right: -8px;
+    background: var(--surface); border: 1.5px solid var(--border);
+    border-radius: 999px; font-size: 8.5px; font-weight: 800; padding: 1px 6px;
+    color: var(--text2); text-transform: uppercase; letter-spacing: 0.4px;
+  }
+  .ent .tag.removed { border-color: var(--danger); color: var(--danger); background: var(--danger-dim); }
+  .ent .tag.kept    { border-color: var(--success); color: var(--success); background: var(--success-dim); }
+  .ent .tag.new     { border-color: var(--info); color: var(--info); background: var(--info-dim); }
+  .ent .tag.renamed { border-color: #6366f1; color: #6366f1; background: rgba(99,102,241,0.10); }
+
+  .fanout { width: 80%; height: 18px; margin: -4px auto 6px; position: relative; border-left: 2px solid var(--border); border-right: 2px solid var(--border); border-bottom: 2px solid var(--border); border-radius: 0 0 8px 8px; }
+  .fanout::before { content: ''; position: absolute; top: -18px; left: 50%; width: 2px; height: 18px; background: var(--border); }
+  .fanout-label { position: absolute; top: -8px; left: 50%; transform: translateX(-50%); background: var(--surface); font-size: 9.5px; color: var(--muted); padding: 0 6px; font-weight: 600; white-space: nowrap; }
+  .fanout.direct { border-color: var(--accent2); }
+  .fanout.direct::before { background: var(--accent2); }
+  .fanout.direct .fanout-label { color: var(--accent2); }
+
+  .direct-row { display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 14px; padding-top: 14px; border-top: 1px dashed var(--border2); flex-wrap: wrap; }
+  .direct-row .arrow { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: var(--accent2); font-weight: 700; padding: 4px 10px; border: 1.5px solid var(--accent2); border-radius: 999px; background: var(--accent2-dim); }
+
+  /* ── Flow Lane (Current vs Proposed) ── */
+  .flow-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .flow-lane { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 18px 18px 22px; }
+  .flow-tag { display: inline-flex; align-items: center; gap: 7px; padding: 3px 10px; border-radius: 999px; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 14px; }
+  .flow-tag.current { background: var(--danger-dim); color: var(--danger); }
+  .flow-tag.proposed { background: var(--success-dim); color: var(--success); }
+  .flow-tag::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .flow-tag .count { background: var(--surface); color: var(--text); margin-left: 4px; padding: 0 6px; border-radius: 4px; border: 1px solid currentColor; opacity: 0.85; font-variant-numeric: tabular-nums; }
+
+  .flow-steps { list-style: none; padding: 0; margin: 0; position: relative; }
+  .flow-step { display: grid; grid-template-columns: 30px 1fr; gap: 12px; padding: 10px 0; position: relative; }
+  .flow-steps::before { content: ''; position: absolute; left: 14px; top: 22px; bottom: 22px; width: 2px; background: var(--border); z-index: 0; }
+  .step-num { width: 30px; height: 30px; border-radius: 50%; background: var(--surface); border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 12px; color: var(--text2); position: relative; z-index: 1; flex-shrink: 0; }
+  .flow-step.warn .step-num { border-color: var(--danger); color: var(--danger); background: var(--danger-dim); }
+  .flow-step.good .step-num { border-color: var(--success); color: var(--success); background: var(--success-dim); }
+  .flow-step.neut .step-num { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+  .step-body { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; }
+  .step-action { font-size: 13px; font-weight: 700; color: var(--text); display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+  .tab-chip { display: inline-flex; align-items: center; gap: 5px; padding: 1px 8px; border-radius: 4px; background: var(--info-dim); color: var(--info); font-size: 10px; font-weight: 700; letter-spacing: 0.4px; text-transform: uppercase; }
+  .tab-chip.clients  { background: rgba(13,148,136,0.14); color: var(--accent2); }
+  .tab-chip.projects { background: var(--accent-dim);     color: var(--accent); }
+  .tab-chip.quotes   { background: var(--info-dim);       color: var(--info); }
+  .tab-chip.orders   { background: rgba(147,51,234,0.14); color: #9333ea; }
+  .tab-chip.schedule { background: rgba(220,38,38,0.12);  color: #dc2626; }
+  .tab-chip.cutlist  { background: rgba(217,119,6,0.14);  color: #d97706; }
+  .tab-chip.cabinet  { background: rgba(99,102,241,0.14); color: #6366f1; }
+  .step-detail { font-size: 11.5px; color: var(--muted); margin-top: 3px; line-height: 1.45; }
+  .step-detail .mono { color: var(--text2); }
+
+  .pain-pill { display: inline-flex; align-items: center; gap: 4px; padding: 1px 7px; border-radius: 4px; background: var(--danger-dim); color: var(--danger); font-size: 9.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; }
+  .win-pill { display: inline-flex; align-items: center; gap: 4px; padding: 1px 7px; border-radius: 4px; background: var(--success-dim); color: var(--success); font-size: 9.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; }
+
+  /* ── Client card with grouped-by-name files ── */
+  .mockup-frame { background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 14px; margin: 12px 0; }
+  .mockup-frame .mfr-tag { font-size: 10px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 8px; }
+  .client-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+  .cc-header { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--border2); }
+  .cc-avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--accent-dim); color: var(--accent); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 14px; flex-shrink: 0; }
+  .cc-name { font-size: 15px; font-weight: 800; color: var(--text); }
+  .cc-meta { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .cc-total { margin-left: auto; font-size: 14px; font-weight: 800; color: var(--text); font-variant-numeric: tabular-nums; }
+
+  .cc-jobs { padding: 8px 12px 12px; }
+  .cc-jobs-h { display: flex; align-items: center; gap: 8px; font-size: 10px; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; padding: 6px 4px; }
+
+  .job-group { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 8px; overflow: hidden; }
+  .job-group-h { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: var(--surface2); border-bottom: 1px solid var(--border2); }
+  .job-name { font-size: 13px; font-weight: 800; color: var(--text); }
+  .job-status { font-size: 10px; color: var(--muted); }
+  .job-value { margin-left: auto; font-size: 12px; font-weight: 800; color: var(--text); font-variant-numeric: tabular-nums; }
+  .job-files { padding: 6px 8px 8px; display: flex; flex-direction: column; gap: 4px; }
+  .file-row { display: flex; align-items: center; gap: 9px; padding: 5px 8px; border-radius: 5px; background: var(--surface2); cursor: pointer; transition: background .1s; }
+  .file-row:hover { background: var(--accent-dim); }
+  .file-icon { width: 18px; height: 18px; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: #fff; flex-shrink: 0; }
+  .file-icon.quote   { background: var(--info); }
+  .file-icon.order   { background: #9333ea; }
+  .file-icon.cutlist { background: #d97706; }
+  .file-icon.cabinet { background: #6366f1; }
+  .file-type-label { font-size: 10px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: 0.5px; min-width: 50px; }
+  .file-detail { font-size: 11.5px; color: var(--text); flex: 1; min-width: 0; }
+  .file-stat { font-size: 10px; color: var(--muted); margin-left: auto; }
+  .file-status-badge { display: inline-block; padding: 1px 7px; border-radius: 4px; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; margin-left: 8px; }
+  .file-status-badge.sent     { background: var(--info-dim);     color: var(--info); }
+  .file-status-badge.approved { background: var(--success-dim);  color: var(--success); }
+  .file-status-badge.prod     { background: rgba(80,140,220,0.16); color: var(--info); }
+  .file-status-badge.draft    { background: var(--surface2);     color: var(--muted); border: 1px solid var(--border); }
+  .file-status-badge.complete { background: var(--accent2-dim);  color: var(--accent2); }
+
+  .add-files {
+    display: flex; gap: 4px; padding: 4px 8px 0; flex-wrap: wrap;
+  }
+  .add-file-btn {
+    padding: 3px 8px; border-radius: 4px; border: 1px dashed var(--border); background: transparent; color: var(--muted);
+    font-size: 10px; font-weight: 700; cursor: pointer; text-transform: uppercase; letter-spacing: 0.4px;
+  }
+  .add-file-btn:hover { color: var(--accent); border-color: var(--accent); background: var(--accent-dim); }
+
+  .new-job-btn {
+    margin-top: 6px;
+    padding: 6px 10px; border-radius: 6px; border: 1px dashed var(--accent); background: var(--accent-dim); color: var(--accent);
+    font-size: 11px; font-weight: 800; cursor: pointer; text-transform: uppercase; letter-spacing: 0.5px;
+    width: 100%; text-align: center;
+  }
+
+  /* ── Migration / Changes table ── */
+  table.changes { width: 100%; border-collapse: collapse; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; font-size: 12.5px; }
+  table.changes th, table.changes td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--border2); vertical-align: top; }
+  table.changes th { background: var(--surface2); color: var(--text2); font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 0.6px; }
+  table.changes tbody tr:last-child td { border-bottom: 0; }
+  table.changes td.label { font-weight: 700; color: var(--text); }
+  table.changes .same-pill { display: inline-block; padding: 1px 7px; border-radius: 4px; font-size: 10px; font-weight: 700; background: var(--surface2); color: var(--muted); text-transform: uppercase; letter-spacing: 0.4px; }
+  table.changes .change-pill { display: inline-block; padding: 1px 7px; border-radius: 4px; font-size: 10px; font-weight: 700; background: var(--accent-dim); color: var(--accent); text-transform: uppercase; letter-spacing: 0.4px; }
+  table.changes .danger-pill { display: inline-block; padding: 1px 7px; border-radius: 4px; font-size: 10px; font-weight: 700; background: var(--danger-dim); color: var(--danger); text-transform: uppercase; letter-spacing: 0.4px; }
+  table.changes .new-pill { display: inline-block; padding: 1px 7px; border-radius: 4px; font-size: 10px; font-weight: 700; background: var(--info-dim); color: var(--info); text-transform: uppercase; letter-spacing: 0.4px; }
+
+  /* ── Compare-decisions panel ── */
+  .vs-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+  .vs-col { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px 16px; }
+  .vs-col h4 { margin: 0 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.8px; }
+  .vs-col.now h4 { color: var(--muted); }
+  .vs-col.a h4   { color: var(--accent); }
+  .vs-col.c h4   { color: var(--accent2); }
+  .vs-col p { margin: 0 0 8px; font-size: 12px; color: var(--text2); }
+  .vs-col ul { padding-left: 18px; margin: 6px 0 0; }
+  .vs-col li { font-size: 12px; color: var(--text2); margin-bottom: 4px; }
+
+  @media (max-width: 1100px) {
+    .flow-pair, .model-pair, .vs-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="doc">
+
+  <header class="doc-head">
+    <div>
+      <h1>Option C — Files-under-client model</h1>
+      <div class="subtitle">Quote / Order / Cut List <em>are</em> the job · Cabinet Builder is the only thing with a Workspace · No standalone Project entity in the UI</div>
+    </div>
+    <button class="theme-toggle" onclick="document.documentElement.classList.toggle('dark')">Toggle dark</button>
+  </header>
+
+  <div class="lede">
+    <strong>The proposal:</strong> Stop treating "Project" as a parent of all work. Instead, each <strong>file</strong> (Quote, Order, Cut List) carries its own <code>name</code> and links straight to the client. The "Smith Kitchen" identity emerges from the <em>file name</em>, not from a separate Project row. <strong>Only Cabinet Builder</strong> keeps a project-shaped container — renamed <strong>Workspace</strong> — because it produces N cabinets in flight before any are committed to a quote or cut list.
+  </div>
+
+  <!-- ═══════════════ Entity model — Before vs After ═══════════════ -->
+  <section class="section">
+    <div class="sec-num">Section 01</div>
+    <h2 class="sec-h">Data model — before &amp; after</h2>
+    <p class="sec-lede">Schema changes are real this time. Most child tables drop <code>project_id</code> and gain a <code>name</code>. Cabinet workspace keeps a parent table (renamed for clarity).</p>
+
+    <div class="model-pair">
+
+      <!-- BEFORE -->
+      <div class="model-frame">
+        <span class="model-tag before">Current</span>
+        <div class="ent-row">
+          <span class="lvl-label">Top</span>
+          <div class="ent client"><span class="tag kept">Kept</span><div class="ent-name">Client</div><div class="ent-sub">contact</div></div>
+        </div>
+        <div class="fanout"><span class="fanout-label">has many</span></div>
+        <div class="ent-row">
+          <span class="lvl-label">Hub</span>
+          <div class="ent project"><span class="tag removed">Drop entity</span><div class="ent-name">Project</div><div class="ent-sub">name + status</div></div>
+        </div>
+        <div class="fanout"><span class="fanout-label">FK groups all 4</span></div>
+        <div class="ent-row">
+          <span class="lvl-label">Work</span>
+          <div class="ent workitem"><div class="ent-name">Cabinets</div><div class="ent-sub">project_id</div></div>
+          <div class="ent workitem"><div class="ent-name">Cut List</div><div class="ent-sub">project_id, name ✓</div></div>
+          <div class="ent workitem"><div class="ent-name">Quote</div><div class="ent-sub">project_id</div></div>
+          <div class="ent workitem"><div class="ent-name">Order</div><div class="ent-sub">project_id</div></div>
+        </div>
+        <div style="margin-top: 16px; padding: 10px 12px; background: var(--surface2); border-radius: 6px; font-size: 11px; color: var(--muted);">
+          Every work file points up to a Project. Project name carries the identity.
+        </div>
+      </div>
+
+      <!-- AFTER -->
+      <div class="model-frame">
+        <span class="model-tag after">Option C</span>
+        <div class="ent-row">
+          <span class="lvl-label">Top</span>
+          <div class="ent client"><span class="tag kept">Kept</span><div class="ent-name">Client</div><div class="ent-sub">contact</div></div>
+        </div>
+        <div class="fanout direct"><span class="fanout-label">has many · direct</span></div>
+        <div class="ent-row">
+          <span class="lvl-label">Files</span>
+          <div class="ent workitem"><span class="tag new">+ name</span><div class="ent-name">Quote</div><div class="ent-sub">client_id, <strong>name</strong></div></div>
+          <div class="ent workitem"><span class="tag new">+ name</span><div class="ent-name">Order</div><div class="ent-sub">client_id, <strong>name</strong></div></div>
+          <div class="ent workitem"><span class="tag kept">name ✓</span><div class="ent-name">Cut List</div><div class="ent-sub">client_id, name</div></div>
+          <div class="ent workspace"><span class="tag renamed">Renamed</span><div class="ent-name">Workspace</div><div class="ent-sub">client_id, name</div></div>
+        </div>
+        <div class="fanout direct"><span class="fanout-label">contains</span></div>
+        <div class="ent-row">
+          <span class="lvl-label" style="visibility:hidden">x</span>
+          <div class="ent workitem" style="opacity: 0.85;"><div class="ent-name">Cabinet rows</div><div class="ent-sub">workspace_id</div></div>
+        </div>
+
+        <div class="direct-row">
+          <span class="arrow">Quote → Order</span>
+          <span class="arrow">Workspace → Quote</span>
+          <span class="arrow">Workspace → Cut List</span>
+        </div>
+      </div>
+
+    </div>
+
+    <p style="font-size: 12px; color: var(--muted); margin-top: 12px;">
+      <strong>Direct links</strong> (already exist in code today): <code>orders.quote_id</code> for quote→order conversion, <code>cutlists.cabinet_id</code> for cabinet→cut-list linking, <code>cbCreateQuoteFromDraft</code> for workspace→quote export. The "Project hub" was duplicating linking work these direct FKs already do.
+    </p>
+  </section>
+
+  <!-- ═══════════════ Section 02 — How a "job" is identified ═══════════════ -->
+  <section class="section">
+    <div class="sec-num">Section 02</div>
+    <h2 class="sec-h">How a "job" is identified — by name, not by entity</h2>
+    <p class="sec-lede">The client view groups files by <strong>name stem</strong>. "Smith Kitchen Quote", "Smith Kitchen Order", "Smith Kitchen Cut List", "Smith Kitchen Cabinets" all visually group under <em>Smith Kitchen</em>.</p>
+
+    <div class="mockup-frame">
+      <div class="mfr-tag">Mockup · Clients tab → Jane Smith's expanded card</div>
+
+      <div class="client-card">
+        <div class="cc-header">
+          <div class="cc-avatar">J</div>
+          <div style="flex:1;min-width:0">
+            <div class="cc-name">Jane Smith</div>
+            <div class="cc-meta">jane@example.com · 555-0144 · 11 files across 3 jobs</div>
+          </div>
+          <div class="cc-total">$48,210</div>
+        </div>
+
+        <div class="cc-jobs">
+          <div class="cc-jobs-h">Jobs · grouped by name</div>
+
+          <!-- Job 1: Smith Kitchen — full pipeline -->
+          <div class="job-group">
+            <div class="job-group-h">
+              <span class="job-name">Smith Kitchen</span>
+              <span class="job-status">Active · started Feb 2026</span>
+              <span class="job-value">$32,400</span>
+            </div>
+            <div class="job-files">
+              <div class="file-row">
+                <div class="file-icon cabinet">▣</div>
+                <div class="file-type-label">Workspace</div>
+                <div class="file-detail">6 cabinets · last edited 2 days ago</div>
+              </div>
+              <div class="file-row">
+                <div class="file-icon quote">Q</div>
+                <div class="file-type-label">Quote</div>
+                <div class="file-detail">#Q-0042 · $32,400</div>
+                <span class="file-status-badge approved">Approved</span>
+              </div>
+              <div class="file-row">
+                <div class="file-icon order">O</div>
+                <div class="file-type-label">Order</div>
+                <div class="file-detail">#0042 · Due 18 May</div>
+                <span class="file-status-badge prod">Production</span>
+              </div>
+              <div class="file-row">
+                <div class="file-icon cutlist">✂</div>
+                <div class="file-type-label">Cut List</div>
+                <div class="file-detail">47 pieces · 4 sheets</div>
+                <span class="file-status-badge approved">Optimised</span>
+              </div>
+              <div class="add-files">
+                <button class="add-file-btn">+ Cut List</button>
+                <button class="add-file-btn">+ Quote (revision)</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Job 2: Smith Pantry — partial -->
+          <div class="job-group">
+            <div class="job-group-h">
+              <span class="job-name">Smith Pantry</span>
+              <span class="job-status">On Hold · client review</span>
+              <span class="job-value">$8,640</span>
+            </div>
+            <div class="job-files">
+              <div class="file-row">
+                <div class="file-icon cabinet">▣</div>
+                <div class="file-type-label">Workspace</div>
+                <div class="file-detail">2 cabinets</div>
+              </div>
+              <div class="file-row">
+                <div class="file-icon quote">Q</div>
+                <div class="file-type-label">Quote</div>
+                <div class="file-detail">#Q-0043 · $8,640</div>
+                <span class="file-status-badge sent">Sent</span>
+              </div>
+              <div class="add-files">
+                <button class="add-file-btn">+ Cut List</button>
+                <button class="add-file-btn">+ Order</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Job 3: Smith Bathroom — complete -->
+          <div class="job-group">
+            <div class="job-group-h">
+              <span class="job-name">Smith Bathroom</span>
+              <span class="job-status">Complete · delivered Apr 2026</span>
+              <span class="job-value">$7,170</span>
+            </div>
+            <div class="job-files">
+              <div class="file-row">
+                <div class="file-icon quote">Q</div>
+                <div class="file-type-label">Quote</div>
+                <div class="file-detail">#Q-0038 · $7,170</div>
+                <span class="file-status-badge complete">Complete</span>
+              </div>
+              <div class="file-row">
+                <div class="file-icon order">O</div>
+                <div class="file-type-label">Order</div>
+                <div class="file-detail">#0038 · Delivered 18 Apr</div>
+                <span class="file-status-badge complete">Complete</span>
+              </div>
+              <div class="file-row">
+                <div class="file-icon cutlist">✂</div>
+                <div class="file-type-label">Cut List</div>
+                <div class="file-detail">18 pieces · 2 sheets</div>
+                <span class="file-status-badge complete">Complete</span>
+              </div>
+            </div>
+          </div>
+
+          <button class="new-job-btn">+ Start new job for Jane</button>
+        </div>
+      </div>
+    </div>
+
+    <p style="font-size: 12px; color: var(--muted); margin: 8px 0 0;">
+      Each <em>job</em> is a visual group of files that share a name stem. There's no row in <code>projects</code> — just files whose names match. The "+&nbsp;Start new job" button opens a small modal: pick name + which file types to seed (most common: Workspace → Quote → ... grows over time).
+    </p>
+  </section>
+
+  <!-- ═══════════════ Section 03 — Flow A ═══════════════ -->
+  <section class="section">
+    <div class="sec-num">Section 03 · Flow A</div>
+    <h2 class="sec-h">Existing client → new quote on existing job</h2>
+    <p class="sec-lede">Same scenario as Option A's Flow A. Compare them apples-to-apples: Option C eliminates the project layer entirely from this path.</p>
+
+    <div class="flow-pair">
+
+      <!-- Current -->
+      <div class="flow-lane">
+        <span class="flow-tag current">Current <span class="count">7 steps · 3 tab switches</span></span>
+        <ol class="flow-steps">
+          <li class="flow-step neut"><div class="step-num">1</div><div class="step-body"><div class="step-action">Open <span class="tab-chip clients">Clients</span></div><div class="step-detail">Search "Jane Smith".</div></div></li>
+          <li class="flow-step neut"><div class="step-num">2</div><div class="step-body"><div class="step-action">Click "Projects" on client card</div><div class="step-detail">1-cell strip → <span class="mono">switchSection('projects')</span>.</div></div></li>
+          <li class="flow-step warn"><div class="step-num">3</div><div class="step-body"><div class="step-action">Land in <span class="tab-chip projects">Projects</span> <span class="pain-pill">2-state gate</span></div><div class="step-detail">Sidebar gate.</div></div></li>
+          <li class="flow-step neut"><div class="step-num">4</div><div class="step-body"><div class="step-action">Click "Smith Kitchen" project card</div></div></li>
+          <li class="flow-step neut"><div class="step-num">5</div><div class="step-body"><div class="step-action">Click "+ Quotes" on project card</div></div></li>
+          <li class="flow-step neut"><div class="step-num">6</div><div class="step-body"><div class="step-action">Land in <span class="tab-chip quotes">Quotes</span></div><div class="step-detail">Project + client pre-filled.</div></div></li>
+          <li class="flow-step good"><div class="step-num">7</div><div class="step-body"><div class="step-action">Add lines, autosave</div></div></li>
+        </ol>
+      </div>
+
+      <!-- Proposed (Option C) -->
+      <div class="flow-lane">
+        <span class="flow-tag proposed">Option C <span class="count">3 steps · 1 tab switch</span></span>
+        <ol class="flow-steps">
+          <li class="flow-step neut"><div class="step-num">1</div><div class="step-body"><div class="step-action">Open <span class="tab-chip clients">Clients</span></div><div class="step-detail">Search "Jane Smith". Her card shows all her jobs as grouped files.</div></div></li>
+          <li class="flow-step good"><div class="step-num">2</div><div class="step-body"><div class="step-action">Click "+ Quote (revision)" under <em>Smith Kitchen</em> <span class="win-pill">name inherited</span></div><div class="step-detail">New quote pre-filled with <strong>client = Jane Smith</strong> and <strong>name = "Smith Kitchen"</strong>. Opens in Quotes tab.</div></div></li>
+          <li class="flow-step good"><div class="step-num">3</div><div class="step-body"><div class="step-action">Add lines, autosave</div><div class="step-detail">No project layer to navigate. The quote IS the unit of work.</div></div></li>
+        </ol>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ═══════════════ Section 04 — Flow B (Cabinet Workspace → exports) ═══════════════ -->
+  <section class="section">
+    <div class="sec-num">Section 04 · Flow B</div>
+    <h2 class="sec-h">Cabinet Workspace → exports to Quote &amp; Cut List</h2>
+    <p class="sec-lede">This is the flow where Option C earns its keep. Workspace is the only entity that genuinely needs a "project container" — it produces N cabinets that may fan out to a quote and a cut list. The exports already exist in code; the user model now matches.</p>
+
+    <div class="flow-pair">
+
+      <!-- Current -->
+      <div class="flow-lane">
+        <span class="flow-tag current">Current <span class="count">conceptual ambiguity</span></span>
+        <ol class="flow-steps">
+          <li class="flow-step neut"><div class="step-num">1</div><div class="step-body"><div class="step-action">Open <span class="tab-chip cabinet">Cabinet</span></div><div class="step-detail">Pick project "Smith Kitchen". The "project" is the cabinet workspace.</div></div></li>
+          <li class="flow-step warn"><div class="step-num">2</div><div class="step-body"><div class="step-action">Add 6 cabinets <span class="pain-pill">stored as <span class="mono">[CB_DRAFT]</span> quote_lines</span></div><div class="step-detail">Under the hood, cabinets are written to a draft quote tagged <code>[CB_DRAFT]</code>. Same project_id as the eventual real quote.</div></div></li>
+          <li class="flow-step neut"><div class="step-num">3</div><div class="step-body"><div class="step-action">"Create Quote from cabinets"</div><div class="step-detail">Copies the draft lines into a new customer-facing quote. Both quote and draft live under the same project.</div></div></li>
+          <li class="flow-step warn"><div class="step-num">4</div><div class="step-body"><div class="step-action">Export to Cut List <span class="pain-pill">parts copied</span></div><div class="step-detail"><code>_clLoadCabinetParts</code> + <code>cutlists.cabinet_id</code> FK. But what cabinet? Cabinets are draft quote_lines, not a first-class entity.</div></div></li>
+          <li class="flow-step warn"><div class="step-num">5</div><div class="step-body"><div class="step-action">All linked via project_id <span class="pain-pill">hub-and-spoke</span></div><div class="step-detail">Conceptually muddy: cabinets are line-items, workspace is a project, but cabinet-library entries (templates) live in their own table.</div></div></li>
+        </ol>
+      </div>
+
+      <!-- Proposed -->
+      <div class="flow-lane">
+        <span class="flow-tag proposed">Option C <span class="count">model matches reality</span></span>
+        <ol class="flow-steps">
+          <li class="flow-step good"><div class="step-num">1</div><div class="step-body"><div class="step-action">Open <span class="tab-chip cabinet">Cabinet</span></div><div class="step-detail">Pick or create Workspace "Smith Kitchen". Workspace is a first-class entity with its own <code>name</code> + <code>client_id</code>.</div></div></li>
+          <li class="flow-step good"><div class="step-num">2</div><div class="step-body"><div class="step-action">Add 6 cabinets in workspace</div><div class="step-detail">Cabinets live in the workspace, not in a draft quote. No <code>[CB_DRAFT]</code> tag fiction.</div></div></li>
+          <li class="flow-step good"><div class="step-num">3</div><div class="step-body"><div class="step-action">Click "→ Quote" <span class="win-pill">direct export</span></div><div class="step-detail">Creates a Quote with <code>name = workspace.name</code>, <code>client_id = workspace.client_id</code>, lines copied from cabinets. Quote stands on its own — no project layer.</div></div></li>
+          <li class="flow-step good"><div class="step-num">4</div><div class="step-body"><div class="step-action">Click "→ Cut List" <span class="win-pill">direct export</span></div><div class="step-detail">Creates a Cut List with same name + client; <code>cutlists.workspace_id</code> FK preserves the link back to source workspace.</div></div></li>
+          <li class="flow-step good"><div class="step-num">5</div><div class="step-body"><div class="step-action">Quote → Order via <code>convertQuoteToOrder</code></div><div class="step-detail">Order inherits the name from the quote. Schedule picks up the order.</div></div></li>
+        </ol>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ═══════════════ Section 05 — Schema migration ═══════════════ -->
+  <section class="section">
+    <div class="sec-num">Section 05</div>
+    <h2 class="sec-h">Schema migration · how today's data becomes tomorrow's</h2>
+
+    <table class="changes">
+      <thead><tr><th>Table</th><th>Change</th><th>Migration</th></tr></thead>
+      <tbody>
+        <tr><td class="label">quotes</td><td><span class="new-pill">+ name</span> <span class="danger-pill">– project_id (eventually)</span></td><td>Add nullable <code>name text</code>. Backfill: <code>UPDATE quotes SET name = projects.name FROM projects WHERE quotes.project_id = projects.id</code>. Keep <code>project_id</code> as soft-deprecated for one release.</td></tr>
+        <tr><td class="label">orders</td><td><span class="new-pill">+ name</span> <span class="danger-pill">– project_id (eventually)</span></td><td>Same as quotes. Plus: when an order is created via <code>convertQuoteToOrder</code>, it now inherits <code>name</code> from the quote.</td></tr>
+        <tr><td class="label">cutlists</td><td><span class="same-pill">name ✓</span> <span class="new-pill">+ client_id</span> <span class="danger-pill">– project_id</span></td><td>Already has <code>name</code>. Add <code>client_id bigint references clients</code>. Backfill via <code>projects.client_id</code>. Drop <code>project_id</code> (library cutlists already have it nullable).</td></tr>
+        <tr><td class="label">pieces / sheets / edge_bands</td><td><span class="same-pill">unchanged</span></td><td>Already keyed on <code>cutlist_id</code> post-<code>cutlists_library_support</code> migration. <code>project_id</code> already nullable; can drop now.</td></tr>
+        <tr><td class="label">cabinets</td><td><span class="change-pill">rename FK</span></td><td>Rename <code>project_id</code> → <code>workspace_id</code>. Same column, just clarifies what it points to.</td></tr>
+        <tr><td class="label">projects</td><td><span class="change-pill">rename → cabinet_workspaces</span></td><td>Rename table. Drop rows that have no cabinets attached (those were pure "container" projects whose work has moved to per-file <code>name</code>). Or keep as zero-cabinet workspaces — user choice.</td></tr>
+        <tr><td class="label">quote_lines / order_lines</td><td><span class="same-pill">unchanged</span></td><td>Already keyed on <code>quote_id</code> / <code>order_id</code>. The <code>[CB_DRAFT]</code> notes-tag pattern goes away — cabinets now live in workspaces, not in draft quote_lines.</td></tr>
+        <tr><td class="label">cabinet_templates</td><td><span class="same-pill">unchanged</span></td><td>The library / template table is separate from workspaces. No change.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ═══════════════ Section 06 — Two-step phasing ═══════════════ -->
+  <section class="section">
+    <div class="sec-num">Section 06</div>
+    <h2 class="sec-h">A pragmatic landing path · do Option A first, then Option C</h2>
+    <p class="sec-lede">The two proposals aren't mutually exclusive. Option A is the cheap UX win you can land in a week; Option C is the structural cleanup you do once Option A proves the simpler model works for real users.</p>
+
+    <div class="vs-grid">
+      <div class="vs-col now">
+        <h4>Today</h4>
+        <p><strong>9 tabs</strong>, Projects hub with 2-state gate, cabinets live in draft quotes via <code>[CB_DRAFT]</code> tag.</p>
+        <ul>
+          <li>Project entity is its own row</li>
+          <li>Dedicated Projects tab</li>
+          <li>Cabinets stored as quote_lines</li>
+          <li>5 tables FK to projects</li>
+        </ul>
+      </div>
+      <div class="vs-col a">
+        <h4>Step 1 · Option A</h4>
+        <p>Collapse the tab. <strong>No schema changes.</strong> Projects entity stays, just expanded inline in Client cards.</p>
+        <ul>
+          <li>8 tabs (Projects tab removed)</li>
+          <li>Projects render inline in Client view</li>
+          <li>Existing FK plumbing unchanged</li>
+          <li>~300 LoC change in <code>clients.js</code></li>
+          <li><strong>Ship in 1 week.</strong></li>
+        </ul>
+      </div>
+      <div class="vs-col c">
+        <h4>Step 2 · Option C</h4>
+        <p>Once Option A is proven: drop the project entity from quotes/orders/cutlists; promote Cabinet Builder to a first-class Workspace.</p>
+        <ul>
+          <li>Schema migration: add <code>name</code>, drop <code>project_id</code></li>
+          <li>Rename <code>projects</code> → <code>cabinet_workspaces</code></li>
+          <li>Drop <code>[CB_DRAFT]</code> pattern; cabinets live in workspace</li>
+          <li>"Job" becomes a visual grouping by name in Client view</li>
+          <li><strong>Plan ~2–3 weeks.</strong></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════ Section 07 — Risks ═══════════════ -->
+  <section class="section">
+    <div class="sec-num">Section 07</div>
+    <h2 class="sec-h">Risks &amp; mitigations</h2>
+
+    <ul style="line-height: 1.7; color: var(--text2); padding-left: 22px;">
+      <li><strong>Name typos break visual grouping.</strong> "Smith Kitchen" vs "Smith Kitcen" → no grouping. <em>Mitigation:</em> never make the user retype it. Conversion/export <strong>always</strong> inherits the name. "+ New Quote" from a client card auto-fills the name from a smart-input over the client's existing job names.</li>
+      <li><strong>Quote revisions get awkward.</strong> "Smith Kitchen Quote v1 → v2". <em>Mitigation:</em> either let names handle it ("Smith Kitchen v2") or add a <code>parent_quote_id</code> FK for explicit revision chains. Probably the former — keeps it simple.</li>
+      <li><strong>Cabinet Workspace renaming touches a lot of UI.</strong> "Project" appears in Cabinet Builder labels, settings, save-buttons. <em>Mitigation:</em> single search-and-replace pass through Cabinet Builder; user-facing copy only — no logic changes inside <code>cabinet.js</code>.</li>
+      <li><strong>"All work for Jane Smith" reporting.</strong> Today: sum project values. After: sum across her quotes/orders/cutlists/workspaces. <em>Same query, just different join.</em></li>
+      <li><strong>Dashboard "Active Projects" widget.</strong> Currently doesn't exist; would need to become "Active Jobs" — derived from open quotes + orders grouped by name. Slightly more work than a simple <code>SELECT * FROM projects</code> but produces the same answer.</li>
+      <li><strong>Schema migration risk.</strong> Real but bounded. <code>project_id</code> can stay as a soft-deprecated column for one release while the new <code>name</code> + <code>client_id</code> fields prove out. Roll-forward in a single migration; no data loss because the project name is preserved on every related row.</li>
+      <li><strong>The <code>[CB_DRAFT]</code> pattern unwinds.</strong> Today: cabinets live as quote_lines with a <code>[CB_DRAFT]</code> notes tag. After: cabinets live in <code>cabinet_workspaces</code> with their own rows. <em>Mitigation:</em> migrate existing <code>[CB_DRAFT]</code> quotes to workspaces; the data shape is similar enough that this is a routine transform.</li>
+    </ul>
+  </section>
+
+</div>
+</body>
+</html>

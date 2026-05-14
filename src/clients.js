@@ -139,6 +139,9 @@ function editClient(id) {
   if (!c) return;
   /** @type {any} */ (window)._editingClientId = id;
   _clientsShowForm = true;
+  if (typeof /** @type {any} */ (window)._pcSaveOpenClientId === 'function') {
+    /** @type {any} */ (window)._pcSaveOpenClientId(id);
+  }
   _renderClientsSidebarGate();
   const set = /** @param {string} elId @param {string} val */ (elId, val) => {
     const el = _clInput(elId); if (el) el.value = val;
@@ -152,7 +155,7 @@ function editClient(id) {
   const ft = document.getElementById('cl-form-title-text');
   if (sb) /** @type {HTMLElement} */ (sb).style.display = 'none';
   if (ft) ft.textContent = 'Edit Client';
-  _clSetSaveState('saved');
+  if (typeof _setSaveStatus === 'function') _setSaveStatus('client', 'clean');
   const sidebar = document.querySelector('#panel-clients .sidebar-scroll');
   if (sidebar) /** @type {HTMLElement} */ (sidebar).scrollTop = 0;
 }
@@ -182,6 +185,9 @@ async function saveClientEdit() {
 function cancelClientEdit() {
   if (_clientsAutosaveTimer) { clearTimeout(_clientsAutosaveTimer); _clientsAutosaveTimer = null; }
   /** @type {any} */ (window)._editingClientId = null;
+  if (typeof /** @type {any} */ (window)._pcSaveOpenClientId === 'function') {
+    /** @type {any} */ (window)._pcSaveOpenClientId(null);
+  }
   for (const id of ['cl-name','cl-email','cl-phone','cl-address','cl-notes']) {
     const el = _clInput(id); if (el) el.value = '';
   }
@@ -189,7 +195,7 @@ function cancelClientEdit() {
   const ft = document.getElementById('cl-form-title-text');
   if (sb) { sb.textContent = '+ Add Client'; /** @type {HTMLElement} */ (sb).style.display = ''; }
   if (ft) ft.textContent = 'New Client';
-  _clSetSaveState(null);
+  if (typeof _setSaveStatus === 'function') _setSaveStatus('client', 'clean');
   _clientsShowForm = false;
   renderClientsMain();
 }
@@ -197,25 +203,13 @@ function cancelClientEdit() {
 /** @type {ReturnType<typeof setTimeout>|null} */
 let _clientsAutosaveTimer = null;
 
-/** @param {'saving'|'saved'|'error'|null} state */
-function _clSetSaveState(state) {
-  const el = document.getElementById('cl-save-indicator');
-  if (!el) return;
-  el.classList.remove('is-saving','is-saved','is-error');
-  if (!state) { /** @type {HTMLElement} */ (el).style.display = 'none'; el.textContent = ''; return; }
-  /** @type {HTMLElement} */ (el).style.display = '';
-  if (state === 'saving') { el.textContent = 'Saving…'; el.classList.add('is-saving'); }
-  else if (state === 'saved') { el.textContent = 'Saved'; el.classList.add('is-saved'); }
-  else if (state === 'error') { el.textContent = 'Save failed'; el.classList.add('is-error'); }
-}
-
-function _clScheduleAutosave() {
+function _clientsScheduleAutosave() {
   if (!(/** @type {any} */ (window)._editingClientId)) return;
   if (_clientsAutosaveTimer) clearTimeout(_clientsAutosaveTimer);
-  _clSetSaveState('saving');
+  if (typeof _setSaveStatus === 'function') _setSaveStatus('client', 'dirty');
   _clientsAutosaveTimer = setTimeout(_clAutosaveRun, 500);
 }
-/** @type {any} */ (window)._clScheduleAutosave = _clScheduleAutosave;
+/** @type {any} */ (window)._clientsScheduleAutosave = _clientsScheduleAutosave;
 
 async function _clAutosaveRun() {
   _clientsAutosaveTimer = null;
@@ -224,7 +218,10 @@ async function _clAutosaveRun() {
   const c = /** @type {any} */ (clients.find(x => x.id === id));
   if (!c) return;
   const name = _clInput('cl-name')?.value.trim() || '';
-  if (!name) { _clSetSaveState('error'); return; }
+  if (!name) {
+    if (typeof _setSaveStatus === 'function') _setSaveStatus('client', 'failed', { retry: _clAutosaveRun });
+    return;
+  }
   /** @type {any} */
   const updates = {
     name,
@@ -234,16 +231,20 @@ async function _clAutosaveRun() {
     notes: _clInput('cl-notes')?.value.trim() || null,
   };
   Object.assign(c, updates);
+  if (typeof _setSaveStatus === 'function') _setSaveStatus('client', 'saving');
   const { error } = await _db('clients').update(/** @type {any} */ (updates)).eq('id', id);
-  if (error) { _clSetSaveState('error'); return; }
-  _clSetSaveState('saved');
+  if (error) {
+    if (typeof _setSaveStatus === 'function') _setSaveStatus('client', 'failed', { retry: _clAutosaveRun });
+    return;
+  }
+  if (typeof _setSaveStatus === 'function') _setSaveStatus('client', 'saved');
   renderClientsMain();
 }
 
 (function _wireClientsAutosave() {
   for (const id of ['cl-name','cl-email','cl-phone','cl-address','cl-notes']) {
     const el = document.getElementById(id);
-    if (el) el.addEventListener('input', _clScheduleAutosave);
+    if (el) el.addEventListener('input', _clientsScheduleAutosave);
   }
 })();
 
@@ -342,20 +343,24 @@ function renderClientsMain() {
 
     const quoteRows = section('Quotes', cQuotes, /** @param {any} q */ q => {
       const label = _quoteLabel(q, { client: false });
-      const status = q.status ? ` · ${_escHtml(q.status)}` : '';
+      const qBadgeCls = q.status === 'approved' ? 'badge-green' : q.status === 'sent' ? 'badge-blue' : 'badge-gray';
+      const qLabel = q.status === 'approved' ? 'Approved' : q.status === 'sent' ? 'Sent' : 'Draft';
+      const statusPill = `<span class="badge ${qBadgeCls}" style="font-size:9px;padding:1px 6px;margin-left:6px">${qLabel}</span>`;
       const money = quoteTotal(q) ? ` · ${fmt(quoteTotal(q))}` : '';
-      return `<div style="font-size:11.5px;padding:4px 6px;border-radius:4px;cursor:pointer" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='transparent'"
+      return `<div style="font-size:11.5px;padding:4px 6px;border-radius:4px;cursor:pointer;display:flex;align-items:center;flex-wrap:wrap;gap:0" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='transparent'"
         onclick="event.stopPropagation();switchSection('quote');loadQuoteIntoSidebar(${q.id})">
-        ${_escHtml(label)}${status}${money}
+        <span>${_escHtml(label)}${money}</span>${statusPill}
       </div>`;
     });
     const orderRows = section('Orders', cOrders, /** @param {any} o */ o => {
       const label = _orderLabel(o, { client: false });
-      const status = o.status ? ` · ${_escHtml(o.status)}` : '';
+      const oBadgeCls = (/** @type {Record<string,string>} */ (STATUS_BADGES))[o.status] || 'badge-gray';
+      const oLabel = (/** @type {Record<string,string>} */ (STATUS_LABELS))[o.status] || o.status || 'Unknown';
+      const statusPill = o.status ? `<span class="badge ${oBadgeCls}" style="font-size:9px;padding:1px 6px;margin-left:6px">${_escHtml(oLabel)}</span>` : '';
       const money = o.value ? ` · ${fmt(o.value)}` : '';
-      return `<div style="font-size:11.5px;padding:4px 6px;border-radius:4px;cursor:pointer" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='transparent'"
+      return `<div style="font-size:11.5px;padding:4px 6px;border-radius:4px;cursor:pointer;display:flex;align-items:center;flex-wrap:wrap;gap:0" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='transparent'"
         onclick="event.stopPropagation();switchSection('orders');loadOrderIntoSidebar(${o.id})">
-        ${_escHtml(label)}${status}${money}
+        <span>${_escHtml(label)}${money}</span>${statusPill}
       </div>`;
     });
     const cutListRows = section('Cut Lists', cCutLists, /** @param {any} cl */ cl => {

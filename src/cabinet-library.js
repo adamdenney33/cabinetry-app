@@ -117,6 +117,26 @@ function cbSaveToLibrary() {
   _saveCabinetToDB(copy).then(id => { if (id) copy.db_id = id; });
 }
 
+/** Save a specific Quote Builder cabinet line (by index) to the library as a
+ *  reusable template. Mirrors cbSaveToLibrary but doesn't depend on the
+ *  scratchpad — used by the per-row "Add to Library" button.
+ *  @param {number} idx */
+function cbAddLineToLibrary(idx) {
+  const line = cbLines[idx];
+  if (!line) { _toast('Cabinet not found', 'error'); return; }
+  if (!_enforceFreeLimit('cabinet_templates', cbLibrary.length)) return;
+  const copy = JSON.parse(JSON.stringify(line));
+  copy.id = Date.now();
+  const libName = copy.name || copy.type || (typeof _cbNextCabinetName === 'function' ? _cbNextCabinetName(true) : 'Cabinet');
+  copy._libName = libName;
+  copy.name = libName;
+  cbLibrary.push(copy);
+  renderCBLibraryView();
+  _toast(`"${copy._libName}" added to library`, 'success');
+  _saveCabinetToDB(copy).then(id => { if (id) copy.db_id = id; });
+}
+/** @type {any} */ (window).cbAddLineToLibrary = cbAddLineToLibrary;
+
 /** @param {number} idx */
 function cbLoadFromLibrary(idx) {
   const src = cbLibrary[idx];
@@ -643,7 +663,7 @@ function _cbCutListProjActHtml(mainOnclick, addOnclick, cabid) {
   return `<div class="proj-act _cbct-btn empty" data-cabid="${cabid}" onclick="event.stopPropagation()">
     <div class="proj-act-main" onclick="event.stopPropagation();${mainOnclick}" title="Open this cabinet's cut lists">
       ${_CB_CUTLIST_ICON}
-      <span class="proj-act-label">Cut List</span>
+      <span class="proj-act-label">Link to Cutlist</span>
       <span class="proj-act-count _cbct-label">0</span>
     </div>
     <div class="proj-act-add" onclick="event.stopPropagation();${addOnclick}" title="New cut list">+</div>

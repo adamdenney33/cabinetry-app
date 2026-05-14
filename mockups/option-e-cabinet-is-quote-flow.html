@@ -1,0 +1,859 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ProCabinet.App — Option E · Cabinet IS Quote · Flow Diagram</title>
+<style>
+  :root {
+    --accent: #e8a838;
+    --accent-dim: rgba(232,168,56,0.12);
+    --accent2: #0d9488;
+    --accent2-dim: rgba(13,148,136,0.12);
+    --danger: #e05252;
+    --danger-dim: rgba(224,82,82,0.12);
+    --success: #3d9970;
+    --success-dim: rgba(61,153,112,0.14);
+    --info: #5b8fc5;
+    --info-dim: rgba(80,140,220,0.12);
+    --purple: #9333ea;
+    --purple-dim: rgba(147,51,234,0.14);
+    --indigo: #6366f1;
+    --indigo-dim: rgba(99,102,241,0.14);
+    --orange: #d97706;
+    --orange-dim: rgba(217,119,6,0.14);
+    --bg: #f2f2f2;
+    --surface: #ffffff;
+    --surface2: #f7f7f7;
+    --border: #e0e0e0;
+    --border2: #ebebeb;
+    --text: #111111;
+    --text2: #444444;
+    --muted: #888888;
+    --radius: 8px;
+    --shadow: 0 1px 4px rgba(0,0,0,.04);
+    --shadow-md: 0 2px 8px rgba(0,0,0,.08);
+  }
+  html.dark {
+    --bg: #141414;
+    --surface: #1e1e1e;
+    --surface2: #252525;
+    --border: #2e2e2e;
+    --border2: #282828;
+    --text: #f0f0f0;
+    --text2: #bbbbbb;
+    --muted: #666666;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, sans-serif; font-size: 14px; line-height: 1.5; background: var(--bg); color: var(--text); }
+  code, .mono { font-family: 'SF Mono', Menlo, Consolas, monospace; font-size: 0.9em; }
+
+  .doc { max-width: 1280px; margin: 0 auto; padding: 32px 28px 80px; }
+  .doc-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; padding-bottom: 20px; border-bottom: 1px solid var(--border); margin-bottom: 32px; }
+  .doc-head h1 { font-size: 24px; font-weight: 800; margin: 0 0 4px; letter-spacing: -0.3px; }
+  .doc-head .subtitle { color: var(--muted); font-size: 13px; }
+  .theme-toggle { border: 1px solid var(--border); background: var(--surface); color: var(--text2); padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600; }
+
+  .lede { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 18px 22px; margin-bottom: 32px; color: var(--text2); }
+  .lede .qmark { color: var(--accent); font-weight: 800; }
+  .lede strong { color: var(--text); }
+  .lede .principle {
+    font-size: 17px; font-weight: 700; color: var(--text); margin-bottom: 10px; letter-spacing: -0.2px;
+  }
+
+  section.section { margin-top: 48px; }
+  .sec-num { font-size: 10px; color: var(--accent); font-weight: 800; letter-spacing: 2px; text-transform: uppercase; }
+  .sec-h { font-size: 20px; font-weight: 800; margin: 6px 0 6px; letter-spacing: -0.3px; }
+  .sec-lede { color: var(--text2); max-width: 760px; margin: 0 0 24px; }
+
+  /* ── Realization panel ── */
+  .realization {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 22px;
+  }
+  .realization-row {
+    display: grid; grid-template-columns: 1fr 40px 1fr; gap: 12px; align-items: center;
+    margin-bottom: 12px;
+  }
+  .realization-row:last-child { margin-bottom: 0; }
+  .real-box {
+    background: var(--surface2); border: 1.5px dashed var(--border); border-radius: 8px;
+    padding: 10px 12px; font-size: 12.5px; color: var(--text2);
+  }
+  .real-box strong { color: var(--text); }
+  .real-box.before { border-color: var(--danger); background: var(--danger-dim); color: var(--danger); }
+  .real-box.after  { border-color: var(--success); background: var(--success-dim); color: var(--success); }
+  .real-arrow { text-align: center; font-size: 20px; color: var(--muted); }
+  .real-quote-note {
+    font-size: 11.5px; color: var(--muted); padding: 10px 14px; background: var(--surface2);
+    border-radius: 6px; border-left: 3px solid var(--accent); margin-top: 14px;
+  }
+  .real-quote-note .mono { color: var(--text2); }
+
+  /* ── Data model: three file types ── */
+  .model-frame { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 22px; }
+  .model-tag { display: inline-flex; align-items: center; gap: 7px; padding: 3px 10px; border-radius: 999px; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 14px; }
+  .model-tag.after  { background: var(--success-dim); color: var(--success); }
+  .model-tag::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+  .flat-graph-3 {
+    display: grid;
+    grid-template-columns: 200px 1fr 200px;
+    grid-template-areas: "lcol client rcol";
+    gap: 0;
+    align-items: center;
+    padding: 8px 0;
+    position: relative;
+  }
+  .client-hub {
+    grid-area: client; justify-self: center;
+    background: var(--accent2-dim); border: 2.5px solid var(--accent2); border-radius: 14px;
+    padding: 18px 24px; min-width: 180px; text-align: center;
+    box-shadow: var(--shadow-md);
+    z-index: 2;
+  }
+  .client-hub .name { font-size: 16px; font-weight: 800; color: var(--text); }
+  .client-hub .sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .file-column { display: flex; flex-direction: column; gap: 22px; position: relative; z-index: 1; }
+  .file-column.left  { grid-area: lcol; align-items: flex-end; }
+  .file-column.right { grid-area: rcol; align-items: flex-start; }
+  .file-box {
+    border: 2px solid; border-radius: 10px; padding: 11px 16px;
+    min-width: 170px; text-align: center; background: var(--surface);
+    box-shadow: var(--shadow); position: relative;
+  }
+  .file-box .fname { font-size: 13px; font-weight: 800; color: var(--text); }
+  .file-box .fsub  { font-size: 10px; color: var(--muted); margin-top: 2px; }
+  .file-box .views {
+    margin-top: 6px; padding-top: 6px; border-top: 1px dashed currentColor; opacity: 0.85;
+    font-size: 10px;
+  }
+  .file-box .views strong { font-weight: 700; }
+  .file-box.quote   { border-color: var(--info); }
+  .file-box.order   { border-color: var(--purple); }
+  .file-box.cutlist { border-color: var(--orange); }
+
+  .quote-callout {
+    display: inline-flex; align-items: center; gap: 4px;
+    margin-left: 4px;
+    padding: 1px 6px; border-radius: 4px;
+    background: var(--indigo-dim); color: var(--indigo);
+    border: 1px solid var(--indigo);
+    font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.4px;
+  }
+  .quote-tag-bar {
+    position: absolute; top: -10px; left: 50%; transform: translateX(-50%);
+    display: flex; gap: 6px;
+  }
+  .quote-tag-bar .tag {
+    background: var(--surface); border: 1.5px solid; border-radius: 999px;
+    font-size: 9px; font-weight: 800; padding: 1px 8px;
+    text-transform: uppercase; letter-spacing: 0.4px;
+    white-space: nowrap;
+  }
+  .quote-tag-bar .tag.qv { color: var(--info); border-color: var(--info); background: var(--info-dim); }
+  .quote-tag-bar .tag.cv { color: var(--indigo); border-color: var(--indigo); background: var(--indigo-dim); }
+
+  .flat-svg { position: absolute; top: 0; left: 0; right: 0; bottom: 0; pointer-events: none; z-index: 0; }
+
+  .gone-row {
+    margin-top: 18px; padding: 12px 14px;
+    background: var(--surface2); border: 1px dashed var(--border); border-radius: 8px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .gone-row .gone-tag {
+    font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.6px;
+    color: var(--danger); background: var(--danger-dim); padding: 2px 8px; border-radius: 4px;
+  }
+  .gone-row .gone-text {
+    font-size: 12px; color: var(--text2);
+  }
+  .gone-row .gone-text .mono { color: var(--danger); text-decoration: line-through; opacity: 0.7; }
+
+  /* ── Two-views mockup ── */
+  .two-views { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .view-frame {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    padding: 16px 16px 18px;
+  }
+  .view-tag {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 3px 10px; border-radius: 999px;
+    font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.6px;
+    margin-bottom: 12px;
+  }
+  .view-tag.design { background: var(--indigo-dim); color: var(--indigo); }
+  .view-tag.lines  { background: var(--info-dim); color: var(--info); }
+  .view-tag::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+  .editor-mockup {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden;
+  }
+  .em-head {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 10px 12px; border-bottom: 1px solid var(--border);
+    background: var(--surface2);
+  }
+  .em-head .back { width: 22px; height: 22px; border-radius: 4px; background: var(--surface); border: 1px solid var(--border); color: var(--muted); display: flex; align-items: center; justify-content: center; font-size: 13px; flex-shrink: 0; }
+  .em-head .icon-box { width: 22px; height: 22px; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 800; font-size: 11px; flex-shrink: 0; }
+  .em-head .icon-box.design { background: var(--indigo); }
+  .em-head .icon-box.quote  { background: var(--info); }
+  .em-head .title { font-size: 13px; font-weight: 800; color: var(--text); }
+  .em-head .sub { font-size: 10.5px; color: var(--muted); margin-top: 1px; }
+  .em-head .status-chip { font-size: 9px; font-weight: 800; padding: 2px 7px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.4px; margin-left: auto; flex-shrink: 0; }
+  .em-head .status-chip.designing { background: var(--indigo-dim); color: var(--indigo); }
+  .em-head .status-chip.draft     { background: var(--surface2); color: var(--muted); border: 1px solid var(--border); }
+  .em-head .status-chip.sent      { background: var(--info-dim); color: var(--info); }
+
+  .view-toggle {
+    display: flex; padding: 8px 12px; gap: 6px;
+    border-bottom: 1px solid var(--border2);
+    background: var(--surface);
+    font-size: 11px;
+  }
+  .vt-btn {
+    padding: 4px 10px; border-radius: 5px; font-weight: 700; cursor: pointer;
+    border: 1px solid var(--border); background: var(--surface2); color: var(--muted);
+  }
+  .vt-btn.active.design { background: var(--indigo-dim); color: var(--indigo); border-color: var(--indigo); }
+  .vt-btn.active.lines  { background: var(--info-dim); color: var(--info); border-color: var(--info); }
+
+  /* ── Design canvas mockup (cabinet design view) ── */
+  .design-canvas {
+    background: var(--surface2);
+    padding: 14px 12px;
+    min-height: 220px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+  .design-cab {
+    background: var(--surface); border: 1.5px solid var(--indigo); border-radius: 6px;
+    padding: 8px 10px;
+    box-shadow: var(--shadow);
+  }
+  .design-cab .cab-num { font-size: 9px; color: var(--indigo); font-weight: 800; }
+  .design-cab .cab-name { font-size: 11px; font-weight: 700; color: var(--text); margin-top: 1px; }
+  .design-cab .cab-dim { font-size: 10px; color: var(--muted); margin-top: 4px; font-variant-numeric: tabular-nums; }
+  .design-cab .cab-price { font-size: 10px; color: var(--text2); font-weight: 700; margin-top: 5px; font-variant-numeric: tabular-nums; }
+  .design-add {
+    background: transparent; border: 1.5px dashed var(--border); border-radius: 6px;
+    padding: 10px; color: var(--muted); font-size: 11px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    text-transform: uppercase; letter-spacing: 0.5px;
+    cursor: pointer;
+  }
+  .design-add:hover { border-color: var(--indigo); color: var(--indigo); }
+
+  /* ── Line items table mockup (quote view) ── */
+  .lines-tbl {
+    width: 100%; border-collapse: collapse; font-size: 11.5px;
+  }
+  .lines-tbl th, .lines-tbl td { padding: 6px 8px; border-bottom: 1px solid var(--border2); text-align: left; }
+  .lines-tbl th { background: var(--surface2); color: var(--muted); font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; }
+  .lines-tbl td { color: var(--text); }
+  .lines-tbl tbody tr:last-child td { border-bottom: 0; }
+  .lines-tbl .lkind {
+    display: inline-block; padding: 1px 6px; border-radius: 4px; font-size: 9px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.4px;
+  }
+  .lines-tbl .lkind.cab { background: var(--indigo-dim); color: var(--indigo); }
+  .lines-tbl .lkind.itm { background: var(--accent-dim); color: var(--accent); }
+  .lines-tbl .lkind.lab { background: var(--accent2-dim); color: var(--accent2); }
+  .lines-tbl .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .lines-foot {
+    display: flex; padding: 8px 12px; background: var(--surface2);
+    border-top: 1px solid var(--border2);
+    font-size: 11px;
+  }
+  .lines-foot .lab { color: var(--muted); }
+  .lines-foot .val { margin-left: auto; font-weight: 800; color: var(--text); font-variant-numeric: tabular-nums; }
+
+  .both-edit-callout {
+    margin-top: 12px;
+    background: var(--success-dim); border: 1px solid var(--success); border-radius: 8px;
+    padding: 12px 14px;
+    font-size: 12px; color: var(--success); font-weight: 600;
+  }
+  .both-edit-callout strong { font-weight: 800; }
+
+  /* ── Lifecycle pipeline ── */
+  .pipeline {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 18px 16px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    overflow-x: auto;
+  }
+  .pipe-stage {
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    text-align: center; flex: 1; min-width: 80px;
+  }
+  .pipe-circle {
+    width: 32px; height: 32px; border-radius: 50%;
+    border: 3px solid; background: var(--surface);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 12px;
+  }
+  .pipe-stage.designing .pipe-circle { border-color: var(--indigo); color: var(--indigo); background: var(--indigo-dim); }
+  .pipe-stage.draft     .pipe-circle { border-color: var(--muted);  color: var(--muted);  }
+  .pipe-stage.sent      .pipe-circle { border-color: var(--info);   color: var(--info);   background: var(--info-dim); }
+  .pipe-stage.approved  .pipe-circle { border-color: var(--success);color: var(--success);background: var(--success-dim); }
+  .pipe-stage.prod      .pipe-circle { border-color: var(--purple); color: var(--purple); background: var(--purple-dim); }
+  .pipe-stage.delivery  .pipe-circle { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+  .pipe-stage.complete  .pipe-circle { border-color: var(--text2);  color: var(--text2);  background: var(--surface2); }
+  .pipe-stage .label { font-size: 10.5px; font-weight: 700; color: var(--text); text-transform: uppercase; letter-spacing: 0.5px; }
+  .pipe-stage .sublbl { font-size: 9.5px; color: var(--muted); }
+  .pipe-line {
+    flex: 0.6; height: 2px; background: var(--border); position: relative;
+  }
+  .pipe-line.solid { background: var(--success); }
+  .pipe-transition {
+    position: absolute; top: -22px; left: 50%; transform: translateX(-50%);
+    font-size: 9px; color: var(--muted); white-space: nowrap;
+    font-style: italic;
+  }
+  .pipe-bg-row {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-top: 14px; padding: 8px 12px; background: var(--surface); border: 1px solid var(--border2); border-radius: 8px;
+    font-size: 11px;
+  }
+  .pipe-bg-row .lab { font-weight: 800; color: var(--text2); font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .pipe-bg-row .ph {
+    flex: 1; margin-left: 12px;
+    height: 18px; border-radius: 9px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 700; color: var(--text); position: relative;
+  }
+  .pipe-bg-row .ph.cab  { background: var(--indigo-dim); color: var(--indigo); flex: 1.5; margin-right: 6px; }
+  .pipe-bg-row .ph.qot  { background: var(--info-dim); color: var(--info); flex: 3; margin-right: 6px; }
+  .pipe-bg-row .ph.ord  { background: var(--purple-dim); color: var(--purple); flex: 4; }
+
+  /* ── Schema simplification table ── */
+  table.schema {
+    width: 100%; border-collapse: collapse;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden;
+    font-size: 12.5px;
+  }
+  table.schema th, table.schema td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--border2); vertical-align: top; }
+  table.schema th { background: var(--surface2); color: var(--text2); font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 0.6px; }
+  table.schema tbody tr:last-child td { border-bottom: 0; }
+  table.schema td.label { font-weight: 700; }
+  table.schema .delta-d { display: inline-block; padding: 1px 7px; border-radius: 4px; font-size: 10px; font-weight: 800; background: var(--accent2-dim); color: var(--accent2); text-transform: uppercase; letter-spacing: 0.4px; }
+  table.schema .delta-e { display: inline-block; padding: 1px 7px; border-radius: 4px; font-size: 10px; font-weight: 800; background: var(--success-dim); color: var(--success); text-transform: uppercase; letter-spacing: 0.4px; }
+  table.schema .delta-drop { display: inline-block; padding: 1px 7px; border-radius: 4px; font-size: 10px; font-weight: 800; background: var(--danger-dim); color: var(--danger); text-transform: uppercase; letter-spacing: 0.4px; }
+
+  /* ── A/C/D/E comparison ── */
+  .four-up { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .four-up-col { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 14px 16px; }
+  .four-up-col h4 { margin: 0 0 8px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.8px; }
+  .four-up-col.a h4 { color: var(--accent); }
+  .four-up-col.c h4 { color: var(--accent2); }
+  .four-up-col.d h4 { color: var(--indigo); }
+  .four-up-col.e h4 { color: var(--success); }
+  .four-up-col .stat-line { font-size: 11px; color: var(--text2); margin-bottom: 5px; display: flex; gap: 6px; align-items: baseline; line-height: 1.3; }
+  .four-up-col .stat-line .lbl-mini { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.4px; font-weight: 700; width: 70px; flex-shrink: 0; }
+  .four-up-col .stat-line .val { font-weight: 700; color: var(--text); }
+  .four-up-col .recommend {
+    background: var(--success-dim); border: 1px solid var(--success); border-radius: 6px;
+    padding: 5px 8px; margin-top: 10px;
+    font-size: 10px; font-weight: 800; color: var(--success); text-transform: uppercase; letter-spacing: 0.6px;
+    display: flex; align-items: center; gap: 5px;
+  }
+  .four-up-col .recommend::before { content: '★'; font-size: 13px; }
+
+  @media (max-width: 1100px) {
+    .two-views, .flat-graph-3 { grid-template-columns: 1fr; grid-template-areas: "client" "lcol" "rcol"; gap: 18px; }
+    .file-column.left, .file-column.right { align-items: center; }
+    .four-up { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="doc">
+
+  <header class="doc-head">
+    <div>
+      <h1>Option E — Cabinet IS Quote</h1>
+      <div class="subtitle">One entity · Two views (Design canvas + Line items) · No <code>[CB_DRAFT]</code> workaround · One fewer table</div>
+    </div>
+    <button class="theme-toggle" onclick="document.documentElement.classList.toggle('dark')">Toggle dark</button>
+  </header>
+
+  <div class="lede">
+    <div class="principle">
+      <span class="qmark">"</span>What if Cabinet Projects were just Quotes (shared with quotes)?<span class="qmark">"</span>
+    </div>
+    <strong>The realization:</strong> Cabinet designs are <em>already</em> stored as <code>quote_lines</code> with <code>line_kind = 'cabinet'</code>. The current "Cabinet Project" / "Workspace" concept is just a draft quote tagged <code>[CB_DRAFT]</code> in its notes field — a workaround for the fact that we treated cabinet-design as a separate entity in the UI when the data model already collapsed them.
+    <br><br>
+    Remove the workaround. <strong>A Quote is a Quote.</strong> The Cabinet tab is a <em>design-canvas view</em> of a Quote; the Quote tab is the <em>line-items + status view</em>. Same row, same table, two ways to look at it. <code>[CB_DRAFT]</code> disappears. The Cabinet Builder snapshot-to-quote step disappears. One fewer entity in the model.
+    <br><br>
+    <span style="font-size: 12px; color: var(--muted);"><span class="qmark">"</span><em>Ultimately, the Client is the thing that groups them.</em><span class="qmark">"</span><br><span class="qmark">"</span><em>Treat each cabinet project as a single entity, same as quotes / orders / cut lists.</em><span class="qmark">"</span></span>
+  </div>
+
+  <!-- ═══════════════ Section 01 — The realization ═══════════════ -->
+  <section class="section">
+    <div class="sec-num">Section 01</div>
+    <h2 class="sec-h">The realization · cabinets already live in <code>quote_lines</code></h2>
+    <p class="sec-lede">Three sequential observations from <code>PLAN.md</code> and the codebase that, taken together, mean we don't need a "Cabinet Project" entity at all.</p>
+
+    <div class="realization">
+      <div class="realization-row">
+        <div class="real-box">
+          <strong>Observation 1.</strong> Per <code>PLAN.md § D.3</code>: <em>"Real cabinet instances inside a project are written to <code>quote_lines</code>."</em>
+          <br><br>Today's data model already treats cabinets as line items, not as a separate "cabinet" entity.
+        </div>
+        <div class="real-arrow">→</div>
+        <div class="real-box after">
+          <strong>So cabinets aren't a distinct entity</strong> — they're <em>just</em> quote_lines with <code>line_kind = 'cabinet'</code>.
+        </div>
+      </div>
+
+      <div class="realization-row">
+        <div class="real-box">
+          <strong>Observation 2.</strong> Cabinet Builder edits a "draft quote" tagged <code>[CB_DRAFT]</code> in its notes field. "Create Quote from cabinets" snapshots the draft into a fresh quote.
+          <br><br>So there are <em>two</em> quote rows for every job: one tagged draft (the workspace) and one customer-facing (the snapshot).
+        </div>
+        <div class="real-arrow">→</div>
+        <div class="real-box after">
+          <strong>This is a workaround</strong> for treating Cabinet Builder as a separate entity when it isn't. Drop the workaround: <em>the design IS the quote</em>. No snapshot. No duplicate row.
+        </div>
+      </div>
+
+      <div class="realization-row">
+        <div class="real-box">
+          <strong>Observation 3.</strong> A Quote in the Quote tab and a "Cabinet Project" in the Cabinet tab have the <em>same shape</em>: parent record with a name, client_id, status, and N line items.
+        </div>
+        <div class="real-arrow">→</div>
+        <div class="real-box after">
+          <strong>Same shape, same data, same table.</strong> Cabinet tab and Quote tab are two <em>views</em> of one entity — not two entities.
+        </div>
+      </div>
+
+      <div class="real-quote-note">
+        Conclusion: Phase 4.2 (2026-05-05) already removed <code>cbSavedQuotes</code> as a separate source of truth. This proposal completes that direction by removing the in-memory / [CB_DRAFT] separation entirely. <span class="mono">cbCreateQuoteFromDraft</span> stops being a snapshot — it becomes a status flip.
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════ Section 02 — Data model: 3 file entities ═══════════════ -->
+  <section class="section">
+    <div class="sec-num">Section 02</div>
+    <h2 class="sec-h">Data model · three file entities (down from four)</h2>
+    <p class="sec-lede">Option D had four file types (Quote / Order / Cut List / Cabinet Project). Option E has three. Quote serves both the design and presentation phases — same row, two views.</p>
+
+    <div class="model-frame">
+      <span class="model-tag after">Option E</span>
+
+      <div class="flat-graph-3" id="flat-graph">
+        <svg class="flat-svg" id="flat-svg" preserveAspectRatio="none"></svg>
+
+        <div class="file-column left">
+          <div class="file-box quote" style="min-width: 200px;">
+            <div class="quote-tag-bar">
+              <span class="tag qv">Quote view</span>
+              <span class="tag cv">Cabinet view</span>
+            </div>
+            <div class="fname">Quote</div>
+            <div class="fsub">client_id, name, status<br>quote_lines (cabinet · item · labour · stock)</div>
+            <div class="views"><strong>Two views</strong> of the same row</div>
+          </div>
+        </div>
+
+        <div class="client-hub">
+          <div class="name">Client</div>
+          <div class="sub">root contact</div>
+        </div>
+
+        <div class="file-column right">
+          <div class="file-box cutlist">
+            <div class="fname">Cut List</div>
+            <div class="fsub">client_id, name, quote_id (optional)<br>pieces, sheets</div>
+          </div>
+          <div class="file-box order">
+            <div class="fname">Order</div>
+            <div class="fsub">client_id, name, quote_id (optional)<br>order_lines</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="gone-row">
+        <span class="gone-tag">Gone</span>
+        <span class="gone-text">
+          <span class="mono">cabinet_projects</span> / <span class="mono">cabinet_workspaces</span> table from Option D — no longer needed. The Cabinet tab operates on the <strong>Quote</strong> table directly.
+        </span>
+      </div>
+
+      <div class="gone-row">
+        <span class="gone-tag">Gone</span>
+        <span class="gone-text">
+          <span class="mono">[CB_DRAFT]</span> notes-tag workaround — a Quote in design phase is just a Quote with <code>status = 'designing'</code>.
+        </span>
+      </div>
+
+      <div class="gone-row">
+        <span class="gone-tag">Gone</span>
+        <span class="gone-text">
+          <span class="mono">cbCreateQuoteFromDraft()</span> snapshot logic — no copy step. Status flip from <code>'designing'</code> → <code>'draft'</code> is the entire conversion.
+        </span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════ Section 03 — Two views of one Quote (centerpiece) ═══════════════ -->
+  <section class="section">
+    <div class="sec-num">Section 03</div>
+    <h2 class="sec-h">Two views of one Quote · the centerpiece</h2>
+    <p class="sec-lede">The same record, <em>Smith Kitchen</em>, opened in the Cabinet tab (design canvas) and the Quote tab (line items). Edits in either view persist to the same database row in real time.</p>
+
+    <div class="two-views">
+      <!-- CABINET VIEW: design canvas -->
+      <div class="view-frame">
+        <span class="view-tag design">Cabinet tab · Design view</span>
+        <div class="editor-mockup">
+          <div class="em-head">
+            <button class="back">←</button>
+            <span class="icon-box design">▣</span>
+            <div style="flex:1;min-width:0">
+              <div class="title">Smith Kitchen</div>
+              <div class="sub">Jane Smith · 6 cabinets · last edited 2m ago</div>
+            </div>
+            <span class="status-chip designing">Designing</span>
+          </div>
+          <div class="view-toggle">
+            <button class="vt-btn active design">Design</button>
+            <button class="vt-btn lines">Lines</button>
+          </div>
+          <div class="design-canvas">
+            <div class="design-cab"><div class="cab-num">CB-1</div><div class="cab-name">Base 900</div><div class="cab-dim">900 × 720 × 560</div><div class="cab-price">$2,140</div></div>
+            <div class="design-cab"><div class="cab-num">CB-2</div><div class="cab-name">Base 600</div><div class="cab-dim">600 × 720 × 560</div><div class="cab-price">$1,820</div></div>
+            <div class="design-cab"><div class="cab-num">CB-3</div><div class="cab-name">Wall 900</div><div class="cab-dim">900 × 720 × 320</div><div class="cab-price">$1,640</div></div>
+            <div class="design-cab"><div class="cab-num">CB-4</div><div class="cab-name">Wall 600</div><div class="cab-dim">600 × 720 × 320</div><div class="cab-price">$1,380</div></div>
+            <div class="design-cab"><div class="cab-num">CB-5</div><div class="cab-name">Tall 600</div><div class="cab-dim">600 × 2100 × 560</div><div class="cab-price">$3,420</div></div>
+            <div class="design-cab"><div class="cab-num">CB-6</div><div class="cab-name">Pantry 400</div><div class="cab-dim">400 × 2100 × 560</div><div class="cab-price">$2,440</div></div>
+            <div class="design-add">+ Add Cabinet</div>
+            <div class="design-add">+ Item</div>
+            <div class="design-add">+ Labour</div>
+          </div>
+        </div>
+        <p style="font-size: 11.5px; color: var(--muted); margin: 10px 4px 0; line-height: 1.5;">
+          The canvas renders each cabinet line in <code>quote_lines</code> as a tile. Edits open the Cabinet Builder sidebar with dimensions, materials, hardware, finishes — the existing UI, unchanged. The "+ Item" and "+ Labour" buttons let users add non-cabinet lines to the same quote without leaving the canvas.
+        </p>
+      </div>
+
+      <!-- QUOTE VIEW: line items table -->
+      <div class="view-frame">
+        <span class="view-tag lines">Quote tab · Lines view</span>
+        <div class="editor-mockup">
+          <div class="em-head">
+            <button class="back">←</button>
+            <span class="icon-box quote">Q</span>
+            <div style="flex:1;min-width:0">
+              <div class="title">Smith Kitchen</div>
+              <div class="sub">Jane Smith · #Q-0042 · 6 cabinets + 2 items</div>
+            </div>
+            <span class="status-chip sent">Sent</span>
+          </div>
+          <div class="view-toggle">
+            <button class="vt-btn design">Design</button>
+            <button class="vt-btn active lines">Lines</button>
+          </div>
+          <div style="padding: 4px 0;">
+            <table class="lines-tbl">
+              <thead><tr><th>Kind</th><th>Description</th><th class="num">Qty</th><th class="num">Total</th></tr></thead>
+              <tbody>
+                <tr><td><span class="lkind cab">Cab</span></td><td>Base 900</td><td class="num">1</td><td class="num">$2,140</td></tr>
+                <tr><td><span class="lkind cab">Cab</span></td><td>Base 600</td><td class="num">1</td><td class="num">$1,820</td></tr>
+                <tr><td><span class="lkind cab">Cab</span></td><td>Wall 900</td><td class="num">1</td><td class="num">$1,640</td></tr>
+                <tr><td><span class="lkind cab">Cab</span></td><td>Wall 600</td><td class="num">1</td><td class="num">$1,380</td></tr>
+                <tr><td><span class="lkind cab">Cab</span></td><td>Tall 600</td><td class="num">1</td><td class="num">$3,420</td></tr>
+                <tr><td><span class="lkind cab">Cab</span></td><td>Pantry 400</td><td class="num">1</td><td class="num">$2,440</td></tr>
+                <tr><td><span class="lkind itm">Itm</span></td><td>Worktop · 32mm walnut</td><td class="num">3.2m</td><td class="num">$1,280</td></tr>
+                <tr><td><span class="lkind lab">Lab</span></td><td>On-site install</td><td class="num">8h</td><td class="num">$640</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="lines-foot">
+            <span class="lab">Tax · 8% · Discount · 0%</span>
+            <span class="val">$14,760</span>
+          </div>
+        </div>
+        <p style="font-size: 11.5px; color: var(--muted); margin: 10px 4px 0; line-height: 1.5;">
+          The same <code>quote_lines</code> rows rendered in tabular form. Cabinet rows are read-only here (price + qty come from the design canvas); item / labour rows are fully editable inline. Status chip in the header advances through Draft / Sent / Approved.
+        </p>
+      </div>
+    </div>
+
+    <div class="both-edit-callout">
+      <strong>One source of truth.</strong> Both views read and write to the same <code>quotes</code> + <code>quote_lines</code> rows. Toggle "Design" / "Lines" in either tab to flip view modes; or stay on the Cabinet tab to focus on geometry, or the Quote tab to focus on pricing &amp; status. No data drift, no sync logic needed.
+    </div>
+  </section>
+
+  <!-- ═══════════════ Section 04 — Quote lifecycle pipeline ═══════════════ -->
+  <section class="section">
+    <div class="sec-num">Section 04</div>
+    <h2 class="sec-h">Quote lifecycle · single pipeline, two-tab phasing</h2>
+    <p class="sec-lede">Adds a <code>designing</code> status before <code>draft</code>. Cabinet tab is the natural home for <em>designing</em>; Quote tab takes over from <em>draft</em> onward; Order tab takes over after conversion.</p>
+
+    <div class="pipeline">
+      <div class="pipe-stage designing">
+        <div class="pipe-circle">D</div>
+        <div class="label">Designing</div>
+        <div class="sublbl">Cabinet tab</div>
+      </div>
+      <div class="pipe-line solid">
+        <div class="pipe-transition">flip status</div>
+      </div>
+      <div class="pipe-stage draft">
+        <div class="pipe-circle">○</div>
+        <div class="label">Draft</div>
+        <div class="sublbl">Quote tab</div>
+      </div>
+      <div class="pipe-line solid">
+        <div class="pipe-transition">send</div>
+      </div>
+      <div class="pipe-stage sent">
+        <div class="pipe-circle">→</div>
+        <div class="label">Sent</div>
+        <div class="sublbl">Quote tab</div>
+      </div>
+      <div class="pipe-line solid">
+        <div class="pipe-transition">client approves</div>
+      </div>
+      <div class="pipe-stage approved">
+        <div class="pipe-circle">✓</div>
+        <div class="label">Approved</div>
+        <div class="sublbl">Quote tab</div>
+      </div>
+      <div class="pipe-line solid">
+        <div class="pipe-transition">convert</div>
+      </div>
+      <div class="pipe-stage prod">
+        <div class="pipe-circle">⚙</div>
+        <div class="label">Production</div>
+        <div class="sublbl">Order tab</div>
+      </div>
+      <div class="pipe-line solid">
+        <div class="pipe-transition">ship</div>
+      </div>
+      <div class="pipe-stage delivery">
+        <div class="pipe-circle">📦</div>
+        <div class="label">Delivery</div>
+        <div class="sublbl">Order tab</div>
+      </div>
+      <div class="pipe-line solid">
+        <div class="pipe-transition">done</div>
+      </div>
+      <div class="pipe-stage complete">
+        <div class="pipe-circle">★</div>
+        <div class="label">Complete</div>
+        <div class="sublbl">Order tab</div>
+      </div>
+    </div>
+
+    <div class="pipe-bg-row">
+      <span class="lab">Tab home</span>
+      <span class="ph cab">CABINET TAB</span>
+      <span class="ph qot">QUOTE TAB</span>
+      <span class="ph ord">ORDER TAB</span>
+    </div>
+
+    <p style="margin-top: 14px; color: var(--text2); font-size: 12.5px;">
+      The "convert to Order" step (Quote → Order) is the only true entity creation in the lifecycle — it splits a single quote into a quote-record (frozen pricing snapshot) + an order-record (production work). Everything before that is just status changes on the same quote row.
+    </p>
+  </section>
+
+  <!-- ═══════════════ Section 05 — Schema simplification (D vs E) ═══════════════ -->
+  <section class="section">
+    <div class="sec-num">Section 05</div>
+    <h2 class="sec-h">Schema · simpler than D</h2>
+
+    <table class="schema">
+      <thead><tr><th>Table</th><th>In Option D</th><th>In Option E</th></tr></thead>
+      <tbody>
+        <tr>
+          <td class="label">quotes</td>
+          <td><span class="delta-d">+ name</span> · status enum unchanged</td>
+          <td><span class="delta-e">+ name · + status enum value</span> "designing" prepended to pipeline; otherwise same</td>
+        </tr>
+        <tr>
+          <td class="label">orders</td>
+          <td><span class="delta-d">+ name · – project_id</span></td>
+          <td><span class="delta-e">+ name · – project_id</span> — same as D</td>
+        </tr>
+        <tr>
+          <td class="label">cutlists</td>
+          <td><span class="delta-d">+ client_id · – project_id</span></td>
+          <td><span class="delta-e">+ client_id · rename cabinet_id → quote_id</span> The back-link to source Quote is now to a Quote row directly, not to a separate cabinet entity.</td>
+        </tr>
+        <tr>
+          <td class="label">cabinets</td>
+          <td>Repurposed as the parent table for cabinet projects</td>
+          <td><span class="delta-drop">Dropped</span> No longer needed — cabinets live in <code>quote_lines</code> already.</td>
+        </tr>
+        <tr>
+          <td class="label">cabinet_projects / cabinet_workspaces</td>
+          <td>New parent table for cabinet workspace entity</td>
+          <td><span class="delta-drop">Never created</span> Quote table absorbs the role.</td>
+        </tr>
+        <tr>
+          <td class="label">projects (legacy)</td>
+          <td>Dropped after migration</td>
+          <td>Dropped after migration — same as D</td>
+        </tr>
+        <tr>
+          <td class="label">cabinet_templates</td>
+          <td>Unchanged (library of saved cabinet designs)</td>
+          <td>Unchanged — separate concern, stays as-is</td>
+        </tr>
+        <tr>
+          <td class="label">quote_lines</td>
+          <td>Unchanged · <code>line_kind</code> enum (cabinet/item/labour/stock) carries forward</td>
+          <td>Unchanged · same enum · cabinets continue to be <code>line_kind = 'cabinet'</code> rows</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ═══════════════ Section 06 — A vs C vs D vs E comparison ═══════════════ -->
+  <section class="section">
+    <div class="sec-num">Section 06</div>
+    <h2 class="sec-h">A vs C vs D vs E · side by side</h2>
+    <p class="sec-lede">Each option progressively simplifies the model. E is the simplest — only Client + Quote/Order/Cut List as file types.</p>
+
+    <div class="four-up">
+
+      <div class="four-up-col a">
+        <h4>A · Collapse tab</h4>
+        <div class="stat-line"><span class="lbl-mini">Schema</span><span class="val">Unchanged</span></div>
+        <div class="stat-line"><span class="lbl-mini">File types</span><span class="val">4 (Cab, Q, O, Cut)</span></div>
+        <div class="stat-line"><span class="lbl-mini">Project entity</span><span class="val">Kept (hidden)</span></div>
+        <div class="stat-line"><span class="lbl-mini">[CB_DRAFT]</span><span class="val">Still used</span></div>
+        <div class="stat-line"><span class="lbl-mini">Effort</span><span class="val">~1 week</span></div>
+      </div>
+
+      <div class="four-up-col c">
+        <h4>C · Name-grouped</h4>
+        <div class="stat-line"><span class="lbl-mini">Schema</span><span class="val">Migrate</span></div>
+        <div class="stat-line"><span class="lbl-mini">File types</span><span class="val">4</span></div>
+        <div class="stat-line"><span class="lbl-mini">Project entity</span><span class="val">Dropped</span></div>
+        <div class="stat-line"><span class="lbl-mini">[CB_DRAFT]</span><span class="val">Still used</span></div>
+        <div class="stat-line"><span class="lbl-mini">Effort</span><span class="val">~2-3 wk</span></div>
+      </div>
+
+      <div class="four-up-col d">
+        <h4>D · Flat files</h4>
+        <div class="stat-line"><span class="lbl-mini">Schema</span><span class="val">Migrate</span></div>
+        <div class="stat-line"><span class="lbl-mini">File types</span><span class="val">4 (Cab is separate)</span></div>
+        <div class="stat-line"><span class="lbl-mini">Project entity</span><span class="val">→ Cabinet Project</span></div>
+        <div class="stat-line"><span class="lbl-mini">[CB_DRAFT]</span><span class="val">Replaced</span></div>
+        <div class="stat-line"><span class="lbl-mini">Effort</span><span class="val">~2 wk</span></div>
+      </div>
+
+      <div class="four-up-col e">
+        <h4>E · Cabinet IS Quote</h4>
+        <div class="stat-line"><span class="lbl-mini">Schema</span><span class="val">Migrate · simplest</span></div>
+        <div class="stat-line"><span class="lbl-mini">File types</span><span class="val">3 (Q, O, Cut)</span></div>
+        <div class="stat-line"><span class="lbl-mini">Project entity</span><span class="val">Gone entirely</span></div>
+        <div class="stat-line"><span class="lbl-mini">[CB_DRAFT]</span><span class="val">Dropped (status enum)</span></div>
+        <div class="stat-line"><span class="lbl-mini">Effort</span><span class="val">~2 wk</span></div>
+        <div class="recommend">Cleanest model</div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ═══════════════ Section 07 — Phased landing ═══════════════ -->
+  <section class="section">
+    <div class="sec-num">Section 07</div>
+    <h2 class="sec-h">Phased landing path</h2>
+
+    <ol style="line-height: 1.7; color: var(--text2); padding-left: 22px;">
+      <li>
+        <strong>Phase 1 (1 week) · Option A first.</strong> Collapse Projects tab into Client cards. <em>No schema changes.</em> Proves the simpler IA with zero data risk.
+      </li>
+      <li>
+        <strong>Phase 2 (~3 days) · Add link-chip UI.</strong> The <code>.link-bar</code> above editor bodies reads existing FKs (<code>orders.quote_id</code>, <code>cutlists.cabinet_id</code>). Pure UI; no schema work.
+      </li>
+      <li>
+        <strong>Phase 3 (~1 week) · Add <code>'designing'</code> status to quotes.</strong> Migrate existing <code>[CB_DRAFT]</code>-tagged quotes to <code>status = 'designing'</code>. Strip the notes-tag. Cabinet tab now lists quotes filtered to <code>status = 'designing'</code> (or all quotes — design decision).
+      </li>
+      <li>
+        <strong>Phase 4 (~3 days) · Wire view-toggle inside editor.</strong> "Design" / "Lines" buttons in both Cabinet and Quote tab editors. Same data, different render. Cabinet-tab "Create Quote" button removed (already a quote).
+      </li>
+      <li>
+        <strong>Phase 5 (~1 week) · Rename <code>cutlists.cabinet_id</code> → <code>cutlists.quote_id</code>.</strong> Backfill from existing data. Update <code>_clLoadCabinetParts</code> and related call sites.
+      </li>
+      <li>
+        <strong>Phase 6 (~3 days) · Drop legacy.</strong> Drop unused <code>cabinets</code> table (was reserved for cabinet projects in Option D; not needed here). Drop <code>project_id</code> from quotes / orders / cutlists after soft-deprecation period.
+      </li>
+    </ol>
+
+    <p style="margin-top: 14px; color: var(--text2); font-size: 12.5px;">
+      Total: ~3.5 weeks. Phases 1–2 are common with Option D's landing path; phases 3–6 diverge to fold Cabinet Builder into Quote. Each phase is independently shippable. Order tab and Cut List tab remain untouched throughout.
+    </p>
+  </section>
+
+  <!-- ═══════════════ Section 08 — Risks ═══════════════ -->
+  <section class="section">
+    <div class="sec-num">Section 08</div>
+    <h2 class="sec-h">Risks &amp; mitigations</h2>
+
+    <ul style="line-height: 1.7; color: var(--text2); padding-left: 22px;">
+      <li>
+        <strong>Two tabs editing the same row.</strong> User opens Smith Kitchen in Cabinet tab on one device, edits dimensions; opens Quote tab on another device, edits markup %. <em>Mitigation:</em> existing autosave + last-write-wins is fine — they're disjoint fields in <code>quote_lines</code> vs <code>quotes</code>. Server-side, the writes don't conflict. UI: a subtle "edited in other view" toast if a stale render is detected.
+      </li>
+      <li>
+        <strong>"Should the Cabinet tab show quotes without cabinet lines?"</strong> Open design question. Option E-1: Cabinet tab lists <em>all</em> quotes; opening one in design view shows an empty canvas + "Add Cabinet" prompt. Option E-2: Cabinet tab filters to quotes with <code>line_kind = 'cabinet'</code> count &gt; 0. Recommend E-1 (simpler; user can start designing from any quote).
+      </li>
+      <li>
+        <strong>Quote without cabinets (pure items + labour).</strong> Lives in Quote tab naturally; appears in Cabinet tab with empty canvas. <em>Fine</em> — user adds cabinets if they want, or stays in Lines view.
+      </li>
+      <li>
+        <strong>The "status pipeline" gets longer.</strong> Adding <code>designing</code> as a pre-draft state extends the existing 3-step pipe (Draft / Sent / Approved) to 4. The <code>.oc-pipeline</code> renderer already iterates through <code>QUOTE_STATUSES</code> — extend the array, no UI rewrite.
+      </li>
+      <li>
+        <strong>Existing draft quotes in production.</strong> Migration: <code>UPDATE quotes SET status = 'designing' WHERE notes LIKE '%[CB_DRAFT]%'; UPDATE quotes SET notes = TRIM(REPLACE(notes, '[CB_DRAFT]', ''));</code> Idempotent and reversible.
+      </li>
+      <li>
+        <strong>Cabinet Builder UI doesn't change much.</strong> The canvas, the dimension inputs, the materials picker — all stay. What changes is the wrapper: instead of "save to draft → snapshot to quote", it's "you're already editing the quote; flip status when ready".
+      </li>
+      <li>
+        <strong>One genuine simplification, not three options layered.</strong> The big mental shift is "Cabinet tab is a view, not an entity owner". Once that lands, the schema cleanup follows naturally.
+      </li>
+    </ul>
+  </section>
+
+</div>
+
+<script>
+  // Draw the FK lines from each file box into the central Client hub
+  (function drawLines() {
+    const graph = document.getElementById('flat-graph');
+    const svg = document.getElementById('flat-svg');
+    const hub = graph.querySelector('.client-hub');
+    if (!graph || !svg || !hub) return;
+    function render() {
+      const gRect = graph.getBoundingClientRect();
+      svg.setAttribute('viewBox', `0 0 ${gRect.width} ${gRect.height}`);
+      svg.setAttribute('width', gRect.width);
+      svg.setAttribute('height', gRect.height);
+      const hubR = hub.getBoundingClientRect();
+      const hubCx = hubR.left - gRect.left + hubR.width / 2;
+      const hubCy = hubR.top - gRect.top + hubR.height / 2;
+      const boxes = graph.querySelectorAll('.file-box');
+      let svgContent = '';
+      boxes.forEach((box) => {
+        const r = box.getBoundingClientRect();
+        const cx = r.left - gRect.left + r.width / 2;
+        const cy = r.top - gRect.top + r.height / 2;
+        const mx = (cx + hubCx) / 2;
+        svgContent += `<path d="M${cx} ${cy} Q ${mx} ${cy} ${hubCx} ${hubCy}" stroke="rgb(13,148,136)" stroke-width="2" fill="none" opacity="0.55" />`;
+        svgContent += `<circle cx="${cx}" cy="${cy}" r="3" fill="rgb(13,148,136)" opacity="0.85" />`;
+      });
+      svg.innerHTML = svgContent;
+    }
+    render();
+    window.addEventListener('resize', render);
+  })();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,866 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ProCabinet.App — Option D · Flat-files model · Flow Diagram</title>
+<style>
+  :root {
+    --accent: #e8a838;
+    --accent-dim: rgba(232,168,56,0.12);
+    --accent2: #0d9488;
+    --accent2-dim: rgba(13,148,136,0.12);
+    --danger: #e05252;
+    --danger-dim: rgba(224,82,82,0.12);
+    --success: #3d9970;
+    --success-dim: rgba(61,153,112,0.14);
+    --info: #5b8fc5;
+    --info-dim: rgba(80,140,220,0.12);
+    --purple: #9333ea;
+    --purple-dim: rgba(147,51,234,0.14);
+    --indigo: #6366f1;
+    --indigo-dim: rgba(99,102,241,0.14);
+    --orange: #d97706;
+    --orange-dim: rgba(217,119,6,0.14);
+    --bg: #f2f2f2;
+    --surface: #ffffff;
+    --surface2: #f7f7f7;
+    --border: #e0e0e0;
+    --border2: #ebebeb;
+    --text: #111111;
+    --text2: #444444;
+    --muted: #888888;
+    --radius: 8px;
+    --shadow: 0 1px 4px rgba(0,0,0,.04);
+    --shadow-md: 0 2px 8px rgba(0,0,0,.08);
+  }
+  html.dark {
+    --bg: #141414;
+    --surface: #1e1e1e;
+    --surface2: #252525;
+    --border: #2e2e2e;
+    --border2: #282828;
+    --text: #f0f0f0;
+    --text2: #bbbbbb;
+    --muted: #666666;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, sans-serif; font-size: 14px; line-height: 1.5; background: var(--bg); color: var(--text); }
+  code, .mono { font-family: 'SF Mono', Menlo, Consolas, monospace; font-size: 0.9em; }
+
+  .doc { max-width: 1280px; margin: 0 auto; padding: 32px 28px 80px; }
+  .doc-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; padding-bottom: 20px; border-bottom: 1px solid var(--border); margin-bottom: 32px; }
+  .doc-head h1 { font-size: 24px; font-weight: 800; margin: 0 0 4px; letter-spacing: -0.3px; }
+  .doc-head .subtitle { color: var(--muted); font-size: 13px; }
+  .theme-toggle { border: 1px solid var(--border); background: var(--surface); color: var(--text2); padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600; }
+
+  .lede { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px 20px; margin-bottom: 32px; color: var(--text2); }
+  .lede strong { color: var(--text); }
+  .lede .quote-mark { color: var(--accent); font-weight: 800; }
+
+  section.section { margin-top: 48px; }
+  .sec-num { font-size: 10px; color: var(--accent); font-weight: 800; letter-spacing: 2px; text-transform: uppercase; }
+  .sec-h { font-size: 20px; font-weight: 800; margin: 6px 0 6px; letter-spacing: -0.3px; }
+  .sec-lede { color: var(--text2); max-width: 760px; margin: 0 0 24px; }
+
+  /* ── Data model: flat-files layout ── */
+  .model-frame { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 24px; }
+  .model-tag { display: inline-flex; align-items: center; gap: 7px; padding: 3px 10px; border-radius: 999px; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 18px; }
+  .model-tag.after  { background: var(--success-dim); color: var(--success); }
+  .model-tag::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+  /* Flat-grid layout: client at center, files arrayed around */
+  .flat-graph {
+    display: grid;
+    grid-template-columns: 200px 1fr 200px;
+    grid-template-areas:
+      "lcol client rcol";
+    gap: 0;
+    align-items: center;
+    padding: 12px 0;
+    position: relative;
+  }
+  .client-hub {
+    grid-area: client; justify-self: center;
+    background: var(--accent2-dim); border: 2.5px solid var(--accent2); border-radius: 14px;
+    padding: 18px 24px; min-width: 180px; text-align: center;
+    box-shadow: var(--shadow-md);
+    z-index: 2;
+  }
+  .client-hub .name { font-size: 16px; font-weight: 800; color: var(--text); }
+  .client-hub .sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .file-column {
+    display: flex; flex-direction: column; gap: 18px;
+    position: relative; z-index: 1;
+  }
+  .file-column.left  { grid-area: lcol; align-items: flex-end; }
+  .file-column.right { grid-area: rcol; align-items: flex-start; }
+  .file-box {
+    border: 2px solid; border-radius: 10px; padding: 9px 14px;
+    min-width: 150px; text-align: center; background: var(--surface);
+    box-shadow: var(--shadow); position: relative;
+  }
+  .file-box .fname { font-size: 12px; font-weight: 800; color: var(--text); }
+  .file-box .fsub  { font-size: 10px; color: var(--muted); margin-top: 1px; }
+  .file-box.quote     { border-color: var(--info);   }
+  .file-box.order     { border-color: var(--purple); }
+  .file-box.cutlist   { border-color: var(--orange); }
+  .file-box.workspace { border-color: var(--indigo); }
+  .file-box .tag {
+    position: absolute; top: -8px; right: -8px;
+    background: var(--surface); border: 1.5px solid var(--border);
+    border-radius: 999px; font-size: 8.5px; font-weight: 800; padding: 1px 6px;
+    color: var(--text2); text-transform: uppercase; letter-spacing: 0.4px;
+  }
+  .file-box .tag.new    { border-color: var(--info); color: var(--info); background: var(--info-dim); }
+  .file-box .tag.kept   { border-color: var(--success); color: var(--success); background: var(--success-dim); }
+  .file-box .tag.renamed{ border-color: var(--indigo); color: var(--indigo); background: var(--indigo-dim); }
+  /* SVG overlay container */
+  .flat-svg {
+    position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+    pointer-events: none; z-index: 0;
+  }
+
+  .legend {
+    display: flex; gap: 18px; justify-content: center; flex-wrap: wrap;
+    margin-top: 28px; padding-top: 18px; border-top: 1px dashed var(--border2);
+  }
+  .legend-item { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text2); }
+  .legend-line { width: 22px; height: 2px; }
+  .legend-line.client-fk { background: var(--accent2); }
+  .legend-line.entity-fk { background: var(--info); border-top: 2px dashed var(--info); height: 0; border-bottom: 0; }
+
+  .cross-link-table { margin-top: 22px; }
+  .cross-link-table table { width: 100%; border-collapse: collapse; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; font-size: 12.5px; }
+  .cross-link-table th, .cross-link-table td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--border2); vertical-align: top; }
+  .cross-link-table th { background: var(--surface2); color: var(--text2); font-weight: 700; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.6px; }
+  .cross-link-table tbody tr:last-child td { border-bottom: 0; }
+  .cross-link-table .lbl { font-weight: 700; }
+  .cross-link-table .lbl.q { color: var(--info); }
+  .cross-link-table .lbl.o { color: var(--purple); }
+  .cross-link-table .lbl.c { color: var(--orange); }
+  .cross-link-table .lbl.w { color: var(--indigo); }
+
+  /* ── Client card mockup ── */
+  .mockup-frame { background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 14px; margin: 12px 0; }
+  .mockup-frame .mfr-tag { font-size: 10px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 8px; }
+
+  .client-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+  .cc-header { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--border2); }
+  .cc-avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--accent-dim); color: var(--accent); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 14px; flex-shrink: 0; }
+  .cc-name { font-size: 15px; font-weight: 800; color: var(--text); }
+  .cc-meta { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .cc-total { margin-left: auto; font-size: 14px; font-weight: 800; color: var(--text); font-variant-numeric: tabular-nums; }
+
+  .cc-strip {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px;
+    padding: 10px 12px;
+  }
+  .cc-act {
+    display: flex; align-items: stretch;
+    border: 1.5px solid var(--border); border-radius: 6px;
+    background: var(--surface2); overflow: hidden;
+  }
+  .cc-act-main {
+    flex: 1; min-width: 0;
+    display: flex; align-items: center; gap: 7px;
+    padding: 7px 10px;
+    cursor: pointer; color: var(--text2);
+  }
+  .cc-act-main .icon {
+    width: 22px; height: 22px; border-radius: 5px;
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 11px; font-weight: 800;
+  }
+  .cc-act-main .icon.q { background: var(--info); }
+  .cc-act-main .icon.o { background: var(--purple); }
+  .cc-act-main .icon.c { background: var(--orange); }
+  .cc-act-main .icon.w { background: var(--indigo); }
+  .cc-act-label { font-size: 11.5px; font-weight: 700; color: var(--text); }
+  .cc-act-count { font-size: 11px; font-weight: 700; color: var(--accent2); background: rgba(13,148,136,.12); padding: 1px 7px; border-radius: 10px; margin-left: auto; font-variant-numeric: tabular-nums; }
+  .cc-act-money { font-size: 10px; color: var(--muted); font-weight: 600; }
+  .cc-act-add { width: 26px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: var(--surface); border-left: 1px solid var(--border); color: var(--muted); font-size: 13px; font-weight: 700; cursor: pointer; }
+  .cc-act-add:hover { background: var(--accent); color: #fff; }
+  .cc-foot { display: flex; gap: 6px; padding: 4px 12px 10px; justify-content: flex-end; }
+  .cc-foot .btn { padding: 4px 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); color: var(--text2); font-size: 11px; font-weight: 600; cursor: pointer; }
+
+  /* ── Flow Lane ── */
+  .flow-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .flow-lane { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 18px 18px 22px; }
+  .flow-tag { display: inline-flex; align-items: center; gap: 7px; padding: 3px 10px; border-radius: 999px; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 14px; }
+  .flow-tag.current { background: var(--danger-dim); color: var(--danger); }
+  .flow-tag.proposed { background: var(--success-dim); color: var(--success); }
+  .flow-tag::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .flow-tag .count { background: var(--surface); color: var(--text); margin-left: 4px; padding: 0 6px; border-radius: 4px; border: 1px solid currentColor; opacity: 0.85; font-variant-numeric: tabular-nums; }
+
+  .flow-steps { list-style: none; padding: 0; margin: 0; position: relative; }
+  .flow-step { display: grid; grid-template-columns: 30px 1fr; gap: 12px; padding: 10px 0; position: relative; }
+  .flow-steps::before { content: ''; position: absolute; left: 14px; top: 22px; bottom: 22px; width: 2px; background: var(--border); z-index: 0; }
+  .step-num { width: 30px; height: 30px; border-radius: 50%; background: var(--surface); border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 12px; color: var(--text2); position: relative; z-index: 1; flex-shrink: 0; }
+  .flow-step.warn .step-num { border-color: var(--danger); color: var(--danger); background: var(--danger-dim); }
+  .flow-step.good .step-num { border-color: var(--success); color: var(--success); background: var(--success-dim); }
+  .flow-step.neut .step-num { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+  .step-body { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; }
+  .step-action { font-size: 13px; font-weight: 700; color: var(--text); display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+  .tab-chip { display: inline-flex; align-items: center; gap: 5px; padding: 1px 8px; border-radius: 4px; font-size: 10px; font-weight: 700; letter-spacing: 0.4px; text-transform: uppercase; }
+  .tab-chip.clients  { background: var(--accent2-dim); color: var(--accent2); }
+  .tab-chip.quotes   { background: var(--info-dim); color: var(--info); }
+  .tab-chip.orders   { background: var(--purple-dim); color: var(--purple); }
+  .tab-chip.cutlist  { background: var(--orange-dim); color: var(--orange); }
+  .tab-chip.cabinet  { background: var(--indigo-dim); color: var(--indigo); }
+  .step-detail { font-size: 11.5px; color: var(--muted); margin-top: 3px; line-height: 1.45; }
+  .step-detail .mono { color: var(--text2); }
+
+  .win-pill { display: inline-flex; align-items: center; gap: 4px; padding: 1px 7px; border-radius: 4px; background: var(--success-dim); color: var(--success); font-size: 9.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; }
+
+  /* ── Editor mockup with cross-entity link badge ── */
+  .editor-mockup {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    overflow: hidden;
+    max-width: 480px; margin: 0 auto;
+  }
+  .ed-head-mock {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 12px 14px; border-bottom: 1px solid var(--border);
+    background: var(--surface2);
+  }
+  .ed-head-mock .back { width: 24px; height: 24px; border-radius: 4px; background: var(--surface); border: 1px solid var(--border); color: var(--muted); display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; cursor: pointer; }
+  .ed-head-mock .icon-box {
+    width: 26px; height: 26px; border-radius: 5px;
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-weight: 800; font-size: 12px; flex-shrink: 0;
+  }
+  .ed-head-mock .title { font-size: 14px; font-weight: 800; color: var(--text); }
+  .ed-head-mock .sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .ed-head-mock .ed-link { color: var(--accent2); cursor: pointer; }
+  .ed-head-mock .ed-link:hover { text-decoration: underline; }
+
+  .link-bar {
+    display: flex; gap: 8px; padding: 8px 14px; align-items: center;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border2);
+    flex-wrap: wrap;
+  }
+  .link-bar-label { font-size: 9px; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: 0.6px; }
+  .link-chip {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 3px 9px; border-radius: 999px;
+    font-size: 11px; font-weight: 700;
+    cursor: pointer; border: 1.5px solid;
+  }
+  .link-chip.quote     { background: var(--info-dim);    color: var(--info);    border-color: var(--info); }
+  .link-chip.order     { background: var(--purple-dim);  color: var(--purple);  border-color: var(--purple); }
+  .link-chip.cutlist   { background: var(--orange-dim);  color: var(--orange);  border-color: var(--orange); }
+  .link-chip.cabinet   { background: var(--indigo-dim);  color: var(--indigo);  border-color: var(--indigo); }
+  .link-chip:hover { filter: brightness(0.95); }
+  .link-chip .arrow-in  { opacity: 0.75; font-size: 13px; }
+  .link-chip .arrow-out { opacity: 0.75; font-size: 13px; }
+
+  /* ── Three-way comparison ── */
+  .three-up { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+  .three-up-col { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; }
+  .three-up-col h4 { margin: 0 0 8px; font-size: 13px; text-transform: uppercase; letter-spacing: 0.8px; }
+  .three-up-col.a h4 { color: var(--accent); }
+  .three-up-col.c h4 { color: var(--accent2); }
+  .three-up-col.d h4 { color: var(--indigo); }
+  .three-up-col .stat-line { font-size: 12px; color: var(--text2); margin-bottom: 6px; display: flex; gap: 8px; align-items: center; }
+  .three-up-col .stat-line .lbl-mini { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; width: 100px; flex-shrink: 0; }
+  .three-up-col .stat-line .val { font-weight: 700; color: var(--text); }
+  .three-up-col .pros { margin: 10px 0 0; padding-left: 18px; font-size: 12px; color: var(--text2); }
+  .three-up-col .pros li { margin-bottom: 4px; }
+  .three-up-col .recommend {
+    background: var(--success-dim); border: 1px solid var(--success); border-radius: 6px;
+    padding: 6px 10px; margin-top: 12px;
+    font-size: 11px; font-weight: 800; color: var(--success); text-transform: uppercase; letter-spacing: 0.6px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .three-up-col .recommend::before { content: '★'; font-size: 14px; }
+
+  @media (max-width: 1100px) {
+    .flow-pair, .three-up { grid-template-columns: 1fr; }
+    .flat-graph { grid-template-columns: 1fr; grid-template-areas: "client" "lcol" "rcol"; gap: 18px; }
+    .file-column.left, .file-column.right { align-items: center; }
+  }
+</style>
+</head>
+<body>
+<div class="doc">
+
+  <header class="doc-head">
+    <div>
+      <h1>Option D — Flat-files model</h1>
+      <div class="subtitle">Client groups everything · Every tab has the same shape · No special "Workspace" concept</div>
+    </div>
+    <button class="theme-toggle" onclick="document.documentElement.classList.toggle('dark')">Toggle dark</button>
+  </header>
+
+  <div class="lede">
+    <div style="font-size: 17px; font-weight: 700; color: var(--text); margin-bottom: 10px; letter-spacing: -0.2px;">
+      <span class="quote-mark">"</span>Ultimately, the <em>Client</em> is the thing that groups them.<span class="quote-mark">"</span>
+    </div>
+    <strong>The proposal:</strong> No Project entity. No name-stem matching. No nested "jobs". Quote, Order, Cut List, and <strong>Cabinet Project</strong> each belong to a <strong>Client</strong> — every tab has the <em>same shape</em> (list of named files, each containing child rows). Where two specific files <em>need</em> to be connected (cut list generated from a Cabinet Project, quote converted to order), the existing <strong>cross-entity FKs</strong> already handle that — names don't have to match.
+    <br><br>
+    <span style="font-size: 12px; color: var(--muted);"><span class="quote-mark">"</span><em>Where necessary, there is already functionality to link tabs even if names are different — e.g. cutlist to cabinets, or cabinets to quotes, or quotes to orders.</em><span class="quote-mark">"</span><br><span class="quote-mark">"</span><em>Treat each cabinet project as a single entity, same as quotes / orders / cut lists.</em><span class="quote-mark">"</span></span>
+  </div>
+
+  <!-- ═══════════════ Section 01 — Data model ═══════════════ -->
+  <section class="section">
+    <div class="sec-num">Section 01</div>
+    <h2 class="sec-h">Data model — flat, with surgical entity-to-entity links</h2>
+    <p class="sec-lede">Client is the only parent. Files are siblings. Direct FKs between files (the ones that already exist in code) carry the relationships that the Project hub used to carry.</p>
+
+    <div class="model-frame">
+      <span class="model-tag after">Option D</span>
+
+      <div class="flat-graph" id="flat-graph">
+        <!-- SVG layer drawn after DOM mount (see <script>) -->
+        <svg class="flat-svg" id="flat-svg" preserveAspectRatio="none"></svg>
+
+        <div class="file-column left">
+          <div class="file-box workspace">
+            <span class="tag new">+ name</span>
+            <div class="fname">Cabinet Project</div>
+            <div class="fsub">client_id, name<br>(contains N cabinets)</div>
+          </div>
+          <div class="file-box quote">
+            <span class="tag new">+ name</span>
+            <div class="fname">Quote</div>
+            <div class="fsub">client_id, name<br>quote_lines</div>
+          </div>
+        </div>
+
+        <div class="client-hub">
+          <div class="name">Client</div>
+          <div class="sub">root contact</div>
+        </div>
+
+        <div class="file-column right">
+          <div class="file-box cutlist">
+            <span class="tag kept">name ✓</span>
+            <div class="fname">Cut List</div>
+            <div class="fsub">client_id, name<br>pieces, sheets</div>
+          </div>
+          <div class="file-box order">
+            <span class="tag new">+ name</span>
+            <div class="fname">Order</div>
+            <div class="fsub">client_id, name<br>order_lines</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="legend">
+        <div class="legend-item"><span class="legend-line client-fk"></span> client_id (every file)</div>
+        <div class="legend-item"><span class="legend-line entity-fk"></span> direct FK between files (used only where needed)</div>
+      </div>
+
+      <div class="cross-link-table">
+        <table>
+          <thead><tr><th>From</th><th>To</th><th>FK column</th><th>Set by</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr><td><span class="lbl q">Quote</span></td><td><span class="lbl o">Order</span></td><td class="mono">orders.quote_id</td><td><span class="mono">convertQuoteToOrder()</span></td><td><span class="lbl" style="color:var(--success)">exists today</span></td></tr>
+            <tr><td><span class="lbl w">Cabinet Project</span></td><td><span class="lbl q">Quote</span></td><td class="mono">— (lines copied at export)</td><td><span class="mono">cbCreateQuoteFromDraft()</span></td><td><span class="lbl" style="color:var(--success)">exists today</span></td></tr>
+            <tr><td><span class="lbl w">Cabinet Project</span></td><td><span class="lbl c">Cut List</span></td><td class="mono">cutlists.cabinet_id</td><td><span class="mono">_clLoadCabinetParts()</span></td><td><span class="lbl" style="color:var(--success)">exists today</span></td></tr>
+            <tr><td><span class="lbl c">Cut List</span></td><td><span class="lbl w">Cabinet Project</span></td><td class="mono">cutlists.cabinet_id (reverse lookup)</td><td>"Linked: <em>Cabinet Project</em>" badge</td><td><span class="lbl" style="color:var(--success)">already rendered at <span class="mono">cutlist.js:4229</span></span></td></tr>
+            <tr><td><span class="lbl o">Order</span></td><td><span class="lbl q">Quote</span></td><td class="mono">orders.quote_id (reverse lookup)</td><td>"From Quote #Q-0042" badge</td><td><span class="lbl" style="color:var(--info)">add to editor header</span></td></tr>
+            <tr><td><span class="lbl q">Quote</span></td><td><span class="lbl o">Order</span></td><td class="mono">orders.quote_id (reverse lookup)</td><td>"→ Order #0042" badge</td><td><span class="lbl" style="color:var(--success)">already rendered at <span class="mono">quotes.js:437</span></span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════ Section 02 — Structural parity across tabs ═══════════════ -->
+  <section class="section">
+    <div class="sec-num">Section 02</div>
+    <h2 class="sec-h">Every tab has the same shape · Cabinet Project is just another file type</h2>
+    <p class="sec-lede">The Cabinet tab loses its special "Workspace" concept. A row in Cabinet is a named record with a client, a count of children, and a status — identical in shape to a row in Quote / Order / Cut List. The only thing that differs is what's <em>inside</em> the record (line items vs pieces vs cabinet designs).</p>
+
+    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px;">
+      <!-- Quote tab list -->
+      <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden;">
+        <div style="padding: 10px 14px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px;">
+          <div style="width: 24px; height: 24px; border-radius: 5px; background: var(--info); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 12px;">Q</div>
+          <div style="font-size: 13px; font-weight: 800;">Quote tab</div>
+        </div>
+        <div style="padding: 8px;">
+          <div style="background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 7px 9px; margin-bottom: 5px;">
+            <div style="font-size: 11.5px; font-weight: 700; color: var(--text);">Smith Kitchen</div>
+            <div style="font-size: 10px; color: var(--muted); margin-top: 1px;">Jane Smith · 6 lines</div>
+            <div style="display: flex; align-items: center; margin-top: 3px; gap: 6px;">
+              <span style="font-size: 9px; padding: 1px 6px; border-radius: 3px; background: var(--info-dim); color: var(--info); font-weight: 700;">SENT</span>
+              <span style="margin-left: auto; font-size: 11px; font-weight: 800; color: var(--text); font-variant-numeric: tabular-nums;">$12,840</span>
+            </div>
+          </div>
+          <div style="background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 7px 9px;">
+            <div style="font-size: 11.5px; font-weight: 700; color: var(--text);">Hill Pantry</div>
+            <div style="font-size: 10px; color: var(--muted); margin-top: 1px;">Bob Hill · 4 lines</div>
+            <div style="display: flex; align-items: center; margin-top: 3px; gap: 6px;">
+              <span style="font-size: 9px; padding: 1px 6px; border-radius: 3px; background: var(--surface); color: var(--muted); border: 1px solid var(--border); font-weight: 700;">DRAFT</span>
+              <span style="margin-left: auto; font-size: 11px; font-weight: 800; color: var(--text); font-variant-numeric: tabular-nums;">$8,640</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Order tab list -->
+      <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden;">
+        <div style="padding: 10px 14px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px;">
+          <div style="width: 24px; height: 24px; border-radius: 5px; background: var(--purple); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 12px;">O</div>
+          <div style="font-size: 13px; font-weight: 800;">Order tab</div>
+        </div>
+        <div style="padding: 8px;">
+          <div style="background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 7px 9px; margin-bottom: 5px;">
+            <div style="font-size: 11.5px; font-weight: 700; color: var(--text);">Smith Kitchen</div>
+            <div style="font-size: 10px; color: var(--muted); margin-top: 1px;">Jane Smith · 6 lines</div>
+            <div style="display: flex; align-items: center; margin-top: 3px; gap: 6px;">
+              <span style="font-size: 9px; padding: 1px 6px; border-radius: 3px; background: var(--info-dim); color: var(--info); font-weight: 700;">PROD</span>
+              <span style="margin-left: auto; font-size: 11px; font-weight: 800; color: var(--text); font-variant-numeric: tabular-nums;">$32,400</span>
+            </div>
+          </div>
+          <div style="background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 7px 9px;">
+            <div style="font-size: 11.5px; font-weight: 700; color: var(--text);">Bathroom run</div>
+            <div style="font-size: 10px; color: var(--muted); margin-top: 1px;">Sarah Lee · 3 lines</div>
+            <div style="display: flex; align-items: center; margin-top: 3px; gap: 6px;">
+              <span style="font-size: 9px; padding: 1px 6px; border-radius: 3px; background: var(--accent-dim); color: var(--accent); font-weight: 700;">DELIVERY</span>
+              <span style="margin-left: auto; font-size: 11px; font-weight: 800; color: var(--text); font-variant-numeric: tabular-nums;">$7,170</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cut List tab list -->
+      <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden;">
+        <div style="padding: 10px 14px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px;">
+          <div style="width: 24px; height: 24px; border-radius: 5px; background: var(--orange); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 12px;">✂</div>
+          <div style="font-size: 13px; font-weight: 800;">Cut List tab</div>
+        </div>
+        <div style="padding: 8px;">
+          <div style="background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 7px 9px; margin-bottom: 5px;">
+            <div style="font-size: 11.5px; font-weight: 700; color: var(--text);">Smith Kitchen</div>
+            <div style="font-size: 10px; color: var(--muted); margin-top: 1px;">Jane Smith · 47 pieces</div>
+            <div style="display: flex; align-items: center; margin-top: 3px; gap: 6px;">
+              <span style="font-size: 9px; padding: 1px 6px; border-radius: 3px; background: var(--success-dim); color: var(--success); font-weight: 700;">OPTIMISED</span>
+              <span style="margin-left: auto; font-size: 11px; font-weight: 800; color: var(--text); font-variant-numeric: tabular-nums;">4 sheets</span>
+            </div>
+          </div>
+          <div style="background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 7px 9px;">
+            <div style="font-size: 11.5px; font-weight: 700; color: var(--text);">Front frames</div>
+            <div style="font-size: 10px; color: var(--muted); margin-top: 1px;">Sarah Lee · 18 pieces</div>
+            <div style="display: flex; align-items: center; margin-top: 3px; gap: 6px;">
+              <span style="font-size: 9px; padding: 1px 6px; border-radius: 3px; background: var(--surface); color: var(--muted); border: 1px solid var(--border); font-weight: 700;">PENDING</span>
+              <span style="margin-left: auto; font-size: 11px; font-weight: 800; color: var(--text); font-variant-numeric: tabular-nums;">2 sheets</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cabinet tab list (NEW: same shape) -->
+      <div style="background: var(--surface); border: 2px solid var(--indigo); border-radius: 10px; overflow: hidden; box-shadow: 0 0 0 4px var(--indigo-dim);">
+        <div style="padding: 10px 14px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px;">
+          <div style="width: 24px; height: 24px; border-radius: 5px; background: var(--indigo); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 12px;">▣</div>
+          <div style="font-size: 13px; font-weight: 800;">Cabinet tab <span style="font-size: 9px; color: var(--indigo); font-weight: 700; letter-spacing: 0.4px; margin-left: 4px;">— SAME SHAPE</span></div>
+        </div>
+        <div style="padding: 8px;">
+          <div style="background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 7px 9px; margin-bottom: 5px;">
+            <div style="font-size: 11.5px; font-weight: 700; color: var(--text);">Smith Kitchen</div>
+            <div style="font-size: 10px; color: var(--muted); margin-top: 1px;">Jane Smith · 6 cabinets</div>
+            <div style="display: flex; align-items: center; margin-top: 3px; gap: 6px;">
+              <span style="font-size: 9px; padding: 1px 6px; border-radius: 3px; background: var(--info-dim); color: var(--info); font-weight: 700;">DESIGNING</span>
+              <span style="margin-left: auto; font-size: 11px; font-weight: 800; color: var(--text); font-variant-numeric: tabular-nums;">$32,400</span>
+            </div>
+          </div>
+          <div style="background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 7px 9px;">
+            <div style="font-size: 11.5px; font-weight: 700; color: var(--text);">Hill Wardrobe</div>
+            <div style="font-size: 10px; color: var(--muted); margin-top: 1px;">Bob Hill · 4 cabinets</div>
+            <div style="display: flex; align-items: center; margin-top: 3px; gap: 6px;">
+              <span style="font-size: 9px; padding: 1px 6px; border-radius: 3px; background: var(--success-dim); color: var(--success); font-weight: 700;">QUOTED</span>
+              <span style="margin-left: auto; font-size: 11px; font-weight: 800; color: var(--text); font-variant-numeric: tabular-nums;">$11,200</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <table class="audit" style="margin-top: 18px; width: 100%; border-collapse: collapse; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; font-size: 12.5px;">
+      <thead><tr style="background: var(--surface2);">
+        <th style="text-align: left; padding: 9px 12px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text2);">Tab</th>
+        <th style="text-align: left; padding: 9px 12px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text2);">Top-level entity</th>
+        <th style="text-align: left; padding: 9px 12px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text2);">Child rows</th>
+        <th style="text-align: left; padding: 9px 12px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text2);">Editor body</th>
+      </tr></thead>
+      <tbody>
+        <tr><td style="padding: 9px 12px; border-bottom: 1px solid var(--border2); color: var(--info); font-weight: 700;">Quote</td><td style="padding: 9px 12px; border-bottom: 1px solid var(--border2);">Quote</td><td style="padding: 9px 12px; border-bottom: 1px solid var(--border2);" class="mono">quote_lines</td><td style="padding: 9px 12px; border-bottom: 1px solid var(--border2);">Line items table</td></tr>
+        <tr><td style="padding: 9px 12px; border-bottom: 1px solid var(--border2); color: var(--purple); font-weight: 700;">Order</td><td style="padding: 9px 12px; border-bottom: 1px solid var(--border2);">Order</td><td style="padding: 9px 12px; border-bottom: 1px solid var(--border2);" class="mono">order_lines</td><td style="padding: 9px 12px; border-bottom: 1px solid var(--border2);">Line items table</td></tr>
+        <tr><td style="padding: 9px 12px; border-bottom: 1px solid var(--border2); color: var(--orange); font-weight: 700;">Cut List</td><td style="padding: 9px 12px; border-bottom: 1px solid var(--border2);">Cut List</td><td style="padding: 9px 12px; border-bottom: 1px solid var(--border2);" class="mono">pieces, sheets, edge_bands</td><td style="padding: 9px 12px; border-bottom: 1px solid var(--border2);">Parts table + canvas</td></tr>
+        <tr style="background: var(--indigo-dim);"><td style="padding: 9px 12px; color: var(--indigo); font-weight: 700;">Cabinet</td><td style="padding: 9px 12px;"><strong>Cabinet Project</strong></td><td style="padding: 9px 12px;" class="mono">cabinets (designs)</td><td style="padding: 9px 12px;">Multi-cabinet design canvas</td></tr>
+      </tbody>
+    </table>
+
+    <p style="font-size: 12px; color: var(--muted); margin-top: 10px;">
+      The Cabinet tab's parent entity needs a name — pick from <strong>Cabinet Project</strong> (matches your verbal framing) / <strong>Cabinet Set</strong> / <strong>Cabinet Build</strong> / just <strong>Cabinet</strong> (singular noun reused). Schema-side: rename or repurpose the existing <code>cabinets</code> table as the parent (or create <code>cabinet_projects</code>), and rename today's individual cabinet rows to a children table (e.g. <code>cabinet_designs</code> or <code>cabinet_rows</code>).
+    </p>
+  </section>
+
+  <!-- ═══════════════ Section 03 — Client card ═══════════════ -->
+  <section class="section">
+    <div class="sec-num">Section 03</div>
+    <h2 class="sec-h">The Client card · same <code>.proj-strip</code> pattern, just at Client level</h2>
+    <p class="sec-lede">No nested "jobs", no name-grouping. The Client card's 4-cell action strip drills into each file-type tab filtered by this client. Add a new file via the <code>+</code> button on the same cell.</p>
+
+    <div class="mockup-frame">
+      <div class="mfr-tag">Mockup · Clients tab → Jane Smith's card</div>
+
+      <div class="client-card">
+        <div class="cc-header">
+          <div class="cc-avatar">J</div>
+          <div style="flex:1;min-width:0">
+            <div class="cc-name">Jane Smith</div>
+            <div class="cc-meta">jane@example.com · 555-0144 · 11 files total</div>
+          </div>
+          <div class="cc-total">$48,210</div>
+        </div>
+
+        <div class="cc-strip">
+          <div class="cc-act">
+            <div class="cc-act-main">
+              <span class="icon w">▣</span>
+              <span class="cc-act-label">Cabinet Proj.</span>
+              <span class="cc-act-count">3</span>
+            </div>
+            <div class="cc-act-add">+</div>
+          </div>
+          <div class="cc-act">
+            <div class="cc-act-main">
+              <span class="icon q">Q</span>
+              <span class="cc-act-label">Quotes</span>
+              <span class="cc-act-count">4</span>
+            </div>
+            <div class="cc-act-add">+</div>
+          </div>
+          <div class="cc-act">
+            <div class="cc-act-main">
+              <span class="icon o">O</span>
+              <span class="cc-act-label">Orders</span>
+              <span class="cc-act-count">3</span>
+            </div>
+            <div class="cc-act-add">+</div>
+          </div>
+          <div class="cc-act">
+            <div class="cc-act-main">
+              <span class="icon c">✂</span>
+              <span class="cc-act-label">Cut Lists</span>
+              <span class="cc-act-count">2</span>
+            </div>
+            <div class="cc-act-add">+</div>
+          </div>
+        </div>
+
+        <div class="cc-foot">
+          <button class="btn">Duplicate</button>
+          <button class="btn" style="color: var(--danger)">Delete</button>
+        </div>
+      </div>
+    </div>
+
+    <p style="font-size: 12px; color: var(--muted); margin: 8px 0 0;">
+      The whole "Jane Smith" record fits in one card — no nested job groups, no name stem logic. Body click on a cell → drill into that tab, filtered by this client. <code>+</code> → create new file pre-filled with this client. Same <code>.proj-strip</code> CSS used today on Project cards, just one level higher.
+    </p>
+  </section>
+
+  <!-- ═══════════════ Section 04 — Flow A ═══════════════ -->
+  <section class="section">
+    <div class="sec-num">Section 04 · Flow A</div>
+    <h2 class="sec-h">Existing client → new quote</h2>
+    <p class="sec-lede">Day-to-day path. Same scenario across A / C / D for apples-to-apples comparison.</p>
+
+    <div class="flow-pair">
+      <div class="flow-lane">
+        <span class="flow-tag current">Current <span class="count">7 steps · 3 tab switches</span></span>
+        <ol class="flow-steps">
+          <li class="flow-step neut"><div class="step-num">1</div><div class="step-body"><div class="step-action">Open <span class="tab-chip clients">Clients</span></div></div></li>
+          <li class="flow-step neut"><div class="step-num">2</div><div class="step-body"><div class="step-action">Click "Projects" on client card</div></div></li>
+          <li class="flow-step warn"><div class="step-num">3</div><div class="step-body"><div class="step-action">Land in Projects, hit 2-state gate</div></div></li>
+          <li class="flow-step neut"><div class="step-num">4</div><div class="step-body"><div class="step-action">Click "Smith Kitchen" project card</div></div></li>
+          <li class="flow-step neut"><div class="step-num">5</div><div class="step-body"><div class="step-action">Click "+ Quotes" on project card</div></div></li>
+          <li class="flow-step neut"><div class="step-num">6</div><div class="step-body"><div class="step-action">Land in <span class="tab-chip quotes">Quotes</span></div></div></li>
+          <li class="flow-step good"><div class="step-num">7</div><div class="step-body"><div class="step-action">Add lines, autosave</div></div></li>
+        </ol>
+      </div>
+
+      <div class="flow-lane">
+        <span class="flow-tag proposed">Option D <span class="count">3 steps · 1 tab switch</span></span>
+        <ol class="flow-steps">
+          <li class="flow-step neut"><div class="step-num">1</div><div class="step-body"><div class="step-action">Open <span class="tab-chip clients">Clients</span>, find Jane Smith</div><div class="step-detail">Card shows: 3 Cabinet Projects, 4 Quotes, 3 Orders, 2 Cut Lists.</div></div></li>
+          <li class="flow-step good"><div class="step-num">2</div><div class="step-body"><div class="step-action">Click <code>+</code> on the Quotes cell <span class="win-pill">no nesting</span></div><div class="step-detail">New quote created with <code>client_id = Jane Smith</code>. Opens in <span class="tab-chip quotes">Quotes</span> editor. No name is required — user types one if they want.</div></div></li>
+          <li class="flow-step good"><div class="step-num">3</div><div class="step-body"><div class="step-action">Add lines, autosave</div></div></li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════ Section 05 — Flow B: cabinet project → quote + cut list ═══════════════ -->
+  <section class="section">
+    <div class="sec-num">Section 05 · Flow B</div>
+    <h2 class="sec-h">Cabinet Project → exports to Quote &amp; Cut List <em>(linked by FK, not by name)</em></h2>
+    <p class="sec-lede">The user can name each file whatever they want. The cross-entity link is the FK, not the name match. When they open the resulting Quote or Cut List later, the editor shows a "← Cabinet Project: …" chip that drills back.</p>
+
+    <div class="flow-pair">
+      <div class="flow-lane">
+        <span class="flow-tag proposed">Cabinet Project export flow</span>
+        <ol class="flow-steps">
+          <li class="flow-step neut"><div class="step-num">1</div><div class="step-body"><div class="step-action">Open <span class="tab-chip cabinet">Cabinet</span>, create new Cabinet Project "Smith Kitchen"</div><div class="step-detail">Gets <code>client_id = Jane Smith</code>, <code>name = "Smith Kitchen"</code>. Add 6 cabinet designs inside.</div></div></li>
+          <li class="flow-step good"><div class="step-num">2</div><div class="step-body"><div class="step-action">Click "→ Quote" — creates Quote</div><div class="step-detail">New Quote with <code>client_id = Jane Smith</code>, <code>name</code> can be blank or user-typed. Lines copied from cabinets. No name inheritance.</div></div></li>
+          <li class="flow-step good"><div class="step-num">3</div><div class="step-body"><div class="step-action">Click "+ Cut List" — creates Cut List with bookmark</div><div class="step-detail">New Cut List with <code>client_id = Jane Smith</code>, <code>name</code> optional. <strong>No part data copied</strong> — pieces are entered independently. <code>cutlists.cabinet_id</code> FK is a bookmark for navigation only.</div></div></li>
+          <li class="flow-step neut"><div class="step-num">4</div><div class="step-body"><div class="step-action">From Quote → "→ Order"</div><div class="step-detail"><code>convertQuoteToOrder</code> creates Order with <code>quote_id</code> FK back to the source quote. Names not constrained.</div></div></li>
+        </ol>
+      </div>
+
+      <!-- Right column: editor mockup with cross-entity link chips -->
+      <div class="flow-lane">
+        <span class="flow-tag proposed">What the linked Cut List editor shows</span>
+
+        <div style="margin-top: 8px;">
+          <div class="editor-mockup">
+            <div class="ed-head-mock">
+              <button class="back">←</button>
+              <div class="icon-box" style="background: var(--orange);">✂</div>
+              <div style="flex:1;min-width:0">
+                <div class="title">Bathroom run (front frames)</div>
+                <div class="sub"><span class="ed-link">Jane Smith</span> · 18 pieces · optimised</div>
+              </div>
+            </div>
+            <div class="link-bar">
+              <span class="link-bar-label">Linked from</span>
+              <span class="link-chip cabinet">
+                <span class="arrow-in">←</span>
+                <span>▣</span>
+                Cabinet Project: Smith Kitchen
+              </span>
+            </div>
+            <div style="padding: 14px 14px 16px; font-size: 12px; color: var(--muted); background: var(--surface);">
+              ▸ Cut-list fields appear here (parts table, sheets, edge bands).<br>
+              ▸ Note the cut list is named <em>"Bathroom run (front frames)"</em> — totally unrelated to the Cabinet Project's name. The link is the FK, not the name.
+            </div>
+          </div>
+        </div>
+
+        <p style="font-size: 11.5px; color: var(--muted); margin: 14px 4px 0; line-height: 1.55;">
+          The <span class="mono">.link-bar</span> row is a new UI element above the editor body. It surfaces every cross-entity link this file has. For a Quote it would show "→ Order #0042" once converted. For an Order it would show "← Quote #Q-0042" + the schedule slot. Click any chip → drill to that linked entity.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════ Section 06 — Cross-entity link UI ═══════════════ -->
+  <section class="section">
+    <div class="sec-num">Section 06</div>
+    <h2 class="sec-h">Cross-entity link chips · the navigation replacement for the project hub</h2>
+    <p class="sec-lede">The link bar appears in every editor that has at least one FK relationship to another entity. Examples below.</p>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 18px;">
+      <div>
+        <div class="editor-mockup">
+          <div class="ed-head-mock">
+            <button class="back">←</button>
+            <div class="icon-box" style="background: var(--info);">Q</div>
+            <div style="flex:1;min-width:0">
+              <div class="title">Smith Kitchen Quote</div>
+              <div class="sub"><span class="ed-link">Jane Smith</span> · $12,840 · Sent</div>
+            </div>
+          </div>
+          <div class="link-bar">
+            <span class="link-bar-label">Linked</span>
+            <span class="link-chip cabinet"><span class="arrow-in">←</span>▣ Cabinet Project: Smith Kitchen</span>
+            <span class="link-chip order"><span class="arrow-out">→</span>O Order #0042</span>
+          </div>
+        </div>
+        <p style="font-size: 11px; color: var(--muted); margin-top: 6px;">Quote editor — source Cabinet Project + converted order both linked.</p>
+      </div>
+
+      <div>
+        <div class="editor-mockup">
+          <div class="ed-head-mock">
+            <button class="back">←</button>
+            <div class="icon-box" style="background: var(--purple);">O</div>
+            <div style="flex:1;min-width:0">
+              <div class="title">#0042 (or any name)</div>
+              <div class="sub"><span class="ed-link">Jane Smith</span> · Production · Due 18 May</div>
+            </div>
+          </div>
+          <div class="link-bar">
+            <span class="link-bar-label">Linked</span>
+            <span class="link-chip quote"><span class="arrow-in">←</span>Q Quote: Smith Kitchen</span>
+          </div>
+        </div>
+        <p style="font-size: 11px; color: var(--muted); margin-top: 6px;">Order editor — source quote linked (already exists at <span class="mono">quotes.js:437</span> in reverse).</p>
+      </div>
+
+      <div>
+        <div class="editor-mockup">
+          <div class="ed-head-mock">
+            <button class="back">←</button>
+            <div class="icon-box" style="background: var(--indigo);">▣</div>
+            <div style="flex:1;min-width:0">
+              <div class="title">Smith Kitchen Cabinets</div>
+              <div class="sub"><span class="ed-link">Jane Smith</span> · 6 cabinets · last edited 2 days ago</div>
+            </div>
+          </div>
+          <div class="link-bar">
+            <span class="link-bar-label">Exports</span>
+            <span class="link-chip quote"><span class="arrow-out">→</span>Q Smith Kitchen Quote</span>
+            <span class="link-chip cutlist"><span class="arrow-out">→</span>✂ Bathroom run (front frames)</span>
+          </div>
+        </div>
+        <p style="font-size: 11px; color: var(--muted); margin-top: 6px;">Cabinet Project editor — every Quote / Cut List exported from this Cabinet Project is listed.</p>
+      </div>
+
+      <div>
+        <div class="editor-mockup">
+          <div class="ed-head-mock">
+            <button class="back">←</button>
+            <div class="icon-box" style="background: var(--orange);">✂</div>
+            <div style="flex:1;min-width:0">
+              <div class="title">Bathroom run (front frames)</div>
+              <div class="sub"><span class="ed-link">Jane Smith</span> · 18 pieces</div>
+            </div>
+          </div>
+          <div class="link-bar">
+            <span class="link-bar-label">Linked from</span>
+            <span class="link-chip cabinet"><span class="arrow-in">←</span>▣ Cabinet Project: Smith Kitchen</span>
+          </div>
+        </div>
+        <p style="font-size: 11px; color: var(--muted); margin-top: 6px;">Cut List editor — back-link already rendered as plain text today (<span class="mono">cutlist.js:4229</span>); needs to become a clickable chip.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════ Section 07 — Three-way comparison ═══════════════ -->
+  <section class="section">
+    <div class="sec-num">Section 07</div>
+    <h2 class="sec-h">A vs C vs D · side by side</h2>
+    <p class="sec-lede">All three eliminate the Projects tab. They differ in how aggressively they remove the Project <em>concept</em>.</p>
+
+    <div class="three-up">
+
+      <div class="three-up-col a">
+        <h4>Option A · Collapse tab</h4>
+        <div class="stat-line"><span class="lbl-mini">Schema</span><span class="val">Unchanged</span></div>
+        <div class="stat-line"><span class="lbl-mini">Tabs</span><span class="val">9 → 8</span></div>
+        <div class="stat-line"><span class="lbl-mini">Project entity</span><span class="val">Kept</span></div>
+        <div class="stat-line"><span class="lbl-mini">Client card</span><span class="val">Expandable, projects inline</span></div>
+        <div class="stat-line"><span class="lbl-mini">Effort</span><span class="val">~1 week</span></div>
+        <div class="stat-line"><span class="lbl-mini">Risk</span><span class="val">Low</span></div>
+        <ul class="pros">
+          <li>Smallest possible step</li>
+          <li>Proves the simpler IA without DB risk</li>
+          <li>Existing Project FKs unchanged</li>
+        </ul>
+      </div>
+
+      <div class="three-up-col c">
+        <h4>Option C · Name-grouped files</h4>
+        <div class="stat-line"><span class="lbl-mini">Schema</span><span class="val">Migration · drop project_id</span></div>
+        <div class="stat-line"><span class="lbl-mini">Tabs</span><span class="val">9 → 8</span></div>
+        <div class="stat-line"><span class="lbl-mini">Project entity</span><span class="val">Dropped from quotes/orders/cutlists</span></div>
+        <div class="stat-line"><span class="lbl-mini">Client card</span><span class="val">Files grouped by name stem</span></div>
+        <div class="stat-line"><span class="lbl-mini">Effort</span><span class="val">~2–3 weeks</span></div>
+        <div class="stat-line"><span class="lbl-mini">Risk</span><span class="val">Medium — name-grouping fragile</span></div>
+        <ul class="pros">
+          <li>"Smith Kitchen" identity preserved via name</li>
+          <li>Visual grouping under each client</li>
+          <li>Vulnerable to typos / inconsistent naming</li>
+        </ul>
+      </div>
+
+      <div class="three-up-col d">
+        <h4>Option D · Flat files</h4>
+        <div class="stat-line"><span class="lbl-mini">Schema</span><span class="val">Migration · drop project_id</span></div>
+        <div class="stat-line"><span class="lbl-mini">Tabs</span><span class="val">9 → 8</span></div>
+        <div class="stat-line"><span class="lbl-mini">Project entity</span><span class="val">Gone (Cabinet Project for cabinets only)</span></div>
+        <div class="stat-line"><span class="lbl-mini">Client card</span><span class="val">Flat 4-cell counts strip</span></div>
+        <div class="stat-line"><span class="lbl-mini">Effort</span><span class="val">~2 weeks</span></div>
+        <div class="stat-line"><span class="lbl-mini">Risk</span><span class="val">Medium — needs link-chip UI</span></div>
+        <ul class="pros">
+          <li>Simplest mental model of all three</li>
+          <li>No naming convention to maintain</li>
+          <li>Cross-entity link chips replace the hub</li>
+          <li>Files can be named anything (or unnamed)</li>
+        </ul>
+        <div class="recommend">User's choice</div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ═══════════════ Section 08 — Phased landing ═══════════════ -->
+  <section class="section">
+    <div class="sec-num">Section 08</div>
+    <h2 class="sec-h">Phased landing path</h2>
+
+    <ol style="line-height: 1.7; color: var(--text2); padding-left: 22px;">
+      <li><strong>Phase 1 (1 week) — Option A first.</strong> Collapse the Projects tab into the Client card. No schema changes. This proves the simpler IA in production with zero data risk and gives you the empty Projects-tab slot on the nav to confirm nobody misses.</li>
+      <li><strong>Phase 2 (~3 days) — Add link-chip UI.</strong> The <code>.link-bar</code> above editor bodies. Reads from existing FKs (<code>orders.quote_id</code>, <code>cutlists.cabinet_id</code>). Zero schema work — pure UI on top of existing relationships. Once this is in, users can already navigate file→file without a project hub.</li>
+      <li><strong>Phase 3 (~1 week) — Rename projects → cabinet_projects.</strong> Cabinet tab UI now lists "Cabinet Projects" as rows (same shape as Quotes/Orders/Cut Lists). Other tabs lose the project-picker entirely. <code>projects</code> table rename + Cabinet Builder copy pass; no other schema change yet.</li>
+      <li><strong>Phase 4 (~1 week) — Drop <code>project_id</code> from quotes/orders/cutlists.</strong> Backfill <code>client_id</code> on cutlists (other two already have it). Soft-deprecate <code>project_id</code> column for one release. By the end of this phase the model is fully flat.</li>
+    </ol>
+
+    <p style="margin-top: 14px; color: var(--text2); font-size: 12.5px;">
+      Total: ~3 weeks across 4 phases, each phase independently shippable and reversible. Phase 1 is the only one that's strictly necessary for the UX win; phases 2–4 progressively clean up the model under it.
+    </p>
+  </section>
+
+  <!-- ═══════════════ Section 09 — Risks ═══════════════ -->
+  <section class="section">
+    <div class="sec-num">Section 09</div>
+    <h2 class="sec-h">Risks &amp; mitigations</h2>
+
+    <ul style="line-height: 1.7; color: var(--text2); padding-left: 22px;">
+      <li><strong>"How do I see all of Jane Smith's kitchen work in one place?"</strong> Use the Cabinet Project as the de facto root of a job — its link-chips list every Quote and Cut List exported from it. Or rely on the Client card's drill-in: "Quotes (4)" → filtered Quotes list shows all her quotes sorted by date.</li>
+      <li><strong>Files without a source Cabinet Project lose their connection.</strong> A standalone Quote (not created from a Cabinet Project) has no link-chip back to anything except the Client. <em>Fine</em> — that's correct behaviour. It's still findable through the client.</li>
+      <li><strong>Schema migration drops <code>project_id</code>.</strong> Bounded risk. Migration runs in phase 4 only after the new model is proven; <code>project_id</code> stays as a soft-deprecated column for one release.</li>
+      <li><strong><code>[CB_DRAFT]</code> notes-tag pattern goes away.</strong> Today cabinets live as quote_lines with a notes-tag flag. After: cabinets live in <code>cabinet_projects</code> directly. One-shot migration translates existing draft quotes → Cabinet Project rows.</li>
+      <li><strong>Dashboard widgets reference "projects".</strong> Replace with Cabinet Projects (per-client) or aggregate file counts. Same SQL shape, different table.</li>
+      <li><strong>Naming the entity.</strong> The parent record needs a label. <strong>Cabinet Project</strong> matches your verbal framing, doesn't reintroduce a global Project entity (the word is constrained to the Cabinet context), and parallels "Cut List" as a compound-noun entity name. If you'd prefer <strong>Cabinet Set</strong> / <strong>Cabinet Build</strong> / just <strong>Cabinet</strong>, a single rename pass swaps it.</li>
+    </ul>
+  </section>
+
+</div>
+
+<script>
+  // Draw the FK lines from each file box into the central Client hub.
+  (function drawLines() {
+    const graph = document.getElementById('flat-graph');
+    const svg = document.getElementById('flat-svg');
+    const hub = graph.querySelector('.client-hub');
+    if (!graph || !svg || !hub) return;
+    function render() {
+      const gRect = graph.getBoundingClientRect();
+      svg.setAttribute('viewBox', `0 0 ${gRect.width} ${gRect.height}`);
+      svg.setAttribute('width', gRect.width);
+      svg.setAttribute('height', gRect.height);
+      // Coords are relative to graph
+      const hubR = hub.getBoundingClientRect();
+      const hubCx = hubR.left - gRect.left + hubR.width / 2;
+      const hubCy = hubR.top - gRect.top + hubR.height / 2;
+      // Build SVG content
+      const boxes = graph.querySelectorAll('.file-box');
+      let svgContent = '';
+      boxes.forEach((box) => {
+        const r = box.getBoundingClientRect();
+        const cx = r.left - gRect.left + r.width / 2;
+        const cy = r.top - gRect.top + r.height / 2;
+        // Curved bezier to hub
+        const mx = (cx + hubCx) / 2;
+        svgContent += `<path d="M${cx} ${cy} Q ${mx} ${cy} ${hubCx} ${hubCy}" stroke="rgb(13,148,136)" stroke-width="2" fill="none" opacity="0.55" />`;
+        // Endpoint dot near hub
+        svgContent += `<circle cx="${cx}" cy="${cy}" r="3" fill="rgb(13,148,136)" opacity="0.85" />`;
+      });
+      svg.innerHTML = svgContent;
+    }
+    render();
+    window.addEventListener('resize', render);
+  })();
+</script>
+
+</body>
+</html>

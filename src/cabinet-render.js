@@ -109,6 +109,9 @@ function switchCBMainView(view) {
     }
   }
   cbMainView = view;
+  if (typeof /** @type {any} */ (window)._pcSaveCabinetMainView === 'function') {
+    /** @type {any} */ (window)._pcSaveCabinetMainView(view);
+  }
   _syncCBMainViewChrome();
   if (view === 'results') renderCBResults();
   else renderCBLibraryView();
@@ -276,7 +279,7 @@ function _renderCBAuthGate() {
     gate.style.cssText = 'flex:1;display:flex;align-items:center;justify-content:center;padding:40px 20px';
     gate.innerHTML = `
       <div style="max-width:420px;text-align:center;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:32px 28px;box-shadow:var(--shadow)">
-        <div style="font-size:32px;margin-bottom:12px">🔒</div>
+        <div style="margin-bottom:12px;color:var(--muted);display:flex;justify-content:center"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg></div>
         <div style="font-size:18px;font-weight:700;margin-bottom:8px;color:var(--text)">Sign in to use Cabinet Builder</div>
         <div style="font-size:13px;color:var(--text2);margin-bottom:20px;line-height:1.5">
           Cabinet Builder saves your work to the cloud so you can pick up where you left off on any device. An account is required.
@@ -314,8 +317,12 @@ function renderCBEditor() {
   const line = cbScratchpad;
   // No cabinet open → render the cabinet sub-gate (only meaningful when a
   // project is active; library mode without a selection just shows empty).
+  // Match _cbRenderContext: either an active client OR an editing-quote id
+  // counts as in-project. Reopening an existing quote sets cbEditingQuoteId
+  // without setting _cbCurrentClientId, so the client-only check left the
+  // sidebar blank on refresh.
   if (!line) {
-    if (_cbCurrentClientId && typeof _cbRenderCabinetSubGate === 'function') {
+    if ((_cbCurrentClientId || cbEditingQuoteId) && typeof _cbRenderCabinetSubGate === 'function') {
       _cbRenderCabinetSubGate();
     } else {
       el.innerHTML = '';
@@ -376,13 +383,11 @@ function renderCBEditor() {
   const sec = calcCBSections(line);
 
   el.innerHTML = `
-    <div class="form-section-title">
-      <span>${_escHtml(displayedName)}</span>
-      <span class="save-indicator" data-save-indicator="cabinet" style="display:none">Autosave</span>
-    </div>
-    <div class="form-group" style="margin-bottom:10px">
+    <div class="form-group" style="padding:10px 14px">
       <label>Name</label>
-      <input type="text" id="cb-name" value="${_escHtml(line.name||'')}" oninput="cbUpdateField('name',this.value)">
+      <div class="prefixed-input">
+        <input type="text" id="cb-name" value="${_escHtml(line.name||'')}" oninput="cbUpdateField('name',this.value)">
+      </div>
     </div>
     <div style="border-top:1px solid var(--border);padding-top:10px;margin-top:6px">
 
@@ -541,14 +546,6 @@ function renderCBEditor() {
         </div>
       </div>
 
-      <!-- Sidebar Actions: Save to Library is the only verb left.
-           All edits autosave; Add/Save/Cancel/Save-Library-Changes were
-           removed when the scratchpad model was dropped. -->
-      ${cbEditingLibraryIdx >= 0 ? '' : `
-      <div style="padding-top:8px;display:flex;gap:6px;flex-wrap:wrap">
-        <button class="btn btn-outline" onclick="cbSaveToLibrary()" style="flex:1;font-size:12px;padding:10px 12px">Save to Library</button>
-      </div>`}
-
     </div>
     <datalist id="cb-room-list">${['Kitchen','Bathroom','Bedroom','Living Room','Laundry','Garage','Office','Pantry'].map(r=>'<option value="'+r+'">').join('')}</datalist>
   `;
@@ -600,12 +597,65 @@ function renderCBResults() {
     if (projName) {
       const cName = (typeof _cbClientNameForProject === 'function') ? _cbClientNameForProject() : '';
       emptyHeader = _renderContentHeader({ iconSvg: _CH_ICON_PROJECT, title: projName, clientName: cName || undefined });
+    } else {
+      emptyHeader = _renderContentHeader({ iconSvg: _CH_ICON_QUOTE, title: 'Quotes' });
     }
-    el.innerHTML = `${emptyHeader}<div class="empty-state">
-      <div class="empty-icon" style="opacity:.18"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg></div>
-      <h3>Cabinet Builder</h3>
-      <p>Configure a cabinet in the editor and click "Add to Quote" to start building your quote.</p>
-    </div>`;
+    // If a quote is already opened (drilled in), don't show the all-quotes
+    // picker — just show an empty state for THIS quote.
+    if (cbEditingQuoteId || cbEditingOrderId) {
+      el.innerHTML = `${emptyHeader}<div class="empty-state" style="max-width:700px">
+        <div class="empty-icon" style="opacity:.18"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg></div>
+        <h3>No cabinets yet</h3>
+        <p>Add a cabinet from the sidebar to start building this ${cbEditingOrderId ? 'order' : 'quote'}.</p>
+      </div>`;
+      return;
+    }
+    // Show all quotes as clickable cards (same card layout as the Quote tab).
+    // Clicking a card loads that quote into the cabinet builder.
+    const allQuotes = (typeof quotes !== 'undefined' && Array.isArray(quotes) ? quotes : [])
+      .slice()
+      .sort(/** @param {any} a @param {any} b */ (a, b) => (+new Date(b.updated_at || 0)) - (+new Date(a.updated_at || 0)));
+    if (!allQuotes.length) {
+      el.innerHTML = `${emptyHeader}<div class="empty-state">
+        <div class="empty-icon" style="opacity:.18"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg></div>
+        <h3>No quotes yet</h3>
+        <p>Pick a quote from the sidebar or create a new one to start building cabinets.</p>
+      </div>`;
+      return;
+    }
+    const cardsHtml = allQuotes.map(/** @param {any} q */ q => {
+      const num = q.quote_number || ('QUO-' + String(q.id).padStart(4, '0'));
+      const proj = (typeof quoteProject === 'function' ? quoteProject(q) : '') || '';
+      const cli = (typeof quoteClient === 'function' ? quoteClient(q) : '') || '';
+      const title = [num, proj, cli].filter(Boolean).join(' · ');
+      const status = q.status || 'draft';
+      const statusBadge = status === 'approved' ? 'badge-green' : status === 'sent' ? 'badge-blue' : 'badge-gray';
+      const statusText = status === 'approved' ? 'Approved' : status === 'sent' ? 'Sent' : 'Draft';
+      const total = typeof quoteTotal === 'function' ? quoteTotal(q) : 0;
+      const counts = typeof _lineKindCountsLabel === 'function' ? _lineKindCountsLabel(q._lines) : '';
+      const dateBits = [q.date, counts].filter(Boolean).join(' · ');
+      return `<div class="quote-card" style="cursor:pointer;max-width:700px;margin-bottom:8px" onclick="_cbPickQuote(${q.id})">
+        <div class="qc-header">
+          <div class="oc-info">
+            <div class="oc-title-row">
+              <div class="qc-title">${_escHtml(title)}</div>
+              <span class="badge ${statusBadge}" style="font-size:10px" onclick="event.stopPropagation()">${statusText}</span>
+            </div>
+            ${dateBits ? `<div class="qc-meta">${_escHtml(dateBits)}</div>` : ''}
+          </div>
+          <div class="oc-right">
+            <div class="oc-value" style="cursor:default;border-bottom:none">${fmt0(total)}</div>
+          </div>
+        </div>
+        <div class="qc-footer" onclick="event.stopPropagation()">
+          <button class="btn btn-outline" onclick="switchSection('quote');loadQuoteIntoSidebar(${q.id})" title="Open in Quote tab">Go to Quote</button>
+          <span style="flex:1"></span>
+          <button class="btn btn-outline" onclick="duplicateQuote(${q.id})">Duplicate</button>
+          <button class="btn btn-outline" style="color:var(--danger)" onclick="_confirm('Delete quote for <strong>${_escHtml(cli || num)}</strong>?',()=>removeQuote(${q.id}))">Delete</button>
+        </div>
+      </div>`;
+    }).join('');
+    el.innerHTML = `${emptyHeader}<div style="max-width:700px">${cardsHtml}</div>`;
     return;
   }
 
@@ -618,17 +668,7 @@ function renderCBResults() {
 
   let html = `<div style="max-width:700px">`;
 
-  // Editing quote banner
-  if (cbEditingQuoteId) {
-    const eq = quotes.find(x => x.id === cbEditingQuoteId);
-    const eqLabel = eq ? (quoteProject(eq) || quoteClient(eq) || 'Quote') : 'Quote';
-    html += `<div style="background:var(--accent-dim);border:2px solid var(--accent);border-radius:8px;padding:10px 16px;margin-bottom:12px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-      <span style="font-size:13px;font-weight:600;color:var(--accent)">Editing quote: ${_escHtml(eqLabel)}</span>
-      <span style="flex:1"></span>
-      <button class="btn btn-primary" onclick="finishEditingQuote()" style="font-size:12px;padding:6px 14px">Done</button>
-      <button class="btn btn-outline" onclick="discardQuoteEdits()" style="font-size:12px;padding:6px 14px">Discard</button>
-    </div>`;
-  } else if (cbEditingOrderId) {
+  if (cbEditingOrderId) {
     // Editing order banner — mirror of quote banner. No Discard yet (no
     // discardOrderEdits handler); Done auto-syncs cabinets back to order_lines.
     const eo = orders.find(x => x.id === cbEditingOrderId);
@@ -643,12 +683,15 @@ function renderCBResults() {
   // Project header
   if (projName) {
     const cName = (typeof _cbClientNameForProject === 'function') ? _cbClientNameForProject() : '';
-    html += _renderContentHeader({ iconSvg: _CH_ICON_PROJECT, title: projName, clientName: cName || undefined });
+    html += _renderContentHeader({ iconSvg: _CH_ICON_QUOTE, title: projName, clientName: cName || undefined });
   }
   html += `<div style="font-size:12px;color:var(--muted);margin: -8px 0 16px">${cbLines.length} cabinet${cbLines.length!==1?'s':''} · ${cbLines.reduce((s,l)=>s+l.qty,0)} units</div>`;
 
   // Top buttons bar
   html += `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;align-items:center">`;
+  if (!cbEditingOrderId) {
+    html += `<button class="btn btn-outline" onclick="cbGoToQuote()" style="font-size:12px;padding:8px 14px">Go to Quote &rarr;</button>`;
+  }
   if (!cbEditingQuoteId && !cbEditingOrderId) {
     html += `<button class="btn btn-primary" onclick="cbSendToQuote()" style="font-size:12px;padding:8px 14px">Send to Quote &rarr;</button>`;
     html += `<button class="btn btn-primary" onclick="cbSendToOrder()" style="font-size:12px;padding:8px 14px">Send to Order &rarr;</button>`;
@@ -676,6 +719,7 @@ function renderCBResults() {
         <div style="display:grid;grid-template-columns:1fr auto;gap:2px 16px">
           <span>Materials</span><span style="text-align:right;font-weight:600;color:var(--text)">${fmt(c.matCost)}</span>
           <span>Labour (${c.labourHrs.toFixed(1)} hrs @ ${cur}${cbSettings.labourRate}/hr)</span><span style="text-align:right;font-weight:600;color:var(--text)">${fmt(c.labourCost)}</span>
+          ${(cbSettings.contingencyPct||0) > 0 ? `<span style="color:var(--muted)">Contingency (${cbSettings.contingencyPct}%)</span><span style="text-align:right;color:var(--muted);font-style:italic">incl. +${fmt0(c.labourCost * cbSettings.contingencyPct / (100 + cbSettings.contingencyPct))}</span>` : ''}
           <span>Hardware</span><span style="text-align:right;font-weight:600;color:var(--text)">${fmt0(c.hwCost)}</span>
           ${line.qty > 1 ? `
           <span style="border-top:1px solid var(--border2);padding-top:4px;margin-top:2px">Unit Cost</span><span style="text-align:right;font-weight:600;border-top:1px solid var(--border2);padding-top:4px;margin-top:2px">${fmt0(unitCost)}</span>
@@ -692,13 +736,15 @@ function renderCBResults() {
         </div>
       </div>
       <!-- Actions -->
-      <div style="padding:6px 12px;border-top:1px solid var(--border2);display:flex;gap:6px;align-items:stretch;justify-content:flex-end;background:var(--surface2)">
+      <div style="padding:6px 12px;border-top:1px solid var(--border2);display:flex;gap:6px;align-items:stretch;background:var(--surface2)">
+        <button class="btn btn-outline" style="font-size:11px;padding:4px 10px;width:auto" onclick="event.stopPropagation();cbAddLineToLibrary(${idx})" title="Save this cabinet as a library template">Add to Library</button>
+        ${_cbCutListProjActHtml(`_cbOpenCabinetCutListsForLine(${idx})`, `_cbNewCutListForLine(${idx})`, line.db_id||'')}
+        <span style="flex:1"></span>
         <div class="cl-stepper" style="flex:0 0 auto" onclick="event.stopPropagation()">
           <button class="cl-step-btn" style="padding:0 6px" onclick="event.stopPropagation();cbStepLineQty(${idx},-1)" title="Decrease quantity">−</button>
           <input type="number" class="cl-input cl-qty-input" value="${line.qty}" min="1" style="font-size:11px;width:32px;padding:4px 2px" onclick="event.stopPropagation()" onchange="event.stopPropagation();cbSetLineQty(${idx},this.value)">
           <button class="cl-step-btn" style="padding:0 6px" onclick="event.stopPropagation();cbStepLineQty(${idx},1)" title="Increase quantity">+</button>
         </div>
-        ${_cbCutListProjActHtml(`_cbOpenCabinetCutListsForLine(${idx})`, `_cbNewCutListForLine(${idx})`, line.db_id||'')}
         <button class="btn btn-outline" style="font-size:11px;padding:4px 10px;width:auto" onclick="event.stopPropagation();_duplicateCabinet(${idx})" title="Duplicate cabinet">Duplicate</button>
         <button class="btn btn-outline" style="font-size:11px;padding:4px 10px;width:auto;color:var(--danger)" onclick="event.stopPropagation();_cbConfirmDeleteLine(${idx})" title="Delete cabinet">Delete</button>
       </div>
@@ -712,6 +758,7 @@ function renderCBResults() {
       <div style="display:grid;grid-template-columns:1fr auto;gap:3px 16px;font-size:13px">
         <span style="color:var(--text2)">Materials</span><span style="text-align:right;font-weight:600">${fmt0(gMat)}</span>
         <span style="color:var(--text2)">Labour (${totalHrs.toFixed(1)} hrs)</span><span style="text-align:right;font-weight:600">${fmt0(gLabour)}</span>
+        ${(cbSettings.contingencyPct||0) > 0 ? `<span style="color:var(--muted)">Contingency (${cbSettings.contingencyPct}%)</span><span style="text-align:right;color:var(--muted);font-style:italic">incl. +${fmt0(gLabour * cbSettings.contingencyPct / (100 + cbSettings.contingencyPct))}</span>` : ''}
         <span style="color:var(--text2)">Hardware</span><span style="text-align:right;font-weight:600">${fmt0(gHw)}</span>
       </div>
       <div style="border-top:1px solid var(--border);margin-top:6px;padding-top:6px;display:grid;grid-template-columns:1fr auto;gap:3px 16px;font-size:13px">
@@ -795,11 +842,10 @@ function _renderLibraryCards(items) {
         </div>
         <div style="font-size:14px;font-weight:800;color:var(--accent);flex-shrink:0;white-space:nowrap">${fmt0(calc.lineSubtotal)}</div>
       </div>
-      <div style="display:flex;padding:4px 12px 6px">
-        ${_cbCutListProjActHtml(`_cbOpenLinkedCutLists(${idx})`, `_cbLinkToCutList(${idx})`, c.db_id||'')}
-      </div>
-      <div style="display:flex;gap:6px;padding:8px 12px 10px;border-top:1px solid var(--border2);justify-content:flex-end;flex-wrap:wrap;align-items:stretch">
+      <div style="display:flex;gap:6px;padding:8px 12px 10px;border-top:1px solid var(--border2);flex-wrap:wrap;align-items:stretch">
         <button class="btn btn-outline" onclick="event.stopPropagation();cbAddFromLibrary(${idx})" style="font-size:11px;padding:5px 10px;width:auto">Add to Quote</button>
+        ${_cbCutListProjActHtml(`_cbOpenLinkedCutLists(${idx})`, `_cbLinkToCutList(${idx})`, c.db_id||'')}
+        <span style="flex:1"></span>
         <button class="btn btn-outline" onclick="event.stopPropagation();cbDuplicateLibraryEntry(${idx})" style="font-size:11px;padding:5px 10px;width:auto">Duplicate</button>
         <button class="btn btn-outline" onclick="event.stopPropagation();_confirm('Delete this template?',()=>cbRemoveFromLibrary(${idx}))" style="font-size:11px;padding:5px 10px;width:auto;color:var(--danger)">Delete</button>
       </div>

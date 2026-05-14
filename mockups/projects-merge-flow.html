@@ -1,0 +1,827 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ProCabinet.App — Collapse Projects into Clients · Flow Diagram</title>
+<style>
+  :root {
+    --accent: #e8a838;
+    --accent-dim: rgba(232,168,56,0.12);
+    --accent2: #0d9488;
+    --accent2-dim: rgba(13,148,136,0.12);
+    --danger: #e05252;
+    --danger-dim: rgba(224,82,82,0.12);
+    --success: #3d9970;
+    --success-dim: rgba(61,153,112,0.14);
+    --info: #5b8fc5;
+    --info-dim: rgba(80,140,220,0.12);
+    --bg: #f2f2f2;
+    --surface: #ffffff;
+    --surface2: #f7f7f7;
+    --border: #e0e0e0;
+    --border2: #ebebeb;
+    --text: #111111;
+    --text2: #444444;
+    --muted: #888888;
+    --radius: 8px;
+    --shadow: 0 1px 4px rgba(0,0,0,.04);
+    --shadow-md: 0 2px 8px rgba(0,0,0,.08);
+  }
+  html.dark {
+    --bg: #141414;
+    --surface: #1e1e1e;
+    --surface2: #252525;
+    --border: #2e2e2e;
+    --border2: #282828;
+    --text: #f0f0f0;
+    --text2: #bbbbbb;
+    --muted: #666666;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    background: var(--bg);
+    color: var(--text);
+  }
+  code, .mono { font-family: 'SF Mono', Menlo, Consolas, monospace; font-size: 0.9em; }
+
+  /* Document chrome */
+  .doc { max-width: 1280px; margin: 0 auto; padding: 32px 28px 80px; }
+  .doc-head {
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 24px;
+    padding-bottom: 20px; border-bottom: 1px solid var(--border); margin-bottom: 32px;
+  }
+  .doc-head h1 { font-size: 24px; font-weight: 800; margin: 0 0 4px; letter-spacing: -0.3px; }
+  .doc-head .subtitle { color: var(--muted); font-size: 13px; }
+  .theme-toggle {
+    border: 1px solid var(--border); background: var(--surface); color: var(--text2);
+    padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600;
+  }
+  .lede {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    padding: 16px 20px; margin-bottom: 32px; color: var(--text2);
+  }
+  .lede strong { color: var(--text); }
+
+  /* Section frame */
+  section.section { margin-top: 48px; }
+  .sec-num { font-size: 10px; color: var(--accent); font-weight: 800; letter-spacing: 2px; text-transform: uppercase; }
+  .sec-h { font-size: 20px; font-weight: 800; margin: 6px 0 6px; letter-spacing: -0.3px; }
+  .sec-lede { color: var(--text2); max-width: 760px; margin: 0 0 24px; }
+
+  /* ── Entity Model Diagram ── */
+  .entity-graph {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    padding: 24px; margin-bottom: 12px;
+    overflow-x: auto;
+  }
+  .entity-row {
+    display: flex; align-items: center; justify-content: center;
+    gap: 14px;
+    margin-bottom: 18px;
+  }
+  .entity-row:last-child { margin-bottom: 0; }
+  .entity-row .lvl-label {
+    font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px;
+    color: var(--muted);
+    width: 70px; text-align: right; flex-shrink: 0;
+  }
+  .ent {
+    border: 2px solid var(--border); border-radius: 10px;
+    padding: 10px 16px; min-width: 110px; text-align: center;
+    background: var(--surface);
+    box-shadow: var(--shadow);
+    position: relative;
+  }
+  .ent .ent-name { font-size: 13px; font-weight: 800; color: var(--text); }
+  .ent .ent-sub { font-size: 10px; color: var(--muted); margin-top: 2px; }
+  .ent.client    { border-color: var(--accent2); background: var(--accent2-dim); }
+  .ent.project   { border-color: var(--accent);  background: var(--accent-dim); }
+  .ent.workitem  { border-color: var(--border); }
+  .ent.tab-tag {
+    position: absolute; top: -10px; right: -10px;
+    background: var(--surface); border: 1.5px solid var(--border);
+    border-radius: 999px;
+    font-size: 9px; font-weight: 800; padding: 2px 7px;
+    color: var(--text2); text-transform: uppercase; letter-spacing: 0.4px;
+  }
+  .ent.tab-tag.has-tab    { border-color: var(--success); color: var(--success); background: var(--success-dim); }
+  .ent.tab-tag.no-tab     { border-color: var(--danger);  color: var(--danger);  background: var(--danger-dim); }
+  .ent.tab-tag.fk-only    { border-color: var(--muted); color: var(--muted); }
+  /* The downward "fans out" connector */
+  .fanout-connector {
+    width: 80%; height: 22px;
+    margin: 0 auto -10px; position: relative;
+    border-left: 2px solid var(--border); border-right: 2px solid var(--border);
+    border-bottom: 2px solid var(--border);
+    border-radius: 0 0 10px 10px;
+  }
+  .fanout-connector::before {
+    content: ''; position: absolute; top: -22px; left: 50%; width: 2px; height: 22px;
+    background: var(--border);
+  }
+  .fanout-label {
+    position: absolute; top: -10px; left: 50%; transform: translateX(-50%);
+    background: var(--surface);
+    font-size: 10px; color: var(--muted); padding: 0 8px;
+    white-space: nowrap; font-weight: 600;
+  }
+  .ent-legend {
+    display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; margin-top: 24px;
+    border-top: 1px dashed var(--border2); padding-top: 16px;
+  }
+  .legend-item { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text2); }
+  .legend-swatch { width: 14px; height: 14px; border: 2px solid; border-radius: 4px; }
+  .legend-swatch.client  { border-color: var(--accent2); background: var(--accent2-dim); }
+  .legend-swatch.project { border-color: var(--accent);  background: var(--accent-dim); }
+  .legend-swatch.workitem{ border-color: var(--border); background: var(--surface); }
+  .legend-pill { display: inline-flex; align-items: center; gap: 4px; padding: 1px 8px; border-radius: 999px; border: 1.5px solid; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; }
+  .legend-pill.has-tab { border-color: var(--success); color: var(--success); background: var(--success-dim); }
+  .legend-pill.no-tab  { border-color: var(--danger);  color: var(--danger);  background: var(--danger-dim); }
+  .legend-pill.fk-only { border-color: var(--muted); color: var(--muted); }
+
+  /* ── Flow Lane (Current vs Proposed) ── */
+  .flow-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .flow-lane {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    padding: 18px 18px 22px;
+  }
+  .flow-tag {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 3px 10px; border-radius: 999px;
+    font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.6px;
+    margin-bottom: 14px;
+  }
+  .flow-tag.current  { background: var(--danger-dim);  color: var(--danger); }
+  .flow-tag.proposed { background: var(--success-dim); color: var(--success); }
+  .flow-tag::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .flow-tag .count {
+    background: var(--surface); color: var(--text); margin-left: 4px;
+    padding: 0 6px; border-radius: 4px; border: 1px solid currentColor; opacity: 0.85;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .flow-steps { list-style: none; padding: 0; margin: 0; position: relative; }
+  .flow-step {
+    display: grid; grid-template-columns: 30px 1fr; gap: 12px;
+    padding: 10px 0;
+    position: relative;
+  }
+  /* Vertical connector running through the step numbers */
+  .flow-steps::before {
+    content: ''; position: absolute; left: 14px; top: 22px; bottom: 22px;
+    width: 2px; background: var(--border); z-index: 0;
+  }
+  .step-num {
+    width: 30px; height: 30px; border-radius: 50%;
+    background: var(--surface); border: 2px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 12px; color: var(--text2);
+    position: relative; z-index: 1; flex-shrink: 0;
+  }
+  .flow-step.warn .step-num { border-color: var(--danger); color: var(--danger); background: var(--danger-dim); }
+  .flow-step.good .step-num { border-color: var(--success); color: var(--success); background: var(--success-dim); }
+  .flow-step.neut .step-num { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+  .step-body {
+    background: var(--surface2); border: 1px solid var(--border); border-radius: 8px;
+    padding: 8px 12px;
+  }
+  .step-action {
+    font-size: 13px; font-weight: 700; color: var(--text);
+    display: flex; align-items: center; flex-wrap: wrap; gap: 6px;
+  }
+  .tab-chip {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 1px 8px; border-radius: 4px;
+    background: var(--info-dim); color: var(--info);
+    font-size: 10px; font-weight: 700; letter-spacing: 0.4px; text-transform: uppercase;
+  }
+  .tab-chip.clients  { background: rgba(13,148,136,0.14); color: var(--accent2); }
+  .tab-chip.projects { background: var(--accent-dim);     color: var(--accent); }
+  .tab-chip.quotes   { background: var(--info-dim);       color: var(--info); }
+  .tab-chip.orders   { background: rgba(147,51,234,0.14); color: #9333ea; }
+  .tab-chip.schedule { background: rgba(220,38,38,0.12);  color: #dc2626; }
+  .tab-chip.cutlist  { background: rgba(217,119,6,0.14);  color: #d97706; }
+  .tab-chip.cabinet  { background: rgba(99,102,241,0.14); color: #6366f1; }
+  .step-detail { font-size: 11.5px; color: var(--muted); margin-top: 3px; line-height: 1.45; }
+  .step-detail .mono { color: var(--text2); }
+
+  .pain-pill {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 1px 7px; border-radius: 4px;
+    background: var(--danger-dim); color: var(--danger);
+    font-size: 9.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;
+  }
+  .win-pill {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 1px 7px; border-radius: 4px;
+    background: var(--success-dim); color: var(--success);
+    font-size: 9.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;
+  }
+
+  /* ── Mockup of expanded Client card ── */
+  .mockup-frame {
+    background: var(--surface2); border: 1px solid var(--border); border-radius: 12px;
+    padding: 14px; margin: 12px 0;
+  }
+  .mockup-frame .mfr-tag { font-size: 10px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 8px; }
+  .client-card-expanded {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    box-shadow: var(--shadow); overflow: hidden;
+  }
+  .ccx-header {
+    display: flex; align-items: center; gap: 12px; padding: 12px 16px;
+    border-bottom: 1px solid var(--border2);
+  }
+  .ccx-avatar {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: var(--accent-dim); color: var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 14px; flex-shrink: 0;
+  }
+  .ccx-name { font-size: 15px; font-weight: 800; color: var(--text); }
+  .ccx-meta { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .ccx-total { margin-left: auto; font-size: 14px; font-weight: 800; color: var(--text); font-variant-numeric: tabular-nums; }
+  .ccx-projects { padding: 6px 12px 12px; }
+  .ccx-projects-h {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 10px; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: 1px;
+    padding: 4px 4px;
+  }
+  .ccx-projects-h .add-btn {
+    margin-left: auto;
+    padding: 3px 9px; border-radius: 5px; border: 1px solid var(--accent);
+    background: var(--accent); color: #fff;
+    font-size: 10px; font-weight: 700; cursor: pointer;
+  }
+  .ccx-project-row {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 6px;
+    padding: 8px 10px; margin-bottom: 6px;
+    display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 10px;
+  }
+  .ccx-pname { font-size: 13px; font-weight: 700; color: var(--text); }
+  .ccx-pmeta { font-size: 10px; color: var(--muted); margin-top: 1px; }
+  .proj-strip-mini {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px;
+    width: 240px;
+  }
+  .proj-act-mini {
+    display: flex; align-items: center;
+    border: 1px solid var(--border); border-radius: 5px;
+    background: var(--surface2); overflow: hidden;
+  }
+  .proj-act-mini-main {
+    flex: 1; min-width: 0;
+    padding: 3px 6px;
+    font-size: 10px; font-weight: 600; color: var(--text2);
+    display: flex; align-items: center; gap: 4px;
+    cursor: pointer;
+  }
+  .proj-act-mini-main .count {
+    margin-left: auto;
+    font-size: 9.5px; font-weight: 700;
+    color: var(--accent2); background: rgba(13,148,136,.12);
+    padding: 0 5px; border-radius: 7px;
+  }
+  .proj-act-mini-main.empty .count { color: var(--muted); background: var(--surface2); }
+  .proj-act-mini-add {
+    width: 18px; border-left: 1px solid var(--border);
+    color: var(--muted); font-weight: 700; font-size: 11px;
+    display: flex; align-items: center; justify-content: center; cursor: pointer;
+  }
+  .ccx-pvalue { font-size: 12px; font-weight: 800; color: var(--text); font-variant-numeric: tabular-nums; }
+
+  /* ── What-changes table ── */
+  table.changes {
+    width: 100%; border-collapse: collapse;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden;
+    font-size: 12.5px;
+  }
+  table.changes th, table.changes td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--border2); vertical-align: top; }
+  table.changes th { background: var(--surface2); color: var(--text2); font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 0.6px; }
+  table.changes tbody tr:last-child td { border-bottom: 0; }
+  table.changes td.label { font-weight: 700; color: var(--text); }
+  table.changes .same-pill { display: inline-block; padding: 1px 7px; border-radius: 4px; font-size: 10px; font-weight: 700; background: var(--surface2); color: var(--muted); text-transform: uppercase; letter-spacing: 0.4px; }
+  table.changes .change-pill { display: inline-block; padding: 1px 7px; border-radius: 4px; font-size: 10px; font-weight: 700; background: var(--accent-dim); color: var(--accent); text-transform: uppercase; letter-spacing: 0.4px; }
+
+  @media (max-width: 1100px) {
+    .flow-pair { grid-template-columns: 1fr; }
+    .proj-strip-mini { width: 180px; grid-template-columns: repeat(4, 1fr); }
+  }
+  @media (max-width: 700px) {
+    .ccx-project-row { grid-template-columns: 1fr; }
+    .proj-strip-mini { width: 100%; }
+  }
+</style>
+</head>
+<body>
+<div class="doc">
+
+  <header class="doc-head">
+    <div>
+      <h1>Collapse Projects tab into Clients</h1>
+      <div class="subtitle">Option A · Same entity model · One fewer tab · Single-flow user journey</div>
+    </div>
+    <button class="theme-toggle" onclick="document.documentElement.classList.toggle('dark')">Toggle dark</button>
+  </header>
+
+  <div class="lede">
+    <strong>The proposal:</strong> Keep the <code>projects</code> table and every FK (6 child tables, 9 source files). Drop only the dedicated tab + its 2-state sidebar gate. Projects become an <strong>expandable sub-list inside each Client card</strong>. Drill-in from a project (Cabinets / Cut Lists / Quotes / Orders) keeps working unchanged — the action strip just moves down one level.
+  </div>
+
+  <!-- ═══════════════ Entity model — what stays, what moves ═══════════════ -->
+  <section class="section">
+    <div class="sec-num">Section 01</div>
+    <h2 class="sec-h">Data model — unchanged</h2>
+    <p class="sec-lede">The DB schema is untouched. Only the dedicated <em>tab</em> and its routing go away.</p>
+
+    <div class="entity-graph">
+
+      <div class="entity-row">
+        <span class="lvl-label">Top-level</span>
+        <div class="ent client">
+          <span class="ent tab-tag has-tab">Tab</span>
+          <div class="ent-name">Client</div>
+          <div class="ent-sub">contact, projects list</div>
+        </div>
+      </div>
+
+      <div class="fanout-connector"><span class="fanout-label">has many</span></div>
+
+      <div class="entity-row">
+        <span class="lvl-label">Job-level</span>
+        <div class="ent project">
+          <span class="ent tab-tag no-tab">No tab</span>
+          <div class="ent-name">Project</div>
+          <div class="ent-sub">expanded inside Client card</div>
+        </div>
+      </div>
+
+      <div class="fanout-connector"><span class="fanout-label">groups</span></div>
+
+      <div class="entity-row">
+        <span class="lvl-label">Work items</span>
+        <div class="ent workitem">
+          <span class="ent tab-tag has-tab">Tab</span>
+          <div class="ent-name">Cabinets</div>
+          <div class="ent-sub">project_id FK</div>
+        </div>
+        <div class="ent workitem">
+          <span class="ent tab-tag has-tab">Tab</span>
+          <div class="ent-name">Cut Lists</div>
+          <div class="ent-sub">project_id FK</div>
+        </div>
+        <div class="ent workitem">
+          <span class="ent tab-tag has-tab">Tab</span>
+          <div class="ent-name">Quotes</div>
+          <div class="ent-sub">project_id FK</div>
+        </div>
+        <div class="ent workitem">
+          <span class="ent tab-tag has-tab">Tab</span>
+          <div class="ent-name">Orders</div>
+          <div class="ent-sub">project_id FK</div>
+        </div>
+      </div>
+
+      <div class="ent-legend">
+        <div class="legend-item">
+          <span class="legend-swatch client"></span> Client (root entity)
+        </div>
+        <div class="legend-item">
+          <span class="legend-swatch project"></span> Project (entity stays, tab removed)
+        </div>
+        <div class="legend-item">
+          <span class="legend-swatch workitem"></span> Work item (unchanged)
+        </div>
+        <div class="legend-item">
+          <span class="legend-pill has-tab">Tab</span> Has dedicated nav tab
+        </div>
+        <div class="legend-item">
+          <span class="legend-pill no-tab">No tab</span> Lives inside parent's view
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════ Flow 1: Add quote for existing client ═══════════════ -->
+  <section class="section">
+    <div class="sec-num">Section 02 · Flow A</div>
+    <h2 class="sec-h">Existing client → new quote on existing project</h2>
+    <p class="sec-lede">The most common day-to-day path. "Jane Smith just asked for a quote on her kitchen renovation."</p>
+
+    <div class="flow-pair">
+
+      <!-- Current -->
+      <div class="flow-lane">
+        <span class="flow-tag current">Current <span class="count">7 steps · 3 tab switches</span></span>
+        <ol class="flow-steps">
+          <li class="flow-step neut">
+            <div class="step-num">1</div>
+            <div class="step-body">
+              <div class="step-action">Open <span class="tab-chip clients">Clients</span></div>
+              <div class="step-detail">Search "Jane Smith", find her card.</div>
+            </div>
+          </li>
+          <li class="flow-step neut">
+            <div class="step-num">2</div>
+            <div class="step-body">
+              <div class="step-action">Click "Projects" on client card</div>
+              <div class="step-detail">1-cell action strip — <span class="mono">_setProjectsActiveClient(id)</span> + <span class="mono">switchSection('projects')</span>.</div>
+            </div>
+          </li>
+          <li class="flow-step warn">
+            <div class="step-num">3</div>
+            <div class="step-body">
+              <div class="step-action">Land in <span class="tab-chip projects">Projects</span> <span class="pain-pill">2-state gate</span></div>
+              <div class="step-detail">Sidebar shows the projects drill — empty state when she has no projects yet.</div>
+            </div>
+          </li>
+          <li class="flow-step neut">
+            <div class="step-num">4</div>
+            <div class="step-body">
+              <div class="step-action">Click "Smith Kitchen" project card</div>
+              <div class="step-detail">Loads project into sidebar editor (autosave).</div>
+            </div>
+          </li>
+          <li class="flow-step neut">
+            <div class="step-num">5</div>
+            <div class="step-body">
+              <div class="step-action">Click "+ Quotes" on project card</div>
+              <div class="step-detail">4-cell <span class="mono">.proj-strip</span> — <span class="mono">_newQuoteForProject(id)</span>.</div>
+            </div>
+          </li>
+          <li class="flow-step neut">
+            <div class="step-num">6</div>
+            <div class="step-body">
+              <div class="step-action">Land in <span class="tab-chip quotes">Quotes</span></div>
+              <div class="step-detail">Project + client pre-filled, empty editor open.</div>
+            </div>
+          </li>
+          <li class="flow-step good">
+            <div class="step-num">7</div>
+            <div class="step-body">
+              <div class="step-action">Add line items, autosave</div>
+              <div class="step-detail">Same as today.</div>
+            </div>
+          </li>
+        </ol>
+      </div>
+
+      <!-- Proposed -->
+      <div class="flow-lane">
+        <span class="flow-tag proposed">Proposed <span class="count">4 steps · 1 tab switch</span></span>
+        <ol class="flow-steps">
+          <li class="flow-step neut">
+            <div class="step-num">1</div>
+            <div class="step-body">
+              <div class="step-action">Open <span class="tab-chip clients">Clients</span></div>
+              <div class="step-detail">Search "Jane Smith". Her card already shows her projects expanded inline.</div>
+            </div>
+          </li>
+          <li class="flow-step good">
+            <div class="step-num">2</div>
+            <div class="step-body">
+              <div class="step-action">Click "+ Quotes" on the <em>Smith Kitchen</em> project row <span class="win-pill">no tab hop</span></div>
+              <div class="step-detail">Same <span class="mono">.proj-strip</span> action strip — just rendered one level deeper, inside the client card.</div>
+            </div>
+          </li>
+          <li class="flow-step neut">
+            <div class="step-num">3</div>
+            <div class="step-body">
+              <div class="step-action">Land in <span class="tab-chip quotes">Quotes</span></div>
+              <div class="step-detail">Project + client pre-filled, empty editor open.</div>
+            </div>
+          </li>
+          <li class="flow-step good">
+            <div class="step-num">4</div>
+            <div class="step-body">
+              <div class="step-action">Add line items, autosave</div>
+              <div class="step-detail">Same as today.</div>
+            </div>
+          </li>
+        </ol>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ═══════════════ Proposed Client card mockup ═══════════════ -->
+  <section class="section">
+    <div class="sec-num">Section 03</div>
+    <h2 class="sec-h">What the new Client card looks like</h2>
+    <p class="sec-lede">Inline-expanded projects. Each project row carries the same 4-cell action strip used today on the Projects tab.</p>
+
+    <div class="mockup-frame">
+      <div class="mfr-tag">Mockup · Clients tab → Jane Smith's card</div>
+
+      <div class="client-card-expanded">
+        <div class="ccx-header">
+          <div class="ccx-avatar">J</div>
+          <div style="flex:1;min-width:0">
+            <div class="ccx-name">Jane Smith</div>
+            <div class="ccx-meta">jane@example.com · 555-0144 · 3 projects · 5 orders</div>
+          </div>
+          <div class="ccx-total">$48,210</div>
+        </div>
+
+        <div class="ccx-projects">
+          <div class="ccx-projects-h">
+            <span>Projects (3)</span>
+            <button class="add-btn">+ New Project</button>
+          </div>
+
+          <!-- Project 1 -->
+          <div class="ccx-project-row">
+            <div>
+              <div class="ccx-pname">Smith Kitchen</div>
+              <div class="ccx-pmeta">Active · started Feb 2026</div>
+            </div>
+            <div class="proj-strip-mini">
+              <div class="proj-act-mini"><div class="proj-act-mini-main">▣<span>Cab</span><span class="count">6</span></div><div class="proj-act-mini-add">+</div></div>
+              <div class="proj-act-mini"><div class="proj-act-mini-main">✂<span>Cut</span><span class="count">2</span></div><div class="proj-act-mini-add">+</div></div>
+              <div class="proj-act-mini"><div class="proj-act-mini-main">📄<span>Q</span><span class="count">2</span></div><div class="proj-act-mini-add">+</div></div>
+              <div class="proj-act-mini"><div class="proj-act-mini-main">📋<span>O</span><span class="count">1</span></div><div class="proj-act-mini-add">+</div></div>
+            </div>
+            <div class="ccx-pvalue">$32,400</div>
+          </div>
+
+          <!-- Project 2 -->
+          <div class="ccx-project-row">
+            <div>
+              <div class="ccx-pname">Smith Pantry</div>
+              <div class="ccx-pmeta">On Hold · client review</div>
+            </div>
+            <div class="proj-strip-mini">
+              <div class="proj-act-mini"><div class="proj-act-mini-main">▣<span>Cab</span><span class="count">2</span></div><div class="proj-act-mini-add">+</div></div>
+              <div class="proj-act-mini"><div class="proj-act-mini-main empty">✂<span>Cut</span><span class="count">0</span></div><div class="proj-act-mini-add">+</div></div>
+              <div class="proj-act-mini"><div class="proj-act-mini-main">📄<span>Q</span><span class="count">1</span></div><div class="proj-act-mini-add">+</div></div>
+              <div class="proj-act-mini"><div class="proj-act-mini-main empty">📋<span>O</span><span class="count">0</span></div><div class="proj-act-mini-add">+</div></div>
+            </div>
+            <div class="ccx-pvalue">$8,640</div>
+          </div>
+
+          <!-- Project 3 -->
+          <div class="ccx-project-row">
+            <div>
+              <div class="ccx-pname">Smith Bathroom</div>
+              <div class="ccx-pmeta">Complete · delivered Apr 2026</div>
+            </div>
+            <div class="proj-strip-mini">
+              <div class="proj-act-mini"><div class="proj-act-mini-main">▣<span>Cab</span><span class="count">4</span></div><div class="proj-act-mini-add">+</div></div>
+              <div class="proj-act-mini"><div class="proj-act-mini-main">✂<span>Cut</span><span class="count">1</span></div><div class="proj-act-mini-add">+</div></div>
+              <div class="proj-act-mini"><div class="proj-act-mini-main">📄<span>Q</span><span class="count">1</span></div><div class="proj-act-mini-add">+</div></div>
+              <div class="proj-act-mini"><div class="proj-act-mini-main">📋<span>O</span><span class="count">1</span></div><div class="proj-act-mini-add">+</div></div>
+            </div>
+            <div class="ccx-pvalue">$7,170</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p style="font-size: 12px; color: var(--muted); margin: 8px 0 0;">
+      Each project row uses the existing <code>.proj-act</code> pattern (current Project card has 4 cells; this preserves it). Click a project name → loads project context into the same Clients sidebar editor.
+      Click an action cell or its <code>+</code> → drills into the destination tab with project + client pre-filled (same <code>_newCabinetForProject</code>&nbsp;/&nbsp;<code>_newCutListForProject</code>&nbsp;/&nbsp;<code>_newQuoteForProject</code>&nbsp;/&nbsp;<code>_newOrderForProject</code> functions used today).
+    </p>
+  </section>
+
+  <!-- ═══════════════ Flow 2: New client + new project + first quote ═══════════════ -->
+  <section class="section">
+    <div class="sec-num">Section 04 · Flow B</div>
+    <h2 class="sec-h">Brand-new client → first project → first quote</h2>
+    <p class="sec-lede">The cold-start flow. New customer walks in the door — everything is empty.</p>
+
+    <div class="flow-pair">
+
+      <!-- Current -->
+      <div class="flow-lane">
+        <span class="flow-tag current">Current <span class="count">8 steps · 3 tab switches</span></span>
+        <ol class="flow-steps">
+          <li class="flow-step neut">
+            <div class="step-num">1</div>
+            <div class="step-body">
+              <div class="step-action">Open <span class="tab-chip clients">Clients</span>, fill the New Client form</div>
+              <div class="step-detail">Name, email, phone, address, notes.</div>
+            </div>
+          </li>
+          <li class="flow-step warn">
+            <div class="step-num">2</div>
+            <div class="step-body">
+              <div class="step-action">Click "+ Add Client" button <span class="pain-pill">explicit save</span></div>
+              <div class="step-detail">No autosave on this form. Form clears after success.</div>
+            </div>
+          </li>
+          <li class="flow-step neut">
+            <div class="step-num">3</div>
+            <div class="step-body">
+              <div class="step-action">Click "Projects" on the new client card</div>
+              <div class="step-detail">Switches tab, sets active client.</div>
+            </div>
+          </li>
+          <li class="flow-step warn">
+            <div class="step-num">4</div>
+            <div class="step-body">
+              <div class="step-action">Land in <span class="tab-chip projects">Projects</span> <span class="pain-pill">2-state gate</span></div>
+              <div class="step-detail">Empty state: "No projects yet for Jane Smith." Sidebar form is now ready.</div>
+            </div>
+          </li>
+          <li class="flow-step neut">
+            <div class="step-num">5</div>
+            <div class="step-body">
+              <div class="step-action">Type project name, description, status</div>
+              <div class="step-detail">Autosave fires on blur. Sidebar shows <code>.cl-unsaved-pill</code> indicator.</div>
+            </div>
+          </li>
+          <li class="flow-step neut">
+            <div class="step-num">6</div>
+            <div class="step-body">
+              <div class="step-action">Click "+ Quotes" on the new project</div>
+              <div class="step-detail"><code>_newQuoteForProject(id)</code>.</div>
+            </div>
+          </li>
+          <li class="flow-step neut">
+            <div class="step-num">7</div>
+            <div class="step-body">
+              <div class="step-action">Land in <span class="tab-chip quotes">Quotes</span></div>
+              <div class="step-detail">Project + client pre-filled.</div>
+            </div>
+          </li>
+          <li class="flow-step good">
+            <div class="step-num">8</div>
+            <div class="step-body">
+              <div class="step-action">Add line items, autosave</div>
+              <div class="step-detail">Same as today.</div>
+            </div>
+          </li>
+        </ol>
+      </div>
+
+      <!-- Proposed -->
+      <div class="flow-lane">
+        <span class="flow-tag proposed">Proposed <span class="count">5 steps · 1 tab switch</span></span>
+        <ol class="flow-steps">
+          <li class="flow-step neut">
+            <div class="step-num">1</div>
+            <div class="step-body">
+              <div class="step-action">Open <span class="tab-chip clients">Clients</span>, fill the New Client form</div>
+              <div class="step-detail">Name, email, phone, address, notes. <strong>Autosave on blur</strong> with <code>.cl-unsaved-pill</code> (Roadmap item).</div>
+            </div>
+          </li>
+          <li class="flow-step good">
+            <div class="step-num">2</div>
+            <div class="step-body">
+              <div class="step-action">Card appears with empty "Projects" section + "+ New Project" button</div>
+              <div class="step-detail">No need to leave the tab.</div>
+            </div>
+          </li>
+          <li class="flow-step good">
+            <div class="step-num">3</div>
+            <div class="step-body">
+              <div class="step-action">Click "+ New Project" on the client card</div>
+              <div class="step-detail">Inline project form appears under the card. Same fields as today's Projects sidebar form. Autosaves on blur.</div>
+            </div>
+          </li>
+          <li class="flow-step neut">
+            <div class="step-num">4</div>
+            <div class="step-body">
+              <div class="step-action">Click "+ Quotes" on the new project row → <span class="tab-chip quotes">Quotes</span></div>
+              <div class="step-detail">Project + client pre-filled, empty editor open.</div>
+            </div>
+          </li>
+          <li class="flow-step good">
+            <div class="step-num">5</div>
+            <div class="step-body">
+              <div class="step-action">Add line items, autosave</div>
+              <div class="step-detail">Same as today.</div>
+            </div>
+          </li>
+        </ol>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ═══════════════ Flow 3: Schedule → drill back through entities ═══════════════ -->
+  <section class="section">
+    <div class="sec-num">Section 05 · Flow C</div>
+    <h2 class="sec-h">Schedule → drill back to client (cross-tab nav)</h2>
+    <p class="sec-lede">"I see a calendar bar for the Smith Kitchen order — I want to call Jane about it." Needs the clickable-FK quick-win from the main review doc.</p>
+
+    <div class="flow-pair">
+
+      <!-- Current -->
+      <div class="flow-lane">
+        <span class="flow-tag current">Current <span class="count">5 steps · 3 tab switches</span></span>
+        <ol class="flow-steps">
+          <li class="flow-step neut">
+            <div class="step-num">1</div>
+            <div class="step-body">
+              <div class="step-action">Click calendar bar in <span class="tab-chip schedule">Schedule</span></div>
+              <div class="step-detail">Opens order editor in Orders tab.</div>
+            </div>
+          </li>
+          <li class="flow-step warn">
+            <div class="step-num">2</div>
+            <div class="step-body">
+              <div class="step-action">See "Smith Kitchen — Jane Smith" in editor header <span class="pain-pill">not clickable</span></div>
+              <div class="step-detail">Plain text. No drill affordance.</div>
+            </div>
+          </li>
+          <li class="flow-step warn">
+            <div class="step-num">3</div>
+            <div class="step-body">
+              <div class="step-action">Open <span class="tab-chip clients">Clients</span> manually</div>
+              <div class="step-detail">User has to leave the order editor.</div>
+            </div>
+          </li>
+          <li class="flow-step neut">
+            <div class="step-num">4</div>
+            <div class="step-body">
+              <div class="step-action">Search "Jane Smith"</div>
+              <div class="step-detail">Re-finds her card.</div>
+            </div>
+          </li>
+          <li class="flow-step neut">
+            <div class="step-num">5</div>
+            <div class="step-body">
+              <div class="step-action">Read contact info</div>
+              <div class="step-detail">Goal reached.</div>
+            </div>
+          </li>
+        </ol>
+      </div>
+
+      <!-- Proposed -->
+      <div class="flow-lane">
+        <span class="flow-tag proposed">Proposed <span class="count">3 steps · 2 tab switches</span></span>
+        <ol class="flow-steps">
+          <li class="flow-step neut">
+            <div class="step-num">1</div>
+            <div class="step-body">
+              <div class="step-action">Click calendar bar in <span class="tab-chip schedule">Schedule</span></div>
+              <div class="step-detail">Same as today — opens order editor.</div>
+            </div>
+          </li>
+          <li class="flow-step good">
+            <div class="step-num">2</div>
+            <div class="step-body">
+              <div class="step-action">Click "Jane Smith" in editor header <span class="win-pill">clickable FK</span></div>
+              <div class="step-detail">Quick-win from the main UX review — adds <code>.ec-link</code> with <code>_drillProjectsForClient(id)</code>.</div>
+            </div>
+          </li>
+          <li class="flow-step good">
+            <div class="step-num">3</div>
+            <div class="step-body">
+              <div class="step-action">Land in <span class="tab-chip clients">Clients</span> with Jane Smith expanded</div>
+              <div class="step-detail">Contact info + her projects visible immediately. Smith Kitchen row highlighted (since that's the order we came from).</div>
+            </div>
+          </li>
+        </ol>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ═══════════════ What changes vs what stays ═══════════════ -->
+  <section class="section">
+    <div class="sec-num">Section 06</div>
+    <h2 class="sec-h">What changes vs what stays</h2>
+
+    <table class="changes">
+      <thead><tr><th>Surface</th><th>Status</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td class="label">Database schema</td><td><span class="same-pill">unchanged</span></td><td><code>projects</code> table stays, all FKs stay. No migration.</td></tr>
+        <tr><td class="label">Projects tab</td><td><span class="change-pill">removed</span></td><td>One fewer item in the top nav. 9 tabs → 8.</td></tr>
+        <tr><td class="label">2-state sidebar gate</td><td><span class="change-pill">removed</span></td><td>The "pick a client first" gate (<code>_renderProjectsSidebarGate</code>) disappears with the tab.</td></tr>
+        <tr><td class="label">Client card</td><td><span class="change-pill">expanded</span></td><td>Adds inline projects list with action strip per project. Existing 1-cell strip ("Projects") is dropped.</td></tr>
+        <tr><td class="label"><code>renderProjectsMain()</code></td><td><span class="change-pill">removed</span></td><td>Logic folds into <code>renderClientsMain()</code> — render each project row inside its client card.</td></tr>
+        <tr><td class="label"><code>_drillQuotesForProject</code> / <code>_drillOrdersForProject</code></td><td><span class="same-pill">unchanged</span></td><td>Still called from the per-project action strip cells.</td></tr>
+        <tr><td class="label"><code>_newCabinetForProject</code> / <code>_newCutListForProject</code> / <code>_newQuoteForProject</code> / <code>_newOrderForProject</code></td><td><span class="same-pill">unchanged</span></td><td>Same pre-fill behaviour, just invoked from inside the Client card.</td></tr>
+        <tr><td class="label">Project autosave (<code>_pjScheduleAutosave</code>, <code>.cl-unsaved-pill</code>)</td><td><span class="same-pill">unchanged</span></td><td>Wired to the inline form on the Client card.</td></tr>
+        <tr><td class="label">Projects-scoped Quote / Order header (<code>.ph-back</code>)</td><td><span class="same-pill">unchanged</span></td><td>Drilling from a project row still shows the blue back-arrow header in Quotes/Orders.</td></tr>
+        <tr><td class="label">Dashboard widgets</td><td><span class="change-pill">add "Active projects"</span></td><td>Covers the only thing the Projects tab uniquely did: cross-client list view. Suggested as a new card alongside Active Orders / Recent Quotes / Stock Alerts.</td></tr>
+        <tr><td class="label">Quotes / Orders / Cabinet / Cut List tabs</td><td><span class="same-pill">unchanged</span></td><td>Still keyed by <code>project_id</code> internally. Smart-input project picker still works.</td></tr>
+        <tr><td class="label">Schedule tab</td><td><span class="same-pill">unchanged</span></td><td>Calendar bars and sidebar list still resolve to orders (which still resolve to projects).</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ═══════════════ Risks / counter-arguments ═══════════════ -->
+  <section class="section">
+    <div class="sec-num">Section 07</div>
+    <h2 class="sec-h">Risks &amp; counter-arguments</h2>
+
+    <ul style="line-height: 1.7; color: var(--text2); padding-left: 22px;">
+      <li><strong>"I want a list of all active projects across clients."</strong> Solved by a Dashboard widget. If that's not enough, add a "Projects" sub-tab on the Dashboard, not a top-level tab.</li>
+      <li><strong>"Power users with 50+ projects."</strong> Inline expansion gets noisy. Mitigation: collapsed-by-default on cards with &gt;5 projects, with a "Show all" expander. Cards with 0–5 projects stay always-open.</li>
+      <li><strong>"Project-only operations (rename, archive, delete)."</strong> Stay in the inline project form / row context menu — no functionality lost, just relocated.</li>
+      <li><strong>"What if a project becomes orphaned (client deleted)?"</strong> Today: <code>on delete cascade</code> drops it. Same after the change. Cascade rules don't move.</li>
+      <li><strong>Code surface change is larger than the visual change suggests.</strong> <code>renderProjectsMain</code> is ~150 lines that fold into <code>renderClientsMain</code>; <code>_pickClientForProjects</code>, <code>_exitClient_projects</code>, the 2-state gate logic, <code>_renderProjectsSidebarGate</code> all collapse. Total: ~300 lines removed, ~200 added inside <code>clients.js</code>. Not trivial — but no schema work, no migration, no data risk.</li>
+    </ul>
+  </section>
+
+</div>
+</body>
+</html>

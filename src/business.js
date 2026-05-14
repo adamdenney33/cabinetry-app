@@ -204,7 +204,10 @@ function _openBusinessDetailsPopup() {
   const esc = s => /** @type {(v:any)=>string} */ (/** @type {any} */ (window)._escHtml)(s);
   const html = `
     <div class="popup-header">
-      <div class="popup-title">Business details</div>
+      <div class="popup-title" style="display:flex;align-items:center;gap:8px">
+        <span>Business details</span>
+        <span class="cl-unsaved-pill" data-save-pill="business" style="display:none"></span>
+      </div>
       <button class="popup-close" onclick="_closePopup()">&times;</button>
     </div>
     <div class="popup-body">

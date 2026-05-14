@@ -215,9 +215,6 @@ function _pickerFilter(input) {
 // dirty / saving / saved / failed states. Pills not in the DOM are no-ops, so
 // callers don't have to pre-check.
 
-/** @type {Record<string, ReturnType<typeof setTimeout>>} */
-const _savePillTimers = {};
-
 /**
  * Update the save-status pill for a domain.
  * @param {string} domain  e.g. 'cabinet', 'cutlist', 'quote', 'order', 'business', 'settings'
@@ -225,63 +222,46 @@ const _savePillTimers = {};
  * @param {{ retry?: () => void }} [opts]
  */
 function _setSaveStatus(domain, state, opts) {
-  const pill = /** @type {HTMLElement | null} */ (document.querySelector(`[data-save-pill="${domain}"]`));
-  const indicator = /** @type {HTMLElement | null} */ (document.querySelector(`[data-save-indicator="${domain}"]`));
-  if (!pill && !indicator) return;
-  // clear any pending revert
-  if (_savePillTimers[domain]) { clearTimeout(_savePillTimers[domain]); delete _savePillTimers[domain]; }
-  if (pill) {
-    pill.classList.remove('is-saving', 'is-saved', 'is-failed');
-    pill.onclick = null;
-  }
-  if (indicator) {
-    indicator.classList.remove('is-saving', 'is-saved', 'is-error');
-    indicator.onclick = null;
-  }
+  // Multi-mount: a domain may have several pill / indicator nodes in the DOM
+  // at once (e.g. business has one in the account dropdown AND one in the
+  // business-details popup AND one in the settings dropdown). Update them all.
+  const pills = /** @type {HTMLElement[]} */ (Array.from(document.querySelectorAll(`[data-save-pill="${domain}"]`)));
+  const indicators = /** @type {HTMLElement[]} */ (Array.from(document.querySelectorAll(`[data-save-indicator="${domain}"]`)));
+  if (!pills.length && !indicators.length) return;
+  pills.forEach(p => { p.classList.remove('is-saving', 'is-saved', 'is-failed'); p.onclick = null; });
+  indicators.forEach(i => { i.classList.remove('is-saving', 'is-saved', 'is-error'); i.onclick = null; });
   switch (state) {
     case 'clean':
-      if (pill) { pill.style.display = 'none'; pill.textContent = ''; }
-      if (indicator) { indicator.style.display = ''; indicator.textContent = 'Autosave'; }
+    case 'saved':
+      // Resting state — pill shows persistent green "Saved" so the user always
+      // sees confirmation that work is persisted, even before they start editing.
+      pills.forEach(p => { p.style.display = ''; p.classList.add('is-saved'); p.textContent = 'Saved'; });
+      indicators.forEach(i => { i.style.display = ''; i.classList.add('is-saved'); i.textContent = 'Saved'; });
       return;
     case 'dirty':
-      if (pill) { pill.style.display = ''; pill.textContent = 'unsaved'; }
-      if (indicator) { indicator.style.display = ''; indicator.textContent = 'Autosave'; }
+      pills.forEach(p => { p.style.display = ''; p.textContent = 'unsaved'; });
+      indicators.forEach(i => { i.style.display = ''; i.textContent = 'Editing…'; });
       return;
     case 'saving':
-      if (pill) { pill.style.display = ''; pill.classList.add('is-saving'); pill.textContent = 'Saving…'; }
-      if (indicator) { indicator.style.display = ''; indicator.classList.add('is-saving'); indicator.textContent = 'Saving…'; }
-      return;
-    case 'saved':
-      if (pill) { pill.style.display = ''; pill.classList.add('is-saved'); pill.textContent = 'Saved'; }
-      if (indicator) { indicator.style.display = ''; indicator.classList.add('is-saved'); indicator.textContent = 'Saved'; }
-      // fade pill back to clean after 2s; indicator reverts to 'Autosave' label.
-      _savePillTimers[domain] = setTimeout(() => {
-        if (pill && pill.classList.contains('is-saved')) {
-          pill.style.display = 'none';
-          pill.classList.remove('is-saved');
-        }
-        if (indicator && indicator.classList.contains('is-saved')) {
-          indicator.classList.remove('is-saved');
-          indicator.textContent = 'Autosave';
-        }
-      }, 2000);
+      pills.forEach(p => { p.style.display = ''; p.classList.add('is-saving'); p.textContent = 'Saving…'; });
+      indicators.forEach(i => { i.style.display = ''; i.classList.add('is-saving'); i.textContent = 'Saving…'; });
       return;
     case 'failed':
-      if (pill) {
-        pill.style.display = '';
-        pill.classList.add('is-failed');
-        pill.textContent = 'Save failed · Retry';
-        if (opts && typeof opts.retry === 'function') pill.onclick = opts.retry;
-      }
-      if (indicator) {
-        indicator.style.display = '';
-        indicator.classList.add('is-error');
-        indicator.textContent = 'Save failed';
+      pills.forEach(p => {
+        p.style.display = '';
+        p.classList.add('is-failed');
+        p.textContent = 'Save failed · Retry';
+        if (opts && typeof opts.retry === 'function') p.onclick = opts.retry;
+      });
+      indicators.forEach(i => {
+        i.style.display = '';
+        i.classList.add('is-error');
+        i.textContent = 'Save failed';
         if (opts && typeof opts.retry === 'function') {
-          indicator.onclick = opts.retry;
-          indicator.style.cursor = 'pointer';
+          i.onclick = opts.retry;
+          i.style.cursor = 'pointer';
         }
-      }
+      });
       return;
   }
 }
@@ -299,14 +279,17 @@ function _setSaveStatus(domain, state, opts) {
 /**
  * Render the Idea-3 project header.
  * @param {string} _domain  retained for back-compat (was the data-save-pill slot)
- * @param {{ name: string, exitFn: string, status?: string, summary?: string, clientName?: string, iconSvg?: string }} opts
+ * @param {{ name: string, exitFn: string, status?: string, summary?: string, clientName?: string, iconSvg?: string, saveIndicator?: string }} opts
  */
 function _renderProjectHeader(_domain, opts) {
-  const { name, exitFn, iconSvg, clientName } = opts;
+  const { name, exitFn, iconSvg, clientName, saveIndicator } = opts;
   const defaultIcon = '<svg class="ph-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>';
   const titleHtml = clientName
     ? `${_escHtml(name)} · ${_escHtml(clientName)}`
     : _escHtml(name);
+  const indicatorHtml = saveIndicator
+    ? `<span class="cl-unsaved-pill" data-save-pill="${_escHtml(saveIndicator)}" style="display:none"></span>`
+    : '';
   return `<div class="project-header">
     <div class="ph-row1">
       <button class="ph-back" onclick="${exitFn}()" title="Back" aria-label="Back">
@@ -314,6 +297,7 @@ function _renderProjectHeader(_domain, opts) {
       </button>
       ${iconSvg || defaultIcon}
       <span class="ph-title">${titleHtml}</span>
+      ${indicatorHtml}
     </div>
   </div>`;
 }
@@ -342,7 +326,11 @@ const _CH_ICON_CLIENT = '<svg class="ch-icon" viewBox="0 0 24 24" fill="none" st
  */
 function _renderContentHeader(opts) {
   const { iconSvg, title, clientName } = opts;
-  const clientHtml = clientName
+  // Suppress the " · client" suffix when the project name already equals the
+  // client name (happens when the quote has no project and we fell back to
+  // the client name as the display title).
+  const showClient = clientName && clientName.trim() !== (title || '').trim();
+  const clientHtml = showClient
     ? ` · <span class="ch-client">${_escHtml(clientName)}</span>`
     : '';
   return `<div class="content-header">${iconSvg}<h2 class="ch-title">${_escHtml(title)}${clientHtml}</h2></div>`;

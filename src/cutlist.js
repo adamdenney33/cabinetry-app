@@ -154,13 +154,14 @@ function cycleGrain(id, type) {
   }
   type === 'sheet' ? renderSheets() : renderPieces();
   if (results) optimize();
+  _saveCutList();
 }
 
 // ── TOGGLE ENABLE ──
 /** @param {number} id */
 function toggleSheet(id) {
   const s = sheets.find(x => x.id === id);
-  if (s) { s.enabled = s.enabled === false ? true : false; renderSheets(); }
+  if (s) { s.enabled = s.enabled === false ? true : false; renderSheets(); _saveCutList(); }
 }
 let _lastToggleIdx = -1;
 
@@ -313,6 +314,7 @@ function stepQty(type, id, delta) {
     item.qty = Math.max(1, Math.min(max, (item.qty || 1) + delta));
   }
   type === 'sheet' ? renderSheets() : renderPieces();
+  _saveCutList();
 }
 
 // ── COLUMN TOGGLE ──
@@ -848,6 +850,7 @@ async function _clRunAutosave() {
   // Post-F5: every cut list is its own row (no project wrapper). Direct
   // write to the cutlists row, then re-sync sheets/pieces/edge_bands children.
   if (_clCurrentCutlistId) {
+    if (typeof _setSaveStatus === 'function') _setSaveStatus('cutlist', 'saving');
     try {
       await _db('cutlists').update(/** @type {any} */ ({
         name: _clCurrentCutlistName || 'Untitled',
@@ -875,8 +878,14 @@ async function _clRunAutosave() {
         await _db('sheets').insert(rows);
       }
       _clDirty = false;
+      if (typeof _setSaveStatus === 'function') _setSaveStatus('cutlist', 'saved');
+      // Refresh the library card grid so the per-cut-list piece count reflects
+      // the rows we just wrote. renderCLCutListLibraryView no-ops when its DOM
+      // isn't mounted, so it's safe to call from any tab.
+      if (typeof renderCLCutListLibraryView === 'function') renderCLCutListLibraryView();
     } catch (e) {
       console.warn('[cl autosave-library]', (/** @type {any} */ (e)).message || e);
+      if (typeof _setSaveStatus === 'function') _setSaveStatus('cutlist', 'failed', { retry: _clRunAutosave });
     }
   }
 }
@@ -978,7 +987,10 @@ function _clRenderContext() {
  *  and the title display. Skips writing while the input is focused so the
  *  user's typing isn't clobbered by other renders. */
 function _clSyncDrillInputs() {
-  const nameInp = /** @type {HTMLInputElement|null} */ (_byId('cl-name'));
+  // id `cutlist-name` (not `cl-name`) — the Clients panel uses `cl-name` for
+  // the client-name field, and getElementById on the duplicated id was
+  // letting client edits leak into this input.
+  const nameInp = /** @type {HTMLInputElement|null} */ (_byId('cutlist-name'));
   if (nameInp && document.activeElement !== nameInp) {
     nameInp.value = _clCurrentCutlistName || '';
   }
@@ -1116,7 +1128,7 @@ async function _clStartNewCutlist() {
       if (typeof renderPieces === 'function') renderPieces();
       if (typeof renderEdgeBands === 'function') { try { renderEdgeBands(); } catch(e) {} }
       _clRenderContext();
-      const focus = /** @type {HTMLInputElement|null} */ (_byId('cl-name'));
+      const focus = /** @type {HTMLInputElement|null} */ (_byId('cutlist-name'));
       if (focus) focus.focus();
     } catch (e) {
       if (typeof _setSaveStatus === 'function') _setSaveStatus('cutlist', 'failed', { retry: _clStartNewCutlist });
@@ -1369,6 +1381,7 @@ function addSheet(name, w, h, qty) {
   });
   renderSheets();
   renderPieces(); // refresh material dropdowns
+  _saveCutList();
 }
 
 /** @param {number} id */
@@ -1403,6 +1416,7 @@ function updateSheet(id, field, val) {
   else s[field] = val;
   renderSheets();
   renderPieces();
+  _saveCutList();
 }
 
 const DRAG_HANDLE = `<svg width="10" height="14" viewBox="0 0 10 14" fill="currentColor"><circle cx="3" cy="2.5" r="1.2"/><circle cx="7" cy="2.5" r="1.2"/><circle cx="3" cy="7" r="1.2"/><circle cx="7" cy="7" r="1.2"/><circle cx="3" cy="11.5" r="1.2"/><circle cx="7" cy="11.5" r="1.2"/></svg>`;
@@ -1487,8 +1501,12 @@ function _saveCutList() {
     localStorage.setItem('pc_cl_ebid', String(_edgeBandId));
     localStorage.setItem('pc_cl_colsVisible', JSON.stringify(colsVisible));
   } catch(e) {}
-  // Any local-state mutation flips dirty when a project is loaded.
-  if (_clCurrentProjectId && !_clDirty) _setClDirty(true);
+  // Any local-state mutation flips dirty when a cut list is open. F6 retired
+  // the project wrapper — every cut list is now its own row keyed by
+  // _clCurrentCutlistId, so that's the right scope for "is there a DB target
+  // to autosave to". The old `_clCurrentProjectId &&` guard never fired
+  // post-F6 and silently broke autosave.
+  if (_clCurrentCutlistId && !_clDirty) _setClDirty(true);
 }
 
 function _loadCutList() {
@@ -1562,6 +1580,7 @@ function addPiece(label, w, h, qty, grain) {
     edges:    {L1:null,W2:null,L3:null,W4:null},
   });
   renderPieces();
+  _saveCutList();
 }
 
 /** @param {number} id */
@@ -1619,6 +1638,7 @@ function updatePiece(id, field, val) {
     if (tp) tp[field] = processed;
   }
   renderPieces();
+  _saveCutList();
 }
 
 function renderPieces() {
@@ -3959,7 +3979,8 @@ function drawCanvas(container, layout, units) {
   ctx.beginPath(); ctx.moveTo(OX + cw, by - 4); ctx.lineTo(OX + cw, by + 4); ctx.stroke();
   const swText = formatDim(sW);
   const swW = ctx.measureText(swText).width;
-  ctx.fillStyle = '#fff';
+  const dimBg = document.documentElement.classList.contains('dark') ? '#cccccc' : '#fff';
+  ctx.fillStyle = dimBg;
   ctx.fillRect(OX + cw / 2 - swW / 2 - 4, by - fs / 2 - 1, swW + 8, fs + 2);
   ctx.fillStyle = '#333';
   ctx.fillText(swText, OX + cw / 2, by);
@@ -3974,7 +3995,7 @@ function drawCanvas(container, layout, units) {
   ctx.beginPath(); ctx.moveTo(ch / 2, -4); ctx.lineTo(ch / 2, 4); ctx.stroke();
   const shText = formatDim(sH);
   const shW = ctx.measureText(shText).width;
-  ctx.fillStyle = '#fff';
+  ctx.fillStyle = document.documentElement.classList.contains('dark') ? '#cccccc' : '#fff';
   ctx.fillRect(-shW / 2 - 4, -fs / 2 - 1, shW + 8, fs + 2);
   ctx.fillStyle = '#333';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
