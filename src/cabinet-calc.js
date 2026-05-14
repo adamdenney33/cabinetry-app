@@ -54,7 +54,14 @@ function calcCBSections(line) {
   /** @param {string} matName */
   function mp(matName) {
     const s = stockItems.find(s => s.name === matName);
-    if (s) return (s.cost ?? 0) / (s.w && s.h ? (s.w/1000)*(s.h/1000) : SHEET_M2);
+    if (s) {
+      // Sheet m² — prefer width_mm + length_m (canonical fields the app writes
+      // for sheet stock); fall back to legacy w/h treated as mm, then SHEET_M2.
+      const sheetM2 = (s.width_mm && s.length_m) ? (s.width_mm / 1000) * s.length_m
+                    : (s.w && s.h) ? (s.w / 1000) * (s.h / 1000)
+                    : SHEET_M2;
+      return sheetM2 > 0 ? (s.cost ?? 0) / sheetM2 : 0;
+    }
     const m = cbSettings.materials.find(/** @param {any} m */ m => m.name === matName);
     return m ? m.price / SHEET_M2 : 0;
   }
@@ -167,7 +174,14 @@ function calcCBLine(line) {
   /** @param {string} matName */
   function mp(matName) {
     const s = stockItems.find(s => s.name === matName);
-    if (s) return (s.cost ?? 0) / (s.w && s.h ? (s.w/1000)*(s.h/1000) : SHEET_M2);
+    if (s) {
+      // Sheet m² — prefer width_mm + length_m (canonical fields the app writes
+      // for sheet stock); fall back to legacy w/h treated as mm, then SHEET_M2.
+      const sheetM2 = (s.width_mm && s.length_m) ? (s.width_mm / 1000) * s.length_m
+                    : (s.w && s.h) ? (s.w / 1000) * (s.h / 1000)
+                    : SHEET_M2;
+      return sheetM2 > 0 ? (s.cost ?? 0) / sheetM2 : 0;
+    }
     const m = cbSettings.materials.find(/** @param {any} m */ m => m.name === matName);
     return m ? m.price / SHEET_M2 : 0;
   }
