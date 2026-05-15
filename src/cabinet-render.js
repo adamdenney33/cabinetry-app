@@ -262,7 +262,7 @@ function renderCBRates() {
     ${section('labour', 'Other Labour Times', '6 rates', labourContent)}
     ${section('basetypes', 'Base', '('+(cbSettings.baseTypes||[]).length+')', listItems(cbSettings.baseTypes||[], 'cbSettings.baseTypes', cur))}
   `;
-  targets.forEach(el => { el.innerHTML = html; });
+  targets.forEach(el => { if (el) el.innerHTML = html; });
 }
 
 function renderCBSettingsLists() { renderCBRates(); }

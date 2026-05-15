@@ -178,31 +178,39 @@ const _wtSteps = [
     type: 'spot', phase: 'Cabinet', section: 'cabinet', cbView: 'results',
     target: '.nav-tab[title="Cabinet"]', position: 'bottom',
     title: 'Cabinet tab',
-    body: 'The engine of the app. Design cabinets, set your rates, and build a reusable library — <span class="wt-hi">everything that powers your quotes</span> lives here.'
-  },
-  {
-    type: 'spot', phase: 'Cabinet', section: 'cabinet', cbView: 'results',
-    target: '#cb-main-tab-results', position: 'bottom',
-    title: 'Quote Builder',
-    body: 'The Quote Builder is where you assemble a quote. Add cabinet lines from your library, set dimensions, choose materials — <span class="wt-hi">pricing updates instantly</span>.'
+    body: 'The heart of ProCabinet. Design cabinets, keep a <span class="wt-hi">reusable template library</span>, and set the rates that price every job — it all lives here.'
   },
   {
     type: 'spot', phase: 'Cabinet', section: 'cabinet', cbView: 'results',
     target: '#cb-context', position: 'right',
-    title: 'Cabinet configuration',
-    body: 'Pick a client and project, then add cabinet lines. ProCabinet saves your work as a <span class="wt-hi">draft quote linked to the project</span> — so nothing is lost between sessions.'
+    title: 'Start from a quote',
+    body: 'The Quote Builder is quote-driven. Pick a quote from the sidebar and its cabinets load instantly — <span class="wt-hi">always in sync with the Quotes tab</span>.'
   },
   {
     type: 'spot', phase: 'Cabinet', section: 'cabinet', cbView: 'results',
+    preClickCard: '#cb-results .quote-card',
     target: '#cb-results', position: 'left',
-    title: 'Live price breakdown',
-    body: 'See material cost, labour, markup and tax calculated line by line. The quote total updates <span class="wt-hi">as you configure each cabinet</span>.'
+    title: 'Cabinets & live pricing',
+    body: 'Every cabinet in the quote is listed here with material, labour, markup and tax <span class="wt-hi">calculated line by line</span> — the total updates as you design.'
+  },
+  {
+    type: 'spot', phase: 'Cabinet', section: 'cabinet', cbView: 'results',
+    preClickCard: '#cb-results .cb-cab-card',
+    target: '#cb-cab-editor', position: 'right',
+    title: 'The cabinet editor',
+    body: 'Open any cabinet to set its full spec — carcass size, doors, drawers, shelves and hardware. A <span class="wt-hi">power-law labour formula</span> prices cabinets of any size correctly.'
+  },
+  {
+    type: 'spot', phase: 'Cabinet', section: 'cabinet', cbView: 'library',
+    target: '#cb-library-view', position: 'left',
+    title: 'Cabinet Library',
+    body: 'A catalogue of <span class="wt-hi">reusable cabinet templates</span>. Build a cabinet once, then "Add to Quote" drops it into any job — dimensions, materials and pricing included.'
   },
   {
     type: 'spot', phase: 'Cabinet', section: 'cabinet', cbView: 'library',
     target: '#cb-lib-tab-rates', position: 'bottom',
     title: 'My Rates',
-    body: 'Set your <span class="wt-hi">hourly labour rate, material markup, edge-banding cost and contingency</span> percentage. Do this once — every cabinet prices itself from these.'
+    body: 'Set your <span class="wt-hi">hourly labour rate, material markup, edge-banding cost and contingency</span>. Do this once — every cabinet prices itself from these.'
   },
   {
     type: 'spot', phase: 'Cabinet', section: 'cabinet', cbView: 'library',
@@ -210,18 +218,6 @@ const _wtSteps = [
     target: '#cb-lib-rates-wrap', position: 'right',
     title: 'Rate inputs',
     body: 'Adjust any rate and all open quotes reprice in real time. <span class="wt-hi">No spreadsheet formulas to maintain</span> — one source of truth for your whole business.'
-  },
-  {
-    type: 'spot', phase: 'Cabinet', section: 'cabinet', cbView: 'library',
-    target: '#cb-main-tab-library', position: 'bottom',
-    title: 'Cabinet Library',
-    body: 'Save any cabinet configuration as a reusable template. <span class="wt-hi">Drop templates into any future quote</span> — dimensions, materials and pricing all carry across.'
-  },
-  {
-    type: 'spot', phase: 'Cabinet', section: 'cabinet', cbView: 'library',
-    target: '#cb-library-view', position: 'left',
-    title: 'Your template library',
-    body: 'Browse saved templates like a catalogue. Edit a template and every quote that uses it can be updated — <span class="wt-hi">great for standard ranges you build repeatedly</span>.'
   },
 
   // ── Cut List ──────────────────────────────────────────────────────────────
@@ -377,7 +373,8 @@ function _wtCursorMoveTo(cx, cy) {
 
 /** Reset a section's sidebar to its gated (no-record-selected) state so the
  *  walkthrough starts each section clean before the card-click animation opens
- *  the editing workflow. Safe to call even when no record is currently open. */
+ *  the editing workflow. Safe to call even when no record is currently open.
+ *  @param {string} section */
 function _wtGateSection(section) {
   try {
     if (section === 'clients') {
@@ -386,6 +383,9 @@ function _wtGateSection(section) {
     }
     if (section === 'stock') {
       if (typeof cancelStockEdit === 'function') cancelStockEdit();
+    }
+    if (section === 'cabinet' && typeof _wtW._exitClient_cabinet === 'function') {
+      _wtW._exitClient_cabinet();
     }
     if (section === 'orders' && typeof _opState !== 'undefined') {
       _opState.orderId = null; _opState.clientId = null;
@@ -527,12 +527,14 @@ function _wtApplyContext(step) {
     const prevSection = _wtCurrent > 0 ? (_wtSteps[_wtCurrent - 1] || {}).section : null;
     if (step.section && typeof _wtW.switchSection === 'function') _wtW.switchSection(step.section);
     if (step.section && step.section !== prevSection) _wtGateSection(step.section);
+    // View/tab switches must run BEFORE the card click — switchCBMainView()
+    // re-syncs the library sub-tab, which would otherwise undo a rates-tab click.
+    if (step.subtab && typeof _wtW.switchCabTab === 'function') _wtW.switchCabTab(step.subtab);
+    if (step.cbView && typeof _wtW.switchCBMainView === 'function') _wtW.switchCBMainView(step.cbView);
     if (step.preClickCard) {
       const card = document.querySelector(step.preClickCard);
       if (card) /** @type {HTMLElement} */ (card).click();
     }
-    if (step.subtab && typeof _wtW.switchCabTab === 'function') _wtW.switchCabTab(step.subtab);
-    if (step.cbView && typeof _wtW.switchCBMainView === 'function') _wtW.switchCBMainView(step.cbView);
   } catch (e) { console.warn('[walkthrough] context switch failed', e); }
   const sd = document.getElementById('settings-dropdown');
   if (sd) sd.classList.toggle('open', !!step.openSettings);
@@ -567,7 +569,7 @@ function _wtGetPreClickTarget(i) {
   if (step.section && step.section !== prev.section) {
     const map = { dashboard: 'Dashboard', clients: 'Clients', cabinet: 'Cabinet',
       quote: 'Quotes', orders: 'Orders', schedule: 'Schedule', stock: 'Stock', cutlist: 'Cut List' };
-    const title = map[step.section];
+    const title = /** @type {Record<string,string>} */ (map)[step.section];
     if (title) return _centre(document.querySelector('.nav-tab[title="' + title + '"]'));
   }
 
