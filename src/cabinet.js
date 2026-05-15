@@ -1330,8 +1330,14 @@ function _cbRenderContext() {
   }
   if (tabsWrap) tabsWrap.style.display = '';
   if (sb) sb.style.display = '';
+  // Prefix the sidebar title with the quote number when a quote is open.
+  let _hdrName = _cbCurrentClientName;
+  if (cbEditingQuoteId) {
+    const _hq = quotes.find(x => x.id === cbEditingQuoteId);
+    if (_hq) _hdrName = (_hq.quote_number || ('QUO-' + String(_hq.id).padStart(4, '0'))) + ' · ' + _cbCurrentClientName;
+  }
   ctx.innerHTML = _renderProjectHeader('cabinet', {
-    name: _cbCurrentClientName,
+    name: _hdrName,
     exitFn: '_exitClient_cabinet',
     iconSvg: _CH_ICON_QUOTE.replace('class="ch-icon"', 'class="ph-icon" width="16" height="16"'),
     saveIndicator: 'cabinet',

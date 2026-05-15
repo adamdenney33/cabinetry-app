@@ -591,12 +591,15 @@ function renderCBResults() {
   /** @param {number} v */
   const fmt0 = v => cur + Math.round(v).toLocaleString();
   const projName = (typeof _cbCurrentClientName !== 'undefined' && _cbCurrentClientName) ? _cbCurrentClientName : (_byId('cb-client')?.value || '');
+  // When a quote is open, prefix the header with its number (e.g. "QUO-0007 · …").
+  const _hdrQuote = cbEditingQuoteId ? quotes.find(x => x.id === cbEditingQuoteId) : null;
+  const _hdrQNum = _hdrQuote ? (_hdrQuote.quote_number || ('QUO-' + String(_hdrQuote.id).padStart(4, '0'))) : '';
+  const cbHeaderTitle = _hdrQNum ? (_hdrQNum + ' · ' + projName) : projName;
 
   if (!cbLines.length) {
     let emptyHeader = '';
     if (projName) {
-      const cName = (typeof _cbClientNameForProject === 'function') ? _cbClientNameForProject() : '';
-      emptyHeader = _renderContentHeader({ iconSvg: _CH_ICON_PROJECT, title: projName, clientName: cName || undefined });
+      emptyHeader = _renderContentHeader({ iconSvg: _CH_ICON_PROJECT, title: cbHeaderTitle });
     } else {
       emptyHeader = _renderContentHeader({ iconSvg: _CH_ICON_QUOTE, title: 'Quotes' });
     }
@@ -682,8 +685,7 @@ function renderCBResults() {
 
   // Project header
   if (projName) {
-    const cName = (typeof _cbClientNameForProject === 'function') ? _cbClientNameForProject() : '';
-    html += _renderContentHeader({ iconSvg: _CH_ICON_QUOTE, title: projName, clientName: cName || undefined });
+    html += _renderContentHeader({ iconSvg: _CH_ICON_QUOTE, title: cbHeaderTitle });
   }
   html += `<div style="font-size:12px;color:var(--muted);margin: -8px 0 16px">${cbLines.length} cabinet${cbLines.length!==1?'s':''} · ${cbLines.reduce((s,l)=>s+l.qty,0)} units</div>`;
 
