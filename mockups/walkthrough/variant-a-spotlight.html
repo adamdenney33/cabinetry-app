@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Variant A — Spotlight Tour (detailed workflow)</title>
+  <style>
+    :root {
+      --accent: #e8a838;
+      --accent-dim: rgba(232,168,56,0.12);
+      --accent2: #0d9488;
+      --danger: #e05252;
+      --success: #3d9970;
+      --bg: #f2f2f2;
+      --surface: #ffffff;
+      --surface2: #f7f7f7;
+      --border: #e0e0e0;
+      --text: #111111;
+      --muted: #888888;
+      --header-bg: #111111;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 13px;
+      overflow: hidden;
+      height: 100vh;
+    }
+
+    /* === APP SHELL === */
+    .app { display: flex; flex-direction: column; height: 100vh; }
+    .app-header {
+      height: 56px; background: var(--header-bg); color: #fff;
+      display: flex; align-items: center; padding: 0 20px; gap: 16px;
+      flex-shrink: 0; z-index: 10;
+    }
+    .app-header .logo { font-weight: 800; font-size: 16px; letter-spacing: -0.3px; }
+    .app-header .logo span { color: var(--accent); }
+    .app-header .beta { font-size: 9px; font-weight: 700; background: var(--accent); color: #111; padding: 2px 6px; border-radius: 3px; letter-spacing: 0.5px; }
+    .app-header .spacer { flex: 1; }
+    .app-header .nav-btn { font-size: 12px; color: #ccc; padding: 6px 10px; border-radius: 5px; cursor: pointer; }
+    .app-header .nav-btn:hover { background: rgba(255,255,255,0.08); color: #fff; }
+
+    .tabs { background: #1c1c1c; display: flex; padding: 0 12px; gap: 2px; flex-shrink: 0; }
+    .tab {
+      padding: 10px 15px; font-size: 12px; font-weight: 600; color: #aaa;
+      cursor: pointer; border-radius: 6px 6px 0 0; white-space: nowrap; transition: background 0.1s;
+    }
+    .tab:hover { background: #2a2a2a; color: #fff; }
+    .tab.active { background: var(--bg); color: var(--text); }
+    .tab .badge { display: inline-block; font-size: 10px; background: var(--danger); color: #fff; border-radius: 8px; padding: 1px 6px; margin-left: 4px; }
+
+    .panel { flex: 1; overflow: hidden; display: none; }
+    .panel.active { display: flex; }
+
+    /* === GENERIC === */
+    .qa-btn { background: var(--surface); border: 1px solid var(--border); border-radius: 7px; padding: 8px 14px; font-size: 12px; font-weight: 600; cursor: pointer; color: var(--text); }
+    .qa-btn.primary { background: var(--accent); border-color: var(--accent); color: #111; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.04); overflow: hidden; }
+    .card .card-head { padding: 12px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+    .card .card-head h3 { font-size: 13px; font-weight: 700; }
+    .card .card-head .count { font-size: 11px; color: var(--muted); font-weight: 600; }
+    .dash-row { padding: 10px 16px; border-bottom: 1px solid #f0f0f0; display: flex; align-items: center; gap: 10px; font-size: 12px; }
+    .dash-row:last-child { border-bottom: none; }
+    .dash-row .name { flex: 1; font-weight: 600; }
+    .dash-row .meta { color: var(--muted); font-size: 11px; }
+    .pill { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 10px; background: #f0f0f0; color: #555; white-space: nowrap; }
+    .pill.production { background: rgba(232,168,56,0.15); color: #a07221; }
+    .pill.approved { background: rgba(61,153,112,0.15); color: var(--success); }
+    .pill.draft { background: #efefef; color: #666; }
+    .pill.warning { background: rgba(224,82,82,0.12); color: var(--danger); }
+    .pill.teal { background: rgba(13,148,136,0.12); color: var(--accent2); }
+
+    .section-head { font-size: 14px; font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; }
+    .form-group { margin-bottom: 11px; }
+    .form-group label { display: block; font-size: 11px; font-weight: 600; color: var(--muted); margin-bottom: 4px; }
+    .form-group input, .form-group select, .form-group textarea {
+      width: 100%; background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 6px; padding: 8px 10px; font-size: 12px; font-family: inherit; color: var(--text);
+    }
+    .form-row { display: flex; gap: 8px; }
+    .form-row .form-group { flex: 1; }
+
+    /* layouts */
+    .full-main { flex: 1; padding: 18px; overflow-y: auto; }
+    .split { display: flex; flex: 1; }
+    .sidebar { background: var(--surface); border-right: 1px solid var(--border); padding: 16px; overflow-y: auto; flex-shrink: 0; }
+    .main { flex: 1; padding: 16px; overflow-y: auto; }
+
+    /* === DASHBOARD === */
+    .quick-actions { display: flex; gap: 8px; margin-bottom: 18px; flex-wrap: wrap; }
+    .dash-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+
+    /* === CLIENTS === */
+    .smart-input-wrap { position: relative; display: flex; gap: 6px; }
+    .smart-input-wrap input { flex: 1; background: var(--surface); border: 1px solid var(--border); border-radius: 7px; padding: 10px 12px; font-size: 13px; font-family: inherit; }
+    .smart-input-add {
+      width: 38px; flex-shrink: 0; background: var(--accent); color: #111;
+      border-radius: 7px; display: flex; align-items: center; justify-content: center;
+      font-size: 20px; font-weight: 700; cursor: pointer;
+    }
+    .suggest-list {
+      margin-top: 6px; background: var(--surface); border: 1px solid var(--border);
+      border-radius: 8px; box-shadow: 0 6px 20px rgba(0,0,0,0.10); overflow: hidden;
+    }
+    .suggest-item { padding: 9px 12px; display: flex; align-items: center; gap: 10px; font-size: 12px; cursor: pointer; border-bottom: 1px solid #f2f2f2; }
+    .suggest-item:hover { background: var(--surface2); }
+    .suggest-item .ic { width: 24px; height: 24px; border-radius: 6px; background: var(--accent-dim); color: #a07221; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; }
+    .suggest-item .si-name { font-weight: 600; }
+    .suggest-item .si-meta { color: var(--muted); font-size: 11px; margin-left: auto; }
+    .suggest-item.add { color: var(--accent2); font-weight: 700; border-bottom: none; }
+    .client-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px,1fr)); gap: 10px; margin-top: 16px; }
+    .client-card { border: 1px solid var(--border); border-radius: 9px; padding: 12px 14px; background: var(--surface); }
+    .client-card.sel { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-dim); }
+    .client-card h4 { font-size: 13px; font-weight: 700; margin-bottom: 3px; }
+    .client-card .cc-meta { font-size: 11px; color: var(--muted); line-height: 1.5; }
+
+    /* === CABINET === */
+    .subtabs { display: flex; gap: 4px; margin-bottom: 14px; background: var(--surface2); padding: 3px; border-radius: 8px; }
+    .subtab { flex: 1; text-align: center; padding: 7px; font-size: 12px; font-weight: 700; color: var(--muted); border-radius: 6px; cursor: pointer; }
+    .subtab.active { background: var(--surface); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+    .subtab-body { display: none; }
+    .subtab-body.active { display: block; }
+    .cost-readout {
+      margin-top: 12px; background: #111; color: #fff; border-radius: 8px;
+      padding: 12px 14px; display: flex; align-items: baseline; justify-content: space-between;
+    }
+    .cost-readout .cr-label { font-size: 11px; color: #aaa; font-weight: 600; }
+    .cost-readout .cr-val { font-size: 20px; font-weight: 800; color: var(--accent); }
+    .rate-row { display: flex; align-items: center; justify-content: space-between; padding: 9px 0; border-bottom: 1px solid #f0f0f0; }
+    .rate-row:last-child { border-bottom: none; }
+    .rate-row .rr-label { font-size: 12px; }
+    .rate-row .rr-sub { font-size: 10px; color: var(--muted); }
+    .rate-row .rr-input { width: 92px; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; font-size: 12px; font-family: inherit; text-align: right; }
+    .cab-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(178px, 1fr)); gap: 12px; }
+    .cab-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px; cursor: pointer; }
+    .cab-card:hover { border-color: var(--accent); }
+    .cab-svg { width: 100%; height: 86px; background: linear-gradient(135deg, #d6c5a8 0%, #b8a382 100%); border-radius: 4px; margin-bottom: 9px; position: relative; }
+    .cab-svg::before { content: ''; position: absolute; inset: 7px; border: 1px solid rgba(0,0,0,0.18); border-radius: 2px; }
+    .cab-card h4 { font-size: 12px; font-weight: 700; margin-bottom: 3px; }
+    .cab-card .dim { font-size: 10px; color: var(--muted); }
+    .cab-card .used { font-size: 10px; color: var(--accent2); font-weight: 700; margin-top: 6px; display: flex; align-items: center; gap: 4px; }
+
+    /* === QUOTE === */
+    .line-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .line-table th { text-align: left; padding: 8px 10px; background: var(--surface2); font-size: 10px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.4px; border-bottom: 1px solid var(--border); }
+    .line-table th.r, .line-table td.r { text-align: right; }
+    .line-table td { padding: 9px 10px; border-bottom: 1px solid #f1f1f1; }
+    .line-table .li-name { font-weight: 600; }
+    .li-tag { display: inline-block; font-size: 9px; font-weight: 700; padding: 2px 6px; border-radius: 4px; margin-left: 6px; vertical-align: middle; }
+    .li-tag.lib { background: var(--accent-dim); color: #a07221; }
+    .li-tag.hw { background: rgba(13,148,136,0.12); color: var(--accent2); }
+    .li-tag.lab { background: #ececec; color: #666; }
+    .totals { margin-top: 4px; }
+    .totals .tr { display: flex; justify-content: space-between; padding: 6px 10px; font-size: 12px; }
+    .totals .tr.grand { border-top: 2px solid var(--text); margin-top: 4px; font-size: 15px; font-weight: 800; padding-top: 10px; }
+    .totals .tr .muted { color: var(--muted); }
+
+    /* === ORDERS === */
+    .row-item {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+      padding: 12px 14px; margin-bottom: 8px; display: flex; align-items: center; gap: 14px;
+    }
+    .row-item .rid { font-weight: 700; font-size: 12px; min-width: 78px; }
+    .row-item .rdesc { flex: 1; font-size: 12px; }
+    .row-item .rtot { font-weight: 700; font-size: 13px; }
+    .stepper { display: flex; gap: 0; margin: 10px 0 4px; }
+    .stepper .st { flex: 1; text-align: center; font-size: 10px; font-weight: 700; padding: 7px 4px; background: var(--surface2); color: var(--muted); border-right: 2px solid var(--bg); }
+    .stepper .st:first-child { border-radius: 6px 0 0 6px; }
+    .stepper .st:last-child { border-radius: 0 6px 6px 0; border-right: none; }
+    .stepper .st.done { background: var(--accent-dim); color: #a07221; }
+    .stepper .st.cur { background: var(--accent); color: #111; }
+
+    /* === SCHEDULE === */
+    .week { display: grid; grid-template-columns: repeat(5,1fr); gap: 10px; }
+    .day-col { background: var(--surface); border: 1px solid var(--border); border-radius: 9px; overflow: hidden; min-height: 320px; }
+    .day-head { padding: 9px 12px; border-bottom: 1px solid var(--border); }
+    .day-head .dn { font-size: 12px; font-weight: 800; }
+    .day-head .dd { font-size: 10px; color: var(--muted); }
+    .day-body { padding: 8px; display: flex; flex-direction: column; gap: 6px; }
+    .job { border-radius: 6px; padding: 7px 9px; font-size: 11px; line-height: 1.35; }
+    .job .jt { font-weight: 700; }
+    .job .jm { font-size: 10px; opacity: 0.8; }
+    .job.smith { background: var(--accent); color: #111; }
+    .job.other { background: var(--surface2); color: #777; border: 1px solid var(--border); }
+    .job.teal { background: rgba(13,148,136,0.12); color: var(--accent2); }
+
+    /* === STOCK === */
+    .stock-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .stock-table th { text-align: left; padding: 8px 10px; background: var(--surface2); font-size: 10px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.4px; border-bottom: 1px solid var(--border); }
+    .stock-table th.r, .stock-table td.r { text-align: right; }
+    .stock-table td { padding: 10px; border-bottom: 1px solid #f1f1f1; }
+    .stock-table tr.low td { background: rgba(224,82,82,0.05); }
+    .stock-table .sm-name { font-weight: 600; }
+    .stock-table .sm-sku { font-size: 10px; color: var(--muted); }
+
+    /* === CUTLIST === */
+    .cl-group { border: 1px solid var(--border); border-radius: 8px; margin-bottom: 8px; overflow: hidden; }
+    .cl-group-head {
+      background: var(--accent-dim); padding: 8px 11px; display: flex; align-items: center; gap: 8px;
+      font-size: 12px; font-weight: 700; color: #8a6018;
+    }
+    .cl-group-head .cabicon { width: 18px; height: 14px; background: linear-gradient(135deg,#d6c5a8,#b8a382); border-radius: 2px; border: 1px solid #8a7654; flex-shrink: 0; }
+    .cl-group-head .qty { margin-left: auto; font-size: 10px; background: #fff; padding: 1px 7px; border-radius: 8px; }
+    .cl-part { display: flex; padding: 6px 11px 6px 32px; font-size: 11px; border-bottom: 1px solid #f4f4f4; }
+    .cl-part:last-child { border-bottom: none; }
+    .cl-part .cp-name { flex: 1; }
+    .cl-part .cp-dim { color: var(--muted); width: 92px; }
+    .cl-part .cp-qty { width: 34px; text-align: right; font-weight: 700; }
+    .cl-toolbar { display: flex; gap: 6px; margin-bottom: 14px; flex-wrap: wrap; }
+    .cl-btn { background: var(--surface); border: 1px solid var(--border); border-radius: 5px; padding: 6px 11px; font-size: 11px; font-weight: 600; cursor: pointer; }
+    .cl-btn.hot { background: var(--accent); border-color: var(--accent); color: #111; }
+    .cl-sheet { background: #fff; border: 2px solid #333; width: 100%; max-width: 760px; aspect-ratio: 2440 / 1220; position: relative; margin: 0 auto; }
+    .cl-piece { position: absolute; border: 1px solid #8a7654; font-size: 9px; font-weight: 700; display: flex; align-items: center; justify-content: center; color: #4a3d28; overflow: hidden; }
+    .cl-legend { display: flex; gap: 14px; margin-top: 12px; font-size: 11px; flex-wrap: wrap; }
+    .cl-legend span { display: flex; align-items: center; gap: 5px; }
+    .cl-legend i { width: 12px; height: 12px; border-radius: 3px; border: 1px solid #8a7654; }
+
+    /* === SETTINGS MODAL === */
+    .settings-modal {
+      position: fixed; top: 50%; left: 46%; transform: translate(-50%,-50%);
+      width: 430px; background: var(--surface); border-radius: 14px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3); z-index: 500; display: none; overflow: hidden;
+    }
+    .settings-modal.show { display: block; }
+    .settings-modal .sm-head { padding: 14px 18px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+    .settings-modal .sm-head h3 { font-size: 14px; font-weight: 800; }
+    .settings-modal .sm-head .x { color: var(--muted); font-size: 18px; }
+    .settings-modal .sm-body { padding: 16px 18px; max-height: 60vh; overflow-y: auto; }
+    .swatch-row { display: flex; gap: 6px; }
+    .swatch { width: 26px; height: 26px; border-radius: 6px; cursor: pointer; border: 2px solid transparent; }
+    .swatch.on { border-color: #111; }
+    .logo-drop { border: 1.5px dashed var(--border); border-radius: 8px; padding: 14px; text-align: center; font-size: 11px; color: var(--muted); }
+
+    /* === SPOTLIGHT TOUR === */
+    .tour-overlay { position: fixed; inset: 0; z-index: 1000; }
+    .tour-overlay.done { display: none; }
+    .tour-mask { position: absolute; inset: 0; background: rgba(14,14,16,0.66); transition: clip-path 0.35s ease; }
+    .tour-spot {
+      position: absolute; pointer-events: none; border: 2px solid var(--accent); border-radius: 8px;
+      box-shadow: 0 0 0 4px rgba(232,168,56,0.28), 0 0 28px rgba(232,168,56,0.35);
+      transition: all 0.35s ease; z-index: 2;
+    }
+    .tour-tooltip {
+      position: absolute; background: var(--surface); border-radius: 12px; padding: 17px 19px;
+      width: 332px; box-shadow: 0 14px 44px rgba(0,0,0,0.34); z-index: 3; transition: all 0.32s ease;
+    }
+    .tour-tooltip .step-num { font-size: 10px; font-weight: 800; color: var(--accent); letter-spacing: 0.6px; text-transform: uppercase; margin-bottom: 6px; }
+    .tour-tooltip h3 { font-size: 16px; font-weight: 800; margin-bottom: 6px; }
+    .tour-tooltip p { font-size: 12.5px; line-height: 1.56; color: #444; margin-bottom: 14px; }
+    .tour-tooltip p .hi { color: #8a6018; font-weight: 700; background: var(--accent-dim); padding: 0 4px; border-radius: 3px; }
+    .tour-progress-bar { height: 3px; background: #eee; border-radius: 2px; margin-bottom: 13px; overflow: hidden; }
+    .tour-progress-bar i { display: block; height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.32s ease; }
+    .tour-actions { display: flex; align-items: center; gap: 8px; }
+    .tour-actions .progress { flex: 1; font-size: 11px; color: var(--muted); font-weight: 600; }
+    .tour-btn { padding: 7px 13px; border-radius: 6px; font-size: 12px; font-weight: 700; cursor: pointer; border: 1px solid transparent; font-family: inherit; }
+    .tour-btn.skip { background: transparent; color: var(--muted); padding: 7px 4px; }
+    .tour-btn.skip:hover { color: var(--text); }
+    .tour-btn.back { background: transparent; border-color: var(--border); color: var(--text); }
+    .tour-btn.next { background: var(--accent); color: #111; }
+    .tour-btn.next:hover { background: #d49826; }
+    .tour-arrow { position: absolute; width: 13px; height: 13px; background: var(--surface); transform: rotate(45deg); z-index: 3; transition: all 0.32s ease; }
+
+    .tour-center {
+      position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%);
+      width: 470px; background: var(--surface); border-radius: 16px; padding: 32px;
+      z-index: 3; box-shadow: 0 22px 64px rgba(0,0,0,0.4); text-align: center;
+    }
+    .tour-center .icon { width: 58px; height: 58px; background: var(--accent-dim); border-radius: 15px; display: flex; align-items: center; justify-content: center; font-size: 30px; margin: 0 auto 16px; }
+    .tour-center h2 { font-size: 22px; font-weight: 800; margin-bottom: 10px; }
+    .tour-center p { font-size: 14px; line-height: 1.6; color: #555; margin-bottom: 22px; }
+    .tour-center .flowline { display: flex; flex-wrap: wrap; gap: 5px; justify-content: center; margin-bottom: 22px; }
+    .tour-center .flowchip { font-size: 10px; font-weight: 700; background: var(--surface2); border: 1px solid var(--border); border-radius: 20px; padding: 4px 10px; color: #555; }
+    .tour-center .flowchip.lead { background: var(--accent); border-color: var(--accent); color: #111; }
+    .pricing { display: flex; gap: 10px; margin-bottom: 22px; }
+    .price-card { flex: 1; border: 2px solid var(--border); border-radius: 10px; padding: 14px; }
+    .price-card.recommended { border-color: var(--accent); background: var(--accent-dim); }
+    .price-card .label { font-size: 11px; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+    .price-card .amount { font-size: 24px; font-weight: 800; margin: 4px 0; }
+    .price-card .period { font-size: 11px; color: var(--muted); }
+    .price-card .save { font-size: 10px; color: var(--success); font-weight: 700; margin-top: 4px; }
+
+    .demo-banner {
+      position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%);
+      background: #1a1a1a; color: #fff; padding: 6px 14px; border-radius: 20px;
+      font-size: 11px; font-weight: 600; z-index: 1100; opacity: 0.92;
+    }
+    .demo-banner kbd { background: rgba(255,255,255,0.15); padding: 1px 5px; border-radius: 3px; font-size: 10px; margin: 0 2px; }
+    .demo-banner a { color: var(--accent); text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <!-- HEADER -->
+    <div class="app-header">
+      <div class="logo">ProCabinet<span>.App</span></div>
+      <div class="beta">BETA</div>
+      <div class="spacer"></div>
+      <div class="nav-btn">Help</div>
+      <div class="nav-btn" id="hdr-settings">Settings</div>
+      <div class="nav-btn">Adam</div>
+    </div>
+
+    <!-- TABS -->
+    <div class="tabs">
+      <div class="tab active" data-panel="dashboard">Dashboard</div>
+      <div class="tab" data-panel="clients">Clients</div>
+      <div class="tab" data-panel="cabinet">Cabinet</div>
+      <div class="tab" data-panel="quote">Quote</div>
+      <div class="tab" data-panel="orders">Orders <span class="badge">3</span></div>
+      <div class="tab" data-panel="schedule">Schedule</div>
+      <div class="tab" data-panel="stock">Stock</div>
+      <div class="tab" data-panel="cutlist">Cut List</div>
+    </div>
+
+    <!-- DASHBOARD -->
+    <div class="panel active" id="panel-dashboard">
+      <div class="full-main">
+        <div class="quick-actions" id="qa-toolbar">
+          <button class="qa-btn primary">+ Quote</button>
+          <button class="qa-btn">+ Cabinet</button>
+          <button class="qa-btn">+ Cut List</button>
+          <button class="qa-btn">+ Order</button>
+          <button class="qa-btn">+ Stock</button>
+          <button class="qa-btn">+ Client</button>
+          <button class="qa-btn">Schedule</button>
+        </div>
+        <div class="dash-grid">
+          <div class="card" id="dash-orders">
+            <div class="card-head"><h3>Active Orders</h3><span class="count">3 in production</span></div>
+            <div class="dash-row"><span class="name">ORD-0001</span><span class="meta">Smith Residence</span><span class="pill production">Production</span></div>
+            <div class="dash-row"><span class="name">ORD-0002</span><span class="meta">Greenwood Kitchens</span><span class="pill production">Production</span></div>
+            <div class="dash-row"><span class="name">ORD-0003</span><span class="meta">Bayside Build Co</span><span class="pill production">Production</span></div>
+          </div>
+          <div class="card">
+            <div class="card-head"><h3>Recent Quotes</h3><span class="count">5 quotes</span></div>
+            <div class="dash-row"><span class="name">QUO-0005</span><span class="meta">Cooper &amp; Sons</span><span class="pill draft">Draft</span></div>
+            <div class="dash-row"><span class="name">QUO-0004</span><span class="meta">Harrington Manor</span><span class="pill approved">Approved</span></div>
+            <div class="dash-row"><span class="name">QUO-0001</span><span class="meta">Smith Residence</span><span class="pill approved">Approved</span></div>
+          </div>
+          <div class="card">
+            <div class="card-head"><h3>Low Stock</h3><span class="count">2 alerts</span></div>
+            <div class="dash-row"><span class="name">18mm Birch Ply</span><span class="meta">3 sheets</span><span class="pill warning">Low</span></div>
+            <div class="dash-row"><span class="name">Blum Hinges 110°</span><span class="meta">12 left</span><span class="pill warning">Low</span></div>
+            <div class="dash-row"><span class="name">PVC Edge 22mm</span><span class="meta">45 m</span><span class="pill">OK</span></div>
+          </div>
+          <div class="card">
+            <div class="card-head"><h3>This Week</h3><span class="count">4 jobs</span></div>
+            <div class="dash-row"><span class="name">Mon · Smith — cut sheets</span><span class="meta">8:00</span></div>
+            <div class="dash-row"><span class="name">Wed · Smith — build</span><span class="meta">8:00</span></div>
+            <div class="dash-row"><span class="name">Fri · Smith — install</span><span class="meta">9:30</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CLIENTS -->
+    <div class="panel" id="panel-clients">
+      <div class="split">
+        <div class="sidebar" style="width:320px">
+          <div class="section-head">Client · Smith Residence</div>
+          <div class="form-group"><label>Contact name</label><input value="Sarah Smith"></div>
+          <div class="form-group"><label>Company / household</label><input value="Smith Residence"></div>
+          <div class="form-row">
+            <div class="form-group"><label>Email</label><input value="sarah.smith@email.com"></div>
+            <div class="form-group"><label>Phone</label><input value="0412 558 901"></div>
+          </div>
+          <div class="form-group"><label>Site address</label><input value="14 Maple Drive, Kew"></div>
+          <div class="form-group"><label>Notes</label><textarea rows="2">Gloss-white kitchen reno. Prefers email contact.</textarea></div>
+          <button class="qa-btn primary" style="width:100%">Save client</button>
+        </div>
+        <div class="main">
+          <div class="section-head">Clients <span style="font-size:11px;color:var(--muted);font-weight:600">5 / 5 free</span></div>
+          <div id="client-smart">
+            <div class="smart-input-wrap">
+              <input value="Smi" placeholder="Search or add a client…">
+              <div class="smart-input-add">+</div>
+            </div>
+            <div class="suggest-list">
+              <div class="suggest-item"><div class="ic">SR</div><span class="si-name">Smith Residence</span><span class="si-meta">Sarah Smith · Kew</span></div>
+              <div class="suggest-item add"><div class="ic" style="background:rgba(13,148,136,0.12);color:var(--accent2)">+</div>Create new client "Smi…"</div>
+            </div>
+          </div>
+          <div class="client-cards">
+            <div class="client-card sel"><h4>Smith Residence</h4><div class="cc-meta">Sarah Smith<br>14 Maple Drive, Kew<br>1 active order</div></div>
+            <div class="client-card"><h4>Greenwood Kitchens</h4><div class="cc-meta">Tom Greenwood<br>Showroom fitout<br>1 active order</div></div>
+            <div class="client-card"><h4>Bayside Build Co</h4><div class="cc-meta">Build contractor<br>4-unit job<br>1 active order</div></div>
+            <div class="client-card"><h4>Harrington Manor</h4><div class="cc-meta">Pantry rebuild<br>Quote approved</div></div>
+            <div class="client-card"><h4>Cooper &amp; Sons</h4><div class="cc-meta">Joinery trade<br>Estimate sent</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CABINET -->
+    <div class="panel" id="panel-cabinet">
+      <div class="split">
+        <div class="sidebar" style="width:420px">
+          <div class="subtabs">
+            <div class="subtab active" data-subtab="builder">Cabinet Builder</div>
+            <div class="subtab" data-subtab="rates">My Rates</div>
+          </div>
+
+          <div class="subtab-body active" id="subtab-builder">
+            <div id="cab-builder-form">
+              <div class="form-group"><label>Cabinet name</label><input value="Base 600"></div>
+              <div class="form-row">
+                <div class="form-group"><label>Type</label><select><option>Base unit</option><option>Wall unit</option><option>Drawer bank</option><option>Tall / larder</option></select></div>
+                <div class="form-group"><label>Qty in job</label><input value="2"></div>
+              </div>
+              <div class="form-row">
+                <div class="form-group"><label>Width</label><input value="600"></div>
+                <div class="form-group"><label>Height</label><input value="720"></div>
+                <div class="form-group"><label>Depth</label><input value="560"></div>
+              </div>
+              <div class="form-group"><label>Carcass material</label><select><option>18mm Birch Plywood</option></select></div>
+              <div class="form-row">
+                <div class="form-group"><label>Doors</label><input value="2"></div>
+                <div class="form-group"><label>Drawers</label><input value="0"></div>
+                <div class="form-group"><label>Shelves</label><input value="1"></div>
+              </div>
+              <div class="form-group"><label>Hardware</label><select><option>Blum 110° hinge + soft-close</option></select></div>
+              <div class="form-group"><label>Edge banding</label><select><option>PVC 22mm — all visible edges</option></select></div>
+              <div class="cost-readout">
+                <span class="cr-label">Estimated cost — priced from My Rates</span>
+                <span class="cr-val">$245</span>
+              </div>
+              <button class="qa-btn primary" style="width:100%;margin-top:10px">Save to library</button>
+            </div>
+          </div>
+
+          <div class="subtab-body" id="subtab-rates">
+            <div id="cab-rates-form">
+              <p style="font-size:11px;color:var(--muted);margin-bottom:10px">Set these once. Every cabinet you build prices itself from these numbers.</p>
+              <div class="rate-row"><div><div class="rr-label">Sheet material</div><div class="rr-sub">18mm Birch Ply · per m²</div></div><input class="rr-input" value="$42.00"></div>
+              <div class="rate-row"><div><div class="rr-label">Edge banding</div><div class="rr-sub">PVC · per metre</div></div><input class="rr-input" value="$1.80"></div>
+              <div class="rate-row"><div><div class="rr-label">Hinge</div><div class="rr-sub">Blum soft-close · each</div></div><input class="rr-input" value="$4.50"></div>
+              <div class="rate-row"><div><div class="rr-label">Drawer runner</div><div class="rr-sub">Per pair</div></div><input class="rr-input" value="$14.00"></div>
+              <div class="rate-row"><div><div class="rr-label">Workshop labour</div><div class="rr-sub">Per hour</div></div><input class="rr-input" value="$70.00"></div>
+              <div class="rate-row"><div><div class="rr-label">Default margin</div><div class="rr-sub">Applied to every quote</div></div><input class="rr-input" value="35%"></div>
+              <div class="rate-row"><div><div class="rr-label">Waste allowance</div><div class="rr-sub">Sheet offcut buffer</div></div><input class="rr-input" value="12%"></div>
+              <button class="qa-btn primary" style="width:100%;margin-top:12px">Save rates</button>
+            </div>
+          </div>
+        </div>
+        <div class="main" style="background:#fafafa">
+          <div class="section-head">Cabinet Library <span style="font-size:11px;color:var(--muted);font-weight:600">5 / 5 free</span></div>
+          <div class="cab-grid" id="cab-grid">
+            <div class="cab-card"><div class="cab-svg"></div><h4>Base 600</h4><div class="dim">600 × 720 × 560 · $245</div><div class="used">↳ used in 3 quotes</div></div>
+            <div class="cab-card"><div class="cab-svg"></div><h4>Wall 600</h4><div class="dim">600 × 720 × 320 · $185</div><div class="used">↳ used in 4 quotes</div></div>
+            <div class="cab-card"><div class="cab-svg"></div><h4>Drawer 800</h4><div class="dim">800 × 720 × 560 · $385</div><div class="used">↳ used in 2 quotes</div></div>
+            <div class="cab-card"><div class="cab-svg"></div><h4>Tall Larder 600</h4><div class="dim">600 × 2100 × 560 · $620</div><div class="used">↳ used in 1 quote</div></div>
+            <div class="cab-card"><div class="cab-svg"></div><h4>Corner Base 900</h4><div class="dim">900 × 720 × 900 · $510</div><div class="used">↳ used in 2 quotes</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- QUOTE -->
+    <div class="panel" id="panel-quote">
+      <div class="split">
+        <div class="sidebar" style="width:300px">
+          <div class="section-head">Quote</div>
+          <div class="form-group"><label>Quote #</label><input value="QUO-0001" readonly></div>
+          <div class="form-group"><label>Client</label><input value="Smith Residence"></div>
+          <div class="form-row">
+            <div class="form-group"><label>Status</label><select><option>Approved</option></select></div>
+            <div class="form-group"><label>Valid until</label><input value="2026-06-15"></div>
+          </div>
+          <div class="form-group"><label>Notes</label><textarea rows="2">Gloss-white shaker. Deposit on approval.</textarea></div>
+          <button class="qa-btn" style="width:100%;margin-bottom:6px">Download PDF</button>
+          <button class="qa-btn primary" style="width:100%">Convert to order</button>
+        </div>
+        <div class="main">
+          <div class="section-head">QUO-0001 · Smith Residence — Kitchen reno</div>
+          <div class="card" id="quote-lines">
+            <table class="line-table">
+              <thead><tr><th>Line item</th><th>Source</th><th class="r">Qty</th><th class="r">Amount</th></tr></thead>
+              <tbody>
+                <tr><td class="li-name">Base 600 <span class="li-tag lib">Library</span></td><td class="meta">Cabinet</td><td class="r">2</td><td class="r">$1,130</td></tr>
+                <tr><td class="li-name">Wall 600 <span class="li-tag lib">Library</span></td><td class="meta">Cabinet</td><td class="r">2</td><td class="r">$850</td></tr>
+                <tr><td class="li-name">Drawer 800 <span class="li-tag lib">Library</span></td><td class="meta">Cabinet</td><td class="r">1</td><td class="r">$890</td></tr>
+                <tr><td class="li-name">Tall Larder 600 <span class="li-tag lib">Library</span></td><td class="meta">Cabinet</td><td class="r">1</td><td class="r">$1,395</td></tr>
+                <tr><td class="li-name">Corner Base 900 <span class="li-tag lib">Library</span></td><td class="meta">Cabinet</td><td class="r">1</td><td class="r">$1,070</td></tr>
+                <tr><td class="li-name">Hardware &amp; fittings <span class="li-tag hw">Stock</span></td><td class="meta">Hinges, runners, handles</td><td class="r">—</td><td class="r">$387</td></tr>
+                <tr><td class="li-name">Edge banding &amp; consumables <span class="li-tag hw">Stock</span></td><td class="meta">PVC 22mm</td><td class="r">—</td><td class="r">$160</td></tr>
+                <tr><td class="li-name">Delivery &amp; install <span class="li-tag lab">Labour</span></td><td class="meta">28 h @ $70</td><td class="r">—</td><td class="r">$1,800</td></tr>
+              </tbody>
+            </table>
+            <div class="totals">
+              <div class="tr"><span class="muted">Subtotal</span><span>$7,682</span></div>
+              <div class="tr"><span class="muted">GST (10%)</span><span>$768</span></div>
+              <div class="tr grand"><span>Total</span><span>$8,450</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ORDERS -->
+    <div class="panel" id="panel-orders">
+      <div class="split">
+        <div class="sidebar" style="width:320px">
+          <div class="section-head">Order · ORD-0001</div>
+          <div class="form-group"><label>Client</label><input value="Smith Residence" readonly></div>
+          <div class="form-group"><label>From quote</label><input value="QUO-0001 · $8,450" readonly></div>
+          <div class="form-group"><label>Status</label><select><option>In Production</option></select></div>
+          <div class="stepper">
+            <div class="st done">Approved</div>
+            <div class="st cur">Production</div>
+            <div class="st">Cut</div>
+            <div class="st">Install</div>
+            <div class="st">Done</div>
+          </div>
+          <div class="form-group" style="margin-top:12px"><label>Due date</label><input value="2026-05-28"></div>
+        </div>
+        <div class="main">
+          <div class="section-head">Orders <span style="font-size:11px;color:var(--muted);font-weight:600">5 / 5 free</span></div>
+          <div class="row-item" id="order-row" style="border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-dim)">
+            <span class="rid">ORD-0001</span><span class="rdesc">Smith Residence — Kitchen reno · from QUO-0001</span><span class="pill production">Production</span><span class="rtot">$8,450</span>
+          </div>
+          <div class="row-item"><span class="rid">ORD-0002</span><span class="rdesc">Greenwood Kitchens — Showroom</span><span class="pill production">Production</span><span class="rtot">$11,500</span></div>
+          <div class="row-item"><span class="rid">ORD-0003</span><span class="rdesc">Bayside Build Co — 4-unit job</span><span class="pill production">Production</span><span class="rtot">$6,200</span></div>
+          <div class="row-item"><span class="rid">ORD-0004</span><span class="rdesc">Harrington Manor — Pantry rebuild</span><span class="pill approved">Done</span><span class="rtot">$3,850</span></div>
+          <div class="row-item"><span class="rid">ORD-0005</span><span class="rdesc">Cooper &amp; Sons — Joinery</span><span class="pill approved">Done</span><span class="rtot">$4,720</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SCHEDULE -->
+    <div class="panel" id="panel-schedule">
+      <div class="full-main">
+        <div class="section-head">Schedule · Week of 25 May <span style="font-size:11px;color:var(--muted);font-weight:600">ORD-0001 highlighted</span></div>
+        <div class="week" id="schedule-week">
+          <div class="day-col">
+            <div class="day-head"><div class="dn">Mon</div><div class="dd">25 May</div></div>
+            <div class="day-body">
+              <div class="job smith"><div class="jt">Smith — cut sheets</div><div class="jm">8:00 · Workshop · ORD-0001</div></div>
+              <div class="job other"><div class="jt">Order ply restock</div><div class="jm">Admin</div></div>
+            </div>
+          </div>
+          <div class="day-col">
+            <div class="day-head"><div class="dn">Tue</div><div class="dd">26 May</div></div>
+            <div class="day-body">
+              <div class="job smith"><div class="jt">Smith — edge &amp; drill</div><div class="jm">8:00 · Workshop · ORD-0001</div></div>
+              <div class="job other"><div class="jt">Greenwood site measure</div><div class="jm">1:00</div></div>
+            </div>
+          </div>
+          <div class="day-col">
+            <div class="day-head"><div class="dn">Wed</div><div class="dd">27 May</div></div>
+            <div class="day-body">
+              <div class="job smith"><div class="jt">Smith — build carcasses</div><div class="jm">8:00 · Workshop · ORD-0001</div></div>
+            </div>
+          </div>
+          <div class="day-col">
+            <div class="day-head"><div class="dn">Thu</div><div class="dd">28 May</div></div>
+            <div class="day-body">
+              <div class="job smith"><div class="jt">Smith — doors &amp; finish</div><div class="jm">8:00 · Workshop · ORD-0001</div></div>
+              <div class="job teal"><div class="jt">Bayside delivery</div><div class="jm">2:00</div></div>
+            </div>
+          </div>
+          <div class="day-col">
+            <div class="day-head"><div class="dn">Fri</div><div class="dd">29 May</div></div>
+            <div class="day-body">
+              <div class="job smith"><div class="jt">Smith — install on site</div><div class="jm">9:30 · 14 Maple Dr · ORD-0001</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STOCK -->
+    <div class="panel" id="panel-stock">
+      <div class="split">
+        <div class="sidebar" style="width:300px">
+          <div class="section-head">Stock item</div>
+          <div class="form-group"><label>Material</label><input value="18mm Birch Plywood"></div>
+          <div class="form-group"><label>SKU</label><input value="PLY-BIR-18"></div>
+          <div class="form-row">
+            <div class="form-group"><label>On hand</label><input value="3"></div>
+            <div class="form-group"><label>Unit</label><select><option>Sheets</option></select></div>
+          </div>
+          <div class="form-group"><label>Reorder threshold</label><input value="8"></div>
+          <div class="form-group"><label>Supplier</label><input value="City Timber Co"></div>
+          <button class="qa-btn primary" style="width:100%">Save material</button>
+        </div>
+        <div class="main">
+          <div class="section-head">Stock Materials <span style="font-size:11px;color:var(--muted);font-weight:600">5 / 5 free</span></div>
+          <div class="card">
+            <table class="stock-table" id="stock-table">
+              <thead><tr><th>Material</th><th class="r">On hand</th><th class="r">Reorder at</th><th>Status</th></tr></thead>
+              <tbody>
+                <tr class="low"><td><div class="sm-name">18mm Birch Plywood</div><div class="sm-sku">PLY-BIR-18</div></td><td class="r">3 sheets</td><td class="r">8</td><td><span class="pill warning">Reorder</span></td></tr>
+                <tr class="low"><td><div class="sm-name">Blum Hinge 110°</div><div class="sm-sku">HW-BLM-110</div></td><td class="r">12 ea</td><td class="r">40</td><td><span class="pill warning">Reorder</span></td></tr>
+                <tr><td><div class="sm-name">PVC Edge 22mm</div><div class="sm-sku">EB-PVC-22</div></td><td class="r">45 m</td><td class="r">20</td><td><span class="pill approved">OK</span></td></tr>
+                <tr><td><div class="sm-name">Drawer Runner 500mm</div><div class="sm-sku">HW-RUN-500</div></td><td class="r">26 pr</td><td class="r">10</td><td><span class="pill approved">OK</span></td></tr>
+                <tr><td><div class="sm-name">16mm White Melamine</div><div class="sm-sku">MEL-WHT-16</div></td><td class="r">14 sheets</td><td class="r">6</td><td><span class="pill approved">OK</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CUT LIST -->
+    <div class="panel" id="panel-cutlist">
+      <div class="split">
+        <div class="sidebar" style="width:380px">
+          <div class="section-head">Cut List · Smith Kitchen</div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:10px;background:var(--accent-dim);padding:8px 10px;border-radius:7px;color:#8a6018;font-weight:600">
+            ↳ Generated from ORD-0001 — 7 cabinets, 18mm Birch Ply
+          </div>
+          <div id="cl-parts">
+            <div class="cl-group">
+              <div class="cl-group-head"><span class="cabicon"></span>Base 600<span class="qty">× 2</span></div>
+              <div class="cl-part"><span class="cp-name">Side panel</span><span class="cp-dim">560 × 720</span><span class="cp-qty">4</span></div>
+              <div class="cl-part"><span class="cp-name">Top / bottom</span><span class="cp-dim">564 × 560</span><span class="cp-qty">4</span></div>
+              <div class="cl-part"><span class="cp-name">Shelf</span><span class="cp-dim">564 × 540</span><span class="cp-qty">2</span></div>
+              <div class="cl-part"><span class="cp-name">Door</span><span class="cp-dim">297 × 715</span><span class="cp-qty">4</span></div>
+              <div class="cl-part"><span class="cp-name">Back panel</span><span class="cp-dim">596 × 716</span><span class="cp-qty">2</span></div>
+            </div>
+            <div class="cl-group">
+              <div class="cl-group-head"><span class="cabicon"></span>Wall 600<span class="qty">× 2</span></div>
+              <div class="cl-part"><span class="cp-name">Side panel</span><span class="cp-dim">320 × 720</span><span class="cp-qty">4</span></div>
+              <div class="cl-part"><span class="cp-name">Top / bottom</span><span class="cp-dim">564 × 320</span><span class="cp-qty">4</span></div>
+              <div class="cl-part"><span class="cp-name">Door</span><span class="cp-dim">297 × 715</span><span class="cp-qty">4</span></div>
+            </div>
+            <div class="cl-group">
+              <div class="cl-group-head"><span class="cabicon"></span>Drawer 800<span class="qty">× 1</span></div>
+              <div class="cl-part"><span class="cp-name">Side panel</span><span class="cp-dim">560 × 720</span><span class="cp-qty">2</span></div>
+              <div class="cl-part"><span class="cp-name">Drawer front</span><span class="cp-dim">796 × 178</span><span class="cp-qty">4</span></div>
+            </div>
+            <div style="font-size:11px;color:var(--muted);text-align:center;padding:6px">+ Tall Larder 600, Corner Base 900</div>
+          </div>
+        </div>
+        <div class="main" style="background:#fafafa">
+          <div class="cl-toolbar">
+            <button class="cl-btn">Summary</button>
+            <button class="cl-btn hot" id="cl-deduct">Deduct from Stock</button>
+            <button class="cl-btn">PDF</button>
+            <button class="cl-btn">Cut order</button>
+            <button class="cl-btn">Rotate</button>
+            <button class="cl-btn">A−</button>
+            <button class="cl-btn">A+</button>
+          </div>
+          <div class="cl-sheet" id="cl-sheet">
+            <div class="cl-piece" style="left:0.4%;top:0.8%;width:23%;height:58%;background:#d9c9ac">Base · Side 560×720</div>
+            <div class="cl-piece" style="left:23.8%;top:0.8%;width:23%;height:58%;background:#d9c9ac">Base · Side 560×720</div>
+            <div class="cl-piece" style="left:47.2%;top:0.8%;width:23.2%;height:46%;background:#d9c9ac">Base · Top 564×560</div>
+            <div class="cl-piece" style="left:70.8%;top:0.8%;width:23.2%;height:46%;background:#d9c9ac">Base · Top 564×560</div>
+            <div class="cl-piece" style="left:47.2%;top:47.4%;width:11.5%;height:58%;background:#cdbf9b">Base · Door</div>
+            <div class="cl-piece" style="left:59.1%;top:47.4%;width:11.5%;height:58%;background:#cdbf9b">Base · Door</div>
+            <div class="cl-piece" style="left:0.4%;top:59.4%;width:23.2%;height:26%;background:#c7d4cf">Wall · Side 320×720</div>
+            <div class="cl-piece" style="left:24%;top:59.4%;width:23.2%;height:26%;background:#c7d4cf">Wall · Side 320×720</div>
+            <div class="cl-piece" style="left:70.8%;top:47.4%;width:23.2%;height:38%;background:#c7d4cf">Wall · Top 564×320</div>
+            <div class="cl-piece" style="left:0.4%;top:86%;width:46.8%;height:13%;background:#d0c4d1">Drawer · Front 796×178</div>
+          </div>
+          <div class="cl-legend">
+            <span><i style="background:#d9c9ac"></i>Base 600 parts</span>
+            <span><i style="background:#c7d4cf"></i>Wall 600 parts</span>
+            <span><i style="background:#d0c4d1"></i>Drawer 800 parts</span>
+            <span style="margin-left:auto;color:var(--muted)">Sheet 1 of 4 · 91% used</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SETTINGS MODAL (shown during Setup step) -->
+  <div class="settings-modal" id="settings-modal">
+    <div class="sm-head"><h3>Business Settings</h3><span class="x">×</span></div>
+    <div class="sm-body">
+      <div class="form-group"><label>Business name</label><input value="Denney Cabinetmaking"></div>
+      <div class="form-row">
+        <div class="form-group"><label>ABN / Tax ID</label><input value="55 142 880 333"></div>
+        <div class="form-group"><label>Tax rate</label><input value="10%"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Payment terms</label><input value="14 days"></div>
+        <div class="form-group"><label>Quote validity</label><input value="30 days"></div>
+      </div>
+      <div class="form-group"><label>PDF accent colour</label>
+        <div class="swatch-row">
+          <div class="swatch on" style="background:#e8a838"></div>
+          <div class="swatch" style="background:#0d9488"></div>
+          <div class="swatch" style="background:#3a6ea5"></div>
+          <div class="swatch" style="background:#111"></div>
+        </div>
+      </div>
+      <div class="form-group"><label>Logo</label><div class="logo-drop">Drop a logo here — prints on every quote &amp; invoice</div></div>
+    </div>
+  </div>
+
+  <!-- TOUR -->
+  <div class="tour-overlay" id="tour"></div>
+
+  <div class="demo-banner">
+    Variant A — Spotlight Tour · 15 steps · <kbd>←</kbd> <kbd>→</kbd> navigate · <kbd>Esc</kbd> close ·
+    <a href="index.html">all variants</a>
+  </div>
+
+  <script>
+    const steps = [
+      {
+        type: 'center', panel: 'dashboard', icon: '🪚',
+        title: 'Follow one kitchen, start to finish',
+        body: 'This tour walks a single job — the <b>Smith Kitchen</b> — through every tab, in the order you\'d actually work it.',
+        flow: ['Toolbar','Client','Cabinet','Quote','Order','Schedule','Stock','Cut List','Dashboard'],
+        nextLabel: 'Start the tour →'
+      },
+      {
+        type: 'spot', phase: 'Toolbar', panel: 'dashboard',
+        target: '#qa-toolbar', position: 'bottom',
+        title: 'The toolbar',
+        body: 'Every job starts from these quick actions — <span class="hi">+ Quote, + Cabinet, + Client</span> and more. They\'re on the dashboard so a new job is always one click away.'
+      },
+      {
+        type: 'spot', phase: 'Setup', panel: 'dashboard', modal: 'settings',
+        target: '#settings-modal', position: 'right',
+        title: 'Set your business up once',
+        body: 'Logo, ABN, <span class="hi">tax rate</span>, payment terms and PDF branding live in Settings. Set them once and they flow onto every quote, order and invoice automatically.'
+      },
+      {
+        type: 'spot', phase: 'Client', panel: 'clients',
+        target: '#client-smart', position: 'right',
+        title: '1 — Add the client',
+        body: 'A job begins with a client. Start typing and ProCabinet searches as you go; hit <span class="hi">+</span> to add a new one. We\'ll use <span class="hi">Smith Residence</span>.'
+      },
+      {
+        type: 'spot', phase: 'Cabinet', panel: 'cabinet', subtab: 'builder',
+        target: '#cab-builder-form', position: 'right',
+        title: '2 — Spec a cabinet',
+        body: 'In the Cabinet Builder you set dimensions, carcass material, doors, drawers, shelves and hardware. The <span class="hi">cost updates live</span> as you type.'
+      },
+      {
+        type: 'spot', phase: 'Cabinet', panel: 'cabinet', subtab: 'rates',
+        target: '#cab-rates-form', position: 'right',
+        title: 'Where that price comes from — My Rates',
+        body: 'The <span class="hi">My Rates</span> tab holds your sheet, edging, hardware and labour rates plus default margin. Set them once and every cabinet prices itself — no spreadsheets.'
+      },
+      {
+        type: 'spot', phase: 'Cabinet', panel: 'cabinet', subtab: 'builder',
+        target: '#cab-grid', position: 'left',
+        title: 'Your cabinet library',
+        body: 'Save the cabinet and it joins your <span class="hi">library</span>. Build a unit once and reuse it on any job — each card shows how many quotes already use it. Library cabinets carry their parts <em>and</em> their costs wherever they go.'
+      },
+      {
+        type: 'spot', phase: 'Quote', panel: 'quote',
+        target: '#quote-lines', position: 'left',
+        title: '3 — Build the quote',
+        body: 'Drop <span class="hi">library cabinets</span> straight into the quote — they bring their pricing with them. Add hardware and labour lines, and margin + GST roll up live. Send it as a branded PDF.'
+      },
+      {
+        type: 'spot', phase: 'Order', panel: 'orders',
+        target: '#order-row', position: 'bottom',
+        title: '4 — Convert to an order',
+        body: 'When the client approves, one click turns <span class="hi">QUO-0001</span> into <span class="hi">ORD-0001</span>. Track it down the production stepper: Approved → Production → Cut → Install → Done.'
+      },
+      {
+        type: 'spot', phase: 'Schedule', panel: 'schedule',
+        target: '#schedule-week', position: 'bottom',
+        title: '5 — Schedule the work',
+        body: 'Block the order\'s cut, build and install days onto the calendar. Everything tagged <span class="hi">ORD-0001</span> stays linked to the job.'
+      },
+      {
+        type: 'spot', phase: 'Stock', panel: 'stock',
+        target: '#stock-table', position: 'left',
+        title: '6 — Track your stock',
+        body: 'Sheet goods and hardware live here with a <span class="hi">reorder threshold</span>. Anything below it flags red so you restock before a job stalls.'
+      },
+      {
+        type: 'spot', phase: 'Cut List', panel: 'cutlist',
+        target: '#cl-parts', position: 'right',
+        title: '7 — The cut list is built from your cabinets',
+        body: 'ProCabinet reads every cabinet on <span class="hi">ORD-0001</span> and breaks each one into parts — sides, tops, shelves, doors, backs — <span class="hi">grouped by the cabinet they came from</span>. Change a cabinet, the cut list updates.'
+      },
+      {
+        type: 'spot', phase: 'Cut List', panel: 'cutlist',
+        target: '#cl-sheet', position: 'left',
+        title: 'Optimised sheet layout',
+        body: 'Those parts pack onto your sheet stock with minimum waste — colour-coded back to each cabinet. Hit <span class="hi">Deduct from Stock</span> and the sheets used drop out of your inventory.'
+      },
+      {
+        type: 'spot', phase: 'Wrap-up', panel: 'dashboard',
+        target: '#dash-orders', position: 'right',
+        title: 'It all lands on the dashboard',
+        body: 'Active orders, quotes, low stock and the week\'s schedule — every step you just walked surfaces here. This is your daily command center.'
+      },
+      {
+        type: 'center', panel: 'dashboard', icon: '🚀',
+        title: 'That\'s the full workflow',
+        body: 'The free plan keeps 5 of each — clients, cabinets, quotes, orders, cut lists. Upgrade for unlimited and a 29% saving on annual.',
+        nextLabel: 'Upgrade to Pro',
+        showPricing: true
+      }
+    ];
+
+    let current = 0;
+    const tour = document.getElementById('tour');
+    const settingsModal = document.getElementById('settings-modal');
+
+    function setPanel(name) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.panel === name));
+      document.querySelectorAll('.panel').forEach(p => p.classList.toggle('active', p.id === 'panel-' + name));
+    }
+    function setSubtab(name) {
+      document.querySelectorAll('#panel-cabinet .subtab').forEach(t => t.classList.toggle('active', t.dataset.subtab === name));
+      document.querySelectorAll('#panel-cabinet .subtab-body').forEach(b => b.classList.toggle('active', b.id === 'subtab-' + name));
+    }
+
+    function placeTooltip(r, side) {
+      const TW = 332, TH = 250, gap = 22, M = 14;
+      const vw = window.innerWidth, vh = window.innerHeight;
+      let left, top, dir = side;
+      if (side === 'right') { left = r.right + gap; top = r.top - 8; }
+      else if (side === 'left') { left = r.left - gap - TW; top = r.top - 8; }
+      else if (side === 'bottom') { left = r.left + r.width/2 - TW/2; top = r.bottom + gap; }
+      else { left = r.left + r.width/2 - TW/2; top = r.top - gap - TH; }
+      // flip if overflow
+      if (side === 'right' && left + TW > vw - M) { left = r.left - gap - TW; dir = 'left'; }
+      if (side === 'left' && left < M) { left = r.right + gap; dir = 'right'; }
+      if (side === 'bottom' && top + TH > vh - M) { top = r.top - gap - TH; dir = 'top'; }
+      // clamp
+      left = Math.max(M, Math.min(left, vw - TW - M));
+      top = Math.max(M, Math.min(top, vh - TH - M));
+      // arrow points at target center, clamped within tooltip span
+      let ax, ay;
+      if (dir === 'right' || dir === 'left') {
+        ay = Math.max(top + 16, Math.min(r.top + r.height/2 - 6, top + TH - 40));
+        ax = dir === 'right' ? left - 6 : left + TW - 7;
+      } else {
+        ax = Math.max(left + 16, Math.min(r.left + r.width/2 - 6, left + TW - 28));
+        ay = dir === 'bottom' ? top - 6 : top + TH - 7;
+      }
+      return { left, top, ax, ay };
+    }
+
+    function render() {
+      const step = steps[current];
+      setPanel(step.panel);
+      if (step.subtab) setSubtab(step.subtab);
+      settingsModal.classList.toggle('show', step.modal === 'settings');
+      tour.innerHTML = '';
+
+      const pct = Math.round(((current + 1) / steps.length) * 100);
+
+      if (step.type === 'center') {
+        const mask = document.createElement('div');
+        mask.className = 'tour-mask';
+        tour.appendChild(mask);
+        const card = document.createElement('div');
+        card.className = 'tour-center';
+        card.innerHTML = `
+          ${step.icon ? `<div class="icon">${step.icon}</div>` : ''}
+          <h2>${step.title}</h2>
+          <p>${step.body}</p>
+          ${step.flow ? `<div class="flowline">${step.flow.map((f,i)=>`<span class="flowchip${i===0?' lead':''}">${f}</span>`).join('')}</div>` : ''}
+          ${step.showPricing ? `
+            <div class="pricing">
+              <div class="price-card"><div class="label">Monthly</div><div class="amount">$35</div><div class="period">per month</div></div>
+              <div class="price-card recommended"><div class="label">Annual</div><div class="amount">$299</div><div class="period">per year</div><div class="save">Save 29%</div></div>
+            </div>` : ''}
+          <div class="tour-actions">
+            ${current > 0 ? '<button class="tour-btn back" data-act="back">Back</button>' : '<button class="tour-btn skip" data-act="close">Skip tour</button>'}
+            <span class="progress">${current + 1} / ${steps.length}</span>
+            <button class="tour-btn next" data-act="next">${step.nextLabel || 'Next →'}</button>
+          </div>`;
+        tour.appendChild(card);
+        return;
+      }
+
+      // spotlight
+      const targetEl = document.querySelector(step.target);
+      if (!targetEl) return;
+      const r = targetEl.getBoundingClientRect();
+      const pad = 7;
+      const x1 = r.left - pad, y1 = r.top - pad, x2 = r.right + pad, y2 = r.bottom + pad;
+
+      const mask = document.createElement('div');
+      mask.className = 'tour-mask';
+      mask.style.clipPath = `polygon(0 0, 100% 0, 100% 100%, 0 100%, 0 ${y1}px, ${x1}px ${y1}px, ${x1}px ${y2}px, ${x2}px ${y2}px, ${x2}px ${y1}px, 0 ${y1}px)`;
+      tour.appendChild(mask);
+
+      const spot = document.createElement('div');
+      spot.className = 'tour-spot';
+      spot.style.left = x1 + 'px'; spot.style.top = y1 + 'px';
+      spot.style.width = (r.width + pad*2) + 'px'; spot.style.height = (r.height + pad*2) + 'px';
+      tour.appendChild(spot);
+
+      const pos = placeTooltip(r, step.position || 'right');
+      const tip = document.createElement('div');
+      tip.className = 'tour-tooltip';
+      tip.style.left = pos.left + 'px'; tip.style.top = pos.top + 'px';
+      tip.innerHTML = `
+        <div class="step-num">${step.phase ? step.phase + ' · ' : ''}Step ${current + 1} of ${steps.length}</div>
+        <h3>${step.title}</h3>
+        <p>${step.body}</p>
+        <div class="tour-progress-bar"><i style="width:${pct}%"></i></div>
+        <div class="tour-actions">
+          <button class="tour-btn skip" data-act="close">Skip</button>
+          <span class="progress">${current + 1} / ${steps.length}</span>
+          ${current > 0 ? '<button class="tour-btn back" data-act="back">Back</button>' : ''}
+          <button class="tour-btn next" data-act="next">${step.nextLabel || 'Next →'}</button>
+        </div>`;
+      tour.appendChild(tip);
+
+      const arrow = document.createElement('div');
+      arrow.className = 'tour-arrow';
+      arrow.style.left = pos.ax + 'px'; arrow.style.top = pos.ay + 'px';
+      tour.appendChild(arrow);
+    }
+
+    function closeTour() { tour.classList.add('done'); tour.innerHTML = ''; settingsModal.classList.remove('show'); }
+
+    tour.addEventListener('click', e => {
+      const act = e.target.dataset.act;
+      if (act === 'next') { current < steps.length - 1 ? (current++, render()) : closeTour(); }
+      else if (act === 'back') { if (current > 0) { current--; render(); } }
+      else if (act === 'close') { closeTour(); }
+    });
+    document.addEventListener('keydown', e => {
+      if (tour.classList.contains('done')) return;
+      if (e.key === 'ArrowRight') { current < steps.length - 1 ? (current++, render()) : closeTour(); }
+      else if (e.key === 'ArrowLeft') { if (current > 0) { current--; render(); } }
+      else if (e.key === 'Escape') { closeTour(); }
+    });
+    window.addEventListener('resize', () => { if (!tour.classList.contains('done')) render(); });
+    requestAnimationFrame(render);
+  </script>
+</body>
+</html>

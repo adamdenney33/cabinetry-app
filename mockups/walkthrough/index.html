@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>ProCabinet — Walkthrough Mockups</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f2f2f2;
+      color: #111;
+      min-height: 100vh;
+      padding: 60px 24px;
+    }
+    .wrap { max-width: 1100px; margin: 0 auto; }
+    .head { text-align: center; margin-bottom: 48px; }
+    .head .logo {
+      display: inline-block;
+      font-weight: 800;
+      font-size: 22px;
+      letter-spacing: -0.3px;
+      color: #111;
+      margin-bottom: 12px;
+    }
+    .head .logo span { color: #e8a838; }
+    .head h1 { font-size: 32px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 12px; }
+    .head p { font-size: 15px; color: #666; max-width: 640px; margin: 0 auto; line-height: 1.6; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(440px, 1fr));
+      gap: 20px;
+    }
+    .card {
+      background: #fff;
+      border: 1px solid #e0e0e0;
+      border-radius: 12px;
+      padding: 24px;
+      text-decoration: none;
+      color: inherit;
+      display: block;
+      transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+      cursor: pointer;
+    }
+    .card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.10);
+      border-color: #e8a838;
+    }
+    .card .badge {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      color: #e8a838;
+      background: rgba(232,168,56,0.12);
+      padding: 4px 8px;
+      border-radius: 4px;
+      margin-bottom: 12px;
+      text-transform: uppercase;
+    }
+    .card h2 { font-size: 18px; font-weight: 800; margin-bottom: 8px; }
+    .card .pitch { font-size: 13px; color: #444; line-height: 1.55; margin-bottom: 16px; }
+    .card .meta {
+      display: flex;
+      gap: 12px;
+      font-size: 11px;
+      color: #888;
+      padding-top: 14px;
+      border-top: 1px solid #f0f0f0;
+    }
+    .card .meta span::before { content: '• '; color: #ccc; margin-right: 4px; }
+    .card .meta span:first-child::before { content: ''; margin-right: 0; }
+    .preview {
+      background: #fafafa;
+      border: 1px solid #eee;
+      border-radius: 8px;
+      height: 130px;
+      margin-bottom: 16px;
+      position: relative;
+      overflow: hidden;
+    }
+    .preview .mock-header {
+      background: #111;
+      height: 18px;
+      display: flex;
+      align-items: center;
+      padding: 0 8px;
+    }
+    .preview .mock-header::before {
+      content: '';
+      width: 38px;
+      height: 6px;
+      background: #e8a838;
+      border-radius: 2px;
+    }
+    .preview .mock-tabs {
+      background: #1c1c1c;
+      height: 14px;
+      display: flex;
+      gap: 4px;
+      padding: 2px 8px;
+    }
+    .preview .mock-tab { flex: 1; background: #2a2a2a; border-radius: 2px; }
+    .preview .mock-tab.active { background: #e8a838; }
+    .preview .mock-body {
+      padding: 8px;
+      display: flex;
+      gap: 6px;
+      height: calc(100% - 32px);
+    }
+    .preview .mock-side { width: 35%; background: #f0f0f0; border-radius: 3px; }
+    .preview .mock-main { flex: 1; background: #f5f5f5; border-radius: 3px; display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; }
+    .preview .mock-card { background: #fff; border-radius: 2px; }
+
+    /* Variant-specific overlay previews */
+    .preview.var-a::after {
+      content: '';
+      position: absolute;
+      inset: 32px 0 0 0;
+      background: rgba(0,0,0,0.55);
+    }
+    .preview.var-a .tooltip {
+      position: absolute;
+      bottom: 16px;
+      right: 16px;
+      background: #fff;
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 9px;
+      font-weight: 700;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      z-index: 2;
+    }
+    .preview.var-a .spot {
+      position: absolute;
+      top: 36px;
+      left: 12px;
+      width: 30%;
+      height: 50%;
+      background: #fff;
+      border-radius: 3px;
+      box-shadow: 0 0 0 3px #e8a838, 0 0 0 9999px rgba(0,0,0,0.55);
+      z-index: 1;
+    }
+
+    .preview.var-b .checklist {
+      position: absolute;
+      bottom: 8px;
+      right: 8px;
+      width: 110px;
+      background: #fff;
+      border: 1px solid #e0e0e0;
+      border-radius: 5px;
+      padding: 6px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    .preview.var-b .checklist .ch-title { font-size: 8px; font-weight: 700; margin-bottom: 4px; }
+    .preview.var-b .checklist .ch-row { display: flex; align-items: center; gap: 4px; font-size: 7px; color: #444; padding: 2px 0; }
+    .preview.var-b .checklist .ch-row::before { content: ''; width: 6px; height: 6px; border: 1px solid #ccc; border-radius: 50%; }
+    .preview.var-b .checklist .ch-row.done::before { background: #3d9970; border-color: #3d9970; }
+
+    .preview.var-c .dot {
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      background: #e8a838;
+      border-radius: 50%;
+      box-shadow: 0 0 0 4px rgba(232,168,56,0.25);
+      animation: pulse 1.5s ease-out infinite;
+    }
+    .preview.var-c .dot.d1 { top: 44px; left: 28px; }
+    .preview.var-c .dot.d2 { top: 60px; right: 50px; }
+    .preview.var-c .dot.d3 { bottom: 18px; right: 18px; }
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(232,168,56,0.5); }
+      100% { box-shadow: 0 0 0 14px rgba(232,168,56,0); }
+    }
+
+    .preview.var-d .narrator {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: #1a1a1a;
+      color: #fff;
+      padding: 8px 10px;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .preview.var-d .narrator .avatar {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: #e8a838;
+      flex-shrink: 0;
+    }
+    .preview.var-d .narrator .text { font-size: 8px; line-height: 1.3; flex: 1; }
+    .preview.var-d .narrator .btn { font-size: 7px; background: #e8a838; color: #111; padding: 3px 6px; border-radius: 3px; font-weight: 700; }
+
+    .footer { text-align: center; margin-top: 48px; font-size: 12px; color: #888; }
+    .footer code { background: #fff; border: 1px solid #e0e0e0; padding: 2px 6px; border-radius: 4px; font-size: 11px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="head">
+      <div class="logo">ProCabinet<span>.App</span></div>
+      <h1>Onboarding Walkthrough — Design Mockups</h1>
+      <p>Four distinct patterns for the first-run guided tour. Each mockup recreates the app shell with demo seed data (Smith Kitchen, QUO-0001) and walks through Dashboard → Quote → Cabinet → Cut List → Orders → Pro CTA. Click into each, then use Next/Back to feel the flow.</p>
+    </div>
+
+    <div class="grid">
+      <a class="card" href="variant-a-spotlight.html">
+        <div class="preview var-a">
+          <div class="mock-header"></div>
+          <div class="mock-tabs">
+            <div class="mock-tab active"></div><div class="mock-tab"></div><div class="mock-tab"></div><div class="mock-tab"></div><div class="mock-tab"></div>
+          </div>
+          <div class="mock-body">
+            <div class="mock-side"></div>
+            <div class="mock-main">
+              <div class="mock-card"></div><div class="mock-card"></div><div class="mock-card"></div><div class="mock-card"></div>
+            </div>
+          </div>
+          <div class="spot"></div>
+          <div class="tooltip">Step 2 / 6 →</div>
+        </div>
+        <div class="badge">Variant A · detailed</div>
+        <h2>Classic Spotlight Tour</h2>
+        <p class="pitch">Dim the screen, light up one element at a time, point at it with a tooltip. Now a granular 15-step walkthrough following one job — the Smith Kitchen — through Toolbar → Client → Cabinet → Quote → Order → Schedule → Stock → Cut List → Dashboard.</p>
+        <div class="meta"><span>15 steps</span><span>Full workflow</span><span>Most familiar</span></div>
+      </a>
+
+      <a class="card" href="variant-b-checklist.html">
+        <div class="preview var-b">
+          <div class="mock-header"></div>
+          <div class="mock-tabs">
+            <div class="mock-tab active"></div><div class="mock-tab"></div><div class="mock-tab"></div><div class="mock-tab"></div><div class="mock-tab"></div>
+          </div>
+          <div class="mock-body">
+            <div class="mock-side"></div>
+            <div class="mock-main">
+              <div class="mock-card"></div><div class="mock-card"></div><div class="mock-card"></div><div class="mock-card"></div>
+            </div>
+          </div>
+          <div class="checklist">
+            <div class="ch-title">Get started 2/6</div>
+            <div class="ch-row done">View quote</div>
+            <div class="ch-row done">Open cabinet</div>
+            <div class="ch-row">Cut list</div>
+            <div class="ch-row">Pro</div>
+          </div>
+        </div>
+        <div class="badge">Variant B</div>
+        <h2>Welcome + Persistent Checklist</h2>
+        <p class="pitch">A welcome modal kicks things off, then a dockable checklist sits in the corner tracking progress. Users can ignore it and explore freely; the checklist re-engages drop-offs. Linear, Notion, GitHub style.</p>
+        <div class="meta"><span>6 tasks</span><span>Non-blocking</span><span>Re-engages</span></div>
+      </a>
+
+      <a class="card" href="variant-c-coachmarks.html">
+        <div class="preview var-c">
+          <div class="mock-header"></div>
+          <div class="mock-tabs">
+            <div class="mock-tab active"></div><div class="mock-tab"></div><div class="mock-tab"></div><div class="mock-tab"></div><div class="mock-tab"></div>
+          </div>
+          <div class="mock-body">
+            <div class="mock-side"></div>
+            <div class="mock-main">
+              <div class="mock-card"></div><div class="mock-card"></div><div class="mock-card"></div><div class="mock-card"></div>
+            </div>
+          </div>
+          <div class="dot d1"></div>
+          <div class="dot d2"></div>
+          <div class="dot d3"></div>
+        </div>
+        <div class="badge">Variant C</div>
+        <h2>Ambient Coach Marks</h2>
+        <p class="pitch">No dimming, no overlays. Pulsing gold dots appear next to the most useful actions. Hover any dot for a one-line tip. Lightest touch — respects pros who'd rather just explore.</p>
+        <div class="meta"><span>~8 hints</span><span>Non-blocking</span><span>Easy to miss</span></div>
+      </a>
+
+      <a class="card" href="variant-d-story.html">
+        <div class="preview var-d">
+          <div class="mock-header"></div>
+          <div class="mock-tabs">
+            <div class="mock-tab active"></div><div class="mock-tab"></div><div class="mock-tab"></div><div class="mock-tab"></div><div class="mock-tab"></div>
+          </div>
+          <div class="mock-body">
+            <div class="mock-side"></div>
+            <div class="mock-main">
+              <div class="mock-card"></div><div class="mock-card"></div><div class="mock-card"></div><div class="mock-card"></div>
+            </div>
+          </div>
+          <div class="narrator">
+            <div class="avatar"></div>
+            <div class="text">"The Smiths approved your quote yesterday..."</div>
+            <div class="btn">→</div>
+          </div>
+        </div>
+        <div class="badge">Variant D</div>
+        <h2>Story Mode</h2>
+        <p class="pitch">Frames demo data as a narrative — meet the Smiths, walk their kitchen project from quote → build → cut → order → done. Most memorable; teaches by doing not by pointing.</p>
+        <div class="meta"><span>5 chapters</span><span>Bottom narrator</span><span>Most opinionated</span></div>
+      </a>
+    </div>
+
+    <div class="footer">
+      Mockups are static HTML — open <code>file://</code> directly. Swap variants any time.
+    </div>
+  </div>
+</body>
+</html>

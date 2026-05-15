@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Variant C — Coach Marks</title>
+  <style>
+    :root {
+      --accent: #e8a838;
+      --accent-dim: rgba(232,168,56,0.12);
+      --danger: #e05252;
+      --success: #3d9970;
+      --bg: #f2f2f2;
+      --surface: #ffffff;
+      --surface2: #f7f7f7;
+      --border: #e0e0e0;
+      --text: #111111;
+      --muted: #888888;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 13px;
+      overflow: hidden;
+      height: 100vh;
+    }
+
+    .app { display: flex; flex-direction: column; height: 100vh; }
+    .app-header { height: 56px; background: #111; color: #fff; display: flex; align-items: center; padding: 0 20px; gap: 16px; flex-shrink: 0; position: relative; z-index: 10; }
+    .app-header .logo { font-weight: 800; font-size: 16px; }
+    .app-header .logo span { color: var(--accent); }
+    .app-header .beta { font-size: 9px; font-weight: 700; background: var(--accent); color: #111; padding: 2px 6px; border-radius: 3px; letter-spacing: 0.5px; }
+    .app-header .spacer { flex: 1; }
+    .app-header .nav-btn { font-size: 12px; color: #ccc; padding: 6px 10px; border-radius: 5px; cursor: pointer; position: relative; }
+    .app-header .nav-btn:hover { background: rgba(255,255,255,0.08); color: #fff; }
+    .tabs { background: #1c1c1c; display: flex; padding: 0 12px; gap: 2px; flex-shrink: 0; position: relative; z-index: 5; }
+    .tab { padding: 10px 16px; font-size: 12px; font-weight: 600; color: #aaa; cursor: pointer; border-radius: 6px 6px 0 0; position: relative; white-space: nowrap; }
+    .tab:hover { background: #2a2a2a; color: #fff; }
+    .tab.active { background: var(--bg); color: var(--text); }
+    .tab .badge { display: inline-block; font-size: 10px; background: var(--danger); color: #fff; border-radius: 8px; padding: 1px 6px; margin-left: 4px; }
+
+    .panel { flex: 1; overflow: hidden; display: none; }
+    .panel.active { display: flex; }
+
+    .dash-main { flex: 1; padding: 18px; overflow-y: auto; position: relative; }
+    .quick-actions { display: flex; gap: 8px; margin-bottom: 18px; flex-wrap: wrap; position: relative; }
+    .qa-btn { background: var(--surface); border: 1px solid var(--border); border-radius: 7px; padding: 8px 14px; font-size: 12px; font-weight: 600; cursor: pointer; color: var(--text); position: relative; }
+    .qa-btn.primary { background: var(--accent); border-color: var(--accent); color: #111; }
+
+    .dash-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.04); overflow: hidden; position: relative; }
+    .card .card-head { padding: 12px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; position: relative; }
+    .card .card-head h3 { font-size: 13px; font-weight: 700; }
+    .card .card-head .count { font-size: 11px; color: var(--muted); font-weight: 600; }
+    .dash-row { padding: 11px 16px; border-bottom: 1px solid #f0f0f0; display: flex; align-items: center; gap: 10px; font-size: 12px; cursor: pointer; position: relative; }
+    .dash-row:last-child { border-bottom: none; }
+    .dash-row:hover { background: #fafafa; }
+    .dash-row .name { flex: 1; font-weight: 600; }
+    .dash-row .meta { color: var(--muted); font-size: 11px; }
+    .pill { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 10px; background: #f0f0f0; color: #555; }
+    .pill.production { background: rgba(232,168,56,0.15); color: #a07221; }
+    .pill.approved { background: rgba(61,153,112,0.15); color: var(--success); }
+    .pill.draft { background: #efefef; color: #666; }
+    .pill.warning { background: rgba(224,82,82,0.12); color: var(--danger); }
+
+    .qp { display: flex; flex: 1; }
+    .qp-sidebar { width: 360px; background: var(--surface); border-right: 1px solid var(--border); padding: 16px; overflow-y: auto; flex-shrink: 0; }
+    .qp-main { flex: 1; padding: 16px; overflow-y: auto; position: relative; }
+    .form-group { margin-bottom: 12px; }
+    .form-group label { display: block; font-size: 11px; font-weight: 600; color: var(--muted); margin-bottom: 4px; }
+    .form-group input, .form-group select { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; font-size: 12px; font-family: inherit; }
+    .form-row { display: flex; gap: 8px; }
+    .form-row .form-group { flex: 1; }
+    .section-head { font-size: 14px; font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; position: relative; }
+
+    .quote-row { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; margin-bottom: 8px; display: flex; align-items: center; gap: 14px; cursor: pointer; position: relative; }
+    .quote-row .qid { font-weight: 700; font-size: 12px; min-width: 80px; }
+    .quote-row .client { flex: 1; font-size: 12px; }
+    .quote-row .total { font-weight: 700; font-size: 13px; }
+
+    .cab-side { width: 440px; background: var(--surface); border-right: 1px solid var(--border); padding: 16px; overflow-y: auto; flex-shrink: 0; }
+    .cab-main { flex: 1; padding: 16px; overflow-y: auto; background: #fafafa; position: relative; }
+    .cab-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+    .cab-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px; position: relative; }
+    .cab-svg { width: 100%; height: 100px; background: linear-gradient(135deg, #d6c5a8 0%, #b8a382 100%); border-radius: 4px; margin-bottom: 10px; position: relative; }
+    .cab-svg::before { content: ''; position: absolute; inset: 8px; border: 1px solid rgba(0,0,0,0.15); border-radius: 2px; }
+    .cab-card h4 { font-size: 13px; font-weight: 700; margin-bottom: 4px; }
+    .cab-card .dim { font-size: 11px; color: var(--muted); }
+
+    /* === COACH MARKS === */
+    .pulse-dot {
+      position: absolute;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--accent);
+      cursor: pointer;
+      z-index: 50;
+      box-shadow: 0 0 0 3px rgba(255,255,255,0.95), 0 1px 4px rgba(0,0,0,0.2);
+    }
+    .pulse-dot::before {
+      content: '';
+      position: absolute;
+      inset: -6px;
+      border-radius: 50%;
+      background: var(--accent);
+      opacity: 0.5;
+      animation: pulse 1.6s ease-out infinite;
+    }
+    .pulse-dot::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      background: var(--accent);
+    }
+    @keyframes pulse {
+      0% { transform: scale(0.8); opacity: 0.5; }
+      100% { transform: scale(2.4); opacity: 0; }
+    }
+    .pulse-dot:hover { transform: scale(1.15); }
+    .pulse-dot.dismissed { display: none; }
+    .pulse-dot.viewed {
+      background: #aaa;
+      box-shadow: 0 0 0 2px rgba(255,255,255,0.95);
+    }
+    .pulse-dot.viewed::before { display: none; }
+    .pulse-dot.viewed::after { background: #aaa; }
+
+    /* Position dots at specific anchors */
+    .dot-newquote { top: -6px; right: -6px; }
+    .dot-orders   { top: -6px; right: -6px; }
+    .dot-stock    { top: -6px; right: -6px; }
+    .dot-quoterow { top: 50%; left: -7px; transform: translateY(-50%); }
+    .dot-cabbtn   { top: -6px; right: -6px; }
+    .dot-cabcard  { top: -6px; right: -6px; }
+    .dot-help     { top: 8px; right: 6px; }
+    .dot-newcabinet { top: -6px; right: -6px; }
+
+    /* === COACH POPOVER === */
+    .coach-pop {
+      position: absolute;
+      width: 280px;
+      background: #1a1a1a;
+      color: #fff;
+      border-radius: 10px;
+      padding: 14px 16px 12px;
+      box-shadow: 0 12px 36px rgba(0,0,0,0.35);
+      z-index: 100;
+      animation: popIn 0.22s ease;
+    }
+    @keyframes popIn {
+      0% { opacity: 0; transform: translateY(-4px); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+    .coach-pop::before {
+      content: '';
+      position: absolute;
+      width: 12px;
+      height: 12px;
+      background: #1a1a1a;
+      transform: rotate(45deg);
+    }
+    .coach-pop.arrow-tl::before { top: -5px; left: 16px; }
+    .coach-pop.arrow-tr::before { top: -5px; right: 16px; }
+    .coach-pop.arrow-bl::before { bottom: -5px; left: 16px; }
+    .coach-pop.arrow-l::before { left: -5px; top: 18px; }
+    .coach-pop .lbl { font-size: 10px; color: var(--accent); font-weight: 800; letter-spacing: 0.6px; text-transform: uppercase; margin-bottom: 6px; }
+    .coach-pop h4 { font-size: 14px; font-weight: 800; margin-bottom: 5px; color: #fff; }
+    .coach-pop p { font-size: 12px; line-height: 1.5; color: #ccc; margin-bottom: 12px; }
+    .coach-pop .actions { display: flex; gap: 8px; align-items: center; }
+    .coach-pop .actions .got-it {
+      background: var(--accent);
+      color: #111;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 5px;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .coach-pop .actions .next-hint {
+      background: transparent;
+      color: #aaa;
+      border: none;
+      padding: 6px 8px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .coach-pop .actions .next-hint:hover { color: #fff; }
+    .coach-pop .spacer { flex: 1; }
+    .coach-pop .x {
+      position: absolute;
+      top: 8px; right: 10px;
+      color: rgba(255,255,255,0.5);
+      font-size: 16px;
+      cursor: pointer;
+      line-height: 1;
+    }
+    .coach-pop .x:hover { color: #fff; }
+
+    /* === FLOATING TOUR PILL === */
+    .tour-pill {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: #1a1a1a;
+      color: #fff;
+      padding: 10px 16px;
+      border-radius: 22px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+      z-index: 800;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transition: all 0.15s ease;
+    }
+    .tour-pill:hover { transform: translateY(-2px); box-shadow: 0 12px 32px rgba(0,0,0,0.3); }
+    .tour-pill .dot {
+      width: 8px; height: 8px;
+      background: var(--accent);
+      border-radius: 50%;
+      box-shadow: 0 0 0 3px rgba(232,168,56,0.3);
+    }
+    .tour-pill .ct {
+      background: rgba(255,255,255,0.12);
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 10px;
+    }
+
+    /* === STATE SWITCHER === */
+    .state-switcher {
+      position: fixed;
+      top: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(26,26,26,0.92);
+      backdrop-filter: blur(10px);
+      color: #fff;
+      padding: 6px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+      z-index: 1200;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .state-switcher button {
+      background: rgba(255,255,255,0.1);
+      color: #fff;
+      border: none;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .state-switcher button.active { background: var(--accent); color: #111; }
+    .state-switcher a { color: var(--accent); text-decoration: none; margin-left: 8px; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="app-header">
+      <div class="logo">ProCabinet<span>.App</span></div>
+      <div class="beta">BETA</div>
+      <div class="spacer"></div>
+      <div class="nav-btn" id="help-anchor">
+        Help
+        <div class="pulse-dot dot-help" data-hint="help" id="dot-help"></div>
+      </div>
+      <div class="nav-btn">Settings</div>
+      <div class="nav-btn">Adam</div>
+    </div>
+
+    <div class="tabs">
+      <div class="tab active" data-panel="dashboard">Dashboard</div>
+      <div class="tab" data-panel="cutlist">Cut List</div>
+      <div class="tab" data-panel="stock">Stock</div>
+      <div class="tab" data-panel="cabinet">Cabinet</div>
+      <div class="tab" data-panel="quote">Quote</div>
+      <div class="tab" data-panel="orders">Orders <span class="badge">3</span></div>
+      <div class="tab" data-panel="clients">Clients</div>
+      <div class="tab" data-panel="schedule">Schedule</div>
+    </div>
+
+    <div class="panel active" id="panel-dashboard">
+      <div class="dash-main">
+        <div class="quick-actions">
+          <button class="qa-btn primary">
+            + Quote
+            <div class="pulse-dot dot-newquote" data-hint="newquote"></div>
+          </button>
+          <button class="qa-btn">+ Cabinet</button>
+          <button class="qa-btn">+ Cut List</button>
+          <button class="qa-btn">+ Order</button>
+          <button class="qa-btn">+ Stock</button>
+          <button class="qa-btn">+ Client</button>
+        </div>
+        <div class="dash-grid">
+          <div class="card">
+            <div class="card-head">
+              <h3>Active Orders</h3>
+              <span class="count">3 in production</span>
+              <div class="pulse-dot dot-orders" data-hint="orders"></div>
+            </div>
+            <div class="dash-row"><span class="name">ORD-0001</span><span class="meta">Smith Residence</span><span class="pill production">Production</span></div>
+            <div class="dash-row"><span class="name">ORD-0002</span><span class="meta">Greenwood Kitchens</span><span class="pill production">Production</span></div>
+            <div class="dash-row"><span class="name">ORD-0003</span><span class="meta">Bayside Build</span><span class="pill production">Production</span></div>
+          </div>
+          <div class="card">
+            <div class="card-head"><h3>Recent Quotes</h3><span class="count">5 quotes</span></div>
+            <div class="dash-row"><span class="name">QUO-0005</span><span class="meta">Cooper & Sons</span><span class="pill draft">Draft</span></div>
+            <div class="dash-row"><span class="name">QUO-0004</span><span class="meta">Harrington Manor</span><span class="pill approved">Approved</span></div>
+            <div class="dash-row"><span class="name">QUO-0003</span><span class="meta">Bayside Build</span><span class="pill approved">Approved</span></div>
+          </div>
+          <div class="card">
+            <div class="card-head">
+              <h3>Low Stock</h3>
+              <span class="count">2 alerts</span>
+              <div class="pulse-dot dot-stock" data-hint="stock"></div>
+            </div>
+            <div class="dash-row"><span class="name">18mm Birch Ply</span><span class="meta">3 sheets</span><span class="pill warning">Low</span></div>
+            <div class="dash-row"><span class="name">Blum Hinges 110°</span><span class="meta">12 left</span><span class="pill warning">Low</span></div>
+            <div class="dash-row"><span class="name">PVC Edge 22mm</span><span class="meta">45m</span><span class="pill">OK</span></div>
+          </div>
+          <div class="card">
+            <div class="card-head"><h3>This Week</h3><span class="count">4 jobs</span></div>
+            <div class="dash-row"><span class="name">Tue · Smith install</span><span class="meta">8:00 AM</span></div>
+            <div class="dash-row"><span class="name">Wed · Greenwood cut</span><span class="meta">9:30 AM</span></div>
+            <div class="dash-row"><span class="name">Fri · Bayside delivery</span><span class="meta">2:00 PM</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel" id="panel-quote">
+      <div class="qp">
+        <div class="qp-sidebar">
+          <div class="section-head">Quote Builder</div>
+          <div class="form-group"><label>Quote #</label><input value="QUO-0001" readonly></div>
+          <div class="form-group"><label>Client</label><input value="Smith Residence"></div>
+        </div>
+        <div class="qp-main">
+          <div class="section-head">
+            Quotes
+            <button class="qa-btn primary">+ New Quote</button>
+          </div>
+          <div class="quote-row" id="quote-anchor">
+            <span class="qid">QUO-0001</span>
+            <span class="client">Smith Residence — Kitchen reno</span>
+            <span class="pill approved">Approved</span>
+            <span class="total">$8,450</span>
+            <div class="pulse-dot dot-quoterow" data-hint="quoterow"></div>
+          </div>
+          <div class="quote-row"><span class="qid">QUO-0002</span><span class="client">Greenwood Kitchens — Showroom</span><span class="pill production">Production</span><span class="total">$11,500</span></div>
+          <div class="quote-row"><span class="qid">QUO-0003</span><span class="client">Bayside Build Co — 4-unit job</span><span class="pill approved">Approved</span><span class="total">$6,200</span></div>
+          <div class="quote-row"><span class="qid">QUO-0004</span><span class="client">Harrington Manor — Pantry rebuild</span><span class="pill approved">Approved</span><span class="total">$3,850</span></div>
+          <div class="quote-row"><span class="qid">QUO-0005</span><span class="client">Cooper & Sons — Estimate</span><span class="pill draft">Draft</span><span class="total">$4,720</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel" id="panel-cabinet">
+      <div class="qp">
+        <div class="cab-side">
+          <div class="section-head">Cabinet Builder</div>
+          <div class="form-row">
+            <div class="form-group"><label>Width</label><input value="600"></div>
+            <div class="form-group"><label>Height</label><input value="720"></div>
+            <div class="form-group"><label>Depth</label><input value="560"></div>
+          </div>
+          <div class="form-group"><label>Material</label><select><option>18mm Birch Plywood</option></select></div>
+        </div>
+        <div class="cab-main">
+          <div class="section-head">
+            Cabinet Library
+            <button class="qa-btn primary">+ New Cabinet
+              <div class="pulse-dot dot-newcabinet" data-hint="newcab"></div>
+            </button>
+          </div>
+          <div class="cab-grid">
+            <div class="cab-card">
+              <div class="cab-svg"></div>
+              <h4>Base 600</h4>
+              <div class="dim">600 × 720 × 560</div>
+              <div class="pulse-dot dot-cabcard" data-hint="cabcard"></div>
+            </div>
+            <div class="cab-card"><div class="cab-svg"></div><h4>Wall 600</h4><div class="dim">600 × 720 × 320</div></div>
+            <div class="cab-card"><div class="cab-svg"></div><h4>Drawer 800</h4><div class="dim">800 × 720 × 560</div></div>
+            <div class="cab-card"><div class="cab-svg"></div><h4>Tall Larder</h4><div class="dim">600 × 2100 × 560</div></div>
+            <div class="cab-card"><div class="cab-svg"></div><h4>Corner 900</h4><div class="dim">900 × 720 × 900</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel" id="panel-orders">
+      <div class="qp">
+        <div class="qp-sidebar">
+          <div class="section-head">Order</div>
+          <div class="form-group"><label>Order #</label><input value="ORD-0001" readonly></div>
+        </div>
+        <div class="qp-main">
+          <div class="section-head">Orders <button class="qa-btn primary">+ New Order</button></div>
+          <div class="quote-row"><span class="qid">ORD-0001</span><span class="client">Smith Residence</span><span class="pill production">Production</span><span class="total">$8,450</span></div>
+          <div class="quote-row"><span class="qid">ORD-0002</span><span class="client">Greenwood Kitchens</span><span class="pill production">Production</span><span class="total">$11,500</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tour pill bottom-right -->
+  <div class="tour-pill" id="tour-pill" style="display:none">
+    <div class="dot"></div>
+    Tips
+    <span class="ct" id="pill-count">5 left</span>
+  </div>
+
+  <!-- Coach popover mount -->
+  <div id="popover-mount"></div>
+
+  <!-- STATE SWITCHER -->
+  <div class="state-switcher">
+    <span>Variant C ·</span>
+    <button class="active" data-state="0">1. Dots</button>
+    <button data-state="1">2. Open tip</button>
+    <button data-state="2">3. Quote tip</button>
+    <button data-state="3">4. Cabinet tip</button>
+    <button data-state="4">5. Dismissed</button>
+    <a href="index.html">all variants</a>
+  </div>
+
+  <script>
+    const hints = {
+      newquote: { title: 'Start a quote', body: 'Click + Quote to draft a new estimate. Add cabinets, hardware, labour — totals roll up automatically.' },
+      orders: { title: 'Track production', body: 'Active orders sit here so you know what\'s in the workshop without hunting. Click any row to update its status.' },
+      stock: { title: 'Low stock alerts', body: 'Anything below your reorder threshold lights up red. Set thresholds per material in the Stock tab.' },
+      help:  { title: 'Re-show this tour', body: 'You can replay this tour any time from the Help menu. We\'ll add new hints when we ship features.' },
+      quoterow: { title: 'Open a sample quote', body: 'QUO-0001 is the Smith Residence — already approved. Click to see how the line items, totals, and PDF preview work.' },
+      newcab: { title: 'Save reusable cabinets', body: 'Build it once, drop it into any quote. Edit dimensions on the left, save to your library on the right.' },
+      cabcard: { title: 'Click any cabinet', body: 'Opens the editor with all dimensions, hardware, and pricing. Duplicate to make a variant in one click.' }
+    };
+
+    const states = {
+      // panel, dotsViewed[], showPopover (or null), pillCount
+      0: { panel: 'dashboard', viewed: [], pop: null, pillTotal: 8 },
+      1: { panel: 'dashboard', viewed: [], pop: { hint: 'orders', anchor: '.dot-orders', placement: 'br' }, pillTotal: 8 },
+      2: { panel: 'quote',     viewed: ['orders','newquote','stock'], pop: { hint: 'quoterow', anchor: '.dot-quoterow', placement: 'l' }, pillTotal: 5 },
+      3: { panel: 'cabinet',   viewed: ['orders','newquote','stock','quoterow'], pop: { hint: 'newcab', anchor: '.dot-newcabinet', placement: 'tr' }, pillTotal: 4 },
+      4: { panel: 'dashboard', viewed: ['orders','newquote','stock','quoterow','newcab','cabcard','help'], pop: null, pillTotal: 1, hidePill: false }
+    };
+
+    function setPanel(name) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.panel === name));
+      document.querySelectorAll('.panel').forEach(p => p.classList.toggle('active', p.id === 'panel-' + name));
+    }
+
+    const popoverMount = document.getElementById('popover-mount');
+    const tourPill = document.getElementById('tour-pill');
+    const pillCount = document.getElementById('pill-count');
+
+    function renderState(s) {
+      const st = states[s];
+      setPanel(st.panel);
+
+      // Reset all dots
+      document.querySelectorAll('.pulse-dot').forEach(d => {
+        d.classList.remove('viewed', 'dismissed');
+        const hintName = d.dataset.hint;
+        if (st.viewed.includes(hintName)) d.classList.add('viewed');
+      });
+
+      // Render popover
+      popoverMount.innerHTML = '';
+      if (st.pop) {
+        const { hint, anchor, placement } = st.pop;
+        const dotEl = document.querySelector(anchor + ':not(.dismissed)');
+        if (dotEl) {
+          const r = dotEl.getBoundingClientRect();
+          const pop = document.createElement('div');
+          pop.className = 'coach-pop arrow-' + placement;
+          let left, top;
+          if (placement === 'tl' || placement === 'tr') {
+            top = r.bottom + 12;
+            left = placement === 'tl' ? r.left - 14 : r.right - 280 + 14;
+          } else if (placement === 'br') {
+            top = r.bottom + 12;
+            left = r.right - 280 + 14;
+          } else if (placement === 'bl') {
+            top = r.top - 100;
+            left = r.left - 14;
+          } else if (placement === 'l') {
+            top = r.top - 14;
+            left = r.right + 14;
+          }
+          left = Math.max(12, Math.min(left, window.innerWidth - 292));
+          pop.style.left = left + 'px';
+          pop.style.top = top + 'px';
+          pop.innerHTML = `
+            <span class="x">×</span>
+            <div class="lbl">Tip</div>
+            <h4>${hints[hint].title}</h4>
+            <p>${hints[hint].body}</p>
+            <div class="actions">
+              <button class="got-it">Got it</button>
+              <button class="next-hint">Next tip →</button>
+              <span class="spacer"></span>
+            </div>
+          `;
+          popoverMount.appendChild(pop);
+        }
+      }
+
+      // Tour pill
+      const remaining = st.pillTotal;
+      if (remaining > 0 && s !== 0) {
+        tourPill.style.display = 'flex';
+        pillCount.textContent = remaining + ' left';
+      } else if (s === 0) {
+        tourPill.style.display = 'none';
+      } else {
+        tourPill.style.display = remaining ? 'flex' : 'none';
+        pillCount.textContent = remaining + ' left';
+      }
+    }
+
+    document.querySelectorAll('.state-switcher button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.state-switcher button').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        renderState(parseInt(btn.dataset.state));
+      });
+    });
+
+    window.addEventListener('resize', () => {
+      const active = document.querySelector('.state-switcher button.active');
+      if (active) renderState(parseInt(active.dataset.state));
+    });
+
+    renderState(0);
+  </script>
+</body>
+</html>

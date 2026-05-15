@@ -147,7 +147,6 @@ let _wtActive = false;
 let _wtCurrent = 0;
 /** @type {HTMLElement | null} */
 let _wtOverlay = null;
-/** @type {number} */
 /** @type {number | ReturnType<typeof setTimeout>} */
 let _wtResizeTimer = 0;
 
@@ -310,8 +309,8 @@ function _wtResolveTarget(sel, tries, cb) {
     const r = el.getBoundingClientRect();
     if (r.width > 1 && r.height > 1) { cb(/** @type {HTMLElement} */ (el)); return; }
   }
-  if (tries >= 14) { cb(null); return; }
-  setTimeout(() => _wtResolveTarget(sel, tries + 1, cb), 35);
+  if (tries >= 6) { cb(null); return; }
+  setTimeout(() => _wtResolveTarget(sel, tries + 1, cb), 40);
 }
 
 /**
