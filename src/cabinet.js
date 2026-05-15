@@ -79,6 +79,7 @@ async function _saveCabinetToDB(entry) {
       default_specs: entry,
     }).select().single();
     if (error) { console.warn('[cabinet-template save]', error.message); return null; }
+    if (data && typeof _track === 'function') _track('library_item_created', { library: 'cabinet_templates', item_id: data.id, source: 'builder' });
     return data?.id || null;
   } catch(e) { console.warn('[cabinet-template save]', (/** @type {any} */ (e)).message || e); return null; }
 }
@@ -985,6 +986,7 @@ async function cbCreateOrderFromDraft() {
   };
   const { data, error } = await _dbInsertSafe('orders', insertBody);
   if (error || !data) { _toast('Could not create order: ' + (error?.message || ''), 'error'); return; }
+  if (typeof _track === 'function') _track('library_item_created', { library: 'orders', item_id: data.id, source: 'cabinet_builder' });
   orders.unshift(data);
 
   await _syncCBLinesToOrder(data.id);

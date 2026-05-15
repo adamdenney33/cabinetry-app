@@ -142,6 +142,7 @@ function isApproachingLimit(library, currentCount) {
  */
 function _enforceFreeLimit(library, currentCount) {
   if (!isAtLimit(library, currentCount)) return true;
+  if (typeof _track === 'function') _track('free_tier_limit_hit', { library: library, current_count: currentCount });
   if (typeof _openLimitHitModal === 'function') {
     _openLimitHitModal(library);
   } else if (typeof _toast === 'function') {

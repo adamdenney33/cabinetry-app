@@ -81,6 +81,7 @@ async function createClient() {
   };
   const { data, error } = await _dbInsertSafe('clients', row);
   if (error || !data) { _toast('Could not save client — ' + (error?.message || JSON.stringify(error)), 'error'); return; }
+  if (typeof _track === 'function') _track('library_item_created', { library: 'clients', item_id: data.id, source: 'editor' });
   clients.push(data);
   clients.sort((a,b) => a.name.localeCompare(b.name));
   _toast('Client added', 'success');

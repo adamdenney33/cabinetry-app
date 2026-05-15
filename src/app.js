@@ -299,9 +299,8 @@ function _renderOrderHoursBreakdown() {
 // hoursRequired (or hours_allocated override).
 /** @param {boolean} on */
 function _orderAutoScheduleToggle(on) {
-  // Priority only applies when auto-scheduling — hide the field when off.
-  const prioWrap = document.getElementById('po-priority-wrap');
-  if (prioWrap) prioWrap.style.display = on ? '' : 'none';
+  // Priority is shown in both modes — it sets queue order for auto-scheduling
+  // and is still a meaningful field to record when scheduling manually.
   const startInput = /** @type {HTMLInputElement|null} */ (document.getElementById('po-start'));
   if (startInput) {
     startInput.disabled = on;
@@ -1191,6 +1190,7 @@ async function authSubmit() {
   }
   if (btn) { btn.disabled = false; btn.textContent = _authMode === 'signin' ? 'Sign In' : 'Create Account'; }
   if (error) { if (msgEl) msgEl.innerHTML = `<div class="auth-error">${error.message}</div>`; return; }
+  if (typeof _track === 'function') _track(_authMode === 'signup' ? 'user_signed_up' : 'user_logged_in');
   if (_authMode === 'signup' && msgEl) { msgEl.innerHTML = '<div class="auth-success">Check your email to confirm your account, then sign in.</div>'; }
 }
 
@@ -1199,6 +1199,7 @@ async function signOut() {
   orders = []; quotes = []; stockItems = []; clients = []; projects = [];
   _userId = null;
   _subscription = null;
+  if (typeof _resetAnalytics === 'function') _resetAnalytics();
   toggleAccount();
   renderStockMain(); renderQuoteMain(); renderOrdersMain();
   if (typeof renderSubscriptionSection === 'function') renderSubscriptionSection();
@@ -1376,12 +1377,14 @@ function _applyBizInfoFromDB(rows) {
 _sb.auth.onAuthStateChange(async (event, session) => {
   if (session) {
     _userId = session.user.id;
+    window.Sentry.setUser({ id: session.user.id, email: session.user.email });
     const emailEl = document.getElementById('account-email-item');
     if (emailEl) emailEl.textContent = session.user.email ?? '';
     /** @type {HTMLElement} */ (document.getElementById('account-guest-view')).style.display = 'none';
     /** @type {HTMLElement} */ (document.getElementById('account-user-view')).style.display = '';
     _showApp();
     await loadAllData();
+    if (typeof _identifyUser === 'function') _identifyUser(session);
     await _loadCabinetTemplatesFromDB();
     // F6 (2026-05-13): _clLoadProjectList removed alongside the projects entity.
     // Restore the active section and any open editor entity from the previous
@@ -1393,6 +1396,7 @@ _sb.auth.onAuthStateChange(async (event, session) => {
     }
   } else {
     _userId = null;
+    window.Sentry.setUser(null);
     _subscription = null;
     if (typeof renderSubscriptionSection === 'function') renderSubscriptionSection();
     /** @type {HTMLElement} */ (document.getElementById('account-guest-view')).style.display = '';

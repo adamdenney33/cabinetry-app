@@ -487,6 +487,7 @@ async function addStockItem() {
   };
   const { data, error } = await _db('stock_items').insert(/** @type {any} */ (row)).select().single();
   if (error || !data) { _toast('Could not save stock item — ' + (error?.message || JSON.stringify(error)), 'error'); console.error(error); return; }
+  if (typeof _track === 'function') _track('library_item_created', { library: 'stock', item_id: data.id, source: 'editor' });
   // Attach edge-band shadow fields (thickness/width/length/glue) to the
   // in-memory item so cut-list dropdowns see them THIS session. Reloads
   // re-hydrate via app.js loadAllData (H0.2 map of *_mm/*_m → short names).

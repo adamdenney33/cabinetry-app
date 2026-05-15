@@ -615,14 +615,14 @@ analytics widgets) available to all users.
   - Verify backup schedule on the Supabase plan
   - Document restore procedure in a new `Building Docs/ops-runbook.md`
 
-- **P.3 — Error logging (Sentry)**
-  - Sign up for Sentry free Developer plan (5k errors/mo, 30-day retention)
-  - Install `@sentry/browser` + `@sentry/vite-plugin`
-  - Wire client-side error capture in `src/main.js` (init early, before app code)
-  - Configure source-map upload in GitHub Actions via `SENTRY_AUTH_TOKEN` secret
-  - Disable Replay/Profiling integrations to keep bundle ~30 KB gz
-  - Set up email alerts for new issues + error-rate spikes
-  - Re-evaluate at ~500 users: stay on Team ($26/mo) or migrate to Better Stack
+- **P.3 — Error logging (Sentry)** — code wired 2026-05-15 (DSN-gated, inert until account exists); pending Sentry account + alerts
+  - ⬜ Sign up for Sentry free Developer plan (5k errors/mo, 30-day retention)
+  - ✅ Install `@sentry/browser` + `@sentry/vite-plugin`
+  - ✅ Wire client-side error capture in `src/main.js` (init early, before app code) — DSN-gated `Sentry.init`, exposed as `window.Sentry`; user context (id + email) set in the `src/app.js` auth listener
+  - ✅ Configure source-map upload via `@sentry/vite-plugin` in `vite.config.mjs`; build-env scaffold (commented) in `.github/workflows/deploy.yml`, `SENTRY_AUTH_TOKEN` to be added as a GitHub Actions secret
+  - ✅ Disable Replay/Profiling integrations to keep bundle ~30 KB gz — error-only init, no extra integrations added
+  - ⬜ Set up email alerts for new issues + error-rate spikes
+  - ⬜ Re-evaluate at ~500 users: stay on Team ($26/mo) or migrate to Better Stack
 
 - **P.4 — Cross-browser smoke test**
   - Chrome, Safari, Firefox, Edge — desktop
@@ -659,13 +659,17 @@ analytics widgets) available to all users.
   - Decide hosting: separate `/blog` route, Notion, or Substack
 
 - **C.5 — Analytics + Search Console (PostHog + Cloudflare Web Analytics)**
-  - Sign up for PostHog Cloud (free tier: 1M events/mo, 5k replays/mo)
-  - Install snippet in `index.html` (gated by env so dev doesn't pollute data)
-  - Wire key events: signup, first project created, first quote created, first
-    PDF export, hit-free-tier-limit, upgrade clicked
-  - Build core funnels: signup → first quote → first PDF
-  - Enable Cloudflare Web Analytics for marketing-site numbers (free, auto on Pages)
-  - Verify Google Search Console + submit sitemap
+  - ⬜ Sign up for PostHog Cloud (free tier: 1M events/mo, 5k replays/mo) — EU region
+  - ✅ Wire PostHog into the app — npm `posthog-js` via the `src/main.js` bridge,
+    key-gated so a dev `.env.local` without `VITE_POSTHOG_KEY` never pollutes prod
+    data. See SPEC.md § 13 (2026-05-15).
+  - ✅ Wire key events: signup, login, `library_item_created` (any client / quote /
+    order / cut list / stock item / cabinet template), `pdf_created` (any PDF type),
+    `free_tier_limit_hit`, `upgrade_clicked`, `section_viewed`. Generic events carry
+    `library` / `type` / `source` properties so funnels stay flexible.
+  - ⬜ Build core funnels in PostHog: signup → library item created → PDF created
+  - ⬜ Enable Cloudflare Web Analytics for marketing-site numbers (free, auto on Pages)
+  - ⬜ Verify Google Search Console + submit sitemap
 
 - **C.6 — Beta outreach (10 cabinet makers)**
   - List candidates from existing network + targeted forums
@@ -1038,8 +1042,8 @@ for visibility.
 | Storage | Supabase Storage (`business-assets` bucket for logos) | ✅ Done |
 | Payments | Stripe | ✅ Test mode shipped (S.2–S.7); live-mode flip pending (S.9) |
 | Email | Supabase auth defaults | ⬜ Needs branding |
-| Analytics | PostHog (in-app) + Cloudflare Web Analytics (marketing) | ⬜ Not started |
-| Error logging | Sentry (free Developer plan) | ⬜ Not started |
+| Analytics | PostHog (in-app) + Cloudflare Web Analytics (marketing) | ✅ PostHog code wired (C.5, key-gated); pending PostHog account + Cloudflare WA |
+| Error logging | Sentry (free Developer plan) | ✅ Code wired (P.3, DSN-gated); pending Sentry account |
 
 ---
 

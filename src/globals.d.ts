@@ -20,6 +20,10 @@ declare global {
   interface Window {
     supabase: { createClient: typeof SupabaseCreateClient };
     jspdf: { jsPDF: typeof JsPDFConstructor };
+    /** Sentry SDK bridge — set by src/main.js. Calls no-op until Sentry.init runs (DSN-gated). */
+    Sentry: typeof import('@sentry/browser');
+    /** PostHog client — set by src/main.js only when VITE_POSTHOG_KEY is present; undefined otherwise. */
+    posthog?: typeof import('posthog-js').default;
     /** Supabase URL — set by src/main.js from import.meta.env.VITE_SUPABASE_URL. */
     _SBURL: string;
     /** Supabase publishable (anon) key — set by src/main.js from import.meta.env.VITE_SUPABASE_ANON_KEY. */

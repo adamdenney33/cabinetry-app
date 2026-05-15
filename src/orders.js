@@ -1072,6 +1072,7 @@ async function createOrderFromEditor(silent) {
   // secondary lookup needed post-F5.
   const { data, error } = await _dbInsertSafe('orders', row);
   if (error || !data) { _toast('Could not create order — ' + ((error && error.message) || ''), 'error'); return false; }
+  if (typeof _track === 'function') _track('library_item_created', { library: 'orders', item_id: data.id, source: 'editor' });
   // Save notes locally
   const notesVal = _popupVal('po-notes') || '';
   if (notesVal) { /** @type {any} */ (data).notes = notesVal; _onSet(data.id, notesVal); }

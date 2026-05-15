@@ -188,6 +188,7 @@ function renderSubscriptionSection() {
 
 /** @param {'monthly' | 'annual'} cadence */
 function _handleUpgradeClick(cadence) {
+  if (typeof _track === 'function') _track('upgrade_clicked', { billing_cycle: cadence });
   startCheckout(cadence).catch(err => {
     const msg = (err && err.message) || 'Checkout failed';
     if (typeof _toast === 'function') _toast(msg, 'error');

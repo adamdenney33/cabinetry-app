@@ -49,6 +49,18 @@ jobs:
           # at build time via import.meta.env.
           VITE_SUPABASE_URL: https://mhzneruvlfmhnsohfrdo.supabase.co
           VITE_SUPABASE_ANON_KEY: sb_publishable_4lHAEgWPQz8DX8TH2KnuiA_oimj8J__
+          # Sentry error tracking (PLAN.md P.3). Uncomment + fill once the
+          # Sentry project exists. VITE_SENTRY_DSN is publishable — plaintext
+          # is fine, like the keys above; while commented out, Sentry stays
+          # disabled and @sentry/vite-plugin no-ops. SENTRY_AUTH_TOKEN must be
+          # added as a GitHub Actions repository secret. ORG/PROJECT are slugs.
+          VITE_SENTRY_DSN: https://535a9c90da9f4467e912d173636ff597@o4511394076426240.ingest.de.sentry.io/4511394099626064
+          # SENTRY_ORG: your-org-slug
+          # SENTRY_PROJECT: your-project-slug
+          # SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          # PostHog product analytics (PLAN.md C.5). Publishable key — plaintext is fine.
+          VITE_POSTHOG_KEY: phc_swdug9tQJqTUR4HD8C7FKTtW2NDKJnkd8V8QA2JkxAuG
+          VITE_POSTHOG_HOST: https://eu.i.posthog.com
 
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3

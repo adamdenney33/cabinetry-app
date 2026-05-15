@@ -360,6 +360,7 @@ async function convertQuoteToOrder(id) {
   if (q.name) orderRow.name = q.name;
   const { data, error: oErr } = await _dbInsertSafe('orders', orderRow);
   if (oErr || !data) { _toast('Could not create order — ' + (oErr?.message || JSON.stringify(oErr)), 'error'); console.error(oErr); return; }
+  if (typeof _track === 'function') _track('library_item_created', { library: 'orders', item_id: data.id, source: 'quote_conversion' });
   // Carry quote notes to order notes & store quote reference
   if (q.notes && data) { data.notes = q.notes; _onSet(data.id, q.notes); }
   if (data) { _oqSet(data.id, q.id); }
@@ -1597,6 +1598,7 @@ async function createQuoteFromEditor(silent) {
   };
   const { data, error } = await _dbInsertSafe('quotes', row);
   if (error || !data) { _toast('Could not create quote — ' + ((error && error.message) || ''), 'error'); return false; }
+  if (typeof _track === 'function') _track('library_item_created', { library: 'quotes', item_id: data.id, source: 'editor' });
   quotes.unshift(data);
   _qpState.quoteId = data.id;
   _qpState.dirty = false;
