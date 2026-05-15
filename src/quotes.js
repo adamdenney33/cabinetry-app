@@ -65,7 +65,7 @@ function _quoteLabel(q, opts) {
   const num = q.quote_number || ('QUO-' + String(q.id || 0).padStart(4, '0'));
   const proj = quoteProject(q) || '';
   const cli = o.client === false ? '' : (quoteClient(q) || '');
-  return [num, proj, cli].filter(Boolean).join(' · ');
+  return [num, cli, proj].filter(Boolean).join(' · ');
 }
 /** @param {any} o @param {{client?: boolean}} [opts] */
 function _orderLabel(o, opts) {
@@ -74,7 +74,7 @@ function _orderLabel(o, opts) {
   const num = o.order_number || ('ORD-' + String(o.id || 0).padStart(4, '0'));
   const proj = orderProject(o) || '';
   const cli = opt.client === false ? '' : (orderClient(o) || '');
-  return [num, proj, cli].filter(Boolean).join(' · ');
+  return [num, cli, proj].filter(Boolean).join(' · ');
 }
 
 // ── Cabinet Builder draft-quote helpers (Item 2 Phase 1.1; F3/F5 2026-05-13) ──
@@ -433,7 +433,7 @@ function renderQuoteMain() {
     const cName = quoteClient(q);
     const qNum = q.quote_number ? `${q.quote_number} · ` : '';
     const titleText = pName && cName
-      ? `${qNum}${_escHtml(pName)} · ${_escHtml(cName)}`
+      ? `${qNum}${_escHtml(cName)} · ${_escHtml(pName)}`
       : `${qNum}${_escHtml(pName || cName || '')}`;
     const lineCounts = _lineKindCountsLabel(q._lines);
     const curIdx = QUOTE_STATUSES.indexOf(q.status || 'draft');

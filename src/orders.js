@@ -164,7 +164,7 @@ function renderOrdersMain() {
     const titleNum = o.order_number || '';
     const titleProj = orderProject(o) || '';
     const titleCli = orderClient(o) || '';
-    const titleText = [titleNum, titleProj, titleCli].filter(Boolean).join(' · ');
+    const titleText = [titleNum, titleCli, titleProj].filter(Boolean).join(' · ');
     const statusBadgeCls = (/** @type {Record<string,string>} */(STATUS_BADGES))[o.status]||'badge-gray';
     const statusLabel = (/** @type {Record<string,string>} */(STATUS_LABELS))[o.status]||o.status;
     const isEditing = o.id === _opState.orderId;
