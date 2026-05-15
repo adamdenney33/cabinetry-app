@@ -705,7 +705,7 @@ function renderCBResults() {
     const unitCost = c.matCost + c.labourCost + c.hwCost;
     const cabMarkup = c.lineSubtotal * cbSettings.markup / 100;
     const cabTotal = (c.lineSubtotal + cabMarkup) * (1 + cbSettings.tax / 100);
-    html += `<div style="background:var(--surface);border:${isActive?'2px solid var(--accent)':'1px solid var(--border)'};border-radius:var(--radius);margin-bottom:10px;overflow:hidden;cursor:pointer;box-shadow:var(--shadow);transition:box-shadow .15s" onclick="cbEditCabinetFromOutput(${idx})" onmouseover="this.style.boxShadow='var(--shadow-md)'" onmouseout="this.style.boxShadow='var(--shadow)'">
+    html += `<div style="background:var(--surface);border:${isActive?'2px solid var(--accent)':'1px solid var(--border)'};border-radius:var(--radius);margin-bottom:10px;overflow:hidden;cursor:pointer;box-shadow:var(--shadow);transition:box-shadow .15s,border-color .15s" onclick="cbEditCabinetFromOutput(${idx})" onmouseover="this.style.boxShadow='var(--shadow-md)'${isActive?'':";this.style.borderColor='rgba(232,168,56,0.3)'"}" onmouseout="this.style.boxShadow='var(--shadow)'${isActive?'':";this.style.borderColor='var(--border)'"}">
       <!-- Header -->
       <div style="display:flex;align-items:center;gap:10px;padding:12px 16px;background:${isActive?'var(--accent-dim)':'var(--surface2)'}">
         <div style="flex:1;min-width:0">

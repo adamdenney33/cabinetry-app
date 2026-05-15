@@ -194,16 +194,39 @@ function _wtClose(reason) {
   if (reason === 'completed') {
     try { localStorage.setItem('pc_hide_guide', '1'); } catch (e) { void e; }
   }
-  // M5 fills this in — persist version + dismissed_at to onboarding_state.
-  _wtPersistState(reason);
+  // Persist dismissal — version gate + timestamp. M7's _wtMaybeAutoStart
+  // reads these to decide whether to auto-show on the next login.
+  _wtPersistState({
+    version: WT_VERSION,
+    dismissed_at: new Date().toISOString(),
+    completed: reason === 'completed'
+  });
 }
 
 /**
- * Persist walkthrough dismissal. STUB until M5 — logs only.
- * @param {'completed'|'skipped'} reason
+ * Merge `patch` into the user's onboarding_state and persist it to
+ * business_info. Find-or-insert UPSERT — a brand-new user has no row yet, so
+ * the first write creates it (baseline name:'' for the NOT-NULL name column,
+ * mirroring _syncBizInfoToDB in business.js). Fire-and-forget.
+ * @param {Record<string, any>} patch
  */
-function _wtPersistState(reason) {
-  console.log('[walkthrough] closed:', reason, '(persistence wired in M5)');
+async function _wtPersistState(patch) {
+  const next = Object.assign({}, _wtW._onboardingState || {}, patch);
+  _wtW._onboardingState = next;
+  if (!_userId || typeof _db !== 'function') return;
+  const uid = _userId;
+  try {
+    const { data: existing } = await _db('business_info').select('id').eq('user_id', uid);
+    if (existing && existing.length > 0) {
+      await _db('business_info')
+        .update({ onboarding_state: next, updated_at: new Date().toISOString() })
+        .eq('user_id', uid);
+    } else {
+      await _db('business_info').insert([{ user_id: uid, name: '', onboarding_state: next }]);
+    }
+  } catch (e) {
+    console.warn('[walkthrough] persist failed', e);
+  }
 }
 
 // ── navigation ──
@@ -227,7 +250,7 @@ function _wtOverlayClick(e) {
   else if (act === 'back') _wtBack();
   else if (act === 'skip') _wtClose('skipped');
   else if (act === 'clear-sample') {
-    // _wtClearSampleData lands in M6; guard until then.
+    _wtClose('completed');
     if (typeof _wtW._wtClearSampleData === 'function') _wtW._wtClearSampleData();
   }
 }
@@ -463,6 +486,149 @@ function _wtCenterHTML(step) {
   return h;
 }
 
+// ── sample-data seeder (M6) ──
+
+/**
+ * Seed a light "Smith Kitchen" sample project so the tour walks populated
+ * panels. Every count stays under the 5-item free cap (1 client, 3 stock,
+ * 3 cabinet templates, 1 quote, 1 order, 1 cut list). The inserted row IDs are
+ * recorded into onboarding_state.sample_ids so _wtClearSampleData can later
+ * remove exactly these rows. Child lines cascade-delete with their parent.
+ * @returns {Promise<boolean>}
+ */
+async function _wtSeedSampleProject() {
+  if (!_userId || typeof _db !== 'function') return false;
+  const uid = _userId;
+  const db = _wtW._db;
+  /** @type {Record<string, number[]>} */
+  const ids = { clients: [], stock_items: [], cabinet_templates: [], quotes: [], orders: [], cutlists: [] };
+  /** @param {string} table @param {any} row @returns {Promise<number>} */
+  const ins1 = async (table, row) => {
+    const { data, error } = await db(table).insert([row]).single();
+    if (error || !data) throw new Error(table + ': ' + ((error && error.message) || 'no row returned'));
+    return data.id;
+  };
+  /** @param {string} table @param {any[]} rows @returns {Promise<number[]>} */
+  const insMany = async (table, rows) => {
+    const { data, error } = await db(table).insert(rows);
+    if (error || !data) throw new Error(table + ': ' + ((error && error.message) || 'no rows returned'));
+    return /** @type {any[]} */ (data).map((/** @type {any} */ r) => r.id);
+  };
+  try {
+    const clientId = await ins1('clients', {
+      user_id: uid, name: 'Smith Residence', email: 'sarah.smith@example.com',
+      phone: '0412 558 901', address: '14 Maple Drive, Kew',
+      notes: 'Sample client — added by the ProCabinet walkthrough.'
+    });
+    ids.clients.push(clientId);
+
+    ids.stock_items = await insMany('stock_items', [
+      { user_id: uid, name: '18mm Birch Plywood', sku: 'PLY-BIR-18', qty: 6, low: 8, cost: 82, category: 'Sheet material' },
+      { user_id: uid, name: 'Blum 110° Hinge', sku: 'HW-BLM-110', qty: 24, low: 40, cost: 4.5, category: 'Hardware' },
+      { user_id: uid, name: 'PVC Edge Banding 22mm', sku: 'EB-PVC-22', qty: 45, low: 20, cost: 1.8, category: 'Edge banding' }
+    ]);
+
+    ids.cabinet_templates = await insMany('cabinet_templates', [
+      { user_id: uid, name: 'Base 600', type: 'base', default_w_mm: 600, default_h_mm: 720, default_d_mm: 560, default_specs: {} },
+      { user_id: uid, name: 'Wall 600', type: 'wall', default_w_mm: 600, default_h_mm: 720, default_d_mm: 320, default_specs: {} },
+      { user_id: uid, name: 'Drawer 800', type: 'drawer', default_w_mm: 800, default_h_mm: 720, default_d_mm: 560, default_specs: {} }
+    ]);
+
+    const quoteId = await ins1('quotes', {
+      user_id: uid, client_id: clientId, name: 'Smith Kitchen Renovation',
+      status: 'sent', markup: 35, tax: 10, quote_number: 'QUO-SAMPLE',
+      notes: 'Sample quote — added by the ProCabinet walkthrough.'
+    });
+    ids.quotes.push(quoteId);
+    // Bulk insert requires every row to carry the SAME keys — the labour line
+    // takes explicit nulls for the cabinet-only columns.
+    await insMany('quote_lines', [
+      { quote_id: quoteId, user_id: uid, position: 0, name: 'Base 600', line_kind: 'cabinet', type: 'base', w_mm: 600, h_mm: 720, d_mm: 560, qty: 2, unit_price: 565 },
+      { quote_id: quoteId, user_id: uid, position: 1, name: 'Wall 600', line_kind: 'cabinet', type: 'wall', w_mm: 600, h_mm: 720, d_mm: 320, qty: 2, unit_price: 425 },
+      { quote_id: quoteId, user_id: uid, position: 2, name: 'Install & fit-off', line_kind: 'labour', type: null, w_mm: null, h_mm: null, d_mm: null, qty: 1, unit_price: 1800 }
+    ]);
+
+    const orderId = await ins1('orders', {
+      user_id: uid, client_id: clientId, quote_id: quoteId, name: 'Smith Kitchen Renovation',
+      value: 8450, status: 'confirmed', due: '2026-06-12', markup: 35, tax: 10, order_number: 'ORD-SAMPLE'
+    });
+    ids.orders.push(orderId);
+    await insMany('order_lines', [
+      { order_id: orderId, user_id: uid, position: 0, name: 'Base 600', line_kind: 'cabinet', type: 'base', w_mm: 600, h_mm: 720, d_mm: 560, qty: 2, unit_price: 565 },
+      { order_id: orderId, user_id: uid, position: 1, name: 'Wall 600', line_kind: 'cabinet', type: 'wall', w_mm: 600, h_mm: 720, d_mm: 320, qty: 2, unit_price: 425 },
+      { order_id: orderId, user_id: uid, position: 2, name: 'Install & fit-off', line_kind: 'labour', type: null, w_mm: null, h_mm: null, d_mm: null, qty: 1, unit_price: 1800 }
+    ]);
+
+    const cutlistId = await ins1('cutlists', {
+      user_id: uid, name: 'Smith Kitchen — Cut List', position: 0, ui_prefs: {}, quote_id: quoteId
+    });
+    ids.cutlists.push(cutlistId);
+  } catch (e) {
+    console.warn('[walkthrough] seed failed', e);
+    // Record whatever landed so a later "clear" can still tidy up.
+    await _wtPersistState({ sample_seeded: true, sample_ids: ids });
+    _wtSyncHelpItem();
+    return false;
+  }
+  await _wtPersistState({ sample_seeded: true, sample_ids: ids });
+  _wtSyncHelpItem();
+  return true;
+}
+
+/**
+ * Remove the seeded sample project (behind a confirm). Deletes child lines
+ * first, then parents in reverse-FK order, clears sample_ids, reloads data.
+ */
+function _wtClearSampleData() {
+  const ob = _wtW._onboardingState || {};
+  const ids = ob.sample_ids || {};
+  const has = ob.sample_seeded && Object.keys(ids).some((/** @type {string} */ k) => (ids[k] || []).length > 0);
+  if (!has) {
+    if (typeof _wtW._toast === 'function') _wtW._toast('No sample data to clear', 'error');
+    return;
+  }
+  const doClear = async () => {
+    const db = _wtW._db;
+    /** @param {string} table @param {string} col @param {number[]} vals */
+    const del = async (table, col, vals) => {
+      if (!vals || !vals.length) return;
+      try { await db(table).delete().in(col, vals); }
+      catch (e) { console.warn('[walkthrough] clear ' + table, e); }
+    };
+    await del('order_lines', 'order_id', ids.orders || []);
+    await del('quote_lines', 'quote_id', ids.quotes || []);
+    await del('orders', 'id', ids.orders || []);
+    await del('cutlists', 'id', ids.cutlists || []);
+    await del('quotes', 'id', ids.quotes || []);
+    await del('cabinet_templates', 'id', ids.cabinet_templates || []);
+    await del('stock_items', 'id', ids.stock_items || []);
+    await del('clients', 'id', ids.clients || []);
+    await _wtPersistState({ sample_seeded: false, sample_ids: {} });
+    _wtSyncHelpItem();
+    if (typeof _wtW.loadAllData === 'function') {
+      try { await _wtW.loadAllData(); } catch (e) { void e; }
+    }
+    if (typeof _wtW._toast === 'function') _wtW._toast('Sample data cleared', 'success');
+  };
+  document.getElementById('help-dropdown')?.classList.remove('open');
+  if (typeof _wtW._confirm === 'function') {
+    _wtW._confirm('Remove the sample project? This deletes the sample client, 3 cabinets, quote, order, cut list and 3 stock items.', doClear);
+  } else {
+    doClear();
+  }
+}
+
+/** Show the Help-menu "Clear sample data" item only while sample data exists. */
+function _wtSyncHelpItem() {
+  const item = document.getElementById('help-clear-sample');
+  if (!item) return;
+  const ob = _wtW._onboardingState || {};
+  item.style.display = ob.sample_seeded ? '' : 'none';
+}
+
 // ── public surface ──
 _wtW._wtStart = _wtStart;
 _wtW._wtClose = _wtClose;
+_wtW._wtSeedSampleProject = _wtSeedSampleProject;
+_wtW._wtClearSampleData = _wtClearSampleData;
+_wtW._wtSyncHelpItem = _wtSyncHelpItem;
