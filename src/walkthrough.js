@@ -33,6 +33,7 @@ const _wtW = /** @type {any} */ (window);
  * @property {string} [section]        switchSection() target before render.
  * @property {string} [subtab]         switchCabTab() target ('builder'|'rates').
  * @property {string} [cbView]         switchCBMainView() target ('results'|'library').
+ * @property {string} [clView]         switchCLMainView() target ('library'|'layout').
  * @property {boolean} [openSettings]  Open the header Settings dropdown for this step.
  * @property {boolean} [openAccount]   Open the header Account dropdown for this step.
  * @property {string} [target]         CSS selector to spotlight (spot steps).
@@ -247,15 +248,16 @@ const _wtSteps = [
   },
   {
     type: 'spot', phase: 'Cut List', section: 'cutlist',
-    target: '.cl-right', position: 'left',
+    preClickCard: '#cl-action-bar .btn',
+    target: '#results-area', position: 'left',
     title: 'Visual layout',
-    body: 'Each sheet is shown as a scaled diagram with pieces labelled and colour-coded. See <span class="wt-hi">waste percentage, cut order and material totals</span> at a glance.'
+    body: 'Each sheet is drawn as a scaled diagram with pieces labelled and colour-coded. See <span class="wt-hi">waste percentage, cut order and material totals</span> at a glance.'
   },
   {
-    type: 'spot', phase: 'Cut List', section: 'cutlist',
-    target: '#cl-tab-layout', position: 'bottom',
+    type: 'spot', phase: 'Cut List', section: 'cutlist', clView: 'layout',
+    target: '#layout-toolbar-top', position: 'bottom',
     title: 'Export & deduct stock',
-    body: 'Export a <span class="wt-hi">workshop PDF</span> with the cut diagram and part labels. Deduct used sheets directly from your Stock inventory with one click.'
+    body: 'Export a <span class="wt-hi">workshop PDF</span> with the cut diagram and part labels, or deduct the used sheets straight from your Stock inventory with one click.'
   },
 
   // ── Schedule ─────────────────────────────────────────────────────────────
@@ -386,6 +388,22 @@ function _wtGateSection(section) {
     }
     if (section === 'cabinet' && typeof _wtW._exitClient_cabinet === 'function') {
       _wtW._exitClient_cabinet();
+    }
+    if (section === 'cutlist') {
+      // Seed a small sample cut list so the optimiser produces a real layout
+      // for the "Visual layout" / "Export" steps. Only when the user has no
+      // cut list of their own — guarded on the localStorage working copy.
+      const savedSheets = localStorage.getItem('pc_cl_sheets');
+      const savedPieces = localStorage.getItem('pc_cl_pieces');
+      const clEmpty = (!savedSheets || savedSheets === '[]')
+        && (!savedPieces || savedPieces === '[]');
+      if (clEmpty && typeof _wtW.addSheet === 'function' && typeof _wtW.addPiece === 'function') {
+        _wtW.addSheet('18mm Birch Plywood', 2440, 1220, 2);
+        _wtW.addPiece('Side panel', 720, 560, 4, 'none');
+        _wtW.addPiece('Shelf', 568, 540, 6, 'none');
+        _wtW.addPiece('Door front', 597, 397, 4, 'none');
+      }
+      if (typeof _wtW.switchCLMainView === 'function') _wtW.switchCLMainView('library');
     }
     if (section === 'orders' && typeof _opState !== 'undefined') {
       _opState.orderId = null; _opState.clientId = null;
@@ -531,6 +549,7 @@ function _wtApplyContext(step) {
     // re-syncs the library sub-tab, which would otherwise undo a rates-tab click.
     if (step.subtab && typeof _wtW.switchCabTab === 'function') _wtW.switchCabTab(step.subtab);
     if (step.cbView && typeof _wtW.switchCBMainView === 'function') _wtW.switchCBMainView(step.cbView);
+    if (step.clView && typeof _wtW.switchCLMainView === 'function') _wtW.switchCLMainView(step.clView);
     if (step.preClickCard) {
       const card = document.querySelector(step.preClickCard);
       if (card) /** @type {HTMLElement} */ (card).click();
@@ -580,6 +599,10 @@ function _wtGetPreClickTarget(i) {
   // Cabinet main-view switch (Library / Results)
   if (step.cbView && step.cbView !== prev.cbView)
     return _centre(document.getElementById(step.cbView === 'library' ? 'cb-main-tab-library' : 'cb-main-tab-results'));
+
+  // Cut List main-view switch (Library / Layout)
+  if (step.clView && step.clView !== prev.clView)
+    return _centre(document.getElementById(step.clView === 'layout' ? 'cl-tab-layout' : 'cl-tab-library'));
 
   // Card pre-click — open a record in the sidebar before spotlighting it
   if (step.preClickCard) return _centre(document.querySelector(step.preClickCard));
