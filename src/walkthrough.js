@@ -148,7 +148,8 @@ let _wtCurrent = 0;
 /** @type {HTMLElement | null} */
 let _wtOverlay = null;
 /** @type {number} */
-let _wtResizeRaf = 0;
+/** @type {number | ReturnType<typeof setTimeout>} */
+let _wtResizeTimer = 0;
 
 /** @param {string} s @returns {string} */
 function _wtEsc(s) {
@@ -242,8 +243,8 @@ function _wtKeydown(e) {
 
 function _wtOnResize() {
   if (!_wtActive) return;
-  if (_wtResizeRaf) cancelAnimationFrame(_wtResizeRaf);
-  _wtResizeRaf = requestAnimationFrame(() => { _wtResizeRaf = 0; _wtRender(_wtCurrent); });
+  if (_wtResizeTimer) clearTimeout(_wtResizeTimer);
+  _wtResizeTimer = setTimeout(() => { _wtResizeTimer = 0; _wtRender(_wtCurrent); }, 120);
 }
 
 // ── render ──
@@ -274,17 +275,26 @@ function _wtRender(i) {
   if (!step || !_wtOverlay) return;
   _wtApplyContext(step);
   if (step.type === 'center') { _wtDrawCenter(step, false); return; }
-  requestAnimationFrame(() => {
+  // switchSection() rebuilds panels synchronously, so the target is almost
+  // always measurable right now — getBoundingClientRect forces a layout flush.
+  // Draw immediately when we can: no timer dependency, no flicker.
+  const sel = step.target || '';
+  const now = sel ? document.querySelector(sel) : null;
+  if (now) {
+    const r0 = now.getBoundingClientRect();
+    if (r0.width > 1 && r0.height > 1) {
+      try { now.scrollIntoView({ block: 'center', inline: 'nearest' }); } catch (e) { void e; }
+      _wtDrawSpot(step, now.getBoundingClientRect());
+      return;
+    }
+  }
+  // Target not ready (a panel that renders asynchronously) — retry across
+  // timers, then fall back to a centred tooltip rather than strand the user.
+  _wtResolveTarget(sel, 0, (el) => {
     if (!_wtActive || _wtCurrent !== i) return;       // user advanced — stale
-    _wtResolveTarget(step.target || '', 0, (el) => {
-      if (!_wtActive || _wtCurrent !== i) return;
-      if (!el) { _wtDrawCenter(step, true); return; } // graceful fallback
-      try { el.scrollIntoView({ block: 'center', inline: 'nearest' }); } catch (e) { void e; }
-      requestAnimationFrame(() => {
-        if (!_wtActive || _wtCurrent !== i) return;
-        _wtDrawSpot(step, el.getBoundingClientRect());
-      });
-    });
+    if (!el) { _wtDrawCenter(step, true); return; }
+    try { el.scrollIntoView({ block: 'center', inline: 'nearest' }); } catch (e) { void e; }
+    _wtDrawSpot(step, el.getBoundingClientRect());
   });
 }
 
@@ -300,8 +310,8 @@ function _wtResolveTarget(sel, tries, cb) {
     const r = el.getBoundingClientRect();
     if (r.width > 1 && r.height > 1) { cb(/** @type {HTMLElement} */ (el)); return; }
   }
-  if (tries >= 12) { cb(null); return; }
-  requestAnimationFrame(() => _wtResolveTarget(sel, tries + 1, cb));
+  if (tries >= 14) { cb(null); return; }
+  setTimeout(() => _wtResolveTarget(sel, tries + 1, cb), 35);
 }
 
 /**
