@@ -372,7 +372,7 @@ function renderClientsMain() {
     });
 
     const isEditing = c.id === /** @type {any} */ (window)._editingClientId;
-    return `<div style="background:var(--surface);border:1px solid ${isEditing ? 'var(--accent)' : 'var(--border)'};border-radius:var(--radius);padding:12px 14px;margin-bottom:10px;cursor:pointer;transition:box-shadow .15s" onclick="_openClientPopup(${c.id})" onmouseover="this.style.boxShadow='var(--shadow-md)'" onmouseout="this.style.boxShadow=''">
+    return `<div style="background:var(--surface);border:1px solid ${isEditing ? 'var(--accent)' : 'var(--border)'};border-radius:var(--radius);padding:12px 14px;margin-bottom:10px;cursor:pointer;transition:box-shadow .15s,border-color .15s" onclick="_openClientPopup(${c.id})" onmouseover="this.style.boxShadow='var(--shadow-md)';this.style.borderColor='var(--accent)'" onmouseout="this.style.boxShadow='';this.style.borderColor='${isEditing ? 'var(--accent)' : 'var(--border)'}'">
       <div style="display:flex;align-items:center;gap:10px">
         <div style="width:30px;height:30px;border-radius:50%;background:var(--accent-dim);color:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;flex-shrink:0">${c.name.charAt(0).toUpperCase()}</div>
         <div style="flex:1;min-width:0">
