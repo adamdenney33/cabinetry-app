@@ -171,7 +171,7 @@ function renderSchedule() {
     const dragHandle = isManualMode
       ? `<span class="cl-drag-handle" title="Drag to reorder" style="cursor:grab;color:var(--muted);display:inline-flex;align-items:center;flex-shrink:0">${SCHED_DRAG_HANDLE}</span>`
       : '';
-    sidebarHTML += `<div style="display:flex;align-items:center;gap:8px;padding:5px 8px;margin-bottom:2px;border-radius:6px;cursor:pointer;background:var(--surface2)"${dragAttr} onclick="_scrollToSchedBar(${e.id})" ondblclick="_openOrderPopup(${e.id})" onmouseover="this.style.background='${e.color}33'" onmouseout="this.style.background='var(--surface2)'">${dragHandle}<div style="width:9px;height:9px;border-radius:50%;background:${e.color};flex-shrink:0"></div><div style="flex:1;min-width:0"><div style="font-size:11px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e.isManual?'🔒 ':''}${[e.numberLabel, e.project, e.client].filter(Boolean).map(_escHtml).join(' · ')}</div>${meta?`<div style="font-size:9px;color:var(--muted);display:flex;align-items:center;gap:4px;margin-top:1px">${meta}</div>`:''}${dueText?`<div style="font-size:9px;color:var(--muted);margin-top:1px">${dueText}</div>`:''}</div></div>`;
+    sidebarHTML += `<div style="display:flex;align-items:center;gap:8px;padding:5px 8px;margin-bottom:2px;border-radius:6px;cursor:pointer;background:var(--surface2)"${dragAttr} onclick="_scrollToSchedBar(${e.id})" ondblclick="_openOrderPopup(${e.id})" onmouseover="this.style.background='${e.color}33'" onmouseout="this.style.background='var(--surface2)'">${dragHandle}<div style="width:9px;height:9px;border-radius:50%;background:${e.color};flex-shrink:0"></div><div style="flex:1;min-width:0"><div style="font-size:11px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e.isManual?SCHED_LOCK_ICON:''}${[e.numberLabel, e.project, e.client].filter(Boolean).map(_escHtml).join(' · ')}</div>${meta?`<div style="font-size:9px;color:var(--muted);display:flex;align-items:center;gap:4px;margin-top:1px">${meta}</div>`:''}${dueText?`<div style="font-size:9px;color:var(--muted);margin-top:1px">${dueText}</div>`:''}</div></div>`;
   });
   if(!sortedEvents.length)sidebarHTML+=`<div style="font-size:12px;color:var(--muted)">No active orders</div>`;
   sidebarHTML += `</div>`; // close sched-sidebar-body
@@ -269,7 +269,7 @@ function renderSchedule() {
 
       const labelText = [e.numberLabel, e.project, e.client].filter(Boolean).map(_escHtml).join(' · ');
       const manualStyle = e.isManual ? 'border:1px dashed rgba(255,255,255,0.5);' : '';
-      const lockIcon = e.isManual ? '🔒 ' : '';
+      const lockIcon = e.isManual ? SCHED_LOCK_ICON : '';
       const barTop = 28 + e.lane * stride;
 
       runs.forEach((run, runIdx) => {
@@ -316,6 +316,7 @@ function _scrollToSchedBar(orderId) {
 
 // ── Sidebar sort: persisted sort mode + drag-reorder for manual mode ──
 const SCHED_DRAG_HANDLE = `<svg width="10" height="14" viewBox="0 0 10 14" fill="currentColor"><circle cx="3" cy="2.5" r="1.2"/><circle cx="7" cy="2.5" r="1.2"/><circle cx="3" cy="7" r="1.2"/><circle cx="7" cy="7" r="1.2"/><circle cx="3" cy="11.5" r="1.2"/><circle cx="7" cy="11.5" r="1.2"/></svg>`;
+const SCHED_LOCK_ICON = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:2px;flex-shrink:0"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>`;
 
 function _getSchedSortMode() {
   try {

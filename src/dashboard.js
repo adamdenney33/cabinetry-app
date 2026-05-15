@@ -8,6 +8,8 @@
 // quoteClient, quoteProject, orderClient, orderProject, renderOrdersMain —
 // are all globals defined elsewhere.
 
+const DASH_LOCK_ICON = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:2px;flex-shrink:0"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>`;
+
 function renderDashboard() {
   const cur = window.currency;
   const el = document.getElementById('dashboard-main');
@@ -326,7 +328,7 @@ function renderDashboard() {
           if (!runs.length) return;
           const labelText = [e.numberLabel, e.project, e.client].filter(Boolean).map(_escHtml).join(' · ');
           const manualStyle = e.isManual ? 'border:1px dashed rgba(255,255,255,0.5);' : '';
-          const lockIcon = e.isManual ? '🔒 ' : '';
+          const lockIcon = e.isManual ? DASH_LOCK_ICON : '';
           const barTop = 28 + e.lane * stride;
           runs.forEach((run, runIdx) => {
             const rs = run[0], re = run[1];
