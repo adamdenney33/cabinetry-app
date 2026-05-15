@@ -175,38 +175,39 @@ const _wtSteps = [
 
   // ── Cabinet ──────────────────────────────────────────────────────────────
   {
-    type: 'spot', phase: 'Cabinet', section: 'cabinet',
+    type: 'spot', phase: 'Cabinet', section: 'cabinet', cbView: 'results',
     target: '.nav-tab[title="Cabinet"]', position: 'bottom',
     title: 'Cabinet tab',
     body: 'The engine of the app. Design cabinets, set your rates, and build a reusable library — <span class="wt-hi">everything that powers your quotes</span> lives here.'
   },
   {
-    type: 'spot', phase: 'Cabinet', section: 'cabinet', subtab: 'builder',
-    target: '#cab-tab-builder', position: 'bottom',
+    type: 'spot', phase: 'Cabinet', section: 'cabinet', cbView: 'results',
+    target: '#cb-main-tab-results', position: 'bottom',
     title: 'Quote Builder',
     body: 'The Quote Builder is where you assemble a quote. Add cabinet lines from your library, set dimensions, choose materials — <span class="wt-hi">pricing updates instantly</span>.'
   },
   {
-    type: 'spot', phase: 'Cabinet', section: 'cabinet', subtab: 'builder',
-    target: '#cb-sidebar', position: 'right',
+    type: 'spot', phase: 'Cabinet', section: 'cabinet', cbView: 'results',
+    target: '#cb-context', position: 'right',
     title: 'Cabinet configuration',
-    body: 'Each cabinet has a full spec: carcass dimensions, material, doors, drawers and shelves. ProCabinet applies a <span class="wt-hi">power-law labour formula</span> — bigger cabinets scale correctly.'
+    body: 'Pick a client and project, then add cabinet lines. ProCabinet saves your work as a <span class="wt-hi">draft quote linked to the project</span> — so nothing is lost between sessions.'
   },
   {
-    type: 'spot', phase: 'Cabinet', section: 'cabinet', subtab: 'builder',
+    type: 'spot', phase: 'Cabinet', section: 'cabinet', cbView: 'results',
     target: '#cb-results', position: 'left',
     title: 'Live price breakdown',
     body: 'See material cost, labour, markup and tax calculated line by line. The quote total updates <span class="wt-hi">as you configure each cabinet</span>.'
   },
   {
-    type: 'spot', phase: 'Cabinet', section: 'cabinet', subtab: 'rates',
-    target: '#cab-tab-rates', position: 'bottom',
+    type: 'spot', phase: 'Cabinet', section: 'cabinet', cbView: 'library',
+    target: '#cb-lib-tab-rates', position: 'bottom',
     title: 'My Rates',
     body: 'Set your <span class="wt-hi">hourly labour rate, material markup, edge-banding cost and contingency</span> percentage. Do this once — every cabinet prices itself from these.'
   },
   {
-    type: 'spot', phase: 'Cabinet', section: 'cabinet', subtab: 'rates',
-    target: '#cab-view-rates', position: 'right',
+    type: 'spot', phase: 'Cabinet', section: 'cabinet', cbView: 'library',
+    preClickCard: '#cb-lib-tab-rates',
+    target: '#cb-lib-rates-wrap', position: 'right',
     title: 'Rate inputs',
     body: 'Adjust any rate and all open quotes reprice in real time. <span class="wt-hi">No spreadsheet formulas to maintain</span> — one source of truth for your whole business.'
   },
@@ -256,7 +257,7 @@ const _wtSteps = [
   },
   {
     type: 'spot', phase: 'Cut List', section: 'cutlist',
-    target: '#layout-toolbar-top', position: 'bottom',
+    target: '#cl-tab-layout', position: 'bottom',
     title: 'Export & deduct stock',
     body: 'Export a <span class="wt-hi">workshop PDF</span> with the cut diagram and part labels. Deduct used sheets directly from your Stock inventory with one click.'
   },
