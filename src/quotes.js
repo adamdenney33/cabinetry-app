@@ -443,8 +443,8 @@ function renderQuoteMain() {
       const active = i === curIdx;
       const color = active ? (/** @type {Record<string,string>} */ (QUOTE_STATUS_COLORS))[s] : done ? 'var(--success)' : 'var(--border)';
       const label = (/** @type {Record<string,string>} */ (QUOTE_STATUS_LABELS))[s];
-      return `<div class="pipe-step ${active?'pipe-active':''}${done?' pipe-done':''}" onclick="event.stopPropagation();setQuoteStatus(${q.id},'${s}')" style="cursor:pointer" title="Set to ${label}">
-        <div class="pipe-dot" style="background:${color};border-color:${color}"></div>
+      return `<div class="pipe-step ${active?'pipe-active':''}${done?' pipe-done':''}" data-idx="${i}" data-hover-color="${(/** @type {Record<string,string>} */(QUOTE_STATUS_COLORS))[s]}" onmouseenter="pipePreview(this)" onmouseleave="pipeRestorePreview(this)" onclick="event.stopPropagation();setQuoteStatus(${q.id},'${s}')" style="cursor:pointer" title="Set to ${label}">
+        <div class="pipe-dot" data-orig-color="${color}" style="background:${color};border-color:${color}"></div>
         <div class="pipe-label">${label}</div>
       </div>${i < QUOTE_STATUSES.length-1 ? `<div class="pipe-line ${done?'pipe-line-done':''}"></div>` : ''}`;
     }).join('');

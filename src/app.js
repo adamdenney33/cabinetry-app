@@ -1304,6 +1304,10 @@ function _applyCatalogFromDB(rows) {
 function _applyBizInfoFromDB(rows) {
   if (!rows || rows.length === 0) return;
   const b = rows[0];
+  // O.2: stash the guided-walkthrough state for walkthrough.js's auto-start
+  // gate. Absent/non-object => {} (treated as a never-onboarded user).
+  /** @type {any} */ (window)._onboardingState =
+    (b && b.onboarding_state && typeof b.onboarding_state === 'object') ? b.onboarding_state : {};
   // Update form inputs (these mirror what saveBizInfo / loadBizInfo manage)
   /** @param {string} id @param {any} v */
   const set = (id, v) => { const el = /** @type {HTMLInputElement | null} */ (document.getElementById(id)); if (el && v != null) el.value = v; };
@@ -1497,6 +1501,37 @@ initColVisibility();
 // for Cut List on init. Cabinet Builder is rendered through renderCBPanel.
 if (typeof _clRenderContext === 'function') _clRenderContext();
 if (typeof _cbRenderContext === 'function') _cbRenderContext();
+
+// ── Pipeline hover preview ──
+/** @param {HTMLElement} stepEl */
+function pipePreview(stepEl) {
+  const container = stepEl.closest('.oc-pipeline');
+  if (!container) return;
+  const hoverIdx = parseInt(/** @type {HTMLElement} */(stepEl).dataset.idx || '0');
+  container.querySelectorAll('.pipe-step').forEach((/** @type {any} */ step, i) => {
+    const dot = /** @type {HTMLElement|null} */(step.querySelector('.pipe-dot'));
+    if (!dot) return;
+    const c = i < hoverIdx ? 'var(--success)' : i === hoverIdx ? step.dataset.hoverColor : 'var(--border)';
+    dot.style.background = c;
+    dot.style.borderColor = c;
+  });
+  container.querySelectorAll('.pipe-line').forEach((/** @type {any} */ line, i) => {
+    line.style.background = i < hoverIdx ? 'var(--success)' : 'var(--border)';
+  });
+}
+
+/** @param {HTMLElement} stepEl */
+function pipeRestorePreview(stepEl) {
+  const container = stepEl.closest('.oc-pipeline');
+  if (!container) return;
+  container.querySelectorAll('.pipe-step').forEach((/** @type {any} */ step) => {
+    const dot = /** @type {HTMLElement|null} */(step.querySelector('.pipe-dot'));
+    if (dot) { dot.style.background = dot.dataset.origColor || ''; dot.style.borderColor = dot.dataset.origColor || ''; }
+  });
+  container.querySelectorAll('.pipe-line').forEach((/** @type {any} */ line) => {
+    line.style.background = line.classList.contains('pipe-line-done') ? 'var(--success)' : 'var(--border)';
+  });
+}
 
 // ── Strategy C: global beforeunload guard ──
 // Block tab close while any sidebar / editor is dirty or has a save in flight.

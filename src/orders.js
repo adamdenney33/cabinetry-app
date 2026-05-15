@@ -149,8 +149,8 @@ function renderOrdersMain() {
       const done = i < curIdx;
       const active = i === curIdx;
       const color = active ? (/** @type {Record<string,string>} */ (STATUS_COLORS))[s] : done ? 'var(--success)' : 'var(--border)';
-      return `<div class="pipe-step ${active?'pipe-active':''}${done?' pipe-done':''}" onclick="event.stopPropagation();setOrderStatus(${o.id},'${s}')" style="cursor:pointer" title="Set to ${stepLabels[i]}">
-        <div class="pipe-dot" style="background:${color};border-color:${color}"></div>
+      return `<div class="pipe-step ${active?'pipe-active':''}${done?' pipe-done':''}" data-idx="${i}" data-hover-color="${(/** @type {Record<string,string>} */(STATUS_COLORS))[s]}" onmouseenter="pipePreview(this)" onmouseleave="pipeRestorePreview(this)" onclick="event.stopPropagation();setOrderStatus(${o.id},'${s}')" style="cursor:pointer" title="Set to ${stepLabels[i]}">
+        <div class="pipe-dot" data-orig-color="${color}" style="background:${color};border-color:${color}"></div>
         <div class="pipe-label">${stepLabels[i]}</div>
       </div>${i < ORDER_STATUSES.length-1 ? `<div class="pipe-line ${done?'pipe-line-done':''}"></div>` : ''}`;
     }).join('');
