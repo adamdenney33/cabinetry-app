@@ -643,6 +643,7 @@ export type Database = {
           created_at: string | null
           discount: number
           due: string | null
+          hours_allocated: number | null
           id: number
           manual_end_date: string | null
           manual_start_date: string | null
@@ -671,6 +672,7 @@ export type Database = {
           created_at?: string | null
           discount?: number
           due?: string | null
+          hours_allocated?: number | null
           id?: never
           manual_end_date?: string | null
           manual_start_date?: string | null
@@ -699,6 +701,7 @@ export type Database = {
           created_at?: string | null
           discount?: number
           due?: string | null
+          hours_allocated?: number | null
           id?: never
           manual_end_date?: string | null
           manual_start_date?: string | null
