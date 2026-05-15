@@ -565,6 +565,7 @@ function editStockItem(id) {
   if (sb) sb.style.display = 'none';
   inp('stock-form-title-text').textContent = 'Edit Material';
   if (typeof _setSaveStatus === 'function') _setSaveStatus('stock', 'clean');
+  renderStockMain();
 }
 
 async function saveStockEdit() {
@@ -877,9 +878,10 @@ function renderStockMain() {
     const variant = vd.variant || glue || '';
     const sku = item.sku && item.sku !== '—' ? item.sku : '';
     const unit = isEB ? 'm' : (sheetCat ? 'sheet' : 'unit');
-    return `<tr class="stock-row" onclick="_openStockPopup(${item.id})">
+    const isEditing = item.id === window._editingStockId;
+    return `<tr class="stock-row${isEditing ? ' editing' : ''}" onclick="_openStockPopup(${item.id})">
       <td>
-        <div style="font-weight:600;color:var(--text)">${_escHtml(item.name)}</div>
+        <div style="font-weight:600;color:var(--text)">${_escHtml(item.name)}${isEditing ? ' <span style="font-weight:500;color:var(--accent);font-size:11px">· editing</span>' : ''}</div>
         ${sku ? `<div style="font-size:9px;color:var(--muted);margin-top:1px">${_escHtml(sku)}</div>` : ''}
       </td>
       <td style="color:var(--text2)">${_escHtml(variant) || '—'}</td>

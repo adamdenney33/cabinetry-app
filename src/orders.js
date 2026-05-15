@@ -167,12 +167,13 @@ function renderOrdersMain() {
     const titleText = [titleNum, titleProj, titleCli].filter(Boolean).join(' · ');
     const statusBadgeCls = (/** @type {Record<string,string>} */(STATUS_BADGES))[o.status]||'badge-gray';
     const statusLabel = (/** @type {Record<string,string>} */(STATUS_LABELS))[o.status]||o.status;
+    const isEditing = o.id === _opState.orderId;
     return `
-    <div class="order-card${isOverdue ? ' order-overdue' : ''}" style="cursor:pointer" onclick="loadOrderIntoSidebar(${o.id})">
+    <div class="order-card${isOverdue ? ' order-overdue' : ''}${isEditing ? ' editing' : ''}" style="cursor:pointer" onclick="loadOrderIntoSidebar(${o.id})">
       <div class="oc-header">
         <div class="oc-info">
           <div class="oc-title-row">
-            <div class="oc-title">${titleText}</div>
+            <div class="oc-title">${titleText}${isEditing ? ' <span style="font-weight:500;color:var(--accent);font-size:11px">· editing</span>' : ''}</div>
             <span class="badge ${statusBadgeCls}" style="font-size:10px" onclick="event.stopPropagation()">${statusLabel}</span>
           </div>
           <div class="oc-meta">
@@ -584,7 +585,7 @@ function renderOrderEditor() {
           <label><input type="checkbox" id="po-hours-override" ${hoursOverride ? 'checked' : ''} oninput="_orderHoursOverrideToggle(this.checked);_oMarkDirty();_renderOrderSchedSummary()">Override hours</label>
         </div>
         <div class="sched-fields">
-          <label class="sched-field" id="po-priority-wrap" style="${auto ? '' : 'display:none'}">
+          <label class="sched-field" id="po-priority-wrap">
             <span class="sched-field-label">Priority</span>
             <div class="sched-stepper">
               <button type="button" class="step-btn" onclick="_oStep('po-priority',-1)" tabindex="-1" aria-label="Decrease">−</button>
@@ -788,6 +789,7 @@ function _oExitOrder() {
     }
     if (typeof _setSaveStatus === 'function') _setSaveStatus('order', 'clean');
     renderOrderEditor();
+    renderOrdersMain();
   };
   if (_opState.dirty) _confirm('Discard unsaved changes and close this order?', proceed);
   else proceed();

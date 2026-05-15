@@ -702,6 +702,9 @@ textarea { resize: vertical; min-height: 70px; }
 .stock-sheet tbody tr.stock-row { transition: background .08s; cursor: pointer; }
 .stock-sheet tbody tr.stock-row:nth-child(even) { background: var(--surface2); }
 .stock-sheet tbody tr.stock-row:hover { background: var(--accent-dim); }
+.stock-sheet tbody tr.stock-row.editing,
+.stock-sheet tbody tr.stock-row.editing:nth-child(even) { background: var(--accent-dim); }
+.stock-sheet tbody tr.stock-row.editing td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
 .stock-sheet tbody td {
   padding: 6px 10px; border-bottom: 1px solid var(--border2);
   vertical-align: middle; white-space: nowrap;
@@ -838,6 +841,7 @@ canvas { display: block; }
 .quote-list { display: flex; flex-direction: column; gap: 12px; }
 .quote-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; margin-bottom: 8px; transition: box-shadow 0.15s; cursor: pointer; }
 .quote-card:hover { box-shadow: var(--shadow-md); border-color: var(--accent-dim); }
+.quote-card.editing { border-color: var(--accent); }
 .qc-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 12px 16px 8px; }
 .qc-title { font-size: 14px; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; cursor: text; }
 .qc-title:focus { outline: none; white-space: normal; border-bottom: 1px solid var(--accent); }
@@ -991,6 +995,7 @@ canvas { display: block; }
 .order-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; margin-bottom: 8px; transition: box-shadow 0.15s; cursor: pointer; }
 .order-card:hover { box-shadow: var(--shadow-md); border-color: var(--accent-dim); }
 .order-overdue { border-left: 3px solid var(--danger); }
+.order-card.editing { border-color: var(--accent); }
 .oc-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; padding: 12px 16px 8px; }
 .oc-title { font-size: 14px; font-weight: 700; color: var(--text); cursor: text; }
 .oc-title:focus { outline: none; border-bottom: 1px solid var(--accent); }

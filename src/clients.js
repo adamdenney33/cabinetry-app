@@ -158,6 +158,7 @@ function editClient(id) {
   if (typeof _setSaveStatus === 'function') _setSaveStatus('client', 'clean');
   const sidebar = document.querySelector('#panel-clients .sidebar-scroll');
   if (sidebar) /** @type {HTMLElement} */ (sidebar).scrollTop = 0;
+  renderClientsMain();
 }
 
 async function saveClientEdit() {
@@ -370,11 +371,12 @@ function renderClientsMain() {
       </div>`;
     });
 
-    return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;margin-bottom:10px;cursor:pointer;transition:box-shadow .15s" onclick="_openClientPopup(${c.id})" onmouseover="this.style.boxShadow='var(--shadow-md)'" onmouseout="this.style.boxShadow=''">
+    const isEditing = c.id === /** @type {any} */ (window)._editingClientId;
+    return `<div style="background:var(--surface);border:1px solid ${isEditing ? 'var(--accent)' : 'var(--border)'};border-radius:var(--radius);padding:12px 14px;margin-bottom:10px;cursor:pointer;transition:box-shadow .15s" onclick="_openClientPopup(${c.id})" onmouseover="this.style.boxShadow='var(--shadow-md)'" onmouseout="this.style.boxShadow=''">
       <div style="display:flex;align-items:center;gap:10px">
         <div style="width:30px;height:30px;border-radius:50%;background:var(--accent-dim);color:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;flex-shrink:0">${c.name.charAt(0).toUpperCase()}</div>
         <div style="flex:1;min-width:0">
-          <div style="font-size:14px;font-weight:700;color:var(--text)">${_escHtml(c.name)}</div>
+          <div style="font-size:14px;font-weight:700;color:var(--text)">${_escHtml(c.name)}${isEditing ? ' <span style="font-weight:500;color:var(--accent);font-size:11px">· editing</span>' : ''}</div>
           <div style="font-size:10px;color:var(--muted);margin-top:1px">
             ${c.email ? _escHtml(c.email) : ''}${c.email && c.phone ? ' · ' : ''}${c.phone ? _escHtml(c.phone) : ''}
             ${(c.email || c.phone) ? ' · ' : ''}${cQuotes.length} quote${cQuotes.length!==1?'s':''} · ${cOrders.length} order${cOrders.length!==1?'s':''} · ${fmt(totalValue)}

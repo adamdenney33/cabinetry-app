@@ -447,12 +447,13 @@ function renderQuoteMain() {
         <div class="pipe-label">${label}</div>
       </div>${i < QUOTE_STATUSES.length-1 ? `<div class="pipe-line ${done?'pipe-line-done':''}"></div>` : ''}`;
     }).join('');
+    const isEditing = q.id === _qpState.quoteId;
     return `
-    <div class="quote-card" style="cursor:pointer" onclick="loadQuoteIntoSidebar(${q.id})">
+    <div class="quote-card${isEditing ? ' editing' : ''}" style="cursor:pointer" onclick="loadQuoteIntoSidebar(${q.id})">
       <div class="qc-header">
         <div class="oc-info">
           <div class="oc-title-row">
-            <div class="qc-title">${titleText}</div>
+            <div class="qc-title">${titleText}${isEditing ? ' <span style="font-weight:500;color:var(--accent);font-size:11px">· editing</span>' : ''}</div>
             <span class="badge ${statusBadge}" style="font-size:10px" onclick="event.stopPropagation()">${statusText}</span>
           </div>
           ${(q.date || lineCounts) ? `<div class="qc-meta">${[q.date, lineCounts].filter(Boolean).join(' · ')}</div>` : ''}
@@ -1372,6 +1373,7 @@ function _qExitQuote() {
     }
     if (typeof _setSaveStatus === 'function') _setSaveStatus('quote', 'clean');
     renderQuoteEditor();
+    renderQuoteMain();
   };
   if (_qpState.dirty) _confirm('Discard unsaved changes and close this quote?', proceed);
   else proceed();
