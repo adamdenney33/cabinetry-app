@@ -468,12 +468,12 @@ function renderQuoteMain() {
         ${q.notes.split(/\r?\n/).filter(/** @param {string} l */ l => l).length > 3 ? '<div style="font-size:10px;color:var(--muted)">…</div>' : ''}
       </div>` : ''}
       <div class="oc-pipeline">${pipe}</div>
-      <div class="qc-footer" onclick="event.stopPropagation()">
-        <button class="btn btn-outline" onclick="printQuote(${q.id},'pdf')">PDF</button>
+      <div class="qc-footer">
+        <button class="btn btn-outline" onclick="event.stopPropagation();printQuote(${q.id},'pdf')">PDF</button>
         <span style="flex:1"></span>
-        ${(() => { const matchingOrder = orders.find(o => o.quote_id === q.id); return matchingOrder ? `<button class="btn btn-outline" onclick="_openOrderPopup(${matchingOrder.id})" style="color:var(--success)">✓ View Order</button>` : `<button class="btn btn-outline" onclick="convertQuoteToOrder(${q.id})">Create Order</button>`; })()}
-        <button class="btn btn-outline" onclick="duplicateQuote(${q.id})">Duplicate</button>
-        <button class="btn btn-outline" style="color:var(--danger)" onclick="_confirm('Delete quote for <strong>${_escHtml(quoteClient(q))}</strong>?',()=>removeQuote(${q.id}))">Delete</button>
+        ${(() => { const matchingOrder = orders.find(o => o.quote_id === q.id); return matchingOrder ? `<button class="btn btn-outline" onclick="event.stopPropagation();_openOrderPopup(${matchingOrder.id})" style="color:var(--success)">✓ View Order</button>` : `<button class="btn btn-outline" onclick="event.stopPropagation();convertQuoteToOrder(${q.id})">Create Order</button>`; })()}
+        <button class="btn btn-outline" onclick="event.stopPropagation();duplicateQuote(${q.id})">Duplicate</button>
+        <button class="btn btn-outline" style="color:var(--danger)" onclick="event.stopPropagation();_confirm('Delete quote for <strong>${_escHtml(quoteClient(q))}</strong>?',()=>removeQuote(${q.id}))">Delete</button>
       </div>
     </div>`;
   };

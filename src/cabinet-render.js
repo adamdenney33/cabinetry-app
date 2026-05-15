@@ -647,11 +647,11 @@ function renderCBResults() {
             <div class="oc-value" style="cursor:default;border-bottom:none">${fmt0(total)}</div>
           </div>
         </div>
-        <div class="qc-footer" onclick="event.stopPropagation()">
-          <button class="btn btn-outline" onclick="switchSection('quote');loadQuoteIntoSidebar(${q.id})" title="Open in Quote tab">Go to Quote</button>
+        <div class="qc-footer">
+          <button class="btn btn-outline" onclick="event.stopPropagation();switchSection('quote');loadQuoteIntoSidebar(${q.id})" title="Open in Quote tab">Go to Quote</button>
           <span style="flex:1"></span>
-          <button class="btn btn-outline" onclick="duplicateQuote(${q.id})">Duplicate</button>
-          <button class="btn btn-outline" style="color:var(--danger)" onclick="_confirm('Delete quote for <strong>${_escHtml(cli || num)}</strong>?',()=>removeQuote(${q.id}))">Delete</button>
+          <button class="btn btn-outline" onclick="event.stopPropagation();duplicateQuote(${q.id})">Duplicate</button>
+          <button class="btn btn-outline" style="color:var(--danger)" onclick="event.stopPropagation();_confirm('Delete quote for <strong>${_escHtml(cli || num)}</strong>?',()=>removeQuote(${q.id}))">Delete</button>
         </div>
       </div>`;
     }).join('');
