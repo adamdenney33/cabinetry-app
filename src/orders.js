@@ -457,7 +457,7 @@ function renderOrderEditor() {
 
   // Hours-allocated override: NULL on the order = use computed; non-null = pinned manual value.
   const hoursOverride = !!(o && /** @type {any} */ (o).hours_allocated != null);
-  const hoursAllocVal = hoursOverride ? /** @type {any} */ (o).hours_allocated : '';
+  const hoursAllocVal = hoursOverride ? Number(/** @type {any} */ (o).hours_allocated).toFixed(1) : '';
 
   // Schedule section open/closed: persisted per-tab in localStorage.
   const schedOpen = localStorage.getItem('pc_order_sched_open') === 'true';
@@ -860,7 +860,7 @@ function _orderHoursOverrideToggle(on) {
       const b = (typeof _orderHoursBreakdown === 'function')
         ? _orderHoursBreakdown(_opState.lines, {})
         : null;
-      if (b) input.value = String(b.total);
+      if (b) input.value = (b.total || 0).toFixed(1);
     }
   }
 }
