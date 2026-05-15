@@ -34,103 +34,269 @@ const _wtW = /** @type {any} */ (window);
  * @property {string} [subtab]         switchCabTab() target ('builder'|'rates').
  * @property {string} [cbView]         switchCBMainView() target ('results'|'library').
  * @property {boolean} [openSettings]  Open the header Settings dropdown for this step.
+ * @property {boolean} [openAccount]   Open the header Account dropdown for this step.
  * @property {string} [target]         CSS selector to spotlight (spot steps).
  * @property {'right'|'left'|'top'|'bottom'} [position]  Preferred tooltip side.
  * @property {string} [icon]           Emoji for centred steps.
  * @property {string} title
+ * @property {string} [titleHtml]      Raw HTML override for title (welcome preview).
  * @property {string} body             May contain authored <span class="wt-hi"> markup.
  * @property {string} [nextLabel]
  * @property {string[]} [flow]         Welcome-step flow chips.
+ * @property {string} [preview]        Welcome preview graphic type ('gantt').
  * @property {boolean} [showPricing]   Final CTA — render the pricing block.
  */
 
 /** @type {WtStep[]} */
 const _wtSteps = [
+  // 0 — Welcome
   {
-    type: 'center', section: 'dashboard', icon: '🪚',
-    title: 'Welcome to ProCabinet',
-    body: 'We\'ve set up a sample kitchen project so you can see how everything fits together. This quick tour follows it from <span class="wt-hi">client to cut list</span>.',
-    flow: ['Toolbar', 'Settings', 'Client', 'Cabinet', 'Quote', 'Order', 'Schedule', 'Stock', 'Cut List', 'Dashboard'],
+    type: 'center', section: 'dashboard', preview: 'gantt',
+    title: 'See the full workflow in action',
+    titleHtml: 'See the full <span class="wt-hi">workflow</span> in action',
+    body: 'This tour walks through each part of the app. We\'ve loaded a sample project so you can see how it works.',
     nextLabel: 'Start the tour →'
   },
+
+  // 1 — Tab bar
   {
-    type: 'spot', phase: 'Toolbar', section: 'dashboard',
-    target: '#dash-toolbar', position: 'bottom',
-    title: 'Start any job here',
-    body: 'The toolbar\'s quick actions — <span class="wt-hi">+ Quote, + Cabinet, + Client</span> and more — are always one click away from the dashboard.'
+    type: 'spot', phase: 'Navigation', section: 'dashboard',
+    target: '.nav-tabs', position: 'bottom',
+    title: 'Navigate between sections',
+    body: 'ProCabinet is organised into <span class="wt-hi">8 tabs</span>, one per section of your workflow. Click any tab to jump there — we\'ll walk through each one now.'
   },
+
+  // 2 — Settings
   {
     type: 'spot', phase: 'Setup', section: 'dashboard', openSettings: true,
     target: '#settings-dropdown', position: 'left',
-    title: 'Set your units & preferences',
+    title: 'Set your units & preferences first',
     body: 'Switch between <span class="wt-hi">metric and imperial</span>, choose your unit format and currency, and toggle dark mode. These apply everywhere — quotes, cabinets and cut lists.'
   },
+
+  // 3 — Account / Business details
   {
-    type: 'spot', phase: 'Client', section: 'clients',
+    type: 'spot', phase: 'Setup', section: 'dashboard', openAccount: true,
+    target: '#account-dropdown', position: 'left',
+    title: 'Add your business details',
+    body: 'Your business name, address and contact info print on <span class="wt-hi">quotes and invoices</span>. Tap "Edit business details" to fill them in.'
+  },
+
+  // ── Clients ──────────────────────────────────────────────────────────────
+  {
+    type: 'spot', phase: 'Clients', section: 'clients',
+    target: '.nav-tab[title="Clients"]', position: 'bottom',
+    title: 'Clients tab',
+    body: 'Every job starts with a client. Their name, address and contact details carry through to <span class="wt-hi">every quote, order and invoice</span> automatically.'
+  },
+  {
+    type: 'spot', phase: 'Clients', section: 'clients',
     target: '#clients-main', position: 'left',
-    title: '1 — Your clients',
-    body: 'Every job starts with a client. Add their details once and they carry through to <span class="wt-hi">quotes, orders and invoices</span>.'
+    title: 'Client cards',
+    body: 'Each card shows the client\'s total quote value and job count. Click a card to open their profile in the sidebar — <span class="wt-hi">full history in one place</span>.'
   },
   {
-    type: 'spot', phase: 'Cabinet', section: 'cabinet', subtab: 'builder',
-    target: '#cb-sidebar', position: 'right',
-    title: '2 — Build a cabinet',
-    body: 'Set dimensions, materials, doors, drawers and shelves. ProCabinet <span class="wt-hi">prices each cabinet live</span> as you build it.'
+    type: 'spot', phase: 'Clients', section: 'clients',
+    target: '#clients-sidebar', position: 'right',
+    title: 'Client profile',
+    body: 'Edit name, email, phone, address and notes. Everything here <span class="wt-hi">auto-populates your quotes and PDFs</span> — fill it in once.'
   },
+
+  // ── Quote ────────────────────────────────────────────────────────────────
   {
-    type: 'spot', phase: 'Cabinet', section: 'cabinet', subtab: 'rates',
-    target: '#cab-view-rates', position: 'right',
-    title: 'Set your rates once',
-    body: 'The <span class="wt-hi">My Rates</span> tab holds your labour rate, material markup, edge-banding and contingency. Every cabinet prices itself from these — no spreadsheets.'
-  },
-  {
-    type: 'spot', phase: 'Cabinet', section: 'cabinet', subtab: 'builder', cbView: 'library',
-    target: '#cb-library-view', position: 'left',
-    title: 'Reuse with the library',
-    body: 'Save any cabinet to your <span class="wt-hi">library</span> as a template and drop it into future quotes — it brings its specs and costs with it.'
+    type: 'spot', phase: 'Quote', section: 'quote',
+    target: '.nav-tab[title="Quotes"]', position: 'bottom',
+    title: 'Quotes tab',
+    body: 'All your customer quotes live here. Each quote moves through a status pipeline — <span class="wt-hi">Draft → Sent → Approved</span> — before becoming an order.'
   },
   {
     type: 'spot', phase: 'Quote', section: 'quote',
     target: '#quote-main', position: 'left',
-    title: '3 — Build the quote',
-    body: 'Add cabinets, hardware and labour as line items. Totals, tax and margin <span class="wt-hi">roll up automatically</span>, and you can send it as a branded PDF.'
+    title: 'Quote list',
+    body: 'Quotes are sorted newest first. Filter by status at the top. Click any quote to open the full editor — <span class="wt-hi">line items, totals and actions</span> in the sidebar.'
   },
   {
-    type: 'spot', phase: 'Order', section: 'orders',
+    type: 'spot', phase: 'Quote', section: 'quote',
+    target: '.qc-footer', position: 'left',
+    title: 'Send & convert',
+    body: 'Export a branded PDF to send to the client. Once approved, one click <span class="wt-hi">converts the quote to an order</span> — locking the line items as a snapshot.'
+  },
+  {
+    type: 'spot', phase: 'Quote', section: 'quote',
+    target: '#quote-sidebar', position: 'right',
+    title: 'Quote editor',
+    body: 'Add line items: cabinets from the builder, labour, materials or custom lines. ProCabinet calculates <span class="wt-hi">subtotals, tax and the grand total</span> live.'
+  },
+
+  // ── Orders ───────────────────────────────────────────────────────────────
+  {
+    type: 'spot', phase: 'Orders', section: 'orders',
+    target: '.nav-tab[title="Orders"]', position: 'bottom',
+    title: 'Orders tab',
+    body: 'Confirmed jobs move here from Quotes. Each order tracks its own <span class="wt-hi">5-stage production pipeline</span> from start to delivery.'
+  },
+  {
+    type: 'spot', phase: 'Orders', section: 'orders',
     target: '#orders-main', position: 'left',
-    title: '4 — Turn it into an order',
-    body: 'When a quote is approved, convert it to an order in one click and track it through the <span class="wt-hi">production pipeline</span> — confirmed, in production, delivery, complete.'
+    title: 'Order cards',
+    body: 'Each card shows the pipeline stage, due date and value. Cards highlight in <span class="wt-hi">amber when overdue</span>. Click to open the full order.'
   },
   {
-    type: 'spot', phase: 'Schedule', section: 'schedule',
-    target: '#schedule-main', position: 'top',
-    title: '5 — Schedule the work',
-    body: 'ProCabinet <span class="wt-hi">auto-schedules</span> your orders around your working hours, so you always know what\'s in the workshop and when.'
+    type: 'spot', phase: 'Orders', section: 'orders',
+    target: '#order-sidebar', position: 'right',
+    title: 'Order detail',
+    body: 'Advance the stage — Confirmed → In Production → Ready → Delivery → Complete. Generate <span class="wt-hi">job sheets and delivery notes</span> at each stage.'
+  },
+
+  // ── Stock ─────────────────────────────────────────────────────────────────
+  {
+    type: 'spot', phase: 'Stock', section: 'stock',
+    target: '.nav-tab[title="Stock"]', position: 'bottom',
+    title: 'Stock tab',
+    body: 'Track your sheet goods, hardware and edge banding here. ProCabinet can <span class="wt-hi">deduct material automatically</span> when you run a cut list.'
   },
   {
     type: 'spot', phase: 'Stock', section: 'stock',
     target: '#stock-main', position: 'left',
-    title: '6 — Track your stock',
-    body: 'Keep sheet goods and hardware here with <span class="wt-hi">low-stock alerts</span>. Cut lists can deduct used sheets straight from your inventory.'
+    title: 'Material list',
+    body: 'Each item shows current quantity, supplier and unit cost. Items below their threshold are flagged in red — <span class="wt-hi">low-stock alerts appear on the dashboard</span>.'
+  },
+  {
+    type: 'spot', phase: 'Stock', section: 'stock',
+    target: '#stock-sidebar', position: 'right',
+    title: 'Adding materials',
+    body: 'Set the sheet dimensions, cost per unit, quantity on hand, and <span class="wt-hi">low-stock threshold</span>. When stock falls below the threshold you\'ll see a dashboard alert.'
+  },
+
+  // ── Cabinet ──────────────────────────────────────────────────────────────
+  {
+    type: 'spot', phase: 'Cabinet', section: 'cabinet',
+    target: '.nav-tab[title="Cabinet"]', position: 'bottom',
+    title: 'Cabinet tab',
+    body: 'The engine of the app. Design cabinets, set your rates, and build a reusable library — <span class="wt-hi">everything that powers your quotes</span> lives here.'
+  },
+  {
+    type: 'spot', phase: 'Cabinet', section: 'cabinet', subtab: 'builder',
+    target: '#cab-tab-builder', position: 'bottom',
+    title: 'Quote Builder',
+    body: 'The Quote Builder is where you assemble a quote. Add cabinet lines from your library, set dimensions, choose materials — <span class="wt-hi">pricing updates instantly</span>.'
+  },
+  {
+    type: 'spot', phase: 'Cabinet', section: 'cabinet', subtab: 'builder',
+    target: '#cb-sidebar', position: 'right',
+    title: 'Cabinet configuration',
+    body: 'Each cabinet has a full spec: carcass dimensions, material, doors, drawers and shelves. ProCabinet applies a <span class="wt-hi">power-law labour formula</span> — bigger cabinets scale correctly.'
+  },
+  {
+    type: 'spot', phase: 'Cabinet', section: 'cabinet', subtab: 'builder',
+    target: '#cb-results', position: 'left',
+    title: 'Live price breakdown',
+    body: 'See material cost, labour, markup and tax calculated line by line. The quote total updates <span class="wt-hi">as you configure each cabinet</span>.'
+  },
+  {
+    type: 'spot', phase: 'Cabinet', section: 'cabinet', subtab: 'rates',
+    target: '#cab-tab-rates', position: 'bottom',
+    title: 'My Rates',
+    body: 'Set your <span class="wt-hi">hourly labour rate, material markup, edge-banding cost and contingency</span> percentage. Do this once — every cabinet prices itself from these.'
+  },
+  {
+    type: 'spot', phase: 'Cabinet', section: 'cabinet', subtab: 'rates',
+    target: '#cab-view-rates', position: 'right',
+    title: 'Rate inputs',
+    body: 'Adjust any rate and all open quotes reprice in real time. <span class="wt-hi">No spreadsheet formulas to maintain</span> — one source of truth for your whole business.'
+  },
+  {
+    type: 'spot', phase: 'Cabinet', section: 'cabinet', cbView: 'library',
+    target: '#cb-main-tab-library', position: 'bottom',
+    title: 'Cabinet Library',
+    body: 'Save any cabinet configuration as a reusable template. <span class="wt-hi">Drop templates into any future quote</span> — dimensions, materials and pricing all carry across.'
+  },
+  {
+    type: 'spot', phase: 'Cabinet', section: 'cabinet', cbView: 'library',
+    target: '#cb-library-view', position: 'left',
+    title: 'Your template library',
+    body: 'Browse saved templates like a catalogue. Edit a template and every quote that uses it can be updated — <span class="wt-hi">great for standard ranges you build repeatedly</span>.'
+  },
+
+  // ── Cut List ──────────────────────────────────────────────────────────────
+  {
+    type: 'spot', phase: 'Cut List', section: 'cutlist',
+    target: '.nav-tab[title="Cut List"]', position: 'bottom',
+    title: 'Cut List tab',
+    body: 'Plan exactly how each sheet gets cut. Add your stock panels, list every piece needed, then let ProCabinet <span class="wt-hi">optimise the layout for minimum waste</span>.'
   },
   {
     type: 'spot', phase: 'Cut List', section: 'cutlist',
-    target: '.cl-left', position: 'right',
-    title: '7 — Plan your cuts',
-    body: 'Add the sheets and pieces for a job. The cut list is <span class="wt-hi">yours to drive</span> — pull in stock panels and lay out every part.'
+    target: '#sheets-table', position: 'right',
+    title: 'Sheet stock',
+    body: 'Pull panels in from your Stock inventory. Each sheet row sets the material, dimensions and grain direction — the optimiser uses this to <span class="wt-hi">rotate and nest pieces correctly</span>.'
+  },
+  {
+    type: 'spot', phase: 'Cut List', section: 'cutlist',
+    target: '#pieces-table', position: 'right',
+    title: 'Piece list',
+    body: 'Add every part you need to cut — label, length, width, quantity, grain direction and edge banding. <span class="wt-hi">You\'re in full control</span> of what goes on each sheet.'
+  },
+  {
+    type: 'spot', phase: 'Cut List', section: 'cutlist',
+    target: '#cl-action-bar', position: 'top',
+    title: 'Optimise the layout',
+    body: 'Hit <span class="wt-hi">Optimise Cut Layout</span> and ProCabinet nests all your pieces onto the available sheets for minimum waste, respecting grain and saw-kerf.'
   },
   {
     type: 'spot', phase: 'Cut List', section: 'cutlist',
     target: '.cl-right', position: 'left',
-    title: 'Optimised sheet layouts',
-    body: 'ProCabinet <span class="wt-hi">nests your pieces</span> onto each sheet for minimum waste, shows the cut order, and exports a PDF for the workshop.'
+    title: 'Visual layout',
+    body: 'Each sheet is shown as a scaled diagram with pieces labelled and colour-coded. See <span class="wt-hi">waste percentage, cut order and material totals</span> at a glance.'
+  },
+  {
+    type: 'spot', phase: 'Cut List', section: 'cutlist',
+    target: '#layout-toolbar-top', position: 'bottom',
+    title: 'Export & deduct stock',
+    body: 'Export a <span class="wt-hi">workshop PDF</span> with the cut diagram and part labels. Deduct used sheets directly from your Stock inventory with one click.'
+  },
+
+  // ── Schedule ─────────────────────────────────────────────────────────────
+  {
+    type: 'spot', phase: 'Schedule', section: 'schedule',
+    target: '.nav-tab[title="Schedule"]', position: 'bottom',
+    title: 'Schedule tab',
+    body: 'ProCabinet automatically places your orders on a calendar based on <span class="wt-hi">due date, priority and your working hours</span> — no manual planning.'
+  },
+  {
+    type: 'spot', phase: 'Schedule', section: 'schedule',
+    target: '#schedule-sidebar', position: 'right',
+    title: 'Order queue',
+    body: 'Active orders are listed here in priority order. <span class="wt-hi">Reorder them</span> and the schedule rebuilds instantly — drag the most urgent job to the top.'
+  },
+  {
+    type: 'spot', phase: 'Schedule', section: 'schedule',
+    target: '#schedule-main', position: 'top',
+    title: 'Gantt calendar',
+    body: 'Each order occupies a coloured bar spanning its production days. Hover to see job details. The scheduler <span class="wt-hi">avoids weekends and respects your daily capacity</span>.'
+  },
+
+  // ── Dashboard ─────────────────────────────────────────────────────────────
+  {
+    type: 'spot', phase: 'Dashboard', section: 'dashboard',
+    target: '.nav-tab[title="Dashboard"]', position: 'bottom',
+    title: 'Dashboard',
+    body: 'Your home base. Everything you just explored is summarised here — <span class="wt-hi">live, every time you open the app</span>.'
+  },
+  {
+    type: 'spot', phase: 'Dashboard', section: 'dashboard',
+    target: '#dash-toolbar', position: 'bottom',
+    title: 'Quick actions',
+    body: '<span class="wt-hi">+ Quote, + Cabinet, + Client</span> — create anything in one click from any tab without losing your place.'
   },
   {
     type: 'spot', phase: 'Dashboard', section: 'dashboard',
     target: '#dashboard-main', position: 'top',
-    title: 'It all lands here',
-    body: 'Active orders, recent quotes, low stock and this week\'s schedule — your dashboard is the <span class="wt-hi">daily overview</span> of everything you just saw.'
+    title: 'Live overview',
+    body: 'Active orders with due-date alerts, your most recent quotes, low-stock warnings and this week\'s schedule — <span class="wt-hi">the full picture without opening a single tab</span>.'
   },
+
+  // Pro CTA
   {
     type: 'center', section: 'dashboard', icon: '🚀',
     title: 'You\'re ready to go',
@@ -149,11 +315,56 @@ let _wtCurrent = 0;
 let _wtOverlay = null;
 /** @type {number | ReturnType<typeof setTimeout>} */
 let _wtResizeTimer = 0;
+/** @type {HTMLElement | null} */
+let _wtCursorEl = null;
 
 /** @param {string} s @returns {string} */
 function _wtEsc(s) {
   return String(s == null ? '' : s)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+// ── animated cursor ──
+
+// Tip of the cursor SVG is at (4, 3) within the 20×26 viewBox.
+const _WT_CUR_TIP_X = 4, _WT_CUR_TIP_Y = 3;
+
+function _wtInitCursor() {
+  if (_wtCursorEl) return;
+  const el = document.createElement('div');
+  el.id = 'wt-cursor';
+  el.innerHTML = '<svg width="20" height="26" viewBox="0 0 20 26" fill="none" xmlns="http://www.w3.org/2000/svg">' +
+    '<path d="M4 3L4 21L9 16L12 24L14.5 23L11.5 15L18 15Z" fill="white" stroke="#1a1a1a" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>' +
+    '</svg>';
+  // Start at viewport centre so the first movement animates from mid-screen.
+  el.style.left = (window.innerWidth  / 2 - _WT_CUR_TIP_X) + 'px';
+  el.style.top  = (window.innerHeight / 2 - _WT_CUR_TIP_Y) + 'px';
+  document.body.appendChild(el);
+  _wtCursorEl = el;
+}
+
+function _wtDestroyCursor() {
+  if (_wtCursorEl) { _wtCursorEl.remove(); _wtCursorEl = null; }
+}
+
+/**
+ * Animate the cursor tip to (cx, cy) and pulse a click when it arrives.
+ * @param {number} cx  @param {number} cy
+ */
+function _wtCursorMoveTo(cx, cy) {
+  const el = _wtCursorEl;
+  if (!el) return;
+  el.classList.add('wt-cur-show');
+  el.classList.remove('wt-cur-click');
+  void el.offsetWidth; // flush so remove-then-add re-triggers any in-flight animation
+  el.style.left = (cx - _WT_CUR_TIP_X) + 'px';
+  el.style.top  = (cy - _WT_CUR_TIP_Y) + 'px';
+  // Click pulse fires after the 0.5 s travel transition.
+  setTimeout(() => {
+    if (!_wtCursorEl) return;
+    _wtCursorEl.classList.add('wt-cur-click');
+    setTimeout(() => _wtCursorEl && _wtCursorEl.classList.remove('wt-cur-click'), 260);
+  }, 490);
 }
 
 // ── lifecycle ──
@@ -175,6 +386,7 @@ function _wtStart(opts) {
   _wtOverlay = ov;
   document.addEventListener('keydown', _wtKeydown, true);
   window.addEventListener('resize', _wtOnResize);
+  _wtInitCursor();
   _wtRender(0);
 }
 
@@ -188,6 +400,7 @@ function _wtClose(reason) {
   if (_wtOverlay) { _wtOverlay.remove(); _wtOverlay = null; }
   document.removeEventListener('keydown', _wtKeydown, true);
   window.removeEventListener('resize', _wtOnResize);
+  _wtDestroyCursor();
   const sd = document.getElementById('settings-dropdown');
   if (sd) sd.classList.remove('open');
   // M8: a finished tour suppresses the redundant dashboard "Getting Started" card.
@@ -284,22 +497,59 @@ function _wtApplyContext(step) {
   } catch (e) { console.warn('[walkthrough] context switch failed', e); }
   const sd = document.getElementById('settings-dropdown');
   if (sd) sd.classList.toggle('open', !!step.openSettings);
+  const ad = document.getElementById('account-dropdown');
+  if (ad) ad.classList.toggle('open', !!step.openAccount);
 }
 
 /**
- * Render step `i`. Panels render async, so spotlight measurement waits a
- * frame; missing targets retry, then fall back to a centred tooltip.
+ * Return the centre of a visible "pre-click" element the cursor should travel
+ * to before the context switch fires (so the page change looks like a real
+ * click). Returns null when no pre-click is needed.
  * @param {number} i
+ * @returns {{cx:number,cy:number}|null}
  */
-function _wtRender(i) {
-  _wtCurrent = i;
+function _wtGetPreClickTarget(i) {
   const step = _wtSteps[i];
-  if (!step || !_wtOverlay) return;
-  _wtApplyContext(step);
-  if (step.type === 'center') { _wtDrawCenter(step, false); return; }
-  // switchSection() rebuilds panels synchronously, so the target is almost
-  // always measurable right now — getBoundingClientRect forces a layout flush.
-  // Draw immediately when we can: no timer dependency, no flicker.
+  const prev = _wtSteps[i - 1];
+  if (!step || !prev) return null;
+
+  /** @param {HTMLElement|null} el @returns {{cx:number,cy:number}|null} */
+  function _centre(el) {
+    if (!el) return null;
+    const r = el.getBoundingClientRect();
+    return (r.width > 1 && r.height > 1) ? { cx: r.left + r.width / 2, cy: r.top + r.height / 2 } : null;
+  }
+
+  // Settings / Account button — opens/closes the dropdown
+  if (step.openSettings && !prev.openSettings) return _centre(document.getElementById('settings-btn'));
+  if (step.openAccount && !prev.openAccount) return _centre(document.getElementById('account-btn'));
+
+  // Section change → the matching nav-tab button (always in the bar, always measurable)
+  if (step.section && step.section !== prev.section) {
+    const map = { dashboard: 'Dashboard', clients: 'Clients', cabinet: 'Cabinet',
+      quote: 'Quotes', orders: 'Orders', schedule: 'Schedule', stock: 'Stock', cutlist: 'Cut List' };
+    const title = map[step.section];
+    if (title) return _centre(document.querySelector('.nav-tab[title="' + title + '"]'));
+  }
+
+  // Cabinet sub-tab switch
+  if (step.subtab && step.subtab !== prev.subtab)
+    return _centre(document.getElementById('cab-tab-' + step.subtab));
+
+  // Cabinet main-view switch (Library / Results)
+  if (step.cbView && step.cbView !== prev.cbView)
+    return _centre(document.getElementById(step.cbView === 'library' ? 'cb-main-tab-library' : 'cb-main-tab-results'));
+
+  return null;
+}
+
+/**
+ * Apply context then resolve the spotlight target and draw. Extracted so both
+ * the immediate path and the pre-click-delay path share the same logic.
+ * @param {number} i
+ * @param {WtStep} step
+ */
+function _wtResolveAndDraw(i, step) {
   const sel = step.target || '';
   const now = sel ? document.querySelector(sel) : null;
   if (now) {
@@ -310,14 +560,41 @@ function _wtRender(i) {
       return;
     }
   }
-  // Target not ready (a panel that renders asynchronously) — retry across
-  // timers, then fall back to a centred tooltip rather than strand the user.
   _wtResolveTarget(sel, 0, (el) => {
-    if (!_wtActive || _wtCurrent !== i) return;       // user advanced — stale
+    if (!_wtActive || _wtCurrent !== i) return;
     if (!el) { _wtDrawCenter(step, true); return; }
     try { el.scrollIntoView({ block: 'center', inline: 'nearest' }); } catch (e) { void e; }
     _wtDrawSpot(step, el.getBoundingClientRect());
   });
+}
+
+/**
+ * Render step `i`. For forward navigation, moves the cursor to the clickable
+ * nav/settings/subtab button first so the page change looks like a real click.
+ * @param {number} i
+ */
+function _wtRender(i) {
+  const prevIdx = _wtCurrent;
+  _wtCurrent = i;
+  const step = _wtSteps[i];
+  if (!step || !_wtOverlay) return;
+
+  if (step.type === 'center') { _wtApplyContext(step); _wtDrawCenter(step, false); return; }
+
+  // Only add the pre-click delay when advancing forward.
+  const pre = (i > prevIdx) ? _wtGetPreClickTarget(i) : null;
+  if (pre) {
+    _wtCursorMoveTo(pre.cx, pre.cy);
+    setTimeout(() => {
+      if (!_wtActive || _wtCurrent !== i) return;
+      _wtApplyContext(step);
+      _wtResolveAndDraw(i, step);
+    }, 540);
+    return;
+  }
+
+  _wtApplyContext(step);
+  _wtResolveAndDraw(i, step);
 }
 
 /**
@@ -378,6 +655,9 @@ function _wtDrawSpot(step, r) {
   arrow.style.left = pos.ax + 'px';
   arrow.style.top = pos.ay + 'px';
   ov.appendChild(arrow);
+
+  // Animate cursor tip to the centre of the spotlit element.
+  _wtCursorMoveTo(r.left + r.width / 2, r.top + r.height / 2);
 }
 
 /**
@@ -428,11 +708,12 @@ function _wtDrawCenter(step, isFallback) {
   const ov = _wtOverlay;
   if (!ov) return;
   ov.innerHTML = '';
+  if (_wtCursorEl) _wtCursorEl.classList.remove('wt-cur-show');
   const mask = document.createElement('div');
   mask.className = 'wt-mask';
   ov.appendChild(mask);
   const card = document.createElement('div');
-  card.className = 'wt-center';
+  card.className = 'wt-center' + (step.preview ? ' wt-has-preview' : '');
   card.innerHTML = _wtCenterHTML(step);
   ov.appendChild(card);
 }
@@ -456,7 +737,66 @@ function _wtTooltipHTML(step) {
 }
 
 /** @param {WtStep} step @returns {string} */
+function _wtCenterPreviewHTML(step) {
+  const title = step.titleHtml || _wtEsc(step.title);
+  return '' +
+    '<div class="wt-wp">' +
+      '<div class="wt-wchrome">' +
+        '<div class="wt-wdot" style="background:#ff5f57"></div>' +
+        '<div class="wt-wdot" style="background:#febc2e"></div>' +
+        '<div class="wt-wdot" style="background:#28c840"></div>' +
+        '<div class="wt-wurl">procabinet.app</div>' +
+      '</div>' +
+      '<div class="wt-wapp">' +
+        '<div class="wt-waheader">' +
+          '<div class="wt-walogo-text">ProCabinet.App</div>' +
+          '<div class="wt-waheader-right"><div class="wt-wahdot"></div><div class="wt-wahdot"></div></div>' +
+        '</div>' +
+        '<div class="wt-watabs">' +
+          '<div class="wt-watab">Dashboard</div>' +
+          '<div class="wt-watab">Cut List</div>' +
+          '<div class="wt-watab">Stock</div>' +
+          '<div class="wt-watab">Cabinet</div>' +
+          '<div class="wt-watab">Quote</div>' +
+          '<div class="wt-watab">Orders</div>' +
+          '<div class="wt-watab">Clients</div>' +
+          '<div class="wt-watab wt-watab-active">Schedule</div>' +
+        '</div>' +
+        '<div class="wt-wabody">' +
+          '<div class="wt-wasidebar">' +
+            '<div class="wt-wasb-title">Orders</div>' +
+            '<div class="wt-wasb-row wt-wasb-row-act"><div class="wt-wasb-dot wt-wasb-dot-acc"></div><div class="wt-wasb-line wt-wasb-line-dk"></div></div>' +
+            '<div class="wt-wasb-row"><div class="wt-wasb-dot"></div><div class="wt-wasb-line"></div></div>' +
+            '<div class="wt-wasb-row"><div class="wt-wasb-dot"></div><div class="wt-wasb-line"></div></div>' +
+            '<div class="wt-wasb-row"><div class="wt-wasb-dot"></div><div class="wt-wasb-line"></div></div>' +
+          '</div>' +
+          '<div class="wt-wamain">' +
+            '<div class="wt-wacols">' +
+              '<div class="wt-wacol">Mon</div><div class="wt-wacol">Tue</div><div class="wt-wacol">Wed</div>' +
+              '<div class="wt-wacol">Thu</div><div class="wt-wacol">Fri</div><div class="wt-wacol">Mon</div><div class="wt-wacol">Tue</div>' +
+            '</div>' +
+            '<div class="wt-wag-row"><div class="wt-wag-track"><div class="wt-wag-bar" style="left:0;width:55%;background:#e8a838;opacity:0.85"></div></div></div>' +
+            '<div class="wt-wag-row"><div class="wt-wag-track"><div class="wt-wag-bar" style="left:30%;width:45%;background:#3d9970;opacity:0.7"></div></div></div>' +
+            '<div class="wt-wag-row"><div class="wt-wag-track"><div class="wt-wag-bar" style="left:55%;width:40%;background:#5b8dd9;opacity:0.7"></div></div></div>' +
+            '<div class="wt-wag-row"><div class="wt-wag-track"><div class="wt-wag-bar" style="left:10%;width:30%;background:#e8a838;opacity:0.5"></div></div></div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="wt-wfade"></div>' +
+      '</div>' +
+    '</div>' +
+    '<div class="wt-wbody">' +
+      '<h2>' + title + '</h2>' +
+      '<p>' + step.body + '</p>' +
+      '<div class="wt-center-actions">' +
+        '<button class="wt-btn wt-btn-skip" data-wt-act="skip">Skip</button>' +
+        '<button class="wt-btn wt-btn-primary" data-wt-act="next">' + _wtEsc(step.nextLabel || 'Start the tour →') + '</button>' +
+      '</div>' +
+    '</div>';
+}
+
+/** @param {WtStep} step @returns {string} */
 function _wtCenterHTML(step) {
+  if (step.preview) return _wtCenterPreviewHTML(step);
   let h = '';
   if (step.icon) h += '<div class="wt-icon">' + step.icon + '</div>';
   h += '<h2>' + _wtEsc(step.title) + '</h2>';
