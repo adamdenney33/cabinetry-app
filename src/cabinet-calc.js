@@ -139,7 +139,7 @@ function calcCBSections(line) {
 
   // ── Shelves & Partitions (material + labour for all shelf/partition/end-panel kinds) ──
   const shelfArea = innerW * (D - T);
-  let shelvesMat = (line.shelves + line.adjShelves) * shelfArea * mp(line.material);
+  let shelvesMat = ((line.shelves || 0) + (line.adjShelves || 0)) * shelfArea * mp(line.material);
   shelvesMat += (line.endPanels || 0) * H * D * mp(line.material);
   shelvesMat *= matMarkupMult;
   const shelvesLabour = (
