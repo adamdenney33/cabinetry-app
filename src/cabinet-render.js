@@ -59,6 +59,26 @@ function switchCabTab(tab) {
   }
 }
 
+/** @param {string} tab */
+function switchCBLibTab(tab) {
+  const gateWrap = _byId('cb-lib-gate-wrap');
+  const ratesWrap = _byId('cb-lib-rates-wrap');
+  const tabBuilder = _byId('cb-lib-tab-builder');
+  const tabRates = _byId('cb-lib-tab-rates');
+  if (tab === 'rates') {
+    if (gateWrap) gateWrap.style.display = 'none';
+    if (ratesWrap) ratesWrap.style.display = '';
+    if (tabBuilder) { tabBuilder.style.borderBottomColor = 'transparent'; tabBuilder.style.fontWeight = '500'; tabBuilder.style.color = 'var(--muted)'; }
+    if (tabRates) { tabRates.style.borderBottomColor = 'var(--accent)'; tabRates.style.fontWeight = '700'; tabRates.style.color = 'var(--text)'; }
+    renderCBRates();
+  } else {
+    if (gateWrap) gateWrap.style.display = '';
+    if (ratesWrap) ratesWrap.style.display = 'none';
+    if (tabBuilder) { tabBuilder.style.borderBottomColor = 'var(--accent)'; tabBuilder.style.fontWeight = '700'; tabBuilder.style.color = 'var(--text)'; }
+    if (tabRates) { tabRates.style.borderBottomColor = 'transparent'; tabRates.style.fontWeight = '500'; tabRates.style.color = 'var(--muted)'; }
+  }
+}
+
 // ── Main content view toggle (Results / Library) ──
 /** Sync sidebar wrappers + tab-strip styling to the current cbMainView and
  *  edit state. Pure render — does NOT mutate scratchpad / editing indices. */
@@ -83,6 +103,7 @@ function _syncCBMainViewChrome() {
   if (view === 'library' && !showBuilder
       && typeof /** @type {any} */ (window)._renderCBLibSidebarGate === 'function') {
     /** @type {any} */ (window)._renderCBLibSidebarGate();
+    switchCBLibTab('builder');
   }
 }
 /** @type {any} */ (window)._syncCBMainViewChrome = _syncCBMainViewChrome;
@@ -132,8 +153,8 @@ function _cbListHTML(arr, path, unitLabel) {
 }
 
 function renderCBRates() {
-  const el = _byId('cb-rates-content');
-  if (!el) return;
+  const targets = [_byId('cb-rates-content'), _byId('cb-lib-rates-content')].filter(Boolean);
+  if (!targets.length) return;
   const cur = window.currency;
   /** @type {any} */
   const lt = cbSettings.labourTimes || {};
@@ -231,7 +252,7 @@ function renderCBRates() {
   const drawerFrontTypes = cbSettings.drawerFrontTypes || [];
   const drawerBoxTypes = cbSettings.drawerBoxTypes || [];
 
-  el.innerHTML = `
+  const html = `
     ${stockLink}
     ${section('core', 'Core Rates', '5 rates', coreContent)}
     ${section('carcassTypes', 'Carcass', '('+carcassTypes.length+')', typeListItems(carcassTypes, 'cbSettings.carcassTypes', 0.4))}
@@ -241,6 +262,7 @@ function renderCBRates() {
     ${section('labour', 'Other Labour Times', '6 rates', labourContent)}
     ${section('basetypes', 'Base', '('+(cbSettings.baseTypes||[]).length+')', listItems(cbSettings.baseTypes||[], 'cbSettings.baseTypes', cur))}
   `;
+  targets.forEach(el => { el.innerHTML = html; });
 }
 
 function renderCBSettingsLists() { renderCBRates(); }
