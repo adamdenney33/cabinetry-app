@@ -55,9 +55,9 @@ jobs:
           # disabled and @sentry/vite-plugin no-ops. SENTRY_AUTH_TOKEN must be
           # added as a GitHub Actions repository secret. ORG/PROJECT are slugs.
           VITE_SENTRY_DSN: https://535a9c90da9f4467e912d173636ff597@o4511394076426240.ingest.de.sentry.io/4511394099626064
-          # SENTRY_ORG: your-org-slug
-          # SENTRY_PROJECT: your-project-slug
-          # SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: pro-desktop
+          SENTRY_PROJECT: javascript
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           # PostHog product analytics (PLAN.md C.5). Publishable key — plaintext is fine.
           VITE_POSTHOG_KEY: phc_swdug9tQJqTUR4HD8C7FKTtW2NDKJnkd8V8QA2JkxAuG
           VITE_POSTHOG_HOST: https://eu.i.posthog.com
