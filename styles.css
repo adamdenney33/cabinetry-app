@@ -959,8 +959,9 @@ canvas { display: block; }
 .cb-gv-card .cb-gv-unit { font-size:10px; color:var(--muted); margin-top:2px; }
 
 /* CB Cabinet Card */
-.cb-cab-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); margin-bottom:8px; box-shadow:var(--shadow); overflow:hidden; transition:border-color .15s; }
-.cb-cab-card:hover { border-color:rgba(232,168,56,0.3); }
+.cb-cab-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow); overflow:hidden; margin-bottom:10px; transition:box-shadow .15s, border-color .15s; cursor:pointer; }
+.cb-cab-card:hover { box-shadow:var(--shadow-md); border-color:var(--accent); }
+.cb-cab-card.editing { border-width:2px; border-color:var(--accent); }
 .cb-cab-header { display:flex; align-items:center; gap:8px; padding:10px 14px; background:var(--surface); border-bottom:1px solid var(--border2); }
 .cb-cab-header .cb-cab-num { font-size:11px; font-weight:800; color:var(--muted); width:24px; text-align:center; flex-shrink:0; }
 .cb-cab-header .cb-cab-name-input { flex:1; font-size:13px; font-weight:600; color:var(--text); padding:4px 8px; border:1px solid transparent; border-radius:5px; background:transparent; outline:none; font-family:inherit; min-width:0; }
