@@ -502,6 +502,9 @@ async function _wtSeedSampleProject() {
   const db = _wtW._db;
   /** @type {Record<string, number[]>} */
   const ids = { clients: [], stock_items: [], cabinet_templates: [], quotes: [], orders: [], cutlists: [] };
+  // Mark intent BEFORE inserting: if the seed is interrupted (tab closed
+  // mid-run), the next login sees sample_seeded=true and won't re-seed.
+  await _wtPersistState({ sample_seeded: true });
   /** @param {string} table @param {any} row @returns {Promise<number>} */
   const ins1 = async (table, row) => {
     const { data, error } = await db(table).insert([row]).single();
@@ -626,9 +629,53 @@ function _wtSyncHelpItem() {
   item.style.display = ob.sample_seeded ? '' : 'none';
 }
 
+// ── first-run gate (M7) ──
+
+/** @param {any} arr @returns {number} */
+function _wtCount(arr) { return (arr && arr.length) ? arr.length : 0; }
+
+/**
+ * Decide whether to auto-show the walkthrough after login. Called from
+ * app.js once loadAllData() has resolved (so the in-memory entity arrays and
+ * window._onboardingState are populated).
+ *   • dismissed at the current version  → nothing
+ *   • dismissed at an older version     → re-show (a new feature shipped)
+ *   • never onboarded, empty app        → seed a sample project, reload, show
+ *   • never onboarded, app already used → show without seeding
+ * No-ops if a tour is already on screen (guards the hourly TOKEN_REFRESHED
+ * auth event from restarting a tour mid-flight).
+ * @returns {Promise<void>}
+ */
+async function _wtMaybeAutoStart() {
+  if (_wtActive) return;
+  _wtSyncHelpItem();
+  const ob = _wtW._onboardingState || {};
+  const seenVersion = typeof ob.version === 'number' ? ob.version : 0;
+  if (ob.dismissed_at && seenVersion >= WT_VERSION) return;          // current — done
+  if (ob.dismissed_at && seenVersion < WT_VERSION) {                 // version-gated re-show
+    _wtStart({ force: true });
+    return;
+  }
+  // Never onboarded — seed a sample project if the app is empty so the tour
+  // walks populated panels, then start.
+  const empty =
+    _wtCount(typeof orders !== 'undefined' && orders) === 0 &&
+    _wtCount(typeof quotes !== 'undefined' && quotes) === 0 &&
+    _wtCount(typeof clients !== 'undefined' && clients) === 0 &&
+    _wtCount(typeof stockItems !== 'undefined' && stockItems) === 0;
+  if (empty && !ob.sample_seeded) {
+    const ok = await _wtSeedSampleProject();
+    if (ok && typeof _wtW.loadAllData === 'function') {
+      try { await _wtW.loadAllData(); } catch (e) { void e; }
+    }
+  }
+  _wtStart({ force: true });
+}
+
 // ── public surface ──
 _wtW._wtStart = _wtStart;
 _wtW._wtClose = _wtClose;
 _wtW._wtSeedSampleProject = _wtSeedSampleProject;
 _wtW._wtClearSampleData = _wtClearSampleData;
 _wtW._wtSyncHelpItem = _wtSyncHelpItem;
+_wtW._wtMaybeAutoStart = _wtMaybeAutoStart;

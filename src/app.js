@@ -1390,6 +1390,12 @@ _sb.auth.onAuthStateChange(async (event, session) => {
     await loadAllData();
     if (typeof _identifyUser === 'function') _identifyUser(session);
     await _loadCabinetTemplatesFromDB();
+    // O.2: guided walkthrough — first-run auto-start / version-gated re-show.
+    // Runs after data has hydrated so the empty-app check is accurate.
+    if (typeof /** @type {any} */ (window)._wtMaybeAutoStart === 'function') {
+      try { await /** @type {any} */ (window)._wtMaybeAutoStart(); }
+      catch (e) { console.warn('[walkthrough] auto-start failed', e); }
+    }
     // F6 (2026-05-13): _clLoadProjectList removed alongside the projects entity.
     // Restore the active section and any open editor entity from the previous
     // session. Runs after data hydrates so entity-lookup .find() guards have
