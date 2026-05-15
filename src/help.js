@@ -21,34 +21,17 @@ function _mailtoHref(subject, body) {
   return `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }
 
+// "User Guide" in the Help dropdown launches the guided walkthrough (O.2).
+// `force` bypasses the first-run gate so a re-trigger always starts at step 0;
+// it does NOT seed sample data — the seeder is exclusive to first-run auto-start.
 function _openUserGuide() {
   document.getElementById('help-dropdown')?.classList.remove('open');
-  const html = `
-    <div class="popup-header">
-      <div class="popup-title">User Guide</div>
-      <button class="popup-close" onclick="_closePopup()">&times;</button>
-    </div>
-    <div class="popup-body">
-      <p style="margin:0 0 12px;color:var(--text2);font-size:13px">
-        A guided walkthrough is coming soon. It will cover the main parts of the app:
-      </p>
-      <ul style="margin:0 0 12px 18px;padding:0;color:var(--text2);font-size:13px;line-height:1.7">
-        <li>Quotes — building, sending, and converting to orders</li>
-        <li>Cabinets — the library and per-quote cabinets</li>
-        <li>Cut List — sheets, pieces, and optimization</li>
-        <li>Orders — tracking and scheduling</li>
-        <li>Stock — materials and inventory</li>
-        <li>Clients — contacts and project history</li>
-      </ul>
-      <p style="margin:0;color:var(--muted);font-size:12px">
-        In the meantime, hover any toolbar icon for a tooltip, or use Contact Support if you get stuck.
-      </p>
-    </div>
-    <div class="popup-footer">
-      <button class="btn btn-primary" onclick="_closePopup()">Got it</button>
-    </div>
-  `;
-  /** @type {any} */ (window)._openPopup(html, 'sm');
+  const w = /** @type {any} */ (window);
+  if (typeof w._wtStart === 'function') {
+    w._wtStart({ force: true });
+  } else if (typeof _toast === 'function') {
+    _toast('Walkthrough unavailable', 'error');
+  }
 }
 
 function _openBugReport() {

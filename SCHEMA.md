@@ -85,6 +85,7 @@ create table public.business_info (
   default_contingency_hours   numeric not null default 0,                          -- deprecated 2026-05-07; kept as legacy column, no longer read
   default_contingency_pct     numeric,                                             -- added 2026-05-07; % of cabinet labour time
   production_queue_start_date date,                                                -- nullable; null = use today
+  onboarding_state jsonb not null default '{}'::jsonb,                             -- O.2 guided-walkthrough state (added 2026-05-15)
   created_at      timestamptz not null default now(),
   updated_at      timestamptz not null default now()
 );
@@ -93,6 +94,22 @@ create index on public.business_info(user_id);
 ```
 
 **Replaces:** localStorage keys `pc_biz` and `pc_biz_logo`.
+
+**Guided-walkthrough state (`onboarding_state`, added 2026-05-15 — task O.2):**
+A single jsonb blob holding the onboarding tour's per-user state. Default `{}` means a brand-new user who has never seen the tour. Shape:
+```jsonc
+{
+  "version": 1,                       // walkthrough version the user last saw (drives version-gated re-show)
+  "dismissed_at": "2026-05-15T…Z",     // set when the tour is finished or skipped; null/absent = still showing
+  "completed": true,                  // true = reached the final CTA step; false = skipped early
+  "sample_seeded": true,              // a light sample project was seeded for this user on first run
+  "sample_ids": {                     // exact row IDs seeded, so "Clear sample data" deletes only those
+    "clients": [..], "cabinet_templates": [..], "stock_items": [..],
+    "quotes": [..], "orders": [..], "cutlists": [..]
+  }
+}
+```
+Child rows (`quote_lines`, `order_lines`) are not tracked — they cascade-delete with their parent. Written by `_wtPersistState()` in `src/walkthrough.js`.
 
 **Scheduler defaults (added 2026-05-06):**
 - `default_weekday_hours` is a 7-element array indexed Mon=0..Sun=6, used by the auto-scheduler when no specific date override exists.

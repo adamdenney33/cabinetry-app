@@ -648,7 +648,7 @@ function renderCBResults() {
           </div>
         </div>
         <div class="qc-footer">
-          <button class="btn btn-outline" onclick="event.stopPropagation();switchSection('quote');loadQuoteIntoSidebar(${q.id})" title="Open in Quote tab">Go to Quote</button>
+          <button class="btn btn-outline" onclick="event.stopPropagation();switchSection('quote');loadQuoteIntoSidebar(${q.id})" title="Open in Quote tab">Go to Quote &rarr;</button>
           <span style="flex:1"></span>
           <button class="btn btn-outline" onclick="event.stopPropagation();duplicateQuote(${q.id})">Duplicate</button>
           <button class="btn btn-outline" style="color:var(--danger)" onclick="event.stopPropagation();_confirm('Delete quote for <strong>${_escHtml(cli || num)}</strong>?',()=>removeQuote(${q.id}))">Delete</button>

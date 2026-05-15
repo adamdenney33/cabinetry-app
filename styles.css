@@ -2455,3 +2455,111 @@ input.pf-input-compact[type="date"]:disabled::-webkit-calendar-picker-indicator 
 }
 .picker-empty strong { color: var(--text2); }
 
+/* ── GUIDED WALKTHROUGH (O.2 onboarding tour) ── */
+/* Overlay sits above popups (8000) / suggest (9000), below confirm (9999) / toast (99999). */
+#wt-overlay {
+  position: fixed; inset: 0; z-index: 9750;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+/* Dim layer — clip-path punches the spotlight hole; blocks clicks on the app. */
+.wt-mask {
+  position: absolute; inset: 0;
+  background: rgba(12,12,14,0.66);
+  transition: clip-path 0.34s ease;
+  animation: wtFade 0.2s ease;
+}
+@keyframes wtFade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes wtPop {
+  from { opacity: 0; transform: translate(-50%,-50%) scale(0.95); }
+  to   { opacity: 1; transform: translate(-50%,-50%) scale(1); }
+}
+/* Highlight ring around the spotlit element. */
+.wt-spot {
+  position: absolute; pointer-events: none;
+  border: 2px solid var(--accent); border-radius: 8px;
+  box-shadow: 0 0 0 4px rgba(232,168,56,0.28), 0 0 26px rgba(232,168,56,0.40);
+  transition: all 0.34s ease;
+}
+/* Anchored tooltip. */
+.wt-tooltip {
+  position: absolute; width: 336px; max-width: calc(100vw - 28px);
+  background: var(--surface); color: var(--text);
+  border: 1px solid var(--border); border-radius: 12px;
+  padding: 17px 19px; box-shadow: 0 14px 48px rgba(0,0,0,0.42);
+  transition: left 0.3s ease, top 0.3s ease;
+}
+.wt-arrow {
+  position: absolute; width: 14px; height: 14px;
+  background: var(--surface); transform: rotate(45deg);
+  transition: left 0.3s ease, top 0.3s ease;
+}
+/* Centred modal — welcome + final CTA. */
+.wt-center {
+  position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%,-50%);
+  width: 466px; max-width: calc(100vw - 32px);
+  background: var(--surface); color: var(--text);
+  border: 1px solid var(--border); border-radius: 16px;
+  padding: 30px 32px; box-shadow: 0 22px 64px rgba(0,0,0,0.5);
+  text-align: center; animation: wtPop 0.28s ease;
+}
+.wt-icon {
+  width: 54px; height: 54px; margin: 0 auto 14px;
+  border-radius: 14px; background: var(--accent-dim);
+  display: flex; align-items: center; justify-content: center; font-size: 27px;
+}
+.wt-phase {
+  font-size: 10px; font-weight: 800; letter-spacing: 0.6px;
+  text-transform: uppercase; color: var(--accent); margin-bottom: 6px;
+}
+.wt-tooltip h3 { font-size: 15.5px; font-weight: 800; color: var(--text); margin-bottom: 6px; }
+.wt-center h2  { font-size: 21px;   font-weight: 800; color: var(--text); margin-bottom: 10px; }
+.wt-tooltip p  { font-size: 12.5px; line-height: 1.55; color: var(--text2); margin-bottom: 13px; }
+.wt-center p   { font-size: 13.5px; line-height: 1.55; color: var(--text2); margin-bottom: 20px; }
+.wt-hi { color: var(--accent); font-weight: 700; }
+/* Progress bar. */
+.wt-progress-track {
+  height: 3px; background: var(--border2);
+  border-radius: 2px; overflow: hidden; margin-bottom: 13px;
+}
+.wt-progress-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.3s ease; }
+/* Action rows + buttons. */
+.wt-actions { display: flex; align-items: center; gap: 8px; }
+.wt-center-actions { display: flex; gap: 8px; justify-content: center; }
+.wt-spacer { flex: 1; }
+.wt-count { font-size: 11px; font-weight: 600; color: var(--muted); }
+.wt-btn {
+  font-family: inherit; font-size: 12px; font-weight: 700;
+  padding: 8px 14px; border-radius: 7px; cursor: pointer; border: 1px solid transparent;
+}
+.wt-btn-primary { background: var(--accent); color: #1a1a1a; }
+.wt-btn-primary:hover { background: #d6982c; }
+.wt-btn-ghost { background: transparent; border-color: var(--border); color: var(--text); }
+.wt-btn-ghost:hover { background: var(--surface2); }
+.wt-btn-skip { background: transparent; color: var(--muted); padding: 8px 4px; }
+.wt-btn-skip:hover { color: var(--text); }
+/* Welcome flow chips. */
+.wt-flow { display: flex; flex-wrap: wrap; gap: 5px; justify-content: center; margin-bottom: 20px; }
+.wt-chip {
+  font-size: 10px; font-weight: 700; padding: 4px 9px; border-radius: 20px;
+  background: var(--surface2); border: 1px solid var(--border); color: var(--text2);
+}
+.wt-chip-lead { background: var(--accent); border-color: var(--accent); color: #1a1a1a; }
+/* Final CTA pricing. */
+.wt-pricing { display: flex; gap: 10px; margin-bottom: 16px; }
+.wt-price { flex: 1; border: 2px solid var(--border); border-radius: 11px; padding: 13px; }
+.wt-price-rec { border-color: var(--accent); background: var(--accent-dim); }
+.wt-price-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); }
+.wt-price-amt { font-size: 23px; font-weight: 800; color: var(--text); margin: 3px 0; }
+.wt-price-per { font-size: 11px; color: var(--muted); }
+.wt-price-save { font-size: 10px; font-weight: 700; color: var(--success); margin-top: 3px; }
+.wt-sublink {
+  display: inline-block; margin-bottom: 14px;
+  font-size: 11px; color: var(--muted); cursor: pointer; text-decoration: underline;
+}
+.wt-sublink:hover { color: var(--text); }
+@media (max-width: 480px) {
+  .wt-tooltip { width: calc(100vw - 28px); }
+  .wt-center { padding: 24px 20px; }
+}
+

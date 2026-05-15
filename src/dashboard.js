@@ -66,7 +66,7 @@ function renderDashboard() {
     <div style="padding:24px;max-width:1200px">
 
       <!-- Quick actions -->
-      <div style="display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap;align-items:center">
+      <div id="dash-toolbar" style="display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap;align-items:center">
         <button class="btn btn-primary" onclick="switchSection('schedule')" style="font-size:11px;padding:6px 12px;width:auto">Schedule</button>
         <button class="btn btn-outline" onclick="switchSection('cutlist')" style="font-size:11px;padding:6px 12px;width:auto">+ Cut List</button>
         <button class="btn btn-outline" onclick="switchSection('stock');setTimeout(()=>document.getElementById('stock-name')?.focus(),100)" style="font-size:11px;padding:6px 12px;width:auto">+ Stock</button>

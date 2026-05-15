@@ -44,6 +44,7 @@ export type Database = {
           id: number
           logo_url: string | null
           name: string
+          onboarding_state: Json
           phone: string | null
           production_queue_start_date: string | null
           unit_format: Json | null
@@ -79,6 +80,7 @@ export type Database = {
           id?: number
           logo_url?: string | null
           name?: string
+          onboarding_state?: Json
           phone?: string | null
           production_queue_start_date?: string | null
           unit_format?: Json | null
@@ -114,6 +116,7 @@ export type Database = {
           id?: number
           logo_url?: string | null
           name?: string
+          onboarding_state?: Json
           phone?: string | null
           production_queue_start_date?: string | null
           unit_format?: Json | null
