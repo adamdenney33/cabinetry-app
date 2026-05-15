@@ -588,7 +588,7 @@ analytics widgets) available to all users.
   - Introductory content in the Dashboard for new/returning users
   - Design TBD — needs thought on what to include
 
-- **O.2 — Step-by-step walkthrough popup**
+- ✅ **O.2 — Step-by-step walkthrough popup**
   - Multi-step overlay walkthrough (like software update tours)
   - Shows every login until user explicitly dismisses
   - Re-trigger option in Settings or Help ("Take the tour")

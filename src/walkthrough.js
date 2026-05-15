@@ -36,6 +36,7 @@ const _wtW = /** @type {any} */ (window);
  * @property {boolean} [openSettings]  Open the header Settings dropdown for this step.
  * @property {boolean} [openAccount]   Open the header Account dropdown for this step.
  * @property {string} [target]         CSS selector to spotlight (spot steps).
+ * @property {string} [preClickCard]   CSS selector — animate cursor to and click this before the step shows.
  * @property {'right'|'left'|'top'|'bottom'} [position]  Preferred tooltip side.
  * @property {string} [icon]           Emoji for centred steps.
  * @property {string} title
@@ -97,6 +98,7 @@ const _wtSteps = [
   },
   {
     type: 'spot', phase: 'Clients', section: 'clients',
+    preClickCard: '.client-card',
     target: '#clients-sidebar', position: 'right',
     title: 'Client profile',
     body: 'Edit name, email, phone, address and notes. Everything here <span class="wt-hi">auto-populates your quotes and PDFs</span> — fill it in once.'
@@ -117,6 +119,7 @@ const _wtSteps = [
   },
   {
     type: 'spot', phase: 'Quote', section: 'quote',
+    preClickCard: '.quote-card',
     target: '.qc-footer', position: 'left',
     title: 'Send & convert',
     body: 'Export a branded PDF to send to the client. Once approved, one click <span class="wt-hi">converts the quote to an order</span> — locking the line items as a snapshot.'
@@ -143,6 +146,7 @@ const _wtSteps = [
   },
   {
     type: 'spot', phase: 'Orders', section: 'orders',
+    preClickCard: '.order-card',
     target: '#order-sidebar', position: 'right',
     title: 'Order detail',
     body: 'Advance the stage — Confirmed → In Production → Ready → Delivery → Complete. Generate <span class="wt-hi">job sheets and delivery notes</span> at each stage.'
@@ -163,6 +167,7 @@ const _wtSteps = [
   },
   {
     type: 'spot', phase: 'Stock', section: 'stock',
+    preClickCard: '.stock-row',
     target: '#stock-sidebar', position: 'right',
     title: 'Adding materials',
     body: 'Set the sheet dimensions, cost per unit, quantity on hand, and <span class="wt-hi">low-stock threshold</span>. When stock falls below the threshold you\'ll see a dashboard alert.'
@@ -367,6 +372,33 @@ function _wtCursorMoveTo(cx, cy) {
   }, 490);
 }
 
+// ── section gating ──
+
+/** Reset a section's sidebar to its gated (no-record-selected) state so the
+ *  walkthrough starts each section clean before the card-click animation opens
+ *  the editing workflow. Safe to call even when no record is currently open. */
+function _wtGateSection(section) {
+  try {
+    if (section === 'clients') {
+      if (typeof cancelClientEdit === 'function') cancelClientEdit();
+      if (typeof _renderClientsSidebarGate === 'function') _renderClientsSidebarGate();
+    }
+    if (section === 'stock') {
+      if (typeof cancelStockEdit === 'function') cancelStockEdit();
+    }
+    if (section === 'orders' && typeof _opState !== 'undefined') {
+      _opState.orderId = null; _opState.clientId = null;
+      _opState.lines = []; _opState.dirty = false; _opState.startingNew = false;
+      if (typeof renderOrderEditor === 'function') renderOrderEditor();
+    }
+    if (section === 'quote' && typeof _qpState !== 'undefined') {
+      _qpState.quoteId = null; _qpState.clientId = null;
+      _qpState.lines = []; _qpState.dirty = false; _qpState.startingNew = false;
+      if (typeof renderQuoteEditor === 'function') renderQuoteEditor();
+    }
+  } catch (e) { console.warn('[walkthrough] gate failed', e); }
+}
+
 // ── lifecycle ──
 
 /**
@@ -491,7 +523,13 @@ function _wtOnResize() {
  */
 function _wtApplyContext(step) {
   try {
+    const prevSection = _wtCurrent > 0 ? (_wtSteps[_wtCurrent - 1] || {}).section : null;
     if (step.section && typeof _wtW.switchSection === 'function') _wtW.switchSection(step.section);
+    if (step.section && step.section !== prevSection) _wtGateSection(step.section);
+    if (step.preClickCard) {
+      const card = document.querySelector(step.preClickCard);
+      if (card) /** @type {HTMLElement} */ (card).click();
+    }
     if (step.subtab && typeof _wtW.switchCabTab === 'function') _wtW.switchCabTab(step.subtab);
     if (step.cbView && typeof _wtW.switchCBMainView === 'function') _wtW.switchCBMainView(step.cbView);
   } catch (e) { console.warn('[walkthrough] context switch failed', e); }
@@ -539,6 +577,9 @@ function _wtGetPreClickTarget(i) {
   // Cabinet main-view switch (Library / Results)
   if (step.cbView && step.cbView !== prev.cbView)
     return _centre(document.getElementById(step.cbView === 'library' ? 'cb-main-tab-library' : 'cb-main-tab-results'));
+
+  // Card pre-click — open a record in the sidebar before spotlighting it
+  if (step.preClickCard) return _centre(document.querySelector(step.preClickCard));
 
   return null;
 }
