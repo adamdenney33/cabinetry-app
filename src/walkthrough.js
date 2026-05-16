@@ -310,25 +310,6 @@ const _wtSteps = [
   }
 ];
 
-/**
- * Ordered, de-duplicated tour phases — the chapters the timeline footer draws,
- * each with the step-index range it spans. Derived from the authored `phase`
- * tags so the footer always matches the step list.
- * @type {{name:string, first:number, last:number}[]}
- */
-const _WT_PHASES = (function () {
-  /** @type {{name:string, first:number, last:number}[]} */
-  const list = [];
-  /** @type {Record<string, {name:string, first:number, last:number}>} */
-  const seen = {};
-  _wtSteps.forEach((s, i) => {
-    if (!s.phase) return;
-    if (seen[s.phase]) seen[s.phase].last = i;
-    else { const p = { name: s.phase, first: i, last: i }; seen[s.phase] = p; list.push(p); }
-  });
-  return list;
-})();
-
 // ── module state ──
 /** @type {boolean} */
 let _wtActive = false;
@@ -340,8 +321,6 @@ let _wtOverlay = null;
 let _wtResizeTimer = 0;
 /** @type {HTMLElement | null} */
 let _wtCursorEl = null;
-/** @type {HTMLElement | null} */
-let _wtTimelineEl = null;
 
 /** @param {string} s @returns {string} */
 function _wtEsc(s) {
@@ -390,81 +369,6 @@ function _wtCursorMoveTo(cx, cy) {
     _wtCursorEl.classList.add('wt-cur-click');
     setTimeout(() => _wtCursorEl && _wtCursorEl.classList.remove('wt-cur-click'), 260);
   }, 490);
-}
-
-// ── timeline footer ──
-
-/** Build the progress-timeline footer once and attach it to the body. One node
- *  per phase, joined by connectors whose fill grows as the tour advances. */
-function _wtInitTimeline() {
-  if (_wtTimelineEl) return;
-  const el = document.createElement('div');
-  el.id = 'wt-timeline';
-  let html = '<div class="wt-tl-inner">';
-  _WT_PHASES.forEach((p, i) => {
-    if (i > 0) html += '<div class="wt-tl-conn" data-i="' + (i - 1) + '"><div class="wt-tl-conn-fill"></div></div>';
-    html += '<div class="wt-tl-node wt-tl-todo" data-i="' + i + '">' +
-      '<div class="wt-tl-dot"></div>' +
-      '<div class="wt-tl-label">' + _wtEsc(p.name) + '</div>' +
-      '</div>';
-  });
-  html += '</div>';
-  el.innerHTML = html;
-  el.addEventListener('click', _wtTimelineClick);
-  document.body.appendChild(el);
-  _wtTimelineEl = el;
-}
-
-function _wtDestroyTimeline() {
-  if (_wtTimelineEl) { _wtTimelineEl.remove(); _wtTimelineEl = null; }
-}
-
-/** Jump the tour to the first step of a clicked phase node.
- *  @param {MouseEvent} e */
-function _wtTimelineClick(e) {
-  e.stopPropagation();
-  const t = /** @type {HTMLElement|null} */ (e.target);
-  const node = t && typeof t.closest === 'function' ? t.closest('.wt-tl-node') : null;
-  if (!node) return;
-  const i = parseInt(node.getAttribute('data-i') || '-1', 10);
-  if (i < 0 || i >= _WT_PHASES.length) return;
-  const target = _WT_PHASES[i].first;
-  if (target !== _wtCurrent) _wtRender(target);
-}
-
-/** Re-mark every node (done / active / todo) and grow each connector to match
- *  the current step. Hidden on centred steps (welcome + final CTA). */
-function _wtUpdateTimeline() {
-  const el = _wtTimelineEl;
-  if (!el) return;
-  const step = _wtSteps[_wtCurrent];
-  if (!step || step.type === 'center') { el.classList.remove('wt-tl-show'); return; }
-  el.classList.add('wt-tl-show');
-  const c = _wtCurrent;
-  /** @param {number} i @returns {'done'|'active'|'todo'} */
-  const stateOf = (i) => {
-    const p = _WT_PHASES[i];
-    if (c > p.last) return 'done';
-    if (c >= p.first) return 'active';
-    return 'todo';
-  };
-  _WT_PHASES.forEach((p, i) => {
-    const node = el.querySelector('.wt-tl-node[data-i="' + i + '"]');
-    if (node) node.className = 'wt-tl-node wt-tl-' + stateOf(i);
-  });
-  for (let i = 0; i < _WT_PHASES.length - 1; i++) {
-    const fill = /** @type {HTMLElement|null} */ (
-      el.querySelector('.wt-tl-conn[data-i="' + i + '"] .wt-tl-conn-fill'));
-    if (!fill) continue;
-    const next = stateOf(i + 1);
-    let pct = 0;
-    if (next !== 'todo') pct = 100;
-    else if (stateOf(i) === 'active') {
-      const p = _WT_PHASES[i];
-      pct = Math.round(((c - p.first + 1) / (p.last - p.first + 2)) * 100);
-    }
-    fill.style.width = pct + '%';
-  }
 }
 
 // ── section gating ──
@@ -534,7 +438,6 @@ function _wtStart(opts) {
   document.addEventListener('keydown', _wtKeydown, true);
   window.addEventListener('resize', _wtOnResize);
   _wtInitCursor();
-  _wtInitTimeline();
   _wtRender(0);
 }
 
@@ -549,7 +452,6 @@ function _wtClose(reason) {
   document.removeEventListener('keydown', _wtKeydown, true);
   window.removeEventListener('resize', _wtOnResize);
   _wtDestroyCursor();
-  _wtDestroyTimeline();
   const sd = document.getElementById('settings-dropdown');
   if (sd) sd.classList.remove('open');
   // M8: a finished tour suppresses the redundant dashboard "Getting Started" card.
@@ -743,7 +645,6 @@ function _wtRender(i) {
   _wtCurrent = i;
   const step = _wtSteps[i];
   if (!step || !_wtOverlay) return;
-  _wtUpdateTimeline();
 
   if (step.type === 'center') { _wtApplyContext(step); _wtDrawCenter(step, false); return; }
 
@@ -835,9 +736,7 @@ function _wtDrawSpot(step, r) {
  * @returns {{left:number,top:number,ax:number,ay:number}}
  */
 function _wtPlaceTooltip(r, side, tip) {
-  // Reserve the bottom strip for the timeline footer so the tooltip never
-  // lands under it (footer is always shown on spot steps).
-  const vw = window.innerWidth, vh = window.innerHeight - 80, M = 14, gap = 18;
+  const vw = window.innerWidth, vh = window.innerHeight, M = 14, gap = 18;
   const tr = tip.getBoundingClientRect();
   const TW = tr.width, TH = tr.height;
   let left, top, dir = side;
