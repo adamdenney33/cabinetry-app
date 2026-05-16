@@ -21,7 +21,7 @@
 
 /** Walkthrough content version. Bump when steps change materially — drives
  *  the version-gated re-show in _wtMaybeAutoStart (M7). */
-const WT_VERSION = 1;
+const WT_VERSION = 2;
 
 /** @type {any} window, any-typed so cross-file globals resolve without decls. */
 const _wtW = /** @type {any} */ (window);
@@ -258,6 +258,12 @@ const _wtSteps = [
     target: '#layout-toolbar-top', position: 'bottom',
     title: 'Export & deduct stock',
     body: 'Export a <span class="wt-hi">workshop PDF</span> with the cut diagram and part labels, or deduct the used sheets straight from your Stock inventory with one click.'
+  },
+  {
+    type: 'spot', phase: 'Cut List', section: 'cutlist', clView: 'library',
+    target: '#cl-view-library', position: 'left',
+    title: 'Cut List Library',
+    body: 'Every cut list is saved here as its own entry. <span class="wt-hi">Reopen or duplicate</span> a past job, or start a fresh one — your whole cutting history in one place.'
   },
 
   // ── Schedule ─────────────────────────────────────────────────────────────
