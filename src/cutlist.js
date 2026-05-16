@@ -850,6 +850,17 @@ async function _clRunAutosave() {
   // Post-F5: every cut list is its own row (no project wrapper). Direct
   // write to the cutlists row, then re-sync sheets/pieces/edge_bands children.
   if (_clCurrentCutlistId) {
+    // Data-loss guard: the sync below deletes every piece/sheet for this
+    // cut list and re-inserts only what is in memory. If all the in-memory
+    // arrays are empty that is almost always a transient load state (e.g.
+    // the walkthrough opening a cut list mid-render), not a deliberate
+    // empty — skip rather than wipe a populated cut list in the DB.
+    if (!pieces.length && !sheets.length &&
+        !(typeof edgeBands !== 'undefined' && edgeBands.length)) {
+      _clDirty = false;
+      if (typeof _setSaveStatus === 'function') _setSaveStatus('cutlist', 'clean');
+      return;
+    }
     if (typeof _setSaveStatus === 'function') _setSaveStatus('cutlist', 'saving');
     try {
       await _db('cutlists').update(/** @type {any} */ ({
