@@ -183,7 +183,7 @@ const _wtSteps = [
   },
   {
     type: 'spot', phase: 'Cabinet', section: 'cabinet', cbView: 'results',
-    target: '#cb-context', position: 'right',
+    target: '#cb-sidebar-builder', position: 'right',
     title: 'Start from a quote',
     body: 'The Quote Builder is quote-driven. Pick a quote from the sidebar and its cabinets load instantly — <span class="wt-hi">always in sync with the Quotes tab</span>.'
   },
