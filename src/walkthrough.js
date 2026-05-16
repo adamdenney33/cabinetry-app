@@ -56,7 +56,7 @@ const _wtSteps = [
     type: 'center', section: 'dashboard', preview: 'gantt',
     title: 'See the full workflow in action',
     titleHtml: 'See the full <span class="wt-hi">workflow</span> in action',
-    body: 'This tour walks through each part of the app. We\'ve loaded a sample project so you can see how it works.',
+    body: 'This tour walks through each part of the app. We\'ve loaded a sample project so you can see how it works — use the <span class="wt-hi">arrow keys</span> to step through it.',
     nextLabel: 'Start the tour →'
   },
 
@@ -143,14 +143,14 @@ const _wtSteps = [
     type: 'spot', phase: 'Orders', section: 'orders',
     target: '#orders-main', position: 'left',
     title: 'Order cards',
-    body: 'Each card shows the pipeline stage, due date and value. Click to open the full order.'
+    body: 'Each card shows the pipeline stage, due date and value. Open one to <span class="wt-hi">advance its stage</span> or export job sheets and delivery notes as PDFs.'
   },
   {
     type: 'spot', phase: 'Orders', section: 'orders',
     preClickCard: '.order-card',
     target: '#order-sidebar', position: 'right',
     title: 'Order detail',
-    body: 'Each order carries its own <span class="wt-hi">priority, hours and dates</span> — set them and the job lands on the production calendar. Job sheets and delivery notes generate from this panel too.'
+    body: 'Each order carries its own <span class="wt-hi">priority, hours and dates</span> — set them and the job lands on the production calendar.'
   },
 
   // ── Stock ─────────────────────────────────────────────────────────────────
@@ -158,13 +158,13 @@ const _wtSteps = [
     type: 'spot', phase: 'Stock', section: 'stock',
     target: '.nav-tab[title="Stock"]', position: 'bottom',
     title: 'Stock tab',
-    body: 'Track your sheet goods, hardware and edge banding here. ProCabinet can <span class="wt-hi">deduct material automatically</span> when you run a cut list.'
+    body: 'Track your sheet goods, hardware, edge banding and finishes here. After a cut list, <span class="wt-hi">deduct the used material</span> from stock with one click.'
   },
   {
     type: 'spot', phase: 'Stock', section: 'stock',
     target: '#stock-main', position: 'left',
     title: 'Material list',
-    body: 'Each item shows current quantity, supplier and unit cost. Items below their threshold are flagged in red — <span class="wt-hi">low-stock alerts appear on the dashboard</span>.'
+    body: 'Each item shows current quantity, supplier and unit cost. Items that drop below their threshold are <span class="wt-hi">flagged in red</span>.'
   },
   {
     type: 'spot', phase: 'Stock', section: 'stock',
@@ -199,7 +199,7 @@ const _wtSteps = [
     preClickCard: '#cb-results .cb-cab-card',
     target: '#cb-cab-editor', position: 'right',
     title: 'The cabinet editor',
-    body: 'Open any cabinet to set its full spec — carcass size, doors, drawers, shelves and hardware. A <span class="wt-hi">power-law labour formula</span> prices cabinets of any size correctly.'
+    body: 'Open any cabinet to set its full spec — carcass size, doors, drawers, shelves and hardware. Labour pricing <span class="wt-hi">scales with size</span> so cabinets big and small are costed accurately.'
   },
   {
     type: 'spot', phase: 'Cabinet', section: 'cabinet', cbView: 'library',
@@ -265,13 +265,13 @@ const _wtSteps = [
     type: 'spot', phase: 'Schedule', section: 'schedule',
     target: '.nav-tab[title="Schedule"]', position: 'bottom',
     title: 'Schedule tab',
-    body: 'ProCabinet automatically places your orders on a calendar based on <span class="wt-hi">due date, priority and your working hours</span> — no manual planning.'
+    body: 'ProCabinet automatically places your orders on a calendar based on <span class="wt-hi">due date, priority and your working hours</span>. Set your hours and days off from the ⚙ Hours button.'
   },
   {
     type: 'spot', phase: 'Schedule', section: 'schedule',
     target: '#schedule-sidebar', position: 'right',
     title: 'Order queue',
-    body: 'Active orders are listed here in priority order. <span class="wt-hi">Reorder them</span> and the schedule rebuilds instantly — drag the most urgent job to the top.'
+    body: 'Active orders are listed here in priority order. Use the <span class="wt-hi">priority stepper</span> on any order to raise or lower it — the schedule rebuilds instantly.'
   },
   {
     type: 'spot', phase: 'Schedule', section: 'schedule',
@@ -291,7 +291,7 @@ const _wtSteps = [
     type: 'spot', phase: 'Dashboard', section: 'dashboard',
     target: '#dash-toolbar', position: 'bottom',
     title: 'Quick actions',
-    body: '<span class="wt-hi">+ Quote, + Cabinet, + Client</span> — create anything in one click from any tab without losing your place.'
+    body: '<span class="wt-hi">+ Quote, + Cabinet, + Client</span> — jump straight into creating anything; each button opens the right tab with a fresh form ready.'
   },
   {
     type: 'spot', phase: 'Dashboard', section: 'dashboard',
@@ -403,7 +403,7 @@ function _wtGateSection(section) {
         _wtW.addPiece('Shelf', 568, 540, 6, 'none');
         _wtW.addPiece('Door front', 597, 397, 4, 'none');
       }
-      if (typeof _wtW.switchCLMainView === 'function') _wtW.switchCLMainView('library');
+      if (typeof _wtW.switchCLMainView === 'function') _wtW.switchCLMainView('layout');
     }
     if (section === 'orders' && typeof _opState !== 'undefined') {
       _opState.orderId = null; _opState.clientId = null;
