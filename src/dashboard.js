@@ -23,7 +23,6 @@ function renderDashboard() {
   const activeOrders = orders
     .filter(o => o.status !== 'complete')
     .sort((a, b) => _dueRank(a) - _dueRank(b));
-  const overdueOrders = activeOrders.filter(o => { if (!o.due || o.due === 'TBD') return false; const d = new Date(o.due); return !isNaN(+d) && d < new Date(); });
   const customerQuotes = quotes.filter(q => !_isDraftQuote(q));
   const lowStock      = stockItems.filter(i => (i.qty ?? 0) <= (i.low ?? 0));
   const DASH_CARD_ROWS = 5;
@@ -74,7 +73,6 @@ function renderDashboard() {
         <button class="btn btn-outline" onclick="switchSection('quote');setTimeout(()=>document.getElementById('q-client')?.focus(),100)" style="font-size:11px;padding:6px 12px;width:auto">+ Quote</button>
         <button class="btn btn-outline" onclick="switchSection('orders');setTimeout(()=>document.getElementById('o-client')?.focus(),100)" style="font-size:11px;padding:6px 12px;width:auto">+ Order</button>
         <button class="btn btn-outline" onclick="switchSection('clients');setTimeout(()=>document.getElementById('cl-name')?.focus(),100)" style="font-size:11px;padding:6px 12px;width:auto">+ Client</button>
-        ${overdueOrders.length ? `<span class="badge badge-red" style="font-size:11px;padding:5px 10px;margin-left:4px;cursor:pointer" onclick="switchSection('orders');window._orderFilter='active';renderOrdersMain()">${overdueOrders.length} overdue</span>` : ''}
       </div>
 
       <!-- Getting started guide — only when everything is empty -->
