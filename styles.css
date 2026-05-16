@@ -2642,8 +2642,8 @@ input.pf-input-compact[type="date"]:disabled::-webkit-calendar-picker-indicator 
 /* progress timeline footer */
 #wt-timeline {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 9756;
-  background: var(--surface); border-top: 1px solid var(--border);
-  box-shadow: 0 -6px 26px rgba(0,0,0,0.30);
+  background: var(--header-bg); border-top: 1px solid rgba(255,255,255,0.08);
+  box-shadow: 0 -6px 26px rgba(0,0,0,0.45);
   padding: 14px 28px 15px;
   transform: translateY(125%);
   transition: transform 0.36s cubic-bezier(0.25, 0.1, 0.25, 1);
@@ -2658,16 +2658,16 @@ input.pf-input-compact[type="date"]:disabled::-webkit-calendar-picker-indicator 
 }
 .wt-tl-dot {
   width: 13px; height: 13px; border-radius: 50%; box-sizing: border-box;
-  background: var(--surface2); border: 2px solid var(--border);
+  background: rgba(255,255,255,0.07); border: 2px solid rgba(255,255,255,0.24);
   transition: background .3s ease, border-color .3s ease, box-shadow .3s ease, transform .3s ease;
 }
 .wt-tl-label {
   margin-top: 8px; font-size: 10px; font-weight: 600; letter-spacing: .2px;
-  white-space: nowrap; color: var(--muted); transition: color .3s ease;
+  white-space: nowrap; color: rgba(255,255,255,0.46); transition: color .3s ease;
 }
 .wt-tl-conn {
   flex: 1 1 0; height: 3px; margin: 5px 4px 0; border-radius: 2px;
-  background: var(--border); position: relative; overflow: hidden;
+  background: rgba(255,255,255,0.13); position: relative; overflow: hidden;
 }
 .wt-tl-conn-fill {
   position: absolute; top: 0; bottom: 0; left: 0; width: 0;
@@ -2675,7 +2675,7 @@ input.pf-input-compact[type="date"]:disabled::-webkit-calendar-picker-indicator 
   transition: width .42s cubic-bezier(0.25, 0.1, 0.25, 1);
 }
 .wt-tl-node.wt-tl-done .wt-tl-dot { background: var(--accent); border-color: var(--accent); }
-.wt-tl-node.wt-tl-done  .wt-tl-label { color: var(--text2); }
+.wt-tl-node.wt-tl-done  .wt-tl-label { color: rgba(255,255,255,0.72); }
 .wt-tl-node.wt-tl-active .wt-tl-dot {
   background: var(--accent); border-color: var(--accent);
   transform: scale(1.34);
