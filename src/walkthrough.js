@@ -143,7 +143,7 @@ const _wtSteps = [
     type: 'spot', phase: 'Orders', section: 'orders',
     target: '#orders-main', position: 'left',
     title: 'Order cards',
-    body: 'Each card shows the pipeline stage, due date and value. Cards highlight in <span class="wt-hi">amber when overdue</span>. Click to open the full order.'
+    body: 'Each card shows the pipeline stage, due date and value. Click to open the full order.'
   },
   {
     type: 'spot', phase: 'Orders', section: 'orders',
