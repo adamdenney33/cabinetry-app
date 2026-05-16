@@ -3,6 +3,7 @@
 
 // ── UI state ──
 let cbOpenSections = new Set();
+let _cbSectionsSeen = new Set();
 let cbExpandedRows = new Set();
 let cbMainView = 'results';
 
@@ -350,6 +351,14 @@ function renderCBEditor() {
       el.innerHTML = '';
     }
     return;
+  }
+
+  // Cabinet editor sections start expanded the first time each cabinet's
+  // editor renders; collapsing one then sticks (re-renders don't re-add).
+  if (!_cbSectionsSeen.has(line.id)) {
+    _cbSectionsSeen.add(line.id);
+    ['cab', 'doors', 'drawerFronts', 'drawerBoxes', 'shelves', 'extras', 'notes']
+      .forEach(s => cbOpenSections.add(line.id + '-' + s));
   }
 
   const displayedName = line.name || (cbEditingLineIdx >= 0 ? 'Cabinet ' + (cbEditingLineIdx + 1) : 'Cabinet');
