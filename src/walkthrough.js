@@ -150,7 +150,7 @@ const _wtSteps = [
     preClickCard: '.order-card',
     target: '#order-sidebar', position: 'right',
     title: 'Order detail',
-    body: 'Advance the stage — Confirmed → In Production → Ready → Delivery → Complete. Generate <span class="wt-hi">job sheets and delivery notes</span> at each stage.'
+    body: 'Each order carries its own <span class="wt-hi">priority, hours and dates</span> — set them and the job lands on the production calendar. Job sheets and delivery notes generate from this panel too.'
   },
 
   // ── Stock ─────────────────────────────────────────────────────────────────
