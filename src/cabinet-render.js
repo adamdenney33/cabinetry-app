@@ -620,7 +620,7 @@ function renderCBResults() {
   /** @param {any} v */
   const fmt = v => cur + Number(v).toFixed(2);
   /** @param {number} v */
-  const fmt0 = v => cur + Math.round(v).toLocaleString();
+  const fmt0 = v => cur + (Number.isFinite(v) ? Math.round(v) : 0).toLocaleString();
   const projName = (typeof _cbCurrentClientName !== 'undefined' && _cbCurrentClientName) ? _cbCurrentClientName : (_byId('cb-client')?.value || '');
   // When a quote is open, prefix the header with its number (e.g. "QUO-0007 · …").
   const _hdrQuote = cbEditingQuoteId ? quotes.find(x => x.id === cbEditingQuoteId) : null;
@@ -817,7 +817,7 @@ function renderCBLibraryView() {
   if (!el) return;
   const cur = window.currency;
   /** @param {number} v */
-  const fmt0 = v => cur + Math.round(v).toLocaleString();
+  const fmt0 = v => cur + (Number.isFinite(v) ? Math.round(v) : 0).toLocaleString();
 
   if (!cbLibrary.length) {
     el.innerHTML = `<div class="empty-state">
@@ -851,7 +851,7 @@ function renderCBLibraryView() {
 function _renderLibraryCards(items) {
   const cur = window.currency;
   /** @param {number} v */
-  const fmt0 = v => cur + Math.round(v).toLocaleString();
+  const fmt0 = v => cur + (Number.isFinite(v) ? Math.round(v) : 0).toLocaleString();
   let html = '';
   items.forEach((c, i) => {
     const idx = cbLibrary.indexOf(c);
