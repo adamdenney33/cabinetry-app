@@ -623,7 +623,15 @@ function _wtResolveAndDraw(i, step) {
   }
   _wtResolveTarget(sel, 0, (el) => {
     if (!_wtActive || _wtCurrent !== i) return;
-    if (!el) { _wtDrawCenter(step, true); return; }
+    if (!el) {
+      // Robustness: a step whose target selector no longer resolves still
+      // shows (centered tooltip) instead of breaking — but warn loudly so a
+      // selector broken by an unrelated change is caught, not shipped silent.
+      console.warn('[walkthrough] step ' + (i + 1) + ' "' + step.title +
+        '": spotlight target not found (' + sel + ') — showing a centered tooltip');
+      _wtDrawCenter(step, true);
+      return;
+    }
     try { el.scrollIntoView({ block: 'center', inline: 'nearest' }); } catch (e) { void e; }
     _wtDrawSpot(step, el.getBoundingClientRect());
   });
