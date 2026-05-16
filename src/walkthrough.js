@@ -945,10 +945,21 @@ async function _wtSeedSampleProject() {
       { user_id: uid, name: 'PVC Edge Banding 22mm', sku: 'EB-PVC-22', qty: 45, low: 20, cost: 1.8, category: 'Edge banding' }
     ]);
 
+    // Full cabinet specs so the library cards price correctly. cbDefaultLine()
+    // supplies valid material / type names from live settings, so each spec
+    // stays priceable (no NaN, no £0) even as the cabinet schema evolves.
+    const _mkCab = (/** @type {any} */ over) => {
+      const base = (typeof _wtW.cbDefaultLine === 'function') ? _wtW.cbDefaultLine() : {};
+      if (base && base.id != null) delete base.id;
+      return Object.assign(base, over);
+    };
     ids.cabinet_templates = await insMany('cabinet_templates', [
-      { user_id: uid, name: 'Base 600', type: 'base', default_w_mm: 600, default_h_mm: 720, default_d_mm: 560, default_specs: {} },
-      { user_id: uid, name: 'Wall 600', type: 'wall', default_w_mm: 600, default_h_mm: 720, default_d_mm: 320, default_specs: {} },
-      { user_id: uid, name: 'Drawer 800', type: 'drawer', default_w_mm: 800, default_h_mm: 720, default_d_mm: 560, default_specs: {} }
+      { user_id: uid, name: 'Base 600', type: 'base', default_w_mm: 600, default_h_mm: 720, default_d_mm: 560,
+        default_specs: _mkCab({ w: 600, h: 720, d: 560, doors: 2, doorPct: 95, shelves: 1 }) },
+      { user_id: uid, name: 'Wall 600', type: 'wall', default_w_mm: 600, default_h_mm: 720, default_d_mm: 320,
+        default_specs: _mkCab({ w: 600, h: 720, d: 320, doors: 2, doorPct: 95, adjShelves: 2 }) },
+      { user_id: uid, name: 'Drawer 800', type: 'drawer', default_w_mm: 800, default_h_mm: 720, default_d_mm: 560,
+        default_specs: _mkCab({ w: 800, h: 720, d: 560, drawers: 3, drawerPct: 100 }) }
     ]);
 
     const quoteId = await ins1('quotes', {
