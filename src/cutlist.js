@@ -3324,10 +3324,18 @@ function renderResults() {
   if (area) renderLayout(area);  // inner tabs removed; layout view is the only view
 }
 
-/** @param {HTMLElement} area */
-function renderLayout(area) {
+/** @param {HTMLElement} area @param {number} [tries] */
+function renderLayout(area, tries) {
   if (!results.layouts.length) {
     area.innerHTML = '<div class="empty-state"><h3>No layouts generated</h3><p>Check that your pieces fit within your sheet dimensions.</p></div>';
+    return;
+  }
+  // The diagram scales to the panel's content width. If the layout panel has
+  // not been laid out yet (e.g. just un-hidden when the walkthrough switches
+  // to it), clientWidth is 0 and the fit-scale floors to a tiny diagram —
+  // defer a few frames until the panel has a real width.
+  if (area.clientWidth < 50 && (tries || 0) < 12) {
+    requestAnimationFrame(() => renderLayout(area, (tries || 0) + 1));
     return;
   }
   const u = window.units === 'metric' ? 'mm' : 'in';
