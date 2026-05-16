@@ -44,6 +44,11 @@ declare global {
     unitFormat: { mode: string; decimals: number; denominator: number };
     /** Supabase Auth-state subscription captured in src/db.js for cleanup. */
     _authSub?: unknown;
+    /** Demo (guest) mode — src/db.js serves _db() reads from the seed dataset
+     *  and blocks writes. Set by src/app.js and src/walkthrough.js. */
+    _demoMode?: boolean;
+    /** True while the guided walkthrough overlay is on screen (src/walkthrough.js). */
+    _wtActive?: boolean;
     /** Various render-state stash slots used by inline-handler `oninput=` etc. */
     _orderFilter?: string;
     _orderSearch?: string;

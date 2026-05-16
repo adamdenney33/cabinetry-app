@@ -288,7 +288,9 @@ function renderCBPanel() {
 function _renderCBAuthGate() {
   const builder = document.getElementById('cab-view-builder');
   let gate = document.getElementById('cb-auth-gate');
-  if (_userId) {
+  // Demo mode shows the seeded builder — saving is gated separately via
+  // _requireAuth(), so a guest can still explore the Cabinet Builder.
+  if (_userId || window._demoMode) {
     if (gate) gate.style.display = 'none';
     if (builder) builder.style.display = 'flex';
     return true;

@@ -308,7 +308,7 @@ function getBizInfo() {
 let dayOverrides = [];
 
 async function loadDayOverrides() {
-  if (!_userId) return;
+  if (!_userId && !window._demoMode) return;
   try {
     const { data, error } = await _db('schedule_day_overrides')
       .select('id, date, hours, label')

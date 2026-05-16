@@ -88,6 +88,16 @@ class _DBBuilder {
    * @returns {Promise<{ data: (Single extends true ? _Tables[K]['Row'] | null : _Tables[K]['Row'][] | null), error: any }>}
    */
   then(onfulfilled) {
+    // Demo mode (src/demo.js): a logged-out visitor exploring the seeded app,
+    // or a signed-in user mid-walkthrough. Reads resolve from the static demo
+    // dataset; writes are blocked. Mirrors the fetch branch's resolve shape.
+    if (window._demoMode) {
+      const dResolve = /** @type {(v: any) => any} */ (onfulfilled);
+      const dResult = (this._method === 'select') ? _demoSelect(this) : _demoBlockWrite(this);
+      Promise.resolve().then(() => { if (dResolve) dResolve(dResult); });
+      // @ts-expect-error fake-thenable: `this` is structurally PromiseLike.
+      return this;
+    }
     const h = _dbHeaders(), ps = this._params();
     const url = `${_SBURL}/rest/v1/${this._t}${ps ? '?' + ps : ''}`;
     /** @type {RequestInit} */

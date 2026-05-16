@@ -431,7 +431,7 @@ function renderClientsMain() {
 // projection at boot and group by client_id.
 /** @type {any} */ (window)._cutListsByClient = {};
 async function _loadCutListsByClient() {
-  if (typeof _userId === 'undefined' || !_userId) return;
+  if ((typeof _userId === 'undefined' || !_userId) && !window._demoMode) return;
   try {
     const { data } = await _db('cutlists').select('id, name, client_id, updated_at').order('updated_at', { ascending: false });
     /** @type {Record<number, any[]>} */

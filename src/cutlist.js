@@ -1122,7 +1122,7 @@ async function _clNextCutlistName(_scopeId) {
  *  cabinet cut parts into the new row. */
 async function _clStartNewCutlist() {
   if (_clCurrentCabinetId) { return _clNewCabinetLinkedCutlist(); }
-  if (!_userId) { _toast('Sign in to create cut lists', 'error'); return; }
+  if (!_requireAuth()) return;
   const { data: _clCountRows } = await _db('cutlists').select('id').eq('user_id', _userId);
   if (!_enforceFreeLimit('cutlists', (_clCountRows || []).length)) return;
   const insertNew = async () => {
@@ -1169,7 +1169,7 @@ async function _clStartNewCutlist() {
  *  cabinet_id set, copies the cabinet's cut parts into pieces rows, then
  *  opens the new cut list in edit state. */
 async function _clNewCabinetLinkedCutlist() {
-  if (!_userId) { _toast('Sign in to create cut lists', 'error'); return; }
+  if (!_requireAuth()) return;
   if (!_clCurrentCabinetId) return;
   const w = /** @type {any} */ (window);
   const lib = (typeof cbLibrary !== 'undefined' && cbLibrary) ? cbLibrary : [];
@@ -3238,10 +3238,6 @@ function _groupUniqueLayouts(flatLayouts) {
 }
 
 function optimize() {
-  if (!_userId && _getOptCount() >= FREE_LIMIT) {
-    /** @type {HTMLElement} */ (_byId('paywall-modal')).classList.remove('hidden');
-    return;
-  }
   const activeSheets = sheets.filter(s => s.enabled !== false);
   const activePieces = pieces.filter(p => p.enabled !== false);
   if (!activeSheets.length) { _toast('Add at least one enabled sheet panel.', 'error'); return; }
@@ -3293,7 +3289,6 @@ function optimize() {
   // for downstream consumers (stock.js, quotes.js).
   results.uniqueLayouts = _groupUniqueLayouts(results.layouts);
 
-  if (!_userId) _incOptCount();
   activeSheetIdx = 0;
   if (typeof switchCLMainView === 'function') switchCLMainView('layout');
   renderResults();
@@ -4208,7 +4203,7 @@ async function renderCLCutListLibraryView() {
       <div style="font-size:12px;color:var(--muted);text-align:center;padding:20px">Loading…</div>
     </div>`;
 
-  if (typeof _userId === 'undefined' || !_userId) {
+  if ((typeof _userId === 'undefined' || !_userId) && !window._demoMode) {
     /** @type {HTMLElement} */ (_byId('cl-lib-grid')).innerHTML = `<div style="font-size:13px;color:var(--muted);text-align:center;padding:30px">Sign in to see your library cut lists.</div>`;
     return;
   }
@@ -4349,7 +4344,7 @@ async function _clDoOpenLibraryCutlist(id) {
 /** Insert a new library cutlist row (no project) and copy the in-memory
  *  pieces/sheets/edge_bands into it. Switches to the Cut List Library tab. */
 async function _clAddToCutlistLibrary() {
-  if (!_userId) { _toast('Sign in to save', 'error'); return; }
+  if (!_requireAuth()) return;
   const { data: _clCountRows } = await _db('cutlists').select('id').eq('user_id', _userId);
   if (!_enforceFreeLimit('cutlists', (_clCountRows || []).length)) return;
   const name = (_clCurrentCutlistName || '').trim() || await _clNextCutlistName(null);
@@ -4450,7 +4445,7 @@ async function _clTogglePickedCabinet(cutlistId, cabinetDbId) {
       if (error) { _toast('Unlink failed', 'error'); return; }
       _toast('Unlinked', 'success');
     } else {
-      if (!_userId) { _toast('Sign in to link', 'error'); return; }
+      if (!_requireAuth()) return;
       const { error } = await _db('cutlist_cabinets').insert(/** @type {any} */ ({ cutlist_id: cutlistId, cabinet_id: cabinetDbId, user_id: _userId }));
       if (error) { _toast('Link failed', 'error'); return; }
       _toast('Linked', 'success');

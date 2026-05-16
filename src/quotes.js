@@ -1323,7 +1323,7 @@ function _qQuoteSuggest(input, boxId) {
  *  (with the next sequential quote number) so back→recent picks it up
  *  without further user input. Mirrors Clients/Stock + cabinets/cutlists. */
 async function _qStartNewQuote() {
-  if (!_userId) { _toast('Sign in to create quotes', 'error'); return; }
+  if (!_requireAuth()) return;
   if (!_qpState.clientId) { _toast('Pick a client first', 'error'); return; }
   const insertNew = async () => {
     const quoteNum = _nextQuoteNumber();
@@ -1573,7 +1573,7 @@ async function _qAddLine(kind) {
 /** Create a new quote row from current editor state. Returns true on success.
  *  @param {boolean} [silent] suppress toast (used when auto-creating from line add) */
 async function createQuoteFromEditor(silent) {
-  if (!_userId) { _toast('Sign in first.', 'error'); return false; }
+  if (!_requireAuth()) return false;
   if (!_qpState.clientId) { _toast('Pick a client first.', 'error'); return false; }
   const customerQuotes = quotes.filter(q => !_isDraftQuote(q));
   if (!_enforceFreeLimit('quotes', customerQuotes.length)) return false;

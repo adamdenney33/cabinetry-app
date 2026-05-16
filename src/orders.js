@@ -734,7 +734,7 @@ function _oOrderSuggest(input, boxId) {
 /** "+ Add Order" handler. Inserts a fresh order row in the DB immediately
  *  (with the next sequential order number). Mirrors quotes / cabinets. */
 async function _oStartNewOrder() {
-  if (!_userId) { _toast('Sign in to create orders', 'error'); return; }
+  if (!_requireAuth()) return;
   if (!_opState.clientId) { _toast('Pick a client first', 'error'); return; }
   const insertNew = async () => {
     const orderNum = _nextOrderNumber();
@@ -1050,7 +1050,7 @@ async function _oAddLine(kind) {
 
 /** @param {boolean} [silent] */
 async function createOrderFromEditor(silent) {
-  if (!_userId) { _toast('Sign in first.', 'error'); return false; }
+  if (!_requireAuth()) return false;
   if (!_opState.clientId) { _toast('Pick a client first.', 'error'); return false; }
   if (!_enforceFreeLimit('orders', orders.length)) return false;
   const client = clients.find(c => c.id === _opState.clientId);

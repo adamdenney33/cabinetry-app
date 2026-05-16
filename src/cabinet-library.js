@@ -104,6 +104,7 @@ function cbImportLibrary() {
 function cbSaveToLibrary() {
   const line = cbScratchpad;
   if (!line) { _toast('Open a cabinet first', 'error'); return; }
+  if (!_requireAuth()) return;
   if (!_enforceFreeLimit('cabinet_templates', cbLibrary.length)) return;
   const copy = JSON.parse(JSON.stringify(line));
   copy.id = Date.now();
@@ -124,6 +125,7 @@ function cbSaveToLibrary() {
 function cbAddLineToLibrary(idx) {
   const line = cbLines[idx];
   if (!line) { _toast('Cabinet not found', 'error'); return; }
+  if (!_requireAuth()) return;
   if (!_enforceFreeLimit('cabinet_templates', cbLibrary.length)) return;
   const copy = JSON.parse(JSON.stringify(line));
   copy.id = Date.now();
@@ -675,7 +677,7 @@ function _cbCutListProjActHtml(mainOnclick, addOnclick, cabid) {
  *  linked to its `data-cabid` cabinet, and toggles the `.empty` class so the
  *  pill picks up muted styling when 0. Best-effort: silent on auth or query errors. */
 async function _cbApplyCutListCounts() {
-  if (!_userId) return;
+  if (!_userId && !window._demoMode) return;
   const buttons = /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('._cbct-btn'));
   if (!buttons.length) return;
   /** @type {Set<number>} */
@@ -832,7 +834,7 @@ async function _cbToggleCutListLink(libIdx, cutlistId) {
       if (error) { _toast('Unlink failed', 'error'); return; }
       _toast('Unlinked', 'success');
     } else {
-      if (!_userId) { _toast('Sign in to link', 'error'); return; }
+      if (!_requireAuth()) return;
       const { error } = await _db('cutlist_cabinets').insert(/** @type {any} */ ({ cutlist_id: cutlistId, cabinet_id: cabinetDbId, user_id: _userId }));
       if (error) { _toast('Link failed', 'error'); return; }
       _toast('Linked', 'success');

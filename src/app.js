@@ -1157,6 +1157,12 @@ function _showAuth() {
   /** @type {HTMLElement} */ (document.getElementById('auth-screen')).classList.remove('hidden');
 }
 
+/** Show or hide the demo-mode banner to match the current auth state. */
+function _syncDemoBanner() {
+  const b = document.getElementById('demo-banner');
+  if (b) b.style.display = window._demoMode ? 'flex' : 'none';
+}
+
 function toggleAuthMode() {
   _authMode = _authMode === 'signin' ? 'signup' : 'signin';
   const isSign = _authMode === 'signin';
@@ -1195,14 +1201,11 @@ async function authSubmit() {
 }
 
 async function signOut() {
-  await _sb.auth.signOut();
-  orders = []; quotes = []; stockItems = []; clients = []; projects = [];
-  _userId = null;
-  _subscription = null;
-  if (typeof _resetAnalytics === 'function') _resetAnalytics();
+  // onAuthStateChange's SIGNED_OUT handler re-enters demo mode, re-seeds the
+  // in-memory arrays and re-renders every panel — so no manual teardown here.
   toggleAccount();
-  renderStockMain(); renderQuoteMain(); renderOrdersMain();
-  if (typeof renderSubscriptionSection === 'function') renderSubscriptionSection();
+  if (typeof _resetAnalytics === 'function') _resetAnalytics();
+  await _sb.auth.signOut();
 }
 
 async function loadAllData() {
@@ -1379,7 +1382,22 @@ function _applyBizInfoFromDB(rows) {
 }
 
 _sb.auth.onAuthStateChange(async (event, session) => {
+  // loadAllData()'s hydrate helpers reference globals from late-loading defer
+  // scripts (e.g. _quoteLineRowToCB in migrate.js). A guest's INITIAL_SESSION
+  // can fire mid defer-script execution — wait until every defer script has run
+  // (DOMContentLoaded, or `load` if we're already past it).
+  if (document.readyState !== 'complete') {
+    await new Promise(res => {
+      const done = () => res(undefined);
+      document.addEventListener('DOMContentLoaded', done, { once: true });
+      window.addEventListener('load', done, { once: true });
+    });
+  }
   if (session) {
+    // A real Supabase session — leave demo mode. Guard on _wtActive so a
+    // TOKEN_REFRESHED firing while a signed-in user runs the walkthrough
+    // (which flips demo mode on temporarily) doesn't clobber the tour.
+    if (!window._wtActive) window._demoMode = false;
     _userId = session.user.id;
     window.Sentry.setUser({ id: session.user.id, email: session.user.email });
     const emailEl = document.getElementById('account-email-item');
@@ -1387,6 +1405,7 @@ _sb.auth.onAuthStateChange(async (event, session) => {
     /** @type {HTMLElement} */ (document.getElementById('account-guest-view')).style.display = 'none';
     /** @type {HTMLElement} */ (document.getElementById('account-user-view')).style.display = '';
     _showApp();
+    if (typeof _syncDemoBanner === 'function') _syncDemoBanner();
     await loadAllData();
     if (typeof _identifyUser === 'function') _identifyUser(session);
     await _loadCabinetTemplatesFromDB();
@@ -1405,53 +1424,42 @@ _sb.auth.onAuthStateChange(async (event, session) => {
       catch (e) { console.warn('restoreAppState failed', e); }
     }
   } else {
+    // Guest: no Supabase session. Enter demo mode — src/db.js serves every
+    // _db() read from the pre-seeded demo dataset and blocks writes. The boot
+    // sequence then mirrors the signed-in path so every panel renders
+    // populated; the guided walkthrough runs over this same seed.
     _userId = null;
+    window._demoMode = true;
     window.Sentry.setUser(null);
     _subscription = null;
-    if (typeof renderSubscriptionSection === 'function') renderSubscriptionSection();
     /** @type {HTMLElement} */ (document.getElementById('account-guest-view')).style.display = '';
     /** @type {HTMLElement} */ (document.getElementById('account-user-view')).style.display = 'none';
-    /** @type {any} */ (window)._cutListsByClient = {};
-    // Clear "what was open" keys only on explicit sign-out, so the next user
-    // on this browser doesn't inherit the previous user's entity IDs. The
-    // INITIAL_SESSION event fires on every guest page load and must NOT
-    // clear these — otherwise guest mode loses its restore state.
-    // pcCurrentPage is kept regardless — it's a UI preference, not user data.
+    _showApp();
+    if (typeof _syncDemoBanner === 'function') _syncDemoBanner();
+    // Clear "what was open" keys only on explicit sign-out, so a signing-out
+    // user's demo session doesn't restore the entity IDs from their real one.
+    // INITIAL_SESSION (every guest page load) must NOT clear them.
     if (event === 'SIGNED_OUT'
         && typeof /** @type {any} */ (window)._pcClearAllOpenKeys === 'function') {
       /** @type {any} */ (window)._pcClearAllOpenKeys();
     }
-    // Item 2 phase 1.4: clear in-memory Cabinet Builder state and re-render
-    // so the auth gate shows immediately on sign-out (otherwise the panel
-    // keeps rendering the previous user's cabinets until the next tab switch).
-    cbLines = [];
-    if (typeof renderCBPanel === 'function') { try { renderCBPanel(); } catch(e){} }
-    // Restore last-active section for guest/free-tier users too. Entity restore
-    // safely no-ops because the DB-backed arrays (quotes/orders/projects) are
-    // empty for guests, so the .find() guards in _restoreAppState skip them.
+    await loadAllData();
+    if (typeof _loadCabinetTemplatesFromDB === 'function') {
+      try { await _loadCabinetTemplatesFromDB(); } catch (e) { console.warn('[cb templates] load failed', e); }
+    }
+    // Guided walkthrough — auto-starts for a first-time visitor (the localStorage
+    // gate in _wtMaybeAutoStart suppresses it on later visits).
+    if (typeof /** @type {any} */ (window)._wtMaybeAutoStart === 'function') {
+      try { await /** @type {any} */ (window)._wtMaybeAutoStart(); }
+      catch (e) { console.warn('[walkthrough] auto-start failed', e); }
+    }
     if (typeof /** @type {any} */ (window)._restoreAppState === 'function') {
       try { await /** @type {any} */ (window)._restoreAppState(); }
       catch (e) { console.warn('restoreAppState failed', e); }
     }
+    if (typeof renderSubscriptionSection === 'function') renderSubscriptionSection();
   }
 });
-
-// ══════════════════════════════════════════
-// FREE TIER
-// ══════════════════════════════════════════
-const FREE_LIMIT = 5;
-function _getOptCount() { return parseInt(localStorage.getItem('pcOptCount') || '0', 10); }
-function _incOptCount() { localStorage.setItem('pcOptCount', String(_getOptCount() + 1)); _updateOptCounter(); }
-function _updateOptCounter() {
-  const el = document.getElementById('opt-counter');
-  if (!el) return;
-  if (_userId) { el.style.display = 'none'; return; }
-  const n = _getOptCount();
-  const left = Math.max(0, FREE_LIMIT - n);
-  el.style.display = '';
-  el.textContent = left > 0 ? `${left} free optimization${left === 1 ? '' : 's'} remaining` : 'Free limit reached — sign in for unlimited';
-  el.style.color = left === 0 ? 'var(--danger)' : 'var(--muted)';
-}
 
 // ══════════════════════════════════════════
 // UTILS
@@ -1478,7 +1486,6 @@ loadLogoPreview();
 renderStockMain();
 renderQuoteMain();
 renderOrdersMain();
-_updateOptCounter();
 
 // Cut list — restore saved state, or load demo data on first visit
 _loadCutList();

@@ -107,7 +107,7 @@ async function _updateCabinetInDB(dbId, entry) {
   } catch(e) { console.warn('[cabinet-template update]', (/** @type {any} */ (e)).message || e); }
 }
 async function _loadCabinetTemplatesFromDB() {
-  if (!_userId) return;
+  if (!_userId && !window._demoMode) return;
   try {
     const { data, error } = await _db('cabinet_templates').select('*').eq('user_id', _userId).order('name');
     if (error) { console.warn('[cabinet-template load]', error.message); return; }
@@ -315,7 +315,7 @@ function saveCBLines() {
 }
 
 function _getCBClientId() {
-  if (!_userId) return null;
+  if (!_userId && !window._demoMode) return null;
   if (_cbCurrentClientId) return _cbCurrentClientId;
   const pn = _byId('cb-client');
   if (!pn) return null;
@@ -328,7 +328,7 @@ function _getCBClientId() {
 async function _ensureCBClient() {
   const cliId = _getCBClientId();
   if (cliId) return cliId;
-  if (!_userId) { _toast('Sign in to save cabinets', 'error'); return null; }
+  if (!_requireAuth()) return null;
   const name = _cbCurrentClientName || (/** @type {HTMLInputElement|null} */ (_byId('cb-client'))?.value?.trim() || '');
   if (!name) { _toast('Pick a client first', 'error'); return null; }
   const newId = await resolveClient(name);
@@ -467,7 +467,7 @@ async function _syncCBLinesToOrder(orderId) {
 }
 
 async function _loadCBLinesFromDB() {
-  if (!_userId) return;
+  if (!_userId && !window._demoMode) return;
   if (_cbLinesSyncTimer) return;
   if (cbEditingQuoteId && cbLines.length > 0) return;
   const editingId = localStorage.getItem('pc_cb_editing_quote_id');
@@ -818,7 +818,7 @@ const _PICKER_ICON_CABINET = '<svg viewBox="0 0 24 24" fill="none" stroke="curre
  *  create a new quote). If none exist, creates a new quote directly. */
 function cbSendToQuote() {
   if (!cbLines.length) { _toast('Add cabinets first.', 'error'); return; }
-  if (!_userId) { _toast('Sign in to save', 'error'); return; }
+  if (!_requireAuth()) return;
 
   const cliName = _cbCurrentClientName || (/** @type {HTMLInputElement|null} */ (_byId('cb-client'))?.value?.trim() || '');
   const cli = _cbCurrentClientId
@@ -882,7 +882,7 @@ async function cbSendCabinetsToExistingQuote(quoteId) {
 
 async function cbCreateQuoteFromDraft() {
   if (!cbLines.length) { _toast('Add cabinets first.', 'error'); return; }
-  if (!_userId) { _toast('Sign in to create a quote', 'error'); return; }
+  if (!_requireAuth()) return;
   // Free-tier cap: count only customer-facing quotes (drafts don't count).
   const customerQuotes = quotes.filter(q => typeof _isDraftQuote === 'function' ? !_isDraftQuote(q) : true);
   if (!_enforceFreeLimit('quotes', customerQuotes.length)) return;
@@ -922,7 +922,7 @@ async function cbCreateQuoteFromDraft() {
  *  If none exist, creates a new order directly. */
 function cbSendToOrder() {
   if (!cbLines.length) { _toast('Add cabinets first.', 'error'); return; }
-  if (!_userId) { _toast('Sign in to save', 'error'); return; }
+  if (!_requireAuth()) return;
 
   const cliName = _cbCurrentClientName || (/** @type {HTMLInputElement|null} */ (_byId('cb-client'))?.value?.trim() || '');
   const cli = _cbCurrentClientId
@@ -967,7 +967,7 @@ async function cbSendCabinetsToExistingOrder(orderId) {
 
 async function cbCreateOrderFromDraft() {
   if (!cbLines.length) { _toast('Add cabinets first.', 'error'); return; }
-  if (!_userId) { _toast('Sign in to create an order', 'error'); return; }
+  if (!_requireAuth()) return;
   if (!_enforceFreeLimit('orders', orders.length)) return;
   const clientId = await _ensureCBClient();
   if (!clientId) return;
@@ -1000,7 +1000,7 @@ async function cbCreateOrderFromDraft() {
 
 /** @param {number} quoteId */
 async function editQuoteInCB(quoteId) {
-  if (!_userId) { _toast('Sign in to edit a quote', 'error'); return; }
+  if (!_requireAuth()) return;
   const q = quotes.find(x => x.id === quoteId);
   if (!q) { _toast('Quote not found', 'error'); return; }
 
@@ -1050,7 +1050,7 @@ async function finishEditingQuote() {
  *  reads/writes order_lines.
  *  @param {number} orderId */
 async function editOrderInCB(orderId) {
-  if (!_userId) { _toast('Sign in to edit an order', 'error'); return; }
+  if (!_requireAuth()) return;
   const o = orders.find(x => x.id === orderId);
   if (!o) { _toast('Order not found', 'error'); return; }
 
@@ -1148,17 +1148,14 @@ function cbConvertToOrder() {
     status: 'draft', date: new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short'}),
     notes: 'Cabinet Quote: ' + cbLines.map(l => l.name || 'Cabinet').filter(Boolean).join(', '),
   };
-  if (_userId) {
-    _db('quotes').insert(row).select().single().then(({data, error}) => {
-      if (error || !data) { _toast('Could not save quote: ' + (error?.message||''), 'error'); return; }
-      quotes.unshift(data);
-      _toast('Quote created from cabinet quote', 'success');
-      renderQuoteMain();
-      switchSection('quote');
-    });
-  } else {
-    _toast('Sign in to save quotes', 'error');
-  }
+  if (!_requireAuth()) return;
+  _db('quotes').insert(row).select().single().then(({data, error}) => {
+    if (error || !data) { _toast('Could not save quote: ' + (error?.message||''), 'error'); return; }
+    quotes.unshift(data);
+    _toast('Quote created from cabinet quote', 'success');
+    renderQuoteMain();
+    switchSection('quote');
+  });
 }
 
 // ── PDF / Print ──
@@ -1606,7 +1603,7 @@ function _cbCancelNewQuote() {
 /** @param {string} name */
 async function _cbSaveClientByName(name) {
   if (!name) return;
-  if (!_userId) { _toast('Sign in to save', 'error'); return; }
+  if (!_requireAuth()) return;
   const existing = clients.find(c => c.name === name);
   let clientId = existing ? existing.id : null;
   if (!clientId) {

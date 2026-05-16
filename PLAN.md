@@ -22,6 +22,37 @@ Companion docs: `SPEC.md` (refactor history), `SCHEMA.md` (DB schema),
 
 ## Active Work
 
+### Read-only demo mode (no-login experience) + walkthrough rebuild ✅ Done 2026-05-16
+
+Plan: `~/.claude/plans/the-walkthrough-is-still-composed-floyd.md`.
+
+A logged-out visitor's first experience is now a fully-explorable, pre-seeded
+demo; saving anything prompts sign-in. The guided walkthrough was hardened.
+
+- ✅ **Demo data layer** — new `src/demo.js`: a static seed dataset (5 clients /
+  quotes / orders / cutlists / cabinet templates, 10 stock items) + `_demoSelect`
+  (resolves a `_DBBuilder` against the seed) + `_demoBlockWrite`. `src/db.js`'s
+  `_DBBuilder.then()` branches on `window._demoMode` — reads come from the seed,
+  writes are blocked.
+- ✅ **Guest boot** — `onAuthStateChange`'s no-session branch sets `_demoMode=true`
+  and runs the full `loadAllData` path so every panel renders populated. Waits
+  for `DOMContentLoaded` first (fixes a boot race against late-loading globals).
+- ✅ **Cabinet un-gated** — `_renderCBAuthGate` + the `if(!_userId)` read-loaders
+  honour `_demoMode`. Supersedes Item-2 locked decision #2 (see below).
+- ✅ **Write gate** — explicit save/create actions route through `_requireAuth()`
+  (sign-in modal); a `_db()`-level block backstops anything missed.
+- ✅ **Demo banner** — slim "exploring a live demo — sign in to save" bar,
+  toggled by auth state.
+- ✅ **Optimizer paywall removed** — the `#paywall-modal` / `pcOptCount` gate is
+  gone; the 5-item library cap is the only free-tier limit.
+- ✅ **Walkthrough hardened** (`src/walkthrough.js`) — DB seeder deleted; the tour
+  always runs over the demo seed (a signed-in user's run flips `_demoMode` on
+  temporarily). Target resolution rebuilt as one `requestAnimationFrame` waiter
+  with pre-flight skip of unreachable steps; dismissal persists to
+  `localStorage['pc_wt_state']`; guests get the tour on first visit.
+
+No schema migration. `npm run typecheck` clean.
+
 ### Business Details popup + logos on PDFs + bank details + Pro/free branding ✅ Done 2026-05-14
 
 Plan: `~/.claude/plans/i-want-the-business-rustling-aurora.md`.
@@ -351,7 +382,10 @@ exploring a design → formal quote → approved order. Detailed architecture
 
 **Resolved decisions** (locked 2026-05-03):
 1. Draft quotes tagged via `[CB_DRAFT]` prefix in `quotes.notes` (no schema change)
-2. Cabinet Builder requires sign-in (no guest mode)
+2. ~~Cabinet Builder requires sign-in (no guest mode)~~ — **superseded 2026-05-16**:
+   read-only demo mode lets logged-out visitors use the Cabinet Builder (and the
+   whole app) over a pre-seeded dataset; saving prompts sign-in. See the
+   "Read-only demo mode" entry under Active Work.
 3. cbSettings fully moves to `business_info` (numeric/jsonb columns) and `catalog_items` (rows)
 4. Quote editing: edit-in-place, with an explicit "Duplicate" button for forking
 

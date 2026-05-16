@@ -4,16 +4,17 @@
 // function it drives already exists. A "spotlight" tour: dims the screen,
 // cuts a highlight around one real DOM element, anchors a tooltip beside it.
 //
-// This file owns three things (built across milestones M3/M5/M6/M7):
-//   • the engine + step list                         (M3 — here now)
-//   • _wtPersistState — onboarding_state read/write   (M5)
-//   • _wtSeedSampleProject / _wtClearSampleData       (M6)
-//   • _wtMaybeAutoStart — first-run gate              (M7)
+// The tour always runs over the demo seed (src/demo.js): for a guest demo
+// mode is already on; for a signed-in user _wtStart flips it on for the
+// tour's duration and _wtClose restores their real data. Dismissal persists
+// to localStorage['pc_wt_state'] (and business_info when signed in), so a
+// first-time visitor sees the tour once.
 //
 // Public surface (window globals — classic-script top-level functions):
-//   _wtStart(opts)   — begin the tour. opts.force is accepted for the Help
-//                      re-trigger (the gate lives in _wtMaybeAutoStart, not here).
-//   _wtClose(reason) — tear down. reason: 'completed' | 'skipped'.
+//   _wtStart(opts)      — begin the tour (async; opts.force kept for the
+//                         Help re-trigger).
+//   _wtClose(reason)    — tear down. reason: 'completed' | 'skipped'.
+//   _wtMaybeAutoStart() — first-run gate; auto-shows the tour once.
 //
 // Cross-file globals used: switchSection (settings.js), switchCabTab /
 // switchCBMainView (cabinet-render.js). Reached via the `_wtW` any-cast so
@@ -321,6 +322,12 @@ const _wtSteps = [
 let _wtActive = false;
 /** @type {number} */
 let _wtCurrent = 0;
+/** Navigation direction of the last step change: 1 forward, -1 back. Used to
+ *  skip an unreachable step in the right direction. */
+let _wtDir = 1;
+/** True when the tour flipped demo mode on for a signed-in user (B2); _wtClose
+ *  restores their real data. */
+let _wtTempDemo = false;
 /** @type {HTMLElement | null} */
 let _wtOverlay = null;
 /** @type {number | ReturnType<typeof setTimeout>} */
@@ -396,13 +403,8 @@ function _wtGateSection(section) {
       _wtW._exitClient_cabinet();
     }
     if (section === 'cutlist') {
-      // Open the seeded sample cut list (created by _wtSeedSampleProject with
-      // its own sheets + pieces) so the input form un-gates and the layout
-      // steps walk a populated cut list.
-      const clIds = (((_wtW._onboardingState || {}).sample_ids) || {}).cutlists || [];
-      if (clIds[0] && typeof _wtW._clOpenLibraryCutlist === 'function') {
-        _wtW._clOpenLibraryCutlist(clIds[0]);
-      }
+      // The default cut layout is always populated (app.js INIT seeds sheets +
+      // pieces), so the layout steps just need the Cut Layout view shown.
       if (typeof _wtW.switchCLMainView === 'function') _wtW.switchCLMainView('layout');
     }
     if (section === 'orders' && typeof _opState !== 'undefined') {
@@ -421,16 +423,51 @@ function _wtGateSection(section) {
 // ── lifecycle ──
 
 /**
- * Begin the walkthrough. No-ops if a tour is already on screen (guards the
- * hourly TOKEN_REFRESHED auth event from restarting a tour mid-flight).
+ * Begin the walkthrough. The tour always runs over the demo seed: for a guest
+ * demo mode is already on; for a signed-in user it is flipped on for the
+ * tour's duration (B2) and _wtClose restores their real data afterwards.
+ * No-ops if a tour is already on screen (guards the hourly TOKEN_REFRESHED
+ * auth event from restarting a tour mid-flight).
  * @param {{force?: boolean}} [opts]
  */
-function _wtStart(opts) {
-  void opts; // gate lives in _wtMaybeAutoStart (M7); _wtStart always starts.
+async function _wtStart(opts) {
+  void opts;
   if (_wtActive) return;
+  const needTempDemo = !!_userId && !window._demoMode;
+  if (needTempDemo) {
+    const w = _wtW;
+    const dirty = !!w._cbDirty || !!w._clDirty
+      || !!(w._qpState && w._qpState.dirty) || !!(w._opState && w._opState.dirty);
+    if (dirty && typeof w._confirm === 'function') {
+      w._confirm('Start the walkthrough? Unsaved changes on the current screen will be discarded.',
+        () => { _wtRunStart(true); });
+      return;
+    }
+    return _wtRunStart(true);
+  }
+  return _wtRunStart(false);
+}
+
+/**
+ * Load the demo seed (when borrowing demo mode for a signed-in user) and open
+ * the tour overlay.
+ * @param {boolean} tempDemo
+ */
+async function _wtRunStart(tempDemo) {
+  if (_wtActive) return;
+  if (tempDemo) {
+    _wtTempDemo = true;
+    window._demoMode = true;
+    try {
+      if (typeof loadAllData === 'function') await loadAllData();
+      if (typeof _loadCabinetTemplatesFromDB === 'function') await _loadCabinetTemplatesFromDB();
+    } catch (e) { console.warn('[walkthrough] demo-seed load failed', e); }
+    if (_wtActive) return; // a concurrent start already opened the tour
+  }
   _wtActive = true;
   _wtW._wtActive = true; // window-visible so other modules can suspend autosaves
   _wtCurrent = 0;
+  _wtDir = 1;
   const ov = document.createElement('div');
   ov.id = 'wt-overlay';
   ov.addEventListener('click', _wtOverlayClick);
@@ -443,42 +480,61 @@ function _wtStart(opts) {
 }
 
 /**
- * Tear the tour down and persist the dismissal.
+ * Tear the tour down, persist the dismissal, and — if the tour borrowed demo
+ * mode for a signed-in user — restore their real data. Idempotent.
  * @param {'completed'|'skipped'} reason
  */
-function _wtClose(reason) {
+async function _wtClose(reason) {
   if (!_wtActive) return;
   _wtActive = false;
   _wtW._wtActive = false;
-  if (_wtOverlay) { _wtOverlay.remove(); _wtOverlay = null; }
   document.removeEventListener('keydown', _wtKeydown, true);
   window.removeEventListener('resize', _wtOnResize);
-  _wtDestroyCursor();
-  const sd = document.getElementById('settings-dropdown');
-  if (sd) sd.classList.remove('open');
-  // M8: a finished tour suppresses the redundant dashboard "Getting Started" card.
-  if (reason === 'completed') {
-    try { localStorage.setItem('pc_hide_guide', '1'); } catch (e) { void e; }
-  }
-  // Persist dismissal — version gate + timestamp. M7's _wtMaybeAutoStart
-  // reads these to decide whether to auto-show on the next login.
+  if (_wtResizeTimer) { clearTimeout(_wtResizeTimer); _wtResizeTimer = 0; }
+  // Persist dismissal — localStorage (the durable first-run gate, works for
+  // guests) and business_info when signed in. _wtPersistState handles both.
   _wtPersistState({
     version: WT_VERSION,
     dismissed_at: new Date().toISOString(),
-    completed: reason === 'completed'
+    completed: reason === 'completed',
   });
+  // A finished tour suppresses the redundant dashboard "Getting Started" card.
+  if (reason === 'completed') {
+    try { localStorage.setItem('pc_hide_guide', '1'); } catch (e) { void e; }
+  }
+  // Restore the signed-in user's real data BEFORE removing the overlay, so
+  // there's no flash of demo content as the panels re-render.
+  if (_wtTempDemo) {
+    _wtTempDemo = false;
+    window._demoMode = false;
+    try {
+      if (typeof loadAllData === 'function') await loadAllData();
+      if (typeof _loadCabinetTemplatesFromDB === 'function') await _loadCabinetTemplatesFromDB();
+    } catch (e) { console.warn('[walkthrough] real-data restore failed', e); }
+  }
+  // Teardown — every handle cleared so a double call or a stale callback no-ops.
+  if (_wtOverlay) { _wtOverlay.remove(); _wtOverlay = null; }
+  _wtDestroyCursor();
+  const sd = document.getElementById('settings-dropdown');
+  if (sd) sd.classList.remove('open');
+  const ad = document.getElementById('account-dropdown');
+  if (ad) ad.classList.remove('open');
+  // Land on a clean Dashboard.
+  if (typeof _wtW.switchSection === 'function') {
+    try { _wtW.switchSection('dashboard'); } catch (e) { void e; }
+  }
 }
 
 /**
- * Merge `patch` into the user's onboarding_state and persist it to
- * business_info. Find-or-insert UPSERT — a brand-new user has no row yet, so
- * the first write creates it (baseline name:'' for the NOT-NULL name column,
- * mirroring _syncBizInfoToDB in business.js). Fire-and-forget.
+ * Merge `patch` into the onboarding state and persist it. localStorage is the
+ * durable first-run gate for everyone (including guests); business_info mirrors
+ * it for a signed-in user across devices. Fire-and-forget.
  * @param {Record<string, any>} patch
  */
 async function _wtPersistState(patch) {
   const next = Object.assign({}, _wtW._onboardingState || {}, patch);
   _wtW._onboardingState = next;
+  try { localStorage.setItem('pc_wt_state', JSON.stringify(next)); } catch (e) { void e; }
   if (!_userId || typeof _db !== 'function') return;
   const uid = _userId;
   try {
@@ -515,10 +571,6 @@ function _wtOverlayClick(e) {
   if (act === 'next') _wtNext();
   else if (act === 'back') _wtBack();
   else if (act === 'skip') _wtClose('skipped');
-  else if (act === 'clear-sample') {
-    _wtClose('completed');
-    if (typeof _wtW._wtClearSampleData === 'function') _wtW._wtClearSampleData();
-  }
 }
 
 /** @param {KeyboardEvent} e */
@@ -532,7 +584,7 @@ function _wtKeydown(e) {
 function _wtOnResize() {
   if (!_wtActive) return;
   if (_wtResizeTimer) clearTimeout(_wtResizeTimer);
-  _wtResizeTimer = setTimeout(() => { _wtResizeTimer = 0; _wtRender(_wtCurrent); }, 120);
+  _wtResizeTimer = setTimeout(() => { _wtResizeTimer = 0; if (_wtActive) _wtRender(_wtCurrent); }, 120);
 }
 
 // ── render ──
@@ -613,81 +665,89 @@ function _wtGetPreClickTarget(i) {
 }
 
 /**
- * Apply context then resolve the spotlight target and draw. Extracted so both
- * the immediate path and the pre-click-delay path share the same logic.
+ * Wait for `sel` to resolve to an on-screen, sized element, polling across
+ * animation frames while a panel renders. Calls cb(el) on success, or cb(null)
+ * once the budget expires. The single target-resolution mechanism for the tour.
+ * @param {string} sel
+ * @param {(el: HTMLElement|null) => void} cb
+ */
+function _wtWaitFor(sel, cb) {
+  if (!sel) { cb(null); return; }
+  const deadline = performance.now() + 1000;
+  const tick = () => {
+    if (!_wtActive) return;
+    const el = document.querySelector(sel);
+    if (el) {
+      const r = el.getBoundingClientRect();
+      if (r.width > 1 && r.height > 1) { cb(/** @type {HTMLElement} */ (el)); return; }
+    }
+    if (performance.now() >= deadline) { cb(null); return; }
+    requestAnimationFrame(tick);
+  };
+  tick();
+}
+
+/**
+ * Skip a step whose spotlight target never resolved, continuing in the current
+ * navigation direction. Step 0 is a center step (always renders), so stepping
+ * back always terminates; stepping forward past the end finishes the tour.
+ * @param {number} i
+ */
+function _wtSkipUnreachable(i) {
+  const next = i + (_wtDir < 0 ? -1 : 1);
+  if (next >= 0 && next < _wtSteps.length) { _wtRender(next); return; }
+  if (_wtDir < 0) { _wtRender(0); return; }
+  _wtClose('completed');
+}
+
+/**
+ * Resolve a step's spotlight target and draw it. If the target can't be found
+ * within the budget the step is skipped rather than shown broken.
  * @param {number} i
  * @param {WtStep} step
  */
 function _wtResolveAndDraw(i, step) {
-  const sel = step.target || '';
-  const now = sel ? document.querySelector(sel) : null;
-  if (now) {
-    const r0 = now.getBoundingClientRect();
-    if (r0.width > 1 && r0.height > 1) {
-      try { now.scrollIntoView({ block: 'center', inline: 'nearest' }); } catch (e) { void e; }
-      _wtDrawSpot(step, now.getBoundingClientRect());
-      return;
-    }
-  }
-  _wtResolveTarget(sel, 0, (el) => {
+  _wtWaitFor(step.target || '', (el) => {
     if (!_wtActive || _wtCurrent !== i) return;
     if (!el) {
-      // Robustness: a step whose target selector no longer resolves still
-      // shows (centered tooltip) instead of breaking — but warn loudly so a
-      // selector broken by an unrelated change is caught, not shipped silent.
       console.warn('[walkthrough] step ' + (i + 1) + ' "' + step.title +
-        '": spotlight target not found (' + sel + ') — showing a centered tooltip');
-      _wtDrawCenter(step, true);
+        '": target not found (' + (step.target || '') + ') — skipping');
+      _wtSkipUnreachable(i);
       return;
     }
     try { el.scrollIntoView({ block: 'center', inline: 'nearest' }); } catch (e) { void e; }
+    if (!_wtActive || _wtCurrent !== i) return;
     _wtDrawSpot(step, el.getBoundingClientRect());
   });
 }
 
 /**
- * Render step `i`. For forward navigation, moves the cursor to the clickable
- * nav/settings/subtab button first so the page change looks like a real click.
+ * Render step `i`. For forward navigation, the cursor first travels to the
+ * clickable nav/settings/sub-tab button so the page change reads as a click.
  * @param {number} i
  */
 function _wtRender(i) {
   const prevIdx = _wtCurrent;
+  _wtDir = (i < prevIdx) ? -1 : 1;
   _wtCurrent = i;
   const step = _wtSteps[i];
   if (!step || !_wtOverlay) return;
 
   if (step.type === 'center') { _wtApplyContext(step); _wtDrawCenter(step, false); return; }
 
-  // Only add the pre-click delay when advancing forward.
+  const proceed = () => {
+    if (!_wtActive || _wtCurrent !== i) return;
+    _wtApplyContext(step);
+    _wtResolveAndDraw(i, step);
+  };
+  // A forward step gets a cursor-travel beat to the button it "clicks".
   const pre = (i > prevIdx) ? _wtGetPreClickTarget(i) : null;
   if (pre) {
     _wtCursorMoveTo(pre.cx, pre.cy);
-    setTimeout(() => {
-      if (!_wtActive || _wtCurrent !== i) return;
-      _wtApplyContext(step);
-      _wtResolveAndDraw(i, step);
-    }, 540);
-    return;
+    setTimeout(proceed, 540);
+  } else {
+    proceed();
   }
-
-  _wtApplyContext(step);
-  _wtResolveAndDraw(i, step);
-}
-
-/**
- * Resolve a spotlight target, retrying across frames while a panel renders.
- * @param {string} sel
- * @param {number} tries
- * @param {(el: HTMLElement|null) => void} cb
- */
-function _wtResolveTarget(sel, tries, cb) {
-  const el = sel ? document.querySelector(sel) : null;
-  if (el) {
-    const r = el.getBoundingClientRect();
-    if (r.width > 1 && r.height > 1) { cb(/** @type {HTMLElement} */ (el)); return; }
-  }
-  if (tries >= 6) { cb(null); return; }
-  setTimeout(() => _wtResolveTarget(sel, tries + 1, cb), 40);
 }
 
 /**
@@ -893,7 +953,6 @@ function _wtCenterHTML(step) {
       '<div class="wt-price-amt">$299</div><div class="wt-price-per">per year</div>' +
       '<div class="wt-price-save">Save 29%</div></div>' +
       '</div>';
-    h += '<div class="wt-sublink" data-wt-act="clear-sample">Clear the sample data</div>';
   }
   h += '<div class="wt-center-actions">';
   if (_wtCurrent > 0) h += '<button class="wt-btn wt-btn-ghost" data-wt-act="back">Back</button>';
@@ -903,235 +962,35 @@ function _wtCenterHTML(step) {
   return h;
 }
 
-// ── sample-data seeder (M6) ──
+// ── first-run gate ──
 
 /**
- * Seed a light "Smith Kitchen" sample project so the tour walks populated
- * panels. Every count stays under the 5-item free cap (1 client, 3 stock,
- * 3 cabinet templates, 1 quote, 4 orders, 1 cut list). The inserted row IDs are
- * recorded into onboarding_state.sample_ids so _wtClearSampleData can later
- * remove exactly these rows. Child lines cascade-delete with their parent.
- * @returns {Promise<boolean>}
- */
-async function _wtSeedSampleProject() {
-  if (!_userId || typeof _db !== 'function') return false;
-  // Idempotency guard: sample_seeded is set as an intent marker before the
-  // first insert, so once it is true the sample project already exists —
-  // seeding again would duplicate every row. _wtMaybeAutoStart also guards,
-  // but this makes the function itself safe to call directly.
-  if ((_wtW._onboardingState || {}).sample_seeded) return false;
-  const uid = _userId;
-  const db = _wtW._db;
-  /** @type {Record<string, number[]>} */
-  const ids = { clients: [], stock_items: [], cabinet_templates: [], quotes: [], orders: [], cutlists: [] };
-  // Mark intent BEFORE inserting: if the seed is interrupted (tab closed
-  // mid-run), the next login sees sample_seeded=true and won't re-seed.
-  await _wtPersistState({ sample_seeded: true });
-  /** @param {string} table @param {any} row @returns {Promise<number>} */
-  const ins1 = async (table, row) => {
-    const { data, error } = await db(table).insert([row]).single();
-    if (error || !data) throw new Error(table + ': ' + ((error && error.message) || 'no row returned'));
-    return data.id;
-  };
-  /** @param {string} table @param {any[]} rows @returns {Promise<number[]>} */
-  const insMany = async (table, rows) => {
-    const { data, error } = await db(table).insert(rows);
-    if (error || !data) throw new Error(table + ': ' + ((error && error.message) || 'no rows returned'));
-    return /** @type {any[]} */ (data).map((/** @type {any} */ r) => r.id);
-  };
-  try {
-    const clientId = await ins1('clients', {
-      user_id: uid, name: 'Smith Residence', email: 'sarah.smith@example.com',
-      phone: '0412 558 901', address: '14 Maple Drive, Kew',
-      notes: 'Sample client — added by the ProCabinet walkthrough.'
-    });
-    ids.clients.push(clientId);
-
-    ids.stock_items = await insMany('stock_items', [
-      { user_id: uid, name: '18mm Birch Plywood', sku: 'PLY-BIR-18', qty: 6, low: 8, cost: 82, category: 'Sheet material' },
-      { user_id: uid, name: 'Blum 110° Hinge', sku: 'HW-BLM-110', qty: 24, low: 40, cost: 4.5, category: 'Hardware' },
-      { user_id: uid, name: 'PVC Edge Banding 22mm', sku: 'EB-PVC-22', qty: 45, low: 20, cost: 1.8, category: 'Edge banding' }
-    ]);
-
-    // Full cabinet specs so the library cards price correctly. cbDefaultLine()
-    // supplies valid material / type names from live settings, so each spec
-    // stays priceable (no NaN, no £0) even as the cabinet schema evolves.
-    const _mkCab = (/** @type {any} */ over) => {
-      const base = (typeof _wtW.cbDefaultLine === 'function') ? _wtW.cbDefaultLine() : {};
-      if (base && base.id != null) delete base.id;
-      return Object.assign(base, over);
-    };
-    ids.cabinet_templates = await insMany('cabinet_templates', [
-      { user_id: uid, name: 'Base 600', type: 'base', default_w_mm: 600, default_h_mm: 720, default_d_mm: 560,
-        default_specs: _mkCab({ w: 600, h: 720, d: 560, doors: 2, doorPct: 95, shelves: 1 }) },
-      { user_id: uid, name: 'Wall 600', type: 'wall', default_w_mm: 600, default_h_mm: 720, default_d_mm: 320,
-        default_specs: _mkCab({ w: 600, h: 720, d: 320, doors: 2, doorPct: 95, adjShelves: 2 }) },
-      { user_id: uid, name: 'Drawer 800', type: 'drawer', default_w_mm: 800, default_h_mm: 720, default_d_mm: 560,
-        default_specs: _mkCab({ w: 800, h: 720, d: 560, drawers: 3, drawerPct: 100 }) }
-    ]);
-
-    const quoteId = await ins1('quotes', {
-      user_id: uid, client_id: clientId, name: 'Smith Kitchen Renovation',
-      status: 'sent', markup: 35, tax: 10, quote_number: 'QUO-SAMPLE',
-      notes: 'Sample quote — added by the ProCabinet walkthrough.'
-    });
-    ids.quotes.push(quoteId);
-    // Bulk insert requires every row to carry the SAME keys — the labour line
-    // takes explicit nulls / zeros for the cabinet-only columns. Cabinet lines
-    // carry door / drawer / shelf specs so the cabinet-editor step opens onto
-    // a fully configured cabinet.
-    await insMany('quote_lines', [
-      { quote_id: quoteId, user_id: uid, position: 0, name: 'Base 600', line_kind: 'cabinet', type: 'base', w_mm: 600, h_mm: 720, d_mm: 560, qty: 2, unit_price: 640, door_count: 2, door_pct: 100, drawer_count: 0, drawer_pct: 0, fixed_shelves: 1, adj_shelves: 0 },
-      { quote_id: quoteId, user_id: uid, position: 1, name: 'Wall 600', line_kind: 'cabinet', type: 'wall', w_mm: 600, h_mm: 720, d_mm: 320, qty: 2, unit_price: 480, door_count: 2, door_pct: 100, drawer_count: 0, drawer_pct: 0, fixed_shelves: 0, adj_shelves: 2 },
-      { quote_id: quoteId, user_id: uid, position: 2, name: 'Drawer Base 600', line_kind: 'cabinet', type: 'base', w_mm: 600, h_mm: 720, d_mm: 560, qty: 1, unit_price: 780, door_count: 0, door_pct: 0, drawer_count: 3, drawer_pct: 100, fixed_shelves: 0, adj_shelves: 0 },
-      { quote_id: quoteId, user_id: uid, position: 3, name: 'Install & fit-off', line_kind: 'labour', type: null, w_mm: null, h_mm: null, d_mm: null, qty: 1, unit_price: 1800, door_count: 0, door_pct: 0, drawer_count: 0, drawer_pct: 0, fixed_shelves: 0, adj_shelves: 0 }
-    ]);
-
-    const orderId = await ins1('orders', {
-      user_id: uid, client_id: clientId, quote_id: quoteId, name: 'Smith Kitchen Renovation',
-      value: 8450, status: 'confirmed', due: '2026-06-12', markup: 35, tax: 10, order_number: 'ORD-SAMPLE'
-    });
-    ids.orders.push(orderId);
-    await insMany('order_lines', [
-      { order_id: orderId, user_id: uid, position: 0, name: 'Base 600', line_kind: 'cabinet', type: 'base', w_mm: 600, h_mm: 720, d_mm: 560, qty: 2, unit_price: 565 },
-      { order_id: orderId, user_id: uid, position: 1, name: 'Wall 600', line_kind: 'cabinet', type: 'wall', w_mm: 600, h_mm: 720, d_mm: 320, qty: 2, unit_price: 425 },
-      { order_id: orderId, user_id: uid, position: 2, name: 'Install & fit-off', line_kind: 'labour', type: null, w_mm: null, h_mm: null, d_mm: null, qty: 1, unit_price: 1800 }
-    ]);
-
-    // A few more orders give the production schedule a fuller multi-week
-    // spread for the Schedule steps. hours_allocated drives the calendar span
-    // directly, so these need no line items.
-    const extraOrderIds = await insMany('orders', [
-      { user_id: uid, client_id: clientId, name: 'Smith — Laundry Cabinets', value: 3200, status: 'production', due: '2026-06-26', markup: 35, tax: 10, order_number: 'ORD-SAMPLE-2', hours_allocated: 28 },
-      { user_id: uid, client_id: clientId, name: 'Smith — Bathroom Vanity', value: 2650, status: 'confirmed', due: '2026-07-17', markup: 35, tax: 10, order_number: 'ORD-SAMPLE-3', hours_allocated: 36 },
-      { user_id: uid, client_id: clientId, name: 'Smith — Study Built-ins', value: 6100, status: 'confirmed', due: '2026-08-14', markup: 35, tax: 10, order_number: 'ORD-SAMPLE-4', hours_allocated: 32 }
-    ]);
-    ids.orders.push(...extraOrderIds);
-
-    const cutlistId = await ins1('cutlists', {
-      user_id: uid, name: 'Smith Kitchen — Cut List', position: 0, ui_prefs: {}, quote_id: quoteId
-    });
-    ids.cutlists.push(cutlistId);
-    // Seed the cut list's sheets + pieces so the cut-list steps open onto a
-    // populated layout. Both cascade-delete with the cutlist row.
-    await insMany('sheets', [
-      { cutlist_id: cutlistId, user_id: uid, position: 0, name: '18mm Birch Plywood', w_mm: 2440, h_mm: 1220, qty: 3, grain: 'none', kerf_mm: 3 }
-    ]);
-    await insMany('pieces', [
-      { cutlist_id: cutlistId, user_id: uid, position: 0, label: 'Side panel', w_mm: 720, h_mm: 560, qty: 4, grain: 'none' },
-      { cutlist_id: cutlistId, user_id: uid, position: 1, label: 'Shelf', w_mm: 568, h_mm: 540, qty: 6, grain: 'none' },
-      { cutlist_id: cutlistId, user_id: uid, position: 2, label: 'Door front', w_mm: 597, h_mm: 397, qty: 4, grain: 'none' }
-    ]);
-  } catch (e) {
-    console.warn('[walkthrough] seed failed', e);
-    // Record whatever landed so a later "clear" can still tidy up.
-    await _wtPersistState({ sample_seeded: true, sample_ids: ids });
-    _wtSyncHelpItem();
-    return false;
-  }
-  await _wtPersistState({ sample_seeded: true, sample_ids: ids });
-  _wtSyncHelpItem();
-  return true;
-}
-
-/**
- * Remove the seeded sample project (behind a confirm). Deletes child lines
- * first, then parents in reverse-FK order, clears sample_ids, reloads data.
- */
-function _wtClearSampleData() {
-  const ob = _wtW._onboardingState || {};
-  const ids = ob.sample_ids || {};
-  const has = ob.sample_seeded && Object.keys(ids).some((/** @type {string} */ k) => (ids[k] || []).length > 0);
-  if (!has) {
-    if (typeof _wtW._toast === 'function') _wtW._toast('No sample data to clear', 'error');
-    return;
-  }
-  const doClear = async () => {
-    const db = _wtW._db;
-    /** @param {string} table @param {string} col @param {number[]} vals */
-    const del = async (table, col, vals) => {
-      if (!vals || !vals.length) return;
-      try { await db(table).delete().in(col, vals); }
-      catch (e) { console.warn('[walkthrough] clear ' + table, e); }
-    };
-    await del('order_lines', 'order_id', ids.orders || []);
-    await del('quote_lines', 'quote_id', ids.quotes || []);
-    await del('orders', 'id', ids.orders || []);
-    await del('cutlists', 'id', ids.cutlists || []);
-    await del('quotes', 'id', ids.quotes || []);
-    await del('cabinet_templates', 'id', ids.cabinet_templates || []);
-    await del('stock_items', 'id', ids.stock_items || []);
-    await del('clients', 'id', ids.clients || []);
-    await _wtPersistState({ sample_seeded: false, sample_ids: {} });
-    _wtSyncHelpItem();
-    if (typeof _wtW.loadAllData === 'function') {
-      try { await _wtW.loadAllData(); } catch (e) { void e; }
-    }
-    if (typeof _wtW._toast === 'function') _wtW._toast('Sample data cleared', 'success');
-  };
-  document.getElementById('help-dropdown')?.classList.remove('open');
-  if (typeof _wtW._confirm === 'function') {
-    _wtW._confirm('Remove the sample project? This deletes the sample client, 3 cabinets, quote, order, cut list and 3 stock items.', doClear);
-  } else {
-    doClear();
-  }
-}
-
-/** Show the Help-menu "Clear sample data" item only while sample data exists. */
-function _wtSyncHelpItem() {
-  const item = document.getElementById('help-clear-sample');
-  if (!item) return;
-  const ob = _wtW._onboardingState || {};
-  item.style.display = ob.sample_seeded ? '' : 'none';
-}
-
-// ── first-run gate (M7) ──
-
-/** @param {any} arr @returns {number} */
-function _wtCount(arr) { return (arr && arr.length) ? arr.length : 0; }
-
-/**
- * Decide whether to auto-show the walkthrough after login. Called from
- * app.js once loadAllData() has resolved (so the in-memory entity arrays and
- * window._onboardingState are populated).
+ * Decide whether to auto-show the walkthrough. Called from app.js after a
+ * sign-in and on guest boot, once data has hydrated.
  *   • dismissed at the current version  → nothing
  *   • dismissed at an older version     → re-show (a new feature shipped)
- *   • never onboarded, empty app        → seed a sample project, reload, show
- *   • never onboarded, app already used → show without seeding
- * No-ops if a tour is already on screen (guards the hourly TOKEN_REFRESHED
- * auth event from restarting a tour mid-flight).
+ *   • never onboarded                   → show
+ * The app is always populated — the demo seed for a guest, or the temporary
+ * demo overlay _wtStart flips on for a signed-in user — so the tour never
+ * needs to seed anything. No-ops if a tour is already on screen.
  * @returns {Promise<void>}
  */
 async function _wtMaybeAutoStart() {
   if (_wtActive) return;
-  _wtSyncHelpItem();
+  // localStorage is the durable first-run gate for everyone (incl. guests);
+  // business_info.onboarding_state mirrors it for a signed-in user's devices.
+  /** @type {any} */
+  let ls = null;
+  try { ls = JSON.parse(localStorage.getItem('pc_wt_state') || 'null'); } catch (e) { ls = null; }
   const ob = _wtW._onboardingState || {};
-  const seenVersion = typeof ob.version === 'number' ? ob.version : 0;
-  if (ob.dismissed_at && seenVersion >= WT_VERSION) return;          // current — done
-  if (ob.dismissed_at && seenVersion < WT_VERSION) {                 // version-gated re-show
-    _wtStart({ force: true });
-    return;
-  }
-  // Never onboarded — seed a sample project if the app is empty so the tour
-  // walks populated panels, then start.
-  const empty =
-    _wtCount(typeof orders !== 'undefined' && orders) === 0 &&
-    _wtCount(typeof quotes !== 'undefined' && quotes) === 0 &&
-    _wtCount(typeof clients !== 'undefined' && clients) === 0 &&
-    _wtCount(typeof stockItems !== 'undefined' && stockItems) === 0;
-  if (empty && !ob.sample_seeded) {
-    const ok = await _wtSeedSampleProject();
-    if (ok && typeof _wtW.loadAllData === 'function') {
-      try { await _wtW.loadAllData(); } catch (e) { void e; }
-    }
-  }
+  const lsVersion = (ls && typeof ls.version === 'number') ? ls.version : -1;
+  const obVersion = (typeof ob.version === 'number') ? ob.version : -1;
+  const dismissed = !!((ls && ls.dismissed_at) || ob.dismissed_at);
+  if (dismissed && Math.max(lsVersion, obVersion) >= WT_VERSION) return;
   _wtStart({ force: true });
 }
 
 // ── public surface ──
 _wtW._wtStart = _wtStart;
 _wtW._wtClose = _wtClose;
-_wtW._wtSeedSampleProject = _wtSeedSampleProject;
-_wtW._wtClearSampleData = _wtClearSampleData;
-_wtW._wtSyncHelpItem = _wtSyncHelpItem;
 _wtW._wtMaybeAutoStart = _wtMaybeAutoStart;

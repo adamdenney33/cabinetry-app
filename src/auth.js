@@ -18,10 +18,6 @@
 function dismissAuth() {
   /** @type {HTMLElement} */ (document.getElementById('auth-screen')).classList.add('hidden');
 }
-function showAuthFromPaywall() {
-  /** @type {HTMLElement} */ (document.getElementById('paywall-modal')).classList.add('hidden');
-  _showAuth();
-}
 
 // Keyboard shortcuts
 document.addEventListener('keydown', e => {
@@ -83,8 +79,6 @@ document.addEventListener('keydown', e => {
   if (e.key !== 'Escape') return;
   const auth = document.getElementById('auth-screen');
   if (auth && !auth.classList.contains('hidden')) { dismissAuth(); return; }
-  const paywall = document.getElementById('paywall-modal');
-  if (paywall && !paywall.classList.contains('hidden')) { paywall.classList.add('hidden'); return; }
   const acct = document.getElementById('account-panel');
   if (acct && acct.classList.contains('open')) { acct.classList.remove('open'); return; }
   const proj = document.getElementById('projects-panel');
