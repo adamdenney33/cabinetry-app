@@ -158,7 +158,7 @@ function renderCBRates() {
   const cur = window.currency;
   /** @type {any} */
   const lt = cbSettings.labourTimes || {};
-  if (!window._ratesOpen) window._ratesOpen = {};
+  if (!window._ratesOpen) window._ratesOpen = { core:true, carcassTypes:true, doorTypes:true, drawerFrontTypes:true, drawerBoxTypes:true, labour:true, basetypes:true };
   const ro = window._ratesOpen;
   /** @param {string} k */
   const isOpen = k => ro[k] === true;
