@@ -56,7 +56,7 @@ const _wtSteps = [
     type: 'center', section: 'dashboard', preview: 'gantt',
     title: 'See the full workflow in action',
     titleHtml: 'See the full <span class="wt-hi">workflow</span> in action',
-    body: 'This tour walks through each part of the app. We\'ve loaded a sample project so you can see how it works — use the <span class="wt-hi">arrow keys</span> to step through it.',
+    body: 'This tour walks through each part of the app. We\'ve loaded a sample project so you can see how it works — use the <span class="wt-hi">arrow keys on your keyboard</span> to step through it.',
     nextLabel: 'Start the tour →'
   },
 
@@ -899,6 +899,11 @@ function _wtCenterHTML(step) {
  */
 async function _wtSeedSampleProject() {
   if (!_userId || typeof _db !== 'function') return false;
+  // Idempotency guard: sample_seeded is set as an intent marker before the
+  // first insert, so once it is true the sample project already exists —
+  // seeding again would duplicate every row. _wtMaybeAutoStart also guards,
+  // but this makes the function itself safe to call directly.
+  if ((_wtW._onboardingState || {}).sample_seeded) return false;
   const uid = _userId;
   const db = _wtW._db;
   /** @type {Record<string, number[]>} */
