@@ -70,6 +70,9 @@ let _clCurrentCabinetName = '';
 let _clCurrentCutlistId = null;
 let _clCurrentCutlistName = '';
 let _clDirty = false;
+// false while a cut list is mid-load — gates autosave so the transient
+// empty/partial in-memory arrays during a load can't be persisted.
+let _clCutlistReady = true;
 /** @type {string} */
 let _clMainView = 'library';
 
@@ -847,6 +850,14 @@ function _clScheduleAutosave() {
 
 async function _clRunAutosave() {
   if (!_userId) return;
+  // Suspend autosave while the walkthrough is on screen: the tour opens the
+  // sample cut list read-only, so a tour-driven render or the optimise step
+  // must not persist over — or wipe — the seeded rows.
+  if (/** @type {any} */ (window)._wtActive) return;
+  // Never autosave a cut list mid-load: its in-memory arrays are transiently
+  // empty/partial and the destructive re-sync below would persist that,
+  // wiping the real rows.
+  if (!_clCutlistReady) return;
   // Post-F5: every cut list is its own row (no project wrapper). Direct
   // write to the cutlists row, then re-sync sheets/pieces/edge_bands children.
   if (_clCurrentCutlistId) {
@@ -4274,6 +4285,11 @@ async function _clOpenLibraryCutlist(id) {
 
 /** @param {number} id */
 async function _clDoOpenLibraryCutlist(id) {
+  // Mark the cut list "not ready" for the whole load and drop any pending
+  // autosave timer — a debounced autosave firing mid-load would otherwise
+  // persist the transient empty arrays over the real rows.
+  _clCutlistReady = false;
+  if (_clAutosaveTimer) { clearTimeout(_clAutosaveTimer); _clAutosaveTimer = null; }
   try {
     const { data: cl } = await _db('cutlists').select('*').eq('id', id).single();
     if (!cl) { _toast('Cut list not found', 'error'); return; }
@@ -4317,6 +4333,8 @@ async function _clDoOpenLibraryCutlist(id) {
     }
   } catch (e) {
     _toast('Failed to load cut list', 'error');
+  } finally {
+    _clCutlistReady = true;
   }
 }
 

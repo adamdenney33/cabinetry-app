@@ -423,6 +423,7 @@ function _wtStart(opts) {
   void opts; // gate lives in _wtMaybeAutoStart (M7); _wtStart always starts.
   if (_wtActive) return;
   _wtActive = true;
+  _wtW._wtActive = true; // window-visible so other modules can suspend autosaves
   _wtCurrent = 0;
   const ov = document.createElement('div');
   ov.id = 'wt-overlay';
@@ -442,6 +443,7 @@ function _wtStart(opts) {
 function _wtClose(reason) {
   if (!_wtActive) return;
   _wtActive = false;
+  _wtW._wtActive = false;
   if (_wtOverlay) { _wtOverlay.remove(); _wtOverlay = null; }
   document.removeEventListener('keydown', _wtKeydown, true);
   window.removeEventListener('resize', _wtOnResize);
