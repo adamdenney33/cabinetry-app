@@ -1957,6 +1957,26 @@ input.pf-input-compact[type="date"]:disabled::-webkit-calendar-picker-indicator 
 .sched-stepper .step-btn:hover { background: var(--accent-dim); color: var(--accent); border-color: var(--accent); }
 .sched-stepper .step-btn:active { background: var(--accent); color: #fff; }
 
+/* Schedule sidebar — per-order priority stepper */
+.sched-pri { display:inline-flex; align-items:center; gap:4px; flex-shrink:0; }
+.sched-pri-num {
+  font-size:11px; font-weight:700; color:var(--muted);
+  min-width:9px; text-align:center; font-variant-numeric:tabular-nums;
+}
+.sched-pri-num.has-priority { color:var(--accent); }
+.sched-pri-arrows {
+  display:inline-flex; flex-direction:column;
+  border:1px solid var(--border); border-radius:3px; overflow:hidden;
+}
+.sched-pri-btn {
+  width:15px; height:9px; padding:0; line-height:0;
+  display:flex; align-items:center; justify-content:center;
+  border:none; background:var(--surface); color:var(--text2); cursor:pointer;
+}
+.sched-pri-btn + .sched-pri-btn { border-top:1px solid var(--border); }
+.sched-pri-btn:hover { background:var(--accent-dim); color:var(--accent); }
+.sched-pri-btn:disabled { opacity:.3; cursor:default; background:var(--surface2); }
+
 /* Pricing rate fields — Tax + Discount. Same label-outside-input pattern
    as .stock-markup-row (a plain uppercase muted heading, then a bordered
    wrap with the number input + .markup-unit suffix). Each field locks to
@@ -2634,6 +2654,7 @@ input.pf-input-compact[type="date"]:disabled::-webkit-calendar-picker-indicator 
 .wt-tl-node {
   flex: 0 0 13px; width: 13px;
   display: flex; flex-direction: column; align-items: center;
+  cursor: pointer;
 }
 .wt-tl-dot {
   width: 13px; height: 13px; border-radius: 50%; box-sizing: border-box;
@@ -2661,6 +2682,10 @@ input.pf-input-compact[type="date"]:disabled::-webkit-calendar-picker-indicator 
   animation: wtTlPulse 2s ease-in-out infinite;
 }
 .wt-tl-node.wt-tl-active .wt-tl-label { color: var(--accent); font-weight: 800; }
+.wt-tl-node:hover .wt-tl-label { color: var(--accent); }
+.wt-tl-node:not(.wt-tl-active):hover .wt-tl-dot {
+  border-color: var(--accent); transform: scale(1.18);
+}
 @keyframes wtTlPulse {
   0%, 100% { box-shadow: 0 0 0 4px rgba(232,168,56,0.22); }
   50%      { box-shadow: 0 0 0 8px rgba(232,168,56,0.09); }

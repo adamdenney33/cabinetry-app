@@ -410,12 +410,26 @@ function _wtInitTimeline() {
   });
   html += '</div>';
   el.innerHTML = html;
+  el.addEventListener('click', _wtTimelineClick);
   document.body.appendChild(el);
   _wtTimelineEl = el;
 }
 
 function _wtDestroyTimeline() {
   if (_wtTimelineEl) { _wtTimelineEl.remove(); _wtTimelineEl = null; }
+}
+
+/** Jump the tour to the first step of a clicked phase node.
+ *  @param {MouseEvent} e */
+function _wtTimelineClick(e) {
+  e.stopPropagation();
+  const t = /** @type {HTMLElement|null} */ (e.target);
+  const node = t && typeof t.closest === 'function' ? t.closest('.wt-tl-node') : null;
+  if (!node) return;
+  const i = parseInt(node.getAttribute('data-i') || '-1', 10);
+  if (i < 0 || i >= _WT_PHASES.length) return;
+  const target = _WT_PHASES[i].first;
+  if (target !== _wtCurrent) _wtRender(target);
 }
 
 /** Re-mark every node (done / active / todo) and grow each connector to match
