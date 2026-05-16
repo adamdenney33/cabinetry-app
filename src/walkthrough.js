@@ -390,18 +390,12 @@ function _wtGateSection(section) {
       _wtW._exitClient_cabinet();
     }
     if (section === 'cutlist') {
-      // Seed a small sample cut list so the optimiser produces a real layout
-      // for the "Visual layout" / "Export" steps. Only when the user has no
-      // cut list of their own — guarded on the localStorage working copy.
-      const savedSheets = localStorage.getItem('pc_cl_sheets');
-      const savedPieces = localStorage.getItem('pc_cl_pieces');
-      const clEmpty = (!savedSheets || savedSheets === '[]')
-        && (!savedPieces || savedPieces === '[]');
-      if (clEmpty && typeof _wtW.addSheet === 'function' && typeof _wtW.addPiece === 'function') {
-        _wtW.addSheet('18mm Birch Plywood', 2440, 1220, 2);
-        _wtW.addPiece('Side panel', 720, 560, 4, 'none');
-        _wtW.addPiece('Shelf', 568, 540, 6, 'none');
-        _wtW.addPiece('Door front', 597, 397, 4, 'none');
+      // Open the seeded sample cut list (created by _wtSeedSampleProject with
+      // its own sheets + pieces) so the input form un-gates and the layout
+      // steps walk a populated cut list.
+      const clIds = (((_wtW._onboardingState || {}).sample_ids) || {}).cutlists || [];
+      if (clIds[0] && typeof _wtW._clOpenLibraryCutlist === 'function') {
+        _wtW._clOpenLibraryCutlist(clIds[0]);
       }
       if (typeof _wtW.switchCLMainView === 'function') _wtW.switchCLMainView('layout');
     }
@@ -898,7 +892,7 @@ function _wtCenterHTML(step) {
 /**
  * Seed a light "Smith Kitchen" sample project so the tour walks populated
  * panels. Every count stays under the 5-item free cap (1 client, 3 stock,
- * 3 cabinet templates, 1 quote, 1 order, 1 cut list). The inserted row IDs are
+ * 3 cabinet templates, 1 quote, 4 orders, 1 cut list). The inserted row IDs are
  * recorded into onboarding_state.sample_ids so _wtClearSampleData can later
  * remove exactly these rows. Child lines cascade-delete with their parent.
  * @returns {Promise<boolean>}
@@ -951,11 +945,14 @@ async function _wtSeedSampleProject() {
     });
     ids.quotes.push(quoteId);
     // Bulk insert requires every row to carry the SAME keys — the labour line
-    // takes explicit nulls for the cabinet-only columns.
+    // takes explicit nulls / zeros for the cabinet-only columns. Cabinet lines
+    // carry door / drawer / shelf specs so the cabinet-editor step opens onto
+    // a fully configured cabinet.
     await insMany('quote_lines', [
-      { quote_id: quoteId, user_id: uid, position: 0, name: 'Base 600', line_kind: 'cabinet', type: 'base', w_mm: 600, h_mm: 720, d_mm: 560, qty: 2, unit_price: 565 },
-      { quote_id: quoteId, user_id: uid, position: 1, name: 'Wall 600', line_kind: 'cabinet', type: 'wall', w_mm: 600, h_mm: 720, d_mm: 320, qty: 2, unit_price: 425 },
-      { quote_id: quoteId, user_id: uid, position: 2, name: 'Install & fit-off', line_kind: 'labour', type: null, w_mm: null, h_mm: null, d_mm: null, qty: 1, unit_price: 1800 }
+      { quote_id: quoteId, user_id: uid, position: 0, name: 'Base 600', line_kind: 'cabinet', type: 'base', w_mm: 600, h_mm: 720, d_mm: 560, qty: 2, unit_price: 640, door_count: 2, door_pct: 100, drawer_count: 0, drawer_pct: 0, fixed_shelves: 1, adj_shelves: 0 },
+      { quote_id: quoteId, user_id: uid, position: 1, name: 'Wall 600', line_kind: 'cabinet', type: 'wall', w_mm: 600, h_mm: 720, d_mm: 320, qty: 2, unit_price: 480, door_count: 2, door_pct: 100, drawer_count: 0, drawer_pct: 0, fixed_shelves: 0, adj_shelves: 2 },
+      { quote_id: quoteId, user_id: uid, position: 2, name: 'Drawer Base 600', line_kind: 'cabinet', type: 'base', w_mm: 600, h_mm: 720, d_mm: 560, qty: 1, unit_price: 780, door_count: 0, door_pct: 0, drawer_count: 3, drawer_pct: 100, fixed_shelves: 0, adj_shelves: 0 },
+      { quote_id: quoteId, user_id: uid, position: 3, name: 'Install & fit-off', line_kind: 'labour', type: null, w_mm: null, h_mm: null, d_mm: null, qty: 1, unit_price: 1800, door_count: 0, door_pct: 0, drawer_count: 0, drawer_pct: 0, fixed_shelves: 0, adj_shelves: 0 }
     ]);
 
     const orderId = await ins1('orders', {
@@ -969,10 +966,30 @@ async function _wtSeedSampleProject() {
       { order_id: orderId, user_id: uid, position: 2, name: 'Install & fit-off', line_kind: 'labour', type: null, w_mm: null, h_mm: null, d_mm: null, qty: 1, unit_price: 1800 }
     ]);
 
+    // A few more orders give the production schedule a fuller multi-week
+    // spread for the Schedule steps. hours_allocated drives the calendar span
+    // directly, so these need no line items.
+    const extraOrderIds = await insMany('orders', [
+      { user_id: uid, client_id: clientId, name: 'Smith — Laundry Cabinets', value: 3200, status: 'production', due: '2026-06-26', markup: 35, tax: 10, order_number: 'ORD-SAMPLE-2', hours_allocated: 28 },
+      { user_id: uid, client_id: clientId, name: 'Smith — Bathroom Vanity', value: 2650, status: 'confirmed', due: '2026-07-17', markup: 35, tax: 10, order_number: 'ORD-SAMPLE-3', hours_allocated: 36 },
+      { user_id: uid, client_id: clientId, name: 'Smith — Study Built-ins', value: 6100, status: 'confirmed', due: '2026-08-14', markup: 35, tax: 10, order_number: 'ORD-SAMPLE-4', hours_allocated: 32 }
+    ]);
+    ids.orders.push(...extraOrderIds);
+
     const cutlistId = await ins1('cutlists', {
       user_id: uid, name: 'Smith Kitchen — Cut List', position: 0, ui_prefs: {}, quote_id: quoteId
     });
     ids.cutlists.push(cutlistId);
+    // Seed the cut list's sheets + pieces so the cut-list steps open onto a
+    // populated layout. Both cascade-delete with the cutlist row.
+    await insMany('sheets', [
+      { cutlist_id: cutlistId, user_id: uid, position: 0, name: '18mm Birch Plywood', w_mm: 2440, h_mm: 1220, qty: 3, grain: 'none', kerf_mm: 3 }
+    ]);
+    await insMany('pieces', [
+      { cutlist_id: cutlistId, user_id: uid, position: 0, label: 'Side panel', w_mm: 720, h_mm: 560, qty: 4, grain: 'none' },
+      { cutlist_id: cutlistId, user_id: uid, position: 1, label: 'Shelf', w_mm: 568, h_mm: 540, qty: 6, grain: 'none' },
+      { cutlist_id: cutlistId, user_id: uid, position: 2, label: 'Door front', w_mm: 597, h_mm: 397, qty: 4, grain: 'none' }
+    ]);
   } catch (e) {
     console.warn('[walkthrough] seed failed', e);
     // Record whatever landed so a later "clear" can still tidy up.
