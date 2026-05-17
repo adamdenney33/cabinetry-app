@@ -190,20 +190,21 @@ header {
 
 .feat-intro { margin: 0 0 12px; font-size: 13px; color: var(--text2); }
 .feat-suggest-cta {
-  width: 100%; justify-content: center; gap: 7px;
+  width: 100%; height: 34px; justify-content: center; gap: 7px;
   margin-bottom: 14px;
 }
 .feat-list { display: flex; flex-direction: column; gap: 6px; }
 .feat-row {
   display: flex; align-items: center; gap: 12px;
-  padding: 7px 12px;
+  min-height: 34px;
+  padding: 0 12px;
   border: 1px solid var(--border);
   border-radius: 9px;
   background: var(--surface);
 }
 .feat-row-body { flex: 1; min-width: 0; }
 .feat-title {
-  font-size: 13px; font-weight: 600; color: var(--text);
+  font-size: 12px; font-weight: 600; color: var(--text);
   line-height: 1.4;
 }
 .feat-desc {
