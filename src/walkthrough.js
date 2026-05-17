@@ -18,6 +18,8 @@
 //   _wtClose(reason)    — tear down. reason: 'completed' | 'skipped'.
 //   _wtMaybeAutoStart() — entry gate; auto-shows the full tour on first run,
 //                         then the once-per-session Pro CTA for free users.
+//   _wtStartCta()       — open just the Pro CTA on demand (the account
+//                         dropdown's "Upgrade to Pro" button); no session gate.
 //
 // Cross-file globals used: switchSection (settings.js), switchCabTab /
 // switchCBMainView (cabinet-render.js). Reached via the `_wtW` any-cast so
@@ -492,11 +494,12 @@ async function _wtRunStart(tempDemo) {
 }
 
 /**
- * Open the overlay showing ONLY the final Pro CTA — the once-per-browser-
- * session reminder for a returning free user (the full guided tour already
- * ran on first login). Unlike _wtRunStart this never borrows demo mode and
- * never switches section: the CTA is a centred modal over the user's own
- * live screen. No-ops if a tour/overlay is already up.
+ * Open the overlay showing ONLY the final Pro CTA. Used two ways: as the
+ * once-per-browser-session reminder for a returning free user (via
+ * _wtMaybeShowSessionCta), and as the on-demand opener behind the account
+ * dropdown's "Upgrade to Pro" button. Unlike _wtRunStart it never borrows
+ * demo mode and never switches section — the CTA is a centred modal over the
+ * user's own live screen. No-ops if a tour/overlay is already up.
  */
 function _wtStartCta() {
   if (_wtActive) return;
@@ -1218,3 +1221,4 @@ async function _wtMaybeAutoStart() {
 _wtW._wtStart = _wtStart;
 _wtW._wtClose = _wtClose;
 _wtW._wtMaybeAutoStart = _wtMaybeAutoStart;
+_wtW._wtStartCta = _wtStartCta;

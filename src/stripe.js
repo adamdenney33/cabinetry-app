@@ -179,19 +179,17 @@ function renderSubscriptionSection() {
     return;
   }
 
+  // Free plan — the Upgrade button opens the walkthrough's plan-picker CTA
+  // (_wtStartCta) rather than jumping straight to Stripe checkout.
   el.innerHTML = `
     <div class="account-plan-row">
       <span class="account-plan-name">Free Plan</span>
       <span class="badge badge-orange">5/library</span>
     </div>
     <div style="padding:10px 16px;border-bottom:1px solid var(--border)">
-      <button onclick="_handleUpgradeClick('annual')" style="width:100%;padding:8px;background:var(--accent);color:white;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer">
+      <button onclick="_wtStartCta()" style="width:100%;padding:8px;background:var(--accent);color:white;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer">
         Upgrade to Pro
       </button>
-      <div style="display:flex;justify-content:space-between;font-size:10px;margin-top:6px;color:var(--muted)">
-        <span style="cursor:pointer" onclick="_handleUpgradeClick('annual')"><strong style="color:var(--text)">$15</strong> / mo · billed yearly</span>
-        <span style="cursor:pointer" onclick="_handleUpgradeClick('monthly')"><strong style="color:var(--text)">$25</strong> / mo</span>
-      </div>
     </div>
   `;
 }

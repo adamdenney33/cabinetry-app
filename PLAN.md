@@ -75,6 +75,11 @@ The full tour stays first-login-only.
   calls it instead of no-opping. A completed full tour also sets the flag, so
   the CTA never doubles up on a same-session reload; the flag clears when the
   browser session ends, so it returns next session.
+- ✅ **"Upgrade to Pro" opens the CTA** — the account-dropdown subscription
+  block (`renderSubscriptionSection`, `src/stripe.js`) now calls `_wtStartCta()`
+  instead of jumping straight to annual checkout, and the two price caption
+  links below the button ($15 / $25) are removed — the CTA's own tier buttons
+  drive plan choice. `_wtStartCta` added to the walkthrough's public surface.
 
 First-run tour, the `WT_VERSION` re-show and the logged-out-demo every-reload
 replay are unchanged. No schema migration. `npm run typecheck` clean; verified
