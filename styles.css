@@ -193,12 +193,12 @@ header {
   width: 100%; justify-content: center; gap: 7px;
   margin-bottom: 14px;
 }
-.feat-list { display: flex; flex-direction: column; gap: 8px; }
+.feat-list { display: flex; flex-direction: column; gap: 6px; }
 .feat-row {
   display: flex; align-items: center; gap: 12px;
-  padding: 11px 12px;
+  padding: 7px 12px;
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 9px;
   background: var(--surface);
 }
 .feat-row-body { flex: 1; min-width: 0; }
@@ -223,9 +223,9 @@ header {
 .feat-badge.shipped     { background: rgba(34,197,94,0.18);   color: #16a34a; }
 .feat-vote {
   flex-shrink: 0;
-  display: flex; flex-direction: column; align-items: center; gap: 1px;
-  min-width: 48px;
-  padding: 6px 8px;
+  display: flex; align-items: center; justify-content: center; gap: 5px;
+  min-width: 52px;
+  padding: 5px 10px;
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--surface2);

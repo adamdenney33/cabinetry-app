@@ -145,8 +145,8 @@ function _featureRow(s) {
     </div>
     <button class="feat-vote${voted ? ' voted' : ''}" onclick="_featureToggleVote(${s.id})"
       aria-pressed="${voted}" title="${voted ? 'Remove your upvote' : 'Upvote this idea'}">
-      ${_FEAT_ARROW}
       <span class="feat-vote-count">${s.vote_count}</span>
+      ${_FEAT_ARROW}
     </button>
   </div>`;
 }
