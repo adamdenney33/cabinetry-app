@@ -66,7 +66,7 @@
   .a-title { font-size: 20px; font-weight: 800; margin-bottom: 5px; }
   .a-sub { font-size: 12.5px; color: var(--text2); }
   .a-cols { display: flex; gap: 10px; }
-  .a-col { flex: 1; border: 1px solid var(--border); border-radius: 12px; padding: 17px 13px 15px; display: flex; flex-direction: column; }
+  .a-col { flex: 1; min-width: 0; border: 1px solid var(--border); border-radius: 12px; padding: 17px 13px 15px; display: flex; flex-direction: column; }
   .a-col-hero { border-color: var(--accent); background: var(--accent-dim); position: relative; }
   .a-flag { position: absolute; top: -9px; left: 50%; transform: translateX(-50%); background: var(--accent); color: #1a1a1a; font-size: 9px; font-weight: 800; letter-spacing: 0.4px; text-transform: uppercase; padding: 3px 10px; border-radius: 20px; white-space: nowrap; }
   .a-tier { font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.6px; color: var(--muted); }
@@ -76,8 +76,12 @@
   .a-per { font-size: 10px; color: var(--muted); margin-top: 3px; min-height: 13px; }
   .a-per s { color: var(--faint); }
   .a-feats { list-style: none; margin: 13px 0 15px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
-  .a-feats li { font-size: 10.5px; line-height: 1.4; color: var(--text2); padding-left: 14px; position: relative; }
+  .a-feats li { font-size: 10.5px; line-height: 1.4; color: var(--text2); padding-left: 14px; position: relative; min-height: 32px; }
+  .a-feats li:nth-child(1), .a-feats li:nth-child(4) { min-height: 48px; }
   .a-feats li::before { content: '✓'; position: absolute; left: 0; color: var(--accent); font-weight: 800; font-size: 9px; }
+  .a-feats li.lim { color: var(--muted); }
+  .a-feats li.lim::before { content: '✕'; color: var(--faint); }
+  .a-feats li.lim strong { color: var(--text2); }
   .a-feats strong { color: var(--text); }
 
   /* ─── B — 2×2 grid ───────────────────────────────────────────────── */
@@ -405,9 +409,9 @@
   <div class="label">A — Four-column compact</div>
   <div class="a-card">
     <div class="a-head">
-      <div class="a-eyebrow">🚀 You're ready to go</div>
-      <div class="a-title">Choose how to continue</div>
-      <div class="a-sub">Keep it free, or unlock unlimited everything.</div>
+      <div class="a-eyebrow">Support the project</div>
+      <div class="a-title">Choose your ProCabinet plan</div>
+      <div class="a-sub">Continue for free, or unlock pro features.</div>
     </div>
     <div class="a-cols">
       <div class="a-col">
@@ -415,8 +419,11 @@
         <div class="a-price">$0</div>
         <div class="a-per">forever</div>
         <ul class="a-feats">
-          <li>Unlimited cabinet quotes &amp; cut lists</li>
-          <li><strong>5 items</strong> saved per library</li>
+          <li>Free use of all core functions of the app</li>
+          <li class="lim"><strong>5 saved items</strong> limit per library</li>
+          <li class="lim">No library import / export</li>
+          <li class="lim">ProCabinet branding on PDFs</li>
+          <li class="lim">Limited access to new features</li>
         </ul>
         <button class="bt bt-ghost bt-sm bt-full">Continue free</button>
       </div>
@@ -425,8 +432,11 @@
         <div class="a-price">$25<span>/mo</span></div>
         <div class="a-per"><s>$35/mo</s> · launch price</div>
         <ul class="a-feats">
-          <li>First 6 months, then $35</li>
-          <li>Cancel anytime</li>
+          <li>First 6 months, then $35/mo · cancel anytime</li>
+          <li><strong>Unlimited saved items</strong></li>
+          <li>Import / export libraries</li>
+          <li>ProCabinet removed from PDFs</li>
+          <li>Priority email support</li>
         </ul>
         <button class="bt bt-ghost bt-sm bt-full">Choose Monthly</button>
       </div>
@@ -435,8 +445,11 @@
         <div class="a-price">$15<span>/mo</span></div>
         <div class="a-per"><s>$25/mo</s> · launch price</div>
         <ul class="a-feats">
-          <li>$180 billed for year one</li>
-          <li>Then renews at $300/yr</li>
+          <li>$180 billed for year one, then $300/yr</li>
+          <li><strong>Unlimited saved items</strong></li>
+          <li>Import / export libraries</li>
+          <li>ProCabinet removed from PDFs</li>
+          <li>Priority email support</li>
         </ul>
         <button class="bt bt-ghost bt-sm bt-full">Choose Annual</button>
       </div>
@@ -448,6 +461,9 @@
         <ul class="a-feats">
           <li>Pay once, use forever</li>
           <li>Only <strong>50 accounts</strong> ever</li>
+          <li><strong>Everything</strong> in the paid plans</li>
+          <li>New feature requests prioritised</li>
+          <li>WhatsApp group with founder</li>
         </ul>
         <button class="bt bt-amber bt-sm bt-full">Claim a seat</button>
       </div>
