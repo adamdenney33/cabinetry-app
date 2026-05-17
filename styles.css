@@ -695,6 +695,11 @@ textarea { resize: vertical; min-height: 70px; }
   border-color: var(--accent-dim);
 }
 
+/* Clickable card headers — navigate to the matching section. */
+.card-header-nav { cursor: pointer; transition: background 0.12s ease; }
+.card-header-nav:hover { background: var(--accent-dim); }
+.card-header-nav:hover .card-title { color: var(--accent); }
+
 /* Schedule event bars — outer wrapper holds onclick, inner colored
    div is the visual bar. Lift + brighten on hover; bump z-index so a
    hovered bar sits above neighbors in the same lane. */

@@ -103,9 +103,8 @@ function renderDashboard() {
 
         <!-- Active Orders -->
         <div class="card">
-          <div class="card-header" style="justify-content:space-between">
+          <div class="card-header card-header-nav" onclick="switchSection('orders')">
             <span class="card-title">Active Orders</span>
-            <button class="btn btn-outline" style="padding:3px 10px;font-size:11px" onclick="switchSection('orders')">View all</button>
           </div>
           <div class="card-body" style="padding:0">
             ${activeOrders.length === 0
@@ -132,9 +131,8 @@ function renderDashboard() {
 
         <!-- Recent Quotes -->
         <div class="card">
-          <div class="card-header" style="justify-content:space-between">
+          <div class="card-header card-header-nav" onclick="switchSection('quote')">
             <span class="card-title">Recent Quotes</span>
-            <button class="btn btn-outline" style="padding:3px 10px;font-size:11px" onclick="switchSection('quote')">View all</button>
           </div>
           <div class="card-body" style="padding:0">
             ${quotes.slice(0, DASH_CARD_ROWS).map(q => {
@@ -162,9 +160,8 @@ function renderDashboard() {
 
         <!-- Stock Alerts -->
         <div class="card">
-          <div class="card-header" style="justify-content:space-between">
+          <div class="card-header card-header-nav" onclick="switchSection('stock')">
             <span class="card-title">Stock Alerts</span>
-            <button class="btn btn-outline" style="padding:3px 10px;font-size:11px" onclick="switchSection('stock')">View stock</button>
           </div>
           <div class="card-body" style="padding:0">
             ${lowStock.length === 0
@@ -351,7 +348,7 @@ function renderDashboard() {
         row += `</div>`;
 
         return `<div class="card" style="margin-bottom:18px">
-          <div class="card-header" style="justify-content:space-between"><span class="card-title">Schedule <span style="font-weight:400;color:var(--muted);margin-left:4px">next 7 days</span></span><button class="btn btn-outline" style="padding:3px 10px;font-size:11px" onclick="switchSection('schedule')">Open</button></div>
+          <div class="card-header card-header-nav" onclick="switchSection('schedule')"><span class="card-title">Schedule <span style="font-weight:400;color:var(--muted);margin-left:4px">next 7 days</span></span></div>
           ${header}
           ${row}
           ${winEvents.length === 0 ? `<div style="padding:10px;text-align:center;color:var(--muted);font-size:11px;border-top:1px solid var(--border2)">Nothing scheduled in the next 7 days</div>` : ''}
@@ -361,13 +358,13 @@ function renderDashboard() {
       <!-- Revenue chart + Pipeline -->
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:18px;margin-bottom:0">
         <div class="card">
-          <div class="card-header"><span class="card-title">Monthly Revenue <span style="font-weight:400;color:var(--muted);margin-left:4px">completed orders</span></span></div>
+          <div class="card-header card-header-nav" onclick="switchSection('orders')"><span class="card-title">Monthly Revenue <span style="font-weight:400;color:var(--muted);margin-left:4px">completed orders</span></span></div>
           <div class="card-body" style="padding:12px 18px">
             <canvas id="revenue-chart" height="120" style="width:100%;display:block"></canvas>
           </div>
         </div>
         <div class="card">
-          <div class="card-header"><span class="card-title">Pipeline <span style="font-weight:400;color:var(--muted);margin-left:4px">last 90 days</span></span></div>
+          <div class="card-header card-header-nav" onclick="switchSection('orders')"><span class="card-title">Pipeline <span style="font-weight:400;color:var(--muted);margin-left:4px">last 90 days</span></span></div>
           <div class="card-body" style="padding:14px 18px">
             ${ordersByStatus.map(s => `
               <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border2)">
