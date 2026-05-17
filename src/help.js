@@ -1,10 +1,11 @@
 // ProCabinet — Help menu actions.
-// Backs the four entries in the toolbar Help dropdown (markup in index.html
+// Backs the three entries in the toolbar Help dropdown (markup in index.html
 // next to .settings-wrap, toggle handler `toggleHelp()` in src/settings.js).
 //
-// User Guide is a placeholder for now; the step-by-step walkthrough engine
-// ships separately. Bug/Suggestion/Support all open the user's mail client
-// via mailto: — no DB writes, no forms.
+// User Guide launches the guided walkthrough. Bug Report and Support open the
+// user's mail client via mailto: — no DB writes, no forms. "Suggest a feature"
+// moved to the Features menu (src/features.js); _helpContext / _mailtoHref /
+// SUPPORT_EMAIL stay here and are shared with it.
 
 const SUPPORT_EMAIL = 'adam@procabinet.app';
 
@@ -55,35 +56,6 @@ function _openBugReport() {
       </ul>
       <p style="margin:0;color:var(--muted);font-size:12px">
         Clicking below opens your email client with the current tab and browser pre-filled.
-      </p>
-    </div>
-    <div class="popup-footer">
-      <button class="btn btn-outline" onclick="_closePopup()">Cancel</button>
-      <a class="btn btn-primary" href="${href}" onclick="_closePopup()">Open Email</a>
-    </div>
-  `;
-  /** @type {any} */ (window)._openPopup(html, 'sm');
-}
-
-function _openSuggestion() {
-  document.getElementById('help-dropdown')?.classList.remove('open');
-  const body = `What would you like to see?\n\nWhy would it help your workflow?\n${_helpContext()}`;
-  const href = _mailtoHref('[Suggestion] ', body);
-  const html = `
-    <div class="popup-header">
-      <div class="popup-title">Make a Suggestion</div>
-      <button class="popup-close" onclick="_closePopup()">&times;</button>
-    </div>
-    <div class="popup-body">
-      <p style="margin:0 0 12px;color:var(--text2);font-size:13px">
-        Got an idea for a new feature or an improvement? Tell us:
-      </p>
-      <ul style="margin:0 0 12px 18px;padding:0;color:var(--text2);font-size:13px;line-height:1.7">
-        <li>What you'd like to see</li>
-        <li>Why it would help your workflow</li>
-      </ul>
-      <p style="margin:0;color:var(--muted);font-size:12px">
-        Clicking below opens your email client with a starter template.
       </p>
     </div>
     <div class="popup-footer">

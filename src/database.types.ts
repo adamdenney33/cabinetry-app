@@ -503,6 +503,62 @@ export type Database = {
           },
         ]
       }
+      feature_suggestion_votes: {
+        Row: {
+          created_at: string
+          suggestion_id: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          suggestion_id: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          suggestion_id?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feature_suggestion_votes_suggestion_id_fkey"
+            columns: ["suggestion_id"]
+            isOneToOne: false
+            referencedRelation: "feature_suggestions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      feature_suggestions: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: number
+          status: string
+          title: string
+          updated_at: string
+          vote_count: number
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: number
+          status?: string
+          title: string
+          updated_at?: string
+          vote_count?: number
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: number
+          status?: string
+          title?: string
+          updated_at?: string
+          vote_count?: number
+        }
+        Relationships: []
+      }
       order_lines: {
         Row: {
           adj_shelves: number

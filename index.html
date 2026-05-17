@@ -31,6 +31,11 @@
     <div class="logo-badge">BETA v0.12.0</div>
   </div>
   <div class="header-right">
+    <div class="features-wrap">
+      <button class="features-btn" onclick="_openFeaturesBoard()" id="features-btn" title="Feature ideas">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 00-4 12.74V17h8v-2.26A7 7 0 0012 2z"/></svg>
+      </button>
+    </div>
     <div class="help-wrap">
       <button class="help-btn" onclick="toggleHelp()" id="help-btn" title="Help">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
@@ -43,10 +48,6 @@
         <div class="help-menu-item" onclick="_openBugReport()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="6" width="8" height="14" rx="4"/><path d="M19 7l-3 2"/><path d="M5 7l3 2"/><path d="M19 13h-3"/><path d="M8 13H5"/><path d="M19 19l-3-2"/><path d="M5 19l3-2"/><path d="M9 6V4a3 3 0 016 0v2"/></svg>
           <span>Report a Bug</span>
-        </div>
-        <div class="help-menu-item" onclick="_openSuggestion()">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 00-4 12.74V17h8v-2.26A7 7 0 0012 2z"/></svg>
-          <span>Make a Suggestion</span>
         </div>
         <div class="help-menu-item" onclick="_openSupport()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
@@ -728,6 +729,7 @@
 <script defer src="src/clients.js"></script>
 <script defer src="src/migrate.js"></script>
 <script defer src="src/help.js"></script>
+<script defer src="src/features.js"></script>
 <script defer src="src/walkthrough.js"></script>
 </body>
 </html>

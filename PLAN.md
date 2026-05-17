@@ -22,6 +22,32 @@ Companion docs: `SPEC.md` (refactor history), `SCHEMA.md` (DB schema),
 
 ## Active Work
 
+### Features menu — suggest-by-email + upvotable leaderboard ✅ Done 2026-05-17
+
+Plan: `~/.claude/plans/add-a-new-features-vectorized-breeze.md`.
+
+A new Features button in the top toolbar (left of Help) opens a popup with a
+"Suggest a feature" button and an upvotable leaderboard of owner-curated
+feature ideas. "Make a Suggestion" was removed from the Help dropdown.
+
+- ✅ **Migration** — `20260517120000_feature_suggestions.sql` applied via
+  Supabase MCP: `feature_suggestions` (shared/global, no `user_id`, select-only
+  RLS — owner curates rows in the Supabase dashboard) + `feature_suggestion_votes`
+  (Pattern A, one row per user per upvote) + a `SECURITY DEFINER` trigger that
+  maintains `feature_suggestions.vote_count`. `EXECUTE` on the function revoked
+  from `public`/`anon`/`authenticated` (advisor fix). `database.types.ts`
+  regenerated; `get_advisors` clean bar the pre-existing leaked-password warning.
+- ✅ **`src/features.js`** (new) — `_openFeaturesBoard()` popup; optimistic
+  `_featureToggleVote()`; status badges (planned / in_progress / shipped).
+  Signed-out / demo visitors get a sign-in prompt and no DB calls.
+- ✅ **Suggest relocated** — `_openSuggestion` (mailto:) moved from `src/help.js`
+  to `src/features.js`; the Help dropdown drops to three items. `_helpContext` /
+  `_mailtoHref` / `SUPPORT_EMAIL` stay in `help.js`, shared across both.
+- ✅ **`index.html` / `styles.css`** — `.features-btn` in the header, `.feat-*`
+  leaderboard styles, `src/features.js` script tag.
+
+`npm run typecheck` clean. SCHEMA.md § 3.19–3.20 added.
+
 ### Read-only demo mode (no-login experience) + walkthrough rebuild ✅ Done 2026-05-16
 
 Plan: `~/.claude/plans/the-walkthrough-is-still-composed-floyd.md`.
