@@ -23,6 +23,11 @@ const FREE_LIMITS = Object.freeze({
   cutlists: 5,
 });
 
+/** Founder plan — total lifetime accounts ever sold (one-off $299 purchase).
+ *  Surfaced as the "N of 50 left" counter on the walkthrough's final CTA and
+ *  enforced server-side in the stripe-checkout Edge Function. */
+const FOUNDER_CAP = 50;
+
 // ══════════════════════════════════════════
 // SUBSCRIPTION STATE
 // ══════════════════════════════════════════

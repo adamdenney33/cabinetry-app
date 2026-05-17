@@ -1708,7 +1708,7 @@ html.dark .proj-act.empty .proj-act-add { background: rgba(13,148,136,.12); }
   width: 100% !important;
   max-width: none !important;
   padding: 2px !important;
-  font-size: 10px !important;
+  font-size: 12px !important;
   text-align: center;
   background: var(--surface2);
   color: var(--text);
@@ -1733,7 +1733,7 @@ html.dark .proj-act.empty .proj-act-add { background: rgba(13,148,136,.12); }
 .sched-override-label { grid-area: label; }
 .sched-override-date, .sched-override-hours, .sched-override-label {
   padding: 3px 4px;
-  font-size: 10px;
+  font-size: 12px;
   background: var(--surface2);
   color: var(--text);
   border: 1px solid var(--border2);
@@ -1905,6 +1905,15 @@ details.sched .sched-body { padding: 4px 14px 12px; display: flex; flex-directio
 /* Working Hours section — the <details class="sched"> pinned at the bottom of
    the Schedule sidebar body; a top border separates it from the job list. */
 .sched-hours-section { border-top: 1px solid var(--border); margin-top: 8px; }
+/* Uniform input-box height + font across the section — native number/date
+   controls otherwise render at mixed heights (18–31px), and the global
+   input[type=number] rule forces 13px on number fields. The two-class
+   selector out-specifies that global rule. */
+.sched-hours-section .pf-input,
+.sched-hours-section .sched-wd-input,
+.sched-hours-section .sched-override-date,
+.sched-hours-section .sched-override-hours,
+.sched-hours-section .sched-override-label { height: 26px; font-size: 12px; }
 
 /* Compact inline label-input rows used for Pricing + Schedule meta.
    Replaces the chunky pf-row stack (label-above) with a tight single-line
@@ -2684,14 +2693,39 @@ input.pf-input-compact[type="date"]:disabled::-webkit-calendar-picker-indicator 
   background: var(--surface2); border: 1px solid var(--border); color: var(--text2);
 }
 .wt-chip-lead { background: var(--accent); border-color: var(--accent); color: #1a1a1a; }
-/* Final CTA pricing. */
-.wt-pricing { display: flex; gap: 10px; margin-bottom: 16px; }
-.wt-price { flex: 1; border: 2px solid var(--border); border-radius: 11px; padding: 13px; }
-.wt-price-rec { border-color: var(--accent); background: var(--accent-dim); }
-.wt-price-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); }
-.wt-price-amt { font-size: 23px; font-weight: 800; color: var(--text); margin: 3px 0; }
-.wt-price-per { font-size: 11px; color: var(--muted); }
-.wt-price-save { font-size: 10px; font-weight: 700; color: var(--success); margin-top: 3px; }
+/* Final CTA — four-tier ProCabinet plan picker. */
+.wt-center.wt-has-cta { width: 700px; padding: 26px 24px; text-align: left; }
+.wt-cta-head { text-align: center; margin-bottom: 22px; }
+.wt-cta-eyebrow { font-size: 10px; font-weight: 800; letter-spacing: 0.9px; text-transform: uppercase; color: var(--accent); margin-bottom: 8px; }
+.wt-cta-title { font-size: 20px; font-weight: 800; color: var(--text); margin-bottom: 5px; }
+.wt-cta-sub { font-size: 12.5px; color: var(--text2); }
+.wt-cta-cols { display: flex; gap: 10px; }
+.wt-cta-col { flex: 1; min-width: 0; border: 1px solid var(--border); border-radius: 12px; padding: 17px 13px 15px; display: flex; flex-direction: column; }
+.wt-cta-col-hero { border-color: var(--accent); background: var(--accent-dim); position: relative; }
+.wt-cta-flag { position: absolute; top: -9px; left: 50%; transform: translateX(-50%); background: var(--accent); color: #1a1a1a; font-size: 9px; font-weight: 800; letter-spacing: 0.4px; text-transform: uppercase; padding: 3px 10px; border-radius: 20px; white-space: nowrap; }
+.wt-cta-tier { font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.6px; color: var(--muted); }
+.wt-cta-tier-hero { color: var(--accent); }
+.wt-cta-price { font-size: 25px; font-weight: 900; color: var(--text); margin-top: 9px; letter-spacing: -0.5px; }
+.wt-cta-price span { font-size: 12px; font-weight: 700; color: var(--muted); }
+.wt-cta-per { font-size: 10px; color: var(--muted); margin-top: 3px; min-height: 13px; }
+.wt-cta-per s { opacity: 0.65; }
+.wt-cta-feats { list-style: none; margin: 13px 0 15px; padding: 0; display: flex; flex-direction: column; gap: 6px; flex: 1; }
+.wt-cta-feats li { font-size: 10.5px; line-height: 1.4; color: var(--text2); padding-left: 14px; position: relative; min-height: 32px; }
+.wt-cta-feats li::before { content: '✓'; position: absolute; left: 0; color: var(--accent); font-weight: 800; font-size: 9px; }
+.wt-cta-feats li.wt-lim { color: var(--muted); }
+.wt-cta-feats li.wt-lim::before { content: '✕'; color: var(--muted); opacity: 0.7; }
+.wt-cta-feats li.wt-lim strong { color: var(--text2); }
+.wt-cta-feats strong { color: var(--text); }
+.wt-cta-btn { font-family: inherit; cursor: pointer; border: 1px solid transparent; font-weight: 700; border-radius: 8px; width: 100%; font-size: 11.5px; padding: 8px 13px; }
+.wt-cta-btn-ghost { background: transparent; border-color: var(--border); color: var(--text2); }
+.wt-cta-btn-ghost:hover { border-color: var(--muted); color: var(--text); }
+.wt-cta-btn-amber { background: var(--accent); color: #1a1a1a; }
+.wt-cta-btn-amber:hover { background: #d6982c; }
+.wt-cta-btn:disabled { opacity: 0.5; cursor: default; }
+@media (max-width: 720px) {
+  .wt-cta-cols { flex-wrap: wrap; }
+  .wt-cta-col { flex: 1 1 calc(50% - 5px); }
+}
 .wt-sublink {
   display: inline-block; margin-bottom: 14px;
   font-size: 11px; color: var(--muted); cursor: pointer; text-decoration: underline;

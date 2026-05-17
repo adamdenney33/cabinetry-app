@@ -12,12 +12,12 @@
 // CHECKOUT FLOW
 // ══════════════════════════════════════════
 /**
- * @param {'monthly' | 'annual'} cadence
+ * @param {'monthly' | 'annual' | 'founder'} plan
  * @returns {Promise<void>}
  */
-async function startCheckout(cadence) {
-  if (cadence !== 'monthly' && cadence !== 'annual') {
-    throw new Error('startCheckout: cadence must be "monthly" or "annual"');
+async function startCheckout(plan) {
+  if (plan !== 'monthly' && plan !== 'annual' && plan !== 'founder') {
+    throw new Error('startCheckout: plan must be "monthly", "annual" or "founder"');
   }
 
   const { data: { session } } = await _sb.auth.getSession();
@@ -30,7 +30,7 @@ async function startCheckout(cadence) {
       'authorization': `Bearer ${session.access_token}`,
       'content-type': 'application/json',
     },
-    body: JSON.stringify({ cadence }),
+    body: JSON.stringify({ plan }),
   });
 
   if (!res.ok) {
@@ -151,6 +151,16 @@ function renderSubscriptionSection() {
 
   if (typeof isPro === 'function' && isPro()) {
     const sub = _subscription;
+    if (sub?.plan === 'founder') {
+      el.innerHTML = `
+      <div class="account-plan-row">
+        <span class="account-plan-name">Founder</span>
+        <span class="badge badge-green">Lifetime</span>
+      </div>
+      <div class="account-menu-item" style="color:var(--muted);font-size:11px;cursor:default;padding-bottom:4px">Lifetime access — thanks for backing ProCabinet.</div>
+    `;
+      return;
+    }
     const planLabel = sub?.plan === 'pro_annual' ? 'Pro · Annual' : 'Pro · Monthly';
     const periodEnd = sub?.current_period_end
       ? new Date(sub.current_period_end).toLocaleDateString()
@@ -179,17 +189,17 @@ function renderSubscriptionSection() {
         Upgrade to Pro
       </button>
       <div style="display:flex;justify-content:space-between;font-size:10px;margin-top:6px;color:var(--muted)">
-        <span style="cursor:pointer" onclick="_handleUpgradeClick('annual')"><strong style="color:var(--text)">$299</strong> / yr · save 29%</span>
-        <span style="cursor:pointer" onclick="_handleUpgradeClick('monthly')"><strong style="color:var(--text)">$35</strong> / mo</span>
+        <span style="cursor:pointer" onclick="_handleUpgradeClick('annual')"><strong style="color:var(--text)">$15</strong> / mo · billed yearly</span>
+        <span style="cursor:pointer" onclick="_handleUpgradeClick('monthly')"><strong style="color:var(--text)">$25</strong> / mo</span>
       </div>
     </div>
   `;
 }
 
-/** @param {'monthly' | 'annual'} cadence */
-function _handleUpgradeClick(cadence) {
-  if (typeof _track === 'function') _track('upgrade_clicked', { billing_cycle: cadence });
-  startCheckout(cadence).catch(err => {
+/** @param {'monthly' | 'annual' | 'founder'} plan */
+function _handleUpgradeClick(plan) {
+  if (typeof _track === 'function') _track('upgrade_clicked', { billing_cycle: plan });
+  startCheckout(plan).catch(err => {
     const msg = (err && err.message) || 'Checkout failed';
     if (typeof _toast === 'function') _toast(msg, 'error');
     else alert(msg);
@@ -202,6 +212,9 @@ function _handleUpgradeClick(cadence) {
 function _handleManageSubscription() {
   const sub = _subscription;
   const status = sub?.status ?? '';
+
+  // Founder is a one-off lifetime purchase — nothing to renew or cancel.
+  if (sub?.plan === 'founder') { _openManagePopupFounder(); return; }
 
   // past_due users still have a subscription row — show the payment-failure popup
   // before the isPro() check (which returns false for past_due).
@@ -226,7 +239,7 @@ function _handleManageSubscription() {
 function _openManagePopupActive(sub) {
   const isAnnual = sub.plan === 'pro_annual';
   const planLabel = isAnnual ? 'Pro Annual' : 'Pro Monthly';
-  const priceLabel = isAnnual ? '$299/yr' : '$35/mo';
+  const priceLabel = isAnnual ? '$300/yr' : '$35/mo';
   const switchLabel = isAnnual ? 'Switch to Monthly' : 'Switch to Annual';
   const periodEnd = sub.current_period_end
     ? new Date(sub.current_period_end).toLocaleDateString()
@@ -362,8 +375,8 @@ function _openLimitHitModal(library) {
       <div class="pf-divider"></div>
       <button class="btn btn-primary btn-lg" onclick="_closePopup();_handleUpgradeClick('annual')">Upgrade to Pro</button>
       <div style="display:flex;justify-content:space-between;font-size:10px;margin-top:8px;color:var(--muted)">
-        <span style="cursor:pointer" onclick="_closePopup();_handleUpgradeClick('annual')"><strong style="color:var(--text)">$299</strong> / yr · save 29%</span>
-        <span style="cursor:pointer" onclick="_closePopup();_handleUpgradeClick('monthly')"><strong style="color:var(--text)">$35</strong> / mo</span>
+        <span style="cursor:pointer" onclick="_closePopup();_handleUpgradeClick('annual')"><strong style="color:var(--text)">$15</strong> / mo · billed yearly</span>
+        <span style="cursor:pointer" onclick="_closePopup();_handleUpgradeClick('monthly')"><strong style="color:var(--text)">$25</strong> / mo</span>
       </div>
     </div>
     <div class="popup-footer">
@@ -394,8 +407,33 @@ function _openProFeatureModal() {
       <div class="pf-divider"></div>
       <button class="btn btn-primary btn-lg" onclick="_closePopup();_handleUpgradeClick('annual')">Upgrade to Pro</button>
       <div style="display:flex;justify-content:space-between;font-size:10px;margin-top:8px;color:var(--muted)">
-        <span style="cursor:pointer" onclick="_closePopup();_handleUpgradeClick('annual')"><strong style="color:var(--text)">$299</strong> / yr · save 29%</span>
-        <span style="cursor:pointer" onclick="_closePopup();_handleUpgradeClick('monthly')"><strong style="color:var(--text)">$35</strong> / mo</span>
+        <span style="cursor:pointer" onclick="_closePopup();_handleUpgradeClick('annual')"><strong style="color:var(--text)">$15</strong> / mo · billed yearly</span>
+        <span style="cursor:pointer" onclick="_closePopup();_handleUpgradeClick('monthly')"><strong style="color:var(--text)">$25</strong> / mo</span>
+      </div>
+    </div>
+    <div class="popup-footer">
+      <div></div>
+      <div class="popup-footer-right">
+        <button class="btn btn-outline" onclick="_closePopup()">Close</button>
+      </div>
+    </div>
+  `, 'sm');
+}
+
+/** Founder is lifetime — a one-off purchase with nothing to manage. */
+function _openManagePopupFounder() {
+  _openPopup(`
+    <div class="popup-header">
+      <div class="popup-title">Subscription</div>
+      <button class="popup-close" onclick="_closePopup()">&times;</button>
+    </div>
+    <div class="popup-body">
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:14px 16px">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:14px;font-weight:700;color:var(--text)">Founder</span>
+          <span class="badge badge-green">Lifetime</span>
+        </div>
+        <div style="font-size:12px;color:var(--muted);margin-top:6px;line-height:1.4">Lifetime access — paid once. No renewal, nothing to manage. Thanks for backing ProCabinet.</div>
       </div>
     </div>
     <div class="popup-footer">
@@ -424,8 +462,8 @@ function _openManagePopupFree() {
       <div class="pf-divider"></div>
       <button class="btn btn-primary btn-lg" onclick="_closePopup();_handleUpgradeClick('annual')">Upgrade to Pro</button>
       <div style="display:flex;justify-content:space-between;font-size:10px;margin-top:8px;color:var(--muted)">
-        <span style="cursor:pointer" onclick="_closePopup();_handleUpgradeClick('annual')"><strong style="color:var(--text)">$299</strong> / yr · save 29%</span>
-        <span style="cursor:pointer" onclick="_closePopup();_handleUpgradeClick('monthly')"><strong style="color:var(--text)">$35</strong> / mo</span>
+        <span style="cursor:pointer" onclick="_closePopup();_handleUpgradeClick('annual')"><strong style="color:var(--text)">$15</strong> / mo · billed yearly</span>
+        <span style="cursor:pointer" onclick="_closePopup();_handleUpgradeClick('monthly')"><strong style="color:var(--text)">$25</strong> / mo</span>
       </div>
     </div>
     <div class="popup-footer">

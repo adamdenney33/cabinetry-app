@@ -6,13 +6,19 @@
 //
 // Required env vars (set via `supabase secrets set`):
 //   STRIPE_SECRET_KEY          — sk_test_... / sk_live_...
-//   STRIPE_PRICE_MONTHLY       — price_... for monthly Pro
-//   STRIPE_PRICE_ANNUAL        — price_... for annual Pro
+//   STRIPE_PRICE_MONTHLY       — price_... for monthly Pro ($35/mo)
+//   STRIPE_PRICE_ANNUAL        — price_... for annual Pro ($300/yr)
 //   APP_URL                    — https://procabinet.app (or http://localhost:3000 in dev)
 //   SUPABASE_URL               — auto-provided
 //   SUPABASE_SERVICE_ROLE_KEY  — auto-provided
 //
-// Request body: { cadence: 'monthly' | 'annual' }
+// Optional env vars (monthly/annual still work without them):
+//   STRIPE_PRICE_FOUNDER          — price_... for the one-off $299 Founder plan
+//   STRIPE_COUPON_MONTHLY_LAUNCH  — coupon_... auto-applied to monthly checkouts
+//   STRIPE_COUPON_ANNUAL_LAUNCH   — coupon_... auto-applied to annual checkouts
+//
+// Request body: { plan: 'monthly' | 'annual' | 'founder' }
+//   (legacy `{ cadence }` is still accepted)
 // Response:     { url: string }    — redirect the user here
 //                 OR
 //               { error: string }  — display in UI
@@ -23,9 +29,16 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 const STRIPE_SECRET_KEY = Deno.env.get('STRIPE_SECRET_KEY');
 const PRICE_MONTHLY = Deno.env.get('STRIPE_PRICE_MONTHLY');
 const PRICE_ANNUAL = Deno.env.get('STRIPE_PRICE_ANNUAL');
+const PRICE_FOUNDER = Deno.env.get('STRIPE_PRICE_FOUNDER');
+const COUPON_MONTHLY = Deno.env.get('STRIPE_COUPON_MONTHLY_LAUNCH');
+const COUPON_ANNUAL = Deno.env.get('STRIPE_COUPON_ANNUAL_LAUNCH');
 const APP_URL = Deno.env.get('APP_URL') ?? 'https://procabinet.app';
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+
+// Founder plan — total lifetime accounts ever sold. Mirrors FOUNDER_CAP in
+// src/limits.js. Enforced here so the cap can't be bypassed client-side.
+const FOUNDER_CAP = 50;
 
 if (!STRIPE_SECRET_KEY || !PRICE_MONTHLY || !PRICE_ANNUAL || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
   throw new Error('Missing required env vars for stripe-checkout function');
@@ -87,6 +100,18 @@ async function getOrCreateCustomer(userId: string, email: string | null): Promis
   return customer.id;
 }
 
+// Count Founder accounts already sold. Enforces the 50-seat cap before a
+// Founder Checkout session is created. (A brief race between two simultaneous
+// buyers could let one extra through — acceptable for a launch promo.)
+async function founderSeatsTaken(): Promise<number> {
+  const { count } = await supabase
+    .from('subscriptions')
+    .select('*', { count: 'exact', head: true })
+    .eq('plan', 'founder')
+    .eq('status', 'active');
+  return count ?? 0;
+}
+
 Deno.serve(async (req) => {
   const origin = req.headers.get('origin');
   const cors = corsHeaders(origin);
@@ -98,65 +123,82 @@ Deno.serve(async (req) => {
     return new Response('Method not allowed', { status: 405, headers: cors });
   }
 
+  const json = (body: unknown, status: number) =>
+    new Response(JSON.stringify(body), {
+      status,
+      headers: { ...cors, 'content-type': 'application/json' },
+    });
+
   // Authenticate via the user's Supabase JWT — this proves which user is
   // requesting Checkout, so we know which Stripe Customer to use.
   const authHeader = req.headers.get('authorization');
-  if (!authHeader) {
-    return new Response(JSON.stringify({ error: 'Not authenticated' }), {
-      status: 401,
-      headers: { ...cors, 'content-type': 'application/json' },
-    });
-  }
+  if (!authHeader) return json({ error: 'Not authenticated' }, 401);
   const token = authHeader.replace(/^Bearer\s+/i, '');
   const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-  if (authError || !user) {
-    return new Response(JSON.stringify({ error: 'Invalid auth token' }), {
-      status: 401,
-      headers: { ...cors, 'content-type': 'application/json' },
-    });
-  }
+  if (authError || !user) return json({ error: 'Invalid auth token' }, 401);
 
-  // Parse + validate the cadence.
-  let cadence: 'monthly' | 'annual';
+  // Parse + validate the requested plan. `cadence` is the legacy field name.
+  let plan: 'monthly' | 'annual' | 'founder';
   try {
     const body = await req.json();
-    if (body.cadence !== 'monthly' && body.cadence !== 'annual') {
-      throw new Error('cadence must be "monthly" or "annual"');
+    const raw = body.plan ?? body.cadence;
+    if (raw !== 'monthly' && raw !== 'annual' && raw !== 'founder') {
+      throw new Error('plan must be "monthly", "annual" or "founder"');
     }
-    cadence = body.cadence;
+    plan = raw;
   } catch (err) {
-    return new Response(JSON.stringify({ error: (err as Error).message }), {
-      status: 400,
-      headers: { ...cors, 'content-type': 'application/json' },
-    });
+    return json({ error: (err as Error).message }, 400);
   }
-
-  const priceId = cadence === 'monthly' ? PRICE_MONTHLY! : PRICE_ANNUAL!;
 
   try {
     const customerId = await getOrCreateCustomer(user.id, user.email ?? null);
 
-    const session = await stripe.checkout.sessions.create({
-      mode: 'subscription',
-      customer: customerId,
-      line_items: [{ price: priceId, quantity: 1 }],
-      // Adaptive Pricing handles local-currency conversion automatically
-      // (must be enabled in Stripe Dashboard → Settings → Currency settings).
-      success_url: `${APP_URL}/?upgrade=success`,
-      cancel_url: `${APP_URL}/?upgrade=cancelled`,
-      // Allow promo codes at checkout — easy lever for early-user discounts.
-      allow_promotion_codes: true,
-    });
+    let session: Stripe.Checkout.Session;
 
-    return new Response(JSON.stringify({ url: session.url }), {
-      status: 200,
-      headers: { ...cors, 'content-type': 'application/json' },
-    });
+    if (plan === 'founder') {
+      if (!PRICE_FOUNDER) {
+        return json({ error: 'The Founder plan is not available yet.' }, 400);
+      }
+      if ((await founderSeatsTaken()) >= FOUNDER_CAP) {
+        return json({ error: 'Founder seats are sold out.' }, 409);
+      }
+      // One-off payment — no subscription. The webhook reads metadata.plan to
+      // record a lifetime 'founder' subscription row.
+      session = await stripe.checkout.sessions.create({
+        mode: 'payment',
+        customer: customerId,
+        line_items: [{ price: PRICE_FOUNDER, quantity: 1 }],
+        metadata: { plan: 'founder', user_id: user.id },
+        payment_intent_data: { metadata: { plan: 'founder', user_id: user.id } },
+        success_url: `${APP_URL}/?upgrade=success`,
+        cancel_url: `${APP_URL}/?upgrade=cancelled`,
+      });
+    } else {
+      const priceId = plan === 'monthly' ? PRICE_MONTHLY! : PRICE_ANNUAL!;
+      const coupon = plan === 'monthly' ? COUPON_MONTHLY : COUPON_ANNUAL;
+      const params: Stripe.Checkout.SessionCreateParams = {
+        mode: 'subscription',
+        customer: customerId,
+        line_items: [{ price: priceId, quantity: 1 }],
+        // Adaptive Pricing handles local-currency conversion automatically
+        // (must be enabled in Stripe Dashboard → Settings → Currency settings).
+        success_url: `${APP_URL}/?upgrade=success`,
+        cancel_url: `${APP_URL}/?upgrade=cancelled`,
+      };
+      // `discounts` and `allow_promotion_codes` are mutually exclusive. Apply
+      // the launch coupon automatically when one is configured; otherwise let
+      // the user enter a promo code at Checkout.
+      if (coupon) {
+        params.discounts = [{ coupon }];
+      } else {
+        params.allow_promotion_codes = true;
+      }
+      session = await stripe.checkout.sessions.create(params);
+    }
+
+    return json({ url: session.url }, 200);
   } catch (err) {
     console.error('[stripe-checkout] Error:', (err as Error).message);
-    return new Response(JSON.stringify({ error: (err as Error).message }), {
-      status: 500,
-      headers: { ...cors, 'content-type': 'application/json' },
-    });
+    return json({ error: (err as Error).message }, 500);
   }
 });

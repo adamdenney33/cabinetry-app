@@ -10,6 +10,7 @@
 //   STRIPE_WEBHOOK_SECRET      — whsec_... (per webhook endpoint, from Stripe dashboard)
 //   STRIPE_PRICE_MONTHLY       — price_... for the monthly Pro plan
 //   STRIPE_PRICE_ANNUAL        — price_... for the annual Pro plan
+//   STRIPE_PRICE_FOUNDER       — price_... for the one-off Founder plan (optional)
 //   SUPABASE_URL               — auto-provided by Supabase
 //   SUPABASE_SERVICE_ROLE_KEY  — auto-provided by Supabase
 //
@@ -26,6 +27,7 @@ const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 const PRICE_MONTHLY = Deno.env.get('STRIPE_PRICE_MONTHLY');
 const PRICE_ANNUAL = Deno.env.get('STRIPE_PRICE_ANNUAL');
+const PRICE_FOUNDER = Deno.env.get('STRIPE_PRICE_FOUNDER');
 
 if (!STRIPE_SECRET_KEY || !STRIPE_WEBHOOK_SECRET || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
   throw new Error('Missing required env vars for stripe-webhook function');
@@ -127,6 +129,39 @@ async function syncFromStripeSubscription(subscription: Stripe.Subscription) {
   });
 }
 
+// Record a one-off Founder purchase as a lifetime 'founder' subscription row.
+// Founder has no Stripe Subscription object — it's a single payment — so the
+// subscription-specific columns stay null; isPro() treats status 'active' with
+// no period end as permanent access.
+async function recordFounderPurchase(session: Stripe.Checkout.Session) {
+  const customerId =
+    typeof session.customer === 'string' ? session.customer : session.customer?.id;
+  if (!customerId) {
+    console.warn('[stripe-webhook] Founder session has no customer — skipping');
+    return;
+  }
+  // Prefer the user_id stamped on the session; fall back to the customer.
+  let userId = session.metadata?.user_id ?? null;
+  if (!userId) userId = await getUserIdForCustomer(customerId);
+  if (!userId) {
+    console.warn(`[stripe-webhook] No user_id for Founder session ${session.id} — skipping`);
+    return;
+  }
+  await upsertSubscription({
+    user_id: userId,
+    stripe_customer_id: customerId,
+    stripe_subscription_id: null,
+    stripe_price_id: PRICE_FOUNDER ?? null,
+    plan: 'founder',
+    status: 'active',
+    current_period_start: null,
+    current_period_end: null,
+    cancel_at_period_end: false,
+    canceled_at: null,
+    updated_at: new Date().toISOString(),
+  });
+}
+
 // ── handler ────────────────────────────────────────────────────────────
 
 Deno.serve(async (req) => {
@@ -155,6 +190,11 @@ Deno.serve(async (req) => {
       // current shape (Checkout sessions include only a subset).
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session;
+        // One-off Founder purchase (mode: 'payment') — record a lifetime row.
+        if (session.mode === 'payment' && session.metadata?.plan === 'founder') {
+          await recordFounderPurchase(session);
+          break;
+        }
         if (session.mode !== 'subscription' || !session.subscription) break;
         const subId =
           typeof session.subscription === 'string' ? session.subscription : session.subscription.id;

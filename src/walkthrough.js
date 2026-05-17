@@ -8,13 +8,16 @@
 // mode is already on; for a signed-in user _wtStart flips it on for the
 // tour's duration and _wtClose restores their real data. Dismissal persists
 // to localStorage['pc_wt_state'] (and business_info when signed in), so a
-// first-time visitor sees the tour once.
+// first-time visitor sees the full tour once. A returning free user instead
+// gets just the final Pro CTA, once per browser session — gated by the
+// sessionStorage key 'pc_wt_session_cta'.
 //
 // Public surface (window globals — classic-script top-level functions):
 //   _wtStart(opts)      — begin the tour (async; opts.force kept for the
 //                         Help re-trigger).
 //   _wtClose(reason)    — tear down. reason: 'completed' | 'skipped'.
-//   _wtMaybeAutoStart() — first-run gate; auto-shows the tour once.
+//   _wtMaybeAutoStart() — entry gate; auto-shows the full tour on first run,
+//                         then the once-per-session Pro CTA for free users.
 //
 // Cross-file globals used: switchSection (settings.js), switchCabTab /
 // switchCBMainView (cabinet-render.js). Reached via the `_wtW` any-cast so
@@ -22,7 +25,7 @@
 
 /** Walkthrough content version. Bump when steps change materially — drives
  *  the version-gated re-show in _wtMaybeAutoStart (M7). */
-const WT_VERSION = 2;
+const WT_VERSION = 3;
 
 /** @type {any} window, any-typed so cross-file globals resolve without decls. */
 const _wtW = /** @type {any} */ (window);
@@ -43,7 +46,7 @@ const _wtW = /** @type {any} */ (window);
  * @property {string} [icon]           Emoji for centred steps.
  * @property {string} title
  * @property {string} [titleHtml]      Raw HTML override for title (welcome preview).
- * @property {string} body             May contain authored <span class="wt-hi"> markup.
+ * @property {string} [body]            May contain authored <span class="wt-hi"> markup. Omitted on the final CTA step.
  * @property {string} [nextLabel]
  * @property {string[]} [flow]         Welcome-step flow chips.
  * @property {string} [preview]        Welcome preview graphic type ('gantt').
@@ -308,13 +311,11 @@ const _wtSteps = [
     body: 'Active orders with due-date alerts, your most recent quotes, low-stock warnings and this week\'s schedule — <span class="wt-hi">the full picture without opening a single tab</span>.'
   },
 
-  // Pro CTA
+  // Pro CTA — the four-tier plan picker (rendered by _wtCtaHTML)
   {
-    type: 'center', section: 'dashboard', icon: '🚀',
-    title: 'You\'re ready to go',
-    body: 'The free plan keeps <span class="wt-hi">5 of each</span> — clients, cabinets, quotes, orders and cut lists. Upgrade to Pro for unlimited.',
-    showPricing: true,
-    nextLabel: 'Finish'
+    type: 'center', section: 'dashboard',
+    title: 'Choose your plan',
+    showPricing: true
   }
 ];
 
@@ -335,6 +336,14 @@ let _wtOverlay = null;
 let _wtResizeTimer = 0;
 /** @type {HTMLElement | null} */
 let _wtCursorEl = null;
+/** Founder seats remaining for the final CTA, or null until the public
+ *  `founder_seats_taken` RPC resolves. @type {number | null} */
+let _wtFounderSeatsLeft = null;
+/** True while the overlay is showing ONLY the final Pro CTA — the
+ *  once-per-browser-session reminder for a returning free user, not the full
+ *  tour. Suppresses the demo-mode borrow, section switches and first-run
+ *  dismissal persistence the full tour performs. */
+let _wtCtaOnly = false;
 
 /** @param {string} s @returns {string} */
 function _wtEsc(s) {
@@ -468,6 +477,7 @@ async function _wtRunStart(tempDemo) {
   }
   _wtActive = true;
   _wtW._wtActive = true; // window-visible so other modules can suspend autosaves
+  _wtFetchFounderSeats(); // best-effort — populates the final CTA's seat counter
   _wtCurrent = 0;
   _wtDir = 1;
   const ov = document.createElement('div');
@@ -482,6 +492,33 @@ async function _wtRunStart(tempDemo) {
 }
 
 /**
+ * Open the overlay showing ONLY the final Pro CTA — the once-per-browser-
+ * session reminder for a returning free user (the full guided tour already
+ * ran on first login). Unlike _wtRunStart this never borrows demo mode and
+ * never switches section: the CTA is a centred modal over the user's own
+ * live screen. No-ops if a tour/overlay is already up.
+ */
+function _wtStartCta() {
+  if (_wtActive) return;
+  const ctaIdx = _wtSteps.findIndex(s => s.showPricing);
+  if (ctaIdx < 0) return;
+  _wtActive = true;
+  _wtW._wtActive = true;
+  _wtCtaOnly = true;
+  _wtFetchFounderSeats(); // best-effort — populates the CTA's seat counter
+  _wtCurrent = ctaIdx;
+  _wtDir = 1;
+  const ov = document.createElement('div');
+  ov.id = 'wt-overlay';
+  ov.addEventListener('click', _wtOverlayClick);
+  document.body.appendChild(ov);
+  _wtOverlay = ov;
+  document.addEventListener('keydown', _wtKeydown, true);
+  window.addEventListener('resize', _wtOnResize);
+  _wtRender(ctaIdx);
+}
+
+/**
  * Tear the tour down, persist the dismissal, and — if the tour borrowed demo
  * mode for a signed-in user — restore their real data. Idempotent.
  * @param {'completed'|'skipped'} reason
@@ -493,16 +530,25 @@ async function _wtClose(reason) {
   document.removeEventListener('keydown', _wtKeydown, true);
   window.removeEventListener('resize', _wtOnResize);
   if (_wtResizeTimer) { clearTimeout(_wtResizeTimer); _wtResizeTimer = 0; }
-  // Persist dismissal — localStorage (the durable first-run gate, works for
-  // guests) and business_info when signed in. _wtPersistState handles both.
-  _wtPersistState({
-    version: WT_VERSION,
-    dismissed_at: new Date().toISOString(),
-    completed: reason === 'completed',
-  });
-  // A finished tour suppresses the redundant dashboard "Getting Started" card.
-  if (reason === 'completed') {
-    try { localStorage.setItem('pc_hide_guide', '1'); } catch (e) { void e; }
+  const ctaOnly = _wtCtaOnly;
+  _wtCtaOnly = false;
+  // The standalone session CTA isn't the first-run tour — it has its own
+  // sessionStorage gate, so it skips the durable dismissal persistence.
+  if (!ctaOnly) {
+    // Persist dismissal — localStorage (the durable first-run gate, works for
+    // guests) and business_info when signed in. _wtPersistState handles both.
+    _wtPersistState({
+      version: WT_VERSION,
+      dismissed_at: new Date().toISOString(),
+      completed: reason === 'completed',
+    });
+    // A finished tour suppresses the redundant dashboard "Getting Started" card.
+    if (reason === 'completed') {
+      try { localStorage.setItem('pc_hide_guide', '1'); } catch (e) { void e; }
+    }
+    // The full tour ends on the CTA, so it satisfies the once-per-session
+    // reminder — don't double up with a standalone CTA on a same-session reload.
+    try { sessionStorage.setItem('pc_wt_session_cta', '1'); } catch (e) { void e; }
   }
   // Restore the signed-in user's real data BEFORE removing the overlay, so
   // there's no flash of demo content as the panels re-render.
@@ -521,8 +567,9 @@ async function _wtClose(reason) {
   if (sd) sd.classList.remove('open');
   const ad = document.getElementById('account-dropdown');
   if (ad) ad.classList.remove('open');
-  // Land on a clean Dashboard.
-  if (typeof _wtW.switchSection === 'function') {
+  // Land on a clean Dashboard — but the CTA-only overlay sits over the user's
+  // own restored screen, so leave them wherever they are.
+  if (!ctaOnly && typeof _wtW.switchSection === 'function') {
     try { _wtW.switchSection('dashboard'); } catch (e) { void e; }
   }
 }
@@ -556,10 +603,15 @@ async function _wtPersistState(patch) {
 // ── navigation ──
 
 function _wtNext() {
+  // The standalone session CTA is a single step — advancing just closes it.
+  if (_wtCtaOnly) { _wtClose('completed'); return; }
   if (_wtCurrent < _wtSteps.length - 1) _wtRender(_wtCurrent + 1);
   else _wtClose('completed');
 }
 function _wtBack() {
+  // No earlier step exists for the standalone session CTA — stepping back
+  // would drop the user into the middle of the full tour.
+  if (_wtCtaOnly) return;
   if (_wtCurrent > 0) _wtRender(_wtCurrent - 1);
 }
 /**
@@ -584,6 +636,10 @@ function _wtOverlayClick(e) {
   if (act === 'next') _wtNext();
   else if (act === 'back') _wtBack();
   else if (act === 'skip') _wtSkip();
+  else if (act === 'cta-free') _wtClose('completed');
+  else if (act === 'cta-monthly') _wtCtaCheckout('monthly');
+  else if (act === 'cta-annual') _wtCtaCheckout('annual');
+  else if (act === 'cta-founder') _wtCtaCheckout('founder');
 }
 
 /** @param {KeyboardEvent} e */
@@ -610,8 +666,10 @@ function _wtOnResize() {
 function _wtApplyContext(step) {
   try {
     const prevSection = _wtCurrent > 0 ? (_wtSteps[_wtCurrent - 1] || {}).section : null;
-    if (step.section && typeof _wtW.switchSection === 'function') _wtW.switchSection(step.section);
-    if (step.section && step.section !== prevSection) _wtGateSection(step.section);
+    // The standalone session CTA is a centred modal over the user's own live
+    // screen — it must not switch tabs or reset a sidebar to its gated state.
+    if (!_wtCtaOnly && step.section && typeof _wtW.switchSection === 'function') _wtW.switchSection(step.section);
+    if (!_wtCtaOnly && step.section && step.section !== prevSection) _wtGateSection(step.section);
     // View/tab switches must run BEFORE the card click — switchCBMainView()
     // re-syncs the library sub-tab, which would otherwise undo a rates-tab click.
     if (step.subtab && typeof _wtW.switchCabTab === 'function') _wtW.switchCabTab(step.subtab);
@@ -877,7 +935,7 @@ function _wtDrawCenter(step, isFallback) {
   mask.className = 'wt-mask';
   ov.appendChild(mask);
   const card = document.createElement('div');
-  card.className = 'wt-center' + (step.preview ? ' wt-has-preview' : '');
+  card.className = 'wt-center' + (step.preview ? ' wt-has-preview' : '') + (step.showPricing ? ' wt-has-cta' : '');
   card.innerHTML = _wtCenterHTML(step);
   ov.appendChild(card);
 }
@@ -961,6 +1019,7 @@ function _wtCenterPreviewHTML(step) {
 /** @param {WtStep} step @returns {string} */
 function _wtCenterHTML(step) {
   if (step.preview) return _wtCenterPreviewHTML(step);
+  if (step.showPricing) return _wtCtaHTML();
   let h = '';
   if (step.icon) h += '<div class="wt-icon">' + step.icon + '</div>';
   h += '<h2>' + _wtEsc(step.title) + '</h2>';
@@ -972,15 +1031,6 @@ function _wtCenterHTML(step) {
     });
     h += '</div>';
   }
-  if (step.showPricing) {
-    h += '<div class="wt-pricing">' +
-      '<div class="wt-price"><div class="wt-price-label">Monthly</div>' +
-      '<div class="wt-price-amt">$35</div><div class="wt-price-per">per month</div></div>' +
-      '<div class="wt-price wt-price-rec"><div class="wt-price-label">Annual</div>' +
-      '<div class="wt-price-amt">$299</div><div class="wt-price-per">per year</div>' +
-      '<div class="wt-price-save">Save 29%</div></div>' +
-      '</div>';
-  }
   h += '<div class="wt-center-actions">';
   if (_wtCurrent > 0) h += '<button class="wt-btn wt-btn-ghost" data-wt-act="back">Back</button>';
   else h += '<button class="wt-btn wt-btn-skip" data-wt-act="skip">Skip tour</button>';
@@ -989,14 +1039,153 @@ function _wtCenterHTML(step) {
   return h;
 }
 
+/**
+ * Final-step CTA — the four-tier ProCabinet plan picker. Self-contained: renders
+ * its own header and per-tier buttons (the generic icon/title/actions are
+ * skipped for this step). Buttons are wired through `data-wt-act` in
+ * `_wtOverlayClick`.
+ * @returns {string}
+ */
+function _wtCtaHTML() {
+  const cap = FOUNDER_CAP;
+  const left = _wtFounderSeatsLeft;
+  const soldOut = typeof left === 'number' && left <= 0;
+  const flag = (typeof left === 'number')
+    ? (soldOut ? 'Sold out' : left + ' of ' + cap + ' left')
+    : 'Limited to ' + cap;
+  const founderBtn = soldOut
+    ? '<button class="wt-cta-btn wt-cta-btn-amber" disabled>Sold out</button>'
+    : '<button class="wt-cta-btn wt-cta-btn-amber" data-wt-act="cta-founder">Claim a seat</button>';
+  return '' +
+    '<div class="wt-cta-head">' +
+      '<div class="wt-cta-eyebrow">Support the project</div>' +
+      '<div class="wt-cta-title">Choose your ProCabinet plan</div>' +
+      '<div class="wt-cta-sub">Continue for free, or unlock pro features.</div>' +
+    '</div>' +
+    '<div class="wt-cta-cols">' +
+      '<div class="wt-cta-col">' +
+        '<div class="wt-cta-tier">Free</div>' +
+        '<div class="wt-cta-price">$0</div>' +
+        '<div class="wt-cta-per">forever</div>' +
+        '<ul class="wt-cta-feats">' +
+          '<li>Free use of all core functions of the app</li>' +
+          '<li class="wt-lim"><strong>5 saved items</strong> limit per library</li>' +
+          '<li class="wt-lim">No library import / export (CSV)</li>' +
+          '<li class="wt-lim">ProCabinet branding on PDFs</li>' +
+          '<li class="wt-lim">Limited access to new features</li>' +
+        '</ul>' +
+        '<button class="wt-cta-btn wt-cta-btn-ghost" data-wt-act="cta-free">Continue free</button>' +
+      '</div>' +
+      '<div class="wt-cta-col">' +
+        '<div class="wt-cta-tier">Monthly</div>' +
+        '<div class="wt-cta-price">$25<span>/mo</span></div>' +
+        '<div class="wt-cta-per"><s>$35/mo</s> · launch price</div>' +
+        '<ul class="wt-cta-feats">' +
+          '<li>First 6 months, then $35/mo</li>' +
+          '<li><strong>Unlimited saved items</strong></li>' +
+          '<li>Import / export libraries (CSV)</li>' +
+          '<li>ProCabinet removed from PDFs</li>' +
+          '<li>Priority email support</li>' +
+        '</ul>' +
+        '<button class="wt-cta-btn wt-cta-btn-ghost" data-wt-act="cta-monthly">Choose Monthly</button>' +
+      '</div>' +
+      '<div class="wt-cta-col">' +
+        '<div class="wt-cta-tier">Annual</div>' +
+        '<div class="wt-cta-price">$15<span>/mo</span></div>' +
+        '<div class="wt-cta-per"><s>$25/mo</s> · launch price</div>' +
+        '<ul class="wt-cta-feats">' +
+          '<li>$180 billed for year one, then $300/yr</li>' +
+          '<li><strong>Unlimited saved items</strong></li>' +
+          '<li>Import / export libraries (CSV)</li>' +
+          '<li>ProCabinet removed from PDFs</li>' +
+          '<li>Priority email support</li>' +
+        '</ul>' +
+        '<button class="wt-cta-btn wt-cta-btn-ghost" data-wt-act="cta-annual">Choose Annual</button>' +
+      '</div>' +
+      '<div class="wt-cta-col wt-cta-col-hero">' +
+        '<div class="wt-cta-flag">' + flag + '</div>' +
+        '<div class="wt-cta-tier wt-cta-tier-hero">Founder</div>' +
+        '<div class="wt-cta-price">$299</div>' +
+        '<div class="wt-cta-per">one-off · lifetime</div>' +
+        '<ul class="wt-cta-feats">' +
+          '<li>Pay once, use forever</li>' +
+          '<li>Only <strong>' + cap + ' accounts</strong> ever</li>' +
+          '<li><strong>Everything</strong> in the paid plans</li>' +
+          '<li>New feature requests prioritised</li>' +
+          '<li>WhatsApp group with founder</li>' +
+        '</ul>' +
+        founderBtn +
+      '</div>' +
+    '</div>';
+}
+
+/**
+ * Fetch the live Founder seat count via the public `founder_seats_taken` RPC
+ * and cache the remaining count for the CTA. Best-effort — on failure the CTA
+ * shows a static "Limited to N" label. Re-renders the CTA if it is on screen
+ * when the count arrives.
+ * @returns {Promise<void>}
+ */
+async function _wtFetchFounderSeats() {
+  if (_wtFounderSeatsLeft !== null) return;
+  try {
+    const { data, error } = await _sb.rpc('founder_seats_taken');
+    if (error || typeof data !== 'number') return;
+    _wtFounderSeatsLeft = Math.max(0, FOUNDER_CAP - data);
+    if (_wtActive && _wtSteps[_wtCurrent] && _wtSteps[_wtCurrent].showPricing) {
+      _wtRender(_wtCurrent);
+    }
+  } catch (e) {
+    console.warn('[walkthrough] founder seat count failed', e);
+  }
+}
+
+/**
+ * Final-CTA paid-tier click. Closes the tour, then routes a signed-in user to
+ * Stripe Checkout, or a guest to the sign-up flow (an account is required
+ * before they can pay).
+ * @param {'monthly'|'annual'|'founder'} plan
+ */
+function _wtCtaCheckout(plan) {
+  const signedIn = !!_userId;
+  _wtClose('completed');
+  if (!signedIn) {
+    if (typeof _wtW._showAuth === 'function') _wtW._showAuth();
+    return;
+  }
+  if (typeof _wtW._handleUpgradeClick === 'function') _wtW._handleUpgradeClick(plan);
+}
+
 // ── first-run gate ──
 
 /**
- * Decide whether to auto-show the walkthrough. Called from app.js after a
+ * Show the Pro CTA once per browser session for a returning free user. The
+ * full guided tour only runs on first login; afterwards a free user still
+ * gets one plan-picker reminder per session. Pro users — and anyone who has
+ * already seen the CTA this session, whether via this reminder or the tour's
+ * own final step — are skipped. The sessionStorage flag clears when the
+ * browser session ends, so the CTA returns next session.
+ */
+function _wtMaybeShowSessionCta() {
+  if (typeof isPro === 'function' && isPro()) return;
+  try {
+    if (sessionStorage.getItem('pc_wt_session_cta') === '1') return;
+    sessionStorage.setItem('pc_wt_session_cta', '1');
+  } catch (e) {
+    // sessionStorage blocked (private mode / disabled) — skip rather than
+    // re-show the CTA on every page load with no way to remember it.
+    void e;
+    return;
+  }
+  _wtStartCta();
+}
+
+/**
+ * Decide what onboarding surface to auto-show. Called from app.js after a
  * sign-in and on guest boot, once data has hydrated.
- *   • dismissed at the current version  → nothing
- *   • dismissed at an older version     → re-show (a new feature shipped)
- *   • never onboarded                   → show
+ *   • dismissed at the current version  → once-per-session Pro CTA (free users)
+ *   • dismissed at an older version     → re-show the full tour (new feature)
+ *   • never onboarded                   → show the full tour
  * The app is always populated — the demo seed for a guest, or the temporary
  * demo overlay _wtStart flips on for a signed-in user — so the tour never
  * needs to seed anything. No-ops if a tour is already on screen.
@@ -1016,7 +1205,12 @@ async function _wtMaybeAutoStart() {
   const lsVersion = (ls && typeof ls.version === 'number') ? ls.version : -1;
   const obVersion = (typeof ob.version === 'number') ? ob.version : -1;
   const dismissed = !!((ls && ls.dismissed_at) || ob.dismissed_at);
-  if (dismissed && Math.max(lsVersion, obVersion) >= WT_VERSION) return;
+  if (dismissed && Math.max(lsVersion, obVersion) >= WT_VERSION) {
+    // First-run tour already done at the current version. A free user still
+    // gets a once-per-browser-session reminder of the plan picker.
+    _wtMaybeShowSessionCta();
+    return;
+  }
   _wtStart({ force: true });
 }
 
