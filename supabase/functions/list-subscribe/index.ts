@@ -46,7 +46,9 @@ function corsHeaders(origin: string | null): Record<string, string> {
   const allowed = origin && ALLOWED_ORIGINS.has(origin) ? origin : 'https://procabinet.app';
   return {
     'access-control-allow-origin': allowed,
-    'access-control-allow-headers': 'authorization, content-type',
+    // supabase-js functions.invoke() sends apikey + x-client-info too — all
+    // four must be allowed or the browser blocks the preflight.
+    'access-control-allow-headers': 'authorization, x-client-info, apikey, content-type',
     'access-control-allow-methods': 'POST, OPTIONS',
   };
 }

@@ -22,7 +22,7 @@ Companion docs: `SPEC.md` (refactor history), `SCHEMA.md` (DB schema),
 
 ## Active Work
 
-### New signups can opt into a marketing mailing list — code complete, pending Resend setup
+### New signups can opt into a marketing mailing list ✅ Done 2026-05-17
 
 New users can tick an opt-in checkbox at signup; once they confirm their email
 and land in the app, a server-side edge function adds them to a Resend
@@ -42,14 +42,18 @@ the list write happens only after email confirmation.
   authenticates the caller's Supabase JWT, re-checks opt-in + confirmation
   server-side, then POSTs the user to the Resend audience. Holds the Resend
   API key; treats an already-subscribed contact as success. Mirrors the
-  `stripe-portal` function's CORS / auth conventions.
+  `stripe-portal` function's auth conventions.
+- ✅ **Deployed + verified** — `RESEND_API_KEY` + `RESEND_AUDIENCE_ID` set as
+  Supabase secrets; `list-subscribe` deployed to the live project. CORS
+  `allow-headers` widened past `stripe-portal`'s set to cover the `apikey` /
+  `x-client-info` headers `supabase-js` `functions.invoke` sends. An
+  authenticated invoke from a non-opted-in user correctly returns
+  `{ ok: false, skipped: 'no marketing opt-in' }`.
 
 No schema migration (opt-in + synced state live in `user_metadata` /
-localStorage). `npm run typecheck` clean; checkbox verified in the dev preview.
-
-**Remaining (manual, owner):** create a Resend account + audience; set
-`RESEND_API_KEY` and `RESEND_AUDIENCE_ID` via `supabase secrets set`; deploy
-with `supabase functions deploy list-subscribe`.
+localStorage). `npm run typecheck` clean; checkbox + function verified in the
+dev preview. The opt-in checkbox reaches users on the next push of `main`
+(Cloudflare frontend deploy).
 
 ### Returning free users see the Pro CTA once per browser session ✅ Done 2026-05-17
 
