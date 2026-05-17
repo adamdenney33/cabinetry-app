@@ -191,14 +191,14 @@ const _wtSteps = [
   {
     type: 'spot', phase: 'Cabinet', section: 'cabinet', cbView: 'results',
     preClickCard: '#cb-results .quote-card',
-    target: '#cab-view-builder .main-content', position: 'left',
+    target: '#cb-results', position: 'left',
     title: 'Cabinets & live pricing',
     body: 'Every cabinet in the quote is listed here with material, labour, markup and tax <span class="wt-hi">calculated line by line</span> — the total updates as you design.'
   },
   {
     type: 'spot', phase: 'Cabinet', section: 'cabinet', cbView: 'results',
     preClickCard: '#cb-results .cb-cab-card',
-    target: '#cb-cab-editor', position: 'right',
+    target: '#cb-sidebar-builder', position: 'right',
     title: 'The cabinet editor',
     body: 'Open any cabinet to set its full spec — carcass size, doors, drawers, shelves and hardware. Labour pricing <span class="wt-hi">scales with size</span> so cabinets big and small are costed accurately.'
   },
@@ -675,7 +675,10 @@ function _wtGetPreClickTarget(i) {
  */
 function _wtWaitFor(sel, cb) {
   if (!sel) { cb(null); return; }
-  const deadline = performance.now() + 1000;
+  const deadline = performance.now() + 2000;
+  // setTimeout, not requestAnimationFrame: rAF is paused in a backgrounded or
+  // throttled tab, which would stall a step whose target appears async (e.g.
+  // a table that only renders once a card-click opens its record).
   const tick = () => {
     if (!_wtActive) return;
     const el = document.querySelector(sel);
@@ -684,7 +687,7 @@ function _wtWaitFor(sel, cb) {
       if (r.width > 1 && r.height > 1) { cb(/** @type {HTMLElement} */ (el)); return; }
     }
     if (performance.now() >= deadline) { cb(null); return; }
-    requestAnimationFrame(tick);
+    setTimeout(tick, 50);
   };
   tick();
 }
@@ -742,10 +745,21 @@ function _wtRender(i) {
     _wtApplyContext(step);
     _wtResolveAndDraw(i, step);
   };
-  // A forward step gets a cursor-travel beat to the button it "clicks".
-  const pre = (i > prevIdx) ? _wtGetPreClickTarget(i) : null;
-  if (pre) {
-    _wtCursorMoveTo(pre.cx, pre.cy);
+  // Move the cursor to where the action is, THEN switch the view / draw the
+  // highlight once it has arrived. A forward step travels to the button it
+  // "clicks"; otherwise it travels to the step's own target if that is already
+  // on screen. The view switch / preClickCard click fires inside proceed(), so
+  // a click's change lands exactly as the cursor reaches it.
+  let dest = (i > prevIdx) ? _wtGetPreClickTarget(i) : null;
+  if (!dest && step.target) {
+    const el = document.querySelector(step.target);
+    if (el) {
+      const r = el.getBoundingClientRect();
+      if (r.width > 1 && r.height > 1) dest = { cx: r.left + r.width / 2, cy: r.top + r.height / 2 };
+    }
+  }
+  if (dest) {
+    _wtCursorMoveTo(dest.cx, dest.cy);
     setTimeout(proceed, 540);
   } else {
     proceed();
