@@ -1171,6 +1171,7 @@ function toggleAuthMode() {
   /** @type {HTMLElement} */ (document.getElementById('auth-toggle')).innerHTML = isSign
     ? 'No account? <span onclick="toggleAuthMode()">Create one</span>'
     : 'Already have an account? <span onclick="toggleAuthMode()">Sign In</span>';
+  /** @type {HTMLElement} */ (document.getElementById('auth-marketing-row')).style.display = isSign ? 'none' : 'flex';
   /** @type {HTMLElement} */ (document.getElementById('auth-msg')).innerHTML = '';
 }
 
@@ -1187,9 +1188,15 @@ async function authSubmit() {
     if (_authMode === 'signin') {
       ({ error } = await _sb.auth.signInWithPassword({ email, password }));
     } else {
+      const marketingOptIn = /** @type {HTMLInputElement | null} */ (document.getElementById('auth-marketing'))?.checked === true;
       ({ error } = await _sb.auth.signUp({
         email, password,
-        options: { emailRedirectTo: window.location.origin },
+        options: {
+          emailRedirectTo: window.location.origin,
+          // Persisted into auth.users.user_metadata; the list-subscribe edge
+          // function reads it after the user confirms their email.
+          data: { marketing_opt_in: marketingOptIn },
+        },
       }));
     }
   } catch (e) {
@@ -1411,6 +1418,9 @@ _sb.auth.onAuthStateChange(async (event, session) => {
     if (typeof _syncDemoBanner === 'function') _syncDemoBanner();
     await loadAllData();
     if (typeof _identifyUser === 'function') _identifyUser(session);
+    if (typeof _syncMailingList === 'function') {
+      _syncMailingList(session).catch(e => console.warn('[mailing-list] sync failed', e));
+    }
     await _loadCabinetTemplatesFromDB();
     // O.2: guided walkthrough — first-run auto-start / version-gated re-show.
     // Runs after data has hydrated so the empty-app check is accurate.

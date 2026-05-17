@@ -19,6 +19,33 @@ function dismissAuth() {
   /** @type {HTMLElement} */ (document.getElementById('auth-screen')).classList.add('hidden');
 }
 
+/**
+ * Add a freshly-confirmed, opted-in user to the marketing mailing list.
+ *
+ * Called fire-and-forget from onAuthStateChange. The actual list write runs
+ * server-side in the `list-subscribe` edge function (which holds the Resend
+ * API key) — this only decides whether to invoke it:
+ *   - the user ticked the opt-in box at signup (user_metadata.marketing_opt_in)
+ *   - their email is confirmed (no Supabase session exists before that anyway)
+ *   - they haven't already been synced on this device
+ * A localStorage flag suppresses repeat calls; the edge function is also
+ * idempotent, so a redundant call (e.g. a second device) is harmless.
+ *
+ * @param {import('@supabase/supabase-js').Session} session
+ */
+async function _syncMailingList(session) {
+  const user = session?.user;
+  if (!user || window._demoMode) return;
+  const meta = user.user_metadata || {};
+  if (meta.marketing_opt_in !== true) return;
+  if (!user.email_confirmed_at) return;
+  const flagKey = `pc_mailing_synced_${user.id}`;
+  if (localStorage.getItem(flagKey)) return;
+  const { error } = await _sb.functions.invoke('list-subscribe');
+  if (error) throw error;
+  localStorage.setItem(flagKey, '1');
+}
+
 // Keyboard shortcuts
 document.addEventListener('keydown', e => {
   // Ctrl/Cmd + number: switch tabs

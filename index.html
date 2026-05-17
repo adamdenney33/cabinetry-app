@@ -19,6 +19,10 @@
     <div id="auth-msg"></div>
     <input type="email" id="auth-email" class="auth-input" placeholder="Email address" autocomplete="email">
     <input type="password" id="auth-password" class="auth-input" placeholder="Password" autocomplete="current-password">
+    <label id="auth-marketing-row" style="display:none;align-items:flex-start;gap:8px;margin:2px 2px 12px;cursor:pointer;font-size:12px;line-height:1.45;color:var(--text2);text-align:left">
+      <input type="checkbox" id="auth-marketing" style="margin-top:1px;flex-shrink:0;cursor:pointer">
+      <span>Email me occasional product updates and cabinetry tips. No spam &mdash; unsubscribe anytime.</span>
+    </label>
     <button class="auth-btn" id="auth-btn" onclick="authSubmit()">Sign In</button>
     <div class="auth-toggle" id="auth-toggle">No account? <span onclick="toggleAuthMode()">Create one</span></div>
   </div>

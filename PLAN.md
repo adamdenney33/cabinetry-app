@@ -22,6 +22,60 @@ Companion docs: `SPEC.md` (refactor history), `SCHEMA.md` (DB schema),
 
 ## Active Work
 
+### New signups can opt into a marketing mailing list — code complete, pending Resend setup
+
+New users can tick an opt-in checkbox at signup; once they confirm their email
+and land in the app, a server-side edge function adds them to a Resend
+audience. Provider is Resend Audiences; consent is explicit opt-in (GDPR-safe);
+the list write happens only after email confirmation.
+
+- ✅ **Opt-in checkbox** — `index.html` adds `#auth-marketing` to the auth card
+  (hidden in sign-in mode, shown in signup mode by `toggleAuthMode`, unchecked
+  by default). `authSubmit` passes `data: { marketing_opt_in }` to
+  `_sb.auth.signUp`, persisting the choice to `auth.users.user_metadata`.
+- ✅ **Confirmed-user sync** — new `_syncMailingList(session)` in `src/auth.js`,
+  called fire-and-forget from `onAuthStateChange`. Invokes the `list-subscribe`
+  edge function once per user per device (a `pc_mailing_synced_<id>`
+  localStorage flag suppresses repeats) when the user opted in and their email
+  is confirmed. Skips demo mode.
+- ✅ **`list-subscribe` edge function** — `supabase/functions/list-subscribe/`
+  authenticates the caller's Supabase JWT, re-checks opt-in + confirmation
+  server-side, then POSTs the user to the Resend audience. Holds the Resend
+  API key; treats an already-subscribed contact as success. Mirrors the
+  `stripe-portal` function's CORS / auth conventions.
+
+No schema migration (opt-in + synced state live in `user_metadata` /
+localStorage). `npm run typecheck` clean; checkbox verified in the dev preview.
+
+**Remaining (manual, owner):** create a Resend account + audience; set
+`RESEND_API_KEY` and `RESEND_AUDIENCE_ID` via `supabase secrets set`; deploy
+with `supabase functions deploy list-subscribe`.
+
+### Returning free users see the Pro CTA once per browser session ✅ Done 2026-05-17
+
+A signed-in free user who has already completed the first-run guided tour now
+gets just the final Pro CTA — not the whole tour — once per browser session.
+The full tour stays first-login-only.
+
+- ✅ **Standalone CTA path** — new `_wtStartCta()` (`src/walkthrough.js`) opens
+  the overlay directly on the final `showPricing` step. A new `_wtCtaOnly`
+  module flag marks the mode: `_wtApplyContext` skips the tab switch + sidebar
+  gating, `_wtClose` skips the dismissal persistence and the "land on
+  Dashboard" `switchSection`, and `_wtNext`/`_wtBack` collapse to single-step
+  so Back / ← can't escape into the middle of the tour. Unlike `_wtRunStart`
+  it never borrows demo mode — the CTA is a centred modal over the user's own
+  live data.
+- ✅ **Once-per-session gate** — new `_wtMaybeShowSessionCta()` shows the CTA
+  unless the user is Pro or `sessionStorage['pc_wt_session_cta']` is already
+  set. `_wtMaybeAutoStart`'s "already onboarded at the current version" branch
+  calls it instead of no-opping. A completed full tour also sets the flag, so
+  the CTA never doubles up on a same-session reload; the flag clears when the
+  browser session ends, so it returns next session.
+
+First-run tour, the `WT_VERSION` re-show and the logged-out-demo every-reload
+replay are unchanged. No schema migration. `npm run typecheck` clean; verified
+in the dev preview.
+
 ### Free-plan import/export lock + tour-skip CTA + demo tour-on-reload ✅ Done 2026-05-17
 
 Plan: `~/.claude/plans/remove-all-import-replicated-quokka.md`.
