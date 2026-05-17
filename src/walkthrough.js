@@ -191,7 +191,7 @@ const _wtSteps = [
   {
     type: 'spot', phase: 'Cabinet', section: 'cabinet', cbView: 'results',
     preClickCard: '#cb-results .quote-card',
-    target: '#cb-results', position: 'left',
+    target: '#cab-view-builder .main-content', position: 'left',
     title: 'Cabinets & live pricing',
     body: 'Every cabinet in the quote is listed here with material, labour, markup and tax <span class="wt-hi">calculated line by line</span> — the total updates as you design.'
   },
@@ -204,7 +204,7 @@ const _wtSteps = [
   },
   {
     type: 'spot', phase: 'Cabinet', section: 'cabinet', cbView: 'library',
-    target: '#cb-library-view', position: 'left',
+    target: '#cab-view-builder .main-content', position: 'left',
     title: 'Cabinet Library',
     body: 'A catalogue of <span class="wt-hi">reusable cabinet templates</span>. Build a cabinet once, then "Add to Quote" drops it into any job — dimensions, materials and pricing included.'
   },
@@ -236,32 +236,33 @@ const _wtSteps = [
     body: 'Every cut list is saved here as its own entry. <span class="wt-hi">Reopen or duplicate</span> a past job, or start a fresh one — your whole cutting history in one place.'
   },
   {
-    type: 'spot', phase: 'Cut List', section: 'cutlist', clView: 'layout',
+    type: 'spot', phase: 'Cut List', section: 'cutlist',
+    preClickCard: '#cl-lib-grid > div',
     target: '#sheets-table', position: 'right',
     title: 'Sheet stock',
     body: 'Pull panels in from your Stock inventory. Each sheet row sets the material, dimensions and grain direction — the optimiser uses this to <span class="wt-hi">rotate and nest pieces correctly</span>.'
   },
   {
-    type: 'spot', phase: 'Cut List', section: 'cutlist', clView: 'layout',
+    type: 'spot', phase: 'Cut List', section: 'cutlist',
     target: '#pieces-table', position: 'right',
     title: 'Piece list',
     body: 'Add every part you need to cut — label, length, width, quantity, grain direction and edge banding. <span class="wt-hi">You\'re in full control</span> of what goes on each sheet.'
   },
   {
-    type: 'spot', phase: 'Cut List', section: 'cutlist', clView: 'layout',
+    type: 'spot', phase: 'Cut List', section: 'cutlist',
     target: '#cl-action-bar', position: 'top',
     title: 'Optimise the layout',
     body: 'Hit <span class="wt-hi">Optimise Cut Layout</span> and ProCabinet nests all your pieces onto the available sheets for minimum waste, respecting grain and saw-kerf.'
   },
   {
-    type: 'spot', phase: 'Cut List', section: 'cutlist', clView: 'layout',
+    type: 'spot', phase: 'Cut List', section: 'cutlist',
     preClickCard: '#cl-action-bar .btn',
     target: '#results-area', position: 'left',
     title: 'Visual layout',
     body: 'Each sheet is drawn as a scaled diagram with pieces labelled and colour-coded. See <span class="wt-hi">waste percentage, cut order and material totals</span> at a glance.'
   },
   {
-    type: 'spot', phase: 'Cut List', section: 'cutlist', clView: 'layout',
+    type: 'spot', phase: 'Cut List', section: 'cutlist',
     target: '#layout-toolbar-top', position: 'bottom',
     title: 'Export & deduct stock',
     body: 'Export a <span class="wt-hi">workshop PDF</span> with the cut diagram and part labels, or deduct the used sheets straight from your Stock inventory with one click.'
@@ -403,19 +404,10 @@ function _wtGateSection(section) {
       _wtW._exitClient_cabinet();
     }
     if (section === 'cutlist') {
-      // The cut-layout steps (sheets / pieces tables, action bar) only render
-      // once a cut list is open. Open the first one, then show the Cut Layout
-      // view — async, but the steps' _wtWaitFor budget covers the load.
-      (async () => {
-        try {
-          if (typeof _db === 'function' && typeof _wtW._clOpenLibraryCutlist === 'function') {
-            const { data } = await _db('cutlists').select('id').order('position').limit(1);
-            const id = data && data[0] && data[0].id;
-            if (id != null) await _wtW._clOpenLibraryCutlist(id);
-          }
-          if (typeof _wtW.switchCLMainView === 'function') _wtW.switchCLMainView('layout');
-        } catch (e) { console.warn('[walkthrough] cutlist gate failed', e); }
-      })();
+      // Land on the Cut List Library. The tour opens a cut list by clicking a
+      // library card (the "Sheet stock" step), so the cut-layout steps see
+      // real data and the layout only appears once Optimise is clicked.
+      if (typeof _wtW.switchCLMainView === 'function') _wtW.switchCLMainView('library');
     }
     if (section === 'orders' && typeof _opState !== 'undefined') {
       _opState.orderId = null; _opState.clientId = null;
