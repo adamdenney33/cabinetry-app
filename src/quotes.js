@@ -529,6 +529,7 @@ function renderQuoteMain() {
 
 // ── CSV import / export ──
 function exportQuotesCSV() {
+  if (!_enforceProFeature()) return;
   const customerQuotes = quotes.filter(q => !_isDraftQuote(q));
   if (!customerQuotes.length) { _toast('No quotes to export', 'error'); return; }
   const cur = window.currency;
@@ -545,6 +546,7 @@ function exportQuotesCSV() {
   _toast('Quotes exported', 'success');
 }
 function importQuotesCSV() {
+  if (!_enforceProFeature()) return;
   const input = document.createElement('input');
   input.type = 'file'; input.accept = '.csv';
   input.onchange = async e => {

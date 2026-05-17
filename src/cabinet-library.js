@@ -44,6 +44,7 @@ function _saveStockLibByName(name) {
 }
 
 function cbExportLibrary() {
+  if (!_enforceProFeature()) return;
   if (!cbLibrary.length) { _toast('No cabinets in library', 'error'); return; }
   const headers = ['Name','Width','Height','Depth','Qty','Material','Back Material','Finish','Construction','Base','Doors','Door Material','Door %','Drawers','Front Material','Inner Material','Drawer %','Fixed Shelves','Adj Shelves','Loose Shelves','Partitions','End Panels'];
   /** @type {any[][]} */
@@ -58,6 +59,7 @@ function cbExportLibrary() {
 }
 
 function cbImportLibrary() {
+  if (!_enforceProFeature()) return;
   const input = document.createElement('input');
   input.type = 'file'; input.accept = '.csv';
   input.onchange = async e => {

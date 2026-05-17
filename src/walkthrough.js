@@ -562,6 +562,17 @@ function _wtNext() {
 function _wtBack() {
   if (_wtCurrent > 0) _wtRender(_wtCurrent - 1);
 }
+/**
+ * Skip handler. A paid (Pro) user exits immediately; everyone else — free or
+ * logged-out demo — is sent to the final Pro CTA step first, unless they are
+ * already on it.
+ */
+function _wtSkip() {
+  const lastIdx = _wtSteps.length - 1;
+  const pro = typeof isPro === 'function' && isPro();
+  if (!pro && _wtCurrent < lastIdx) { _wtDir = 1; _wtRender(lastIdx); return; }
+  _wtClose('skipped');
+}
 
 /** @param {MouseEvent} e */
 function _wtOverlayClick(e) {
@@ -572,7 +583,7 @@ function _wtOverlayClick(e) {
   const act = t && t.getAttribute ? t.getAttribute('data-wt-act') : null;
   if (act === 'next') _wtNext();
   else if (act === 'back') _wtBack();
-  else if (act === 'skip') _wtClose('skipped');
+  else if (act === 'skip') _wtSkip();
 }
 
 /** @param {KeyboardEvent} e */
@@ -580,7 +591,7 @@ function _wtKeydown(e) {
   if (!_wtActive) return;
   if (e.key === 'ArrowRight') { e.preventDefault(); _wtNext(); }
   else if (e.key === 'ArrowLeft') { e.preventDefault(); _wtBack(); }
-  else if (e.key === 'Escape') { e.preventDefault(); _wtClose('skipped'); }
+  else if (e.key === 'Escape') { e.preventDefault(); _wtSkip(); }
 }
 
 function _wtOnResize() {
@@ -993,8 +1004,11 @@ function _wtCenterHTML(step) {
  */
 async function _wtMaybeAutoStart() {
   if (_wtActive) return;
-  // localStorage is the durable first-run gate for everyone (incl. guests);
-  // business_info.onboarding_state mirrors it for a signed-in user's devices.
+  // Logged-out demo visitors get the full tour + CTA on every reload — the demo
+  // is a marketing surface, so the localStorage dismissal gate is bypassed.
+  if (!_userId) { _wtStart({ force: true }); return; }
+  // Signed-in users: localStorage is the durable first-run gate;
+  // business_info.onboarding_state mirrors it across their devices.
   /** @type {any} */
   let ls = null;
   try { ls = JSON.parse(localStorage.getItem('pc_wt_state') || 'null'); } catch (e) { ls = null; }

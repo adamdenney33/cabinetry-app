@@ -150,3 +150,28 @@ function _enforceFreeLimit(library, currentCount) {
   }
   return false;
 }
+
+// ══════════════════════════════════════════
+// PRO-ONLY FEATURE GATE
+// ══════════════════════════════════════════
+/**
+ * Gate a Pro-only feature (CSV import / export). Logged-out demo visitors
+ * (no `_userId`) and Pro users pass through; a signed-in free user gets the
+ * locked-feature modal and the caller bails. Returns true when it's safe to
+ * proceed.
+ *
+ * Use at the top of every import/export entry point:
+ *   if (!_enforceProFeature()) return;
+ *
+ * @returns {boolean}
+ */
+function _enforceProFeature() {
+  if (!_userId || isPro()) return true;
+  if (typeof _track === 'function') _track('pro_feature_blocked', { feature: 'import_export' });
+  if (typeof _openProFeatureModal === 'function') {
+    _openProFeatureModal();
+  } else if (typeof _toast === 'function') {
+    _toast('Importing and exporting is a Pro feature.', 'error');
+  }
+  return false;
+}

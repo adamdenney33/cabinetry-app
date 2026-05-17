@@ -130,6 +130,7 @@ function importStockLibrary() {
 }
 
 function exportStockCSV() {
+  if (!_enforceProFeature()) return;
   const u = window.units === 'metric' ? 'mm' : 'in';
   /** @type {any[][]} */
   const rows = [['Name','SKU','Category',`W (${u})`,`H (${u})`,'Qty','Low Alert','Cost/Sheet','Total Value','Status']];
@@ -153,6 +154,7 @@ function downloadStockTemplate() {
 }
 
 function importStockCSV() {
+  if (!_enforceProFeature()) return;
   const input = document.createElement('input');
   input.type = 'file'; input.accept = '.csv';
   input.onchange = async e => {

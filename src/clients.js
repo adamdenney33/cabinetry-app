@@ -454,6 +454,7 @@ try { renderDashboard(); setTimeout(drawRevenueChart, 0); } catch(e) {}
 
 // ── Clients CSV import / export ──
 function exportClientsCSV() {
+  if (!_enforceProFeature()) return;
   const allClients = [...new Set([...quotes.map(q=>quoteClient(q)), ...orders.map(o=>orderClient(o))].filter(Boolean))].sort();
   if (!allClients.length) { _toast('No clients to export', 'error'); return; }
   /** @type {any[][]} */
@@ -470,5 +471,6 @@ function exportClientsCSV() {
   _toast('Clients exported', 'success');
 }
 function importClientsCSV() {
+  if (!_enforceProFeature()) return;
   _toast('Clients are created automatically from quotes and orders', 'info');
 }

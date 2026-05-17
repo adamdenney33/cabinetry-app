@@ -264,6 +264,7 @@ async function setOrderStatus(id, status) {
 
 // ── CSV import / export ──
 function exportOrdersCSV() {
+  if (!_enforceProFeature()) return;
   if (!orders.length) { _toast('No orders to export', 'error'); return; }
   /** @type {any[][]} */
   const rows = [['Order #','Client','Project','Value','Status','Due','Notes']];
@@ -274,6 +275,7 @@ function exportOrdersCSV() {
   _toast('Orders exported', 'success');
 }
 function importOrdersCSV() {
+  if (!_enforceProFeature()) return;
   const input = document.createElement('input');
   input.type = 'file'; input.accept = '.csv';
   input.onchange = async e => {

@@ -375,6 +375,38 @@ function _openLimitHitModal(library) {
   `, 'sm');
 }
 
+/**
+ * Modal shown when a signed-in free user clicks an import or export button.
+ * Lock icon + the standard upgrade CTAs. Logged-out demo visitors never reach
+ * this — `_enforceProFeature` lets them through.
+ */
+function _openProFeatureModal() {
+  _openPopup(`
+    <div class="popup-header">
+      <div class="popup-title">A Pro Feature</div>
+      <button class="popup-close" onclick="_closePopup()">&times;</button>
+    </div>
+    <div class="popup-body">
+      <div style="text-align:center;font-size:34px;line-height:1;padding:4px 0 2px">&#128274;</div>
+      <div style="background:rgba(232,168,56,0.08);border:1px solid rgba(232,168,56,0.2);border-radius:8px;padding:12px 14px;font-size:13px;color:var(--text);line-height:1.5;text-align:center">
+        Importing and exporting data is a <strong>Pro</strong> feature. Upgrade to move your clients, quotes, orders, stock and cabinet libraries in and out as CSV.
+      </div>
+      <div class="pf-divider"></div>
+      <button class="btn btn-primary btn-lg" onclick="_closePopup();_handleUpgradeClick('annual')">Upgrade to Pro</button>
+      <div style="display:flex;justify-content:space-between;font-size:10px;margin-top:8px;color:var(--muted)">
+        <span style="cursor:pointer" onclick="_closePopup();_handleUpgradeClick('annual')"><strong style="color:var(--text)">$299</strong> / yr · save 29%</span>
+        <span style="cursor:pointer" onclick="_closePopup();_handleUpgradeClick('monthly')"><strong style="color:var(--text)">$35</strong> / mo</span>
+      </div>
+    </div>
+    <div class="popup-footer">
+      <div></div>
+      <div class="popup-footer-right">
+        <button class="btn btn-outline" onclick="_closePopup()">Close</button>
+      </div>
+    </div>
+  `, 'sm');
+}
+
 function _openManagePopupFree() {
   _openPopup(`
     <div class="popup-header">

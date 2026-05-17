@@ -22,6 +22,30 @@ Companion docs: `SPEC.md` (refactor history), `SCHEMA.md` (DB schema),
 
 ## Active Work
 
+### Free-plan import/export lock + tour-skip CTA + demo tour-on-reload ✅ Done 2026-05-17
+
+Plan: `~/.claude/plans/remove-all-import-replicated-quokka.md`.
+
+Three monetisation / funnel changes.
+
+- ✅ **Import/export is Pro-only** — new `_enforceProFeature()` in `src/limits.js`
+  (passes for the logged-out demo and Pro users; blocks signed-in free users)
+  guards all 10 CSV import/export entry points (`export/importClientsCSV`,
+  `export/importQuotesCSV`, `export/importOrdersCSV`, `export/importStockCSV`,
+  `cbExportLibrary`/`cbImportLibrary`). A blocked click opens
+  `_openProFeatureModal()` (`src/stripe.js`) — a lock-icon popup with the upgrade
+  CTAs. PDF generation (quote / cut-list / stock) stays free — scope is CSV data
+  import/export only.
+- ✅ **Skip shows the CTA** — new `_wtSkip()` (`src/walkthrough.js`): a free or
+  demo user who skips the tour jumps to its existing final Pro CTA step instead
+  of closing; a Pro user still exits immediately. Both skip call sites (overlay
+  click + Escape) reroute through it.
+- ✅ **Demo replays the tour every reload** — `_wtMaybeAutoStart()` bypasses the
+  `pc_wt_state` dismissal gate when `!_userId`, so a logged-out visitor gets the
+  full tour + CTA on every page load. Signed-in users keep the once-only gate.
+
+No schema migration. `npm run typecheck` clean; verified in the dev preview.
+
 ### Features menu — suggest-by-email + upvotable leaderboard ✅ Done 2026-05-17
 
 Plan: `~/.claude/plans/add-a-new-features-vectorized-breeze.md`.
