@@ -65,7 +65,7 @@ const _FEAT_PLUS = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" 
 function _featureShell(bodyHtml) {
   return `
     <div class="popup-header">
-      <div class="popup-title">Feature Ideas</div>
+      <div class="popup-title">New Features</div>
       <button class="popup-close" onclick="_closePopup()">&times;</button>
     </div>
     <div class="popup-body">
