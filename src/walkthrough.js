@@ -230,6 +230,12 @@ const _wtSteps = [
     body: 'Plan exactly how each sheet gets cut. Add your stock panels, list every piece needed, then let ProCabinet <span class="wt-hi">optimise the layout for minimum waste</span>.'
   },
   {
+    type: 'spot', phase: 'Cut List', section: 'cutlist', clView: 'library',
+    target: '#cl-view-library', position: 'left',
+    title: 'Cut List Library',
+    body: 'Every cut list is saved here as its own entry. <span class="wt-hi">Reopen or duplicate</span> a past job, or start a fresh one — your whole cutting history in one place.'
+  },
+  {
     type: 'spot', phase: 'Cut List', section: 'cutlist', clView: 'layout',
     target: '#sheets-table', position: 'right',
     title: 'Sheet stock',
@@ -259,12 +265,6 @@ const _wtSteps = [
     target: '#layout-toolbar-top', position: 'bottom',
     title: 'Export & deduct stock',
     body: 'Export a <span class="wt-hi">workshop PDF</span> with the cut diagram and part labels, or deduct the used sheets straight from your Stock inventory with one click.'
-  },
-  {
-    type: 'spot', phase: 'Cut List', section: 'cutlist', clView: 'library',
-    target: '#cl-view-library', position: 'left',
-    title: 'Cut List Library',
-    body: 'Every cut list is saved here as its own entry. <span class="wt-hi">Reopen or duplicate</span> a past job, or start a fresh one — your whole cutting history in one place.'
   },
 
   // ── Schedule ─────────────────────────────────────────────────────────────
