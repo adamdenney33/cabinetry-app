@@ -129,26 +129,28 @@ function _featureRenderBoard() {
 }
 
 /**
- * One leaderboard row: idea + status badge + upvote button.
+ * One leaderboard row. The whole row is a button that toggles the upvote;
+ * the vote pill on the right is just the visual indicator.
  * @param {any} s
  * @returns {string}
  */
 function _featureRow(s) {
   const voted = _featVoted.has(s.id);
   const desc = s.description
-    ? `<div class="feat-desc">${_escHtml(s.description)}</div>`
+    ? `<span class="feat-desc">${_escHtml(s.description)}</span>`
     : '';
-  return `<div class="feat-row">
-    <div class="feat-row-body">
-      <div class="feat-title">${_escHtml(s.title)}${_featureStatusBadge(s.status)}</div>
+  return `<button type="button" class="feat-row${voted ? ' voted' : ''}"
+    onclick="_featureToggleVote(${s.id})" aria-pressed="${voted}"
+    title="${voted ? 'Remove your upvote' : 'Upvote this idea'}">
+    <span class="feat-row-body">
+      <span class="feat-title">${_escHtml(s.title)}${_featureStatusBadge(s.status)}</span>
       ${desc}
-    </div>
-    <button class="feat-vote${voted ? ' voted' : ''}" onclick="_featureToggleVote(${s.id})"
-      aria-pressed="${voted}" title="${voted ? 'Remove your upvote' : 'Upvote this idea'}">
+    </span>
+    <span class="feat-vote">
       <span class="feat-vote-count">${s.vote_count}</span>
       ${_FEAT_ARROW}
-    </button>
-  </div>`;
+    </span>
+  </button>`;
 }
 
 /**

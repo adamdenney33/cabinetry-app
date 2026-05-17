@@ -196,13 +196,22 @@ header {
 .feat-list { display: flex; flex-direction: column; gap: 6px; }
 .feat-row {
   display: flex; align-items: center; gap: 12px;
+  width: 100%;
   min-height: 34px;
   padding: 0 12px;
   border: 1px solid var(--border);
   border-radius: 9px;
   background: var(--surface);
+  color: var(--text);
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.15s;
 }
-.feat-row-body { flex: 1; min-width: 0; }
+.feat-row:hover { background: var(--accent-dim); border-color: var(--accent); }
+.feat-row:focus { outline: none; }
+.feat-row:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.feat-row-body { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .feat-title {
   font-size: 12px; font-weight: 600; color: var(--text);
   line-height: 1.4;
@@ -231,12 +240,10 @@ header {
   border-radius: 8px;
   background: var(--surface2);
   color: var(--text2);
-  cursor: pointer;
-  font-family: inherit;
   transition: all 0.15s;
 }
-.feat-vote:hover { border-color: var(--accent); color: var(--accent); }
-.feat-vote.voted {
+.feat-row:hover .feat-vote { border-color: var(--accent); color: var(--accent); }
+.feat-row.voted .feat-vote {
   background: var(--accent);
   border-color: var(--accent);
   color: #fff;
