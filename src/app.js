@@ -1187,7 +1187,10 @@ async function authSubmit() {
     if (_authMode === 'signin') {
       ({ error } = await _sb.auth.signInWithPassword({ email, password }));
     } else {
-      ({ error } = await _sb.auth.signUp({ email, password }));
+      ({ error } = await _sb.auth.signUp({
+        email, password,
+        options: { emailRedirectTo: window.location.origin },
+      }));
     }
   } catch (e) {
     if (btn) { btn.disabled = false; btn.textContent = _authMode === 'signin' ? 'Sign In' : 'Create Account'; }

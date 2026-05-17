@@ -23,6 +23,20 @@ function copyClassicScriptsPlugin() {
   };
 }
 
+// The Supabase auth email templates (supabase/templates/*.html) reference the
+// logo by absolute URL — email clients strip SVG and inline data-URIs, so it
+// must be a hosted PNG. Ship the brand logo at the dist/ root so it deploys to
+// https://procabinet.app/logo-colour-on-dark.png.
+function copyEmailLogoPlugin() {
+  return {
+    name: 'copy-email-logo',
+    closeBundle() {
+      const logo = 'brand/logo/logo-colour-on-dark.png';
+      if (existsSync(logo)) copyFileSync(logo, 'dist/logo-colour-on-dark.png');
+    },
+  };
+}
+
 export default defineConfig({
   root: '.',
   publicDir: false,
@@ -39,6 +53,7 @@ export default defineConfig({
   },
   plugins: [
     copyClassicScriptsPlugin(),
+    copyEmailLogoPlugin(),
     // Source-map upload + release/commit grouping. Needs build.sourcemap (set
     // above). org/project/authToken come from the build env — see
     // .github/workflows/deploy.yml. `disable` makes the plugin a no-op when

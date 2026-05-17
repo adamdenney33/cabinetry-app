@@ -631,10 +631,14 @@ analytics widgets) available to all users.
   - Track walkthrough version + dismissed state in `business_info` jsonb
     or dedicated `onboarding_state` column
 
-- **O.3 — Transactional email**
-  - Customise Supabase auth email templates (signup confirmation, password reset)
-  - Brand styling matches the app
-  - Test deliverability — check spam scoring, SPF/DKIM/DMARC
+- **O.3 — Transactional email** — branded templates + custom-sender code/build wired 2026-05-17; Resend SMTP + DNS setup pending. SPEC.md § 13 has the detail.
+  - ✅ Four branded HTML auth-email templates in `supabase/templates/` (`confirmation`, `recovery`, `magic-link`, `email-change`) — dark `#111111` header with the `logo-colour-on-dark` wordmark, amber CTA, British-English trade voice
+  - ✅ Logo hosting — `vite.config.mjs` `copyEmailLogoPlugin` ships `brand/logo/logo-colour-on-dark.png` into `dist/` → served at `https://procabinet.app/logo-colour-on-dark.png`
+  - ✅ `signUp` passes `emailRedirectTo: window.location.origin` (`src/app.js`)
+  - ⬜ Resend account + verify `procabinet.app` domain (DNS records in Cloudflare)
+  - ⬜ Supabase custom SMTP (`smtp.resend.com`, sender `noreply@procabinet.app` / `ProCabinet.App`) — also drops the "powered by Supabase" footer + lifts the built-in email rate limit
+  - ⬜ Paste the four templates + subjects into Supabase → Authentication → Emails; set Site URL + redirect allow-list
+  - ⬜ Test deliverability — spam scoring, SPF/DKIM/DMARC
 
 ### Production Ops
 

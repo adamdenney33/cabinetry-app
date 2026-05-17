@@ -1,0 +1,75 @@
+<!-- ProCabinet.App auth email — Supabase > Authentication > Emails > "Change Email Address" -->
+<!-- Subject: Confirm your new email — ProCabinet.App -->
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="color-scheme" content="light">
+  <meta name="supported-color-schemes" content="light">
+  <title>Confirm your new email — ProCabinet.App</title>
+  <style>
+    body { margin: 0; padding: 0; width: 100% !important; -webkit-text-size-adjust: 100%; }
+    a { text-decoration: none; }
+    @media only screen and (max-width: 620px) {
+      .pc-wrap { width: 100% !important; }
+      .pc-pad { padding-left: 24px !important; padding-right: 24px !important; }
+    }
+  </style>
+</head>
+<body style="margin:0;padding:0;background-color:#f2f2f2;">
+  <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">Confirm the new email address for your ProCabinet.App account.</div>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f2f2f2;">
+    <tr>
+      <td align="center" style="padding:32px 16px;">
+        <table role="presentation" class="pc-wrap" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:600px;">
+
+          <!-- header -->
+          <tr>
+            <td align="center" bgcolor="#111111" style="background-color:#111111;border-radius:12px 12px 0 0;padding:30px 0;">
+              <img src="https://procabinet.app/logo-colour-on-dark.png" width="200" height="48" alt="ProCabinet.App" style="display:block;border:0;width:200px;height:48px;color:#ffffff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:22px;font-weight:800;">
+            </td>
+          </tr>
+
+          <!-- body -->
+          <tr>
+            <td class="pc-pad" bgcolor="#ffffff" style="background-color:#ffffff;border-radius:0 0 12px 12px;padding:40px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
+              <h1 style="margin:0 0 16px;font-size:22px;line-height:1.3;font-weight:800;color:#111111;">Confirm your new email</h1>
+              <p style="margin:0 0 28px;font-size:15px;line-height:1.6;color:#444444;">
+                Confirm this is the new email address for your ProCabinet.App account. Once it's confirmed, you'll use it to sign in.
+              </p>
+
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td align="center" bgcolor="#e8a838" style="background-color:#e8a838;border-radius:6px;">
+                    <a href="{{ .ConfirmationURL }}" target="_blank" style="display:inline-block;padding:14px 34px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:16px;font-weight:700;line-height:1;color:#111111;border-radius:6px;">Confirm new email</a>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin:28px 0 0;font-size:13px;line-height:1.6;color:#888888;">
+                Button not working? Copy and paste this link into your browser:<br>
+                <a href="{{ .ConfirmationURL }}" target="_blank" style="color:#111111;text-decoration:underline;word-break:break-all;">{{ .ConfirmationURL }}</a>
+              </p>
+            </td>
+          </tr>
+
+          <!-- footer -->
+          <tr>
+            <td class="pc-pad" style="padding:24px 40px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
+              <p style="margin:0 0 6px;font-size:12px;line-height:1.6;color:#666666;">
+                Didn't request this change? Ignore this email — your address won't change.
+              </p>
+              <p style="margin:0;font-size:12px;line-height:1.6;color:#888888;">
+                ProCabinet.App · Workshop OS for cabinetmakers
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
