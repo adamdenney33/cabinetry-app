@@ -8,9 +8,13 @@
 // `_restoreProdStarts`, `STATUS_LABELS`, `renderOrdersMain` — are all
 // globals defined in app.js / db.js, available at call time.
 
-function renderSchedule() {
+/** @param {{sidebar?: boolean}} [opts] */
+function renderSchedule(opts) {
   const el = document.getElementById('schedule-main');
   if (!el) return;
+  // sidebar:false re-renders only the calendar — used by the inline Working
+  // Hours section so editing its inputs doesn't rebuild (and destroy) them.
+  const renderSidebar = !opts || opts.sidebar !== false;
   _restoreProdStarts(orders); // ensure prodStart dates loaded
   const today = new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
   const palette = ['#e8a838','#2563eb','#0d9488','#9333ea','#dc2626','#059669','#d97706','#6366f1','#ec4899','#14b8a6'];
@@ -172,18 +176,31 @@ function renderSchedule() {
       ? `<span class="cl-drag-handle" title="Drag to reorder" style="cursor:grab;color:var(--muted);display:inline-flex;align-items:center;flex-shrink:0">${SCHED_DRAG_HANDLE}</span>`
       : '';
     const pri = (o && /** @type {any} */ (o).priority) || 0;
-    const priStepper = `<div class="sched-pri" title="Priority — 1 = highest, 0 = none" draggable="false" onmousedown="event.stopPropagation()" ondblclick="event.stopPropagation()"><span class="sched-pri-num${pri > 0 ? ' has-priority' : ''}">${pri}</span><span class="sched-pri-arrows"><button type="button" class="sched-pri-btn" aria-label="Raise priority" onclick="event.stopPropagation();_schedStepPriority(${e.id},1)">${SCHED_CHEV_UP}</button><button type="button" class="sched-pri-btn" aria-label="Lower priority" ${pri <= 0 ? 'disabled' : ''} onclick="event.stopPropagation();_schedStepPriority(${e.id},-1)">${SCHED_CHEV_DOWN}</button></span></div>`;
+    const priLabel = pri > 0 ? pri : '—';
+    const priStepper = `<div class="sched-pri" title="Priority — 1 = highest. Dash = none." draggable="false" onmousedown="event.stopPropagation()" ondblclick="event.stopPropagation()"><span class="sched-pri-num${pri > 0 ? ' has-priority' : ''}">${priLabel}</span><span class="sched-pri-arrows"><button type="button" class="sched-pri-btn" aria-label="Raise priority" onclick="event.stopPropagation();_schedStepPriority(${e.id},1)">${SCHED_CHEV_UP}</button><button type="button" class="sched-pri-btn" aria-label="Lower priority" ${pri <= 1 ? 'disabled' : ''} onclick="event.stopPropagation();_schedStepPriority(${e.id},-1)">${SCHED_CHEV_DOWN}</button></span></div>`;
     sidebarHTML += `<div style="display:flex;align-items:center;gap:8px;padding:5px 8px;margin-bottom:2px;border-radius:6px;cursor:pointer;background:var(--surface2)"${dragAttr} onclick="_scrollToSchedBar(${e.id})" ondblclick="_openOrderPopup(${e.id})" onmouseover="this.style.background='${e.color}33'" onmouseout="this.style.background='var(--surface2)'">${dragHandle}<div style="width:9px;height:9px;border-radius:50%;background:${e.color};flex-shrink:0"></div><div style="flex:1;min-width:0"><div style="font-size:11px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e.isManual?SCHED_LOCK_ICON:''}${[e.numberLabel, e.client, e.project].filter(Boolean).map(_escHtml).join(' · ')}</div>${meta?`<div style="font-size:9px;color:var(--muted);display:flex;align-items:center;gap:4px;margin-top:1px">${meta}</div>`:''}${dueText?`<div style="font-size:9px;color:var(--muted);margin-top:1px">${dueText}</div>`:''}</div>${priStepper}</div>`;
   });
   if(!sortedEvents.length)sidebarHTML+=`<div style="font-size:12px;color:var(--muted)">No active orders</div>`;
+  // Working Hours — collapsible section at the bottom of the body (replaces
+  // the old ⚙ Hours footer button + popup).
+  const hoursOpen = localStorage.getItem('pc_sched_hours_open') === 'true';
+  const hoursSummary = `${cbSettings.workdayHours ?? 8}h/day`
+    + (overrideCount ? ` · ${overrideCount} day${overrideCount === 1 ? '' : 's'} off` : '');
+  sidebarHTML += `<details class="sched sched-hours-section" id="sched-hours-details" ${hoursOpen ? 'open' : ''} ontoggle="_schedHoursToggle(this)">
+    <summary>
+      <span class="chev"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <span class="sched-label">Working Hours</span>
+      <span class="sched-summary">${hoursSummary}</span>
+    </summary>
+    <div class="sched-body">${_schedHoursSectionHTML()}</div>
+  </details>`;
   sidebarHTML += `</div>`; // close sched-sidebar-body
   // FOOT
   sidebarHTML += `<div class="sched-sidebar-foot">
-    <button class="btn btn-outline" onclick="_openScheduleSettingsPopup()" title="Working hours and holidays" style="font-size:10px;padding:4px 6px">⚙ Hours${overrideCount?` <span style="opacity:.7">(${overrideCount})</span>`:''}</button>
     <button class="btn btn-outline" onclick="document.getElementById('schedule-today-marker')?.scrollIntoView({behavior:'smooth',block:'center'})" style="font-size:10px;padding:4px 6px">Today</button>
   </div>`;
   const sidebarEl = document.getElementById('schedule-sidebar');
-  if (sidebarEl) sidebarEl.innerHTML = sidebarHTML;
+  if (renderSidebar && sidebarEl) sidebarEl.innerHTML = sidebarHTML;
 
   // Calendar using CSS grid per week
   // Calendar (rendered into main area)
@@ -299,8 +316,9 @@ function renderSchedule() {
   });
 
   el.innerHTML = cal;
-  // Auto-scroll to today on load
-  setTimeout(() => {
+  // Auto-scroll to today on load — skipped for sidebar:false re-renders so
+  // editing the Working Hours inputs doesn't yank the calendar viewport.
+  if (renderSidebar) setTimeout(() => {
     const todayEl = document.getElementById('schedule-today-marker');
     if (todayEl) todayEl.scrollIntoView({behavior:'smooth',block:'center'});
   }, 100);
@@ -373,7 +391,10 @@ function _sortSchedEvents(events, mode) {
       const bo = orders.find(x => x.id === b.id);
       const ap = (ao && /** @type {any} */ (ao).priority) || 0;
       const bp = (bo && /** @type {any} */ (bo).priority) || 0;
-      if (bp !== ap) return bp - ap;
+      // 0 = no priority → sorts last; explicit priorities ascending (1 = top).
+      if (ap === 0 && bp !== 0) return 1;
+      if (bp === 0 && ap !== 0) return -1;
+      if (ap !== bp) return ap - bp;
       const av = a.start ? +a.start : Infinity;
       const bv = b.start ? +b.start : Infinity;
       return av - bv;
@@ -466,14 +487,15 @@ function setOrderProdStart(id, val) {
 }
 
 /** Step an order's priority from the Schedule sidebar. dir>0 raises, dir<0
- *  lowers; floored at 0. Persists immediately and re-renders (which re-runs
+ *  lowers; floored at 1 (the stepper never yields 0 — "no priority" is only
+ *  the never-set state). Persists immediately and re-renders (which re-runs
  *  computeSchedule, so the calendar re-lays-out).
  *  @param {number} orderId @param {number} dir */
 function _schedStepPriority(orderId, dir) {
   const o = orders.find(x => x.id === orderId);
   if (!o) return;
   const cur = parseInt(String(/** @type {any} */ (o).priority || 0), 10) || 0;
-  const next = Math.max(0, cur + (dir > 0 ? 1 : -1));
+  const next = Math.max(1, cur + (dir > 0 ? 1 : -1));
   if (next === cur) return;
   /** @type {any} */ (o).priority = next;
   if (_userId) {
@@ -523,15 +545,18 @@ function _toggleSchedSection(key, headerEl) {
 /** @param {string} key */
 function _isSchedCollapsed(key) { return !!_schedSectionState[key]; }
 
-// ── Schedule Settings Popup (working hours + holidays) ──
-// Replaces the inline sidebar panels: a single ⚙ Hours button opens this.
-// Packaging / Contingency live in Cabinet Builder Core Rates, not here.
-function _openScheduleSettingsPopup() {
-  if (typeof _openPopup !== 'function') return;
-  _openPopup(_scheduleSettingsPopupHTML(), 'md');
+// ── Working Hours sidebar section (working hours + holidays) ──
+// Rendered inline as a collapsible <details> at the bottom of the Schedule
+// sidebar. Packaging / Contingency live in Cabinet Builder Core Rates.
+/** Persist the Working Hours section's open/closed state.
+ *  @param {HTMLDetailsElement} el */
+function _schedHoursToggle(el) {
+  try { localStorage.setItem('pc_sched_hours_open', String(el.open)); } catch (e) {}
 }
 
-function _scheduleSettingsPopupHTML() {
+/** Body of the collapsible Working Hours section: default workday hours, the
+ *  per-weekday grid, the queue-start anchor, and the holidays/overrides list. */
+function _schedHoursSectionHTML() {
   const wd = Array.isArray(cbSettings.weekdayHours) && cbSettings.weekdayHours.length === 7
     ? cbSettings.weekdayHours
     : [8, 8, 8, 8, 8, 0, 0];
@@ -539,26 +564,18 @@ function _scheduleSettingsPopupHTML() {
   const dayNamesFull = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
   const weekdayInputs = wd.map(/** @param {number} h @param {number} i */ (h, i) => `<div class="sched-wd-cell">
     <div class="sched-wd-letter" title="${dayNamesFull[i]}">${dayLetters[i]}</div>
-    <input type="number" min="0" max="24" step="0.5" value="${h}" class="sched-wd-input" oninput="_updateWeekdayHour(${i}, this.value)">
+    <input type="number" min="0" max="24" step="0.5" value="${h}" class="sched-wd-input" onchange="_updateWeekdayHour(${i}, this.value)">
   </div>`).join('');
 
-  return `<div class="popup-header">
-  <div class="popup-title">
-    Working Hours &amp; Holidays
-    <span class="cl-unsaved-pill" data-save-pill="cabinet" style="display:none;margin-left:8px"></span>
-  </div>
-  <button class="popup-close" onclick="_closePopup()">×</button>
-</div>
-<div class="popup-body">
-  <div class="pf"><label class="pf-label">Default workday hours</label>
-    <input class="pf-input" type="number" min="0" max="24" step="0.5" value="${cbSettings.workdayHours ?? 8}" oninput="_updateSchedDefault('workdayHours', this.value)">
+  return `<div class="pf"><label class="pf-label">Default workday hours</label>
+    <input class="pf-input" type="number" min="0" max="24" step="0.5" value="${cbSettings.workdayHours ?? 8}" onchange="_updateSchedDefault('workdayHours', this.value)">
   </div>
   <div class="pf"><label class="pf-label">Hours per weekday</label>
     <div class="sched-wd-grid">${weekdayInputs}</div>
     <div style="font-size:10px;color:var(--muted);margin-top:4px">Mon–Sun. Set Sat/Sun to 0 for a 5-day workweek; reduce one day for a recurring half-day.</div>
   </div>
   <div class="pf"><label class="pf-label">Production queue start</label>
-    <input class="pf-input" type="date" value="${cbSettings.queueStartDate || ''}" oninput="_updateSchedDefault('queueStartDate', this.value)">
+    <input class="pf-input" type="date" value="${cbSettings.queueStartDate || ''}" onchange="_updateSchedDefault('queueStartDate', this.value)">
     <div style="font-size:10px;color:var(--muted);margin-top:4px">Anchor for auto-scheduled orders. Leave blank to use today.</div>
   </div>
   <div class="pf-divider"></div>
@@ -567,8 +584,7 @@ function _scheduleSettingsPopupHTML() {
     <button class="btn btn-outline" onclick="_holidayAdd()" style="font-size:11px;padding:3px 8px;width:auto">+ Add</button>
   </div>
   <div id="sched-holidays-list" class="sched-overrides-list">${_holidaysListHTML()}</div>
-  <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">Changes save automatically.</div>
-</div>`;
+  <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px">Changes save automatically.</div>`;
 }
 
 function _holidaysListHTML() {
@@ -599,7 +615,7 @@ function _updateSchedDefault(key, val) {
     cbSettings[key] = isFinite(n) ? n : 0;
   }
   if (typeof _syncCBSettingsToDB === 'function') _syncCBSettingsToDB();
-  renderSchedule();
+  renderSchedule({ sidebar: false });
 }
 
 /** @param {number} idx  @param {string} val */
@@ -610,7 +626,7 @@ function _updateWeekdayHour(idx, val) {
   const n = parseFloat(val);
   cbSettings.weekdayHours[idx] = isFinite(n) ? n : 0;
   if (typeof _syncCBSettingsToDB === 'function') _syncCBSettingsToDB();
-  renderSchedule();
+  renderSchedule({ sidebar: false });
 }
 
 async function _holidayAdd() {
@@ -623,7 +639,7 @@ async function _holidayAdd() {
   }
   await upsertDayOverride(target, 0, '');
   _refreshHolidaysList();
-  renderSchedule();
+  renderSchedule({ sidebar: false });
 }
 /** @param {number|null} id @param {string} val */
 async function _holidayEditDate(id, val) {
@@ -633,7 +649,7 @@ async function _holidayEditDate(id, val) {
   if (o.id != null) await deleteDayOverride(o.id);
   await upsertDayOverride(val, o.hours, o.label);
   _refreshHolidaysList();
-  renderSchedule();
+  renderSchedule({ sidebar: false });
 }
 /** @param {number|null} id @param {string} val */
 async function _holidayEditHours(id, val) {
@@ -642,7 +658,7 @@ async function _holidayEditHours(id, val) {
   if (!o) return;
   await upsertDayOverride(o.date, parseFloat(val) || 0, o.label);
   _refreshHolidaysList();
-  renderSchedule();
+  renderSchedule({ sidebar: false });
 }
 /** @param {number|null} id @param {string} val */
 async function _holidayEditLabel(id, val) {
@@ -657,7 +673,7 @@ async function _holidayDelete(id) {
   if (id == null) return;
   await deleteDayOverride(id);
   _refreshHolidaysList();
-  renderSchedule();
+  renderSchedule({ sidebar: false });
 }
 
 // Quick-override flow from clicking a calendar cell's hours indicator.

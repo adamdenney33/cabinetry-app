@@ -273,7 +273,7 @@ const _wtSteps = [
     type: 'spot', phase: 'Schedule', section: 'schedule',
     target: '.nav-tab[title="Schedule"]', position: 'bottom',
     title: 'Schedule tab',
-    body: 'ProCabinet automatically places your orders on a calendar based on <span class="wt-hi">due date, priority and your working hours</span>. Set your hours and days off from the ⚙ Hours button.'
+    body: 'ProCabinet automatically places your orders on a calendar based on <span class="wt-hi">due date, priority and your working hours</span>. Set your hours and days off in the Working Hours section in the sidebar.'
   },
   {
     type: 'spot', phase: 'Schedule', section: 'schedule',
