@@ -630,16 +630,32 @@ function _updateWeekdayHour(idx, val) {
 }
 
 async function _holidayAdd() {
-  const today = new Date();
-  const iso = today.toISOString().slice(0, 10);
-  let target = iso;
-  if (Array.isArray(dayOverrides) && dayOverrides.find(o => o.date === target)) {
-    const t = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
-    target = t.toISOString().slice(0, 10);
+  // First date from today with no override yet, so every click adds a
+  // distinct row. (The old code bumped a single day and then collided —
+  // upsert would silently UPDATE the taken date instead of adding a row.)
+  const base = new Date();
+  let target = '';
+  for (let i = 0; i < 730; i++) {
+    const d = new Date(base.getFullYear(), base.getMonth(), base.getDate() + i);
+    const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    if (!dayOverrides.some(o => o.date === iso)) { target = iso; break; }
   }
-  await upsertDayOverride(target, 0, '');
+  if (!target) return;
+  // Optimistic: show the row immediately so the add isn't gated on the DB
+  // round-trip. The placeholder has no id; upsertDayOverride therefore takes
+  // the INSERT path and pushes the real (id-bearing) row.
+  const placeholder = { id: /** @type {number|null} */ (null), date: target, hours: 0, label: '' };
+  dayOverrides.push(placeholder);
+  dayOverrides.sort((a, b) => a.date.localeCompare(b.date));
   _refreshHolidaysList();
   renderSchedule({ sidebar: false });
+  const saved = await upsertDayOverride(target, 0, '');
+  // Drop the placeholder either way: on success the real row was pushed; on
+  // failure nothing was inserted, so the row correctly disappears.
+  const pi = dayOverrides.indexOf(placeholder);
+  if (pi >= 0) dayOverrides.splice(pi, 1);
+  _refreshHolidaysList();
+  if (!saved) renderSchedule({ sidebar: false });
 }
 /** @param {number|null} id @param {string} val */
 async function _holidayEditDate(id, val) {

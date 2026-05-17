@@ -1640,11 +1640,17 @@ html.dark .proj-act.empty .proj-act-add { background: rgba(13,148,136,.12); }
 .sched-overrides-list { padding: 4px 4px 8px; }
 .sched-override-row {
   display: grid;
-  grid-template-columns: 1fr 38px 1fr 18px;
-  gap: 3px;
-  margin-bottom: 3px;
+  grid-template-columns: 1fr 54px 18px;
+  grid-template-areas:
+    "date hours del"
+    "label label label";
+  gap: 4px;
+  margin-bottom: 8px;
   align-items: center;
 }
+.sched-override-date  { grid-area: date; }
+.sched-override-hours { grid-area: hours; }
+.sched-override-label { grid-area: label; }
 .sched-override-date, .sched-override-hours, .sched-override-label {
   padding: 3px 4px;
   font-size: 10px;
@@ -1656,6 +1662,7 @@ html.dark .proj-act.empty .proj-act-add { background: rgba(13,148,136,.12); }
   min-width: 0;
 }
 .sched-override-x {
+  grid-area: del;
   background: transparent;
   border: none;
   color: var(--muted);
