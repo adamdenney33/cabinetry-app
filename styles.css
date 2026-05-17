@@ -241,7 +241,7 @@ header {
   border-color: var(--accent);
   color: #fff;
 }
-.feat-vote-count { font-size: 13px; font-weight: 700; line-height: 1; }
+.feat-vote-count { font-size: 12px; font-weight: 700; line-height: 1; }
 .feat-empty {
   padding: 28px 16px;
   text-align: center;
