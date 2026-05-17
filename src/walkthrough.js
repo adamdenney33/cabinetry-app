@@ -230,25 +230,25 @@ const _wtSteps = [
     body: 'Plan exactly how each sheet gets cut. Add your stock panels, list every piece needed, then let ProCabinet <span class="wt-hi">optimise the layout for minimum waste</span>.'
   },
   {
-    type: 'spot', phase: 'Cut List', section: 'cutlist',
+    type: 'spot', phase: 'Cut List', section: 'cutlist', clView: 'layout',
     target: '#sheets-table', position: 'right',
     title: 'Sheet stock',
     body: 'Pull panels in from your Stock inventory. Each sheet row sets the material, dimensions and grain direction — the optimiser uses this to <span class="wt-hi">rotate and nest pieces correctly</span>.'
   },
   {
-    type: 'spot', phase: 'Cut List', section: 'cutlist',
+    type: 'spot', phase: 'Cut List', section: 'cutlist', clView: 'layout',
     target: '#pieces-table', position: 'right',
     title: 'Piece list',
     body: 'Add every part you need to cut — label, length, width, quantity, grain direction and edge banding. <span class="wt-hi">You\'re in full control</span> of what goes on each sheet.'
   },
   {
-    type: 'spot', phase: 'Cut List', section: 'cutlist',
+    type: 'spot', phase: 'Cut List', section: 'cutlist', clView: 'layout',
     target: '#cl-action-bar', position: 'top',
     title: 'Optimise the layout',
     body: 'Hit <span class="wt-hi">Optimise Cut Layout</span> and ProCabinet nests all your pieces onto the available sheets for minimum waste, respecting grain and saw-kerf.'
   },
   {
-    type: 'spot', phase: 'Cut List', section: 'cutlist',
+    type: 'spot', phase: 'Cut List', section: 'cutlist', clView: 'layout',
     preClickCard: '#cl-action-bar .btn',
     target: '#results-area', position: 'left',
     title: 'Visual layout',
@@ -403,9 +403,19 @@ function _wtGateSection(section) {
       _wtW._exitClient_cabinet();
     }
     if (section === 'cutlist') {
-      // The default cut layout is always populated (app.js INIT seeds sheets +
-      // pieces), so the layout steps just need the Cut Layout view shown.
-      if (typeof _wtW.switchCLMainView === 'function') _wtW.switchCLMainView('layout');
+      // The cut-layout steps (sheets / pieces tables, action bar) only render
+      // once a cut list is open. Open the first one, then show the Cut Layout
+      // view — async, but the steps' _wtWaitFor budget covers the load.
+      (async () => {
+        try {
+          if (typeof _db === 'function' && typeof _wtW._clOpenLibraryCutlist === 'function') {
+            const { data } = await _db('cutlists').select('id').order('position').limit(1);
+            const id = data && data[0] && data[0].id;
+            if (id != null) await _wtW._clOpenLibraryCutlist(id);
+          }
+          if (typeof _wtW.switchCLMainView === 'function') _wtW.switchCLMainView('layout');
+        } catch (e) { console.warn('[walkthrough] cutlist gate failed', e); }
+      })();
     }
     if (section === 'orders' && typeof _opState !== 'undefined') {
       _opState.orderId = null; _opState.clientId = null;
