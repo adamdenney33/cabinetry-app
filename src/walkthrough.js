@@ -191,7 +191,7 @@ const _wtSteps = [
   {
     type: 'spot', phase: 'Cabinet', section: 'cabinet', cbView: 'results',
     preClickCard: '#cb-results .quote-card',
-    target: '#cb-results', position: 'left',
+    target: '#cab-view-builder .main-content', position: 'left',
     title: 'Cabinets & live pricing',
     body: 'Every cabinet in the quote is listed here with material, labour, markup and tax <span class="wt-hi">calculated line by line</span> — the total updates as you design.'
   },
@@ -217,7 +217,7 @@ const _wtSteps = [
   {
     type: 'spot', phase: 'Cabinet', section: 'cabinet', cbView: 'library',
     preClickCard: '#cb-lib-tab-rates',
-    target: '#cb-lib-rates-wrap', position: 'right',
+    target: '#cb-sidebar-library', position: 'right',
     title: 'Rate inputs',
     body: 'Adjust any rate and all open quotes reprice in real time. <span class="wt-hi">No spreadsheet formulas to maintain</span> — one source of truth for your whole business.'
   },
@@ -231,7 +231,7 @@ const _wtSteps = [
   },
   {
     type: 'spot', phase: 'Cut List', section: 'cutlist', clView: 'library',
-    target: '#cl-view-library', position: 'left',
+    target: '.cl-right', position: 'left',
     title: 'Cut List Library',
     body: 'Every cut list is saved here as its own entry. <span class="wt-hi">Reopen or duplicate</span> a past job, or start a fresh one — your whole cutting history in one place.'
   },
@@ -257,7 +257,7 @@ const _wtSteps = [
   {
     type: 'spot', phase: 'Cut List', section: 'cutlist',
     preClickCard: '#cl-action-bar .btn',
-    target: '#results-area', position: 'left',
+    target: '.cl-right', position: 'left',
     title: 'Visual layout',
     body: 'Each sheet is drawn as a scaled diagram with pieces labelled and colour-coded. See <span class="wt-hi">waste percentage, cut order and material totals</span> at a glance.'
   },
