@@ -23,8 +23,10 @@ brand/
 │   ├── icons-labelled-sheet          all 8 labelled lockups on one card  (version 2 — icons with text)
 │   └── tab-bar/
 │       └── tab-bar-dashboard-active  the full navigation bar, Dashboard active  (version 3)
+├── screenshots/                      live app captures — 8 tab pages + tour welcome
 └── _src/
-    └── build.mjs                     generator — regenerates the whole kit
+    ├── build.mjs                     regenerates the logo + icon kit
+    └── shoot.mjs                     recaptures the screenshots
 ```
 
 ## Logo
@@ -52,6 +54,13 @@ Quotes, Clients, Schedule.
 
 Icon SVGs ship in `#111111`; recolour by editing the `stroke` attribute.
 
+## Screenshots
+
+`screenshots/` holds live captures of the running app at 1440×900 (2× retina):
+`01-dashboard` … `08-schedule` — one per tab — plus `tour-welcome`, the guided
+tour's opening screen. Captured logged-out, so the app shows its built-in demo
+dataset (see `src/demo.js`) in the light theme.
+
 ## Colour & type reference
 
 | Token | Hex | Role |
@@ -75,3 +84,10 @@ node brand/_src/build.mjs
 
 It rewrites every SVG and PNG here, and refreshes the social-cut logos in
 `marketing/assets/`. Requires Google Chrome (used headless to rasterise the PNGs).
+
+To recapture the screenshots after a UI change, start the dev server
+(`npm run dev`) and run:
+
+```sh
+node brand/_src/shoot.mjs
+```
