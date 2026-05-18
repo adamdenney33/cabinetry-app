@@ -512,6 +512,15 @@ header {
   min-width: 0;
 }
 
+/* Portrait phones: the desktop two-pane layout would crush the main pane to a
+   sliver. Instead, hold the panel at a usable width and let the body scroll
+   horizontally so the full layout can be panned. Landscape + desktop untouched
+   (this only matches a phone-width viewport held upright). */
+@media (orientation: portrait) and (max-width: 600px) {
+  .app-body { overflow-x: auto; justify-content: flex-start; }
+  .section-panel.active { min-width: 840px; }
+}
+
 /* ── FORM ELEMENTS ── */
 .form-section { margin-bottom: 14px; }
 .form-section-title {

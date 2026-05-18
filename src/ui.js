@@ -459,8 +459,10 @@ function _initSidebarResize() {
     handle.addEventListener('pointermove', /** @param {PointerEvent} e */ e => {
       if (!dragging) return;
       // Clamp the max to the viewport so the sidebar can't be dragged wide
-      // enough to hide the main viewer on a narrow landscape screen.
-      const vpMax = Math.min(maxW, window.innerWidth - 140);
+      // enough to hide the main viewer — except in portrait-scroll mode, where
+      // the layout pans horizontally so a wide sidebar stays reachable.
+      const portraitScroll = window.matchMedia('(orientation: portrait) and (max-width: 600px)').matches;
+      const vpMax = portraitScroll ? maxW : Math.min(maxW, window.innerWidth - 140);
       sidebar.style.width = Math.max(minW, Math.min(vpMax, startW + e.clientX - startX)) + 'px';
     });
     const end = () => {
