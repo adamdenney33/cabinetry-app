@@ -458,7 +458,10 @@ function _initSidebarResize() {
     });
     handle.addEventListener('pointermove', /** @param {PointerEvent} e */ e => {
       if (!dragging) return;
-      sidebar.style.width = Math.max(minW, Math.min(maxW, startW + e.clientX - startX)) + 'px';
+      // Clamp the max to the viewport so the sidebar can't be dragged wide
+      // enough to hide the main viewer on a narrow landscape screen.
+      const vpMax = Math.min(maxW, window.innerWidth - 140);
+      sidebar.style.width = Math.max(minW, Math.min(vpMax, startW + e.clientX - startX)) + 'px';
     });
     const end = () => {
       if (!dragging) return;

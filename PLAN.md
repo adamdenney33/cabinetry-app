@@ -22,6 +22,27 @@ Companion docs: `SPEC.md` (refactor history), `SCHEMA.md` (DB schema),
 
 ## Active Work
 
+### Landscape-usability fixes — pane scroll + touch resize ✅ Done 2026-05-18
+
+A targeted pass to make the existing layout usable on a phone/tablet in
+landscape, with no visual redesign (precursor to the full M.1 responsive pass).
+
+- ✅ **Flex scroll chain fixed** — `styles.css` now sets `min-height:0` /
+  `min-width:0` on the pane chain (`.app-body`, `.section-panel`, `.sidebar`,
+  `.main-content`, the scroll containers, plus the inline-styled `#cab-*` /
+  `#schedule-main` wrappers). Flex items default to `min-height:auto`, so on a
+  short landscape viewport the inner `overflow:auto` panes expanded instead of
+  scrolling and the bottom was clipped. Invisible when content fits. Verification
+  also caught the Cabinet Builder empty-state picker (`#cb-context`) clipping
+  outside any scroller — `#cb-sidebar-builder` switched to `overflow-y:auto` so
+  the wrapper scrolls it.
+- ✅ **Resize handle works on touch** — dropped the `@media (max-width:768px)`
+  rule that hid `.resize-handle`, added `touch-action:none` so a touch-drag
+  resizes instead of panning, and widened the invisible `::after` hit area
+  under `@media (pointer:coarse)`. The handler (`_initSidebarResize`,
+  `src/ui.js`) already used pointer events; `pointermove` now also clamps the
+  max width to `innerWidth − 140` so the sidebar can't hide the main viewer.
+
 ### Security + load review — performance, privacy & build fixes ✅ Done 2026-05-18
 
 A security + load review surfaced 12 issues; five were actioned. The other
@@ -932,6 +953,9 @@ analytics widgets) available to all users.
 
 From `Building Docs/ProCabinet_Outstanding_Features.docx`. Can run in parallel
 with Stripe / Free-tier work; required before public launch.
+
+> Landscape basics already done 2026-05-18 (see Active Work): pane scroll
+> chain + touch resize. M.1 below is still the full portrait/responsive pass.
 
 - **M.1 — Per-module responsive layout pass**
   - Dashboard
