@@ -100,11 +100,42 @@ async function updateClient(id, field, value) {
   await _db('clients').update(/** @type {any} */ ({ [field]: value })).eq('id', id);
 }
 
-/** @param {number} id */
+/** Confirm client deletion, warning about the quotes + orders that will be
+ *  permanently removed with it. @param {number} id */
+function _confirmRemoveClient(id) {
+  const c = clients.find(x => x.id === id);
+  if (!c) return;
+  const nQuotes = quotes.filter(q => q.client_id === id && !_isDraftQuote(q)).length;
+  const nOrders = orders.filter(o => o.client_id === id).length;
+  /** @type {string[]} */
+  const parts = [];
+  if (nQuotes) parts.push(`${nQuotes} quote${nQuotes !== 1 ? 's' : ''}`);
+  if (nOrders) parts.push(`${nOrders} order${nOrders !== 1 ? 's' : ''}`);
+  const msg = parts.length
+    ? `Delete <strong>${_escHtml(c.name)}</strong> and permanently remove ${parts.join(' and ')}? This cannot be undone.`
+    : `Delete <strong>${_escHtml(c.name)}</strong>?`;
+  _confirm(msg, () => removeClient(id));
+}
+
+/** Delete a client and cascade-delete all their quotes and orders. The
+ *  quote_lines / order_lines rows cascade at the DB level. @param {number} id */
 async function removeClient(id) {
   if (!_requireAuth()) return;
-  await _db('clients').delete().eq('id', id);
+  const { error: oErr } = await _db('orders').delete().eq('client_id', id);
+  const { error: qErr } = await _db('quotes').delete().eq('client_id', id);
+  const childErr = oErr || qErr;
+  if (childErr) {
+    _toast('Could not remove client — ' + (childErr.message || 'unknown error'), 'error');
+    return;
+  }
+  const { error: cErr } = await _db('clients').delete().eq('id', id);
+  if (cErr) {
+    _toast('Could not remove client — ' + (cErr.message || 'unknown error'), 'error');
+    return;
+  }
   clients = clients.filter(c => c.id !== id);
+  quotes = quotes.filter(q => q.client_id !== id);
+  orders = orders.filter(o => o.client_id !== id);
   renderClientsMain();
   _toast('Client removed', 'success');
 }
@@ -390,7 +421,7 @@ function renderClientsMain() {
       <div style="display:flex;align-items:center;gap:4px;margin-top:10px;padding-top:8px;border-top:1px solid var(--border2)" onclick="event.stopPropagation()">
         <span style="flex:1"></span>
         <button class="btn btn-outline" style="font-size:11px;padding:4px 8px;width:auto" onclick="duplicateClient(${c.id})">Duplicate</button>
-        <button class="btn btn-outline" style="color:var(--danger);font-size:11px;padding:4px 8px;width:auto" onclick="_confirm('Delete <strong>${_escHtml(c.name)}</strong>?',()=>removeClient(${c.id}))">Delete</button>
+        <button class="btn btn-outline" style="color:var(--danger);font-size:11px;padding:4px 8px;width:auto" onclick="_confirmRemoveClient(${c.id})">Delete</button>
       </div>
     </div>`;
   };
