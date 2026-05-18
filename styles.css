@@ -1568,11 +1568,11 @@ input.li-num:focus { outline: none; border-color: var(--accent); }
 .demo-banner-btn:hover { background: #000; }
 
 /* Chrome auto-collapse — _initChromeCollapse (src/ui.js) toggles
-   body.chrome-collapsed when a content pane is scrolled down on a touch
-   device, sliding the demo banner + nav-tab bar away so .app-body (flex:1)
-   reclaims the height on a short landscape viewport. JS-gated to coarse
-   pointers; the base rule is inert (max-height well above the ~44px content)
-   until the class is applied, so desktop is unaffected. */
+   body.chrome-collapsed as a content pane is scrolled down on a short viewport
+   (a landscape phone), sliding the demo banner + nav-tab bar away so .app-body
+   (flex:1) reclaims the height. JS-gated to short viewports; the base rule is
+   inert (max-height well above the ~44px content) until the class is applied,
+   so a tall/desktop viewport is unaffected. */
 #demo-banner, .nav-tabs-wrap {
   max-height: 80px;
   transition: max-height 0.24s ease, padding 0.24s ease, opacity 0.18s ease;
