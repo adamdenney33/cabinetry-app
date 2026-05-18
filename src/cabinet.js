@@ -1665,7 +1665,9 @@ async function _loadCBClientById(clientId, clientName) {
   _setCbDirty(false);
   _cbSuppressDirty = false;
   if (typeof renderCBPanel === 'function') renderCBPanel();
-  if (typeof switchCBMainView === 'function') switchCBMainView('library');
+  // Land on the Quote Builder (not the Cabinet Library) so the new quote is
+  // ready to build into — mirrors _cbPickQuote opening an existing quote.
+  if (typeof switchCBMainView === 'function') switchCBMainView('results');
 }
 
 // ── Init CB ──

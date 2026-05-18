@@ -162,6 +162,14 @@ function cbLoadFromLibrary(idx) {
 function cbAddFromLibrary(idx) {
   const src = cbLibrary[idx];
   if (!src) return;
+  // "Add to Quote" targets the quote (or order) currently open in the Quote
+  // Builder. With nothing open, the autosave path mints a brand-new draft
+  // quote nobody asked for — block that and send the user to pick a quote.
+  if (!cbEditingQuoteId && !cbEditingOrderId) {
+    if (typeof switchCBMainView === 'function') switchCBMainView('results');
+    _toast('Open or start a quote first, then add from the library', 'info');
+    return;
+  }
   const copy = JSON.parse(JSON.stringify(src));
   copy.id = cbNextId++;
   delete copy._libName;
@@ -170,7 +178,7 @@ function cbAddFromLibrary(idx) {
   saveCBLines();
   renderCBPanel();
   if (typeof switchCBMainView === 'function') switchCBMainView('results');
-  _toast(`"${src._libName}" added to project`, 'success');
+  _toast(`"${src._libName}" added to quote`, 'success');
 }
 
 /** @param {number} idx */
