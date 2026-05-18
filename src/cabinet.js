@@ -149,7 +149,7 @@ let cbEditingOrderId = null;
 
 // Client-state tracking — F5: re-keyed from project_id to client_id.
 // _cbCurrentClientId scopes the active design canvas to a client; the
-// workspace quote is the most recent 'designing' status quote for this client.
+// workspace quote is tracked by cbEditingQuoteId (a normal 'draft' quote).
 /** @type {number | null} */
 let _cbCurrentClientId = null;
 let _cbCurrentClientName = '';
@@ -365,14 +365,11 @@ async function _syncCBLinesToDB() {
       if (clientId) {
         const draft = await _findOrCreateDraftQuote(clientId);
         if (draft) {
-          // Only delete cabinet-kind rows; preserve any item/labour lines added
-          // directly in the quote popup.
-          await _db('quote_lines').delete().eq('quote_id', draft.id).eq('line_kind', 'cabinet');
-          if (cbLines.length > 0) {
-            /** @type {any[]} */
-            const rows = cbLines.map((l, i) => _cbLineToRow(l, i, draft.id));
-            await _db('quote_lines').insert(rows);
-          }
+          // Adopt the new quote as the editing target so every later autosave
+          // routes through the cbEditingQuoteId branch above.
+          cbEditingQuoteId = draft.id;
+          localStorage.setItem('pc_cb_editing_quote_id', String(draft.id));
+          await _syncCBLinesToQuote(draft.id);
         }
       }
     }
@@ -1474,7 +1471,7 @@ function _smartCBEmptyClientSuggest(input, boxId) {
   const esc = s => _escHtml(s).replace(/'/g, '&#39;');
   let html = '';
   for (const c of matches) {
-    const designingCount = quotes.filter(/** @param {any} q */ q => q.client_id === c.id && _isDraftQuote(q)).length;
+    const designingCount = quotes.filter(/** @param {any} q */ q => q.client_id === c.id && q.status === 'draft').length;
     html += `<div class="client-suggest-item" onmousedown="_cbPickClient(${c.id})">
       <span class="suggest-icon">${esc(c.name).charAt(0).toUpperCase()}</span>
       <span class="csi-name">${esc(c.name)}</span>
@@ -1636,6 +1633,9 @@ async function _cbSaveClientByName(name) {
 
 /** @param {number} clientId @param {string} clientName */
 async function _loadCBClientById(clientId, clientName) {
+  // A Cabinet Builder quote is a normal quote — enforce the free-tier cap.
+  const customerQuotes = quotes.filter(q => !_isDraftQuote(q));
+  if (!_enforceFreeLimit('quotes', customerQuotes.length)) return;
   if (_cbLinesSyncTimer) { clearTimeout(_cbLinesSyncTimer); _cbLinesSyncTimer = null; }
   _cbSuppressDirty = true;
   cbEditingQuoteId = null;
@@ -1645,39 +1645,27 @@ async function _loadCBClientById(clientId, clientName) {
   cbNextId = 1;
   cbScratchpad = null;
   cbEditingLineIdx = -1;
-
-  // Pick the most-recent designing quote for this client (mirror _findOrCreateDraftQuote).
-  const drafts = quotes
-    .filter(q => q.client_id === clientId && _isDraftQuote(q))
-    .sort((a, b) => (+new Date(b.updated_at || b.created_at || 0)) - (+new Date(a.updated_at || a.created_at || 0)));
-  const draft = drafts[0];
-  if (draft) {
-    try {
-      const { data: lines } = await _db('quote_lines')
-        .select('*').eq('quote_id', draft.id).eq('line_kind', 'cabinet').order('position');
-      if (lines && lines.length) {
-        cbLines = lines.map(/** @param {any} row @param {number} i */ (row, i) => {
-          const cb = /** @type {any} */ (_quoteLineRowToCB(row));
-          cb.id = i + 1;
-          return cb;
-        });
-        cbNextId = cbLines.length + 1;
-      }
-    } catch (e) {
-      console.warn('[cb load-client]', (/** @type {any} */ (e)).message || e);
-    }
-  }
-
   _cbCurrentClientId = clientId;
   _cbCurrentClientName = clientName;
   const pn = _byId('cb-client');
   if (pn) /** @type {HTMLInputElement} */ (pn).value = clientName;
   localStorage.setItem('pc_cq_client_name', clientName);
   localStorage.removeItem('pc_cq_lines');
+
+  // Start the new quote now so it appears in the Quotes tab and on the client
+  // card right away; the builder autosaves into it via cbEditingQuoteId.
+  let quote = null;
+  try { quote = await _findOrCreateDraftQuote(clientId); }
+  catch (e) { console.warn('[cb new-quote]', (/** @type {any} */ (e)).message || e); }
+  if (quote) {
+    cbEditingQuoteId = quote.id;
+    localStorage.setItem('pc_cb_editing_quote_id', String(quote.id));
+  }
+
   _setCbDirty(false);
   _cbSuppressDirty = false;
   if (typeof renderCBPanel === 'function') renderCBPanel();
-  if (typeof switchCBMainView === 'function') switchCBMainView(cbLines.length ? 'results' : 'library');
+  if (typeof switchCBMainView === 'function') switchCBMainView('library');
 }
 
 // ── Init CB ──

@@ -77,16 +77,14 @@ function _orderLabel(o, opts) {
   return [num, cli, proj].filter(Boolean).join(' · ');
 }
 
-// ── Cabinet Builder draft-quote helpers (Item 2 Phase 1.1; F3/F5 2026-05-13) ──
-// Each client may have many draft (designing-status) quotes — one per design
-// the user is exploring. The Cabinet Builder workspace picks the most recent
-// designing quote for the active client; "Create Quote" status-flips it to
-// 'draft' and starts a fresh designing quote on the next add. Drafts are
-// excluded from the Quotes tab, dashboard counts, and CSV exports.
-//
-// F3 (2026-05-13): the marker moved from a notes-prefix workaround ([CB_DRAFT])
-// to a real status value ('designing'). F5 (2026-05-13): re-keyed from
-// project_id to client_id when the projects entity was retired.
+// ── Legacy draft-quote guard (Item 2; hidden-draft model removed 2026-05-18) ──
+// The Cabinet Builder used to autosave into a hidden 'designing'-status quote
+// that was excluded from the Quotes tab, client cards, dashboard, and CSV
+// exports. That hidden state was removed: the builder now creates a normal
+// 'draft' quote (see _findOrCreateDraftQuote) and tracks it via
+// cbEditingQuoteId, so a quote built in the Cabinet Builder is first-class and
+// visible everywhere immediately. _isDraftQuote is kept only to hide any
+// pre-existing 'designing' / [CB_DRAFT] rows created before this change.
 const CB_DRAFT_TAG = '[CB_DRAFT]';
 
 /** @param {{notes?: string | null, status?: string | null} | null | undefined} q */
@@ -98,40 +96,25 @@ function _isDraftQuote(q) {
 }
 
 /**
- * Find the most-recent designing-status quote for a client, or create a fresh
- * one. Returns null if no user is signed in or no client id is supplied.
+ * Create a fresh draft quote for the Cabinet Builder to autosave into. The
+ * builder adopts it via cbEditingQuoteId, so it behaves like any other quote
+ * and shows in the Quotes tab immediately. Returns null if no user is signed
+ * in or no client id is supplied.
  * @param {number | null | undefined} clientId
  */
 async function _findOrCreateDraftQuote(clientId) {
   if (!_userId || !clientId) return null;
-  // Pick the most-recently-updated designing quote for this client.
-  const inMemory = quotes
-    .filter(q => q.client_id === clientId && _isDraftQuote(q))
-    .sort((a, b) => (+new Date(b.updated_at || b.created_at || 0)) - (+new Date(a.updated_at || a.created_at || 0)));
-  if (inMemory.length) return inMemory[0];
-  const { data: existing } = await _db('quotes')
-    .select('*')
-    .eq('user_id', _userId)
-    .eq('client_id', clientId)
-    .order('updated_at', { ascending: false });
-  if (existing && existing.length) {
-    const found = existing.find(q => _isDraftQuote(q));
-    if (found) {
-      if (!quotes.find(q => q.id === found.id)) quotes.unshift(found);
-      return found;
-    }
-  }
   const insertBody = {
     user_id: _userId,
     client_id: clientId,
-    status: 'designing',
+    status: 'draft',
     markup: (typeof cbSettings !== 'undefined' && cbSettings && cbSettings.markup) ?? 0,
     tax: (typeof cbSettings !== 'undefined' && cbSettings && cbSettings.tax) ?? 0,
     date: new Date().toISOString().slice(0, 10),
   };
   const { data, error } = await _db('quotes').insert(insertBody).select().single();
   if (error || !data) {
-    _toast('Could not create draft quote.', 'error');
+    _toast('Could not create quote.', 'error');
     return null;
   }
   quotes.unshift(data);
