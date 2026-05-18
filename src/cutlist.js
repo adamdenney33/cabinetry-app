@@ -4286,7 +4286,8 @@ async function _clOpenLibraryCutlist(id) {
 }
 /** @type {any} */ (window)._clOpenLibraryCutlist = _clOpenLibraryCutlist;
 
-/** @param {number} id */
+/** @param {number} id
+ *  @returns {Promise<boolean>} true if the cutlist was found and loaded */
 async function _clDoOpenLibraryCutlist(id) {
   // Mark the cut list "not ready" for the whole load and drop any pending
   // autosave timer — a debounced autosave firing mid-load would otherwise
@@ -4295,7 +4296,12 @@ async function _clDoOpenLibraryCutlist(id) {
   if (_clAutosaveTimer) { clearTimeout(_clAutosaveTimer); _clAutosaveTimer = null; }
   try {
     const { data: cl } = await _db('cutlists').select('*').eq('id', id).single();
-    if (!cl) { _toast('Cut list not found', 'error'); return; }
+    if (!cl) {
+      // During restoreAppState a missing cutlist is expected (deleted since
+      // last session) — stay silent and let the caller drop the stale key.
+      if (!(/** @type {any} */ (window))._pcSuppressToasts) _toast('Cut list not found', 'error');
+      return false;
+    }
     _clCurrentProjectId = null;
     _clCurrentProjectName = '';
     _clCurrentCutlistId = id;
@@ -4334,8 +4340,10 @@ async function _clDoOpenLibraryCutlist(id) {
     if (!(/** @type {any} */ (window))._pcSuppressToasts) {
       _toast(`Opened "${_clCurrentCutlistName}"`, 'success');
     }
+    return true;
   } catch (e) {
-    _toast('Failed to load cut list', 'error');
+    if (!(/** @type {any} */ (window))._pcSuppressToasts) _toast('Failed to load cut list', 'error');
+    return false;
   } finally {
     _clCutlistReady = true;
   }

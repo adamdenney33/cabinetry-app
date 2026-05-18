@@ -193,8 +193,15 @@
             }
             // If !canValidate, leave the key for the next page load.
           } else if (ctx.cutlistId && typeof w._clDoOpenLibraryCutlist === 'function') {
-            await w._clDoOpenLibraryCutlist(ctx.cutlistId);
-            restored = true;
+            const ok = await w._clDoOpenLibraryCutlist(ctx.cutlistId);
+            if (ok) {
+              restored = true;
+            } else {
+              // Cutlist was deleted since last session → drop the stale key
+              // so the "not found" error doesn't recur on every reload.
+              // Bypasses saveOpenCutlistCtx's _initComplete gate (still false).
+              localStorage.removeItem('pc_open_cutlist_ctx');
+            }
           }
           if (restored && ctx.mainView && typeof w.switchCLMainView === 'function') {
             w.switchCLMainView(ctx.mainView);
