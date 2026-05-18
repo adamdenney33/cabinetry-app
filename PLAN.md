@@ -22,6 +22,38 @@ Companion docs: `SPEC.md` (refactor history), `SCHEMA.md` (DB schema),
 
 ## Active Work
 
+### Security + load review — performance, privacy & build fixes ✅ Done 2026-05-18
+
+A security + load review surfaced 12 issues; five were actioned. The other
+seven (XSS escaping, CSP / security headers, list pagination, DB-side row IDs,
+server-side free-tier enforcement) are deferred. Plan:
+`~/.claude/plans/do-1-2-5-only-mask-lovely-snail.md`.
+
+- ✅ **#1 — N+1 line loading batched** — `_hydrateQuoteTotals` /
+  `_hydrateOrderLines` (`src/quotes.js`) now issue one batched `.in()` query
+  each instead of one fetch per quote/order on every boot. Dev-preview
+  verified: a 4-order account makes one `order_lines` request (was four).
+- ✅ **#2 — DB indexes + RLS InitPlan** — migration
+  `20260518150000_perf_indexes_and_rls_initplan.sql` (applied via Supabase MCP)
+  adds 10 missing FK covering indexes and rewrites all 61 RLS policies to
+  `(select auth.uid())`. `get_advisors` `auth_rls_initplan` /
+  `unindexed_foreign_keys` lints cleared. SCHEMA.md § 4 updated.
+- ✅ **#5 — PostHog masks Business Info** — `src/main.js` masks the six `biz-*`
+  fields (company name / phone / email / address / ABN / bank details) in
+  session replays. Client data and pricing are not masked (user scope choice).
+- ✅ **#10 — production code minified, source maps not published** —
+  `vite.config.mjs` minifies the classic `src/*.js` (whitespace + syntax only,
+  identifiers preserved for the global lexical env) and a new
+  `stripSourceMapsPlugin` removes every `.map` from `dist/`.
+- ⏳ **#6 — leaked-password protection** — *manual, pending*: enable in the
+  Supabase dashboard → Authentication → password settings. No MCP/API tool
+  exposes this; cannot be scripted.
+
+`npm run typecheck` + `npm run build` clean; built app smoke-tested via
+`npm run preview` (all tabs, zero console errors). Detail in SPEC.md § 13.
+
+---
+
 ### Manage Subscription popup shows the live offer price + increase date ✅ Done 2026-05-18
 
 The Manage Subscription popup hard-coded `$35/mo` / `$300/yr`
