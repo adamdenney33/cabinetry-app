@@ -22,6 +22,20 @@ Companion docs: `SPEC.md` (refactor history), `SCHEMA.md` (DB schema),
 
 ## Active Work
 
+### Landscape chrome auto-collapse on scroll ✅ Done 2026-05-18
+
+On a short landscape phone the header + demo banner + nav-tab bar ate ~35% of
+the viewport. The demo banner and nav-tab bar now slide away when a content
+pane is scrolled down and return on scroll up, handing ~80px back to the
+content area. The top header stays put. Detail in SPEC.md § 13.
+
+- ✅ `styles.css` — `#demo-banner` + `.nav-tabs-wrap` get a `max-height` /
+  `padding` / `opacity` transition; `body.chrome-collapsed` collapses both to 0
+  and `.app-body` (flex:1) reclaims the space.
+- ✅ `src/ui.js` — `_initChromeCollapse()` registers one capture-phase scroll
+  listener that toggles `body.chrome-collapsed` by scroll direction. Gated to
+  coarse pointers and suspended during the guided tour; desktop unaffected.
+
 ### Guided walkthrough — mobile landscape support ✅ Done 2026-05-18
 
 The desktop spotlight tour broke on phones: the 336px tooltip had no room to

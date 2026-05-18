@@ -479,3 +479,53 @@ function _initSidebarResize() {
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', _initSidebarResize);
 else _initSidebarResize();
 
+// ── chrome auto-collapse on scroll (touch devices) ──
+// The demo banner + nav-tab bar are fixed chrome above the scroll area; on a
+// short landscape phone they eat a big slice of the viewport. On a touch
+// device, collapse them when a content pane is scrolled down and restore them
+// on scroll up (or at the top). Desktop (fine pointer) is never touched — the
+// CSS only reacts to the body.chrome-collapsed class this toggles.
+function _initChromeCollapse() {
+  const coarse = window.matchMedia('(pointer: coarse)');
+  /** @type {WeakMap<HTMLElement, number>} */
+  const lastTop = new WeakMap();
+  let collapsed = false;
+  let raf = 0;
+  /** @type {HTMLElement | null} */
+  let pending = null;
+  const apply = () => {
+    raf = 0;
+    const el = pending;
+    pending = null;
+    if (!el) return;
+    const st = el.scrollTop;
+    const prev = lastTop.get(el) || 0;
+    lastTop.set(el, st);
+    let next = collapsed;
+    if (st <= 6) next = false;            // at the top — always show chrome
+    else if (st > prev + 6) next = true;  // scrolling down — collapse
+    else if (st < prev - 6) next = false; // scrolling up — restore
+    if (next !== collapsed) {
+      collapsed = next;
+      document.body.classList.toggle('chrome-collapsed', collapsed);
+    }
+  };
+  // Capture phase — scroll events don't bubble, so one document listener
+  // catches scrolling in any pane (.sidebar-scroll / .main-scroll / .cl-scroll).
+  document.addEventListener('scroll', /** @param {Event} e */ (e) => {
+    // Touch only; never collapse behind the guided tour (it spotlights the tabs).
+    if (!coarse.matches || /** @type {any} */ (window)._wtActive) return;
+    const el = e.target;
+    if (!(el instanceof HTMLElement) || !el.closest('.app-body')) return;
+    pending = el;
+    if (!raf) raf = requestAnimationFrame(apply);
+  }, true);
+  // A fresh layout (orientation flip) starts with the chrome shown.
+  window.addEventListener('orientationchange', () => {
+    collapsed = false;
+    document.body.classList.remove('chrome-collapsed');
+  });
+}
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', _initChromeCollapse);
+else _initChromeCollapse();
+

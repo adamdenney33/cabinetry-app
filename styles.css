@@ -1567,6 +1567,24 @@ input.li-num:focus { outline: none; border-color: var(--accent); }
 }
 .demo-banner-btn:hover { background: #000; }
 
+/* Chrome auto-collapse — _initChromeCollapse (src/ui.js) toggles
+   body.chrome-collapsed when a content pane is scrolled down on a touch
+   device, sliding the demo banner + nav-tab bar away so .app-body (flex:1)
+   reclaims the height on a short landscape viewport. JS-gated to coarse
+   pointers; the base rule is inert (max-height well above the ~44px content)
+   until the class is applied, so desktop is unaffected. */
+#demo-banner, .nav-tabs-wrap {
+  max-height: 80px;
+  transition: max-height 0.24s ease, padding 0.24s ease, opacity 0.18s ease;
+}
+body.chrome-collapsed #demo-banner,
+body.chrome-collapsed .nav-tabs-wrap {
+  max-height: 0;
+  padding: 0; /* the demo banner's 7px vertical padding would survive max-height:0 */
+  opacity: 0;
+  overflow: hidden;
+}
+
 /* ── TOAST ── */
 #toast-container { position: fixed; bottom: 24px; right: 24px; z-index: 99999; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
 .toast { padding: 10px 16px; border-radius: 8px; font-size: 13px; font-weight: 500; color: #fff; box-shadow: 0 4px 16px rgba(0,0,0,0.25); opacity: 0; transform: translateY(8px); transition: opacity 0.2s, transform 0.2s; pointer-events: none; max-width: 320px; }
