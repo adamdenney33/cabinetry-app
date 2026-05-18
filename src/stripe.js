@@ -233,11 +233,108 @@ function _handleManageSubscription() {
   }
 }
 
+/**
+ * Fetch the caller's live subscription pricing from Stripe via the
+ * `stripe-subscription` edge function — current (possibly discounted) price,
+ * standard price, and when a promo discount ends. Returns null on any failure
+ * so callers can fall back to a static price label.
+ *
+ * @returns {Promise<{currency: string|null, interval: string|null, standardAmount: number|null, currentAmount: number|null, discountEnd: string|null} | null>}
+ */
+async function _loadSubscriptionPricing() {
+  try {
+    const { data: { session } } = await _sb.auth.getSession();
+    if (!session) return null;
+    const res = await fetch(`${window._SBURL}/functions/v1/stripe-subscription`, {
+      method: 'POST',
+      headers: {
+        'authorization': `Bearer ${session.access_token}`,
+        'content-type': 'application/json',
+      },
+    });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch (_e) {
+    return null;
+  }
+}
+
+/**
+ * Format an integer minor-unit amount as a price label, e.g.
+ * (2500, 'usd', 'month') → "$25/mo". A whole-currency amount drops the ".00".
+ *
+ * @param {number} minorUnits
+ * @param {string} currency  ISO currency code (Stripe returns it lowercased)
+ * @param {string|null} interval  Stripe recurring interval ('month' | 'year' | …)
+ * @returns {string}
+ */
+function _fmtSubscriptionPrice(minorUnits, currency, interval) {
+  const major = minorUnits / 100;
+  // Whole amounts show no decimals ("$25"); fractional amounts show exactly
+  // two ("$35.50"). Force the en-US locale so USD renders as "$" (not "US$"),
+  // matching the static price labels used everywhere else in the app.
+  const fractionDigits = minorUnits % 100 === 0 ? 0 : 2;
+  let amount;
+  try {
+    amount = new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: currency.toUpperCase(),
+      minimumFractionDigits: fractionDigits,
+      maximumFractionDigits: fractionDigits,
+    }).format(major);
+  } catch (_e) {
+    amount = `${currency.toUpperCase()} ${major}`;
+  }
+  const suffix = interval === 'year' ? '/yr'
+    : interval === 'month' ? '/mo'
+    : interval ? `/${interval}` : '';
+  return `${amount}${suffix}`;
+}
+
+/**
+ * Replace the Manage Subscription popup's "Loading…" price placeholder with
+ * live figures: the discounted price the user pays now, plus — when a promo
+ * is active — a line showing the standard price and the date it takes effect.
+ * Falls back to the static plan price if the lookup fails or there is no
+ * active discount.
+ *
+ * @param {string} fallbackPrice  static "$35/mo"-style label
+ */
+async function _fillManageSubscriptionPricing(fallbackPrice) {
+  const data = await _loadSubscriptionPricing();
+  const priceEl = document.getElementById('ms-price-line');
+  if (!priceEl) return;  // popup was closed mid-fetch
+
+  if (!data || data.currentAmount == null || !data.currency) {
+    priceEl.textContent = fallbackPrice;
+    return;
+  }
+
+  priceEl.textContent = _fmtSubscriptionPrice(data.currentAmount, data.currency, data.interval);
+
+  // Announce a price increase only when the current price is genuinely below
+  // standard AND Stripe gave us the date the discount ends.
+  if (data.standardAmount != null
+      && data.currentAmount < data.standardAmount
+      && data.discountEnd) {
+    const increaseEl = document.getElementById('ms-increase-line');
+    if (increaseEl) {
+      const standard = _fmtSubscriptionPrice(data.standardAmount, data.currency, data.interval);
+      const date = new Date(data.discountEnd).toLocaleDateString();
+      increaseEl.textContent = `Increases to ${standard} on ${date}`;
+      increaseEl.style.display = '';
+    }
+  }
+}
+
 /** @param {SubscriptionRow} sub */
 function _openManagePopupActive(sub) {
   const isAnnual = sub.plan === 'pro_annual';
   const planLabel = isAnnual ? 'Pro Annual' : 'Pro Monthly';
-  const priceLabel = isAnnual ? '$300/yr' : '$35/mo';
+  // Static price shown while the live Stripe lookup is in flight, and the
+  // fallback if it fails. _fillManageSubscriptionPricing swaps in the real
+  // (possibly discounted) figure once stripe-subscription responds.
+  const fallbackPrice = isAnnual ? '$300/yr' : '$35/mo';
   const switchLabel = isAnnual ? 'Switch to Monthly' : 'Switch to Annual';
   const periodEnd = sub.current_period_end
     ? new Date(sub.current_period_end).toLocaleDateString()
@@ -257,7 +354,8 @@ function _openManagePopupActive(sub) {
           <span style="font-size:14px;font-weight:700;color:var(--text)">${planLabel}</span>
           <span class="badge badge-green">Active</span>
         </div>
-        <div style="font-size:13px;font-weight:600;color:var(--text);margin-top:6px">${priceLabel}</div>
+        <div id="ms-price-line" style="font-size:13px;font-weight:600;color:var(--text);margin-top:6px"><span style="color:var(--muted);font-weight:400">Loading…</span></div>
+        <div id="ms-increase-line" style="font-size:11px;color:var(--muted);margin-top:4px;display:none"></div>
         ${periodEnd ? `<div style="font-size:11px;color:var(--muted);margin-top:4px">Renews ${periodEnd}</div>` : ''}
       </div>
       <div class="pf-divider"></div>
@@ -272,6 +370,8 @@ function _openManagePopupActive(sub) {
       </div>
     </div>
   `, 'sm');
+
+  _fillManageSubscriptionPricing(fallbackPrice);
 }
 
 /** @param {SubscriptionRow} sub */

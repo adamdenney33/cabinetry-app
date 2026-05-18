@@ -22,6 +22,41 @@ Companion docs: `SPEC.md` (refactor history), `SCHEMA.md` (DB schema),
 
 ## Active Work
 
+### Manage Subscription popup shows the live offer price + increase date ✅ Done 2026-05-18
+
+The Manage Subscription popup hard-coded `$35/mo` / `$300/yr`
+(`stripe.js` `_openManagePopupActive`), so subscribers on the launch coupon
+($25/mo for the first 6 months, then $35/mo — applied via
+`STRIPE_COUPON_MONTHLY_LAUNCH` in `stripe-checkout`) saw the standard price,
+not what they actually pay. The discount lives only in Stripe — the
+`subscriptions` table mirrors plan/status/period, never the coupon — so the
+popup now reads it live (Option B: fetch-on-open, no DB migration, no cache to
+go stale, accurate for existing subscribers immediately).
+
+- ✅ **`stripe-subscription` edge function** — `supabase/functions/stripe-subscription/`
+  authenticates the caller's Supabase JWT, looks up their
+  `stripe_subscription_id`, retrieves the Stripe subscription with
+  `expand: ['discounts']`, and returns
+  `{ currency, interval, standardAmount, currentAmount, discountEnd }` (amounts
+  in minor units; `currentAmount` = standard minus the active coupon). Mirrors
+  the `stripe-portal` auth/CORS conventions; needs no new secrets.
+- ✅ **Popup reads it live** — `_openManagePopupActive` opens with a "Loading…"
+  price placeholder and fires `_fillManageSubscriptionPricing`, which calls the
+  function and renders the discounted price plus an "Increases to $35/mo on
+  &lt;date&gt;" line. Falls back to the static plan price when the lookup fails
+  or there's no active discount. New helpers `_loadSubscriptionPricing` /
+  `_fmtSubscriptionPrice`.
+- ✅ **Deployed** — `stripe-subscription` is live on the Supabase project
+  (version 1, `verify_jwt: true`, no new secrets, no DB migration); OPTIONS
+  preflight (204 + CORS) and an unauthenticated POST (401) smoke-tested against
+  the live URL. The popup reads real pricing once the frontend ships (push to
+  `main`); until then it falls back to the static price.
+
+No schema change. `npm run typecheck` clean; the client formatter, fallback,
+and discount / no-discount rendering verified in the dev preview.
+
+---
+
 ### New signups can opt into a marketing mailing list ✅ Done 2026-05-17
 
 New users can tick an opt-in checkbox at signup; once they confirm their email
