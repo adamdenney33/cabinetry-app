@@ -51,7 +51,13 @@ if (_phKey) {
     capture_pageview: true,
     autocapture: true,
     disable_session_recording: false,
-    session_recording: { maskAllInputs: false },
+    session_recording: {
+      maskAllInputs: false,
+      // Mask the owner's Business Info fields in replays — company name,
+      // phone, email, address, tax number and bank/payment details are
+      // sensitive PII/financial data that should not reach analytics.
+      maskTextSelector: '#biz-name, #biz-phone, #biz-email, #biz-address, #biz-abn, #biz-bank-details',
+    },
   });
   window.posthog = posthog;
 }
