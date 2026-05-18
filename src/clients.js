@@ -487,18 +487,21 @@ function renderClientsMain() {
 }
 
 // ── Cut lists by client cache (F6) ──
-// Client cards show a flat list of the client's cutlists. Cutlists aren't
-// loaded into memory like quotes/orders, so we fetch a slim id/name/client_id
-// projection at boot and group by client_id.
+// Client cards show a flat list of the client's cut lists. Cut lists link to
+// a quote (cutlists.quote_id) and the quote carries the client_id, so we fetch
+// a slim cutlist projection and group it by each cut list's quote's client.
 /** @type {any} */ (window)._cutListsByClient = {};
 async function _loadCutListsByClient() {
   if ((typeof _userId === 'undefined' || !_userId) && !window._demoMode) return;
   try {
-    const { data } = await _db('cutlists').select('id, name, client_id, updated_at').order('updated_at', { ascending: false });
+    const { data } = await _db('cutlists').select('id, name, quote_id, updated_at').order('updated_at', { ascending: false });
     /** @type {Record<number, any[]>} */
     const map = {};
     for (const r of (data || [])) {
-      const cid = /** @type {any} */ (r).client_id;
+      const qid = /** @type {any} */ (r).quote_id;
+      if (qid == null) continue;
+      const q = quotes.find(x => x.id === qid);
+      const cid = q && q.client_id;
       if (cid == null) continue;
       (map[cid] = map[cid] || []).push(r);
     }
