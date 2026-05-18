@@ -2624,7 +2624,19 @@ input.pf-input-compact[type="date"]:disabled::-webkit-calendar-picker-indicator 
   border: 1px solid var(--border); border-radius: 16px;
   padding: 30px 32px; box-shadow: 0 22px 64px rgba(0,0,0,0.5);
   text-align: center; animation: wtPop 0.28s ease;
-  overflow: hidden;
+  /* x stays clipped (rounded corners / welcome preview graphic); y scrolls when
+     the card is taller than a short viewport — e.g. a landscape phone — so the
+     content, including the CTA's exit button, is never clipped off-screen. */
+  max-height: calc(100vh - 24px);
+  max-height: calc(100dvh - 24px);
+  overflow: hidden auto;
+}
+/* Rotate-to-landscape prompt — reuses the .wt-center modal box. */
+.wt-rotate-icon {
+  width: 60px; height: 60px; margin: 0 auto 16px;
+  border-radius: 50%; background: var(--accent-dim);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--accent);
 }
 /* Welcome step — app preview variant */
 .wt-center.wt-has-preview { padding: 0; width: 500px; text-align: left; }

@@ -22,6 +22,31 @@ Companion docs: `SPEC.md` (refactor history), `SCHEMA.md` (DB schema),
 
 ## Active Work
 
+### Guided walkthrough — mobile landscape support ✅ Done 2026-05-18
+
+The desktop spotlight tour broke on phones: the 336px tooltip had no room to
+sit beside its target in portrait, and the centred welcome / pricing modals
+overflowed a short viewport (`overflow:hidden`, no `max-height`), clipping the
+pricing CTA's "Continue free" exit button off-screen (no arrow keys on touch →
+the user could get stuck). Fix keeps the desktop visuals; on a phone the tour
+runs in landscape only. Detail in SPEC.md § 13.
+
+- ✅ **Landscape gate** — `src/walkthrough.js` adds `_wtIsPortraitBlocked()`
+  (`(orientation:portrait) and (max-width:767px) and (pointer:coarse)`) and
+  `_wtDrawRotatePrompt()`; `_wtRender` shows a "Rotate your device" prompt in
+  portrait instead of a broken step (`_wtCurrent` preserved). Re-renders on the
+  new `orientationchange` / existing `resize` listeners. The standalone session
+  CTA is exempt.
+- ✅ **Centred modals scroll** — `styles.css` `.wt-center` swaps
+  `overflow:hidden` for `overflow:hidden auto` + `max-height:calc(100dvh-24px)`,
+  so the welcome and pricing modals cap to the viewport and scroll instead of
+  clipping their exit button off-screen.
+- ✅ **Touch navigation** — `_wtOverlayClick` adds tap-to-step on coarse
+  pointers: a tap on the right half of the dimmed backdrop advances, the left
+  half goes back (phones have no arrow keys). Desktop is unaffected.
+- ✅ **Device-aware copy** — the welcome step's keyboard hint is swapped for a
+  tap-zone hint on touch devices.
+
 ### Mobile/tablet opening notice ✅ Done 2026-05-18
 
 A one-time advisory shown to touch-device visitors on app load: the app is
@@ -51,7 +76,9 @@ landscape, with no visual redesign (precursor to the full M.1 responsive pass).
   scrolling and the bottom was clipped. Invisible when content fits. Verification
   also caught the Cabinet Builder empty-state picker (`#cb-context`) clipping
   outside any scroller — `#cb-sidebar-builder` switched to `overflow-y:auto` so
-  the wrapper scrolls it.
+  the wrapper scrolls it. Follow-up: `100vh` → `100dvh` on the app shell +
+  dropdown/popup height caps so they fit the visible viewport rather than
+  sitting behind the mobile URL bar.
 - ✅ **Resize handle works on touch** — dropped the `@media (max-width:768px)`
   rule that hid `.resize-handle`, added `touch-action:none` so a touch-drag
   resizes instead of panning, and widened the invisible `::after` hit area

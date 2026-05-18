@@ -42,6 +42,8 @@ const _wtW = /** @type {any} */ (window);
  * @property {string} [clView]         switchCLMainView() target ('library'|'layout').
  * @property {boolean} [openSettings]  Open the header Settings dropdown for this step.
  * @property {boolean} [openAccount]   Open the header Account dropdown for this step.
+ * @property {boolean} [openHelp]      Open the header Help dropdown for this step.
+ * @property {boolean} [openFeatures]  Open the header New-features dropdown for this step.
  * @property {string} [target]         CSS selector to spotlight (spot steps).
  * @property {string} [preClickCard]   CSS selector — animate cursor to and click this before the step shows.
  * @property {'right'|'left'|'top'|'bottom'} [position]  Preferred tooltip side.
@@ -62,7 +64,7 @@ const _wtSteps = [
     type: 'center', section: 'dashboard', preview: 'gantt',
     title: 'See the full workflow in action',
     titleHtml: 'See the full <span class="wt-hi">workflow</span> in action',
-    body: 'This tour walks through each part of the app. We\'ve loaded a sample project so you can see how it works — use the <span class="wt-hi">arrow keys on your keyboard</span> to step through it.',
+    body: 'This tour walks through each part of the app. We\'ve loaded a sample project so you can see how it works.',
     nextLabel: 'Start the tour →'
   },
 
@@ -88,6 +90,22 @@ const _wtSteps = [
     target: '#account-dropdown', position: 'left',
     title: 'Add your business details',
     body: 'Your business name, address and contact info print on <span class="wt-hi">quotes and invoices</span>. Tap "Edit business details" to fill them in.'
+  },
+
+  // 4 — Help
+  {
+    type: 'spot', phase: 'Help', section: 'dashboard', openHelp: true,
+    target: '#help-dropdown', position: 'left',
+    title: 'Find help when you need it',
+    body: 'Open the <span class="wt-hi">User Guide</span>, report a bug, or contact support — all in one place.'
+  },
+
+  // 5 — New features
+  {
+    type: 'spot', phase: 'Feedback', section: 'dashboard', openFeatures: true,
+    target: '#features-dropdown', position: 'left',
+    title: 'Shape what gets built next',
+    body: 'ProCabinet is actively developed — <span class="wt-hi">vote on upcoming features</span> or suggest your own, and help steer the roadmap.'
   },
 
   // ── Clients ──────────────────────────────────────────────────────────────
@@ -302,18 +320,19 @@ const _wtSteps = [
   },
   {
     type: 'spot', phase: 'Dashboard', section: 'dashboard',
-    target: '#dash-toolbar', position: 'bottom',
-    title: 'Quick actions',
-    body: '<span class="wt-hi">+ Quote, + Cabinet, + Client</span> — jump straight into creating anything; each button opens the right tab with a fresh form ready.'
-  },
-  {
-    type: 'spot', phase: 'Dashboard', section: 'dashboard',
     target: '#dashboard-main', position: 'top',
     title: 'Live overview',
     body: 'Active orders with due-date alerts, your most recent quotes, low-stock warnings and this week\'s schedule — <span class="wt-hi">the full picture without opening a single tab</span>.'
   },
+  {
+    type: 'spot', phase: 'Dashboard', section: 'dashboard',
+    target: '#dash-toolbar', position: 'bottom',
+    title: 'Quick actions',
+    body: '<span class="wt-hi">+ Quote, + Cabinet, + Client</span> — jump straight into creating anything; each button opens the right tab with a fresh form ready.'
+  },
 
-  // Pro CTA — the four-tier plan picker (rendered by _wtCtaHTML)
+  // Pro CTA — the four-tier plan picker (rendered by _wtCtaHTML). Dropped for
+  // paid users by _wtLastIdx; their tour ends on the step before this.
   {
     type: 'center', section: 'dashboard',
     title: 'Choose your plan',
@@ -351,6 +370,19 @@ let _wtCtaOnly = false;
 function _wtEsc(s) {
   return String(s == null ? '' : s)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+/**
+ * True on a phone held in portrait. The spotlight tour anchors a wide tooltip
+ * beside each element, which needs landscape width — so portrait shows a
+ * "rotate your device" prompt (_wtDrawRotatePrompt) instead. Gated on a coarse
+ * pointer so a narrow desktop window is never affected.
+ * @returns {boolean}
+ */
+function _wtIsPortraitBlocked() {
+  return window.matchMedia(
+    '(orientation: portrait) and (max-width: 767px) and (pointer: coarse)'
+  ).matches;
 }
 
 // ── animated cursor ──
@@ -489,6 +521,7 @@ async function _wtRunStart(tempDemo) {
   _wtOverlay = ov;
   document.addEventListener('keydown', _wtKeydown, true);
   window.addEventListener('resize', _wtOnResize);
+  window.addEventListener('orientationchange', _wtOnResize);
   _wtInitCursor();
   _wtRender(0);
 }
@@ -518,6 +551,7 @@ function _wtStartCta() {
   _wtOverlay = ov;
   document.addEventListener('keydown', _wtKeydown, true);
   window.addEventListener('resize', _wtOnResize);
+  window.addEventListener('orientationchange', _wtOnResize);
   _wtRender(ctaIdx);
 }
 
@@ -532,6 +566,7 @@ async function _wtClose(reason) {
   _wtW._wtActive = false;
   document.removeEventListener('keydown', _wtKeydown, true);
   window.removeEventListener('resize', _wtOnResize);
+  window.removeEventListener('orientationchange', _wtOnResize);
   if (_wtResizeTimer) { clearTimeout(_wtResizeTimer); _wtResizeTimer = 0; }
   const ctaOnly = _wtCtaOnly;
   _wtCtaOnly = false;
@@ -570,6 +605,10 @@ async function _wtClose(reason) {
   if (sd) sd.classList.remove('open');
   const ad = document.getElementById('account-dropdown');
   if (ad) ad.classList.remove('open');
+  const hd = document.getElementById('help-dropdown');
+  if (hd) hd.classList.remove('open');
+  const fd = document.getElementById('features-dropdown');
+  if (fd) fd.classList.remove('open');
   // Land on a clean Dashboard — but the CTA-only overlay sits over the user's
   // own restored screen, so leave them wherever they are.
   if (!ctaOnly && typeof _wtW.switchSection === 'function') {
@@ -605,10 +644,22 @@ async function _wtPersistState(patch) {
 
 // ── navigation ──
 
+/**
+ * Last step index the guided tour advances to. The trailing Pro CTA
+ * ("Choose your plan") is dropped for paid users — nothing to upsell — so
+ * their tour ends one step earlier, on the final content step.
+ * @returns {number}
+ */
+function _wtLastIdx() {
+  const last = _wtSteps.length - 1;
+  const pro = typeof isPro === 'function' && isPro();
+  return (pro && _wtSteps[last] && _wtSteps[last].showPricing) ? last - 1 : last;
+}
+
 function _wtNext() {
   // The standalone session CTA is a single step — advancing just closes it.
   if (_wtCtaOnly) { _wtClose('completed'); return; }
-  if (_wtCurrent < _wtSteps.length - 1) _wtRender(_wtCurrent + 1);
+  if (_wtCurrent < _wtLastIdx()) _wtRender(_wtCurrent + 1);
   else _wtClose('completed');
 }
 function _wtBack() {
@@ -623,7 +674,7 @@ function _wtBack() {
  * already on it.
  */
 function _wtSkip() {
-  const lastIdx = _wtSteps.length - 1;
+  const lastIdx = _wtLastIdx();
   const pro = typeof isPro === 'function' && isPro();
   if (!pro && _wtCurrent < lastIdx) { _wtDir = 1; _wtRender(lastIdx); return; }
   _wtClose('skipped');
@@ -643,6 +694,16 @@ function _wtOverlayClick(e) {
   else if (act === 'cta-monthly') _wtCtaCheckout('monthly');
   else if (act === 'cta-annual') _wtCtaCheckout('annual');
   else if (act === 'cta-founder') _wtCtaCheckout('founder');
+  if (act) return;
+  // Touch navigation — phones have no arrow keys, so a tap on the dimmed
+  // backdrop steps the tour: right half forward, left half back. Taps on the
+  // tooltip / centre card (its buttons are handled above) and the rotate
+  // prompt are left alone.
+  if (!window.matchMedia('(pointer: coarse)').matches) return;
+  if (_wtIsPortraitBlocked()) return;
+  if (t && t.closest && t.closest('.wt-tooltip, .wt-center')) return;
+  if (e.clientX > window.innerWidth / 2) _wtNext();
+  else _wtBack();
 }
 
 /** @param {KeyboardEvent} e */
@@ -687,6 +748,10 @@ function _wtApplyContext(step) {
   if (sd) sd.classList.toggle('open', !!step.openSettings);
   const ad = document.getElementById('account-dropdown');
   if (ad) ad.classList.toggle('open', !!step.openAccount);
+  const hd = document.getElementById('help-dropdown');
+  if (hd) hd.classList.toggle('open', !!step.openHelp);
+  const fd = document.getElementById('features-dropdown');
+  if (fd) fd.classList.toggle('open', !!step.openFeatures);
 }
 
 /**
@@ -708,9 +773,11 @@ function _wtGetPreClickTarget(i) {
     return (r.width > 1 && r.height > 1) ? { cx: r.left + r.width / 2, cy: r.top + r.height / 2 } : null;
   }
 
-  // Settings / Account button — opens/closes the dropdown
+  // Settings / Account / Help / Features button — opens/closes the dropdown
   if (step.openSettings && !prev.openSettings) return _centre(document.getElementById('settings-btn'));
   if (step.openAccount && !prev.openAccount) return _centre(document.getElementById('account-btn'));
+  if (step.openHelp && !prev.openHelp) return _centre(document.getElementById('help-btn'));
+  if (step.openFeatures && !prev.openFeatures) return _centre(document.getElementById('features-btn'));
 
   // Section change → the matching nav-tab button (always in the bar, always measurable)
   if (step.section && step.section !== prev.section) {
@@ -772,7 +839,7 @@ function _wtWaitFor(sel, cb) {
  */
 function _wtSkipUnreachable(i) {
   const next = i + (_wtDir < 0 ? -1 : 1);
-  if (next >= 0 && next < _wtSteps.length) { _wtRender(next); return; }
+  if (next >= 0 && next <= _wtLastIdx()) { _wtRender(next); return; }
   if (_wtDir < 0) { _wtRender(0); return; }
   _wtClose('completed');
 }
@@ -810,6 +877,13 @@ function _wtRender(i) {
   const step = _wtSteps[i];
   if (!step || !_wtOverlay) return;
 
+  // The spotlight tour is laid out for landscape; a phone in portrait gets a
+  // rotate prompt instead. _wtCurrent is kept, so the orientationchange/resize
+  // handler re-renders this same step once the device is turned. The
+  // standalone session CTA is exempt — a centred, scrollable modal that works
+  // fine in portrait.
+  if (!_wtCtaOnly && _wtIsPortraitBlocked()) { _wtDrawRotatePrompt(); return; }
+
   if (step.type === 'center') { _wtApplyContext(step); _wtDrawCenter(step, false); return; }
 
   const proceed = () => {
@@ -839,7 +913,8 @@ function _wtRender(i) {
 }
 
 /**
- * Draw the dim mask + spotlight ring + anchored tooltip for a spot step.
+ * Draw the dim mask, current-tab highlight, spotlight ring and anchored
+ * tooltip for a spot step.
  * @param {WtStep} step
  * @param {DOMRect} r
  */
@@ -858,6 +933,7 @@ function _wtDrawSpot(step, r) {
     'px, ' + x1 + 'px ' + y1 + 'px, ' + x1 + 'px ' + y2 + 'px, ' + x2 + 'px ' +
     y2 + 'px, ' + x2 + 'px ' + y1 + 'px, 0 ' + y1 + 'px)';
   ov.appendChild(mask);
+  _wtDrawTabHighlight(step);
 
   const spot = document.createElement('div');
   spot.className = 'wt-spot';
@@ -883,6 +959,38 @@ function _wtDrawSpot(step, r) {
 
   // Animate cursor tip to the centre of the spotlit element.
   _wtCursorMoveTo(r.left + r.width / 2, r.top + r.height / 2);
+}
+
+/**
+ * Keep the section the tour is in visibly lit: clone the active nav tab and
+ * float the copy above the dim mask so it reads as highlighted on every spot
+ * step. Skipped when the step already spotlights the nav bar itself — the tab
+ * is un-dimmed by the clip-path hole there — and when no tab is active.
+ * @param {WtStep} step
+ */
+function _wtDrawTabHighlight(step) {
+  const ov = _wtOverlay;
+  if (!ov) return;
+  if (step.target && step.target.indexOf('.nav-tab') === 0) return;
+  const tab = document.querySelector('.nav-tab.active');
+  if (!tab) return;
+  const r = tab.getBoundingClientRect();
+  if (r.width < 1 || r.height < 1) return;
+  const clone = /** @type {HTMLElement} */ (tab.cloneNode(true));
+  clone.removeAttribute('id');
+  clone.classList.add('wt-tabhi');
+  // The clone keeps the `.nav-tab` class for its lit styling, so its box has
+  // to be pinned with `!important` to beat the responsive `.nav-tab` rules
+  // (which force `width: auto !important`).
+  const cs = clone.style;
+  cs.setProperty('position', 'absolute', 'important');
+  cs.setProperty('margin', '0', 'important');
+  cs.setProperty('pointer-events', 'none', 'important');
+  cs.setProperty('left', r.left + 'px', 'important');
+  cs.setProperty('top', r.top + 'px', 'important');
+  cs.setProperty('width', r.width + 'px', 'important');
+  cs.setProperty('height', r.height + 'px', 'important');
+  ov.appendChild(clone);
 }
 
 /**
@@ -943,11 +1051,48 @@ function _wtDrawCenter(step, isFallback) {
   ov.appendChild(card);
 }
 
+/**
+ * Replace the overlay with a "rotate to landscape" prompt. The spotlight tour
+ * anchors a wide tooltip beside each element, which needs landscape width — so
+ * a phone held in portrait sees this instead. _wtRender keeps _wtCurrent, and
+ * the orientationchange/resize handler re-renders the step once the device is
+ * turned. Reuses the `.wt-center` modal box for its styling.
+ */
+function _wtDrawRotatePrompt() {
+  const ov = _wtOverlay;
+  if (!ov) return;
+  ov.innerHTML = '';
+  if (_wtCursorEl) _wtCursorEl.classList.remove('wt-cur-show');
+  const mask = document.createElement('div');
+  mask.className = 'wt-mask';
+  ov.appendChild(mask);
+  const card = document.createElement('div');
+  card.className = 'wt-center wt-rotate';
+  card.innerHTML =
+    '<div class="wt-rotate-icon">' +
+      '<svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+      'stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+        '<path d="M21 12a9 9 0 0 1-9 9 9 9 0 0 1-6.4-2.6"/>' +
+        '<path d="M3 12a9 9 0 0 1 9-9 9 9 0 0 1 6.4 2.6"/>' +
+        '<polyline points="21 3 21 8 16 8"/>' +
+        '<polyline points="3 21 3 16 8 16"/>' +
+      '</svg>' +
+    '</div>' +
+    '<h2>Rotate your device</h2>' +
+    '<p>The guided tour is built for landscape — turn your phone sideways to continue.</p>' +
+    '<div class="wt-center-actions">' +
+      '<button class="wt-btn wt-btn-skip" data-wt-act="skip">Skip tour</button>' +
+    '</div>';
+  ov.appendChild(card);
+}
+
 /** @param {WtStep} step @returns {string} */
 function _wtTooltipHTML(step) {
-  const n = _wtCurrent + 1, total = _wtSteps.length;
+  const n = _wtCurrent + 1, total = _wtLastIdx() + 1;
   const pct = Math.round((n / total) * 100);
   const phase = step.phase ? _wtEsc(step.phase) + ' · ' : '';
+  // Last step ends the tour for paid users (the Pro CTA is dropped) — say "Finish".
+  const nextLabel = step.nextLabel || (_wtCurrent >= _wtLastIdx() ? 'Finish' : 'Next →');
   return '' +
     '<div class="wt-phase">' + phase + 'Step ' + n + ' of ' + total + '</div>' +
     '<h3>' + _wtEsc(step.title) + '</h3>' +
@@ -957,13 +1102,17 @@ function _wtTooltipHTML(step) {
       '<button class="wt-btn wt-btn-skip" data-wt-act="skip">Skip tour</button>' +
       '<span class="wt-spacer"></span>' +
       (_wtCurrent > 0 ? '<button class="wt-btn wt-btn-ghost" data-wt-act="back">Back</button>' : '') +
-      '<button class="wt-btn wt-btn-primary" data-wt-act="next">' + _wtEsc(step.nextLabel || 'Next →') + '</button>' +
+      '<button class="wt-btn wt-btn-primary" data-wt-act="next">' + _wtEsc(nextLabel) + '</button>' +
     '</div>';
 }
 
 /** @param {WtStep} step @returns {string} */
 function _wtCenterPreviewHTML(step) {
   const title = step.titleHtml || _wtEsc(step.title);
+  // Touch devices have no arrow keys — point them at the tap-to-navigate zones.
+  const navHint = window.matchMedia('(pointer: coarse)').matches
+    ? 'Tap the <span class="wt-hi">right side</span> of the screen to continue, or the <span class="wt-hi">left side</span> to go back.'
+    : 'Use the <span class="wt-hi">arrow keys</span> on your keyboard to step through it.';
   return '' +
     '<div class="wt-wp">' +
       '<div class="wt-wchrome">' +
@@ -1011,7 +1160,7 @@ function _wtCenterPreviewHTML(step) {
     '</div>' +
     '<div class="wt-wbody">' +
       '<h2>' + title + '</h2>' +
-      '<p>' + step.body + '</p>' +
+      '<p>' + step.body + ' ' + navHint + '</p>' +
       '<div class="wt-center-actions">' +
         '<button class="wt-btn wt-btn-skip" data-wt-act="skip">Skip</button>' +
         '<button class="wt-btn wt-btn-primary" data-wt-act="next">' + _wtEsc(step.nextLabel || 'Start the tour →') + '</button>' +
