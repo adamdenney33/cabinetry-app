@@ -709,7 +709,7 @@ create table public.subscriptions (
 alter table public.subscriptions enable row level security;
 
 create policy "owner can read own subscription"
-  on public.subscriptions for select using (user_id = auth.uid());
+  on public.subscriptions for select using (user_id = (select auth.uid()));
 ```
 
 **RLS deviation from Pattern A:** SELECT only. No INSERT/UPDATE/DELETE
@@ -824,7 +824,11 @@ has already upvoted.
 
 ## 4. Row-Level Security
 
-Every table has RLS enabled. Two policy patterns:
+Every table has RLS enabled. Two policy patterns.
+
+> All policies wrap `auth.uid()` in a scalar subquery — `(select auth.uid())` —
+> so Postgres evaluates it once per query (the InitPlan), not once per row.
+> Applied to all 61 policies in migration `20260518150000`.
 
 ### Pattern A — direct ownership
 
@@ -834,16 +838,16 @@ For tables with their own `user_id`:
 alter table public.<table> enable row level security;
 
 create policy "owner can read"
-  on public.<table> for select using (user_id = auth.uid());
+  on public.<table> for select using (user_id = (select auth.uid()));
 
 create policy "owner can insert"
-  on public.<table> for insert with check (user_id = auth.uid());
+  on public.<table> for insert with check (user_id = (select auth.uid()));
 
 create policy "owner can update"
-  on public.<table> for update using (user_id = auth.uid());
+  on public.<table> for update using (user_id = (select auth.uid()));
 
 create policy "owner can delete"
-  on public.<table> for delete using (user_id = auth.uid());
+  on public.<table> for delete using (user_id = (select auth.uid()));
 ```
 
 ### Pattern B — chained ownership
@@ -855,7 +859,7 @@ alter table public.piece_edges enable row level security;
 
 create policy "owner via piece"
   on public.piece_edges for all using (
-    piece_id in (select id from public.pieces where user_id = auth.uid())
+    piece_id in (select id from public.pieces where user_id = (select auth.uid()))
   );
 ```
 
