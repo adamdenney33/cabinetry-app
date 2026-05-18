@@ -222,25 +222,57 @@ async function orderTotalsFromLines(orderId) {
 }
 
 async function _hydrateQuoteTotals() {
-  // Run in parallel; each call also caches q._lines as a side effect.
-  await Promise.all(quotes.map(async q => {
-    if (q._totals) return;
+  // One batched query for every quote's lines, instead of one fetch per quote
+  // (the per-quote loop was an N+1). Lines are grouped by quote_id in memory;
+  // q._lines and q._totals are populated to match the old per-quote behaviour.
+  const need = quotes.filter(q => !q._totals);
+  if (!need.length) return;
+  const { data: lines, error } = await _db('quote_lines').select('*')
+    .in('quote_id', need.map(q => q.id)).order('position');
+  if (error || !lines) {
+    console.warn('[quote totals] hydrate failed:', error && error.message);
+    return;
+  }
+  /** @type {Record<number, any[]>} */
+  const byQuote = {};
+  for (const row of lines) (byQuote[row.quote_id] || (byQuote[row.quote_id] = [])).push(row);
+  for (const q of need) {
+    const rows = (byQuote[q.id] || []).map(/** @param {any} r */ r => ({ ...r }));
+    q._lines = rows;
+    if (!rows.length) continue;
     try {
-      const t = await quoteTotalsFromLines(q.id);
-      if (t) q._totals = t;
+      let materials = 0, labour = 0, stockMat = 0;
+      for (const row of rows) {
+        const sub = _lineSubtotal(row);
+        materials += sub.materials;
+        labour += sub.labour;
+        if (row.line_kind === 'stock') stockMat += sub.materials;
+      }
+      const totals = { materials, labour, stockMat };
+      q._totals = totals;
     } catch (e) {
-      console.warn('[quote totals] hydrate failed for', q.id, (/** @type {any} */ (e)).message || e);
+      console.warn('[quote totals] compute failed for', q.id, (/** @type {any} */ (e)).message || e);
     }
-  }));
+  }
 }
 
 async function _hydrateOrderLines() {
-  // Pre-cache order lines so the order popup opens without a network wait.
-  await Promise.all(orders.map(async o => {
-    if (/** @type {any} */ (o)._lines) return;
-    try { await orderTotalsFromLines(o.id); }
-    catch (e) { console.warn('[order lines] hydrate failed for', o.id, (/** @type {any} */ (e)).message || e); }
-  }));
+  // One batched query for every order's lines (was an N+1: one fetch per
+  // order). Pre-caches o._lines so order popups open without a network wait.
+  const need = orders.filter(o => !(/** @type {any} */ (o)._lines));
+  if (!need.length) return;
+  const { data: lines, error } = await _db('order_lines').select('*')
+    .in('order_id', need.map(o => o.id)).order('position');
+  if (error || !lines) {
+    console.warn('[order lines] hydrate failed:', error && error.message);
+    return;
+  }
+  /** @type {Record<number, any[]>} */
+  const byOrder = {};
+  for (const row of lines) (byOrder[row.order_id] || (byOrder[row.order_id] = [])).push(row);
+  for (const o of need) {
+    /** @type {any} */ (o)._lines = (byOrder[o.id] || []).map(/** @param {any} r */ r => ({ ...r }));
+  }
 }
 
 /** Build a "2 cabinets · 1 item · 3 stock" caption from a quote/order's
