@@ -49,6 +49,10 @@ declare global {
     _demoMode?: boolean;
     /** True while the guided walkthrough overlay is on screen (src/walkthrough.js). */
     _wtActive?: boolean;
+    /** True for phones/tablets — touch-primary, no hover. Defined in src/mobile-notice.js. */
+    _pcIsTouchDevice?: () => boolean;
+    /** Once-per-session mobile/tablet advisory notice. Defined in src/mobile-notice.js. */
+    _pcMaybeShowMobileNotice?: () => void;
     /** Various render-state stash slots used by inline-handler `oninput=` etc. */
     _orderFilter?: string;
     _orderSearch?: string;

@@ -22,6 +22,22 @@ Companion docs: `SPEC.md` (refactor history), `SCHEMA.md` (DB schema),
 
 ## Active Work
 
+### Mobile/tablet opening notice ✅ Done 2026-05-18
+
+A one-time advisory shown to touch-device visitors on app load: the app is
+desktop-first, so use a computer for the full experience; limited use is
+possible in landscape. Informational and dismissible — not a hard block.
+
+- ✅ New `src/mobile-notice.js` — `_pcIsTouchDevice()`
+  (`(hover:none) and (pointer:coarse)` → phones + tablets) +
+  `_pcMaybeShowMobileNotice()` (once-per-session `sessionStorage` gate, builds
+  an inline-styled overlay modelled on `_confirm()`, z-index 10000).
+- ✅ Hook `_pcMaybeShowMobileNotice()` into `_wtMaybeAutoStart()`
+  (`src/walkthrough.js`) — notice layers above the guided tour, which still runs
+  underneath and is revealed on dismiss.
+- ✅ Register the script in `index.html`; declare the two globals in
+  `src/globals.d.ts`. Detail in SPEC.md § 13.
+
 ### Landscape-usability fixes — pane scroll + touch resize ✅ Done 2026-05-18
 
 A targeted pass to make the existing layout usable on a phone/tablet in
