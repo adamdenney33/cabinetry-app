@@ -5,7 +5,7 @@
 /** @type {{ mode: string, decimals: number, denominator: number }} */
 window.unitFormat = {
   mode: 'decimal',
-  decimals: 1,
+  decimals: 0,
   denominator: 16,
 };
 
