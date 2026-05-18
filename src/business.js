@@ -236,7 +236,7 @@ function _openBusinessDetailsPopup() {
       </div>
     </div>
     <div class="popup-footer">
-      <button class="btn btn-accent" onclick="_closePopup()">Done</button>
+      <button class="btn btn-primary" onclick="_closePopup()">Done</button>
     </div>
   `;
   _openPopup(html, 'md');

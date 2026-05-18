@@ -402,7 +402,7 @@ function _openNewCBMaterialPopup(fieldName) {
     </div>
     <div class="popup-footer">
       <button class="btn btn-outline" onclick="_closePopup()">Cancel</button>
-      <button class="btn btn-accent" onclick="_saveNewCBMaterial('${fieldName}')">Add Material</button>
+      <button class="btn btn-primary" onclick="_saveNewCBMaterial('${fieldName}')">Add Material</button>
     </div>
   `, 'sm');
   setTimeout(() => _byId('pnm-name')?.focus(), 50);
@@ -442,7 +442,7 @@ function _openNewCBFinishPopup(fieldName) {
     </div>
     <div class="popup-footer">
       <button class="btn btn-outline" onclick="_closePopup()">Cancel</button>
-      <button class="btn btn-accent" onclick="_saveNewCBFinish('${field}')">Add Finish</button>
+      <button class="btn btn-primary" onclick="_saveNewCBFinish('${field}')">Add Finish</button>
     </div>
   `, 'sm');
   setTimeout(() => _byId('pnf-name')?.focus(), 50);
@@ -539,7 +539,7 @@ function _openNewCBHardwarePopup(lineId, hwIdx, scope) {
     </div>
     <div class="popup-footer">
       <button class="btn btn-outline" onclick="_closePopup()">Cancel</button>
-      <button class="btn btn-accent" onclick="_saveNewCBHardware(${lineId},${hwIdx},'${sc}')">Add Hardware</button>
+      <button class="btn btn-primary" onclick="_saveNewCBHardware(${lineId},${hwIdx},'${sc}')">Add Hardware</button>
     </div>
   `, 'sm');
   setTimeout(() => _byId('pnh-name')?.focus(), 50);

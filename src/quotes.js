@@ -608,7 +608,7 @@ function _openNewClientPopup(targetInputId) {
     </div>
     <div class="popup-footer">
       <button class="btn btn-outline" onclick="_closePopup()">Cancel</button>
-      <button class="btn btn-accent" onclick="_saveNewClientPopup('${targetInputId}')">Add Client</button>
+      <button class="btn btn-primary" onclick="_saveNewClientPopup('${targetInputId}')">Add Client</button>
     </div>`;
   _openPopup(html, 'sm');
 }

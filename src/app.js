@@ -947,7 +947,7 @@ function _openNewStockPopup() {
     </div>
     <div class="popup-footer">
       <button class="btn btn-outline" onclick="_closePopup()">Cancel</button>
-      <button class="btn btn-accent" onclick="_saveNewStockPopup()">Add to Stock</button>
+      <button class="btn btn-primary" onclick="_saveNewStockPopup()">Add to Stock</button>
     </div>
   `, 'sm');
   setTimeout(() => document.getElementById('pns-name')?.focus(), 50);
@@ -1100,7 +1100,7 @@ function _openCabinetPopup(idx) {
       <button class="btn btn-outline" style="color:var(--danger);margin-right:auto" onclick="_confirm('Delete this cabinet?',()=>{cbLines.splice(${idx},1);saveCBLines();_closePopup();renderCBPanel()})">Delete</button>
       <button class="btn btn-outline" onclick="_duplicateCabinet(${idx})">Duplicate</button>
       <button class="btn btn-outline" onclick="_closePopup();cbEditCabinetFromOutput(${idx})">Full Editor</button>
-      <button class="btn btn-accent" onclick="_saveCabinetPopup(${idx})">Save</button>
+      <button class="btn btn-primary" onclick="_saveCabinetPopup(${idx})">Save</button>
     </div>`;
   _openPopup(html, 'md');
 }
