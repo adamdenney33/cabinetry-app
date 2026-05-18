@@ -1,8 +1,9 @@
 // ProCabinet — Features menu: suggest-by-email + upvotable leaderboard.
 //
 // The Features button in the top toolbar (left of Help; markup in index.html)
-// runs _openFeaturesBoard() — a popup with a "Suggest a feature" button and a
-// leaderboard of owner-curated feature ideas that signed-in users can upvote.
+// opens a dropdown with two items: "Vote on new features" runs
+// _openFeaturesBoard() — a popup leaderboard of owner-curated feature ideas
+// that signed-in users can upvote — and "Suggest a feature" runs _openSuggestion().
 //
 // "Suggest a feature" (_openSuggestion — moved here from src/help.js) keeps the
 // mailto: flow. It reuses _helpContext / _mailtoHref / SUPPORT_EMAIL, which
@@ -16,7 +17,7 @@
 
 // ── Suggest a feature (mailto:) — relocated from the Help dropdown ──
 function _openSuggestion() {
-  document.getElementById('help-dropdown')?.classList.remove('open');
+  document.getElementById('features-dropdown')?.classList.remove('open');
   const body = `What would you like to see?\n\nWhy would it help your workflow?\n${_helpContext()}`;
   const href = _mailtoHref('[Suggestion] ', body);
   const html = `
@@ -55,7 +56,6 @@ let _featVoted = new Set();
 let _featVoting = new Set();
 
 const _FEAT_ARROW = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="6"/><polyline points="5 13 12 6 19 13"/></svg>';
-const _FEAT_PLUS = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>';
 
 /**
  * Build the Features popup markup around a board-body fragment.
@@ -70,9 +70,6 @@ function _featureShell(bodyHtml) {
     </div>
     <div class="popup-body">
       <p class="feat-intro">Upvote the ideas you'd most like us to build next.</p>
-      <button class="btn btn-outline feat-suggest-cta" onclick="_openSuggestion()">
-        ${_FEAT_PLUS}<span>Suggest a feature</span>
-      </button>
       <div id="feat-board">${bodyHtml}</div>
     </div>
     <div class="popup-footer">
@@ -81,9 +78,9 @@ function _featureShell(bodyHtml) {
   `;
 }
 
-/** Open the Features popup: "Suggest a feature" + the upvotable leaderboard. */
+/** Open the Features popup: the upvotable feature-idea leaderboard. */
 function _openFeaturesBoard() {
-  document.getElementById('help-dropdown')?.classList.remove('open');
+  document.getElementById('features-dropdown')?.classList.remove('open');
   // Signed-out / demo visitors can still suggest by email, but the board needs
   // an account (per-user vote rows), so skip all DB calls in that case.
   if (!_userId || window._demoMode) {
@@ -118,7 +115,7 @@ function _featureRenderBoard() {
   const board = document.getElementById('feat-board');
   if (!board) return;
   if (!_featSuggestions.length) {
-    board.innerHTML = '<div class="feat-empty">No feature ideas on the board yet — use “Suggest a feature” above to send us yours.</div>';
+    board.innerHTML = '<div class="feat-empty">No feature ideas on the board yet — use “Suggest a feature” in the Features menu to send us yours.</div>';
     return;
   }
   const rows = _featSuggestions.slice().sort(/** @param {any} a @param {any} b */ (a, b) =>
