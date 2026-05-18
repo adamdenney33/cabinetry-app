@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite';
-import { copyFileSync, mkdirSync, readdirSync, existsSync } from 'node:fs';
+import { copyFileSync, mkdirSync, readdirSync, existsSync, readFileSync, writeFileSync, unlinkSync } from 'node:fs';
 import { dirname, join } from 'node:path';
+import { transformSync } from 'esbuild';
 import { sentryVitePlugin } from '@sentry/vite-plugin';
 
 // Phase A: Vite is currently a thin shell around the existing vanilla codebase.
@@ -17,7 +18,15 @@ function copyClassicScriptsPlugin() {
       if (!existsSync(srcDir)) return;
       mkdirSync(outDir, { recursive: true });
       for (const f of readdirSync(srcDir)) {
-        if (f.endsWith('.js')) copyFileSync(join(srcDir, f), join(outDir, f));
+        if (!f.endsWith('.js')) continue;
+        // Minify whitespace + syntax only — NOT identifiers. The classic
+        // scripts share state through the global lexical environment, so
+        // renaming top-level names would break cross-file references.
+        const { code } = transformSync(readFileSync(join(srcDir, f), 'utf8'), {
+          loader: 'js', target: 'es2020',
+          minifyWhitespace: true, minifySyntax: true, minifyIdentifiers: false,
+        });
+        writeFileSync(join(outDir, f), code);
       }
     },
   };
@@ -37,6 +46,23 @@ function copyEmailLogoPlugin() {
   };
 }
 
+// Delete every source map from dist/ after the build. Maps are still
+// generated (build.sourcemap: 'hidden') and uploaded to Sentry by
+// sentryVitePlugin; closeBundle runs after that writeBundle upload, so
+// removing the files here keeps Sentry stack traces working while never
+// serving the maps publicly.
+function stripSourceMapsPlugin() {
+  return {
+    name: 'strip-source-maps',
+    closeBundle() {
+      if (!existsSync('dist')) return;
+      for (const f of readdirSync('dist', { recursive: true })) {
+        if (typeof f === 'string' && f.endsWith('.map')) unlinkSync(join('dist', f));
+      }
+    },
+  };
+}
+
 export default defineConfig({
   root: '.',
   publicDir: false,
@@ -47,7 +73,10 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
-    sourcemap: true,
+    // 'hidden' generates source maps (sentryVitePlugin uploads them) but adds
+    // no sourceMappingURL comment to the bundles; stripSourceMapsPlugin then
+    // removes the .map files so they are never served publicly.
+    sourcemap: 'hidden',
     target: 'es2020',
     emptyOutDir: true,
   },
@@ -65,5 +94,8 @@ export default defineConfig({
       authToken: process.env.SENTRY_AUTH_TOKEN,
       disable: !process.env.SENTRY_AUTH_TOKEN,
     }),
+    // Must run after sentryVitePlugin so source maps are uploaded before
+    // they are stripped from the deploy output.
+    stripSourceMapsPlugin(),
   ],
 });
