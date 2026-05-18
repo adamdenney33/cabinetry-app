@@ -100,27 +100,55 @@ async function updateClient(id, field, value) {
   await _db('clients').update(/** @type {any} */ ({ [field]: value })).eq('id', id);
 }
 
-/** Confirm client deletion, warning about the quotes + orders that will be
- *  permanently removed with it. @param {number} id */
-function _confirmRemoveClient(id) {
+/** Confirm client deletion, warning about the quotes, orders and cut lists
+ *  that will be permanently removed with it. @param {number} id */
+async function _confirmRemoveClient(id) {
   const c = clients.find(x => x.id === id);
   if (!c) return;
   const nQuotes = quotes.filter(q => q.client_id === id && !_isDraftQuote(q)).length;
   const nOrders = orders.filter(o => o.client_id === id).length;
+  // Cut lists link to the client's quotes (cutlists.quote_id) — count them
+  // with a live query keyed on those quote ids.
+  let nCutLists = 0;
+  const quoteIds = quotes.filter(q => q.client_id === id).map(/** @param {any} q */ q => q.id);
+  if (quoteIds.length) {
+    const { data: cls } = await _db('cutlists').select('id').in('quote_id', quoteIds);
+    nCutLists = (cls || []).length;
+  }
   /** @type {string[]} */
   const parts = [];
   if (nQuotes) parts.push(`${nQuotes} quote${nQuotes !== 1 ? 's' : ''}`);
   if (nOrders) parts.push(`${nOrders} order${nOrders !== 1 ? 's' : ''}`);
-  const msg = parts.length
-    ? `Delete <strong>${_escHtml(c.name)}</strong> and permanently remove ${parts.join(' and ')}? This cannot be undone.`
+  if (nCutLists) parts.push(`${nCutLists} cut list${nCutLists !== 1 ? 's' : ''}`);
+  const removed = parts.length <= 1
+    ? parts.join('')
+    : `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`;
+  const msg = removed
+    ? `Delete <strong>${_escHtml(c.name)}</strong> and permanently remove ${removed}? This cannot be undone.`
     : `Delete <strong>${_escHtml(c.name)}</strong>?`;
   _confirm(msg, () => removeClient(id));
 }
 
-/** Delete a client and cascade-delete all their quotes and orders. The
- *  quote_lines / order_lines rows cascade at the DB level. @param {number} id */
+/** Delete a client and everything tied to them — quotes, orders, and the cut
+ *  lists belonging to those quotes. quote_lines / order_lines and cut-list
+ *  child rows cascade at the DB level; cut lists themselves do not
+ *  (cutlists.quote_id is ON DELETE SET NULL), so they are removed first by
+ *  the client's quote ids. @param {number} id */
 async function removeClient(id) {
   if (!_requireAuth()) return;
+  const { data: clientQuotes, error: qIdErr } = await _db('quotes').select('id').eq('client_id', id);
+  if (qIdErr) {
+    _toast('Could not remove client — ' + (qIdErr.message || 'unknown error'), 'error');
+    return;
+  }
+  const quoteIds = (clientQuotes || []).map(/** @param {any} q */ q => q.id);
+  if (quoteIds.length) {
+    const { error: clErr } = await _db('cutlists').delete().in('quote_id', quoteIds);
+    if (clErr) {
+      _toast('Could not remove client — ' + (clErr.message || 'unknown error'), 'error');
+      return;
+    }
+  }
   const { error: oErr } = await _db('orders').delete().eq('client_id', id);
   const { error: qErr } = await _db('quotes').delete().eq('client_id', id);
   const childErr = oErr || qErr;
@@ -136,6 +164,8 @@ async function removeClient(id) {
   clients = clients.filter(c => c.id !== id);
   quotes = quotes.filter(q => q.client_id !== id);
   orders = orders.filter(o => o.client_id !== id);
+  const cutListCache = /** @type {any} */ (window)._cutListsByClient;
+  if (cutListCache) delete cutListCache[id];
   renderClientsMain();
   _toast('Client removed', 'success');
 }
