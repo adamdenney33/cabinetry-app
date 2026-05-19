@@ -6,6 +6,7 @@ let cbOpenSections = new Set();
 let _cbSectionsSeen = new Set();
 let cbExpandedRows = new Set();
 let cbMainView = 'results';
+let cbActiveTab = 'builder'; // 'builder' | 'rates' — active Quote Builder sidebar sub-tab
 
 /** @param {number} id */
 function toggleCBExpand(id) {
@@ -39,22 +40,32 @@ function toggleCBSettings() {
 
 /** @param {string} tab */
 function switchCabTab(tab) {
+  cbActiveTab = tab;
   const rates = _byId('cab-view-rates');
   const tabBuilder = _byId('cab-tab-builder');
   const tabRates = _byId('cab-tab-rates');
   const sidebar = _byId('cb-sidebar');
+  const ctx = _byId('cb-context');
   if (!sidebar) return;
   const builderDivs = /** @type {HTMLElement[]} */ (Array.from(sidebar.children).filter(el => el.id !== 'cab-view-rates'));
+  // Gated empty state (no quote/client open, not editing a library template):
+  // #cb-context holds the quote-picker gate and #cb-sidebar is hidden. The
+  // rates panel lives inside #cb-sidebar, so My Rates here means revealing
+  // #cb-sidebar + hiding the gate; the Builder tab restores the gate. When a
+  // project is open #cb-context is the persistent header — leave it alone.
+  const gated = !_cbCurrentClientId && !cbEditingQuoteId && !(cbEditingLibraryIdx >= 0);
 
   if (tab === 'rates') {
     builderDivs.forEach(el => el.style.display = 'none');
     if (rates) rates.style.display = '';
+    if (gated) { sidebar.style.display = ''; if (ctx) ctx.style.display = 'none'; }
     if (tabBuilder) { tabBuilder.style.borderBottomColor = 'transparent'; tabBuilder.style.fontWeight = '500'; tabBuilder.style.color = 'var(--muted)'; }
     if (tabRates) { tabRates.style.borderBottomColor = 'var(--accent)'; tabRates.style.fontWeight = '700'; tabRates.style.color = 'var(--text)'; }
     renderCBRates();
   } else {
     builderDivs.forEach(el => el.style.display = '');
     if (rates) rates.style.display = 'none';
+    if (gated) { sidebar.style.display = 'none'; if (ctx) ctx.style.display = ''; }
     if (tabBuilder) { tabBuilder.style.borderBottomColor = 'var(--accent)'; tabBuilder.style.fontWeight = '700'; tabBuilder.style.color = 'var(--text)'; }
     if (tabRates) { tabRates.style.borderBottomColor = 'transparent'; tabRates.style.fontWeight = '500'; tabRates.style.color = 'var(--muted)'; }
   }

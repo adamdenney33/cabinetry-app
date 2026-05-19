@@ -1242,6 +1242,9 @@ function _cbRenderContext() {
   const tabsWrap = _byId('cb-tabs-wrap');
   const sb = _byId('cb-sidebar');
   if (!ctx) return;
+  // Reset #cb-context visibility — the gated rates tab hides it (switchCabTab);
+  // every branch below either keeps it visible or re-hides it for that tab.
+  ctx.style.display = '';
   // Editing a library template always shows the "Cabinet Library" header
   // regardless of any open quote/client context — the template is owned by
   // the library, not the project. Without this check, opening a template
@@ -1255,11 +1258,15 @@ function _cbRenderContext() {
       exitFn: '_cbExitLibraryEdit',
       iconSvg: _CB_LIBRARY_ICON,
     });
+    // Library-edit always shows the template editor (tab bar is hidden).
+    switchCabTab('builder');
     return;
   }
   if (!_cbCurrentClientId && !cbEditingQuoteId) {
-    if (tabsWrap) tabsWrap.style.display = 'none';
-    if (sb) sb.style.display = 'none';
+    // Gated empty state — no quote open. Keep the Builder / My Rates tab bar
+    // visible so rates stay reachable here; switchCabTab() (before each return
+    // below) owns the #cb-context-vs-#cb-sidebar visibility for the active tab.
+    if (tabsWrap) tabsWrap.style.display = '';
     if (_cbStartingNewQuote) {
       // Sub-flow: pick the client that will own the new quote. Same client
       // smart-search as before, with a back link to return to the quote picker.
@@ -1279,6 +1286,7 @@ function _cbRenderContext() {
         </div>
         <div style="margin-top:14px;font-size:11px"><a href="javascript:_cbCancelNewQuote()" style="color:var(--muted);text-decoration:none">← Back to quotes</a></div>
       </div>`;
+      switchCabTab(cbActiveTab);
       return;
     }
 
@@ -1320,6 +1328,7 @@ function _cbRenderContext() {
         </div>`).join('')}
       </div>` : ''}
     </div>`;
+    switchCabTab(cbActiveTab);
     return;
   }
   if (tabsWrap) tabsWrap.style.display = '';
