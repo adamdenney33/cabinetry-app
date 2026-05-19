@@ -22,6 +22,44 @@ Companion docs: `SPEC.md` (refactor history), `SCHEMA.md` (DB schema),
 
 ## Active Work
 
+### Paid-ads tracking + first-touch attribution ✅ Done 2026-05-19
+
+Paid-ads foundation laid before any spend. Three pixels plus a UTM-capture
+layer that survives across the email-confirm gap, so signups carry permanent
+ad-campaign attribution all the way through to revenue (via Stripe `client_reference_id`
+later). Everything env-gated — with no IDs set, nothing loads, no requests fire.
+
+- ✅ `src/main.js` — first-touch attribution: on landing, if `utm_*`/`gclid`/`fbclid`
+  are in the URL, snapshot the params + referrer + landing path + timestamp into
+  `localStorage.pc_attribution`. First-touch wins (industry-standard for SaaS:
+  the campaign that first introduced the user gets credit, not the last click).
+  `window._getAttribution()` returns the blob (`{}` for organic).
+- ✅ `src/main.js` — GA4 + Google Ads via gtag.js (`VITE_GA4_ID`,
+  `VITE_GOOGLE_ADS_ID`), Meta Pixel (`VITE_META_PIXEL_ID`). Each independently
+  env-gated; no env, no network. Pixels fire PageView on load.
+- ✅ `src/app.js` — `authSubmit()` signup branch pulls the attribution blob and
+  passes it into `_sb.auth.signUp({ data: { …, attribution } })` so it lands in
+  `auth.users.raw_user_meta_data` permanently. Queryable later via
+  `select raw_user_meta_data->'attribution' from auth.users`.
+- ✅ `src/app.js` — on successful signup, fires `_trackSignupConversion()` which
+  pings Meta Pixel `CompleteRegistration`, GA4 `sign_up`, and Google Ads
+  `conversion` (the latter needs `VITE_GOOGLE_ADS_CONVERSION_SEND_TO` — without
+  it the GA4 event still fires but Google Ads can't attribute).
+- ✅ `src/analytics.js` — `_trackSignupConversion()` added; `_identifyUser()`
+  enriched to lift `user_metadata.attribution` into PostHog person properties as
+  `initial_utm_source`/etc., so PostHog funnels break down by ad campaign.
+- ✅ `.env.example` — documented `VITE_GA4_ID`, `VITE_GOOGLE_ADS_ID`,
+  `VITE_GOOGLE_ADS_CONVERSION_SEND_TO`, `VITE_META_PIXEL_ID` with where to find
+  each ID and what each enables.
+- ✅ `src/globals.d.ts` — declared `window.gtag`/`fbq`/`dataLayer`/`_GADS_CONV`/
+  `_getAttribution` plus the analytics function globals for strict TS.
+
+**No migration** — `auth.users.raw_user_meta_data` is a JSONB column already, so
+attribution lands there without DDL. A SQL view to flatten it can be added
+later once we have campaigns to query.
+
+**Detail in SPEC.md § 13.**
+
 ### Guided tour — desktop-only on mobile ✅ Done 2026-05-18
 
 The guided spotlight tour is now skipped entirely on phones/tablets — adapting

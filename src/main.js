@@ -62,6 +62,99 @@ if (_phKey) {
   window.posthog = posthog;
 }
 
+// ── Marketing attribution capture (first-touch) ──
+// Runs once per browser. If the visitor lands with any utm_*/gclid/fbclid
+// query params, snapshot them + referrer + landing path into localStorage.
+// First-touch wins (industry standard for SaaS attribution) — we never
+// overwrite once set, so a returning user's signup is attributed to the
+// campaign that first introduced them. authSubmit() in src/app.js reads
+// this blob via window._getAttribution() and passes it into Supabase's
+// user_metadata at signUp time so it lands permanently on auth.users.
+const _ATTR_KEY = 'pc_attribution';
+try {
+  if (!localStorage.getItem(_ATTR_KEY)) {
+    const _qp = new URLSearchParams(window.location.search);
+    const _has = (/** @type {string} */ k) => _qp.has(k);
+    const _get = (/** @type {string} */ k) => _qp.get(k) || '';
+    // Only persist if there's actual attribution data — direct/organic
+    // visits don't need a row.
+    if (_has('utm_source') || _has('utm_medium') || _has('utm_campaign')
+        || _has('gclid') || _has('fbclid')) {
+      localStorage.setItem(_ATTR_KEY, JSON.stringify({
+        utm_source: _get('utm_source'),
+        utm_medium: _get('utm_medium'),
+        utm_campaign: _get('utm_campaign'),
+        utm_term: _get('utm_term'),
+        utm_content: _get('utm_content'),
+        gclid: _get('gclid'),
+        fbclid: _get('fbclid'),
+        referrer: document.referrer || '',
+        landing_path: window.location.pathname + window.location.search,
+        first_seen_at: new Date().toISOString(),
+      }));
+    }
+  }
+} catch (_e) {
+  // localStorage unavailable (private mode etc.) — attribution is best-effort.
+}
+window._getAttribution = () => {
+  try { return JSON.parse(localStorage.getItem(_ATTR_KEY) || '{}'); }
+  catch { return {}; }
+};
+
+// ── Google tag (GA4 + Google Ads) ──
+// One gtag.js script powers both GA4 measurement and Google Ads conversion
+// tracking. Env-gated: with neither ID set, the script never loads and
+// window.gtag stays undefined, so the analytics.js conversion helpers no-op.
+const _ga4Id = import.meta.env.VITE_GA4_ID;
+const _googleAdsId = import.meta.env.VITE_GOOGLE_ADS_ID;
+if (_ga4Id || _googleAdsId) {
+  const _tagSeed = _ga4Id || _googleAdsId;
+  const _s = document.createElement('script');
+  _s.async = true;
+  _s.src = `https://www.googletagmanager.com/gtag/js?id=${_tagSeed}`;
+  document.head.appendChild(_s);
+  /** @type {any[]} */
+  const _dl = window.dataLayer = window.dataLayer || [];
+  /** @type {(...args: any[]) => void} */
+  const _gtag = function () { _dl.push(arguments); };
+  window.gtag = _gtag;
+  _gtag('js', new Date());
+  if (_ga4Id) _gtag('config', _ga4Id, { send_page_view: true });
+  if (_googleAdsId) _gtag('config', _googleAdsId);
+}
+// Google Ads conversion `send_to` string ('AW-XXXXXXXXX/abcDEF12345').
+// Exposed to classic scripts via window — src/analytics.js fires the
+// conversion event when this is set.
+const _adsConvSendTo = import.meta.env.VITE_GOOGLE_ADS_CONVERSION_SEND_TO;
+if (_adsConvSendTo) window._GADS_CONV = _adsConvSendTo;
+
+// ── Meta Pixel (Facebook + Instagram ads) ──
+// Env-gated by VITE_META_PIXEL_ID. With no ID set, window.fbq stays
+// undefined and the analytics.js conversion helpers no-op.
+const _metaPixelId = import.meta.env.VITE_META_PIXEL_ID;
+if (_metaPixelId) {
+  // Standard Meta Pixel bootstrap, scoped to avoid leaking helpers globally.
+  // The Meta-supplied snippet mutates the fbq function with non-function
+  // properties (.callMethod, .queue, .push, .loaded, .version) so the inner
+  // `n` binding is typed `any` to keep the upstream code shape intact while
+  // satisfying strict TS.
+  (function (/** @type {any} */ f, /** @type {Document} */ b, /** @type {string} */ e, /** @type {string} */ v) {
+    if (f.fbq) return;
+    /** @type {any} */
+    const n = f.fbq = function () {
+      n.callMethod ? n.callMethod.apply(n, arguments) : n.queue.push(arguments);
+    };
+    if (!f._fbq) f._fbq = n;
+    n.push = n; n.loaded = true; n.version = '2.0'; n.queue = [];
+    const t = b.createElement(e); /** @type {any} */ (t).async = true; /** @type {any} */ (t).src = v;
+    const s = b.getElementsByTagName(e)[0];
+    s.parentNode?.insertBefore(t, s);
+  })(window, document, 'script', 'https://connect.facebook.net/en_US/fbevents.js');
+  /** @type {any} */ (window).fbq('init', _metaPixelId);
+  /** @type {any} */ (window).fbq('track', 'PageView');
+}
+
 // Dev-only: stash test credentials for window._signInForTesting() (defined in db.js).
 // Production builds (`import.meta.env.DEV === false`) leave these undefined.
 if (import.meta.env.DEV) {

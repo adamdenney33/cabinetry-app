@@ -24,6 +24,18 @@ declare global {
     Sentry: typeof import('@sentry/browser');
     /** PostHog client — set by src/main.js only when VITE_POSTHOG_KEY is present; undefined otherwise. */
     posthog?: typeof import('posthog-js').default;
+    /** Google tag (GA4 + Google Ads) — set by src/main.js only when VITE_GA4_ID or VITE_GOOGLE_ADS_ID is present. */
+    gtag?: (...args: any[]) => void;
+    /** Google tag dataLayer — populated by gtag.js when loaded. */
+    dataLayer?: any[];
+    /** Meta Pixel global — set by src/main.js only when VITE_META_PIXEL_ID is present. */
+    fbq?: (...args: any[]) => void;
+    /** Meta Pixel internal — set by the pixel bootstrap snippet. */
+    _fbq?: any;
+    /** First-touch attribution blob captured by src/main.js. Returns {} if no UTMs were present at landing. */
+    _getAttribution?: () => Record<string, string>;
+    /** Google Ads conversion `send_to` string ('AW-XXX/LABEL') — set by src/main.js when VITE_GOOGLE_ADS_CONVERSION_SEND_TO is set. */
+    _GADS_CONV?: string;
     /** Supabase URL — set by src/main.js from import.meta.env.VITE_SUPABASE_URL. */
     _SBURL: string;
     /** Supabase publishable (anon) key — set by src/main.js from import.meta.env.VITE_SUPABASE_ANON_KEY. */
@@ -136,6 +148,13 @@ declare global {
   function _renderProjectEmpty(
     opts: { title: string; subtitle: string; pickFnName: string; newFnName: string; recentProjects: Array<{ id: number; name: string; updated_at?: string | null }> }
   ): string;
+
+  // ── analytics.js globals ──
+  function _track(event: string, props?: Record<string, any>): void;
+  function _identifyUser(session: any): void;
+  function _resetAnalytics(): void;
+  /** Fire ad-platform conversion pixels (Meta Pixel + Google Ads + GA4) at signup. No-ops if pixels are disabled. */
+  function _trackSignupConversion(): void;
 
   // ── settings.js unit-format globals ──
   function setUnitFormat(mode: string): void;

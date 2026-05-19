@@ -1189,13 +1189,21 @@ async function authSubmit() {
       ({ error } = await _sb.auth.signInWithPassword({ email, password }));
     } else {
       const marketingOptIn = /** @type {HTMLInputElement | null} */ (document.getElementById('auth-marketing'))?.checked === true;
+      // First-touch attribution (utm_*/gclid/fbclid/referrer) captured by
+      // src/main.js into localStorage on landing. Returns {} for organic
+      // visits. We persist it into auth.users.user_metadata so every signup
+      // carries permanent ad-campaign attribution, queryable later via
+      // `select raw_user_meta_data->'attribution' from auth.users`.
+      const attribution = (typeof window._getAttribution === 'function')
+        ? window._getAttribution()
+        : {};
       ({ error } = await _sb.auth.signUp({
         email, password,
         options: {
           emailRedirectTo: window.location.origin,
           // Persisted into auth.users.user_metadata; the list-subscribe edge
           // function reads it after the user confirms their email.
-          data: { marketing_opt_in: marketingOptIn },
+          data: { marketing_opt_in: marketingOptIn, attribution },
         },
       }));
     }
@@ -1207,6 +1215,12 @@ async function authSubmit() {
   if (btn) { btn.disabled = false; btn.textContent = _authMode === 'signin' ? 'Sign In' : 'Create Account'; }
   if (error) { if (msgEl) msgEl.innerHTML = `<div class="auth-error">${error.message}</div>`; return; }
   if (typeof _track === 'function') _track(_authMode === 'signup' ? 'user_signed_up' : 'user_logged_in');
+  // Fire ad-platform conversion pixels for paid-ads attribution. No-ops when
+  // pixels are disabled (no env vars set in main.js). _trackSignupConversion
+  // is defined in src/analytics.js.
+  if (_authMode === 'signup' && typeof _trackSignupConversion === 'function') {
+    _trackSignupConversion();
+  }
   if (_authMode === 'signup' && msgEl) { msgEl.innerHTML = '<div class="auth-success">Check your email to confirm your account, then sign in.</div>'; }
 }
 
