@@ -26,7 +26,7 @@ function _pcMaybeShowMobileNotice() {
     <div style="font-size:13px;line-height:1.6;color:var(--text2)">
       ProCabinet isn't fully optimised for mobile yet. For the full experience, open it on a desktop or laptop.
       <br><br>
-      You can still use it with limited functionality on a phone or tablet — rotate to <strong style="color:var(--text)">landscape</strong> for the best mobile view.
+      You can still use it with limited functionality on a phone or tablet.
     </div>
     <div style="display:flex;justify-content:flex-end;margin-top:18px">
       <button id="pc-mobile-notice-ok" style="padding:9px 20px;border-radius:6px;border:none;background:var(--accent);color:#fff;cursor:pointer;font-size:13px;font-weight:600;font-family:inherit">Continue anyway</button>

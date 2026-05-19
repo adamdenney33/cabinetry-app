@@ -22,6 +22,24 @@ Companion docs: `SPEC.md` (refactor history), `SCHEMA.md` (DB schema),
 
 ## Active Work
 
+### Guided tour — desktop-only on mobile ✅ Done 2026-05-18
+
+The guided spotlight tour is now skipped entirely on phones/tablets — adapting
+it for mobile (the "mobile landscape support" entry below) proved more trouble
+than it was worth. The mobile advisory notice already steers touch users to a
+desktop, so the tour simply doesn't run there. Detail in SPEC.md § 13.
+
+- ✅ `src/walkthrough.js` — `_wtStart()` early-returns when
+  `window._pcIsTouchDevice()` is true, so the tour never runs on a touch
+  device (auto-start or Help re-trigger). The standalone Pro CTA still works.
+- ✅ Removed the now-dead mobile-tour scaffolding: the `_wtDrawRotatePrompt`
+  rotate prompt, `_wtIsPortraitBlocked`, the `_wtRender` portrait branch, the
+  `_wtOverlayClick` tap-to-navigate, the `orientationchange` listeners, and
+  the device-aware welcome copy. The `.wt-center` modal scroll fix stays (the
+  Pro CTA can still appear on a short viewport).
+- ✅ `src/mobile-notice.js` — dropped the "rotate to landscape" line from the
+  "Best viewed on a computer" notice.
+
 ### Landscape chrome auto-collapse on scroll ✅ Done 2026-05-18
 
 On a short landscape phone the header + demo banner + nav-tab bar ate ~35% of
@@ -39,7 +57,7 @@ available. Detail in SPEC.md § 13.
   tall/desktop viewports unaffected. (Re-gated from `(pointer: coarse)` + rAF
   dropped — see SPEC.md § 13 — so it is reliable and verifiable.)
 
-### Guided walkthrough — mobile landscape support ✅ Done 2026-05-18
+### Guided walkthrough — mobile landscape support ✅ Done 2026-05-18 (superseded — tour is now desktop-only, see above)
 
 The desktop spotlight tour broke on phones: the 336px tooltip had no room to
 sit beside its target in portrait, and the centred welcome / pricing modals

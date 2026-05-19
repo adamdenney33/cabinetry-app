@@ -64,7 +64,7 @@ const _wtSteps = [
     type: 'center', section: 'dashboard', preview: 'gantt',
     title: 'See the full workflow in action',
     titleHtml: 'See the full <span class="wt-hi">workflow</span> in action',
-    body: 'This tour walks through each part of the app. We\'ve loaded a sample project so you can see how it works.',
+    body: 'This tour walks through each part of the app. We\'ve loaded a sample project so you can see how it works — use the <span class="wt-hi">arrow keys on your keyboard</span> to step through it.',
     nextLabel: 'Start the tour →'
   },
 
@@ -372,19 +372,6 @@ function _wtEsc(s) {
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
-/**
- * True on a phone held in portrait. The spotlight tour anchors a wide tooltip
- * beside each element, which needs landscape width — so portrait shows a
- * "rotate your device" prompt (_wtDrawRotatePrompt) instead. Gated on a coarse
- * pointer so a narrow desktop window is never affected.
- * @returns {boolean}
- */
-function _wtIsPortraitBlocked() {
-  return window.matchMedia(
-    '(orientation: portrait) and (max-width: 767px) and (pointer: coarse)'
-  ).matches;
-}
-
 // ── animated cursor ──
 
 // Tip of the cursor SVG is at (4, 3) within the 20×26 viewBox.
@@ -478,6 +465,9 @@ function _wtGateSection(section) {
 async function _wtStart(opts) {
   void opts;
   if (_wtActive) return;
+  // The guided tour is a desktop experience — skip it on phones/tablets; the
+  // mobile advisory notice (_pcMaybeShowMobileNotice) covers them instead.
+  if (typeof window._pcIsTouchDevice === 'function' && window._pcIsTouchDevice()) return;
   const needTempDemo = !!_userId && !window._demoMode;
   if (needTempDemo) {
     const w = _wtW;
@@ -521,7 +511,6 @@ async function _wtRunStart(tempDemo) {
   _wtOverlay = ov;
   document.addEventListener('keydown', _wtKeydown, true);
   window.addEventListener('resize', _wtOnResize);
-  window.addEventListener('orientationchange', _wtOnResize);
   _wtInitCursor();
   _wtRender(0);
 }
@@ -551,7 +540,6 @@ function _wtStartCta() {
   _wtOverlay = ov;
   document.addEventListener('keydown', _wtKeydown, true);
   window.addEventListener('resize', _wtOnResize);
-  window.addEventListener('orientationchange', _wtOnResize);
   _wtRender(ctaIdx);
 }
 
@@ -566,7 +554,6 @@ async function _wtClose(reason) {
   _wtW._wtActive = false;
   document.removeEventListener('keydown', _wtKeydown, true);
   window.removeEventListener('resize', _wtOnResize);
-  window.removeEventListener('orientationchange', _wtOnResize);
   if (_wtResizeTimer) { clearTimeout(_wtResizeTimer); _wtResizeTimer = 0; }
   const ctaOnly = _wtCtaOnly;
   _wtCtaOnly = false;
@@ -694,16 +681,6 @@ function _wtOverlayClick(e) {
   else if (act === 'cta-monthly') _wtCtaCheckout('monthly');
   else if (act === 'cta-annual') _wtCtaCheckout('annual');
   else if (act === 'cta-founder') _wtCtaCheckout('founder');
-  if (act) return;
-  // Touch navigation — phones have no arrow keys, so a tap on the dimmed
-  // backdrop steps the tour: right half forward, left half back. Taps on the
-  // tooltip / centre card (its buttons are handled above) and the rotate
-  // prompt are left alone.
-  if (!window.matchMedia('(pointer: coarse)').matches) return;
-  if (_wtIsPortraitBlocked()) return;
-  if (t && t.closest && t.closest('.wt-tooltip, .wt-center')) return;
-  if (e.clientX > window.innerWidth / 2) _wtNext();
-  else _wtBack();
 }
 
 /** @param {KeyboardEvent} e */
@@ -877,13 +854,6 @@ function _wtRender(i) {
   const step = _wtSteps[i];
   if (!step || !_wtOverlay) return;
 
-  // The spotlight tour is laid out for landscape; a phone in portrait gets a
-  // rotate prompt instead. _wtCurrent is kept, so the orientationchange/resize
-  // handler re-renders this same step once the device is turned. The
-  // standalone session CTA is exempt — a centred, scrollable modal that works
-  // fine in portrait.
-  if (!_wtCtaOnly && _wtIsPortraitBlocked()) { _wtDrawRotatePrompt(); return; }
-
   if (step.type === 'center') { _wtApplyContext(step); _wtDrawCenter(step, false); return; }
 
   const proceed = () => {
@@ -1051,41 +1021,6 @@ function _wtDrawCenter(step, isFallback) {
   ov.appendChild(card);
 }
 
-/**
- * Replace the overlay with a "rotate to landscape" prompt. The spotlight tour
- * anchors a wide tooltip beside each element, which needs landscape width — so
- * a phone held in portrait sees this instead. _wtRender keeps _wtCurrent, and
- * the orientationchange/resize handler re-renders the step once the device is
- * turned. Reuses the `.wt-center` modal box for its styling.
- */
-function _wtDrawRotatePrompt() {
-  const ov = _wtOverlay;
-  if (!ov) return;
-  ov.innerHTML = '';
-  if (_wtCursorEl) _wtCursorEl.classList.remove('wt-cur-show');
-  const mask = document.createElement('div');
-  mask.className = 'wt-mask';
-  ov.appendChild(mask);
-  const card = document.createElement('div');
-  card.className = 'wt-center wt-rotate';
-  card.innerHTML =
-    '<div class="wt-rotate-icon">' +
-      '<svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
-      'stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
-        '<path d="M21 12a9 9 0 0 1-9 9 9 9 0 0 1-6.4-2.6"/>' +
-        '<path d="M3 12a9 9 0 0 1 9-9 9 9 0 0 1 6.4 2.6"/>' +
-        '<polyline points="21 3 21 8 16 8"/>' +
-        '<polyline points="3 21 3 16 8 16"/>' +
-      '</svg>' +
-    '</div>' +
-    '<h2>Rotate your device</h2>' +
-    '<p>The guided tour is built for landscape — turn your phone sideways to continue.</p>' +
-    '<div class="wt-center-actions">' +
-      '<button class="wt-btn wt-btn-skip" data-wt-act="skip">Skip tour</button>' +
-    '</div>';
-  ov.appendChild(card);
-}
-
 /** @param {WtStep} step @returns {string} */
 function _wtTooltipHTML(step) {
   const n = _wtCurrent + 1, total = _wtLastIdx() + 1;
@@ -1109,10 +1044,6 @@ function _wtTooltipHTML(step) {
 /** @param {WtStep} step @returns {string} */
 function _wtCenterPreviewHTML(step) {
   const title = step.titleHtml || _wtEsc(step.title);
-  // Touch devices have no arrow keys — point them at the tap-to-navigate zones.
-  const navHint = window.matchMedia('(pointer: coarse)').matches
-    ? 'Tap the <span class="wt-hi">right side</span> of the screen to continue, or the <span class="wt-hi">left side</span> to go back.'
-    : 'Use the <span class="wt-hi">arrow keys</span> on your keyboard to step through it.';
   return '' +
     '<div class="wt-wp">' +
       '<div class="wt-wchrome">' +
@@ -1160,7 +1091,7 @@ function _wtCenterPreviewHTML(step) {
     '</div>' +
     '<div class="wt-wbody">' +
       '<h2>' + title + '</h2>' +
-      '<p>' + step.body + ' ' + navHint + '</p>' +
+      '<p>' + step.body + '</p>' +
       '<div class="wt-center-actions">' +
         '<button class="wt-btn wt-btn-skip" data-wt-act="skip">Skip</button>' +
         '<button class="wt-btn wt-btn-primary" data-wt-act="next">' + _wtEsc(step.nextLabel || 'Start the tour →') + '</button>' +

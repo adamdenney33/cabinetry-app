@@ -2659,13 +2659,6 @@ input.pf-input-compact[type="date"]:disabled::-webkit-calendar-picker-indicator 
   max-height: calc(100dvh - 24px);
   overflow: hidden auto;
 }
-/* Rotate-to-landscape prompt — reuses the .wt-center modal box. */
-.wt-rotate-icon {
-  width: 60px; height: 60px; margin: 0 auto 16px;
-  border-radius: 50%; background: var(--accent-dim);
-  display: flex; align-items: center; justify-content: center;
-  color: var(--accent);
-}
 /* Welcome step — app preview variant */
 .wt-center.wt-has-preview { padding: 0; width: 500px; text-align: left; }
 .wt-wp   { background: #f0f0f0; padding: 10px 10px 0; }
