@@ -1397,9 +1397,19 @@ function _doClearAll() {
 /** @param {string} [name] @param {number} [w] @param {number} [h] @param {number} [qty] */
 function addSheet(name, w, h, qty) {
   const m = window.units === 'metric';
+  // Default name: next free "Sheet N", skipping numbers already in use.
+  let sheetName = name;
+  if (sheetName === undefined) {
+    let maxN = 0;
+    for (const s of sheets) {
+      const sm = (s.name || '').match(/^Sheet (\d+)$/);
+      if (sm) maxN = Math.max(maxN, parseInt(sm[1], 10));
+    }
+    sheetName = `Sheet ${maxN + 1}`;
+  }
   sheets.push({
     id:      _sheetId++,
-    name:    name !== undefined ? name : (m ? '18mm Plywood' : '3/4" Plywood'),
+    name:    sheetName,
     w:       w    !== undefined ? w    : (m ? 2440 : 96),
     h:       h    !== undefined ? h    : (m ? 1220 : 48),
     qty:     qty  !== undefined ? qty  : 1,
@@ -1595,9 +1605,19 @@ function addPiece(label, w, h, qty, grain) {
   const m = window.units === 'metric';
   const color = COLORS[pieceColorIdx++ % COLORS.length];
   const prevMat = pieces.length > 0 ? (pieces[pieces.length-1].material || '') : '';
+  // Default name: next free "Panel N", skipping numbers already in use.
+  let pieceLabel = label;
+  if (pieceLabel === undefined) {
+    let maxN = 0;
+    for (const q of pieces) {
+      const qm = (q.label || '').match(/^Panel (\d+)$/);
+      if (qm) maxN = Math.max(maxN, parseInt(qm[1], 10));
+    }
+    pieceLabel = `Panel ${maxN + 1}`;
+  }
   pieces.push({
     id:       _pieceId++,
-    label:    label !== undefined ? label : `Part ${pieces.length + 1}`,
+    label:    pieceLabel,
     w:        w     !== undefined ? w     : (m ? 300 : 12),
     h:        h     !== undefined ? h     : (m ? 600 : 24),
     qty:      qty   !== undefined ? qty   : 1,
@@ -1896,8 +1916,8 @@ function handleCSVImport(input) {
     const lines = text.trim().split(/\r?\n/).slice(1);
     lines.forEach(line => {
       const c = line.split(',').map(x => x.trim().replace(/^"|"$/g,''));
-      if (_csvImportTarget === 'pieces') addPiece(c[0]||`Part ${pieces.length+1}`, parseDim(c[1]), parseDim(c[2]), parseInt(c[3])||1, c[4]||'none');
-      else addSheet(c[0]||'Sheet', parseDim(c[1]), parseDim(c[2]), parseInt(c[3])||1);
+      if (_csvImportTarget === 'pieces') addPiece(c[0]||undefined, parseDim(c[1]), parseDim(c[2]), parseInt(c[3])||1, c[4]||'none');
+      else addSheet(c[0]||undefined, parseDim(c[1]), parseDim(c[2]), parseInt(c[3])||1);
     });
   };
   reader.readAsText(file);
