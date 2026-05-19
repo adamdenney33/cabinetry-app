@@ -1569,18 +1569,19 @@ input.li-num:focus { outline: none; border-color: var(--accent); }
 
 /* Chrome auto-collapse — _initChromeCollapse (src/ui.js) toggles
    body.chrome-collapsed as a content pane is scrolled down on a short viewport
-   (a landscape phone), sliding the demo banner + nav-tab bar away so .app-body
-   (flex:1) reclaims the height. JS-gated to short viewports; the base rule is
-   inert (max-height well above the ~44px content) until the class is applied,
+   (a landscape phone), sliding the top header + demo banner away so .app-body
+   (flex:1) reclaims the height. The nav-tab bar is left in place so section
+   navigation stays available. JS-gated to short viewports; the base rule is
+   inert (max-height well above the real content) until the class is applied,
    so a tall/desktop viewport is unaffected. */
-#demo-banner, .nav-tabs-wrap {
-  max-height: 80px;
+header, #demo-banner {
+  max-height: 90px;
   transition: max-height 0.24s ease, padding 0.24s ease, opacity 0.18s ease;
 }
-body.chrome-collapsed #demo-banner,
-body.chrome-collapsed .nav-tabs-wrap {
+body.chrome-collapsed header,
+body.chrome-collapsed #demo-banner {
   max-height: 0;
-  padding: 0; /* the demo banner's 7px vertical padding would survive max-height:0 */
+  padding: 0; /* collapse the header's / banner's padding, not just content */
   opacity: 0;
   overflow: hidden;
 }

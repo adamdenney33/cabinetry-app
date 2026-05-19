@@ -480,10 +480,11 @@ if (document.readyState === 'loading') document.addEventListener('DOMContentLoad
 else _initSidebarResize();
 
 // ── chrome auto-collapse on scroll (short viewports) ──
-// The demo banner + nav-tab bar are fixed chrome above the scroll area; on a
+// The top header + demo banner are fixed chrome above the scroll area; on a
 // short viewport — a phone in landscape — they eat a big slice of the screen.
 // When the viewport is short, collapse them as a content pane is scrolled down
-// and restore them on scroll up (or at the top). A tall viewport (desktop) is
+// and restore them on scroll up (or at the top). The nav-tab bar is left in
+// place so section navigation stays available. A tall viewport (desktop) is
 // never touched — the CSS only reacts to the body.chrome-collapsed class.
 function _initChromeCollapse() {
   // Gate on viewport height, not pointer type — the problem is a short screen
