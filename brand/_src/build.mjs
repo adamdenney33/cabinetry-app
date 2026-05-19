@@ -154,25 +154,6 @@ function labelledSheetSVG() {
     `  ${cells}\n</svg>\n`;
 }
 
-// ── marketing/assets refresh (text-only, replacing the stale cabinet-mark SVGs) ──
-const marketingLogoPlate = () =>
-  `<svg xmlns="${SVG_NS}" viewBox="0 0 1000 260" role="img" aria-label="ProCabinet.App">\n` +
-  `  <title>ProCabinet.App</title>\n` +
-  `  <rect width="1000" height="260" rx="28" fill="${INK}"/>\n` +
-  `  <text x="500" y="135" text-anchor="middle" dominant-baseline="central" font-family="${FONT}" ` +
-  `font-weight="800" font-size="100" letter-spacing="-2.6" fill="${WHITE}">ProCabinet<tspan fill="${AMBER}">.App</tspan></text>\n</svg>\n`;
-
-const marketingLogoSquare = () =>
-  `<svg xmlns="${SVG_NS}" viewBox="0 0 1024 1024" role="img" aria-label="ProCabinet.App">\n` +
-  `  <title>ProCabinet.App</title>\n` +
-  `  <defs><linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">` +
-  `<stop offset="0%" stop-color="#1a1a1a"/><stop offset="100%" stop-color="#0a0a0a"/></linearGradient></defs>\n` +
-  `  <rect width="1024" height="1024" fill="url(#bg)"/>\n` +
-  `  <text x="512" y="452" text-anchor="middle" dominant-baseline="central" font-family="${FONT}" ` +
-  `font-weight="800" font-size="140" letter-spacing="-3.6" fill="${WHITE}">ProCabinet</text>\n` +
-  `  <text x="512" y="624" text-anchor="middle" dominant-baseline="central" font-family="${FONT}" ` +
-  `font-weight="800" font-size="140" letter-spacing="-3.6" fill="${AMBER}">.App</text>\n</svg>\n`;
-
 // ── write SVG masters, queue PNG renders ──
 const renders = []; // { svg, out, w, h, scale }
 const write = (rel, content) => {
@@ -227,16 +208,6 @@ for (const icon of ICONS) {
   write('icons/icons-labelled-sheet.svg', b);
   renders.push({ svg: b, out: join(BRAND, 'icons/icons-labelled-sheet.png'), w: 896, h: 880, scale: 2 });
 }
-
-// marketing/assets refresh (SVG only — matches what was there before)
-console.log('Refreshing marketing/assets/...');
-const mkt = (rel, content) => {
-  writeFileSync(join(REPO, rel), content);
-  console.log('  svg  ' + rel);
-};
-mkt('marketing/assets/logo.svg', marketingLogoPlate());
-mkt('marketing/assets/logo-light.svg', logoSVG(INK, AMBER, 'transparent, light backgrounds'));
-mkt('marketing/assets/logo-square.svg', marketingLogoSquare());
 
 // ── rasterise every queued PNG via Chrome headless ──
 console.log('Rendering ' + renders.length + ' PNGs via Chrome headless...');

@@ -1,50 +1,66 @@
-# Screenshot shotlist — capture these 9 + 3 detail crops
+# Screenshots — what exists and what would be nice to add
 
-The marketing copy references specific screenshots throughout. Capture each one at **1920×1200** (or your native browser size) with the **sample data** populated (the walkthrough auto-seeds "Smith Kitchen Renovation" on first sign-in — if it's been cleared, run the walkthrough again from the Help menu).
+> **TL;DR:** The 8 tab overview shots already exist in [`/brand/screenshots/`](../../../brand/screenshots/), captured at 1440×900 (2× retina) directly from the live app by `brand/_src/shoot.mjs`. Use those. Three optional detail captures would make a few specific posts hit harder; the script makes regeneration trivial.
 
-Save each PNG into `marketing/assets/screenshots/` using the exact filename in the table.
+## What's already in `/brand/screenshots/` (use these)
 
-> **macOS shortcut:** `Cmd + Shift + 4` then press `Space` and click the browser window — captures just the window with a clean shadow. Or use `Cmd + Shift + 5` for region selection.
-> **Hide:** any sensitive data, bookmark bars, browser chrome that doesn't help.
+| File | What it shows | Best for |
+|---|---|---|
+| `01-dashboard.png` | Full dashboard: 6 active orders, 6 recent quotes, stock alerts (3 red flags), 7-day schedule preview, revenue chart, pipeline summary | **Hero shot.** Use in: IG A3 slide 1 · LinkedIn C1 · marketing plan opener · landing page above-the-fold |
+| `02-cut-list.png` | Cut List **Library** view — 5 cut lists (Westside 12B, Nair Kitchen, Whitfield, Cole Study, Mitchell) with parts counts, link-to-cabinet badges | IG A3 slide 2 · "every job's cut list, one place" angle |
+| `03-cabinet.png` | Cabinet **Quote Builder** — quote list with status badges (Draft / Sent / Approved) and cabinet counts | IG B3 slide 1 · "the cabinets come from your quotes" angle |
+| `04-stock.png` | Stock list with low-stock items flagged | IG A3 slide 4 · IG Story Set B frame 5 |
+| `05-orders.png` | Orders list with pipeline stages and values | LinkedIn B-set posts about production flow |
+| `06-quotes.png` | Quotes tab — 5 quotes with status pipeline (Draft → Sent → Approved), PDF export, Create Order buttons | IG A3 slide 1 · "quote to order in one click" angle |
+| `07-clients.png` | Clients list with quote counts and totals | IG / LinkedIn supporting shot |
+| `08-schedule.png` | Full Gantt — orders auto-placed across April/May/June 2026, sidebar with active orders + priority steppers + working-hours panel | **The killer shot.** IG A3 slide 3 · IG B2 · LinkedIn C3 · FB/Reddit Option C |
+| `tour-welcome.png` | Guided-tour welcome modal | Onboarding posts, "we made it dead simple" angle |
 
-## Hero screens (9 required)
+## Filename mapping — what the marketing copy references vs. what to actually use
 
-| # | Filename | Tab / view | What to show | Used in |
-|---|---|---|---|---|
-| 1 | `01-dashboard.png` | Dashboard | Full overview — sample data populated. Schedule preview visible, recent quotes, low-stock warning. | LinkedIn C1, README, landing page hero |
-| 2 | `02-cut-list-layout.png` | Cut List → Layout view | Nested pieces on a sheet, colour-coded, waste % visible at top. Run "Optimise" on the sample Smith Kitchen cut list first. | IG A3 slide 2, IG B1, FB/Reddit Option C |
-| 3 | `03-schedule-gantt.png` | Schedule | Gantt with 3–4 coloured order bars across 2+ weeks. Should show all 4 sample orders (Smith Kitchen, Laundry, Bathroom, Study Built-ins). | IG A3 slide 3, IG B2, LinkedIn C3, FB/Reddit Option C alt |
-| 4 | `04-cabinet-editor.png` | Cabinet tab → click on Base 600 → Editor opens in sidebar | Full editor showing carcass dims, doors, drawers, shelves, hardware. Live pricing on the right. | IG B3 slide 2 |
-| 5 | `05-rates.png` | Cabinet → Library → My Rates tab | Rate inputs panel: labour rate, material markup, edge banding, contingency. | LinkedIn B3, story Set B frame 6 |
-| 6 | `06-quote-sidebar.png` | Quote tab → click Smith Kitchen quote | Quote sidebar open with line items (3 cabinets + install), live subtotal/tax/total visible. | IG A3 slide 1, IG B3 slide 3 |
-| 7 | `07-cabinet-library.png` | Cabinet → Library view | Grid of cabinet template cards (Base 600, Wall 600, Drawer 800). | IG A3 slide 5, IG B3 slide 1 |
-| 8 | `08-stock-list.png` | Stock | List showing 3 sample items; **18mm Birch Plywood** should be flagged red (qty 6, low threshold 8). | IG A3 slide 4, story Set B frame 5 |
-| 9 | `09-orders-list.png` | Orders | All 4 sample orders visible with pipeline stages and due dates. | IG B2 alt, marketing plan |
+| Marketing copy file references… | Use this file from `/brand/screenshots/` |
+|---|---|
+| `01-dashboard.png` | `01-dashboard.png` ✅ matches |
+| `02-cut-list-layout.png` | `02-cut-list.png` (note: shows Library view, not optimised layout) |
+| `03-schedule-gantt.png` | `08-schedule.png` |
+| `04-cabinet-editor.png` | `03-cabinet.png` (note: shows Quote Builder, not editor) |
+| `05-rates.png` | *(not captured yet — see optional list below)* |
+| `06-quote-sidebar.png` | `06-quotes.png` |
+| `07-cabinet-library.png` | `03-cabinet.png` (or capture the Library sub-tab) |
+| `08-stock-list.png` | `04-stock.png` ✅ same content |
+| `09-orders-list.png` | `05-orders.png` ✅ same content |
 
-## Detail crops (3 optional but recommended)
+The naming difference doesn't matter for the copy — the posts only describe what's *in* the picture, not the filename. When you upload, the filename is invisible to viewers.
 
-| # | Filename | What to crop | Used in |
-|---|---|---|---|
-| 10 | `10-detail-waste-percent.png` | Just the waste-% callout from shot #2 — zoomed in, big, single number. | Story / Reel hook frame |
-| 11 | `11-detail-low-stock-flag.png` | Just the red low-stock row from shot #8. | Story Set B frame 5 emphasis |
-| 12 | `12-detail-live-total.png` | Just the grand total area from shot #6, with the number visible. | "Quote in 3 minutes" Reel hook |
+## Optional — 3 detail shots that would strengthen specific posts
 
-## Bonus: 60-second screen recording (`13-demo-walkthrough.mov`)
+These aren't in `/brand/screenshots/` yet. Add them by editing `brand/_src/shoot.mjs` to navigate to the right sub-view before capturing, or capture manually and drop alongside the existing files.
 
-For Reels / TikTok / cold-DM Looms:
+| Proposed filename | Why it matters | Marketing copy that wants it |
+|---|---|---|
+| `02b-cut-list-layout.png` | The optimised sheet layout with nested pieces, waste % visible. The "wow" frame for the cut list optimiser. | IG B1 (Cut list spotlight) · IG Story Set B frame 3 · FB/Reddit Option C |
+| `03b-cabinet-editor.png` | A cabinet open in the editor showing carcass / doors / drawers / hardware spec + live pricing. The depth shot. | IG B3 slide 2 |
+| `03c-cabinet-library.png` | The Cabinet → Library sub-tab showing template cards (Base 600, Wall 600, Drawer 800). | IG A3 slide 5 · IG B3 slide 1 |
+| `03d-rates.png` | The My Rates panel — labour, markup, edge banding, contingency inputs. | LinkedIn B3 · IG Story Set B frame 6 ("Change a rate, every quote re-prices") |
 
-1. Start on the empty Dashboard (clear sample data first via Help menu, then sign back in to trigger the walkthrough re-seed)
-2. Open the Smith Kitchen quote (~5s)
-3. Drop in a cabinet from the Library (~5s)
-4. Hop to Cut List, hit Optimise (~10s)
-5. Hop to Schedule, show the Gantt (~5s)
-6. Show Stock with the red flag (~5s)
-7. End on the Dashboard with the logo (~3s)
+To capture: extend `brand/_src/shoot.mjs` with steps that switch to the Cut Layout view (`switchCLMainView('layout')`), open a cabinet card, and switch to the Library / Rates sub-tabs before each capture. The hooks already exist in `walkthrough.js` for the same navigation.
 
-Total: 30–60s. Record with **Tella** or **ScreenStudio** for the polished export with auto-zoom, mouse highlights and a clean cursor. **Loom free** is fine for the cold-DM Looms (rougher edges are an asset there).
+## Why use the brand folder rather than duplicating into marketing
 
-## After capturing
+Single source of truth. If the UI changes, you re-run `node brand/_src/shoot.mjs` and every marketing post stays in sync with the live app automatically. Copying PNGs into `marketing/assets/screenshots/` would mean two folders to keep aligned.
 
-1. Optimise file sizes (PNG → TinyPNG or ImageOptim) — should be &lt; 400 KB each for socials
-2. Make 1×1 square crops of #1, #2 and #3 saved as `01a-dashboard-square.png` etc. for Instagram grid use
-3. Save the originals in this folder; never delete them — they're the source for all derivatives
+## Cropping for socials
+
+The brand shots are 1440×900 (16:10). For social platforms you'll want square (1:1) or vertical (9:16) crops:
+
+- **Instagram grid (1:1):** crop to a square centred on the most informative panel (e.g. the Gantt portion of `08-schedule.png`, the alerts block of `01-dashboard.png`)
+- **Instagram Reels / Stories / TikTok (9:16):** stack two screen crops on a black `#111111` background with the wordmark at the bottom — `assets/logo-square.svg` is the right asset for the bottom logo
+- **LinkedIn (1.91:1 or 1:1):** the native shot works without cropping; LinkedIn will display the full 16:10
+
+A 5-minute pass through Canva, Photopea or Photoshop is enough to generate all the crops from each master shot.
+
+## After any UI change
+
+1. `npm run dev`
+2. `node brand/_src/shoot.mjs` — re-shoot all 8 tabs
+3. (Optional) Re-crop social variants in Canva — they only change if the layout shifted significantly

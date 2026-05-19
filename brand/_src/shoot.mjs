@@ -21,7 +21,11 @@ const OUT = join(SRC, '..', 'screenshots');
 const CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 const APP = 'http://localhost:3000/index.html';
 const PORT = 9333;
-const W = 1440, H = 900;
+// 1400 = exact max-width of .section-panel (see styles.css L486). At this
+// viewport the content panel sits flush with the window edge — no body-bg
+// gutter on either side. Don't drop below 1240 or the icon-only nav breakpoint
+// (styles.css L464) kicks in and the tab labels disappear.
+const W = 1400, H = 900;
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 

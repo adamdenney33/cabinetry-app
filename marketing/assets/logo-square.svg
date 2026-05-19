@@ -1,7 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-label="ProCabinet.App">
-  <title>ProCabinet.App</title>
-  <defs><linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#1a1a1a"/><stop offset="100%" stop-color="#0a0a0a"/></linearGradient></defs>
-  <rect width="1024" height="1024" fill="url(#bg)"/>
-  <text x="512" y="452" text-anchor="middle" dominant-baseline="central" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-weight="800" font-size="140" letter-spacing="-3.6" fill="#ffffff">ProCabinet</text>
-  <text x="512" y="624" text-anchor="middle" dominant-baseline="central" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-weight="800" font-size="140" letter-spacing="-3.6" fill="#e8a838">.App</text>
-</svg>

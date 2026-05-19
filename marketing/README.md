@@ -66,9 +66,28 @@ Use a per-channel UTM so you can see what works:
 - **$299 once · capped at 50** — Founders' Lifetime, launch week only
 - **Free for ~20 creators** — Creator Lifetime gifting programme (see `05-instagram-dms-influencers.md`)
 
-## Screenshots
+## Screenshots &amp; brand assets
 
-Live screenshots of the app are in `assets/screenshots/` — captured directly from the running app so they reflect the real UI, not mockups. Use these in posts, stories, ads and the landing page. If you change the UI, retake the relevant shots.
+All visual assets live in **[`/brand/`](../brand/)**, generated directly from the live app:
+
+- **`brand/logo/`** — 4 SVG + PNG logo cuts (mono black/white, colour on light/dark) with generous framing
+- **`brand/logo-tight/`** — 3 PNG-only logo cuts, flush-cropped to the visible bounds (zero whitespace) — for avatars, favicons, button labels
+- **`brand/icons/individual/`** — the 8 tab icons (Dashboard, Cut List, Cabinet, Stock, Orders, Quotes, Clients, Schedule)
+- **`brand/icons/labelled/`** — same 8 icons paired with their labels
+- **`brand/icons/tab-bar/`** — full tab bar with active state
+- **`brand/screenshots/`** — 8 live tab captures + tour-welcome, at 1400×900 (2× retina)
+
+Use these directly in your marketing posts. No logo or icon files live under `marketing/assets/` — single source of truth.
+
+The marketing copy describes screenshots by what's *in* them, not by filename, so the brand folder's naming (`01-dashboard.png` … `08-schedule.png`) is what you actually upload. See **[`assets/screenshot-shotlist.md`](assets/screenshot-shotlist.md)** for the mapping + 3 optional detail captures that would strengthen specific posts.
+
+To regenerate after a UI change:
+
+```sh
+node brand/_src/build.mjs        # logos + icons (SVG + PNG)
+node brand/_src/build-tight.mjs  # flush-cropped logo PNGs
+node brand/_src/shoot.mjs        # app screenshots (requires npm run dev)
+```
 
 ## How to refresh any of this with Claude
 

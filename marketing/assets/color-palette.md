@@ -48,10 +48,9 @@ Pulled from `styles.css` so the marketing assets, ad creative and screenshots al
 
 ## Logo files
 
-The full brand kit — logo, the 8 tab icons and the navigation bar — lives in
-[`/brand`](../../brand/), generated directly from the live app. The three files
-here are the social-ready cuts of the text wordmark:
+All logo assets live in [`/brand`](../../../brand/), generated directly from the live app:
 
-- `logo.svg` — text wordmark on the dark `#111111` plate (default for posts, presentations)
-- `logo-light.svg` — text wordmark on transparent, amber `.App` (use over photos / pale backgrounds)
-- `logo-square.svg` — 1024×1024 stacked-wordmark avatar (Instagram profile pic, app icon)
+- **`brand/logo/`** — 4 SVG + PNG cuts of the full wordmark (primary B&amp;W on light/dark, colour on light/dark). Use for hero graphics, presentations, anywhere the logo has room to breathe. Regenerate with `node brand/_src/build.mjs`.
+- **`brand/logo-tight/`** — 3 PNG cuts of the wordmark, cropped flush to the visible bounds (zero whitespace around the edges). Use for avatars, favicons, button labels, inline mentions. Regenerate with `node brand/_src/build-tight.mjs`.
+
+No logo files live in this folder — single source of truth is the brand kit.

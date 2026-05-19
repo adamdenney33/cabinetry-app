@@ -1085,4 +1085,131 @@ _Auto-logged by SessionEnd hook. Flesh out with context next session if useful._
 
 _Auto-logged by SessionEnd hook. Flesh out with context next session if useful._
 
-<!-- last_commit: f013eed -->
+
+---
+
+## [Auto] Session ending 2026-05-17
+
+### Commits
+- refactor(nav): reorder top-level tabs — Stock before Cabinet, Clients before Schedule
+- feat(labels): include project name with quote/order numbers across dropdowns, pickers, client card
+- WIP preserve: help menu + multi-module updates + architecture mockups
+- feat(limits): cap cutlists at 5 + rewrite demo seed for post-projects schema
+- fix(cabinet): library template cards show NaN dimensions/prices
+- fix(cabinet-calc): use width_mm/length_m for sheet pricing instead of legacy w/h
+- fix(cards): clicking card footer's empty area now opens the card
+- refactor(ui): replace lock emoji with Lucide-style outline SVG
+- fix(orders): round allocated-hours field to 1 decimal place
+- feat(ui): highlight the record currently open in the sidebar editor
+- feat(ui): show accent border on card hover across tabs
+- fix(orders): add missing hours_allocated column to unblock order saves
+- feat(labels): order quote/order labels as number · client · project
+- feat(analytics): wire PostHog product analytics + Sentry error tracking
+- feat(onboarding): add guided walkthrough tour (O.2)
+- fix(typecheck): annotate _wtResizeTimer as ReturnType<typeof setTimeout>
+- feat(sentry): activate error tracking with org/project/DSN config
+- feat(walkthrough): add UI mockups and tune target-resolve timing
+- WIP preserve: walkthrough improvements and cabinet-render tweak
+- feat(pipeline): hover preview shows progression colours on dots and lines
+- feat(walkthrough): first-run auto-start gate + interrupted-seed guard
+- fix(cabinet): wire .cb-cab-card class so quote-builder cards hover-highlight
+- feat(cabinet): show quote number in quote-builder headers
+- fix(cabinet): guard shelf material calc against undefined shelf counts
+- feat(cabinet): show Cabinet Builder and My Rates tabs in Cabinet Library sidebar
+- fix(walkthrough): move Send & convert earlier and fix its spotlight target
+- feat(walkthrough): gate sidebars on section entry, animate cursor to card click
+- fix(walkthrough): fix cabinet steps 19-23 and cut-list step 31 spotlight targets
+- fix(walkthrough): redesign cabinet section tour from scratch
+- fix(walkthrough): make cut-list Visual layout & Export steps show a real layout
+- feat(walkthrough): add progress timeline footer
+- feat(walkthrough): make timeline footer nodes clickable
+- style(walkthrough): darken timeline footer to match the app header
+- feat(schedule): add per-order priority stepper to sidebar
+- revert(walkthrough): remove the progress timeline footer
+- feat(dashboard): remove overdue orders badge from the toolbar
+- fix(walkthrough): remove the overdue detail from the Order cards step
+- fix(walkthrough): refocus the Order detail step on scheduling
+- fix(walkthrough): revise tour copy and fix the cut-list tour view
+- feat(cabinet): open all My Rates sections by default
+- fix(walkthrough): spotlight the whole sidebar on step 19
+- feat(cabinet): expand cabinet editor sections by default
+- fix(walkthrough): enrich sample data and open the seeded cut list
+- fix(walkthrough): keyboard wording + guard sample seed from double-seeding
+- fix(cabinet): guard cabinet card prices against NaN
+- fix(walkthrough): warn when a step's spotlight target is missing
+- fix(walkthrough): seed cabinet templates with full specs
+- fix(cutlist): don't let an empty-array autosave wipe a cut list
+- fix(cutlist): stop the autosave wiping a cut list mid-load
+- fix(cutlist): defer layout render until the panel has width
+- feat(walkthrough): add a Cut List Library tour step
+- feat(demo): read-only demo mode + walkthrough rebuild
+- fix(walkthrough): open a cut list for the cut-layout tour steps
+- fix(walkthrough): lead the Cut List tour section with the Library step
+- fix(walkthrough): cabinet + cut-list step polish
+- fix(walkthrough): editor-step highlight, cursor timing, async targets
+- feat(mockups): 15 walkthrough CTA designs with Founder tier
+- fix(walkthrough): include the sub-tab row in 4 step spotlights
+- feat(schedule): inline Working Hours section + priority polish
+- feat(brand): brand asset kit generated from the live app
+- feat(brand): capture app tab + tour screenshots
+- fix(schedule): holiday rows readable in sidebar + reliable + Add
+- feat(auth): brand the Supabase auth emails
+- feat(features): add Features menu — suggest a feature + upvotable leaderboard
+- feat(features): rename the board header to "New Features"
+- style(features): compact board rows, upvote arrow right of the count
+- feat(marketing): add launch content, brand assets, welcome mockups, and library backup
+- style(features): match row font size and height to the Suggest button
+- style(features): match the vote count font size to the rest of the board
+- feat(limits): gate import/export behind Pro + tour-skip CTA
+- feat(features): make the whole leaderboard row a clickable upvote control
+- feat(dashboard): make card headers clickable, drop per-card nav buttons
+- style(features): row gets a light hover fill instead of being clickable
+- style(dashboard): reorder quick-action buttons to match tab bar
+- feat(mockups): finalize variant A of the walkthrough plan CTA
+- feat(walkthrough): four-tier plan CTA with limited Founder plan
+- feat(auth): opt new signups into a Resend mailing list
+- fix(list-subscribe): allow supabase-js headers in CORS preflight
+
+_Auto-logged by SessionEnd hook. Flesh out with context next session if useful._
+
+
+---
+
+## [Auto] Session ending 2026-05-18
+
+### Commits
+- feat(subscription): Upgrade to Pro button opens the plan-picker CTA
+- fix(clients): warn and cascade-delete quotes + orders on client delete
+- fix(cabinet): builder quotes are normal visible drafts, not hidden
+- fix(clients): also cascade-delete cut lists on client delete
+- fix(clients): repair cut-list-by-client lookup after the quote_id re-key
+- feat(units): default unit format to 0 decimal places
+- fix(ui): orange primary buttons in popup footers
+- fix(cabinet): new quote opens the builder; guard library Add-to-Quote
+- fix(cutlist): stop the stale "Cut list not found" toast on restore
+- feat(subscription): show live offer price + increase date in Manage Subscription
+- perf(db): add FK indexes and optimise RLS auth.uid() calls
+- perf(quotes): batch quote and order line hydration into one query
+- fix(analytics): mask Business Info fields in PostHog recording
+- build: minify classic scripts and stop publishing source maps
+- docs(plan): log security and load review fixes
+- feat(ui): Features dropdown menu + bold header dropdown items
+- fix(ui): make sidebars and viewers scroll + resize in landscape
+- fix(ui): use dvh so the layout fits the visible mobile viewport
+- feat(ui): mobile/tablet opening notice
+- fix(walkthrough): mobile landscape support
+
+_Auto-logged by SessionEnd hook. Flesh out with context next session if useful._
+
+
+---
+
+## [Auto] Session ending 2026-05-18
+
+### Commits
+- feat(ui): horizontal-scroll the desktop layout on portrait phones
+- feat(ui): auto-collapse demo banner + nav tabs on scroll
+
+_Auto-logged by SessionEnd hook. Flesh out with context next session if useful._
+
+<!-- last_commit: 087c495 -->
