@@ -208,6 +208,29 @@ function _demoBuildDataset() {
         value: 11200, status: 'confirmed', due: _demoDue(68), order_number: 'ORD-0316',
         markup: 35, tax: 10, discount: 0, stock_markup: 0, priority: 2, hours_allocated: 56,
         auto_schedule: true, created_at: _demoDate(3), updated_at: _demoDate(1) },
+      // Completed orders — backdated across the last 6 months so the dashboard
+      // Monthly Revenue chart (orders.status === 'complete', bucketed by
+      // created_at month) actually has data to render.
+      { id: 6, user_id: null, client_id: 1, quote_id: null, name: 'Mitchell Pantry Refurb',
+        value: 4200, status: 'complete', due: _demoDue(-140), order_number: 'ORD-0298',
+        markup: 35, tax: 10, discount: 0, stock_markup: 0, priority: 3, hours_allocated: 22,
+        auto_schedule: false, created_at: _demoDate(158), updated_at: _demoDate(138) },
+      { id: 7, user_id: null, client_id: 3, quote_id: null, name: 'Nair Walk-in Robe',
+        value: 7850, status: 'complete', due: _demoDue(-105), order_number: 'ORD-0299',
+        markup: 35, tax: 10, discount: 0, stock_markup: 0, priority: 2, hours_allocated: 38,
+        auto_schedule: false, created_at: _demoDate(127), updated_at: _demoDate(103) },
+      { id: 8, user_id: null, client_id: 2, quote_id: null, name: 'Whitfield Study Built-ins',
+        value: 3400, status: 'complete', due: _demoDue(-72), order_number: 'ORD-0300',
+        markup: 35, tax: 10, discount: 0, stock_markup: 0, priority: 3, hours_allocated: 19,
+        auto_schedule: false, created_at: _demoDate(95), updated_at: _demoDate(70) },
+      { id: 9, user_id: null, client_id: 5, quote_id: null, name: 'Westside Apartment 8C',
+        value: 9600, status: 'complete', due: _demoDue(-42), order_number: 'ORD-0301',
+        markup: 35, tax: 10, discount: 0, stock_markup: 0, priority: 2, hours_allocated: 48,
+        auto_schedule: false, created_at: _demoDate(64), updated_at: _demoDate(40) },
+      { id: 10, user_id: null, client_id: 4, quote_id: null, name: 'Cole Mudroom Cabinetry',
+        value: 5750, status: 'complete', due: _demoDue(-14), order_number: 'ORD-0302',
+        markup: 35, tax: 10, discount: 0, stock_markup: 0, priority: 3, hours_allocated: 28,
+        auto_schedule: false, created_at: _demoDate(33), updated_at: _demoDate(12) },
     ],
 
     order_lines: [
