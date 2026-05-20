@@ -1,0 +1,38 @@
+{
+  "_doc": "Narration script for the workflow video. Explanatory voiceover — describes what each panel does, no marketing-style imperatives. Adam Denney (user's own cloned voice).",
+  "voice_id": "C5FvZKmhLl9aF8kCbguV",
+  "_voice_name": "Adam Denney (cloned, user's own)",
+  "model_id": "eleven_multilingual_v2",
+  "scenes": [
+    {
+      "id": "00-intro",
+      "title": "Intro",
+      "text": "Here's a quick tour of ProCabinet.App. I'll walk you through setting your rates and designing a cabinet from scratch.",
+      "approx_seconds": 7
+    },
+    {
+      "id": "01-rates",
+      "title": "My Rates",
+      "text": "The rates panel holds your labour rate, markup, tax, and standard cabinet prices. Every quote reads from here.",
+      "approx_seconds": 7
+    },
+    {
+      "id": "02-builder",
+      "title": "Cabinet Builder",
+      "text": "In the Cabinet Builder, you spec each cabinet's dimensions, doors, drawers, and hardware. All priced from your rates.",
+      "approx_seconds": 8
+    },
+    {
+      "id": "03-spec",
+      "title": "Specifying a cabinet",
+      "text": "Each field updates the live price as you fill it in. Width, height, door count, carcass material, hardware.",
+      "approx_seconds": 8
+    },
+    {
+      "id": "04-library",
+      "title": "Cabinet Library",
+      "text": "Saving a cabinet to your library makes it reusable. Drop it into any future quote in one click.",
+      "approx_seconds": 7
+    }
+  ]
+}

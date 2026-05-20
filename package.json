@@ -8,11 +8,23 @@
     "build": "vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
-    "build:visual-guide": "node scripts/build-visual-guide.js"
+    "build:visual-guide": "node scripts/build-visual-guide.js",
+    "gen:narration": "node remotion/_src/gen-narration.mjs",
+    "studio:video": "remotion studio remotion/index.ts",
+    "render:video": "remotion render remotion/index.ts CabinetWorkflow marketing/videos/workflow.mp4"
   },
   "devDependencies": {
+    "@remotion/bundler": "^4.0.464",
+    "@remotion/cli": "^4.0.464",
+    "@remotion/google-fonts": "^4.0.464",
+    "@remotion/renderer": "^4.0.464",
     "@sentry/vite-plugin": "^5.3.0",
     "@types/node": "^25.6.0",
+    "@types/react": "^19.2.15",
+    "@types/react-dom": "^19.2.3",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6",
+    "remotion": "^4.0.464",
     "typescript": "^6.0.3",
     "vite": "^5.4.10",
     "wrangler": "^4.87.0"

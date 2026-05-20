@@ -1,8 +1,10 @@
 # Screenshots — what exists and what would be nice to add
 
-> **TL;DR:** The 8 tab overview shots already exist in [`/brand/screenshots/`](../../../brand/screenshots/), captured at 1440×900 (2× retina) directly from the live app by `brand/_src/shoot.mjs`. Use those. Three optional detail captures would make a few specific posts hit harder; the script makes regeneration trivial.
+> **TL;DR:** 17 captures exist in [`/brand/screenshots/`](../../../brand/screenshots/), at 1280×900 (2× retina) directly from the live app by `brand/_src/shoot.mjs`. 9 base tab/welcome shots + 8 "in use" sub-tab and sidebar-editor shots. Use those.
 
 ## What's already in `/brand/screenshots/` (use these)
+
+### Base shots — one per nav tab + the guided-tour welcome
 
 | File | What it shows | Best for |
 |---|---|---|
@@ -15,6 +17,19 @@
 | `07-clients.png` | Clients list with quote counts and totals | IG / LinkedIn supporting shot |
 | `08-schedule.png` | Full Gantt — orders auto-placed across April/May/June 2026, sidebar with active orders + priority steppers + working-hours panel | **The killer shot.** IG A3 slide 3 · IG B2 · LinkedIn C3 · FB/Reddit Option C |
 | `tour-welcome.png` | Guided-tour welcome modal | Onboarding posts, "we made it dead simple" angle |
+
+### Sub-tab + sidebar-editor "in use" shots — the depth shots
+
+| File | What it shows | Best for |
+|---|---|---|
+| `02b-cut-layout.png` | **Cut Layout** sub-tab with an optimised cut list — packed sheets, door/drawer pieces nested, waste % shown, sidebar with the parts/panels editor and **Optimize Cut Layout** CTA | IG B1 (Cut list spotlight) · IG Story Set B frame 3 · FB/Reddit Option C · "wow" frame for the cut list optimiser |
+| `03b-cabinet-library.png` | **Cabinet Library** sub-tab — 5 reusable templates (Base, Wall, Drawer, Tall, Corner) with dimensions, prices, Add to Quote / Link to Cutlist actions | IG A3 slide 5 · IG B3 slide 1 |
+| `03c-cabinet-rates.png` | **My Rates** sub-tab — the rates editor in the sidebar with Core Rates, Carcass, Door, Drawer Front, Drawer Box sections + per-hour labour | LinkedIn B3 · IG Story Set B frame 6 ("Change a rate, every quote re-prices") |
+| `03d-cabinet-editor.png` | Cabinet **editor in use** — QUO-1042 open with the carcass / doors / drawers / hardware spec form in the sidebar, 3 cabinets + prices in the main pane | IG B3 slide 2 · the depth shot of the Cabinet Builder |
+| `04b-stock-editor.png` | **Stock sidebar editor in use** — editing 18mm Birch Plywood (qty/low/cost/supplier) with the active row highlighted in the table | IG / LinkedIn supporting shot |
+| `05b-order-editor.png` | **Orders sidebar editor in use** — ORD-0312 open with line items, pricing, schedule section, and active order highlighted in the list | LinkedIn B-set, production-flow posts |
+| `06b-quote-editor.png` | **Quotes sidebar editor in use** — QUO-1042 open with cabinet + labour line items, tax / discount controls, notes | IG A3 slide 1 alt · "quote to order" angle |
+| `07b-client-editor.png` | **Clients sidebar editor in use** — Sarah Mitchell's contact + address + notes in the sidebar, related quotes / orders / cut lists in the main pane | Onboarding / "everything for one client in one place" angle |
 
 ## Filename mapping — what the marketing copy references vs. what to actually use
 
@@ -32,18 +47,7 @@
 
 The naming difference doesn't matter for the copy — the posts only describe what's *in* the picture, not the filename. When you upload, the filename is invisible to viewers.
 
-## Optional — 3 detail shots that would strengthen specific posts
-
-These aren't in `/brand/screenshots/` yet. Add them by editing `brand/_src/shoot.mjs` to navigate to the right sub-view before capturing, or capture manually and drop alongside the existing files.
-
-| Proposed filename | Why it matters | Marketing copy that wants it |
-|---|---|---|
-| `02b-cut-list-layout.png` | The optimised sheet layout with nested pieces, waste % visible. The "wow" frame for the cut list optimiser. | IG B1 (Cut list spotlight) · IG Story Set B frame 3 · FB/Reddit Option C |
-| `03b-cabinet-editor.png` | A cabinet open in the editor showing carcass / doors / drawers / hardware spec + live pricing. The depth shot. | IG B3 slide 2 |
-| `03c-cabinet-library.png` | The Cabinet → Library sub-tab showing template cards (Base 600, Wall 600, Drawer 800). | IG A3 slide 5 · IG B3 slide 1 |
-| `03d-rates.png` | The My Rates panel — labour, markup, edge banding, contingency inputs. | LinkedIn B3 · IG Story Set B frame 6 ("Change a rate, every quote re-prices") |
-
-To capture: extend `brand/_src/shoot.mjs` with steps that switch to the Cut Layout view (`switchCLMainView('layout')`), open a cabinet card, and switch to the Library / Rates sub-tabs before each capture. The hooks already exist in `walkthrough.js` for the same navigation.
+> The previously-optional detail shots (cut layout, cabinet library, my rates, cabinet editor) are now part of the standard `shoot.mjs` run — see the "Sub-tab + sidebar-editor in use" table above.
 
 ## Why use the brand folder rather than duplicating into marketing
 
@@ -51,7 +55,7 @@ Single source of truth. If the UI changes, you re-run `node brand/_src/shoot.mjs
 
 ## Cropping for socials
 
-The brand shots are 1440×900 (16:10). For social platforms you'll want square (1:1) or vertical (9:16) crops:
+The brand shots are 1280×900 (≈16:11). For social platforms you'll want square (1:1) or vertical (9:16) crops:
 
 - **Instagram grid (1:1):** crop to a square centred on the most informative panel (e.g. the Gantt portion of `08-schedule.png`, the alerts block of `01-dashboard.png`)
 - **Instagram Reels / Stories / TikTok (9:16):** stack two screen crops on a black `#111111` background with the wordmark at the bottom — `assets/logo-square.svg` is the right asset for the bottom logo
@@ -62,5 +66,5 @@ A 5-minute pass through Canva, Photopea or Photoshop is enough to generate all t
 ## After any UI change
 
 1. `npm run dev`
-2. `node brand/_src/shoot.mjs` — re-shoot all 8 tabs
+2. `node brand/_src/shoot.mjs` — re-shoot all 17 captures
 3. (Optional) Re-crop social variants in Canva — they only change if the layout shifted significantly

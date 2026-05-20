@@ -75,7 +75,7 @@ All visual assets live in **[`/brand/`](../brand/)**, generated directly from th
 - **`brand/icons/individual/`** — the 8 tab icons (Dashboard, Cut List, Cabinet, Stock, Orders, Quotes, Clients, Schedule)
 - **`brand/icons/labelled/`** — same 8 icons paired with their labels
 - **`brand/icons/tab-bar/`** — full tab bar with active state
-- **`brand/screenshots/`** — 8 live tab captures + tour-welcome, at 1400×900 (2× retina)
+- **`brand/screenshots/`** — 17 live captures (8 tab overviews + tour-welcome + 8 sub-tab / sidebar-editor "in use" shots), at 1280×900 (2× retina)
 
 Use these directly in your marketing posts. No logo or icon files live under `marketing/assets/` — single source of truth.
 
