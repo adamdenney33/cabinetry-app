@@ -11,7 +11,8 @@
     "build:visual-guide": "node scripts/build-visual-guide.js",
     "gen:narration": "node remotion/_src/gen-narration.mjs",
     "studio:video": "remotion studio remotion/index.ts",
-    "render:video": "remotion render remotion/index.ts CabinetWorkflow marketing/videos/workflow.mp4"
+    "render:video": "remotion render remotion/index.ts CabinetWorkflow marketing/videos/workflow.mp4",
+    "render:reel": "remotion render remotion/index.ts CabinetBuilderReel marketing/videos/cabinet-builder-reel.mp4"
   },
   "devDependencies": {
     "@remotion/bundler": "^4.0.464",

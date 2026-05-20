@@ -22,6 +22,23 @@ Companion docs: `SPEC.md` (refactor history), `SCHEMA.md` (DB schema),
 
 ## Active Work
 
+### Cabinet Builder vertical reel (30s, 9:16) — in progress 2026-05-20
+
+A 30-second vertical companion to the existing `CabinetWorkflow` horizontal
+demo, focused on the cabinet builder for Instagram Reels / TikTok / YouTube
+Shorts. Full spec at `marketing/cabinet-builder-reel-spec.md`.
+
+- ⏳ `marketing/cabinet-builder-reel-spec.md` — 6-scene breakdown, copy, timing
+- ⏳ `remotion/vertical/` — new directory parallel to the horizontal scenes:
+  `constants.ts`, `PhoneFrame.tsx`, `VerticalScreen.tsx`, `VerticalCursor.tsx`,
+  `Counter.tsx`, `BigCaption.tsx`, `Composition.tsx`, + 6 scenes
+- ⏳ `remotion/Root.tsx` — register `CabinetBuilderReel` (1080×1920, 900 frames)
+  plus 6 per-scene debug compositions (`reel-hook`, `reel-open-builder`, etc.)
+- ⏳ `remotion/public/logo` — new symlink to `brand/logo/` for the close card
+- ⏳ `package.json` — add `render:reel` script
+- ⏳ Audio: silent v1; user supplies music at `marketing/audio/reel-music.mp3`
+  later and flips `INCLUDE_AUDIO` in `vertical/constants.ts`
+
 ### Paid-ads tracking + first-touch attribution ✅ Done 2026-05-19
 
 Paid-ads foundation laid before any spend. Three pixels plus a UTM-capture
