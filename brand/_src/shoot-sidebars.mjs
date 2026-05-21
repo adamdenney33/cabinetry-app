@@ -216,6 +216,11 @@ try {
   // ── Cabinet editor sidebar (QUO-1042 → Base Cabinet 600) ──
   await evalJS("window.switchCabTab && window.switchCabTab('builder')");
   await sleep(600);
+  // editQuoteInCB is the entry point the Quote-tab "Edit in Cabinet Builder"
+  // button uses; we deliberately exercise it here so this screenshot acts as
+  // a regression guard for the _cbCurrentClientName population fix landed in
+  // SPEC.md § 13 (2026-05-21). If the breadcrumb ever returns to "QUO-1042 ·"
+  // with a dangling separator, this capture catches it.
   await evalJS("typeof editQuoteInCB === 'function' && editQuoteInCB(1)", true);
   await sleep(1200);
   await evalJS("typeof cbSelectLine === 'function' && cbSelectLine(0)");
