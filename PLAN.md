@@ -22,22 +22,33 @@ Companion docs: `SPEC.md` (refactor history), `SCHEMA.md` (DB schema),
 
 ## Active Work
 
-### Cabinet Builder vertical reel (30s, 9:16) — in progress 2026-05-20
+### Cabinet Builder reel — vertical + horizontal-split ✅ Done 2026-05-21
 
-A 30-second vertical companion to the existing `CabinetWorkflow` horizontal
-demo, focused on the cabinet builder for Instagram Reels / TikTok / YouTube
-Shorts. Full spec at `marketing/cabinet-builder-reel-spec.md`.
+Two parallel productions of the same 30-second narrative (Hook → Open
+Builder → Spec Scroll → Live Price → Save to Library → Close), shipped
+silent so they autoplay on social. Full spec at
+`marketing/cabinet-builder-reel-spec.md`.
 
-- ⏳ `marketing/cabinet-builder-reel-spec.md` — 6-scene breakdown, copy, timing
-- ⏳ `remotion/vertical/` — new directory parallel to the horizontal scenes:
-  `constants.ts`, `PhoneFrame.tsx`, `VerticalScreen.tsx`, `VerticalCursor.tsx`,
-  `Counter.tsx`, `BigCaption.tsx`, `Composition.tsx`, + 6 scenes
-- ⏳ `remotion/Root.tsx` — register `CabinetBuilderReel` (1080×1920, 900 frames)
-  plus 6 per-scene debug compositions (`reel-hook`, `reel-open-builder`, etc.)
-- ⏳ `remotion/public/logo` — new symlink to `brand/logo/` for the close card
-- ⏳ `package.json` — add `render:reel` script
-- ⏳ Audio: silent v1; user supplies music at `marketing/audio/reel-music.mp3`
-  later and flips `INCLUDE_AUDIO` in `vertical/constants.ts`
+- ✅ **Vertical master** (`CabinetBuilderReel`, 1080×1920, 900 frames) —
+  music-driven IG Reels / TikTok / Shorts cut. Output at
+  `marketing/videos/cabinet-builder-reel.mp4`.
+- ✅ **Horizontal split** (`h-hook`, `h-open-builder`, `h-spec-scroll`,
+  `h-live-price`, `h-save-library`, `h-close`) — each scene rendered as
+  its own 1920×1080 MP4 in `marketing/videos/reel/{01..06}-*.mp4` via
+  `npm run render:reel-h`.
+- ✅ **Narration-demo split** (`w-intro`, `w-rates`, `w-builder`, `w-spec`,
+  `w-library`, `w-outro`) — the existing horizontal `CabinetWorkflow` demo
+  also split into per-section files with narration audio baked in. Render
+  via `npm run render:scenes` → `marketing/videos/scenes/{1..6}-*.mp4`.
+- ✅ `remotion/vertical/` + `remotion/reel-h/` — parallel scene directories
+  sharing the BRAND palette and reusable primitives (BrowserFrame/Screen/
+  Cursor/Caption for horizontal, PhoneFrame/VerticalScreen/VerticalCursor/
+  BigCaption for vertical; Counter shared)
+- ✅ `remotion/Root.tsx` — registers all four productions (master + three
+  split sets) plus 6 vertical per-scene debug comps for fast iteration
+- ✅ Audio: silent v1 across the board. Drop a music track at
+  `marketing/audio/reel-music.mp3` and flip `INCLUDE_AUDIO` in
+  `vertical/constants.ts` to layer it under the vertical reel.
 
 ### Paid-ads tracking + first-touch attribution ✅ Done 2026-05-19
 

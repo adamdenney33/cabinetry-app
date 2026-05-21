@@ -111,6 +111,62 @@ npm run render:reel
 # → marketing/videos/cabinet-builder-reel.mp4 (1080×1920, h264, CRF 18)
 ```
 
+## Horizontal split (1920×1080, one file per section)
+
+A parallel deliverable to the vertical master: each of the 6 scenes rendered
+as its own 1920×1080 MP4. Useful for landing-page section cards, ad creative
+variants per beat, or feeding individual scenes into a non-linear editor.
+
+### Files
+
+```
+remotion/reel-h/
+├── constants.ts                    # REEL_H (1920×1080) + scene specs
+└── scenes/{Hook,OpenBuilder,SpecScroll,LivePrice,SaveToLibrary,Close}.tsx
+```
+
+Each scene reuses the existing horizontal primitives (`BrowserFrame`,
+`Screen`, `Cursor`, `Caption` from `remotion/components/`) plus the
+`Counter` from `remotion/vertical/`.
+
+### Compositions
+
+Registered in `remotion/Root.tsx` as six standalone (no master):
+
+| Composition id | Duration | Output |
+|---|---|---|
+| `h-hook` | 90 f / 3 s | `01-hook.mp4` |
+| `h-open-builder` | 120 f / 4 s | `02-open-builder.mp4` |
+| `h-spec-scroll` | 330 f / 11 s | `03-spec-scroll.mp4` |
+| `h-live-price` | 150 f / 5 s | `04-live-price.mp4` |
+| `h-save-library` | 120 f / 4 s | `05-save-library.mp4` |
+| `h-close` | 90 f / 3 s | `06-close.mp4` |
+
+### Render
+
+```bash
+# All 6 in one command (loops through h-* and writes to marketing/videos/reel/)
+npm run render:reel-h
+
+# Re-render a single scene
+npx remotion render remotion/index.ts h-spec-scroll \
+  marketing/videos/reel/03-spec-scroll.mp4
+```
+
+Output lands at `marketing/videos/reel/{01..06}-*.mp4`.
+
+### Related: per-scene split of the narration demo
+
+The existing `CabinetWorkflow` (horizontal narration-driven demo) is also
+split into per-section files via `w-intro` / `w-rates` / `w-builder` /
+`w-spec` / `w-library` / `w-outro` compositions — each with its narration
+audio baked in. Render with:
+
+```bash
+npm run render:scenes
+# → marketing/videos/scenes/{1..6}-*.mp4
+```
+
 ## Out of scope for this pass
 
 - Beat-sync (deferred until soundtrack chosen)

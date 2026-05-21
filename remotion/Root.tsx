@@ -1,54 +1,131 @@
 // Composition registration.
 //
-// Two productions live here:
-//   - CabinetWorkflow         — 16:9 horizontal demo (existing, narration-driven)
-//   - CabinetBuilderReel      — 9:16 vertical reel    (new, music-driven)
+// Four productions live here:
+//   - CabinetWorkflow         — 16:9 horizontal demo master (narration-driven)
+//   - w-<scene>               — same demo split into one file per section
+//                                (intro / rates / builder / spec / library / outro)
+//                                with per-section narration audio baked in.
+//                                The `w-` prefix mirrors the `h-` reel scenes;
+//                                Remotion bans underscores in composition ids.
+//   - CabinetBuilderReel      — 9:16 vertical reel master (music-driven)
+//   - h-* (six standalones)   — 16:9 horizontal reel scenes shipped as
+//                                separate files (no master comp)
 //
 // Plus per-scene debug compositions for the vertical reel, so any single
-// scene can be scrubbed/rendered in isolation (~30× faster than re-rendering
-// the whole 900-frame master while iterating).
+// scene can be scrubbed/rendered in isolation.
 
-import { Composition, useCurrentFrame } from 'remotion';
+import { Composition, Audio, Sequence, staticFile, useCurrentFrame, useVideoConfig } from 'remotion';
 import { WorkflowVideo } from './Composition';
-import { TOTAL_FRAMES, FPS, WIDTH, HEIGHT } from './scenes';
+import { SCENES, TOTAL_FRAMES, FPS, WIDTH, HEIGHT, type SceneSpec as WorkflowSceneSpec } from './scenes';
+import { Intro } from './scenes/Intro';
+import { Outro } from './scenes/Outro';
+import { SceneRates } from './scenes/SceneRates';
+import { SceneBuilder } from './scenes/SceneBuilder';
+import { SceneSpec } from './scenes/SceneSpec';
+import { SceneLibrary } from './scenes/SceneLibrary';
 import { CabinetBuilderReel } from './vertical/Composition';
 import { REEL, REEL_SCENES } from './vertical/constants';
-import { Hook } from './vertical/scenes/Hook';
-import { OpenBuilder } from './vertical/scenes/OpenBuilder';
-import { SpecScroll } from './vertical/scenes/SpecScroll';
-import { LivePrice } from './vertical/scenes/LivePrice';
-import { SaveToLibrary } from './vertical/scenes/SaveToLibrary';
-import { Close } from './vertical/scenes/Close';
+import { Hook as VHook } from './vertical/scenes/Hook';
+import { OpenBuilder as VOpenBuilder } from './vertical/scenes/OpenBuilder';
+import { SpecScroll as VSpecScroll } from './vertical/scenes/SpecScroll';
+import { LivePrice as VLivePrice } from './vertical/scenes/LivePrice';
+import { SaveToLibrary as VSaveToLibrary } from './vertical/scenes/SaveToLibrary';
+import { Close as VClose } from './vertical/scenes/Close';
+import { REEL_H, REEL_H_SCENES } from './reel-h/constants';
+import { Hook as HHook } from './reel-h/scenes/Hook';
+import { OpenBuilder as HOpenBuilder } from './reel-h/scenes/OpenBuilder';
+import { SpecScroll as HSpecScroll } from './reel-h/scenes/SpecScroll';
+import { LivePrice as HLivePrice } from './reel-h/scenes/LivePrice';
+import { SaveToLibrary as HSaveToLibrary } from './reel-h/scenes/SaveToLibrary';
+import { Close as HClose } from './reel-h/scenes/Close';
 
 type SceneComponent = React.FC<{ localFrame: number; durationFrames: number }>;
 
-const REEL_SCENE_COMPONENTS: Record<string, SceneComponent> = {
-  hook: Hook,
-  openBuilder: OpenBuilder,
-  specScroll: SpecScroll,
-  livePrice: LivePrice,
-  saveLibrary: SaveToLibrary,
-  close: Close,
+const VERTICAL_SCENES: Record<string, SceneComponent> = {
+  hook: VHook,
+  openBuilder: VOpenBuilder,
+  specScroll: VSpecScroll,
+  livePrice: VLivePrice,
+  saveLibrary: VSaveToLibrary,
+  close: VClose,
 };
 
-/** Wraps a scene component so it can be the entry of a standalone debug
+const HORIZONTAL_SCENES: Record<string, SceneComponent> = {
+  hook: HHook,
+  openBuilder: HOpenBuilder,
+  specScroll: HSpecScroll,
+  livePrice: HLivePrice,
+  saveLibrary: HSaveToLibrary,
+  close: HClose,
+};
+
+/** Wraps a scene component so it can be the entry of a standalone
  *  Composition — Remotion's frame counter becomes `localFrame`. */
-const makeDebugComponent = (
+const makeStandaloneComponent = (
   Component: SceneComponent,
   duration: number,
+  tag: string,
 ): React.FC => {
   const Wrapped: React.FC = () => {
     const f = useCurrentFrame();
     return <Component localFrame={f} durationFrames={duration} />;
   };
-  Wrapped.displayName = `ReelSceneDebug(${Component.displayName ?? Component.name})`;
+  Wrapped.displayName = `Standalone(${tag})`;
   return Wrapped;
 };
+
+/** Standalone wrapper for a narration-demo scene. Mounts the scene's audio
+ *  alongside the visual so the per-section MP4 plays back with sound. The
+ *  Sequence `from={6}` matches the master Composition.tsx's audio offset
+ *  (small lead so the voiceover doesn't trip over the scene's entrance). */
+const makeNarratedScene = (
+  render: (lf: number, d: number, fps: number) => React.ReactNode,
+  spec: WorkflowSceneSpec,
+): React.FC => {
+  const Wrapped: React.FC = () => {
+    const f = useCurrentFrame();
+    const { fps } = useVideoConfig();
+    return (
+      <>
+        {spec.audio && (
+          <Sequence from={6}>
+            <Audio src={staticFile(spec.audio)} volume={1} />
+          </Sequence>
+        )}
+        {render(f, spec.duration, fps)}
+      </>
+    );
+  };
+  Wrapped.displayName = `Narrated(${spec.id})`;
+  return Wrapped;
+};
+
+/** Per-scene renderers for the narration demo. The signature is uniform
+ *  (lf, d, fps) so we don't need any-typed casts even though Intro/Outro
+ *  consume `fps` and the others don't. */
+const NARRATED_SCENE_RENDERERS: Record<
+  string,
+  (lf: number, d: number, fps: number) => React.ReactNode
+> = {
+  'intro':      (lf, d, fps) => <Intro localFrame={lf} durationFrames={d} fps={fps} />,
+  '01-rates':   (lf, d)      => <SceneRates localFrame={lf} durationFrames={d} />,
+  '02-builder': (lf, d)      => <SceneBuilder localFrame={lf} durationFrames={d} />,
+  '03-spec':    (lf, d)      => <SceneSpec localFrame={lf} durationFrames={d} />,
+  '04-library': (lf, d)      => <SceneLibrary localFrame={lf} durationFrames={d} />,
+  'outro':      (lf, d, fps) => <Outro localFrame={lf} durationFrames={d} fps={fps} />,
+};
+
+/** Map a scenes/index.ts spec id to its standalone composition id.
+ *  `01-rates` → `w-rates`, `intro` → `w-intro`, etc. The `w-` prefix mirrors
+ *  the existing `h-` prefix the horizontal-reel scenes use, and Remotion
+ *  rejects underscores in composition ids (a-z A-Z 0-9 and `-` only). */
+export const workflowSceneCompositionId = (sceneId: string): string =>
+  'w-' + sceneId.replace(/^\d+-/, '');
 
 export const RemotionRoot: React.FC = () => {
   return (
     <>
-      {/* ---- Horizontal demo (existing) ---- */}
+      {/* ---- Horizontal narration demo master ---- */}
       <Composition
         id="CabinetWorkflow"
         component={WorkflowVideo}
@@ -57,6 +134,24 @@ export const RemotionRoot: React.FC = () => {
         width={WIDTH}
         height={HEIGHT}
       />
+
+      {/* ---- Same demo, one file per section. Each composition bundles its
+              narration audio so the resulting MP4 plays back standalone. ---- */}
+      {SCENES.map((spec) => {
+        const renderer = NARRATED_SCENE_RENDERERS[spec.id];
+        if (!renderer) return null;
+        return (
+          <Composition
+            key={spec.id}
+            id={workflowSceneCompositionId(spec.id)}
+            component={makeNarratedScene(renderer, spec)}
+            durationInFrames={spec.duration}
+            fps={FPS}
+            width={WIDTH}
+            height={HEIGHT}
+          />
+        );
+      })}
 
       {/* ---- Vertical reel master ---- */}
       <Composition
@@ -70,17 +165,34 @@ export const RemotionRoot: React.FC = () => {
 
       {/* ---- Per-scene debug comps for the vertical reel ---- */}
       {REEL_SCENES.map((s) => {
-        const Component = REEL_SCENE_COMPONENTS[s.id];
+        const Component = VERTICAL_SCENES[s.id];
         if (!Component) return null;
         return (
           <Composition
             key={s.label}
             id={s.label}
-            component={makeDebugComponent(Component, s.duration)}
+            component={makeStandaloneComponent(Component, s.duration, s.label)}
             durationInFrames={s.duration}
             fps={REEL.fps}
             width={REEL.width}
             height={REEL.height}
+          />
+        );
+      })}
+
+      {/* ---- Horizontal reel: six standalone scenes, each its own file ---- */}
+      {REEL_H_SCENES.map((s) => {
+        const Component = HORIZONTAL_SCENES[s.id];
+        if (!Component) return null;
+        return (
+          <Composition
+            key={s.compId}
+            id={s.compId}
+            component={makeStandaloneComponent(Component, s.duration, s.compId)}
+            durationInFrames={s.duration}
+            fps={REEL_H.fps}
+            width={REEL_H.width}
+            height={REEL_H.height}
           />
         );
       })}

@@ -12,7 +12,9 @@
     "gen:narration": "node remotion/_src/gen-narration.mjs",
     "studio:video": "remotion studio remotion/index.ts",
     "render:video": "remotion render remotion/index.ts CabinetWorkflow marketing/videos/workflow.mp4",
-    "render:reel": "remotion render remotion/index.ts CabinetBuilderReel marketing/videos/cabinet-builder-reel.mp4"
+    "render:scenes": "node remotion/_src/render-scenes.mjs",
+    "render:reel": "remotion render remotion/index.ts CabinetBuilderReel marketing/videos/cabinet-builder-reel.mp4",
+    "render:reel-h": "node scripts/render-reel-h.mjs"
   },
   "devDependencies": {
     "@remotion/bundler": "^4.0.464",
