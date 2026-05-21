@@ -17,6 +17,7 @@
     "render:reel-h": "node scripts/render-reel-h.mjs"
   },
   "devDependencies": {
+    "@babel/core": "^7.29.0",
     "@remotion/bundler": "^4.0.464",
     "@remotion/cli": "^4.0.464",
     "@remotion/google-fonts": "^4.0.464",
