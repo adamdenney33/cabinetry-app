@@ -1,0 +1,33 @@
+# Prettier is wired up for Remotion Studio's "Save Default" feature, which
+# rewrites composition defaultProps back to source. We intentionally do NOT
+# format the rest of the codebase: src/*.js follows hand-tuned conventions
+# (see CLAUDE.md), the mockups/ HTML files are pixel-tuned, and dist/ +
+# supabase/ + Building Docs/ shouldn't be touched.
+#
+# When Prettier needs to expand, allowlist new directories explicitly rather
+# than removing entries here.
+
+# Build / vendor / system
+node_modules/
+dist/
+.vite/
+.wrangler/
+backups/
+supabase/.temp/
+
+# Generated artifacts
+src/database.types.ts
+
+# Hand-styled source / docs / assets
+src/
+styles.css
+index.html
+mockups/
+Building\ Docs/
+brand/
+marketing/raw-footage/
+marketing/videos/
+marketing/audio/
+marketing/assets/
+marketing/videos\ of\ me/
+*.md

@@ -27,3 +27,7 @@ scripts/output/
 
 # Claude Code per-user config (not shared)
 .claude/settings.local.json
+
+# Large binary / generated output — store externally
+marketing/raw-footage/
+out/

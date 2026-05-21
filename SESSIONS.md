@@ -1212,4 +1212,93 @@ _Auto-logged by SessionEnd hook. Flesh out with context next session if useful._
 
 _Auto-logged by SessionEnd hook. Flesh out with context next session if useful._
 
-<!-- last_commit: 087c495 -->
+
+---
+
+## [Auto] Session ending 2026-05-20
+
+### Commits
+- fix(ui): make chrome auto-collapse actually trigger on scroll
+- fix(ui): collapse the top header on scroll, keep the nav-tab bar
+- fix(cutlist): auto-number sheets and panels sequentially (Sheet N / Panel N)
+- docs(brand): update sessions log, brand build scripts, and marketing assets
+- fix(walkthrough): skip the guided tour on touch devices
+- feat(cabinet): show the My Rates tab bar on the Quote Builder gate
+- feat(ads): first-touch attribution + GA4/Meta Pixel/Google Ads pixels
+
+_Auto-logged by SessionEnd hook. Flesh out with context next session if useful._
+
+
+---
+
+## [Auto] Session ending 2026-05-20
+
+### Commits
+- feat(demo): seed completed orders so dashboard revenue chart renders
+
+_Auto-logged by SessionEnd hook. Flesh out with context next session if useful._
+
+
+---
+
+## [Auto] Session ending 2026-05-21
+
+### Commits
+- feat(remotion): scaffold horizontal video pipeline + CabinetWorkflow demo
+- feat(marketing): 30s vertical cabinet builder reel (9:16)
+
+_Auto-logged by SessionEnd hook. Flesh out with context next session if useful._
+
+
+---
+
+## [Auto] Session ending 2026-05-21
+
+### Commits
+- feat(marketing): horizontal 1920x1080 reel split into 6 scene files
+
+_Auto-logged by SessionEnd hook. Flesh out with context next session if useful._
+
+
+---
+
+## [Auto] Session ending 2026-05-21
+
+### Commits
+- feat(marketing): horizontal 1920x1080 reel split into 6 scene files
+
+_Auto-logged by SessionEnd hook. Flesh out with context next session if useful._
+
+
+---
+
+## [Auto] Session ending 2026-05-21
+
+### Commits
+- feat(marketing): horizontal 1920x1080 reel split into 6 scene files
+
+_Auto-logged by SessionEnd hook. Flesh out with context next session if useful._
+
+
+---
+
+## [Auto] Session ending 2026-05-21
+
+### Commits
+- feat(marketing): horizontal 1920x1080 reel split into 6 scene files
+
+_Auto-logged by SessionEnd hook. Flesh out with context next session if useful._
+
+
+---
+
+## [Auto] Session ending 2026-05-21
+
+### Commits
+- chore(repo): consolidate loose docs, marketing drafts, and mockups into subfolders
+- feat(remotion): schema-driven props for the vertical Hook scene
+- chore(repo): finish reorg by removing the old file locations
+
+_Auto-logged by SessionEnd hook. Flesh out with context next session if useful._
+
+<!-- last_commit: 30d6359 -->
