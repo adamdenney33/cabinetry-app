@@ -25,6 +25,7 @@ import { SceneSpec } from './scenes/SceneSpec';
 import { SceneLibrary } from './scenes/SceneLibrary';
 import { CabinetBuilderReel } from './vertical/Composition';
 import { REEL, REEL_SCENES } from './vertical/constants';
+import { HookSchema, REEL_CONTENT, type HookProps } from './vertical/reel-content';
 import { Hook as VHook } from './vertical/scenes/Hook';
 import { OpenBuilder as VOpenBuilder } from './vertical/scenes/OpenBuilder';
 import { SpecScroll as VSpecScroll } from './vertical/scenes/SpecScroll';
@@ -72,6 +73,17 @@ const makeStandaloneComponent = (
   };
   Wrapped.displayName = `Standalone(${tag})`;
   return Wrapped;
+};
+
+/** Standalone wrapper for the vertical Hook scene. Unlike the generic
+ *  `makeStandaloneComponent`, this one accepts HookProps so they can be
+ *  driven by a Composition's `defaultProps` and edited live in Remotion
+ *  Studio's right-side Props panel. The other 5 vertical scenes still use
+ *  the props-less generic wrapper for now — they'll migrate in a follow-up. */
+const HOOK_DURATION_FRAMES = REEL_SCENES.find((s) => s.id === 'hook')!.duration;
+const HookStandalone: React.FC<HookProps> = (props) => {
+  const f = useCurrentFrame();
+  return <VHook {...props} localFrame={f} durationFrames={HOOK_DURATION_FRAMES} />;
 };
 
 /** Standalone wrapper for a narration-demo scene. Mounts the scene's audio
@@ -163,8 +175,26 @@ export const RemotionRoot: React.FC = () => {
         height={REEL.height}
       />
 
-      {/* ---- Per-scene debug comps for the vertical reel ---- */}
-      {REEL_SCENES.map((s) => {
+      {/* ---- Per-scene debug comps for the vertical reel ----
+              `reel-hook` is registered explicitly so it can declare a zod
+              schema + defaultProps. That makes its copy + accent color show
+              up as editable inputs in Remotion Studio's right-side Props
+              panel — drag-edit-render with no code round-trip. The other 5
+              scenes still use the props-less standalone wrapper via the
+              loop below; they'll migrate to the same pattern in a follow-up
+              commit. */}
+      <Composition
+        id="reel-hook"
+        component={HookStandalone}
+        schema={HookSchema}
+        defaultProps={REEL_CONTENT.hook}
+        durationInFrames={HOOK_DURATION_FRAMES}
+        fps={REEL.fps}
+        width={REEL.width}
+        height={REEL.height}
+      />
+
+      {REEL_SCENES.filter((s) => s.id !== 'hook').map((s) => {
         const Component = VERTICAL_SCENES[s.id];
         if (!Component) return null;
         return (

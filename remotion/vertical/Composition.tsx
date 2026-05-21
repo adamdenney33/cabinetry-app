@@ -10,6 +10,7 @@ import { LivePrice } from './scenes/LivePrice';
 import { SaveToLibrary } from './scenes/SaveToLibrary';
 import { Close } from './scenes/Close';
 import { REEL_SCENES, INCLUDE_AUDIO, REEL_AUDIO_SRC } from './constants';
+import { REEL_CONTENT } from './reel-content';
 
 /** Wrapper that scopes each scene's frame counter to start at 0. Mirrors the
  *  same helper used by the horizontal Composition.tsx. */
@@ -46,7 +47,7 @@ export const CabinetBuilderReel: React.FC = () => {
       ) : null}
 
       <Scene id="hook" start={get('hook').start} duration={get('hook').duration}>
-        {(lf, d) => <Hook localFrame={lf} durationFrames={d} />}
+        {(lf, d) => <Hook {...REEL_CONTENT.hook} localFrame={lf} durationFrames={d} />}
       </Scene>
 
       <Scene

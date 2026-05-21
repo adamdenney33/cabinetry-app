@@ -1,15 +1,21 @@
 // Scene 1 / Hook (0:00 → 0:03, 90 frames).
 // Dark brand-ink card with a two-line headline. The first line lands hard
 // on frame 0 (already visible when the reel starts); the second line slides
-// in on frame ~14 with the amber accent under-mark.
+// in on frame ~14 with the accent under-mark.
+//
+// Copy + accent color come in as props (see `../reel-content.ts` for the
+// HookSchema and the default REEL_CONTENT.hook values). Background and text
+// colors stay tied to BRAND constants — those are a brand-level decision,
+// not a per-scene tweak.
 
 import { AbsoluteFill, interpolate, spring, useVideoConfig } from 'remotion';
 import { BRAND } from '../constants';
+import type { HookProps } from '../reel-content';
 
-export const Hook: React.FC<{
+export const Hook: React.FC<HookProps & {
   localFrame: number;
   durationFrames: number;
-}> = ({ localFrame, durationFrames }) => {
+}> = ({ line1, line2, accentColor, localFrame, durationFrames }) => {
   const { fps } = useVideoConfig();
 
   const line1Enter = spring({
@@ -67,7 +73,7 @@ export const Hook: React.FC<{
             transform: `translateY(${(1 - line1Enter) * 14}px)`,
           }}
         >
-          Quote a cabinet
+          {line1}
         </div>
         <div
           style={{
@@ -82,7 +88,7 @@ export const Hook: React.FC<{
             transform: `translateY(${line2Y}px)`,
           }}
         >
-          without spreadsheets.
+          {line2}
           {/* Accent under-mark — draws left to right. */}
           <div
             style={{
@@ -92,10 +98,10 @@ export const Hook: React.FC<{
               bottom: -16,
               height: 10,
               borderRadius: 5,
-              background: BRAND.accent,
+              background: accentColor,
               transformOrigin: 'left center',
               transform: `scaleX(${underlineProgress})`,
-              boxShadow: `0 0 24px ${BRAND.accent}`,
+              boxShadow: `0 0 24px ${accentColor}`,
             }}
           />
         </div>
