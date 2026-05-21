@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1440">
+<title>Strategy 2 — Gated Sidebar · Full Tabs</title>
+<style>
+  :root {
+    --accent:   #e8a838;
+    --accent-dim: rgba(232,168,56,0.12);
+    --accent2:  #0d9488;
+    --danger:   #e05252;
+    --success:  #3d9970;
+    --bg:       #f2f2f2;
+    --surface:  #ffffff;
+    --surface2: #f7f7f7;
+    --border:   #e0e0e0;
+    --border2:  #ebebeb;
+    --text:     #111111;
+    --text2:    #444444;
+    --muted:    #888888;
+    --header-bg:#111111;
+    --header-fg:#ffffff;
+    --tabbar:   #e2e2e2;
+    --radius: 10px;
+    --shadow: 0 1px 4px rgba(0,0,0,0.07);
+    --shadow-md: 0 4px 16px rgba(0,0,0,0.10);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); padding: 32px 24px 48px; }
+
+  /* ── Page header ── */
+  .page-h1 { font-size: 22px; font-weight: 800; letter-spacing: -0.4px; margin-bottom: 4px; }
+  .page-sub { font-size: 13px; color: var(--muted); margin-bottom: 28px; max-width: 1100px; line-height: 1.55; }
+  .page-sub b { color: var(--text); font-weight: 600; }
+
+  /* ── Tab section wrapper ── */
+  .tab-section { margin-bottom: 36px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; box-shadow: var(--shadow-md); }
+  .tab-section-label { padding: 10px 16px; background: var(--surface2); border-bottom: 1px solid var(--border); font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; display: flex; justify-content: space-between; align-items: center; }
+  .tab-section-label .name { color: var(--text); font-size: 13px; }
+  .tab-section-label .var-tag { color: var(--accent); font-weight: 700; font-size: 10px; }
+
+  /* ── App header chrome ── */
+  .app-head { background: var(--header-bg); color: var(--header-fg); padding: 0 20px; height: 48px; display: flex; align-items: center; gap: 16px; }
+  .app-head .logo { font-weight: 800; font-size: 16px; letter-spacing: -0.4px; }
+  .app-head .logo .badge { font-size: 8px; font-weight: 700; background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.55); padding: 2px 5px; border-radius: 3px; margin-left: 4px; vertical-align: middle; letter-spacing: 0.4px; }
+  .app-head .nav { display: flex; gap: 4px; flex: 1; padding-left: 12px; }
+  .app-head .nav-tab { font-size: 12px; color: rgba(255,255,255,0.7); padding: 6px 12px; border-radius: 5px; cursor: pointer; }
+  .app-head .nav-tab.active { color: #fff; background: rgba(255,255,255,0.1); }
+  .app-head .right { display: flex; align-items: center; gap: 8px; }
+  .app-head .avatar { width: 28px; height: 28px; border-radius: 6px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12); display: flex; align-items: center; justify-content: center; color: rgba(255,255,255,0.6); font-size: 11px; font-weight: 700; }
+
+  /* ── App body ── */
+  .app-body { display: flex; height: 660px; background: var(--bg); }
+  .app-sidebar { width: 360px; min-width: 360px; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; }
+  .app-sidebar.wide { width: 440px; min-width: 440px; }
+  .app-main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+  /* ── Project header (Strategy 2) ── */
+  .proj-header { padding: 14px 16px 12px; background: linear-gradient(180deg, var(--accent-dim), transparent); border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  .proj-header .back { font-size: 11px; color: var(--muted); margin-bottom: 8px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; }
+  .proj-header .back:hover { color: var(--text); }
+  .proj-header .title-row { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+  .proj-header .title { font-size: 17px; font-weight: 800; color: var(--text); letter-spacing: -0.3px; flex: 1; }
+  .proj-header .x { font-size: 16px; color: var(--muted); cursor: pointer; padding: 4px 8px; border-radius: 4px; }
+  .proj-header .x:hover { background: rgba(0,0,0,0.04); color: var(--text); }
+  .proj-header .meta-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .proj-header .meta { font-size: 11px; color: var(--muted); }
+  .proj-header .badge { font-size: 9px; font-weight: 700; text-transform: uppercase; padding: 2px 7px; border-radius: 3px; background: rgba(80,140,220,0.15); color: #5b8fc5; letter-spacing: 0.4px; }
+  .proj-header .pill { font-size: 9px; font-weight: 700; padding: 2px 7px; border-radius: 3px; color: var(--success); background: rgba(61,153,112,0.14); display: inline-flex; align-items: center; gap: 3px; letter-spacing: 0.4px; }
+  .proj-header .pill::before { content: '✓'; font-size: 9px; }
+  .proj-header .client { font-size: 11px; color: var(--text2); margin-top: 4px; }
+  .proj-header .client b { color: var(--text); font-weight: 600; }
+
+  /* ── Sidebar inner ── */
+  .sb-tabs { display: flex; border-bottom: 2px solid var(--border); flex-shrink: 0; }
+  .sb-tab { flex: 1; padding: 10px 12px; font-size: 12px; font-weight: 600; text-align: center; cursor: pointer; color: var(--muted); border-bottom: 2px solid transparent; margin-bottom: -2px; }
+  .sb-tab.active { color: var(--text); border-bottom-color: var(--accent); }
+  .sb-body { flex: 1; overflow-y: auto; padding: 14px 16px; font-size: 12px; }
+  .sb-foot { border-top: 1px solid var(--border); padding: 12px 16px; background: var(--surface); flex-shrink: 0; }
+
+  .sec-label { font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; letter-spacing: 0.6px; display: flex; align-items: center; gap: 6px; }
+  .sec-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+  .scoped-section { margin-bottom: 16px; }
+
+  /* ── Form bits ── */
+  .field { width: 100%; padding: 6px 9px; border: 1px solid var(--border); border-radius: 6px; font-size: 12px; background: var(--surface2); color: var(--text); margin-bottom: 6px; font-family: inherit; }
+  .smart-input { display: flex; border: 1px solid var(--border); border-radius: 6px; background: var(--surface2); overflow: hidden; margin-bottom: 6px; }
+  .smart-input input { flex: 1; padding: 7px 10px; border: none; background: transparent; font-size: 12px; outline: none; color: var(--text); font-family: inherit; }
+  .smart-input .plus { width: 28px; background: transparent; border-left: 1px solid var(--border); display: flex; align-items: center; justify-content: center; color: var(--accent); font-size: 14px; font-weight: 700; cursor: pointer; }
+
+  /* ── Buttons ── */
+  .btn { padding: 7px 12px; border: none; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-outline { background: transparent; color: var(--text2); border: 1px solid var(--border); }
+  .btn-outline:hover { background: var(--surface2); }
+  .btn-lg { padding: 10px 14px; font-size: 13px; width: 100%; }
+
+  /* ── Cabinet rows in sidebar ── */
+  .cab-list-row { display: flex; align-items: center; gap: 8px; padding: 8px 10px; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; margin-bottom: 6px; cursor: pointer; transition: background .15s, border-color .15s; }
+  .cab-list-row:hover { background: var(--accent-dim); border-color: var(--accent); }
+  .cab-list-row.active { background: var(--accent-dim); border-color: var(--accent); }
+  .cab-list-row .icon { width: 26px; height: 26px; border-radius: 5px; background: var(--surface); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; color: var(--muted); flex-shrink: 0; }
+  .cab-list-row .name { font-size: 12px; font-weight: 600; color: var(--text); }
+  .cab-list-row .meta { font-size: 10px; color: var(--muted); }
+  .cab-list-row .price { font-size: 12px; font-weight: 700; color: var(--text); margin-left: auto; }
+
+  /* ── Mini tables (Cut List sidebar) ── */
+  .mini-table { width: 100%; border-collapse: collapse; font-size: 11px; margin-bottom: 6px; }
+  .mini-table th { text-align: left; padding: 5px 7px; font-size: 9px; color: var(--muted); text-transform: uppercase; font-weight: 700; letter-spacing: 0.4px; background: var(--surface2); border-bottom: 1px solid var(--border); }
+  .mini-table td { padding: 5px 7px; border-bottom: 1px solid var(--border2); }
+  .mini-table .qty { text-align: right; color: var(--muted); }
+  .add-btn { color: var(--muted); font-size: 11px; padding: 6px 8px; cursor: pointer; }
+  .add-btn:hover { color: var(--text); }
+
+  /* ── Cabinet builder main grid ── */
+  .toolbar { padding: 10px 20px; border-bottom: 1px solid var(--border); background: var(--surface); display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+  .toolbar .tabs { display: flex; gap: 4px; }
+  .toolbar .tab { font-size: 12px; color: var(--muted); padding: 6px 12px; border-radius: 5px; cursor: pointer; }
+  .toolbar .tab.active { color: var(--text); background: var(--surface2); font-weight: 600; }
+  .toolbar .grow { flex: 1; }
+  .toolbar .total { font-size: 13px; font-weight: 700; color: var(--text); }
+  .toolbar .total small { color: var(--muted); font-weight: 500; font-size: 11px; margin-left: 6px; }
+
+  .main-scroll { flex: 1; overflow-y: auto; padding: 20px; }
+
+  .cab-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+  .cab-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; box-shadow: var(--shadow); cursor: pointer; transition: box-shadow .15s, border-color .15s; }
+  .cab-card:hover { box-shadow: var(--shadow-md); border-color: var(--accent); }
+  .cab-card .preview { aspect-ratio: 1.4 / 1; background: var(--surface2); display: flex; align-items: center; justify-content: center; padding: 16px; }
+  .cab-card .body { padding: 12px 14px; }
+  .cab-card .name { font-size: 14px; font-weight: 700; color: var(--text); }
+  .cab-card .desc { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .cab-card .stats-row { display: flex; gap: 12px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border2); }
+  .cab-card .stat { font-size: 11px; }
+  .cab-card .stat .lab { color: var(--muted); }
+  .cab-card .stat .val { color: var(--text); font-weight: 600; margin-left: 4px; }
+  .cab-card .price-row { display: flex; justify-content: space-between; align-items: center; padding-top: 8px; margin-top: 8px; border-top: 1px solid var(--border2); }
+  .cab-card .qty { font-size: 11px; color: var(--muted); }
+  .cab-card .price { font-size: 16px; font-weight: 800; color: var(--text); }
+
+  /* ── Cut layout viz ── */
+  .cl-stats { display: flex; gap: 14px; padding: 14px 20px; border-bottom: 1px solid var(--border); background: var(--surface); flex-shrink: 0; }
+  .cl-stat { font-size: 11px; }
+  .cl-stat .lab { color: var(--muted); text-transform: uppercase; font-weight: 700; letter-spacing: 0.4px; font-size: 9px; }
+  .cl-stat .val { font-size: 17px; font-weight: 800; color: var(--text); margin-top: 2px; }
+  .cl-stat .val.warn { color: var(--accent); }
+  .cl-stat .val.good { color: var(--success); }
+
+  .sheet { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 14px; margin-bottom: 14px; }
+  .sheet-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .sheet-head .name { font-size: 12px; font-weight: 700; }
+  .sheet-head .yield { font-size: 11px; color: var(--muted); }
+  .sheet-canvas { aspect-ratio: 2 / 1; background: var(--surface2); border: 1px solid var(--border2); border-radius: 4px; position: relative; overflow: hidden; }
+
+  /* ── Quote / Order list cards ── */
+  .doc-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 18px; margin-bottom: 12px; box-shadow: var(--shadow); cursor: pointer; transition: box-shadow .15s; }
+  .doc-card:hover { box-shadow: var(--shadow-md); border-color: var(--accent); }
+  .doc-card.active { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-dim); }
+  .doc-card .top-row { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+  .doc-card .num { font-size: 14px; font-weight: 800; color: var(--text); }
+  .doc-card .badge { font-size: 9px; font-weight: 700; text-transform: uppercase; padding: 2px 7px; border-radius: 3px; letter-spacing: 0.4px; }
+  .doc-card .badge.draft { background: rgba(0,0,0,0.06); color: var(--text2); }
+  .doc-card .badge.sent { background: rgba(80,140,220,0.15); color: #5b8fc5; }
+  .doc-card .badge.approved { background: rgba(61,153,112,0.14); color: var(--success); }
+  .doc-card .badge.production { background: rgba(232,168,56,0.18); color: var(--accent); }
+  .doc-card .grow { flex: 1; }
+  .doc-card .value { font-size: 16px; font-weight: 800; color: var(--text); }
+  .doc-card .meta-row { display: flex; gap: 14px; font-size: 11px; color: var(--muted); }
+  .doc-card .meta-row b { color: var(--text); font-weight: 600; }
+
+  .pipeline { display: flex; align-items: center; gap: 0; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border2); }
+  .pp-step { display: flex; flex-direction: column; align-items: center; gap: 4px; flex-shrink: 0; }
+  .pp-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--border); border: 2px solid var(--border); }
+  .pp-dot.done { background: var(--success); border-color: var(--success); }
+  .pp-dot.active { background: var(--accent); border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-dim); }
+  .pp-label { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.3px; }
+  .pp-label.done { color: var(--text2); }
+  .pp-label.active { color: var(--text); font-weight: 700; }
+  .pp-line { flex: 1; height: 2px; background: var(--border); margin: 0 4px; align-self: flex-start; margin-top: 6px; }
+  .pp-line.done { background: var(--success); }
+
+  /* ── Doc add CTA ── */
+  .add-cta { padding: 14px 18px; border: 2px dashed var(--border); border-radius: 10px; text-align: center; color: var(--muted); font-size: 12px; cursor: pointer; }
+  .add-cta:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+
+  hr.fade { border: none; height: 1px; background: linear-gradient(to right, transparent, var(--border), transparent); margin: 12px 0; }
+
+  /* ── Section header for ordering ── */
+  .section-h2 { font-size: 16px; font-weight: 700; margin-bottom: 12px; color: var(--text); }
+
+  /* ── SVG cabinet preview helpers ── */
+  .svg-cab { width: 100%; height: 100%; max-width: 130px; max-height: 100px; }
+  .svg-cab .body-rect { fill: #d4ad7a; stroke: #8c6a3f; stroke-width: 2; }
+  .svg-cab .door-rect { fill: #c89060; stroke: #6e4f2a; stroke-width: 1.5; }
+  .svg-cab .drawer-rect { fill: #b88050; stroke: #6e4f2a; stroke-width: 1.5; }
+  .svg-cab .handle { fill: #555; }
+
+  /* ── Cut layout SVG part ── */
+  .part { fill: var(--surface); stroke: var(--accent); stroke-width: 1; opacity: 0.85; }
+  .part-label { font-size: 9px; fill: var(--text); }
+</style>
+</head>
+<body>
+
+<div class="page-h1">Strategy 2 — Gated Sidebar · Full Tab Mockups</div>
+<div class="page-sub">
+  Each affected tab shown in its <b>in-project final state</b> — sidebar gated to the active project, main content showing the actual project work. The sidebar's <code>← Back to projects</code> link returns to the empty/picker state. The same Kitchen Reno project carries across all four tabs.
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!--                       Tab 1 — Cabinet Builder                            -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<div class="tab-section">
+  <div class="tab-section-label">
+    <span class="name">Cabinet Builder</span>
+    <span class="var-tag">IN-PROJECT</span>
+  </div>
+  <div class="app-head">
+    <span class="logo">ProCabinet<span class="badge">APP</span></span>
+    <div class="nav">
+      <span class="nav-tab">Dashboard</span>
+      <span class="nav-tab active">Cabinet</span>
+      <span class="nav-tab">Cut List</span>
+      <span class="nav-tab">Quotes</span>
+      <span class="nav-tab">Orders</span>
+      <span class="nav-tab">Schedule</span>
+      <span class="nav-tab">Stock</span>
+      <span class="nav-tab">Projects</span>
+      <span class="nav-tab">Clients</span>
+    </div>
+    <div class="right">
+      <div class="avatar">A</div>
+    </div>
+  </div>
+  <div class="app-body">
+
+    <div class="app-sidebar wide">
+      <div class="proj-header">
+        <div class="back">← Back to projects</div>
+        <div class="title-row">
+          <span class="title">Kitchen Reno</span>
+          <span class="x" title="Close project">×</span>
+        </div>
+        <div class="meta-row">
+          <span class="badge">Active</span>
+          <span class="meta">3 cabinets · $1,044</span>
+          <span class="pill">Saved</span>
+        </div>
+        <div class="client">Client: <b>Acme Corp</b></div>
+      </div>
+      <div class="sb-tabs">
+        <div class="sb-tab active">Cabinet Builder</div>
+        <div class="sb-tab">My Rates</div>
+      </div>
+      <div class="sb-body">
+        <div class="scoped-section">
+          <div class="sec-label">Add cabinet</div>
+          <div class="smart-input">
+            <input placeholder="Search library or type name..." />
+            <div class="plus">+</div>
+          </div>
+        </div>
+        <div class="scoped-section">
+          <div class="sec-label">In this project</div>
+          <div class="cab-list-row active">
+            <div class="icon">
+              <svg width="16" height="14" viewBox="0 0 16 14" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="1" width="14" height="12" rx="0.5"/><line x1="8" y1="1" x2="8" y2="13"/></svg>
+            </div>
+            <div>
+              <div class="name">Base 600 mm</div>
+              <div class="meta">Body · Doors × 2 · Qty 2</div>
+            </div>
+            <div class="price">$696</div>
+          </div>
+          <div class="cab-list-row">
+            <div class="icon">
+              <svg width="16" height="14" viewBox="0 0 16 14" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="1" width="14" height="12" rx="0.5"/><line x1="8" y1="1" x2="8" y2="13"/></svg>
+            </div>
+            <div>
+              <div class="name">Wall 800 mm</div>
+              <div class="meta">Body · Doors × 2 · Qty 2</div>
+            </div>
+            <div class="price">$824</div>
+          </div>
+          <div class="cab-list-row">
+            <div class="icon">
+              <svg width="16" height="14" viewBox="0 0 16 14" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="1" width="14" height="12" rx="0.5"/><line x1="1" y1="5" x2="15" y2="5"/><line x1="1" y1="9" x2="15" y2="9"/></svg>
+            </div>
+            <div>
+              <div class="name">Drawer 450 mm</div>
+              <div class="meta">Body · Drawers × 3 · Qty 1</div>
+            </div>
+            <div class="price">$284</div>
+          </div>
+          <hr class="fade" />
+          <div style="display:flex;justify-content:space-between;font-size:11px;padding:0 4px">
+            <span style="color:var(--muted)">Total</span>
+            <span style="font-weight:700">$1,804</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="app-main">
+      <div class="toolbar">
+        <div class="tabs">
+          <span class="tab active">Project</span>
+          <span class="tab">Library</span>
+        </div>
+        <div class="grow"></div>
+        <span class="total">$1,804 <small>· 3 cabinets · 14h labour</small></span>
+      </div>
+      <div class="main-scroll">
+        <div class="section-h2">Cabinets in this project</div>
+        <div class="cab-grid">
+
+          <div class="cab-card">
+            <div class="preview">
+              <svg class="svg-cab" viewBox="0 0 130 100">
+                <rect class="body-rect" x="6" y="10" width="118" height="80" />
+                <rect class="door-rect" x="14" y="18" width="48" height="64" />
+                <rect class="door-rect" x="68" y="18" width="48" height="64" />
+                <circle class="handle" cx="58" cy="50" r="2" />
+                <circle class="handle" cx="72" cy="50" r="2" />
+              </svg>
+            </div>
+            <div class="body">
+              <div class="name">Base 600 mm</div>
+              <div class="desc">Standard base · 600 × 720 × 560 mm</div>
+              <div class="stats-row">
+                <div class="stat"><span class="lab">Doors</span><span class="val">2</span></div>
+                <div class="stat"><span class="lab">Shelves</span><span class="val">1</span></div>
+                <div class="stat"><span class="lab">Hinges</span><span class="val">4</span></div>
+              </div>
+              <div class="price-row">
+                <span class="qty">× 2</span>
+                <span class="price">$696</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="cab-card">
+            <div class="preview">
+              <svg class="svg-cab" viewBox="0 0 130 80">
+                <rect class="body-rect" x="6" y="6" width="118" height="68" />
+                <rect class="door-rect" x="14" y="12" width="48" height="56" />
+                <rect class="door-rect" x="68" y="12" width="48" height="56" />
+                <circle class="handle" cx="58" cy="40" r="2" />
+                <circle class="handle" cx="72" cy="40" r="2" />
+              </svg>
+            </div>
+            <div class="body">
+              <div class="name">Wall 800 mm</div>
+              <div class="desc">Wall cabinet · 800 × 720 × 330 mm</div>
+              <div class="stats-row">
+                <div class="stat"><span class="lab">Doors</span><span class="val">2</span></div>
+                <div class="stat"><span class="lab">Shelves</span><span class="val">2</span></div>
+                <div class="stat"><span class="lab">Hinges</span><span class="val">4</span></div>
+              </div>
+              <div class="price-row">
+                <span class="qty">× 2</span>
+                <span class="price">$824</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="cab-card">
+            <div class="preview">
+              <svg class="svg-cab" viewBox="0 0 130 100">
+                <rect class="body-rect" x="6" y="10" width="118" height="80" />
+                <rect class="drawer-rect" x="12" y="16" width="106" height="22" />
+                <rect class="drawer-rect" x="12" y="40" width="106" height="22" />
+                <rect class="drawer-rect" x="12" y="64" width="106" height="22" />
+                <rect class="handle" x="60" y="26" width="10" height="2" />
+                <rect class="handle" x="60" y="50" width="10" height="2" />
+                <rect class="handle" x="60" y="74" width="10" height="2" />
+              </svg>
+            </div>
+            <div class="body">
+              <div class="name">Drawer 450 mm</div>
+              <div class="desc">Drawer unit · 450 × 720 × 560 mm</div>
+              <div class="stats-row">
+                <div class="stat"><span class="lab">Drawers</span><span class="val">3</span></div>
+                <div class="stat"><span class="lab">Slides</span><span class="val">3</span></div>
+                <div class="stat"><span class="lab">Pulls</span><span class="val">3</span></div>
+              </div>
+              <div class="price-row">
+                <span class="qty">× 1</span>
+                <span class="price">$284</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="cab-card" style="border-style:dashed;border-color:var(--border);box-shadow:none">
+            <div class="preview" style="background:var(--surface2);color:var(--muted);font-size:13px">
+              + Add cabinet
+            </div>
+            <div class="body" style="text-align:center;padding:8px 14px 14px">
+              <div style="font-size:11px;color:var(--muted)">From library or custom</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!--                       Tab 2 — Cut List                                   -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<div class="tab-section">
+  <div class="tab-section-label">
+    <span class="name">Cut List</span>
+    <span class="var-tag">IN-PROJECT</span>
+  </div>
+  <div class="app-head">
+    <span class="logo">ProCabinet<span class="badge">APP</span></span>
+    <div class="nav">
+      <span class="nav-tab">Dashboard</span>
+      <span class="nav-tab">Cabinet</span>
+      <span class="nav-tab active">Cut List</span>
+      <span class="nav-tab">Quotes</span>
+      <span class="nav-tab">Orders</span>
+      <span class="nav-tab">Schedule</span>
+      <span class="nav-tab">Stock</span>
+      <span class="nav-tab">Projects</span>
+      <span class="nav-tab">Clients</span>
+    </div>
+    <div class="right">
+      <div class="avatar">A</div>
+    </div>
+  </div>
+  <div class="app-body">
+
+    <div class="app-sidebar wide">
+      <div class="proj-header">
+        <div class="back">← Back to projects</div>
+        <div class="title-row">
+          <span class="title">Kitchen Reno</span>
+          <span class="x" title="Close project">×</span>
+        </div>
+        <div class="meta-row">
+          <span class="badge">Active</span>
+          <span class="meta">12 parts · 4 sheets</span>
+          <span class="pill">Saved</span>
+        </div>
+        <div class="client">Client: <b>Acme Corp</b></div>
+      </div>
+      <div class="sb-body">
+        <div class="scoped-section">
+          <div class="sec-label">Cut Parts (12)</div>
+          <table class="mini-table">
+            <thead><tr><th>Label</th><th>L</th><th>W</th><th class="qty">Qty</th></tr></thead>
+            <tbody>
+              <tr><td>Side L</td><td>720</td><td>560</td><td class="qty">4</td></tr>
+              <tr><td>Top</td><td>568</td><td>560</td><td class="qty">2</td></tr>
+              <tr><td>Bottom</td><td>568</td><td>560</td><td class="qty">2</td></tr>
+              <tr><td>Shelf</td><td>568</td><td>540</td><td class="qty">2</td></tr>
+              <tr><td>Door</td><td>716</td><td>296</td><td class="qty">2</td></tr>
+            </tbody>
+          </table>
+          <div class="add-btn">+ Add part</div>
+        </div>
+        <hr class="fade" />
+        <div class="scoped-section">
+          <div class="sec-label">Project Panels (4)</div>
+          <table class="mini-table">
+            <thead><tr><th>Material</th><th>L</th><th>W</th><th class="qty">Qty</th></tr></thead>
+            <tbody><tr><td>18 mm Birch Ply</td><td>2440</td><td>1220</td><td class="qty">4</td></tr></tbody>
+          </table>
+        </div>
+        <hr class="fade" />
+        <div class="scoped-section">
+          <div class="sec-label">Add to project</div>
+          <div class="smart-input">
+            <input placeholder="Cabinet from library..." />
+            <div class="plus">+</div>
+          </div>
+          <div class="smart-input">
+            <input placeholder="Stock material..." />
+            <div class="plus">+</div>
+          </div>
+        </div>
+      </div>
+      <div class="sb-foot">
+        <button class="btn btn-primary btn-lg">⚡ Optimize Cut Layout</button>
+      </div>
+    </div>
+
+    <div class="app-main">
+      <div class="cl-stats">
+        <div class="cl-stat"><div class="lab">Sheets used</div><div class="val">4</div></div>
+        <div class="cl-stat"><div class="lab">Yield</div><div class="val good">82%</div></div>
+        <div class="cl-stat"><div class="lab">Waste</div><div class="val warn">18%</div></div>
+        <div class="cl-stat"><div class="lab">Material cost</div><div class="val">$418</div></div>
+        <div style="flex:1"></div>
+        <div class="cl-stat" style="text-align:right"><div class="lab">Last optimised</div><div class="val" style="font-size:13px">14:32 today</div></div>
+      </div>
+      <div class="main-scroll">
+        <div class="section-h2">Optimized Layout · 18 mm Birch Ply</div>
+
+        <div class="sheet">
+          <div class="sheet-head">
+            <div class="name">Sheet 1 of 4 · 2440 × 1220 mm</div>
+            <div class="yield"><b style="color:var(--success)">88%</b> yield</div>
+          </div>
+          <div class="sheet-canvas">
+            <svg width="100%" height="100%" viewBox="0 0 488 244" preserveAspectRatio="none">
+              <rect class="part" x="6" y="6" width="144" height="112" /><text class="part-label" x="14" y="22">Side L</text>
+              <rect class="part" x="156" y="6" width="144" height="112" /><text class="part-label" x="164" y="22">Side L</text>
+              <rect class="part" x="306" y="6" width="113" height="112" /><text class="part-label" x="314" y="22">Top</text>
+              <rect class="part" x="6" y="124" width="113" height="112" /><text class="part-label" x="14" y="140">Bottom</text>
+              <rect class="part" x="125" y="124" width="113" height="108" /><text class="part-label" x="133" y="140">Shelf</text>
+              <rect class="part" x="244" y="124" width="143" height="59" /><text class="part-label" x="252" y="140">Door</text>
+              <rect class="part" x="244" y="189" width="143" height="43" /><text class="part-label" x="252" y="205">Door</text>
+            </svg>
+          </div>
+        </div>
+
+        <div class="sheet">
+          <div class="sheet-head">
+            <div class="name">Sheet 2 of 4 · 2440 × 1220 mm</div>
+            <div class="yield"><b style="color:var(--success)">79%</b> yield</div>
+          </div>
+          <div class="sheet-canvas">
+            <svg width="100%" height="100%" viewBox="0 0 488 244" preserveAspectRatio="none">
+              <rect class="part" x="6" y="6" width="144" height="112" /><text class="part-label" x="14" y="22">Side L</text>
+              <rect class="part" x="156" y="6" width="144" height="112" /><text class="part-label" x="164" y="22">Side L</text>
+              <rect class="part" x="306" y="6" width="113" height="112" /><text class="part-label" x="314" y="22">Top</text>
+              <rect class="part" x="6" y="124" width="113" height="112" /><text class="part-label" x="14" y="140">Bottom</text>
+              <rect class="part" x="125" y="124" width="113" height="108" /><text class="part-label" x="133" y="140">Shelf</text>
+            </svg>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!--                       Tab 3 — Quotes                                     -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<div class="tab-section">
+  <div class="tab-section-label">
+    <span class="name">Quotes</span>
+    <span class="var-tag">IN-PROJECT</span>
+  </div>
+  <div class="app-head">
+    <span class="logo">ProCabinet<span class="badge">APP</span></span>
+    <div class="nav">
+      <span class="nav-tab">Dashboard</span>
+      <span class="nav-tab">Cabinet</span>
+      <span class="nav-tab">Cut List</span>
+      <span class="nav-tab active">Quotes</span>
+      <span class="nav-tab">Orders</span>
+      <span class="nav-tab">Schedule</span>
+      <span class="nav-tab">Stock</span>
+      <span class="nav-tab">Projects</span>
+      <span class="nav-tab">Clients</span>
+    </div>
+    <div class="right">
+      <div class="avatar">A</div>
+    </div>
+  </div>
+  <div class="app-body">
+
+    <div class="app-sidebar wide">
+      <div class="proj-header">
+        <div class="back">← Back to projects</div>
+        <div class="title-row">
+          <span class="title">Kitchen Reno</span>
+          <span class="x" title="Close project">×</span>
+        </div>
+        <div class="meta-row">
+          <span class="badge">Active</span>
+          <span class="meta">Q-0042 · Draft</span>
+          <span class="pill">Saved</span>
+        </div>
+        <div class="client">Client: <b>Acme Corp</b></div>
+      </div>
+      <div class="sb-body">
+        <div class="scoped-section">
+          <div class="sec-label">Quote setup</div>
+          <label style="display:block;font-size:10px;color:var(--muted);margin-bottom:3px;font-weight:700;text-transform:uppercase">Status</label>
+          <select class="field"><option>Draft</option><option>Sent</option><option>Approved</option></select>
+          <label style="display:block;font-size:10px;color:var(--muted);margin-bottom:3px;font-weight:700;text-transform:uppercase">Quote #</label>
+          <input class="field" value="Q-0042" />
+        </div>
+        <div class="scoped-section">
+          <div class="sec-label">Line Items (5)</div>
+          <div style="font-size:9px;font-weight:700;text-transform:uppercase;color:var(--muted);letter-spacing:0.5px;padding:6px 0 3px">Cabinets (3)</div>
+          <div class="cab-list-row">
+            <div><div class="name">Base 600 mm × 2</div><div class="meta">From Cabinet Builder</div></div>
+            <div class="price">$696</div>
+          </div>
+          <div class="cab-list-row">
+            <div><div class="name">Wall 800 mm × 2</div><div class="meta">From Cabinet Builder</div></div>
+            <div class="price">$824</div>
+          </div>
+          <div style="font-size:9px;font-weight:700;text-transform:uppercase;color:var(--muted);letter-spacing:0.5px;padding:6px 0 3px">Items (1)</div>
+          <div class="cab-list-row">
+            <div><div class="name">Hinges (soft-close)</div><div class="meta">qty 24 · $2.40 ea</div></div>
+            <div class="price">$57</div>
+          </div>
+          <div style="font-size:9px;font-weight:700;text-transform:uppercase;color:var(--muted);letter-spacing:0.5px;padding:6px 0 3px">Labour (1)</div>
+          <div class="cab-list-row">
+            <div><div class="name">Install</div><div class="meta">8h · $80/h</div></div>
+            <div class="price">$640</div>
+          </div>
+          <div class="add-btn">+ Add line item</div>
+        </div>
+        <div class="scoped-section">
+          <div class="sec-label">Pricing</div>
+          <div style="display:flex;gap:6px">
+            <div style="flex:1">
+              <label style="display:block;font-size:10px;color:var(--muted);margin-bottom:3px;font-weight:700;text-transform:uppercase">Markup %</label>
+              <input class="field" value="20" />
+            </div>
+            <div style="flex:1">
+              <label style="display:block;font-size:10px;color:var(--muted);margin-bottom:3px;font-weight:700;text-transform:uppercase">Tax %</label>
+              <input class="field" value="13" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="app-main">
+      <div class="toolbar">
+        <span style="font-size:13px;font-weight:700">Quotes for Kitchen Reno</span>
+        <div class="grow"></div>
+        <button class="btn btn-outline">Export PDF</button>
+        <button class="btn btn-primary">+ New Quote</button>
+      </div>
+      <div class="main-scroll">
+
+        <div class="doc-card active">
+          <div class="top-row">
+            <span class="num">Q-0042</span>
+            <span class="badge draft">Draft</span>
+            <div class="grow"></div>
+            <span class="value">$4,820</span>
+          </div>
+          <div class="meta-row">
+            <span><b>Created:</b> 14 May 2026</span>
+            <span><b>Items:</b> 5 lines</span>
+            <span><b>Markup:</b> 20% · <b>Tax:</b> 13%</span>
+            <span><b>Status:</b> editing in sidebar</span>
+          </div>
+          <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border2);display:flex;gap:8px;align-items:center">
+            <span style="font-size:11px;color:var(--muted)">→ Currently editing</span>
+            <span style="flex:1"></span>
+            <button class="btn btn-outline">Convert to Order</button>
+          </div>
+        </div>
+
+        <div class="doc-card">
+          <div class="top-row">
+            <span class="num">Q-0038</span>
+            <span class="badge approved">Approved</span>
+            <div class="grow"></div>
+            <span class="value">$3,940</span>
+          </div>
+          <div class="meta-row">
+            <span><b>Created:</b> 28 Apr 2026</span>
+            <span><b>Items:</b> 4 lines</span>
+            <span><b>Approved:</b> 02 May</span>
+            <span style="color:var(--success);font-weight:600">✓ Order #1042 created</span>
+          </div>
+        </div>
+
+        <div class="add-cta" style="margin-top:8px">+ Add another quote for this project</div>
+
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!--                       Tab 4 — Orders                                     -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<div class="tab-section">
+  <div class="tab-section-label">
+    <span class="name">Orders</span>
+    <span class="var-tag">IN-PROJECT</span>
+  </div>
+  <div class="app-head">
+    <span class="logo">ProCabinet<span class="badge">APP</span></span>
+    <div class="nav">
+      <span class="nav-tab">Dashboard</span>
+      <span class="nav-tab">Cabinet</span>
+      <span class="nav-tab">Cut List</span>
+      <span class="nav-tab">Quotes</span>
+      <span class="nav-tab active">Orders</span>
+      <span class="nav-tab">Schedule</span>
+      <span class="nav-tab">Stock</span>
+      <span class="nav-tab">Projects</span>
+      <span class="nav-tab">Clients</span>
+    </div>
+    <div class="right">
+      <div class="avatar">A</div>
+    </div>
+  </div>
+  <div class="app-body">
+
+    <div class="app-sidebar wide">
+      <div class="proj-header">
+        <div class="back">← Back to projects</div>
+        <div class="title-row">
+          <span class="title">Kitchen Reno</span>
+          <span class="x" title="Close project">×</span>
+        </div>
+        <div class="meta-row">
+          <span class="badge">Active</span>
+          <span class="meta">#1042 · Production</span>
+          <span class="pill">Saved</span>
+        </div>
+        <div class="client">Client: <b>Acme Corp</b></div>
+      </div>
+      <div class="sb-body">
+        <div class="scoped-section">
+          <div class="sec-label">Order setup</div>
+          <label style="display:block;font-size:10px;color:var(--muted);margin-bottom:3px;font-weight:700;text-transform:uppercase">Status</label>
+          <select class="field"><option>Production</option><option>Confirmed</option><option>Delivery</option></select>
+          <label style="display:block;font-size:10px;color:var(--muted);margin-bottom:3px;font-weight:700;text-transform:uppercase">Due Date</label>
+          <input class="field" type="date" value="2026-05-22" />
+        </div>
+        <div class="scoped-section">
+          <div class="sec-label">Schedule</div>
+          <div style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:10px;font-size:11px">
+            <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="color:var(--muted)">Production start</span><b>15 May</b></div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="color:var(--muted)">Estimated end</span><b>21 May</b></div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="color:var(--muted)">Due</span><b>22 May</b></div>
+            <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">Total hours</span><b>14h + 1.4h pkg</b></div>
+          </div>
+        </div>
+        <div class="scoped-section">
+          <div class="sec-label">Line Items (5)</div>
+          <div class="cab-list-row">
+            <div><div class="name">Base 600 mm × 2</div><div class="meta">From Cabinet Builder</div></div>
+            <div class="price">$696</div>
+          </div>
+          <div class="cab-list-row">
+            <div><div class="name">Wall 800 mm × 2</div><div class="meta">From Cabinet Builder</div></div>
+            <div class="price">$824</div>
+          </div>
+          <div class="cab-list-row">
+            <div><div class="name">Hinges (soft-close)</div><div class="meta">qty 24</div></div>
+            <div class="price">$57</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="app-main">
+      <div class="toolbar">
+        <span style="font-size:13px;font-weight:700">Orders for Kitchen Reno</span>
+        <div class="grow"></div>
+        <button class="btn btn-outline">Work Order</button>
+        <button class="btn btn-outline">Invoice</button>
+      </div>
+      <div class="main-scroll">
+
+        <div class="doc-card active">
+          <div class="top-row">
+            <span class="num">Order #1042</span>
+            <span class="badge production">Production</span>
+            <div class="grow"></div>
+            <span class="value">$4,820</span>
+          </div>
+          <div class="meta-row">
+            <span><b>From quote:</b> Q-0038 (Approved 02 May)</span>
+            <span><b>Items:</b> 5 lines</span>
+            <span><b>Production:</b> 15–21 May</span>
+            <span><b>Due:</b> 22 May</span>
+          </div>
+          <div class="pipeline">
+            <div class="pp-step"><div class="pp-dot done"></div><div class="pp-label done">Quote</div></div>
+            <div class="pp-line done"></div>
+            <div class="pp-step"><div class="pp-dot done"></div><div class="pp-label done">Confirmed</div></div>
+            <div class="pp-line done"></div>
+            <div class="pp-step"><div class="pp-dot active"></div><div class="pp-label active">Production</div></div>
+            <div class="pp-line"></div>
+            <div class="pp-step"><div class="pp-dot"></div><div class="pp-label">Delivery</div></div>
+            <div class="pp-line"></div>
+            <div class="pp-step"><div class="pp-dot"></div><div class="pp-label">Done</div></div>
+          </div>
+        </div>
+
+        <div class="add-cta" style="margin-top:8px">+ Create another order for this project</div>
+
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</body>
+</html>

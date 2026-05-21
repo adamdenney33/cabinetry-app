@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Option 4 — Pipeline Card</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background:#f2f2f2; color:#111; padding:24px; }
+
+  .title-bar { font-size:11px; font-weight:700; color:#888; text-transform:uppercase; letter-spacing:1px; margin-bottom:16px; }
+  .title-bar span { color:#e8a838; }
+
+  .summary { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:16px; }
+  .stat { background:#fff; border:1px solid #e0e0e0; border-radius:10px; padding:12px 16px; }
+  .stat .lbl { font-size:10px; color:#888; text-transform:uppercase; font-weight:700; letter-spacing:.5px; }
+  .stat .val { font-size:22px; font-weight:800; color:#111; margin-top:2px; }
+  .stat .sub { font-size:11px; color:#888; margin-top:1px; }
+  .stat .val.gold { color:#e8a838; }
+
+  .toolbar { display:flex; gap:8px; align-items:center; margin-bottom:14px; flex-wrap:wrap; }
+  .search { padding:7px 12px; border:1px solid #e0e0e0; border-radius:8px; font-size:12px; width:240px; background:#fff; }
+  .pill { font-size:11px; font-weight:600; padding:5px 12px; border-radius:20px; border:1px solid #e0e0e0; background:#fff; color:#444; cursor:pointer; }
+  .pill.active { background:#111; color:#fff; border-color:#111; }
+  .sort { margin-left:auto; font-size:11px; padding:5px 10px; border:1px solid #e0e0e0; border-radius:8px; background:#fff; color:#444; cursor:pointer; }
+
+  .list { display:flex; flex-direction:column; gap:10px; }
+
+  .card {
+    background:#fff; border:1px solid #e0e0e0; border-radius:12px;
+    padding:14px 18px;
+    box-shadow:0 1px 4px rgba(0,0,0,.04);
+    transition: box-shadow .12s, border-color .12s;
+  }
+  .card:hover { box-shadow:0 4px 14px rgba(0,0,0,.07); border-color:#d4d4d4; }
+
+  .head { display:flex; align-items:center; gap:12px; margin-bottom:14px; }
+  .pname { font-size:15px; font-weight:700; color:#111; cursor:pointer; }
+  .pname:hover { color:#e8a838; }
+  .pclient { font-size:12px; color:#666; }
+  .pclient::before { content:'·'; margin-right:6px; color:#ccc; }
+  .meta { font-size:11px; color:#999; }
+  .meta::before { content:'·'; margin:0 6px; color:#ccc; }
+
+  .badge { display:inline-flex; font-size:10px; font-weight:700; padding:3px 9px; border-radius:20px; text-transform:uppercase; letter-spacing:.4px; }
+  .b-active { background:rgba(80,140,220,.12); color:#3878c4; }
+  .b-hold { background:#f0f0f0; color:#666; }
+  .b-done { background:rgba(61,153,112,.14); color:#2c7956; }
+
+  .total { margin-left:auto; font-size:14px; font-weight:800; color:#111; font-variant-numeric:tabular-nums; }
+  .total.zero { color:#bbb; font-weight:500; }
+
+  /* PIPELINE */
+  .pipe {
+    display:grid;
+    grid-template-columns: 1fr 24px 1fr 24px 1fr 24px 1fr;
+    align-items:stretch;
+    gap:0;
+  }
+  .stage {
+    border:1.5px solid #e8e8e8;
+    border-radius:9px;
+    padding:9px 12px;
+    background:#fff;
+    cursor:pointer;
+    transition: all .15s;
+    display:flex; align-items:center; gap:10px;
+    position:relative;
+  }
+  .stage:hover { border-color:#0d9488; background:#f0fbf9; }
+  .stage.empty {
+    border-style:dashed;
+    border-color:#d4d4d4;
+    background:#fafafa;
+  }
+  .stage.empty:hover { border-color:#e8a838; background:#fff8e7; }
+
+  .stage-icon {
+    width:28px; height:28px; border-radius:6px;
+    background:#f0f0f0; color:#888;
+    display:flex; align-items:center; justify-content:center;
+    flex-shrink:0;
+    transition: all .15s;
+  }
+  .stage-icon svg { width:14px; height:14px; }
+  .stage.has .stage-icon { background:rgba(13,148,136,.15); color:#0d9488; }
+  .stage.empty:hover .stage-icon { background:rgba(232,168,56,.18); color:#e8a838; }
+
+  .stage-body { flex:1; min-width:0; }
+  .stage-label { font-size:10px; color:#888; text-transform:uppercase; font-weight:700; letter-spacing:.4px; }
+  .stage-val { font-size:13px; font-weight:700; color:#111; margin-top:1px; }
+  .stage.empty .stage-val { color:#aaa; font-weight:600; }
+  .stage-sub { font-size:10px; color:#888; }
+
+  .stage-cta {
+    font-size:14px; font-weight:700;
+    color:#aaa;
+    margin-left:auto; padding-left:6px;
+    transition: color .15s;
+  }
+  .stage.empty .stage-cta { color:#0d9488; font-size:13px; }
+  .stage.empty:hover .stage-cta { color:#e8a838; }
+  .stage.has .stage-cta { font-size:13px; }
+
+  /* Connector arrows */
+  .arrow {
+    display:flex; align-items:center; justify-content:center;
+    color:#d4d4d4;
+    font-size:14px;
+    user-select:none;
+  }
+  .arrow.done { color:#0d9488; }
+
+  /* Status indicator on stage corner */
+  .stage-status {
+    position:absolute; top:6px; right:6px;
+    width:6px; height:6px; border-radius:50%;
+    background:#3d9970;
+  }
+  .stage.empty .stage-status { display:none; }
+
+  .legend { font-size:10px; color:#aaa; margin-top:14px; padding-left:4px; }
+  .legend .lk { color:#0d9488; font-weight:600; }
+  .legend .lk2 { color:#e8a838; font-weight:600; }
+</style>
+</head>
+<body>
+
+<div class="title-bar"><span>Option 4</span> — Project cards with horizontal pipeline</div>
+
+<div class="summary">
+  <div class="stat"><div class="lbl">Projects</div><div class="val">6</div><div class="sub">4 active · 1 on hold · 1 complete</div></div>
+  <div class="stat"><div class="lbl">Open Quotes</div><div class="val">6</div><div class="sub">across 5 projects</div></div>
+  <div class="stat"><div class="lbl">Quote Value</div><div class="val gold">$170,250</div><div class="sub">5 projects with active quotes</div></div>
+  <div class="stat"><div class="lbl">Booked Orders</div><div class="val">$117,800</div><div class="sub">3 active · 0 pending</div></div>
+</div>
+
+<div class="toolbar">
+  <input class="search" placeholder="Search projects…">
+  <button class="pill active">All (6)</button>
+  <button class="pill">Active (4)</button>
+  <button class="pill">On Hold (1)</button>
+  <button class="pill">Complete (1)</button>
+  <select class="sort"><option>Sort: Newest</option><option>Name</option><option>Client</option><option>Value</option></select>
+</div>
+
+<div class="list">
+
+  <!-- Project 1: Kitchen Remodel — has cab/cl/q, no order -->
+  <div class="card">
+    <div class="head">
+      <span class="pname">Kitchen Remodel</span>
+      <span class="pclient">Smith</span>
+      <span class="badge b-active">Active</span>
+      <span class="meta">Created Apr 18</span>
+      <span class="total">$42,800</span>
+    </div>
+    <div class="pipe">
+      <div class="stage has">
+        <div class="stage-icon"><svg viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M2 6h12M2 10h12" stroke="currentColor" stroke-width="1.6"/></svg></div>
+        <div class="stage-body"><div class="stage-label">Cabinets</div><div class="stage-val">8 designs</div></div>
+        <div class="stage-cta">›</div>
+        <div class="stage-status"></div>
+      </div>
+      <div class="arrow done">→</div>
+      <div class="stage has">
+        <div class="stage-icon"><svg viewBox="0 0 16 16"><circle cx="4" cy="11.5" r="2" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="11.5" r="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M5.5 10L13 2M10.5 10L3 2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></div>
+        <div class="stage-body"><div class="stage-label">Cut List</div><div class="stage-val">1 plan</div></div>
+        <div class="stage-cta">›</div>
+        <div class="stage-status"></div>
+      </div>
+      <div class="arrow done">→</div>
+      <div class="stage has">
+        <div class="stage-icon"><svg viewBox="0 0 16 16"><path d="M3 1.5h7l3 3v10H3z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M5 6h6M5 9h6M5 12h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></div>
+        <div class="stage-body"><div class="stage-label">Quotes</div><div class="stage-val">2 sent</div></div>
+        <div class="stage-cta">›</div>
+        <div class="stage-status"></div>
+      </div>
+      <div class="arrow">→</div>
+      <div class="stage empty">
+        <div class="stage-icon"><svg viewBox="0 0 16 16"><path d="M2.5 4.5l5.5-2.5 5.5 2.5v7L8 14 2.5 11.5z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M2.5 4.5L8 7l5.5-2.5M8 7v7" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg></div>
+        <div class="stage-body"><div class="stage-label">Order</div><div class="stage-val">Not yet</div></div>
+        <div class="stage-cta">+ New</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Project 2: Office Built-ins — full pipeline -->
+  <div class="card">
+    <div class="head">
+      <span class="pname">Office Built-ins</span>
+      <span class="pclient">Acme Corp</span>
+      <span class="badge b-active">Active</span>
+      <span class="meta">Created Mar 22</span>
+      <span class="total">$68,400</span>
+    </div>
+    <div class="pipe">
+      <div class="stage has">
+        <div class="stage-icon"><svg viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M2 6h12M2 10h12" stroke="currentColor" stroke-width="1.6"/></svg></div>
+        <div class="stage-body"><div class="stage-label">Cabinets</div><div class="stage-val">12 designs</div></div>
+        <div class="stage-cta">›</div>
+        <div class="stage-status"></div>
+      </div>
+      <div class="arrow done">→</div>
+      <div class="stage has">
+        <div class="stage-icon"><svg viewBox="0 0 16 16"><circle cx="4" cy="11.5" r="2" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="11.5" r="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M5.5 10L13 2M10.5 10L3 2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></div>
+        <div class="stage-body"><div class="stage-label">Cut List</div><div class="stage-val">1 plan</div></div>
+        <div class="stage-cta">›</div>
+        <div class="stage-status"></div>
+      </div>
+      <div class="arrow done">→</div>
+      <div class="stage has">
+        <div class="stage-icon"><svg viewBox="0 0 16 16"><path d="M3 1.5h7l3 3v10H3z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M5 6h6M5 9h6M5 12h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></div>
+        <div class="stage-body"><div class="stage-label">Quote</div><div class="stage-val">1 accepted</div></div>
+        <div class="stage-cta">›</div>
+        <div class="stage-status"></div>
+      </div>
+      <div class="arrow done">→</div>
+      <div class="stage has">
+        <div class="stage-icon"><svg viewBox="0 0 16 16"><path d="M2.5 4.5l5.5-2.5 5.5 2.5v7L8 14 2.5 11.5z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M2.5 4.5L8 7l5.5-2.5M8 7v7" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg></div>
+        <div class="stage-body"><div class="stage-label">Order</div><div class="stage-val">In progress</div></div>
+        <div class="stage-cta">›</div>
+        <div class="stage-status"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Project 3: Master Bath — partial -->
+  <div class="card">
+    <div class="head">
+      <span class="pname">Master Bath</span>
+      <span class="pclient">Garcia</span>
+      <span class="badge b-active">Active</span>
+      <span class="meta">Created Apr 12</span>
+      <span class="total">$18,200</span>
+    </div>
+    <div class="pipe">
+      <div class="stage has">
+        <div class="stage-icon"><svg viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M2 6h12M2 10h12" stroke="currentColor" stroke-width="1.6"/></svg></div>
+        <div class="stage-body"><div class="stage-label">Cabinets</div><div class="stage-val">4 designs</div></div>
+        <div class="stage-cta">›</div>
+        <div class="stage-status"></div>
+      </div>
+      <div class="arrow">→</div>
+      <div class="stage empty">
+        <div class="stage-icon"><svg viewBox="0 0 16 16"><circle cx="4" cy="11.5" r="2" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="11.5" r="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M5.5 10L13 2M10.5 10L3 2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></div>
+        <div class="stage-body"><div class="stage-label">Cut List</div><div class="stage-val">Not yet</div></div>
+        <div class="stage-cta">+ New</div>
+      </div>
+      <div class="arrow done">→</div>
+      <div class="stage has">
+        <div class="stage-icon"><svg viewBox="0 0 16 16"><path d="M3 1.5h7l3 3v10H3z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M5 6h6M5 9h6M5 12h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></div>
+        <div class="stage-body"><div class="stage-label">Quote</div><div class="stage-val">1 draft</div></div>
+        <div class="stage-cta">›</div>
+        <div class="stage-status"></div>
+      </div>
+      <div class="arrow">→</div>
+      <div class="stage empty">
+        <div class="stage-icon"><svg viewBox="0 0 16 16"><path d="M2.5 4.5l5.5-2.5 5.5 2.5v7L8 14 2.5 11.5z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M2.5 4.5L8 7l5.5-2.5M8 7v7" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg></div>
+        <div class="stage-body"><div class="stage-label">Order</div><div class="stage-val">Not yet</div></div>
+        <div class="stage-cta">+ New</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Project 4: Bar Cabinet — empty pipeline -->
+  <div class="card">
+    <div class="head">
+      <span class="pname">Bar Cabinet</span>
+      <span class="pclient">Lee</span>
+      <span class="badge b-hold">On Hold</span>
+      <span class="meta">Created May 1</span>
+      <span class="total zero">—</span>
+    </div>
+    <div class="pipe">
+      <div class="stage empty">
+        <div class="stage-icon"><svg viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M2 6h12M2 10h12" stroke="currentColor" stroke-width="1.6"/></svg></div>
+        <div class="stage-body"><div class="stage-label">Cabinets</div><div class="stage-val">Not yet</div></div>
+        <div class="stage-cta">+ New</div>
+      </div>
+      <div class="arrow">→</div>
+      <div class="stage empty">
+        <div class="stage-icon"><svg viewBox="0 0 16 16"><circle cx="4" cy="11.5" r="2" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="11.5" r="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M5.5 10L13 2M10.5 10L3 2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></div>
+        <div class="stage-body"><div class="stage-label">Cut List</div><div class="stage-val">Not yet</div></div>
+        <div class="stage-cta">+ New</div>
+      </div>
+      <div class="arrow">→</div>
+      <div class="stage empty">
+        <div class="stage-icon"><svg viewBox="0 0 16 16"><path d="M3 1.5h7l3 3v10H3z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M5 6h6M5 9h6M5 12h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></div>
+        <div class="stage-body"><div class="stage-label">Quote</div><div class="stage-val">Not yet</div></div>
+        <div class="stage-cta">+ New</div>
+      </div>
+      <div class="arrow">→</div>
+      <div class="stage empty">
+        <div class="stage-icon"><svg viewBox="0 0 16 16"><path d="M2.5 4.5l5.5-2.5 5.5 2.5v7L8 14 2.5 11.5z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M2.5 4.5L8 7l5.5-2.5M8 7v7" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg></div>
+        <div class="stage-body"><div class="stage-label">Order</div><div class="stage-val">Not yet</div></div>
+        <div class="stage-cta">+ New</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="legend">Each project shows a 4-stage pipeline: Cabinets → Cut List → Quote → Order. <span class="lk">Filled stages</span> drill into the existing items; <span class="lk2">empty dashed stages</span> create the next artifact with this project preselected. The connector arrow brightens once a stage is complete.</div>
+
+</body>
+</html>

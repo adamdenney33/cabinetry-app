@@ -27,7 +27,7 @@ Companion docs: `SPEC.md` (refactor history), `SCHEMA.md` (DB schema),
 Two parallel productions of the same 30-second narrative (Hook → Open
 Builder → Spec Scroll → Live Price → Save to Library → Close), shipped
 silent so they autoplay on social. Full spec at
-`marketing/cabinet-builder-reel-spec.md`.
+`marketing/specs/cabinet-builder-reel-spec.md`.
 
 - ✅ **Vertical master** (`CabinetBuilderReel`, 1080×1920, 900 frames) —
   music-driven IG Reels / TikTok / Shorts cut. Output at
@@ -402,7 +402,7 @@ No schema migration. `npm run typecheck` clean.
 
 Plan: `~/.claude/plans/i-want-the-business-rustling-aurora.md`.
 
-- ✅ **Mockup** — `mockups/pdf-branding-options.html` shows the three branding intensities side-by-side (free vs Pro pairs). Variant 2 (footer band) chosen as default.
+- ✅ **Mockup** — `mockups/pdf/pdf-branding-options.html` shows the three branding intensities side-by-side (free vs Pro pairs). Variant 2 (footer band) chosen as default.
 - ✅ **Migration** — `ALTER TABLE business_info ADD COLUMN IF NOT EXISTS bank_details text;` applied via Supabase MCP `apply_migration` on 2026-05-14 (migration name `add_bank_details_to_business_info`). `src/database.types.ts` regenerated; `business_info.bank_details: string | null` now visible in the generated Row/Insert/Update types. `get_advisors` clean (only pre-existing leaked-password-protection warning, unrelated).
 - ✅ **Popup** — `_openBusinessDetailsPopup` in `src/business.js` replaces the inline form at `index.html:141-153`. Logo upload + name + address + phone/email row + ABN + bank-details textarea.
 - ✅ **Logo on every PDF** — new `_drawBizHeader` helper at top of `src/cutlist.js` wires logo + reordered caption (name → address → phone → email) into all 5 PDF builders. Logo replaces the big bold business-name when present.
@@ -413,9 +413,9 @@ Plan: `~/.claude/plans/i-want-the-business-rustling-aurora.md`.
 ### Remove Projects entity · adopt library-first / Cabinet-IS-Quote ✅ Done 2026-05-13
 
 Foundational refactor toward the new architecture designed across
-`mockups/option-d-flat-files-flow.html` (flat files, no project hub),
-`mockups/option-e-cabinet-is-quote-flow.html` (Cabinet view = a view of Quote
-with `status='designing'`), and `mockups/top-level-architecture-flow.html`
+`mockups/architecture/option-d-flat-files-flow.html` (flat files, no project hub),
+`mockups/architecture/option-e-cabinet-is-quote-flow.html` (Cabinet view = a view of Quote
+with `status='designing'`), and `mockups/architecture/top-level-architecture-flow.html`
 (library tier with 3 tables + tags; client tier; derived views). Client
 groups everything; library items snapshot into quotes via attribution chip.
 
@@ -536,7 +536,7 @@ entry uses the new format already.
 
 ### Orders / Quotes editor — mockup-J port 🚧 In Progress 2026-05-11
 
-Second-pass redesign on top of the 2026-05-10 mockup-B work. Implements the user's refined J mockup (`mockups/orders-redesign-J-column-toggles.html` + `mockups/quotes-redesign-J-column-toggles.html`) — new `.ed-head` header (back arrow + tab icon + editable order# prefix + project name + clickable status badge), column-toggle pills (Discount/Hours/Stock), split `+ Cabinet` / `+ Item` add buttons, stock smart-library + per-order `stock_markup` input, divider above Pricing, footer buttons dropped. Stock is a 3rd `line_kind` with the same per-line math as items; its materials get re-priced via `stock_markup` at totals time.
+Second-pass redesign on top of the 2026-05-10 mockup-B work. Implements the user's refined J mockup (`mockups/orders/orders-redesign-J-column-toggles.html` + `mockups/quotes/quotes-redesign-J-column-toggles.html`) — new `.ed-head` header (back arrow + tab icon + editable order# prefix + project name + clickable status badge), column-toggle pills (Discount/Hours/Stock), split `+ Cabinet` / `+ Item` add buttons, stock smart-library + per-order `stock_markup` input, divider above Pricing, footer buttons dropped. Stock is a 3rd `line_kind` with the same per-line math as items; its materials get re-priced via `stock_markup` at totals time.
 
 **Code changes (in this commit):**
 - New `.ed-head` layout in both editors. Status moves to a `<select>` styled as a colored badge (`data-status` drives the bg). Order# is a small inline input prefixed by a `#` span; quote# similarly prefixed by `#Q-` (and re-prepended on save).
@@ -563,7 +563,7 @@ Second-pass redesign on top of the 2026-05-10 mockup-B work. Implements the user
 
 ### Orders / Quotes editor cleanup pass (mockup B) ✅ Done 2026-05-10
 
-Four-point UI cleanup on the order + quote editor sidebars, ported from the user's `mockups/orders-redesign-B-zebra-cutlist.html` mockup. Plan at `~/.claude/plans/clean-up-orders-dapper-yao.md`. **Superseded by the 2026-05-11 mockup-J port above** — that pass replaced the line-items table renderer, dropped the order-level Markup chip, and added column-toggle pills + stock kind / library / per-order stock_markup. The B-mockup migration (`20260510233952_add_discount_columns.sql`) was applied alongside the J migration this session.
+Four-point UI cleanup on the order + quote editor sidebars, ported from the user's `mockups/orders/orders-redesign-B-zebra-cutlist.html` mockup. Plan at `~/.claude/plans/clean-up-orders-dapper-yao.md`. **Superseded by the 2026-05-11 mockup-J port above** — that pass replaced the line-items table renderer, dropped the order-level Markup chip, and added column-toggle pills + stock kind / library / per-order stock_markup. The B-mockup migration (`20260510233952_add_discount_columns.sql`) was applied alongside the J migration this session.
 
 **Code changes (in this commit):**
 - **Pricing chips** — `Markup · Tax · Disc` on one line via new `.rates-chips` / `.rate-chip` / `.chip-label` / `.chip-unit` CSS (replaces the stacked `.pf-row-inline` block). New `po-discount` + `pq-discount` inputs wired to totals re-render + dirty flag.
@@ -1011,11 +1011,11 @@ analytics widgets) available to all users.
   - Chrome, Safari, Firefox, Edge — desktop
   - iOS Safari, Android Chrome — mobile
   - Run after Stripe + free-tier limits land
-  - Document rough edges in `SMOKE_TESTS.md`
+  - Document rough edges in `docs/SMOKE_TESTS.md`
 
 - **P.5 — End-to-end signup → upgrade → cancel test**
   - Run after S.8 in production environment
-  - Document in `SMOKE_TESTS.md`
+  - Document in `docs/SMOKE_TESTS.md`
 
 ### Pre-Launch Content
 
@@ -1180,7 +1180,7 @@ From `Building Docs/ProCabinet_Outstanding_Features.docx`. Run before launch.
   (Edit / Cut List / Reorder).
   - Line weights match V2 mockup: outer `1px var(--border)`, header bottom
     `1px var(--border)` — same token as summary cards / inputs / pills, so
-    other tabs unify when we redo them. (Mockups in `mockups/option-d1-*`.)
+    other tabs unify when we redo them. (Mockups in `mockups/library/layouts/option-d1-*`.)
   - Themed via existing `var(--surface)` / `var(--border)` / `var(--text)` /
     `var(--success)` / `var(--danger)` so dark mode works automatically.
   - Per-user collapsed group state persisted to
@@ -1195,7 +1195,7 @@ From `Building Docs/ProCabinet_Outstanding_Features.docx`. Run before launch.
   Replace the thin project card in `renderProjectsMain()` (`src/clients.js:274`)
   with a per-project always-visible 4-button action strip (Cabinets · Cut Lists
   · Quotes · Orders) so the project line connects outward to the producing
-  tabs. Mockup approved: `mockups/option-3-row-action-strip.html`.
+  tabs. Mockup approved: `mockups/library/row-interactions/option-3-row-action-strip.html`.
   - Each button: icon + label + count (when in-memory) + `+` segment.
   - `+` segment → `_newCabinetForProject` / `_newCutListForProject` /
     `_newQuoteForProject` / `_newOrderForProject` — each calls
@@ -1362,7 +1362,7 @@ resolutions that closed during the pre-launch refactor. Full history in
 | Types (JSDoc / TS / neither) | **JSDoc + `checkJs:true` + `strict:true`** across all 19 src files. Stayed `.js`; `.ts` rename in Backlog → Deferred. |
 | Migration approach (big-bang or phased) | **Phased.** Schema → migration code → reads → CSS extract → JS extract → module split → cleanup. |
 | Existing data preservation | **One-shot `migrateLocalToDB()`** in `src/migrate.js`, idempotent, exposed via Settings → Backup & Migration. |
-| Smoke test list | **Written as `SMOKE_TESTS.md`.** Referenced from P.4 / P.5. |
+| Smoke test list | **Written as `docs/SMOKE_TESTS.md`.** Referenced from P.4 / P.5. |
 
 ### Other historical resolutions
 

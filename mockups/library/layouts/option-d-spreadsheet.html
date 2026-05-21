@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Option D: Spreadsheet Grid</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f2f2f2; color: #111; padding: 24px; }
+  .title-bar { font-size: 11px; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px; }
+  .title-bar span { color: #e8a838; }
+
+  .summary { display: flex; gap: 12px; margin-bottom: 16px; }
+  .summary-card { background: #fff; border: 1px solid #e0e0e0; border-radius: 10px; padding: 10px 16px; flex: 1; }
+  .summary-card .label { font-size: 10px; color: #888; text-transform: uppercase; font-weight: 600; }
+  .summary-card .val { font-size: 20px; font-weight: 800; color: #111; }
+  .summary-card .val.warn { color: #e05252; }
+
+  /* Toolbar */
+  .toolbar { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; padding: 6px 0; border-bottom: 1px solid #e0e0e0; flex-wrap: wrap; }
+  .search { padding: 5px 10px; border: 1px solid #e0e0e0; border-radius: 6px; font-size: 11px; width: 200px; background: #fff; }
+  .tb-btn { font-size: 10px; font-weight: 600; padding: 4px 10px; border: 1px solid #e0e0e0; border-radius: 6px; background: #fff; color: #444; cursor: pointer; }
+  .tb-btn:hover { border-color: #e8a838; color: #e8a838; }
+  .tb-btn.primary { background: #e8a838; color: #fff; border-color: #e8a838; }
+  .tb-sep { width: 1px; height: 20px; background: #e0e0e0; }
+  .pill { font-size: 10px; font-weight: 600; padding: 3px 10px; border-radius: 16px; border: 1px solid #e0e0e0; background: #f7f7f7; color: #444; cursor: pointer; }
+  .pill.active { background: #e8a838; color: #fff; border-color: #e8a838; }
+
+  /* Spreadsheet */
+  .sheet-wrap { border: 1px solid #bbb; border-radius: 6px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.07); }
+  .sheet { width: 100%; border-collapse: collapse; font-size: 11px; }
+  .sheet thead th {
+    background: #e8e8e8; font-weight: 700; font-size: 10px; text-transform: uppercase;
+    letter-spacing: .3px; color: #555; padding: 6px 8px; text-align: left;
+    border-bottom: 2px solid #bbb; border-right: 1px solid #d0d0d0;
+    position: sticky; top: 0; cursor: pointer; user-select: none; white-space: nowrap;
+  }
+  .sheet thead th:last-child { border-right: none; }
+  .sheet thead th:hover { background: #ddd; }
+  .sheet tbody tr { transition: background .08s; }
+  .sheet tbody tr:nth-child(even) { background: #fafafa; }
+  .sheet tbody tr:hover { background: #fff8e7; }
+  .sheet tbody td {
+    padding: 5px 8px; border-bottom: 1px solid #e0e0e0; border-right: 1px solid #ebebeb;
+    vertical-align: middle; white-space: nowrap;
+  }
+  .sheet tbody td:last-child { border-right: none; }
+
+  /* Checkbox col */
+  .chk { width: 14px; height: 14px; accent-color: #e8a838; cursor: pointer; }
+  .chk-col { width: 30px; text-align: center; }
+
+  /* Status */
+  .status-ok { color: #3d9970; font-weight: 600; }
+  .status-low { color: #e05252; font-weight: 700; }
+
+  /* Editable qty */
+  .qty-edit {
+    width: 48px; text-align: center; border: 1px solid transparent; border-radius: 4px;
+    padding: 2px 4px; font-size: 12px; font-weight: 700; font-family: inherit;
+    background: transparent; transition: all .1s;
+  }
+  .qty-edit:hover { border-color: #e0e0e0; background: #fff; }
+  .qty-edit:focus { border-color: #e8a838; background: #fff; outline: none; box-shadow: 0 0 0 2px rgba(232,168,56,0.2); }
+
+  .fw600 { font-weight: 600; }
+  .fw700 { font-weight: 700; }
+  .text-right { text-align: right; }
+  .muted { color: #888; }
+
+  /* Row number */
+  .row-num { color: #aaa; font-size: 10px; text-align: center; width: 28px; }
+
+  /* Bottom bar */
+  .sheet-footer { display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; background: #e8e8e8; font-size: 10px; color: #666; border-top: 1px solid #bbb; }
+</style>
+</head>
+<body>
+<div class="title-bar"><span>Option D</span> — Spreadsheet Grid (Excel-like)</div>
+
+<div class="summary">
+  <div class="summary-card"><div class="label">Materials</div><div class="val">24</div></div>
+  <div class="summary-card"><div class="label">In Stock</div><div class="val">187</div></div>
+  <div class="summary-card"><div class="label">Low Stock</div><div class="val warn">4</div></div>
+  <div class="summary-card"><div class="label">Total Value</div><div class="val">£12,480</div></div>
+</div>
+
+<div class="toolbar">
+  <input class="search" placeholder="Search...">
+  <div class="tb-sep"></div>
+  <span class="pill active">All</span>
+  <span class="pill">Sheet Goods</span>
+  <span class="pill">Edge Banding</span>
+  <span class="pill">Hardware</span>
+  <span class="pill">Finishing</span>
+  <div class="tb-sep"></div>
+  <span class="tb-btn">Export CSV</span>
+  <span class="tb-btn">Import</span>
+  <span class="tb-btn">Print</span>
+  <div style="flex:1"></div>
+  <span class="tb-btn primary">+ Add Material</span>
+</div>
+
+<div class="sheet-wrap">
+<table class="sheet">
+  <thead>
+    <tr>
+      <th class="chk-col"><input type="checkbox" class="chk"></th>
+      <th class="row-num">#</th>
+      <th>Status</th>
+      <th style="min-width:140px">Material Name</th>
+      <th>SKU</th>
+      <th>Category</th>
+      <th>Variant / Spec</th>
+      <th>Dimensions</th>
+      <th>Thickness</th>
+      <th style="width:60px">Qty</th>
+      <th>Low Alert</th>
+      <th class="text-right">Unit Cost</th>
+      <th class="text-right">Total Value</th>
+      <th>Supplier</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class="chk-col"><input type="checkbox" class="chk"></td>
+      <td class="row-num">1</td>
+      <td><span class="status-ok">● OK</span></td>
+      <td class="fw600">Birch Plywood</td>
+      <td class="muted">PLY-18-B</td>
+      <td>Sheet Goods</td>
+      <td>—</td>
+      <td>2440×1220mm</td>
+      <td>18mm</td>
+      <td><input type="text" class="qty-edit" value="12"></td>
+      <td>3</td>
+      <td class="text-right">£65.00</td>
+      <td class="text-right fw700">£780</td>
+      <td>Timber Merchant Ltd</td>
+    </tr>
+    <tr>
+      <td class="chk-col"><input type="checkbox" class="chk"></td>
+      <td class="row-num">2</td>
+      <td><span class="status-low">● Low</span></td>
+      <td class="fw600">Oak Veneer MDF</td>
+      <td class="muted">MDF-OV-18</td>
+      <td>Sheet Goods</td>
+      <td>Oak</td>
+      <td>2440×1220mm</td>
+      <td>18mm</td>
+      <td><input type="text" class="qty-edit" value="2"></td>
+      <td>5</td>
+      <td class="text-right">£85.00</td>
+      <td class="text-right fw700">£170</td>
+      <td>Wood Supplies Co</td>
+    </tr>
+    <tr>
+      <td class="chk-col"><input type="checkbox" class="chk"></td>
+      <td class="row-num">3</td>
+      <td><span class="status-ok">● OK</span></td>
+      <td class="fw600">Walnut Plywood</td>
+      <td class="muted">PLY-WN-18</td>
+      <td>Sheet Goods</td>
+      <td>Walnut</td>
+      <td>2440×1220mm</td>
+      <td>18mm</td>
+      <td><input type="text" class="qty-edit" value="8"></td>
+      <td>3</td>
+      <td class="text-right">£112.00</td>
+      <td class="text-right fw700">£896</td>
+      <td>Premier Panels</td>
+    </tr>
+    <tr>
+      <td class="chk-col"><input type="checkbox" class="chk"></td>
+      <td class="row-num">4</td>
+      <td><span class="status-ok">● OK</span></td>
+      <td class="fw600">White Melamine</td>
+      <td class="muted">MEL-W-16</td>
+      <td>Sheet Goods</td>
+      <td>White</td>
+      <td>2440×1220mm</td>
+      <td>16mm</td>
+      <td><input type="text" class="qty-edit" value="15"></td>
+      <td>4</td>
+      <td class="text-right">£38.00</td>
+      <td class="text-right fw700">£570</td>
+      <td>Board Baron</td>
+    </tr>
+    <tr>
+      <td class="chk-col"><input type="checkbox" class="chk"></td>
+      <td class="row-num">5</td>
+      <td><span class="status-ok">● OK</span></td>
+      <td class="fw600">Sapele Plywood</td>
+      <td class="muted">PLY-SAP-12</td>
+      <td>Sheet Goods</td>
+      <td>—</td>
+      <td>2440×1220mm</td>
+      <td>12mm</td>
+      <td><input type="text" class="qty-edit" value="6"></td>
+      <td>3</td>
+      <td class="text-right">£48.00</td>
+      <td class="text-right fw700">£288</td>
+      <td>Timber Merchant Ltd</td>
+    </tr>
+    <tr>
+      <td class="chk-col"><input type="checkbox" class="chk"></td>
+      <td class="row-num">6</td>
+      <td><span class="status-ok">● OK</span></td>
+      <td class="fw600">Anthracite Laminate</td>
+      <td class="muted">LAM-ANT-18</td>
+      <td>Sheet Goods</td>
+      <td>U963</td>
+      <td>2440×1220mm</td>
+      <td>18mm</td>
+      <td><input type="text" class="qty-edit" value="10"></td>
+      <td>3</td>
+      <td class="text-right">£42.00</td>
+      <td class="text-right fw700">£420</td>
+      <td>Board Baron</td>
+    </tr>
+    <tr>
+      <td class="chk-col"><input type="checkbox" class="chk"></td>
+      <td class="row-num">7</td>
+      <td><span class="status-low">● Low</span></td>
+      <td class="fw600">Maple Edge Band</td>
+      <td class="muted">EB-MPL-22</td>
+      <td>Edge Banding</td>
+      <td>1mm × 22mm EVA</td>
+      <td>50m roll</td>
+      <td>1mm</td>
+      <td><input type="text" class="qty-edit" value="8"></td>
+      <td>10</td>
+      <td class="text-right">£0.45/m</td>
+      <td class="text-right fw700">£22</td>
+      <td>Edge Supply UK</td>
+    </tr>
+    <tr>
+      <td class="chk-col"><input type="checkbox" class="chk"></td>
+      <td class="row-num">8</td>
+      <td><span class="status-low">● Low</span></td>
+      <td class="fw600">Oak Edge Band</td>
+      <td class="muted">EB-OAK-22</td>
+      <td>Edge Banding</td>
+      <td>0.5mm × 22mm PUR</td>
+      <td>100m roll</td>
+      <td>0.5mm</td>
+      <td><input type="text" class="qty-edit" value="5"></td>
+      <td>10</td>
+      <td class="text-right">£0.38/m</td>
+      <td class="text-right fw700">£38</td>
+      <td>Edge Supply UK</td>
+    </tr>
+    <tr>
+      <td class="chk-col"><input type="checkbox" class="chk"></td>
+      <td class="row-num">9</td>
+      <td><span class="status-ok">● OK</span></td>
+      <td class="fw600">Soft Close Hinges</td>
+      <td class="muted">HW-SC-110</td>
+      <td>Hardware</td>
+      <td>110° Full Overlay</td>
+      <td>—</td>
+      <td>—</td>
+      <td><input type="text" class="qty-edit" value="48"></td>
+      <td>10</td>
+      <td class="text-right">£3.20</td>
+      <td class="text-right fw700">£154</td>
+      <td>Hardware Direct</td>
+    </tr>
+    <tr>
+      <td class="chk-col"><input type="checkbox" class="chk"></td>
+      <td class="row-num">10</td>
+      <td><span class="status-ok">● OK</span></td>
+      <td class="fw600">Drawer Runners</td>
+      <td class="muted">HW-DR-500</td>
+      <td>Hardware</td>
+      <td>500mm Soft Close</td>
+      <td>—</td>
+      <td>—</td>
+      <td><input type="text" class="qty-edit" value="20"></td>
+      <td>5</td>
+      <td class="text-right">£12.50</td>
+      <td class="text-right fw700">£250</td>
+      <td>Hardware Direct</td>
+    </tr>
+    <tr>
+      <td class="chk-col"><input type="checkbox" class="chk"></td>
+      <td class="row-num">11</td>
+      <td><span class="status-ok">● OK</span></td>
+      <td class="fw600">Shelf Supports</td>
+      <td class="muted">HW-SS-5N</td>
+      <td>Hardware</td>
+      <td>5mm Pin, Nickel</td>
+      <td>—</td>
+      <td>—</td>
+      <td><input type="text" class="qty-edit" value="200"></td>
+      <td>20</td>
+      <td class="text-right">£0.15</td>
+      <td class="text-right fw700">£30</td>
+      <td>Hardware Direct</td>
+    </tr>
+    <tr>
+      <td class="chk-col"><input type="checkbox" class="chk"></td>
+      <td class="row-num">12</td>
+      <td><span class="status-low">● Low</span></td>
+      <td class="fw600">Osmo Polyx Oil</td>
+      <td class="muted">FIN-OSMO-3032</td>
+      <td>Finishing</td>
+      <td>Clear Satin 2.5L</td>
+      <td>—</td>
+      <td>—</td>
+      <td><input type="text" class="qty-edit" value="1"></td>
+      <td>2</td>
+      <td class="text-right">£72.00</td>
+      <td class="text-right fw700">£72</td>
+      <td>Finishers Ltd</td>
+    </tr>
+  </tbody>
+</table>
+<div class="sheet-footer">
+  <span>12 items · 4 selected</span>
+  <span>Showing all categories</span>
+  <span>Total: £3,700</span>
+</div>
+</div>
+</body>
+</html>

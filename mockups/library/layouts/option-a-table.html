@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Option A: Compact Table Rows</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f2f2f2; color: #111; padding: 24px; }
+  .title-bar { font-size: 11px; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px; }
+  .title-bar span { color: #e8a838; }
+
+  /* Summary row */
+  .summary { display: flex; gap: 12px; margin-bottom: 16px; }
+  .summary-card { background: #fff; border: 1px solid #e0e0e0; border-radius: 10px; padding: 10px 16px; flex: 1; }
+  .summary-card .label { font-size: 10px; color: #888; text-transform: uppercase; font-weight: 600; }
+  .summary-card .val { font-size: 20px; font-weight: 800; color: #111; }
+  .summary-card .val.warn { color: #e05252; }
+
+  /* Filter bar */
+  .filters { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
+  .search { padding: 6px 12px; border: 1px solid #e0e0e0; border-radius: 8px; font-size: 12px; width: 220px; background: #fff; }
+  .pill { font-size: 11px; font-weight: 600; padding: 4px 12px; border-radius: 20px; border: 1px solid #e0e0e0; background: #f7f7f7; color: #444; cursor: pointer; }
+  .pill.active { background: #e8a838; color: #fff; border-color: #e8a838; }
+
+  /* Table */
+  .stock-table { width: 100%; border-collapse: separate; border-spacing: 0; background: #fff; border-radius: 10px; overflow: hidden; border: 1px solid #e0e0e0; box-shadow: 0 1px 4px rgba(0,0,0,0.07); }
+  .stock-table thead th {
+    font-size: 10px; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: .5px;
+    padding: 10px 12px; text-align: left; border-bottom: 2px solid #e0e0e0; background: #f7f7f7;
+    position: sticky; top: 0; cursor: pointer; white-space: nowrap; user-select: none;
+  }
+  .stock-table thead th:hover { color: #e8a838; }
+  .stock-table thead th .sort { font-size: 8px; margin-left: 3px; opacity: 0.4; }
+  .stock-table tbody tr { transition: background .1s; }
+  .stock-table tbody tr:hover { background: rgba(232,168,56,0.06); }
+  .stock-table tbody td {
+    font-size: 12px; padding: 8px 12px; border-bottom: 1px solid #ebebeb;
+    vertical-align: middle; white-space: nowrap;
+  }
+  .stock-table tbody tr:last-child td { border-bottom: none; }
+
+  /* Status dot */
+  .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  .dot.ok { background: #3d9970; }
+  .dot.low { background: #e05252; }
+
+  /* Name cell */
+  .name-cell .name { font-weight: 600; color: #111; }
+  .name-cell .sku { font-size: 10px; color: #888; margin-top: 1px; }
+
+  /* Qty controls */
+  .qty-cell { display: flex; align-items: center; gap: 4px; }
+  .qty-btn { width: 20px; height: 20px; border: 1px solid #e0e0e0; border-radius: 4px; background: #f7f7f7; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; color: #444; }
+  .qty-val { font-weight: 700; min-width: 28px; text-align: center; }
+
+  /* Actions */
+  .action-btns { display: flex; gap: 4px; }
+  .action-btn { font-size: 10px; padding: 3px 8px; border: 1px solid #e0e0e0; border-radius: 6px; background: #fff; color: #444; cursor: pointer; white-space: nowrap; }
+  .action-btn:hover { border-color: #e8a838; color: #e8a838; }
+
+  .muted { color: #888; }
+  .text-right { text-align: right; }
+  .fw700 { font-weight: 700; }
+</style>
+</head>
+<body>
+<div class="title-bar"><span>Option A</span> — Compact Table Rows</div>
+
+<div class="summary">
+  <div class="summary-card"><div class="label">Materials</div><div class="val">24</div></div>
+  <div class="summary-card"><div class="label">In Stock</div><div class="val">187</div></div>
+  <div class="summary-card"><div class="label">Low Stock</div><div class="val warn">4</div></div>
+  <div class="summary-card"><div class="label">Total Value</div><div class="val">£12,480</div></div>
+</div>
+
+<div class="filters">
+  <input class="search" placeholder="Search materials...">
+  <div class="pill active">All</div>
+  <div class="pill">Sheet Goods</div>
+  <div class="pill">Solid Timber</div>
+  <div class="pill">Edge Banding</div>
+  <div class="pill">Hardware</div>
+  <div class="pill">Finishing</div>
+</div>
+
+<table class="stock-table">
+  <thead>
+    <tr>
+      <th style="width:30px"></th>
+      <th>Material <span class="sort">▼</span></th>
+      <th>Variant</th>
+      <th>Dims</th>
+      <th>Qty</th>
+      <th class="text-right">Unit Cost</th>
+      <th class="text-right">Value</th>
+      <th>Supplier</th>
+      <th style="width:140px">Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><span class="dot ok"></span></td>
+      <td><div class="name-cell"><div class="name">Birch Plywood</div><div class="sku">PLY-18-B</div></div></td>
+      <td>18mm</td>
+      <td>2440×1220mm</td>
+      <td><div class="qty-cell"><span class="qty-btn">−</span><span class="qty-val">12</span><span class="qty-btn">+</span></div></td>
+      <td class="text-right">£65.00</td>
+      <td class="text-right fw700">£780</td>
+      <td>Timber Merchant Ltd</td>
+      <td><div class="action-btns"><span class="action-btn">Edit</span><span class="action-btn">Cut List</span><span class="action-btn">Reorder</span></div></td>
+    </tr>
+    <tr>
+      <td><span class="dot low"></span></td>
+      <td><div class="name-cell"><div class="name">Oak Veneer MDF</div><div class="sku">MDF-OV-18</div></div></td>
+      <td>18mm Oak</td>
+      <td>2440×1220mm</td>
+      <td><div class="qty-cell"><span class="qty-btn">−</span><span class="qty-val">2</span><span class="qty-btn">+</span></div></td>
+      <td class="text-right">£85.00</td>
+      <td class="text-right fw700">£170</td>
+      <td>Wood Supplies Co</td>
+      <td><div class="action-btns"><span class="action-btn">Edit</span><span class="action-btn">Cut List</span><span class="action-btn">Reorder ↗</span></div></td>
+    </tr>
+    <tr>
+      <td><span class="dot ok"></span></td>
+      <td><div class="name-cell"><div class="name">Walnut Plywood</div><div class="sku">PLY-WN-18</div></div></td>
+      <td>18mm Walnut</td>
+      <td>2440×1220mm</td>
+      <td><div class="qty-cell"><span class="qty-btn">−</span><span class="qty-val">8</span><span class="qty-btn">+</span></div></td>
+      <td class="text-right">£112.00</td>
+      <td class="text-right fw700">£896</td>
+      <td>Premier Panels</td>
+      <td><div class="action-btns"><span class="action-btn">Edit</span><span class="action-btn">Cut List</span><span class="action-btn">Reorder</span></div></td>
+    </tr>
+    <tr>
+      <td><span class="dot ok"></span></td>
+      <td><div class="name-cell"><div class="name">White Melamine</div><div class="sku">MEL-W-16</div></div></td>
+      <td>16mm White</td>
+      <td>2440×1220mm</td>
+      <td><div class="qty-cell"><span class="qty-btn">−</span><span class="qty-val">15</span><span class="qty-btn">+</span></div></td>
+      <td class="text-right">£38.00</td>
+      <td class="text-right fw700">£570</td>
+      <td>Board Baron</td>
+      <td><div class="action-btns"><span class="action-btn">Edit</span><span class="action-btn">Cut List</span><span class="action-btn">Reorder</span></div></td>
+    </tr>
+    <tr>
+      <td><span class="dot low"></span></td>
+      <td><div class="name-cell"><div class="name">Maple Edge Band</div><div class="sku">EB-MPL-22</div></div></td>
+      <td>1mm × 22mm</td>
+      <td>50m roll</td>
+      <td><div class="qty-cell"><span class="qty-btn">−</span><span class="qty-val">8</span><span class="qty-btn">+</span></div></td>
+      <td class="text-right">£0.45/m</td>
+      <td class="text-right fw700">£22</td>
+      <td>Edge Supply UK</td>
+      <td><div class="action-btns"><span class="action-btn">Edit</span><span class="action-btn">Cut List</span><span class="action-btn">Reorder ↗</span></div></td>
+    </tr>
+    <tr>
+      <td><span class="dot ok"></span></td>
+      <td><div class="name-cell"><div class="name">Soft Close Hinges</div><div class="sku">HW-SC-110</div></div></td>
+      <td>110° Full Overlay</td>
+      <td>—</td>
+      <td><div class="qty-cell"><span class="qty-btn">−</span><span class="qty-val">48</span><span class="qty-btn">+</span></div></td>
+      <td class="text-right">£3.20</td>
+      <td class="text-right fw700">£154</td>
+      <td>Hardware Direct</td>
+      <td><div class="action-btns"><span class="action-btn">Edit</span><span class="action-btn">Cut List</span><span class="action-btn">Reorder</span></div></td>
+    </tr>
+    <tr>
+      <td><span class="dot ok"></span></td>
+      <td><div class="name-cell"><div class="name">Drawer Runners</div><div class="sku">HW-DR-500</div></div></td>
+      <td>500mm Soft Close</td>
+      <td>—</td>
+      <td><div class="qty-cell"><span class="qty-btn">−</span><span class="qty-val">20</span><span class="qty-btn">+</span></div></td>
+      <td class="text-right">£12.50</td>
+      <td class="text-right fw700">£250</td>
+      <td>Hardware Direct</td>
+      <td><div class="action-btns"><span class="action-btn">Edit</span><span class="action-btn">Cut List</span><span class="action-btn">Reorder</span></div></td>
+    </tr>
+    <tr>
+      <td><span class="dot low"></span></td>
+      <td><div class="name-cell"><div class="name">Osmo Polyx Oil</div><div class="sku">FIN-OSMO-3032</div></div></td>
+      <td>Clear Satin 2.5L</td>
+      <td>—</td>
+      <td><div class="qty-cell"><span class="qty-btn">−</span><span class="qty-val">1</span><span class="qty-btn">+</span></div></td>
+      <td class="text-right">£72.00</td>
+      <td class="text-right fw700">£72</td>
+      <td>Finishers Ltd</td>
+      <td><div class="action-btns"><span class="action-btn">Edit</span><span class="action-btn">Cut List</span><span class="action-btn">Reorder ↗</span></div></td>
+    </tr>
+    <tr>
+      <td><span class="dot ok"></span></td>
+      <td><div class="name-cell"><div class="name">Sapele Plywood</div><div class="sku">PLY-SAP-12</div></div></td>
+      <td>12mm</td>
+      <td>2440×1220mm</td>
+      <td><div class="qty-cell"><span class="qty-btn">−</span><span class="qty-val">6</span><span class="qty-btn">+</span></div></td>
+      <td class="text-right">£48.00</td>
+      <td class="text-right fw700">£288</td>
+      <td>Timber Merchant Ltd</td>
+      <td><div class="action-btns"><span class="action-btn">Edit</span><span class="action-btn">Cut List</span><span class="action-btn">Reorder</span></div></td>
+    </tr>
+    <tr>
+      <td><span class="dot low"></span></td>
+      <td><div class="name-cell"><div class="name">Oak Edge Band</div><div class="sku">EB-OAK-22</div></div></td>
+      <td>0.5mm × 22mm PUR</td>
+      <td>100m roll</td>
+      <td><div class="qty-cell"><span class="qty-btn">−</span><span class="qty-val">5</span><span class="qty-btn">+</span></div></td>
+      <td class="text-right">£0.38/m</td>
+      <td class="text-right fw700">£38</td>
+      <td>Edge Supply UK</td>
+      <td><div class="action-btns"><span class="action-btn">Edit</span><span class="action-btn">Cut List</span><span class="action-btn">Reorder ↗</span></div></td>
+    </tr>
+  </tbody>
+</table>
+</body>
+</html>

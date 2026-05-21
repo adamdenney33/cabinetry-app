@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Option C: Condensed Mini-Cards</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f2f2f2; color: #111; padding: 24px; }
+  .title-bar { font-size: 11px; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px; }
+  .title-bar span { color: #e8a838; }
+
+  .summary { display: flex; gap: 12px; margin-bottom: 16px; }
+  .summary-card { background: #fff; border: 1px solid #e0e0e0; border-radius: 10px; padding: 10px 16px; flex: 1; }
+  .summary-card .label { font-size: 10px; color: #888; text-transform: uppercase; font-weight: 600; }
+  .summary-card .val { font-size: 20px; font-weight: 800; color: #111; }
+  .summary-card .val.warn { color: #e05252; }
+
+  .filters { display: flex; gap: 8px; align-items: center; margin-bottom: 16px; }
+  .search { padding: 6px 12px; border: 1px solid #e0e0e0; border-radius: 8px; font-size: 12px; width: 220px; background: #fff; }
+  .pill { font-size: 11px; font-weight: 600; padding: 4px 12px; border-radius: 20px; border: 1px solid #e0e0e0; background: #f7f7f7; color: #444; cursor: pointer; }
+  .pill.active { background: #e8a838; color: #fff; border-color: #e8a838; }
+
+  /* Grid */
+  .card-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+  /* Category header */
+  .cat-head { grid-column: 1/-1; font-size: 10px; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: .8px; padding: 8px 0 2px; border-bottom: 1px solid #e0e0e0; }
+
+  /* Mini card */
+  .mini-card {
+    background: #fff; border: 1px solid #e0e0e0; border-radius: 8px;
+    padding: 8px 12px; cursor: pointer; transition: all .15s;
+    display: flex; flex-direction: column; gap: 3px;
+    position: relative; overflow: hidden;
+  }
+  .mini-card:hover { border-color: #e8a838; box-shadow: 0 2px 8px rgba(232,168,56,0.12); }
+  .mini-card.low-stock { border-left: 3px solid #e05252; }
+
+  /* Top row: name + badge + qty */
+  .mc-top { display: flex; align-items: center; gap: 6px; }
+  .mc-name { font-size: 12px; font-weight: 700; color: #111; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mc-badge { font-size: 9px; font-weight: 700; padding: 1px 6px; border-radius: 8px; }
+  .mc-badge.ok { background: rgba(61,153,112,0.1); color: #3d9970; }
+  .mc-badge.low { background: rgba(224,82,82,0.1); color: #e05252; }
+  .mc-qty { font-size: 13px; font-weight: 800; color: #111; min-width: 24px; text-align: right; }
+  .mc-qty-label { font-size: 8px; color: #888; font-weight: 600; }
+
+  /* Bottom row: details */
+  .mc-bottom { display: flex; align-items: center; gap: 4px; font-size: 10px; color: #888; }
+  .mc-bottom .sep { color: #ddd; }
+  .mc-cost { font-weight: 700; color: #444; margin-left: auto; }
+
+  /* Hover actions */
+  .mc-actions {
+    position: absolute; right: 0; top: 0; bottom: 0;
+    display: flex; align-items: center; gap: 2px; padding: 0 6px;
+    background: linear-gradient(90deg, transparent, #fff 20%);
+    opacity: 0; transition: opacity .15s;
+  }
+  .mini-card:hover .mc-actions { opacity: 1; }
+  .mc-act { width: 24px; height: 24px; border: 1px solid #e0e0e0; border-radius: 5px; background: #fff; font-size: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center; color: #666; }
+  .mc-act:hover { border-color: #e8a838; color: #e8a838; }
+</style>
+</head>
+<body>
+<div class="title-bar"><span>Option C</span> — Condensed Mini-Cards (2-Column)</div>
+
+<div class="summary">
+  <div class="summary-card"><div class="label">Materials</div><div class="val">24</div></div>
+  <div class="summary-card"><div class="label">In Stock</div><div class="val">187</div></div>
+  <div class="summary-card"><div class="label">Low Stock</div><div class="val warn">4</div></div>
+  <div class="summary-card"><div class="label">Total Value</div><div class="val">£12,480</div></div>
+</div>
+
+<div class="filters">
+  <input class="search" placeholder="Search materials...">
+  <div class="pill active">All</div>
+  <div class="pill">Sheet Goods</div>
+  <div class="pill">Solid Timber</div>
+  <div class="pill">Edge Banding</div>
+  <div class="pill">Hardware</div>
+  <div class="pill">Finishing</div>
+</div>
+
+<div class="card-grid">
+  <div class="cat-head">Sheet Goods (6)</div>
+
+  <div class="mini-card">
+    <div class="mc-top">
+      <span class="mc-name">Birch Plywood</span>
+      <span class="mc-badge ok">OK</span>
+      <span class="mc-qty">12 <span class="mc-qty-label">sheets</span></span>
+    </div>
+    <div class="mc-bottom">18mm <span class="sep">·</span> 2440×1220mm <span class="sep">·</span> PLY-18-B <span class="mc-cost">£780</span></div>
+    <div class="mc-actions"><span class="mc-act">✎</span><span class="mc-act">⊞</span><span class="mc-act">↗</span></div>
+  </div>
+
+  <div class="mini-card low-stock">
+    <div class="mc-top">
+      <span class="mc-name">Oak Veneer MDF</span>
+      <span class="mc-badge low">Low</span>
+      <span class="mc-qty">2 <span class="mc-qty-label">sheets</span></span>
+    </div>
+    <div class="mc-bottom">18mm Oak <span class="sep">·</span> 2440×1220mm <span class="sep">·</span> MDF-OV-18 <span class="mc-cost">£170</span></div>
+    <div class="mc-actions"><span class="mc-act">✎</span><span class="mc-act">⊞</span><span class="mc-act">↗</span></div>
+  </div>
+
+  <div class="mini-card">
+    <div class="mc-top">
+      <span class="mc-name">Walnut Plywood</span>
+      <span class="mc-badge ok">OK</span>
+      <span class="mc-qty">8 <span class="mc-qty-label">sheets</span></span>
+    </div>
+    <div class="mc-bottom">18mm Walnut <span class="sep">·</span> 2440×1220mm <span class="sep">·</span> PLY-WN-18 <span class="mc-cost">£896</span></div>
+    <div class="mc-actions"><span class="mc-act">✎</span><span class="mc-act">⊞</span><span class="mc-act">↗</span></div>
+  </div>
+
+  <div class="mini-card">
+    <div class="mc-top">
+      <span class="mc-name">White Melamine</span>
+      <span class="mc-badge ok">OK</span>
+      <span class="mc-qty">15 <span class="mc-qty-label">sheets</span></span>
+    </div>
+    <div class="mc-bottom">16mm White <span class="sep">·</span> 2440×1220mm <span class="sep">·</span> MEL-W-16 <span class="mc-cost">£570</span></div>
+    <div class="mc-actions"><span class="mc-act">✎</span><span class="mc-act">⊞</span><span class="mc-act">↗</span></div>
+  </div>
+
+  <div class="mini-card">
+    <div class="mc-top">
+      <span class="mc-name">Sapele Plywood</span>
+      <span class="mc-badge ok">OK</span>
+      <span class="mc-qty">6 <span class="mc-qty-label">sheets</span></span>
+    </div>
+    <div class="mc-bottom">12mm <span class="sep">·</span> 2440×1220mm <span class="sep">·</span> PLY-SAP-12 <span class="mc-cost">£288</span></div>
+    <div class="mc-actions"><span class="mc-act">✎</span><span class="mc-act">⊞</span><span class="mc-act">↗</span></div>
+  </div>
+
+  <div class="mini-card">
+    <div class="mc-top">
+      <span class="mc-name">Anthracite Laminate</span>
+      <span class="mc-badge ok">OK</span>
+      <span class="mc-qty">10 <span class="mc-qty-label">sheets</span></span>
+    </div>
+    <div class="mc-bottom">18mm U963 <span class="sep">·</span> 2440×1220mm <span class="sep">·</span> LAM-ANT-18 <span class="mc-cost">£420</span></div>
+    <div class="mc-actions"><span class="mc-act">✎</span><span class="mc-act">⊞</span><span class="mc-act">↗</span></div>
+  </div>
+
+  <div class="cat-head">Edge Banding (3)</div>
+
+  <div class="mini-card low-stock">
+    <div class="mc-top">
+      <span class="mc-name">Maple Edge Band</span>
+      <span class="mc-badge low">Low</span>
+      <span class="mc-qty">8 <span class="mc-qty-label">metres</span></span>
+    </div>
+    <div class="mc-bottom">1mm × 22mm EVA <span class="sep">·</span> 50m roll <span class="sep">·</span> EB-MPL-22 <span class="mc-cost">£22</span></div>
+    <div class="mc-actions"><span class="mc-act">✎</span><span class="mc-act">⊞</span><span class="mc-act">↗</span></div>
+  </div>
+
+  <div class="mini-card low-stock">
+    <div class="mc-top">
+      <span class="mc-name">Oak Edge Band</span>
+      <span class="mc-badge low">Low</span>
+      <span class="mc-qty">5 <span class="mc-qty-label">metres</span></span>
+    </div>
+    <div class="mc-bottom">0.5mm × 22mm PUR <span class="sep">·</span> 100m roll <span class="sep">·</span> EB-OAK-22 <span class="mc-cost">£38</span></div>
+    <div class="mc-actions"><span class="mc-act">✎</span><span class="mc-act">⊞</span><span class="mc-act">↗</span></div>
+  </div>
+
+  <div class="mini-card">
+    <div class="mc-top">
+      <span class="mc-name">White Edge Band</span>
+      <span class="mc-badge ok">OK</span>
+      <span class="mc-qty">45 <span class="mc-qty-label">metres</span></span>
+    </div>
+    <div class="mc-bottom">1mm × 22mm EVA <span class="sep">·</span> 50m roll <span class="sep">·</span> EB-WHT-22 <span class="mc-cost">£16</span></div>
+    <div class="mc-actions"><span class="mc-act">✎</span><span class="mc-act">⊞</span><span class="mc-act">↗</span></div>
+  </div>
+
+  <div class="cat-head">Hardware (3)</div>
+
+  <div class="mini-card">
+    <div class="mc-top">
+      <span class="mc-name">Soft Close Hinges</span>
+      <span class="mc-badge ok">OK</span>
+      <span class="mc-qty">48 <span class="mc-qty-label">units</span></span>
+    </div>
+    <div class="mc-bottom">110° Full Overlay <span class="sep">·</span> HW-SC-110 <span class="mc-cost">£154</span></div>
+    <div class="mc-actions"><span class="mc-act">✎</span><span class="mc-act">⊞</span><span class="mc-act">↗</span></div>
+  </div>
+
+  <div class="mini-card">
+    <div class="mc-top">
+      <span class="mc-name">Drawer Runners</span>
+      <span class="mc-badge ok">OK</span>
+      <span class="mc-qty">20 <span class="mc-qty-label">units</span></span>
+    </div>
+    <div class="mc-bottom">500mm Soft Close <span class="sep">·</span> HW-DR-500 <span class="mc-cost">£250</span></div>
+    <div class="mc-actions"><span class="mc-act">✎</span><span class="mc-act">⊞</span><span class="mc-act">↗</span></div>
+  </div>
+
+  <div class="mini-card">
+    <div class="mc-top">
+      <span class="mc-name">Shelf Supports</span>
+      <span class="mc-badge ok">OK</span>
+      <span class="mc-qty">200 <span class="mc-qty-label">units</span></span>
+    </div>
+    <div class="mc-bottom">5mm Pin, Nickel <span class="sep">·</span> HW-SS-5N <span class="mc-cost">£30</span></div>
+    <div class="mc-actions"><span class="mc-act">✎</span><span class="mc-act">⊞</span><span class="mc-act">↗</span></div>
+  </div>
+
+  <div class="cat-head">Finishing (2)</div>
+
+  <div class="mini-card low-stock">
+    <div class="mc-top">
+      <span class="mc-name">Osmo Polyx Oil</span>
+      <span class="mc-badge low">Low</span>
+      <span class="mc-qty">1 <span class="mc-qty-label">tin</span></span>
+    </div>
+    <div class="mc-bottom">Clear Satin 2.5L <span class="sep">·</span> FIN-OSMO-3032 <span class="mc-cost">£72</span></div>
+    <div class="mc-actions"><span class="mc-act">✎</span><span class="mc-act">⊞</span><span class="mc-act">↗</span></div>
+  </div>
+
+  <div class="mini-card">
+    <div class="mc-top">
+      <span class="mc-name">Rubio Monocoat</span>
+      <span class="mc-badge ok">OK</span>
+      <span class="mc-qty">3 <span class="mc-qty-label">tins</span></span>
+    </div>
+    <div class="mc-bottom">Pure 350ml <span class="sep">·</span> FIN-RMC-350 <span class="mc-cost">£165</span></div>
+    <div class="mc-actions"><span class="mc-act">✎</span><span class="mc-act">⊞</span><span class="mc-act">↗</span></div>
+  </div>
+</div>
+</body>
+</html>

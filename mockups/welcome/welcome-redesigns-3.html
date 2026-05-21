@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Welcome Step Mockups — Set 3</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #141414;
+    padding: 56px 32px 80px;
+    display: flex;
+    flex-direction: column;
+    gap: 80px;
+    align-items: center;
+  }
+  .label { color: #555; font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 16px; text-align: center; }
+  .mock-wrap { width: 100%; max-width: 520px; }
+  :root { --accent: #e8a838; --accent-dim: rgba(232,168,56,0.13); }
+
+  /* ─── K: Job Ticket ──────────────────────────────────────────────── */
+  .k-card {
+    background: #faf8f4;
+    border-radius: 12px;
+    box-shadow: 0 24px 72px rgba(0,0,0,0.55);
+    overflow: hidden;
+    border: 1px solid #e8e0d0;
+    position: relative;
+  }
+  .k-holes {
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 36px;
+    background: #f0ece4;
+    border-right: 1px dashed #d8d0c0;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-around;
+    align-items: center;
+    padding: 16px 0;
+  }
+  .k-hole {
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: #141414;
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.4);
+  }
+  .k-body { padding: 28px 28px 28px 56px; }
+  .k-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px dashed #d8d0c0; }
+  .k-brand { display: flex; align-items: center; gap: 10px; }
+  .k-brand-icon { font-size: 26px; }
+  .k-brand h2 { font-size: 17px; font-weight: 900; color: #2a2010; letter-spacing: -0.3px; }
+  .k-brand p { font-size: 10px; font-weight: 700; color: #b0a080; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 1px; }
+  .k-ticket-no { text-align: right; }
+  .k-ticket-no span { display: block; font-size: 9.5px; font-weight: 700; color: #b0a080; text-transform: uppercase; letter-spacing: 0.5px; }
+  .k-ticket-no strong { font-size: 14px; font-weight: 900; color: #5a4a20; font-variant-numeric: tabular-nums; }
+  .k-field { margin-bottom: 14px; }
+  .k-field-label { font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.8px; color: #b0a080; margin-bottom: 3px; }
+  .k-field-val { font-size: 13.5px; color: #3a2e18; font-weight: 600; line-height: 1.5; }
+  .k-field-val em { color: var(--accent); font-style: normal; font-weight: 800; }
+  .k-sections { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 20px; padding-top: 16px; border-top: 1px dashed #d8d0c0; }
+  .k-tag { font-size: 10px; font-weight: 700; color: #7a6a40; background: #ede8d8; border: 1px solid #d8d0c0; border-radius: 4px; padding: 3px 8px; }
+  .k-actions { display: flex; gap: 10px; align-items: center; }
+  .k-skip { font-size: 12px; color: #b0a080; background: none; border: none; cursor: pointer; }
+  .k-go { background: #3a2e18; color: #e8d090; font-size: 13px; font-weight: 800; padding: 10px 22px; border-radius: 7px; border: none; cursor: pointer; letter-spacing: 0.2px; }
+
+  /* ─── L: Progress Track ──────────────────────────────────────────── */
+  .l-card {
+    background: #fff;
+    border-radius: 18px;
+    box-shadow: 0 24px 72px rgba(0,0,0,0.55);
+    overflow: hidden;
+  }
+  .l-track {
+    background: #fafafa;
+    border-bottom: 1px solid #f0f0f0;
+    padding: 20px 24px 18px;
+  }
+  .l-track-label { font-size: 10px; font-weight: 800; letter-spacing: 0.8px; text-transform: uppercase; color: #ccc; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
+  .l-track-label span { color: var(--accent); }
+  .l-steps { display: flex; align-items: center; gap: 0; }
+  .l-step { display: flex; align-items: center; flex: 1; }
+  .l-dot { width: 26px; height: 26px; border-radius: 50%; border: 2px solid #e0e0e0; background: #fff; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 800; color: #ccc; flex-shrink: 0; position: relative; z-index: 1; }
+  .l-dot.first { border-color: var(--accent); background: var(--accent); color: #000; }
+  .l-line { flex: 1; height: 2px; background: #ebebeb; }
+  .l-step-names { display: flex; margin-top: 8px; }
+  .l-step-name { flex: 1; font-size: 8.5px; font-weight: 700; color: #ccc; text-align: center; }
+  .l-step-name.first { color: var(--accent); }
+  .l-body { padding: 26px 28px 28px; }
+  .l-body h2 { font-size: 21px; font-weight: 800; color: #111; margin-bottom: 10px; }
+  .l-body p { font-size: 13px; color: #555; line-height: 1.6; margin-bottom: 24px; }
+  .l-hi { color: var(--accent); font-weight: 700; }
+  .l-actions { display: flex; gap: 10px; }
+  .l-skip { background: none; border: 1px solid #e5e5e5; color: #999; font-size: 13px; font-weight: 600; padding: 10px 16px; border-radius: 9px; cursor: pointer; }
+  .l-go { flex: 1; background: var(--accent); color: #000; font-size: 13.5px; font-weight: 800; padding: 11px; border-radius: 9px; border: none; cursor: pointer; }
+
+  /* ─── M: Stacked Cards ───────────────────────────────────────────── */
+  .m-wrap {
+    position: relative;
+    padding-bottom: 14px;
+  }
+  .m-card-back2 {
+    position: absolute;
+    bottom: 0; left: 50%;
+    transform: translateX(-50%) rotate(-4deg);
+    width: calc(100% - 24px);
+    height: 100%;
+    background: #f0f0f0;
+    border-radius: 16px;
+    border: 1px solid #e0e0e0;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.25);
+  }
+  .m-card-back1 {
+    position: absolute;
+    bottom: 7px; left: 50%;
+    transform: translateX(-50%) rotate(-2deg);
+    width: calc(100% - 12px);
+    height: 100%;
+    background: #f8f8f8;
+    border-radius: 16px;
+    border: 1px solid #e8e8e8;
+    box-shadow: 0 16px 50px rgba(0,0,0,0.3);
+  }
+  .m-card {
+    background: #fff;
+    border-radius: 18px;
+    box-shadow: 0 24px 72px rgba(0,0,0,0.55);
+    position: relative;
+    padding: 32px 28px 28px;
+    text-align: center;
+  }
+  .m-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--accent-dim);
+    border: 1px solid rgba(232,168,56,0.35);
+    border-radius: 20px;
+    padding: 5px 12px;
+    font-size: 11px;
+    font-weight: 800;
+    color: #b07a10;
+    margin-bottom: 18px;
+  }
+  .m-badge-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+  .m-card h2 { font-size: 22px; font-weight: 800; color: #111; margin-bottom: 10px; letter-spacing: -0.3px; }
+  .m-card p { font-size: 13.5px; color: #666; line-height: 1.6; margin-bottom: 26px; max-width: 340px; margin-left: auto; margin-right: auto; }
+  .m-hi { color: var(--accent); font-weight: 700; }
+  .m-actions { display: flex; gap: 10px; justify-content: center; }
+  .m-skip { background: none; border: none; color: #bbb; font-size: 13px; cursor: pointer; padding: 10px 14px; }
+  .m-go { background: #111; color: #fff; font-size: 13.5px; font-weight: 800; padding: 11px 28px; border-radius: 9px; border: none; cursor: pointer; }
+
+  /* ─── N: Glow / Dark Ambient ─────────────────────────────────────── */
+  .n-card {
+    background: #0a0a0a;
+    border-radius: 20px;
+    box-shadow: 0 0 0 1px #1e1e1e, 0 32px 80px rgba(0,0,0,0.8), 0 0 60px rgba(232,168,56,0.08);
+    overflow: hidden;
+    text-align: center;
+  }
+  .n-glow-wrap {
+    padding: 48px 40px 36px;
+    position: relative;
+  }
+  .n-glow-wrap::before {
+    content: '';
+    position: absolute;
+    top: -60px; left: 50%;
+    transform: translateX(-50%);
+    width: 280px; height: 280px;
+    background: radial-gradient(circle, rgba(232,168,56,0.22) 0%, transparent 65%);
+    pointer-events: none;
+  }
+  .n-icon-ring {
+    width: 64px; height: 64px;
+    border-radius: 18px;
+    background: rgba(232,168,56,0.1);
+    border: 1px solid rgba(232,168,56,0.25);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 30px;
+    margin: 0 auto 22px;
+    position: relative;
+    box-shadow: 0 0 24px rgba(232,168,56,0.2);
+  }
+  .n-label { font-size: 10px; font-weight: 800; letter-spacing: 1.2px; text-transform: uppercase; color: rgba(232,168,56,0.7); margin-bottom: 12px; }
+  .n-card h2 { font-size: 27px; font-weight: 900; color: #f0f0f0; line-height: 1.15; margin-bottom: 14px; letter-spacing: -0.5px; }
+  .n-card h2 em { color: var(--accent); font-style: normal; }
+  .n-card p { font-size: 13.5px; color: #666; line-height: 1.65; max-width: 320px; margin: 0 auto; }
+  .n-divider { height: 1px; background: linear-gradient(to right, transparent, #2a2a2a, transparent); margin: 0 40px; }
+  .n-footer { padding: 20px 40px 28px; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+  .n-go { width: 100%; background: var(--accent); color: #000; font-size: 14px; font-weight: 800; padding: 13px; border-radius: 10px; border: none; cursor: pointer; }
+  .n-skip { font-size: 12px; color: #444; background: none; border: none; cursor: pointer; }
+
+  /* ─── O: Stats / Social Proof ────────────────────────────────────── */
+  .o-card {
+    background: #fff;
+    border-radius: 18px;
+    box-shadow: 0 24px 72px rgba(0,0,0,0.55);
+    overflow: hidden;
+  }
+  .o-top {
+    padding: 30px 28px 24px;
+    text-align: center;
+    border-bottom: 1px solid #f4f4f4;
+  }
+  .o-icon { font-size: 36px; margin-bottom: 14px; display: block; }
+  .o-top h2 { font-size: 21px; font-weight: 800; color: #111; margin-bottom: 8px; }
+  .o-top p { font-size: 13px; color: #666; line-height: 1.6; }
+  .o-stats {
+    display: flex;
+    border-bottom: 1px solid #f4f4f4;
+  }
+  .o-stat {
+    flex: 1;
+    padding: 18px 12px;
+    text-align: center;
+    border-right: 1px solid #f4f4f4;
+  }
+  .o-stat:last-child { border-right: none; }
+  .o-stat-num { font-size: 22px; font-weight: 900; color: #111; letter-spacing: -0.5px; line-height: 1; margin-bottom: 4px; }
+  .o-stat-num span { color: var(--accent); }
+  .o-stat-label { font-size: 10px; font-weight: 700; color: #aaa; text-transform: uppercase; letter-spacing: 0.5px; }
+  .o-bottom { padding: 20px 28px 24px; }
+  .o-bottom p { font-size: 12.5px; color: #888; line-height: 1.6; margin-bottom: 18px; text-align: center; }
+  .o-actions { display: flex; gap: 10px; }
+  .o-skip { background: none; border: 1px solid #e8e8e8; color: #aaa; font-size: 12.5px; font-weight: 600; padding: 10px 16px; border-radius: 9px; cursor: pointer; }
+  .o-go { flex: 1; background: var(--accent); color: #000; font-size: 13.5px; font-weight: 800; padding: 11px; border-radius: 9px; border: none; cursor: pointer; }
+</style>
+</head>
+<body>
+
+<!-- ─── K: Job Ticket ──────────────────────────────────────────────────── -->
+<div class="mock-wrap">
+  <div class="label">K — Job Ticket (trade / craft aesthetic)</div>
+  <div class="k-card">
+    <div class="k-holes">
+      <div class="k-hole"></div>
+      <div class="k-hole"></div>
+      <div class="k-hole"></div>
+      <div class="k-hole"></div>
+      <div class="k-hole"></div>
+    </div>
+    <div class="k-body">
+      <div class="k-header">
+        <div class="k-brand">
+          <div class="k-brand-icon">🪚</div>
+          <div>
+            <h2>ProCabinet</h2>
+            <p>Workshop Management</p>
+          </div>
+        </div>
+        <div class="k-ticket-no">
+          <span>Tour ID</span>
+          <strong>#T-001</strong>
+        </div>
+      </div>
+      <div class="k-field">
+        <div class="k-field-label">Project loaded</div>
+        <div class="k-field-val">Smith Kitchen Renovation — <em>Sample</em></div>
+      </div>
+      <div class="k-field">
+        <div class="k-field-label">What we'll cover</div>
+        <div class="k-field-val">A guided walk through every section of the app using real data you can explore and edit.</div>
+      </div>
+      <div class="k-field">
+        <div class="k-field-label">Estimated time</div>
+        <div class="k-field-val">~2 minutes</div>
+      </div>
+      <div class="k-sections">
+        <div class="k-tag">Clients</div>
+        <div class="k-tag">Cabinet Builder</div>
+        <div class="k-tag">Quotes</div>
+        <div class="k-tag">Orders</div>
+        <div class="k-tag">Schedule</div>
+        <div class="k-tag">Stock</div>
+        <div class="k-tag">Cut Lists</div>
+        <div class="k-tag">Dashboard</div>
+      </div>
+      <div class="k-actions">
+        <button class="k-skip">Skip tour</button>
+        <button class="k-go">Start the tour →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── L: Progress Track ──────────────────────────────────────────────── -->
+<div class="mock-wrap">
+  <div class="label">L — Progress Track (numbered steps at the top)</div>
+  <div class="l-card">
+    <div class="l-track">
+      <div class="l-track-label">Tour sections <span>1 of 8</span></div>
+      <div class="l-steps">
+        <div class="l-step">
+          <div class="l-dot first">1</div>
+          <div class="l-line"></div>
+        </div>
+        <div class="l-step">
+          <div class="l-dot">2</div>
+          <div class="l-line"></div>
+        </div>
+        <div class="l-step">
+          <div class="l-dot">3</div>
+          <div class="l-line"></div>
+        </div>
+        <div class="l-step">
+          <div class="l-dot">4</div>
+          <div class="l-line"></div>
+        </div>
+        <div class="l-step">
+          <div class="l-dot">5</div>
+          <div class="l-line"></div>
+        </div>
+        <div class="l-step">
+          <div class="l-dot">6</div>
+          <div class="l-line"></div>
+        </div>
+        <div class="l-step">
+          <div class="l-dot">7</div>
+          <div class="l-line"></div>
+        </div>
+        <div class="l-step">
+          <div class="l-dot">8</div>
+        </div>
+      </div>
+      <div class="l-step-names">
+        <div class="l-step-name first">Clients</div>
+        <div class="l-step-name">Cabinet</div>
+        <div class="l-step-name">Quote</div>
+        <div class="l-step-name">Orders</div>
+        <div class="l-step-name">Schedule</div>
+        <div class="l-step-name">Stock</div>
+        <div class="l-step-name">Cut List</div>
+        <div class="l-step-name">Dash</div>
+      </div>
+    </div>
+    <div class="l-body">
+      <h2>Let's walk through the app</h2>
+      <p>We've set up a <span class="l-hi">sample kitchen project</span> with real data so every section of the tour shows you something meaningful. About 2 minutes total.</p>
+      <div class="l-actions">
+        <button class="l-skip">Skip</button>
+        <button class="l-go">Start the tour →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── M: Stacked Cards ───────────────────────────────────────────────── -->
+<div class="mock-wrap">
+  <div class="label">M — Stacked Cards (depth suggests more to explore)</div>
+  <div class="m-wrap">
+    <div class="m-card-back2"></div>
+    <div class="m-card-back1"></div>
+    <div class="m-card">
+      <div class="m-badge">
+        <div class="m-badge-dot"></div>
+        Sample project loaded
+      </div>
+      <h2>Welcome to ProCabinet</h2>
+      <p>We've set up a sample kitchen so you can see how everything fits together. This tour walks through <span class="m-hi">8 sections of the app</span>, one tab at a time.</p>
+      <div class="m-actions">
+        <button class="m-skip">Skip for now</button>
+        <button class="m-go">Start the tour →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── N: Glow / Dark Ambient ────────────────────────────────────────── -->
+<div class="mock-wrap">
+  <div class="label">N — Dark Ambient Glow (premium / dramatic)</div>
+  <div class="n-card">
+    <div class="n-glow-wrap">
+      <div class="n-icon-ring">🪚</div>
+      <div class="n-label">Quick tour · 2 minutes</div>
+      <h2>Your workspace is<br><em>ready to explore</em></h2>
+      <p>We've loaded a sample kitchen project with real clients, cabinets, quotes and orders. Every section of the app is populated and ready.</p>
+    </div>
+    <div class="n-divider"></div>
+    <div class="n-footer">
+      <button class="n-go">Start the tour →</button>
+      <button class="n-skip">Skip for now</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── O: Stats / Social Proof ───────────────────────────────────────── -->
+<div class="mock-wrap">
+  <div class="label">O — Stats (what the app covers, quantified)</div>
+  <div class="o-card">
+    <div class="o-top">
+      <span class="o-icon">🪚</span>
+      <h2>Welcome to ProCabinet</h2>
+      <p>One app for your entire cabinet workflow. We've set up a sample kitchen project to show you how it all fits together.</p>
+    </div>
+    <div class="o-stats">
+      <div class="o-stat">
+        <div class="o-stat-num"><span>8</span></div>
+        <div class="o-stat-label">Sections</div>
+      </div>
+      <div class="o-stat">
+        <div class="o-stat-num"><span>2</span>min</div>
+        <div class="o-stat-label">Tour length</div>
+      </div>
+      <div class="o-stat">
+        <div class="o-stat-num"><span>1</span></div>
+        <div class="o-stat-label">Sample project</div>
+      </div>
+    </div>
+    <div class="o-bottom">
+      <p>The sample data is yours to explore — edit anything, delete it all, or clear it at the end of the tour.</p>
+      <div class="o-actions">
+        <button class="o-skip">Skip</button>
+        <button class="o-go">Start the tour →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

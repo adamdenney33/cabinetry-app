@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1440">
+<title>Save UX — Strategy Comparison</title>
+<style>
+  /* Tokens cloned from styles.css for fidelity */
+  :root {
+    --accent:   #e8a838;
+    --accent-dim: rgba(232,168,56,0.12);
+    --accent2:  #0d9488;
+    --danger:   #e05252;
+    --success:  #3d9970;
+    --warn:     #e8a838;
+    --bg:       #f2f2f2;
+    --surface:  #ffffff;
+    --surface2: #f7f7f7;
+    --border:   #e0e0e0;
+    --border2:  #ebebeb;
+    --text:     #111111;
+    --text2:    #444444;
+    --muted:    #888888;
+    --header-bg:#111111;
+    --header-fg:#ffffff;
+    --radius: 10px;
+    --shadow: 0 1px 4px rgba(0,0,0,0.07);
+    --shadow-md: 0 4px 16px rgba(0,0,0,0.10);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); padding: 32px 28px 56px; }
+
+  /* ── Page header ── */
+  .page-h1 { font-size: 22px; font-weight: 800; letter-spacing: -0.4px; margin-bottom: 4px; }
+  .page-sub { font-size: 13px; color: var(--muted); margin-bottom: 24px; max-width: 980px; line-height: 1.5; }
+  .page-sub b { color: var(--text); font-weight: 600; }
+
+  /* ── Strategy section ── */
+  .strategy { margin-bottom: 36px; }
+  .strategy-header { margin-bottom: 14px; padding-bottom: 10px; border-bottom: 2px solid var(--border); }
+  .strategy-tag { display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: 1px; padding: 3px 10px; border-radius: 4px; background: var(--text); color: var(--surface); text-transform: uppercase; margin-right: 10px; vertical-align: middle; }
+  .strategy-tag.recommended { background: var(--success); }
+  .strategy-title { display: inline-block; font-size: 18px; font-weight: 700; vertical-align: middle; }
+  .strategy-desc { margin-top: 8px; font-size: 13px; color: var(--text2); line-height: 1.55; max-width: 1000px; }
+  .strategy-desc code { background: var(--surface2); padding: 1px 6px; border-radius: 4px; font-size: 12px; }
+  .strategy-pros { margin-top: 6px; font-size: 12px; color: var(--muted); }
+  .strategy-pros b { color: var(--success); font-weight: 600; }
+  .strategy-cons { font-size: 12px; color: var(--muted); }
+  .strategy-cons b { color: var(--danger); font-weight: 600; }
+
+  /* ── Sidebar grid ── */
+  .grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 18px; }
+  .panel-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow); overflow: hidden; display: flex; flex-direction: column; }
+  .panel-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); padding: 10px 14px 8px; background: var(--surface2); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+  .panel-label .var-tag { color: var(--accent); font-weight: 700; }
+
+  /* ── Sidebar mock chrome (shaped like real sidebar) ── */
+  .sidebar-mock { display: flex; flex-direction: column; height: 540px; background: var(--surface); }
+  .sb-head { padding: 12px 14px 10px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  .sb-head .sb-title-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .sb-title { font-size: 13px; font-weight: 700; color: var(--text); }
+  .sb-sub { font-size: 11px; color: var(--muted); margin-top: 3px; }
+  .sb-tabs { display: flex; border-bottom: 2px solid var(--border); flex-shrink: 0; }
+  .sb-tab { flex: 1; padding: 9px 12px; font-size: 12px; font-weight: 600; text-align: center; cursor: pointer; color: var(--muted); border-bottom: 2px solid transparent; margin-bottom: -2px; }
+  .sb-tab.active { color: var(--text); border-bottom-color: var(--accent); }
+  .sb-body { flex: 1; overflow: hidden; padding: 12px 14px; font-size: 12px; }
+  .sb-foot { border-top: 1px solid var(--border); padding: 10px 14px; background: var(--surface); flex-shrink: 0; }
+
+  /* Form bits */
+  .label { display: block; font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; letter-spacing: 0.5px; }
+  .field { width: 100%; padding: 6px 9px; border: 1px solid var(--border); border-radius: 6px; font-size: 12px; background: var(--surface2); color: var(--text); margin-bottom: 8px; font-family: inherit; }
+  .field:focus { outline: none; border-color: var(--accent); }
+  .smart-input { display: flex; border: 1px solid var(--border); border-radius: 6px; background: var(--surface2); overflow: hidden; margin-bottom: 8px; }
+  .smart-input input { flex: 1; padding: 6px 9px; border: none; background: transparent; font-size: 12px; outline: none; color: var(--text); font-family: inherit; }
+  .smart-input .plus { width: 28px; background: transparent; border-left: 1px solid var(--border); display: flex; align-items: center; justify-content: center; color: var(--accent); font-size: 14px; font-weight: 700; cursor: pointer; }
+
+  /* Buttons */
+  .btn { padding: 7px 12px; border: none; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary[disabled] { background: var(--border); color: var(--muted); cursor: default; }
+  .btn-outline { background: transparent; color: var(--text2); border: 1px solid var(--border); }
+  .btn-outline:hover { background: var(--surface2); }
+  .btn-lg { padding: 10px 14px; font-size: 13px; width: 100%; }
+  .btn-row { display: flex; gap: 8px; }
+  .btn-row > .btn { flex: 1; }
+  .btn-row > .btn.grow2 { flex: 2; }
+
+  /* Pills (save status) */
+  .pill { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; padding: 2px 7px; border-radius: 4px; display: inline-flex; align-items: center; gap: 4px; }
+  .pill-unsaved { color: var(--accent); background: var(--accent-dim); }   /* matches real .cl-unsaved-pill */
+  .pill-saving  { color: var(--accent); background: var(--accent-dim); }
+  .pill-saving::before { content: '●'; animation: pulse 1.4s ease-in-out infinite; font-size: 8px; }
+  @keyframes pulse { 0%,100% { opacity: 0.4 } 50% { opacity: 1 } }
+  .pill-saved   { color: var(--success); background: rgba(61,153,112,0.14); }
+  .pill-saved::before { content: '✓'; font-size: 9px; }
+  .pill-failed  { color: var(--danger); background: rgba(224,82,82,0.14); cursor: pointer; }
+  .pill-failed::before { content: '!'; font-size: 9px; font-weight: 800; }
+  .pill-changes { color: var(--text); background: var(--accent-dim); border: 1px solid var(--accent); padding: 2px 8px; }
+  .pill-mode    { font-size: 9px; color: var(--muted); background: var(--surface2); border: 1px solid var(--border); }
+
+  /* Cabinet line/row mocks */
+  .cab-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; margin-bottom: 6px; }
+  .cab-row .name { font-size: 12px; font-weight: 600; color: var(--text); }
+  .cab-row .meta { font-size: 10px; color: var(--muted); }
+  .cab-row .price { font-size: 12px; font-weight: 700; color: var(--text); }
+
+  /* Cut list mini-table */
+  .mini-table { width: 100%; border-collapse: collapse; font-size: 11px; margin-bottom: 8px; }
+  .mini-table th { text-align: left; padding: 4px 6px; font-size: 9px; color: var(--muted); text-transform: uppercase; font-weight: 700; letter-spacing: 0.4px; background: var(--surface2); border-bottom: 1px solid var(--border); }
+  .mini-table td { padding: 5px 6px; border-bottom: 1px solid var(--border2); }
+  .mini-table .qty { text-align: right; color: var(--muted); }
+  .add-btn { color: var(--muted); font-size: 11px; padding: 5px 8px; cursor: pointer; }
+
+  /* Order line items */
+  .ol-row { display: grid; grid-template-columns: 1fr 50px 60px; gap: 6px; padding: 6px 8px; align-items: center; font-size: 12px; border-bottom: 1px solid var(--border2); }
+  .ol-row .name { color: var(--text); font-weight: 500; }
+  .ol-row .qty  { color: var(--muted); text-align: right; font-size: 11px; }
+  .ol-row .price { font-weight: 700; text-align: right; }
+  .ol-section { font-size: 9px; font-weight: 700; text-transform: uppercase; color: var(--muted); letter-spacing: 0.6px; padding: 8px 8px 4px; }
+
+  /* Sticky-bar variants */
+  .stickybar { background: var(--surface); border-top: 1px solid var(--border); padding: 9px 12px; display: flex; align-items: center; justify-content: space-between; gap: 8px; box-shadow: 0 -2px 6px rgba(0,0,0,0.04); }
+  .stickybar .count { font-size: 11px; color: var(--text); font-weight: 600; }
+  .stickybar .count i { color: var(--accent); font-style: normal; }
+
+  /* Toast preview */
+  .toast-preview { position: relative; padding: 7px 14px; background: var(--text); color: var(--surface); border-radius: 7px; font-size: 11px; font-weight: 500; box-shadow: var(--shadow-md); display: inline-block; margin-top: 6px; }
+  .toast-preview.success { background: var(--success); }
+  .toast-preview.error { background: var(--danger); }
+  .toast-cap { font-size: 9px; color: var(--muted); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+  /* Helper rows for legend */
+  .legend { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 18px; margin-bottom: 28px; box-shadow: var(--shadow); }
+  .legend h3 { font-size: 12px; font-weight: 700; text-transform: uppercase; color: var(--muted); letter-spacing: 1px; margin-bottom: 10px; }
+  .legend-row { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; font-size: 11px; color: var(--text2); }
+  .legend-row > div { display: flex; align-items: center; gap: 6px; }
+
+  .scroll-hint { text-align: center; font-size: 10px; color: var(--muted); padding: 6px; background: var(--surface2); border-top: 1px dashed var(--border); }
+  hr.scroll-fade { border: none; height: 1px; background: linear-gradient(to right, transparent, var(--border), transparent); margin: 10px 0; }
+</style>
+</head>
+<body>
+
+<div class="page-h1">Save UX — Strategy Comparison</div>
+<div class="page-sub">
+  Four candidate save strategies, each shown applied to the three sidebars the user named: <b>Cabinet Builder</b>, <b>Cut List</b>, and <b>Orders</b>. All strategies assume the editing surface is a right-side sidebar (consistent with Cabinet Builder and Cut List today; future migration target for Quote/Order/Client/Project/Stock).
+  Real CSS tokens (<code>--accent</code>, <code>--surface</code>, <code>.cl-unsaved-pill</code> styles) are reused for fidelity.
+</div>
+
+<div class="legend">
+  <h3>Status pill states (used across strategies)</h3>
+  <div class="legend-row">
+    <div><span class="pill pill-unsaved">unsaved</span> dirty, awaiting save</div>
+    <div><span class="pill pill-saving">Saving…</span> save in flight</div>
+    <div><span class="pill pill-saved">Saved 2s ago</span> commit success</div>
+    <div><span class="pill pill-failed">Failed · Retry</span> network error</div>
+    <div><span class="pill pill-changes">4 unsaved changes</span> sticky-bar count</div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!--                STRATEGY A — Universal Save Button                       -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<div class="strategy">
+  <div class="strategy-header">
+    <span class="strategy-tag">Strategy A</span>
+    <span class="strategy-title">Universal Save Button (Pessimistic)</span>
+    <div class="strategy-desc">Every editing sidebar gets a sticky <b>Discard / Save</b> footer. Nothing autosaves silently; an <code>unsaved</code> pill appears in the header until the user clicks Save. Save fires <code>_toast('Saved')</code>. <code>beforeunload</code> blocks tab close while dirty.</div>
+    <div class="strategy-pros"><b>Pros:</b> Predictable; one mental model; fewer DB writes.</div>
+    <div class="strategy-cons"><b>Cons:</b> Friction for Settings/Business Info; risk users forget to click Save and assume it persisted.</div>
+  </div>
+
+  <div class="grid">
+
+    <!-- A · Cabinet Builder -->
+    <div class="panel-card">
+      <div class="panel-label"><span>Cabinet Builder sidebar</span><span class="var-tag">DIRTY</span></div>
+      <div class="sidebar-mock">
+        <div class="sb-head">
+          <div class="sb-title-row">
+            <span class="sb-title">Kitchen Reno</span>
+            <span class="pill pill-unsaved">unsaved</span>
+          </div>
+          <div class="sb-sub">Project · 3 cabinets</div>
+        </div>
+        <div class="sb-tabs">
+          <div class="sb-tab active">Cabinet Builder</div>
+          <div class="sb-tab">My Rates</div>
+        </div>
+        <div class="sb-body">
+          <span class="label">Cabinet</span>
+          <div class="smart-input"><input value="Base 600 mm" /><div class="plus">+</div></div>
+          <div class="cab-row"><div><div class="name">Base 600 mm</div><div class="meta">Body · Doors × 2</div></div><div class="price">$348</div></div>
+          <div class="cab-row"><div><div class="name">Wall 800 mm</div><div class="meta">Body · Doors × 2</div></div><div class="price">$412</div></div>
+          <div class="cab-row"><div><div class="name">Drawer 450 mm</div><div class="meta">Body · Drawers × 3</div></div><div class="price">$284</div></div>
+          <hr class="scroll-fade" />
+          <span class="label">Width (mm)</span>
+          <input class="field" value="600" />
+          <span class="label">Height (mm)</span>
+          <input class="field" value="720" />
+        </div>
+        <div class="sb-foot">
+          <div class="btn-row">
+            <button class="btn btn-outline">Discard</button>
+            <button class="btn btn-primary grow2">Save</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- A · Cut List -->
+    <div class="panel-card">
+      <div class="panel-label"><span>Cut List sidebar</span><span class="var-tag">DIRTY</span></div>
+      <div class="sidebar-mock">
+        <div class="sb-head">
+          <div class="sb-title-row">
+            <span class="sb-title">Kitchen Reno</span>
+            <span class="pill pill-unsaved">unsaved</span>
+          </div>
+          <div class="sb-sub">Cut list · 12 parts · 4 sheets</div>
+        </div>
+        <div class="sb-body">
+          <span class="label">Cut Parts</span>
+          <table class="mini-table">
+            <thead><tr><th>Label</th><th>L</th><th>W</th><th class="qty">Qty</th></tr></thead>
+            <tbody>
+              <tr><td>Side L</td><td>720</td><td>560</td><td class="qty">2</td></tr>
+              <tr><td>Top</td><td>568</td><td>560</td><td class="qty">1</td></tr>
+              <tr><td>Bottom</td><td>568</td><td>560</td><td class="qty">1</td></tr>
+              <tr><td>Shelf</td><td>568</td><td>540</td><td class="qty">1</td></tr>
+              <tr><td>Door</td><td>716</td><td>296</td><td class="qty">2</td></tr>
+            </tbody>
+          </table>
+          <div class="add-btn">+ Add part</div>
+          <hr class="scroll-fade" />
+          <span class="label">Project Panels</span>
+          <table class="mini-table">
+            <thead><tr><th>Material</th><th>L</th><th>W</th><th class="qty">Qty</th></tr></thead>
+            <tbody><tr><td>18 mm Birch Ply</td><td>2440</td><td>1220</td><td class="qty">2</td></tr></tbody>
+          </table>
+        </div>
+        <div class="sb-foot">
+          <button class="btn btn-primary btn-lg" style="margin-bottom:6px">⚡ Optimize Cut Layout</button>
+          <div class="btn-row">
+            <button class="btn btn-outline">Discard</button>
+            <button class="btn btn-primary grow2">Save Project</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- A · Orders -->
+    <div class="panel-card">
+      <div class="panel-label"><span>Orders sidebar</span><span class="var-tag">DIRTY</span></div>
+      <div class="sidebar-mock">
+        <div class="sb-head">
+          <div class="sb-title-row">
+            <span class="sb-title">Order #1042 · Acme Corp</span>
+            <span class="pill pill-unsaved">unsaved</span>
+          </div>
+          <div class="sb-sub">Production · Due 22 May</div>
+        </div>
+        <div class="sb-body">
+          <span class="label">Client</span>
+          <input class="field" value="Acme Corp" />
+          <span class="label">Project</span>
+          <input class="field" value="Kitchen Reno" />
+          <div class="ol-section">Cabinets</div>
+          <div class="ol-row"><span class="name">Base 600 mm</span><span class="qty">×2</span><span class="price">$696</span></div>
+          <div class="ol-row"><span class="name">Wall 800 mm</span><span class="qty">×2</span><span class="price">$824</span></div>
+          <div class="ol-section">Items</div>
+          <div class="ol-row"><span class="name">Hinges (soft-close)</span><span class="qty">24</span><span class="price">$57</span></div>
+          <div class="ol-section">Labour</div>
+          <div class="ol-row"><span class="name">Install</span><span class="qty">8h</span><span class="price">$640</span></div>
+        </div>
+        <div class="sb-foot">
+          <div class="btn-row">
+            <button class="btn btn-outline">Discard</button>
+            <button class="btn btn-primary grow2">Save</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!--                STRATEGY B — Universal Autosave + Status                 -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<div class="strategy">
+  <div class="strategy-header">
+    <span class="strategy-tag">Strategy B</span>
+    <span class="strategy-title">Universal Autosave with Status (Notion / Linear)</span>
+    <div class="strategy-desc">Every change autosaves on blur (or 600 ms debounce on text). A live <b>status pill</b> in the header cycles through Saving… → Saved → Failed. No save buttons except in creation flows. Failed saves surface a toast and inline retry.</div>
+    <div class="strategy-pros"><b>Pros:</b> Zero data loss; modern feel; no friction.</div>
+    <div class="strategy-cons"><b>Cons:</b> Heavier DB write load; users may instinctively look for a Save button and feel uncertain.</div>
+  </div>
+
+  <div class="grid">
+
+    <!-- B · Cabinet Builder (Saving) -->
+    <div class="panel-card">
+      <div class="panel-label"><span>Cabinet Builder sidebar</span><span class="var-tag">SAVING</span></div>
+      <div class="sidebar-mock">
+        <div class="sb-head">
+          <div class="sb-title-row">
+            <span class="sb-title">Kitchen Reno</span>
+            <span class="pill pill-saving">Saving…</span>
+          </div>
+          <div class="sb-sub">Project · 3 cabinets</div>
+        </div>
+        <div class="sb-tabs">
+          <div class="sb-tab active">Cabinet Builder</div>
+          <div class="sb-tab">My Rates</div>
+        </div>
+        <div class="sb-body">
+          <span class="label">Cabinet</span>
+          <div class="smart-input"><input value="Base 600 mm" /><div class="plus">+</div></div>
+          <div class="cab-row"><div><div class="name">Base 600 mm</div><div class="meta">Body · Doors × 2</div></div><div class="price">$348</div></div>
+          <div class="cab-row"><div><div class="name">Wall 800 mm</div><div class="meta">Body · Doors × 2</div></div><div class="price">$412</div></div>
+          <div class="cab-row"><div><div class="name">Drawer 450 mm</div><div class="meta">Body · Drawers × 3</div></div><div class="price">$284</div></div>
+          <hr class="scroll-fade" />
+          <span class="label">Width (mm)</span>
+          <input class="field" value="650" style="border-color:var(--accent)" />
+          <span class="label">Height (mm)</span>
+          <input class="field" value="720" />
+        </div>
+        <!-- no footer — autosave -->
+      </div>
+    </div>
+
+    <!-- B · Cut List (Saved) -->
+    <div class="panel-card">
+      <div class="panel-label"><span>Cut List sidebar</span><span class="var-tag">SAVED</span></div>
+      <div class="sidebar-mock">
+        <div class="sb-head">
+          <div class="sb-title-row">
+            <span class="sb-title">Kitchen Reno</span>
+            <span class="pill pill-saved">Saved 2s ago</span>
+          </div>
+          <div class="sb-sub">Cut list · 12 parts · 4 sheets</div>
+        </div>
+        <div class="sb-body">
+          <span class="label">Cut Parts</span>
+          <table class="mini-table">
+            <thead><tr><th>Label</th><th>L</th><th>W</th><th class="qty">Qty</th></tr></thead>
+            <tbody>
+              <tr><td>Side L</td><td>720</td><td>560</td><td class="qty">2</td></tr>
+              <tr><td>Top</td><td>568</td><td>560</td><td class="qty">1</td></tr>
+              <tr><td>Bottom</td><td>568</td><td>560</td><td class="qty">1</td></tr>
+              <tr><td>Shelf</td><td>568</td><td>540</td><td class="qty">1</td></tr>
+              <tr><td>Door</td><td>716</td><td>296</td><td class="qty">2</td></tr>
+            </tbody>
+          </table>
+          <div class="add-btn">+ Add part</div>
+          <hr class="scroll-fade" />
+          <span class="label">Project Panels</span>
+          <table class="mini-table">
+            <thead><tr><th>Material</th><th>L</th><th>W</th><th class="qty">Qty</th></tr></thead>
+            <tbody><tr><td>18 mm Birch Ply</td><td>2440</td><td>1220</td><td class="qty">2</td></tr></tbody>
+          </table>
+        </div>
+        <div class="sb-foot">
+          <button class="btn btn-primary btn-lg">⚡ Optimize Cut Layout</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- B · Orders (Failed) -->
+    <div class="panel-card">
+      <div class="panel-label"><span>Orders sidebar</span><span class="var-tag">FAILED</span></div>
+      <div class="sidebar-mock">
+        <div class="sb-head">
+          <div class="sb-title-row">
+            <span class="sb-title">Order #1042 · Acme Corp</span>
+            <span class="pill pill-failed">Save failed · Retry</span>
+          </div>
+          <div class="sb-sub">Production · Due 22 May</div>
+        </div>
+        <div class="sb-body">
+          <span class="label">Client</span>
+          <input class="field" value="Acme Corp" />
+          <span class="label">Project</span>
+          <input class="field" value="Kitchen Reno" />
+          <div class="ol-section">Cabinets</div>
+          <div class="ol-row"><span class="name">Base 600 mm</span><span class="qty">×2</span><span class="price">$696</span></div>
+          <div class="ol-row"><span class="name">Wall 800 mm</span><span class="qty">×2</span><span class="price">$824</span></div>
+          <div class="ol-section">Items</div>
+          <div class="ol-row"><span class="name">Hinges (soft-close)</span><span class="qty">24</span><span class="price">$57</span></div>
+          <div style="margin-top:10px">
+            <span class="toast-preview error">Save failed — check connection · Retry</span>
+            <div class="toast-cap">Toast surfaced on network error</div>
+          </div>
+        </div>
+        <!-- no footer — autosave -->
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!--                STRATEGY C — Hybrid (Recommended)                        -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<div class="strategy">
+  <div class="strategy-header">
+    <span class="strategy-tag recommended">Strategy C · Recommended</span>
+    <span class="strategy-title">Hybrid: Autosave for Editing, Explicit for Creation</span>
+    <div class="strategy-desc">Creating a new entity uses an explicit <b>Cancel / + Create</b> footer (so half-typed entities don't pollute lists). Editing an existing entity autosaves with a status pill. Cut List keeps its <b>Save Project</b> snapshot button (it's a versioning action, not a field-edit action).</div>
+    <div class="strategy-pros"><b>Pros:</b> Matches user intent (create vs. edit); reuses existing dirty-state infrastructure; minimal friction for routine edits.</div>
+    <div class="strategy-cons"><b>Cons:</b> Two patterns to learn (mitigated because they map cleanly to user mental model).</div>
+  </div>
+
+  <div class="grid">
+
+    <!-- C · Cabinet Builder (autosave editing) -->
+    <div class="panel-card">
+      <div class="panel-label"><span>Cabinet Builder · editing</span><span class="var-tag">SAVED</span></div>
+      <div class="sidebar-mock">
+        <div class="sb-head">
+          <div class="sb-title-row">
+            <span class="sb-title">Kitchen Reno</span>
+            <span class="pill pill-saved">Saved</span>
+            <span class="pill pill-mode">edit mode</span>
+          </div>
+          <div class="sb-sub">Project · 3 cabinets</div>
+        </div>
+        <div class="sb-tabs">
+          <div class="sb-tab active">Cabinet Builder</div>
+          <div class="sb-tab">My Rates</div>
+        </div>
+        <div class="sb-body">
+          <span class="label">Cabinet</span>
+          <div class="smart-input"><input value="Base 600 mm" /><div class="plus">+</div></div>
+          <div class="cab-row"><div><div class="name">Base 600 mm</div><div class="meta">Body · Doors × 2</div></div><div class="price">$348</div></div>
+          <div class="cab-row"><div><div class="name">Wall 800 mm</div><div class="meta">Body · Doors × 2</div></div><div class="price">$412</div></div>
+          <div class="cab-row"><div><div class="name">Drawer 450 mm</div><div class="meta">Body · Drawers × 3</div></div><div class="price">$284</div></div>
+          <hr class="scroll-fade" />
+          <span class="label">Width (mm)</span>
+          <input class="field" value="600" />
+          <span class="label">Height (mm)</span>
+          <input class="field" value="720" />
+        </div>
+        <!-- no footer in edit mode -->
+      </div>
+    </div>
+
+    <!-- C · Cut List (autosave + Save Project snapshot) -->
+    <div class="panel-card">
+      <div class="panel-label"><span>Cut List sidebar</span><span class="var-tag">SAVED</span></div>
+      <div class="sidebar-mock">
+        <div class="sb-head">
+          <div class="sb-title-row">
+            <span class="sb-title">Kitchen Reno</span>
+            <span class="pill pill-saved">Saved 2s ago</span>
+          </div>
+          <div class="sb-sub">Cut list · 12 parts · 4 sheets</div>
+        </div>
+        <div class="sb-body">
+          <span class="label">Cut Parts</span>
+          <table class="mini-table">
+            <thead><tr><th>Label</th><th>L</th><th>W</th><th class="qty">Qty</th></tr></thead>
+            <tbody>
+              <tr><td>Side L</td><td>720</td><td>560</td><td class="qty">2</td></tr>
+              <tr><td>Top</td><td>568</td><td>560</td><td class="qty">1</td></tr>
+              <tr><td>Bottom</td><td>568</td><td>560</td><td class="qty">1</td></tr>
+              <tr><td>Shelf</td><td>568</td><td>540</td><td class="qty">1</td></tr>
+              <tr><td>Door</td><td>716</td><td>296</td><td class="qty">2</td></tr>
+            </tbody>
+          </table>
+          <div class="add-btn">+ Add part</div>
+          <hr class="scroll-fade" />
+          <span class="label">Project Panels</span>
+          <table class="mini-table">
+            <thead><tr><th>Material</th><th>L</th><th>W</th><th class="qty">Qty</th></tr></thead>
+            <tbody><tr><td>18 mm Birch Ply</td><td>2440</td><td>1220</td><td class="qty">2</td></tr></tbody>
+          </table>
+        </div>
+        <div class="sb-foot">
+          <button class="btn btn-primary btn-lg" style="margin-bottom:6px">⚡ Optimize Cut Layout</button>
+          <button class="btn btn-outline btn-lg" title="Field edits autosave; this saves a snapshot to the project">Save Project (snapshot)</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- C · Orders — CREATING (explicit Create) -->
+    <div class="panel-card">
+      <div class="panel-label"><span>Orders · creating</span><span class="var-tag">DRAFT</span></div>
+      <div class="sidebar-mock">
+        <div class="sb-head">
+          <div class="sb-title-row">
+            <span class="sb-title">New Order</span>
+            <span class="pill pill-mode">draft</span>
+          </div>
+          <div class="sb-sub">Will be saved when you click Create</div>
+        </div>
+        <div class="sb-body">
+          <span class="label">Client</span>
+          <div class="smart-input"><input placeholder="Search or add client…" /><div class="plus">+</div></div>
+          <span class="label">Project</span>
+          <div class="smart-input"><input placeholder="Search or add project…" /><div class="plus">+</div></div>
+          <span class="label">Due date</span>
+          <input class="field" value="2026-05-22" />
+          <div class="ol-section">Cabinets</div>
+          <div style="font-size:11px;color:var(--muted);padding:8px;text-align:center;background:var(--surface2);border-radius:6px">No cabinets added yet — pick from a Cabinet Builder project</div>
+        </div>
+        <div class="sb-foot">
+          <div class="btn-row">
+            <button class="btn btn-outline">Cancel</button>
+            <button class="btn btn-primary grow2">+ Create Order</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Second row: Orders editing variant + Cabinet Builder Saving variant -->
+  <div class="grid" style="margin-top:14px">
+
+    <div class="panel-card">
+      <div class="panel-label"><span>Cabinet Builder · saving</span><span class="var-tag">SAVING</span></div>
+      <div class="sidebar-mock" style="height:340px">
+        <div class="sb-head">
+          <div class="sb-title-row">
+            <span class="sb-title">Kitchen Reno</span>
+            <span class="pill pill-saving">Saving…</span>
+            <span class="pill pill-mode">edit mode</span>
+          </div>
+          <div class="sb-sub">Width changed · debounced 600 ms</div>
+        </div>
+        <div class="sb-body">
+          <span class="label">Width (mm)</span>
+          <input class="field" value="650" style="border-color:var(--accent)" />
+          <span class="label">Height (mm)</span>
+          <input class="field" value="720" />
+        </div>
+      </div>
+    </div>
+
+    <div class="panel-card">
+      <div class="panel-label"><span>Orders · editing existing</span><span class="var-tag">SAVED</span></div>
+      <div class="sidebar-mock" style="height:340px">
+        <div class="sb-head">
+          <div class="sb-title-row">
+            <span class="sb-title">Order #1042 · Acme Corp</span>
+            <span class="pill pill-saved">Saved 2s ago</span>
+            <span class="pill pill-mode">edit mode</span>
+          </div>
+          <div class="sb-sub">Production · Due 22 May</div>
+        </div>
+        <div class="sb-body">
+          <span class="label">Client</span>
+          <input class="field" value="Acme Corp" />
+          <span class="label">Project</span>
+          <input class="field" value="Kitchen Reno" />
+          <div class="ol-section">Cabinets</div>
+          <div class="ol-row"><span class="name">Base 600 mm</span><span class="qty">×2</span><span class="price">$696</span></div>
+          <div class="ol-row"><span class="name">Wall 800 mm</span><span class="qty">×2</span><span class="price">$824</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel-card">
+      <div class="panel-label"><span>Toast feedback</span><span class="var-tag">FEEDBACK</span></div>
+      <div class="sidebar-mock" style="height:340px;padding:18px;display:block">
+        <span class="label">On a successful autosave</span>
+        <span class="toast-preview success">Saved</span>
+        <div class="toast-cap">Brief, success colour, 2 s fade</div>
+
+        <hr class="scroll-fade" />
+        <span class="label">On a failed save</span>
+        <span class="toast-preview error">Save failed — check connection · Retry</span>
+        <div class="toast-cap">Persistent until clicked or 6 s, header pill flips to "Failed · Retry"</div>
+
+        <hr class="scroll-fade" />
+        <span class="label">On creation success</span>
+        <span class="toast-preview success">Order #1042 created</span>
+        <div class="toast-cap">Footer Create button fires this on success</div>
+
+        <hr class="scroll-fade" />
+        <span class="label">On unload while saving</span>
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:8px;font-size:11px;color:var(--text)">⚠ Changes haven't been saved. Leave anyway?</div>
+        <div class="toast-cap"><code>beforeunload</code> only fires when a save is in flight</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!--                STRATEGY D — Sticky Sidebar Save Bar                     -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<div class="strategy">
+  <div class="strategy-header">
+    <span class="strategy-tag">Strategy D</span>
+    <span class="strategy-title">Sticky Sidebar Save Bar (GitHub / Linear)</span>
+    <div class="strategy-desc">Edits are <b>local-only</b> until the user commits. A sticky bar slides up <b>inside the sidebar</b> when there are unsaved changes, showing the count and Discard / Save buttons. Bar is hidden when clean.</div>
+    <div class="strategy-pros"><b>Pros:</b> Visually unmissable when something needs saving; naturally batches writes; one shared pattern.</div>
+    <div class="strategy-cons"><b>Cons:</b> Heaviest rework; layout shift when bar appears; awkward for creation flow.</div>
+  </div>
+
+  <div class="grid">
+
+    <!-- D · Cabinet Builder -->
+    <div class="panel-card">
+      <div class="panel-label"><span>Cabinet Builder sidebar</span><span class="var-tag">DIRTY</span></div>
+      <div class="sidebar-mock">
+        <div class="sb-head">
+          <div class="sb-title-row">
+            <span class="sb-title">Kitchen Reno</span>
+            <span class="pill pill-unsaved">unsaved</span>
+          </div>
+          <div class="sb-sub">Project · 3 cabinets</div>
+        </div>
+        <div class="sb-tabs">
+          <div class="sb-tab active">Cabinet Builder</div>
+          <div class="sb-tab">My Rates</div>
+        </div>
+        <div class="sb-body">
+          <span class="label">Cabinet</span>
+          <div class="smart-input"><input value="Base 600 mm" /><div class="plus">+</div></div>
+          <div class="cab-row"><div><div class="name">Base 600 mm</div><div class="meta">Body · Doors × 2</div></div><div class="price">$348</div></div>
+          <div class="cab-row"><div><div class="name">Wall 800 mm</div><div class="meta">Body · Doors × 2 (edited)</div></div><div class="price">$430</div></div>
+          <div class="cab-row"><div><div class="name">Drawer 450 mm</div><div class="meta">Body · Drawers × 3</div></div><div class="price">$284</div></div>
+          <hr class="scroll-fade" />
+          <span class="label">Width (mm)</span>
+          <input class="field" value="650" />
+          <span class="label">Height (mm)</span>
+          <input class="field" value="720" />
+        </div>
+        <div class="stickybar">
+          <span class="count"><i>4</i> unsaved changes</span>
+          <div style="display:flex;gap:6px"><button class="btn btn-outline">Discard</button><button class="btn btn-primary">Save</button></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- D · Cut List -->
+    <div class="panel-card">
+      <div class="panel-label"><span>Cut List sidebar</span><span class="var-tag">DIRTY</span></div>
+      <div class="sidebar-mock">
+        <div class="sb-head">
+          <div class="sb-title-row">
+            <span class="sb-title">Kitchen Reno</span>
+            <span class="pill pill-unsaved">unsaved</span>
+          </div>
+          <div class="sb-sub">Cut list · 12 parts · 4 sheets</div>
+        </div>
+        <div class="sb-body">
+          <span class="label">Cut Parts</span>
+          <table class="mini-table">
+            <thead><tr><th>Label</th><th>L</th><th>W</th><th class="qty">Qty</th></tr></thead>
+            <tbody>
+              <tr><td>Side L</td><td>720</td><td>560</td><td class="qty">2</td></tr>
+              <tr><td>Top</td><td>568</td><td>560</td><td class="qty">1</td></tr>
+              <tr><td>Bottom</td><td>568</td><td>560</td><td class="qty">1</td></tr>
+              <tr style="background:var(--accent-dim)"><td>Shelf <span style="color:var(--accent);font-size:9px;font-weight:700">·edit</span></td><td>568</td><td>540</td><td class="qty">2</td></tr>
+              <tr><td>Door</td><td>716</td><td>296</td><td class="qty">2</td></tr>
+            </tbody>
+          </table>
+          <div class="add-btn">+ Add part</div>
+          <hr class="scroll-fade" />
+          <span class="label">Project Panels</span>
+          <table class="mini-table">
+            <thead><tr><th>Material</th><th>L</th><th>W</th><th class="qty">Qty</th></tr></thead>
+            <tbody><tr><td>18 mm Birch Ply</td><td>2440</td><td>1220</td><td class="qty">2</td></tr></tbody>
+          </table>
+        </div>
+        <div class="stickybar">
+          <span class="count"><i>1</i> unsaved change</span>
+          <div style="display:flex;gap:6px"><button class="btn btn-outline">Discard</button><button class="btn btn-primary">Save</button></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- D · Orders -->
+    <div class="panel-card">
+      <div class="panel-label"><span>Orders sidebar</span><span class="var-tag">DIRTY</span></div>
+      <div class="sidebar-mock">
+        <div class="sb-head">
+          <div class="sb-title-row">
+            <span class="sb-title">Order #1042 · Acme Corp</span>
+            <span class="pill pill-unsaved">unsaved</span>
+          </div>
+          <div class="sb-sub">Production · Due 22 May</div>
+        </div>
+        <div class="sb-body">
+          <span class="label">Client</span>
+          <input class="field" value="Acme Corp" />
+          <span class="label">Project</span>
+          <input class="field" value="Kitchen Reno" />
+          <span class="label" style="margin-top:6px">Due date</span>
+          <input class="field" value="2026-05-29" style="border-color:var(--accent)" />
+          <div class="ol-section">Cabinets</div>
+          <div class="ol-row"><span class="name">Base 600 mm</span><span class="qty">×3</span><span class="price">$1,044</span></div>
+          <div class="ol-row"><span class="name">Wall 800 mm</span><span class="qty">×2</span><span class="price">$824</span></div>
+          <div class="ol-section">Items</div>
+          <div class="ol-row"><span class="name">Hinges (soft-close)</span><span class="qty">24</span><span class="price">$57</span></div>
+        </div>
+        <div class="stickybar">
+          <span class="count"><i>3</i> unsaved changes</span>
+          <div style="display:flex;gap:6px"><button class="btn btn-outline">Discard</button><button class="btn btn-primary">Save</button></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</body>
+</html>

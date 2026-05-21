@@ -1,0 +1,1060 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ProCabinet.App — Adding library items to a Quote · UI patterns</title>
+<style>
+  :root {
+    --accent: #e8a838;
+    --accent-dim: rgba(232,168,56,0.12);
+    --accent2: #0d9488;
+    --accent2-dim: rgba(13,148,136,0.12);
+    --danger: #e05252;
+    --danger-dim: rgba(224,82,82,0.12);
+    --success: #3d9970;
+    --success-dim: rgba(61,153,112,0.14);
+    --info: #5b8fc5;
+    --info-dim: rgba(80,140,220,0.12);
+    --purple: #9333ea;
+    --purple-dim: rgba(147,51,234,0.14);
+    --indigo: #6366f1;
+    --indigo-dim: rgba(99,102,241,0.14);
+    --orange: #d97706;
+    --orange-dim: rgba(217,119,6,0.14);
+    --bg: #f2f2f2;
+    --surface: #ffffff;
+    --surface2: #f7f7f7;
+    --border: #e0e0e0;
+    --border2: #ebebeb;
+    --text: #111111;
+    --text2: #444444;
+    --muted: #888888;
+    --radius: 8px;
+    --shadow: 0 1px 4px rgba(0,0,0,.04);
+    --shadow-md: 0 2px 8px rgba(0,0,0,.08);
+  }
+  html.dark {
+    --bg: #141414;
+    --surface: #1e1e1e;
+    --surface2: #252525;
+    --border: #2e2e2e;
+    --border2: #282828;
+    --text: #f0f0f0;
+    --text2: #bbbbbb;
+    --muted: #666666;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, sans-serif; font-size: 14px; line-height: 1.5; background: var(--bg); color: var(--text); }
+  code, .mono { font-family: 'SF Mono', Menlo, Consolas, monospace; font-size: 0.9em; }
+
+  .doc { max-width: 1280px; margin: 0 auto; padding: 32px 28px 80px; }
+  .doc-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; padding-bottom: 20px; border-bottom: 1px solid var(--border); margin-bottom: 24px; }
+  .doc-head h1 { font-size: 24px; font-weight: 800; margin: 0 0 4px; letter-spacing: -0.3px; }
+  .doc-head .subtitle { color: var(--muted); font-size: 13px; }
+  .theme-toggle { border: 1px solid var(--border); background: var(--surface); color: var(--text2); padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600; }
+
+  .lede { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px 20px; margin-bottom: 28px; color: var(--text2); font-size: 13px; }
+  .lede strong { color: var(--text); }
+
+  section.section { margin-top: 48px; }
+  .sec-num { font-size: 10px; color: var(--accent); font-weight: 800; letter-spacing: 2px; text-transform: uppercase; }
+  .sec-h { font-size: 20px; font-weight: 800; margin: 6px 0 6px; letter-spacing: -0.3px; }
+  .sec-lede { color: var(--text2); max-width: 760px; margin: 0 0 20px; }
+
+  /* Pattern card frame */
+  .pattern {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    padding: 20px 22px;
+  }
+  .pattern-tag {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 3px 10px; border-radius: 999px;
+    font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.6px;
+    margin-bottom: 12px;
+  }
+  .pattern-tag.primary   { background: var(--success-dim);  color: var(--success); }
+  .pattern-tag.secondary { background: var(--info-dim);     color: var(--info); }
+  .pattern-tag.tertiary  { background: var(--accent-dim);   color: var(--accent); }
+  .pattern-tag.skip      { background: var(--danger-dim);   color: var(--danger); }
+  .pattern-tag::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+  .pattern-row { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: start; }
+  .pattern-row.three { grid-template-columns: repeat(3, 1fr); }
+
+  .pattern-h { font-size: 15px; font-weight: 800; color: var(--text); margin: 0 0 8px; }
+  .pattern-sub { font-size: 12px; color: var(--text2); margin: 0 0 14px; line-height: 1.5; }
+
+  /* Tags */
+  .tag {
+    display: inline-flex; align-items: center;
+    padding: 1px 6px; border-radius: 3px;
+    font-size: 9px; font-weight: 700;
+    text-transform: lowercase; letter-spacing: 0.2px;
+    border: 1px solid;
+  }
+  .tag.cabinet   { background: var(--info-dim);     color: var(--info);     border-color: var(--info); }
+  .tag.cutlist   { background: var(--orange-dim);   color: var(--orange);   border-color: var(--orange); }
+  .tag.stock     { background: var(--accent2-dim);  color: var(--accent2);  border-color: var(--accent2); }
+  .tag.material  { background: var(--accent2-dim);  color: var(--accent2);  border-color: var(--accent2); }
+  .tag.hardware  { background: var(--accent2-dim);  color: var(--accent2);  border-color: var(--accent2); }
+  .tag.edge      { background: var(--accent2-dim);  color: var(--accent2);  border-color: var(--accent2); }
+  .tag.sheet     { background: var(--accent2-dim);  color: var(--accent2);  border-color: var(--accent2); }
+  .tag.template  { background: var(--success-dim);  color: var(--success);  border-color: var(--success); }
+  .tag.repeat    { background: var(--success-dim);  color: var(--success);  border-color: var(--success); }
+  .tag.client    { background: var(--accent-dim);   color: var(--accent);   border-color: var(--accent); }
+
+  /* Mockup chrome */
+  .mock-frame {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    padding: 14px; box-shadow: var(--shadow);
+    position: relative;
+  }
+  .mock-label {
+    position: absolute; top: -10px; left: 14px;
+    background: var(--surface); padding: 1px 8px; border: 1px solid var(--border); border-radius: 4px;
+    font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted);
+  }
+  .mock-caption { font-size: 11.5px; color: var(--muted); margin-top: 10px; line-height: 1.45; padding: 8px 10px; background: var(--surface2); border-radius: 6px; }
+  .mock-caption strong { color: var(--text2); }
+
+  /* Quote editor mockup */
+  .quote-editor {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+    overflow: hidden;
+  }
+  .qe-head {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 14px; border-bottom: 1px solid var(--border); background: var(--surface2);
+  }
+  .qe-back { width: 22px; height: 22px; border: 1px solid var(--border); border-radius: 4px; background: var(--surface); color: var(--muted); display: flex; align-items: center; justify-content: center; font-size: 12px; }
+  .qe-icon { width: 24px; height: 24px; border-radius: 5px; background: var(--info); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 12px; }
+  .qe-title { font-size: 13px; font-weight: 800; color: var(--text); }
+  .qe-sub { font-size: 10.5px; color: var(--muted); margin-top: 1px; }
+  .qe-status { margin-left: auto; padding: 2px 9px; border-radius: 4px; background: var(--info-dim); color: var(--info); font-size: 9.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.4px; }
+  .qe-body { padding: 12px; }
+
+  /* Smart-input picker */
+  .smart-input-wrap {
+    position: relative;
+    display: flex; border: 2px solid var(--accent); border-radius: 7px;
+    background: var(--surface); overflow: visible;
+    box-shadow: 0 0 0 4px var(--accent-dim);
+  }
+  .smart-input-wrap input {
+    flex: 1; border: 0; padding: 8px 12px; font-size: 13px; color: var(--text);
+    background: transparent; outline: none; font-family: inherit;
+  }
+  .smart-input-add {
+    width: 36px; border-left: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--accent); font-weight: 800; font-size: 16px; cursor: pointer;
+  }
+  .smart-input-add:hover { background: var(--accent); color: #fff; }
+
+  .suggest-list {
+    margin-top: 4px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+    box-shadow: var(--shadow-md);
+    overflow: hidden;
+  }
+  .suggest-section-h {
+    font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.7px;
+    color: var(--muted); padding: 7px 12px 4px; background: var(--surface2);
+  }
+  .suggest-item {
+    display: grid; grid-template-columns: 28px 1fr auto;
+    align-items: center; gap: 10px;
+    padding: 7px 12px; cursor: pointer;
+    border-bottom: 1px solid var(--border2);
+  }
+  .suggest-item:last-child { border-bottom: 0; }
+  .suggest-item:hover { background: var(--accent-dim); }
+  .suggest-item.active { background: var(--accent-dim); }
+  .suggest-item.active::before { content: '▸'; color: var(--accent); position: absolute; margin-left: -16px; font-weight: 800; }
+  .suggest-icon {
+    width: 24px; height: 24px; border-radius: 5px;
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-weight: 800; font-size: 11px;
+  }
+  .suggest-icon.cabinet { background: var(--info); }
+  .suggest-icon.stock   { background: var(--accent2); }
+  .suggest-icon.cutlist { background: var(--orange); }
+  .suggest-name { font-size: 12.5px; font-weight: 700; color: var(--text); }
+  .suggest-meta { font-size: 10px; color: var(--muted); margin-top: 1px; }
+  .suggest-tags { display: flex; gap: 3px; flex-wrap: wrap; justify-content: flex-end; }
+  .suggest-add-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 12px; border-top: 1px dashed var(--border);
+    background: var(--surface2); cursor: pointer;
+    font-size: 12px; color: var(--accent); font-weight: 700;
+  }
+  .suggest-add-row .plus {
+    width: 22px; height: 22px; border-radius: 5px;
+    background: var(--accent-dim); color: var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 14px;
+  }
+
+  /* Quote line with attribution chip */
+  .qline {
+    display: grid; grid-template-columns: 22px 1fr auto auto auto auto;
+    gap: 10px; align-items: center;
+    padding: 8px 12px;
+    background: var(--surface2); border: 1px solid var(--border2); border-radius: 6px;
+    margin-bottom: 5px;
+    font-size: 12px;
+  }
+  .qline.fresh { background: rgba(232,168,56,0.06); border-color: var(--accent); }
+  .qline-kind {
+    width: 18px; height: 18px; border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-weight: 800; font-size: 9px;
+  }
+  .qline-kind.cab { background: var(--info); }
+  .qline-kind.stk { background: var(--accent2); }
+  .qline-name { font-weight: 700; color: var(--text); }
+  .attribution-chip {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 1px 8px; border-radius: 999px;
+    background: var(--indigo-dim); color: var(--indigo);
+    border: 1px solid var(--indigo);
+    font-size: 9px; font-weight: 700; cursor: pointer;
+  }
+  .attribution-chip .arrow { font-size: 11px; }
+  .attribution-chip:hover { background: var(--indigo); color: #fff; }
+  .qline-qty { text-align: right; font-variant-numeric: tabular-nums; }
+  .qline-price { text-align: right; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .qline-x { color: var(--muted); cursor: pointer; font-size: 14px; }
+
+  /* Browse modal */
+  .browse-modal {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    box-shadow: var(--shadow-md);
+    display: grid; grid-template-rows: auto 1fr auto;
+    overflow: hidden;
+  }
+  .bm-head {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 16px; border-bottom: 1px solid var(--border); background: var(--surface2);
+  }
+  .bm-title { font-size: 14px; font-weight: 800; color: var(--text); }
+  .bm-sub { font-size: 10px; color: var(--muted); margin-top: 1px; }
+  .bm-close { margin-left: auto; padding: 4px 9px; border: 1px solid var(--border); border-radius: 4px; font-size: 12px; cursor: pointer; }
+  .bm-body { display: grid; grid-template-columns: 160px 1fr; }
+  .bm-sidebar {
+    padding: 12px 10px;
+    background: var(--surface2);
+    border-right: 1px solid var(--border);
+  }
+  .bm-side-h { font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.6px; color: var(--muted); margin: 8px 4px 4px; }
+  .bm-side-h:first-child { margin-top: 0; }
+  .bm-side-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 5px 8px; border-radius: 5px;
+    font-size: 11.5px; color: var(--text2); cursor: pointer;
+  }
+  .bm-side-item:hover { background: var(--surface); }
+  .bm-side-item.active { background: var(--accent-dim); color: var(--accent); font-weight: 700; }
+  .bm-side-count { margin-left: auto; font-size: 9.5px; color: var(--muted); }
+  .bm-side-item.active .bm-side-count { color: var(--accent); }
+
+  .bm-grid {
+    padding: 12px;
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+    overflow-y: auto;
+    max-height: 320px;
+  }
+  .bm-tile {
+    background: var(--surface); border: 1.5px solid var(--border); border-radius: 8px;
+    padding: 10px 12px;
+    cursor: pointer;
+    position: relative;
+  }
+  .bm-tile:hover { border-color: var(--accent); }
+  .bm-tile.selected { border-color: var(--accent); background: var(--accent-dim); }
+  .bm-tile-cb {
+    position: absolute; top: 8px; right: 8px;
+    width: 18px; height: 18px; border-radius: 4px;
+    border: 1.5px solid var(--border); background: var(--surface);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; color: var(--accent); font-weight: 800;
+  }
+  .bm-tile.selected .bm-tile-cb { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .bm-tile-icon {
+    width: 26px; height: 26px; border-radius: 5px;
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-weight: 800; font-size: 12px;
+    margin-bottom: 6px;
+  }
+  .bm-tile-icon.cabinet { background: var(--info); }
+  .bm-tile-icon.stock   { background: var(--accent2); }
+  .bm-tile-icon.cutlist { background: var(--orange); }
+  .bm-tile-name { font-size: 12px; font-weight: 700; color: var(--text); }
+  .bm-tile-meta { font-size: 10px; color: var(--muted); margin-top: 1px; }
+  .bm-tile-tags { display: flex; gap: 3px; flex-wrap: wrap; margin-top: 6px; }
+
+  .bm-foot {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 16px; border-top: 1px solid var(--border); background: var(--surface2);
+    font-size: 12px;
+  }
+  .bm-foot-count { color: var(--text); font-weight: 700; }
+  .bm-foot-spacer { flex: 1; }
+  .bm-foot-btn {
+    padding: 6px 14px; border-radius: 6px; border: 0;
+    background: var(--accent); color: #fff; font-weight: 700; cursor: pointer;
+    font-size: 12px;
+  }
+  .bm-foot-btn.ghost { background: transparent; border: 1px solid var(--border); color: var(--text2); }
+
+  /* Empty-state CTA */
+  .empty-state {
+    display: flex; align-items: center; justify-content: center; gap: 14px;
+    padding: 36px 20px;
+    background: var(--surface2); border: 2px dashed var(--border); border-radius: 10px;
+    text-align: center; flex-direction: column;
+  }
+  .empty-icon { font-size: 36px; opacity: 0.4; }
+  .empty-title { font-size: 14px; font-weight: 700; color: var(--text); }
+  .empty-sub { font-size: 12px; color: var(--muted); }
+  .empty-actions { display: flex; gap: 8px; margin-top: 6px; }
+  .empty-btn { padding: 8px 16px; border-radius: 6px; font-weight: 700; cursor: pointer; font-size: 12px; }
+  .empty-btn.primary { background: var(--accent); color: #fff; border: 0; }
+  .empty-btn.ghost   { background: transparent; border: 1px solid var(--border); color: var(--text2); }
+
+  /* Toolbar buttons (entry points) */
+  .toolbar-mock {
+    display: flex; gap: 6px; padding: 8px 12px;
+    border-bottom: 1px solid var(--border2);
+    align-items: center; flex-wrap: wrap;
+  }
+  .tb-btn {
+    padding: 5px 11px; border-radius: 5px;
+    background: var(--accent-dim); color: var(--accent);
+    border: 1px solid var(--accent);
+    font-size: 11px; font-weight: 700; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 5px;
+  }
+  .tb-btn.outline { background: var(--surface); border-color: var(--border); color: var(--text2); }
+  .tb-btn:hover { background: var(--accent); color: #fff; }
+  .tb-btn.outline:hover { background: var(--surface2); }
+
+  /* Library tab → push-to-quote */
+  .lib-tab-mock {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+    overflow: hidden;
+  }
+  .lib-tab-toolbar {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 14px; border-bottom: 1px solid var(--border); background: var(--surface2);
+    flex-wrap: wrap;
+  }
+  .lib-tab-toolbar input {
+    flex: 1; min-width: 100px;
+    padding: 5px 10px; border: 1px solid var(--border); border-radius: 5px;
+    font-size: 12px; background: var(--surface);
+  }
+  .lib-tab-tag {
+    padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: 700;
+    background: var(--surface); border: 1px solid var(--border); color: var(--text2);
+    cursor: pointer;
+  }
+  .lib-tab-tag.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .lib-tab-list {
+    padding: 10px;
+  }
+  .lib-tab-item {
+    display: grid; grid-template-columns: 24px 28px 1fr auto auto;
+    gap: 10px; align-items: center;
+    padding: 7px 10px; margin-bottom: 4px;
+    border: 1px solid transparent; border-radius: 5px;
+  }
+  .lib-tab-item.selected { background: var(--accent-dim); border-color: var(--accent); }
+  .lib-tab-item .cb {
+    width: 18px; height: 18px; border-radius: 4px;
+    border: 1.5px solid var(--border); background: var(--surface);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--accent); font-weight: 800; font-size: 12px;
+  }
+  .lib-tab-item.selected .cb { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .lib-tab-bulk-bar {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 14px; background: var(--accent-dim);
+    border-top: 1px solid var(--accent);
+    font-size: 12px;
+  }
+  .lib-tab-bulk-bar .count { font-weight: 800; color: var(--accent); }
+  .lib-tab-bulk-bar select { padding: 5px 9px; border-radius: 4px; border: 1px solid var(--border); font-size: 11px; background: var(--surface); }
+  .lib-tab-bulk-bar .send-btn { padding: 5px 14px; border-radius: 5px; background: var(--accent); color: #fff; font-weight: 700; border: 0; font-size: 11px; cursor: pointer; margin-left: auto; }
+
+  /* Comparison table */
+  table.compare {
+    width: 100%; border-collapse: collapse;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden;
+    font-size: 12.5px;
+  }
+  table.compare th, table.compare td { text-align: left; padding: 10px 13px; border-bottom: 1px solid var(--border2); vertical-align: top; }
+  table.compare th { background: var(--surface2); color: var(--text2); font-weight: 700; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.6px; }
+  table.compare tbody tr:last-child td { border-bottom: 0; }
+  table.compare td.label { font-weight: 700; color: var(--text); }
+  .check { color: var(--success); font-weight: 800; }
+  .cross { color: var(--danger); font-weight: 800; }
+  .partial { color: var(--accent); font-weight: 800; }
+
+  /* Pattern picker mini callouts */
+  .recommend-banner {
+    background: var(--success-dim); border: 1px solid var(--success); border-radius: 10px;
+    padding: 14px 18px;
+    display: flex; align-items: center; gap: 14px;
+    margin: 20px 0;
+  }
+  .recommend-banner .star {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: var(--success); color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; font-weight: 800; flex-shrink: 0;
+  }
+  .recommend-banner .text { font-size: 13px; color: var(--text2); }
+  .recommend-banner .text strong { color: var(--text); }
+
+  @media (max-width: 1000px) {
+    .pattern-row, .pattern-row.three { grid-template-columns: 1fr; }
+    .bm-body { grid-template-columns: 1fr; }
+    .bm-sidebar { border-right: 0; border-bottom: 1px solid var(--border); }
+    .bm-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+<div class="doc">
+
+  <header class="doc-head">
+    <div>
+      <h1>Adding library items to a Quote · UI patterns</h1>
+      <div class="subtitle">Five entry points · smart-input picker as the primary mechanism · attribution chip after add</div>
+    </div>
+    <button class="theme-toggle" onclick="document.documentElement.classList.toggle('dark')">Toggle dark</button>
+  </header>
+
+  <div class="lede">
+    <strong>The question:</strong> Given the library-first model (cabinet designs, cut list templates, stock items all live in the library tier), what's the actual UI for pulling a library item into a Client's Quote? This doc shows five candidate patterns, recommends one as primary, and walks through the after-add experience.
+    <br><br>
+    <strong>Anchoring principle:</strong> the app already uses a <strong>smart-input picker</strong> for clients-on-projects, projects-on-quotes, and stock-on-quote-lines (per <code>CLAUDE.md</code> "Library / Data Inputs Pattern"). The library-first model should reuse and extend that pattern — not invent a new one.
+  </div>
+
+  <!-- ═══════════════ Section 01 — Entry points overview ═══════════════ -->
+  <section class="section">
+    <div class="sec-num">Section 01</div>
+    <h2 class="sec-h">Five entry points · where the user triggers "add from library"</h2>
+    <p class="sec-lede">All five share the same destination (a library picker), but the trigger varies by context. Reuse a single picker component; vary the affordance.</p>
+
+    <table class="compare">
+      <thead><tr><th>#</th><th>Entry point</th><th>Lives in</th><th>Best for</th><th>Trigger</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><strong>1</strong></td>
+          <td class="label">Inline smart-input</td>
+          <td>Quote · Lines view · "Add line" row</td>
+          <td>Daily building of quotes — type and add fast</td>
+          <td>Smart-input wrap with placeholder "Search library or type to add custom…"</td>
+        </tr>
+        <tr>
+          <td><strong>2</strong></td>
+          <td class="label">"+ from library" tile</td>
+          <td>Quote · Cabinet view · design canvas</td>
+          <td>Designer flow — visual canvas with cabinet thumbnails</td>
+          <td>Dashed-border tile in the canvas grid, same shape as cabinet tiles</td>
+        </tr>
+        <tr>
+          <td><strong>3</strong></td>
+          <td class="label">Toolbar "Browse library" button</td>
+          <td>Quote editor toolbar</td>
+          <td>Browsing mode — don't know what you want yet</td>
+          <td>Opens larger picker modal with grid + sidebar filters</td>
+        </tr>
+        <tr>
+          <td><strong>4</strong></td>
+          <td class="label">Empty-state CTA</td>
+          <td>New / empty Quote</td>
+          <td>First-time orientation — what do I do here?</td>
+          <td>Big buttons: "Add from library" + "Design new"</td>
+        </tr>
+        <tr>
+          <td><strong>5</strong></td>
+          <td class="label">Library tab → "Send to quote"</td>
+          <td>Cabinet / Cut List / Stock tab (library mode)</td>
+          <td>Power-user batch flow — select 6 items, push to a quote</td>
+          <td>Multi-select checkboxes + bottom action bar</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ═══════════════ Section 02 — Pattern 1: Inline smart-input ═══════════════ -->
+  <section class="section">
+    <div class="sec-num">Section 02 · Pattern 1</div>
+    <h2 class="sec-h">Inline smart-input picker <em>(primary)</em></h2>
+    <p class="sec-lede">The existing app convention. Type to filter library matches; hit Enter or click to add. Tags visible in the dropdown. The <code>+</code> button creates a new library item inline (for one-offs that don't exist yet).</p>
+
+    <div class="pattern">
+      <span class="pattern-tag primary">Recommended primary pattern</span>
+
+      <div class="pattern-row">
+        <div>
+          <h3 class="pattern-h">In the Quote · Lines view</h3>
+          <p class="pattern-sub">Reuses the existing <code>.smart-input-wrap</code> + <code>.client-suggest-list</code> pattern from <code>CLAUDE.md</code>. The dropdown groups by recency and source library; tags are visible inline.</p>
+
+          <div class="quote-editor">
+            <div class="qe-head">
+              <div class="qe-back">←</div>
+              <div class="qe-icon">Q</div>
+              <div>
+                <div class="qe-title">Smith Kitchen</div>
+                <div class="qe-sub">Jane Smith · 6 lines · #Q-0042</div>
+              </div>
+              <span class="qe-status">Draft</span>
+            </div>
+            <div class="qe-body">
+              <div style="font-size: 10px; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 6px;">Add line</div>
+
+              <div class="smart-input-wrap">
+                <input type="text" value="base 6" placeholder="Search library or type to add custom…" autofocus>
+                <div class="smart-input-add" title="Create new line">+</div>
+              </div>
+
+              <div class="suggest-list">
+                <div class="suggest-section-h">Library matches · 3</div>
+                <div class="suggest-item active" style="position: relative;">
+                  <div class="suggest-icon cabinet">▣</div>
+                  <div>
+                    <div class="suggest-name">Base 600</div>
+                    <div class="suggest-meta">600 × 720 × 560 · standard base unit · used 14×</div>
+                  </div>
+                  <div class="suggest-tags">
+                    <span class="tag template">template</span>
+                    <span class="tag repeat">repeat</span>
+                  </div>
+                </div>
+                <div class="suggest-item">
+                  <div class="suggest-icon cabinet">▣</div>
+                  <div>
+                    <div class="suggest-name">Base 60 deep</div>
+                    <div class="suggest-meta">600 × 720 × 620 · deeper variant</div>
+                  </div>
+                  <div class="suggest-tags">
+                    <span class="tag template">template</span>
+                  </div>
+                </div>
+                <div class="suggest-item">
+                  <div class="suggest-icon cabinet">▣</div>
+                  <div>
+                    <div class="suggest-name">Base 60 corner</div>
+                    <div class="suggest-meta">600 × 720 × 560 · L-shape · 2 doors</div>
+                  </div>
+                  <div class="suggest-tags">
+                    <span class="tag template">template</span>
+                  </div>
+                </div>
+                <div class="suggest-add-row">
+                  <div class="plus">+</div>
+                  <span>Create <strong>"base 6"</strong> as a new custom line (won't save to library)</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="mock-caption">
+            <strong>Behavior:</strong> Press <code>↑</code>/<code>↓</code> to navigate suggestions, <code>Enter</code> to add the highlighted item, <code>Esc</code> to dismiss. The dropdown stays open for multi-add — picker doesn't close after a selection.
+          </div>
+        </div>
+
+        <div>
+          <h3 class="pattern-h">After add — line with attribution chip</h3>
+          <p class="pattern-sub">The added line shows a small chip linking back to the source library item. Click the chip to view the source (read-only, in a side drawer). Edit fields inline — changes stay on this quote line; the library template is unchanged.</p>
+
+          <div class="quote-editor">
+            <div class="qe-head">
+              <div class="qe-back">←</div>
+              <div class="qe-icon">Q</div>
+              <div>
+                <div class="qe-title">Smith Kitchen</div>
+                <div class="qe-sub">Jane Smith · 7 lines · just added Base 600</div>
+              </div>
+              <span class="qe-status">Draft</span>
+            </div>
+            <div class="qe-body">
+              <div class="qline">
+                <div class="qline-kind cab">C</div>
+                <div>
+                  <div class="qline-name">Base 600</div>
+                  <div style="font-size: 10px; color: var(--muted); margin-top: 2px;">600 × 720 × 560 · birch carcass · soft-close hinges</div>
+                </div>
+                <span class="attribution-chip" title="From library template — click to view">
+                  <span class="arrow">↰</span>
+                  Base 600 template
+                </span>
+                <div class="qline-qty">×&nbsp;1</div>
+                <div class="qline-price">$2,140</div>
+                <div class="qline-x">×</div>
+              </div>
+              <div class="qline">
+                <div class="qline-kind cab">C</div>
+                <div>
+                  <div class="qline-name">Wall 900</div>
+                  <div style="font-size: 10px; color: var(--muted); margin-top: 2px;">900 × 720 × 320 · 2 doors</div>
+                </div>
+                <span class="attribution-chip">
+                  <span class="arrow">↰</span>
+                  Wall 900 template
+                </span>
+                <div class="qline-qty">×&nbsp;1</div>
+                <div class="qline-price">$1,640</div>
+                <div class="qline-x">×</div>
+              </div>
+              <div class="qline fresh" style="position: relative;">
+                <div class="qline-kind cab">C</div>
+                <div>
+                  <div class="qline-name">Base 873</div>
+                  <div style="font-size: 10px; color: var(--muted); margin-top: 2px;">873 × 720 × 560 · sized for wall · custom</div>
+                </div>
+                <span class="attribution-chip" style="background: var(--accent-dim); color: var(--accent); border-color: var(--accent);">
+                  <span class="arrow">✎</span>
+                  Custom · not in library
+                </span>
+                <div class="qline-qty">×&nbsp;1</div>
+                <div class="qline-price">$2,440</div>
+                <div class="qline-x">×</div>
+              </div>
+            </div>
+          </div>
+          <div class="mock-caption">
+            <strong>Attribution chip variants:</strong> <span class="attribution-chip"><span class="arrow">↰</span>Template name</span> = snapshot from library; <span class="attribution-chip" style="background: var(--accent-dim); color: var(--accent); border-color: var(--accent);"><span class="arrow">✎</span>Custom · not in library</span> = entered fresh; <span class="attribution-chip" style="background: var(--success-dim); color: var(--success); border-color: var(--success);"><span class="arrow">↛</span>Promoted to library</span> = user clicked "Save to library" on a custom line.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════ Section 03 — Pattern 2: Design canvas tile ═══════════════ -->
+  <section class="section">
+    <div class="sec-num">Section 03 · Pattern 2</div>
+    <h2 class="sec-h">"+ from library" tile in design canvas</h2>
+    <p class="sec-lede">In Quote's Cabinet view (the design canvas), the user works visually. A dashed-border tile in the cabinet grid opens a thumbnail picker. Designed for the cabinetmaker who wants to see what they're choosing before committing.</p>
+
+    <div class="pattern">
+      <span class="pattern-tag primary">Recommended for Cabinet view</span>
+
+      <div class="pattern-row">
+        <div>
+          <h3 class="pattern-h">Canvas with "+ from library" tile</h3>
+          <div class="quote-editor">
+            <div class="qe-head">
+              <div class="qe-back">←</div>
+              <div class="qe-icon" style="background: var(--indigo);">▣</div>
+              <div>
+                <div class="qe-title">Smith Kitchen</div>
+                <div class="qe-sub">Cabinet view · 3 cabinets · click + to add</div>
+              </div>
+              <span class="qe-status" style="background: var(--indigo-dim); color: var(--indigo);">Designing</span>
+            </div>
+            <div class="qe-body" style="background: var(--surface2); display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;">
+              <div style="background: var(--surface); border: 1.5px solid var(--info); border-radius: 6px; padding: 9px 10px;">
+                <div style="font-size: 9px; color: var(--info); font-weight: 800;">CB-1</div>
+                <div style="font-size: 11px; font-weight: 700; margin-top: 1px;">Base 600</div>
+                <div style="font-size: 9.5px; color: var(--muted); margin-top: 4px;">600 × 720 × 560</div>
+                <div style="font-size: 10px; font-weight: 700; margin-top: 5px;">$2,140</div>
+              </div>
+              <div style="background: var(--surface); border: 1.5px solid var(--info); border-radius: 6px; padding: 9px 10px;">
+                <div style="font-size: 9px; color: var(--info); font-weight: 800;">CB-2</div>
+                <div style="font-size: 11px; font-weight: 700; margin-top: 1px;">Wall 900</div>
+                <div style="font-size: 9.5px; color: var(--muted); margin-top: 4px;">900 × 720 × 320</div>
+                <div style="font-size: 10px; font-weight: 700; margin-top: 5px;">$1,640</div>
+              </div>
+              <div style="background: var(--surface); border: 1.5px solid var(--info); border-radius: 6px; padding: 9px 10px;">
+                <div style="font-size: 9px; color: var(--info); font-weight: 800;">CB-3</div>
+                <div style="font-size: 11px; font-weight: 700; margin-top: 1px;">Tall 600</div>
+                <div style="font-size: 9.5px; color: var(--muted); margin-top: 4px;">600 × 2100 × 560</div>
+                <div style="font-size: 10px; font-weight: 700; margin-top: 5px;">$3,420</div>
+              </div>
+              <div style="background: transparent; border: 2px dashed var(--accent); border-radius: 6px; padding: 9px 10px; color: var(--accent); display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; min-height: 80px;">
+                <div style="font-size: 24px;">+</div>
+                <div style="font-size: 11px; font-weight: 800;">From library</div>
+              </div>
+              <div style="background: transparent; border: 2px dashed var(--border); border-radius: 6px; padding: 9px 10px; color: var(--muted); display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; min-height: 80px;">
+                <div style="font-size: 24px;">+</div>
+                <div style="font-size: 11px; font-weight: 800;">Design new</div>
+              </div>
+            </div>
+          </div>
+          <div class="mock-caption">
+            Two add-tiles side by side: <strong>"+ From library"</strong> (gold, primary) opens a thumbnail picker; <strong>"+ Design new"</strong> (muted, secondary) opens a blank cabinet editor. The visual prominence matches the library-first principle.
+          </div>
+        </div>
+
+        <div>
+          <h3 class="pattern-h">Thumbnail picker (opens over canvas)</h3>
+          <div class="browse-modal">
+            <div class="bm-head">
+              <div>
+                <div class="bm-title">Add cabinet from library</div>
+                <div class="bm-sub">Cabinet templates · 8 matches</div>
+              </div>
+              <button class="bm-close">×</button>
+            </div>
+            <div class="bm-body">
+              <div class="bm-sidebar">
+                <div class="bm-side-h">Quick filters</div>
+                <div class="bm-side-item active"><span>All cabinets</span><span class="bm-side-count">8</span></div>
+                <div class="bm-side-item"><span>Templates</span><span class="bm-side-count">5</span></div>
+                <div class="bm-side-item"><span>Repeat</span><span class="bm-side-count">3</span></div>
+                <div class="bm-side-h">By type</div>
+                <div class="bm-side-item"><span>Base</span><span class="bm-side-count">4</span></div>
+                <div class="bm-side-item"><span>Wall</span><span class="bm-side-count">2</span></div>
+                <div class="bm-side-item"><span>Tall</span><span class="bm-side-count">2</span></div>
+              </div>
+              <div class="bm-grid">
+                <div class="bm-tile selected">
+                  <div class="bm-tile-cb">✓</div>
+                  <div class="bm-tile-icon cabinet">▣</div>
+                  <div class="bm-tile-name">Base 600</div>
+                  <div class="bm-tile-meta">600 × 720 × 560</div>
+                  <div class="bm-tile-tags"><span class="tag template">tmpl</span><span class="tag repeat">repeat</span></div>
+                </div>
+                <div class="bm-tile">
+                  <div class="bm-tile-cb"></div>
+                  <div class="bm-tile-icon cabinet">▣</div>
+                  <div class="bm-tile-name">Base 900</div>
+                  <div class="bm-tile-meta">900 × 720 × 560</div>
+                  <div class="bm-tile-tags"><span class="tag template">tmpl</span></div>
+                </div>
+                <div class="bm-tile selected">
+                  <div class="bm-tile-cb">✓</div>
+                  <div class="bm-tile-icon cabinet">▣</div>
+                  <div class="bm-tile-name">Wall 600</div>
+                  <div class="bm-tile-meta">600 × 720 × 320</div>
+                  <div class="bm-tile-tags"><span class="tag template">tmpl</span></div>
+                </div>
+                <div class="bm-tile">
+                  <div class="bm-tile-cb"></div>
+                  <div class="bm-tile-icon cabinet">▣</div>
+                  <div class="bm-tile-name">Wall 900</div>
+                  <div class="bm-tile-meta">900 × 720 × 320</div>
+                  <div class="bm-tile-tags"><span class="tag template">tmpl</span><span class="tag repeat">repeat</span></div>
+                </div>
+                <div class="bm-tile">
+                  <div class="bm-tile-cb"></div>
+                  <div class="bm-tile-icon cabinet">▣</div>
+                  <div class="bm-tile-name">Tall 600</div>
+                  <div class="bm-tile-meta">600 × 2100 × 560</div>
+                  <div class="bm-tile-tags"><span class="tag template">tmpl</span></div>
+                </div>
+                <div class="bm-tile">
+                  <div class="bm-tile-cb"></div>
+                  <div class="bm-tile-icon cabinet">▣</div>
+                  <div class="bm-tile-name">Pantry 400</div>
+                  <div class="bm-tile-meta">400 × 2100 × 560</div>
+                  <div class="bm-tile-tags"><span class="tag template">tmpl</span></div>
+                </div>
+              </div>
+            </div>
+            <div class="bm-foot">
+              <span class="bm-foot-count">2 selected</span>
+              <span class="bm-foot-spacer"></span>
+              <button class="bm-foot-btn ghost">Cancel</button>
+              <button class="bm-foot-btn">Add 2 cabinets to quote</button>
+            </div>
+          </div>
+          <div class="mock-caption">
+            Multi-select with checkboxes; bulk-add via footer button. Each selected item gets snapshotted into a new <code>quote_lines</code> row. Press <code>Esc</code> to close.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════ Section 04 — Pattern 3, 4: Toolbar button + empty-state ═══════════════ -->
+  <section class="section">
+    <div class="sec-num">Section 04 · Patterns 3 + 4</div>
+    <h2 class="sec-h">Toolbar button &amp; empty-state CTA</h2>
+    <p class="sec-lede">Two affordances that trigger the same picker. The toolbar button works anytime; the empty-state CTA only shows on a blank quote and biases users toward starting from the library.</p>
+
+    <div class="pattern">
+      <span class="pattern-tag secondary">Secondary patterns · same picker, different trigger</span>
+
+      <div class="pattern-row">
+        <div>
+          <h3 class="pattern-h">Toolbar "Browse library" button</h3>
+          <div class="quote-editor">
+            <div class="qe-head">
+              <div class="qe-back">←</div>
+              <div class="qe-icon">Q</div>
+              <div>
+                <div class="qe-title">Hill Pantry</div>
+                <div class="qe-sub">Bob Hill · 2 lines</div>
+              </div>
+              <span class="qe-status">Draft</span>
+            </div>
+            <div class="toolbar-mock">
+              <button class="tb-btn">⊞ Browse library</button>
+              <button class="tb-btn outline">+ Custom line</button>
+              <button class="tb-btn outline">+ Labour</button>
+              <span style="flex: 1;"></span>
+              <button class="tb-btn outline">📄 PDF</button>
+              <button class="tb-btn outline">→ Order</button>
+            </div>
+            <div class="qe-body">
+              <div class="qline">
+                <div class="qline-kind cab">C</div>
+                <div><div class="qline-name">Wall 600</div></div>
+                <span class="attribution-chip"><span class="arrow">↰</span>Wall 600 template</span>
+                <div class="qline-qty">×&nbsp;1</div>
+                <div class="qline-price">$1,380</div>
+                <div class="qline-x">×</div>
+              </div>
+              <div class="qline">
+                <div class="qline-kind stk">S</div>
+                <div><div class="qline-name">18mm Birch Ply</div></div>
+                <span class="attribution-chip"><span class="arrow">↰</span>stock</span>
+                <div class="qline-qty">×&nbsp;3</div>
+                <div class="qline-price">$144</div>
+                <div class="qline-x">×</div>
+              </div>
+            </div>
+          </div>
+          <div class="mock-caption">
+            The toolbar button is always present (no contextual conditions). Opens the full browse modal from Pattern 2. Useful when the user knows they want to add multiple items in one pass without typing each name.
+          </div>
+        </div>
+
+        <div>
+          <h3 class="pattern-h">Empty-state CTA (new quote)</h3>
+          <div class="quote-editor">
+            <div class="qe-head">
+              <div class="qe-back">←</div>
+              <div class="qe-icon">Q</div>
+              <div>
+                <div class="qe-title">New Quote</div>
+                <div class="qe-sub">Jane Smith · 0 lines · just created</div>
+              </div>
+              <span class="qe-status" style="background: var(--surface2); color: var(--muted); border: 1px solid var(--border);">Empty</span>
+            </div>
+            <div class="qe-body">
+              <div class="empty-state">
+                <div class="empty-icon">📋</div>
+                <div class="empty-title">Empty quote — let's add some lines</div>
+                <div class="empty-sub">Pull from your library or design something new for this client</div>
+                <div class="empty-actions">
+                  <button class="empty-btn primary">⊞ Add from library</button>
+                  <button class="empty-btn ghost">▣ Design new in Cabinet view</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="mock-caption">
+            First-time orientation. Encourages library-first (gold primary button) but doesn't block design-new (ghost button). Disappears the moment the quote has its first line.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════ Section 05 — Pattern 5: Library tab → push to quote ═══════════════ -->
+  <section class="section">
+    <div class="sec-num">Section 05 · Pattern 5</div>
+    <h2 class="sec-h">Library tab → "Send to quote" <em>(same shape as Optimize Cut List)</em></h2>
+    <p class="sec-lede">The user is browsing in the Cabinet / Cut List / Stock tab (library mode), spots items they want for a client, multi-selects, and pushes them to a quote. The trigger is from the library side; the destination is the chosen quote.</p>
+
+    <div style="background: var(--accent-dim); border: 1px solid var(--accent); border-radius: 10px; padding: 14px 18px; margin-bottom: 18px; display: flex; gap: 14px; align-items: flex-start;">
+      <div style="width: 32px; height: 32px; border-radius: 50%; background: var(--accent); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 800; flex-shrink: 0;">↺</div>
+      <div style="font-size: 13px; color: var(--text2);">
+        <strong style="color: var(--text);">Familiar motor pattern.</strong> This is the same shape as <strong>Optimize Cut List</strong>: <em>prepare a selection → fire a verb in the bottom action bar → see results in another view</em>. Users who already use Optimize will grok this immediately — no new mental model required.
+        <br><br>
+        <table style="width: 100%; margin-top: 4px; font-size: 11.5px; border-collapse: collapse;">
+          <thead><tr style="background: var(--surface);">
+            <th style="text-align: left; padding: 5px 8px; font-size: 9.5px; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; border-radius: 4px 0 0 0;">Step</th>
+            <th style="text-align: left; padding: 5px 8px; font-size: 9.5px; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px;">Optimize Cut List</th>
+            <th style="text-align: left; padding: 5px 8px; font-size: 9.5px; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; border-radius: 0 4px 0 0;">Library → Quote</th>
+          </tr></thead>
+          <tbody>
+            <tr><td style="padding: 4px 8px; font-weight: 700; color: var(--text);">Setup</td><td style="padding: 4px 8px;">Define parts in sidebar table</td><td style="padding: 4px 8px;">Multi-select library items</td></tr>
+            <tr><td style="padding: 4px 8px; font-weight: 700; color: var(--text);">Verb</td><td style="padding: 4px 8px;">"Optimize" button</td><td style="padding: 4px 8px;">"Send N items →" button</td></tr>
+            <tr><td style="padding: 4px 8px; font-weight: 700; color: var(--text);">Process</td><td style="padding: 4px 8px;">Guillotine layout algorithm</td><td style="padding: 4px 8px;">Snapshot + route to destination</td></tr>
+            <tr><td style="padding: 4px 8px; font-weight: 700; color: var(--text);">Result</td><td style="padding: 4px 8px;">Layout in main canvas</td><td style="padding: 4px 8px;">Items appear in destination quote</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="pattern">
+      <span class="pattern-tag primary">Alternate primary · inventory-driven workflow</span>
+
+      <div class="lib-tab-mock">
+        <div class="lib-tab-toolbar">
+          <input type="text" placeholder="Search cabinet library…" value="base">
+          <span class="lib-tab-tag active">Templates</span>
+          <span class="lib-tab-tag">Repeat</span>
+          <span class="lib-tab-tag">All</span>
+        </div>
+        <div class="lib-tab-list">
+          <div class="lib-tab-item selected">
+            <div class="cb">✓</div>
+            <div class="suggest-icon cabinet">▣</div>
+            <div>
+              <div class="suggest-name">Base 600</div>
+              <div class="suggest-meta">600 × 720 × 560 · standard base unit</div>
+            </div>
+            <div class="suggest-tags"><span class="tag template">tmpl</span><span class="tag repeat">repeat</span></div>
+            <div style="font-size: 11px; color: var(--muted);">used 14×</div>
+          </div>
+          <div class="lib-tab-item selected">
+            <div class="cb">✓</div>
+            <div class="suggest-icon cabinet">▣</div>
+            <div>
+              <div class="suggest-name">Base 900</div>
+              <div class="suggest-meta">900 × 720 × 560 · standard base unit</div>
+            </div>
+            <div class="suggest-tags"><span class="tag template">tmpl</span></div>
+            <div style="font-size: 11px; color: var(--muted);">used 6×</div>
+          </div>
+          <div class="lib-tab-item">
+            <div class="cb"></div>
+            <div class="suggest-icon cabinet">▣</div>
+            <div>
+              <div class="suggest-name">Base 60 corner</div>
+              <div class="suggest-meta">600 × 720 × 560 · L-shape</div>
+            </div>
+            <div class="suggest-tags"><span class="tag template">tmpl</span></div>
+            <div style="font-size: 11px; color: var(--muted);">used 2×</div>
+          </div>
+        </div>
+        <div class="lib-tab-bulk-bar">
+          <span class="count">2 selected</span>
+          <span>→ Add to:</span>
+          <select>
+            <option>Quote · Smith Kitchen (Draft)</option>
+            <option>Quote · Hill Pantry (Sent)</option>
+            <option>Quote · Sarah's Bathroom (Draft)</option>
+            <option>— New quote for an existing client —</option>
+          </select>
+          <button class="send-btn">Send 2 cabinets →</button>
+        </div>
+      </div>
+      <div class="mock-caption">
+        <strong>Power-user batch flow.</strong> Select multiple library items, choose a destination Quote (existing or new), bulk-snapshot to that quote. The "send" verb is intentional — the action originates in the library, not the quote. Each selected item becomes a fresh <code>quote_lines</code> row with attribution back to its library source.
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════ Section 06 — Comparison + recommendation ═══════════════ -->
+  <section class="section">
+    <div class="sec-num">Section 06</div>
+    <h2 class="sec-h">Comparison &amp; recommendation</h2>
+
+    <table class="compare">
+      <thead><tr><th>Pattern</th><th>Discoverability</th><th>Speed (existing users)</th><th>Multi-add</th><th>Visual / fast</th><th>Existing in app?</th></tr></thead>
+      <tbody>
+        <tr>
+          <td class="label">1 · Inline smart-input</td>
+          <td><span class="check">High</span> (always in edit row)</td>
+          <td><span class="check">Fastest</span> — keyboard-driven</td>
+          <td><span class="partial">Stays open · multi-add fine</span></td>
+          <td>Tags inline, no thumbnails</td>
+          <td><span class="check">Yes</span> — used for clients, projects, stock</td>
+        </tr>
+        <tr>
+          <td class="label">2 · Canvas tile</td>
+          <td><span class="check">High</span> (in design grid)</td>
+          <td>Two clicks</td>
+          <td><span class="check">Multi-select grid</span></td>
+          <td><span class="check">Visual</span> — thumbnails, type filters</td>
+          <td><span class="partial">Adapt — cabinet builder has search now</span></td>
+        </tr>
+        <tr>
+          <td class="label">3 · Toolbar button</td>
+          <td><span class="check">High</span> (top of editor)</td>
+          <td>Two clicks</td>
+          <td><span class="check">Multi-select</span></td>
+          <td><span class="check">Visual</span></td>
+          <td><span class="cross">No</span> — new button</td>
+        </tr>
+        <tr>
+          <td class="label">4 · Empty-state CTA</td>
+          <td><span class="check">High</span> for new quotes only</td>
+          <td>Two clicks</td>
+          <td><span class="check">via picker</span></td>
+          <td>—</td>
+          <td><span class="cross">No</span> — needs design</td>
+        </tr>
+        <tr>
+          <td class="label">5 · Library tab push <span style="font-size: 9px; font-weight: 700; padding: 1px 5px; background: var(--accent-dim); color: var(--accent); border-radius: 3px; margin-left: 4px;">★ familiar shape</span></td>
+          <td><span class="check">High</span> — mirrors Optimize Cut List motor pattern</td>
+          <td>Slower for one-off; <span class="check">fastest for batch</span></td>
+          <td><span class="check">Batch native</span></td>
+          <td><span class="check">List + filters</span></td>
+          <td><span class="partial">Adapt</span> — Optimize establishes the convention</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="recommend-banner">
+      <div class="star">★</div>
+      <div class="text">
+        <strong>Two primaries, not one.</strong> <strong>Pattern 1</strong> (inline smart-input) is primary for <em>task-driven</em> work — you're inside a quote and need another line, keyboard-fast. <strong>Pattern 5</strong> (library batch send) is primary for <em>inventory-driven</em> work — you're in your library and want to assign items to a quote, same motor pattern as Optimize Cut List. <strong>Pattern 2</strong> (canvas tile) is the primary inside Cabinet view's design canvas. <strong>Patterns 3 + 4</strong> are optional secondary affordances that can ship later.
+      </div>
+    </div>
+
+    <div style="margin-top: 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 18px;">
+      <h4 style="margin: 0 0 8px; font-size: 13px; font-weight: 800;">Shipping order</h4>
+      <ol style="margin: 0; padding-left: 22px; font-size: 12.5px; color: var(--text2); line-height: 1.7;">
+        <li><strong>Phase 1 — Inline smart-input (Pattern 1).</strong> Extends <code>_oStockSearch</code> / <code>_qStockSearch</code> to a unified <code>_smartLibraryForQuoteSuggest</code> that searches all three library tables. Adds attribution chip on resulting lines. ~3 days. Ships independently.</li>
+        <li><strong>Phase 2 — Library tab batch send (Pattern 5).</strong> <span style="background: var(--accent-dim); color: var(--accent); padding: 1px 6px; border-radius: 3px; font-size: 11px; font-weight: 700;">★ Familiar shape</span> Multi-select checkboxes in library list views + Optimize-style bottom action bar + destination-quote dropdown. ~3 days. Promoted in shipping order because it mirrors the Optimize Cut List motor pattern users already know — high discoverability without a new mental model.</li>
+        <li><strong>Phase 3 — Canvas tile (Pattern 2).</strong> "+ from library" tile in Cabinet view's design canvas. Opens a thumbnail picker. ~2 days.</li>
+        <li><strong>Phase 4 — Toolbar + empty state (Patterns 3 + 4).</strong> Both call the same browse-modal component from Phase 3. ~2 days. Lowest priority — Patterns 1 + 5 already cover both task-driven and inventory-driven flows.</li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ═══════════════ Section 07 — Attribution + override behavior ═══════════════ -->
+  <section class="section">
+    <div class="sec-num">Section 07</div>
+    <h2 class="sec-h">Attribution + override behavior</h2>
+    <p class="sec-lede">Every quote_line carries provenance — where it came from. Editing the line in the quote doesn't sync back to the library; the chip stays as a "snapshot of …" marker.</p>
+
+    <table class="compare">
+      <thead><tr><th>State</th><th>Chip shown</th><th>What it means</th><th>Click chip → ?</th></tr></thead>
+      <tbody>
+        <tr>
+          <td class="label">Snapshot · unchanged</td>
+          <td><span class="attribution-chip"><span class="arrow">↰</span>Base 600 template</span></td>
+          <td>Line is a snapshot from library; specs match the source exactly</td>
+          <td>Side-drawer shows the source library item (read-only); option to "re-snapshot" if library has changed</td>
+        </tr>
+        <tr>
+          <td class="label">Snapshot · overridden</td>
+          <td><span class="attribution-chip" style="background: var(--accent-dim); color: var(--accent); border-color: var(--accent);"><span class="arrow">↰</span>Base 600 · modified</span></td>
+          <td>Line started as a snapshot but the user has edited at least one field</td>
+          <td>Drawer shows diff between line and source; option to "revert to template" or "promote changes to library"</td>
+        </tr>
+        <tr>
+          <td class="label">Custom · not in library</td>
+          <td><span class="attribution-chip" style="background: var(--accent-dim); color: var(--accent); border-color: var(--accent);"><span class="arrow">✎</span>Custom · not in library</span></td>
+          <td>Line entered fresh (e.g. via "+ Design new" or smart-input "+ Create custom")</td>
+          <td>Opens a "Save to library" prompt: "Promote this to a reusable template?"</td>
+        </tr>
+        <tr>
+          <td class="label">Promoted</td>
+          <td><span class="attribution-chip" style="background: var(--success-dim); color: var(--success); border-color: var(--success);"><span class="arrow">↛</span>Promoted to library</span></td>
+          <td>User clicked "Save to library" on a custom line; library now has this design as a template</td>
+          <td>Drawer opens the new library item · option to add a "repeat" tag · view other quotes that use this template</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p style="margin-top: 14px; font-size: 12.5px; color: var(--muted);">
+      <strong>Schema:</strong> Each <code>quote_lines</code> row gains two new columns: <code>source_kind text</code> (one of <code>'cabinet_template' · 'stock_item' · 'cutlist_template' · NULL</code>) and <code>source_id bigint</code> (FK to whichever library table). NULL on both = "Custom · not in library."
+    </p>
+  </section>
+
+</div>
+</body>
+</html>

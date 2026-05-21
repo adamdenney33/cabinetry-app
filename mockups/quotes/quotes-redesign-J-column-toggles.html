@@ -1,0 +1,661 @@
+<!doctype html>
+<!--
+  Quote variant — same shell as orders mockup J, with the quote-specific differences:
+  • Nav active: Quote
+  • Header back-arrow returns to the quotes list; icon is the quote (document) glyph
+  • #Q-1042 prefix on the title; status badges are Draft / Sent / Approved
+  • No Schedule section — quotes don't carry production hours
+  • Main pane shows the Quotes list (Draft / Sent / Approved filter pills, status badges
+    instead of Due dates)
+  • Totals row label is "Total" (not "Order total")
+  Everything else — column toggles, stock smart-library, popup, descriptions wrap,
+  Hrs greyed for PDF-hidden cue — is identical to the order mockup.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Quotes redesign — J · Column toggles + stock library</title>
+<style>
+  :root {
+    --accent: #e8a838;
+    --accent-dim: rgba(232,168,56,0.12);
+    --accent2: #0d9488;
+    --danger: #e05252;
+    --success: #3d9970;
+    --bg: #f2f2f2;
+    --surface: #ffffff;
+    --surface2: #f7f7f7;
+    --border: #e0e0e0;
+    --border2: #ebebeb;
+    --text: #111111;
+    --text2: #444444;
+    --muted: #888888;
+    --header-bg: #111111;
+    --header-fg: #ffffff;
+    --tabbar: #e2e2e2;
+    --radius: 10px;
+    --shadow: 0 1px 4px rgba(0,0,0,0.07);
+    --shadow-md: 0 4px 16px rgba(0,0,0,0.10);
+    --zebra: rgba(0,0,0,0.025);
+  }
+  html.dark {
+    --bg: #141414;
+    --surface: #1e1e1e;
+    --surface2: #252525;
+    --border: #2e2e2e;
+    --border2: #282828;
+    --text: #f0f0f0;
+    --text2: #bbbbbb;
+    --muted: #666666;
+    --header-bg: #0a0a0a;
+    --tabbar: #161616;
+    --zebra: rgba(255,255,255,0.03);
+    color-scheme: dark;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg); color: var(--text);
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  input[type=number]::-webkit-inner-spin-button,
+  input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+  input[type=number] { -moz-appearance: textfield; }
+
+  /* HEADER */
+  header { background: var(--header-bg); color: var(--header-fg); padding: 0 24px; height: 56px;
+    display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+  .logo { display: flex; align-items: center; gap: 10px; }
+  .logo-text { font-size: 19px; font-weight: 800; letter-spacing: -0.5px; color: #fff; }
+  .logo-badge { font-size: 9px; font-weight: 700; background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.55);
+    padding: 2px 6px; border-radius: 4px; letter-spacing: 0.8px; text-transform: uppercase; border: 1px solid rgba(255,255,255,0.12); }
+  .header-right { display: flex; align-items: center; gap: 12px; }
+  .hbtn { width: 32px; height: 32px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 7px; display: flex; align-items: center; justify-content: center; color: #aaa; cursor: pointer; }
+  .hbtn:hover { background: rgba(255,255,255,0.14); color: #fff; }
+
+  /* NAV */
+  .navbar-wrap { background: var(--tabbar); border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  .nav-tabs { display: flex; align-items: flex-end; padding: 8px 0 0 50px; gap: 2px; max-width: 1400px; margin: 0 auto; width: 100%; }
+  .nav-tab { display: flex; align-items: center; justify-content: center; gap: 7px;
+    padding: 8px 0 10px; min-width: 130px; width: 130px; font-size: 13px; font-weight: 500; color: var(--muted);
+    cursor: pointer; border-radius: 8px 8px 0 0; background: transparent; border: 1px solid transparent; border-bottom: none; }
+  .nav-tab:hover { color: var(--text); background: rgba(128,128,128,0.12); }
+  .nav-tab.active { color: var(--text); background: var(--surface); font-weight: 700;
+    border: 1px solid var(--border); border-bottom-color: var(--surface); margin-bottom: -1px; }
+  .nav-tab .tab-badge { font-size: 10px; font-weight: 700; background: var(--accent); color: #fff; padding: 1px 6px; border-radius: 10px; }
+
+  /* BODY */
+  .app-body { flex: 1; overflow: hidden; display: flex; justify-content: center; background: var(--bg); }
+  .section-panel { display: flex; flex: 1; overflow: hidden; max-width: 1400px; width: 100%; }
+  .sidebar { width: 480px; background: var(--surface); display: flex; flex-direction: column; overflow: hidden; flex-shrink: 0; }
+  .sidebar-scroll { overflow-y: auto; flex: 1; }
+  .resize-handle { width: 4px; cursor: col-resize; background: transparent; flex-shrink: 0; }
+  .resize-handle:hover { background: var(--accent); }
+  .main-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  .main-scroll { flex: 1; overflow: auto; padding: 20px; }
+
+  /* EDITOR */
+  .editor-section { padding: 10px 14px; border-bottom: 1px solid var(--border); }
+  .editor-section:last-child { border-bottom: none; }
+  .editor-section-title { font-size: 11px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: 0.6px;
+    margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+  .ed-head { padding: 12px 14px; border-bottom: 1px solid var(--border);
+    display: grid; grid-template-columns: 28px 20px 1fr; gap: 8px; align-items: start; }
+  .ed-head .back-btn {
+    width: 28px; height: 28px;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 6px;
+    color: var(--text2); cursor: pointer;
+    margin-top: 2px;
+  }
+  .ed-head .back-btn:hover { background: var(--accent-dim); color: var(--accent); }
+  .ed-head .head-icon {
+    width: 20px; height: 20px;
+    color: var(--text);
+    margin-top: 6px;
+    flex-shrink: 0;
+  }
+  .ed-head .head-icon svg { width: 100%; height: 100%; display: block; }
+  .ed-head .head-text { min-width: 0; }
+  .ed-head .title { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 2px; }
+  .ed-head .title .order-num { color: var(--text); font-weight: 700; margin-right: 4px; }
+  .ed-head .sub { display: flex; align-items: center; gap: 8px;
+    font-size: 15px; font-weight: 700; color: var(--text); }
+  .ed-head .badge { font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 10px;
+    text-transform: uppercase; letter-spacing: 0.4px; }
+  .badge-blue { background: rgba(80,140,220,0.12); color: #5b8fc5; }
+
+  /* SECTION HEADER WITH COLUMN TOGGLE PILLS */
+  .cl-section-header {
+    padding: 8px 14px 6px;
+    display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  }
+  .cl-section-title { font-size: 11px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: 0.6px; }
+  .pill-group { display: flex; gap: 3px; margin-left: 8px; flex: 1; justify-content: flex-end; }
+  .cl-col-pill {
+    font-size: 10px; font-weight: 600;
+    padding: 3px 9px; border-radius: 12px;
+    border: 1px solid var(--border); background: var(--surface);
+    color: var(--muted); cursor: pointer; font-family: inherit;
+    display: inline-flex; align-items: center; gap: 4px;
+  }
+  .cl-col-pill:hover { border-color: var(--accent); color: var(--accent); }
+  .cl-col-pill.active { background: var(--text); color: var(--surface); border-color: var(--text); }
+  .cl-col-pill.active:hover { background: var(--text2); color: var(--surface); border-color: var(--text2); }
+
+  /* CUTLIST TABLE */
+  .cl-table { width: 100%; border-collapse: collapse; }
+  .cl-table th { background: var(--surface2); font-size: 9px; font-weight: 700; color: var(--muted); text-transform: uppercase;
+    letter-spacing: 0.4px; padding: 5px 4px; text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  .cl-table th.num { text-align: right; }
+  .cl-table td { padding: 0; border-bottom: 1px solid var(--border2); vertical-align: top; }
+  .cl-table tr:last-child td { border-bottom: none; }
+  .cl-table tbody tr:nth-child(even) td { background: var(--zebra); }
+  .cl-table tbody tr:hover td { background: var(--accent-dim) !important; }
+  .cl-table.hide-disc .col-disc, .cl-table.hide-disc th.col-disc { display: none; }
+  .cl-table.hide-hrs  .col-hrs,  .cl-table.hide-hrs  th.col-hrs  { display: none; }
+
+  .cl-input { width: 100%; padding: 5px 4px; border: none; background: transparent; color: var(--text); font-size: 12px;
+    font-family: inherit; outline: none; font-variant-numeric: tabular-nums; }
+  .cl-input:focus { background: var(--accent-dim); border-radius: 3px; }
+  .cl-input.right { text-align: right; }
+  textarea.cl-input.desc {
+    font-weight: 400; color: var(--text);
+    resize: none; overflow: hidden;
+    line-height: 1.35;
+    min-height: 22px;
+    padding: 4px 4px;
+    display: block;
+  }
+  .cl-input.is-computed { color: var(--muted); font-style: italic; }
+  .cl-input.is-computed:focus { color: var(--text); font-style: normal; }
+
+  .cl-table .col-handle { width: 14px; padding: 0 2px; color: var(--muted); cursor: grab; text-align: center; font-size: 12px; }
+  .cl-table .col-dot { width: 14px; padding: 0; }
+  .cl-table .col-dot span { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); margin-left: 2px; vertical-align: middle; }
+  .cl-table .col-dot.is-item span { background: var(--accent2); }
+  .cl-table .col-dot.is-stock span { background: var(--success); }
+  .cl-table .col-desc { min-width: 0; }
+  .cl-table .col-qty   { width: 38px; }
+  .cl-table .col-price { width: 60px; }
+  .cl-table .col-hrs   { width: 44px; }
+  .cl-table .col-disc  { width: 42px; }
+  .cl-table .col-total { width: 64px; }
+  .cl-table .col-x     { width: 20px; text-align: center; padding: 0; color: var(--muted); cursor: pointer; font-size: 12px; }
+  .cl-table .col-total .total-val { padding: 5px 4px; text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; font-size: 12px; }
+  .cl-table .col-disc.zero .cl-input { color: var(--muted); opacity: 0.55; }
+
+  .cl-table th.col-hrs { color: var(--muted); opacity: 0.7; }
+  .cl-table .col-hrs .cl-input { color: var(--muted); }
+  .cl-table .col-hrs .cl-input:focus { color: var(--text); }
+  .cl-table .col-hrs .cl-input.is-computed { color: var(--muted); opacity: 0.75; font-style: italic; }
+
+  /* ADD BUTTONS */
+  .cl-add-row { display: flex; gap: 6px; padding: 8px 14px 0; }
+  .cl-add-btn { flex: 1; padding: 7px 10px; border: 1px dashed var(--border); border-radius: 6px;
+    background: transparent; color: var(--text2); font-size: 11px; font-weight: 600; font-family: inherit; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; }
+  .cl-add-btn:hover { color: var(--accent); border-color: var(--accent); background: var(--surface2); }
+
+  /* STOCK SMART LIBRARY */
+  .stock-library { padding: 8px 14px 4px; display: none; position: relative; }
+  .stock-library.visible { display: block; }
+  .smart-input-wrap { position: relative; display: flex; align-items: stretch; gap: 4px; }
+  .stock-search { flex: 1; padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px;
+    background: var(--surface2); color: var(--text); font-size: 12px; font-family: inherit; outline: none; }
+  .stock-search:focus { border-color: var(--accent); background: var(--surface); }
+  .smart-input-add { width: 28px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+    border: 1px solid var(--border); border-radius: 6px; background: var(--surface2); color: var(--text2);
+    font-size: 16px; font-weight: 700; line-height: 1; cursor: pointer; user-select: none; }
+  .smart-input-add:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+  .stock-suggest { display: none; position: absolute; top: 100%; left: 0; right: 36px; margin-top: 4px;
+    border: 1px solid var(--border); border-radius: 6px; background: var(--surface);
+    box-shadow: var(--shadow-md); max-height: 240px; overflow-y: auto; z-index: 20; }
+  .stock-suggest.open { display: block; }
+  .stock-section-label { font-size: 9px; font-weight: 700; color: var(--muted); text-transform: uppercase;
+    letter-spacing: 0.6px; padding: 6px 10px 3px; background: var(--surface2);
+    border-bottom: 1px solid var(--border2); position: sticky; top: 0; }
+  .stock-row { display: flex; align-items: center; gap: 8px; padding: 6px 10px; cursor: pointer;
+    border-bottom: 1px solid var(--border2); font-size: 11px; }
+  .stock-row:last-child { border-bottom: none; }
+  .stock-row:hover { background: var(--accent-dim); }
+  .stock-row .stock-name { flex: 1; color: var(--text); }
+  .stock-row .stock-qty { font-size: 10px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .stock-row .stock-price { font-size: 11px; color: var(--text2); font-variant-numeric: tabular-nums; font-weight: 600; min-width: 50px; text-align: right; }
+
+  .stock-markup-row { display: flex; align-items: center; gap: 8px; padding: 6px 0 2px;
+    font-size: 11px; color: var(--text2); }
+  .stock-markup-row label { font-size: 10px; color: var(--muted); font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.4px; white-space: nowrap; }
+  .stock-markup-row .markup-wrap { flex: 1; display: flex; align-items: stretch;
+    border: 1px solid var(--border); border-radius: 5px; background: var(--surface2); overflow: hidden; max-width: 140px; }
+  .stock-markup-row input { flex: 1; min-width: 0; border: none; background: transparent;
+    padding: 4px 6px; font-size: 12px; font-weight: 500; color: var(--text);
+    font-family: inherit; font-variant-numeric: tabular-nums; text-align: right; outline: none; }
+  .stock-markup-row input:focus { background: var(--accent-dim); }
+  .stock-markup-row .markup-unit { font-size: 10px; color: var(--muted); font-weight: 600;
+    padding: 0 6px 0 0; display: flex; align-items: center; }
+  .stock-markup-hint { font-size: 10px; color: var(--muted); margin-left: auto; }
+
+  /* POPUP */
+  .popup-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45);
+    display: none; align-items: center; justify-content: center; z-index: 100; transform: translateZ(0); }
+  .popup-overlay.visible { display: flex; }
+  .popup { background: var(--surface); color: var(--text); border-radius: var(--radius);
+    border: 1px solid var(--border); width: 100%; max-width: 460px; max-height: calc(100vh - 32px);
+    display: flex; flex-direction: column; box-shadow: var(--shadow-md); }
+  .popup-header { display: flex; align-items: center; gap: 8px; padding: 14px 16px; border-bottom: 1px solid var(--border); }
+  .popup-title { font-size: 14px; font-weight: 700; color: var(--text); flex: 1; }
+  .popup-close { font-size: 20px; line-height: 1; color: var(--muted); cursor: pointer; padding: 0 4px; }
+  .popup-close:hover { color: var(--text); }
+  .popup-body { padding: 14px 16px; overflow-y: auto; }
+  .popup-body .pf { margin-bottom: 10px; display: flex; flex-direction: column; gap: 4px; }
+  .popup-body .pf-row { display: flex; gap: 8px; }
+  .popup-body .pf-row .pf { flex: 1; }
+  .popup-body .pf-label { font-size: 10px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.4px; }
+  .popup-body .pf-input, .popup-body .pf-select {
+    padding: 6px 10px; border: 1px solid var(--border); border-radius: 5px;
+    background: var(--surface2); color: var(--text); font-size: 12px; font-family: inherit; outline: none; }
+  .popup-body .pf-input:focus, .popup-body .pf-select:focus { border-color: var(--accent); background: var(--surface); }
+  .popup-footer { display: flex; gap: 8px; justify-content: flex-end; padding: 12px 16px; border-top: 1px solid var(--border); }
+  .popup-footer .btn-primary { background: var(--accent); color: #fff; border: 1px solid var(--accent); }
+  .popup-footer .btn-primary:hover { background: #d99632; border-color: #d99632; color: #fff; }
+
+  /* RATES CHIPS */
+  .rates-chips { display: flex; gap: 4px; align-items: center; }
+  .rate-chip { flex: 1; min-width: 0; display: flex; align-items: stretch; border: 1px solid var(--border); border-radius: 5px;
+    background: var(--surface2); overflow: hidden; }
+  .rate-chip .chip-label { font-size: 9px; color: var(--muted); font-weight: 700; padding: 4px 6px; background: var(--surface);
+    border-right: 1px solid var(--border); text-transform: uppercase; letter-spacing: 0.4px; display: flex; align-items: center; white-space: nowrap; }
+  .rate-chip input { flex: 1; min-width: 0; border: none; background: transparent; padding: 3px 4px;
+    font-size: 11px; font-weight: 500; color: var(--text); font-family: inherit; font-variant-numeric: tabular-nums; text-align: right; outline: none; }
+  .rate-chip input:focus { background: var(--accent-dim); }
+  .rate-chip .chip-unit { font-size: 10px; color: var(--muted); font-weight: 600; padding: 0 6px 0 0; display: flex; align-items: center; }
+
+  /* TOTALS */
+  .pf-totals { background: var(--surface2); border: 1px solid var(--border2); border-radius: 8px; padding: 8px 10px;
+    display: flex; flex-direction: column; gap: 3px; }
+  .pf-total-row { display: flex; justify-content: space-between; align-items: baseline; font-size: 11px; color: var(--text2);
+    font-variant-numeric: tabular-nums; }
+  .pf-total-row .v { font-weight: 600; color: var(--text); }
+  .pf-total-row.discount .v { color: var(--danger); }
+  .pf-total-row.t-main { border-top: 1px solid var(--border); padding-top: 5px; margin-top: 3px; }
+  .pf-total-row.t-main .l { font-weight: 700; color: var(--text); text-transform: uppercase; letter-spacing: 0.4px; font-size: 10px; }
+  .pf-total-row.t-main .v { font-weight: 800; font-size: 14px; }
+
+  .pf-textarea { width: 100%; min-height: 50px; border: 1px solid var(--border); border-radius: 5px;
+    background: var(--surface2); color: var(--text); padding: 6px 8px; font-size: 12px; font-family: inherit; resize: vertical; outline: none; }
+  .pf-textarea:focus { border-color: var(--accent); background: var(--surface); }
+
+  /* MAIN — quotes list */
+  .content-header { margin-bottom: 16px; display: flex; align-items: center; gap: 12px; }
+  .content-header .ch-icon { width: 20px; height: 20px; color: var(--accent); }
+  .content-header .ch-title { font-size: 18px; font-weight: 800; color: var(--text); letter-spacing: -0.3px; }
+  .order-filter-tabs { display: flex; gap: 6px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
+  .order-search-input { flex: 1; max-width: 280px; padding: 5px 10px; border: 1px solid var(--border); border-radius: 6px;
+    background: var(--surface2); color: var(--text); font-size: 11px; font-family: inherit; outline: none; }
+  .ofilter-tab { font-size: 11px; font-weight: 600; padding: 4px 10px; border: 1px solid var(--border); border-radius: 16px;
+    background: var(--surface); color: var(--text2); cursor: pointer; font-family: inherit; }
+  .ofilter-tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .orders-list { display: flex; flex-direction: column; gap: 8px; }
+  .order-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; cursor: pointer; }
+  .order-card.active { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-dim); }
+  .order-card:hover { box-shadow: var(--shadow-md); border-color: var(--accent-dim); }
+  .oc-header { display: flex; gap: 10px; padding: 10px 14px; align-items: flex-start; }
+  .oc-info { flex: 1; min-width: 0; }
+  .oc-title-row { display: flex; align-items: center; gap: 8px; }
+  .oc-title { font-size: 13px; font-weight: 700; color: var(--text); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .badge { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 10px; text-transform: uppercase; letter-spacing: 0.4px; }
+  .badge-green { background: rgba(61,153,112,0.12); color: var(--success); }
+  .badge-blue  { background: rgba(80,140,220,0.12); color: #5b8fc5; }
+  .badge-gray  { background: var(--surface2); color: var(--muted); }
+  .oc-meta { display: flex; gap: 6px; align-items: center; margin-top: 3px; font-size: 11px; color: var(--muted); }
+  .oc-right { text-align: right; }
+  .oc-value { font-size: 14px; font-weight: 800; color: var(--text); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-text">ProCabinet.App</div>
+    <div class="logo-badge">BETA v0.12.0</div>
+  </div>
+  <div class="header-right">
+    <button class="hbtn" id="theme-toggle" title="Toggle theme"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/></svg></button>
+    <button class="hbtn" title="Settings"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/></svg></button>
+    <button class="hbtn" title="Account"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg></button>
+  </div>
+</header>
+
+<div class="navbar-wrap">
+  <div class="nav-tabs">
+    <div class="nav-tab"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg><span>Dashboard</span></div>
+    <div class="nav-tab"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg><span>Cut List</span></div>
+    <div class="nav-tab"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg><span>Stock</span></div>
+    <div class="nav-tab"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg><span>Cabinet</span></div>
+    <div class="nav-tab active"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span>Quote</span></div>
+    <div class="nav-tab"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg><span>Orders</span><span class="tab-badge">3</span></div>
+    <div class="nav-tab"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><span>Schedule</span></div>
+    <div class="nav-tab"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg><span>Projects</span></div>
+    <div class="nav-tab"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg><span>Clients</span></div>
+  </div>
+</div>
+
+<div class="app-body">
+  <div class="section-panel">
+
+    <aside class="sidebar">
+      <div class="sidebar-scroll">
+
+        <div class="ed-head">
+          <div class="back-btn" title="Back to quotes">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+          </div>
+          <div class="head-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          </div>
+          <div class="head-text">
+            <div class="title"><span class="order-num">#Q-1042</span>Smith Kitchen Renovation</div>
+            <div class="sub"><span>Smith Family</span><span class="badge badge-blue">Sent</span></div>
+          </div>
+        </div>
+
+        <!-- Section header with COLUMN toggle pills. Default: Discount + Hours visible.
+             Stock is a library toggle (not a column). -->
+        <div class="cl-section-header">
+          <span class="cl-section-title">Line Items</span>
+          <div class="pill-group" id="col-toggle-group">
+            <button class="cl-col-pill active" data-col="disc">Discount</button>
+            <button class="cl-col-pill active" data-col="hrs">Hours</button>
+            <button class="cl-col-pill" data-col="stock">Stock</button>
+          </div>
+        </div>
+
+        <table class="cl-table" id="lines-table">
+          <thead>
+            <tr>
+              <th></th>
+              <th></th>
+              <th>Description</th>
+              <th class="num">Qty</th>
+              <th class="num">Price</th>
+              <th class="num col-hrs">Hrs</th>
+              <th class="num col-disc">Disc%</th>
+              <th class="num">Total</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr data-kind="cabinet">
+              <td class="col-handle">⋮</td>
+              <td class="col-dot"><span></span></td>
+              <td class="col-desc"><textarea class="cl-input desc" rows="1">Base Cabinet 24″ — Shaker White · Soft-close</textarea></td>
+              <td class="col-qty"><input class="cl-input right" value="4"></td>
+              <td class="col-price"><input class="cl-input right" value="385.00"></td>
+              <td class="col-hrs"><input class="cl-input right is-computed" value="1.2" title="Auto from cabinet labour — edit to override"></td>
+              <td class="col-disc zero"><input class="cl-input right" value="0"></td>
+              <td class="col-total"><div class="total-val">1,540.00</div></td>
+              <td class="col-x">✕</td>
+            </tr>
+            <tr data-kind="cabinet">
+              <td class="col-handle">⋮</td>
+              <td class="col-dot"><span></span></td>
+              <td class="col-desc"><textarea class="cl-input desc" rows="1">Wall Cabinet 30″ — Shaker White · Glass insert · Walnut interior with brushed brass cup pulls</textarea></td>
+              <td class="col-qty"><input class="cl-input right" value="2"></td>
+              <td class="col-price"><input class="cl-input right" value="295.00"></td>
+              <td class="col-hrs"><input class="cl-input right is-computed" value="0.8"></td>
+              <td class="col-disc"><input class="cl-input right" value="5"></td>
+              <td class="col-total"><div class="total-val">560.50</div></td>
+              <td class="col-x">✕</td>
+            </tr>
+            <tr data-kind="item">
+              <td class="col-handle">⋮</td>
+              <td class="col-dot is-item"><span></span></td>
+              <td class="col-desc"><textarea class="cl-input desc" rows="1" placeholder="Item description…">Hinges — Blum Soft-close</textarea></td>
+              <td class="col-qty"><input class="cl-input right" value="24"></td>
+              <td class="col-price"><input class="cl-input right" value="4.50"></td>
+              <td class="col-hrs"><input class="cl-input right" value="0"></td>
+              <td class="col-disc zero"><input class="cl-input right" value="0"></td>
+              <td class="col-total"><div class="total-val">108.00</div></td>
+              <td class="col-x">✕</td>
+            </tr>
+            <tr data-kind="stock">
+              <td class="col-handle">⋮</td>
+              <td class="col-dot is-stock"><span></span></td>
+              <td class="col-desc"><textarea class="cl-input desc" rows="1">18mm Birch Plywood (1220×2440) — A/B grade, pre-finished one side, FSC-certified</textarea></td>
+              <td class="col-qty"><input class="cl-input right" value="3"></td>
+              <td class="col-price"><input class="cl-input right" value="68.00"></td>
+              <td class="col-hrs"><input class="cl-input right" value="0"></td>
+              <td class="col-disc zero"><input class="cl-input right" value="0"></td>
+              <td class="col-total"><div class="total-val">204.00</div></td>
+              <td class="col-x">✕</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="cl-add-row">
+          <button class="cl-add-btn" id="add-cabinet">+ Cabinet</button>
+          <button class="cl-add-btn" id="add-item">+ Item</button>
+        </div>
+
+        <div class="stock-library" id="stock-library">
+          <div class="smart-input-wrap">
+            <input class="stock-search" type="search" placeholder="Search or add stock…" autocomplete="off">
+            <div class="smart-input-add" id="stock-add-btn" title="Add new stock item">+</div>
+            <div class="stock-suggest" id="stock-suggest">
+              <div class="stock-section-label">Sheet stock</div>
+              <div class="stock-row"><span class="stock-name">18mm Birch Plywood (1220×2440)</span><span class="stock-qty">42 in stock</span><span class="stock-price">$68.00</span></div>
+              <div class="stock-row"><span class="stock-name">12mm MDF (1200×2400)</span><span class="stock-qty">18 in stock</span><span class="stock-price">$36.00</span></div>
+              <div class="stock-row"><span class="stock-name">19mm White Melamine (1830×2440)</span><span class="stock-qty">7 in stock</span><span class="stock-price">$52.00</span></div>
+              <div class="stock-section-label">Edgebanding</div>
+              <div class="stock-row"><span class="stock-name">22mm White Melamine PVC</span><span class="stock-qty">120 m</span><span class="stock-price">$1.85/m</span></div>
+              <div class="stock-row"><span class="stock-name">22mm Walnut PVC</span><span class="stock-qty">45 m</span><span class="stock-price">$2.40/m</span></div>
+              <div class="stock-section-label">Hardware</div>
+              <div class="stock-row"><span class="stock-name">Blum Clip-top Soft-close hinge</span><span class="stock-qty">220 ea</span><span class="stock-price">$4.50</span></div>
+              <div class="stock-row"><span class="stock-name">Blum Tandembox slide 450mm</span><span class="stock-qty">36 pr</span><span class="stock-price">$32.00</span></div>
+              <div class="stock-section-label">Finishes</div>
+              <div class="stock-row"><span class="stock-name">2-pack Polyurethane — Shaker White</span><span class="stock-qty">14 L</span><span class="stock-price">$45.00/L</span></div>
+            </div>
+          </div>
+          <div class="stock-markup-row">
+            <label>Stock Markup</label>
+            <div class="markup-wrap">
+              <input type="number" value="35">
+              <span class="markup-unit">%</span>
+            </div>
+            <span class="stock-markup-hint">applied to all stock lines</span>
+          </div>
+        </div>
+
+        <!-- Pricing — divider above the header. Quotes have no Schedule section. -->
+        <div class="editor-section" style="margin-top:10px;border-top:1px solid var(--border);border-bottom:none;padding-top:10px">
+          <div class="editor-section-title">Pricing</div>
+          <div class="rates-chips">
+            <div class="rate-chip"><span class="chip-label">Tax</span><input type="number" value="13"><span class="chip-unit">%</span></div>
+            <div class="rate-chip"><span class="chip-label">Disc</span><input type="number" value="5"><span class="chip-unit">%</span></div>
+          </div>
+        </div>
+
+        <div class="editor-section" style="border-top:none;border-bottom:none;padding-top:0">
+          <div class="pf-totals">
+            <div class="pf-total-row"><span class="l">Subtotal</span><span class="v">2,412.50</span></div>
+            <div class="pf-total-row"><span class="l">Tax (13%)</span><span class="v">+313.63</span></div>
+            <div class="pf-total-row discount"><span class="l">Discount (5%)</span><span class="v">−136.31</span></div>
+            <div class="pf-total-row t-main"><span class="l">Total</span><span class="v">$2,589.82</span></div>
+          </div>
+        </div>
+
+        <div class="editor-section">
+          <div class="editor-section-title">Notes</div>
+          <textarea class="pf-textarea">Customer-facing notes shown on the quote PDF. Cambria quartz countertop install scheduled separately and is not included in this quote.</textarea>
+        </div>
+      </div>
+    </aside>
+
+    <div class="resize-handle"></div>
+
+    <div class="main-content">
+      <div class="main-scroll">
+        <div style="max-width:800px;margin:0 auto">
+          <div class="content-header">
+            <svg class="ch-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            <div class="ch-title">Quotes</div>
+          </div>
+          <div class="order-filter-tabs">
+            <input class="order-search-input" type="search" placeholder="Search client or project…">
+            <button class="ofilter-tab active">All (12)</button>
+            <button class="ofilter-tab">Draft (3)</button>
+            <button class="ofilter-tab">Sent (5)</button>
+            <button class="ofilter-tab">Approved (4)</button>
+          </div>
+          <div class="orders-list">
+            <div class="order-card active">
+              <div class="oc-header">
+                <div class="oc-info">
+                  <div class="oc-title-row"><div class="oc-title">Q-1042 · Smith Kitchen Renovation - Smith Family</div><span class="badge badge-blue">Sent</span></div>
+                  <div class="oc-meta"><span>Issued: 12 May</span><span>Valid: 30 days</span></div>
+                </div>
+                <div class="oc-right"><div class="oc-value">$2,589.82</div></div>
+              </div>
+            </div>
+            <div class="order-card">
+              <div class="oc-header">
+                <div class="oc-info">
+                  <div class="oc-title-row"><div class="oc-title">Q-1041 · Jensen Workshop Cabinets - Jensen Carpentry</div><span class="badge badge-green">Approved</span></div>
+                  <div class="oc-meta"><span>Issued: 8 May</span></div>
+                </div>
+                <div class="oc-right"><div class="oc-value">$8,415.20</div></div>
+              </div>
+            </div>
+            <div class="order-card">
+              <div class="oc-header">
+                <div class="oc-info">
+                  <div class="oc-title-row"><div class="oc-title">Q-1040 · Hartley Pantry - Hartley Family</div><span class="badge badge-gray">Draft</span></div>
+                  <div class="oc-meta"><span>Issued: 5 May</span></div>
+                </div>
+                <div class="oc-right"><div class="oc-value">$1,985.00</div></div>
+              </div>
+            </div>
+            <div class="order-card">
+              <div class="oc-header">
+                <div class="oc-info">
+                  <div class="oc-title-row"><div class="oc-title">Q-1039 · Pendle Vanity - Pendle Builders</div><span class="badge badge-blue">Sent</span></div>
+                  <div class="oc-meta"><span>Issued: 2 May</span></div>
+                </div>
+                <div class="oc-right"><div class="oc-value">$3,240.00</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- New-stock popup (same as orders mockup; opened by the smart-input `+` button). -->
+<div class="popup-overlay" id="new-stock-popup">
+  <div class="popup">
+    <div class="popup-header">
+      <div class="popup-title">Add new stock item</div>
+      <div class="popup-close" data-close>×</div>
+    </div>
+    <div class="popup-body">
+      <div class="pf">
+        <label class="pf-label">Name</label>
+        <input class="pf-input" type="text" placeholder="e.g. 18mm Birch Plywood">
+      </div>
+      <div class="pf-row">
+        <div class="pf">
+          <label class="pf-label">Type</label>
+          <select class="pf-select"><option>Sheet stock</option><option>Edgebanding</option><option>Hardware</option><option>Finishes</option></select>
+        </div>
+        <div class="pf">
+          <label class="pf-label">Supplier</label>
+          <input class="pf-input" type="text" placeholder="(optional)">
+        </div>
+      </div>
+      <div class="pf-row">
+        <div class="pf"><label class="pf-label">Qty in stock</label><input class="pf-input" type="number" min="0" step="1" value="0"></div>
+        <div class="pf"><label class="pf-label">Unit cost</label><input class="pf-input" type="number" min="0" step="0.01" value="0.00"></div>
+        <div class="pf"><label class="pf-label">Unit</label><select class="pf-select"><option>each</option><option>m</option><option>m²</option><option>L</option><option>pair</option></select></div>
+      </div>
+      <div class="pf-row">
+        <div class="pf"><label class="pf-label">Width (mm)</label><input class="pf-input" type="number" min="0" step="1" placeholder="—"></div>
+        <div class="pf"><label class="pf-label">Length (mm)</label><input class="pf-input" type="number" min="0" step="1" placeholder="—"></div>
+        <div class="pf"><label class="pf-label">Reorder at</label><input class="pf-input" type="number" min="0" step="1" value="0"></div>
+      </div>
+    </div>
+    <div class="popup-footer">
+      <button class="btn btn-outline" data-close>Cancel</button>
+      <button class="btn btn-primary" data-close>+ Add stock</button>
+    </div>
+  </div>
+</div>
+
+<style>
+  /* Local: small button utility for popup footer */
+  .btn { font-size: 11px; font-weight: 600; padding: 6px 10px; border-radius: 5px; cursor: pointer; font-family: inherit;
+    border: 1px solid var(--border); background: var(--surface); color: var(--text2); }
+  .btn:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-outline { background: transparent; }
+</style>
+
+<script>
+  document.getElementById('theme-toggle').addEventListener('click', () => {
+    document.documentElement.classList.toggle('dark');
+  });
+  const popup = document.getElementById('new-stock-popup');
+  document.getElementById('stock-add-btn').addEventListener('click', () => popup.classList.add('visible'));
+  popup.addEventListener('click', e => {
+    if (e.target === popup || e.target.matches('[data-close]')) popup.classList.remove('visible');
+  });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') popup.classList.remove('visible'); });
+  const table = document.getElementById('lines-table');
+  const stockLib = document.getElementById('stock-library');
+  document.querySelectorAll('#col-toggle-group .cl-col-pill').forEach(pill => {
+    pill.addEventListener('click', () => {
+      pill.classList.toggle('active');
+      const col = pill.dataset.col;
+      if (col === 'stock') {
+        stockLib.classList.toggle('visible', pill.classList.contains('active'));
+      } else {
+        table.classList.toggle('hide-' + col, !pill.classList.contains('active'));
+      }
+    });
+  });
+  const searchInput = document.querySelector('.stock-search');
+  const suggest = document.getElementById('stock-suggest');
+  if (searchInput && suggest) {
+    searchInput.addEventListener('focus', () => suggest.classList.add('open'));
+    searchInput.addEventListener('input', () => {
+      const q = searchInput.value.trim().toLowerCase();
+      suggest.classList.add('open');
+      document.querySelectorAll('.stock-suggest .stock-row').forEach(row => {
+        const name = row.querySelector('.stock-name').textContent.toLowerCase();
+        row.style.display = (!q || name.includes(q)) ? '' : 'none';
+      });
+    });
+    document.addEventListener('mousedown', e => {
+      if (!e.target.closest('.smart-input-wrap')) suggest.classList.remove('open');
+    });
+    suggest.addEventListener('click', e => {
+      const row = e.target.closest('.stock-row');
+      if (!row) return;
+      row.style.background = 'var(--accent-dim)';
+      setTimeout(() => row.style.background = '', 400);
+    });
+  }
+  document.querySelectorAll('.col-hrs .cl-input.is-computed').forEach(inp => {
+    inp.addEventListener('input', () => inp.classList.remove('is-computed'));
+  });
+  function autoGrow(ta) { ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 'px'; }
+  document.querySelectorAll('textarea.cl-input.desc').forEach(ta => {
+    autoGrow(ta);
+    ta.addEventListener('input', () => autoGrow(ta));
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,607 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>PDF branding options — ProCabinet</title>
+  <style>
+    /* ─── Page chrome ─────────────────────────────────── */
+    :root {
+      --bg: #0f1115;
+      --surface: #1a1d24;
+      --border: #2a2e38;
+      --text: #e4e6eb;
+      --muted: #8a8f9a;
+      --accent: #4a9eff;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+      padding: 24px;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    h1 {
+      font-size: 18px;
+      font-weight: 600;
+      margin: 0 0 4px;
+    }
+    .sub {
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 24px;
+    }
+    .legend {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 16px;
+      margin-bottom: 28px;
+      font-size: 12.5px;
+      color: var(--muted);
+    }
+    .legend strong { color: var(--text); }
+    .legend code {
+      background: rgba(255,255,255,0.05);
+      padding: 1px 6px;
+      border-radius: 3px;
+      font-size: 11.5px;
+    }
+
+    /* ─── Variant grid ────────────────────────────────── */
+    .variants { display: grid; gap: 32px; }
+    .variant {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .variant-header {
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .variant-num {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #fff;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 13px;
+    }
+    .variant-title { font-weight: 600; font-size: 14px; }
+    .variant-desc { color: var(--muted); font-size: 12px; flex: 1; }
+    .pair {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+      padding: 24px;
+    }
+    .tier-label {
+      font-size: 11px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 10px;
+      font-weight: 600;
+    }
+    .tier-label.free { color: #ff9b54; }
+    .tier-label.pro { color: #54d68b; }
+
+    /* ─── PDF page (A4 visual at scale) ────────────────── */
+    /* A4 = 210mm × 297mm. Scale: 1mm = 1.6px → 336 × 475 page. */
+    .page {
+      width: 336px;
+      height: 475px;
+      background: #fff;
+      color: #111;
+      position: relative;
+      font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+      padding: 28.8px;  /* M=18mm */
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .biz-name {
+      font-size: 16px;       /* mirrors 16pt */
+      font-weight: 700;
+      color: #111;
+      margin: 0;
+      letter-spacing: -0.2px;
+    }
+    .biz-sub {
+      font-size: 8px;
+      color: #777;
+      margin: 4px 0 0;
+    }
+    .biz-abn {
+      font-size: 7px;
+      color: #777;
+      margin: 3px 0 0;
+    }
+    .doc-title {
+      position: absolute;
+      top: 28.8px;
+      right: 28.8px;
+      text-align: right;
+    }
+    .doc-title-text {
+      font-size: 22px;
+      color: #333;
+      font-weight: 400;
+      letter-spacing: 0.8px;
+    }
+    .doc-title-ref {
+      font-size: 8px;
+      color: #888;
+      margin-top: 4px;
+    }
+    .header-divider {
+      position: absolute;
+      left: 28.8px; right: 28.8px;
+      top: 60px;
+      height: 0;
+      border-top: 0.8px solid #111;
+    }
+    .section-block {
+      position: absolute;
+      left: 28.8px; right: 28.8px;
+      top: 70px;
+    }
+    .section-label {
+      font-size: 7px;
+      color: #aaa;
+      letter-spacing: 1.5px;
+      font-weight: 700;
+    }
+    .section-value {
+      font-size: 12px;
+      font-weight: 700;
+      color: #111;
+      margin-top: 4px;
+    }
+    .table-header {
+      position: absolute;
+      left: 28.8px; right: 28.8px;
+      top: 116px;
+      display: flex;
+      justify-content: space-between;
+      font-size: 7px;
+      color: #888;
+      letter-spacing: 1.2px;
+      font-weight: 700;
+      border-bottom: 0.6px solid #111;
+      padding-bottom: 3px;
+    }
+    .line-rows {
+      position: absolute;
+      left: 28.8px; right: 28.8px;
+      top: 130px;
+      font-size: 10px;
+    }
+    .line-row { display: flex; justify-content: space-between; padding: 4px 0; }
+    .line-row .name { font-weight: 700; color: #111; }
+    .line-row .detail { font-size: 8.5px; color: #888; padding: 1px 0 0 4px; }
+    .group-label {
+      font-size: 7px;
+      color: #aaa;
+      letter-spacing: 1.2px;
+      font-weight: 700;
+      margin-top: 6px;
+      margin-bottom: 2px;
+    }
+
+    .total-box {
+      position: absolute;
+      left: 28.8px; right: 28.8px;
+      bottom: 110px;
+      background: #111;
+      color: #fff;
+      padding: 8px 12px;
+      border-radius: 4px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .total-box .label { font-size: 8px; font-weight: 700; letter-spacing: 0.5px; }
+    .total-box .value { font-size: 18px; font-weight: 700; }
+
+    /* ─── Footer variants ─────────────────────────────── */
+    .footer-base {
+      position: absolute;
+      left: 28.8px; right: 28.8px;
+      bottom: 28.8px;
+      display: flex;
+      justify-content: space-between;
+      font-size: 6.5px;
+      color: #bdbdbd;
+    }
+    .footer-base .pro-text { color: #999; }
+
+    /* Variant 1: subtle — just text */
+    .v1 .footer-base { font-size: 6.5px; color: #bdbdbd; }
+    .v1 .pro-text-emph { color: #888; }
+
+    /* Variant 2: footer block — accent line above bigger centered text */
+    .v2 .footer-block {
+      position: absolute;
+      left: 0; right: 0;
+      bottom: 0;
+      padding: 8px 28.8px;
+      border-top: 0.8px solid var(--accent);
+      background: #fafbfd;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 8px;
+      color: #555;
+    }
+    .v2 .footer-block .brand {
+      color: var(--accent);
+      font-weight: 600;
+    }
+    .v2 .footer-block .brand a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    /* Variant 3: header strip + footer */
+    .v3 .header-strip {
+      position: absolute;
+      top: 0;
+      right: 0;
+      background: var(--accent);
+      color: #fff;
+      font-size: 7px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-bottom-left-radius: 6px;
+      letter-spacing: 0.3px;
+    }
+    .v3 .footer-block {
+      position: absolute;
+      left: 0; right: 0;
+      bottom: 0;
+      padding: 6px 28.8px;
+      background: #fafbfd;
+      border-top: 0.6px solid var(--accent);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 7.5px;
+      color: #555;
+    }
+    .v3 .footer-block .brand { color: var(--accent); font-weight: 600; }
+
+    /* ─── Caption variants (logo replaces name) ──────── */
+    .header-row { display: flex; align-items: flex-start; gap: 12px; }
+    .fake-logo {
+      width: 56px;
+      height: 28px;
+      background: linear-gradient(135deg, var(--accent), #2d6cba);
+      border-radius: 4px;
+      color: #fff;
+      font-size: 9px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      letter-spacing: 0.4px;
+      flex-shrink: 0;
+    }
+    .logo-caption .biz-name { font-size: 9px; }
+    .logo-caption .biz-sub { font-size: 7.5px; }
+
+    .footnote {
+      margin-top: 12px;
+      font-size: 12px;
+      color: var(--muted);
+      padding: 8px 14px;
+      background: rgba(255,255,255,0.03);
+      border-left: 2px solid var(--accent);
+      border-radius: 0 4px 4px 0;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>ProCabinet — PDF branding options</h1>
+  <div class="sub">Three branding intensities for free-tier PDFs. Each card shows <strong>free</strong> (left) vs <strong>Pro</strong> (right). Pick one.</div>
+
+  <div class="legend">
+    The header on every card uses the <strong>new layout</strong>: logo top-left (when uploaded) with caption below in the order <code>Business&nbsp;name → Address → Phone → Email</code>. The right side keeps the document title (QUOTATION / TAX INVOICE / etc.). The branding choice only affects the footer / page chrome, not the header.
+  </div>
+
+  <div class="variants">
+
+    <!-- ─── Variant 1 — Subtle ─────────────────────────── -->
+    <div class="variant v1">
+      <div class="variant-header">
+        <span class="variant-num">1</span>
+        <span class="variant-title">Subtle footer</span>
+        <span class="variant-desc">A single 6.5pt grey line — same size as today, just rephrased. Minimal visual impact, doesn't compete with your branding.</span>
+      </div>
+      <div class="pair">
+        <!-- FREE -->
+        <div>
+          <div class="tier-label free">Free tier</div>
+          <div class="page">
+            <div class="header-row">
+              <div class="fake-logo">ACME</div>
+              <div class="logo-caption">
+                <div class="biz-name">Acme Cabinetry Ltd</div>
+                <div class="biz-sub">12 Workshop Lane, Bristol BS1 4XY · 0117 555 0199 · hello@acme.co.uk</div>
+                <div class="biz-abn">ABN: 12 345 678 901</div>
+              </div>
+            </div>
+            <div class="doc-title">
+              <div class="doc-title-text">QUOTATION</div>
+              <div class="doc-title-ref">#QUO-0042 · 14 May 2026</div>
+            </div>
+            <div class="header-divider"></div>
+            <div class="section-block">
+              <div style="display:flex;gap:46px">
+                <div><div class="section-label">PREPARED FOR</div><div class="section-value">Riverside Kitchens</div></div>
+                <div><div class="section-label">PROJECT</div><div class="section-value">Hampstead Reno</div></div>
+              </div>
+            </div>
+            <div class="table-header"><span>DESCRIPTION</span><span>AMOUNT</span></div>
+            <div class="line-rows">
+              <div class="group-label">CABINETS</div>
+              <div class="line-row"><span class="name">Base unit 600mm × 4</span><span>£2,840.00</span></div>
+              <div class="line-row"><span class="detail">18mm white oak veneer, soft-close hinges</span></div>
+              <div class="line-row"><span class="name">Tall larder 2100mm × 1</span><span>£1,420.00</span></div>
+            </div>
+            <div class="total-box">
+              <div class="label">TOTAL AMOUNT DUE</div>
+              <div class="value">£5,180</div>
+            </div>
+            <div class="footer-base">
+              <span>Acme Cabinetry Ltd  ·  <span class="pro-text-emph">Made with ProCabinet.app</span></span>
+              <span>14 May 2026</span>
+            </div>
+          </div>
+        </div>
+        <!-- PRO -->
+        <div>
+          <div class="tier-label pro">Pro tier</div>
+          <div class="page">
+            <div class="header-row">
+              <div class="fake-logo">ACME</div>
+              <div class="logo-caption">
+                <div class="biz-name">Acme Cabinetry Ltd</div>
+                <div class="biz-sub">12 Workshop Lane, Bristol BS1 4XY · 0117 555 0199 · hello@acme.co.uk</div>
+                <div class="biz-abn">ABN: 12 345 678 901</div>
+              </div>
+            </div>
+            <div class="doc-title">
+              <div class="doc-title-text">QUOTATION</div>
+              <div class="doc-title-ref">#QUO-0042 · 14 May 2026</div>
+            </div>
+            <div class="header-divider"></div>
+            <div class="section-block">
+              <div style="display:flex;gap:46px">
+                <div><div class="section-label">PREPARED FOR</div><div class="section-value">Riverside Kitchens</div></div>
+                <div><div class="section-label">PROJECT</div><div class="section-value">Hampstead Reno</div></div>
+              </div>
+            </div>
+            <div class="table-header"><span>DESCRIPTION</span><span>AMOUNT</span></div>
+            <div class="line-rows">
+              <div class="group-label">CABINETS</div>
+              <div class="line-row"><span class="name">Base unit 600mm × 4</span><span>£2,840.00</span></div>
+              <div class="line-row"><span class="detail">18mm white oak veneer, soft-close hinges</span></div>
+              <div class="line-row"><span class="name">Tall larder 2100mm × 1</span><span>£1,420.00</span></div>
+            </div>
+            <div class="total-box">
+              <div class="label">TOTAL AMOUNT DUE</div>
+              <div class="value">£5,180</div>
+            </div>
+            <div class="footer-base">
+              <span>Acme Cabinetry Ltd</span>
+              <span>14 May 2026</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── Variant 2 — Footer block ─────────────────── -->
+    <div class="variant v2">
+      <div class="variant-header">
+        <span class="variant-num">2</span>
+        <span class="variant-title">Footer band with link</span>
+        <span class="variant-desc">A coloured band across the bottom of every page. More visible, but still confined to the page chrome — your content owns the real estate above it.</span>
+      </div>
+      <div class="pair">
+        <!-- FREE -->
+        <div>
+          <div class="tier-label free">Free tier</div>
+          <div class="page">
+            <div class="header-row">
+              <div class="fake-logo">ACME</div>
+              <div class="logo-caption">
+                <div class="biz-name">Acme Cabinetry Ltd</div>
+                <div class="biz-sub">12 Workshop Lane, Bristol BS1 4XY · 0117 555 0199 · hello@acme.co.uk</div>
+                <div class="biz-abn">ABN: 12 345 678 901</div>
+              </div>
+            </div>
+            <div class="doc-title">
+              <div class="doc-title-text">QUOTATION</div>
+              <div class="doc-title-ref">#QUO-0042 · 14 May 2026</div>
+            </div>
+            <div class="header-divider"></div>
+            <div class="section-block">
+              <div style="display:flex;gap:46px">
+                <div><div class="section-label">PREPARED FOR</div><div class="section-value">Riverside Kitchens</div></div>
+                <div><div class="section-label">PROJECT</div><div class="section-value">Hampstead Reno</div></div>
+              </div>
+            </div>
+            <div class="table-header"><span>DESCRIPTION</span><span>AMOUNT</span></div>
+            <div class="line-rows">
+              <div class="group-label">CABINETS</div>
+              <div class="line-row"><span class="name">Base unit 600mm × 4</span><span>£2,840.00</span></div>
+              <div class="line-row"><span class="detail">18mm white oak veneer, soft-close hinges</span></div>
+              <div class="line-row"><span class="name">Tall larder 2100mm × 1</span><span>£1,420.00</span></div>
+            </div>
+            <div class="total-box">
+              <div class="label">TOTAL AMOUNT DUE</div>
+              <div class="value">£5,180</div>
+            </div>
+            <div class="footer-block">
+              <span>Acme Cabinetry Ltd · 14 May 2026</span>
+              <span class="brand">Made with <a href="#">ProCabinet.app</a></span>
+            </div>
+          </div>
+        </div>
+        <!-- PRO -->
+        <div>
+          <div class="tier-label pro">Pro tier</div>
+          <div class="page">
+            <div class="header-row">
+              <div class="fake-logo">ACME</div>
+              <div class="logo-caption">
+                <div class="biz-name">Acme Cabinetry Ltd</div>
+                <div class="biz-sub">12 Workshop Lane, Bristol BS1 4XY · 0117 555 0199 · hello@acme.co.uk</div>
+                <div class="biz-abn">ABN: 12 345 678 901</div>
+              </div>
+            </div>
+            <div class="doc-title">
+              <div class="doc-title-text">QUOTATION</div>
+              <div class="doc-title-ref">#QUO-0042 · 14 May 2026</div>
+            </div>
+            <div class="header-divider"></div>
+            <div class="section-block">
+              <div style="display:flex;gap:46px">
+                <div><div class="section-label">PREPARED FOR</div><div class="section-value">Riverside Kitchens</div></div>
+                <div><div class="section-label">PROJECT</div><div class="section-value">Hampstead Reno</div></div>
+              </div>
+            </div>
+            <div class="table-header"><span>DESCRIPTION</span><span>AMOUNT</span></div>
+            <div class="line-rows">
+              <div class="group-label">CABINETS</div>
+              <div class="line-row"><span class="name">Base unit 600mm × 4</span><span>£2,840.00</span></div>
+              <div class="line-row"><span class="detail">18mm white oak veneer, soft-close hinges</span></div>
+              <div class="line-row"><span class="name">Tall larder 2100mm × 1</span><span>£1,420.00</span></div>
+            </div>
+            <div class="total-box">
+              <div class="label">TOTAL AMOUNT DUE</div>
+              <div class="value">£5,180</div>
+            </div>
+            <div class="footer-base">
+              <span>Acme Cabinetry Ltd</span>
+              <span>14 May 2026</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── Variant 3 — Header strip + footer ──────────── -->
+    <div class="variant v3">
+      <div class="variant-header">
+        <span class="variant-num">3</span>
+        <span class="variant-title">Header corner + footer band</span>
+        <span class="variant-desc">Adds a small accent-colored corner badge in the top right of page 1 in addition to the footer band. Most visible — strongest upgrade pressure but also the most intrusive.</span>
+      </div>
+      <div class="pair">
+        <!-- FREE -->
+        <div>
+          <div class="tier-label free">Free tier</div>
+          <div class="page">
+            <div class="header-strip">Made with ProCabinet.app</div>
+            <div class="header-row">
+              <div class="fake-logo">ACME</div>
+              <div class="logo-caption">
+                <div class="biz-name">Acme Cabinetry Ltd</div>
+                <div class="biz-sub">12 Workshop Lane, Bristol BS1 4XY · 0117 555 0199 · hello@acme.co.uk</div>
+                <div class="biz-abn">ABN: 12 345 678 901</div>
+              </div>
+            </div>
+            <div class="doc-title" style="top:36px">
+              <div class="doc-title-text">QUOTATION</div>
+              <div class="doc-title-ref">#QUO-0042 · 14 May 2026</div>
+            </div>
+            <div class="header-divider"></div>
+            <div class="section-block">
+              <div style="display:flex;gap:46px">
+                <div><div class="section-label">PREPARED FOR</div><div class="section-value">Riverside Kitchens</div></div>
+                <div><div class="section-label">PROJECT</div><div class="section-value">Hampstead Reno</div></div>
+              </div>
+            </div>
+            <div class="table-header"><span>DESCRIPTION</span><span>AMOUNT</span></div>
+            <div class="line-rows">
+              <div class="group-label">CABINETS</div>
+              <div class="line-row"><span class="name">Base unit 600mm × 4</span><span>£2,840.00</span></div>
+              <div class="line-row"><span class="detail">18mm white oak veneer, soft-close hinges</span></div>
+              <div class="line-row"><span class="name">Tall larder 2100mm × 1</span><span>£1,420.00</span></div>
+            </div>
+            <div class="total-box">
+              <div class="label">TOTAL AMOUNT DUE</div>
+              <div class="value">£5,180</div>
+            </div>
+            <div class="footer-block">
+              <span>Acme Cabinetry Ltd · 14 May 2026</span>
+              <span class="brand">procabinet.app</span>
+            </div>
+          </div>
+        </div>
+        <!-- PRO -->
+        <div>
+          <div class="tier-label pro">Pro tier</div>
+          <div class="page">
+            <div class="header-row">
+              <div class="fake-logo">ACME</div>
+              <div class="logo-caption">
+                <div class="biz-name">Acme Cabinetry Ltd</div>
+                <div class="biz-sub">12 Workshop Lane, Bristol BS1 4XY · 0117 555 0199 · hello@acme.co.uk</div>
+                <div class="biz-abn">ABN: 12 345 678 901</div>
+              </div>
+            </div>
+            <div class="doc-title">
+              <div class="doc-title-text">QUOTATION</div>
+              <div class="doc-title-ref">#QUO-0042 · 14 May 2026</div>
+            </div>
+            <div class="header-divider"></div>
+            <div class="section-block">
+              <div style="display:flex;gap:46px">
+                <div><div class="section-label">PREPARED FOR</div><div class="section-value">Riverside Kitchens</div></div>
+                <div><div class="section-label">PROJECT</div><div class="section-value">Hampstead Reno</div></div>
+              </div>
+            </div>
+            <div class="table-header"><span>DESCRIPTION</span><span>AMOUNT</span></div>
+            <div class="line-rows">
+              <div class="group-label">CABINETS</div>
+              <div class="line-row"><span class="name">Base unit 600mm × 4</span><span>£2,840.00</span></div>
+              <div class="line-row"><span class="detail">18mm white oak veneer, soft-close hinges</span></div>
+              <div class="line-row"><span class="name">Tall larder 2100mm × 1</span><span>£1,420.00</span></div>
+            </div>
+            <div class="total-box">
+              <div class="label">TOTAL AMOUNT DUE</div>
+              <div class="value">£5,180</div>
+            </div>
+            <div class="footer-base">
+              <span>Acme Cabinetry Ltd</span>
+              <span>14 May 2026</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="footnote">
+    Default if no pick: <strong>Variant 2 (footer band)</strong> — it strikes the best balance between visibility and respect for the document. Implementation already defaults to it; flip a single variable to switch.
+  </div>
+
+</body>
+</html>

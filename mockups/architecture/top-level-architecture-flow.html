@@ -1,0 +1,934 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ProCabinet.App — Top-level architecture flow (library-first)</title>
+<style>
+  :root {
+    --accent: #e8a838;
+    --accent-dim: rgba(232,168,56,0.12);
+    --accent2: #0d9488;
+    --accent2-dim: rgba(13,148,136,0.12);
+    --danger: #e05252;
+    --danger-dim: rgba(224,82,82,0.12);
+    --success: #3d9970;
+    --success-dim: rgba(61,153,112,0.14);
+    --info: #5b8fc5;
+    --info-dim: rgba(80,140,220,0.12);
+    --purple: #9333ea;
+    --purple-dim: rgba(147,51,234,0.14);
+    --indigo: #6366f1;
+    --indigo-dim: rgba(99,102,241,0.14);
+    --orange: #d97706;
+    --orange-dim: rgba(217,119,6,0.14);
+    --bg: #f2f2f2;
+    --surface: #ffffff;
+    --surface2: #f7f7f7;
+    --border: #e0e0e0;
+    --border2: #ebebeb;
+    --text: #111111;
+    --text2: #444444;
+    --muted: #888888;
+    --radius: 8px;
+    --shadow: 0 1px 4px rgba(0,0,0,.04);
+    --shadow-md: 0 2px 8px rgba(0,0,0,.08);
+  }
+  html.dark {
+    --bg: #141414;
+    --surface: #1e1e1e;
+    --surface2: #252525;
+    --border: #2e2e2e;
+    --border2: #282828;
+    --text: #f0f0f0;
+    --text2: #bbbbbb;
+    --muted: #666666;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, sans-serif; font-size: 14px; line-height: 1.5; background: var(--bg); color: var(--text); }
+  code, .mono { font-family: 'SF Mono', Menlo, Consolas, monospace; font-size: 0.9em; }
+
+  .doc { max-width: 1300px; margin: 0 auto; padding: 32px 28px 80px; }
+  .doc-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; padding-bottom: 20px; border-bottom: 1px solid var(--border); margin-bottom: 24px; }
+  .doc-head h1 { font-size: 24px; font-weight: 800; margin: 0 0 4px; letter-spacing: -0.3px; }
+  .doc-head .subtitle { color: var(--muted); font-size: 13px; }
+  .theme-toggle { border: 1px solid var(--border); background: var(--surface); color: var(--text2); padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600; }
+
+  .lede {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    padding: 14px 18px; margin-bottom: 24px; color: var(--text2); font-size: 13px;
+  }
+  .lede strong { color: var(--text); }
+  .lede .quote-mark { color: var(--accent); font-weight: 800; }
+
+  /* ── Flowchart canvas ── */
+  .flow-canvas {
+    position: relative;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+    padding: 22px;
+    margin-bottom: 28px;
+  }
+
+  /* Zones */
+  .zone { border-radius: 12px; padding: 18px 20px 22px; position: relative; }
+  .zone-label {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 4px 12px; border-radius: 999px;
+    font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.8px;
+    margin-bottom: 16px;
+  }
+  .zone-label::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+  .zone-label .meta { font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--muted); margin-left: 8px; }
+
+  /* ── Library tier (primary, prominent) ── */
+  .zone.library-tier {
+    background: var(--indigo-dim);
+    border: 2.5px solid var(--indigo);
+    box-shadow: 0 4px 16px rgba(99,102,241,0.16);
+    padding: 22px 24px 24px;
+  }
+  .zone.library-tier .zone-label { background: var(--indigo); color: #fff; }
+  .primary-badge {
+    position: absolute; top: -12px; right: 18px;
+    background: var(--indigo); color: #fff;
+    padding: 4px 12px; border-radius: 999px;
+    font-size: 10px; font-weight: 800; letter-spacing: 0.8px; text-transform: uppercase;
+    box-shadow: var(--shadow-md);
+  }
+
+  .lib-card {
+    background: var(--surface); border: 2px solid var(--indigo); border-radius: 10px;
+    padding: 14px 16px; box-shadow: var(--shadow);
+  }
+  .lib-card-h { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .lib-icon {
+    width: 36px; height: 36px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--indigo); color: #fff; font-weight: 800; font-size: 17px;
+  }
+  .lib-card-title { font-size: 16px; font-weight: 800; color: var(--text); }
+  .lib-card-sub { font-size: 11.5px; color: var(--muted); margin-top: 1px; }
+  .lib-table-ref { font-size: 10.5px; color: var(--muted); font-family: 'SF Mono', Menlo, Consolas, monospace; margin-left: auto; }
+
+  /* Filter chips (tag-driven views) */
+  .filter-strip {
+    display: flex; flex-wrap: wrap; gap: 6px;
+    padding: 10px 12px;
+    background: var(--surface2); border-radius: 8px;
+    margin-bottom: 12px;
+    border: 1px solid var(--border2);
+  }
+  .filter-label { font-size: 10px; color: var(--muted); font-weight: 800; text-transform: uppercase; letter-spacing: 0.6px; margin-right: 4px; align-self: center; }
+  .filter-chip {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 3px 9px; border-radius: 999px;
+    font-size: 10.5px; font-weight: 700;
+    border: 1px solid;
+    cursor: default;
+  }
+  .filter-chip.all       { background: var(--surface); color: var(--text); border-color: var(--text); font-weight: 800; }
+  .filter-chip.cabinet   { background: var(--info-dim);     color: var(--info);     border-color: var(--info); }
+  .filter-chip.cutlist   { background: var(--orange-dim);   color: var(--orange);   border-color: var(--orange); }
+  .filter-chip.stock     { background: var(--accent2-dim);  color: var(--accent2);  border-color: var(--accent2); }
+  .filter-chip.template  { background: var(--success-dim);  color: var(--success);  border-color: var(--success); }
+  .filter-chip.repeat    { background: var(--success-dim);  color: var(--success);  border-color: var(--success); }
+  .filter-chip.hardware  { background: var(--accent2-dim);  color: var(--accent2);  border-color: var(--accent2); }
+  .filter-chip.material  { background: var(--accent2-dim);  color: var(--accent2);  border-color: var(--accent2); }
+  .filter-chip.edge      { background: var(--accent2-dim);  color: var(--accent2);  border-color: var(--accent2); }
+  .filter-chip.client    { background: var(--accent-dim);   color: var(--accent);   border-color: var(--accent); }
+
+  /* Sample items list */
+  .lib-items {
+    background: var(--surface); border: 1px solid var(--border2); border-radius: 8px;
+    overflow: hidden;
+  }
+  .lib-item-row {
+    display: grid; grid-template-columns: 30px 1fr auto;
+    gap: 10px; align-items: center;
+    padding: 7px 12px;
+    border-bottom: 1px solid var(--border2);
+  }
+  .lib-item-row:last-child { border-bottom: 0; }
+  .lib-item-row:hover { background: var(--surface2); }
+  .lib-item-icon {
+    width: 22px; height: 22px; border-radius: 5px;
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 11px; font-weight: 800;
+  }
+  .lib-item-icon.cabinet { background: var(--info); }
+  .lib-item-icon.cutlist { background: var(--orange); }
+  .lib-item-icon.stock   { background: var(--accent2); }
+  .lib-item-name { font-size: 12.5px; font-weight: 700; color: var(--text); }
+  .lib-item-meta { font-size: 10.5px; color: var(--muted); margin-top: 1px; }
+  .lib-item-tags { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
+  .tag {
+    display: inline-flex; align-items: center;
+    padding: 1px 6px; border-radius: 3px;
+    font-size: 9px; font-weight: 700;
+    text-transform: lowercase; letter-spacing: 0.2px;
+    border: 1px solid;
+  }
+  .tag.cabinet   { background: var(--info-dim);     color: var(--info);     border-color: var(--info); }
+  .tag.cutlist   { background: var(--orange-dim);   color: var(--orange);   border-color: var(--orange); }
+  .tag.stock     { background: var(--accent2-dim);  color: var(--accent2);  border-color: var(--accent2); }
+  .tag.material  { background: var(--accent2-dim);  color: var(--accent2);  border-color: var(--accent2); }
+  .tag.hardware  { background: var(--accent2-dim);  color: var(--accent2);  border-color: var(--accent2); }
+  .tag.edge      { background: var(--accent2-dim);  color: var(--accent2);  border-color: var(--accent2); }
+  .tag.sheet     { background: var(--accent2-dim);  color: var(--accent2);  border-color: var(--accent2); }
+  .tag.template  { background: var(--success-dim);  color: var(--success);  border-color: var(--success); }
+  .tag.repeat    { background: var(--success-dim);  color: var(--success);  border-color: var(--success); }
+  .tag.client    { background: var(--accent-dim);   color: var(--accent);   border-color: var(--accent); }
+
+  /* Tab access strip */
+  .tab-access {
+    display: flex; gap: 12px; margin-top: 12px;
+    font-size: 11px; color: var(--muted);
+    padding: 8px 12px; background: var(--surface); border: 1px dashed var(--border); border-radius: 8px;
+    align-items: center; flex-wrap: wrap;
+  }
+  .tab-access-label { font-size: 9.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text2); }
+  .tab-access-chip {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 8px; border-radius: 5px;
+    background: var(--surface2); border: 1px solid var(--border);
+    font-size: 11px; font-weight: 700; color: var(--text2);
+  }
+  .tab-access-chip .arr { font-size: 9px; color: var(--muted); }
+
+  /* ── Client tier (secondary, downstream) ── */
+  .zone.client-tier {
+    background: var(--accent2-dim);
+    border: 1.5px solid var(--accent2);
+    margin-top: 70px;
+    padding: 16px 18px 18px;
+  }
+  .zone.client-tier .zone-label { background: var(--accent2); color: #fff; }
+
+  .secondary-badge {
+    position: absolute; top: -10px; right: 18px;
+    background: var(--surface); border: 1.5px solid var(--accent2); color: var(--accent2);
+    padding: 3px 11px; border-radius: 999px;
+    font-size: 10px; font-weight: 800; letter-spacing: 0.6px; text-transform: uppercase;
+  }
+
+  .client-grid {
+    display: grid;
+    grid-template-columns: 200px 1fr 200px;
+    gap: 14px;
+    align-items: start;
+  }
+  .client-card {
+    background: var(--surface);
+    border: 2px solid var(--accent2);
+    border-radius: 10px;
+    padding: 12px 14px;
+    box-shadow: var(--shadow);
+    text-align: center;
+    align-self: center;
+  }
+  .client-avatar {
+    width: 38px; height: 38px; border-radius: 50%;
+    background: var(--accent2); color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 15px;
+    margin: 0 auto 6px;
+  }
+  .client-name { font-size: 13px; font-weight: 800; color: var(--text); }
+  .client-meta { font-size: 10.5px; color: var(--muted); margin-top: 2px; }
+  .client-tab { font-size: 9px; color: var(--muted); margin-top: 6px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; padding-top: 5px; border-top: 1px dashed var(--border); }
+
+  .quote-card {
+    background: var(--surface);
+    border: 2px solid var(--info);
+    border-radius: 10px;
+    padding: 11px;
+    box-shadow: var(--shadow);
+    position: relative;
+  }
+  .one-row-tag {
+    position: absolute; top: -10px; left: 50%; transform: translateX(-50%);
+    background: var(--success); color: #fff;
+    border-radius: 999px; padding: 2px 11px; font-size: 9px; font-weight: 800;
+    text-transform: uppercase; letter-spacing: 0.6px; white-space: nowrap;
+  }
+  .quote-card-h { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .quote-icon { width: 26px; height: 26px; border-radius: 6px; background: var(--info); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 12px; }
+  .quote-name { font-size: 13px; font-weight: 800; color: var(--text); }
+  .quote-sub { font-size: 9.5px; color: var(--muted); margin-top: 1px; }
+  .quote-views { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 4px; }
+  .view-chip {
+    border: 1.5px solid; border-radius: 6px;
+    padding: 6px 8px; text-align: center;
+  }
+  .view-chip.design { border-color: var(--indigo); background: var(--indigo-dim); }
+  .view-chip.lines  { border-color: var(--info);   background: var(--info-dim); }
+  .view-chip-name { font-size: 10.5px; font-weight: 800; }
+  .view-chip.design .view-chip-name { color: var(--indigo); }
+  .view-chip.lines  .view-chip-name { color: var(--info); }
+  .view-chip-meta { font-size: 8.5px; color: var(--muted); margin-top: 1px; }
+  .view-chip-tab { font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; margin-top: 3px; padding-top: 3px; border-top: 1px dashed currentColor; opacity: 0.85; }
+
+  .right-stack { display: flex; flex-direction: column; gap: 12px; }
+  .file-card {
+    background: var(--surface); border: 2px solid;
+    border-radius: 10px; padding: 10px 12px; box-shadow: var(--shadow);
+  }
+  .file-card.cutlist { border-color: var(--orange); }
+  .file-card.order   { border-color: var(--purple); }
+  .file-card-h { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+  .file-icon { width: 24px; height: 24px; border-radius: 5px; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 800; font-size: 12px; }
+  .file-card.cutlist .file-icon { background: var(--orange); }
+  .file-card.order   .file-icon { background: var(--purple); }
+  .file-name { font-size: 12.5px; font-weight: 800; color: var(--text); }
+  .file-sub { font-size: 9.5px; color: var(--muted); margin-top: 1px; }
+  .file-tab { font-size: 9px; color: var(--muted); margin-top: 5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; padding-top: 4px; border-top: 1px dashed var(--border); }
+
+  /* ── Derived views (smallest) ── */
+  .derived-zone {
+    margin-top: 14px;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+  }
+  .derived-card {
+    background: var(--surface); border: 1.5px dashed var(--accent);
+    border-radius: 10px; padding: 10px 12px;
+    box-shadow: var(--shadow);
+    position: relative;
+  }
+  .derived-tag {
+    position: absolute; top: -9px; right: -8px;
+    background: var(--surface); border: 1.5px solid var(--accent); color: var(--accent);
+    border-radius: 999px; padding: 2px 8px; font-size: 8.5px; font-weight: 800;
+    text-transform: uppercase; letter-spacing: 0.5px;
+  }
+  .derived-card-h { display: flex; align-items: center; gap: 8px; margin-bottom: 3px; }
+  .derived-icon { width: 22px; height: 22px; border-radius: 5px; background: var(--accent); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 11px; }
+  .derived-name { font-size: 12px; font-weight: 800; color: var(--text); }
+  .derived-tab { font-size: 9px; color: var(--accent); font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; }
+  .derived-desc { font-size: 10.5px; color: var(--text2); line-height: 1.4; margin-top: 4px; }
+
+  /* SVG arrow overlay */
+  .flow-svg {
+    position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  /* Legend */
+  .legend {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    padding: 14px 18px;
+    margin-top: 24px;
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px 24px;
+  }
+  .legend-h {
+    grid-column: 1 / -1;
+    font-size: 11px; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px;
+    margin-bottom: 2px;
+  }
+  .legend-item { display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: var(--text2); }
+  .legend-line { width: 28px; height: 0; }
+  .legend-line.thick { border-top: 4px solid; }
+  .legend-line.thin  { border-top: 2px solid; }
+  .legend-line.dashed { border-top: 2px dashed; }
+  .legend-line.snapshot { border-color: var(--indigo); }
+  .legend-line.bookmark { border-color: var(--orange); }
+  .legend-line.convert  { border-color: var(--purple); }
+  .legend-line.derived  { border-color: var(--accent); }
+
+  /* Section frame */
+  section.section { margin-top: 36px; }
+  .sec-num { font-size: 10px; color: var(--accent); font-weight: 800; letter-spacing: 2px; text-transform: uppercase; }
+  .sec-h { font-size: 18px; font-weight: 800; margin: 4px 0 14px; letter-spacing: -0.2px; }
+
+  table.conns {
+    width: 100%; border-collapse: collapse;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden;
+    font-size: 12px;
+  }
+  table.conns th, table.conns td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--border2); vertical-align: top; }
+  table.conns th { background: var(--surface2); color: var(--text2); font-weight: 700; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.6px; }
+  table.conns tbody tr:last-child td { border-bottom: 0; }
+  table.conns .arr {
+    display: inline-block;
+    padding: 1px 7px; border-radius: 4px;
+    font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.4px;
+    color: #fff;
+  }
+  table.conns .arr.snapshot { background: var(--indigo); }
+  table.conns .arr.bookmark { background: var(--orange); }
+  table.conns .arr.convert  { background: var(--purple); }
+  table.conns .arr.derived  { background: var(--accent); }
+
+  .tag-table { width: 100%; border-collapse: collapse; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; font-size: 12px; }
+  .tag-table th, .tag-table td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--border2); }
+  .tag-table th { background: var(--surface2); color: var(--text2); font-weight: 700; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.6px; }
+  .tag-table tbody tr:last-child td { border-bottom: 0; }
+
+  @media (max-width: 1100px) {
+    .client-grid { grid-template-columns: 1fr; }
+    .derived-zone { grid-template-columns: 1fr; }
+    .quote-views { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="doc">
+
+  <header class="doc-head">
+    <div>
+      <h1>Top-level architecture flow <span style="font-size: 13px; font-weight: 600; color: var(--indigo); margin-left: 8px;">library-first</span></h1>
+      <div class="subtitle">Library is the primary workspace · Client tier assembles + bills · Tags categorize · No save-back paths</div>
+    </div>
+    <button class="theme-toggle" onclick="document.documentElement.classList.toggle('dark')">Toggle dark</button>
+  </header>
+
+  <div class="lede">
+    <div style="font-size: 16px; font-weight: 700; color: var(--text); margin-bottom: 8px;">
+      <span class="quote-mark">"</span>Libraries could be all outputs, which simplifies initial workflow. Then added to quotes/clients as needed. Library could use tags for repeat / stock items.<span class="quote-mark">"</span>
+    </div>
+    <strong>The library tier is the primary workspace.</strong> Every cabinet design, cut list, and stock item lives there — and a user can design real work immediately, without needing a client. When a customer arrives, library items get <em>snapshotted</em> into their Quote (the design specs copy into <code>quote_lines</code>; the library item is unchanged). No "save to library" step — every output already <em>is</em> a library item.
+    <br><br>
+    <strong>Storage stays in three tables</strong> (<code>cabinet_templates</code>, <code>stock_items</code>, <code>cutlists</code>-where-<code>client_id-is-null</code>) — they have genuinely different shapes (stock decrements, designs don't; cut lists have FK children; stock has cost/qty fields cabinets don't need). <strong>Tags are a UX-layer convention</strong>: a <code>tags jsonb</code> column on each table powers cross-cutting filters like "Templates" or "Repeat" without forcing the schema to collapse.
+  </div>
+
+  <!-- ═══════════════ Single-page flowchart ═══════════════ -->
+  <div class="flow-canvas" id="canvas">
+
+    <svg class="flow-svg" id="flow-svg" preserveAspectRatio="none"></svg>
+
+    <!-- ─ LIBRARY TIER (primary, prominent) ─ -->
+    <div class="zone library-tier" id="lib-zone">
+      <span class="primary-badge">Primary workspace</span>
+      <div class="zone-label">Library tier <span class="meta">— shared across clients · no <code>client_id</code> · this is where you design</span></div>
+
+      <!-- Shared tag-driven filter strip (works across all three tables) -->
+      <div class="filter-strip" style="background: var(--surface); margin-bottom: 14px;">
+        <span class="filter-label">Cross-cutting filters:</span>
+        <span class="filter-chip all">All</span>
+        <span class="filter-chip template">tag · template</span>
+        <span class="filter-chip repeat">tag · repeat</span>
+        <span style="font-size: 10px; color: var(--muted); margin-left: 6px; font-style: italic;">— apply across all 3 library tables via the shared <code>tags jsonb</code> column</span>
+      </div>
+
+      <!-- Three library cards (one per table) -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
+
+        <!-- Cabinet Library -->
+        <div class="lib-card" id="lib-cabinet" style="border-color: var(--info);">
+          <div class="lib-card-h">
+            <div class="lib-icon" style="background: var(--info);">▣</div>
+            <div style="flex: 1; min-width: 0;">
+              <div class="lib-card-title" style="font-size: 14px;">Cabinet Library</div>
+              <div class="lib-card-sub">Tab · Cabinet</div>
+            </div>
+          </div>
+          <div style="font-size: 9.5px; color: var(--muted); font-family: 'SF Mono', Menlo, Consolas, monospace; padding: 4px 7px; background: var(--surface2); border-radius: 4px; margin-bottom: 8px;">
+            table: <strong>cabinet_templates</strong> + tags jsonb
+          </div>
+          <div class="lib-items" style="font-size: 11px;">
+            <div class="lib-item-row" style="padding: 6px 9px;">
+              <div class="lib-item-icon cabinet">▣</div>
+              <div>
+                <div class="lib-item-name" style="font-size: 11.5px;">Base 600</div>
+                <div class="lib-item-meta" style="font-size: 9.5px;">standard base unit</div>
+              </div>
+              <div class="lib-item-tags">
+                <span class="tag template">template</span>
+                <span class="tag repeat">repeat</span>
+              </div>
+            </div>
+            <div class="lib-item-row" style="padding: 6px 9px;">
+              <div class="lib-item-icon cabinet">▣</div>
+              <div>
+                <div class="lib-item-name" style="font-size: 11.5px;">Wall 900</div>
+                <div class="lib-item-meta" style="font-size: 9.5px;">upper unit, 2 doors</div>
+              </div>
+              <div class="lib-item-tags">
+                <span class="tag template">template</span>
+              </div>
+            </div>
+            <div class="lib-item-row" style="padding: 6px 9px;">
+              <div class="lib-item-icon cabinet">▣</div>
+              <div>
+                <div class="lib-item-name" style="font-size: 11.5px;">Base 873</div>
+                <div class="lib-item-meta" style="font-size: 9.5px;">sized to wall</div>
+              </div>
+              <div class="lib-item-tags">
+                <span class="tag client">smith-kitchen</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Cut List Library -->
+        <div class="lib-card" id="lib-cutlist" style="border-color: var(--orange);">
+          <div class="lib-card-h">
+            <div class="lib-icon" style="background: var(--orange);">✂</div>
+            <div style="flex: 1; min-width: 0;">
+              <div class="lib-card-title" style="font-size: 14px;">Cut List Library</div>
+              <div class="lib-card-sub">Tab · Cut List</div>
+            </div>
+          </div>
+          <div style="font-size: 9.5px; color: var(--muted); font-family: 'SF Mono', Menlo, Consolas, monospace; padding: 4px 7px; background: var(--surface2); border-radius: 4px; margin-bottom: 8px;">
+            table: <strong>cutlists</strong> where <code>client_id IS NULL</code> + tags jsonb
+          </div>
+          <div class="lib-items" style="font-size: 11px;">
+            <div class="lib-item-row" style="padding: 6px 9px;">
+              <div class="lib-item-icon cutlist">✂</div>
+              <div>
+                <div class="lib-item-name" style="font-size: 11.5px;">Standard pack</div>
+                <div class="lib-item-meta" style="font-size: 9.5px;">8 sheets · starter</div>
+              </div>
+              <div class="lib-item-tags">
+                <span class="tag template">template</span>
+              </div>
+            </div>
+            <div class="lib-item-row" style="padding: 6px 9px;">
+              <div class="lib-item-icon cutlist">✂</div>
+              <div>
+                <div class="lib-item-name" style="font-size: 11.5px;">Bathroom run</div>
+                <div class="lib-item-meta" style="font-size: 9.5px;">3 sheets · front frames</div>
+              </div>
+              <div class="lib-item-tags">
+                <span class="tag template">template</span>
+                <span class="tag repeat">repeat</span>
+              </div>
+            </div>
+            <div style="font-size: 10px; color: var(--muted); padding: 6px 9px; font-style: italic;">+ has FK children: pieces, sheets, edge_bands</div>
+          </div>
+        </div>
+
+        <!-- Stock Library -->
+        <div class="lib-card" id="lib-stock" style="border-color: var(--accent2);">
+          <div class="lib-card-h">
+            <div class="lib-icon" style="background: var(--accent2);">⊞</div>
+            <div style="flex: 1; min-width: 0;">
+              <div class="lib-card-title" style="font-size: 14px;">Stock Library</div>
+              <div class="lib-card-sub">Tab · Stock</div>
+            </div>
+          </div>
+          <div style="font-size: 9.5px; color: var(--muted); font-family: 'SF Mono', Menlo, Consolas, monospace; padding: 4px 7px; background: var(--surface2); border-radius: 4px; margin-bottom: 8px;">
+            table: <strong>stock_items</strong> + tags jsonb
+          </div>
+          <div class="lib-items" style="font-size: 11px;">
+            <div class="lib-item-row" style="padding: 6px 9px;">
+              <div class="lib-item-icon stock">⊞</div>
+              <div>
+                <div class="lib-item-name" style="font-size: 11.5px;">18mm Birch Ply</div>
+                <div class="lib-item-meta" style="font-size: 9.5px;">qty 24 · sheet</div>
+              </div>
+              <div class="lib-item-tags">
+                <span class="tag material">material</span>
+                <span class="tag sheet">sheet</span>
+              </div>
+            </div>
+            <div class="lib-item-row" style="padding: 6px 9px;">
+              <div class="lib-item-icon stock">⊞</div>
+              <div>
+                <div class="lib-item-name" style="font-size: 11.5px;">Soft-close hinge</div>
+                <div class="lib-item-meta" style="font-size: 9.5px;">qty 48 · pair</div>
+              </div>
+              <div class="lib-item-tags">
+                <span class="tag hardware">hardware</span>
+              </div>
+            </div>
+            <div class="lib-item-row" style="padding: 6px 9px;">
+              <div class="lib-item-icon stock">⊞</div>
+              <div>
+                <div class="lib-item-name" style="font-size: 11.5px;">22mm walnut edge</div>
+                <div class="lib-item-meta" style="font-size: 9.5px;">qty 120m</div>
+              </div>
+              <div class="lib-item-tags">
+                <span class="tag edge">edge-banding</span>
+              </div>
+            </div>
+            <div style="font-size: 10px; color: var(--muted); padding: 6px 9px; font-style: italic;">+ qty decrements when consumed (lifecycle differs from designs)</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ─ Client tier (secondary, smaller) ─ -->
+    <div class="zone client-tier" id="client-zone">
+      <span class="secondary-badge">Assembly + billing</span>
+      <div class="zone-label">Client tier <span class="meta">— every row scoped by <code>client_id</code> · references library via snapshot</span></div>
+
+      <div class="client-grid">
+        <!-- Left: Client root -->
+        <div class="client-card" id="client-card">
+          <div class="client-avatar">J</div>
+          <div class="client-name">Client</div>
+          <div class="client-meta">root contact · groups files</div>
+          <div class="client-tab">Tab · Clients</div>
+        </div>
+
+        <!-- Center: Quote with two views -->
+        <div class="quote-card" id="quote-card">
+          <span class="one-row-tag">One row · two views</span>
+          <div class="quote-card-h">
+            <div class="quote-icon">Q</div>
+            <div>
+              <div class="quote-name">Quote</div>
+              <div class="quote-sub">client_id · name · status · quote_lines (snapshots from library)</div>
+            </div>
+          </div>
+          <div class="quote-views">
+            <div class="view-chip design" id="view-cabinet">
+              <div class="view-chip-name">Cabinet view</div>
+              <div class="view-chip-meta">Design canvas</div>
+              <div class="view-chip-tab">Tab · Cabinet</div>
+            </div>
+            <div class="view-chip lines" id="view-lines">
+              <div class="view-chip-name">Lines view</div>
+              <div class="view-chip-meta">Line items + status</div>
+              <div class="view-chip-tab">Tab · Quote</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Cut List + Order -->
+        <div class="right-stack">
+          <div class="file-card cutlist" id="cutlist-instance">
+            <div class="file-card-h">
+              <div class="file-icon">✂</div>
+              <div>
+                <div class="file-name">Cut List <span style="font-weight: 500; font-size: 10px; color: var(--muted)">(instance)</span></div>
+                <div class="file-sub">client_id · quote_id · pieces · sheets</div>
+              </div>
+            </div>
+            <div class="file-tab">Tab · Cut List</div>
+          </div>
+
+          <div class="file-card order" id="order-card">
+            <div class="file-card-h">
+              <div class="file-icon">O</div>
+              <div>
+                <div class="file-name">Order</div>
+                <div class="file-sub">client_id · name · quote_id · order_lines</div>
+              </div>
+            </div>
+            <div class="file-tab">Tab · Order</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─ Derived views (smallest) ─ -->
+    <div class="derived-zone">
+      <div class="derived-card" id="schedule-card">
+        <span class="derived-tag">Derived</span>
+        <div class="derived-card-h">
+          <div class="derived-icon">📅</div>
+          <div>
+            <div class="derived-name">Schedule</div>
+            <div class="derived-tab">Tab · Schedule</div>
+          </div>
+        </div>
+        <div class="derived-desc">Time-based view over Orders. Reads <code>production_start_date</code> + hours.</div>
+      </div>
+
+      <div class="derived-card" id="dashboard-card">
+        <span class="derived-tag">Derived</span>
+        <div class="derived-card-h">
+          <div class="derived-icon">▦</div>
+          <div>
+            <div class="derived-name">Dashboard</div>
+            <div class="derived-tab">Tab · Dashboard</div>
+          </div>
+        </div>
+        <div class="derived-desc">Aggregate over active orders, recent quotes, stock alerts.</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ═══════════════ Legend ═══════════════ -->
+  <div class="legend">
+    <div class="legend-h">Arrow types</div>
+    <div class="legend-item"><span class="legend-line thick snapshot"></span> <span><strong style="color: var(--indigo);">Snapshot (primary)</strong> — Library item specs copied into a client file as line items. Edits on the quote stay local.</span></div>
+    <div class="legend-item"><span class="legend-line dashed bookmark"></span> <span><strong style="color: var(--orange);">Bookmark</strong> — FK pointer only. Cabinet view of a Quote and its associated Cut List are linked for navigation; no part data is copied.</span></div>
+    <div class="legend-item"><span class="legend-line thin convert"></span> <span><strong style="color: var(--purple);">Convert</strong> — Quote becomes Order (status transition + new row).</span></div>
+    <div class="legend-item"><span class="legend-line dashed derived"></span> <span><strong style="color: var(--accent);">Read-only</strong> — Derived view reading the client tier; no entity created.</span></div>
+    <div class="legend-item" style="grid-column: 1 / -1; padding-top: 8px; border-top: 1px dashed var(--border2); margin-top: 4px;">
+      <span style="font-weight: 700; color: var(--text2);">Gone:</span>
+      <span style="color: var(--muted);">"Save to library" arrows — no longer needed. Every design <em>is</em> a library item from the moment it's created.</span>
+    </div>
+  </div>
+
+  <!-- ═══════════════ How tags work ═══════════════ -->
+  <section class="section">
+    <div class="sec-num">Section 01</div>
+    <h2 class="sec-h">Tag categories · the dimensions that replace hard-coded tables</h2>
+
+    <table class="tag-table">
+      <thead><tr><th style="width: 130px;">Tag</th><th style="width: 130px;">Type</th><th>Purpose · example</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><span class="tag cabinet">cabinet</span></td>
+          <td>Kind</td>
+          <td>Library item is a cabinet design. Appears in Cabinet tab filter.</td>
+        </tr>
+        <tr>
+          <td><span class="tag cutlist">cutlist</span></td>
+          <td>Kind</td>
+          <td>Library item is a cut list pattern. Appears in Cut List tab filter.</td>
+        </tr>
+        <tr>
+          <td><span class="tag stock">stock</span></td>
+          <td>Kind</td>
+          <td>Library item is physical inventory (has qty, low-alert, cost). Appears in Stock tab filter.</td>
+        </tr>
+        <tr>
+          <td><span class="tag material">material</span> <span class="tag hardware">hardware</span> <span class="tag edge">edge-banding</span> <span class="tag sheet">sheet</span></td>
+          <td>Sub-kind</td>
+          <td>Within stock — what kind of physical thing it is. Drives display category, decimation rules.</td>
+        </tr>
+        <tr>
+          <td><span class="tag template">template</span></td>
+          <td>Reusability</td>
+          <td>Marks an item as a reusable template. Default view in Cabinet / Cut List tabs filters for this.</td>
+        </tr>
+        <tr>
+          <td><span class="tag repeat">repeat</span></td>
+          <td>Reusability</td>
+          <td>"I use this often." Pinned / surfaced in the design canvas suggestions.</td>
+        </tr>
+        <tr>
+          <td><span class="tag client">smith-kitchen</span></td>
+          <td>Context</td>
+          <td>One-off design tagged with its job. Hides from default template view but findable when needed.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div style="margin-top: 12px; font-size: 12px; color: var(--muted); padding: 10px 14px; background: var(--surface); border-left: 3px solid var(--indigo); border-radius: 6px;">
+      <strong style="color: var(--text);">Filter rules:</strong> The Cabinet tab's default view is <code>tag = 'cabinet' AND (tag = 'template' OR tag = 'repeat')</code> — shows your reusables. Toggling "All" expands to include one-off designs. The Stock tab is <code>tag = 'stock'</code>. The Cut List tab is <code>tag = 'cutlist' AND tag = 'template'</code> by default.
+    </div>
+  </section>
+
+  <!-- ═══════════════ All connections ═══════════════ -->
+  <section class="section">
+    <div class="sec-num">Section 02</div>
+    <h2 class="sec-h">All connections · with current code locations</h2>
+
+    <table class="conns">
+      <thead><tr><th>From</th><th>To</th><th>Type</th><th>Mechanism</th><th>File:line</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><strong style="color: var(--info);">Cabinet Library</strong></td>
+          <td>Quote · Cabinet view</td>
+          <td><span class="arr snapshot">snapshot</span></td>
+          <td><code>cabinet_templates</code> row copied into <code>quote_lines</code> as <code>line_kind='cabinet'</code>; <code>source_kind='cabinet'</code> + <code>source_id</code> for traceability</td>
+          <td class="mono">cabinet-library.js · _cbAddFromLibrary</td>
+        </tr>
+        <tr>
+          <td><strong style="color: var(--accent2);">Stock Library</strong></td>
+          <td>Quote · Lines view</td>
+          <td><span class="arr snapshot">snapshot</span></td>
+          <td>Smart-input picker adds <code>line_kind='stock'</code> row referencing the stock_items row</td>
+          <td class="mono">_oStockSearch / _qStockSearch</td>
+        </tr>
+        <tr>
+          <td><strong style="color: var(--accent2);">Stock Library</strong></td>
+          <td>Cut List (instance)</td>
+          <td><span class="arr snapshot">snapshot</span></td>
+          <td>Sheets and pieces reference stock_items for material variants; <code>qty</code> decrements at usage</td>
+          <td class="mono">cutlist.js · stock picker</td>
+        </tr>
+        <tr>
+          <td><strong style="color: var(--orange);">Cut List Library</strong></td>
+          <td>Cut List (instance)</td>
+          <td><span class="arr snapshot">snapshot</span></td>
+          <td>Library cutlist (<code>client_id IS NULL</code>) duplicated into a client-scoped row, FK children copied</td>
+          <td class="mono">_clOpenLibraryCutlist / _clDuplicateLibraryCutlist</td>
+        </tr>
+        <tr>
+          <td>Quote · Cabinet view</td>
+          <td>Cut List (instance)</td>
+          <td><span class="arr bookmark">bookmark</span></td>
+          <td><strong>FK pointer only · no data copied.</strong> Cut list pieces are entered independently. <code>cutlists.quote_id</code> (or <code>cabinet_id</code>) lets the UI navigate between a cabinet design and its associated cut list.</td>
+          <td class="mono">cutlists.cabinet_id FK</td>
+        </tr>
+        <tr>
+          <td>Quote</td>
+          <td>Order</td>
+          <td><span class="arr convert">convert</span></td>
+          <td><code>convertQuoteToOrder()</code> creates Order with <code>orders.quote_id</code> FK; lines copied</td>
+          <td class="mono">quotes.js · convertQuoteToOrder</td>
+        </tr>
+        <tr>
+          <td>Order</td>
+          <td>Schedule</td>
+          <td><span class="arr derived">read-only</span></td>
+          <td>Schedule reads production_start_date + hours; no entity created</td>
+          <td class="mono">schedule.js</td>
+        </tr>
+        <tr>
+          <td>(all client files)</td>
+          <td>Dashboard</td>
+          <td><span class="arr derived">read-only</span></td>
+          <td>Aggregates active orders, recent quotes, stock alerts</td>
+          <td class="mono">dashboard.js</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p style="margin-top: 12px; font-size: 12px; color: var(--muted);">
+      <strong>What's gone:</strong> The two reverse-direction "save to library" rows from the previous version. Under library-first, there's nothing to save back — everything is in the library to begin with. The only writes <em>into</em> the library happen from the Library tab itself (designing new items), which is intra-tier and doesn't need an arrow.
+    </p>
+  </section>
+
+  <!-- ═══════════════ Why three tiers matter ═══════════════ -->
+  <section class="section">
+    <div class="sec-num">Section 03</div>
+    <h2 class="sec-h">Why the three tiers still matter</h2>
+
+    <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px 20px;">
+      <ul style="margin: 0; padding-left: 20px; line-height: 1.7; color: var(--text2);">
+        <li><strong>Library is upstream of every job.</strong> Whether stock material, cabinet template, or cut list pattern — all designs live here without needing a client. Free-tier 5-item cap (per <code>PLAN.md F.2</code>) is enforced on library count.</li>
+        <li><strong>Client tier is downstream assembly.</strong> A Quote is "these library items, for this client, at this price, currently in this status." It snapshots specs from the library so client-specific edits don't mutate templates. The <code>source_library_id</code> FK preserves traceability.</li>
+        <li><strong>Derived views own no data.</strong> Schedule and Dashboard <em>read</em> the client tier. They never write. Useful for confirming the schedule isn't "a thing we need to migrate" — it follows whatever Orders does.</li>
+        <li><strong>Cabinet tab and Quote tab share a quote row.</strong> Per Option E, they're two views of the same <code>quotes</code> row. The Cabinet tab's design canvas is where you either design fresh (writes directly to a quote line) or pull from library (snapshot copies a library item to a quote line).</li>
+        <li><strong>Three tables, one UX.</strong> Storage keeps <code>cabinet_templates</code> · <code>stock_items</code> · <code>cutlists</code>(library) separate — they have genuinely different shapes (decrementing stock vs. non-decrementing designs, FK children on cutlists, cost/qty fields on stock). Each gets a <code>tags jsonb</code> column. The "Library tier" is a <em>UX construct</em>, not a single table — tag-driven filters give the user a unified mental model while the schema stays purpose-built.</li>
+        <li><strong>Onboarding gets much simpler.</strong> "Design your first cabinet" or "Add your first stock material" — both happen in the library tab the user already opened. No client-creation gate. Free tier users get to play immediately.</li>
+      </ul>
+    </div>
+  </section>
+
+</div>
+
+<script>
+  // Draw arrows on the canvas
+  (function drawFlow() {
+    const canvas = document.getElementById('canvas');
+    const svg = document.getElementById('flow-svg');
+    if (!canvas || !svg) return;
+
+    const arrows = [
+      // Library → Client tier (PRIMARY, thick, snapshot) — one per source library
+      { from: '#lib-cabinet', to: '#view-cabinet',     type: 'snapshot', label: 'snapshot · cabinet template',  thick: true },
+      { from: '#lib-stock',   to: '#view-lines',       type: 'snapshot', label: 'snapshot · stock line',        thick: true },
+      { from: '#lib-stock',   to: '#cutlist-instance', type: 'snapshot', label: 'snapshot · sheets / parts',    thick: true },
+      { from: '#lib-cutlist', to: '#cutlist-instance', type: 'snapshot', label: 'snapshot · template',          thick: true },
+
+      // Within client tier
+      { from: '#view-cabinet', to: '#cutlist-instance', type: 'bookmark', label: 'bookmark · no data copied', dashed: true },
+      { from: '#view-lines',   to: '#order-card',       type: 'convert',  label: 'convertQuoteToOrder' },
+
+      // Derived views
+      { from: '#order-card', to: '#schedule-card',  type: 'derived', label: 'production date' },
+      { from: '#order-card', to: '#dashboard-card', type: 'derived', label: '(aggregate)' },
+    ];
+
+    const typeColor = {
+      snapshot: 'rgb(99,102,241)',
+      bookmark: 'rgb(217,119,6)',
+      convert:  'rgb(147,51,234)',
+      derived:  'rgb(232,168,56)',
+    };
+
+    function render() {
+      const cRect = canvas.getBoundingClientRect();
+      svg.setAttribute('viewBox', `0 0 ${cRect.width} ${cRect.height}`);
+      svg.setAttribute('width', cRect.width);
+      svg.setAttribute('height', cRect.height);
+
+      let defs = '<defs>';
+      Object.entries(typeColor).forEach(([type, color]) => {
+        defs += `<marker id="arrow-${type}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="${color}" /></marker>`;
+      });
+      defs += '</defs>';
+
+      let pathSvg = '';
+      let labelSvg = '';
+
+      arrows.forEach((a) => {
+        const fromEl = canvas.querySelector(a.from);
+        const toEl   = canvas.querySelector(a.to);
+        if (!fromEl || !toEl) return;
+        const fr = fromEl.getBoundingClientRect();
+        const tr = toEl.getBoundingClientRect();
+
+        const fcx = fr.left - cRect.left + fr.width / 2;
+        const fcy = fr.top  - cRect.top  + fr.height / 2;
+        const tcx = tr.left - cRect.left + tr.width / 2;
+        const tcy = tr.top  - cRect.top  + tr.height / 2;
+
+        let x1, y1, x2, y2;
+        const dx = tcx - fcx;
+        const dy = tcy - fcy;
+
+        if (Math.abs(dy) > Math.abs(dx)) {
+          if (dy > 0) {
+            x1 = fcx; y1 = fr.bottom - cRect.top;
+            x2 = tcx; y2 = tr.top    - cRect.top;
+          } else {
+            x1 = fcx; y1 = fr.top    - cRect.top;
+            x2 = tcx; y2 = tr.bottom - cRect.top;
+          }
+        } else {
+          if (dx > 0) {
+            x1 = fr.right - cRect.left; y1 = fcy;
+            x2 = tr.left  - cRect.left; y2 = tcy;
+          } else {
+            x1 = fr.left  - cRect.left; y1 = fcy;
+            x2 = tr.right - cRect.left; y2 = tcy;
+          }
+        }
+
+        // Stagger the three "snapshot" arrows so their labels don't pile up
+        if (a.offset != null) {
+          x1 += (a.offset - 1) * 160;
+        }
+
+        const color = typeColor[a.type] || 'rgb(120,120,120)';
+        const isDashed = (a.type === 'derived') || a.dashed;
+        const stroke = isDashed ? '6 4' : '0';
+        const width = a.thick ? 3.5 : 2;
+
+        const midY = (y1 + y2) / 2;
+        const midX = (x1 + x2) / 2;
+        let d;
+        if (Math.abs(y2 - y1) > Math.abs(x2 - x1)) {
+          d = `M ${x1} ${y1} C ${x1} ${midY}, ${x2} ${midY}, ${x2} ${y2}`;
+        } else {
+          d = `M ${x1} ${y1} C ${midX} ${y1}, ${midX} ${y2}, ${x2} ${y2}`;
+        }
+
+        pathSvg += `<path d="${d}" stroke="${color}" stroke-width="${width}" fill="none" opacity="0.82" stroke-dasharray="${stroke}" marker-end="url(#arrow-${a.type})" />`;
+
+        if (a.label) {
+          const lx = (x1 + x2) / 2;
+          const ly = (y1 + y2) / 2;
+          labelSvg += `<g transform="translate(${lx} ${ly})">
+            <rect x="-${a.label.length * 3.4}" y="-7" width="${a.label.length * 6.8}" height="14" rx="3" fill="rgb(255,255,255)" stroke="${color}" stroke-width="0.8" opacity="0.94" />
+            <text x="0" y="3" text-anchor="middle" font-size="9" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-weight="700" fill="${color}">${a.label}</text>
+          </g>`;
+        }
+      });
+
+      svg.innerHTML = defs + pathSvg + labelSvg;
+    }
+
+    render();
+    window.addEventListener('resize', render);
+    new MutationObserver(render).observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    setTimeout(render, 100);
+    setTimeout(render, 500);
+  })();
+
+  (function fixDarkLabels() {
+    function tweak() {
+      const isDark = document.documentElement.classList.contains('dark');
+      const svgRects = document.querySelectorAll('#flow-svg rect');
+      svgRects.forEach(r => r.setAttribute('fill', isDark ? 'rgb(30,30,30)' : 'rgb(255,255,255)'));
+    }
+    setTimeout(tweak, 200);
+    new MutationObserver(tweak).observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    document.querySelector('.theme-toggle')?.addEventListener('click', () => setTimeout(tweak, 50));
+  })();
+</script>
+
+</body>
+</html>

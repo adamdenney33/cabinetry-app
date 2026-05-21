@@ -1,0 +1,1408 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ProCabinet.App — 1-Week Launch Marketing Plan</title>
+<style>
+  :root{
+    --bg:#faf7f2;
+    --ink:#1a1410;
+    --ink-2:#3a2f26;
+    --muted:#6b5d52;
+    --line:#e7ddce;
+    --line-2:#d7c8b0;
+    --accent:#7a4a1f;        /* walnut */
+    --accent-2:#b8862a;      /* brass */
+    --good:#2f6b3e;
+    --warn:#a04a14;
+    --bad:#9b2226;
+    --card:#ffffff;
+    --card-2:#fbf6ec;
+    --shadow:0 1px 0 rgba(0,0,0,.04), 0 6px 22px -10px rgba(60,40,20,.18);
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --serif: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    font: 16px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color:var(--ink);
+    background:var(--bg);
+    -webkit-font-smoothing:antialiased;
+  }
+  a{color:var(--accent); text-underline-offset:3px}
+  a:hover{color:var(--accent-2)}
+  .wrap{max-width:1180px; margin:0 auto; padding:0 24px}
+  header.hero{
+    background: linear-gradient(180deg, #2b1d12 0%, #1a1108 100%);
+    color:#f5ecdb;
+    padding: 64px 0 56px;
+    border-bottom: 1px solid #000;
+  }
+  header.hero .eyebrow{
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: #d8b066;
+    margin-bottom: 14px;
+  }
+  header.hero h1{
+    font-family: var(--serif);
+    font-size: clamp(34px, 5vw, 54px);
+    line-height: 1.05;
+    margin: 0 0 14px;
+    letter-spacing: -.01em;
+  }
+  header.hero p.lead{
+    font-size: 18px;
+    max-width: 740px;
+    color: #e7d6b6;
+    margin: 0 0 24px;
+  }
+  .pill-row{display:flex; flex-wrap:wrap; gap:8px}
+  .pill{
+    display:inline-block; padding:6px 12px; border-radius:999px;
+    background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.18);
+    font-size:13px; color:#f1e6cc;
+  }
+  .pill strong{color:#fff}
+  nav.toc{
+    position: sticky; top:0; z-index: 5;
+    background: #fbf6ec; border-bottom:1px solid var(--line-2);
+    padding: 10px 0;
+  }
+  nav.toc .toc-inner{
+    display:flex; flex-wrap:wrap; gap:6px 4px;
+    font-size:13px;
+  }
+  nav.toc a{
+    display:inline-block; padding:6px 10px; border-radius:6px;
+    color:var(--ink-2); text-decoration:none;
+  }
+  nav.toc a:hover{background:#f1e6cc}
+  main{padding: 36px 0 80px}
+  section{padding: 36px 0; border-top: 1px solid var(--line)}
+  section:first-of-type{border-top:none; padding-top: 8px}
+  h2{
+    font-family: var(--serif);
+    font-size: 30px; letter-spacing:-.01em; margin: 0 0 6px;
+  }
+  h2 .num{
+    font-family: var(--mono); font-size: 14px; color:var(--accent-2);
+    margin-right: 10px; vertical-align: 4px;
+  }
+  h3{font-size:18px; margin: 22px 0 8px}
+  h4{font-size:15px; margin: 16px 0 6px; color:var(--ink-2)}
+  p{margin: 8px 0}
+  .lede{font-size: 17px; color: var(--ink-2); max-width: 820px}
+  .grid{display:grid; gap:18px}
+  .grid-2{grid-template-columns: 1fr 1fr}
+  .grid-3{grid-template-columns: repeat(3, 1fr)}
+  .grid-4{grid-template-columns: repeat(4, 1fr)}
+  @media (max-width: 820px){
+    .grid-2,.grid-3,.grid-4{grid-template-columns: 1fr}
+  }
+  .card{
+    background: var(--card); border:1px solid var(--line);
+    border-radius:10px; padding:18px; box-shadow: var(--shadow);
+  }
+  .card.cream{background: var(--card-2)}
+  .card .label{
+    font-family: var(--mono); font-size:11px; letter-spacing:.12em;
+    text-transform:uppercase; color:var(--muted);
+  }
+  .callout{
+    border-left: 4px solid var(--accent-2);
+    background:#fff8e6; padding:14px 16px; border-radius: 6px;
+    margin: 14px 0;
+  }
+  .callout.warn{border-color: var(--warn); background:#fff1e6}
+  .callout.bad{border-color: var(--bad); background:#fde9ea}
+  .callout.good{border-color: var(--good); background:#e9f4ec}
+  .callout .tag{
+    font-family: var(--mono); font-size: 11px; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--accent); margin-right: 8px;
+  }
+  table{
+    width:100%; border-collapse: collapse; margin: 12px 0;
+    background:#fff; border:1px solid var(--line); border-radius: 8px;
+    overflow: hidden;
+  }
+  th, td{
+    text-align: left; padding: 10px 12px;
+    border-bottom: 1px solid var(--line); vertical-align: top;
+    font-size: 14px;
+  }
+  th{
+    background:#f5ecd9; font-weight:600; color:var(--ink-2);
+    font-size:12px; letter-spacing:.06em; text-transform:uppercase;
+  }
+  tr:last-child td{border-bottom:none}
+  td.center, th.center{text-align:center}
+  td.right, th.right{text-align:right}
+  .tag-good{background:#e9f4ec; color:var(--good); padding:2px 8px; border-radius:999px; font-size:12px; font-weight:600}
+  .tag-mid{background:#fff3d6; color:#8a6a00; padding:2px 8px; border-radius:999px; font-size:12px; font-weight:600}
+  .tag-low{background:#f1e3df; color:#7a3a2a; padding:2px 8px; border-radius:999px; font-size:12px; font-weight:600}
+  .tag-tier{display:inline-block; padding:2px 8px; border-radius:4px; font-size:12px; font-weight:600; font-family:var(--mono)}
+  .tag-tier.t1{background:#0f3d22; color:#cdebd6}
+  .tag-tier.t2{background:#5a3a06; color:#f6e1ad}
+  .tag-tier.t3{background:#3a2418; color:#e6d3c2}
+  .day{
+    display:flex; gap:18px; padding:18px 0; border-top:1px dashed var(--line-2);
+  }
+  .day:first-child{border-top:none}
+  .day .when{
+    flex:0 0 110px; font-family: var(--mono); font-size:12px;
+    letter-spacing:.08em; text-transform:uppercase; color:var(--accent);
+    padding-top: 4px;
+  }
+  .day .when .big{
+    display:block; font-family: var(--serif); font-size: 30px;
+    color: var(--ink); letter-spacing:-.01em; margin-top:2px;
+    text-transform: none;
+  }
+  .day .what{flex:1}
+  .day h3{margin:0 0 6px; font-size: 17px}
+  .day ul{margin:6px 0 0 0; padding-left:18px}
+  .day li{margin: 4px 0; color: var(--ink-2)}
+  .kbd{
+    font-family: var(--mono); font-size:12px; padding:2px 6px;
+    border-radius: 4px; background:#f0e6d4; border:1px solid var(--line-2);
+    color: var(--ink-2);
+  }
+  details{
+    background:#fff; border:1px solid var(--line); border-radius:8px;
+    padding: 12px 14px; margin: 10px 0;
+  }
+  details > summary{
+    cursor: pointer; font-weight: 600; color: var(--ink-2);
+    list-style: none;
+  }
+  details > summary::-webkit-details-marker{display:none}
+  details > summary::before{
+    content: "▸"; display:inline-block; margin-right:8px; color: var(--accent-2);
+    transition: transform .15s;
+  }
+  details[open] > summary::before{transform: rotate(90deg)}
+  pre.prompt{
+    margin: 8px 0 0; padding: 12px 14px; background:#1a1108; color:#e7d6b6;
+    border-radius:6px; font: 12.5px/1.55 var(--mono); white-space: pre-wrap;
+    word-wrap: break-word;
+  }
+  .kpi{
+    display:grid; grid-template-columns: repeat(4, 1fr); gap: 12px;
+  }
+  @media (max-width: 820px){.kpi{grid-template-columns: repeat(2, 1fr)}}
+  .kpi .stat{
+    background:#fff; border:1px solid var(--line); border-radius:10px; padding:14px;
+  }
+  .kpi .stat .num{
+    font-family: var(--serif); font-size: 28px; color: var(--ink);
+    letter-spacing: -.01em; line-height: 1;
+  }
+  .kpi .stat .lbl{
+    font-family: var(--mono); font-size: 11px; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--muted); margin-top: 6px;
+  }
+  ul.tight{margin: 6px 0 0 0; padding-left: 18px}
+  ul.tight li{margin: 3px 0}
+  .footer{
+    color: var(--muted); font-size: 13px; padding: 30px 0 0;
+    border-top: 1px solid var(--line); margin-top: 30px;
+  }
+  .price{font-family: var(--mono); font-size: 13px}
+  hr.soft{border:none; border-top: 1px dashed var(--line-2); margin: 18px 0}
+  .check{color: var(--good); font-weight: 700}
+  .x{color: var(--bad); font-weight: 700}
+  @media print{
+    nav.toc{display:none}
+    header.hero{background:#fff; color:#000}
+    header.hero p.lead, header.hero .eyebrow, .pill{color:#000; border-color:#999}
+    .card, table{box-shadow:none}
+    section{break-inside:avoid; page-break-inside: avoid}
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <div class="eyebrow">Marketing Plan · Drafted 11 May 2026</div>
+    <h1>ProCabinet.App — 1-Week Launch Plan</h1>
+    <p class="lead">A pragmatic, low-budget go-to-market for the workshop OS for cabinetmakers. Built for a solo founder, ~£250/mo, launching to a global English-speaking trades audience in seven days.</p>
+    <div class="pill-row">
+      <span class="pill">Timeline · <strong>7 days to live</strong></span>
+      <span class="pill">Budget · <strong>~£250/mo</strong></span>
+      <span class="pill">Markets · <strong>UK · US · AU · CA · NZ</strong></span>
+      <span class="pill">ICP · <strong>1–10 person cabinet shops</strong></span>
+      <span class="pill">Format · <strong>Organic-first, paid only after creative validated</strong></span>
+    </div>
+  </div>
+</header>
+
+<nav class="toc">
+  <div class="wrap">
+    <div class="toc-inner">
+      <a href="#tldr">TL;DR</a>
+      <a href="#reality">Reality Check</a>
+      <a href="#positioning">Positioning</a>
+      <a href="#icp">ICP &amp; Where They Live</a>
+      <a href="#offer">The Launch Offer</a>
+      <a href="#week">Day-by-Day (7 Days)</a>
+      <a href="#channels">Channels Ranked</a>
+      <a href="#claude">Claude AI Playbook</a>
+      <a href="#connectors">Connectors / MCPs</a>
+      <a href="#stack">Tools &amp; Apps Stack</a>
+      <a href="#budget">Budget</a>
+      <a href="#kpis">KPIs &amp; Targets</a>
+      <a href="#post">30 / 60 / 90 Day</a>
+      <a href="#risks">Risks</a>
+      <a href="#templates">Copy &amp; Templates</a>
+    </div>
+  </div>
+</nav>
+
+<main class="wrap">
+
+<!-- ===================== TL;DR ===================== -->
+<section id="tldr">
+  <h2><span class="num">01</span>TL;DR</h2>
+  <p class="lede">Cabinetmakers are not on Hacker News. They are on Facebook, YouTube and at the bench. Ignore the standard SaaS launch playbook — win this audience with trade-community proof, founder DMs, and short demo videos that show a real shop problem solved in 30 seconds.</p>
+
+  <div class="grid grid-3" style="margin-top:18px">
+    <div class="card cream">
+      <div class="label">Single message</div>
+      <h3 style="margin-top:6px">Replace your spreadsheets, notebooks and post-its.</h3>
+      <p>One tool to quote, cut, schedule, stock and bill. Built by a maker, for makers.</p>
+    </div>
+    <div class="card cream">
+      <div class="label">Top three tactics</div>
+      <ul class="tight">
+        <li>Daily presence in 6–10 cabinetmaker Facebook groups + 5 subreddits.</li>
+        <li>20 cold Loom-led founder DMs/day to shops you find on Instagram &amp; Google Maps.</li>
+        <li>Short demo clips (cut list optimised in 5s) on TikTok &amp; Reels.</li>
+      </ul>
+    </div>
+    <div class="card cream">
+      <div class="label">North-star (Day 30)</div>
+      <ul class="tight">
+        <li>2,000 landing-page visitors</li>
+        <li>200 trial signups</li>
+        <li>25 paying shops · ~$700 MRR + ~$15k lifetime cash</li>
+        <li>10 video testimonials in the can</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="callout warn" style="margin-top:18px">
+    <span class="tag">Honest take</span>
+    A 7-day launch with £250/mo is enough to <em>start</em>, not enough to <em>scale</em>. The job of week 1 is to land 5–10 paying shops who become your case studies and your roadmap. Everything in this plan optimises for that.
+  </div>
+</section>
+
+<!-- ===================== REALITY CHECK ===================== -->
+<section id="reality">
+  <h2><span class="num">02</span>Reality Check &amp; What This Plan Rules Out</h2>
+  <p class="lede">Constraints make the plan. With one week and £250/mo, here is what is in and what is out.</p>
+  <div class="grid grid-2">
+    <div class="card">
+      <h3 style="margin-top:0; color:var(--good)">In scope (high leverage)</h3>
+      <ul class="tight">
+        <li>Founder-led outreach (DMs, cold email with Loom).</li>
+        <li>Posting in existing communities (FB groups, subreddits, trade forums).</li>
+        <li>Short-form video on TikTok / Reels / Shorts.</li>
+        <li>Light SEO: 3 cornerstone landing pages targeting bottom-funnel intent.</li>
+        <li>One launch event (Product Hunt + Indie Hackers + your own list).</li>
+        <li>£100–150/mo Meta ads <em>after</em> creative is validated organically.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3 style="margin-top:0; color:var(--bad)">Out of scope (this month)</h3>
+      <ul class="tight">
+        <li>Paid Google Ads on broad terms (£3–8 CPC for trades software, burns the budget fast).</li>
+        <li>Influencer paid sponsorships (negotiate gifted lifetime access instead).</li>
+        <li>Trade show booths (AWFS, W14, KBB) — track for Q3/Q4 instead.</li>
+        <li>Press releases to <em>tier-1</em> publications (do trade rags only).</li>
+        <li>A polished brand campaign. Ship raw founder content; polish later.</li>
+        <li>Building a separate community (Slack/Discord) on day one — gather emails first.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== POSITIONING ===================== -->
+<section id="positioning">
+  <h2><span class="num">03</span>Positioning &amp; Message</h2>
+
+  <div class="grid grid-2">
+    <div class="card">
+      <div class="label">Category</div>
+      <h3 style="margin-top:6px">Workshop OS for cabinetmakers</h3>
+      <p>Not a CAD tool, not generic trades software, not accounting. A vertical SaaS that sits on top of how cabinet shops actually work — quote, cut list, schedule, stock, clients, projects, dashboard.</p>
+    </div>
+    <div class="card">
+      <div class="label">One-line pitch</div>
+      <h3 style="margin-top:6px">"Quote, cut and schedule jobs in one place — built by a maker."</h3>
+      <p>Always lead with the trade credentials. Cabinetmakers buy from people who understand their world.</p>
+    </div>
+  </div>
+
+  <h3>Three message variants (test these)</h3>
+  <table>
+    <thead><tr><th>Variant</th><th>Hero copy</th><th>Use where</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>Pain-led</strong></td>
+        <td>"Stop quoting in spreadsheets. ProCabinet.App turns a job into a quote, cut list and schedule in 5 minutes."</td>
+        <td>Cold ads, FB group posts, cold email subject lines.</td>
+      </tr>
+      <tr>
+        <td><strong>Identity-led</strong></td>
+        <td>"The workshop OS for cabinetmakers who'd rather be in the shop than at the desk."</td>
+        <td>Landing page hero, Product Hunt, X bio.</td>
+      </tr>
+      <tr>
+        <td><strong>Proof-led</strong></td>
+        <td>"Used by [n] shops to quote faster, cut sheets cleaner, and never miss an order again."</td>
+        <td>Switch to this once you have ≥10 paying shops.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>What you are <em>not</em></h3>
+  <p>Don't try to compete with KitchenDraw / Cabinet Vision on CAD. Don't try to be Xero on accounting. Be the layer that sits between design and finance — the operational brain of the shop.</p>
+</section>
+
+<!-- ===================== ICP ===================== -->
+<section id="icp">
+  <h2><span class="num">04</span>ICP &amp; Where They Live</h2>
+
+  <div class="grid grid-2">
+    <div class="card cream">
+      <h3 style="margin-top:0">Primary ICP</h3>
+      <p><strong>Solo to small cabinet shops (1–10 people)</strong> in the UK, US, AU, CA, NZ. Mostly bespoke kitchens / built-ins / commercial joinery. Currently held together by Excel, a notebook, WhatsApp, and the owner's memory.</p>
+      <h4>Top pains (in order)</h4>
+      <ul class="tight">
+        <li>Quoting takes too long, jobs lost to faster competitors.</li>
+        <li>Cut list math errors waste sheet material (£££).</li>
+        <li>No visibility on cash flow per project.</li>
+        <li>Missed orders and bottlenecks at install/delivery.</li>
+        <li>Switching between 5+ tools / paper / WhatsApp.</li>
+      </ul>
+    </div>
+    <div class="card cream">
+      <h3 style="margin-top:0">Secondary ICP (later)</h3>
+      <p><strong>Mid-sized shops (10–30 staff)</strong> who already use Cabinet Vision or Mozaik for CAD but want operational software they don't currently have.</p>
+      <h4>Why they wait</h4>
+      <ul class="tight">
+        <li>Higher ACV but slower sales cycle (3–6 months).</li>
+        <li>Need integrations (Xero/QuickBooks, Cabinet Vision import).</li>
+        <li>Land them on the back of solo-shop momentum.</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3>Where they actually hang out</h3>
+  <table>
+    <thead>
+      <tr><th>Channel</th><th>Why it works</th><th>Reach (rough)</th><th>Effort</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Facebook Group: <em>Cabinet Makers Worldwide</em></td><td>The single biggest concentration of the ICP on the planet.</td><td>50k+ members</td><td><span class="tag-good">Low</span></td></tr>
+      <tr><td>Facebook Group: <em>Cabinet Makers UK</em>, <em>Australian Cabinet Makers</em>, <em>Cabinet Makers North America</em></td><td>Regional groups, more focused. Joining 6–10 covers most of the addressable market.</td><td>5k–25k each</td><td><span class="tag-good">Low</span></td></tr>
+      <tr><td>Reddit: <em>r/Cabinetry, r/Carpentry, r/woodworking</em></td><td>English-language, search-indexed. Post quality matters; mods will ban for spam.</td><td>3–5M combined</td><td><span class="tag-mid">Medium</span></td></tr>
+      <tr><td>Instagram + TikTok hashtags</td><td>#cabinetmaker #cabinetry #joinery #customcabinets get serious traffic.</td><td>4M+ monthly</td><td><span class="tag-mid">Medium</span></td></tr>
+      <tr><td>YouTube channels</td><td>Cabinet/woodworking creators have hyper-loyal trade audiences. Ideal partners.</td><td>10k–500k subs each</td><td><span class="tag-low">High (DM 20+)</span></td></tr>
+      <tr><td>Trade forums: <em>Sawmill Creek, Woodweb, KitchenDrawer</em></td><td>Older audience, high purchase intent, low spam tolerance.</td><td>2–5k DAU each</td><td><span class="tag-mid">Medium</span></td></tr>
+      <tr><td>Google Maps listings</td><td>Cold-outreach gold mine: every cabinet shop in your target cities, with email + phone.</td><td>Unlimited</td><td><span class="tag-mid">Medium (manual scrape or Apollo)</span></td></tr>
+      <tr><td>LinkedIn (small business owner accounts)</td><td>Lower density but easier to reach owners directly.</td><td>~1k qualified</td><td><span class="tag-mid">Medium</span></td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout">
+    <span class="tag">Note</span>
+    Hacker News, Indie Hackers and r/SaaS will <em>not</em> bring you cabinetmaker customers. Use them for one launch post each (free distribution + backlinks), then move on.
+  </div>
+</section>
+
+<!-- ===================== OFFER ===================== -->
+<section id="offer">
+  <h2><span class="num">05</span>The Launch Offer</h2>
+  <p class="lede">Standard pricing plus a launch-week hero offer plus a gifting programme that turns creators into your distribution channel — three pieces, one engine.</p>
+
+  <h3>Standard pricing</h3>
+  <div class="grid grid-2">
+    <div class="card">
+      <div class="label">Monthly</div>
+      <h3 style="margin-top:6px">$35 / month</h3>
+      <p>Billed monthly, cancel anytime. Lower commitment, higher headline price — the option for shops who want to dip a toe.</p>
+    </div>
+    <div class="card">
+      <div class="label">Annual <span style="color:var(--good)">· save 29%</span></div>
+      <h3 style="margin-top:6px">$299 / year</h3>
+      <p>Effective $24.92/month. Lower friction than lifetime; locks shops in for 12 months and improves cash flow.</p>
+    </div>
+  </div>
+
+  <h3 style="margin-top:24px">Launch-week hero · Founders' Lifetime</h3>
+  <div class="card cream">
+    <div class="label">Capped at 50 shops · launch week only</div>
+    <h3 style="margin-top:6px">$299 once · locked in forever · all features</h3>
+    <p>Same price as one annual subscription, used forever. Creates urgency, surfaces your most committed users, gives you ~$15k of upfront cash to fuel paid ads in weeks 3–8, and produces 50 vocal advocates who feel they got a great deal.</p>
+    <p class="price">Estimated upside if cap fills: $14,950 cash · 50 founder advocates</p>
+  </div>
+
+  <h3 style="margin-top:24px">Creator Lifetime gifting programme</h3>
+  <p>Run a <em>separate</em> pool of ~20 gifted lifetime spots for cabinetmaker creators on YouTube / Instagram / TikTok. Don't gift from the 50 paid Founders' Lifetimes — those need to stay scarce to convert. Gifted spots cost you nothing in cash and are arguably your highest-leverage marketing spend in month 1.</p>
+
+  <table>
+    <thead><tr><th>Tier</th><th>Audience size</th><th class="center">Spots</th><th>What you ask for in return</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Macro</strong></td><td>100k+ subs / followers</td><td class="center">2</td><td>1 dedicated video or Reel within 30 days, with timestamp / link in description.</td></tr>
+      <tr><td><strong>Mid</strong></td><td>10k–100k</td><td class="center">8</td><td>1 mention in next 2 uploads, OR 1 dedicated short, OR pinned comment + IG story.</td></tr>
+      <tr><td><strong>Micro</strong></td><td>1k–10k</td><td class="center">10</td><td>1 honest review post + 1 IG story + tag the brand. Ideal for grassroots reach.</td></tr>
+    </tbody>
+  </table>
+
+  <h4>How to run it (week 1, ~3 hours total)</h4>
+  <ul class="tight">
+    <li><strong>Build the list</strong> — Day 3 task: 30–50 cabinetmaker creators across UK, US, AU. Score by audience size, posting frequency (active in last 30 days), and audience fit (real shop content vs. hobby DIY).</li>
+    <li><strong>Personalised reach-out</strong> — DM or email with a 60-second Loom: "I built this, I'd love to give you a free lifetime account in exchange for an honest review — no contract, you owe me nothing if you don't like it."</li>
+    <li><strong>Track each gifted spot</strong> — UTM per creator: <span class="kbd">?utm_source=creator&amp;utm_medium=gift&amp;utm_campaign={handle}</span>. Tells you which creator drove signups vs. which just took the freebie.</li>
+    <li><strong>Don't publicise the programme</strong> — public "free for influencers" attracts grifters. Direct DM only.</li>
+    <li><strong>Set a 30-day clawback</strong> — soft expectation that if no content has shipped by day 30, the gifted account converts to standard pricing. Worded politely in the offer email.</li>
+  </ul>
+
+  <div class="callout good" style="margin-top:14px">
+    <span class="tag">Why three offers, not one</span>
+    Standard pricing serves the long tail. The 50 paid Founders' Lifetimes give you cash, urgency and proof. The 20 gifted Creator Lifetimes give you reach you couldn't otherwise afford. Each does a different job — don't collapse them into one programme.
+  </div>
+
+  <h4>Pricing rules to follow</h4>
+  <ul class="tight">
+    <li><strong>Show annual first</strong> on the pricing page — anchor on $299/yr; monthly is the "more flexible but more expensive" option.</li>
+    <li><strong>Show local currency</strong> via Stripe Checkout — IP-detect on the pricing page or let Stripe convert at checkout. UK shops see £, AU shops see A$, etc.</li>
+    <li><strong>Lifetime is launch-week only</strong> in your messaging, even if a few late stragglers buy after. Urgency lost = conversion lost.</li>
+    <li><strong>Stripe Tax</strong> handles VAT/GST/sales-tax automatically. Show prices ex-tax with a "+ local tax" note.</li>
+  </ul>
+</section>
+
+<!-- ===================== 7 DAYS ===================== -->
+<section id="week">
+  <h2><span class="num">06</span>Day-by-Day · 7 Days to Launch</h2>
+  <p class="lede">Each day has a single primary outcome. Don't move on until it's done.</p>
+
+  <div class="day">
+    <div class="when">Day<span class="big">1</span>Mon</div>
+    <div class="what">
+      <h3>Foundations &amp; the launch page</h3>
+      <ul>
+        <li><strong>Outcome:</strong> A landing page that can convert a cold visitor into a paying shop today.</li>
+        <li>Lock the headline, subhead, 3 features with screenshots, social proof slot (placeholder), pricing, FAQ, CTA.</li>
+        <li>Wire Stripe (Founders' Lifetime SKU + monthly).</li>
+        <li>Install analytics: <strong>Plausible</strong> (£7/mo) or PostHog free tier. Add UTM template doc.</li>
+        <li>Set up <strong>Resend</strong> (free 3k/mo) for transactional, <strong>Beehiiv</strong> (free under 2.5k subs) for newsletter.</li>
+        <li>Set up <strong>Crisp</strong> chat (free) for live support during launch week.</li>
+        <li>Connect domain email (<span class="kbd">hello@procabinet.app</span>) and warm it up by sending 5 personal emails today.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="day">
+    <div class="when">Day<span class="big">2</span>Tue</div>
+    <div class="what">
+      <h3>Content factory: video + posts</h3>
+      <ul>
+        <li><strong>Outcome:</strong> 1 hero demo video + 10 short clips + 30 social posts queued.</li>
+        <li>Record 90s walkthrough on <strong>ScreenStudio</strong> or <strong>Tella</strong>. Show a real job: client → quote → cut list → schedule.</li>
+        <li>Cut into 10× 15–30s clips (one per feature). Caption with <strong>Captions.app</strong> or <strong>Submagic</strong>.</li>
+        <li>Use Claude to generate 30 social posts (Twitter/X, LinkedIn, Instagram, Threads). See <a href="#claude">§ 8 Claude playbook</a>.</li>
+        <li>Schedule via <strong>Buffer</strong> (£5/mo) or <strong>Typefully</strong> (free for X/LinkedIn).</li>
+        <li>Write the launch post for Product Hunt + Indie Hackers + Show HN (in case you go that route).</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="day">
+    <div class="when">Day<span class="big">3</span>Wed</div>
+    <div class="what">
+      <h3>Outreach lists &amp; community seeding</h3>
+      <ul>
+        <li><strong>Outcome:</strong> 200 shop prospects + 30 creator prospects in lists, 8 communities joined and warmed.</li>
+        <li>Build a <strong>shop prospect list</strong>: scrape <strong>Google Maps</strong> for "cabinet maker" in 20 cities (UK + US + AU). Use <strong>Apollo.io</strong> free (50/mo) or <strong>PhantomBuster</strong> trial. Aim for 200 contacts with email.</li>
+        <li>Build a <strong>creator prospect list</strong>: 30–50 cabinetmaker / woodworker creators across YouTube, Instagram and TikTok. Score by audience size, posting frequency (active in last 30 days) and audience fit (real shop content vs. hobby DIY). Tier as Macro / Mid / Micro per § 5. Tools: YouTube search, IG hashtag scroll, <strong>Modash</strong> free trial, <strong>HypeAuditor</strong>.</li>
+        <li>Join 6–10 Facebook groups; post <em>once</em> with a value-first message ("free cut list optimiser, no signup needed" hosted on a tool route of your app).</li>
+        <li>Reddit: post in 2 subs with a teardown / case study, not a launch post. Save the launch post for after.</li>
+        <li>For each creator on your list, like + thoughtful-comment on their latest 2 posts. Buy attention before asking for it.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="day">
+    <div class="when">Day<span class="big">4</span>Thu</div>
+    <div class="what">
+      <h3>Founder Loom blitz · shops + creators</h3>
+      <ul>
+        <li><strong>Outcome:</strong> 50 shop Looms + 30 creator Looms sent. Target ≥3 demo bookings + ≥5 creator yes's.</li>
+        <li><strong>Shop track (50 Looms):</strong> each ~60s, opens with the shop's name, shows their <em>own</em> Instagram or website, then cuts to your tool quoting their style of work. CTA = book a 20-min demo on Calendly.</li>
+        <li><strong>Creator track (30 Looms):</strong> open with a specific compliment on their last upload, explain you're giving 20 cabinetmaker creators free lifetime access in exchange for an honest review (no contract, no obligation). CTA = "reply yes and I'll send you a login today". See <a href="#offer">§ 5 Creator Lifetime programme</a>.</li>
+        <li>Send via Gmail + <strong>Mixmax</strong> (free trial) or just plain Gmail with tracking off. Creator outreach over IG / YouTube DM where they're more responsive.</li>
+        <li>Booked demos go on Calendly: 20-min slots, leave 4–5 daily slots open.</li>
+        <li>Use Claude to draft each email body from the Loom transcript. See <a href="#templates">§ 15 templates</a>.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="day">
+    <div class="when">Day<span class="big">5</span>Fri</div>
+    <div class="what">
+      <h3>Soft launch + waitlist crunch</h3>
+      <ul>
+        <li><strong>Outcome:</strong> Quiet pre-announce to your warm list. Surface the first 5 paying shops.</li>
+        <li>Email anyone who's ever expressed interest, beta tested, or signed up to a waitlist. Founders' Lifetime offer, 50 spots, runs Mon–Sun.</li>
+        <li>Personal DMs to 20 contacts you know in the trade.</li>
+        <li>Post a "we go live Tuesday" teaser in the FB groups + Instagram.</li>
+        <li>Friday afternoon: <strong>fix the top 3 bugs</strong> uncovered by the warm group before public launch.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="day">
+    <div class="when">Day<span class="big">6</span>Sat</div>
+    <div class="what">
+      <h3>Final prep + buffer day</h3>
+      <ul>
+        <li><strong>Outcome:</strong> All assets queued, support ready, you sleep 8 hours.</li>
+        <li>Schedule launch posts for Tuesday: Product Hunt 12:01 PT, Indie Hackers 6 AM PT, Show HN 8 AM PT, LinkedIn 8 AM UK.</li>
+        <li>Warm up Product Hunt: follow 30 makers, comment on 5 today's launches, ask 5 supportive friends to upvote/comment (no buying votes).</li>
+        <li>Prepare a "Launch Day Inbox" — Claude-drafted reply templates for FAQs, objections, integration questions.</li>
+        <li>Run the full happy-path through the app one more time. Fix anything that breaks.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="day">
+    <div class="when">Day<span class="big">7</span>Tue</div>
+    <div class="what">
+      <h3>LAUNCH DAY</h3>
+      <ul>
+        <li><strong>Outcome:</strong> 500+ visitors, 5+ paying, 10+ demos booked, 50+ emails captured.</li>
+        <li>Product Hunt live · top of comments engagement (you reply to every single comment).</li>
+        <li>Post in all 6–10 FB groups simultaneously. Adapt copy per group.</li>
+        <li>Reddit launch posts in 3 subs. Be honest, transparent, no marketing language.</li>
+        <li>Twitter/X thread; LinkedIn post; Instagram Reel; TikTok; Threads.</li>
+        <li>Email blast: warm list + waitlist + 200 cold prospects (separate lists; tailor copy).</li>
+        <li>Run paid ads <em>only if</em> a creative organically outperforms in the morning. Otherwise wait until Wednesday.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="callout warn">
+    <span class="tag">If you only do three things this week</span>
+    (1) Land 5 paying customers via founder DMs. (2) Capture 10 video testimonials from beta users <em>before</em> launch. (3) Have a real, ugly, interesting demo video — not a polished marketing trailer.
+  </div>
+</section>
+
+<!-- ===================== CHANNELS ===================== -->
+<section id="channels">
+  <h2><span class="num">07</span>Channels Ranked by Leverage</h2>
+  <p class="lede">Tier 1 channels do most of the work. Tier 2 backstops them. Tier 3 only matters past the first 100 customers.</p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Channel</th>
+        <th class="center">Tier</th>
+        <th>Cost</th>
+        <th>Effort</th>
+        <th>Expected impact (Month 1)</th>
+        <th>How to play it</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Facebook Groups (cabinetmaker)</td>
+        <td class="center"><span class="tag-tier t1">T1</span></td>
+        <td>£0</td>
+        <td>2 hrs/wk</td>
+        <td>30–60% of signups</td>
+        <td>Be a member first; one valuable post per group per month; never spam.</td>
+      </tr>
+      <tr>
+        <td>Founder cold DMs / email + Loom</td>
+        <td class="center"><span class="tag-tier t1">T1</span></td>
+        <td>£0–45 (Apollo)</td>
+        <td>2 hrs/day</td>
+        <td>5–10 paying shops</td>
+        <td>Personalised, references their shop. Loom &gt; written every time.</td>
+      </tr>
+      <tr>
+        <td>Short-form video (TikTok / Reels / Shorts)</td>
+        <td class="center"><span class="tag-tier t1">T1</span></td>
+        <td>£0</td>
+        <td>1 hr/day</td>
+        <td>Compounds: 0 → 1k followers in 30 days</td>
+        <td>One post/day. Topic: shop pains, before/after, "we replaced this spreadsheet".</td>
+      </tr>
+      <tr>
+        <td>Reddit (cabinetry/woodworking)</td>
+        <td class="center"><span class="tag-tier t1">T1</span></td>
+        <td>£0</td>
+        <td>1 hr/wk</td>
+        <td>10–25% of signups</td>
+        <td>Comment first for 2 weeks, post once with a useful free resource.</td>
+      </tr>
+      <tr>
+        <td>Free tools as SEO / lead magnet</td>
+        <td class="center"><span class="tag-tier t1">T1</span></td>
+        <td>£0</td>
+        <td>1 day setup</td>
+        <td>Slow-burn but compounds</td>
+        <td>e.g. <span class="kbd">/free-cut-list-optimiser</span> indexable + email gate.</td>
+      </tr>
+      <tr>
+        <td>YouTube / IG / TikTok creator partnerships <em>(via Creator Lifetime gifting)</em></td>
+        <td class="center"><span class="tag-tier t1">T1</span></td>
+        <td>$0 (gifted lifetime)</td>
+        <td>3 hrs setup + 1 hr/creator</td>
+        <td>1 mid-tier win = +50–150 signups</td>
+        <td>Run as the structured programme in § 5: 2 macro / 8 mid / 10 micro spots. Track per-creator UTM.</td>
+      </tr>
+      <tr>
+        <td>Product Hunt</td>
+        <td class="center"><span class="tag-tier t2">T2</span></td>
+        <td>£0</td>
+        <td>1 day prep</td>
+        <td>200–800 visitors, low conversion</td>
+        <td>Worth it for backlinks &amp; credibility, not for trades customers.</td>
+      </tr>
+      <tr>
+        <td>Indie Hackers · Show HN</td>
+        <td class="center"><span class="tag-tier t2">T2</span></td>
+        <td>£0</td>
+        <td>2 hrs prep</td>
+        <td>Founder support + a few signups</td>
+        <td>Tell the build story, not the marketing pitch.</td>
+      </tr>
+      <tr>
+        <td>Meta ads (Facebook/Instagram)</td>
+        <td class="center"><span class="tag-tier t2">T2</span></td>
+        <td>£100–150/mo</td>
+        <td>2 hrs/wk</td>
+        <td>5–15 signups/mo at start</td>
+        <td>Only after a Reel/clip organically goes off. Promote the winner.</td>
+      </tr>
+      <tr>
+        <td>Trade forums (Sawmill Creek, Woodweb)</td>
+        <td class="center"><span class="tag-tier t2">T2</span></td>
+        <td>£0</td>
+        <td>1 hr/wk</td>
+        <td>Low-volume, high-intent</td>
+        <td>Read their rules carefully; older audience, ban-happy mods.</td>
+      </tr>
+      <tr>
+        <td>LinkedIn (founder account)</td>
+        <td class="center"><span class="tag-tier t2">T2</span></td>
+        <td>£0</td>
+        <td>1 hr/wk</td>
+        <td>Hiring &amp; partnerships, few customers</td>
+        <td>Build-in-public posts; trade audience is light here.</td>
+      </tr>
+      <tr>
+        <td>Trade publications (PR)</td>
+        <td class="center"><span class="tag-tier t3">T3</span></td>
+        <td>£0–200</td>
+        <td>1 day per outlet</td>
+        <td>Long-term credibility</td>
+        <td>Furniture Production, Woodworking Network, KBB Review. Pitch a story not a launch.</td>
+      </tr>
+      <tr>
+        <td>Trade shows (AWFS, W14, KBB)</td>
+        <td class="center"><span class="tag-tier t3">T3</span></td>
+        <td>££££</td>
+        <td>Weeks</td>
+        <td>Q3–Q4 only</td>
+        <td>Visit first as a delegate, walk the floor, meet partners.</td>
+      </tr>
+      <tr>
+        <td>Hardware supplier partnerships (Blum / Häfele)</td>
+        <td class="center"><span class="tag-tier t3">T3</span></td>
+        <td>£0</td>
+        <td>Weeks of BD</td>
+        <td>Game-changing once landed</td>
+        <td>Need 100+ paying customers as proof first.</td>
+      </tr>
+      <tr>
+        <td>Google Ads</td>
+        <td class="center"><span class="tag-tier t3">T3</span></td>
+        <td>£3–8 CPC</td>
+        <td>Ongoing</td>
+        <td>Burns budget pre-product-market-fit</td>
+        <td>Don't, unless you ship a free tool that ranks for high-intent.</td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ===================== CLAUDE ===================== -->
+<section id="claude">
+  <h2><span class="num">08</span>Claude AI Playbook for Marketing</h2>
+  <p class="lede">Claude is a force multiplier for a solo founder doing marketing. Below are 12 concrete uses, each with a copy-paste prompt skeleton.</p>
+
+  <div class="grid grid-2">
+    <div class="card">
+      <h3 style="margin-top:0">1 · Social content factory</h3>
+      <p>Generate a month of cross-platform posts in one go.</p>
+      <details>
+        <summary>Show prompt</summary>
+<pre class="prompt">You are the marketing lead for ProCabinet.App, a workshop OS
+for solo and small cabinetmakers. Tone: blunt, trade-savvy,
+zero corporate fluff. Audience: 35–60yo shop owners, mostly
+not on Twitter, mostly on FB and Instagram.
+
+Generate 30 posts split as:
+- 10 X / Threads (≤220 chars, hook + insight, 1 emoji max)
+- 10 LinkedIn (3–5 short paragraphs, build-in-public angle)
+- 10 Instagram captions (visual-led, end with question)
+
+Each post must reference one of: quoting, cut list optimisation,
+scheduling, stock, client management, late payments,
+material waste, switching from spreadsheets.
+
+Format as a markdown table: platform | hook | full post | hashtags.</pre>
+      </details>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-top:0">2 · Cold email + Loom script writer</h3>
+      <p>Personalise outreach at scale without sounding automated.</p>
+      <details>
+        <summary>Show prompt</summary>
+<pre class="prompt">Here is a cabinet shop's website / Instagram bio:
+[paste]
+
+Write:
+1. A 60-second Loom script that opens by referencing one
+   specific thing from their work, then shows how
+   ProCabinet.App quotes a similar job in 5 mins.
+2. A 90-word email body to send with the Loom. Subject line
+   should be ≤6 words and reference their shop, not the tool.
+
+Voice: peer-to-peer, no "Hope you're well", no "I came across".
+Sound like a fellow tradesperson who built something useful.</pre>
+      </details>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-top:0">3 · Repurpose long content</h3>
+      <p>Turn one demo video into ten posts.</p>
+      <details>
+        <summary>Show prompt</summary>
+<pre class="prompt">Here's the transcript of my 90s demo video:
+[paste transcript]
+
+Produce:
+- 1 LinkedIn post (build-in-public, 5 paragraphs)
+- 5 X/Threads posts (each standalone, no thread)
+- 1 Instagram carousel outline (8 slides)
+- 1 TikTok hook + 30s script
+- 1 short blog (~400 words) for the website /blog
+
+Same trade-savvy voice as #1.</pre>
+      </details>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-top:0">4 · SEO keyword cluster + briefs</h3>
+      <p>Find what cabinetmakers actually search.</p>
+      <details>
+        <summary>Show prompt</summary>
+<pre class="prompt">Give me 30 long-tail search queries a cabinetmaker (UK, US,
+AU) would type into Google when they're frustrated with their
+current workflow. For each:
+- Estimated intent (informational / commercial / transactional)
+- Difficulty (1–5, gut feel)
+- Suggested page type (free tool / blog / landing)
+- Competing pages I should review
+
+Group into 5 clusters and recommend which 3 cluster pages to
+build first for ProCabinet.App.</pre>
+      </details>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-top:0">5 · Landing page A/B variants</h3>
+      <p>Three credible alternatives to your current hero.</p>
+      <details>
+        <summary>Show prompt</summary>
+<pre class="prompt">My current hero:
+[paste H1, subhead, CTA]
+
+Write 3 alternative variants:
+- Pain-led
+- Identity-led
+- Outcome-led
+
+Each: H1 (≤9 words), subhead (≤22 words), CTA button (≤4 words).
+For each variant explain in one sentence which audience
+segment it converts best.</pre>
+      </details>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-top:0">6 · Objection-handling reply bank</h3>
+      <p>Pre-built calm answers to the most common pushback.</p>
+      <details>
+        <summary>Show prompt</summary>
+<pre class="prompt">Cabinetmakers are wary of SaaS subscriptions. Draft warm,
+concise replies (≤120 words each) for these objections:
+
+- "I already use Excel and it works fine."
+- "I'm not paying monthly for software."
+- "I'm a one-man shop, this is overkill."
+- "Can it import from Cabinet Vision / Mozaik?"
+- "What about my existing Xero / QuickBooks?"
+- "Looks complicated."
+- "Can I see real numbers from another shop using this?"
+
+Voice: confident peer, not salesy. Always offer a concrete next
+step (Loom demo, free trial, lifetime offer).</pre>
+      </details>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-top:0">7 · Product Hunt + Show HN posts</h3>
+      <p>Each platform has its own etiquette — Claude can match it.</p>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-top:0">8 · Localisation pass (UK / US / AU)</h3>
+      <p>Convert sheet to ply, mm to inches, kitchen to closet copy where appropriate. Three runs of the landing page = three regional landing pages.</p>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-top:0">9 · Persona simulation for cold testing</h3>
+      <p>Have Claude roleplay a 55yr old solo cabinetmaker reading your landing page. Ask: "what would put you off?" — surfaces objections before real prospects find them.</p>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-top:0">10 · Competitor teardown matrix</h3>
+      <p>Feed it 3–5 competitor URLs (Cabinet Vision, Mozaik, KitchenDraw, generic ERP). Ask for a side-by-side feature + positioning matrix and where ProCabinet.App is genuinely different.</p>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-top:0">11 · Help docs from one walkthrough</h3>
+      <p>Paste a screen-recorded walkthrough transcript. Claude turns it into structured help docs (Getting Started, Quoting, Cut Lists, etc.) in markdown — feed straight into your help site.</p>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-top:0">12 · Trade publication pitch</h3>
+      <p>Pitch <em>stories</em> not launches. "How a UK cabinetmaker cut quoting time 80% with software they wrote themselves" lands; "We launched a SaaS" doesn't.</p>
+    </div>
+  </div>
+
+  <div class="callout">
+    <span class="tag">Pro tip</span>
+    Save your best-performing prompts as Claude <strong>Projects</strong> with brand voice, ICP and tone of voice as the system prompt. Then every future post starts with the right context, not from scratch.
+  </div>
+</section>
+
+<!-- ===================== CONNECTORS ===================== -->
+<section id="connectors">
+  <h2><span class="num">09</span>Cowork Connectors / MCPs to Wire Up</h2>
+  <p class="lede">You're already in Cowork mode and have Supabase MCP connected. The connectors below turn Claude into your marketing operations co-pilot.</p>
+
+  <h3>Already connected</h3>
+  <table>
+    <thead><tr><th>MCP</th><th>What you can do today</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Supabase</strong></td><td>Query signups, conversion funnel, churn, MRR. Generate type definitions after schema migrations. Run growth queries: "show me trial users who haven't created a quote in 7 days".</td></tr>
+      <tr><td><strong>Computer-use / Claude in Chrome</strong></td><td>Drive your browser for repetitive tasks: posting in 6 FB groups, scheduling Buffer, refreshing Stripe, screenshotting analytics.</td></tr>
+      <tr><td><strong>Firecrawl</strong></td><td>Scrape competitor pages, gather prospect lists from directories, extract email addresses from public shop websites.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Recommended to add (priority order)</h3>
+  <table>
+    <thead>
+      <tr><th>Connector</th><th>Why now</th><th>Cost</th><th>Priority</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Gmail / Google Workspace</strong></td>
+        <td>Send and search outreach. Claude can draft personalised cold emails to your prospect list and queue them as drafts for review.</td>
+        <td>£0 (existing GW)</td>
+        <td><span class="tag-good">P0</span></td>
+      </tr>
+      <tr>
+        <td><strong>Stripe</strong></td>
+        <td>Live MRR / new customer queries. "Who paid in the last 24 hrs and haven't activated?"</td>
+        <td>£0</td>
+        <td><span class="tag-good">P0</span></td>
+      </tr>
+      <tr>
+        <td><strong>Notion</strong> (or Airtable)</td>
+        <td>Content calendar, prospect CRM, launch checklist — all queryable by Claude.</td>
+        <td>£0–8/mo</td>
+        <td><span class="tag-good">P0</span></td>
+      </tr>
+      <tr>
+        <td><strong>Slack</strong></td>
+        <td>Pipe Stripe webhooks, signup events, support tickets into one channel; Claude can summarise the daily digest.</td>
+        <td>£0 (free tier)</td>
+        <td><span class="tag-mid">P1</span></td>
+      </tr>
+      <tr>
+        <td><strong>Linear</strong> (or GitHub Issues)</td>
+        <td>Convert customer feedback into roadmap items automatically.</td>
+        <td>£0 (free tier)</td>
+        <td><span class="tag-mid">P1</span></td>
+      </tr>
+      <tr>
+        <td><strong>Calendar (Google)</strong></td>
+        <td>Block demo slots, draft demo prep notes from the prospect's email.</td>
+        <td>£0</td>
+        <td><span class="tag-mid">P1</span></td>
+      </tr>
+      <tr>
+        <td><strong>Beehiiv / Substack / Loops</strong></td>
+        <td>Newsletter MCP; draft weekly "shop floor notes" email and have Claude post it.</td>
+        <td>£0–24/mo</td>
+        <td><span class="tag-mid">P1</span></td>
+      </tr>
+      <tr>
+        <td><strong>HubSpot Free</strong></td>
+        <td>Lightweight CRM with email sequences. Claude can score leads and surface stale ones.</td>
+        <td>£0</td>
+        <td><span class="tag-low">P2</span></td>
+      </tr>
+      <tr>
+        <td><strong>PostHog</strong> (self-host or cloud free)</td>
+        <td>Product analytics MCP — feature usage, funnels, retention.</td>
+        <td>£0</td>
+        <td><span class="tag-low">P2</span></td>
+      </tr>
+      <tr>
+        <td><strong>Plausible</strong></td>
+        <td>Privacy-friendly traffic. Currently no MCP, but Claude can read its dashboard via Chrome.</td>
+        <td>£7/mo</td>
+        <td><span class="tag-low">P2</span></td>
+      </tr>
+      <tr>
+        <td><strong>Cloudflare</strong></td>
+        <td>Already hosting on Pages — MCP gives Claude visibility into deploys, analytics, DNS.</td>
+        <td>£0</td>
+        <td><span class="tag-low">P2</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="callout good">
+    <span class="tag">Workflow examples</span>
+    <ul class="tight" style="margin-top:8px">
+      <li><strong>Daily growth digest:</strong> Claude pulls Stripe + Supabase + Plausible each morning and posts a 4-line Slack summary.</li>
+      <li><strong>Re-engagement nudge:</strong> Supabase query → trial users idle 3+ days → Claude drafts personalised Gmail nudges → you approve and send.</li>
+      <li><strong>Content from product:</strong> Linear ships a feature → Claude reads the changelog → drafts an X post, LinkedIn post and changelog entry → you approve.</li>
+      <li><strong>Prospect mining:</strong> Firecrawl + Google Maps → 50 fresh shops/week → Notion CRM → Gmail drafts.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ===================== STACK ===================== -->
+<section id="stack">
+  <h2><span class="num">10</span>Tools &amp; Apps Stack</h2>
+  <p class="lede">A concrete stack a solo founder can actually run within budget. Free where possible.</p>
+
+  <h3>Core stack</h3>
+  <table>
+    <thead><tr><th>Function</th><th>Tool</th><th>Why this one</th><th>Cost</th></tr></thead>
+    <tbody>
+      <tr><td>Landing page / site</td><td><strong>Existing app shell + Vite</strong></td><td>You already have it. Add a /marketing route or static page on the same domain.</td><td>£0</td></tr>
+      <tr><td>Payments</td><td><strong>Stripe</strong></td><td>Standard. Use Stripe Checkout (no UI work) and Stripe Tax for global VAT.</td><td>1.5%+£0.20</td></tr>
+      <tr><td>Transactional email</td><td><strong>Resend</strong></td><td>3k/mo free. Modern API. Pairs with React Email for receipts.</td><td>£0</td></tr>
+      <tr><td>Marketing email / newsletter</td><td><strong>Beehiiv</strong></td><td>Free under 2.5k subs, growth tools built in.</td><td>£0</td></tr>
+      <tr><td>Analytics (web)</td><td><strong>Plausible</strong></td><td>£7/mo, GDPR-friendly, no cookie banner needed.</td><td>£7</td></tr>
+      <tr><td>Analytics (product)</td><td><strong>PostHog</strong></td><td>Free up to 1M events. Funnels, replays, feature flags.</td><td>£0</td></tr>
+      <tr><td>Live chat</td><td><strong>Crisp</strong></td><td>Free tier covers launch. Easy to upgrade.</td><td>£0</td></tr>
+      <tr><td>Demo recording</td><td><strong>Tella</strong> or <strong>Loom</strong></td><td>Tella looks more polished out the box; Loom is faster + free.</td><td>£0–15</td></tr>
+      <tr><td>Social scheduling</td><td><strong>Buffer Essentials</strong></td><td>£5/mo for 3 channels — enough for X, LinkedIn, IG.</td><td>£5</td></tr>
+      <tr><td>Captions for clips</td><td><strong>Submagic</strong> or <strong>Captions.app</strong></td><td>£12/mo, dramatic boost in Reels/TikTok performance.</td><td>£12</td></tr>
+      <tr><td>Graphics</td><td><strong>Canva Pro</strong></td><td>Brand kit + bulk resize for social formats.</td><td>£11</td></tr>
+      <tr><td>Outreach (cold email)</td><td><strong>Gmail + Mixmax free</strong></td><td>Avoid sequencer overhead in week 1. 50 personal sends/day is fine.</td><td>£0</td></tr>
+      <tr><td>Prospect data</td><td><strong>Apollo.io free</strong></td><td>50 emails/mo free. Supplement with manual Google Maps scraping.</td><td>£0</td></tr>
+      <tr><td>Demo booking</td><td><strong>Cal.com</strong> or <strong>Calendly</strong></td><td>Cal.com free + open source.</td><td>£0</td></tr>
+      <tr><td>Testimonial collection</td><td><strong>Senja</strong></td><td>Free tier, gorgeous embeds.</td><td>£0</td></tr>
+      <tr><td>Roadmap / changelog</td><td><strong>Featurebase</strong> or <strong>Canny</strong></td><td>Public proof you ship. Free tier OK.</td><td>£0</td></tr>
+      <tr><td>Help docs</td><td><strong>GitBook</strong> or markdown on your own /help</td><td>Free. Claude generates the content.</td><td>£0</td></tr>
+      <tr><td>Status page</td><td><strong>Cloudflare</strong> built-in or <strong>BetterStack</strong> free</td><td>Tradespeople care about uptime — show them you do too.</td><td>£0</td></tr>
+      <tr><td>AI</td><td><strong>Claude Pro</strong></td><td>Plus the API for any heavy lifting via Cowork mode.</td><td>£18</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Nice-to-have (add when paying customers exist)</h3>
+  <table>
+    <tbody>
+      <tr><td>Customer.io / Loops</td><td>Lifecycle email sequences (onboarding, dormant nudges, upgrade).</td><td>£20–30</td></tr>
+      <tr><td>Userlist / Bento</td><td>Behaviour-based emails by user state.</td><td>£20+</td></tr>
+      <tr><td>Notion + Slite</td><td>Internal docs once you hire / contract help.</td><td>£0–10</td></tr>
+      <tr><td>Riverside / Descript</td><td>Podcast / interview content with cabinetmakers.</td><td>£15–24</td></tr>
+      <tr><td>Smartlead / Instantly</td><td>Cold email at volume (only after warmups, only if needed).</td><td>£30+</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ===================== BUDGET ===================== -->
+<section id="budget">
+  <h2><span class="num">11</span>Budget · £250/month</h2>
+  <p class="lede">Fixed costs ~£90, leaving roughly £160 to spend on paid acquisition <em>after</em> creative is validated.</p>
+
+  <table>
+    <thead><tr><th>Bucket</th><th>Item</th><th class="right">Monthly</th></tr></thead>
+    <tbody>
+      <tr><td rowspan="6"><strong>Tools (fixed ~£89)</strong></td><td>Claude Pro</td><td class="right">£18.00</td></tr>
+      <tr><td>Plausible analytics</td><td class="right">£7.00</td></tr>
+      <tr><td>Buffer Essentials</td><td class="right">£5.00</td></tr>
+      <tr><td>Canva Pro</td><td class="right">£11.00</td></tr>
+      <tr><td>Submagic captions</td><td class="right">£12.00</td></tr>
+      <tr><td>Tella (or Loom paid)</td><td class="right">£15.00</td></tr>
+      <tr><td><strong>Domain &amp; misc</strong></td><td>Domain renewal amortised + buffer for trial tools</td><td class="right">£21.00</td></tr>
+      <tr><td><strong>Paid acquisition</strong></td><td>Meta ads test (Reels promotion of best-performing organic)</td><td class="right">£120.00</td></tr>
+      <tr><td><strong>Perks &amp; swag</strong></td><td>Stickers / mugs / t-shirts for early customers + creator partners <em>(creator lifetimes themselves are $0 — gifted from a separate pool, see § 5)</em></td><td class="right">£20.00</td></tr>
+      <tr><td colspan="2"><strong>Total</strong></td><td class="right"><strong>£249.00</strong></td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout">
+    <span class="tag">Spending rule</span>
+    Don't run paid ads in week 1. Spend the £120 in <em>weeks 3–4</em>, only against creatives that already drove organic traction. This usually 3–10× the ROAS vs. cold testing.
+  </div>
+</section>
+
+<!-- ===================== KPIs ===================== -->
+<section id="kpis">
+  <h2><span class="num">12</span>KPIs &amp; Targets</h2>
+
+  <h3>Week 1 targets (launch week)</h3>
+  <div class="kpi">
+    <div class="stat"><div class="num">500</div><div class="lbl">Visitors</div></div>
+    <div class="stat"><div class="num">50</div><div class="lbl">Trial signups</div></div>
+    <div class="stat"><div class="num">10</div><div class="lbl">Demos booked</div></div>
+    <div class="stat"><div class="num">5</div><div class="lbl">Paying shops</div></div>
+  </div>
+
+  <h3 style="margin-top:24px">Month 1 targets</h3>
+  <div class="kpi">
+    <div class="stat"><div class="num">2,000</div><div class="lbl">Visitors</div></div>
+    <div class="stat"><div class="num">200</div><div class="lbl">Trial signups</div></div>
+    <div class="stat"><div class="num">25</div><div class="lbl">Paying shops</div></div>
+    <div class="stat"><div class="num">$700</div><div class="lbl">MRR (ex lifetime cash)</div></div>
+  </div>
+
+  <h3 style="margin-top:24px">Month 3 targets</h3>
+  <div class="kpi">
+    <div class="stat"><div class="num">8,000</div><div class="lbl">Visitors</div></div>
+    <div class="stat"><div class="num">800</div><div class="lbl">Trial signups</div></div>
+    <div class="stat"><div class="num">100</div><div class="lbl">Paying shops</div></div>
+    <div class="stat"><div class="num">$3,000</div><div class="lbl">MRR</div></div>
+  </div>
+
+  <h3 style="margin-top:24px">Leading indicators to watch daily</h3>
+  <ul class="tight">
+    <li><strong>Demo-booked rate</strong> — % of trial signups who book a 20-min call. Target ≥10%.</li>
+    <li><strong>Activation rate</strong> — % of signups who create a quote in their first session. Target ≥40%.</li>
+    <li><strong>Time-to-first-quote</strong> — median minutes from signup to first quote saved. Target &lt;15.</li>
+    <li><strong>Reply rate on cold outreach</strong> — Loom + email. Target ≥8%.</li>
+    <li><strong>Reels view-through rate</strong> — &gt;25% means the creative is worth promoting.</li>
+  </ul>
+</section>
+
+<!-- ===================== POST LAUNCH ===================== -->
+<section id="post">
+  <h2><span class="num">13</span>30 / 60 / 90 Day Rolling Plan</h2>
+
+  <div class="grid grid-3">
+    <div class="card">
+      <h3 style="margin-top:0">Days 8–30 · Compound</h3>
+      <ul class="tight">
+        <li>One short-form video / day, no exceptions.</li>
+        <li>50 cold Looms / week.</li>
+        <li>Ship one free SEO tool route (e.g. /free-cut-list-optimiser).</li>
+        <li>Capture 10 video testimonials from week-1 customers.</li>
+        <li>Start the Wednesday "Shop Floor Notes" newsletter.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3 style="margin-top:0">Days 31–60 · Validate channels</h3>
+      <ul class="tight">
+        <li>Double down on the 1–2 channels that worked in M1; cut the rest.</li>
+        <li>Launch first creator partnership (gifted lifetime).</li>
+        <li>Pitch 5 trade publications.</li>
+        <li>Test £150/mo Meta ad budget against winning Reel.</li>
+        <li>Stand up a Discord or private FB group for paying customers.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3 style="margin-top:0">Days 61–90 · Scale what works</h3>
+      <ul class="tight">
+        <li>Hire a part-time clipper / VA (~£300/mo) to handle short-form.</li>
+        <li>First integration partnership (Xero / Cabinet Vision import).</li>
+        <li>Trade publication feature placed.</li>
+        <li>Plan Q3 trade show presence (delegate, not booth).</li>
+        <li>Lifetime offer closes; switch to monthly + annual only.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== RISKS ===================== -->
+<section id="risks">
+  <h2><span class="num">14</span>Risks &amp; Mitigations</h2>
+  <table>
+    <thead><tr><th>Risk</th><th>Likelihood</th><th>Mitigation</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>Trades audience rejects subscriptions</td>
+        <td><span class="tag-mid">Medium</span></td>
+        <td>Lead with $299 Founders' Lifetime (same price as one annual). $299/yr annual is the natural fallback — feels like the lifetime "next best thing".</td>
+      </tr>
+      <tr>
+        <td>1 week is too tight, launch feels half-baked</td>
+        <td><span class="tag-mid">Medium</span></td>
+        <td>"Soft launch" Friday to warm list, "loud launch" Tuesday after fixes. Be transparent: this is v1.</td>
+      </tr>
+      <tr>
+        <td>Global launch dilutes early traction</td>
+        <td><span class="tag-mid">Medium</span></td>
+        <td>Pick UK <em>or</em> US as your primary for first 30 days; expand once activation is &gt;40%.</td>
+      </tr>
+      <tr>
+        <td>Facebook group bans for promotion</td>
+        <td><span class="tag-good">Low (if careful)</span></td>
+        <td>Be a member first, contribute 5+ times before any promo, follow each group's rules to the letter.</td>
+      </tr>
+      <tr>
+        <td>Paid ads to cabinetmakers on Meta are expensive</td>
+        <td><span class="tag-mid">Medium</span></td>
+        <td>Promote organic winners only. £5/day × 24 days &gt; £40/day for 3 days. Kill anything &lt; 25% VTR fast.</td>
+      </tr>
+      <tr>
+        <td>Critical bug surfaces during launch</td>
+        <td><span class="tag-good">Low</span></td>
+        <td>Friday warm launch surfaces bugs early. Have a rollback path. Crisp chat staffed by you on launch day.</td>
+      </tr>
+      <tr>
+        <td>Stripe / payment friction in non-UK markets</td>
+        <td><span class="tag-mid">Medium</span></td>
+        <td>Enable Stripe Tax + multi-currency from day 1. Show prices in user's local currency via IP detection.</td>
+      </tr>
+      <tr>
+        <td>Burnout — solo founder doing everything</td>
+        <td><span class="tag-low">High over 3 months</span></td>
+        <td>The 30/60/90 plan budgets for a part-time VA at day 60. Don't try to do social + outreach + product + support solo past month 2.</td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ===================== TEMPLATES ===================== -->
+<section id="templates">
+  <h2><span class="num">15</span>Copy &amp; Templates</h2>
+  <p class="lede">Ready-to-edit text blocks for the most common launch needs.</p>
+
+  <details>
+    <summary>Cold email + Loom — shops (template)</summary>
+<pre class="prompt">Subject: {their shop name} — quick thing I built
+
+Hey {first name},
+
+Saw the {kitchen / wardrobe / fitout} you posted on
+{Instagram / your site} — really clean work.
+
+I built something I think might save you some time on the
+quoting / cut list side. 60-sec Loom showing it on a job like
+yours: {loom URL}
+
+If it's useful, I've got 50 lifetime founder spots open at
+$299 — locked in forever, no subscription. Happy to walk you
+through a real demo on Calendly if you'd rather: {url}
+
+Either way, made me admire your work.
+
+— Adam
+ProCabinet.app</pre>
+  </details>
+
+  <details>
+    <summary>Creator Lifetime cold DM — YouTube / IG / TikTok (template)</summary>
+<pre class="prompt">Subject (email) / opener (DM):
+{first name} — free lifetime account for an honest review?
+
+Body:
+
+Hey {first name},
+
+Watched your last {video / Reel / TikTok} on {specific topic
+they covered} — genuinely useful, you explained the
+{pull-out drawer detail / sheet layout / scribe / etc.}
+better than I've seen anywhere.
+
+I'm Adam — I built ProCabinet.App, a workshop OS for cabinet
+shops (quote, cut list, schedule, stock, clients, all in one).
+
+I'm giving 20 cabinetmaker creators free lifetime access in
+exchange for an honest review on your channel within 30 days
+— no contract, no script, no obligation if you don't actually
+like it. Worst case you keep the account either way.
+
+If you're up for it, just reply "yes" and I'll send a login
+today. If not, no hard feelings.
+
+Either way — keep making stuff like that {video}.
+
+— Adam
+ProCabinet.app
+{loom of the product, 60s}</pre>
+  </details>
+
+  <details>
+    <summary>Facebook group launch post</summary>
+<pre class="prompt">Built this for myself / my mate's shop and it's working well
+enough I figured I'd share. ProCabinet.App.
+
+Quoting, cut list optimisation, schedule, stock, clients —
+all in one place. Built specifically for cabinetmakers (not
+generic trades software).
+
+Free trial, no card. First 50 shops get a $299 lifetime deal
+(same price as one year of the annual plan, locked forever).
+
+Honest feedback welcome — this is v1, the roadmap is your
+roadmap.
+
+{link}</pre>
+  </details>
+
+  <details>
+    <summary>Product Hunt tagline + first comment</summary>
+<pre class="prompt">Tagline: The workshop OS for cabinetmakers.
+Description: Quote, cut, schedule and bill from one place.
+Built by a maker, for makers.
+
+First comment (post immediately after launch goes live):
+
+Hi PH! I'm Adam, the maker behind ProCabinet.App.
+
+I built this because I watched cabinetmakers (including my own
+network) hold their entire shop together with Excel,
+notebooks, WhatsApp and a lot of overtime.
+
+ProCabinet replaces all of that with one tool: quoting, cut
+list optimisation, scheduling, stock, clients and a real
+dashboard. Built specifically for the trade — not generic
+ERP.
+
+Today's launch is for the first 50 shops who want a Founders'
+Lifetime spot ($299 once — same as one year of the annual,
+locked forever). Everyone else: free
+trial, no card.
+
+I'll be in the comments all day. Tear it apart. The roadmap
+is whatever you most need.</pre>
+  </details>
+
+  <details>
+    <summary>Show HN post</summary>
+<pre class="prompt">Show HN: ProCabinet.App – workshop OS for cabinetmakers
+
+I've been building software for tradespeople and noticed
+cabinet shops in particular run on a chaotic stack of Excel,
+notebooks and memory.
+
+ProCabinet is a single web app that does quoting, cut list
+optimisation (1D and 2D bin packing), scheduling, stock, and
+client/project management.
+
+Stack notes for HN: vanilla JS + Vite (no framework), Supabase
+for auth + Postgres + RLS, Cloudflare Pages for hosting,
+TypeScript via JSDoc + checkJs for type safety without losing
+the no-build-step ergonomics.
+
+The cut list optimiser was the most interesting piece — uses
+a guillotine-cut bin packer with grain direction constraints.
+
+Live at procabinet.app, free trial, founders' lifetime
+available.
+
+Happy to discuss the architecture decisions in particular.</pre>
+  </details>
+
+  <details>
+    <summary>X / Threads launch post</summary>
+<pre class="prompt">Cabinetmakers run their shop on Excel, post-its and memory.
+
+I built ProCabinet.App so they don't have to.
+
+Quote, cut list, schedule, stock, clients — one tool.
+
+Live today. First 50 shops get a $299 lifetime spot
+(same price as one year, locked forever).
+
+{link}
+
+(Replies: more on what's inside ↓)</pre>
+  </details>
+
+  <details>
+    <summary>"Shop Floor Notes" newsletter — Issue 1 outline</summary>
+<pre class="prompt">Subject: We're live. Here's what we built and why.
+
+- 200 words: why I built ProCabinet (the spreadsheet rant)
+- 1 GIF: turning a job into a quote in 60 seconds
+- 100 words: this week's feature spotlight (cut list optimiser)
+- "From the shop floor": one short story from a beta tester
+- Founders' Lifetime CTA (capped, urgency)
+- One question for replies: "what's the biggest time-suck in
+  your shop right now?"</pre>
+  </details>
+
+  <details>
+    <summary>Reddit r/Cabinetry launch post</summary>
+<pre class="prompt">Title: I built a workshop tool for cabinetmakers because
+nothing decent existed for solo and small shops — looking
+for honest feedback.
+
+Body:
+
+Long-time lurker. I've been building ProCabinet.App over the
+last {n} months because every piece of software aimed at our
+trade is either ERP overkill or a CAD tool with bolt-ons.
+
+What it does: takes a job from quote → cut list (with sheet
+optimisation) → schedule → invoice. Tracks stock, clients
+and projects.
+
+Free trial, no card. I'm offering a $299 lifetime spot to
+the first 50 shops.
+
+Mods: I checked the rules and self-promotion is allowed
+weekly with disclosure. Happy to delete if I've
+misread.
+
+Tear into it. What would make this actually useful in your
+shop?</pre>
+  </details>
+</section>
+
+<!-- ===================== FOOTER ===================== -->
+<div class="footer">
+  Drafted for Adam Denney · ProCabinet.App · 11 May 2026.
+  Edit freely. Re-run any section through Claude with
+  "<em>rewrite this section assuming we've now got 100 paying customers</em>"
+  for a 60-day refresh.
+</div>
+
+</main>
+</body>
+</html>

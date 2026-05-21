@@ -1,0 +1,868 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ProCabinet.App — UX Consistency Review · 11 May 2026</title>
+<style>
+  /* ── App tokens (lifted from styles.css so mockups render identically) ── */
+  :root {
+    --accent: #e8a838;
+    --accent-dim: rgba(232,168,56,0.12);
+    --accent2: #0d9488;
+    --danger: #e05252;
+    --success: #3d9970;
+    --bg: #f2f2f2;
+    --surface: #ffffff;
+    --surface2: #f7f7f7;
+    --border: #e0e0e0;
+    --border2: #ebebeb;
+    --text: #111111;
+    --text2: #444444;
+    --muted: #888888;
+    --radius: 8px;
+    --shadow: 0 1px 4px rgba(0,0,0,.04);
+    --shadow-md: 0 2px 8px rgba(0,0,0,.08);
+  }
+  html.dark {
+    --accent: #e8a838;
+    --accent-dim: rgba(232,168,56,0.12);
+    --accent2: #0d9488;
+    --danger: #e05252;
+    --success: #3d9970;
+    --bg: #141414;
+    --surface: #1e1e1e;
+    --surface2: #252525;
+    --border: #2e2e2e;
+    --border2: #282828;
+    --text: #f0f0f0;
+    --text2: #bbbbbb;
+    --muted: #666666;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    background: var(--bg);
+    color: var(--text);
+  }
+  code, pre, .mono { font-family: 'SF Mono', Menlo, Consolas, monospace; }
+  a { color: var(--accent2); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  /* ── Document chrome ── */
+  .doc { max-width: 1280px; margin: 0 auto; padding: 32px 28px 96px; }
+  .doc-head {
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 24px;
+    padding-bottom: 20px; border-bottom: 1px solid var(--border);
+    margin-bottom: 32px;
+  }
+  .doc-head h1 { font-size: 26px; font-weight: 800; margin: 0 0 4px; letter-spacing: -0.3px; }
+  .doc-head .subtitle { color: var(--muted); font-size: 13px; }
+  .theme-toggle {
+    border: 1px solid var(--border); background: var(--surface); color: var(--text2);
+    padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600;
+  }
+  .theme-toggle:hover { border-color: var(--text2); }
+
+  .lede {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    padding: 18px 22px; margin-bottom: 32px;
+  }
+  .lede p { margin: 0 0 8px; color: var(--text2); }
+  .lede p:last-child { margin-bottom: 0; }
+  .lede strong { color: var(--text); }
+
+  /* ── TOC ── */
+  nav.toc {
+    background: var(--surface2); border: 1px solid var(--border); border-radius: 10px;
+    padding: 14px 18px; margin-bottom: 40px;
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 8px 24px;
+  }
+  nav.toc a { display: flex; align-items: baseline; gap: 8px; color: var(--text); font-size: 13px; padding: 2px 0; }
+  nav.toc a:hover { color: var(--accent2); }
+  nav.toc .toc-num { color: var(--muted); font-size: 11px; font-weight: 700; min-width: 18px; }
+
+  /* ── Section frame ── */
+  section.section { scroll-margin-top: 16px; margin-top: 56px; }
+  .sec-num { font-size: 10px; color: var(--accent); font-weight: 800; letter-spacing: 2px; text-transform: uppercase; }
+  .sec-h { font-size: 22px; font-weight: 800; margin: 6px 0 8px; letter-spacing: -0.3px; }
+  .sec-lede { color: var(--text2); max-width: 760px; margin: 0; }
+  .sub-h { font-size: 14px; font-weight: 700; margin: 28px 0 8px; color: var(--text); text-transform: uppercase; letter-spacing: 1px; }
+  .sub-h .meta { font-weight: 500; text-transform: none; letter-spacing: 0; color: var(--muted); font-size: 11px; margin-left: 8px; }
+
+  /* ── Tables ── */
+  table.audit {
+    width: 100%; border-collapse: collapse;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden;
+    font-size: 12.5px;
+  }
+  table.audit th, table.audit td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--border2); vertical-align: top; }
+  table.audit th { background: var(--surface2); color: var(--text2); font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 0.6px; }
+  table.audit tbody tr:last-child td { border-bottom: 0; }
+  table.audit td.mono { font-family: 'SF Mono', Menlo, Consolas, monospace; font-size: 11.5px; color: var(--text2); }
+  table.audit .pill {
+    display: inline-block; padding: 1px 7px; border-radius: 4px; font-size: 10px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.4px;
+  }
+  .pill.popup    { background: rgba(80,140,220,0.12); color: #5b8fc5; }
+  .pill.sidebar  { background: rgba(13,148,136,0.14); color: var(--accent2); }
+  .pill.inline   { background: rgba(232,168,56,0.18); color: #b6802a; }
+  .pill.none     { background: var(--surface2); color: var(--muted); }
+  .pill.explicit { background: rgba(224,82,82,0.12); color: var(--danger); }
+  .pill.auto     { background: rgba(13,148,136,0.14); color: var(--accent2); }
+
+  /* ── Side-by-side compare ── */
+  .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 18px 0 8px; }
+  .compare-col {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    padding: 14px 14px 16px; min-width: 0;
+  }
+  .compare-tag {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 3px 9px; border-radius: 4px;
+    font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.6px;
+    margin-bottom: 12px;
+  }
+  .compare-tag.current  { background: rgba(224,82,82,0.10); color: var(--danger); }
+  .compare-tag.proposed { background: rgba(13,148,136,0.12); color: var(--accent2); }
+  .compare-tag::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .compare-note {
+    font-size: 11.5px; color: var(--muted); border-top: 1px dashed var(--border2);
+    margin-top: 14px; padding-top: 10px;
+  }
+  .compare-note .mono { color: var(--text2); }
+
+  /* ── Findings / gap lists ── */
+  ul.findings { padding-left: 0; list-style: none; margin: 12px 0; }
+  ul.findings li {
+    border-left: 3px solid var(--accent); padding: 6px 0 6px 12px; margin-bottom: 8px;
+    color: var(--text2); font-size: 13px;
+  }
+  ul.findings li strong { color: var(--text); }
+  ul.findings.good li { border-left-color: var(--success); }
+  ul.findings.gap  li { border-left-color: var(--danger); }
+
+  /* ── Reproductions of live app classes (so "Current" mockups look real) ── */
+  /* Project card (verbatim from styles.css:1407+) */
+  .proj-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px 12px; margin-bottom: 10px; box-shadow: 0 1px 4px rgba(0,0,0,.04); transition: box-shadow .12s, border-color .12s; }
+  .proj-card:hover { box-shadow: var(--shadow-md); border-color: var(--border2); }
+  .proj-card-top { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; flex-wrap: wrap; }
+  .proj-name { font-size: 14px; font-weight: 700; color: var(--text); }
+  .proj-client { font-size: 14px; font-weight: 700; color: var(--text); }
+  .proj-client::before { content: '- '; }
+  .proj-desc { font-size: 11px; color: var(--muted); flex: 1; min-width: 60px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .proj-total { font-size: 13px; font-weight: 800; color: var(--text); font-variant-numeric: tabular-nums; margin-left: auto; }
+  .proj-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; padding-top: 8px; border-top: 1px dashed var(--border2); }
+  .proj-strip.cols-3 { grid-template-columns: repeat(3, 1fr); }
+  .proj-act { display: flex; align-items: stretch; border: 1px solid var(--border); border-radius: 6px; background: var(--surface2); overflow: hidden; }
+  .proj-act-main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 7px; padding: 4px 9px; cursor: pointer; color: var(--text2); }
+  .proj-act-main svg { width: 13px; height: 13px; flex-shrink: 0; }
+  .proj-act-label { font-size: 11px; font-weight: 600; }
+  .proj-act-count { font-size: 11px; font-weight: 700; color: var(--accent2); background: rgba(13,148,136,.12); padding: 1px 7px; border-radius: 10px; margin-left: auto; font-variant-numeric: tabular-nums; }
+  .proj-act-money { font-size: 10px; color: var(--muted); font-weight: 600; }
+  .proj-act.empty .proj-act-count { color: var(--muted); background: var(--surface2); }
+  .proj-act.empty .proj-act-main { color: var(--muted); }
+  .proj-act-add { width: 26px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: var(--surface); border-left: 1px solid var(--border); color: var(--muted); font-size: 13px; font-weight: 700; cursor: pointer; }
+  .proj-footer-row { display: flex; gap: 6px; padding: 6px 12px 0; justify-content: flex-end; }
+  .badge { display: inline-block; padding: 1px 6px; border-radius: 4px; font-size: 9px; font-weight: 700; }
+  .badge-blue { background: rgba(80,140,220,0.16); color: #5b8fc5; }
+  .badge-green { background: rgba(61,153,112,0.16); color: var(--success); }
+  .badge-gray { background: var(--surface2); color: var(--muted); }
+  .badge-red { background: rgba(224,82,82,0.16); color: var(--danger); }
+
+  /* Quote card (verbatim from styles.css:762) */
+  .quote-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; margin-bottom: 8px; }
+  .qc-header { display: flex; padding: 10px 16px 8px; }
+  .qc-title { font-size: 14px; font-weight: 700; color: var(--text); }
+  .qc-meta  { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .qc-total { font-size: 14px; font-weight: 800; color: var(--text); align-self: center; font-variant-numeric: tabular-nums; }
+  .qc-notes-strip { border-top: 1px solid var(--border2); padding: 8px 16px; background: var(--surface); font-size: 11px; color: var(--text2); }
+  .qc-footer { display: flex; gap: 6px; padding: 8px 12px; border-top: 1px solid var(--border2); align-items: center; }
+
+  /* Status pipeline */
+  .oc-pipeline { display: flex; align-items: center; padding: 6px 16px; overflow-x: auto; }
+  .pipe-step { display: flex; flex-direction: column; align-items: center; flex-shrink: 0; min-width: 50px; }
+  .pipe-dot { width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--border); background: var(--border); }
+  .pipe-label { font-size: 9px; color: var(--muted); margin-top: 4px; text-transform: uppercase; font-weight: 700; letter-spacing: 0.4px; }
+  .pipe-line { flex: 1; height: 2px; background: var(--border); margin: 0 4px 14px; }
+  .pipe-line.pipe-line-done { background: var(--success); }
+  .pipe-step.pipe-active .pipe-label { color: var(--text); }
+  .pipe-step.pipe-done .pipe-dot { background: var(--success); border-color: var(--success); }
+
+  /* Order card */
+  .order-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; margin-bottom: 8px; }
+  .order-card.order-overdue { border-color: rgba(224,82,82,0.5); }
+  .oc-header { display: flex; padding: 10px 16px 8px; gap: 12px; }
+  .oc-info { flex: 1; min-width: 0; }
+  .oc-title-row { display: flex; align-items: center; gap: 8px; }
+  .oc-title { font-size: 14px; font-weight: 700; color: var(--text); }
+  .oc-meta { display: flex; gap: 10px; align-items: center; font-size: 11px; color: var(--muted); margin-top: 3px; }
+  .oc-value { font-size: 14px; font-weight: 800; color: var(--text); font-variant-numeric: tabular-nums; }
+  .oc-footer { display: flex; gap: 6px; padding: 6px 12px; border-top: 1px solid var(--border2); align-items: center; }
+
+  /* Buttons */
+  .btn { padding: 4px 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); color: var(--text2); font-size: 11px; font-weight: 600; cursor: pointer; }
+  .btn:hover { border-color: var(--text2); }
+  .btn-danger { color: var(--danger); }
+  .btn-flex { flex: 1; text-align: center; }
+
+  /* Stock row (current spreadsheet look) */
+  .stock-tbl { width: 100%; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--surface); border-collapse: collapse; font-size: 12px; }
+  .stock-tbl th, .stock-tbl td { padding: 7px 10px; border-bottom: 1px solid var(--border2); }
+  .stock-tbl th { background: var(--surface2); color: var(--text2); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; text-align: left; }
+  .stock-tbl tbody tr:hover { background: var(--accent-dim); cursor: pointer; }
+  .stock-qpill { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 11px; font-weight: 700; }
+  .stock-qpill.ok { background: rgba(61,153,112,0.14); color: var(--success); }
+  .stock-qpill.low { background: rgba(224,82,82,0.14); color: var(--danger); }
+
+  /* Sidebar form mocks */
+  .sb-mock {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+    padding: 14px; font-size: 12px;
+  }
+  .sb-mock .pf-row { display: flex; gap: 6px; margin-bottom: 6px; }
+  .sb-mock label { display: block; font-size: 10px; color: var(--muted); font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 3px; }
+  .sb-mock .pf input, .sb-mock .pf textarea, .sb-mock .pf select {
+    width: 100%; border: 1px solid var(--border); border-radius: 5px; background: var(--surface2);
+    padding: 5px 7px; font-size: 12px; color: var(--text); font-family: inherit;
+  }
+  .sb-mock .pf { margin-bottom: 8px; }
+  .sb-mock .pf-half { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .sb-add-btn {
+    display: block; width: 100%; text-align: center;
+    padding: 8px; border-radius: 6px; background: var(--accent); color: #fff;
+    font-size: 12px; font-weight: 700; border: 0; cursor: pointer; margin-top: 8px;
+  }
+  .smart-input-wrap-mock { position: relative; display: flex; gap: 0; border: 1px solid var(--border); border-radius: 5px; background: var(--surface2); overflow: hidden; }
+  .smart-input-wrap-mock input { border: 0; background: transparent; flex: 1; padding: 5px 7px; font-size: 12px; color: var(--text); font-family: inherit; }
+  .smart-input-add-mock { width: 28px; border-left: 1px solid var(--border); color: var(--accent); font-weight: 700; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+
+  /* Unsaved pill (verbatim from styles.css:227) */
+  .cl-unsaved-pill { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; color: var(--accent); background: var(--accent-dim); padding: 1px 6px; border-radius: 3px; display: inline-flex; align-items: center; gap: 4px; }
+  .cl-unsaved-pill::before { content: '●'; font-size: 8px; }
+  .cl-unsaved-pill.is-saved { color: var(--success); background: rgba(61,153,112,0.14); }
+  .cl-unsaved-pill.is-saved::before { content: '✓'; font-size: 9px; }
+
+  /* Editor head (verbatim from styles.css:1941) */
+  .ed-head { display: flex; gap: 10px; padding: 12px 14px; border-bottom: 1px solid var(--border); background: var(--surface); align-items: flex-start; }
+  .ed-head .back-btn { width: 24px; height: 24px; border: 0; background: transparent; color: var(--muted); display: flex; align-items: center; justify-content: center; border-radius: 4px; cursor: pointer; flex-shrink: 0; margin-top: 4px; }
+  .ed-head .head-icon { width: 20px; height: 20px; color: var(--text); margin-top: 6px; flex-shrink: 0; }
+  .ed-head .head-text { min-width: 0; flex: 1; }
+  .ed-head .title { font-size: 14px; font-weight: 700; color: var(--text); }
+  .ed-head .sub { font-size: 12px; color: var(--muted); margin-top: 1px; }
+  .ed-status { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 700; text-transform: uppercase; background: var(--surface2); color: var(--muted); }
+  .ed-status[data-status="approved"]   { background: rgba(61,153,112,0.12); color: var(--success); }
+  .ed-status[data-status="production"] { background: rgba(80,140,220,0.12); color: #5b8fc5; }
+  .ed-status[data-status="active"]     { background: rgba(80,140,220,0.12); color: #5b8fc5; }
+
+  /* ph-back (drill-in project header) */
+  .ph-back-mock {
+    display: flex; align-items: center; gap: 10px;
+    padding: 12px 14px; background: rgba(80,140,220,0.06); border: 1px solid rgba(80,140,220,0.18); border-radius: 8px;
+  }
+  .ph-back-mock .back-arrow { width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border-radius: 4px; background: rgba(80,140,220,0.12); color: #5b8fc5; cursor: pointer; }
+  .ph-back-mock .ph-title { font-size: 14px; font-weight: 700; color: var(--text); }
+
+  /* ── Proposed: .entity-card unified anatomy ── */
+  .entity-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    box-shadow: 0 1px 4px rgba(0,0,0,.04); overflow: hidden; margin-bottom: 8px;
+    transition: box-shadow .12s, border-color .12s;
+  }
+  .entity-card:hover { box-shadow: var(--shadow-md); border-color: var(--border2); }
+  .ec-header { display: flex; align-items: center; gap: 10px; padding: 10px 14px 6px; }
+  .ec-icon { width: 22px; height: 22px; color: var(--text2); flex-shrink: 0; }
+  .ec-icon svg { width: 100%; height: 100%; }
+  .ec-title { font-size: 14px; font-weight: 700; color: var(--text); }
+  .ec-id { font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .ec-status-chip { display: inline-block; padding: 1px 6px; border-radius: 4px; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; }
+  .ec-value { margin-left: auto; font-size: 14px; font-weight: 800; color: var(--text); font-variant-numeric: tabular-nums; }
+  .ec-subtitle {
+    display: flex; align-items: center; gap: 6px; padding: 0 14px 8px; font-size: 11.5px; color: var(--text2);
+  }
+  .ec-link { color: var(--accent2); cursor: pointer; }
+  .ec-link:hover { text-decoration: underline; }
+  .ec-link-sep { color: var(--muted); }
+  .ec-timeline { padding: 6px 14px; border-top: 1px solid var(--border2); }
+  .ec-strip {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px;
+    padding: 8px 14px; border-top: 1px dashed var(--border2);
+  }
+  .ec-strip.cols-3 { grid-template-columns: repeat(3, 1fr); }
+  .ec-strip.cols-2 { grid-template-columns: repeat(2, 1fr); }
+  .ec-act { display: flex; align-items: stretch; border: 1px solid var(--border); border-radius: 6px; background: var(--surface2); overflow: hidden; }
+  .ec-act-main { flex: 1; display: flex; align-items: center; gap: 7px; padding: 4px 9px; cursor: pointer; color: var(--text2); }
+  .ec-act-main svg { width: 13px; height: 13px; }
+  .ec-act-label { font-size: 11px; font-weight: 600; }
+  .ec-act-count { font-size: 11px; font-weight: 700; color: var(--accent2); background: rgba(13,148,136,.12); padding: 1px 7px; border-radius: 10px; margin-left: auto; }
+  .ec-act-add { width: 26px; display: flex; align-items: center; justify-content: center; background: var(--surface); border-left: 1px solid var(--border); color: var(--muted); font-size: 13px; font-weight: 700; cursor: pointer; }
+  .ec-footer { display: flex; gap: 6px; padding: 6px 12px 10px; border-top: 1px solid var(--border2); }
+  .ec-footer .ec-footer-spacer { flex: 1; }
+
+  /* Filter pill (proposed for drill-in context) */
+  .filter-pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 9px; border-radius: 999px;
+    background: rgba(80,140,220,0.10); color: #5b8fc5;
+    border: 1px solid rgba(80,140,220,0.24);
+    font-size: 11.5px; font-weight: 700;
+  }
+  .filter-pill .x { cursor: pointer; padding: 0 0 0 4px; opacity: 0.7; }
+  .filter-pill .x:hover { opacity: 1; }
+
+  /* ── Roadmap ── */
+  .roadmap { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 18px; }
+  .roadmap-block { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px 16px 12px; }
+  .roadmap-block h4 {
+    font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.8px;
+    margin: 0 0 4px; display: flex; align-items: center; gap: 8px;
+  }
+  .roadmap-block .effort { color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: 0; text-transform: none; }
+  .roadmap-block.quick h4 { color: var(--success); }
+  .roadmap-block.med h4   { color: var(--accent); }
+  .roadmap-block.big h4   { color: var(--accent2); }
+  .roadmap-block ul { padding-left: 18px; margin: 8px 0 0; }
+  .roadmap-block li { margin-bottom: 8px; font-size: 12.5px; color: var(--text2); line-height: 1.45; }
+  .roadmap-block li strong { color: var(--text); font-weight: 700; }
+  .roadmap-block li .where { display: block; font-family: 'SF Mono', Menlo, Consolas, monospace; font-size: 10.5px; color: var(--muted); margin-top: 2px; }
+
+  /* ── Out-of-scope footer note ── */
+  .oos {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    padding: 18px 22px; margin-top: 56px;
+  }
+  .oos h3 { margin: 0 0 8px; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; color: var(--text2); }
+  .oos ul { margin: 0; padding-left: 18px; color: var(--muted); font-size: 12.5px; }
+  .oos li { margin-bottom: 4px; }
+
+  /* Single-column at narrow viewports */
+  @media (max-width: 900px) {
+    .compare, .roadmap { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="doc">
+
+  <!-- ── Header ── -->
+  <header class="doc-head">
+    <div>
+      <h1>ProCabinet.App — UX Consistency Review</h1>
+      <div class="subtitle">11 May 2026 · Tactical scope only · No new IA, no schema changes</div>
+    </div>
+    <button class="theme-toggle" onclick="document.documentElement.classList.toggle('dark')">Toggle dark</button>
+  </header>
+
+  <div class="lede">
+    <p>The app has nine tabs and the pre-launch refactor has already pulled the big interaction patterns into shape — every entity tab opens its records in the <strong>sidebar editor</strong>, not a modal. The drift that remains is smaller and more specific: <strong>card layout</strong>, <strong>save mechanic</strong>, <strong>unsaved-state visibility</strong>, and <strong>foreign-key clickability</strong>.</p>
+    <p>One naming gotcha to flag up front — functions like <code>_openClientPopup</code> / <code>_openStockPopup</code> / <code>_openOrderPopup</code> are <strong>legacy aliases</strong>. They sound like they open modals; they actually call <code>switchSection()</code> + <code>edit{Entity}()</code> or <code>load{Entity}IntoSidebar()</code>. The drill-in is uniformly the sidebar.</p>
+    <p>Mockups in the left column are <strong>verbatim</strong> reproductions of the live app's classes; the right column shows the suggested unified version using the same design tokens.</p>
+  </div>
+
+  <nav class="toc">
+    <a href="#sec-1"><span class="toc-num">01</span> Tab access &amp; drill-in</a>
+    <a href="#sec-2"><span class="toc-num">02</span> Row / item layout</a>
+    <a href="#sec-3"><span class="toc-num">03</span> Sidebar create &amp; save</a>
+    <a href="#sec-4"><span class="toc-num">04</span> Cross-tab linking</a>
+    <a href="#sec-5"><span class="toc-num">05</span> Phased roadmap</a>
+  </nav>
+
+  <!-- ════════════════════════════════════════════════════════════════════ -->
+  <!-- SECTION 1 — Tab access & drill-in -->
+  <!-- ════════════════════════════════════════════════════════════════════ -->
+  <section class="section" id="sec-1">
+    <div class="sec-num">Section 01</div>
+    <h2 class="sec-h">Tab access &amp; drill-in behavior</h2>
+    <p class="sec-lede">Drill-in is <strong>already unified</strong> across all entity tabs — clicking a card or row opens the record in the sidebar editor of that tab. The remaining inconsistencies are smaller: sidebar gate state, sub-tab convention, schedule's twin click models, and the misleading <code>_open*Popup</code> function names.</p>
+
+    <div class="sub-h">Current state per tab <span class="meta">index.html:166–203 · src/settings.js:279</span></div>
+
+    <table class="audit">
+      <thead><tr><th>Tab</th><th>Drill-in</th><th>Editor body</th><th>Sub-tabs?</th><th>Filter style</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Dashboard</strong></td><td><span class="pill none">none</span> widgets open destination tab + sidebar</td><td>—</td><td>—</td><td>—</td></tr>
+        <tr><td><strong>Cut List</strong></td><td><span class="pill sidebar">sidebar</span> <code>_clOpenLibraryCutlist</code></td><td>tables + canvas</td><td>3 main tabs (Layout / Project / Library)</td><td>smart-search</td></tr>
+        <tr><td><strong>Cabinet</strong></td><td><span class="pill sidebar">sidebar</span> <code>cbSelectLine</code></td><td>builder canvas + form</td><td>2 sidebar + 2 main tabs</td><td>smart-search</td></tr>
+        <tr><td><strong>Stock</strong></td><td><span class="pill sidebar">sidebar</span> <code>_openStockPopup</code> → <code>editStockItem</code></td><td>form</td><td>—</td><td>category pills</td></tr>
+        <tr><td><strong>Quote</strong></td><td><span class="pill sidebar">sidebar</span> <code>loadQuoteIntoSidebar</code></td><td>form + line-items table</td><td>line-kind buttons (informal)</td><td>status tabs + sort</td></tr>
+        <tr><td><strong>Orders</strong></td><td><span class="pill sidebar">sidebar</span> <code>loadOrderIntoSidebar</code></td><td>form + line-items table</td><td>line-kind buttons (informal)</td><td>status tabs + sort</td></tr>
+        <tr><td><strong>Schedule</strong></td><td><span class="pill sidebar">sidebar</span> calendar bar 1-click; list <strong>double</strong>-click</td><td>no editor — opens via Orders tab</td><td>—</td><td>status filter + sort</td></tr>
+        <tr><td><strong>Projects</strong></td><td><span class="pill sidebar">sidebar</span> <code>_openProjectPopup</code> → <code>_pjLoadProject</code></td><td>form (autosave)</td><td>—</td><td>filter tabs + sort</td></tr>
+        <tr><td><strong>Clients</strong></td><td><span class="pill sidebar">sidebar</span> <code>_openClientPopup</code> → <code>editClient</code></td><td>form</td><td>—</td><td>sort dropdown</td></tr>
+      </tbody>
+    </table>
+
+    <ul class="findings good">
+      <li><strong>Drill-in is consistent.</strong> Every entity tab loads the clicked record into the sidebar editor of the same tab. The <code>_open*Popup</code> function names are misleading — they're all aliases that call <code>switchSection()</code> + <code>edit{Entity}()</code>.</li>
+    </ul>
+
+    <ul class="findings gap">
+      <li><strong>Schedule has two click models.</strong> Calendar bar: single-click opens the order. Sidebar list: <em>single-click scrolls the calendar</em>, <em>double-click</em> opens the order. (<code>schedule.js:174</code> · <code>schedule.js:289</code>.) Every other tab in the app opens an editor on single-click.</li>
+      <li><strong>Projects has a 2-state sidebar gate.</strong> When no client is picked the sidebar shows a "pick client" picker + recent-clients list (<code>_renderProjectsSidebarGate</code> · <code>clients.js:377</code>). Clients/Stock/Quotes/Orders don't have a gate — sidebar is always ready to take input. Justifiable for Projects (every project needs a client) but worth flagging.</li>
+      <li><strong>Sub-tab convention is split three ways.</strong> Cut List has a clean 3-tab strip at the top of the main panel. Cabinet has 2 sub-tabs in the sidebar (Builder/Rates) <em>and</em> 2 in the main panel (Project/Library). Quotes/Orders treat the line-kind buttons (Cabinets/Items/Labour) as informal pseudo-tabs.</li>
+      <li><strong>Filter UI varies per tab.</strong> Status tabs (Quotes/Orders/Schedule), category pills (Stock), filter+sort dropdowns (Projects), sort-only (Clients), pure search (Cabinet/Cut List), nothing (Dashboard).</li>
+      <li><strong>Function names mislead readers.</strong> <code>_openClientPopup</code> / <code>_openProjectPopup</code> / <code>_openStockPopup</code> / <code>_openOrderPopup</code> / <code>_openQuotePopup</code> all <em>look</em> like they open modal popups. They don't — they switch tab + load into sidebar. Rename to <code>_load{Entity}Editor</code> would match what they do.</li>
+    </ul>
+
+    <div class="sub-h">Proposal · normalise Schedule click model</div>
+    <p style="margin: 0 0 8px; color: var(--text2);">Make the Schedule sidebar list match every other list in the app: <strong>single-click opens the order editor</strong>. The "scroll to bar" affordance becomes a separate icon button on the row, or fires automatically when you open the editor.</p>
+
+    <div class="compare">
+      <!-- Current: Schedule list double-click -->
+      <div class="compare-col">
+        <span class="compare-tag current">Current · Schedule sidebar list</span>
+        <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 8px; max-width: 320px;">
+          <div style="font-size: 11px; color: var(--muted); margin-bottom: 6px; font-weight: 700; letter-spacing: 0.4px; text-transform: uppercase;">Jobs · 4 active</div>
+          <div style="display:flex;align-items:center;gap:8px;padding:5px 8px;margin-bottom:2px;border-radius:6px;background:var(--surface2);">
+            <div style="width:9px;height:9px;border-radius:50%;background:#e8a838;"></div>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:11px;font-weight:600;color:var(--text);">#0042 - Smith Kitchen — Jane Smith</div>
+              <div style="font-size:9px;color:var(--muted);margin-top:1px">12 May → 18 May</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;padding:5px 8px;margin-bottom:2px;border-radius:6px;background:var(--surface2);">
+            <div style="width:9px;height:9px;border-radius:50%;background:#2563eb;"></div>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:11px;font-weight:600;color:var(--text);">#0043 - Hill Pantry — Bob Hill</div>
+              <div style="font-size:9px;color:var(--muted);margin-top:1px">14 May → 19 May</div>
+            </div>
+          </div>
+        </div>
+        <div class="compare-note"><strong>1-click</strong> = <span class="mono">_scrollToSchedBar(id)</span> — scrolls the calendar to the order's bar. <strong>2-click</strong> = <span class="mono">_openOrderPopup(id)</span> = opens the editor. The interaction model is undiscoverable; users tend to click once, see the scroll, and never try double-click.</div>
+      </div>
+
+      <!-- Proposed: single-click opens editor -->
+      <div class="compare-col">
+        <span class="compare-tag proposed">Proposed · Schedule sidebar list</span>
+        <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 8px; max-width: 320px;">
+          <div style="font-size: 11px; color: var(--muted); margin-bottom: 6px; font-weight: 700; letter-spacing: 0.4px; text-transform: uppercase;">Jobs · 4 active</div>
+          <div style="display:flex;align-items:center;gap:6px;padding:5px 8px;margin-bottom:2px;border-radius:6px;background:var(--surface2);">
+            <div style="width:9px;height:9px;border-radius:50%;background:#e8a838;"></div>
+            <div style="flex:1;min-width:0;cursor:pointer;">
+              <div style="font-size:11px;font-weight:600;color:var(--text);">#0042 - Smith Kitchen — Jane Smith</div>
+              <div style="font-size:9px;color:var(--muted);margin-top:1px">12 May → 18 May</div>
+            </div>
+            <button title="Scroll calendar to this job" style="width:22px;height:22px;border:0;background:transparent;color:var(--muted);cursor:pointer;border-radius:4px;font-size:13px;">⤓</button>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;padding:5px 8px;margin-bottom:2px;border-radius:6px;background:var(--surface2);">
+            <div style="width:9px;height:9px;border-radius:50%;background:#2563eb;"></div>
+            <div style="flex:1;min-width:0;cursor:pointer;">
+              <div style="font-size:11px;font-weight:600;color:var(--text);">#0043 - Hill Pantry — Bob Hill</div>
+              <div style="font-size:9px;color:var(--muted);margin-top:1px">14 May → 19 May</div>
+            </div>
+            <button title="Scroll calendar to this job" style="width:22px;height:22px;border:0;background:transparent;color:var(--muted);cursor:pointer;border-radius:4px;font-size:13px;">⤓</button>
+          </div>
+        </div>
+        <div class="compare-note">Row click opens the order editor (consistent with every other list in the app). The "jump to calendar" affordance moves to a dedicated <span class="mono">⤓</span> icon — discoverable, hover-titled, doesn't fight the click model.</div>
+      </div>
+    </div>
+
+    <div class="sub-h">Proposal · sub-tab convention</div>
+    <p style="margin: 0; color: var(--text2);">Adopt Cut List's pattern: a single horizontal <code>.sub-tab-strip</code> at the top of the main panel. Move Cabinet's sidebar sub-tabs (Builder/Rates) into the main panel. Drop the line-kind buttons-as-tabs pretence in Quotes/Orders — they already work fine as add-line buttons.</p>
+
+    <div class="sub-h">Proposal · rename legacy function aliases</div>
+    <p style="margin: 0; color: var(--text2);">Pure rename pass — purely cosmetic, but the current names actively confuse anyone reading the codebase for the first time:</p>
+    <table class="audit" style="margin-top: 8px;">
+      <thead><tr><th>Current name</th><th>Proposed name</th><th>What it actually does</th></tr></thead>
+      <tbody>
+        <tr><td class="mono">_openClientPopup</td><td class="mono">_loadClientEditor</td><td><span class="mono">switchSection('clients')</span> + <span class="mono">editClient(id)</span></td></tr>
+        <tr><td class="mono">_openProjectPopup</td><td class="mono">_loadProjectEditor</td><td>switchSection + <span class="mono">_setProjectsActiveClient</span> + <span class="mono">_pjLoadProject</span></td></tr>
+        <tr><td class="mono">_openStockPopup</td><td class="mono">_loadStockEditor</td><td>switchSection + <span class="mono">editStockItem(id)</span></td></tr>
+        <tr><td class="mono">_openOrderPopup</td><td class="mono">_loadOrderEditor</td><td>switchSection + <span class="mono">loadOrderIntoSidebar(id)</span></td></tr>
+        <tr><td class="mono">_openQuotePopup</td><td class="mono">_loadQuoteEditor</td><td>switchSection + <span class="mono">loadQuoteIntoSidebar(id)</span></td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ════════════════════════════════════════════════════════════════════ -->
+  <!-- SECTION 2 — Row / item layout -->
+  <!-- ════════════════════════════════════════════════════════════════════ -->
+  <section class="section" id="sec-2">
+    <div class="sec-num">Section 02</div>
+    <h2 class="sec-h">Row / item layout &amp; content</h2>
+    <p class="sec-lede">Every list view has its own card class, its own metadata layout, and its own action position. The Project card's <code>.proj-strip</code> action pattern is the closest thing to a winning design — it should generalise.</p>
+
+    <div class="sub-h">Current card anatomy per entity</div>
+    <table class="audit">
+      <thead><tr><th>Entity</th><th>Class</th><th>Status UI</th><th>Action strip</th><th>Footer</th><th>File:line</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Client</strong></td><td class="mono">(inline div, no class)</td><td>none</td><td>1-cell <span class="mono">.proj-act</span> (Projects)</td><td>Duplicate / Delete</td><td class="mono">clients.js:789</td></tr>
+        <tr><td><strong>Project</strong></td><td class="mono">.proj-card</td><td>static badge</td><td><strong>4-cell .proj-strip</strong> (Cabinets / Cut Lists / Quotes / Orders)</td><td>Duplicate / Delete</td><td class="mono">clients.js:931</td></tr>
+        <tr><td><strong>Quote</strong></td><td class="mono">.quote-card</td><td>clickable .oc-pipeline (3 steps)</td><td>3-cell .proj-strip.cols-3 (line-kinds, not related entities)</td><td>→ Order / PDF / Dup / Del</td><td class="mono">quotes.js:413</td></tr>
+        <tr><td><strong>Order</strong></td><td class="mono">.order-card</td><td>clickable .oc-pipeline (5 steps)</td><td><strong>none</strong></td><td>4 PDF buttons + Dup/Del</td><td class="mono">orders.js:169</td></tr>
+        <tr><td><strong>Stock</strong></td><td class="mono">.stock-row (in &lt;table&gt;)</td><td>low/ok qpill</td><td>hover icon (Add to Cut List)</td><td>inline qty edit</td><td class="mono">stock.js:817</td></tr>
+        <tr><td><strong>Cut List (library)</strong></td><td class="mono">(inline div, no class)</td><td>"editing" tag when active</td><td>—</td><td>Link to Cabinet / Dup / Del</td><td class="mono">cutlist.js:4230</td></tr>
+        <tr><td><strong>Schedule</strong></td><td class="mono">.sched-event</td><td>colour-coded lane</td><td>—</td><td>—</td><td class="mono">schedule.js:55</td></tr>
+        <tr><td><strong>Dashboard</strong></td><td class="mono">.card / .dash-row</td><td>—</td><td>—</td><td>—</td><td class="mono">dashboard.js:106</td></tr>
+      </tbody>
+    </table>
+
+    <ul class="findings">
+      <li><strong>Class names lack convention.</strong> <code>.proj-card</code> / <code>.quote-card</code> / <code>.order-card</code> / <code>.stock-row</code> / <code>.card</code> / <code>.dash-row</code> — every entity invented its own, plus two cards have no class at all (Client card, Cut-List library card use inline-styled divs).</li>
+      <li><strong>The <code>.proj-strip</code> action-strip pattern is the de-facto winner</strong> but applied inconsistently. Project has 4 cells (related entities), Quote has 3 (line-kinds — different concept!), Client has 1 (Projects only), Order has none, Cut-List has none, Stock has none.</li>
+      <li><strong>Order card is the standout.</strong> No related-entity action strip; instead it dumps 4 PDF document buttons into the footer (Confirmation / Pro-forma / Invoice / Work Order) where Project/Quote put a clean strip.</li>
+      <li><strong>Status visualisation diverges sharply.</strong> Clickable timeline (Quotes/Orders), static badge (Projects), qty pill (Stock), "editing" tag (Cut-List), nothing on Clients/Dashboard.</li>
+      <li><strong>Metadata layout has no grid.</strong> Project: 5 fields on one line. Order: 2-line title + meta + value. Quote: 3-part header + notes preview. Client: avatar + chips. Nothing aligns; CSS for each card is a separate block.</li>
+    </ul>
+
+    <div class="sub-h">Proposal · unified <code>.entity-card</code> anatomy</div>
+    <p style="margin: 0 0 4px; color: var(--text2);">One card shell with named slots. Cards opt into the slots they need; layout stays consistent. The Project card already has 80% of this — proposal pulls the rest in line.</p>
+
+    <div class="compare">
+      <!-- Current: Quote card -->
+      <div class="compare-col">
+        <span class="compare-tag current">Current · Quote card</span>
+        <div class="quote-card">
+          <div class="qc-header">
+            <div style="flex: 1; min-width: 0;">
+              <div class="qc-title"><span style="flex:1">Q-0042 · Smith Kitchen - Jane Smith</span> <span class="badge badge-blue">Sent</span></div>
+              <div class="qc-meta">8 May 2026</div>
+            </div>
+            <span class="qc-total">$12,840</span>
+          </div>
+          <div class="qc-notes-strip">Pantry on left, fridge run on right. Walnut veneer doors.</div>
+          <div class="oc-pipeline">
+            <div class="pipe-step pipe-done"><div class="pipe-dot"></div><div class="pipe-label">Draft</div></div>
+            <div class="pipe-line pipe-line-done"></div>
+            <div class="pipe-step pipe-active"><div class="pipe-dot" style="background:#5b8fc5;border-color:#5b8fc5"></div><div class="pipe-label">Sent</div></div>
+            <div class="pipe-line"></div>
+            <div class="pipe-step"><div class="pipe-dot"></div><div class="pipe-label">Approved</div></div>
+          </div>
+          <div class="proj-strip cols-3" style="padding: 8px 14px;">
+            <div class="proj-act"><div class="proj-act-main"><span style="width:13px;height:13px;display:inline-block">▣</span><span class="proj-act-label">Cabinets</span><span class="proj-act-count">6</span></div><div class="proj-act-add">+</div></div>
+            <div class="proj-act empty"><div class="proj-act-main"><span style="width:13px;height:13px;display:inline-block">≡</span><span class="proj-act-label">Items</span><span class="proj-act-count">0</span></div><div class="proj-act-add">+</div></div>
+            <div class="proj-act empty"><div class="proj-act-main"><span style="width:13px;height:13px;display:inline-block">⏱</span><span class="proj-act-label">Labour</span><span class="proj-act-count">0</span></div><div class="proj-act-add">+</div></div>
+          </div>
+          <div class="qc-footer">
+            <button class="btn">→ Order</button>
+            <button class="btn">PDF</button>
+            <span style="flex:1"></span>
+            <button class="btn">Duplicate</button>
+            <button class="btn btn-danger">Delete</button>
+          </div>
+        </div>
+        <div class="compare-note">Title bundles quote#, project, client into a single ellipsing string. <span class="mono">.proj-strip.cols-3</span> reused for line-kinds (not related entities). Client name is not clickable.</div>
+      </div>
+
+      <!-- Proposed: Quote card via .entity-card -->
+      <div class="compare-col">
+        <span class="compare-tag proposed">Proposed · Quote via .entity-card</span>
+        <div class="entity-card">
+          <div class="ec-header">
+            <span class="ec-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></span>
+            <span class="ec-title">Smith Kitchen</span>
+            <span class="ec-id">#Q-0042</span>
+            <span class="ec-status-chip" style="background: rgba(80,140,220,0.16); color: #5b8fc5;">Sent</span>
+            <span class="ec-value">$12,840</span>
+          </div>
+          <div class="ec-subtitle">
+            <span class="ec-link">Jane Smith</span>
+            <span class="ec-link-sep">·</span>
+            <span class="ec-link">Smith Kitchen project</span>
+            <span class="ec-link-sep">·</span>
+            <span style="color: var(--muted);">8 May 2026</span>
+          </div>
+          <div class="ec-timeline">
+            <div class="oc-pipeline" style="padding: 0;">
+              <div class="pipe-step pipe-done"><div class="pipe-dot"></div><div class="pipe-label">Draft</div></div>
+              <div class="pipe-line pipe-line-done"></div>
+              <div class="pipe-step pipe-active"><div class="pipe-dot" style="background:#5b8fc5;border-color:#5b8fc5"></div><div class="pipe-label">Sent</div></div>
+              <div class="pipe-line"></div>
+              <div class="pipe-step"><div class="pipe-dot"></div><div class="pipe-label">Approved</div></div>
+            </div>
+          </div>
+          <div class="ec-strip cols-3">
+            <div class="ec-act"><div class="ec-act-main">▣ <span class="ec-act-label">Cabinets</span><span class="ec-act-count">6</span></div><div class="ec-act-add">+</div></div>
+            <div class="ec-act"><div class="ec-act-main">≡ <span class="ec-act-label">Items</span><span class="ec-act-count">0</span></div><div class="ec-act-add">+</div></div>
+            <div class="ec-act"><div class="ec-act-main">⏱ <span class="ec-act-label">Labour</span><span class="ec-act-count">0</span></div><div class="ec-act-add">+</div></div>
+          </div>
+          <div class="ec-footer">
+            <button class="btn">→ Order</button>
+            <button class="btn">PDF</button>
+            <span class="ec-footer-spacer"></span>
+            <button class="btn">Duplicate</button>
+            <button class="btn btn-danger">Delete</button>
+          </div>
+        </div>
+        <div class="compare-note">Same visual structure as Order, Project, Client. <strong>Client name and project name are clickable</strong> (with <span class="mono">stopPropagation</span>) → drill into Clients/Projects tab.</div>
+      </div>
+    </div>
+
+    <div class="sub-h">Proposed slots</div>
+    <table class="audit">
+      <thead><tr><th>Slot</th><th>Purpose</th><th>Carries over from</th></tr></thead>
+      <tbody>
+        <tr><td class="mono">.ec-header</td><td>Icon + title + small ID + status chip + primary value (right-aligned)</td><td>order-card oc-header pattern</td></tr>
+        <tr><td class="mono">.ec-subtitle</td><td>Foreign-key chain: client → project, both clickable</td><td><strong>new</strong> (project name is already in proj-card)</td></tr>
+        <tr><td class="mono">.ec-timeline</td><td>Optional clickable status pipeline</td><td>existing .oc-pipeline</td></tr>
+        <tr><td class="mono">.ec-strip</td><td>2–4 cell action strip: related entities or actions</td><td>direct adapt of .proj-strip</td></tr>
+        <tr><td class="mono">.ec-footer</td><td>Primary actions left, Duplicate/Delete right (always)</td><td>existing pattern, just standardised</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ════════════════════════════════════════════════════════════════════ -->
+  <!-- SECTION 3 — Sidebar create & save -->
+  <!-- ════════════════════════════════════════════════════════════════════ -->
+  <section class="section" id="sec-3">
+    <div class="sec-num">Section 03</div>
+    <h2 class="sec-h">Sidebar interface for creating &amp; saving</h2>
+    <p class="sec-lede">Save mechanics split into two camps. Half the tabs autosave silently; the other half need an explicit "+ Add" click. Only Projects shows a visible unsaved-state indicator.</p>
+
+    <div class="sub-h">Current save mechanic per tab</div>
+    <table class="audit">
+      <thead><tr><th>Tab</th><th>Save mechanic</th><th>Unsaved indicator?</th><th>Smart-input fn</th><th>Post-save</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Clients</strong></td><td><span class="pill explicit">explicit button</span> "+ Add Client" / "Save Changes"</td><td>none</td><td>—</td><td>form clears</td></tr>
+        <tr><td><strong>Stock</strong></td><td><span class="pill explicit">explicit button</span> "+ Add Material" / "Save Changes"</td><td>none</td><td>—</td><td>form clears</td></tr>
+        <tr><td><strong>Projects</strong></td><td><span class="pill auto">autosave</span> <code>_pjScheduleAutosave</code> 800 ms debounce</td><td><strong>.cl-unsaved-pill</strong> (●/✓/!)</td><td><code>_smartProjectsClientSuggest</code></td><td>stay in editor</td></tr>
+        <tr><td><strong>Quote</strong></td><td><span class="pill auto">autosave</span> <code>_qMarkDirty</code></td><td>silent</td><td><code>_smartQProjectSuggest</code></td><td>stay in editor</td></tr>
+        <tr><td><strong>Order</strong></td><td><span class="pill auto">autosave</span> <code>_oMarkDirty</code></td><td>silent</td><td><code>_smartOProjectSuggest</code></td><td>stay in editor</td></tr>
+        <tr><td><strong>Cut List</strong></td><td><span class="pill auto">autosave</span> <code>_clScheduleAutosave</code> per-cell blur</td><td>silent</td><td><code>_smartCLProjectSuggest</code> · <code>_smartCLStockSuggest</code></td><td>tables refresh</td></tr>
+        <tr><td><strong>Cabinet</strong></td><td><span class="pill auto">autosave</span> <code>_cbScheduleAutosave</code></td><td>silent</td><td><code>_smartCBLibrarySuggest</code></td><td>retain context</td></tr>
+      </tbody>
+    </table>
+
+    <ul class="findings gap">
+      <li><strong>Two different save models in one app.</strong> Clients and Stock require an explicit button click (<code>saveClientEdit</code> at <span class="mono">clients.js:176</span>, <code>saveStockEdit</code> at <span class="mono">stock.js:600</span>). Every other tab autosaves. Users learn the wrong mental model first if they land on Clients before Quotes.</li>
+      <li><strong>Only Projects shows save state visually.</strong> The <code>.cl-unsaved-pill</code> (●&nbsp;Unsaved → ✓&nbsp;Saved → !&nbsp;Failed) is already implemented in <span class="mono">styles.css:227</span> with full animation. Quote / Order / Cabinet / Cut-List autosave silently — users can't tell whether their typing has persisted.</li>
+      <li><strong>Smart-input function names are ad-hoc.</strong> Same UI pattern under six different names — sometimes target-first (<code>_smartQProjectSuggest</code>), sometimes source-first (<code>_smartClientSuggest</code>), sometimes library-style (<code>_smartCBLibrarySuggest</code>).</li>
+      <li><strong>Post-save behaviour differs.</strong> Clients/Stock close the form. Quotes/Orders/Projects keep the editor open — surprising on a brand-new record where the user expects a "saved" confirmation and a return to the list.</li>
+    </ul>
+
+    <div class="sub-h">Proposal · unified autosave + visible <code>.cl-unsaved-pill</code></div>
+    <div class="compare">
+      <div class="compare-col">
+        <span class="compare-tag current">Current · Clients sidebar</span>
+        <div class="sb-mock" style="max-width: 280px;">
+          <div style="font-size: 12px; font-weight: 700; color: var(--text); margin-bottom: 10px;">New Client</div>
+          <div class="pf"><label>Name</label><input value="Jane Smith"></div>
+          <div class="pf"><label>Email</label><input value="jane@example.com"></div>
+          <div class="pf"><label>Phone</label><input value=""></div>
+          <div class="pf"><label>Address</label><textarea rows="2"></textarea></div>
+          <div class="pf"><label>Notes</label><textarea rows="2"></textarea></div>
+          <button class="sb-add-btn">+ Add Client</button>
+        </div>
+        <div class="compare-note">Pattern: <span class="mono">clients.js:84-105</span>. User must remember to click the button. Until they do, nothing is saved — no indicator either way.</div>
+      </div>
+
+      <div class="compare-col">
+        <span class="compare-tag proposed">Proposed · Clients sidebar (autosave)</span>
+        <div class="sb-mock" style="max-width: 280px;">
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
+            <button class="back-btn" style="width:22px;height:22px;border:0;background:transparent;color:var(--muted);cursor:pointer;">←</button>
+            <div style="font-size: 12px; font-weight: 700; color: var(--text); flex: 1;">Jane Smith</div>
+            <span class="cl-unsaved-pill is-saved">Saved</span>
+          </div>
+          <div class="pf"><label>Name</label><input value="Jane Smith"></div>
+          <div class="pf"><label>Email</label><input value="jane@example.com"></div>
+          <div class="pf"><label>Phone</label><input value=""></div>
+          <div class="pf"><label>Address</label><textarea rows="2"></textarea></div>
+          <div class="pf"><label>Notes</label><textarea rows="2"></textarea></div>
+          <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border2); display: flex; gap: 6px; justify-content: flex-end;">
+            <button class="btn">Duplicate</button>
+            <button class="btn btn-danger">Delete</button>
+          </div>
+        </div>
+        <div class="compare-note">Autosave debounce on every blur (same impl as <span class="mono">_pjFormChanged</span> in <span class="mono">src/projects.js</span> post-commit <span class="mono">176f310</span>). State always visible in pill: ● Unsaved → ✓ Saved → ! Failed (retry on click).</div>
+      </div>
+    </div>
+
+    <div class="sub-h">Proposal · sidebar shell standard</div>
+    <p style="margin: 0; color: var(--text2);">Every sidebar editor in the app follows the same 3-block layout:</p>
+    <ol style="color: var(--text2); margin-top: 6px; padding-left: 22px; line-height: 1.7;">
+      <li><strong>Header</strong> — back arrow · entity icon · title · status chip · <code>.cl-unsaved-pill</code>. This is the existing <code>.ed-head</code> from the mockup-J port.</li>
+      <li><strong>Body</strong> — fields grouped in <code>.pf</code> rows. Smart-inputs (<code>.smart-input-wrap</code> + <code>+</code> popup button) for FK relations.</li>
+      <li><strong>Footer</strong> — Duplicate / Delete (when editing); nothing (when creating — autosave handles it).</li>
+    </ol>
+
+    <div class="sub-h">Proposal · smart-input naming</div>
+    <p style="margin: 0; color: var(--text2);">Rename to <code>_smart{Entity}For{Context}Suggest()</code>. Listed as a follow-up — not a blocker, but lowers cognitive load for future maintainers.</p>
+    <table class="audit" style="margin-top: 8px;">
+      <thead><tr><th>Current</th><th>Proposed</th><th>What it does</th></tr></thead>
+      <tbody>
+        <tr><td class="mono">_smartClientSuggest</td><td class="mono">_smartClientForProjectSuggest</td><td>Search clients while typing in a project form</td></tr>
+        <tr><td class="mono">_smartQProjectSuggest</td><td class="mono">_smartProjectForQuoteSuggest</td><td>Search projects while typing in a quote form</td></tr>
+        <tr><td class="mono">_smartOProjectSuggest</td><td class="mono">_smartProjectForOrderSuggest</td><td>Search projects while typing in an order form</td></tr>
+        <tr><td class="mono">_smartCLProjectSuggest</td><td class="mono">_smartProjectForCutlistSuggest</td><td>Search projects while typing in a cut-list form</td></tr>
+        <tr><td class="mono">_smartCBLibrarySuggest</td><td class="mono">_smartCabinetForLibrarySuggest</td><td>Search cabinet library while in builder</td></tr>
+        <tr><td class="mono">_oStockSearch / _qStockSearch</td><td class="mono">_smartStockForOrderSuggest / _smartStockForQuoteSuggest</td><td>Search stock while building order/quote line</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ════════════════════════════════════════════════════════════════════ -->
+  <!-- SECTION 4 — Cross-tab linking -->
+  <!-- ════════════════════════════════════════════════════════════════════ -->
+  <section class="section" id="sec-4">
+    <div class="sec-num">Section 04</div>
+    <h2 class="sec-h">Cross-tab data linking</h2>
+    <p class="sec-lede">Projects card is the hub — its 4-button action strip drills into every other relational tab. But the reverse paths (Quote→Project, Order→Client, Schedule→Order) are missing or hidden.</p>
+
+    <div class="sub-h">Existing links (what works today)</div>
+    <table class="audit">
+      <thead><tr><th>From</th><th>To</th><th>How</th><th>Pre-fill?</th><th>File:line</th></tr></thead>
+      <tbody>
+        <tr><td>Client card · Projects button</td><td>Projects (filtered)</td><td>1-cell .proj-act</td><td>Yes · active client id</td><td class="mono">clients.js:801</td></tr>
+        <tr><td>Project card · Cabinets button</td><td>Cabinet Builder</td><td>4-button .proj-strip</td><td>Yes · project name</td><td class="mono">clients.js:940</td></tr>
+        <tr><td>Project card · Cut Lists button</td><td>Cut List</td><td>4-button .proj-strip</td><td>Yes · project name</td><td class="mono">clients.js:941</td></tr>
+        <tr><td>Project card · Quotes button</td><td>Quotes (filtered)</td><td>4-button .proj-strip → blue .ph-back header</td><td>Yes · _qpState.projectId</td><td class="mono">clients.js:942</td></tr>
+        <tr><td>Project card · Orders button</td><td>Orders (filtered)</td><td>4-button .proj-strip → blue .ph-back header</td><td>Yes · _opState.projectId</td><td class="mono">clients.js:943</td></tr>
+        <tr><td>Quote card · → Order button</td><td>Orders (new)</td><td><span class="mono">convertQuoteToOrder</span></td><td>copies lines + project + client</td><td class="mono">quotes.js:437</td></tr>
+        <tr><td>Quote card · ✓ View Order</td><td>Orders (specific)</td><td><span class="mono">_openOrderPopup</span> alias → sidebar</td><td>Yes · order id</td><td class="mono">quotes.js:437</td></tr>
+        <tr><td>Cabinet draft · Create Quote</td><td>Quotes (new)</td><td><span class="mono">cbCreateQuoteFromDraft</span></td><td>snapshots cbLines</td><td class="mono">cabinet.js:779</td></tr>
+        <tr><td>Cabinet · Edit Quote</td><td>Cabinet Builder</td><td><span class="mono">editQuoteInCB</span></td><td>loads quote_lines</td><td class="mono">cabinet.js:905</td></tr>
+        <tr><td><strong>Schedule calendar bar</strong></td><td>Orders (sidebar editor)</td><td><span class="mono">onclick="_openOrderPopup(${e.id})"</span></td><td>Yes · order id</td><td class="mono">schedule.js:289</td></tr>
+        <tr><td>Schedule sidebar list · double-click</td><td>Orders (sidebar editor)</td><td>same alias</td><td>Yes · order id</td><td class="mono">schedule.js:174</td></tr>
+        <tr><td>Cut-list library row</td><td>Cabinet (shown as static text)</td><td>"Linked: <em>CabinetName</em>" rendered when <span class="mono">cabinet_id</span> set, but it's not a link</td><td>—</td><td class="mono">cutlist.js:4229</td></tr>
+        <tr><td>Dashboard rows</td><td>Orders / Quotes / Stock (sidebar)</td><td>Card row click via legacy aliases</td><td>Yes · entity id</td><td class="mono">dashboard.js:116, 137, 160</td></tr>
+      </tbody>
+    </table>
+
+    <div class="sub-h">Gaps · navigation users would expect but doesn't exist</div>
+    <ul class="findings gap">
+      <li><strong>Foreign-key names on cards are not clickable.</strong> Project, Quote, and Order cards display the client name (and project name on Quote/Order) but as plain text. To get to the client, user must close the editor, switch to Clients tab, search.</li>
+      <li><strong>Editor headers don't drill either.</strong> When editing an order, the header shows "<em>Smith Kitchen — Jane Smith</em>" as static text. Same for Quote, Cabinet, Cut List editors.</li>
+      <li><strong>The existing "Linked: <em>CabinetName</em>" text is static.</strong> The cut-list library renders it correctly (<span class="mono">cutlist.js:4229</span>) but doesn't make it a link. One <code>onclick</code> away from being a real reciprocal nav.</li>
+      <li><strong>Drill-in scope isn't obvious enough.</strong> The blue <code>.ph-back</code> header is the only signal that you're in a filtered Quotes/Orders view. New users miss it and assume their search returns empty because there are no quotes — not because they're scoped to one project.</li>
+    </ul>
+
+    <div class="sub-h">Proposal · clickable foreign-key names</div>
+    <p style="margin: 0; color: var(--text2);">Project and client names become <code>.ec-link</code> spans wherever they appear on cards and editor headers. With <code>event.stopPropagation()</code> on cards, the card click still opens the editor; clicks specifically on the FK name drill into the FK's tab.</p>
+
+    <div class="compare">
+      <div class="compare-col">
+        <span class="compare-tag current">Current · Order editor header</span>
+        <div class="ed-head">
+          <button class="back-btn">←</button>
+          <span class="head-icon" style="opacity: 0.6;">📋</span>
+          <div class="head-text">
+            <div class="title"><span style="color: var(--text); margin-right: 4px;">#0042</span> Smith Kitchen</div>
+            <div class="sub">Jane Smith · Production</div>
+          </div>
+          <span class="ed-status" data-status="production" style="margin-top: 4px;">Production</span>
+        </div>
+        <div class="compare-note">"Smith Kitchen" and "Jane Smith" are plain text. To see the project, you leave the order and navigate.</div>
+      </div>
+
+      <div class="compare-col">
+        <span class="compare-tag proposed">Proposed · Order editor header</span>
+        <div class="ed-head">
+          <button class="back-btn">←</button>
+          <span class="head-icon" style="opacity: 0.6;">📋</span>
+          <div class="head-text">
+            <div class="title"><span style="color: var(--text); margin-right: 4px;">#0042</span> <span class="ec-link">Smith Kitchen</span></div>
+            <div class="sub"><span class="ec-link">Jane Smith</span> · Production</div>
+          </div>
+          <span class="ed-status" data-status="production" style="margin-top: 4px;">Production</span>
+        </div>
+        <div class="compare-note">Both project and client become clickable; clicks pre-fill the destination tab (existing <span class="mono">_drillQuotesForProject</span> / new <span class="mono">_drillProjectsForClient</span>).</div>
+      </div>
+    </div>
+
+    <div class="sub-h">Proposal · drill-in pill</div>
+    <div class="compare">
+      <div class="compare-col">
+        <span class="compare-tag current">Current · drilled Quotes view</span>
+        <div class="ph-back-mock">
+          <span class="back-arrow">←</span>
+          <span class="ph-title">Smith Kitchen</span>
+        </div>
+        <div style="margin-top: 8px; display: flex; gap: 6px; align-items: center;">
+          <input type="search" placeholder="Search client or project…" style="flex:1;font-size:11px;padding:5px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);">
+          <button class="btn" style="background: var(--accent-dim); color: var(--accent); border-color: var(--accent);">All (4)</button>
+          <button class="btn">Draft (1)</button>
+          <button class="btn">Sent (2)</button>
+        </div>
+        <div class="compare-note">Blue header bar is the only signal. Users sometimes search inside a scoped view and wonder why their search returns nothing.</div>
+      </div>
+
+      <div class="compare-col">
+        <span class="compare-tag proposed">Proposed · drilled Quotes view</span>
+        <div class="ph-back-mock">
+          <span class="back-arrow">←</span>
+          <span class="ph-title">Smith Kitchen</span>
+        </div>
+        <div style="margin-top: 8px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
+          <input type="search" placeholder="Search inside this project…" style="flex:1;min-width:140px;font-size:11px;padding:5px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);">
+          <span class="filter-pill">Filtered: Smith Kitchen <span class="x">×</span></span>
+        </div>
+        <div class="compare-note">Adds a <span class="mono">.filter-pill</span> right of the search box. Search placeholder also updates to "Search inside this project…" so the scope is unmistakable.</div>
+      </div>
+    </div>
+
+    <div class="sub-h">Proposal · make existing "Linked: <em>CabinetName</em>" clickable</div>
+    <p style="margin: 0; color: var(--text2);">Cut-list library rows already render the linked cabinet name (<span class="mono">cutlist.js:4229</span>). Wrap it in an <code>onclick</code> that switches to Cabinet Builder and pre-loads the cabinet. Two-line change; turns the existing visual cue into actual nav.</p>
+  </section>
+
+  <!-- ════════════════════════════════════════════════════════════════════ -->
+  <!-- SECTION 5 — Roadmap -->
+  <!-- ════════════════════════════════════════════════════════════════════ -->
+  <section class="section" id="sec-5">
+    <div class="sec-num">Section 05</div>
+    <h2 class="sec-h">Phased implementation roadmap</h2>
+    <p class="sec-lede">Every item below maps to a real function or file. Quick wins ship as one commit. Medium and large items are commit-per-tab.</p>
+
+    <div class="roadmap">
+
+      <!-- Quick wins -->
+      <div class="roadmap-block quick">
+        <h4>Quick wins <span class="effort">≤ 1 hr each</span></h4>
+        <ul>
+          <li><strong>Clickable project/client names on Quote &amp; Order cards.</strong> Add <code>.ec-link</code> spans with <code>stopPropagation</code>; drill via existing <code>_drillQuotesForProject</code> / future <code>_drillProjectsForClient</code>.<span class="where">quotes.js:413 · orders.js:169</span></li>
+          <li><strong>Clickable project/client names in editor headers.</strong> Same change to <code>.ed-head</code> in Quote / Order / Cabinet / Cut-List editors.<span class="where">.ed-head consumers</span></li>
+          <li><strong>Make existing "Linked: <em>CabinetName</em>" text clickable.</strong> Already rendered on cut-list library rows; just needs <code>onclick</code> → switch to Cabinet Builder.<span class="where">cutlist.js:4229</span></li>
+          <li><strong>Mirror the <code>.cl-unsaved-pill</code> on Cabinet, Cut List, Quote, Order editors.</strong> Component already exists; only the wiring is new.<span class="where">styles.css:227 (existing) · _qMarkDirty / _oMarkDirty / _cbScheduleAutosave / _clScheduleAutosave</span></li>
+          <li><strong>Add <code>.filter-pill</code> to drilled Quotes / Orders views.</strong> Render next to the search box when <code>_qpState.projectId</code> / <code>_opState.projectId</code> is set; also update placeholder to "Search inside this project…".<span class="where">quotes.js:460 · orders.js:215</span></li>
+          <li><strong>Normalise Schedule sidebar list click model.</strong> Single-click should open the editor (matching every other list). Move "scroll to bar" to a dedicated <span class="mono">⤓</span> icon button on the row.<span class="where">schedule.js:174</span></li>
+          <li><strong>Rename legacy <code>_open*Popup</code> aliases.</strong> <code>_openClientPopup</code>/<code>_openProjectPopup</code>/<code>_openStockPopup</code>/<code>_openOrderPopup</code>/<code>_openQuotePopup</code> → <code>_load{Entity}Editor</code>. They don't open popups — they load the sidebar editor.<span class="where">app.js:17, 35, 526, 821, 838 + ~20 callers</span></li>
+        </ul>
+      </div>
+
+      <!-- Medium -->
+      <div class="roadmap-block med">
+        <h4>Medium <span class="effort">~½ day each</span></h4>
+        <ul>
+          <li><strong>Migrate Clients form to autosave-on-blur + <code>.cl-unsaved-pill</code>.</strong> Adopt the <code>_pjScheduleAutosave</code> pattern from <code>src/clients.js:570</code>. Drop the "+ Add Client" / "Save Changes" button + cancel button pair.<span class="where">clients.js:84-211</span></li>
+          <li><strong>Migrate Stock form to autosave-on-blur + <code>.cl-unsaved-pill</code>.</strong> Same pattern, more fields (Edge-Banding has its own field set). Drop the "+ Add Material" / "Save Changes" buttons.<span class="where">stock.js:494 · stock.js:559-638 · index.html:266-364</span></li>
+          <li><strong>Add a related-entity <code>.proj-strip</code> to Order cards.</strong> Cabinets / Items / Labour counts (like the Quote card), or Project / Client / Quote drill-down (more useful given Order already shows pipeline + PDFs). Move the 4 PDF buttons to a single "Documents ▾" dropdown.<span class="where">orders.js:169-198</span></li>
+          <li><strong>Unify card class names to <code>.entity-card</code> + slots.</strong> CSS pass + per-render-function edits. Client card and cut-list library card need actual classes too (they're inline-styled divs today).<span class="where">clients.js · quotes.js · orders.js · stock.js · cutlist.js · dashboard.js</span></li>
+          <li><strong>Standardise sidebar shell across all editor tabs.</strong> <code>.ed-head</code> (back arrow + icon + title + status chip + unsaved-pill) on every tab. Already canonical in Quote/Order/Project — extend to Cabinet, Cut List, Stock, Clients.<span class="where">.ed-head pattern (mockup-J port)</span></li>
+        </ul>
+      </div>
+
+      <!-- Larger -->
+      <div class="roadmap-block big">
+        <h4>Larger refactors <span class="effort">1+ day each</span></h4>
+        <ul>
+          <li><strong>Sub-tab convention unification.</strong> Adopt Cut List's main-panel 3-tab strip everywhere. Move Cabinet's Builder/Rates sub-tabs out of the sidebar into a main-panel strip. Drop the line-kind-buttons-as-tabs framing in Quotes/Orders.<span class="where">cabinet-render.js · index.html:215-246 · quotes.js / orders.js</span></li>
+          <li><strong>Stock grouped-spreadsheet treatment (PLAN.md U.8).</strong> Already specced; covers the same line-weight tokens needed by the unified card design.<span class="where">stock.js:687 · PLAN.md U.8</span></li>
+          <li><strong>Standardise smart-input function names.</strong> <code>_smart{Entity}For{Context}Suggest()</code> across 6+ touchpoints. Pure rename + <code>index.html</code> + <code>app.js</code> attribute updates.<span class="where">cross-file rename</span></li>
+          <li><strong>Filter UI parity.</strong> Pick one of: status-tabs+sort (current Quotes/Orders), filter+sort dropdowns (current Projects), or category-pills (current Stock). Apply across all list tabs.<span class="where">clients.js · quotes.js · orders.js · stock.js · schedule.js</span></li>
+        </ul>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ════════════════════════════════════════════════════════════════════ -->
+  <!-- Out of scope -->
+  <!-- ════════════════════════════════════════════════════════════════════ -->
+  <div class="oos">
+    <h3>Out of scope for this pass</h3>
+    <ul>
+      <li>New tabs, IA reshuffles, command palette, global search.</li>
+      <li>Schema changes or migrations.</li>
+      <li>Mobile / responsive treatments — tracked in <code>PLAN.md § M.*</code>.</li>
+      <li>Empty / loading / error states — tracked as <code>PLAN.md § U.3</code>.</li>
+      <li>Accessibility pass — tracked as <code>PLAN.md § U.6</code>.</li>
+      <li>Stock reverse-link (which orders/quotes use a stock item) — needs a usage query, not pure UI.</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>

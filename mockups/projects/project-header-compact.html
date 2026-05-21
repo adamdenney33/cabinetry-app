@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1440">
+<title>Project Header — Compact Ideas</title>
+<style>
+  :root {
+    --accent:   #e8a838;
+    --accent-dim: rgba(232,168,56,0.12);
+    --accent2:  #0d9488;
+    --danger:   #e05252;
+    --success:  #3d9970;
+    --bg:       #f2f2f2;
+    --surface:  #ffffff;
+    --surface2: #f7f7f7;
+    --border:   #e0e0e0;
+    --border2:  #ebebeb;
+    --text:     #111111;
+    --text2:    #444444;
+    --muted:    #888888;
+    --header-bg:#111111;
+    --header-fg:#ffffff;
+    --shadow: 0 1px 4px rgba(0,0,0,0.07);
+    --shadow-md: 0 4px 16px rgba(0,0,0,0.10);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); padding: 32px 28px 56px; }
+
+  .page-h1 { font-size: 22px; font-weight: 800; letter-spacing: -0.4px; margin-bottom: 4px; }
+  .page-sub { font-size: 13px; color: var(--muted); margin-bottom: 24px; max-width: 1100px; line-height: 1.55; }
+  .page-sub b { color: var(--text); font-weight: 600; }
+
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 18px; }
+
+  .panel-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow); overflow: hidden; display: flex; flex-direction: column; }
+  .panel-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); padding: 10px 14px 8px; background: var(--surface2); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+  .panel-label .name { color: var(--text); font-size: 12px; }
+  .panel-label .h-tag { font-weight: 700; font-size: 10px; }
+  .panel-label .h-tag.gain { color: var(--success); }
+  .panel-label .h-tag.same { color: var(--muted); }
+
+  .desc { padding: 8px 14px 10px; font-size: 11px; color: var(--text2); line-height: 1.5; background: var(--surface); border-bottom: 1px dashed var(--border); }
+  .desc b { color: var(--text); font-weight: 600; }
+
+  /* Sidebar mock — fixed height to compare */
+  .sb { display: flex; flex-direction: column; height: 460px; background: var(--surface); }
+  .sb-body { flex: 1; overflow-y: auto; padding: 12px 14px; font-size: 11.5px; }
+
+  .below-line { font-size: 9px; color: var(--muted); text-align: center; padding: 4px 0; border-top: 1px dashed var(--border); border-bottom: 1px dashed var(--border); margin: 0 -14px 12px; text-transform: uppercase; letter-spacing: 0.6px; background: rgba(232,168,56,0.04); }
+
+  .sec-label { font-size: 9px; font-weight: 700; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; letter-spacing: 0.5px; }
+  .smart-input { display: flex; border: 1px solid var(--border); border-radius: 5px; background: var(--surface2); overflow: hidden; margin-bottom: 8px; }
+  .smart-input input { flex: 1; padding: 5px 8px; border: none; background: transparent; font-size: 11px; outline: none; color: var(--text); font-family: inherit; }
+  .smart-input .plus { width: 24px; background: transparent; border-left: 1px solid var(--border); display: flex; align-items: center; justify-content: center; color: var(--accent); font-size: 13px; font-weight: 700; }
+  .cab-row { display: flex; justify-content: space-between; padding: 6px 8px; background: var(--surface2); border: 1px solid var(--border); border-radius: 5px; margin-bottom: 4px; align-items: center; }
+  .cab-row .name { font-size: 11px; font-weight: 600; color: var(--text); }
+  .cab-row .meta { font-size: 9px; color: var(--muted); }
+  .cab-row .price { font-size: 11px; font-weight: 700; }
+
+  /* Save pill (shared) */
+  .pill-saved { font-size: 9px; font-weight: 700; padding: 2px 7px; border-radius: 3px; color: var(--success); background: rgba(61,153,112,0.14); display: inline-flex; align-items: center; gap: 3px; letter-spacing: 0.4px; text-transform: uppercase; }
+  .pill-saved::before { content: '✓'; font-size: 9px; }
+  .badge-active { font-size: 9px; font-weight: 700; padding: 2px 6px; border-radius: 3px; color: #5b8fc5; background: rgba(80,140,220,0.15); letter-spacing: 0.4px; text-transform: uppercase; }
+  .icon-x { font-size: 14px; color: var(--muted); cursor: pointer; padding: 2px 6px; border-radius: 4px; }
+  .icon-x:hover { background: rgba(0,0,0,0.06); color: var(--text); }
+
+  /* ── Header variants ── */
+
+  /* BASELINE — current */
+  .h-baseline { padding: 12px 14px 10px; background: linear-gradient(180deg, var(--accent-dim), transparent); border-bottom: 1px solid var(--border); }
+  .h-baseline .back { font-size: 11px; color: var(--muted); margin-bottom: 6px; cursor: pointer; }
+  .h-baseline .row1 { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+  .h-baseline .title { font-size: 16px; font-weight: 800; flex: 1; }
+  .h-baseline .row2 { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 4px; }
+  .h-baseline .meta { font-size: 11px; color: var(--muted); }
+  .h-baseline .client { font-size: 11px; color: var(--text2); }
+  .h-baseline .client b { color: var(--text); font-weight: 600; }
+
+  /* IDEA 1 — Breadcrumb single-line */
+  .h-bread { padding: 10px 14px 9px; background: linear-gradient(180deg, var(--accent-dim), transparent); border-bottom: 1px solid var(--border); }
+  .h-bread .crumb { font-size: 11px; color: var(--muted); display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+  .h-bread .crumb .link { cursor: pointer; }
+  .h-bread .crumb .link:hover { color: var(--text); text-decoration: underline; }
+  .h-bread .crumb .arrow { color: var(--muted); }
+  .h-bread .crumb .here { color: var(--text); font-weight: 700; font-size: 14px; }
+  .h-bread .meta-row { display: flex; align-items: center; gap: 8px; margin-top: 4px; flex-wrap: wrap; }
+  .h-bread .meta { font-size: 10px; color: var(--muted); }
+
+  /* IDEA 2 — Workspace switcher */
+  .h-wssw { padding: 10px 12px 10px; background: linear-gradient(180deg, var(--accent-dim), transparent); border-bottom: 1px solid var(--border); }
+  .h-wssw .switcher { display: flex; align-items: center; gap: 8px; padding: 5px 8px; background: rgba(255,255,255,0.6); border: 1px solid var(--border); border-radius: 6px; cursor: pointer; transition: background .15s; }
+  .h-wssw .switcher:hover { background: var(--surface); border-color: var(--accent); }
+  .h-wssw .av { width: 24px; height: 24px; border-radius: 5px; background: var(--accent); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; }
+  .h-wssw .name { font-size: 13px; font-weight: 700; flex: 1; min-width: 0; line-height: 1.1; }
+  .h-wssw .caret { color: var(--muted); font-size: 10px; }
+  .h-wssw .meta-row { display: flex; align-items: center; gap: 6px; margin-top: 6px; padding: 0 4px; flex-wrap: wrap; }
+  .h-wssw .meta { font-size: 10px; color: var(--muted); }
+
+  /* IDEA 3 — Title block with back arrow icon */
+  .h-title { padding: 10px 12px 10px; background: linear-gradient(180deg, var(--accent-dim), transparent); border-bottom: 1px solid var(--border); }
+  .h-title .row1 { display: flex; align-items: center; gap: 8px; }
+  .h-title .back-icon { width: 22px; height: 22px; border-radius: 5px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--muted); flex-shrink: 0; }
+  .h-title .back-icon:hover { background: rgba(0,0,0,0.06); color: var(--text); }
+  .h-title .title { font-size: 16px; font-weight: 800; flex: 1; min-width: 0; letter-spacing: -0.3px; }
+  .h-title .meta-row { display: flex; align-items: center; gap: 8px; margin-top: 4px; padding-left: 30px; flex-wrap: wrap; }
+  .h-title .meta { font-size: 10px; color: var(--muted); }
+
+  /* IDEA 4 — Bordered card (you-are-here) */
+  .h-card-wrap { padding: 8px 10px 10px; }
+  .h-card { background: var(--surface); border: 2px solid var(--accent); border-radius: 8px; padding: 8px 10px; }
+  .h-card .row1 { display: flex; align-items: center; gap: 8px; }
+  .h-card .title { font-size: 14px; font-weight: 800; flex: 1; min-width: 0; }
+  .h-card .meta-row { display: flex; align-items: center; gap: 6px; margin-top: 4px; flex-wrap: wrap; }
+  .h-card .meta { font-size: 10px; color: var(--muted); }
+  .h-card .icon-x { color: var(--muted); }
+
+  /* IDEA 5 — Hover-reveal exit */
+  .h-hover { padding: 10px 14px 10px; background: linear-gradient(180deg, var(--accent-dim), transparent); border-bottom: 1px solid var(--border); position: relative; cursor: default; }
+  .h-hover .row1 { display: flex; align-items: center; gap: 8px; }
+  .h-hover .title { font-size: 15px; font-weight: 800; flex: 1; min-width: 0; }
+  .h-hover .exit-affordance { font-size: 10px; color: var(--muted); cursor: pointer; opacity: 0; transition: opacity .15s; }
+  .h-hover.is-hovered .exit-affordance { opacity: 1; }
+  .h-hover .exit-affordance:hover { color: var(--text); }
+  .h-hover .meta-row { display: flex; align-items: center; gap: 6px; margin-top: 3px; flex-wrap: wrap; }
+  .h-hover .meta { font-size: 10px; color: var(--muted); }
+  .h-hover .hover-hint { font-size: 8px; color: var(--accent); position: absolute; right: 12px; top: 4px; opacity: 0.7; text-transform: uppercase; letter-spacing: 0.4px; font-weight: 700; }
+
+  /* Annotation row */
+  .ann-row { padding: 6px 14px; background: var(--surface2); border-top: 1px solid var(--border); font-size: 10px; color: var(--text2); display: flex; gap: 10px; flex-wrap: wrap; }
+  .ann-row .ann-tag { font-weight: 700; color: var(--accent); }
+  .ann-row .ann-tag.warn { color: var(--danger); }
+  .ann-row .ann-tag.good { color: var(--success); }
+</style>
+</head>
+<body>
+
+<div class="page-h1">Project Header — Compact Layout Ideas</div>
+<div class="page-sub">
+  Today's project header is a 2-line "← Back to projects" link + a name row with × close + a meta row + a client line. That's roughly <b>~92 px tall</b> and pushes everything below it down. Each idea below combines the <b>back/× into one affordance</b> AND restructures the info layout. Sidebar bodies are clipped to the same fixed height so you can read off "more rows visible = more compact header."
+</div>
+
+<div class="grid3">
+
+  <!-- ═════════════════ BASELINE — Current ═════════════════ -->
+  <div class="panel-card">
+    <div class="panel-label"><span class="name">Baseline · Current</span><span class="h-tag same">~92 px</span></div>
+    <div class="desc">Today's pattern. Two affordances do the same thing (<b>← Back</b> link + <b>×</b> button), spread across 4 lines (back / name / meta / client).</div>
+    <div class="sb">
+      <div class="h-baseline">
+        <div class="back">← Back to projects</div>
+        <div class="row1">
+          <span class="title">Kitchen Reno</span>
+          <span class="icon-x" title="Close">×</span>
+        </div>
+        <div class="row2">
+          <span class="badge-active">Active</span>
+          <span class="meta">3 cabinets · $1,044</span>
+          <span class="pill-saved">Saved</span>
+        </div>
+        <div class="client">Client: <b>Acme Corp</b></div>
+      </div>
+      <div class="sb-body">
+        <div class="below-line">↓ sidebar content begins here</div>
+        <div class="sec-label">Add cabinet</div>
+        <div class="smart-input"><input placeholder="Search library or type name..."/><div class="plus">+</div></div>
+        <div class="sec-label">In this project</div>
+        <div class="cab-row"><div><div class="name">Base 600 mm</div><div class="meta">Body · Doors × 2</div></div><div class="price">$696</div></div>
+        <div class="cab-row"><div><div class="name">Wall 800 mm</div><div class="meta">Body · Doors × 2</div></div><div class="price">$824</div></div>
+        <div class="cab-row"><div><div class="name">Drawer 450 mm</div><div class="meta">Drawers × 3</div></div><div class="price">$284</div></div>
+      </div>
+    </div>
+    <div class="ann-row">
+      <span><span class="ann-tag">Exit:</span> two affordances (link + ×)</span>
+      <span><span class="ann-tag">Lines:</span> 4</span>
+    </div>
+  </div>
+
+  <!-- ═════════════════ IDEA 1 — Breadcrumb ═════════════════ -->
+  <div class="panel-card">
+    <div class="panel-label"><span class="name">Idea 1 · Breadcrumb</span><span class="h-tag gain">~52 px · saves 40 px</span></div>
+    <div class="desc">Web-pattern breadcrumb. Click <b>"Projects"</b> to exit. Project name is the "you are here" part. All meta inline on one line below.</div>
+    <div class="sb">
+      <div class="h-bread">
+        <div class="crumb">
+          <span class="link">Projects</span>
+          <span class="arrow">›</span>
+          <span class="here">Kitchen Reno</span>
+        </div>
+        <div class="meta-row">
+          <span class="badge-active">Active</span>
+          <span class="meta">Acme Corp · 3 cab · $1,044</span>
+          <span class="pill-saved">Saved</span>
+        </div>
+      </div>
+      <div class="sb-body">
+        <div class="below-line">↓ sidebar content begins here</div>
+        <div class="sec-label">Add cabinet</div>
+        <div class="smart-input"><input placeholder="Search library or type name..."/><div class="plus">+</div></div>
+        <div class="sec-label">In this project</div>
+        <div class="cab-row"><div><div class="name">Base 600 mm</div><div class="meta">Body · Doors × 2</div></div><div class="price">$696</div></div>
+        <div class="cab-row"><div><div class="name">Wall 800 mm</div><div class="meta">Body · Doors × 2</div></div><div class="price">$824</div></div>
+        <div class="cab-row"><div><div class="name">Drawer 450 mm</div><div class="meta">Drawers × 3</div></div><div class="price">$284</div></div>
+        <div class="cab-row" style="border-style:dashed;background:transparent"><div><div class="name" style="color:var(--muted)">+ More fits here</div></div></div>
+      </div>
+    </div>
+    <div class="ann-row">
+      <span><span class="ann-tag good">Exit:</span> click "Projects" link</span>
+      <span><span class="ann-tag good">Lines:</span> 2</span>
+    </div>
+  </div>
+
+  <!-- ═════════════════ IDEA 2 — Workspace Switcher ═════════════════ -->
+  <div class="panel-card">
+    <div class="panel-label"><span class="name">Idea 2 · Workspace switcher</span><span class="h-tag gain">~58 px · saves 34 px</span></div>
+    <div class="desc">Avatar + name in a clickable chip with a <b>▾ caret</b>. Clicking opens a switcher menu with "Switch project" / "Close project" actions. Meta sits below the chip.</div>
+    <div class="sb">
+      <div class="h-wssw">
+        <div class="switcher">
+          <div class="av">K</div>
+          <div class="name">Kitchen Reno</div>
+          <span class="pill-saved">Saved</span>
+          <span class="caret">▾</span>
+        </div>
+        <div class="meta-row">
+          <span class="badge-active">Active</span>
+          <span class="meta">Acme Corp · 3 cab · $1,044</span>
+        </div>
+      </div>
+      <div class="sb-body">
+        <div class="below-line">↓ sidebar content begins here</div>
+        <div class="sec-label">Add cabinet</div>
+        <div class="smart-input"><input placeholder="Search library or type name..."/><div class="plus">+</div></div>
+        <div class="sec-label">In this project</div>
+        <div class="cab-row"><div><div class="name">Base 600 mm</div><div class="meta">Body · Doors × 2</div></div><div class="price">$696</div></div>
+        <div class="cab-row"><div><div class="name">Wall 800 mm</div><div class="meta">Body · Doors × 2</div></div><div class="price">$824</div></div>
+        <div class="cab-row"><div><div class="name">Drawer 450 mm</div><div class="meta">Drawers × 3</div></div><div class="price">$284</div></div>
+      </div>
+    </div>
+    <div class="ann-row">
+      <span><span class="ann-tag good">Exit:</span> chip dropdown menu</span>
+      <span><span class="ann-tag good">Lines:</span> 2</span>
+      <span><span class="ann-tag">Bonus:</span> switch project without exiting</span>
+    </div>
+  </div>
+
+  <!-- ═════════════════ IDEA 3 — Title block with ← icon ═════════════════ -->
+  <div class="panel-card">
+    <div class="panel-label"><span class="name">Idea 3 · Title block</span><span class="h-tag gain">~52 px · saves 40 px</span></div>
+    <div class="desc">Compact <b>← icon</b> button next to the project title. Treats the project name as a page title. Meta hangs below. Most familiar to mobile-app patterns.</div>
+    <div class="sb">
+      <div class="h-title">
+        <div class="row1">
+          <span class="back-icon" title="Back to projects">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+          </span>
+          <span class="title">Kitchen Reno</span>
+          <span class="pill-saved">Saved</span>
+        </div>
+        <div class="meta-row">
+          <span class="badge-active">Active</span>
+          <span class="meta">Acme · 3 cab · $1,044</span>
+        </div>
+      </div>
+      <div class="sb-body">
+        <div class="below-line">↓ sidebar content begins here</div>
+        <div class="sec-label">Add cabinet</div>
+        <div class="smart-input"><input placeholder="Search library or type name..."/><div class="plus">+</div></div>
+        <div class="sec-label">In this project</div>
+        <div class="cab-row"><div><div class="name">Base 600 mm</div><div class="meta">Body · Doors × 2</div></div><div class="price">$696</div></div>
+        <div class="cab-row"><div><div class="name">Wall 800 mm</div><div class="meta">Body · Doors × 2</div></div><div class="price">$824</div></div>
+        <div class="cab-row"><div><div class="name">Drawer 450 mm</div><div class="meta">Drawers × 3</div></div><div class="price">$284</div></div>
+        <div class="cab-row" style="border-style:dashed;background:transparent"><div><div class="name" style="color:var(--muted)">+ More fits here</div></div></div>
+      </div>
+    </div>
+    <div class="ann-row">
+      <span><span class="ann-tag good">Exit:</span> ← icon button</span>
+      <span><span class="ann-tag good">Lines:</span> 2</span>
+    </div>
+  </div>
+
+  <!-- ═════════════════ IDEA 4 — Bordered "you-are-here" card ═════════════════ -->
+  <div class="panel-card">
+    <div class="panel-label"><span class="name">Idea 4 · Bordered card</span><span class="h-tag gain">~62 px · saves 30 px</span></div>
+    <div class="desc">Project info in a <b>bordered accent card</b> — visually framed "you're inside this thing." × in the corner is the only exit. Strongest "in-a-folder" feel.</div>
+    <div class="sb">
+      <div class="h-card-wrap">
+        <div class="h-card">
+          <div class="row1">
+            <span class="title">Kitchen Reno</span>
+            <span class="badge-active">Active</span>
+            <span class="pill-saved">Saved</span>
+            <span class="icon-x" title="Close project">×</span>
+          </div>
+          <div class="meta-row">
+            <span class="meta">Client: <b style="color:var(--text);font-weight:600">Acme Corp</b> · 3 cab · $1,044</span>
+          </div>
+        </div>
+      </div>
+      <div class="sb-body">
+        <div class="below-line">↓ sidebar content begins here</div>
+        <div class="sec-label">Add cabinet</div>
+        <div class="smart-input"><input placeholder="Search library or type name..."/><div class="plus">+</div></div>
+        <div class="sec-label">In this project</div>
+        <div class="cab-row"><div><div class="name">Base 600 mm</div><div class="meta">Body · Doors × 2</div></div><div class="price">$696</div></div>
+        <div class="cab-row"><div><div class="name">Wall 800 mm</div><div class="meta">Body · Doors × 2</div></div><div class="price">$824</div></div>
+        <div class="cab-row"><div><div class="name">Drawer 450 mm</div><div class="meta">Drawers × 3</div></div><div class="price">$284</div></div>
+      </div>
+    </div>
+    <div class="ann-row">
+      <span><span class="ann-tag good">Exit:</span> × in card corner</span>
+      <span><span class="ann-tag good">Lines:</span> 2</span>
+      <span><span class="ann-tag">Visual:</span> strongest "inside" feel</span>
+    </div>
+  </div>
+
+  <!-- ═════════════════ IDEA 5 — Hover-reveal exit ═════════════════ -->
+  <div class="panel-card">
+    <div class="panel-label"><span class="name">Idea 5 · Hover-reveal</span><span class="h-tag gain">~46 px · saves 46 px</span></div>
+    <div class="desc">Most compact at rest. Exit affordance (<b>"× exit"</b>) only appears on hover. Default view shows just project name + meta. Smallest footprint — best for power users who rarely need to exit mid-task.</div>
+    <div class="sb">
+      <div class="h-hover is-hovered">
+        <span class="hover-hint">on hover →</span>
+        <div class="row1">
+          <span class="title">Kitchen Reno</span>
+          <span class="exit-affordance">× exit</span>
+        </div>
+        <div class="meta-row">
+          <span class="badge-active">Active</span>
+          <span class="meta">Acme Corp · 3 cab · $1,044</span>
+          <span class="pill-saved">Saved</span>
+        </div>
+      </div>
+      <div class="sb-body">
+        <div class="below-line">↓ sidebar content begins here</div>
+        <div class="sec-label">Add cabinet</div>
+        <div class="smart-input"><input placeholder="Search library or type name..."/><div class="plus">+</div></div>
+        <div class="sec-label">In this project</div>
+        <div class="cab-row"><div><div class="name">Base 600 mm</div><div class="meta">Body · Doors × 2</div></div><div class="price">$696</div></div>
+        <div class="cab-row"><div><div class="name">Wall 800 mm</div><div class="meta">Body · Doors × 2</div></div><div class="price">$824</div></div>
+        <div class="cab-row"><div><div class="name">Drawer 450 mm</div><div class="meta">Drawers × 3</div></div><div class="price">$284</div></div>
+        <div class="cab-row" style="border-style:dashed;background:transparent"><div><div class="name" style="color:var(--muted)">+ More fits here</div></div></div>
+      </div>
+    </div>
+    <div class="ann-row">
+      <span><span class="ann-tag good">Exit:</span> "× exit" appears on hover</span>
+      <span><span class="ann-tag good">Lines:</span> 2 (1 visible at rest)</span>
+      <span><span class="ann-tag warn">Risk:</span> discoverability for new users</span>
+    </div>
+  </div>
+
+</div>
+
+<div style="margin-top:32px;padding:14px 18px;background:var(--surface);border:1px solid var(--border);border-radius:10px">
+  <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Quick recommendation</div>
+  <div style="font-size:13px;color:var(--text2);line-height:1.55">
+    <b style="color:var(--text)">Idea 2 (Workspace switcher)</b> is my top pick — caret-dropdown is the most familiar pattern for "I'm in X, take me out / move me to Y," and it doubles as a project switcher (huge time-save vs. having to back out and pick another). <b style="color:var(--text)">Idea 1 (Breadcrumb)</b> is the most space-efficient if you only need exit (no switch). <b style="color:var(--text)">Idea 4 (Bordered card)</b> wins on "you are inside this thing" feel. Pick one — happy to refine into the final shipping pattern.
+  </div>
+</div>
+
+</body>
+</html>

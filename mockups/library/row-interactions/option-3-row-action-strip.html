@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Option 3 — Always-Visible Action Strip</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background:#f2f2f2; color:#111; padding:24px; }
+
+  .title-bar { font-size:11px; font-weight:700; color:#888; text-transform:uppercase; letter-spacing:1px; margin-bottom:16px; }
+  .title-bar span { color:#e8a838; }
+
+  .summary { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:16px; }
+  .stat { background:#fff; border:1px solid #e0e0e0; border-radius:10px; padding:12px 16px; }
+  .stat .lbl { font-size:10px; color:#888; text-transform:uppercase; font-weight:700; letter-spacing:.5px; }
+  .stat .val { font-size:22px; font-weight:800; color:#111; margin-top:2px; }
+  .stat .sub { font-size:11px; color:#888; margin-top:1px; }
+  .stat .val.gold { color:#e8a838; }
+
+  .toolbar { display:flex; gap:8px; align-items:center; margin-bottom:14px; flex-wrap:wrap; }
+  .search { padding:7px 12px; border:1px solid #e0e0e0; border-radius:8px; font-size:12px; width:240px; background:#fff; }
+  .pill { font-size:11px; font-weight:600; padding:5px 12px; border-radius:20px; border:1px solid #e0e0e0; background:#fff; color:#444; cursor:pointer; }
+  .pill.active { background:#111; color:#fff; border-color:#111; }
+  .sort { margin-left:auto; font-size:11px; padding:5px 10px; border:1px solid #e0e0e0; border-radius:8px; background:#fff; color:#444; cursor:pointer; }
+
+  .list { display:flex; flex-direction:column; gap:10px; }
+
+  .card {
+    background:#fff; border:1px solid #e0e0e0; border-radius:10px;
+    padding:14px 16px 12px;
+    box-shadow:0 1px 4px rgba(0,0,0,.04);
+    transition: box-shadow .12s, border-color .12s;
+  }
+  .card:hover { box-shadow:0 4px 14px rgba(0,0,0,.07); border-color:#d4d4d4; }
+
+  .card-top { display:flex; align-items:center; gap:12px; margin-bottom:10px; }
+  .pname { font-size:14px; font-weight:700; color:#111; cursor:pointer; }
+  .pname:hover { color:#e8a838; }
+  .pclient { font-size:12px; color:#666; }
+  .pclient::before { content:'·'; margin-right:6px; color:#ccc; }
+
+  .badge { display:inline-flex; font-size:10px; font-weight:700; padding:3px 9px; border-radius:20px; text-transform:uppercase; letter-spacing:.4px; }
+  .b-active { background:rgba(80,140,220,.12); color:#3878c4; }
+  .b-hold { background:#f0f0f0; color:#666; }
+  .b-done { background:rgba(61,153,112,.14); color:#2c7956; }
+
+  .desc { font-size:11px; color:#888; flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .total { font-size:13px; font-weight:800; color:#111; font-variant-numeric:tabular-nums; }
+  .total.zero { color:#bbb; font-weight:500; }
+
+  /* ACTION STRIP */
+  .strip {
+    display:grid; grid-template-columns:repeat(4,1fr); gap:6px;
+    padding-top:10px; border-top:1px dashed #ececec;
+  }
+  .act {
+    display:flex; align-items:stretch;
+    border:1px solid #e8e8e8; border-radius:7px;
+    background:#fafafa;
+    overflow:hidden;
+    transition: all .12s;
+  }
+  .act:hover { border-color:#d4d4d4; background:#fff; }
+  .act-main {
+    flex:1;
+    display:flex; align-items:center; gap:8px;
+    padding:7px 10px;
+    cursor:pointer;
+    color:#444;
+  }
+  .act-main:hover { color:#0d9488; }
+  .act-main svg { width:13px; height:13px; flex-shrink:0; }
+  .act-label { font-size:11px; font-weight:600; }
+  .act-count {
+    font-size:11px; font-weight:700; color:#0d9488;
+    background:rgba(13,148,136,.12);
+    padding:1px 7px; border-radius:10px;
+    margin-left:auto;
+    font-variant-numeric:tabular-nums;
+  }
+  .act.empty .act-count { color:#bbb; background:#f0f0f0; }
+  .act.empty .act-main { color:#999; }
+
+  .act-add {
+    width:32px; display:flex; align-items:center; justify-content:center;
+    background:#fff;
+    border-left:1px solid #e8e8e8;
+    color:#aaa; font-size:14px; font-weight:700;
+    cursor:pointer;
+    transition: all .12s;
+  }
+  .act-add:hover { background:#e8a838; color:#fff; border-left-color:#e8a838; }
+  .act.empty .act-add { color:#0d9488; background:#f0fbf9; }
+  .act.empty .act-add:hover { background:#0d9488; color:#fff; border-left-color:#0d9488; }
+
+  /* Money in act */
+  .act-money { font-size:10px; color:#888; font-weight:600; margin-left:6px; }
+  .act:hover .act-money { color:#666; }
+
+  .legend { font-size:10px; color:#aaa; margin-top:14px; padding-left:4px; }
+  .legend .lk { color:#0d9488; font-weight:600; }
+  .legend .lk2 { color:#e8a838; font-weight:600; }
+</style>
+</head>
+<body>
+
+<div class="title-bar"><span>Option 3</span> — Always-visible action strip per project</div>
+
+<div class="summary">
+  <div class="stat"><div class="lbl">Projects</div><div class="val">6</div><div class="sub">4 active · 1 on hold · 1 complete</div></div>
+  <div class="stat"><div class="lbl">Open Quotes</div><div class="val">6</div><div class="sub">across 5 projects</div></div>
+  <div class="stat"><div class="lbl">Quote Value</div><div class="val gold">$170,250</div><div class="sub">5 projects with active quotes</div></div>
+  <div class="stat"><div class="lbl">Booked Orders</div><div class="val">$117,800</div><div class="sub">3 active · 0 pending</div></div>
+</div>
+
+<div class="toolbar">
+  <input class="search" placeholder="Search projects…">
+  <button class="pill active">All (6)</button>
+  <button class="pill">Active (4)</button>
+  <button class="pill">On Hold (1)</button>
+  <button class="pill">Complete (1)</button>
+  <select class="sort"><option>Sort: Newest</option><option>Name</option><option>Client</option><option>Value</option></select>
+</div>
+
+<div class="list">
+
+  <!-- Project 1 -->
+  <div class="card">
+    <div class="card-top">
+      <div class="pname">Kitchen Remodel</div>
+      <div class="pclient">Smith</div>
+      <span class="badge b-active">Active</span>
+      <div class="desc">Full kitchen with island and pantry</div>
+      <div class="total">$42,800</div>
+    </div>
+    <div class="strip">
+      <div class="act">
+        <div class="act-main">
+          <svg viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M2 6h12M2 10h12" stroke="currentColor" stroke-width="1.6"/></svg>
+          <span class="act-label">Cabinets</span>
+          <span class="act-count">8</span>
+        </div>
+        <div class="act-add" title="New cabinet">+</div>
+      </div>
+      <div class="act">
+        <div class="act-main">
+          <svg viewBox="0 0 16 16"><circle cx="4" cy="11.5" r="2" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="11.5" r="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M5.5 10L13 2M10.5 10L3 2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          <span class="act-label">Cut Lists</span>
+          <span class="act-count">1</span>
+        </div>
+        <div class="act-add">+</div>
+      </div>
+      <div class="act">
+        <div class="act-main">
+          <svg viewBox="0 0 16 16"><path d="M3 1.5h7l3 3v10H3z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M5 6h6M5 9h6M5 12h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          <span class="act-label">Quotes</span>
+          <span class="act-count">2</span>
+          <span class="act-money">$42.8k</span>
+        </div>
+        <div class="act-add">+</div>
+      </div>
+      <div class="act empty">
+        <div class="act-main">
+          <svg viewBox="0 0 16 16"><path d="M2.5 4.5l5.5-2.5 5.5 2.5v7L8 14 2.5 11.5z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M2.5 4.5L8 7l5.5-2.5M8 7v7" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+          <span class="act-label">Orders</span>
+          <span class="act-count">0</span>
+        </div>
+        <div class="act-add">+</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Project 2 -->
+  <div class="card">
+    <div class="card-top">
+      <div class="pname">Master Bath</div>
+      <div class="pclient">Garcia</div>
+      <span class="badge b-active">Active</span>
+      <div class="desc">Vanity + linen tower</div>
+      <div class="total">$18,200</div>
+    </div>
+    <div class="strip">
+      <div class="act">
+        <div class="act-main">
+          <svg viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M2 6h12M2 10h12" stroke="currentColor" stroke-width="1.6"/></svg>
+          <span class="act-label">Cabinets</span>
+          <span class="act-count">4</span>
+        </div>
+        <div class="act-add">+</div>
+      </div>
+      <div class="act empty">
+        <div class="act-main">
+          <svg viewBox="0 0 16 16"><circle cx="4" cy="11.5" r="2" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="11.5" r="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M5.5 10L13 2M10.5 10L3 2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          <span class="act-label">Cut Lists</span>
+          <span class="act-count">0</span>
+        </div>
+        <div class="act-add">+</div>
+      </div>
+      <div class="act">
+        <div class="act-main">
+          <svg viewBox="0 0 16 16"><path d="M3 1.5h7l3 3v10H3z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M5 6h6M5 9h6M5 12h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          <span class="act-label">Quotes</span>
+          <span class="act-count">1</span>
+          <span class="act-money">$18.2k</span>
+        </div>
+        <div class="act-add">+</div>
+      </div>
+      <div class="act empty">
+        <div class="act-main">
+          <svg viewBox="0 0 16 16"><path d="M2.5 4.5l5.5-2.5 5.5 2.5v7L8 14 2.5 11.5z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M2.5 4.5L8 7l5.5-2.5M8 7v7" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+          <span class="act-label">Orders</span>
+          <span class="act-count">0</span>
+        </div>
+        <div class="act-add">+</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Project 3 -->
+  <div class="card">
+    <div class="card-top">
+      <div class="pname">Office Built-ins</div>
+      <div class="pclient">Acme Corp</div>
+      <span class="badge b-active">Active</span>
+      <div class="desc">Wall-to-wall executive office storage</div>
+      <div class="total">$68,400</div>
+    </div>
+    <div class="strip">
+      <div class="act">
+        <div class="act-main">
+          <svg viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M2 6h12M2 10h12" stroke="currentColor" stroke-width="1.6"/></svg>
+          <span class="act-label">Cabinets</span>
+          <span class="act-count">12</span>
+        </div>
+        <div class="act-add">+</div>
+      </div>
+      <div class="act">
+        <div class="act-main">
+          <svg viewBox="0 0 16 16"><circle cx="4" cy="11.5" r="2" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="11.5" r="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M5.5 10L13 2M10.5 10L3 2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          <span class="act-label">Cut Lists</span>
+          <span class="act-count">1</span>
+        </div>
+        <div class="act-add">+</div>
+      </div>
+      <div class="act">
+        <div class="act-main">
+          <svg viewBox="0 0 16 16"><path d="M3 1.5h7l3 3v10H3z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M5 6h6M5 9h6M5 12h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          <span class="act-label">Quotes</span>
+          <span class="act-count">1</span>
+          <span class="act-money">$50.2k</span>
+        </div>
+        <div class="act-add">+</div>
+      </div>
+      <div class="act">
+        <div class="act-main">
+          <svg viewBox="0 0 16 16"><path d="M2.5 4.5l5.5-2.5 5.5 2.5v7L8 14 2.5 11.5z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M2.5 4.5L8 7l5.5-2.5M8 7v7" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+          <span class="act-label">Orders</span>
+          <span class="act-count">1</span>
+          <span class="act-money">$68.4k</span>
+        </div>
+        <div class="act-add">+</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Project 4 -->
+  <div class="card">
+    <div class="card-top">
+      <div class="pname">Bar Cabinet</div>
+      <div class="pclient">Lee</div>
+      <span class="badge b-hold">On Hold</span>
+      <div class="desc">Awaiting client decision on materials</div>
+      <div class="total zero">—</div>
+    </div>
+    <div class="strip">
+      <div class="act empty">
+        <div class="act-main">
+          <svg viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M2 6h12M2 10h12" stroke="currentColor" stroke-width="1.6"/></svg>
+          <span class="act-label">Cabinets</span>
+          <span class="act-count">0</span>
+        </div>
+        <div class="act-add">+</div>
+      </div>
+      <div class="act empty">
+        <div class="act-main">
+          <svg viewBox="0 0 16 16"><circle cx="4" cy="11.5" r="2" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="11.5" r="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M5.5 10L13 2M10.5 10L3 2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          <span class="act-label">Cut Lists</span>
+          <span class="act-count">0</span>
+        </div>
+        <div class="act-add">+</div>
+      </div>
+      <div class="act empty">
+        <div class="act-main">
+          <svg viewBox="0 0 16 16"><path d="M3 1.5h7l3 3v10H3z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M5 6h6M5 9h6M5 12h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          <span class="act-label">Quotes</span>
+          <span class="act-count">0</span>
+        </div>
+        <div class="act-add">+</div>
+      </div>
+      <div class="act empty">
+        <div class="act-main">
+          <svg viewBox="0 0 16 16"><path d="M2.5 4.5l5.5-2.5 5.5 2.5v7L8 14 2.5 11.5z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M2.5 4.5L8 7l5.5-2.5M8 7v7" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+          <span class="act-label">Orders</span>
+          <span class="act-count">0</span>
+        </div>
+        <div class="act-add">+</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="legend">Each action button shows the icon, label, count, and (for quotes/orders) value. Click the body to drill into that tab filtered to this project; click <span class="lk2">+</span> on the right to create new with this project preselected. Empty actions glow <span class="lk">teal</span> to invite a first-touch.</div>
+
+</body>
+</html>
