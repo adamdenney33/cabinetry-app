@@ -1018,9 +1018,19 @@ async function editQuoteInCB(quoteId) {
   cbEditingOriginalLines = JSON.parse(JSON.stringify(cbLines));
   localStorage.setItem('pc_cb_editing_quote_id', String(quoteId));
 
-  const projName = quoteProject(q);
+  // Populate the same client-context globals that `_cbPickQuote` sets,
+  // so the sidebar header reads "QUO-1042 · Mitchell Kitchen Renovation"
+  // and not "QUO-1042 · " with a dangling separator. Was a real bug for
+  // anyone opening a quote via "Edit in Cabinet Builder" (Quote tab card,
+  // headless screenshot scripts, etc.); the quote-picker path was fine.
+  const cli = clients.find(c => c.id === q.client_id);
+  _cbCurrentClientId = q.client_id || null;
+  const cliName = (cli && cli.name) || (typeof quoteClient === 'function' ? quoteClient(q) : '') || '';
+  const projName = (typeof quoteProject === 'function' ? quoteProject(q) : '') || '';
+  const qNum = q.quote_number || ('QUO-' + String(q.id).padStart(4, '0'));
+  _cbCurrentClientName = [projName, cliName].filter(Boolean).join(' · ') || qNum;
+  if (_cbCurrentClientName) localStorage.setItem('pc_cq_client_name', _cbCurrentClientName);
   const pn = _byId('cb-client'); if (pn) /** @type {HTMLInputElement} */ (pn).value = projName;
-  if (projName) localStorage.setItem('pc_cq_client_name', projName);
 
   cbEditingLineIdx = -1;
   cbScratchpad = null;
@@ -1070,9 +1080,17 @@ async function editOrderInCB(orderId) {
   localStorage.setItem('pc_cb_editing_order_id', String(orderId));
   localStorage.removeItem('pc_cb_editing_quote_id');
 
-  const projName = (typeof orderProject === 'function') ? orderProject(o) : '';
+  // Mirror editQuoteInCB's client-context population so the sidebar header
+  // reads "ORD-0312 · Mitchell Kitchen Renovation" rather than "ORD-0312 · "
+  // when opening an order via "Edit in Cabinet Builder".
+  const cli = clients.find(c => c.id === o.client_id);
+  _cbCurrentClientId = o.client_id || null;
+  const cliName = (cli && cli.name) || (typeof orderClient === 'function' ? orderClient(o) : '') || '';
+  const projName = (typeof orderProject === 'function' ? orderProject(o) : '') || '';
+  const oNum = o.order_number || ('ORD-' + String(o.id).padStart(4, '0'));
+  _cbCurrentClientName = [projName, cliName].filter(Boolean).join(' · ') || oNum;
+  if (_cbCurrentClientName) localStorage.setItem('pc_cq_client_name', _cbCurrentClientName);
   const pn = _byId('cb-client'); if (pn) /** @type {HTMLInputElement} */ (pn).value = projName;
-  if (projName) localStorage.setItem('pc_cq_client_name', projName);
 
   cbEditingLineIdx = -1;
   cbScratchpad = null;
