@@ -14,7 +14,7 @@
 // Plus per-scene debug compositions for the vertical reel, so any single
 // scene can be scrubbed/rendered in isolation.
 
-import { Composition, Audio, Sequence, staticFile, useCurrentFrame, useVideoConfig } from 'remotion';
+import { Composition, Folder, Audio, Sequence, staticFile, useCurrentFrame, useVideoConfig } from 'remotion';
 import { WorkflowVideo } from './Composition';
 import { SCENES, TOTAL_FRAMES, FPS, WIDTH, HEIGHT, type SceneSpec as WorkflowSceneSpec } from './scenes';
 import { Intro } from './scenes/Intro';
@@ -137,95 +137,111 @@ export const workflowSceneCompositionId = (sceneId: string): string =>
 export const RemotionRoot: React.FC = () => {
   return (
     <>
-      {/* ---- Horizontal narration demo master ---- */}
-      <Composition
-        id="CabinetWorkflow"
-        component={WorkflowVideo}
-        durationInFrames={TOTAL_FRAMES}
-        fps={FPS}
-        width={WIDTH}
-        height={HEIGHT}
-      />
+      {/* =====================================================================
+          Workflow — 16:9 narrated product demo
+          Master comp plus one comp per section (each section bundles its own
+          narration audio so the per-section MP4 plays back standalone).
+          ===================================================================== */}
+      <Folder name="Workflow (16:9)">
+        <Composition
+          id="CabinetWorkflow"
+          component={WorkflowVideo}
+          durationInFrames={TOTAL_FRAMES}
+          fps={FPS}
+          width={WIDTH}
+          height={HEIGHT}
+        />
 
-      {/* ---- Same demo, one file per section. Each composition bundles its
-              narration audio so the resulting MP4 plays back standalone. ---- */}
-      {SCENES.map((spec) => {
-        const renderer = NARRATED_SCENE_RENDERERS[spec.id];
-        if (!renderer) return null;
-        return (
+        <Folder name="Sections">
+          {SCENES.map((spec) => {
+            const renderer = NARRATED_SCENE_RENDERERS[spec.id];
+            if (!renderer) return null;
+            return (
+              <Composition
+                key={spec.id}
+                id={workflowSceneCompositionId(spec.id)}
+                component={makeNarratedScene(renderer, spec)}
+                durationInFrames={spec.duration}
+                fps={FPS}
+                width={WIDTH}
+                height={HEIGHT}
+              />
+            );
+          })}
+        </Folder>
+      </Folder>
+
+      {/* =====================================================================
+          Reel — Vertical (9:16) — music-driven 30s reel
+          Master comp plus one debug comp per scene. `reel-hook` declares a
+          zod schema + defaultProps so its copy + accent color show up as
+          editable inputs in Remotion Studio's right-side Props panel — edit
+          live with no code round-trip; the other 5 scenes still use the
+          props-less standalone wrapper and will migrate to the same pattern
+          in a follow-up commit.
+          ===================================================================== */}
+      <Folder name="Reel — Vertical (9:16)">
+        <Composition
+          id="CabinetBuilderReel"
+          component={CabinetBuilderReel}
+          durationInFrames={REEL.totalFrames}
+          fps={REEL.fps}
+          width={REEL.width}
+          height={REEL.height}
+        />
+
+        <Folder name="Scenes">
           <Composition
-            key={spec.id}
-            id={workflowSceneCompositionId(spec.id)}
-            component={makeNarratedScene(renderer, spec)}
-            durationInFrames={spec.duration}
-            fps={FPS}
-            width={WIDTH}
-            height={HEIGHT}
-          />
-        );
-      })}
-
-      {/* ---- Vertical reel master ---- */}
-      <Composition
-        id="CabinetBuilderReel"
-        component={CabinetBuilderReel}
-        durationInFrames={REEL.totalFrames}
-        fps={REEL.fps}
-        width={REEL.width}
-        height={REEL.height}
-      />
-
-      {/* ---- Per-scene debug comps for the vertical reel ----
-              `reel-hook` is registered explicitly so it can declare a zod
-              schema + defaultProps. That makes its copy + accent color show
-              up as editable inputs in Remotion Studio's right-side Props
-              panel — drag-edit-render with no code round-trip. The other 5
-              scenes still use the props-less standalone wrapper via the
-              loop below; they'll migrate to the same pattern in a follow-up
-              commit. */}
-      <Composition
-        id="reel-hook"
-        component={HookStandalone}
-        schema={HookSchema}
-        defaultProps={REEL_CONTENT.hook}
-        durationInFrames={HOOK_DURATION_FRAMES}
-        fps={REEL.fps}
-        width={REEL.width}
-        height={REEL.height}
-      />
-
-      {REEL_SCENES.filter((s) => s.id !== 'hook').map((s) => {
-        const Component = VERTICAL_SCENES[s.id];
-        if (!Component) return null;
-        return (
-          <Composition
-            key={s.label}
-            id={s.label}
-            component={makeStandaloneComponent(Component, s.duration, s.label)}
-            durationInFrames={s.duration}
+            id="reel-hook"
+            component={HookStandalone}
+            schema={HookSchema}
+            defaultProps={REEL_CONTENT.hook}
+            durationInFrames={HOOK_DURATION_FRAMES}
             fps={REEL.fps}
             width={REEL.width}
             height={REEL.height}
           />
-        );
-      })}
 
-      {/* ---- Horizontal reel: six standalone scenes, each its own file ---- */}
-      {REEL_H_SCENES.map((s) => {
-        const Component = HORIZONTAL_SCENES[s.id];
-        if (!Component) return null;
-        return (
-          <Composition
-            key={s.compId}
-            id={s.compId}
-            component={makeStandaloneComponent(Component, s.duration, s.compId)}
-            durationInFrames={s.duration}
-            fps={REEL_H.fps}
-            width={REEL_H.width}
-            height={REEL_H.height}
-          />
-        );
-      })}
+          {REEL_SCENES.filter((s) => s.id !== 'hook').map((s) => {
+            const Component = VERTICAL_SCENES[s.id];
+            if (!Component) return null;
+            return (
+              <Composition
+                key={s.label}
+                id={s.label}
+                component={makeStandaloneComponent(Component, s.duration, s.label)}
+                durationInFrames={s.duration}
+                fps={REEL.fps}
+                width={REEL.width}
+                height={REEL.height}
+              />
+            );
+          })}
+        </Folder>
+      </Folder>
+
+      {/* =====================================================================
+          Reel — Horizontal (16:9) — six standalone scenes, no master
+          ===================================================================== */}
+      <Folder name="Reel — Horizontal (16:9)">
+        <Folder name="Scenes">
+          {REEL_H_SCENES.map((s) => {
+            const Component = HORIZONTAL_SCENES[s.id];
+            if (!Component) return null;
+            return (
+              <Composition
+                key={s.compId}
+                id={s.compId}
+                component={makeStandaloneComponent(Component, s.duration, s.compId)}
+                durationInFrames={s.duration}
+                fps={REEL_H.fps}
+                width={REEL_H.width}
+                height={REEL_H.height}
+              />
+            );
+          })}
+        </Folder>
+      </Folder>
     </>
   );
 };
