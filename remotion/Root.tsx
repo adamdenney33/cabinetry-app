@@ -148,7 +148,7 @@ export const RemotionRoot: React.FC = () => {
           Master comp plus one comp per section (each section bundles its own
           narration audio so the per-section MP4 plays back standalone).
           ===================================================================== */}
-      <Folder name="Workflow (16:9)">
+      <Folder name="Workflow">
         <Composition
           id="CabinetWorkflow"
           component={WorkflowVideo}
@@ -219,7 +219,7 @@ export const RemotionRoot: React.FC = () => {
           props-less standalone wrapper and will migrate to the same pattern
           in a follow-up commit.
           ===================================================================== */}
-      <Folder name="Reel — Vertical (9:16)">
+      <Folder name="Reel-Vertical">
         <Composition
           id="CabinetBuilderReel"
           component={CabinetBuilderReel}
@@ -287,7 +287,7 @@ export const RemotionRoot: React.FC = () => {
       {/* =====================================================================
           Reel — Horizontal (16:9) — six standalone scenes, no master
           ===================================================================== */}
-      <Folder name="Reel — Horizontal (16:9)">
+      <Folder name="Reel-Horizontal">
         <Folder name="Scenes">
           <Composition
             id="h-hook"
