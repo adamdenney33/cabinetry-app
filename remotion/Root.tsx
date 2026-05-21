@@ -13,6 +13,14 @@
 //
 // Plus per-scene debug compositions for the vertical reel, so any single
 // scene can be scrubbed/rendered in isolation.
+//
+// Each <Composition> is written as explicit JSX (not generated from a
+// `.map()` loop) so Remotion Studio's "delete from Studio" affordance can
+// target individual comps. Studio rewrites this file through Prettier when
+// you delete a comp from the rail; it only sees standalone JSX nodes, not
+// array iterations. Durations and audio paths still come from one source
+// (scenes/index.ts, vertical/constants.ts, reel-h/constants.ts) via the
+// w() / reel() / reelH() helpers below.
 
 import { Composition, Folder, Audio, Sequence, staticFile, useCurrentFrame, useVideoConfig } from 'remotion';
 import { WorkflowVideo } from './Composition';
@@ -42,22 +50,27 @@ import { Close as HClose } from './reel-h/scenes/Close';
 
 type SceneComponent = React.FC<{ localFrame: number; durationFrames: number }>;
 
-const VERTICAL_SCENES: Record<string, SceneComponent> = {
-  hook: VHook,
-  openBuilder: VOpenBuilder,
-  specScroll: VSpecScroll,
-  livePrice: VLivePrice,
-  saveLibrary: VSaveToLibrary,
-  close: VClose,
+/** Spec lookup helpers. Each `<Composition>` below is written as explicit
+ *  JSX (rather than a `.map()` loop) so Remotion Studio's "delete from
+ *  Studio" feature can target it — the in-Studio delete edits Root.tsx via
+ *  Prettier, and it only sees standalone JSX nodes, not array iterations.
+ *  These helpers keep the JSX DRY for fields that should still come from
+ *  one source of truth (durations in `constants.ts`, audio paths in
+ *  `scenes/index.ts`). Throws on miss so a typo is caught at startup. */
+const w = (id: string): WorkflowSceneSpec => {
+  const found = SCENES.find((s) => s.id === id);
+  if (!found) throw new Error(`Workflow scene spec not found: ${id}`);
+  return found;
 };
-
-const HORIZONTAL_SCENES: Record<string, SceneComponent> = {
-  hook: HHook,
-  openBuilder: HOpenBuilder,
-  specScroll: HSpecScroll,
-  livePrice: HLivePrice,
-  saveLibrary: HSaveToLibrary,
-  close: HClose,
+const reel = (id: string) => {
+  const found = REEL_SCENES.find((s) => s.id === id);
+  if (!found) throw new Error(`Vertical reel scene spec not found: ${id}`);
+  return found;
+};
+const reelH = (id: string) => {
+  const found = REEL_H_SCENES.find((s) => s.id === id);
+  if (!found) throw new Error(`Horizontal reel scene spec not found: ${id}`);
+  return found;
 };
 
 /** Wraps a scene component so it can be the entry of a standalone
@@ -127,13 +140,6 @@ const NARRATED_SCENE_RENDERERS: Record<
   'outro':      (lf, d, fps) => <Outro localFrame={lf} durationFrames={d} fps={fps} />,
 };
 
-/** Map a scenes/index.ts spec id to its standalone composition id.
- *  `01-rates` → `w-rates`, `intro` → `w-intro`, etc. The `w-` prefix mirrors
- *  the existing `h-` prefix the horizontal-reel scenes use, and Remotion
- *  rejects underscores in composition ids (a-z A-Z 0-9 and `-` only). */
-export const workflowSceneCompositionId = (sceneId: string): string =>
-  'w-' + sceneId.replace(/^\d+-/, '');
-
 export const RemotionRoot: React.FC = () => {
   return (
     <>
@@ -153,21 +159,54 @@ export const RemotionRoot: React.FC = () => {
         />
 
         <Folder name="Sections">
-          {SCENES.map((spec) => {
-            const renderer = NARRATED_SCENE_RENDERERS[spec.id];
-            if (!renderer) return null;
-            return (
-              <Composition
-                key={spec.id}
-                id={workflowSceneCompositionId(spec.id)}
-                component={makeNarratedScene(renderer, spec)}
-                durationInFrames={spec.duration}
-                fps={FPS}
-                width={WIDTH}
-                height={HEIGHT}
-              />
-            );
-          })}
+          <Composition
+            id="w-intro"
+            component={makeNarratedScene(NARRATED_SCENE_RENDERERS['intro'], w('intro'))}
+            durationInFrames={w('intro').duration}
+            fps={FPS}
+            width={WIDTH}
+            height={HEIGHT}
+          />
+          <Composition
+            id="w-rates"
+            component={makeNarratedScene(NARRATED_SCENE_RENDERERS['01-rates'], w('01-rates'))}
+            durationInFrames={w('01-rates').duration}
+            fps={FPS}
+            width={WIDTH}
+            height={HEIGHT}
+          />
+          <Composition
+            id="w-builder"
+            component={makeNarratedScene(NARRATED_SCENE_RENDERERS['02-builder'], w('02-builder'))}
+            durationInFrames={w('02-builder').duration}
+            fps={FPS}
+            width={WIDTH}
+            height={HEIGHT}
+          />
+          <Composition
+            id="w-spec"
+            component={makeNarratedScene(NARRATED_SCENE_RENDERERS['03-spec'], w('03-spec'))}
+            durationInFrames={w('03-spec').duration}
+            fps={FPS}
+            width={WIDTH}
+            height={HEIGHT}
+          />
+          <Composition
+            id="w-library"
+            component={makeNarratedScene(NARRATED_SCENE_RENDERERS['04-library'], w('04-library'))}
+            durationInFrames={w('04-library').duration}
+            fps={FPS}
+            width={WIDTH}
+            height={HEIGHT}
+          />
+          <Composition
+            id="w-outro"
+            component={makeNarratedScene(NARRATED_SCENE_RENDERERS['outro'], w('outro'))}
+            durationInFrames={w('outro').duration}
+            fps={FPS}
+            width={WIDTH}
+            height={HEIGHT}
+          />
         </Folder>
       </Folder>
 
@@ -202,21 +241,46 @@ export const RemotionRoot: React.FC = () => {
             height={REEL.height}
           />
 
-          {REEL_SCENES.filter((s) => s.id !== 'hook').map((s) => {
-            const Component = VERTICAL_SCENES[s.id];
-            if (!Component) return null;
-            return (
-              <Composition
-                key={s.label}
-                id={s.label}
-                component={makeStandaloneComponent(Component, s.duration, s.label)}
-                durationInFrames={s.duration}
-                fps={REEL.fps}
-                width={REEL.width}
-                height={REEL.height}
-              />
-            );
-          })}
+          <Composition
+            id="reel-open-builder"
+            component={makeStandaloneComponent(VOpenBuilder, reel('openBuilder').duration, 'reel-open-builder')}
+            durationInFrames={reel('openBuilder').duration}
+            fps={REEL.fps}
+            width={REEL.width}
+            height={REEL.height}
+          />
+          <Composition
+            id="reel-spec-scroll"
+            component={makeStandaloneComponent(VSpecScroll, reel('specScroll').duration, 'reel-spec-scroll')}
+            durationInFrames={reel('specScroll').duration}
+            fps={REEL.fps}
+            width={REEL.width}
+            height={REEL.height}
+          />
+          <Composition
+            id="reel-live-price"
+            component={makeStandaloneComponent(VLivePrice, reel('livePrice').duration, 'reel-live-price')}
+            durationInFrames={reel('livePrice').duration}
+            fps={REEL.fps}
+            width={REEL.width}
+            height={REEL.height}
+          />
+          <Composition
+            id="reel-save-library"
+            component={makeStandaloneComponent(VSaveToLibrary, reel('saveLibrary').duration, 'reel-save-library')}
+            durationInFrames={reel('saveLibrary').duration}
+            fps={REEL.fps}
+            width={REEL.width}
+            height={REEL.height}
+          />
+          <Composition
+            id="reel-close"
+            component={makeStandaloneComponent(VClose, reel('close').duration, 'reel-close')}
+            durationInFrames={reel('close').duration}
+            fps={REEL.fps}
+            width={REEL.width}
+            height={REEL.height}
+          />
         </Folder>
       </Folder>
 
@@ -225,21 +289,54 @@ export const RemotionRoot: React.FC = () => {
           ===================================================================== */}
       <Folder name="Reel — Horizontal (16:9)">
         <Folder name="Scenes">
-          {REEL_H_SCENES.map((s) => {
-            const Component = HORIZONTAL_SCENES[s.id];
-            if (!Component) return null;
-            return (
-              <Composition
-                key={s.compId}
-                id={s.compId}
-                component={makeStandaloneComponent(Component, s.duration, s.compId)}
-                durationInFrames={s.duration}
-                fps={REEL_H.fps}
-                width={REEL_H.width}
-                height={REEL_H.height}
-              />
-            );
-          })}
+          <Composition
+            id="h-hook"
+            component={makeStandaloneComponent(HHook, reelH('hook').duration, 'h-hook')}
+            durationInFrames={reelH('hook').duration}
+            fps={REEL_H.fps}
+            width={REEL_H.width}
+            height={REEL_H.height}
+          />
+          <Composition
+            id="h-open-builder"
+            component={makeStandaloneComponent(HOpenBuilder, reelH('openBuilder').duration, 'h-open-builder')}
+            durationInFrames={reelH('openBuilder').duration}
+            fps={REEL_H.fps}
+            width={REEL_H.width}
+            height={REEL_H.height}
+          />
+          <Composition
+            id="h-spec-scroll"
+            component={makeStandaloneComponent(HSpecScroll, reelH('specScroll').duration, 'h-spec-scroll')}
+            durationInFrames={reelH('specScroll').duration}
+            fps={REEL_H.fps}
+            width={REEL_H.width}
+            height={REEL_H.height}
+          />
+          <Composition
+            id="h-live-price"
+            component={makeStandaloneComponent(HLivePrice, reelH('livePrice').duration, 'h-live-price')}
+            durationInFrames={reelH('livePrice').duration}
+            fps={REEL_H.fps}
+            width={REEL_H.width}
+            height={REEL_H.height}
+          />
+          <Composition
+            id="h-save-library"
+            component={makeStandaloneComponent(HSaveToLibrary, reelH('saveLibrary').duration, 'h-save-library')}
+            durationInFrames={reelH('saveLibrary').duration}
+            fps={REEL_H.fps}
+            width={REEL_H.width}
+            height={REEL_H.height}
+          />
+          <Composition
+            id="h-close"
+            component={makeStandaloneComponent(HClose, reelH('close').duration, 'h-close')}
+            durationInFrames={reelH('close').duration}
+            fps={REEL_H.fps}
+            width={REEL_H.width}
+            height={REEL_H.height}
+          />
         </Folder>
       </Folder>
     </>
