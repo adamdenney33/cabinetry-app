@@ -357,8 +357,8 @@ function renderDashboard() {
 
       <!-- Revenue chart + Pipeline -->
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:18px;margin-bottom:0">
-        <div class="card">
-          <div class="card-header card-header-nav" onclick="switchSection('orders')"><span class="card-title">Monthly Revenue <span style="font-weight:400;color:var(--muted);margin-left:4px">completed orders</span></span></div>
+        <div class="card" onclick="switchSection('orders');setOrderFilter('complete')" style="cursor:pointer">
+          <div class="card-header card-header-nav"><span class="card-title">Monthly Revenue <span style="font-weight:400;color:var(--muted);margin-left:4px">completed orders</span></span></div>
           <div class="card-body" style="padding:12px 18px">
             <canvas id="revenue-chart" height="120" style="width:100%;display:block"></canvas>
           </div>
@@ -381,18 +381,27 @@ function renderDashboard() {
     </div>`;
 }
 
-function drawRevenueChart() {
+function drawRevenueChart(hoverIdx) {
   const canvas = /** @type {HTMLCanvasElement | null} */ (document.getElementById('revenue-chart'));
   if (!canvas) return;
-  canvas.width = canvas.offsetWidth || 400;
-  const W = canvas.width, H = canvas.height;
+  const dpr = window.devicePixelRatio || 1;
+  const cssW = canvas.offsetWidth || 400;
+  const cssH = 120;
+  canvas.style.height = cssH + 'px';
+  canvas.width = Math.round(cssW * dpr);
+  canvas.height = Math.round(cssH * dpr);
+  const W = cssW, H = cssH;
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   const dark = document.documentElement.classList.contains('dark');
   const gridCol = dark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
   const labelCol = dark ? '#64748b' : '#94a3b8';
   const barCol = dark ? '#4caf50' : '#4caf50';
+  const barColHover = '#66bb6a';
   const emptyCol = dark ? '#334155' : '#e2e8f0';
+  const tipBg = dark ? 'rgba(17,24,39,0.96)' : 'rgba(15,23,42,0.94)';
+  const tipFg = '#f8fafc';
 
   const now = new Date();
   const months = Array.from({length: 6}, (_, i) => {
@@ -411,6 +420,9 @@ function drawRevenueChart() {
   const cW = W - PAD.l - PAD.r, cH = H - PAD.t - PAD.b;
   const barW = cW / months.length;
 
+  // Stash geometry for the hover listener so it can map mouse → bar without recomputing.
+  /** @type {any} */ (canvas)._revChart = { months, PAD, barW, cH, W, H };
+
   ctx.clearRect(0, 0, W, H);
 
   // Gridlines + Y labels
@@ -427,18 +439,82 @@ function drawRevenueChart() {
 
   // Bars
   months.forEach((m, i) => {
+    const isHover = (i === hoverIdx);
     const barH = Math.max(2, (m.revenue / maxRev) * cH);
     const x = PAD.l + i * barW + barW * 0.18;
     const bw = barW * 0.64;
     const y = PAD.t + cH - barH;
-    ctx.fillStyle = m.revenue > 0 ? barCol : emptyCol;
+    ctx.fillStyle = m.revenue > 0 ? (isHover ? barColHover : barCol) : emptyCol;
     ctx.beginPath();
     ctx.moveTo(x + 3, y); ctx.lineTo(x + bw - 3, y);
     ctx.arcTo(x + bw, y, x + bw, y + 3, 3); ctx.lineTo(x + bw, y + barH);
     ctx.lineTo(x, y + barH); ctx.arcTo(x, y, x + 3, y, 3);
     ctx.closePath(); ctx.fill();
 
-    ctx.fillStyle = labelCol; ctx.textAlign = 'center';
+    ctx.fillStyle = isHover ? (dark ? '#cbd5e1' : '#475569') : labelCol;
+    ctx.textAlign = 'center';
     ctx.fillText(m.label, PAD.l + i * barW + barW / 2, H - 6);
+  });
+
+  // Tooltip
+  if (hoverIdx != null && hoverIdx >= 0 && hoverIdx < months.length) {
+    const m = months[hoverIdx];
+    const cur = /** @type {string} */ (window.currency || '$');
+    const rev = m.revenue;
+    const revStr = cur + rev.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+    const text = `${m.label} · ${revStr}`;
+    ctx.font = '600 11px -apple-system,sans-serif';
+    const tw = ctx.measureText(text).width;
+    const padX = 8, padY = 5, th = 18;
+    const cx = PAD.l + hoverIdx * barW + barW / 2;
+    const tx = Math.max(PAD.l, Math.min(W - PAD.r - (tw + padX * 2), cx - (tw + padX * 2) / 2));
+    const ty = Math.max(0, PAD.t - 2);
+    ctx.fillStyle = tipBg;
+    ctx.beginPath();
+    const r = 4;
+    ctx.moveTo(tx + r, ty);
+    ctx.lineTo(tx + tw + padX * 2 - r, ty);
+    ctx.arcTo(tx + tw + padX * 2, ty, tx + tw + padX * 2, ty + r, r);
+    ctx.lineTo(tx + tw + padX * 2, ty + th - r);
+    ctx.arcTo(tx + tw + padX * 2, ty + th, tx + tw + padX * 2 - r, ty + th, r);
+    ctx.lineTo(tx + r, ty + th);
+    ctx.arcTo(tx, ty + th, tx, ty + th - r, r);
+    ctx.lineTo(tx, ty + r);
+    ctx.arcTo(tx, ty, tx + r, ty, r);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = tipFg;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, tx + padX, ty + th / 2 + 1);
+    ctx.textBaseline = 'alphabetic';
+  }
+
+  _wireRevenueHover(canvas);
+}
+
+function _wireRevenueHover(canvas) {
+  if (/** @type {any} */ (canvas)._revHoverWired) return;
+  /** @type {any} */ (canvas)._revHoverWired = true;
+  canvas.addEventListener('mousemove', (e) => {
+    const st = /** @type {any} */ (canvas)._revChart;
+    if (!st) return;
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left, y = e.clientY - rect.top;
+    let idx = null;
+    if (y >= st.PAD.t && y <= st.H - st.PAD.b + 14) {
+      const i = Math.floor((x - st.PAD.l) / st.barW);
+      if (i >= 0 && i < st.months.length) idx = i;
+    }
+    if (idx !== /** @type {any} */ (canvas)._revHoverIdx) {
+      /** @type {any} */ (canvas)._revHoverIdx = idx;
+      drawRevenueChart(idx == null ? undefined : idx);
+    }
+  });
+  canvas.addEventListener('mouseleave', () => {
+    if (/** @type {any} */ (canvas)._revHoverIdx != null) {
+      /** @type {any} */ (canvas)._revHoverIdx = null;
+      drawRevenueChart();
+    }
   });
 }

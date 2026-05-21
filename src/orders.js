@@ -155,12 +155,16 @@ function renderOrdersMain() {
       </div>${i < ORDER_STATUSES.length-1 ? `<div class="pipe-line ${done?'pipe-line-done':''}"></div>` : ''}`;
     }).join('');
 
+    const isComplete = o.status === 'complete';
     let isOverdue = false;
-    if (o.status !== 'complete' && o.due && o.due !== 'TBD') {
+    if (!isComplete && o.due && o.due !== 'TBD') {
       const parsed = new Date(o.due);
       if (!isNaN(+parsed) && parsed < new Date()) isOverdue = true;
     }
-    const relDate = _relativeDate(o.due);
+    const relDate = isComplete ? null : _relativeDate(o.due);
+    const completedOn = isComplete
+      ? (o.updated_at ? String(o.updated_at).slice(0, 10) : '—')
+      : null;
     const titleNum = o.order_number || '';
     const titleProj = orderProject(o) || '';
     const titleCli = orderClient(o) || '';
@@ -177,7 +181,9 @@ function renderOrdersMain() {
             <span class="badge ${statusBadgeCls}" style="font-size:10px" onclick="event.stopPropagation()">${statusLabel}</span>
           </div>
           <div class="oc-meta">
-            <span>Due: ${o.due ? String(o.due).slice(0, 10) : 'TBD'}</span>
+            ${isComplete
+              ? `<span>Completed: ${completedOn}</span>`
+              : `<span>Due: ${o.due ? String(o.due).slice(0, 10) : 'TBD'}</span>`}
             ${relDate ? `<span style="font-size:9px;font-weight:700;color:${relDate.color}">${relDate.label}</span>` : ''}
             ${isOverdue ? '<span class="badge badge-red" style="font-size:8px;padding:1px 5px">Overdue</span>' : ''}
             ${(() => { const lc = _lineKindCountsLabel(/** @type {any} */ (o)._lines); return lc ? `<span>· ${lc}</span>` : ''; })()}
