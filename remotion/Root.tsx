@@ -33,7 +33,7 @@ import { SceneSpec } from './scenes/SceneSpec';
 import { SceneLibrary } from './scenes/SceneLibrary';
 import { CabinetBuilderReel } from './vertical/Composition';
 import { REEL, REEL_SCENES } from './vertical/constants';
-import { HookSchema, REEL_CONTENT, type HookProps } from './vertical/reel-content';
+import { HookSchema, type HookProps } from './vertical/reel-content';
 import { Hook as VHook } from './vertical/scenes/Hook';
 import { OpenBuilder as VOpenBuilder } from './vertical/scenes/OpenBuilder';
 import { SpecScroll as VSpecScroll } from './vertical/scenes/SpecScroll';
@@ -234,7 +234,11 @@ export const RemotionRoot: React.FC = () => {
             id="reel-hook"
             component={HookStandalone}
             schema={HookSchema}
-            defaultProps={REEL_CONTENT.hook}
+            defaultProps={{
+              line1: 'Quote a cabinet',
+              line2: 'without spreadsheets.',
+              accentColor: '#e8a838',
+            }}
             durationInFrames={HOOK_DURATION_FRAMES}
             fps={REEL.fps}
             width={REEL.width}

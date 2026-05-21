@@ -15,8 +15,14 @@
     },
     {
       "name": "Remotion Studio",
-      "runtimeExecutable": "npx",
-      "runtimeArgs": ["remotion", "studio", "remotion/index.ts", "--port", "3001"],
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "./node_modules/@remotion/cli/remotion-cli.js",
+        "studio",
+        "remotion/index.ts",
+        "--port",
+        "3001"
+      ],
       "port": 3001
     }
   ]
