@@ -61,6 +61,10 @@ declare global {
     _demoMode?: boolean;
     /** True while the guided walkthrough overlay is on screen (src/walkthrough.js). */
     _wtActive?: boolean;
+    /** Pricing-tier deep-link from the landing page (/?plan=…). Stashed by the
+     *  INIT param handler in src/app.js, consumed once the auth state is known
+     *  (signed-in → Stripe Checkout, guest → sign-up then retry after auth). */
+    _pendingPlan?: 'monthly' | 'annual' | 'founder' | null;
     /** True for phones/tablets — touch-primary, no hover. Defined in src/mobile-notice.js. */
     _pcIsTouchDevice?: () => boolean;
     /** Once-per-session mobile/tablet advisory notice. Defined in src/mobile-notice.js. */

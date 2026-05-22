@@ -1,5 +1,5 @@
 import { defineConfig } from 'vite';
-import { copyFileSync, mkdirSync, readdirSync, existsSync, readFileSync, writeFileSync, unlinkSync } from 'node:fs';
+import { copyFileSync, mkdirSync, readdirSync, existsSync, readFileSync, writeFileSync, unlinkSync, cpSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { transformSync } from 'esbuild';
 import { sentryVitePlugin } from '@sentry/vite-plugin';
@@ -46,6 +46,25 @@ function copyEmailLogoPlugin() {
   };
 }
 
+// The marketing landing page (landing.html) is a standalone static page served
+// at /landing.html — it loads none of the app bundle, just its own landing.css
+// + landing.js. Vite only builds index.html, so copy the landing files here.
+// publicDir is false, so the brand assets the landing references (icons,
+// screenshots, logo) must also be copied explicitly into dist/brand/.
+function copyLandingPlugin() {
+  return {
+    name: 'copy-landing',
+    closeBundle() {
+      for (const f of ['landing.html', 'landing.css', 'landing.js']) {
+        if (existsSync(f)) copyFileSync(f, join('dist', f));
+      }
+      for (const dir of ['brand/icons', 'brand/screenshots', 'brand/logo']) {
+        if (existsSync(dir)) cpSync(dir, join('dist', dir), { recursive: true });
+      }
+    },
+  };
+}
+
 // Delete every source map from dist/ after the build. Maps are still
 // generated (build.sourcemap: 'hidden') and uploaded to Sentry by
 // sentryVitePlugin; closeBundle runs after that writeBundle upload, so
@@ -83,6 +102,7 @@ export default defineConfig({
   plugins: [
     copyClassicScriptsPlugin(),
     copyEmailLogoPlugin(),
+    copyLandingPlugin(),
     // Source-map upload + release/commit grouping. Needs build.sourcemap (set
     // above). org/project/authToken come from the build env — see
     // .github/workflows/deploy.yml. `disable` makes the plugin a no-op when

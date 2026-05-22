@@ -1486,6 +1486,20 @@ _sb.auth.onAuthStateChange(async (event, session) => {
     }
     if (typeof renderSubscriptionSection === 'function') renderSubscriptionSection();
   }
+  // Landing-page pricing deep-link (/?plan=…): once the initial session is
+  // known, send a signed-in visitor straight to Stripe Checkout, or a guest to
+  // the sign-up screen — the stashed plan is retried automatically after they
+  // authenticate (the next SIGNED_IN event runs this branch with a session).
+  if (window._pendingPlan) {
+    if (session) {
+      const _plan = window._pendingPlan;
+      window._pendingPlan = null;
+      const _up = /** @type {any} */ (window)._handleUpgradeClick;
+      if (typeof _up === 'function') _up(_plan);
+    } else if (typeof _showAuth === 'function') {
+      _showAuth();
+    }
+  }
 });
 
 // ══════════════════════════════════════════
@@ -1506,6 +1520,21 @@ function trunc(s, n) { return s.length <= n ? s : s.slice(0, n-1) + '…'; }
 // then strip the query param so a refresh doesn't re-toast.
 if (typeof handleCheckoutReturn === 'function') handleCheckoutReturn();
 if (typeof handlePortalReturn === 'function') handlePortalReturn();
+// Landing-page pricing deep-link: the static landing page links its pricing
+// CTAs to /?plan=<tier>. Stash the tier and strip the param (mirrors
+// handleCheckoutReturn); the onAuthStateChange handler above consumes it once
+// the session is known. Runs before that handler clears its readyState await.
+(function () {
+  const _params = new URLSearchParams(window.location.search);
+  const _plan = _params.get('plan');
+  if (_plan === 'monthly' || _plan === 'annual' || _plan === 'founder') {
+    window._pendingPlan = _plan;
+    _params.delete('plan');
+    const _cleaned = _params.toString();
+    window.history.replaceState({}, '',
+      window.location.pathname + (_cleaned ? `?${_cleaned}` : '') + window.location.hash);
+  }
+})();
 loadBizInfo();
 loadLogoPreview();
 // Restore kerf

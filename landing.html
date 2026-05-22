@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- Mark JS-on so reveal-on-scroll hidden states apply only when scripts run.
+       Without JS the page renders fully visible. Runs before first paint. -->
+  <script>document.documentElement.classList.add('js');</script>
+  <title>ProCabinet.App — Quote custom cabinetry in minutes, not hours</title>
+  <meta name="description" content="The workshop OS for cabinet makers. Set your rates once, then quote, cut, schedule and bill from one place. Free to start." />
+  <meta name="theme-color" content="#111111" />
+
+  <!-- Open Graph / social -->
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="ProCabinet.App — Quote custom cabinetry in minutes, not hours" />
+  <meta property="og:description" content="The workshop OS for cabinet makers. Quote, cut, schedule and bill from one place." />
+  <meta property="og:image" content="/brand/screenshots/01-dashboard.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+
+  <link rel="icon" href="/brand/logo/logo-primary-black.svg" />
+  <link rel="preload" as="image" href="/brand/screenshots/03b-cabinet-library.png" />
+  <link rel="stylesheet" href="/landing.css" />
+</head>
+<body>
+  <!-- Scroll-progress bar -->
+  <div class="scroll-progress" id="progress" aria-hidden="true"></div>
+
+  <!-- ── Sticky tab-bar nav: replica of the app header (ink bar) + chrome tab strip ── -->
+  <header class="tabbar" id="tabbar">
+    <div class="tabbar-top">
+      <a class="brand" href="/" aria-label="ProCabinet.App home">
+        <span class="logo-text">ProCabinet.App</span>      </a>
+      <div class="tabbar-actions">
+        <a class="btn btn-ghost-dark" href="#pricing">Pricing</a>
+        <a class="btn btn-amber-sm" href="/">Open the app →</a>
+      </div>
+    </div>
+    <nav class="tabbar-tabs" aria-label="Feature navigation">
+      <a class="tab" href="#f-dashboard" data-tab="dashboard"><span class="ico" style="--ico:url('/brand/icons/individual/dashboard.svg')"></span><span>Dashboard</span></a>
+      <a class="tab" href="#f-cutlist"   data-tab="cutlist"><span class="ico" style="--ico:url('/brand/icons/individual/cut-list.svg')"></span><span>Cut List</span></a>
+      <a class="tab" href="#f-cabinet"   data-tab="cabinet"><span class="ico" style="--ico:url('/brand/icons/individual/cabinet.svg')"></span><span>Cabinet</span></a>
+      <a class="tab" href="#f-stock"     data-tab="stock"><span class="ico" style="--ico:url('/brand/icons/individual/stock.svg')"></span><span>Stock</span></a>
+      <a class="tab" href="#f-quotes"    data-tab="orders"><span class="ico" style="--ico:url('/brand/icons/individual/orders.svg')"></span><span>Orders</span></a>
+      <a class="tab" href="#f-quotes"    data-tab="quotes"><span class="ico" style="--ico:url('/brand/icons/individual/quotes.svg')"></span><span>Quotes</span></a>
+      <a class="tab" href="#f-quotes"    data-tab="clients"><span class="ico" style="--ico:url('/brand/icons/individual/clients.svg')"></span><span>Clients</span></a>
+      <a class="tab" href="#f-schedule"  data-tab="schedule"><span class="ico" style="--ico:url('/brand/icons/individual/schedule.svg')"></span><span>Schedule</span></a>
+    </nav>
+  </header>
+
+  <!-- ── Hero ── -->
+  <section class="hero">
+    <div class="hero-copy">
+      <span class="eyebrow">The workshop OS for cabinet makers</span>
+      <h1>Quote custom<br />cabinetry projects<br /><span class="amber">in minutes<br />... not hours</span></h1>
+      <p class="lede">
+        Set your rates and times once. Then build bespoke cabinet quotes in seconds —
+        and run the whole job from quote to cut list to schedule to invoice, in one place.
+      </p>
+      <div class="cta-row">
+        <a class="btn btn-amber" href="/">Try the demo — no sign-up</a>
+        <a class="btn btn-ghost" href="#pricing">See pricing</a>
+      </div>
+      <p class="micro">Free to start — 5 clients, 5 quotes, 5 orders.</p>
+    </div>
+    <div class="hero-media" data-parallax>
+      <div class="browser-frame" data-tilt>
+        <span class="browser-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+        <div class="shot-stack">
+          <img class="shot-base" src="/brand/screenshots/03b-cabinet-library.png" alt="Your cabinet library of reusable cabinets" />
+          <img class="shot-hover" src="/brand/screenshots/03c-cabinet-rates.png" alt="Set your rates and times once — My Rates" loading="lazy" />
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Tab bar as a brand object ── -->
+  <section class="tabbar-show" id="features" data-reveal>
+    <h2>Eight tabs. One workshop.</h2>
+    <p class="section-lede">The same nav you'll use every day — quote, cut, schedule and bill, all one click apart.</p>
+    <div class="tabbar-hero" data-scroll3d role="img" aria-label="The ProCabinet tab bar">
+      <span class="sb-tab"><img src="/brand/icons/individual/dashboard.svg" alt="" loading="lazy" /></span>
+      <span class="sb-tab"><img src="/brand/icons/individual/cut-list.svg" alt="" loading="lazy" /></span>
+      <span class="sb-tab"><img src="/brand/icons/individual/cabinet.svg" alt="" loading="lazy" /></span>
+      <span class="sb-tab"><img src="/brand/icons/individual/stock.svg" alt="" loading="lazy" /></span>
+      <span class="sb-tab"><img src="/brand/icons/individual/orders.svg" alt="" loading="lazy" /></span>
+      <span class="sb-tab"><img src="/brand/icons/individual/quotes.svg" alt="" loading="lazy" /></span>
+      <span class="sb-tab"><img src="/brand/icons/individual/clients.svg" alt="" loading="lazy" /></span>
+      <span class="sb-tab"><img src="/brand/icons/individual/schedule.svg" alt="" loading="lazy" /></span>
+    </div>
+    <ul class="stats">
+      <li><strong data-countup="8">8</strong><span>connected tabs</span></li>
+      <li><strong data-countup="6">6</strong><span>smart libraries</span></li>
+      <li><strong data-countup="1">1</strong><span>place for everything</span></li>
+    </ul>
+  </section>
+
+  <!-- ── Feature 1 — Cabinet (image right) ── -->
+  <section class="feature" id="f-cabinet" data-spy="cabinet" data-reveal>
+    <div class="feature-copy">
+      <span class="feature-icon"><img src="/brand/icons/individual/cabinet.svg" alt="" /></span>
+      <h3>Custom Cabinet Quote Builder</h3>
+      <p class="promise">Build bespoke cabinet quotes in seconds. Set your rates and times for each production step once, then let the builder do the maths.</p>
+      <ul class="ticks">
+        <li>Pull materials, edgebanding, hardware &amp; finishes straight from your stock library.</li>
+        <li>Save reusable cabinets to your library, with cut-list parts linked ready to drop into new jobs.</li>
+        <li>Delegate quoting with confidence — someone else can handle the admin with very little training.</li>
+      </ul>
+    </div>
+    <div class="feature-media" data-tilt>
+      <div class="browser-frame">
+        <span class="browser-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+        <div class="shot-stack">
+          <img class="shot-base" src="/brand/screenshots/03-cabinet.png" alt="Cabinet builder" loading="lazy" />
+          <img class="shot-hover" src="/brand/screenshots/03d-cabinet-editor.png" alt="Editing a cabinet" loading="lazy" />
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Feature 2 — Schedule (image left) ── -->
+  <section class="feature reverse" id="f-schedule" data-spy="schedule" data-reveal>
+    <div class="feature-copy">
+      <span class="feature-icon"><img src="/brand/icons/individual/schedule.svg" alt="" /></span>
+      <h3>Auto-Schedule Production Calendar</h3>
+      <p class="promise">Production that schedules itself. Set your available working hours and a priority for each order — work is allocated automatically, in line or concurrently.</p>
+      <ul class="ticks">
+        <li>Add extra time when a job runs over, and track exactly where you're losing money.</li>
+        <li>Manual overrides for fixed start dates or set durations — auto-schedule works around them.</li>
+      </ul>
+    </div>
+    <div class="feature-media" data-tilt>
+      <div class="browser-frame">
+        <span class="browser-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+        <img src="/brand/screenshots/08-schedule.png" alt="Production schedule calendar" loading="lazy" />
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Feature 3 — Stock (image right) ── -->
+  <section class="feature" id="f-stock" data-spy="stock" data-reveal>
+    <div class="feature-copy">
+      <span class="feature-icon"><img src="/brand/icons/individual/stock.svg" alt="" /></span>
+      <h3>Stock Library</h3>
+      <p class="promise">Every material, tracked — and fed straight into quotes, cut lists and orders.</p>
+      <ul class="ticks">
+        <li>Set a low-stock alert quantity for each item individually.</li>
+        <li>Total stock values make your end-of-year accounts easy.</li>
+        <li>Deduct from stock as you build, so on-hand figures stay honest.</li>
+      </ul>
+    </div>
+    <div class="feature-media" data-tilt>
+      <div class="browser-frame">
+        <span class="browser-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+        <div class="shot-stack">
+          <img class="shot-base" src="/brand/screenshots/04-stock.png" alt="Stock library" loading="lazy" />
+          <img class="shot-hover" src="/brand/screenshots/04b-stock-editor.png" alt="Editing a stock item" loading="lazy" />
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Feature 4 — Cut List (image left) ── -->
+  <section class="feature reverse" id="f-cutlist" data-spy="cutlist" data-reveal>
+    <div class="feature-copy">
+      <span class="feature-icon"><img src="/brand/icons/individual/cut-list.svg" alt="" /></span>
+      <h3>Cut List Optimiser</h3>
+      <p class="promise">Cut sheets that don't waste board. Pull panels and edge banding from your stock library and let the optimiser nest them.</p>
+      <ul class="ticks">
+        <li>Deduct from stock with one button.</li>
+        <li>Save reusable parts for repeat cabinets.</li>
+        <li>Set grain direction for individual parts and panels.</li>
+        <li>Add edge banding to specific sides, with the trim toggle set to each band's thickness.</li>
+      </ul>
+    </div>
+    <div class="feature-media" data-tilt>
+      <div class="browser-frame">
+        <span class="browser-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+        <div class="shot-stack">
+          <img class="shot-base" src="/brand/screenshots/02-cut-list.png" alt="Cut list" loading="lazy" />
+          <img class="shot-hover" src="/brand/screenshots/02b-cut-layout.png" alt="Optimised cut layout" loading="lazy" />
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Feature 5 — Quotes, Orders & Clients (image right) ── -->
+  <section class="feature" id="f-quotes" data-spy="quotes orders clients" data-reveal>
+    <span class="anchor" id="f-orders"></span><span class="anchor" id="f-clients"></span>
+    <div class="feature-copy">
+      <span class="feature-icon trio">
+        <img src="/brand/icons/individual/quotes.svg" alt="" />
+        <img src="/brand/icons/individual/orders.svg" alt="" />
+        <img src="/brand/icons/individual/clients.svg" alt="" />
+      </span>
+      <h3>Quotes, Orders &amp; Clients</h3>
+      <p class="promise">From first quote to final invoice, on one pipeline.</p>
+      <ul class="ticks">
+        <li>Create quotes and invoices with times linked directly to the schedule.</li>
+        <li>Build quotes from cabinets, standard line items and stock from your library.</li>
+        <li>Convert quotes to orders and track every stage on a visual pipeline.</li>
+        <li>Export PDFs for customers and for the workshop floor.</li>
+        <li>See every quote and order for a client in one place.</li>
+      </ul>
+    </div>
+    <div class="feature-media" data-tilt>
+      <div class="browser-frame">
+        <span class="browser-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+        <div class="shot-stack">
+          <img class="shot-base" src="/brand/screenshots/06-quotes.png" alt="Quotes and orders pipeline" loading="lazy" />
+          <img class="shot-hover" src="/brand/screenshots/06b-quote-editor.png" alt="Editing a quote" loading="lazy" />
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Feature 6 — Dashboard (image left) ── -->
+  <section class="feature reverse" id="f-dashboard" data-spy="dashboard" data-reveal>
+    <div class="feature-copy">
+      <span class="feature-icon"><img src="/brand/icons/individual/dashboard.svg" alt="" /></span>
+      <h3>Business Dashboard</h3>
+      <p class="promise">Your whole business on one screen. Pull all your data together for a top-level view.</p>
+      <ul class="ticks">
+        <li>Track quotes, orders and revenue.</li>
+        <li>See your next 7 days of production at a glance.</li>
+        <li>Low-stock alerts always visible.</li>
+        <li>Create any new entry with one click.</li>
+      </ul>
+    </div>
+    <div class="feature-media" data-tilt>
+      <div class="browser-frame">
+        <span class="browser-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+        <img src="/brand/screenshots/01-dashboard.png" alt="Business dashboard" loading="lazy" />
+      </div>
+    </div>
+  </section>
+
+  <!-- ── OS / SOP closing band ── -->
+  <section class="os-band" data-reveal>
+    <h2>It's not just an app. It's your workshop's <span class="amber">operating system.</span></h2>
+    <p>
+      Set your rates, times, stock and process once — ProCabinet runs the same repeatable system
+      on every job. The SOPs are built in, so quoting, cutting, scheduling and billing happen the
+      same way every time, whoever's at the keyboard.
+    </p>
+    <div class="cta-row center">
+      <a class="btn btn-amber" href="/">Try the demo</a>
+      <a class="btn btn-ghost-light" href="#pricing">See pricing</a>
+    </div>
+  </section>
+
+  <!-- ── Pricing (mirrors the in-app plan picker) ── -->
+  <section class="pricing" id="pricing" data-reveal>
+    <div class="pricing-head">
+      <span class="eyebrow">Support the project</span>
+      <h2>Pricing that fits a small shop.</h2>
+      <p class="section-lede">Start free. Go Pro when it's paying its way. Founders get it for life.</p>
+    </div>
+    <div class="price-grid">
+
+      <div class="price-card">
+        <div class="price-tier">Free</div>
+        <div class="price-amount">$0<span>/forever</span></div>
+        <div class="price-sub">No card needed</div>
+        <ul class="price-feats">
+          <li>Free use of all core functions</li>
+          <li><strong>5 saved items</strong> per library</li>
+          <li class="muted">No library import / export (CSV)</li>
+          <li class="muted">ProCabinet branding on PDFs</li>
+          <li class="muted">Limited access to new features</li>
+        </ul>
+        <a class="btn btn-ghost full" href="/">Start free</a>
+      </div>
+
+      <div class="price-card">
+        <div class="price-tier">Monthly</div>
+        <div class="price-amount">$25<span>/mo</span></div>
+        <div class="price-sub"><s>$35/mo</s> · launch price</div>
+        <ul class="price-feats">
+          <li>First 6 months, then $35/mo</li>
+          <li><strong>Unlimited</strong> saved items</li>
+          <li>Import / export libraries (CSV)</li>
+          <li>ProCabinet removed from PDFs</li>
+          <li>Priority email support</li>
+        </ul>
+        <a class="btn btn-ghost full" href="/?plan=monthly">Choose Monthly</a>
+      </div>
+
+      <div class="price-card">
+        <div class="price-tier">Annual</div>
+        <div class="price-amount">$15<span>/mo</span></div>
+        <div class="price-sub"><s>$25/mo</s> · launch price</div>
+        <ul class="price-feats">
+          <li>$180 billed for year one, then $300/yr</li>
+          <li><strong>Unlimited</strong> saved items</li>
+          <li>Import / export libraries (CSV)</li>
+          <li>ProCabinet removed from PDFs</li>
+          <li>Priority email support</li>
+        </ul>
+        <a class="btn btn-ghost full" href="/?plan=annual">Choose Annual</a>
+      </div>
+
+      <div class="price-card hero-card">
+        <div class="price-flag">Only <strong data-countup="50">50</strong> ever</div>
+        <div class="price-tier">Founder</div>
+        <div class="price-amount">$299<span>/once</span></div>
+        <div class="price-sub">one-off · lifetime</div>
+        <ul class="price-feats">
+          <li>Pay once, use forever</li>
+          <li>Only <strong>50 accounts</strong> ever sold</li>
+          <li><strong>Everything</strong> in the paid plans</li>
+          <li>New feature requests prioritised</li>
+          <li>WhatsApp group with the founder</li>
+        </ul>
+        <a class="btn btn-amber full" href="/?plan=founder">Claim a seat</a>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ── Footer ── -->
+  <footer class="foot">
+    <div class="foot-inner">
+      <a class="brand" href="/" aria-label="ProCabinet.App home">
+        <span class="logo-text">ProCabinet.App</span>      </a>
+      <nav class="foot-links">
+        <a href="#features">Features</a>
+        <a href="#pricing">Pricing</a>
+        <a href="/">Open the app</a>
+      </nav>
+      <small>Made by a cabinet maker</small>
+    </div>
+  </footer>
+
+  <script src="/landing.js" defer></script>
+</body>
+</html>

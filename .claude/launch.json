@@ -2,6 +2,12 @@
   "version": "0.0.1",
   "configurations": [
     {
+      "name": "Landing",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["-e", "const http=require('http'),fs=require('fs'),path=require('path');const root=process.cwd();const types={'.html':'text/html;charset=utf-8','.css':'text/css','.js':'text/javascript','.svg':'image/svg+xml','.png':'image/png','.jpg':'image/jpeg','.json':'application/json'};http.createServer((req,res)=>{let p=decodeURIComponent(req.url.split('?')[0]);if(p==='/')p='/landing.html';const f=path.join(root,p);fs.readFile(f,(e,d)=>{if(e){res.statusCode=404;return res.end('not found');}res.setHeader('content-type',types[path.extname(f)]||'application/octet-stream');res.end(d);});}).listen(4180);"],
+      "port": 4180
+    },
+    {
       "name": "Vite dev",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],
