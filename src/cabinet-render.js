@@ -877,6 +877,13 @@ function _renderLibraryCards(items) {
 
     const isEditingThis = cbEditingLibraryIdx === idx;
     const borderColor = isEditingThis ? 'var(--accent)' : 'var(--border)';
+    // Caption segments: each stays on one line (white-space:nowrap) so a whole
+    // segment pushes to the next line at the " ·" separators rather than being
+    // split mid-segment (e.g. dimensions never break across lines).
+    const _capSegs = [`${c.w} × ${c.h} × ${c.d} mm`];
+    if (c.material) _capSegs.push(_escHtml(c.material));
+    if (details.length) _capSegs.push(details.join(', '));
+    const _capHtml = _capSegs.map((s, si) => `<span style="white-space:nowrap">${s}${si < _capSegs.length - 1 ? ' ·' : ''}</span>`).join(' ');
     html += `<div style="background:var(--surface);border:1px solid ${borderColor};border-radius:var(--radius);box-shadow:var(--shadow);transition:box-shadow .15s,border-color .15s;cursor:pointer;display:flex;flex-direction:column;height:100%"
       onmouseover="this.style.boxShadow='var(--shadow-md)';this.style.borderColor='var(--accent)'"
       onmouseout="this.style.boxShadow='var(--shadow)';this.style.borderColor='${borderColor}'"
@@ -884,7 +891,7 @@ function _renderLibraryCards(items) {
       <div style="flex:1;display:flex;align-items:flex-start;gap:8px;padding:10px 12px 6px">
         <div style="flex:1;min-width:0">
           <div style="font-size:13px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_escHtml(c._libName||c.name||'Cabinet')}${isEditingThis?' <span style="font-size:10px;font-weight:600;color:var(--accent);margin-left:4px">· editing</span>':''}</div>
-          <div style="font-size:11px;color:var(--muted);line-height:1.4;overflow-wrap:anywhere">${c.w} × ${c.h} × ${c.d} mm · ${_escHtml(c.material||'')}${details.length?' · '+details.join(', '):''}</div>
+          <div style="font-size:11px;color:var(--muted);line-height:1.4">${_capHtml}</div>
         </div>
         <div style="font-size:14px;font-weight:800;color:var(--accent);flex-shrink:0;white-space:nowrap">${fmt0(calc.lineSubtotal)}</div>
       </div>
