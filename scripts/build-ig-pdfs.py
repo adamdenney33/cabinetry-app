@@ -10,7 +10,8 @@ from pathlib import Path
 from PIL import Image
 
 BASE = Path("out/instagram")
-CAROUSELS = ["flagship", "cutlist", "schedule", "pipeline"]
+# auto-discover every carousel folder that has rendered slides
+CAROUSELS = sorted(d.name for d in BASE.iterdir() if d.is_dir() and any(d.glob("slide-*.png")))
 
 for c in CAROUSELS:
     d = BASE / c

@@ -31,6 +31,10 @@ const Flagship: React.FC<Brand> = (p) => <Slides id="flagship" {...p} />;
 const CutList: React.FC<Brand> = (p) => <Slides id="cutlist" {...p} />;
 const Schedule: React.FC<Brand> = (p) => <Slides id="schedule" {...p} />;
 const Pipeline: React.FC<Brand> = (p) => <Slides id="pipeline" {...p} />;
+const EightTabs: React.FC<Brand> = (p) => <Slides id="eighttabs" {...p} />;
+const Stock: React.FC<Brand> = (p) => <Slides id="stock" {...p} />;
+const Rates: React.FC<Brand> = (p) => <Slides id="rates" {...p} />;
+const Pricing: React.FC<Brand> = (p) => <Slides id="pricing" {...p} />;
 
 export const RemotionRoot: React.FC = () => (
   <>
@@ -212,6 +216,90 @@ export const RemotionRoot: React.FC = () => (
             title: 'One pipeline,\nstart to *finish*.',
             sub: 'No card. Free forever \n8 connected tabs 6 smart libraries\nSave 5 Items in each library for free',
           },
+        ],
+      }}
+    />
+    <Composition
+      id="eighttabs"
+      component={EightTabs}
+      schema={brandSchema}
+      durationInFrames={CAROUSELS.eighttabs.builders.length}
+      fps={1}
+      width={W}
+      height={H}
+      defaultProps={{
+        accent: '#e8a838',
+        betaTag: 'BETA v0.12.0',
+        handle: 'ProCabinet.App',
+        copy: [
+          { kicker: 'The workshop OS', title: 'Eight tabs.\n*One workshop*.', sub: 'Quote, cut, schedule and bill — all one click apart.' },
+          { kicker: 'One place for everything', title: 'The nav you use *every day*', sub: '8 connected tabs, 6 smart libraries, 1 place for everything.' },
+          { kicker: 'Dashboard', title: 'Your whole business, *one screen*', sub: 'Orders, quotes and low-stock alerts the moment you log in.' },
+          { kicker: 'One system', title: 'Replace your *spreadsheets & post-its*', sub: '' },
+          { kicker: 'Start free', title: 'Your workshop *OS*.', sub: 'No card. Free forever — 5 of each, in every library.' },
+        ],
+      }}
+    />
+    <Composition
+      id="stock"
+      component={Stock}
+      schema={brandSchema}
+      durationInFrames={CAROUSELS.stock.builders.length}
+      fps={1}
+      width={W}
+      height={H}
+      defaultProps={{
+        accent: '#e8a838',
+        betaTag: 'BETA v0.12.0',
+        handle: 'ProCabinet.App',
+        copy: [
+          { kicker: 'Stock', title: 'Every material, *tracked*.', sub: 'And fed straight into quotes, cut lists and orders.' },
+          { kicker: 'Stock library', title: 'One library, *every material*', sub: 'Sheet goods, hardware, edge banding and finishes.' },
+          { kicker: 'Reorder points', title: 'Never run out *mid-job*', sub: 'Set a low-stock alert quantity on each item.' },
+          { kicker: 'Honest figures', title: 'Stock that *pays its way*', sub: '' },
+          { kicker: 'Start free', title: 'Keep your numbers *honest*.', sub: 'No card. Free forever — 5 of each, in every library.' },
+        ],
+      }}
+    />
+    <Composition
+      id="rates"
+      component={Rates}
+      schema={brandSchema}
+      durationInFrames={CAROUSELS.rates.builders.length}
+      fps={1}
+      width={W}
+      height={H}
+      defaultProps={{
+        accent: '#e8a838',
+        betaTag: 'BETA v0.12.0',
+        handle: 'ProCabinet.App',
+        copy: [
+          { kicker: 'My Rates', title: 'Set your rates *once*.', sub: 'Labour, markup, tax and times — entered one time.' },
+          { kicker: 'My Rates', title: 'Your numbers, *in one place*', sub: 'Labour rate, material markup, tax and contingency.' },
+          { kicker: 'Live pricing', title: 'Change a rate — *every quote re-prices*', sub: 'No spreadsheet formulas to maintain.' },
+          { kicker: 'Delegate with confidence', title: 'Anyone can *quote it right*', sub: '' },
+          { kicker: 'Start free', title: 'Quote in *minutes, not hours*.', sub: 'No card. Free forever — 5 of each, in every library.' },
+        ],
+      }}
+    />
+    <Composition
+      id="pricing"
+      component={Pricing}
+      schema={brandSchema}
+      durationInFrames={CAROUSELS.pricing.builders.length}
+      fps={1}
+      width={W}
+      height={H}
+      defaultProps={{
+        accent: '#e8a838',
+        betaTag: 'BETA v0.12.0',
+        handle: 'ProCabinet.App',
+        copy: [
+          { kicker: 'Pricing', title: 'Pricing that fits\n*a small shop*.', sub: 'Start free. Go Pro when it pays its way.' },
+          { kicker: 'Plans', title: 'Free, Pro, or *Founder*', sub: 'Free forever, or unlimited from $15/mo.' },
+          { kicker: 'Free forever', title: 'Everything, *5 of each*', sub: '' },
+          { kicker: "Founders' lifetime", title: 'Only *50 seats*. Ever.', sub: '' },
+          { kicker: 'Start free', title: 'Built by a maker,\n*for makers*.', sub: 'No card needed. Try it free.' },
         ],
       }}
     />

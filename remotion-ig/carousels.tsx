@@ -20,6 +20,8 @@ import cutLayoutImg from './assets/cut-layout.png';
 import cutNestImg from './assets/cut-nest.png';
 // real app screenshot of the redesigned cabinet library (template grid)
 import cabLibraryImg from './assets/cabinet-library.png';
+import cabinetRatesImg from './assets/cabinet-rates.png';
+import stockEditorImg from './assets/stock-editor.png';
 import { ScheduleScreen, ScheduleCalendar } from './screens/Schedule';
 import { QuoteLinesPanel, QuotesScreen } from './screens/Quotes';
 import { OrdersScreen } from './screens/Orders';
@@ -125,6 +127,106 @@ const scheduleFeatures = (
   </Panel>
 );
 
+// "Eight tabs. One workshop." — the landing-page OS showcase
+const tabShowcase = (
+  <Panel w={800}>
+    <IconStrip size={46} />
+    <div style={{ display: 'flex', gap: 16, marginTop: 30 }}>
+      <BigStat value="8" label="connected tabs" color={C.accent} />
+      <div style={{ width: 1, background: C.borderSoft }} />
+      <BigStat value="6" label="smart libraries" color={C.text} />
+      <div style={{ width: 1, background: C.borderSoft }} />
+      <BigStat value="1" label="place for everything" color={C.teal} />
+    </div>
+  </Panel>
+);
+
+const replaceStack = (
+  <Panel w={690}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+      <Tick>Quote, cut, schedule and bill — one place</Tick>
+      <Tick>Smart libraries: clients, cabinets, stock &amp; parts</Tick>
+      <Tick>The same repeatable system on every job</Tick>
+      <Tick>Delegate the admin with confidence</Tick>
+    </div>
+  </Panel>
+);
+
+const stockValue = (
+  <Panel w={690}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+      <Tick>Deducts from stock as you build and cut</Tick>
+      <Tick>Low-stock alerts surface on the dashboard</Tick>
+      <Tick>Total stock value for year-end accounts</Tick>
+      <Tick>Feeds quotes, cut lists and orders</Tick>
+    </div>
+  </Panel>
+);
+
+const ratesDelegate = (
+  <Panel w={690}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+      <Tick>One source of truth for every price</Tick>
+      <Tick>Change a rate — every quote re-prices</Tick>
+      <Tick>Hand quoting to an assistant, keep your margins</Tick>
+    </div>
+  </Panel>
+);
+
+const PriceCard: React.FC<{ tier: string; price: string; per: string; sub: string; feats: string[]; flag?: string; hero?: boolean }> = ({ tier, price, per, sub, feats, flag, hero }) => (
+  <div style={{ position: 'relative', background: C.surface, border: `1px solid ${hero ? C.accent : C.border}`, borderRadius: 14, padding: '22px 20px', boxShadow: '0 2px 8px rgba(17,17,17,0.06)', display: 'flex', flexDirection: 'column' }}>
+    {flag && (
+      <div style={{ position: 'absolute', top: -12, left: '50%', transform: 'translateX(-50%)', background: C.accent, color: '#1a1a1a', fontSize: 12, fontWeight: 800, padding: '4px 12px', borderRadius: 20, whiteSpace: 'nowrap' }}>{flag}</div>
+    )}
+    <div style={{ fontSize: 13, fontWeight: 800, letterSpacing: '0.6px', textTransform: 'uppercase', color: C.muted }}>{tier}</div>
+    <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginTop: 6 }}>
+      <span style={{ fontSize: 38, fontWeight: 900, letterSpacing: '-1px', color: C.text }}>{price}</span>
+      <span style={{ fontSize: 15, fontWeight: 600, color: C.muted }}>{per}</span>
+    </div>
+    <div style={{ fontSize: 13, color: C.text2, minHeight: 18, marginTop: 2 }}>{sub}</div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 16 }}>
+      {feats.map((f) => (
+        <div key={f} style={{ display: 'flex', gap: 9, fontSize: 14, color: C.text2, lineHeight: 1.35 }}>
+          <span style={{ flex: 'none', width: 6, height: 6, borderRadius: '50%', background: C.accent, marginTop: 7 }} />
+          {f}
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+const pricingCards = (
+  <div style={{ width: 840, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18, fontFamily: FONT }}>
+    <PriceCard tier="Free" price="$0" per="/forever" sub="No card needed" feats={['All core functions', '5 saved items per library', 'ProCabinet branding on PDFs']} />
+    <PriceCard tier="Monthly" price="$25" per="/mo" sub="launch price · then $35" feats={['Unlimited saved items', 'Import / export libraries', 'Branding removed from PDFs']} />
+    <PriceCard tier="Annual" price="$15" per="/mo" sub="$180 year one · then $300" feats={['Everything in Monthly', 'Best everyday value', 'Priority email support']} />
+    <PriceCard tier="Founder" price="$299" per="/once" sub="lifetime access" feats={['Pay once, use forever', 'Everything in the paid plans', 'WhatsApp group with the founder']} flag="Only 50 ever" hero />
+  </div>
+);
+
+const freeTier = (
+  <Panel w={690}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+      <Tick>Free forever — no card needed</Tick>
+      <Tick>Every core feature, fully usable</Tick>
+      <Tick>5 saved items in each of your 6 libraries</Tick>
+      <Tick>Upgrade only when it's paying its way</Tick>
+    </div>
+  </Panel>
+);
+
+const founderHook = (
+  <Panel w={620}>
+    <div style={{ textAlign: 'center' }}>
+      <div style={{ fontSize: 17, fontWeight: 800, letterSpacing: '1.2px', textTransform: 'uppercase', color: C.accent }}>Founders' lifetime</div>
+      <div style={{ fontSize: 120, fontWeight: 900, color: C.accent, letterSpacing: '-4px', lineHeight: 1, marginTop: 10 }}>50</div>
+      <div style={{ fontSize: 22, fontWeight: 800, color: C.text }}>seats. Ever.</div>
+      <div style={{ fontSize: 36, fontWeight: 900, color: C.text, marginTop: 22 }}>$299 <span style={{ fontSize: 17, color: C.muted, fontWeight: 600 }}>once</span></div>
+      <div style={{ fontSize: 16, color: C.text2, marginTop: 6 }}>Same price as one year — used forever.</div>
+    </div>
+  </Panel>
+);
+
 // ════════════════════════════════════════════════════════════════
 export const CAROUSELS: Record<string, Carousel> = {
   flagship: {
@@ -169,6 +271,46 @@ export const CAROUSELS: Record<string, Carousel> = {
       screenB(<Window active="quotes"><QuotesScreen /></Window>),
       screenB(<Window active="orders"><OrdersScreen /></Window>),
       screenB(<Window active="stock"><StockScreen /></Window>),
+      ctaB,
+    ],
+  },
+  eighttabs: {
+    title: 'Eight tabs. One workshop.',
+    builders: [
+      coverB,
+      screenB(tabShowcase),
+      screenB(<Window active="dashboard"><DashboardScreen /></Window>),
+      screenB(replaceStack),
+      ctaB,
+    ],
+  },
+  stock: {
+    title: 'Every material, tracked',
+    builders: [
+      coverB,
+      screenB(<Window active="stock"><StockScreen /></Window>),
+      screenB(<Shot src={stockEditorImg} />),
+      screenB(stockValue),
+      ctaB,
+    ],
+  },
+  rates: {
+    title: 'Set your rates once',
+    builders: [
+      coverB,
+      screenB(<Shot src={cabinetRatesImg} />),
+      screenB(<PriceMoneyShot />),
+      screenB(ratesDelegate),
+      ctaB,
+    ],
+  },
+  pricing: {
+    title: 'Pricing that fits a small shop',
+    builders: [
+      coverB,
+      screenB(pricingCards),
+      screenB(freeTier),
+      screenB(founderHook),
       ctaB,
     ],
   },
