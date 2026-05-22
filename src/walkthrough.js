@@ -139,25 +139,25 @@ const _wtSteps = [
   // ── Cabinet ──────────────────────────────────────────────────────────────
   {
     type: 'spot', phase: 'Cabinet', section: 'cabinet', cbView: 'results',
-    target: '#cb-main-tab-results', position: 'bottom',
+    target: '#cb-results', position: 'left',
     title: 'Quote Builder',
     body: 'Pick a quote and its cabinets load here, <span class="wt-hi">priced live</span> — material, labour, markup and tax calculated line by line as you design.'
   },
   {
     type: 'spot', phase: 'Cabinet', section: 'cabinet', cbView: 'results', subtab: 'builder',
-    target: '#cab-tab-builder', position: 'bottom',
+    target: '#cb-sidebar-builder', position: 'right',
     title: 'Cabinet Builder',
     body: 'Open any cabinet to set its full spec — <span class="wt-hi">carcass size, doors, drawers, shelves and hardware</span>. Labour pricing scales with size, so every cabinet is costed accurately.'
   },
   {
     type: 'spot', phase: 'Cabinet', section: 'cabinet', cbView: 'results', subtab: 'rates',
-    target: '#cab-tab-rates', position: 'bottom',
+    target: '#cab-view-rates', position: 'right',
     title: 'My Rates',
     body: 'Set your <span class="wt-hi">hourly labour rate, material markup, edge-banding cost and contingency</span> once — every cabinet prices itself from these, no spreadsheet formulas to maintain.'
   },
   {
     type: 'spot', phase: 'Cabinet', section: 'cabinet', cbView: 'library',
-    target: '#cb-main-tab-library', position: 'bottom',
+    target: '#cb-library-view', position: 'left',
     title: 'Cabinet Library',
     body: 'A catalogue of <span class="wt-hi">reusable cabinet templates</span>. Build a cabinet once, then "Add to Quote" drops it into any job — dimensions, materials and pricing included.'
   },
@@ -171,13 +171,13 @@ const _wtSteps = [
   },
   {
     type: 'spot', phase: 'Cut List', section: 'cutlist', clView: 'library',
-    target: '#cl-tab-library', position: 'bottom',
+    target: '#cl-view-library', position: 'left',
     title: 'Cut List Library',
     body: 'Every cut list is saved here as its own entry. <span class="wt-hi">Reopen or duplicate</span> a past job, or start a fresh one — your whole cutting history in one place.'
   },
   {
     type: 'spot', phase: 'Cut List', section: 'cutlist', clView: 'layout',
-    target: '#cl-tab-layout', position: 'bottom',
+    target: '#results-area', position: 'left',
     title: 'Cut Layout',
     body: 'The optimised result: each sheet drawn to scale with pieces labelled and colour-coded. See <span class="wt-hi">waste %, cut order and material totals</span> at a glance, then export a workshop PDF.'
   },
