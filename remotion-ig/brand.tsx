@@ -2,12 +2,15 @@
 // schema on each Composition and threaded to components through context.
 import React, { createContext, useContext } from 'react';
 import { z } from 'zod';
-import { zColor } from '@remotion/zod-types';
+import { zColor, zTextarea } from '@remotion/zod-types';
 
 export const brandSchema = z.object({
   accent: zColor(),
-  betaTag: z.string(),
-  handle: z.string(),
+  // zTextarea (a Remotion-native control) renders an editable text box in the
+  // Studio props panel reliably; plain z.string() can render read-only under
+  // some zod/Studio combos.
+  betaTag: zTextarea(),
+  handle: zTextarea(),
 });
 
 export type Brand = z.infer<typeof brandSchema>;
