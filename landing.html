@@ -3,6 +3,12 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- Bridge: Stripe returns (?upgrade/?portal), auth confirmations (?code,
+       ?token_hash, ?error, or #access_token/#refresh_token), and pricing
+       deep-links (?plan) all resolve to the home page (/). Forward them to the
+       app at /os, preserving query + hash, so no backend/edge-function changes
+       are needed. Runs before paint; plain anchors (#pricing etc.) never match. -->
+  <script>(function(){var q=location.search,h=location.hash;if(/[?&](upgrade|portal|plan|code|token_hash|error|error_description)=/.test(q)||/(access_token|refresh_token)=|[#&]error=/.test(h)){location.replace('/os'+q+h);}})();</script>
   <!-- Mark JS-on so reveal-on-scroll hidden states apply only when scripts run.
        Without JS the page renders fully visible. Runs before first paint. -->
   <script>document.documentElement.classList.add('js');</script>
@@ -32,7 +38,7 @@
         <span class="logo-text">ProCabinet.App</span>      </a>
       <div class="tabbar-actions">
         <a class="btn btn-ghost-dark" href="#pricing">Pricing</a>
-        <a class="btn btn-amber-sm" href="/">Open the app →</a>
+        <a class="btn btn-amber-sm" href="/os">Open the app →</a>
       </div>
     </div>
     <nav class="tabbar-tabs" aria-label="Feature navigation">
@@ -57,7 +63,7 @@
         and run the whole job from quote to cut list to schedule to invoice, in one place.
       </p>
       <div class="cta-row">
-        <a class="btn btn-amber" href="/">Try the demo — no sign-up</a>
+        <a class="btn btn-amber" href="/os">Try the demo — no sign-up</a>
         <a class="btn btn-ghost" href="#pricing">See pricing</a>
       </div>
       <p class="micro">Free to start — 5 clients, 5 quotes, 5 orders.</p>
@@ -243,7 +249,7 @@
       same way every time, whoever's at the keyboard.
     </p>
     <div class="cta-row center">
-      <a class="btn btn-amber" href="/">Try the demo</a>
+      <a class="btn btn-amber" href="/os">Try the demo</a>
       <a class="btn btn-ghost-light" href="#pricing">See pricing</a>
     </div>
   </section>
@@ -268,7 +274,7 @@
           <li class="muted">ProCabinet branding on PDFs</li>
           <li class="muted">Limited access to new features</li>
         </ul>
-        <a class="btn btn-ghost full" href="/">Start free</a>
+        <a class="btn btn-ghost full" href="/os">Start free</a>
       </div>
 
       <div class="price-card">
@@ -282,7 +288,7 @@
           <li>ProCabinet removed from PDFs</li>
           <li>Priority email support</li>
         </ul>
-        <a class="btn btn-ghost full" href="/?plan=monthly">Choose Monthly</a>
+        <a class="btn btn-ghost full" href="/os?plan=monthly">Choose Monthly</a>
       </div>
 
       <div class="price-card">
@@ -296,7 +302,7 @@
           <li>ProCabinet removed from PDFs</li>
           <li>Priority email support</li>
         </ul>
-        <a class="btn btn-ghost full" href="/?plan=annual">Choose Annual</a>
+        <a class="btn btn-ghost full" href="/os?plan=annual">Choose Annual</a>
       </div>
 
       <div class="price-card hero-card">
@@ -311,7 +317,7 @@
           <li>New feature requests prioritised</li>
           <li>WhatsApp group with the founder</li>
         </ul>
-        <a class="btn btn-amber full" href="/?plan=founder">Claim a seat</a>
+        <a class="btn btn-amber full" href="/os?plan=founder">Claim a seat</a>
       </div>
 
     </div>
@@ -325,7 +331,7 @@
       <nav class="foot-links">
         <a href="#features">Features</a>
         <a href="#pricing">Pricing</a>
-        <a href="/">Open the app</a>
+        <a href="/os">Open the app</a>
       </nav>
       <small>Made by a cabinet maker</small>
     </div>

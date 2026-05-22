@@ -46,16 +46,27 @@ function copyEmailLogoPlugin() {
   };
 }
 
-// The marketing landing page (landing.html) is a standalone static page served
-// at /landing.html — it loads none of the app bundle, just its own landing.css
-// + landing.js. Vite only builds index.html, so copy the landing files here.
+// Routing: the marketing landing is the home page (/) and the app lives at /os.
+// Vite builds the app to dist/index.html; this plugin moves that to
+// dist/os/index.html and installs landing.html as the new dist/index.html.
+// The landing loads none of the app bundle (just landing.css + landing.js).
 // publicDir is false, so the brand assets the landing references (icons,
-// screenshots, logo) must also be copied explicitly into dist/brand/.
+// screenshots, logo) are copied explicitly into dist/brand/.
 function copyLandingPlugin() {
   return {
     name: 'copy-landing',
     closeBundle() {
-      for (const f of ['landing.html', 'landing.css', 'landing.js']) {
+      // Move the built app to /os so the landing can own the home page.
+      mkdirSync(join('dist', 'os'), { recursive: true });
+      if (existsSync(join('dist', 'index.html'))) {
+        copyFileSync(join('dist', 'index.html'), join('dist', 'os', 'index.html'));
+      }
+      // Landing becomes the home page (keep /landing.html too for back-compat).
+      if (existsSync('landing.html')) {
+        copyFileSync('landing.html', join('dist', 'index.html'));
+        copyFileSync('landing.html', join('dist', 'landing.html'));
+      }
+      for (const f of ['landing.css', 'landing.js']) {
         if (existsSync(f)) copyFileSync(f, join('dist', f));
       }
       for (const dir of ['brand/icons', 'brand/screenshots', 'brand/logo']) {
