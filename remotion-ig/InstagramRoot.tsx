@@ -163,7 +163,7 @@ export const RemotionRoot: React.FC = () => (
           { kicker: 'Stay in control', title: 'Overrides + *overrun tracking*', sub: '' },
           {
             kicker: 'Start free',
-            title: 'Never *double-book* again.',
+            title: 'Always up to date \n and *on schedule*.',
             sub: 'No card. Free forever \n6 Libraries - save up 5 Items in each for free',
           },
         ],
