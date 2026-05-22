@@ -219,7 +219,7 @@ export const Stepper: React.FC<{
           borderRadius: 3,
         }}
       />
-      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+      <div style={{ position: 'relative', zIndex: 1, display: 'flex', justifyContent: 'space-between' }}>
         {steps.map((_, i) => {
           const done = i <= active;
           return (

@@ -4,6 +4,7 @@
 // the CTA). The actual text lives in each composition's defaultProps in
 // InstagramRoot.tsx, so it's editable + saveable in Remotion Studio.
 import React from 'react';
+import { Img } from 'remotion';
 import { ScreenSlide, InkSlide, renderRich } from './slide';
 import { Window } from './ui';
 import { C } from './theme';
@@ -13,7 +14,10 @@ import { useBrand, Slot } from './brand';
 import { IcoCheck } from './icons';
 import { DashboardScreen } from './screens/Dashboard';
 import { BuilderScreen, PriceMoneyShot, LibraryScreen } from './screens/Builder';
-import { CutListScreen, NestingMoneyShot, DeductPanel } from './screens/CutList';
+import { DeductPanel } from './screens/CutList';
+// real app screenshots for the cut-list layout (full screen + cropped nest)
+import cutLayoutImg from './assets/cut-layout.png';
+import cutNestImg from './assets/cut-nest.png';
 import { ScheduleScreen, ScheduleCalendar } from './screens/Schedule';
 import { QuoteLinesPanel, QuotesScreen } from './screens/Quotes';
 import { OrdersScreen } from './screens/Orders';
@@ -77,6 +81,19 @@ const screenB =
     </ScreenSlide>
   );
 
+// A real app screenshot in a browser frame (used for the cut-list layout, which
+// is shown as the actual app capture rather than a React replica).
+const Shot: React.FC<{ src: string; w?: number | string }> = ({ src, w = '100%' }) => (
+  <div style={{ width: w, borderRadius: 18, overflow: 'hidden', border: `1px solid ${C.border}`, boxShadow: '0 30px 80px rgba(17,17,17,0.22)', background: C.surface }}>
+    <div style={{ height: 38, background: C.surface2, borderBottom: `1px solid ${C.borderSoft}`, display: 'flex', alignItems: 'center', gap: 8, padding: '0 16px' }}>
+      {['#ff5f57', '#febc2e', '#28c840'].map((d) => (
+        <span key={d} style={{ width: 12, height: 12, borderRadius: '50%', background: d }} />
+      ))}
+    </div>
+    <Img src={src} style={{ width: '100%', display: 'block' }} />
+  </div>
+);
+
 // fixed feature panels (their bullet copy stays in code)
 const cutEfficiency = (
   <Panel w={680}>
@@ -125,8 +142,8 @@ export const CAROUSELS: Record<string, Carousel> = {
     title: "Cut sheets that don't waste board",
     builders: [
       coverB,
-      screenB(<Window active="cutlist"><CutListScreen /></Window>),
-      screenB(<NestingMoneyShot />),
+      screenB(<Shot src={cutLayoutImg} />),
+      screenB(<Shot src={cutNestImg} w={700} />),
       screenB(cutEfficiency),
       screenB(<DeductPanel />),
       ctaB,
