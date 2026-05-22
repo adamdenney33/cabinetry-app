@@ -12,8 +12,11 @@ import {
   IcoGear,
   IcoMenu,
 } from './icons';
+import { useBrand } from './brand';
 
-export const AppHeader: React.FC<{ h?: number }> = ({ h = 62 }) => (
+export const AppHeader: React.FC<{ h?: number }> = ({ h = 62 }) => {
+  const { betaTag } = useBrand();
+  return (
   <div
     style={{
       height: h,
@@ -48,7 +51,7 @@ export const AppHeader: React.FC<{ h?: number }> = ({ h = 62 }) => (
           borderRadius: 5,
         }}
       >
-        BETA v0.12.0
+        {betaTag}
       </span>
     </div>
     <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
@@ -56,8 +59,9 @@ export const AppHeader: React.FC<{ h?: number }> = ({ h = 62 }) => (
         <Ico key={i} size={20} color="rgba(255,255,255,0.62)" />
       ))}
     </div>
-  </div>
-);
+    </div>
+  );
+};
 
 // Icon-only tab strip used as a brand motif on cover/CTA slides (mirrors
 // brand/icons/icons-only-sheet — the 8 nav glyphs on a rounded bar).

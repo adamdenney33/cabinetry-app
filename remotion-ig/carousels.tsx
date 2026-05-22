@@ -6,6 +6,7 @@ import { Window } from './ui';
 import { C } from './theme';
 import { FONT } from './fonts';
 import { IconStrip } from './chrome';
+import { useBrand } from './brand';
 import { IcoCheck } from './icons';
 import { DashboardScreen } from './screens/Dashboard';
 import { BuilderScreen, PriceMoneyShot, LibraryScreen } from './screens/Builder';
@@ -35,16 +36,19 @@ const Cover: React.FC<{ index: number; count: number; kicker: string; title: Rea
   </InkSlide>
 );
 
-const Cta: React.FC<{ index: number; count: number; line: React.ReactNode }> = ({ index, count, line }) => (
-  <InkSlide index={index} count={count} last>
-    <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: '2.4px', color: C.accent, textTransform: 'uppercase' }}>Start free</div>
-    <div style={{ fontSize: 76, fontWeight: 900, letterSpacing: '-2px', lineHeight: 1.04, color: '#fff', marginTop: 16 }}>{line}</div>
-    <div style={{ fontSize: 26, color: 'rgba(255,255,255,0.75)', marginTop: 22, lineHeight: 1.5 }}>
-      No sign-up. No card. Free forever —<br />5 clients, 5 quotes, 5 orders.
-    </div>
-    <div style={{ fontSize: 52, fontWeight: 900, color: C.accent, letterSpacing: '-1px', marginTop: 34 }}>ProCabinet.App</div>
-  </InkSlide>
-);
+const Cta: React.FC<{ index: number; count: number; line: React.ReactNode }> = ({ index, count, line }) => {
+  const { handle } = useBrand();
+  return (
+    <InkSlide index={index} count={count} last>
+      <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: '2.4px', color: C.accent, textTransform: 'uppercase' }}>Start free</div>
+      <div style={{ fontSize: 76, fontWeight: 900, letterSpacing: '-2px', lineHeight: 1.04, color: '#fff', marginTop: 16 }}>{line}</div>
+      <div style={{ fontSize: 26, color: 'rgba(255,255,255,0.75)', marginTop: 22, lineHeight: 1.5 }}>
+        No sign-up. No card. Free forever —<br />5 clients, 5 quotes, 5 orders.
+      </div>
+      <div style={{ fontSize: 52, fontWeight: 900, color: C.accent, letterSpacing: '-1px', marginTop: 34 }}>{handle}</div>
+    </InkSlide>
+  );
+};
 
 const Tick: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, fontSize: 22, color: C.text, fontWeight: 600, lineHeight: 1.4 }}>

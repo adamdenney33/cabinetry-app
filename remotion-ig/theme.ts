@@ -3,8 +3,9 @@
 // live app exactly. Fresh, self-contained — shares nothing with remotion/.
 
 export const C = {
-  // brand
-  accent: '#e8a838',
+  // brand — `accent` reads the --pc-accent CSS var (set per composition from
+  // the editable `accent` prop) so it can be retuned live in Remotion Studio.
+  accent: 'var(--pc-accent, #e8a838)',
   accentDim: 'rgba(232,168,56,0.13)',
   accentSoft: '#fbf1da',
   ink: '#111111',

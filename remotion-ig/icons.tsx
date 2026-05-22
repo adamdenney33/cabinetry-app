@@ -13,11 +13,11 @@ const Base: React.FC<
     height={size}
     viewBox="0 0 24 24"
     fill="none"
-    stroke={color}
     strokeWidth={sw}
     strokeLinecap="round"
     strokeLinejoin="round"
-    style={{ display: 'block' }}
+    // stroke set via style (not attribute) so CSS var() / --pc-accent resolves
+    style={{ display: 'block', stroke: color }}
   >
     {children}
   </svg>
