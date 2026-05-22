@@ -14,16 +14,17 @@ import { Schedule } from './app/Schedule';
 import { Dashboard } from './app/Dashboard';
 
 // Per-scene voiceover clip lengths in frames (measured from the generated MP3s @30fps).
+// Voice: Adam Denney's own cloned voice (ElevenLabs voice_id C5FvZKmhLl9aF8kCbguV).
 const VO = {
-  intro: 201,
-  rates: 251,
-  cabinet: 325,
-  cutlist: 252,
-  stock: 225,
-  quotes: 273,
-  schedule: 268,
-  dashboard: 259,
-  outro: 273,
+  intro: 152,
+  rates: 187,
+  cabinet: 287,
+  cutlist: 192,
+  stock: 177,
+  quotes: 205,
+  schedule: 203,
+  dashboard: 191,
+  outro: 183,
 };
 
 const VO_DELAY = 10; // VO starts this many frames into an app scene (lets the screen settle)
