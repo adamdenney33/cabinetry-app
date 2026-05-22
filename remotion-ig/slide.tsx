@@ -11,6 +11,23 @@ export const Amber: React.FC<React.PropsWithChildren> = ({ children }) => (
   <span style={{ color: C.accent }}>{children}</span>
 );
 
+// Render editable copy: *word* → accent-amber, newlines → <br/>.
+export const renderRich = (text: string): React.ReactNode => {
+  if (!text) return null;
+  return text.split('\n').map((line, li) => (
+    <React.Fragment key={li}>
+      {li > 0 ? <br /> : null}
+      {line.split(/(\*[^*]+\*)/g).map((part, pi) =>
+        part.length > 1 && part.startsWith('*') && part.endsWith('*') ? (
+          <Amber key={pi}>{part.slice(1, -1)}</Amber>
+        ) : (
+          <React.Fragment key={pi}>{part}</React.Fragment>
+        ),
+      )}
+    </React.Fragment>
+  ));
+};
+
 const Wordmark: React.FC<{ light?: boolean; size?: number }> = ({ light, size = 22 }) => (
   <span style={{ fontSize: size, fontWeight: 800, letterSpacing: '-0.5px', color: light ? '#fff' : C.ink }}>
     ProCabinet<span style={{ color: C.accent }}>.App</span>
