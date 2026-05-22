@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ProCabinet.App — Icon Mark Explorations</title>
+<style>
+  @property --ang { syntax:'<angle>'; inherits:false; initial-value:0deg; }
+
+  :root{
+    --icon: url("data:image/png;base64,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BAAAACQiAAAAIBEBAAAAiQgAAABIRAAAAEAiAgAAABIRAAAAkIgAAACARAQAAAAkIgAAACARAQAAAIkIAAAASEQAAABAIgIAAAASEQAAAJCIAAAAgEQEAAAAJCIAAAAgEQEAAACJCAAAAEhEAAAAQCICAAAAEhEAAACQiAAAAIBEBAAAACQiAAAAIBEBAAAAiQgAAABIRAAAAEAiAgAAABIRAAAAkIgAAACARAQAAAAkIgAAACARAQAAAIkIAAAASEQAAABAIgIAAAASEQAAAJCIAAAAgEQEAAAAJCIAAAAgEQEAAACJCAAAAEhEAAAAQCICAAAAEhEAAACQiAAAAIBEBAAAACQiAAAAIBEBAAAAiQgAAABIRAAAAEAiAgAAABIRAAAAkIgAAACARAQAAAAkIgAAACARAQAAAIkIAAAASEQAAABAIgIAAAASEQAAAJCIAAAAgEQEAAAAJCIAAAAgEQEAAACJCAAAAEhEAAAAQCICAAAAEhEAAACQiAAAAIBEBAAAACQiAAAAIBEBAAAAiQgAAABIRAAAAEAiAgAAABIRAAAAkIgAAACARAQAAAAkIgAAACARAQAAAIkIAAAASEQAAABAIgIAAAASEQAAAJCIAAAAgEQEAAAAJCIAAAAgEQEAAACJCAAAAEhEAAAAQCICAAAAEhEAAACQiAAAAIBEBAAAACQiAAAAIBEBAAAAiQgAAABIRAAAAEAiAgAAABIRAAAAkIgAAACARAQAAAAkIgAAACARAQAAAIkIAAAASEQAAABAIgIAAAASEQAAAJCIAAAAgEQEAAAAJCIAAAAgEQEAAACJCAAAAEhEAAAAQCICAAAAEhEAAACQiAAAAIBEBAAAACQiAAAAIBEBAAAAiQgAAABIRAAAAEAiAgAAABIRAAAAkIgAAACARAQAAAAkIgAAACARAQAAAIkIAAAASEQAAABAIgIAAAASEQAAAJCIAAAAgEQEAAAAJCIAAAAgEQEAAACJCAAAAEhEAAAAQCICAAAAEhEAAACQiAAAAIBEBAAAACQiAAAAIBEBAAAAiQgAAABIRAAAAEAiAgAAABIRAAAAkIgAAACARAQAAAAkIgAAACARAQAAAIkIAAAASEQAAABAIgIAAAASEQAAAJCIAAAAgEQEAAAAJCIAAAAgEQEAAACJCAAAAEhEAAAAQCICAAAAEhEAAACQiAAA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");
+    --amber:#e8a838;
+    --amber-d:#c8861f;
+    --amber-l:#f7d488;
+    --teal:#0d9488;
+    --teal-l:#23b9ab;
+    --ink:#111111;
+    --bg:#0d0d0f;
+    --card:#171719;
+    --line:#2a2a2e;
+    --text:#f1f1f0;
+    --muted:#8a8a90;
+    --font:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;}
+  body{
+    font-family:var(--font);
+    background:
+      radial-gradient(900px 500px at 85% -10%, rgba(232,168,56,.10), transparent 60%),
+      radial-gradient(700px 500px at 0% 110%, rgba(13,148,136,.10), transparent 55%),
+      var(--bg);
+    color:var(--text);
+    -webkit-font-smoothing:antialiased;
+    min-height:100vh;
+  }
+
+  .wrap{max-width:1180px;margin:0 auto;padding:48px 28px 80px;}
+
+  /* ---- header ---- */
+  header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:24px;margin-bottom:8px;}
+  .brand-line{display:flex;align-items:center;gap:16px;}
+  .brand-mark{width:46px;height:46px;border-radius:24%;background:var(--amber);display:grid;place-items:center;box-shadow:0 6px 18px rgba(232,168,56,.28);}
+  .brand-mark i{width:74%;height:74%;background:#fff;-webkit-mask:var(--icon) center/contain no-repeat;mask:var(--icon) center/contain no-repeat;}
+  .wordmark{font-weight:800;font-size:26px;letter-spacing:-.02em;}
+  .wordmark .acc{color:var(--amber);}
+  h1{font-size:15px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0 0 4px;}
+  .sub{color:var(--muted);font-size:14.5px;max-width:560px;line-height:1.5;margin:14px 0 0;}
+
+  /* ---- controls ---- */
+  .controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:30px 0 26px;padding:14px 16px;border:1px solid var(--line);border-radius:14px;background:rgba(255,255,255,.02);}
+  .controls .lbl{font-size:12.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-right:4px;}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;}
+  .seg button{appearance:none;border:0;background:transparent;color:var(--muted);font:inherit;font-size:13px;font-weight:600;padding:8px 14px;cursor:pointer;transition:.18s;}
+  .seg button+button{border-left:1px solid var(--line);}
+  .seg button:hover{color:var(--text);}
+  .seg button.on{background:var(--amber);color:#1a1a1a;}
+  .controls .hint{margin-left:auto;font-size:12.5px;color:var(--muted);}
+
+  /* ---- grid ---- */
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:20px;}
+  .card{border:1px solid var(--line);border-radius:18px;background:var(--card);overflow:hidden;transition:transform .25s, border-color .25s;}
+  .card:hover{border-color:#3a3a40;transform:translateY(-3px);}
+  .stage{position:relative;height:230px;display:grid;place-items:center;transition:background .25s;background:#0e0e10;}
+  body.surf-light .stage{background:#f3f3f1;}
+  body.surf-amber .stage{background:var(--amber);}
+  body.surf-checker .stage{
+    background-color:#1a1a1c;
+    background-image:linear-gradient(45deg,#202023 25%,transparent 25%),linear-gradient(-45deg,#202023 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#202023 75%),linear-gradient(-45deg,transparent 75%,#202023 75%);
+    background-size:22px 22px;background-position:0 0,0 11px,11px -11px,-11px 0;
+  }
+  .num{position:absolute;top:12px;left:14px;font-size:12px;font-weight:700;color:var(--muted);opacity:.7;}
+  .meta{padding:16px 18px 18px;border-top:1px solid var(--line);}
+  .meta .top{display:flex;align-items:center;gap:10px;justify-content:space-between;}
+  .meta h2{font-size:16px;margin:0;font-weight:700;letter-spacing:-.01em;}
+  .meta p{margin:7px 0 0;font-size:13px;line-height:1.5;color:var(--muted);}
+  .tag{font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:4px 9px;border-radius:999px;white-space:nowrap;}
+  .tag.s{background:rgba(255,255,255,.07);color:#cfcfd4;}
+  .tag.a{background:rgba(232,168,56,.16);color:var(--amber-l);}
+  .tag.i{background:rgba(13,148,136,.18);color:var(--teal-l);}
+
+  /* ---- base tile + glyph ---- */
+  .tile{width:148px;height:148px;display:grid;place-items:center;}
+  .glyph{width:100%;height:100%;-webkit-mask:var(--icon) center/contain no-repeat;mask:var(--icon) center/contain no-repeat;}
+  .squircle{border-radius:24%;}
+
+  /* 1. Brand Solid */
+  .t1{background:var(--amber);box-shadow:0 10px 26px rgba(0,0,0,.35);}
+  .t1 .glyph{width:78%;height:78%;background:#fff;}
+
+  /* 2. Warm Gradient */
+  .t2{background:linear-gradient(140deg,var(--amber-l),var(--amber) 45%,var(--amber-d));box-shadow:0 14px 30px rgba(200,134,31,.35), inset 0 1px 0 rgba(255,255,255,.4);}
+  .t2 .glyph{width:78%;height:78%;background:#fff;}
+
+  /* 3. Duotone amber -> teal */
+  .t3{background:#161617;border:1px solid #262628;box-shadow:0 10px 26px rgba(0,0,0,.4);}
+  .t3 .glyph{width:80%;height:80%;background:linear-gradient(135deg,var(--amber-l),var(--amber) 38%,var(--teal));}
+
+  /* 4. Conic spin (animated) */
+  .t4{background:#141416;border:1px solid #262628;}
+  .t4 .glyph{width:80%;height:80%;background:conic-gradient(from var(--ang),var(--amber-l),var(--amber-d),var(--amber-l),var(--amber-d),var(--amber-l));animation:spin 5s linear infinite;}
+  @keyframes spin{to{--ang:360deg;}}
+
+  /* 5. Gloss sweep (animated) */
+  .t5{background:linear-gradient(140deg,var(--amber) ,var(--amber-d));border-radius:24%;position:relative;box-shadow:0 12px 28px rgba(0,0,0,.4);}
+  .t5 .glyph{width:78%;height:78%;background:#fff;position:relative;}
+  .t5 .sheen{position:absolute;inset:0;width:78%;height:78%;margin:auto;-webkit-mask:var(--icon) center/contain no-repeat;mask:var(--icon) center/contain no-repeat;background:linear-gradient(115deg,transparent 38%,rgba(255,255,255,.9) 50%,transparent 62%);background-size:280% 100%;background-repeat:no-repeat;animation:sweep 3.4s ease-in-out infinite;mix-blend-mode:soft-light;}
+  @keyframes sweep{0%{background-position:160% 0;}55%,100%{background-position:-60% 0;}}
+
+  /* 6. Aurora glow (animated) */
+  .t6{background:#0c0c0e;border:1px solid #1f1f22;}
+  .t6 .glyph{width:80%;height:80%;background:var(--amber);animation:breathe 3.2s ease-in-out infinite;}
+  @keyframes breathe{
+    0%,100%{filter:drop-shadow(0 0 6px rgba(232,168,56,.55)) drop-shadow(0 0 14px rgba(232,168,56,.25));}
+    50%{filter:drop-shadow(0 0 14px rgba(232,168,56,.95)) drop-shadow(0 0 34px rgba(232,168,56,.55));}
+  }
+
+  /* 7. Glassmorphism */
+  .t7{position:relative;border-radius:24%;overflow:hidden;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.28);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);box-shadow:0 14px 34px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.4);}
+  .t7::before{content:"";position:absolute;inset:-30%;background:radial-gradient(circle at 30% 25%,var(--amber),transparent 45%),radial-gradient(circle at 78% 80%,var(--teal),transparent 45%);filter:blur(14px);z-index:0;animation:drift 9s ease-in-out infinite alternate;}
+  .t7 .glyph{position:relative;z-index:1;width:78%;height:78%;background:rgba(255,255,255,.92);filter:drop-shadow(0 2px 6px rgba(0,0,0,.25));}
+  @keyframes drift{to{transform:translate(8%,-6%) scale(1.12);}}
+
+  /* 8. Engraved (deboss) */
+  .t8{background:linear-gradient(160deg,var(--amber-l),var(--amber) 55%,var(--amber-d));border-radius:24%;box-shadow:0 10px 26px rgba(0,0,0,.3), inset 0 2px 4px rgba(255,255,255,.5), inset 0 -3px 6px rgba(120,72,8,.4);}
+  .t8 .glyph{width:78%;height:78%;background:#bd821f;filter:drop-shadow(0 -1px 1px rgba(120,72,8,.65)) drop-shadow(0 1.5px 0 rgba(255,255,255,.6));}
+
+  /* 9. 3D tilt (interactive) */
+  .stage.s9{perspective:760px;}
+  .t9{background:linear-gradient(140deg,var(--amber-l),var(--amber) 50%,var(--amber-d));border-radius:24%;transform:rotateX(14deg) rotateY(-16deg);transform-style:preserve-3d;transition:transform .35s cubic-bezier(.2,.7,.2,1);box-shadow:18px 22px 40px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.5);}
+  .card:hover .t9{transform:rotateX(6deg) rotateY(8deg) scale(1.05);}
+  .t9 .glyph{width:78%;height:78%;background:#fff;transform:translateZ(26px);filter:drop-shadow(0 8px 10px rgba(120,72,8,.4));}
+
+  /* 10. Mesh motion (animated) */
+  .t10{background:#0d0d0f;border:1px solid #222225;}
+  .t10 .glyph{
+    width:80%;height:80%;
+    background:
+      radial-gradient(circle at 18% 22%,var(--amber-l),transparent 42%),
+      radial-gradient(circle at 82% 28%,var(--amber-d),transparent 45%),
+      radial-gradient(circle at 70% 82%,var(--teal),transparent 48%),
+      radial-gradient(circle at 25% 80%,#f0a93a,transparent 45%),
+      var(--amber);
+    background-size:200% 200%;
+    animation:mesh 7s ease-in-out infinite;
+  }
+  @keyframes mesh{0%{background-position:0% 0%;}50%{background-position:100% 100%;}100%{background-position:0% 0%;}}
+
+  /* ---- lockup ---- */
+  .section-title{font-size:13px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:54px 0 18px;}
+  .lockups{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:18px;}
+  .lockup{border:1px solid var(--line);border-radius:16px;padding:26px;display:flex;align-items:center;gap:16px;background:var(--card);}
+  .lockup.dark{background:#0c0c0e;}
+  .lockup.lite{background:#f3f3f1;}
+  .lk-mark{width:54px;height:54px;border-radius:24%;display:grid;place-items:center;flex:0 0 auto;}
+  .lk-mark.amber{background:var(--amber);box-shadow:0 6px 16px rgba(232,168,56,.3);}
+  .lk-mark.amber i{width:76%;height:76%;background:#fff;-webkit-mask:var(--icon) center/contain no-repeat;mask:var(--icon) center/contain no-repeat;}
+  .lk-mark.glyphonly i{width:100%;height:100%;background:linear-gradient(135deg,var(--amber),var(--teal));-webkit-mask:var(--icon) center/contain no-repeat;mask:var(--icon) center/contain no-repeat;}
+  .lk-word{font-weight:800;font-size:22px;letter-spacing:-.02em;}
+  .lockup.lite .lk-word{color:#111;}
+  .lk-word .acc{color:var(--amber);}
+
+  /* ---- scale strip ---- */
+  .scale{display:flex;align-items:flex-end;gap:30px;flex-wrap:wrap;border:1px solid var(--line);border-radius:16px;padding:26px 28px;background:var(--card);}
+  .scale .unit{display:flex;flex-direction:column;align-items:center;gap:10px;}
+  .scale .u-mark{border-radius:24%;background:var(--amber);display:grid;place-items:center;}
+  .scale .u-mark i{width:76%;height:76%;background:#fff;-webkit-mask:var(--icon) center/contain no-repeat;mask:var(--icon) center/contain no-repeat;}
+  .scale .cap{font-size:11.5px;color:var(--muted);}
+
+  footer{margin-top:48px;color:var(--muted);font-size:12.5px;line-height:1.6;text-align:center;}
+  code{background:rgba(255,255,255,.06);padding:2px 6px;border-radius:5px;font-size:12px;}
+
+  @media (prefers-reduced-motion: reduce){
+    *{animation:none !important;}
+  }
+</style>
+</head>
+<body class="surf-dark">
+  <div class="wrap">
+
+    <header>
+      <div>
+        <h1>Icon Mark Explorations</h1>
+        <div class="brand-line">
+          <span class="brand-mark"><i></i></span>
+          <span class="wordmark">ProCabinet<span class="acc">.App</span></span>
+        </div>
+        <p class="sub">Ten dynamic treatments of the cabinet mark to sit alongside the wordmark. Static options are brand-safe everywhere; animated and interactive ones add life for web, app icons and motion contexts.</p>
+      </div>
+    </header>
+
+    <div class="controls">
+      <span class="lbl">Preview surface</span>
+      <div class="seg" id="surf">
+        <button data-s="surf-dark" class="on">Dark</button>
+        <button data-s="surf-light">Light</button>
+        <button data-s="surf-amber">Amber</button>
+        <button data-s="surf-checker">Checker</button>
+      </div>
+      <span class="hint">Hover option 9 to see the 3D tilt react.</span>
+    </div>
+
+    <div class="grid">
+
+      <div class="card"><div class="stage"><span class="num">01</span><div class="tile t1 squircle"><div class="glyph"></div></div></div>
+        <div class="meta"><div class="top"><h2>Brand Solid</h2><span class="tag s">Static</span></div>
+        <p>The safe default. Flat amber squircle, white glyph. Reads cleanly at any size and on any background.</p></div></div>
+
+      <div class="card"><div class="stage"><span class="num">02</span><div class="tile t2 squircle"><div class="glyph"></div></div></div>
+        <div class="meta"><div class="top"><h2>Warm Gradient</h2><span class="tag s">Static</span></div>
+        <p>Amber tile with a soft top-light gradient and inner highlight — a touch of depth without animation.</p></div></div>
+
+      <div class="card"><div class="stage"><span class="num">03</span><div class="tile t3 squircle"><div class="glyph"></div></div></div>
+        <div class="meta"><div class="top"><h2>Duotone</h2><span class="tag s">Static</span></div>
+        <p>Glyph filled with the full brand spectrum, amber into teal. Strongest on dark surfaces.</p></div></div>
+
+      <div class="card"><div class="stage"><span class="num">04</span><div class="tile t4 squircle"><div class="glyph"></div></div></div>
+        <div class="meta"><div class="top"><h2>Conic Shimmer</h2><span class="tag a">Animated</span></div>
+        <p>A metallic conic gradient rotates slowly through the amber range — like brushed brass catching light.</p></div></div>
+
+      <div class="card"><div class="stage"><span class="num">05</span><div class="tile t5"><div class="glyph"></div><div class="sheen"></div></div></div>
+        <div class="meta"><div class="top"><h2>Gloss Sweep</h2><span class="tag a">Animated</span></div>
+        <p>A specular highlight glides across the white glyph on a loop. Premium, glossy feel.</p></div></div>
+
+      <div class="card"><div class="stage"><span class="num">06</span><div class="tile t6"><div class="glyph"></div></div></div>
+        <div class="meta"><div class="top"><h2>Aurora Glow</h2><span class="tag a">Animated</span></div>
+        <p>Glyph-only mark on near-black with a breathing amber glow. Great for splash screens and hero loops.</p></div></div>
+
+      <div class="card"><div class="stage"><span class="num">07</span><div class="tile t7"><div class="glyph"></div></div></div>
+        <div class="meta"><div class="top"><h2>Glassmorphism</h2><span class="tag a">Animated</span></div>
+        <p>Frosted glass tile over drifting amber/teal blobs, with a translucent white glyph. Modern and airy.</p></div></div>
+
+      <div class="card"><div class="stage"><span class="num">08</span><div class="tile t8"><div class="glyph"></div></div></div>
+        <div class="meta"><div class="top"><h2>Embossed</h2><span class="tag s">Static</span></div>
+        <p>Tone-on-tone glyph pressed into the amber surface with a subtle bevel. Tactile, understated.</p></div></div>
+
+      <div class="card"><div class="stage s9"><span class="num">09</span><div class="tile t9"><div class="glyph"></div></div></div>
+        <div class="meta"><div class="top"><h2>3D Tilt</h2><span class="tag i">Interactive</span></div>
+        <p>A floating, perspective-tilted tile with a raised glyph. Reacts on hover — ideal for a landing hero.</p></div></div>
+
+      <div class="card"><div class="stage"><span class="num">10</span><div class="tile t10 squircle"><div class="glyph"></div></div></div>
+        <div class="meta"><div class="top"><h2>Mesh Motion</h2><span class="tag a">Animated</span></div>
+        <p>A living gradient mesh of amber, gold and teal flows inside the glyph. Colourful and energetic.</p></div></div>
+
+    </div>
+
+    <div class="section-title">Alongside the wordmark (lockup)</div>
+    <div class="lockups">
+      <div class="lockup dark"><span class="lk-mark amber"><i></i></span><span class="lk-word">ProCabinet<span class="acc">.App</span></span></div>
+      <div class="lockup lite"><span class="lk-mark amber"><i></i></span><span class="lk-word">ProCabinet<span class="acc">.App</span></span></div>
+      <div class="lockup dark"><span class="lk-mark glyphonly"><i></i></span><span class="lk-word">ProCabinet<span class="acc">.App</span></span></div>
+    </div>
+
+    <div class="section-title">Legibility at small sizes</div>
+    <div class="scale">
+      <div class="unit"><span class="u-mark" style="width:64px;height:64px"><i></i></span><span class="cap">64px</span></div>
+      <div class="unit"><span class="u-mark" style="width:48px;height:48px"><i></i></span><span class="cap">48px</span></div>
+      <div class="unit"><span class="u-mark" style="width:32px;height:32px"><i></i></span><span class="cap">32px</span></div>
+      <div class="unit"><span class="u-mark" style="width:24px;height:24px"><i></i></span><span class="cap">24px favicon</span></div>
+      <div class="unit"><span class="u-mark" style="width:16px;height:16px"><i></i></span><span class="cap">16px</span></div>
+    </div>
+
+    <footer>
+      ProCabinet.App brand icon explorations · amber <code>#e8a838</code> · teal <code>#0d9488</code> · ink <code>#111111</code><br>
+      Icon embedded as a CSS mask, so every treatment uses the real mark. Pick a number and I'll export it as production assets.
+    </footer>
+
+  </div>
+
+<script>
+  const seg = document.getElementById('surf');
+  seg.addEventListener('click', e=>{
+    const b = e.target.closest('button'); if(!b) return;
+    document.body.className = b.dataset.s;
+    [...seg.children].forEach(x=>x.classList.toggle('on', x===b));
+  });
+</script>
+</body>
+</html>
