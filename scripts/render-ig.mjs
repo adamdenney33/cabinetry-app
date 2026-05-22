@@ -10,7 +10,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const ENTRY = join(ROOT, 'remotion-ig', 'index.ts');
+const ENTRY = join(ROOT, 'remotion-ig', 'instagram-entry.ts');
 const OUT = join(ROOT, 'out', 'instagram');
 const only = process.argv[2]?.toLowerCase() || null;
 
