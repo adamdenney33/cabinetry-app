@@ -85,7 +85,7 @@ export const RemotionRoot: React.FC = () => (
           {
             kicker: 'Start free',
             title: 'Try it *free*.',
-            sub: 'No card. Free forever \n6 Libraries - save up 5 Items in each for free',
+            sub: 'No card. Free forever \n8 connected tabs 6 smart libraries\nSave 5 Items in each library for free',
           },
         ],
       }}
@@ -127,7 +127,7 @@ export const RemotionRoot: React.FC = () => (
           {
             kicker: 'Start free',
             title: 'Cut *smarter*.',
-            sub: 'No card. Free forever \n6 Libraries - save up 5 Items in each for free',
+            sub: 'No card. Free forever \n8 connected tabs 6 smart libraries\nSave 5 Items in each library for free',
           },
         ],
       }}
@@ -164,7 +164,7 @@ export const RemotionRoot: React.FC = () => (
           {
             kicker: 'Start free',
             title: 'Production that\n*schedules itself*.',
-            sub: 'No card. Free forever \n6 Libraries - save up 5 Items in each for free',
+            sub: 'No card. Free forever \n8 connected tabs 6 smart libraries\nSave 5 Items in each library for free',
           },
         ],
       }}
@@ -210,7 +210,7 @@ export const RemotionRoot: React.FC = () => (
           {
             kicker: 'Start free',
             title: 'One pipeline,\nstart to *finish*.',
-            sub: 'No card. Free forever \n6 Libraries - save up 5 Items in each for free',
+            sub: 'No card. Free forever \n8 connected tabs 6 smart libraries\nSave 5 Items in each library for free',
           },
         ],
       }}
