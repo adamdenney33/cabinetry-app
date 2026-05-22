@@ -139,19 +139,21 @@ const _wtSteps = [
   // ── Cabinet ──────────────────────────────────────────────────────────────
   {
     type: 'spot', phase: 'Cabinet', section: 'cabinet', cbView: 'results',
+    preClickCard: '#cb-results .quote-card',
     target: '#cb-results', position: 'left',
     title: 'Quote Builder',
     body: 'Pick a quote and its cabinets load here, <span class="wt-hi">priced live</span> — material, labour, markup and tax calculated line by line as you design.'
   },
   {
     type: 'spot', phase: 'Cabinet', section: 'cabinet', cbView: 'results', subtab: 'builder',
+    preClickCard: '#cb-results .cb-cab-card',
     target: '#cb-sidebar-builder', position: 'right',
     title: 'Cabinet Builder',
     body: 'Open any cabinet to set its full spec — <span class="wt-hi">carcass size, doors, drawers, shelves and hardware</span>. Labour pricing scales with size, so every cabinet is costed accurately.'
   },
   {
     type: 'spot', phase: 'Cabinet', section: 'cabinet', cbView: 'results', subtab: 'rates',
-    target: '#cab-view-rates', position: 'right',
+    target: '#cb-sidebar-builder', position: 'right',
     title: 'My Rates',
     body: 'Set your <span class="wt-hi">hourly labour rate, material markup, edge-banding cost and contingency</span> once — every cabinet prices itself from these, no spreadsheet formulas to maintain.'
   },
