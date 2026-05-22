@@ -381,6 +381,7 @@ function renderDashboard() {
     </div>`;
 }
 
+/** @param {number | null} [hoverIdx] */
 function drawRevenueChart(hoverIdx) {
   const canvas = /** @type {HTMLCanvasElement | null} */ (document.getElementById('revenue-chart'));
   if (!canvas) return;
@@ -493,6 +494,7 @@ function drawRevenueChart(hoverIdx) {
   _wireRevenueHover(canvas);
 }
 
+/** @param {HTMLCanvasElement} canvas */
 function _wireRevenueHover(canvas) {
   if (/** @type {any} */ (canvas)._revHoverWired) return;
   /** @type {any} */ (canvas)._revHoverWired = true;
