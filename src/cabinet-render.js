@@ -842,7 +842,7 @@ function renderCBLibraryView() {
     return;
   }
 
-  let html = `<div style="max-width:700px">`;
+  let html = `<div style="max-width:1100px">`;
   html += _renderContentHeader({ iconSvg: _CH_ICON_CABINET, title: 'Cabinet Library' });
 
   // Filter input + Import/Export buttons (CLAUDE.md convention: I/E lives in
@@ -853,7 +853,7 @@ function renderCBLibraryView() {
     <button class="btn btn-outline" onclick="cbImportLibrary()" style="font-size:12px;padding:8px 12px;width:auto;flex:0 0 auto">&uarr; Import</button>
   </div>`;
 
-  html += `<div id="cb-lib-grid">`;
+  html += `<div id="cb-lib-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px;align-items:stretch">`;
   html += _renderLibraryCards(cbLibrary);
   html += `</div></div>`;
   el.innerHTML = html;
@@ -877,11 +877,11 @@ function _renderLibraryCards(items) {
 
     const isEditingThis = cbEditingLibraryIdx === idx;
     const borderColor = isEditingThis ? 'var(--accent)' : 'var(--border)';
-    html += `<div style="background:var(--surface);border:1px solid ${borderColor};border-radius:var(--radius);margin-bottom:6px;box-shadow:var(--shadow);transition:box-shadow .15s,border-color .15s;cursor:pointer"
+    html += `<div style="background:var(--surface);border:1px solid ${borderColor};border-radius:var(--radius);box-shadow:var(--shadow);transition:box-shadow .15s,border-color .15s;cursor:pointer;display:flex;flex-direction:column;height:100%"
       onmouseover="this.style.boxShadow='var(--shadow-md)';this.style.borderColor='var(--accent)'"
       onmouseout="this.style.boxShadow='var(--shadow)';this.style.borderColor='${borderColor}'"
       onclick="cbEditLibraryEntry(${idx})">
-      <div style="display:flex;align-items:flex-start;gap:8px;padding:10px 12px 6px">
+      <div style="flex:1;display:flex;align-items:flex-start;gap:8px;padding:10px 12px 6px">
         <div style="flex:1;min-width:0">
           <div style="font-size:13px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_escHtml(c._libName||c.name||'Cabinet')}${isEditingThis?' <span style="font-size:10px;font-weight:600;color:var(--accent);margin-left:4px">· editing</span>':''}</div>
           <div style="font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.w} × ${c.h} × ${c.d} mm · ${_escHtml(c.material||'')}${details.length?' · '+details.join(', '):''}</div>
