@@ -1200,7 +1200,10 @@ async function authSubmit() {
       ({ error } = await _sb.auth.signUp({
         email, password,
         options: {
-          emailRedirectTo: window.location.origin + '/os',
+          // App is served at /os in prod, but at / in local dev (window._isDev,
+          // set by main.js). Point the email-confirm redirect at wherever the
+          // app actually lives so dev signups don't bounce to a 404.
+          emailRedirectTo: window.location.origin + (window._isDev ? '' : '/os'),
           // Persisted into auth.users.user_metadata; the list-subscribe edge
           // function reads it after the user confirms their email.
           data: { marketing_opt_in: marketingOptIn, attribution },
