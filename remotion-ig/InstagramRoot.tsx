@@ -105,8 +105,8 @@ export const RemotionRoot: React.FC = () => (
         copy: [
           {
             kicker: 'Cut list optimiser',
-            title: 'Stop wasting *time*\nand *money*.',
-            sub: 'List your parts once, pick your materials from your stock library, and let the optimiser nest them onto your sheets. Link parts to your cabinet library to drop them in to new cut lists.',
+            title: 'Stop wasting *time*\nand *materials*.',
+            sub: 'List your parts once, pick your materials from your stock library, and let the optimiser nest them onto your sheets. ',
           },
           {
             kicker: 'Cut parts',
@@ -147,7 +147,7 @@ export const RemotionRoot: React.FC = () => (
         copy: [
           {
             kicker: 'Auto-schedule',
-            title: 'Production that\n*schedules itself*.',
+            title: 'Always up to date \n and *on schedule*.',
             sub: 'Set your hours and a priority per order — the workshop calendar fills itself in.',
           },
           {
@@ -163,7 +163,7 @@ export const RemotionRoot: React.FC = () => (
           { kicker: 'Stay in control', title: 'Overrides + *overrun tracking*', sub: '' },
           {
             kicker: 'Start free',
-            title: 'Always up to date \n and *on schedule*.',
+            title: 'Production that\n*schedules itself*.',
             sub: 'No card. Free forever \n6 Libraries - save up 5 Items in each for free',
           },
         ],
@@ -184,7 +184,7 @@ export const RemotionRoot: React.FC = () => (
         copy: [
           {
             kicker: 'Quote → invoice',
-            title: 'One pipeline,\nstart to *finish*.',
+            title: 'Your workshop *OS*.',
             sub: 'From the first quote to the final invoice — every job on one connected pipeline.',
           },
           {
@@ -209,7 +209,7 @@ export const RemotionRoot: React.FC = () => (
           },
           {
             kicker: 'Start free',
-            title: 'Your workshop *OS*.',
+            title: 'One pipeline,\nstart to *finish*.',
             sub: 'No card. Free forever \n6 Libraries - save up 5 Items in each for free',
           },
         ],
