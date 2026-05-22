@@ -27,7 +27,7 @@
 
 /** Walkthrough content version. Bump when steps change materially — drives
  *  the version-gated re-show in _wtMaybeAutoStart (M7). */
-const WT_VERSION = 3;
+const WT_VERSION = 4;
 
 /** @type {any} window, any-typed so cross-file globals resolve without decls. */
 const _wtW = /** @type {any} */ (window);
@@ -76,45 +76,7 @@ const _wtSteps = [
     body: 'ProCabinet is organised into <span class="wt-hi">8 tabs</span>, one per section of your workflow. Click any tab to jump there — we\'ll walk through each one now.'
   },
 
-  // 2 — Settings
-  {
-    type: 'spot', phase: 'Setup', section: 'dashboard', openSettings: true,
-    target: '#settings-dropdown', position: 'left',
-    title: 'Set your units & preferences first',
-    body: 'Switch between <span class="wt-hi">metric and imperial</span>, choose your unit format and currency, and toggle dark mode. These apply everywhere — quotes, cabinets and cut lists.'
-  },
-
-  // 3 — Account / Business details
-  {
-    type: 'spot', phase: 'Setup', section: 'dashboard', openAccount: true,
-    target: '#account-dropdown', position: 'left',
-    title: 'Add your business details',
-    body: 'Your business name, address and contact info print on <span class="wt-hi">quotes and invoices</span>. Tap "Edit business details" to fill them in.'
-  },
-
-  // 4 — Help
-  {
-    type: 'spot', phase: 'Help', section: 'dashboard', openHelp: true,
-    target: '#help-dropdown', position: 'left',
-    title: 'Find help when you need it',
-    body: 'Open the <span class="wt-hi">User Guide</span>, report a bug, or contact support — all in one place.'
-  },
-
-  // 5 — New features
-  {
-    type: 'spot', phase: 'Feedback', section: 'dashboard', openFeatures: true,
-    target: '#features-dropdown', position: 'left',
-    title: 'Shape what gets built next',
-    body: 'ProCabinet is actively developed — <span class="wt-hi">vote on upcoming features</span> or suggest your own, and help steer the roadmap.'
-  },
-
   // ── Clients ──────────────────────────────────────────────────────────────
-  {
-    type: 'spot', phase: 'Clients', section: 'clients',
-    target: '.nav-tab[title="Clients"]', position: 'bottom',
-    title: 'Clients tab',
-    body: 'Every job starts with a client. Their name, address and contact details carry through to <span class="wt-hi">every quote, order and invoice</span> automatically.'
-  },
   {
     type: 'spot', phase: 'Clients', section: 'clients',
     target: '#clients-main', position: 'left',
@@ -132,12 +94,6 @@ const _wtSteps = [
   // ── Quote ────────────────────────────────────────────────────────────────
   {
     type: 'spot', phase: 'Quote', section: 'quote',
-    target: '.nav-tab[title="Quotes"]', position: 'bottom',
-    title: 'Quotes tab',
-    body: 'All your customer quotes live here. Each quote moves through a status pipeline — <span class="wt-hi">Draft → Sent → Approved</span> — before becoming an order.'
-  },
-  {
-    type: 'spot', phase: 'Quote', section: 'quote',
     target: '#quote-main', position: 'left',
     title: 'Quote list',
     body: 'Quotes are sorted newest first. Filter by status at the top. Click any quote to open the full editor — <span class="wt-hi">line items, totals and actions</span> in the sidebar.'
@@ -145,24 +101,12 @@ const _wtSteps = [
   {
     type: 'spot', phase: 'Quote', section: 'quote',
     preClickCard: '.quote-card',
-    target: '.qc-footer', position: 'left',
-    title: 'Send & convert',
-    body: 'Export a branded PDF to send to the client. Once approved, one click <span class="wt-hi">converts the quote to an order</span> — locking the line items as a snapshot.'
-  },
-  {
-    type: 'spot', phase: 'Quote', section: 'quote',
     target: '#quote-sidebar', position: 'right',
     title: 'Quote editor',
     body: 'Add line items: cabinets from the builder, labour, materials or custom lines. ProCabinet calculates <span class="wt-hi">subtotals, tax and the grand total</span> live.'
   },
 
   // ── Orders ───────────────────────────────────────────────────────────────
-  {
-    type: 'spot', phase: 'Orders', section: 'orders',
-    target: '.nav-tab[title="Orders"]', position: 'bottom',
-    title: 'Orders tab',
-    body: 'Confirmed jobs move here from Quotes. Each order tracks its own <span class="wt-hi">5-stage production pipeline</span> from start to delivery.'
-  },
   {
     type: 'spot', phase: 'Orders', section: 'orders',
     target: '#orders-main', position: 'left',
@@ -180,12 +124,6 @@ const _wtSteps = [
   // ── Stock ─────────────────────────────────────────────────────────────────
   {
     type: 'spot', phase: 'Stock', section: 'stock',
-    target: '.nav-tab[title="Stock"]', position: 'bottom',
-    title: 'Stock tab',
-    body: 'Track your sheet goods, hardware, edge banding and finishes here. After a cut list, <span class="wt-hi">deduct the used material</span> from stock with one click.'
-  },
-  {
-    type: 'spot', phase: 'Stock', section: 'stock',
     target: '#stock-main', position: 'left',
     title: 'Material list',
     body: 'Each item shows current quantity, supplier and unit cost. Items that drop below their threshold are <span class="wt-hi">flagged in red</span>.'
@@ -201,103 +139,50 @@ const _wtSteps = [
   // ── Cabinet ──────────────────────────────────────────────────────────────
   {
     type: 'spot', phase: 'Cabinet', section: 'cabinet', cbView: 'results',
-    target: '.nav-tab[title="Cabinet"]', position: 'bottom',
-    title: 'Cabinet tab',
-    body: 'The heart of ProCabinet. Design cabinets, keep a <span class="wt-hi">reusable template library</span>, and set the rates that price every job — it all lives here.'
+    target: '#cb-main-tab-results', position: 'bottom',
+    title: 'Quote Builder',
+    body: 'Pick a quote and its cabinets load here, <span class="wt-hi">priced live</span> — material, labour, markup and tax calculated line by line as you design.'
   },
   {
-    type: 'spot', phase: 'Cabinet', section: 'cabinet', cbView: 'results',
-    target: '#cb-sidebar-builder', position: 'right',
-    title: 'Start from a quote',
-    body: 'The Quote Builder is quote-driven. Pick a quote from the sidebar and its cabinets load instantly — <span class="wt-hi">always in sync with the Quotes tab</span>.'
+    type: 'spot', phase: 'Cabinet', section: 'cabinet', cbView: 'results', subtab: 'builder',
+    target: '#cab-tab-builder', position: 'bottom',
+    title: 'Cabinet Builder',
+    body: 'Open any cabinet to set its full spec — <span class="wt-hi">carcass size, doors, drawers, shelves and hardware</span>. Labour pricing scales with size, so every cabinet is costed accurately.'
   },
   {
-    type: 'spot', phase: 'Cabinet', section: 'cabinet', cbView: 'results',
-    preClickCard: '#cb-results .quote-card',
-    target: '#cab-view-builder .main-content', position: 'left',
-    title: 'Cabinets & live pricing',
-    body: 'Every cabinet in the quote is listed here with material, labour, markup and tax <span class="wt-hi">calculated line by line</span> — the total updates as you design.'
-  },
-  {
-    type: 'spot', phase: 'Cabinet', section: 'cabinet', cbView: 'results',
-    preClickCard: '#cb-results .cb-cab-card',
-    target: '#cb-sidebar-builder', position: 'right',
-    title: 'The cabinet editor',
-    body: 'Open any cabinet to set its full spec — carcass size, doors, drawers, shelves and hardware. Labour pricing <span class="wt-hi">scales with size</span> so cabinets big and small are costed accurately.'
+    type: 'spot', phase: 'Cabinet', section: 'cabinet', cbView: 'results', subtab: 'rates',
+    target: '#cab-tab-rates', position: 'bottom',
+    title: 'My Rates',
+    body: 'Set your <span class="wt-hi">hourly labour rate, material markup, edge-banding cost and contingency</span> once — every cabinet prices itself from these, no spreadsheet formulas to maintain.'
   },
   {
     type: 'spot', phase: 'Cabinet', section: 'cabinet', cbView: 'library',
-    target: '#cab-view-builder .main-content', position: 'left',
+    target: '#cb-main-tab-library', position: 'bottom',
     title: 'Cabinet Library',
     body: 'A catalogue of <span class="wt-hi">reusable cabinet templates</span>. Build a cabinet once, then "Add to Quote" drops it into any job — dimensions, materials and pricing included.'
-  },
-  {
-    type: 'spot', phase: 'Cabinet', section: 'cabinet', cbView: 'library',
-    target: '#cb-lib-tab-rates', position: 'bottom',
-    title: 'My Rates',
-    body: 'Set your <span class="wt-hi">hourly labour rate, material markup, edge-banding cost and contingency</span>. Do this once — every cabinet prices itself from these.'
-  },
-  {
-    type: 'spot', phase: 'Cabinet', section: 'cabinet', cbView: 'library',
-    preClickCard: '#cb-lib-tab-rates',
-    target: '#cb-sidebar-library', position: 'right',
-    title: 'Rate inputs',
-    body: 'Adjust any rate and all open quotes reprice in real time. <span class="wt-hi">No spreadsheet formulas to maintain</span> — one source of truth for your whole business.'
   },
 
   // ── Cut List ──────────────────────────────────────────────────────────────
   {
-    type: 'spot', phase: 'Cut List', section: 'cutlist',
-    target: '.nav-tab[title="Cut List"]', position: 'bottom',
-    title: 'Cut List tab',
-    body: 'Plan exactly how each sheet gets cut. Add your stock panels, list every piece needed, then let ProCabinet <span class="wt-hi">optimise the layout for minimum waste</span>.'
+    type: 'spot', phase: 'Cut List', section: 'cutlist', clView: 'layout',
+    target: '.cl-left', position: 'right',
+    title: 'Sheets & pieces',
+    body: 'Add your stock sheets and the pieces to cut — dimensions, quantity, grain and edge banding — then hit <span class="wt-hi">Optimise</span> and ProCabinet nests everything for minimum waste.'
   },
   {
     type: 'spot', phase: 'Cut List', section: 'cutlist', clView: 'library',
-    target: '.cl-right', position: 'left',
+    target: '#cl-tab-library', position: 'bottom',
     title: 'Cut List Library',
     body: 'Every cut list is saved here as its own entry. <span class="wt-hi">Reopen or duplicate</span> a past job, or start a fresh one — your whole cutting history in one place.'
   },
   {
-    type: 'spot', phase: 'Cut List', section: 'cutlist',
-    preClickCard: '#cl-lib-grid > div',
-    target: '#sheets-table', position: 'right',
-    title: 'Sheet stock',
-    body: 'Pull panels in from your Stock inventory. Each sheet row sets the material, dimensions and grain direction — the optimiser uses this to <span class="wt-hi">rotate and nest pieces correctly</span>.'
-  },
-  {
-    type: 'spot', phase: 'Cut List', section: 'cutlist',
-    target: '#pieces-table', position: 'right',
-    title: 'Piece list',
-    body: 'Add every part you need to cut — label, length, width, quantity, grain direction and edge banding. <span class="wt-hi">You\'re in full control</span> of what goes on each sheet.'
-  },
-  {
-    type: 'spot', phase: 'Cut List', section: 'cutlist',
-    target: '#cl-action-bar', position: 'top',
-    title: 'Optimise the layout',
-    body: 'Hit <span class="wt-hi">Optimise Cut Layout</span> and ProCabinet nests all your pieces onto the available sheets for minimum waste, respecting grain and saw-kerf.'
-  },
-  {
-    type: 'spot', phase: 'Cut List', section: 'cutlist',
-    preClickCard: '#cl-action-bar .btn',
-    target: '.cl-right', position: 'left',
-    title: 'Visual layout',
-    body: 'Each sheet is drawn as a scaled diagram with pieces labelled and colour-coded. See <span class="wt-hi">waste percentage, cut order and material totals</span> at a glance.'
-  },
-  {
-    type: 'spot', phase: 'Cut List', section: 'cutlist',
-    target: '#layout-toolbar-top', position: 'bottom',
-    title: 'Export & deduct stock',
-    body: 'Export a <span class="wt-hi">workshop PDF</span> with the cut diagram and part labels, or deduct the used sheets straight from your Stock inventory with one click.'
+    type: 'spot', phase: 'Cut List', section: 'cutlist', clView: 'layout',
+    target: '#cl-tab-layout', position: 'bottom',
+    title: 'Cut Layout',
+    body: 'The optimised result: each sheet drawn to scale with pieces labelled and colour-coded. See <span class="wt-hi">waste %, cut order and material totals</span> at a glance, then export a workshop PDF.'
   },
 
   // ── Schedule ─────────────────────────────────────────────────────────────
-  {
-    type: 'spot', phase: 'Schedule', section: 'schedule',
-    target: '.nav-tab[title="Schedule"]', position: 'bottom',
-    title: 'Schedule tab',
-    body: 'ProCabinet automatically places your orders on a calendar based on <span class="wt-hi">due date, priority and your working hours</span>. Set your hours and days off in the Working Hours section in the sidebar.'
-  },
   {
     type: 'spot', phase: 'Schedule', section: 'schedule',
     target: '#schedule-sidebar', position: 'right',
@@ -314,12 +199,6 @@ const _wtSteps = [
   // ── Dashboard ─────────────────────────────────────────────────────────────
   {
     type: 'spot', phase: 'Dashboard', section: 'dashboard',
-    target: '.nav-tab[title="Dashboard"]', position: 'bottom',
-    title: 'Dashboard',
-    body: 'Your home base. Everything you just explored is summarised here — <span class="wt-hi">live, every time you open the app</span>.'
-  },
-  {
-    type: 'spot', phase: 'Dashboard', section: 'dashboard',
     target: '#dashboard-main', position: 'top',
     title: 'Live overview',
     body: 'Active orders with due-date alerts, your most recent quotes, low-stock warnings and this week\'s schedule — <span class="wt-hi">the full picture without opening a single tab</span>.'
@@ -329,6 +208,32 @@ const _wtSteps = [
     target: '#dash-toolbar', position: 'bottom',
     title: 'Quick actions',
     body: '<span class="wt-hi">+ Quote, + Cabinet, + Client</span> — jump straight into creating anything; each button opens the right tab with a fresh form ready.'
+  },
+
+  // Top toolbar (header tools) — shown right to left: Account, Settings, Help, New features
+  {
+    type: 'spot', phase: 'Toolbar', section: 'dashboard', openAccount: true,
+    target: '#account-dropdown', position: 'left',
+    title: 'Add your business details',
+    body: 'Your business name, address and contact info print on <span class="wt-hi">quotes and invoices</span>. Tap "Edit business details" to fill them in.'
+  },
+  {
+    type: 'spot', phase: 'Toolbar', section: 'dashboard', openSettings: true,
+    target: '#settings-dropdown', position: 'left',
+    title: 'Set your units & preferences',
+    body: 'Switch between <span class="wt-hi">metric and imperial</span>, choose your unit format and currency, and toggle dark mode. These apply everywhere — quotes, cabinets and cut lists.'
+  },
+  {
+    type: 'spot', phase: 'Toolbar', section: 'dashboard', openHelp: true,
+    target: '#help-dropdown', position: 'left',
+    title: 'Find help when you need it',
+    body: 'Open the <span class="wt-hi">User Guide</span>, report a bug, or contact support — all in one place.'
+  },
+  {
+    type: 'spot', phase: 'Toolbar', section: 'dashboard', openFeatures: true,
+    target: '#features-dropdown', position: 'left',
+    title: 'Shape what gets built next',
+    body: 'ProCabinet is actively developed — <span class="wt-hi">vote on upcoming features</span> or suggest your own, and help steer the roadmap.'
   },
 
   // Pro CTA — the four-tier plan picker (rendered by _wtCtaHTML). Dropped for
