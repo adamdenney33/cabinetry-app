@@ -125,7 +125,7 @@ const STabs: React.FC = () => {
           })}
         </div>
         <div style={{ display: 'flex', gap: 24, marginTop: 64 }}>
-          {[['8', 'connected tabs', C.ink], ['6', 'smart libraries', C.ink], ['1', 'place for everything', C.accent]].map(([t, l, col], i) => (
+          {[['8', 'connected tabs', C.accent], ['6', 'smart libraries', C.accent], ['1', 'place for everything', C.accent]].map(([t, l, col], i) => (
             <div key={l as string} style={{ flex: 1, textAlign: 'center' }}>
               <div style={{ fontSize: 96, fontWeight: 900, color: col as string, letterSpacing: '-3px', ...numeric }}>{stat(Number(t), 30 + i * 6)}</div>
               <div style={{ fontSize: 24, color: C.muted, fontWeight: 600 }}>{l}</div>
