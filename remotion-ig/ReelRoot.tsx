@@ -1,0 +1,9 @@
+// Root for the 9:16 product reel (video). Separate from InstagramRoot (stills)
+// so the still-render script never tries to rasterise the reel's frames.
+import React from 'react';
+import { Composition } from 'remotion';
+import { Reel, REEL_FPS, REEL_DURATION } from './Reel';
+
+export const RemotionRoot: React.FC = () => (
+  <Composition id="reel" component={Reel} durationInFrames={REEL_DURATION} fps={REEL_FPS} width={1080} height={1920} />
+);

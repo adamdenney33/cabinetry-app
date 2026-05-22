@@ -17,7 +17,9 @@
     "render:reel-h": "node scripts/render-reel-h.mjs",
     "studio:ig": "remotion studio remotion-ig/instagram-entry.ts --no-open",
     "render:ig": "node scripts/render-ig.mjs",
-    "pdf:ig": "python3 scripts/build-ig-pdfs.py"
+    "pdf:ig": "python3 scripts/build-ig-pdfs.py",
+    "studio:ig-reel": "remotion studio remotion-ig/reel-entry.ts --no-open",
+    "render:ig-reel": "node scripts/render-reel.mjs"
   },
   "devDependencies": {
     "@babel/core": "^7.29.0",
