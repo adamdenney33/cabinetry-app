@@ -35,12 +35,12 @@ export const Caption: React.FC<{
     >
       <div
         style={{
-          maxWidth: 1180,
-          background: 'rgba(14,14,16,0.72)',
+          maxWidth: 1340,
+          background: 'rgba(14,14,16,0.74)',
           backdropFilter: 'blur(8px)',
           border: '1px solid rgba(255,255,255,0.10)',
           borderRadius: 16,
-          padding: '16px 30px',
+          padding: '15px 30px',
           display: 'flex',
           alignItems: 'center',
           gap: 16,
@@ -48,7 +48,7 @@ export const Caption: React.FC<{
         }}
       >
         <span style={{ width: 10, height: 10, borderRadius: '50%', background: C.accent, flexShrink: 0, boxShadow: `0 0 14px ${C.accent}` }} />
-        <span style={{ color: '#fff', fontSize: 31, fontWeight: 600, letterSpacing: -0.3, lineHeight: 1.2 }}>{text}</span>
+        <span style={{ color: '#fff', fontSize: 29, fontWeight: 600, letterSpacing: -0.2, lineHeight: 1.32, textAlign: align === 'center' ? 'center' : 'left' }}>{text}</span>
       </div>
     </div>
   );

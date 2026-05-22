@@ -30,14 +30,14 @@ const DbgSchedule = dbg('schedule', <>Production that <b style={{ color: A }}>sc
 
 const comp = (id: string, c: React.FC) => <Composition id={id} component={c} durationInFrames={120} fps={FPS} width={1920} height={1080} />;
 
-const IntroDbg: React.FC = () => <Intro dur={116} />;
-const OutroDbg: React.FC = () => <Outro dur={130} />;
+const IntroDbg: React.FC = () => <Intro dur={229} />;
+const OutroDbg: React.FC = () => <Outro dur={299} />;
 
 export const RemotionRoot: React.FC = () => (
   <>
     <Composition id="ProCabinetDemo" component={Master} durationInFrames={TOTAL} fps={FPS} width={1920} height={1080} />
-    <Composition id="Dbg-Intro" component={IntroDbg} durationInFrames={116} fps={FPS} width={1920} height={1080} />
-    <Composition id="Dbg-Outro" component={OutroDbg} durationInFrames={130} fps={FPS} width={1920} height={1080} />
+    <Composition id="Dbg-Intro" component={IntroDbg} durationInFrames={229} fps={FPS} width={1920} height={1080} />
+    <Composition id="Dbg-Outro" component={OutroDbg} durationInFrames={299} fps={FPS} width={1920} height={1080} />
     {comp('Dbg-Dashboard', DbgDashboard)}
     {comp('Dbg-Rates', DbgRates)}
     {comp('Dbg-Cabinet', DbgCabinet)}

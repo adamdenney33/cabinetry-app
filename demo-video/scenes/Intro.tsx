@@ -18,18 +18,13 @@ export const Intro: React.FC<{ dur: number }> = ({ dur }) => {
   return (
     <AbsoluteFill style={{ background: BACKDROP, fontFamily: FONT, alignItems: 'center', justifyContent: 'center', opacity: out }}>
       <div style={{ transform: `scale(${drift})`, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 22, opacity: interpolate(tile, [0, 1], [0, 1]) }}>
-          <div style={{ width: 96, height: 96, borderRadius: 22, background: `linear-gradient(150deg, #f0b54a, ${C.accent})`, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: `0 18px 50px rgba(232,168,56,0.45)`, transform: `scale(${interpolate(tile, [0, 1], [0.6, 1])}) rotate(${interpolate(tile, [0, 1], [-12, 0])}deg)` }}>
-            <TabIcon tab="cabinet" size={56} color="#fff" strokeWidth={1.8} />
-          </div>
-          <div style={{ overflow: 'hidden' }}>
-            <div style={{ fontSize: 78, fontWeight: 800, letterSpacing: -2, lineHeight: 1, transform: `translateX(${interpolate(word, [0, 1], [-30, 0])}px)`, opacity: word }}>
-              <span style={{ color: '#fff' }}>ProCabinet</span><span style={{ color: C.accent }}>.App</span>
-            </div>
+        <div style={{ opacity: interpolate(tile, [0, 1], [0, 1]), transform: `scale(${interpolate(tile, [0, 1], [0.86, 1])})` }}>
+          <div style={{ fontSize: 92, fontWeight: 800, letterSpacing: -2.5, lineHeight: 1, opacity: word }}>
+            <span style={{ color: '#fff' }}>ProCabinet</span><span style={{ color: C.accent }}>.App</span>
           </div>
         </div>
 
-        <div style={{ fontSize: 30, color: 'rgba(255,255,255,0.82)', fontWeight: 500, marginTop: 28, opacity: tag, transform: `translateY(${interpolate(tag, [0, 1], [12, 0])}px)` }}>
+        <div style={{ fontSize: 31, color: 'rgba(255,255,255,0.82)', fontWeight: 500, marginTop: 26, opacity: tag, transform: `translateY(${interpolate(tag, [0, 1], [12, 0])}px)` }}>
           {BRAND.tagline}
         </div>
 

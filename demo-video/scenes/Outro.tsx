@@ -1,7 +1,6 @@
 import React from 'react';
 import { AbsoluteFill, useCurrentFrame, interpolate, spring, useVideoConfig } from 'remotion';
 import { BACKDROP, FONT, C, BRAND } from '../theme';
-import { TabIcon } from '../icons';
 import { EASE_OUT, clampOpts } from '../primitives';
 
 export const Outro: React.FC<{ dur: number }> = ({ dur }) => {
@@ -15,11 +14,8 @@ export const Outro: React.FC<{ dur: number }> = ({ dur }) => {
 
   return (
     <AbsoluteFill style={{ background: BACKDROP, fontFamily: FONT, alignItems: 'center', justifyContent: 'center', opacity: inOp }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 14, opacity: brand, marginBottom: 30 }}>
-        <div style={{ width: 50, height: 50, borderRadius: 13, background: `linear-gradient(150deg, #f0b54a, ${C.accent})`, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 10px 28px rgba(232,168,56,0.4)' }}>
-          <TabIcon tab="cabinet" size={30} color="#fff" strokeWidth={1.8} />
-        </div>
-        <div style={{ fontSize: 34, fontWeight: 800, letterSpacing: -0.8 }}>
+      <div style={{ opacity: brand, marginBottom: 30 }}>
+        <div style={{ fontSize: 38, fontWeight: 800, letterSpacing: -0.9 }}>
           <span style={{ color: '#fff' }}>ProCabinet</span><span style={{ color: C.accent }}>.App</span>
         </div>
       </div>
