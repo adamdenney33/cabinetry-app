@@ -1200,7 +1200,7 @@ async function authSubmit() {
       ({ error } = await _sb.auth.signUp({
         email, password,
         options: {
-          emailRedirectTo: window.location.origin,
+          emailRedirectTo: window.location.origin + '/os',
           // Persisted into auth.users.user_metadata; the list-subscribe edge
           // function reads it after the user confirms their email.
           data: { marketing_opt_in: marketingOptIn, attribution },

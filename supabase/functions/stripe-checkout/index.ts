@@ -170,8 +170,8 @@ Deno.serve(async (req) => {
         line_items: [{ price: PRICE_FOUNDER, quantity: 1 }],
         metadata: { plan: 'founder', user_id: user.id },
         payment_intent_data: { metadata: { plan: 'founder', user_id: user.id } },
-        success_url: `${APP_URL}/?upgrade=success`,
-        cancel_url: `${APP_URL}/?upgrade=cancelled`,
+        success_url: `${APP_URL}/os?upgrade=success`,
+        cancel_url: `${APP_URL}/os?upgrade=cancelled`,
       });
     } else {
       const priceId = plan === 'monthly' ? PRICE_MONTHLY! : PRICE_ANNUAL!;
@@ -182,8 +182,8 @@ Deno.serve(async (req) => {
         line_items: [{ price: priceId, quantity: 1 }],
         // Adaptive Pricing handles local-currency conversion automatically
         // (must be enabled in Stripe Dashboard → Settings → Currency settings).
-        success_url: `${APP_URL}/?upgrade=success`,
-        cancel_url: `${APP_URL}/?upgrade=cancelled`,
+        success_url: `${APP_URL}/os?upgrade=success`,
+        cancel_url: `${APP_URL}/os?upgrade=cancelled`,
       };
       // `discounts` and `allow_promotion_codes` are mutually exclusive. Apply
       // the launch coupon automatically when one is configured; otherwise let
