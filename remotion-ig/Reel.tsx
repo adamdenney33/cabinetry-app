@@ -24,6 +24,8 @@ import cutNestImg from './assets/cut-nest.png';
 import reelMusic from './assets/reel-music.mp3';
 
 const Amber: React.FC<React.PropsWithChildren> = ({ children }) => <span style={{ color: C.accent }}>{children}</span>;
+// trailing full stop in accent-amber (brand motif on headlines)
+const Dot: React.FC = () => <span style={{ color: C.accent }}>.</span>;
 
 // rise + fade in
 const Rise: React.FC<React.PropsWithChildren<{ delay?: number; y?: number; style?: React.CSSProperties }>> = ({ delay = 0, y = 46, style, children }) => {
@@ -92,8 +94,8 @@ const SHook: React.FC = () => (
       <Rise delay={6} style={{ marginTop: 60 }}><div style={KICKER}>The workshop OS</div></Rise>
       <div style={{ marginTop: 22 }}>
         <Rise delay={12}><div style={H1}>Quote custom</div></Rise>
-        <Rise delay={20}><div style={H1}>cabinetry <Amber>in minutes</Amber>.</div></Rise>
-        <Rise delay={28}><div style={{ ...H1, color: 'rgba(255,255,255,0.5)' }}>…not hours.</div></Rise>
+        <Rise delay={20}><div style={H1}>cabinetry <Amber>in minutes</Amber><Dot /></div></Rise>
+        <Rise delay={28}><div style={{ ...H1, color: 'rgba(255,255,255,0.5)' }}>…not hours<Dot /></div></Rise>
       </div>
     </Pad>
   </InkBG>
@@ -109,13 +111,13 @@ const STabs: React.FC = () => {
     <LightBG>
       <Pad style={{ justifyContent: 'center' }}>
         <Rise delay={0}><div style={{ ...KICKER, color: C.accent }}>One workshop</div></Rise>
-        <Rise delay={6} style={{ marginTop: 14 }}><div style={H1D}>Eight tabs.<br /><Amber>One workshop.</Amber></div></Rise>
+        <Rise delay={6} style={{ marginTop: 14 }}><div style={H1D}>Eight tabs<Dot /><br /><Amber>One workshop.</Amber></div></Rise>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 22, marginTop: 70 }}>
           {keys.map((k, i) => {
             const Ico = TAB_ICONS[k];
             return (
               <Pop key={k} delay={14 + i * 4}>
-                <div style={{ aspectRatio: '1', background: C.surface, border: `1px solid ${C.border}`, borderRadius: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 8px 24px rgba(17,17,17,0.06)' }}>
+                <div style={{ aspectRatio: '1', background: C.surface, border: `1px solid ${C.border}`, borderRadius: '22px 22px 0 0', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 8px 24px rgba(17,17,17,0.06)' }}>
                   <Ico size={62} color={C.ink} />
                 </div>
               </Pop>
@@ -123,7 +125,7 @@ const STabs: React.FC = () => {
           })}
         </div>
         <div style={{ display: 'flex', gap: 24, marginTop: 64 }}>
-          {[['8', 'connected tabs', C.accent], ['6', 'smart libraries', C.ink], ['1', 'place for everything', C.teal]].map(([t, l, col], i) => (
+          {[['8', 'connected tabs', C.ink], ['6', 'smart libraries', C.ink], ['1', 'place for everything', C.accent]].map(([t, l, col], i) => (
             <div key={l as string} style={{ flex: 1, textAlign: 'center' }}>
               <div style={{ fontSize: 96, fontWeight: 900, color: col as string, letterSpacing: '-3px', ...numeric }}>{stat(Number(t), 30 + i * 6)}</div>
               <div style={{ fontSize: 24, color: C.muted, fontWeight: 600 }}>{l}</div>
@@ -144,7 +146,7 @@ const SPrice: React.FC = () => {
     <LightBG>
       <Pad style={{ justifyContent: 'center' }}>
         <Rise delay={0}><div style={KICKER}>Live pricing</div></Rise>
-        <Rise delay={6} style={{ marginTop: 14 }}><div style={H1D}>It does the <Amber>maths</Amber>.</div></Rise>
+        <Rise delay={6} style={{ marginTop: 14 }}><div style={H1D}>It does the <Amber>maths</Amber><Dot /></div></Rise>
         <Rise delay={12} style={{ marginTop: 16 }}><div style={{ ...SUB, color: C.text2 }}>Set your rates once — every change re-prices live.</div></Rise>
         <Pop delay={14} style={{ marginTop: 56 }}>
           <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 28, boxShadow: '0 40px 100px rgba(17,17,17,0.18)', padding: 44 }}>
@@ -178,7 +180,7 @@ const SCut: React.FC = () => {
     <LightBG>
       <Pad style={{ justifyContent: 'center', alignItems: 'flex-start' }}>
         <Rise delay={0}><div style={KICKER}>Cut list optimiser</div></Rise>
-        <Rise delay={6} style={{ marginTop: 14 }}><div style={H1D}>Cut sheets that <Amber>don't waste board</Amber>.</div></Rise>
+        <Rise delay={6} style={{ marginTop: 14 }}><div style={H1D}>Optimize cut lists <Amber>deduct from stock</Amber><Dot /></div></Rise>
         <div style={{ position: 'relative', marginTop: 60, alignSelf: 'center' }}>
           <Pop delay={12}><Framed w={920}><Img src={cutNestImg} style={{ width: '100%', display: 'block' }} /></Framed></Pop>
           <div style={{ position: 'absolute', top: -28, right: -10, background: C.green, color: '#fff', fontWeight: 900, fontSize: 38, padding: '14px 26px', borderRadius: 18, boxShadow: '0 16px 40px rgba(61,153,112,0.5)', transform: `scale(${badge})`, ...numeric }}>72% used</div>
@@ -193,7 +195,7 @@ const SSchedule: React.FC = () => (
   <LightBG>
     <Pad style={{ justifyContent: 'center', alignItems: 'flex-start' }}>
       <Rise delay={0}><div style={KICKER}>Auto-schedule</div></Rise>
-      <Rise delay={6} style={{ marginTop: 14 }}><div style={H1D}>Production that <Amber>schedules itself</Amber>.</div></Rise>
+      <Rise delay={6} style={{ marginTop: 14 }}><div style={H1D}>Production that <Amber>schedules itself</Amber><Dot /></div></Rise>
       <Pop delay={12} style={{ marginTop: 56, alignSelf: 'center' }}>
         <Framed w={960}>
           <div style={{ background: C.bg }}><ScheduleCalendar /></div>
@@ -208,7 +210,7 @@ const SPipeline: React.FC = () => (
   <LightBG>
     <Pad style={{ justifyContent: 'center', alignItems: 'flex-start' }}>
       <Rise delay={0}><div style={KICKER}>One pipeline</div></Rise>
-      <Rise delay={6} style={{ marginTop: 14 }}><div style={H1D}>Quote → order → <Amber>invoice</Amber>.</div></Rise>
+      <Rise delay={6} style={{ marginTop: 14 }}><div style={H1D}>Quote → order → <Amber>invoice</Amber><Dot /></div></Rise>
       <Pop delay={12} style={{ marginTop: 50, alignSelf: 'center' }}>
         <Framed w={980}>
           <div style={{ background: C.bg }}><OrdersScreen /></div>
@@ -226,13 +228,13 @@ const SClose: React.FC = () => {
       <Pad style={{ justifyContent: 'center', alignItems: 'center', textAlign: 'center' }}>
         <Rise delay={0}><div style={{ ...KICKER, color: C.accent }}>Not just an app</div></Rise>
         <Rise delay={8} style={{ marginTop: 22 }}>
-          <div style={{ ...H1, fontSize: 78 }}>It's your workshop's<br /><Amber>operating system</Amber>.</div>
+          <div style={{ ...H1, fontSize: 78 }}>It's your workshop's<br /><Amber>operating system</Amber><Dot /></div>
         </Rise>
         <Rise delay={20} style={{ marginTop: 56 }}><IconStrip light size={42} /></Rise>
         <Rise delay={30} style={{ marginTop: 64 }}>
           <div style={{ fontSize: 64, fontWeight: 900, color: '#fff', letterSpacing: '-1px' }}>ProCabinet<span style={{ color: C.accent }}>.App</span></div>
           <div style={{ fontSize: 30, color: 'rgba(255,255,255,0.72)', marginTop: 14, display: 'flex', gap: 12, alignItems: 'center', justifyContent: 'center' }}>
-            <IcoCheck size={26} color={C.accent} /> Free to start — 5 of each
+            <IcoCheck size={26} color={C.accent} /> Try it for free - no card required
           </div>
         </Rise>
       </Pad>
