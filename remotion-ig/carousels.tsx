@@ -134,9 +134,9 @@ const tabShowcase = (
     <div style={{ display: 'flex', gap: 16, marginTop: 30 }}>
       <BigStat value="8" label="connected tabs" color={C.accent} />
       <div style={{ width: 1, background: C.borderSoft }} />
-      <BigStat value="6" label="smart libraries" color={C.text} />
+      <BigStat value="6" label="smart libraries" color={C.accent} />
       <div style={{ width: 1, background: C.borderSoft }} />
-      <BigStat value="1" label="place for everything" color={C.teal} />
+      <BigStat value="1" label="place for everything" color={C.accent} />
     </div>
   </Panel>
 );

@@ -95,7 +95,7 @@ const SHook: React.FC = () => (
       <div style={{ marginTop: 22 }}>
         <Rise delay={12}><div style={H1}>Quote custom</div></Rise>
         <Rise delay={20}><div style={H1}>cabinetry <Amber>in minutes</Amber><Dot /></div></Rise>
-        <Rise delay={28}><div style={{ ...H1, color: 'rgba(255,255,255,0.5)' }}>…not hours<Dot /></div></Rise>
+        <Rise delay={28}><div style={H1}>…not hours.</div></Rise>
       </div>
     </Pad>
   </InkBG>
@@ -111,7 +111,7 @@ const STabs: React.FC = () => {
     <LightBG>
       <Pad style={{ justifyContent: 'center' }}>
         <Rise delay={0}><div style={{ ...KICKER, color: C.accent }}>One workshop</div></Rise>
-        <Rise delay={6} style={{ marginTop: 14 }}><div style={H1D}>Eight tabs<Dot /><br /><Amber>One workshop.</Amber></div></Rise>
+        <Rise delay={6} style={{ marginTop: 14 }}><div style={H1D}>Eight tabs.<br /><Amber>One workshop.</Amber></div></Rise>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 22, marginTop: 70 }}>
           {keys.map((k, i) => {
             const Ico = TAB_ICONS[k];
