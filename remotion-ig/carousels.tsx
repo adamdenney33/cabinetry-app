@@ -13,11 +13,13 @@ import { IconStrip } from './chrome';
 import { useBrand, Slot } from './brand';
 import { IcoCheck } from './icons';
 import { DashboardScreen } from './screens/Dashboard';
-import { BuilderScreen, PriceMoneyShot, LibraryScreen } from './screens/Builder';
+import { BuilderScreen, PriceMoneyShot } from './screens/Builder';
 import { DeductPanel } from './screens/CutList';
 // real app screenshots for the cut-list layout (full screen + cropped nest)
 import cutLayoutImg from './assets/cut-layout.png';
 import cutNestImg from './assets/cut-nest.png';
+// real app screenshot of the redesigned cabinet library (template grid)
+import cabLibraryImg from './assets/cabinet-library.png';
 import { ScheduleScreen, ScheduleCalendar } from './screens/Schedule';
 import { QuoteLinesPanel, QuotesScreen } from './screens/Quotes';
 import { OrdersScreen } from './screens/Orders';
@@ -129,12 +131,12 @@ export const CAROUSELS: Record<string, Carousel> = {
     title: 'Quote a kitchen in minutes',
     builders: [
       coverB,
-      screenB(<Window active="dashboard"><DashboardScreen /></Window>),
       screenB(<Window active="cabinet"><BuilderScreen /></Window>),
       screenB(<PriceMoneyShot />),
-      screenB(<Window active="cabinet"><LibraryScreen /></Window>),
+      screenB(<Shot src={cabLibraryImg} />),
       screenB(<QuoteLinesPanel />),
       screenB(<Window active="orders"><OrdersScreen /></Window>),
+      screenB(<Window active="dashboard"><DashboardScreen /></Window>),
       ctaB,
     ],
   },
