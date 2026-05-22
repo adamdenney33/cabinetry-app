@@ -1301,4 +1301,118 @@ _Auto-logged by SessionEnd hook. Flesh out with context next session if useful._
 
 _Auto-logged by SessionEnd hook. Flesh out with context next session if useful._
 
-<!-- last_commit: 30d6359 -->
+
+---
+
+## [Auto] Session ending 2026-05-21
+
+### Commits
+- fix(cabinet): set _cbCurrentClientName in editQuoteInCB / editOrderInCB
+- chore(brand): regenerate sidebar screenshots + re-render spec-scroll reel
+- feat(dashboard): HiDPI revenue chart with bar hover + tooltip; fix completed order display
+- feat(remotion): schema-driven Hook scene props + dependency update
+- chore(tooling): add Prettier config, Remotion skill docs, gitignore updates, sessions log
+- feat(remotion): make every composition deletable from Studio
+- fix(remotion): make Studio launch + render the folder rail
+
+_Auto-logged by SessionEnd hook. Flesh out with context next session if useful._
+
+
+---
+
+## [Auto] Session ending 2026-05-21
+
+### Commits
+- fix(cabinet): set _cbCurrentClientName in editQuoteInCB / editOrderInCB
+- chore(brand): regenerate sidebar screenshots + re-render spec-scroll reel
+- feat(dashboard): HiDPI revenue chart with bar hover + tooltip; fix completed order display
+- feat(remotion): schema-driven Hook scene props + dependency update
+- chore(tooling): add Prettier config, Remotion skill docs, gitignore updates, sessions log
+- feat(remotion): make every composition deletable from Studio
+- fix(remotion): make Studio launch + render the folder rail
+
+_Auto-logged by SessionEnd hook. Flesh out with context next session if useful._
+
+
+---
+
+## [Auto] Session ending 2026-05-21
+
+### Commits
+- feat(remotion): enable Studio Save-Default for the Hook scene
+- fix(deps): add @babel/core explicitly
+
+_Auto-logged by SessionEnd hook. Flesh out with context next session if useful._
+
+
+---
+
+## [Auto] Session ending 2026-05-22
+
+### Commits
+- feat(brand): add inverted and amber-padded cabinet icon variants
+- chore(brand): add icon-mark exploration galleries
+- feat(brand): add ProCabinet app icon assets (sunset, classic-gloss, glass-dome)
+- fix(brand): match square icon padding to the original padded variants
+
+_Auto-logged by SessionEnd hook. Flesh out with context next session if useful._
+
+
+---
+
+## [Auto] Session ending 2026-05-22
+
+### Commits
+- feat(landing): add marketing landing page
+- fix(dashboard): annotate revenue-chart params to clear implicit-any
+
+_Auto-logged by SessionEnd hook. Flesh out with context next session if useful._
+
+
+---
+
+## [Auto] Session ending 2026-05-22
+
+### Commits
+- feat(marketing): add Instagram carousel generator (remotion-ig) + Canva export
+- feat(demo-video): add Remotion founder product demo
+
+_Auto-logged by SessionEnd hook. Flesh out with context next session if useful._
+
+
+---
+
+## [Auto] Session ending 2026-05-22
+
+### Commits
+- feat(cabinet): grid layout for Cabinet Library sub-tab
+- feat(demo-video): add voiceover + music, explanatory captions, icon-free logos
+
+_Auto-logged by SessionEnd hook. Flesh out with context next session if useful._
+
+
+---
+
+## [Auto] Session ending 2026-05-22
+
+### Commits
+- feat(routing): move app to /os, make the landing the home page
+- feat(demo-video): narrate in the founder's own cloned voice
+
+_Auto-logged by SessionEnd hook. Flesh out with context next session if useful._
+
+
+---
+
+## [Auto] Session ending 2026-05-22
+
+### Commits
+- feat(cabinet): wrap Cabinet Library card caption to multiple lines
+- feat(routing): point Stripe returns + auth redirect directly at /os
+- fix(cabinet): wrap Cabinet Library caption at segment boundaries
+- fix(auth): keep email-confirm redirect on / in dev, /os in prod
+- refactor(walkthrough): drop per-section tab intro steps to shorten the tour
+
+_Auto-logged by SessionEnd hook. Flesh out with context next session if useful._
+
+<!-- last_commit: 6cd3208 -->
