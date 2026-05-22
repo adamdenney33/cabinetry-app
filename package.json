@@ -14,7 +14,10 @@
     "render:video": "remotion render remotion/index.ts CabinetWorkflow marketing/videos/workflow.mp4",
     "render:scenes": "node remotion/_src/render-scenes.mjs",
     "render:reel": "remotion render remotion/index.ts CabinetBuilderReel marketing/videos/cabinet-builder-reel.mp4",
-    "render:reel-h": "node scripts/render-reel-h.mjs"
+    "render:reel-h": "node scripts/render-reel-h.mjs",
+    "studio:ig": "remotion studio remotion-ig/index.ts",
+    "render:ig": "node scripts/render-ig.mjs",
+    "pdf:ig": "python3 scripts/build-ig-pdfs.py"
   },
   "devDependencies": {
     "@babel/core": "^7.29.0",
