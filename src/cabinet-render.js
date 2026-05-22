@@ -884,7 +884,7 @@ function _renderLibraryCards(items) {
       <div style="flex:1;display:flex;align-items:flex-start;gap:8px;padding:10px 12px 6px">
         <div style="flex:1;min-width:0">
           <div style="font-size:13px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_escHtml(c._libName||c.name||'Cabinet')}${isEditingThis?' <span style="font-size:10px;font-weight:600;color:var(--accent);margin-left:4px">· editing</span>':''}</div>
-          <div style="font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.w} × ${c.h} × ${c.d} mm · ${_escHtml(c.material||'')}${details.length?' · '+details.join(', '):''}</div>
+          <div style="font-size:11px;color:var(--muted);line-height:1.4;overflow-wrap:anywhere">${c.w} × ${c.h} × ${c.d} mm · ${_escHtml(c.material||'')}${details.length?' · '+details.join(', '):''}</div>
         </div>
         <div style="font-size:14px;font-weight:800;color:var(--accent);flex-shrink:0;white-space:nowrap">${fmt0(calc.lineSubtotal)}</div>
       </div>
