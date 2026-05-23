@@ -2480,14 +2480,15 @@ input.pf-input-compact[type="date"]:disabled::-webkit-calendar-picker-indicator 
   .editor-li-table thead { display: none; }
 
   .editor-li-table tbody tr {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(84px, 1fr));
-    gap: 8px 10px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 8px;
     position: relative;
     border: 1px solid var(--border);
     border-radius: 8px;
     margin: 0 0 8px;
-    padding: 10px 38px 10px 12px;   /* right pad clears the ✕ */
+    padding: 10px 12px;
     background: var(--surface);
   }
   /* Alternating row colour like the original table — the same --zebra tint,
@@ -2504,19 +2505,23 @@ input.pf-input-compact[type="date"]:disabled::-webkit-calendar-picker-indicator 
   .editor-li-table .col-handle,
   .editor-li-table .col-dot { display: none; }
 
-  /* Description spans the full card width on top. */
-  .editor-li-table .col-desc { grid-column: 1 / -1; }
+  /* Name/description: full-width input box on its own line (right pad clears ✕). */
+  .editor-li-table .col-desc { flex: 0 0 100%; padding-right: 26px; }
   .editor-li-table .col-desc .desc,
-  .editor-li-table .col-desc .cl-input { font-size: 16px; width: 100%; }
+  .editor-li-table .col-desc .cl-input {
+    width: 100%; box-sizing: border-box; font-size: 16px;
+    border: 1px solid var(--border); border-radius: 6px;
+    background: var(--surface); color: var(--text); padding: 6px 8px;
+  }
 
-  /* Numeric cells: small label on top, value below — columns stay aligned and
-     wrap to a new row as needed (~3 across at 360px). */
+  /* All numeric fields share one row below the name (label on top). */
   .editor-li-table td.col-qty,
   .editor-li-table td.col-price,
   .editor-li-table td.col-hrs,
   .editor-li-table td.col-disc,
   .editor-li-table td.col-total {
-    display: flex; flex-direction: column; gap: 3px; min-width: 0; text-align: left;
+    flex: 1 1 0; min-width: 0;
+    display: flex; flex-direction: column; gap: 3px; text-align: center;
   }
   .editor-li-table td.col-qty::before   { content: "Qty"; }
   .editor-li-table td.col-price::before { content: "Price"; }
@@ -2528,23 +2533,27 @@ input.pf-input-compact[type="date"]:disabled::-webkit-calendar-picker-indicator 
   .editor-li-table td.col-hrs::before,
   .editor-li-table td.col-disc::before,
   .editor-li-table td.col-total::before {
-    font-size: 10px; font-weight: 700; text-transform: uppercase;
-    letter-spacing: 0.4px; color: var(--muted);
+    font-size: 9px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.2px; color: var(--muted); white-space: nowrap; text-align: center;
   }
 
-  /* Editable inputs fill their cell. */
-  .editor-li-table td.col-qty .cl-input,
-  .editor-li-table td.col-price .cl-input,
-  .editor-li-table td.col-hrs .cl-input,
-  .editor-li-table td.col-disc .cl-input {
-    width: 100%; text-align: left; font-size: 16px; min-height: 38px;
-    box-sizing: border-box; padding: 5px 8px;
+  /* Editable fields shown as real input boxes. */
+  .editor-li-table td.col-qty .cl-input:not(.is-computed),
+  .editor-li-table td.col-price .cl-input:not(.is-computed),
+  .editor-li-table td.col-hrs .cl-input:not(.is-computed),
+  .editor-li-table td.col-disc .cl-input:not(.is-computed) {
+    width: 100%; box-sizing: border-box;
+    border: 1px solid var(--border); border-radius: 6px;
+    background: var(--surface); color: var(--text);
+    text-align: center; font-size: 16px; min-height: 38px; padding: 4px 2px;
   }
-  /* Computed values + total: read-only display. */
+  .editor-li-table td .cl-input:focus { border-color: var(--accent); background: var(--surface); }
+  /* Driven values (computed price/hours + total): plain text, no box. */
   .editor-li-table td.col-price .cl-input.is-computed,
   .editor-li-table td.col-hrs .cl-input.is-computed,
   .editor-li-table td.col-total .total-val {
-    display: flex; align-items: center; min-height: 38px; font-size: 16px;
+    display: flex; align-items: center; justify-content: center;
+    min-height: 38px; font-size: 16px;
   }
   .editor-li-table td.col-total .total-val { font-weight: 700; }
 
