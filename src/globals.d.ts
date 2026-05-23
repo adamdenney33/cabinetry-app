@@ -69,6 +69,12 @@ declare global {
     _pcIsTouchDevice?: () => boolean;
     /** Once-per-session mobile/tablet advisory notice. Defined in src/mobile-notice.js. */
     _pcMaybeShowMobileNotice?: () => void;
+    /** Mobile single-column "one pane at a time" controls (src/mobile-nav.js).
+     *  `data-mv` on <body> is "list" | "editor"; these flip it and no-op on desktop. */
+    _mvSet?: (view: 'list' | 'editor') => void;
+    _mvIsMobile?: () => boolean;
+    _mvShowEditor?: () => void;
+    _mvShowList?: () => void;
     /** Various render-state stash slots used by inline-handler `oninput=` etc. */
     _orderFilter?: string;
     _orderSearch?: string;

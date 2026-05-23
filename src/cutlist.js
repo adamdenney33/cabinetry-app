@@ -1144,6 +1144,7 @@ async function _clStartNewCutlist() {
       if (typeof _track === 'function') _track('library_item_created', { library: 'cutlists', item_id: newId, source: 'cutlist_tab' });
       _clCurrentCutlistId = newId;
       _clCurrentCutlistName = name;
+      if (window._mvShowEditor) window._mvShowEditor();
       pieces = []; sheets = []; edgeBands = [];
       _pieceId = 1; _sheetId = 1; _edgeBandId = 1; pieceColorIdx = 0;
       results = null;
@@ -4217,6 +4218,7 @@ async function renderCLCutListLibraryView() {
   host.innerHTML = `
     ${_renderContentHeader({ iconSvg: _CH_ICON_CUTLIST, title: 'Cut List Library' })}
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:12px">
+      <button class="btn btn-primary mv-only" onclick="_clStartNewCutlist()" style="font-size:12px;padding:6px 10px;width:auto">+ Add Cut List</button>
       <input type="text" id="cl-lib-filter" placeholder="Filter by name..." value="${_escHtml(q)}" oninput="renderCLCutListLibraryView()" style="font-size:12px;padding:6px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);width:200px;margin-left:auto">
     </div>
     <div id="cl-lib-grid" style="display:flex;flex-direction:column;gap:8px">
@@ -4242,7 +4244,8 @@ async function renderCLCutListLibraryView() {
   if (!filtered.length) {
     grid.innerHTML = `<div style="font-size:13px;color:var(--muted);text-align:center;padding:30px;border:1px dashed var(--border);border-radius:var(--radius)">
       ${rows.length ? 'No cut lists match this filter.' : 'No cut lists in your library yet. Use "Add to Library" under Optimize to save the current cut list here.'}
-    </div>`;
+    </div>
+    <button class="btn btn-primary mv-only" onclick="_clStartNewCutlist()" style="margin-top:10px;width:auto;align-self:center">+ Add Cut List</button>`;
     return;
   }
 
@@ -4322,6 +4325,7 @@ async function _clDoOpenLibraryCutlist(id) {
       if (!(/** @type {any} */ (window))._pcSuppressToasts) _toast('Cut list not found', 'error');
       return false;
     }
+    if (window._mvShowEditor) window._mvShowEditor();
     _clCurrentProjectId = null;
     _clCurrentProjectName = '';
     _clCurrentCutlistId = id;

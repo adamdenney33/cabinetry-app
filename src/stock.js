@@ -419,6 +419,7 @@ function cancelStockEdit() {
   inp('stock-form-title-text').textContent = 'Add Material';
   if (typeof _setSaveStatus === 'function') _setSaveStatus('stock', 'clean');
   _stockShowForm = false;
+  if (window._mvShowList) window._mvShowList();
   renderStockMain();
 }
 
@@ -530,6 +531,7 @@ function editStockItem(id) {
   if (!item) return;
   window._editingStockId = id;
   _stockShowForm = true;
+  if (window._mvShowEditor) window._mvShowEditor();
   if (typeof /** @type {any} */ (window)._pcSaveOpenStockId === 'function') {
     /** @type {any} */ (window)._pcSaveOpenStockId(id);
   }
@@ -816,6 +818,7 @@ function _renderStockSidebarGate() {
 }
 function _stockRevealForm() {
   _stockShowForm = true;
+  if (window._mvShowEditor) window._mvShowEditor();
   _renderStockSidebarGate();
   const first = _byId('stock-name');
   if (first) /** @type {HTMLInputElement} */ (first).focus();

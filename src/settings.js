@@ -298,6 +298,8 @@ function setCurrency(c) {
 /** @param {string} name */
 function switchSection(name) {
   if (typeof _track === 'function') _track('section_viewed', { section: name });
+  // Mobile: every tab change lands on that section's list view (src/mobile-nav.js).
+  if (window._mvShowList) window._mvShowList();
   if (typeof /** @type {any} */ (window)._pcSaveSection === 'function') {
     /** @type {any} */ (window)._pcSaveSection(name);
   }

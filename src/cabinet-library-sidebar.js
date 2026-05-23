@@ -52,6 +52,7 @@ function cbStartNewLibraryEntry() {
   cbEditingLibraryIdx = cbLibrary.length - 1;
   cbEditingLineIdx = -1;
   cbScratchpad = entry;
+  if (window._mvShowEditor) window._mvShowEditor();
   if (typeof renderCBPanel === 'function') renderCBPanel();
   if (typeof renderCBLibraryView === 'function') renderCBLibraryView();
   if (typeof _cbScheduleAutosave === 'function') _cbScheduleAutosave();

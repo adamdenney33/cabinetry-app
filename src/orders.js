@@ -774,6 +774,7 @@ async function _oStartNewOrder() {
         /** @type {any} */ (window)._pcSaveOpenOrderId(newId);
       }
       if (typeof _setSaveStatus === 'function') _setSaveStatus('order', 'saved');
+      if (window._mvShowEditor) window._mvShowEditor();
       renderOrderEditor();
       renderOrdersMain();
     } catch (e) {
@@ -796,6 +797,7 @@ function _oExitOrder() {
       /** @type {any} */ (window)._pcSaveOpenOrderId(null);
     }
     if (typeof _setSaveStatus === 'function') _setSaveStatus('order', 'clean');
+    if (window._mvShowList) window._mvShowList();
     renderOrderEditor();
     renderOrdersMain();
   };
@@ -938,6 +940,7 @@ function _oClearEditor() {
   if (typeof /** @type {any} */ (window)._pcSaveOpenOrderId === 'function') {
     /** @type {any} */ (window)._pcSaveOpenOrderId(null);
   }
+  if (window._mvShowList) window._mvShowList();
   renderOrderEditor();
   renderOrdersMain();
 }
@@ -945,6 +948,7 @@ function _oClearEditor() {
 /** Idle-state click handler: reveal the client-picker form. */
 function _oNewOrder() {
   _opState.startingNew = true;
+  if (window._mvShowEditor) window._mvShowEditor();
   renderOrderEditor();
   setTimeout(() => {
     const el = document.getElementById('oe-client-picker');
@@ -979,6 +983,7 @@ async function loadOrderIntoSidebar(id) {
   if (typeof /** @type {any} */ (window)._pcSaveOpenOrderId === 'function') {
     /** @type {any} */ (window)._pcSaveOpenOrderId(id);
   }
+  if (window._mvShowEditor) window._mvShowEditor();
   renderOrderEditor();
   renderOrdersMain();
   if (!Array.isArray(/** @type {any} */ (o)._lines)) {

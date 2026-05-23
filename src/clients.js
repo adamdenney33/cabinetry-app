@@ -201,6 +201,7 @@ function editClient(id) {
   if (!c) return;
   /** @type {any} */ (window)._editingClientId = id;
   _clientsShowForm = true;
+  if (window._mvShowEditor) window._mvShowEditor();
   if (typeof /** @type {any} */ (window)._pcSaveOpenClientId === 'function') {
     /** @type {any} */ (window)._pcSaveOpenClientId(id);
   }
@@ -260,6 +261,7 @@ function cancelClientEdit() {
   if (ft) ft.textContent = 'New Client';
   if (typeof _setSaveStatus === 'function') _setSaveStatus('client', 'clean');
   _clientsShowForm = false;
+  if (window._mvShowList) window._mvShowList();
   renderClientsMain();
 }
 

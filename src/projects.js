@@ -18,6 +18,7 @@ async function _clLoadCutlist(cutlistId) {
   if (!cutlistId) return;
   const { data: cl, error } = await _db('cutlists').select('id, name').eq('id', cutlistId).single();
   if (error || !cl) { _toast('Could not load cut list.', 'error'); return; }
+  if (window._mvShowEditor) window._mvShowEditor();
   sheets = []; pieces = []; edgeBands = []; _sheetId = 1; _pieceId = 1; _edgeBandId = 1; pieceColorIdx = 0;
   const [{ data: dbSheets }, { data: dbPieces }, { data: dbEdges }] = await Promise.all([
     _db('sheets').select('*').eq('cutlist_id', cutlistId).order('position', { ascending: true }),

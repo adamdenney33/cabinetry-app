@@ -14,13 +14,41 @@ Companion docs: `SPEC.md` (refactor history), `SCHEMA.md` (DB schema),
 - **Pre-launch refactor (SPEC.md Phases 0–7)** complete — modular files, TypeScript strict mode, schema normalised
 - **Cabinet Builder unification** (Item 2): all 4 phases done — pre-launch refactor closed
 - **Stripe payments**: S.2–S.7 done in test mode (Checkout + Portal + Webhook + DB schema); S.8 verification + S.9 live-mode flip remain
-- **Mobile / responsive**: not started
+- **Mobile / responsive**: 🚧 in progress — comprehensive mobile-native pass (7 phases; see Active Work)
 - **UI polish + design finalisation**: not started
 - **Launch target:** mid-May 2026 (per Business Plan)
 
 ---
 
 ## Active Work
+
+### Mobile-native responsive pass 🚧 In Progress 2026-05-23
+
+Comprehensive portrait-phone redesign. Replaces the old horizontal-scroll hack
+with true single-column "one pane at a time" stacking, touch sizing, and reworks
+the hard surfaces. Full plan: `~/.claude/plans/swirling-knitting-thompson.md`.
+Breakpoints: `@media (max-width:760px)` = single-column; `@media (pointer:coarse)`
+= touch targets (independent).
+
+- ✅ **Phase 1 — Single-column layout + drill-in** (2026-05-23). `body[data-mv]`
+  ("list" | "editor") + `.mv-pane-editor`/`.mv-pane-list` marker classes on every
+  section's two panes + new `src/mobile-nav.js` (`_mvSet`/`_mvIsMobile`/
+  `_mvShowEditor`/`_mvShowList` + a global "← Back to list" bar). The 760px block
+  in `styles.css` stacks the panels and shows one pane at a time; the old
+  `min-width:840px` portrait hack is gone. Drill-in wired into the existing
+  card→editor / back→list fns (quotes/orders/stock/clients + cabinet/cut-list
+  openers); `switchSection` resets to list. `_renderProjectHeader`'s back button
+  also returns to list. Cabinet/Cut-List creation lives in the sidebar, so
+  `.mv-only` "+ Add" / "Open builder" buttons were added to those list panes so
+  the sidebar is reachable on a phone. Verified at 390px (Clients/Quotes/Cabinet)
+  + desktop regression (two-pane intact). typecheck clean.
+- ⏳ **Phase 2** — touch target sizing (`@media (pointer:coarse)`).
+- ⏳ **Phase 3** — header & nav on mobile (4px account-button overflow at ≤400px).
+- ⏳ **Phase 4** — quote/order line-items table → stacked cards.
+- ⏳ **Phase 5** — cut-list canvas pinch-zoom/pan.
+- ⏳ **Phase 6** — schedule agenda (stacked) view.
+- ⏳ **Phase 7** — remove the "Best viewed on a computer" notice + polish
+  (incl. quote/order card title wrapping at narrow widths).
 
 ### Cabinet Builder reel — vertical + horizontal-split ✅ Done 2026-05-21
 

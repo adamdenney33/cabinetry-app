@@ -512,14 +512,65 @@ header {
   min-width: 0;
 }
 
-/* Portrait phones: the desktop two-pane layout would crush the main pane to a
-   sliver. Instead, hold the panel at a usable width and let the body scroll
-   horizontally so the full layout can be panned. Landscape + desktop untouched
-   (this only matches a phone-width viewport held upright). */
-@media (orientation: portrait) and (max-width: 600px) {
-  .app-body { overflow-x: auto; justify-content: flex-start; }
-  .section-panel.active { min-width: 840px; }
+/* ── MOBILE: single-column "one pane at a time" (≤760px) ──
+   Replaces the old horizontal-scroll hack. The two-pane panels stack to a
+   single column; body[data-mv] ("list" | "editor", driven by src/mobile-nav.js)
+   picks which pane shows. `.mv-pane-editor` = the sidebar/editor, `.mv-pane-list`
+   = the main list. Desktop is untouched — every rule lives inside the query. */
+@media (max-width: 760px) {
+  /* Stack the back bar above the active panel; panels fill the full width. */
+  .app-body { flex-direction: column; justify-content: flex-start; }
+  .section-panel.active { flex-direction: column; min-width: 0; width: 100%; max-width: none; }
+  #cab-view-builder { flex-direction: column !important; }
+
+  /* Each marker pane becomes a full-width column. */
+  .mv-pane-editor, .mv-pane-list {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    flex: 1 1 auto !important;
+  }
+
+  /* No side-by-side → nothing to resize. */
+  .resize-handle { display: none !important; }
+
+  /* List view (default): show the list, hide the editor. */
+  body[data-mv="list"] .mv-pane-editor { display: none !important; }
+  /* Editor view: show the editor, hide the list. */
+  body[data-mv="editor"] .mv-pane-list { display: none !important; }
+
+  /* Mobile back bar — only in editor view on a phone. */
+  body[data-mv="editor"] #mv-backbar {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+    padding: 6px 10px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+  }
 }
+
+/* Back bar: hidden by default (also on desktop); shown via the query above. */
+#mv-backbar { display: none; }
+.mv-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 6px 4px;
+}
+
+/* Mobile-only inline control — for create/open actions that live in the sidebar
+   on desktop (always visible there) but are unreachable from the list pane on a
+   phone, where the sidebar is hidden until you drill in. */
+.mv-only { display: none !important; }
+@media (max-width: 760px) { .mv-only { display: inline-flex !important; } }
 
 /* ── FORM ELEMENTS ── */
 .form-section { margin-bottom: 14px; }

@@ -242,7 +242,7 @@
   <div class="section-panel" id="panel-cabinet">
     <!-- BUILDER view (default) -->
     <div id="cab-view-builder" style="flex:1;display:flex;overflow:hidden">
-      <div class="sidebar" style="width:440px;min-width:380px">
+      <div class="sidebar mv-pane-editor" style="width:440px;min-width:380px">
         <!-- Quote Builder sidebar wrapper: client-picker empty state OR
              in-project header + cabinet editor. Default visible. -->
         <div id="cb-sidebar-builder" style="display:flex;flex-direction:column;flex:1;overflow-y:auto;overflow-x:hidden">
@@ -286,7 +286,7 @@
         </div>
       </div>
       <div class="resize-handle" data-sidebar-resize="cabinet" data-min="380" data-max="720"></div>
-      <div class="main-content" style="display:flex;flex-direction:column">
+      <div class="main-content mv-pane-list" style="display:flex;flex-direction:column">
         <div style="display:flex;border-bottom:2px solid var(--border);flex-shrink:0">
           <div id="cb-main-tab-results" onclick="switchCBMainView('results')" style="flex:1;padding:10px 16px;font-size:13px;font-weight:700;text-align:center;cursor:pointer;border-bottom:2px solid var(--accent);margin-bottom:-2px;color:var(--text)">Quote Builder</div>
           <div id="cb-main-tab-library" onclick="switchCBMainView('library')" style="flex:1;padding:10px 16px;font-size:13px;font-weight:500;text-align:center;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-2px">Cabinet Library</div>
@@ -301,7 +301,7 @@
        STOCK SECTION
   ════════════════════════════════════ -->
   <div class="section-panel" id="panel-stock">
-    <div class="sidebar" id="stock-sidebar">
+    <div class="sidebar mv-pane-editor" id="stock-sidebar">
       <div class="sidebar-scroll">
         <div id="stock-gate"></div>
         <div class="form-section" id="stock-form-section">
@@ -420,7 +420,7 @@
       </div>
     </div>
     <div class="resize-handle" data-sidebar-resize="stock" data-min="260" data-max="520"></div>
-    <div class="main-content">
+    <div class="main-content mv-pane-list">
       <div class="main-scroll" id="stock-main">
         <!-- rendered by JS -->
       </div>
@@ -433,7 +433,7 @@
   <div class="section-panel" id="panel-cutlist">
 
     <!-- LEFT: Inputs -->
-    <div class="cl-left">
+    <div class="cl-left mv-pane-editor">
       <!-- Strategy 2: project context replaces the inline picker. Empty state
            or Idea-3 header lives at the top; project-scoped tools below. -->
       <div id="cl-context"></div>
@@ -553,7 +553,7 @@
     <div class="resize-handle" data-sidebar-resize="cutlist" data-min="260" data-max="680"></div>
 
     <!-- RIGHT: Results -->
-    <div class="cl-right">
+    <div class="cl-right mv-pane-list">
       <!-- Main content tabs (F5: middle "Project" tab removed) -->
       <div style="display:flex;border-bottom:2px solid var(--border);flex-shrink:0">
         <div id="cl-tab-library" onclick="switchCLMainView('library')" style="flex:1;padding:10px 16px;font-size:13px;font-weight:700;text-align:center;cursor:pointer;border-bottom:2px solid var(--accent);margin-bottom:-2px;color:var(--text)">Cut List Library</div>
@@ -605,13 +605,13 @@
        QUOTE SECTION
   ════════════════════════════════════ -->
   <div class="section-panel" id="panel-quote">
-    <div class="sidebar sidebar-wide" id="quote-sidebar">
+    <div class="sidebar sidebar-wide mv-pane-editor" id="quote-sidebar">
       <div class="sidebar-scroll" id="quote-editor-host">
         <!-- Editor rendered by renderQuoteEditor() in quotes.js -->
       </div>
     </div>
     <div class="resize-handle" data-sidebar-resize="quote" data-min="360" data-max="720"></div>
-    <div class="main-content">
+    <div class="main-content mv-pane-list">
       <div class="main-scroll" id="quote-main">
         <!-- rendered by JS -->
       </div>
@@ -622,13 +622,13 @@
        ORDERS SECTION
   ════════════════════════════════════ -->
   <div class="section-panel" id="panel-orders">
-    <div class="sidebar sidebar-wide" id="order-sidebar">
+    <div class="sidebar sidebar-wide mv-pane-editor" id="order-sidebar">
       <div class="sidebar-scroll" id="order-editor-host">
         <!-- Editor rendered by renderOrderEditor() in orders.js -->
       </div>
     </div>
     <div class="resize-handle" data-sidebar-resize="orders" data-min="360" data-max="720"></div>
-    <div class="main-content">
+    <div class="main-content mv-pane-list">
       <div class="main-scroll" id="orders-main">
         <!-- rendered by JS -->
       </div>
@@ -639,13 +639,13 @@
        SCHEDULE SECTION
   ════════════════════════════════════ -->
   <div class="section-panel" id="panel-schedule">
-    <div class="sidebar" style="width:220px;min-width:180px">
+    <div class="sidebar mv-pane-editor" style="width:220px;min-width:180px">
       <div class="sched-sidebar" id="schedule-sidebar">
         <!-- rendered by JS -->
       </div>
     </div>
     <div class="resize-handle" data-sidebar-resize="schedule" data-min="180" data-max="380"></div>
-    <div class="main-content">
+    <div class="main-content mv-pane-list">
       <div style="flex:1;overflow:auto" id="schedule-main">
         <!-- rendered by JS -->
       </div>
@@ -656,7 +656,7 @@
        DASHBOARD SECTION
   ════════════════════════════════════ -->
   <div class="section-panel active" id="panel-dashboard">
-    <div class="main-content">
+    <div class="main-content mv-pane-list">
       <div class="main-scroll" id="dashboard-main">
         <!-- rendered by JS -->
       </div>
@@ -669,7 +669,7 @@
        CLIENTS SECTION
   ════════════════════════════════════ -->
   <div class="section-panel" id="panel-clients">
-    <div class="sidebar" id="clients-sidebar">
+    <div class="sidebar mv-pane-editor" id="clients-sidebar">
       <div class="sidebar-scroll">
         <div id="clients-gate"></div>
         <div class="form-section" id="clients-form-section">
@@ -708,7 +708,7 @@
       </div>
     </div>
     <div class="resize-handle" data-sidebar-resize="clients" data-min="260" data-max="520"></div>
-    <div class="main-content">
+    <div class="main-content mv-pane-list">
       <div class="main-scroll" id="clients-main">
         <!-- rendered by JS -->
       </div>
@@ -751,5 +751,6 @@
 <script defer src="/src/features.js"></script>
 <script defer src="/src/mobile-notice.js"></script>
 <script defer src="/src/walkthrough.js"></script>
+<script defer src="/src/mobile-nav.js"></script>
 </body>
 </html>

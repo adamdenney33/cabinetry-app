@@ -1368,6 +1368,7 @@ async function _qStartNewQuote() {
         /** @type {any} */ (window)._pcSaveOpenQuoteId(newId);
       }
       if (typeof _setSaveStatus === 'function') _setSaveStatus('quote', 'saved');
+      if (window._mvShowEditor) window._mvShowEditor();
       renderQuoteEditor();
       renderQuoteMain();
     } catch (e) {
@@ -1390,6 +1391,7 @@ function _qExitQuote() {
       /** @type {any} */ (window)._pcSaveOpenQuoteId(null);
     }
     if (typeof _setSaveStatus === 'function') _setSaveStatus('quote', 'clean');
+    if (window._mvShowList) window._mvShowList();
     renderQuoteEditor();
     renderQuoteMain();
   };
@@ -1469,6 +1471,7 @@ function _qClearEditor() {
   if (typeof /** @type {any} */ (window)._pcSaveOpenQuoteId === 'function') {
     /** @type {any} */ (window)._pcSaveOpenQuoteId(null);
   }
+  if (window._mvShowList) window._mvShowList();
   renderQuoteEditor();
   renderQuoteMain();
 }
@@ -1476,6 +1479,7 @@ function _qClearEditor() {
 /** Idle-state click handler: reveal the client-picker form. */
 function _qNewQuote() {
   _qpState.startingNew = true;
+  if (window._mvShowEditor) window._mvShowEditor();
   renderQuoteEditor();
   setTimeout(() => {
     const el = document.getElementById('qe-client-picker');
@@ -1512,6 +1516,7 @@ async function loadQuoteIntoSidebar(id) {
   if (typeof /** @type {any} */ (window)._pcSaveOpenQuoteId === 'function') {
     /** @type {any} */ (window)._pcSaveOpenQuoteId(id);
   }
+  if (window._mvShowEditor) window._mvShowEditor();
   renderQuoteEditor();
   renderQuoteMain();
   if (!Array.isArray(q._lines)) {

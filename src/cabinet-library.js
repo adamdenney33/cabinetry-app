@@ -206,6 +206,7 @@ function cbEditLibraryEntry(idx) {
   cbScratchpad = src; // reference, NOT a copy
   cbEditingLineIdx = -1;
   cbEditingLibraryIdx = idx;
+  if (window._mvShowEditor) window._mvShowEditor();
   renderCBPanel();
   _scrollCBEditorIntoView();
 }
