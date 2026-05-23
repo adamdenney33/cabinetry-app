@@ -1183,6 +1183,10 @@ function _wtMaybeShowSessionCta() {
  */
 async function _wtMaybeAutoStart() {
   if (_wtActive) return;
+  // Touch devices get a once-per-session "this is the mobile-optimised version"
+  // welcome (z-index 10000). The guided tour is desktop-only on touch, so on a
+  // phone this notice shows on its own; on desktop it's a no-op.
+  if (typeof window._pcMaybeShowMobileNotice === 'function') window._pcMaybeShowMobileNotice();
   // Logged-out demo visitors get the full tour + CTA on every reload — the demo
   // is a marketing surface, so the localStorage dismissal gate is bypassed.
   if (!_userId) { _wtStart({ force: true }); return; }

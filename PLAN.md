@@ -83,11 +83,12 @@ Breakpoints: `@media (max-width:760px)` = single-column; `@media (pointer:coarse
   to a stacked agenda (`_renderScheduleAgenda`) reusing `sortedEvents` — job cards
   with dates/status/slack/priority, sort+filter+hours relocated into the header;
   re-renders on a matchMedia change. Desktop keeps the 7-col grid + sidebar.
-- ✅ **Phase 7 — Notice removal + polish**. Dropped the "Best viewed on a
-  computer" advisory (`_pcMaybeShowMobileNotice` gone; `_pcIsTouchDevice` kept).
-  Fixed two pre-existing bugs: `input[type="tel"]` missing from the base field
-  rule (phone field was narrow) and `.oc-info` lacking `min-width:0` (long card
-  titles pushed the value off-screen).
+- ✅ **Phase 7 — Notice reframe + polish**. Reframed the once-per-session
+  touch-device notice from "Best viewed on a computer" to a positive "Optimised
+  for mobile" welcome (with tap-to-open / Back / pinch-zoom tips). Fixed two
+  pre-existing bugs: `input[type="tel"]` missing from the base field rule (phone
+  field was narrow) and `.oc-info` lacking `min-width:0` (long card titles pushed
+  the value off-screen).
 
 Verified end-to-end at 360/390px (Dashboard, Clients, Quotes, Orders, Stock,
 Cabinet, Cut List, Schedule) with desktop regression at 1440px; `npm run
