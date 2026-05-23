@@ -7,6 +7,10 @@
 
 function _requireAuth() {
   if (_userId) return true;
+  // Demo (guest) visitor: don't throw up the full sign-in screen on every save
+  // — give a non-blocking nudge and leave them where they are. They can still
+  // sign in via the demo banner or account menu whenever they're ready.
+  if (window._demoMode) { _demoNudge(); return false; }
   _showAuth();
   return false;
 }

@@ -147,6 +147,14 @@ function isApproachingLimit(library, currentCount) {
  */
 function _enforceFreeLimit(library, currentCount) {
   if (!isAtLimit(library, currentCount)) return true;
+  // Demo (guest) visitor: never surface the upgrade modal — they aren't even
+  // signed in. Nudge them to sign in and bail, leaving them where they are.
+  // (The seeded demo always sits at the cap, so this is the path a guest hits
+  // when they try to add a 6th item.)
+  if (window._demoMode && !_userId) {
+    if (typeof _demoNudge === 'function') _demoNudge();
+    return false;
+  }
   if (typeof _track === 'function') _track('free_tier_limit_hit', { library: library, current_count: currentCount });
   if (typeof _openLimitHitModal === 'function') {
     _openLimitHitModal(library);

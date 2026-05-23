@@ -5,16 +5,18 @@
 // signed-in user running the guided walkthrough — src/db.js routes every
 // `_db()` call here instead of to Supabase:
 //   • select → served from the static demo dataset (`_demoSelect`)
-//   • insert / update / delete → blocked (`_demoBlockWrite`). Explicit
-//     save/create actions already prompt sign-in via `_requireAuth()`; the
-//     `_db()`-level block is a no-op backstop so a missed guard can't escape.
+//   • insert / update / delete → blocked (`_demoBlockWrite`), which shows a
+//     non-blocking `_demoNudge()` toast. Explicit save/create actions already
+//     nudge via `_requireAuth()` / `_enforceFreeLimit()`; the `_db()`-level
+//     block is a backstop so a missed guard can't escape (and never throws up
+//     the full sign-in screen mid-demo).
 //
 // The dataset is built lazily on first use so `cbDefaultLine()` / `cbSettings`
 // (cabinet.js) are available. It is immutable — the demo is read-only, so a
 // guest's in-memory edits never reach it and a reload restores the pristine
 // seed.
 //
-// Cross-file globals used: cbDefaultLine (cabinet.js), _requireAuth (auth.js).
+// Cross-file globals used: cbDefaultLine (cabinet.js), _toast (ui.js).
 
 /** Lazily-built, memoized demo dataset, keyed by table name.
  *  @type {Record<string, any[]> | null} */
@@ -374,19 +376,43 @@ function _demoSelect(builder) {
   return { data: builder._isSingle ? (rows[0] || null) : rows, error: null };
 }
 
+/** Timestamp (ms) of the last demo nudge, for debouncing — see `_demoNudge`. */
+let _demoNudgeAt = 0;
+
 /**
- * Block a write in demo mode. A logged-out visitor is prompted to sign in (the
- * explicit-action guards in the app normally catch this first; this is the
- * backstop). Returns a benign result so the caller can't crash.
+ * Non-blocking "this is a demo" nudge. Shown when a guest tries to save in the
+ * read-only demo, in place of the full sign-in screen — they stay exactly where
+ * they are and keep exploring, and can sign in via the demo banner or account
+ * menu whenever they're ready. Debounced so rapid inline edits (e.g. dragging a
+ * dimension field) can't spam the toast stack.
+ */
+function _demoNudge() {
+  // Guests only. A signed-in user mid-walkthrough also runs in demo mode, but
+  // telling them to "sign in" would be nonsense — stay silent for them.
+  if (typeof _userId !== 'undefined' && _userId) return;
+  const now = Date.now();
+  if (now - _demoNudgeAt < 4000) return;
+  _demoNudgeAt = now;
+  if (typeof _toast === 'function') {
+    _toast("You're exploring the demo — sign in to save your work.", 'info');
+  }
+}
+
+/**
+ * Block a write in demo mode. A logged-out visitor gets a gentle nudge (the
+ * explicit-action guards in the app normally catch this first via `_requireAuth`
+ * / `_enforceFreeLimit`; this is the backstop). Returns a benign result so the
+ * caller can't crash.
  * @param {any} builder a `_DBBuilder` instance
  * @returns {{ data: any, error: any }}
  */
 function _demoBlockWrite(builder) {
-  if (typeof _requireAuth === 'function') _requireAuth();
+  _demoNudge();
   return { data: builder && builder._isSingle ? null : [], error: { message: 'Sign in to save your work', _demo: true } };
 }
 
 const _demoW = /** @type {any} */ (window);
 _demoW._demoSelect = _demoSelect;
 _demoW._demoBlockWrite = _demoBlockWrite;
+_demoW._demoNudge = _demoNudge;
 _demoW._demoBuildDataset = _demoBuildDataset;
