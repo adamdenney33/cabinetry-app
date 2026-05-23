@@ -951,7 +951,7 @@ function renderStockMain() {
           <span>Value: <b>${cur}${value.toLocaleString('en-US',{maximumFractionDigits:0})}</b></span>
         </div>
       </div>
-      ${collapsed ? '' : `<table class="stock-sheet">${theadHTML}<tbody>${items.map(stockRowHTML).join('')}</tbody></table>`}
+      ${collapsed ? '' : `<div class="stock-sheet-scroll"><table class="stock-sheet">${theadHTML}<tbody>${items.map(stockRowHTML).join('')}</tbody></table></div>`}
     </div>`;
   };
 

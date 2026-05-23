@@ -947,7 +947,15 @@ textarea { resize: vertical; min-height: 70px; }
   box-shadow: var(--shadow);
   margin: 0 0 10px;
 }
+/* Horizontal scroll for the wide stock table — lets all columns be reached on
+   narrow screens instead of being clipped by .stock-sheet-wrap's overflow:hidden.
+   Desktop is unaffected: the 100%-width table fits, so no scrollbar appears. */
+.stock-sheet-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .stock-sheet { width: 100%; border-collapse: collapse; font-size: 11px; }
+@media (max-width: 760px) {
+  /* keep natural column widths and scroll sideways rather than squashing 10 cols */
+  .stock-sheet { min-width: max-content; }
+}
 .stock-sheet thead th {
   background: var(--surface2);
   font-weight: 700; font-size: 10px;
