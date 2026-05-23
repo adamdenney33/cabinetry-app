@@ -1287,9 +1287,20 @@ canvas { display: block; }
 .pipe-line-done { background: var(--success); }
 .oc-footer { display: flex; align-items: center; gap: 6px; padding: 8px 16px; border-top: 1px solid var(--border2); }
 .oc-status-select { font-size: 12px; padding: 5px 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); font-family: inherit; cursor: pointer; }
-.order-filter-tabs { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
-.order-search-input { flex: 1; min-width: 140px; font-size: 12px; padding: 5px 10px; border-radius: 20px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); font-family: inherit; }
-.order-search-input:focus { outline: none; border-color: var(--accent); }
+/* ── Unified list/library filter bars (reference: Cabinet Library) ──
+   Row 1 (.lib-filter-row): search/filter input + Import/Export buttons, all
+   the same height on one line. Row 2 (.lib-toggle-row): status tabs, sort
+   selects, category pills — any toggles live on their own line. */
+.lib-filter-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
+.lib-filter-row:has(+ .lib-toggle-row), .lib-filter-row:has(+ .stock-cat-filter-bar) { margin-bottom: 8px; }
+/* `input.` prefix so this beats the global `input[type="text"]` rule (which
+   otherwise wins on padding/radius and would make text vs search inputs differ). */
+input.lib-filter-input { flex: 1; width: auto; min-width: 140px; font-size: 13px; padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface2); color: var(--text); font-family: inherit; }
+input.lib-filter-input:focus { border-color: var(--accent); box-shadow: none; }
+.lib-filter-btn { flex: 0 0 auto; width: auto; font-size: 12px; padding: 8px 12px; }
+.lib-toggle-row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
+/* Compact sort dropdown for toggle rows (overrides the global select width:100%). */
+.lib-sort-select { flex: 0 0 auto; width: auto; font-size: 11px; padding: 5px 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface2); color: var(--muted); font-family: inherit; cursor: pointer; }
 .ofilter-tab { padding: 5px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; cursor: pointer; background: var(--surface2); border: 1px solid var(--border); color: var(--muted); transition: all 0.15s; font-family: inherit; }
 .ofilter-tab:hover { border-color: var(--accent); color: var(--text); }
 .ofilter-tab.active { background: var(--accent); border-color: var(--accent); color: #fff; }
@@ -1515,7 +1526,7 @@ html.dark .gantt-cell.weekend { background:rgba(255,255,255,0.02); }
   /* Hide everything by default */
   header, .nav-tabs, .tab-bar, .cl-left, .inner-tabs, .sheet-tabs, .layout-toolbar,
   .sidebar, nav, button, .form-section, #toast-container, .resize-handle,
-  .order-filter-tabs, .stock-cat-filter-bar,
+  .lib-filter-row, .lib-toggle-row, .stock-cat-filter-bar,
   .section-panel { display: none !important; }
   /* Only show the active cut-list right panel */
   .section-panel#panel-cutlist { display: block !important; width: 100% !important; }

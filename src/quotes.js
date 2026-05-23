@@ -508,19 +508,21 @@ function renderQuoteMain() {
   if (qSort === 'value') filteredQ.sort((a,b) => quoteTotal(b) - quoteTotal(a));
   else if (qSort === 'client') filteredQ.sort((a,b) => (quoteClient(a)||'').localeCompare(quoteClient(b)||''));
 
-  const filterBar = `<div class="order-filter-tabs" style="align-items:center">
-    <input class="order-search-input" type="search" placeholder="Search client or project…" value="${window._quoteSearch||''}" oninput="window._quoteSearch=this.value;renderQuoteMain()">
+  const filterBar = `<div class="lib-filter-row">
+    <input class="lib-filter-input" type="search" placeholder="Search client or project…" value="${window._quoteSearch||''}" oninput="window._quoteSearch=this.value;renderQuoteMain()">
+    <button class="btn btn-outline lib-filter-btn" onclick="event.stopPropagation();exportQuotesCSV()">&darr; Export</button>
+    <button class="btn btn-outline lib-filter-btn" onclick="event.stopPropagation();importQuotesCSV()">&uarr; Import</button>
+  </div>
+  <div class="lib-toggle-row">
     <button class="ofilter-tab ${qFilter==='all'?'active':''}" onclick="window._quoteFilter='all';renderQuoteMain()">All (${customerQuotes.length})</button>
     <button class="ofilter-tab ${qFilter==='draft'?'active':''}" onclick="window._quoteFilter='draft';renderQuoteMain()">Draft (${draft})</button>
     <button class="ofilter-tab ${qFilter==='sent'?'active':''}" onclick="window._quoteFilter='sent';renderQuoteMain()">Sent (${sent})</button>
     <button class="ofilter-tab ${qFilter==='approved'?'active':''}" onclick="window._quoteFilter='approved';renderQuoteMain()">Approved (${approved})</button>
-    <select style="font-size:11px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--muted);font-family:inherit;cursor:pointer;margin-left:auto" onchange="window._quoteSort=this.value;renderQuoteMain()">
+    <select class="lib-sort-select" style="margin-left:auto" onchange="window._quoteSort=this.value;renderQuoteMain()">
       <option value="newest" ${qSort==='newest'?'selected':''}>Newest first</option>
       <option value="value" ${qSort==='value'?'selected':''}>Value</option>
       <option value="client" ${qSort==='client'?'selected':''}>Client</option>
     </select>
-    <button class="btn btn-outline" onclick="event.stopPropagation();exportQuotesCSV()" style="font-size:10px;padding:4px 8px;width:auto">Export</button>
-    <button class="btn btn-outline" onclick="event.stopPropagation();importQuotesCSV()" style="font-size:10px;padding:4px 8px;width:auto">Import</button>
   </div>`;
 
   const header = drillClient

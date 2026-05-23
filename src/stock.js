@@ -982,14 +982,12 @@ function renderStockMain() {
     ${stockItems.length === 0 ? `<div class="empty-state">
       <div class="empty-icon" style="opacity:.18"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg></div>
       <h3>No stock items yet</h3><p>Add your first material using the form on the left.</p></div>` : `
-    <div style="padding:0 ${_hp} 8px;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-      <input class="order-search-input" type="search" placeholder="Search…" value="${window._stockSearch||''}" oninput="window._stockSearch=this.value;renderStockMain()" style="max-width:180px">
-      <span style="font-size:11px;color:var(--muted)">${filtered.length} of ${stockItems.length}</span>
-      <div style="margin-left:auto;display:flex;gap:4px">
-        <button class="btn btn-outline" onclick="_buildStockPDF()" style="width:auto;padding:4px 10px;font-size:11px" title="PDF">PDF</button>
-        <button class="btn btn-outline" onclick="exportStockCSV()" style="width:auto;padding:4px 10px;font-size:11px" title="Export CSV">Export</button>
-        <button class="btn btn-outline" onclick="importStockCSV()" style="width:auto;padding:4px 10px;font-size:11px" title="Import CSV">Import</button>
-      </div>
+    <div class="lib-filter-row" style="padding:0 ${_hp}">
+      <input class="lib-filter-input" type="search" placeholder="Search…" value="${window._stockSearch||''}" oninput="window._stockSearch=this.value;renderStockMain()">
+      <span style="flex:0 0 auto;font-size:11px;color:var(--muted)">${filtered.length} of ${stockItems.length}</span>
+      <button class="btn btn-outline lib-filter-btn" onclick="_buildStockPDF()" title="PDF">PDF</button>
+      <button class="btn btn-outline lib-filter-btn" onclick="exportStockCSV()" title="Export CSV">&darr; Export</button>
+      <button class="btn btn-outline lib-filter-btn" onclick="importStockCSV()" title="Import CSV">&uarr; Import</button>
     </div>
     ${showCatFilter ? `<div class="stock-cat-filter-bar">${allCatPills.map(c => `<span class="stock-cat-pill${c===activeCat?' active':''}" onclick="window._stockCatFilter='${c}';renderStockMain()">${c}</span>`).join('')}</div>` : ''}
     <div style="padding:0 ${_hp}">${sectionsHTML}</div>

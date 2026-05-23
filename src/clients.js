@@ -478,14 +478,13 @@ function renderClientsMain() {
 
   el.innerHTML = `<div style="${_m ? 'max-width:none' : 'padding:24px;max-width:900px'}">
     ${_renderContentHeader({ iconSvg: _CH_ICON_CLIENT, title: 'Clients', addOnclick: '_clientsRevealForm()' })}
-    <div style="display:flex;align-items:center;gap:6px;margin-bottom:16px;flex-wrap:wrap">
-      <input type="text" placeholder="Search clients..." value="${_escHtml(window._clientSearch||'')}" oninput="window._clientSearch=this.value;renderClientsMain()" style="font-size:12px;padding:6px 12px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);width:200px;font-family:inherit">
-      <span style="flex:1"></span>
-      <button class="btn btn-outline" onclick="exportClientsCSV()" style="font-size:10px;padding:4px 8px;width:auto">Export</button>
-      <button class="btn btn-outline" onclick="importClientsCSV()" style="font-size:10px;padding:4px 8px;width:auto">Import</button>
+    <div class="lib-filter-row">
+      <input type="text" class="lib-filter-input" placeholder="Search clients..." value="${_escHtml(window._clientSearch||'')}" oninput="window._clientSearch=this.value;renderClientsMain()">
+      <button class="btn btn-outline lib-filter-btn" onclick="exportClientsCSV()">&darr; Export</button>
+      <button class="btn btn-outline lib-filter-btn" onclick="importClientsCSV()">&uarr; Import</button>
     </div>
-    ${clients.length > 1 ? `<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
-      <select style="font-size:11px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--muted);font-family:inherit;cursor:pointer" onchange="window._clientSort=this.value;renderClientsMain()">
+    ${clients.length > 1 ? `<div class="lib-toggle-row">
+      <select class="lib-sort-select" onchange="window._clientSort=this.value;renderClientsMain()">
         <option value="name" ${sortBy==='name'?'selected':''}>Sort by name</option>
         <option value="value" ${sortBy==='value'?'selected':''}>Sort by value</option>
         <option value="orders" ${sortBy==='orders'?'selected':''}>Sort by orders</option>

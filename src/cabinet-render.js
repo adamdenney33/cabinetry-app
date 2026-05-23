@@ -846,11 +846,12 @@ function renderCBLibraryView() {
   html += _renderContentHeader({ iconSvg: _CH_ICON_CABINET, title: 'Cabinet Library', addOnclick: 'cbStartNewLibraryEntry()' });
 
   // Filter input + Import/Export buttons (CLAUDE.md convention: I/E lives in
-  // the main content area filter bar, not in sidebars).
-  html += `<div style="display:flex;gap:8px;margin-bottom:16px;align-items:center">
-    <input type="text" id="cb-lib-filter" placeholder="Filter templates..." style="flex:1;font-size:13px;padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface2);color:var(--text)" oninput="filterCBLibraryView(this.value)">
-    <button class="btn btn-outline" onclick="cbExportLibrary()" style="font-size:12px;padding:8px 12px;width:auto;flex:0 0 auto">&darr; Export</button>
-    <button class="btn btn-outline" onclick="cbImportLibrary()" style="font-size:12px;padding:8px 12px;width:auto;flex:0 0 auto">&uarr; Import</button>
+  // the main content area filter bar, not in sidebars). This is the reference
+  // filter-bar layout — .lib-filter-* classes are shared by every list tab.
+  html += `<div class="lib-filter-row">
+    <input type="text" id="cb-lib-filter" class="lib-filter-input" placeholder="Filter templates..." oninput="filterCBLibraryView(this.value)">
+    <button class="btn btn-outline lib-filter-btn" onclick="cbExportLibrary()">&darr; Export</button>
+    <button class="btn btn-outline lib-filter-btn" onclick="cbImportLibrary()">&uarr; Import</button>
   </div>`;
 
   html += `<div id="cb-lib-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px;align-items:stretch">`;

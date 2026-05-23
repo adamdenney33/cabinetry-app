@@ -221,19 +221,21 @@ function renderOrdersMain() {
     <div class="empty-icon" style="opacity:.18"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg></div>
     <h3>No orders yet</h3><p>Add your first order using the form on the left, or convert a quote.</p></div>`;
 
-  const filterTabs = `<div class="order-filter-tabs" style="align-items:center">
-    <input class="order-search-input" type="search" placeholder="Search client or project…" value="${window._orderSearch||''}" oninput="window._orderSearch=this.value;renderOrdersMain()">
+  const filterTabs = `<div class="lib-filter-row">
+    <input class="lib-filter-input" type="search" placeholder="Search client or project…" value="${window._orderSearch||''}" oninput="window._orderSearch=this.value;renderOrdersMain()">
+    <button class="btn btn-outline lib-filter-btn" onclick="event.stopPropagation();exportOrdersCSV()">&darr; Export</button>
+    <button class="btn btn-outline lib-filter-btn" onclick="event.stopPropagation();importOrdersCSV()">&uarr; Import</button>
+  </div>
+  <div class="lib-toggle-row">
     <button class="ofilter-tab ${filterVal==='active'?'active':''}" onclick="setOrderFilter('active')">Active (${active.length})</button>
     <button class="ofilter-tab ${filterVal==='all'?'active':''}" onclick="setOrderFilter('all')">All (${scopedOrders.length})</button>
     <button class="ofilter-tab ${filterVal==='complete'?'active':''}" onclick="setOrderFilter('complete')">Completed (${complete.length})</button>
-    <select style="font-size:11px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--muted);font-family:inherit;cursor:pointer;margin-left:auto" onchange="window._orderSort=this.value;renderOrdersMain()">
+    <select class="lib-sort-select" style="margin-left:auto" onchange="window._orderSort=this.value;renderOrdersMain()">
       <option value="newest" ${sortBy==='newest'?'selected':''}>Newest first</option>
       <option value="due" ${sortBy==='due'?'selected':''}>Due date</option>
       <option value="value" ${sortBy==='value'?'selected':''}>Value</option>
       <option value="client" ${sortBy==='client'?'selected':''}>Client</option>
     </select>
-    <button class="btn btn-outline" onclick="event.stopPropagation();exportOrdersCSV()" style="font-size:10px;padding:4px 8px;width:auto">Export</button>
-    <button class="btn btn-outline" onclick="event.stopPropagation();importOrdersCSV()" style="font-size:10px;padding:4px 8px;width:auto">Import</button>
   </div>`;
 
   const header = drillClient

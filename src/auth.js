@@ -71,7 +71,7 @@ document.addEventListener('keydown', e => {
   }
   // / key: focus search (when not typing)
   if (e.key === '/' && !typing && !e.ctrlKey && !e.metaKey) {
-    const search = /** @type {HTMLElement | null} */ (document.querySelector('.section-panel.active .order-search-input, .section-panel.active input[type="search"], .section-panel.active input[placeholder*="Search"]'));
+    const search = /** @type {HTMLElement | null} */ (document.querySelector('.section-panel.active .lib-filter-input, .section-panel.active input[type="search"], .section-panel.active input[placeholder*="Search"]'));
     if (search) { search.focus(); e.preventDefault(); }
   }
 });

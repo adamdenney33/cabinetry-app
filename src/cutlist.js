@@ -4321,8 +4321,8 @@ async function renderCLCutListLibraryView() {
 
   host.innerHTML = `
     ${_renderContentHeader({ iconSvg: _CH_ICON_CUTLIST, title: 'Cut List Library', addOnclick: '_clStartNewCutlist()' })}
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:12px">
-      <input type="text" id="cl-lib-filter" placeholder="Filter by name..." value="${_escHtml(q)}" oninput="renderCLCutListLibraryView()" style="font-size:12px;padding:6px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);width:200px;margin-left:auto">
+    <div class="lib-filter-row">
+      <input type="text" id="cl-lib-filter" class="lib-filter-input" placeholder="Filter by name..." value="${_escHtml(q)}" oninput="renderCLCutListLibraryView()">
     </div>
     <div id="cl-lib-grid" style="display:flex;flex-direction:column;gap:8px">
       <div style="font-size:12px;color:var(--muted);text-align:center;padding:20px">Loading…</div>
