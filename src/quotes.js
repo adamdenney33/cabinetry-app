@@ -1042,6 +1042,7 @@ const _Q_EMPTY_ICON = '<svg class="pe-icon" viewBox="0 0 24 24" fill="none" stro
 function renderQuoteEditor() {
   const host = document.getElementById('quote-editor-host');
   if (!host) return;
+  const _m = !!(window._mvIsMobile && window._mvIsMobile());
 
   const q = _qpState.quoteId ? quotes.find(qx => qx.id === _qpState.quoteId) : null;
   const clientId = _qpState.clientId || (q ? q.client_id : null);
@@ -1094,8 +1095,8 @@ function renderQuoteEditor() {
     // Drafting: client-picker form (reached by clicking "+ New Quote")
     host.innerHTML = `
       <div class="form-section">
-        ${_renderProjectHeader('quote', { name: 'New Quote', exitFn: '_qClearEditor', iconSvg: _CH_ICON_QUOTE.replace('ch-icon', 'ph-icon') })}
-        <div style="padding:0 14px">
+        ${_m ? _renderProjectHeader('quote', { name: 'New Quote', exitFn: '_qClearEditor', iconSvg: _CH_ICON_QUOTE.replace('ch-icon', 'ph-icon') }) : '<div class="form-section-title">New Quote</div>'}
+        <div style="${_m ? 'padding:0 14px' : ''}">
         <div class="form-group" style="position:relative;margin-bottom:8px">
           <label>Client</label>
           <div class="smart-input-wrap">

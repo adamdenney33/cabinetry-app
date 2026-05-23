@@ -391,6 +391,7 @@ function renderClientsMain() {
   _renderClientsSidebarGate();
   const el = document.getElementById('clients-main');
   if (!el) return;
+  const _m = !!(window._mvIsMobile && window._mvIsMobile());
   const cur = window.currency;
 
   /** @param {any} c */
@@ -475,7 +476,7 @@ function renderClientsMain() {
   else if (sortBy === 'orders') filtered.sort((a,b) => orders.filter(o=>o.client_id===b.id||orderClient(o)===b.name).length - orders.filter(o=>o.client_id===a.id||orderClient(o)===a.name).length);
   else filtered.sort((a,b) => a.name.localeCompare(b.name));
 
-  el.innerHTML = `<div style="max-width:900px;margin:0 auto">
+  el.innerHTML = `<div style="${_m ? 'max-width:none' : 'padding:24px;max-width:900px'}">
     ${_renderContentHeader({ iconSvg: _CH_ICON_CLIENT, title: 'Clients', addOnclick: '_clientsRevealForm()' })}
     <div style="display:flex;align-items:center;gap:6px;margin-bottom:16px;flex-wrap:wrap">
       <input type="text" placeholder="Search clients..." value="${_escHtml(window._clientSearch||'')}" oninput="window._clientSearch=this.value;renderClientsMain()" style="font-size:12px;padding:6px 12px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);width:200px;font-family:inherit">

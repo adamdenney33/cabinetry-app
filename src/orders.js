@@ -327,6 +327,7 @@ const _O_EMPTY_ICON = '<svg class="pe-icon" viewBox="0 0 24 24" fill="none" stro
 function renderOrderEditor() {
   const host = document.getElementById('order-editor-host');
   if (!host) return;
+  const _m = !!(window._mvIsMobile && window._mvIsMobile());
 
   const o = _opState.orderId ? orders.find(ox => ox.id === _opState.orderId) : null;
   const clientId = _opState.clientId || (o ? o.client_id : null);
@@ -378,8 +379,8 @@ function renderOrderEditor() {
     // Drafting: client-picker form (reached by clicking "+ New Order")
     host.innerHTML = `
       <div class="form-section">
-        ${_renderProjectHeader('order', { name: 'New Order', exitFn: '_oClearEditor', iconSvg: _CH_ICON_ORDER.replace('ch-icon', 'ph-icon') })}
-        <div style="padding:0 14px">
+        ${_m ? _renderProjectHeader('order', { name: 'New Order', exitFn: '_oClearEditor', iconSvg: _CH_ICON_ORDER.replace('ch-icon', 'ph-icon') }) : '<div class="form-section-title">New Order</div>'}
+        <div style="${_m ? 'padding:0 14px' : ''}">
         <div class="form-group" style="position:relative;margin-bottom:8px">
           <label>Client</label>
           <div class="smart-input-wrap">
