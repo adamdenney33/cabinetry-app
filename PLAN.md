@@ -22,6 +22,27 @@ Companion docs: `SPEC.md` (refactor history), `SCHEMA.md` (DB schema),
 
 ## Active Work
 
+### Paid-ads tracking — landing-page coverage fix ✅ Done 2026-05-23
+
+The 2026-05-19 attribution foundation only fired on the app (`/os`), but paid-ad
+clicks land on the marketing landing page (`landing.html` at `/`), which loaded
+PostHog only — so GA4, the Meta Pixel, and the first-touch attribution capture
+never ran where the click actually arrives. Every paid signup looked organic;
+Google Ads / Meta couldn't attribute conversions. Fixed by firing the same
+tracking on the landing page.
+
+- ✅ `landing.html` — inline tracking block mirroring `src/main.js`: `pc_attribution`
+  first-touch snapshot + GA4/Google Ads gtag loader + Meta Pixel init/PageView,
+  placed after the auth/Stripe redirect so pass-throughs don't fire stray events.
+- ✅ `vite.config.mjs` — `copyLandingPlugin` now injects `__VITE_GA4_ID__` /
+  `__VITE_GOOGLE_ADS_ID__` / `__VITE_META_PIXEL_ID__` at build time (same
+  placeholder mechanism already used for the PostHog key/host).
+- ✅ `landing.js` — forwards utm_*/gclid/fbclid onto every `/os` link
+  (belt-and-braces; the same-origin cookies + localStorage already carry over).
+- Env-gated like `main.js` — no IDs set → `val('')` → no-op, zero network calls.
+
+**Detail in SPEC.md § 13.**
+
 ### Mobile-native responsive pass ✅ Done 2026-05-23
 
 Comprehensive portrait-phone redesign. Replaces the old horizontal-scroll hack

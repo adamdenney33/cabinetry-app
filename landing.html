@@ -41,6 +41,81 @@
       });
     })();
   </script>
+  <!-- ── Paid-ads tracking: first-touch attribution + GA4 + Google Ads + Meta Pixel ──
+       Ad clicks land HERE (the home page), not on the /os app, so the attribution
+       snapshot and the ad pixels MUST fire on this page — otherwise paid signups
+       (which complete at /os) can't be attributed back to the campaign. Mirrors
+       src/main.js, which runs the same logic on /os: identical localStorage key,
+       identical pixel inits. The _gcl_aw / _fbc cookies these set and the
+       localStorage blob are same-origin, so /os reads them at signup.
+       IDs are injected at BUILD time by copyLandingPlugin() in vite.config.mjs
+       (this file is copied verbatim — import.meta.env is NOT available here). In
+       dev the __VITE_*__ placeholders survive and every block below cleanly
+       no-ops. Placed AFTER the auth/Stripe redirect so pass-through visitors
+       don't fire stray events. -->
+  <script>
+    (function () {
+      // Injected value, or '' when the placeholder survived (dev) or the env var
+      // was empty at build time — both mean "feature off".
+      var val = function (x) { return (x && x.charAt(0) !== '_') ? x : ''; };
+
+      // ── First-touch attribution snapshot (mirrors src/main.js) ──
+      // First-touch wins: never overwrite once set, so a returning visitor's
+      // signup stays credited to the campaign that first introduced them.
+      try {
+        var KEY = 'pc_attribution';
+        if (!localStorage.getItem(KEY)) {
+          var qp = new URLSearchParams(window.location.search);
+          var get = function (k) { return qp.get(k) || ''; };
+          if (qp.has('utm_source') || qp.has('utm_medium') || qp.has('utm_campaign') ||
+              qp.has('gclid') || qp.has('fbclid')) {
+            localStorage.setItem(KEY, JSON.stringify({
+              utm_source: get('utm_source'),
+              utm_medium: get('utm_medium'),
+              utm_campaign: get('utm_campaign'),
+              utm_term: get('utm_term'),
+              utm_content: get('utm_content'),
+              gclid: get('gclid'),
+              fbclid: get('fbclid'),
+              referrer: document.referrer || '',
+              landing_path: window.location.pathname + window.location.search,
+              first_seen_at: new Date().toISOString()
+            }));
+          }
+        }
+      } catch (e) { /* private mode etc. — attribution is best-effort */ }
+
+      // ── Google tag (GA4 + Google Ads) ──
+      var ga4 = val('__VITE_GA4_ID__');
+      var ads = val('__VITE_GOOGLE_ADS_ID__');
+      if (ga4 || ads) {
+        var s = document.createElement('script');
+        s.async = true;
+        s.src = 'https://www.googletagmanager.com/gtag/js?id=' + (ga4 || ads);
+        document.head.appendChild(s);
+        window.dataLayer = window.dataLayer || [];
+        window.gtag = function () { window.dataLayer.push(arguments); };
+        window.gtag('js', new Date());
+        if (ga4) window.gtag('config', ga4, { send_page_view: true });
+        if (ads) window.gtag('config', ads);
+      }
+
+      // ── Meta Pixel (Facebook + Instagram ads) ──
+      var pixel = val('__VITE_META_PIXEL_ID__');
+      if (pixel) {
+        !function (f, b, e, v, n, t, s) {
+          if (f.fbq) return; n = f.fbq = function () {
+            n.callMethod ? n.callMethod.apply(n, arguments) : n.queue.push(arguments);
+          };
+          if (!f._fbq) f._fbq = n; n.push = n; n.loaded = !0; n.version = '2.0';
+          n.queue = []; t = b.createElement(e); t.async = !0;
+          t.src = v; s = b.getElementsByTagName(e)[0]; s.parentNode.insertBefore(t, s);
+        }(window, document, 'script', 'https://connect.facebook.net/en_US/fbevents.js');
+        window.fbq('init', pixel);
+        window.fbq('track', 'PageView');
+      }
+    })();
+  </script>
   <title>ProCabinet.App — Quote custom cabinetry in minutes, not hours</title>
   <meta name="description" content="The workshop OS for cabinet makers. Set your rates once, then quote, cut, schedule and bill from one place. Free to start." />
   <meta name="theme-color" content="#111111" />

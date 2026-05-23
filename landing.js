@@ -10,6 +10,26 @@
   var canHover = !window.matchMedia || window.matchMedia('(hover: hover)').matches;
   var slice = function (n) { return Array.prototype.slice.call(n); };
 
+  /* ── Forward ad params (utm_*/gclid/fbclid) to the /os app ─────────────
+     Ad clicks land on this page; the app lives at /os. The pixels in <head>
+     already set the _gcl/_fbc cookies and write the attribution blob to
+     localStorage (all same-origin, so /os reads them). This carries the params
+     across in the URL too, so the app's own GA4/Meta tags and the attribution
+     capture in src/main.js see them directly — belt-and-braces. */
+  (function forwardAdParams() {
+    var inbound = new URLSearchParams(window.location.search);
+    var KEEP = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'gclid', 'fbclid'];
+    var fwd = new URLSearchParams();
+    KEEP.forEach(function (k) { if (inbound.has(k)) fwd.set(k, inbound.get(k)); });
+    var qs = fwd.toString();
+    if (!qs) return;
+    slice(document.querySelectorAll('a[href^="/os"]')).forEach(function (a) {
+      var href = a.getAttribute('href');
+      if (!href) return;
+      a.setAttribute('href', href + (href.indexOf('?') === -1 ? '?' : '&') + qs);
+    });
+  })();
+
   /* ── Reveal-on-scroll ─────────────────────────────────────────────── */
   var reveals = slice(document.querySelectorAll('[data-reveal]'));
   if (!reduce && 'IntersectionObserver' in window) {

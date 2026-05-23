@@ -54,8 +54,10 @@ function copyEmailLogoPlugin() {
 // screenshots, logo) are copied explicitly into dist/brand/.
 //
 // landing.html is copied verbatim (it is NOT a Vite build input), so its inline
-// PostHog snippet cannot read import.meta.env. Instead we inject the analytics
-// key/host from the build env here, swapping the __VITE_POSTHOG_*__ placeholders.
+// analytics/ads snippets cannot read import.meta.env. Instead we inject the
+// values from the build env here, swapping the __VITE_*__ placeholders for the
+// PostHog key/host AND the paid-ads IDs (GA4, Google Ads, Meta Pixel) — ad clicks
+// land on the landing page, so its pixels must fire there, mirroring src/main.js.
 // `env` comes from loadEnv() below: .env.local locally, process.env on Cloudflare.
 /** @param {Record<string, string>} env */
 function copyLandingPlugin(env) {
@@ -71,7 +73,10 @@ function copyLandingPlugin(env) {
       if (existsSync('landing.html')) {
         const landing = readFileSync('landing.html', 'utf8')
           .split('__VITE_POSTHOG_KEY__').join(env.VITE_POSTHOG_KEY || '')
-          .split('__VITE_POSTHOG_HOST__').join(env.VITE_POSTHOG_HOST || '');
+          .split('__VITE_POSTHOG_HOST__').join(env.VITE_POSTHOG_HOST || '')
+          .split('__VITE_GA4_ID__').join(env.VITE_GA4_ID || '')
+          .split('__VITE_GOOGLE_ADS_ID__').join(env.VITE_GOOGLE_ADS_ID || '')
+          .split('__VITE_META_PIXEL_ID__').join(env.VITE_META_PIXEL_ID || '');
         writeFileSync(join('dist', 'index.html'), landing);
         writeFileSync(join('dist', 'landing.html'), landing);
       }
@@ -105,7 +110,8 @@ function stripSourceMapsPlugin() {
 export default defineConfig(({ mode }) => {
   // VITE_-prefixed vars from .env files (.env.local locally) plus any matching
   // process.env vars (Cloudflare Pages build env). Used to inject the PostHog
-  // key/host into the verbatim-copied landing.html — see copyLandingPlugin.
+  // key/host + GA4/Google Ads/Meta Pixel IDs into the verbatim-copied
+  // landing.html — see copyLandingPlugin.
   const env = loadEnv(mode, process.cwd(), 'VITE_');
   return {
   root: '.',
