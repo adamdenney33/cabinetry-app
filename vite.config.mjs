@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 import { copyFileSync, mkdirSync, readdirSync, existsSync, readFileSync, writeFileSync, unlinkSync, cpSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { transformSync } from 'esbuild';
@@ -52,7 +52,13 @@ function copyEmailLogoPlugin() {
 // The landing loads none of the app bundle (just landing.css + landing.js).
 // publicDir is false, so the brand assets the landing references (icons,
 // screenshots, logo) are copied explicitly into dist/brand/.
-function copyLandingPlugin() {
+//
+// landing.html is copied verbatim (it is NOT a Vite build input), so its inline
+// PostHog snippet cannot read import.meta.env. Instead we inject the analytics
+// key/host from the build env here, swapping the __VITE_POSTHOG_*__ placeholders.
+// `env` comes from loadEnv() below: .env.local locally, process.env on Cloudflare.
+/** @param {Record<string, string>} env */
+function copyLandingPlugin(env) {
   return {
     name: 'copy-landing',
     closeBundle() {
@@ -63,8 +69,11 @@ function copyLandingPlugin() {
       }
       // Landing becomes the home page (keep /landing.html too for back-compat).
       if (existsSync('landing.html')) {
-        copyFileSync('landing.html', join('dist', 'index.html'));
-        copyFileSync('landing.html', join('dist', 'landing.html'));
+        const landing = readFileSync('landing.html', 'utf8')
+          .split('__VITE_POSTHOG_KEY__').join(env.VITE_POSTHOG_KEY || '')
+          .split('__VITE_POSTHOG_HOST__').join(env.VITE_POSTHOG_HOST || '');
+        writeFileSync(join('dist', 'index.html'), landing);
+        writeFileSync(join('dist', 'landing.html'), landing);
       }
       for (const f of ['landing.css', 'landing.js']) {
         if (existsSync(f)) copyFileSync(f, join('dist', f));
@@ -93,7 +102,12 @@ function stripSourceMapsPlugin() {
   };
 }
 
-export default defineConfig({
+export default defineConfig(({ mode }) => {
+  // VITE_-prefixed vars from .env files (.env.local locally) plus any matching
+  // process.env vars (Cloudflare Pages build env). Used to inject the PostHog
+  // key/host into the verbatim-copied landing.html — see copyLandingPlugin.
+  const env = loadEnv(mode, process.cwd(), 'VITE_');
+  return {
   root: '.',
   publicDir: false,
   server: {
@@ -113,7 +127,7 @@ export default defineConfig({
   plugins: [
     copyClassicScriptsPlugin(),
     copyEmailLogoPlugin(),
-    copyLandingPlugin(),
+    copyLandingPlugin(env),
     // Source-map upload + release/commit grouping. Needs build.sourcemap (set
     // above). org/project/authToken come from the build env — see
     // .github/workflows/deploy.yml. `disable` makes the plugin a no-op when
@@ -129,4 +143,5 @@ export default defineConfig({
     // they are stripped from the deploy output.
     stripSourceMapsPlugin(),
   ],
+  };
 });
