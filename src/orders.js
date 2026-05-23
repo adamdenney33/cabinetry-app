@@ -242,8 +242,9 @@ function renderOrdersMain() {
         exitFn: '_oChangeClient',
         iconSvg: _CH_ICON_ORDER.replace('ch-icon', 'ph-icon'),
         clientName: undefined,
+        addOnclick: '_oNewOrder()',
       })
-    : _renderContentHeader({ iconSvg: _CH_ICON_ORDER, title: 'Orders' });
+    : _renderContentHeader({ iconSvg: _CH_ICON_ORDER, title: 'Orders', addOnclick: '_oNewOrder()' });
 
   const drillEmpty = `<div class="empty-state" style="padding:40px 0"><p style="color:var(--muted)">No orders for this client yet.</p></div>`;
 
@@ -947,6 +948,9 @@ function _oClearEditor() {
 
 /** Idle-state click handler: reveal the client-picker form. */
 function _oNewOrder() {
+  // Clear any still-open order so "+" always starts fresh (switching tabs can
+  // leave one loaded while the list is shown).
+  _opState.orderId = null; _opState.lines = []; _opState.dirty = false; _opState.clientId = null;
   _opState.startingNew = true;
   if (window._mvShowEditor) window._mvShowEditor();
   renderOrderEditor();

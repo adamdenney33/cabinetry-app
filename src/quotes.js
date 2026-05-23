@@ -528,8 +528,9 @@ function renderQuoteMain() {
         name: drillClient.name,
         exitFn: '_qChangeClient',
         iconSvg: _CH_ICON_QUOTE.replace('ch-icon', 'ph-icon'),
+        addOnclick: '_qNewQuote()',
       })
-    : _renderContentHeader({ iconSvg: _CH_ICON_QUOTE, title: 'Quotes' });
+    : _renderContentHeader({ iconSvg: _CH_ICON_QUOTE, title: 'Quotes', addOnclick: '_qNewQuote()' });
 
   const noMatchMsg = drillClient
     ? '<div class="empty-state" style="padding:40px 0"><p style="color:var(--muted)">No quotes for this client yet.</p></div>'
@@ -1478,6 +1479,9 @@ function _qClearEditor() {
 
 /** Idle-state click handler: reveal the client-picker form. */
 function _qNewQuote() {
+  // Clear any still-open quote so "+" always starts fresh (switching tabs can
+  // leave one loaded while the list is shown).
+  _qpState.quoteId = null; _qpState.lines = []; _qpState.dirty = false; _qpState.clientId = null;
   _qpState.startingNew = true;
   if (window._mvShowEditor) window._mvShowEditor();
   renderQuoteEditor();

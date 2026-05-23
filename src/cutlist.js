@@ -3333,6 +3333,9 @@ function switchTab(tab) {
 }
 
 function renderResults() {
+  // Mobile back bar (#cl-view-layout) shows the open cut-list's name.
+  const _clNameEl = document.getElementById('cl-layout-name');
+  if (_clNameEl) _clNameEl.textContent = _clCurrentCutlistName || 'Cut Layout';
   if (!results) return;
   // Sync layout toolbar button states with persisted prefs
   const btnCo = _byId('lt-cutorder'); if (btnCo) btnCo.classList.toggle('active', layoutCutOrder);
@@ -4309,9 +4312,8 @@ async function renderCLCutListLibraryView() {
   const q = (filterEl && filterEl.value) ? filterEl.value.trim().toLowerCase() : '';
 
   host.innerHTML = `
-    ${_renderContentHeader({ iconSvg: _CH_ICON_CUTLIST, title: 'Cut List Library' })}
+    ${_renderContentHeader({ iconSvg: _CH_ICON_CUTLIST, title: 'Cut List Library', addOnclick: '_clStartNewCutlist()' })}
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:12px">
-      <button class="btn btn-primary mv-only" onclick="_clStartNewCutlist()" style="font-size:12px;padding:6px 10px;width:auto">+ Add Cut List</button>
       <input type="text" id="cl-lib-filter" placeholder="Filter by name..." value="${_escHtml(q)}" oninput="renderCLCutListLibraryView()" style="font-size:12px;padding:6px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);width:200px;margin-left:auto">
     </div>
     <div id="cl-lib-grid" style="display:flex;flex-direction:column;gap:8px">
@@ -4337,8 +4339,7 @@ async function renderCLCutListLibraryView() {
   if (!filtered.length) {
     grid.innerHTML = `<div style="font-size:13px;color:var(--muted);text-align:center;padding:30px;border:1px dashed var(--border);border-radius:var(--radius)">
       ${rows.length ? 'No cut lists match this filter.' : 'No cut lists in your library yet. Use "Add to Library" under Optimize to save the current cut list here.'}
-    </div>
-    <button class="btn btn-primary mv-only" onclick="_clStartNewCutlist()" style="margin-top:10px;width:auto;align-self:center">+ Add Cut List</button>`;
+    </div>`;
     return;
   }
 

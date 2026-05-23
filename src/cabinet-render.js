@@ -644,9 +644,9 @@ function renderCBResults() {
   if (!cbLines.length) {
     let emptyHeader = '';
     if (projName) {
-      emptyHeader = _renderContentHeader({ iconSvg: _CH_ICON_PROJECT, title: cbHeaderTitle });
+      emptyHeader = _renderContentHeader({ iconSvg: _CH_ICON_PROJECT, title: cbHeaderTitle, addOnclick: 'window._mvShowEditor()', backOnclick: cbEditingQuoteId ? 'finishEditingQuote()' : undefined });
     } else {
-      emptyHeader = _renderContentHeader({ iconSvg: _CH_ICON_QUOTE, title: 'Quotes' });
+      emptyHeader = _renderContentHeader({ iconSvg: _CH_ICON_QUOTE, title: 'Quotes', addOnclick: 'window._mvShowEditor()' });
     }
     // If a quote is already opened (drilled in), don't show the all-quotes
     // picker — just show an empty state for THIS quote.
@@ -654,9 +654,7 @@ function renderCBResults() {
       el.innerHTML = `${emptyHeader}<div class="empty-state" style="max-width:700px">
         <div class="empty-icon" style="opacity:.18"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg></div>
         <h3>No cabinets yet</h3>
-        <p>Add a cabinet from the sidebar to start building this ${cbEditingOrderId ? 'order' : 'quote'}.</p>
-        <button class="btn btn-primary mv-only" style="margin-top:10px;width:auto" onclick="window._mvShowEditor&&window._mvShowEditor()">Open builder</button>
-      </div>`;
+        <p>Add a cabinet from the sidebar to start building this ${cbEditingOrderId ? 'order' : 'quote'}.</p>      </div>`;
       return;
     }
     // Show all quotes as clickable cards (same card layout as the Quote tab).
@@ -668,9 +666,7 @@ function renderCBResults() {
       el.innerHTML = `${emptyHeader}<div class="empty-state">
         <div class="empty-icon" style="opacity:.18"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg></div>
         <h3>No quotes yet</h3>
-        <p>Pick a quote from the sidebar or create a new one to start building cabinets.</p>
-        <button class="btn btn-primary mv-only" style="margin-top:10px;width:auto" onclick="window._mvShowEditor&&window._mvShowEditor()">Open builder</button>
-      </div>`;
+        <p>Pick a quote from the sidebar or create a new one to start building cabinets.</p>      </div>`;
       return;
     }
     const cardsHtml = allQuotes.map(/** @param {any} q */ q => {
@@ -732,7 +728,7 @@ function renderCBResults() {
 
   // Project header
   if (projName) {
-    html += _renderContentHeader({ iconSvg: _CH_ICON_QUOTE, title: cbHeaderTitle });
+    html += _renderContentHeader({ iconSvg: _CH_ICON_QUOTE, title: cbHeaderTitle, addOnclick: 'window._mvShowEditor()', backOnclick: cbEditingQuoteId ? 'finishEditingQuote()' : undefined });
   }
   html += `<div style="font-size:12px;color:var(--muted);margin: -8px 0 16px">${cbLines.length} cabinet${cbLines.length!==1?'s':''} · ${cbLines.reduce((s,l)=>s+l.qty,0)} units</div>`;
 
@@ -847,13 +843,12 @@ function renderCBLibraryView() {
   }
 
   let html = `<div style="max-width:1100px">`;
-  html += _renderContentHeader({ iconSvg: _CH_ICON_CABINET, title: 'Cabinet Library' });
+  html += _renderContentHeader({ iconSvg: _CH_ICON_CABINET, title: 'Cabinet Library', addOnclick: 'cbStartNewLibraryEntry()' });
 
   // Filter input + Import/Export buttons (CLAUDE.md convention: I/E lives in
   // the main content area filter bar, not in sidebars).
   html += `<div style="display:flex;gap:8px;margin-bottom:16px;align-items:center">
     <input type="text" id="cb-lib-filter" placeholder="Filter templates..." style="flex:1;font-size:13px;padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface2);color:var(--text)" oninput="filterCBLibraryView(this.value)">
-    <button class="btn btn-primary mv-only" onclick="cbStartNewLibraryEntry()" style="font-size:12px;padding:8px 12px;width:auto;flex:0 0 auto">+ Add</button>
     <button class="btn btn-outline" onclick="cbExportLibrary()" style="font-size:12px;padding:8px 12px;width:auto;flex:0 0 auto">&darr; Export</button>
     <button class="btn btn-outline" onclick="cbImportLibrary()" style="font-size:12px;padding:8px 12px;width:auto;flex:0 0 auto">&uarr; Import</button>
   </div>`;

@@ -94,6 +94,13 @@ Verified end-to-end at 360/390px (Dashboard, Clients, Quotes, Orders, Stock,
 Cabinet, Cut List, Schedule) with desktop regression at 1440px; `npm run
 typecheck` + `npm run build` clean. **Detail in SPEC.md § 13.**
 
+**Follow-up — header refinements ✅ 2026-05-23** (from on-device testing): per-tab
+"+" create button in each content header (mobile-only, via `_renderContentHeader`);
+Quote-Builder + Quote/Order drill-down back arrows; Cut-Layout back-to-editor bar;
+removed the global "Back to list" bar (editors have their own header back arrows);
+line-item cards reworked to a wrapping column grid; fixed order-schedule steppers
+overflowing. Create fns hardened to always start fresh. Detail in SPEC.md § 13.
+
 **Known follow-ups (not blocking):** cut-list `.cl-table` inline inputs still
 sub-16px (iOS may zoom on focus) — a full mobile redesign of those dense tables
 is deferred; the manual drag-reorder ("Sort: Manual") isn't wired in the mobile

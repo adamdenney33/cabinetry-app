@@ -341,6 +341,33 @@ header {
 .content-header .ch-icon { width: 20px; height: 20px; color: var(--accent); flex-shrink: 0; }
 .content-header .ch-title { font-size: 18px; font-weight: 800; margin: 0; flex: 1; min-width: 0; letter-spacing: -0.3px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .content-header .ch-client { color: var(--text); font-weight: 800; font-size: 18px; }
+/* Mobile-only header controls (gated by .mv-only): a create "+" pushed to the
+   right by .ch-title's flex:1, and an optional back arrow on the left. */
+.content-header .ch-add {
+  flex-shrink: 0; width: 38px; height: 38px; padding: 0;
+  border: none; border-radius: 8px;
+  background: var(--accent); color: #fff;
+  font-size: 24px; font-weight: 400; line-height: 1;
+  cursor: pointer; font-family: inherit;
+  align-items: center; justify-content: center;
+}
+.content-header .ch-back {
+  flex-shrink: 0; width: 34px; height: 34px; padding: 0;
+  border: none; border-radius: 6px;
+  background: none; color: var(--muted);
+  cursor: pointer; align-items: center; justify-content: center;
+}
+.content-header .ch-back:hover { background: rgba(0,0,0,0.06); color: var(--text); }
+/* Cut Layout → back to the parts editor (mobile only; on desktop both panes show). */
+.cl-layout-mobilebar { display: none; }
+@media (max-width: 760px) {
+  .cl-layout-mobilebar {
+    display: flex; align-items: center; gap: 8px;
+    flex-shrink: 0; padding: 8px 12px; cursor: pointer;
+    border-bottom: 1px solid var(--border); background: var(--surface);
+  }
+  .cl-layout-mobilebar .ph-title { font-size: 15px; font-weight: 700; color: var(--text); }
+}
 
 /* ── Project empty state (no project active) ── */
 .project-empty { padding: 32px 16px; text-align: center; }
@@ -538,33 +565,6 @@ header {
   body[data-mv="list"] .mv-pane-editor { display: none !important; }
   /* Editor view: show the editor, hide the list. */
   body[data-mv="editor"] .mv-pane-list { display: none !important; }
-
-  /* Mobile back bar — only in editor view on a phone. */
-  body[data-mv="editor"] #mv-backbar {
-    display: flex;
-    align-items: center;
-    flex-shrink: 0;
-    padding: 6px 10px;
-    background: var(--surface);
-    border-bottom: 1px solid var(--border);
-  }
-}
-
-/* Back bar: hidden by default (also on desktop); shown via the query above. */
-#mv-backbar { display: none; }
-.mv-back-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: none;
-  border: none;
-  color: var(--accent);
-  font-family: inherit;
-  font-size: 14px;
-  font-weight: 700;
-  cursor: pointer;
-  padding: 8px 6px;
-  min-height: 40px;
 }
 
 /* Mobile-only inline control — for create/open actions that live in the sidebar
@@ -583,13 +583,26 @@ header {
   /* Form fields: 16px font stops iOS Safari auto-zoom on focus; min-height gives
      a comfortable tap. Inline table inputs (.cl-input) are excluded — they live
      in dense cut-list / line-item tables that get their own mobile treatment. */
-  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not(.cl-input),
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not(.cl-input):not(.pf-input-compact),
   select:not(.cl-input),
   textarea:not(.cl-input) {
     font-size: 16px;
     min-height: 42px;
   }
   textarea:not(.cl-input) { min-height: 60px; }
+
+  /* Schedule steppers (Priority / Allocated / Run-over): keep the −/input/h/+
+     chip aligned and tappable. The generic input bump above excludes
+     .pf-input-compact so it doesn't tower over the step buttons; here all three
+     parts share a 36px height, and the fields wrap so each stepper has room
+     (no number spill at 360px). */
+  .sched-body .sched-fields { flex-wrap: wrap; }
+  .sched-body .sched-field { flex: 1 1 140px; }
+  /* `.sched-body` prefix bumps specificity over the base `.sched-stepper .step-btn`
+     rule (defined later in the file) so the 36px height actually wins. */
+  .sched-body .sched-stepper .step-btn { width: 30px; height: 36px; }
+  .sched-body .sched-stepper > input.pf-input-compact { height: 36px; font-size: 15px; }
+  .sched-body .sched-stepper .step-unit { height: 36px; }
 
   /* Buttons → ≥44px tap target. */
   .btn { min-height: 44px; }
@@ -2438,79 +2451,91 @@ input.pf-input-compact[type="date"]:disabled::-webkit-calendar-picker-indicator 
 .editor-li-table .col-disc  { width: 42px; text-align: right; }
 .editor-li-table .col-total { width: 64px; text-align: right; }
 
-/* ── MOBILE (≤760px): stack each line into a card (Phase 4) ──
+/* ── MOBILE (≤760px): line item → card with a wrapping column grid (Part E) ──
    The dense 7-column row is too tight for a phone, so each <tr> becomes a card:
-   description on top, then "Label … value" rows. Pure CSS — the stable column
-   classes carry their labels via ::before, so no markup/JS change is needed, and
-   the existing hide-hrs / hide-disc column toggles keep working. */
+   the description spans the top, then Qty/Price/Hours/Disc/Total flow as a CSS
+   grid that keeps the columns aligned and wraps to a 2nd row when they don't fit.
+   Pure CSS — column classes carry their labels via ::before; the existing
+   hide-hrs / hide-disc toggles keep working. */
 @media (max-width: 760px) {
   .editor-li-table,
-  .editor-li-table tbody,
-  .editor-li-table tr,
-  .editor-li-table td { display: block; width: auto; }
+  .editor-li-table tbody { display: block; }
   .editor-li-table thead { display: none; }
 
   .editor-li-table tbody tr {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(84px, 1fr));
+    gap: 8px 10px;
     position: relative;
     border: 1px solid var(--border);
     border-radius: 8px;
     margin: 0 0 8px;
-    padding: 8px 10px;
+    padding: 10px 38px 10px 12px;   /* right pad clears the ✕ */
     background: var(--surface);
   }
-  .editor-li-table tbody td { padding: 0; border-bottom: none; }
-  .editor-li-table tbody tr:nth-child(even) td,
-  .editor-li-table tbody tr:hover td { background: transparent !important; }
+  .editor-li-table tbody td {
+    display: block; padding: 0; border: none;
+    background: transparent !important;
+  }
 
   /* Drag handle + colour dot aren't useful on a phone card. */
   .editor-li-table .col-handle,
   .editor-li-table .col-dot { display: none; }
 
-  /* Description spans the card; leave room for the ✕ at top-right. */
-  .editor-li-table .col-desc { width: auto; margin-bottom: 4px; padding-right: 30px; }
+  /* Description spans the full card width on top. */
+  .editor-li-table .col-desc { grid-column: 1 / -1; }
   .editor-li-table .col-desc .desc,
   .editor-li-table .col-desc .cl-input { font-size: 16px; width: 100%; }
 
-  /* Value rows: "Label ……… value". */
+  /* Numeric cells: small label on top, value below — columns stay aligned and
+     wrap to a new row as needed (~3 across at 360px). */
   .editor-li-table td.col-qty,
   .editor-li-table td.col-price,
   .editor-li-table td.col-hrs,
   .editor-li-table td.col-disc,
   .editor-li-table td.col-total {
-    display: flex; align-items: center; justify-content: space-between;
-    width: auto; text-align: left; padding: 4px 0;
-    border-top: 1px solid var(--border2);
+    display: flex; flex-direction: column; gap: 3px; min-width: 0; text-align: left;
   }
   .editor-li-table td.col-qty::before   { content: "Qty"; }
   .editor-li-table td.col-price::before { content: "Price"; }
   .editor-li-table td.col-hrs::before   { content: "Hours"; }
   .editor-li-table td.col-disc::before  { content: "Disc %"; }
   .editor-li-table td.col-total::before { content: "Total"; }
-  .editor-li-table td[class*="col-"]::before {
-    color: var(--muted); font-size: 13px; font-weight: 600; flex: 0 0 auto;
+  .editor-li-table td.col-qty::before,
+  .editor-li-table td.col-price::before,
+  .editor-li-table td.col-hrs::before,
+  .editor-li-table td.col-disc::before,
+  .editor-li-table td.col-total::before {
+    font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.4px; color: var(--muted);
   }
 
-  /* Value control sits on the right, sized for touch. */
+  /* Editable inputs fill their cell. */
   .editor-li-table td.col-qty .cl-input,
   .editor-li-table td.col-price .cl-input,
   .editor-li-table td.col-hrs .cl-input,
-  .editor-li-table td.col-disc .cl-input,
+  .editor-li-table td.col-disc .cl-input {
+    width: 100%; text-align: left; font-size: 16px; min-height: 38px;
+    box-sizing: border-box; padding: 5px 8px;
+  }
+  /* Computed values + total: read-only display. */
+  .editor-li-table td.col-price .cl-input.is-computed,
+  .editor-li-table td.col-hrs .cl-input.is-computed,
   .editor-li-table td.col-total .total-val {
-    width: 120px; flex: 0 0 auto;
-    text-align: right; font-size: 16px; min-height: 38px;
+    display: flex; align-items: center; min-height: 38px; font-size: 16px;
   }
   .editor-li-table td.col-total .total-val { font-weight: 700; }
 
-  /* Re-assert the column-toggle hides over the flex display above. */
+  /* Re-assert the column-toggle hides over the grid display above. */
   .editor-li-table.hide-disc td.col-disc,
   .editor-li-table.hide-hrs  td.col-hrs { display: none; }
 
   /* Remove (✕) → top-right corner of the card. */
   .editor-li-table .col-x {
-    position: absolute; top: 6px; right: 4px;
-    width: 32px; height: 32px;
+    position: absolute; top: 8px; right: 6px;
+    width: 30px; height: 30px;
     display: flex; align-items: center; justify-content: center;
-    font-size: 15px; color: var(--muted);
+    font-size: 16px; color: var(--muted);
   }
 }
 .editor-li-table .col-x {

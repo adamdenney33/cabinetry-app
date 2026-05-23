@@ -364,7 +364,13 @@ function _renderClientsSidebarGate() {
   }
 }
 function _clientsRevealForm() {
+  // Start fresh — the header "+" can be tapped while a previous client is still
+  // loaded, so reset any in-progress edit first. cancelClientEdit clears the
+  // fields/title; the _mvShowEditor below overrides its _mvShowList so we land in
+  // the editor pane on mobile.
+  if (typeof cancelClientEdit === 'function') cancelClientEdit();
   _clientsShowForm = true;
+  if (window._mvShowEditor) window._mvShowEditor();
   _renderClientsSidebarGate();
   const first = document.getElementById('cl-name');
   if (first) /** @type {HTMLInputElement} */ (first).focus();
@@ -470,7 +476,7 @@ function renderClientsMain() {
   else filtered.sort((a,b) => a.name.localeCompare(b.name));
 
   el.innerHTML = `<div style="padding:24px;max-width:900px">
-    ${_renderContentHeader({ iconSvg: _CH_ICON_CLIENT, title: 'Clients' })}
+    ${_renderContentHeader({ iconSvg: _CH_ICON_CLIENT, title: 'Clients', addOnclick: '_clientsRevealForm()' })}
     <div style="display:flex;align-items:center;gap:6px;margin-bottom:16px;flex-wrap:wrap">
       <input type="text" placeholder="Search clients..." value="${_escHtml(window._clientSearch||'')}" oninput="window._clientSearch=this.value;renderClientsMain()" style="font-size:12px;padding:6px 12px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);width:200px;font-family:inherit">
       <span style="flex:1"></span>
