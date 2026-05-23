@@ -14,7 +14,7 @@ Companion docs: `SPEC.md` (refactor history), `SCHEMA.md` (DB schema),
 - **Pre-launch refactor (SPEC.md Phases 0–7)** complete — modular files, TypeScript strict mode, schema normalised
 - **Cabinet Builder unification** (Item 2): all 4 phases done — pre-launch refactor closed
 - **Stripe payments**: S.2–S.7 done in test mode (Checkout + Portal + Webhook + DB schema); S.8 verification + S.9 live-mode flip remain
-- **Mobile / responsive**: 🚧 in progress — comprehensive mobile-native pass (7 phases; see Active Work)
+- **Mobile / responsive**: ✅ comprehensive mobile-native pass done 2026-05-23 (7 phases; see Active Work / SPEC.md § 13)
 - **UI polish + design finalisation**: not started
 - **Launch target:** mid-May 2026 (per Business Plan)
 
@@ -22,7 +22,7 @@ Companion docs: `SPEC.md` (refactor history), `SCHEMA.md` (DB schema),
 
 ## Active Work
 
-### Mobile-native responsive pass 🚧 In Progress 2026-05-23
+### Mobile-native responsive pass ✅ Done 2026-05-23
 
 Comprehensive portrait-phone redesign. Replaces the old horizontal-scroll hack
 with true single-column "one pane at a time" stacking, touch sizing, and reworks
@@ -42,13 +42,40 @@ Breakpoints: `@media (max-width:760px)` = single-column; `@media (pointer:coarse
   `.mv-only` "+ Add" / "Open builder" buttons were added to those list panes so
   the sidebar is reachable on a phone. Verified at 390px (Clients/Quotes/Cabinet)
   + desktop regression (two-pane intact). typecheck clean.
-- ⏳ **Phase 2** — touch target sizing (`@media (pointer:coarse)`).
-- ⏳ **Phase 3** — header & nav on mobile (4px account-button overflow at ≤400px).
-- ⏳ **Phase 4** — quote/order line-items table → stacked cards.
-- ⏳ **Phase 5** — cut-list canvas pinch-zoom/pan.
-- ⏳ **Phase 6** — schedule agenda (stacked) view.
-- ⏳ **Phase 7** — remove the "Best viewed on a computer" notice + polish
-  (incl. quote/order card title wrapping at narrow widths).
+- ✅ **Phase 2 — Touch sizing**. One `@media (pointer:coarse), (max-width:760px)`
+  block: 16px form fields (kills iOS focus-zoom) + 42px min-height, ≥44px buttons,
+  taller nav tabs/pills/steppers/suggest rows, 40px back-bar. OR query so it's
+  verifiable in a desktop preview window; dense `.cl-input` table cells excluded.
+- ✅ **Phase 3 — Header & nav**. Header padding 24→12px + tighter gap, BETA badge
+  hidden <420px (fixes the 4px account-button overflow); dropdowns capped to
+  `calc(100vw-16px)`. Nav already icon-only ≤1240px → 8 icons share the width.
+- ✅ **Phase 4 — Line-items → cards**. `.editor-li-table` collapses to one card
+  per line on ≤760px (description on top, "Label → value" rows, bold total, ✕ in
+  corner). Pure CSS via `::before` on the column classes; hide-hrs/hide-disc still
+  work; desktop keeps the table.
+- ✅ **Phase 5 — Canvas pinch-zoom/pan**. `_clAttachCanvasGestures` (pointer
+  events, phones/coarse only) transforms the cut-layout canvas via CSS (bitmap
+  pristine → PDF unaffected): pinch 1×–6×, drag-pan when zoomed, double-tap
+  zoom/reset; `touch-action` flips to none only while zoomed. `optimize()` reveals
+  the list pane on mobile.
+- ✅ **Phase 6 — Schedule agenda**. `renderSchedule` branches on `_mvIsMobile()`
+  to a stacked agenda (`_renderScheduleAgenda`) reusing `sortedEvents` — job cards
+  with dates/status/slack/priority, sort+filter+hours relocated into the header;
+  re-renders on a matchMedia change. Desktop keeps the 7-col grid + sidebar.
+- ✅ **Phase 7 — Notice removal + polish**. Dropped the "Best viewed on a
+  computer" advisory (`_pcMaybeShowMobileNotice` gone; `_pcIsTouchDevice` kept).
+  Fixed two pre-existing bugs: `input[type="tel"]` missing from the base field
+  rule (phone field was narrow) and `.oc-info` lacking `min-width:0` (long card
+  titles pushed the value off-screen).
+
+Verified end-to-end at 360/390px (Dashboard, Clients, Quotes, Orders, Stock,
+Cabinet, Cut List, Schedule) with desktop regression at 1440px; `npm run
+typecheck` + `npm run build` clean. **Detail in SPEC.md § 13.**
+
+**Known follow-ups (not blocking):** cut-list `.cl-table` inline inputs still
+sub-16px (iOS may zoom on focus) — a full mobile redesign of those dense tables
+is deferred; the manual drag-reorder ("Sort: Manual") isn't wired in the mobile
+agenda.
 
 ### Cabinet Builder reel — vertical + horizontal-split ✅ Done 2026-05-21
 
