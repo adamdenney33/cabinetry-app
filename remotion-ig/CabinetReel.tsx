@@ -176,6 +176,7 @@ const SRates: React.FC = () => (
 const SBreak: React.FC = () => {
   const frame = useCurrentFrame();
   const n = Math.round(interpolate(frame, [22, 70], [0, 1111], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }));
+  const hrs = interpolate(frame, [22, 70], [0, 9.6], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
   const d = BASE_CAB;
   const cost: [string, string][] = [
     ['Materials', d.materials],
@@ -194,7 +195,8 @@ const SBreak: React.FC = () => {
       <Pad style={{ justifyContent: 'center' }}>
         <Rise delay={0}><div style={KICKER}>The breakdown</div></Rise>
         <Rise delay={6} style={{ marginTop: 12 }}><div style={H1D}>See how it <Amber>adds up</Amber><Dot /></div></Rise>
-        <Pop delay={14} style={{ marginTop: 44 }}>
+        <Rise delay={10} style={{ marginTop: 14 }}><div style={{ ...SUB, color: C.text2 }}>Every quote gives you the <Amber>hours</Amber>, not just the price.</div></Rise>
+        <Pop delay={14} style={{ marginTop: 30 }}>
           <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 26, boxShadow: '0 40px 100px rgba(17,17,17,0.16)', padding: 40 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
               <div style={{ fontSize: 34, fontWeight: 800, color: C.ink }}>Base Cabinet 600</div>
@@ -214,9 +216,15 @@ const SBreak: React.FC = () => {
                 </div>
               ))}
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginTop: 14, paddingTop: 18, borderTop: `2px solid ${C.border}` }}>
-              <span style={{ fontSize: 34, fontWeight: 800, color: C.ink }}>Total</span>
-              <span style={{ fontSize: 76, fontWeight: 900, color: C.accent, letterSpacing: '-2px', ...numeric }}>£{n.toLocaleString()}</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 14, paddingTop: 18, borderTop: `2px solid ${C.border}` }}>
+              <div>
+                <div style={{ fontSize: 21, fontWeight: 700, letterSpacing: '0.5px', color: C.muted }}>TIME</div>
+                <div style={{ fontSize: 60, fontWeight: 900, color: C.ink, letterSpacing: '-1.5px', ...numeric }}>{hrs.toFixed(1)} <span style={{ fontSize: 28, fontWeight: 700, color: C.muted }}>hrs</span></div>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: 21, fontWeight: 700, letterSpacing: '0.5px', color: C.muted }}>TOTAL</div>
+                <div style={{ fontSize: 64, fontWeight: 900, color: C.accent, letterSpacing: '-2px', ...numeric }}>£{n.toLocaleString()}</div>
+              </div>
             </div>
           </div>
         </Pop>
