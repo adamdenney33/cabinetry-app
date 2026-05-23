@@ -2417,6 +2417,82 @@ input.pf-input-compact[type="date"]:disabled::-webkit-calendar-picker-indicator 
 .editor-li-table .col-hrs   { width: 44px; text-align: right; }
 .editor-li-table .col-disc  { width: 42px; text-align: right; }
 .editor-li-table .col-total { width: 64px; text-align: right; }
+
+/* ── MOBILE (≤760px): stack each line into a card (Phase 4) ──
+   The dense 7-column row is too tight for a phone, so each <tr> becomes a card:
+   description on top, then "Label … value" rows. Pure CSS — the stable column
+   classes carry their labels via ::before, so no markup/JS change is needed, and
+   the existing hide-hrs / hide-disc column toggles keep working. */
+@media (max-width: 760px) {
+  .editor-li-table,
+  .editor-li-table tbody,
+  .editor-li-table tr,
+  .editor-li-table td { display: block; width: auto; }
+  .editor-li-table thead { display: none; }
+
+  .editor-li-table tbody tr {
+    position: relative;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin: 0 0 8px;
+    padding: 8px 10px;
+    background: var(--surface);
+  }
+  .editor-li-table tbody td { padding: 0; border-bottom: none; }
+  .editor-li-table tbody tr:nth-child(even) td,
+  .editor-li-table tbody tr:hover td { background: transparent !important; }
+
+  /* Drag handle + colour dot aren't useful on a phone card. */
+  .editor-li-table .col-handle,
+  .editor-li-table .col-dot { display: none; }
+
+  /* Description spans the card; leave room for the ✕ at top-right. */
+  .editor-li-table .col-desc { width: auto; margin-bottom: 4px; padding-right: 30px; }
+  .editor-li-table .col-desc .desc,
+  .editor-li-table .col-desc .cl-input { font-size: 16px; width: 100%; }
+
+  /* Value rows: "Label ……… value". */
+  .editor-li-table td.col-qty,
+  .editor-li-table td.col-price,
+  .editor-li-table td.col-hrs,
+  .editor-li-table td.col-disc,
+  .editor-li-table td.col-total {
+    display: flex; align-items: center; justify-content: space-between;
+    width: auto; text-align: left; padding: 4px 0;
+    border-top: 1px solid var(--border2);
+  }
+  .editor-li-table td.col-qty::before   { content: "Qty"; }
+  .editor-li-table td.col-price::before { content: "Price"; }
+  .editor-li-table td.col-hrs::before   { content: "Hours"; }
+  .editor-li-table td.col-disc::before  { content: "Disc %"; }
+  .editor-li-table td.col-total::before { content: "Total"; }
+  .editor-li-table td[class*="col-"]::before {
+    color: var(--muted); font-size: 13px; font-weight: 600; flex: 0 0 auto;
+  }
+
+  /* Value control sits on the right, sized for touch. */
+  .editor-li-table td.col-qty .cl-input,
+  .editor-li-table td.col-price .cl-input,
+  .editor-li-table td.col-hrs .cl-input,
+  .editor-li-table td.col-disc .cl-input,
+  .editor-li-table td.col-total .total-val {
+    width: 120px; flex: 0 0 auto;
+    text-align: right; font-size: 16px; min-height: 38px;
+  }
+  .editor-li-table td.col-total .total-val { font-weight: 700; }
+
+  /* Re-assert the column-toggle hides over the flex display above. */
+  .editor-li-table.hide-disc td.col-disc,
+  .editor-li-table.hide-hrs  td.col-hrs { display: none; }
+
+  /* Remove (✕) → top-right corner of the card. */
+  .editor-li-table .col-x {
+    position: absolute; top: 6px; right: 4px;
+    width: 32px; height: 32px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px; color: var(--muted);
+  }
+}
 .editor-li-table .col-x {
   width: 20px; text-align: center;
   color: var(--muted); cursor: pointer; font-size: 13px;
