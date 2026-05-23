@@ -6,13 +6,6 @@ on:
       - main
   workflow_dispatch:
 
-# Force the bundled JS in actions/checkout, actions/setup-node, and
-# cloudflare/wrangler-action to run on the runner's Node 24 instead
-# of the bundled Node 20. GitHub will flip this default on
-# 2026-06-02; opting in early surfaces any incompatibility now.
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
-
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -22,10 +15,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           # 'lts/*' tracks the current Node LTS automatically — Node 22
           # today, becomes Node 24 in October 2025, etc. Avoids the
@@ -63,7 +56,7 @@ jobs:
           VITE_POSTHOG_HOST: https://eu.i.posthog.com
 
       - name: Deploy to Cloudflare Pages
-        uses: cloudflare/wrangler-action@v3
+        uses: cloudflare/wrangler-action@v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
