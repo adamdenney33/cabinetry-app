@@ -563,7 +563,8 @@ header {
   font-size: 14px;
   font-weight: 700;
   cursor: pointer;
-  padding: 6px 4px;
+  padding: 8px 6px;
+  min-height: 40px;
 }
 
 /* Mobile-only inline control — for create/open actions that live in the sidebar
@@ -571,6 +572,51 @@ header {
    phone, where the sidebar is hidden until you drill in. */
 .mv-only { display: none !important; }
 @media (max-width: 760px) { .mv-only { display: inline-flex !important; } }
+
+/* ── TOUCH TARGET SIZING (Phase 2) ──
+   Applies on touch devices (pointer:coarse) OR any narrow viewport (≤760px), so
+   phones, touch tablets/laptops, and narrow windows all get finger-friendly
+   controls. A wide mouse desktop matches neither and is untouched. (The width
+   arm also makes the sizing render in a desktop preview window, where the
+   pointer is "fine", so it stays verifiable.) */
+@media (pointer: coarse), (max-width: 760px) {
+  /* Form fields: 16px font stops iOS Safari auto-zoom on focus; min-height gives
+     a comfortable tap. Inline table inputs (.cl-input) are excluded — they live
+     in dense cut-list / line-item tables that get their own mobile treatment. */
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not(.cl-input),
+  select:not(.cl-input),
+  textarea:not(.cl-input) {
+    font-size: 16px;
+    min-height: 42px;
+  }
+  textarea:not(.cl-input) { min-height: 60px; }
+
+  /* Buttons → ≥44px tap target. */
+  .btn { min-height: 44px; }
+  .btn-lg { min-height: 48px; }
+  .cl-add-btn { min-height: 40px; }
+
+  /* Nav tabs (icon-only ≤1240px) tall enough to tap comfortably. */
+  .nav-tab { min-height: 46px; }
+
+  /* Pills, toggles, small chips. */
+  .sd-pill-btn { min-height: 34px; padding-top: 8px; padding-bottom: 8px; }
+  .cl-col-pill { min-height: 30px; }
+  .cl-grain-btn, .cl-toggle-btn { min-width: 38px; min-height: 38px; }
+  .layout-tool-btn { min-height: 38px; }
+
+  /* Smart-input add (+) and suggest rows. */
+  .smart-input-add { width: 44px; }
+  .client-suggest-item { padding-top: 12px; padding-bottom: 12px; }
+
+  /* Card action buttons (client / quote / order cards). */
+  .proj-act-main, .proj-act-add { min-height: 40px; }
+
+  /* Back, close, steppers. */
+  .project-header .ph-back { width: 34px; height: 34px; }
+  .popup-close { width: 36px; height: 36px; }
+  .pf-step-btn { min-width: 38px; }
+}
 
 /* ── FORM ELEMENTS ── */
 .form-section { margin-bottom: 14px; }
