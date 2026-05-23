@@ -2485,6 +2485,11 @@ input.pf-input-compact[type="date"]:disabled::-webkit-calendar-picker-indicator 
     padding: 10px 38px 10px 12px;   /* right pad clears the ✕ */
     background: var(--surface);
   }
+  /* Alternating row colour like the original table — the same --zebra tint,
+     layered over the card's --surface base so it matches the desktop look. */
+  .editor-li-table tbody tr:nth-child(even) {
+    background-image: linear-gradient(var(--zebra), var(--zebra));
+  }
   .editor-li-table tbody td {
     display: block; padding: 0; border: none;
     background: transparent !important;
