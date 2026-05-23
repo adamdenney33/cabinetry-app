@@ -984,7 +984,6 @@ function renderStockMain() {
       <h3>No stock items yet</h3><p>Add your first material using the form on the left.</p></div>` : `
     <div class="lib-filter-row" style="padding:0 ${_hp}">
       <input class="lib-filter-input" type="search" placeholder="Search…" value="${window._stockSearch||''}" oninput="window._stockSearch=this.value;renderStockMain()">
-      <span style="flex:0 0 auto;font-size:11px;color:var(--muted)">${filtered.length} of ${stockItems.length}</span>
       <button class="btn btn-outline lib-filter-btn" onclick="_buildStockPDF()" title="PDF">PDF</button>
       <button class="btn btn-outline lib-filter-btn" onclick="exportStockCSV()" title="Export CSV">&darr; Export</button>
       <button class="btn btn-outline lib-filter-btn" onclick="importStockCSV()" title="Import CSV">&uarr; Import</button>
