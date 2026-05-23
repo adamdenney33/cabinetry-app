@@ -3312,6 +3312,8 @@ function optimize() {
 
   activeSheetIdx = 0;
   if (typeof switchCLMainView === 'function') switchCLMainView('layout');
+  // Mobile: the layout renders in the list pane (cl-right) — reveal it.
+  if (window._mvShowList) window._mvShowList();
   renderResults();
   // Scroll results into view
   setTimeout(() => {
@@ -3475,6 +3477,96 @@ function toPastelDark(hex) {
   return `rgb(${Math.round(r*.45+180*.55)},${Math.round(g*.45+180*.55)},${Math.round(b*.45+180*.55)})`;
 }
 
+/** Pinch-zoom + drag-pan for a rendered cut-layout canvas. Phones / touch only
+ *  (a gesture layer on top of the toolbar zoom; a wide mouse desktop keeps the
+ *  toolbar controls only). The canvas is moved with a CSS transform, so the
+ *  bitmap stays pristine — PDF export and toolbar re-renders (which replace the
+ *  canvas) are unaffected. Pinch = zoom (1×–6×), drag = pan when zoomed,
+ *  double-tap = zoom to / reset. `touch-action` flips to `none` only while
+ *  zoomed, so the results list still scrolls normally at fit.
+ *  @param {HTMLCanvasElement} canvas */
+function _clAttachCanvasGestures(canvas) {
+  const enable = (typeof window._mvIsMobile === 'function' && window._mvIsMobile())
+    || (!!window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+  if (!enable) return;
+
+  let scale = 1, tx = 0, ty = 0;
+  /** @type {Map<number, {x:number, y:number}>} */
+  const pts = new Map();
+  let pinchDist = 0, pinchScale = 1, lastTapAt = 0, anchorX = 0, anchorY = 0;
+  /** @type {{x:number, y:number} | null} */
+  let panLast = null;
+
+  canvas.style.transformOrigin = '0 0';
+  canvas.style.willChange = 'transform';
+  canvas.style.touchAction = 'pan-y';
+
+  const apply = () => {
+    canvas.style.transform = `translate(${tx}px,${ty}px) scale(${scale})`;
+    canvas.style.touchAction = scale > 1.01 ? 'none' : 'pan-y';
+  };
+  /** @param {number} s */
+  const clamp = (s) => Math.max(1, Math.min(6, s));
+  /** @param {number} cx @param {number} cy @param {number} s */
+  const setAnchor = (cx, cy, s) => {
+    const r = canvas.getBoundingClientRect();
+    anchorX = (cx - r.left) / s; anchorY = (cy - r.top) / s;
+  };
+  /** @param {number} ns @param {number} fx @param {number} fy */
+  const zoomTo = (ns, fx, fy) => {
+    ns = clamp(ns);
+    setAnchor(fx, fy, scale);
+    const r = canvas.getBoundingClientRect();
+    tx = fx - (r.left - tx) - anchorX * ns;
+    ty = fy - (r.top - ty) - anchorY * ns;
+    scale = ns; apply();
+  };
+  const reset = () => { scale = 1; tx = 0; ty = 0; apply(); };
+
+  canvas.addEventListener('pointerdown', (e) => {
+    pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    try { canvas.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+    if (pts.size === 1) {
+      panLast = { x: e.clientX, y: e.clientY };
+      const now = Date.now();
+      if (now - lastTapAt < 320) { if (scale > 1.01) reset(); else zoomTo(2.5, e.clientX, e.clientY); lastTapAt = 0; }
+      else lastTapAt = now;
+    } else if (pts.size === 2) {
+      const a = Array.from(pts.values());
+      pinchDist = Math.hypot(a[0].x - a[1].x, a[0].y - a[1].y) || 1;
+      pinchScale = scale;
+      setAnchor((a[0].x + a[1].x) / 2, (a[0].y + a[1].y) / 2, scale);
+    }
+  });
+  canvas.addEventListener('pointermove', (e) => {
+    if (!pts.has(e.pointerId)) return;
+    pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pts.size >= 2) {
+      const a = Array.from(pts.values());
+      const dist = Math.hypot(a[0].x - a[1].x, a[0].y - a[1].y) || 1;
+      const mx = (a[0].x + a[1].x) / 2, my = (a[0].y + a[1].y) / 2;
+      const ns = clamp(pinchScale * (dist / pinchDist));
+      tx = mx - (canvas.getBoundingClientRect().left - tx) - anchorX * ns;
+      ty = my - (canvas.getBoundingClientRect().top - ty) - anchorY * ns;
+      scale = ns; apply(); e.preventDefault();
+    } else if (pts.size === 1 && scale > 1.01 && panLast) {
+      tx += e.clientX - panLast.x; ty += e.clientY - panLast.y;
+      panLast = { x: e.clientX, y: e.clientY };
+      apply(); e.preventDefault();
+    }
+  });
+  /** @param {PointerEvent} e */
+  const end = (e) => {
+    pts.delete(e.pointerId);
+    if (pts.size < 2) pinchDist = 0;
+    if (pts.size === 1) { const a = Array.from(pts.values())[0]; panLast = { x: a.x, y: a.y }; }
+    if (pts.size === 0) { panLast = null; if (scale <= 1.01) reset(); }
+  };
+  canvas.addEventListener('pointerup', end);
+  canvas.addEventListener('pointercancel', end);
+  canvas.addEventListener('lostpointercapture', end);
+}
+
 /** @param {HTMLElement} container @param {any} layout @param {string} units */
 function drawCanvas(container, layout, units) {
   const { sheet, placed } = layout;
@@ -3517,6 +3609,7 @@ function drawCanvas(container, layout, units) {
   canvas.height = Math.round(TH * dpr);
   canvas.style.cssText = `width:${TW}px;height:${TH}px;display:block`;
   wrap.appendChild(canvas);
+  _clAttachCanvasGestures(canvas);
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
