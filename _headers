@@ -1,0 +1,25 @@
+# Cloudflare Pages cache rules. Copied into dist/ at build time by
+# copyHeadersPlugin in vite.config.mjs (publicDir is false, so it is not picked
+# up automatically). See versionClassicScriptsPlugin for the ?v= stamping that
+# makes the /src rule below safe.
+
+# Vite-hashed bundles: the filename changes whenever the content does, so a
+# given URL is safe to cache forever.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Classic /src scripts: stable filenames, but each <script> URL carries a
+# ?v=<contenthash> stamp added at build time, so the URL changes when the file
+# changes. Safe to cache forever; the stamp busts it on the next deploy.
+/src/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# HTML must always revalidate. This is the lynchpin: the browser re-reads the
+# document on every load, so it always sees the latest ?v= script URLs. Without
+# this, an aggressively cached HTML would keep pointing at old script URLs.
+/
+  Cache-Control: public, max-age=0, must-revalidate
+/os
+  Cache-Control: public, max-age=0, must-revalidate
+/os/
+  Cache-Control: public, max-age=0, must-revalidate

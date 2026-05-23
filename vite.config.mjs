@@ -1,6 +1,7 @@
 import { defineConfig, loadEnv } from 'vite';
 import { copyFileSync, mkdirSync, readdirSync, existsSync, readFileSync, writeFileSync, unlinkSync, cpSync } from 'node:fs';
 import { dirname, join } from 'node:path';
+import { createHash } from 'node:crypto';
 import { transformSync } from 'esbuild';
 import { sentryVitePlugin } from '@sentry/vite-plugin';
 
@@ -107,6 +108,56 @@ function stripSourceMapsPlugin() {
   };
 }
 
+// Cache-busting for the classic <script src="/src/*.js"> tags. These keep
+// stable filenames across deploys, so browsers — and Cloudflare's 4-hour
+// default browser cache (max-age=14400) — kept serving stale copies after a
+// deploy until the cache expired. (Symptom: new features invisible in a normal
+// window but fine in a fresh/incognito profile; a Chrome-style hard refresh
+// doesn't help on Safari, whose reload-from-origin is Cmd+Opt+R.)
+//
+// Fix: append ?v=<contenthash> to each /src/*.js reference so the URL changes
+// whenever the file's contents change. Combined with the immutable cache header
+// in _headers, files are cached forever yet refetched the instant they change,
+// and every deploy self-busts on the next page load (the HTML itself always
+// revalidates — see _headers). Runs after copyLandingPlugin, which moves the
+// app HTML to dist/os/index.html.
+function versionClassicScriptsPlugin() {
+  return {
+    name: 'version-classic-scripts',
+    closeBundle() {
+      const appHtml = join('dist', 'os', 'index.html');
+      const srcDir = join('dist', 'src');
+      if (!existsSync(appHtml) || !existsSync(srcDir)) return;
+      let html = readFileSync(appHtml, 'utf8');
+      for (const f of readdirSync(srcDir)) {
+        if (!f.endsWith('.js')) continue;
+        const hash = createHash('sha256')
+          .update(readFileSync(join(srcDir, f)))
+          .digest('hex')
+          .slice(0, 8);
+        // Anchored on the closing quote so e.g. cabinet.js never matches inside
+        // cabinet-calc.js. main.js is the bundled module (/assets/...), not a
+        // /src/ tag, so it simply never matches here.
+        html = html.split(`/src/${f}"`).join(`/src/${f}?v=${hash}"`);
+      }
+      writeFileSync(appHtml, html);
+    },
+  };
+}
+
+// Cloudflare Pages reads dist/_headers for per-path cache rules. publicDir is
+// false, so the root _headers file must be copied into the build output
+// explicitly. It marks the hashed /assets and the ?v=-stamped /src as immutable
+// while keeping HTML on must-revalidate. See versionClassicScriptsPlugin.
+function copyHeadersPlugin() {
+  return {
+    name: 'copy-headers',
+    closeBundle() {
+      if (existsSync('_headers')) copyFileSync('_headers', join('dist', '_headers'));
+    },
+  };
+}
+
 export default defineConfig(({ mode }) => {
   // VITE_-prefixed vars from .env files (.env.local locally) plus any matching
   // process.env vars (Cloudflare Pages build env). Used to inject the PostHog
@@ -134,6 +185,10 @@ export default defineConfig(({ mode }) => {
     copyClassicScriptsPlugin(),
     copyEmailLogoPlugin(),
     copyLandingPlugin(env),
+    // Must run after copyLandingPlugin — it needs the app HTML in its final
+    // home at dist/os/index.html before stamping the /src script URLs.
+    versionClassicScriptsPlugin(),
+    copyHeadersPlugin(),
     // Source-map upload + release/commit grouping. Needs build.sourcemap (set
     // above). org/project/authToken come from the build env — see
     // .github/workflows/deploy.yml. `disable` makes the plugin a no-op when
