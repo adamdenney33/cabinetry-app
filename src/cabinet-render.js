@@ -644,7 +644,7 @@ function renderCBResults() {
   if (!cbLines.length) {
     let emptyHeader = '';
     if (projName) {
-      emptyHeader = _renderContentHeader({ iconSvg: _CH_ICON_PROJECT, title: cbHeaderTitle, addOnclick: 'window._mvShowEditor()', backOnclick: cbEditingQuoteId ? '_exitClient_cabinet()' : undefined });
+      emptyHeader = _renderContentHeader({ iconSvg: _CH_ICON_PROJECT, title: cbHeaderTitle, addOnclick: 'window._mvShowEditor()', backOnclick: cbEditingQuoteId ? '_exitClient_cabinet()' : undefined, addIcon: _CH_ICON_CABINET.replace('class="ch-icon"', '') });
     } else {
       emptyHeader = _renderContentHeader({ iconSvg: _CH_ICON_QUOTE, title: 'Quotes', addOnclick: 'window._mvShowEditor()' });
     }
@@ -728,7 +728,7 @@ function renderCBResults() {
 
   // Project header
   if (projName) {
-    html += _renderContentHeader({ iconSvg: _CH_ICON_QUOTE, title: cbHeaderTitle, addOnclick: 'window._mvShowEditor()', backOnclick: cbEditingQuoteId ? '_exitClient_cabinet()' : undefined });
+    html += _renderContentHeader({ iconSvg: _CH_ICON_QUOTE, title: cbHeaderTitle, addOnclick: 'window._mvShowEditor()', backOnclick: cbEditingQuoteId ? '_exitClient_cabinet()' : undefined, addIcon: _CH_ICON_CABINET.replace('class="ch-icon"', '') });
   }
   html += `<div style="font-size:12px;color:var(--muted);margin: -8px 0 16px">${cbLines.length} cabinet${cbLines.length!==1?'s':''} · ${cbLines.reduce((s,l)=>s+l.qty,0)} units</div>`;
 

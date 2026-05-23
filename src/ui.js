@@ -329,12 +329,14 @@ const _CH_ICON_CLIENT = '<svg class="ch-icon" viewBox="0 0 24 24" fill="none" st
  * Content-area section header: icon + bold title, optional " — client" suffix.
  * `addOnclick` / `backOnclick` add mobile-only (≤760px) create-+ and back-arrow
  * controls — on a phone the gated sidebar is hidden, so the list header carries
- * the create + back affordances. Both are no-ops/hidden on desktop.
- * @param {{ iconSvg: string, title: string, clientName?: string, addOnclick?: string, backOnclick?: string }} opts
+ * the create + back affordances. Both are no-ops/hidden on desktop. `addIcon`
+ * (an SVG string) widens the "+" and shows that icon — use it only when the thing
+ * being created differs from the header's own icon (e.g. "+ cabinet" in a quote).
+ * @param {{ iconSvg: string, title: string, clientName?: string, addOnclick?: string, backOnclick?: string, addIcon?: string }} opts
  * @returns {string}
  */
 function _renderContentHeader(opts) {
-  const { iconSvg, title, clientName, addOnclick, backOnclick } = opts;
+  const { iconSvg, title, clientName, addOnclick, backOnclick, addIcon } = opts;
   // Suppress the " · client" suffix when the project name already equals the
   // client name (happens when the quote has no project and we fell back to
   // the client name as the display title).
@@ -346,7 +348,7 @@ function _renderContentHeader(opts) {
     ? `<button class="ch-back mv-only" onclick="${backOnclick}" title="Back" aria-label="Back"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></button>`
     : '';
   const addHtml = addOnclick
-    ? `<button class="ch-add mv-only" onclick="${addOnclick}" title="Add new" aria-label="Add new">+</button>`
+    ? `<button class="ch-add${addIcon ? ' ch-add-labeled' : ''} mv-only" onclick="${addOnclick}" title="Add new" aria-label="Add new">+${addIcon ? `<span class="ch-add-ico">${addIcon}</span>` : ''}</button>`
     : '';
   return `<div class="content-header">${backHtml}${iconSvg}<h2 class="ch-title">${_escHtml(title)}${clientHtml}</h2>${addHtml}</div>`;
 }
