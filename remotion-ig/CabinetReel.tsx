@@ -92,10 +92,10 @@ const SHook: React.FC = () => (
       <Rise delay={0}><Wordmark light /></Rise>
       <Rise delay={6} style={{ marginTop: 60 }}><div style={KICKER}>Cabinet builder</div></Rise>
       <div style={{ marginTop: 22 }}>
-        <Rise delay={12}><div style={H1}>Price every job</div></Rise>
-        <Rise delay={20}><div style={H1}>to the <Amber>penny</Amber><Dot /></div></Rise>
+        <Rise delay={12}><div style={H1}>What if quoting</div></Rise>
+        <Rise delay={20}><div style={H1}>was <Amber>easy?</Amber></div></Rise>
       </div>
-      <Rise delay={30} style={{ marginTop: 28 }}><div style={{ ...SUB, color: 'rgba(255,255,255,0.72)' }}>Customise every part — then the builder does the maths.</div></Rise>
+      <Rise delay={30} style={{ marginTop: 28 }}><div style={{ ...SUB, color: 'rgba(255,255,255,0.72)' }}>Customise every part — then let the builder do the maths.</div></Rise>
     </Pad>
   </InkBG>
 );
@@ -131,7 +131,7 @@ const SBuilder: React.FC = () => (
       <Rise delay={6} style={{ marginTop: 12, marginBottom: 34 }}><div style={{ ...H1D, fontSize: 78 }}>Customise <Amber>every part</Amber><Dot /></div></Rise>
       <div style={{ alignSelf: 'center' }}>
         <Pop delay={12}>
-          <VPan src={cabSidebarImg} natW={880} natH={4200} w={760} viewH={1120} panFrom={26} panTo={150} />
+          <VPan src={cabSidebarImg} natW={880} natH={4200} w={760} viewH={1300} panFrom={22} panTo={235} />
         </Pop>
       </div>
     </Pad>
@@ -146,7 +146,7 @@ const SRates: React.FC = () => (
       <Rise delay={6} style={{ marginTop: 12, marginBottom: 34 }}><div style={{ ...H1D, fontSize: 78 }}>Set rates + times <Amber>once</Amber><Dot /></div></Rise>
       <div style={{ alignSelf: 'center' }}>
         <Pop delay={12}>
-          <VPan src={cabRatesSidebarImg} natW={880} natH={2620} w={760} viewH={1120} panFrom={24} panTo={120} />
+          <VPan src={cabRatesSidebarImg} natW={880} natH={2620} w={760} viewH={1300} panFrom={20} panTo={120} />
         </Pop>
       </div>
     </Pad>
@@ -225,14 +225,14 @@ const SClose: React.FC = () => (
 
 // ── timeline ─────────────────────────────────────────────────────
 export const CABINET_REEL_FPS = 30;
-export const CABINET_REEL_DURATION = 770;
+export const CABINET_REEL_DURATION = 861;
 const SCENES: { c: React.FC; from: number; dur: number }[] = [
   { c: SHook, from: 0, dur: 100 },
   { c: STabs, from: 100, dur: 96 },
-  { c: SBuilder, from: 196, dur: 160 },
-  { c: SRates, from: 356, dur: 134 },
-  { c: SBreak, from: 490, dur: 130 },
-  { c: SClose, from: 620, dur: 150 },
+  { c: SBuilder, from: 196, dur: 250 }, // slower pan for readability
+  { c: SRates, from: 446, dur: 135 },
+  { c: SBreak, from: 581, dur: 130 },
+  { c: SClose, from: 711, dur: 150 },
 ];
 
 export const CabinetReel: React.FC = () => (

@@ -95,3 +95,76 @@ Free to start, with five saved items in every library. Link in bio.
 How many separate tools does one job pass through in your shop?
 
 #cabinetmaker #cabinetry #joinery #customcabinets #woodworking #cabinetshop #invoicing #smallbusiness #procabinetapp
+
+---
+
+## REEL — 9:16 product overview
+**Asset:** `out/instagram/reel.mp4` (1080×1920, ~26s, music, no narration)
+
+The workshop OS for cabinet makers.
+
+Quote, cut, schedule and bill from one place. Set your rates once, and price a full custom kitchen in minutes — not hours.
+
+What you're watching:
+· Build a cabinet and watch it price live
+· Nest the cut list onto the fewest sheets
+· Production that schedules itself
+· Quote → order → invoice on one pipeline
+· Stock that stays honest as you cut
+
+Eight connected tabs. One workshop.
+
+Free to start — 5 of each, no card. procabinet.app (link in bio).
+
+Which of these would save you the most time?
+
+#cabinetmaker #cabinetry #joinery #customcabinets #woodworking #cabinetshop #shopowner #buildinpublic #procabinetapp
+
+### Short alt (if you want it punchier)
+
+The workshop OS for cabinet makers — quote, cut, schedule and bill from one place.
+
+Set your rates once and price a full kitchen in minutes, not hours. Eight tabs. One workshop.
+
+Free to start — no card. Link in bio.
+
+What eats the most time in your shop right now?
+
+---
+
+## REEL 2 — Cabinet-tab deep dive
+**Asset:** `out/instagram/cabinet-reel.mp4` (1080×1920, ~26s, music, no narration)
+
+### Instagram
+
+What if quoting was easy?
+
+This is the Cabinet Builder. Spec a cabinet — dimensions, carcass, doors, drawers, shelves, hardware, finishes — and it prices itself as you go.
+
+Set your rates and times once (labour, markups, tax, contingency, and the hours for each step). After that every cabinet breaks down to the penny: materials, labour, contingency, markup, tax → unit cost → total.
+
+That's the part most shops do in their head or a spreadsheet. Here it's structured, consistent, and quick enough to hand to an assistant.
+
+Free to start — 5 of each, no card. procabinet.app (link in bio).
+
+How long does pricing one cabinet take you today?
+
+#cabinetmaker #cabinetry #joinery #customcabinets #woodworking #cabinetshop #quoting #shopowner #procabinetapp
+
+### LinkedIn (repost)
+
+What if quoting was easy?
+
+For years, pricing a custom cabinet meant a spreadsheet, a notebook and a fair bit of gut feel. The maths was the same on every job, but it lived in my head — which made it slow, inconsistent, and almost impossible to hand off.
+
+So I built the Cabinet Builder in ProCabinet.App around one idea: set your rates and times once, then let the software do the maths.
+
+You spec the cabinet — dimensions, carcass, doors, drawers, shelves, hardware, finishes — and it costs every part as you go. Behind it sits My Rates: your labour rate, markups, tax, contingency, and the hours for each production step. Change a rate and every quote re-prices.
+
+The result is a quote that breaks down to the penny — materials, labour, contingency, markup, tax, unit cost, total — the same way every time, whoever's at the keyboard. That last part is the one that mattered most to me: it's structured enough to delegate.
+
+Short 9:16 walkthrough below. Built by a maker, for makers — free to start.
+
+(Link in the comments.)
+
+#cabinetmaking #joinery #smallbusiness #buildinpublic
