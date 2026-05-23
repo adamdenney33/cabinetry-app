@@ -16,7 +16,8 @@ import {
 import { C } from './theme';
 import { FONT, numeric } from './fonts';
 import { IcoCheck } from './icons';
-import { BASE_CAB } from './screens/Builder';
+import { BASE_CAB, BuilderScreen } from './screens/Builder';
+import { Window } from './ui';
 import cabSidebarImg from './assets/cabinet-sidebar.png';
 import cabRatesSidebarImg from './assets/cabinet-rates-sidebar.png';
 import reelMusic from './assets/reel-music.mp3';
@@ -93,7 +94,7 @@ const SHook: React.FC = () => (
       <Rise delay={6} style={{ marginTop: 60 }}><div style={KICKER}>Cabinet builder</div></Rise>
       <div style={{ marginTop: 22 }}>
         <Rise delay={12}><div style={H1}>What if quoting</div></Rise>
-        <Rise delay={20}><div style={H1}>was <Amber>easy?</Amber></div></Rise>
+        <Rise delay={20}><div style={H1}>was this <Amber>easy?</Amber></div></Rise>
       </div>
       <Rise delay={30} style={{ marginTop: 28 }}><div style={{ ...SUB, color: 'rgba(255,255,255,0.72)' }}>Customise every part — then let the builder do the maths.</div></Rise>
     </Pad>
@@ -101,27 +102,45 @@ const SHook: React.FC = () => (
 );
 
 // ── Scene 2 — the four sub-tabs ──────────────────────────────────
-const STabs: React.FC = () => {
-  const subtabs = ['Cabinet Builder', 'My Rates', 'Quote Builder', 'Cabinet Library'];
-  return (
-    <LightBG>
-      <Pad style={{ justifyContent: 'center' }}>
-        <Rise delay={0}><div style={{ ...KICKER, color: C.accent }}>One tab</div></Rise>
-        <Rise delay={6} style={{ marginTop: 14 }}><div style={H1D}>Four tools,<br /><Amber>one tab</Amber><Dot /></div></Rise>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 18, marginTop: 64 }}>
-          {subtabs.map((t, i) => (
-            <Pop key={t} delay={14 + i * 6}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 18, background: C.surface, border: `1px solid ${i === 0 ? C.accent : C.border}`, borderRadius: 16, padding: '26px 30px', boxShadow: '0 8px 24px rgba(17,17,17,0.05)' }}>
-                <span style={{ width: 14, height: 14, borderRadius: '50%', background: i === 0 ? C.accent : C.faint }} />
-                <span style={{ fontSize: 40, fontWeight: 800, color: C.ink }}>{t}</span>
-              </div>
-            </Pop>
-          ))}
+// the Cabinet tab's sub-tab bar, rendered as the app does it
+const SubTab: React.FC<{ label: string; on?: boolean }> = ({ label, on }) => (
+  <span style={{ position: 'relative', fontSize: 23, fontWeight: on ? 800 : 600, color: on ? C.text : C.muted, padding: '20px 4px 18px', whiteSpace: 'nowrap' }}>
+    {label}
+    {on && <span style={{ position: 'absolute', left: 0, right: 0, bottom: -1, height: 4, borderRadius: 4, background: C.accent }} />}
+  </span>
+);
+
+const CabinetSubTabBar: React.FC = () => (
+  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', padding: '0 26px', background: C.surface, borderBottom: `1px solid ${C.border}` }}>
+    <div style={{ display: 'flex', gap: 38 }}>
+      <SubTab label="Cabinet Builder" on />
+      <SubTab label="My Rates" />
+    </div>
+    <div style={{ display: 'flex', gap: 38 }}>
+      <SubTab label="Quote Builder" />
+      <SubTab label="Cabinet Library" />
+    </div>
+  </div>
+);
+
+const STabs: React.FC = () => (
+  <LightBG>
+    <Pad style={{ justifyContent: 'center' }}>
+      <Rise delay={0}><div style={{ ...KICKER, color: C.accent }}>One tab</div></Rise>
+      <Rise delay={6} style={{ marginTop: 14, marginBottom: 44 }}><div style={H1D}>Four tools,<br /><Amber>one tab</Amber><Dot /></div></Rise>
+      <Pop delay={12} style={{ alignSelf: 'center' }}>
+        <div style={{ width: 960 }}>
+          <Window active="cabinet">
+            <div style={{ height: 500, overflow: 'hidden' }}>
+              <CabinetSubTabBar />
+              <BuilderScreen />
+            </div>
+          </Window>
         </div>
-      </Pad>
-    </LightBG>
-  );
-};
+      </Pop>
+    </Pad>
+  </LightBG>
+);
 
 // ── Scene 3 — pan the editor sidebar (customisation) ─────────────
 const SBuilder: React.FC = () => (

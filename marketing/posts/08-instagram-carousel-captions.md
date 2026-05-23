@@ -137,7 +137,7 @@ What eats the most time in your shop right now?
 
 ### Instagram
 
-What if quoting was easy?
+What if quoting was this easy?
 
 This is the Cabinet Builder. Spec a cabinet — dimensions, carcass, doors, drawers, shelves, hardware, finishes — and it prices itself as you go.
 
@@ -153,7 +153,7 @@ How long does pricing one cabinet take you today?
 
 ### LinkedIn (repost)
 
-What if quoting was easy?
+What if quoting was this easy?
 
 For years, pricing a custom cabinet meant a spreadsheet, a notebook and a fair bit of gut feel. The maths was the same on every job, but it lived in my head — which made it slow, inconsistent, and almost impossible to hand off.
 
