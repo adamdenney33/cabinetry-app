@@ -1183,10 +1183,6 @@ function _wtMaybeShowSessionCta() {
  */
 async function _wtMaybeAutoStart() {
   if (_wtActive) return;
-  // Mobile/tablet advisory — phones & tablets get a once-per-visit notice that
-  // the app is desktop-first. Layered above the tour (z-index 10000); the
-  // walkthrough still runs underneath and is revealed when the notice closes.
-  if (typeof window._pcMaybeShowMobileNotice === 'function') window._pcMaybeShowMobileNotice();
   // Logged-out demo visitors get the full tour + CTA on every reload — the demo
   // is a marketing surface, so the localStorage dismissal gate is bypassed.
   if (!_userId) { _wtStart({ force: true }); return; }

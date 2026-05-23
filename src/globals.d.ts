@@ -67,8 +67,6 @@ declare global {
     _pendingPlan?: 'monthly' | 'annual' | 'founder' | null;
     /** True for phones/tablets — touch-primary, no hover. Defined in src/mobile-notice.js. */
     _pcIsTouchDevice?: () => boolean;
-    /** Once-per-session mobile/tablet advisory notice. Defined in src/mobile-notice.js. */
-    _pcMaybeShowMobileNotice?: () => void;
     /** Mobile single-column "one pane at a time" controls (src/mobile-nav.js).
      *  `data-mv` on <body> is "list" | "editor"; these flip it and no-op on desktop. */
     _mvSet?: (view: 'list' | 'editor') => void;

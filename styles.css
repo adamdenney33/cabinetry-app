@@ -668,7 +668,7 @@ header {
 .form-group { flex: 1; }
 label { display: block; font-size: 11px; font-weight: 600; color: var(--muted); margin-bottom: 4px; letter-spacing: 0.2px; }
 
-input[type="text"], input[type="number"], input[type="email"], select, textarea {
+input[type="text"], input[type="number"], input[type="email"], input[type="tel"], select, textarea {
   width: 100%;
   padding: 7px 10px;
   border: 1px solid var(--border);
@@ -1238,6 +1238,7 @@ canvas { display: block; }
 .oc-edit:focus { outline: none; border-bottom-color: var(--accent); }
 [data-placeholder]:empty:not(:focus)::before { content: attr(data-placeholder); color: var(--muted); font-style: italic; opacity: 0.5; }
 [contenteditable]:focus { outline: none; }
+.oc-info { flex: 1; min-width: 0; }
 .oc-right { display: flex; align-items: center; gap: 6px; flex-shrink: 0; text-align: right; }
 .oc-value { font-size: 18px; font-weight: 800; color: var(--text); padding: 0 4px; border-radius: 3px; }
 .oc-meta { display: flex; gap: 8px; align-items: center; margin-top: 3px; font-size: 11px; color: var(--muted); }
