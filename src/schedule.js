@@ -8,6 +8,84 @@
 // `_restoreProdStarts`, `STATUS_LABELS`, `renderOrdersMain` — are all
 // globals defined in app.js / db.js, available at call time.
 
+/** Mobile-only stacked agenda for the Schedule tab — the 7-column week grid is
+ *  unreadable on a phone, so render a vertical list of job cards instead, reusing
+ *  the same sorted/filtered events. The sort + filter selects and Working-Hours
+ *  controls (normally in the now-hidden sidebar) move into the agenda header.
+ *  @param {any[]} sortedEvents @param {string} sortMode @param {string} filterStatus @param {number} overrideCount */
+function _renderScheduleAgenda(sortedEvents, sortMode, filterStatus, overrideCount) {
+  const el = document.getElementById('schedule-main');
+  if (!el) return;
+  const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  /** @param {Date|null} d */
+  const fmtD = d => d ? `${d.getDate()} ${MON[d.getMonth()]}` : '';
+
+  const controls = `<div class="sched-agenda-controls">
+    <select onchange="_setSchedSortMode(this.value)">
+      <option value="start" ${sortMode==='start'?'selected':''}>Sort: Start date</option>
+      <option value="due" ${sortMode==='due'?'selected':''}>Sort: Due date</option>
+      <option value="priority" ${sortMode==='priority'?'selected':''}>Sort: Priority</option>
+      <option value="manual" ${sortMode==='manual'?'selected':''}>Sort: Manual</option>
+      <option value="created" ${sortMode==='created'?'selected':''}>Sort: Order placed</option>
+    </select>
+    <select onchange="_setSchedFilterStatus(this.value)">
+      <option value="all" ${filterStatus==='all'?'selected':''}>All</option>
+      <option value="quote" ${filterStatus==='quote'?'selected':''}>Quote Sent</option>
+      <option value="confirmed" ${filterStatus==='confirmed'?'selected':''}>Confirmed</option>
+      <option value="production" ${filterStatus==='production'?'selected':''}>In Production</option>
+      <option value="delivery" ${filterStatus==='delivery'?'selected':''}>Ready for Delivery</option>
+    </select>
+  </div>`;
+
+  let cards = '';
+  sortedEvents.forEach(e => {
+    const o = orders.find(x => x.id === e.id);
+    const st = o && o.status ? ((/** @type {Record<string,string>} */ (STATUS_LABELS))[o.status] || o.status) : '';
+    const pri = (o && /** @type {any} */ (o).priority) || 0;
+    const priLabel = pri > 0 ? pri : '—';
+    const dates = e.isMissingDates
+      ? '<span style="color:#f87171;font-weight:600">No dates set</span>'
+      : [fmtD(e.start), fmtD(e.end)].filter(Boolean).join(' → ');
+    const due = (o && o.due && o.due !== 'TBD') ? `Due ${_escHtml(String(o.due).slice(0,10))}` : '';
+    const slack = slackChipHTML(/** @type {any} */ (e).slack);
+    const priStepper = `<div class="sched-pri" title="Priority — 1 = highest" onclick="event.stopPropagation()"><span class="sched-pri-num${pri>0?' has-priority':''}">${priLabel}</span><span class="sched-pri-arrows"><button type="button" class="sched-pri-btn" aria-label="Raise priority" onclick="event.stopPropagation();_schedStepPriority(${e.id},1)">${SCHED_CHEV_UP}</button><button type="button" class="sched-pri-btn" aria-label="Lower priority" ${pri<=1?'disabled':''} onclick="event.stopPropagation();_schedStepPriority(${e.id},-1)">${SCHED_CHEV_DOWN}</button></span></div>`;
+    cards += `<div class="sched-agenda-card" onclick="_openOrderPopup(${e.id})">
+      <div class="sa-dot" style="background:${e.color}"></div>
+      <div class="sa-main">
+        <div class="sa-title">${e.isManual?SCHED_LOCK_ICON:''}${[e.numberLabel,e.client,e.project].filter(Boolean).map(_escHtml).join(' · ')}</div>
+        <div class="sa-meta">${[dates, st && _escHtml(st), due].filter(Boolean).join(' · ')}${slack?(' '+slack):''}</div>
+      </div>
+      ${priStepper}
+    </div>`;
+  });
+  if (!sortedEvents.length) cards = `<div style="font-size:13px;color:var(--muted);text-align:center;padding:30px">No active orders</div>`;
+
+  const hoursOpen = localStorage.getItem('pc_sched_hours_open') === 'true';
+  const hoursSummary = `${cbSettings.workdayHours ?? 8}h/day`
+    + (overrideCount ? ` · ${overrideCount} day${overrideCount === 1 ? '' : 's'} off` : '');
+  const hours = `<details class="sched sched-hours-section" id="sched-hours-details" ${hoursOpen ? 'open' : ''} ontoggle="_schedHoursToggle(this)">
+    <summary><span class="chev"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="sched-label">Working Hours</span><span class="sched-summary">${hoursSummary}</span></summary>
+    <div class="sched-body">${_schedHoursSectionHTML()}</div>
+  </details>`;
+
+  el.innerHTML = `<div class="sched-agenda">
+    <div class="sched-agenda-head">Schedule</div>
+    ${controls}
+    <div class="sched-agenda-list">${cards}</div>
+    ${hours}
+  </div>`;
+}
+
+// Re-render the schedule when crossing the mobile breakpoint (grid ⇄ agenda).
+(function () {
+  if (!window.matchMedia) return;
+  try {
+    window.matchMedia('(max-width: 760px)').addEventListener('change', function () {
+      if (typeof renderSchedule === 'function') renderSchedule();
+    });
+  } catch (e) { /* older browsers: ignore */ }
+})();
+
 /** @param {{sidebar?: boolean}} [opts] */
 function renderSchedule(opts) {
   const el = document.getElementById('schedule-main');
@@ -132,6 +210,13 @@ function renderSchedule(opts) {
   const sortedEvents = _sortSchedEvents(visibleEvents, sortMode);
   const isManualMode = sortMode === 'manual';
   /** @type {any} */ (window)._lastSchedSidebarEvents = sortedEvents;
+
+  // Mobile: replace the unreadable 7-column grid with a stacked agenda in the
+  // (always-visible) main pane; the sidebar's sort/filter/hours move into it.
+  if (typeof window._mvIsMobile === 'function' && window._mvIsMobile()) {
+    _renderScheduleAgenda(sortedEvents, sortMode, filterStatus, overrideCount);
+    return;
+  }
 
   let sidebarHTML = '';
   // HEAD

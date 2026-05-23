@@ -634,6 +634,25 @@ header {
   .header-right { gap: 6px; }
 }
 
+/* ── SCHEDULE MOBILE AGENDA (Phase 6) ──
+   Rendered into #schedule-main on phones in place of the 7-column week grid. */
+.sched-agenda { padding: 14px; }
+.sched-agenda-head { font-size: 18px; font-weight: 800; color: var(--text); margin-bottom: 12px; }
+.sched-agenda-controls { display: flex; gap: 8px; margin-bottom: 12px; }
+.sched-agenda-controls select { flex: 1; min-width: 0; }
+.sched-agenda-list { display: flex; flex-direction: column; gap: 8px; }
+.sched-agenda-card {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px; border: 1px solid var(--border); border-radius: 10px;
+  background: var(--surface); cursor: pointer;
+}
+.sched-agenda-card:active { background: var(--surface2); }
+.sched-agenda-card .sa-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.sched-agenda-card .sa-main { flex: 1; min-width: 0; }
+.sched-agenda-card .sa-title { font-size: 14px; font-weight: 700; color: var(--text); }
+.sched-agenda-card .sa-meta { font-size: 12px; color: var(--muted); margin-top: 3px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.sched-agenda .sched-hours-section { margin-top: 14px; }
+
 /* ── FORM ELEMENTS ── */
 .form-section { margin-bottom: 14px; }
 .form-section-title {
