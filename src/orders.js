@@ -378,7 +378,7 @@ function renderOrderEditor() {
     // Drafting: client-picker form (reached by clicking "+ New Order")
     host.innerHTML = `
       <div class="form-section">
-        <div class="form-section-title">New Order</div>
+        ${_renderProjectHeader('order', { name: 'New Order', exitFn: '_oClearEditor', iconSvg: _CH_ICON_ORDER.replace('ch-icon', 'ph-icon') })}
         <div class="form-group" style="position:relative;margin-bottom:8px">
           <label>Client</label>
           <div class="smart-input-wrap">

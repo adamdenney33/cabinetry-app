@@ -1094,7 +1094,7 @@ function renderQuoteEditor() {
     // Drafting: client-picker form (reached by clicking "+ New Quote")
     host.innerHTML = `
       <div class="form-section">
-        <div class="form-section-title">New Quote</div>
+        ${_renderProjectHeader('quote', { name: 'New Quote', exitFn: '_qClearEditor', iconSvg: _CH_ICON_QUOTE.replace('ch-icon', 'ph-icon') })}
         <div class="form-group" style="position:relative;margin-bottom:8px">
           <label>Client</label>
           <div class="smart-input-wrap">
