@@ -618,6 +618,22 @@ header {
   .pf-step-btn { min-width: 38px; }
 }
 
+/* ── HEADER & NAV ON MOBILE (Phase 3) ──
+   Tighten the header so the logo + 4 dropdown buttons fit without overflow, and
+   keep every dropdown inside the viewport. Nav tabs already drop to icon-only
+   with zero side padding at ≤1240px, so 8 icons share the full width. */
+@media (max-width: 760px) {
+  header { padding: 0 12px; }
+  .header-right { gap: 8px; }
+  /* Right-anchored menus must never exceed the viewport at narrow widths. */
+  .account-dropdown, .settings-dropdown { max-width: calc(100vw - 16px); }
+  .help-dropdown, .features-dropdown { max-width: calc(100vw - 16px); }
+}
+@media (max-width: 420px) {
+  .logo-badge { display: none; }      /* drop the BETA pill to save width */
+  .header-right { gap: 6px; }
+}
+
 /* ── FORM ELEMENTS ── */
 .form-section { margin-bottom: 14px; }
 .form-section-title {
