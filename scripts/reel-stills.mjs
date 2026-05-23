@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const serveUrl = await bundle({ entryPoint: join(ROOT, 'remotion-ig', 'reel-entry.ts'), publicDir: join(ROOT, 'brand') });
-const composition = await selectComposition({ serveUrl, id: 'reel' });
+const composition = await selectComposition({ serveUrl, id: process.env.REEL_ID || 'reel' });
 const browser = await openBrowser('chrome');
 const frames = process.argv.slice(2).map(Number);
 const list = frames.length ? frames : [50, 150, 280, 365, 475, 575, 710];
