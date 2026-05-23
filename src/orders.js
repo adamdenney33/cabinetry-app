@@ -379,6 +379,7 @@ function renderOrderEditor() {
     host.innerHTML = `
       <div class="form-section">
         ${_renderProjectHeader('order', { name: 'New Order', exitFn: '_oClearEditor', iconSvg: _CH_ICON_ORDER.replace('ch-icon', 'ph-icon') })}
+        <div style="padding:0 14px">
         <div class="form-group" style="position:relative;margin-bottom:8px">
           <label>Client</label>
           <div class="smart-input-wrap">
@@ -392,6 +393,7 @@ function renderOrderEditor() {
         </div>
         <div style="font-size:11px;color:var(--muted);margin-top:8px;padding:8px 10px;background:var(--surface2);border-radius:6px;line-height:1.5">
           Pick or create a client to start a new order.
+        </div>
         </div>
       </div>`;
     return;

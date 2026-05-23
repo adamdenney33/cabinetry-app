@@ -1095,6 +1095,7 @@ function renderQuoteEditor() {
     host.innerHTML = `
       <div class="form-section">
         ${_renderProjectHeader('quote', { name: 'New Quote', exitFn: '_qClearEditor', iconSvg: _CH_ICON_QUOTE.replace('ch-icon', 'ph-icon') })}
+        <div style="padding:0 14px">
         <div class="form-group" style="position:relative;margin-bottom:8px">
           <label>Client</label>
           <div class="smart-input-wrap">
@@ -1108,6 +1109,7 @@ function renderQuoteEditor() {
         </div>
         <div style="font-size:11px;color:var(--muted);margin-top:8px;padding:8px 10px;background:var(--surface2);border-radius:6px;line-height:1.5">
           Pick or create a client to start a new quote.
+        </div>
         </div>
       </div>`;
     return;
