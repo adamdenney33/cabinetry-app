@@ -14,8 +14,6 @@
  *  controls (normally in the now-hidden sidebar) move into the agenda header.
  *  @param {any[]} sortedEvents @param {string} sortMode @param {string} filterStatus @param {number} overrideCount */
 function _renderScheduleAgenda(sortedEvents, sortMode, filterStatus, overrideCount) {
-  const el = document.getElementById('schedule-main');
-  if (!el) return;
   const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   /** @param {Date|null} d */
   const fmtD = d => d ? `${d.getDate()} ${MON[d.getMonth()]}` : '';
@@ -68,13 +66,22 @@ function _renderScheduleAgenda(sortedEvents, sortMode, filterStatus, overrideCou
     <div class="sched-body">${_schedHoursSectionHTML()}</div>
   </details>`;
 
-  el.innerHTML = `<div class="sched-agenda">
-    <div class="sched-agenda-head">Schedule</div>
+  return `<div class="sched-agenda">
     ${controls}
     <div class="sched-agenda-list">${cards}</div>
     ${hours}
   </div>`;
 }
+
+/** Mobile schedule sub-view: 'orders' (agenda) | 'calendar' (week grid). */
+let _schedMobileView = (typeof localStorage !== 'undefined' && localStorage.getItem('pc_sched_mobile_view')) || 'orders';
+/** @param {string} v */
+function _setSchedMobileView(v) {
+  _schedMobileView = (v === 'calendar') ? 'calendar' : 'orders';
+  try { localStorage.setItem('pc_sched_mobile_view', _schedMobileView); } catch (e) { /* ignore */ }
+  if (typeof renderSchedule === 'function') renderSchedule();
+}
+/** @type {any} */ (window)._setSchedMobileView = _setSchedMobileView;
 
 // Re-render the schedule when crossing the mobile breakpoint (grid ⇄ agenda).
 (function () {
@@ -210,13 +217,6 @@ function renderSchedule(opts) {
   const sortedEvents = _sortSchedEvents(visibleEvents, sortMode);
   const isManualMode = sortMode === 'manual';
   /** @type {any} */ (window)._lastSchedSidebarEvents = sortedEvents;
-
-  // Mobile: replace the unreadable 7-column grid with a stacked agenda in the
-  // (always-visible) main pane; the sidebar's sort/filter/hours move into it.
-  if (typeof window._mvIsMobile === 'function' && window._mvIsMobile()) {
-    _renderScheduleAgenda(sortedEvents, sortMode, filterStatus, overrideCount);
-    return;
-  }
 
   let sidebarHTML = '';
   // HEAD
@@ -399,6 +399,25 @@ function renderSchedule(opts) {
 
     cal += `</div>`; // close week container
   });
+
+  // Mobile: the 7-column grid is unreadable, so show sub-tabs in the (always-
+  // visible) list pane — "Orders" (stacked agenda) and "Calendar" (the week grid,
+  // horizontally scrollable). The sidebar's sort/filter/hours move into the agenda.
+  if (typeof window._mvIsMobile === 'function' && window._mvIsMobile()) {
+    const mv = _schedMobileView;
+    const tabs = `<div class="sched-mobile-tabs">
+      <button type="button" class="sched-mtab${mv !== 'calendar' ? ' active' : ''}" onclick="_setSchedMobileView('orders')">Orders</button>
+      <button type="button" class="sched-mtab${mv === 'calendar' ? ' active' : ''}" onclick="_setSchedMobileView('calendar')">Calendar</button>
+    </div>`;
+    el.innerHTML = tabs + (mv === 'calendar'
+      ? `<div class="sched-mobile-cal">${cal}</div>`
+      : _renderScheduleAgenda(sortedEvents, sortMode, filterStatus, overrideCount));
+    if (renderSidebar && mv === 'calendar') setTimeout(() => {
+      const t = document.getElementById('schedule-today-marker');
+      if (t) t.scrollIntoView({ block: 'center' });
+    }, 100);
+    return;
+  }
 
   el.innerHTML = cal;
   // Auto-scroll to today on load — skipped for sidebar:false re-renders so

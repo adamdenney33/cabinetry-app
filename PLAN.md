@@ -99,7 +99,10 @@ typecheck` + `npm run build` clean. **Detail in SPEC.md § 13.**
 Quote-Builder + Quote/Order drill-down back arrows; Cut-Layout back-to-editor bar;
 removed the global "Back to list" bar (editors have their own header back arrows);
 line-item cards reworked to a wrapping column grid; fixed order-schedule steppers
-overflowing. Create fns hardened to always start fresh. Detail in SPEC.md § 13.
+overflowing. Create fns hardened to always start fresh. Round 3: Schedule
+"Orders/Calendar" sub-tabs (the calendar was unreachable on mobile); cut layouts
+default to portrait on a phone; cut-layout header restyled to match the others.
+Detail in SPEC.md § 13.
 
 **Known follow-ups (not blocking):** cut-list `.cl-table` inline inputs still
 sub-16px (iOS may zoom on focus) — a full mobile redesign of those dense tables

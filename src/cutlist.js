@@ -50,6 +50,9 @@ let colsVisible = { grain: false, material: true, label: true, notes: false, edg
 let edgeBands = [];
 let _edgeBandId = 1;
 let layoutRotate = false;
+// True once the user manually hits Rotate, so the mobile portrait-default
+// (set in renderResults) stops overriding their choice.
+let _clRotateTouched = false;
 let clShowSummary = localStorage.getItem('pc_show_summary') === '1';
 let clShowCutList = clShowSummary;  // cut list is part of the Summary tile
 /** @type {any} */
@@ -3104,6 +3107,7 @@ async function _buildCutListPDF({ biz, layouts, imgs, pieces, u, cur, totalPiece
 
 function toggleLayoutRotate() {
   layoutRotate = !layoutRotate;
+  _clRotateTouched = true;
   const b = _byId('lt-rotate'); if (b) b.classList.toggle('active', layoutRotate);
   renderResults();
 }
@@ -3337,10 +3341,14 @@ function renderResults() {
   const _clNameEl = document.getElementById('cl-layout-name');
   if (_clNameEl) _clNameEl.textContent = _clCurrentCutlistName || 'Cut Layout';
   if (!results) return;
+  // Mobile defaults to portrait sheet orientation — landscape sheets render tiny
+  // on a phone. Respected only until the user manually hits Rotate.
+  if (!_clRotateTouched && window._mvIsMobile && window._mvIsMobile()) layoutRotate = true;
   // Sync layout toolbar button states with persisted prefs
   const btnCo = _byId('lt-cutorder'); if (btnCo) btnCo.classList.toggle('active', layoutCutOrder);
   const btnSum = _byId('lt-pg-summary'); if (btnSum) btnSum.classList.toggle('active', clShowSummary);
   const btnScl = _byId('lt-sheetcl'); if (btnScl) btnScl.classList.toggle('active', layoutSheetCutList);
+  const btnRot = _byId('lt-rotate'); if (btnRot) btnRot.classList.toggle('active', layoutRotate);
   const area = _byId('results-area');
   if (area) renderLayout(area);  // inner tabs removed; layout view is the only view
 }
