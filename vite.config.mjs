@@ -108,39 +108,55 @@ function stripSourceMapsPlugin() {
   };
 }
 
-// Cache-busting for the classic <script src="/src/*.js"> tags. These keep
-// stable filenames across deploys, so browsers — and Cloudflare's 4-hour
-// default browser cache (max-age=14400) — kept serving stale copies after a
+// Cache-busting for the unhashed scripts/styles that keep stable filenames
+// across deploys: the app's classic <script src="/src/*.js"> tags AND the
+// landing page's /landing.js + /landing.css. Cloudflare's 4-hour default
+// browser cache (max-age=14400) kept serving stale copies of these after a
 // deploy until the cache expired. (Symptom: new features invisible in a normal
 // window but fine in a fresh/incognito profile; a Chrome-style hard refresh
 // doesn't help on Safari, whose reload-from-origin is Cmd+Opt+R.)
 //
-// Fix: append ?v=<contenthash> to each /src/*.js reference so the URL changes
-// whenever the file's contents change. Combined with the immutable cache header
-// in _headers, files are cached forever yet refetched the instant they change,
-// and every deploy self-busts on the next page load (the HTML itself always
+// Fix: append ?v=<contenthash> to each reference so the URL changes whenever
+// the file's contents change. Combined with the immutable cache header in
+// _headers, files are cached forever yet refetched the instant they change, and
+// every deploy self-busts on the next page load (the HTML itself always
 // revalidates — see _headers). Runs after copyLandingPlugin, which moves the
-// app HTML to dist/os/index.html.
+// app HTML to dist/os/index.html and writes the landing HTML.
 function versionClassicScriptsPlugin() {
+  // 8-char content hash of a file inside dist/, for ?v= cache-busting.
+  const tag = (/** @type {string} */ distRel) =>
+    createHash('sha256').update(readFileSync(join('dist', distRel))).digest('hex').slice(0, 8);
   return {
     name: 'version-classic-scripts',
     closeBundle() {
+      // App (/os): stamp every classic /src/*.js script tag. Anchored on the
+      // closing quote so e.g. cabinet.js never matches inside cabinet-calc.js;
+      // main.js is the bundled module (/assets/...), not a /src/ tag, so it
+      // never matches here.
       const appHtml = join('dist', 'os', 'index.html');
       const srcDir = join('dist', 'src');
-      if (!existsSync(appHtml) || !existsSync(srcDir)) return;
-      let html = readFileSync(appHtml, 'utf8');
-      for (const f of readdirSync(srcDir)) {
-        if (!f.endsWith('.js')) continue;
-        const hash = createHash('sha256')
-          .update(readFileSync(join(srcDir, f)))
-          .digest('hex')
-          .slice(0, 8);
-        // Anchored on the closing quote so e.g. cabinet.js never matches inside
-        // cabinet-calc.js. main.js is the bundled module (/assets/...), not a
-        // /src/ tag, so it simply never matches here.
-        html = html.split(`/src/${f}"`).join(`/src/${f}?v=${hash}"`);
+      if (existsSync(appHtml) && existsSync(srcDir)) {
+        let html = readFileSync(appHtml, 'utf8');
+        for (const f of readdirSync(srcDir)) {
+          if (!f.endsWith('.js')) continue;
+          html = html.split(`/src/${f}"`).join(`/src/${f}?v=${tag(join('src', f))}"`);
+        }
+        writeFileSync(appHtml, html);
       }
-      writeFileSync(appHtml, html);
+      // Landing (/ and the /landing.html back-compat alias): stamp the only
+      // unhashed root assets, /landing.js and /landing.css. copyLandingPlugin
+      // writes both HTML files verbatim, so each carries the same plain refs.
+      for (const page of ['index.html', 'landing.html']) {
+        const p = join('dist', page);
+        if (!existsSync(p)) continue;
+        let html = readFileSync(p, 'utf8');
+        for (const asset of ['landing.js', 'landing.css']) {
+          if (existsSync(join('dist', asset))) {
+            html = html.split(`/${asset}"`).join(`/${asset}?v=${tag(asset)}"`);
+          }
+        }
+        writeFileSync(p, html);
+      }
     },
   };
 }

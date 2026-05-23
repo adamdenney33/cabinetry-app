@@ -14,6 +14,13 @@
 /src/*
   Cache-Control: public, max-age=31536000, immutable
 
+# Landing page's unhashed root assets — same build-time ?v= stamping as /src
+# (see versionClassicScriptsPlugin), so equally safe to cache forever.
+/landing.js
+  Cache-Control: public, max-age=31536000, immutable
+/landing.css
+  Cache-Control: public, max-age=31536000, immutable
+
 # HTML must always revalidate. This is the lynchpin: the browser re-reads the
 # document on every load, so it always sees the latest ?v= script URLs. Without
 # this, an aggressively cached HTML would keep pointing at old script URLs.
@@ -22,4 +29,6 @@
 /os
   Cache-Control: public, max-age=0, must-revalidate
 /os/
+  Cache-Control: public, max-age=0, must-revalidate
+/landing.html
   Cache-Control: public, max-age=0, must-revalidate
