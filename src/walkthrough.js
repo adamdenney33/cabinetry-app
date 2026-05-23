@@ -563,14 +563,11 @@ function _wtBack() {
   if (_wtCurrent > 0) _wtRender(_wtCurrent - 1);
 }
 /**
- * Skip handler. A paid (Pro) user exits immediately; everyone else — free or
- * logged-out demo — is sent to the final Pro CTA step first, unless they are
- * already on it.
+ * Skip handler. Closes the tour immediately for everyone. The Pro CTA lives
+ * only at the natural end of the walkthrough, so skipping never surfaces it —
+ * a visitor sees the plan picker only by stepping through to the finish.
  */
 function _wtSkip() {
-  const lastIdx = _wtLastIdx();
-  const pro = typeof isPro === 'function' && isPro();
-  if (!pro && _wtCurrent < lastIdx) { _wtDir = 1; _wtRender(lastIdx); return; }
   _wtClose('skipped');
 }
 
