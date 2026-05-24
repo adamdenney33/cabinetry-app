@@ -30,4 +30,9 @@ scripts/output/
 
 # Large binary / generated output — store externally
 marketing/raw-footage/
+marketing/videos/
+marketing/audio/
 out/
+
+# Supabase local temp
+supabase/.temp/
