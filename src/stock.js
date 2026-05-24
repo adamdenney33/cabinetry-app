@@ -951,7 +951,7 @@ function renderStockMain() {
           <span>Value: <b>${cur}${value.toLocaleString('en-US',{maximumFractionDigits:0})}</b></span>
         </div>
       </div>
-      ${collapsed ? '' : `<div class="stock-sheet-scroll"><table class="stock-sheet">${theadHTML}<tbody>${items.map(stockRowHTML).join('')}</tbody></table></div>`}
+      ${collapsed ? '' : `<div class="stock-sheet-scrollwrap"><div class="stock-sheet-scroll"><table class="stock-sheet">${theadHTML}<tbody>${items.map(stockRowHTML).join('')}</tbody></table></div></div>`}
     </div>`;
   };
 
@@ -992,5 +992,46 @@ function renderStockMain() {
     <div style="padding:0 ${_hp}">${sectionsHTML}</div>
     `}
   </div>`;
+
+  _stockInitScrollFades(el);
+}
+
+/**
+ * Edge-fade affordance for the horizontally-scrollable stock tables. The fade
+ * only shows while there's more table to reach in that direction and hides at
+ * the ends — so it never dims the last visible column. Driven by a
+ * ResizeObserver (fires on first layout AND when the hidden panel becomes
+ * visible) plus a capture-phase scroll listener (scroll events don't bubble).
+ * Self-gating: classes are only added when the table actually overflows, so the
+ * desktop layout (table fits at 100%) never shows a fade.
+ * @param {HTMLElement} root container whose .stock-sheet-scroll elements to wire
+ */
+function _stockInitScrollFades(root) {
+  try {
+    if (!window._stockFadeObs && typeof ResizeObserver !== 'undefined') {
+      window._stockFadeObs = new ResizeObserver(entries => {
+        entries.forEach(e => _stockUpdateFade(/** @type {HTMLElement} */ (e.target)));
+      });
+      document.addEventListener('scroll', e => {
+        const t = /** @type {HTMLElement} */ (e.target);
+        if (t && t.classList && t.classList.contains('stock-sheet-scroll')) _stockUpdateFade(t);
+      }, true);
+    }
+    const obs = window._stockFadeObs;
+    if (obs) {
+      obs.disconnect(); // drop stale observations from the previous render
+      root.querySelectorAll('.stock-sheet-scroll').forEach(s => obs.observe(s));
+    }
+  } catch (_) { /* progressive enhancement only */ }
+}
+
+/** @param {HTMLElement} s the scrolling .stock-sheet-scroll element */
+function _stockUpdateFade(s) {
+  const wrap = s.closest && s.closest('.stock-sheet-scrollwrap');
+  if (!wrap) return;
+  const max = s.scrollWidth - s.clientWidth;
+  const canScroll = max > 1;
+  wrap.classList.toggle('fade-right', canScroll && s.scrollLeft < max - 1);
+  wrap.classList.toggle('fade-left', canScroll && s.scrollLeft > 1);
 }
 

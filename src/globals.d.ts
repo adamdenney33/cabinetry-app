@@ -93,6 +93,8 @@ declare global {
     _stockSearch?: string;
     _stockCatFilter?: string;
     _editingStockId?: number | null;
+    /** Shared ResizeObserver driving the stock-table edge-fade affordance. */
+    _stockFadeObs?: ResizeObserver;
     _editingClientId?: number | null;
     _editingProjectId?: number | null;
     _saveStock?: () => void;

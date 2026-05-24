@@ -951,6 +951,20 @@ textarea { resize: vertical; min-height: 70px; }
    narrow screens instead of being clipped by .stock-sheet-wrap's overflow:hidden.
    Desktop is unaffected: the 100%-width table fits, so no scrollbar appears. */
 .stock-sheet-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+/* Edge-fade affordance: a soft gradient over the table edge that signals more
+   columns in that direction. .fade-left/.fade-right are toggled in JS only while
+   the table actually overflows and isn't at that end — so it auto-hides at the
+   extremes and never appears on desktop (where the table fits at 100%). */
+.stock-sheet-scrollwrap { position: relative; }
+.stock-sheet-scrollwrap::before,
+.stock-sheet-scrollwrap::after {
+  content: ""; position: absolute; top: 0; bottom: 0; width: 26px;
+  pointer-events: none; opacity: 0; transition: opacity .12s ease; z-index: 2;
+}
+.stock-sheet-scrollwrap::after  { right: 0; background: linear-gradient(to right, rgba(0,0,0,0), var(--surface)); }
+.stock-sheet-scrollwrap::before { left: 0;  background: linear-gradient(to left,  rgba(0,0,0,0), var(--surface)); }
+.stock-sheet-scrollwrap.fade-right::after { opacity: 1; }
+.stock-sheet-scrollwrap.fade-left::before { opacity: 1; }
 .stock-sheet { width: 100%; border-collapse: collapse; font-size: 11px; }
 @media (max-width: 760px) {
   /* keep natural column widths and scroll sideways rather than squashing 10 cols */
