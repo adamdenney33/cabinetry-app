@@ -141,14 +141,14 @@ What if quoting was this easy?
 
 This is the Cabinet tab. Set your rates once, then it's build, quote, repeat:
 
-· Set your rates and times once in My Rates (labour, markups, tax, contingency, hours per step)
+· Set your rates and times once in My Rates (labour, hours per step, markups, tax, contingency)
 · Build the cabinet (dimensions, carcass, doors, drawers, shelves, hardware, finishes) and watch it price live
 · Drop it into a quote that breaks down to the penny
 · Save it to your library so the next one starts from there
 
 Every cabinet gives you the hours as well as the price, so you see what a job costs in time, not just money. That's the part most shops do in their head or a spreadsheet. Here it's structured enough to hand to an assistant and get the same answer every time.
 
-Free to start, 5 of each, no card. procabinet.app (link in bio).
+procabinet.app (link in bio).
 
 How long does pricing one cabinet take you today?
 
