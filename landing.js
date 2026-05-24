@@ -10,7 +10,7 @@
   var canHover = !window.matchMedia || window.matchMedia('(hover: hover)').matches;
   var slice = function (n) { return Array.prototype.slice.call(n); };
 
-  /* ── Forward ad params (utm_*/gclid/fbclid) to the /os app ─────────────
+  /* ── Forward ad params (utm_*, gclid, fbclid) to the /os app ───────────
      Ad clicks land on this page; the app lives at /os. The pixels in <head>
      already set the _gcl/_fbc cookies and write the attribution blob to
      localStorage (all same-origin, so /os reads them). This carries the params
