@@ -22,9 +22,11 @@
        passing through to /os don't fire a stray landing pageview. Same PostHog
        project + same origin as the /os app, so a visitor's anonymous landing
        activity stitches to their identified profile after signup.
-       Session recording is OFF on the landing page to conserve the free-tier
-       replay quota for in-app sessions; flip disable_session_recording to false
-       to capture landing replays. -->
+       Session recording is ON so landing-page visits show up in replays and
+       stitch into one continuous session through to the /os app (same project +
+       origin). Note: replays count toward the free-tier 5k/mo quota — add a
+       session_recording: { sampleRate: '0.5' } block below to sample sessions
+       if landing traffic gets heavy. -->
   <script>
     (function () {
       var k = '__VITE_POSTHOG_KEY__';
@@ -37,7 +39,7 @@
         person_profiles: 'identified_only',
         capture_pageview: true,
         autocapture: true,
-        disable_session_recording: true
+        disable_session_recording: false
       });
     })();
   </script>
