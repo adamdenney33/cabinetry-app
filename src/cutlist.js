@@ -2162,7 +2162,8 @@ function _saveAsPDF(html) {
  */
 function _drawBizHeader(pdf, biz, logoDataUrl, x, y, opts) {
   const nameSize = (opts && opts.nameSize) || 16;
-  let cursor = 0;
+  let by = y;             // running text baseline
+  let lastBaseline = y;   // baseline of the last line drawn (drives height calc)
   let renderedLogo = false;
   if (logoDataUrl) {
     try {
@@ -2172,7 +2173,7 @@ function _drawBizHeader(pdf, biz, logoDataUrl, x, y, opts) {
       let w = maxW, h = maxW / ratio;
       if (h > maxH) { h = maxH; w = maxH * ratio; }
       pdf.addImage(logoDataUrl, props.fileType || 'PNG', x, y, w, h);
-      cursor = h + 2;
+      by = y + h + 6;     // first caption line sits below the logo
       renderedLogo = true;
     } catch (_e) {
       // Fall through to text-only header on bad image data.
@@ -2181,27 +2182,31 @@ function _drawBizHeader(pdf, biz, logoDataUrl, x, y, opts) {
   if (renderedLogo) {
     // Caption mode: small bold name, then contact line, then ABN line.
     pdf.setFontSize(9); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(17);
-    pdf.text(biz.name || 'Your Business', x, y + cursor + 3);
-    cursor += 5;
+    pdf.text(biz.name || 'Your Business', x, by);
+    lastBaseline = by; by += 5.5;
   } else {
+    // Banner mode: large bold name over a contact subline. Generous leading so
+    // the contact line doesn't collide with the name's descenders.
     pdf.setFontSize(nameSize); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(17);
-    pdf.text(biz.name || 'Your Business', x, y + 6);
-    cursor = 8;
+    by = y + 6;
+    pdf.text(biz.name || 'Your Business', x, by);
+    lastBaseline = by; by += 7.5;
   }
   const subline = [biz.address, biz.phone, biz.email].filter(Boolean).join('  ·  ');
   if (subline) {
     pdf.setFontSize(renderedLogo ? 7.5 : 8); pdf.setFont('helvetica', 'normal'); pdf.setTextColor(120);
-    pdf.text(subline, x, y + cursor + 2);
-    cursor += 5;
+    pdf.text(subline, x, by);
+    lastBaseline = by; by += 5;
   }
   if (biz.abn) {
     pdf.setFontSize(7); pdf.setTextColor(120);
-    pdf.text('ABN: ' + biz.abn, x, y + cursor + 1);
-    cursor += 4;
+    pdf.text('ABN: ' + biz.abn, x, by);
+    lastBaseline = by; by += 4.5;
   }
   // Reset text colour to default-dark so callers don't inherit our grey.
   pdf.setTextColor(17);
-  return cursor;
+  // Consumed height = last baseline + descender room + a gap before the divider.
+  return (lastBaseline - y) + 4.5;
 }
 
 // _drawPdfFooter: footer line at the bottom of every page.
@@ -2344,7 +2349,7 @@ function _buildQuotePDF(q, lineRows) {
   pdf.text('QUOTATION', PW - M, y + 7, { align:'right' });
   pdf.setFontSize(8); pdf.setTextColor(140);
   const quoteRef = q.quote_number || ('QUO-' + String(q.id).padStart(4,'0'));
-  pdf.text('#' + quoteRef + '  ·  ' + (q.date||dateStr), PW - M, y + 12, { align:'right' });
+  pdf.text('#' + quoteRef + '  ·  ' + (q.date||dateStr), PW - M, y + 13.5, { align:'right' });
 
   y += Math.max(20, hdrH);
   pdf.setDrawColor(17); pdf.setLineWidth(0.6); pdf.line(M, y, PW-M, y);
@@ -2533,7 +2538,7 @@ function _buildStockPDF() {
   pdf.setFontSize(18); pdf.setFont('helvetica','normal'); pdf.setTextColor(50);
   pdf.text('STOCK INVENTORY', PW - M, y + 7, { align:'right' });
   pdf.setFontSize(8); pdf.setTextColor(140);
-  pdf.text(dateStr + '  ·  ' + stockItems.length + ' items  ·  ' + cur + Math.round(totalValue), PW - M, y + 12, { align:'right' });
+  pdf.text(dateStr + '  ·  ' + stockItems.length + ' items  ·  ' + cur + Math.round(totalValue), PW - M, y + 13.5, { align:'right' });
   y += Math.max(18, stockHdrH);
   pdf.setDrawColor(17); pdf.setLineWidth(0.5); pdf.line(M, y, PW-M, y);
   y += 6;
@@ -2628,7 +2633,7 @@ function _buildWorkOrderPDF(o) {
   pdf.text('WORK ORDER', PW - M, y + 7, { align:'right' });
   pdf.setFontSize(8); pdf.setTextColor(140);
   const woRef = String(o.order_number || ('ORD-' + String(o.id).padStart(4,'0'))).replace(/^ORD-/i, '');
-  pdf.text('#WO-' + woRef + '  ·  ' + dateStr, PW - M, y + 12, { align:'right' });
+  pdf.text('#WO-' + woRef + '  ·  ' + dateStr, PW - M, y + 13.5, { align:'right' });
   y += Math.max(18, woHdrH);
   pdf.setDrawColor(17); pdf.setLineWidth(0.6); pdf.line(M, y, PW-M, y);
   y += 10;
@@ -2788,7 +2793,7 @@ function _buildOrderDocPDF(o, lines, type) {
   pdf.setFontSize(22); pdf.setFont('helvetica','normal'); pdf.setTextColor(50);
   pdf.text(c.title, PW - M, y + 7, { align:'right' });
   pdf.setFontSize(8); pdf.setTextColor(140);
-  pdf.text('#' + c.prefix + '-' + refNum + '  ·  ' + dateStr, PW - M, y + 12, { align:'right' });
+  pdf.text('#' + c.prefix + '-' + refNum + '  ·  ' + dateStr, PW - M, y + 13.5, { align:'right' });
   if (c.showDueInHeader) {
     pdf.setFontSize(8); pdf.setTextColor(140);
     pdf.text('Due: ' + dueLabel, PW - M, y + 16, { align:'right' });
@@ -3003,7 +3008,7 @@ async function _buildCutListPDF({ biz, layouts, imgs, pieces, u, cur, totalPiece
       pdf.setFontSize(20); pdf.setFont('helvetica','normal'); pdf.setTextColor(51);
       pdf.text('CUT LIST', PW-M, M+9, { align:'right' });
       pdf.setFontSize(7.5); pdf.setFont('helvetica','normal'); pdf.setTextColor(153);
-      pdf.text(dateStr, PW-M, M+14, { align:'right' });
+      pdf.text(dateStr, PW-M, M+15.5, { align:'right' });
       const divY = M + Math.max(17, clHdrH);
       pdf.setDrawColor(17); pdf.setLineWidth(0.7); pdf.line(M, divY, PW-M, divY);
       pdf.setTextColor(17);
