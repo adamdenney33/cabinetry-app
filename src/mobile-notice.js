@@ -27,7 +27,7 @@ function _pcMaybeShowMobileNotice() {
     <div style="font-size:13px;line-height:1.6;color:var(--text2)">
       You're using the mobile version of ProCabinet, built to work on your phone.
       <br><br>
-      Tap any card to open it, and use the Back button to return to the list. In cut layouts, pinch to zoom and drag to pan.
+      Tap any card to open it, and use the Back button to return to the list.
     </div>
     <div style="display:flex;justify-content:flex-end;margin-top:18px">
       <button id="pc-mobile-notice-ok" style="padding:9px 20px;border-radius:6px;border:none;background:var(--accent);color:#fff;cursor:pointer;font-size:13px;font-weight:600;font-family:inherit">Got it</button>
