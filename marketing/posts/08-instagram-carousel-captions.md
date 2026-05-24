@@ -133,19 +133,22 @@ What eats the most time in your shop right now?
 ---
 
 ## REEL 2 — Cabinet-tab deep dive
-**Asset:** `out/instagram/cabinet-reel.mp4` (1080×1920, ~26s, music, no narration)
+**Asset:** `out/instagram/cabinet-reel.mp4` (1080×1920, ~29s, music, no narration)
 
 ### Instagram
 
 What if quoting was this easy?
 
-This is the Cabinet Builder. Spec a cabinet — dimensions, carcass, doors, drawers, shelves, hardware, finishes — and it prices itself as you go.
+This is the Cabinet tab. Set your rates once, then it's build, quote, repeat:
 
-Set your rates and times once (labour, markups, tax, contingency, and the hours for each step). After that every cabinet breaks down to the penny: materials, labour, contingency, markup, tax → unit cost → total.
+· Set your rates and times once in My Rates (labour, markups, tax, contingency, hours per step)
+· Build the cabinet (dimensions, carcass, doors, drawers, shelves, hardware, finishes) and watch it price live
+· Drop it into a quote that breaks down to the penny
+· Save it to your library so the next one starts from there
 
-That's the part most shops do in their head or a spreadsheet. Here it's structured, consistent, and quick enough to hand to an assistant.
+Every cabinet gives you the hours as well as the price, so you see what a job costs in time, not just money. That's the part most shops do in their head or a spreadsheet. Here it's structured enough to hand to an assistant and get the same answer every time.
 
-Free to start — 5 of each, no card. procabinet.app (link in bio).
+Free to start, 5 of each, no card. procabinet.app (link in bio).
 
 How long does pricing one cabinet take you today?
 
@@ -155,15 +158,15 @@ How long does pricing one cabinet take you today?
 
 What if quoting was this easy?
 
-For years, pricing a custom cabinet meant a spreadsheet, a notebook and a fair bit of gut feel. The maths was the same on every job, but it lived in my head — which made it slow, inconsistent, and almost impossible to hand off.
+For years, pricing a custom cabinet meant a spreadsheet, a notebook and a fair bit of gut feel. The maths was the same on every job, but it lived in my head, which made it slow and almost impossible to hand off.
 
-So I built the Cabinet Builder in ProCabinet.App around one idea: set your rates and times once, then let the software do the maths.
+So I built the Cabinet tab in ProCabinet.App around one idea: set your rates and times once, then let the software do the maths.
 
-You spec the cabinet — dimensions, carcass, doors, drawers, shelves, hardware, finishes — and it costs every part as you go. Behind it sits My Rates: your labour rate, markups, tax, contingency, and the hours for each production step. Change a rate and every quote re-prices.
+You spec the cabinet (dimensions, carcass, doors, drawers, shelves, hardware, finishes) and it costs every part as you go. Behind it sits My Rates: your labour rate, markups, tax, contingency, and the hours for each production step. Change a rate and every quote re-prices.
 
-The result is a quote that breaks down to the penny — materials, labour, contingency, markup, tax, unit cost, total — the same way every time, whoever's at the keyboard. That last part is the one that mattered most to me: it's structured enough to delegate.
+The result is a quote that breaks down to the penny, the same way every time, whoever's at the keyboard. It gives you the hours as well as the cost, so you can plan the work and price it from one place. That last part mattered most to me. It's structured enough to delegate.
 
-Short 9:16 walkthrough below. Built by a maker, for makers — free to start.
+Set your rates once, then it's build, quote, repeat. Short 9:16 walkthrough below. Built by a maker, for makers, free to start.
 
 (Link in the comments.)
 
