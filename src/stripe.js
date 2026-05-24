@@ -500,7 +500,7 @@ function _openProFeatureModal() {
     <div class="popup-body">
       <div style="text-align:center;font-size:34px;line-height:1;padding:4px 0 2px">&#128274;</div>
       <div style="background:rgba(232,168,56,0.08);border:1px solid rgba(232,168,56,0.2);border-radius:8px;padding:12px 14px;font-size:13px;color:var(--text);line-height:1.5;text-align:center">
-        Importing and exporting data is a <strong>Pro</strong> feature. Upgrade to move your clients, quotes, orders, stock and cabinet libraries in and out as CSV.
+        This is a <strong>Pro</strong> feature. Upgrade to import and export your libraries as CSV, and send your nested cut layouts to the CNC as DXF.
       </div>
       <div class="pf-divider"></div>
       <button class="btn btn-primary btn-lg" onclick="_closePopup();_handleUpgradeClick('annual')">Upgrade to Pro</button>
