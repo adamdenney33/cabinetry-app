@@ -2267,6 +2267,18 @@ function _drawPdfBrandingStrip(pdf, PW) {
   pdf.setTextColor(17);
 }
 
+// _pdfNiceDate: format an ISO YYYY-MM-DD into "15 July 2026" so due dates match
+// the issue-date style on the rest of the document. Non-ISO values (e.g. 'TBD',
+// 'On receipt') pass through unchanged.
+/** @param {string|null|undefined} s @returns {string} */
+function _pdfNiceDate(s) {
+  const str = String(s || '');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+  const d = new Date(str + 'T00:00:00');
+  if (isNaN(d.getTime())) return str;
+  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
 
 // ── Build a real PDF for quotes using jsPDF ──
 /** @param {any} q */
@@ -2315,8 +2327,6 @@ function _buildQuotePDF(q, lineRows) {
   const anyLineDisc = Array.isArray(lineRows) && lineRows.some(/** @param {any} r */ r => (parseFloat(r.discount) || 0) > 0);
   /** @param {any} v */
   const fmt = v => cur + Number(v).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
-  /** @param {number} v */
-  const fmt0 = v => cur + Math.round(v).toLocaleString();
 
   // Portrait A4
   const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
@@ -2325,7 +2335,9 @@ function _buildQuotePDF(q, lineRows) {
   let y = M;
 
   // ── Header ──
-  _drawBizHeader(pdf, biz, logo, M, y);
+  // Advance past whichever side is taller: the identity block (taller when a
+  // logo is set) or the QUOTATION title block on the right.
+  const hdrH = _drawBizHeader(pdf, biz, logo, M, y);
   _drawPdfBrandingStrip(pdf, PW);
 
   pdf.setFontSize(22); pdf.setFont('helvetica','normal'); pdf.setTextColor(50);
@@ -2334,7 +2346,7 @@ function _buildQuotePDF(q, lineRows) {
   const quoteRef = q.quote_number || ('QUO-' + String(q.id).padStart(4,'0'));
   pdf.text('#' + quoteRef + '  ·  ' + (q.date||dateStr), PW - M, y + 12, { align:'right' });
 
-  y += 20;
+  y += Math.max(20, hdrH);
   pdf.setDrawColor(17); pdf.setLineWidth(0.6); pdf.line(M, y, PW-M, y);
   y += 10;
 
@@ -2424,7 +2436,7 @@ function _buildQuotePDF(q, lineRows) {
   }
   if (orderDiscPct > 0) {
     pdf.setFontSize(8.5); pdf.setTextColor(196, 68, 68);
-    pdf.text('Discount (' + orderDiscPct + '%)', labelX, y); pdf.text('− ' + fmt(orderDiscAmt), totalsX, y, { align:'right' });
+    pdf.text('Discount (' + orderDiscPct + '%)', labelX, y); pdf.text('- ' + fmt(orderDiscAmt), totalsX, y, { align:'right' });
     pdf.setTextColor(140);
     y += 5;
   }
@@ -2435,7 +2447,7 @@ function _buildQuotePDF(q, lineRows) {
   pdf.setFontSize(8); pdf.setFont('helvetica','bold'); pdf.setTextColor(255);
   pdf.text('TOTAL AMOUNT DUE', M + 8, y + 9);
   pdf.setFontSize(18); pdf.setFont('helvetica','bold');
-  pdf.text(fmt0(total), PW - M - 8, y + 10, { align:'right' });
+  pdf.text(fmt(total), PW - M - 8, y + 10, { align:'right' });
   y += 22;
 
   // ── Notes ──
@@ -2473,7 +2485,10 @@ function _buildQuotePDF(q, lineRows) {
   pdf.setFontSize(8); pdf.setFont('helvetica','bold'); pdf.setTextColor(80);
   pdf.text('ACCEPTANCE', M, y); y += 6;
   pdf.setFontSize(7.5); pdf.setFont('helvetica','normal'); pdf.setTextColor(120);
-  const accText = 'To accept this quotation, please sign below and return a copy to ' + (biz.name||'us') + '.';
+  // Strip a trailing period from the name so businesses like "… Co." don't
+  // produce a doubled full stop.
+  const accName = (biz.name || 'us').replace(/\.\s*$/, '');
+  const accText = 'To accept this quotation, please sign below and return a copy to ' + accName + '.';
   pdf.text(accText, M, y); y += 10;
 
   // Signature lines
@@ -2513,20 +2528,39 @@ function _buildStockPDF() {
 
   // Header
   const stockLogo = getBizLogo();
-  _drawBizHeader(pdf, biz, stockLogo, M, y, { nameSize: 14 });
+  const stockHdrH = _drawBizHeader(pdf, biz, stockLogo, M, y, { nameSize: 14 });
   _drawPdfBrandingStrip(pdf, PW);
   pdf.setFontSize(18); pdf.setFont('helvetica','normal'); pdf.setTextColor(50);
   pdf.text('STOCK INVENTORY', PW - M, y + 7, { align:'right' });
   pdf.setFontSize(8); pdf.setTextColor(140);
   pdf.text(dateStr + '  ·  ' + stockItems.length + ' items  ·  ' + cur + Math.round(totalValue), PW - M, y + 12, { align:'right' });
-  y += 18;
+  y += Math.max(18, stockHdrH);
   pdf.setDrawColor(17); pdf.setLineWidth(0.5); pdf.line(M, y, PW-M, y);
   y += 6;
 
+  // Table column geometry. Text columns are left-aligned at a fixed x and
+  // ellipsis-truncated to fit their slot; numeric columns are right-aligned so
+  // they can't collide with the text to their left whatever the value width.
+  const colMat = M, colSku = M + 56, colSize = M + 78, colSup = M + 102;
+  const colQty = M + 142, colAlert = M + 158, colVal = PW - M;
+  /** Trim a string with a trailing ellipsis so it fits maxW at the active font. */
+  /** @param {string|null|undefined} s @param {number} maxW */
+  const fit = (s, maxW) => {
+    let str = String(s || '');
+    if (pdf.getTextWidth(str) <= maxW) return str;
+    while (str.length && pdf.getTextWidth(str + '…') > maxW) str = str.slice(0, -1);
+    return str + '…';
+  };
+
   // Table header
-  const cols = [M, M+55, M+80, M+100, M+130, M+148, M+165];
   pdf.setFontSize(7); pdf.setFont('helvetica','bold'); pdf.setTextColor(140);
-  ['Material','SKU','Size','Supplier','Qty','Alert',cur+' Value'].forEach((h,i) => pdf.text(h, cols[i], y));
+  pdf.text('Material', colMat, y);
+  pdf.text('SKU', colSku, y);
+  pdf.text('Size', colSize, y);
+  pdf.text('Supplier', colSup, y);
+  pdf.text('Qty', colQty, y, { align:'right' });
+  pdf.text('Alert', colAlert, y, { align:'right' });
+  pdf.text(cur + ' Value', colVal, y, { align:'right' });
   y += 4;
   pdf.setDrawColor(200); pdf.setLineWidth(0.2); pdf.line(M, y, PW-M, y);
   y += 5;
@@ -2536,19 +2570,24 @@ function _buildStockPDF() {
     if (y > PH - 20) { pdf.addPage(); y = M + 10; }
     const isLow = (item.qty ?? 0) <= (item.low ?? 0);
     const sup = _ssGet(item.id);
+    // Material — bold + red when at/below the alert level
     pdf.setFontSize(9); pdf.setFont('helvetica', isLow?'bold':'normal');
     pdf.setTextColor(isLow ? 192 : 40, isLow ? 50 : 40, isLow ? 50 : 40);
-    pdf.text(item.name.substring(0,22), cols[0], y);
+    pdf.text(fit(item.name, colSku - colMat - 3), colMat, y);
+    // SKU / Size / Supplier — grey, normal weight
     pdf.setTextColor(120); pdf.setFont('helvetica','normal');
-    pdf.text((item.sku||'').substring(0,10), cols[1], y);
-    pdf.text(formatDim(item.w)+'×'+formatDim(item.h)+u, cols[2], y);
-    pdf.text((sup.supplier||'').substring(0,14), cols[3], y);
-    pdf.setTextColor(isLow?192:40, isLow?50:40, isLow?50:40);
+    pdf.text(fit(item.sku, colSize - colSku - 3), colSku, y);
+    const sizeStr = (item.w || item.h) ? (formatDim(item.w) + '×' + formatDim(item.h) + u) : '—';
+    pdf.text(fit(sizeStr, colSup - colSize - 3), colSize, y);
+    pdf.text(fit(sup.supplier, colQty - colSup - 10), colSup, y);
+    // Qty — bold + red when low, right-aligned
+    pdf.setTextColor(isLow ? 192 : 40, isLow ? 50 : 40, isLow ? 50 : 40);
     pdf.setFont('helvetica', isLow?'bold':'normal');
-    pdf.text(String(item.qty), cols[4], y);
+    pdf.text(String(item.qty ?? 0), colQty, y, { align:'right' });
+    // Alert + Value — grey, right-aligned
     pdf.setTextColor(120); pdf.setFont('helvetica','normal');
-    pdf.text(String(item.low), cols[5], y);
-    pdf.text(cur + ((item.qty ?? 0)*(item.cost ?? 0)).toFixed(0), cols[6], y);
+    pdf.text(String(item.low ?? 0), colAlert, y, { align:'right' });
+    pdf.text(cur + ((item.qty ?? 0)*(item.cost ?? 0)).toFixed(0), colVal, y, { align:'right' });
     y += 5;
   });
 
@@ -2583,14 +2622,14 @@ function _buildWorkOrderPDF(o) {
 
   // Header
   const woLogo = getBizLogo();
-  _drawBizHeader(pdf, biz, woLogo, M, y, { nameSize: 14 });
+  const woHdrH = _drawBizHeader(pdf, biz, woLogo, M, y, { nameSize: 14 });
   _drawPdfBrandingStrip(pdf, PW);
   pdf.setFontSize(20); pdf.setFont('helvetica','normal'); pdf.setTextColor(50);
   pdf.text('WORK ORDER', PW - M, y + 7, { align:'right' });
   pdf.setFontSize(8); pdf.setTextColor(140);
   const woRef = String(o.order_number || ('ORD-' + String(o.id).padStart(4,'0'))).replace(/^ORD-/i, '');
   pdf.text('#WO-' + woRef + '  ·  ' + dateStr, PW - M, y + 12, { align:'right' });
-  y += 18;
+  y += Math.max(18, woHdrH);
   pdf.setDrawColor(17); pdf.setLineWidth(0.6); pdf.line(M, y, PW-M, y);
   y += 10;
 
@@ -2599,7 +2638,7 @@ function _buildWorkOrderPDF(o) {
   const infoItems = [
     ['Client', orderClient(o)], ['Project', orderProject(o)],
     ['Order Value', fmt(o.value ?? 0)], ['Status', statusLabel||''],
-    ['Due Date', o.due || 'TBD']
+    ['Due Date', _pdfNiceDate(o.due) || 'TBD']
   ];
   infoItems.forEach(([label, val]) => {
     pdf.setFontSize(7); pdf.setFont('helvetica','normal'); pdf.setTextColor(170);
@@ -2676,7 +2715,7 @@ function _buildOrderDocPDF(o, lines, type) {
   // Strip ORD- since the per-doc prefix (ORC / PRO / INV) replaces it on the
   // PDF — refNum is the digit portion only.
   const refNum = String(o.order_number || ('ORD-' + String(o.id).padStart(4,'0'))).replace(/^ORD-/i, '');
-  const dueLabel = (o.due && o.due !== 'TBD') ? o.due : 'On receipt';
+  const dueLabel = (o.due && o.due !== 'TBD') ? _pdfNiceDate(o.due) : 'On receipt';
 
   /** @type {Record<string, {title: string, prefix: string, addresseeLabel: string, totalLabel: string, closing: string, showPaymentBlock: boolean, showDueInHeader: boolean}>} */
   const cfg = {
@@ -2743,7 +2782,7 @@ function _buildOrderDocPDF(o, lines, type) {
 
   // ── Header ──
   const orderLogo = getBizLogo();
-  _drawBizHeader(pdf, biz, orderLogo, M, y);
+  const orderHdrH = _drawBizHeader(pdf, biz, orderLogo, M, y);
   _drawPdfBrandingStrip(pdf, PW);
 
   pdf.setFontSize(22); pdf.setFont('helvetica','normal'); pdf.setTextColor(50);
@@ -2755,7 +2794,7 @@ function _buildOrderDocPDF(o, lines, type) {
     pdf.text('Due: ' + dueLabel, PW - M, y + 16, { align:'right' });
   }
 
-  y += 20;
+  y += Math.max(20, orderHdrH);
   pdf.setDrawColor(17); pdf.setLineWidth(0.6); pdf.line(M, y, PW-M, y);
   y += 10;
 
@@ -2840,7 +2879,7 @@ function _buildOrderDocPDF(o, lines, type) {
   }
   if (orderDiscPct > 0) {
     pdf.setFontSize(8.5); pdf.setTextColor(196, 68, 68);
-    pdf.text('Discount (' + orderDiscPct + '%)', labelX, y); pdf.text('− ' + fmt(orderDiscAmt), totalsX, y, { align:'right' });
+    pdf.text('Discount (' + orderDiscPct + '%)', labelX, y); pdf.text('- ' + fmt(orderDiscAmt), totalsX, y, { align:'right' });
     pdf.setTextColor(140);
     y += 5;
   }
@@ -2955,16 +2994,20 @@ async function _buildCutListPDF({ biz, layouts, imgs, pieces, u, cur, totalPiece
     }
 
     // ── full-page header used on the combined summary/cutlist page ──
+    // Returns the divider Y so the caller can flow content below a tall
+    // (logo) header instead of overlapping a fixed offset.
     function pageHeader() {
       const clLogo = getBizLogo();
-      _drawBizHeader(pdf, biz, clLogo, M, M, { nameSize: 14 });
+      const clHdrH = _drawBizHeader(pdf, biz, clLogo, M, M, { nameSize: 14 });
       _drawPdfBrandingStrip(pdf, PW);
       pdf.setFontSize(20); pdf.setFont('helvetica','normal'); pdf.setTextColor(51);
       pdf.text('CUT LIST', PW-M, M+9, { align:'right' });
       pdf.setFontSize(7.5); pdf.setFont('helvetica','normal'); pdf.setTextColor(153);
       pdf.text(dateStr, PW-M, M+14, { align:'right' });
-      pdf.setDrawColor(17); pdf.setLineWidth(0.7); pdf.line(M, M+17, PW-M, M+17);
+      const divY = M + Math.max(17, clHdrH);
+      pdf.setDrawColor(17); pdf.setLineWidth(0.7); pdf.line(M, divY, PW-M, divY);
       pdf.setTextColor(17);
+      return divY;
     }
 
     // ── one page per sheet — sheets start on page 1 ──
@@ -3042,8 +3085,8 @@ async function _buildCutListPDF({ biz, layouts, imgs, pieces, u, cur, totalPiece
     // ── OPTIONAL COMBINED PAGE: summary stats + full cut list ──
     if (clShowSummary || clShowCutList) {
       pdf.addPage();
-      pageHeader();
-      let cy = M + 22;
+      const clDivY = pageHeader();
+      let cy = clDivY + 5;
 
       if (clShowSummary) {
         const stats = [

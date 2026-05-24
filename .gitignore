@@ -25,6 +25,9 @@ dist/
 # Generated output from scripts/ (compare and copy across manually)
 scripts/output/
 
+# Sample PDFs rendered by scripts/render-pdf-samples.mjs (regenerate on demand)
+pdf-samples/
+
 # Claude Code per-user config (not shared)
 .claude/settings.local.json
 
