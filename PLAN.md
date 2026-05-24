@@ -22,6 +22,24 @@ Companion docs: `SPEC.md` (refactor history), `SCHEMA.md` (DB schema),
 
 ## Active Work
 
+### DXF / CNC export of the nested cut layout ✅ Done 2026-05-25
+
+A new **DXF** button in the Cut Layout toolbar (beside PDF) exports the
+optimiser's nested layout as DXF for import into CAM / CNC nesting software —
+one file per unique sheet packing, parts pre-placed at their cut positions.
+Pro-only (mirrors the CSV export gating). G-code is deliberately out of scope:
+the correct handoff is a DXF the user drops into their own CAM, which posts
+G-code for their specific machine.
+
+- ✅ `src/cutlist.js` — `exportLayoutDXF()` (Pro-gated, iterates
+  `results.uniqueLayouts`, staggered multi-file download) + R12/AC1009 DXF
+  builders `_buildSheetDXF`/`_dxfRect`/`_dxfText`/`_dxfNum`/`_dxfFilenameSafe`.
+  Sheet outline / parts / labels on separate layers; top-left→bottom-left
+  origin flip; cut (edge-band-trimmed) sizes; `$INSUNITS` from `window.units`.
+- ✅ `index.html` — `DXF` button in `#layout-toolbar-top`.
+- ✅ Verified in the dev preview (metric + imperial, real `optimize()` run);
+  `npm run typecheck` clean. **Detail in SPEC.md § 13.**
+
 ### Paid-ads tracking — landing-page coverage fix ✅ Done 2026-05-23
 
 The 2026-05-19 attribution foundation only fired on the app (`/os`), but paid-ad

@@ -1927,6 +1927,130 @@ function handleCSVImport(input) {
   reader.readAsText(file);
 }
 
+// ── DXF / CNC EXPORT ──
+// Exports the optimised nested layout as DXF — one file per unique sheet
+// packing — for import into CAM / CNC nesting software. Each part is a closed
+// polyline rectangle sitting at its nested CUT position; the sheet outline and
+// the part labels live on their own layers so they can be toggled in CAM.
+// Pro-only (a data export, mirroring the CSV gating).
+//
+// Two correctness points that are easy to get wrong:
+//   • Origin flip — the packer uses a top-left origin (y grows downward, canvas
+//     convention). DXF and CNC machines use a bottom-left origin (y grows up),
+//     so every y is mapped through (sheetH - y). Skip this and every part is
+//     mirrored vertically on the bed.
+//   • Cut size — `placed.w/h` is already the trimmed cut size (the optimiser
+//     subtracts edge-band thickness in _trimmedDims), which is exactly what the
+//     machine should cut. We draw that, not the finished size.
+//
+// Output is R12 (AC1009) with old-style closed POLYLINEs — the most universally
+// readable DXF flavour across Vectric, Fusion, AlphaCAM, Cabinet Vision, etc.
+
+/** Format a real for DXF output — fixed precision, no float dust. @param {number} v */
+function _dxfNum(v) { return (Math.round(v * 10000) / 10000).toString(); }
+
+/**
+ * One closed POLYLINE rectangle (R12 old-style) on `layer`.
+ * @param {string} layer @param {number} x0 @param {number} y0 @param {number} x1 @param {number} y1
+ * @returns {string}
+ */
+function _dxfRect(layer, x0, y0, x1, y1) {
+  /** @param {number} x @param {number} y */
+  const vtx = (x, y) => `0\nVERTEX\n8\n${layer}\n10\n${_dxfNum(x)}\n20\n${_dxfNum(y)}\n30\n0.0\n`;
+  return `0\nPOLYLINE\n8\n${layer}\n66\n1\n70\n1\n10\n0.0\n20\n0.0\n30\n0.0\n`
+    + vtx(x0, y0) + vtx(x1, y0) + vtx(x1, y1) + vtx(x0, y1)
+    + `0\nSEQEND\n8\n${layer}\n`;
+}
+
+/**
+ * A TEXT entity centred (horizontally + vertically) on (cx,cy).
+ * @param {string} layer @param {number} cx @param {number} cy @param {number} height @param {string} text
+ * @returns {string}
+ */
+function _dxfText(layer, cx, cy, height, text) {
+  const t = String(text).replace(/[^\x20-\x7E]/g, ''); // DXF default encoding is ASCII
+  return `0\nTEXT\n8\n${layer}\n`
+    + `10\n${_dxfNum(cx)}\n20\n${_dxfNum(cy)}\n30\n0.0\n`
+    + `40\n${_dxfNum(height)}\n1\n${t}\n`
+    + `72\n1\n`
+    + `11\n${_dxfNum(cx)}\n21\n${_dxfNum(cy)}\n31\n0.0\n`
+    + `73\n2\n`;
+}
+
+/**
+ * Assemble a complete DXF document for a single nested sheet layout.
+ * @param {any} layout one entry from results.uniqueLayouts / results.layouts
+ * @returns {string}
+ */
+function _buildSheetDXF(layout) {
+  const sheetW = layout.sheet.w, sheetH = layout.sheet.h;
+  const metric = window.units === 'metric';
+  const insUnits = metric ? 4 : 1; // $INSUNITS: 4 = mm, 1 = inch
+  const minTh = metric ? 4 : 0.15, maxTh = metric ? 22 : 0.9;
+
+  let ents = _dxfRect('SHEET', 0, 0, sheetW, sheetH);
+  for (const p of layout.placed) {
+    // Flip Y: canvas top-left corner (p.x, p.y) → DXF bottom-left origin.
+    const x0 = p.x, y0 = sheetH - (p.y + p.h), x1 = p.x + p.w, y1 = sheetH - p.y;
+    ents += _dxfRect('PARTS', x0, y0, x1, y1);
+    const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+    const th = Math.max(minTh, Math.min(Math.min(p.w, p.h) * 0.14, maxTh));
+    const name = (p.item && p.item.label) ? String(p.item.label) : '';
+    if (name) ents += _dxfText('LABELS', cx, cy + th * 0.7, th, name);
+    ents += _dxfText('LABELS', cx, cy - th * 0.7, th * 0.8, `${formatDim(p.w)}x${formatDim(p.h)}`);
+  }
+
+  /** @param {string} name @param {number} color */
+  const layer = (name, color) => `0\nLAYER\n2\n${name}\n70\n0\n62\n${color}\n6\nCONTINUOUS\n`;
+
+  return `0\nSECTION\n2\nHEADER\n`
+    + `9\n$ACADVER\n1\nAC1009\n`
+    + `9\n$INSUNITS\n70\n${insUnits}\n`
+    + `9\n$EXTMIN\n10\n0.0\n20\n0.0\n`
+    + `9\n$EXTMAX\n10\n${_dxfNum(sheetW)}\n20\n${_dxfNum(sheetH)}\n`
+    + `0\nENDSEC\n`
+    + `0\nSECTION\n2\nTABLES\n0\nTABLE\n2\nLAYER\n70\n3\n`
+    + layer('SHEET', 5) + layer('PARTS', 3) + layer('LABELS', 7)
+    + `0\nENDTAB\n0\nENDSEC\n`
+    + `0\nSECTION\n2\nENTITIES\n`
+    + ents
+    + `0\nENDSEC\n0\nEOF\n`;
+}
+
+/** Sanitise a string for a download filename. @param {string} s */
+function _dxfFilenameSafe(s) {
+  return (s || 'cutlist').replace(/[^\w\-]+/g, '-').replace(/-+/g, '-')
+    .replace(/^-|-$/g, '').slice(0, 60) || 'cutlist';
+}
+
+/** Export the optimised nested layout as DXF files — one per unique sheet. Pro-only. */
+function exportLayoutDXF() {
+  if (!_enforceProFeature()) return;
+  if (!results || !results.uniqueLayouts || !results.uniqueLayouts.length) {
+    _toast('Run the optimiser first', 'error');
+    return;
+  }
+  const base = _dxfFilenameSafe(_clCurrentCutlistName || _clCurrentCabinetName || 'cutlist');
+  const layouts = results.uniqueLayouts;
+  const N = layouts.length;
+  layouts.forEach(/** @param {any} layout @param {number} i */ (layout, i) => {
+    const dxf = _buildSheetDXF(layout);
+    const qty = layout.qty || 1;
+    const fn = `${base}-sheet-${i + 1}of${N}${qty > 1 ? `-x${qty}` : ''}.dxf`;
+    // Stagger multi-file downloads so the browser doesn't drop all but the first.
+    setTimeout(() => {
+      const url = URL.createObjectURL(new Blob([dxf], { type: 'application/dxf' }));
+      const a = Object.assign(document.createElement('a'), { href: url, download: fn });
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    }, i * 250);
+  });
+  if (typeof _track === 'function') _track('cnc_dxf_exported', { sheets: N });
+  _toast(N === 1 ? 'Exported 1 DXF file' : `Exported ${N} DXF files (one per sheet)`, 'success');
+}
+
 // ── LAYOUT TOOLBAR ──
 function zoomIn()  { layoutZoom = Math.min(layoutZoom + 0.25, 4); localStorage.setItem('pc_zoom', String(layoutZoom)); renderResults(); }
 function zoomOut() { layoutZoom = Math.max(layoutZoom - 0.25, 0.25); localStorage.setItem('pc_zoom', String(layoutZoom)); renderResults(); }
