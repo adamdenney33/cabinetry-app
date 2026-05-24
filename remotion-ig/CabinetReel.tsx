@@ -15,9 +15,8 @@ import {
 } from 'remotion';
 import { C } from './theme';
 import { FONT, numeric } from './fonts';
-import { IcoCheck } from './icons';
-import { BASE_CAB, BuilderScreen } from './screens/Builder';
-import { Window } from './ui';
+import { IcoCheck, TAB_ICONS } from './icons';
+import { BASE_CAB } from './screens/Builder';
 import cabSidebarImg from './assets/cabinet-sidebar.png';
 import cabRatesSidebarImg from './assets/cabinet-rates-sidebar.png';
 import reelMusic from './assets/reel-music.mp3';
@@ -96,47 +95,90 @@ const SHook: React.FC = () => (
         <Rise delay={12}><div style={H1}>What if quoting</div></Rise>
         <Rise delay={20}><div style={H1}>was this <Amber>easy?</Amber></div></Rise>
       </div>
-      <Rise delay={30} style={{ marginTop: 28 }}><div style={{ ...SUB, color: 'rgba(255,255,255,0.72)' }}>Customise every part — then let the builder do the maths.</div></Rise>
+      <Rise delay={30} style={{ marginTop: 28 }}><div style={{ ...SUB, color: 'rgba(255,255,255,0.72)' }}>Spec the parts, get instant pricing and timings.</div></Rise>
     </Pad>
   </InkBG>
 );
 
 // ── Scene 2 — the four sub-tabs ──────────────────────────────────
-// the Cabinet tab's sub-tab bar, rendered as the app does it
+// the Cabinet tab's sub-tabs, rendered as the app does them: equal-width tabs,
+// centred labels, the active one underlined in amber (app uses 13px / flex:1 /
+// 2px accent border-bottom — see index.html #cab-tab-*).
 const SubTab: React.FC<{ label: string; on?: boolean }> = ({ label, on }) => (
-  <span style={{ position: 'relative', fontSize: 23, fontWeight: on ? 800 : 600, color: on ? C.text : C.muted, padding: '20px 4px 18px', whiteSpace: 'nowrap' }}>
+  <div
+    style={{
+      flex: '1 1 0',
+      textAlign: 'center',
+      padding: '18px 10px',
+      fontSize: 19,
+      fontWeight: on ? 800 : 500,
+      color: on ? C.text : C.muted,
+      borderBottom: on ? `3px solid ${C.accent}` : '3px solid transparent',
+      marginBottom: -1,
+      whiteSpace: 'nowrap',
+    }}
+  >
     {label}
-    {on && <span style={{ position: 'absolute', left: 0, right: 0, bottom: -1, height: 4, borderRadius: 4, background: C.accent }} />}
-  </span>
+  </div>
 );
 
+// just the Cabinet nav tab (other tabs dropped), scaled up to sit in proportion
+// with the sub-tabs below. Mirrors the app's active-tab styling: white surface,
+// rounded top, amber accent line, icon + label.
+const CabinetNavTab: React.FC = () => {
+  const Ico = TAB_ICONS.cabinet;
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 10,
+        boxSizing: 'border-box',
+        width: 220, // = one sub-tab (880 / 4)
+        marginLeft: 110, // centre on the seam between sub-tabs 1 and 2 (x=220)
+        padding: '14px 0 16px',
+        borderRadius: '12px 12px 0 0',
+        background: C.surface,
+        border: `1px solid ${C.border}`,
+        borderBottom: `1px solid ${C.surface}`,
+        marginBottom: -1,
+        color: C.text,
+        fontSize: 19,
+        fontWeight: 800,
+        whiteSpace: 'nowrap',
+      }}
+    >
+      <Ico size={22} color={C.text} />
+      <span>Cabinet</span>
+    </div>
+  );
+};
+
+// the Cabinet tab + its four sub-tabs — a faithful crop of the app's tab area,
+// not the whole screen.
 const CabinetSubTabBar: React.FC = () => (
-  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', padding: '0 26px', background: C.surface, borderBottom: `1px solid ${C.border}` }}>
-    <div style={{ display: 'flex', gap: 38 }}>
+  <div style={{ width: 880, background: C.surface, border: `1px solid ${C.border}`, borderRadius: '18px 18px 0 0', overflow: 'hidden', boxShadow: '0 30px 80px rgba(17,17,17,0.18)' }}>
+    <div style={{ background: C.tabbar, padding: '14px 0 0', display: 'flex' }}>
+      <CabinetNavTab />
+    </div>
+    <div style={{ display: 'flex', borderBottom: `1px solid ${C.border}` }}>
       <SubTab label="Cabinet Builder" on />
       <SubTab label="My Rates" />
-    </div>
-    <div style={{ display: 'flex', gap: 38 }}>
       <SubTab label="Quote Builder" />
       <SubTab label="Cabinet Library" />
     </div>
+    <div style={{ height: 64, background: C.surface }} />
   </div>
 );
 
 const STabs: React.FC = () => (
   <LightBG>
     <Pad style={{ justifyContent: 'center' }}>
-      <Rise delay={0}><div style={{ ...KICKER, color: C.accent }}>One tab</div></Rise>
-      <Rise delay={6} style={{ marginTop: 14, marginBottom: 44 }}><div style={H1D}>Four tools,<br /><Amber>one tab</Amber><Dot /></div></Rise>
+      <Rise delay={0}><div style={{ ...KICKER, color: C.accent }}>One Cabinet tab</div></Rise>
+      <Rise delay={6} style={{ marginTop: 14, marginBottom: 56 }}><div style={H1D}>Set rates once,<br /><Amber>build, quote, repeat.</Amber></div></Rise>
       <Pop delay={12} style={{ alignSelf: 'center' }}>
-        <div style={{ width: 960 }}>
-          <Window active="cabinet">
-            <div style={{ height: 500, overflow: 'hidden' }}>
-              <CabinetSubTabBar />
-              <BuilderScreen />
-            </div>
-          </Window>
-        </div>
+        <CabinetSubTabBar />
       </Pop>
     </Pad>
   </LightBG>
@@ -239,7 +281,7 @@ const SClose: React.FC = () => (
     <Pad style={{ justifyContent: 'center', alignItems: 'center', textAlign: 'center' }}>
       <Rise delay={0}><div style={{ ...KICKER, color: C.accent }}>Set it once</div></Rise>
       <Rise delay={8} style={{ marginTop: 22 }}><div style={{ ...H1, fontSize: 80 }}>Quote with<br /><Amber>confidence</Amber><Dot /></div></Rise>
-      <Rise delay={18} style={{ marginTop: 26 }}><div style={{ ...SUB, color: 'rgba(255,255,255,0.72)', maxWidth: 760 }}>Delegate the admin — and keep your margins on every job.</div></Rise>
+      <Rise delay={18} style={{ marginTop: 26 }}><div style={{ ...SUB, color: 'rgba(255,255,255,0.72)', maxWidth: 760 }}>Set your rates once, hand off the admin.</div></Rise>
       <Rise delay={30} style={{ marginTop: 60 }}>
         <div style={{ fontSize: 64, fontWeight: 900, color: '#fff', letterSpacing: '-1px' }}>ProCabinet<span style={{ color: C.accent }}>.App</span></div>
         <div style={{ fontSize: 30, color: 'rgba(255,255,255,0.72)', marginTop: 14, display: 'flex', gap: 12, alignItems: 'center', justifyContent: 'center' }}>
@@ -256,8 +298,8 @@ export const CABINET_REEL_DURATION = 861;
 const SCENES: { c: React.FC; from: number; dur: number }[] = [
   { c: SHook, from: 0, dur: 100 },
   { c: STabs, from: 100, dur: 96 },
-  { c: SBuilder, from: 196, dur: 250 }, // slower pan for readability
-  { c: SRates, from: 446, dur: 135 },
+  { c: SRates, from: 196, dur: 135 },
+  { c: SBuilder, from: 331, dur: 250 }, // slower pan for readability
   { c: SBreak, from: 581, dur: 130 },
   { c: SClose, from: 711, dur: 150 },
 ];
