@@ -1928,11 +1928,12 @@ function handleCSVImport(input) {
 }
 
 // ── DXF / CNC EXPORT ──
-// Exports the optimised nested layout as DXF — one file per unique sheet
-// packing — for import into CAM / CNC nesting software. Each part is a closed
-// polyline rectangle sitting at its nested CUT position; the sheet outline and
-// the part labels live on their own layers so they can be toggled in CAM.
-// Pro-only (a data export, mirroring the CSV gating).
+// Exports the optimised nested layout as a single DXF — every unique sheet
+// packing tiled left-to-right into one drawing — for import into CAM / CNC
+// nesting software. Each part is a closed polyline rectangle sitting at its
+// nested CUT position; the sheet outline and the part labels live on their own
+// layers so they can be toggled in CAM. Pro-only (a data export, mirroring the
+// CSV gating).
 //
 // Two correctness points that are easy to get wrong:
 //   • Origin flip — the packer uses a top-left origin (y grows downward, canvas
@@ -1978,20 +1979,33 @@ function _dxfText(layer, cx, cy, height, text) {
 }
 
 /**
- * Assemble a complete DXF document for a single nested sheet layout.
- * @param {any} layout one entry from results.uniqueLayouts / results.layouts
+ * A left-justified TEXT entity at baseline point (x,y) — used for sheet
+ * captions (the centred `_dxfText` is for part labels).
+ * @param {string} layer @param {number} x @param {number} y @param {number} height @param {string} text
  * @returns {string}
  */
-function _buildSheetDXF(layout) {
+function _dxfTextLeft(layer, x, y, height, text) {
+  const t = String(text).replace(/[^\x20-\x7E]/g, '');
+  return `0\nTEXT\n8\n${layer}\n10\n${_dxfNum(x)}\n20\n${_dxfNum(y)}\n30\n0.0\n40\n${_dxfNum(height)}\n1\n${t}\n`;
+}
+
+/**
+ * Entities for ONE sheet placed at block offset (ox, oy): outline (SHEET),
+ * parts (PARTS), part labels + an identifying caption (LABELS). The per-sheet
+ * Y-flip (top-left canvas → bottom-left DXF) happens first, then the whole
+ * block is translated by the offset.
+ * @param {any} layout @param {number} ox @param {number} oy @param {number} idx @param {number} total
+ * @returns {string}
+ */
+function _dxfSheetBlock(layout, ox, oy, idx, total) {
   const sheetW = layout.sheet.w, sheetH = layout.sheet.h;
   const metric = window.units === 'metric';
-  const insUnits = metric ? 4 : 1; // $INSUNITS: 4 = mm, 1 = inch
   const minTh = metric ? 4 : 0.15, maxTh = metric ? 22 : 0.9;
 
-  let ents = _dxfRect('SHEET', 0, 0, sheetW, sheetH);
+  let ents = _dxfRect('SHEET', ox, oy, ox + sheetW, oy + sheetH);
   for (const p of layout.placed) {
-    // Flip Y: canvas top-left corner (p.x, p.y) → DXF bottom-left origin.
-    const x0 = p.x, y0 = sheetH - (p.y + p.h), x1 = p.x + p.w, y1 = sheetH - p.y;
+    const x0 = ox + p.x, y0 = oy + sheetH - (p.y + p.h);
+    const x1 = ox + p.x + p.w, y1 = oy + sheetH - p.y;
     ents += _dxfRect('PARTS', x0, y0, x1, y1);
     const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
     const th = Math.max(minTh, Math.min(Math.min(p.w, p.h) * 0.14, maxTh));
@@ -1999,6 +2013,33 @@ function _buildSheetDXF(layout) {
     if (name) ents += _dxfText('LABELS', cx, cy + th * 0.7, th, name);
     ents += _dxfText('LABELS', cx, cy - th * 0.7, th * 0.8, `${formatDim(p.w)}x${formatDim(p.h)}`);
   }
+  // Caption above the block so each sheet is identifiable in the combined file.
+  const qty = layout.qty || 1;
+  const cap = `Sheet ${idx + 1}/${total}: ${layout.sheet.name || 'Sheet'} `
+    + `[${formatDim(sheetW)}x${formatDim(sheetH)}]${qty > 1 ? ` x${qty}` : ''}`;
+  ents += _dxfTextLeft('LABELS', ox, oy + sheetH + (metric ? 36 : 1.4), metric ? 28 : 1.1, cap);
+  return ents;
+}
+
+/**
+ * Assemble ONE DXF document containing every unique sheet layout, tiled
+ * left-to-right with a gap between blocks.
+ * @param {any[]} layouts results.uniqueLayouts
+ * @returns {string}
+ */
+function _buildLayoutDXF(layouts) {
+  const metric = window.units === 'metric';
+  const insUnits = metric ? 4 : 1;       // $INSUNITS: 4 = mm, 1 = inch
+  const gap = metric ? 100 : 4;          // clear space between sheet blocks
+  const capSpace = metric ? 70 : 2.8;    // caption headroom above each block
+
+  let ents = '', ox = 0, extMaxX = 0, extMaxY = 0;
+  layouts.forEach(/** @param {any} layout @param {number} i */ (layout, i) => {
+    ents += _dxfSheetBlock(layout, ox, 0, i, layouts.length);
+    extMaxX = ox + layout.sheet.w;
+    extMaxY = Math.max(extMaxY, layout.sheet.h + capSpace);
+    ox += layout.sheet.w + gap;
+  });
 
   /** @param {string} name @param {number} color */
   const layer = (name, color) => `0\nLAYER\n2\n${name}\n70\n0\n62\n${color}\n6\nCONTINUOUS\n`;
@@ -2007,7 +2048,7 @@ function _buildSheetDXF(layout) {
     + `9\n$ACADVER\n1\nAC1009\n`
     + `9\n$INSUNITS\n70\n${insUnits}\n`
     + `9\n$EXTMIN\n10\n0.0\n20\n0.0\n`
-    + `9\n$EXTMAX\n10\n${_dxfNum(sheetW)}\n20\n${_dxfNum(sheetH)}\n`
+    + `9\n$EXTMAX\n10\n${_dxfNum(extMaxX)}\n20\n${_dxfNum(extMaxY)}\n`
     + `0\nENDSEC\n`
     + `0\nSECTION\n2\nTABLES\n0\nTABLE\n2\nLAYER\n70\n3\n`
     + layer('SHEET', 5) + layer('PARTS', 3) + layer('LABELS', 7)
@@ -2023,7 +2064,7 @@ function _dxfFilenameSafe(s) {
     .replace(/^-|-$/g, '').slice(0, 60) || 'cutlist';
 }
 
-/** Export the optimised nested layout as DXF files — one per unique sheet. Pro-only. */
+/** Export the optimised nested layout as a single DXF (all sheets tiled). Pro-only. */
 function exportLayoutDXF() {
   if (!_enforceProFeature()) return;
   if (!results || !results.uniqueLayouts || !results.uniqueLayouts.length) {
@@ -2033,22 +2074,18 @@ function exportLayoutDXF() {
   const base = _dxfFilenameSafe(_clCurrentCutlistName || _clCurrentCabinetName || 'cutlist');
   const layouts = results.uniqueLayouts;
   const N = layouts.length;
-  layouts.forEach(/** @param {any} layout @param {number} i */ (layout, i) => {
-    const dxf = _buildSheetDXF(layout);
-    const qty = layout.qty || 1;
-    const fn = `${base}-sheet-${i + 1}of${N}${qty > 1 ? `-x${qty}` : ''}.dxf`;
-    // Stagger multi-file downloads so the browser doesn't drop all but the first.
-    setTimeout(() => {
-      const url = URL.createObjectURL(new Blob([dxf], { type: 'application/dxf' }));
-      const a = Object.assign(document.createElement('a'), { href: url, download: fn });
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 60000);
-    }, i * 250);
-  });
-  if (typeof _track === 'function') _track('cnc_dxf_exported', { sheets: N });
-  _toast(N === 1 ? 'Exported 1 DXF file' : `Exported ${N} DXF files (one per sheet)`, 'success');
+  const phys = layouts.reduce(/** @param {number} s @param {any} l */ (s, l) => s + (l.qty || 1), 0);
+  const dxf = _buildLayoutDXF(layouts);
+  const url = URL.createObjectURL(new Blob([dxf], { type: 'application/dxf' }));
+  const a = Object.assign(document.createElement('a'), { href: url, download: `${base}-nested.dxf` });
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+  if (typeof _track === 'function') _track('cnc_dxf_exported', { layouts: N, sheets: phys });
+  _toast(phys === N
+    ? `Exported nested DXF (${N} sheet${N !== 1 ? 's' : ''})`
+    : `Exported nested DXF (${N} layout${N !== 1 ? 's' : ''}, ${phys} sheets)`, 'success');
 }
 
 // ── LAYOUT TOOLBAR ──

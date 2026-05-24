@@ -25,15 +25,16 @@ Companion docs: `SPEC.md` (refactor history), `SCHEMA.md` (DB schema),
 ### DXF / CNC export of the nested cut layout ✅ Done 2026-05-25
 
 A new **DXF** button in the Cut Layout toolbar (beside PDF) exports the
-optimiser's nested layout as DXF for import into CAM / CNC nesting software —
-one file per unique sheet packing, parts pre-placed at their cut positions.
-Pro-only (mirrors the CSV export gating). G-code is deliberately out of scope:
-the correct handoff is a DXF the user drops into their own CAM, which posts
-G-code for their specific machine.
+optimiser's nested layout as a single DXF for import into CAM / CNC nesting
+software — every unique sheet packing tiled left-to-right into one drawing,
+parts pre-placed at their cut positions. Pro-only (mirrors the CSV export
+gating). G-code is deliberately out of scope: the correct handoff is a DXF the
+user drops into their own CAM, which posts G-code for their specific machine.
 
-- ✅ `src/cutlist.js` — `exportLayoutDXF()` (Pro-gated, iterates
-  `results.uniqueLayouts`, staggered multi-file download) + R12/AC1009 DXF
-  builders `_buildSheetDXF`/`_dxfRect`/`_dxfText`/`_dxfNum`/`_dxfFilenameSafe`.
+- ✅ `src/cutlist.js` — `exportLayoutDXF()` (Pro-gated, one combined download
+  `<name>-nested.dxf`) + R12/AC1009 DXF builders `_buildLayoutDXF` (tiles the
+  unique layouts) / `_dxfSheetBlock` (one sheet at an offset, with caption) /
+  `_dxfRect` / `_dxfText` / `_dxfTextLeft` / `_dxfNum` / `_dxfFilenameSafe`.
   Sheet outline / parts / labels on separate layers; top-left→bottom-left
   origin flip; cut (edge-band-trimmed) sizes; `$INSUNITS` from `window.units`.
 - ✅ `index.html` — `DXF` button in `#layout-toolbar-top`.
