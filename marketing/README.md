@@ -2,6 +2,8 @@
 
 Everything needed for the launch week, in one place. Each file is self-contained — open whichever you need without reading the others first.
 
+> **Generated media lives on disk, not in git.** `marketing/videos/` (rendered `.mp4`s) and `marketing/audio/` (TTS/music) are git-ignored — regenerate them with the `npm run render:*` / `gen:narration` scripts, and keep finished cuts in external storage. The copy, captions, and specs in this folder *are* tracked.
+
 ## What's here
 
 ```
