@@ -1058,6 +1058,7 @@ function _wtCtaHTML() {
           '<li>Free use of all core functions of the app</li>' +
           '<li class="wt-lim"><strong>5 saved items</strong> limit per library</li>' +
           '<li class="wt-lim">No library import / export (CSV)</li>' +
+          '<li class="wt-lim">No CNC / DXF export</li>' +
           '<li class="wt-lim">ProCabinet branding on PDFs</li>' +
           '<li class="wt-lim">Limited access to new features</li>' +
         '</ul>' +
@@ -1071,6 +1072,7 @@ function _wtCtaHTML() {
           '<li>First 6 months, then $35/mo</li>' +
           '<li><strong>Unlimited saved items</strong></li>' +
           '<li>Import / export libraries (CSV)</li>' +
+          '<li>CNC / DXF export</li>' +
           '<li>ProCabinet removed from PDFs</li>' +
           '<li>Priority email support</li>' +
         '</ul>' +
@@ -1084,6 +1086,7 @@ function _wtCtaHTML() {
           '<li>$180 billed for year one, then $300/yr</li>' +
           '<li><strong>Unlimited saved items</strong></li>' +
           '<li>Import / export libraries (CSV)</li>' +
+          '<li>CNC / DXF export</li>' +
           '<li>ProCabinet removed from PDFs</li>' +
           '<li>Priority email support</li>' +
         '</ul>' +
@@ -1098,6 +1101,7 @@ function _wtCtaHTML() {
           '<li>Pay once, use forever</li>' +
           '<li>Only <strong>' + cap + ' accounts</strong> ever</li>' +
           '<li><strong>Everything</strong> in the paid plans</li>' +
+          '<li>CNC / DXF export</li>' +
           '<li>New feature requests prioritised</li>' +
           '<li>WhatsApp group with founder</li>' +
         '</ul>' +
