@@ -44,6 +44,9 @@ let layoutGrain = true;
 let layoutFontScale = parseFloat(localStorage.getItem('pc_font_scale') ?? '') || 1.0;
 let layoutCutOrder = localStorage.getItem('pc_cut_order') === '1';
 let layoutSheetCutList = localStorage.getItem('pc_sheet_cutlist') === '1';
+// Cutting method: 'guillotine' (panel saw, edge-to-edge cuts) or 'nested'
+// (CNC router, parts placed freely). Selects which packer optimize() uses.
+let cutMethod = localStorage.getItem('pc_cut_method') === 'nested' ? 'nested' : 'guillotine';
 /** @type {Record<string, boolean>} */
 let colsVisible = { grain: false, material: true, label: true, notes: false, edgeband: false };
 /** @type {any[]} */
@@ -3438,6 +3441,105 @@ function packSheetRecGuillotine(sheetW, sheetH, sheetGrain, items, kerf) {
   return best || { placed: [], leftover: items };
 }
 
+// ── CNC ROUTER (NESTED) PACKER ──────────────────────────────────────────────
+// Non-guillotine packer for a CNC router: parts can sit anywhere on the sheet
+// (no edge-to-edge cut constraint), so it packs denser than the panel-saw
+// packer. MaxRects with Best-Short-Side-Fit placement.
+//
+// `gap` is the clearance left around every part (the router bit diameter). It is
+// baked into each part's footprint, and the bin is inflated by `gap`, so any two
+// neighbouring parts end up >= gap apart while parts can still reach the real
+// sheet edge. Returns the SAME shape as packSheetRecGuillotine —
+// { placed: [{ x, y, w, h, item, rotated }], leftover } in real (un-inflated)
+// coordinates — so the layout viewer, PDF and DXF export consume it unchanged.
+/**
+ * @param {number} sheetW @param {number} sheetH @param {string} sheetGrain
+ * @param {any[]} items @param {number} gap
+ * @returns {{ placed: any[], leftover: any[] }}
+ */
+function packSheetNested(sheetW, sheetH, sheetGrain, items, gap) {
+  const g = gap || 0;
+  // Allowed orientations given the sheet grain (mirrors the guillotine packer).
+  /** @param {any} it */
+  const orientOf = (it) => {
+    const pg = it.grain || 'none', sg = sheetGrain || 'none';
+    const mustRot = pg !== 'none' && sg !== 'none' && pg !== sg;
+    const canRot  = pg === 'none' || mustRot;
+    const nat = { w: it.w, h: it.h, rotated: false };
+    const rot = { w: it.h, h: it.w, rotated: true };
+    if (mustRot) return [rot, nat];
+    if (canRot)  return [nat, rot];
+    return [nat];
+  };
+
+  // Free-rectangle list. Bin inflated by g so a part touching the real sheet
+  // edge still "fits" with its trailing (virtual) gap.
+  let free = [{ x: 0, y: 0, w: sheetW + g, h: sheetH + g }];
+  /** @type {any[]} */ const placed = [];
+  /** @type {any[]} */ const leftover = [];
+
+  // Largest-first — MaxRects packs best with big pieces placed first.
+  const queue = [...items].sort((a, b) => (b.w * b.h) - (a.w * a.h));
+
+  for (const it of queue) {
+    /** @type {any} */ let best = null;
+    for (let i = 0; i < free.length; i++) {
+      const fr = free[i];
+      for (const o of orientOf(it)) {
+        const fw = o.w + g, fh = o.h + g;            // inflated footprint
+        if (fw > fr.w + 1e-6 || fh > fr.h + 1e-6) continue;
+        const short = Math.min(fr.w - fw, fr.h - fh);
+        const long  = Math.max(fr.w - fw, fr.h - fh);
+        if (!best || short < best.short || (short === best.short && long < best.long)) {
+          best = { x: fr.x, y: fr.y, fw, fh, o, short, long };
+        }
+      }
+    }
+    if (!best) { leftover.push(it); continue; }
+
+    // Place the REAL part at the free-rect origin (un-inflated size).
+    placed.push({ x: best.x, y: best.y, w: best.o.w, h: best.o.h, item: it, rotated: best.o.rotated });
+
+    // Split every free rect overlapping the inflated footprint, then prune.
+    const px0 = best.x, py0 = best.y, px1 = best.x + best.fw, py1 = best.y + best.fh;
+    /** @type {any[]} */ const next = [];
+    for (const fr of free) {
+      if (px0 >= fr.x + fr.w || px1 <= fr.x || py0 >= fr.y + fr.h || py1 <= fr.y) {
+        next.push(fr); continue;                      // no overlap — keep
+      }
+      if (px0 > fr.x)        next.push({ x: fr.x, y: fr.y, w: px0 - fr.x, h: fr.h });
+      if (px1 < fr.x + fr.w) next.push({ x: px1, y: fr.y, w: fr.x + fr.w - px1, h: fr.h });
+      if (py0 > fr.y)        next.push({ x: fr.x, y: fr.y, w: fr.w, h: py0 - fr.y });
+      if (py1 < fr.y + fr.h) next.push({ x: fr.x, y: py1, w: fr.w, h: fr.y + fr.h - py1 });
+    }
+    free = _pruneFreeRects(next);
+  }
+  return { placed, leftover };
+}
+
+/**
+ * MaxRects housekeeping: drop sliver rects and any free rect fully contained in
+ * another (keeps the free list small and correct).
+ * @param {any[]} rects @returns {any[]}
+ */
+function _pruneFreeRects(rects) {
+  const r = rects.filter(a => a.w >= 1 && a.h >= 1);
+  /** @type {any[]} */ const keep = [];
+  for (let i = 0; i < r.length; i++) {
+    const a = r[i];
+    let contained = false;
+    for (let j = 0; j < r.length; j++) {
+      if (i === j) continue;
+      const b = r[j];
+      const inside = a.x >= b.x && a.y >= b.y && a.x + a.w <= b.x + b.w && a.y + a.h <= b.y + b.h;
+      const aArea = a.w * a.h, bArea = b.w * b.h;
+      if (inside && (bArea > aArea || (bArea === aArea && j < i))) { contained = true; break; }
+    }
+    if (!contained) keep.push(a);
+  }
+  return keep;
+}
+
 // Groups physical-sheet layouts that pack identical pieces in identical
 // positions/orientations into a single unique-layout entry with a `qty` count
 // and `physIndexes` (the positions in the flat results.layouts array that
@@ -3471,6 +3573,25 @@ function _groupUniqueLayouts(flatLayouts) {
   return unique;
 }
 
+/**
+ * Switch the cutting method ('guillotine' = panel saw, 'nested' = CNC router).
+ * Persists the choice and re-optimises immediately when a layout is on screen.
+ * @param {string} method
+ */
+function setCutMethod(method) {
+  cutMethod = method === 'nested' ? 'nested' : 'guillotine';
+  localStorage.setItem('pc_cut_method', cutMethod);
+  _syncCutMethodToggle();
+  if (results) optimize();
+}
+
+/** Reflect the current cutMethod on the action-bar toggle buttons. */
+function _syncCutMethodToggle() {
+  const g = _byId('cmt-guillotine'), n = _byId('cmt-nested');
+  if (g) g.classList.toggle('active', cutMethod === 'guillotine');
+  if (n) n.classList.toggle('active', cutMethod === 'nested');
+}
+
 function optimize() {
   const activeSheets = sheets.filter(s => s.enabled !== false);
   const activePieces = pieces.filter(p => p.enabled !== false);
@@ -3501,14 +3622,16 @@ function optimize() {
     });
     if (!fittable.length) continue;
     const sheetKerf = si.kerf ?? 0;
-    // PANEL-SAW OPTIMISATION ───────────────────────────────────────────────
-    // Recursive guillotine only — builds an explicit cut tree by trying both
-    // horizontal and vertical splits at each region and keeping whichever
-    // packs more pieces. Produces clean hierarchical structure ideal for
-    // panel-saw workflows.
-    const recR   = packSheetRecGuillotine(si.w, si.h, si.grain || 'none', fittable, sheetKerf);
-    if (!recR.placed.length) continue;
-    const chosen = recR;
+    // PACK THIS SHEET ───────────────────────────────────────────────────────
+    // Panel saw (guillotine): recursive guillotine builds an explicit cut tree,
+    // trying both splits at each region — clean hierarchical cuts for a saw.
+    // CNC router (nested): MaxRects places parts freely for denser packing,
+    // with `sheetKerf` acting as the router-bit gap between parts.
+    /** @type {{ placed: any[], leftover: any[] }} */
+    const chosen = cutMethod === 'nested'
+      ? packSheetNested(si.w, si.h, si.grain || 'none', fittable, sheetKerf)
+      : packSheetRecGuillotine(si.w, si.h, si.grain || 'none', fittable, sheetKerf);
+    if (!chosen.placed.length) continue;
     const { placed, leftover } = chosen;
     if (!placed.length) continue;
     const usedArea = placed.reduce(/** @param {number} s @param {any} p */ (s, p) => s + p.w * p.h, 0);

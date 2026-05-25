@@ -1573,6 +1573,7 @@ if (pieces.length === 0 && sheets.length === 0) {
   renderPieces();
 }
 initColVisibility();
+if (typeof _syncCutMethodToggle === 'function') _syncCutMethodToggle();
 // Strategy 2 + Idea 3: render the project context (empty state or header)
 // for Cut List on init. Cabinet Builder is rendered through renderCBPanel.
 if (typeof _clRenderContext === 'function') _clRenderContext();

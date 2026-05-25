@@ -22,6 +22,24 @@ Companion docs: `SPEC.md` (refactor history), `SCHEMA.md` (DB schema),
 
 ## Active Work
 
+### Cut type toggle — panel saw (guillotine) vs CNC router (nested) ✅ Done 2026-05-25
+
+The optimiser was guillotine-only (edge-to-edge cuts for a panel saw). Added a
+**Cut for: Panel saw / CNC router** toggle by the Optimize button. CNC-router
+mode uses a non-guillotine packer (parts placed freely, denser packing); the
+per-sheet kerf doubles as the router-bit gap.
+
+- ✅ `src/cutlist.js` — `cutMethod` state (persists to `localStorage.pc_cut_method`),
+  `packSheetNested` (MaxRects-BSSF + rotation/grain, gap baked into footprint) +
+  `_pruneFreeRects`, `setCutMethod`/`_syncCutMethodToggle`, and `optimize()` picks
+  the packer. Output shape identical to the guillotine packer, so layout/PDF/DXF
+  consume it unchanged.
+- ✅ `index.html` — segmented toggle in `#cl-action-bar`; `styles.css` — `.cut-method*`
+  styles; `src/app.js` — init sync.
+- ✅ Verified in the dev preview: nested = 0 overlaps / 0 out-of-bounds / 0 gap
+  violations and denser (94% vs 92% on a real layout); toggle re-optimises and
+  persists. `npm run typecheck` clean. **Detail in SPEC.md § 13.**
+
 ### DXF / CNC export of the nested cut layout ✅ Done 2026-05-25
 
 A new **DXF** button in the Cut Layout toolbar (beside PDF) exports the
