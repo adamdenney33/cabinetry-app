@@ -263,53 +263,106 @@ h1, h2, h3, p, ul { margin: 0; }
 .ticks li::after { content: ""; position: absolute; left: 7px; top: 5px; width: 5px; height: 9px; border-right: 2px solid var(--accent); border-bottom: 2px solid var(--accent); transform: rotate(45deg); }
 .tick-pro { display: inline-block; margin-left: 8px; font-size: 10px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase; color: #1a1a1a; background: var(--accent); padding: 1px 7px; border-radius: 20px; vertical-align: middle; }
 
+/* DXF / external-app shot — already contains its own macOS window chrome,
+   so no .browser-frame wrapper. Match the radius + shadow of other shots. */
+.raw-shot { width: 100%; height: auto; display: block; border-radius: 12px; box-shadow: var(--shadow-lg); }
+
 /* ══════════════════════════════════════
-   MOBILE SECTION (phone mockup in a .feature media slot)
+   MOBILE FEATURE — phone mockup
+   Replaces the .browser-frame on the Optimised-for-mobile section. Mirrors the
+   live tilt/hover pattern: [data-tilt] on .feature-media drives the 3D tilt
+   (landing.js), and an .m-view.alt screen fades in on hover the same way
+   .shot-hover does on the other features.
    ══════════════════════════════════════ */
-.feature-icon svg { width: 28px; height: 28px; transition: filter .2s var(--ease); }
-.feature:hover .feature-icon svg { filter: brightness(0) invert(1); }
+.phone-stage { position: relative; display: flex; align-items: center; justify-content: center; padding: 16px 0; }
+.phone-stage::before { content: ""; position: absolute; z-index: 0; width: 380px; height: 360px; border-radius: 50%; background: radial-gradient(closest-side, var(--accent-dim), transparent 70%); }
+.phone { position: relative; z-index: 1; width: 272px; background: #0c0c0c; border-radius: 44px; padding: 11px; box-shadow: var(--shadow-lg), 0 0 0 2px #000 inset; animation: phone-float 5.4s ease-in-out infinite; }
+@keyframes phone-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+.phone-screen { position: relative; height: 558px; background: var(--bg); border-radius: 33px; overflow: hidden; display: flex; flex-direction: column; }
 
-.phone-stage { position: relative; display: flex; align-items: center; justify-content: center; padding: 12px 0; }
-.phone-stage::before { content: ""; position: absolute; z-index: 0; width: 360px; height: 360px; border-radius: 50%; background: radial-gradient(closest-side, var(--accent-dim), transparent 70%); }
-.phone { position: relative; z-index: 1; width: 272px; background: #0c0c0c; border-radius: 44px; padding: 11px; box-shadow: var(--shadow-lg), 0 0 0 2px #000 inset; }
-.phone-screen { position: relative; height: 552px; background: var(--bg); border-radius: 33px; overflow: hidden; display: flex; flex-direction: column; }
-.phone-notch { position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 118px; height: 22px; background: #0c0c0c; border-radius: 0 0 14px 14px; z-index: 6; }
+/* Dynamic Island — compact idle state */
+.phone-island { position: absolute; top: 9px; left: 50%; transform: translateX(-50%); width: 86px; height: 24px; background: #000; border-radius: 14px; z-index: 6; box-shadow: 0 1px 3px rgba(0,0,0,.45); }
 
-.m-status { display: flex; align-items: center; justify-content: space-between; padding: 9px 20px 5px; font-size: 11px; font-weight: 700; color: var(--text); }
+/* Base/alt screen stack — like .shot-base / .shot-hover */
+.m-views { position: relative; flex: 1; min-height: 0; }
+.m-view { position: absolute; inset: 0; display: flex; flex-direction: column; transition: opacity .45s var(--ease); }
+.m-view.alt { opacity: 0; }
+.feature-media:hover .m-view.alt { opacity: 1; }
+
+/* iOS status bar — hugs the corners around the island */
+.m-status { position: relative; z-index: 4; display: flex; align-items: center; justify-content: space-between; padding: 16px 14px 8px; font-size: 11px; font-weight: 700; color: var(--text); min-height: 30px; }
 .m-status .m-sig { display: flex; align-items: center; gap: 5px; }
 .m-batt { width: 20px; height: 10px; border: 1px solid var(--text); border-radius: 3px; position: relative; }
 .m-batt::before { content: ""; position: absolute; inset: 1.5px; right: 5px; background: var(--text); border-radius: 1px; }
 .m-batt::after { content: ""; position: absolute; right: -3px; top: 3px; width: 2px; height: 4px; background: var(--text); border-radius: 0 1px 1px 0; }
 
-.m-appbar { background: var(--ink); color: #fff; display: flex; align-items: center; justify-content: space-between; padding: 11px 14px; }
-.m-appbar .m-brand { font-size: 14px; font-weight: 800; letter-spacing: -.3px; }
-.m-burger { display: flex; flex-direction: column; gap: 3px; }
-.m-burger i { width: 17px; height: 2px; background: #fff; border-radius: 2px; }
+/* App header — brand wordmark + 4 small icon buttons */
+.m-appbar { background: var(--ink); color: #fff; display: flex; align-items: center; justify-content: space-between; padding: 9px 12px; }
+.m-appbar .m-brand { font-size: 13px; font-weight: 800; letter-spacing: -.3px; }
+.m-actions { display: flex; align-items: center; gap: 4px; }
+.m-ic { width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid rgba(255,255,255,.18); border-radius: 6px; color: rgba(255,255,255,.78); }
+.m-ic svg { width: 13px; height: 13px; }
 
-.m-tabs { display: flex; gap: 4px; background: var(--tabbar); padding: 8px 10px 0; overflow: hidden; }
-.m-tab { flex: 0 0 auto; width: 36px; height: 34px; border-radius: 8px 8px 0 0; display: flex; align-items: center; justify-content: center; }
-.m-tab img { width: 16px; height: 16px; opacity: .55; }
+/* Tab strip — real brand icons, full 8 tabs */
+.m-tabs { display: flex; gap: 3px; background: var(--tabbar); padding: 7px 8px 0; overflow: hidden; }
+.m-tab { flex: 1 1 0; min-width: 0; height: 30px; border-radius: 6px 6px 0 0; display: flex; align-items: center; justify-content: center; }
+.m-tab img { width: 14px; height: 14px; opacity: .55; }
 .m-tab.active { background: var(--surface); border: 1px solid var(--border); border-bottom: none; }
 .m-tab.active img { opacity: 1; }
 
-.m-body { flex: 1; padding: 13px 12px; display: flex; flex-direction: column; gap: 11px; }
-.m-greet { font-size: 14px; font-weight: 800; letter-spacing: -.2px; }
-.m-greet small { display: block; font-weight: 500; color: var(--muted); font-size: 11px; margin-top: 1px; }
-.m-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.m-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 10px 11px; }
-.m-card .n { font-size: 21px; font-weight: 800; letter-spacing: -.6px; line-height: 1.05; }
-.m-card .n.amber { color: var(--accent); }
-.m-card .l { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; margin-top: 2px; }
-.m-sec { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 11px; }
-.m-sec h4 { margin: 0 0 7px; font-size: 10px; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); font-weight: 700; }
-.m-row { display: flex; align-items: center; gap: 9px; padding: 6px 0; border-top: 1px solid var(--surface-2); }
-.m-row:first-of-type { border-top: none; padding-top: 0; }
-.m-bar { width: 4px; height: 26px; border-radius: 3px; background: var(--accent); flex: 0 0 auto; }
-.m-bar.dim { background: #d8d8d8; }
-.m-row .t { flex: 1; font-size: 12px; font-weight: 600; }
-.m-row .d { font-size: 11px; color: var(--muted); }
-.m-alert { display: flex; align-items: center; gap: 8px; background: var(--accent-dim); border: 1px solid var(--accent); border-radius: 11px; padding: 9px 11px; font-size: 11.5px; font-weight: 600; }
-.m-alert b { color: var(--accent); }
+/* Sub-nav (Quote Builder | Cabinet Library) for the editor view */
+.m-subnav { display: flex; background: var(--surface); border-bottom: 1px solid var(--border); }
+.m-subnav span { flex: 1; text-align: center; padding: 9px 6px; font-size: 11px; font-weight: 700; color: var(--muted); border-bottom: 2px solid transparent; }
+.m-subnav span.active { color: var(--text); border-bottom-color: var(--accent); }
+
+/* Page header inside the editor view */
+.m-page-head { display: flex; align-items: center; gap: 8px; padding: 10px 11px 4px; }
+.m-page-head .back { width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; color: var(--text-2); }
+.m-page-head .back svg { width: 16px; height: 16px; }
+.m-page-head .lib-ic { width: 18px; height: 18px; color: var(--accent); display: inline-flex; align-items: center; justify-content: center; }
+.m-page-head .lib-ic svg { width: 16px; height: 16px; }
+.m-page-head h3 { margin: 0; font-size: 14px; font-weight: 800; letter-spacing: -.3px; flex: 1; }
+
+/* Editor form */
+.m-form { padding: 0 11px 8px; display: flex; flex-direction: column; gap: 9px; flex: 1; overflow: hidden; }
+.m-label { font-size: 9.5px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: var(--muted); margin-bottom: 3px; }
+.m-input { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; font-size: 12px; font-weight: 600; color: var(--text); display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.m-input .plus { width: 18px; height: 18px; flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; color: var(--accent); font-weight: 800; font-size: 14px; line-height: 1; }
+.m-section-hd { display: flex; align-items: center; gap: 6px; padding: 7px 0 2px; font-size: 12px; font-weight: 800; }
+.m-section-hd .caret { color: var(--text-2); font-size: 9px; }
+.m-section-hd .amt { color: var(--accent); margin-left: auto; }
+.m-section-hd .dims { color: var(--muted); font-weight: 500; font-size: 11px; }
+.m-dims { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+.m-dims .m-input { padding: 7px 8px; }
+.m-dims .m-label { margin-bottom: 2px; font-size: 9px; }
+.m-form-scroll { flex: 1; overflow: hidden; position: relative; display: flex; flex-direction: column; gap: 9px; }
+.m-form-scroll::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 36px; background: linear-gradient(to bottom, transparent, var(--bg)); pointer-events: none; }
+
+/* Body container */
+.m-body { flex: 1; padding: 11px 11px 0; display: flex; flex-direction: column; gap: 11px; background: var(--bg); overflow: hidden; }
+
+/* Quick-action shortcut pills (Dashboard view) */
+.m-shortcuts { display: flex; flex-wrap: wrap; gap: 6px; }
+.m-sc { font-size: 11px; font-weight: 700; padding: 7px 11px; border-radius: 8px; background: var(--surface); color: var(--text); border: 1px solid var(--border); line-height: 1; }
+.m-sc.amber { background: var(--accent); color: #1a1a1a; border-color: var(--accent); }
+
+/* Dashboard cards (Active Orders / Recent Quotes) */
+.m-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 10px 11px 4px; }
+.m-card h4 { margin: 0; font-size: 13px; font-weight: 800; letter-spacing: -.2px; padding-bottom: 8px; border-bottom: 1px solid var(--surface-2); }
+.m-row { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 4px 8px; padding: 7px 0; border-bottom: 1px solid var(--surface-2); }
+.m-row:last-child { border-bottom: none; }
+.m-row .ord { font-size: 11.5px; font-weight: 700; letter-spacing: -.1px; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 145px; }
+.m-row .proj { grid-column: 1; font-size: 10.5px; color: var(--muted); line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 145px; }
+.m-row .amt { grid-column: 2; grid-row: 1; font-size: 12px; font-weight: 800; text-align: right; }
+.m-row .pill { grid-column: 2; grid-row: 2; justify-self: end; font-size: 9px; font-weight: 700; letter-spacing: .2px; padding: 2px 6px; border-radius: 10px; background: var(--surface-2); color: var(--text-2); white-space: nowrap; }
+.m-row .pill.prod  { background: rgba(232,168,56,.18); color: #8a6a1f; }
+.m-row .pill.conf  { background: rgba(110,90,210,.16); color: #5a48b8; }
+.m-row .pill.draft { background: var(--surface-2);    color: var(--muted); }
+
+/* Reduced motion — disable the float */
+@media (prefers-reduced-motion: reduce) {
+  .phone { animation: none !important; }
+}
 
 /* ══════════════════════════════════════
    OS / SOP BAND

@@ -1,0 +1,476 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mockup — "Optimised for mobile" landing section</title>
+
+  <!-- Pulls the LIVE landing stylesheet so the new section matches the real page
+       exactly (served from root by the Vite dev server: root '.', publicDir false).
+       The only extra CSS below is the phone-frame mockup + this preview's chrome.
+       Note: the <html> element deliberately has NO `.js` class, so the real page's
+       reveal-on-scroll hidden states don't apply here and everything renders. -->
+  <link rel="stylesheet" href="/landing.css" />
+
+  <style>
+    /* ── Feature icon: the live page uses <img>; this section uses an inline
+         <svg> (no phone glyph exists in the brand set yet), so mirror the
+         icon sizing + the on-hover white-glyph treatment. ── */
+    .feature-icon svg { width: 28px; height: 28px; transition: filter .2s var(--ease); }
+    .feature:hover .feature-icon svg { filter: brightness(0) invert(1); }
+
+    /* ══════════ PHONE MOCKUP (lives where a .browser-frame normally would) ══════════
+       Mirrors the live page's pattern: one device, JS-driven 3D tilt on .feature-media
+       (data-tilt + landing.js), and a base/hover swap (like .shot-base/.shot-hover) for
+       the second screen — the editor view fades in on .feature-media:hover. */
+    .phone-stage {
+      position: relative;
+      display: flex; align-items: center; justify-content: center;
+      padding: 16px 0;
+    }
+    /* Soft on-brand glow behind the device */
+    .phone-stage::before {
+      content: ""; position: absolute; z-index: 0;
+      width: 380px; height: 360px; border-radius: 50%;
+      background: radial-gradient(closest-side, var(--accent-dim), transparent 70%);
+    }
+    .phone {
+      position: relative; z-index: 1;
+      width: 272px;
+      background: #0c0c0c;
+      border-radius: 44px;
+      padding: 11px;
+      box-shadow: var(--shadow-lg), 0 0 0 2px #000 inset;
+      animation: phone-float 5.4s ease-in-out infinite;
+    }
+    @keyframes phone-float {
+      0%, 100% { transform: translateY(0); }
+      50%      { transform: translateY(-6px); }
+    }
+    .phone-screen {
+      position: relative;
+      height: 558px;
+      background: var(--bg);
+      border-radius: 33px;
+      overflow: hidden;
+      display: flex; flex-direction: column;
+    }
+
+    /* Base / hover stack — mirrors .shot-base / .shot-hover from landing.css.
+       Both screens fill the area below the OS chrome; the alt fades in on hover. */
+    .m-views { position: relative; flex: 1; min-height: 0; }
+    .m-view  { position: absolute; inset: 0; display: flex; flex-direction: column; transition: opacity .45s var(--ease); }
+    .m-view.alt { opacity: 0; }
+    .feature-media:hover .m-view.alt { opacity: 1; }
+
+    /* iOS Dynamic Island — compact idle state: small empty black pill. */
+    .phone-island {
+      position: absolute; top: 9px; left: 50%; transform: translateX(-50%);
+      width: 86px; height: 24px;
+      background: #000;
+      border-radius: 14px;
+      z-index: 6;
+      box-shadow: 0 1px 3px rgba(0,0,0,.45);
+    }
+
+    /* iOS status bar — items hug the corners so they sit either side of the island */
+    .m-status {
+      position: relative; z-index: 4;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px 14px 8px; font-size: 11px; font-weight: 700; color: var(--text);
+      min-height: 30px;
+    }
+    .m-status .m-sig { display: flex; align-items: center; gap: 5px; }
+    .m-batt { width: 20px; height: 10px; border: 1px solid var(--text); border-radius: 3px; position: relative; }
+    .m-batt::before { content: ""; position: absolute; inset: 1.5px; right: 5px; background: var(--text); border-radius: 1px; }
+    .m-batt::after  { content: ""; position: absolute; right: -3px; top: 3px; width: 2px; height: 4px; background: var(--text); border-radius: 0 1px 1px 0; }
+
+    /* App header — matches the real app: brand wordmark + 4 small icon buttons */
+    .m-appbar {
+      background: var(--ink); color: #fff;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 9px 12px;
+    }
+    .m-appbar .m-brand { font-size: 13px; font-weight: 800; letter-spacing: -.3px; }
+    .m-actions { display: flex; align-items: center; gap: 4px; }
+    .m-ic {
+      width: 24px; height: 24px;
+      display: inline-flex; align-items: center; justify-content: center;
+      border: 1px solid rgba(255,255,255,.18); border-radius: 6px;
+      color: rgba(255,255,255,.78);
+    }
+    .m-ic svg { width: 13px; height: 13px; }
+
+    /* Tab strip — real brand icons; only 8th tab clips because the bar is too narrow at phone width (matches real) */
+    .m-tabs { display: flex; gap: 3px; background: var(--tabbar); padding: 7px 8px 0; overflow: hidden; }
+    .m-tab {
+      flex: 1 1 0; min-width: 0;
+      height: 30px;
+      border-radius: 6px 6px 0 0;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .m-tab img { width: 14px; height: 14px; opacity: .55; }
+    .m-tab.active { background: var(--surface); border: 1px solid var(--border); border-bottom: none; }
+    .m-tab.active img { opacity: 1; }
+
+    /* Screen body */
+    .m-body {
+      flex: 1; padding: 11px 11px 0;
+      display: flex; flex-direction: column; gap: 11px;
+      background: var(--bg);
+      overflow: hidden;
+    }
+    /* Quick-action shortcut row (matches the real dashboard's chunky pill buttons) */
+    .m-shortcuts { display: flex; flex-wrap: wrap; gap: 6px; }
+    .m-sc {
+      font-size: 11px; font-weight: 700;
+      padding: 7px 11px;
+      border-radius: 8px;
+      background: var(--surface); color: var(--text);
+      border: 1px solid var(--border);
+      line-height: 1;
+    }
+    .m-sc.amber { background: var(--accent); color: #1a1a1a; border-color: var(--accent); }
+
+    /* Card (mirrors the dashboard's Active Orders / Recent Quotes blocks) */
+    .m-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px 11px 4px;
+    }
+    .m-card h4 {
+      margin: 0; font-size: 13px; font-weight: 800; letter-spacing: -.2px;
+      padding-bottom: 8px; border-bottom: 1px solid var(--surface-2);
+    }
+    .m-row {
+      display: grid; grid-template-columns: 1fr auto;
+      align-items: center; gap: 4px 8px;
+      padding: 7px 0;
+      border-bottom: 1px solid var(--surface-2);
+    }
+    .m-row:last-child { border-bottom: none; }
+    .m-row .ord { font-size: 11.5px; font-weight: 700; letter-spacing: -.1px; line-height: 1.15;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 145px; }
+    .m-row .proj { grid-column: 1; font-size: 10.5px; color: var(--muted); line-height: 1.15;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 145px; }
+    .m-row .amt  { grid-column: 2; grid-row: 1; font-size: 12px; font-weight: 800; text-align: right; }
+    .m-row .pill {
+      grid-column: 2; grid-row: 2;
+      justify-self: end;
+      font-size: 9px; font-weight: 700; letter-spacing: .2px;
+      padding: 2px 6px; border-radius: 10px;
+      background: var(--surface-2); color: var(--text-2);
+      white-space: nowrap;
+    }
+    .m-row .pill.prod    { background: rgba(232,168,56,.18); color: #8a6a1f; }
+    .m-row .pill.conf    { background: rgba(110,90,210,.16);  color: #5a48b8; }
+    .m-row .pill.draft   { background: var(--surface-2);      color: var(--muted); }
+    .m-row .pill.sent    { background: rgba(110,90,210,.16);  color: #5a48b8; }
+
+    /* ── Editor-view styles (second phone: Cabinet Builder editor on mobile) ── */
+    /* Sub-nav (Quote Builder | Cabinet Library) below the main tabs */
+    .m-subnav { display: flex; background: var(--surface); border-bottom: 1px solid var(--border); }
+    .m-subnav span {
+      flex: 1; text-align: center;
+      padding: 9px 6px;
+      font-size: 11px; font-weight: 700;
+      color: var(--muted);
+      border-bottom: 2px solid transparent;
+    }
+    .m-subnav span.active { color: var(--text); border-bottom-color: var(--accent); }
+
+    /* Editor page header — back arrow + breadcrumb + title */
+    .m-page-head { display: flex; align-items: center; gap: 8px; padding: 10px 11px 4px; }
+    .m-page-head .back { width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; color: var(--text-2); }
+    .m-page-head .back svg { width: 16px; height: 16px; }
+    .m-page-head .lib-ic { width: 18px; height: 18px; color: var(--accent); display: inline-flex; align-items: center; justify-content: center; }
+    .m-page-head .lib-ic svg { width: 16px; height: 16px; }
+    .m-page-head h3 { margin: 0; font-size: 14px; font-weight: 800; letter-spacing: -.3px; flex: 1; }
+
+    /* Form rows inside the editor */
+    .m-form { padding: 0 11px 8px; display: flex; flex-direction: column; gap: 9px; flex: 1; overflow: hidden; }
+    .m-label { font-size: 9.5px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: var(--muted); margin-bottom: 3px; }
+    .m-input {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 12px; font-weight: 600; color: var(--text);
+      display: flex; align-items: center; justify-content: space-between; gap: 6px;
+    }
+    .m-input .plus {
+      width: 18px; height: 18px; flex: 0 0 auto;
+      display: inline-flex; align-items: center; justify-content: center;
+      color: var(--accent); font-weight: 800; font-size: 14px; line-height: 1;
+    }
+    /* Cabinet section header (▼ Cabinet | $150 | dims) */
+    .m-section-hd {
+      display: flex; align-items: center; gap: 6px;
+      padding: 7px 0 2px;
+      font-size: 12px; font-weight: 800;
+    }
+    .m-section-hd .caret { color: var(--text-2); font-size: 9px; }
+    .m-section-hd .amt   { color: var(--accent); margin-left: auto; }
+    .m-section-hd .dims  { color: var(--muted); font-weight: 500; font-size: 11px; }
+    /* Three dimension inputs side-by-side */
+    .m-dims { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+    .m-dims .m-input { padding: 7px 8px; }
+    .m-dims .m-label { margin-bottom: 2px; font-size: 9px; }
+    /* Form scroll fade-out at bottom so it reads as "more below" */
+    .m-form-scroll {
+      flex: 1; overflow: hidden; position: relative;
+      display: flex; flex-direction: column; gap: 9px;
+    }
+    .m-form-scroll::after {
+      content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 36px;
+      background: linear-gradient(to bottom, transparent, var(--bg));
+      pointer-events: none;
+    }
+
+    /* Reduced motion — disable the float */
+    @media (prefers-reduced-motion: reduce) {
+      .phone { animation: none !important; }
+    }
+
+    /* ── Preview chrome (not part of the real page) ── */
+    .mock-banner { background: var(--ink); color: #fff; padding: 14px 20px; font-size: 14px; text-align: center; }
+    .mock-banner b { color: var(--accent); }
+    .mock-head { max-width: var(--maxw); margin: 42px auto 0; padding: 0 24px; }
+    .mock-head .eyebrow { font-size: 12px; }
+    .mock-head h2 { font-size: 26px; font-weight: 800; letter-spacing: -.4px; margin: 6px 0 0; }
+    .mock-head p { margin: 8px 0 0; color: var(--text-2); font-size: 15px; max-width: 74ch; }
+    .mock-note { max-width: var(--maxw); margin: 24px auto 40px; padding: 14px 18px; background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: 10px; color: var(--text-2); font-size: 14px; }
+    .mock-note b { color: var(--text); }
+  </style>
+</head>
+<body>
+
+  <div class="mock-banner">
+    <b>MOCKUP</b> &nbsp;·&nbsp; "Optimised for mobile" landing section &nbsp;·&nbsp; not live &nbsp;·&nbsp; uses the real <b>landing.css</b> — say the word and I'll drop it into <b>landing.html</b>
+  </div>
+
+  <div class="mock-head">
+    <span class="eyebrow">Landing · new feature section</span>
+    <h2>Optimised for mobile</h2>
+    <p>Same feature layout, copy and styling as every other section on the live page. Single phone with <b>JS-driven 3D tilt</b> (the existing <code>[data-tilt]</code> + <code>landing.js</code> behaviour the other screenshots use) — <b>hover the phone</b> to see the Dashboard swap to the Cabinet Builder editor, the same way the desktop browser-frame stacks fade in their "active edit" view. Compact iOS Dynamic Island, gentle float (both paused under <code>prefers-reduced-motion</code>).</p>
+  </div>
+
+  <!-- ══════════════ THE NEW SECTION (live markup) ══════════════ -->
+  <section class="feature" id="f-mobile" data-spy="mobile" data-reveal>
+    <div class="feature-copy">
+      <span class="feature-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect>
+          <line x1="12" y1="18" x2="12.01" y2="18"></line>
+        </svg>
+      </span>
+      <h3>Optimised for mobile</h3>
+      <p class="promise">Your whole workshop, in your pocket. The same app, laid out for a phone — so you can quote, check and update jobs wherever the work actually is.</p>
+      <ul class="ticks">
+        <li>Build and send a quote on site, before you've left the driveway.</li>
+        <li>Pull up the optimised cut list right at the saw — no printout needed.</li>
+        <li>Move an order down the pipeline from the workshop floor.</li>
+        <li>Runs in your phone's browser — add it to your home screen, nothing to install.</li>
+      </ul>
+    </div>
+
+    <div class="feature-media" data-tilt>
+      <div class="phone-stage">
+        <div class="phone">
+          <div class="phone-screen" role="img" aria-label="ProCabinet.App on a phone — Dashboard (default) swaps to Cabinet Builder editor on hover">
+
+            <!-- Dynamic Island — compact idle pill -->
+            <div class="phone-island" aria-hidden="true"></div>
+
+            <!-- iOS status bar (wraps around the island) -->
+            <div class="m-status">
+              <span>9:41</span>
+              <span class="m-sig">
+                <svg width="16" height="11" viewBox="0 0 16 11" aria-hidden="true"><g fill="#111"><rect x="0" y="7" width="3" height="4" rx="1"/><rect x="4.5" y="5" width="3" height="6" rx="1"/><rect x="9" y="2.5" width="3" height="8.5" rx="1"/><rect x="13.5" y="0" width="3" height="11" rx="1" opacity=".35"/></g></svg>
+                <span style="font-size:10px;font-weight:700">5G</span>
+                <span class="m-batt" aria-hidden="true"></span>
+              </span>
+            </div>
+
+            <!-- App header — brand + the 4 small action icons from the real app -->
+            <div class="m-appbar">
+              <span class="m-brand">ProCabinet.App</span>
+              <span class="m-actions" aria-hidden="true">
+                <span class="m-ic" title="Cut list">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3 18 3l3 3-3.3 3.3"/><path d="m18 3-9 9"/><path d="M9 12 5 8H3v2l4 4"/><path d="m9 12 5 5"/><path d="m14 17-2 2"/></svg>
+                </span>
+                <span class="m-ic" title="Help">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 1 1 5.8 1c0 2-3 2-3 4"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                </span>
+                <span class="m-ic" title="Settings">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                </span>
+                <span class="m-ic" title="Menu">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+                </span>
+              </span>
+            </div>
+
+            <!-- Below the OS chrome + app header: base/hover stack.
+                 Base = Dashboard; hover-alt = Cabinet Builder editor. -->
+            <div class="m-views">
+
+            <!-- ── Base view: Dashboard ── -->
+            <div class="m-view base">
+            <!-- Tab strip — full 8 tabs, icon-only on mobile (real app behaviour <900px) -->
+            <div class="m-tabs" aria-hidden="true">
+              <span class="m-tab active"><img src="/brand/icons/individual/dashboard.svg" alt="" /></span>
+              <span class="m-tab"><img src="/brand/icons/individual/cut-list.svg" alt="" /></span>
+              <span class="m-tab"><img src="/brand/icons/individual/cabinet.svg" alt="" /></span>
+              <span class="m-tab"><img src="/brand/icons/individual/stock.svg" alt="" /></span>
+              <span class="m-tab"><img src="/brand/icons/individual/orders.svg" alt="" /></span>
+              <span class="m-tab"><img src="/brand/icons/individual/quotes.svg" alt="" /></span>
+              <span class="m-tab"><img src="/brand/icons/individual/clients.svg" alt="" /></span>
+              <span class="m-tab"><img src="/brand/icons/individual/schedule.svg" alt="" /></span>
+            </div>
+
+            <div class="m-body">
+              <!-- Quick-action shortcuts: chunky pills with Schedule selected, mirroring the real dashboard -->
+              <div class="m-shortcuts">
+                <span class="m-sc amber">Schedule</span>
+                <span class="m-sc">+ Cut List</span>
+                <span class="m-sc">+ Cabinet</span>
+                <span class="m-sc">+ Stock</span>
+                <span class="m-sc">+ Order</span>
+                <span class="m-sc">+ Quote</span>
+                <span class="m-sc">+ Client</span>
+              </div>
+
+              <!-- Active Orders card — same rows you'd see on the live demo -->
+              <div class="m-card">
+                <h4>Active Orders</h4>
+                <div class="m-row">
+                  <span class="ord">ORD-0315 · Daniel &amp; Em…</span>
+                  <span class="amt">$5,980</span>
+                  <span class="proj">Cole Study Built-ins</span>
+                  <span class="pill prod">In Production</span>
+                </div>
+                <div class="m-row">
+                  <span class="ord">ORD-0312 · Sarah Mitch…</span>
+                  <span class="amt">$8,450</span>
+                  <span class="proj">Mitchell Kitchen Renovation</span>
+                  <span class="pill prod">In Production</span>
+                </div>
+                <div class="m-row">
+                  <span class="ord">ORD-0316 · Westside Pro…</span>
+                  <span class="amt">$11,200</span>
+                  <span class="proj">Westside Apartment 12B</span>
+                  <span class="pill conf">Confirmed</span>
+                </div>
+              </div>
+
+              <!-- Glimpse of the next card so the screen reads as "more below", not as a terminus -->
+              <div class="m-card" style="padding-bottom:11px">
+                <h4>Recent Quotes</h4>
+                <div class="m-row" style="border-bottom:none">
+                  <span class="ord">QUO-1044 · Sarah Mitchell</span>
+                  <span class="amt">$2,891</span>
+                  <span class="proj">Mitchell Walk-in Robe</span>
+                  <span class="pill draft">Draft</span>
+                </div>
+              </div>
+            </div>
+            </div><!-- /.m-view.base -->
+
+            <!-- ── Hover-alt view: Cabinet Builder editor ── -->
+            <div class="m-view alt">
+            <!-- Tab strip — Cabinet (3rd) is the active one this time -->
+            <div class="m-tabs" aria-hidden="true">
+              <span class="m-tab"><img src="/brand/icons/individual/dashboard.svg" alt="" /></span>
+              <span class="m-tab"><img src="/brand/icons/individual/cut-list.svg" alt="" /></span>
+              <span class="m-tab active"><img src="/brand/icons/individual/cabinet.svg" alt="" /></span>
+              <span class="m-tab"><img src="/brand/icons/individual/stock.svg" alt="" /></span>
+              <span class="m-tab"><img src="/brand/icons/individual/orders.svg" alt="" /></span>
+              <span class="m-tab"><img src="/brand/icons/individual/quotes.svg" alt="" /></span>
+              <span class="m-tab"><img src="/brand/icons/individual/clients.svg" alt="" /></span>
+              <span class="m-tab"><img src="/brand/icons/individual/schedule.svg" alt="" /></span>
+            </div>
+
+            <!-- Sub-nav (Quote Builder | Cabinet Library) -->
+            <div class="m-subnav" aria-hidden="true">
+              <span>Quote Builder</span>
+              <span class="active">Cabinet Library</span>
+            </div>
+
+            <!-- Editor body: page header + form -->
+            <div class="m-body" style="padding:0; gap:0">
+              <div class="m-page-head">
+                <span class="back" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+                </span>
+                <span class="lib-ic" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="#e8a838" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="9" x2="9" y2="21"/></svg>
+                </span>
+                <h3>Cabinet Library</h3>
+              </div>
+
+              <div class="m-form">
+                <div>
+                  <div class="m-label">Name</div>
+                  <div class="m-input"><span>Base Cabinet 600</span></div>
+                </div>
+
+                <div class="m-form-scroll">
+                  <div class="m-section-hd">
+                    <span class="caret">▼</span>
+                    <span>Cabinet</span>
+                    <span class="amt">$150</span>
+                    <span class="dims">600×720×560</span>
+                  </div>
+
+                  <div class="m-dims">
+                    <div>
+                      <div class="m-label">W (mm)</div>
+                      <div class="m-input"><span>600</span></div>
+                    </div>
+                    <div>
+                      <div class="m-label">H (mm)</div>
+                      <div class="m-input"><span>720</span></div>
+                    </div>
+                    <div>
+                      <div class="m-label">D (mm)</div>
+                      <div class="m-input"><span>560</span></div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div class="m-label">Carcass Material</div>
+                    <div class="m-input"><span>Birch Ply 18mm</span><span class="plus">+</span></div>
+                  </div>
+
+                  <div>
+                    <div class="m-label">Back Panel</div>
+                    <div class="m-input"><span>Plywood 3mm (backs)</span><span class="plus">+</span></div>
+                  </div>
+
+                  <div>
+                    <div class="m-label">Carcass Type</div>
+                    <div class="m-input"><span>Standard</span><span class="plus" style="color:var(--text-2);font-weight:400">⌄</span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            </div><!-- /.m-view.alt -->
+
+            </div><!-- /.m-views -->
+          </div><!-- /.phone-screen -->
+        </div><!-- /.phone -->
+      </div>
+    </div>
+  </section>
+
+  <div class="mock-note">
+    <b>Where it slots in:</b> best placed right after the existing feature run (Dashboard) and before the dark <b>"operating system"</b> band — it reads as the closing "...and it's with you everywhere" beat. <code>brand/icons/individual/mobile.svg</code> is already in place for the feature icon. The Dynamic Island sits in its compact idle state, the phone floats gently, and the screen swap on hover matches how the other feature sections already work.
+  </div>
+
+  <!-- Load the live landing.js so the data-tilt 3D tilt animates exactly as on
+       the real page. landing.js is safe without the .js class on <html>: the
+       reveal CSS only hides elements when that class is present, so all content
+       still renders here. -->
+  <script src="/landing.js" defer></script>
+
+</body>
+</html>

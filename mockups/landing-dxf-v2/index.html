@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mockup — "Cut on any CNC" landing section (DXF export)</title>
+
+  <!-- Links the live landing stylesheet so the new section matches the real page
+       exactly. The only extra CSS below is for this preview's chrome banner. -->
+  <link rel="stylesheet" href="/landing.css" />
+
+  <style>
+    /* Pro chip used inline in the section heading area (same colours as the
+       existing landing pro-tag pattern; keeps the section visually consistent
+       with the pricing-tier story). */
+    .feature-icon { position: relative; }
+    .pro-flag {
+      display: inline-block; vertical-align: middle;
+      margin-left: 10px; transform: translateY(-2px);
+      font-size: 11px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase;
+      color: #1a1a1a; background: var(--accent);
+      padding: 3px 9px; border-radius: 20px;
+    }
+
+    /* The AutoCAD screenshot already contains its own macOS window — no extra
+       browser-frame around it. A subtle shadow + matching corner radius keeps it
+       visually flush with the other feature shots without the double-window effect. */
+    .raw-shot {
+      width: 100%; height: auto; display: block;
+      border-radius: 12px;
+      box-shadow: var(--shadow-lg);
+    }
+
+    /* ── Preview chrome (not part of the real page) ── */
+    .mock-banner { background: var(--ink); color: #fff; padding: 14px 20px; font-size: 14px; text-align: center; }
+    .mock-banner b { color: var(--accent); }
+    .mock-head { max-width: var(--maxw); margin: 42px auto 0; padding: 0 24px; }
+    .mock-head .eyebrow { font-size: 12px; }
+    .mock-head h2 { font-size: 26px; font-weight: 800; letter-spacing: -.4px; margin: 6px 0 0; }
+    .mock-head p { margin: 8px 0 0; color: var(--text-2); font-size: 15px; max-width: 74ch; }
+    .mock-note { max-width: var(--maxw); margin: 24px auto 40px; padding: 14px 18px; background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: 10px; color: var(--text-2); font-size: 14px; }
+    .mock-note b { color: var(--text); }
+    .mock-note code { background: var(--surface-2); padding: 1px 5px; border-radius: 4px; font-size: 13px; }
+  </style>
+</head>
+<body>
+
+  <div class="mock-banner">
+    <b>MOCKUP</b> &nbsp;·&nbsp; new "Cut on any CNC" landing section (DXF export) &nbsp;·&nbsp; not live &nbsp;·&nbsp; uses the real <b>landing.css</b> &amp; the real <b>09-dxf-export.png</b> — say the word and I'll drop it into <b>landing.html</b>
+  </div>
+
+  <div class="mock-head">
+    <span class="eyebrow">Landing · new feature section</span>
+    <h2>Cut on any CNC</h2>
+    <p>Dedicated feature section that follows the existing Cut List block. Same copy, ticks and 3D tilt (<code>[data-tilt]</code> + <code>landing.js</code>) as every other feature on the live page. The screenshot — your real <em>Westside-12B-Cut-List-nested.dxf</em> open in AutoCAD — already shows a macOS window, so it stands on its own (no <code>.browser-frame</code> wrapper, just a soft shadow + matching corner radius).</p>
+  </div>
+
+  <!-- ══════════════ THE NEW SECTION (live markup) ══════════════ -->
+  <section class="feature" id="f-dxf" data-spy="cutlist" data-reveal>
+    <div class="feature-copy">
+      <span class="feature-icon"><img src="/brand/icons/individual/cut-list.svg" alt="" /></span>
+      <h3>Cut on any CNC <span class="pro-flag">Pro</span></h3>
+      <p class="promise">The same nest you see on screen, exported as a DXF your router can read.</p>
+      <ul class="ticks">
+        <li>One file, every sheet nested and labelled with the material and stock size.</li>
+        <li>Every part labelled with its name and finished dimensions — edge-banding trim already taken off.</li>
+        <li>Opens in any CAM — Vectric, Fusion, AlphaCAM, Cabinet Vision, anything that reads DXF.</li>
+        <li>You post the G-code for your own machine, so feeds and tooling stay yours.</li>
+      </ul>
+    </div>
+    <div class="feature-media" data-tilt>
+      <img class="raw-shot" src="/brand/screenshots/09-dxf-export.png" alt="Nested DXF cut list opened in AutoCAD, showing labelled cabinet panels across a sheet of melamine" loading="lazy" />
+    </div>
+  </section>
+
+  <div class="mock-note">
+    <b>Where it slots in:</b> straight after the existing <b>Cut List Optimiser</b> section so the DXF export reads as the natural "and then the cutter…" follow-on. Cut List is image-left (<code>reverse</code>), so this one is image-right (default) to keep the alternating rhythm — and Quotes (next) flips to image-left.<br>
+    <br>
+    <b>Pro flag:</b> the heading carries a small Pro chip matching the existing pricing tier story. The pricing cards already list <code>CNC / DXF export</code> as a paid-tier line — that copy now has a real feature section to point at.
+  </div>
+
+  <!-- Load the live landing.js so [data-tilt] animates exactly as it does on
+       the real page. Safe without the .js class on <html>: the reveal CSS only
+       hides elements when that class is present. -->
+  <script src="/landing.js" defer></script>
+
+</body>
+</html>
