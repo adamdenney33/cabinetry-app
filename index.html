@@ -579,8 +579,10 @@
           <button class="layout-tool-btn" onclick="exportLayoutDXF()" title="Export nested sheets as DXF for CNC / CAM">DXF</button>
         </div>
         <div class="layout-toolbar layout-toolbar-bot" id="layout-toolbar">
-          <button class="layout-tool-btn active" id="cmt-guillotine" onclick="setCutMethod('guillotine')" title="Panel saw — every cut runs edge to edge across the board">Saw</button>
-          <button class="layout-tool-btn" id="cmt-nested" onclick="setCutMethod('nested')" title="CNC router — parts nested freely; the kerf value is the bit gap between parts">Router</button>
+          <div class="lt-toggle" role="group" aria-label="Cutting method">
+            <button class="lt-toggle-opt active" id="cmt-guillotine" onclick="setCutMethod('guillotine')" title="Panel saw — every cut runs edge to edge across the board">Saw</button>
+            <button class="lt-toggle-opt" id="cmt-nested" onclick="setCutMethod('nested')" title="CNC router — parts nested freely; the kerf value is the bit gap between parts">Router</button>
+          </div>
           <div class="layout-tool-sep"></div>
           <button class="layout-tool-btn" id="lt-cutorder" onclick="toggleCutOrder()" title="Show numbered cut sequence">Cut order</button>
           <button class="layout-tool-btn" id="lt-sheetcl" onclick="toggleSheetCutList()" title="Show cut list under each sheet">Cut list</button>
