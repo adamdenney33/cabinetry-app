@@ -3652,6 +3652,14 @@ function optimize() {
   // for downstream consumers (stock.js, quotes.js).
   results.uniqueLayouts = _groupUniqueLayouts(results.layouts);
 
+  // Immediate feedback when not everything fitted on the available sheets —
+  // the persistent banner in renderLayout lists which parts; this toast just
+  // surfaces the count so the user notices right after clicking Optimize.
+  if (results.unplaced.length && typeof _toast === 'function') {
+    const n = results.unplaced.length;
+    _toast(`${n} part${n === 1 ? '' : 's'} didn't fit — add more sheets`, 'error');
+  }
+
   activeSheetIdx = 0;
   if (typeof switchCLMainView === 'function') switchCLMainView('layout');
   // Mobile: the layout renders in the list pane (cl-right) — reveal it.
@@ -3718,6 +3726,34 @@ function renderLayout(area, tries) {
   const cur = window.currency;
 
   area.innerHTML = '';
+
+  // Unplaced-parts banner — pinned to the top of the layout view so it can't
+  // be missed. Groups instances by (label, w, h) into per-part chips with a
+  // quantity badge, and tells the user what to do next.
+  if (results.unplaced.length) {
+    /** @type {Map<string, { label: string, w: number, h: number, qty: number }>} */
+    const grouped = new Map();
+    for (const p of results.unplaced) {
+      const k = `${p.label}|${p.w}|${p.h}`;
+      const g = grouped.get(k);
+      if (g) g.qty++; else grouped.set(k, { label: p.label, w: p.w, h: p.h, qty: 1 });
+    }
+    const chips = [...grouped.values()].map(g =>
+      `<span class="layout-warn-chip">${g.qty}× ${g.label} <em>${formatDim(g.w)}×${formatDim(g.h)}${u}</em></span>`
+    ).join('');
+    const n = results.unplaced.length;
+    const banner = document.createElement('div');
+    banner.className = 'layout-warn';
+    banner.setAttribute('role', 'alert');
+    banner.innerHTML = `
+      <div class="layout-warn-icon" aria-hidden="true">⚠</div>
+      <div class="layout-warn-body">
+        <div class="layout-warn-title">${n} part${n === 1 ? '' : 's'} didn't fit on the available sheets</div>
+        <div class="layout-warn-sub">Add more sheets, or trim parts that exceed the sheet size.</div>
+        <div class="layout-warn-list">${chips}</div>
+      </div>`;
+    area.appendChild(banner);
+  }
 
   // Combined Summary tile — stats + full cut list in one card, shown when Summary is on
   if (clShowSummary) {
