@@ -3585,11 +3585,17 @@ function setCutMethod(method) {
   if (results) optimize();
 }
 
-/** Reflect the current cutMethod on the action-bar toggle buttons. */
+/** Reflect the current cutMethod on the toolbar — toggle button active states
+ *  and hide the guillotine-only "Cut order" button in router mode. */
 function _syncCutMethodToggle() {
   const g = _byId('cmt-guillotine'), n = _byId('cmt-nested');
   if (g) g.classList.toggle('active', cutMethod === 'guillotine');
   if (n) n.classList.toggle('active', cutMethod === 'nested');
+  // Cut order shows the numbered guillotine cut sequence — meaningless on a
+  // CNC router (each part is its own toolpath), so hide the button entirely
+  // in nested mode. Its layoutCutOrder state is preserved.
+  const co = _byId('lt-cutorder');
+  if (co) co.style.display = cutMethod === 'nested' ? 'none' : '';
 }
 
 function optimize() {
