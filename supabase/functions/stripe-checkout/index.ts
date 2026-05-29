@@ -170,7 +170,7 @@ Deno.serve(async (req) => {
         line_items: [{ price: PRICE_FOUNDER, quantity: 1 }],
         metadata: { plan: 'founder', user_id: user.id },
         payment_intent_data: { metadata: { plan: 'founder', user_id: user.id } },
-        success_url: `${APP_URL}/os?upgrade=success`,
+        success_url: `${APP_URL}/os?upgrade=success&plan=founder`,
         cancel_url: `${APP_URL}/os?upgrade=cancelled`,
       });
     } else {
@@ -182,7 +182,7 @@ Deno.serve(async (req) => {
         line_items: [{ price: priceId, quantity: 1 }],
         // Adaptive Pricing handles local-currency conversion automatically
         // (must be enabled in Stripe Dashboard → Settings → Currency settings).
-        success_url: `${APP_URL}/os?upgrade=success`,
+        success_url: `${APP_URL}/os?upgrade=success&plan=${plan}`,
         cancel_url: `${APP_URL}/os?upgrade=cancelled`,
       };
       // `discounts` and `allow_promotion_codes` are mutually exclusive. Apply

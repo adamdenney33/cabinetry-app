@@ -105,6 +105,9 @@ function handleCheckoutReturn() {
   if (!upgrade) return;
   if (upgrade === 'success') {
     if (typeof _toast === 'function') _toast('Welcome to Pro! Your subscription is active.', 'success');
+    // Fire ad-platform purchase conversions (Meta / GA4 / Google Ads). The plan
+    // arrives as ?plan=<monthly|annual|founder> from the Stripe success_url.
+    if (typeof _trackPurchaseConversion === 'function') _trackPurchaseConversion(params.get('plan'));
     setTimeout(() => { if (typeof loadSubscription === 'function') loadSubscription(); }, 2000);
   } else if (upgrade === 'cancelled') {
     if (typeof _toast === 'function') _toast('Checkout cancelled — no charge made.', 'error');

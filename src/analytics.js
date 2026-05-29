@@ -107,6 +107,53 @@ function _trackSignupConversion() {
   } catch (e) { /* best-effort */ }
 }
 
+/**
+ * Fire ad-platform conversion pixels on a successful Pro purchase. Called from
+ * handleCheckoutReturn() (src/stripe.js) when Stripe redirects back with
+ * `?upgrade=success&plan=<plan>`. Feature-detected exactly like the signup
+ * helper — with no pixel/ads IDs configured, every branch is a safe no-op.
+ *
+ * `value` is the USD list price from the stripe-checkout function (monthly $35,
+ * annual $300, founder $299 one-off). The amount actually charged can differ
+ * with launch coupons or Adaptive Pricing currency conversion, so treat this as
+ * the reporting / value-optimisation figure, not the exact receipt. (A future
+ * server-side Meta CAPI call from the Stripe webhook can report amount_total.)
+ *
+ * Event names per platform:
+ *   - Meta Pixel: 'Subscribe' (monthly/annual) or 'Purchase' (founder one-off)
+ *   - GA4:        'purchase'
+ *   - Google Ads: 'conversion' with send_to (VITE_GOOGLE_ADS_PURCHASE_CONVERSION_SEND_TO)
+ *
+ * @param {string | null | undefined} plan  Expected 'monthly' | 'annual' | 'founder'; any other value falls back to the monthly price.
+ */
+function _trackPurchaseConversion(plan) {
+  // USD list prices keyed by plan. Fall back to the monthly price if the plan
+  // param is missing, so the conversion still carries a sensible value.
+  /** @type {Record<string, number>} */
+  const PRICES = { monthly: 35, annual: 300, founder: 299 };
+  const value = (plan && PRICES[plan]) || PRICES.monthly;
+  const currency = 'USD';
+  const isFounder = plan === 'founder';
+
+  // ── Meta Pixel ──
+  try {
+    if (typeof window.fbq === 'function') {
+      window.fbq('track', isFounder ? 'Purchase' : 'Subscribe', { value, currency });
+    }
+  } catch (e) { /* best-effort */ }
+
+  // ── GA4 purchase + Google Ads purchase conversion ──
+  try {
+    if (typeof window.gtag === 'function') {
+      window.gtag('event', 'purchase', { value, currency });
+      const adsPurchaseSendTo = window._GADS_PURCHASE_CONV;
+      if (adsPurchaseSendTo) {
+        window.gtag('event', 'conversion', { send_to: adsPurchaseSendTo, value, currency });
+      }
+    }
+  } catch (e) { /* best-effort */ }
+}
+
 /** Clear the PostHog identity on sign-out so the next user starts clean. */
 function _resetAnalytics() {
   const ph = window.posthog;

@@ -128,6 +128,11 @@ if (_ga4Id || _googleAdsId) {
 // conversion event when this is set.
 const _adsConvSendTo = import.meta.env.VITE_GOOGLE_ADS_CONVERSION_SEND_TO;
 if (_adsConvSendTo) window._GADS_CONV = _adsConvSendTo;
+// Google Ads PURCHASE conversion `send_to` — a distinct conversion action from
+// the signup one above, fired by _trackPurchaseConversion (src/analytics.js) on
+// a successful Pro checkout. No-op until VITE_GOOGLE_ADS_PURCHASE_CONVERSION_SEND_TO is set.
+const _adsPurchaseSendTo = import.meta.env.VITE_GOOGLE_ADS_PURCHASE_CONVERSION_SEND_TO;
+if (_adsPurchaseSendTo) window._GADS_PURCHASE_CONV = _adsPurchaseSendTo;
 
 // ── Meta Pixel (Facebook + Instagram ads) ──
 // Env-gated by VITE_META_PIXEL_ID. With no ID set, window.fbq stays

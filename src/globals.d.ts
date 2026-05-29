@@ -36,6 +36,8 @@ declare global {
     _getAttribution?: () => Record<string, string>;
     /** Google Ads conversion `send_to` string ('AW-XXX/LABEL') — set by src/main.js when VITE_GOOGLE_ADS_CONVERSION_SEND_TO is set. */
     _GADS_CONV?: string;
+    /** Google Ads PURCHASE conversion `send_to` — set by src/main.js when VITE_GOOGLE_ADS_PURCHASE_CONVERSION_SEND_TO is set. Fired by _trackPurchaseConversion. */
+    _GADS_PURCHASE_CONV?: string;
     /** Supabase URL — set by src/main.js from import.meta.env.VITE_SUPABASE_URL. */
     _SBURL: string;
     /** Supabase publishable (anon) key — set by src/main.js from import.meta.env.VITE_SUPABASE_ANON_KEY. */
@@ -167,6 +169,8 @@ declare global {
   function _resetAnalytics(): void;
   /** Fire ad-platform conversion pixels (Meta Pixel + Google Ads + GA4) at signup. No-ops if pixels are disabled. */
   function _trackSignupConversion(): void;
+  /** Fire ad-platform purchase conversions (Meta Subscribe/Purchase + GA4 purchase + Google Ads) on a successful Pro checkout. No-ops if pixels are disabled. */
+  function _trackPurchaseConversion(plan: string | null | undefined): void;
 
   // ── settings.js unit-format globals ──
   function setUnitFormat(mode: string): void;
