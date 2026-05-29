@@ -3749,7 +3749,7 @@ function renderLayout(area, tries) {
       <div class="layout-warn-icon" aria-hidden="true">⚠</div>
       <div class="layout-warn-body">
         <div class="layout-warn-title">${n} part${n === 1 ? '' : 's'} didn't fit on the available sheets</div>
-        <div class="layout-warn-sub">Add more sheets, or trim parts that exceed the sheet size.</div>
+        <div class="layout-warn-sub">Add more sheets, or turn off the parts you don't need.</div>
         <div class="layout-warn-list">${chips}</div>
       </div>`;
     area.appendChild(banner);
