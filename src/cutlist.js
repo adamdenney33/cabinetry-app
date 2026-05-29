@@ -4158,7 +4158,14 @@ function drawCanvas(container, layout, units) {
     return out;
   }
 
-  const plan = buildGuillotinePlan(0, 0, sW0, sH0, origPieces, []);
+  // In CNC-router (nested) mode there are no guillotine cut paths — the router
+  // follows each part outline — so skip the whole plan. Downstream loops over
+  // plan.cuts / plan.offcuts then no-op cleanly: no dashed cut lines, no offcut
+  // dimension annotations, no numbered cut-order overlay.
+  /** @type {{ cuts: any[], offcuts: any[] }} */
+  const plan = cutMethod === 'nested'
+    ? { cuts: [], offcuts: [] }
+    : buildGuillotinePlan(0, 0, sW0, sH0, origPieces, []);
 
   // Transform cuts + offcuts into display coordinates if the layout is rotated.
   // The transform is a transposition (x↔y, w↔h) — it matches the same transform
