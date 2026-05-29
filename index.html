@@ -542,13 +542,6 @@
         </div>
 
         <div class="action-bar" id="cl-action-bar">
-          <div class="cut-method" role="group" aria-label="Cutting method">
-            <span class="cut-method-label">Cut for</span>
-            <div class="cut-method-toggle">
-              <button type="button" class="cmt-btn active" id="cmt-guillotine" onclick="setCutMethod('guillotine')" title="Panel saw — every cut runs edge to edge across the board">Panel saw</button>
-              <button type="button" class="cmt-btn" id="cmt-nested" onclick="setCutMethod('nested')" title="CNC router — parts nested freely for tighter packing; the kerf value is used as the bit gap between parts">CNC router</button>
-            </div>
-          </div>
           <button class="btn btn-primary btn-lg" onclick="optimize()">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
             Optimize Cut Layout
@@ -586,6 +579,9 @@
           <button class="layout-tool-btn" onclick="exportLayoutDXF()" title="Export nested sheets as DXF for CNC / CAM">DXF</button>
         </div>
         <div class="layout-toolbar layout-toolbar-bot" id="layout-toolbar">
+          <button class="layout-tool-btn active" id="cmt-guillotine" onclick="setCutMethod('guillotine')" title="Panel saw — every cut runs edge to edge across the board">Saw</button>
+          <button class="layout-tool-btn" id="cmt-nested" onclick="setCutMethod('nested')" title="CNC router — parts nested freely; the kerf value is the bit gap between parts">Router</button>
+          <div class="layout-tool-sep"></div>
           <button class="layout-tool-btn" id="lt-cutorder" onclick="toggleCutOrder()" title="Show numbered cut sequence">Cut order</button>
           <button class="layout-tool-btn" id="lt-sheetcl" onclick="toggleSheetCutList()" title="Show cut list under each sheet">Cut list</button>
           <div class="layout-tool-sep"></div>
