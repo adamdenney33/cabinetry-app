@@ -17,13 +17,38 @@ const _sb = window.supabase.createClient(window._SBURL, window._SBKEY);
 // ── Raw-fetch DB helper (replaces _db() for queries — SDK hangs with sb_publishable keys) ──
 const _SBURL = window._SBURL;
 const _SBKEY = window._SBKEY;
+// Current user access token, cached in memory and refreshed from Supabase's
+// onAuthStateChange (see src/app.js). We deliberately do NOT depend on
+// localStorage for this: iOS and in-app browsers (e.g. the Instagram webview)
+// frequently block or partition storage, so the supabase-js session lives in
+// memory only. Reading localStorage there yields nothing, and the previous code
+// then fell back to the publishable key as the bearer — which isn't a JWT, so
+// every authenticated write went out as the `anon` role and was rejected 401 by
+// RLS while reads silently returned empty. Holding the token in memory keeps
+// writes working regardless of whether storage persists; the SDK keeps it fresh
+// via TOKEN_REFRESHED events, which re-fire onAuthStateChange.
+/** @type {string | null} */
+let _accessToken = null;
+/** @param {string | null} t */
+function _setAccessToken(t) { _accessToken = t || null; }
+
 /** @returns {Record<string, string>} */
 function _dbHeaders() {
-  try {
-    const raw = localStorage.getItem('sb-mhzneruvlfmhnsohfrdo-auth-token');
-    const token = raw ? (JSON.parse(raw)?.access_token || _SBKEY) : _SBKEY;
-    return { 'apikey': _SBKEY, 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' };
-  } catch(e) { return { 'apikey': _SBKEY, 'Content-Type': 'application/json' }; }
+  // Prefer the in-memory token. Fall back to a localStorage read only to cover
+  // the brief first-paint window before onAuthStateChange fires (and only where
+  // storage works). Never send the publishable key AS a bearer — without a real
+  // user JWT we send `apikey` alone, i.e. a clean anonymous request.
+  let token = _accessToken;
+  if (!token) {
+    try {
+      const raw = localStorage.getItem('sb-mhzneruvlfmhnsohfrdo-auth-token');
+      if (raw) token = JSON.parse(raw)?.access_token || null;
+    } catch (e) { /* storage blocked or value not plain JSON — stay anonymous */ }
+  }
+  /** @type {Record<string, string>} */
+  const h = { 'apikey': _SBKEY, 'Content-Type': 'application/json' };
+  if (token) h['Authorization'] = 'Bearer ' + token;
+  return h;
 }
 /**
  * @template {_TableName} K

@@ -76,6 +76,7 @@ function _syncBizInfoToDB(payload) {
     if (typeof _setSaveStatus === 'function') {
       _setSaveStatus('business', failed ? 'failed' : 'saved', failed ? { retry: () => _syncBizInfoToDB(payload) } : undefined);
     }
+    if (failed) _toast('Business details didn’t save — check your connection and try again', 'error');
   }, 800);
 }
 

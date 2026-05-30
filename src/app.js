@@ -1419,6 +1419,12 @@ function _applyBizInfoFromDB(rows) {
 }
 
 _sb.auth.onAuthStateChange(async (event, session) => {
+  // Keep the raw-fetch DB layer's bearer token current on every auth event,
+  // synchronously and before any await — _db()'s _dbHeaders() reads this
+  // in-memory token (see src/db.js). Must run on TOKEN_REFRESHED too so a
+  // rotated token is picked up immediately, and on storage-blocked browsers
+  // where it's the only place the token is available.
+  _setAccessToken(session?.access_token ?? null);
   // loadAllData()'s hydrate helpers reference globals from late-loading defer
   // scripts (e.g. _quoteLineRowToCB in migrate.js). A guest's INITIAL_SESSION
   // can fire mid defer-script execution — wait until every defer script has run

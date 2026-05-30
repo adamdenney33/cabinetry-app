@@ -144,6 +144,11 @@ declare global {
   function convertDim(val: number, from: string, to: string): number;
   function unitLabel(): string;
 
+  // ── db.js auth-token cache global ──
+  /** Update the in-memory bearer token used by _db()'s raw-fetch layer.
+   *  Called from src/app.js's onAuthStateChange on every auth event. */
+  function _setAccessToken(t: string | null): void;
+
   // ── ui.js save-status pill global ──
   function _setSaveStatus(
     domain: string,
