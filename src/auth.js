@@ -41,7 +41,13 @@ async function _syncMailingList(session) {
   if (!user.email_confirmed_at) return;
   const flagKey = `pc_mailing_synced_${user.id}`;
   if (localStorage.getItem(flagKey)) return;
-  const { error } = await _sb.functions.invoke('list-subscribe');
+  // Pass the session's access token explicitly. _sb.functions.invoke() otherwise
+  // takes its bearer from the SDK's persisted session, which is empty on
+  // storage-blocked browsers (iOS / in-app webviews) — there the call goes out
+  // as anon and the verify_jwt gateway 401s, silently dropping the subscribe.
+  const { error } = await _sb.functions.invoke('list-subscribe', {
+    headers: { Authorization: `Bearer ${session.access_token}` },
+  });
   if (error) throw error;
   localStorage.setItem(flagKey, '1');
 }
