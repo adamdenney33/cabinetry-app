@@ -1475,6 +1475,7 @@ _sb.auth.onAuthStateChange(async (event, session) => {
     // sequence then mirrors the signed-in path so every panel renders
     // populated; the guided walkthrough runs over this same seed.
     _userId = null;
+    _setAccessToken(null);
     window._demoMode = true;
     window.Sentry.setUser(null);
     _subscription = null;
