@@ -180,6 +180,13 @@
               Edit business details
             </button>
           </div>
+          <div class="sd-section">
+            <div class="sd-label">Accounting</div>
+            <button class="btn btn-outline btn-sm" style="width:100%;justify-content:center"
+                    onclick="toggleAccount();_openAccountingPopup()">
+              QuickBooks &amp; Xero
+            </button>
+          </div>
           <div class="account-menu-item" id="account-email-item" style="color:var(--muted);font-size:11px;cursor:default"></div>
           <div class="account-menu-item" onclick="signOut()">Sign Out</div>
         </div>
@@ -742,6 +749,7 @@
 <script defer src="/src/forms.js"></script>
 <script defer src="/src/orders.js"></script>
 <script defer src="/src/quotes.js"></script>
+<script defer src="/src/accounting.js"></script>
 <script defer src="/src/business.js"></script>
 <script defer src="/src/stock.js"></script>
 <script defer src="/src/cabinet-calc.js"></script>

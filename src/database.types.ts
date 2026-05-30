@@ -14,6 +14,98 @@ export type Database = {
   }
   public: {
     Tables: {
+      accounting_connections: {
+        Row: {
+          access_token_enc: string | null
+          connected_at: string
+          default_tax_code: string | null
+          expires_at: string | null
+          id: number
+          org_name: string | null
+          provider: string
+          realm_id: string | null
+          refresh_token_enc: string | null
+          status: string
+          tenant_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_token_enc?: string | null
+          connected_at?: string
+          default_tax_code?: string | null
+          expires_at?: string | null
+          id?: number
+          org_name?: string | null
+          provider: string
+          realm_id?: string | null
+          refresh_token_enc?: string | null
+          status?: string
+          tenant_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_token_enc?: string | null
+          connected_at?: string
+          default_tax_code?: string | null
+          expires_at?: string | null
+          id?: number
+          org_name?: string | null
+          provider?: string
+          realm_id?: string | null
+          refresh_token_enc?: string | null
+          status?: string
+          tenant_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      accounting_invoice_links: {
+        Row: {
+          external_id: string
+          external_number: string | null
+          external_url: string | null
+          id: number
+          order_id: number
+          provider: string
+          pushed_at: string
+          status: string | null
+          user_id: string
+        }
+        Insert: {
+          external_id: string
+          external_number?: string | null
+          external_url?: string | null
+          id?: number
+          order_id: number
+          provider: string
+          pushed_at?: string
+          status?: string | null
+          user_id: string
+        }
+        Update: {
+          external_id?: string
+          external_number?: string | null
+          external_url?: string | null
+          id?: number
+          order_id?: number
+          provider?: string
+          pushed_at?: string
+          status?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "accounting_invoice_links_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       business_info: {
         Row: {
           abn: string | null

@@ -1243,6 +1243,11 @@ async function loadAllData() {
   // F.1: kick off subscription load in parallel — updates global `_subscription`
   // via side effect; we don't need its return value in the destructure below.
   const subPromise = loadSubscription().catch(() => null);
+  // Hydrate QuickBooks/Xero connections + order→invoice links in parallel so the
+  // order cards can show "Synced" chips. No-ops (stays empty) when not signed in.
+  const acctPromise = typeof loadAccountingConnections === 'function'
+    ? loadAccountingConnections().catch(() => null)
+    : Promise.resolve();
   const [{ data: ord }, { data: quo }, { data: stk }, { data: cli }, { data: cat }, { data: biz }] = await Promise.all([
     _db('orders').select('*').order('created_at', { ascending: false }),
     _db('quotes').select('*').order('created_at', { ascending: false }),
@@ -1254,6 +1259,7 @@ async function loadAllData() {
     _db('business_info').select('*').eq('user_id', _userId).then(r => r).catch(() => ({data:[]})),
   ]);
   await subPromise;
+  await acctPromise;
   orders = ord || [];
   _onRestore(orders);  // merge locally-stored notes (notes col may not be in DB schema yet)
   _restoreProdStarts(orders);  // merge locally-stored production start dates
@@ -1527,6 +1533,9 @@ function trunc(s, n) { return s.length <= n ? s : s.slice(0, n-1) + '…'; }
 // then strip the query param so a refresh doesn't re-toast.
 if (typeof handleCheckoutReturn === 'function') handleCheckoutReturn();
 if (typeof handlePortalReturn === 'function') handlePortalReturn();
+// Toast + refresh on return from the QuickBooks/Xero OAuth consent screen
+// (?accounting=connected / error), then strip the param.
+if (typeof handleAccountingReturn === 'function') handleAccountingReturn();
 // Landing-page pricing deep-link: the static landing page links its pricing
 // CTAs to /?plan=<tier>. Stash the tier and strip the param (mirrors
 // handleCheckoutReturn); the onAuthStateChange handler above consumes it once

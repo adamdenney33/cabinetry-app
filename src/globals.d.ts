@@ -172,6 +172,16 @@ declare global {
   /** Fire ad-platform purchase conversions (Meta Subscribe/Purchase + GA4 purchase + Google Ads) on a successful Pro checkout. No-ops if pixels are disabled. */
   function _trackPurchaseConversion(plan: string | null | undefined): void;
 
+  // ── accounting.js globals (QuickBooks/Xero invoice push) ──
+  /** Hydrate the user's accounting connections + order→invoice links. Called from loadAllData. */
+  function loadAccountingConnections(): Promise<void>;
+  /** Toast + refresh on return from the OAuth consent screen (?accounting=). Called once on load. */
+  function handleAccountingReturn(): void;
+  /** HTML for the order card: "Synced" chip(s) + the Sync button. Rendered by src/orders.js. */
+  function _accountingOrderFooter(orderId: number): string;
+  /** Open the Pro-gated "Accounting integrations" connect/disconnect popup. */
+  function _openAccountingPopup(): void;
+
   // ── settings.js unit-format globals ──
   function setUnitFormat(mode: string): void;
   function setUnitDecimals(n: number): void;
