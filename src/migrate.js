@@ -43,24 +43,14 @@ async function _migrateBizInfo(log) {
   }
   // Logo upload
   let logoUrl = null;
-  if (logoB64 && typeof logoB64 === 'string' && logoB64.startsWith('data:image/')) {
-    try {
-      const m = logoB64.match(/^data:(image\/[^;]+);base64,(.+)$/);
-      if (m) {
-        const mime = m[1];
-        const ext = mime.split('/')[1].replace('+xml','svg');
-        const path = _userId + '/logo.' + ext;
-        const bin = Uint8Array.from(atob(m[2]), c => c.charCodeAt(0));
-        const up = await _sb.storage.from('business-assets').upload(path, bin, { contentType: mime, upsert: true });
-        if (up.error) {
-          _migLog(log, sub, 'WARN', 'Logo upload failed: ' + up.error.message);
-        } else {
-          const pub = _sb.storage.from('business-assets').getPublicUrl(path);
-          logoUrl = pub.data && pub.data.publicUrl ? pub.data.publicUrl : null;
-          _migLog(log, sub, 'OK', 'Logo uploaded to ' + path);
-        }
-      }
-    } catch(e) { _migLog(log, sub, 'WARN', 'Logo upload exception: ' + ((/** @type {any} */ (e)).message || e)); }
+  if (_userId && logoB64 && typeof logoB64 === 'string' && logoB64.startsWith('data:image/')) {
+    const m = logoB64.match(/^data:(image\/[^;]+);base64,(.+)$/);
+    if (m) {
+      const bin = Uint8Array.from(atob(m[2]), c => c.charCodeAt(0));
+      const { url, error } = await _uploadLogoAsset(_userId, bin, m[1]);
+      if (error) _migLog(log, sub, 'WARN', 'Logo upload failed: ' + error.message);
+      else { logoUrl = url; _migLog(log, sub, 'OK', 'Logo uploaded'); }
+    }
   }
   if (!_userId) return;
   const uid = _userId;

@@ -243,6 +243,43 @@ function _openBusinessDetailsPopup() {
   _openPopup(html, 'md');
 }
 /** @type {any} */ (window)._openBusinessDetailsPopup = _openBusinessDetailsPopup;
+/**
+ * Upload a logo to the public `business-assets` bucket via raw fetch, using the
+ * in-memory auth token (see _dbAuthToken in db.js). We avoid _sb.storage.upload()
+ * because the SDK storage client takes its bearer from the *persisted* session,
+ * which is empty on storage-blocked browsers (iOS / in-app webviews) — there the
+ * upload silently went out unauthenticated and Storage rejected it (HTTP 400
+ * wrapping a 403 RLS denial). The raw fetch carries the token we hold in memory.
+ * @param {string} uid
+ * @param {Blob | Uint8Array} body
+ * @param {string} contentType
+ * @returns {Promise<{ url: string | null, error: { message: string } | null }>}
+ */
+async function _uploadLogoAsset(uid, body, contentType) {
+  const ext = (contentType.split('/')[1] || 'png').replace('+xml', ''); // image/svg+xml -> svg
+  const path = uid + '/logo.' + ext;
+  const token = _dbAuthToken();
+  if (!token) return { url: null, error: { message: 'not signed in' } };
+  const payload = body instanceof Blob ? body : new Blob([/** @type {any} */ (body)], { type: contentType });
+  try {
+    const res = await fetch(`${_SBURL}/storage/v1/object/business-assets/${path}`, {
+      method: 'POST',
+      headers: { 'apikey': _SBKEY, 'Authorization': 'Bearer ' + token, 'Content-Type': contentType, 'x-upsert': 'true' },
+      body: payload,
+    });
+    if (!res.ok) {
+      const detail = await res.text().catch(() => '');
+      if (window.Sentry) window.Sentry.captureMessage('logo upload failed (' + res.status + ')', { level: 'warning', extra: { status: res.status, detail } });
+      return { url: null, error: { message: 'HTTP ' + res.status } };
+    }
+    const pub = _sb.storage.from('business-assets').getPublicUrl(path);
+    return { url: (pub.data && pub.data.publicUrl) || null, error: null };
+  } catch (e) {
+    if (window.Sentry) window.Sentry.captureException(/** @type {any} */ (e));
+    return { url: null, error: { message: (/** @type {any} */ (e)).message || String(e) } };
+  }
+}
+
 /** @param {HTMLInputElement} input */
 function handleLogoUpload(input) {
   const file = input.files?.[0];
@@ -254,31 +291,28 @@ function handleLogoUpload(input) {
     const result = /** @type {string} */ (/** @type {FileReader} */ (e.target).result);
     localStorage.setItem('pc_biz_logo', result);
     loadLogoPreview();
-    // 2. Phase 3.3: also upload to Supabase Storage and store URL on business_info
+    // 2. Phase 3.3: also upload to Supabase Storage and store URL on business_info.
+    //    Uses _uploadLogoAsset (raw fetch + in-memory token) rather than
+    //    _sb.storage.upload() so it stays authenticated on storage-blocked
+    //    browsers (iOS / in-app webviews).
     if (_userId) {
-      try {
-        const ext = (file.type.split('/')[1] || 'png').replace('+xml','svg');
-        const path = _userId + '/logo.' + ext;
-        const up = await _sb.storage.from('business-assets').upload(path, file, { contentType: file.type, upsert: true });
-        if (up.error) {
-          console.warn('[logo] Storage upload failed:', up.error.message);
-          _toast('Logo saved locally — cloud sync failed', 'success');
+      const { url, error } = await _uploadLogoAsset(_userId, file, file.type);
+      if (error) {
+        console.warn('[logo] Storage upload failed:', error.message);
+        _toast('Logo saved on this device, but cloud sync failed', 'error');
+        return;
+      }
+      if (url) {
+        // UPSERT business_info.logo_url
+        const { data: existing } = await _db('business_info').select('id').eq('user_id', _userId);
+        if (existing && existing.length > 0) {
+          await _db('business_info').update({ logo_url: url, updated_at: new Date().toISOString() }).eq('user_id', _userId);
         } else {
-          const pub = _sb.storage.from('business-assets').getPublicUrl(path);
-          const url = pub.data && pub.data.publicUrl ? pub.data.publicUrl : null;
-          if (url) {
-            // UPSERT business_info.logo_url
-            const { data: existing } = await _db('business_info').select('id').eq('user_id', _userId);
-            if (existing && existing.length > 0) {
-              await _db('business_info').update({ logo_url: url, updated_at: new Date().toISOString() }).eq('user_id', _userId);
-            } else {
-              await _db('business_info').insert([{ user_id: _userId, logo_url: url, name: '' }]);
-            }
-            _toast('Logo saved & synced', 'success');
-            return;
-          }
+          await _db('business_info').insert([{ user_id: _userId, logo_url: url, name: '' }]);
         }
-      } catch(err) { console.warn('[logo] Sync exception:', (/** @type {any} */ (err)).message || err); }
+        _toast('Logo saved & synced', 'success');
+        return;
+      }
     }
     _toast('Logo saved', 'success');
   };

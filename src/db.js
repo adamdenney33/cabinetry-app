@@ -32,23 +32,44 @@ let _accessToken = null;
 /** @param {string | null} t */
 function _setAccessToken(t) { _accessToken = t || null; }
 
+/** Current best-effort user access token. Prefer the in-memory cache; fall back
+ *  to a localStorage read only for the brief first-paint window before
+ *  onAuthStateChange fires (and only where storage works). Shared by _dbHeaders()
+ *  and the storage-upload helper so every authenticated request uses the same
+ *  storage-independent token. @returns {string | null} */
+function _dbAuthToken() {
+  if (_accessToken) return _accessToken;
+  try {
+    const raw = localStorage.getItem('sb-mhzneruvlfmhnsohfrdo-auth-token');
+    if (raw) return JSON.parse(raw)?.access_token || null;
+  } catch (e) { /* storage blocked or value not plain JSON — stay anonymous */ }
+  return null;
+}
+
 /** @returns {Record<string, string>} */
 function _dbHeaders() {
-  // Prefer the in-memory token. Fall back to a localStorage read only to cover
-  // the brief first-paint window before onAuthStateChange fires (and only where
-  // storage works). Never send the publishable key AS a bearer — without a real
-  // user JWT we send `apikey` alone, i.e. a clean anonymous request.
-  let token = _accessToken;
-  if (!token) {
-    try {
-      const raw = localStorage.getItem('sb-mhzneruvlfmhnsohfrdo-auth-token');
-      if (raw) token = JSON.parse(raw)?.access_token || null;
-    } catch (e) { /* storage blocked or value not plain JSON — stay anonymous */ }
-  }
+  // Never send the publishable key AS a bearer — without a real user JWT we send
+  // `apikey` alone, i.e. a clean anonymous request.
+  const token = _dbAuthToken();
   /** @type {Record<string, string>} */
   const h = { 'apikey': _SBKEY, 'Content-Type': 'application/json' };
   if (token) h['Authorization'] = 'Bearer ' + token;
   return h;
+}
+
+/** Report a failed _db() write to Sentry. Writes fail as resolved {error}
+ *  values, never thrown, so without this the error-tracking SDK can't see the
+ *  entire class of save failures (RLS 401s, network drops on writes, …) — which
+ *  is exactly how the anon-write regression stayed invisible for days.
+ *  @param {string} table @param {string} method @param {number} status @param {any} detail */
+function _dbReportWriteError(table, method, status, detail) {
+  if (window._demoMode) return; // demo writes are intentionally blocked, not failures
+  try {
+    if (window.Sentry) window.Sentry.captureMessage(
+      `_db ${method} ${table} failed${status ? ' (' + status + ')' : ' (network)'}`,
+      { level: 'warning', tags: { db_table: table, db_method: method, http_status: String(status) }, extra: { detail } }
+    );
+  } catch (e) { /* never let telemetry throw into the data path */ }
 }
 /**
  * @template {_TableName} K
@@ -136,10 +157,16 @@ class _DBBuilder {
       // The conditional Single → Row|null vs Row[]|null return type can't statically
       // narrow inside this generic handler, so cast through any at the resolve site.
       const resolve = /** @type {(v: any) => any} */ (onfulfilled);
-      if (!r.ok) return resolve && resolve({ data: null, error: data || { message: 'HTTP ' + r.status } });
+      if (!r.ok) {
+        if (this._method !== 'select') _dbReportWriteError(this._t, this._method, r.status, data || txt);
+        return resolve && resolve({ data: null, error: data || { message: 'HTTP ' + r.status } });
+      }
       if (this._isSingle) return resolve && resolve({ data: Array.isArray(data) ? (data[0] || null) : (data || null), error: null });
       resolve && resolve({ data: data || [], error: null });
-    }).catch(e => onfulfilled && /** @type {(v: any) => any} */ (onfulfilled)({ data: null, error: { message: e.message } }));
+    }).catch(e => {
+      if (this._method !== 'select') _dbReportWriteError(this._t, this._method, 0, { message: e && e.message });
+      return onfulfilled && /** @type {(v: any) => any} */ (onfulfilled)({ data: null, error: { message: e.message } });
+    });
     // @ts-expect-error fake-thenable: `this` is structurally PromiseLike (it has .then),
     // but TS can't reconcile the fixed-shape resolve type with PromiseLike's generic signature
     return this;
