@@ -23,6 +23,29 @@ Companion docs: `SPEC.md` (refactor history), `SCHEMA.md` (DB schema),
 
 ## Active Work
 
+### Onboarding welcome email for all new sign-ups 🚧 In progress 2026-06-12
+
+One-time founder-voiced welcome email, sent automatically to every new
+sign-up (email + Google OAuth), with a Google Calendar appointment-schedule
+link to book a free 15-min setup call. Transactional/service email → all
+signups, regardless of marketing opt-in; content stays non-promotional.
+Plan: `~/.claude/plans/help-me-create-an-federated-axolotl.md`.
+
+- ⬜ **E.1 — Booking link**: Google Calendar appointment schedule
+  ("ProCabinet setup call", 15 min, Meet) → `calendar.app.google/…` URL.
+- ⬜ **E.2 — Copy doc**: `marketing/welcome-email-2026-06-12.md`, register of
+  the founders' welcome email.
+- ⬜ **E.3 — Edge function** `send-welcome-email`: JWT-verified, gates
+  (confirmed email · post-launch cutoff · `app_metadata.welcome_email_sent_at`
+  claim), claim-then-send via Resend with `Idempotency-Key`, rollback on
+  send failure.
+- ⬜ **E.4 — Client trigger**: `_sendWelcomeEmailOnce(session)` in
+  `src/auth.js` + fire-and-forget call beside `_syncMailingList` in
+  `src/app.js` `onAuthStateChange`.
+- ⬜ **E.5 — Deploy + verify**: typecheck, Resend domain check, real cutoff
+  timestamps, function deploy (verify_jwt ON), throwaway-signup end-to-end
+  (happy path / idempotency / old-user skip), edge-log check, cleanup.
+
 ### Guided walkthrough on phones ✅ Done 2026-06-11
 
 The onboarding tour was desktop-only by design (touch devices got the static
@@ -1564,7 +1587,7 @@ analytics widgets) available to all users.
     order / cut list / stock item / cabinet template), `pdf_created` (any PDF type),
     `free_tier_limit_hit`, `upgrade_clicked`, `section_viewed`. Generic events carry
     `library` / `type` / `source` properties so funnels stay flexible.
-  - ⬜ Build core funnels in PostHog: signup → library item created → PDF created
+  - ✅ Build core funnels in PostHog — acquisition funnel "Landing → App → Signup → Pro" saved + pinned to dashboard 683581 (insight `e1bs6UMd`, 2026-05-31); added `pro_subscription_started` (`src/stripe.js`, on Stripe-success return) so it ends on a real paid conversion, not `upgrade_clicked` intent. See SPEC.md § 13 (2026-05-31). ⬜ remaining: activation funnel (signup → library item created → PDF created); localhost test-account filter (manual — MCP can't write it).
   - ⬜ Enable Cloudflare Web Analytics for marketing-site numbers (free, auto on Pages)
   - ⬜ Verify Google Search Console + submit sitemap
 

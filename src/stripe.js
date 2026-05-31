@@ -110,6 +110,11 @@ function handleCheckoutReturn() {
   if (!upgrade) return;
   if (upgrade === 'success') {
     if (typeof _toast === 'function') _toast('Welcome to Pro! Your subscription is active.', 'success');
+    // Product-analytics conversion event (PostHog). This is the real "became Pro"
+    // signal the landing → app → signup → pro funnel ends on — distinct from
+    // `upgrade_clicked` (mere intent) and from the ad-platform pixels below. Fires
+    // on the Stripe success return. `plan` arrives as ?plan=<monthly|annual|founder>.
+    if (typeof _track === 'function') _track('pro_subscription_started', { plan: params.get('plan') || 'unknown' });
     // Fire ad-platform purchase conversions (Meta / GA4 / Google Ads). The plan
     // arrives as ?plan=<monthly|annual|founder> from the Stripe success_url.
     if (typeof _trackPurchaseConversion === 'function') _trackPurchaseConversion(params.get('plan'));
