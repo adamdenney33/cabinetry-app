@@ -2557,15 +2557,21 @@ function _buildQuotePDF(q, lineRows) {
       }
       pdf.setFontSize(11); pdf.setFont('helvetica','bold'); pdf.setTextColor(17);
       const headerText = d.qtyText ? d.name + '  ' + d.qtyText : d.name;
-      pdf.text(headerText, M, y);
+      // Wrap the name so a long description can't overrun the amount (and DISC)
+      // column on the right. Reserve the measured amount width + a gutter, plus
+      // the DISC block when present. The amount stays aligned to the first line.
+      const amtStr = fmt(d.total);
+      const nameReserve = pdf.getTextWidth(amtStr) + 6 + (anyLineDisc ? 28 : 0);
+      const nameLines = pdf.splitTextToSize(headerText, Math.max(40, W - nameReserve));
+      pdf.text(nameLines, M, y);
       if (anyLineDisc) {
         const rowDisc = parseFloat(row.discount) || 0;
         pdf.setFont('helvetica','normal'); pdf.setTextColor(130); pdf.setFontSize(9);
         pdf.text(rowDisc > 0 ? rowDisc + '%' : '—', PW - M - 28, y, { align: 'right' });
         pdf.setFont('helvetica','bold'); pdf.setTextColor(17); pdf.setFontSize(11);
       }
-      pdf.text(fmt(d.total), PW - M, y, { align: 'right' });
-      y += 5;
+      pdf.text(amtStr, PW - M, y, { align: 'right' });
+      y += nameLines.length * 5;
       if (d.detail) {
         pdf.setFontSize(8.5); pdf.setFont('helvetica','normal'); pdf.setTextColor(130);
         const detailLines = pdf.splitTextToSize(d.detail, W - 30);
@@ -3000,15 +3006,21 @@ function _buildOrderDocPDF(o, lines, type) {
       }
       pdf.setFontSize(11); pdf.setFont('helvetica','bold'); pdf.setTextColor(17);
       const headerText = d.qtyText ? d.name + '  ' + d.qtyText : d.name;
-      pdf.text(headerText, M, y);
+      // Wrap the name so a long description can't overrun the amount (and DISC)
+      // column on the right. Reserve the measured amount width + a gutter, plus
+      // the DISC block when present. The amount stays aligned to the first line.
+      const amtStr = fmt(d.total);
+      const nameReserve = pdf.getTextWidth(amtStr) + 6 + (anyLineDisc ? 28 : 0);
+      const nameLines = pdf.splitTextToSize(headerText, Math.max(40, W - nameReserve));
+      pdf.text(nameLines, M, y);
       if (anyLineDisc) {
         const rowDisc = parseFloat(row.discount) || 0;
         pdf.setFont('helvetica','normal'); pdf.setTextColor(130); pdf.setFontSize(9);
         pdf.text(rowDisc > 0 ? rowDisc + '%' : '—', PW - M - 28, y, { align: 'right' });
         pdf.setFont('helvetica','bold'); pdf.setTextColor(17); pdf.setFontSize(11);
       }
-      pdf.text(fmt(d.total), PW - M, y, { align: 'right' });
-      y += 5;
+      pdf.text(amtStr, PW - M, y, { align: 'right' });
+      y += nameLines.length * 5;
       if (d.detail) {
         pdf.setFontSize(8.5); pdf.setFont('helvetica','normal'); pdf.setTextColor(130);
         const detailLines = pdf.splitTextToSize(d.detail, W - 30);
