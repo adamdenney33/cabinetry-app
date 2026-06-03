@@ -91,14 +91,18 @@ function basicAuth(provider: Provider): string {
 export function buildAuthorizeUrl(provider: Provider, redirectUri: string, state: string): string {
   const id = CFG[provider].clientId();
   if (!id) throw new Error(`Missing client id for ${provider}`);
-  const p = new URLSearchParams({
-    client_id: id,
-    response_type: 'code',
-    redirect_uri: redirectUri,
-    scope: CFG[provider].scope,
-    state,
-  });
-  return `${CFG[provider].authorizeUrl}?${p.toString()}`;
+  // Build the query manually so the spaces in `scope` are percent-encoded as
+  // %20. URLSearchParams encodes spaces as '+', which Xero's authorize endpoint
+  // does NOT treat as a delimiter — it reads the whole value as a single scope
+  // and returns invalid_scope. encodeURIComponent encodes spaces as %20.
+  const q = [
+    `client_id=${encodeURIComponent(id)}`,
+    `response_type=code`,
+    `redirect_uri=${encodeURIComponent(redirectUri)}`,
+    `scope=${encodeURIComponent(CFG[provider].scope)}`,
+    `state=${encodeURIComponent(state)}`,
+  ].join('&');
+  return `${CFG[provider].authorizeUrl}?${q}`;
 }
 
 // ── OAuth: token exchange + refresh ───────────────────────────────────────
