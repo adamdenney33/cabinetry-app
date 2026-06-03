@@ -213,14 +213,20 @@ function renderSubscriptionSection() {
     return;
   }
 
-  // Grandfathered (legacy, pre-trial) user — full free access, no read-only.
+  // Grandfathered (legacy, pre-trial) user — old free tier: 5 items/library, no
+  // read-only lock. Upgrade opens the trial/plan picker for unlimited.
   if (typeof isGrandfathered === 'function' && isGrandfathered()) {
     el.innerHTML = `
       <div class="account-plan-row">
         <span class="account-plan-name">Free (legacy)</span>
-        <span class="badge badge-green">Full access</span>
+        <span class="badge badge-orange">5/library</span>
       </div>
-      <div class="account-menu-item" style="color:var(--muted);font-size:11px;cursor:default;padding-bottom:4px">Thanks for being an early user — your account keeps full access.</div>
+      <div class="account-menu-item" style="color:var(--muted);font-size:11px;cursor:default;padding-bottom:4px">Early-user plan — 5 items per library. Upgrade any time for unlimited.</div>
+      <div style="padding:10px 16px;border-bottom:1px solid var(--border)">
+        <button onclick="_wtStartCta()" style="width:100%;padding:8px;background:var(--accent);color:white;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer">
+          Upgrade to Pro
+        </button>
+      </div>
     `;
     return;
   }
@@ -547,6 +553,51 @@ function _openTrialModal(opts) {
       <div></div>
       <div class="popup-footer-right">
         <button class="btn btn-outline" onclick="_closePopup()">Maybe later</button>
+      </div>
+    </div>
+  `, 'sm');
+}
+
+/**
+ * Cap-hit modal — shown when a grandfathered (legacy free) user tries to create
+ * past their FREE_LIMITS[library] cap. Upgrading (start a trial / subscribe)
+ * lifts the cap. Post-cutoff read-only users hit _openTrialModal instead.
+ *
+ * @param {'clients'|'quotes'|'orders'|'cabinet_templates'|'stock'|'cutlists'} library
+ */
+function _openLimitHitModal(library) {
+  /** @type {Record<string, {label: string, verb: string}>} */
+  const labels = {
+    clients:           { label: 'clients',           verb: 'manage' },
+    quotes:            { label: 'quotes',            verb: 'send' },
+    orders:            { label: 'orders',            verb: 'track' },
+    cabinet_templates: { label: 'cabinet templates', verb: 'save' },
+    stock:             { label: 'stock items',       verb: 'track' },
+    cutlists:          { label: 'cut lists',         verb: 'track' },
+  };
+  const { label, verb } = labels[library] || { label: 'items', verb: 'add' };
+  const cap = (typeof FREE_LIMITS !== 'undefined' && FREE_LIMITS[library]) || 5;
+
+  _openPopup(`
+    <div class="popup-header">
+      <div class="popup-title">Plan limit reached</div>
+      <button class="popup-close" onclick="_closePopup()">&times;</button>
+    </div>
+    <div class="popup-body">
+      <div style="background:rgba(232,168,56,0.08);border:1px solid rgba(232,168,56,0.2);border-radius:8px;padding:12px 14px;font-size:13px;color:var(--text);line-height:1.5">
+        You've used all <strong>${cap}</strong> of your legacy free ${label}. Upgrade to Pro for unlimited, or delete an existing one to ${verb} this new ${label.replace(/s$/, '')}.
+      </div>
+      <div class="pf-divider"></div>
+      <button class="btn btn-primary btn-lg" onclick="_closePopup();_handleUpgradeClick('annual')">Upgrade to Pro</button>
+      <div style="display:flex;justify-content:space-between;font-size:10px;margin-top:8px;color:var(--muted)">
+        <span style="cursor:pointer" onclick="_closePopup();_handleUpgradeClick('annual')"><strong style="color:var(--text)">$15</strong> / mo · billed yearly</span>
+        <span style="cursor:pointer" onclick="_closePopup();_handleUpgradeClick('monthly')"><strong style="color:var(--text)">$25</strong> / mo</span>
+      </div>
+    </div>
+    <div class="popup-footer">
+      <div></div>
+      <div class="popup-footer-right">
+        <button class="btn btn-outline" onclick="_closePopup()">Close</button>
       </div>
     </div>
   `, 'sm');

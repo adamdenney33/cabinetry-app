@@ -178,6 +178,34 @@ function _trialDaysLeft() {
 }
 
 // ══════════════════════════════════════════
+// LEGACY FREE-TIER CAP (grandfathered users only)
+// ══════════════════════════════════════════
+/** Per-library item cap for grandfathered (legacy free) users. Pro/trial users
+ *  are unlimited; post-cutoff non-subscribers are read-only (no creates at all). */
+const FREE_LIMITS = Object.freeze({
+  clients: 5,
+  quotes: 5,
+  orders: 5,
+  cabinet_templates: 5,
+  stock: 5,
+  cutlists: 5,
+});
+/** @typedef {keyof typeof FREE_LIMITS} LimitedLibrary */
+
+/** Cap for a library: Infinity for Pro/trial, else the legacy free cap.
+ *  @param {LimitedLibrary} library @returns {number} */
+function getLimit(library) {
+  if (isPro()) return Infinity;
+  return FREE_LIMITS[library];
+}
+
+/** True when adding one more item would exceed the cap.
+ *  @param {LimitedLibrary} library @param {number} currentCount @returns {boolean} */
+function isAtLimit(library, currentCount) {
+  return currentCount >= getLimit(library);
+}
+
+// ══════════════════════════════════════════
 // WRITE GATES
 // ══════════════════════════════════════════
 /**
@@ -205,24 +233,54 @@ function _enforceCanEdit() {
 }
 
 /**
- * Deprecated freemium alias — the per-library cap is gone. Delegates to
- * `_enforceCanEdit()` so the existing call sites keep working unchanged.
- * @param {string} [_library] @param {number} [_currentCount] @returns {boolean}
+ * Gate a per-library CREATE action against the tier rules:
+ *   • Guided tour (window._demoMode) → pass (the db demo branch blocks the write).
+ *   • Pro / trial → unlimited.
+ *   • Grandfathered (legacy free) → capped at FREE_LIMITS[library]; at the cap,
+ *     open the cap modal and bail.
+ *   • Read-only (post-cutoff non-subscriber) → can't create; open the trial modal.
+ *
+ * Use at the top of every per-library create entry point:
+ *   if (!_enforceFreeLimit('clients', clients.length)) return;
+ *
+ * @param {LimitedLibrary} library
+ * @param {number} currentCount
+ * @returns {boolean}
  */
-function _enforceFreeLimit(_library, _currentCount) {
-  return _enforceCanEdit();
+function _enforceFreeLimit(library, currentCount) {
+  if (window._demoMode) return true;
+  if (isPro()) return true;
+  if (isGrandfathered()) {
+    if (!isAtLimit(library, currentCount)) return true;
+    if (typeof _track === 'function') _track('free_tier_limit_hit', { library: library, current_count: currentCount });
+    if (typeof _openLimitHitModal === 'function') _openLimitHitModal(library);
+    else if (typeof _toast === 'function') _toast(`Legacy free plan limit reached (${FREE_LIMITS[library]} ${library}). Upgrade for unlimited.`, 'error');
+    return false;
+  }
+  // Read-only (no active trial/sub, not grandfathered) — can't create at all.
+  if (typeof _track === 'function') _track('readonly_write_blocked', { surface: 'create', library: library });
+  if (typeof _openTrialModal === 'function') _openTrialModal();
+  else if (typeof _toast === 'function') _toast(`Start your ${TRIAL_DAYS}-day free trial to add this.`, 'error');
+  return false;
 }
 
 /**
- * Gate a Pro-only WRITE / paid-integration action (CSV import, accounting
- * connect/push). Same rule as `_enforceCanEdit`. Exports are NOT gated — a
- * read-only user may export their data — so their guards are removed at the
- * call site rather than routed here.
+ * Gate a Pro-only action that bulk-writes or uses a paid integration (CSV
+ * import, accounting connect/push). Pro/trial only — grandfathered (legacy
+ * free) users are blocked too, both to match the old free tier and because a
+ * bulk import would bypass their per-library cap. Exports are NOT gated (a
+ * read-only user may export their data); those guards were removed at the call
+ * sites, not routed here.
  *
  * @returns {boolean}
  */
 function _enforceProFeature() {
-  return _enforceCanEdit();
+  if (window._demoMode) return true;
+  if (isPro()) return true;
+  if (typeof _track === 'function') _track('pro_feature_blocked', { feature: 'import_integration' });
+  if (typeof _openTrialModal === 'function') _openTrialModal();
+  else if (typeof _toast === 'function') _toast('Importing is a Pro feature — start your free trial.', 'error');
+  return false;
 }
 
 // ══════════════════════════════════════════
