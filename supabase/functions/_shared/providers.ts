@@ -74,7 +74,12 @@ export const CFG: Record<Provider, ProviderCfg> = {
     authorizeUrl: 'https://login.xero.com/identity/connect/authorize',
     tokenUrl: 'https://identity.xero.com/connect/token',
     revokeUrl: 'https://identity.xero.com/connect/revocation',
-    scope: 'openid offline_access accounting.transactions accounting.contacts accounting.settings',
+    // Xero's new GRANULAR scopes (broad scopes like accounting.transactions are
+    // gone for apps created after 2 Mar 2026). We need: create invoices
+    // (accounting.invoices), find/create contacts (accounting.contacts), read
+    // tax rates + revenue accounts (accounting.settings.read), refresh tokens
+    // (offline_access). Granular scopes also work for older apps, so this is safe.
+    scope: 'offline_access accounting.contacts accounting.invoices accounting.settings.read',
     clientId: () => Deno.env.get('XERO_CLIENT_ID'),
     clientSecret: () => Deno.env.get('XERO_CLIENT_SECRET'),
   },
