@@ -36,6 +36,14 @@ const APP_URL = Deno.env.get('APP_URL') ?? 'https://procabinet.app';
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
+// Card-upfront free-trial length (days) applied to monthly/annual subscriptions.
+// Mirrors TRIAL_DAYS in src/limits.js. Override via the STRIPE_TRIAL_DAYS secret;
+// falls back to 14. Founder (one-off) gets no trial.
+const TRIAL_DAYS = (() => {
+  const n = Number(Deno.env.get('STRIPE_TRIAL_DAYS'));
+  return Number.isFinite(n) && n > 0 ? Math.floor(n) : 14;
+})();
+
 // Founder plan — total lifetime accounts ever sold. Mirrors FOUNDER_CAP in
 // src/limits.js. Enforced here so the cap can't be bypassed client-side.
 const FOUNDER_CAP = 50;
@@ -184,6 +192,12 @@ Deno.serve(async (req) => {
         // (must be enabled in Stripe Dashboard → Settings → Currency settings).
         success_url: `${APP_URL}/os?upgrade=success&plan=${plan}`,
         cancel_url: `${APP_URL}/os?upgrade=cancelled`,
+        // Card-upfront 14-day free trial: Stripe collects the card now, runs the
+        // trial (status 'trialing' → isPro() true in-app), then charges at trial
+        // end. payment_method_collection 'always' (the subscription-mode default)
+        // is set explicitly so a card is required to start the trial.
+        subscription_data: { trial_period_days: TRIAL_DAYS },
+        payment_method_collection: 'always',
       };
       // `discounts` and `allow_promotion_codes` are mutually exclusive. Apply
       // the launch coupon automatically when one is configured; otherwise let

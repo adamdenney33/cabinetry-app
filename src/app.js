@@ -1167,6 +1167,62 @@ function _syncDemoBanner() {
   if (b) b.style.display = window._demoMode ? 'flex' : 'none';
 }
 
+/**
+ * Show / hide + populate the read-only / trial banner for a SIGNED-IN user.
+ * Hidden for guests (they get the demo banner instead), during the guided tour,
+ * before subscription state is known (avoids a read-only flash for paying users
+ * at boot), and for active/founder subscribers. Shows for:
+ *   • read-only  (never subscribed / lapsed) → start trial / resubscribe
+ *   • past_due   → "Update payment" via the Stripe portal (NOT a new checkout)
+ *   • trialing in the last ≤3 days → a trial-ending reminder
+ * Re-synced after loadSubscription() resolves (src/limits.js).
+ */
+function _syncTrialBanner() {
+  const b = document.getElementById('trial-banner');
+  if (!b) return;
+  const hide = () => { b.style.display = 'none'; };
+  // Guests get the demo banner; the tour is transient; don't pre-empt the
+  // subscription fetch.
+  if (!_userId || window._demoMode) return hide();
+  const known = (typeof _subStateKnown !== 'undefined') && _subStateKnown;
+  if (!known) return hide();
+  const st = (typeof _subState === 'function') ? _subState() : 'none';
+  const days = (typeof TRIAL_DAYS !== 'undefined') ? TRIAL_DAYS : 14;
+  let msg, label, action;
+  if (st === 'active') {
+    return hide();
+  } else if (st === 'trialing') {
+    // Trial-ending reminder, last few days only (so it isn't a constant nag).
+    const left = (typeof _trialDaysLeft === 'function') ? _trialDaysLeft() : null;
+    if (left == null || left > 3) return hide();
+    const end = _subscription && _subscription.current_period_end
+      ? new Date(_subscription.current_period_end).toLocaleDateString() : '';
+    const dleft = `<strong>${left} day${left === 1 ? '' : 's'}</strong>`;
+    msg = (_subscription && _subscription.cancel_at_period_end)
+      ? `Your trial ends in ${dleft} — you won't be charged.`
+      : `Your free trial ends in ${dleft}${end ? ` — you'll be charged on ${end}` : ''}. Cancel any time.`;
+    label = 'Manage';
+    action = `_handleManageSubscription()`;
+  } else if (st === 'past_due') {
+    msg = `Your payment failed — your account is <strong>read-only</strong> until it's fixed.`;
+    label = 'Update payment';
+    action = `_handleManageSubscription()`;
+  } else if (st === 'lapsed') {
+    msg = `Your account is <strong>read-only</strong> — resubscribe to create and edit again.`;
+    label = 'Resubscribe';
+    action = `_openTrialModal({mode:'resubscribe'})`;
+  } else { // none
+    msg = `You're in <strong>read-only</strong> mode — start your ${days}-day free trial to begin.`;
+    label = 'Start free trial';
+    action = `_wtStartCta()`;
+  }
+  const msgEl = b.querySelector('.trial-banner-msg');
+  const btnEl = /** @type {HTMLElement|null} */ (b.querySelector('.trial-banner-btn'));
+  if (msgEl) msgEl.innerHTML = msg;
+  if (btnEl) { btnEl.textContent = label; btnEl.setAttribute('onclick', action); }
+  b.style.display = 'flex';
+}
+
 function toggleAuthMode() {
   _authMode = _authMode === 'signin' ? 'signup' : 'signin';
   const isSign = _authMode === 'signin';
@@ -1449,6 +1505,7 @@ _sb.auth.onAuthStateChange(async (event, session) => {
     /** @type {HTMLElement} */ (document.getElementById('account-user-view')).style.display = '';
     _showApp();
     if (typeof _syncDemoBanner === 'function') _syncDemoBanner();
+    if (typeof _syncTrialBanner === 'function') _syncTrialBanner();
     await loadAllData();
     if (typeof _identifyUser === 'function') _identifyUser(session);
     if (typeof _syncMailingList === 'function') {

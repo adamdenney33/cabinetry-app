@@ -144,6 +144,25 @@ class _DBBuilder {
       // @ts-expect-error fake-thenable: `this` is structurally PromiseLike.
       return this;
     }
+    // Read-only lock (src/limits.js): a signed-in user with no active trial /
+    // subscription may read but not write. Mirrors the demo write-block above.
+    // The demo branch returns first, so this is only reached OUTSIDE a guided
+    // tour. Fails OPEN until subscription state is known (`_subStateKnown`), so
+    // a write that races boot is never wrongly blocked for a paying user. An
+    // allowlist (`_readonlyWriteAllowed`) lets through non-core engagement writes.
+    if (this._method !== 'select'
+        && typeof _userId !== 'undefined' && _userId
+        && typeof _subStateKnown !== 'undefined' && _subStateKnown
+        && typeof canEdit === 'function' && !canEdit()
+        && !(typeof _readonlyWriteAllowed === 'function' && _readonlyWriteAllowed(this._t))) {
+      const roResolve = /** @type {(v: any) => any} */ (onfulfilled);
+      const roResult = (typeof _readonlyBlockWrite === 'function')
+        ? _readonlyBlockWrite(this)
+        : { data: this._isSingle ? null : [], error: { message: 'Read-only', _readonly: true } };
+      Promise.resolve().then(() => { if (roResolve) roResolve(roResult); });
+      // @ts-expect-error fake-thenable: `this` is structurally PromiseLike.
+      return this;
+    }
     const h = _dbHeaders(), ps = this._params();
     const url = `${_SBURL}/rest/v1/${this._t}${ps ? '?' + ps : ''}`;
     /** @type {RequestInit} */
