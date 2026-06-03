@@ -2497,9 +2497,13 @@ function _drawDocLineItems(pdf, rows, opts) {
       y += 4;
       lastKind = d.kind;
     }
-    // Description (wrapped within the description column).
+    // Description (wrapped within the description column). Collapse any stray
+    // whitespace/line breaks in the user-entered name first — a leading blank
+    // line would otherwise become an empty first row and push the qty/price/
+    // amount (which align to the first line) out of alignment with the text.
     pdf.setFontSize(11); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(17);
-    const nameLines = pdf.splitTextToSize(d.name, descMaxW);
+    const cleanName = String(d.name || '').replace(/\s+/g, ' ').trim() || '—';
+    const nameLines = pdf.splitTextToSize(cleanName, descMaxW);
     pdf.text(nameLines, M, y);
     // Qty + unit Price (muted, regular weight) on the first line.
     pdf.setFontSize(9.5); pdf.setFont('helvetica', 'normal'); pdf.setTextColor(95);
