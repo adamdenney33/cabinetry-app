@@ -767,6 +767,10 @@ function _lineDisplay(row) {
   const kind = row.line_kind || 'cabinet';
   const sub = _lineSubtotal(row);
   const total = sub.materials + sub.labour;
+  // Pre-discount per-unit price, so a quote/order column can read
+  // "qty × unit price, less disc%, = amount" consistently across kinds.
+  const _disc = parseFloat(row.discount) || 0;
+  const _discMult = 1 - _disc / 100;
   if (kind === 'cabinet') {
     const dims = [row.w_mm, row.h_mm, row.d_mm].filter(Boolean).join('×');
     const parts = [];
@@ -774,23 +778,26 @@ function _lineDisplay(row) {
     if (row.material) parts.push(row.material);
     if ((row.door_count || 0) > 0) parts.push(row.door_count + ' door' + (row.door_count !== 1 ? 's' : ''));
     if ((row.drawer_count || 0) > 0) parts.push(row.drawer_count + ' drawer' + (row.drawer_count !== 1 ? 's' : ''));
+    const cabQty = row.qty || 1;
     return {
       kind, name: row.name || 'Cabinet',
       detail: parts.join(', '),
-      qtyText: (row.qty || 1) > 1 ? '×' + row.qty : '',
+      qtyText: cabQty > 1 ? '×' + cabQty : '',
       total,
+      qty: cabQty,
+      unitPrice: (cabQty > 0 && _discMult > 0) ? total / (cabQty * _discMult) : total,
     };
   }
   if (kind === 'item' || kind === 'stock') {
     const qty = row.qty || 1;
     const price = row.unit_price || 0;
     const fallbackName = kind === 'stock' ? 'Stock item' : 'Item';
-    return { kind, name: row.name || fallbackName, detail: qty + ' × ' + price, qtyText: '', total };
+    return { kind, name: row.name || fallbackName, detail: qty + ' × ' + price, qtyText: '', total, qty, unitPrice: price };
   }
   // labour
   const hrs = row.labour_hours || 0;
   const rate = row.unit_price ?? ((typeof cbSettings !== 'undefined' && cbSettings.labourRate) ? cbSettings.labourRate : 65);
-  return { kind, name: row.name || 'Labour', detail: hrs + 'h @ ' + rate + '/hr', qtyText: '', total };
+  return { kind, name: row.name || 'Labour', detail: hrs + 'h @ ' + rate + '/hr', qtyText: '', total, qty: hrs, unitPrice: rate };
 }
 
 /** @param {number} id @param {string} [mode] */

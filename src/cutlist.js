@@ -2450,6 +2450,85 @@ function _pdfNiceDate(s) {
 
 
 // ── Build a real PDF for quotes using jsPDF ──
+/**
+ * Render the client-facing line-item table for quote/order PDFs. Columns mirror
+ * the editor sidebar — Description, Qty, Price (unit), Disc% (only when any line
+ * is discounted) and Amount; the sidebar's Hrs column is workshop-only and
+ * omitted. Item/stock/labour rows carry qty×price in the columns, so only
+ * cabinets keep a spec sub-line (dimensions, material, doors). Returns the y
+ * cursor after the table's closing rule.
+ * @param {any} pdf jsPDF instance
+ * @param {any[]} rows quote_lines / order_lines
+ * @param {{M:number,PW:number,PH:number,y:number,anyLineDisc:boolean,fmt:(v:number)=>string}} opts
+ * @returns {number}
+ */
+function _drawDocLineItems(pdf, rows, opts) {
+  const { M, PW, PH, anyLineDisc, fmt } = opts;
+  let y = opts.y;
+  // Right-edge x for each numeric column (values are right-aligned to these).
+  const colAmt = PW - M;
+  const colDisc = colAmt - 28;
+  const colPrice = (anyLineDisc ? colDisc : colAmt) - 30;
+  const colQty = colPrice - 24;
+  // Description wraps within everything left of the Qty column.
+  const descMaxW = Math.max(40, (colQty - 12) - M);
+  /** @param {number} n */
+  const qtyStr = n => String(Math.round((Number(n) || 0) * 100) / 100);
+
+  // Header row
+  pdf.setFontSize(7); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(140);
+  pdf.text('DESCRIPTION', M, y);
+  pdf.text('QTY', colQty, y, { align: 'right' });
+  pdf.text('PRICE', colPrice, y, { align: 'right' });
+  if (anyLineDisc) pdf.text('DISC', colDisc, y, { align: 'right' });
+  pdf.text('AMOUNT', colAmt, y, { align: 'right' });
+  y += 2;
+  pdf.setDrawColor(17); pdf.setLineWidth(0.4); pdf.line(M, y, PW - M, y);
+  y += 6;
+
+  let lastKind = '';
+  rows.forEach(/** @param {any} row */ row => {
+    const d = _lineDisplay(row);
+    // Group header when the kind changes
+    if (d.kind !== lastKind) {
+      pdf.setFontSize(7); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(160);
+      const groupLabel = { cabinet: 'CABINETS', item: 'ITEMS', labour: 'LABOUR' };
+      pdf.text((/** @type {any} */ (groupLabel))[d.kind] || d.kind.toUpperCase(), M, y);
+      y += 4;
+      lastKind = d.kind;
+    }
+    // Description (wrapped within the description column).
+    pdf.setFontSize(11); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(17);
+    const nameLines = pdf.splitTextToSize(d.name, descMaxW);
+    pdf.text(nameLines, M, y);
+    // Qty + unit Price (muted, regular weight) on the first line.
+    pdf.setFontSize(9.5); pdf.setFont('helvetica', 'normal'); pdf.setTextColor(95);
+    pdf.text(qtyStr(d.qty), colQty, y, { align: 'right' });
+    pdf.text(fmt(d.unitPrice), colPrice, y, { align: 'right' });
+    if (anyLineDisc) {
+      const rowDisc = parseFloat(row.discount) || 0;
+      pdf.setTextColor(130);
+      pdf.text(rowDisc > 0 ? rowDisc + '%' : '—', colDisc, y, { align: 'right' });
+    }
+    // Amount (bold).
+    pdf.setFontSize(11); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(17);
+    pdf.text(fmt(d.total), colAmt, y, { align: 'right' });
+    y += nameLines.length * 5;
+    // Spec sub-line — cabinets only. Items/labour show qty×price in columns.
+    if (d.kind === 'cabinet' && d.detail) {
+      pdf.setFontSize(8.5); pdf.setFont('helvetica', 'normal'); pdf.setTextColor(130);
+      const detailLines = pdf.splitTextToSize(d.detail, descMaxW);
+      detailLines.forEach(/** @param {string} dl */ dl => { pdf.text(dl, M + 4, y); y += 4; });
+    }
+    y += 3;
+    if (y > PH - 60) { pdf.addPage(); y = M + 10; }
+  });
+
+  pdf.setDrawColor(210); pdf.setLineWidth(0.25); pdf.line(M, y, PW - M, y);
+  y += 8;
+  return y;
+}
+
 /** @param {any} q */
 /**
  * @param {any} q quote row
@@ -2535,54 +2614,7 @@ function _buildQuotePDF(q, lineRows) {
   const rows = Array.isArray(lineRows) ? lineRows : [];
 
   if (rows.length > 0) {
-    // Table header — add a "DISC" column only when at least one line has a discount.
-    pdf.setFontSize(7); pdf.setFont('helvetica','bold'); pdf.setTextColor(140);
-    pdf.text('DESCRIPTION', M, y);
-    if (anyLineDisc) pdf.text('DISC', PW - M - 28, y, { align: 'right' });
-    pdf.text('AMOUNT', PW-M, y, { align:'right' });
-    y += 2;
-    pdf.setDrawColor(17); pdf.setLineWidth(0.4); pdf.line(M, y, PW-M, y);
-    y += 6;
-
-    let lastKind = '';
-    rows.forEach(/** @param {any} row */ row => {
-      const d = _lineDisplay(row);
-      // Group header when the kind changes
-      if (d.kind !== lastKind) {
-        pdf.setFontSize(7); pdf.setFont('helvetica','bold'); pdf.setTextColor(160);
-        const groupLabel = { cabinet: 'CABINETS', item: 'ITEMS', labour: 'LABOUR' };
-        pdf.text((/** @type {any} */ (groupLabel))[d.kind] || d.kind.toUpperCase(), M, y);
-        y += 4;
-        lastKind = d.kind;
-      }
-      pdf.setFontSize(11); pdf.setFont('helvetica','bold'); pdf.setTextColor(17);
-      const headerText = d.qtyText ? d.name + '  ' + d.qtyText : d.name;
-      // Wrap the name so a long description can't overrun the amount (and DISC)
-      // column on the right. Reserve the measured amount width + a gutter, plus
-      // the DISC block when present. The amount stays aligned to the first line.
-      const amtStr = fmt(d.total);
-      const nameReserve = pdf.getTextWidth(amtStr) + 6 + (anyLineDisc ? 28 : 0);
-      const nameLines = pdf.splitTextToSize(headerText, Math.max(40, W - nameReserve));
-      pdf.text(nameLines, M, y);
-      if (anyLineDisc) {
-        const rowDisc = parseFloat(row.discount) || 0;
-        pdf.setFont('helvetica','normal'); pdf.setTextColor(130); pdf.setFontSize(9);
-        pdf.text(rowDisc > 0 ? rowDisc + '%' : '—', PW - M - 28, y, { align: 'right' });
-        pdf.setFont('helvetica','bold'); pdf.setTextColor(17); pdf.setFontSize(11);
-      }
-      pdf.text(amtStr, PW - M, y, { align: 'right' });
-      y += nameLines.length * 5;
-      if (d.detail) {
-        pdf.setFontSize(8.5); pdf.setFont('helvetica','normal'); pdf.setTextColor(130);
-        const detailLines = pdf.splitTextToSize(d.detail, W - 30);
-        detailLines.forEach(/** @param {string} dl */ dl => { pdf.text(dl, M + 4, y); y += 4; });
-      }
-      y += 3;
-      if (y > PH - 60) { pdf.addPage(); y = M + 10; }
-    });
-
-    pdf.setDrawColor(210); pdf.setLineWidth(0.25); pdf.line(M, y, PW-M, y);
-    y += 8;
+    y = _drawDocLineItems(pdf, rows, { M, PW, PH, y, anyLineDisc, fmt });
   }
 
   // ── Totals ──
@@ -2986,52 +3018,7 @@ function _buildOrderDocPDF(o, lines, type) {
 
   // ── Line items ──
   if (rows.length > 0) {
-    pdf.setFontSize(7); pdf.setFont('helvetica','bold'); pdf.setTextColor(140);
-    pdf.text('DESCRIPTION', M, y);
-    if (anyLineDisc) pdf.text('DISC', PW - M - 28, y, { align: 'right' });
-    pdf.text('AMOUNT', PW-M, y, { align:'right' });
-    y += 2;
-    pdf.setDrawColor(17); pdf.setLineWidth(0.4); pdf.line(M, y, PW-M, y);
-    y += 6;
-
-    let lastKind = '';
-    rows.forEach(/** @param {any} row */ row => {
-      const d = _lineDisplay(row);
-      if (d.kind !== lastKind) {
-        pdf.setFontSize(7); pdf.setFont('helvetica','bold'); pdf.setTextColor(160);
-        const groupLabel = { cabinet: 'CABINETS', item: 'ITEMS', labour: 'LABOUR' };
-        pdf.text((/** @type {any} */ (groupLabel))[d.kind] || d.kind.toUpperCase(), M, y);
-        y += 4;
-        lastKind = d.kind;
-      }
-      pdf.setFontSize(11); pdf.setFont('helvetica','bold'); pdf.setTextColor(17);
-      const headerText = d.qtyText ? d.name + '  ' + d.qtyText : d.name;
-      // Wrap the name so a long description can't overrun the amount (and DISC)
-      // column on the right. Reserve the measured amount width + a gutter, plus
-      // the DISC block when present. The amount stays aligned to the first line.
-      const amtStr = fmt(d.total);
-      const nameReserve = pdf.getTextWidth(amtStr) + 6 + (anyLineDisc ? 28 : 0);
-      const nameLines = pdf.splitTextToSize(headerText, Math.max(40, W - nameReserve));
-      pdf.text(nameLines, M, y);
-      if (anyLineDisc) {
-        const rowDisc = parseFloat(row.discount) || 0;
-        pdf.setFont('helvetica','normal'); pdf.setTextColor(130); pdf.setFontSize(9);
-        pdf.text(rowDisc > 0 ? rowDisc + '%' : '—', PW - M - 28, y, { align: 'right' });
-        pdf.setFont('helvetica','bold'); pdf.setTextColor(17); pdf.setFontSize(11);
-      }
-      pdf.text(amtStr, PW - M, y, { align: 'right' });
-      y += nameLines.length * 5;
-      if (d.detail) {
-        pdf.setFontSize(8.5); pdf.setFont('helvetica','normal'); pdf.setTextColor(130);
-        const detailLines = pdf.splitTextToSize(d.detail, W - 30);
-        detailLines.forEach(/** @param {string} dl */ dl => { pdf.text(dl, M + 4, y); y += 4; });
-      }
-      y += 3;
-      if (y > PH - 60) { pdf.addPage(); y = M + 10; }
-    });
-
-    pdf.setDrawColor(210); pdf.setLineWidth(0.25); pdf.line(M, y, PW-M, y);
-    y += 8;
+    y = _drawDocLineItems(pdf, rows, { M, PW, PH, y, anyLineDisc, fmt });
   }
 
   // ── Totals ──
