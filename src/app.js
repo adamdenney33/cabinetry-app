@@ -1186,6 +1186,9 @@ function _syncTrialBanner() {
   if (!_userId || window._demoMode) return hide();
   const known = (typeof _subStateKnown !== 'undefined') && _subStateKnown;
   if (!known) return hide();
+  // Grandfathered (legacy, pre-trial) users keep full access — never nag them
+  // with the read-only / trial banner.
+  if (typeof isGrandfathered === 'function' && isGrandfathered()) return hide();
   const st = (typeof _subState === 'function') ? _subState() : 'none';
   const days = (typeof TRIAL_DAYS !== 'undefined') ? TRIAL_DAYS : 14;
   let msg, label, action;
@@ -1498,6 +1501,7 @@ _sb.auth.onAuthStateChange(async (event, session) => {
     // (which flips demo mode on temporarily) doesn't clobber the tour.
     if (!window._wtActive) window._demoMode = false;
     _userId = session.user.id;
+    _userCreatedAt = session.user.created_at || null; // for isGrandfathered()
     window.Sentry.setUser({ id: session.user.id, email: session.user.email });
     const emailEl = document.getElementById('account-email-item');
     if (emailEl) emailEl.textContent = session.user.email ?? '';

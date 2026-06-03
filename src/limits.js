@@ -28,6 +28,18 @@ const FOUNDER_CAP = 50;
  *  Keep in sync with STRIPE_TRIAL_DAYS in supabase/functions/stripe-checkout. */
 const TRIAL_DAYS = 14;
 
+/** Accounts created before this instant keep full free access ("legacy" /
+ *  grandfathered): they predate the 14-day-trial model, so they're never forced
+ *  into read-only. Set this to your go-live timestamp — the default covers
+ *  everyone who signed up through 2026-06-04. */
+const GRANDFATHER_BEFORE = '2026-06-05T00:00:00Z';
+
+/** Current user's auth `created_at` (ISO), captured from the Supabase session in
+ *  app.js. Null when signed out / not yet known. Server-set, so it can't be
+ *  forged client-side.
+ *  @type {string | null} */
+let _userCreatedAt = null;
+
 // ══════════════════════════════════════════
 // SUBSCRIPTION STATE
 // ══════════════════════════════════════════
@@ -115,7 +127,21 @@ function isPro(sub) {
  * @returns {boolean}
  */
 function canEdit() {
-  return isPro();
+  return isPro() || isGrandfathered();
+}
+
+/**
+ * True when the signed-in user predates the 14-day-trial model and keeps full
+ * free access ("legacy" account). Compares the authenticated session's
+ * `created_at` (captured into `_userCreatedAt`) against GRANDFATHER_BEFORE.
+ *
+ * @returns {boolean}
+ */
+function isGrandfathered() {
+  if (!_userId || !_userCreatedAt) return false;
+  const t = new Date(_userCreatedAt).getTime();
+  if (isNaN(t)) return false;
+  return t < new Date(GRANDFATHER_BEFORE).getTime();
 }
 
 /**

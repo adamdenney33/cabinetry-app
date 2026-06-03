@@ -213,6 +213,18 @@ function renderSubscriptionSection() {
     return;
   }
 
+  // Grandfathered (legacy, pre-trial) user — full free access, no read-only.
+  if (typeof isGrandfathered === 'function' && isGrandfathered()) {
+    el.innerHTML = `
+      <div class="account-plan-row">
+        <span class="account-plan-name">Free (legacy)</span>
+        <span class="badge badge-green">Full access</span>
+      </div>
+      <div class="account-menu-item" style="color:var(--muted);font-size:11px;cursor:default;padding-bottom:4px">Thanks for being an early user — your account keeps full access.</div>
+    `;
+    return;
+  }
+
   // Read-only — no active trial/subscription.
   //   past_due → fix the card via the Stripe portal (NOT a fresh checkout)
   //   lapsed   → resubscribe
