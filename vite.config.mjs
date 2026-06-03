@@ -84,6 +84,11 @@ function copyLandingPlugin(env) {
       for (const f of ['landing.css', 'landing.js']) {
         if (existsSync(f)) copyFileSync(f, join('dist', f));
       }
+      // Static legal pages — self-contained, no build-time injection needed.
+      // Cloudflare Pages serves these at /privacy and /terms (extensionless).
+      for (const f of ['privacy.html', 'terms.html']) {
+        if (existsSync(f)) copyFileSync(f, join('dist', f));
+      }
       for (const dir of ['brand/icons', 'brand/screenshots', 'brand/logo']) {
         if (existsSync(dir)) cpSync(dir, join('dist', dir), { recursive: true });
       }
