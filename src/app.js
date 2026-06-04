@@ -1235,16 +1235,19 @@ function toggleAuthMode() {
     ? 'No account? <span onclick="toggleAuthMode()">Create one</span>'
     : 'Already have an account? <span onclick="toggleAuthMode()">Sign In</span>';
   /** @type {HTMLElement} */ (document.getElementById('auth-marketing-row')).style.display = isSign ? 'none' : 'flex';
+  /** @type {HTMLElement} */ (document.getElementById('auth-name')).style.display = isSign ? 'none' : 'block';
   /** @type {HTMLElement} */ (document.getElementById('auth-msg')).innerHTML = '';
 }
 
 async function authSubmit() {
   const email = /** @type {HTMLInputElement | null} */ (document.getElementById('auth-email'))?.value.trim() || '';
   const password = /** @type {HTMLInputElement | null} */ (document.getElementById('auth-password'))?.value || '';
+  const name = /** @type {HTMLInputElement | null} */ (document.getElementById('auth-name'))?.value.trim() || '';
   const msgEl = document.getElementById('auth-msg');
   const btn = /** @type {HTMLButtonElement | null} */ (document.getElementById('auth-btn'));
   if (msgEl) msgEl.innerHTML = '';
   if (!email || !password) { if (msgEl) msgEl.innerHTML = '<div class="auth-error">Email and password required.</div>'; return; }
+  if (_authMode === 'signup' && !name) { if (msgEl) msgEl.innerHTML = '<div class="auth-error">Please enter your name.</div>'; return; }
   if (btn) { btn.disabled = true; btn.textContent = '…'; }
   let error;
   try {
@@ -1268,8 +1271,10 @@ async function authSubmit() {
           // app actually lives so dev signups don't bounce to a 404.
           emailRedirectTo: window.location.origin + (window._isDev ? '' : '/os'),
           // Persisted into auth.users.user_metadata; the list-subscribe edge
-          // function reads it after the user confirms their email.
-          data: { marketing_opt_in: marketingOptIn, attribution },
+          // function reads it after the user confirms their email. full_name is
+          // the user's name collected at signup, queryable via
+          // `raw_user_meta_data->>'full_name'` and used to greet them in-app.
+          data: { full_name: name, marketing_opt_in: marketingOptIn, attribution },
         },
       }));
     }
