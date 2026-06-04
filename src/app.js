@@ -442,6 +442,7 @@ function _orderLineAdd(kind) {
     if (idx < 0) return;
     _opState.lines[idx].id = r.data.id;
     if (typeof _setSaveStatus === 'function') _setSaveStatus('order', 'saved');
+    if (_opState.orderId) _recomputeOrderValuePersist(_opState.orderId);
     const cur = _opState.lines[idx];
     if (cur.name || cur.qty || cur.labour_hours || (cur.unit_price !== row.unit_price)) {
       _scheduleOrderLineUpsert(idx);
@@ -479,6 +480,7 @@ function _oAddStockLineFromLibrary(stockItem) {
     const idx = _opState.lines.findIndex(x => x === row);
     if (idx >= 0) _opState.lines[idx].id = r.data.id;
     if (typeof _setSaveStatus === 'function') _setSaveStatus('order', 'saved');
+    if (_opState.orderId) _recomputeOrderValuePersist(_opState.orderId);
   });
   // Clear the search input so the next pick starts fresh.
   const inp = /** @type {HTMLInputElement|null} */ (document.getElementById('po-stock-search'));
@@ -504,6 +506,7 @@ async function _orderLineRemove(idx) {
   _renderOrderLineTotals();
   _renderOrderHoursBreakdown();
   if (typeof _setSaveStatus === 'function') _setSaveStatus('order', 'saved');
+  if (_opState.orderId) _recomputeOrderValuePersist(_opState.orderId);
 }
 
 /** @type {Map<number, ReturnType<typeof setTimeout>>} */
