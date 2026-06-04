@@ -162,38 +162,6 @@ async function recordFounderPurchase(session: Stripe.Checkout.Session) {
   });
 }
 
-// Optional server-side product-analytics: when a trial converts to a paid
-// subscription (the ~day-15 first real charge), capture a PostHog event so the
-// paid conversion is recorded even though the user's browser isn't present.
-// Env-gated — a no-op unless POSTHOG_PROJECT_KEY is set, so deploying this
-// changes nothing until you opt in. distinct_id is the Supabase user id (matches
-// the frontend's _identifyUser). Never throws into the webhook path.
-async function trackTrialConverted(subscription: Stripe.Subscription) {
-  const key = Deno.env.get('POSTHOG_PROJECT_KEY');
-  if (!key) return;
-  const host = (Deno.env.get('POSTHOG_HOST') ?? 'https://eu.i.posthog.com').replace(/\/$/, '');
-  const customerId =
-    typeof subscription.customer === 'string' ? subscription.customer : subscription.customer.id;
-  const userId = await getUserIdForCustomer(customerId);
-  if (!userId) return;
-  const priceId = subscription.items.data[0]?.price?.id ?? null;
-  const res = await fetch(`${host}/capture/`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({
-      api_key: key,
-      event: 'pro_trial_converted',
-      distinct_id: userId,
-      properties: {
-        plan: planFromPriceId(priceId),
-        stripe_price_id: priceId,
-        stripe_subscription_id: subscription.id,
-      },
-    }),
-  });
-  if (!res.ok) console.warn('[stripe-webhook] PostHog capture HTTP', res.status);
-}
-
 // ── handler ────────────────────────────────────────────────────────────
 
 Deno.serve(async (req) => {
@@ -240,16 +208,6 @@ Deno.serve(async (req) => {
       case 'customer.subscription.deleted': {
         const subscription = event.data.object as Stripe.Subscription;
         await syncFromStripeSubscription(subscription);
-        // Day-15 paid-conversion signal: a trial flipping to 'active'.
-        // `previous_attributes` is only present on 'updated' events. Fire-and-
-        // forget — analytics must never block or fail the subscription sync.
-        if (event.type === 'customer.subscription.updated') {
-          const prev = (event.data as { previous_attributes?: { status?: string } }).previous_attributes;
-          if (prev?.status === 'trialing' && subscription.status === 'active') {
-            await trackTrialConverted(subscription).catch((e) =>
-              console.warn('[stripe-webhook] trial-converted analytics failed:', (e as Error).message));
-          }
-        }
         break;
       }
 

@@ -2067,10 +2067,9 @@ function _dxfFilenameSafe(s) {
     .replace(/^-|-$/g, '').slice(0, 60) || 'cutlist';
 }
 
-/** Export the optimised nested layout as a single DXF (all sheets tiled).
- *  Pro-only for legacy/grandfathered users (no export on the old free tier). */
+/** Export the optimised nested layout as a single DXF (all sheets tiled). Pro-only. */
 function exportLayoutDXF() {
-  if (!_enforceExport()) return;
+  if (!_enforceProFeature()) return;
   if (!results || !results.uniqueLayouts || !results.uniqueLayouts.length) {
     _toast('Run the optimiser first', 'error');
     return;
@@ -2375,8 +2374,8 @@ function _drawBizHeader(pdf, biz, logoDataUrl, x, y, opts) {
 }
 
 // _drawPdfFooter: footer line at the bottom of every page.
-//   - Full access (active trial or paid subscription) → business name only.
-//   - Read-only (no active trial/sub) → business name + ProCabinet.app branding.
+//   - Pro tier (paid subscription) → business name only.
+//   - Free tier → business name + ProCabinet.app branding.
 // Variant of the branding is controlled by _PROCAB_FOOTER_VARIANT below — flip
 // to switch between subtle / band / band+strip without touching call sites.
 /** @type {1|2|3} */
@@ -2398,7 +2397,7 @@ function _drawPdfFooter(pdf, biz, dateStr, PW, PH, M) {
     pdf.text(dateStr, PW - M, PH - M, { align: 'right' });
     return;
   }
-  // Read-only — branded footer. Variant 2 (band) is the default per mockup.
+  // Free tier — variant selection. Variant 2 (band) is the default per mockup.
   if (_PROCAB_FOOTER_VARIANT === 1) {
     pdf.setFontSize(6.5); pdf.setFont('helvetica', 'normal'); pdf.setTextColor(190);
     const left = name ? (name + '  ·  Made with ProCabinet.app') : 'Made with ProCabinet.app';

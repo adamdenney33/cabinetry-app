@@ -130,7 +130,7 @@ function importStockLibrary() {
 }
 
 function exportStockCSV() {
-  if (!_enforceExport()) return;
+  if (!_enforceProFeature()) return;
   const u = window.units === 'metric' ? 'mm' : 'in';
   /** @type {any[][]} */
   const rows = [['Name','SKU','Category',`W (${u})`,`H (${u})`,'Qty','Low Alert','Cost/Sheet','Total Value','Status']];

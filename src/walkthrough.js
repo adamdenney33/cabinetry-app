@@ -1043,37 +1043,54 @@ function _wtCtaHTML() {
   const founderBtn = soldOut
     ? '<button class="wt-cta-btn wt-cta-btn-amber" disabled>Sold out</button>'
     : '<button class="wt-cta-btn wt-cta-btn-amber" data-wt-act="cta-founder">Claim a seat</button>';
-  const days = (typeof TRIAL_DAYS !== 'undefined') ? TRIAL_DAYS : 14;
   return '' +
     '<div class="wt-cta-head">' +
-      '<div class="wt-cta-eyebrow">' + days + '-day free trial</div>' +
-      '<div class="wt-cta-title">Start your free trial</div>' +
-      '<div class="wt-cta-sub">Full access for ' + days + ' days. Card required — cancel any time before day ' + days + ' and you won\'t be charged.</div>' +
+      '<div class="wt-cta-eyebrow">Support the project</div>' +
+      '<div class="wt-cta-title">Choose your ProCabinet plan</div>' +
+      '<div class="wt-cta-sub">Continue for free, or unlock pro features.</div>' +
     '</div>' +
     '<div class="wt-cta-cols">' +
+      '<div class="wt-cta-col">' +
+        '<div class="wt-cta-tier">Free</div>' +
+        '<div class="wt-cta-price">$0</div>' +
+        '<div class="wt-cta-per">forever</div>' +
+        '<ul class="wt-cta-feats">' +
+          '<li>Free use of all core functions of the app</li>' +
+          '<li class="wt-lim"><strong>5 saved items</strong> limit per library</li>' +
+          '<li class="wt-lim">No library import / export (CSV)</li>' +
+          '<li class="wt-lim">No CNC / DXF export</li>' +
+          '<li class="wt-lim">ProCabinet branding on PDFs</li>' +
+          '<li class="wt-lim">Limited access to new features</li>' +
+        '</ul>' +
+        '<button class="wt-cta-btn wt-cta-btn-ghost" data-wt-act="cta-free">Continue free</button>' +
+      '</div>' +
       '<div class="wt-cta-col">' +
         '<div class="wt-cta-tier">Monthly</div>' +
         '<div class="wt-cta-price">$25<span>/mo</span></div>' +
         '<div class="wt-cta-per"><s>$35/mo</s> · launch price</div>' +
         '<ul class="wt-cta-feats">' +
-          '<li><strong>' + days + ' days free</strong>, then $25/mo</li>' +
           '<li>First 6 months, then $35/mo</li>' +
-          '<li>Everything included</li>' +
-          '<li>Cancel any time</li>' +
+          '<li><strong>Unlimited saved items</strong></li>' +
+          '<li>Import / export libraries (CSV)</li>' +
+          '<li>CNC / DXF export</li>' +
+          '<li>ProCabinet removed from PDFs</li>' +
+          '<li>Priority email support</li>' +
         '</ul>' +
-        '<button class="wt-cta-btn wt-cta-btn-ghost" data-wt-act="cta-monthly">Start trial — Monthly</button>' +
+        '<button class="wt-cta-btn wt-cta-btn-ghost" data-wt-act="cta-monthly">Choose Monthly</button>' +
       '</div>' +
       '<div class="wt-cta-col">' +
         '<div class="wt-cta-tier">Annual</div>' +
         '<div class="wt-cta-price">$15<span>/mo</span></div>' +
         '<div class="wt-cta-per"><s>$25/mo</s> · launch price</div>' +
         '<ul class="wt-cta-feats">' +
-          '<li><strong>' + days + ' days free</strong>, then $180/yr</li>' +
-          '<li>Best value — then $300/yr</li>' +
-          '<li>Everything included</li>' +
-          '<li>Cancel any time</li>' +
+          '<li>$180 billed for year one, then $300/yr</li>' +
+          '<li><strong>Unlimited saved items</strong></li>' +
+          '<li>Import / export libraries (CSV)</li>' +
+          '<li>CNC / DXF export</li>' +
+          '<li>ProCabinet removed from PDFs</li>' +
+          '<li>Priority email support</li>' +
         '</ul>' +
-        '<button class="wt-cta-btn wt-cta-btn-ghost" data-wt-act="cta-annual">Start trial — Annual</button>' +
+        '<button class="wt-cta-btn wt-cta-btn-ghost" data-wt-act="cta-annual">Choose Annual</button>' +
       '</div>' +
       '<div class="wt-cta-col wt-cta-col-hero">' +
         '<div class="wt-cta-flag">' + flag + '</div>' +
@@ -1084,14 +1101,12 @@ function _wtCtaHTML() {
           '<li>Pay once, use forever</li>' +
           '<li>Only <strong>' + cap + ' accounts</strong> ever</li>' +
           '<li><strong>Everything</strong> in the paid plans</li>' +
-          '<li>No trial — instant lifetime access</li>' +
+          '<li>CNC / DXF export</li>' +
+          '<li>New feature requests prioritised</li>' +
           '<li>WhatsApp group with founder</li>' +
         '</ul>' +
         founderBtn +
       '</div>' +
-    '</div>' +
-    '<div style="text-align:center;margin-top:14px">' +
-      '<button class="wt-cta-btn wt-cta-btn-ghost" data-wt-act="cta-free" style="display:inline-block;width:auto;padding:8px 28px">Maybe later</button>' +
     '</div>';
 }
 

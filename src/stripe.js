@@ -104,22 +104,10 @@ function handleCheckoutReturn() {
   const upgrade = params.get('upgrade');
   if (!upgrade) return;
   if (upgrade === 'success') {
-    const _plan = params.get('plan') || 'unknown';
-    // Monthly/annual now begin a 14-day card-upfront trial (no charge yet);
-    // Founder is an immediate one-off lifetime purchase.
-    const _isTrialPlan = _plan === 'monthly' || _plan === 'annual';
-    const _days = (typeof TRIAL_DAYS !== 'undefined') ? TRIAL_DAYS : 14;
-    if (typeof _toast === 'function') {
-      _toast(_isTrialPlan ? `Your ${_days}-day free trial has started!` : 'Welcome to Pro! Your purchase is confirmed.', 'success');
-    }
-    // Product-analytics (PostHog). `trial_started` marks the start of the
-    // 14-day trial (no charge yet); the real day-15 paid conversion is best
-    // captured server-side from the webhook (recommended follow-up, see PLAN.md).
-    if (typeof _track === 'function' && _isTrialPlan) _track('trial_started', { plan: _plan });
-    // Ad-platform conversions (Meta / GA4 / Google Ads). NOTE: for trial plans
-    // this fires at trial START ($0), not a sale — see _trackPurchaseConversion
-    // and PLAN.md (recommended follow-up: server-side paid signal at day 15).
-    if (typeof _trackPurchaseConversion === 'function') _trackPurchaseConversion(_plan);
+    if (typeof _toast === 'function') _toast('Welcome to Pro! Your subscription is active.', 'success');
+    // Fire ad-platform purchase conversions (Meta / GA4 / Google Ads). The plan
+    // arrives as ?plan=<monthly|annual|founder> from the Stripe success_url.
+    if (typeof _trackPurchaseConversion === 'function') _trackPurchaseConversion(params.get('plan'));
     setTimeout(() => { if (typeof loadSubscription === 'function') loadSubscription(); }, 2000);
   } else if (upgrade === 'cancelled') {
     if (typeof _toast === 'function') _toast('Checkout cancelled — no charge made.', 'error');
@@ -180,25 +168,6 @@ function renderSubscriptionSection() {
     const periodEnd = sub?.current_period_end
       ? new Date(sub.current_period_end).toLocaleDateString()
       : '';
-    // Trial in progress — countdown + when billing begins.
-    if (sub?.status === 'trialing') {
-      const left = (typeof _trialDaysLeft === 'function') ? _trialDaysLeft() : null;
-      const leftLabel = left != null ? `${left} day${left === 1 ? '' : 's'} left` : 'Trialing';
-      const billLine = periodEnd
-        ? (sub?.cancel_at_period_end
-            ? `Ends ${periodEnd} — you won't be charged`
-            : `Billing starts ${periodEnd}`)
-        : '';
-      el.innerHTML = `
-      <div class="account-plan-row">
-        <span class="account-plan-name">Free trial</span>
-        <span class="badge badge-green">${leftLabel}</span>
-      </div>
-      ${billLine ? `<div class="account-menu-item" style="color:var(--muted);font-size:11px;cursor:default;padding-bottom:4px">${billLine}</div>` : ''}
-      <div class="account-menu-item" onclick="_handleManageSubscription()" style="color:var(--accent);font-weight:600">Manage subscription</div>
-    `;
-      return;
-    }
     const renewLine = sub?.cancel_at_period_end
       ? `Cancels ${periodEnd}`
       : periodEnd ? `Renews ${periodEnd}` : '';
@@ -213,53 +182,16 @@ function renderSubscriptionSection() {
     return;
   }
 
-  // Grandfathered (legacy, pre-trial) user — old free tier: 5 items/library, no
-  // read-only lock. Upgrade opens the trial/plan picker for unlimited.
-  if (typeof isGrandfathered === 'function' && isGrandfathered()) {
-    el.innerHTML = `
-      <div class="account-plan-row">
-        <span class="account-plan-name">Free (legacy)</span>
-        <span class="badge badge-orange">5/library</span>
-      </div>
-      <div class="account-menu-item" style="color:var(--muted);font-size:11px;cursor:default;padding-bottom:4px">Early-user plan — 5 items per library. Upgrade any time for unlimited.</div>
-      <div style="padding:10px 16px;border-bottom:1px solid var(--border)">
-        <button onclick="_wtStartCta()" style="width:100%;padding:8px;background:var(--accent);color:white;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer">
-          Upgrade to Pro
-        </button>
-      </div>
-    `;
-    return;
-  }
-
-  // Read-only — no active trial/subscription.
-  //   past_due → fix the card via the Stripe portal (NOT a fresh checkout)
-  //   lapsed   → resubscribe
-  //   none     → start the 14-day trial via the walkthrough plan-picker CTA
-  const _st = (typeof _subState === 'function') ? _subState() : 'none';
-  const _days = (typeof TRIAL_DAYS !== 'undefined') ? TRIAL_DAYS : 14;
-  let roName = 'Read-only', roBadge, roBtnLabel, roBtnAction;
-  if (_st === 'past_due') {
-    roName = 'Payment failed';
-    roBadge = 'Past due';
-    roBtnLabel = 'Update payment';
-    roBtnAction = `_handleManageSubscription()`;
-  } else if (_st === 'lapsed') {
-    roBadge = 'No plan';
-    roBtnLabel = 'Resubscribe';
-    roBtnAction = `_openTrialModal({mode:'resubscribe'})`;
-  } else {
-    roBadge = `${_days}-day trial`;
-    roBtnLabel = 'Start free trial';
-    roBtnAction = `_wtStartCta()`;
-  }
+  // Free plan — the Upgrade button opens the walkthrough's plan-picker CTA
+  // (_wtStartCta) rather than jumping straight to Stripe checkout.
   el.innerHTML = `
     <div class="account-plan-row">
-      <span class="account-plan-name">${roName}</span>
-      <span class="badge badge-orange">${roBadge}</span>
+      <span class="account-plan-name">Free Plan</span>
+      <span class="badge badge-orange">5/library</span>
     </div>
     <div style="padding:10px 16px;border-bottom:1px solid var(--border)">
-      <button onclick="${roBtnAction}" style="width:100%;padding:8px;background:var(--accent);color:white;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer">
-        ${roBtnLabel}
+      <button onclick="_wtStartCta()" style="width:100%;padding:8px;background:var(--accent);color:white;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer">
+        Upgrade to Pro
       </button>
     </div>
   `;
@@ -293,9 +225,7 @@ function _handleManageSubscription() {
   }
 
   if (!(typeof isPro === 'function' && isPro())) {
-    // Read-only — no active trial/subscription. Lapsed → resubscribe; never
-    // subscribed → start the trial.
-    _openTrialModal({ mode: (typeof _subState === 'function' && _subState() === 'lapsed') ? 'resubscribe' : 'trial' });
+    _openManagePopupFree();
     return;
   }
 
@@ -468,7 +398,7 @@ function _openManagePopupCancelling(sub) {
         </div>
       </div>
       <div style="background:rgba(232,168,56,0.08);border:1px solid rgba(232,168,56,0.2);border-radius:8px;padding:10px 14px;margin-top:12px;font-size:12px;color:var(--text2);line-height:1.5">
-        Your Pro access ends on <strong>${periodEnd}</strong>. After this date your account becomes read-only — you can still view and export your data, but you'll need to resubscribe to create or edit.
+        Your Pro access ends on <strong>${periodEnd}</strong>. After this date you'll revert to the free plan (5 items/library).
       </div>
       <div class="pf-divider"></div>
       <div onclick="_portalAction()" style="padding:8px 0;font-size:12px;color:var(--accent);cursor:pointer;font-weight:600;display:flex;justify-content:space-between;align-items:center" onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'">Update payment method<span style="color:var(--muted);font-size:11px">&rsaquo;</span></div>
@@ -516,52 +446,8 @@ function _openManagePopupPastDue(sub) {
 }
 
 /**
- * The trial / resubscribe modal — the single upgrade surface that replaces the
- * old free-tier "limit hit" and "Pro feature" modals. Shown when a read-only
- * user tries to create/edit/import, or from the account menu / trial banner.
- * Card is required at Stripe Checkout; cancelling before day 14 means no charge.
- *
- * @param {{ mode?: 'trial' | 'resubscribe' }} [opts] 'resubscribe' for a lapsed
- *   subscriber; 'trial' (default) for someone who has never subscribed.
- */
-function _openTrialModal(opts) {
-  const mode = (opts && opts.mode) || 'trial';
-  const days = (typeof TRIAL_DAYS !== 'undefined') ? TRIAL_DAYS : 14;
-  const title = mode === 'resubscribe' ? 'Resubscribe to keep editing' : `Start your ${days}-day free trial`;
-  const lead = mode === 'resubscribe'
-    ? 'Your account is read-only. Resubscribe to create and edit again — your data is safe and waiting, and you can still view or export it any time.'
-    : `Get full access for ${days} days — quote, cut, schedule and bill from one place. Card required; cancel any time before day ${days} and you won't be charged.`;
-  const primaryLabel = mode === 'resubscribe' ? 'Resubscribe — Annual' : 'Start free trial — Annual';
-
-  _openPopup(`
-    <div class="popup-header">
-      <div class="popup-title">${title}</div>
-      <button class="popup-close" onclick="_closePopup()">&times;</button>
-    </div>
-    <div class="popup-body">
-      <div style="background:rgba(232,168,56,0.08);border:1px solid rgba(232,168,56,0.2);border-radius:8px;padding:12px 14px;font-size:13px;color:var(--text);line-height:1.5">
-        ${lead}
-      </div>
-      <div class="pf-divider"></div>
-      <button class="btn btn-primary btn-lg" onclick="_closePopup();_handleUpgradeClick('annual')">${primaryLabel}</button>
-      <div style="display:flex;justify-content:space-between;font-size:10px;margin-top:8px;color:var(--muted)">
-        <span style="cursor:pointer" onclick="_closePopup();_handleUpgradeClick('annual')"><strong style="color:var(--text)">$15</strong> / mo · billed yearly</span>
-        <span style="cursor:pointer" onclick="_closePopup();_handleUpgradeClick('monthly')"><strong style="color:var(--text)">$25</strong> / mo</span>
-      </div>
-    </div>
-    <div class="popup-footer">
-      <div></div>
-      <div class="popup-footer-right">
-        <button class="btn btn-outline" onclick="_closePopup()">Maybe later</button>
-      </div>
-    </div>
-  `, 'sm');
-}
-
-/**
- * Cap-hit modal — shown when a grandfathered (legacy free) user tries to create
- * past their FREE_LIMITS[library] cap. Upgrading (start a trial / subscribe)
- * lifts the cap. Post-cutoff read-only users hit _openTrialModal instead.
+ * Modal shown when a free-tier user tries to create a 6th item in a capped
+ * library. Tailored heading per library; reuses the upgrade CTAs.
  *
  * @param {'clients'|'quotes'|'orders'|'cabinet_templates'|'stock'|'cutlists'} library
  */
@@ -575,17 +461,49 @@ function _openLimitHitModal(library) {
     stock:             { label: 'stock items',       verb: 'track' },
     cutlists:          { label: 'cut lists',         verb: 'track' },
   };
-  const { label, verb } = labels[library] || { label: 'items', verb: 'add' };
-  const cap = (typeof FREE_LIMITS !== 'undefined' && FREE_LIMITS[library]) || 5;
+  const { label, verb } = labels[library];
+  const cap = FREE_LIMITS[library];
 
   _openPopup(`
     <div class="popup-header">
-      <div class="popup-title">Plan limit reached</div>
+      <div class="popup-title">Free Plan Limit Reached</div>
       <button class="popup-close" onclick="_closePopup()">&times;</button>
     </div>
     <div class="popup-body">
       <div style="background:rgba(232,168,56,0.08);border:1px solid rgba(232,168,56,0.2);border-radius:8px;padding:12px 14px;font-size:13px;color:var(--text);line-height:1.5">
-        You've used all <strong>${cap}</strong> of your legacy free ${label}. Upgrade to Pro for unlimited, or delete an existing one to ${verb} this new ${label.replace(/s$/, '')}.
+        You've used all <strong>${cap}</strong> of your free ${label}. Upgrade to Pro for unlimited storage, or delete an existing one to ${verb} this new ${label.replace(/s$/, '')}.
+      </div>
+      <div class="pf-divider"></div>
+      <button class="btn btn-primary btn-lg" onclick="_closePopup();_handleUpgradeClick('annual')">Upgrade to Pro</button>
+      <div style="display:flex;justify-content:space-between;font-size:10px;margin-top:8px;color:var(--muted)">
+        <span style="cursor:pointer" onclick="_closePopup();_handleUpgradeClick('annual')"><strong style="color:var(--text)">$15</strong> / mo · billed yearly</span>
+        <span style="cursor:pointer" onclick="_closePopup();_handleUpgradeClick('monthly')"><strong style="color:var(--text)">$25</strong> / mo</span>
+      </div>
+    </div>
+    <div class="popup-footer">
+      <div></div>
+      <div class="popup-footer-right">
+        <button class="btn btn-outline" onclick="_closePopup()">Close</button>
+      </div>
+    </div>
+  `, 'sm');
+}
+
+/**
+ * Modal shown when a signed-in free user clicks an import or export button.
+ * Lock icon + the standard upgrade CTAs. Logged-out demo visitors never reach
+ * this — `_enforceProFeature` lets them through.
+ */
+function _openProFeatureModal() {
+  _openPopup(`
+    <div class="popup-header">
+      <div class="popup-title">A Pro Feature</div>
+      <button class="popup-close" onclick="_closePopup()">&times;</button>
+    </div>
+    <div class="popup-body">
+      <div style="text-align:center;font-size:34px;line-height:1;padding:4px 0 2px">&#128274;</div>
+      <div style="background:rgba(232,168,56,0.08);border:1px solid rgba(232,168,56,0.2);border-radius:8px;padding:12px 14px;font-size:13px;color:var(--text);line-height:1.5;text-align:center">
+        This is a <strong>Pro</strong> feature. Upgrade to import and export your libraries as CSV, and send your nested cut layouts to the CNC as DXF.
       </div>
       <div class="pf-divider"></div>
       <button class="btn btn-primary btn-lg" onclick="_closePopup();_handleUpgradeClick('annual')">Upgrade to Pro</button>
@@ -628,5 +546,32 @@ function _openManagePopupFounder() {
   `, 'sm');
 }
 
-// _openManagePopupFree removed — there is no permanent free plan. A read-only
-// (non-trial/non-subscriber) user is routed to _openTrialModal() instead.
+function _openManagePopupFree() {
+  _openPopup(`
+    <div class="popup-header">
+      <div class="popup-title">Subscription</div>
+      <button class="popup-close" onclick="_closePopup()">&times;</button>
+    </div>
+    <div class="popup-body">
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:14px 16px">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:14px;font-weight:700;color:var(--text)">Free Plan</span>
+          <span class="badge badge-orange">5/library</span>
+        </div>
+        <div style="font-size:12px;color:var(--muted);margin-top:6px;line-height:1.4">Full access to all features, up to 5 items per library.</div>
+      </div>
+      <div class="pf-divider"></div>
+      <button class="btn btn-primary btn-lg" onclick="_closePopup();_handleUpgradeClick('annual')">Upgrade to Pro</button>
+      <div style="display:flex;justify-content:space-between;font-size:10px;margin-top:8px;color:var(--muted)">
+        <span style="cursor:pointer" onclick="_closePopup();_handleUpgradeClick('annual')"><strong style="color:var(--text)">$15</strong> / mo · billed yearly</span>
+        <span style="cursor:pointer" onclick="_closePopup();_handleUpgradeClick('monthly')"><strong style="color:var(--text)">$25</strong> / mo</span>
+      </div>
+    </div>
+    <div class="popup-footer">
+      <div></div>
+      <div class="popup-footer-right">
+        <button class="btn btn-outline" onclick="_closePopup()">Close</button>
+      </div>
+    </div>
+  `, 'sm');
+}
