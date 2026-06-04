@@ -197,8 +197,17 @@ export async function listTaxOptions(provider: Provider, conn: Conn, accessToken
 export async function pickDefaultTaxCode(provider: Provider, conn: Conn, accessToken: string): Promise<string | null> {
   const opts = await listTaxOptions(provider, conn, accessToken);
   if (opts.length === 0) return null;
-  // Prefer a standard sales/output rate; fall back to the first option.
-  const preferred = opts.find((o) => /output|standard|sales|gst|vat|20%|s$/i.test(o.name));
+  if (provider === 'xero') {
+    // Sales invoices (ACCREC) need an OUTPUT (sales/income) tax type. Xero
+    // rejects an INPUT (purchases/expenses) type on a sales invoice, so exclude
+    // those and prefer a standard ~20% output rate.
+    const nonInput = opts.filter((o) => !/^input/i.test(o.code) && !/expense|purchase/i.test(o.name));
+    const output = nonInput.filter((o) => /^output/i.test(o.code));
+    const pool = output.length ? output : (nonInput.length ? nonInput : opts);
+    return (pool.find((o) => /20%|standard|output2/i.test(o.name)) ?? pool[0]).code;
+  }
+  // QuickBooks — prefer a standard taxable rate; fall back to the first option.
+  const preferred = opts.find((o) => /standard|taxable|tax|gst|vat|20%/i.test(o.name));
   return (preferred ?? opts[0]).code;
 }
 
