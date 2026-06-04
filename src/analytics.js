@@ -48,6 +48,13 @@ function _identifyUser(session) {
   try {
     /** @type {Record<string, any>} */
     const props = { email: session.user.email, plan: _currentPlan() };
+    // Name collected at signup (user_metadata). `name` is PostHog's canonical
+    // person-display property; first/last are kept for segmentation.
+    const meta = session.user.user_metadata || {};
+    const fullName = (meta.full_name || [meta.first_name, meta.last_name].filter(Boolean).join(' ')).trim();
+    if (fullName) props.name = fullName;
+    if (meta.first_name) props.first_name = meta.first_name;
+    if (meta.last_name) props.last_name = meta.last_name;
     // Lift the attribution blob captured at signUp time into person props.
     // Mirrors what's on auth.users.raw_user_meta_data.attribution.
     const attr = session.user.user_metadata?.attribution;

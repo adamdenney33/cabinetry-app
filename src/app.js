@@ -1546,6 +1546,12 @@ _sb.auth.onAuthStateChange(async (event, session) => {
     window.Sentry.setUser({ id: session.user.id, email: session.user.email });
     const emailEl = document.getElementById('account-email-item');
     if (emailEl) emailEl.textContent = session.user.email ?? '';
+    // Name collected at signup (user_metadata.full_name / first_name+last_name).
+    // Older accounts created before the name field won't have it — hide the row.
+    const meta = session.user.user_metadata || {};
+    const displayName = (meta.full_name || [meta.first_name, meta.last_name].filter(Boolean).join(' ')).trim();
+    const nameEl = document.getElementById('account-name-item');
+    if (nameEl) { nameEl.textContent = displayName; nameEl.style.display = displayName ? '' : 'none'; }
     /** @type {HTMLElement} */ (document.getElementById('account-guest-view')).style.display = 'none';
     /** @type {HTMLElement} */ (document.getElementById('account-user-view')).style.display = '';
     _showApp();
