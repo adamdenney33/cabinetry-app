@@ -130,7 +130,7 @@ function importStockLibrary() {
 }
 
 function exportStockCSV() {
-  // Export is ungated — read-only users may always retrieve their data.
+  if (!_enforceExport()) return;
   const u = window.units === 'metric' ? 'mm' : 'in';
   /** @type {any[][]} */
   const rows = [['Name','SKU','Category',`W (${u})`,`H (${u})`,'Qty','Low Alert','Cost/Sheet','Total Value','Status']];

@@ -51,10 +51,12 @@ original commit; see SPEC § 13.)
   `2026-06-05T00:00:00Z`; set to go-live) keep the **old free tier: 5 items per
   library** (not unlimited). `canEdit() = isPro() || isGrandfathered()` (reads the
   session's `created_at`) so they can edit, but `_enforceFreeLimit` caps creates
-  at 5 (cap modal) and `_enforceProFeature` blocks CSV import (Pro-only — also
-  stops a bulk import bypassing the cap). No read-only lock; account dropdown
-  shows "Free (legacy) · 5/library · Upgrade to Pro". New signups (on/after the
-  cutoff) get the trial + read-only model.
+  at 5 (cap modal), `_enforceProFeature` blocks CSV import, and `_enforceExport`
+  blocks CSV/DXF export — all Pro-only, exactly the old free tier (import-block
+  also stops a bulk import bypassing the cap). Read-only (post-cutoff) users
+  still CAN export (the trial model's "view + export" promise). No read-only
+  lock for grandfathered; account dropdown shows "Free (legacy) · 5/library ·
+  Upgrade to Pro". New signups (on/after the cutoff) get the trial + read-only model.
 - ✅ typecheck + build clean.
 - ⬜ **Deploy + push (user-confirmed):** deploy `stripe-checkout` (Supabase MCP),
   optionally set `STRIPE_TRIAL_DAYS`, confirm trials enabled in Stripe; then push

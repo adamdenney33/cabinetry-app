@@ -283,6 +283,26 @@ function _enforceProFeature() {
   return false;
 }
 
+/**
+ * Gate CSV / DXF export. Blocks ONLY grandfathered (legacy free) users — the old
+ * free tier never had export, so they keep it exactly as before (Pro-only).
+ * Pro/trial export freely; read-only (post-cutoff lapsed/none) users may export
+ * too — that's the trial model's "view + export your data" data-portability
+ * promise, distinct from the legacy tier.
+ *
+ * @returns {boolean}
+ */
+function _enforceExport() {
+  if (window._demoMode) return true;                 // guest/tour: demo data
+  if (typeof isGrandfathered === 'function' && isGrandfathered()) {
+    if (typeof _track === 'function') _track('pro_feature_blocked', { feature: 'export' });
+    if (typeof _openTrialModal === 'function') _openTrialModal();
+    else if (typeof _toast === 'function') _toast('Exporting is a Pro feature — upgrade for CSV/DXF export.', 'error');
+    return false;
+  }
+  return true;                                        // pro/trial + read-only
+}
+
 // ══════════════════════════════════════════
 // READ-ONLY WRITE BLOCK (db.js chokepoint backstop)
 // ══════════════════════════════════════════

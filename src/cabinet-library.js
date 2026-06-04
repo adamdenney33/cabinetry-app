@@ -44,8 +44,7 @@ function _saveStockLibByName(name) {
 }
 
 function cbExportLibrary() {
-  // Export is available to everyone signed in (read-only users included) — it's
-  // how they retrieve their data. No trial gate.
+  if (!_enforceExport()) return;
   if (!cbLibrary.length) { _toast('No cabinets in library', 'error'); return; }
   const headers = ['Name','Width','Height','Depth','Qty','Material','Back Material','Finish','Construction','Base','Doors','Door Material','Door %','Drawers','Front Material','Inner Material','Drawer %','Fixed Shelves','Adj Shelves','Loose Shelves','Partitions','End Panels'];
   /** @type {any[][]} */

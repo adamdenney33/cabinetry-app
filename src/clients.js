@@ -526,7 +526,7 @@ try { renderDashboard(); setTimeout(drawRevenueChart, 0); } catch(e) {}
 
 // ── Clients CSV import / export ──
 function exportClientsCSV() {
-  // Export is ungated — read-only users may always retrieve their data.
+  if (!_enforceExport()) return;
   const allClients = [...new Set([...quotes.map(q=>quoteClient(q)), ...orders.map(o=>orderClient(o))].filter(Boolean))].sort();
   if (!allClients.length) { _toast('No clients to export', 'error'); return; }
   /** @type {any[][]} */

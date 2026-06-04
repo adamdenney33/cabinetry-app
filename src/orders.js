@@ -274,7 +274,7 @@ async function setOrderStatus(id, status) {
 
 // ── CSV import / export ──
 function exportOrdersCSV() {
-  // Export is ungated — read-only users may always retrieve their data.
+  if (!_enforceExport()) return;
   if (!orders.length) { _toast('No orders to export', 'error'); return; }
   /** @type {any[][]} */
   const rows = [['Order #','Client','Project','Value','Status','Due','Notes']];
