@@ -1190,14 +1190,20 @@ async function saveOrderEditor() {
   // the legacy markup → tax → discount chain.
   if (typeof orderTotalsFromLines === 'function') {
     const t = await orderTotalsFromLines(id);
+    let newValue = 0;
     if (t) {
       const nonStockMat = t.materials - (t.stockMat || 0);
       const stockSub = (t.stockMat || 0) * (1 + (stock_markup||0)/100);
       const subPostLine = nonStockMat + t.labour + stockSub;
       const afterMarkup = subPostLine * (1 + (markup||0)/100);
       const afterTax = afterMarkup * (1 + (tax||0)/100);
-      /** @type {any} */ (o).value = Math.round(afterTax * (1 - (discount||0)/100));
+      newValue = Math.round(afterTax * (1 - (discount||0)/100));
     }
+    // Persist the denormalised value cache (SCHEMA § 3.15). It was only set in
+    // memory here, so manually-created orders (which start at value 0) showed
+    // £0 on the card after a reload until re-saved. Write it back.
+    /** @type {any} */ (o).value = newValue;
+    await _db('orders').update({ value: newValue }).eq('id', id);
   }
   _opState.dirty = false;
   _oBadge();
