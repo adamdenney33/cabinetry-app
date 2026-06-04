@@ -22,47 +22,6 @@ Companion docs: `SPEC.md` (refactor history), `SCHEMA.md` (DB schema),
 
 ## Active Work
 
-### Freemium → 14-day trial + read-only lock (demo KEPT) ✅ Code complete 2026-06-03 (deploy + push pending)
-
-Replaced the 5-item freemium tier with a **card-upfront, Stripe-managed 14-day
-trial**. No active trial/subscription ⇒ **read-only** (view + export only). Stripe
-owns the clock (`status='trialing'`); `isPro()` already treats `trialing` as full
-access → **no schema migration**. The **no-signup demo is kept** as top-of-funnel;
-the trial is the commit step. (Rebuilt after a `git reset --hard` discarded the
-original commit; see SPEC § 13.)
-
-- ✅ **Trial in checkout** — `stripe-checkout`: `subscription_data.trial_period_days`
-  (env `STRIPE_TRIAL_DAYS`, default 14) + `payment_method_collection:'always'`;
-  Founder one-off untouched. Webhook unchanged.
-- ✅ **Read-only lock** — one write block at `_DBBuilder.then()` (`src/db.js`);
-  fails open until `_subStateKnown`; allowlist. `src/limits.js`: `canEdit`,
-  `_subState` (incl. `past_due`), `_trialDaysLeft`, `_enforceCanEdit`,
-  `_readonlyBlockWrite`. Exports ungated; imports gated.
-- ✅ **Funnel/copy** — trial-aware account dropdown + `_openTrialModal` (`stripe.js`),
-  walkthrough CTA → trial picker (`walkthrough.js`), landing pricing → trial
-  (demo CTAs kept), `trial_started` analytics.
-- ✅ **Demo kept** — logged-out `/os` still boots the seeded demo + guest tour;
-  demo banner reworded ("exploring a live demo — sign in to use the app"); a
-  separate `#trial-banner` (`_syncTrialBanner`) serves signed-in read-only users.
-- ✅ **Fix #1** — trial-ending reminder banner in the last ≤3 days.
-- ✅ **Fix #2** — `past_due` → Stripe portal ("Update payment"), not a new checkout.
-- ✅ **Grandfathered existing users → legacy free tier** (2026-06-04) — accounts
-  created before `GRANDFATHER_BEFORE` (`src/limits.js`, default
-  `2026-06-05T00:00:00Z`; set to go-live) keep the **old free tier: 5 items per
-  library** (not unlimited). `canEdit() = isPro() || isGrandfathered()` (reads the
-  session's `created_at`) so they can edit, but `_enforceFreeLimit` caps creates
-  at 5 (cap modal), `_enforceProFeature` blocks CSV import, and `_enforceExport`
-  blocks CSV/DXF export — all Pro-only, exactly the old free tier (import-block
-  also stops a bulk import bypassing the cap). Read-only (post-cutoff) users
-  still CAN export (the trial model's "view + export" promise). No read-only
-  lock for grandfathered; account dropdown shows "Free (legacy) · 5/library ·
-  Upgrade to Pro". New signups (on/after the cutoff) get the trial + read-only model.
-- ✅ typecheck + build clean.
-- ⬜ **Deploy + push (user-confirmed):** deploy `stripe-checkout` (Supabase MCP),
-  optionally set `STRIPE_TRIAL_DAYS`, confirm trials enabled in Stripe; then push
-  `main`. Recommended follow-ups: Stripe trial-ending email; server-side day-15
-  paid-conversion signal; email existing free users before they hit read-only.
-
 ### Cut type toggle — panel saw (guillotine) vs CNC router (nested) ✅ Done 2026-05-25
 
 The optimiser was guillotine-only (edge-to-edge cuts for a panel saw). Added a

@@ -44,7 +44,7 @@ function _saveStockLibByName(name) {
 }
 
 function cbExportLibrary() {
-  if (!_enforceExport()) return;
+  if (!_enforceProFeature()) return;
   if (!cbLibrary.length) { _toast('No cabinets in library', 'error'); return; }
   const headers = ['Name','Width','Height','Depth','Qty','Material','Back Material','Finish','Construction','Base','Doors','Door Material','Door %','Drawers','Front Material','Inner Material','Drawer %','Fixed Shelves','Adj Shelves','Loose Shelves','Partitions','End Panels'];
   /** @type {any[][]} */
@@ -68,8 +68,14 @@ function cbImportLibrary() {
       const text = await file.text();
       const rows = text.split(/\r?\n/).map(r => r.split(',').map(c => c.replace(/^"|"$/g,'').trim()));
       if (rows.length < 2) { _toast('CSV has no data rows', 'error'); return; }
-      // Import is a bulk write — the `_enforceProFeature()` gate above already
-      // blocks read-only (non-trial/non-subscriber) users. No per-library cap.
+      // Free-tier cap on cabinet_templates: refuse the import outright if we'd
+      // bust the cap. Pro users skip the check.
+      if (typeof isPro === 'function' && !isPro()) {
+        const room = FREE_LIMITS.cabinet_templates - cbLibrary.length;
+        const incoming = rows.length - 1;
+        if (room <= 0) { _openLimitHitModal('cabinet_templates'); return; }
+        if (incoming > room) { _toast(`Free plan only allows ${room} more cabinet${room === 1 ? '' : 's'}. Upgrade for unlimited.`, 'error'); _openLimitHitModal('cabinet_templates'); return; }
+      }
       let imported = 0;
       for (let i = 1; i < rows.length; i++) {
         const r = rows[i]; if (r.length < 4 || !r[0]) continue;

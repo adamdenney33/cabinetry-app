@@ -1794,13 +1794,12 @@ input.li-num:focus { outline: none; border-color: var(--accent); }
    navigation stays available. JS-gated to short viewports; the base rule is
    inert (max-height well above the real content) until the class is applied,
    so a tall/desktop viewport is unaffected. */
-header, #demo-banner, #trial-banner {
+header, #demo-banner {
   max-height: 90px;
   transition: max-height 0.24s ease, padding 0.24s ease, opacity 0.18s ease;
 }
 body.chrome-collapsed header,
-body.chrome-collapsed #demo-banner,
-body.chrome-collapsed #trial-banner {
+body.chrome-collapsed #demo-banner {
   max-height: 0;
   padding: 0; /* collapse the header's / banner's padding, not just content */
   opacity: 0;
