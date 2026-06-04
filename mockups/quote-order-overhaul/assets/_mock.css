@@ -1,0 +1,203 @@
+/* ===================================================================
+   Quote/Order overhaul MOCKUPS — chrome that sits ON TOP of the real
+   app styles.css. Only adds: customer-page shell, payment sheet,
+   segmented control, photo thumbs, and per-direction shared bits.
+   =================================================================== */
+
+/* ---- Mockup label ribbon (every page) ---- */
+.mock-ribbon { position: fixed; bottom: 12px; left: 12px; z-index: 9999; display: flex; align-items: center; gap: 8px;
+  background: #111; color: #fff; font-size: 11px; font-weight: 600; padding: 6px 11px; border-radius: 999px; box-shadow: 0 4px 16px rgba(0,0,0,.25); opacity: .9; }
+.mock-ribbon a { color: var(--accent); text-decoration: none; font-weight: 700; }
+.mock-ribbon .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
+body.cust .mock-ribbon { bottom: 84px; }
+
+/* ---- Customer page shell (standalone, scrolls, phone-first) ---- */
+body.cust { height: auto; min-height: 100dvh; overflow: auto; display: block; background: var(--bg); }
+.cust-wrap { max-width: 880px; margin: 0 auto; padding: 0 16px 140px; }
+.cust-wrap.narrow { max-width: 560px; }
+.cust-top { max-width: 880px; margin: 0 auto; padding: 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.cust-brand { display: flex; align-items: center; gap: 11px; min-width: 0; }
+.cust-logo { width: 40px; height: 40px; border-radius: 9px; background: var(--accent); color: #fff; font-weight: 800; font-size: 20px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: var(--shadow); }
+.cust-bizname { font-size: 15px; font-weight: 800; color: var(--text); line-height: 1.1; }
+.cust-biztag { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.cust-top-right { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.cust-secure { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; color: var(--success); }
+.cust-hero { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 20px 22px; margin-bottom: 16px; }
+.cust-hero h1 { font-size: 21px; font-weight: 800; letter-spacing: -.3px; }
+.cust-hero .sub { font-size: 13px; color: var(--muted); margin-top: 4px; }
+.cust-greeting { font-size: 14px; color: var(--text2); line-height: 1.55; margin-top: 12px; }
+
+/* ---- Segmented control (Full ⇄ Smart Link, tabs, etc.) ---- */
+.seg { display: inline-flex; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 2px; gap: 2px; }
+.seg-opt { font-family: inherit; font-size: 12px; font-weight: 600; padding: 5px 12px; border: none; background: transparent; color: var(--muted); border-radius: 6px; cursor: pointer; transition: all .15s; }
+.seg-opt:hover { color: var(--text); }
+.seg-opt.active { background: var(--surface); color: var(--text); box-shadow: var(--shadow); }
+html.dark .seg-opt.active { background: #333; }
+
+/* ---- Line-item photo thumbnails ---- */
+.lphoto { border-radius: 8px; overflow: hidden; background: var(--surface2); border: 1px solid var(--border); flex-shrink: 0; display: block; }
+.lphoto svg { display: block; }
+.lphoto-add { display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 3px; color: var(--muted); font-size: 10px; font-weight: 600; border: 1.5px dashed var(--border); background: var(--surface2); cursor: pointer; border-radius: 8px; }
+.lphoto-add:hover { border-color: var(--accent); color: var(--accent); }
+.photo-strip { display: flex; gap: 6px; flex-wrap: wrap; }
+
+/* ---- Optional-item toggle (include/exclude) ---- */
+.inc-toggle { position: relative; width: 42px; height: 24px; border-radius: 999px; border: none; background: var(--success); cursor: pointer; flex-shrink: 0; transition: background .18s; }
+.inc-toggle::after { content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; transition: transform .18s; box-shadow: 0 1px 3px rgba(0,0,0,.3); }
+.inc-toggle[aria-pressed="false"] { background: var(--border); }
+.inc-toggle[aria-pressed="false"]::after { transform: translateX(18px); }
+.line-excluded { opacity: .5; }
+.line-excluded .li-price { text-decoration: line-through; }
+
+/* chips */
+.opt-chip { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; padding: 2px 7px; border-radius: 999px; background: rgba(232,168,56,.16); color: var(--accent); }
+.edit-chip { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; padding: 2px 7px; border-radius: 999px; background: rgba(13,148,136,.14); color: var(--accent2); cursor: pointer; }
+
+/* ---- Totals block (shared) ---- */
+.totals { border-top: 1px solid var(--border); margin-top: 4px; padding-top: 10px; }
+.totals .tr { display: flex; justify-content: space-between; font-size: 13px; color: var(--text2); padding: 4px 0; }
+.totals .tr.grand { font-size: 17px; font-weight: 800; color: var(--text); border-top: 1px solid var(--border); margin-top: 6px; padding-top: 10px; }
+.totals .tr.muted { color: var(--muted); font-size: 12px; }
+.totals .tr.save { color: var(--success); }
+.deposit-box { background: var(--accent-dim); border: 1px solid rgba(232,168,56,.3); border-radius: 9px; padding: 12px 14px; margin-top: 12px; }
+.deposit-box .dep-row { display: flex; justify-content: space-between; align-items: baseline; }
+.deposit-box .dep-amt { font-size: 22px; font-weight: 800; color: var(--text); }
+.deposit-box .dep-bal { font-size: 11px; color: var(--muted); margin-top: 3px; }
+
+/* ---- Sticky pay bar (A, D) ---- */
+.paybar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 500; background: var(--surface); border-top: 1px solid var(--border); box-shadow: 0 -4px 20px rgba(0,0,0,.08); padding: 12px 16px; }
+.paybar-inner { max-width: 880px; margin: 0 auto; display: flex; align-items: center; gap: 14px; }
+.paybar .pb-total { flex: 1; min-width: 0; }
+.paybar .pb-lbl { font-size: 11px; color: var(--muted); }
+.paybar .pb-amt { font-size: 18px; font-weight: 800; color: var(--text); }
+.paybar .btn { width: auto; white-space: nowrap; }
+
+/* ---- Checkout rail (C) ---- */
+.rail { position: sticky; top: 16px; align-self: flex-start; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 18px; }
+
+/* ---- Basket / product cards (B) ---- */
+.pcard { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; display: flex; flex-direction: column; transition: box-shadow .15s, border-color .15s; }
+.pcard:hover { box-shadow: var(--shadow-md); }
+.pcard .pc-photo { aspect-ratio: 4/3; background: var(--surface2); position: relative; }
+.pcard .pc-photo .opt-chip { position: absolute; top: 8px; left: 8px; }
+.pcard .pc-body { padding: 12px 14px; flex: 1; display: flex; flex-direction: column; gap: 4px; }
+.pgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }
+
+/* ---- Thread bubbles (D) ---- */
+.thread { display: flex; flex-direction: column; gap: 12px; padding: 8px 0; }
+.bubble { max-width: 90%; }
+.bubble.them { align-self: flex-start; }
+.bubble.me { align-self: flex-end; }
+.bubble .bub-body { padding: 10px 14px; border-radius: 14px; font-size: 13px; line-height: 1.5; }
+.bubble.them .bub-body { background: var(--surface); border: 1px solid var(--border); border-bottom-left-radius: 4px; color: var(--text); }
+.bubble.me .bub-body { background: var(--accent); color: #fff; border-bottom-right-radius: 4px; }
+.bubble .bub-time { font-size: 10px; color: var(--muted); margin: 3px 6px 0; }
+.thread-event { align-self: center; font-size: 11px; color: var(--muted); background: var(--surface2); border: 1px solid var(--border); padding: 4px 12px; border-radius: 999px; }
+.thread-event strong { color: var(--text2); }
+.bubble-line { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; border-bottom-left-radius: 4px; overflow: hidden; max-width: 92%; align-self: flex-start; box-shadow: var(--shadow); }
+
+/* ---- Spec-edit popover ---- */
+.spec-pop { border: 1px solid var(--border); border-radius: 10px; background: var(--surface2); padding: 12px; margin-top: 10px; }
+.spec-pop .sp-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.spec-pop label { font-size: 11px; font-weight: 600; color: var(--muted); width: 64px; flex-shrink: 0; }
+.spec-pop select, .spec-pop input { font-size: 12px; padding: 6px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--text); flex: 1; font-family: inherit; }
+.dim-input { width: 70px !important; flex: none !important; }
+
+/* ---- Payment sheet (mock Stripe) ---- */
+.pay-overlay { position: fixed; inset: 0; z-index: 9000; background: rgba(10,10,10,.55); display: flex; align-items: center; justify-content: center; padding: 16px; transform: translateZ(0); }
+.pay-card { width: 400px; max-width: 100%; background: var(--surface); border-radius: 14px; box-shadow: var(--shadow-md); padding: 20px; max-height: 92dvh; overflow: auto; }
+.pay-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.pay-merchant { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: var(--text); }
+.pay-amount { font-size: 28px; font-weight: 800; color: var(--text); }
+.pay-sub { font-size: 12px; color: var(--muted); margin-bottom: 16px; }
+.pay-lbl { font-size: 11px; font-weight: 600; color: var(--text2); display: block; margin: 10px 0 5px; }
+.pay-field { border: 1px solid var(--border); border-radius: 7px; background: var(--surface2); display: flex; align-items: center; padding: 0 10px; flex: 1; }
+.pay-field input { border: none; background: transparent; flex: 1; padding: 10px 0; font-size: 13px; font-family: inherit; color: var(--text); outline: none; }
+.pay-cards { font-size: 10px; font-weight: 800; color: #1a1f71; background: #fff; padding: 2px 5px; border-radius: 3px; }
+.pay-row { display: flex; gap: 8px; }
+.pay-powered { display: flex; align-items: center; justify-content: center; gap: 5px; font-size: 10px; color: var(--muted); margin-top: 12px; }
+
+/* ---- Success / paid state ---- */
+.paid-stamp { display: inline-flex; align-items: center; gap: 6px; transform: rotate(-6deg); border: 3px solid var(--success); color: var(--success); font-weight: 800; font-size: 15px; letter-spacing: .08em; text-transform: uppercase; padding: 4px 12px; border-radius: 8px; }
+.success-hero { text-align: center; padding: 28px 16px; }
+.success-hero .check { width: 64px; height: 64px; border-radius: 50%; background: var(--success); color: #fff; display: flex; align-items: center; justify-content: center; margin: 0 auto 14px; }
+
+/* ---- Share panel (business modal mock) ---- */
+.share-toggle-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border2); }
+.share-toggle-row:last-child { border-bottom: none; }
+.share-toggle-row .st-label { font-size: 13px; font-weight: 600; color: var(--text); }
+.share-toggle-row .st-desc { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.mini-toggle { position: relative; width: 38px; height: 22px; border-radius: 999px; border: none; background: var(--accent); cursor: pointer; flex-shrink: 0; }
+.mini-toggle::after { content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform .16s; }
+.mini-toggle[aria-pressed="false"] { background: var(--border); }
+.mini-toggle[aria-pressed="false"]::after { transform: translateX(16px); }
+.link-box { display: flex; gap: 8px; align-items: center; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; font-size: 12px; color: var(--text2); }
+.link-box code { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: ui-monospace, monospace; }
+
+/* ---- Toast ---- */
+#mock-toast { position: fixed; bottom: 84px; left: 50%; transform: translateX(-50%) translateY(20px); background: #111; color: #fff; font-size: 13px; font-weight: 600; padding: 11px 18px; border-radius: 10px; box-shadow: var(--shadow-md); opacity: 0; pointer-events: none; transition: all .25s; z-index: 9500; }
+#mock-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ---- Business page list wrapper helpers ---- */
+.deal-list { max-width: 820px; margin: 0 auto; }
+.act-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); display: inline-block; }
+
+/* ---- Two-pane (C: editor + live preview / customer list+rail) ---- */
+.two-pane { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+.two-pane.rail-right { grid-template-columns: 1fr 320px; }
+.device-frame { border: 9px solid #1b1b1b; border-radius: 22px; overflow: hidden; background: #1b1b1b; box-shadow: var(--shadow-md); }
+.device-frame .dev-notch { height: 18px; background: #1b1b1b; display: flex; align-items: center; justify-content: center; }
+.device-frame .dev-notch::after { content: ""; width: 60px; height: 5px; border-radius: 3px; background: #444; }
+.device-frame iframe { width: 100%; height: 620px; border: 0; display: block; background: var(--surface); }
+
+/* ---- Inbox (D business: deal list + thread) ---- */
+.inbox { display: grid; grid-template-columns: 300px 1fr; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; background: var(--surface); box-shadow: var(--shadow); min-height: 560px; }
+.inbox-list { border-right: 1px solid var(--border); overflow: auto; }
+.inbox-item { padding: 12px 14px; border-bottom: 1px solid var(--border2); cursor: pointer; display: flex; gap: 10px; align-items: flex-start; }
+.inbox-item:hover { background: var(--surface2); }
+.inbox-item.active { background: var(--accent-dim); box-shadow: inset 3px 0 0 var(--accent); }
+.inbox-avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--accent2); color: #fff; font-weight: 700; font-size: 13px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.inbox-thread { display: flex; flex-direction: column; background: var(--bg); }
+.composer { border-top: 1px solid var(--border); padding: 10px 14px; display: flex; gap: 8px; align-items: center; background: var(--surface); }
+.composer input { flex: 1; border: 1px solid var(--border); border-radius: 999px; padding: 9px 14px; font-family: inherit; font-size: 13px; background: var(--surface2); color: var(--text); }
+
+/* ---- pinned bar (D customer) ---- */
+.pinbar { position: sticky; top: 0; z-index: 50; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow); padding: 10px 14px; display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+
+/* ---- Floating chat widget (chat option A) ---- */
+.chat-launcher { position: fixed; bottom: 20px; right: 20px; z-index: 600; height: 50px; padding: 0 18px 0 14px; border-radius: 999px; background: var(--accent); color: #fff; border: none; box-shadow: var(--shadow-md); cursor: pointer; display: flex; align-items: center; gap: 9px; font-family: inherit; font-size: 13px; font-weight: 700; }
+.chat-launcher:hover { filter: brightness(1.06); }
+.chat-launcher .cl-badge { position: absolute; top: -3px; right: -3px; background: var(--danger); color: #fff; font-size: 10px; font-weight: 800; min-width: 19px; height: 19px; border-radius: 10px; display: flex; align-items: center; justify-content: center; border: 2px solid var(--surface); }
+.chat-pop { position: fixed; bottom: 82px; right: 20px; z-index: 601; width: 366px; max-width: calc(100vw - 32px); height: 70vh; max-height: 560px; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; box-shadow: var(--shadow-md); display: flex; flex-direction: column; overflow: hidden; }
+.chat-pop-head { padding: 12px 14px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; background: var(--surface); }
+.chat-pop-head .cust-logo { width: 32px; height: 32px; font-size: 15px; }
+.chat-pop-body { flex: 1; overflow: auto; padding: 14px; background: var(--bg); display: flex; flex-direction: column; gap: 10px; }
+
+/* ---- Inline per-line thread (chat option C) ---- */
+.line-thread { margin-top: 10px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface2); overflow: hidden; }
+.line-thread .lt-msgs { padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; max-height: 230px; overflow: auto; }
+.ask-chip { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; padding: 2px 7px; border-radius: 999px; background: var(--surface2); color: var(--muted); border: 1px solid var(--border); cursor: pointer; display: inline-flex; align-items: center; gap: 4px; }
+.ask-chip:hover { border-color: var(--accent); color: var(--accent); }
+.ask-chip .ask-count { background: var(--accent); color: #fff; border-radius: 999px; padding: 0 5px; font-size: 9px; }
+
+/* ---- order tracking stepper (B/A order) ---- */
+.track { display: flex; flex-direction: column; gap: 0; }
+.track-step { display: flex; gap: 12px; }
+.track-rail { display: flex; flex-direction: column; align-items: center; }
+.track-node { width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--border); background: var(--surface); display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: var(--muted); }
+.track-step.done .track-node { background: var(--success); border-color: var(--success); color: #fff; }
+.track-step.current .track-node { border-color: var(--accent); color: var(--accent); }
+.track-line { width: 2px; flex: 1; min-height: 26px; background: var(--border); }
+.track-step.done .track-line { background: var(--success); }
+.track-body { padding-bottom: 18px; }
+.track-title { font-size: 13px; font-weight: 700; }
+.track-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+/* ---- responsive ---- */
+@media (max-width: 720px) {
+  .inbox { grid-template-columns: 1fr; }
+  .two-pane.rail-right { grid-template-columns: 1fr; }
+  .cust-hero h1 { font-size: 18px; }
+  .rail { position: static; }
+  .two-pane { grid-template-columns: 1fr !important; }
+}

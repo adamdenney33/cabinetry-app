@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Orders · ProCabinet (Direction B)</title>
+<link rel="stylesheet" href="../../styles.css">
+<link rel="stylesheet" href="assets/_mock.css">
+<style>
+  .deal-list { max-width: 820px; margin: 0 auto; }
+  .hero-strip { display: flex; gap: 0; height: 96px; background: var(--surface2); border-bottom: 1px solid var(--border2); overflow: hidden; }
+  .hero-strip .lphoto { height: 96px; border: 0; border-radius: 0; border-right: 1px solid rgba(255,255,255,.35); flex: 1 1 0; min-width: 0; }
+  .hero-strip .hs-more { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; padding: 0 14px; font-size: 12px; font-weight: 700; color: var(--muted); background: var(--surface2); }
+  .oc-sub-meta { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  /* deposit-paid strip across a card */
+  .deposit-strip { display: flex; align-items: center; gap: 8px; padding: 6px 16px; font-size: 11px; color: var(--text2); background: rgba(61,153,112,.08); border-top: 1px solid var(--border2); border-bottom: 1px solid var(--border2); }
+  .deposit-strip .ds-amt { font-weight: 700; color: var(--success); }
+  .xero-chip { display: inline-flex; align-items: center; gap: 5px; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: #e6f4ee; color: var(--success); }
+  html.dark .xero-chip { background: rgba(61,153,112,.15); color: #5dbf90; }
+  .xero-chip .x-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--success); }
+</style>
+</head>
+<body>
+<div id="chrome"></div>
+<div class="app-body">
+  <div class="section-panel active">
+    <div class="main-content"><div class="main-scroll">
+      <div class="deal-list">
+
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/></svg>
+          <h2 style="font-size:18px;font-weight:800;flex:1">Orders</h2>
+          <button class="btn btn-primary" style="width:auto">+ New order</button>
+        </div>
+
+        <div class="lib-filter-row">
+          <input class="lib-filter-input" type="search" placeholder="Search client or order…">
+          <button class="btn btn-outline lib-filter-btn">&darr; Export</button>
+        </div>
+        <div class="lib-toggle-row">
+          <button class="ofilter-tab active">All (5)</button>
+          <button class="ofilter-tab">Deposit Paid (2)</button>
+          <button class="ofilter-tab">Production (1)</button>
+          <button class="ofilter-tab">Delivery (1)</button>
+          <button class="ofilter-tab">Done (1)</button>
+        </div>
+
+        <div id="cards"></div>
+      </div>
+    </div></div>
+  </div>
+</div>
+
+<div class="mock-ribbon"><span class="dot"></span> Direction B · Storefront — Business Orders <a href="index.html">all mockups</a></div>
+
+<script src="assets/_seed.js"></script>
+<script>
+const M = window.MOCK;
+document.getElementById('chrome').outerHTML = M.appChrome('orders', { orders: 3 });
+const t = M.computeTotals();
+
+function heroStrip(arts, totalCount) {
+  const shown = arts.slice(0, 4);
+  const more = (totalCount || arts.length) - shown.length;
+  return `<div class="hero-strip">
+    ${shown.map(a => `<div class="lphoto">${M.art(a)}</div>`).join('')}
+    ${more > 0 ? `<div class="hs-more">+${more}</div>` : ''}
+  </div>`;
+}
+
+const xeroChip = '<span class="xero-chip"><span class="x-dot"></span>Synced · Xero</span>';
+
+function orderCard(o) {
+  return `<div class="order-card">
+    ${heroStrip(o.arts, o.count)}
+    <div class="oc-header">
+      <div class="oc-info"><div class="oc-title-row"><div class="oc-title">${o.num} · ${o.who} · ${o.proj}</div><span class="badge ${o.badge}" style="font-size:10px">${o.status}</span></div>
+      <div class="oc-sub-meta">${o.meta}</div></div>
+      <div class="oc-right"><div class="oc-value">${o.val}</div></div>
+    </div>
+    <div class="deposit-strip">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+      <span class="ds-amt">${o.dep} deposit paid</span><span>· ${o.depDate}</span>
+      <span style="flex:1"></span>${o.synced ? xeroChip : '<span class="badge badge-orange" style="font-size:9px">Sync pending</span>'}
+    </div>
+    ${M.pipeline(M.DEAL_STAGES, o.idx)}
+    <div class="oc-footer">
+      <a class="btn btn-outline" style="width:auto;font-size:11px;padding:4px 8px" href="b-cust-order.html" target="_blank">Tracking page ↗</a>
+      <button class="btn btn-outline" style="width:auto;font-size:11px;padding:4px 8px">Invoice PDF</button>
+      <button class="btn btn-outline" style="width:auto;font-size:11px;padding:4px 8px">Cut list PDF</button>
+      <span style="flex:1"></span>
+      <button class="btn btn-outline" style="width:auto;font-size:11px;padding:4px 8px">Open</button>
+    </div>
+  </div>`;
+}
+
+const cabArts = M.lines.filter(l => l.kind === 'cabinet').map(l => l.art);
+
+document.getElementById('cards').innerHTML =
+  orderCard({ num: 'Order #0031', who: 'Sarah &amp; Tom Whitfield', proj: 'Kitchen — Maple Shaker', status: 'Production', badge: 'badge-orange', idx: 5, val: M.fmt(t.total, 0), count: M.lines.length, arts: cabArts, dep: M.fmt(t.deposit, 0), depDate: '31 May', synced: true, meta: 'In production · doors hand-painting · est. fit 24–25 Jun' }) +
+  orderCard({ num: 'Order #0030', who: 'Marcus Lee', proj: 'Utility room', status: 'Deposit Paid', badge: 'badge-green', idx: 4, val: M.fmt(3140, 0), count: 4, arts: ['base', 'drawers', 'wall', 'service'], dep: M.fmt(1256, 0), depDate: '18 May', synced: true, meta: 'Awaiting final measure · slot booked w/c 9 Jun' }) +
+  orderCard({ num: 'Order #0029', who: 'Priya &amp; Sam Desai', proj: 'Pantry + dresser', status: 'Delivery', badge: 'badge-teal', idx: 6, val: M.fmt(4880, 0), count: 5, arts: ['tall', 'tall', 'drawers', 'base', 'handle'], dep: M.fmt(1952, 0), depDate: '2 May', synced: true, meta: 'Out for delivery · fitting Thu–Fri this week' }) +
+  orderCard({ num: 'Order #0028', who: 'The Old Rectory', proj: 'Boot room + bench', status: 'Deposit Paid', badge: 'badge-green', idx: 4, val: M.fmt(5620, 0), count: 5, arts: ['base', 'drawers', 'tall', 'wall', 'service'], dep: M.fmt(2248, 0), depDate: '27 May', synced: false, meta: 'Deposit just in · invoice queued for Xero sync' }) +
+  orderCard({ num: 'Order #0026', who: 'H. Bennett', proj: 'Study fitted desk', status: 'Done', badge: 'badge-green', idx: 7, val: M.fmt(2390, 0), count: 3, arts: ['base', 'drawers', 'handle'], dep: M.fmt(956, 0), depDate: '3 Apr', synced: true, meta: 'Completed 16 May · paid in full · review requested' });
+</script>
+</body>
+</html>

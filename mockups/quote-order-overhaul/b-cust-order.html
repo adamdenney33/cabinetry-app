@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Your order · Blackwood Joinery</title>
+<link rel="stylesheet" href="../../styles.css">
+<link rel="stylesheet" href="assets/_mock.css">
+<style>
+  .order-summary-line { display: flex; gap: 12px; align-items: center; padding: 12px 0; border-top: 1px solid var(--border2); }
+  .order-summary-line:first-child { border-top: 0; }
+  .osl-name { flex: 1; min-width: 0; }
+  .osl-name .nm { font-weight: 700; font-size: 14px; }
+  .osl-name .sp { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .osl-amt { font-weight: 700; font-size: 14px; font-variant-numeric: tabular-nums; flex-shrink: 0; }
+  .eta-card { background: var(--accent-dim); border: 1px solid rgba(232,168,56,.3); border-radius: 12px; padding: 16px 18px; display: flex; align-items: center; gap: 14px; margin-bottom: 16px; }
+  .eta-card .eta-ico { width: 44px; height: 44px; border-radius: 10px; background: var(--accent); color: #fff; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .eta-card .eta-date { font-size: 19px; font-weight: 800; letter-spacing: -.2px; }
+  .eta-card .eta-lbl { font-size: 11px; color: var(--text2); text-transform: uppercase; letter-spacing: .05em; font-weight: 700; }
+  .order-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+  .order-head h1 { font-size: 21px; font-weight: 800; letter-spacing: -.3px; }
+  .order-head .sub { font-size: 13px; color: var(--muted); margin-top: 3px; }
+</style>
+</head>
+<body class="cust">
+<div class="cust-top" id="hdr"></div>
+<div class="cust-wrap narrow">
+
+  <div class="order-head">
+    <div>
+      <h1>Your kitchen is in production</h1>
+      <div class="sub" id="order-sub"></div>
+    </div>
+    <span class="paid-stamp">Paid</span>
+  </div>
+
+  <!-- ETA -->
+  <div class="eta-card">
+    <div class="eta-ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13" rx="1"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg></div>
+    <div style="flex:1">
+      <div class="eta-lbl">Estimated delivery &amp; fit</div>
+      <div class="eta-date" id="eta-date"></div>
+    </div>
+    <span class="badge badge-teal" style="font-size:11px">On schedule</span>
+  </div>
+
+  <!-- ORDER SUMMARY with thumbnails -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-header"><div class="card-title">Order summary</div><span style="margin-left:auto;font-size:11px;color:var(--muted)" id="order-num"></span></div>
+    <div style="padding:4px 18px 14px"><div id="summary"></div><div class="totals" id="totals"></div></div>
+  </div>
+
+  <!-- PRODUCTION + DELIVERY TRACKER -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-header"><div class="card-title">Production &amp; delivery</div></div>
+    <div style="padding:16px 18px"><div class="track" id="track"></div></div>
+  </div>
+
+  <!-- ACTIONS -->
+  <div class="card"><div class="card-body" style="display:flex;flex-direction:column;gap:8px">
+    <button class="btn btn-outline" onclick="MOCK.toast('Mock: opens your PDF receipt')">View receipt</button>
+    <button class="btn btn-outline" onclick="MOCK.toast('Mock: opens a message to Blackwood Joinery')">Contact us</button>
+  </div></div>
+
+</div>
+
+<!-- STICKY PAY-BALANCE BAR -->
+<div class="paybar" id="paybar">
+  <div class="paybar-inner">
+    <div class="pb-total"><div class="pb-lbl">Balance due on completion</div><div class="pb-amt" id="pb-amt"></div></div>
+    <button class="btn btn-primary" id="pb-btn">Pay balance</button>
+  </div>
+</div>
+
+<div class="mock-ribbon"><span class="dot"></span> Direction B · Storefront — Customer Order <a href="index.html">all mockups</a></div>
+
+<script src="assets/_seed.js"></script>
+<script>
+const M = window.MOCK;
+document.getElementById('hdr').outerHTML = M.publicHeader({});
+document.getElementById('order-sub').textContent = 'Order #' + M.quote.orderNumber + ' · ' + M.biz.name;
+document.getElementById('order-num').textContent = 'Order #' + M.quote.orderNumber + ' · placed ' + M.quote.date;
+document.getElementById('eta-date').textContent = '24–25 Jun 2026';
+
+const lines = M.freshLines();
+const t = M.computeTotals(lines);
+
+// summary rows with product thumbnails
+document.getElementById('summary').innerHTML = lines.map(l => `
+  <div class="order-summary-line">
+    <div class="lphoto" style="width:60px;height:46px">${M.art(l.art)}</div>
+    <div class="osl-name"><div class="nm">${M.esc(l.name)}${l.qty > 1 ? ' ×' + l.qty : ''}</div><div class="sp">${l.kind === 'cabinet' ? M.esc(l.finish) : M.esc(l.detail)}</div></div>
+    <div class="osl-amt">${M.fmt(M.lineTotal(l))}</div>
+  </div>`).join('');
+
+document.getElementById('totals').innerHTML =
+  `<div class="tr"><span>Total incl. VAT</span><span>${M.fmt(t.total, 2)}</span></div>` +
+  `<div class="tr save"><span>Deposit paid · ${M.quote.date}</span><span>−${M.fmt(t.deposit, 2)}</span></div>` +
+  `<div class="tr grand"><span>Balance remaining</span><span>${M.fmt(t.balance, 2)}</span></div>`;
+
+// tracker steps
+const steps = [
+  { t: 'Order confirmed', s: 'Deposit ' + M.fmt(t.deposit, 2) + ' received · ' + M.quote.date, st: 'done' },
+  { t: 'Final measure', s: 'Site survey signed off · 4 Jun', st: 'done' },
+  { t: 'In production', s: 'Carcasses cut, doors hand-painting now', st: 'current' },
+  { t: 'Quality check & finish', s: 'Hardware fitted, packed for transit', st: '' },
+  { t: 'Delivery & installation', s: '2-day fit · est. 24–25 Jun', st: '' },
+];
+document.getElementById('track').innerHTML = steps.map((step, i) => `
+  <div class="track-step ${step.st}">
+    <div class="track-rail">
+      <div class="track-node">${step.st === 'done'
+        ? '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>'
+        : (step.st === 'current' ? '<span style="width:8px;height:8px;border-radius:50%;background:var(--accent);display:block"></span>' : '')}</div>
+      ${i < steps.length - 1 ? '<div class="track-line"></div>' : ''}
+    </div>
+    <div class="track-body"><div class="track-title">${step.t}${step.st === 'current' ? ' <span class="badge badge-orange" style="font-size:9px;vertical-align:middle">Now</span>' : ''}</div><div class="track-sub">${step.s}</div></div>
+  </div>`).join('');
+
+window._depLabel = M.fmt(t.balance, 2);
+document.getElementById('pb-amt').textContent = M.fmt(t.balance, 2);
+document.getElementById('pb-btn').onclick = () => M.paymentSheet(M.fmt(t.balance, 2), 'Final balance · order #' + M.quote.orderNumber);
+
+window._onPaid = function () {
+  document.getElementById('paybar').style.display = 'none';
+  document.querySelector('.cust-wrap').innerHTML = `
+    <div class="success-hero">
+      <div class="check"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+      <h1 style="font-size:23px;font-weight:800">Paid in full — thank you 🎉</h1>
+      <p style="color:var(--text2);font-size:14px;margin-top:8px;max-width:460px;margin-inline:auto">Your balance of <strong>${M.fmt(t.balance, 2)}</strong> is settled. We’ll be in touch to lock in your fit dates. A full receipt is on its way to ${M.esc(M.client.email)}.</p>
+      <div style="margin-top:14px"><span class="badge badge-green">Invoice marked paid in Xero</span></div>
+    </div>`;
+  M.toast('Balance paid · thank you');
+};
+</script>
+</body>
+</html>

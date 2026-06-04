@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Your Order · Blackwood Joinery</title>
+<link rel="stylesheet" href="../../styles.css">
+<link rel="stylesheet" href="assets/_mock.css">
+</head>
+<body class="cust">
+<div class="cust-top" id="hdr"></div>
+<div class="cust-wrap">
+
+  <!-- HERO -->
+  <div class="cust-hero">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap">
+      <div>
+        <h1>Your order</h1>
+        <div class="sub" id="hero-sub"></div>
+      </div>
+      <span class="paid-stamp">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        Paid
+      </span>
+    </div>
+    <div class="cust-greeting" id="greeting"></div>
+  </div>
+
+  <!-- PRODUCTION TIMELINE -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-header">
+      <div class="card-title">Production status</div>
+      <span class="badge badge-orange" style="margin-left:auto;font-size:11px">In production</span>
+    </div>
+    <div class="card-body">
+      <div class="track" id="track"></div>
+    </div>
+  </div>
+
+  <!-- ITEMS (read-only document) -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-header">
+      <div class="card-title">What you ordered</div>
+      <span style="margin-left:auto;font-size:11px;color:var(--muted)" id="lines-meta"></span>
+    </div>
+    <div id="lines"></div>
+    <div style="padding:16px 18px"><div class="totals" id="totals"></div></div>
+  </div>
+
+  <!-- INVOICE ROW -->
+  <div class="card" style="margin-bottom:8px">
+    <div class="card-body" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <div style="width:38px;height:38px;border-radius:9px;background:var(--surface2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--muted)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      </div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:14px;font-weight:700">Invoice INV-0031</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">Tax invoice for this order · issued 31 May 2026</div>
+      </div>
+      <span class="badge badge-green" style="font-size:11px">Drafted in Xero</span>
+      <button class="btn btn-outline" style="width:auto" onclick="MOCK.toast('Mock: opens the PDF invoice')">View PDF</button>
+    </div>
+  </div>
+
+  <div style="font-size:11px;color:var(--muted);text-align:center;line-height:1.6;margin:8px 0">
+    Order <span id="ord-foot"></span> · Re-open this link any time to track production and settle your balance · Blackwood Joinery
+  </div>
+
+</div>
+
+<!-- STICKY PAY BAR (balance) -->
+<div class="paybar" id="paybar">
+  <div class="paybar-inner">
+    <div class="pb-total"><div class="pb-lbl" id="pb-lbl"></div><div class="pb-amt" id="pb-amt"></div></div>
+    <button class="btn btn-outline" style="width:auto" onclick="MOCK.toast('Mock: opens a message to Blackwood Joinery')">Ask a question</button>
+    <button class="btn btn-primary" id="pb-btn" onclick="MOCK.paymentSheet(window._balLabel,'Final balance · due on completion')">Pay balance</button>
+  </div>
+</div>
+
+<div class="mock-ribbon"><span class="dot"></span> Direction A · Deal Room — Customer Order <a href="index.html">all mockups</a></div>
+
+<script src="assets/_seed.js"></script>
+<script>
+const M = window.MOCK;
+document.getElementById('hdr').outerHTML = M.publicHeader({});
+
+document.getElementById('hero-sub').innerHTML =
+  'Maple Shaker Kitchen · Order <strong>' + M.esc(M.quote.orderNumber) + '</strong>';
+document.getElementById('ord-foot').textContent = M.quote.orderNumber;
+document.getElementById('greeting').innerHTML =
+  'Thanks ' + M.esc(M.client.first) + ' — your deposit is in and your kitchen is now being built. '
+  + 'Here’s the full order for your records, plus live production updates. We’ll be in touch before delivery.';
+
+// read-only line copy (no toggles, no edit, no reprice)
+const lines = M.freshLines();
+document.getElementById('lines-meta').textContent =
+  lines.length + ' lines · ' + lines.filter(l => l.kind === 'cabinet').length + ' cabinets';
+
+function row(l) {
+  const photo = `<div class="lphoto" style="width:84px;height:64px">${M.art(l.art, { w: 168, h: 128 })}</div>`;
+  const specLine = l.kind === 'cabinet'
+    ? `${l.w}×${l.h}×${l.d}mm · ${M.esc(l.finish)}`
+    : M.esc(l.detail);
+  return `<div class="line-row" style="border-top:1px solid var(--border2);padding:14px 18px">
+    <div style="display:flex;gap:14px;align-items:center">
+      ${photo}
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="font-weight:700;font-size:14px">${M.esc(l.name)}</span></div>
+        <div style="font-size:12px;color:var(--muted);margin-top:3px">${specLine}${l.qty > 1 ? ' · Qty ' + l.qty : ''}</div>
+      </div>
+      <div style="text-align:right;flex-shrink:0">
+        <div class="li-price" style="font-weight:800;font-size:15px;font-variant-numeric:tabular-nums">${M.fmt(M.lineTotal(l))}</div>
+        ${l.qty > 1 ? `<div style="font-size:11px;color:var(--muted)">${M.fmt(l.unit)} each</div>` : ''}
+      </div>
+    </div>
+  </div>`;
+}
+document.getElementById('lines').innerHTML = lines.map(row).join('');
+
+// production timeline
+const STEPS = [
+  { t: 'Order confirmed', s: '31 May 2026', state: 'done' },
+  { t: 'Deposit paid', s: M.fmt(M.computeTotals(lines).deposit, 2) + ' · 31 May 2026', state: 'done' },
+  { t: 'In production', s: 'Started 31 May · your cabinets are on the bench', state: 'current' },
+  { t: 'Quality check', s: 'Final inspection before despatch', state: '' },
+  { t: 'Delivery & fit', s: '2-day install · we’ll book a date with you', state: '' },
+  { t: 'Complete', s: 'Sign-off & balance settled', state: '' },
+];
+function trackStep(st, last) {
+  const node = st.state === 'done'
+    ? '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>'
+    : st.state === 'current'
+      ? '<svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="12"/></svg>'
+      : '';
+  return `<div class="track-step ${st.state}">
+    <div class="track-rail"><div class="track-node">${node}</div>${last ? '' : '<div class="track-line"></div>'}</div>
+    <div class="track-body"><div class="track-title">${st.t}</div><div class="track-sub">${st.s}</div></div>
+  </div>`;
+}
+document.getElementById('track').innerHTML = STEPS.map((s, i) => trackStep(s, i === STEPS.length - 1)).join('');
+
+// totals — deposit paid (green) + balance due
+function renderTotals(paid) {
+  const t = M.computeTotals(lines);
+  document.getElementById('totals').innerHTML =
+    `<div class="tr"><span>Subtotal</span><span>${M.fmt(t.subtotal)}</span></div>` +
+    `<div class="tr"><span>VAT (20%)</span><span>${M.fmt(t.vat, 2)}</span></div>` +
+    `<div class="tr grand"><span>Order total</span><span>${M.fmt(t.total, 2)}</span></div>` +
+    `<div class="tr save" style="padding-top:10px"><span>✓ Deposit paid · 31 May</span><span>−${M.fmt(t.deposit, 2)}</span></div>` +
+    (paid
+      ? `<div class="tr save"><span>✓ Balance paid in full</span><span>−${M.fmt(t.balance, 2)}</span></div>
+         <div class="deposit-box" style="background:rgba(61,153,112,.12);border-color:rgba(61,153,112,.3)"><div class="dep-row"><span style="font-size:12px;font-weight:700;color:var(--text2)">Settled in full</span><span class="dep-amt" style="color:var(--success)">${M.fmt(0, 2)} due</span></div><div class="dep-bal">Thank you — nothing left to pay</div></div>`
+      : `<div class="deposit-box"><div class="dep-row"><span style="font-size:12px;font-weight:700;color:var(--text2)">Balance due on completion</span><span class="dep-amt">${M.fmt(t.balance, 2)}</span></div><div class="dep-bal">Payable once your kitchen is fitted and signed off</div></div>`);
+  window._balLabel = M.fmt(t.balance, 2);
+  document.getElementById('pb-lbl').textContent = paid ? 'Order settled in full' : 'Balance due on completion';
+  document.getElementById('pb-amt').textContent = paid ? M.fmt(t.total, 2) + ' paid' : M.fmt(t.balance, 2);
+}
+
+window._onPaid = function () {
+  renderTotals(true);
+  const btn = document.getElementById('pb-btn');
+  btn.className = 'btn btn-success';
+  btn.style.width = 'auto';
+  btn.disabled = true;
+  btn.textContent = '✓ Paid in full';
+  btn.onclick = null;
+  M.toast('Balance received · paid in full');
+};
+
+renderTotals(false);
+</script>
+</body>
+</html>

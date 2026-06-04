@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Your Order · Blackwood Joinery</title>
+<link rel="stylesheet" href="../../styles.css">
+<link rel="stylesheet" href="assets/_mock.css">
+<style>
+  /* Direction C — customer order rows (read-only) + status rail */
+  .prow { display: flex; gap: 14px; align-items: flex-start; padding: 14px 18px; border-top: 1px solid var(--border2); }
+  .prow:first-child { border-top: none; }
+  .prow .pr-main { flex: 1; min-width: 0; }
+  .prow .pr-name { font-weight: 700; font-size: 14px; }
+  .prow .pr-spec { font-size: 12px; color: var(--muted); margin-top: 3px; }
+  .prow .pr-right { text-align: right; flex-shrink: 0; }
+  .prow .li-price { font-weight: 800; font-size: 15px; font-variant-numeric: tabular-nums; }
+  .prow .pr-each { font-size: 11px; color: var(--muted); }
+  .rail h3 { font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin-bottom: 8px; }
+  .rail .rail-line { display: flex; justify-content: space-between; align-items: baseline; font-size: 13px; color: var(--text2); padding: 5px 0; }
+  .rail .rail-line.grand { font-weight: 800; color: var(--text); }
+  .rail-sticky-wrap { position: sticky; top: 16px; align-self: start; }
+  .paid-row { display: flex; align-items: center; gap: 10px; background: var(--accent-dim); border: 1px solid rgba(61,153,112,.3); border-radius: 9px; padding: 10px 12px; margin-bottom: 12px; }
+  .paid-row .pr-check { width: 26px; height: 26px; border-radius: 50%; background: var(--success); color: #fff; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .eta-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; margin-top: 14px; }
+</style>
+</head>
+<body class="cust">
+<div class="cust-top" id="hdr"></div>
+<div class="cust-wrap">
+
+  <div class="cust-hero">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap">
+      <div>
+        <h1>Your order is underway</h1>
+        <div class="sub" id="hero-sub"></div>
+      </div>
+      <span class="badge badge-orange" style="font-size:11px">In production</span>
+    </div>
+    <div class="cust-greeting" id="greeting"></div>
+  </div>
+
+  <div class="two-pane rail-right">
+    <!-- LEFT: read-only confirmed line items -->
+    <div class="card" style="overflow:hidden">
+      <div class="card-header"><div class="card-title">What we’re building</div>
+        <span style="margin-left:auto;font-size:11px;color:var(--muted)">Order confirmed 31 May</span>
+      </div>
+      <div id="lines"></div>
+      <div style="padding:14px 18px;border-top:1px solid var(--border)"><div class="totals" id="totals"></div></div>
+    </div>
+
+    <!-- RIGHT: payment status + balance + production tracker -->
+    <div class="rail-sticky-wrap">
+      <div class="rail" id="rail"></div>
+    </div>
+  </div>
+
+  <div style="font-size:11px;color:var(--muted);text-align:center;line-height:1.6;margin:18px 0 8px">
+    Questions about your order? Reply to your confirmation email or call <span id="biz-phone"></span>.
+  </div>
+
+</div>
+
+<div class="mock-ribbon"><span class="dot"></span> Direction C · Interactive Proposal — Customer Order <a href="index.html">all mockups</a></div>
+
+<script src="assets/_seed.js"></script>
+<script>
+const M = window.MOCK;
+document.getElementById('hdr').outerHTML = M.publicHeader({ secure: true });
+document.getElementById('hero-sub').textContent = 'Order #' + M.quote.orderNumber + ' · ' + M.esc(M.client.project);
+document.getElementById('biz-phone').textContent = M.biz.phone;
+document.getElementById('greeting').innerHTML =
+  'Hi ' + M.esc(M.client.first) + ', thanks again — your deposit is in and your kitchen is booked into the workshop. '
+  + 'Here’s exactly what we’re making, your remaining balance, and where things are up to.';
+
+const lines = M.freshLines();           // all included → confirmed order
+const t = M.computeTotals(lines);
+
+function row(l) {
+  const photo = `<div class="lphoto" style="width:80px;height:60px">${M.art(l.art, { w: 160, h: 120 })}</div>`;
+  const specLine = l.kind === 'cabinet'
+    ? `${l.w}×${l.h}×${l.d}mm · ${M.esc(l.finish)}`
+    : M.esc(l.detail);
+  return `<div class="prow">
+    ${photo}
+    <div class="pr-main">
+      <div class="pr-name">${M.esc(l.name)}</div>
+      <div class="pr-spec">${specLine}${l.qty > 1 ? ' · Qty ' + l.qty : ''}</div>
+    </div>
+    <div class="pr-right">
+      <div class="li-price">${M.fmt(M.lineTotal(l))}</div>
+      ${l.qty > 1 ? `<div class="pr-each">${M.fmt(l.unit)} each</div>` : ''}
+    </div>
+  </div>`;
+}
+
+// Compact production tracker (deposit paid → done)
+function track() {
+  const steps = [
+    ['Order confirmed', 'Deposit received · 31 May', 'done'],
+    ['In production', 'Carcasses cut · doors being painted', 'current'],
+    ['Delivery & fit', 'Provisional 24–25 Jun', ''],
+    ['Complete', 'Balance due on the day', ''],
+  ];
+  return `<div class="track">` + steps.map((s, i) => `
+    <div class="track-step ${s[2]}">
+      <div class="track-rail">
+        <div class="track-node">${s[2] === 'done' ? '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>' : (s[2] === 'current' ? '<span style="width:8px;height:8px;border-radius:50%;background:var(--accent)"></span>' : '')}</div>
+        ${i < steps.length - 1 ? '<div class="track-line"></div>' : ''}
+      </div>
+      <div class="track-body"><div class="track-title">${s[0]}</div><div class="track-sub">${s[1]}</div></div>
+    </div>`).join('') + `</div>`;
+}
+
+document.getElementById('lines').innerHTML = lines.map(row).join('');
+document.getElementById('totals').innerHTML =
+  `<div class="tr"><span>Subtotal</span><span>${M.fmt(t.subtotal)}</span></div>` +
+  `<div class="tr"><span>VAT (20%)</span><span>${M.fmt(t.vat, 2)}</span></div>` +
+  `<div class="tr grand"><span>Order total</span><span>${M.fmt(t.total, 2)}</span></div>`;
+
+function rail() {
+  return `<div class="paid-row">
+      <div class="pr-check"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+      <div><div style="font-size:13px;font-weight:700">Deposit paid</div><div style="font-size:11px;color:var(--muted)">${M.fmt(t.deposit, 2)} received 31 May</div></div>
+    </div>
+    <h3>Payment</h3>
+    <div class="rail-line"><span>Order total</span><span>${M.fmt(t.total, 2)}</span></div>
+    <div class="rail-line save" style="color:var(--success)"><span>Deposit paid</span><span>− ${M.fmt(t.deposit, 2)}</span></div>
+    <div class="totals" style="margin-top:6px"><div class="tr grand" style="border-top:1px solid var(--border);margin-top:0"><span>Balance due</span><span>${M.fmt(t.balance, 2)}</span></div></div>
+    <div style="font-size:11px;color:var(--muted);margin-top:6px">Due on completion. You can pay early any time below.</div>
+    <button class="btn btn-success btn-lg" style="margin-top:14px" onclick="MOCK.paymentSheet('${M.fmt(t.balance, 2)} balance','Final payment · order #${M.quote.orderNumber}')">Pay balance now</button>
+
+    <div class="eta-card">
+      <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:10px">Production status</div>
+      ${track()}
+    </div>`;
+}
+document.getElementById('rail').innerHTML = rail();
+
+// Paying the balance → confirmed-paid state in the rail
+window._onPaid = function () {
+  document.getElementById('rail').innerHTML = `
+    <div class="success-hero" style="padding:18px 6px">
+      <div class="check" style="width:52px;height:52px;margin-bottom:10px"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+      <div style="font-size:17px;font-weight:800">Paid in full</div>
+      <p style="font-size:12px;color:var(--muted);margin-top:6px">Thanks ${M.esc(M.client.first)} — your balance of ${M.fmt(t.balance, 2)} is settled. A receipt is on its way to ${M.esc(M.client.email)}.</p>
+      <div class="paid-stamp" style="margin-top:12px">Paid</div>
+    </div>
+    <div class="eta-card"><div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:10px">Production status</div>${track()}</div>`;
+  M.toast('Balance received · thank you');
+};
+</script>
+</body>
+</html>

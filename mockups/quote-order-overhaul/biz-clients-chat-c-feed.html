@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Clients · ProCabinet (Chat — Option C)</title>
+<link rel="stylesheet" href="../../styles.css">
+<link rel="stylesheet" href="assets/_mock.css">
+<style>
+  /* Chat Option C — Messages feed inside the Clients tab */
+  .feed-wrap { max-width: 760px; margin: 0 auto; }
+
+  /* header row: title + segmented toggle */
+  .feed-head { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+  .feed-head h2 { font-size: 18px; font-weight: 800; flex: 1; display: flex; align-items: center; gap: 9px; }
+  .seg-count { background: var(--accent); color: #fff; font-size: 10px; font-weight: 800; min-width: 17px; height: 17px; padding: 0 5px; border-radius: 9px; display: inline-flex; align-items: center; justify-content: center; margin-left: 5px; }
+  .seg-opt.active .seg-count { background: var(--accent); }
+
+  /* filter row */
+  .feed-filters { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+
+  /* message cards */
+  .mcard { margin-bottom: 12px; cursor: pointer; transition: border-color .15s, box-shadow .15s; }
+  .mcard:hover { border-color: var(--accent); box-shadow: var(--shadow-md); }
+  .mcard.open { border-color: var(--accent); }
+  .mc-top { display: flex; align-items: flex-start; gap: 12px; padding: 13px 15px; }
+  .mc-avatar { width: 38px; height: 38px; border-radius: 50%; background: var(--accent2); color: #fff; font-weight: 700; font-size: 14px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .mc-main { flex: 1; min-width: 0; }
+  .mc-name-row { display: flex; align-items: center; gap: 8px; }
+  .mc-name { font-weight: 700; font-size: 14px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mc-time { font-size: 11px; color: var(--muted); flex-shrink: 0; margin-left: auto; }
+  .mc-sub { font-size: 11px; color: var(--muted); margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mc-sub .ref { color: var(--text2); font-weight: 600; }
+  .mc-last { font-size: 13px; color: var(--text2); line-height: 1.45; margin-top: 7px; display: flex; gap: 7px; align-items: baseline; }
+  .mc-last .mc-from { font-size: 11px; font-weight: 700; color: var(--muted); flex-shrink: 0; }
+  .mc-last .mc-txt { overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .mc-foot { display: flex; align-items: center; gap: 8px; margin-top: 11px; }
+
+  /* state pill */
+  .state-pill { font-size: 10px; font-weight: 700; padding: 3px 10px; border-radius: 999px; display: inline-flex; align-items: center; gap: 5px; }
+  .state-pill.needs { background: var(--accent); color: #fff; }
+  .state-pill.replied { background: var(--surface2); color: var(--muted); border: 1px solid var(--border); }
+  .state-pill .sp-dot { width: 6px; height: 6px; border-radius: 50%; background: #fff; }
+
+  .mc-reply-btn { margin-left: auto; }
+
+  /* inline expanded thread */
+  .mc-expand { border-top: 1px solid var(--border); background: var(--bg); display: none; }
+  .mcard.open .mc-expand { display: block; }
+  .mc-thread { max-height: 320px; overflow: auto; padding: 14px 15px; }
+  .mc-thread.thread { gap: 11px; }
+  .mc-expand .composer { border-radius: 0 0 var(--radius) var(--radius); }
+
+  /* CLIENTS list view */
+  .crow { display: flex; align-items: center; gap: 12px; padding: 12px 15px; margin-bottom: 9px; cursor: pointer; transition: border-color .15s, box-shadow .15s; }
+  .crow:hover { border-color: var(--accent); box-shadow: var(--shadow-md); }
+  .crow .mc-avatar { width: 34px; height: 34px; font-size: 13px; }
+  .crow-main { flex: 1; min-width: 0; }
+  .crow-name { font-weight: 700; font-size: 13px; color: var(--text); }
+  .crow-sub { font-size: 11px; color: var(--muted); margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .chat-chip { font-size: 11px; font-weight: 600; padding: 5px 11px; border-radius: 999px; background: var(--surface2); border: 1px solid var(--border); color: var(--text2); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0; transition: all .15s; }
+  .chat-chip:hover { border-color: var(--accent); color: var(--accent); }
+  .chat-chip .cc-unread { background: var(--accent); color: #fff; border-radius: 999px; padding: 0 6px; font-size: 9px; font-weight: 800; }
+  .chat-chip svg { color: var(--accent2); }
+
+  .view { display: none; }
+  .view.active { display: block; }
+  .td { display: inline-block; animation: tdpulse 1.1s infinite; }
+  @keyframes tdpulse { 0%,100%{opacity:.3} 50%{opacity:1} }
+</style>
+</head>
+<body>
+<div id="chrome"></div>
+<div class="app-body">
+  <div class="section-panel active">
+    <div class="main-content"><div class="main-scroll">
+      <div class="feed-wrap">
+
+        <!-- header: title + Clients/Messages segmented toggle -->
+        <div class="feed-head">
+          <h2>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+            Clients
+          </h2>
+          <div class="seg" id="view-seg" role="group" aria-label="View">
+            <button class="seg-opt" data-view="clients" onclick="setView('clients')">Clients</button>
+            <button class="seg-opt active" data-view="messages" onclick="setView('messages')">Messages<span class="seg-count" id="seg-unread"></span></button>
+          </div>
+        </div>
+
+        <!-- MESSAGES VIEW -->
+        <div class="view active" id="view-messages">
+          <div class="feed-filters" id="msg-filters"></div>
+          <div id="msg-cards"></div>
+        </div>
+
+        <!-- CLIENTS VIEW -->
+        <div class="view" id="view-clients">
+          <div id="client-rows"></div>
+        </div>
+
+      </div>
+    </div></div>
+  </div>
+</div>
+
+<div class="mock-ribbon"><span class="dot"></span> App · Clients tab chat — Option C · Messages feed <a href="index.html">all mockups</a></div>
+
+<script src="assets/_seed.js"></script>
+<script>
+const M = window.MOCK;
+const C = M.contacts;
+const totalUnread = C.reduce((n, c) => n + (c.unread || 0), 0);
+
+// chrome
+document.getElementById('chrome').outerHTML = M.appChrome('clients', { orders: 3 });
+document.getElementById('seg-unread').textContent = totalUnread;
+
+// runtime state per contact (reply flips needsReply→false, clears unread)
+const state = {};
+C.forEach(c => { state[c.id] = { needs: c.who === 'them', unread: c.unread || 0, open: false }; });
+
+// ── view toggle ─────────────────────────────────────────────────────
+window.setView = v => {
+  document.querySelectorAll('#view-seg .seg-opt').forEach(b => b.classList.toggle('active', b.dataset.view === v));
+  document.getElementById('view-messages').classList.toggle('active', v === 'messages');
+  document.getElementById('view-clients').classList.toggle('active', v === 'clients');
+};
+
+// ── filters (Messages) ──────────────────────────────────────────────
+let activeFilter = 'all';
+function needsCount() { return C.filter(c => state[c.id].needs).length; }
+function leadsCount() { return C.filter(c => c.status === 'Lead').length; }
+function renderFilters() {
+  const tabs = [
+    ['all', 'All', C.length],
+    ['needs', 'Needs reply', needsCount()],
+    ['leads', 'Leads', leadsCount()],
+  ];
+  document.getElementById('msg-filters').innerHTML = tabs.map(([k, label, n]) =>
+    `<button class="ofilter-tab${k === activeFilter ? ' active' : ''}" onclick="setFilter('${k}')">${label} (${n})</button>`
+  ).join('');
+}
+window.setFilter = k => { activeFilter = k; renderFilters(); renderCards(); };
+
+function passesFilter(c) {
+  if (activeFilter === 'needs') return state[c.id].needs;
+  if (activeFilter === 'leads') return c.status === 'Lead';
+  return true;
+}
+
+// ── message cards ───────────────────────────────────────────────────
+function statePill(c) {
+  return state[c.id].needs
+    ? '<span class="state-pill needs"><span class="sp-dot"></span>Needs reply</span>'
+    : '<span class="state-pill replied">✓ Replied</span>';
+}
+function lastText(c) {
+  // strip a leading "You: " — we render the from-tag separately
+  return c.last.replace(/^You:\s*/, '');
+}
+// first name for the "from" tag; keep business-style names ("The Old Rectory") whole
+function firstName(name) { const t = name.split(/[ &]/)[0]; return t === 'The' ? name : t; }
+function fromTag(c) { return c.who === 'me' ? 'You' : firstName(c.name); }
+
+function card(c) {
+  const s = state[c.id];
+  const unreadDot = s.unread ? '<span class="act-dot" style="margin-left:2px"></span>' : '';
+  return `<div class="card mcard${s.open ? ' open' : ''}" id="card-${c.id}">
+    <div class="mc-top" onclick="toggleCard('${c.id}')">
+      <div class="mc-avatar">${c.initials}</div>
+      <div class="mc-main">
+        <div class="mc-name-row">
+          <span class="mc-name">${M.esc(c.name)}</span>
+          <span class="badge ${c.badge}">${c.status}</span>${unreadDot}
+          <span class="mc-time">${c.time}</span>
+        </div>
+        <div class="mc-sub">${M.esc(c.project)} · <span class="ref">${c.ref}</span>${c.value ? ' · ' + M.fmt(c.value, 0) : ''}</div>
+        <div class="mc-last">
+          <span class="mc-from">${fromTag(c)}:</span>
+          <span class="mc-txt">${M.esc(lastText(c))}</span>
+        </div>
+        <div class="mc-foot">
+          ${statePill(c)}
+          <button class="btn btn-primary mc-reply-btn" style="width:auto;font-size:11px;padding:6px 14px" onclick="event.stopPropagation();toggleCard('${c.id}',true)">${s.open ? 'Close' : 'Reply'}</button>
+        </div>
+      </div>
+    </div>
+    <div class="mc-expand">
+      <div class="thread mc-thread" id="feed-thread-${c.id}">${M.threadFor(c)}</div>
+      <div class="composer">
+        <input id="feed-input-${c.id}" placeholder="Reply to ${M.esc(firstName(c.name))}…" autocomplete="off"
+          onkeydown="if(event.key==='Enter')doReply('${c.id}')">
+        <button class="btn btn-outline" style="width:auto;font-size:11px;padding:8px 10px" title="Attach photo" onclick="M.toast('Mock: attach a photo')">📎</button>
+        <button class="btn btn-primary" style="width:auto;padding:8px 16px" onclick="doReply('${c.id}')">Send</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderCards() {
+  const list = C.filter(passesFilter);
+  const host = document.getElementById('msg-cards');
+  if (!list.length) {
+    host.innerHTML = `<div class="card" style="padding:28px;text-align:center;color:var(--muted);font-size:13px">Nothing here — you're all caught up. 🎉</div>`;
+    return;
+  }
+  host.innerHTML = list.map(card).join('');
+}
+
+// open/close a card's inline thread. `scroll` = scroll into view + focus input.
+window.toggleCard = (id, focus) => {
+  const s = state[id];
+  s.open = !s.open;
+  const el = document.getElementById('card-' + id);
+  if (!el) return;
+  el.classList.toggle('open', s.open);
+  // update the Reply button label
+  const btn = el.querySelector('.mc-reply-btn');
+  if (btn) btn.textContent = s.open ? 'Close' : 'Reply';
+  // clear the unread dot on open
+  if (s.open && s.unread) { s.unread = 0; refreshUnreadBadge(); const d = el.querySelector('.mc-name-row .act-dot'); if (d) d.remove(); }
+  if (s.open) {
+    const th = document.getElementById('feed-thread-' + id);
+    if (th) th.scrollTop = th.scrollHeight;
+    if (focus) { const inp = document.getElementById('feed-input-' + id); if (inp) setTimeout(() => inp.focus(), 60); el.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
+  }
+};
+
+// send a reply → MOCK.chat.send appends bubble + canned reply, then we flip state
+window.doReply = id => {
+  const inp = document.getElementById('feed-input-' + id);
+  if (!inp || !inp.value.trim()) return;
+  const c = C.find(x => x.id === id);
+  const reply = cannedReply(c);
+  M.chat.send('feed-input-' + id, 'feed-thread-' + id, reply);
+  // flip the card to ✓ Replied + clear unread
+  state[id].needs = false;
+  state[id].unread = 0;
+  refreshState(id);
+  refreshUnreadBadge();
+  renderFilters();
+  M.toast('Reply sent to ' + firstName(c.name));
+};
+
+function cannedReply(c) {
+  const map = {
+    c1: 'Lovely — no rush on the island at all. I’ll leave the quote open and it’ll reprice the moment you decide 👍',
+    c2: 'Brilliant, thank you Marcus! Your order’s now in the build queue — I’ll send dates this week.',
+    c3: 'Perfect — I’ll get the deposit link over to you now so we can lock in your slot.',
+    c4: 'No problem — happy to walk through the alcove sizes whenever suits. Just say the word.',
+    c5: 'Hi! Yes, I’d love to quote your walk-in wardrobe. Could you send a rough width and any photos of the space?',
+  };
+  return map[c.id] || 'Thanks — I’ll get back to you on that shortly 👍';
+}
+
+// re-render a single card's footer (state pill + reply btn label) in place
+function refreshState(id) {
+  const el = document.getElementById('card-' + id);
+  if (!el) return;
+  const foot = el.querySelector('.mc-foot');
+  if (foot) {
+    const c = C.find(x => x.id === id);
+    foot.querySelector('.state-pill').outerHTML = statePill(c);
+  }
+  const dot = el.querySelector('.mc-name-row .act-dot');
+  if (dot) dot.remove();
+}
+
+function refreshUnreadBadge() {
+  const n = C.reduce((sum, c) => sum + (state[c.id].unread || 0), 0);
+  const b = document.getElementById('seg-unread');
+  b.textContent = n;
+  b.style.display = n ? '' : 'none';
+}
+
+// ── CLIENTS list view ───────────────────────────────────────────────
+function clientRow(c) {
+  const s = state[c.id];
+  const unread = s.unread ? `<span class="cc-unread">${s.unread} unread</span>` : '';
+  return `<div class="card crow" onclick="openFromClient('${c.id}')">
+    <div class="mc-avatar">${c.initials}</div>
+    <div class="crow-main">
+      <div class="crow-name">${M.esc(c.name)}</div>
+      <div class="crow-sub">${M.esc(c.project)} · ${c.ref} · <span class="badge ${c.badge}" style="font-size:9px">${c.status}</span></div>
+    </div>
+    <div class="chat-chip" onclick="event.stopPropagation();openFromClient('${c.id}')">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+      ${c.chatCount || cannedCount(c)} ${unread}
+    </div>
+  </div>`;
+}
+function cannedCount(c) { return c.id === 'c1' ? 4 : 2; } // messages in each thread
+
+// from Clients view: jump to Messages and expand that client's reply
+window.openFromClient = id => {
+  setView('messages');
+  // make sure it passes the current filter; if not, reset to All
+  const c = C.find(x => x.id === id);
+  if (!passesFilter(c)) { activeFilter = 'all'; renderFilters(); }
+  renderCards();
+  // expand + focus
+  state[id].open = true;
+  renderCards(); // re-render so the open class + thread are present
+  setTimeout(() => {
+    const el = document.getElementById('card-' + id);
+    const inp = document.getElementById('feed-input-' + id);
+    const th = document.getElementById('feed-thread-' + id);
+    if (th) th.scrollTop = th.scrollHeight;
+    if (state[id].unread) { state[id].unread = 0; refreshUnreadBadge(); renderClientRows(); }
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    if (inp) inp.focus();
+  }, 40);
+};
+
+function renderClientRows() {
+  document.getElementById('client-rows').innerHTML = C.map(clientRow).join('');
+}
+
+// ── init ────────────────────────────────────────────────────────────
+renderFilters();
+renderCards();
+renderClientRows();
+refreshUnreadBadge();
+</script>
+</body>
+</html>

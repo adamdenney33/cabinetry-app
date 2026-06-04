@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Orders · ProCabinet (Direction C)</title>
+<link rel="stylesheet" href="../../styles.css">
+<link rel="stylesheet" href="assets/_mock.css">
+<style>
+  /* Direction C — business order controls (left) + live device preview (right) */
+  .wt-wrap { max-width: 980px; margin: 0 auto; }
+  .pay-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .pay-tile { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; background: var(--surface2); }
+  .pay-tile .pt-lbl { font-size: 11px; color: var(--muted); }
+  .pay-tile .pt-val { font-size: 18px; font-weight: 800; margin-top: 3px; font-variant-numeric: tabular-nums; }
+  .pay-tile.balance { background: var(--accent-dim); border-color: rgba(232,168,56,.3); }
+  .stage-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .stage-opt { display: flex; align-items: center; gap: 8px; padding: 9px 11px; border: 1px solid var(--border); border-radius: 9px; cursor: pointer; font-size: 12px; font-weight: 600; color: var(--text2); background: var(--surface); transition: all .14s; }
+  .stage-opt:hover { border-color: var(--accent); }
+  .stage-opt.on { background: var(--accent-dim); border-color: var(--accent); color: var(--text); }
+  .stage-opt .so-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--border); flex-shrink: 0; }
+  .stage-opt.on .so-dot { background: var(--accent); }
+  .pdf-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .pdf-btn { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 9px; background: var(--surface); cursor: pointer; font-size: 12px; font-weight: 600; color: var(--text); text-align: left; font-family: inherit; transition: all .14s; }
+  .pdf-btn:hover { border-color: var(--accent); background: var(--surface2); }
+  .pdf-btn svg { color: var(--muted); flex-shrink: 0; }
+  .xero-chip { display: inline-flex; align-items: center; gap: 6px; }
+  .preview-label { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; color: var(--text2); margin-bottom: 10px; }
+  .preview-label .live-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--success); box-shadow: 0 0 0 3px rgba(61,153,112,.2); }
+  .preview-sticky { position: sticky; top: 8px; }
+</style>
+</head>
+<body>
+<div id="chrome"></div>
+<div class="app-body">
+  <div class="section-panel active">
+    <div class="main-content"><div class="main-scroll">
+      <div class="wt-wrap">
+
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg>
+          <h2 style="font-size:18px;font-weight:800;flex:1">Orders</h2>
+          <a class="btn btn-outline" style="width:auto" href="c-cust-order.html" target="_blank">View as customer ↗</a>
+        </div>
+
+        <div class="lib-toggle-row" style="margin-bottom:14px">
+          <button class="ofilter-tab active">#0031 · Whitfield</button>
+          <button class="ofilter-tab">#0030 · Marcus Lee</button>
+          <button class="ofilter-tab">#0029 · The Old Rectory</button>
+        </div>
+
+        <div class="two-pane">
+          <!-- LEFT: order controls -->
+          <div>
+            <div class="card" style="margin-bottom:12px">
+              <div class="oc-header" style="padding:14px 16px 8px">
+                <div class="oc-info"><div class="oc-title-row"><div class="oc-title">Order #0031 · Sarah &amp; Tom Whitfield</div><span class="badge badge-orange" style="font-size:10px">In production</span></div>
+                <div class="oc-meta">Kitchen — Maple Shaker · from Q-0042 · confirmed 31 May</div></div>
+                <div class="oc-right"><div class="oc-value" id="order-total"></div></div>
+              </div>
+              <div id="order-pipeline"></div>
+            </div>
+
+            <!-- Payment -->
+            <div class="card" style="margin-bottom:12px">
+              <div class="card-header"><div class="card-title">Payment</div>
+                <span class="badge badge-green xero-chip" style="margin-left:auto;font-size:10px">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Synced · Xero
+                </span>
+              </div>
+              <div class="card-body">
+                <div class="pay-grid">
+                  <div class="pay-tile"><div class="pt-lbl">Deposit paid</div><div class="pt-val" id="pt-dep"></div><div style="font-size:10px;color:var(--success);font-weight:700;margin-top:2px">Received 31 May</div></div>
+                  <div class="pay-tile balance"><div class="pt-lbl">Balance due</div><div class="pt-val" id="pt-bal"></div><div style="font-size:10px;color:var(--muted);margin-top:2px">On completion</div></div>
+                </div>
+                <div style="display:flex;gap:8px;margin-top:12px">
+                  <button class="btn btn-success" style="width:auto" onclick="MOCK.toast('Mock: requests the balance from Sarah')">Request balance</button>
+                  <button class="btn btn-outline" style="width:auto" onclick="MOCK.toast('Mock: records a manual payment')">Record payment</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Production status -->
+            <div class="card" style="margin-bottom:12px">
+              <div class="card-header"><div class="card-title">Production status</div>
+                <span style="margin-left:auto;font-size:11px;color:var(--muted)">Customer sees this update</span>
+              </div>
+              <div class="card-body">
+                <div class="stage-grid" id="stages"></div>
+              </div>
+            </div>
+
+            <!-- Documents -->
+            <div class="card">
+              <div class="card-header"><div class="card-title">Documents</div></div>
+              <div class="card-body">
+                <div class="pdf-grid">
+                  <button class="pdf-btn" onclick="MOCK.toast('Mock: opens the Order Confirmation PDF')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg> Confirmation</button>
+                  <button class="pdf-btn" onclick="MOCK.toast('Mock: opens the Pro-forma PDF')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg> Pro-forma</button>
+                  <button class="pdf-btn" onclick="MOCK.toast('Mock: opens the VAT Invoice PDF')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg> Invoice</button>
+                  <button class="pdf-btn" onclick="MOCK.toast('Mock: opens the Work Order for the bench')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1.7 14 6 19.3 4.7 19.3 9.6 22.3 12 19.6 16.1 19.3 19.3 15.9 21.5 12 22.3 8.1 21.5 4.7 19.3 4.4 16.1 1.7 12 4.4 9.6 4.7 4.7 8.1 4.4Z"/><circle cx="12" cy="12" r="1.5"/></svg> Work Order</button>
+                </div>
+                <div style="font-size:11px;color:var(--muted);margin-top:10px;display:flex;align-items:center;gap:6px">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  Invoice pushed to Xero · payments reconcile automatically
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- RIGHT: live device preview -->
+          <div class="preview-sticky">
+            <div class="preview-label"><span class="live-dot"></span> What the customer sees · live</div>
+            <div class="device-frame">
+              <div class="dev-notch"></div>
+              <iframe id="preview" src="c-cust-order.html" title="Customer order preview"></iframe>
+            </div>
+            <div style="text-align:center;font-size:11px;color:var(--muted);margin-top:8px">Status &amp; balance mirror this order · <a href="c-cust-order.html" target="_blank" style="color:var(--accent);font-weight:600">Open full size ↗</a></div>
+          </div>
+        </div>
+
+      </div>
+    </div></div>
+  </div>
+</div>
+
+<div class="mock-ribbon"><span class="dot"></span> Direction C · Interactive Proposal — Business Orders <a href="index.html">all mockups</a></div>
+
+<script src="assets/_seed.js"></script>
+<script>
+const M = window.MOCK;
+document.getElementById('chrome').outerHTML = M.appChrome('orders', { orders: 3 });
+const t = M.computeTotals();
+document.getElementById('order-total').textContent = M.fmt(t.total, 0);
+document.getElementById('pt-dep').textContent = M.fmt(t.deposit, 2);
+document.getElementById('pt-bal').textContent = M.fmt(t.balance, 2);
+
+// signature status pipeline — order is at Production (idx 5)
+document.getElementById('order-pipeline').innerHTML = M.pipeline(M.DEAL_STAGES, 5);
+
+// Production stage picker (current = In production)
+const STAGES = [
+  ['Confirmed', true],
+  ['Materials ordered', true],
+  ['In production', true],
+  ['Ready to fit', false],
+  ['Delivered & fitted', false],
+  ['Complete', false],
+];
+document.getElementById('stages').innerHTML = STAGES.map((s, i) =>
+  `<button class="stage-opt ${s[1] ? 'on' : ''}" onclick="pickStage(${i})" data-i="${i}"><span class="so-dot"></span>${s[0]}</button>`
+).join('');
+
+window.pickStage = i => {
+  document.querySelectorAll('.stage-opt').forEach(b => b.classList.toggle('on', +b.dataset.i <= i));
+  MOCK.toast('Status updated · customer notified');
+  // nudge the live preview so the demo feels connected
+  try { document.getElementById('preview').contentWindow.location.reload(); } catch (e) {}
+};
+</script>
+</body>
+</html>

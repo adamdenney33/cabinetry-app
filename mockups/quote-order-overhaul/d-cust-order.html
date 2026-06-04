@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Your Order · Blackwood Joinery</title>
+<link rel="stylesheet" href="../../styles.css">
+<link rel="stylesheet" href="assets/_mock.css">
+</head>
+<body class="cust">
+<div class="cust-top" id="hdr"></div>
+<div class="cust-wrap narrow">
+
+  <!-- STICKY PIN BAR (in production · balance) -->
+  <div class="pinbar" id="pinbar">
+    <div style="flex:1;min-width:0">
+      <div style="font-size:11px;color:var(--accent);font-weight:700;display:flex;align-items:center;gap:5px">
+        <span class="act-dot" style="background:var(--accent)"></span> In production
+      </div>
+      <div style="font-size:14px;font-weight:800;font-variant-numeric:tabular-nums" id="pin-amt"></div>
+    </div>
+    <button class="btn btn-primary" style="width:auto;white-space:nowrap" id="pin-btn"
+      onclick="MOCK.paymentSheet(window._balLabel,'Final balance · pay anytime before delivery')">Pay balance</button>
+  </div>
+
+  <div class="thread" id="thread"></div>
+
+  <!-- composer -->
+  <div class="composer" style="border:1px solid var(--border);border-radius:999px;margin-top:8px;background:var(--surface)">
+    <input id="ask" placeholder="Message Blackwood about your build…" autocomplete="off"
+      onkeydown="if(event.key==='Enter')sendAsk()">
+    <button class="btn btn-primary" style="width:auto;padding:8px 16px" onclick="sendAsk()">Send</button>
+  </div>
+  <div style="font-size:11px;color:var(--muted);text-align:center;line-height:1.6;margin-top:14px">
+    Order <span id="onum"></span> · ref <span id="qnum"></span> · we'll message here at each stage of your build
+  </div>
+
+</div>
+
+<div class="mock-ribbon"><span class="dot"></span> Direction D · Thread — Customer Order <a href="index.html">all mockups</a></div>
+
+<script src="assets/_seed.js"></script>
+<script>
+const M = window.MOCK;
+document.getElementById('hdr').outerHTML = M.publicHeader({ secure: true });
+document.getElementById('onum').textContent = '#' + M.quote.orderNumber;
+document.getElementById('qnum').textContent = M.quote.number;
+
+const lines = M.freshLines();
+const t = M.computeTotals(lines);
+let paid = false;
+
+function bubbleThem(body, time) {
+  return `<div class="bubble them"><div class="bub-body">${body}</div><div class="bub-time">${time}</div></div>`;
+}
+function bubbleMe(body, time) {
+  return `<div class="bubble me"><div class="bub-body">${body}</div><div class="bub-time" style="text-align:right">${time}</div></div>`;
+}
+// a production update with an attached "photo" (MOCK.art thumb)
+function updateBubble(art, title, body, time) {
+  return `<div class="bubble them" style="max-width:92%">
+    <div class="bub-body" style="padding:0;overflow:hidden">
+      <div class="lphoto" style="width:100%;height:150px;border:0;border-radius:0;border-bottom:1px solid var(--border)">${M.art(art)}</div>
+      <div style="padding:10px 14px">
+        <div style="font-weight:700;font-size:13px;margin-bottom:3px">${title}</div>
+        <div style="font-size:12px;color:var(--text2);line-height:1.5">${body}</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:6px">📎 1 photo attached</div>
+      </div>
+    </div>
+    <div class="bub-time">${time}</div>
+  </div>`;
+}
+
+function buildThread() {
+  let html = '';
+
+  // continuation marker from the quote thread
+  html += `<div class="thread-event">Quote ${M.quote.number} accepted · continued from your quote</div>`;
+
+  // 1) payment event (deposit) — this is the PAST payment
+  html += `<div class="thread-event"><span class="paid-stamp" style="font-size:11px;border-width:2px;padding:2px 8px">Deposit paid</span> &nbsp;${M.fmt(t.deposit, 2)} received · <strong>18 May</strong></div>`;
+
+  html += bubbleThem(
+    `That's your deposit in and your slot booked — thank you! 🎉 Your <strong>Maple Shaker kitchen</strong> is now in our build queue. I'll keep you posted right here at every stage.`,
+    'Blackwood Joinery · 18 May');
+
+  html += `<div class="thread-event">Order <strong>#${M.quote.orderNumber}</strong> created · production scheduled</div>`;
+
+  // 2) measurements confirmed
+  html += bubbleThem(
+    `Quick one — Tom kindly let us in to template on Thursday. Final measurements all confirmed, no changes to your quote. Cutting begins Monday. ✅`,
+    'Blackwood Joinery · 21 May');
+
+  // a customer reply in-thread for realism
+  html += bubbleMe(`Amazing, thank you! Can't wait to see it come together.`, '21 May');
+
+  // 3) production update — frames cut (with photo)
+  html += updateBubble('drawers',
+    'Frames cut 🪵',
+    'All ' + lines.filter(l => l.kind === 'cabinet').length + ' carcasses are cut and assembled on the bench. Solid stuff. Doors go to spray next.',
+    'Blackwood Joinery · 26 May');
+
+  html += `<div class="thread-event">Stage <strong>2 of 4</strong> complete · Frames</div>`;
+
+  // 4) production update — doors sprayed (with photo)
+  html += updateBubble('base',
+    'Doors sprayed — Hand-painted Sage 🎨',
+    'Two coats on and curing now. The Sage looks gorgeous in the workshop light. Next we hang doors and fit your brushed brass handles.',
+    'Blackwood Joinery · 29 May');
+
+  html += `<div class="thread-event">Stage <strong>3 of 4</strong> complete · Doors &amp; finish</div>`;
+
+  // 5) delivery ETA bubble
+  html += bubbleThem(
+    `We're on the home straight. Everything's wrapped and ready — I'd like to book your <strong>2-day fit</strong> in. ` +
+    `<div style="background:var(--accent-dim);border-radius:9px;padding:10px 12px;margin-top:8px">
+       <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;font-weight:700">Delivery &amp; install</div>
+       <div style="font-size:16px;font-weight:800;margin-top:2px">Tue 9 Jun · 8:30 AM</div>
+       <div style="font-size:11px;color:var(--muted);margin-top:2px">2-day fit · waste removal included</div>
+     </div>` +
+    `Does that Tuesday still suit you both?`,
+    'Blackwood Joinery · 30 May');
+
+  html += `<div class="thread-event">Blackwood is typing<span class="td">…</span></div>`;
+
+  // balance reminder (pre-delivery) — soft prompt that the pinbar mirrors
+  html += bubbleThem(
+    `<div style="font-weight:700;margin-bottom:4px">Final balance</div>
+     <div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0"><span>Total incl. VAT</span><span>${M.fmt(t.total, 2)}</span></div>
+     <div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0"><span>Deposit paid</span><span>−${M.fmt(t.deposit, 2)}</span></div>
+     <div style="display:flex;justify-content:space-between;font-size:14px;font-weight:800;padding:6px 0 2px;border-top:1px solid var(--border);margin-top:4px"><span>Balance due</span><span>${M.fmt(t.balance, 2)}</span></div>
+     <div style="font-size:11px;color:var(--muted);margin-top:6px">No rush — payable any time before we fit. Tap <strong>Pay balance</strong> above whenever suits.</div>`,
+    'Blackwood Joinery · 30 May');
+
+  html += `<div id="dyn"></div>`;
+  return html;
+}
+
+window._balLabel = M.fmt(t.balance, 2);
+
+function syncMoney() {
+  document.getElementById('pin-amt').textContent =
+    paid ? 'Paid in full · ' + M.fmt(t.total, 2)
+         : 'Balance ' + M.fmt(t.balance, 2) + ' due before fit';
+}
+
+let askCount = 0;
+window.sendAsk = () => {
+  const inp = document.getElementById('ask'); const v = (inp.value || '').trim();
+  if (!v) return; inp.value = '';
+  const now = new Date();
+  const hh = ((now.getHours() % 12) || 12) + ':' + String(now.getMinutes()).padStart(2, '0') + (now.getHours() < 12 ? ' AM' : ' PM');
+  askCount++;
+  const dyn = document.getElementById('dyn');
+  dyn.insertAdjacentHTML('beforeend', bubbleMe(M.esc(v), hh));
+  dyn.insertAdjacentHTML('beforeend', `<div class="thread-event" id="askt-${askCount}">Blackwood is typing<span class="td">…</span></div>`);
+  scrollEnd();
+  setTimeout(() => {
+    const tEl = document.getElementById('askt-' + askCount); if (tEl) tEl.remove();
+    dyn.insertAdjacentHTML('beforeend', bubbleThem(
+      `Got it — thanks ${M.esc(M.client.first)}. I'll sort that and confirm here. Looking forward to getting it all fitted for you.`,
+      'Blackwood Joinery · just now'));
+    scrollEnd();
+  }, 1400);
+};
+
+function scrollEnd() {
+  const dyn = document.getElementById('dyn');
+  if (dyn && dyn.lastElementChild) dyn.lastElementChild.scrollIntoView({ behavior: 'smooth', block: 'end' });
+}
+
+// pay balance → success state, keep pinbar
+window._onPaid = function () {
+  paid = true;
+  const dyn = document.getElementById('dyn');
+  dyn.insertAdjacentHTML('beforeend', bubbleMe(`✅ Paid the balance — <strong>${M.fmt(t.balance, 0)}</strong>. See you Tuesday!`, 'just now'));
+  dyn.insertAdjacentHTML('beforeend',
+    `<div class="thread-event"><span class="paid-stamp" style="font-size:11px;border-width:2px;padding:2px 8px">Paid in full</span> &nbsp;${M.fmt(t.total, 2)} settled · receipt sent</div>`);
+  dyn.insertAdjacentHTML('beforeend', bubbleThem(
+    `Perfect — paid in full, thank you! 🙌 We're all set for your <strong>2-day fit on Tue 9 Jun</strong>. The van's loaded the night before; we'll text on the morning when we set off.`,
+    'Blackwood Joinery · just now'));
+  const pin = document.getElementById('pinbar');
+  pin.innerHTML = `<div style="flex:1;min-width:0">
+      <div style="font-size:11px;color:var(--success);font-weight:700;display:flex;align-items:center;gap:5px">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        Paid in full · ${M.fmt(t.total, 2)}</div>
+      <div style="font-size:13px;font-weight:700">Install Tue 9 Jun · 8:30 AM</div>
+    </div>
+    <span class="badge badge-green" style="font-size:11px">Ready to fit</span>`;
+  M.toast('Balance received · paid in full');
+  scrollEnd();
+};
+
+document.getElementById('thread').innerHTML = buildThread();
+syncMoney();
+</script>
+<style>
+.td { display:inline-block; animation: tdpulse 1.1s infinite; }
+@keyframes tdpulse { 0%,100%{opacity:.3} 50%{opacity:1} }
+</style>
+</body>
+</html>
