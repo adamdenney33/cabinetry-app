@@ -377,7 +377,7 @@ h1, h2, h3, p, ul { margin: 0; }
    ══════════════════════════════════════ */
 .pricing { max-width: var(--maxw); margin: 0 auto; padding: 76px 24px; }
 .pricing-head { text-align: center; margin-bottom: 44px; }
-.price-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; align-items: stretch; }
+.price-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; align-items: stretch; }
 
 .price-card {
   background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg);
