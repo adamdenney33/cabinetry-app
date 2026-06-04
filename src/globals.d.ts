@@ -61,6 +61,8 @@ declare global {
     /** Demo (guest) mode — src/db.js serves _db() reads from the seed dataset
      *  and blocks writes. Set by src/app.js and src/walkthrough.js. */
     _demoMode?: boolean;
+    /** Feature flag for line-item/template photos (Phase 2). Off until the line_photos migration is applied. Set in src/line-photos.js. */
+    _FEAT_LINE_PHOTOS?: boolean;
     /** True while the guided walkthrough overlay is on screen (src/walkthrough.js). */
     _wtActive?: boolean;
     /** Pricing-tier deep-link from the landing page (/?plan=…). Stashed by the
@@ -186,6 +188,24 @@ declare global {
   function _accountingOrderFooter(orderId: number): string;
   /** Open the Pro-gated "Accounting integrations" connect/disconnect popup. */
   function _openAccountingPopup(): void;
+
+  // ── line-photos.js globals (Phase 2: line-item & cabinet-template photos) ──
+  /** Hydrate line/template photos from public.line_photos. Called from loadAllData. No-op while window._FEAT_LINE_PHOTOS is false. */
+  function loadLinePhotos(): Promise<void>;
+  /** Handle a multi-file <input> for a line/template's photos: upload to storage + insert link rows. */
+  function _addLinePhotos(kind: 'quote_line' | 'order_line' | 'cabinet_template', ownerId: number, input: HTMLInputElement): Promise<void>;
+  /** Remove one photo (row + in-memory cache). */
+  function _removeLinePhoto(kind: 'quote_line' | 'order_line' | 'cabinet_template', ownerId: number, id: number): Promise<void>;
+  /** Editor strip: thumbnails + an add-photos button. Returns '' while the feature flag is off. */
+  function _linePhotoStrip(kind: 'quote_line' | 'order_line' | 'cabinet_template', ownerId: number): string;
+  /** Display thumbnails for cards / the live page. Returns '' while off or when there are none. */
+  function _linePhotoThumbs(kind: 'quote_line' | 'order_line' | 'cabinet_template', ownerId: number, max?: number): string;
+  /** Public photo URLs for a line — used by the live customer page renderer. */
+  function _linePhotoUrls(kind: 'quote_line' | 'order_line' | 'cabinet_template', ownerId: number): (string | null)[];
+  /** Fetch a photo and return a dataURL for jsPDF.addImage. */
+  function _linePhotoDataUrl(url: string): Promise<string | null>;
+  /** Raw-fetch upload of one photo to the business-assets bucket (in-memory token). */
+  function _uploadLinePhotoAsset(uid: string, kind: 'quote_line' | 'order_line' | 'cabinet_template', ownerId: number, file: File): Promise<{ path: string | null, url: string | null, error: { message: string } | null }>;
 
   // ── settings.js unit-format globals ──
   function setUnitFormat(mode: string): void;
