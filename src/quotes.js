@@ -547,7 +547,7 @@ function renderQuoteMain() {
 
 // ── CSV import / export ──
 function exportQuotesCSV() {
-  if (!_enforceProFeature()) return;
+  if (!_enforceExport()) return;
   const customerQuotes = quotes.filter(q => !_isDraftQuote(q));
   if (!customerQuotes.length) { _toast('No quotes to export', 'error'); return; }
   const cur = window.currency;
