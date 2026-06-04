@@ -533,9 +533,39 @@ function _scheduleOrderLineUpsert(idx) {
         return;
       }
       if (typeof _setSaveStatus === 'function') _setSaveStatus('order', 'saved');
+      if (row.order_id) _recomputeOrderValuePersist(row.order_id);
     });
   }, 600);
   _orderLineUpsertTimers.set(idx, t);
+}
+
+/** Recompute + persist the denormalised orders.value cache after a line
+ *  mutation. saveOrderEditor does this on the full save, but the line-autosave
+ *  paths (add/edit/remove) did not — so an order built purely via autosave kept
+ *  its £0 cache until a full save. Mirrors saveOrderEditor's markup → tax →
+ *  discount math (stock materials re-priced via stock_markup).
+ *  @param {number} id */
+async function _recomputeOrderValuePersist(id) {
+  if (!id || typeof orderTotalsFromLines !== 'function') return;
+  const o = orders.find(x => x.id === id);
+  if (!o) return;
+  const t = await orderTotalsFromLines(id);
+  let newValue = 0;
+  if (t) {
+    const mk = /** @type {any} */ (o).markup || 0;
+    const tx = /** @type {any} */ (o).tax || 0;
+    const dc = /** @type {any} */ (o).discount || 0;
+    const sm = /** @type {any} */ (o).stock_markup || 0;
+    const nonStockMat = t.materials - (t.stockMat || 0);
+    const stockSub = (t.stockMat || 0) * (1 + sm / 100);
+    const subPostLine = nonStockMat + t.labour + stockSub;
+    const afterMarkup = subPostLine * (1 + mk / 100);
+    const afterTax = afterMarkup * (1 + tx / 100);
+    newValue = Math.round(afterTax * (1 - dc / 100));
+  }
+  /** @type {any} */ (o).value = newValue;
+  await _db('orders').update({ value: newValue }).eq('id', id);
+  try { renderOrdersMain(); } catch (_e) {}
 }
 
 // _saveOrderPopup was replaced by saveOrderEditor() in src/orders.js.
@@ -1235,19 +1265,21 @@ function toggleAuthMode() {
     ? 'No account? <span onclick="toggleAuthMode()">Create one</span>'
     : 'Already have an account? <span onclick="toggleAuthMode()">Sign In</span>';
   /** @type {HTMLElement} */ (document.getElementById('auth-marketing-row')).style.display = isSign ? 'none' : 'flex';
-  /** @type {HTMLElement} */ (document.getElementById('auth-name')).style.display = isSign ? 'none' : 'block';
+  /** @type {HTMLElement} */ (document.getElementById('auth-first-name')).style.display = isSign ? 'none' : 'block';
+  /** @type {HTMLElement} */ (document.getElementById('auth-last-name')).style.display = isSign ? 'none' : 'block';
   /** @type {HTMLElement} */ (document.getElementById('auth-msg')).innerHTML = '';
 }
 
 async function authSubmit() {
   const email = /** @type {HTMLInputElement | null} */ (document.getElementById('auth-email'))?.value.trim() || '';
   const password = /** @type {HTMLInputElement | null} */ (document.getElementById('auth-password'))?.value || '';
-  const name = /** @type {HTMLInputElement | null} */ (document.getElementById('auth-name'))?.value.trim() || '';
+  const firstName = /** @type {HTMLInputElement | null} */ (document.getElementById('auth-first-name'))?.value.trim() || '';
+  const lastName = /** @type {HTMLInputElement | null} */ (document.getElementById('auth-last-name'))?.value.trim() || '';
   const msgEl = document.getElementById('auth-msg');
   const btn = /** @type {HTMLButtonElement | null} */ (document.getElementById('auth-btn'));
   if (msgEl) msgEl.innerHTML = '';
   if (!email || !password) { if (msgEl) msgEl.innerHTML = '<div class="auth-error">Email and password required.</div>'; return; }
-  if (_authMode === 'signup' && !name) { if (msgEl) msgEl.innerHTML = '<div class="auth-error">Please enter your name.</div>'; return; }
+  if (_authMode === 'signup' && (!firstName || !lastName)) { if (msgEl) msgEl.innerHTML = '<div class="auth-error">Please enter your first and last name.</div>'; return; }
   if (btn) { btn.disabled = true; btn.textContent = '…'; }
   let error;
   try {
@@ -1271,10 +1303,11 @@ async function authSubmit() {
           // app actually lives so dev signups don't bounce to a 404.
           emailRedirectTo: window.location.origin + (window._isDev ? '' : '/os'),
           // Persisted into auth.users.user_metadata; the list-subscribe edge
-          // function reads it after the user confirms their email. full_name is
-          // the user's name collected at signup, queryable via
-          // `raw_user_meta_data->>'full_name'` and used to greet them in-app.
-          data: { full_name: name, marketing_opt_in: marketingOptIn, attribution },
+          // function reads it after the user confirms their email. first_name/
+          // last_name are collected at signup; full_name is the convenience
+          // combination, queryable via `raw_user_meta_data->>'full_name'` and
+          // used to greet them in-app.
+          data: { first_name: firstName, last_name: lastName, full_name: `${firstName} ${lastName}`, marketing_opt_in: marketingOptIn, attribution },
         },
       }));
     }
