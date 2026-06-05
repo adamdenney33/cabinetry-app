@@ -113,7 +113,7 @@ function _liveLinkPanel(kind) {
   const linkBox = shared
     ? `<div class="ll-link"><code id="share-link">${_escHtml(link)}</code><button class="btn btn-primary ll-copy" onclick="_copyShareLink()">Copy</button></div>
        <div class="ll-link-actions">
-         <button class="btn btn-primary" onclick="_sendLiveLink('${kind}',${kind === 'quote' ? q.id : (_opState.orderId || 0)})">✉ Send live link</button>
+         <button class="btn btn-primary" onclick="_sendLiveLink('${kind}',${kind === 'quote' ? q.id : (_opState.orderId || 0)})">Send live link</button>
          <a class="btn btn-outline" href="${_escHtml(link)}" target="_blank">Open ↗</a>
        </div>`
     : `<div class="ll-empty">No live link yet — set the options below, then <strong>Generate</strong>.</div>`;
@@ -192,7 +192,7 @@ function _llRenderPreview(kind) {
     <div class="ll-preview-bar"><span class="ll-preview-label">Live preview · what the customer sees</span>
       <a class="btn btn-outline ll-preview-open" href="${_escHtml(link)}" target="_blank">Open ↗</a></div>
     <div class="ll-preview-stage"><iframe class="ll-preview-frame" src="${_escHtml(link)}" title="Live customer preview"></iframe></div>
-    ${clientId ? `<button class="ll-chat-fab" onclick="_openClientChat(${clientId})" title="Message the customer">💬<span>Message</span></button>` : ''}
+    ${clientId ? `<button class="ll-chat-fab" onclick="_openClientChat(${clientId})" title="Message the customer"><span>Message customer</span></button>` : ''}
   </div>`;
 }
 
