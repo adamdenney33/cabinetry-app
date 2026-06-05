@@ -64,34 +64,46 @@ Deno.serve(async (req) => {
       return jsonResponse({ ok: true }, 200, cors);
     }
 
-    // ── edit an unlocked spec (finish / width) ──
+    // ── edit unlocked specs (dims / finish / material / doors / drawers) ──
     if (action === 'edit') {
       if (!settings.allow_edit) return jsonResponse({ error: 'editing_disabled' }, 403, cors);
       const lineId = Number(body.line_id);
       const { data: line } = await admin
-        .from('quote_lines').select('id, quote_id, customer_editable')
+        .from('quote_lines').select('id, quote_id, customer_editable, editable_specs')
         .eq('id', lineId).maybeSingle();
       if (!line || line.quote_id !== quote.id) return jsonResponse({ error: 'line_not_found' }, 404, cors);
       if (!line.customer_editable) return jsonResponse({ error: 'line_locked' }, 403, cors);
+      // Only accept fields the business actually unlocked. Empty editable_specs =
+      // legacy "all editable" (a line shared before the per-spec migration).
+      const specs: string[] = Array.isArray(line.editable_specs) ? line.editable_specs : [];
+      const allows = (k: string) => specs.length === 0 || specs.includes(k);
 
       const patch: Record<string, unknown> = {};
-      // Finish must be one of the business's catalogued finishes (or the line's
-      // current value) — prevents arbitrary strings.
-      if (typeof body.finish === 'string') {
-        const finish = body.finish.slice(0, 80);
+      // Finish / material must be one of the business's catalogued names (prevents
+      // arbitrary strings); only when that spec is unlocked.
+      const catNames = async (type: string) => {
         const { data: cat } = await admin
           .from('catalog_items').select('name')
-          .eq('user_id', quote.user_id).eq('type', 'finish');
-        const allowed = new Set((cat ?? []).map((c: { name: string }) => c.name));
-        if (!allowed.has(finish)) return jsonResponse({ error: 'finish_not_allowed' }, 422, cors);
+          .eq('user_id', quote.user_id).eq('type', type);
+        return new Set((cat ?? []).map((c: { name: string }) => c.name));
+      };
+      if (typeof body.finish === 'string' && allows('finish')) {
+        const finish = body.finish.slice(0, 80);
+        if (!(await catNames('finish')).has(finish)) return jsonResponse({ error: 'finish_not_allowed' }, 422, cors);
         patch.finish = finish;
       }
-      // Width clamped to a sane cabinet range.
-      if (body.w_mm != null) {
-        const w = Math.round(Number(body.w_mm));
-        if (!isFinite(w) || w < 100 || w > 3600) return jsonResponse({ error: 'width_out_of_range' }, 422, cors);
-        patch.w_mm = w;
+      if (typeof body.material === 'string' && allows('material')) {
+        const material = body.material.slice(0, 80);
+        if (!(await catNames('material')).has(material)) return jsonResponse({ error: 'material_not_allowed' }, 422, cors);
+        patch.material = material;
       }
+      // Dimensions / counts clamped to sane ranges.
+      const clamp = (v: unknown, lo: number, hi: number) => { const n = Math.round(Number(v)); return (isFinite(n) && n >= lo && n <= hi) ? n : null; };
+      if (body.w_mm != null && allows('dims')) { const w = clamp(body.w_mm, 100, 3600); if (w === null) return jsonResponse({ error: 'width_out_of_range' }, 422, cors); patch.w_mm = w; }
+      if (body.h_mm != null && allows('dims')) { const h = clamp(body.h_mm, 100, 3600); if (h === null) return jsonResponse({ error: 'height_out_of_range' }, 422, cors); patch.h_mm = h; }
+      if (body.d_mm != null && allows('dims')) { const d = clamp(body.d_mm, 100, 1200); if (d === null) return jsonResponse({ error: 'depth_out_of_range' }, 422, cors); patch.d_mm = d; }
+      if (body.door_count != null && allows('doors')) { const n = clamp(body.door_count, 0, 6); if (n === null) return jsonResponse({ error: 'doors_out_of_range' }, 422, cors); patch.door_count = n; }
+      if (body.drawer_count != null && allows('drawers')) { const n = clamp(body.drawer_count, 0, 12); if (n === null) return jsonResponse({ error: 'drawers_out_of_range' }, 422, cors); patch.drawer_count = n; }
       if (!Object.keys(patch).length) return jsonResponse({ error: 'nothing_to_update' }, 400, cors);
       await admin.from('quote_lines').update(patch).eq('id', lineId);
       return jsonResponse({ ok: true }, 200, cors);

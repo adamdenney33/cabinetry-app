@@ -50,7 +50,7 @@ Deno.serve(async (req) => {
     // ── Lines (public-safe spec + per-line customer flags) ──
     const { data: lines } = await admin
       .from('quote_lines')
-      .select('id, position, line_kind, name, type, room, w_mm, h_mm, d_mm, qty, material, finish, construction, base_type, door_count, door_pct, door_handle, drawer_count, drawer_pct, drawer_front_material, fixed_shelves, adj_shelves, loose_shelves, partitions, end_panels, unit_price, labour_hours, extras, hardware, notes, optional, customer_editable, customer_included, customer_price')
+      .select('id, position, line_kind, name, type, room, w_mm, h_mm, d_mm, qty, material, finish, construction, base_type, door_count, door_pct, door_handle, drawer_count, drawer_pct, drawer_front_material, fixed_shelves, adj_shelves, loose_shelves, partitions, end_panels, unit_price, labour_hours, extras, hardware, notes, optional, customer_editable, customer_included, customer_price, editable_specs')
       .eq('quote_id', quote.id)
       .order('position');
 
@@ -68,6 +68,15 @@ Deno.serve(async (req) => {
     const finishes = Array.from(new Set([
       ...(finRows ?? []).map((f: { name: string }) => f.name),
       ...(lines ?? []).map((l: { finish: string | null }) => l.finish).filter(Boolean),
+    ])) as string[];
+
+    // ── Allowed materials for the in-page spec editor ──
+    const { data: matRows } = await admin
+      .from('catalog_items').select('name')
+      .eq('user_id', quote.user_id).eq('type', 'material');
+    const materials = Array.from(new Set([
+      ...(matRows ?? []).map((m: { name: string }) => m.name),
+      ...(lines ?? []).map((l: { material: string | null }) => l.material).filter(Boolean),
     ])) as string[];
 
     // ── Client name (greeting only) ──
@@ -125,6 +134,8 @@ Deno.serve(async (req) => {
       client,
       lines: lines ?? [],
       photos: photoUrls,
+      finishes,
+      materials,
     }, 200, cors);
   } catch (err) {
     console.error('[quote-public-get]', (err as Error).message);

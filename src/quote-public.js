@@ -94,7 +94,7 @@ function row(l) {
     : '';
   const chips = [];
   if (l.optional) chips.push('<span class="qp-chip opt">Optional</span>');
-  if (l.customer_editable && D?.settings?.allow_edit) chips.push(`<span class="qp-chip edit" onclick="__qp.toggleSpec(${l.id})">Edit ▾</span>`);
+  if ((((l.editable_specs && l.editable_specs.length) || l.customer_editable)) && D?.settings?.allow_edit) chips.push(`<span class="qp-chip edit" onclick="__qp.toggleSpec(${l.id})">Edit ▾</span>`);
   if (l._pending) chips.push('<span class="qp-chip pending">Price to confirm</span>');
   const spec = l.line_kind === 'cabinet'
     ? `${l.w_mm || '—'}×${l.h_mm || '—'}×${l.d_mm || '—'}mm${l.finish ? ' · ' + esc(l.finish) : ''}`
@@ -122,13 +122,30 @@ function row(l) {
 
 /** @param {any} l */
 function specEditor(l) {
-  const finishes = (D?.finishes || []);
-  const opts = finishes.length
-    ? finishes.map(/** @param {string} f */(f) => `<option ${f === l.finish ? 'selected' : ''}>${esc(f)}</option>`).join('')
-    : `<option selected>${esc(l.finish || '')}</option>`;
-  return `<div class="qp-spec">
-    <div class="r"><label>Finish</label><select onchange="__qp.setFinish(${l.id},this.value)" style="flex:1">${opts}</select></div>
-    <div class="r"><label>Width</label><input type="number" value="${l.w_mm || ''}" min="100" max="3600" step="10" style="width:90px" onchange="__qp.setWidth(${l.id},this.value)"> <span style="font-size:11px;color:var(--muted)">mm</span></div>
+  const specs = (Array.isArray(l.editable_specs) && l.editable_specs.length)
+    ? l.editable_specs
+    : (l.customer_editable ? ['dims', 'finish'] : []);   // legacy lines: the old dims+finish editor
+  /** @param {string[]} list @param {string} cur */
+  const optList = (list, cur) => {
+    const opts = (list && list.length ? list.slice() : []);
+    if (cur && !opts.includes(cur)) opts.unshift(cur);
+    return (opts.length ? opts : ['']).map((/** @type {string} */ o) => `<option ${o === cur ? 'selected' : ''}>${esc(o)}</option>`).join('');
+  };
+  /** @param {string} label @param {any} val @param {number} min @param {number} max @param {string} setter @param {string} unit */
+  const num = (label, val, min, max, setter, unit) =>
+    `<div class="r"><label>${label}</label><input type="number" value="${val != null ? val : ''}" min="${min}" max="${max}" step="${unit ? 10 : 1}" style="width:${unit ? 84 : 64}px" onchange="${setter}">${unit ? ` <span style="font-size:11px;color:var(--muted)">${unit}</span>` : ''}</div>`;
+  const rows = [];
+  if (specs.includes('dims')) {
+    rows.push(num('Width', l.w_mm, 100, 3600, `__qp.setWidth(${l.id},this.value)`, 'mm'));
+    rows.push(num('Height', l.h_mm, 100, 3600, `__qp.setHeight(${l.id},this.value)`, 'mm'));
+    rows.push(num('Depth', l.d_mm, 100, 1200, `__qp.setDepth(${l.id},this.value)`, 'mm'));
+  }
+  if (specs.includes('finish')) rows.push(`<div class="r"><label>Finish</label><select onchange="__qp.setFinish(${l.id},this.value)" style="flex:1">${optList(D?.finishes || [], l.finish)}</select></div>`);
+  if (specs.includes('material')) rows.push(`<div class="r"><label>Material</label><select onchange="__qp.setMaterial(${l.id},this.value)" style="flex:1">${optList(D?.materials || [], l.material)}</select></div>`);
+  if (specs.includes('doors')) rows.push(num('Doors', l.door_count, 0, 6, `__qp.setDoors(${l.id},this.value)`, ''));
+  if (specs.includes('drawers')) rows.push(num('Drawers', l.drawer_count, 0, 12, `__qp.setDrawers(${l.id},this.value)`, ''));
+  if (!rows.length) rows.push(`<div class="r"><label>Finish</label><select onchange="__qp.setFinish(${l.id},this.value)" style="flex:1">${optList(D?.finishes || [], l.finish)}</select></div>`);
+  return `<div class="qp-spec">${rows.join('')}
     <div style="font-size:11px;color:var(--muted)">Changes are sent to ${esc(D?.business?.name || 'us')}, who’ll confirm the updated price.</div>
   </div>`;
 }
@@ -273,6 +290,16 @@ const handlers = {
   async setFinish(id, v) { await applyEdit(id, { finish: v }); },
   /** @param {number} id @param {string} v */
   async setWidth(id, v) { await applyEdit(id, { w_mm: Number(v) }); },
+  /** @param {number} id @param {string} v */
+  async setHeight(id, v) { await applyEdit(id, { h_mm: Number(v) }); },
+  /** @param {number} id @param {string} v */
+  async setDepth(id, v) { await applyEdit(id, { d_mm: Number(v) }); },
+  /** @param {number} id @param {string} v */
+  async setMaterial(id, v) { await applyEdit(id, { material: v }); },
+  /** @param {number} id @param {string} v */
+  async setDoors(id, v) { await applyEdit(id, { door_count: Number(v) }); },
+  /** @param {number} id @param {string} v */
+  async setDrawers(id, v) { await applyEdit(id, { drawer_count: Number(v) }); },
   async accept() {
     if (D?.quote?.accepted_at) return;
     const t = totals();
