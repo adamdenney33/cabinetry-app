@@ -459,6 +459,7 @@ function renderClientsMain() {
       ${cutListRows}
       <div style="display:flex;align-items:center;gap:4px;margin-top:10px;padding-top:8px;border-top:1px solid var(--border2)" onclick="event.stopPropagation()">
         <span style="flex:1"></span>
+        ${typeof _openClientChat === 'function' ? '<button class="btn btn-outline" style="font-size:11px;padding:4px 8px;width:auto" onclick="event.stopPropagation();_openClientChat(' + c.id + ')">💬 Messages' + (typeof _clientUnreadCount === 'function' && _clientUnreadCount(c.id) ? ' (' + _clientUnreadCount(c.id) + ')' : '') + '</button>' : ''}
         <button class="btn btn-outline" style="font-size:11px;padding:4px 8px;width:auto" onclick="duplicateClient(${c.id})">Duplicate</button>
         <button class="btn btn-outline" style="color:var(--danger);font-size:11px;padding:4px 8px;width:auto" onclick="_confirmRemoveClient(${c.id})">Delete</button>
       </div>

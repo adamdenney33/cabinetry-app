@@ -225,6 +225,16 @@ declare global {
   /** Build the public /q link for a share token. */
   function _shareLink(token: string): string;
 
+  // ── clients-chat.js globals (business-side customer chat) ──
+  /** Hydrate every client's conversation on boot (best-effort). */
+  function loadAllClientMessages(): Promise<void>;
+  /** Count unread (customer→business) messages for a client. */
+  function _clientUnreadCount(clientId: number): number;
+  /** Open the client's chat popup (read + reply). */
+  function _openClientChat(clientId: number): Promise<void>;
+  /** Send a business reply to the client. */
+  function _sendClientMessage(clientId: number): Promise<void>;
+
   // ── settings.js unit-format globals ──
   function setUnitFormat(mode: string): void;
   function setUnitDecimals(n: number): void;

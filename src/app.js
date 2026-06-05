@@ -1293,6 +1293,7 @@ async function loadAllData() {
   // status (Phase 4) in the background. Both no-op until their flag/schema is on.
   if (typeof loadLinePhotos === 'function') loadLinePhotos().catch(() => null);
   if (typeof loadConnectStatus === 'function') loadConnectStatus().catch(() => null);
+  if (typeof loadAllClientMessages === 'function') loadAllClientMessages().catch(() => null);
   const [{ data: ord }, { data: quo }, { data: stk }, { data: cli }, { data: cat }, { data: biz }] = await Promise.all([
     _db('orders').select('*').order('created_at', { ascending: false }),
     _db('quotes').select('*').order('created_at', { ascending: false }),
