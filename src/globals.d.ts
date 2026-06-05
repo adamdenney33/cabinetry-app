@@ -226,6 +226,8 @@ declare global {
   function _generateShareLink(quoteId: number): Promise<void>;
   /** Build the public /q link for a share token. */
   function _shareLink(token: string): string;
+  /** Open the live customer page for an order (reuse the deal's /q link). */
+  function _openLiveOrderPage(orderId: number): void;
 
   // ── clients-chat.js globals (business-side customer chat) ──
   /** Hydrate every client's conversation on boot (best-effort). */
@@ -236,6 +238,12 @@ declare global {
   function _openClientChat(clientId: number): Promise<void>;
   /** Send a business reply to the client. */
   function _sendClientMessage(clientId: number): Promise<void>;
+  /** Toggle the in-card messages thread on an order card. */
+  function _toggleOrderThread(orderId: number): Promise<void>;
+  /** Render the in-card order thread (bubbles + composer). */
+  function _orderThreadInner(orderId: number, clientId: number): string;
+  /** Send a business reply from an order card (tags order_id). */
+  function _sendOrderMessage(orderId: number): Promise<void>;
 
   // ── settings.js unit-format globals ──
   function setUnitFormat(mode: string): void;

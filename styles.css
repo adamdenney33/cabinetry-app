@@ -1333,7 +1333,9 @@ canvas { display: block; }
 .pipe-done .pipe-label { color: var(--text2); }
 .pipe-line { flex: 1; height: 2px; background: var(--border); min-width: 12px; margin-bottom: 12px; transition: background 0.2s; }
 .pipe-line-done { background: var(--success); }
-.oc-footer { display: flex; align-items: center; gap: 6px; padding: 8px 16px; border-top: 1px solid var(--border2); }
+.oc-footer { display: flex; align-items: center; gap: 6px; padding: 8px 16px; border-top: 1px solid var(--border2); flex-wrap: wrap; }
+.oc-thread { border-top: 1px solid var(--border2); background: var(--bg); overflow: hidden; animation: ocThreadIn 0.16s ease; }
+@keyframes ocThreadIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
 .oc-status-select { font-size: 12px; padding: 5px 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); font-family: inherit; cursor: pointer; }
 /* ── Unified list/library filter bars (reference: Cabinet Library) ──
    Row 1 (.lib-filter-row): search/filter input + Import/Export buttons, all

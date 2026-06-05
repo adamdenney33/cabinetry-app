@@ -114,4 +114,17 @@ async function _generateShareLink(quoteId) {
   }
 }
 
-Object.assign(window, { _openSharePanel, _generateShareLink, _shareLink, _shTgl, _copyShareLink });
+/** Open the live customer page for an order — reuse the originating quote's /q
+ *  link (one link per deal, evolving quote→order). Falls back to the Share panel
+ *  so the business can mint it if the quote hasn't been shared yet.
+ *  @param {number} orderId */
+function _openLiveOrderPage(orderId) {
+  const o = /** @type {any} */ (orders).find(/** @param {any} x */ x => x.id === orderId);
+  if (!o) { _toast('Order not found', 'error'); return; }
+  const lq = /** @type {any} */ (quotes).find(/** @param {any} q */ q => q.id === o.quote_id);
+  if (lq && lq.share_token) { window.open(_shareLink(lq.share_token), '_blank'); return; }
+  if (o.quote_id && typeof _openSharePanel === 'function') { _openSharePanel(o.quote_id); return; }
+  _toast('Share the originating quote to open its live page', 'info');
+}
+
+Object.assign(window, { _openSharePanel, _generateShareLink, _shareLink, _shTgl, _copyShareLink, _openLiveOrderPage });

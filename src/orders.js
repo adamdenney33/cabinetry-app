@@ -200,11 +200,14 @@ function renderOrdersMain() {
         <button class="btn btn-outline" onclick="event.stopPropagation();printOrderDoc(${o.id},'proforma')" style="font-size:11px;padding:5px 8px;width:auto">Pro-forma</button>
         <button class="btn btn-outline" onclick="event.stopPropagation();printOrderDoc(${o.id},'invoice')" style="font-size:11px;padding:5px 8px;width:auto">Invoice</button>
         <button class="btn btn-outline" onclick="event.stopPropagation();printOrderDoc(${o.id},'work_order')" style="font-size:11px;padding:5px 8px;width:auto">Work Order</button>
+        ${typeof _openLiveOrderPage === 'function' ? (() => { const _lq = /** @type {any} */ (quotes).find(/** @param {any} q */ q => q.id === o.quote_id); return `<button class="btn btn-outline" onclick="event.stopPropagation();_openLiveOrderPage(${o.id})" style="font-size:11px;padding:5px 8px;width:auto">${_lq && _lq.share_token ? '🔗 Live order' : 'Live order'}</button>`; })() : ''}
+        ${typeof _toggleOrderThread === 'function' ? (() => { const _u = typeof _clientUnreadCount === 'function' ? _clientUnreadCount(o.client_id) : 0; return `<button class="btn btn-outline" onclick="event.stopPropagation();_toggleOrderThread(${o.id})" style="font-size:11px;padding:5px 8px;width:auto">💬 Messages <span data-order-unread="${o.id}">${_u ? `(${_u})` : ''}</span></button>`; })() : ''}
         ${typeof _accountingOrderFooter === 'function' ? _accountingOrderFooter(o.id) : ''}
         <span style="flex:1"></span>
         <button class="btn btn-outline" onclick="event.stopPropagation();duplicateOrder(${o.id})" style="font-size:11px;padding:5px 10px;width:auto">Duplicate</button>
         <button class="btn btn-outline" style="color:var(--danger);font-size:11px;padding:5px 10px;width:auto" onclick="event.stopPropagation();_confirm('Delete order for <strong>${_escHtml(orderClient(o))}</strong>?',()=>removeOrder(${o.id}))">Delete</button>
       </div>
+      <div class="oc-thread" data-order-thread="${o.id}" style="display:none" onclick="event.stopPropagation()"></div>
     </div>`;
   };
 
