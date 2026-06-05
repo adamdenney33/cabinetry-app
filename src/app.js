@@ -1289,6 +1289,10 @@ async function loadAllData() {
   const acctPromise = typeof loadAccountingConnections === 'function'
     ? loadAccountingConnections().catch(() => null)
     : Promise.resolve();
+  // Quote/order overhaul: hydrate line-item photos (Phase 2) + Stripe Connect
+  // status (Phase 4) in the background. Both no-op until their flag/schema is on.
+  if (typeof loadLinePhotos === 'function') loadLinePhotos().catch(() => null);
+  if (typeof loadConnectStatus === 'function') loadConnectStatus().catch(() => null);
   const [{ data: ord }, { data: quo }, { data: stk }, { data: cli }, { data: cat }, { data: biz }] = await Promise.all([
     _db('orders').select('*').order('created_at', { ascending: false }),
     _db('quotes').select('*').order('created_at', { ascending: false }),
@@ -1590,6 +1594,7 @@ if (typeof handlePortalReturn === 'function') handlePortalReturn();
 // Toast + refresh on return from the QuickBooks/Xero OAuth consent screen
 // (?accounting=connected / error), then strip the param.
 if (typeof handleAccountingReturn === 'function') handleAccountingReturn();
+if (typeof handleConnectReturn === 'function') handleConnectReturn();
 // Landing-page pricing deep-link: the static landing page links its pricing
 // CTAs to /?plan=<tier>. Stash the tier and strip the param (mirrors
 // handleCheckoutReturn); the onAuthStateChange handler above consumes it once
