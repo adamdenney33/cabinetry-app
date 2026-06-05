@@ -139,7 +139,7 @@ function rail() {
   const accepted = !!D?.quote?.accepted_at;
   const cta = accepted
     ? `<div class="qp-chip" style="background:var(--success);color:#fff;display:block;text-align:center;padding:10px;font-size:12px">✓ Accepted — thank you</div>`
-    : `<button class="btn btn-primary btn-lg" style="margin-top:14px" onclick="__qp.accept()">${D?.settings?.accept_payment ? 'Accept &amp; Pay deposit' : 'Accept this quote'}</button>`;
+    : `<button class="btn btn-primary btn-lg" style="margin-top:14px" onclick="${D?.settings?.accept_payment ? '__qp.payDeposit()' : '__qp.accept()'}">${D?.settings?.accept_payment ? 'Accept &amp; Pay deposit' : 'Accept this quote'}</button>`;
   return `<h3>Your quote</h3>
     <div style="font-size:12px;color:var(--muted);margin-bottom:10px">${lines.filter((l) => l.customer_included).length} of ${lines.length} items included</div>
     <div class="qp-rl"><span>Subtotal</span><span>${money(t.subtotal)}</span></div>
@@ -180,6 +180,52 @@ function refreshLine(id) {
   byId('qp-rail').innerHTML = rail();
 }
 
+// ── Stripe.js (loaded on demand for the pay flow) ────────────────────────────
+async function loadStripe() {
+  const w = /** @type {any} */ (window);
+  if (w.Stripe) return w.Stripe;
+  await new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = 'https://js.stripe.com/v3'; s.onload = () => resolve(null); s.onerror = reject;
+    document.head.appendChild(s);
+  });
+  return w.Stripe;
+}
+async function recordAccept() {
+  const t = totals();
+  const snapshot = {
+    lines: lines.filter((l) => l.customer_included).map((l) => ({ id: l.id, name: l.name, finish: l.finish, w_mm: l.w_mm, customer_price: l.customer_price })),
+    totals: { subtotal: t.subtotal, tax: t.tax, total: t.total, deposit: t.deposit }, at: new Date().toISOString(),
+  };
+  try { await fn('quote-public-update', { token, action: 'accept', snapshot }); } catch (e) { /* best-effort */ }
+}
+/** @param {string} amountLabel @param {() => void} onConfirm */
+function openPaySheet(amountLabel, onConfirm) {
+  closePaySheet();
+  const el = document.createElement('div');
+  el.className = 'qp-overlay'; el.id = 'qp-pay';
+  el.innerHTML = `<div class="qp-sheet">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><strong style="font-size:15px">Pay your deposit</strong><button onclick="__qp.closePay()" style="border:none;background:none;font-size:20px;cursor:pointer;color:var(--muted)">×</button></div>
+    <div style="font-size:26px;font-weight:800;margin-bottom:12px">${amountLabel}</div>
+    <div id="qp-pay-el"></div>
+    <div id="qp-pay-err" style="color:var(--danger);font-size:12px;margin-top:8px"></div>
+    <button class="btn btn-primary btn-lg" id="qp-pay-btn" style="margin-top:12px">Pay ${amountLabel}</button>
+    <div style="display:flex;align-items:center;justify-content:center;gap:5px;font-size:10px;color:var(--muted);margin-top:8px"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg> Secured by Stripe</div>
+  </div>`;
+  document.body.appendChild(el);
+  byId('qp-pay-btn').addEventListener('click', onConfirm);
+}
+function closePaySheet() { const e = document.getElementById('qp-pay'); if (e) e.remove(); }
+/** @param {any} pay */
+function paidState(pay) {
+  if (D.quote) D.quote.accepted_at = new Date().toISOString();
+  byId('qp-root').innerHTML = `<div class="qp-state">
+    <div class="check"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+    <h1 style="font-size:22px;font-weight:800;color:var(--text)">Payment received 🎉</h1>
+    <p style="font-size:14px;margin-top:8px;color:var(--text2)">Thanks — your ${money(pay.amount)} ${pay.kind === 'deposit' ? 'deposit' : 'payment'} is in and your order is confirmed.${D.business?.name ? ' ' + esc(D.business.name) + ' will be in touch.' : ''} A receipt is on its way.</p>
+  </div>`;
+}
+
 // ── interactions (attached to window for inline handlers) ────────────────────
 const handlers = {
   /** @param {number} id */
@@ -214,6 +260,29 @@ const handlers = {
       successState(t);
     } catch (e) { alert('Could not record acceptance — please try again.'); }
   },
+  async payDeposit() {
+    if (D?.quote?.accepted_at) return;
+    /** @type {any} */ let pay;
+    try { pay = await fn('quote-pay', { token, kind: 'deposit' }); }
+    catch (e) {
+      const m = (/** @type {Error} */ (e)).message;
+      if (m === 'payments_unavailable' || m === 'payments_disabled') { await handlers.accept(); return; }
+      alert('Could not start payment: ' + m); return;
+    }
+    await recordAccept();
+    const StripeCtor = await loadStripe();
+    const stripe = StripeCtor(pay.publishable_key);
+    const elements = stripe.elements({ clientSecret: pay.client_secret });
+    openPaySheet(money(pay.amount), async () => {
+      const errEl = byId('qp-pay-err'); const btn = byId('qp-pay-btn');
+      btn.setAttribute('disabled', ''); btn.textContent = 'Processing…';
+      const { error } = await stripe.confirmPayment({ elements, redirect: 'if_required' });
+      if (error) { errEl.textContent = error.message || 'Payment failed'; btn.removeAttribute('disabled'); btn.textContent = 'Pay ' + money(pay.amount); return; }
+      closePaySheet(); paidState(pay);
+    });
+    elements.create('payment').mount('#qp-pay-el');
+  },
+  closePay() { closePaySheet(); },
 };
 
 /** @param {number} id @param {Record<string, unknown>} patch */
