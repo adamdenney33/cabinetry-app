@@ -26,15 +26,11 @@ function _shareLink(token) { return `${location.origin}/q.html?t=${token}`; }
 async function _openSharePanel(quoteId) {
   if (!_requireAuth()) return;
   if (!_enforceProFeature()) return;
-  const q = /** @type {any} */ (quotes.find(x => x.id === quoteId));
-  if (!q) { _toast('Quote not found', 'error'); return; }
-  if (!q._lines) {
-    try {
-      const { data } = await _db('quote_lines').select('*').eq('quote_id', quoteId).order('position');
-      q._lines = (data || []).map(/** @param {any} r */ r => ({ ...r }));
-    } catch (e) { q._lines = []; }
-  }
-  _openPopup(_sharePanelHtml(q), 'lg');
+  // The share controls moved into the sidebar "Live link" tab — open the quote
+  // there instead of the old popup.
+  if (typeof switchSection === 'function') switchSection('quote');
+  if (typeof loadQuoteIntoSidebar === 'function') await loadQuoteIntoSidebar(quoteId);
+  if (typeof switchQuoteTab === 'function') switchQuoteTab('live');
 }
 
 /** @param {any} q @returns {string} */
@@ -95,22 +91,27 @@ async function _generateShareLink(quoteId) {
   try {
     for (const l of (q._lines || [])) {
       const optEl = /** @type {HTMLInputElement|null} */ (document.getElementById('sh-opt-' + l.id));
-      const edEl = /** @type {HTMLInputElement|null} */ (document.getElementById('sh-edit-' + l.id));
+      const editable_specs = Array.from(document.querySelectorAll('.ll-spec[data-line="' + l.id + '"]'))
+        .filter(/** @param {any} el */ el => el.checked)
+        .map(/** @param {any} el */ el => el.getAttribute('data-spec'));
       const optional = optEl ? optEl.checked : false;
-      const customer_editable = edEl ? edEl.checked : false;
+      const customer_editable = editable_specs.length > 0;
       const customer_price = _shareLineCustomerPrice(q, l);
-      await _db('quote_lines').update(/** @type {any} */ ({ optional, customer_editable, customer_included: true, customer_price })).eq('id', l.id);
-      Object.assign(l, { optional, customer_editable, customer_included: true, customer_price });
+      const _upd = await _db('quote_lines').update(/** @type {any} */ ({ optional, customer_editable, customer_included: true, customer_price, editable_specs })).eq('id', l.id);
+      if (_upd && _upd.error) {
+        // editable_specs column not migrated yet — still save the rest so the link works.
+        await _db('quote_lines').update(/** @type {any} */ ({ optional, customer_editable, customer_included: true, customer_price })).eq('id', l.id);
+      }
+      Object.assign(l, { optional, customer_editable, customer_included: true, customer_price, editable_specs });
     }
     await _db('quotes').update(/** @type {any} */ ({ share_token: token, share_settings: settings, status: q.status === 'draft' ? 'sent' : q.status })).eq('id', quoteId);
     q.share_token = token; q.share_settings = settings; if (q.status === 'draft') q.status = 'sent';
     if (typeof _track === 'function') _track('quote_shared', { accept_payment: settings.accept_payment });
-    _openPopup(_sharePanelHtml(q), 'lg');   // re-render with the link box
+    if (typeof _llAfterSave === 'function') _llAfterSave();   // re-render the Live-link panel + preview
     _copyShareLink();
-    try { renderQuoteMain(); } catch (e) { /* tab may not be mounted */ }
     _toast('Live link ready — copied to clipboard', 'success');
   } catch (e) {
-    _toast('Could not generate the link (is the schema migration applied?)', 'error');
+    _toast('Could not save the live link (is the schema migration applied?)', 'error');
   }
 }
 
