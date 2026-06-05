@@ -170,6 +170,7 @@ function render() {
     <div style="font-size:11px;color:var(--muted);text-align:center;margin-top:18px">${q.notes ? esc(q.notes) + ' · ' : ''}Prices include VAT where shown.</div>`;
   byId('qp-lines').innerHTML = lines.map(row).join('');
   byId('qp-rail').innerHTML = rail();
+  mountChat();
 }
 
 /** @param {number} id */
@@ -224,6 +225,31 @@ function paidState(pay) {
     <h1 style="font-size:22px;font-weight:800;color:var(--text)">Payment received 🎉</h1>
     <p style="font-size:14px;margin-top:8px;color:var(--text2)">Thanks — your ${money(pay.amount)} ${pay.kind === 'deposit' ? 'deposit' : 'payment'} is in and your order is confirmed.${D.business?.name ? ' ' + esc(D.business.name) + ' will be in touch.' : ''} A receipt is on its way.</p>
   </div>`;
+}
+
+// ── live chat widget ─────────────────────────────────────────────────────────
+/** @type {Array<{sender:string,body:string}>} */ let _chatMsgs = [];
+function mountChat() {
+  if (!D || !D.business || document.getElementById('qp-chat-launcher')) return;
+  const b = document.createElement('button');
+  b.id = 'qp-chat-launcher'; b.className = 'qp-chat-launcher';
+  b.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg> Message`;
+  b.addEventListener('click', () => handlers.toggleChat());
+  document.body.appendChild(b);
+  const pop = document.createElement('div');
+  pop.id = 'qp-chat-pop'; pop.className = 'qp-chat-pop';
+  pop.innerHTML = `<div class="qp-chat-head"><span>${esc((D.business && D.business.name) || 'Message us')}</span><button onclick="__qp.toggleChat()" style="border:none;background:none;font-size:18px;cursor:pointer;color:var(--muted)">×</button></div>
+    <div class="qp-chat-body" id="qp-chat-body"></div>
+    <div class="qp-chat-foot"><input id="qp-chat-input" placeholder="Type a message…" onkeydown="if(event.key==='Enter')__qp.sendMsg()"><button class="btn btn-primary" style="width:auto;padding:8px 14px" onclick="__qp.sendMsg()">Send</button></div>`;
+  document.body.appendChild(pop);
+  renderMsgs();
+}
+function renderMsgs() {
+  const body = document.getElementById('qp-chat-body'); if (!body) return;
+  body.innerHTML = _chatMsgs.length
+    ? _chatMsgs.map((m) => `<div class="qp-bub ${m.sender === 'customer' ? 'me' : 'them'}">${esc(m.body)}</div>`).join('')
+    : `<div style="color:var(--muted);font-size:12px;text-align:center;margin:auto">Send ${esc((D.business && D.business.name) || 'us')} a message — replies appear here.</div>`;
+  body.scrollTop = body.scrollHeight;
 }
 
 // ── interactions (attached to window for inline handlers) ────────────────────
@@ -283,6 +309,21 @@ const handlers = {
     elements.create('payment').mount('#qp-pay-el');
   },
   closePay() { closePaySheet(); },
+  async toggleChat() {
+    const pop = document.getElementById('qp-chat-pop'); if (!pop) return;
+    const open = pop.classList.toggle('open');
+    if (open) {
+      try { const r = await fn('quote-messages', { token, action: 'list' }); _chatMsgs = r.messages || []; renderMsgs(); } catch (e) { /* offline */ }
+      const inp = document.getElementById('qp-chat-input'); if (inp) inp.focus();
+    }
+  },
+  async sendMsg() {
+    const inp = /** @type {HTMLInputElement|null} */ (document.getElementById('qp-chat-input'));
+    if (!inp || !inp.value.trim()) return;
+    const text = inp.value.trim(); inp.value = '';
+    _chatMsgs.push({ sender: 'customer', body: text }); renderMsgs();
+    try { await fn('quote-messages', { token, action: 'send', body: text }); } catch (e) { /* keep optimistic */ }
+  },
 };
 
 /** @param {number} id @param {Record<string, unknown>} patch */

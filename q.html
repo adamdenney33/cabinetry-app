@@ -56,6 +56,17 @@
   .qp-field { border: 1px solid var(--border); border-radius: 7px; background: var(--surface2); display: flex; align-items: center; padding: 0 10px; margin-top: 8px; }
   .qp-field input { border: none; background: transparent; flex: 1; padding: 10px 0; font-size: 13px; font-family: inherit; color: var(--text); outline: none; }
   @media (max-width: 720px) { .qp-two { grid-template-columns: 1fr; } .qp-rail-wrap { position: static; } }
+  /* live chat widget */
+  .qp-chat-launcher { position: fixed; bottom: 18px; right: 18px; z-index: 700; height: 48px; padding: 0 18px; border-radius: 999px; background: var(--accent); color: #fff; border: none; box-shadow: var(--shadow-md); cursor: pointer; font-family: inherit; font-size: 13px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+  .qp-chat-pop { position: fixed; bottom: 76px; right: 18px; z-index: 701; width: 340px; max-width: calc(100vw - 32px); height: 60vh; max-height: 520px; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow-md); display: none; flex-direction: column; overflow: hidden; }
+  .qp-chat-pop.open { display: flex; }
+  .qp-chat-head { padding: 12px 14px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; font-weight: 700; font-size: 13px; }
+  .qp-chat-body { flex: 1; overflow: auto; padding: 12px; display: flex; flex-direction: column; gap: 8px; background: var(--bg); }
+  .qp-bub { max-width: 84%; padding: 8px 12px; border-radius: 12px; font-size: 13px; line-height: 1.45; }
+  .qp-bub.them { align-self: flex-start; background: var(--surface); border: 1px solid var(--border); border-bottom-left-radius: 4px; }
+  .qp-bub.me { align-self: flex-end; background: var(--accent); color: #fff; border-bottom-right-radius: 4px; }
+  .qp-chat-foot { border-top: 1px solid var(--border); padding: 8px; display: flex; gap: 6px; }
+  .qp-chat-foot input { flex: 1; border: 1px solid var(--border); border-radius: 999px; padding: 8px 12px; font-family: inherit; font-size: 13px; background: var(--surface2); color: var(--text); outline: none; }
 </style>
 </head>
 <body class="qp">
