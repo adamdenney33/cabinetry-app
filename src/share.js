@@ -80,6 +80,7 @@ function _copyShareLink() {
 async function _generateShareLink(quoteId) {
   const q = /** @type {any} */ (quotes.find(x => x.id === quoteId));
   if (!q) return;
+  const wasShared = !!q.share_token;
   const pressed = (/** @type {string} */ id) => { const b = document.getElementById(id); return b ? b.getAttribute('aria-pressed') === 'true' : false; };
   const settings = {
     allow_select: pressed('sh-select'),
@@ -106,12 +107,10 @@ async function _generateShareLink(quoteId) {
     }
     await _db('quotes').update(/** @type {any} */ ({ share_token: token, share_settings: settings, status: q.status === 'draft' ? 'sent' : q.status })).eq('id', quoteId);
     q.share_token = token; q.share_settings = settings; if (q.status === 'draft') q.status = 'sent';
-    if (typeof _track === 'function') _track('quote_shared', { accept_payment: settings.accept_payment });
-    if (typeof _llAfterSave === 'function') _llAfterSave();   // re-render the Live-link panel + preview
-    _copyShareLink();
-    _toast('Live link ready — copied to clipboard', 'success');
+    if (typeof _track === 'function' && !wasShared) _track('quote_shared', { accept_payment: settings.accept_payment });
+    if (typeof _llOnSaved === 'function') _llOnSaved(wasShared);
   } catch (e) {
-    _toast('Could not save the live link (is the schema migration applied?)', 'error');
+    if (typeof _llSaveError === 'function') _llSaveError();
   }
 }
 

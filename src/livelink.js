@@ -77,6 +77,8 @@ async function _llEnterLive(kind) {
   const body = document.getElementById(bodyId);
   if (body) body.innerHTML = _liveLinkPanel(kind);
   _llRenderPreview(kind);
+  // Auto-create the live link on first open (no manual "Generate" button).
+  if (q && !q.share_token && typeof _generateShareLink === 'function') await _generateShareLink(q.id);
 }
 
 // ── Tab switching ────────────────────────────────────────────────────────────
@@ -118,7 +120,7 @@ function _liveLinkPanel(kind) {
        </div>`
     : `<div class="ll-empty">No live link yet — set the options below, then <strong>Generate</strong>.</div>`;
   const tog = (/** @type {string} */ id, /** @type {string} */ label, /** @type {string} */ desc, /** @type {boolean} */ on) =>
-    `<div class="share-toggle-row"><div><div class="st-label">${label}</div><div class="st-desc">${desc}</div></div><button class="mini-toggle" id="${id}" aria-pressed="${on ? 'true' : 'false'}" onclick="_shTgl(this)"></button></div>`;
+    `<div class="share-toggle-row"><div><div class="st-label">${label}</div><div class="st-desc">${desc}</div></div><button class="mini-toggle" id="${id}" aria-pressed="${on ? 'true' : 'false'}" onclick="_shTgl(this);_llAutoSave()"></button></div>`;
   const lineRows = lines.map(_llLineControl).join('') || '<div class="ll-hint" style="padding:8px 0">No line items on this quote yet.</div>';
   return `<div class="ll-pad">
     ${linkBox}
@@ -127,11 +129,11 @@ function _liveLinkPanel(kind) {
     ${tog('sh-edit', 'Allow spec editing', 'Customer can request changes to unlocked specs', !!s.allow_edit)}
     ${tog('sh-pay', 'Accept card payment', 'Pays into your Stripe · platform fee applies', !!s.accept_payment)}
     <div class="share-toggle-row"><div><div class="st-label">Take a deposit</div><div class="st-desc">% due to confirm the order</div></div>
-      <div class="ll-dep"><input type="number" id="sh-dep" value="${s.deposit_pct != null ? s.deposit_pct : 40}" min="0" max="100"><span>%</span></div></div>
+      <div class="ll-dep"><input type="number" id="sh-dep" value="${s.deposit_pct != null ? s.deposit_pct : 40}" min="0" max="100" onchange="_llAutoSave()"><span>%</span></div></div>
     <div class="ll-h">Per-line controls</div>
     <div class="ll-hint">Mark lines the customer may remove, and which specs they can request changes to.</div>
     ${lineRows}
-    <button class="btn btn-primary ll-gen" onclick="_generateShareLink(${q.id})">${shared ? 'Update live link' : 'Generate live link'}</button>
+    <div class="ll-autosave" id="ll-autosave">${shared ? 'Changes save automatically' : 'Creating live link…'}</div>
   </div>`;
 }
 
@@ -152,7 +154,7 @@ function _llLineControl(l) {
   const specs = _llSpecsFor(l);
   const ed = Array.isArray(l.editable_specs) ? l.editable_specs : [];
   const specRows = specs.map(sp =>
-    `<label class="ll-spec-opt"><input type="checkbox" class="ll-spec" data-line="${l.id}" data-spec="${sp.key}" ${ed.includes(sp.key) ? 'checked' : ''}> ${sp.label}</label>`).join('');
+    `<label class="ll-spec-opt"><input type="checkbox" class="ll-spec" data-line="${l.id}" data-spec="${sp.key}" ${ed.includes(sp.key) ? 'checked' : ''} onchange="_llAutoSave()"> ${sp.label}</label>`).join('');
   const specBlock = specs.length
     ? `<div class="ll-spec-caret" id="ll-caret-${l.id}" onclick="_llToggleSpecs(${l.id})">Editable specs${ed.length ? ` · ${ed.length}` : ''} ▾</div>
        <div class="ll-spec-list" id="ll-specs-${l.id}" style="display:none">${specRows}</div>`
@@ -160,7 +162,7 @@ function _llLineControl(l) {
   return `<div class="ll-line">
     <div class="ll-line-head">
       <span class="ll-line-name">${_escHtml(l.name || 'Item')}</span>
-      <label class="ll-opt"><input type="checkbox" id="sh-opt-${l.id}" ${l.optional ? 'checked' : ''}> Optional</label>
+      <label class="ll-opt"><input type="checkbox" id="sh-opt-${l.id}" ${l.optional ? 'checked' : ''} onchange="_llAutoSave()"> Optional</label>
     </div>
     <div class="ll-line-sub">${specBlock}</div>
   </div>`;
@@ -204,6 +206,27 @@ function _llAfterSave(kind) {
   if (body) body.innerHTML = _liveLinkPanel(k);
   _llRenderPreview(k);
 }
+
+// ── Auto-save (no manual button) ─────────────────────────────────────────────
+/** @type {any} */ let _llSaveTimer = null;
+/** Debounced auto-save of the live-link settings + per-line controls. */
+function _llAutoSave() {
+  const kind = _llTab.order === 'live' ? 'order' : 'quote';
+  const q = _llShareQuote(kind);
+  if (!q) return;
+  const s = document.getElementById('ll-autosave'); if (s) s.textContent = 'Saving…';
+  if (_llSaveTimer) clearTimeout(_llSaveTimer);
+  _llSaveTimer = setTimeout(() => { if (typeof _generateShareLink === 'function') _generateShareLink(q.id); }, 450);
+}
+/** After a save: the first share re-renders (so the link box + preview appear);
+ *  later saves refresh the preview and flash "Saved". @param {boolean} wasShared */
+function _llOnSaved(wasShared) {
+  const kind = _llTab.order === 'live' ? 'order' : 'quote';
+  if (!wasShared) { _llAfterSave(kind); return; }
+  const s = document.getElementById('ll-autosave'); if (s) s.textContent = 'Saved ✓';
+  _llRenderPreview(kind);
+}
+function _llSaveError() { const s = document.getElementById('ll-autosave'); if (s) s.textContent = 'Couldn’t save — check your connection'; }
 
 // ── Send live link (pre-filled email) ────────────────────────────────────────
 /** @param {'quote'|'order'} kind @param {number} id */
@@ -274,4 +297,5 @@ Object.assign(window, {
   _llTab, _llReset, _llShareQuote, _llClientId, _llEnsureLines, _llTabBar, _llLiveBodyDiv,
   _llEnterLive, switchQuoteTab, switchOrderTab, _liveLinkPanel, _llSpecsFor, _llLineControl,
   _llToggleSpecs, _llRenderPreview, _llAfterSave, _sendLiveLink, _orderPdfMenu, _openLiveLinkTab,
+  _llAutoSave, _llOnSaved, _llSaveError,
 });
