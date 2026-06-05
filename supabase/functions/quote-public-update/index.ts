@@ -1,0 +1,123 @@
+// ProCabinet — PUBLIC mutation of one shared quote by its share_token.
+//
+// UNAUTHENTICATED, service-role. The customer (no login) toggles optional items,
+// edits unlocked specs, or accepts — always gated server-side by the quote's
+// share_settings and each line's per-line flags, so a crafted request can't do
+// more than the business allowed. Mirrors quote-public-get's token model.
+//
+// DEPLOY NOTE: verify_jwt = false (no JWT). The Smart Link mode was dropped, so
+// there is no present_mode here.
+//
+// Body: { token, action, ... }
+//   action 'toggle' : { line_id, included }                — needs allow_select + line.optional
+//   action 'edit'   : { line_id, finish?, w_mm? }          — needs allow_edit + line.customer_editable
+//   action 'accept' : { snapshot }                          — records the accepted state
+
+import { corsHeaders, jsonResponse } from '../_shared/cors.ts';
+import { admin } from '../_shared/auth.ts';
+
+const MAX_SNAPSHOT_BYTES = 200_000;
+
+Deno.serve(async (req) => {
+  const cors = corsHeaders(req.headers.get('origin'));
+  if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
+  if (req.method !== 'POST') return jsonResponse({ error: 'Method not allowed' }, 405, cors);
+
+  let body: Record<string, unknown>;
+  try { body = await req.json(); }
+  catch { return jsonResponse({ error: 'Invalid request body' }, 400, cors); }
+
+  const token = String(body.token || '');
+  const action = String(body.action || '');
+  if (!token || token.length < 8) return jsonResponse({ error: 'Missing token' }, 400, cors);
+
+  try {
+    // ── Resolve the quote + its gate state ──
+    const { data: quote, error: qErr } = await admin
+      .from('quotes')
+      .select('id, user_id, status, share_settings, accepted_at')
+      .eq('share_token', token)
+      .maybeSingle();
+    if (qErr) throw new Error(qErr.message);
+    if (!quote) return jsonResponse({ error: 'not_found' }, 404, cors);
+
+    const settings = (quote.share_settings ?? {}) as Record<string, unknown>;
+    if (settings.expires_at && new Date(String(settings.expires_at)) < new Date()) {
+      return jsonResponse({ error: 'expired' }, 410, cors);
+    }
+    // Once accepted, the quote is locked (changes would desync the snapshot).
+    if (quote.accepted_at && action !== 'accept') {
+      return jsonResponse({ error: 'already_accepted' }, 409, cors);
+    }
+
+    // ── toggle an optional item in / out ──
+    if (action === 'toggle') {
+      if (!settings.allow_select) return jsonResponse({ error: 'selection_disabled' }, 403, cors);
+      const lineId = Number(body.line_id);
+      const included = !!body.included;
+      const { data: line } = await admin
+        .from('quote_lines').select('id, quote_id, optional')
+        .eq('id', lineId).maybeSingle();
+      if (!line || line.quote_id !== quote.id) return jsonResponse({ error: 'line_not_found' }, 404, cors);
+      if (!line.optional) return jsonResponse({ error: 'line_not_optional' }, 403, cors);
+      await admin.from('quote_lines').update({ customer_included: included }).eq('id', lineId);
+      return jsonResponse({ ok: true }, 200, cors);
+    }
+
+    // ── edit an unlocked spec (finish / width) ──
+    if (action === 'edit') {
+      if (!settings.allow_edit) return jsonResponse({ error: 'editing_disabled' }, 403, cors);
+      const lineId = Number(body.line_id);
+      const { data: line } = await admin
+        .from('quote_lines').select('id, quote_id, customer_editable')
+        .eq('id', lineId).maybeSingle();
+      if (!line || line.quote_id !== quote.id) return jsonResponse({ error: 'line_not_found' }, 404, cors);
+      if (!line.customer_editable) return jsonResponse({ error: 'line_locked' }, 403, cors);
+
+      const patch: Record<string, unknown> = {};
+      // Finish must be one of the business's catalogued finishes (or the line's
+      // current value) — prevents arbitrary strings.
+      if (typeof body.finish === 'string') {
+        const finish = body.finish.slice(0, 80);
+        const { data: cat } = await admin
+          .from('catalog_items').select('name')
+          .eq('user_id', quote.user_id).eq('type', 'finish');
+        const allowed = new Set((cat ?? []).map((c: { name: string }) => c.name));
+        if (!allowed.has(finish)) return jsonResponse({ error: 'finish_not_allowed' }, 422, cors);
+        patch.finish = finish;
+      }
+      // Width clamped to a sane cabinet range.
+      if (body.w_mm != null) {
+        const w = Math.round(Number(body.w_mm));
+        if (!isFinite(w) || w < 100 || w > 3600) return jsonResponse({ error: 'width_out_of_range' }, 422, cors);
+        patch.w_mm = w;
+      }
+      if (!Object.keys(patch).length) return jsonResponse({ error: 'nothing_to_update' }, 400, cors);
+      await admin.from('quote_lines').update(patch).eq('id', lineId);
+      return jsonResponse({ ok: true }, 200, cors);
+    }
+
+    // ── accept: record the customer's accepted state ──
+    // Payment + order creation happen in Phase 4 (quote-pay + webhook). Here we
+    // freeze what the customer agreed to. The snapshot is computed client-side
+    // (cabinet costing lives in the frontend) and reviewed by the business.
+    if (action === 'accept') {
+      if (quote.accepted_at) return jsonResponse({ error: 'already_accepted' }, 409, cors);
+      const snapshot = body.snapshot ?? null;
+      if (snapshot && JSON.stringify(snapshot).length > MAX_SNAPSHOT_BYTES) {
+        return jsonResponse({ error: 'snapshot_too_large' }, 413, cors);
+      }
+      await admin.from('quotes').update({
+        accepted_at: new Date().toISOString(),
+        status: 'accepted',
+        accepted_snapshot: snapshot,
+      }).eq('id', quote.id);
+      return jsonResponse({ ok: true, accepted: true }, 200, cors);
+    }
+
+    return jsonResponse({ error: 'unknown_action' }, 400, cors);
+  } catch (err) {
+    console.error('[quote-public-update]', (err as Error).message);
+    return jsonResponse({ error: (err as Error).message }, 500, cors);
+  }
+});
