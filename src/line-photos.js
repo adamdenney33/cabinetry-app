@@ -173,7 +173,19 @@ async function _linePhotoDataUrl(url) {
   } catch (e) { return null; }
 }
 
+/** Open a popup to add/manage a line's or cabinet template's photos. A reusable
+ *  hook so editors only need a 📷 button (`onclick="_openLinePhotosPopup('quote_line', id, name)"`).
+ *  @param {LPKind} kind @param {number} ownerId @param {string} [title] */
+function _openLinePhotosPopup(kind, ownerId, title) {
+  if (!window._FEAT_LINE_PHOTOS) { if (typeof _toast === 'function') _toast('Photos aren’t enabled yet', 'info'); return; }
+  if (typeof _openPopup !== 'function') return;
+  _openPopup(
+    `<div class="popup-header"><div class="popup-title">${_escHtml(title || 'Photos')}</div><button class="popup-close" onclick="_closePopup()">&times;</button></div>`
+    + `<div class="popup-body"><p style="font-size:12px;color:var(--muted);margin:0 0 12px">Add photos — they show on the live quote page and the PDF.</p>${_linePhotoStrip(kind, ownerId)}</div>`,
+    'md');
+}
+
 Object.assign(window, {
-  loadLinePhotos, _addLinePhotos, _removeLinePhoto,
+  loadLinePhotos, _addLinePhotos, _removeLinePhoto, _openLinePhotosPopup,
   _linePhotoStrip, _linePhotoThumbs, _linePhotoUrls, _linePhotoDataUrl, _uploadLinePhotoAsset,
 });

@@ -192,6 +192,8 @@ declare global {
   // ── line-photos.js globals (Phase 2: line-item & cabinet-template photos) ──
   /** Hydrate line/template photos from public.line_photos. Called from loadAllData. No-op while window._FEAT_LINE_PHOTOS is false. */
   function loadLinePhotos(): Promise<void>;
+  /** Open a popup to add/manage a line's or template's photos (reusable editor hook). */
+  function _openLinePhotosPopup(kind: 'quote_line' | 'order_line' | 'cabinet_template', ownerId: number, title?: string): void;
   /** Handle a multi-file <input> for a line/template's photos: upload to storage + insert link rows. */
   function _addLinePhotos(kind: 'quote_line' | 'order_line' | 'cabinet_template', ownerId: number, input: HTMLInputElement): Promise<void>;
   /** Remove one photo (row + in-memory cache). */
