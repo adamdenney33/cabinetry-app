@@ -119,7 +119,7 @@ function _orderLineRowHtml(row, i) {
     return `<tr>
       <td class="col-handle" title="Drag to reorder (coming soon)">⋮</td>
       <td class="col-dot"><span></span></td>
-      <td class="col-desc"><textarea class="cl-input desc" rows="1" oninput="_orderLineUpdate(${i}, 'name', this.value);_autoGrowTextarea(this)">${_escHtml(descDefault)}</textarea></td>
+      <td class="col-desc"><textarea class="cl-input desc" rows="1" oninput="_orderLineUpdate(${i}, 'name', this.value);_autoGrowTextarea(this)">${_escHtml(descDefault)}</textarea>${_linePhotoBtn(row, 'order_line')}</td>
       <td class="col-qty"><input class="cl-input right" type="number" min="1" step="1" value="${row.qty ?? 1}" oninput="_orderLineUpdate(${i}, 'qty', this.value)"></td>
       <td class="col-price"><div class="cl-input right is-computed" style="padding:5px 4px">${Number(unitPrice || 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</div></td>
       <td class="col-hrs" title="Computed from cabinet labour"><div class="cl-input right is-computed" style="padding:5px 4px">${hrsTotal.toFixed(1)}</div></td>
@@ -141,7 +141,7 @@ function _orderLineRowHtml(row, i) {
   return `<tr>
     <td class="col-handle" title="Drag to reorder (coming soon)">⋮</td>
     <td class="col-dot ${dotClass}"><span></span></td>
-    <td class="col-desc"><textarea class="cl-input desc" rows="1" placeholder="${placeholder}" oninput="_orderLineUpdate(${i}, 'name', this.value);_autoGrowTextarea(this)">${_escHtml(row.name || '')}</textarea></td>
+    <td class="col-desc"><textarea class="cl-input desc" rows="1" placeholder="${placeholder}" oninput="_orderLineUpdate(${i}, 'name', this.value);_autoGrowTextarea(this)">${_escHtml(row.name || '')}</textarea>${_linePhotoBtn(row, 'order_line')}</td>
     <td class="col-qty"><input class="cl-input right" type="number" min="0" step="1" value="${row.qty ?? 1}" oninput="_orderLineUpdate(${i}, 'qty', this.value)"></td>
     <td class="col-price"><input class="cl-input right" type="number" min="0" step="0.01" value="${row.unit_price ?? 0}" oninput="_orderLineUpdate(${i}, 'unit_price', this.value)"></td>
     <td class="col-hrs" title="Workshop time, not on PDF"><input class="cl-input right" type="number" min="0" step="0.5" value="${hoursVal}" oninput="_orderLineUpdate(${i}, '${hoursField}', this.value)"></td>
@@ -626,11 +626,12 @@ function _quoteTableToggleClasses() {
 
 /** Small 📷 affordance for a SAVED line (needs row.id). Returns '' while the
  *  line-photos feature flag is off, so it's safe to embed unconditionally.
- *  @param {any} row */
-function _linePhotoBtn(row) {
+ *  @param {any} row @param {'quote_line'|'order_line'} [kind] */
+function _linePhotoBtn(row, kind) {
+  const k = /** @type {'quote_line'|'order_line'} */ (kind || 'quote_line');
   if (!window._FEAT_LINE_PHOTOS || !row || !row.id || typeof _openLinePhotosPopup !== 'function') return '';
-  const n = (typeof _linePhotoUrls === 'function') ? _linePhotoUrls('quote_line', row.id).length : 0;
-  return `<button type="button" class="li-photo-btn" title="Add photos" onclick="event.stopPropagation();_openLinePhotosPopup('quote_line',${row.id})">📷${n ? ' ' + n : ''}</button>`;
+  const n = (typeof _linePhotoUrls === 'function') ? _linePhotoUrls(k, row.id).length : 0;
+  return `<button type="button" class="li-photo-btn" title="Add photos" onclick="event.stopPropagation();_openLinePhotosPopup('${k}',${row.id})">📷${n ? ' ' + n : ''}</button>`;
 }
 
 // Render a single quote_lines row as a <tr>. Same shape as _orderLineRowHtml.
