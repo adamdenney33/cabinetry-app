@@ -2915,8 +2915,9 @@ function _buildWorkOrderPDF(o) {
  * @param {any} o the order row
  * @param {any[]} lines order_lines rows (may be empty for legacy orders)
  * @param {'order_confirmation'|'proforma'|'invoice'} type
+ * @param {Record<number, string[]>} [photos] per-line photo dataURLs (Phase 2; flag-gated)
  */
-function _buildOrderDocPDF(o, lines, type) {
+function _buildOrderDocPDF(o, lines, type, photos) {
   if (!window.jspdf) { _toast('PDF library not loaded yet — try again', 'error'); return; }
   if (typeof _track === 'function') _track('pdf_created', { type: 'order_document', document_type: type });
   const { jsPDF } = window.jspdf;
@@ -3112,6 +3113,34 @@ function _buildOrderDocPDF(o, lines, type) {
 
   // ── Footer ──
   _drawPdfFooter(pdf, biz, dateStr, PW, PH, M);
+
+  // ── Line photos appendix (Phase 2; flag-gated, never blocks the doc) ──
+  try {
+    if (window._FEAT_LINE_PHOTOS && photos && Object.keys(photos).length) {
+      pdf.addPage(); let py = M + 8;
+      pdf.setFontSize(13); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(40);
+      pdf.text('Photos', M, py); py += 8;
+      const cw = 52, ch = 40, gap = 6;
+      for (const line of lines) {
+        const arr = photos[line.id]; if (!arr || !arr.length) continue;
+        if (py > PH - ch - 16) { pdf.addPage(); py = M + 8; }
+        pdf.setFontSize(9); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(80);
+        pdf.text(String(line.name || 'Item'), M, py); py += 4;
+        let px = M;
+        for (const dataUrl of arr) {
+          if (px + cw > PW - M) { px = M; py += ch + gap; }
+          if (py + ch > PH - 14) { pdf.addPage(); py = M + 8; px = M; }
+          try {
+            const fm = /^data:image\/(\w+)/.exec(dataUrl);
+            const fmt = fm ? fm[1].toUpperCase().replace('JPG', 'JPEG') : 'JPEG';
+            pdf.addImage(dataUrl, fmt, px, py, cw, ch);
+          } catch (e) { /* skip an unreadable image */ }
+          px += cw + gap;
+        }
+        py += ch + gap + 4;
+      }
+    }
+  } catch (e) { /* photos are best-effort — never fail the PDF */ }
 
   const blob = pdf.output('blob');
   const url = URL.createObjectURL(blob);

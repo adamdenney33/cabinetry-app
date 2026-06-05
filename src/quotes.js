@@ -715,7 +715,20 @@ async function printOrderDoc(id, type) {
     const { data } = await _db('order_lines').select('*').eq('order_id', id).order('position');
     rows = data || [];
   }
-  _buildOrderDocPDF(o, rows, type);
+  /** @type {Record<number, string[]>} */
+  const photos = {};
+  if (window._FEAT_LINE_PHOTOS && typeof _linePhotoUrls === 'function' && typeof _linePhotoDataUrl === 'function') {
+    try {
+      for (const row of rows) {
+        const urls = _linePhotoUrls('order_line', row.id);
+        if (!urls.length) continue;
+        /** @type {string[]} */ const dataUrls = [];
+        for (const u of urls) { if (!u) continue; const d = await _linePhotoDataUrl(u); if (d) dataUrls.push(d); }
+        if (dataUrls.length) photos[row.id] = dataUrls;
+      }
+    } catch (e) { /* best-effort; the PDF still prints without photos */ }
+  }
+  _buildOrderDocPDF(o, rows, type, photos);
 }
 
 async function deductStockFromCutList() {
