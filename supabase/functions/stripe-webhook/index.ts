@@ -29,6 +29,15 @@ const PRICE_MONTHLY = Deno.env.get('STRIPE_PRICE_MONTHLY');
 const PRICE_ANNUAL = Deno.env.get('STRIPE_PRICE_ANNUAL');
 const PRICE_FOUNDER = Deno.env.get('STRIPE_PRICE_FOUNDER');
 
+// PostHog product-analytics capture (optional). When POSTHOG_KEY is unset the
+// capturePosthog() helper is a no-op, so the webhook works fine without it.
+// POSTHOG_KEY is the same project write key as the client's VITE_POSTHOG_KEY.
+const POSTHOG_KEY = Deno.env.get('POSTHOG_KEY');
+const POSTHOG_HOST = Deno.env.get('POSTHOG_HOST') ?? 'https://eu.i.posthog.com';
+// Production hostname stamped as $host on server-side events so they survive
+// the dev-traffic filter ($host not_regex localhost) on PostHog funnels.
+const APP_HOST = (Deno.env.get('APP_URL') ?? 'https://procabinet.app').replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+
 if (!STRIPE_SECRET_KEY || !STRIPE_WEBHOOK_SECRET || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
   throw new Error('Missing required env vars for stripe-webhook function');
 }
@@ -46,6 +55,33 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
 });
 
 // ── helpers ────────────────────────────────────────────────────────────
+
+// Fire a server-side PostHog event. Best-effort: no-op without POSTHOG_KEY,
+// and never throws (a tracking failure must not fail the webhook → no Stripe
+// retry storm). distinct_id must be the auth.users.id so the event lands on
+// the same person the client's posthog.identify(user.id) created. We stamp
+// $host so the event passes funnel filters that exclude localhost dev traffic.
+async function capturePosthog(
+  distinctId: string,
+  event: string,
+  properties: Record<string, unknown> = {},
+) {
+  if (!POSTHOG_KEY) return;
+  try {
+    await fetch(`${POSTHOG_HOST}/capture/`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        api_key: POSTHOG_KEY,
+        event,
+        distinct_id: distinctId,
+        properties: { $host: APP_HOST, ...properties },
+      }),
+    });
+  } catch (err) {
+    console.warn('[stripe-webhook] PostHog capture failed:', (err as Error).message);
+  }
+}
 
 function planFromPriceId(priceId: string | null | undefined): string | null {
   if (!priceId) return null;
@@ -91,7 +127,11 @@ async function upsertSubscription(payload: SubscriptionUpsertPayload) {
 
 // Build the subscriptions-table row from a Stripe Subscription. Used by
 // every event type that has subscription state (created/updated/deleted/payment_failed).
-async function syncFromStripeSubscription(subscription: Stripe.Subscription) {
+// Returns the resolved { userId, plan } so the checkout handler can fire a
+// one-time analytics event, or null when the customer can't be mapped.
+async function syncFromStripeSubscription(
+  subscription: Stripe.Subscription,
+): Promise<{ userId: string; plan: string | null } | null> {
   const customerId =
     typeof subscription.customer === 'string'
       ? subscription.customer
@@ -100,7 +140,7 @@ async function syncFromStripeSubscription(subscription: Stripe.Subscription) {
   const userId = await getUserIdForCustomer(customerId);
   if (!userId) {
     console.warn(`[stripe-webhook] No user_id metadata on customer ${customerId} — skipping`);
-    return;
+    return null;
   }
 
   const item = subscription.items.data[0];
@@ -114,12 +154,13 @@ async function syncFromStripeSubscription(subscription: Stripe.Subscription) {
     (item as Stripe.SubscriptionItem & { current_period_end?: number })?.current_period_end ??
     (subscription as unknown as { current_period_end?: number }).current_period_end;
 
+  const plan = planFromPriceId(priceId);
   await upsertSubscription({
     user_id: userId,
     stripe_customer_id: customerId,
     stripe_subscription_id: subscription.id,
     stripe_price_id: priceId,
-    plan: planFromPriceId(priceId),
+    plan,
     status: subscription.status,
     current_period_start: tsFromUnix(periodStart),
     current_period_end: tsFromUnix(periodEnd),
@@ -127,6 +168,7 @@ async function syncFromStripeSubscription(subscription: Stripe.Subscription) {
     canceled_at: tsFromUnix(subscription.canceled_at),
     updated_at: new Date().toISOString(),
   });
+  return { userId, plan };
 }
 
 // Record a one-off Founder purchase as a lifetime 'founder' subscription row.
@@ -159,6 +201,12 @@ async function recordFounderPurchase(session: Stripe.Checkout.Session) {
     cancel_at_period_end: false,
     canceled_at: null,
     updated_at: new Date().toISOString(),
+  });
+  // Funnel step 5: a one-off Founder purchase is a Pro conversion.
+  await capturePosthog(userId, 'pro_subscription_started', {
+    plan: 'founder',
+    billing_cycle: 'founder',
+    $set: { plan: 'pro', subscription_plan: 'founder' },
   });
 }
 
@@ -199,7 +247,16 @@ Deno.serve(async (req) => {
         const subId =
           typeof session.subscription === 'string' ? session.subscription : session.subscription.id;
         const subscription = await stripe.subscriptions.retrieve(subId);
-        await syncFromStripeSubscription(subscription);
+        const synced = await syncFromStripeSubscription(subscription);
+        // Funnel step 5: fire ONLY here (initial checkout), not on
+        // subscription.updated, so each subscriber converts exactly once.
+        if (synced) {
+          await capturePosthog(synced.userId, 'pro_subscription_started', {
+            plan: synced.plan,
+            billing_cycle: synced.plan === 'pro_annual' ? 'annual' : 'monthly',
+            $set: { plan: 'pro', subscription_plan: synced.plan },
+          });
+        }
         break;
       }
 
