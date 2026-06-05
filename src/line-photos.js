@@ -17,7 +17,7 @@
 
 /** @typedef {'quote_line'|'order_line'|'cabinet_template'} LPKind */
 
-if (typeof window._FEAT_LINE_PHOTOS === 'undefined') window._FEAT_LINE_PHOTOS = false;
+if (typeof window._FEAT_LINE_PHOTOS === 'undefined') window._FEAT_LINE_PHOTOS = true;
 
 // In-memory cache, grouped by owner. Hydrated by loadLinePhotos() on boot.
 /** @type {Record<LPKind, Record<number, Array<{id:number,storage_path:string,url:string|null,caption:string|null,position:number}>>>} */
