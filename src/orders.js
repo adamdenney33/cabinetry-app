@@ -197,7 +197,7 @@ function renderOrdersMain() {
       <div class="oc-pipeline">${pipe}</div>
       <div class="oc-footer">
         ${typeof _orderPdfMenu === 'function' ? `<button class="btn btn-outline" onclick="event.stopPropagation();_orderPdfMenu(${o.id})" style="font-size:11px;padding:5px 8px;width:auto" title="Export a PDF document">PDF ▾</button>` : ''}
-        ${typeof _sendLiveLink === 'function' ? `<button class="btn btn-outline" onclick="event.stopPropagation();_sendLiveLink('order',${o.id})" style="font-size:11px;padding:5px 8px;width:auto" title="Email the live link to the customer">✉ Send live link</button>` : ''}
+        ${typeof _openLiveLinkTab === 'function' ? `<button class="btn btn-outline" onclick="event.stopPropagation();_openLiveLinkTab('order',${o.id})" style="font-size:11px;padding:5px 8px;width:auto" title="Open the live link page">Live link</button>` : ''}
         ${typeof _toggleOrderThread === 'function' ? (() => { const _u = typeof _clientUnreadCount === 'function' ? _clientUnreadCount(o.client_id) : 0; return `<button class="btn btn-outline" onclick="event.stopPropagation();_toggleOrderThread(${o.id})" style="font-size:11px;padding:5px 8px;width:auto">💬 Messages <span data-order-unread="${o.id}">${_u ? `(${_u})` : ''}</span></button>`; })() : ''}
         ${typeof _accountingOrderFooter === 'function' ? _accountingOrderFooter(o.id) : ''}
         <span style="flex:1"></span>

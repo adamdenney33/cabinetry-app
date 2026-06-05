@@ -242,6 +242,19 @@ function _llBizName() {
   return 'us';
 }
 
+// ── Open a record's Live link sub-tab from its card ──────────────────────────
+/** @param {'quote'|'order'} kind @param {number} id */
+async function _openLiveLinkTab(kind, id) {
+  if (typeof switchSection === 'function') switchSection(kind === 'quote' ? 'quote' : 'orders');
+  if (kind === 'quote') {
+    if (typeof loadQuoteIntoSidebar === 'function') await loadQuoteIntoSidebar(id);
+    if (typeof switchQuoteTab === 'function') await switchQuoteTab('live');
+  } else {
+    if (typeof loadOrderIntoSidebar === 'function') await loadOrderIntoSidebar(id);
+    if (typeof switchOrderTab === 'function') await switchOrderTab('live');
+  }
+}
+
 // ── Order card "PDF ▾" dropdown (Phase 5) ────────────────────────────────────
 /** @param {number} orderId */
 function _orderPdfMenu(orderId) {
@@ -260,5 +273,5 @@ function _orderPdfMenu(orderId) {
 Object.assign(window, {
   _llTab, _llReset, _llShareQuote, _llClientId, _llEnsureLines, _llTabBar, _llLiveBodyDiv,
   _llEnterLive, switchQuoteTab, switchOrderTab, _liveLinkPanel, _llSpecsFor, _llLineControl,
-  _llToggleSpecs, _llRenderPreview, _llAfterSave, _sendLiveLink, _orderPdfMenu,
+  _llToggleSpecs, _llRenderPreview, _llAfterSave, _sendLiveLink, _orderPdfMenu, _openLiveLinkTab,
 });
