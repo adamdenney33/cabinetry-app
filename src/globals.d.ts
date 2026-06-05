@@ -207,6 +207,16 @@ declare global {
   /** Raw-fetch upload of one photo to the business-assets bucket (in-memory token). */
   function _uploadLinePhotoAsset(uid: string, kind: 'quote_line' | 'order_line' | 'cabinet_template', ownerId: number, file: File): Promise<{ path: string | null, url: string | null, error: { message: string } | null }>;
 
+  // ── connect.js globals (Stripe Connect payouts, business side) ──
+  /** Hydrate the business's Stripe Connect status on boot (best-effort). */
+  function loadConnectStatus(): Promise<void>;
+  /** Start/resume Stripe Express onboarding (redirects to Stripe). */
+  function startConnectOnboarding(): Promise<void>;
+  /** Handle the ?connect=return redirect back from Stripe. */
+  function handleConnectReturn(): void;
+  /** Open the "Card payments" connect/manage popup. */
+  function _openConnectPopup(): void;
+
   // ── settings.js unit-format globals ──
   function setUnitFormat(mode: string): void;
   function setUnitDecimals(n: number): void;

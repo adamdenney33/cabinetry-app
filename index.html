@@ -192,6 +192,13 @@
               QuickBooks &amp; Xero
             </button>
           </div>
+          <div class="sd-section">
+            <div class="sd-label">Card payments</div>
+            <button class="btn btn-outline btn-sm" style="width:100%;justify-content:center"
+                    onclick="toggleAccount();_openConnectPopup()">
+              Stripe payouts
+            </button>
+          </div>
           <div class="account-menu-item" id="account-name-item" style="font-weight:600;font-size:13px;cursor:default;padding-bottom:2px;display:none"></div>
           <div class="account-menu-item" id="account-email-item" style="color:var(--muted);font-size:11px;cursor:default"></div>
           <div class="account-menu-item" onclick="signOut()">Sign Out</div>
@@ -751,6 +758,7 @@
 <script defer src="/src/persist.js"></script>
 <script defer src="/src/limits.js"></script>
 <script defer src="/src/stripe.js"></script>
+<script defer src="/src/connect.js"></script>
 <script defer src="/src/analytics.js"></script>
 <script defer src="/src/forms.js"></script>
 <script defer src="/src/orders.js"></script>
