@@ -310,6 +310,8 @@ header {
 .lp-thumbs { display: flex; gap: 4px; align-items: center; margin-top: 4px; }
 .lp-thumb-img { width: 34px; height: 34px; border-radius: 5px; object-fit: cover; border: 1px solid var(--border); }
 .lp-more { font-size: 10px; font-weight: 700; color: var(--muted); background: var(--surface2); border: 1px solid var(--border); border-radius: 5px; padding: 2px 5px; }
+.li-photo-btn { margin-left: 6px; border: 1px solid var(--border); background: var(--surface2); border-radius: 5px; padding: 1px 6px; font-size: 11px; cursor: pointer; color: var(--muted); vertical-align: middle; }
+.li-photo-btn:hover { border-color: var(--accent); color: var(--accent); }
 
 .prefixed-input { display: flex; align-items: center; gap: 8px; }
 .prefixed-input > input { flex: 1; min-width: 0; }
