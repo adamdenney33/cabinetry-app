@@ -487,6 +487,7 @@ function renderQuoteMain() {
       <div class="oc-pipeline">${pipe}</div>
       <div class="qc-footer">
         <button class="btn btn-outline" onclick="event.stopPropagation();printQuote(${q.id},'pdf')">PDF</button>
+        ${typeof _openSharePanel === 'function' ? `<button class="btn btn-outline" onclick="event.stopPropagation();_openSharePanel(${q.id})">${q.share_token ? '🔗 Shared' : 'Share'}</button>` : ''}
         <span style="flex:1"></span>
         ${(() => { const matchingOrder = orders.find(o => o.quote_id === q.id); return matchingOrder ? `<button class="btn btn-outline" onclick="event.stopPropagation();_openOrderPopup(${matchingOrder.id})" style="color:var(--success)">✓ View Order</button>` : `<button class="btn btn-outline" onclick="event.stopPropagation();convertQuoteToOrder(${q.id})">Create Order</button>`; })()}
         <button class="btn btn-outline" onclick="event.stopPropagation();duplicateQuote(${q.id})">Duplicate</button>

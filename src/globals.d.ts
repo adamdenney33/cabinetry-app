@@ -217,6 +217,14 @@ declare global {
   /** Open the "Card payments" connect/manage popup. */
   function _openConnectPopup(): void;
 
+  // ── share.js globals (share a live quote) ──
+  /** Open the Share panel for a quote (settings + per-line flags + link). */
+  function _openSharePanel(quoteId: number): Promise<void>;
+  /** Mint token + snapshot customer_price + write share_settings, then show the link. */
+  function _generateShareLink(quoteId: number): Promise<void>;
+  /** Build the public /q link for a share token. */
+  function _shareLink(token: string): string;
+
   // ── settings.js unit-format globals ──
   function setUnitFormat(mode: string): void;
   function setUnitDecimals(n: number): void;
