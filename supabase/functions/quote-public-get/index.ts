@@ -50,7 +50,7 @@ Deno.serve(async (req) => {
     // ── Lines (public-safe spec + per-line customer flags) ──
     const { data: lines } = await admin
       .from('quote_lines')
-      .select('id, position, line_kind, name, type, room, w_mm, h_mm, d_mm, qty, material, finish, construction, base_type, door_count, door_pct, door_handle, drawer_count, drawer_pct, drawer_front_material, fixed_shelves, adj_shelves, loose_shelves, partitions, end_panels, unit_price, labour_hours, extras, hardware, notes, optional, customer_editable, customer_included')
+      .select('id, position, line_kind, name, type, room, w_mm, h_mm, d_mm, qty, material, finish, construction, base_type, door_count, door_pct, door_handle, drawer_count, drawer_pct, drawer_front_material, fixed_shelves, adj_shelves, loose_shelves, partitions, end_panels, unit_price, labour_hours, extras, hardware, notes, optional, customer_editable, customer_included, customer_price')
       .eq('quote_id', quote.id)
       .order('position');
 
@@ -60,6 +60,15 @@ Deno.serve(async (req) => {
       .select('name, email, phone, address, abn, bank_details, logo_url, default_currency')
       .eq('user_id', quote.user_id)
       .maybeSingle();
+
+    // ── Allowed finishes for the in-page spec editor (names only, not sensitive) ──
+    const { data: finRows } = await admin
+      .from('catalog_items').select('name')
+      .eq('user_id', quote.user_id).eq('type', 'finish');
+    const finishes = Array.from(new Set([
+      ...(finRows ?? []).map((f: { name: string }) => f.name),
+      ...(lines ?? []).map((l: { finish: string | null }) => l.finish).filter(Boolean),
+    ])) as string[];
 
     // ── Client name (greeting only) ──
     let client: { name: string } | null = null;

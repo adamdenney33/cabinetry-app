@@ -55,12 +55,22 @@ create unique index if not exists orders_share_token_key
 alter table public.quote_lines
   add column if not exists optional          boolean not null default false,  -- customer may exclude
   add column if not exists customer_editable boolean not null default false,  -- customer may edit spec
-  add column if not exists customer_included boolean not null default true;   -- current include state
+  add column if not exists customer_included boolean not null default true,   -- current include state
+  add column if not exists customer_price    numeric;                         -- all-in customer-facing price (post-markup), snapshotted at share time
 
 alter table public.order_lines
   add column if not exists optional          boolean not null default false,
   add column if not exists customer_editable boolean not null default false,
-  add column if not exists customer_included boolean not null default true;
+  add column if not exists customer_included boolean not null default true,
+  add column if not exists customer_price    numeric;
+
+-- `customer_price` is the all-in per-line price the CUSTOMER sees (their share of
+-- materials + labour + markup, pre-tax). Written by the business app at share
+-- time from calcCBLine, so the customer page never receives the business's cost
+-- inputs (material costs, labour rate, markup %) — it only sums these safe
+-- figures. Editing a spec on the live page marks the line "price to confirm"
+-- until the business re-snapshots (live edit-reprice needs the costing ported
+-- server-side — a later sub-step).
 
 -- ════════════════════════════════════════════════════════════════════════════
 -- 4. line_photos — photos on quote/order lines and cabinet-library templates

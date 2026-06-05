@@ -201,6 +201,13 @@ export default defineConfig(({ mode }) => {
     sourcemap: 'hidden',
     target: 'es2020',
     emptyOutDir: true,
+    rollupOptions: {
+      // index.html = the app (copyLandingPlugin moves it to /os). q.html = the
+      // public live quote page (/q.html?t=<token>) bundled as its own module
+      // entry (src/quote-public.js). HTML inputs keep their own dist filenames,
+      // so this doesn't disturb the landing/os routing.
+      input: { app: 'index.html', quote: 'q.html' },
+    },
   },
   plugins: [
     copyClassicScriptsPlugin(),
