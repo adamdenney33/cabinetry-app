@@ -2389,7 +2389,7 @@ const _PROCAB_FOOTER_VARIANT = 2;
  * @param {number} M
  */
 function _drawPdfFooter(pdf, biz, dateStr, PW, PH, M) {
-  const pro = (typeof isPro === 'function') ? isPro() : false;
+  const pro = (typeof _hasProAccess === 'function') ? _hasProAccess() : false;
   const name = biz.name || '';
   if (pro) {
     pdf.setFontSize(6.5); pdf.setFont('helvetica', 'normal'); pdf.setTextColor(190);
@@ -2428,7 +2428,7 @@ function _drawPdfFooter(pdf, biz, dateStr, PW, PH, M) {
  */
 function _drawPdfBrandingStrip(pdf, PW) {
   if (_PROCAB_FOOTER_VARIANT !== 3) return;
-  if ((typeof isPro === 'function') && isPro()) return;
+  if ((typeof _hasProAccess === 'function') && _hasProAccess()) return;
   pdf.setFillColor(74, 158, 255);
   pdf.rect(PW - 56, 0, 56, 6, 'F');
   pdf.setFontSize(7); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(255);

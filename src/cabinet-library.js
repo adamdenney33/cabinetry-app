@@ -69,8 +69,8 @@ function cbImportLibrary() {
       const rows = text.split(/\r?\n/).map(r => r.split(',').map(c => c.replace(/^"|"$/g,'').trim()));
       if (rows.length < 2) { _toast('CSV has no data rows', 'error'); return; }
       // Free-tier cap on cabinet_templates: refuse the import outright if we'd
-      // bust the cap. Pro users skip the check.
-      if (typeof isPro === 'function' && !isPro()) {
+      // bust the cap. Pro users and trial users skip the check.
+      if (typeof _hasProAccess === 'function' && !_hasProAccess()) {
         const room = FREE_LIMITS.cabinet_templates - cbLibrary.length;
         const incoming = rows.length - 1;
         if (room <= 0) { _openLimitHitModal('cabinet_templates'); return; }

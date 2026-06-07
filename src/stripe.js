@@ -182,6 +182,26 @@ function renderSubscriptionSection() {
     return;
   }
 
+  // Automatic 14-day Pro trial — unlimited access until it lapses, then this
+  // falls through to the Free-plan block below. Same Upgrade CTA so a trial user
+  // can convert before it ends.
+  if (typeof _trialActive === 'function' && _trialActive()) {
+    const daysLeft = typeof _trialDaysLeft === 'function' ? _trialDaysLeft() : 0;
+    el.innerHTML = `
+      <div class="account-plan-row">
+        <span class="account-plan-name">Pro Trial</span>
+        <span class="badge badge-orange">${daysLeft} day${daysLeft === 1 ? '' : 's'} left</span>
+      </div>
+      <div class="account-menu-item" style="color:var(--muted);font-size:11px;cursor:default;padding-bottom:4px">Unlimited access during your trial — upgrade to keep it.</div>
+      <div style="padding:10px 16px;border-bottom:1px solid var(--border)">
+        <button onclick="_wtStartCta()" style="width:100%;padding:8px;background:var(--accent);color:white;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer">
+          Upgrade to Pro
+        </button>
+      </div>
+    `;
+    return;
+  }
+
   // Free plan — the Upgrade button opens the walkthrough's plan-picker CTA
   // (_wtStartCta) rather than jumping straight to Stripe checkout.
   el.innerHTML = `

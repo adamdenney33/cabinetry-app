@@ -1773,33 +1773,18 @@ input.li-num:focus { outline: none; border-color: var(--accent); }
 
 /* (Old library CSS removed) */
 
-/* ── DEMO MODE BANNER ── */
-.demo-banner {
-  display: flex; align-items: center; justify-content: center; gap: 14px;
-  padding: 7px 16px; background: var(--accent); color: #1a1a1a;
-  font-size: 12.5px; font-weight: 600;
-}
-.demo-banner strong { font-weight: 800; }
-.demo-banner-btn {
-  background: #1a1a1a; color: #fff; border: none; font: inherit;
-  font-size: 11.5px; font-weight: 700; padding: 4px 13px;
-  border-radius: 5px; cursor: pointer; white-space: nowrap;
-}
-.demo-banner-btn:hover { background: #000; }
-
 /* Chrome auto-collapse — _initChromeCollapse (src/ui.js) toggles
    body.chrome-collapsed as a content pane is scrolled down on a short viewport
-   (a landscape phone), sliding the top header + demo banner away so .app-body
+   (a landscape phone), sliding the top header away so .app-body
    (flex:1) reclaims the height. The nav-tab bar is left in place so section
    navigation stays available. JS-gated to short viewports; the base rule is
    inert (max-height well above the real content) until the class is applied,
    so a tall/desktop viewport is unaffected. */
-header, #demo-banner {
+header {
   max-height: 90px;
   transition: max-height 0.24s ease, padding 0.24s ease, opacity 0.18s ease;
 }
-body.chrome-collapsed header,
-body.chrome-collapsed #demo-banner {
+body.chrome-collapsed header {
   max-height: 0;
   padding: 0; /* collapse the header's / banner's padding, not just content */
   opacity: 0;

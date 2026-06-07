@@ -28,6 +28,16 @@ const FREE_LIMITS = Object.freeze({
  *  enforced server-side in the stripe-checkout Edge Function. */
 const FOUNDER_CAP = 50;
 
+/** Length of the automatic, no-card Pro trial every new account gets, in days.
+ *  After it lapses the account silently drops to the 5-item free tier. */
+const TRIAL_DAYS = 14;
+
+/** Current user's server-set signup timestamp (auth.users.created_at, ISO),
+ *  assigned from the Supabase session in src/app.js on sign-in and cleared on
+ *  sign-out. Tamper-proof, so it's a safe basis for the trial clock.
+ *  @type {string | null} */
+let _userCreatedAt = null;
+
 // ══════════════════════════════════════════
 // SUBSCRIPTION STATE
 // ══════════════════════════════════════════
@@ -94,6 +104,47 @@ function isPro(sub) {
 }
 
 // ══════════════════════════════════════════
+// AUTOMATIC 14-DAY TRIAL
+// ══════════════════════════════════════════
+/**
+ * True when the signed-in user is inside their automatic 14-day Pro trial: an
+ * account younger than TRIAL_DAYS that has no paid subscription. Paying users
+ * return false here (they're Pro via isPro, not "on trial"). Falls to false the
+ * moment the window lapses, dropping the user to the 5-item free tier.
+ *
+ * @returns {boolean}
+ */
+function _trialActive() {
+  if (!_userId || !_userCreatedAt || isPro()) return false;
+  const start = new Date(_userCreatedAt).getTime();
+  if (isNaN(start)) return false;
+  return Date.now() < start + TRIAL_DAYS * 86400000;
+}
+
+/**
+ * Whole days remaining in the trial (rounded up), or 0 once it has lapsed / when
+ * the signup date is unknown. For the "X days left" UI label.
+ *
+ * @returns {number}
+ */
+function _trialDaysLeft() {
+  if (!_userCreatedAt) return 0;
+  const start = new Date(_userCreatedAt).getTime();
+  if (isNaN(start)) return 0;
+  return Math.max(0, Math.ceil((start + TRIAL_DAYS * 86400000 - Date.now()) / 86400000));
+}
+
+/**
+ * Single gate for "full Pro access": a paid subscription OR an active trial.
+ * Limit/feature checks use this so trial users get unlimited everything.
+ *
+ * @returns {boolean}
+ */
+function _hasProAccess() {
+  return isPro() || _trialActive();
+}
+
+// ══════════════════════════════════════════
 // LIMIT CHECKS
 // ══════════════════════════════════════════
 /** @typedef {keyof typeof FREE_LIMITS} LimitedLibrary */
@@ -105,7 +156,7 @@ function isPro(sub) {
  * @returns {number}
  */
 function getLimit(library) {
-  if (isPro()) return Infinity;
+  if (_hasProAccess()) return Infinity;
   return FREE_LIMITS[library];
 }
 
@@ -129,7 +180,7 @@ function isAtLimit(library, currentCount) {
  * @returns {boolean}
  */
 function isApproachingLimit(library, currentCount) {
-  if (isPro()) return false;
+  if (_hasProAccess()) return false;
   return currentCount >= FREE_LIMITS[library] - 1;
 }
 
@@ -179,7 +230,7 @@ function _enforceFreeLimit(library, currentCount) {
  * @returns {boolean}
  */
 function _enforceProFeature() {
-  if (!_userId || isPro()) return true;
+  if (!_userId || _hasProAccess()) return true;
   if (typeof _track === 'function') _track('pro_feature_blocked', { feature: 'import_export' });
   if (typeof _openProFeatureModal === 'function') {
     _openProFeatureModal();

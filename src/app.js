@@ -1194,12 +1194,6 @@ function _showAuth() {
   /** @type {HTMLElement} */ (document.getElementById('auth-screen')).classList.remove('hidden');
 }
 
-/** Show or hide the demo-mode banner to match the current auth state. */
-function _syncDemoBanner() {
-  const b = document.getElementById('demo-banner');
-  if (b) b.style.display = window._demoMode ? 'flex' : 'none';
-}
-
 function toggleAuthMode() {
   _authMode = _authMode === 'signin' ? 'signup' : 'signin';
   const isSign = _authMode === 'signin';
@@ -1483,6 +1477,10 @@ _sb.auth.onAuthStateChange(async (event, session) => {
     // (which flips demo mode on temporarily) doesn't clobber the tour.
     if (!window._wtActive) window._demoMode = false;
     _userId = session.user.id;
+    // Server-set signup timestamp — drives the 14-day no-card Pro trial in
+    // src/limits.js (_trialActive). Set before loadAllData() so the first
+    // subscription render is trial-aware. Tamper-proof (auth.users.created_at).
+    _userCreatedAt = session.user.created_at ?? null;
     window.Sentry.setUser({ id: session.user.id, email: session.user.email });
     const emailEl = document.getElementById('account-email-item');
     if (emailEl) emailEl.textContent = session.user.email ?? '';
@@ -1495,7 +1493,6 @@ _sb.auth.onAuthStateChange(async (event, session) => {
     /** @type {HTMLElement} */ (document.getElementById('account-guest-view')).style.display = 'none';
     /** @type {HTMLElement} */ (document.getElementById('account-user-view')).style.display = '';
     _showApp();
-    if (typeof _syncDemoBanner === 'function') _syncDemoBanner();
     await loadAllData();
     if (typeof _identifyUser === 'function') _identifyUser(session);
     if (typeof _syncMailingList === 'function') {
@@ -1517,41 +1514,31 @@ _sb.auth.onAuthStateChange(async (event, session) => {
       catch (e) { console.warn('restoreAppState failed', e); }
     }
   } else {
-    // Guest: no Supabase session. Enter demo mode — src/db.js serves every
-    // _db() read from the pre-seeded demo dataset and blocks writes. The boot
-    // sequence then mirrors the signed-in path so every panel renders
-    // populated; the guided walkthrough runs over this same seed.
+    // No Supabase session — an account is required. Show the auth screen (a
+    // full-screen overlay) instead of loading any app data. No more guest demo
+    // mode: the demo seed (src/demo.js) now exists only for the in-app guided
+    // walkthrough, which a signed-in user borrows via _wtRunStart(tempDemo).
     _userId = null;
+    _userCreatedAt = null;
     _setAccessToken(null);
-    window._demoMode = true;
+    window._demoMode = false;
     window.Sentry.setUser(null);
     _subscription = null;
     /** @type {HTMLElement} */ (document.getElementById('account-guest-view')).style.display = '';
     /** @type {HTMLElement} */ (document.getElementById('account-user-view')).style.display = 'none';
-    _showApp();
-    if (typeof _syncDemoBanner === 'function') _syncDemoBanner();
-    // Clear "what was open" keys only on explicit sign-out, so a signing-out
-    // user's demo session doesn't restore the entity IDs from their real one.
-    // INITIAL_SESSION (every guest page load) must NOT clear them.
+    _showAuth();
+    // Open straight into sign-up mode when the landing CTA links to /os?signup.
+    if (_authMode === 'signin'
+        && new URLSearchParams(location.search).has('signup')) {
+      toggleAuthMode();
+    }
+    // Clear "what was open" keys on explicit sign-out so the next user's session
+    // doesn't restore the previous one's entity IDs. INITIAL_SESSION (a plain
+    // logged-out page load) must NOT clear them.
     if (event === 'SIGNED_OUT'
         && typeof /** @type {any} */ (window)._pcClearAllOpenKeys === 'function') {
       /** @type {any} */ (window)._pcClearAllOpenKeys();
     }
-    await loadAllData();
-    if (typeof _loadCabinetTemplatesFromDB === 'function') {
-      try { await _loadCabinetTemplatesFromDB(); } catch (e) { console.warn('[cb templates] load failed', e); }
-    }
-    // Guided walkthrough — auto-starts for a first-time visitor (the localStorage
-    // gate in _wtMaybeAutoStart suppresses it on later visits).
-    if (typeof /** @type {any} */ (window)._wtMaybeAutoStart === 'function') {
-      try { await /** @type {any} */ (window)._wtMaybeAutoStart(); }
-      catch (e) { console.warn('[walkthrough] auto-start failed', e); }
-    }
-    if (typeof /** @type {any} */ (window)._restoreAppState === 'function') {
-      try { await /** @type {any} */ (window)._restoreAppState(); }
-      catch (e) { console.warn('restoreAppState failed', e); }
-    }
-    if (typeof renderSubscriptionSection === 'function') renderSubscriptionSection();
   }
   // Landing-page pricing deep-link (/?plan=…): once the initial session is
   // known, send a signed-in visitor straight to Stripe Checkout, or a guest to
