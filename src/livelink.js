@@ -76,6 +76,7 @@ async function _llEnterLive(kind) {
   const bodyId = kind === 'quote' ? 'ql-live-body' : 'ol-live-body';
   const body = document.getElementById(bodyId);
   if (body) body.innerHTML = _liveLinkPanel(kind);
+  _llSyncLineControls();
   _llRenderPreview(kind);
   // Auto-create the live link on first open (no manual "Generate" button).
   if (q && !q.share_token && typeof _generateShareLink === 'function') await _generateShareLink(q.id);
@@ -120,7 +121,7 @@ function _liveLinkPanel(kind) {
        </div>`
     : `<div class="ll-empty">No live link yet — set the options below, then <strong>Generate</strong>.</div>`;
   const tog = (/** @type {string} */ id, /** @type {string} */ label, /** @type {string} */ desc, /** @type {boolean} */ on) =>
-    `<div class="share-toggle-row"><div><div class="st-label">${label}</div><div class="st-desc">${desc}</div></div><button class="mini-toggle" id="${id}" aria-pressed="${on ? 'true' : 'false'}" onclick="_shTgl(this);_llAutoSave()"></button></div>`;
+    `<div class="share-toggle-row"><div><div class="st-label">${label}</div><div class="st-desc">${desc}</div></div><button class="mini-toggle" id="${id}" aria-pressed="${on ? 'true' : 'false'}" onclick="_shTgl(this);_llAutoSave();_llSyncLineControls()"></button></div>`;
   const lineRows = lines.map(_llLineControl).join('') || '<div class="ll-hint" style="padding:8px 0">No line items on this quote yet.</div>';
   return `<div class="ll-pad">
     ${linkBox}
@@ -180,9 +181,9 @@ function _llLineControl(l) {
   return `<div class="ll-line">
     <div class="ll-line-head">
       <span class="ll-line-name">${_escHtml(l.name || 'Item')}</span>
-      <label class="ll-opt"><input type="checkbox" id="sh-opt-${l.id}" ${l.optional ? 'checked' : ''} onchange="_llAutoSave()"> Optional</label>
+      <label class="ll-opt" data-needs="select"><input type="checkbox" id="sh-opt-${l.id}" ${l.optional ? 'checked' : ''} onchange="_llAutoSave()"> Optional</label>
     </div>
-    <div class="ll-line-sub">${specBlock}</div>
+    <div class="ll-line-sub" data-needs="edit">${specBlock}</div>
   </div>`;
 }
 
@@ -196,6 +197,15 @@ function _llToggleSpecs(lineId) {
 function _llSpecAll(lineId, on) {
   document.querySelectorAll('.ll-spec[data-line="' + lineId + '"]').forEach(cb => { /** @type {HTMLInputElement} */ (cb).checked = !!on; });
   _llAutoSave();
+}
+
+/** Show/hide the per-line Optional + Editable-specs controls to match the
+ *  "Allow item selection" / "Allow spec editing" master toggles. */
+function _llSyncLineControls() {
+  const on = (/** @type {string} */ id) => { const b = document.getElementById(id); return b ? b.getAttribute('aria-pressed') === 'true' : true; };
+  const sel = on('sh-select'), edit = on('sh-edit');
+  document.querySelectorAll('[data-needs="select"]').forEach(el => { /** @type {HTMLElement} */ (el).style.display = sel ? '' : 'none'; });
+  document.querySelectorAll('[data-needs="edit"]').forEach(el => { /** @type {HTMLElement} */ (el).style.display = edit ? '' : 'none'; });
 }
 
 // ── Main-pane preview (iframe of /q) + two-way chat launcher ──────────────────
@@ -228,6 +238,7 @@ function _llAfterSave(kind) {
   const bodyId = k === 'quote' ? 'ql-live-body' : 'ol-live-body';
   const body = document.getElementById(bodyId);
   if (body) body.innerHTML = _liveLinkPanel(k);
+  _llSyncLineControls();
   _llRenderPreview(k);
 }
 
@@ -320,6 +331,6 @@ function _orderPdfMenu(orderId) {
 Object.assign(window, {
   _llTab, _llReset, _llShareQuote, _llClientId, _llEnsureLines, _llTabBar, _llLiveBodyDiv,
   _llEnterLive, switchQuoteTab, switchOrderTab, _liveLinkPanel, _llSpecsFor, _llLineControl,
-  _llToggleSpecs, _llSpecAll, _llRenderPreview, _llAfterSave, _sendLiveLink, _orderPdfMenu, _openLiveLinkTab,
+  _llToggleSpecs, _llSpecAll, _llSyncLineControls, _llRenderPreview, _llAfterSave, _sendLiveLink, _orderPdfMenu, _openLiveLinkTab,
   _llAutoSave, _llOnSaved, _llSaveError,
 });
