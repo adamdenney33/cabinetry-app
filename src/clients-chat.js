@@ -157,4 +157,64 @@ async function _sendOrderMessage(orderId) {
   catch (e) { _toast('Message not sent (is the schema migration applied?)', 'error'); }
 }
 
-Object.assign(window, { loadAllClientMessages, _clientUnreadCount, _openClientChat, _sendClientMessage, _toggleOrderThread, _orderThreadInner, _sendOrderMessage });
+// ── In-card client thread (Clients tab) ─────────────────────────────────────
+// Same client-scoped conversation rendered INLINE in a client card (matches the
+// order-card pattern + the chosen mockup) instead of the _openClientChat popup.
+
+/** Render the in-card client thread (bubbles + composer). @param {number} clientId @returns {string} */
+function _clientThreadInner(clientId) {
+  const msgs = _clientMessages[clientId] || [];
+  const thread = msgs.length
+    ? msgs.map(_ccBubbleHtml).join('')
+    : '<div style="color:var(--muted);font-size:12px;text-align:center;margin:auto;padding:18px 8px">No messages yet — the customer can reply from their live link page.</div>';
+  return `<div id="cc-thread-body-${clientId}" style="display:flex;flex-direction:column;gap:8px;max-height:300px;overflow-y:auto;padding:12px 14px;background:var(--bg)">${thread}</div>
+    <div style="border-top:1px solid var(--border);padding:8px 10px;display:flex;gap:6px;background:var(--surface)">
+      <input id="cc-thread-input-${clientId}" placeholder="Reply to the customer…" autocomplete="off" style="flex:1;border:1px solid var(--border);border-radius:999px;padding:8px 14px;font-family:inherit;font-size:13px;background:var(--surface2);color:var(--text)" onkeydown="if(event.key==='Enter')_sendClientThreadMessage(${clientId})">
+      <button class="btn btn-primary" style="width:auto;padding:8px 16px" onclick="_sendClientThreadMessage(${clientId})">Send</button>
+    </div>`;
+}
+
+/** Expand / collapse the in-card thread on a client card. @param {number} clientId */
+async function _toggleClientThread(clientId) {
+  if (!_requireAuth()) return;
+  const wrap = /** @type {HTMLElement|null} */ (document.querySelector(`[data-client-thread="${clientId}"]`));
+  if (!wrap) return;
+  if (wrap.style.display !== 'none') { wrap.style.display = 'none'; wrap.innerHTML = ''; return; }
+  // Pull the latest conversation for this client (the customer may have replied).
+  try {
+    const { data } = await _cmTable().select('id, client_id, sender, body, created_at, read_at').eq('client_id', clientId).order('created_at');
+    _clientMessages[clientId] = data || [];
+  } catch (e) { /* offline / not applied */ }
+  wrap.innerHTML = _clientThreadInner(clientId);
+  wrap.style.display = 'block';
+  const body = document.getElementById(`cc-thread-body-${clientId}`); if (body) body.scrollTop = body.scrollHeight;
+  // Mark the customer's messages read + clear the badges in place (no full
+  // re-render — that would collapse the thread we just opened).
+  try {
+    await _cmTable().update({ read_at: new Date().toISOString() }).eq('client_id', clientId).eq('sender', 'customer').is('read_at', null);
+    (_clientMessages[clientId] || []).forEach(/** @param {any} m */ m => { if (m.sender === 'customer' && !m.read_at) m.read_at = new Date().toISOString(); });
+    document.querySelectorAll(`[data-client-unread="${clientId}"]`).forEach(el => { el.textContent = ''; });
+    if (typeof orders !== 'undefined' && orders) {
+      /** @type {any} */ (orders).filter(/** @param {any} x */ x => x.client_id === clientId).forEach(/** @param {any} x */ x => {
+        document.querySelectorAll(`[data-order-unread="${x.id}"]`).forEach(el => { el.textContent = ''; });
+      });
+    }
+  } catch (e) { /* ignore */ }
+}
+
+/** Send a business reply from a client card. @param {number} clientId */
+async function _sendClientThreadMessage(clientId) {
+  const inp = /** @type {HTMLInputElement|null} */ (document.getElementById(`cc-thread-input-${clientId}`));
+  if (!inp || !inp.value.trim()) return;
+  const text = inp.value.trim(); inp.value = '';
+  (_clientMessages[clientId] = _clientMessages[clientId] || []).push({ sender: 'business', body: text, created_at: new Date().toISOString() });
+  const body = document.getElementById(`cc-thread-body-${clientId}`);
+  if (body) {
+    body.innerHTML = (_clientMessages[clientId] || []).map(_ccBubbleHtml).join('');
+    body.scrollTop = body.scrollHeight;
+  }
+  try { await _cmTable().insert({ user_id: _userId, client_id: clientId, sender: 'business', body: text }); }
+  catch (e) { _toast('Message not sent (is the schema migration applied?)', 'error'); }
+}
+
+Object.assign(window, { loadAllClientMessages, _clientUnreadCount, _openClientChat, _sendClientMessage, _toggleOrderThread, _orderThreadInner, _sendOrderMessage, _clientThreadInner, _toggleClientThread, _sendClientThreadMessage });

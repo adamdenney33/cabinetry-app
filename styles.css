@@ -1340,6 +1340,7 @@ canvas { display: block; }
 .pipe-line-done { background: var(--success); }
 .oc-footer { display: flex; align-items: center; gap: 6px; padding: 8px 16px; border-top: 1px solid var(--border2); flex-wrap: wrap; }
 .oc-thread { border-top: 1px solid var(--border2); background: var(--bg); overflow: hidden; animation: ocThreadIn 0.16s ease; }
+.cc-thread { margin-top: 8px; border: 1px solid var(--border2); border-radius: 8px; background: var(--bg); overflow: hidden; animation: ocThreadIn 0.16s ease; }
 @keyframes ocThreadIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
 
 /* ── Live link sidebar sub-tab + main-area preview ─────────────────────── */

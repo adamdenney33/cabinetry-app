@@ -244,6 +244,12 @@ declare global {
   function _orderThreadInner(orderId: number, clientId: number): string;
   /** Send a business reply from an order card (tags order_id). */
   function _sendOrderMessage(orderId: number): Promise<void>;
+  /** Toggle the in-card messages thread on a client card. */
+  function _toggleClientThread(clientId: number): Promise<void>;
+  /** Render the in-card client thread (bubbles + composer). */
+  function _clientThreadInner(clientId: number): string;
+  /** Send a business reply from a client card. */
+  function _sendClientThreadMessage(clientId: number): Promise<void>;
 
   // ── settings.js unit-format globals ──
   function setUnitFormat(mode: string): void;
