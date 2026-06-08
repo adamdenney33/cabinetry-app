@@ -403,17 +403,23 @@
               </select>
             </div>
           </div>
+          <div id="stock-fin-fields" style="display:none">
+            <div class="form-group" style="margin-bottom:6px">
+              <label id="stock-fin-cov-label">Coverage (m²/L)</label>
+              <input type="number" id="stock-fin-coverage" value="10" min="0" step="0.1">
+            </div>
+          </div>
           <div class="form-row" id="stock-qty-fields">
             <div class="form-group">
-              <label>Qty</label>
-              <input type="number" id="stock-qty" value="10" min="0">
+              <label id="stock-qty-label">Qty</label>
+              <input type="number" id="stock-qty" value="10" min="0" step="0.01">
             </div>
             <div class="form-group">
-              <label>Low Alert</label>
-              <input type="number" id="stock-low" value="3" min="0">
+              <label id="stock-low-label">Low Alert</label>
+              <input type="number" id="stock-low" value="3" min="0" step="0.01">
             </div>
             <div class="form-group">
-              <label>Cost / Unit</label>
+              <label id="stock-cost-label">Cost / Unit</label>
               <input type="number" id="stock-cost" value="65.00" min="0" step="0.01">
             </div>
           </div>

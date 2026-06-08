@@ -196,11 +196,22 @@ alter table public.stock_items
   add column updated_at     timestamptz not null default now();
 
 create index on public.stock_items(user_id, category);
+
+-- Finishing materials (paint/oil/lacquer), added 2026-06-08:
+alter table public.stock_items
+  alter column qty type numeric,        -- was integer; finishes are litres (decimals)
+  add column coverage_sqm numeric;      -- m² covered per litre; drives per-area quote pricing
 ```
 
 **Replaces:** localStorage `pc_stock_cats`, `pc_stock_suppliers`, `pc_stock_variants`.
 
 Existing columns kept: `id, user_id, name, sku, w, h, qty, low, cost, created_at`.
+
+**Finishing items (category = `Finishing`):** canonical storage is metric — `qty` = litres
+in stock, `cost` = £/litre, `coverage_sqm` = m² covered per litre. The stock form shows
+US gallons + ft²/gal when the app is in imperial mode and converts on save/load. Adding a
+finish to a quote/order creates a stock line priced per surface area (`unit_price` =
+`cost ÷ coverage_sqm` = £/m², or £/ft² imperial; `qty` = area).
 
 ---
 

@@ -456,15 +456,17 @@ function _orderLineAdd(kind) {
 function _oAddStockLineFromLibrary(stockItem) {
   if (!_opState.orderId || !_userId) return;
   const position = _opState.lines.reduce((m, r) => Math.max(m, (r.position ?? 0) + 1), 0);
+  // Finishing materials with a coverage rate price by surface area (qty = area).
+  const fin = (typeof _finQuoteLine === 'function') ? _finQuoteLine(stockItem) : null;
   /** @type {any} */
   const row = {
     order_id: _opState.orderId,
     user_id: _userId,
     position,
     line_kind: 'stock',
-    name: stockItem.name || '',
+    name: fin ? fin.name : (stockItem.name || ''),
     qty: 1,
-    unit_price: parseFloat(stockItem.cost) || 0,
+    unit_price: fin ? fin.unit_price : (parseFloat(stockItem.cost) || 0),
     discount: 0,
   };
   _opState.lines.push(row);
@@ -800,15 +802,17 @@ function _lineAdd(kind) {
 function _qAddStockLineFromLibrary(stockItem) {
   if (!_qpState.quoteId || !_userId) return;
   const position = _qpState.lines.reduce((m, r) => Math.max(m, (r.position ?? 0) + 1), 0);
+  // Finishing materials with a coverage rate price by surface area (qty = area).
+  const fin = (typeof _finQuoteLine === 'function') ? _finQuoteLine(stockItem) : null;
   /** @type {any} */
   const row = {
     quote_id: _qpState.quoteId,
     user_id: _userId,
     position,
     line_kind: 'stock',
-    name: stockItem.name || '',
+    name: fin ? fin.name : (stockItem.name || ''),
     qty: 1,
-    unit_price: parseFloat(stockItem.cost) || 0,
+    unit_price: fin ? fin.unit_price : (parseFloat(stockItem.cost) || 0),
     discount: 0,
   };
   _qpState.lines.push(row);
