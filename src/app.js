@@ -118,7 +118,7 @@ function _orderLineRowHtml(row, i) {
     const descDefault = row.name || 'Cabinet';
     return `<tr>
       <td class="col-handle" title="Drag to reorder (coming soon)">⋮</td>
-      <td class="col-dot"><span></span></td>
+      ${_lineDotCell('cabinet', row, i, true)}
       <td class="col-desc"><div class="li-desc-wrap">${_linePhotoBtn(row, 'order_line')}<textarea class="cl-input desc" rows="1" oninput="_orderLineUpdate(${i}, 'name', this.value);_autoGrowTextarea(this)">${_escHtml(descDefault)}</textarea></div></td>
       <td class="col-qty"><input class="cl-input right" type="number" min="1" step="1" value="${row.qty ?? 1}" oninput="_orderLineUpdate(${i}, 'qty', this.value)"></td>
       <td class="col-price"><div class="cl-input right is-computed" style="padding:5px 4px">${Number(unitPrice || 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</div></td>
@@ -134,13 +134,12 @@ function _orderLineRowHtml(row, i) {
   // schedule_hours (workshop time, scheduler-only, PDF-hidden).
   const isLegacyLabour = kind === 'labour';
   const isStock = kind === 'stock';
-  const dotClass = isStock ? 'is-stock' : (isLegacyLabour ? 'is-labour' : 'is-item');
   const hoursField = isLegacyLabour ? 'labour_hours' : 'schedule_hours';
   const hoursVal = isLegacyLabour ? (row.labour_hours ?? 0) : (row.schedule_hours ?? 0);
   const placeholder = isStock ? 'Stock item description…' : 'Item description…';
   return `<tr>
     <td class="col-handle" title="Drag to reorder (coming soon)">⋮</td>
-    <td class="col-dot ${dotClass}"><span></span></td>
+    ${_lineDotCell(kind, row, i, true)}
     <td class="col-desc"><div class="li-desc-wrap">${_linePhotoBtn(row, 'order_line')}<textarea class="cl-input desc" rows="1" placeholder="${placeholder}" oninput="_orderLineUpdate(${i}, 'name', this.value);_autoGrowTextarea(this)">${_escHtml(row.name || '')}</textarea></div></td>
     <td class="col-qty"><input class="cl-input right" type="number" min="0" step="1" value="${row.qty ?? 1}" oninput="_orderLineUpdate(${i}, 'qty', this.value)"></td>
     <td class="col-price"><input class="cl-input right" type="number" min="0" step="0.01" value="${row.unit_price ?? 0}" oninput="_orderLineUpdate(${i}, 'unit_price', this.value)"></td>
@@ -636,10 +635,32 @@ function _linePhotoBtn(row, kind) {
   return `<button type="button" class="li-icon-btn li-photo-btn" title="Add photos" onclick="event.stopPropagation();_openLinePhotosPopup('${k}',${row.id})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/></svg>${n ? `<span class="li-icon-n">${n}</span>` : ''}</button>`;
 }
 
-/** "Open in Cabinet Builder" affordance for a cabinet quote line — the row's
- *  double-click is unobvious. @param {number} i */
-function _lineCabinetBtn(i) {
-  return `<button type="button" class="li-icon-btn li-cab-btn" title="Open in Cabinet Builder" onclick="event.stopPropagation();_lineEditCabinetRow(${i})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg></button>`;
+/** Leading type cell for a line row (replaces the bare colour dot).
+ *  Cabinet → cabinet icon that opens the Builder; stock → stock icon that
+ *  opens the linked library item; item / labour → the original colour dot.
+ *  @param {string} kind @param {any} row @param {number} i
+ *  @param {boolean} isOrder true for order rows (different cabinet-edit entry) */
+function _lineDotCell(kind, row, i, isOrder) {
+  if (kind === 'cabinet') {
+    const action = isOrder ? '_orderLineEditCabinet(_opState.orderId)' : `_lineEditCabinetRow(${i})`;
+    return `<td class="col-dot col-dot-icon"><button type="button" class="li-icon-btn li-dot-btn" title="Open in Cabinet Builder" onclick="event.stopPropagation();${action}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg></button></td>`;
+  }
+  if (kind === 'stock') {
+    const svg = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>`;
+    const sid = row && row.stock_id;
+    if (sid) return `<td class="col-dot col-dot-icon"><button type="button" class="li-icon-btn li-dot-btn" title="Open stock item" onclick="event.stopPropagation();_openStockFromLine(${sid})">${svg}</button></td>`;
+    return `<td class="col-dot col-dot-icon"><span class="li-dot-static" title="Stock item">${svg}</span></td>`;
+  }
+  const dotClass = kind === 'labour' ? 'is-labour' : 'is-item';
+  return `<td class="col-dot ${dotClass}"><span></span></td>`;
+}
+
+/** Open a stock library item referenced by a line row: jump to the Stock
+ *  section and load it into the editor. @param {number} id */
+function _openStockFromLine(id) {
+  if (!id) return;
+  if (typeof switchSection === 'function') switchSection('stock');
+  if (typeof editStockItem === 'function') editStockItem(id);
 }
 
 // Render a single quote_lines row as a <tr>. Same shape as _orderLineRowHtml.
@@ -664,8 +685,8 @@ function _lineRowHtml(row, i) {
     const descDefault = row.name || 'Cabinet';
     return `<tr ondblclick="_lineEditCabinetRow(${i})" title="Double-click to edit in Cabinet Builder">
       <td class="col-handle">⋮</td>
-      <td class="col-dot"><span></span></td>
-      <td class="col-desc"><div class="li-desc-wrap">${_linePhotoBtn(row)}${_lineCabinetBtn(i)}<textarea class="cl-input desc" rows="1" oninput="_lineUpdate(${i}, 'name', this.value);_autoGrowTextarea(this)">${_escHtml(descDefault)}</textarea></div></td>
+      ${_lineDotCell('cabinet', row, i, false)}
+      <td class="col-desc"><div class="li-desc-wrap">${_linePhotoBtn(row)}<textarea class="cl-input desc" rows="1" oninput="_lineUpdate(${i}, 'name', this.value);_autoGrowTextarea(this)">${_escHtml(descDefault)}</textarea></div></td>
       <td class="col-qty"><input class="cl-input right" type="number" min="1" step="1" value="${row.qty ?? 1}" oninput="_lineUpdate(${i}, 'qty', this.value)"></td>
       <td class="col-price"><div class="cl-input right is-computed" style="padding:5px 4px">${Number(unitPrice || 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</div></td>
       <td class="col-hrs" title="Computed from cabinet labour"><div class="cl-input right is-computed" style="padding:5px 4px">${hrs.toFixed(1)}</div></td>
@@ -676,13 +697,12 @@ function _lineRowHtml(row, i) {
   }
   const isLegacyLabour = kind === 'labour';
   const isStock = kind === 'stock';
-  const dotClass = isStock ? 'is-stock' : (isLegacyLabour ? 'is-labour' : 'is-item');
   const hoursField = isLegacyLabour ? 'labour_hours' : 'schedule_hours';
   const hoursVal = isLegacyLabour ? (row.labour_hours ?? 0) : (row.schedule_hours ?? 0);
   const placeholder = isStock ? 'Stock item description…' : 'Item description…';
   return `<tr>
     <td class="col-handle">⋮</td>
-    <td class="col-dot ${dotClass}"><span></span></td>
+    ${_lineDotCell(kind, row, i, false)}
     <td class="col-desc"><div class="li-desc-wrap">${_linePhotoBtn(row)}<textarea class="cl-input desc" rows="1" placeholder="${placeholder}" oninput="_lineUpdate(${i}, 'name', this.value);_autoGrowTextarea(this)">${_escHtml(row.name || '')}</textarea></div></td>
     <td class="col-qty"><input class="cl-input right" type="number" min="0" step="1" value="${row.qty ?? 1}" oninput="_lineUpdate(${i}, 'qty', this.value)"></td>
     <td class="col-price"><input class="cl-input right" type="number" min="0" step="0.01" value="${row.unit_price ?? 0}" oninput="_lineUpdate(${i}, 'unit_price', this.value)"></td>

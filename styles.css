@@ -2586,7 +2586,7 @@ input.pf-input-compact[type="date"]:disabled::-webkit-calendar-picker-indicator 
   user-select: none;
 }
 .editor-li-table .col-dot {
-  width: 14px; padding: 0;
+  width: 20px; padding: 0; text-align: center;
 }
 .editor-li-table .col-dot span {
   display: inline-block; width: 6px; height: 6px; border-radius: 50%;
@@ -2595,6 +2595,11 @@ input.pf-input-compact[type="date"]:disabled::-webkit-calendar-picker-indicator 
 .editor-li-table .col-dot.is-item span   { background: #3b82f6; }
 .editor-li-table .col-dot.is-stock span  { background: var(--success); }
 .editor-li-table .col-dot.is-labour span { background: var(--success); }
+/* Type icons in the leading cell (cabinet / stock) replace the bare dot. */
+.editor-li-table .col-dot .li-dot-btn { margin-top: 6px; padding: 1px; }
+.editor-li-table .col-dot .li-dot-static { display: inline-flex; margin-top: 6px; color: var(--muted); }
+.editor-li-table .col-dot .li-dot-btn svg,
+.editor-li-table .col-dot .li-dot-static svg { width: 13px; height: 13px; }
 .editor-li-table .col-desc  { min-width: 0; }
 .editor-li-table .col-qty   { width: 38px; }
 .editor-li-table .col-price { width: 60px; text-align: right; }
