@@ -57,9 +57,13 @@ function calcCBSections(line) {
     if (s) {
       // Sheet m² — prefer width_mm + length_m (canonical fields the app writes
       // for sheet stock); fall back to legacy w/h treated as mm, then SHEET_M2.
-      const sheetM2 = (s.width_mm && s.length_m) ? (s.width_mm / 1000) * s.length_m
-                    : (s.w && s.h) ? (s.w / 1000) * (s.h / 1000)
-                    : SHEET_M2;
+      let sheetM2 = (s.width_mm && s.length_m) ? (s.width_mm / 1000) * s.length_m
+                  : (s.w && s.h) ? (s.w / 1000) * (s.h / 1000)
+                  : SHEET_M2;
+      // Guard: a real sheet is ~1–3 m². If the stored size is implausibly small
+      // (e.g. inches mis-entered as mm, or a half-filled legacy row), fall back to
+      // the standard sheet so one bad row can't explode a cabinet/quote price.
+      if (!(sheetM2 >= 0.5)) sheetM2 = SHEET_M2;
       return sheetM2 > 0 ? (s.cost ?? 0) / sheetM2 : 0;
     }
     const m = cbSettings.materials.find(/** @param {any} m */ m => m.name === matName);
@@ -177,9 +181,13 @@ function calcCBLine(line) {
     if (s) {
       // Sheet m² — prefer width_mm + length_m (canonical fields the app writes
       // for sheet stock); fall back to legacy w/h treated as mm, then SHEET_M2.
-      const sheetM2 = (s.width_mm && s.length_m) ? (s.width_mm / 1000) * s.length_m
-                    : (s.w && s.h) ? (s.w / 1000) * (s.h / 1000)
-                    : SHEET_M2;
+      let sheetM2 = (s.width_mm && s.length_m) ? (s.width_mm / 1000) * s.length_m
+                  : (s.w && s.h) ? (s.w / 1000) * (s.h / 1000)
+                  : SHEET_M2;
+      // Guard: a real sheet is ~1–3 m². If the stored size is implausibly small
+      // (e.g. inches mis-entered as mm, or a half-filled legacy row), fall back to
+      // the standard sheet so one bad row can't explode a cabinet/quote price.
+      if (!(sheetM2 >= 0.5)) sheetM2 = SHEET_M2;
       return sheetM2 > 0 ? (s.cost ?? 0) / sheetM2 : 0;
     }
     const m = cbSettings.materials.find(/** @param {any} m */ m => m.name === matName);
