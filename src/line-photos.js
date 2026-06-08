@@ -56,26 +56,33 @@ async function loadLinePhotos() {
   } catch (e) { /* table not present yet / offline — stay empty */ }
 }
 
-// ── Upload (raw fetch + in-memory token; mirrors _uploadLogoAsset) ───────────
-/** @param {string} uid @param {LPKind} kind @param {number} ownerId @param {File} file */
-async function _uploadLinePhotoAsset(uid, kind, ownerId, file) {
-  const ext = (file.type.split('/')[1] || 'jpg').replace('+xml', '').replace('jpeg', 'jpg');
-  const rand = Math.random().toString(36).slice(2, 8);
-  const path = `${uid}/lines/${kind}/${ownerId}/${Date.now()}-${rand}.${ext}`;
+// ── Upload (via the image-upload edge function) ──────────────────────────────
+// Direct Storage uploads on this project land as anonymous (Storage doesn't
+// honor user JWTs here — RLS denies every write). We route through the
+// authenticated image-upload function instead; it verifies the JWT, computes
+// the per-user path server-side, and uploads with the service role.
+/** @param {string} _uid @param {LPKind} kind @param {number} ownerId @param {File} file */
+async function _uploadLinePhotoAsset(_uid, kind, ownerId, file) {
   const token = _dbAuthToken();
   if (!token) return { path: null, url: null, error: { message: 'not signed in' } };
+  const form = new FormData();
+  form.append('file', file);
+  form.append('prefix', 'line_photo');
+  form.append('owner_kind', kind);
+  form.append('owner_id', String(ownerId));
   try {
-    const res = await fetch(`${_SBURL}/storage/v1/object/business-assets/${path}`, {
+    const res = await fetch(`${_SBURL}/functions/v1/image-upload`, {
       method: 'POST',
-      headers: { 'apikey': _SBKEY, 'Authorization': 'Bearer ' + token, 'Content-Type': file.type, 'x-upsert': 'true' },
-      body: file,
+      headers: { 'apikey': _SBKEY, 'Authorization': 'Bearer ' + token },
+      body: form,
     });
     if (!res.ok) {
       const detail = await res.text().catch(() => '');
       if (window.Sentry) window.Sentry.captureMessage('line photo upload failed (' + res.status + ')', { level: 'warning', extra: { status: res.status, detail } });
       return { path: null, url: null, error: { message: 'HTTP ' + res.status } };
     }
-    return { path, url: _lpPublicUrl(path), error: null };
+    const data = await res.json();
+    return { path: data.path, url: data.url || _lpPublicUrl(data.path), error: null };
   } catch (e) {
     return { path: null, url: null, error: { message: (/** @type {any} */ (e)).message || String(e) } };
   }
