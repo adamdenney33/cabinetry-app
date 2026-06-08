@@ -88,6 +88,45 @@ async function _uploadLinePhotoAsset(_uid, kind, ownerId, file) {
   }
 }
 
+// Downscale a photo client-side before upload. A typical phone shot is 4000+px
+// and 6–12MB — overkill for a line-item context photo and a real cost on the
+// customer page / PDF. We rasterise to ≤2000px on the long side as a JPEG@0.85,
+// which lands at ~300–500KB for almost any input. Passes the file through
+// unchanged for formats createImageBitmap can't decode (SVG, animated GIF) or
+// if anything fails — the caller still has the original to upload.
+/** @param {File} file */
+async function _lpDownscale(file) {
+  const MAX_DIM = 2000;
+  const QUALITY = 0.85;
+  // Only re-encode raster formats. SVG (vector) and unknown types pass through.
+  if (!/^image\/(jpeg|jpg|png|webp|heic|heif)$/i.test(file.type)) return file;
+  try {
+    const bitmap = await createImageBitmap(file);
+    const scale = Math.min(1, MAX_DIM / Math.max(bitmap.width, bitmap.height));
+    // Small files at native size — no point re-encoding (would lose quality).
+    if (scale === 1 && file.size < 1_000_000) { bitmap.close && bitmap.close(); return file; }
+    const w = Math.round(bitmap.width * scale);
+    const h = Math.round(bitmap.height * scale);
+    let blob;
+    if (typeof OffscreenCanvas !== 'undefined') {
+      const canvas = new OffscreenCanvas(w, h);
+      /** @type {any} */ (canvas.getContext('2d')).drawImage(bitmap, 0, 0, w, h);
+      blob = await canvas.convertToBlob({ type: 'image/jpeg', quality: QUALITY });
+    } else {
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      /** @type {any} */ (canvas.getContext('2d')).drawImage(bitmap, 0, 0, w, h);
+      blob = await new Promise(/** @param {(b: any) => void} resolve */ resolve => canvas.toBlob(resolve, 'image/jpeg', QUALITY));
+    }
+    bitmap.close && bitmap.close();
+    if (!blob) return file;
+    const newName = file.name.replace(/\.[^.]+$/, '') + '.jpg';
+    return new File([blob], newName, { type: 'image/jpeg' });
+  } catch (e) {
+    return file; // fall back to the original — upload will still attempt it
+  }
+}
+
 // ── Add (from a file input) / remove ─────────────────────────────────────────
 /** @param {LPKind} kind @param {number} ownerId @param {HTMLInputElement} input */
 async function _addLinePhotos(kind, ownerId, input) {
@@ -95,9 +134,13 @@ async function _addLinePhotos(kind, ownerId, input) {
   if (!_userId) { _toast('Sign in to add photos', 'error'); return; }
   const files = [...(input.files || [])];
   input.value = '';
-  for (const file of files) {
-    if (!file.type.startsWith('image/')) continue;
-    if (file.size > 5_000_000) { _toast(`${file.name} is too large (max 5MB)`, 'error'); continue; }
+  for (const original of files) {
+    if (!original.type.startsWith('image/')) continue;
+    // Reject ridiculous originals BEFORE the downscale read (avoid OOM on a 100MB
+    // RAW). The 25MB threshold is generous — any phone photo is well under.
+    if (original.size > 25_000_000) { _toast(`${original.name} is too large (max 25MB)`, 'error'); continue; }
+    const file = await _lpDownscale(original);
+    if (file.size > 15_000_000) { _toast(`${original.name} couldn't be shrunk small enough`, 'error'); continue; }
     const { path, url, error } = await _uploadLinePhotoAsset(/** @type {string} */ (_userId), kind, ownerId, file);
     if (error || !path) { _toast('Photo upload failed', 'error'); continue; }
     const position = _linePhotosFor(kind, ownerId).length;

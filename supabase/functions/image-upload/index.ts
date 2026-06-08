@@ -29,7 +29,7 @@ import { corsHeaders, jsonResponse } from '../_shared/cors.ts';
 import { admin, authenticateCaller } from '../_shared/auth.ts';
 
 const BUCKET = 'business-assets';
-const MAX_BYTES = 8_000_000; // 8MB hard cap (logo is 500KB client-side, line photos 5MB)
+const MAX_BYTES = 16_000_000; // 16MB hard cap (logo is 500KB client-side, line photos 15MB)
 const ALLOWED_OWNER_KINDS = new Set(['quote_line', 'order_line', 'cabinet_template']);
 
 Deno.serve(async (req) => {
