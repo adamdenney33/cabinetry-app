@@ -138,38 +138,41 @@ function _liveLinkPanel(kind) {
   </div>`;
 }
 
-/** Applicable editable specs for a cabinet line. @param {any} l @returns {Array<{key:string,label:string}>} */
+/** The full cabinet spec catalogue. Always returns every spec; `used` flags the
+ *  ones this cabinet actually has (the rest can still be unlocked, shown muted).
+ *  @param {any} l @returns {Array<{key:string,label:string,used:boolean}>} */
 function _llSpecsFor(l) {
   if ((l.line_kind || 'cabinet') !== 'cabinet') return [];
   const doors = (l.door_count || 0) > 0;
   const drawers = (l.drawer_count || 0) > 0;
-  const out = [];
-  if (l.w_mm || l.h_mm || l.d_mm) out.push({ key: 'dims', label: 'Dimensions (W×H×D)' });
-  out.push({ key: 'material', label: 'Carcass material' });
-  out.push({ key: 'finish', label: 'Carcass finish' });
-  out.push({ key: 'construction', label: 'Construction' });
-  out.push({ key: 'base', label: 'Base / plinth' });
-  if (doors) out.push({ key: 'doors', label: 'Door count' });
-  if (doors) out.push({ key: 'doorPct', label: 'Door area (% of front)' });
-  if (doors) out.push({ key: 'doorType', label: 'Door style' });
-  if (doors) out.push({ key: 'doorMat', label: 'Door material' });
-  if (doors) out.push({ key: 'doorFinish', label: 'Door finish' });
-  if (doors) out.push({ key: 'handle', label: 'Handles' });
-  if (drawers) out.push({ key: 'drawers', label: 'Drawer count' });
-  if (drawers) out.push({ key: 'drawerPct', label: 'Drawer area (% of front)' });
-  if (drawers) out.push({ key: 'drawerType', label: 'Drawer front style' });
-  if (drawers) out.push({ key: 'drawerMat', label: 'Drawer front material' });
-  if (drawers) out.push({ key: 'drawerFinish', label: 'Drawer front finish' });
-  out.push({ key: 'shelves', label: 'Shelves' });
-  return out;
+  return [
+    { key: 'dims', label: 'Dimensions (W×H×D)', used: !!(l.w_mm || l.h_mm || l.d_mm) },
+    { key: 'material', label: 'Carcass material', used: !!l.material },
+    { key: 'finish', label: 'Carcass finish', used: !!(l.finish && l.finish !== 'None') },
+    { key: 'construction', label: 'Construction', used: !!l.construction },
+    { key: 'base', label: 'Base / plinth', used: !!(l.base_type && l.base_type !== 'None') },
+    { key: 'doors', label: 'Door count', used: doors },
+    { key: 'doorPct', label: 'Door area (% of front)', used: doors },
+    { key: 'doorType', label: 'Door style', used: doors },
+    { key: 'doorMat', label: 'Door material', used: doors },
+    { key: 'doorFinish', label: 'Door finish', used: doors },
+    { key: 'handle', label: 'Handles', used: !!l.door_handle },
+    { key: 'drawers', label: 'Drawer count', used: drawers },
+    { key: 'drawerPct', label: 'Drawer area (% of front)', used: drawers },
+    { key: 'drawerType', label: 'Drawer front style', used: drawers },
+    { key: 'drawerMat', label: 'Drawer front material', used: drawers },
+    { key: 'drawerFinish', label: 'Drawer front finish', used: drawers },
+    { key: 'shelves', label: 'Shelves', used: (l.fixed_shelves || 0) > 0 },
+  ];
 }
 
 /** One line's controls: Optional + an editable-specs expander. @param {any} l @returns {string} */
 function _llLineControl(l) {
   const specs = _llSpecsFor(l);
   const ed = Array.isArray(l.editable_specs) ? l.editable_specs : [];
-  const specRows = specs.map(sp =>
-    `<label class="ll-spec-opt"><input type="checkbox" class="ll-spec" data-line="${l.id}" data-spec="${sp.key}" ${ed.includes(sp.key) ? 'checked' : ''} onchange="_llAutoSave()"> ${sp.label}</label>`).join('');
+  const specRows = `<div class="ll-spec-all"><a onclick="_llSpecAll(${l.id},true)">All on</a><span>·</span><a onclick="_llSpecAll(${l.id},false)">All off</a></div>`
+    + specs.map(sp =>
+      `<label class="ll-spec-opt ${sp.used ? 'used' : 'unused'}"><input type="checkbox" class="ll-spec" data-line="${l.id}" data-spec="${sp.key}" ${ed.includes(sp.key) ? 'checked' : ''} onchange="_llAutoSave()"> <span class="ll-spec-name">${sp.label}</span>${sp.used ? '<span class="ll-spec-used">in use</span>' : ''}</label>`).join('');
   const specBlock = specs.length
     ? `<div class="ll-spec-caret" id="ll-caret-${l.id}" onclick="_llToggleSpecs(${l.id})">Editable specs${ed.length ? ` · ${ed.length}` : ''} ▾</div>
        <div class="ll-spec-list" id="ll-specs-${l.id}" style="display:none">${specRows}</div>`
@@ -187,6 +190,12 @@ function _llLineControl(l) {
 function _llToggleSpecs(lineId) {
   const el = document.getElementById('ll-specs-' + lineId);
   if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+/** Check / uncheck every editable-spec box for a line, then save. @param {number} lineId @param {boolean} on */
+function _llSpecAll(lineId, on) {
+  document.querySelectorAll('.ll-spec[data-line="' + lineId + '"]').forEach(cb => { /** @type {HTMLInputElement} */ (cb).checked = !!on; });
+  _llAutoSave();
 }
 
 // ── Main-pane preview (iframe of /q) + two-way chat launcher ──────────────────
@@ -311,6 +320,6 @@ function _orderPdfMenu(orderId) {
 Object.assign(window, {
   _llTab, _llReset, _llShareQuote, _llClientId, _llEnsureLines, _llTabBar, _llLiveBodyDiv,
   _llEnterLive, switchQuoteTab, switchOrderTab, _liveLinkPanel, _llSpecsFor, _llLineControl,
-  _llToggleSpecs, _llRenderPreview, _llAfterSave, _sendLiveLink, _orderPdfMenu, _openLiveLinkTab,
+  _llToggleSpecs, _llSpecAll, _llRenderPreview, _llAfterSave, _sendLiveLink, _orderPdfMenu, _openLiveLinkTab,
   _llAutoSave, _llOnSaved, _llSaveError,
 });
