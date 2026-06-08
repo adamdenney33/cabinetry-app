@@ -104,6 +104,9 @@ Deno.serve(async (req) => {
       if (body.d_mm != null && allows('dims')) { const d = clamp(body.d_mm, 100, 1200); if (d === null) return jsonResponse({ error: 'depth_out_of_range' }, 422, cors); patch.d_mm = d; }
       if (body.door_count != null && allows('doors')) { const n = clamp(body.door_count, 0, 6); if (n === null) return jsonResponse({ error: 'doors_out_of_range' }, 422, cors); patch.door_count = n; }
       if (body.drawer_count != null && allows('drawers')) { const n = clamp(body.drawer_count, 0, 12); if (n === null) return jsonResponse({ error: 'drawers_out_of_range' }, 422, cors); patch.drawer_count = n; }
+      // Door / drawer share of the front face (% — clamped 0–100).
+      if (body.door_pct != null && allows('doorPct')) { const n = clamp(body.door_pct, 0, 100); if (n === null) return jsonResponse({ error: 'door_pct_out_of_range' }, 422, cors); patch.door_pct = n; }
+      if (body.drawer_pct != null && allows('drawerPct')) { const n = clamp(body.drawer_pct, 0, 100); if (n === null) return jsonResponse({ error: 'drawer_pct_out_of_range' }, 422, cors); patch.drawer_pct = n; }
       // Per-component finishes / drawer-front material — catalogued names only.
       if (typeof body.door_finish === 'string' && allows('doorFinish')) {
         const f = body.door_finish.slice(0, 80);

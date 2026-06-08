@@ -147,8 +147,10 @@ function _llSpecsFor(l) {
   out.push({ key: 'material', label: 'Carcass material' });
   out.push({ key: 'finish', label: 'Carcass finish' });
   if (doors) out.push({ key: 'doors', label: 'Door count' });
+  if (doors) out.push({ key: 'doorPct', label: 'Door area (% of front)' });
   if (doors) out.push({ key: 'doorFinish', label: 'Door finish' });
   if (drawers) out.push({ key: 'drawers', label: 'Drawer count' });
+  if (drawers) out.push({ key: 'drawerPct', label: 'Drawer area (% of front)' });
   if (drawers) out.push({ key: 'drawerMat', label: 'Drawer front material' });
   if (drawers) out.push({ key: 'drawerFinish', label: 'Drawer front finish' });
   out.push({ key: 'shelves', label: 'Shelves' });
