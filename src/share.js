@@ -76,8 +76,9 @@ function _copyShareLink() {
   if (el && navigator.clipboard) { navigator.clipboard.writeText(el.textContent || ''); _toast('Link copied', 'success'); }
 }
 
-/** @param {number} quoteId */
-async function _generateShareLink(quoteId) {
+/** @param {number} quoteId @param {'quote'|'order'} [kind] */
+async function _generateShareLink(quoteId, kind) {
+  if ((kind || 'quote') === 'order') return _generateOrderShareLink(quoteId);
   const q = /** @type {any} */ (quotes.find(x => x.id === quoteId));
   if (!q) return;
   const wasShared = !!q.share_token;
@@ -114,17 +115,33 @@ async function _generateShareLink(quoteId) {
   }
 }
 
-/** Open the live customer page for an order — reuse the originating quote's /q
- *  link (one link per deal, evolving quote→order). Falls back to the Share panel
- *  so the business can mint it if the quote hasn't been shared yet.
+/** Mint (or refresh) an order's OWN live link: write share_token + share_settings
+ *  on the order. Orders are view-only on the live page, so there's no per-line
+ *  customer snapshot to write. @param {number} orderId */
+async function _generateOrderShareLink(orderId) {
+  const o = /** @type {any} */ (orders.find(/** @param {any} x */ x => x.id === orderId));
+  if (!o) return;
+  const wasShared = !!o.share_token;
+  const token = o.share_token || (crypto.randomUUID ? crypto.randomUUID().replace(/-/g, '').slice(0, 16) : Math.random().toString(36).slice(2, 14));
+  const settings = (o.share_settings && typeof o.share_settings === 'object') ? o.share_settings : {};
+  try {
+    await _db('orders').update(/** @type {any} */ ({ share_token: token, share_settings: settings })).eq('id', orderId);
+    o.share_token = token; o.share_settings = settings;
+    if (typeof _track === 'function' && !wasShared) _track('order_shared', {});
+    if (typeof _llOnSaved === 'function') _llOnSaved(wasShared);
+  } catch (e) {
+    if (typeof _llSaveError === 'function') _llSaveError();
+  }
+}
+
+/** Open the order's OWN live customer page (mints the link first if needed).
  *  @param {number} orderId */
 function _openLiveOrderPage(orderId) {
   const o = /** @type {any} */ (orders).find(/** @param {any} x */ x => x.id === orderId);
   if (!o) { _toast('Order not found', 'error'); return; }
-  const lq = /** @type {any} */ (quotes).find(/** @param {any} q */ q => q.id === o.quote_id);
-  if (lq && lq.share_token) { window.open(_shareLink(lq.share_token), '_blank'); return; }
-  if (o.quote_id && typeof _openSharePanel === 'function') { _openSharePanel(o.quote_id); return; }
-  _toast('Share the originating quote to open its live page', 'info');
+  if (o.share_token) { window.open(_shareLink(o.share_token), '_blank'); return; }
+  if (typeof _openLiveLinkTab === 'function') { _openLiveLinkTab('order', orderId); return; }
+  _toast('Open the order to set up its live link', 'info');
 }
 
-Object.assign(window, { _openSharePanel, _generateShareLink, _shareLink, _shTgl, _copyShareLink, _openLiveOrderPage });
+Object.assign(window, { _openSharePanel, _generateShareLink, _generateOrderShareLink, _shareLink, _shTgl, _copyShareLink, _openLiveOrderPage });

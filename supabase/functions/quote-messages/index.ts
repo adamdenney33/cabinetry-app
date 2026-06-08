@@ -22,18 +22,28 @@ Deno.serve(async (req) => {
   if (!token || token.length < 8) return jsonResponse({ error: 'Missing token' }, 400, cors);
 
   try {
-    const { data: quote } = await admin
-      .from('quotes').select('id, user_id, client_id').eq('share_token', token).maybeSingle();
-    if (!quote) return jsonResponse({ error: 'not_found' }, 404, cors);
-    if (!quote.client_id) return jsonResponse({ messages: [], disabled: true }, 200, cors);
+    // Resolve the token against quotes first, then orders. Both share the
+    // client-scoped conversation; tag the customer's row with whichever posted.
+    let dealKind: 'quote' | 'order' = 'quote';
+    let deal = (await admin
+      .from('quotes').select('id, user_id, client_id').eq('share_token', token).maybeSingle()).data as
+      { id: number; user_id: string; client_id: number | null } | null;
+    if (!deal) {
+      const { data: o } = await admin
+        .from('orders').select('id, user_id, client_id').eq('share_token', token).maybeSingle();
+      if (o) { deal = o; dealKind = 'order'; }
+    }
+    if (!deal) return jsonResponse({ error: 'not_found' }, 404, cors);
+    if (!deal.client_id) return jsonResponse({ messages: [], disabled: true }, 200, cors);
 
     if (action === 'send') {
       const text = body.slice(0, 4000).trim();
       if (!text) return jsonResponse({ error: 'empty' }, 400, cors);
-      await admin.from('customer_messages').insert({
-        user_id: quote.user_id, client_id: quote.client_id, quote_id: quote.id,
-        sender: 'customer', body: text,
-      });
+      const row: Record<string, unknown> = {
+        user_id: deal.user_id, client_id: deal.client_id, sender: 'customer', body: text,
+      };
+      if (dealKind === 'order') row.order_id = deal.id; else row.quote_id = deal.id;
+      await admin.from('customer_messages').insert(row);
       return jsonResponse({ ok: true }, 200, cors);
     }
 
@@ -41,12 +51,12 @@ Deno.serve(async (req) => {
     const { data: msgs } = await admin
       .from('customer_messages')
       .select('sender, body, created_at')
-      .eq('client_id', quote.client_id)
+      .eq('client_id', deal.client_id)
       .order('created_at', { ascending: true });
     // Mark business messages as read by the customer (best-effort).
     await admin.from('customer_messages')
       .update({ read_at: new Date().toISOString() })
-      .eq('client_id', quote.client_id).eq('sender', 'business').is('read_at', null);
+      .eq('client_id', deal.client_id).eq('sender', 'business').is('read_at', null);
 
     return jsonResponse({ messages: msgs ?? [] }, 200, cors);
   } catch (err) {

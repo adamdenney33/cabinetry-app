@@ -181,11 +181,15 @@ function specEditor(l) {
 // ── rail ─────────────────────────────────────────────────────────────────────
 function rail() {
   const t = totals();
+  const isOrder = D?.kind === 'order';
   const accepted = !!D?.quote?.accepted_at;
-  const cta = accepted
-    ? `<div class="qp-chip" style="background:var(--success);color:#fff;display:block;text-align:center;padding:10px;font-size:12px">✓ Accepted — thank you</div>`
-    : `<button class="btn btn-primary btn-lg" style="margin-top:14px" onclick="${D?.settings?.accept_payment ? '__qp.payDeposit()' : '__qp.accept()'}">${D?.settings?.accept_payment ? 'Accept &amp; Pay deposit' : 'Accept this quote'}</button>`;
-  return `<h3>Your quote</h3>
+  // Orders are confirmed — no accept / pay CTA on the live page.
+  const cta = isOrder
+    ? ''
+    : (accepted
+      ? `<div class="qp-chip" style="background:var(--success);color:#fff;display:block;text-align:center;padding:10px;font-size:12px">✓ Accepted — thank you</div>`
+      : `<button class="btn btn-primary btn-lg" style="margin-top:14px" onclick="${D?.settings?.accept_payment ? '__qp.payDeposit()' : '__qp.accept()'}">${D?.settings?.accept_payment ? 'Accept &amp; Pay deposit' : 'Accept this quote'}</button>`);
+  return `<h3>Your ${isOrder ? 'order' : 'quote'}</h3>
     <div style="font-size:12px;color:var(--muted);margin-bottom:10px">${lines.filter((l) => l.customer_included).length} of ${lines.length} items included</div>
     <div class="qp-rl"><span>Subtotal</span><span>${money(t.subtotal)}</span></div>
     ${t.taxPct ? `<div class="qp-rl"><span>VAT (${t.taxPct}%)</span><span>${money(t.tax)}</span></div>` : ''}
@@ -199,14 +203,19 @@ function rail() {
 // ── full render ──────────────────────────────────────────────────────────────
 function render() {
   const q = D.quote || {};
+  const isOrder = D.kind === 'order';
+  const noun = isOrder ? 'order' : 'quote';
+  const statusChip = isOrder
+    ? esc(String(q.status || 'order').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()))
+    : esc(q.accepted_at ? 'Accepted' : 'Awaiting your approval');
   const greetingName = (D.client?.name || '').split(/[ &]/)[0] || 'there';
   byId('qp-root').innerHTML = `
     <div class="qp-hero">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap">
-        <div><h1>Your quote${q.number ? ' · ' + esc(q.number) : ''}</h1><div class="sub">${q.date ? 'Issued ' + esc(q.date) : ''}</div></div>
-        <span class="qp-chip" style="background:rgba(80,140,220,.15);color:#2962d9">${esc(q.accepted_at ? 'Accepted' : 'Awaiting your approval')}</span>
+        <div><h1>Your ${noun}${q.number ? ' · ' + esc(q.number) : ''}</h1><div class="sub">${q.date ? (isOrder ? 'Created ' : 'Issued ') + esc(q.date) : ''}</div></div>
+        <span class="qp-chip" style="background:rgba(80,140,220,.15);color:#2962d9">${statusChip}</span>
       </div>
-      <div class="qp-greeting">Hi ${esc(greetingName)}, here's your quote${D.business?.name ? ' from <strong>' + esc(D.business.name) + '</strong>' : ''}. ${D.settings?.allow_select ? 'Toggle any optional items and the total updates as you go.' : ''} ${D.settings?.allow_edit ? 'Tap Edit on a line to request a spec change.' : ''}</div>
+      <div class="qp-greeting">Hi ${esc(greetingName)}, here's your ${noun}${D.business?.name ? ' from <strong>' + esc(D.business.name) + '</strong>' : ''}. ${D.settings?.allow_select ? 'Toggle any optional items and the total updates as you go.' : ''} ${D.settings?.allow_edit ? 'Tap Edit on a line to request a spec change.' : ''}</div>
     </div>
     <div class="qp-two">
       <div class="card" style="overflow:hidden"><div class="card-header"><div class="card-title">Your items</div></div><div id="qp-lines"></div></div>

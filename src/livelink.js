@@ -21,12 +21,12 @@ let _llTab = { quote: 'builder', order: 'builder' };
 /** Reset to the builder tab (call when a different record opens). @param {'quote'|'order'} kind */
 function _llReset(kind) { _llTab[kind] = 'builder'; }
 
-/** The quote that backs the live link for this section (order -> its origin quote).
- *  @param {'quote'|'order'} kind @returns {any} */
+/** The record that backs the live link for this section: a quote for 'quote',
+ *  and the order ITSELF for 'order' (orders are independently shareable — they
+ *  carry their own share_token / share_settings). @param {'quote'|'order'} kind @returns {any} */
 function _llShareQuote(kind) {
   if (kind === 'quote') return _qpState.quoteId ? quotes.find(/** @param {any} q */ q => q.id === _qpState.quoteId) : null;
-  const o = _opState.orderId ? orders.find(/** @param {any} x */ x => x.id === _opState.orderId) : null;
-  return o && o.quote_id ? quotes.find(/** @param {any} q */ q => q.id === o.quote_id) : null;
+  return _opState.orderId ? orders.find(/** @param {any} x */ x => x.id === _opState.orderId) : null;
 }
 
 /** Client id for the conversation in this section. @param {'quote'|'order'} kind */
@@ -36,16 +36,18 @@ function _llClientId(kind) {
   return o ? o.client_id : null;
 }
 
-/** Ensure a quote's line rows are loaded for the controls. @param {any} q */
-async function _llEnsureLines(q) {
-  if (!q) return [];
-  if (!Array.isArray(q._lines)) {
+/** Ensure the controls' line rows are loaded. Quotes load quote_lines; orders
+ *  are view-only on the live page (lines render server-side) so we skip.
+ *  @param {any} entity @param {'quote'|'order'} [kind] */
+async function _llEnsureLines(entity, kind) {
+  if (!entity || kind === 'order') return (entity && entity._lines) || [];
+  if (!Array.isArray(entity._lines)) {
     try {
-      const { data } = await _db('quote_lines').select('*').eq('quote_id', q.id).order('position');
-      q._lines = (data || []).map(/** @param {any} r */ r => ({ ...r }));
-    } catch (e) { q._lines = []; }
+      const { data } = await _db('quote_lines').select('*').eq('quote_id', entity.id).order('position');
+      entity._lines = (data || []).map(/** @param {any} r */ r => ({ ...r }));
+    } catch (e) { entity._lines = []; }
   }
-  return q._lines;
+  return entity._lines;
 }
 
 // ── Tab bar (rendered by renderQuoteEditor / renderOrderEditor) ───────────────
@@ -72,14 +74,14 @@ function _llLiveBodyDiv(kind) {
  *  tab is active: fill the live body + render the preview. @param {'quote'|'order'} kind */
 async function _llEnterLive(kind) {
   const q = _llShareQuote(kind);
-  await _llEnsureLines(q);
+  await _llEnsureLines(q, kind);
   const bodyId = kind === 'quote' ? 'ql-live-body' : 'ol-live-body';
   const body = document.getElementById(bodyId);
   if (body) body.innerHTML = _liveLinkPanel(kind);
   _llSyncLineControls();
   _llRenderPreview(kind);
   // Auto-create the live link on first open (no manual "Generate" button).
-  if (q && !q.share_token && typeof _generateShareLink === 'function') await _generateShareLink(q.id);
+  if (q && !q.share_token && typeof _generateShareLink === 'function') await _generateShareLink(q.id, kind);
 }
 
 // ── Tab switching ────────────────────────────────────────────────────────────
@@ -91,7 +93,7 @@ async function switchOrderTab(tab) { await _llSwitch('order', tab); }
 /** @param {'quote'|'order'} kind @param {'builder'|'live'} tab */
 async function _llSwitch(kind, tab) {
   _llTab[kind] = tab;
-  if (tab === 'live') { await _llEnsureLines(_llShareQuote(kind)); }
+  if (tab === 'live') { await _llEnsureLines(_llShareQuote(kind), kind); }
   // Re-render the editor (rebuilds the tab bar + bodies with correct active state).
   if (kind === 'quote') { if (typeof renderQuoteEditor === 'function') renderQuoteEditor(); }
   else { if (typeof renderOrderEditor === 'function') renderOrderEditor(); }
@@ -103,12 +105,34 @@ async function _llSwitch(kind, tab) {
 }
 
 // ── The controls panel (migrated from share.js _sharePanelHtml + per-spec) ────
+/** Order live-link panel: the customer page is view-only, so just the link +
+ *  Send + a note — no per-line / spec / selection controls (those stay
+ *  quote-only). @param {any} o @returns {string} */
+function _orderLinkPanel(o) {
+  const shared = !!o.share_token;
+  const link = shared ? _shareLink(o.share_token) : '';
+  const linkBox = shared
+    ? `<div class="ll-link"><code id="share-link">${_escHtml(link)}</code><button class="btn btn-primary ll-copy" onclick="_copyShareLink()">Copy</button></div>
+       <div class="ll-link-actions">
+         <button class="btn btn-primary" onclick="_sendLiveLink('order',${o.id})">Send live link</button>
+         <a class="btn btn-outline" href="${_escHtml(link)}" target="_blank">Open ↗</a>
+       </div>`
+    : `<div class="ll-empty">Creating live link…</div>`;
+  return `<div class="ll-pad">
+    ${linkBox}
+    <div class="ll-h">Customer access</div>
+    <div class="ll-hint">Customers can view this order’s items and message you from the live page. Spec changes and item selection stay on the quote.</div>
+    <div class="ll-autosave" id="ll-autosave">${shared ? 'Live link ready' : 'Creating live link…'}</div>
+  </div>`;
+}
+
 /** @param {'quote'|'order'} kind @returns {string} */
 function _liveLinkPanel(kind) {
   const q = _llShareQuote(kind);
   if (!q) {
-    return `<div class="ll-pad"><div class="ll-empty">This order isn’t linked to a shareable quote yet, so it has no live link. Create the order from a shared quote to enable a live page here.</div></div>`;
+    return `<div class="ll-pad"><div class="ll-empty">${kind === 'order' ? 'Open an order to set up its live link.' : 'Open a quote to set up its live link.'}</div></div>`;
   }
+  if (kind === 'order') return _orderLinkPanel(q);
   const s = q.share_settings || {};
   const shared = !!q.share_token;
   const lines = q._lines || [];
@@ -251,7 +275,7 @@ function _llAutoSave() {
   if (!q) return;
   const s = document.getElementById('ll-autosave'); if (s) s.textContent = 'Saving…';
   if (_llSaveTimer) clearTimeout(_llSaveTimer);
-  _llSaveTimer = setTimeout(() => { if (typeof _generateShareLink === 'function') _generateShareLink(q.id); }, 450);
+  _llSaveTimer = setTimeout(() => { if (typeof _generateShareLink === 'function') _generateShareLink(q.id, kind); }, 450);
 }
 /** After a save: the first share re-renders (so the link box + preview appear);
  *  later saves refresh the preview and flash "Saved". @param {boolean} wasShared */
@@ -266,28 +290,27 @@ function _llSaveError() { const s = document.getElementById('ll-autosave'); if (
 // ── Send live link (pre-filled email) ────────────────────────────────────────
 /** @param {'quote'|'order'} kind @param {number} id */
 async function _sendLiveLink(kind, id) {
-  /** @type {any} */ let q = null;
-  /** @type {any} */ let clientId = null;
-  if (kind === 'quote') { q = quotes.find(/** @param {any} x */ x => x.id === id); clientId = q ? q.client_id : null; }
-  else {
-    const o = orders.find(/** @param {any} x */ x => x.id === id);
-    clientId = o ? o.client_id : null;
-    q = o && o.quote_id ? quotes.find(/** @param {any} x */ x => x.id === o.quote_id) : null;
-  }
-  if (!q) { _toast(kind === 'order' ? 'Link this order to a shared quote first' : 'Quote not found', 'info'); return; }
-  if (!q.share_token) {
+  /** @type {any} */ const entity = kind === 'quote'
+    ? quotes.find(/** @param {any} x */ x => x.id === id)
+    : orders.find(/** @param {any} x */ x => x.id === id);
+  if (!entity) { _toast(kind === 'order' ? 'Order not found' : 'Quote not found', 'info'); return; }
+  if (!entity.share_token) {
     _toast('Set up the live link first', 'info');
-    if (kind === 'quote' && typeof loadQuoteIntoSidebar === 'function') { await loadQuoteIntoSidebar(q.id); switchQuoteTab('live'); }
+    if (kind === 'quote' && typeof loadQuoteIntoSidebar === 'function') { await loadQuoteIntoSidebar(entity.id); switchQuoteTab('live'); }
     else if (kind === 'order' && typeof loadOrderIntoSidebar === 'function') { await loadOrderIntoSidebar(id); switchOrderTab('live'); }
     return;
   }
-  const client = clientId ? clients.find(/** @param {any} c */ c => c.id === clientId) : null;
+  const client = entity.client_id ? clients.find(/** @param {any} c */ c => c.id === entity.client_id) : null;
   const email = (client && client.email) ? client.email : '';
   const biz = _llBizName();
-  const link = _shareLink(q.share_token);
+  const link = _shareLink(entity.share_token);
   const first = (client && client.name) ? (' ' + String(client.name).split(/[ &]/)[0]) : '';
-  const subject = `Your quote${q.quote_number ? ' ' + q.quote_number : ''} from ${biz}`;
-  const body = `Hi${first},\n\nHere's your quote — you can review the items, choose what you'd like, and approve it online here:\n\n${link}\n\nAny questions, just reply to this email or send us a message on the page.\n\nThanks,\n${biz}`;
+  const noun = kind === 'order' ? 'order' : 'quote';
+  const num = kind === 'order' ? entity.order_number : entity.quote_number;
+  const subject = `Your ${noun}${num ? ' ' + num : ''} from ${biz}`;
+  const body = kind === 'order'
+    ? `Hi${first},\n\nHere's your order — you can view the details and message us any time on this page:\n\n${link}\n\nAny questions, just reply to this email or send us a message on the page.\n\nThanks,\n${biz}`
+    : `Hi${first},\n\nHere's your quote — you can review the items, choose what you'd like, and approve it online here:\n\n${link}\n\nAny questions, just reply to this email or send us a message on the page.\n\nThanks,\n${biz}`;
   window.location.href = `mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }
 
