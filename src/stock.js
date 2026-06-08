@@ -240,6 +240,7 @@ const STOCK_CATS = ['Sheet Goods','Solid Timber','Edge Banding','Hardware','Fini
 // cost = £/L. When the app is in imperial mode the form shows US gallons +
 // ft²/gal and we convert on the way in/out. The quote integration prices a
 // finish by surface area: £/m² = cost-per-litre ÷ coverage(m²/L).
+const FIN_DEFAULT_COV_M2L = 10;            // default coverage for new finishes: 10 m²/L
 const L_PER_USGAL = 3.785411784;          // 1 US gallon = 3.785411784 L
 const SQFT_PER_SQM = 10.7639104167;        // 1 m² = 10.7639 ft²
 // 1 (m²/L) expressed as (ft²/US-gal): multiply by ft²/m² then by L/gal
@@ -455,6 +456,12 @@ function stockCatChanged() {
   _setLabel('stock-low-label', isFin ? `Low Alert (${vol})` : 'Low Alert');
   _setLabel('stock-cost-label', isFin ? `Cost / ${vol}` : 'Cost / Unit');
   _setLabel('stock-fin-cov-label', `Coverage (${_finCovUnit()})`);
+  // Default coverage to 10 m²/L (unit-converted) for NEW finishing items —
+  // editStockItem sets _editingStockId first, so existing items aren't clobbered.
+  if (isFin && !window._editingStockId) {
+    const covEl = /** @type {HTMLInputElement|null} */ (_byId('stock-fin-coverage'));
+    if (covEl) covEl.value = _fmtNum(_finCovFromM2L(FIN_DEFAULT_COV_M2L));
+  }
 }
 /** @param {string} id @param {string} text */
 function _setLabel(id, text) { const el = _byId(id); if (el) el.textContent = text; }
