@@ -127,6 +127,7 @@ function _liveLinkPanel(kind) {
     <div class="ll-h">What the customer can do</div>
     ${tog('sh-select', 'Allow item selection', 'Include / exclude optional lines', s.allow_select !== false)}
     ${tog('sh-edit', 'Allow spec editing', 'Customer can request changes to unlocked specs', !!s.allow_edit)}
+    <div class="ll-h">Payment</div>
     ${tog('sh-pay', 'Accept card payment', 'Pays into your Stripe · platform fee applies', !!s.accept_payment)}
     <div class="share-toggle-row"><div><div class="st-label">Take a deposit</div><div class="st-desc">% due to confirm the order</div></div>
       <div class="ll-dep"><input type="number" id="sh-dep" value="${s.deposit_pct != null ? s.deposit_pct : 40}" min="0" max="100" onchange="_llAutoSave()"><span>%</span></div></div>
