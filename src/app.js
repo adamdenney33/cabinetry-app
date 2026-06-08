@@ -665,7 +665,7 @@ function _lineRowHtml(row, i) {
     return `<tr ondblclick="_lineEditCabinetRow(${i})" title="Double-click to edit in Cabinet Builder">
       <td class="col-handle">⋮</td>
       <td class="col-dot"><span></span></td>
-      <td class="col-desc"><div class="li-desc-wrap">${_lineCabinetBtn(i)}${_linePhotoBtn(row)}<textarea class="cl-input desc" rows="1" oninput="_lineUpdate(${i}, 'name', this.value);_autoGrowTextarea(this)">${_escHtml(descDefault)}</textarea></div></td>
+      <td class="col-desc"><div class="li-desc-wrap">${_linePhotoBtn(row)}${_lineCabinetBtn(i)}<textarea class="cl-input desc" rows="1" oninput="_lineUpdate(${i}, 'name', this.value);_autoGrowTextarea(this)">${_escHtml(descDefault)}</textarea></div></td>
       <td class="col-qty"><input class="cl-input right" type="number" min="1" step="1" value="${row.qty ?? 1}" oninput="_lineUpdate(${i}, 'qty', this.value)"></td>
       <td class="col-price"><div class="cl-input right is-computed" style="padding:5px 4px">${Number(unitPrice || 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</div></td>
       <td class="col-hrs" title="Computed from cabinet labour"><div class="cl-input right is-computed" style="padding:5px 4px">${hrs.toFixed(1)}</div></td>
