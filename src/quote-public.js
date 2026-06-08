@@ -187,8 +187,8 @@ function rail() {
   const cta = isOrder
     ? ''
     : (accepted
-      ? `<div class="qp-chip" style="background:var(--success);color:#fff;display:block;text-align:center;padding:10px;font-size:12px">✓ Accepted — thank you</div>`
-      : `<button class="btn btn-primary btn-lg" style="margin-top:14px" onclick="${D?.settings?.accept_payment ? '__qp.payDeposit()' : '__qp.accept()'}">${D?.settings?.accept_payment ? 'Accept &amp; Pay deposit' : 'Accept this quote'}</button>`);
+      ? `<div class="qp-chip" style="background:var(--success);color:#fff;display:block;text-align:center;padding:14px 16px;font-size:12px;margin-top:16px;line-height:1.2">✓ Accepted — thank you</div>`
+      : `<button class="btn btn-primary btn-lg" style="margin-top:16px" onclick="${D?.settings?.accept_payment ? '__qp.payDeposit()' : '__qp.accept()'}">${D?.settings?.accept_payment ? 'Accept &amp; Pay deposit' : 'Accept this quote'}</button>`);
   return `<h3>Your ${isOrder ? 'order' : 'quote'}</h3>
     <div style="font-size:12px;color:var(--muted);margin-bottom:10px">${lines.filter((l) => l.customer_included).length} of ${lines.length} items included</div>
     <div class="qp-rl"><span>Subtotal</span><span>${money(t.subtotal)}</span></div>
@@ -197,7 +197,7 @@ function rail() {
     ${t.depPct ? `<div class="qp-dep"><div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:12px;font-weight:700;color:var(--text2)">Deposit (${t.depPct}%)</span><span class="amt">${money(t.deposit)}</span></div><div class="bal">Balance of ${money(t.balance)} on completion</div></div>` : ''}
     ${t.pending ? `<div style="font-size:11px;color:var(--danger);margin-top:10px">${t.pending} item${t.pending > 1 ? 's' : ''} awaiting a confirmed price after your spec change.</div>` : ''}
     ${cta}
-    <div style="display:flex;align-items:center;justify-content:center;gap:6px;font-size:10.5px;color:var(--muted);margin-top:12px"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg> Secured · ${esc(D?.business?.name || '')}</div>`;
+    <div style="display:flex;align-items:center;justify-content:center;gap:6px;font-size:10.5px;color:var(--muted);margin-top:14px"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg> Secured · ${esc(D?.business?.name || '')}</div>`;
 }
 
 // ── full render ──────────────────────────────────────────────────────────────
