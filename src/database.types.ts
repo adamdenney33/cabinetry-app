@@ -1277,6 +1277,7 @@ export type Database = {
         Row: {
           category: string | null
           cost: number | null
+          coverage_sqm: number | null
           created_at: string | null
           glue: string | null
           h: number | null
@@ -1299,6 +1300,7 @@ export type Database = {
         Insert: {
           category?: string | null
           cost?: number | null
+          coverage_sqm?: number | null
           created_at?: string | null
           glue?: string | null
           h?: number | null
@@ -1321,6 +1323,7 @@ export type Database = {
         Update: {
           category?: string | null
           cost?: number | null
+          coverage_sqm?: number | null
           created_at?: string | null
           glue?: string | null
           h?: number | null

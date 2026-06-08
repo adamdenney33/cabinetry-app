@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Clients · ProCabinet (real layout + Option C chat)</title>
+<link rel="stylesheet" href="../../styles.css">
+<link rel="stylesheet" href="assets/_mock.css">
+<style>
+  /* state pill + chat chip + message cards (Option C) reused on the real layout */
+  .seg-count { background: var(--accent); color: #fff; font-size: 10px; font-weight: 800; min-width: 17px; height: 17px; padding: 0 5px; border-radius: 9px; display: inline-flex; align-items: center; justify-content: center; margin-left: 5px; }
+  .view { display: none; } .view.active { display: block; }
+  .chat-chip { font-size: 11px; font-weight: 600; padding: 5px 11px; border-radius: 999px; background: var(--surface2); border: 1px solid var(--border); color: var(--text2); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0; transition: all .15s; }
+  .chat-chip:hover { border-color: var(--accent); color: var(--accent); }
+  .chat-chip.needs { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .chat-chip svg { color: inherit; }
+  .cc-row { font-size: 11.5px; padding: 4px 6px; border-radius: 4px; cursor: pointer; display: flex; align-items: center; flex-wrap: wrap; }
+  .cc-row:hover { background: var(--surface2); }
+  /* message cards */
+  .mcard { margin-bottom: 12px; }
+  .mc-top { display: flex; align-items: flex-start; gap: 12px; padding: 13px 15px; cursor: pointer; }
+  .mc-avatar { width: 38px; height: 38px; border-radius: 50%; background: var(--accent2); color: #fff; font-weight: 700; font-size: 14px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .mc-main { flex: 1; min-width: 0; }
+  .mc-name-row { display: flex; align-items: center; gap: 8px; }
+  .mc-name { font-weight: 700; font-size: 14px; }
+  .mc-time { font-size: 11px; color: var(--muted); margin-left: auto; }
+  .mc-sub { font-size: 11px; color: var(--muted); margin-top: 1px; }
+  .mc-sub .ref { color: var(--text2); font-weight: 600; }
+  .mc-last { font-size: 13px; color: var(--text2); line-height: 1.45; margin-top: 7px; display: flex; gap: 7px; }
+  .mc-last .mc-from { font-size: 11px; font-weight: 700; color: var(--muted); flex-shrink: 0; }
+  .mc-foot { display: flex; align-items: center; gap: 8px; margin-top: 11px; }
+  .state-pill { font-size: 10px; font-weight: 700; padding: 3px 10px; border-radius: 999px; display: inline-flex; align-items: center; gap: 5px; }
+  .state-pill.needs { background: var(--accent); color: #fff; }
+  .state-pill.replied { background: var(--surface2); color: var(--muted); border: 1px solid var(--border); }
+  .state-pill .sp-dot { width: 6px; height: 6px; border-radius: 50%; background: #fff; }
+  .mc-expand { border-top: 1px solid var(--border); background: var(--bg); display: none; }
+  .mcard.open .mc-expand { display: block; }
+  .mcard.open { border-color: var(--accent); }
+  .mc-thread { max-height: 300px; overflow: auto; padding: 14px 15px; }
+</style>
+</head>
+<body>
+<div id="chrome"></div>
+<div class="app-body">
+  <div class="section-panel active">
+
+    <!-- REAL CLIENTS SIDEBAR (New Client form) -->
+    <div class="sidebar mv-pane-editor" id="clients-sidebar" style="width:300px;min-width:260px">
+      <div class="sidebar-scroll">
+        <div class="form-section">
+          <div class="project-header">
+            <div class="ph-row1">
+              <svg class="ph-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+              <span class="ph-title">New Client</span>
+            </div>
+          </div>
+          <div class="form-group" style="margin-bottom:8px"><label>Name</label><input type="text" placeholder="e.g. John Smith"></div>
+          <div class="form-group" style="margin-bottom:8px"><label>Email</label><input type="email" placeholder="john@example.com"></div>
+          <div class="form-group" style="margin-bottom:8px"><label>Phone</label><input type="tel" placeholder="+44 7700 900000"></div>
+          <div class="form-group" style="margin-bottom:8px"><label>Address</label><textarea placeholder="Street, City..."></textarea></div>
+          <div class="form-group" style="margin-bottom:8px"><label>Notes</label><textarea placeholder="Any notes..."></textarea></div>
+          <button class="btn btn-primary" style="margin-top:4px;width:100%">+ Add Client</button>
+        </div>
+      </div>
+    </div>
+    <div class="resize-handle"></div>
+
+    <!-- MAIN -->
+    <div class="main-content mv-pane-list">
+      <div class="main-scroll" id="clients-main"></div>
+    </div>
+  </div>
+</div>
+
+<div class="mock-ribbon"><span class="dot"></span> App · Clients tab — real layout + Option C chat <a href="index.html">all mockups</a></div>
+
+<script src="assets/_seed.js"></script>
+<script>
+const M = window.MOCK;
+const C = M.contacts;
+const fmt = v => '£' + Number(v).toLocaleString('en-GB', { maximumFractionDigits: 0 });
+
+// Per-client quotes/orders (as the real Clients tab shows them inline)
+const DEALS = {
+  c1: { email: 'sarah.whitfield@gmail.com', phone: '07700 900 042', quotes: [{ label: 'Q-0042 · Kitchen — Maple Shaker', status: 'Viewed', badge: 'badge-blue', value: 7982.40 }], orders: [] },
+  c2: { email: 'marcus.lee@outlook.com', phone: '07700 900 118', quotes: [], orders: [{ label: 'Order 0029 · Utility room', status: 'Deposit paid', badge: 'badge-green', value: 3140 }] },
+  c3: { email: 'estate@theoldrectory.co.uk', phone: '01453 555 071', quotes: [{ label: 'Q-0040 · Boot room + bench', status: 'Accepted', badge: 'badge-teal', value: 5620 }], orders: [] },
+  c4: { email: 'j.okafor@gmail.com', phone: '07700 900 239', quotes: [{ label: 'Q-0039 · Alcove units ×2', status: 'Sent', badge: 'badge-blue', value: 1880 }, { label: 'Q-0035 · Bookcase', status: 'Draft', badge: 'badge-gray', value: 640 }], orders: [] },
+  c5: { email: 'priya.sam@gmail.com', phone: '07700 900 285', quotes: [], orders: [] },
+};
+
+document.getElementById('chrome').outerHTML = M.appChrome('clients', { orders: 3 });
+
+// runtime state per contact
+const state = {};
+C.forEach(c => { state[c.id] = { needs: c.who === 'them', unread: c.unread || 0, open: false }; });
+function totalUnread() { return C.reduce((n, c) => n + (state[c.id].unread || 0), 0); }
+
+const CHAT_ICON = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>';
+
+// ── shell (content header + filter + segment + views) ──────────────
+function shell() {
+  return `<div style="padding:24px;max-width:900px;margin:0 auto">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+      <h2 style="font-size:18px;font-weight:800;flex:1">Clients</h2>
+      <button class="btn btn-primary" style="width:auto">+ New client</button>
+    </div>
+    <div class="lib-filter-row">
+      <input type="text" class="lib-filter-input" placeholder="Search clients...">
+      <button class="btn btn-outline lib-filter-btn">&darr; Export</button>
+      <button class="btn btn-outline lib-filter-btn">&uarr; Import</button>
+    </div>
+    <div class="lib-toggle-row" style="justify-content:space-between">
+      <div class="seg" id="view-seg" role="group" aria-label="View">
+        <button class="seg-opt active" data-view="clients" onclick="setView('clients')">Clients</button>
+        <button class="seg-opt" data-view="messages" onclick="setView('messages')">Messages<span class="seg-count" id="seg-unread"></span></button>
+      </div>
+      <select class="lib-sort-select"><option>Sort by name</option><option>Sort by value</option><option>Needs reply first</option></select>
+    </div>
+    <div class="view active" id="view-clients"><div id="client-cards"></div></div>
+    <div class="view" id="view-messages">
+      <div class="feed-filters" id="msg-filters" style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap"></div>
+      <div id="msg-cards"></div>
+    </div>
+  </div>`;
+}
+
+// ── REAL client card (avatar + meta + Quotes/Orders sections) + chat ──
+function clientCard(c) {
+  const d = DEALS[c.id] || { quotes: [], orders: [] };
+  const s = state[c.id];
+  const totalValue = d.quotes.reduce((a, q) => a + q.value, 0) + d.orders.reduce((a, o) => a + o.value, 0);
+  const section = (label, items) => items.length
+    ? `<div class="cc-section" style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--border2)">
+        <div style="font-size:10px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">${label} (${items.length})</div>
+        ${items.map(it => `<div class="cc-row"><span>${M.esc(it.label)} · ${fmt(it.value)}</span><span class="badge ${it.badge}" style="font-size:9px;padding:1px 6px;margin-left:6px">${it.status}</span></div>`).join('')}
+      </div>` : '';
+  const metaBits = [d.email, d.quotes.length + ' quote' + (d.quotes.length !== 1 ? 's' : ''), d.orders.length + ' order' + (d.orders.length !== 1 ? 's' : ''), fmt(totalValue)].join(' · ');
+  const chip = s.needs
+    ? `<div class="chat-chip needs" onclick="event.stopPropagation();openFromClient('${c.id}')" title="Open conversation">${CHAT_ICON} ${s.unread ? s.unread + ' unread · reply' : 'Needs reply'}</div>`
+    : `<div class="chat-chip" onclick="event.stopPropagation();openFromClient('${c.id}')" title="Open conversation">${CHAT_ICON} ${c.id === 'c1' ? 4 : 2}</div>`;
+  return `<div class="client-card" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;margin-bottom:10px;cursor:pointer;transition:box-shadow .15s,border-color .15s"
+      onmouseover="this.style.boxShadow='var(--shadow-md)';this.style.borderColor='var(--accent)'" onmouseout="this.style.boxShadow='';this.style.borderColor='var(--border)'">
+    <div style="display:flex;align-items:center;gap:10px">
+      <div style="width:30px;height:30px;border-radius:50%;background:var(--accent-dim);color:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;flex-shrink:0">${c.name.charAt(0).toUpperCase()}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:14px;font-weight:700;color:var(--text)">${M.esc(c.name)}</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:1px">${M.esc(metaBits)}</div>
+      </div>
+      ${chip}
+    </div>
+    ${section('Quotes', d.quotes)}
+    ${section('Orders', d.orders)}
+    ${(!d.quotes.length && !d.orders.length) ? `<div style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--border2);font-size:11px;color:var(--muted)">New lead · no quote yet — <span style="color:var(--accent2);font-weight:600">${M.esc(c.last.replace(/^You:\s*/, ''))}</span></div>` : ''}
+    <div style="display:flex;align-items:center;gap:4px;margin-top:10px;padding-top:8px;border-top:1px solid var(--border2)">
+      <button class="btn btn-outline" style="font-size:11px;padding:4px 10px;width:auto" onclick="event.stopPropagation();openFromClient('${c.id}')">${CHAT_ICON.replace('width="13" height="13"','width="11" height="11"')} Message</button>
+      <span style="flex:1"></span>
+      <button class="btn btn-outline" style="font-size:11px;padding:4px 8px;width:auto">Duplicate</button>
+      <button class="btn btn-outline" style="color:var(--danger);font-size:11px;padding:4px 8px;width:auto">Delete</button>
+    </div>
+  </div>`;
+}
+function renderClientCards() { document.getElementById('client-cards').innerHTML = C.map(clientCard).join(''); }
+
+// ── Messages feed (Option C) ───────────────────────────────────────
+let activeFilter = 'all';
+function needsCount() { return C.filter(c => state[c.id].needs).length; }
+function leadsCount() { return C.filter(c => c.status === 'Lead').length; }
+function renderFilters() {
+  const tabs = [['all', 'All', C.length], ['needs', 'Needs reply', needsCount()], ['leads', 'Leads', leadsCount()]];
+  document.getElementById('msg-filters').innerHTML = tabs.map(([k, label, n]) => `<button class="ofilter-tab${k === activeFilter ? ' active' : ''}" onclick="setFilter('${k}')">${label} (${n})</button>`).join('');
+}
+window.setFilter = k => { activeFilter = k; renderFilters(); renderCards(); };
+function passesFilter(c) { if (activeFilter === 'needs') return state[c.id].needs; if (activeFilter === 'leads') return c.status === 'Lead'; return true; }
+function firstName(name) { const t = name.split(/[ &]/)[0]; return t === 'The' ? name : t; }
+function fromTag(c) { return c.who === 'me' ? 'You' : firstName(c.name); }
+function statePill(c) { return state[c.id].needs ? '<span class="state-pill needs"><span class="sp-dot"></span>Needs reply</span>' : '<span class="state-pill replied">✓ Replied</span>'; }
+function card(c) {
+  const s = state[c.id];
+  const dot = s.unread ? '<span class="act-dot" style="margin-left:2px"></span>' : '';
+  return `<div class="card mcard${s.open ? ' open' : ''}" id="card-${c.id}">
+    <div class="mc-top" onclick="toggleCard('${c.id}')">
+      <div class="mc-avatar">${c.initials}</div>
+      <div class="mc-main">
+        <div class="mc-name-row"><span class="mc-name">${M.esc(c.name)}</span><span class="badge ${c.badge}">${c.status}</span>${dot}<span class="mc-time">${c.time}</span></div>
+        <div class="mc-sub">${M.esc(c.project)} · <span class="ref">${c.ref}</span>${c.value ? ' · ' + M.fmt(c.value, 0) : ''}</div>
+        <div class="mc-last"><span class="mc-from">${fromTag(c)}:</span><span>${M.esc(c.last.replace(/^You:\s*/, ''))}</span></div>
+        <div class="mc-foot">${statePill(c)}<button class="btn btn-primary" style="margin-left:auto;width:auto;font-size:11px;padding:6px 14px" onclick="event.stopPropagation();toggleCard('${c.id}',true)">${s.open ? 'Close' : 'Reply'}</button></div>
+      </div>
+    </div>
+    <div class="mc-expand">
+      <div class="thread mc-thread" id="feed-thread-${c.id}">${M.threadFor(c)}</div>
+      <div class="composer">
+        <input id="feed-input-${c.id}" placeholder="Reply to ${M.esc(firstName(c.name))}…" autocomplete="off" onkeydown="if(event.key==='Enter')doReply('${c.id}')">
+        <button class="btn btn-primary" style="width:auto;padding:8px 16px" onclick="doReply('${c.id}')">Send</button>
+      </div>
+    </div>
+  </div>`;
+}
+function renderCards() {
+  const list = C.filter(passesFilter);
+  document.getElementById('msg-cards').innerHTML = list.length ? list.map(card).join('') : `<div class="card" style="padding:28px;text-align:center;color:var(--muted);font-size:13px">You're all caught up. 🎉</div>`;
+}
+window.toggleCard = (id, focus) => {
+  const s = state[id]; s.open = !s.open;
+  const el = document.getElementById('card-' + id); if (!el) return;
+  el.classList.toggle('open', s.open);
+  const btn = el.querySelector('.mc-foot .btn'); if (btn) btn.textContent = s.open ? 'Close' : 'Reply';
+  if (s.open && s.unread) { s.unread = 0; refreshBadges(); const d = el.querySelector('.mc-name-row .act-dot'); if (d) d.remove(); }
+  if (s.open && focus) { const inp = document.getElementById('feed-input-' + id); if (inp) setTimeout(() => inp.focus(), 60); el.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
+};
+window.doReply = id => {
+  const inp = document.getElementById('feed-input-' + id); if (!inp || !inp.value.trim()) return;
+  const c = C.find(x => x.id === id);
+  M.chat.send('feed-input-' + id, 'feed-thread-' + id, cannedReply(c));
+  state[id].needs = false; state[id].unread = 0;
+  const foot = document.querySelector('#card-' + id + ' .mc-foot .state-pill'); if (foot) foot.outerHTML = statePill(c);
+  refreshBadges(); renderFilters();
+  M.toast('Reply sent to ' + firstName(c.name));
+};
+function cannedReply(c) {
+  return ({
+    c1: 'Lovely — no rush on the island at all. The quote stays live and reprices the moment you decide 👍',
+    c2: 'Brilliant, thanks Marcus! Your order’s in the build queue — I’ll send dates this week.',
+    c3: 'Perfect — I’ll send the deposit link now so we can lock in your slot.',
+    c4: 'No problem — happy to walk through the alcove sizes whenever suits.',
+    c5: 'Hi! Yes, I’d love to quote your walk-in wardrobe — could you send a rough width and a photo of the space?',
+  })[c.id] || 'Thanks — I’ll get back to you shortly 👍';
+}
+
+// ── shared ─────────────────────────────────────────────────────────
+function refreshBadges() {
+  const n = totalUnread(); const b = document.getElementById('seg-unread');
+  b.textContent = n; b.style.display = n ? '' : 'none';
+  renderClientCards(); // keep the Clients-view chips in sync
+}
+window.setView = v => {
+  document.querySelectorAll('#view-seg .seg-opt').forEach(b => b.classList.toggle('active', b.dataset.view === v));
+  document.getElementById('view-clients').classList.toggle('active', v === 'clients');
+  document.getElementById('view-messages').classList.toggle('active', v === 'messages');
+};
+window.openFromClient = id => {
+  setView('messages');
+  const c = C.find(x => x.id === id);
+  if (!passesFilter(c)) { activeFilter = 'all'; renderFilters(); }
+  state[id].open = true;
+  renderCards();
+  setTimeout(() => {
+    const el = document.getElementById('card-' + id), inp = document.getElementById('feed-input-' + id), th = document.getElementById('feed-thread-' + id);
+    if (state[id].unread) { state[id].unread = 0; refreshBadges(); }
+    if (th) th.scrollTop = th.scrollHeight;
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    if (inp) inp.focus();
+  }, 50);
+};
+
+// ── init ───────────────────────────────────────────────────────────
+document.getElementById('clients-main').innerHTML = shell();
+renderClientCards();
+renderFilters();
+renderCards();
+refreshBadges();
+</script>
+</body>
+</html>

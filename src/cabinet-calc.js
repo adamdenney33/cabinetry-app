@@ -86,13 +86,16 @@ function calcCBSections(line) {
   cabinetMat += carcassSurfArea * _finishPricePerM2(line.finish);  // carcass finish
   const edgingLength = 2*H + 2*innerW + ((line.shelves || 0) + (line.adjShelves || 0)) * innerW;
   cabinetMat += edgingLength * (cbSettings.edgingPerM || 0);   // edge banding
-  cabinetMat += (cbSettings.baseTypes||[]).find(/** @param {any} b */ b => b.name === line.baseType)?.price || 0;
   const constPrice = (cbSettings.constructions||[]).find(/** @param {any} c */ c => c.name === line.construction)?.price || 0;
   cabinetMat += constPrice * front;
   cabinetMat *= matMarkupMult;
   const carcassRefH = _typeRefHours(cbSettings.carcassTypes, line.carcassType) || lt.carcassRefHours || 0.4;
   const carcassHrs = carcassRefH * Math.pow((W*H*D) / CARCASS_REF_VOLUME, LABOUR_EXPONENT);
-  const cabinetLabour = (carcassHrs + carcassSurfArea * (lt.finishPerM2 || 0.5)) * cont * labourRate;
+  // Base/plinth fabrication labour — flat hours per base type (× labour rate).
+  // Exact-match only: an unset/unknown base contributes 0 (base is optional,
+  // unlike carcass which always falls back to the first type).
+  const baseHrs = (cbSettings.baseTypes||[]).find(/** @param {any} b */ b => b.name === line.baseType)?.refHours || 0;
+  const cabinetLabour = (carcassHrs + baseHrs + carcassSurfArea * (lt.finishPerM2 || 0.5)) * cont * labourRate;
   const cabinet = cabinetMat + cabinetLabour;
 
   // ── Doors (material + door finish + labour) ──
@@ -244,10 +247,6 @@ function calcCBLine(line) {
   const edgingCost = edgingLength * (cbSettings.edgingPerM || 0);
   matCost += edgingCost;
 
-  // Base type cost (BUG FIX: moved BEFORE override snapshot)
-  const basePrice = (cbSettings.baseTypes||[]).find(/** @param {any} b */ b => b.name === line.baseType)?.price || 0;
-  matCost += basePrice;
-
   // Construction type cost (BUG FIX: moved BEFORE override snapshot)
   const frontArea = W * H;
   const constPrice = (cbSettings.constructions||[]).find(/** @param {any} c */ c => c.name === line.construction)?.price || 0;
@@ -280,6 +279,7 @@ function calcCBLine(line) {
       autoLabour += drwBoxRefH * Math.pow(drwBoxVol / DRAWER_BOX_REF_VOLUME, LABOUR_EXPONENT);
     }
   }
+  autoLabour += (cbSettings.baseTypes||[]).find(/** @param {any} b */ b => b.name === line.baseType)?.refHours || 0;  // base/plinth fabrication
   autoLabour += (line.shelves || 0) * (lt.fixedShelf || 0.3);
   autoLabour += (line.adjShelves || 0) * (lt.adjShelfHoles || 0.4);
   autoLabour += (line.looseShelves || 0) * (lt.looseShelf || 0.2);

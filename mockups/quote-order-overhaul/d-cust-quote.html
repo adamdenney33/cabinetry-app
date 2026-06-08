@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Your Quote · Blackwood Joinery</title>
+<link rel="stylesheet" href="../../styles.css">
+<link rel="stylesheet" href="assets/_mock.css">
+</head>
+<body class="cust">
+<div class="cust-top" id="hdr"></div>
+<div class="cust-wrap narrow">
+
+  <!-- STICKY PIN BAR -->
+  <div class="pinbar" id="pinbar">
+    <div style="flex:1;min-width:0">
+      <div style="font-size:11px;color:var(--muted)">Total incl. VAT · 40% deposit due</div>
+      <div style="font-size:15px;font-weight:800;font-variant-numeric:tabular-nums" id="pin-amt"></div>
+    </div>
+    <button class="btn btn-primary" style="width:auto;white-space:nowrap" id="pin-btn"
+      onclick="MOCK.paymentSheet(window._depLabel,'40% deposit · balance on completion')">Accept &amp; Pay</button>
+  </div>
+
+  <!-- FULL VIEW (the conversation) -->
+  <div id="view-full">
+    <div class="thread" id="thread"></div>
+
+    <!-- composer -->
+    <div class="composer" style="border:1px solid var(--border);border-radius:999px;margin-top:8px;background:var(--surface)">
+      <input id="ask" placeholder="Ask Blackwood a question…" autocomplete="off"
+        onkeydown="if(event.key==='Enter')sendAsk()">
+      <button class="btn btn-primary" style="width:auto;padding:8px 16px" onclick="sendAsk()">Send</button>
+    </div>
+    <div style="font-size:11px;color:var(--muted);text-align:center;line-height:1.6;margin-top:14px">
+      Quote <span id="qnum"></span> · valid until <span id="valid"></span> · prices include VAT · replies usually within an hour
+    </div>
+  </div>
+
+  <!-- SMART LINK VIEW (minimal one-tap) -->
+  <div id="view-smart" style="display:none">
+    <div class="cust-hero" style="text-align:center">
+      <div class="cust-logo" style="margin:0 auto 12px">B</div>
+      <div style="font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-weight:700">Deposit to confirm your kitchen</div>
+      <div style="font-size:40px;font-weight:800;letter-spacing:-1px;margin:6px 0" id="smart-dep"></div>
+      <div class="sub" id="smart-sub"></div>
+      <button class="btn btn-primary btn-lg" style="margin-top:16px;max-width:320px"
+        onclick="MOCK.paymentSheet(window._depLabel,'Deposit · balance on completion')">Approve &amp; Pay deposit</button>
+      <div style="margin-top:12px"><button class="btn btn-outline" style="width:auto" onclick="MOCK.setMode('full')">See the full breakdown &amp; chat ▾</button></div>
+    </div>
+    <div style="font-size:11px;color:var(--muted);text-align:center">Blackwood Joinery · Secured by Stripe</div>
+  </div>
+
+</div>
+
+<div class="mock-ribbon"><span class="dot"></span> Direction D · Thread — Customer Quote <a href="index.html">all mockups</a></div>
+
+<script src="assets/_seed.js"></script>
+<script>
+const M = window.MOCK;
+document.getElementById('hdr').outerHTML = M.publicHeader({ modeToggle: true, mode: 'full' });
+document.getElementById('valid').textContent = M.quote.validUntil;
+document.getElementById('qnum').textContent = M.quote.number;
+
+let lines = M.freshLines().map(l => Object.assign(l, { _base: l.unit, _baseW: l.w }));
+let paid = false;
+
+function priceLine(l) {
+  const finishF = { 'Natural Oiled': 1.08, 'Walnut Veneer': 1.18 }[l.finish] || 1;
+  const widthF = l.w && l._baseW ? l.w / l._baseW : 1;
+  l.unit = Math.round(l._base * finishF * widthF);
+  return l.unit;
+}
+
+// ── line-item card bubble ────────────────────────────────────────────
+function lineBubble(l) {
+  const chips = [];
+  if (l.optional) chips.push('<span class="opt-chip">Optional</span>');
+  if (l.editable) chips.push(`<span class="edit-chip" onclick="toggleSpec('${l.id}')">Change spec ▾</span>`);
+  const specLine = l.kind === 'cabinet'
+    ? `${l.w}×${l.h}×${l.d}mm · ${M.esc(l.finish)}`
+    : M.esc(l.detail);
+  const toggle = l.optional
+    ? `<button class="inc-toggle" aria-pressed="${l.included}" onclick="toggleInc('${l.id}')" title="Include / exclude"></button>`
+    : '';
+  return `<div class="bubble-line ${l.included ? '' : 'line-excluded'}" id="rowwrap-${l.id}">
+    <div style="display:flex;gap:0;align-items:stretch">
+      <div class="lphoto" style="width:96px;height:auto;border:0;border-radius:0;flex-shrink:0">${M.art(l.art)}</div>
+      <div style="flex:1;min-width:0;padding:11px 13px">
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span style="font-weight:700;font-size:13px">${M.esc(l.name)}</span>${chips.join('')}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:3px">${specLine}${l.qty > 1 ? ' · Qty ' + l.qty : ''}</div>
+        <div style="display:flex;align-items:center;gap:10px;margin-top:8px">
+          <span class="li-price" style="font-weight:800;font-size:14px;font-variant-numeric:tabular-nums">${M.fmt(M.lineTotal(l))}</span>
+          ${l.qty > 1 ? `<span style="font-size:11px;color:var(--muted)">${M.fmt(l.unit)} each</span>` : ''}
+          <span style="flex:1"></span>
+          ${toggle}
+        </div>
+        <div id="spec-${l.id}" style="display:none"></div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function specEditor(l) {
+  const finishes = M.finishOptions.map(f => `<option ${f === l.finish ? 'selected' : ''}>${f}</option>`).join('');
+  return `<div class="spec-pop">
+    <div class="sp-row"><label>Finish</label><select onchange="setFinish('${l.id}',this.value)">${finishes}</select></div>
+    <div class="sp-row"><label>Width</label><input class="dim-input" type="number" value="${l.w}" min="300" max="2400" step="50" onchange="setWidth('${l.id}',this.value)"> <span style="font-size:11px;color:var(--muted)">mm</span></div>
+    <div style="font-size:11px;color:var(--muted)">Updates your price instantly · ${M.fmt(l.unit)} each at this spec.</div>
+  </div>`;
+}
+
+// ── the conversation, assembled top→bottom ──────────────────────────
+function buildThread() {
+  const t = M.computeTotals(lines);
+  let html = '';
+
+  // intro bubble from the maker
+  html += bubbleThem(
+    `Hi ${M.esc(M.client.first)} 👋 great to meet you both on Tuesday. Here's the full quote for your <strong>Maple Shaker kitchen</strong> — every piece is below. Untick anything optional or tap <em>Change spec</em> and the deposit updates live. Any questions, just reply here.`,
+    'Blackwood Joinery · 9:24 AM');
+
+  html += `<div class="thread-event">You opened this quote <strong>2 hours ago</strong></div>`;
+
+  // each line as its own card bubble
+  lines.forEach((l, i) => {
+    html += lineBubble(l);
+    if (i === 4) html += `<div class="thread-event">The island &amp; handles are <strong>optional</strong> — toggle them anytime</div>`;
+  });
+
+  // running total bubble from maker
+  html += bubbleThem(totalsBlock(t), 'Blackwood Joinery · live total');
+
+  // typing indicator
+  html += `<div class="thread-event" id="typing">Blackwood is typing<span class="td">…</span></div>`;
+
+  // dynamic me bubbles (questions asked / paid)
+  html += `<div id="dyn"></div>`;
+
+  return html;
+}
+
+function bubbleThem(body, time) {
+  return `<div class="bubble them"><div class="bub-body">${body}</div><div class="bub-time">${time}</div></div>`;
+}
+function bubbleMe(body, time) {
+  return `<div class="bubble me"><div class="bub-body">${body}</div><div class="bub-time" style="text-align:right">${time}</div></div>`;
+}
+
+function totalsBlock(t) {
+  return `<div style="min-width:230px">
+    <div style="font-weight:700;margin-bottom:6px">Your running total</div>
+    <div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0"><span>Subtotal</span><span>${M.fmt(t.subtotal)}</span></div>
+    <div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0"><span>VAT (20%)</span><span>${M.fmt(t.vat, 2)}</span></div>
+    <div style="display:flex;justify-content:space-between;font-size:14px;font-weight:800;padding:6px 0 2px;border-top:1px solid var(--border);margin-top:4px"><span>Total</span><span>${M.fmt(t.total, 2)}</span></div>
+    <div style="background:var(--accent-dim);border-radius:8px;padding:9px 11px;margin-top:8px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:11px;font-weight:700;color:var(--text2)">Deposit to confirm (40%)</span><strong style="font-size:17px">${M.fmt(t.deposit, 2)}</strong></div>
+      <div style="font-size:10px;color:var(--muted);margin-top:2px">Balance of ${M.fmt(t.balance, 2)} due on completion</div>
+    </div>
+  </div>`;
+}
+
+// ── interactions ────────────────────────────────────────────────────
+window.toggleSpec = id => {
+  const el = document.getElementById('spec-' + id); const l = lines.find(x => x.id === id);
+  if (el.style.display === 'none') { el.innerHTML = specEditor(l); el.style.display = ''; } else el.style.display = 'none';
+};
+window.setFinish = (id, v) => { const l = lines.find(x => x.id === id); l.finish = v; priceLine(l); render(); M.toast('Updated · ' + M.esc(v)); };
+window.setWidth = (id, v) => { const l = lines.find(x => x.id === id); l.w = +v; priceLine(l); render(); };
+window.toggleInc = id => {
+  const l = lines.find(x => x.id === id); l.included = !l.included; render();
+  M.toast((l.included ? 'Added ' : 'Removed ') + M.esc(l.name) + ' · ' + (l.included ? '+' : '−') + M.fmt(M.lineTotal(l)));
+};
+
+let askCount = 0;
+window.sendAsk = () => {
+  const inp = document.getElementById('ask'); const v = (inp.value || '').trim();
+  if (!v) return;
+  inp.value = '';
+  const now = new Date();
+  const hh = ((now.getHours() % 12) || 12) + ':' + String(now.getMinutes()).padStart(2, '0') + (now.getHours() < 12 ? ' AM' : ' PM');
+  askCount++;
+  const dyn = document.getElementById('dyn');
+  dyn.insertAdjacentHTML('beforeend', bubbleMe(M.esc(v), hh));
+  // show typing then a canned reply
+  dyn.insertAdjacentHTML('beforeend', `<div class="thread-event" id="askt-${askCount}">Blackwood is typing<span class="td">…</span></div>`);
+  scrollEnd();
+  setTimeout(() => {
+    const tEl = document.getElementById('askt-' + askCount); if (tEl) tEl.remove();
+    dyn.insertAdjacentHTML('beforeend', bubbleThem(
+      `Good question — happy to help with that. I'll confirm the detail and pop it in writing here, but nothing changes on your price until you're ready.`,
+      'Blackwood Joinery · just now'));
+    scrollEnd();
+  }, 1400);
+};
+
+function scrollEnd() {
+  const dyn = document.getElementById('dyn');
+  if (dyn && dyn.lastElementChild) dyn.lastElementChild.scrollIntoView({ behavior: 'smooth', block: 'end' });
+}
+
+// ── render (rebuild thread + sync pinbar) ───────────────────────────
+function render() {
+  if (paid) return;
+  document.getElementById('thread').innerHTML = buildThread();
+  syncMoney();
+}
+
+function syncMoney() {
+  const t = M.computeTotals(lines);
+  window._depLabel = M.fmt(t.deposit, 2);
+  document.getElementById('pin-amt').textContent = M.fmt(t.total, 2) + ' · ' + M.fmt(t.deposit, 2) + ' today';
+  document.getElementById('smart-dep').textContent = M.fmt(t.deposit, 2);
+  document.getElementById('smart-sub').textContent =
+    M.fmt(t.total, 2) + ' total for ' + lines.filter(l => l.included && l.kind === 'cabinet').length + ' cabinets + fitting · balance on completion';
+}
+
+// ── paid → me bubble + success event, keep pinbar ───────────────────
+window._onPaid = function () {
+  const t = M.computeTotals(lines);
+  paid = true;
+  const dyn = document.getElementById('dyn');
+  // typing indicator already in thread is static; append the paid confirmation
+  dyn.insertAdjacentHTML('beforeend', bubbleMe(
+    `✅ Paid <strong>${M.fmt(t.deposit, 0)}</strong> deposit`, 'just now'));
+  dyn.insertAdjacentHTML('beforeend',
+    `<div class="thread-event"><span class="paid-stamp" style="font-size:11px;border-width:2px;padding:2px 8px">Deposit paid</span> &nbsp;Order confirmed · receipt sent to ${M.esc(M.client.email)}</div>`);
+  dyn.insertAdjacentHTML('beforeend', bubbleThem(
+    `Brilliant — that's your slot booked! 🎉 We've received your <strong>${M.fmt(t.deposit, 2)}</strong> deposit and your order is now confirmed. Next we'll lock in final measurements, then your build begins. You can re-open this thread anytime to track production and pay the balance of ${M.fmt(t.balance, 2)}.`,
+    'Blackwood Joinery · just now'));
+  // repurpose pinbar to a confirmed state (kept visible)
+  const pin = document.getElementById('pinbar');
+  pin.innerHTML = `<div style="flex:1;min-width:0">
+      <div style="font-size:11px;color:var(--success);font-weight:700;display:flex;align-items:center;gap:5px">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        Deposit paid · order confirmed</div>
+      <div style="font-size:13px;font-weight:700;font-variant-numeric:tabular-nums">Balance ${M.fmt(t.balance, 2)} due on completion</div>
+    </div>
+    <span class="badge badge-green" style="font-size:11px">Booked in</span>`;
+  M.toast('Payment received · order confirmed');
+  scrollEnd();
+};
+
+render();
+</script>
+<style>
+/* typing-dot shimmer, scoped to this page */
+.td { display:inline-block; animation: tdpulse 1.1s infinite; }
+@keyframes tdpulse { 0%,100%{opacity:.3} 50%{opacity:1} }
+</style>
+</body>
+</html>

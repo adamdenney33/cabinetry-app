@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Your Proposal · Blackwood Joinery</title>
+<link rel="stylesheet" href="../../styles.css">
+<link rel="stylesheet" href="assets/_mock.css">
+<style>
+  /* Direction C — customer worktable rows + rail polish */
+  .prow { display: flex; gap: 14px; align-items: flex-start; padding: 16px 18px; border-top: 1px solid var(--border2); }
+  .prow:first-child { border-top: none; }
+  .prow.line-excluded .li-price { text-decoration: line-through; }
+  .prow .pr-main { flex: 1; min-width: 0; }
+  .prow .pr-title { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .prow .pr-name { font-weight: 700; font-size: 14px; }
+  .prow .pr-spec { font-size: 12px; color: var(--muted); margin-top: 3px; }
+  .prow .pr-right { text-align: right; flex-shrink: 0; display: flex; flex-direction: column; align-items: flex-end; gap: 7px; }
+  .prow .li-price { font-weight: 800; font-size: 15px; font-variant-numeric: tabular-nums; }
+  .prow .pr-each { font-size: 11px; color: var(--muted); margin-top: -4px; }
+  .rail .rail-line { display: flex; justify-content: space-between; font-size: 12px; color: var(--text2); padding: 3px 0; }
+  .rail .rail-line.muted { color: var(--muted); }
+  .rail h3 { font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin-bottom: 4px; }
+  .rail .rail-mini { display: flex; gap: 8px; margin-top: 10px; }
+  .rail .rail-mini .btn { width: auto; flex: 1; font-size: 12px; }
+  .rail-trust { display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 10.5px; color: var(--muted); margin-top: 12px; }
+  .rail-sticky-wrap { position: sticky; top: 16px; align-self: start; }
+
+  /* ── chat option A: per-row Ask chip placement + widget polish ── */
+  .pr-title .ask-chip { margin-left: 2px; }
+  /* the pop head subtitle (typically replies ~1h) */
+  .chat-pop-head .cph-name { font-weight: 800; font-size: 14px; line-height: 1.15; }
+  .chat-pop-head .cph-meta { font-size: 11px; color: var(--muted); margin-top: 1px; display: flex; align-items: center; gap: 5px; }
+  .chat-pop-head .cph-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--success); flex-shrink: 0; }
+  .chat-pop-head .cph-close { margin-left: auto; background: none; border: none; color: var(--muted); font-size: 22px; line-height: 1; cursor: pointer; padding: 0 2px; }
+  .chat-pop-head .cph-close:hover { color: var(--text); }
+  /* give the body thread-spacing + make it the scroll container */
+  .chat-pop-body.thread { gap: 12px; }
+  /* the in-widget composer (pill, matches D) */
+  .chat-pop .composer { background: var(--surface); }
+  .chat-pop .composer .btn { width: auto; padding: 8px 15px; flex-shrink: 0; }
+  /* subtle pop-in */
+  .chat-pop { transform-origin: bottom right; animation: chatPopIn .16s ease-out; }
+  @keyframes chatPopIn { from { opacity: 0; transform: translateY(8px) scale(.98); } to { opacity: 1; transform: none; } }
+  /* launcher icon sits left of the label */
+  .chat-launcher svg { flex-shrink: 0; }
+</style>
+</head>
+<body class="cust">
+<div class="cust-top" id="hdr"></div>
+<div class="cust-wrap">
+
+  <!-- FULL VIEW : two-pane worktable + sticky checkout rail -->
+  <div id="view-full">
+    <div class="cust-hero">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap">
+        <div>
+          <h1>Your kitchen proposal</h1>
+          <div class="sub" id="hero-sub"></div>
+        </div>
+        <span class="badge badge-blue" style="font-size:11px">Awaiting your approval</span>
+      </div>
+      <div class="cust-greeting" id="greeting"></div>
+    </div>
+
+    <div class="two-pane rail-right">
+      <!-- LEFT: the line-item worktable -->
+      <div class="card" style="overflow:hidden">
+        <div class="card-header"><div class="card-title">Your items</div>
+          <span style="margin-left:auto;font-size:11px;color:var(--muted)">Toggle extras · tap <span class="edit-chip">Edit</span> to tweak · <span class="ask-chip">Ask</span> to message us</span>
+        </div>
+        <div id="lines"></div>
+      </div>
+
+      <!-- RIGHT: persistent checkout rail -->
+      <div class="rail-sticky-wrap">
+        <div class="rail" id="rail"></div>
+      </div>
+    </div>
+
+    <div style="font-size:11px;color:var(--muted);text-align:center;line-height:1.6;margin:18px 0 8px">
+      Proposal valid until <span id="valid"></span> · Prices include VAT · A 40% deposit confirms your order and books your production slot.
+    </div>
+  </div>
+
+  <!-- SMART LINK VIEW : minimal one-tap deposit -->
+  <div id="view-smart" style="display:none">
+    <div class="cust-hero" style="text-align:center">
+      <div style="font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-weight:700">Deposit to confirm</div>
+      <div style="font-size:40px;font-weight:800;letter-spacing:-1px;margin:6px 0" id="smart-dep"></div>
+      <div class="sub" id="smart-sub"></div>
+      <button class="btn btn-primary btn-lg" style="margin-top:16px;max-width:320px" onclick="MOCK.paymentSheet(window._depLabel,'Deposit · balance on completion')">Approve &amp; Pay deposit</button>
+      <div style="margin-top:12px"><button class="btn btn-outline" style="width:auto" onclick="MOCK.setMode('full')">See the full proposal ▾</button></div>
+    </div>
+    <div style="font-size:11px;color:var(--muted);text-align:center">Blackwood Joinery · Secured by Stripe</div>
+  </div>
+
+</div>
+
+<!-- ════════════ CHAT OPTION A · floating messenger ════════════ -->
+<!-- Launcher pill (bottom-right). Starts visible with the unread badge. -->
+<button class="chat-launcher" id="chat-launcher" onclick="toggleChat()" aria-label="Message Blackwood Joinery">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+  Message us
+  <span class="cl-badge" id="chat-badge"></span>
+</button>
+
+<!-- Pop panel (bottom-right). Starts closed. -->
+<div class="chat-pop" id="chat-pop" style="display:none">
+  <div class="chat-pop-head">
+    <div class="cust-logo" id="chat-logo"></div>
+    <div>
+      <div class="cph-name" id="chat-bizname"></div>
+      <div class="cph-meta"><span class="cph-dot"></span> Typically replies in ~1h</div>
+    </div>
+    <button class="cph-close" onclick="toggleChat()" aria-label="Close chat">&times;</button>
+  </div>
+  <!-- body IS the scroll container; .thread aligns the bubbles -->
+  <div class="chat-pop-body thread" id="chat-thread"></div>
+  <div class="composer" style="border-radius:0">
+    <input id="chat-input" placeholder="Reply to Blackwood…" autocomplete="off"
+      onkeydown="if(event.key==='Enter')chatSend()">
+    <button class="btn btn-primary" onclick="chatSend()">Send</button>
+  </div>
+</div>
+
+<div class="mock-ribbon"><span class="dot"></span> Chat option A · Floating widget — Customer (C) <a href="index.html">all mockups</a></div>
+
+<script src="assets/_seed.js"></script>
+<script>
+const M = window.MOCK;
+document.getElementById('hdr').outerHTML = M.publicHeader({ modeToggle: true, mode: 'full' });
+document.getElementById('hero-sub').textContent = M.quote.number + ' · Issued ' + M.quote.date;
+document.getElementById('valid').textContent = M.quote.validUntil;
+document.getElementById('greeting').innerHTML =
+  'Hi ' + M.esc(M.client.first) + ', here’s your live proposal for the <strong>Maple Shaker kitchen</strong>. '
+  + 'The running total on the right updates the moment you change anything — leave out an extra, swap a finish, then pay a deposit when it’s right. '
+  + 'Questions? Tap <strong>Message us</strong> (bottom-right) or the little <span class="ask-chip" style="cursor:default">Ask</span> on any item.';
+
+let lines = M.freshLines().map(l => Object.assign(l, { _base: l.unit, _baseW: l.w }));
+
+function priceLine(l) {
+  const finishF = { 'Natural Oiled': 1.08, 'Walnut Veneer': 1.18 }[l.finish] || 1;
+  const widthF = l.w && l._baseW ? l.w / l._baseW : 1;
+  l.unit = Math.round(l._base * finishF * widthF);
+  return l.unit;
+}
+
+function row(l) {
+  const photo = `<div class="lphoto" style="width:88px;height:66px">${M.art(l.art, { w: 176, h: 132 })}</div>`;
+  const chips = [];
+  if (l.optional) chips.push('<span class="opt-chip">Optional</span>');
+  if (l.editable) chips.push(`<span class="edit-chip" onclick="toggleSpec('${l.id}')">Edit ▾</span>`);
+  // chat option A: tiny per-row Ask chip — opens the widget + prefills context
+  chips.push(`<span class="ask-chip" onclick="askAbout('${l.id}')" title="Message us about this item">
+    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Ask</span>`);
+  const specLine = l.kind === 'cabinet'
+    ? `${l.w}×${l.h}×${l.d}mm · ${M.esc(l.finish)}`
+    : M.esc(l.detail);
+  const toggle = l.optional
+    ? `<button class="inc-toggle" aria-pressed="${l.included}" onclick="toggleInc('${l.id}')" title="Include / exclude"></button>`
+    : '';
+  return `<div class="prow ${l.included ? '' : 'line-excluded'}" id="rowwrap-${l.id}">
+    <div style="display:flex;gap:14px;align-items:flex-start;width:100%">
+      ${photo}
+      <div class="pr-main">
+        <div class="pr-title"><span class="pr-name">${M.esc(l.name)}</span>${chips.join('')}</div>
+        <div class="pr-spec">${specLine}${l.qty > 1 ? ' · Qty ' + l.qty : ''}</div>
+        <div id="spec-${l.id}" style="display:none"></div>
+      </div>
+      <div class="pr-right">
+        <div class="li-price">${M.fmt(M.lineTotal(l))}</div>
+        ${l.qty > 1 ? `<div class="pr-each">${M.fmt(l.unit)} each</div>` : ''}
+        ${toggle}
+      </div>
+    </div>
+  </div>`;
+}
+
+function specEditor(l) {
+  const finishes = M.finishOptions.map(f => `<option ${f === l.finish ? 'selected' : ''}>${f}</option>`).join('');
+  return `<div class="spec-pop">
+    <div class="sp-row"><label>Finish</label><select onchange="setFinish('${l.id}',this.value)">${finishes}</select></div>
+    <div class="sp-row"><label>Width</label><input class="dim-input" type="number" value="${l.w}" min="300" max="2400" step="50" onchange="setWidth('${l.id}',this.value)"> <span style="font-size:11px;color:var(--muted)">mm</span></div>
+    <div style="font-size:11px;color:var(--muted)">Changes reprice instantly. ${M.fmt(l.unit)} each at this spec.</div>
+  </div>`;
+}
+
+window.toggleSpec = id => { const el = document.getElementById('spec-' + id); const l = lines.find(x => x.id === id); if (el.style.display === 'none') { el.innerHTML = specEditor(l); el.style.display = ''; } else el.style.display = 'none'; };
+window.setFinish = (id, v) => { const l = lines.find(x => x.id === id); l.finish = v; priceLine(l); render(); window.toggleSpec(id); window.toggleSpec(id); };
+window.setWidth = (id, v) => { const l = lines.find(x => x.id === id); l.w = +v; priceLine(l); render(); };
+window.toggleInc = id => { const l = lines.find(x => x.id === id); l.included = !l.included; render(); };
+
+function rail() {
+  const t = M.computeTotals(lines);
+  const cabCount = lines.filter(l => l.included && l.kind === 'cabinet').length;
+  window._depLabel = M.fmt(t.deposit, 2);
+  return `<h3>Your proposal</h3>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:10px">${cabCount} cabinets + handles &amp; fitting</div>
+    <div class="rail-line"><span>Subtotal</span><span>${M.fmt(t.subtotal)}</span></div>
+    ${t.optionalSavings ? `<div class="rail-line muted"><span>incl. optional extras</span><span>${M.fmt(t.optionalSavings)}</span></div>` : ''}
+    <div class="rail-line"><span>VAT (20%)</span><span>${M.fmt(t.vat, 2)}</span></div>
+    <div class="totals" style="margin-top:8px"><div class="tr grand" style="border-top:none;margin-top:0;padding-top:0"><span>Total</span><span>${M.fmt(t.total, 2)}</span></div></div>
+    <div class="deposit-box">
+      <div class="dep-row"><span style="font-size:12px;font-weight:700;color:var(--text2)">Deposit to confirm (40%)</span><span class="dep-amt">${M.fmt(t.deposit, 2)}</span></div>
+      <div class="dep-bal">Balance of ${M.fmt(t.balance, 2)} on completion</div>
+    </div>
+    <button class="btn btn-primary btn-lg" style="margin-top:14px" onclick="MOCK.paymentSheet(window._depLabel,'40% deposit · balance on completion')">Accept &amp; Pay deposit</button>
+    <div class="rail-mini">
+      <button class="btn btn-outline" onclick="MOCK.toast('Mock: downloads a branded PDF')">↓ Download PDF</button>
+      <button class="btn btn-outline" onclick="openChat()">Ask a question</button>
+    </div>
+    <div class="rail-trust"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg> Secured by Stripe · ${M.esc(M.biz.name)}</div>`;
+}
+
+function render() {
+  document.getElementById('lines').innerHTML = lines.map(row).join('');
+  document.getElementById('rail').innerHTML = rail();
+  const t = M.computeTotals(lines);
+  document.getElementById('smart-dep').textContent = M.fmt(t.deposit, 2);
+  document.getElementById('smart-sub').textContent = M.fmt(t.total, 2) + ' total for ' + lines.filter(l => l.included && l.kind === 'cabinet').length + ' cabinets + fitting · balance on completion';
+}
+
+window._onPaid = function () {
+  const t = M.computeTotals(lines);
+  document.querySelector('.cust-wrap').innerHTML = `
+    <div class="success-hero">
+      <div class="check"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+      <h1 style="font-size:23px;font-weight:800">You’re booked in 🎉</h1>
+      <p style="color:var(--text2);font-size:14px;margin-top:8px;max-width:460px;margin-inline:auto">Thanks ${M.esc(M.client.first)} — we’ve received your <strong>${M.fmt(t.deposit, 2)}</strong> deposit and your order is confirmed. A receipt is on its way to ${M.esc(M.client.email)}.</p>
+    </div>
+    <div class="card" style="max-width:480px;margin:0 auto"><div class="card-body">
+      <div style="display:flex;justify-content:space-between;font-size:13px;padding:6px 0"><span style="color:var(--muted)">Deposit paid</span><strong>${M.fmt(t.deposit, 2)}</strong></div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;padding:6px 0;border-top:1px solid var(--border2)"><span style="color:var(--muted)">Balance on completion</span><strong>${M.fmt(t.balance, 2)}</strong></div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;padding:6px 0;border-top:1px solid var(--border2)"><span style="color:var(--muted)">Invoice</span><span class="badge badge-green">Drafted in Xero</span></div>
+      <p style="font-size:12px;color:var(--muted);margin-top:12px">What’s next: we’ll confirm your final measurements, then your build begins. Re-open this link any time to track production and pay your balance — or message us right here anytime.</p>
+    </div></div>`;
+  M.toast('Payment received · order confirmed');
+};
+
+// ════════════ chat widget wiring ════════════
+let chatOpen = false;
+let chatSeeded = false;
+
+// brand the head from the seed business
+document.getElementById('chat-logo').textContent = M.biz.monogram;
+document.getElementById('chat-bizname').textContent = M.biz.name;
+
+// show the unread badge on load (cleared on first open)
+function paintBadge() {
+  const b = document.getElementById('chat-badge');
+  if (M.chat.unread > 0 && !chatSeeded) { b.textContent = M.chat.unread; b.style.display = 'flex'; }
+  else b.style.display = 'none';
+}
+
+function seedThread() {
+  if (chatSeeded) return;
+  document.getElementById('chat-thread').innerHTML = M.chat.thread();
+  chatSeeded = true;
+}
+
+window.openChat = function () {
+  if (chatOpen) { document.getElementById('chat-input').focus(); return; }
+  chatOpen = true;
+  seedThread();
+  paintBadge(); // opening clears the badge
+  const pop = document.getElementById('chat-pop');
+  pop.style.display = 'flex';
+  const thread = document.getElementById('chat-thread');
+  thread.scrollTop = thread.scrollHeight;
+  setTimeout(() => document.getElementById('chat-input').focus(), 60);
+};
+window.closeChat = function () { chatOpen = false; document.getElementById('chat-pop').style.display = 'none'; };
+window.toggleChat = function () { chatOpen ? closeChat() : openChat(); };
+
+// per-row Ask: open + prefill a context line into the composer
+window.askAbout = function (id) {
+  const l = lines.find(x => x.id === id);
+  openChat();
+  const inp = document.getElementById('chat-input');
+  inp.value = 'About ' + (l ? l.name : 'this item') + ': ';
+  setTimeout(() => { inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); }, 80);
+};
+
+// composer send → seeded MOCK helper (appends me bubble, typing…, canned reply, autoscrolls)
+window.chatSend = function () { M.chat.send('chat-input', 'chat-thread'); };
+
+paintBadge();
+render();
+</script>
+</body>
+</html>

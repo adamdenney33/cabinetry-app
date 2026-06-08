@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Clients · ProCabinet (Option F · Sidebar list + detail)</title>
+<link rel="stylesheet" href="../../styles.css">
+<link rel="stylesheet" href="assets/_mock.css">
+<style>
+  /* ── sidebar = client master list (reuses the .inbox-item look) ── */
+  .sb-top { position: sticky; top: 0; z-index: 5; background: var(--surface); border-bottom: 1px solid var(--border); padding: 12px 12px 10px; }
+  .sb-top .btn { width: 100%; }
+  .sb-search { margin-top: 9px; position: relative; }
+  .sb-search input { width: 100%; border: 1px solid var(--border); border-radius: 8px; background: var(--surface2); color: var(--text); font-family: inherit; font-size: 12.5px; padding: 8px 10px 8px 30px; outline: none; }
+  .sb-search input:focus { border-color: var(--accent); }
+  .sb-search svg { position: absolute; left: 9px; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; }
+  .sb-list { padding: 4px 0; }
+  /* slightly tighter than the base .inbox-item to suit a 300px rail */
+  .cl-item { padding: 11px 13px; border-bottom: 1px solid var(--border2); cursor: pointer; display: flex; gap: 10px; align-items: flex-start; transition: background .12s; }
+  .cl-item:hover { background: var(--surface2); }
+  .cl-item.active { background: var(--accent-dim); box-shadow: inset 3px 0 0 var(--accent); }
+  .cl-av { width: 34px; height: 34px; border-radius: 50%; background: var(--accent2); color: #fff; font-weight: 700; font-size: 12.5px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .cl-main { flex: 1; min-width: 0; }
+  .cl-namerow { display: flex; align-items: center; gap: 6px; }
+  .cl-name { font-weight: 700; font-size: 13px; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cl-time { font-size: 10px; color: var(--muted); flex-shrink: 0; }
+  .cl-proj { font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 1px; }
+  .cl-foot { display: flex; align-items: center; gap: 6px; margin-top: 5px; }
+  .cl-preview { font-size: 11px; color: var(--text2); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cl-dot { flex-shrink: 0; }
+
+  /* ── main detail ── */
+  .det-wrap { max-width: 780px; margin: 0 auto; padding: 22px 24px 32px; }
+  .det-head { display: flex; align-items: flex-start; gap: 14px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 16px 18px; }
+  .det-av { width: 52px; height: 52px; border-radius: 50%; background: var(--accent-dim); color: var(--accent); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 21px; flex-shrink: 0; }
+  .det-name { font-size: 19px; font-weight: 800; letter-spacing: -.2px; }
+  .det-contact { font-size: 12px; color: var(--muted); margin-top: 3px; display: flex; flex-wrap: wrap; gap: 4px 12px; }
+  .det-contact a { color: var(--text2); text-decoration: none; }
+  .det-chips { display: flex; align-items: center; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+  .open-chip { font-size: 11px; font-weight: 600; padding: 5px 11px; border-radius: 999px; background: var(--surface2); border: 1px solid var(--border); color: var(--text2); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: all .15s; }
+  .open-chip:hover { border-color: var(--accent); color: var(--accent); }
+  .det-value { text-align: right; flex-shrink: 0; margin-left: auto; }
+  .det-value .dv-lbl { font-size: 10px; color: var(--muted); line-height: 1; }
+  .det-value .dv-amt { font-weight: 800; font-size: 19px; font-variant-numeric: tabular-nums; margin-top: 3px; }
+
+  .det-section { margin-top: 18px; }
+  .det-sec-h { font-size: 11px; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: .6px; margin-bottom: 8px; }
+  /* deal rows reuse the base client-card row styling */
+  .deal-row { display: flex; align-items: center; gap: 8px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 13px; margin-bottom: 8px; cursor: pointer; transition: border-color .15s, box-shadow .15s; }
+  .deal-row:hover { border-color: var(--accent); box-shadow: var(--shadow); }
+  .deal-row .dr-label { font-size: 13px; font-weight: 600; color: var(--text); flex: 1; min-width: 0; }
+  .deal-row .dr-val { font-size: 12px; font-weight: 700; color: var(--text2); font-variant-numeric: tabular-nums; flex-shrink: 0; }
+  .deal-empty { font-size: 12px; color: var(--muted); background: var(--surface2); border: 1px dashed var(--border); border-radius: 10px; padding: 12px 14px; }
+  .deal-empty .lead-line { color: var(--accent2); font-weight: 600; }
+
+  /* conversation block */
+  .conv-card { margin-top: 18px; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; background: var(--surface); box-shadow: var(--shadow); }
+  .conv-head { display: flex; align-items: center; gap: 8px; padding: 11px 15px; border-bottom: 1px solid var(--border); background: var(--surface); }
+  .conv-head .ch-title { font-size: 13px; font-weight: 700; }
+  .conv-head .ch-sub { font-size: 11px; color: var(--muted); margin-left: auto; }
+  .conv-thread { padding: 16px 15px 8px; background: var(--bg); max-height: 420px; overflow: auto; }
+</style>
+</head>
+<body>
+<div id="chrome"></div>
+<div class="app-body">
+  <div class="section-panel active">
+
+    <!-- LEFT SIDEBAR = client master list -->
+    <div class="sidebar mv-pane-editor" id="clients-sidebar" style="width:300px;min-width:264px">
+      <div class="sb-top">
+        <button class="btn btn-primary" onclick="M.toast('Mock: opens the New Client form')">+ New client</button>
+        <div class="sb-search">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="sb-search-input" placeholder="Search clients…" autocomplete="off" oninput="filterList(this.value)">
+        </div>
+      </div>
+      <div class="sidebar-scroll" style="padding:0">
+        <div class="sb-list" id="client-list"></div>
+      </div>
+    </div>
+    <div class="resize-handle"></div>
+
+    <!-- MAIN = selected client detail -->
+    <div class="main-content mv-pane-list">
+      <div class="main-scroll" id="clients-main"></div>
+    </div>
+  </div>
+</div>
+
+<div class="mock-ribbon"><span class="dot"></span> App · Clients tab — Option F · Sidebar client list + detail <a href="index.html">all mockups</a></div>
+
+<script src="assets/_seed.js"></script>
+<script>
+const M = window.MOCK;
+const C = M.contacts;
+const fmt = v => '£' + Number(v).toLocaleString('en-GB', { maximumFractionDigits: 0 });
+
+// Per-client quotes/orders — COPIED VERBATIM from biz-clients-chat-c-real.html
+const DEALS = {
+  c1: { email: 'sarah.whitfield@gmail.com', phone: '07700 900 042', quotes: [{ label: 'Q-0042 · Kitchen — Maple Shaker', status: 'Viewed', badge: 'badge-blue', value: 7982.40 }], orders: [] },
+  c2: { email: 'marcus.lee@outlook.com', phone: '07700 900 118', quotes: [], orders: [{ label: 'Order 0029 · Utility room', status: 'Deposit paid', badge: 'badge-green', value: 3140 }] },
+  c3: { email: 'estate@theoldrectory.co.uk', phone: '01453 555 071', quotes: [{ label: 'Q-0040 · Boot room + bench', status: 'Accepted', badge: 'badge-teal', value: 5620 }], orders: [] },
+  c4: { email: 'j.okafor@gmail.com', phone: '07700 900 239', quotes: [{ label: 'Q-0039 · Alcove units ×2', status: 'Sent', badge: 'badge-blue', value: 1880 }, { label: 'Q-0035 · Bookcase', status: 'Draft', badge: 'badge-gray', value: 640 }], orders: [] },
+  c5: { email: 'priya.sam@gmail.com', phone: '07700 900 285', quotes: [], orders: [] },
+};
+
+document.getElementById('chrome').outerHTML = M.appChrome('clients', { orders: 3 });
+
+// runtime state per contact (unread carries through to sidebar dot + main)
+const state = {};
+C.forEach(c => { state[c.id] = { unread: c.unread || 0 }; });
+let activeId = 'c1';
+
+const CHAT_ICON = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>';
+
+function firstName(name) { const t = name.split(/[ &]/)[0]; return t === 'The' ? name : t; }
+
+// ── SIDEBAR: client list row (reuses the .inbox-item look) ─────────
+function listItem(c) {
+  const s = state[c.id];
+  const preview = c.last.replace(/^You:\s*/, 'You: ');
+  const dot = s.unread ? `<span class="act-dot cl-dot" title="${s.unread} unread"></span>` : '';
+  return `<div class="cl-item${c.id === activeId ? ' active' : ''}" data-id="${c.id}" id="cl-${c.id}" onclick="selectClient('${c.id}')">
+    <div class="cl-av">${M.esc(c.initials)}</div>
+    <div class="cl-main">
+      <div class="cl-namerow"><span class="cl-name">${M.esc(c.name)}</span><span class="cl-time">${M.esc(c.time)}</span></div>
+      <div class="cl-proj">${M.esc(c.project)}</div>
+      <div class="cl-foot">
+        <span class="badge ${c.badge}" style="font-size:9px;flex-shrink:0">${M.esc(c.status)}</span>
+        <span class="cl-preview">${M.esc(preview)}</span>
+        ${dot}
+      </div>
+    </div>
+  </div>`;
+}
+function renderList() { document.getElementById('client-list').innerHTML = C.map(listItem).join(''); }
+
+// ── search filter (sidebar) ────────────────────────────────────────
+window.filterList = q => {
+  q = (q || '').trim().toLowerCase();
+  C.forEach(c => {
+    const el = document.getElementById('cl-' + c.id); if (!el) return;
+    const hay = (c.name + ' ' + c.project + ' ' + c.status).toLowerCase();
+    el.style.display = !q || hay.indexOf(q) !== -1 ? '' : 'none';
+  });
+};
+
+// ── MAIN: selected client detail ───────────────────────────────────
+function dealRow(it) {
+  return `<div class="deal-row" onclick="M.toast('Mock: opens ${M.esc(it.label.split(' · ')[0])}')">
+    <span class="dr-label">${M.esc(it.label)}</span>
+    <span class="dr-val">${fmt(it.value)}</span>
+    <span class="badge ${it.badge}" style="font-size:9px;flex-shrink:0">${M.esc(it.status)}</span>
+  </div>`;
+}
+function detail(c) {
+  const d = DEALS[c.id] || { email: '', phone: '', quotes: [], orders: [] };
+  const totalValue = d.quotes.reduce((a, q) => a + q.value, 0) + d.orders.reduce((a, o) => a + o.value, 0);
+  const isLead = c.status === 'Lead';
+
+  const valBlock = totalValue > 0
+    ? `<div class="det-value"><div class="dv-lbl">Deal value</div><div class="dv-amt">${M.fmt(totalValue, 2)}</div></div>`
+    : `<div class="det-value"><div class="dv-lbl">New lead</div><div class="dv-amt" style="color:var(--muted)">—</div></div>`;
+
+  const quotesSec = `<div class="det-section">
+    <div class="det-sec-h">Quotes (${d.quotes.length})</div>
+    ${d.quotes.length ? d.quotes.map(dealRow).join('') : `<div class="deal-empty">No quotes yet.${isLead ? ` This is a new lead — <span class="lead-line">${M.esc(c.last.replace(/^You:\s*/, ''))}</span>` : ''}</div>`}
+  </div>`;
+  const ordersSec = `<div class="det-section">
+    <div class="det-sec-h">Orders (${d.orders.length})</div>
+    ${d.orders.length ? d.orders.map(dealRow).join('') : `<div class="deal-empty">No orders yet.</div>`}
+  </div>`;
+
+  return `<div class="det-wrap">
+    <div class="det-head">
+      <div class="det-av">${c.name.charAt(0).toUpperCase()}</div>
+      <div style="flex:1;min-width:0">
+        <div class="det-name">${M.esc(c.name)}</div>
+        <div class="det-contact">
+          ${d.email ? `<a href="#" onclick="M.toast('Mock: email ${M.esc(d.email)}');return false">${M.esc(d.email)}</a>` : ''}
+          ${d.phone ? `<a href="#" onclick="M.toast('Mock: call ${M.esc(d.phone)}');return false">${M.esc(d.phone)}</a>` : ''}
+        </div>
+        <div class="det-chips">
+          <span class="badge ${c.badge}">${M.esc(c.status)}</span>
+          <span class="open-chip" onclick="M.toast('Mock: opens ${M.esc(c.ref)}')">${CHAT_ICON.replace('width=\"13\" height=\"13\"', 'width=\"12\" height=\"12\"')} Open ${M.esc(c.ref)} ↗</span>
+        </div>
+      </div>
+      ${valBlock}
+    </div>
+
+    ${quotesSec}
+    ${ordersSec}
+
+    <div class="conv-card">
+      <div class="conv-head">
+        ${CHAT_ICON} <span class="ch-title">Conversation</span>
+        <span class="ch-sub">with ${M.esc(firstName(c.name))}</span>
+      </div>
+      <div class="thread conv-thread" id="active-thread">${M.threadFor(c)}</div>
+      <div class="composer">
+        <input id="msg-input" placeholder="Message ${M.esc(firstName(c.name))}…" autocomplete="off"
+          onkeydown="if(event.key==='Enter'){M.chat.send('msg-input','active-thread', cannedReply());}">
+        <button class="btn btn-outline" style="width:auto;font-size:11px;padding:8px 10px" title="Attach photo" onclick="M.toast('Mock: attach a photo')">📎</button>
+        <button class="btn btn-primary" style="width:auto;padding:8px 16px" onclick="M.chat.send('msg-input','active-thread', cannedReply())">Send</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderDetail(c) {
+  document.getElementById('clients-main').innerHTML = detail(c);
+  const tr = document.getElementById('active-thread');
+  if (tr) tr.scrollTop = tr.scrollHeight;
+}
+
+// canned reply keyed to the currently active client
+function cannedReply() {
+  return ({
+    c1: 'Lovely — no rush on the island at all. The quote stays live and reprices the moment you decide 👍',
+    c2: 'Brilliant, thanks Marcus! Your order’s in the build queue — I’ll send dates this week.',
+    c3: 'Perfect — I’ll send the deposit link now so we can lock in your slot.',
+    c4: 'No problem — happy to walk through the alcove sizes whenever suits.',
+    c5: 'Hi! Yes, I’d love to quote your walk-in wardrobe — could you send a rough width and a photo of the space?',
+  })[activeId] || 'Thanks — I’ll get back to you shortly 👍';
+}
+
+// ── selection: re-render main + clear that client's unread/dot ─────
+window.selectClient = id => {
+  activeId = id;
+  const c = C.find(x => x.id === id);
+  // clear unread for the now-open conversation
+  state[id].unread = 0;
+  // update sidebar active state + drop the dot, without a full re-render
+  document.querySelectorAll('#client-list .cl-item').forEach(el => el.classList.toggle('active', el.dataset.id === id));
+  const row = document.getElementById('cl-' + id);
+  if (row) { const dot = row.querySelector('.cl-dot'); if (dot) dot.remove(); }
+  renderDetail(c);
+  // on narrow screens, scroll the detail into view
+  document.querySelector('.main-content').scrollTop = 0;
+};
+
+// ── init: list + open Sarah (c1) ──────────────────────────────────
+renderList();
+renderDetail(C.find(c => c.id === 'c1'));
+state.c1.unread = 0; // Sarah opens by default → her unread clears
+(function clearC1Dot() { const r = document.getElementById('cl-c1'); if (r) { const d = r.querySelector('.cl-dot'); if (d) d.remove(); } })();
+</script>
+</body>
+</html>

@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quotes · ProCabinet (Direction A)</title>
+<link rel="stylesheet" href="../../styles.css">
+<link rel="stylesheet" href="assets/_mock.css">
+</head>
+<body>
+<div id="chrome"></div>
+<div class="app-body">
+  <div class="section-panel active">
+    <div class="main-content"><div class="main-scroll">
+      <div class="deal-list">
+
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          <h2 style="font-size:18px;font-weight:800;flex:1">Quotes</h2>
+          <button class="btn btn-primary" style="width:auto">+ New quote</button>
+        </div>
+
+        <div class="lib-filter-row">
+          <input class="lib-filter-input" type="search" placeholder="Search client or project…">
+          <button class="btn btn-outline lib-filter-btn">&darr; Export</button>
+        </div>
+        <div class="lib-toggle-row">
+          <button class="ofilter-tab active">All (6)</button>
+          <button class="ofilter-tab">Draft (2)</button>
+          <button class="ofilter-tab">Sent (1)</button>
+          <button class="ofilter-tab">Viewed (1)</button>
+          <button class="ofilter-tab">Accepted (1)</button>
+          <button class="ofilter-tab">Paid (1)</button>
+        </div>
+
+        <div id="cards"></div>
+      </div>
+    </div></div>
+  </div>
+</div>
+
+<!-- SHARE PANEL (key new screen) -->
+<div id="share-modal" style="display:none;position:fixed;inset:0;z-index:9000;background:rgba(10,10,10,.5);align-items:center;justify-content:center;padding:16px">
+  <div class="popup-modal popup-md" style="background:var(--surface);border-radius:14px;box-shadow:var(--shadow-md);width:480px;max-width:100%;max-height:92dvh;overflow:auto;display:flex;flex-direction:column">
+    <div class="popup-header"><div class="popup-title">Share live quote · Q-0042</div><button class="popup-close" onclick="closeShare()">&times;</button></div>
+    <div class="popup-body">
+      <div class="link-box" style="margin-bottom:6px"><code>procabinet.app/q/8fK2-Whitfield</code><button class="btn btn-primary" style="width:auto;font-size:11px;padding:6px 10px" onclick="MOCK.toast('Link copied')">Copy</button></div>
+      <div style="display:flex;gap:8px;margin-bottom:14px">
+        <button class="btn btn-outline" style="font-size:12px" onclick="MOCK.toast('Mock: opens email to Sarah')">✉ Email to Sarah</button>
+        <button class="btn btn-outline" style="font-size:12px" onclick="MOCK.toast('Mock: shows QR code')">▦ QR code</button>
+        <a class="btn btn-outline" style="font-size:12px" href="a-cust-quote.html" target="_blank">↗ Preview</a>
+      </div>
+
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:4px">What the customer can do</div>
+      <div class="share-toggle-row"><div><div class="st-label">Allow item selection</div><div class="st-desc">Customer can include/exclude optional lines</div></div><button class="mini-toggle" aria-pressed="true" onclick="tgl(this)"></button></div>
+      <div class="share-toggle-row"><div><div class="st-label">Allow spec editing</div><div class="st-desc">Unlocked lines: change finish, handle, size</div></div><button class="mini-toggle" aria-pressed="true" onclick="tgl(this)"></button></div>
+      <div class="share-toggle-row"><div><div class="st-label">Accept card payment</div><div class="st-desc">Pays into your Stripe · 1.4% platform fee</div></div><button class="mini-toggle" aria-pressed="true" onclick="tgl(this)"></button></div>
+
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin:14px 0 4px">How they pay</div>
+      <div class="share-toggle-row"><div><div class="st-label">Take a deposit</div><div class="st-desc">Percentage due to confirm the order</div></div>
+        <div style="display:flex;align-items:center;gap:6px"><input type="number" value="40" style="width:54px;text-align:right;padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);font-family:inherit"><span style="color:var(--muted)">%</span></div></div>
+      <div class="share-toggle-row"><div><div class="st-label">Send as</div><div class="st-desc">Full page, or one-tap Smart Link</div></div>
+        <div class="seg"><button class="seg-opt active" onclick="segPick(this)">Full</button><button class="seg-opt" onclick="segPick(this)">Smart Link</button></div></div>
+      <div class="share-toggle-row"><div><div class="st-label">Link expires</div><div class="st-desc">Quote auto-closes after this date</div></div><span style="font-size:12px;color:var(--text2)">30 Jun 2026</span></div>
+    </div>
+    <div class="popup-footer" style="padding:14px 20px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn btn-outline" style="width:auto" onclick="closeShare()">Cancel</button>
+      <button class="btn btn-primary" style="width:auto" onclick="closeShare();MOCK.toast('Live quote sent to Sarah')">Send to customer</button>
+    </div>
+  </div>
+</div>
+
+<div class="mock-ribbon"><span class="dot"></span> Direction A · Deal Room — Business Quotes <a href="index.html">all mockups</a></div>
+
+<script src="assets/_seed.js"></script>
+<script>
+const M = window.MOCK;
+document.getElementById('chrome').outerHTML = M.appChrome('quote', { orders: 3 });
+const t = M.computeTotals();
+
+// per-line setup strip for the active card
+function lineSetup() {
+  return M.lines.map(l => `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--border2)">
+    <div class="lphoto" style="width:46px;height:36px">${M.art(l.art,{w:92,h:72})}</div>
+    <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600">${M.esc(l.name)}</div><div style="font-size:11px;color:var(--muted)">${M.fmt(M.lineTotal(l))}${l.qty>1?' · ×'+l.qty:''}</div></div>
+    <label style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted)"><input type="checkbox" ${l.optional?'checked':''}> Optional</label>
+    <label style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted)"><input type="checkbox" ${l.editable?'checked':''}> Editable</label>
+  </div>`).join('') +
+  `<div style="display:flex;align-items:center;gap:8px;padding-top:10px"><div class="lphoto-add" style="width:46px;height:36px">＋<span>photo</span></div><span style="font-size:11px;color:var(--muted)">Drop photos onto any line — they show on the live page &amp; PDF</span></div>`;
+}
+
+function activeCard() {
+  return `<div class="quote-card editing">
+    <div class="qc-header">
+      <div class="oc-info"><div class="oc-title-row"><div class="qc-title">Q-0042 · Sarah &amp; Tom Whitfield · Kitchen — Maple Shaker</div><span class="badge badge-blue" style="font-size:10px">Viewed</span></div>
+      <div class="qc-meta">Issued 31 May · ${M.lines.length} lines · 5 cabinets</div></div>
+      <div class="oc-right"><div class="oc-value">${M.fmt(t.total,0)}</div></div>
+    </div>
+    <div style="padding:6px 16px;display:flex;align-items:center;gap:8px;font-size:11px;color:var(--text2);background:var(--accent-dim);border-top:1px solid var(--border2);border-bottom:1px solid var(--border2)">
+      <span class="act-dot"></span> <strong>Live:</strong> Sarah opened this 2h ago · toggled off the Island (−${M.fmt(2150,0)}) · still deciding
+    </div>
+    ${M.pipeline(M.DEAL_STAGES, 2)}
+    <div style="padding:6px 16px 12px">
+      <details open><summary style="cursor:pointer;font-size:12px;font-weight:700;color:var(--accent2)">Line sharing setup</summary>
+        <div style="margin-top:6px">${lineSetup()}</div>
+      </details>
+    </div>
+    <div class="qc-footer">
+      <button class="btn btn-primary" style="width:auto" onclick="openShare()">Share / Send ▾</button>
+      <a class="btn btn-outline" style="width:auto" href="a-cust-quote.html" target="_blank">View as customer ↗</a>
+      <button class="btn btn-outline" style="width:auto">PDF</button>
+      <span style="flex:1"></span>
+      <button class="btn btn-outline" style="width:auto">Duplicate</button>
+    </div>
+  </div>`;
+}
+
+function miniCard(num, who, proj, status, badgeCls, idx, val, meta) {
+  return `<div class="quote-card">
+    <div class="qc-header"><div class="oc-info"><div class="oc-title-row"><div class="qc-title">${num} · ${who} · ${proj}</div><span class="badge ${badgeCls}" style="font-size:10px">${status}</span></div>
+    <div class="qc-meta">${meta}</div></div><div class="oc-right"><div class="oc-value">${val}</div></div></div>
+    ${M.pipeline(M.DEAL_STAGES, idx)}
+    <div class="qc-footer"><button class="btn btn-outline" style="width:auto">Share ▾</button><button class="btn btn-outline" style="width:auto">PDF</button><span style="flex:1"></span><button class="btn btn-outline" style="width:auto">Open</button></div>
+  </div>`;
+}
+
+document.getElementById('cards').innerHTML =
+  activeCard() +
+  miniCard('Q-0041', 'Marcus Lee', 'Utility room', 'Deposit Paid', 'badge-green', 4, M.fmt(3140,0), 'Paid £1,256 deposit · 18 May · order auto-created') +
+  miniCard('Q-0040', 'The Old Rectory', 'Boot room + bench', 'Accepted', 'badge-teal', 3, M.fmt(5620,0), 'Accepted 22 May · awaiting deposit') +
+  miniCard('Q-0039', 'J. Okafor', 'Alcove units ×2', 'Sent', 'badge-blue', 1, M.fmt(1880,0), 'Sent 24 May · not yet opened') +
+  miniCard('Q-0038', 'Draft', 'Wardrobe — walk-in', 'Draft', 'badge-gray', 0, M.fmt(4200,0), 'Last edited 28 May');
+
+window.openShare = () => { document.getElementById('share-modal').style.display = 'flex'; };
+window.closeShare = () => { document.getElementById('share-modal').style.display = 'none'; };
+window.tgl = b => b.setAttribute('aria-pressed', b.getAttribute('aria-pressed') === 'true' ? 'false' : 'true');
+window.segPick = b => { b.parentElement.querySelectorAll('.seg-opt').forEach(x => x.classList.remove('active')); b.classList.add('active'); };
+</script>
+</body>
+</html>

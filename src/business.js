@@ -244,36 +244,42 @@ function _openBusinessDetailsPopup() {
 }
 /** @type {any} */ (window)._openBusinessDetailsPopup = _openBusinessDetailsPopup;
 /**
- * Upload a logo to the public `business-assets` bucket via raw fetch, using the
- * in-memory auth token (see _dbAuthToken in db.js). We avoid _sb.storage.upload()
- * because the SDK storage client takes its bearer from the *persisted* session,
- * which is empty on storage-blocked browsers (iOS / in-app webviews) — there the
- * upload silently went out unauthenticated and Storage rejected it (HTTP 400
- * wrapping a 403 RLS denial). The raw fetch carries the token we hold in memory.
- * @param {string} uid
+ * Upload a logo via the authenticated `image-upload` edge function.
+ *
+ * History: this used to POST directly to `/storage/v1/object/...` with the
+ * in-memory auth token, but Storage on this project doesn't honor user JWTs —
+ * every direct upload (SDK or raw fetch, any apikey) lands as anonymous and is
+ * rejected by the owner-folder RLS policy ("new row violates row-level security
+ * policy"). The doorman function verifies the JWT itself and writes with the
+ * service role; it derives the per-user path server-side so callers still can't
+ * write outside their own `{uid}/...` folder.
+ *
+ * @param {string} _uid (kept for call-site compatibility; the function derives uid from the JWT)
  * @param {Blob | Uint8Array} body
  * @param {string} contentType
  * @returns {Promise<{ url: string | null, error: { message: string } | null }>}
  */
-async function _uploadLogoAsset(uid, body, contentType) {
-  const ext = (contentType.split('/')[1] || 'png').replace('+xml', ''); // image/svg+xml -> svg
-  const path = uid + '/logo.' + ext;
+async function _uploadLogoAsset(_uid, body, contentType) {
   const token = _dbAuthToken();
   if (!token) return { url: null, error: { message: 'not signed in' } };
-  const payload = body instanceof Blob ? body : new Blob([/** @type {any} */ (body)], { type: contentType });
+  const blob = body instanceof Blob ? body : new Blob([/** @type {any} */ (body)], { type: contentType });
+  const ext = (contentType.split('/')[1] || 'png').replace('+xml', '');
+  const form = new FormData();
+  form.append('file', new File([blob], 'logo.' + ext, { type: contentType }));
+  form.append('prefix', 'logo');
   try {
-    const res = await fetch(`${_SBURL}/storage/v1/object/business-assets/${path}`, {
+    const res = await fetch(`${_SBURL}/functions/v1/image-upload`, {
       method: 'POST',
-      headers: { 'apikey': _SBKEY, 'Authorization': 'Bearer ' + token, 'Content-Type': contentType, 'x-upsert': 'true' },
-      body: payload,
+      headers: { 'apikey': _SBKEY, 'Authorization': 'Bearer ' + token },
+      body: form,
     });
     if (!res.ok) {
       const detail = await res.text().catch(() => '');
       if (window.Sentry) window.Sentry.captureMessage('logo upload failed (' + res.status + ')', { level: 'warning', extra: { status: res.status, detail } });
       return { url: null, error: { message: 'HTTP ' + res.status } };
     }
-    const pub = _sb.storage.from('business-assets').getPublicUrl(path);
-    return { url: (pub.data && pub.data.publicUrl) || null, error: null };
+    const data = await res.json();
+    return { url: data.url || null, error: null };
   } catch (e) {
     if (window.Sentry) window.Sentry.captureException(/** @type {any} */ (e));
     return { url: null, error: { message: (/** @type {any} */ (e)).message || String(e) } };

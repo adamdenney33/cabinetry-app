@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quotes &amp; Orders Overhaul — Mockups</title>
+<link rel="stylesheet" href="../../styles.css">
+<link rel="stylesheet" href="assets/_mock.css">
+<style>
+  body.idx { height: auto; min-height: 100dvh; overflow: auto; display: block; }
+  .idx-band { background: linear-gradient(180deg, #111 0%, #1c1c1c 100%); color: #fff; padding: 34px 20px 30px; }
+  .idx-inner { max-width: 1040px; margin: 0 auto; }
+  .idx-band h1 { font-size: 26px; font-weight: 800; letter-spacing: -.4px; }
+  .idx-band h1 span { color: var(--accent); }
+  .idx-band p { font-size: 14px; color: rgba(255,255,255,.66); margin-top: 8px; max-width: 680px; line-height: 1.55; }
+  .idx-tags { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
+  .idx-tag { font-size: 11px; font-weight: 600; color: rgba(255,255,255,.8); background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.14); border-radius: 999px; padding: 5px 11px; }
+  .idx-tag b { color: var(--accent); }
+  .idx-main { max-width: 1040px; margin: 0 auto; padding: 24px 20px 80px; }
+  .dir-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+  .dir { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; display: flex; flex-direction: column; }
+  .dir-top { padding: 16px 18px; border-bottom: 1px solid var(--border2); }
+  .dir-key { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 7px; background: var(--accent); color: #fff; font-weight: 800; font-size: 14px; margin-right: 8px; }
+  .dir-name { font-size: 16px; font-weight: 800; }
+  .dir-idea { font-size: 13px; color: var(--text2); margin-top: 8px; line-height: 1.5; }
+  .dir-best { font-size: 11px; color: var(--muted); margin-top: 8px; }
+  .dir-best b { color: var(--accent2); }
+  .dir-links { padding: 12px 18px 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .dir-col-label { grid-column: 1 / -1; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-top: 4px; }
+  .dir-links a { display: flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 600; color: var(--text); text-decoration: none; border: 1px solid var(--border); border-radius: 8px; padding: 9px 11px; background: var(--surface2); transition: all .14s; }
+  .dir-links a:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+  .dir-links a svg { color: var(--muted); flex-shrink: 0; }
+  .dir-links a:hover svg { color: var(--accent); }
+  .smart { background: linear-gradient(180deg, var(--accent-dim), var(--surface)); }
+  .legend { display: flex; gap: 18px; flex-wrap: wrap; font-size: 12px; color: var(--muted); margin: 18px 0 4px; }
+  .legend b { color: var(--text2); }
+  @media (max-width: 760px) { .dir-grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body class="idx">
+<div class="idx-band">
+  <div class="idx-inner">
+    <h1>Quotes &amp; Orders Overhaul · <span>Mockups</span></h1>
+    <p>Four design directions for turning a quote/order into a <b style="color:#fff">shareable live page</b> the customer can toggle items on, edit specs, and pay a deposit on — with the order &amp; Xero/QuickBooks invoice created automatically. Every page is built on the real app stylesheet and is lightly interactive: toggle an item or edit a spec and the total reprices; hit <b style="color:#fff">Accept &amp; Pay</b> for the mock card sheet.</p>
+    <div class="idx-tags">
+      <span class="idx-tag"><b>Live</b> repricing</span>
+      <span class="idx-tag"><b>Optional</b> item toggles</span>
+      <span class="idx-tag"><b>Spec</b> editing</span>
+      <span class="idx-tag"><b>Card</b> deposit · Stripe</span>
+      <span class="idx-tag"><b>Photos</b> on line items</span>
+      <span class="idx-tag"><b>Auto</b> Xero / QuickBooks invoice</span>
+    </div>
+  </div>
+</div>
+
+<div class="idx-main">
+  <div class="legend">
+    <span>👁 <b>Business</b> pages sit inside the real app (header + tabs).</span>
+    <span>📱 <b>Customer</b> pages are the standalone link the customer opens — try them on a phone width.</span>
+    <span>Each direction has all four.</span>
+  </div>
+
+  <div style="background:var(--accent-dim);border:1px solid rgba(232,168,56,.32);border-radius:10px;padding:11px 14px;font-size:13px;color:var(--text);margin-bottom:16px">
+    <b>Your pick:</b> Direction <b>A</b> in the app · Direction <b>C</b> for the customer live page · customer <b>chat</b> options below ↓
+  </div>
+
+  <div class="dir-grid" id="grid"></div>
+
+  <div class="dir smart" style="margin-top:16px">
+    <div class="dir-top">
+      <div><span class="dir-key">★</span><span class="dir-name">Smart Link — a cross-cutting mode</span></div>
+      <div class="dir-idea">Not a fifth direction — a minimal one-tap view <b>any</b> of the four can switch into: headline deposit + one big <b>Approve &amp; Pay</b>, with the detail behind a “Customise” expander. Set per quote via <b>Send as: Full / Smart Link</b>.</div>
+      <div class="dir-best"><b>Best for</b> · cold or low-touch leads, repeat customers, SMS links — fewest taps to paid.</div>
+    </div>
+    <div class="dir-links">
+      <a href="mode-smart-link.html" style="grid-column:1/-1">★ Open the Smart Link customer view →</a>
+    </div>
+  </div>
+
+  <div class="dir" style="margin-top:16px">
+    <div class="dir-top">
+      <div><span class="dir-key">💬</span><span class="dir-name">Customer chat — 3 ways to add it to the C page</span></div>
+      <div class="dir-idea">D's conversation, brought onto the chosen <b>C</b> customer proposal. Three integrations, all live (type a message → seeded reply); the proposal, reprice and pay flow stay intact.</div>
+    </div>
+    <div class="dir-links" style="grid-template-columns:repeat(3,1fr)">
+      <a href="c-cust-chat-a-widget.html">💬 A · Floating widget</a>
+      <a href="c-cust-chat-b-panel.html">🗂 B · Docked rail tab</a>
+      <a href="c-cust-chat-c-inline.html">📌 C · Inline per-line threads</a>
+    </div>
+  </div>
+
+  <div class="dir" style="margin-top:16px">
+    <div class="dir-top">
+      <div><span class="dir-key">👤</span><span class="dir-name">Business chat — in the Clients tab</span></div>
+      <div class="dir-idea">Where <b>you</b> read &amp; reply in-app, in the top-level <b>Clients</b> tab — so a customer’s whole conversation sits in one place. The <b>real-layout</b> versions include the New-Client sidebar + the actual client cards with quotes/orders inline.</div>
+    </div>
+    <div class="dir-links" style="grid-template-columns:repeat(2,1fr)">
+      <div class="dir-col-label">Real app layout — refining the chosen Option C</div>
+      <a href="biz-clients-chat-c-real.html">📨 C · Messages feed (separate view)</a>
+      <a href="biz-clients-chat-d-incard.html">💬 D · Chat inside each card</a>
+      <a href="biz-clients-chat-e-unified.html">🗂 E · Messages reuses the card</a>
+      <a href="biz-clients-chat-f-sidebarlist.html">📥 F · Sidebar = client list</a>
+      <div class="dir-col-label">Earlier simplified sketches</div>
+      <a href="biz-clients-chat-a-inbox.html">A · Inbox</a>
+      <a href="biz-clients-chat-b-rail.html">B · List + rail</a>
+    </div>
+  </div>
+
+  <p style="font-size:12px;color:var(--muted);margin-top:22px;line-height:1.6">
+    Tip: every page has a black pill in the bottom-left labelling it, with a link back here. On customer pages, use the <b>Full ⇄ Smart Link</b> switch (top-right) to see that direction collapse into one-tap mode. Toggle the <b>Island</b> or <b>Brushed Brass Handles</b> (marked Optional) to watch the total reprice.
+  </p>
+</div>
+
+<script src="assets/_seed.js"></script>
+<script>
+const ICON = {
+  bizq: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>',
+  bizo: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg>',
+  cust: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="2" width="12" height="20" rx="2"/><line x1="11" y1="18" x2="13" y2="18"/></svg>',
+};
+const DIRS = [
+  { k: 'A', slug: 'a', name: 'Deal Room', idea: 'Your branded PDF, made live. Quote and the order it becomes are one continuous deal moving along a single status pipeline.', best: 'tradespeople who think in branded paper quotes — least new to learn.' },
+  { k: 'B', slug: 'b', name: 'Storefront / Configurator', idea: 'Photo-led product cards and a basket-style checkout. Leans hardest into images + spec choices.', best: 'kitchens & furniture where finish choice and imagery drive the sale.' },
+  { k: 'C', slug: 'c', name: 'Interactive Proposal', idea: 'Two-pane workspace with a sticky checkout rail. The business sees a live preview of exactly what the customer sees (WYSIWYG).', best: 'the most SaaS-grade feel and tightest control/visibility.' },
+  { k: 'D', slug: 'd', name: 'Thread', idea: 'The quote is a message thread between you and the customer — toggles, edits and questions arrive as live events. Phone-native.', best: 'relationship-driven, negotiation-heavy bespoke jobs.' },
+];
+document.getElementById('grid').innerHTML = DIRS.map(d => `
+  <div class="dir">
+    <div class="dir-top">
+      <div><span class="dir-key">${d.k}</span><span class="dir-name">${d.name}</span></div>
+      <div class="dir-idea">${d.idea}</div>
+      <div class="dir-best"><b>Best for</b> · ${d.best}</div>
+    </div>
+    <div class="dir-links">
+      <div class="dir-col-label">👁 Business (in-app)</div>
+      <a href="${d.slug}-biz-quotes.html">${ICON.bizq} Quotes tab</a>
+      <a href="${d.slug}-biz-orders.html">${ICON.bizo} Orders tab</a>
+      <div class="dir-col-label">📱 Customer (live link)</div>
+      <a href="${d.slug}-cust-quote.html">${ICON.cust} Live quote</a>
+      <a href="${d.slug}-cust-order.html">${ICON.cust} Live order</a>
+    </div>
+  </div>`).join('');
+</script>
+</body>
+</html>

@@ -192,6 +192,13 @@
               QuickBooks &amp; Xero
             </button>
           </div>
+          <div class="sd-section">
+            <div class="sd-label">Card payments</div>
+            <button class="btn btn-outline btn-sm" style="width:100%;justify-content:center"
+                    onclick="toggleAccount();_openConnectPopup()">
+              Stripe payouts
+            </button>
+          </div>
           <div class="account-menu-item" id="account-name-item" style="font-weight:600;font-size:13px;cursor:default;padding-bottom:2px;display:none"></div>
           <div class="account-menu-item" id="account-email-item" style="color:var(--muted);font-size:11px;cursor:default"></div>
           <div class="account-menu-item" onclick="signOut()">Sign Out</div>
@@ -390,17 +397,23 @@
               </select>
             </div>
           </div>
+          <div id="stock-fin-fields" style="display:none">
+            <div class="form-group" style="margin-bottom:6px">
+              <label id="stock-fin-cov-label">Coverage (m²/L)</label>
+              <input type="number" id="stock-fin-coverage" value="10" min="0" step="0.1">
+            </div>
+          </div>
           <div class="form-row" id="stock-qty-fields">
             <div class="form-group">
-              <label>Qty</label>
-              <input type="number" id="stock-qty" value="10" min="0">
+              <label id="stock-qty-label">Qty</label>
+              <input type="number" id="stock-qty" value="10" min="0" step="0.01">
             </div>
             <div class="form-group">
-              <label>Low Alert</label>
-              <input type="number" id="stock-low" value="3" min="0">
+              <label id="stock-low-label">Low Alert</label>
+              <input type="number" id="stock-low" value="3" min="0" step="0.01">
             </div>
             <div class="form-group">
-              <label>Cost / Unit</label>
+              <label id="stock-cost-label">Cost / Unit</label>
               <input type="number" id="stock-cost" value="65.00" min="0" step="0.01">
             </div>
           </div>
@@ -745,12 +758,16 @@
 <script defer src="/src/persist.js"></script>
 <script defer src="/src/limits.js"></script>
 <script defer src="/src/stripe.js"></script>
+<script defer src="/src/connect.js"></script>
 <script defer src="/src/analytics.js"></script>
 <script defer src="/src/forms.js"></script>
 <script defer src="/src/orders.js"></script>
 <script defer src="/src/quotes.js"></script>
+<script defer src="/src/share.js"></script>
+<script defer src="/src/livelink.js"></script>
 <script defer src="/src/accounting.js"></script>
 <script defer src="/src/business.js"></script>
+<script defer src="/src/line-photos.js"></script>
 <script defer src="/src/stock.js"></script>
 <script defer src="/src/cabinet-calc.js"></script>
 <script defer src="/src/cabinet-library.js"></script>
@@ -768,6 +785,7 @@
 <script defer src="/src/auth.js"></script>
 <script defer src="/src/projects.js"></script>
 <script defer src="/src/clients.js"></script>
+<script defer src="/src/clients-chat.js"></script>
 <script defer src="/src/migrate.js"></script>
 <script defer src="/src/help.js"></script>
 <script defer src="/src/features.js"></script>

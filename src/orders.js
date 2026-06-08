@@ -196,15 +196,15 @@ function renderOrdersMain() {
       </div>
       <div class="oc-pipeline">${pipe}</div>
       <div class="oc-footer">
-        <button class="btn btn-outline" onclick="event.stopPropagation();printOrderDoc(${o.id},'order_confirmation')" style="font-size:11px;padding:5px 8px;width:auto">Confirmation</button>
-        <button class="btn btn-outline" onclick="event.stopPropagation();printOrderDoc(${o.id},'proforma')" style="font-size:11px;padding:5px 8px;width:auto">Pro-forma</button>
-        <button class="btn btn-outline" onclick="event.stopPropagation();printOrderDoc(${o.id},'invoice')" style="font-size:11px;padding:5px 8px;width:auto">Invoice</button>
-        <button class="btn btn-outline" onclick="event.stopPropagation();printOrderDoc(${o.id},'work_order')" style="font-size:11px;padding:5px 8px;width:auto">Work Order</button>
+        ${typeof _orderPdfMenu === 'function' ? `<button class="btn btn-outline" onclick="event.stopPropagation();_orderPdfMenu(${o.id})" style="font-size:11px;padding:5px 8px;width:auto" title="Export a PDF document">PDF ▾</button>` : ''}
+        ${typeof _openLiveLinkTab === 'function' ? `<button class="btn btn-outline" onclick="event.stopPropagation();_openLiveLinkTab('order',${o.id})" style="font-size:11px;padding:5px 8px;width:auto" title="Open the live link page">Live link</button>` : ''}
+        ${typeof _toggleOrderThread === 'function' ? (() => { const _u = typeof _clientUnreadCount === 'function' ? _clientUnreadCount(o.client_id) : 0; return `<button class="btn btn-outline" onclick="event.stopPropagation();_toggleOrderThread(${o.id})" style="font-size:11px;padding:5px 8px;width:auto">Messages <span data-order-unread="${o.id}">${_u ? `(${_u})` : ''}</span></button>`; })() : ''}
         ${typeof _accountingOrderFooter === 'function' ? _accountingOrderFooter(o.id) : ''}
         <span style="flex:1"></span>
         <button class="btn btn-outline" onclick="event.stopPropagation();duplicateOrder(${o.id})" style="font-size:11px;padding:5px 10px;width:auto">Duplicate</button>
         <button class="btn btn-outline" style="color:var(--danger);font-size:11px;padding:5px 10px;width:auto" onclick="event.stopPropagation();_confirm('Delete order for <strong>${_escHtml(orderClient(o))}</strong>?',()=>removeOrder(${o.id}))">Delete</button>
       </div>
+      <div class="oc-thread" data-order-thread="${o.id}" style="display:none" onclick="event.stopPropagation()"></div>
     </div>`;
   };
 
@@ -490,7 +490,7 @@ function renderOrderEditor() {
 
   const headerName = clientName || 'Untitled order';
 
-  host.innerHTML = `<div class="form-section editor-shell">
+  host.innerHTML = `${typeof _llTabBar === 'function' ? _llTabBar('order') : ''}<div id="ob-body"${(typeof _llTab !== 'undefined' && _llTab.order === 'live') ? ' style="display:none"' : ''}><div class="form-section editor-shell">
     <div class="project-header">
       <div class="ph-row1">
         <button class="ph-back" onclick="_oChangeClient()" title="Back to orders" aria-label="Back">
@@ -642,7 +642,7 @@ function renderOrderEditor() {
     </details>
 
     ${isExisting ? '' : `<div class="editor-footer"><span style="flex:1"></span><button class="btn btn-primary" onclick="createOrderFromEditor()">+ Create Order</button></div>`}
-  </div>`;
+  </div></div>${typeof _llLiveBodyDiv === 'function' ? _llLiveBodyDiv('order') : ''}`;
 
   if (o || _opState.lines.length > 0) {
     if (typeof _renderOrderLines === 'function') _renderOrderLines();
@@ -653,6 +653,7 @@ function renderOrderEditor() {
   if (o && typeof _setSaveStatus === 'function') {
     _setSaveStatus('order', _opState.dirty ? 'dirty' : 'clean');
   }
+  if (typeof _llTab !== 'undefined' && _llTab.order === 'live' && typeof _llEnterLive === 'function') _llEnterLive('order');
 }
 
 /** Persist the Schedule section's open/closed state.
@@ -993,6 +994,7 @@ async function loadOrderIntoSidebar(id) {
   if (typeof /** @type {any} */ (window)._pcSaveOpenOrderId === 'function') {
     /** @type {any} */ (window)._pcSaveOpenOrderId(id);
   }
+  if (typeof _llReset === 'function') _llReset('order');
   if (window._mvShowEditor) window._mvShowEditor();
   renderOrderEditor();
   renderOrdersMain();

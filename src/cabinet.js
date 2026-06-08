@@ -46,11 +46,11 @@ let cbSettings = {
     { name: '2-Pack Spray', price: 35 },
   ],
   baseTypes: [
-    { name: 'None', price: 0 },
-    { name: 'Plinth', price: 20 },
-    { name: 'Feet / Legs', price: 40 },
-    { name: 'Castors', price: 60 },
-    { name: 'Frame', price: 30 },
+    { name: 'None', refHours: 0 },
+    { name: 'Plinth', refHours: 0.3 },
+    { name: 'Feet / Legs', refHours: 0.4 },
+    { name: 'Castors', refHours: 0.3 },
+    { name: 'Frame', refHours: 0.5 },
   ],
   constructions: [
     { name: 'Overlay', price: 0 },
@@ -231,8 +231,11 @@ function loadCBSettings() {
   try { const s = localStorage.getItem('pc_cq_settings'); if (s) cbSettings = JSON.parse(s); } catch(e) {}
   if (typeof cbSettings.contingencyPct !== 'number') cbSettings.contingencyPct = 5;
   if (!cbSettings.baseTypes || !cbSettings.baseTypes.length) cbSettings.baseTypes = [
-    {name:'None',price:0},{name:'Plinth',price:20},{name:'Feet / Legs',price:40},{name:'Castors',price:60},{name:'Frame',price:30}
+    {name:'None',refHours:0},{name:'Plinth',refHours:0.3},{name:'Feet / Legs',refHours:0.4},{name:'Castors',refHours:0.3},{name:'Frame',refHours:0.5}
   ];
+  // Migrate legacy base types (flat price → labour hours). Drop the old price
+  // field and default refHours to 0 so prices don't silently double-count.
+  else cbSettings.baseTypes.forEach(/** @param {any} b */ b => { if (b.refHours == null) { b.refHours = 0; delete b.price; } });
   if (!cbSettings.constructions || !cbSettings.constructions.length) cbSettings.constructions = [
     {name:'Overlay',price:0},{name:'Inset',price:25},{name:'Face Frame',price:35}
   ];

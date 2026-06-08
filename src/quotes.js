@@ -487,6 +487,7 @@ function renderQuoteMain() {
       <div class="oc-pipeline">${pipe}</div>
       <div class="qc-footer">
         <button class="btn btn-outline" onclick="event.stopPropagation();printQuote(${q.id},'pdf')">PDF</button>
+        ${typeof _openLiveLinkTab === 'function' ? `<button class="btn btn-outline" onclick="event.stopPropagation();_openLiveLinkTab('quote',${q.id})" title="Open the live link page">Live link</button>` : (typeof _openSharePanel === 'function' ? `<button class="btn btn-outline" onclick="event.stopPropagation();_openSharePanel(${q.id})">Live link</button>` : '')}
         <span style="flex:1"></span>
         ${(() => { const matchingOrder = orders.find(o => o.quote_id === q.id); return matchingOrder ? `<button class="btn btn-outline" onclick="event.stopPropagation();_openOrderPopup(${matchingOrder.id})" style="color:var(--success)">✓ View Order</button>` : `<button class="btn btn-outline" onclick="event.stopPropagation();convertQuoteToOrder(${q.id})">Create Order</button>`; })()}
         <button class="btn btn-outline" onclick="event.stopPropagation();duplicateQuote(${q.id})">Duplicate</button>
@@ -714,7 +715,20 @@ async function printOrderDoc(id, type) {
     const { data } = await _db('order_lines').select('*').eq('order_id', id).order('position');
     rows = data || [];
   }
-  _buildOrderDocPDF(o, rows, type);
+  /** @type {Record<number, string[]>} */
+  const photos = {};
+  if (window._FEAT_LINE_PHOTOS && typeof _linePhotoUrls === 'function' && typeof _linePhotoDataUrl === 'function') {
+    try {
+      for (const row of rows) {
+        const urls = _linePhotoUrls('order_line', row.id);
+        if (!urls.length) continue;
+        /** @type {string[]} */ const dataUrls = [];
+        for (const u of urls) { if (!u) continue; const d = await _linePhotoDataUrl(u); if (d) dataUrls.push(d); }
+        if (dataUrls.length) photos[row.id] = dataUrls;
+      }
+    } catch (e) { /* best-effort; the PDF still prints without photos */ }
+  }
+  _buildOrderDocPDF(o, rows, type, photos);
 }
 
 async function deductStockFromCutList() {
@@ -1169,6 +1183,7 @@ function renderQuoteEditor() {
 
   const dateStr = q ? q.date : new Date().toLocaleDateString('en-GB', { day:'numeric', month:'short' });
 
+  const colImgOff  = localStorage.getItem('pc_quote_col_img')  === 'off';
   const colDiscOff = localStorage.getItem('pc_quote_col_disc') === 'off';
   const colHrsOff  = localStorage.getItem('pc_quote_col_hrs')  === 'off';
   const colStockOn = localStorage.getItem('pc_quote_col_stock') === 'on';
@@ -1180,7 +1195,7 @@ function renderQuoteEditor() {
 
   const headerName = clientName || 'Untitled quote';
 
-  host.innerHTML = `<div class="form-section editor-shell">
+  host.innerHTML = `${typeof _llTabBar === 'function' ? _llTabBar('quote') : ''}<div id="qb-body"${(typeof _llTab !== 'undefined' && _llTab.quote === 'live') ? ' style="display:none"' : ''}><div class="form-section editor-shell">
     <div class="project-header">
       <div class="ph-row1">
         <button class="ph-back" onclick="_qChangeClient()" title="Back to quotes" aria-label="Back">
@@ -1214,6 +1229,7 @@ function renderQuoteEditor() {
     <div class="cl-section-header">
       <span class="cl-section-title">Line Items</span>
       <div class="pill-group">
+        <button class="cl-col-pill ${colImgOff ? '' : 'active'}" data-col="img" onclick="_qToggleColumn('img',this)">Images</button>
         <button class="cl-col-pill ${colDiscOff ? '' : 'active'}" data-col="disc" onclick="_qToggleColumn('disc',this)">Discount</button>
         <button class="cl-col-pill ${colHrsOff ? '' : 'active'}" data-col="hrs" onclick="_qToggleColumn('hrs',this)">Hours</button>
       </div>
@@ -1277,7 +1293,7 @@ function renderQuoteEditor() {
     </div>
 
     ${isExisting ? '' : `<div class="editor-footer"><span style="flex:1"></span><button class="btn btn-primary" onclick="createQuoteFromEditor()">+ Create Quote</button></div>`}
-  </div>`;
+  </div></div>${typeof _llLiveBodyDiv === 'function' ? _llLiveBodyDiv('quote') : ''}`;
 
   // After render, populate line list and totals if there's anything to show.
   if (q || _qpState.lines.length > 0) {
@@ -1287,6 +1303,7 @@ function renderQuoteEditor() {
   if (q && typeof _setSaveStatus === 'function') {
     _setSaveStatus('quote', _qpState.dirty ? 'dirty' : 'clean');
   }
+  if (typeof _llTab !== 'undefined' && _llTab.quote === 'live' && typeof _llEnterLive === 'function') _llEnterLive('quote');
 }
 
 /** Reflect the picked status into the badge's data-status attribute.
@@ -1532,6 +1549,7 @@ async function loadQuoteIntoSidebar(id) {
   if (typeof /** @type {any} */ (window)._pcSaveOpenQuoteId === 'function') {
     /** @type {any} */ (window)._pcSaveOpenQuoteId(id);
   }
+  if (typeof _llReset === 'function') _llReset('quote');
   if (window._mvShowEditor) window._mvShowEditor();
   renderQuoteEditor();
   renderQuoteMain();

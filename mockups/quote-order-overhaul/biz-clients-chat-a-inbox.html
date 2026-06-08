@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Clients · ProCabinet (Chat A · Inbox)</title>
+<link rel="stylesheet" href="../../styles.css">
+<link rel="stylesheet" href="assets/_mock.css">
+</head>
+<body>
+<div id="chrome"></div>
+<div class="app-body">
+  <div class="section-panel active">
+    <div class="main-content"><div class="main-scroll">
+      <div style="max-width:1000px;margin:0 auto">
+
+        <!-- content header -->
+        <div style="display:flex;align-items:center;gap:11px;margin-bottom:14px">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+          <div style="flex:1;min-width:0">
+            <h2 style="font-size:18px;font-weight:800;line-height:1.15">Clients</h2>
+            <div style="font-size:12px;color:var(--muted);margin-top:1px">Messages &amp; conversations</div>
+          </div>
+          <button class="btn btn-primary" style="width:auto" onclick="M.toast('Mock: new client / message')">+ New client</button>
+        </div>
+
+        <!-- filter pills -->
+        <div class="lib-toggle-row" style="margin-bottom:14px">
+          <button class="ofilter-tab active" data-filter="all" onclick="setFilter(this)">All (5)</button>
+          <button class="ofilter-tab" data-filter="unread" onclick="setFilter(this)">Unread (3)</button>
+          <button class="ofilter-tab" data-filter="leads" onclick="setFilter(this)">Leads (1)</button>
+        </div>
+
+        <!-- INBOX: left client list · right thread -->
+        <div class="inbox">
+          <div class="inbox-list" id="inbox-list"></div>
+          <div class="inbox-thread" id="inbox-thread"></div>
+        </div>
+
+      </div>
+    </div></div>
+  </div>
+</div>
+
+<div class="mock-ribbon"><span class="dot"></span> App · Clients tab chat — Option A · Inbox <a href="index.html">all mockups</a></div>
+
+<script src="assets/_seed.js"></script>
+<script>
+const M = window.MOCK;
+document.getElementById('chrome').outerHTML = M.appChrome('clients', { orders: 3 });
+
+const CONTACTS = M.contacts;
+let activeId = 'c1';
+
+// ── left list item ──────────────────────────────────────────────────
+function listItem(c) {
+  const preview = c.last.replace(/^You:\s*/, c.who === 'me' ? 'You: ' : '');
+  return `<div class="inbox-item${c.id === activeId ? ' active' : ''}" data-id="${c.id}" data-lead="${c.status === 'Lead' ? '1' : '0'}" data-unread="${c.unread > 0 ? '1' : '0'}" onclick="selectContact('${c.id}',this)">
+    <div class="inbox-avatar">${M.esc(c.initials)}</div>
+    <div style="flex:1;min-width:0">
+      <div style="display:flex;align-items:center;gap:6px">
+        <span style="font-weight:700;font-size:13px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${M.esc(c.name)}</span>
+        <span style="font-size:10px;color:var(--muted);flex-shrink:0">${M.esc(c.time)}</span>
+      </div>
+      <div style="font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:1px">${M.esc(c.project)}</div>
+      <div style="display:flex;align-items:center;gap:6px;margin-top:5px">
+        <span class="badge ${c.badge}" style="font-size:9px">${M.esc(c.status)}</span>
+        <span class="li-preview" style="font-size:11px;color:var(--text2);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${M.esc(preview)}</span>
+        ${c.unread > 0 ? `<span class="unread-pill" style="flex-shrink:0;background:var(--accent);color:#fff;font-size:9px;font-weight:800;min-width:16px;height:16px;border-radius:8px;display:flex;align-items:center;justify-content:center;padding:0 4px">${c.unread}</span>` : ''}
+      </div>
+    </div>
+  </div>`;
+}
+function renderList() {
+  document.getElementById('inbox-list').innerHTML = CONTACTS.map(listItem).join('');
+}
+
+// ── right: thread header + scroll + composer ────────────────────────
+function threadHeader(c) {
+  const valChip = c.value > 0
+    ? `<div style="text-align:right;flex-shrink:0"><div style="font-size:10px;color:var(--muted);line-height:1">Deal value</div><div style="font-weight:800;font-size:15px;font-variant-numeric:tabular-nums">${M.fmt(c.value, 2)}</div></div>`
+    : `<div style="text-align:right;flex-shrink:0"><div style="font-size:10px;color:var(--muted);line-height:1">New lead</div><div style="font-weight:800;font-size:14px;color:var(--muted)">—</div></div>`;
+  return `<div style="display:flex;align-items:center;gap:11px;padding:11px 14px;border-bottom:1px solid var(--border);background:var(--surface)">
+    <div class="inbox-avatar">${M.esc(c.initials)}</div>
+    <div style="flex:1;min-width:0">
+      <div style="font-weight:700;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${M.esc(c.name)}</div>
+      <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted);margin-top:2px">
+        <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${M.esc(c.project)}</span>
+        <span class="badge ${c.badge}" style="font-size:9px;flex-shrink:0">${M.esc(c.status)}</span>
+      </div>
+    </div>
+    <button class="btn btn-outline" style="width:auto;font-size:11px;padding:6px 10px;flex-shrink:0" onclick="M.toast('Mock: opens ${M.esc(c.ref)}')">Open ${M.esc(c.ref)} ↗</button>
+    ${valChip}
+  </div>`;
+}
+
+function renderThread(c) {
+  document.getElementById('inbox-thread').innerHTML =
+    threadHeader(c) +
+    `<div class="thread" id="active-thread" style="flex:1;overflow:auto;padding:14px 14px 6px">${M.threadFor(c)}</div>` +
+    `<div class="composer">
+       <input id="msg-input" placeholder="Message ${M.esc(c.name.split(/[ &]/)[0])}…" autocomplete="off"
+         onkeydown="if(event.key==='Enter'){M.chat.send('msg-input','active-thread');}">
+       <button class="btn btn-outline" style="width:auto;font-size:11px;padding:8px 10px" title="Attach photo" onclick="M.toast('Mock: attach a photo')">📎</button>
+       <button class="btn btn-primary" style="width:auto;padding:8px 16px" onclick="M.chat.send('msg-input','active-thread')">Send</button>
+     </div>`;
+  const tr = document.getElementById('active-thread');
+  if (tr) tr.scrollTop = tr.scrollHeight;
+}
+
+// ── selection ───────────────────────────────────────────────────────
+window.selectContact = (id, el) => {
+  activeId = id;
+  document.querySelectorAll('#inbox-list .inbox-item').forEach(x => x.classList.remove('active'));
+  if (el) el.classList.add('active');
+  // clear that contact's unread indicator (list + model)
+  const c = CONTACTS.find(x => x.id === id);
+  if (c) c.unread = 0;
+  if (el) {
+    const pill = el.querySelector('.unread-pill'); if (pill) pill.remove();
+    el.setAttribute('data-unread', '0');
+  }
+  if (c) renderThread(c);
+};
+
+// ── filter pills ────────────────────────────────────────────────────
+window.setFilter = (btn) => {
+  document.querySelectorAll('.ofilter-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const f = btn.dataset.filter;
+  document.querySelectorAll('#inbox-list .inbox-item').forEach(item => {
+    let show = true;
+    if (f === 'unread') show = item.dataset.unread === '1';
+    if (f === 'leads') show = item.dataset.lead === '1';
+    item.style.display = show ? '' : 'none';
+  });
+};
+
+// initial render: list + open Sarah (c1)
+renderList();
+renderThread(CONTACTS.find(c => c.id === 'c1'));
+</script>
+<style>
+/* keep the inbox at a workable, generous height */
+.inbox { min-height: 600px; height: 600px; }
+.inbox-thread { overflow: hidden; }
+</style>
+</body>
+</html>

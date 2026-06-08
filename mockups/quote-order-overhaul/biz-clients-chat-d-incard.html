@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Clients · ProCabinet (Option D — chat inside client cards)</title>
+<link rel="stylesheet" href="../../styles.css">
+<link rel="stylesheet" href="assets/_mock.css">
+<style>
+  /* ── Option D: messaging baked into the real client card ──────────── */
+  .cc-row { font-size: 11.5px; padding: 4px 6px; border-radius: 4px; cursor: pointer; display: flex; align-items: center; flex-wrap: wrap; }
+  .cc-row:hover { background: var(--surface2); }
+
+  /* dashed-top Conversation block inside each card */
+  .conv-block { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--border2); }
+  .conv-head { display: flex; align-items: center; gap: 8px; }
+  .conv-title { font-size: 10px; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: .6px; display: inline-flex; align-items: center; gap: 5px; }
+  .conv-title svg { color: var(--muted); }
+  .conv-count { background: var(--surface2); color: var(--text2); border: 1px solid var(--border); font-size: 9px; font-weight: 800; min-width: 16px; height: 16px; padding: 0 5px; border-radius: 9px; display: inline-flex; align-items: center; justify-content: center; }
+
+  .state-pill { font-size: 10px; font-weight: 700; padding: 3px 10px; border-radius: 999px; display: inline-flex; align-items: center; gap: 5px; margin-left: auto; }
+  .state-pill.needs { background: var(--accent); color: #fff; }
+  .state-pill.replied { background: var(--surface2); color: var(--muted); border: 1px solid var(--border); }
+  .state-pill .sp-dot { width: 6px; height: 6px; border-radius: 50%; background: #fff; }
+
+  /* latest-message one-line preview + the expand control */
+  .conv-preview { display: flex; align-items: center; gap: 7px; margin-top: 8px; }
+  .conv-preview .cp-from { font-size: 11px; font-weight: 700; color: var(--muted); flex-shrink: 0; }
+  .conv-preview .cp-text { font-size: 12.5px; color: var(--text2); line-height: 1.4; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
+  .conv-open { font-size: 11px; font-weight: 700; padding: 5px 12px; border-radius: 999px; background: var(--surface2); border: 1px solid var(--border); color: var(--text2); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0; transition: all .15s; }
+  .conv-open:hover { border-color: var(--accent); color: var(--accent); }
+  .conv-open.needs { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .conv-open svg { color: inherit; }
+
+  /* the inline expand: thread + composer */
+  .conv-expand { display: none; margin-top: 10px; border: 1px solid var(--border); border-radius: 10px; background: var(--bg); overflow: hidden; }
+  .client-card.conv-shown .conv-expand { display: block; }
+  .client-card.conv-shown { border-color: var(--accent) !important; }
+  .conv-expand .thread { max-height: 280px; overflow: auto; padding: 14px 15px; }
+  .conv-expand .composer { border-radius: 0; }
+
+  .empty-state { text-align: center; color: var(--muted); font-size: 13px; padding: 30px 16px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+</style>
+</head>
+<body>
+<div id="chrome"></div>
+<div class="app-body">
+  <div class="section-panel active">
+
+    <!-- REAL CLIENTS SIDEBAR (New Client form) -->
+    <div class="sidebar mv-pane-editor" id="clients-sidebar" style="width:300px;min-width:260px">
+      <div class="sidebar-scroll">
+        <div class="form-section">
+          <div class="project-header">
+            <div class="ph-row1">
+              <svg class="ph-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+              <span class="ph-title">New Client</span>
+            </div>
+          </div>
+          <div class="form-group" style="margin-bottom:8px"><label>Name</label><input type="text" placeholder="e.g. John Smith"></div>
+          <div class="form-group" style="margin-bottom:8px"><label>Email</label><input type="email" placeholder="john@example.com"></div>
+          <div class="form-group" style="margin-bottom:8px"><label>Phone</label><input type="tel" placeholder="+44 7700 900000"></div>
+          <div class="form-group" style="margin-bottom:8px"><label>Address</label><textarea placeholder="Street, City..."></textarea></div>
+          <div class="form-group" style="margin-bottom:8px"><label>Notes</label><textarea placeholder="Any notes..."></textarea></div>
+          <button class="btn btn-primary" style="margin-top:4px;width:100%">+ Add Client</button>
+        </div>
+      </div>
+    </div>
+    <div class="resize-handle"></div>
+
+    <!-- MAIN -->
+    <div class="main-content mv-pane-list">
+      <div class="main-scroll" id="clients-main"></div>
+    </div>
+  </div>
+</div>
+
+<div class="mock-ribbon"><span class="dot"></span> App · Clients tab — Option D · Chat inside client cards <a href="index.html">all mockups</a></div>
+
+<script src="assets/_seed.js"></script>
+<script>
+const M = window.MOCK;
+const C = M.contacts;
+const fmt = v => '£' + Number(v).toLocaleString('en-GB', { maximumFractionDigits: 0 });
+
+// Per-client quotes/orders (as the real Clients tab shows them inline) — copied verbatim from Option C base
+const DEALS = {
+  c1: { email: 'sarah.whitfield@gmail.com', phone: '07700 900 042', quotes: [{ label: 'Q-0042 · Kitchen — Maple Shaker', status: 'Viewed', badge: 'badge-blue', value: 7982.40 }], orders: [] },
+  c2: { email: 'marcus.lee@outlook.com', phone: '07700 900 118', quotes: [], orders: [{ label: 'Order 0029 · Utility room', status: 'Deposit paid', badge: 'badge-green', value: 3140 }] },
+  c3: { email: 'estate@theoldrectory.co.uk', phone: '01453 555 071', quotes: [{ label: 'Q-0040 · Boot room + bench', status: 'Accepted', badge: 'badge-teal', value: 5620 }], orders: [] },
+  c4: { email: 'j.okafor@gmail.com', phone: '07700 900 239', quotes: [{ label: 'Q-0039 · Alcove units ×2', status: 'Sent', badge: 'badge-blue', value: 1880 }, { label: 'Q-0035 · Bookcase', status: 'Draft', badge: 'badge-gray', value: 640 }], orders: [] },
+  c5: { email: 'priya.sam@gmail.com', phone: '07700 900 285', quotes: [], orders: [] },
+};
+
+document.getElementById('chrome').outerHTML = M.appChrome('clients', { orders: 3 });
+
+// runtime state per contact
+const state = {};
+C.forEach(c => { state[c.id] = { needs: c.who === 'them', unread: c.unread || 0, open: false }; });
+
+const CHAT_ICON = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>';
+
+// rough message-count per client (matches the seeded threads)
+function msgCount(c) { return c.id === 'c1' ? 4 : 2; }
+function firstName(name) { const t = name.split(/[ &]/)[0]; return t === 'The' ? name : t; }
+
+// ── shell (content header + search + filter pills) ─────────────────
+function shell() {
+  return `<div style="padding:24px;max-width:900px;margin:0 auto">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+      <h2 style="font-size:18px;font-weight:800;flex:1">Clients</h2>
+      <button class="btn btn-primary" style="width:auto">+ New client</button>
+    </div>
+    <div class="lib-filter-row">
+      <input type="text" class="lib-filter-input" placeholder="Search clients..." oninput="setSearch(this.value)">
+      <button class="btn btn-outline lib-filter-btn">&darr; Export</button>
+      <button class="btn btn-outline lib-filter-btn">&uarr; Import</button>
+    </div>
+    <div class="feed-filters" id="client-filters" style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap"></div>
+    <div id="client-cards"></div>
+  </div>`;
+}
+
+// ── filter pills: All / Needs reply / Leads ────────────────────────
+let activeFilter = 'all', searchTerm = '';
+function needsCount() { return C.filter(c => state[c.id].needs).length; }
+function leadsCount() { return C.filter(c => c.status === 'Lead').length; }
+function renderFilters() {
+  const tabs = [['all', 'All', C.length], ['needs', 'Needs reply', needsCount()], ['leads', 'Leads', leadsCount()]];
+  document.getElementById('client-filters').innerHTML = tabs.map(([k, label, n]) =>
+    `<button class="ofilter-tab${k === activeFilter ? ' active' : ''}" onclick="setFilter('${k}')">${label} (${n})</button>`).join('');
+}
+window.setFilter = k => { activeFilter = k; renderFilters(); renderClientCards(); };
+window.setSearch = v => { searchTerm = v.trim().toLowerCase(); renderClientCards(); };
+function passesFilter(c) {
+  if (activeFilter === 'needs' && !state[c.id].needs) return false;
+  if (activeFilter === 'leads' && c.status !== 'Lead') return false;
+  if (searchTerm) {
+    const d = DEALS[c.id] || {};
+    const hay = (c.name + ' ' + c.project + ' ' + (d.email || '') + ' ' + c.ref).toLowerCase();
+    if (!hay.includes(searchTerm)) return false;
+  }
+  return true;
+}
+
+// ── REAL client card (avatar + meta + Quotes/Orders) + Conversation ──
+function statePill(c) {
+  return state[c.id].needs
+    ? '<span class="state-pill needs"><span class="sp-dot"></span>Needs reply</span>'
+    : '<span class="state-pill replied">✓ Replied</span>';
+}
+function clientCard(c) {
+  const d = DEALS[c.id] || { quotes: [], orders: [] };
+  const s = state[c.id];
+  const totalValue = d.quotes.reduce((a, q) => a + q.value, 0) + d.orders.reduce((a, o) => a + o.value, 0);
+  const section = (label, items) => items.length
+    ? `<div class="cc-section" style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--border2)">
+        <div style="font-size:10px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">${label} (${items.length})</div>
+        ${items.map(it => `<div class="cc-row"><span>${M.esc(it.label)} · ${fmt(it.value)}</span><span class="badge ${it.badge}" style="font-size:9px;padding:1px 6px;margin-left:6px">${it.status}</span></div>`).join('')}
+      </div>` : '';
+  const metaBits = [d.email, d.quotes.length + ' quote' + (d.quotes.length !== 1 ? 's' : ''), d.orders.length + ' order' + (d.orders.length !== 1 ? 's' : ''), fmt(totalValue)].join(' · ');
+
+  // latest message preview (strip a leading "You: ")
+  const preview = M.esc(c.last.replace(/^You:\s*/, ''));
+  const fromLabel = (c.who === 'me') ? 'You' : firstName(c.name);
+  const openBtnLabel = s.needs ? (s.unread ? s.unread + ' unread · Reply' : 'Reply') : 'Open conversation';
+
+  return `<div class="client-card${s.open ? ' conv-shown' : ''}" id="card-${c.id}" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;margin-bottom:10px;cursor:pointer;transition:box-shadow .15s,border-color .15s"
+      onmouseover="this.style.boxShadow='var(--shadow-md)'" onmouseout="this.style.boxShadow=''">
+    <div style="display:flex;align-items:center;gap:10px">
+      <div style="width:30px;height:30px;border-radius:50%;background:var(--accent-dim);color:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;flex-shrink:0">${c.name.charAt(0).toUpperCase()}</div>
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;gap:7px"><span style="font-size:14px;font-weight:700;color:var(--text)">${M.esc(c.name)}</span><span class="badge ${c.badge}" style="font-size:9px;padding:1px 6px">${c.status}</span></div>
+        <div style="font-size:10px;color:var(--muted);margin-top:1px">${M.esc(metaBits)}</div>
+      </div>
+    </div>
+    ${section('Quotes', d.quotes)}
+    ${section('Orders', d.orders)}
+
+    <!-- Conversation block (baked into the card) -->
+    <div class="conv-block">
+      <div class="conv-head">
+        <span class="conv-title">${CHAT_ICON} Messages <span class="conv-count" id="count-${c.id}">${msgCount(c)}</span></span>
+        ${statePill(c)}
+      </div>
+      <div class="conv-preview">
+        <span class="cp-from">${fromLabel}:</span>
+        <span class="cp-text" id="preview-${c.id}">${preview}</span>
+        <button class="conv-open${s.needs ? ' needs' : ''}" id="openbtn-${c.id}" onclick="event.stopPropagation();toggleConv('${c.id}',true)">${CHAT_ICON} <span class="ob-label">${s.open ? 'Close' : openBtnLabel}</span></button>
+      </div>
+      <div class="conv-expand">
+        <div class="thread" id="thread-${c.id}">${M.threadFor(c)}</div>
+        <div class="composer">
+          <input id="input-${c.id}" placeholder="Reply to ${M.esc(firstName(c.name))}…" autocomplete="off" onkeydown="if(event.key==='Enter')doReply('${c.id}')">
+          <button class="btn btn-primary" style="width:auto;padding:8px 16px" onclick="doReply('${c.id}')">Send</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- footer actions -->
+    <div style="display:flex;align-items:center;gap:4px;margin-top:10px;padding-top:8px;border-top:1px solid var(--border2)">
+      <button class="btn btn-outline" style="font-size:11px;padding:4px 10px;width:auto" onclick="event.stopPropagation();toggleConv('${c.id}',true)">${CHAT_ICON.replace('width="13" height="13"', 'width="11" height="11"')} Message</button>
+      <span style="flex:1"></span>
+      <button class="btn btn-outline" style="font-size:11px;padding:4px 8px;width:auto">Duplicate</button>
+      <button class="btn btn-outline" style="color:var(--danger);font-size:11px;padding:4px 8px;width:auto">Delete</button>
+    </div>
+  </div>`;
+}
+function renderClientCards() {
+  const list = C.filter(passesFilter);
+  document.getElementById('client-cards').innerHTML = list.length
+    ? list.map(clientCard).join('')
+    : `<div class="empty-state">No clients match. <span style="color:var(--accent);font-weight:600;cursor:pointer" onclick="setFilter('all');document.querySelector('.lib-filter-input').value=''">Clear filters</span></div>`;
+}
+
+// ── expand / collapse the in-card conversation ─────────────────────
+window.toggleConv = (id, focus) => {
+  const s = state[id]; s.open = !s.open;
+  const el = document.getElementById('card-' + id); if (!el) return;
+  el.classList.toggle('conv-shown', s.open);
+  // update open-button label + border highlight
+  const lbl = el.querySelector('#openbtn-' + id + ' .ob-label');
+  const openBtnLabel = s.needs ? (s.unread ? s.unread + ' unread · Reply' : 'Reply') : 'Open conversation';
+  if (lbl) lbl.textContent = s.open ? 'Close' : openBtnLabel;
+  el.style.borderColor = s.open ? 'var(--accent)' : 'var(--border)';
+  // opening clears the unread chip
+  if (s.open && s.unread) { s.unread = 0; const ob = el.querySelector('#openbtn-' + id); if (ob && s.needs) ob.querySelector('.ob-label').textContent = 'Reply'; }
+  if (s.open && focus) {
+    const inp = document.getElementById('input-' + id), th = document.getElementById('thread-' + id);
+    if (th) th.scrollTop = th.scrollHeight;
+    if (inp) setTimeout(() => inp.focus(), 60);
+    el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+};
+
+// ── send a reply: me bubble + typing + canned them reply ───────────
+window.doReply = id => {
+  const inp = document.getElementById('input-' + id); if (!inp || !inp.value.trim()) return;
+  const c = C.find(x => x.id === id);
+  const sent = inp.value.trim();
+  M.chat.send('input-' + id, 'thread-' + id, cannedReply(c));
+  // flip the card to ✓ Replied + clear unread chip
+  state[id].needs = false; state[id].unread = 0;
+  const el = document.getElementById('card-' + id);
+  if (el) {
+    const pill = el.querySelector('.state-pill'); if (pill) pill.outerHTML = statePill(c);
+    const ob = el.querySelector('#openbtn-' + id); if (ob) { ob.classList.remove('needs'); ob.querySelector('.ob-label').textContent = 'Close'; }
+    // update one-line preview to the just-sent message
+    const pv = document.getElementById('preview-' + id); if (pv) pv.textContent = sent;
+    const pvFrom = el.querySelector('.conv-preview .cp-from'); if (pvFrom) pvFrom.textContent = 'You';
+    const cnt = document.getElementById('count-' + id); if (cnt) cnt.textContent = (parseInt(cnt.textContent, 10) || 0) + 2;
+  }
+  renderFilters();
+  M.toast('Reply sent to ' + firstName(c.name));
+};
+function cannedReply(c) {
+  return ({
+    c1: 'Lovely — no rush on the island at all. The quote stays live and reprices the moment you decide 👍',
+    c2: 'Brilliant, thanks Marcus! Your order’s in the build queue — I’ll send dates this week.',
+    c3: 'Perfect — I’ll send the deposit link now so we can lock in your slot.',
+    c4: 'No problem — happy to walk through the alcove sizes whenever suits.',
+    c5: 'Hi! Yes, I’d love to quote your walk-in wardrobe — could you send a rough width and a photo of the space?',
+  })[c.id] || 'Thanks — I’ll get back to you shortly 👍';
+}
+
+// ── init ───────────────────────────────────────────────────────────
+document.getElementById('clients-main').innerHTML = shell();
+renderFilters();
+renderClientCards();
+</script>
+</body>
+</html>

@@ -235,6 +235,51 @@ let projects = [];
 let stockNextId = 1;
 const STOCK_CATS = ['Sheet Goods','Solid Timber','Edge Banding','Hardware','Finishing','Other'];
 
+// ── Finishing units (paint/oil/lacquer) ──
+// Canonical storage is metric: qty = litres, coverage_sqm = m² per litre,
+// cost = £/L. When the app is in imperial mode the form shows US gallons +
+// ft²/gal and we convert on the way in/out. The quote integration prices a
+// finish by surface area: £/m² = cost-per-litre ÷ coverage(m²/L).
+const FIN_DEFAULT_COV_M2L = 10;            // default coverage for new finishes: 10 m²/L
+const L_PER_USGAL = 3.785411784;          // 1 US gallon = 3.785411784 L
+const SQFT_PER_SQM = 10.7639104167;        // 1 m² = 10.7639 ft²
+// 1 (m²/L) expressed as (ft²/US-gal): multiply by ft²/m² then by L/gal
+const COV_M2L_TO_FT2GAL = SQFT_PER_SQM * L_PER_USGAL; // ≈ 40.746
+/** True when finishes should display in US gallons / ft²/gal. */
+function _finImperial() { return window.units !== 'metric'; }
+/** Volume label for finishing inputs. */
+function _finVolUnit() { return _finImperial() ? 'gal' : 'L'; }
+/** Coverage label for finishing inputs. */
+function _finCovUnit() { return _finImperial() ? 'ft²/gal' : 'm²/L'; }
+/** Convert a display volume (L or US gal) to canonical litres. @param {number} v */
+function _finVolToL(v) { return _finImperial() ? v * L_PER_USGAL : v; }
+/** Convert canonical litres to the display volume. @param {number} l */
+function _finVolFromL(l) { return _finImperial() ? l / L_PER_USGAL : l; }
+/** Convert a display coverage to canonical m²/L. @param {number} c */
+function _finCovToM2L(c) { return _finImperial() ? c / COV_M2L_TO_FT2GAL : c; }
+/** Convert canonical m²/L to the display coverage. @param {number} c */
+function _finCovFromM2L(c) { return _finImperial() ? c * COV_M2L_TO_FT2GAL : c; }
+/** Convert a display cost (£/L or £/gal) to canonical £/L. @param {number} c */
+function _finCostToPerL(c) { return _finImperial() ? c / L_PER_USGAL : c; }
+/** Convert canonical £/L to the display cost. @param {number} c */
+function _finCostFromPerL(c) { return _finImperial() ? c * L_PER_USGAL : c; }
+/** If a stock item is a Finishing material with a coverage rate, return the
+ *  per-area pricing for a quote/order line (priced per m² metric / per ft²
+ *  imperial). Returns null for non-finishing items or those with no coverage,
+ *  so callers fall back to the plain per-unit cost. @param {any} stockItem */
+function _finQuoteLine(stockItem) {
+  if (!stockItem) return null;
+  const cat = stockItem.category || (typeof _scGet === 'function' ? _scGet(stockItem.id) : '');
+  if (cat !== 'Finishing') return null;
+  const cov = parseFloat(stockItem.coverage_sqm);    // m² per litre (canonical)
+  const costL = parseFloat(stockItem.cost);          // £ per litre (canonical)
+  if (!cov || cov <= 0 || !isFinite(costL)) return null;
+  const perM2 = costL / cov;                          // £/m²
+  const areaUnit = _finImperial() ? 'ft²' : 'm²';
+  const unit_price = _finImperial() ? perM2 / SQFT_PER_SQM : perM2;
+  return { name: `${stockItem.name} (per ${areaUnit})`, unit_price, areaUnit };
+}
+
 // ── Stock metadata: DB columns first, localStorage fallback (Phase 3 of pre-launch refactor) ──
 // stockItems is loaded with select('*'), so DB columns (category, supplier, supplier_url,
 // variant, thickness_mm, width_mm, length_m, glue) come along automatically. Once migration
@@ -393,16 +438,35 @@ function stockCatChanged() {
   const cat = _byId('stock-cat')?.value ?? '';
   const dimsEl = _byId('stock-dims-fields');
   const ebEl = _byId('stock-eb-fields');
+  const finEl = _byId('stock-fin-fields');
   const qtyEl = _byId('stock-qty-fields');
   const ebQtyEl = _byId('stock-eb-qty-fields');
   if (!dimsEl) return;
   const isEB = cat === 'Edge Banding';
+  const isFin = cat === 'Finishing';
   const sheetCats = ['Sheet Goods', 'Solid Timber'];
   dimsEl.style.display = sheetCats.includes(cat) ? '' : 'none';
   if (ebEl) ebEl.style.display = isEB ? '' : 'none';
+  if (finEl) finEl.style.display = isFin ? '' : 'none';
   if (qtyEl) qtyEl.style.display = isEB ? 'none' : '';
   if (ebQtyEl) ebQtyEl.style.display = isEB ? '' : 'none';
+  // Relabel the generic qty/low/cost row for finishing (volume in L or gal).
+  const vol = _finVolUnit();
+  _setLabel('stock-qty-label', isFin ? `Volume (${vol})` : 'Qty');
+  _setLabel('stock-low-label', isFin ? `Low Alert (${vol})` : 'Low Alert');
+  _setLabel('stock-cost-label', isFin ? `Cost / ${vol}` : 'Cost / Unit');
+  _setLabel('stock-fin-cov-label', `Coverage (${_finCovUnit()})`);
+  // Default coverage to 10 m²/L (unit-converted) for NEW finishing items —
+  // editStockItem sets _editingStockId first, so existing items aren't clobbered.
+  if (isFin && !window._editingStockId) {
+    const covEl = /** @type {HTMLInputElement|null} */ (_byId('stock-fin-coverage'));
+    if (covEl) covEl.value = _fmtNum(_finCovFromM2L(FIN_DEFAULT_COV_M2L));
+  }
 }
+/** @param {string} id @param {string} text */
+function _setLabel(id, text) { const el = _byId(id); if (el) el.textContent = text; }
+/** Round to 2dp and drop trailing zeros (tidies unit-conversion float noise). @param {number} n */
+function _fmtNum(n) { return String(Math.round((Number(n) || 0) * 100) / 100); }
 function cancelStockEdit() {
   if (_stockAutosaveTimer) { clearTimeout(_stockAutosaveTimer); _stockAutosaveTimer = null; }
   window._editingStockId = null;
@@ -440,6 +504,7 @@ async function duplicateStockItem(id) {
     qty: src.qty,
     low: src.low,
     cost: src.cost,
+    coverage_sqm: /** @type {any} */ (src).coverage_sqm ?? null,
   };
   const { data, error } = await _db('stock_items').insert(/** @type {any} */ (row)).select().single();
   if (error || !data) { _toast('Could not duplicate stock item', 'error'); return; }
@@ -467,12 +532,16 @@ async function addStockItem() {
   const cat = inp('stock-cat').value.trim();
   const variant = inp('stock-variant').value.trim();
   const isEB = cat === 'Edge Banding';
+  const isFin = cat === 'Finishing';
   const thick = isEB
     ? (parseFloat(_byId('stock-eb-thick')?.value ?? '') || 0)
     : (parseFloat(_byId('stock-thick')?.value ?? '') || 0);
   const ebWidth = isEB ? (parseFloat(_byId('stock-eb-width')?.value ?? '') || 0) : 0;
   const ebLength = isEB ? (parseFloat(_byId('stock-eb-length')?.value ?? '') || 0) : 0;
   const ebGlue = isEB ? (_byId('stock-eb-glue')?.value || '') : '';
+  // Finishing: qty/low/cost are entered in display units (L or US gal) and the
+  // coverage in m²/L or ft²/gal — store everything canonically in metric.
+  const finCov = isFin ? _finCovToM2L(parseFloat(_byId('stock-fin-coverage')?.value ?? '') || 0) : null;
   const row = {
     user_id: _userId, name,
     sku: inp('stock-sku').value.trim() || '—',
@@ -480,13 +549,20 @@ async function addStockItem() {
     h: isEB ? ebWidth : (parseFloat(inp('stock-h').value) || 1220),
     qty: isEB
       ? Math.round(ebLength)
-      : (parseInt(inp('stock-qty').value) || 0),
+      : isFin
+        ? _finVolToL(parseFloat(inp('stock-qty').value) || 0)
+        : (parseInt(inp('stock-qty').value) || 0),
     low: isEB
       ? Math.round(parseFloat(_byId('stock-eb-low')?.value ?? '') || 0)
-      : (parseInt(inp('stock-low').value) || 3),
+      : isFin
+        ? _finVolToL(parseFloat(inp('stock-low').value) || 0)
+        : (parseInt(inp('stock-low').value) || 3),
     cost: isEB
       ? (parseFloat(_byId('stock-eb-cost')?.value ?? '') || 0)
-      : (parseFloat(inp('stock-cost').value) || 0),
+      : isFin
+        ? _finCostToPerL(parseFloat(inp('stock-cost').value) || 0)
+        : (parseFloat(inp('stock-cost').value) || 0),
+    coverage_sqm: finCov,
   };
   const { data, error } = await _db('stock_items').insert(/** @type {any} */ (row)).select().single();
   if (error || !data) { _toast('Could not save stock item — ' + (error?.message || JSON.stringify(error)), 'error'); console.error(error); return; }
@@ -552,6 +628,13 @@ function editStockItem(id) {
     inp('stock-eb-glue').value = vd.glue || item.glue || 'EVA';
     inp('stock-eb-low').value = String(item.low ?? '');
     inp('stock-eb-cost').value = String(item.cost ?? '');
+  } else if (cat === 'Finishing') {
+    // Canonical metric → display units (L/gal, m²/L or ft²/gal, £/L or £/gal).
+    const cov = /** @type {any} */ (item).coverage_sqm;
+    inp('stock-fin-coverage').value = (cov != null) ? _fmtNum(_finCovFromM2L(cov)) : '';
+    inp('stock-qty').value = (item.qty != null) ? _fmtNum(_finVolFromL(item.qty)) : '';
+    inp('stock-low').value = (item.low != null) ? _fmtNum(_finVolFromL(item.low)) : '';
+    inp('stock-cost').value = (item.cost != null) ? _fmtNum(_finCostFromPerL(item.cost)) : '';
   } else {
     inp('stock-thick').value = vd.thickness || '';
     inp('stock-w').value = String(item.w ?? '');
@@ -582,6 +665,7 @@ async function saveStockEdit() {
   const inp = id => /** @type {HTMLInputElement} */ (_byId(id));
   const cat = inp('stock-cat').value.trim();
   const isEB = cat === 'Edge Banding';
+  const isFin = cat === 'Finishing';
   const variant = _byId('stock-variant')?.value?.trim() || '';
   /** @type {any} */
   let updates;
@@ -599,6 +683,17 @@ async function saveStockEdit() {
       qty: Math.round(ebLength),
       low: Math.round(parseFloat(_byId('stock-eb-low')?.value ?? '') || 0),
       cost: parseFloat(_byId('stock-eb-cost')?.value ?? '') || 0,
+      coverage_sqm: null,
+    };
+  } else if (isFin) {
+    updates = {
+      name: inp('stock-name').value.trim(),
+      sku: inp('stock-sku').value.trim(),
+      w: item.w, h: item.h,
+      qty: _finVolToL(parseFloat(inp('stock-qty').value) || 0),
+      low: _finVolToL(parseFloat(inp('stock-low').value) || 0),
+      cost: _finCostToPerL(parseFloat(inp('stock-cost').value) || 0),
+      coverage_sqm: _finCovToM2L(parseFloat(_byId('stock-fin-coverage')?.value ?? '') || 0),
     };
   } else {
     thick = parseFloat(_byId('stock-thick')?.value ?? '') || 0;
@@ -610,6 +705,7 @@ async function saveStockEdit() {
       qty: parseInt(inp('stock-qty').value) || 0,
       low: parseInt(inp('stock-low').value) || 3,
       cost: parseFloat(inp('stock-cost').value) || 0,
+      coverage_sqm: null,
     };
   }
   /** @type {any} */
@@ -656,6 +752,7 @@ async function _stockAutosaveRun() {
   }
   const cat = inp('stock-cat').value.trim();
   const isEB = cat === 'Edge Banding';
+  const isFin = cat === 'Finishing';
   const variant = _byId('stock-variant')?.value?.trim() || '';
   /** @type {any} */
   let updates;
@@ -671,6 +768,16 @@ async function _stockAutosaveRun() {
       qty: Math.round(ebLength),
       low: Math.round(parseFloat(_byId('stock-eb-low')?.value ?? '') || 0),
       cost: parseFloat(_byId('stock-eb-cost')?.value ?? '') || 0,
+      coverage_sqm: null,
+    };
+  } else if (isFin) {
+    updates = {
+      name, sku: inp('stock-sku').value.trim(),
+      w: item.w, h: item.h,
+      qty: _finVolToL(parseFloat(inp('stock-qty').value) || 0),
+      low: _finVolToL(parseFloat(inp('stock-low').value) || 0),
+      cost: _finCostToPerL(parseFloat(inp('stock-cost').value) || 0),
+      coverage_sqm: _finCovToM2L(parseFloat(_byId('stock-fin-coverage')?.value ?? '') || 0),
     };
   } else {
     thick = parseFloat(_byId('stock-thick')?.value ?? '') || 0;
@@ -681,6 +788,7 @@ async function _stockAutosaveRun() {
       qty: parseInt(inp('stock-qty').value) || 0,
       low: parseInt(inp('stock-low').value) || 3,
       cost: parseFloat(inp('stock-cost').value) || 0,
+      coverage_sqm: null,
     };
   }
   Object.assign(item, updates);
@@ -710,6 +818,7 @@ async function _stockAutosaveRun() {
   const inputs = ['stock-name','stock-variant','stock-sku',
     'stock-w','stock-h','stock-thick',
     'stock-eb-thick','stock-eb-width','stock-eb-length',
+    'stock-fin-coverage',
     'stock-qty','stock-low','stock-cost',
     'stock-eb-low','stock-eb-cost',
     'stock-supplier','stock-reorder-url'];
@@ -747,6 +856,17 @@ async function setStockQty(id, text) {
   const item = stockItems.find(s => s.id === id);
   if (!item || item.qty === qty) return;
   item.qty = Math.max(0, qty);
+  if (_userId) await _db('stock_items').update({ qty: item.qty }).eq('id', id);
+  renderStockMain();
+}
+/** Inline-edit a finishing item's volume. Accepts a decimal in display units
+ *  (L or US gal) and stores canonical litres. @param {number} id @param {string | number} text */
+async function setStockQtyFin(id, text) {
+  const disp = parseFloat(String(text).replace(/[^0-9.]/g,'')) || 0;
+  const litres = Math.max(0, _finVolToL(disp));
+  const item = stockItems.find(s => s.id === id);
+  if (!item || item.qty === litres) return;
+  item.qty = litres;
   if (_userId) await _db('stock_items').update({ qty: item.qty }).eq('id', id);
   renderStockMain();
 }
@@ -869,6 +989,7 @@ function renderStockMain() {
     const sup = _ssGet(item.id);
     const vd = _svGet(item.id);
     const isEB = cat === 'Edge Banding';
+    const isFin = cat === 'Finishing';
     const sheetCat = ['Sheet Goods','Solid Timber'].includes(cat);
     let dims = ''; let thk = ''; let glue = '';
     if (isEB) {
@@ -878,6 +999,14 @@ function renderStockMain() {
       thk = t ? `${t}mm` : '';
       dims = (w && l) ? `${w}mm × ${l}m` : (w ? `${w}mm` : '');
       glue = vd.glue || item.glue || '';
+    } else if (isFin) {
+      // Dimensions col = coverage; Thickness col = derived cost per area.
+      const cov = item.coverage_sqm;
+      if (cov) {
+        dims = `${_fmtNum(_finCovFromM2L(cov))} ${_finCovUnit()}`;
+        const perArea = item.cost / cov; // £/m²
+        thk = `${cur}${(_finImperial() ? perArea / SQFT_PER_SQM : perArea).toFixed(2)}/${_finImperial() ? 'ft²' : 'm²'}`;
+      }
     } else if (sheetCat) {
       dims = `${formatDim(item.w)}×${formatDim(item.h)}${u}`;
       thk = vd.thickness ? `${vd.thickness}mm` : '';
@@ -886,8 +1015,13 @@ function renderStockMain() {
     }
     const variant = vd.variant || glue || '';
     const sku = item.sku && item.sku !== '—' ? item.sku : '';
-    const unit = isEB ? 'm' : (sheetCat ? 'sheet' : 'unit');
+    const unit = isEB ? 'm' : (isFin ? _finVolUnit() : (sheetCat ? 'sheet' : 'unit'));
     const isEditing = item.id === window._editingStockId;
+    // Finishing stores canonical metric (litres, £/L) — show display units.
+    const qtyDisp = isFin ? _fmtNum(_finVolFromL(item.qty ?? 0)) : item.qty;
+    const lowDisp = isFin ? _fmtNum(_finVolFromL(item.low ?? 0)) : (item.low ?? 0);
+    const costDisp = isFin ? _finCostFromPerL(item.cost ?? 0) : (item.cost ?? 0);
+    const qtySetter = isFin ? `setStockQtyFin(${item.id}, this.value)` : `setStockQty(${item.id}, this.value)`;
     return `<tr class="stock-row${isEditing ? ' editing' : ''}" onclick="_openStockPopup(${item.id})">
       <td>
         <div style="font-weight:600;color:var(--text)">${_escHtml(item.name)}${isEditing ? ' <span style="font-weight:500;color:var(--accent);font-size:11px">· editing</span>' : ''}</div>
@@ -898,12 +1032,12 @@ function renderStockMain() {
       <td style="color:var(--text2)">${_escHtml(thk) || '—'}</td>
       <td onclick="event.stopPropagation()">
         <span class="stock-qpill ${isLow?'low':'ok'}">
-          <input type="text" value="${item.qty}" onclick="this.select()" onblur="setStockQty(${item.id}, this.value)" onkeydown="if(event.key==='Enter')this.blur()">
+          <input type="text" value="${qtyDisp}" onclick="this.select()" onblur="${qtySetter}" onkeydown="if(event.key==='Enter')this.blur()">
         </span>
       </td>
-      <td style="color:var(--muted)">${item.low ?? 0}</td>
-      <td style="text-align:right;color:var(--text2)">${cur}${item.cost.toFixed(2)}<span style="font-size:9px;color:var(--muted)">/${unit}</span></td>
-      <td style="text-align:right;font-weight:700">${cur}${(item.qty * item.cost).toFixed(0)}</td>
+      <td style="color:var(--muted)">${lowDisp}</td>
+      <td style="text-align:right;color:var(--text2)">${cur}${costDisp.toFixed(2)}<span style="font-size:9px;color:var(--muted)">/${unit}</span></td>
+      <td style="text-align:right;font-weight:700">${cur}${((item.qty ?? 0) * (item.cost ?? 0)).toFixed(0)}</td>
       <td style="color:var(--text2)">${
         sup.supplier && sup.url
           ? `<a class="stock-supplier-link" href="${_escHtml(_normalizeUrl(sup.url))}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${_escHtml(sup.supplier)}</a>`
@@ -934,12 +1068,14 @@ function renderStockMain() {
 
   /** @param {string} cat @param {any[]} items @param {boolean} collapsed */
   const sectionHTML = (cat, items, collapsed) => {
-    const stock = items.reduce((s, i) => s + (i.qty ?? 0), 0);
+    const isEB = cat === 'Edge Banding';
+    const isFin = cat === 'Finishing';
+    const sheetCat = ['Sheet Goods','Solid Timber'].includes(cat);
+    const rawStock = items.reduce((s, i) => s + (i.qty ?? 0), 0);
+    const stock = isFin ? _fmtNum(_finVolFromL(rawStock)) : rawStock;
     const value = items.reduce((s, i) => s + (i.qty ?? 0) * (i.cost ?? 0), 0);
     const lowCount = items.filter(i => (i.qty ?? 0) <= (i.low ?? 0)).length;
-    const isEB = cat === 'Edge Banding';
-    const sheetCat = ['Sheet Goods','Solid Timber'].includes(cat);
-    const unitLabel = isEB ? 'metres' : (sheetCat ? 'sheets' : 'units');
+    const unitLabel = isEB ? 'metres' : (isFin ? (_finImperial() ? 'gal' : 'litres') : (sheetCat ? 'sheets' : 'units'));
     return `<div class="stock-sheet-wrap${collapsed ? ' collapsed' : ''}">
       <div class="stock-cat-header" onclick="_stockToggleGroup('${cat.replace(/'/g,"\\'")}')">
         <span class="stock-grp-chevron">▼</span>

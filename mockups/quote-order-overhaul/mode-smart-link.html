@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Approve &amp; Pay · Blackwood Joinery</title>
+<link rel="stylesheet" href="../../styles.css">
+<link rel="stylesheet" href="assets/_mock.css">
+<style>
+  /* slim explainer strip above the customer view */
+  .sl-explainer { max-width: 880px; margin: 0 auto; padding: 9px 16px; display: flex; align-items: center; gap: 8px;
+    font-size: 11.5px; color: var(--muted); line-height: 1.4; }
+  .sl-explainer .sl-pill { font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em;
+    padding: 2px 8px; border-radius: 999px; background: rgba(13,148,136,.14); color: var(--accent2); flex-shrink: 0; }
+  /* smart-link hero card */
+  .sl-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 26px 24px 22px; text-align: center; }
+  .sl-eyebrow { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; font-weight: 700; }
+  .sl-amt { font-size: 46px; font-weight: 800; letter-spacing: -1.5px; margin: 8px 0 2px; line-height: 1; font-variant-numeric: tabular-nums; }
+  .sl-amt-lbl { font-size: 12px; color: var(--accent2); font-weight: 700; }
+  .sl-summary { font-size: 13px; color: var(--text2); line-height: 1.55; margin: 14px auto 0; max-width: 360px; }
+  .sl-summary strong { color: var(--text); font-variant-numeric: tabular-nums; }
+  .sl-pay { margin-top: 20px; }
+  .sl-pay .btn { max-width: 360px; }
+  .sl-secure { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted); margin-top: 14px; }
+  .sl-secure svg { color: var(--success); }
+  .sl-customise-btn { font-family: inherit; background: none; border: none; color: var(--accent2); font-size: 13px; font-weight: 700; cursor: pointer; padding: 12px; }
+  .sl-customise-btn:hover { text-decoration: underline; }
+  /* expandable itemised list */
+  .sl-items { border-top: 1px solid var(--border); margin-top: 4px; text-align: left; }
+  .sl-foot-links { margin-top: 18px; text-align: center; }
+  .sl-foot-links .lbl { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-bottom: 8px; }
+  .sl-foot-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; max-width: 420px; margin: 0 auto; }
+  .sl-foot-card { display: block; text-decoration: none; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 9px 12px; text-align: left; transition: border-color .15s, box-shadow .15s; }
+  .sl-foot-card:hover { border-color: var(--accent2); box-shadow: var(--shadow); }
+  .sl-foot-card .fc-dir { font-size: 10px; font-weight: 800; color: var(--accent2); text-transform: uppercase; letter-spacing: .04em; }
+  .sl-foot-card .fc-name { font-size: 13px; font-weight: 700; color: var(--text); margin-top: 1px; }
+  .sl-foot-card .fc-arrow { float: right; color: var(--muted); }
+  @media (max-width: 480px) { .sl-amt { font-size: 40px; } .sl-foot-grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body class="cust">
+
+<!-- slim explainer strip (mockup context) -->
+<div class="sl-explainer">
+  <span class="sl-pill">Smart Link mode</span>
+  <span>The minimal one-tap view any of the four directions can switch into. Optimised for the fastest link-to-paid.</span>
+</div>
+
+<div class="cust-top" id="hdr"></div>
+
+<div class="cust-wrap narrow">
+
+  <div class="sl-card">
+    <div class="sl-eyebrow">Deposit to confirm your order</div>
+    <div class="sl-amt" id="sl-amt"></div>
+    <div class="sl-amt-lbl">40% deposit · balance on completion</div>
+
+    <div class="sl-summary" id="sl-summary"></div>
+
+    <div class="sl-pay">
+      <button class="btn btn-primary btn-lg" onclick="MOCK.paymentSheet(window._depLabel, '40% deposit · balance on completion')">Approve &amp; Pay deposit</button>
+    </div>
+
+    <div class="sl-secure">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+      Secured by Stripe · pays straight to Blackwood Joinery
+    </div>
+
+    <!-- Customise (expands the itemised list) -->
+    <div style="border-top:1px solid var(--border2);margin-top:18px">
+      <button class="sl-customise-btn" id="sl-toggle" onclick="toggleItems()">Customise my order ▾</button>
+    </div>
+    <div id="sl-items" class="sl-items" style="display:none">
+      <div style="padding:8px 2px 4px;font-size:11px;color:var(--muted)">
+        Untick anything optional or tap <span class="edit-chip">Edit</span> to change a finish or size — the deposit above updates instantly.
+      </div>
+      <div id="lines"></div>
+      <div style="padding:14px 2px 4px"><div class="totals" id="totals"></div></div>
+    </div>
+  </div>
+
+  <!-- "See this inside" — the four directions this Smart Link folds out of -->
+  <div class="sl-foot-links">
+    <div class="lbl">See this inside</div>
+    <div class="sl-foot-grid">
+      <a class="sl-foot-card" href="a-cust-quote.html"><span class="fc-arrow">↗</span><div class="fc-dir">Direction A</div><div class="fc-name">Deal Room</div></a>
+      <a class="sl-foot-card" href="b-cust-quote.html"><span class="fc-arrow">↗</span><div class="fc-dir">Direction B</div><div class="fc-name">Storefront</div></a>
+      <a class="sl-foot-card" href="c-cust-quote.html"><span class="fc-arrow">↗</span><div class="fc-dir">Direction C</div><div class="fc-name">Proposal</div></a>
+      <a class="sl-foot-card" href="d-cust-quote.html"><span class="fc-arrow">↗</span><div class="fc-dir">Direction D</div><div class="fc-name">Thread</div></a>
+    </div>
+  </div>
+
+</div>
+
+<div class="mock-ribbon"><span class="dot"></span> Smart Link mode — Customer <a href="index.html">all mockups</a></div>
+
+<script src="assets/_seed.js"></script>
+<script>
+const M = window.MOCK;
+document.getElementById('hdr').outerHTML = M.publicHeader({});
+
+let lines = M.freshLines().map(l => Object.assign(l, { _base: l.unit, _baseW: l.w }));
+
+// Same reprice model as the reference customer page.
+function priceLine(l) {
+  const finishF = { 'Natural Oiled': 1.08, 'Walnut Veneer': 1.18 }[l.finish] || 1;
+  const widthF = l.w && l._baseW ? l.w / l._baseW : 1;
+  l.unit = Math.round(l._base * finishF * widthF);
+  return l.unit;
+}
+
+function row(l) {
+  const photo = `<div class="lphoto" style="width:84px;height:64px">${M.art(l.art, { w: 168, h: 128 })}</div>`;
+  const chips = [];
+  if (l.optional) chips.push('<span class="opt-chip">Optional</span>');
+  if (l.editable) chips.push(`<span class="edit-chip" onclick="toggleSpec('${l.id}')">Edit ▾</span>`);
+  const specLine = l.kind === 'cabinet'
+    ? `${l.w}×${l.h}×${l.d}mm · ${M.esc(l.finish)}`
+    : M.esc(l.detail);
+  const toggle = l.optional
+    ? `<button class="inc-toggle" aria-pressed="${l.included}" onclick="toggleInc('${l.id}')" title="Include / exclude"></button>`
+    : '';
+  return `<div class="line-row ${l.included ? '' : 'line-excluded'}" id="rowwrap-${l.id}" style="border-top:1px solid var(--border2);padding:14px 2px">
+    <div style="display:flex;gap:14px;align-items:center">
+      ${photo}
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="font-weight:700;font-size:14px">${M.esc(l.name)}</span>${chips.join('')}</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:3px">${specLine}${l.qty > 1 ? ' · Qty ' + l.qty : ''}</div>
+      </div>
+      <div style="text-align:right;flex-shrink:0">
+        <div class="li-price" style="font-weight:800;font-size:15px;font-variant-numeric:tabular-nums">${M.fmt(M.lineTotal(l))}</div>
+        ${l.qty > 1 ? `<div style="font-size:11px;color:var(--muted)">${M.fmt(l.unit)} each</div>` : ''}
+        ${toggle}
+      </div>
+    </div>
+    <div id="spec-${l.id}" style="display:none"></div>
+  </div>`;
+}
+
+function specEditor(l) {
+  const finishes = M.finishOptions.map(f => `<option ${f === l.finish ? 'selected' : ''}>${f}</option>`).join('');
+  return `<div class="spec-pop">
+    <div class="sp-row"><label>Finish</label><select onchange="setFinish('${l.id}',this.value)">${finishes}</select></div>
+    <div class="sp-row"><label>Width</label><input class="dim-input" type="number" value="${l.w}" min="300" max="2400" step="50" onchange="setWidth('${l.id}',this.value)"> <span style="font-size:11px;color:var(--muted)">mm</span></div>
+    <div style="font-size:11px;color:var(--muted)">Changing the spec updates your deposit instantly. ${M.fmt(l.unit)} each at this spec.</div>
+  </div>`;
+}
+
+window.toggleSpec = id => { const el = document.getElementById('spec-' + id); const l = lines.find(x => x.id === id); if (el.style.display === 'none') { el.innerHTML = specEditor(l); el.style.display = ''; } else el.style.display = 'none'; };
+window.setFinish = (id, v) => { const l = lines.find(x => x.id === id); l.finish = v; priceLine(l); render(); window.toggleSpec(id); window.toggleSpec(id); };
+window.setWidth = (id, v) => { const l = lines.find(x => x.id === id); l.w = +v; priceLine(l); render(); };
+window.toggleInc = id => { const l = lines.find(x => x.id === id); l.included = !l.included; render(); };
+
+window.toggleItems = () => {
+  const box = document.getElementById('sl-items'), btn = document.getElementById('sl-toggle');
+  const open = box.style.display === 'none';
+  box.style.display = open ? '' : 'none';
+  btn.textContent = open ? 'Hide details ▴' : 'Customise my order ▾';
+};
+
+function render() {
+  document.getElementById('lines').innerHTML = lines.map(row).join('');
+  const t = M.computeTotals(lines);
+
+  // headline deposit + one-line summary (recomputed live as toggles/edits change)
+  window._depLabel = M.fmt(t.deposit, 2);
+  document.getElementById('sl-amt').textContent = M.fmt(t.deposit, 2);
+  const cabs = lines.filter(l => l.included && l.kind === 'cabinet').length;
+  document.getElementById('sl-summary').innerHTML =
+    `${cabs} cabinets + fitting · <strong>${M.fmt(t.total, 2)}</strong> total inc VAT · balance on completion`;
+
+  // itemised totals block
+  document.getElementById('totals').innerHTML =
+    `<div class="tr"><span>Subtotal</span><span>${M.fmt(t.subtotal)}</span></div>` +
+    (t.optionalSavings ? `<div class="tr muted">Includes ${M.fmt(t.optionalSavings)} of optional extras</div>` : '') +
+    `<div class="tr"><span>VAT (20%)</span><span>${M.fmt(t.vat, 2)}</span></div>` +
+    `<div class="tr grand"><span>Total</span><span>${M.fmt(t.total, 2)}</span></div>` +
+    `<div class="deposit-box"><div class="dep-row"><span style="font-size:12px;font-weight:700;color:var(--text2)">Deposit to confirm (40%)</span><span class="dep-amt">${M.fmt(t.deposit, 2)}</span></div><div class="dep-bal">Balance of ${M.fmt(t.balance, 2)} due on completion</div></div>`;
+}
+
+window._onPaid = function () {
+  const t = M.computeTotals(lines);
+  document.querySelector('.cust-wrap').innerHTML = `
+    <div class="sl-card">
+      <div class="success-hero" style="padding:8px 4px 4px">
+        <div class="check"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+        <h1 style="font-size:23px;font-weight:800">You're booked in 🎉</h1>
+        <p style="color:var(--text2);font-size:14px;margin-top:8px;max-width:380px;margin-inline:auto">Thanks ${M.esc(M.client.first)} — your <strong>${M.fmt(t.deposit, 2)}</strong> deposit is in and your order is confirmed. A receipt is on its way to ${M.esc(M.client.email)}.</p>
+      </div>
+      <div style="border-top:1px solid var(--border);margin-top:14px;padding-top:6px;text-align:left">
+        <div style="display:flex;justify-content:space-between;font-size:13px;padding:7px 0"><span style="color:var(--muted)">Deposit paid</span><strong>${M.fmt(t.deposit, 2)}</strong></div>
+        <div style="display:flex;justify-content:space-between;font-size:13px;padding:7px 0;border-top:1px solid var(--border2)"><span style="color:var(--muted)">Balance on completion</span><strong>${M.fmt(t.balance, 2)}</strong></div>
+        <div style="display:flex;justify-content:space-between;font-size:13px;padding:7px 0;border-top:1px solid var(--border2)"><span style="color:var(--muted)">Invoice</span><span class="badge badge-green">Drafted in Xero</span></div>
+        <p style="font-size:12px;color:var(--muted);margin-top:12px">What's next: we'll confirm your final measurements, then your build begins. Re-open this link any time to track production and pay your balance.</p>
+      </div>
+    </div>`;
+  M.toast('Payment received · order confirmed');
+};
+
+render();
+</script>
+</body>
+</html>

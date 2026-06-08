@@ -61,6 +61,8 @@ declare global {
     /** Demo (guest) mode — src/db.js serves _db() reads from the seed dataset
      *  and blocks writes. Set by src/app.js and src/walkthrough.js. */
     _demoMode?: boolean;
+    /** Feature flag for line-item/template photos (Phase 2). Off until the line_photos migration is applied. Set in src/line-photos.js. */
+    _FEAT_LINE_PHOTOS?: boolean;
     /** True while the guided walkthrough overlay is on screen (src/walkthrough.js). */
     _wtActive?: boolean;
     /** Pricing-tier deep-link from the landing page (/?plan=…). Stashed by the
@@ -186,6 +188,68 @@ declare global {
   function _accountingOrderFooter(orderId: number): string;
   /** Open the Pro-gated "Accounting integrations" connect/disconnect popup. */
   function _openAccountingPopup(): void;
+
+  // ── line-photos.js globals (Phase 2: line-item & cabinet-template photos) ──
+  /** Hydrate line/template photos from public.line_photos. Called from loadAllData. No-op while window._FEAT_LINE_PHOTOS is false. */
+  function loadLinePhotos(): Promise<void>;
+  /** Open a popup to add/manage a line's or template's photos (reusable editor hook). */
+  function _openLinePhotosPopup(kind: 'quote_line' | 'order_line' | 'cabinet_template', ownerId: number, title?: string): void;
+  /** Handle a multi-file <input> for a line/template's photos: upload to storage + insert link rows. */
+  function _addLinePhotos(kind: 'quote_line' | 'order_line' | 'cabinet_template', ownerId: number, input: HTMLInputElement): Promise<void>;
+  /** Remove one photo (row + in-memory cache). */
+  function _removeLinePhoto(kind: 'quote_line' | 'order_line' | 'cabinet_template', ownerId: number, id: number): Promise<void>;
+  /** Editor strip: thumbnails + an add-photos button. Returns '' while the feature flag is off. */
+  function _linePhotoStrip(kind: 'quote_line' | 'order_line' | 'cabinet_template', ownerId: number): string;
+  /** Display thumbnails for cards / the live page. Returns '' while off or when there are none. */
+  function _linePhotoThumbs(kind: 'quote_line' | 'order_line' | 'cabinet_template', ownerId: number, max?: number): string;
+  /** Public photo URLs for a line — used by the live customer page renderer. */
+  function _linePhotoUrls(kind: 'quote_line' | 'order_line' | 'cabinet_template', ownerId: number): (string | null)[];
+  /** Fetch a photo and return a dataURL for jsPDF.addImage. */
+  function _linePhotoDataUrl(url: string): Promise<string | null>;
+  /** Raw-fetch upload of one photo to the business-assets bucket (in-memory token). */
+  function _uploadLinePhotoAsset(uid: string, kind: 'quote_line' | 'order_line' | 'cabinet_template', ownerId: number, file: File): Promise<{ path: string | null, url: string | null, error: { message: string } | null }>;
+
+  // ── connect.js globals (Stripe Connect payouts, business side) ──
+  /** Hydrate the business's Stripe Connect status on boot (best-effort). */
+  function loadConnectStatus(): Promise<void>;
+  /** Start/resume Stripe Express onboarding (redirects to Stripe). */
+  function startConnectOnboarding(): Promise<void>;
+  /** Handle the ?connect=return redirect back from Stripe. */
+  function handleConnectReturn(): void;
+  /** Open the "Card payments" connect/manage popup. */
+  function _openConnectPopup(): void;
+
+  // ── share.js globals (share a live quote) ──
+  /** Open the Share panel for a quote (settings + per-line flags + link). */
+  function _openSharePanel(quoteId: number): Promise<void>;
+  /** Mint token + snapshot customer_price + write share_settings, then show the link. */
+  function _generateShareLink(quoteId: number): Promise<void>;
+  /** Build the public /q link for a share token. */
+  function _shareLink(token: string): string;
+  /** Open the live customer page for an order (reuse the deal's /q link). */
+  function _openLiveOrderPage(orderId: number): void;
+
+  // ── clients-chat.js globals (business-side customer chat) ──
+  /** Hydrate every client's conversation on boot (best-effort). */
+  function loadAllClientMessages(): Promise<void>;
+  /** Count unread (customer→business) messages for a client. */
+  function _clientUnreadCount(clientId: number): number;
+  /** Open the client's chat popup (read + reply). */
+  function _openClientChat(clientId: number): Promise<void>;
+  /** Send a business reply to the client. */
+  function _sendClientMessage(clientId: number): Promise<void>;
+  /** Toggle the in-card messages thread on an order card. */
+  function _toggleOrderThread(orderId: number): Promise<void>;
+  /** Render the in-card order thread (bubbles + composer). */
+  function _orderThreadInner(orderId: number, clientId: number): string;
+  /** Send a business reply from an order card (tags order_id). */
+  function _sendOrderMessage(orderId: number): Promise<void>;
+  /** Toggle the in-card messages thread on a client card. */
+  function _toggleClientThread(clientId: number): Promise<void>;
+  /** Render the in-card client thread (bubbles + composer). */
+  function _clientThreadInner(clientId: number): string;
+  /** Send a business reply from a client card. */
+  function _sendClientThreadMessage(clientId: number): Promise<void>;
 
   // ── settings.js unit-format globals ──
   function setUnitFormat(mode: string): void;

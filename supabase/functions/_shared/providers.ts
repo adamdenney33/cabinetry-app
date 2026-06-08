@@ -264,7 +264,7 @@ export async function findOrCreateContact(provider: Provider, conn: Conn, access
       PrimaryPhone: client.phone ? { FreeFormNumber: client.phone } : undefined,
     }),
   });
-  if (!create.ok) throw new Error(`QBO customer create ${create.status}: ${(await create.text()).slice(0, 200)}`);
+  if (!create.ok) { const tid = create.headers.get('intuit_tid') || ''; throw new Error(`QBO customer create ${create.status}${tid ? ` [intuit_tid ${tid}]` : ''}: ${(await create.text()).slice(0, 200)}`); }
   const cj = await create.json() as { Customer: { Id: string } };
   return cj.Customer.Id;
 }
@@ -348,7 +348,12 @@ export async function createDraftInvoice(provider: Provider, conn: Conn, accessT
     headers: { 'authorization': `Bearer ${accessToken}`, 'accept': 'application/json', 'content-type': 'application/json' },
     body: JSON.stringify(body),
   });
-  if (!res.ok) throw new Error(`QBO invoice create ${res.status}: ${(await res.text()).slice(0, 300)}`);
+  // Capture the Intuit transaction id (intuit_tid) from the response headers —
+  // Intuit support uses it to trace a request. Logged on success; included in
+  // the error below so it lands in the function logs for troubleshooting.
+  const qbTid = res.headers.get('intuit_tid') || '';
+  if (!res.ok) throw new Error(`QBO invoice create ${res.status}${qbTid ? ` [intuit_tid ${qbTid}]` : ''}: ${(await res.text()).slice(0, 300)}`);
+  console.log(`[QBO] invoice created intuit_tid=${qbTid}`);
   const j = await res.json() as { Invoice: { Id: string; DocNumber?: string } };
   return {
     externalId: j.Invoice.Id,
