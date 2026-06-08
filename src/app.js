@@ -119,7 +119,7 @@ function _orderLineRowHtml(row, i) {
     return `<tr>
       <td class="col-handle" title="Drag to reorder (coming soon)">⋮</td>
       <td class="col-dot"><span></span></td>
-      <td class="col-desc"><textarea class="cl-input desc" rows="1" oninput="_orderLineUpdate(${i}, 'name', this.value);_autoGrowTextarea(this)">${_escHtml(descDefault)}</textarea>${_linePhotoBtn(row, 'order_line')}</td>
+      <td class="col-desc"><div class="li-desc-wrap">${_linePhotoBtn(row, 'order_line')}<textarea class="cl-input desc" rows="1" oninput="_orderLineUpdate(${i}, 'name', this.value);_autoGrowTextarea(this)">${_escHtml(descDefault)}</textarea></div></td>
       <td class="col-qty"><input class="cl-input right" type="number" min="1" step="1" value="${row.qty ?? 1}" oninput="_orderLineUpdate(${i}, 'qty', this.value)"></td>
       <td class="col-price"><div class="cl-input right is-computed" style="padding:5px 4px">${Number(unitPrice || 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</div></td>
       <td class="col-hrs" title="Computed from cabinet labour"><div class="cl-input right is-computed" style="padding:5px 4px">${hrsTotal.toFixed(1)}</div></td>
@@ -141,7 +141,7 @@ function _orderLineRowHtml(row, i) {
   return `<tr>
     <td class="col-handle" title="Drag to reorder (coming soon)">⋮</td>
     <td class="col-dot ${dotClass}"><span></span></td>
-    <td class="col-desc"><textarea class="cl-input desc" rows="1" placeholder="${placeholder}" oninput="_orderLineUpdate(${i}, 'name', this.value);_autoGrowTextarea(this)">${_escHtml(row.name || '')}</textarea>${_linePhotoBtn(row, 'order_line')}</td>
+    <td class="col-desc"><div class="li-desc-wrap">${_linePhotoBtn(row, 'order_line')}<textarea class="cl-input desc" rows="1" placeholder="${placeholder}" oninput="_orderLineUpdate(${i}, 'name', this.value);_autoGrowTextarea(this)">${_escHtml(row.name || '')}</textarea></div></td>
     <td class="col-qty"><input class="cl-input right" type="number" min="0" step="1" value="${row.qty ?? 1}" oninput="_orderLineUpdate(${i}, 'qty', this.value)"></td>
     <td class="col-price"><input class="cl-input right" type="number" min="0" step="0.01" value="${row.unit_price ?? 0}" oninput="_orderLineUpdate(${i}, 'unit_price', this.value)"></td>
     <td class="col-hrs" title="Workshop time, not on PDF"><input class="cl-input right" type="number" min="0" step="0.5" value="${hoursVal}" oninput="_orderLineUpdate(${i}, '${hoursField}', this.value)"></td>
@@ -619,7 +619,7 @@ function _renderQuoteLines() {
 }
 
 function _quoteTableToggleClasses() {
-  const cols = ['disc', 'hrs'];
+  const cols = ['img', 'disc', 'hrs'];
   return cols
     .filter(c => localStorage.getItem('pc_quote_col_' + c) === 'off')
     .map(c => 'hide-' + c)
@@ -633,7 +633,13 @@ function _linePhotoBtn(row, kind) {
   const k = /** @type {'quote_line'|'order_line'} */ (kind || 'quote_line');
   if (!window._FEAT_LINE_PHOTOS || !row || !row.id || typeof _openLinePhotosPopup !== 'function') return '';
   const n = (typeof _linePhotoUrls === 'function') ? _linePhotoUrls(k, row.id).length : 0;
-  return `<button type="button" class="li-photo-btn" title="Add photos" onclick="event.stopPropagation();_openLinePhotosPopup('${k}',${row.id})">📷${n ? ' ' + n : ''}</button>`;
+  return `<button type="button" class="li-icon-btn li-photo-btn" title="Add photos" onclick="event.stopPropagation();_openLinePhotosPopup('${k}',${row.id})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/></svg>${n ? `<span class="li-icon-n">${n}</span>` : ''}</button>`;
+}
+
+/** "Open in Cabinet Builder" affordance for a cabinet quote line — the row's
+ *  double-click is unobvious. @param {number} i */
+function _lineCabinetBtn(i) {
+  return `<button type="button" class="li-icon-btn li-cab-btn" title="Open in Cabinet Builder" onclick="event.stopPropagation();_lineEditCabinetRow(${i})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg></button>`;
 }
 
 // Render a single quote_lines row as a <tr>. Same shape as _orderLineRowHtml.
@@ -659,7 +665,7 @@ function _lineRowHtml(row, i) {
     return `<tr ondblclick="_lineEditCabinetRow(${i})" title="Double-click to edit in Cabinet Builder">
       <td class="col-handle">⋮</td>
       <td class="col-dot"><span></span></td>
-      <td class="col-desc"><textarea class="cl-input desc" rows="1" oninput="_lineUpdate(${i}, 'name', this.value);_autoGrowTextarea(this)">${_escHtml(descDefault)}</textarea>${_linePhotoBtn(row)}</td>
+      <td class="col-desc"><div class="li-desc-wrap">${_lineCabinetBtn(i)}${_linePhotoBtn(row)}<textarea class="cl-input desc" rows="1" oninput="_lineUpdate(${i}, 'name', this.value);_autoGrowTextarea(this)">${_escHtml(descDefault)}</textarea></div></td>
       <td class="col-qty"><input class="cl-input right" type="number" min="1" step="1" value="${row.qty ?? 1}" oninput="_lineUpdate(${i}, 'qty', this.value)"></td>
       <td class="col-price"><div class="cl-input right is-computed" style="padding:5px 4px">${Number(unitPrice || 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</div></td>
       <td class="col-hrs" title="Computed from cabinet labour"><div class="cl-input right is-computed" style="padding:5px 4px">${hrs.toFixed(1)}</div></td>
@@ -677,7 +683,7 @@ function _lineRowHtml(row, i) {
   return `<tr>
     <td class="col-handle">⋮</td>
     <td class="col-dot ${dotClass}"><span></span></td>
-    <td class="col-desc"><textarea class="cl-input desc" rows="1" placeholder="${placeholder}" oninput="_lineUpdate(${i}, 'name', this.value);_autoGrowTextarea(this)">${_escHtml(row.name || '')}</textarea>${_linePhotoBtn(row)}</td>
+    <td class="col-desc"><div class="li-desc-wrap">${_linePhotoBtn(row)}<textarea class="cl-input desc" rows="1" placeholder="${placeholder}" oninput="_lineUpdate(${i}, 'name', this.value);_autoGrowTextarea(this)">${_escHtml(row.name || '')}</textarea></div></td>
     <td class="col-qty"><input class="cl-input right" type="number" min="0" step="1" value="${row.qty ?? 1}" oninput="_lineUpdate(${i}, 'qty', this.value)"></td>
     <td class="col-price"><input class="cl-input right" type="number" min="0" step="0.01" value="${row.unit_price ?? 0}" oninput="_lineUpdate(${i}, 'unit_price', this.value)"></td>
     <td class="col-hrs" title="Workshop time, not on PDF"><input class="cl-input right" type="number" min="0" step="0.5" value="${hoursVal}" oninput="_lineUpdate(${i}, '${hoursField}', this.value)"></td>

@@ -1183,6 +1183,7 @@ function renderQuoteEditor() {
 
   const dateStr = q ? q.date : new Date().toLocaleDateString('en-GB', { day:'numeric', month:'short' });
 
+  const colImgOff  = localStorage.getItem('pc_quote_col_img')  === 'off';
   const colDiscOff = localStorage.getItem('pc_quote_col_disc') === 'off';
   const colHrsOff  = localStorage.getItem('pc_quote_col_hrs')  === 'off';
   const colStockOn = localStorage.getItem('pc_quote_col_stock') === 'on';
@@ -1228,6 +1229,7 @@ function renderQuoteEditor() {
     <div class="cl-section-header">
       <span class="cl-section-title">Line Items</span>
       <div class="pill-group">
+        <button class="cl-col-pill ${colImgOff ? '' : 'active'}" data-col="img" onclick="_qToggleColumn('img',this)">Images</button>
         <button class="cl-col-pill ${colDiscOff ? '' : 'active'}" data-col="disc" onclick="_qToggleColumn('disc',this)">Discount</button>
         <button class="cl-col-pill ${colHrsOff ? '' : 'active'}" data-col="hrs" onclick="_qToggleColumn('hrs',this)">Hours</button>
       </div>

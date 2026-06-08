@@ -310,8 +310,13 @@ header {
 .lp-thumbs { display: flex; gap: 4px; align-items: center; margin-top: 4px; }
 .lp-thumb-img { width: 34px; height: 34px; border-radius: 5px; object-fit: cover; border: 1px solid var(--border); }
 .lp-more { font-size: 10px; font-weight: 700; color: var(--muted); background: var(--surface2); border: 1px solid var(--border); border-radius: 5px; padding: 2px 5px; }
-.li-photo-btn { margin-left: 6px; border: 1px solid var(--border); background: var(--surface2); border-radius: 5px; padding: 1px 6px; font-size: 11px; cursor: pointer; color: var(--muted); vertical-align: middle; }
-.li-photo-btn:hover { border-color: var(--accent); color: var(--accent); }
+.li-desc-wrap { display: flex; align-items: flex-start; gap: 2px; min-width: 0; }
+.li-desc-wrap .cl-input.desc { flex: 1 1 auto; min-width: 0; }
+.li-icon-btn { flex-shrink: 0; display: inline-flex; align-items: center; gap: 2px; margin-top: 3px; padding: 2px; border: none; background: none; color: var(--muted); cursor: pointer; border-radius: 4px; }
+.li-icon-btn:hover { color: var(--accent); background: var(--surface2); }
+.li-icon-btn svg { width: 15px; height: 15px; display: block; }
+.li-icon-n { font-size: 10px; font-weight: 600; line-height: 1; }
+.editor-li-table.hide-img .li-photo-btn { display: none; }
 
 .prefixed-input { display: flex; align-items: center; gap: 8px; }
 .prefixed-input > input { flex: 1; min-width: 0; }
