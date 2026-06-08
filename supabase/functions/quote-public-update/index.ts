@@ -124,6 +124,20 @@ Deno.serve(async (req) => {
         patch.drawer_front_material = m;
       }
       if (body.fixed_shelves != null && allows('shelves')) { const n = clamp(body.fixed_shelves, 0, 12); if (n === null) return jsonResponse({ error: 'shelves_out_of_range' }, 422, cors); patch.fixed_shelves = n; }
+      // Style / build fields — door & drawer style, base, construction, handle:
+      // free text (the customer picks from a dropdown client-side; the value is
+      // reviewed by the business). Door material is validated like other materials.
+      const str = (v: unknown) => String(v).slice(0, 80);
+      if (typeof body.door_type === 'string' && allows('doorType')) patch.door_type = str(body.door_type);
+      if (typeof body.drawer_front_type === 'string' && allows('drawerType')) patch.drawer_front_type = str(body.drawer_front_type);
+      if (typeof body.base_type === 'string' && allows('base')) patch.base_type = str(body.base_type);
+      if (typeof body.construction === 'string' && allows('construction')) patch.construction = str(body.construction);
+      if (typeof body.door_handle === 'string' && allows('handle')) patch.door_handle = str(body.door_handle);
+      if (typeof body.door_material === 'string' && allows('doorMat')) {
+        const m = body.door_material.slice(0, 80);
+        if (!(await catNames('material')).has(m)) return jsonResponse({ error: 'door_material_not_allowed' }, 422, cors);
+        patch.door_material = m;
+      }
       if (!Object.keys(patch).length) return jsonResponse({ error: 'nothing_to_update' }, 400, cors);
       await admin.from('quote_lines').update(patch).eq('id', lineId);
       return jsonResponse({ ok: true }, 200, cors);

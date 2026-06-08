@@ -147,11 +147,17 @@ function _llSpecsFor(l) {
   if (l.w_mm || l.h_mm || l.d_mm) out.push({ key: 'dims', label: 'Dimensions (W×H×D)' });
   out.push({ key: 'material', label: 'Carcass material' });
   out.push({ key: 'finish', label: 'Carcass finish' });
+  out.push({ key: 'construction', label: 'Construction' });
+  out.push({ key: 'base', label: 'Base / plinth' });
   if (doors) out.push({ key: 'doors', label: 'Door count' });
   if (doors) out.push({ key: 'doorPct', label: 'Door area (% of front)' });
+  if (doors) out.push({ key: 'doorType', label: 'Door style' });
+  if (doors) out.push({ key: 'doorMat', label: 'Door material' });
   if (doors) out.push({ key: 'doorFinish', label: 'Door finish' });
+  if (doors) out.push({ key: 'handle', label: 'Handles' });
   if (drawers) out.push({ key: 'drawers', label: 'Drawer count' });
   if (drawers) out.push({ key: 'drawerPct', label: 'Drawer area (% of front)' });
+  if (drawers) out.push({ key: 'drawerType', label: 'Drawer front style' });
   if (drawers) out.push({ key: 'drawerMat', label: 'Drawer front material' });
   if (drawers) out.push({ key: 'drawerFinish', label: 'Drawer front finish' });
   out.push({ key: 'shelves', label: 'Shelves' });

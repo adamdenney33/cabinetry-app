@@ -50,7 +50,7 @@ Deno.serve(async (req) => {
     // ── Lines (public-safe spec + per-line customer flags) ──
     const { data: lines } = await admin
       .from('quote_lines')
-      .select('id, position, line_kind, name, type, room, w_mm, h_mm, d_mm, qty, material, finish, door_finish, drawer_front_finish, construction, base_type, door_count, door_pct, door_handle, drawer_count, drawer_pct, drawer_front_material, fixed_shelves, adj_shelves, loose_shelves, partitions, end_panels, unit_price, labour_hours, extras, hardware, notes, optional, customer_editable, customer_included, customer_price, editable_specs')
+      .select('id, position, line_kind, name, type, room, w_mm, h_mm, d_mm, qty, material, finish, door_finish, drawer_front_finish, construction, base_type, door_count, door_pct, door_handle, door_type, door_material, drawer_count, drawer_pct, drawer_front_material, drawer_front_type, fixed_shelves, adj_shelves, loose_shelves, partitions, end_panels, unit_price, labour_hours, extras, hardware, notes, optional, customer_editable, customer_included, customer_price, editable_specs')
       .eq('quote_id', quote.id)
       .order('position');
 
@@ -78,6 +78,18 @@ Deno.serve(async (req) => {
       ...(matRows ?? []).map((m: { name: string }) => m.name),
       ...(lines ?? []).map((l: { material: string | null }) => l.material).filter(Boolean),
     ])) as string[];
+
+    // ── Style / build option lists: the standard cabinetry sets merged with any
+    //    values used on this quote's lines. Handles come from used values only
+    //    (the hardware catalogue lives in the business's local settings). ──
+    const ls = (lines ?? []) as Array<Record<string, unknown>>;
+    const mergeOpts = (std: string[], col: string) =>
+      Array.from(new Set([...std, ...(ls.map((l) => l[col]).filter(Boolean) as string[])]));
+    const doorTypes = mergeOpts(['Slab', 'Shaker', 'Vinyl-Wrapped', 'Integrated Handle'], 'door_type');
+    const drawerFrontTypes = mergeOpts(['Slab', 'Shaker'], 'drawer_front_type');
+    const baseTypes = mergeOpts(['None', 'Plinth', 'Feet / Legs', 'Castors', 'Frame'], 'base_type');
+    const constructions = mergeOpts(['Overlay', 'Inset', 'Face Frame'], 'construction');
+    const handles = mergeOpts(['None'], 'door_handle');
 
     // ── Client name (greeting only) ──
     let client: { name: string } | null = null;
@@ -136,6 +148,11 @@ Deno.serve(async (req) => {
       photos: photoUrls,
       finishes,
       materials,
+      doorTypes,
+      drawerFrontTypes,
+      baseTypes,
+      constructions,
+      handles,
     }, 200, cors);
   } catch (err) {
     console.error('[quote-public-get]', (err as Error).message);
