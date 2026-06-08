@@ -131,27 +131,40 @@ function specEditor(l) {
     if (cur && !opts.includes(cur)) opts.unshift(cur);
     return (opts.length ? opts : ['']).map((/** @type {string} */ o) => `<option ${o === cur ? 'selected' : ''}>${esc(o)}</option>`).join('');
   };
-  /** @param {string} label @param {any} val @param {number} min @param {number} max @param {string} setter @param {string} unit */
-  const num = (label, val, min, max, setter, unit) =>
-    `<div class="r"><label>${label}</label><input type="number" value="${val != null ? val : ''}" min="${min}" max="${max}" step="${unit ? 10 : 1}" style="width:${unit ? 84 : 64}px" onchange="${setter}">${unit ? ` <span style="font-size:11px;color:var(--muted)">${unit}</span>` : ''}</div>`;
-  const rows = [];
-  if (specs.includes('dims')) {
-    rows.push(num('Width', l.w_mm, 100, 3600, `__qp.setWidth(${l.id},this.value)`, 'mm'));
-    rows.push(num('Height', l.h_mm, 100, 3600, `__qp.setHeight(${l.id},this.value)`, 'mm'));
-    rows.push(num('Depth', l.d_mm, 100, 1200, `__qp.setDepth(${l.id},this.value)`, 'mm'));
-  }
-  if (specs.includes('finish')) rows.push(`<div class="r"><label>Finish</label><select onchange="__qp.setFinish(${l.id},this.value)" style="flex:1">${optList(D?.finishes || [], l.finish)}</select></div>`);
-  if (specs.includes('material')) rows.push(`<div class="r"><label>Material</label><select onchange="__qp.setMaterial(${l.id},this.value)" style="flex:1">${optList(D?.materials || [], l.material)}</select></div>`);
-  if (specs.includes('doors')) rows.push(num('Doors', l.door_count, 0, 6, `__qp.setDoors(${l.id},this.value)`, ''));
-  if (specs.includes('doorPct')) rows.push(num('Door area', l.door_pct, 0, 100, `__qp.setField(${l.id},'door_pct',this.value)`, '%'));
-  if (specs.includes('drawers')) rows.push(num('Drawers', l.drawer_count, 0, 12, `__qp.setDrawers(${l.id},this.value)`, ''));
-  if (specs.includes('drawerPct')) rows.push(num('Drawer area', l.drawer_pct, 0, 100, `__qp.setField(${l.id},'drawer_pct',this.value)`, '%'));
-  if (specs.includes('doorFinish')) rows.push(`<div class="r"><label>Door finish</label><select onchange="__qp.setField(${l.id},'door_finish',this.value)" style="flex:1">${optList(D?.finishes || [], l.door_finish)}</select></div>`);
-  if (specs.includes('drawerMat')) rows.push(`<div class="r"><label>Drawer front material</label><select onchange="__qp.setField(${l.id},'drawer_front_material',this.value)" style="flex:1">${optList(D?.materials || [], l.drawer_front_material)}</select></div>`);
-  if (specs.includes('drawerFinish')) rows.push(`<div class="r"><label>Drawer front finish</label><select onchange="__qp.setField(${l.id},'drawer_front_finish',this.value)" style="flex:1">${optList(D?.finishes || [], l.drawer_front_finish)}</select></div>`);
-  if (specs.includes('shelves')) rows.push(num('Shelves', l.fixed_shelves, 0, 12, `__qp.setField(${l.id},'fixed_shelves',this.value)`, ''));
-  if (!rows.length) rows.push(`<div class="r"><label>Finish</label><select onchange="__qp.setFinish(${l.id},this.value)" style="flex:1">${optList(D?.finishes || [], l.finish)}</select></div>`);
-  return `<div class="qp-spec">${rows.join('')}
+  /** @param {string} label @param {any} val @param {number} min @param {number} max @param {string} col @param {string} unit */
+  const num = (label, val, min, max, col, unit) =>
+    `<div class="r"><label>${label}</label><input type="number" value="${val != null ? val : ''}" min="${min}" max="${max}" step="${unit === 'mm' ? 10 : 1}" style="width:${unit ? 84 : 64}px" onchange="__qp.setField(${l.id},'${col}',this.value)">${unit ? ` <span style="font-size:11px;color:var(--muted)">${unit}</span>` : ''}</div>`;
+  /** @param {string} label @param {string[]} opts @param {string} cur @param {string} col */
+  const sel = (label, opts, cur, col) =>
+    `<div class="r"><label>${label}</label><select onchange="__qp.setField(${l.id},'${col}',this.value)" style="flex:1">${optList(opts, cur)}</select></div>`;
+  /** @type {Array<{t:string, rows:string[]}>} */
+  const sections = [];
+  if (specs.includes('dims')) sections.push({ t: 'Dimensions', rows: [
+    num('Width', l.w_mm, 100, 3600, 'w_mm', 'mm'),
+    num('Height', l.h_mm, 100, 3600, 'h_mm', 'mm'),
+    num('Depth', l.d_mm, 100, 1200, 'd_mm', 'mm'),
+  ] });
+  const carcass = [];
+  if (specs.includes('material')) carcass.push(sel('Material', D?.materials || [], l.material, 'material'));
+  if (specs.includes('finish')) carcass.push(sel('Finish', D?.finishes || [], l.finish, 'finish'));
+  if (carcass.length) sections.push({ t: 'Carcass', rows: carcass });
+  const door = [];
+  if (specs.includes('doors')) door.push(num('Count', l.door_count, 0, 6, 'door_count', ''));
+  if (specs.includes('doorPct')) door.push(num('Area', l.door_pct, 0, 100, 'door_pct', '%'));
+  if (specs.includes('doorFinish')) door.push(sel('Finish', D?.finishes || [], l.door_finish, 'door_finish'));
+  if (door.length) sections.push({ t: 'Doors', rows: door });
+  const drawer = [];
+  if (specs.includes('drawers')) drawer.push(num('Count', l.drawer_count, 0, 12, 'drawer_count', ''));
+  if (specs.includes('drawerPct')) drawer.push(num('Area', l.drawer_pct, 0, 100, 'drawer_pct', '%'));
+  if (specs.includes('drawerMat')) drawer.push(sel('Material', D?.materials || [], l.drawer_front_material, 'drawer_front_material'));
+  if (specs.includes('drawerFinish')) drawer.push(sel('Finish', D?.finishes || [], l.drawer_front_finish, 'drawer_front_finish'));
+  if (drawer.length) sections.push({ t: 'Drawers', rows: drawer });
+  const storage = [];
+  if (specs.includes('shelves')) storage.push(num('Shelves', l.fixed_shelves, 0, 12, 'fixed_shelves', ''));
+  if (storage.length) sections.push({ t: 'Shelves', rows: storage });
+  if (!sections.length) sections.push({ t: '', rows: [sel('Finish', D?.finishes || [], l.finish, 'finish')] });
+  const body = sections.map(s => `${s.t ? `<div class="qp-spec-head">${s.t}</div>` : ''}${s.rows.join('')}`).join('');
+  return `<div class="qp-spec">${body}
     <div style="font-size:11px;color:var(--muted)">Changes are sent to ${esc(D?.business?.name || 'us')}, who’ll confirm the updated price.</div>
   </div>`;
 }
