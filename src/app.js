@@ -1453,7 +1453,12 @@ function _applyBizInfoFromDB(rows) {
       // added 2026-05-05). Wholesale replace would wipe forward-compat defaults.
       cbSettings.labourTimes = { ...cbSettings.labourTimes, ...b.default_labour_times };
     }
-    if (Array.isArray(b.default_base_types)         && b.default_base_types.length         > 0) cbSettings.baseTypes         = b.default_base_types;
+    if (Array.isArray(b.default_base_types)         && b.default_base_types.length         > 0) {
+      // Migrate legacy base types (flat price → labour hours). Old rows hold
+      // {name, price}; base now contributes labour (hours × rate), so drop the
+      // price and default refHours to 0 rather than double-counting it.
+      cbSettings.baseTypes = b.default_base_types.map(/** @param {any} bt */ bt => ({ name: bt.name, refHours: bt.refHours != null ? bt.refHours : 0 }));
+    }
     if (Array.isArray(b.default_constructions)      && b.default_constructions.length      > 0) cbSettings.constructions     = b.default_constructions;
     if (Array.isArray(b.default_edge_banding)       && b.default_edge_banding.length       > 0) cbSettings.edgeBanding       = b.default_edge_banding;
     if (Array.isArray(b.default_carcass_types)      && b.default_carcass_types.length      > 0) cbSettings.carcassTypes      = b.default_carcass_types;

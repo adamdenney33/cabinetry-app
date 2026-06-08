@@ -272,7 +272,7 @@ function renderCBRates() {
     ${section('drawerFrontTypes', 'Drawer Front', '('+drawerFrontTypes.length+')', typeListItems(drawerFrontTypes, 'cbSettings.drawerFrontTypes', 0.3))}
     ${section('drawerBoxTypes', 'Drawer Box', '('+drawerBoxTypes.length+')', typeListItems(drawerBoxTypes, 'cbSettings.drawerBoxTypes', 0.8))}
     ${section('labour', 'Other Labour Times', '6 rates', labourContent)}
-    ${section('basetypes', 'Base', '('+(cbSettings.baseTypes||[]).length+')', listItems(cbSettings.baseTypes||[], 'cbSettings.baseTypes', cur))}
+    ${section('basetypes', 'Base', '('+(cbSettings.baseTypes||[]).length+')', typeListItems(cbSettings.baseTypes||[], 'cbSettings.baseTypes', 0.3))}
   `;
   targets.forEach(el => { if (el) el.innerHTML = html; });
 }
@@ -459,7 +459,7 @@ function renderCBEditor() {
           </div>
           <div style="margin-bottom:8px"><label style="${LB}">Base</label>
             <select style="${SL};width:100%" onchange="cbUpdateField('baseType',this.value)">
-              ${(cbSettings.baseTypes||[]).map(/** @param {any} b */ b=>`<option value="${b.name}" ${b.name===line.baseType?'selected':''}>${b.name}${b.price?' (+'+cur+b.price+')':''}</option>`).join('')}
+              ${(cbSettings.baseTypes||[]).map(/** @param {any} b */ b=>`<option value="${b.name}" ${b.name===line.baseType?'selected':''}>${b.name}${b.refHours?' ('+b.refHours+'hrs)':''}</option>`).join('')}
             </select>
           </div>
           <div style="margin-bottom:8px"><label style="${LB}">Finish</label>${finishSmart('finish')}</div>
