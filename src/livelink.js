@@ -140,12 +140,18 @@ function _liveLinkPanel(kind) {
 /** Applicable editable specs for a cabinet line. @param {any} l @returns {Array<{key:string,label:string}>} */
 function _llSpecsFor(l) {
   if ((l.line_kind || 'cabinet') !== 'cabinet') return [];
+  const doors = (l.door_count || 0) > 0;
+  const drawers = (l.drawer_count || 0) > 0;
   const out = [];
   if (l.w_mm || l.h_mm || l.d_mm) out.push({ key: 'dims', label: 'Dimensions (W×H×D)' });
-  if (l.finish) out.push({ key: 'finish', label: 'Finish' });
-  if (l.material) out.push({ key: 'material', label: 'Material' });
-  if ((l.door_count || 0) > 0) out.push({ key: 'doors', label: 'Door count' });
-  if ((l.drawer_count || 0) > 0) out.push({ key: 'drawers', label: 'Drawer count' });
+  out.push({ key: 'material', label: 'Carcass material' });
+  out.push({ key: 'finish', label: 'Carcass finish' });
+  if (doors) out.push({ key: 'doors', label: 'Door count' });
+  if (doors) out.push({ key: 'doorFinish', label: 'Door finish' });
+  if (drawers) out.push({ key: 'drawers', label: 'Drawer count' });
+  if (drawers) out.push({ key: 'drawerMat', label: 'Drawer front material' });
+  if (drawers) out.push({ key: 'drawerFinish', label: 'Drawer front finish' });
+  out.push({ key: 'shelves', label: 'Shelves' });
   return out;
 }
 

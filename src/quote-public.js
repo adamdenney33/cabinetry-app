@@ -144,6 +144,10 @@ function specEditor(l) {
   if (specs.includes('material')) rows.push(`<div class="r"><label>Material</label><select onchange="__qp.setMaterial(${l.id},this.value)" style="flex:1">${optList(D?.materials || [], l.material)}</select></div>`);
   if (specs.includes('doors')) rows.push(num('Doors', l.door_count, 0, 6, `__qp.setDoors(${l.id},this.value)`, ''));
   if (specs.includes('drawers')) rows.push(num('Drawers', l.drawer_count, 0, 12, `__qp.setDrawers(${l.id},this.value)`, ''));
+  if (specs.includes('doorFinish')) rows.push(`<div class="r"><label>Door finish</label><select onchange="__qp.setField(${l.id},'door_finish',this.value)" style="flex:1">${optList(D?.finishes || [], l.door_finish)}</select></div>`);
+  if (specs.includes('drawerMat')) rows.push(`<div class="r"><label>Drawer front material</label><select onchange="__qp.setField(${l.id},'drawer_front_material',this.value)" style="flex:1">${optList(D?.materials || [], l.drawer_front_material)}</select></div>`);
+  if (specs.includes('drawerFinish')) rows.push(`<div class="r"><label>Drawer front finish</label><select onchange="__qp.setField(${l.id},'drawer_front_finish',this.value)" style="flex:1">${optList(D?.finishes || [], l.drawer_front_finish)}</select></div>`);
+  if (specs.includes('shelves')) rows.push(num('Shelves', l.fixed_shelves, 0, 12, `__qp.setField(${l.id},'fixed_shelves',this.value)`, ''));
   if (!rows.length) rows.push(`<div class="r"><label>Finish</label><select onchange="__qp.setFinish(${l.id},this.value)" style="flex:1">${optList(D?.finishes || [], l.finish)}</select></div>`);
   return `<div class="qp-spec">${rows.join('')}
     <div style="font-size:11px;color:var(--muted)">Changes are sent to ${esc(D?.business?.name || 'us')}, who’ll confirm the updated price.</div>
@@ -300,6 +304,8 @@ const handlers = {
   async setDoors(id, v) { await applyEdit(id, { door_count: Number(v) }); },
   /** @param {number} id @param {string} v */
   async setDrawers(id, v) { await applyEdit(id, { drawer_count: Number(v) }); },
+  /** @param {number} id @param {string} col @param {string} v */
+  async setField(id, col, v) { await applyEdit(id, { [col]: v }); },
   async accept() {
     if (D?.quote?.accepted_at) return;
     const t = totals();

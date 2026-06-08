@@ -104,6 +104,23 @@ Deno.serve(async (req) => {
       if (body.d_mm != null && allows('dims')) { const d = clamp(body.d_mm, 100, 1200); if (d === null) return jsonResponse({ error: 'depth_out_of_range' }, 422, cors); patch.d_mm = d; }
       if (body.door_count != null && allows('doors')) { const n = clamp(body.door_count, 0, 6); if (n === null) return jsonResponse({ error: 'doors_out_of_range' }, 422, cors); patch.door_count = n; }
       if (body.drawer_count != null && allows('drawers')) { const n = clamp(body.drawer_count, 0, 12); if (n === null) return jsonResponse({ error: 'drawers_out_of_range' }, 422, cors); patch.drawer_count = n; }
+      // Per-component finishes / drawer-front material — catalogued names only.
+      if (typeof body.door_finish === 'string' && allows('doorFinish')) {
+        const f = body.door_finish.slice(0, 80);
+        if (!(await catNames('finish')).has(f)) return jsonResponse({ error: 'door_finish_not_allowed' }, 422, cors);
+        patch.door_finish = f;
+      }
+      if (typeof body.drawer_front_finish === 'string' && allows('drawerFinish')) {
+        const f = body.drawer_front_finish.slice(0, 80);
+        if (!(await catNames('finish')).has(f)) return jsonResponse({ error: 'drawer_front_finish_not_allowed' }, 422, cors);
+        patch.drawer_front_finish = f;
+      }
+      if (typeof body.drawer_front_material === 'string' && allows('drawerMat')) {
+        const m = body.drawer_front_material.slice(0, 80);
+        if (!(await catNames('material')).has(m)) return jsonResponse({ error: 'drawer_front_material_not_allowed' }, 422, cors);
+        patch.drawer_front_material = m;
+      }
+      if (body.fixed_shelves != null && allows('shelves')) { const n = clamp(body.fixed_shelves, 0, 12); if (n === null) return jsonResponse({ error: 'shelves_out_of_range' }, 422, cors); patch.fixed_shelves = n; }
       if (!Object.keys(patch).length) return jsonResponse({ error: 'nothing_to_update' }, 400, cors);
       await admin.from('quote_lines').update(patch).eq('id', lineId);
       return jsonResponse({ ok: true }, 200, cors);
