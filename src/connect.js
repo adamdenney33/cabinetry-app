@@ -15,11 +15,16 @@ let _connectStatus = null;
 
 /** @param {string} name @param {any} body @returns {Promise<any>} */
 async function _connectFn(name, body) {
-  const { data: { session } } = await _sb.auth.getSession();
-  if (!session) throw new Error('Sign in to set up payments');
+  // Use the in-memory access token (db.js `_dbAuthToken`), NOT `_sb.auth.getSession()`:
+  // the storage-based session goes stale/partitioned (Safari ITP, in-app webviews), so
+  // getSession() can hand back an expired JWT — which the verify_jwt edge functions
+  // reject as 401 "Invalid auth token". The in-memory token is kept fresh by
+  // onAuthStateChange / TOKEN_REFRESHED (see db.js § _accessToken).
+  const token = (typeof _dbAuthToken === 'function' && _dbAuthToken()) || null;
+  if (!token) throw new Error('Sign in to set up payments');
   const res = await fetch(`${window._SBURL}/functions/v1/${name}`, {
     method: 'POST',
-    headers: { 'authorization': `Bearer ${session.access_token}`, 'content-type': 'application/json' },
+    headers: { 'authorization': `Bearer ${token}`, 'apikey': window._SBKEY, 'content-type': 'application/json' },
     body: JSON.stringify(body || {}),
   });
   /** @type {any} */ let payload = {};
