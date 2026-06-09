@@ -864,7 +864,7 @@ async function _lineRemove(idx) {
   const row = _qpState.lines[idx];
   if (!row) return;
   if (row.line_kind === 'cabinet') {
-    if (!confirm('Remove this cabinet line? This will also delete it from the project.')) return;
+    if (!confirm('Remove this cabinet line from the quote?')) return;
   }
   if (typeof _setSaveStatus === 'function') _setSaveStatus('quote', 'saving');
   const { error } = await _db('quote_lines').delete().eq('id', row.id);
