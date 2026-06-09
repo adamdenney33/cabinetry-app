@@ -37,6 +37,11 @@ Deno.serve(async (req) => {
 
     const settings = (quote.share_settings ?? {}) as Record<string, unknown>;
     if (!settings.accept_payment) return jsonResponse({ error: 'payments_disabled' }, 403, cors);
+    // Don't take money on an expired link (quote-public-get / -update already
+    // block view + accept past expiry; this closes the same gap for payment).
+    if (settings.expires_at && new Date(String(settings.expires_at)) < new Date()) {
+      return jsonResponse({ error: 'expired' }, 410, cors);
+    }
 
     // ── Business's connected account must be able to take charges ──
     const { data: acct } = await admin

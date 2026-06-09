@@ -97,7 +97,18 @@ async function createOrderFromQuote(quote: any): Promise<number | undefined> {
     markup: quote.markup ?? 0, tax: quote.tax ?? 0, discount: quote.discount ?? 0, stock_markup: quote.stock_markup ?? 0,
     due: 'TBD',
   }).select('id').single();
-  if (error || !order) { console.error('[quote-pay-webhook] order insert:', error?.message); return undefined; }
+  if (error || !order) {
+    // A concurrent webhook delivery for the same payment may have created the
+    // order first; the unique index on orders(quote_id) makes our insert fail
+    // with 23505. Treat that as "already done" and reuse the existing order
+    // rather than creating a duplicate.
+    if ((error as { code?: string } | null)?.code === '23505') {
+      const { data: dup } = await admin.from('orders').select('id').eq('quote_id', quote.id).maybeSingle();
+      if (dup?.id) return dup.id as number;
+    }
+    console.error('[quote-pay-webhook] order insert:', error?.message);
+    return undefined;
+  }
 
   const rows = included.map((l: any) => {
     const { id, quote_id, created_at, updated_at, ...rest } = l;

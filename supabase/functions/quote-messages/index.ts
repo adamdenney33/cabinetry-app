@@ -39,6 +39,14 @@ Deno.serve(async (req) => {
     if (action === 'send') {
       const text = body.slice(0, 4000).trim();
       if (!text) return jsonResponse({ error: 'empty' }, 400, cors);
+      // Anti-spam: the endpoint is unauthenticated (token-scoped), so cap how
+      // fast a customer can post. Max 12 customer messages per client in the
+      // last 60s — enough for a real back-and-forth, not a flood.
+      const since = new Date(Date.now() - 60_000).toISOString();
+      const { count } = await admin.from('customer_messages')
+        .select('id', { count: 'exact', head: true })
+        .eq('client_id', deal.client_id).eq('sender', 'customer').gte('created_at', since);
+      if ((count ?? 0) >= 12) return jsonResponse({ error: 'rate_limited' }, 429, cors);
       const row: Record<string, unknown> = {
         user_id: deal.user_id, client_id: deal.client_id, sender: 'customer', body: text,
       };

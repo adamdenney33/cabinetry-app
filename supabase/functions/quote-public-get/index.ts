@@ -65,22 +65,30 @@ Deno.serve(async (req) => {
 
     // ── Lines (public-safe spec + per-line customer flags) ──
     // order_lines lacks the quote-only finish/hardware fields; select per kind.
+    // SECURITY: never select the business's cost inputs (`unit_price`,
+    // `labour_hours`) or any cost-bearing free text (`extras`, `hardware`) — the
+    // customer only ever needs `customer_price` (the marked-up, public figure).
+    // Returning cost columns to an unauthenticated visitor leaks margin/pricing.
     const { data: lines } = kind === 'quote'
       ? await admin
         .from('quote_lines')
-        .select('id, position, line_kind, name, type, room, w_mm, h_mm, d_mm, qty, material, finish, door_finish, drawer_front_finish, construction, base_type, door_count, door_pct, door_handle, door_type, door_material, drawer_count, drawer_pct, drawer_front_material, drawer_front_type, fixed_shelves, adj_shelves, loose_shelves, partitions, end_panels, unit_price, labour_hours, extras, hardware, notes, optional, customer_editable, customer_included, customer_price, editable_specs')
+        .select('id, position, line_kind, name, type, room, w_mm, h_mm, d_mm, qty, material, finish, door_finish, drawer_front_finish, construction, base_type, door_count, door_pct, door_handle, door_type, door_material, drawer_count, drawer_pct, drawer_front_material, drawer_front_type, fixed_shelves, adj_shelves, loose_shelves, partitions, end_panels, notes, optional, customer_editable, customer_included, customer_price, editable_specs')
         .eq('quote_id', entity.id)
         .order('position')
       : await admin
         .from('order_lines')
-        .select('id, position, line_kind, name, type, room, w_mm, h_mm, d_mm, qty, material, finish, construction, base_type, door_count, door_pct, door_handle, door_type, door_material, drawer_count, drawer_pct, drawer_front_material, drawer_front_type, fixed_shelves, adj_shelves, loose_shelves, partitions, end_panels, unit_price, labour_hours, extras, hardware, notes, optional, customer_editable, customer_included, customer_price, editable_specs')
+        .select('id, position, line_kind, name, type, room, w_mm, h_mm, d_mm, qty, material, finish, construction, base_type, door_count, door_pct, door_handle, door_type, door_material, drawer_count, drawer_pct, drawer_front_material, drawer_front_type, fixed_shelves, adj_shelves, loose_shelves, partitions, end_panels, notes, optional, customer_editable, customer_included, customer_price, editable_specs')
         .eq('order_id', entity.id)
         .order('position');
 
     // ── Business branding ──
+    // SECURITY: only public-safe contact fields. `abn` and especially
+    // `bank_details` must NOT reach an unauthenticated visitor — they're never
+    // rendered on the customer page and would expose sensitive business data to
+    // anyone holding (or guessing) a share link.
     const { data: biz } = await admin
       .from('business_info')
-      .select('name, email, phone, address, abn, bank_details, logo_url, default_currency')
+      .select('name, email, phone, address, logo_url, default_currency')
       .eq('user_id', entity.user_id)
       .maybeSingle();
 

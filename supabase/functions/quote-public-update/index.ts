@@ -153,6 +153,14 @@ Deno.serve(async (req) => {
       if (snapshot && JSON.stringify(snapshot).length > MAX_SNAPSHOT_BYTES) {
         return jsonResponse({ error: 'snapshot_too_large' }, 413, cors);
       }
+      // The snapshot is an informational record of what the customer agreed to —
+      // money is never derived from it (the order is rebuilt server-side from
+      // `customer_price`). Still, reject a malformed shape so downstream readers
+      // (PDF, accounting) can trust `totals.total` exists.
+      if (snapshot && (typeof snapshot !== 'object'
+        || typeof (snapshot as Record<string, any>).totals?.total !== 'number')) {
+        return jsonResponse({ error: 'invalid_snapshot' }, 400, cors);
+      }
       await admin.from('quotes').update({
         accepted_at: new Date().toISOString(),
         status: 'accepted',
