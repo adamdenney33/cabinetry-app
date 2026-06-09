@@ -155,9 +155,11 @@ function renderDashboard() {
               const qCli = quoteClient(q);
               const qProj = quoteProject(q);
               const qTopLine = [qNum, qCli].filter(Boolean).join(' · ');
-              const qStatus = q.status || 'draft';
-              const qStatusBadge = qStatus === 'approved' ? 'badge-green' : qStatus === 'sent' ? 'badge-blue' : 'badge-gray';
-              const qStatusText = qStatus === 'approved' ? 'Approved' : qStatus === 'sent' ? 'Sent' : 'Draft';
+              // Same status meta as the quote cards — a customer-accepted or
+              // deposit-paid quote must not fall back to "Draft" here.
+              const _dm = typeof _quoteStatusMeta === 'function' ? _quoteStatusMeta(q.status) : { badge: 'badge-gray', label: 'Draft' };
+              const qStatusBadge = _dm.badge;
+              const qStatusText = _dm.label;
               return `
               <div class="dash-row" onclick="_openQuotePopup(${q.id})">
                 <div style="flex:1;min-width:0">

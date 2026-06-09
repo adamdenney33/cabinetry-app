@@ -27,9 +27,12 @@
 let quotes = [];
 let quoteNextId = 1;
 
-const QUOTE_STATUSES = ['draft','sent','approved'];
-const QUOTE_STATUS_LABELS = { draft:'Draft', sent:'Sent', approved:'Approved' };
-const QUOTE_STATUS_COLORS = { draft:'#94a3b8', sent:'#1565c0', approved:'var(--success)' };
+// One status vocabulary everywhere: the pipeline's manual stages are
+// Draft → Sent → Accepted ("Approved" was the old manual word for the same
+// stage — kept as a read alias below so legacy rows display identically).
+const QUOTE_STATUSES = ['draft','sent','accepted'];
+const QUOTE_STATUS_LABELS = { draft:'Draft', sent:'Sent', accepted:'Accepted' };
+const QUOTE_STATUS_COLORS = { draft:'#94a3b8', sent:'#1565c0', accepted:'var(--success)' };
 
 // Live-link lifecycle → how the card renders it. The live-link edge functions
 // write richer statuses than the 3-step pipeline knows (viewed/accepted/
@@ -44,7 +47,7 @@ const QUOTE_STATUS_META = {
   sent:         { label: 'Sent',         badge: 'badge-blue',  stage: 1 },
   viewed:       { label: 'Viewed',       badge: 'badge-blue',  stage: 1 },
   accepted:     { label: 'Accepted',     badge: 'badge-green', stage: 2 },
-  approved:     { label: 'Approved',     badge: 'badge-green', stage: 2 }, // legacy alias for accepted
+  approved:     { label: 'Accepted',     badge: 'badge-green', stage: 2 }, // legacy alias — same word everywhere
   deposit_paid: { label: 'Deposit paid', badge: 'badge-green', stage: 2 },
   paid:         { label: 'Paid',         badge: 'badge-green', stage: 2 },
 };
@@ -381,9 +384,9 @@ async function convertQuoteToOrder(id) {
   if (!_enforceFreeLimit('orders', orders.length)) return;
   const q = quotes.find(q => q.id === id);
   if (!q) return;
-  const { error: qErr } = await _db('quotes').update({ status: 'approved' }).eq('id', id);
+  const { error: qErr } = await _db('quotes').update({ status: 'accepted' }).eq('id', id);
   if (qErr) { _toast('Could not update quote — ' + (qErr.message || JSON.stringify(qErr)), 'error'); console.error(qErr); return; }
-  q.status = 'approved';
+  q.status = 'accepted';
   /** @type {any} */
   const orderRow = {
     user_id: _userId,
@@ -428,14 +431,49 @@ async function convertQuoteToOrder(id) {
 }
 
 /** @param {number} id @param {string} status */
+// Statuses written by the CUSTOMER's live page / payment webhook. A manual
+// pipeline click shouldn't silently destroy these facts.
+const _QUOTE_CUSTOMER_STATUSES = ['viewed', 'accepted', 'deposit_paid', 'paid'];
+
+/** Plain-language line about what the customer did, for confirm dialogs.
+ *  @param {any} q @returns {string} */
+function _quoteCustomerFact(q) {
+  if (q.status === 'paid') return 'The customer has <strong>paid in full</strong> on the live page';
+  if (q.status === 'deposit_paid') return 'The customer has <strong>paid a deposit</strong> on the live page';
+  if (q.status === 'accepted') return 'The customer <strong>accepted</strong> this quote' + (q.accepted_at ? ' on ' + _fmtLLDate(q.accepted_at) : '');
+  if (q.status === 'viewed') return 'The customer <strong>viewed</strong> this quote' + (q.viewed_at ? ' on ' + _fmtLLDate(q.viewed_at) : '');
+  return '';
+}
+
+/** @param {number} id @param {string} status */
 async function setQuoteStatus(id, status) {
   if (!_requireAuth()) return;
   const q = quotes.find(q => q.id === id);
   if (!q) return;
   if (q.status === status) return;
-  await _db('quotes').update({ status }).eq('id', id);
+  const curMeta = _quoteStatusMeta(q.status);
+  const newMeta = _quoteStatusMeta(status);
+  const customerDriven = _QUOTE_CUSTOMER_STATUSES.includes(q.status || '');
+  // Same pipeline stage but the current status is richer (viewed ⊃ sent,
+  // deposit_paid ⊃ accepted): the richer truth wins — nothing to change.
+  if (customerDriven && newMeta.stage === curMeta.stage) return;
+  // Walking a customer-driven status backwards is a deliberate choice, not a
+  // mis-click: confirm with what actually happened.
+  if (customerDriven && newMeta.stage < curMeta.stage) {
+    _confirm(
+      `${_quoteCustomerFact(q)}. Move it back to <strong>${newMeta.label}</strong>?` +
+      `<br><br><span style="font-size:11px;color:var(--muted)">This only changes the status on your cards — payments and the customer's page aren't affected.</span>`,
+      () => { _applyQuoteStatus(q, status); });
+    return;
+  }
+  await _applyQuoteStatus(q, status);
+}
+
+/** Write + render a manual status change. @param {any} q @param {string} status */
+async function _applyQuoteStatus(q, status) {
+  await _db('quotes').update({ status }).eq('id', q.id);
   q.status = status;
-  if (status === 'approved') _toast('Quote marked as approved', 'success');
+  if (status === 'accepted') _toast('Quote marked as accepted', 'success');
   renderQuoteMain();
 }
 
@@ -460,25 +498,25 @@ function renderQuoteMain() {
   const sent = customerQuotes.filter(q => _quoteStatusMeta(q.status).stage === 1).length;
   const approved = customerQuotes.filter(q => _quoteStatusMeta(q.status).stage === 2).length;
 
-  /** @param {string} s */
-  const statusBadge = s => {
-    if (s === 'approved') return '<span class="badge badge-green">Approved</span>';
-    if (s === 'sent') return '<span class="badge badge-blue">Sent</span>';
-    return '<span class="badge badge-gray">Draft</span>';
-  };
-
   /** @param {any} q */
   const qCard = q => {
     const total = quoteTotal(q);
     const _qm = _quoteStatusMeta(q.status);
     const statusBadge = _qm.badge;
     const statusText = _qm.label;
-    // Live-link activity stamp — surfaces what the customer did on the link.
-    const _llStamp = q.accepted_at
-      ? `<span class="qc-live">✓ Accepted ${_fmtLLDate(q.accepted_at)}</span>`
-      : q.viewed_at
-        ? `<span class="qc-live">Viewed ${_fmtLLDate(q.viewed_at)}</span>`
-        : '';
+    // ONE status display: the badge carries the granular state + its date
+    // (the old separate "✓ Accepted 2 Jun" meta stamp duplicated it in
+    // different words). Live-link events and manual clicks land in the same
+    // place, so the card reads identically with or without a live link.
+    const _stDate = (q.status === 'viewed' && q.viewed_at) ? _fmtLLDate(q.viewed_at)
+      : ((q.status === 'accepted' || q.status === 'approved') && q.accepted_at) ? _fmtLLDate(q.accepted_at)
+      : '';
+    const badgeText = _stDate ? `${statusText} · ${_stDate}` : statusText;
+    // Quiet nudge while a live link is out but unopened. Shows nothing for
+    // makers who don't use live links at all.
+    const _linkHint = (q.share_token && !q.viewed_at && !q.accepted_at && _qm.stage < 2)
+      ? '<span class="qc-link-hint" title="The live link exists but the customer hasn’t opened it yet">Link live · not viewed yet</span>'
+      : '';
     const pName = quoteProject(q);
     const cName = quoteClient(q);
     const qNum = q.quote_number ? `${q.quote_number} · ` : '';
@@ -491,8 +529,13 @@ function renderQuoteMain() {
       const done = i < curIdx;
       const active = i === curIdx;
       const color = active ? (/** @type {Record<string,string>} */ (QUOTE_STATUS_COLORS))[s] : done ? 'var(--success)' : 'var(--border)';
-      const label = (/** @type {Record<string,string>} */ (QUOTE_STATUS_LABELS))[s];
-      return `<div class="pipe-step ${active?'pipe-active':''}${done?' pipe-done':''}" data-idx="${i}" data-hover-color="${(/** @type {Record<string,string>} */(QUOTE_STATUS_COLORS))[s]}" onmouseenter="pipePreview(this)" onmouseleave="pipeRestorePreview(this)" onclick="event.stopPropagation();setQuoteStatus(${q.id},'${s}')" style="cursor:pointer" title="Set to ${label}">
+      // The ACTIVE step shows the granular status word (Viewed / Deposit paid /
+      // Paid) so the pipeline and the badge always say the same thing; the
+      // other steps keep their stage names as click targets.
+      const stageLabel = (/** @type {Record<string,string>} */ (QUOTE_STATUS_LABELS))[s];
+      const label = active ? statusText : stageLabel;
+      const title = active ? 'Current stage' : `Set to ${stageLabel}`;
+      return `<div class="pipe-step ${active?'pipe-active':''}${done?' pipe-done':''}" data-idx="${i}" data-hover-color="${(/** @type {Record<string,string>} */(QUOTE_STATUS_COLORS))[s]}" onmouseenter="pipePreview(this)" onmouseleave="pipeRestorePreview(this)" onclick="event.stopPropagation();setQuoteStatus(${q.id},'${s}')" style="cursor:pointer" title="${title}">
         <div class="pipe-dot" data-orig-color="${color}" style="background:${color};border-color:${color}"></div>
         <div class="pipe-label">${label}</div>
       </div>${i < QUOTE_STATUSES.length-1 ? `<div class="pipe-line ${done?'pipe-line-done':''}"></div>` : ''}`;
@@ -504,9 +547,9 @@ function renderQuoteMain() {
         <div class="oc-info">
           <div class="oc-title-row">
             <div class="qc-title">${titleText}${isEditing ? ' <span style="font-weight:500;color:var(--accent);font-size:11px">· editing</span>' : ''}</div>
-            <span class="badge ${statusBadge}" style="font-size:10px" onclick="event.stopPropagation()">${statusText}</span>
+            <span class="badge ${statusBadge}" style="font-size:10px" onclick="event.stopPropagation()">${badgeText}</span>
           </div>
-          ${(q.date || lineCounts || _llStamp) ? `<div class="qc-meta">${[[q.date, lineCounts].filter(Boolean).join(' · '), _llStamp].filter(Boolean).join(' · ')}</div>` : ''}
+          ${(q.date || lineCounts || _linkHint) ? `<div class="qc-meta">${[[q.date, lineCounts].filter(Boolean).join(' · '), _linkHint].filter(Boolean).join(' · ')}</div>` : ''}
         </div>
         <div class="oc-right">
           <div class="oc-value" style="cursor:default;border-bottom:none">${fmt(total)}</div>
@@ -559,7 +602,7 @@ function renderQuoteMain() {
     <button class="ofilter-tab ${qFilter==='all'?'active':''}" onclick="window._quoteFilter='all';renderQuoteMain()">All (${customerQuotes.length})</button>
     <button class="ofilter-tab ${qFilter==='draft'?'active':''}" onclick="window._quoteFilter='draft';renderQuoteMain()">Draft (${draft})</button>
     <button class="ofilter-tab ${qFilter==='sent'?'active':''}" onclick="window._quoteFilter='sent';renderQuoteMain()">Sent (${sent})</button>
-    <button class="ofilter-tab ${qFilter==='approved'?'active':''}" onclick="window._quoteFilter='approved';renderQuoteMain()">Approved (${approved})</button>
+    <button class="ofilter-tab ${qFilter==='accepted'?'active':''}" onclick="window._quoteFilter='accepted';renderQuoteMain()">Accepted (${approved})</button>
     <select class="lib-sort-select" style="margin-left:auto" onchange="window._quoteSort=this.value;renderQuoteMain()">
       <option value="newest" ${qSort==='newest'?'selected':''}>Newest first</option>
       <option value="value" ${qSort==='value'?'selected':''}>Value</option>
@@ -1721,7 +1764,11 @@ async function saveQuoteEditor() {
   w._saveInFlight.add('quote');
   if (typeof _setSaveStatus === 'function') _setSaveStatus('quote', 'saving');
   try {
-    const status = _popupVal('pq-status');
+    // Status is NOT edited here — there's no status field in the editor (it's
+    // managed from the card pipeline + live-link events). Reading the missing
+    // '#pq-status' returned '' and the 600ms autosave wiped customer-driven
+    // statuses (viewed / accepted / deposit_paid…) on every keystroke.
+    const status = q.status || 'draft';
     const notes = _popupVal('pq-notes');
     const qnRaw = _popupVal('pq-quote-number') || '';
     const quote_number = qnRaw ? ('QUO-' + qnRaw.replace(/^(QUO|Q)-/i, '')) : null;

@@ -171,15 +171,19 @@ function renderOrdersMain() {
     const titleText = [titleNum, titleCli, titleProj].filter(Boolean).join(' · ');
     const statusBadgeCls = (/** @type {Record<string,string>} */(STATUS_BADGES))[o.status]||'badge-gray';
     const statusLabel = (/** @type {Record<string,string>} */(STATUS_LABELS))[o.status]||o.status;
-    // Live-link status chip. Orders have no independent accept/pay flow (payment
-    // is quote-only) and don't track "viewed", so accepted/paid is derived from
-    // the originating quote; otherwise just surface whether the link is live.
+    // Payment is a SEPARATE dimension from production status, so it gets its
+    // own outline pill in the meta row instead of a second look-alike badge
+    // next to the production one (which read as two conflicting statuses).
+    // Derived from the originating quote (payment is quote-only); shows
+    // nothing at all when the maker isn't using live links / card payment.
     const _llQuote = o.quote_id ? quotes.find(/** @param {any} x */ x => x.id === o.quote_id) : null;
-    let _llChip = '';
-    if (_llQuote && (_llQuote.status === 'paid' || _llQuote.status === 'deposit_paid')) {
-      _llChip = `<span class="badge badge-green" style="font-size:9px" onclick="event.stopPropagation()" title="Customer paid on the live link">${_llQuote.status === 'paid' ? 'Paid' : 'Deposit paid'}</span>`;
-    } else if (o.share_token) {
-      _llChip = '<span class="badge badge-blue" style="font-size:9px" onclick="event.stopPropagation()" title="Live link is active">Link live</span>';
+    let _payPill = '';
+    if (_llQuote && _llQuote.status === 'paid') {
+      _payPill = '<span class="oc-pay paid" onclick="event.stopPropagation()" title="Paid by card on the live page">✓ Paid in full</span>';
+    } else if (_llQuote && _llQuote.status === 'deposit_paid') {
+      _payPill = '<span class="oc-pay paid" onclick="event.stopPropagation()" title="Deposit paid by card on the live page — balance due on completion">✓ Deposit paid · balance due</span>';
+    } else if (o.share_token || (_llQuote && /** @type {any} */ (_llQuote).share_token)) {
+      _payPill = '<span class="oc-pay linked" onclick="event.stopPropagation()" title="The customer can view this on its live link">Link live</span>';
     }
     const isEditing = o.id === _opState.orderId;
     return `
@@ -189,7 +193,6 @@ function renderOrdersMain() {
           <div class="oc-title-row">
             <div class="oc-title">${titleText}${isEditing ? ' <span style="font-weight:500;color:var(--accent);font-size:11px">· editing</span>' : ''}</div>
             <span class="badge ${statusBadgeCls}" style="font-size:10px" onclick="event.stopPropagation()">${statusLabel}</span>
-            ${_llChip}
           </div>
           <div class="oc-meta">
             ${isComplete
@@ -198,6 +201,7 @@ function renderOrdersMain() {
             ${relDate ? `<span style="font-size:9px;font-weight:700;color:${relDate.color}">${relDate.label}</span>` : ''}
             ${isOverdue ? '<span class="badge badge-red" style="font-size:8px;padding:1px 5px">Overdue</span>' : ''}
             ${(() => { const lc = _lineKindCountsLabel(/** @type {any} */ (o)._lines); return lc ? `<span>· ${lc}</span>` : ''; })()}
+            ${_payPill}
           </div>
           ${o.notes ? `<div class="oc-notes" style="cursor:default">${_escHtml(o.notes)}</div>` : ''}
         </div>
@@ -1136,7 +1140,10 @@ async function saveOrderEditor() {
   w._saveInFlight.add('order');
   if (typeof _setSaveStatus === 'function') _setSaveStatus('order', 'saving');
   try {
-  const status = _popupVal('po-status');
+  // Status is managed from the card pipeline (and the pay webhook), not the
+  // editor — '#po-status' no longer exists, so reading it returned '' and the
+  // autosave wiped the production status on every edit.
+  const status = o.status || 'quote';
   const onRaw = _popupVal('po-order-number') || '';
   const order_number = onRaw ? ('ORD-' + onRaw.replace(/^ORD-/i, '')) : null;
   // Legacy order-level markup column is no longer surfaced in the editor; we

@@ -1360,6 +1360,14 @@ canvas { display: block; }
    prices were just recalculated when this tab opened. */
 .ll-banner { font-size: 12px; color: var(--text2); background: var(--accent-dim); border: 1px solid rgba(232,168,56,.45); border-radius: 8px; padding: 10px 12px; line-height: 1.55; margin-bottom: 12px; }
 .ll-banner strong { color: var(--text); }
+/* Payment pill on order cards — OUTLINE style so it reads as a different
+   dimension (money) from the filled production-status badge. */
+.oc-pay { display: inline-flex; align-items: center; gap: 4px; font-size: 9px; font-weight: 700; letter-spacing: .02em; padding: 1px 7px; border-radius: 999px; border: 1px solid; background: transparent; white-space: nowrap; cursor: default; }
+.oc-pay.paid { color: var(--success); border-color: var(--success); }
+.oc-pay.linked { color: var(--muted); border-color: var(--border); font-weight: 600; }
+/* Muted "link is out, not opened yet" hint on quote cards — informational,
+   not a success state. */
+.qc-link-hint { color: var(--muted); font-weight: 600; }
 .ll-status-row { display: flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 600; color: var(--text2); margin-bottom: 12px; }
 .ll-status-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 .ll-h { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin: 14px 0 2px; }
@@ -1865,6 +1873,22 @@ input.li-num:focus { outline: none; border-color: var(--accent); }
 .auth-btn:disabled { opacity: 0.5; cursor: default; }
 .auth-toggle { font-size: 12px; color: var(--muted); text-align: center; margin-top: 16px; }
 .auth-toggle span { color: var(--accent); cursor: pointer; text-decoration: underline; }
+.auth-oauth-btn {
+  width: 100%; padding: 10px 14px; display: flex; align-items: center;
+  justify-content: center; gap: 10px; background: var(--surface2);
+  border: 1px solid var(--border); border-radius: 8px; color: var(--text);
+  font-size: 14px; font-weight: 600; cursor: pointer;
+}
+.auth-oauth-btn:hover { border-color: var(--accent); background: var(--surface); }
+.auth-oauth-btn:disabled { opacity: 0.5; cursor: default; }
+.auth-divider {
+  display: flex; align-items: center; gap: 10px; margin: 14px 0;
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em;
+  color: var(--muted);
+}
+.auth-divider::before, .auth-divider::after {
+  content: ''; flex: 1; height: 1px; background: var(--border);
+}
 .auth-guest { font-size: 12px; color: var(--muted); text-align: center; margin-top: 10px; cursor: pointer; }
 .auth-guest span { text-decoration: underline; color: var(--muted); }
 
