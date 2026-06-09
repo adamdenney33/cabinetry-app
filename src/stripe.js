@@ -20,14 +20,18 @@ async function startCheckout(plan) {
     throw new Error('startCheckout: plan must be "monthly", "annual" or "founder"');
   }
 
-  const { data: { session } } = await _sb.auth.getSession();
-  if (!session) throw new Error('Sign in to upgrade to Pro');
+  // Read the bearer from the in-memory token (db.js `_dbAuthToken`), NOT
+  // `_sb.auth.getSession()`, whose storage-based token goes stale on Safari /
+  // in-app webviews → 401 "Invalid auth token" from the verify_jwt function.
+  const token = (typeof _dbAuthToken === 'function' && _dbAuthToken()) || null;
+  if (!token) throw new Error('Sign in to upgrade to Pro');
 
   const url = `${window._SBURL}/functions/v1/stripe-checkout`;
   const res = await fetch(url, {
     method: 'POST',
     headers: {
-      'authorization': `Bearer ${session.access_token}`,
+      'authorization': `Bearer ${token}`,
+      'apikey': window._SBKEY,
       'content-type': 'application/json',
     },
     body: JSON.stringify({ plan }),
@@ -56,14 +60,15 @@ async function startCheckout(plan) {
  * @returns {Promise<void>}
  */
 async function openCustomerPortal() {
-  const { data: { session } } = await _sb.auth.getSession();
-  if (!session) throw new Error('Sign in to manage your subscription');
+  const token = (typeof _dbAuthToken === 'function' && _dbAuthToken()) || null;
+  if (!token) throw new Error('Sign in to manage your subscription');
 
   const url = `${window._SBURL}/functions/v1/stripe-portal`;
   const res = await fetch(url, {
     method: 'POST',
     headers: {
-      'authorization': `Bearer ${session.access_token}`,
+      'authorization': `Bearer ${token}`,
+      'apikey': window._SBKEY,
       'content-type': 'application/json',
     },
   });
@@ -266,12 +271,13 @@ function _handleManageSubscription() {
  */
 async function _loadSubscriptionPricing() {
   try {
-    const { data: { session } } = await _sb.auth.getSession();
-    if (!session) return null;
+    const token = (typeof _dbAuthToken === 'function' && _dbAuthToken()) || null;
+    if (!token) return null;
     const res = await fetch(`${window._SBURL}/functions/v1/stripe-subscription`, {
       method: 'POST',
       headers: {
-        'authorization': `Bearer ${session.access_token}`,
+        'authorization': `Bearer ${token}`,
+        'apikey': window._SBKEY,
         'content-type': 'application/json',
       },
     });
