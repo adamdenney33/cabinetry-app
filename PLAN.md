@@ -35,20 +35,30 @@ a **0.7% (capped ~$100)** application fee. Built across the quote/order overhaul
 `stripe_accounts`, `payments`, `customer_messages`, `line_photos` + quote/order
 `share_token`/`share_settings` (SCHEMA.md § 3.23–3.26).
 
-- ✅ **Charge model corrected to the agreed design (2026-06-09, `6711b61`).** Pre-fix
-  it was **Express + destination charges** (so the *platform* paid Stripe's ~2.9% fee
-  while collecting only 0.7% → net loss per txn; plus cross-region limits) with **no
-  fee cap** and a **1.5% default**. Now **Standard accounts + direct charges** (maker =
-  merchant of record, pays Stripe's fee), **0.7% capped ~$100/currency**; `quote-pay`
-  returns `account_id`; `quote-public.js` confirms with `{ stripeAccount }`. `quote-pay`
-  v4 + `connect-onboard` v4 redeployed ACTIVE; smoke green; `npm run typecheck` clean.
-- ⬜ **Stripe config (user):** the `quote-pay-webhook` endpoint must be a **Connect**
-  webhook — direct-charge `payment_intent.succeeded` fires on the *connected* account,
-  not the platform; confirm `STRIPE_PLATFORM_FEE_BPS=70` or unset.
-- ⬜ **End-to-end test (test mode):** onboard a Standard account → pay a `/q` deposit
-  with a test card → verify the `payments` row, webhook, auto-created order, and fee
-  on the platform balance.
-- ⬜ **Live-mode flip** (alongside the subscription Stripe S.9).
+- ✅ **Charge model corrected to the agreed design (`6711b61`).** Was Express +
+  destination charges (platform paid Stripe's fee → net loss; cross-region limits),
+  no cap, 1.5% default. Now **Standard accounts + direct charges**, **0.7% capped
+  ~$100/currency**; `quote-pay` returns `account_id`; `quote-public.js` confirms with
+  `{ stripeAccount }`.
+- ✅ **Auth-token fix (`112972c`).** Connect calls used `_sb.auth.getSession()` (stale
+  on Safari → 401 "Invalid auth token"); switched to the in-memory `_dbAuthToken()`.
+  Same latent bug flagged for stripe.js checkout/portal + accounting.js (separate task).
+- ✅ **Connect key decoupled (`cb84b66`).** Payments read `STRIPE_CONNECT_SECRET_KEY` /
+  `STRIPE_CONNECT_PUBLISHABLE_KEY` (fallback to the live subscription key), so they run
+  in a **test sandbox** while live billing keeps running untouched.
+- ✅ **customer_price stale-£0 fix (`57d6bb4`) + perf (`1ae213b`).** Recompute each
+  line's `customer_price` on every Live-link-tab open (the snapshot drifted when a line
+  was edited or shared while still £0); per-line writes parallelised. Stale "deleted
+  from project" delete-confirm copy fixed (`de83d48`).
+- ✅ **Webhook order-number fix.** `createOrderFromQuote` now numbers orders `ORD-####`
+  to match the app's `_nextOrderNumber` (was emitting `0001`).
+- ✅ **Connect enabled (sandbox) + Connect webhook configured; `STRIPE_PLATFORM_FEE_BPS=70`.**
+- ✅ **End-to-end test PASSED (test/sandbox, 2026-06-09).** Onboarded a Standard account
+  → paid a 40% deposit on `/q` (£692.39) with a test card → `payments` row `succeeded`,
+  **fee £4.85 (0.7%)**, `quote-pay-webhook` 200, quote → `deposit_paid`, order auto-created.
+- ⬜ **Live-mode flip (go-live):** swap `STRIPE_CONNECT_*` to live keys (or unset → falls
+  back to the live key) + create a **live** Connect webhook → `STRIPE_CONNECT_WEBHOOK_SECRET`;
+  Connect already enabled on live; makers onboard live Standard accounts.
 
 Detail: SPEC.md § 13 (2026-06-09).
 
