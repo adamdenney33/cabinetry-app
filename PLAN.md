@@ -23,6 +23,75 @@ Companion docs: `SPEC.md` (refactor history), `SCHEMA.md` (DB schema),
 
 ## Active Work
 
+### Conversion funnel — P0 fixes from full-funnel review ✅ Done 2026-06-09
+
+From a landing-page / conversion-flow / pricing / onboarding review (2026-06-09).
+The four leaks below are fixed; the rest of the review lives in
+"Conversion funnel — review backlog" below. Summary in SPEC.md § 13.
+
+- ✅ **F.1 — Pending-plan persistence (app.js):** the landing `?plan=` deep-link
+  is stashed only on `window._pendingPlan`, so it dies during the signup →
+  email-confirm round trip (a fresh page load). Persist to localStorage
+  (`pc_pending_plan`, 48 h TTL), consume on the first authenticated auth event,
+  and skip the walkthrough auto-start on that load (the page is redirecting to
+  Stripe Checkout; the tour shows on return).
+- ✅ **F.2 — Trial-ending banner (stripe.js + limits.js):** the 14-day trial
+  currently lapses silently (countdown only in the account dropdown). Slim
+  dismissible banner under the header for the last 3 trial days, re-shown once
+  per remaining day, "See plans" → `_wtStartCta()`. PostHog events
+  `trial_banner_shown` / `trial_banner_upgrade_clicked`.
+- ✅ **F.3 — Plan picker on tour skip (walkthrough.js):** `_wtSkip` closed the
+  tour without ever surfacing the plan picker — only completers of the 26-step
+  tour saw pricing. Skipping the auto-run first tour now ends on the standalone
+  CTA. Guarded: auto-run tours only (not the Help re-trigger), not Pro users,
+  not when already on the pricing step, never from the CTA-only overlay.
+- ✅ **F.4 — Getting Started card (dashboard.js + walkthrough.js):** completing
+  the tour set `pc_hide_guide`, hiding the only call-to-action card exactly for
+  the users with an empty app — stop setting it. Card copy still referenced the
+  removed Projects entity; rewrite steps to the aha path (set rates → add stock
+  → build a cabinet → first quote) with deep-links.
+
+### Conversion funnel — review backlog ⬜ Pending 2026-06-09
+
+Remaining findings from the same review, roughly priority-ordered:
+
+- ⬜ **Mobile pricing path:** the tour is desktop-only and returns *before*
+  persisting dismissal on touch, so `_wtMaybeShowSessionCta` is never reached —
+  mobile-only users never auto-see the plan picker. Add a mobile-friendly
+  pricing surface on first run (or at least persist dismissal on touch).
+- ⬜ **Trial-end emails:** email-flow-plan.html covers Day 0–13 but nothing is
+  implemented (only `list-subscribe` exists). Minimum: Day-12 "trial ending"
+  and Day-14 "what changes now" sends via Resend.
+- ⬜ **Pre-signup product proof:** guest demo mode was removed and there's no
+  video — every landing CTA hits the auth wall ("Open the app →" over-promises
+  for cold visitors). Add a 60–90 s hero demo video (remotion pipeline exists)
+  or revive a read-only `/os?demo` marketing surface.
+- ⬜ **Landing social proof:** promote "Made by a cabinet maker" from the footer
+  to a founder-story section; pull quotes from Creator Lifetime users near the
+  hero CTA and pricing.
+- ⬜ **Landing FAQ + schema:** trial/cancel/currency/DXF-compatibility/units
+  questions answered next to pricing; add FAQPage structured data.
+- ⬜ **Currency clarity on pricing cards:** prices are USD + Stripe Adaptive
+  Pricing — add "Prices in USD — checkout bills in your local currency."
+- ⬜ **Signup friction:** drop first/last-name fields (collect in business
+  details later); fix post-signup copy ("Check your email, then sign in" is
+  wrong — the confirm link signs them in); consider Google OAuth.
+- ⬜ **Tour length:** cut 26 steps to ~8–10 (drop the four toolbar-dropdown
+  steps); consider a post-tour action checklist driving to first real quote.
+- ⬜ **Session CTA cadence:** full-screen plan picker every browser session for
+  all free + trial users trains dismissal — gate to trial-final-3-days,
+  post-limit-hit, or weekly.
+- ⬜ **$299 vs $300 annual:** Stripe/PLAN say $299/yr, landing + manage popup
+  say $300/yr — unify everywhere.
+- ⬜ **Launch prices hardcoded in 3 places** (landing.html, walkthrough.js CTA,
+  stripe.js modals) — centralise or note to update when the 6-month offer ends.
+- ⬜ **Founder card:** wire the live `founder_seats_taken` counter on the
+  landing page (RPC + publishable anon key — see landing.js comment); add a
+  30-day money-back line; keep "ever **sold**" phrasing everywhere (Creator
+  Lifetime gifts exist).
+- ⬜ **Free-tier copy:** "Limited access to new features" is vague — specify or
+  cut.
+
 ### Customer payments + live quote/order pages (Stripe Connect) 🚧 In Progress 2026-06-09
 
 Public `/q?t=<share_token>` live pages (`q.html` + `src/quote-public.js`) where a
