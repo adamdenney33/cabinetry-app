@@ -51,9 +51,11 @@ The four leaks below are fixed; the rest of the review lives in
   removed Projects entity; rewrite steps to the aha path (set rates → add stock
   → build a cabinet → first quote) with deep-links.
 
-### Conversion funnel — review backlog ⬜ Pending 2026-06-09
+### Conversion funnel — review backlog 🚧 P1–P3 batch done 2026-06-10
 
-Remaining findings from the same review, roughly priority-ordered:
+Findings from the same review, roughly priority-ordered. The 2026-06-10 batch
+cleared most of it (see SPEC.md § 13); remaining ⬜ items are blocked on
+user-side config or policy decisions.
 
 - ⬜ **Mobile pricing path:** the tour is desktop-only and returns *before*
   persisting dismissal on touch, so `_wtMaybeShowSessionCta` is never reached —
@@ -69,26 +71,45 @@ Remaining findings from the same review, roughly priority-ordered:
 - ⬜ **Landing social proof:** promote "Made by a cabinet maker" from the footer
   to a founder-story section; pull quotes from Creator Lifetime users near the
   hero CTA and pricing.
-- ⬜ **Landing FAQ + schema:** trial/cancel/currency/DXF-compatibility/units
-  questions answered next to pricing; add FAQPage structured data.
-- ⬜ **Currency clarity on pricing cards:** prices are USD + Stripe Adaptive
-  Pricing — add "Prices in USD — checkout bills in your local currency."
-- ⬜ **Signup friction:** drop first/last-name fields (collect in business
-  details later); fix post-signup copy ("Check your email, then sign in" is
-  wrong — the confirm link signs them in); consider Google OAuth.
-- ⬜ **Tour length:** cut 26 steps to ~8–10 (drop the four toolbar-dropdown
-  steps); consider a post-tour action checklist driving to first real quote.
-- ⬜ **Session CTA cadence:** full-screen plan picker every browser session for
-  all free + trial users trains dismissal — gate to trial-final-3-days,
-  post-limit-hit, or weekly.
-- ⬜ **$299 vs $300 annual:** Stripe/PLAN say $299/yr, landing + manage popup
-  say $300/yr — unify everywhere.
-- ⬜ **Launch prices hardcoded in 3 places** (landing.html, walkthrough.js CTA,
-  stripe.js modals) — centralise or note to update when the 6-month offer ends.
-- ⬜ **Founder card:** wire the live `founder_seats_taken` counter on the
-  landing page (RPC + publishable anon key — see landing.js comment); add a
-  30-day money-back line; keep "ever **sold**" phrasing everywhere (Creator
-  Lifetime gifts exist).
+- ✅ **Landing FAQ + schema** (2026-06-10): 6-question `<details>` FAQ section
+  after pricing (trial end, cancel, currency, DXF/CAM, units, customer live
+  link) + matching FAQPage JSON-LD in `<head>` + footer link.
+- ✅ **Currency clarity on pricing cards** (2026-06-10): `.price-currency` line
+  under the pricing header — "Prices in USD — checkout bills in your local
+  currency."
+- 🚧 **Signup friction:** ✅ first/last-name fields removed (index.html +
+  app.js: no validation, no user_metadata names — downstream already tolerates
+  nameless accounts) and post-signup copy fixed ("the confirmation link signs
+  you in automatically"). ⬜ Google OAuth still pending — needs a Google Cloud
+  OAuth client + enabling the provider in Supabase Auth (user-side dashboard
+  work) before any code.
+- ✅ **Tour length** (2026-06-10): 26 → 10 steps (cut Clients ×2, Quote list,
+  Orders ×2, Stock ×2, Cabinet Library, Cut List Library/Layout, Schedule
+  queue, Dashboard quick-actions, Toolbar ×4). `WT_VERSION` deliberately NOT
+  bumped — nothing new to teach. Post-tour checklist = Getting Started card
+  with progress ticks (see dashboard.js).
+- ✅ **Session CTA cadence** (2026-06-10): standalone plan picker now skips
+  trial users entirely (trial banner owns days 12–14) and fires at most once
+  per 7 days for free users (`pc_wt_cta_last`, also stamped on tour close).
+  Limit-hit / Pro-feature modals stay intent-triggered.
+- ✅ **$299 vs $300 annual** (2026-06-10): unified at **$299/yr** — landing
+  annual card, walkthrough CTA, stripe.js manage-popup fallback, analytics
+  purchase-conversion value. Stripe Price was already $299.
+- ⬜ **Launch-offer end checklist** — when the 6-month launch pricing ends,
+  update every hardcoded price string: `landing.html` Monthly/Annual cards
+  (amounts, `<s>` strikethroughs, "First 6 months…"/"$180 billed…" bullets),
+  `src/walkthrough.js` `_wtCtaHTML` (same four tiers), `src/stripe.js`
+  `_openLimitHitModal` / `_openProFeatureModal` / `_openManagePopupFree`
+  ($15/$25 footer splits), trial banner copy ("from $15/mo") in
+  `_renderTrialBanner`. The Manage Subscription popup is already live via
+  `stripe-subscription`; everything else is static copy.
+- 🚧 **Founder card:** ✅ live `founder_seats_taken` counter wired on landing
+  (Supabase URL + publishable anon key injected as `window.__PC_SB` by
+  `copyLandingPlugin`; `landing.js founderSeats()` swaps the flag for
+  "N of 50 left", handles sold-out by disabling the CTA; dev = clean no-op)
+  and "ever **sold**" phrasing everywhere (Creator Lifetime gifts exist).
+  ⬜ 30-day money-back line on the Founder card — needs a refund-policy
+  decision first.
 - ⬜ **Free-tier copy:** "Limited access to new features" is vague — specify or
   cut.
 
