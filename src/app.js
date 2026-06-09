@@ -349,20 +349,23 @@ function _renderOrderLineTotals() {
     { materials: 0, labour: 0, stockMat: 0 }
   );
   // Stock markup is a single rate applied to all stock-kind lines (set in the
-  // editor below the stock library). The legacy order-level markup column
-  // (orders.markup) stays in the DB for back-compat — existing rows with a
-  // non-zero markup still apply it here, but the UI no longer exposes it.
-  // The legacy order-level `markup` column is no longer applied — stock_markup
-  // is the only markup concept in the new editor (per mockup J). Existing
-  // orders with a non-zero `markup` value will see a lower total; the column
-  // stays in the DB so historical data isn't lost.
+  // editor below the stock library). NOTE: stock materials themselves belong
+  // in the subtotal too — they were being dropped here, so an order with
+  // stock lines understated its total vs. the card/dashboard/webhook math.
   const stockMarkup = parseFloat(_popupVal('po-stock-markup')) || 0;
   const stockMarkupAmt = subParts.stockMat * stockMarkup / 100;
-  const sub = subParts.materials + subParts.labour + stockMarkupAmt;
+  const sub = subParts.materials + subParts.labour + subParts.stockMat + stockMarkupAmt;
+  // The order's stored `markup` has no editor input (per mockup J) but it IS
+  // applied everywhere else (order value, card, webhook, live link). Surface
+  // it read-only so the editor total matches what everyone else sees.
+  const _o = _opState.orderId ? orders.find(x => x.id === _opState.orderId) : null;
+  const markupPct = _o ? (parseFloat(/** @type {any} */ (_o).markup) || 0) : 0;
+  const markupAmt = sub * markupPct / 100;
+  const afterMarkup = sub + markupAmt;
   const tax = parseFloat(_popupVal('po-tax')) || 0;
   const discount = parseFloat(_popupVal('po-discount')) || 0;
-  const taxAmt = sub * tax / 100;
-  const afterTax = sub + taxAmt;
+  const taxAmt = afterMarkup * tax / 100;
+  const afterTax = afterMarkup + taxAmt;
   const discountAmt = afterTax * discount / 100;
   const total = afterTax - discountAmt;
   const el = document.getElementById('po-totals');
@@ -370,12 +373,16 @@ function _renderOrderLineTotals() {
   const stockMarkupRow = stockMarkupAmt > 0
     ? `<div class="pf-total-row"><span class="t-label">Stock markup (${stockMarkup}%)</span><span class="t-val">+${fmt(stockMarkupAmt)}</span></div>`
     : '';
+  const markupRow = markupAmt > 0
+    ? `<div class="pf-total-row"><span class="t-label" title="Set when this order was created (Cabinet Builder markup)">Markup (${markupPct}%)</span><span class="t-val">+${fmt(markupAmt)}</span></div>`
+    : '';
   const discRow = discount > 0
     ? `<div class="pf-total-row discount"><span class="t-label">Discount (${discount}%)</span><span class="t-val">−${fmt(discountAmt)}</span></div>`
     : '';
   el.innerHTML = `
-    <div class="pf-total-row"><span class="t-label">Subtotal</span><span class="t-val">${fmt(subParts.materials + subParts.labour)}</span></div>
+    <div class="pf-total-row"><span class="t-label">Subtotal</span><span class="t-val">${fmt(subParts.materials + subParts.labour + subParts.stockMat)}</span></div>
     ${stockMarkupRow}
+    ${markupRow}
     <div class="pf-total-row"><span class="t-label">Tax (${tax}%)</span><span class="t-val">+${fmt(taxAmt)}</span></div>
     ${discRow}
     <div class="pf-total-row t-main"><span class="t-label">Order Total</span><span class="t-val">${fmt(total)}</span></div>`;
@@ -730,15 +737,21 @@ function _renderQuoteLineTotals() {
     },
     { materials: 0, labour: 0, stockMat: 0 }
   );
-  // Same simplification as the order side: legacy `markup` is no longer
-  // applied in totals math. Stock markup is the only markup concept.
+  // Stock markup is the only EDITABLE markup here, but the quote's stored
+  // `markup` (seeded by the Cabinet Builder's Quote Markup setting) is applied
+  // by the card total, live customer page, and order conversion — so it must
+  // show here too or the editor disagrees with every other surface.
   const stockMarkup = parseFloat(_popupVal('pq-stock-markup')) || 0;
   const stockMarkupAmt = subParts.stockMat * stockMarkup / 100;
   const sub = subParts.materials + subParts.labour + subParts.stockMat + stockMarkupAmt;
+  const _q = _qpState.quoteId ? quotes.find(x => x.id === _qpState.quoteId) : null;
+  const markupPct = _q ? (parseFloat(/** @type {any} */ (_q).markup) || 0) : 0;
+  const markupAmt = sub * markupPct / 100;
+  const afterMarkup = sub + markupAmt;
   const tax = parseFloat(_popupVal('pq-tax')) || 0;
   const discount = parseFloat(_popupVal('pq-discount')) || 0;
-  const taxAmt = sub * tax / 100;
-  const afterTax = sub + taxAmt;
+  const taxAmt = afterMarkup * tax / 100;
+  const afterTax = afterMarkup + taxAmt;
   const discountAmt = afterTax * discount / 100;
   const total = afterTax - discountAmt;
   const el = document.getElementById('pq-totals');
@@ -746,12 +759,16 @@ function _renderQuoteLineTotals() {
   const stockMarkupRow = stockMarkupAmt > 0
     ? `<div class="pf-total-row"><span class="t-label">Stock markup (${stockMarkup}%)</span><span class="t-val">+${fmt(stockMarkupAmt)}</span></div>`
     : '';
+  const markupRow = markupAmt > 0
+    ? `<div class="pf-total-row"><span class="t-label" title="From Cabinet Builder → Settings → Quote Markup, set when this quote was created">Markup (${markupPct}%)</span><span class="t-val">+${fmt(markupAmt)}</span></div>`
+    : '';
   const discRow = discount > 0
     ? `<div class="pf-total-row discount"><span class="t-label">Discount (${discount}%)</span><span class="t-val">−${fmt(discountAmt)}</span></div>`
     : '';
   el.innerHTML = `
     <div class="pf-total-row"><span class="t-label">Subtotal</span><span class="t-val">${fmt(subParts.materials + subParts.labour + subParts.stockMat)}</span></div>
     ${stockMarkupRow}
+    ${markupRow}
     <div class="pf-total-row"><span class="t-label">Tax (${tax}%)</span><span class="t-val">+${fmt(taxAmt)}</span></div>
     ${discRow}
     <div class="pf-total-row t-main"><span class="t-label">Total</span><span class="t-val">${fmt(total)}</span></div>`;

@@ -706,12 +706,22 @@ function renderCBResults() {
     return;
   }
 
-  // Totals
+  // Totals. When a real quote/order is open, use ITS stored markup / tax /
+  // discount so the figure here matches the Quotes tab, the editor, and the
+  // customer's live page — cbSettings rates are only the default for a
+  // standalone (not-yet-attached) builder session.
+  const _editEnt = cbEditingQuoteId ? quotes.find(x => x.id === cbEditingQuoteId)
+    : (cbEditingOrderId ? orders.find(x => x.id === cbEditingOrderId) : null);
+  const effMarkup = _editEnt ? (parseFloat(/** @type {any} */ (_editEnt).markup) || 0) : cbSettings.markup;
+  const effTax    = _editEnt ? (parseFloat(/** @type {any} */ (_editEnt).tax) || 0) : cbSettings.tax;
+  const effDisc   = _editEnt ? (parseFloat(/** @type {any} */ (_editEnt).discount) || 0) : 0;
   let gMat=0,gLabour=0,gHw=0,gSub=0;
   const calcs = cbLines.map(l => { const c=calcCBLine(l); gMat+=c.matCost*l.qty; gLabour+=c.labourCost*l.qty; gHw+=c.hwCost*l.qty; gSub+=c.lineSubtotal; return c; });
   const totalHrs = cbLines.reduce((s,l,i)=>s+calcs[i].labourHrs*l.qty,0);
-  const gMarkup = gSub * cbSettings.markup/100;
-  const gTotal = (gSub+gMarkup)*(1+cbSettings.tax/100);
+  const gMarkup = gSub * effMarkup/100;
+  const gPreDisc = (gSub+gMarkup)*(1+effTax/100);
+  const gDiscAmt = gPreDisc * effDisc/100;
+  const gTotal = gPreDisc - gDiscAmt;
 
   let html = `<div style="max-width:700px">`;
 
@@ -749,8 +759,8 @@ function renderCBResults() {
     const c = calcs[idx];
     const isActive = idx === cbEditingLineIdx;
     const unitCost = c.matCost + c.labourCost + c.hwCost;
-    const cabMarkup = c.lineSubtotal * cbSettings.markup / 100;
-    const cabTotal = (c.lineSubtotal + cabMarkup) * (1 + cbSettings.tax / 100);
+    const cabMarkup = c.lineSubtotal * effMarkup / 100;
+    const cabTotal = (c.lineSubtotal + cabMarkup) * (1 + effTax / 100) * (1 - effDisc / 100);
     html += `<div class="cb-cab-card${isActive?' editing':''}" onclick="cbEditCabinetFromOutput(${idx})">
       <!-- Header -->
       <div style="display:flex;align-items:center;gap:10px;padding:12px 16px;background:${isActive?'var(--accent-dim)':'var(--surface2)'}">
@@ -773,8 +783,9 @@ function renderCBResults() {
           ` : `
           <span style="color:var(--muted);border-top:1px solid var(--border2);padding-top:4px;margin-top:2px">Subtotal</span><span style="text-align:right;font-weight:700;border-top:1px solid var(--border2);padding-top:4px;margin-top:2px">${fmt0(c.lineSubtotal)}</span>
           `}
-          ${cbSettings.markup>0?`<span style="color:var(--muted)">Markup (${cbSettings.markup}%)</span><span style="text-align:right;color:var(--muted)">+${fmt0(cabMarkup)}</span>`:''}
-          ${cbSettings.tax>0?`<span style="color:var(--muted)">Tax (${cbSettings.tax}%)</span><span style="text-align:right;color:var(--muted)">+${fmt0(cabTotal-c.lineSubtotal-cabMarkup)}</span>`:''}
+          ${effMarkup>0?`<span style="color:var(--muted)">Markup (${effMarkup}%)</span><span style="text-align:right;color:var(--muted)">+${fmt0(cabMarkup)}</span>`:''}
+          ${effTax>0?`<span style="color:var(--muted)">Tax (${effTax}%)</span><span style="text-align:right;color:var(--muted)">+${fmt0((c.lineSubtotal+cabMarkup)*effTax/100)}</span>`:''}
+          ${effDisc>0?`<span style="color:var(--muted)">Discount (${effDisc}%)</span><span style="text-align:right;color:var(--muted)">−${fmt0((c.lineSubtotal+cabMarkup)*(1+effTax/100)*effDisc/100)}</span>`:''}
         </div>
         <!-- Sub details -->
         <div style="margin-top:6px;padding-top:6px;border-top:1px solid var(--border2);font-size:11px;color:var(--muted);display:flex;gap:8px;flex-wrap:wrap">
@@ -809,13 +820,15 @@ function renderCBResults() {
       </div>
       <div style="border-top:1px solid var(--border);margin-top:6px;padding-top:6px;display:grid;grid-template-columns:1fr auto;gap:3px 16px;font-size:13px">
         <span style="font-weight:700">Subtotal</span><span style="text-align:right;font-weight:700">${fmt0(gSub)}</span>
-        ${cbSettings.markup>0?`<span style="color:var(--muted)">Markup (${cbSettings.markup}%)</span><span style="text-align:right;color:var(--muted)">+${fmt0(gMarkup)}</span>`:''}
-        ${cbSettings.tax>0?`<span style="color:var(--muted)">Tax (${cbSettings.tax}%)</span><span style="text-align:right;color:var(--muted)">+${fmt0(gTotal-gSub-gMarkup)}</span>`:''}
+        ${effMarkup>0?`<span style="color:var(--muted)">Markup (${effMarkup}%)</span><span style="text-align:right;color:var(--muted)">+${fmt0(gMarkup)}</span>`:''}
+        ${effTax>0?`<span style="color:var(--muted)">Tax (${effTax}%)</span><span style="text-align:right;color:var(--muted)">+${fmt0(gPreDisc-gSub-gMarkup)}</span>`:''}
+        ${effDisc>0?`<span style="color:var(--muted)">Discount (${effDisc}%)</span><span style="text-align:right;color:var(--muted)">−${fmt0(gDiscAmt)}</span>`:''}
       </div>
       <div style="border-top:2px solid var(--accent);margin-top:6px;padding-top:8px;display:flex;justify-content:space-between;font-size:16px">
-        <span style="font-weight:700;color:var(--accent)">Quote Total</span>
+        <span style="font-weight:700;color:var(--accent)">${_editEnt && cbEditingOrderId ? 'Order Total' : 'Quote Total'}${_editEnt ? '' : ' (est.)'}</span>
         <span style="font-weight:800;color:var(--accent)">${fmt0(gTotal)}</span>
       </div>
+      ${_editEnt ? '' : `<div style="font-size:10px;color:var(--muted);margin-top:4px;text-align:right">Using your default markup/tax — attaches to the quote's own rates when sent.</div>`}
     </div>
   </div>`;
 
