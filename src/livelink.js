@@ -39,14 +39,17 @@ function _llClientId(kind) {
 
 /** Ensure the controls' line rows are loaded. Quotes load quote_lines; orders
  *  are view-only on the live page (lines render server-side) so we skip.
- *  @param {any} entity @param {'quote'|'order'} [kind] */
-async function _llEnsureLines(entity, kind) {
+ *  `force` refetches even when a cache exists — the boot-time cache goes stale
+ *  the moment a CUSTOMER edits a spec on the live page (quote_lines isn't in
+ *  the realtime publication), so the Live-link tab always loads fresh rows.
+ *  @param {any} entity @param {'quote'|'order'} [kind] @param {boolean} [force] */
+async function _llEnsureLines(entity, kind, force) {
   if (!entity || kind === 'order') return (entity && entity._lines) || [];
-  if (!Array.isArray(entity._lines)) {
+  if (force || !Array.isArray(entity._lines)) {
     try {
       const { data } = await _db('quote_lines').select('*').eq('quote_id', entity.id).order('position');
       entity._lines = (data || []).map(/** @param {any} r */ r => ({ ...r }));
-    } catch (e) { entity._lines = []; }
+    } catch (e) { entity._lines = entity._lines || []; }
   }
   return entity._lines;
 }
@@ -81,12 +84,23 @@ function _llLiveBodyDiv(kind) {
 async function _llSyncCustomerPrices(q) {
   if (!q || !q.share_token || typeof _shareLineCustomerPrice !== 'function') return;
   const writes = [];
+  /** Lines whose price was null = customer spec-change requests awaiting a
+   *  re-priced confirmation. Re-pricing them here IS the confirmation, so we
+   *  remember their names and tell the maker what just happened (banner). */
+  const repriced = [];
   for (const l of (q._lines || [])) {
+    // Null price + customer-editable = a customer change request (the edit
+    // endpoint clears the price). A line merely added after sharing is also
+    // null-priced but not editable, so it reprices silently without the banner.
+    const wasPending = l.customer_price == null
+      && (l.customer_editable || (Array.isArray(l.editable_specs) && l.editable_specs.length > 0));
     const customer_price = _shareLineCustomerPrice(q, l);
-    if (customer_price == null || Number(l.customer_price) === customer_price) continue; // unchanged
+    if (customer_price == null || (l.customer_price != null && Number(l.customer_price) === customer_price)) continue; // unchanged
+    if (wasPending) repriced.push(l.name || 'Item');
     l.customer_price = customer_price;
     writes.push(_db('quote_lines').update(/** @type {any} */ ({ customer_price })).eq('id', l.id));
   }
+  q._llRepriced = repriced;
   if (writes.length) { try { await Promise.all(writes); } catch (e) { /* best-effort — the tab still works without it */ } }
 }
 
@@ -117,7 +131,8 @@ async function _llSyncOrderPrices(o) {
  *  tab is active: fill the live body + render the preview. @param {'quote'|'order'} kind */
 async function _llEnterLive(kind) {
   const q = _llShareQuote(kind);
-  await _llEnsureLines(q, kind);
+  // Force-fresh rows: pick up any customer edits made since boot.
+  await _llEnsureLines(q, kind, true);
   // Keep customer_price in sync with the current figures (fixes stale / £0).
   if (kind === 'quote') await _llSyncCustomerPrices(q);
   else if (q && q.share_token) await _llSyncOrderPrices(q);
@@ -233,9 +248,9 @@ function _liveLinkPanel(kind) {
          <button class="btn btn-primary" onclick="_sendLiveLink('${kind}',${kind === 'quote' ? q.id : (_opState.orderId || 0)})">Send live link</button>
          <a class="btn btn-outline" href="${_escHtml(link)}" target="_blank">Open ↗</a>
        </div>`
-    : `<div class="ll-empty">No live link yet — set the options below, then <strong>Generate</strong>.</div>`;
+    : `<div class="ll-empty">Creating live link…</div>`;
   const tog = (/** @type {string} */ id, /** @type {string} */ label, /** @type {string} */ desc, /** @type {boolean} */ on) =>
-    `<div class="share-toggle-row"><div><div class="st-label">${label}</div><div class="st-desc">${desc}</div></div><button class="mini-toggle" id="${id}" aria-pressed="${on ? 'true' : 'false'}" onclick="_shTgl(this);_llAutoSave();_llSyncLineControls()"></button></div>`;
+    `<div class="share-toggle-row"><div><div class="st-label">${label}</div><div class="st-desc">${desc}</div></div><button class="mini-toggle" id="${id}" aria-pressed="${on ? 'true' : 'false'}" onclick="_shTgl(this);_llAutoSave('${kind}');_llSyncLineControls()"></button></div>`;
   // Pro-gated toggle: rendered off + locked for free users. The hidden id is kept
   // (aria-pressed="false") so _generateShareLink reads it as off and persists
   // allow_select/allow_edit = false. Clicking opens the upgrade modal.
@@ -262,13 +277,23 @@ function _liveLinkPanel(kind) {
   const payRow = stripeReady
     ? tog('sh-pay', 'Accept card payment', 'Paid straight into your Stripe · ProCabinet fee 0.7% (capped)', !!s.accept_payment)
     : `<div class="share-toggle-row ll-locked"><div><div class="st-label">Accept card payment</div><div class="st-desc">Connect Stripe to take a deposit on the live page. <a onclick="_openConnectPopup()" style="color:var(--accent);cursor:pointer;font-weight:600">Set up payments →</a></div></div><button class="mini-toggle" aria-pressed="false" disabled></button></div>`;
+  // Customer spec-change requests that were just re-priced by this tab open
+  // (see _llSyncCustomerPrices). Without this banner the maker would never
+  // know a change was requested — the price silently updates.
+  const repricedBanner = (Array.isArray(q._llRepriced) && q._llRepriced.length)
+    ? `<div class="ll-banner">
+        <strong>Customer requested change${q._llRepriced.length > 1 ? 's' : ''}:</strong> ${q._llRepriced.map(_escHtml).join(', ')}.
+        Price${q._llRepriced.length > 1 ? 's have' : ' has'} been recalculated at your current rates and the customer's page is unblocked. Check the new specs in <strong>Quote builder</strong>, and see the details in <strong>Messages</strong> on the quote card.
+      </div>`
+    : '';
   return `<div class="ll-pad">
     ${_llStatusRow(q)}
+    ${repricedBanner}
     ${linkBox}
     <div class="ll-h">Payment</div>
     ${payRow}
     <div class="share-toggle-row"><div><div class="st-label">Take a deposit</div><div class="st-desc">Collected when the customer accepts · balance due on completion</div></div>
-      <div class="ll-dep"><input type="number" id="sh-dep" value="${s.deposit_pct != null ? s.deposit_pct : 40}" min="0" max="100" onchange="_llAutoSave()"><span>%</span></div></div>
+      <div class="ll-dep"><input type="number" id="sh-dep" value="${s.deposit_pct != null ? s.deposit_pct : 40}" min="0" max="100" onchange="_llAutoSave('${kind}')"><span>%</span></div></div>
     <div class="ll-h">What the customer can do</div>
     ${togPro('sh-select', 'Let customers choose items', 'They can include / exclude lines you mark optional below', s.allow_select !== false)}
     ${togPro('sh-edit', 'Let customers request changes', 'They can request changes to specs you unlock — you confirm the new price before anything’s charged', !!s.allow_edit)}
@@ -311,7 +336,7 @@ function _llLineControl(l) {
   const ed = Array.isArray(l.editable_specs) ? l.editable_specs : [];
   const specRows = `<div class="ll-spec-all"><a onclick="_llSpecAll(${l.id},true)">All on</a><span>·</span><a onclick="_llSpecAll(${l.id},false)">All off</a></div>`
     + specs.map(sp =>
-      `<label class="ll-spec-opt ${sp.used ? 'used' : 'unused'}"><input type="checkbox" class="ll-spec" data-line="${l.id}" data-spec="${sp.key}" ${ed.includes(sp.key) ? 'checked' : ''} onchange="_llAutoSave()"> <span class="ll-spec-name">${sp.label}</span>${sp.used ? '<span class="ll-spec-used">in use</span>' : ''}</label>`).join('');
+      `<label class="ll-spec-opt ${sp.used ? 'used' : 'unused'}"><input type="checkbox" class="ll-spec" data-line="${l.id}" data-spec="${sp.key}" ${ed.includes(sp.key) ? 'checked' : ''} onchange="_llAutoSave('quote')"> <span class="ll-spec-name">${sp.label}</span>${sp.used ? '<span class="ll-spec-used">in use</span>' : ''}</label>`).join('');
   const specBlock = specs.length
     ? `<div class="ll-spec-caret" id="ll-caret-${l.id}" onclick="_llToggleSpecs(${l.id})">Editable specs${ed.length ? ` · ${ed.length}` : ''} ▾</div>
        <div class="ll-spec-list" id="ll-specs-${l.id}" style="display:none">${specRows}</div>`
@@ -319,7 +344,7 @@ function _llLineControl(l) {
   return `<div class="ll-line">
     <div class="ll-line-head">
       <span class="ll-line-name">${_escHtml(l.name || 'Item')}</span>
-      <label class="ll-opt" data-needs="select"><input type="checkbox" id="sh-opt-${l.id}" ${l.optional ? 'checked' : ''} onchange="_llAutoSave()"> Optional</label>
+      <label class="ll-opt" data-needs="select"><input type="checkbox" id="sh-opt-${l.id}" ${l.optional ? 'checked' : ''} onchange="_llAutoSave('quote')"> Optional</label>
     </div>
     <div class="ll-line-sub" data-needs="edit">${specBlock}</div>
   </div>`;
@@ -357,7 +382,7 @@ function _llRenderPreview(kind) {
     host.innerHTML = `<div class="ll-preview-empty">
       <div class="ll-preview-empty-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></div>
       <h3>Live preview</h3>
-      <p>Generate the live link in the panel on the left, then your customer’s page appears here — exactly as they’ll see it.</p>
+      <p>Once this ${kind === 'order' ? 'order' : 'quote'} has items and its live link is ready, your customer’s page appears here — exactly as they’ll see it.</p>
     </div>`;
     return;
   }
@@ -382,22 +407,31 @@ function _llAfterSave(kind) {
 
 // ── Auto-save (no manual button) ─────────────────────────────────────────────
 /** @type {any} */ let _llSaveTimer = null;
-/** Debounced auto-save of the live-link settings + per-line controls. */
-function _llAutoSave() {
-  const kind = _llTab.order === 'live' ? 'order' : 'quote';
-  const q = _llShareQuote(kind);
+/** Debounced auto-save of the live-link settings + per-line controls.
+ *  `kind` is passed EXPLICITLY by the panel's inline handlers — inferring it
+ *  from leftover `_llTab` state saved settings onto the wrong record when both
+ *  a quote's and an order's Live tab had been opened in the same session.
+ *  @param {'quote'|'order'} [kind] */
+function _llAutoSave(kind) {
+  const k = kind || (_llTab.order === 'live' ? 'order' : 'quote');
+  const q = _llShareQuote(k);
   if (!q) return;
   const s = document.getElementById('ll-autosave'); if (s) s.textContent = 'Saving…';
   if (_llSaveTimer) clearTimeout(_llSaveTimer);
-  _llSaveTimer = setTimeout(() => { if (typeof _generateShareLink === 'function') _generateShareLink(q.id, kind); }, 450);
+  _llSaveTimer = setTimeout(() => { if (typeof _generateShareLink === 'function') _generateShareLink(q.id, k); }, 450);
 }
 /** After a save: the first share re-renders (so the link box + preview appear);
- *  later saves refresh the preview and flash "Saved". @param {boolean} wasShared */
-function _llOnSaved(wasShared) {
-  const kind = _llTab.order === 'live' ? 'order' : 'quote';
-  if (!wasShared) { _llAfterSave(kind); return; }
+ *  later saves refresh the preview and flash "Saved".
+ *  @param {boolean} wasShared @param {'quote'|'order'} [kind] */
+function _llOnSaved(wasShared, kind) {
+  const k = kind || (_llTab.order === 'live' ? 'order' : 'quote');
+  if (!wasShared) { _llAfterSave(k); return; }
   const s = document.getElementById('ll-autosave'); if (s) s.textContent = 'Saved ✓';
-  _llRenderPreview(kind);
+  // Settings changed on an existing link: just reload the preview iframe
+  // in place — rebuilding the whole preview DOM made the page flash.
+  const frame = /** @type {HTMLIFrameElement|null} */ (document.querySelector('.ll-preview-frame'));
+  if (frame) { try { frame.src = frame.src; return; } catch (e) { /* fall through */ } }
+  _llRenderPreview(k);
 }
 function _llSaveError() { const s = document.getElementById('ll-autosave'); if (s) s.textContent = 'Couldn’t save — check your connection'; }
 

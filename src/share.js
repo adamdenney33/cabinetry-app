@@ -112,7 +112,7 @@ async function _generateShareLink(quoteId, kind) {
     await _db('quotes').update(/** @type {any} */ ({ share_token: token, share_settings: settings, status: q.status === 'draft' ? 'sent' : q.status })).eq('id', quoteId);
     q.share_token = token; q.share_settings = settings; if (q.status === 'draft') q.status = 'sent';
     if (typeof _track === 'function' && !wasShared) _track('quote_shared', { accept_payment: settings.accept_payment });
-    if (typeof _llOnSaved === 'function') _llOnSaved(wasShared);
+    if (typeof _llOnSaved === 'function') _llOnSaved(wasShared, 'quote');
   } catch (e) {
     if (typeof _llSaveError === 'function') _llSaveError();
   }
@@ -151,7 +151,7 @@ async function _generateOrderShareLink(orderId) {
     await _db('orders').update(/** @type {any} */ ({ share_token: token, share_settings: settings })).eq('id', orderId);
     o.share_token = token; o.share_settings = settings;
     if (typeof _track === 'function' && !wasShared) _track('order_shared', {});
-    if (typeof _llOnSaved === 'function') _llOnSaved(wasShared);
+    if (typeof _llOnSaved === 'function') _llOnSaved(wasShared, 'order');
   } catch (e) {
     if (typeof _llSaveError === 'function') _llSaveError();
   }
