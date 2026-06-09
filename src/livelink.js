@@ -90,12 +90,37 @@ async function _llSyncCustomerPrices(q) {
   if (writes.length) { try { await Promise.all(writes); } catch (e) { /* best-effort — the tab still works without it */ } }
 }
 
+/** Order equivalent of _llSyncCustomerPrices: keep the shared order's per-line
+ *  customer_price current. Orders aren't hydrated into `_lines` for the panel,
+ *  so load order_lines here. @param {any} o */
+async function _llSyncOrderPrices(o) {
+  if (!o || !o.share_token || typeof _shareLineCustomerPrice !== 'function') return;
+  let lines = Array.isArray(o._lines) ? o._lines : null;
+  if (!lines) {
+    try {
+      const { data } = await _db('order_lines').select('*').eq('order_id', o.id).order('position');
+      lines = (data || []).map(/** @param {any} r */ r => ({ ...r }));
+      o._lines = lines;
+    } catch (e) { return; }
+  }
+  const writes = [];
+  for (const l of lines) {
+    const customer_price = _shareLineCustomerPrice(o, l);
+    if (customer_price == null || Number(l.customer_price) === customer_price) continue;
+    l.customer_price = customer_price;
+    writes.push(_db('order_lines').update(/** @type {any} */ ({ customer_price })).eq('id', l.id));
+  }
+  if (writes.length) { try { await Promise.all(writes); } catch (e) { /* best-effort */ } }
+}
+
 /** Called by renderQuoteEditor/renderOrderEditor after innerHTML when the live
  *  tab is active: fill the live body + render the preview. @param {'quote'|'order'} kind */
 async function _llEnterLive(kind) {
   const q = _llShareQuote(kind);
   await _llEnsureLines(q, kind);
-  if (kind === 'quote') await _llSyncCustomerPrices(q);  // keep customer_price in sync with current quote (fixes stale £0)
+  // Keep customer_price in sync with the current figures (fixes stale / £0).
+  if (kind === 'quote') await _llSyncCustomerPrices(q);
+  else if (q && q.share_token) await _llSyncOrderPrices(q);
   const bodyId = kind === 'quote' ? 'ql-live-body' : 'ol-live-body';
   const body = document.getElementById(bodyId);
   if (body) body.innerHTML = _liveLinkPanel(kind);

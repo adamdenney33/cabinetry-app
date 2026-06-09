@@ -119,8 +119,10 @@ async function _generateShareLink(quoteId, kind) {
 }
 
 /** Mint (or refresh) an order's OWN live link: write share_token + share_settings
- *  on the order. Orders are view-only on the live page, so there's no per-line
- *  customer snapshot to write. @param {number} orderId */
+ *  on the order, plus a customer-safe per-line `customer_price` snapshot. The
+ *  live order page renders `customer_price`, so without this every line shows
+ *  "—" and the total reads £0 (orders carry the same markup/discount/stock_markup
+ *  as quotes, so the same price formula applies). @param {number} orderId */
 async function _generateOrderShareLink(orderId) {
   const o = /** @type {any} */ (orders.find(/** @param {any} x */ x => x.id === orderId));
   if (!o) return;
@@ -128,6 +130,24 @@ async function _generateOrderShareLink(orderId) {
   const token = o.share_token || (crypto.randomUUID ? crypto.randomUUID().replace(/-/g, '').slice(0, 16) : Math.random().toString(36).slice(2, 14));
   const settings = (o.share_settings && typeof o.share_settings === 'object') ? o.share_settings : {};
   try {
+    // Load the order's lines once (the Live-link tab doesn't hydrate them for
+    // orders) and snapshot each customer_price, mirroring the quote flow.
+    let lines = Array.isArray(o._lines) ? o._lines : null;
+    if (!lines) {
+      try {
+        const { data } = await _db('order_lines').select('*').eq('order_id', orderId).order('position');
+        lines = (data || []).map(/** @param {any} r */ r => ({ ...r }));
+        o._lines = lines;
+      } catch (e) { lines = []; }
+    }
+    if (typeof _shareLineCustomerPrice === 'function') {
+      await Promise.all((lines || []).map(/** @param {any} l */ async (l) => {
+        const customer_price = _shareLineCustomerPrice(o, l);
+        if (customer_price == null || Number(l.customer_price) === customer_price) return;
+        l.customer_price = customer_price;
+        await _db('order_lines').update(/** @type {any} */ ({ customer_price })).eq('id', l.id);
+      }));
+    }
     await _db('orders').update(/** @type {any} */ ({ share_token: token, share_settings: settings })).eq('id', orderId);
     o.share_token = token; o.share_settings = settings;
     if (typeof _track === 'function' && !wasShared) _track('order_shared', {});
