@@ -26,7 +26,10 @@
 // the type-checker doesn't need ambient decls for them.
 
 /** Walkthrough content version. Bump when steps change materially — drives
- *  the version-gated re-show in _wtMaybeAutoStart (M7). */
+ *  the version-gated re-show in _wtMaybeAutoStart (M7).
+ *  NOTE: the 2026-06 trim (26 → 10 steps) deliberately did NOT bump this:
+ *  nothing new to teach, and re-showing a tour to users who already dismissed
+ *  it is exactly the friction the trim removes. */
 const WT_VERSION = 4;
 
 /** @type {any} window, any-typed so cross-file globals resolve without decls. */
@@ -64,7 +67,7 @@ const _wtSteps = [
     type: 'center', section: 'dashboard', preview: 'gantt',
     title: 'See the full workflow in action',
     titleHtml: 'See the full <span class="wt-hi">workflow</span> in action',
-    body: 'This tour walks through each part of the app. We\'ve loaded a sample project so you can see how it works — use the <span class="wt-hi">arrow keys on your keyboard</span> to step through it.',
+    body: 'A quick tour of the highlights — set your rates once, price a cabinet, send the quote. We\'ve loaded a sample project so you can see it working — use the <span class="wt-hi">arrow keys on your keyboard</span> to step through it.',
     nextLabel: 'Start the tour →'
   },
 
@@ -73,70 +76,16 @@ const _wtSteps = [
     type: 'spot', phase: 'Navigation', section: 'dashboard',
     target: '.nav-tabs', position: 'bottom',
     title: 'Navigate between sections',
-    body: 'ProCabinet is organised into <span class="wt-hi">8 tabs</span>, one per section of your workflow. Click any tab to jump there — we\'ll walk through each one now.'
+    body: 'ProCabinet is organised into <span class="wt-hi">8 tabs</span>, one per section of your workflow — quote, cut, schedule and bill, one click apart. The tour hits the key ones.'
   },
 
-  // ── Clients ──────────────────────────────────────────────────────────────
-  {
-    type: 'spot', phase: 'Clients', section: 'clients',
-    target: '#clients-main', position: 'left',
-    title: 'Client cards',
-    body: 'Each card shows the client\'s total quote value and job count. Click a card to open their profile in the sidebar — <span class="wt-hi">full history in one place</span>.'
-  },
-  {
-    type: 'spot', phase: 'Clients', section: 'clients',
-    preClickCard: '.client-card',
-    target: '#clients-sidebar', position: 'right',
-    title: 'Client profile',
-    body: 'Edit name, email, phone, address and notes. Everything here <span class="wt-hi">auto-populates your quotes and PDFs</span> — fill it in once.'
-  },
+  // F (tour trim): 26 → 10 steps. Cut: Clients ×2, Quote list, Orders ×2,
+  // Stock ×2, Cabinet Library, Cut List Library + Layout, Schedule queue,
+  // Dashboard quick-actions, Toolbar ×4 (settings, not selling). What's left
+  // proves "minutes, not hours": rates → builder → quote → cut list →
+  // schedule → dashboard → plans.
 
-  // ── Quote ────────────────────────────────────────────────────────────────
-  {
-    type: 'spot', phase: 'Quote', section: 'quote',
-    target: '#quote-main', position: 'left',
-    title: 'Quote list',
-    body: 'Quotes are sorted newest first. Filter by status at the top. Click any quote to open the full editor — <span class="wt-hi">line items, totals and actions</span> in the sidebar.'
-  },
-  {
-    type: 'spot', phase: 'Quote', section: 'quote',
-    preClickCard: '.quote-card',
-    target: '#quote-sidebar', position: 'right',
-    title: 'Quote editor',
-    body: 'Add line items: cabinets from the builder, labour, materials or custom lines. ProCabinet calculates <span class="wt-hi">subtotals, tax and the grand total</span> live.'
-  },
-
-  // ── Orders ───────────────────────────────────────────────────────────────
-  {
-    type: 'spot', phase: 'Orders', section: 'orders',
-    target: '#orders-main', position: 'left',
-    title: 'Order cards',
-    body: 'Each card shows the pipeline stage, due date and value. Open one to <span class="wt-hi">advance its stage</span> or export job sheets and delivery notes as PDFs.'
-  },
-  {
-    type: 'spot', phase: 'Orders', section: 'orders',
-    preClickCard: '.order-card',
-    target: '#order-sidebar', position: 'right',
-    title: 'Order detail',
-    body: 'Each order carries its own <span class="wt-hi">priority, hours and dates</span> — set them and the job lands on the production calendar.'
-  },
-
-  // ── Stock ─────────────────────────────────────────────────────────────────
-  {
-    type: 'spot', phase: 'Stock', section: 'stock',
-    target: '#stock-main', position: 'left',
-    title: 'Material list',
-    body: 'Each item shows current quantity, supplier and unit cost. Items that drop below their threshold are <span class="wt-hi">flagged in red</span>.'
-  },
-  {
-    type: 'spot', phase: 'Stock', section: 'stock',
-    preClickCard: '.stock-row',
-    target: '#stock-sidebar', position: 'right',
-    title: 'Adding materials',
-    body: 'Set the sheet dimensions, cost per unit, quantity on hand, and <span class="wt-hi">low-stock threshold</span>. When stock falls below the threshold you\'ll see a dashboard alert.'
-  },
-
-  // ── Cabinet ──────────────────────────────────────────────────────────────
+  // ── Cabinet — the aha: set rates once, every cabinet prices itself ──────
   {
     type: 'spot', phase: 'Cabinet', section: 'cabinet', cbView: 'results',
     preClickCard: '#cb-results .quote-card',
@@ -157,11 +106,13 @@ const _wtSteps = [
     title: 'My Rates',
     body: 'Set your <span class="wt-hi">hourly labour rate, material markup, edge-banding cost and contingency</span> once — every cabinet prices itself from these, no spreadsheet formulas to maintain.'
   },
+  // ── Quote ────────────────────────────────────────────────────────────────
   {
-    type: 'spot', phase: 'Cabinet', section: 'cabinet', cbView: 'library',
-    target: '#cb-library-view', position: 'left',
-    title: 'Cabinet Library',
-    body: 'A catalogue of <span class="wt-hi">reusable cabinet templates</span>. Build a cabinet once, then "Add to Quote" drops it into any job — dimensions, materials and pricing included.'
+    type: 'spot', phase: 'Quote', section: 'quote',
+    preClickCard: '.quote-card',
+    target: '#quote-sidebar', position: 'right',
+    title: 'Quote editor',
+    body: 'Add line items: cabinets from the builder, labour, materials or custom lines. ProCabinet calculates <span class="wt-hi">subtotals, tax and the grand total</span> live — then export a PDF or send the customer a live link.'
   },
 
   // ── Cut List ──────────────────────────────────────────────────────────────
@@ -171,31 +122,13 @@ const _wtSteps = [
     title: 'Sheets & pieces',
     body: 'Add your stock sheets and the pieces to cut — dimensions, quantity, grain and edge banding — then hit <span class="wt-hi">Optimise</span> and ProCabinet nests everything for minimum waste.'
   },
-  {
-    type: 'spot', phase: 'Cut List', section: 'cutlist', clView: 'library',
-    target: '#cl-view-library', position: 'left',
-    title: 'Cut List Library',
-    body: 'Every cut list is saved here as its own entry. <span class="wt-hi">Reopen or duplicate</span> a past job, or start a fresh one — your whole cutting history in one place.'
-  },
-  {
-    type: 'spot', phase: 'Cut List', section: 'cutlist', clView: 'layout',
-    target: '#results-area', position: 'left',
-    title: 'Cut Layout',
-    body: 'The optimised result: each sheet drawn to scale with pieces labelled and colour-coded. See <span class="wt-hi">waste %, cut order and material totals</span> at a glance, then export a workshop PDF.'
-  },
 
   // ── Schedule ─────────────────────────────────────────────────────────────
   {
     type: 'spot', phase: 'Schedule', section: 'schedule',
-    target: '#schedule-sidebar', position: 'right',
-    title: 'Order queue',
-    body: 'Active orders are listed here in priority order. Use the <span class="wt-hi">priority stepper</span> on any order to raise or lower it — the schedule rebuilds instantly.'
-  },
-  {
-    type: 'spot', phase: 'Schedule', section: 'schedule',
     target: '#schedule-main', position: 'top',
     title: 'Gantt calendar',
-    body: 'Each order occupies a coloured bar spanning its production days. Hover to see job details. The scheduler <span class="wt-hi">avoids weekends and respects your daily capacity</span>.'
+    body: 'Orders land on the calendar automatically, in priority order — each coloured bar spans its production days. The scheduler <span class="wt-hi">avoids weekends and respects your daily capacity</span>.'
   },
 
   // ── Dashboard ─────────────────────────────────────────────────────────────
@@ -205,39 +138,6 @@ const _wtSteps = [
     title: 'Live overview',
     body: 'Active orders with due-date alerts, your most recent quotes, low-stock warnings and this week\'s schedule — <span class="wt-hi">the full picture without opening a single tab</span>.'
   },
-  {
-    type: 'spot', phase: 'Dashboard', section: 'dashboard',
-    target: '#dash-toolbar', position: 'bottom',
-    title: 'Quick actions',
-    body: '<span class="wt-hi">+ Quote, + Cabinet, + Client</span> — jump straight into creating anything; each button opens the right tab with a fresh form ready.'
-  },
-
-  // Top toolbar (header tools) — shown right to left: Account, Settings, Help, New features
-  {
-    type: 'spot', phase: 'Toolbar', section: 'dashboard', openAccount: true,
-    target: '#account-dropdown', position: 'left',
-    title: 'Add your business details',
-    body: 'Your business name, address and contact info print on <span class="wt-hi">quotes and invoices</span>. Tap "Edit business details" to fill them in.'
-  },
-  {
-    type: 'spot', phase: 'Toolbar', section: 'dashboard', openSettings: true,
-    target: '#settings-dropdown', position: 'left',
-    title: 'Set your units & preferences',
-    body: 'Switch between <span class="wt-hi">metric and imperial</span>, choose your unit format and currency, and toggle dark mode. These apply everywhere — quotes, cabinets and cut lists.'
-  },
-  {
-    type: 'spot', phase: 'Toolbar', section: 'dashboard', openHelp: true,
-    target: '#help-dropdown', position: 'left',
-    title: 'Find help when you need it',
-    body: 'Open the <span class="wt-hi">User Guide</span>, report a bug, or contact support — all in one place.'
-  },
-  {
-    type: 'spot', phase: 'Toolbar', section: 'dashboard', openFeatures: true,
-    target: '#features-dropdown', position: 'left',
-    title: 'Shape what gets built next',
-    body: 'ProCabinet is actively developed — <span class="wt-hi">vote on upcoming features</span> or suggest your own, and help steer the roadmap.'
-  },
-
   // Pro CTA — the four-tier plan picker (rendered by _wtCtaHTML). Dropped for
   // paid users by _wtLastIdx; their tour ends on the step before this.
   {
@@ -486,8 +386,10 @@ async function _wtClose(reason) {
     // Hiding it on tour completion stripped guidance from exactly the users
     // with an empty app.
     // The full tour ends on the CTA, so it satisfies the once-per-session
-    // reminder — don't double up with a standalone CTA on a same-session reload.
+    // reminder — don't double up with a standalone CTA on a same-session
+    // reload, and stamp the 7-day cadence clock too (F: CTA cadence).
     try { sessionStorage.setItem('pc_wt_session_cta', '1'); } catch (e) { void e; }
+    try { localStorage.setItem('pc_wt_cta_last', String(Date.now())); } catch (e) { void e; }
   }
   // Restore the signed-in user's real data BEFORE removing the overlay, so
   // there's no flash of demo content as the panels re-render.
@@ -1100,7 +1002,7 @@ function _wtCtaHTML() {
         '<div class="wt-cta-price">$15<span>/mo</span></div>' +
         '<div class="wt-cta-per"><s>$25/mo</s> · launch price</div>' +
         '<ul class="wt-cta-feats">' +
-          '<li>$180 billed for year one, then $300/yr</li>' +
+          '<li>$180 billed for year one, then $299/yr</li>' +
           '<li><strong>Unlimited saved items</strong></li>' +
           '<li>Import / export libraries (CSV)</li>' +
           '<li>CNC / DXF export</li>' +
@@ -1116,7 +1018,7 @@ function _wtCtaHTML() {
         '<div class="wt-cta-per">one-off · lifetime</div>' +
         '<ul class="wt-cta-feats">' +
           '<li>Pay once, use forever</li>' +
-          '<li>Only <strong>' + cap + ' accounts</strong> ever</li>' +
+          '<li>Only <strong>' + cap + ' accounts</strong> ever sold</li>' +
           '<li><strong>Everything</strong> in the paid plans</li>' +
           '<li>CNC / DXF export</li>' +
           '<li>New feature requests prioritised</li>' +
@@ -1166,22 +1068,33 @@ function _wtCtaCheckout(plan) {
 
 // ── first-run gate ──
 
+/** Minimum gap between automatic plan-picker reminders (F: CTA cadence). */
+const _WT_CTA_GAP_MS = 7 * 86400000;
+
 /**
- * Show the Pro CTA once per browser session for a returning free user. The
- * full guided tour only runs on first login; afterwards a free user still
- * gets one plan-picker reminder per session. Pro users — and anyone who has
- * already seen the CTA this session, whether via this reminder or the tour's
- * own final step — are skipped. The sessionStorage flag clears when the
- * browser session ends, so the CTA returns next session.
+ * Standalone plan-picker reminder for a returning FREE user — heavily gated
+ * so it never trains dismissal (F: CTA cadence):
+ *   • Pro users: never.
+ *   • Trial users: never — the trial-ending banner (stripe.js) owns days
+ *     12–14, and the account dropdown always has Upgrade.
+ *   • Free (post-trial): at most once per browser session AND at most once
+ *     every 7 days (localStorage 'pc_wt_cta_last', also stamped when the
+ *     full tour ends, so a fresh tour-CTA doesn't repeat a week's reminder).
+ * Limit-hit and Pro-feature modals (stripe.js) remain intent-triggered and
+ * are not gated by this cadence.
  */
 function _wtMaybeShowSessionCta() {
   if (typeof isPro === 'function' && isPro()) return;
+  if (typeof _trialActive === 'function' && _trialActive()) return;
   try {
     if (sessionStorage.getItem('pc_wt_session_cta') === '1') return;
+    const last = Number(localStorage.getItem('pc_wt_cta_last') || 0);
+    if (last && Date.now() - last < _WT_CTA_GAP_MS) return;
     sessionStorage.setItem('pc_wt_session_cta', '1');
+    localStorage.setItem('pc_wt_cta_last', String(Date.now()));
   } catch (e) {
-    // sessionStorage blocked (private mode / disabled) — skip rather than
-    // re-show the CTA on every page load with no way to remember it.
+    // Storage blocked (private mode / disabled) — skip rather than re-show
+    // the CTA on every page load with no way to remember it.
     void e;
     return;
   }
