@@ -204,7 +204,7 @@ h1, h2, h3, p, ul { margin: 0; }
    TAB-BAR SHOWCASE
    ══════════════════════════════════════ */
 .tabbar-show { max-width: var(--maxw); margin: 0 auto; padding: 64px 24px; text-align: center; }
-.tabbar-show h2, .os-band h2, .pricing h2 {
+.tabbar-show h2, .os-band h2, .pricing h2, .faq h2 {
   font-size: clamp(26px, 3.4vw, 38px); font-weight: 800; letter-spacing: -.5px;
 }
 /* Icon-only tab-bar showcase — grey bar of dark icons, rounded top / square
@@ -456,6 +456,34 @@ h1, h2, h3, p, ul { margin: 0; }
   .stats strong { font-size: 36px; }
   .foot-inner { flex-direction: column; align-items: flex-start; gap: 16px; }
 }
+
+/* ══════════════════════════════════════
+   FAQ
+   ══════════════════════════════════════ */
+.faq { max-width: 760px; margin: 0 auto; padding: 0 24px 84px; text-align: center; }
+.faq h2 { margin: 0 0 28px; }
+.faq-list { text-align: left; }
+.faq details {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); margin-bottom: 10px; box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.faq summary {
+  cursor: pointer; list-style: none; display: flex; justify-content: space-between;
+  align-items: center; gap: 14px; padding: 15px 18px;
+  font-weight: 650; font-size: 15px; color: var(--text);
+}
+.faq summary::-webkit-details-marker { display: none; }
+.faq summary::after {
+  content: '+'; font-size: 19px; font-weight: 500; color: var(--muted);
+  flex-shrink: 0; transition: transform .25s var(--ease);
+}
+.faq details[open] summary::after { transform: rotate(45deg); }
+.faq .faq-a { padding: 0 18px 16px; font-size: 14px; line-height: 1.65; color: var(--text-2); }
+.faq .faq-a p { margin: 0; }
+
+/* Currency note under the pricing header */
+.price-currency { font-size: 12.5px; color: var(--muted); margin: 10px auto 0; }
 
 /* ══════════════════════════════════════
    REDUCED MOTION

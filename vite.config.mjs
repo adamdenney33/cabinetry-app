@@ -77,7 +77,11 @@ function copyLandingPlugin(env) {
           .split('__VITE_POSTHOG_HOST__').join(env.VITE_POSTHOG_HOST || '')
           .split('__VITE_GA4_ID__').join(env.VITE_GA4_ID || '')
           .split('__VITE_GOOGLE_ADS_ID__').join(env.VITE_GOOGLE_ADS_ID || '')
-          .split('__VITE_META_PIXEL_ID__').join(env.VITE_META_PIXEL_ID || '');
+          .split('__VITE_META_PIXEL_ID__').join(env.VITE_META_PIXEL_ID || '')
+          // Live Founder-seats counter (landing.js founderSeats): the anon key
+          // is the publishable client key — safe to embed, same one the app ships.
+          .split('__VITE_SUPABASE_URL__').join(env.VITE_SUPABASE_URL || '')
+          .split('__VITE_SUPABASE_ANON_KEY__').join(env.VITE_SUPABASE_ANON_KEY || '');
         writeFileSync(join('dist', 'index.html'), landing);
         writeFileSync(join('dist', 'landing.html'), landing);
       }

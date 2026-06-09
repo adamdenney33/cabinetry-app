@@ -147,18 +147,38 @@
   window.addEventListener('resize', onScroll, { passive: true });
   onScroll();
 
-  /* ── Founder seats live counter (optional, not wired in v1) ──────────
-     The static landing page can't import supabase-js, so v1 shows the static
-     "Only 50 ever" flag. To make it live later, POST to the public RPC and
-     update [data-countup="50"] + the flag copy, e.g.:
-
-       fetch(SUPABASE_URL + '/rest/v1/rpc/founder_seats_taken', {
-         method: 'POST',
-         headers: { apikey: ANON_KEY, Authorization: 'Bearer ' + ANON_KEY,
-                    'Content-Type': 'application/json' },
-         body: '{}'
-       }).then(function (r) { return r.json(); })
-         .then(function (taken) { var left = Math.max(0, 50 - taken); ... });
-
-     Left static here to keep the page free of embedded keys. */
+  /* ── Founder seats live counter ──────────────────────────────────────
+     Scarcity that ticks: swap the static "Only 50 ever sold" flag for the
+     live "N of 50 left" count via the public founder_seats_taken RPC. The
+     Supabase URL + publishable anon key arrive via window.__PC_SB, injected
+     into landing.html at build time — absent in dev, so this no-ops and the
+     static flag stays. Best-effort: any failure leaves the flag untouched. */
+  (function founderSeats() {
+    var cfg = window.__PC_SB;
+    var flag = document.getElementById('founder-flag');
+    if (!cfg || !cfg.url || !cfg.key || !flag) return;
+    fetch(cfg.url + '/rest/v1/rpc/founder_seats_taken', {
+      method: 'POST',
+      headers: { apikey: cfg.key, Authorization: 'Bearer ' + cfg.key, 'Content-Type': 'application/json' },
+      body: '{}'
+    }).then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (taken) {
+        if (typeof taken !== 'number') return;
+        var left = Math.max(0, 50 - taken);
+        if (left > 0) {
+          flag.innerHTML = '<strong>' + left + '</strong> of 50 left';
+          return;
+        }
+        // Sold out: flip the flag and disable the card's CTA.
+        flag.textContent = 'Sold out';
+        var btn = document.querySelector('.price-card.hero-card a.btn');
+        if (btn) {
+          btn.textContent = 'Sold out';
+          btn.setAttribute('aria-disabled', 'true');
+          btn.style.pointerEvents = 'none';
+          btn.style.opacity = '0.55';
+        }
+      })
+      .catch(function () { /* static flag remains */ });
+  })();
 })();

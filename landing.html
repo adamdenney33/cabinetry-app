@@ -118,6 +118,19 @@
       }
     })();
   </script>
+  <!-- ── Supabase config for the live Founder-seats counter ──────────────────
+       Injected at BUILD time by copyLandingPlugin() (this file is copied
+       verbatim — import.meta.env is NOT available here). The anon key is the
+       publishable client key, safe to embed. In dev the placeholders survive
+       and landing.js's founder-seats fetch cleanly no-ops. -->
+  <script>
+    (function () {
+      var u = '__VITE_SUPABASE_URL__', k = '__VITE_SUPABASE_ANON_KEY__';
+      if (u && u.charAt(0) !== '_' && k && k.charAt(0) !== '_') {
+        window.__PC_SB = { url: u, key: k };
+      }
+    })();
+  </script>
   <title>ProCabinet.App — Quote custom cabinetry in minutes, not hours</title>
   <meta name="description" content="The workshop OS for cabinet makers. Set your rates once, then quote, cut, schedule and bill from one place. Free to start." />
   <meta name="theme-color" content="#111111" />
@@ -134,6 +147,46 @@
   <!-- ?v bumped on each re-shoot: same filename, so this busts browser/CDN cache. Keep in sync with the <img> below. -->
   <link rel="preload" as="image" href="/brand/screenshots/03b-cabinet-library.png?v=20260522" />
   <link rel="stylesheet" href="/landing.css" />
+
+  <!-- FAQPage structured data — mirrors the visible #faq section verbatim -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "What happens when my 14-day Pro trial ends?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Your account drops to the free plan automatically — nothing is charged and nothing is deleted. You keep every core function with up to 5 saved items per library, and you can upgrade (or trim your libraries) whenever you like." }
+      },
+      {
+        "@type": "Question",
+        "name": "Can I cancel anytime?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Yes. Cancel in two clicks from the in-app billing portal — you keep Pro until the end of the period you've paid for, then drop to the free plan. The Founder seat is a one-off payment, so there's nothing to cancel." }
+      },
+      {
+        "@type": "Question",
+        "name": "What currency are the prices in?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Prices are listed in USD. Checkout converts to your local currency automatically — Stripe handles the exchange — so you pay in pounds, euros or dollars, whatever your card uses." }
+      },
+      {
+        "@type": "Question",
+        "name": "Will the DXF export work with my CNC?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Yes — the optimiser exports the nested layout as a standard DXF that opens in any CAM software: Vectric, Fusion 360, AlphaCAM, Cabinet Vision and the rest. You post the G-code with your own tooling and feeds, so it works with whatever router you run." }
+      },
+      {
+        "@type": "Question",
+        "name": "Does it work in imperial and metric?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Both. Switch units and formats in Settings at any time — quotes, cabinets, cut lists and PDFs all follow." }
+      },
+      {
+        "@type": "Question",
+        "name": "Do my customers need an account to view quotes?",
+        "acceptedAnswer": { "@type": "Answer", "text": "No. You send one live link per job — your customer opens it in their browser to view the quote, tick optional items in or out, sign off and pay a deposit. No portal, no login, no app to download." }
+      }
+    ]
+  }
+  </script>
 </head>
 <body>
   <!-- Scroll-progress bar -->
@@ -601,6 +654,7 @@
       <span class="eyebrow">Support the project</span>
       <h2>Pricing that fits a small shop.</h2>
       <p class="section-lede">Every account starts with 14 days of Pro, free. Keep Pro when it's paying its way, or drop to the free plan. Founders get it for life.</p>
+      <p class="price-currency">Prices in USD — checkout bills in your local currency.</p>
     </div>
     <div class="price-grid">
 
@@ -640,7 +694,7 @@
         <div class="price-amount">$15<span>/mo</span></div>
         <div class="price-sub"><s>$25/mo</s> · launch price</div>
         <ul class="price-feats">
-          <li>$180 billed for year one, then $300/yr</li>
+          <li>$180 billed for year one, then $299/yr</li>
           <li><strong>Unlimited</strong> saved items</li>
           <li>Import / export libraries (CSV)</li>
           <li>CNC / DXF export</li>
@@ -651,7 +705,7 @@
       </div>
 
       <div class="price-card hero-card">
-        <div class="price-flag">Only <strong data-countup="50">50</strong> ever</div>
+        <div class="price-flag" id="founder-flag">Only <strong data-countup="50">50</strong> ever sold</div>
         <div class="price-tier">Founder</div>
         <div class="price-amount">$299<span>/once</span></div>
         <div class="price-sub">one-off · lifetime</div>
@@ -669,6 +723,37 @@
     </div>
   </section>
 
+  <!-- ── FAQ ── -->
+  <section class="faq" id="faq" data-reveal>
+    <h2>Common questions</h2>
+    <div class="faq-list">
+      <details>
+        <summary>What happens when my 14-day Pro trial ends?</summary>
+        <div class="faq-a"><p>Your account drops to the free plan automatically — nothing is charged and nothing is deleted. You keep every core function with up to 5 saved items per library, and you can upgrade (or trim your libraries) whenever you like.</p></div>
+      </details>
+      <details>
+        <summary>Can I cancel anytime?</summary>
+        <div class="faq-a"><p>Yes. Cancel in two clicks from the in-app billing portal — you keep Pro until the end of the period you've paid for, then drop to the free plan. The Founder seat is a one-off payment, so there's nothing to cancel.</p></div>
+      </details>
+      <details>
+        <summary>What currency are the prices in?</summary>
+        <div class="faq-a"><p>Prices are listed in USD. Checkout converts to your local currency automatically — Stripe handles the exchange — so you pay in pounds, euros or dollars, whatever your card uses.</p></div>
+      </details>
+      <details>
+        <summary>Will the DXF export work with my CNC?</summary>
+        <div class="faq-a"><p>Yes — the optimiser exports the nested layout as a standard DXF that opens in any CAM software: Vectric, Fusion 360, AlphaCAM, Cabinet Vision and the rest. You post the G-code with your own tooling and feeds, so it works with whatever router you run.</p></div>
+      </details>
+      <details>
+        <summary>Does it work in imperial and metric?</summary>
+        <div class="faq-a"><p>Both. Switch units and formats in Settings at any time — quotes, cabinets, cut lists and PDFs all follow.</p></div>
+      </details>
+      <details>
+        <summary>Do my customers need an account to view quotes?</summary>
+        <div class="faq-a"><p>No. You send one live link per job — your customer opens it in their browser to view the quote, tick optional items in or out, sign off and pay a deposit. No portal, no login, no app to download.</p></div>
+      </details>
+    </div>
+  </section>
+
   <!-- ── Footer ── -->
   <footer class="foot">
     <div class="foot-inner">
@@ -677,6 +762,7 @@
       <nav class="foot-links">
         <a href="#features">Features</a>
         <a href="#pricing">Pricing</a>
+        <a href="#faq">FAQ</a>
         <a href="/os">Open the app</a>
         <a href="/privacy">Privacy</a>
         <a href="/terms">Terms</a>
