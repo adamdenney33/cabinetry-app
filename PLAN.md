@@ -62,6 +62,26 @@ a **0.7% (capped ~$100)** application fee. Built across the quote/order overhaul
 
 Detail: SPEC.md § 13 (2026-06-09).
 
+### Quote/Order cards sync with live-link status ✅ Done 2026-06-09
+
+Quote & order cards now reflect the live-link lifecycle the backend already
+records, and update in **realtime** without a reload.
+
+- ✅ **Status vocabulary reconciled** — `QUOTE_STATUS_META` + `_quoteStatusMeta(s)`
+  in `src/quotes.js` map the richer edge-function statuses (`viewed`/`accepted`/
+  `deposit_paid`/`paid`) onto the existing Draft→Sent→Approved pipeline via
+  `stage`, with granular `label`/`badge`. Replaced the duplicated 3-value ternary
+  at all 6 render sites (quotes card/sidebar/counts/filter, `clients.js`,
+  `cabinet-render.js`). Fixes customer-driven statuses silently showing "Draft".
+- ✅ **Live-link stamps/chips** — quote cards show "👁 Viewed"/"✓ Accepted" dates;
+  order cards show "Link live" / "Deposit paid" / "Paid" (derived from the linked
+  quote; no "viewed" for orders; production pipeline untouched).
+- ✅ **Supabase realtime** — `_subscribeLiveStatus()` in `src/app.js` subscribes
+  to `quotes`/`orders` `postgres_changes` (per-user), merges in place + re-renders.
+  Migration `enable_realtime_quotes_orders` adds both tables to the publication.
+
+Detail: SPEC.md § 13 (2026-06-09).
+
 ### Cut type toggle — panel saw (guillotine) vs CNC router (nested) ✅ Done 2026-05-25
 
 The optimiser was guillotine-only (edge-to-edge cuts for a panel saw). Added a

@@ -675,8 +675,9 @@ function renderCBResults() {
       const cli = (typeof quoteClient === 'function' ? quoteClient(q) : '') || '';
       const title = [num, proj, cli].filter(Boolean).join(' · ');
       const status = q.status || 'draft';
-      const statusBadge = status === 'approved' ? 'badge-green' : status === 'sent' ? 'badge-blue' : 'badge-gray';
-      const statusText = status === 'approved' ? 'Approved' : status === 'sent' ? 'Sent' : 'Draft';
+      const _qm = typeof _quoteStatusMeta === 'function' ? _quoteStatusMeta(status) : { badge: 'badge-gray', label: 'Draft' };
+      const statusBadge = _qm.badge;
+      const statusText = _qm.label;
       const total = typeof quoteTotal === 'function' ? quoteTotal(q) : 0;
       const counts = typeof _lineKindCountsLabel === 'function' ? _lineKindCountsLabel(q._lines) : '';
       const dateBits = [q.date, counts].filter(Boolean).join(' · ');

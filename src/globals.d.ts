@@ -86,6 +86,8 @@ declare global {
     _quoteFilter?: string;
     _quoteSearch?: string;
     _quoteSort?: string;
+    /** Supabase realtime channel for live-link status sync (app.js). */
+    _rtChannel?: any;
     _projFilter?: string;
     _projSearch?: string;
     _projSort?: string;

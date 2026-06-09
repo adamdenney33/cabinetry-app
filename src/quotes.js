@@ -31,6 +31,31 @@ const QUOTE_STATUSES = ['draft','sent','approved'];
 const QUOTE_STATUS_LABELS = { draft:'Draft', sent:'Sent', approved:'Approved' };
 const QUOTE_STATUS_COLORS = { draft:'#94a3b8', sent:'#1565c0', approved:'var(--success)' };
 
+// Live-link lifecycle → how the card renders it. The live-link edge functions
+// write richer statuses than the 3-step pipeline knows (viewed/accepted/
+// deposit_paid/paid). `stage` collapses them onto the existing Draft→Sent→
+// Approved pipeline, while `label`/`badge` carry the granular state so the card
+// shows what the customer actually did. `_quoteStatusMeta` is the single source
+// of truth — used by every quote status-render site (card, sidebar, client
+// detail, cabinet builder). Globally visible to the other classic-script files.
+/** @type {Record<string, { label: string, badge: string, stage: number }>} */
+const QUOTE_STATUS_META = {
+  draft:        { label: 'Draft',        badge: 'badge-gray',  stage: 0 },
+  sent:         { label: 'Sent',         badge: 'badge-blue',  stage: 1 },
+  viewed:       { label: 'Viewed',       badge: 'badge-blue',  stage: 1 },
+  accepted:     { label: 'Accepted',     badge: 'badge-green', stage: 2 },
+  approved:     { label: 'Approved',     badge: 'badge-green', stage: 2 }, // legacy alias for accepted
+  deposit_paid: { label: 'Deposit paid', badge: 'badge-green', stage: 2 },
+  paid:         { label: 'Paid',         badge: 'badge-green', stage: 2 },
+};
+/** @param {string | null} [s] */
+function _quoteStatusMeta(s) { return QUOTE_STATUS_META[s || 'draft'] || QUOTE_STATUS_META.draft; }
+/** Short "2 Jun"-style date for live-link activity stamps. @param {string} ts */
+function _fmtLLDate(ts) {
+  try { return new Date(ts).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }); }
+  catch (e) { return ''; }
+}
+
 // FK-resolving display helpers. After Phase 7 the legacy text columns are gone,
 // so an unresolved FK simply returns ''.
 /** @param {any} q */
@@ -429,9 +454,11 @@ function renderQuoteMain() {
   const customerQuotes = quotes
     .filter(q => !_isDraftQuote(q))
     .filter(q => !drillClient || q.client_id === drillClient.id);
-  const approved = customerQuotes.filter(q => q.status === 'approved').length;
-  const sent = customerQuotes.filter(q => q.status === 'sent').length;
-  const draft = customerQuotes.filter(q => q.status === 'draft').length;
+  // Bucket by pipeline stage so the live-link statuses (viewed→Sent,
+  // accepted/deposit_paid/paid→Approved) count under the right tab.
+  const draft = customerQuotes.filter(q => _quoteStatusMeta(q.status).stage === 0).length;
+  const sent = customerQuotes.filter(q => _quoteStatusMeta(q.status).stage === 1).length;
+  const approved = customerQuotes.filter(q => _quoteStatusMeta(q.status).stage === 2).length;
 
   /** @param {string} s */
   const statusBadge = s => {
@@ -443,8 +470,15 @@ function renderQuoteMain() {
   /** @param {any} q */
   const qCard = q => {
     const total = quoteTotal(q);
-    const statusBadge = q.status === 'approved' ? 'badge-green' : q.status === 'sent' ? 'badge-blue' : 'badge-gray';
-    const statusText = q.status === 'approved' ? 'Approved' : q.status === 'sent' ? 'Sent' : 'Draft';
+    const _qm = _quoteStatusMeta(q.status);
+    const statusBadge = _qm.badge;
+    const statusText = _qm.label;
+    // Live-link activity stamp — surfaces what the customer did on the link.
+    const _llStamp = q.accepted_at
+      ? `<span class="qc-live">✓ Accepted ${_fmtLLDate(q.accepted_at)}</span>`
+      : q.viewed_at
+        ? `<span class="qc-live">👁 Viewed ${_fmtLLDate(q.viewed_at)}</span>`
+        : '';
     const pName = quoteProject(q);
     const cName = quoteClient(q);
     const qNum = q.quote_number ? `${q.quote_number} · ` : '';
@@ -452,7 +486,7 @@ function renderQuoteMain() {
       ? `${qNum}${_escHtml(cName)} · ${_escHtml(pName)}`
       : `${qNum}${_escHtml(pName || cName || '')}`;
     const lineCounts = _lineKindCountsLabel(q._lines);
-    const curIdx = QUOTE_STATUSES.indexOf(q.status || 'draft');
+    const curIdx = _qm.stage;
     const pipe = QUOTE_STATUSES.map((s, i) => {
       const done = i < curIdx;
       const active = i === curIdx;
@@ -472,7 +506,7 @@ function renderQuoteMain() {
             <div class="qc-title">${titleText}${isEditing ? ' <span style="font-weight:500;color:var(--accent);font-size:11px">· editing</span>' : ''}</div>
             <span class="badge ${statusBadge}" style="font-size:10px" onclick="event.stopPropagation()">${statusText}</span>
           </div>
-          ${(q.date || lineCounts) ? `<div class="qc-meta">${[q.date, lineCounts].filter(Boolean).join(' · ')}</div>` : ''}
+          ${(q.date || lineCounts || _llStamp) ? `<div class="qc-meta">${[[q.date, lineCounts].filter(Boolean).join(' · '), _llStamp].filter(Boolean).join(' · ')}</div>` : ''}
         </div>
         <div class="oc-right">
           <div class="oc-value" style="cursor:default;border-bottom:none">${fmt(total)}</div>
@@ -506,7 +540,12 @@ function renderQuoteMain() {
   const qSearch = (window._quoteSearch || '').toLowerCase().trim();
   const qSort = window._quoteSort || 'newest';
   let filteredQ = [...customerQuotes];
-  if (qFilter !== 'all') filteredQ = filteredQ.filter(q => q.status === qFilter);
+  // Match the tab's pipeline stage (draft/sent/approved), so a viewed quote
+  // shows under Sent and accepted/paid quotes show under Approved.
+  if (qFilter !== 'all') {
+    const wantStage = _quoteStatusMeta(qFilter).stage;
+    filteredQ = filteredQ.filter(q => _quoteStatusMeta(q.status).stage === wantStage);
+  }
   if (qSearch) filteredQ = filteredQ.filter(q => (quoteClient(q) + ' ' + quoteProject(q)).toLowerCase().includes(qSearch));
   if (qSort === 'value') filteredQ.sort((a,b) => quoteTotal(b) - quoteTotal(a));
   else if (qSort === 'client') filteredQ.sort((a,b) => (quoteClient(a)||'').localeCompare(quoteClient(b)||''));
@@ -1177,8 +1216,9 @@ function renderQuoteEditor() {
 
   // ── Active editor (quote open) ──
   const status = q ? q.status : 'draft';
-  const statusBadge = status === 'approved' ? 'badge-green' : status === 'sent' ? 'badge-blue' : 'badge-gray';
-  const statusLabel = status === 'approved' ? 'Approved' : status === 'sent' ? 'Sent' : 'Draft';
+  const _sm = _quoteStatusMeta(status);
+  const statusBadge = _sm.badge;
+  const statusLabel = _sm.label;
   const isExisting = !!q;
   const matchingOrder = q ? orders.find(o => o.quote_id === q.id) : null;
   const hasOrder = !!matchingOrder;

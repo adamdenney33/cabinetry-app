@@ -415,8 +415,9 @@ function renderClientsMain() {
 
     const quoteRows = section('Quotes', cQuotes, /** @param {any} q */ q => {
       const label = _quoteLabel(q, { client: false });
-      const qBadgeCls = q.status === 'approved' ? 'badge-green' : q.status === 'sent' ? 'badge-blue' : 'badge-gray';
-      const qLabel = q.status === 'approved' ? 'Approved' : q.status === 'sent' ? 'Sent' : 'Draft';
+      const _qm = typeof _quoteStatusMeta === 'function' ? _quoteStatusMeta(q.status) : { badge: 'badge-gray', label: q.status || 'Draft' };
+      const qBadgeCls = _qm.badge;
+      const qLabel = _qm.label;
       const statusPill = `<span class="badge ${qBadgeCls}" style="font-size:9px;padding:1px 6px;margin-left:6px">${qLabel}</span>`;
       const money = quoteTotal(q) ? ` · ${fmt(quoteTotal(q))}` : '';
       return `<div style="font-size:11.5px;padding:4px 6px;border-radius:4px;cursor:pointer;display:flex;align-items:center;flex-wrap:wrap;gap:0" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='transparent'"

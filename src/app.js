@@ -1316,6 +1316,7 @@ async function signOut() {
   // in-memory arrays and re-renders every panel — so no manual teardown here.
   toggleAccount();
   if (typeof _resetAnalytics === 'function') _resetAnalytics();
+  _unsubscribeLiveStatus();
   await _sb.auth.signOut();
 }
 
@@ -1392,6 +1393,9 @@ async function loadAllData() {
   renderStockMain();
   renderQuoteMain();
   renderOrdersMain();
+  // Realtime: reflect customer live-link activity (viewed / accepted / paid, and
+  // webhook-created orders) on the cards without a manual reload.
+  _subscribeLiveStatus();
   // Dashboard renders once at script-load before data arrives, so refresh it now
   // that orders/quotes/stockItems are populated. Safe to call even when another
   // panel is active — innerHTML update is invisible until the user navigates back.
@@ -1403,6 +1407,59 @@ async function loadAllData() {
   // Item 2 phase 1.3: pull Cabinet Builder lines from the project's draft quote.
   // No-op without auth, without a saved project name, or when the DB draft is empty.
   _loadCBLinesFromDB().catch(e => console.warn('[cb db-load]', e.message || e));
+}
+
+// ── Realtime live-link status sync ──────────────────────────────────────────
+// The live-link edge functions (running with the service role) update the
+// user's own quotes/orders rows when a customer views, accepts, or pays — and
+// the pay webhook inserts a new order. With no subscription the cards only catch
+// up on a full reload, so a quote the customer just accepted still reads
+// "Draft". Subscribe to postgres_changes scoped to this user (RLS already limits
+// delivery to their own rows) and re-render the affected lists in place.
+
+/** Merge a realtime row change into a local array, preserving locally-attached
+ *  fields (`_lines`, restored notes/prod-starts) by mutating in place rather
+ *  than replacing the object. @param {any[]} arr @param {any} payload */
+function _applyRealtimeRow(arr, payload) {
+  const evt = payload.eventType || payload.event;
+  if (evt === 'DELETE') {
+    const oid = payload.old && payload.old.id;
+    const di = arr.findIndex(x => x.id === oid);
+    if (di >= 0) arr.splice(di, 1);
+    return;
+  }
+  const row = payload.new;
+  if (!row || row.id == null) return;
+  const idx = arr.findIndex(x => x.id === row.id);
+  if (idx >= 0) Object.assign(arr[idx], row);   // keep _lines/notes already on the object
+  else arr.unshift({ ...row });
+}
+
+/** Subscribe once to quotes/orders changes for the signed-in user. Re-renders
+ *  both card lists on any change (order chips derive from the linked quote, so a
+ *  quote change can move an order chip and vice-versa). */
+function _subscribeLiveStatus() {
+  if (!_userId || window._rtChannel) return;
+  const rerender = () => {
+    try { renderQuoteMain(); } catch (e) {}
+    try { renderOrdersMain(); } catch (e) {}
+    try { _oBadge(); } catch (e) {}
+  };
+  try {
+    window._rtChannel = _sb.channel('rt-cards')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'quotes', filter: `user_id=eq.${_userId}` },
+          /** @param {any} p */ p => { _applyRealtimeRow(quotes, p); rerender(); })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `user_id=eq.${_userId}` },
+          /** @param {any} p */ p => { _applyRealtimeRow(orders, p); rerender(); })
+      .subscribe();
+  } catch (e) { console.warn('[realtime] subscribe failed:', /** @type {any} */ (e)?.message || e); }
+}
+
+/** Tear down the realtime channel (on sign-out, before the user_id changes). */
+function _unsubscribeLiveStatus() {
+  if (!window._rtChannel) return;
+  try { _sb.removeChannel(window._rtChannel); } catch (e) {}
+  window._rtChannel = null;
 }
 
 // Phase 3.2: overlay catalog_items rows onto in-memory cbSettings.
@@ -1576,6 +1633,7 @@ _sb.auth.onAuthStateChange(async (event, session) => {
     _userId = null;
     _userCreatedAt = null;
     _setAccessToken(null);
+    _unsubscribeLiveStatus();
     window._demoMode = false;
     window.Sentry.setUser(null);
     _subscription = null;

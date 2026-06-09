@@ -171,6 +171,16 @@ function renderOrdersMain() {
     const titleText = [titleNum, titleCli, titleProj].filter(Boolean).join(' · ');
     const statusBadgeCls = (/** @type {Record<string,string>} */(STATUS_BADGES))[o.status]||'badge-gray';
     const statusLabel = (/** @type {Record<string,string>} */(STATUS_LABELS))[o.status]||o.status;
+    // Live-link status chip. Orders have no independent accept/pay flow (payment
+    // is quote-only) and don't track "viewed", so accepted/paid is derived from
+    // the originating quote; otherwise just surface whether the link is live.
+    const _llQuote = o.quote_id ? quotes.find(/** @param {any} x */ x => x.id === o.quote_id) : null;
+    let _llChip = '';
+    if (_llQuote && (_llQuote.status === 'paid' || _llQuote.status === 'deposit_paid')) {
+      _llChip = `<span class="badge badge-green" style="font-size:9px" onclick="event.stopPropagation()" title="Customer paid on the live link">${_llQuote.status === 'paid' ? 'Paid' : 'Deposit paid'}</span>`;
+    } else if (o.share_token) {
+      _llChip = '<span class="badge badge-blue" style="font-size:9px" onclick="event.stopPropagation()" title="Live link is active">Link live</span>';
+    }
     const isEditing = o.id === _opState.orderId;
     return `
     <div class="order-card${isOverdue ? ' order-overdue' : ''}${isEditing ? ' editing' : ''}" style="cursor:pointer" onclick="loadOrderIntoSidebar(${o.id})">
@@ -179,6 +189,7 @@ function renderOrdersMain() {
           <div class="oc-title-row">
             <div class="oc-title">${titleText}${isEditing ? ' <span style="font-weight:500;color:var(--accent);font-size:11px">· editing</span>' : ''}</div>
             <span class="badge ${statusBadgeCls}" style="font-size:10px" onclick="event.stopPropagation()">${statusLabel}</span>
+            ${_llChip}
           </div>
           <div class="oc-meta">
             ${isComplete
