@@ -58,7 +58,11 @@ Deno.serve(async (req) => {
       .eq('quote_id', quote.id);
     let subtotal = 0;
     for (const l of (lines ?? [])) {
-      if (l.customer_included && l.customer_price != null) subtotal += Number(l.customer_price) || 0;
+      if (!l.customer_included) continue;
+      // An included line with no price = a spec change awaiting re-pricing.
+      // Refuse to charge rather than silently under-collecting.
+      if (l.customer_price == null) return jsonResponse({ error: 'price_pending' }, 409, cors);
+      subtotal += Number(l.customer_price) || 0;
     }
     const tax = subtotal * (Number(quote.tax) || 0) / 100;
     const total = subtotal + tax;

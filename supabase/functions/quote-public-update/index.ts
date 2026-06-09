@@ -18,6 +18,19 @@ import { admin } from '../_shared/auth.ts';
 
 const MAX_SNAPSHOT_BYTES = 200_000;
 
+// Human-readable labels for the change-request message dropped into the
+// business's client chat when a customer edits a spec.
+const SPEC_LABELS: Record<string, string> = {
+  w_mm: 'Width (mm)', h_mm: 'Height (mm)', d_mm: 'Depth (mm)',
+  finish: 'Finish', material: 'Material', construction: 'Construction',
+  base_type: 'Base', door_count: 'Doors', door_pct: 'Door area %',
+  door_type: 'Door style', door_material: 'Door material',
+  door_finish: 'Door finish', door_handle: 'Handles',
+  drawer_count: 'Drawers', drawer_pct: 'Drawer area %',
+  drawer_front_type: 'Drawer front style', drawer_front_material: 'Drawer front material',
+  drawer_front_finish: 'Drawer front finish', fixed_shelves: 'Shelves',
+};
+
 Deno.serve(async (req) => {
   const cors = corsHeaders(req.headers.get('origin'));
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
@@ -35,7 +48,7 @@ Deno.serve(async (req) => {
     // ── Resolve the quote + its gate state ──
     const { data: quote, error: qErr } = await admin
       .from('quotes')
-      .select('id, user_id, status, share_settings, accepted_at')
+      .select('id, user_id, client_id, status, share_settings, accepted_at')
       .eq('share_token', token)
       .maybeSingle();
     if (qErr) throw new Error(qErr.message);
@@ -69,7 +82,8 @@ Deno.serve(async (req) => {
       if (!settings.allow_edit) return jsonResponse({ error: 'editing_disabled' }, 403, cors);
       const lineId = Number(body.line_id);
       const { data: line } = await admin
-        .from('quote_lines').select('id, quote_id, customer_editable, editable_specs')
+        .from('quote_lines')
+        .select('id, quote_id, customer_editable, editable_specs, name, w_mm, h_mm, d_mm, finish, material, construction, base_type, door_count, door_pct, door_type, door_material, door_finish, door_handle, drawer_count, drawer_pct, drawer_front_type, drawer_front_material, drawer_front_finish, fixed_shelves')
         .eq('id', lineId).maybeSingle();
       if (!line || line.quote_id !== quote.id) return jsonResponse({ error: 'line_not_found' }, 404, cors);
       if (!line.customer_editable) return jsonResponse({ error: 'line_locked' }, 403, cors);
@@ -139,7 +153,33 @@ Deno.serve(async (req) => {
         patch.door_material = m;
       }
       if (!Object.keys(patch).length) return jsonResponse({ error: 'nothing_to_update' }, 400, cors);
+      // The old customer_price no longer matches the requested spec — clear it
+      // so the page (and any reload) shows "Price to confirm" instead of a
+      // stale figure, and quote-pay refuses to charge until the business
+      // re-prices (its line sum treats null as pending).
+      const changes = Object.keys(patch)
+        .map((k) => {
+          const label = SPEC_LABELS[k] || k;
+          const oldVal = (line as Record<string, unknown>)[k];
+          const fmt = (v: unknown) => (v === null || v === undefined || v === '' ? '—' : String(v));
+          return `${label}: ${fmt(oldVal)} → ${fmt(patch[k])}`;
+        });
+      patch.customer_price = null;
       await admin.from('quote_lines').update(patch).eq('id', lineId);
+      // Drop a note into the existing client chat thread so the business sees
+      // the request (unread badge on the quote/client cards) and keeps an
+      // audit trail. Best-effort — the edit itself has already succeeded.
+      if (quote.client_id) {
+        try {
+          await admin.from('customer_messages').insert({
+            user_id: quote.user_id,
+            client_id: quote.client_id,
+            quote_id: quote.id,
+            sender: 'customer',
+            body: `Requested a change to “${line.name || 'Item'}” — ${changes.join(', ')}. (Sent from the quote page; price to be re-confirmed.)`,
+          });
+        } catch (_e) { /* chat table missing / RLS issue — edit still recorded */ }
+      }
       return jsonResponse({ ok: true }, 200, cors);
     }
 
