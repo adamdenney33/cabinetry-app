@@ -36,8 +36,26 @@ function friendlyError(e, fallback) {
     payments_unavailable: 'Card payment is being set up — your maker will be in touch to take payment.',
     rate_limited: "You're sending messages a little fast — please wait a moment and try again.",
     nothing_to_pay: 'There’s nothing to pay on this quote.',
+    price_pending: 'An updated price is being confirmed after your change — payment unlocks once it’s ready.',
   });
-  return map[m] || fallback || 'Something went wrong. Please refresh the page and try again.';
+  if (map[m]) return map[m];
+  if (/_out_of_range$/.test(m)) return 'That value is outside the allowed range — please try something closer to the original.';
+  if (/_not_allowed$/.test(m)) return 'That option isn’t available — please pick one from the list.';
+  return fallback || 'Something went wrong. Please refresh the page and try again.';
+}
+
+let _toastTimer = /** @type {any} */ (null);
+/** Page-styled toast — replaces native alert() (jarring on a payment page).
+ *  @param {string} msg @param {boolean} [isErr] */
+function toast(msg, isErr = true) {
+  let el = document.getElementById('qp-toast');
+  if (!el) { el = document.createElement('div'); el.id = 'qp-toast'; document.body.appendChild(el); }
+  el.className = 'qp-toast' + (isErr ? ' err' : '');
+  el.textContent = msg;
+  // restart the transition
+  requestAnimationFrame(() => el.classList.add('show'));
+  if (_toastTimer) clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => el.classList.remove('show'), 4600);
 }
 
 function getToken() {
@@ -115,21 +133,35 @@ function renderTop() {
 // ── line row ─────────────────────────────────────────────────────────────────
 /** @param {any} l */
 function row(l) {
+  const accepted = !!D?.quote?.accepted_at;
   const photos = photosByLine[l.id] || [];
   const photo = photos.length
     ? `<div class="qp-photo"><img src="${esc(photos[0])}" alt="" loading="lazy"></div>`
     : '';
   const chips = [];
-  if (l.optional) chips.push('<span class="qp-chip opt">Optional</span>');
-  if ((((l.editable_specs && l.editable_specs.length) || l.customer_editable)) && D?.settings?.allow_edit) chips.push(`<span class="qp-chip edit" onclick="__qp.toggleSpec(${l.id})">Edit ▾</span>`);
+  if (l.optional && !accepted) chips.push('<span class="qp-chip opt">Optional</span>');
+  // Once accepted, the quote is locked server-side — don't render controls
+  // that would only error with "already accepted".
+  if (!accepted && (((l.editable_specs && l.editable_specs.length) || l.customer_editable)) && D?.settings?.allow_edit) chips.push(`<button class="qp-chip edit" onclick="__qp.toggleSpec(${l.id})">Edit ▾</button>`);
   if (l._pending) chips.push('<span class="qp-chip pending">Price to confirm</span>');
-  const spec = l.line_kind === 'cabinet'
-    ? `${l.w_mm || '—'}×${l.h_mm || '—'}×${l.d_mm || '—'}mm${l.finish ? ' · ' + esc(l.finish) : ''}`
-    : esc(l.notes || l.type || '');
+  // Richer cabinet description — mirrors what the PDF shows (dims, material,
+  // finish, fronts) so the page reads like a real spec, not a mystery box.
+  let spec = '';
+  if (l.line_kind === 'cabinet') {
+    const parts = [];
+    if (l.w_mm || l.h_mm || l.d_mm) parts.push(`${l.w_mm || '—'}×${l.h_mm || '—'}×${l.d_mm || '—'}mm`);
+    if (l.material) parts.push(esc(l.material));
+    if (l.finish && l.finish !== 'None') parts.push(esc(l.finish));
+    if ((l.door_count || 0) > 0) parts.push(`${l.door_count} door${l.door_count !== 1 ? 's' : ''}`);
+    if ((l.drawer_count || 0) > 0) parts.push(`${l.drawer_count} drawer${l.drawer_count !== 1 ? 's' : ''}`);
+    spec = parts.join(' · ');
+  } else {
+    spec = esc(l.notes || l.type || '');
+  }
   const priceHtml = l._pending
     ? '<div class="qp-price" style="font-size:12px;color:var(--danger)">To confirm</div>'
     : (l.customer_price != null ? `<div class="qp-price">${money(l.customer_price)}</div>` : '<div class="qp-price" style="color:var(--muted)">—</div>');
-  const toggle = (l.optional && D?.settings?.allow_select)
+  const toggle = (l.optional && D?.settings?.allow_select && !accepted)
     ? `<button class="qp-toggle" aria-pressed="${!!l.customer_included}" aria-label="Include ${esc(l.name || 'this item')} in your ${D?.kind === 'order' ? 'order' : 'quote'}" onclick="__qp.toggle(${l.id})" title="Include / exclude"></button>`
     : '';
   return `<div class="qp-row${l.customer_included ? '' : ' excluded'}" id="qp-row-${l.id}">
@@ -160,7 +192,7 @@ function specEditor(l) {
   };
   /** @param {string} label @param {any} val @param {number} min @param {number} max @param {string} col @param {string} unit */
   const num = (label, val, min, max, col, unit) =>
-    `<div class="r"><label>${label}</label><input type="number" value="${val != null ? val : ''}" min="${min}" max="${max}" step="${unit === 'mm' ? 10 : 1}" style="width:${unit ? 84 : 64}px" onchange="__qp.setField(${l.id},'${col}',this.value)">${unit ? ` <span style="font-size:11px;color:var(--muted)">${unit}</span>` : ''}</div>`;
+    `<div class="r"><label>${label}</label><input type="number" value="${val != null ? val : ''}" min="${min}" max="${max}" step="${unit === 'mm' ? 10 : 1}" style="width:${unit ? 84 : 64}px" onchange="__qp.setField(${l.id},'${col}',this.value)">${unit ? ` <span style="font-size:11px;color:var(--muted)">${unit}</span>` : ''}<span class="qp-range">${min}–${max}${unit ? unit : ''}</span></div>`;
   /** @param {string} label @param {string[]} opts @param {string} cur @param {string} col */
   const sel = (label, opts, cur, col) =>
     `<div class="r"><label>${label}</label><select onchange="__qp.setField(${l.id},'${col}',this.value)" style="flex:1">${optList(opts, cur)}</select></div>`;
@@ -213,24 +245,36 @@ function rail() {
     ? (t.depPct ? `Accept &amp; pay ${money(t.deposit)} deposit` : `Accept &amp; pay ${money(t.total)}`)
     : 'Accept this quote';
   // One line under the button so the customer knows exactly what the click does.
-  const ctaHint = payMode
-    ? (t.depPct
-      ? `Pay a ${t.depPct}% deposit now to confirm — the ${money(t.balance)} balance is due on completion.`
-      : `Pay in full to confirm your ${isOrder ? 'order' : 'quote'}.`)
-    : 'Confirms you’re happy to go ahead — your maker will be in touch about next steps and payment.';
+  const hasPending = t.pending > 0;
+  const ctaHint = hasPending
+    ? `Accepting unlocks once ${esc(D?.business?.name || 'your maker')} confirms the updated price${t.pending > 1 ? 's' : ''}.`
+    : payMode
+      ? (t.depPct
+        ? `Pay a ${t.depPct}% deposit now to confirm — the ${money(t.balance)} balance is due on completion.`
+        : `Pay in full to confirm your ${isOrder ? 'order' : 'quote'}.`)
+      : 'Confirms you’re happy to go ahead — your maker will be in touch about next steps and payment.';
   const cta = isOrder
     ? ''
     : (accepted
       ? `<div class="qp-chip" style="background:var(--success);color:#fff;display:block;text-align:center;padding:14px 16px;font-size:12px;margin-top:16px;line-height:1.2">✓ Accepted — thank you</div>`
-      : `<button class="btn btn-primary btn-lg" style="margin-top:16px" onclick="${payMode ? '__qp.payDeposit()' : '__qp.accept()'}">${btnLabel}</button>
+      : `<button class="btn btn-primary btn-lg" style="margin-top:16px${hasPending ? ';opacity:.55;cursor:not-allowed' : ''}"${hasPending ? ' disabled' : ''} onclick="${payMode ? '__qp.payDeposit()' : '__qp.confirmAccept()'}">${btnLabel}</button>
        <div style="font-size:11px;color:var(--muted);margin-top:8px;line-height:1.4;text-align:center">${ctaHint}</div>`);
+  // The customer's discount is baked into each line price — surface it so they
+  // can see what they're saving (and the subtotal reads pre-discount).
+  const discPct = Number(D?.quote?.discount) || 0;
+  const preDiscount = discPct > 0 && discPct < 100 ? t.subtotal / (1 - discPct / 100) : t.subtotal;
+  const saving = preDiscount - t.subtotal;
+  const discRows = discPct > 0
+    ? `<div class="qp-rl"><span>Subtotal</span><span>${money(preDiscount)}</span></div>
+       <div class="qp-rl" style="color:var(--success);font-weight:600"><span>Your discount (${discPct}%)</span><span>−${money(saving)}</span></div>`
+    : `<div class="qp-rl"><span>Subtotal</span><span>${money(t.subtotal)}</span></div>`;
   return `<h3>Your ${isOrder ? 'order' : 'quote'}</h3>
     <div style="font-size:12px;color:var(--muted);margin-bottom:10px">${lines.filter((l) => l.customer_included).length} of ${lines.length} items included</div>
-    <div class="qp-rl"><span>Subtotal</span><span>${money(t.subtotal)}</span></div>
+    ${discRows}
     ${t.taxPct ? `<div class="qp-rl"><span>VAT (${t.taxPct}%)</span><span>${money(t.tax)}</span></div>` : ''}
     <div class="qp-rl grand"><span>Total</span><span>${money(t.total)}${t.pending ? '+' : ''}</span></div>
     ${t.depPct ? `<div class="qp-dep"><div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:12px;font-weight:700;color:var(--text2)">Deposit (${t.depPct}%)</span><span class="amt">${money(t.deposit)}</span></div><div class="bal">Balance of ${money(t.balance)} on completion</div></div>` : ''}
-    ${t.pending ? `<div style="font-size:11px;color:var(--danger);margin-top:10px">${t.pending} item${t.pending > 1 ? 's' : ''} awaiting a confirmed price after your spec change.</div>` : ''}
+    ${t.pending ? `<div style="font-size:11px;color:var(--danger);margin-top:10px">${t.pending} item${t.pending > 1 ? 's' : ''} awaiting a confirmed price after your spec change — we’ll update this page.</div>` : ''}
     ${cta}
     <div style="display:flex;align-items:center;justify-content:center;gap:6px;font-size:10.5px;color:var(--muted);margin-top:14px"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg> Secured · ${esc(D?.business?.name || '')}</div>`;
 }
@@ -374,7 +418,7 @@ const handlers = {
     l.customer_included = !l.customer_included;
     refreshLine(id);
     try { await fn('quote-public-update', { token, action: 'toggle', line_id: id, included: l.customer_included }); }
-    catch (e) { l.customer_included = !l.customer_included; refreshLine(id); alert(friendlyError(e, 'Could not update that item — please try again.')); }
+    catch (e) { l.customer_included = !l.customer_included; refreshLine(id); toast(friendlyError(e, 'Could not update that item — please try again.')); }
   },
   /** @param {number} id */
   toggleSpec(id) {
@@ -399,6 +443,26 @@ const handlers = {
   async setDrawers(id, v) { await applyEdit(id, { drawer_count: Number(v) }); },
   /** @param {number} id @param {string} col @param {string} v */
   async setField(id, col, v) { await applyEdit(id, { [col]: v }); },
+  /** Confirmation sheet before the (irreversible) non-payment accept — one
+   *  mis-click shouldn't lock the quote. The pay flow has the payment sheet
+   *  as its natural confirm step, so it skips this. */
+  confirmAccept() {
+    if (D?.quote?.accepted_at) return;
+    const t = totals();
+    if (t.pending) { toast(friendlyError('price_pending')); return; }
+    closePaySheet();
+    const n = lines.filter((l) => l.customer_included).length;
+    const el = document.createElement('div');
+    el.className = 'qp-overlay'; el.id = 'qp-pay';
+    el.innerHTML = `<div class="qp-sheet">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><strong style="font-size:15px">Accept this quote?</strong><button onclick="__qp.closePay()" style="border:none;background:none;font-size:20px;cursor:pointer;color:var(--muted)">×</button></div>
+      <div style="font-size:13px;color:var(--text2);line-height:1.55;margin-bottom:6px">${n} item${n !== 1 ? 's' : ''} · <strong style="color:var(--text)">${money(t.total)}</strong> total${t.taxPct ? ' (incl. VAT)' : ''}.</div>
+      <div style="font-size:12px;color:var(--muted);line-height:1.5;margin-bottom:14px">This confirms you’re happy to go ahead — ${esc(D?.business?.name || 'your maker')} will be notified and the quote is locked for changes.</div>
+      <button class="btn btn-primary btn-lg" onclick="__qp.closePay();__qp.accept()">Yes — accept quote</button>
+      <button class="btn" style="width:100%;margin-top:8px;background:none;border:1px solid var(--border);color:var(--text2)" onclick="__qp.closePay()">Go back</button>
+    </div>`;
+    document.body.appendChild(el);
+  },
   async accept() {
     if (D?.quote?.accepted_at) return;
     const t = totals();
@@ -410,7 +474,7 @@ const handlers = {
     try {
       await fn('quote-public-update', { token, action: 'accept', snapshot });
       successState(t);
-    } catch (e) { alert(friendlyError(e, 'Could not record your acceptance — please try again.')); }
+    } catch (e) { toast(friendlyError(e, 'Could not record your acceptance — please try again.')); }
   },
   async payDeposit() {
     if (D?.quote?.accepted_at) return;
@@ -421,7 +485,7 @@ const handlers = {
       // No card set up yet → fall back to a plain accept so the customer isn't
       // blocked; the maker arranges payment separately.
       if (m === 'payments_unavailable' || m === 'payments_disabled') { await handlers.accept(); return; }
-      alert(friendlyError(e, 'Could not start payment. Please try again.')); return;
+      toast(friendlyError(e, 'Could not start payment. Please try again.')); return;
     }
     await recordAccept();
     const StripeCtor = await loadStripe();
@@ -466,11 +530,15 @@ async function applyEdit(id, patch) {
   try {
     await fn('quote-public-update', { token, action: 'edit', line_id: id, ...patch });
     Object.assign(l, patch);
-    l._pending = true;          // price needs re-confirming after a spec change
+    // Mirror the server: the old price no longer applies, so the line is
+    // pending a re-confirmed price (persists across reloads now).
+    l.customer_price = null;
+    l._pending = true;
     const host = byId('qp-spec-' + id); if (host) host.style.display = 'none';
     refreshLine(id);
+    toast(`Change sent — ${(D?.business?.name || 'your maker')} will confirm the updated price.`, false);
   } catch (e) {
-    alert(friendlyError(e, 'Could not save that change — please try again.'));
+    toast(friendlyError(e, 'Could not save that change — please try again.'));
   }
 }
 
@@ -507,6 +575,12 @@ async function boot() {
     clearTimeout(slow);
     cur = (D.business && D.business.default_currency) || '£';
     lines = (D.lines || []).map(/** @param {any} l */(l) => ({ ...l }));
+    // A null customer_price on a quote line = a spec change awaiting the
+    // business's re-priced confirmation (the edit endpoint clears it). Restore
+    // the "Price to confirm" state across reloads instead of a bare "—".
+    if (D.kind !== 'order') {
+      for (const l of lines) { if (l.customer_included && l.customer_price == null) l._pending = true; }
+    }
     photosByLine = {};
     for (const p of (D.photos || [])) { (photosByLine[p.line_id] = photosByLine[p.line_id] || []).push(p.url); }
     renderTop();

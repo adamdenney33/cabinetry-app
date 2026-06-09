@@ -45,12 +45,14 @@
   .qp-price { font-weight: 800; font-size: 15px; font-variant-numeric: tabular-nums; }
   .qp-chip { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; padding: 2px 7px; border-radius: 999px; }
   .qp-chip.opt { background: rgba(232,168,56,.16); color: var(--accent); }
-  .qp-chip.edit { background: rgba(13,148,136,.14); color: var(--accent2); cursor: pointer; }
+  .qp-chip.edit { background: rgba(13,148,136,.14); color: var(--accent2); cursor: pointer; border: none; font-family: inherit; line-height: inherit; }
   .qp-chip.pending { background: rgba(224,82,82,.12); color: var(--danger); }
+  /* Include/exclude switch — knob RIGHT + green when included (the
+     conventional "on" position), LEFT + grey when excluded. */
   .qp-toggle { position: relative; width: 42px; height: 24px; border-radius: 999px; border: none; background: var(--success); cursor: pointer; flex-shrink: 0; transition: background .18s; }
   .qp-toggle::after { content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; transition: transform .18s; box-shadow: 0 1px 3px rgba(0,0,0,.3); }
+  .qp-toggle[aria-pressed="true"]::after { transform: translateX(18px); }
   .qp-toggle[aria-pressed="false"] { background: var(--border); }
-  .qp-toggle[aria-pressed="false"]::after { transform: translateX(18px); }
   .qp-spec { border: 1px solid var(--border); border-radius: 10px; background: var(--surface2); padding: 12px; margin-top: 10px; }
   .qp-spec .r { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
   .qp-spec label { font-size: 11px; font-weight: 600; color: var(--muted); width: 60px; }
@@ -83,6 +85,12 @@
   /* a11y: keyboard focus ring on the include/exclude switch. */
   .qp-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   .qp-chip.edit:focus-visible { outline: 2px solid var(--accent2); outline-offset: 1px; }
+  /* Toast — replaces native alert() so errors match the page, not the OS. */
+  .qp-toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(8px); z-index: 9500; max-width: min(440px, calc(100vw - 32px)); background: var(--text); color: var(--bg); font-size: 13px; line-height: 1.45; padding: 11px 16px; border-radius: 10px; box-shadow: var(--shadow-md); opacity: 0; transition: opacity .2s, transform .2s; pointer-events: none; }
+  .qp-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .qp-toast.err { background: #a81d1d; color: #fff; }
+  /* Allowed-range hint inside the spec editor. */
+  .qp-range { font-size: 10px; color: var(--muted); margin-left: auto; white-space: nowrap; }
   /* Stronger chip contrast for low-vision readability. */
   .qp-chip.opt { background: rgba(232,168,56,.22); color: #8a5a00; }
   .qp-chip.pending { background: rgba(224,82,82,.18); color: #a81d1d; }
