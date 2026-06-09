@@ -477,7 +477,7 @@ function renderQuoteMain() {
     const _llStamp = q.accepted_at
       ? `<span class="qc-live">✓ Accepted ${_fmtLLDate(q.accepted_at)}</span>`
       : q.viewed_at
-        ? `<span class="qc-live">👁 Viewed ${_fmtLLDate(q.viewed_at)}</span>`
+        ? `<span class="qc-live">Viewed ${_fmtLLDate(q.viewed_at)}</span>`
         : '';
     const pName = quoteProject(q);
     const cName = quoteClient(q);
