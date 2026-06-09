@@ -79,11 +79,17 @@ async function createOrderFromQuote(quote: any): Promise<number | undefined> {
   for (const l of included) subtotal += Number(l.customer_price) || 0;
   const value = subtotal + subtotal * (Number(quote.tax) || 0) / 100;
 
-  // Next per-user 4-digit order number (zero-padded → lexical sort works).
-  const { data: maxRows } = await admin.from('orders')
-    .select('order_number').eq('user_id', quote.user_id)
-    .order('order_number', { ascending: false }).limit(1);
-  const nextNum = String((Number(maxRows?.[0]?.order_number) || 0) + 1).padStart(4, '0');
+  // Next per-user order number, matching the app's _nextOrderNumber (ORD-####):
+  // parse the digits out of every existing order_number, take the max, +1. (A
+  // plain Number() on 'ORD-0042' is NaN, which is why the old code emitted 0001.)
+  const { data: existing } = await admin.from('orders')
+    .select('order_number').eq('user_id', quote.user_id);
+  let maxN = 0;
+  for (const o of (existing ?? [])) {
+    const m = String((o as any).order_number || '').match(/(\d+)/);
+    if (m) maxN = Math.max(maxN, parseInt(m[1], 10));
+  }
+  const nextNum = 'ORD-' + String(maxN + 1).padStart(4, '0');
 
   const { data: order, error } = await admin.from('orders').insert({
     user_id: quote.user_id, client_id: quote.client_id, quote_id: quote.id,
