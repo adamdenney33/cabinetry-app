@@ -52,6 +52,72 @@ async function _syncMailingList(session) {
   localStorage.setItem(flagKey, '1');
 }
 
+/**
+ * One-time marketing opt-in prompt for accounts that never recorded a choice.
+ *
+ * The email signup form has a "send me cabinetry tips" checkbox that writes
+ * user_metadata.marketing_opt_in at signUp() time. OAuth (Google) signups skip
+ * that form entirely, so those accounts land with the flag ABSENT — without
+ * this they'd never get the chance to opt in. We show the same opt-in once,
+ * in-app, after onboarding. Opt-in only — default stays off (no implied
+ * consent), and we only ever ADD to the list here; opting out later is the
+ * unsubscribe link in every email (Resend-managed).
+ *
+ * Gated to show at most once per account per device, regardless of the answer.
+ * Skips accounts that already carry a boolean preference (every email signup),
+ * so only OAuth signups and any legacy pre-checkbox accounts are ever asked.
+ *
+ * @param {import('@supabase/supabase-js').Session} session
+ */
+function _maybePromptMarketingOptIn(session) {
+  const user = session?.user;
+  if (!user || window._demoMode) return;
+  const meta = user.user_metadata || {};
+  // Email signups always carry a boolean here — only ask when it's genuinely
+  // absent (OAuth signup, or a legacy account predating the checkbox).
+  if (typeof meta.marketing_opt_in === 'boolean') return;
+  const askedKey = `pc_mkt_asked_${user.id}`;
+  if (localStorage.getItem(askedKey)) return;
+
+  const id = '_mktoptin_' + Date.now();
+  const overlay = document.createElement('div');
+  overlay.id = id;
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;animation:popupFadeIn .15s ease;transform:translateZ(0)';
+  overlay.innerHTML = `<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:22px 24px;box-shadow:0 16px 64px rgba(0,0,0,0.5),0 0 0 1px rgba(255,255,255,0.04);max-width:380px;width:calc(100vw - 32px);color:var(--text);animation:popupSlideIn .2s ease">
+    <div style="font-size:15px;font-weight:800;margin-bottom:8px">Stay in the loop?</div>
+    <div style="font-size:13px;line-height:1.5;color:var(--text2);margin-bottom:18px">Get occasional cabinetry tips and product news by email. No spam — unsubscribe anytime.</div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button id="${id}_no" style="padding:8px 16px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);cursor:pointer;font-size:12px;font-family:inherit">No thanks</button>
+      <button id="${id}_yes" style="padding:8px 16px;border-radius:6px;border:none;background:var(--accent);color:#fff;cursor:pointer;font-size:12px;font-weight:700;font-family:inherit">Yes, send tips</button>
+    </div>
+  </div>`;
+  document.body.appendChild(overlay);
+  // Mark "asked" the moment it's shown so it never reappears, whatever happens
+  // next (explicit choice, backdrop-dismiss, or tab close = stays opted out).
+  localStorage.setItem(askedKey, '1');
+  const close = () => overlay.remove();
+  /** @param {boolean} optIn */
+  const record = async (optIn) => {
+    close();
+    try {
+      await _sb.auth.updateUser({ data: { marketing_opt_in: optIn } });
+      if (optIn) {
+        // updateUser leaves the access token valid; re-read the session so
+        // _syncMailingList sees the now-true flag and a fresh user object.
+        const { data } = await _sb.auth.getSession();
+        if (data?.session) await _syncMailingList(data.session);
+        if (typeof _toast === 'function') _toast('You’re on the list — thanks!', 'success');
+      }
+    } catch (e) {
+      console.warn('[mailing-list] opt-in update failed', e);
+    }
+  };
+  /** @type {HTMLElement} */ (document.getElementById(id + '_no')).onclick = () => record(false);
+  /** @type {HTMLElement} */ (document.getElementById(id + '_yes')).onclick = () => record(true);
+  // Backdrop click dismisses without subscribing (default stays opted out).
+  overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+}
+
 // Keyboard shortcuts
 document.addEventListener('keydown', e => {
   // Ctrl/Cmd + number: switch tabs

@@ -1335,8 +1335,9 @@ async function authSubmit() {
 //
 // Note: OAuth signups can't carry the marketing_opt_in / attribution metadata
 // the email flow attaches at signUp() time — those come from Google's profile
-// instead. Acceptable: email prefs are managed in-app; paid-ads attribution
-// just won't be stamped on Google-originated accounts.
+// instead. The marketing opt-in is recovered post-auth by
+// _maybePromptMarketingOptIn (src/auth.js), which asks Google users once in-app.
+// Paid-ads attribution just won't be stamped on Google-originated accounts.
 async function signInWithGoogle() {
   const msgEl = document.getElementById('auth-msg');
   const btn = /** @type {HTMLButtonElement | null} */ (document.getElementById('auth-google-btn'));
@@ -1687,6 +1688,13 @@ _sb.auth.onAuthStateChange(async (event, session) => {
     if (typeof /** @type {any} */ (window)._restoreAppState === 'function') {
       try { await /** @type {any} */ (window)._restoreAppState(); }
       catch (e) { console.warn('restoreAppState failed', e); }
+    }
+    // Marketing opt-in for OAuth (Google) signups: the email form's opt-in
+    // checkbox never ran for them, so ask once in-app. Never on top of the
+    // first-run walkthrough (_wtActive) or a Checkout redirect — in those cases
+    // it shows on a later load, where marketing_opt_in is still unset.
+    if (!_pendingPlanNow && !window._wtActive && typeof _maybePromptMarketingOptIn === 'function') {
+      _maybePromptMarketingOptIn(session);
     }
   } else {
     // No Supabase session — an account is required. Show the auth screen (a
