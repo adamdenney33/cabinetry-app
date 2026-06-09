@@ -8,17 +8,24 @@
 
 import Stripe from 'https://esm.sh/stripe@17?target=deno';
 
-const KEY = Deno.env.get('STRIPE_SECRET_KEY');
-if (!KEY) throw new Error('Missing STRIPE_SECRET_KEY');
+// Connect runs on its OWN Stripe key, decoupled from the (live) subscription key.
+// The subscription functions read STRIPE_SECRET_KEY directly and never import this
+// file, so they're unaffected. Decoupling lets customer-payments run in test mode /
+// a sandbox while live billing keeps running on STRIPE_SECRET_KEY. Falls back to the
+// shared key when STRIPE_CONNECT_SECRET_KEY isn't set (i.e. once payments goes live too).
+const KEY = Deno.env.get('STRIPE_CONNECT_SECRET_KEY') ?? Deno.env.get('STRIPE_SECRET_KEY');
+if (!KEY) throw new Error('Missing STRIPE_CONNECT_SECRET_KEY / STRIPE_SECRET_KEY');
 
 export const stripe = new Stripe(KEY, {
   apiVersion: '2024-09-30.acacia',
   httpClient: Stripe.createFetchHttpClient(),
 });
 
-/** Platform publishable key — returned to the public page so Stripe.js can
- *  confirm the PaymentIntent on the connected account (direct charges). */
-export const STRIPE_PUBLISHABLE_KEY = Deno.env.get('STRIPE_PUBLISHABLE_KEY') ?? '';
+/** Publishable key for the Connect environment — returned to the public page so
+ *  Stripe.js can confirm the connected-account PaymentIntent (direct charges). MUST
+ *  match STRIPE_CONNECT_SECRET_KEY's mode; falls back to STRIPE_PUBLISHABLE_KEY. */
+export const STRIPE_PUBLISHABLE_KEY =
+  Deno.env.get('STRIPE_CONNECT_PUBLISHABLE_KEY') ?? Deno.env.get('STRIPE_PUBLISHABLE_KEY') ?? '';
 
 export const APP_URL = Deno.env.get('APP_URL') ?? 'https://procabinet.app';
 
