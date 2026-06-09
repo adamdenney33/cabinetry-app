@@ -62,6 +62,34 @@ a **0.7% (capped ~$100)** application fee. Built across the quote/order overhaul
 
 Detail: SPEC.md § 13 (2026-06-09).
 
+### Live link + cabinet quote — UX/UI review pass 2 ✅ Done 2026-06-09
+
+Full re-review of both workflows (business + customer sides); 14 fixes landed.
+
+- ✅ **Spec-change requests now persist + notify** — `quote-public-update` 'edit'
+  nulls `customer_price` (page shows "Price to confirm" across reloads) and
+  auto-inserts a `customer_messages` row describing the change (unread badge +
+  audit trail); `quote-pay` returns `price_pending` instead of silently
+  charging stale/skipped prices (both redeployed, v13). Customer CTA disables
+  while pending; the Live-link tab force-refreshes `quote_lines`, reprices, and
+  shows an amber "customer requested changes" banner.
+- ✅ **Pricing consistency** — quote/order editor totals now show the stored
+  `markup` row (was omitted → editor disagreed with card/live page/PDF/order
+  value); order editor also no longer drops stock materials from its subtotal;
+  `renderCBResults` uses the open quote/order's markup/tax/discount instead of
+  `cbSettings` (label says "(est.)" only when standalone).
+- ✅ **Customer page UX** — include/exclude knob direction fixed (right = on);
+  accepted quotes render read-only; "Your discount (N%) — you save £X" row;
+  richer cabinet spec line (material/doors/drawers); styled toasts replace
+  alert(); confirm sheet before non-payment accept; spec-editor range hints +
+  friendly range/option errors; Edit chip is a real button (keyboard a11y).
+- ✅ **Business panel** — `_llAutoSave` takes an explicit kind (was inferring
+  from leftover tab state → could save settings onto the wrong record); stale
+  "then Generate" copy removed; settings saves reload just the preview iframe
+  (no flash).
+
+Detail: SPEC.md § 13 (2026-06-09).
+
 ### Live-link workflow — clarity & trust pass ✅ Done 2026-06-09
 
 Full review of the business + customer live-link flow; fixed the verified issues.
