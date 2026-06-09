@@ -82,6 +82,10 @@ async function loadSubscription() {
   if (typeof renderSubscriptionSection === 'function') {
     try { renderSubscriptionSection(); } catch (_e) { /* render is best-effort */ }
   }
+  // F.2: trial-ending banner — inserts/updates/removes itself from trial state.
+  if (typeof _renderTrialBanner === 'function') {
+    try { _renderTrialBanner(); } catch (_e) { /* banner is best-effort */ }
+  }
   return _subscription;
 }
 

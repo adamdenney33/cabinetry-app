@@ -605,3 +605,66 @@ function _openManagePopupFree() {
     </div>
   `, 'sm');
 }
+
+// ══════════════════════════════════════════
+// TRIAL-ENDING BANNER (F.2)
+// ══════════════════════════════════════════
+/** localStorage key — the days-left value the banner was last dismissed at. */
+const _TRIAL_BANNER_KEY = 'pc_trial_banner_day';
+
+/**
+ * Slim dismissible banner under the header for the last 3 days of the 14-day
+ * trial. The trial otherwise lapses silently — the countdown lives only in the
+ * account dropdown — and days 12–14 are the highest-converting window to ask.
+ * Dismissal is per remaining day: dismissing at "2 days left" keeps it away
+ * until "1 day left". Idempotent — called after every subscription (re)load
+ * from loadSubscription(); inserts, updates, or removes itself as needed.
+ */
+function _renderTrialBanner() {
+  const existing = document.getElementById('trial-banner');
+  const active = !!_userId && typeof _trialActive === 'function' && _trialActive();
+  const daysLeft = typeof _trialDaysLeft === 'function' ? _trialDaysLeft() : 0;
+  /** @type {string | null} */
+  let dismissedAt = null;
+  try { dismissedAt = localStorage.getItem(_TRIAL_BANNER_KEY); } catch (_e) { /* private mode */ }
+  const show = active && daysLeft > 0 && daysLeft <= 3 && dismissedAt !== String(daysLeft);
+  if (!show) { if (existing) existing.remove(); return; }
+
+  const label = daysLeft === 1 ? 'Your Pro trial ends today' : `Your Pro trial ends in ${daysLeft} days`;
+  let el = existing;
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'trial-banner';
+    el.style.cssText = 'display:flex;align-items:center;gap:12px;flex-shrink:0;padding:7px 16px;' +
+      'background:rgba(232,168,56,0.10);border-bottom:1px solid rgba(232,168,56,0.25);' +
+      'font-size:12.5px;line-height:1.4;color:var(--text)';
+    // Body is a flex column (header has flex-shrink:0) — inserting directly
+    // after the header pushes the app content down rather than overlapping it.
+    const header = document.querySelector('header');
+    if (header && header.parentElement) header.insertAdjacentElement('afterend', el);
+    else document.body.prepend(el);
+    if (typeof _track === 'function') _track('trial_banner_shown', { days_left: daysLeft });
+  }
+  el.innerHTML = `
+    <span style="flex:1;min-width:0"><strong>${label}.</strong> Keep unlimited saved items, CSV import/export and CNC/DXF export — from $15/mo.</span>
+    <button onclick="_trialBannerUpgrade()" style="flex-shrink:0;padding:5px 14px;border:none;border-radius:6px;background:var(--accent);color:#fff;font-size:12px;font-weight:600;font-family:inherit;cursor:pointer">See plans</button>
+    <button onclick="_trialBannerDismiss()" title="Dismiss" style="flex-shrink:0;background:none;border:none;color:var(--muted);font-size:16px;line-height:1;cursor:pointer;padding:2px 4px">&times;</button>`;
+}
+
+/** Banner CTA → the standalone plan-picker overlay (same one the tour ends on). */
+function _trialBannerUpgrade() {
+  if (typeof _track === 'function') {
+    _track('trial_banner_upgrade_clicked', { days_left: typeof _trialDaysLeft === 'function' ? _trialDaysLeft() : 0 });
+  }
+  const w = /** @type {any} */ (window);
+  if (typeof w._wtStartCta === 'function') w._wtStartCta();
+}
+
+/** Dismiss for the current days-left value — it returns when the count drops. */
+function _trialBannerDismiss() {
+  try {
+    localStorage.setItem(_TRIAL_BANNER_KEY, String(typeof _trialDaysLeft === 'function' ? _trialDaysLeft() : 0));
+  } catch (_e) { /* private mode — banner just reappears next load */ }
+  const el = document.getElementById('trial-banner');
+  if (el) el.remove();
+}
