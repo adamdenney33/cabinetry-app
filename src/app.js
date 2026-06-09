@@ -1225,7 +1225,10 @@ function _saveCabinetPopup(idx) {
 
 /** @type {string | null} */
 let _userId = null;
-let _authMode = 'signin';
+// Default to sign-up: a logged-out visitor arriving from the landing site lands
+// on "Create your account", with a one-click "Sign In" toggle for returning
+// users. Keep in sync with the auth-screen markup defaults in index.html.
+let _authMode = 'signup';
 
 function _showApp() {
   /** @type {HTMLElement} */ (document.getElementById('auth-screen')).classList.add('hidden');
@@ -1245,6 +1248,8 @@ function toggleAuthMode() {
   /** @type {HTMLElement} */ (document.getElementById('auth-marketing-row')).style.display = isSign ? 'none' : 'flex';
   /** @type {HTMLElement} */ (document.getElementById('auth-first-name')).style.display = isSign ? 'none' : 'block';
   /** @type {HTMLElement} */ (document.getElementById('auth-last-name')).style.display = isSign ? 'none' : 'block';
+  const reassureEl = document.getElementById('auth-reassure');
+  if (reassureEl) reassureEl.style.display = isSign ? 'none' : '';
   /** @type {HTMLElement} */ (document.getElementById('auth-msg')).innerHTML = '';
 }
 
@@ -1577,11 +1582,8 @@ _sb.auth.onAuthStateChange(async (event, session) => {
     /** @type {HTMLElement} */ (document.getElementById('account-guest-view')).style.display = '';
     /** @type {HTMLElement} */ (document.getElementById('account-user-view')).style.display = 'none';
     _showAuth();
-    // Open straight into sign-up mode when the landing CTA links to /os?signup.
-    if (_authMode === 'signin'
-        && new URLSearchParams(location.search).has('signup')) {
-      toggleAuthMode();
-    }
+    // The screen opens in sign-up mode by default (see _authMode init) — a
+    // landing-site visitor lands on "Create your account", not a sign-in form.
     // Clear "what was open" keys on explicit sign-out so the next user's session
     // doesn't restore the previous one's entity IDs. INITIAL_SESSION (a plain
     // logged-out page load) must NOT clear them.
