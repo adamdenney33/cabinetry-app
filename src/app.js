@@ -1326,6 +1326,43 @@ async function authSubmit() {
   if (_authMode === 'signup' && msgEl) { msgEl.innerHTML = '<div class="auth-success">Almost there — check your email and click the confirmation link. It signs you in automatically.</div>'; }
 }
 
+// One-click Google sign-in / sign-up. signInWithOAuth navigates the whole page
+// to Google's consent screen, so on success nothing after it runs — Google
+// redirects back to redirectTo, the SDK's detectSessionInUrl exchanges the code
+// for a session, and onAuthStateChange (SIGNED_IN) drives the rest exactly like
+// a password login. An `error` only comes back synchronously if the redirect
+// itself can't be started (provider not configured, offline).
+//
+// Note: OAuth signups can't carry the marketing_opt_in / attribution metadata
+// the email flow attaches at signUp() time — those come from Google's profile
+// instead. Acceptable: email prefs are managed in-app; paid-ads attribution
+// just won't be stamped on Google-originated accounts.
+async function signInWithGoogle() {
+  const msgEl = document.getElementById('auth-msg');
+  const btn = /** @type {HTMLButtonElement | null} */ (document.getElementById('auth-google-btn'));
+  if (msgEl) msgEl.innerHTML = '';
+  if (btn) btn.disabled = true;
+  if (typeof _track === 'function') _track('google_signin_clicked');
+  let error;
+  try {
+    ({ error } = await _sb.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        // Mirror the email-confirm redirect: app is served at /os in prod, / in
+        // local dev (window._isDev, set by main.js).
+        redirectTo: window.location.origin + (window._isDev ? '' : '/os'),
+      },
+    }));
+  } catch (e) {
+    error = /** @type {{ message?: string }} */ (e);
+  }
+  // Reached only when the redirect failed to start (otherwise the page is gone).
+  if (btn) btn.disabled = false;
+  if (error && msgEl) {
+    msgEl.innerHTML = `<div class="auth-error">${error.message || 'Could not start Google sign-in.'}</div>`;
+  }
+}
+
 async function signOut() {
   // onAuthStateChange's SIGNED_OUT handler re-enters demo mode, re-seeds the
   // in-memory arrays and re-renders every panel — so no manual teardown here.
