@@ -272,6 +272,10 @@ let _wtFounderSeatsLeft = null;
  *  tour. Suppresses the demo-mode borrow, section switches and first-run
  *  dismissal persistence the full tour performs. */
 let _wtCtaOnly = false;
+/** True when the current tour was auto-started by _wtMaybeAutoStart (first
+ *  run / version re-show) rather than deliberately opened from Help. Drives
+ *  the skip → plan-picker hand-off in _wtSkip (F.3). */
+let _wtAutoRun = false;
 
 /** @param {string} s @returns {string} */
 function _wtEsc(s) {
@@ -367,11 +371,13 @@ function _wtGateSection(section) {
  * tour's duration (B2) and _wtClose restores their real data afterwards.
  * No-ops if a tour is already on screen (guards the hourly TOKEN_REFRESHED
  * auth event from restarting a tour mid-flight).
- * @param {{force?: boolean}} [opts]
+ * @param {{force?: boolean, auto?: boolean}} [opts]  auto: set by
+ *   _wtMaybeAutoStart so _wtSkip can tell a first-run tour from a Help
+ *   re-trigger (F.3).
  */
 async function _wtStart(opts) {
-  void opts;
   if (_wtActive) return;
+  _wtAutoRun = !!(opts && opts.auto);
   // The guided tour is a desktop experience — skip it on phones/tablets; the
   // mobile advisory notice (_pcMaybeShowMobileNotice) covers them instead.
   if (typeof window._pcIsTouchDevice === 'function' && window._pcIsTouchDevice()) return;
@@ -474,10 +480,11 @@ async function _wtClose(reason) {
       dismissed_at: new Date().toISOString(),
       completed: reason === 'completed',
     });
-    // A finished tour suppresses the redundant dashboard "Getting Started" card.
-    if (reason === 'completed') {
-      try { localStorage.setItem('pc_hide_guide', '1'); } catch (e) { void e; }
-    }
+    // F.4: pc_hide_guide is deliberately NOT set here any more — the dashboard
+    // "Getting Started" card is the action prompt toward a first real quote,
+    // it only renders while the app is empty, and it has its own dismiss ×.
+    // Hiding it on tour completion stripped guidance from exactly the users
+    // with an empty app.
     // The full tour ends on the CTA, so it satisfies the once-per-session
     // reminder — don't double up with a standalone CTA on a same-session reload.
     try { sessionStorage.setItem('pc_wt_session_cta', '1'); } catch (e) { void e; }
@@ -563,12 +570,22 @@ function _wtBack() {
   if (_wtCurrent > 0) _wtRender(_wtCurrent - 1);
 }
 /**
- * Skip handler. Closes the tour immediately for everyone. The Pro CTA lives
- * only at the natural end of the walkthrough, so skipping never surfaces it —
- * a visitor sees the plan picker only by stepping through to the finish.
+ * Skip handler (F.3). Closes the tour, then — for the auto-run first tour
+ * only — hands off to the standalone plan-picker CTA, so skippers (the
+ * majority of users) still see pricing exactly once. The hand-off never fires
+ * for: the CTA-only overlay (Escape there must not reopen it), Pro users
+ * (nothing to upsell), a deliberate Help re-trigger, or a skip pressed when
+ * the pricing step is already on screen.
  */
 function _wtSkip() {
-  _wtClose('skipped');
+  const onPricingStep = !!(_wtSteps[_wtCurrent] && _wtSteps[_wtCurrent].showPricing);
+  const pro = typeof isPro === 'function' && isPro();
+  const handOff = _wtAutoRun && !_wtCtaOnly && !pro && !onPricingStep;
+  _wtClose('skipped').then(() => {
+    if (!handOff) return;
+    if (typeof _track === 'function') _track('tour_skip_plan_picker_shown');
+    _wtStartCta();
+  });
 }
 
 /** @param {MouseEvent} e */
@@ -1190,7 +1207,7 @@ async function _wtMaybeAutoStart() {
   if (typeof window._pcMaybeShowMobileNotice === 'function') window._pcMaybeShowMobileNotice();
   // Logged-out demo visitors get the full tour + CTA on every reload — the demo
   // is a marketing surface, so the localStorage dismissal gate is bypassed.
-  if (!_userId) { _wtStart({ force: true }); return; }
+  if (!_userId) { _wtStart({ force: true, auto: true }); return; }
   // Signed-in users: localStorage is the durable first-run gate;
   // business_info.onboarding_state mirrors it across their devices.
   /** @type {any} */
@@ -1206,7 +1223,7 @@ async function _wtMaybeAutoStart() {
     _wtMaybeShowSessionCta();
     return;
   }
-  _wtStart({ force: true });
+  _wtStart({ force: true, auto: true });
 }
 
 // ── public surface ──

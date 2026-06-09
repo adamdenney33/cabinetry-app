@@ -81,21 +81,25 @@ function renderDashboard() {
         <button onclick="localStorage.setItem('pc_hide_guide','1');this.parentElement.remove()" style="position:absolute;top:8px;right:8px;background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:4px 8px;border-radius:4px" title="Dismiss">&times;</button>
         <div style="font-size:13px;font-weight:700;margin-bottom:12px;color:var(--text)">Getting Started</div>
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px">
-          <div style="display:flex;gap:12px;align-items:flex-start;cursor:pointer" onclick="switchSection('clients')">
+          <div style="display:flex;gap:12px;align-items:flex-start;cursor:pointer" onclick="switchSection('cabinet');typeof switchCabTab==='function'&&switchCabTab('rates')">
             <div style="width:28px;height:28px;border-radius:50%;background:var(--accent-dim);color:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;flex-shrink:0">1</div>
-            <div><div style="font-size:13px;font-weight:600;color:var(--accent)">Add clients &amp; projects</div><div style="font-size:11px;color:var(--muted);margin-top:2px">Create clients and projects — they appear in shared libraries across all tabs</div></div>
+            <div><div style="font-size:13px;font-weight:600;color:var(--accent)">Set your rates</div><div style="font-size:11px;color:var(--muted);margin-top:2px">Hourly rate, markup and labour times — every cabinet prices itself from these</div></div>
           </div>
           <div style="display:flex;gap:12px;align-items:flex-start;cursor:pointer" onclick="switchSection('stock')">
             <div style="width:28px;height:28px;border-radius:50%;background:var(--surface2);color:var(--muted);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;flex-shrink:0">2</div>
-            <div><div style="font-size:13px;font-weight:600;color:var(--text2)">Add stock materials</div><div style="font-size:11px;color:var(--muted);margin-top:2px">Enter your sheet materials — they flow into the Cut List as Stock Panels</div></div>
+            <div><div style="font-size:13px;font-weight:600;color:var(--text2)">Add stock materials</div><div style="font-size:11px;color:var(--muted);margin-top:2px">Sheets, edging and hardware — they feed your quotes, cut lists and orders</div></div>
+          </div>
+          <div style="display:flex;gap:12px;align-items:flex-start;cursor:pointer" onclick="switchSection('cabinet')">
+            <div style="width:28px;height:28px;border-radius:50%;background:var(--surface2);color:var(--muted);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;flex-shrink:0">3</div>
+            <div><div style="font-size:13px;font-weight:600;color:var(--text2)">Build a cabinet</div><div style="font-size:11px;color:var(--muted);margin-top:2px">Spec it once in the builder and save it to your library to reuse on every job</div></div>
           </div>
           <div style="display:flex;gap:12px;align-items:flex-start;cursor:pointer" onclick="switchSection('quote')">
-            <div style="width:28px;height:28px;border-radius:50%;background:var(--surface2);color:var(--muted);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;flex-shrink:0">3</div>
-            <div><div style="font-size:13px;font-weight:600;color:var(--text2)">Quote &amp; build</div><div style="font-size:11px;color:var(--muted);margin-top:2px">Create quotes, optimize cut lists, build cabinets — convert quotes to orders when ready</div></div>
+            <div style="width:28px;height:28px;border-radius:50%;background:var(--surface2);color:var(--muted);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;flex-shrink:0">4</div>
+            <div><div style="font-size:13px;font-weight:600;color:var(--text2)">Send your first quote</div><div style="font-size:11px;color:var(--muted);margin-top:2px">Drop in cabinets and line items, then export a PDF or share a live link</div></div>
           </div>
         </div>
         <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border2);font-size:11px;color:var(--muted)">
-          <strong style="color:var(--text2)">Shared Data:</strong> Clients and Projects are shared across tabs. Use the search inputs in each sidebar to find existing entries, or tap <strong>+</strong> to create new ones inline.
+          <strong style="color:var(--text2)">Tip:</strong> Clients and stock are shared across tabs. Use the search inputs in each sidebar to find existing entries, or tap <strong>+</strong> to create new ones inline.
         </div>
       </div>` : ''}
 
