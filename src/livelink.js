@@ -70,11 +70,31 @@ function _llLiveBodyDiv(kind) {
   return `<div id="${id}"${_llTab[kind] === 'live' ? '' : ' style="display:none"'}></div>`;
 }
 
+/** Self-heal: quotes shared before the per-line price snapshot existed have a
+ *  null customer_price, so the customer page shows £0 ("awaiting a confirmed
+ *  price"). On opening the Live-link tab, fill any missing prices from the quote's
+ *  own figures — WITHOUT touching share_settings (unlike _generateShareLink, which
+ *  reads the settings toggles from the DOM and would clobber them here). @param {any} q */
+async function _llBackfillPrices(q) {
+  if (!q || !q.share_token || typeof _shareLineCustomerPrice !== 'function') return;
+  const missing = (q._lines || []).filter(/** @param {any} l */ (l) => l.customer_price == null);
+  if (!missing.length) return;
+  for (const l of missing) {
+    const customer_price = _shareLineCustomerPrice(q, l);
+    if (customer_price == null) continue;
+    try {
+      const r = await _db('quote_lines').update(/** @type {any} */ ({ customer_price })).eq('id', l.id);
+      if (!r || !r.error) l.customer_price = customer_price;
+    } catch (e) { /* best-effort — the tab still works without it */ }
+  }
+}
+
 /** Called by renderQuoteEditor/renderOrderEditor after innerHTML when the live
  *  tab is active: fill the live body + render the preview. @param {'quote'|'order'} kind */
 async function _llEnterLive(kind) {
   const q = _llShareQuote(kind);
   await _llEnsureLines(q, kind);
+  if (kind === 'quote') await _llBackfillPrices(q);  // self-heal pre-pricing-snapshot quotes (£0 → real price)
   const bodyId = kind === 'quote' ? 'ql-live-body' : 'ol-live-body';
   const body = document.getElementById(bodyId);
   if (body) body.innerHTML = _liveLinkPanel(kind);
