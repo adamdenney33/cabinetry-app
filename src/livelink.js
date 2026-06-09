@@ -79,14 +79,14 @@ function _llLiveBodyDiv(kind) {
  *  write only the lines whose price actually changed. @param {any} q */
 async function _llSyncCustomerPrices(q) {
   if (!q || !q.share_token || typeof _shareLineCustomerPrice !== 'function') return;
+  const writes = [];
   for (const l of (q._lines || [])) {
     const customer_price = _shareLineCustomerPrice(q, l);
     if (customer_price == null || Number(l.customer_price) === customer_price) continue; // unchanged
-    try {
-      const r = await _db('quote_lines').update(/** @type {any} */ ({ customer_price })).eq('id', l.id);
-      if (!r || !r.error) l.customer_price = customer_price;
-    } catch (e) { /* best-effort — the tab still works without it */ }
+    l.customer_price = customer_price;
+    writes.push(_db('quote_lines').update(/** @type {any} */ ({ customer_price })).eq('id', l.id));
   }
+  if (writes.length) { try { await Promise.all(writes); } catch (e) { /* best-effort — the tab still works without it */ } }
 }
 
 /** Called by renderQuoteEditor/renderOrderEditor after innerHTML when the live

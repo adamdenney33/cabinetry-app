@@ -91,7 +91,7 @@ async function _generateShareLink(quoteId, kind) {
   };
   const token = q.share_token || (crypto.randomUUID ? crypto.randomUUID().replace(/-/g, '').slice(0, 16) : Math.random().toString(36).slice(2, 14));
   try {
-    for (const l of (q._lines || [])) {
+    await Promise.all((q._lines || []).map(/** @param {any} l */ async (l) => {
       const optEl = /** @type {HTMLInputElement|null} */ (document.getElementById('sh-opt-' + l.id));
       const editable_specs = Array.from(document.querySelectorAll('.ll-spec[data-line="' + l.id + '"]'))
         .filter(/** @param {any} el */ el => el.checked)
@@ -105,7 +105,7 @@ async function _generateShareLink(quoteId, kind) {
         await _db('quote_lines').update(/** @type {any} */ ({ optional, customer_editable, customer_included: true, customer_price })).eq('id', l.id);
       }
       Object.assign(l, { optional, customer_editable, customer_included: true, customer_price, editable_specs });
-    }
+    }));
     await _db('quotes').update(/** @type {any} */ ({ share_token: token, share_settings: settings, status: q.status === 'draft' ? 'sent' : q.status })).eq('id', quoteId);
     q.share_token = token; q.share_settings = settings; if (q.status === 'draft') q.status = 'sent';
     if (typeof _track === 'function' && !wasShared) _track('quote_shared', { accept_payment: settings.accept_payment });
