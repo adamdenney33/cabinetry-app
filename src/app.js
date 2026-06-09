@@ -1247,6 +1247,12 @@ let _userId = null;
 // users. Keep in sync with the auth-screen markup defaults in index.html.
 let _authMode = 'signup';
 
+// Message pulled from an OAuth redirect that came back with an error instead of
+// a session (set by _handleOAuthError at init; consumed once when the auth
+// screen first shows). null when the last load wasn't a failed OAuth return.
+/** @type {string | null} */
+let _oauthError = null;
+
 function _showApp() {
   /** @type {HTMLElement} */ (document.getElementById('auth-screen')).classList.add('hidden');
 }
@@ -1711,6 +1717,14 @@ _sb.auth.onAuthStateChange(async (event, session) => {
     /** @type {HTMLElement} */ (document.getElementById('account-guest-view')).style.display = '';
     /** @type {HTMLElement} */ (document.getElementById('account-user-view')).style.display = 'none';
     _showAuth();
+    // A failed OAuth return (provider misconfigured, redirect mismatch, user
+    // cancelled) bounces back here with no session — show why instead of a
+    // silent auth screen. Consumed once; cleared so a re-render stays clean.
+    if (_oauthError) {
+      const m = document.getElementById('auth-msg');
+      if (m) m.innerHTML = `<div class="auth-error">${_oauthError}</div>`;
+      _oauthError = null;
+    }
     // The screen opens in sign-up mode by default (see _authMode init) — a
     // landing-site visitor lands on "Create your account", not a sign-in form.
     // Clear "what was open" keys on explicit sign-out so the next user's session
@@ -1737,9 +1751,40 @@ function hexRgba(hex, a) {
 /** @param {string} s @param {number} n */
 function trunc(s, n) { return s.length <= n ? s : s.slice(0, n-1) + '…'; }
 
+/**
+ * Pull an OAuth error off the return URL (and strip it so a refresh is clean).
+ *
+ * When Google/Supabase rejects a sign-in, it redirects back to redirectTo with
+ * `error` + `error_description` and NO session — PKCE puts them in the query
+ * string, the implicit flow in the hash; we read both. Returns a user-facing
+ * string (or null), stashed in `_oauthError` for the auth screen to show.
+ * @returns {string | null}
+ */
+function _handleOAuthError() {
+  const q = new URLSearchParams(window.location.search);
+  const h = window.location.hash.startsWith('#')
+    ? new URLSearchParams(window.location.hash.slice(1))
+    : new URLSearchParams();
+  const err = q.get('error') || h.get('error');
+  if (!err) return null;
+  const desc = q.get('error_description') || h.get('error_description') || '';
+  // Strip the OAuth error params from the query so a refresh doesn't re-show it.
+  // (The token-carrying hash, if any, is left to the SDK's detectSessionInUrl.)
+  ['error', 'error_description', 'error_code'].forEach(k => q.delete(k));
+  const s = q.toString();
+  history.replaceState(null, '', window.location.pathname + (s ? '?' + s : '') + window.location.hash);
+  // access_denied = the user backed out of Google's consent screen — not alarming.
+  return err === 'access_denied'
+    ? 'Google sign-in was cancelled.'
+    : (desc || 'Google sign-in failed. Please check the provider setup and try again.');
+}
+
 // ══════════════════════════════════════════
 // INIT
 // ══════════════════════════════════════════
+// Capture any OAuth-return error before onAuthStateChange's no-session branch
+// renders the auth screen, so it can explain the failure instead of going blank.
+_oauthError = _handleOAuthError();
 // Show a toast on Stripe Checkout return (?upgrade=success / cancelled),
 // then strip the query param so a refresh doesn't re-toast.
 if (typeof handleCheckoutReturn === 'function') handleCheckoutReturn();
