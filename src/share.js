@@ -81,6 +81,9 @@ async function _generateShareLink(quoteId, kind) {
   if ((kind || 'quote') === 'order') return _generateOrderShareLink(quoteId);
   const q = /** @type {any} */ (quotes.find(x => x.id === quoteId));
   if (!q) return;
+  // Backstop: never mint a link for an items-less quote (it would share a blank
+  // page). The Live-link panel blocks this earlier; this guards direct callers.
+  if (!q.share_token && !(Array.isArray(q._lines) && q._lines.length)) return;
   const wasShared = !!q.share_token;
   const pressed = (/** @type {string} */ id) => { const b = document.getElementById(id); return b ? b.getAttribute('aria-pressed') === 'true' : false; };
   const settings = {

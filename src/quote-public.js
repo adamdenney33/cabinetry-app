@@ -5,9 +5,9 @@
 // receives customer-safe figures (per-line `customer_price`), never the
 // business's cost inputs.
 //
-// Phase 3 scope: view + photos + optional-item toggle (live reprice) + spec
-// edit (stored; price re-confirmed by the business) + accept. Card payment is
-// Phase 4 (Stripe Connect); the Pay action is a placeholder until then.
+// Scope: view + photos + optional-item toggle (live reprice) + spec edit
+// (stored; price re-confirmed by the business) + accept + card deposit via
+// Stripe Connect (direct charge on the maker's connected account).
 
 /** @type {string} */
 const SBURL = import.meta.env.VITE_SUPABASE_URL;
@@ -18,6 +18,27 @@ const SBKEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c] || c));
 /** @param {string} id @returns {HTMLElement} */
 const byId = (id) => /** @type {HTMLElement} */ (document.getElementById(id));
+
+/** Map a raw edge-function error code to a calm, customer-readable sentence.
+ *  Customers should never see things like "HTTP 500" or "rate_limited".
+ *  @param {unknown} e @param {string} [fallback] */
+function friendlyError(e, fallback) {
+  const m = (e && /** @type {any} */ (e).message) || String(e || '');
+  const map = /** @type {Record<string,string>} */ ({
+    not_found: 'This link is no longer valid — please ask for a fresh one.',
+    expired: 'This quote has expired. Please ask for an updated link.',
+    closed: 'This quote is closed.',
+    already_accepted: 'This quote has already been accepted.',
+    selection_disabled: "This quote's items can't be changed.",
+    editing_disabled: "Spec changes aren't enabled on this quote.",
+    line_locked: "That item can't be changed.",
+    payments_disabled: 'Card payment is turned off for this quote.',
+    payments_unavailable: 'Card payment is being set up — your maker will be in touch to take payment.',
+    rate_limited: "You're sending messages a little fast — please wait a moment and try again.",
+    nothing_to_pay: 'There’s nothing to pay on this quote.',
+  });
+  return map[m] || fallback || 'Something went wrong. Please refresh the page and try again.';
+}
 
 function getToken() {
   const u = new URL(location.href);
@@ -78,14 +99,17 @@ function renderTop() {
   const b = D?.business || {};
   const name = b.name || 'Your cabinetmaker';
   const logo = b.logo_url
-    ? `<img src="${esc(b.logo_url)}" alt="">`
+    ? `<img src="${esc(b.logo_url)}" alt="${esc(name)} logo">`
     : esc((name[0] || 'Q').toUpperCase());
+  // Show whatever contact the maker has on file — more ways to reach a real
+  // person is the single biggest trust signal on a page asking for money.
+  const contact = [b.email, b.phone].filter(Boolean).map(esc).join(' · ');
   byId('qp-top').innerHTML = `
     <div class="qp-brand">
       <div class="qp-logo">${logo}</div>
-      <div><div class="qp-bizname">${esc(name)}</div>${b.email ? `<div class="qp-biztag">${esc(b.email)}</div>` : ''}</div>
+      <div><div class="qp-bizname">${esc(name)}</div>${contact ? `<div class="qp-biztag">${contact}</div>` : ''}</div>
     </div>
-    <span class="qp-secure"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>Secure quote</span>`;
+    <span class="qp-secure" title="This page is encrypted (HTTPS). Card payments are handled securely by Stripe."><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>Secure &amp; encrypted</span>`;
 }
 
 // ── line row ─────────────────────────────────────────────────────────────────
@@ -106,7 +130,7 @@ function row(l) {
     ? '<div class="qp-price" style="font-size:12px;color:var(--danger)">To confirm</div>'
     : (l.customer_price != null ? `<div class="qp-price">${money(l.customer_price)}</div>` : '<div class="qp-price" style="color:var(--muted)">—</div>');
   const toggle = (l.optional && D?.settings?.allow_select)
-    ? `<button class="qp-toggle" aria-pressed="${!!l.customer_included}" onclick="__qp.toggle(${l.id})" title="Include / exclude"></button>`
+    ? `<button class="qp-toggle" aria-pressed="${!!l.customer_included}" aria-label="Include ${esc(l.name || 'this item')} in your ${D?.kind === 'order' ? 'order' : 'quote'}" onclick="__qp.toggle(${l.id})" title="Include / exclude"></button>`
     : '';
   return `<div class="qp-row${l.customer_included ? '' : ' excluded'}" id="qp-row-${l.id}">
     <div style="display:flex;gap:14px;width:100%;align-items:flex-start">
@@ -174,7 +198,7 @@ function specEditor(l) {
   if (!sections.length) sections.push({ t: '', rows: [sel('Finish', D?.finishes || [], l.finish, 'finish')] });
   const body = sections.map(s => `${s.t ? `<div class="qp-spec-head">${s.t}</div>` : ''}${s.rows.join('')}`).join('');
   return `<div class="qp-spec">${body}
-    <div style="font-size:11px;color:var(--muted)">Changes are sent to ${esc(D?.business?.name || 'us')}, who’ll confirm the updated price.</div>
+    <div style="font-size:11px;color:var(--muted);line-height:1.5">Your change is saved and sent to ${esc(D?.business?.name || 'us')} — we’ll confirm the updated price before anything’s charged. The item shows “Price to confirm” until then.</div>
   </div>`;
 }
 
@@ -184,11 +208,22 @@ function rail() {
   const isOrder = D?.kind === 'order';
   const accepted = !!D?.quote?.accepted_at;
   // Orders are confirmed — no accept / pay CTA on the live page.
+  const payMode = !!D?.settings?.accept_payment;
+  const btnLabel = payMode
+    ? (t.depPct ? `Accept &amp; pay ${money(t.deposit)} deposit` : `Accept &amp; pay ${money(t.total)}`)
+    : 'Accept this quote';
+  // One line under the button so the customer knows exactly what the click does.
+  const ctaHint = payMode
+    ? (t.depPct
+      ? `Pay a ${t.depPct}% deposit now to confirm — the ${money(t.balance)} balance is due on completion.`
+      : `Pay in full to confirm your ${isOrder ? 'order' : 'quote'}.`)
+    : 'Confirms you’re happy to go ahead — your maker will be in touch about next steps and payment.';
   const cta = isOrder
     ? ''
     : (accepted
       ? `<div class="qp-chip" style="background:var(--success);color:#fff;display:block;text-align:center;padding:14px 16px;font-size:12px;margin-top:16px;line-height:1.2">✓ Accepted — thank you</div>`
-      : `<button class="btn btn-primary btn-lg" style="margin-top:16px" onclick="${D?.settings?.accept_payment ? '__qp.payDeposit()' : '__qp.accept()'}">${D?.settings?.accept_payment ? 'Accept &amp; Pay deposit' : 'Accept this quote'}</button>`);
+      : `<button class="btn btn-primary btn-lg" style="margin-top:16px" onclick="${payMode ? '__qp.payDeposit()' : '__qp.accept()'}">${btnLabel}</button>
+       <div style="font-size:11px;color:var(--muted);margin-top:8px;line-height:1.4;text-align:center">${ctaHint}</div>`);
   return `<h3>Your ${isOrder ? 'order' : 'quote'}</h3>
     <div style="font-size:12px;color:var(--muted);margin-bottom:10px">${lines.filter((l) => l.customer_included).length} of ${lines.length} items included</div>
     <div class="qp-rl"><span>Subtotal</span><span>${money(t.subtotal)}</span></div>
@@ -209,7 +244,13 @@ function render() {
     ? esc(String(q.status || 'order').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()))
     : esc(q.accepted_at ? 'Accepted' : 'Awaiting your approval');
   const greetingName = (D.client?.name || '').split(/[ &]/)[0] || 'there';
+  // Orders are already confirmed — a banner removes any "do I need to do
+  // something?" doubt that a quote-style page would otherwise create.
+  const orderBanner = isOrder
+    ? `<div class="qp-banner"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg><div>This is your confirmed order — no action needed. You can review the details below or message us any time.</div></div>`
+    : '';
   byId('qp-root').innerHTML = `
+    ${orderBanner}
     <div class="qp-hero">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap">
         <div><h1>Your ${noun}${q.number ? ' · ' + esc(q.number) : ''}</h1><div class="sub">${q.date ? (isOrder ? 'Created ' : 'Issued ') + esc(q.date) : ''}</div></div>
@@ -221,7 +262,7 @@ function render() {
       <div class="card" style="overflow:hidden"><div class="card-header"><div class="card-title">Your items</div></div><div id="qp-lines"></div></div>
       <div class="qp-rail-wrap"><div class="qp-rail" id="qp-rail"></div></div>
     </div>
-    <div style="font-size:11px;color:var(--muted);text-align:center;margin-top:18px">${q.notes ? esc(q.notes) + ' · ' : ''}Prices include VAT where shown.</div>`;
+    <div style="font-size:11px;color:var(--muted);text-align:center;margin-top:18px">${q.notes ? esc(q.notes) + ' · ' : ''}${Number(q.tax) > 0 ? 'Total includes VAT (' + Number(q.tax) + '%).' : 'No VAT applies to this ' + noun + '.'}</div>`;
   byId('qp-lines').innerHTML = lines.map(row).join('');
   byId('qp-rail').innerHTML = rail();
   mountChat();
@@ -254,14 +295,15 @@ async function recordAccept() {
   };
   try { await fn('quote-public-update', { token, action: 'accept', snapshot }); } catch (e) { /* best-effort */ }
 }
-/** @param {string} amountLabel @param {() => void} onConfirm */
-function openPaySheet(amountLabel, onConfirm) {
+/** @param {string} amountLabel @param {string} subline @param {() => void} onConfirm */
+function openPaySheet(amountLabel, subline, onConfirm) {
   closePaySheet();
   const el = document.createElement('div');
   el.className = 'qp-overlay'; el.id = 'qp-pay';
   el.innerHTML = `<div class="qp-sheet">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><strong style="font-size:15px">Pay your deposit</strong><button onclick="__qp.closePay()" style="border:none;background:none;font-size:20px;cursor:pointer;color:var(--muted)">×</button></div>
-    <div style="font-size:26px;font-weight:800;margin-bottom:12px">${amountLabel}</div>
+    <div style="font-size:26px;font-weight:800;margin-bottom:2px">${amountLabel}</div>
+    ${subline ? `<div style="font-size:12px;color:var(--muted);margin-bottom:12px">${subline}</div>` : '<div style="margin-bottom:12px"></div>'}
     <div id="qp-pay-el"></div>
     <div id="qp-pay-err" style="color:var(--danger);font-size:12px;margin-top:8px"></div>
     <button class="btn btn-primary btn-lg" id="qp-pay-btn" style="margin-top:12px">Pay ${amountLabel}</button>
@@ -271,13 +313,31 @@ function openPaySheet(amountLabel, onConfirm) {
   byId('qp-pay-btn').addEventListener('click', onConfirm);
 }
 function closePaySheet() { const e = document.getElementById('qp-pay'); if (e) e.remove(); }
+/** Small "what happens next" panel shared by the accepted / paid states.
+ *  @param {string[]} rows */
+function nextStepsPanel(rows) {
+  const biz = D.business || {};
+  const contact = [biz.email, biz.phone].filter(Boolean).map(esc).join(' · ');
+  return `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:16px;margin-top:20px;text-align:left;font-size:13px;color:var(--text2);line-height:1.5">
+      <div style="font-weight:700;color:var(--text);margin-bottom:6px">What happens next</div>
+      <ul style="margin:0;padding-left:18px">${rows.map((/** @type {string} */ r) => `<li>${r}</li>`).join('')}</ul>
+    </div>
+    ${contact ? `<div style="font-size:12px;color:var(--muted);margin-top:14px">Questions? Reach ${esc(biz.name || 'us')} at ${contact}, or message us on this page any time.</div>` : ''}`;
+}
 /** @param {any} pay */
 function paidState(pay) {
   if (D.quote) D.quote.accepted_at = new Date().toISOString();
+  const t = totals();
+  const isDep = pay.kind === 'deposit';
   byId('qp-root').innerHTML = `<div class="qp-state">
     <div class="check"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
     <h1 style="font-size:22px;font-weight:800;color:var(--text)">Payment received 🎉</h1>
-    <p style="font-size:14px;margin-top:8px;color:var(--text2)">Thanks — your ${money(pay.amount)} ${pay.kind === 'deposit' ? 'deposit' : 'payment'} is in and your order is confirmed.${D.business?.name ? ' ' + esc(D.business.name) + ' will be in touch.' : ''} A receipt is on its way.</p>
+    <p style="font-size:14px;margin-top:8px;color:var(--text2)">Your ${money(pay.amount)} ${isDep ? 'deposit' : 'payment'} is confirmed and your order is booked in.</p>
+    ${nextStepsPanel([
+      'A receipt is on its way to your email.',
+      isDep && t.balance > 0 ? `The remaining ${money(t.balance)} balance is due on completion.` : 'This order is paid in full.',
+      `${esc(D.business?.name || 'Your maker')} will be in touch to arrange the work.`,
+    ])}
   </div>`;
 }
 
@@ -314,7 +374,7 @@ const handlers = {
     l.customer_included = !l.customer_included;
     refreshLine(id);
     try { await fn('quote-public-update', { token, action: 'toggle', line_id: id, included: l.customer_included }); }
-    catch (e) { l.customer_included = !l.customer_included; refreshLine(id); alert('Could not update — please try again.'); }
+    catch (e) { l.customer_included = !l.customer_included; refreshLine(id); alert(friendlyError(e, 'Could not update that item — please try again.')); }
   },
   /** @param {number} id */
   toggleSpec(id) {
@@ -350,7 +410,7 @@ const handlers = {
     try {
       await fn('quote-public-update', { token, action: 'accept', snapshot });
       successState(t);
-    } catch (e) { alert('Could not record acceptance — please try again.'); }
+    } catch (e) { alert(friendlyError(e, 'Could not record your acceptance — please try again.')); }
   },
   async payDeposit() {
     if (D?.quote?.accepted_at) return;
@@ -358,8 +418,10 @@ const handlers = {
     try { pay = await fn('quote-pay', { token, kind: 'deposit' }); }
     catch (e) {
       const m = (/** @type {Error} */ (e)).message;
+      // No card set up yet → fall back to a plain accept so the customer isn't
+      // blocked; the maker arranges payment separately.
       if (m === 'payments_unavailable' || m === 'payments_disabled') { await handlers.accept(); return; }
-      alert('Could not start payment: ' + m); return;
+      alert(friendlyError(e, 'Could not start payment. Please try again.')); return;
     }
     await recordAccept();
     const StripeCtor = await loadStripe();
@@ -367,11 +429,15 @@ const handlers = {
     // must run in that account's context to confirm it.
     const stripe = StripeCtor(pay.publishable_key, { stripeAccount: pay.account_id });
     const elements = stripe.elements({ clientSecret: pay.client_secret });
-    openPaySheet(money(pay.amount), async () => {
+    const t = totals();
+    const subline = t.depPct
+      ? `${t.depPct}% deposit · ${money(t.balance)} balance due on completion`
+      : 'Full payment';
+    openPaySheet(money(pay.amount), subline, async () => {
       const errEl = byId('qp-pay-err'); const btn = byId('qp-pay-btn');
       btn.setAttribute('disabled', ''); btn.textContent = 'Processing…';
       const { error } = await stripe.confirmPayment({ elements, redirect: 'if_required' });
-      if (error) { errEl.textContent = error.message || 'Payment failed'; btn.removeAttribute('disabled'); btn.textContent = 'Pay ' + money(pay.amount); return; }
+      if (error) { errEl.textContent = error.message || 'Payment could not be completed — please check your card details.'; btn.removeAttribute('disabled'); btn.textContent = 'Pay ' + money(pay.amount); return; }
       closePaySheet(); paidState(pay);
     });
     elements.create('payment').mount('#qp-pay-el');
@@ -404,7 +470,7 @@ async function applyEdit(id, patch) {
     const host = byId('qp-spec-' + id); if (host) host.style.display = 'none';
     refreshLine(id);
   } catch (e) {
-    alert('Could not save that change: ' + (/** @type {Error} */(e)).message);
+    alert(friendlyError(e, 'Could not save that change — please try again.'));
   }
 }
 
@@ -414,7 +480,12 @@ function successState(t) {
   byId('qp-root').innerHTML = `<div class="qp-state">
     <div class="check"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
     <h1 style="font-size:22px;font-weight:800;color:var(--text)">Quote accepted 🎉</h1>
-    <p style="font-size:14px;margin-top:8px;color:var(--text2)">Thanks — we've let ${esc(D.business?.name || 'your cabinetmaker')} know.${t.depPct ? ' They’ll be in touch about your ' + money(t.deposit) + ' deposit to book your slot.' : ''} You can reopen this link any time.</p>
+    <p style="font-size:14px;margin-top:8px;color:var(--text2)">Thanks — we've let ${esc(D.business?.name || 'your cabinetmaker')} know.</p>
+    ${nextStepsPanel([
+      `${esc(D.business?.name || 'Your maker')} will be in touch to confirm the details.`,
+      t.depPct ? `They’ll arrange your ${money(t.deposit)} deposit (${t.depPct}%) to book your slot.` : 'They’ll let you know about payment and timing.',
+      'You can reopen this link any time to review your items.',
+    ])}
   </div>`;
 }
 
@@ -424,8 +495,16 @@ function successState(t) {
 async function boot() {
   if (!SBURL || !SBKEY) { byId('qp-root').innerHTML = `<div class="qp-state">Configuration error.</div>`; return; }
   if (!token) { byId('qp-root').innerHTML = `<div class="qp-state">This link is missing its quote reference.</div>`; return; }
+  // If the network is slow, reassure rather than show a frozen spinner.
+  const slow = setTimeout(() => {
+    const root = byId('qp-root');
+    if (root && root.querySelector('.qp-spin')) {
+      root.innerHTML = `<div class="qp-state"><div class="qp-spin"></div>Still loading… this is taking a little longer than usual.</div>`;
+    }
+  }, 8000);
   try {
     D = await fn('quote-public-get', { token });
+    clearTimeout(slow);
     cur = (D.business && D.business.default_currency) || '£';
     lines = (D.lines || []).map(/** @param {any} l */(l) => ({ ...l }));
     photosByLine = {};
@@ -433,12 +512,8 @@ async function boot() {
     renderTop();
     render();
   } catch (e) {
-    const msg = (/** @type {Error} */ (e)).message;
-    const friendly = msg === 'not_found' ? 'This quote link is no longer valid.'
-      : msg === 'expired' ? 'This quote has expired. Please ask for a fresh link.'
-      : msg === 'closed' ? 'This quote is closed.'
-      : 'Sorry — we couldn’t load this quote. Please check the link or try again.';
-    byId('qp-root').innerHTML = `<div class="qp-state">${esc(friendly)}</div>`;
+    clearTimeout(slow);
+    byId('qp-root').innerHTML = `<div class="qp-state">${esc(friendlyError(e, 'Sorry — we couldn’t load this. Please check the link or try again.'))}</div>`;
   }
 }
 

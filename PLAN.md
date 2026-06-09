@@ -62,6 +62,23 @@ a **0.7% (capped ~$100)** application fee. Built across the quote/order overhaul
 
 Detail: SPEC.md § 13 (2026-06-09).
 
+### Live-link workflow — clarity & trust pass ✅ Done 2026-06-09
+
+Full review of the business + customer live-link flow; fixed the verified issues.
+
+- ✅ **Security (deployed):** stopped `quote-public-get` leaking cost inputs
+  (`unit_price`/`labour_hours`) + `abn`/`bank_details` to anyone with a link;
+  `quote-pay` expiry guard; `quote-public-update` snapshot validation;
+  `quote-messages` rate limit; `quote-pay-webhook` idempotent under the
+  duplicate-order race (`orders_quote_id_unique`). 5 functions redeployed.
+- ✅ **Customer page:** phone+email contact, friendly errors, loading spinner,
+  order banner, deposit/balance breakdown, "what happens next" confirmation,
+  VAT clarity, a11y + mobile fixes.
+- ✅ **Business panel:** live status row, Stripe-not-connected payment guard,
+  plain-language toggle relabels, fee transparency, empty-quote guard.
+
+Detail: SPEC.md § 13 (2026-06-09).
+
 ### Quote/Order cards sync with live-link status ✅ Done 2026-06-09
 
 Quote & order cards now reflect the live-link lifecycle the backend already

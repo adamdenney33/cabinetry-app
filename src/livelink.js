@@ -5,8 +5,9 @@
 // a live preview of the customer /q page (with a two-way chat launcher) rendered
 // into the main pane. Replaces the old _openSharePanel popup.
 //
-// For an ORDER, the live link is the originating quote's (one link per deal,
-// quote -> order), so all live-link operations resolve to that backing quote.
+// An ORDER is independently shareable: it carries its OWN share_token /
+// share_settings and its live page is view-only (the customer reviews items +
+// messages, but can't re-select or re-spec — that all happens on the quote).
 //
 // Cross-file deps: quotes/orders/clients (arrays), _qpState (quotes.js) /
 // _opState (orders.js), _db/_userId (db.js), _toast/_escHtml/_openPopup/
@@ -100,8 +101,11 @@ async function _llEnterLive(kind) {
   if (body) body.innerHTML = _liveLinkPanel(kind);
   _llSyncLineControls();
   _llRenderPreview(kind);
-  // Auto-create the live link on first open (no manual "Generate" button).
-  if (q && !q.share_token && typeof _generateShareLink === 'function') await _generateShareLink(q.id, kind);
+  // Auto-create the live link on first open (no manual "Generate" button) —
+  // but never for a quote with no items (it would share a blank page; the panel
+  // shows an "add items first" notice instead).
+  const hasLines = kind === 'order' || (q && Array.isArray(q._lines) && q._lines.length > 0);
+  if (q && !q.share_token && hasLines && typeof _generateShareLink === 'function') await _generateShareLink(q.id, kind);
 }
 
 // ── Tab switching ────────────────────────────────────────────────────────────
@@ -156,12 +160,34 @@ function _orderLinkPanel(o) {
          <a class="btn btn-outline" href="${_escHtml(link)}" target="_blank">Open ↗</a>
        </div>`
     : `<div class="ll-empty">Creating live link…</div>`;
+  const statusRow = `<div class="ll-status-row"><span class="ll-status-dot" style="background:${shared ? '#2962d9' : 'var(--border)'}"></span>${shared ? 'Live link ready to share' : 'Setting up live link…'}</div>`;
   return `<div class="ll-pad">
+    ${statusRow}
     ${linkBox}
     <div class="ll-h">Customer access</div>
-    <div class="ll-hint">Customers can view this order’s items and message you from the live page. Spec changes and item selection stay on the quote.</div>
+    <div class="ll-hint">This order’s page is view-only: customers can review the items and message you. Choosing items and requesting spec changes happen on the quote.</div>
     <div class="ll-autosave" id="ll-autosave">${shared ? 'Live link ready' : 'Creating live link…'}</div>
   </div>`;
+}
+
+/** Whether the maker's Stripe Connect account can actually take card payments.
+ *  Reads the cached connect-status (connect.js). @returns {boolean} */
+function _llStripeReady() {
+  const s = typeof _connectStatus !== 'undefined' ? _connectStatus : null;
+  return !!(s && s.connected && s.charges_enabled);
+}
+
+/** A one-line "where this link is at" banner so the maker can see customer
+ *  activity without leaving the Live link tab. @param {any} q @returns {string} */
+function _llStatusRow(q) {
+  const fmt = typeof _fmtLLDate === 'function' ? _fmtLLDate : (/** @type {string} */ s) => String(s).slice(0, 10);
+  let label, dot;
+  if (q.status === 'paid' || q.status === 'deposit_paid') { label = q.status === 'paid' ? 'Paid in full' : 'Deposit paid'; dot = 'var(--success)'; }
+  else if (q.accepted_at) { label = `Accepted ${fmt(q.accepted_at)}`; dot = 'var(--success)'; }
+  else if (q.viewed_at) { label = `Viewed ${fmt(q.viewed_at)}`; dot = '#2962d9'; }
+  else if (q.share_token) { label = 'Live — not viewed yet'; dot = '#2962d9'; }
+  else { label = 'Not shared yet'; dot = 'var(--border)'; }
+  return `<div class="ll-status-row"><span class="ll-status-dot" style="background:${dot}"></span>${label}</div>`;
 }
 
 /** @param {'quote'|'order'} kind @returns {string} */
@@ -191,21 +217,36 @@ function _liveLinkPanel(kind) {
   const togPro = (/** @type {string} */ id, /** @type {string} */ label, /** @type {string} */ desc, /** @type {boolean} */ on) =>
     pro ? tog(id, label, desc, on)
         : `<div class="share-toggle-row ll-locked" onclick="_llControlsProGate()"><div><div class="st-label">${label} <span class="ll-pro-pill">Pro</span></div><div class="st-desc">${desc}</div></div><button class="mini-toggle" id="${id}" aria-pressed="false" disabled></button></div>`;
-  const lineRows = lines.map(_llLineControl).join('') || '<div class="ll-hint" style="padding:8px 0">No line items on this quote yet.</div>';
+  // Guard: a quote with no items would share as a blank page. Block sharing and
+  // tell the maker what to do instead.
+  if (!lines.length) {
+    return `<div class="ll-pad">
+      ${_llStatusRow(q)}
+      <div class="ll-empty" style="margin-top:12px">Add at least one item to this quote before sharing — the customer’s page would be empty otherwise. Switch to <strong>Quote builder</strong> to add items.</div>
+    </div>`;
+  }
+  const lineRows = lines.map(_llLineControl).join('');
   const perLineSection = pro
     ? `<div class="ll-h">Per-line controls</div>
        <div class="ll-hint">Mark lines the customer may remove, and which specs they can request changes to.</div>
        ${lineRows}`
     : '';
+  // Payment toggle: only offer it once Stripe Connect can take charges, so the
+  // maker never shares a link whose "Pay" button errors for the customer.
+  const stripeReady = _llStripeReady();
+  const payRow = stripeReady
+    ? tog('sh-pay', 'Accept card payment', 'Paid straight into your Stripe · ProCabinet fee 0.7% (capped)', !!s.accept_payment)
+    : `<div class="share-toggle-row ll-locked"><div><div class="st-label">Accept card payment</div><div class="st-desc">Connect Stripe to take a deposit on the live page. <a onclick="_openConnectPopup()" style="color:var(--accent);cursor:pointer;font-weight:600">Set up payments →</a></div></div><button class="mini-toggle" aria-pressed="false" disabled></button></div>`;
   return `<div class="ll-pad">
+    ${_llStatusRow(q)}
     ${linkBox}
     <div class="ll-h">Payment</div>
-    ${tog('sh-pay', 'Accept card payment', 'Pays into your Stripe · platform fee applies', !!s.accept_payment)}
-    <div class="share-toggle-row"><div><div class="st-label">Take a deposit</div><div class="st-desc">% due to confirm the order</div></div>
+    ${payRow}
+    <div class="share-toggle-row"><div><div class="st-label">Take a deposit</div><div class="st-desc">Collected when the customer accepts · balance due on completion</div></div>
       <div class="ll-dep"><input type="number" id="sh-dep" value="${s.deposit_pct != null ? s.deposit_pct : 40}" min="0" max="100" onchange="_llAutoSave()"><span>%</span></div></div>
     <div class="ll-h">What the customer can do</div>
-    ${togPro('sh-select', 'Allow item selection', 'Include / exclude optional lines', s.allow_select !== false)}
-    ${togPro('sh-edit', 'Allow spec editing', 'Customer can request changes to unlocked specs', !!s.allow_edit)}
+    ${togPro('sh-select', 'Let customers choose items', 'They can include / exclude lines you mark optional below', s.allow_select !== false)}
+    ${togPro('sh-edit', 'Let customers request changes', 'They can request changes to specs you unlock — you confirm the new price before anything’s charged', !!s.allow_edit)}
     ${perLineSection}
     <div class="ll-autosave" id="ll-autosave">${shared ? 'Changes save automatically' : 'Creating live link…'}</div>
   </div>`;
@@ -354,8 +395,8 @@ async function _sendLiveLink(kind, id) {
   const link = _shareLink(entity.share_token);
   const first = (client && client.name) ? (' ' + String(client.name).split(/[ &]/)[0]) : '';
   const noun = kind === 'order' ? 'order' : 'quote';
-  const num = kind === 'order' ? entity.order_number : entity.quote_number;
-  const subject = `Your ${noun}${num ? ' ' + num : ''} from ${biz}`;
+  const num = (kind === 'order' ? entity.order_number : entity.quote_number) || `#${entity.id}`;
+  const subject = `Your ${noun} ${num} from ${biz}`;
   const body = kind === 'order'
     ? `Hi${first},\n\nHere's your order — you can view the details and message us any time on this page:\n\n${link}\n\nAny questions, just reply to this email or send us a message on the page.\n\nThanks,\n${biz}`
     : `Hi${first},\n\nHere's your quote — you can review the items, choose what you'd like, and approve it online here:\n\n${link}\n\nAny questions, just reply to this email or send us a message on the page.\n\nThanks,\n${biz}`;
