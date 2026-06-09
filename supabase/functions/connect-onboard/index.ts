@@ -1,6 +1,6 @@
 // ProCabinet — Stripe Connect onboarding for the business (Pro).
 //
-// Authenticated. Creates (or reuses) the business's Express connected account and
+// Authenticated. Creates (or reuses) the business's Standard connected account and
 // returns a Stripe-hosted onboarding URL. Once onboarding completes, customers
 // can pay the business directly on the live quote page (with the platform fee).
 //
@@ -28,14 +28,14 @@ Deno.serve(async (req) => {
 
     let accountId = row?.stripe_account_id as string | undefined;
     if (!accountId) {
+      // Standard account: the maker gets their own Stripe dashboard, is merchant
+      // of record, and pays Stripe's processing fee (we take only the application
+      // fee on direct charges). Standard accounts manage their own capabilities,
+      // so we don't request them here. Account Links hosted onboarding is supported.
       const account = await stripe.accounts.create({
-        type: 'express',
+        type: 'standard',
         email: auth.user.email ?? undefined,
         metadata: { user_id: uid },
-        capabilities: {
-          card_payments: { requested: true },
-          transfers: { requested: true },
-        },
       });
       accountId = account.id;
       await admin.from('stripe_accounts').upsert({

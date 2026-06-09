@@ -2,9 +2,9 @@
 //
 // UNAUTHENTICATED (the customer is anon). Resolves the quote by share_token,
 // computes the amount SERVER-SIDE from the snapshotted customer_price (the
-// customer can't dictate what they pay), and creates a destination charge into
-// the business's connected account with ProCabinet's application fee. Returns a
-// client_secret + the platform publishable key for Stripe.js to confirm.
+// customer can't dictate what they pay), and creates a DIRECT charge on the
+// business's connected account with ProCabinet's application fee. Returns a
+// client_secret + publishable key + connected account_id for Stripe.js to confirm.
 //
 // DEPLOY NOTE: verify_jwt = false.
 // Env: STRIPE_SECRET_KEY, STRIPE_PUBLISHABLE_KEY, STRIPE_PLATFORM_FEE_BPS.
@@ -69,16 +69,18 @@ Deno.serve(async (req) => {
       currency = CUR_MAP[(biz?.default_currency as string) || '£'] || 'gbp';
     }
     const amountMinor = Math.round(amount * 100);
-    const fee = platformFee(amountMinor);
+    const fee = platformFee(amountMinor, currency);
 
+    // DIRECT charge: the PaymentIntent is created ON the connected account (via the
+    // stripeAccount option), so the maker is merchant of record and pays Stripe's
+    // processing fee; application_fee_amount is transferred to the ProCabinet platform.
     const pi = await stripe.paymentIntents.create({
       amount: amountMinor,
       currency,
       application_fee_amount: fee,
-      transfer_data: { destination: acct.stripe_account_id },
       automatic_payment_methods: { enabled: true },
       metadata: { quote_id: String(quote.id), user_id: quote.user_id, kind },
-    });
+    }, { stripeAccount: acct.stripe_account_id });
 
     await admin.from('payments').upsert({
       user_id: quote.user_id,
@@ -95,6 +97,7 @@ Deno.serve(async (req) => {
     return jsonResponse({
       client_secret: pi.client_secret,
       publishable_key: STRIPE_PUBLISHABLE_KEY,
+      account_id: acct.stripe_account_id,   // direct charge → Stripe.js must init with { stripeAccount }
       amount, currency, kind,
     }, 200, cors);
   } catch (err) {

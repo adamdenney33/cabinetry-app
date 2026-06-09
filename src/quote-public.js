@@ -363,7 +363,9 @@ const handlers = {
     }
     await recordAccept();
     const StripeCtor = await loadStripe();
-    const stripe = StripeCtor(pay.publishable_key);
+    // Direct charge: the PaymentIntent lives on the connected account, so Stripe.js
+    // must run in that account's context to confirm it.
+    const stripe = StripeCtor(pay.publishable_key, { stripeAccount: pay.account_id });
     const elements = stripe.elements({ clientSecret: pay.client_secret });
     openPaySheet(money(pay.amount), async () => {
       const errEl = byId('qp-pay-err'); const btn = byId('qp-pay-btn');
