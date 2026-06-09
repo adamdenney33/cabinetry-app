@@ -20,8 +20,10 @@
     <div class="auth-heading" id="auth-heading">Create your account</div>
     <div id="auth-reassure" class="auth-reassure">✓ 14 days of Pro included · no card · no commitment</div>
     <div id="auth-msg"></div>
-    <input type="text" id="auth-first-name" class="auth-input" placeholder="First name" autocomplete="given-name">
-    <input type="text" id="auth-last-name" class="auth-input" placeholder="Last name" autocomplete="family-name">
+    <!-- F: signup friction — name fields removed (each extra field costs
+         signups). Names are optional metadata; collect later in-app if ever
+         needed. Downstream display (account dropdown) already tolerates
+         accounts with no name. -->
     <input type="email" id="auth-email" class="auth-input" placeholder="Email address" autocomplete="email">
     <input type="password" id="auth-password" class="auth-input" placeholder="Password" autocomplete="current-password">
     <div id="auth-marketing-row" style="display:flex;flex-direction:column;gap:8px;margin:2px 2px 12px;text-align:left">

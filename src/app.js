@@ -1263,8 +1263,6 @@ function toggleAuthMode() {
     ? 'No account? <span onclick="toggleAuthMode()">Create one</span>'
     : 'Already have an account? <span onclick="toggleAuthMode()">Sign In</span>';
   /** @type {HTMLElement} */ (document.getElementById('auth-marketing-row')).style.display = isSign ? 'none' : 'flex';
-  /** @type {HTMLElement} */ (document.getElementById('auth-first-name')).style.display = isSign ? 'none' : 'block';
-  /** @type {HTMLElement} */ (document.getElementById('auth-last-name')).style.display = isSign ? 'none' : 'block';
   const reassureEl = document.getElementById('auth-reassure');
   if (reassureEl) reassureEl.style.display = isSign ? 'none' : '';
   /** @type {HTMLElement} */ (document.getElementById('auth-msg')).innerHTML = '';
@@ -1273,13 +1271,10 @@ function toggleAuthMode() {
 async function authSubmit() {
   const email = /** @type {HTMLInputElement | null} */ (document.getElementById('auth-email'))?.value.trim() || '';
   const password = /** @type {HTMLInputElement | null} */ (document.getElementById('auth-password'))?.value || '';
-  const firstName = /** @type {HTMLInputElement | null} */ (document.getElementById('auth-first-name'))?.value.trim() || '';
-  const lastName = /** @type {HTMLInputElement | null} */ (document.getElementById('auth-last-name'))?.value.trim() || '';
   const msgEl = document.getElementById('auth-msg');
   const btn = /** @type {HTMLButtonElement | null} */ (document.getElementById('auth-btn'));
   if (msgEl) msgEl.innerHTML = '';
   if (!email || !password) { if (msgEl) msgEl.innerHTML = '<div class="auth-error">Email and password required.</div>'; return; }
-  if (_authMode === 'signup' && (!firstName || !lastName)) { if (msgEl) msgEl.innerHTML = '<div class="auth-error">Please enter your first and last name.</div>'; return; }
   if (btn) { btn.disabled = true; btn.textContent = '…'; }
   let error;
   try {
@@ -1303,11 +1298,11 @@ async function authSubmit() {
           // app actually lives so dev signups don't bounce to a 404.
           emailRedirectTo: window.location.origin + (window._isDev ? '' : '/os'),
           // Persisted into auth.users.user_metadata; the list-subscribe edge
-          // function reads it after the user confirms their email. first_name/
-          // last_name are collected at signup; full_name is the convenience
-          // combination, queryable via `raw_user_meta_data->>'full_name'` and
-          // used to greet them in-app.
-          data: { first_name: firstName, last_name: lastName, full_name: `${firstName} ${lastName}`, marketing_opt_in: marketingOptIn, attribution },
+          // function reads marketing_opt_in after the user confirms their
+          // email. Name fields were dropped from signup (F: friction) — the
+          // account dropdown and greetings already tolerate accounts with no
+          // first_name/last_name/full_name metadata.
+          data: { marketing_opt_in: marketingOptIn, attribution },
         },
       }));
     }
@@ -1325,7 +1320,10 @@ async function authSubmit() {
   if (_authMode === 'signup' && typeof _trackSignupConversion === 'function') {
     _trackSignupConversion();
   }
-  if (_authMode === 'signup' && msgEl) { msgEl.innerHTML = '<div class="auth-success">Check your email to confirm your account, then sign in.</div>'; }
+  // The confirm link's tokens land on /os and the Supabase client exchanges
+  // them automatically — clicking the link signs the user straight in, so
+  // don't tell them to come back and sign in again.
+  if (_authMode === 'signup' && msgEl) { msgEl.innerHTML = '<div class="auth-success">Almost there — check your email and click the confirmation link. It signs you in automatically.</div>'; }
 }
 
 async function signOut() {
