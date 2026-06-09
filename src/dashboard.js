@@ -27,6 +27,17 @@ function renderDashboard() {
   const lowStock      = stockItems.filter(i => (i.qty ?? 0) <= (i.low ?? 0));
   const DASH_CARD_ROWS = 5;
 
+  // Getting Started progress (F: aha checklist) — ticks driven by cheap,
+  // unambiguous signals only. The card itself shows until the first real
+  // quote or order exists (first value), then disappears for good.
+  const gsStockDone = stockItems.length > 0;
+  const gsCabDone = typeof cbLibrary !== 'undefined' && cbLibrary.length > 0;
+  const gsTick = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+  /** @param {string} n @param {boolean} done */
+  const gsCircle = (n, done) => done
+    ? `<div style="width:28px;height:28px;border-radius:50%;background:rgba(61,153,112,0.16);color:#3d9970;display:flex;align-items:center;justify-content:center;flex-shrink:0">${gsTick}</div>`
+    : `<div style="width:28px;height:28px;border-radius:50%;background:var(--surface2);color:var(--muted);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;flex-shrink:0">${n}</div>`;
+
   // Schedule data — mirror the Schedule tab so the dashboard "this week" card
   // shows the same events as the calendar. See src/schedule.js:43-80.
   if (typeof _restoreProdStarts === 'function') _restoreProdStarts(orders);
@@ -75,8 +86,8 @@ function renderDashboard() {
         <button class="btn btn-outline" onclick="switchSection('clients');setTimeout(()=>document.getElementById('cl-name')?.focus(),100)" style="font-size:11px;padding:6px 12px;width:auto">+ Client</button>
       </div>
 
-      <!-- Getting started guide — only when everything is empty -->
-      ${orders.length === 0 && customerQuotes.length === 0 && stockItems.length === 0 && !localStorage.getItem('pc_hide_guide') ? `
+      <!-- Getting started guide — shows until the first real quote/order -->
+      ${orders.length === 0 && customerQuotes.length === 0 && !localStorage.getItem('pc_hide_guide') ? `
       <div id="getting-started-guide" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px 24px;margin-bottom:20px;position:relative">
         <button onclick="localStorage.setItem('pc_hide_guide','1');this.parentElement.remove()" style="position:absolute;top:8px;right:8px;background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:4px 8px;border-radius:4px" title="Dismiss">&times;</button>
         <div style="font-size:13px;font-weight:700;margin-bottom:12px;color:var(--text)">Getting Started</div>
@@ -86,11 +97,11 @@ function renderDashboard() {
             <div><div style="font-size:13px;font-weight:600;color:var(--accent)">Set your rates</div><div style="font-size:11px;color:var(--muted);margin-top:2px">Hourly rate, markup and labour times — every cabinet prices itself from these</div></div>
           </div>
           <div style="display:flex;gap:12px;align-items:flex-start;cursor:pointer" onclick="switchSection('stock')">
-            <div style="width:28px;height:28px;border-radius:50%;background:var(--surface2);color:var(--muted);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;flex-shrink:0">2</div>
+            ${gsCircle('2', gsStockDone)}
             <div><div style="font-size:13px;font-weight:600;color:var(--text2)">Add stock materials</div><div style="font-size:11px;color:var(--muted);margin-top:2px">Sheets, edging and hardware — they feed your quotes, cut lists and orders</div></div>
           </div>
           <div style="display:flex;gap:12px;align-items:flex-start;cursor:pointer" onclick="switchSection('cabinet')">
-            <div style="width:28px;height:28px;border-radius:50%;background:var(--surface2);color:var(--muted);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;flex-shrink:0">3</div>
+            ${gsCircle('3', gsCabDone)}
             <div><div style="font-size:13px;font-weight:600;color:var(--text2)">Build a cabinet</div><div style="font-size:11px;color:var(--muted);margin-top:2px">Spec it once in the builder and save it to your library to reuse on every job</div></div>
           </div>
           <div style="display:flex;gap:12px;align-items:flex-start;cursor:pointer" onclick="switchSection('quote')">
