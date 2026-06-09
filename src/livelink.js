@@ -70,18 +70,18 @@ function _llLiveBodyDiv(kind) {
   return `<div id="${id}"${_llTab[kind] === 'live' ? '' : ' style="display:none"'}></div>`;
 }
 
-/** Self-heal: quotes shared before the per-line price snapshot existed have a
- *  null customer_price, so the customer page shows £0 ("awaiting a confirmed
- *  price"). On opening the Live-link tab, fill any missing prices from the quote's
- *  own figures — WITHOUT touching share_settings (unlike _generateShareLink, which
- *  reads the settings toggles from the DOM and would clobber them here). @param {any} q */
-async function _llBackfillPrices(q) {
+/** Keep each line's customer-facing `customer_price` in sync with the quote's
+ *  CURRENT figures every time the Live-link tab opens. customer_price is a
+ *  snapshot, so it goes stale when the business edits a line after sharing (or
+ *  shares while a line is still £0) — the customer then sees a wrong/zero total.
+ *  Recompute from `_shareLineCustomerPrice` (price-only — never touches
+ *  share_settings, unlike _generateShareLink which reads the settings DOM) and
+ *  write only the lines whose price actually changed. @param {any} q */
+async function _llSyncCustomerPrices(q) {
   if (!q || !q.share_token || typeof _shareLineCustomerPrice !== 'function') return;
-  const missing = (q._lines || []).filter(/** @param {any} l */ (l) => l.customer_price == null);
-  if (!missing.length) return;
-  for (const l of missing) {
+  for (const l of (q._lines || [])) {
     const customer_price = _shareLineCustomerPrice(q, l);
-    if (customer_price == null) continue;
+    if (customer_price == null || Number(l.customer_price) === customer_price) continue; // unchanged
     try {
       const r = await _db('quote_lines').update(/** @type {any} */ ({ customer_price })).eq('id', l.id);
       if (!r || !r.error) l.customer_price = customer_price;
@@ -94,7 +94,7 @@ async function _llBackfillPrices(q) {
 async function _llEnterLive(kind) {
   const q = _llShareQuote(kind);
   await _llEnsureLines(q, kind);
-  if (kind === 'quote') await _llBackfillPrices(q);  // self-heal pre-pricing-snapshot quotes (£0 → real price)
+  if (kind === 'quote') await _llSyncCustomerPrices(q);  // keep customer_price in sync with current quote (fixes stale £0)
   const bodyId = kind === 'quote' ? 'ql-live-body' : 'ol-live-body';
   const body = document.getElementById(bodyId);
   if (body) body.innerHTML = _liveLinkPanel(kind);
