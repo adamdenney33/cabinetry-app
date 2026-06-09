@@ -1,0 +1,366 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mockup — DXF / CNC export on landing &amp; pricing</title>
+  <style>
+    /* ── Subset of landing.css (tokens + the classes these sections use) ── */
+    :root{
+      --accent:#e8a838; --accent-dim:rgba(232,168,56,.12);
+      --ink:#111; --bg:#f2f2f2; --surface:#fff; --surface-2:#f7f7f7;
+      --border:#e0e0e0; --text:#111; --text-2:#444; --muted:#888;
+      --radius:10px; --radius-lg:16px;
+      --shadow-lg:0 18px 50px rgba(0,0,0,.16);
+      --maxw:1180px; --ease:cubic-bezier(.22,.61,.36,1);
+      --font:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:var(--font);color:var(--text);background:var(--bg);line-height:1.55;-webkit-font-smoothing:antialiased}
+    img{max-width:100%;display:block}
+    h1,h2,h3,p,ul{margin:0}
+    .amber{color:var(--accent)}
+    .eyebrow{display:inline-block;font-size:13px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--accent)}
+    .section-lede{font-size:17px;color:var(--text-2);margin:12px auto 0;max-width:56ch}
+
+    /* buttons */
+    .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;font:inherit;font-weight:600;font-size:15px;line-height:1;padding:13px 20px;border-radius:var(--radius);border:1px solid transparent;cursor:pointer;white-space:nowrap;transition:transform .15s var(--ease),box-shadow .15s var(--ease)}
+    .btn:hover{transform:translateY(-2px)}
+    .full{width:100%}
+    .btn-amber{background:var(--accent);color:#1a1a1a;box-shadow:0 6px 18px rgba(232,168,56,.35)}
+    .btn-ghost{background:transparent;color:var(--text);border-color:var(--border)}
+
+    /* feature sections */
+    .feature{position:relative;max-width:var(--maxw);margin:0 auto;padding:48px 24px;display:grid;grid-template-columns:1fr 1.1fr;gap:56px;align-items:center}
+    .feature.reverse .feature-copy{order:2}
+    .feature.reverse .feature-media{order:1}
+    .feature-icon{display:inline-flex;align-items:center;justify-content:center;width:52px;height:52px;background:var(--accent-dim);border-radius:14px}
+    .feature-icon svg{width:28px;height:28px}
+    .feature h3{font-size:clamp(22px,2.6vw,30px);font-weight:800;letter-spacing:-.4px;margin:18px 0 0}
+    .promise{font-size:17px;line-height:1.6;color:var(--text-2);margin:12px 0 0}
+    .ticks{list-style:none;margin:22px 0 0;padding:0;display:grid;gap:12px}
+    .ticks li{position:relative;padding-left:30px;font-size:15px;line-height:1.5}
+    .ticks li::before{content:"";position:absolute;left:0;top:1px;width:20px;height:20px;border-radius:50%;background:var(--accent-dim)}
+    .ticks li::after{content:"";position:absolute;left:7px;top:5px;width:5px;height:9px;border-right:2px solid var(--accent);border-bottom:2px solid var(--accent);transform:rotate(45deg)}
+    .ticks li.is-new{font-weight:600}
+    .ticks li.is-new::before{background:var(--accent)}
+    .ticks li.is-new::after{border-color:#fff}
+
+    /* browser frame */
+    .browser-frame{background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow-lg);overflow:hidden;position:relative}
+    .browser-dots{display:flex;gap:6px;padding:10px 12px;background:var(--surface-2);border-bottom:1px solid var(--border)}
+    .browser-dots i{width:10px;height:10px;border-radius:50%;background:#d8d8d8}
+
+    /* pro chips */
+    .pro-tag{display:inline-block;background:var(--accent);color:#1a1a1a;font-size:10px;font-weight:700;letter-spacing:.5px;padding:2px 8px;border-radius:20px;text-transform:uppercase;vertical-align:middle;margin-left:8px}
+
+    /* B — Pro callout card */
+    .pro-callout{margin-top:22px;border:1px solid var(--accent);background:var(--accent-dim);border-radius:14px;padding:16px 18px}
+    .pro-callout .pc-head{display:flex;align-items:center;gap:10px}
+    .pro-callout .pc-badge{background:var(--accent);color:#1a1a1a;font-size:11px;font-weight:700;letter-spacing:.5px;padding:3px 9px;border-radius:20px;text-transform:uppercase}
+    .pro-callout h4{margin:0;font-size:17px;font-weight:800;letter-spacing:-.2px}
+    .pro-callout p{margin:8px 0 0;font-size:14.5px;color:var(--text-2);line-height:1.55}
+    .cam-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+    .cam-chip{font-size:12px;color:var(--text-2);background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:3px 9px}
+
+    /* pricing */
+    .pricing{max-width:var(--maxw);margin:0 auto;padding:40px 24px 76px}
+    .pricing-head{text-align:center;margin-bottom:36px}
+    .pricing-head h2{font-size:clamp(26px,3.4vw,38px);font-weight:800;letter-spacing:-.5px}
+    .price-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;align-items:stretch}
+    .price-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:26px 22px;display:flex;flex-direction:column;transition:transform .2s var(--ease),box-shadow .2s var(--ease)}
+    .price-card:hover{transform:translateY(-6px);box-shadow:var(--shadow-lg)}
+    .price-tier{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted)}
+    .price-amount{font-size:40px;font-weight:800;letter-spacing:-1px;margin:6px 0 2px}
+    .price-amount span{font-size:15px;font-weight:600;color:var(--muted);letter-spacing:0}
+    .price-sub{font-size:13px;color:var(--text-2);min-height:18px}
+    .price-sub s{color:var(--muted)}
+    .price-feats{list-style:none;margin:18px 0 22px;padding:0;display:flex;flex-direction:column;gap:6px;flex:1}
+    .price-feats li{position:relative;padding-left:22px;font-size:14px;line-height:1.45;min-height:42px}
+    .price-feats li::before{content:"";position:absolute;left:0;top:7px;width:6px;height:6px;border-radius:50%;background:var(--accent)}
+    .price-feats li.muted{color:var(--muted)}
+    .price-feats li.muted::before{background:#cfcfcf}
+    .hero-card{border-color:var(--accent)}
+    .price-flag{position:absolute;top:-10px;left:50%;transform:translateX(-50%);background:var(--accent);color:#1a1a1a;font-size:11px;font-weight:700;padding:4px 12px;border-radius:20px;white-space:nowrap}
+    .new-pill{font-style:normal;font-size:10px;font-weight:700;color:var(--accent);border:1px solid var(--accent);border-radius:10px;padding:1px 6px;margin-left:6px;text-transform:uppercase;letter-spacing:.4px}
+
+    /* DXF nest illustration */
+    .dxf-art{background:#fbfbf9}
+    .dxf-art text{font-family:'SFMono-Regular',ui-monospace,Menlo,Consolas,monospace}
+
+    /* ── mockup chrome (not part of the real page) ── */
+    .mock-banner{background:var(--ink);color:#fff;padding:14px 20px;font-size:14px;text-align:center;position:static;z-index:50}
+    .mock-banner b{color:var(--accent)}
+    .mock-head{max-width:var(--maxw);margin:44px auto 0;padding:0 24px}
+    .mock-head .eyebrow{font-size:12px}
+    .mock-head h2{font-size:26px;font-weight:800;letter-spacing:-.4px;margin:6px 0 0}
+    .mock-head p{margin:8px 0 0;color:var(--text-2);font-size:15px;max-width:70ch}
+    .vtag{max-width:var(--maxw);margin:34px auto 0;padding:0 24px}
+    .vtag span{display:inline-block;background:#111;color:#fff;font-size:12px;font-weight:700;padding:6px 13px;border-radius:7px;letter-spacing:.3px}
+    .vtag.rec span{background:var(--accent);color:#1a1a1a}
+    .vnote{max-width:var(--maxw);margin:8px auto 0;padding:0 24px;color:var(--muted);font-size:13px}
+    .divider{max-width:var(--maxw);margin:30px auto 0;border-top:1px dashed #cfcfcf}
+    .card-surface{background:var(--surface);border:1px solid var(--border);border-radius:18px;max-width:calc(var(--maxw) + 8px);margin:14px auto 0}
+    .card-surface .feature{padding:36px 30px}
+    @media (max-width:860px){
+      .feature{grid-template-columns:1fr;gap:28px}
+      .feature.reverse .feature-copy{order:1}
+      .feature.reverse .feature-media{order:2}
+      .price-grid{grid-template-columns:repeat(2,1fr)}
+    }
+  </style>
+</head>
+<body>
+
+  <div class="mock-banner">
+    <b>MOCKUP</b> &nbsp;·&nbsp; DXF / CNC export on the landing page &amp; pricing &nbsp;·&nbsp; not live &nbsp;·&nbsp; pick the treatments you want, then I'll apply them to <b>landing.html</b>
+  </div>
+
+  <!-- ══════════════ LANDING — CUT LIST FEATURE ══════════════ -->
+  <div class="mock-head">
+    <span class="eyebrow">Landing · Cut List section</span>
+    <h2>How prominently to feature CNC / DXF export</h2>
+    <p>Three options, subtle → bold. They all sit in (or beside) the existing <em>Cut List Optimiser</em> feature. Same copy &amp; styling as the live page.</p>
+  </div>
+
+  <!-- Variant A — inline bullet -->
+  <div class="vtag"><span>A · Inline bullet — subtle</span></div>
+  <div class="vnote">One extra tick in the existing list. Smallest change; easy to miss.</div>
+  <div class="card-surface">
+    <section class="feature reverse">
+      <div class="feature-copy">
+        <span class="feature-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#e8a838" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="1.5"/><path d="M3 9h18M9 9v11M15 9v11"/></svg>
+        </span>
+        <h3>Cut List Optimiser</h3>
+        <p class="promise">Cut sheets that don't waste board. Pull panels and edge banding from your stock library and let the optimiser nest them.</p>
+        <ul class="ticks">
+          <li>Deduct from stock with one button.</li>
+          <li>Save reusable parts for repeat cabinets.</li>
+          <li>Set grain direction for individual parts and panels.</li>
+          <li>Add edge banding to specific sides, with the trim toggle set to each band's thickness.</li>
+          <li class="is-new">Export the nested layout as a CNC-ready DXF file.<span class="pro-tag">Pro</span></li>
+        </ul>
+      </div>
+      <div class="feature-media">
+        <div class="browser-frame">
+          <span class="browser-dots"><i></i><i></i><i></i></span>
+          <svg class="dxf-art" viewBox="0 0 520 300" width="100%" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" aria-label="Nested DXF sheet">
+            <rect width="520" height="300" fill="#fbfbf9"/>
+            <g stroke="#111" stroke-width="1" fill="rgba(232,168,56,.10)">
+              <rect x="28" y="40" width="220" height="220"/>
+              <rect x="36" y="48" width="92" height="120"/><rect x="134" y="48" width="106" height="74"/>
+              <rect x="134" y="128" width="50" height="62"/><rect x="190" y="128" width="50" height="62"/>
+              <rect x="36" y="174" width="92" height="40"/><rect x="36" y="220" width="204" height="32"/>
+              <rect x="272" y="40" width="220" height="220"/>
+              <rect x="280" y="48" width="120" height="92"/><rect x="406" y="48" width="78" height="92"/>
+              <rect x="280" y="146" width="80" height="106"/><rect x="366" y="146" width="118" height="50"/>
+              <rect x="366" y="202" width="118" height="50"/>
+            </g>
+            <g fill="#9a9a93" font-size="9">
+              <text x="138" y="30">Sheet 1</text><text x="382" y="30">Sheet 2</text>
+            </g>
+            <g font-size="8" fill="#7a7a72">
+              <text x="60" y="112">Gable</text><text x="168" y="88">Shelf</text><text x="300" y="98">Back</text>
+            </g>
+            <rect x="436" y="12" width="56" height="20" rx="4" fill="#111"/>
+            <text x="464" y="26" fill="#e8a838" font-size="11" font-weight="700" text-anchor="middle">DXF</text>
+          </svg>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Variant B — Pro callout -->
+  <div class="vtag rec"><span>B · Pro callout card — recommended</span></div>
+  <div class="vnote">Existing list, plus a highlighted callout that names the CAM tools. Reads as a real differentiator without a whole new section.</div>
+  <div class="card-surface">
+    <section class="feature reverse">
+      <div class="feature-copy">
+        <span class="feature-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#e8a838" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="1.5"/><path d="M3 9h18M9 9v11M15 9v11"/></svg>
+        </span>
+        <h3>Cut List Optimiser</h3>
+        <p class="promise">Cut sheets that don't waste board. Pull panels and edge banding from your stock library and let the optimiser nest them.</p>
+        <ul class="ticks">
+          <li>Deduct from stock with one button.</li>
+          <li>Save reusable parts for repeat cabinets.</li>
+          <li>Set grain direction for individual parts and panels.</li>
+          <li>Add edge banding to specific sides, with the trim toggle set to each band's thickness.</li>
+        </ul>
+        <div class="pro-callout">
+          <div class="pc-head">
+            <span class="pc-badge">Pro</span>
+            <h4>Send it straight to the CNC</h4>
+          </div>
+          <p>Export the whole nested layout as one DXF — every sheet, every part cut to size (edge-band trim already taken off). Drops into the CAM you already use.</p>
+          <div class="cam-chips">
+            <span class="cam-chip">Vectric</span><span class="cam-chip">Fusion</span>
+            <span class="cam-chip">AlphaCAM</span><span class="cam-chip">Cabinet Vision</span>
+            <span class="cam-chip">+ any DXF reader</span>
+          </div>
+        </div>
+      </div>
+      <div class="feature-media">
+        <div class="browser-frame">
+          <span class="browser-dots"><i></i><i></i><i></i></span>
+          <svg class="dxf-art" viewBox="0 0 520 300" width="100%" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" aria-label="Nested DXF sheet">
+            <rect width="520" height="300" fill="#fbfbf9"/>
+            <g stroke="#111" stroke-width="1" fill="rgba(232,168,56,.10)">
+              <rect x="28" y="40" width="220" height="220"/>
+              <rect x="36" y="48" width="92" height="120"/><rect x="134" y="48" width="106" height="74"/>
+              <rect x="134" y="128" width="50" height="62"/><rect x="190" y="128" width="50" height="62"/>
+              <rect x="36" y="174" width="92" height="40"/><rect x="36" y="220" width="204" height="32"/>
+              <rect x="272" y="40" width="220" height="220"/>
+              <rect x="280" y="48" width="120" height="92"/><rect x="406" y="48" width="78" height="92"/>
+              <rect x="280" y="146" width="80" height="106"/><rect x="366" y="146" width="118" height="50"/>
+              <rect x="366" y="202" width="118" height="50"/>
+            </g>
+            <g fill="#9a9a93" font-size="9">
+              <text x="138" y="30">Sheet 1</text><text x="382" y="30">Sheet 2</text>
+            </g>
+            <g font-size="8" fill="#7a7a72">
+              <text x="60" y="112">Gable</text><text x="168" y="88">Shelf</text><text x="300" y="98">Back</text>
+            </g>
+            <rect x="436" y="12" width="56" height="20" rx="4" fill="#111"/>
+            <text x="464" y="26" fill="#e8a838" font-size="11" font-weight="700" text-anchor="middle">DXF</text>
+          </svg>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Variant C — dedicated feature block -->
+  <div class="vtag"><span>C · Dedicated feature block — boldest</span></div>
+  <div class="vnote">A whole new feature section of its own, like Cabinet / Schedule / Stock. Treats "cut on any CNC" as a headline.</div>
+  <div class="card-surface">
+    <section class="feature">
+      <div class="feature-copy">
+        <span class="feature-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#e8a838" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4M5 5l2.5 2.5M16.5 16.5 19 19M19 5l-2.5 2.5M7.5 16.5 5 19"/></svg>
+        </span>
+        <h3>Cut on any CNC</h3>
+        <p class="promise">The same nest you see on screen, exported as a DXF your router can read.</p>
+        <ul class="ticks">
+          <li>One file, every sheet nested and labelled.</li>
+          <li>Parts cut to size, with edge-banding trim already taken off.</li>
+          <li>Opens in any CAM — Vectric, Fusion, AlphaCAM, Cabinet Vision.</li>
+          <li>You post the G-code for your own machine, so feeds and tooling stay yours.</li>
+        </ul>
+      </div>
+      <div class="feature-media">
+        <div class="browser-frame">
+          <span class="browser-dots"><i></i><i></i><i></i></span>
+          <svg class="dxf-art" viewBox="0 0 520 320" width="100%" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" aria-label="Nested DXF sheets with layers">
+            <rect width="520" height="320" fill="#fbfbf9"/>
+            <g stroke="#111" stroke-width="1.1" fill="rgba(232,168,56,.10)">
+              <rect x="28" y="44" width="224" height="224"/>
+              <rect x="36" y="52" width="94" height="124"/><rect x="136" y="52" width="108" height="76"/>
+              <rect x="136" y="134" width="52" height="62"/><rect x="194" y="134" width="50" height="62"/>
+              <rect x="36" y="182" width="94" height="40"/><rect x="36" y="228" width="208" height="32"/>
+              <rect x="276" y="44" width="216" height="224"/>
+              <rect x="284" y="52" width="120" height="94"/><rect x="410" y="52" width="74" height="94"/>
+              <rect x="284" y="152" width="80" height="108"/><rect x="370" y="152" width="114" height="50"/>
+              <rect x="370" y="208" width="114" height="52"/>
+            </g>
+            <g fill="#9a9a93" font-size="9">
+              <text x="140" y="34">Sheet 1 / 2</text><text x="384" y="34">Sheet 2 / 2</text>
+            </g>
+            <g font-size="8" fill="#7a7a72">
+              <text x="62" y="118">Gable 600x720</text><text x="170" y="92">Shelf 562x300</text>
+              <text x="306" y="102">Back 1100x700</text>
+            </g>
+            <!-- layer legend -->
+            <g font-size="9" fill="#666">
+              <rect x="36" y="286" width="12" height="9" fill="none" stroke="#111"/><text x="54" y="294">SHEET</text>
+              <rect x="116" y="286" width="12" height="9" fill="rgba(232,168,56,.25)" stroke="#111"/><text x="134" y="294">PARTS</text>
+              <text x="196" y="294" fill="#7a7a72">LABELS</text>
+            </g>
+            <rect x="436" y="14" width="56" height="20" rx="4" fill="#111"/>
+            <text x="464" y="28" fill="#e8a838" font-size="11" font-weight="700" text-anchor="middle">DXF</text>
+          </svg>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ══════════════ LANDING — PRICING / CTA ══════════════ -->
+  <div class="mock-head" style="margin-top:64px">
+    <span class="eyebrow">Landing · Pricing / CTA</span>
+    <h2>CNC / DXF export as a Pro line</h2>
+    <p>The four live plan cards with one new row added to each (marked <em class="new-pill">new</em>). Free shows it locked; paid plans include it. Row counts stay equal so the cards line up.</p>
+  </div>
+
+  <section class="pricing">
+    <div class="price-grid">
+
+      <div class="price-card">
+        <div class="price-tier">Free</div>
+        <div class="price-amount">$0<span>/forever</span></div>
+        <div class="price-sub">No card needed</div>
+        <ul class="price-feats">
+          <li>Free use of all core functions</li>
+          <li><strong>5 saved items</strong> per library</li>
+          <li class="muted">No library import / export (CSV)</li>
+          <li class="muted">No CNC / DXF export <em class="new-pill">new</em></li>
+          <li class="muted">ProCabinet branding on PDFs</li>
+          <li class="muted">Limited access to new features</li>
+        </ul>
+        <a class="btn btn-ghost full" href="#">Start free</a>
+      </div>
+
+      <div class="price-card">
+        <div class="price-tier">Monthly</div>
+        <div class="price-amount">$25<span>/mo</span></div>
+        <div class="price-sub"><s>$35/mo</s> · launch price</div>
+        <ul class="price-feats">
+          <li>First 6 months, then $35/mo</li>
+          <li><strong>Unlimited</strong> saved items</li>
+          <li>Import / export libraries (CSV)</li>
+          <li>CNC / DXF export <em class="new-pill">new</em></li>
+          <li>ProCabinet removed from PDFs</li>
+          <li>Priority email support</li>
+        </ul>
+        <a class="btn btn-ghost full" href="#">Choose Monthly</a>
+      </div>
+
+      <div class="price-card">
+        <div class="price-tier">Annual</div>
+        <div class="price-amount">$15<span>/mo</span></div>
+        <div class="price-sub"><s>$25/mo</s> · launch price</div>
+        <ul class="price-feats">
+          <li>$180 billed for year one, then $300/yr</li>
+          <li><strong>Unlimited</strong> saved items</li>
+          <li>Import / export libraries (CSV)</li>
+          <li>CNC / DXF export <em class="new-pill">new</em></li>
+          <li>ProCabinet removed from PDFs</li>
+          <li>Priority email support</li>
+        </ul>
+        <a class="btn btn-ghost full" href="#">Choose Annual</a>
+      </div>
+
+      <div class="price-card hero-card" style="position:relative">
+        <div class="price-flag">Only <strong>50</strong> ever</div>
+        <div class="price-tier">Founder</div>
+        <div class="price-amount">$299<span>/once</span></div>
+        <div class="price-sub">one-off · lifetime</div>
+        <ul class="price-feats">
+          <li>Pay once, use forever</li>
+          <li>Only <strong>50 accounts</strong> ever sold</li>
+          <li><strong>Everything</strong> in the paid plans</li>
+          <li>CNC / DXF export <em class="new-pill">new</em></li>
+          <li>New feature requests prioritised</li>
+          <li>WhatsApp group with the founder</li>
+        </ul>
+        <a class="btn btn-amber full" href="#">Claim a seat</a>
+      </div>
+
+    </div>
+  </section>
+
+</body>
+</html>

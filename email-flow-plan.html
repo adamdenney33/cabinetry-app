@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ProCabinet — New Subscriber Email Flow</title>
+<style>
+  :root {
+    --ink: #1f2024;
+    --muted: #6b6f76;
+    --line: #e4e3df;
+    --bg: #f4f2ee;
+    --card: #ffffff;
+    --accent: #c4623a;        /* ProCabinet sunset */
+    --accent-soft: #fbeee7;
+    --tag-bg: #fff3cd;
+    --tag-ink: #8a6d1a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 40px 20px 80px; }
+
+  /* Header */
+  .page-head { margin-bottom: 32px; }
+  .page-head .kicker {
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--accent);
+    margin: 0 0 8px;
+  }
+  .page-head h1 { margin: 0 0 10px; font-size: 30px; line-height: 1.2; }
+  .page-head p { margin: 0; color: var(--muted); font-size: 15px; }
+  .meta-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+  .pill {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 999px; padding: 5px 12px; font-size: 12px; color: var(--muted);
+  }
+  .pill b { color: var(--ink); font-weight: 600; }
+
+  /* Timeline table */
+  .timeline {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; overflow: hidden; margin: 0 0 40px;
+  }
+  .timeline h2 {
+    margin: 0; padding: 16px 20px; font-size: 13px; text-transform: uppercase;
+    letter-spacing: .08em; color: var(--muted); border-bottom: 1px solid var(--line);
+  }
+  table { width: 100%; border-collapse: collapse; }
+  td, th { text-align: left; padding: 12px 20px; font-size: 14px; vertical-align: top; }
+  thead th {
+    font-size: 11px; text-transform: uppercase; letter-spacing: .06em;
+    color: var(--muted); font-weight: 600; border-bottom: 1px solid var(--line);
+  }
+  tbody tr + tr td { border-top: 1px solid var(--line); }
+  .day { white-space: nowrap; font-weight: 700; color: var(--accent); }
+  .theme { font-weight: 600; }
+  td.take { color: var(--muted); }
+
+  /* Section headings */
+  .section-head { font-size: 20px; margin: 8px 0 4px; }
+  .section-sub { color: var(--muted); font-size: 14px; margin: 0 0 20px; }
+
+  /* Email cards */
+  .email {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; margin-bottom: 24px; overflow: hidden;
+    box-shadow: 0 1px 2px rgba(0,0,0,.03);
+  }
+  .email-tabrow { display: flex; align-items: flex-start; justify-content: space-between; }
+  .email-tab {
+    display: inline-block; background: var(--accent-soft); color: var(--accent);
+    font-size: 12px; font-weight: 700; letter-spacing: .04em;
+    padding: 4px 10px; border-radius: 0 0 8px 0;
+  }
+  .carousel { display: flex; align-items: center; gap: 8px; padding: 8px 12px 0; }
+  .arrow {
+    border: 1px solid var(--line); background: var(--card); color: var(--accent);
+    width: 27px; height: 27px; border-radius: 7px; cursor: pointer;
+    font-size: 16px; line-height: 1; display: flex; align-items: center; justify-content: center;
+    transition: background .12s ease;
+  }
+  .arrow:hover { background: var(--accent-soft); }
+  .arrow:active { transform: translateY(1px); }
+  .counter {
+    font-size: 11px; color: var(--muted); min-width: 168px; text-align: center;
+    text-transform: uppercase; letter-spacing: .03em; font-weight: 600;
+  }
+  .counter .opt { color: var(--accent); }
+
+  .email-inner { padding: 6px 24px 28px; }
+  .from {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 0 16px; border-bottom: 1px solid var(--line); margin-bottom: 18px;
+  }
+  .avatar {
+    width: 40px; height: 40px; border-radius: 50%; flex: 0 0 40px;
+    background: var(--accent); color: #fff; display: flex; align-items: center;
+    justify-content: center; font-weight: 700; font-size: 16px;
+  }
+  .from-meta { font-size: 13px; line-height: 1.4; }
+  .from-meta .name { font-weight: 600; color: var(--ink); }
+  .from-meta .addr { color: var(--muted); }
+  .subject { font-size: 19px; font-weight: 700; margin: 0 0 16px; }
+  .body p { margin: 0 0 14px; font-size: 15px; }
+  .body ul { margin: 0 0 14px; padding-left: 22px; }
+  .body li { margin: 0 0 6px; font-size: 15px; }
+  .sig { margin-top: 18px; }
+  .sig .name { font-weight: 600; }
+  .sig .role { color: var(--muted); font-size: 14px; }
+
+  .tag {
+    background: var(--tag-bg); color: var(--tag-ink);
+    border-radius: 4px; padding: 1px 5px; font-size: 13px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-weight: 600;
+  }
+
+  .footnote {
+    color: var(--muted); font-size: 13px; text-align: center;
+    margin-top: 36px; padding-top: 20px; border-top: 1px solid var(--line);
+  }
+
+  /* Editing hint callout */
+  .callout {
+    background: var(--accent-soft); border: 1px solid #f0d4c6;
+    border-radius: 12px; padding: 14px 18px; margin: 0 0 28px;
+    font-size: 14px; color: #7a3f25;
+  }
+  .callout b { color: #5e2f1a; }
+
+  /* Inline-editable fields */
+  .editable { border-radius: 6px; transition: background .12s ease, box-shadow .12s ease; cursor: text; }
+  .editable:hover { background: #faf8f5; box-shadow: inset 0 0 0 1px var(--line); }
+  .editable:focus { outline: none; background: #fff; box-shadow: 0 0 0 2px var(--accent); }
+  .subject.editable { padding: 4px 6px; margin: -4px -6px 12px; }
+  .body.editable { padding: 6px; margin: 0 -6px; }
+
+  /* Use-this-email toggle */
+  .card-controls { display: flex; align-items: center; gap: 14px; padding: 8px 14px 0; }
+  .use-toggle {
+    display: inline-flex; align-items: center; gap: 7px; cursor: pointer;
+    font-size: 12px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase;
+    color: var(--muted); user-select: none; white-space: nowrap;
+  }
+  .use-toggle input { width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; margin: 0; }
+  .email.selected { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+  .email.selected .use-toggle { color: var(--accent); }
+
+  /* Sticky action bar */
+  .actionbar {
+    position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%);
+    background: var(--ink); color: #fff; border-radius: 999px;
+    display: flex; align-items: center; gap: 14px; padding: 10px 12px 10px 20px;
+    box-shadow: 0 8px 24px rgba(0,0,0,.22); z-index: 50; font-size: 14px;
+  }
+  .actionbar .count { font-weight: 600; }
+  .actionbar button {
+    border: none; border-radius: 999px; padding: 8px 16px; font-size: 13px;
+    font-weight: 600; cursor: pointer; font-family: inherit;
+  }
+  .actionbar .copy { background: var(--accent); color: #fff; }
+  .actionbar .copy:hover { background: #b1542f; }
+  .actionbar .reset { background: transparent; color: #c9c7c2; padding: 8px 10px; }
+  .actionbar .reset:hover { color: #fff; }
+
+  /* Toast */
+  .toast {
+    position: fixed; left: 50%; bottom: 78px; transform: translateX(-50%) translateY(8px);
+    background: #2f7d4f; color: #fff; padding: 10px 18px; border-radius: 8px;
+    font-size: 14px; opacity: 0; pointer-events: none; transition: opacity .2s ease, transform .2s ease; z-index: 60;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page-head">
+    <p class="kicker">ProCabinet · Welcome Series</p>
+    <h1>New subscriber email flow</h1>
+    <p>An education-first welcome series that builds trust whether or not someone has signed up for the app yet. Written in Adam's voice, from the workshop.</p>
+    <div class="meta-row">
+      <span class="pill"><b>Audience:</b> all new subscribers</span>
+      <span class="pill"><b>Goal:</b> educate &amp; build trust</span>
+      <span class="pill"><b>5 emails</b> over ~2 weeks</span>
+      <span class="pill"><b>+3 bonus topics</b></span>
+      <span class="pill"><b>3 options</b> each</span>
+    </div>
+  </header>
+
+  <div class="callout">
+    <b>How to use this page.</b> Flip between options with the <b>‹ ›</b> arrows. Click any <b>subject</b> or <b>body</b> text to edit it directly. Tick <b>Use this email</b> on the ones you want. Then hit <b>Copy summary</b> at the bottom and paste it back to me. Your edits and ticks are saved in this browser, so a reload won't lose them.
+  </div>
+
+  <section class="timeline">
+    <h2>The flow at a glance</h2>
+    <table>
+      <thead>
+        <tr><th>Send</th><th>Theme</th><th>What they walk away with</th></tr>
+      </thead>
+      <tbody>
+        <tr><td class="day">Day 0</td><td class="theme">Welcome &amp; why I built this</td><td class="take">Who you are, why you get their world</td></tr>
+        <tr><td class="day">Day 2</td><td class="theme">Quoting accurately</td><td class="take">A real lesson on not underpricing</td></tr>
+        <tr><td class="day">Day 5</td><td class="theme">Cutlists &amp; sheet waste</td><td class="take">How to stop throwing money in the offcut bin</td></tr>
+        <tr><td class="day">Day 9</td><td class="theme">Winning the job</td><td class="take">What makes a client say yes</td></tr>
+        <tr><td class="day">Day 13</td><td class="theme">Where to start</td><td class="take">Recap + a gentle nudge to try it</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <h2 class="section-head">The 5-email flow</h2>
+  <p class="section-sub">Each card has three written options. Flip with the arrows and pick your favourite.</p>
+  <div id="flow"></div>
+
+  <h2 class="section-head">3 more topics you could add</h2>
+  <p class="section-sub">Optional emails on other angles. Swap any of these into the flow, or hold them for a later series. Three options each, same as above.</p>
+  <div id="extra"></div>
+
+  <p class="footnote">Draft preview for review · click text to edit · tick the ones you want · this is a mockup, not the production email build</p>
+
+</div>
+
+<div class="actionbar">
+  <span class="count" id="selcount">0 emails selected</span>
+  <button class="copy" id="copybtn">Copy summary</button>
+  <button class="reset" id="resetbtn" title="Clear all edits and ticks">Reset</button>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const FROM = { name: 'Adam at ProCabinet', addr: 'adam@procabinet.app' };
+
+const FLOW = [
+  {
+    tab: 'EMAIL 1 · DAY 0',
+    variants: [
+      { angle: 'Founder story', subject: 'A quick hello from the workshop', body: `
+        <p>Hi <span class="tag">{{first_name}}</span>,</p>
+        <p>Thanks for signing up. I'm Adam, and I built ProCabinet.</p>
+        <p>Before this was an app, it was a problem I had. I ran my own workshop for about ten years, making cabinets and furniture, and the part I dreaded most was quoting. Every job started with a pad of paper, a calculator, and the quiet worry that I'd forgotten something. Half the time I had. A drawer runner here, an hour of fitting there, and the margin I thought I had was gone.</p>
+        <p>So I made the thing I wished I'd had back then. A way to build a cabinet on screen and have the price, the cutlist and the paperwork come out the other end.</p>
+        <p>Over the next couple of weeks I'm going to send you a few short emails. Not a sales pitch. Just the handful of things I learned the hard way about quoting and running cabinet work, the stuff that actually moved the needle for me.</p>
+        <p>If you've got a minute, hit reply and tell me what you make. Kitchens, wardrobes, one-off pieces, whatever it is. I read every reply.</p>
+        <div class="sig"><p>Talk soon,<br><span class="name">Adam</span></p></div>` },
+      { angle: 'Straight to the point', subject: "Welcome, here's what to expect", body: `
+        <p>Hi <span class="tag">{{first_name}}</span>,</p>
+        <p>Thanks for signing up. I'm Adam, the maker behind ProCabinet.</p>
+        <p>I'll keep this short. Over the next couple of weeks I'll send you five quick emails, each one a thing I learned the hard way about quoting and running cabinet work. No pitch, just the useful bits.</p>
+        <p>I spent about ten years in my own workshop, so all of this comes from real jobs, not theory.</p>
+        <p>If you fancy it, reply and tell me what you make. I read every one.</p>
+        <div class="sig"><p>Talk soon,<br><span class="name">Adam</span></p></div>` },
+      { angle: 'Shared pain', subject: 'The worst part of the job, for me anyway', body: `
+        <p>Hi <span class="tag">{{first_name}}</span>,</p>
+        <p>For me the worst part of cabinet work was never the making. It was the quoting. Sitting down with a pad and a calculator, hoping I hadn't forgotten a runner or underguessed the hours.</p>
+        <p>I did that for about ten years in my own workshop. Eventually I built the tool I wished I'd had, and that became ProCabinet.</p>
+        <p>Over the next couple of weeks I'll send you a few short emails on the things that actually helped me quote better and waste less. Not a sales pitch.</p>
+        <p>If you've got a second, hit reply and tell me what you make. I read every reply.</p>
+        <div class="sig"><p><span class="name">Adam</span></p></div>` }
+    ]
+  },
+  {
+    tab: 'EMAIL 2 · DAY 2',
+    variants: [
+      { angle: 'The story', subject: 'The quote that nearly cost me money', body: `
+        <p>Hi <span class="tag">{{first_name}}</span>,</p>
+        <p>Early on I quoted a fitted wardrobe job that I was sure I'd priced well. I'd done dozens like it. I gave the client a good number, they said yes, and I got to work feeling pleased with myself.</p>
+        <p>Then the real job showed up. The hardware cost more than I'd remembered. The fitting took a day longer than I'd guessed because of an out-of-square wall. I'd quoted from memory, and my memory was generous. By the end I'd made almost nothing on a month of work.</p>
+        <p>Here's what I take from it now. A quote isn't a guess at a number. It's a build, broken into its parts, with a price on each one:</p>
+        <ul>
+          <li>Materials, down to the sheet and the edging</li>
+          <li>Hardware, every hinge, runner and handle</li>
+          <li>Labour, the hours to make it and the hours to fit it</li>
+          <li>Margin, because a job that doesn't make money isn't worth doing</li>
+        </ul>
+        <p>When you price it that way, you stop forgetting things, because the list won't let you.</p>
+        <p>That's the whole idea behind ProCabinet. You build the cabinet, and it adds all of that up for you as you go. If you've made an account, try pricing one real job and see what number it gives you. If you haven't yet, no rush. It'll be here.</p>
+        <div class="sig"><p><span class="name">Adam</span></p></div>` },
+      { angle: 'The checklist', subject: 'The four things every quote needs', body: `
+        <p>Hi <span class="tag">{{first_name}}</span>,</p>
+        <p>Most quotes that lose money are missing the same things. Here's the short list I run every job through now:</p>
+        <ul>
+          <li>Materials, down to the sheet and the edging</li>
+          <li>Hardware, every hinge, runner and handle</li>
+          <li>Labour, the hours to make it and the hours to fit it</li>
+          <li>Margin, because a job that doesn't make money isn't worth doing</li>
+        </ul>
+        <p>The trick isn't being clever. It's not forgetting. A list does that better than memory ever will.</p>
+        <p>ProCabinet works the same way. You build the cabinet and it totals all of that as you go, so nothing slips through. If you've got an account, put one real job through it and see.</p>
+        <div class="sig"><p><span class="name">Adam</span></p></div>` },
+      { angle: 'The mindset', subject: 'Stop quoting from memory', body: `
+        <p>Hi <span class="tag">{{first_name}}</span>,</p>
+        <p>The most expensive habit I had early on was quoting from memory. I'd done enough jobs that I thought I could eyeball a number. I was wrong often enough that it hurt.</p>
+        <p>A good quote isn't a number you remember. It's a build added up from its parts, materials, hardware, labour and a margin you actually keep.</p>
+        <p>When you price from the build instead of from memory, the guesswork goes away. That's the whole point of ProCabinet. You make the cabinet on screen and the price comes from what's actually in it.</p>
+        <div class="sig"><p><span class="name">Adam</span></p></div>` }
+    ]
+  },
+  {
+    tab: 'EMAIL 3 · DAY 5',
+    variants: [
+      { angle: 'The question hook', subject: 'How much of that sheet are you actually using?', body: `
+        <p>Hi <span class="tag">{{first_name}}</span>,</p>
+        <p>Quick question. When you cut a job, how much of each sheet ends up as offcut?</p>
+        <p>Most makers don't really know, and I didn't either for a long time. A bit of waste on every sheet feels like nothing. But add it up over a year of jobs and it's real money sitting in the bin, plus the hours spent working out cuts by hand.</p>
+        <p>Two things helped me:</p>
+        <ul>
+          <li>Think in whole sheets, not just parts. Before you cut, know how many sheets the job needs and how the parts sit on them. A small change to a panel size can sometimes save you a whole board.</li>
+          <li>Let the list do the maths. Working out an efficient cutting plan in your head is slow and easy to get wrong.</li>
+        </ul>
+        <p>In ProCabinet the cutlist comes straight off the cabinets you've built. You're not retyping sizes or working out the nesting yourself, it's done from the same numbers that made the quote. Fewer mistakes, less waste, less time at the desk.</p>
+        <div class="sig"><p><span class="name">Adam</span></p></div>` },
+      { angle: 'The yearly cost', subject: 'The money in your offcut bin', body: `
+        <p>Hi <span class="tag">{{first_name}}</span>,</p>
+        <p>A bit of waste on each sheet feels like nothing. A few quid here, half a board there. But run the numbers over a full year of jobs and it adds up to a figure that would make you wince.</p>
+        <p>Two things cut mine down:</p>
+        <ul>
+          <li>Plan in whole sheets before you cut. Knowing how parts sit on a board, a small size change can save you a whole sheet.</li>
+          <li>Don't work the nesting out by hand. It's slow and easy to get wrong.</li>
+        </ul>
+        <p>In ProCabinet the cutlist comes off the cabinets you've already built, so the sizes are right and the layout's done for you. Less waste, fewer mistakes.</p>
+        <div class="sig"><p><span class="name">Adam</span></p></div>` },
+      { angle: 'The time angle', subject: 'How long do you spend working out cuts?', body: `
+        <p>Hi <span class="tag">{{first_name}}</span>,</p>
+        <p>Be honest, how long do you spend at the end of a job working out what to cut from what? An hour? More? It's the kind of desk work that eats an evening and pays nothing.</p>
+        <p>It used to eat mine too. The fix wasn't doing it faster, it was not doing it by hand at all.</p>
+        <p>In ProCabinet the cutlist is generated straight from the cabinets you've built. Same numbers that made the quote, no retyping, no working out the nesting yourself. You get the evening back.</p>
+        <div class="sig"><p><span class="name">Adam</span></p></div>` }
+    ]
+  },
+  {
+    tab: 'EMAIL 4 · DAY 9',
+    variants: [
+      { angle: 'Confidence framing', subject: 'What makes a client say yes', body: `
+        <p>Hi <span class="tag">{{first_name}}</span>,</p>
+        <p>A client isn't only buying cabinets. They're buying the feeling that you've got it handled. And a lot of that feeling is decided before you ever pick up a tool, by the quote you send them.</p>
+        <p>A scribbled number on a text message says one thing. A clear, professional quote they can actually look at says another.</p>
+        <p>This is the part of ProCabinet I'm most proud of. Instead of a flat PDF, you send your client a live link to their quote:</p>
+        <ul>
+          <li>They open it in their browser, no app to download</li>
+          <li>It stays up to date. If something changes, you edit it and they see the current version, not an old attachment</li>
+          <li>They can pay through it, so accepting the job and paying the deposit happen in the same place</li>
+          <li>You can message back and forth on it, so the questions and answers live with the quote instead of getting lost in email</li>
+        </ul>
+        <p>It makes a small workshop feel like a proper, organised business, because it is one. And it makes the client's decision easy.</p>
+        <div class="sig"><p><span class="name">Adam</span></p></div>` },
+      { angle: 'Before / after', subject: 'A text message vs a proper quote', body: `
+        <p>Hi <span class="tag">{{first_name}}</span>,</p>
+        <p>Picture two makers quoting the same kitchen.</p>
+        <p>One sends a number in a text. The other sends a link the client opens in their browser, with everything laid out, that they can pay through and ask questions on.</p>
+        <p>Same skill, same price maybe. But one of them already looks like the safer pair of hands, before a single panel is cut.</p>
+        <p>That second one is what ProCabinet gives you. A live quote link instead of a flat PDF, that stays current when you edit it, takes the deposit, and keeps the back-and-forth in one place. It makes saying yes easy.</p>
+        <div class="sig"><p><span class="name">Adam</span></p></div>` },
+      { angle: "Client's eyes", subject: 'What your client actually sees', body: `
+        <p>Hi <span class="tag">{{first_name}}</span>,</p>
+        <p>Put yourself in your client's shoes for a second. They've asked three people to quote the same job. Two reply with a number. The third sends a link.</p>
+        <p>They click it. It opens in their browser, no app, no fuss. Everything's itemised and clear. There's a button to pay the deposit, and a place to ask that question they forgot. It feels organised. It feels safe.</p>
+        <p>That's the experience ProCabinet gives the people you quote. The live link does the selling for you, just by being clear and easy.</p>
+        <div class="sig"><p><span class="name">Adam</span></p></div>` }
+    ]
+  },
+  {
+    tab: 'EMAIL 5 · DAY 13',
+    variants: [
+      { angle: 'Recap + free tier', subject: 'Where to start', body: `
+        <p>Hi <span class="tag">{{first_name}}</span>,</p>
+        <p>That's the series. Quick recap of what we covered:</p>
+        <ul>
+          <li>Price the build, not a number from memory</li>
+          <li>Know what each sheet is really costing you</li>
+          <li>Let the cutlist come off the design, not your head</li>
+          <li>Send a live quote the client can read, pay and ask questions on</li>
+        </ul>
+        <p>If any of that struck a chord, the best next step is to do one real quote in ProCabinet and feel the difference.</p>
+        <p>You can start for free. The free plan lets you build and price up to five items, no card needed. That's enough to put through a proper job and see the quote, the cutlist and the live link for yourself.</p>
+        <p>When you outgrow five items, Pro lifts the limit and opens up the full thing. But start with free. See if it earns its place first.</p>
+        <p>Thanks for reading these. If you ever want a hand getting set up, just reply, it comes straight to me.</p>
+        <div class="sig"><p><span class="name">Adam</span><br><span class="role">Founder, ProCabinet</span></p></div>` },
+      { angle: 'Just the nudge', subject: 'One quote is all it takes', body: `
+        <p>Hi <span class="tag">{{first_name}}</span>,</p>
+        <p>You don't have to take my word for any of this. The fastest way to know if ProCabinet is for you is to put one real job through it.</p>
+        <p>The free plan lets you build and price up to five items, no card needed. That's enough to see the quote, the cutlist and the live link come out the other end.</p>
+        <p>Do one quote. If it doesn't save you time, you've lost nothing. If it does, you'll feel it straight away.</p>
+        <div class="sig"><p><span class="name">Adam</span><br><span class="role">Founder, ProCabinet</span></p></div>` },
+      { angle: 'No pressure', subject: 'No pressure, just an open door', body: `
+        <p>Hi <span class="tag">{{first_name}}</span>,</p>
+        <p>That's the last of these. Thanks for reading them.</p>
+        <p>There's no hard sell coming. ProCabinet is here when you want it, and the free plan lets you build and price up to five items without putting a card in. Plenty to try it on a real job.</p>
+        <p>If quoting and cutlists are a headache for you, give it a go. If now's not the time, that's fine too, it'll be here.</p>
+        <p>Either way, if you ever want a hand, just reply. It comes straight to me.</p>
+        <div class="sig"><p><span class="name">Adam</span><br><span class="role">Founder, ProCabinet</span></p></div>` }
+    ]
+  }
+];
+
+const EXTRA = [
+  {
+    tab: 'BONUS TOPIC · GETTING PAID',
+    variants: [
+      { angle: 'The awkward chase', subject: "The job's done. Where's the money?", body: `
+        <p>Hi <span class="tag">{{first_name}}</span>,</p>
+        <p>Every maker knows the feeling. The job's finished, the client's happy, and three weeks later you're still waiting to be paid, working out how to chase without sounding pushy.</p>
+        <p>For years I just put up with it. The fix turned out to be simple. Sort the money out before the work, not after.</p>
+        <p>A deposit up front and a clear point to pay covers your materials and your time, and it quietly filters out the clients who were never really going to pay anyway.</p>
+        <p>In ProCabinet the client can pay straight from the quote, so taking a deposit is part of saying yes, not an awkward conversation later.</p>
+        <div class="sig"><p><span class="name">Adam</span></p></div>` },
+      { angle: 'Take the deposit', subject: 'Take the deposit. Always.', body: `
+        <p>Hi <span class="tag">{{first_name}}</span>,</p>
+        <p>If I could give my younger self one bit of business advice it would be this: never start a job without a deposit.</p>
+        <p>It's not about not trusting people. It's that a deposit means you're not funding someone else's kitchen out of your own pocket, and it makes the client serious before you order a single sheet.</p>
+        <p>Staged payments work the same way. A bit up front, a bit at fitting, the rest at the end. The cash flow stops being a white-knuckle ride.</p>
+        <p>ProCabinet lets clients pay right from their quote, deposit included, so this just becomes how you work.</p>
+        <div class="sig"><p><span class="name">Adam</span></p></div>` },
+      { angle: 'Money in one place', subject: "Getting paid shouldn't be a separate job", body: `
+        <p>Hi <span class="tag">{{first_name}}</span>,</p>
+        <p>Quoting in one place, invoicing in another, chasing payment in a third. That's how most small workshops run, and it's how money goes missing.</p>
+        <p>It's much easier when the quote and the payment are the same thing. The client opens their quote, sees the price, and pays the deposit right there. No separate invoice, no "did you get my bank details".</p>
+        <p>That's how ProCabinet handles it. The live quote takes the payment, so getting paid is part of the quote, not a chore you do later.</p>
+        <div class="sig"><p><span class="name">Adam</span></p></div>` }
+    ]
+  },
+  {
+    tab: 'BONUS TOPIC · REUSING YOUR WORK',
+    variants: [
+      { angle: 'The same box again', subject: 'How many times have you built that same cabinet?', body: `
+        <p>Hi <span class="tag">{{first_name}}</span>,</p>
+        <p>A base unit. A standard wardrobe. That drawer stack you've made a hundred times. So much of cabinet work is the same shapes over and over, with the sizes tweaked.</p>
+        <p>So why quote it from scratch every time?</p>
+        <p>The makers who move fastest aren't working harder. They've just stopped redoing work they've already done once.</p>
+        <p>In ProCabinet you can save a cabinet you've built and reuse it on the next job, sizes and all. Build it well once, then it's yours to drop in whenever.</p>
+        <div class="sig"><p><span class="name">Adam</span></p></div>` },
+      { angle: 'Your own catalogue', subject: 'Build your own catalogue', body: `
+        <p>Hi <span class="tag">{{first_name}}</span>,</p>
+        <p>Over the years you build up a set of things you make really well. Your version of a shaker base unit, your go-to wardrobe internals. That knowledge is worth money, but only if you can reuse it without starting over each time.</p>
+        <p>That's what templates are for. You turn the cabinets you make often into a little catalogue of your own, ready to drop into any quote.</p>
+        <p>ProCabinet lets you save and reuse your cabinets, so your best work becomes a starting point instead of a one-off. Quote faster, and quote consistently.</p>
+        <div class="sig"><p><span class="name">Adam</span></p></div>` },
+      { angle: 'Speed', subject: 'Quote the next one in minutes', body: `
+        <p>Hi <span class="tag">{{first_name}}</span>,</p>
+        <p>The slowest quotes are the ones you build from nothing. The fastest are the ones that are mostly done before you start.</p>
+        <p>If you make similar pieces job to job, you're sitting on a shortcut. Reuse what you built last time, change the sizes and the finish, and you're most of the way there.</p>
+        <p>ProCabinet lets you save a cabinet and reuse it, so the second kitchen like that one takes minutes, not an evening. The time you save goes back into the workshop, or your weekend.</p>
+        <div class="sig"><p><span class="name">Adam</span></p></div>` }
+    ]
+  },
+  {
+    tab: 'BONUS TOPIC · PRICING CONFIDENCE',
+    variants: [
+      { angle: 'Race to the bottom', subject: "You can't win on price", body: `
+        <p>Hi <span class="tag">{{first_name}}</span>,</p>
+        <p>There's always someone cheaper. Always. If price is the only thing you compete on, you've signed up for a race you can't win, against people doing worse work than you.</p>
+        <p>What you can win on is being clear, being reliable, and looking like someone who'll turn up and do a tidy job. Most clients will pay more for that than for the lowest number, they just need a reason to trust you.</p>
+        <p>A clean, professional quote is a big part of that reason. It's the first proof a client gets that you run a proper business.</p>
+        <div class="sig"><p><span class="name">Adam</span></p></div>` },
+      { angle: 'The cheap client', subject: 'The cheapest jobs cost me the most', body: `
+        <p>Hi <span class="tag">{{first_name}}</span>,</p>
+        <p>Here's something it took me too long to learn. The clients who haggled hardest on price were almost always the most expensive ones to work for. More changes, more complaints, more chasing for the final payment.</p>
+        <p>The jobs I priced with a bit of confidence went to people who valued the work, and those were the good ones.</p>
+        <p>You don't get those clients by being the cheapest. You get them by looking like you're worth it, starting with a quote that's clear and professional.</p>
+        <div class="sig"><p><span class="name">Adam</span></p></div>` },
+      { angle: 'Raising prices', subject: 'When did you last put your prices up?', body: `
+        <p>Hi <span class="tag">{{first_name}}</span>,</p>
+        <p>Materials have gone up. Your skill has gone up. Has your pricing?</p>
+        <p>Most makers I know are quietly undercharging, running on numbers they set years ago because putting prices up feels risky. But the right clients rarely flinch at a fair price, especially when the quote in front of them looks considered and professional.</p>
+        <p>You don't have to leap. Try your next quote a little higher than feels comfortable and watch what happens. The work you do is worth more than you're charging for it.</p>
+        <div class="sig"><p><span class="name">Adam</span></p></div>` }
+    ]
+  }
+];
+
+/* ---- persistence ---- */
+const STORE_KEY = 'pc_email_flow_v2';
+let store = { edits: {}, state: {} };
+try { const raw = localStorage.getItem(STORE_KEY); if (raw) store = JSON.parse(raw); } catch (e) {}
+store.edits = store.edits || {};
+store.state = store.state || {};
+let saveTimer = null;
+function save() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(store)); } catch (e) {}
+  }, 120);
+}
+
+function getEdit(id, idx) {
+  return (store.edits[id] && store.edits[id][idx]) || null;
+}
+function setEdit(id, idx, field, value) {
+  store.edits[id] = store.edits[id] || {};
+  store.edits[id][idx] = store.edits[id][idx] || {};
+  store.edits[id][idx][field] = value;
+  save();
+}
+
+const allCards = [];
+
+function makeCard(item, id) {
+  const st = store.state[id] || (store.state[id] = { sel: 0, use: false });
+
+  const art = document.createElement('article');
+  art.className = 'email';
+  art.innerHTML = `
+    <div class="email-tabrow">
+      <span class="email-tab">${item.tab}</span>
+      <div class="card-controls">
+        <div class="carousel">
+          <button class="arrow prev" aria-label="Previous option" title="Previous option">&#8249;</button>
+          <span class="counter"></span>
+          <button class="arrow next" aria-label="Next option" title="Next option">&#8250;</button>
+        </div>
+        <label class="use-toggle"><input type="checkbox" class="use-check"> Use this email</label>
+      </div>
+    </div>
+    <div class="email-inner">
+      <div class="from">
+        <div class="avatar">A</div>
+        <div class="from-meta">
+          <div class="name">${FROM.name}</div>
+          <div class="addr">${FROM.addr}</div>
+        </div>
+      </div>
+      <h2 class="subject editable" contenteditable="true" spellcheck="true"></h2>
+      <div class="body editable" contenteditable="true" spellcheck="true"></div>
+    </div>`;
+
+  const subjEl = art.querySelector('.subject');
+  const bodyEl = art.querySelector('.body');
+  const counterEl = art.querySelector('.counter');
+  const checkEl = art.querySelector('.use-check');
+  const n = item.variants.length;
+  let i = Math.min(st.sel || 0, n - 1);
+
+  function currentSubject() { const e = getEdit(id, i); return (e && e.subject != null) ? e.subject : item.variants[i].subject; }
+  function currentBody() { const e = getEdit(id, i); return (e && e.body != null) ? e.body : item.variants[i].body; }
+
+  function render() {
+    subjEl.textContent = currentSubject();
+    bodyEl.innerHTML = currentBody();
+    counterEl.innerHTML = `<span class="opt">Option ${i + 1} of ${n}</span> · ${item.variants[i].angle}`;
+  }
+
+  subjEl.addEventListener('input', () => setEdit(id, i, 'subject', subjEl.textContent));
+  bodyEl.addEventListener('input', () => setEdit(id, i, 'body', bodyEl.innerHTML));
+
+  function go(delta) {
+    i = (i + delta + n) % n;
+    st.sel = i; save();
+    render();
+  }
+  art.querySelector('.prev').addEventListener('click', () => go(-1));
+  art.querySelector('.next').addEventListener('click', () => go(1));
+
+  checkEl.checked = !!st.use;
+  art.classList.toggle('selected', !!st.use);
+  checkEl.addEventListener('change', () => {
+    st.use = checkEl.checked; save();
+    art.classList.toggle('selected', checkEl.checked);
+    updateCount();
+  });
+
+  render();
+
+  allCards.push({
+    id, item,
+    getIndex: () => i,
+    isUsed: () => checkEl.checked,
+    getSubjectText: () => subjEl.textContent,
+    getBodyText: () => bodyEl.innerText
+  });
+  return art;
+}
+
+const flowEl = document.getElementById('flow');
+const extraEl = document.getElementById('extra');
+FLOW.forEach((item, idx) => flowEl.appendChild(makeCard(item, 'flow-' + idx)));
+EXTRA.forEach((item, idx) => extraEl.appendChild(makeCard(item, 'extra-' + idx)));
+
+/* ---- action bar ---- */
+const selcount = document.getElementById('selcount');
+function updateCount() {
+  const n = allCards.filter(c => c.isUsed()).length;
+  selcount.textContent = n + (n === 1 ? ' email selected' : ' emails selected');
+}
+updateCount();
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 1800);
+}
+
+document.getElementById('copybtn').addEventListener('click', () => {
+  const chosen = allCards.filter(c => c.isUsed());
+  if (!chosen.length) { showToast('Tick at least one email first'); return; }
+  let out = 'ProCabinet welcome flow — my picks\n\n';
+  chosen.forEach(c => {
+    const i = c.getIndex();
+    out += '==============================\n';
+    out += c.item.tab + '\n';
+    out += 'Chosen option: ' + (i + 1) + ' of ' + c.item.variants.length + ' (' + c.item.variants[i].angle + ')\n';
+    out += 'Subject: ' + c.getSubjectText() + '\n\n';
+    out += c.getBodyText().trim() + '\n\n';
+  });
+  const finish = () => showToast('Summary copied — paste it back to me');
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(out).then(finish).catch(() => { window.prompt('Copy this and paste it back to me:', out); });
+  } else {
+    window.prompt('Copy this and paste it back to me:', out);
+  }
+});
+
+document.getElementById('resetbtn').addEventListener('click', () => {
+  if (window.confirm('Clear all your edits and ticks and start fresh?')) {
+    try { localStorage.removeItem(STORE_KEY); } catch (e) {}
+    location.reload();
+  }
+});
+</script>
+</body>
+</html>
