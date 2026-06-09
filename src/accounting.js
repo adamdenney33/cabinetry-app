@@ -54,11 +54,13 @@ function _accountingConnected() {
 // ── Edge-function call (Bearer JWT, mirrors src/stripe.js) ───────────────────
 /** @param {string} name @param {any} body @returns {Promise<any>} */
 async function _accountingFn(name, body) {
-  const { data: { session } } = await _sb.auth.getSession();
-  if (!session) throw new Error('Sign in to use accounting integrations');
+  // In-memory token (db.js `_dbAuthToken`), not `_sb.auth.getSession()` — the
+  // storage-based session goes stale on Safari / in-app webviews → 401.
+  const token = (typeof _dbAuthToken === 'function' && _dbAuthToken()) || null;
+  if (!token) throw new Error('Sign in to use accounting integrations');
   const res = await fetch(`${window._SBURL}/functions/v1/${name}`, {
     method: 'POST',
-    headers: { 'authorization': `Bearer ${session.access_token}`, 'content-type': 'application/json' },
+    headers: { 'authorization': `Bearer ${token}`, 'apikey': window._SBKEY, 'content-type': 'application/json' },
     body: JSON.stringify(body || {}),
   });
   /** @type {any} */
