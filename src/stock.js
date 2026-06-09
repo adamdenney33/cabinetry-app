@@ -235,6 +235,110 @@ let projects = [];
 let stockNextId = 1;
 const STOCK_CATS = ['Sheet Goods','Solid Timber','Edge Banding','Hardware','Finishing','Other'];
 
+// ── Default starter library ──
+// A sensible cabinet maker's starter set: common sheet goods, solid timber,
+// edge banding, hardware and finishes. Inserted on demand from the Stock
+// empty-state via `loadDefaultStockItems()`. Dimensions are metric (mm); the
+// canonical storage units match — display conversion happens in the UI layer.
+// Cost is in the user's currency unit at face value (no FX); users can edit.
+/** @typedef {{ name:string, sku:string, cat:string, w:number, h:number, qty:number, low:number, cost:number, variant?:string, thickness?:number, ebWidth?:number, ebLength?:number, glue?:string, coverage_sqm?:number }} StockDefault */
+/** @type {StockDefault[]} */
+const STOCK_DEFAULTS = [
+  // Sheet Goods — 2440×1220 standard sheet
+  { name:'18mm Birch Plywood',       sku:'PLY-18-BIRCH', cat:'Sheet Goods', w:2440, h:1220, qty:10, low:3, cost:78,  thickness:18 },
+  { name:'18mm MDF',                 sku:'MDF-18',       cat:'Sheet Goods', w:2440, h:1220, qty:10, low:3, cost:32,  thickness:18 },
+  { name:'12mm MDF',                 sku:'MDF-12',       cat:'Sheet Goods', w:2440, h:1220, qty:5,  low:2, cost:22,  thickness:12 },
+  { name:'6mm MDF',                  sku:'MDF-06',       cat:'Sheet Goods', w:2440, h:1220, qty:4,  low:2, cost:14,  thickness:6  },
+  { name:'18mm Melamine White',      sku:'MEL-18-WHT',   cat:'Sheet Goods', w:2440, h:1220, qty:6,  low:2, cost:42,  thickness:18 },
+  { name:'18mm Oak Veneer MDF',      sku:'VEN-18-OAK',   cat:'Sheet Goods', w:2440, h:1220, qty:3,  low:1, cost:95,  thickness:18 },
+  { name:'18mm Walnut Veneer MDF',   sku:'VEN-18-WAL',   cat:'Sheet Goods', w:2440, h:1220, qty:2,  low:1, cost:110, thickness:18 },
+  { name:'6mm Plywood (backing)',    sku:'PLY-06-BACK',  cat:'Sheet Goods', w:2440, h:1220, qty:4,  low:2, cost:28,  thickness:6  },
+
+  // Solid Timber — 2400 × 200 boards (length × width)
+  { name:'European Oak 25mm',        sku:'TIM-OAK-25',   cat:'Solid Timber', w:2400, h:200, qty:8, low:2, cost:55,  thickness:25 },
+  { name:'Tulipwood (Poplar) 25mm',  sku:'TIM-POP-25',   cat:'Solid Timber', w:2400, h:200, qty:6, low:2, cost:32,  thickness:25 },
+  { name:'American Walnut 25mm',     sku:'TIM-WAL-25',   cat:'Solid Timber', w:2400, h:200, qty:3, low:1, cost:110, thickness:25 },
+  { name:'Beech 25mm',               sku:'TIM-BCH-25',   cat:'Solid Timber', w:2400, h:200, qty:5, low:2, cost:48,  thickness:25 },
+
+  // Edge Banding — width = tape width (mm), length = roll length (m → stored mm)
+  { name:'White Melamine Edge Tape', sku:'EB-MEL-WHT',   cat:'Edge Banding', w:100000, h:22, qty:100, low:20, cost:18, thickness:0.4, ebWidth:22, ebLength:100, glue:'Hot melt' },
+  { name:'Oak Veneer Edge Tape',     sku:'EB-VEN-OAK',   cat:'Edge Banding', w:50000,  h:22, qty:50,  low:10, cost:32, thickness:0.5, ebWidth:22, ebLength:50,  glue:'Hot melt' },
+  { name:'Walnut Veneer Edge Tape',  sku:'EB-VEN-WAL',   cat:'Edge Banding', w:50000,  h:22, qty:50,  low:10, cost:38, thickness:0.5, ebWidth:22, ebLength:50,  glue:'Hot melt' },
+
+  // Hardware — w/h not meaningful; stored as 0
+  { name:'Blum Tandem Drawer Runner 450mm', sku:'HW-RUN-450', cat:'Hardware', w:0, h:0, qty:20, low:5,  cost:14    },
+  { name:'Blum Clip Top Hinge 110°',        sku:'HW-HNG-110', cat:'Hardware', w:0, h:0, qty:50, low:10, cost:3.50  },
+  { name:'Soft-Close Hinge',                sku:'HW-HNG-SC',  cat:'Hardware', w:0, h:0, qty:30, low:8,  cost:4.20  },
+  { name:'Adjustable Cabinet Leg 100mm',    sku:'HW-LEG-100', cat:'Hardware', w:0, h:0, qty:40, low:10, cost:2.20  },
+  { name:'Wood Screws 4×40mm (box 200)',    sku:'HW-SCR-440', cat:'Hardware', w:0, h:0, qty:5,  low:1,  cost:8     },
+  { name:'Confirmat Screws 7×50mm (box)',   sku:'HW-SCR-CFM', cat:'Hardware', w:0, h:0, qty:3,  low:1,  cost:12    },
+  { name:'Cup Handle 96mm',                 sku:'HW-HDL-CUP', cat:'Hardware', w:0, h:0, qty:20, low:5,  cost:4.50  },
+  { name:'Bar Pull Handle 128mm',           sku:'HW-HDL-BAR', cat:'Hardware', w:0, h:0, qty:20, low:5,  cost:5     },
+  { name:'Shelf Pin 5mm (bag 100)',         sku:'HW-PIN-005', cat:'Hardware', w:0, h:0, qty:4,  low:1,  cost:6     },
+
+  // Finishing — qty in L, cost £/L, coverage m²/L (canonical metric)
+  { name:'Osmo Polyx Hardwax Oil', sku:'FIN-OSMO',   cat:'Finishing', w:0, h:0, qty:5, low:1, cost:45, coverage_sqm:24 },
+  { name:'Rubio Monocoat Oil',     sku:'FIN-RUBIO',  cat:'Finishing', w:0, h:0, qty:2, low:1, cost:75, coverage_sqm:30 },
+  { name:'Water-based Lacquer',    sku:'FIN-LACQ-W', cat:'Finishing', w:0, h:0, qty:5, low:1, cost:18, coverage_sqm:10 },
+  { name:'Shellac Sanding Sealer', sku:'FIN-SHEL',   cat:'Finishing', w:0, h:0, qty:2, low:1, cost:14, coverage_sqm:10 },
+  { name:'White Cabinet Paint',    sku:'FIN-PNT-WHT',cat:'Finishing', w:0, h:0, qty:5, low:1, cost:28, coverage_sqm:12 },
+];
+
+/** Bulk-insert STOCK_DEFAULTS into the user's stock library. Used by the
+ *  empty-state "Load defaults" button. Skips items the user already has
+ *  (matched by SKU) so it's safe to re-run. */
+async function loadDefaultStockItems() {
+  if (!_requireAuth || !_requireAuth()) return;
+  const have = new Set(stockItems.map(s => (s.sku || '').toUpperCase()).filter(Boolean));
+  const pending = STOCK_DEFAULTS.filter(d => !have.has(d.sku.toUpperCase()));
+  if (!pending.length) { _toast('Default stock library already loaded', 'success'); return; }
+  // Respect free-tier cap: only insert what fits.
+  const cap = (typeof FREE_LIMITS !== 'undefined' && FREE_LIMITS.stock) || Infinity;
+  const proOrTrial = (typeof isPro === 'function' && isPro()) || (typeof _trialActive === 'function' && _trialActive());
+  const room = proOrTrial ? pending.length : Math.max(0, cap - stockItems.length);
+  if (room <= 0) { _toast(`Free plan limit reached (${cap} stock items)`, 'error'); return; }
+  const batch = pending.slice(0, room);
+  const rows = batch.map(d => ({
+    user_id: _userId,
+    name: d.name,
+    sku: d.sku,
+    w: d.w,
+    h: d.h,
+    qty: d.qty,
+    low: d.low,
+    cost: d.cost,
+    coverage_sqm: d.coverage_sqm ?? null,
+  }));
+  const { data, error } = await _db('stock_items').insert(/** @type {any} */ (rows)).select();
+  if (error || !data) { _toast('Could not load defaults — ' + (error?.message || 'unknown error'), 'error'); console.error(error); return; }
+  // Attach category + variant/edge-band metadata to each new row.
+  data.forEach((row, i) => {
+    const d = batch[i];
+    const dataAny = /** @type {any} */ (row);
+    if (d.cat === 'Edge Banding') {
+      dataAny.thickness = d.thickness;
+      dataAny.width = d.ebWidth;
+      dataAny.length = d.ebLength;
+      dataAny.glue = d.glue;
+    } else if (d.thickness != null) {
+      dataAny.thickness = d.thickness;
+    }
+    stockItems.push(row);
+    if (d.cat) _scSet(row.id, d.cat);
+    if (d.cat === 'Edge Banding') {
+      _svSet(row.id, { variant: '', thickness: d.thickness || 0, width: d.ebWidth, length: d.ebLength, glue: d.glue });
+    } else if (d.thickness != null) {
+      _svSet(row.id, { variant: d.variant || '', thickness: d.thickness });
+    }
+  });
+  if (typeof _track === 'function') _track('stock_defaults_loaded', { count: data.length });
+  const skipped = pending.length - batch.length;
+  _toast(`Loaded ${data.length} default stock item${data.length===1?'':'s'}${skipped?` (${skipped} skipped — free plan limit)`:''}`, 'success');
+  if (typeof renderStockMain === 'function') renderStockMain();
+  if (typeof _updateStockBadge === 'function') _updateStockBadge();
+}
+/** @type {any} */ (window).loadDefaultStockItems = loadDefaultStockItems;
+
 // ── Finishing units (paint/oil/lacquer) ──
 // Canonical storage is metric: qty = litres, coverage_sqm = m² per litre,
 // cost = £/L. When the app is in imperial mode the form shows US gallons +
@@ -1117,7 +1221,8 @@ function renderStockMain() {
     <div style="padding:16px ${_hp} 0">${_renderContentHeader({ iconSvg: _CH_ICON_STOCK, title: 'Stock Library', addOnclick: '_stockRevealForm()' })}</div>
     ${stockItems.length === 0 ? `<div class="empty-state">
       <div class="empty-icon" style="opacity:.18"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg></div>
-      <h3>No stock items yet</h3><p>Add your first material using the form on the left.</p></div>` : `
+      <h3>No stock items yet</h3><p>Add your first material using the form on the left, or load a starter library.</p>
+      <button class="btn btn-primary" style="margin-top:12px" onclick="loadDefaultStockItems()">Load default stock list</button></div>` : `
     <div class="lib-filter-row" style="padding:0 ${_hp}">
       <input class="lib-filter-input" type="search" placeholder="Search…" value="${window._stockSearch||''}" oninput="window._stockSearch=this.value;renderStockMain()">
       <button class="btn btn-outline lib-filter-btn" onclick="_buildStockPDF()" title="PDF">PDF</button>

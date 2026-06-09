@@ -50,7 +50,7 @@ let cbSettings = {
     { name: 'Plinth', refHours: 0.3 },
     { name: 'Feet / Legs', refHours: 0.4 },
     { name: 'Castors', refHours: 0.3 },
-    { name: 'Frame', refHours: 0.5 },
+    { name: 'Frame', refHours: 2 },
   ],
   constructions: [
     { name: 'Overlay', price: 0 },
@@ -231,7 +231,7 @@ function loadCBSettings() {
   try { const s = localStorage.getItem('pc_cq_settings'); if (s) cbSettings = JSON.parse(s); } catch(e) {}
   if (typeof cbSettings.contingencyPct !== 'number') cbSettings.contingencyPct = 5;
   if (!cbSettings.baseTypes || !cbSettings.baseTypes.length) cbSettings.baseTypes = [
-    {name:'None',refHours:0},{name:'Plinth',refHours:0.3},{name:'Feet / Legs',refHours:0.4},{name:'Castors',refHours:0.3},{name:'Frame',refHours:0.5}
+    {name:'None',refHours:0},{name:'Plinth',refHours:0.3},{name:'Feet / Legs',refHours:0.4},{name:'Castors',refHours:0.3},{name:'Frame',refHours:2}
   ];
   // Migrate legacy base types (flat price → labour hours). Drop the old price
   // field and default refHours to 0 so prices don't silently double-count.
