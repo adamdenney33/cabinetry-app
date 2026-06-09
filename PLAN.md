@@ -152,6 +152,35 @@ a **0.7% (capped ~$100)** application fee. Built across the quote/order overhaul
 
 Detail: SPEC.md § 13 (2026-06-09).
 
+### Quote/order cards — one status language, live link optional ✅ Done 2026-06-10
+
+The cards mixed three status displays (badge, pipeline, live stamp) in two
+vocabularies, and a critical bug wiped statuses on every editor autosave.
+
+- ✅ **Status-wipe bug (critical):** `saveQuoteEditor`/`saveOrderEditor` read
+  the long-removed `#pq-status`/`#po-status` selects → wrote `status: ''` on
+  every 600 ms autosave, destroying live-link statuses (accepted/deposit_paid →
+  card showed "Draft"). Editors now preserve the row's status (it's owned by
+  the card pipeline + live-link events). Repaired 4 quotes + 5 orders in prod
+  via SQL (status inferred from accepted_at/viewed_at/share_token).
+- ✅ **Quote card:** one status display — badge carries the granular state +
+  date ("Accepted · 2 Jun"); duplicate meta stamp removed; pipeline renamed
+  Draft → Sent → **Accepted** (one vocabulary; 'approved' is a read alias) and
+  its active step shows the same granular word (Viewed / Deposit paid / Paid);
+  muted "Link live · not viewed yet" hint only when a link exists. Without a
+  live link the card is purely the manual pipeline — nothing extra shows.
+- ✅ **Pipeline guard:** clicking an earlier stage on a customer-driven status
+  (viewed/accepted/deposit_paid/paid) asks for confirmation with what the
+  customer actually did; same-stage clicks keep the richer truth (no silent
+  viewed→sent downgrades). Manual-only flows behave exactly as before.
+- ✅ **Order card:** payment is its own dimension — the second look-alike badge
+  is replaced by an outline pill in the meta row ("✓ Deposit paid · balance
+  due" / "✓ Paid in full" / "Link live"); production badge + pipeline untouched.
+- ✅ **Dashboard:** Recent Quotes rows use `_quoteStatusMeta` (its own ternary
+  showed "Draft" for viewed/accepted/paid quotes).
+
+Detail: SPEC.md § 13 (2026-06-10).
+
 ### Live link + cabinet quote — UX/UI review pass 2 ✅ Done 2026-06-09
 
 Full re-review of both workflows (business + customer sides); 14 fixes landed.
