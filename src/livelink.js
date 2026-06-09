@@ -110,21 +110,26 @@ async function switchQuoteTab(tab) { await _llSwitch('quote', tab); }
 /** @param {'builder'|'live'} tab */
 async function switchOrderTab(tab) { await _llSwitch('order', tab); }
 
-/** Live link is a Pro-only feature. Gate entry to the live tab behind an
- *  active subscription/trial; free users get the upgrade modal and stay on the
- *  builder. @returns {boolean} true when it's safe to open the live tab. */
-function _enforceLiveLinkPro() {
-  if (typeof _enforceProFeature !== 'function') return true;
-  return _enforceProFeature('live_link', {
-    message: 'The customer <strong>Live link</strong> is a Pro feature. Upgrade to send a live quote page where customers can pick options, request changes, message you and pay a deposit.',
-    toast: 'The customer Live link is a Pro feature.',
-  });
+/** True when the signed-in user has Pro access (paid or trial). The customer
+ *  Live link itself is free; only item selection + spec editing are gated.
+ *  @returns {boolean} */
+function _llHasPro() {
+  return typeof _hasProAccess === 'function' ? _hasProAccess() : true;
+}
+
+/** Free user clicked a Pro-gated customer-controls toggle: show the upgrade
+ *  modal (item selection / spec editing are Pro). */
+function _llControlsProGate() {
+  if (typeof _enforceProFeature === 'function') {
+    _enforceProFeature('live_link_controls', {
+      message: 'Letting customers <strong>pick optional items</strong> and <strong>request spec changes</strong> on the live page is a Pro feature. Upgrade to switch these on.',
+      toast: 'Customer item selection & spec editing are Pro features.',
+    });
+  }
 }
 
 /** @param {'quote'|'order'} kind @param {'builder'|'live'} tab */
 async function _llSwitch(kind, tab) {
-  // Pro gate: block entry to the live tab for free users (keeps them on builder).
-  if (tab === 'live' && !_enforceLiveLinkPro()) { _llTab[kind] = 'builder'; return; }
   _llTab[kind] = tab;
   if (tab === 'live') { await _llEnsureLines(_llShareQuote(kind), kind); }
   // Re-render the editor (rebuilds the tab bar + bodies with correct active state).
@@ -168,6 +173,7 @@ function _liveLinkPanel(kind) {
   if (kind === 'order') return _orderLinkPanel(q);
   const s = q.share_settings || {};
   const shared = !!q.share_token;
+  const pro = _llHasPro();  // item selection + spec editing are Pro-gated
   const lines = q._lines || [];
   const link = shared ? _shareLink(q.share_token) : '';
   const linkBox = shared
@@ -179,7 +185,18 @@ function _liveLinkPanel(kind) {
     : `<div class="ll-empty">No live link yet — set the options below, then <strong>Generate</strong>.</div>`;
   const tog = (/** @type {string} */ id, /** @type {string} */ label, /** @type {string} */ desc, /** @type {boolean} */ on) =>
     `<div class="share-toggle-row"><div><div class="st-label">${label}</div><div class="st-desc">${desc}</div></div><button class="mini-toggle" id="${id}" aria-pressed="${on ? 'true' : 'false'}" onclick="_shTgl(this);_llAutoSave();_llSyncLineControls()"></button></div>`;
+  // Pro-gated toggle: rendered off + locked for free users. The hidden id is kept
+  // (aria-pressed="false") so _generateShareLink reads it as off and persists
+  // allow_select/allow_edit = false. Clicking opens the upgrade modal.
+  const togPro = (/** @type {string} */ id, /** @type {string} */ label, /** @type {string} */ desc, /** @type {boolean} */ on) =>
+    pro ? tog(id, label, desc, on)
+        : `<div class="share-toggle-row ll-locked" onclick="_llControlsProGate()"><div><div class="st-label">${label} <span class="ll-pro-pill">Pro</span></div><div class="st-desc">${desc}</div></div><button class="mini-toggle" id="${id}" aria-pressed="false" disabled></button></div>`;
   const lineRows = lines.map(_llLineControl).join('') || '<div class="ll-hint" style="padding:8px 0">No line items on this quote yet.</div>';
+  const perLineSection = pro
+    ? `<div class="ll-h">Per-line controls</div>
+       <div class="ll-hint">Mark lines the customer may remove, and which specs they can request changes to.</div>
+       ${lineRows}`
+    : '';
   return `<div class="ll-pad">
     ${linkBox}
     <div class="ll-h">Payment</div>
@@ -187,11 +204,9 @@ function _liveLinkPanel(kind) {
     <div class="share-toggle-row"><div><div class="st-label">Take a deposit</div><div class="st-desc">% due to confirm the order</div></div>
       <div class="ll-dep"><input type="number" id="sh-dep" value="${s.deposit_pct != null ? s.deposit_pct : 40}" min="0" max="100" onchange="_llAutoSave()"><span>%</span></div></div>
     <div class="ll-h">What the customer can do</div>
-    ${tog('sh-select', 'Allow item selection', 'Include / exclude optional lines', s.allow_select !== false)}
-    ${tog('sh-edit', 'Allow spec editing', 'Customer can request changes to unlocked specs', !!s.allow_edit)}
-    <div class="ll-h">Per-line controls</div>
-    <div class="ll-hint">Mark lines the customer may remove, and which specs they can request changes to.</div>
-    ${lineRows}
+    ${togPro('sh-select', 'Allow item selection', 'Include / exclude optional lines', s.allow_select !== false)}
+    ${togPro('sh-edit', 'Allow spec editing', 'Customer can request changes to unlocked specs', !!s.allow_edit)}
+    ${perLineSection}
     <div class="ll-autosave" id="ll-autosave">${shared ? 'Changes save automatically' : 'Creating live link…'}</div>
   </div>`;
 }
@@ -388,5 +403,5 @@ Object.assign(window, {
   _llTab, _llReset, _llShareQuote, _llClientId, _llEnsureLines, _llTabBar, _llLiveBodyDiv,
   _llEnterLive, switchQuoteTab, switchOrderTab, _liveLinkPanel, _llSpecsFor, _llLineControl,
   _llToggleSpecs, _llSpecAll, _llSyncLineControls, _llRenderPreview, _llAfterSave, _sendLiveLink, _orderPdfMenu, _openLiveLinkTab,
-  _llAutoSave, _llOnSaved, _llSaveError,
+  _llAutoSave, _llOnSaved, _llSaveError, _llControlsProGate,
 });

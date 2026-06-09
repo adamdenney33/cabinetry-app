@@ -1163,6 +1163,7 @@ canvas { display: block; }
 .qc-title { font-size: 14px; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; cursor: text; }
 .qc-title:focus { outline: none; white-space: normal; border-bottom: 1px solid var(--accent); }
 .qc-meta { font-size: 11px; color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.qc-live { color: var(--success); font-weight: 600; }
 .qc-notes { font-size: 11px; color: var(--text2); margin-top: 4px; font-style: italic; opacity: 0.8; cursor: text; }
 .qc-notes:focus { outline: none; font-style: normal; }
 .qc-actions { display: flex; gap: 5px; flex-shrink: 0; align-items: flex-start; }
@@ -1398,6 +1399,10 @@ canvas { display: block; }
 .mini-toggle::after { content: ''; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.3); transition: transform .15s; }
 .mini-toggle[aria-pressed="true"] { background: var(--accent); }
 .mini-toggle[aria-pressed="true"]::after { transform: translateX(16px); }
+/* Pro-locked customer-controls toggle (item selection / spec editing) */
+.share-toggle-row.ll-locked { cursor: pointer; }
+.share-toggle-row.ll-locked .mini-toggle { opacity: .45; cursor: pointer; }
+.ll-pro-pill { display: inline-block; margin-left: 6px; font-size: 9px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase; color: #1a1a1a; background: var(--accent); padding: 1px 6px; border-radius: 20px; vertical-align: middle; }
 .oc-status-select { font-size: 12px; padding: 5px 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); font-family: inherit; cursor: pointer; }
 /* ── Unified list/library filter bars (reference: Cabinet Library) ──
    Row 1 (.lib-filter-row): search/filter input + Import/Export buttons, all
