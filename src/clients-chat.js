@@ -157,6 +157,78 @@ async function _sendOrderMessage(orderId) {
   catch (e) { _toast('Message not sent (is the schema migration applied?)', 'error'); }
 }
 
+// ── In-card quote thread (Quotes tab) ───────────────────────────────────────
+// Same client-scoped conversation rendered INLINE in a quote card, matching the
+// order-card pattern. Messages sent here are tagged with quote_id (context).
+
+/** @param {number} quoteId @param {number} clientId @returns {string} */
+function _quoteThreadInner(quoteId, clientId) {
+  const msgs = _clientMessages[clientId] || [];
+  const thread = msgs.length
+    ? msgs.map(_ccBubbleHtml).join('')
+    : '<div style="color:var(--muted);font-size:12px;text-align:center;margin:auto;padding:18px 8px">No messages yet — the customer can reply from their live quote page.</div>';
+  return `<div id="qc-thread-body-${quoteId}" style="display:flex;flex-direction:column;gap:8px;max-height:300px;overflow-y:auto;padding:12px 14px;background:var(--bg)">${thread}</div>
+    <div style="border-top:1px solid var(--border);padding:8px 10px;display:flex;gap:6px;background:var(--surface)">
+      <input id="qc-thread-input-${quoteId}" placeholder="Reply to the customer…" autocomplete="off" style="flex:1;border:1px solid var(--border);border-radius:999px;padding:8px 14px;font-family:inherit;font-size:13px;background:var(--surface2);color:var(--text)" onkeydown="if(event.key==='Enter')_sendQuoteMessage(${quoteId})">
+      <button class="btn btn-primary" style="width:auto;padding:8px 16px" onclick="_sendQuoteMessage(${quoteId})">Send</button>
+    </div>`;
+}
+
+/** Expand / collapse the in-card thread on a quote card. @param {number} quoteId */
+async function _toggleQuoteThread(quoteId) {
+  if (!_requireAuth()) return;
+  const wrap = /** @type {HTMLElement|null} */ (document.querySelector(`[data-quote-thread="${quoteId}"]`));
+  if (!wrap) return;
+  if (wrap.style.display !== 'none') { wrap.style.display = 'none'; wrap.innerHTML = ''; return; }
+  const q = /** @type {any} */ (typeof quotes !== 'undefined' ? quotes : []).find(/** @param {any} x */ x => x.id === quoteId);
+  const clientId = q ? q.client_id : null;
+  if (!clientId) { _toast('No client on this quote', 'error'); return; }
+  // Pull the latest conversation for this client (the customer may have replied).
+  try {
+    const { data } = await _cmTable().select('id, client_id, sender, body, created_at, read_at').eq('client_id', clientId).order('created_at');
+    _clientMessages[clientId] = data || [];
+  } catch (e) { /* offline / not applied */ }
+  wrap.innerHTML = _quoteThreadInner(quoteId, clientId);
+  wrap.style.display = 'block';
+  const body = document.getElementById(`qc-thread-body-${quoteId}`); if (body) body.scrollTop = body.scrollHeight;
+  // Mark the customer's messages read + clear badges in place (every quote/order
+  // card for this client, since the thread is client-scoped) without a full re-render.
+  try {
+    await _cmTable().update({ read_at: new Date().toISOString() }).eq('client_id', clientId).eq('sender', 'customer').is('read_at', null);
+    (_clientMessages[clientId] || []).forEach(/** @param {any} m */ m => { if (m.sender === 'customer' && !m.read_at) m.read_at = new Date().toISOString(); });
+    if (typeof quotes !== 'undefined' && quotes) {
+      /** @type {any} */ (quotes).filter(/** @param {any} x */ x => x.client_id === clientId).forEach(/** @param {any} x */ x => {
+        document.querySelectorAll(`[data-quote-unread="${x.id}"]`).forEach(el => { el.textContent = ''; });
+      });
+    }
+    if (typeof orders !== 'undefined' && orders) {
+      /** @type {any} */ (orders).filter(/** @param {any} x */ x => x.client_id === clientId).forEach(/** @param {any} x */ x => {
+        document.querySelectorAll(`[data-order-unread="${x.id}"]`).forEach(el => { el.textContent = ''; });
+      });
+    }
+    document.querySelectorAll(`[data-client-unread="${clientId}"]`).forEach(el => { el.textContent = ''; });
+    try { renderClientsMain(); } catch (e) { /* Clients tab not mounted */ }
+  } catch (e) { /* ignore */ }
+}
+
+/** Send a business reply from a quote card (tags quote_id). @param {number} quoteId */
+async function _sendQuoteMessage(quoteId) {
+  const inp = /** @type {HTMLInputElement|null} */ (document.getElementById(`qc-thread-input-${quoteId}`));
+  if (!inp || !inp.value.trim()) return;
+  const q = /** @type {any} */ (typeof quotes !== 'undefined' ? quotes : []).find(/** @param {any} x */ x => x.id === quoteId);
+  const clientId = q ? q.client_id : null;
+  if (!clientId) return;
+  const text = inp.value.trim(); inp.value = '';
+  (_clientMessages[clientId] = _clientMessages[clientId] || []).push({ sender: 'business', body: text, created_at: new Date().toISOString() });
+  const body = document.getElementById(`qc-thread-body-${quoteId}`);
+  if (body) {
+    body.innerHTML = (_clientMessages[clientId] || []).map(_ccBubbleHtml).join('');
+    body.scrollTop = body.scrollHeight;
+  }
+  try { await _cmTable().insert({ user_id: _userId, client_id: clientId, quote_id: quoteId, sender: 'business', body: text }); }
+  catch (e) { _toast('Message not sent (is the schema migration applied?)', 'error'); }
+}
+
 // ── In-card client thread (Clients tab) ─────────────────────────────────────
 // Same client-scoped conversation rendered INLINE in a client card (matches the
 // order-card pattern + the chosen mockup) instead of the _openClientChat popup.
@@ -217,4 +289,4 @@ async function _sendClientThreadMessage(clientId) {
   catch (e) { _toast('Message not sent (is the schema migration applied?)', 'error'); }
 }
 
-Object.assign(window, { loadAllClientMessages, _clientUnreadCount, _openClientChat, _sendClientMessage, _toggleOrderThread, _orderThreadInner, _sendOrderMessage, _clientThreadInner, _toggleClientThread, _sendClientThreadMessage });
+Object.assign(window, { loadAllClientMessages, _clientUnreadCount, _openClientChat, _sendClientMessage, _toggleOrderThread, _orderThreadInner, _sendOrderMessage, _quoteThreadInner, _toggleQuoteThread, _sendQuoteMessage, _clientThreadInner, _toggleClientThread, _sendClientThreadMessage });

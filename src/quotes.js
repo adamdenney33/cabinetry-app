@@ -488,11 +488,13 @@ function renderQuoteMain() {
       <div class="qc-footer">
         <button class="btn btn-outline" onclick="event.stopPropagation();printQuote(${q.id},'pdf')">PDF</button>
         ${typeof _openLiveLinkTab === 'function' ? `<button class="btn btn-outline" onclick="event.stopPropagation();_openLiveLinkTab('quote',${q.id})" title="Open the live link page">Live link</button>` : (typeof _openSharePanel === 'function' ? `<button class="btn btn-outline" onclick="event.stopPropagation();_openSharePanel(${q.id})">Live link</button>` : '')}
+        ${typeof _toggleQuoteThread === 'function' ? (() => { const _u = typeof _clientUnreadCount === 'function' ? _clientUnreadCount(q.client_id) : 0; return `<button class="btn btn-outline" onclick="event.stopPropagation();_toggleQuoteThread(${q.id})">Messages <span data-quote-unread="${q.id}">${_u ? `(${_u})` : ''}</span></button>`; })() : ''}
         <span style="flex:1"></span>
         ${(() => { const matchingOrder = orders.find(o => o.quote_id === q.id); return matchingOrder ? `<button class="btn btn-outline" onclick="event.stopPropagation();_openOrderPopup(${matchingOrder.id})" style="color:var(--success)">✓ View Order</button>` : `<button class="btn btn-outline" onclick="event.stopPropagation();convertQuoteToOrder(${q.id})">Create Order</button>`; })()}
         <button class="btn btn-outline" onclick="event.stopPropagation();duplicateQuote(${q.id})">Duplicate</button>
         <button class="btn btn-outline" style="color:var(--danger)" onclick="event.stopPropagation();_confirm('Delete quote for <strong>${_escHtml(quoteClient(q))}</strong>?',()=>removeQuote(${q.id}))">Delete</button>
       </div>
+      <div class="oc-thread" data-quote-thread="${q.id}" style="display:none" onclick="event.stopPropagation()"></div>
     </div>`;
   };
 
