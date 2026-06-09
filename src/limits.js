@@ -227,15 +227,21 @@ function _enforceFreeLimit(library, currentCount) {
  * Use at the top of every import/export entry point:
  *   if (!_enforceProFeature()) return;
  *
+ * Pass a feature name + custom copy to reuse the gate for other Pro-only
+ * features (e.g. the customer Live link):
+ *   if (!_enforceProFeature('live_link', { message: '…', toast: '…' })) return;
+ *
+ * @param {string} [feature]  Tracking label for the blocked feature.
+ * @param {{message?:string, toast?:string}} [opts]  Optional modal/toast copy.
  * @returns {boolean}
  */
-function _enforceProFeature() {
+function _enforceProFeature(feature, opts) {
   if (!_userId || _hasProAccess()) return true;
-  if (typeof _track === 'function') _track('pro_feature_blocked', { feature: 'import_export' });
+  if (typeof _track === 'function') _track('pro_feature_blocked', { feature: feature || 'import_export' });
   if (typeof _openProFeatureModal === 'function') {
-    _openProFeatureModal();
+    _openProFeatureModal(opts && opts.message);
   } else if (typeof _toast === 'function') {
-    _toast('Importing and exporting is a Pro feature.', 'error');
+    _toast((opts && opts.toast) || 'Importing and exporting is a Pro feature.', 'error');
   }
   return false;
 }

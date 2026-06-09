@@ -516,11 +516,15 @@ function _openLimitHitModal(library) {
 }
 
 /**
- * Modal shown when a signed-in free user clicks an import or export button.
- * Lock icon + the standard upgrade CTAs. Logged-out demo visitors never reach
- * this — `_enforceProFeature` lets them through.
+ * Modal shown when a signed-in free user clicks a Pro-only button. Lock icon +
+ * the standard upgrade CTAs. Logged-out demo visitors never reach this —
+ * `_enforceProFeature` lets them through. Defaults to the import/export + DXF
+ * copy; pass `messageHtml` to tailor it for another feature (e.g. Live link).
+ * @param {string} [messageHtml]
  */
-function _openProFeatureModal() {
+function _openProFeatureModal(messageHtml) {
+  const body = messageHtml ||
+    'This is a <strong>Pro</strong> feature. Upgrade to import and export your libraries as CSV, and send your nested cut layouts to the CNC as DXF.';
   _openPopup(`
     <div class="popup-header">
       <div class="popup-title">A Pro Feature</div>
@@ -529,7 +533,7 @@ function _openProFeatureModal() {
     <div class="popup-body">
       <div style="text-align:center;font-size:34px;line-height:1;padding:4px 0 2px">&#128274;</div>
       <div style="background:rgba(232,168,56,0.08);border:1px solid rgba(232,168,56,0.2);border-radius:8px;padding:12px 14px;font-size:13px;color:var(--text);line-height:1.5;text-align:center">
-        This is a <strong>Pro</strong> feature. Upgrade to import and export your libraries as CSV, and send your nested cut layouts to the CNC as DXF.
+        ${body}
       </div>
       <div class="pf-divider"></div>
       <button class="btn btn-primary btn-lg" onclick="_closePopup();_handleUpgradeClick('annual')">Upgrade to Pro</button>

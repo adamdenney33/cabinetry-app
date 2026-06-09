@@ -110,8 +110,21 @@ async function switchQuoteTab(tab) { await _llSwitch('quote', tab); }
 /** @param {'builder'|'live'} tab */
 async function switchOrderTab(tab) { await _llSwitch('order', tab); }
 
+/** Live link is a Pro-only feature. Gate entry to the live tab behind an
+ *  active subscription/trial; free users get the upgrade modal and stay on the
+ *  builder. @returns {boolean} true when it's safe to open the live tab. */
+function _enforceLiveLinkPro() {
+  if (typeof _enforceProFeature !== 'function') return true;
+  return _enforceProFeature('live_link', {
+    message: 'The customer <strong>Live link</strong> is a Pro feature. Upgrade to send a live quote page where customers can pick options, request changes, message you and pay a deposit.',
+    toast: 'The customer Live link is a Pro feature.',
+  });
+}
+
 /** @param {'quote'|'order'} kind @param {'builder'|'live'} tab */
 async function _llSwitch(kind, tab) {
+  // Pro gate: block entry to the live tab for free users (keeps them on builder).
+  if (tab === 'live' && !_enforceLiveLinkPro()) { _llTab[kind] = 'builder'; return; }
   _llTab[kind] = tab;
   if (tab === 'live') { await _llEnsureLines(_llShareQuote(kind), kind); }
   // Re-render the editor (rebuilds the tab bar + bodies with correct active state).
