@@ -363,7 +363,7 @@ function _openManagePopupActive(sub) {
   // Static price shown while the live Stripe lookup is in flight, and the
   // fallback if it fails. _fillManageSubscriptionPricing swaps in the real
   // (possibly discounted) figure once stripe-subscription responds.
-  const fallbackPrice = isAnnual ? '$300/yr' : '$35/mo';
+  const fallbackPrice = isAnnual ? '$299/yr' : '$35/mo';
   const switchLabel = isAnnual ? 'Switch to Monthly' : 'Switch to Annual';
   const periodEnd = sub.current_period_end
     ? new Date(sub.current_period_end).toLocaleDateString()

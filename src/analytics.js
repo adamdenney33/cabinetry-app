@@ -121,7 +121,7 @@ function _trackSignupConversion() {
  * helper — with no pixel/ads IDs configured, every branch is a safe no-op.
  *
  * `value` is the USD list price from the stripe-checkout function (monthly $35,
- * annual $300, founder $299 one-off). The amount actually charged can differ
+ * annual $299, founder $299 one-off). The amount actually charged can differ
  * with launch coupons or Adaptive Pricing currency conversion, so treat this as
  * the reporting / value-optimisation figure, not the exact receipt. (A future
  * server-side Meta CAPI call from the Stripe webhook can report amount_total.)
@@ -137,7 +137,7 @@ function _trackPurchaseConversion(plan) {
   // USD list prices keyed by plan. Fall back to the monthly price if the plan
   // param is missing, so the conversion still carries a sensible value.
   /** @type {Record<string, number>} */
-  const PRICES = { monthly: 35, annual: 300, founder: 299 };
+  const PRICES = { monthly: 35, annual: 299, founder: 299 };
   const value = (plan && PRICES[plan]) || PRICES.monthly;
   const currency = 'USD';
   const isFounder = plan === 'founder';
