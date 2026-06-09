@@ -13,7 +13,8 @@ Companion docs: `SPEC.md` (refactor history), `SCHEMA.md` (DB schema),
 - **App is live** at [procabinet.app](https://procabinet.app) (Cloudflare Pages, auto-deploy on push to `main`)
 - **Pre-launch refactor (SPEC.md Phases 0–7)** complete — modular files, TypeScript strict mode, schema normalised
 - **Cabinet Builder unification** (Item 2): all 4 phases done — pre-launch refactor closed
-- **Stripe payments**: S.2–S.7 done in test mode (Checkout + Portal + Webhook + DB schema); S.8 verification + S.9 live-mode flip remain
+- **Stripe payments (subscriptions)**: S.2–S.7 done in test mode (Checkout + Portal + Webhook + DB schema); S.8 verification + S.9 live-mode flip remain
+- **Stripe Connect (customer payments on live quote/order pages)**: built + deployed (connect-onboard/connect-status/quote-pay/quote-pay-webhook + `src/connect.js` + `q.html`); charge model corrected to **Standard + direct charges + 0.7%/$100-cap fee** (2026-06-09, commit `6711b61`). Pending: Connect-webhook config + end-to-end test + live-mode flip
 - **Mobile / responsive**: ✅ comprehensive mobile-native pass done 2026-05-23 (7 phases; see Active Work / SPEC.md § 13)
 - **UI polish + design finalisation**: not started
 - **Launch target:** mid-May 2026 (per Business Plan)
@@ -21,6 +22,35 @@ Companion docs: `SPEC.md` (refactor history), `SCHEMA.md` (DB schema),
 ---
 
 ## Active Work
+
+### Customer payments + live quote/order pages (Stripe Connect) 🚧 In Progress 2026-06-09
+
+Public `/q?t=<share_token>` live pages (`q.html` + `src/quote-public.js`) where a
+customer views a quote/order, edits unlocked specs, accepts, chats (two-way), and
+**pays a deposit/balance by card** into the business's own Stripe — ProCabinet takes
+a **0.7% (capped ~$100)** application fee. Built across the quote/order overhaul
+(migrations `20260604120000`+; edge functions `quote-public-get`/`-update`,
+`quote-messages`, `quote-pay`, `quote-pay-webhook`, `connect-onboard`,
+`connect-status`; `src/livelink.js`/`share.js`/`connect.js`). Schema:
+`stripe_accounts`, `payments`, `customer_messages`, `line_photos` + quote/order
+`share_token`/`share_settings` (SCHEMA.md § 3.23–3.26).
+
+- ✅ **Charge model corrected to the agreed design (2026-06-09, `6711b61`).** Pre-fix
+  it was **Express + destination charges** (so the *platform* paid Stripe's ~2.9% fee
+  while collecting only 0.7% → net loss per txn; plus cross-region limits) with **no
+  fee cap** and a **1.5% default**. Now **Standard accounts + direct charges** (maker =
+  merchant of record, pays Stripe's fee), **0.7% capped ~$100/currency**; `quote-pay`
+  returns `account_id`; `quote-public.js` confirms with `{ stripeAccount }`. `quote-pay`
+  v4 + `connect-onboard` v4 redeployed ACTIVE; smoke green; `npm run typecheck` clean.
+- ⬜ **Stripe config (user):** the `quote-pay-webhook` endpoint must be a **Connect**
+  webhook — direct-charge `payment_intent.succeeded` fires on the *connected* account,
+  not the platform; confirm `STRIPE_PLATFORM_FEE_BPS=70` or unset.
+- ⬜ **End-to-end test (test mode):** onboard a Standard account → pay a `/q` deposit
+  with a test card → verify the `payments` row, webhook, auto-created order, and fee
+  on the platform balance.
+- ⬜ **Live-mode flip** (alongside the subscription Stripe S.9).
+
+Detail: SPEC.md § 13 (2026-06-09).
 
 ### Cut type toggle — panel saw (guillotine) vs CNC router (nested) ✅ Done 2026-05-25
 
