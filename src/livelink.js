@@ -210,10 +210,26 @@ function _orderLinkPanel(o) {
   </div>`;
 }
 
-// Deposit-row captions — swapped live so it's obvious that turning the
-// deposit off means the customer is asked for the FULL amount on accept.
+// Deposit-row captions — swapped live with the toggle.
 const _LL_DEP_ON_DESC = 'Collected when the customer accepts · balance due on completion';
-const _LL_DEP_OFF_DESC = 'Off — the customer pays the full amount when they accept';
+const _LL_DEP_OFF_DESC = 'Off — no deposit requested';
+/** One sentence stating what the customer will actually be asked to pay,
+ *  given the card-payment + deposit toggles combined — and which switch to
+ *  flip to change it. Shown under the Payment rows, updated live.
+ *  @param {boolean} pay @param {boolean} dep @param {number} pct @returns {string} */
+function _llPaySummaryText(pay, dep, pct) {
+  if (pay && dep && pct > 0) return `Customer pays a ${pct}% deposit by card when they accept — the balance is due on completion.`;
+  if (pay) return 'Customer pays the FULL total by card when they accept. Prefer part up front? Turn the deposit on. Want no payment on this page? Switch off card payment above.';
+  if (dep && pct > 0) return `No card payment on this page — the customer just accepts, and you arrange the ${pct}% deposit yourself.`;
+  return 'No card payment on this page — the customer just accepts, and you arrange payment yourself.';
+}
+/** Re-render the payment summary from the current toggle states. */
+function _llPaySummaryUpdate() {
+  const el = document.getElementById('ll-pay-summary'); if (!el) return;
+  const on = (/** @type {string} */ id) => { const b = document.getElementById(id); return !!b && b.getAttribute('aria-pressed') === 'true'; };
+  const pctEl = /** @type {HTMLInputElement|null} */ (document.getElementById('sh-dep'));
+  el.textContent = _llPaySummaryText(on('sh-pay'), on('sh-dep-on'), pctEl ? (parseFloat(pctEl.value) || 0) : 0);
+}
 /** Deposit toggle: flip state, show/hide the % input, swap the caption.
  *  @param {HTMLElement} b @param {'quote'|'order'} kind */
 function _llDepTgl(b, kind) {
@@ -221,6 +237,7 @@ function _llDepTgl(b, kind) {
   const on = b.getAttribute('aria-pressed') === 'true';
   const w = document.getElementById('ll-dep-wrap'); if (w) w.style.display = on ? '' : 'none';
   const d = document.getElementById('ll-dep-desc'); if (d) d.textContent = on ? _LL_DEP_ON_DESC : _LL_DEP_OFF_DESC;
+  _llPaySummaryUpdate();
   _llAutoSave(kind);
 }
 
@@ -264,7 +281,7 @@ function _liveLinkPanel(kind) {
        </div>`
     : `<div class="ll-empty">Creating live link…</div>`;
   const tog = (/** @type {string} */ id, /** @type {string} */ label, /** @type {string} */ desc, /** @type {boolean} */ on) =>
-    `<div class="share-toggle-row"><div><div class="st-label">${label}</div><div class="st-desc">${desc}</div></div><button class="mini-toggle" id="${id}" aria-pressed="${on ? 'true' : 'false'}" onclick="_shTgl(this);_llAutoSave('${kind}');_llSyncLineControls()"></button></div>`;
+    `<div class="share-toggle-row"><div><div class="st-label">${label}</div><div class="st-desc">${desc}</div></div><button class="mini-toggle" id="${id}" aria-pressed="${on ? 'true' : 'false'}" onclick="_shTgl(this);_llPaySummaryUpdate();_llAutoSave('${kind}');_llSyncLineControls()"></button></div>`;
   // Pro-gated toggle: rendered off + locked for free users. The hidden id is kept
   // (aria-pressed="false") so _generateShareLink reads it as off and persists
   // allow_select/allow_edit = false. Clicking opens the upgrade modal.
@@ -308,9 +325,10 @@ function _liveLinkPanel(kind) {
     ${payRow}
     <div class="share-toggle-row"><div><div class="st-label">Take a deposit</div><div class="st-desc" id="ll-dep-desc">${s.take_deposit === false ? _LL_DEP_OFF_DESC : _LL_DEP_ON_DESC}</div></div>
       <div style="display:flex;align-items:center;gap:10px">
-        <div class="ll-dep" id="ll-dep-wrap"${s.take_deposit === false ? ' style="display:none"' : ''}><input type="number" id="sh-dep" value="${s.deposit_pct != null ? s.deposit_pct : 40}" min="0" max="100" onchange="_llAutoSave('${kind}')"><span>%</span></div>
+        <div class="ll-dep" id="ll-dep-wrap"${s.take_deposit === false ? ' style="display:none"' : ''}><input type="number" id="sh-dep" value="${s.deposit_pct != null ? s.deposit_pct : 40}" min="0" max="100" oninput="_llPaySummaryUpdate()" onchange="_llAutoSave('${kind}')"><span>%</span></div>
         <button class="mini-toggle" id="sh-dep-on" aria-pressed="${s.take_deposit === false ? 'false' : 'true'}" onclick="_llDepTgl(this,'${kind}')"></button>
       </div></div>
+    <div class="ll-pay-summary" id="ll-pay-summary">${_llPaySummaryText(stripeReady && !!s.accept_payment, s.take_deposit !== false, s.deposit_pct != null ? Number(s.deposit_pct) : 40)}</div>
     <div class="ll-h">What the customer can do</div>
     ${togPro('sh-select', 'Let customers choose items', 'They can include / exclude lines you mark optional below', s.allow_select !== false)}
     ${togPro('sh-edit', 'Let customers request changes', 'They can request changes to specs you unlock — you confirm the new price before anything’s charged', !!s.allow_edit)}
