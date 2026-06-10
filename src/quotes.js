@@ -481,6 +481,11 @@ function renderQuoteMain() {
   const cur = window.currency;
   const el = _byId('quote-main');
   if (!el) return;
+  // Live-link tab owns the main pane (the customer-preview iframe). A realtime
+  // echo of our own settings autosave — or any background refresh — must not
+  // clobber it with the cards grid; _llSwitch repaints the cards on tab exit.
+  if (typeof _llTab !== 'undefined' && _llTab.quote === 'live'
+      && typeof _qpState !== 'undefined' && _qpState && _qpState.quoteId != null) return;
   /** @param {number} v */
   const fmt = v => cur + v.toLocaleString('en-US', {minimumFractionDigits:0, maximumFractionDigits:0});
   // Drill-down: when the sidebar editor has a client picked, scope this list

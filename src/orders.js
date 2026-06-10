@@ -127,6 +127,10 @@ function renderOrdersMain() {
   const cur = window.currency;
   const el = document.getElementById('orders-main');
   if (!el) return;
+  // Live-link tab owns the main pane (customer-preview iframe) — see
+  // renderQuoteMain for why background refreshes must not repaint cards here.
+  if (typeof _llTab !== 'undefined' && _llTab.order === 'live'
+      && typeof _opState !== 'undefined' && _opState && _opState.orderId != null) return;
   /** @param {number} v */
   const fmt = v => cur + v.toLocaleString('en-US', {minimumFractionDigits:0, maximumFractionDigits:0});
   // Drill-down: when the sidebar editor has a client picked, scope this list
