@@ -1450,23 +1450,25 @@ function _qQuoteSuggest(input, boxId) {
 
 /** "+ Add Quote" handler. Inserts a fresh quote row in the DB immediately
  *  (with the next sequential quote number) so back→recent picks it up
- *  without further user input. Mirrors Clients/Stock + cabinets/cutlists. */
-async function _qStartNewQuote() {
+ *  without further user input. Mirrors Clients/Stock + cabinets/cutlists.
+ *  @param {string} [numOverride] full quote number (e.g. 'QUO-0012') — used by
+ *  the suggest dropdown's "Start new quote QUO-X" row to honour the typed number. */
+async function _qStartNewQuote(numOverride) {
   if (!_requireAuth()) return;
   if (!_qpState.clientId) { _toast('Pick a client first', 'error'); return; }
   const insertNew = async () => {
-    const quoteNum = _nextQuoteNumber();
+    const quoteNum = (typeof numOverride === 'string' && numOverride) ? numOverride : _nextQuoteNumber();
     if (typeof _setSaveStatus === 'function') _setSaveStatus('quote', 'saving');
     try {
+      // NB: quotes has no subtotal/total columns (totals are computed from
+      // lines) — sending them 400s with PGRST204 (Sentry JAVASCRIPT-2).
       const { data, error } = await _dbInsertSafe('quotes', /** @type {any} */ ({
         user_id: _userId,
         client_id: _qpState.clientId,
         quote_number: quoteNum,
         status: 'draft',
         date: new Date().toISOString().slice(0, 10),
-        subtotal: 0,
         tax: 0,
-        total: 0,
       }));
       if (error || !data) {
         if (typeof _setSaveStatus === 'function') _setSaveStatus('quote', 'failed', { retry: _qStartNewQuote });
@@ -1492,6 +1494,15 @@ async function _qStartNewQuote() {
   else insertNew();
 }
 /** @type {any} */ (window)._qStartNewQuote = _qStartNewQuote;
+
+/** Suggest-dropdown "Start new quote QUO-X" row: create the quote with the
+ *  number typed into #pq-quote-number (was an unbound onmousedown target). */
+function _qNewQuoteFromInput() {
+  const el = /** @type {HTMLInputElement|null} */ (document.getElementById('pq-quote-number'));
+  const typed = el ? el.value.trim() : '';
+  _qStartNewQuote(typed ? ('QUO-' + typed.replace(/^(QUO|Q)-/i, '')) : undefined);
+}
+/** @type {any} */ (window)._qNewQuoteFromInput = _qNewQuoteFromInput;
 
 /** Exit the open quote back to the quote sub-gate (stays in the project). */
 function _qExitQuote() {
@@ -1724,7 +1735,9 @@ async function createQuoteFromEditor(silent) {
   const row = {
     user_id: _userId,
     client_id: client.id,
-    status: _popupVal('pq-status') || 'draft',
+    // Status is managed from the card pipeline — there's no '#pq-status'
+    // editor field (see saveQuoteEditor), so new quotes always start 'draft'.
+    status: 'draft',
     notes: _popupVal('pq-notes') || '',
     // Legacy order-level markup column kept for back-compat; UI no longer exposes it.
     markup: 0,
@@ -1793,7 +1806,9 @@ async function saveQuoteEditor() {
         qty: row.qty || 0,
         unit_price: row.unit_price ?? null,
         labour_hours: row.labour_hours ?? null,
-        schedule_hours: row.schedule_hours ?? null,
+        // quote_lines.schedule_hours is NOT NULL default 0 — writing null
+        // violated the constraint (23502, Sentry JAVASCRIPT-6).
+        schedule_hours: row.schedule_hours ?? 0,
         discount: row.discount ?? 0,
       };
       writes.push(/** @type {any} */ (_db('quote_lines').update(u).eq('id', row.id)));

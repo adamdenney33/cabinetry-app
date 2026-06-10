@@ -758,12 +758,14 @@ function _oOrderSuggest(input, boxId) {
 }
 
 /** "+ Add Order" handler. Inserts a fresh order row in the DB immediately
- *  (with the next sequential order number). Mirrors quotes / cabinets. */
-async function _oStartNewOrder() {
+ *  (with the next sequential order number). Mirrors quotes / cabinets.
+ *  @param {string} [numOverride] full order number (e.g. 'ORD-0012') — used by
+ *  the suggest dropdown's "Start new order ORD-X" row to honour the typed number. */
+async function _oStartNewOrder(numOverride) {
   if (!_requireAuth()) return;
   if (!_opState.clientId) { _toast('Pick a client first', 'error'); return; }
   const insertNew = async () => {
-    const orderNum = _nextOrderNumber();
+    const orderNum = (typeof numOverride === 'string' && numOverride) ? numOverride : _nextOrderNumber();
     // Pre-populate Project Name with "Project N" where N = existing-orders-
     // for-this-client + 1. User overwrites as they wish; the field is editable.
     const clientId = _opState.clientId;
@@ -804,6 +806,15 @@ async function _oStartNewOrder() {
   else insertNew();
 }
 /** @type {any} */ (window)._oStartNewOrder = _oStartNewOrder;
+
+/** Suggest-dropdown "Start new order ORD-X" row: create the order with the
+ *  number typed into #po-order-number (was an unbound onmousedown target). */
+function _oNewOrderFromInput() {
+  const el = /** @type {HTMLInputElement|null} */ (document.getElementById('po-order-number'));
+  const typed = el ? el.value.trim() : '';
+  _oStartNewOrder(typed ? ('ORD-' + typed.replace(/^ORD-/i, '')) : undefined);
+}
+/** @type {any} */ (window)._oNewOrderFromInput = _oNewOrderFromInput;
 
 /** Exit the open order back to the order sub-gate (stays in the project). */
 function _oExitOrder() {
@@ -1093,7 +1104,9 @@ async function createOrderFromEditor(silent) {
     user_id: _userId,
     client_id: client.id,
     value: 0,
-    status: _popupVal('po-status') || 'quote',
+    // Status is managed from the card pipeline — there's no '#po-status'
+    // editor field (see saveOrderEditor), so new orders always start 'quote'.
+    status: 'quote',
     markup: 0,
     tax: parseFloat(_popupVal('po-tax')) || 0,
     discount: parseFloat(_popupVal('po-discount')) || 0,
