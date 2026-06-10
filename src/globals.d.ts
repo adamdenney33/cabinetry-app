@@ -176,9 +176,9 @@ declare global {
   function _track(event: string, props?: Record<string, any>): void;
   function _identifyUser(session: any): void;
   function _resetAnalytics(): void;
-  /** Fire ad-platform conversion pixels (Meta Pixel + Google Ads + GA4) at signup. No-ops if pixels are disabled. */
-  function _trackSignupConversion(): void;
-  /** Fire ad-platform purchase conversions (Meta Subscribe/Purchase + GA4 purchase + Google Ads) on a successful Pro checkout. No-ops if pixels are disabled. */
+  /** Fire ad-platform conversion pixels (Meta Pixel + Google Ads + GA4) at signup. Pass the Supabase user id so the Meta event dedupes against the server-side CAPI event (`signup-<user_id>`). No-ops if pixels are disabled. */
+  function _trackSignupConversion(userId?: string | null): void;
+  /** Fire ad-platform purchase conversions (GA4 purchase + Google Ads) on a successful Pro checkout. Meta Subscribe/Purchase fires server-side via CAPI from stripe-webhook. No-ops if pixels are disabled. */
   function _trackPurchaseConversion(plan: string | null | undefined): void;
 
   // ── accounting.js globals (QuickBooks/Xero invoice push) ──

@@ -165,9 +165,14 @@
       .then(function (taken) {
         if (typeof taken !== 'number') return;
         var left = Math.max(0, 50 - taken);
+        var heroLeft = document.getElementById('founder-hero-left');
         if (left > 0) {
           flag.innerHTML = '<strong>' + left + '</strong> of 50 left';
+          if (heroLeft) heroLeft.innerHTML = 'only <strong>' + left + '</strong> of 50 seats left';
           return;
+        }
+        if (heroLeft && heroLeft.parentElement && heroLeft.parentElement.parentElement) {
+          heroLeft.parentElement.parentElement.style.display = 'none'; // hide hero line when sold out
         }
         // Sold out: flip the flag and disable the card's CTA.
         flag.textContent = 'Sold out';

@@ -120,6 +120,53 @@ user-side config or policy decisions.
   blocked the core loop without adding upgrade intent. Quotes/orders/cabinets/
   cut lists/clients caps unchanged.
 
+### Growth: paid-acquisition tracking + founders push ✅ Code done 2026-06-10 — ⬜ user-side config to activate
+
+Full-stack pass from a Meta Ads × PostHog × Supabase funnel review (30d: ~£305
+spend → 845 LPVs → 20 signups (1.29%) → 4 upgrade clicks → 0 real sales,
+because Stripe is still test-mode). Goal: make Meta optimise for signups
+instead of landing-page views, make purchases measurable, and surface the
+founders' offer. Details in SPEC.md § 13 (2026-06-10 growth entry).
+
+- ✅ **G.1 — Server-side signup conversions:** new `meta-capi-signup` edge
+  function (CAPI `CompleteRegistration`, event_id `signup-<user_id>`, hashed
+  email + fbc from signup attribution) + `trg_meta_capi_signup` AFTER INSERT
+  trigger on auth.users via pg_net (migration `meta_capi_signup_trigger`).
+  Covers OAuth signups and pixel-blocked browsers; dedupes with the browser
+  pixel, which now passes the same eventID (`analytics.js` / `app.js`).
+- ✅ **G.2 — Purchase conversions + analytics:** stripe-webhook v22 fires Meta
+  CAPI `Subscribe`/`Purchase` (exact `amount_total`, hashed email, fbc) and
+  PostHog `subscription_started` after the DB write on
+  `checkout.session.completed`; both env-gated no-ops until secrets are set,
+  never able to 500 the webhook. Browser-side Meta purchase pixel removed from
+  `_trackPurchaseConversion` (CAPI is canonical; GA4/Google Ads unchanged).
+- ✅ **G.3 — Founders offer above the fold:** hero `.micro-founder` line on
+  landing.html ("$299 once, yours forever · only N of 50 seats left" →
+  #pricing), live count via the existing `founderSeats()` IIFE
+  (#founder-hero-left; hides itself when sold out).
+- ✅ **G.4 — Meta campaigns (created PAUSED via API):** campaign
+  `52550164607114` "Signups (pixel CompleteRegistration)" (OUTCOME_LEADS) with
+  ad set `52550164945314` (£15/day, OFFSITE_CONVERSIONS on
+  COMPLETE_REGISTRATION, same interests/geo as the winning traffic ad set) and
+  the proven Overview reel creative; campaign shell `52550164627114`
+  "Founders Retargeting (warm)" (OUTCOME_SALES) awaiting custom audiences.
+- ⬜ **G.5 — User-side activation (blocking):**
+  1. **S.9 Stripe live-mode flip** (see Stripe section) — nothing real can be
+     sold until this is done. Afterwards decide whether to purge the 3
+     test-mode `subscriptions` rows (they grant Pro + inflate the founder
+     counter).
+  2. Meta Events Manager → pixel 1913344152250764 → Settings → **generate a
+     Conversions API token** → `supabase secrets set META_CAPI_ACCESS_TOKEN=…`
+     (+ optionally `POSTHOG_KEY=<VITE_POSTHOG_KEY value>` for
+     `subscription_started`) → redeploy not needed (functions read env at run).
+  3. In Ads Manager create two custom audiences: "Video viewers 25% — 180d"
+     (the Overview reel) and "Website visitors — 30d" (pixel) — then the
+     retargeting ad set + founders ad can be built into `52550164627114`.
+  4. Enable the Signups campaign + pause the LPV traffic campaign once
+     CompleteRegistration events flow (keep the reel running until then).
+  5. Send the founders email — `marketing/founders-email-2026-06-10.md`
+     (AFTER S.9; the Claim link hits test checkout until then).
+
 ### Orders → cabinet line editing UX pass ✅ Done 2026-06-10
 
 Closed the Orders→Builder round trip and fixed latent order-context bugs.

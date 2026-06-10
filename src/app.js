@@ -1306,6 +1306,12 @@ async function authSubmit() {
   if (!email || !password) { if (msgEl) msgEl.innerHTML = '<div class="auth-error">Email and password required.</div>'; return; }
   if (btn) { btn.disabled = true; btn.textContent = '…'; }
   let error;
+  // Supabase user id from a successful signUp() — passed to
+  // _trackSignupConversion as the Meta Pixel eventID so the browser event
+  // dedupes against the server-side CAPI event fired by the auth.users
+  // trigger → meta-capi-signup edge function (both use `signup-<user_id>`).
+  /** @type {string | null} */
+  let signupUserId = null;
   try {
     if (_authMode === 'signin') {
       ({ error } = await _sb.auth.signInWithPassword({ email, password }));
@@ -1319,7 +1325,8 @@ async function authSubmit() {
       const attribution = (typeof window._getAttribution === 'function')
         ? window._getAttribution()
         : {};
-      ({ error } = await _sb.auth.signUp({
+      let signUpData;
+      ({ data: signUpData, error } = await _sb.auth.signUp({
         email, password,
         options: {
           // App is served at /os in prod, but at / in local dev (window._isDev,
@@ -1334,6 +1341,7 @@ async function authSubmit() {
           data: { marketing_opt_in: marketingOptIn, attribution },
         },
       }));
+      signupUserId = signUpData?.user?.id ?? null;
     }
   } catch (e) {
     if (btn) { btn.disabled = false; btn.textContent = _authMode === 'signin' ? 'Sign In' : 'Create Account'; }
@@ -1347,7 +1355,7 @@ async function authSubmit() {
   // pixels are disabled (no env vars set in main.js). _trackSignupConversion
   // is defined in src/analytics.js.
   if (_authMode === 'signup' && typeof _trackSignupConversion === 'function') {
-    _trackSignupConversion();
+    _trackSignupConversion(signupUserId);
   }
   // The confirm link's tokens land on /os and the Supabase client exchanges
   // them automatically — clicking the link signs the user straight in, so

@@ -85,12 +85,24 @@ function _identifyUser(session) {
  * to the originating ad click — they expect the conversion at the moment the
  * user completes the form, not on a later email click that breaks the
  * referrer chain.
+ *
+ * Dedupe: the auth.users insert trigger also fires a server-side Meta CAPI
+ * CompleteRegistration (meta-capi-signup edge function) with
+ * event_id `signup-<user_id>`. Passing the same eventID here lets Meta
+ * deduplicate the pair, so browser-blocked environments still convert via
+ * the server path without double-counting where both arrive.
+ *
+ * @param {string | null} [userId] Supabase auth user id from signUp()
  */
-function _trackSignupConversion() {
+function _trackSignupConversion(userId) {
   // ── Meta Pixel ──
   try {
     if (typeof window.fbq === 'function') {
-      window.fbq('track', 'CompleteRegistration');
+      if (userId) {
+        window.fbq('track', 'CompleteRegistration', {}, { eventID: 'signup-' + userId });
+      } else {
+        window.fbq('track', 'CompleteRegistration');
+      }
     }
   } catch (e) { /* best-effort */ }
 
@@ -123,11 +135,16 @@ function _trackSignupConversion() {
  * `value` is the USD list price from the stripe-checkout function (monthly $35,
  * annual $299, founder $299 one-off). The amount actually charged can differ
  * with launch coupons or Adaptive Pricing currency conversion, so treat this as
- * the reporting / value-optimisation figure, not the exact receipt. (A future
- * server-side Meta CAPI call from the Stripe webhook can report amount_total.)
+ * the reporting / value-optimisation figure, not the exact receipt.
+ *
+ * Meta is NOT fired from the browser here (since 2026-06-10): the Stripe
+ * webhook fires a server-side CAPI 'Subscribe'/'Purchase' with the exact
+ * amount_total, hashed email, and fbc — far more reliable than a pixel on a
+ * post-checkout return page (which only fires if the user lands back, with no
+ * blocker, before navigating away). One canonical source = no dedupe risk.
  *
  * Event names per platform:
- *   - Meta Pixel: 'Subscribe' (monthly/annual) or 'Purchase' (founder one-off)
+ *   - Meta:       server-side CAPI from stripe-webhook ('Subscribe' / 'Purchase')
  *   - GA4:        'purchase'
  *   - Google Ads: 'conversion' with send_to (VITE_GOOGLE_ADS_PURCHASE_CONVERSION_SEND_TO)
  *
@@ -140,14 +157,6 @@ function _trackPurchaseConversion(plan) {
   const PRICES = { monthly: 35, annual: 299, founder: 299 };
   const value = (plan && PRICES[plan]) || PRICES.monthly;
   const currency = 'USD';
-  const isFounder = plan === 'founder';
-
-  // ── Meta Pixel ──
-  try {
-    if (typeof window.fbq === 'function') {
-      window.fbq('track', isFounder ? 'Purchase' : 'Subscribe', { value, currency });
-    }
-  } catch (e) { /* best-effort */ }
 
   // ── GA4 purchase + Google Ads purchase conversion ──
   try {
