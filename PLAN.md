@@ -112,6 +112,13 @@ user-side config or policy decisions.
   decision first.
 - ⬜ **Free-tier copy:** "Limited access to new features" is vague — specify or
   cut.
+- ✅ **Stock uncapped on free tier** (2026-06-10): `stock` removed from
+  `FREE_LIMITS`; both create guards in stock.js dropped; "Load defaults"
+  inserts the full set; copy updated everywhere (landing free card + FAQ +
+  JSON-LD, walkthrough CTA, manage-subscription popups). Stock is the
+  setup-investment library that feeds quotes/cut lists/orders — capping it
+  blocked the core loop without adding upgrade intent. Quotes/orders/cabinets/
+  cut lists/clients caps unchanged.
 
 ### Customer payments + live quote/order pages (Stripe Connect) 🚧 In Progress 2026-06-09
 

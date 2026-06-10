@@ -3,8 +3,11 @@
 // Loaded as a classic <script defer> BEFORE src/app.js. Declares the global
 // `_subscription` state and `loadSubscription()` (called from loadAllData).
 //
-// Free tier: 5 items per library (clients, projects, quotes, orders,
-// cabinet_templates, stock). Hard block + upgrade modal at the cap.
+// Free tier: 5 items per library (clients, quotes, orders, cabinet_templates,
+// cutlists). Hard block + upgrade modal at the cap. STOCK IS UNCAPPED — it's
+// the setup-investment library that feeds quotes, cut lists and orders;
+// capping it blocked the core loop while adding nothing to upgrade intent
+// (decision 2026-06-10, SPEC § 13).
 // Pro tier: unlimited; no feature gates.
 //
 // Cross-file dependencies: _userId (defined in src/db.js), _db (defined in
@@ -13,13 +16,12 @@
 // ══════════════════════════════════════════
 // FREE TIER CAPS
 // ══════════════════════════════════════════
-/** @type {Readonly<Record<'clients'|'quotes'|'orders'|'cabinet_templates'|'stock'|'cutlists', number>>} */
+/** @type {Readonly<Record<'clients'|'quotes'|'orders'|'cabinet_templates'|'cutlists', number>>} */
 const FREE_LIMITS = Object.freeze({
   clients: 5,
   quotes: 5,
   orders: 5,
   cabinet_templates: 5,
-  stock: 5,
   cutlists: 5,
 });
 

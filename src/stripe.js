@@ -424,7 +424,7 @@ function _openManagePopupCancelling(sub) {
         </div>
       </div>
       <div style="background:rgba(232,168,56,0.08);border:1px solid rgba(232,168,56,0.2);border-radius:8px;padding:10px 14px;margin-top:12px;font-size:12px;color:var(--text2);line-height:1.5">
-        Your Pro access ends on <strong>${periodEnd}</strong>. After this date you'll revert to the free plan (5 items/library).
+        Your Pro access ends on <strong>${periodEnd}</strong>. After this date you'll revert to the free plan (5 items per library, stock unlimited).
       </div>
       <div class="pf-divider"></div>
       <div onclick="_portalAction()" style="padding:8px 0;font-size:12px;color:var(--accent);cursor:pointer;font-weight:600;display:flex;justify-content:space-between;align-items:center" onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'">Update payment method<span style="color:var(--muted);font-size:11px">&rsaquo;</span></div>
@@ -474,8 +474,9 @@ function _openManagePopupPastDue(sub) {
 /**
  * Modal shown when a free-tier user tries to create a 6th item in a capped
  * library. Tailored heading per library; reuses the upgrade CTAs.
+ * (Stock is uncapped since 2026-06-10 and can no longer reach this modal.)
  *
- * @param {'clients'|'quotes'|'orders'|'cabinet_templates'|'stock'|'cutlists'} library
+ * @param {'clients'|'quotes'|'orders'|'cabinet_templates'|'cutlists'} library
  */
 function _openLimitHitModal(library) {
   /** @type {Record<string, {label: string, verb: string}>} */
@@ -484,7 +485,6 @@ function _openLimitHitModal(library) {
     quotes:            { label: 'quotes',            verb: 'send' },
     orders:            { label: 'orders',            verb: 'track' },
     cabinet_templates: { label: 'cabinet templates', verb: 'save' },
-    stock:             { label: 'stock items',       verb: 'track' },
     cutlists:          { label: 'cut lists',         verb: 'track' },
   };
   const { label, verb } = labels[library];
@@ -588,7 +588,7 @@ function _openManagePopupFree() {
           <span style="font-size:14px;font-weight:700;color:var(--text)">Free Plan</span>
           <span class="badge badge-orange">5/library</span>
         </div>
-        <div style="font-size:12px;color:var(--muted);margin-top:6px;line-height:1.4">Full access to all features, up to 5 items per library.</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:6px;line-height:1.4">Full access to all features — 5 items per library, unlimited stock.</div>
       </div>
       <div class="pf-divider"></div>
       <button class="btn btn-primary btn-lg" onclick="_closePopup();_handleUpgradeClick('annual')">Upgrade to Pro</button>

@@ -292,12 +292,8 @@ async function loadDefaultStockItems() {
   const have = new Set(stockItems.map(s => (s.sku || '').toUpperCase()).filter(Boolean));
   const pending = STOCK_DEFAULTS.filter(d => !have.has(d.sku.toUpperCase()));
   if (!pending.length) { _toast('Default stock library already loaded', 'success'); return; }
-  // Respect free-tier cap: only insert what fits.
-  const cap = (typeof FREE_LIMITS !== 'undefined' && FREE_LIMITS.stock) || Infinity;
-  const proOrTrial = (typeof isPro === 'function' && isPro()) || (typeof _trialActive === 'function' && _trialActive());
-  const room = proOrTrial ? pending.length : Math.max(0, cap - stockItems.length);
-  if (room <= 0) { _toast(`Free plan limit reached (${cap} stock items)`, 'error'); return; }
-  const batch = pending.slice(0, room);
+  // Stock is uncapped on the free tier (2026-06-10) — load the full set.
+  const batch = pending;
   const rows = batch.map(d => ({
     user_id: _userId,
     name: d.name,
@@ -598,7 +594,7 @@ async function duplicateStockItem(id) {
   const src = stockItems.find(s => s.id === id);
   if (!src) return;
   if (!_requireAuth()) return;
-  if (!_enforceFreeLimit('stock', stockItems.length)) return;
+  // Stock is uncapped on the free tier (2026-06-10) — no _enforceFreeLimit.
   const row = {
     user_id: _userId,
     name: (src.name || 'Material') + ' (Copy)',
@@ -632,7 +628,7 @@ async function addStockItem() {
   const name = inp('stock-name').value.trim();
   if (!name) { _toast('Enter a material name.', 'error'); return; }
   if (!_requireAuth()) return;
-  if (!_enforceFreeLimit('stock', stockItems.length)) return;
+  // Stock is uncapped on the free tier (2026-06-10) — no _enforceFreeLimit.
   const cat = inp('stock-cat').value.trim();
   const variant = inp('stock-variant').value.trim();
   const isEB = cat === 'Edge Banding';

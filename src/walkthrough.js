@@ -975,7 +975,8 @@ function _wtCtaHTML() {
         '<div class="wt-cta-per">forever</div>' +
         '<ul class="wt-cta-feats">' +
           '<li>Free use of all core functions of the app</li>' +
-          '<li class="wt-lim"><strong>5 saved items</strong> limit per library</li>' +
+          '<li><strong>Unlimited</strong> stock items</li>' +
+          '<li class="wt-lim"><strong>5 saved items</strong> per other library</li>' +
           '<li class="wt-lim">No library import / export (CSV)</li>' +
           '<li class="wt-lim">No CNC / DXF export</li>' +
           '<li class="wt-lim">ProCabinet branding on PDFs</li>' +
