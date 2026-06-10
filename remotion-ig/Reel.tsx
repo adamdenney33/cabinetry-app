@@ -87,7 +87,8 @@ const Wordmark: React.FC<{ light?: boolean }> = ({ light }) => (
 );
 
 // ── Scene 1 — hook ───────────────────────────────────────────────
-const SHook: React.FC = () => (
+// (scenes are exported so ReelV2 can reuse them verbatim)
+export const SHook: React.FC = () => (
   <InkBG>
     <Pad style={{ justifyContent: 'center' }}>
       <Rise delay={0}><Wordmark light /></Rise>
@@ -102,7 +103,7 @@ const SHook: React.FC = () => (
 );
 
 // ── Scene 2 — eight tabs ─────────────────────────────────────────
-const STabs: React.FC = () => {
+export const STabs: React.FC = () => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const keys: TabKey[] = ['dashboard', 'cutlist', 'cabinet', 'stock', 'orders', 'quotes', 'clients', 'schedule'];
@@ -138,7 +139,7 @@ const STabs: React.FC = () => {
 };
 
 // ── Scene 3 — live pricing (count-up) ────────────────────────────
-const SPrice: React.FC = () => {
+export const SPrice: React.FC = () => {
   const frame = useCurrentFrame();
   const n = Math.round(interpolate(frame, [14, 52], [0, 1111], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }));
   const rows: [string, string][] = [['Materials', '£7.83'], ['Labour · 2.4 hrs', '£179.22'], ['Markup (35%)', '+£262'], ['Tax (10%)', '+£101']];
@@ -172,7 +173,7 @@ const SPrice: React.FC = () => {
 };
 
 // ── Scene 4 — cut list (real screenshot) ─────────────────────────
-const SCut: React.FC = () => {
+export const SCut: React.FC = () => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const badge = spring({ frame: frame - 26, fps, config: { damping: 12 } });
@@ -191,7 +192,7 @@ const SCut: React.FC = () => {
 };
 
 // ── Scene 5 — schedule ───────────────────────────────────────────
-const SSchedule: React.FC = () => (
+export const SSchedule: React.FC = () => (
   <LightBG>
     <Pad style={{ justifyContent: 'center', alignItems: 'flex-start' }}>
       <Rise delay={0}><div style={KICKER}>Auto-schedule</div></Rise>
@@ -206,7 +207,7 @@ const SSchedule: React.FC = () => (
 );
 
 // ── Scene 6 — one pipeline ───────────────────────────────────────
-const SPipeline: React.FC = () => (
+export const SPipeline: React.FC = () => (
   <LightBG>
     <Pad style={{ justifyContent: 'center', alignItems: 'flex-start' }}>
       <Rise delay={0}><div style={KICKER}>One pipeline</div></Rise>
@@ -221,7 +222,7 @@ const SPipeline: React.FC = () => (
 );
 
 // ── Scene 7 — OS close + CTA ─────────────────────────────────────
-const SClose: React.FC = () => {
+export const SClose: React.FC = () => {
   const frame = useCurrentFrame();
   return (
     <InkBG>
