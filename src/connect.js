@@ -83,7 +83,7 @@ function _connectPopupHtml() {
     : `<button class="btn btn-primary btn-sm" style="flex:none" onclick="startConnectOnboarding()">${pending ? 'Finish setup' : 'Connect'}</button>`;
   return `<div class="popup-header"><div class="popup-title">Card payments</div><button class="popup-close" onclick="_closePopup()">&times;</button></div>
     <div class="popup-body">
-      <p style="font-size:12px;color:var(--muted);margin:0 0 14px">Let customers pay a deposit or balance by card straight from their live quote. Funds go to your Stripe account; a small platform fee applies per payment.</p>
+      <p style="font-size:12px;color:var(--muted);margin:0 0 14px">Let customers pay a deposit or balance by card or bank transfer straight from their live quote. Funds go to your Stripe account; a small platform fee applies per payment. <a href="/payment-fees" target="_blank" style="color:var(--accent);font-weight:600">How fees work →</a></p>
       <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;border:1px solid var(--border);border-radius:10px;padding:12px">${head}${action}</div>
       ${live ? '<div style="font-size:11px;color:var(--success);margin-top:10px">✓ Ready — turn on “Accept card payment” when sharing a quote.</div>' : ''}
     </div>`;

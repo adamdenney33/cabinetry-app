@@ -221,6 +221,16 @@ a **0.7% (capped ~$100)** application fee. Built across the quote/order overhaul
 - ✅ **End-to-end test PASSED (test/sandbox, 2026-06-09).** Onboarded a Standard account
   → paid a 40% deposit on `/q` (£692.39) with a test card → `payments` row `succeeded`,
   **fee £4.85 (0.7%)**, `quote-pay-webhook` 200, quote → `deposit_paid`, order auto-created.
+- ✅ **Bank transfers + fees page (2026-06-10).** Per-quote "Accept bank transfer" toggle
+  (`share_settings.allow_bank_transfer`, livelink.js/share.js); `quote-pay` attaches a
+  connected-account Customer + `payment_method_options.customer_balance`
+  (gb/us/eu/jp/mx funding types, EU needs `stripe_accounts.country`, card-only fallback
+  on Stripe rejection) while keeping `automatic_payment_methods` so Pay by bank still
+  surfaces from the maker's dashboard. `quote-public.js`: `return_url` on confirm,
+  bank-pending + processing states, redirect-return handling in `boot()`. New static
+  `/payment-fees` page (privacy.html pattern, copied in `vite.config.mjs`) linked from
+  the Live link panel, share popup, and Connect popup. Webhook unchanged (async
+  `payment_intent.succeeded` already books the order).
 - ⬜ **Live-mode flip (go-live):** swap `STRIPE_CONNECT_*` to live keys (or unset → falls
   back to the live key) + create a **live** Connect webhook → `STRIPE_CONNECT_WEBHOOK_SECRET`;
   Connect already enabled on live; makers onboard live Standard accounts.

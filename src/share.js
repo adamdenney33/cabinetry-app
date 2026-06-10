@@ -55,7 +55,7 @@ function _sharePanelHtml(q) {
       <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:2px">What the customer can do</div>
       ${tog('sh-select', 'Allow item selection', 'Include / exclude optional lines', s.allow_select !== false)}
       ${tog('sh-edit', 'Allow spec editing', 'Unlocked lines: change finish &amp; size', !!s.allow_edit)}
-      ${tog('sh-pay', 'Accept card payment', 'Pays into your Stripe · platform fee applies', !!s.accept_payment)}
+      ${tog('sh-pay', 'Accept online payment', 'Pays into your Stripe · <a href="/payment-fees" target="_blank" style="color:var(--accent)">platform fee applies</a>', !!s.accept_payment)}
       <div class="share-toggle-row"><div><div class="st-label">Take a deposit</div><div class="st-desc">% due to confirm the order</div></div>
         <div style="display:flex;align-items:center;gap:6px"><input type="number" id="sh-dep" value="${s.deposit_pct != null ? s.deposit_pct : 40}" min="0" max="100" style="width:54px;text-align:right;padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);font-family:inherit"><span style="color:var(--muted)">%</span></div></div>
       <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin:14px 0 2px">Per-line controls</div>
@@ -86,13 +86,16 @@ async function _generateShareLink(quoteId, kind) {
   if (!q.share_token && !(Array.isArray(q._lines) && q._lines.length)) return;
   const wasShared = !!q.share_token;
   const pressed = (/** @type {string} */ id) => { const b = document.getElementById(id); return b ? b.getAttribute('aria-pressed') === 'true' : false; };
-  // The deposit toggle may not be in the DOM (legacy share popup) — fall back
-  // to the stored setting so a save from elsewhere never flips it off.
+  // The deposit + bank-transfer toggles may not be in the DOM (legacy share
+  // popup) — fall back to the stored setting so a save from elsewhere never
+  // flips them off.
   const depTog = document.getElementById('sh-dep-on');
+  const bankTog = document.getElementById('sh-bank');
   const settings = {
     allow_select: pressed('sh-select'),
     allow_edit: pressed('sh-edit'),
     accept_payment: pressed('sh-pay'),
+    allow_bank_transfer: bankTog ? bankTog.getAttribute('aria-pressed') === 'true' : ((q.share_settings || {}).allow_bank_transfer === true),
     take_deposit: depTog ? depTog.getAttribute('aria-pressed') === 'true' : ((q.share_settings || {}).take_deposit !== false),
     deposit_pct: Math.max(0, Math.min(100, parseFloat(_popupVal('sh-dep')) || 0)),
   };

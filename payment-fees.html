@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>How Payment Fees Work — ProCabinet.App</title>
+  <meta name="description" content="What it costs to take customer payments on your live quote page: the ProCabinet platform fee, Stripe's processing fees, and who pays what." />
+  <link rel="icon" href="/brand/icons/favicon.png" />
+  <style>
+    :root { --accent:#e8a838; --ink:#111111; --bg:#f7f7f7; --muted:#5b5b5b; --line:#e2e2e2; }
+    * { box-sizing:border-box; }
+    html { -webkit-text-size-adjust:100%; }
+    body {
+      margin:0; background:var(--bg); color:var(--ink);
+      font-family:-apple-system,BlinkMacSystemFont,"Inter","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+      line-height:1.65; font-size:16px;
+    }
+    header.bar { background:var(--ink); color:#fff; }
+    header.bar .inner { max-width:780px; margin:0 auto; padding:18px 24px; display:flex; align-items:center; justify-content:space-between; }
+    header.bar a.brand { color:#fff; text-decoration:none; font-weight:800; letter-spacing:-.5px; font-size:19px; }
+    header.bar nav a { color:#cfcfcf; text-decoration:none; font-size:13px; margin-left:18px; }
+    header.bar nav a:hover { color:var(--accent); }
+    main { max-width:780px; margin:0 auto; padding:44px 24px 80px; }
+    h1 { font-size:34px; font-weight:800; letter-spacing:-1px; margin:0 0 6px; }
+    .updated { color:var(--muted); font-size:14px; margin:0 0 32px; }
+    h2 { font-size:20px; font-weight:700; letter-spacing:-.3px; margin:38px 0 10px; }
+    h3 { font-size:16px; font-weight:700; margin:22px 0 6px; }
+    p, li { color:#2a2a2a; }
+    a { color:#9a6c10; }
+    ul { padding-left:22px; }
+    li { margin:5px 0; }
+    .lead { font-size:17px; color:#333; }
+    table { width:100%; border-collapse:collapse; margin:14px 0; font-size:14.5px; }
+    th, td { text-align:left; padding:9px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
+    th { color:var(--muted); font-weight:700; }
+    footer.foot { border-top:1px solid var(--line); }
+    footer.foot .inner { max-width:780px; margin:0 auto; padding:26px 24px; display:flex; flex-wrap:wrap; gap:16px; justify-content:space-between; color:var(--muted); font-size:13px; }
+    footer.foot a { color:var(--muted); text-decoration:none; margin-right:16px; }
+    footer.foot a:hover { color:var(--ink); }
+    .accent { color:var(--accent); }
+    .callout { background:#fff; border:1px solid var(--line); border-left:3px solid var(--accent); border-radius:8px; padding:14px 16px; margin:16px 0; font-size:15px; }
+  </style>
+</head>
+<body>
+  <header class="bar">
+    <div class="inner">
+      <a class="brand" href="/">ProCabinet<span class="accent">.App</span></a>
+      <nav>
+        <a href="/terms">Terms</a>
+        <a href="/os">Open the app</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <h1>How payment fees work</h1>
+    <p class="updated">Last updated: 10 June 2026</p>
+
+    <p class="lead">When a customer pays a deposit or balance on your live quote page, the money
+      goes straight into <strong>your own Stripe account</strong> — ProCabinet never holds your
+      funds. This page explains the two fees involved, who pays them, and what your customer sees.</p>
+
+    <h2>1. How a payment flows</h2>
+    <ul>
+      <li>You connect your own Stripe account to ProCabinet (a one-time setup in the app).</li>
+      <li>Your customer pays on the live quote page; the charge is made directly on
+        <strong>your</strong> Stripe account — you are the merchant of record, and the payment
+        shows up in your own Stripe dashboard like any other sale.</li>
+      <li>Stripe pays the money out to your bank on your normal payout schedule.</li>
+    </ul>
+
+    <div class="callout"><strong>Your customer always pays exactly the quoted amount.</strong>
+      No fees or surcharges are added on their side — all fees below come out of your share.</div>
+
+    <h2>2. The ProCabinet platform fee</h2>
+    <p>ProCabinet charges <strong>0.7% per payment</strong>, capped so big-ticket jobs stay fair.
+      It's deducted automatically from each payment — there's nothing to set up and no invoice to pay.</p>
+    <table>
+      <tr><th>Currency</th><th>Fee</th><th>Maximum per payment</th></tr>
+      <tr><td>GBP £</td><td>0.7%</td><td>£80</td></tr>
+      <tr><td>USD $</td><td>0.7%</td><td>$100</td></tr>
+      <tr><td>EUR €</td><td>0.7%</td><td>€90</td></tr>
+      <tr><td>CAD $</td><td>0.7%</td><td>CA$135</td></tr>
+      <tr><td>AUD $</td><td>0.7%</td><td>A$150</td></tr>
+      <tr><td>NZD $</td><td>0.7%</td><td>NZ$165</td></tr>
+    </table>
+    <p>However large the job, the platform fee never exceeds the cap — a £30,000 kitchen paid in
+      full costs £80, not 0.7%.</p>
+
+    <h2>3. Stripe's processing fees</h2>
+    <p>Stripe charges its own processing fee on each payment, billed to your Stripe account the
+      same as any direct Stripe sale. Rates are set by Stripe and vary by country and payment
+      method — see <a href="https://stripe.com/pricing" target="_blank" rel="noopener">stripe.com/pricing</a>
+      for your exact rates. As a rough guide:</p>
+    <ul>
+      <li><strong>Cards &amp; wallets</strong> (Visa, Mastercard, Apple&nbsp;Pay, Google&nbsp;Pay) —
+        typically around 1.5%–2.9% plus a small fixed fee, depending on card type and country.</li>
+      <li><strong>Bank transfer</strong> — a small flat fee per payment; usually the cheapest way
+        to take large deposits.</li>
+      <li><strong>Pay by bank</strong> (UK/EU open banking) — low-cost, settled quickly.</li>
+    </ul>
+
+    <h2>4. Payment methods on the live page</h2>
+    <h3>Cards &amp; wallets</h3>
+    <p>Always available once your Stripe account is connected. The payment confirms instantly and
+      the order is created straight away.</p>
+    <h3>Bank transfer</h3>
+    <p>Turn on <em>Accept bank transfer</em> in the Live link tab. Your customer is shown unique
+      account details (powered by Stripe) and sends the money from their own banking app. The
+      payment usually arrives within hours in the UK, and the order confirms automatically when
+      the funds land. The customer should transfer the <strong>exact amount shown</strong> —
+      partial transfers won't complete the payment. Bank transfers must also be enabled as a
+      payment method in your own
+      <a href="https://dashboard.stripe.com/settings/payment_methods" target="_blank" rel="noopener">Stripe payment-method settings</a>.</p>
+    <h3>Pay by bank</h3>
+    <p>Where available (UK/EU), customers can approve an instant payment through their banking
+      app. Enable it in your Stripe payment-method settings and it appears on the live page
+      automatically.</p>
+
+    <h2>5. A worked example</h2>
+    <p>A £1,200 quote with a 40% deposit, paid by card:</p>
+    <table>
+      <tr><th></th><th>Amount</th></tr>
+      <tr><td>Customer pays (40% deposit)</td><td>£480.00</td></tr>
+      <tr><td>ProCabinet platform fee (0.7%)</td><td>−£3.36</td></tr>
+      <tr><td>Stripe processing fee (varies — see your Stripe pricing)</td><td>−£7.40 (illustrative)</td></tr>
+      <tr><td><strong>You receive</strong></td><td><strong>≈ £469.24</strong></td></tr>
+    </table>
+    <p>The same deposit paid by bank transfer attracts the same £3.36 platform fee, but Stripe's
+      fee drops to a small flat amount — on large deposits the difference adds up.</p>
+
+    <h2>6. Your ProCabinet subscription</h2>
+    <p>Your monthly or annual ProCabinet subscription is billed separately and has nothing to do
+      with per-payment fees. There are no hidden charges beyond the platform fee above.</p>
+
+    <h2>7. Questions</h2>
+    <p>Anything unclear, or a payment that doesn't add up? Email
+      <a href="mailto:adam@procabinet.app">adam@procabinet.app</a>.</p>
+  </main>
+
+  <footer class="foot">
+    <div class="inner">
+      <span>© 2026 ProCabinet.App</span>
+      <nav>
+        <a href="/privacy">Privacy</a>
+        <a href="/terms">Terms</a>
+        <a href="/os">Open the app</a>
+      </nav>
+    </div>
+  </footer>
+</body>
+</html>

@@ -214,21 +214,22 @@ function _orderLinkPanel(o) {
 const _LL_DEP_ON_DESC = 'Collected when the customer accepts · balance due on completion';
 const _LL_DEP_OFF_DESC = 'Off — no deposit requested';
 /** One sentence stating what the customer will actually be asked to pay,
- *  given the card-payment + deposit toggles combined — and which switch to
- *  flip to change it. Shown under the Payment rows, updated live.
- *  @param {boolean} pay @param {boolean} dep @param {number} pct @returns {string} */
-function _llPaySummaryText(pay, dep, pct) {
-  if (pay && dep && pct > 0) return `Customer pays a ${pct}% deposit by card when they accept — the balance is due on completion.`;
-  if (pay) return 'Customer pays the FULL total by card when they accept. Prefer part up front? Turn the deposit on. Want no payment on this page? Switch off card payment above.';
-  if (dep && pct > 0) return `No card payment on this page — the customer just accepts, and you arrange the ${pct}% deposit yourself.`;
-  return 'No card payment on this page — the customer just accepts, and you arrange payment yourself.';
+ *  given the payment + bank-transfer + deposit toggles combined — and which
+ *  switch to flip to change it. Shown under the Payment rows, updated live.
+ *  @param {boolean} pay @param {boolean} dep @param {number} pct @param {boolean} [bank] @returns {string} */
+function _llPaySummaryText(pay, dep, pct, bank) {
+  const how = bank ? 'by card or bank transfer' : 'by card';
+  if (pay && dep && pct > 0) return `Customer pays a ${pct}% deposit ${how} when they accept — the balance is due on completion.`;
+  if (pay) return `Customer pays the FULL total ${how} when they accept. Prefer part up front? Turn the deposit on. Want no payment on this page? Switch off online payment above.`;
+  if (dep && pct > 0) return `No online payment on this page — the customer just accepts, and you arrange the ${pct}% deposit yourself.`;
+  return 'No online payment on this page — the customer just accepts, and you arrange payment yourself.';
 }
 /** Re-render the payment summary from the current toggle states. */
 function _llPaySummaryUpdate() {
   const el = document.getElementById('ll-pay-summary'); if (!el) return;
   const on = (/** @type {string} */ id) => { const b = document.getElementById(id); return !!b && b.getAttribute('aria-pressed') === 'true'; };
   const pctEl = /** @type {HTMLInputElement|null} */ (document.getElementById('sh-dep'));
-  el.textContent = _llPaySummaryText(on('sh-pay'), on('sh-dep-on'), pctEl ? (parseFloat(pctEl.value) || 0) : 0);
+  el.textContent = _llPaySummaryText(on('sh-pay'), on('sh-dep-on'), pctEl ? (parseFloat(pctEl.value) || 0) : 0, on('sh-bank'));
 }
 /** Deposit toggle: flip state, show/hide the % input, swap the caption.
  *  @param {HTMLElement} b @param {'quote'|'order'} kind */
@@ -306,8 +307,14 @@ function _liveLinkPanel(kind) {
   // maker never shares a link whose "Pay" button errors for the customer.
   const stripeReady = _llStripeReady();
   const payRow = stripeReady
-    ? tog('sh-pay', 'Accept card payment', 'Paid straight into your Stripe · ProCabinet fee 0.7% (capped)', !!s.accept_payment)
-    : `<div class="share-toggle-row ll-locked"><div><div class="st-label">Accept card payment</div><div class="st-desc">Connect Stripe to take a deposit on the live page. <a onclick="_openConnectPopup()" style="color:var(--accent);cursor:pointer;font-weight:600">Set up payments →</a></div></div><button class="mini-toggle" aria-pressed="false" disabled></button></div>`;
+    ? tog('sh-pay', 'Accept online payment', 'Paid straight into your Stripe · ProCabinet fee 0.7% (capped) · <a href="/payment-fees" target="_blank" style="color:var(--accent);font-weight:600">How fees work</a>', !!s.accept_payment)
+    : `<div class="share-toggle-row ll-locked"><div><div class="st-label">Accept online payment</div><div class="st-desc">Connect Stripe to take a deposit on the live page. <a onclick="_openConnectPopup()" style="color:var(--accent);cursor:pointer;font-weight:600">Set up payments →</a></div></div><button class="mini-toggle" aria-pressed="false" disabled></button></div>`;
+  // Bank transfer rides on the same payment sheet (Stripe customer_balance):
+  // the customer pushes the money from their banking app and the order confirms
+  // when the funds land. Off by default; only meaningful once Stripe is live.
+  const bankRow = stripeReady
+    ? tog('sh-bank', 'Accept bank transfer', 'Customer transfers from their banking app · needs “Bank transfers” on in your <a href="https://dashboard.stripe.com/settings/payment_methods" target="_blank" style="color:var(--accent);font-weight:600">Stripe payment methods</a>', s.allow_bank_transfer === true)
+    : '';
   // Customer spec-change requests that were just re-priced by this tab open
   // (see _llSyncCustomerPrices). Without this banner the maker would never
   // know a change was requested — the price silently updates.
@@ -323,12 +330,13 @@ function _liveLinkPanel(kind) {
     ${linkBox}
     <div class="ll-h">Payment</div>
     ${payRow}
+    ${bankRow}
     <div class="share-toggle-row"><div><div class="st-label">Take a deposit</div><div class="st-desc" id="ll-dep-desc">${s.take_deposit === false ? _LL_DEP_OFF_DESC : _LL_DEP_ON_DESC}</div></div>
       <div style="display:flex;align-items:center;gap:10px">
         <div class="ll-dep" id="ll-dep-wrap"${s.take_deposit === false ? ' style="display:none"' : ''}><input type="number" id="sh-dep" value="${s.deposit_pct != null ? s.deposit_pct : 40}" min="0" max="100" oninput="_llPaySummaryUpdate()" onchange="_llAutoSave('${kind}')"><span>%</span></div>
         <button class="mini-toggle" id="sh-dep-on" aria-pressed="${s.take_deposit === false ? 'false' : 'true'}" onclick="_llDepTgl(this,'${kind}')"></button>
       </div></div>
-    <div class="ll-pay-summary" id="ll-pay-summary">${_llPaySummaryText(stripeReady && !!s.accept_payment, s.take_deposit !== false, s.deposit_pct != null ? Number(s.deposit_pct) : 40)}</div>
+    <div class="ll-pay-summary" id="ll-pay-summary">${_llPaySummaryText(stripeReady && !!s.accept_payment, s.take_deposit !== false, s.deposit_pct != null ? Number(s.deposit_pct) : 40, stripeReady && s.allow_bank_transfer === true)}</div>
     <div class="ll-h">What the customer can do</div>
     ${togPro('sh-select', 'Let customers choose items', 'They can include / exclude lines you mark optional below', s.allow_select !== false)}
     ${togPro('sh-edit', 'Let customers request changes', 'They can request changes to specs you unlock — you confirm the new price before anything’s charged', !!s.allow_edit)}

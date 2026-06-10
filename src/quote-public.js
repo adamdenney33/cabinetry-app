@@ -398,6 +398,43 @@ function paidState(pay) {
     ])}
   </div>`;
 }
+/** Bank transfer chosen: the payment completes asynchronously when the funds
+ *  land. Stripe has already shown the account-details modal — keep a way back
+ *  to those details (hosted instructions) and say what happens next.
+ *  @param {any} pay @param {any} pi */
+function bankPendingState(pay, pi) {
+  if (D.quote && !D.quote.accepted_at) D.quote.accepted_at = new Date().toISOString();
+  const isDep = pay.kind === 'deposit';
+  const url = (pi && pi.next_action && pi.next_action.display_bank_transfer_instructions
+    && pi.next_action.display_bank_transfer_instructions.hosted_instructions_url) || '';
+  byId('qp-root').innerHTML = `<div class="qp-state">
+    <div class="check"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V10"/><path d="M19 21V10"/><path d="M12 3L3 8h18l-9-5z"/><path d="M9 21v-7"/><path d="M15 21v-7"/></svg></div>
+    <h1 style="font-size:22px;font-weight:800;color:var(--text)">One step left — send your bank transfer</h1>
+    <p style="font-size:14px;margin-top:8px;color:var(--text2)">Transfer <strong>${money(pay.amount)}</strong> using the bank details from Stripe — your ${isDep ? 'deposit' : 'payment'} is confirmed automatically when it arrives.</p>
+    ${url ? `<a class="btn btn-primary btn-lg" style="display:block;margin-top:16px;text-decoration:none;text-align:center" href="${esc(url)}" target="_blank" rel="noopener">View bank details ↗</a>` : ''}
+    ${nextStepsPanel([
+      'Send the exact amount shown, with the reference provided — that’s how the transfer is matched to your order.',
+      'Transfers usually arrive within hours; your order is booked in automatically when the money lands.',
+      `${esc(D.business?.name || 'Your maker')} will be in touch once the payment is confirmed.`,
+    ])}
+  </div>`;
+}
+/** Async payment still settling (e.g. Pay by bank) — the webhook confirms it.
+ *  @param {any} pay */
+function processingState(pay) {
+  if (D.quote && !D.quote.accepted_at) D.quote.accepted_at = new Date().toISOString();
+  const isDep = pay.kind === 'deposit';
+  byId('qp-root').innerHTML = `<div class="qp-state">
+    <div class="check"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg></div>
+    <h1 style="font-size:22px;font-weight:800;color:var(--text)">Payment processing</h1>
+    <p style="font-size:14px;margin-top:8px;color:var(--text2)">Your ${money(pay.amount)} ${isDep ? 'deposit' : 'payment'} is on its way — your order is booked in as soon as it's confirmed.</p>
+    ${nextStepsPanel([
+      'This usually only takes a moment, but can take a little longer depending on your bank.',
+      'You’ll get a receipt by email once the payment is confirmed.',
+      `${esc(D.business?.name || 'Your maker')} will be in touch to arrange the work.`,
+    ])}
+  </div>`;
+}
 
 // ── live chat widget ─────────────────────────────────────────────────────────
 /** @type {Array<{sender:string,body:string}>} */ let _chatMsgs = [];
@@ -542,8 +579,21 @@ const handlers = {
     openPaySheet(money(pay.amount), subline, async () => {
       const errEl = byId('qp-pay-err'); const btn = byId('qp-pay-btn');
       btn.setAttribute('disabled', ''); btn.textContent = 'Processing…';
-      const { error } = await stripe.confirmPayment({ elements, redirect: 'if_required' });
-      if (error) { errEl.textContent = error.message || 'Payment could not be completed — please check your card details.'; btn.removeAttribute('disabled'); btn.textContent = 'Pay ' + money(pay.amount); return; }
+      // return_url: redirect methods (e.g. Pay by bank) bounce via the bank and
+      // land back here with ?redirect_status=… (picked up in boot()). Cards,
+      // wallets and bank transfer resolve in place thanks to 'if_required'.
+      const { error, paymentIntent } = await stripe.confirmPayment({
+        elements, redirect: 'if_required',
+        confirmParams: { return_url: window.location.href },
+      });
+      if (error) { errEl.textContent = error.message || 'Payment could not be completed — please check your payment details.'; btn.removeAttribute('disabled'); btn.textContent = 'Pay ' + money(pay.amount); return; }
+      const na = paymentIntent && paymentIntent.next_action;
+      if (paymentIntent && paymentIntent.status === 'requires_action' && na && na.type === 'display_bank_transfer_instructions') {
+        // Bank transfer: Stripe has just shown the account-details modal; the
+        // payment completes asynchronously when the funds land (webhook).
+        closePaySheet(); bankPendingState(pay, paymentIntent); return;
+      }
+      if (paymentIntent && paymentIntent.status === 'processing') { closePaySheet(); processingState(pay); return; }
       closePaySheet(); paidState(pay);
     });
     elements.create('payment').mount('#qp-pay-el');
@@ -605,6 +655,15 @@ function successState(t) {
 async function boot() {
   if (!SBURL || !SBKEY) { byId('qp-root').innerHTML = `<div class="qp-state">Configuration error.</div>`; return; }
   if (!token) { byId('qp-root').innerHTML = `<div class="qp-state">This link is missing its quote reference.</div>`; return; }
+  // Redirect-based payment methods (e.g. Pay by bank) bounce via the bank and
+  // land back on this page with Stripe's params appended to the return_url.
+  // Remember the outcome, then strip the params so reloads/shares stay clean.
+  const ru = new URL(window.location.href);
+  const redirectStatus = ru.searchParams.get('redirect_status');
+  if (redirectStatus) {
+    for (const k of ['payment_intent', 'payment_intent_client_secret', 'redirect_status', 'source_type']) ru.searchParams.delete(k);
+    history.replaceState({}, '', ru.pathname + (ru.searchParams.toString() ? '?' + ru.searchParams.toString() : '') + ru.hash);
+  }
   // If the network is slow, reassure rather than show a frozen spinner.
   const slow = setTimeout(() => {
     const root = byId('qp-root');
@@ -626,7 +685,18 @@ async function boot() {
     photosByLine = {};
     for (const p of (D.photos || [])) { (photosByLine[p.line_id] = photosByLine[p.line_id] || []).push(p.url); }
     renderTop();
+    // Back from a redirect payment: show the outcome instead of the quote.
+    // The amount mirrors the server's choice in quote-pay (deposit when a
+    // deposit % is set, else the full total).
+    if (redirectStatus === 'succeeded' || redirectStatus === 'processing' || redirectStatus === 'pending') {
+      const t = totals();
+      const payLike = { amount: t.depPct > 0 ? t.deposit : t.total, kind: t.depPct > 0 ? 'deposit' : 'full' };
+      if (redirectStatus === 'succeeded') paidState(payLike); else processingState(payLike);
+      mountChat();
+      return;
+    }
     render();
+    if (redirectStatus === 'failed') toast('Payment didn’t complete — you can try again.');
   } catch (e) {
     clearTimeout(slow);
     byId('qp-root').innerHTML = `<div class="qp-state">${esc(friendlyError(e, 'Sorry — we couldn’t load this. Please check the link or try again.'))}</div>`;

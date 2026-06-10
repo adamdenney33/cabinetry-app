@@ -17,6 +17,28 @@ import { stripe, STRIPE_PUBLISHABLE_KEY, platformFee } from '../_shared/stripe.t
 
 const CUR_MAP: Record<string, string> = { '£': 'gbp', '$': 'usd', '€': 'eur', 'A$': 'aud' };
 
+// Stripe push bank transfers (customer_balance) — funding type per currency.
+// eu_bank_transfer additionally needs the account's country. Currencies not
+// listed (aud, cad, nzd, …) have no bank-transfer support, so the toggle
+// silently degrades to the card/wallet sheet for those accounts.
+const BANK_TRANSFER_TYPE: Record<string, string> = {
+  gbp: 'gb_bank_transfer', usd: 'us_bank_transfer', eur: 'eu_bank_transfer',
+  jpy: 'jp_bank_transfer', mxn: 'mx_bank_transfer',
+};
+
+/** payment_method_options.customer_balance for this currency, or null when
+ *  bank transfer isn't supported (unsupported currency / EU without country). */
+function bankTransferOptions(currency: string, country: string | null) {
+  const type = BANK_TRANSFER_TYPE[currency];
+  if (!type) return null;
+  const bank_transfer: Record<string, unknown> = { type };
+  if (type === 'eu_bank_transfer') {
+    if (!country) return null;
+    bank_transfer.eu_bank_transfer = { country };
+  }
+  return { funding_type: 'bank_transfer', bank_transfer };
+}
+
 Deno.serve(async (req) => {
   const cors = corsHeaders(req.headers.get('origin'));
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
@@ -46,7 +68,7 @@ Deno.serve(async (req) => {
     // ── Business's connected account must be able to take charges ──
     const { data: acct } = await admin
       .from('stripe_accounts')
-      .select('stripe_account_id, charges_enabled, default_currency')
+      .select('stripe_account_id, charges_enabled, default_currency, country')
       .eq('user_id', quote.user_id).maybeSingle();
     if (!acct?.stripe_account_id || !acct.charges_enabled) {
       return jsonResponse({ error: 'payments_unavailable' }, 400, cors);
@@ -83,13 +105,44 @@ Deno.serve(async (req) => {
     // DIRECT charge: the PaymentIntent is created ON the connected account (via the
     // stripeAccount option), so the maker is merchant of record and pays Stripe's
     // processing fee; application_fee_amount is transferred to the ProCabinet platform.
-    const pi = await stripe.paymentIntents.create({
+    const baseParams = {
       amount: amountMinor,
       currency,
       application_fee_amount: fee,
       automatic_payment_methods: { enabled: true },
       metadata: { quote_id: String(quote.id), user_id: quote.user_id, kind },
-    }, { stripeAccount: acct.stripe_account_id });
+    };
+    // Push bank transfer (customer_balance): rides alongside the automatic
+    // methods, but Stripe requires a Customer on the PaymentIntent plus the
+    // funding options. It only shows in the Payment Element when the maker has
+    // "Bank transfers" enabled in their own Stripe payment-method settings.
+    let bankParams: Record<string, unknown> | null = null;
+    if (settings.allow_bank_transfer === true) {
+      const cbOptions = bankTransferOptions(currency, (acct.country as string | null) ?? null);
+      if (cbOptions) {
+        const cus = await stripe.customers.create(
+          { metadata: { quote_id: String(quote.id) } },
+          { stripeAccount: acct.stripe_account_id },
+        );
+        bankParams = { ...baseParams, customer: cus.id, payment_method_options: { customer_balance: cbOptions } };
+      }
+    }
+    let pi;
+    try {
+      pi = await stripe.paymentIntents.create(
+        (bankParams ?? baseParams) as Parameters<typeof stripe.paymentIntents.create>[0],
+        { stripeAccount: acct.stripe_account_id },
+      );
+    } catch (piErr) {
+      // Bank-transfer params rejected (capability not active on the account,
+      // etc.) → never block the customer; retry as a plain card/wallet intent.
+      if (!bankParams) throw piErr;
+      console.error('[quote-pay] bank transfer unavailable, falling back to card:', (piErr as Error).message);
+      pi = await stripe.paymentIntents.create(
+        baseParams as Parameters<typeof stripe.paymentIntents.create>[0],
+        { stripeAccount: acct.stripe_account_id },
+      );
+    }
 
     await admin.from('payments').upsert({
       user_id: quote.user_id,
