@@ -469,7 +469,45 @@ async function _syncCBLinesToOrder(orderId) {
 async function _loadCBLinesFromDB() {
   if (!_userId && !window._demoMode) return;
   if (_cbLinesSyncTimer) return;
-  if (cbEditingQuoteId && cbLines.length > 0) return;
+  if ((cbEditingQuoteId || cbEditingOrderId) && cbLines.length > 0) return;
+  // Restore an interrupted order-editing session (mirror of the quote branch
+  // below — previously pc_cb_editing_order_id was written but never read, so
+  // a mid-edit reload silently dropped back to the standalone workspace).
+  const editingOrderKey = localStorage.getItem('pc_cb_editing_order_id');
+  if (editingOrderKey) {
+    const oId = parseInt(editingOrderKey, 10);
+    const o = typeof orders !== 'undefined' ? orders.find(x => x.id === oId) : null;
+    if (o) {
+      cbEditingOrderId = oId;
+      cbEditingQuoteId = null;
+      if (o.client_id) {
+        const cli = clients.find(c => c.id === o.client_id);
+        if (cli) {
+          _cbCurrentClientId = cli.id;
+          _cbCurrentClientName = cli.name;
+        }
+      }
+      try {
+        const { data: lines } = await _db('order_lines').select('*').eq('order_id', oId).eq('line_kind', 'cabinet').order('position');
+        if (lines && lines.length) {
+          cbLines = lines.map(/** @param {any} row @param {number} i */ (row, i) => {
+            const cb = /** @type {any} */ (_quoteLineRowToCB(row));
+            cb.id = i + 1;
+            return cb;
+          });
+          cbNextId = cbLines.length + 1;
+          cbEditingOriginalLines = JSON.parse(JSON.stringify(cbLines));
+        }
+      } catch (e) {
+        console.warn('[cb edit-restore order]', (/** @type {any} */ (e)).message || e);
+      }
+      localStorage.removeItem('pc_cq_lines');
+      if (typeof renderCBPanel === 'function') renderCBPanel();
+      return;
+    }
+    localStorage.removeItem('pc_cb_editing_order_id');
+    cbEditingOrderId = null;
+  }
   const editingId = localStorage.getItem('pc_cb_editing_quote_id');
   if (editingId) {
     const qId = parseInt(editingId, 10);
@@ -487,7 +525,10 @@ async function _loadCBLinesFromDB() {
         }
       }
       try {
-        const { data: lines } = await _db('quote_lines').select('*').eq('quote_id', qId).order('position');
+        // line_kind filter matches editQuoteInCB — without it a quote's item/
+        // stock rows were restored as malformed cabinets after a reload, and
+        // the next sync re-inserted them as duplicate cabinet lines.
+        const { data: lines } = await _db('quote_lines').select('*').eq('quote_id', qId).eq('line_kind', 'cabinet').order('position');
         if (lines && lines.length) {
           cbLines = lines.map(/** @param {any} row @param {number} i */ (row, i) => {
             const cb = /** @type {any} */ (_quoteLineRowToCB(row));
@@ -998,8 +1039,10 @@ async function cbCreateOrderFromDraft() {
   switchSection('orders');
 }
 
-/** @param {number} quoteId */
-async function editQuoteInCB(quoteId) {
+/** Open the Cabinet Builder pointed at a quote. Pass the quote_lines row id
+ *  of a cabinet line to land with that cabinet pre-selected in the editor.
+ *  @param {number} quoteId @param {number|null} [lineId] */
+async function editQuoteInCB(quoteId, lineId) {
   if (!_requireAuth()) return;
   const q = quotes.find(x => x.id === quoteId);
   if (!q) { _toast('Quote not found', 'error'); return; }
@@ -1035,11 +1078,30 @@ async function editQuoteInCB(quoteId) {
   if (_cbCurrentClientName) localStorage.setItem('pc_cq_client_name', _cbCurrentClientName);
   const pn = _byId('cb-client'); if (pn) /** @type {HTMLInputElement} */ (pn).value = projName;
 
-  cbEditingLineIdx = -1;
-  cbScratchpad = null;
+  // Land on the workspace view, then pre-select the clicked cabinet (if any)
+  // so the sidebar editor opens straight onto it. switchCBMainView must run
+  // BEFORE the selection is set — leaving library-edit mode clears it.
+  if (typeof switchCBMainView === 'function') switchCBMainView('results');
+  const selIdx = lineId != null ? (lines || []).findIndex(/** @param {any} r */ r => r.id === lineId) : -1;
+  cbEditingLineIdx = selIdx;
+  cbScratchpad = selIdx >= 0 ? cbLines[selIdx] : null;
   switchSection('cabinet');
   renderCBPanel();
+  if (selIdx >= 0) _cbRevealSelectedCabinet();
   _toast('Editing quote - changes save automatically', 'info');
+}
+
+/** After a targeted "edit this cabinet" jump, surface the selection: open the
+ *  editor pane on mobile, scroll the sidebar form into view, and scroll the
+ *  highlighted card into view in the workspace. */
+function _cbRevealSelectedCabinet() {
+  if (window._mvShowEditor) window._mvShowEditor();
+  const sidebar = _byId('cb-sidebar');
+  if (sidebar) sidebar.scrollTop = sidebar.scrollHeight;
+  setTimeout(() => {
+    const card = document.querySelector('.cb-cab-card.editing');
+    if (card && typeof card.scrollIntoView === 'function') card.scrollIntoView({ block: 'nearest' });
+  }, 0);
 }
 
 async function finishEditingQuote() {
@@ -1057,9 +1119,10 @@ async function finishEditingQuote() {
 }
 
 /** Cabinet Builder editing pointed at an order. Mirrors editQuoteInCB but
- *  reads/writes order_lines.
- *  @param {number} orderId */
-async function editOrderInCB(orderId) {
+ *  reads/writes order_lines. Pass the order_lines row id of a cabinet line to
+ *  land with that cabinet pre-selected in the editor.
+ *  @param {number} orderId @param {number|null} [lineId] */
+async function editOrderInCB(orderId, lineId) {
   if (!_requireAuth()) return;
   const o = orders.find(x => x.id === orderId);
   if (!o) { _toast('Order not found', 'error'); return; }
@@ -1095,14 +1158,19 @@ async function editOrderInCB(orderId) {
   if (_cbCurrentClientName) localStorage.setItem('pc_cq_client_name', _cbCurrentClientName);
   const pn = _byId('cb-client'); if (pn) /** @type {HTMLInputElement} */ (pn).value = projName;
 
-  cbEditingLineIdx = -1;
-  cbScratchpad = null;
+  // Same selection mechanics as editQuoteInCB (see comment there).
+  if (typeof switchCBMainView === 'function') switchCBMainView('results');
+  const selIdx = lineId != null ? (lines || []).findIndex(/** @param {any} r */ r => r.id === lineId) : -1;
+  cbEditingLineIdx = selIdx;
+  cbScratchpad = selIdx >= 0 ? cbLines[selIdx] : null;
   switchSection('cabinet');
   renderCBPanel();
-  _toast('Editing order — cabinets save automatically', 'info');
+  if (selIdx >= 0) _cbRevealSelectedCabinet();
+  _toast('Editing order — cabinets save automatically. "Back to order" returns when you\'re done.', 'info');
 }
 
 async function finishEditingOrder() {
+  const backId = cbEditingOrderId;
   if (_cbLinesSyncTimer) { clearTimeout(_cbLinesSyncTimer); _cbLinesSyncTimer = null; }
   if (cbEditingOrderId) await _syncCBLinesToOrder(cbEditingOrderId);
   cbEditingOrderId = null;
@@ -1113,7 +1181,45 @@ async function finishEditingOrder() {
   await _loadCBLinesFromDB();
   _setCbDirty(false);
   renderCBPanel();
+  // Close the round trip: return to the order the user came from, with its
+  // line list freshly reloaded (_syncCBLinesToOrder dropped the _lines cache).
+  if (backId != null) {
+    if (typeof switchSection === 'function') switchSection('orders');
+    if (typeof loadOrderIntoSidebar === 'function') loadOrderIntoSidebar(backId);
+  }
   _toast('Order saved', 'success');
+}
+
+/** Discard cabinet edits made in this Builder session and restore the order's
+ *  cabinet lines to the snapshot taken when editing began. Mirror of
+ *  discardQuoteEdits — reuses _syncCBLinesToOrder for the rewrite + value
+ *  refresh, then returns to the order. */
+function discardOrderEdits() {
+  if (cbEditingOrderId == null) return;
+  /** @type {number} */
+  const oId = cbEditingOrderId;
+  /** @type {any[]} */
+  const orig = cbEditingOriginalLines || [];
+  _confirm('Discard changes to this order\'s cabinets?', async () => {
+    if (_cbLinesSyncTimer) { clearTimeout(_cbLinesSyncTimer); _cbLinesSyncTimer = null; }
+    try {
+      cbLines = JSON.parse(JSON.stringify(orig));
+      await _syncCBLinesToOrder(oId);
+    } catch (e) {
+      console.warn('[cb discard order]', (/** @type {any} */ (e)).message || e);
+    }
+    cbEditingOrderId = null;
+    cbEditingOriginalLines = null;
+    localStorage.removeItem('pc_cb_editing_order_id');
+    cbLines = [];
+    cbNextId = 1;
+    await _loadCBLinesFromDB();
+    _setCbDirty(false);
+    renderCBPanel();
+    if (typeof switchSection === 'function') switchSection('orders');
+    if (typeof loadOrderIntoSidebar === 'function') loadOrderIntoSidebar(oId);
+    _toast('Changes discarded', 'info');
+  });
 }
 
 function discardQuoteEdits() {
@@ -1430,10 +1536,15 @@ function _exitClient_cabinet() {
     cbScratchpad = null;
     cbEditingLineIdx = -1;
     cbEditingQuoteId = null;
+    // Also detach any order-editing context. Leaving cbEditingOrderId set
+    // here meant later standalone autosaves still routed through
+    // _syncCBLinesToOrder — wiping/corrupting that order's cabinet lines.
+    cbEditingOrderId = null;
     cbEditingOriginalLines = null;
     localStorage.removeItem('pc_cq_lines');
     localStorage.removeItem('pc_cq_client_name');
     localStorage.removeItem('pc_cb_editing_quote_id');
+    localStorage.removeItem('pc_cb_editing_order_id');
     _cbCurrentClientId = null;
     _cbCurrentClientName = '';
     _cbStartingNewQuote = false;
@@ -1462,10 +1573,12 @@ function _cbNewClient() {
     cbScratchpad = null;
     cbEditingLineIdx = -1;
     cbEditingQuoteId = null;
+    cbEditingOrderId = null; // same order-context detach as _exitClient_cabinet
     cbEditingOriginalLines = null;
     localStorage.removeItem('pc_cq_lines');
     localStorage.removeItem('pc_cq_client_name');
     localStorage.removeItem('pc_cb_editing_quote_id');
+    localStorage.removeItem('pc_cb_editing_order_id');
     _cbCurrentClientId = null;
     _cbCurrentClientName = '';
     const pn = _byId('cb-client');

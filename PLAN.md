@@ -120,6 +120,27 @@ user-side config or policy decisions.
   blocked the core loop without adding upgrade intent. Quotes/orders/cabinets/
   cut lists/clients caps unchanged.
 
+### Orders → cabinet line editing UX pass ✅ Done 2026-06-10
+
+Closed the Orders→Builder round trip and fixed latent order-context bugs.
+
+- ✅ **Targeted edit:** the row icon / new double-click on an order's cabinet
+  line opens the Builder with THAT cabinet pre-selected (`editOrderInCB`/
+  `editQuoteInCB` take an optional `lineId`; `_cbRevealSelectedCabinet()`
+  scrolls form + card into view). Dbl-click guard so selecting text in
+  inputs no longer jumps into the Builder (quotes had this bug too).
+- ✅ **Round trip closed:** banner always shows (was hidden on zero-cabinet
+  orders = dead end), leads with the ORD-number, and "← Back to order"
+  (was "Done") returns to the order editor. New `discardOrderEdits()`
+  restores the entry snapshot (parity with quotes).
+- ✅ **Data-risk fixes:** `_exitClient_cabinet`/`_cbNewClient` now detach
+  `cbEditingOrderId` (stale id routed later standalone autosaves into the
+  order, wiping its cabinet lines); reload mid-edit now restores the
+  order-editing session (`pc_cb_editing_order_id` was write-only); quote
+  restore now filters `line_kind='cabinet'`.
+
+Detail: SPEC.md § 13 (2026-06-10).
+
 ### Customer payments + live quote/order pages (Stripe Connect) 🚧 In Progress 2026-06-09
 
 Public `/q?t=<share_token>` live pages (`q.html` + `src/quote-public.js`) where a

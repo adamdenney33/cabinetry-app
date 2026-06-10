@@ -641,6 +641,24 @@ function renderCBResults() {
   const _hdrQNum = _hdrQuote ? (_hdrQuote.quote_number || ('QUO-' + String(_hdrQuote.id).padStart(4, '0'))) : '';
   const cbHeaderTitle = _hdrQNum ? (_hdrQNum + ' · ' + projName) : projName;
 
+  // Editing-order banner — built once, shown in BOTH the empty and populated
+  // states (it used to render only when cabinets existed, so an order with no
+  // cabinets yet had no way back and no Discard). Label leads with the order
+  // number so the user always knows which order they're inside.
+  let orderBanner = '';
+  if (cbEditingOrderId) {
+    const eo = orders.find(x => x.id === cbEditingOrderId);
+    const eoNum = eo ? (eo.order_number || ('ORD-' + String(eo.id).padStart(4, '0'))) : '';
+    const eoProj = eo ? (((typeof orderProject === 'function' ? orderProject(eo) : '') || (typeof orderClient === 'function' ? orderClient(eo) : '')) || '') : '';
+    const eoLabel = [eoNum, eoProj].filter(Boolean).join(' · ') || 'Order';
+    orderBanner = `<div style="background:var(--accent-dim);border:2px solid var(--accent);border-radius:8px;padding:10px 16px;margin-bottom:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <span style="font-size:13px;font-weight:600;color:var(--accent)">Editing order: ${_escHtml(eoLabel)}</span>
+      <span style="flex:1"></span>
+      <button class="btn btn-outline" onclick="discardOrderEdits()" style="font-size:12px;padding:6px 14px;width:auto;color:var(--danger)" title="Restore the cabinets to how they were when you opened the Builder">Discard changes</button>
+      <button class="btn btn-primary" onclick="finishEditingOrder()" style="font-size:12px;padding:6px 14px;width:auto" title="Cabinets autosave — this returns you to the order editor">&larr; Back to order</button>
+    </div>`;
+  }
+
   if (!cbLines.length) {
     let emptyHeader = '';
     if (projName) {
@@ -651,7 +669,7 @@ function renderCBResults() {
     // If a quote is already opened (drilled in), don't show the all-quotes
     // picker — just show an empty state for THIS quote.
     if (cbEditingQuoteId || cbEditingOrderId) {
-      el.innerHTML = `${emptyHeader}<div class="empty-state" style="max-width:700px">
+      el.innerHTML = `${emptyHeader}<div style="max-width:700px">${orderBanner}</div><div class="empty-state" style="max-width:700px">
         <div class="empty-icon" style="opacity:.18"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg></div>
         <h3>No cabinets yet</h3>
         <p>Add a cabinet from the sidebar to start building this ${cbEditingOrderId ? 'order' : 'quote'}.</p>      </div>`;
@@ -725,17 +743,7 @@ function renderCBResults() {
 
   let html = `<div style="max-width:700px">`;
 
-  if (cbEditingOrderId) {
-    // Editing order banner — mirror of quote banner. No Discard yet (no
-    // discardOrderEdits handler); Done auto-syncs cabinets back to order_lines.
-    const eo = orders.find(x => x.id === cbEditingOrderId);
-    const eoLabel = eo ? ((typeof orderProject === 'function' ? orderProject(eo) : '') || (typeof orderClient === 'function' ? orderClient(eo) : '') || ('Order #' + (eo.order_number || ('ORD-' + String(eo.id).padStart(4,'0'))))) : 'Order';
-    html += `<div style="background:var(--accent-dim);border:2px solid var(--accent);border-radius:8px;padding:10px 16px;margin-bottom:12px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-      <span style="font-size:13px;font-weight:600;color:var(--accent)">Editing order: ${_escHtml(eoLabel)}</span>
-      <span style="flex:1"></span>
-      <button class="btn btn-primary" onclick="finishEditingOrder()" style="font-size:12px;padding:6px 14px">Done</button>
-    </div>`;
-  }
+  html += orderBanner;
 
   // Project header
   if (projName) {

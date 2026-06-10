@@ -116,16 +116,16 @@ function _orderLineRowHtml(row, i) {
     const hrsTotal = hrs * (parseFloat(row.qty) || 1);
     const unitPrice = (parseFloat(row.qty) || 1) > 0 ? (sub.materials + sub.labour) / (parseFloat(row.qty) || 1) : 0;
     const descDefault = row.name || 'Cabinet';
-    return `<tr>
+    return `<tr ondblclick="if(!_liDblIgnore(event))_orderLineEditCabinetRow(${i})" title="Double-click to edit this cabinet in the Cabinet Builder">
       <td class="col-handle" title="Drag to reorder (coming soon)">⋮</td>
       ${_lineDotCell('cabinet', row, i, true)}
       <td class="col-desc"><div class="li-desc-wrap">${_linePhotoBtn(row, 'order_line')}<textarea class="cl-input desc" rows="1" oninput="_orderLineUpdate(${i}, 'name', this.value);_autoGrowTextarea(this)">${_escHtml(descDefault)}</textarea></div></td>
       <td class="col-qty"><input class="cl-input right" type="number" min="1" step="1" value="${row.qty ?? 1}" oninput="_orderLineUpdate(${i}, 'qty', this.value)"></td>
-      <td class="col-price"><div class="cl-input right is-computed" style="padding:5px 4px">${Number(unitPrice || 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</div></td>
+      <td class="col-price" title="Priced from the cabinet's specs — double-click to edit in the Builder"><div class="cl-input right is-computed" style="padding:5px 4px">${Number(unitPrice || 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</div></td>
       <td class="col-hrs" title="Computed from cabinet labour"><div class="cl-input right is-computed" style="padding:5px 4px">${hrsTotal.toFixed(1)}</div></td>
       ${discCell}
       <td class="col-total"><div class="total-val">${fmt(total)}</div></td>
-      <td class="col-x" title="Remove" onclick="_orderLineRemove(${i})">✕</td>
+      <td class="col-x" title="Remove" onclick="event.stopPropagation();_orderLineRemove(${i})">✕</td>
     </tr>`;
   }
   // Item / stock / legacy labour: same editable shape. Stock rows link to a
@@ -649,8 +649,8 @@ function _linePhotoBtn(row, kind) {
  *  @param {boolean} isOrder true for order rows (different cabinet-edit entry) */
 function _lineDotCell(kind, row, i, isOrder) {
   if (kind === 'cabinet') {
-    const action = isOrder ? '_orderLineEditCabinet(_opState.orderId)' : `_lineEditCabinetRow(${i})`;
-    return `<td class="col-dot col-dot-icon"><button type="button" class="li-icon-btn li-dot-btn" title="Open in Cabinet Builder" onclick="event.stopPropagation();${action}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg></button></td>`;
+    const action = isOrder ? `_orderLineEditCabinetRow(${i})` : `_lineEditCabinetRow(${i})`;
+    return `<td class="col-dot col-dot-icon"><button type="button" class="li-icon-btn li-dot-btn" title="Edit this cabinet in the Cabinet Builder" onclick="event.stopPropagation();${action}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg></button></td>`;
   }
   if (kind === 'stock') {
     const svg = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>`;
@@ -690,12 +690,12 @@ function _lineRowHtml(row, i) {
     } catch (e) { hrs = 0; }
     const unitPrice = (parseFloat(row.qty) || 1) > 0 ? (sub.materials + sub.labour) / (parseFloat(row.qty) || 1) : 0;
     const descDefault = row.name || 'Cabinet';
-    return `<tr ondblclick="_lineEditCabinetRow(${i})" title="Double-click to edit in Cabinet Builder">
+    return `<tr ondblclick="if(!_liDblIgnore(event))_lineEditCabinetRow(${i})" title="Double-click to edit this cabinet in the Cabinet Builder">
       <td class="col-handle">⋮</td>
       ${_lineDotCell('cabinet', row, i, false)}
       <td class="col-desc"><div class="li-desc-wrap">${_linePhotoBtn(row)}<textarea class="cl-input desc" rows="1" oninput="_lineUpdate(${i}, 'name', this.value);_autoGrowTextarea(this)">${_escHtml(descDefault)}</textarea></div></td>
       <td class="col-qty"><input class="cl-input right" type="number" min="1" step="1" value="${row.qty ?? 1}" oninput="_lineUpdate(${i}, 'qty', this.value)"></td>
-      <td class="col-price"><div class="cl-input right is-computed" style="padding:5px 4px">${Number(unitPrice || 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</div></td>
+      <td class="col-price" title="Priced from the cabinet's specs — double-click to edit in the Builder"><div class="cl-input right is-computed" style="padding:5px 4px">${Number(unitPrice || 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</div></td>
       <td class="col-hrs" title="Computed from cabinet labour"><div class="cl-input right is-computed" style="padding:5px 4px">${hrs.toFixed(1)}</div></td>
       ${discCell}
       <td class="col-total"><div class="total-val">${fmt(total)}</div></td>
@@ -911,7 +911,8 @@ function _lineEditCabinetRow(idx) {
   const row = _qpState.lines[idx];
   if (!row || !_qpState.quoteId) return;
   const qId = /** @type {number} */ (_qpState.quoteId);
-  const after = () => { if (typeof editQuoteInCB === 'function') editQuoteInCB(qId); };
+  const lineId = row.id != null ? row.id : null;
+  const after = () => { if (typeof editQuoteInCB === 'function') editQuoteInCB(qId, lineId); };
   if (typeof saveQuoteEditor === 'function') saveQuoteEditor().then(after); else after();
 }
 
@@ -921,6 +922,28 @@ function _lineEditCabinetRow(idx) {
 function _orderLineEditCabinet(orderId) {
   const after = () => { if (typeof editOrderInCB === 'function') editOrderInCB(orderId); };
   if (typeof saveOrderEditor === 'function') saveOrderEditor().then(after); else after();
+}
+
+/** Edit a SPECIFIC cabinet line of the open order: saves the editor, then
+ *  opens the Cabinet Builder with that cabinet pre-selected (no re-finding
+ *  the cabinet among the workspace cards).
+ *  @param {number} idx index into _opState.lines */
+function _orderLineEditCabinetRow(idx) {
+  const row = _opState.lines[idx];
+  if (!row || !_opState.orderId) return;
+  const oId = /** @type {number} */ (_opState.orderId);
+  const lineId = row.id != null ? row.id : null;
+  const after = () => { if (typeof editOrderInCB === 'function') editOrderInCB(oId, lineId); };
+  if (typeof saveOrderEditor === 'function') saveOrderEditor().then(after); else after();
+}
+
+/** True when a dblclick landed on an editable control inside a line row —
+ *  used to keep "double-click row to edit cabinet" from hijacking a
+ *  double-click-to-select-word inside the description/qty/discount inputs.
+ *  @param {Event} ev */
+function _liDblIgnore(ev) {
+  const t = /** @type {HTMLElement|null} */ (ev && ev.target);
+  return !!(t && t.closest && t.closest('input,textarea,button,.col-x'));
 }
 
 // Debounced per-line upsert: each edit waits 600ms before writing to the DB,
