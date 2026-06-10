@@ -502,16 +502,14 @@ function renderQuoteMain() {
   const qCard = q => {
     const total = quoteTotal(q);
     const _qm = _quoteStatusMeta(q.status);
-    const statusBadge = _qm.badge;
     const statusText = _qm.label;
-    // ONE status display: the badge carries the granular state + its date
-    // (the old separate "✓ Accepted 2 Jun" meta stamp duplicated it in
-    // different words). Live-link events and manual clicks land in the same
-    // place, so the card reads identically with or without a live link.
+    // ONE status display: the pipeline. Its active step carries the granular
+    // state word + date — no badge duplicating the same fact in the corner.
+    // Live-link events and manual clicks land in the same place, so the card
+    // reads identically with or without a live link.
     const _stDate = (q.status === 'viewed' && q.viewed_at) ? _fmtLLDate(q.viewed_at)
       : ((q.status === 'accepted' || q.status === 'approved') && q.accepted_at) ? _fmtLLDate(q.accepted_at)
       : '';
-    const badgeText = _stDate ? `${statusText} · ${_stDate}` : statusText;
     // Quiet nudge while a live link is out but unopened. Shows nothing for
     // makers who don't use live links at all.
     const _linkHint = (q.share_token && !q.viewed_at && !q.accepted_at && _qm.stage < 2)
@@ -537,7 +535,7 @@ function renderQuoteMain() {
       const title = active ? 'Current stage' : `Set to ${stageLabel}`;
       return `<div class="pipe-step ${active?'pipe-active':''}${done?' pipe-done':''}" data-idx="${i}" data-hover-color="${(/** @type {Record<string,string>} */(QUOTE_STATUS_COLORS))[s]}" onmouseenter="pipePreview(this)" onmouseleave="pipeRestorePreview(this)" onclick="event.stopPropagation();setQuoteStatus(${q.id},'${s}')" style="cursor:pointer" title="${title}">
         <div class="pipe-dot" data-orig-color="${color}" style="background:${color};border-color:${color}"></div>
-        <div class="pipe-label">${label}</div>
+        <div class="pipe-label">${label}</div>${active && _stDate ? `<div class="pipe-date">${_stDate}</div>` : ''}
       </div>${i < QUOTE_STATUSES.length-1 ? `<div class="pipe-line ${done?'pipe-line-done':''}"></div>` : ''}`;
     }).join('');
     const isEditing = q.id === _qpState.quoteId;
@@ -547,7 +545,6 @@ function renderQuoteMain() {
         <div class="oc-info">
           <div class="oc-title-row">
             <div class="qc-title">${titleText}${isEditing ? ' <span style="font-weight:500;color:var(--accent);font-size:11px">· editing</span>' : ''}</div>
-            <span class="badge ${statusBadge}" style="font-size:10px" onclick="event.stopPropagation()">${badgeText}</span>
           </div>
           ${(q.date || lineCounts || _linkHint) ? `<div class="qc-meta">${[[q.date, lineCounts].filter(Boolean).join(' · '), _linkHint].filter(Boolean).join(' · ')}</div>` : ''}
         </div>

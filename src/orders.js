@@ -169,8 +169,6 @@ function renderOrdersMain() {
     const titleProj = orderProject(o) || '';
     const titleCli = orderClient(o) || '';
     const titleText = [titleNum, titleCli, titleProj].filter(Boolean).join(' · ');
-    const statusBadgeCls = (/** @type {Record<string,string>} */(STATUS_BADGES))[o.status]||'badge-gray';
-    const statusLabel = (/** @type {Record<string,string>} */(STATUS_LABELS))[o.status]||o.status;
     // Payment is a SEPARATE dimension from production status, so it gets its
     // own outline pill in the meta row instead of a second look-alike badge
     // next to the production one (which read as two conflicting statuses).
@@ -192,7 +190,6 @@ function renderOrdersMain() {
         <div class="oc-info">
           <div class="oc-title-row">
             <div class="oc-title">${titleText}${isEditing ? ' <span style="font-weight:500;color:var(--accent);font-size:11px">· editing</span>' : ''}</div>
-            <span class="badge ${statusBadgeCls}" style="font-size:10px" onclick="event.stopPropagation()">${statusLabel}</span>
           </div>
           <div class="oc-meta">
             ${isComplete
@@ -454,8 +451,6 @@ function renderOrderEditor() {
 
   // ── Active editor (order open) ──
   const status = o ? (o.status || 'quote') : 'quote';
-  const statusBadgeCls = (/** @type {Record<string,string>} */ (STATUS_BADGES))[status] || 'badge-gray';
-  const statusLabel = (/** @type {Record<string,string>} */ (STATUS_LABELS))[status] || status;
   const isExisting = !!o;
 
   // Pipeline visualization
@@ -932,16 +927,14 @@ function _renderOrderSchedSummary() {
   el.textContent = `${mode} · Start ${fmtDate(start ? start.value : '')} · ${hoursVal} h`;
 }
 
-/** Helper used by pipeline-step click in the editor. Sets the visible status select to s and marks dirty.
+/** Pipeline-step click in the EDITOR. The old #po-status select is gone, so
+ *  this used to silently no-op — now it writes the status directly through
+ *  the same path as the card pipeline, then refreshes the editor's dots.
  *  @param {string} s */
-function _oSetPopupStatus(s) {
-  const sel = document.getElementById('po-status');
-  if (sel) {
-    /** @type {HTMLSelectElement} */ (sel).value = s;
-    _oMarkDirty();
-    // Re-render to update pipeline dots
-    renderOrderEditor();
-  }
+async function _oSetPopupStatus(s) {
+  if (!_opState.orderId) return;
+  await setOrderStatus(_opState.orderId, s);
+  if (typeof renderOrderEditor === 'function') renderOrderEditor();
 }
 
 /** @type {ReturnType<typeof setTimeout> | null} */
