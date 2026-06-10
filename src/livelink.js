@@ -293,7 +293,10 @@ function _liveLinkPanel(kind) {
     <div class="ll-h">Payment</div>
     ${payRow}
     <div class="share-toggle-row"><div><div class="st-label">Take a deposit</div><div class="st-desc">Collected when the customer accepts · balance due on completion</div></div>
-      <div class="ll-dep"><input type="number" id="sh-dep" value="${s.deposit_pct != null ? s.deposit_pct : 40}" min="0" max="100" onchange="_llAutoSave('${kind}')"><span>%</span></div></div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="ll-dep" id="ll-dep-wrap"${s.take_deposit === false ? ' style="display:none"' : ''}><input type="number" id="sh-dep" value="${s.deposit_pct != null ? s.deposit_pct : 40}" min="0" max="100" onchange="_llAutoSave('${kind}')"><span>%</span></div>
+        <button class="mini-toggle" id="sh-dep-on" aria-pressed="${s.take_deposit === false ? 'false' : 'true'}" onclick="_shTgl(this);var w=document.getElementById('ll-dep-wrap');if(w)w.style.display=this.getAttribute('aria-pressed')==='true'?'':'none';_llAutoSave('${kind}')"></button>
+      </div></div>
     <div class="ll-h">What the customer can do</div>
     ${togPro('sh-select', 'Let customers choose items', 'They can include / exclude lines you mark optional below', s.allow_select !== false)}
     ${togPro('sh-edit', 'Let customers request changes', 'They can request changes to specs you unlock — you confirm the new price before anything’s charged', !!s.allow_edit)}

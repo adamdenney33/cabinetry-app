@@ -66,7 +66,7 @@ Deno.serve(async (req) => {
     }
     const tax = subtotal * (Number(quote.tax) || 0) / 100;
     const total = subtotal + tax;
-    const depPct = Number(settings.deposit_pct) || 0;
+    const depPct = settings.take_deposit === false ? 0 : Number(settings.deposit_pct) || 0;
     const amount = kind === 'deposit' && depPct > 0 ? total * depPct / 100 : total;
     if (!(amount > 0)) return jsonResponse({ error: 'nothing_to_pay' }, 400, cors);
 

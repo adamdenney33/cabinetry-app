@@ -173,7 +173,7 @@ Deno.serve(async (req) => {
         allow_select: !!settings.allow_select,
         allow_edit: !!settings.allow_edit,
         accept_payment: !!settings.accept_payment,
-        deposit_pct: Number(settings.deposit_pct) || 0,
+        deposit_pct: settings.take_deposit === false ? 0 : Number(settings.deposit_pct) || 0,
         expires_at: settings.expires_at ?? null,
       },
       business: biz ?? null,

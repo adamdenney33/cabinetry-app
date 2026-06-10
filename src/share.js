@@ -86,10 +86,14 @@ async function _generateShareLink(quoteId, kind) {
   if (!q.share_token && !(Array.isArray(q._lines) && q._lines.length)) return;
   const wasShared = !!q.share_token;
   const pressed = (/** @type {string} */ id) => { const b = document.getElementById(id); return b ? b.getAttribute('aria-pressed') === 'true' : false; };
+  // The deposit toggle may not be in the DOM (legacy share popup) — fall back
+  // to the stored setting so a save from elsewhere never flips it off.
+  const depTog = document.getElementById('sh-dep-on');
   const settings = {
     allow_select: pressed('sh-select'),
     allow_edit: pressed('sh-edit'),
     accept_payment: pressed('sh-pay'),
+    take_deposit: depTog ? depTog.getAttribute('aria-pressed') === 'true' : ((q.share_settings || {}).take_deposit !== false),
     deposit_pct: Math.max(0, Math.min(100, parseFloat(_popupVal('sh-dep')) || 0)),
   };
   const token = q.share_token || (crypto.randomUUID ? crypto.randomUUID().replace(/-/g, '').slice(0, 16) : Math.random().toString(36).slice(2, 14));
