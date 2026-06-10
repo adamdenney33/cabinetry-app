@@ -234,11 +234,7 @@ function specEditor(l) {
   if (!sections.length) sections.push({ t: '', rows: [sel('Finish', D?.finishes || [], l.finish, 'finish')] });
   const body = sections.map(s => `${s.t ? `<div class="qp-spec-head">${s.t}</div>` : ''}${s.rows.join('')}`).join('');
   return `<div class="qp-spec">${body}
-    <div style="font-size:11px;color:var(--muted);line-height:1.5;margin-top:10px">When you send your edits, ${esc(D?.business?.name || 'your maker')} will confirm the updated price before anything is charged. The item shows \"Price to confirm\" until then.</div>
-    <div style="display:flex;gap:8px;margin-top:10px">
-      <button class="btn btn-primary" style="flex:1;padding:9px 12px;font-size:13px" onclick="__qp.sendEdits(${l.id})">Send edits</button>
-      <button class="btn" style="background:none;border:1px solid var(--border);color:var(--text2);padding:9px 14px;font-size:13px" onclick="__qp.cancelEdits(${l.id})">Cancel</button>
-    </div>
+    <div style="font-size:11px;color:var(--muted);line-height:1.5;margin-top:10px">Adjust anything above, then press <strong>Send edits</strong> in the summary to submit your changes.</div>
   </div>`;
 }
 
@@ -261,7 +257,17 @@ function rail() {
         ? `Pay a ${t.depPct}% deposit now to confirm — the ${money(t.balance)} balance is due on completion.`
         : `Pay in full to confirm your ${isOrder ? 'order' : 'quote'}.`)
       : 'Confirms you’re happy to go ahead — your maker will be in touch about next steps and payment.';
-  const cta = isOrder
+  // Edit mode: while any spec editor is open the accept/pay CTA is replaced
+  // by Send edits + Cancel, with its own explanatory caption.
+  const editing = Object.keys(originalValues).length > 0;
+  const editCta = `<div style="display:flex;gap:8px;margin-top:16px">
+      <button class="btn btn-primary btn-lg" style="flex:1" onclick="__qp.sendEdits()">Send edits</button>
+      <button class="btn btn-lg" style="width:auto;flex-shrink:0;background:none;border:1px solid var(--border);color:var(--text2)" onclick="__qp.cancelEdits()">Cancel</button>
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-top:8px;line-height:1.4;text-align:center">Sends your requested changes to ${esc(D?.business?.name || 'your maker')} — the updated price will be confirmed before anything is charged.</div>`;
+  const cta = editing
+    ? editCta
+    : isOrder
     ? ''
     : (accepted
       ? `<div class="qp-chip" style="background:var(--success);color:#fff;display:block;text-align:center;padding:14px 16px;font-size:12px;margin-top:16px;line-height:1.2">✓ Accepted — thank you</div>`
@@ -442,6 +448,7 @@ const handlers = {
         fixed_shelves: l.fixed_shelves };
       pendingEdits[id] = {};
       host.innerHTML = specEditor(l); host.style.display = '';
+      const railEl = document.getElementById('qp-rail'); if (railEl) railEl.innerHTML = rail();
     } else {
       handlers.cancelEdits(id);
     }
@@ -451,23 +458,32 @@ const handlers = {
     pendingEdits[id] = pendingEdits[id] || {};
     pendingEdits[id][col] = v;
   },
-  /** Send all buffered edits for a line in one request.
-   * @param {number} id */
-  async sendEdits(id) {
-    const patch = pendingEdits[id];
-    if (!patch || !Object.keys(patch).length) { handlers.cancelEdits(id); return; }
-    await applyEdit(id, patch);
-    delete pendingEdits[id];
-    delete originalValues[id];
+  /** Send every buffered edit (one request per changed line), then close
+   *  the editors and restore the normal accept CTA. */
+  async sendEdits() {
+    const ids = Object.keys(pendingEdits).map(Number);
+    let sent = 0;
+    for (const id of ids) {
+      const patch = pendingEdits[id];
+      if (!patch || !Object.keys(patch).length) { handlers.cancelEdits(id); continue; }
+      if (await applyEdit(id, patch)) { delete pendingEdits[id]; delete originalValues[id]; sent++; }
+      // on failure the buffer and editor stay so the customer can retry
+    }
+    if (sent) toast(`Change${sent > 1 ? 's' : ''} sent — ${(D?.business?.name || 'your maker')} will confirm the updated price.`, false);
+    const railEl = document.getElementById('qp-rail'); if (railEl) railEl.innerHTML = rail();
   },
-  /** Discard buffered edits and close the spec editor.
-   * @param {number} id */
+  /** Discard buffered edits and close spec editors.
+   * @param {number} [id] one line, or every open editor when omitted */
   cancelEdits(id) {
-    const orig = originalValues[id];
-    if (orig) { const l = lines.find((x) => x.id === id); if (l) Object.assign(l, orig); }
-    delete pendingEdits[id];
-    delete originalValues[id];
-    const host = byId('qp-spec-' + id); if (host) host.style.display = 'none';
+    const ids = id != null ? [id] : Object.keys(originalValues).map(Number);
+    for (const lid of ids) {
+      const orig = originalValues[lid];
+      if (orig) { const l = lines.find((x) => x.id === lid); if (l) Object.assign(l, orig); }
+      delete pendingEdits[lid];
+      delete originalValues[lid];
+      const host = byId('qp-spec-' + lid); if (host) host.style.display = 'none';
+    }
+    const railEl = document.getElementById('qp-rail'); if (railEl) railEl.innerHTML = rail();
   },
   /** Confirmation sheet before the (irreversible) non-payment accept — one
    *  mis-click shouldn't lock the quote. The pay flow has the payment sheet
@@ -552,7 +568,7 @@ const handlers = {
 
 /** @param {number} id @param {Record<string, unknown>} patch */
 async function applyEdit(id, patch) {
-  const l = lines.find((x) => x.id === id); if (!l) return;
+  const l = lines.find((x) => x.id === id); if (!l) return false;
   try {
     await fn('quote-public-update', { token, action: 'edit', line_id: id, ...patch });
     Object.assign(l, patch);
