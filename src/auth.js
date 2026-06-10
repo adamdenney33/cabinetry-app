@@ -135,11 +135,10 @@ document.addEventListener('keydown', e => {
   // N key: new item for current tab (when not typing)
   if (e.key === 'n' && !typing && !e.ctrlKey && !e.metaKey) {
     const active = document.querySelector('.section-panel.active')?.id;
-    if (active === 'panel-quote') { document.getElementById('q-client')?.focus(); e.preventDefault(); }
-    else if (active === 'panel-orders') { document.getElementById('o-client')?.focus(); e.preventDefault(); }
+    if (active === 'panel-quote') { document.getElementById('qe-client-picker')?.focus(); e.preventDefault(); }
+    else if (active === 'panel-orders') { document.getElementById('oe-client-picker')?.focus(); e.preventDefault(); }
     else if (active === 'panel-stock') { document.getElementById('stock-name')?.focus(); e.preventDefault(); }
     else if (active === 'panel-clients') { document.getElementById('cl-name')?.focus(); e.preventDefault(); }
-    else if (active === 'panel-projects') { document.getElementById('pj-name')?.focus(); e.preventDefault(); }
   }
   // / key: focus search (when not typing)
   if (e.key === '/' && !typing && !e.ctrlKey && !e.metaKey) {
@@ -178,10 +177,8 @@ document.addEventListener('keydown', e => {
   if (e.key !== 'Escape') return;
   const auth = document.getElementById('auth-screen');
   if (auth && !auth.classList.contains('hidden')) { dismissAuth(); return; }
-  const acct = document.getElementById('account-panel');
+  const acct = document.getElementById('account-dropdown');
   if (acct && acct.classList.contains('open')) { acct.classList.remove('open'); return; }
-  const proj = document.getElementById('projects-panel');
-  if (proj && proj.classList.contains('open')) { proj.classList.remove('open'); return; }
   // Close any open confirm dialogs
   const confirms = document.querySelectorAll('[id^="_confirm_"]');
   if (confirms.length) { confirms.forEach(c => c.remove()); return; }

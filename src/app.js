@@ -1881,8 +1881,8 @@ function _readPendingPlan(consume) {
 })();
 loadBizInfo();
 loadLogoPreview();
-// Restore kerf
-(function(){ const k = localStorage.getItem('pc_kerf'); if (k) { const el = /** @type {HTMLInputElement | null} */ (document.getElementById('kerf')); if (el) el.value = k; } })();
+// (kerf restore removed — kerf is per-sheet in the cut list now; the global
+// '#kerf' input no longer exists.)
 renderStockMain();
 renderQuoteMain();
 renderOrdersMain();

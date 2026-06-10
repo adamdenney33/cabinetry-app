@@ -125,9 +125,8 @@ function setUnits(u) {
     }
   }
 
-  // Sync unit pills (settings bar + layout toolbar)
-  document.querySelectorAll('#cl-unit-in').forEach(el => el.classList.toggle('active', !m));
-  document.querySelectorAll('#cl-unit-mm').forEach(el => el.classList.toggle('active', m));
+  // (unit-pill sync removed — '#cl-unit-in' / '#cl-unit-mm' pills no longer
+  // exist; the unit toggle lives in the settings popup and re-renders itself.)
 
   // Stock form defaults
   const stW = /** @type {HTMLInputElement | null} */ (document.getElementById('stock-w'));
