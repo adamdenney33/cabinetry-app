@@ -16,6 +16,11 @@ dist/
 
 # Vite dev cache
 .vite/
+vite.config.mjs.timestamp-*.mjs
+
+# Runtime / tool state
+.playwright-mcp/
+ig-dashboard/
 
 # Local env (publishable Supabase keys live here in dev)
 .env
