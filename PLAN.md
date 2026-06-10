@@ -14,7 +14,7 @@ Companion docs: `SPEC.md` (refactor history), `SCHEMA.md` (DB schema),
 - **Pre-launch refactor (SPEC.md Phases 0–7)** complete — modular files, TypeScript strict mode, schema normalised
 - **Cabinet Builder unification** (Item 2): all 4 phases done — pre-launch refactor closed
 - **Stripe payments (subscriptions)**: S.2–S.7 done in test mode (Checkout + Portal + Webhook + DB schema); S.8 verification + S.9 live-mode flip remain
-- **Stripe Connect (customer payments on live quote/order pages)**: built + deployed (connect-onboard/connect-status/quote-pay/quote-pay-webhook + `src/connect.js` + `q.html`); charge model corrected to **Standard + direct charges + 0.7%/$100-cap fee** (2026-06-09, commit `6711b61`). Pending: Connect-webhook config + end-to-end test + live-mode flip
+- **Stripe Connect (customer payments on live quote/order pages)**: built + deployed (connect-onboard/connect-status/quote-pay/quote-pay-webhook + `src/connect.js` + `q.html`); charge model **Standard + direct charges + 0.7%/$100-cap fee** (2026-06-09, commit `6711b61`); **LIVE mode since 2026-06-10** (live keys + live Connect webhook — real money). Bank transfers + `/payment-fees` page added 2026-06-10
 - **Mobile / responsive**: ✅ comprehensive mobile-native pass done 2026-05-23 (7 phases; see Active Work / SPEC.md § 13)
 - **UI polish + design finalisation**: not started
 - **Launch target:** mid-May 2026 (per Business Plan)
@@ -231,9 +231,10 @@ a **0.7% (capped ~$100)** application fee. Built across the quote/order overhaul
   `/payment-fees` page (privacy.html pattern, copied in `vite.config.mjs`) linked from
   the Live link panel, share popup, and Connect popup. Webhook unchanged (async
   `payment_intent.succeeded` already books the order).
-- ⬜ **Live-mode flip (go-live):** swap `STRIPE_CONNECT_*` to live keys (or unset → falls
-  back to the live key) + create a **live** Connect webhook → `STRIPE_CONNECT_WEBHOOK_SECRET`;
-  Connect already enabled on live; makers onboard live Standard accounts.
+- ✅ **Live-mode flip (go-live) — 2026-06-10.** `STRIPE_CONNECT_SECRET_KEY` now matches the
+  live `STRIPE_SECRET_KEY` (same secret digest) and `STRIPE_CONNECT_WEBHOOK_SECRET` is set
+  (live Connect webhook); `STRIPE_PLATFORM_FEE_BPS` unset → code default 70 bps (0.7%).
+  Customer payments are REAL MONEY from here — no test-dashboard funding simulations.
 
 Detail: SPEC.md § 13 (2026-06-09).
 
