@@ -89,6 +89,10 @@ const isBiz = new URLSearchParams(location.search).get('biz') === '1';
 /** @type {any[]} */ let lines = [];    // mutable line state
 /** @type {Record<number, string[]>} */ let photosByLine = {};
 let cur = '£';
+/** Buffered spec-editor changes, keyed by line id -- sent only on Send edits. */
+/** @type {Record<number, Record<string, unknown>>} */ const pendingEdits = {};
+/** Original line values saved when a spec editor opens, for cancel/revert. */
+/** @type {Record<number, Record<string, unknown>>} */ const originalValues = {};
 
 /** @param {number} n */
 function money(n) {
@@ -230,7 +234,11 @@ function specEditor(l) {
   if (!sections.length) sections.push({ t: '', rows: [sel('Finish', D?.finishes || [], l.finish, 'finish')] });
   const body = sections.map(s => `${s.t ? `<div class="qp-spec-head">${s.t}</div>` : ''}${s.rows.join('')}`).join('');
   return `<div class="qp-spec">${body}
-    <div style="font-size:11px;color:var(--muted);line-height:1.5">Your change is saved and sent to ${esc(D?.business?.name || 'us')} — we’ll confirm the updated price before anything’s charged. The item shows “Price to confirm” until then.</div>
+    <div style="font-size:11px;color:var(--muted);line-height:1.5;margin-top:10px">When you send your edits, ${esc(D?.business?.name || 'your maker')} will confirm the updated price before anything is charged. The item shows \"Price to confirm\" until then.</div>
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <button class="btn btn-primary" style="flex:1;padding:9px 12px;font-size:13px" onclick="__qp.sendEdits(${l.id})">Send edits</button>
+      <button class="btn" style="background:none;border:1px solid var(--border);color:var(--text2);padding:9px 14px;font-size:13px" onclick="__qp.cancelEdits(${l.id})">Cancel</button>
+    </div>
   </div>`;
 }
 
@@ -300,7 +308,7 @@ function render() {
         <div><h1>Your ${noun}${q.number ? ' · ' + esc(q.number) : ''}</h1><div class="sub">${q.date ? (isOrder ? 'Created ' : 'Issued ') + esc(q.date) : ''}</div></div>
         <span class="qp-chip" style="background:rgba(80,140,220,.15);color:#2962d9">${statusChip}</span>
       </div>
-      <div class="qp-greeting">Hi ${esc(greetingName)}, here's your ${noun}${D.business?.name ? ' from <strong>' + esc(D.business.name) + '</strong>' : ''}. ${D.settings?.allow_select ? 'Toggle any optional items and the total updates as you go.' : ''} ${D.settings?.allow_edit ? 'Tap Edit on a line to request a spec change.' : ''}</div>
+      <div class="qp-greeting">Hi ${esc(greetingName)}, here's your ${noun}${D.business?.name ? ' from <strong>' + esc(D.business.name) + '</strong>' : ''}. ${(D.settings?.allow_select && lines.filter((l) => l.optional).length >= 2) ? 'Toggle any optional items and the total updates as you go.' : ''} ${D.settings?.allow_edit ? 'Tap Edit on a line to request a spec change.' : ''}</div>
     </div>
     <div class="qp-two">
       <div class="card" style="overflow:hidden"><div class="card-header"><div class="card-title">Your items</div></div><div id="qp-lines"></div></div>
@@ -424,25 +432,43 @@ const handlers = {
   toggleSpec(id) {
     const host = byId('qp-spec-' + id); const l = lines.find((x) => x.id === id);
     if (!host || !l) return;
-    if (host.style.display === 'none') { host.innerHTML = specEditor(l); host.style.display = ''; }
-    else host.style.display = 'none';
+    if (host.style.display === 'none') {
+      originalValues[id] = { finish: l.finish, w_mm: l.w_mm, h_mm: l.h_mm, d_mm: l.d_mm,
+        material: l.material, construction: l.construction, base_type: l.base_type,
+        door_count: l.door_count, door_pct: l.door_pct, door_type: l.door_type,
+        door_material: l.door_material, door_finish: l.door_finish, door_handle: l.door_handle,
+        drawer_count: l.drawer_count, drawer_pct: l.drawer_pct, drawer_front_type: l.drawer_front_type,
+        drawer_front_material: l.drawer_front_material, drawer_front_finish: l.drawer_front_finish,
+        fixed_shelves: l.fixed_shelves };
+      pendingEdits[id] = {};
+      host.innerHTML = specEditor(l); host.style.display = '';
+    } else {
+      handlers.cancelEdits(id);
+    }
   },
-  /** @param {number} id @param {string} v */
-  async setFinish(id, v) { await applyEdit(id, { finish: v }); },
-  /** @param {number} id @param {string} v */
-  async setWidth(id, v) { await applyEdit(id, { w_mm: Number(v) }); },
-  /** @param {number} id @param {string} v */
-  async setHeight(id, v) { await applyEdit(id, { h_mm: Number(v) }); },
-  /** @param {number} id @param {string} v */
-  async setDepth(id, v) { await applyEdit(id, { d_mm: Number(v) }); },
-  /** @param {number} id @param {string} v */
-  async setMaterial(id, v) { await applyEdit(id, { material: v }); },
-  /** @param {number} id @param {string} v */
-  async setDoors(id, v) { await applyEdit(id, { door_count: Number(v) }); },
-  /** @param {number} id @param {string} v */
-  async setDrawers(id, v) { await applyEdit(id, { drawer_count: Number(v) }); },
   /** @param {number} id @param {string} col @param {string} v */
-  async setField(id, col, v) { await applyEdit(id, { [col]: v }); },
+  setField(id, col, v) {
+    pendingEdits[id] = pendingEdits[id] || {};
+    pendingEdits[id][col] = v;
+  },
+  /** Send all buffered edits for a line in one request.
+   * @param {number} id */
+  async sendEdits(id) {
+    const patch = pendingEdits[id];
+    if (!patch || !Object.keys(patch).length) { handlers.cancelEdits(id); return; }
+    await applyEdit(id, patch);
+    delete pendingEdits[id];
+    delete originalValues[id];
+  },
+  /** Discard buffered edits and close the spec editor.
+   * @param {number} id */
+  cancelEdits(id) {
+    const orig = originalValues[id];
+    if (orig) { const l = lines.find((x) => x.id === id); if (l) Object.assign(l, orig); }
+    delete pendingEdits[id];
+    delete originalValues[id];
+    const host = byId('qp-spec-' + id); if (host) host.style.display = 'none';
+  },
   /** Confirmation sheet before the (irreversible) non-payment accept — one
    *  mis-click shouldn't lock the quote. The pay flow has the payment sheet
    *  as its natural confirm step, so it skips this. */
