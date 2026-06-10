@@ -465,6 +465,64 @@ export type Database = {
         }
         Relationships: []
       }
+      customer_messages: {
+        Row: {
+          body: string
+          client_id: number
+          created_at: string
+          id: number
+          order_id: number | null
+          quote_id: number | null
+          read_at: string | null
+          sender: string
+          user_id: string
+        }
+        Insert: {
+          body: string
+          client_id: number
+          created_at?: string
+          id?: number
+          order_id?: number | null
+          quote_id?: number | null
+          read_at?: string | null
+          sender: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          client_id?: number
+          created_at?: string
+          id?: number
+          order_id?: number | null
+          quote_id?: number | null
+          read_at?: string | null
+          sender?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_messages_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_messages_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_messages_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cutlist_cabinets: {
         Row: {
           cabinet_id: number
@@ -651,21 +709,66 @@ export type Database = {
         }
         Relationships: []
       }
+      line_photos: {
+        Row: {
+          caption: string | null
+          created_at: string
+          id: number
+          owner_id: number
+          owner_kind: string
+          position: number
+          storage_path: string
+          user_id: string
+        }
+        Insert: {
+          caption?: string | null
+          created_at?: string
+          id?: number
+          owner_id: number
+          owner_kind: string
+          position?: number
+          storage_path: string
+          user_id: string
+        }
+        Update: {
+          caption?: string | null
+          created_at?: string
+          id?: number
+          owner_id?: number
+          owner_kind?: string
+          position?: number
+          storage_path?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       order_lines: {
         Row: {
           adj_shelves: number
           base_type: string | null
           construction: string | null
           created_at: string
+          customer_editable: boolean
+          customer_included: boolean
+          customer_price: number | null
           d_mm: number | null
           discount: number
           door_count: number
+          door_finish: string | null
           door_handle: string | null
+          door_hardware: Json | null
+          door_material: string | null
           door_pct: number | null
+          door_type: string | null
+          drawer_box_finish: string | null
           drawer_count: number
+          drawer_front_finish: string | null
           drawer_front_material: string | null
+          drawer_front_type: string | null
+          drawer_hardware: Json | null
           drawer_inner_material: string | null
           drawer_pct: number | null
+          editable_specs: Json
           end_panels: number
           extras: Json
           finish: string | null
@@ -681,6 +784,7 @@ export type Database = {
           material_cost_override: number | null
           name: string
           notes: string | null
+          optional: boolean
           order_id: number
           partitions: number
           position: number
@@ -698,15 +802,27 @@ export type Database = {
           base_type?: string | null
           construction?: string | null
           created_at?: string
+          customer_editable?: boolean
+          customer_included?: boolean
+          customer_price?: number | null
           d_mm?: number | null
           discount?: number
           door_count?: number
+          door_finish?: string | null
           door_handle?: string | null
+          door_hardware?: Json | null
+          door_material?: string | null
           door_pct?: number | null
+          door_type?: string | null
+          drawer_box_finish?: string | null
           drawer_count?: number
+          drawer_front_finish?: string | null
           drawer_front_material?: string | null
+          drawer_front_type?: string | null
+          drawer_hardware?: Json | null
           drawer_inner_material?: string | null
           drawer_pct?: number | null
+          editable_specs?: Json
           end_panels?: number
           extras?: Json
           finish?: string | null
@@ -722,6 +838,7 @@ export type Database = {
           material_cost_override?: number | null
           name?: string
           notes?: string | null
+          optional?: boolean
           order_id: number
           partitions?: number
           position?: number
@@ -739,15 +856,27 @@ export type Database = {
           base_type?: string | null
           construction?: string | null
           created_at?: string
+          customer_editable?: boolean
+          customer_included?: boolean
+          customer_price?: number | null
           d_mm?: number | null
           discount?: number
           door_count?: number
+          door_finish?: string | null
           door_handle?: string | null
+          door_hardware?: Json | null
+          door_material?: string | null
           door_pct?: number | null
+          door_type?: string | null
+          drawer_box_finish?: string | null
           drawer_count?: number
+          drawer_front_finish?: string | null
           drawer_front_material?: string | null
+          drawer_front_type?: string | null
+          drawer_hardware?: Json | null
           drawer_inner_material?: string | null
           drawer_pct?: number | null
+          editable_specs?: Json
           end_panels?: number
           extras?: Json
           finish?: string | null
@@ -763,6 +892,7 @@ export type Database = {
           material_cost_override?: number | null
           name?: string
           notes?: string | null
+          optional?: boolean
           order_id?: number
           partitions?: number
           position?: number
@@ -807,6 +937,8 @@ export type Database = {
           production_start_date: string | null
           quote_id: number | null
           run_over_hours: number
+          share_settings: Json
+          share_token: string | null
           sidebar_order_index: number
           status: string | null
           stock_markup: number
@@ -814,6 +946,7 @@ export type Database = {
           updated_at: string
           user_id: string
           value: number | null
+          viewed_at: string | null
         }
         Insert: {
           auto_schedule?: boolean
@@ -836,6 +969,8 @@ export type Database = {
           production_start_date?: string | null
           quote_id?: number | null
           run_over_hours?: number
+          share_settings?: Json
+          share_token?: string | null
           sidebar_order_index?: number
           status?: string | null
           stock_markup?: number
@@ -843,6 +978,7 @@ export type Database = {
           updated_at?: string
           user_id: string
           value?: number | null
+          viewed_at?: string | null
         }
         Update: {
           auto_schedule?: boolean
@@ -865,6 +1001,8 @@ export type Database = {
           production_start_date?: string | null
           quote_id?: number | null
           run_over_hours?: number
+          share_settings?: Json
+          share_token?: string | null
           sidebar_order_index?: number
           status?: string | null
           stock_markup?: number
@@ -872,6 +1010,7 @@ export type Database = {
           updated_at?: string
           user_id?: string
           value?: number | null
+          viewed_at?: string | null
         }
         Relationships: [
           {
@@ -883,6 +1022,72 @@ export type Database = {
           },
           {
             foreignKeyName: "orders_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payments: {
+        Row: {
+          amount: number
+          application_fee: number
+          created_at: string
+          currency: string
+          customer_email: string | null
+          id: number
+          kind: string
+          order_id: number | null
+          quote_id: number | null
+          status: string
+          stripe_checkout_session: string | null
+          stripe_payment_intent: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount?: number
+          application_fee?: number
+          created_at?: string
+          currency?: string
+          customer_email?: string | null
+          id?: number
+          kind: string
+          order_id?: number | null
+          quote_id?: number | null
+          status?: string
+          stripe_checkout_session?: string | null
+          stripe_payment_intent?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          application_fee?: number
+          created_at?: string
+          currency?: string
+          customer_email?: string | null
+          id?: number
+          kind?: string
+          order_id?: number | null
+          quote_id?: number | null
+          status?: string
+          stripe_checkout_session?: string | null
+          stripe_payment_intent?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_quote_id_fkey"
             columns: ["quote_id"]
             isOneToOne: false
             referencedRelation: "quotes"
@@ -988,20 +1193,27 @@ export type Database = {
           base_type: string | null
           construction: string | null
           created_at: string
+          customer_editable: boolean
+          customer_included: boolean
+          customer_price: number | null
           d_mm: number | null
           discount: number
           door_count: number
           door_finish: string | null
           door_handle: string | null
           door_hardware: Json | null
+          door_material: string | null
           door_pct: number | null
+          door_type: string | null
           drawer_box_finish: string | null
           drawer_count: number
           drawer_front_finish: string | null
           drawer_front_material: string | null
+          drawer_front_type: string | null
           drawer_hardware: Json | null
           drawer_inner_material: string | null
           drawer_pct: number | null
+          editable_specs: Json
           end_panels: number
           extras: Json
           finish: string | null
@@ -1017,6 +1229,7 @@ export type Database = {
           material_cost_override: number | null
           name: string
           notes: string | null
+          optional: boolean
           partitions: number
           position: number
           qty: number
@@ -1034,20 +1247,27 @@ export type Database = {
           base_type?: string | null
           construction?: string | null
           created_at?: string
+          customer_editable?: boolean
+          customer_included?: boolean
+          customer_price?: number | null
           d_mm?: number | null
           discount?: number
           door_count?: number
           door_finish?: string | null
           door_handle?: string | null
           door_hardware?: Json | null
+          door_material?: string | null
           door_pct?: number | null
+          door_type?: string | null
           drawer_box_finish?: string | null
           drawer_count?: number
           drawer_front_finish?: string | null
           drawer_front_material?: string | null
+          drawer_front_type?: string | null
           drawer_hardware?: Json | null
           drawer_inner_material?: string | null
           drawer_pct?: number | null
+          editable_specs?: Json
           end_panels?: number
           extras?: Json
           finish?: string | null
@@ -1063,6 +1283,7 @@ export type Database = {
           material_cost_override?: number | null
           name?: string
           notes?: string | null
+          optional?: boolean
           partitions?: number
           position?: number
           qty?: number
@@ -1080,20 +1301,27 @@ export type Database = {
           base_type?: string | null
           construction?: string | null
           created_at?: string
+          customer_editable?: boolean
+          customer_included?: boolean
+          customer_price?: number | null
           d_mm?: number | null
           discount?: number
           door_count?: number
           door_finish?: string | null
           door_handle?: string | null
           door_hardware?: Json | null
+          door_material?: string | null
           door_pct?: number | null
+          door_type?: string | null
           drawer_box_finish?: string | null
           drawer_count?: number
           drawer_front_finish?: string | null
           drawer_front_material?: string | null
+          drawer_front_type?: string | null
           drawer_hardware?: Json | null
           drawer_inner_material?: string | null
           drawer_pct?: number | null
+          editable_specs?: Json
           end_panels?: number
           extras?: Json
           finish?: string | null
@@ -1109,6 +1337,7 @@ export type Database = {
           material_cost_override?: number | null
           name?: string
           notes?: string | null
+          optional?: boolean
           partitions?: number
           position?: number
           qty?: number
@@ -1133,6 +1362,8 @@ export type Database = {
       }
       quotes: {
         Row: {
+          accepted_at: string | null
+          accepted_snapshot: Json | null
           client_id: number | null
           created_at: string | null
           date: string | null
@@ -1142,13 +1373,18 @@ export type Database = {
           name: string | null
           notes: string | null
           quote_number: string | null
+          share_settings: Json
+          share_token: string | null
           status: string | null
           stock_markup: number
           tax: number | null
           updated_at: string
           user_id: string
+          viewed_at: string | null
         }
         Insert: {
+          accepted_at?: string | null
+          accepted_snapshot?: Json | null
           client_id?: number | null
           created_at?: string | null
           date?: string | null
@@ -1158,13 +1394,18 @@ export type Database = {
           name?: string | null
           notes?: string | null
           quote_number?: string | null
+          share_settings?: Json
+          share_token?: string | null
           status?: string | null
           stock_markup?: number
           tax?: number | null
           updated_at?: string
           user_id: string
+          viewed_at?: string | null
         }
         Update: {
+          accepted_at?: string | null
+          accepted_snapshot?: Json | null
           client_id?: number | null
           created_at?: string | null
           date?: string | null
@@ -1174,11 +1415,14 @@ export type Database = {
           name?: string | null
           notes?: string | null
           quote_number?: string | null
+          share_settings?: Json
+          share_token?: string | null
           status?: string | null
           stock_markup?: number
           tax?: number | null
           updated_at?: string
           user_id?: string
+          viewed_at?: string | null
         }
         Relationships: [
           {
@@ -1345,6 +1589,42 @@ export type Database = {
         }
         Relationships: []
       }
+      stripe_accounts: {
+        Row: {
+          charges_enabled: boolean
+          country: string | null
+          created_at: string
+          default_currency: string | null
+          details_submitted: boolean
+          payouts_enabled: boolean
+          stripe_account_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          charges_enabled?: boolean
+          country?: string | null
+          created_at?: string
+          default_currency?: string | null
+          details_submitted?: boolean
+          payouts_enabled?: boolean
+          stripe_account_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          charges_enabled?: boolean
+          country?: string | null
+          created_at?: string
+          default_currency?: string | null
+          details_submitted?: boolean
+          payouts_enabled?: boolean
+          stripe_account_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       subscriptions: {
         Row: {
           cancel_at_period_end: boolean
@@ -1398,7 +1678,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      founder_seats_taken: { Args: never; Returns: number }
     }
     Enums: {
       [_ in never]: never

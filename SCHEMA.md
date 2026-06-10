@@ -693,6 +693,8 @@ edits on the order don't affect the original quote.
 
 **`line_kind = 'stock'` (added 2026-05-11):** new kind alongside `cabinet`/`item`/`labour`. Stock-kind rows are added from the stock smart-library in the editor sidebar (when the Stock pill is toggled on). Same shape as item rows (`name`, `qty`, `unit_price`, `discount`), with the per-line math going through `_lineSubtotal`'s item branch (`qty × unit_price × (1 - discount/100)` into `materials`). Totals math splits stock materials out and applies the parent's `stock_markup` percentage before the legacy `markup` → `tax` → `discount` chain. The check constraint was extended to allow `'stock'` in migration `20260511015625_stock_kind_and_markup`.
 
+**Parity repair (2026-06-10, migration `add_order_lines_finish_hardware_parity`):** the "same shape as `quote_lines`" promise above had drifted — `door_finish`, `drawer_front_finish`, `drawer_box_finish` (text) and `door_hardware`, `drawer_hardware` (jsonb default `'[]'`) existed on `quote_lines` only. Every cabinet-row write to `order_lines` (`_syncCBLinesToOrder` in `cabinet.js`, the wholesale `{...l}` copy in `convertQuoteToOrder`) sent those fields and 400'd with `PGRST204` (Sentry JAVASCRIPT-5) — in `_syncCBLinesToOrder` *after* the delete of existing cabinet rows, so order cabinet lines could be lost. The five columns were added to `order_lines` to restore parity. Remaining intentional asymmetry: `quote_lines.schedule_hours` is `not null default 0`; `order_lines.schedule_hours` stays nullable.
+
 ---
 
 ### 3.17 `subscriptions`
