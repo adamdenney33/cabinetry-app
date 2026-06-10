@@ -210,6 +210,20 @@ function _orderLinkPanel(o) {
   </div>`;
 }
 
+// Deposit-row captions — swapped live so it's obvious that turning the
+// deposit off means the customer is asked for the FULL amount on accept.
+const _LL_DEP_ON_DESC = 'Collected when the customer accepts · balance due on completion';
+const _LL_DEP_OFF_DESC = 'Off — the customer pays the full amount when they accept';
+/** Deposit toggle: flip state, show/hide the % input, swap the caption.
+ *  @param {HTMLElement} b @param {'quote'|'order'} kind */
+function _llDepTgl(b, kind) {
+  _shTgl(b);
+  const on = b.getAttribute('aria-pressed') === 'true';
+  const w = document.getElementById('ll-dep-wrap'); if (w) w.style.display = on ? '' : 'none';
+  const d = document.getElementById('ll-dep-desc'); if (d) d.textContent = on ? _LL_DEP_ON_DESC : _LL_DEP_OFF_DESC;
+  _llAutoSave(kind);
+}
+
 /** Whether the maker's Stripe Connect account can actually take card payments.
  *  Reads the cached connect-status (connect.js). @returns {boolean} */
 function _llStripeReady() {
@@ -292,10 +306,10 @@ function _liveLinkPanel(kind) {
     ${linkBox}
     <div class="ll-h">Payment</div>
     ${payRow}
-    <div class="share-toggle-row"><div><div class="st-label">Take a deposit</div><div class="st-desc">Collected when the customer accepts · balance due on completion</div></div>
+    <div class="share-toggle-row"><div><div class="st-label">Take a deposit</div><div class="st-desc" id="ll-dep-desc">${s.take_deposit === false ? _LL_DEP_OFF_DESC : _LL_DEP_ON_DESC}</div></div>
       <div style="display:flex;align-items:center;gap:10px">
         <div class="ll-dep" id="ll-dep-wrap"${s.take_deposit === false ? ' style="display:none"' : ''}><input type="number" id="sh-dep" value="${s.deposit_pct != null ? s.deposit_pct : 40}" min="0" max="100" onchange="_llAutoSave('${kind}')"><span>%</span></div>
-        <button class="mini-toggle" id="sh-dep-on" aria-pressed="${s.take_deposit === false ? 'false' : 'true'}" onclick="_shTgl(this);var w=document.getElementById('ll-dep-wrap');if(w)w.style.display=this.getAttribute('aria-pressed')==='true'?'':'none';_llAutoSave('${kind}')"></button>
+        <button class="mini-toggle" id="sh-dep-on" aria-pressed="${s.take_deposit === false ? 'false' : 'true'}" onclick="_llDepTgl(this,'${kind}')"></button>
       </div></div>
     <div class="ll-h">What the customer can do</div>
     ${togPro('sh-select', 'Let customers choose items', 'They can include / exclude lines you mark optional below', s.allow_select !== false)}
