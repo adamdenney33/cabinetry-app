@@ -13,22 +13,24 @@ Companion docs: `SPEC.md` (refactor history), `SCHEMA.md` (DB schema),
 - **App is live** at [procabinet.app](https://procabinet.app) (Cloudflare Pages, auto-deploy on push to `main`)
 - **Pre-launch refactor (SPEC.md Phases 0–7)** complete — modular files, TypeScript strict mode, schema normalised
 - **Cabinet Builder unification** (Item 2): all 4 phases done — pre-launch refactor closed
-- **Stripe payments (subscriptions)**: S.2–S.7 done in test mode (Checkout + Portal + Webhook + DB schema); S.8 verification + S.9 live-mode flip remain
+- **Stripe payments (subscriptions)**: S.2–S.7 built in test mode; **S.9 live-mode flip done** — verified 2026-06-11 via secret digests (`STRIPE_SECRET_KEY` = the verified-live Connect key; price secrets ≠ the S.2 test IDs; `STRIPE_PRICE_FOUNDER` present). Outstanding: S.8's remaining live smoke checks + decide on the 3 test-mode `subscriptions` rows
 - **Stripe Connect (customer payments on live quote/order pages)**: built + deployed (connect-onboard/connect-status/quote-pay/quote-pay-webhook + `src/connect.js` + `q.html`); charge model **Standard + direct charges + 0.7%/$100-cap fee** (2026-06-09, commit `6711b61`); **LIVE mode since 2026-06-10** (live keys + live Connect webhook — real money). Bank transfers + `/payment-fees` page added 2026-06-10
 - **Mobile / responsive**: ✅ comprehensive mobile-native pass done 2026-05-23 (7 phases; see Active Work / SPEC.md § 13)
-- **UI polish + design finalisation**: not started
-- **Launch target:** mid-May 2026 (per Business Plan)
+- **UI polish + design finalisation**: progressing in passes (PDF cleanup 2026-05-24 · unified filter bars + mobile pass 2026-05-23 · card status unification 2026-06-10); no formal design-system lock (U.1) yet
+- **Launched:** live since 2026-05-02 — soft launch, no public-posts push; growth runs through the paid-ads + founders track. Auth emails on Resend SMTP since 2026-05-17; signup-confirmation UX hardened 2026-06-11
 
 ---
 
 ## Active Work
 
-### App load performance pass (2026-06-11)
+### App load performance pass ✅ Done 2026-06-11
 
 The /os app boot is a strict waterfall: 1.24 MB module bundle (Supabase +
 Sentry + PostHog + jsPDF eager) → 40 classic defer scripts (~1.8 MB) →
 DOMContentLoaded → INITIAL_SESSION → *then* ~9 render-gating data queries.
 Goal: cut the critical-path JS and overlap data latency with script loading.
+**Result: boot bundle 1.24 MB → 652 KB; all nine early-fetch slots consumed
+on a signed-in reload (verified in dev preview).**
 
 - ✅ **P.1 — Lazy jsPDF (main.js + cutlist.js):** drop the eager
   `jspdf`/`jspdf-autotable` imports; `window._ensureJsPDF()` dynamic-imports
@@ -97,6 +99,8 @@ user-side config or policy decisions.
   video — every landing CTA hits the auth wall ("Open the app →" over-promises
   for cold visitors). Add a 60–90 s hero demo video (remotion pipeline exists)
   or revive a read-only `/os?demo` marketing surface.
+  *(Update 2026-06-11: the ~65 s founder demo film is rendered in
+  `demo-video/` — embedding it on the landing is the remaining step.)*
 - ⬜ **Landing social proof:** promote "Made by a cabinet maker" from the footer
   to a founder-story section; pull quotes from Creator Lifetime users near the
   hero CTA and pricing.
@@ -109,9 +113,14 @@ user-side config or policy decisions.
 - 🚧 **Signup friction:** ✅ first/last-name fields removed (index.html +
   app.js: no validation, no user_metadata names — downstream already tolerates
   nameless accounts) and post-signup copy fixed ("the confirmation link signs
-  you in automatically"). ⬜ Google OAuth still pending — needs a Google Cloud
-  OAuth client + enabling the provider in Supabase Auth (user-side dashboard
-  work) before any code.
+  you in automatically"). ✅ Google OAuth **code** shipped 2026-06-10
+  ("Continue with Google" button, OAuth redirect-error surfacing, marketing
+  opt-in recovery — § 13); ⬜ activation still needs the Google Cloud OAuth
+  client + enabling the provider + redirect URLs in the Supabase dashboard
+  (user-side). ✅ Confirmation-flow dead ends fixed 2026-06-11: check-your-inbox
+  panel (resend w/ 60 s cooldown, spam hint), already-exists detection routes
+  to sign-in, `email_not_confirmed` errors route to the panel, forgot-password
+  flow added, `mailer_otp_exp` raised 1 h → 24 h (§ 13).
 - ✅ **Tour length** (2026-06-10): 26 → 10 steps (cut Clients ×2, Quote list,
   Orders ×2, Stock ×2, Cabinet Library, Cut List Library/Layout, Schedule
   queue, Dashboard quick-actions, Toolbar ×4). `WT_VERSION` deliberately NOT
@@ -180,10 +189,10 @@ founders' offer. Details in SPEC.md § 13 (2026-06-10 growth entry).
   the proven Overview reel creative; campaign shell `52550164627114`
   "Founders Retargeting (warm)" (OUTCOME_SALES) awaiting custom audiences.
 - ⬜ **G.5 — User-side activation (blocking):**
-  1. **S.9 Stripe live-mode flip** (see Stripe section) — nothing real can be
-     sold until this is done. Afterwards decide whether to purge the 3
-     test-mode `subscriptions` rows (they grant Pro + inflate the founder
-     counter).
+  1. ✅ **S.9 Stripe live-mode flip** — done (verified via secret digests
+     2026-06-11; see the Stripe section). Still open: decide whether to purge
+     the 3 test-mode `subscriptions` rows (they grant Pro + inflate the
+     founder counter) and run one live Checkout as a smoke test.
   2. Meta Events Manager → pixel 1913344152250764 → Settings → **generate a
      Conversions API token** → `supabase secrets set META_CAPI_ACCESS_TOKEN=…`
      (+ optionally `POSTHOG_KEY=<VITE_POSTHOG_KEY value>` for
@@ -217,7 +226,7 @@ Closed the Orders→Builder round trip and fixed latent order-context bugs.
 
 Detail: SPEC.md § 13 (2026-06-10).
 
-### Customer payments + live quote/order pages (Stripe Connect) 🚧 In Progress 2026-06-09
+### Customer payments + live quote/order pages (Stripe Connect) ✅ LIVE 2026-06-10
 
 Public `/q?t=<share_token>` live pages (`q.html` + `src/quote-public.js`) where a
 customer views a quote/order, edits unlocked specs, accepts, chats (two-way), and
@@ -961,7 +970,7 @@ groups everything; library items snapshot into quotes via attribution chip.
 
 ---
 
-### Quote / Order / Invoice number-format unification 🚧 In Progress 2026-05-12
+### Quote / Order / Invoice number-format unification ✅ Done 2026-05-12
 
 Three-prefix unification: quotes `Q-NNNN` → `QUO-NNNN`, orders `NNNN` (no
 prefix) → `ORD-NNNN`, order-PDF per-doc prefixes `OC` / `PF` → `ORC` / `PRO`
@@ -978,26 +987,15 @@ quote pattern), and `src/migrate.js`'s legacy LS normalization. Editor
 input strip regex broadened to `/^(QUO|Q)-/i` so existing `Q-NNNN` rows show
 just digits in the input through the transition. `npm run typecheck` clean.
 
-**Sub-step pending: migration not yet applied.** Supabase MCP
-`apply_migration` blocked by harness permissions. SQL staged at
-`supabase/migrations/20260512175008_renumber_prefixes.sql` — one-shot
-rewrite of stored values. Apply via the Supabase SQL editor before
-existing cards/dashboards/PDFs flip over to the new prefixes. Code is
-migration-tolerant — every save migrates that single row, and every new
-entry uses the new format already.
-
-**Remaining:**
-- ✅ Migration `renumber_prefixes` applied via Supabase MCP (data was already
-  in target format from the demo-data reset, so the UPDATE is a no-op; still
-  registered in `schema_migrations` for parity).
-- Browser smoke: existing cards display `QUO-NNNN` / `#ORD-NNNN` post-migration;
-  new quote / new order use next sequential `QUO-` / `ORD-`; PDF spot-check
-  (`#QUO-NNNN`, `#ORC-NNNN`, `#PRO-NNNN`, `#INV-NNNN`, `#WO-NNNN`).
-- Mark ✅ once verified.
+**Closed out (status reconciled 2026-06-11):** migration `renumber_prefixes`
+applied via Supabase MCP (no-op rewrite — data was already in target format);
+the new prefixes have been live in production for a month — cards, dashboards,
+PDFs, and the 2026-06-09 webhook order-number parity fix all run on
+`QUO-`/`ORD-` numbering.
 
 ---
 
-### Orders / Quotes editor — mockup-J port 🚧 In Progress 2026-05-11
+### Orders / Quotes editor — mockup-J port ✅ Done 2026-05-11
 
 Second-pass redesign on top of the 2026-05-10 mockup-B work. Implements the user's refined J mockup (`mockups/orders/orders-redesign-J-column-toggles.html` + `mockups/quotes/quotes-redesign-J-column-toggles.html`) — new `.ed-head` header (back arrow + tab icon + editable order# prefix + project name + clickable status badge), column-toggle pills (Discount/Hours/Stock), split `+ Cabinet` / `+ Item` add buttons, stock smart-library + per-order `stock_markup` input, divider above Pricing, footer buttons dropped. Stock is a 3rd `line_kind` with the same per-line math as items; its materials get re-priced via `stock_markup` at totals time.
 
@@ -1016,11 +1014,11 @@ Second-pass redesign on top of the 2026-05-10 mockup-B work. Implements the user
 
 **Migration applied this session via Supabase MCP.** All four schema changes from `supabase/migrations/20260511015625_stock_kind_and_markup.sql` are live: `line_kind` CHECK constraints on `quote_lines` / `order_lines` now allow `'stock'`, and `stock_markup numeric default 0` columns are present on `quotes` + `orders`. Code paths against the new columns no longer rely on migration-tolerance.
 
-**Remaining:**
-- ✅ Migration `stock_kind_and_markup` applied via Supabase MCP.
-- ✅ `database.types.ts` regenerated via Supabase MCP (includes `stock_markup` on quotes/orders, plus the discount / schedule_hours columns from the B-pass).
-- Browser smoke per `~/.claude/plans/clean-up-orders-dapper-yao.md` Phase 2 Verification.
-- Mark ✅ in this section + append final tick to SPEC.md § 13 entry.
+**Closed out (status reconciled 2026-06-11):** migration `stock_kind_and_markup`
+applied + `database.types.ts` regenerated (2026-05-11); SPEC.md § 13 entry
+exists (2026-05-11). The editor has since been reworked on top of this pass
+repeatedly (live-link sidebar tab 2026-06-06, pricing-consistency fixes
+2026-06-09, status-wipe fix 2026-06-10) — the formal browser-smoke step is moot.
 
 ---
 
@@ -1065,7 +1063,7 @@ Eight-point overhaul of the Cutlist + Cabinet flows around a shared smart-librar
 
 ---
 
-### Orders / Quotes sidebar redesign 🚧 In Progress 2026-05-09
+### Orders / Quotes sidebar redesign ✅ Done 2026-05-09
 
 Eight-point overhaul of the order + quote editor sidebars: line-item inputs got proper labels, schedule became a single collapsible block driven by Production Start + a hours-allocated override, totals moved above the schedule, status/order# repetition removed from the project header. Detail in `~/.claude/plans/orders-quotes-sidebar-1-line-glimmering-kay.md`.
 
@@ -1080,15 +1078,13 @@ Eight-point overhaul of the order + quote editor sidebars: line-item inputs got 
 - `status` / `summary` fields dropped from the `_renderProjectHeader` calls in both editors — header is now project name + client only. Status select / Order# input / pipeline / overdue badge stay in the editor section below.
 - `npm run typecheck` clean.
 
-**Sub-step pending: `orders.hours_allocated` migration not yet applied.** Supabase MCP `apply_migration` was blocked by harness permissions. SQL staged in the plan file's "DB migration order" section. User to apply manually via Supabase SQL editor; once applied, regenerate `database.types.ts` and the override feature lights up. Without the migration, code paths still work — `o.hours_allocated` reads return `undefined`, override checkbox stays unchecked.
+**Closed out (status reconciled 2026-06-11):** `orders.hours_allocated` is live
+in the production schema (verified via `information_schema`), so the override
+feature is active; `database.types.ts` includes it. The sidebar itself was
+superseded twice within days (mockup-B 2026-05-10, mockup-J 2026-05-11) and
+again by the June live-link tab work. SPEC.md § 13 entry exists (2026-05-09).
 
-**Remaining:**
-- Apply migration `add_orders_hours_allocated`.
-- Regenerate `database.types.ts`.
-- Browser smoke per the plan's Verification section (8 steps).
-- Mark ✅ in this section + append SPEC.md § 13 entry once verified.
-
-### Cut List multi-cutlist + 3-tab refactor 🚧 In Progress 2026-05-09
+### Cut List multi-cutlist + 3-tab refactor ✅ Done 2026-05-09
 
 Adds support for **multiple named cutlists per project** (currently 1-per-project, overwritten on save) and reorganises the Cut List main view into 3 tabs: **Cut Layout / Project Cut Lists / Cabinet Library**.
 
@@ -1102,14 +1098,12 @@ Adds support for **multiple named cutlists per project** (currently 1-per-projec
 - Removed orphaned `_smartCLCabinetSuggest()` (the deleted smart-search's only consumer).
 - `database.types.ts` hand-updated to include `cutlists` table + `cutlist_id` columns. `npm run typecheck` passes clean.
 
-**Sub-step pending: schema migration is not yet applied.** The Supabase MCP `apply_migration` was blocked by harness permissions. SQL is staged in `~/.claude/plans/currently-i-can-only-abstract-raccoon.md` (Phase 1, Migrations 1 & 2). User will apply manually via Supabase SQL editor; once applied, regenerate `database.types.ts` to verify the hand-written types match.
-
-**Remaining:**
-- Apply both migrations (`add_cutlists_table`, `backfill_cutlists_main`).
-- Smoke check: `select count(*) from pieces where cutlist_id is null` → 0.
-- RLS check: query `cutlists` as user A → no user B rows.
-- Browser end-to-end: load project → pick cutlist → edit → save under new name → verify second cutlist row → optimize (auto-switch) → save selected parts (auto-switch) → load from library.
-- Append entry to SPEC.md § 13 once smoke-tested.
+**Closed out (status reconciled 2026-06-11):** the `cutlists` schema is live in
+production (30 rows at the 2026-06-11 check) and later migrations built on it
+(`cutlists.cabinet_id` FK retarget + `cutlist_cabinets` M:N join 2026-05-12;
+`cutlists.quote_id` in F4 2026-05-13). SPEC.md § 13 entry exists (2026-05-09).
+The 3-tab main view was later reshaped: F5 dropped the Project Cut Lists tab
+(3 → 2 tabs) and the 2026-05-10 library-pattern refresh reworked the rest.
 
 ### Orders auto-numbering ✅ Done 2026-05-09
 
@@ -1291,7 +1285,7 @@ in Berlin sees EUR; customer in London sees GBP. Stripe handles all FX
 (~2% spread). UK Stripe account settles in GBP regardless. No free trial —
 free tier is the trial.
 
-- **S.1 — Stripe account setup** *(user-side, ~30 min + bank verification)*
+- **S.1 — Stripe account setup** ✅ Done *(UK account active; live keys in production use since the S.9 flip)*
   - Sign up at dashboard.stripe.com/register (UK account)
   - Business details, bank account, tax info (VAT number if registered)
   - Stay in **Test mode** for full S.2–S.8 build; flip to live keys at launch
@@ -1372,17 +1366,18 @@ free tier is the trial.
   - ⬜ Trigger `invoice.payment_failed` from Stripe Dashboard test event →
     verify status flips to `past_due` and Manage popup shows the red branch
 
-- **S.9 — Live-mode flip** *(pending — pre-launch only)*
-  - Activate Stripe account (full business + bank details) to unlock live keys
-  - Recreate the 2 Prices in live mode → capture `price_…` IDs
-  - Set live secrets:
-    - `supabase secrets set STRIPE_SECRET_KEY=sk_live_…`
-    - `supabase secrets set STRIPE_PRICE_MONTHLY=price_…`
-    - `supabase secrets set STRIPE_PRICE_ANNUAL=price_…`
-  - Update `VITE_STRIPE_PUBLISHABLE_KEY=pk_live_…` in Cloudflare Pages env vars
-  - Register live webhook endpoint (separate from test one) →
-    `supabase secrets set STRIPE_WEBHOOK_SECRET=whsec_…`
-  - Redeploy both functions to pick up the new secrets
+- **S.9 — Live-mode flip** ✅ Done (~2026-06-09/10; verified 2026-06-11)
+  - Verified via `supabase secrets list` digests: `STRIPE_SECRET_KEY` is the
+    same key as the verified-live `STRIPE_CONNECT_SECRET_KEY` (Connect go-live
+    2026-06-10); `STRIPE_PRICE_MONTHLY` / `STRIPE_PRICE_ANNUAL` no longer
+    match the S.2 test Price IDs (sha256 comparison) and a `STRIPE_PRICE_FOUNDER`
+    secret exists; `STRIPE_WEBHOOK_SECRET` is distinct from the Connect
+    webhook secret (separate endpoints, as designed). Launch coupons set
+    (`STRIPE_COUPON_MONTHLY_LAUNCH` / `_ANNUAL_LAUNCH`).
+  - ⬜ Residual: confirm `VITE_STRIPE_PUBLISHABLE_KEY` in Cloudflare Pages is
+    the `pk_live_…` key (client-side; the redirect Checkout flow doesn't use
+    it, so low stakes); run one real live Checkout (S.8 / P.5); decide on the
+    3 test-mode `subscriptions` rows (G.5).
 
 ### Free-Tier Limits
 
@@ -1426,9 +1421,10 @@ analytics widgets) available to all users.
 
 ### Onboarding + Email
 
-- **O.1 — Dashboard intro section**
-  - Introductory content in the Dashboard for new/returning users
-  - Design TBD — needs thought on what to include
+- ✅ **O.1 — Dashboard intro section** — shipped as the Getting Started card:
+  aha-path steps (set rates → add stock → build a cabinet → first quote) with
+  deep links + live progress ticks; shows until the first quote exists
+  (F.4 rewrite 2026-06-09, progress ticks 2026-06-07).
 
 - ✅ **O.2 — Step-by-step walkthrough popup**
   - Multi-step overlay walkthrough (like software update tours)
@@ -1439,30 +1435,28 @@ analytics widgets) available to all users.
   - Track walkthrough version + dismissed state in `business_info` jsonb
     or dedicated `onboarding_state` column
 
-- **O.3 — Transactional email** — branded templates + custom-sender code/build wired 2026-05-17; Resend SMTP + DNS setup pending. SPEC.md § 13 has the detail.
+- ✅ **O.3 — Transactional email** — live end-to-end since 2026-05-17: branded templates + Resend SMTP custom sender. SPEC.md § 13 has the detail.
   - ✅ Four branded HTML auth-email templates in `supabase/templates/` (`confirmation`, `recovery`, `magic-link`, `email-change`) — dark `#111111` header with the `logo-colour-on-dark` wordmark, amber CTA, British-English trade voice
   - ✅ Logo hosting — `vite.config.mjs` `copyEmailLogoPlugin` ships `brand/logo/logo-colour-on-dark.png` into `dist/` → served at `https://procabinet.app/logo-colour-on-dark.png`
   - ✅ `signUp` passes `emailRedirectTo: window.location.origin` (`src/app.js`)
-  - ⬜ Resend account + verify `procabinet.app` domain (DNS records in Cloudflare)
-  - ⬜ Supabase custom SMTP (`smtp.resend.com`, sender `noreply@procabinet.app` / `ProCabinet.App`) — also drops the "powered by Supabase" footer + lifts the built-in email rate limit
-  - ⬜ Paste the four templates + subjects into Supabase → Authentication → Emails; set Site URL + redirect allow-list
-  - ⬜ Test deliverability — spam scoring, SPF/DKIM/DMARC
+  - ✅ Resend account + `procabinet.app` domain verified (API key lives in `supabase/.env`)
+  - ✅ Supabase custom SMTP live — sender `noreply@procabinet.app`; `smtp_max_frequency` 60 s; `mailer_otp_exp` raised 1 h → 24 h (2026-06-11)
+  - ✅ Templates + subjects live in Supabase Auth — branded emails confirmed arriving
+  - ✅ Deliverability proven via Resend delivery logs during the 2026-06-11 signup diagnosis (4/4 delivered to a real customer; one user's spam placement suspected → spam hint added to the confirm panel)
 
 ### Production Ops
 
-- **P.1 — Production Supabase env separate from dev**
-  - Create second Supabase project for production
-  - Run all migrations in production (re-apply from SCHEMA.md)
-  - Update production env vars in Cloudflare Pages
-  - Test signup against prod DB
-  - Document the project ref change required in `db.js` (currently hardcoded)
+- **P.1 — Production Supabase env separate from dev** *(overtaken by events —
+  the app launched on the single project `mhzneruvlfmhnsohfrdo`, which IS
+  production. Revisit only if a separate staging env becomes worth the
+  overhead; H.1 — deriving the hardcoded project ref — is the prerequisite.)*
 
 - **P.2 — Automated DB backups**
   - Verify backup schedule on the Supabase plan
   - Document restore procedure in a new `Building Docs/ops-runbook.md`
 
-- **P.3 — Error logging (Sentry)** — code wired 2026-05-15 (DSN-gated, inert until account exists); pending Sentry account + alerts
-  - ⬜ Sign up for Sentry free Developer plan (5k errors/mo, 30-day retention)
+- **P.3 — Error logging (Sentry)** — ✅ live: code wired 2026-05-15, account active with prod triage in routine use; ⬜ alert rules still to configure
+  - ✅ Sentry account live — real prod issues triaged from it (JAVASCRIPT-2/-5/-6 debug sweep 2026-06-10; JWT-expiry / upsert-race / Outlook-noise triage 2026-06-11)
   - ✅ Install `@sentry/browser` + `@sentry/vite-plugin`
   - ✅ Wire client-side error capture in `src/main.js` (init early, before app code) — DSN-gated `Sentry.init`, exposed as `window.Sentry`; user context (id + email) set in the `src/app.js` auth listener
   - ✅ Configure source-map upload via `@sentry/vite-plugin` in `vite.config.mjs`; build-env scaffold (commented) in `.github/workflows/deploy.yml`, `SENTRY_AUTH_TOKEN` to be added as a GitHub Actions secret
@@ -1482,21 +1476,22 @@ analytics widgets) available to all users.
 
 ### Pre-Launch Content
 
-- **C.1 — Landing page placement** ✅ *(resolved: app stays at root)*
-  - No routing change needed — `procabinet.app` remains the app
-  - Marketing/landing content lives within the app shell (logged-out view or
-    dashboard intro section)
+- **C.1 — Landing page placement** ✅ *(resolved, then superseded 2026-05-19/23:
+  a dedicated `landing.html` now serves at `/` and the app moved to `/os`.
+  The original "app stays at root" call was reversed when paid ads needed a
+  real marketing surface; the logged-out guest demo was later removed
+  entirely on 2026-06-07.)*
 
-- **C.2 — Landing page build**
-  - Hero, features, pricing, CTA
-  - Pricing comparison table (Free vs Pro)
-  - Testimonials section (placeholder until beta feedback)
-  - Email capture for waitlist
+- ✅ **C.2 — Landing page build** — shipped as `landing.html` and iterated
+  continuously: hero (+ live founders-seats line), features, 4-tier pricing
+  cards, FAQ + FAQPage JSON-LD, founder counter, full ads/analytics tracking.
+  Waitlist email capture superseded by direct signup + the marketing opt-in
+  (`list-subscribe`).
 
-- **C.3 — Demo video (2 min)**
-  - Script: client → project → quote → cut list → PDF
-  - Record (Loom / Screen Studio / OBS)
-  - Embed on landing page
+- 🚧 **C.3 — Demo video** — ✅ ~65 s founder product demo produced in Remotion
+  (`demo-video/`, VO + music), superseding the screen-record plan;
+  ⬜ embed on the landing page (same gap as the funnel backlog's
+  "pre-signup product proof" item).
 
 - **C.4 — SEO blog posts (3 launch posts)**
   - "Best cut list software 2026"
@@ -1505,7 +1500,7 @@ analytics widgets) available to all users.
   - Decide hosting: separate `/blog` route, Notion, or Substack
 
 - **C.5 — Analytics + Search Console (PostHog + Cloudflare Web Analytics)**
-  - ⬜ Sign up for PostHog Cloud (free tier: 1M events/mo, 5k replays/mo) — EU region
+  - ✅ PostHog Cloud account live — events, session replays, and funnel reviews in routine prod use (2026-06-10 growth review; 2026-06-11 walkthrough diagnosis via replay + autocapture)
   - ✅ Wire PostHog into the app — npm `posthog-js` via the `src/main.js` bridge,
     key-gated so a dev `.env.local` without `VITE_POSTHOG_KEY` never pollutes prod
     data. See SPEC.md § 13 (2026-05-15).
@@ -1529,7 +1524,11 @@ analytics widgets) available to all users.
   - IndieHackers
   - Email to waitlist
 
-### Launch Week (5–14 May 2026)
+### Launch Week (5–14 May 2026) — *window passed; kept as a future checklist*
+
+> Launch went soft on 2026-05-02 with no public-posts push; the growth motion
+> moved to paid ads + the founders offer (see "Growth" under Active Work).
+> L.1–L.4 remain usable for a deliberate public-launch moment later.
 
 - **L.1 — Soft launch to beta testers**
   - Enable beta access via a coupon / role flag
@@ -1561,38 +1560,36 @@ analytics widgets) available to all users.
 From `Building Docs/ProCabinet_Outstanding_Features.docx`. Can run in parallel
 with Stripe / Free-tier work; required before public launch.
 
-> Landscape basics already done 2026-05-18 (see Active Work): pane scroll
-> chain + touch resize. M.1 below is still the full portrait/responsive pass.
+> ✅ Substantially delivered by the 2026-05-23 mobile-native pass (7 phases:
+> single-column drill-in, touch sizing, header/nav, line-item cards, canvas
+> pinch-zoom, schedule agenda, notice reframe) plus the 2026-05-18 landscape
+> work — see Active Work / SPEC.md § 13. Per-item state below.
 
-- **M.1 — Per-module responsive layout pass**
-  - Dashboard
-  - Stock
-  - Cabinet Builder *(hardest — sidebar + main panel layout)*
-  - Quotes
-  - Orders
-  - Schedule
-  - Clients
-  - Cut list *(also hard — canvas resize)*
+- ✅ **M.1 — Per-module responsive layout pass** — done 2026-05-23 across all
+  8 modules (Cabinet Builder via sidebar drill-in; Cut List canvas got
+  pinch-zoom/pan; Schedule got the stacked agenda). Known residue: dense
+  `.cl-table` inline inputs are still sub-16px (iOS may focus-zoom) — full
+  redesign of those tables deferred.
 
-- **M.2 — Mobile navigation**
-  - Decision: bottom tab bar vs drawer
-  - Implement chosen pattern
-  - Tap targets ≥44px throughout
+- ✅ **M.2 — Mobile navigation** — resolved as icon nav-tabs + list⇄editor
+  drill-in with per-editor back arrows (no bottom bar / drawer needed);
+  ≥44px touch targets shipped in the touch-sizing phase.
 
-- **M.3 — Popups, tables, filter bars on narrow screens**
-  - Popups full-screen on mobile (already partially done — verify)
-  - Tables scroll horizontally with sticky first column
-  - Filter bars collapse to a "Filters" button
+- ✅ **M.3 — Popups, tables, filter bars on narrow screens** — line-item
+  tables collapse to one card per line (phase 4); filter bars unified on the
+  Cabinet Library pattern (2026-05-23); popups cap to `calc(100vw - 32px)`
+  with 480px adjustments. (Sticky-first-column scroll wasn't needed once
+  tables collapsed to cards.)
 
 - **M.4 — PWA manifest + home-screen icon**
   - Generate icon set (192, 512, maskable)
   - `manifest.webmanifest` with app metadata
   - Service worker for offline shell *(optional)*
 
-- **M.5 — Device testing**
-  - iOS Safari (iPhone)
-  - Android Chrome
-  - iPad Safari (workshop tablet use case)
+- ✅ **M.5 — Device testing** — three rounds of on-device feedback drove the
+  2026-05-23 refinement batches; verified at 360/390px with 1440px desktop
+  regression. (Note for analytics: iPadOS requests desktop sites, so iPads
+  report as "Desktop Mac" — discovered 2026-06-11.)
 
 ---
 
@@ -1615,10 +1612,9 @@ From `Building Docs/ProCabinet_Outstanding_Features.docx`. Run before launch.
   - Every async action: loading indicator
   - Every catch: user-facing error toast (no silent swallow)
 
-- **U.4 — Polish printable outputs**
-  - Quote PDF: header, line breaks, page numbers
-  - Order PDF: same
-  - Cut list PDF: legend, scale indicator
+- ✅ **U.4 — Polish printable outputs** — logos/branding + bank details on all
+  PDFs (2026-05-14), then a spacing/layout cleanup across all 5 jsPDF builders
+  with an offline QA harness (`scripts/render-pdf-samples.mjs`, 2026-05-24).
 
 - **U.5 — Settings page polish**
   - Group settings logically (Business / Defaults / Subscription / Account)
@@ -1682,10 +1678,11 @@ From `Building Docs/ProCabinet_Outstanding_Features.docx`. Run before launch.
 ### Small follow-ups (housekeeping)
 
 - **H.1 — Derive Supabase auth-token localStorage key from URL**
-  `src/db.js:23` currently hardcodes `sb-mhzneruvlfmhnsohfrdo-auth-token`.
-  Derive it from `window._SBURL` (parse the project ref out of the host)
-  so the codebase isn't tied to one Supabase project. Becomes blocking when
-  P.1 (production Supabase env) lands.
+  `src/db.js:68` hardcodes `sb-mhzneruvlfmhnsohfrdo-auth-token`, and the
+  2026-06-11 early-boot fetch (`src/main.js`) reads the same key — both
+  sites need covering. Derive it from `window._SBURL` (parse the project
+  ref out of the host) so the codebase isn't tied to one Supabase project.
+  Only matters if a second Supabase project ever exists (P.1, currently OBE).
 
 - **H.2 — Rotate Supabase password**
   *(User-side; only Adam can do this.)* Password leaked into chat transcripts
@@ -1708,15 +1705,13 @@ From `Building Docs/ProCabinet_Outstanding_Features.docx`. Run before launch.
 Technical debt parked during the pre-launch refactor. Pick up opportunistically
 or before specific features that touch these areas.
 
-- **R.1 — Split `src/cabinet.js`** (currently 2,543 lines, SPEC § 7 target <1500)
-  - Identify natural split points (settings UI, line CRUD, calc engine, render, library, quote conversion)
-  - Extract `src/cabinet-calc.js` (the 14-step `calcCQLine` pipeline per Cabinet_Builder_Guide.docx)
-  - Extract `src/cabinet-render.js` (the render functions)
-  - Extract `src/cabinet-library.js` (save/load to `cabinet_templates`)
-  - Smoke test after each carve
-  - Phase 4 cleanup landed 2026-05-05 (cbSavedQuotes + cbProjectLibrary removed). File still ~2,500 lines after Phase 4 — carve work is now actionable when prioritised.
+- ✅ **R.1 — Split `src/cabinet.js`** — done: `cabinet-calc.js`,
+  `cabinet-render.js`, `cabinet-library.js` (+ `cabinet-library-sidebar.js`)
+  all exist as separate carved files (in place by the 2026-05-07 UX/pricing
+  batch). `cabinet.js` itself is 1,825 lines (2026-06-11) — still above the
+  1,500 target; residual accepted.
 
-- **R.2 — Split `src/cutlist.js`** (currently 2,946 lines, SPEC § 7 target <1500)
+- **R.2 — Split `src/cutlist.js`** (now **5,167 lines** as of 2026-06-11 — grew with the nested packer, DXF export, and PDF work; the largest file in the codebase. SPEC § 7 target <1500)
   - Extract `src/cutlist-layout.js` (guillotine algorithm + canvas drawing)
   - Extract `src/cutlist-render.js` (sheet/piece tables)
   - Extract `src/cutlist-edge.js` (edge band UI + assignment)
@@ -1730,10 +1725,10 @@ or before specific features that touch these areas.
   - Drop the intersection type in `stock.js`
 
 - **R.4 — Relocate stragglers to conceptual homes**
-  - `clients` array declaration → `clients.js` (currently in `stock.js`)
-  - `projects` array declaration → `projects.js` (currently in `stock.js`)
-  - `_clProjectCache` declaration → `clients.js` (currently in `cabinet.js`)
-  - All cosmetic; do alongside R.1 / R.2 if convenient
+  - `clients` array declaration → `clients.js` (still in `stock.js:230`)
+  - ~~`projects` array~~ / ~~`_clProjectCache`~~ — moot: removed with the
+    Projects entity (F5/F6, 2026-05-13)
+  - Cosmetic; do alongside R.2 if convenient
 
 ### Deferred (don't pick up unless something forces it)
 
@@ -1883,16 +1878,16 @@ for visibility.
 
 | Layer | Choice | Status |
 |-------|--------|--------|
-| Frontend | Vite + plain HTML/CSS/JS (no framework) — 19 source files split by domain | ✅ Done |
+| Frontend | Vite + plain HTML/CSS/JS (no framework) — 42 source files split by domain | ✅ Done |
 | Type-checking | TypeScript strict mode via JSDoc + `checkJs:true` | ✅ Done |
 | Auth + Database | Supabase (Postgres + RLS, project `mhzneruvlfmhnsohfrdo`) | ✅ Done |
 | Hosting | Cloudflare Pages — auto-deploy via GitHub Actions on push to `main` (~40s build) | ✅ Done |
 | Domain | procabinet.app (DNS via Cloudflare nameservers; Bot Fight + leaked-creds mitigation on) | ✅ Done |
 | Storage | Supabase Storage (`business-assets` bucket for logos) | ✅ Done |
-| Payments | Stripe | ✅ Test mode shipped (S.2–S.7); live-mode flip pending (S.9) |
-| Email | Supabase auth defaults | ⬜ Needs branding |
-| Analytics | PostHog (in-app) + Cloudflare Web Analytics (marketing) | ✅ PostHog code wired (C.5, key-gated); pending PostHog account + Cloudflare WA |
-| Error logging | Sentry (free Developer plan) | ✅ Code wired (P.3, DSN-gated); pending Sentry account |
+| Payments | Stripe — subscriptions + Connect customer payments | ✅ LIVE — subscriptions live-keyed (S.9, verified 2026-06-11); Connect customer payments live 2026-06-10 |
+| Email | Resend SMTP via Supabase Auth (`noreply@procabinet.app`) + branded templates | ✅ Live since 2026-05-17 |
+| Analytics | PostHog (app + landing) + Cloudflare Web Analytics (marketing) | ✅ PostHog live (replays + funnel reviews in use); ⬜ Cloudflare WA + Search Console pending |
+| Error logging | Sentry (free Developer plan) | ✅ Live — prod issues triaged 2026-06-10/11; ⬜ alert rules |
 
 ---
 
