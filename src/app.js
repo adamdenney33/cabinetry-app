@@ -817,6 +817,7 @@ function _lineAdd(kind) {
     qty: (kind === 'item' || kind === 'stock') ? 1 : 0,
     labour_hours: kind === 'labour' ? 0 : null,
     unit_price: kind === 'labour' ? businessRate : 0,
+    schedule_hours: 0,
     discount: 0,
   };
   _qpState.lines.push(row);
@@ -856,6 +857,7 @@ function _qAddStockLineFromLibrary(stockItem) {
     name: fin ? fin.name : (stockItem.name || ''),
     qty: 1,
     unit_price: fin ? fin.unit_price : (parseFloat(stockItem.cost) || 0),
+    schedule_hours: 0,
     discount: 0,
   };
   _qpState.lines.push(row);
@@ -964,7 +966,10 @@ function _scheduleLineUpsert(idx) {
       qty: row.qty || 0,
       unit_price: row.unit_price ?? null,
       labour_hours: row.labour_hours ?? null,
-      schedule_hours: row.schedule_hours ?? null,
+      // quote_lines.schedule_hours is NOT NULL default 0 — a freshly added
+      // line has no local value (only id is copied back after insert), and
+      // writing null 400s the whole PATCH (23502, same fix as saveQuoteEditor).
+      schedule_hours: row.schedule_hours ?? 0,
       discount: row.discount ?? 0,
     };
     if (typeof _setSaveStatus === 'function') _setSaveStatus('quote', 'saving');
