@@ -176,6 +176,12 @@ let _wtCtaOnly = false;
  *  run / version re-show) rather than deliberately opened from Help. Drives
  *  the skip → plan-picker hand-off in _wtSkip (F.3). */
 let _wtAutoRun = false;
+/** "Nothing to sell this user" — _hasProAccess() (paying OR in the automatic
+ *  trial) snapshotted by _wtRunStart BEFORE the tour borrows demo mode: the
+ *  demo seed has no subscription rows, so live isPro()/_hasProAccess() reads
+ *  are false mid-tour even for paying users. Drops the trailing plan-picker
+ *  step (_wtLastIdx) and the skip → plan-picker hand-off (_wtSkip). */
+let _wtNoUpsell = false;
 
 /** @param {string} s @returns {string} */
 function _wtEsc(s) {
@@ -303,6 +309,11 @@ async function _wtStart(opts) {
  */
 async function _wtRunStart(tempDemo) {
   if (_wtActive) return;
+  // Decide the upsell question NOW, over the user's real subscription state —
+  // after the demo-mode flip below, isPro()/_hasProAccess() read demo data.
+  _wtNoUpsell = typeof _hasProAccess === 'function'
+    ? _hasProAccess()
+    : (typeof isPro === 'function' && isPro());
   if (tempDemo) {
     _wtTempDemo = true;
     window._demoMode = true;
@@ -340,6 +351,10 @@ function _wtStartCta() {
   if (_wtActive) return;
   const ctaIdx = _wtSteps.findIndex(s => s.showPricing);
   if (ctaIdx < 0) return;
+  // Showing pricing is this overlay's whole job (explicit Upgrade click /
+  // post-trial reminder) — clear any stale no-upsell snapshot so the step
+  // counter and navigation treat the CTA step as reachable.
+  _wtNoUpsell = false;
   _wtActive = true;
   _wtW._wtActive = true;
   _wtCtaOnly = true;
@@ -450,14 +465,16 @@ async function _wtPersistState(patch) {
 
 /**
  * Last step index the guided tour advances to. The trailing Pro CTA
- * ("Choose your plan") is dropped for paid users — nothing to upsell — so
- * their tour ends one step earlier, on the final content step.
+ * ("Choose your plan") is dropped for anyone with full Pro access
+ * (_hasProAccess: paying OR inside the automatic 14-day trial — i.e. every
+ * fresh signup) — nothing to sell them yet, so their tour ends one step
+ * earlier, on the final content step. Pricing waits until the trial lapses:
+ * the trial-ending banner (stripe.js) and the weekly session CTA own that.
  * @returns {number}
  */
 function _wtLastIdx() {
   const last = _wtSteps.length - 1;
-  const pro = typeof isPro === 'function' && isPro();
-  return (pro && _wtSteps[last] && _wtSteps[last].showPricing) ? last - 1 : last;
+  return (_wtNoUpsell && _wtSteps[last] && _wtSteps[last].showPricing) ? last - 1 : last;
 }
 
 function _wtNext() {
@@ -474,16 +491,15 @@ function _wtBack() {
 }
 /**
  * Skip handler (F.3). Closes the tour, then — for the auto-run first tour
- * only — hands off to the standalone plan-picker CTA, so skippers (the
- * majority of users) still see pricing exactly once. The hand-off never fires
- * for: the CTA-only overlay (Escape there must not reopen it), Pro users
- * (nothing to upsell), a deliberate Help re-trigger, or a skip pressed when
- * the pricing step is already on screen.
+ * only — hands off to the standalone plan-picker CTA, so post-trial skippers
+ * still see pricing exactly once. The hand-off never fires for: the CTA-only
+ * overlay (Escape there must not reopen it), anyone with full Pro access
+ * (paying or in-trial — nothing to sell yet), a deliberate Help re-trigger,
+ * or a skip pressed when the pricing step is already on screen.
  */
 function _wtSkip() {
   const onPricingStep = !!(_wtSteps[_wtCurrent] && _wtSteps[_wtCurrent].showPricing);
-  const pro = typeof isPro === 'function' && isPro();
-  const handOff = _wtAutoRun && !_wtCtaOnly && !pro && !onPricingStep;
+  const handOff = _wtAutoRun && !_wtCtaOnly && !_wtNoUpsell && !onPricingStep;
   _wtClose('skipped').then(() => {
     if (!handOff) return;
     if (typeof _track === 'function') _track('tour_skip_plan_picker_shown');
