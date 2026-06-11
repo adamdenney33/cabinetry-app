@@ -380,7 +380,7 @@ function renderCBEditor() {
   const cur = window.currency;
   const c = calcCBLine(line);
   /** @param {string} field @param {any} val */
-  const matSmart = (field, val) => `<div style="position:relative"><div class="smart-input-wrap"><input type="text" id="cb-mat-${field}" value="${_escHtml(val||'')}" autocomplete="off" style="font-size:13px" oninput="_smartCBMaterialSuggest(this,'cb-mat-suggest-${field}','${field}')" onfocus="_smartCBMaterialSuggest(this,'cb-mat-suggest-${field}','${field}')" onblur="setTimeout(()=>{_byId('cb-mat-suggest-${field}').style.display='none';cbUpdateField('${field}',this.value)},150)"><div class="smart-input-add" onclick="_openNewStockPopup()" title="Add new material">+</div></div><div id="cb-mat-suggest-${field}" class="client-suggest-list" style="display:none"></div></div>`;
+  const matSmart = (field, val) => `<div style="position:relative"><div class="smart-input-wrap"><input type="text" id="cb-mat-${field}" value="${_escHtml(val||'')}" placeholder="Search material..." autocomplete="off" style="font-size:13px" oninput="_smartCBMaterialSuggest(this,'cb-mat-suggest-${field}','${field}')" onfocus="_smartCBMaterialSuggest(this,'cb-mat-suggest-${field}','${field}')" onblur="setTimeout(()=>{_byId('cb-mat-suggest-${field}').style.display='none';cbUpdateField('${field}',this.value)},150)"><div class="smart-input-add" onclick="_openNewStockPopup()" title="Add new material">+</div></div><div id="cb-mat-suggest-${field}" class="client-suggest-list" style="display:none"></div></div>`;
   // Per-component finish picker. `field` is the line property name
   // (`finish` | `doorFinish` | `drawerFrontFinish` | `drawerBoxFinish`).
   /** @param {string} field */
