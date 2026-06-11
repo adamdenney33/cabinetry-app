@@ -462,18 +462,14 @@ async function _wtClose(reason) {
     try { sessionStorage.setItem('pc_wt_session_cta', '1'); } catch (e) { void e; }
     try { localStorage.setItem('pc_wt_cta_last', String(Date.now())); } catch (e) { void e; }
   }
-  // Restore the signed-in user's real data BEFORE removing the overlay, so
-  // there's no flash of demo content as the panels re-render.
-  if (_wtTempDemo) {
-    _wtTempDemo = false;
-    window._demoMode = false;
-    try {
-      if (typeof loadAllData === 'function') await loadAllData();
-      if (typeof _loadCabinetTemplatesFromDB === 'function') await _loadCabinetTemplatesFromDB();
-    } catch (e) { console.warn('[walkthrough] real-data restore failed', e); }
+  // Strip the tour chrome NOW. The demo→real reload below can take seconds
+  // on a phone connection, and a frozen spotlight/tooltip after tapping
+  // Finish reads as a hang. The dim mask stays up with a small loading pill,
+  // so demo content never flashes and interaction stays blocked until the
+  // user's real data is back.
+  if (_wtTempDemo && _wtOverlay) {
+    _wtOverlay.innerHTML = '<div class="wt-mask"></div><div class="wt-restore">Loading your data…</div>';
   }
-  // Teardown — every handle cleared so a double call or a stale callback no-ops.
-  if (_wtOverlay) { _wtOverlay.remove(); _wtOverlay = null; }
   _wtDestroyCursor();
   const sd = document.getElementById('settings-dropdown');
   if (sd) sd.classList.remove('open');
@@ -483,6 +479,24 @@ async function _wtClose(reason) {
   if (hd) hd.classList.remove('open');
   const fd = document.getElementById('features-dropdown');
   if (fd) fd.classList.remove('open');
+  // Restore the signed-in user's real data before dropping the mask. The wait
+  // is capped — a stalled fetch on a flaky connection must not trap the user
+  // under the overlay; a late response still renders when it lands.
+  if (_wtTempDemo) {
+    _wtTempDemo = false;
+    window._demoMode = false;
+    try {
+      await Promise.race([
+        (async () => {
+          if (typeof loadAllData === 'function') await loadAllData();
+          if (typeof _loadCabinetTemplatesFromDB === 'function') await _loadCabinetTemplatesFromDB();
+        })(),
+        new Promise((res) => setTimeout(res, 12000)),
+      ]);
+    } catch (e) { console.warn('[walkthrough] real-data restore failed', e); }
+  }
+  // Teardown — every handle cleared so a double call or a stale callback no-ops.
+  if (_wtOverlay) { _wtOverlay.remove(); _wtOverlay = null; }
   // Land on a clean Dashboard — but the CTA-only overlay sits over the user's
   // own restored screen, so leave them wherever they are.
   if (!ctaOnly && typeof _wtW.switchSection === 'function') {
@@ -922,11 +936,12 @@ function _wtPlaceTooltip(r, side, tip) {
   let left, top, dir = side;
   if (_wtIsNarrow()) {
     // Single-column phone layout: targets are full-width, so beside-the-target
-    // placement can't fit. Pin the tooltip sheet-style to whichever screen
-    // edge (top/bottom) is away from the spotlight centre.
+    // placement can't fit. Pin the tooltip sheet-style to the BOTTOM edge —
+    // always: panes carry their key info (headers, names, first fields) at the
+    // top, so a top-pinned sheet covers exactly what the step is pointing at.
     left = (vw - TW) / 2;
-    if (r.top + r.height / 2 < vh / 2) { top = vh - TH - M; dir = 'bottom'; }
-    else { top = M; dir = 'top'; }
+    top = vh - TH - M;
+    dir = 'bottom'; // arrow on the sheet's top edge, toward the target above
   } else {
     if (side === 'right') { left = r.right + gap; top = r.top - 8; }
     else if (side === 'left') { left = r.left - gap - TW; top = r.top - 8; }

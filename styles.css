@@ -3105,6 +3105,24 @@ input.pf-input-compact[type="date"]:disabled::-webkit-calendar-picker-indicator 
   background: var(--surface); transform: rotate(45deg);
   transition: left 0.3s ease, top 0.3s ease;
 }
+/* Restore pill — shown on the dim mask while _wtClose reloads the user's
+   real data after the tour's demo borrow (tour chrome is already gone). */
+.wt-restore {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+  display: flex; align-items: center; gap: 10px;
+  background: var(--surface); color: var(--text);
+  border: 1px solid var(--border); border-radius: 10px;
+  padding: 12px 18px; font-size: 13px; font-weight: 600;
+  box-shadow: 0 14px 48px rgba(0,0,0,0.42);
+  animation: wtPop 0.2s ease; transform-origin: center;
+}
+.wt-restore::before {
+  content: ''; width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0;
+  border: 2px solid var(--border2); border-top-color: var(--accent);
+  animation: wtSpin 0.8s linear infinite;
+}
+@keyframes wtSpin { to { transform: rotate(360deg); } }
+
 /* Centred modal — welcome + final CTA. */
 .wt-center {
   position: absolute; top: 50%; left: 50%;

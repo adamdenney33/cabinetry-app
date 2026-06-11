@@ -33,8 +33,10 @@ The onboarding tour was desktop-only by design (touch devices got the static
 - ✅ **W.2 — Per-step mobile pane** (`step.mv: 'list'|'editor'`): each step
   lands on the `body[data-mv]` pane holding its target, applied after the
   pre-click (card handlers flip to editor; `switchSection` resets to list).
-- ✅ **W.3 — Sheet tooltip ≤760px**: pinned to the top/bottom screen edge away
-  from the spotlight (side-anchoring can't fit beside full-width targets).
+- ✅ **W.3 — Sheet tooltip ≤760px**: pinned to the bottom screen edge
+  (side-anchoring can't fit beside full-width targets; originally flipped
+  top/bottom, but a top sheet covered pane headers — always-bottom since
+  2026-06-12 user feedback).
 - ✅ **W.4 — Touch affordances**: fingertip tap-dot replaces the arrow cursor
   on touch devices; swipe left/right steps the tour; device-aware copy
   (`bodyTouch`/`bodyNarrow` overrides — keyboard hint → swipe hint, gantt
