@@ -3237,8 +3237,20 @@ input.pf-input-compact[type="date"]:disabled::-webkit-calendar-picker-indicator 
 }
 .wt-sublink:hover { color: var(--text); }
 @media (max-width: 480px) {
-  .wt-tooltip { width: calc(100vw - 28px); }
+  .wt-tooltip { width: calc(100vw - 28px); padding: 14px 16px; }
+  .wt-tooltip p { margin-bottom: 10px; }
   .wt-center { padding: 24px 20px; }
+  /* Plan picker: the 2×2 wrap is unreadable at phone width — stack the four
+     tiers full-width and let the modal's existing y-scroll take the height. */
+  .wt-center.wt-has-cta { padding: 22px 14px; }
+  .wt-cta-cols { flex-direction: column; }
+  .wt-cta-col { flex: 1 1 auto; }
+  .wt-cta-feats li { min-height: 0; }
+}
+/* Comfortable tap targets for the tour controls on touch/narrow screens. */
+@media (pointer: coarse), (max-width: 760px) {
+  .wt-btn { min-height: 42px; }
+  .wt-cta-btn { min-height: 42px; }
 }
 
 /* animated cursor */
@@ -3259,5 +3271,12 @@ input.pf-input-compact[type="date"]:disabled::-webkit-calendar-picker-indicator 
   0%   { transform: scale(1); }
   35%  { transform: scale(0.72); }
   100% { transform: scale(1); }
+}
+/* Touch devices: the pointer is a fingertip tap-dot, not a mouse arrow. */
+#wt-cursor .wt-tap-dot {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: rgba(232,168,56,0.45);
+  border: 2px solid rgba(255,255,255,0.9);
+  box-shadow: 0 1px 6px rgba(0,0,0,0.35), 0 0 0 4px rgba(232,168,56,0.18);
 }
 

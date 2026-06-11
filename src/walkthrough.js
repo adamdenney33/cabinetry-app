@@ -4,6 +4,13 @@
 // function it drives already exists. A "spotlight" tour: dims the screen,
 // cuts a highlight around one real DOM element, anchors a tooltip beside it.
 //
+// Runs on every device. On a narrow viewport (≤760px, the single-column
+// mobile layout) each step also picks the pane its target lives in via
+// body[data-mv] (step.mv, applied through mobile-nav.js), the tooltip pins
+// sheet-style to the top/bottom screen edge, and swipe left/right steps the
+// tour. On touch devices the animated pointer is a fingertip tap-dot instead
+// of the desktop arrow cursor, and keyboard copy swaps to touch copy.
+//
 // The tour always runs over the demo seed (src/demo.js): for a guest demo
 // mode is already on; for a signed-in user _wtStart flips it on for the
 // tour's duration and _wtClose restores their real data. Dismissal persists
@@ -35,6 +42,23 @@ const WT_VERSION = 4;
 /** @type {any} window, any-typed so cross-file globals resolve without decls. */
 const _wtW = /** @type {any} */ (window);
 
+/** Narrow single-column viewport — the mobile pane layout (mobile-nav.js).
+ *  Drives pane selection, sheet-style tooltip placement and narrow copy. */
+function _wtIsNarrow() {
+  return typeof _wtW._mvIsMobile === 'function'
+    ? !!_wtW._mvIsMobile()
+    : window.matchMedia('(max-width: 760px)').matches;
+}
+
+/** Touch-primary device (phone/tablet) — no keyboard, no hover. Drives the
+ *  tap-dot pointer and touch copy; independent of viewport width (an iPad
+ *  keeps the desktop two-pane layout but still gets touch affordances). */
+function _wtIsTouch() {
+  return typeof _wtW._pcIsTouchDevice === 'function'
+    ? !!_wtW._pcIsTouchDevice()
+    : window.matchMedia('(hover: none) and (pointer: coarse)').matches;
+}
+
 /**
  * @typedef {Object} WtStep
  * @property {'center'|'spot'} type
@@ -49,11 +73,14 @@ const _wtW = /** @type {any} */ (window);
  * @property {boolean} [openFeatures]  Open the header New-features dropdown for this step.
  * @property {string} [target]         CSS selector to spotlight (spot steps).
  * @property {string} [preClickCard]   CSS selector — animate cursor to and click this before the step shows.
+ * @property {'list'|'editor'} [mv]    Mobile pane (body[data-mv]) holding the step's target in the ≤760px single-column layout. Applied after preClickCard.
  * @property {'right'|'left'|'top'|'bottom'} [position]  Preferred tooltip side.
  * @property {string} [icon]           Emoji for centred steps.
  * @property {string} title
  * @property {string} [titleHtml]      Raw HTML override for title (welcome preview).
  * @property {string} [body]            May contain authored <span class="wt-hi"> markup. Omitted on the final CTA step.
+ * @property {string} [bodyTouch]       Body override on touch devices (keyboard hints don't apply).
+ * @property {string} [bodyNarrow]      Body override on narrow viewports (what's on screen differs, e.g. schedule agenda vs gantt grid). Wins over bodyTouch.
  * @property {string} [nextLabel]
  * @property {string[]} [flow]         Welcome-step flow chips.
  * @property {string} [preview]        Welcome preview graphic type ('gantt').
@@ -64,19 +91,21 @@ const _wtW = /** @type {any} */ (window);
 const _wtSteps = [
   // 0 — Welcome
   {
-    type: 'center', section: 'dashboard', preview: 'gantt',
+    type: 'center', section: 'dashboard', mv: 'list', preview: 'gantt',
     title: 'See the full workflow in action',
     titleHtml: 'See the full <span class="wt-hi">workflow</span> in action',
     body: 'A quick tour of the highlights — set your rates once, price a cabinet, send the quote. We\'ve loaded a sample project so you can see it working — use the <span class="wt-hi">arrow keys on your keyboard</span> to step through it.',
+    bodyTouch: 'A quick tour of the highlights — set your rates once, price a cabinet, send the quote. We\'ve loaded a sample project so you can see it working — <span class="wt-hi">swipe left or tap Next</span> to step through it.',
     nextLabel: 'Start the tour →'
   },
 
   // 1 — Tab bar
   {
-    type: 'spot', phase: 'Navigation', section: 'dashboard',
+    type: 'spot', phase: 'Navigation', section: 'dashboard', mv: 'list',
     target: '.nav-tabs', position: 'bottom',
     title: 'Navigate between sections',
-    body: 'ProCabinet is organised into <span class="wt-hi">8 tabs</span>, one per section of your workflow — quote, cut, schedule and bill, one click apart. The tour hits the key ones.'
+    body: 'ProCabinet is organised into <span class="wt-hi">8 tabs</span>, one per section of your workflow — quote, cut, schedule and bill, one click apart. The tour hits the key ones.',
+    bodyTouch: 'ProCabinet is organised into <span class="wt-hi">8 tabs</span>, one per section of your workflow — quote, cut, schedule and bill, one tap apart. The tour hits the key ones.'
   },
 
   // F (tour trim): 26 → 10 steps. Cut: Clients ×2, Quote list, Orders ×2,
@@ -87,28 +116,28 @@ const _wtSteps = [
 
   // ── Cabinet — the aha: set rates once, every cabinet prices itself ──────
   {
-    type: 'spot', phase: 'Cabinet', section: 'cabinet', cbView: 'results',
+    type: 'spot', phase: 'Cabinet', section: 'cabinet', cbView: 'results', mv: 'list',
     preClickCard: '#cb-results .quote-card',
     target: '#cb-results', position: 'left',
     title: 'Quote Builder',
     body: 'Pick a quote and its cabinets load here, <span class="wt-hi">priced live</span> — material, labour, markup and tax calculated line by line as you design.'
   },
   {
-    type: 'spot', phase: 'Cabinet', section: 'cabinet', cbView: 'results', subtab: 'builder',
+    type: 'spot', phase: 'Cabinet', section: 'cabinet', cbView: 'results', subtab: 'builder', mv: 'editor',
     preClickCard: '#cb-results .cb-cab-card',
     target: '#cb-sidebar-builder', position: 'right',
     title: 'Cabinet Builder',
     body: 'Open any cabinet to set its full spec — <span class="wt-hi">carcass size, doors, drawers, shelves and hardware</span>. Labour pricing scales with size, so every cabinet is costed accurately.'
   },
   {
-    type: 'spot', phase: 'Cabinet', section: 'cabinet', cbView: 'results', subtab: 'rates',
+    type: 'spot', phase: 'Cabinet', section: 'cabinet', cbView: 'results', subtab: 'rates', mv: 'editor',
     target: '#cb-sidebar-builder', position: 'right',
     title: 'My Rates',
     body: 'Set your <span class="wt-hi">hourly labour rate, material markup, edge-banding cost and contingency</span> once — every cabinet prices itself from these, no spreadsheet formulas to maintain.'
   },
   // ── Quote ────────────────────────────────────────────────────────────────
   {
-    type: 'spot', phase: 'Quote', section: 'quote',
+    type: 'spot', phase: 'Quote', section: 'quote', mv: 'editor',
     preClickCard: '.quote-card',
     target: '#quote-sidebar', position: 'right',
     title: 'Quote editor',
@@ -116,8 +145,13 @@ const _wtSteps = [
   },
 
   // ── Cut List ──────────────────────────────────────────────────────────────
+  // The section gate lands on the Cut List Library; pre-clicking a library
+  // card opens a real demo cut list, so the spotlit pane shows populated
+  // sheet/piece tables instead of the "no cut list open" gate. [onclick]
+  // skips the grid's synchronous "Loading…" / empty-state placeholder divs.
   {
-    type: 'spot', phase: 'Cut List', section: 'cutlist', clView: 'layout',
+    type: 'spot', phase: 'Cut List', section: 'cutlist', mv: 'editor',
+    preClickCard: '#cl-lib-grid > div[onclick]',
     target: '.cl-left', position: 'right',
     title: 'Sheets & pieces',
     body: 'Add your stock sheets and the pieces to cut — dimensions, quantity, grain and edge banding — then hit <span class="wt-hi">Optimise</span> and ProCabinet nests everything for minimum waste.'
@@ -125,23 +159,25 @@ const _wtSteps = [
 
   // ── Schedule ─────────────────────────────────────────────────────────────
   {
-    type: 'spot', phase: 'Schedule', section: 'schedule',
+    type: 'spot', phase: 'Schedule', section: 'schedule', mv: 'list',
     target: '#schedule-main', position: 'top',
     title: 'Gantt calendar',
-    body: 'Orders land on the calendar automatically, in priority order — each coloured bar spans its production days. The scheduler <span class="wt-hi">avoids weekends and respects your daily capacity</span>.'
+    body: 'Orders land on the calendar automatically, in priority order — each coloured bar spans its production days. The scheduler <span class="wt-hi">avoids weekends and respects your daily capacity</span>.',
+    bodyNarrow: 'Orders land on the schedule automatically, in priority order — each job shows its <span class="wt-hi">start and delivery dates</span>, and the Calendar tab has the full timeline. The scheduler <span class="wt-hi">avoids weekends and respects your daily capacity</span>.'
   },
 
   // ── Dashboard ─────────────────────────────────────────────────────────────
   {
-    type: 'spot', phase: 'Dashboard', section: 'dashboard',
+    type: 'spot', phase: 'Dashboard', section: 'dashboard', mv: 'list',
     target: '#dashboard-main', position: 'top',
     title: 'Live overview',
     body: 'Active orders with due-date alerts, your most recent quotes, low-stock warnings and this week\'s schedule — <span class="wt-hi">the full picture without opening a single tab</span>.'
   },
-  // Pro CTA — the four-tier plan picker (rendered by _wtCtaHTML). Dropped for
-  // paid users by _wtLastIdx; their tour ends on the step before this.
+  // Pro CTA — the four-tier plan picker (rendered by _wtCtaHTML). Dropped by
+  // _wtLastIdx for anyone with full Pro access (paying or in the automatic
+  // trial — i.e. every fresh signup); their tour ends on the step before this.
   {
-    type: 'center', section: 'dashboard',
+    type: 'center', section: 'dashboard', mv: 'list',
     title: 'Choose your plan',
     showPricing: true
   }
@@ -189,21 +225,40 @@ function _wtEsc(s) {
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
+/** Step body resolved for the current device — narrow/touch overrides first.
+ *  @param {WtStep} step @returns {string} */
+function _wtBody(step) {
+  if (step.bodyNarrow && _wtIsNarrow()) return step.bodyNarrow;
+  if (step.bodyTouch && _wtIsTouch()) return step.bodyTouch;
+  return step.body || '';
+}
+
 // ── animated cursor ──
 
-// Tip of the cursor SVG is at (4, 3) within the 20×26 viewBox.
+// Tip of the cursor SVG is at (4, 3) within the 20×26 viewBox; the touch
+// tap-dot's "tip" is its centre (radius 14 of the 28px circle).
 const _WT_CUR_TIP_X = 4, _WT_CUR_TIP_Y = 3;
+const _WT_DOT_R = 14;
+let _wtCurTipX = _WT_CUR_TIP_X, _wtCurTipY = _WT_CUR_TIP_Y;
 
 function _wtInitCursor() {
   if (_wtCursorEl) return;
   const el = document.createElement('div');
   el.id = 'wt-cursor';
-  el.innerHTML = '<svg width="20" height="26" viewBox="0 0 20 26" fill="none" xmlns="http://www.w3.org/2000/svg">' +
-    '<path d="M4 3L4 21L9 16L12 24L14.5 23L11.5 15L18 15Z" fill="white" stroke="#1a1a1a" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>' +
-    '</svg>';
+  if (_wtIsTouch()) {
+    // A mouse arrow means nothing on a phone — show a fingertip tap-dot.
+    el.classList.add('wt-cur-touch');
+    el.innerHTML = '<div class="wt-tap-dot"></div>';
+    _wtCurTipX = _WT_DOT_R; _wtCurTipY = _WT_DOT_R;
+  } else {
+    el.innerHTML = '<svg width="20" height="26" viewBox="0 0 20 26" fill="none" xmlns="http://www.w3.org/2000/svg">' +
+      '<path d="M4 3L4 21L9 16L12 24L14.5 23L11.5 15L18 15Z" fill="white" stroke="#1a1a1a" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>' +
+      '</svg>';
+    _wtCurTipX = _WT_CUR_TIP_X; _wtCurTipY = _WT_CUR_TIP_Y;
+  }
   // Start at viewport centre so the first movement animates from mid-screen.
-  el.style.left = (window.innerWidth  / 2 - _WT_CUR_TIP_X) + 'px';
-  el.style.top  = (window.innerHeight / 2 - _WT_CUR_TIP_Y) + 'px';
+  el.style.left = (window.innerWidth  / 2 - _wtCurTipX) + 'px';
+  el.style.top  = (window.innerHeight / 2 - _wtCurTipY) + 'px';
   document.body.appendChild(el);
   _wtCursorEl = el;
 }
@@ -222,8 +277,8 @@ function _wtCursorMoveTo(cx, cy) {
   el.classList.add('wt-cur-show');
   el.classList.remove('wt-cur-click');
   void el.offsetWidth; // flush so remove-then-add re-triggers any in-flight animation
-  el.style.left = (cx - _WT_CUR_TIP_X) + 'px';
-  el.style.top  = (cy - _WT_CUR_TIP_Y) + 'px';
+  el.style.left = (cx - _wtCurTipX) + 'px';
+  el.style.top  = (cy - _wtCurTipY) + 'px';
   // Click pulse fires after the 0.5 s travel transition.
   setTimeout(() => {
     if (!_wtCursorEl) return;
@@ -251,9 +306,9 @@ function _wtGateSection(section) {
       _wtW._exitClient_cabinet();
     }
     if (section === 'cutlist') {
-      // Land on the Cut List Library. The tour opens a cut list by clicking a
-      // library card (the "Sheet stock" step), so the cut-layout steps see
-      // real data and the layout only appears once Optimise is clicked.
+      // Land on the Cut List Library. The "Sheets & pieces" step then opens a
+      // cut list by pre-clicking a library card, so the spotlit pane shows
+      // real sheet/piece data rather than the no-cut-list-open gate.
       if (typeof _wtW.switchCLMainView === 'function') _wtW.switchCLMainView('library');
     }
     if (section === 'orders' && typeof _opState !== 'undefined') {
@@ -284,9 +339,6 @@ function _wtGateSection(section) {
 async function _wtStart(opts) {
   if (_wtActive) return;
   _wtAutoRun = !!(opts && opts.auto);
-  // The guided tour is a desktop experience — skip it on phones/tablets; the
-  // mobile advisory notice (_pcMaybeShowMobileNotice) covers them instead.
-  if (typeof window._pcIsTouchDevice === 'function' && window._pcIsTouchDevice()) return;
   const needTempDemo = !!_userId && !window._demoMode;
   if (needTempDemo) {
     const w = _wtW;
@@ -331,6 +383,8 @@ async function _wtRunStart(tempDemo) {
   const ov = document.createElement('div');
   ov.id = 'wt-overlay';
   ov.addEventListener('click', _wtOverlayClick);
+  ov.addEventListener('touchstart', _wtTouchStart, { passive: true });
+  ov.addEventListener('touchend', _wtTouchEnd, { passive: true });
   document.body.appendChild(ov);
   _wtOverlay = ov;
   document.addEventListener('keydown', _wtKeydown, true);
@@ -364,6 +418,8 @@ function _wtStartCta() {
   const ov = document.createElement('div');
   ov.id = 'wt-overlay';
   ov.addEventListener('click', _wtOverlayClick);
+  ov.addEventListener('touchstart', _wtTouchStart, { passive: true });
+  ov.addEventListener('touchend', _wtTouchEnd, { passive: true });
   document.body.appendChild(ov);
   _wtOverlay = ov;
   document.addEventListener('keydown', _wtKeydown, true);
@@ -531,6 +587,33 @@ function _wtKeydown(e) {
   else if (e.key === 'Escape') { e.preventDefault(); _wtSkip(); }
 }
 
+// Swipe left/right anywhere on the overlay steps the tour — the touch
+// counterpart of the arrow keys. Listeners are passive so vertical scrolling
+// inside the centred modals (the CTA plan picker) is never blocked; the
+// 1.5× dx:dy ratio keeps a scroll from registering as a swipe, and the 60px
+// floor keeps a tap from registering as one.
+/** Swipe origin from the overlay's last touchstart, or null.
+ *  @type {{x:number,y:number}|null} */
+let _wtTouchOrig = null;
+
+/** @param {TouchEvent} e */
+function _wtTouchStart(e) {
+  const t = e.changedTouches && e.changedTouches[0];
+  _wtTouchOrig = t ? { x: t.clientX, y: t.clientY } : null;
+}
+
+/** @param {TouchEvent} e */
+function _wtTouchEnd(e) {
+  const o = _wtTouchOrig;
+  _wtTouchOrig = null;
+  if (!o || !_wtActive) return;
+  const t = e.changedTouches && e.changedTouches[0];
+  if (!t) return;
+  const dx = t.clientX - o.x, dy = t.clientY - o.y;
+  if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+  if (dx < 0) _wtNext(); else _wtBack();
+}
+
 function _wtOnResize() {
   if (!_wtActive) return;
   if (_wtResizeTimer) clearTimeout(_wtResizeTimer);
@@ -539,9 +622,21 @@ function _wtOnResize() {
 
 // ── render ──
 
+/** Mobile single-column layout: land on the pane that holds the step's
+ *  target. Runs AFTER the pre-click — switchSection resets to the list pane
+ *  and card pre-click handlers flip to the editor pane, so the step's own
+ *  choice must win over both.
+ *  @param {WtStep} step */
+function _wtApplyMv(step) {
+  if (_wtCtaOnly || !step.mv) return;
+  if (_wtIsNarrow() && typeof _wtW._mvSet === 'function') _wtW._mvSet(step.mv);
+}
+
 /**
  * Apply a step's navigation context — switch tab / sub-tab / main view, and
- * open or close the Settings dropdown. All synchronous.
+ * open or close the Settings dropdown. All synchronous; the pre-click and
+ * pane choice run afterwards in _wtRender's pipeline (the pre-click card may
+ * render async, so it is awaited there rather than clicked blindly here).
  * @param {WtStep} step
  */
 function _wtApplyContext(step) {
@@ -556,10 +651,6 @@ function _wtApplyContext(step) {
     if (step.subtab && typeof _wtW.switchCabTab === 'function') _wtW.switchCabTab(step.subtab);
     if (step.cbView && typeof _wtW.switchCBMainView === 'function') _wtW.switchCBMainView(step.cbView);
     if (step.clView && typeof _wtW.switchCLMainView === 'function') _wtW.switchCLMainView(step.clView);
-    if (step.preClickCard) {
-      const card = document.querySelector(step.preClickCard);
-      if (card) /** @type {HTMLElement} */ (card).click();
-    }
   } catch (e) { console.warn('[walkthrough] context switch failed', e); }
   const sd = document.getElementById('settings-dropdown');
   if (sd) sd.classList.toggle('open', !!step.openSettings);
@@ -694,11 +785,24 @@ function _wtRender(i) {
   const step = _wtSteps[i];
   if (!step || !_wtOverlay) return;
 
-  if (step.type === 'center') { _wtApplyContext(step); _wtDrawCenter(step, false); return; }
+  if (step.type === 'center') { _wtApplyContext(step); _wtApplyMv(step); _wtDrawCenter(step, false); return; }
 
   const proceed = () => {
     if (!_wtActive || _wtCurrent !== i) return;
     _wtApplyContext(step);
+    if (step.preClickCard) {
+      // The card may render async after the section/view switch (e.g. the
+      // Cut List Library grid) — wait for it like a spotlight target, click,
+      // THEN pick the pane and resolve. A missing card degrades to no click.
+      _wtWaitFor(step.preClickCard, (card) => {
+        if (!_wtActive || _wtCurrent !== i) return;
+        if (card) { try { card.click(); } catch (e) { void e; } }
+        _wtApplyMv(step);
+        _wtResolveAndDraw(i, step);
+      });
+      return;
+    }
+    _wtApplyMv(step);
     _wtResolveAndDraw(i, step);
   };
   // Move the cursor to where the action is, THEN switch the view / draw the
@@ -816,15 +920,24 @@ function _wtPlaceTooltip(r, side, tip) {
   const tr = tip.getBoundingClientRect();
   const TW = tr.width, TH = tr.height;
   let left, top, dir = side;
-  if (side === 'right') { left = r.right + gap; top = r.top - 8; }
-  else if (side === 'left') { left = r.left - gap - TW; top = r.top - 8; }
-  else if (side === 'bottom') { left = r.left + r.width / 2 - TW / 2; top = r.bottom + gap; }
-  else { left = r.left + r.width / 2 - TW / 2; top = r.top - gap - TH; }
-  // flip if it would overflow the chosen side
-  if (side === 'right' && left + TW > vw - M) { left = r.left - gap - TW; dir = 'left'; }
-  else if (side === 'left' && left < M) { left = r.right + gap; dir = 'right'; }
-  else if (side === 'bottom' && top + TH > vh - M) { top = r.top - gap - TH; dir = 'top'; }
-  else if (side === 'top' && top < M) { top = r.bottom + gap; dir = 'bottom'; }
+  if (_wtIsNarrow()) {
+    // Single-column phone layout: targets are full-width, so beside-the-target
+    // placement can't fit. Pin the tooltip sheet-style to whichever screen
+    // edge (top/bottom) is away from the spotlight centre.
+    left = (vw - TW) / 2;
+    if (r.top + r.height / 2 < vh / 2) { top = vh - TH - M; dir = 'bottom'; }
+    else { top = M; dir = 'top'; }
+  } else {
+    if (side === 'right') { left = r.right + gap; top = r.top - 8; }
+    else if (side === 'left') { left = r.left - gap - TW; top = r.top - 8; }
+    else if (side === 'bottom') { left = r.left + r.width / 2 - TW / 2; top = r.bottom + gap; }
+    else { left = r.left + r.width / 2 - TW / 2; top = r.top - gap - TH; }
+    // flip if it would overflow the chosen side
+    if (side === 'right' && left + TW > vw - M) { left = r.left - gap - TW; dir = 'left'; }
+    else if (side === 'left' && left < M) { left = r.right + gap; dir = 'right'; }
+    else if (side === 'bottom' && top + TH > vh - M) { top = r.top - gap - TH; dir = 'top'; }
+    else if (side === 'top' && top < M) { top = r.bottom + gap; dir = 'bottom'; }
+  }
   // clamp into the viewport
   left = Math.max(M, Math.min(left, vw - TW - M));
   top = Math.max(M, Math.min(top, vh - TH - M));
@@ -871,7 +984,7 @@ function _wtTooltipHTML(step) {
   return '' +
     '<div class="wt-phase">' + phase + 'Step ' + n + ' of ' + total + '</div>' +
     '<h3>' + _wtEsc(step.title) + '</h3>' +
-    '<p>' + step.body + '</p>' +
+    '<p>' + _wtBody(step) + '</p>' +
     '<div class="wt-progress-track"><div class="wt-progress-fill" style="width:' + pct + '%"></div></div>' +
     '<div class="wt-actions">' +
       '<button class="wt-btn wt-btn-skip" data-wt-act="skip">Skip tour</button>' +
@@ -931,7 +1044,7 @@ function _wtCenterPreviewHTML(step) {
     '</div>' +
     '<div class="wt-wbody">' +
       '<h2>' + title + '</h2>' +
-      '<p>' + step.body + '</p>' +
+      '<p>' + _wtBody(step) + '</p>' +
       '<div class="wt-center-actions">' +
         '<button class="wt-btn wt-btn-skip" data-wt-act="skip">Skip</button>' +
         '<button class="wt-btn wt-btn-primary" data-wt-act="next">' + _wtEsc(step.nextLabel || 'Start the tour →') + '</button>' +
@@ -946,7 +1059,7 @@ function _wtCenterHTML(step) {
   let h = '';
   if (step.icon) h += '<div class="wt-icon">' + step.icon + '</div>';
   h += '<h2>' + _wtEsc(step.title) + '</h2>';
-  h += '<p>' + step.body + '</p>';
+  h += '<p>' + _wtBody(step) + '</p>';
   if (step.flow) {
     h += '<div class="wt-flow">';
     step.flow.forEach((f, idx) => {
@@ -1132,10 +1245,6 @@ function _wtMaybeShowSessionCta() {
  */
 async function _wtMaybeAutoStart() {
   if (_wtActive) return;
-  // Touch devices get a once-per-session "this is the mobile-optimised version"
-  // welcome (z-index 10000). The guided tour is desktop-only on touch, so on a
-  // phone this notice shows on its own; on desktop it's a no-op.
-  if (typeof window._pcMaybeShowMobileNotice === 'function') window._pcMaybeShowMobileNotice();
   // Logged-out demo visitors get the full tour + CTA on every reload — the demo
   // is a marketing surface, so the localStorage dismissal gate is bypassed.
   if (!_userId) { _wtStart({ force: true, auto: true }); return; }
@@ -1154,8 +1263,11 @@ async function _wtMaybeAutoStart() {
   const obVersion = (typeof ob.version === 'number') ? ob.version : -1;
   const dismissed = !!((ls && ls.dismissed_at) || ob.dismissed_at);
   if (dismissed && Math.max(lsVersion, obVersion) >= WT_VERSION) {
-    // First-run tour already done at the current version. A free user still
-    // gets a once-per-browser-session reminder of the plan picker.
+    // First-run tour already done at the current version. Touch devices get
+    // the once-per-session "optimised for mobile" welcome (suppressed when the
+    // full tour runs — the tour IS the welcome), then a free user still gets a
+    // once-per-browser-session reminder of the plan picker.
+    if (typeof window._pcMaybeShowMobileNotice === 'function') window._pcMaybeShowMobileNotice();
     _wtMaybeShowSessionCta();
     return;
   }

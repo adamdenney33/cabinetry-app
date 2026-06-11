@@ -2,8 +2,9 @@
 // Shown once per browser session to touch-device users on app load: a short,
 // positive heads-up that this is the mobile-optimised version, with a couple of
 // gesture tips. (Replaces the old desktop-first "Best viewed on a computer"
-// advisory.) Layered above the guided walkthrough; the walkthrough is desktop-
-// only on touch, so on a phone this notice shows on its own.
+// advisory.) The guided walkthrough runs on phones too, so _wtMaybeAutoStart
+// only shows this notice when the full tour is NOT auto-starting (returning
+// users); a first run gets the tour as its welcome instead.
 
 /** True for phones and tablets — a touch-primary device with no hover. */
 function _pcIsTouchDevice() {

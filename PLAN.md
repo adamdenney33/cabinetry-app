@@ -15,13 +15,38 @@ Companion docs: `SPEC.md` (refactor history), `SCHEMA.md` (DB schema),
 - **Cabinet Builder unification** (Item 2): all 4 phases done — pre-launch refactor closed
 - **Stripe payments (subscriptions)**: S.2–S.7 built in test mode; **S.9 live-mode flip done** — verified 2026-06-11 via secret digests (`STRIPE_SECRET_KEY` = the verified-live Connect key; price secrets ≠ the S.2 test IDs; `STRIPE_PRICE_FOUNDER` present). Outstanding: S.8's remaining live smoke checks + decide on the 3 test-mode `subscriptions` rows
 - **Stripe Connect (customer payments on live quote/order pages)**: built + deployed (connect-onboard/connect-status/quote-pay/quote-pay-webhook + `src/connect.js` + `q.html`); charge model **Standard + direct charges + 0.7%/$100-cap fee** (2026-06-09, commit `6711b61`); **LIVE mode since 2026-06-10** (live keys + live Connect webhook — real money). Bank transfers + `/payment-fees` page added 2026-06-10
-- **Mobile / responsive**: ✅ comprehensive mobile-native pass done 2026-05-23 (7 phases; see Active Work / SPEC.md § 13)
+- **Mobile / responsive**: ✅ comprehensive mobile-native pass done 2026-05-23 (7 phases; see Active Work / SPEC.md § 13); guided walkthrough runs on phones since 2026-06-11
 - **UI polish + design finalisation**: progressing in passes (PDF cleanup 2026-05-24 · unified filter bars + mobile pass 2026-05-23 · card status unification 2026-06-10); no formal design-system lock (U.1) yet
 - **Launched:** live since 2026-05-02 — soft launch, no public-posts push; growth runs through the paid-ads + founders track. Auth emails on Resend SMTP since 2026-05-17; signup-confirmation UX hardened 2026-06-11
 
 ---
 
 ## Active Work
+
+### Guided walkthrough on phones ✅ Done 2026-06-11
+
+The onboarding tour was desktop-only by design (touch devices got the static
+"Optimised for mobile" notice instead). Now it runs on every device:
+
+- ✅ **W.1 — Touch gate removed** (`_wtStart`); Help → User Guide works on
+  phones too.
+- ✅ **W.2 — Per-step mobile pane** (`step.mv: 'list'|'editor'`): each step
+  lands on the `body[data-mv]` pane holding its target, applied after the
+  pre-click (card handlers flip to editor; `switchSection` resets to list).
+- ✅ **W.3 — Sheet tooltip ≤760px**: pinned to the top/bottom screen edge away
+  from the spotlight (side-anchoring can't fit beside full-width targets).
+- ✅ **W.4 — Touch affordances**: fingertip tap-dot replaces the arrow cursor
+  on touch devices; swipe left/right steps the tour; device-aware copy
+  (`bodyTouch`/`bodyNarrow` overrides — keyboard hint → swipe hint, gantt
+  bars → agenda description).
+- ✅ **W.5 — Async-safe pre-clicks**: `preClickCard` now waits for the card
+  (like spotlight targets) instead of clicking blindly; the Cut List step
+  pre-opens a demo cut list from the library (`#cl-lib-grid > div[onclick]`
+  skips the "Loading…" placeholder) so the spotlit pane shows real
+  sheet/piece data on desktop too, not the empty gate.
+- ✅ **W.6 — Mobile notice demoted**: `_wtMaybeAutoStart` shows it only when
+  the full tour is NOT auto-starting; CTA plan picker stacks to one column
+  ≤480px; tour buttons get ≥42px tap targets.
 
 ### App load performance pass ✅ Done 2026-06-11
 
