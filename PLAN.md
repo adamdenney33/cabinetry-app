@@ -225,10 +225,14 @@ founders' offer. Details in SPEC.md § 13 (2026-06-10 growth entry).
      2026-06-11; see the Stripe section). Still open: decide whether to purge
      the 3 test-mode `subscriptions` rows (they grant Pro + inflate the
      founder counter) and run one live Checkout as a smoke test.
-  2. Meta Events Manager → pixel 1913344152250764 → Settings → **generate a
-     Conversions API token** → `supabase secrets set META_CAPI_ACCESS_TOKEN=…`
-     (+ optionally `POSTHOG_KEY=<VITE_POSTHOG_KEY value>` for
-     `subscription_started`) → redeploy not needed (functions read env at run).
+  2. ✅ CAPI token set (user, 2026-06-11) — `META_CAPI_ACCESS_TOKEN` digest
+     verified via `supabase secrets list`; `meta-capi-signup` v3 ACTIVE,
+     `trg_meta_capi_signup` enabled on auth.users. Secret-set restarts the
+     function instances, so no redeploy needed. Live confirmation = next real
+     signup (fn logs show `CAPI failed` if the token is bad; Events Manager
+     should show the event arriving on the Server channel, deduped against
+     the browser pixel via `signup-<user_id>`). `POSTHOG_KEY` (optional, for
+     stripe-webhook `subscription_started`) still unset.
   3. In Ads Manager create two custom audiences: "Video viewers 25% — 180d"
      (the Overview reel) and "Website visitors — 30d" (pixel) — then the
      retargeting ad set + founders ad can be built into `52550164627114`.
