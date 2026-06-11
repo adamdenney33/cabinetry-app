@@ -120,7 +120,12 @@
     const w = /** @type {any} */ (window);
     w._pcSuppressToasts = true;
     try {
-      const section = loadSection();
+      // A nav tab tapped before the deferred scripts executed (the head stub
+      // in index.html stashes it) beats the persisted last-section restore —
+      // it's the user's most recent explicit choice.
+      const preBoot = typeof w._preBootSection === 'string' ? w._preBootSection : null;
+      w._preBootSection = null;
+      const section = preBoot || loadSection();
       if (section && typeof w.switchSection === 'function') {
         try { w.switchSection(section); } catch (e) { /* fall back to default */ }
       }

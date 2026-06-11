@@ -140,6 +140,9 @@ declare global {
     _qpState?: { dirty?: boolean };
     _opState?: { dirty?: boolean };
     _saveInFlight?: Set<string>;
+    /** index.html head stub — nav tab tapped before the deferred scripts
+     *  executed; replayed (then cleared) by restoreAppState. */
+    _preBootSection?: string | null;
     /** persist.js — refresh-state helpers. */
     _pcSaveSection?: (name: string) => void;
     _pcLoadSection?: () => string | null;

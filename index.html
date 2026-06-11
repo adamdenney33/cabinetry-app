@@ -11,6 +11,12 @@
      Vite replaces %VITE_*% in HTML at build/serve time. -->
 <link rel="preconnect" href="%VITE_SUPABASE_URL%" crossorigin>
 <script type="module" src="/src/main.js"></script>
+<!-- Pre-boot nav guard: the shell renders as plain HTML while the deferred
+     scripts download, so a nav tab tapped on a slow connection would hit an
+     undefined global (Sentry JAVASCRIPT-D, mobile Safari). Stash the tap;
+     settings.js's function declaration replaces this stub, and
+     restoreAppState (persist.js) replays the stash once the app has booted. -->
+<script>window.switchSection = function (name) { window._preBootSection = name; };</script>
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
