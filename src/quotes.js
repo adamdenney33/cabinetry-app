@@ -735,16 +735,29 @@ function _openNewClientPopup(targetInputId) {
   _openPopup(html, 'sm');
 }
 
+/** The gated-entry pickers ("Pick a client to start a new quote/order") drive
+ *  a flow: creating a client from one of them should continue exactly like
+ *  clicking that client in the dropdown — open the editor sidebar with the new
+ *  client — instead of leaving the name sitting in the input.
+ *  @param {string} targetInputId @param {number} clientId */
+function _continuePickerFlow(targetInputId, clientId) {
+  if (targetInputId === 'cb-empty-picker' && typeof _cbPickClient === 'function') _cbPickClient(clientId);
+  else if (targetInputId === 'qe-client-picker') _qPickClient(clientId);
+  else if (targetInputId === 'oe-client-picker' && typeof _oPickClient === 'function') _oPickClient(clientId);
+}
+
 /** @param {string} targetInputId */
 async function _saveNewClientPopup(targetInputId) {
   const name = _popupVal('pnc-name');
   if (!name) { _toast('Client name is required', 'error'); return; }
   // Check for duplicate
-  if (clients.some(c => c.name.toLowerCase() === name.toLowerCase())) {
+  const dup = clients.find(c => c.name.toLowerCase() === name.toLowerCase());
+  if (dup) {
     // Just set the input and close
     /** @type {HTMLInputElement} */ (_byId(targetInputId)).value = name;
     _closePopup();
     _toast('Client already exists — selected', 'info');
+    _continuePickerFlow(targetInputId, dup.id);
     return;
   }
   const insertBody = {
@@ -762,6 +775,7 @@ async function _saveNewClientPopup(targetInputId) {
   _closePopup();
   renderClientsMain();
   _toast(`Client "${name}" added`, 'success');
+  _continuePickerFlow(targetInputId, data.id);
 }
 
 // F6 (2026-05-13): _openNewProjectPopup / _saveNewProjectPopup +
