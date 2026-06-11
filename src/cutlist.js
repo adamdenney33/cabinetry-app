@@ -58,6 +58,14 @@ let layoutRotate = false;
 let _clRotateTouched = false;
 let clShowSummary = localStorage.getItem('pc_show_summary') === '1';
 let clShowCutList = clShowSummary;  // cut list is part of the Summary tile
+// Width (px) of #results-area when the layout diagrams were last drawn, or -1
+// if never drawn. The area ResizeObserver re-renders when the live width
+// meaningfully deviates from this — e.g. the pane was hidden at draw time and
+// the diagram fell back to the 200px floor, or the window/panel was resized.
+let _clDrawnW = -1;
+/** @type {ResizeObserver|null} */
+let _clAreaObs = null;
+let _clAreaObsRaf = 0;
 /** @type {any} */
 let _dragSrc = null;
 /** @type {any} */
@@ -3714,11 +3722,34 @@ function switchTab(tab) {
   renderResults();
 }
 
+/** Watch #results-area and re-render the layout when its width meaningfully
+ *  changes from the width the diagrams were drawn for. Covers every "drawn at
+ *  the wrong width" case in one place: rendered while the pane was hidden
+ *  (tab switch later un-hides a tiny diagram), window resizes, phone rotation,
+ *  and panel collapse/expand. The 24px dead-band ignores scrollbar
+ *  appear/disappear so a re-render can't re-trigger itself. */
+function _clEnsureAreaObserver() {
+  if (_clAreaObs || typeof ResizeObserver === 'undefined') return;
+  const area = _byId('results-area');
+  if (!area) return;
+  _clAreaObs = new ResizeObserver(() => {
+    if (!results || !results.layouts.length || _clDrawnW < 0) return;
+    const a = _byId('results-area');
+    if (!a) return;
+    const w = a.clientWidth;
+    if (w < 50 || Math.abs(w - _clDrawnW) <= 24) return;
+    if (_clAreaObsRaf) return;
+    _clAreaObsRaf = requestAnimationFrame(() => { _clAreaObsRaf = 0; renderResults(); });
+  });
+  _clAreaObs.observe(area);
+}
+
 function renderResults() {
   // Mobile back bar (#cl-view-layout) shows the open cut-list's name.
   const _clNameEl = document.getElementById('cl-layout-name');
   if (_clNameEl) _clNameEl.textContent = _clCurrentCutlistName || 'Cut Layout';
   if (!results) return;
+  _clEnsureAreaObserver();
   // Mobile defaults to portrait sheet orientation — landscape sheets render tiny
   // on a phone. Respected only until the user manually hits Rotate.
   if (!_clRotateTouched && window._mvIsMobile && window._mvIsMobile()) layoutRotate = true;
@@ -3745,6 +3776,9 @@ function renderLayout(area, tries) {
     requestAnimationFrame(() => renderLayout(area, (tries || 0) + 1));
     return;
   }
+  // Record the width this render is sized for; the area ResizeObserver
+  // re-renders when the live width later deviates (see _clEnsureAreaObserver).
+  _clDrawnW = area.clientWidth;
   const u = window.units === 'metric' ? 'mm' : 'in';
   const totalArea = results.layouts.reduce(/** @param {number} s @param {any} l */ (s,l) => s + l.sheet.w * l.sheet.h, 0);
   const usedArea  = results.layouts.reduce(/** @param {number} s @param {any} l */ (s,l) => s + l.placed.reduce(/** @param {number} a @param {any} p */ (a,p) => a + p.w * p.h, 0), 0);
