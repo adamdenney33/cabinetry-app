@@ -4,7 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Your quote</title>
-<link rel="icon" type="image/png" href="/brand/icons/procabinet-sunset-favicon.png">
+<link rel="icon" type="image/png" sizes="64x64" href="/brand/icons/procabinet-favicon-64.png">
+<!-- The quote data + payment status load from the Supabase origin straight
+     away — open the connection while the page assets download. -->
+<link rel="preconnect" href="%VITE_SUPABASE_URL%" crossorigin>
 <link rel="stylesheet" href="/styles.css">
 <style>
   /* Public quote/order page — self-contained chrome (no app nav, no mockup CSS). */

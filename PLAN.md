@@ -23,6 +23,35 @@ Companion docs: `SPEC.md` (refactor history), `SCHEMA.md` (DB schema),
 
 ## Active Work
 
+### App load performance pass (2026-06-11)
+
+The /os app boot is a strict waterfall: 1.24 MB module bundle (Supabase +
+Sentry + PostHog + jsPDF eager) → 40 classic defer scripts (~1.8 MB) →
+DOMContentLoaded → INITIAL_SESSION → *then* ~9 render-gating data queries.
+Goal: cut the critical-path JS and overlap data latency with script loading.
+
+- ✅ **P.1 — Lazy jsPDF (main.js + cutlist.js):** drop the eager
+  `jspdf`/`jspdf-autotable` imports; `window._ensureJsPDF()` dynamic-imports
+  both on first use (warmed post-`load`). The five PDF builders await it;
+  existing `!window.jspdf` guards stay as fallback.
+- ✅ **P.2 — Lazy PostHog (main.js + analytics.js):** dynamic-import + init
+  after `load` so the SDK parse, recorder fetch, and recording CPU leave the
+  boot path. `_identifyUser` stashes `window._pendingIdentify` for the
+  init handler to replay; pageview still captured at init.
+- ✅ **P.3 — Defer gtag/Meta pixel script injection to `load` (main.js):**
+  stubs stay eager (queued conversions still flush) — only the external
+  script downloads move out of the boot window.
+- ✅ **P.4 — Early boot fetch (main.js + db.js + app.js + limits.js +
+  accounting.js):** main.js reads the stored Supabase session and fires the
+  nine render-gating REST queries immediately (`window._earlyBoot`),
+  overlapping data latency with classic-script download/parse.
+  `_earlyBootOr()` consumes each result once (user-id-guarded) and falls
+  back to the normal `_db()` query on any miss/error/expiry.
+- ✅ **P.5 — Supabase preconnect (index.html + q.html):** `%VITE_SUPABASE_URL%`
+  preconnect hint so auth/REST/realtime skip DNS+TLS setup.
+- ✅ **P.6 — Right-sized favicons:** 512px/137KB PNG served for both icon
+  rels → 64px favicon + 180px apple-touch variants.
+
 ### Conversion funnel — P0 fixes from full-funnel review ✅ Done 2026-06-09
 
 From a landing-page / conversion-flow / pricing / onboarding review (2026-06-09).

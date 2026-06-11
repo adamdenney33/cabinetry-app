@@ -19,7 +19,20 @@ import type { jsPDF as JsPDFConstructor } from 'jspdf';
 declare global {
   interface Window {
     supabase: { createClient: typeof SupabaseCreateClient };
-    jspdf: { jsPDF: typeof JsPDFConstructor };
+    /** jsPDF bridge — set lazily by window._ensureJsPDF() (src/main.js); undefined until the first PDF export (or the post-load warm-up) pulls the chunk. */
+    jspdf?: { jsPDF: typeof JsPDFConstructor };
+    /** Lazy jsPDF loader (src/main.js): dynamic-imports jspdf + jspdf-autotable on first use, then resolves with (and sets) window.jspdf. */
+    _ensureJsPDF: () => Promise<{ jsPDF: typeof JsPDFConstructor }>;
+    /** Early boot fetch (src/main.js): in-flight render-gating queries keyed by
+     *  table name, started before the classic scripts finish loading, plus the
+     *  `userId` they were issued for. Slots are consumed (nulled) at most once
+     *  by _earlyBootOr (src/db.js). */
+    _earlyBoot?: { userId: string; [table: string]: any };
+    /** Session stashed by _identifyUser (src/analytics.js) when PostHog hadn't
+     *  loaded yet; replayed and cleared by the lazy PostHog init (src/main.js). */
+    _pendingIdentify?: any;
+    /** PostHog person-identify (src/analytics.js classic-script global) — read off window by the lazy PostHog init replay. */
+    _identifyUser?: (session: any) => void;
     /** Sentry SDK bridge — set by src/main.js. Calls no-op until Sentry.init runs (DSN-gated). */
     Sentry: typeof import('@sentry/browser');
     /** PostHog client — set by src/main.js only when VITE_POSTHOG_KEY is present; undefined otherwise. */

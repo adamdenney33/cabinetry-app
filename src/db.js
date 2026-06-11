@@ -234,6 +234,37 @@ class _DBBuilder {
  */
 function _db(table) { return new _DBBuilder(table); }
 
+// ── Early boot fetch consumption (perf pass P.4) ────────────────────────────
+// src/main.js fires the render-gating boot queries the moment the module
+// bundle executes — well before the classic scripts finish parsing — and
+// stashes the in-flight promises on window._earlyBoot. The query shapes there
+// must stay equivalent to the fallbacks passed here.
+/**
+ * Resolve with the early-boot result for `key` when one is available, fresh,
+ * and belongs to the same signed-in user; otherwise (or on any HTTP/parse
+ * error) run the normal `_db()` query. Each slot is consumed at most once, so
+ * auth-event re-runs of the load path always hit the network fresh. The
+ * fallback also covers expired-token rejections — _db() can refresh the
+ * session and retry, which the raw early fetch cannot.
+ *
+ * @param {string} key window._earlyBoot slot, e.g. 'orders'
+ * @param {string | null} userId current _userId — guards cross-user reuse
+ * @param {() => any} run fallback query — a _db() builder (awaitable thenable)
+ * @returns {Promise<{ data: any, error: any }>}
+ */
+async function _earlyBootOr(key, userId, run) {
+  const eb = window._earlyBoot;
+  if (eb && userId && eb.userId === userId && eb[key]) {
+    const p = eb[key];
+    eb[key] = null;
+    try {
+      const r = await p;
+      if (r && !r.error && r.data != null) return r;
+    } catch (e) { /* fall through to the normal query */ }
+  }
+  return run();
+}
+
 // Dev-only: assistant-driven test signin. main.js stashes _isDev + creds on
 // window (production builds skip the gate). Run window._signInForTesting()
 // from the browser console to authenticate via VITE_TEST_EMAIL/PASSWORD.

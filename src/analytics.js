@@ -43,8 +43,11 @@ function _track(event, props) {
  * @param {any} session Supabase auth session
  */
 function _identifyUser(session) {
+  if (!session || !session.user) return;
   const ph = window.posthog;
-  if (!ph || !session || !session.user) return;
+  // PostHog lazy-loads after `load` (src/main.js, perf pass P.2) and a fast
+  // data load can beat it here — stash the session for the init to replay.
+  if (!ph) { window._pendingIdentify = session; return; }
   try {
     /** @type {Record<string, any>} */
     const props = { email: session.user.email, plan: _currentPlan() };
@@ -172,6 +175,7 @@ function _trackPurchaseConversion(plan) {
 
 /** Clear the PostHog identity on sign-out so the next user starts clean. */
 function _resetAnalytics() {
+  window._pendingIdentify = null; // a queued identify must not outlive sign-out
   const ph = window.posthog;
   if (!ph) return;
   try {

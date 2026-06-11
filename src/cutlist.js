@@ -2548,8 +2548,11 @@ function _drawDocLineItems(pdf, rows, opts) {
  *                           (so legacy callers like cabinet.js's preview path
  *                           keep working without an extra fetch).
  */
-function _buildQuotePDF(q, lineRows) {
-  if (!window.jspdf) { _toast('PDF library not loaded yet — try again', 'error'); return; }
+async function _buildQuotePDF(q, lineRows) {
+  if (!window.jspdf) {
+    try { await window._ensureJsPDF(); } catch (e) {}
+    if (!window.jspdf) { _toast('PDF library not loaded yet — try again', 'error'); return; }
+  }
   if (typeof _track === 'function') _track('pdf_created', { type: 'quote' });
   const { jsPDF } = window.jspdf;
   const cur = window.currency;
@@ -2730,8 +2733,11 @@ function _buildQuotePDF(q, lineRows) {
 }
 
 
-function _buildStockPDF() {
-  if (!window.jspdf) { _toast('PDF library not loaded yet', 'error'); return; }
+async function _buildStockPDF() {
+  if (!window.jspdf) {
+    try { await window._ensureJsPDF(); } catch (e) {}
+    if (!window.jspdf) { _toast('PDF library not loaded yet', 'error'); return; }
+  }
   if (typeof _track === 'function') _track('pdf_created', { type: 'stock_list' });
   const { jsPDF } = window.jspdf;
   const biz = getBizInfo();
@@ -2821,8 +2827,11 @@ function _buildStockPDF() {
 }
 
 /** @param {any} o */
-function _buildWorkOrderPDF(o) {
-  if (!window.jspdf) { _toast('PDF library not loaded yet', 'error'); return; }
+async function _buildWorkOrderPDF(o) {
+  if (!window.jspdf) {
+    try { await window._ensureJsPDF(); } catch (e) {}
+    if (!window.jspdf) { _toast('PDF library not loaded yet', 'error'); return; }
+  }
   if (typeof _track === 'function') _track('pdf_created', { type: 'work_order' });
   const { jsPDF } = window.jspdf;
   const biz = getBizInfo();
@@ -2925,8 +2934,11 @@ function _buildWorkOrderPDF(o) {
  * @param {'order_confirmation'|'proforma'|'invoice'} type
  * @param {Record<number, string[]>} [photos] per-line photo dataURLs (Phase 2; flag-gated)
  */
-function _buildOrderDocPDF(o, lines, type, photos) {
-  if (!window.jspdf) { _toast('PDF library not loaded yet — try again', 'error'); return; }
+async function _buildOrderDocPDF(o, lines, type, photos) {
+  if (!window.jspdf) {
+    try { await window._ensureJsPDF(); } catch (e) {}
+    if (!window.jspdf) { _toast('PDF library not loaded yet — try again', 'error'); return; }
+  }
   if (typeof _track === 'function') _track('pdf_created', { type: 'order_document', document_type: type });
   const { jsPDF } = window.jspdf;
   const cur = window.currency;
@@ -3159,7 +3171,10 @@ function _buildOrderDocPDF(o, lines, type, photos) {
 
 /** @param {{biz: any, layouts: any[], imgs: string[], pieces: any[], u: string, cur: string, totalPieces: number, avgUtil: string, matCost: number}} arg */
 async function _buildCutListPDF({ biz, layouts, imgs, pieces, u, cur, totalPieces, avgUtil, matCost }) {
-  if (!window.jspdf) { _toast('PDF library not loaded yet — try again', 'error'); return; }
+  if (!window.jspdf) {
+    try { await window._ensureJsPDF(); } catch (e) {}
+    if (!window.jspdf) { _toast('PDF library not loaded yet — try again', 'error'); return; }
+  }
   if (typeof _track === 'function') _track('pdf_created', { type: 'cutlist' });
   _toast('Building PDF\u2026', 'info', 8000);
   try {

@@ -72,9 +72,10 @@ async function loadSubscription() {
     return null;
   }
   try {
-    const { data } = await _db('subscriptions')
-      .select('*')
-      .eq('user_id', _userId);
+    // May already be in flight via the early boot fetch (src/main.js) —
+    // _earlyBootOr falls back to the _db() query on any miss/error.
+    const { data } = await _earlyBootOr('subscriptions', _userId,
+      () => _db('subscriptions').select('*').eq('user_id', _userId));
     _subscription = (data && data[0]) ? /** @type {SubscriptionRow} */ (data[0]) : null;
   } catch (e) {
     console.warn('[limits] loadSubscription failed:', /** @type {Error} */ (e).message || e);

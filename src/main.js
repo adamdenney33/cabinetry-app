@@ -10,10 +10,7 @@
 // Phase C of the modernization plan converts everything else.
 
 import { createClient } from '@supabase/supabase-js';
-import { jsPDF } from 'jspdf';
-import 'jspdf-autotable';
 import * as Sentry from '@sentry/browser';
-import posthog from 'posthog-js';
 
 // ── Error tracking ──
 // Init before everything else so the Supabase env check below — and any other
@@ -40,32 +37,142 @@ if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KE
 }
 
 window.supabase = { createClient };
-window.jspdf = { jsPDF };
 window._SBURL = import.meta.env.VITE_SUPABASE_URL;
 window._SBKEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+/** Run after the window `load` event — immediately (next tick) if already past
+ *  it. Used to keep optional payloads (analytics SDKs, ad pixels, the jsPDF
+ *  warm-up) out of the boot-critical window. @param {() => void} fn */
+const _afterLoad = (fn) => {
+  if (document.readyState === 'complete') setTimeout(fn, 0);
+  else window.addEventListener('load', () => setTimeout(fn, 0), { once: true });
+};
+
+// ── Early boot fetch (perf pass P.4) ──
+// This module executes before the classic <script defer> files finish
+// downloading/parsing, so it's the earliest possible moment to request the
+// data the dashboard needs. If a stored Supabase session exists (the same
+// localStorage blob db.js's _dbAuthToken falls back to), fire the
+// render-gating boot queries now and stash the in-flight promises on
+// window._earlyBoot. loadAllData / loadSubscription /
+// loadAccountingConnections consume them through _earlyBootOr (src/db.js),
+// which falls back to the normal _db() query on any miss or error — so the
+// query strings here MUST stay equivalent to those fallbacks. Signed-out
+// visitors (no blob) and storage-blocked browsers skip this entirely and
+// boot exactly as before.
+try {
+  const _ebRef = new URL(window._SBURL).hostname.split('.')[0];
+  const _ebRaw = localStorage.getItem(`sb-${_ebRef}-auth-token`);
+  const _ebSess = _ebRaw ? JSON.parse(_ebRaw) : null;
+  const _ebToken = _ebSess?.access_token;
+  const _ebUid = _ebSess?.user?.id;
+  // Skip on an expired/near-expiry JWT — the request would just 401; the
+  // normal _db() path refreshes the session and retries instead.
+  const _ebFresh = !_ebSess?.expires_at || (_ebSess.expires_at * 1000 > Date.now() + 30_000);
+  if (_ebToken && _ebUid && _ebFresh) {
+    const _ebHeaders = { apikey: window._SBKEY, Authorization: `Bearer ${_ebToken}` };
+    /** @param {string} table @param {string} params @returns {Promise<{ data: any, error: null }>} */
+    const _ebGet = (table, params) => {
+      const go = () =>
+        fetch(`${window._SBURL}/rest/v1/${table}?${params}`, { headers: _ebHeaders })
+          .then(async (r) => {
+            if (!r.ok) throw new Error(`early-boot ${table} HTTP ${r.status}`);
+            return { data: await r.json(), error: null };
+          });
+      // One immediate retry on pure network failure (fetch rejects with
+      // TypeError): a stale pooled socket to the Supabase origin kills all
+      // nine requests at once (ERR_CONNECTION_CLOSED) where a fresh
+      // connection succeeds. HTTP errors (our own Error above) don't retry —
+      // a 401 here means the token is bad and the _db() fallback must handle it.
+      return go().catch((e) => (e instanceof TypeError ? go() : Promise.reject(e)));
+    };
+    window._earlyBoot = {
+      userId: _ebUid,
+      orders: _ebGet('orders', 'select=*&order=created_at.desc'),
+      quotes: _ebGet('quotes', 'select=*&order=created_at.desc'),
+      stock_items: _ebGet('stock_items', 'select=*&order=created_at.asc'),
+      clients: _ebGet('clients', 'select=*&order=name.asc'),
+      catalog_items: _ebGet('catalog_items', `select=*&user_id=eq.${_ebUid}`),
+      business_info: _ebGet('business_info', `select=*&user_id=eq.${_ebUid}`),
+      subscriptions: _ebGet('subscriptions', `select=*&user_id=eq.${_ebUid}`),
+      accounting_connections: _ebGet('accounting_connections', 'select=provider,org_name,status,default_tax_code'),
+      accounting_invoice_links: _ebGet('accounting_invoice_links', 'select=order_id,provider,external_url,external_number,status'),
+    };
+    // Pre-handle rejections: a revoked token rejects all nine at once, and the
+    // consumers only catch the copies they await — this silences the
+    // unhandled-rejection noise for any slot that never gets consumed.
+    for (const v of Object.values(window._earlyBoot)) {
+      const p = /** @type {any} */ (v);
+      if (p && typeof p.catch === 'function') p.catch(() => {});
+    }
+  }
+} catch (e) { /* storage blocked / malformed blob — boot proceeds normally */ }
+
+// ── jsPDF (lazy) ──
+// PDF generation is never on the boot path, and jspdf + autotable are ~450 KB
+// minified — dynamic-import them on first use instead of shipping them in the
+// boot bundle. window.jspdf keeps the exact shape the eager import used to
+// set, so the `!window.jspdf` guards in cutlist.js still work as a fallback.
+/** @type {Promise<{ jsPDF: typeof import('jspdf').jsPDF }> | null} */
+let _jspdfLoad = null;
+window._ensureJsPDF = function _ensureJsPDF() {
+  if (window.jspdf) return Promise.resolve(window.jspdf);
+  if (!_jspdfLoad) {
+    _jspdfLoad = import('jspdf')
+      .then(async (m) => {
+        await import('jspdf-autotable'); // patches jsPDF.API — must follow jspdf
+        window.jspdf = { jsPDF: m.jsPDF };
+        return window.jspdf;
+      })
+      .catch((e) => { _jspdfLoad = null; throw e; }); // failed fetch → retry on next call
+  }
+  return _jspdfLoad;
+};
+// Warm the chunk shortly after full page load so the first export click in a
+// normal session never actually waits on the network.
+_afterLoad(() => {
+  setTimeout(() => { window._ensureJsPDF().catch(() => {}); }, 3000);
+});
 
 // ── Product analytics ──
 // PostHog is OPTIONAL and key-gated: with no VITE_POSTHOG_KEY the SDK is never
 // initialised and window.posthog stays undefined, so the src/analytics.js
 // wrappers no-op. A dev .env.local that omits the key keeps dev traffic out of
 // production analytics. Never throws — unlike the Supabase keys above.
+//
+// Perf pass P.2: the SDK (~350 KB minified, plus the session-recorder chunk it
+// pulls and the recording CPU) is dynamic-imported after `load`, off the boot
+// path. The pageview is captured at init as before (just dated ~a second
+// later); _track calls in that first window no-op, and an early _identifyUser
+// stashes window._pendingIdentify for the replay below.
 const _phKey = import.meta.env.VITE_POSTHOG_KEY;
 if (_phKey) {
-  posthog.init(_phKey, {
-    api_host: import.meta.env.VITE_POSTHOG_HOST || 'https://eu.i.posthog.com',
-    person_profiles: 'identified_only',
-    capture_pageview: true,
-    autocapture: true,
-    disable_session_recording: false,
-    session_recording: {
-      maskAllInputs: false,
-      // Mask the owner's Business Info fields in replays — company name,
-      // phone, email, address, tax number and bank/payment details are
-      // sensitive PII/financial data that should not reach analytics.
-      maskTextSelector: '#biz-name, #biz-phone, #biz-email, #biz-address, #biz-abn, #biz-bank-details',
-    },
+  _afterLoad(() => {
+    import('posthog-js').then(({ default: posthog }) => {
+      posthog.init(_phKey, {
+        api_host: import.meta.env.VITE_POSTHOG_HOST || 'https://eu.i.posthog.com',
+        person_profiles: 'identified_only',
+        capture_pageview: true,
+        autocapture: true,
+        disable_session_recording: false,
+        session_recording: {
+          maskAllInputs: false,
+          // Mask the owner's Business Info fields in replays — company name,
+          // phone, email, address, tax number and bank/payment details are
+          // sensitive PII/financial data that should not reach analytics.
+          maskTextSelector: '#biz-name, #biz-phone, #biz-email, #biz-address, #biz-abn, #biz-bank-details',
+        },
+      });
+      window.posthog = posthog;
+      // Replay an identify that fired before the SDK was ready (analytics.js
+      // stashes it when window.posthog is still undefined).
+      const pending = window._pendingIdentify;
+      if (pending && typeof window._identifyUser === 'function') {
+        window._pendingIdentify = null;
+        window._identifyUser(pending);
+      }
+    }).catch(() => { /* analytics is best-effort */ });
   });
-  window.posthog = posthog;
 }
 
 // ── Marketing attribution capture (first-touch) ──
@@ -115,11 +222,6 @@ window._getAttribution = () => {
 const _ga4Id = import.meta.env.VITE_GA4_ID;
 const _googleAdsId = import.meta.env.VITE_GOOGLE_ADS_ID;
 if (_ga4Id || _googleAdsId) {
-  const _tagSeed = _ga4Id || _googleAdsId;
-  const _s = document.createElement('script');
-  _s.async = true;
-  _s.src = `https://www.googletagmanager.com/gtag/js?id=${_tagSeed}`;
-  document.head.appendChild(_s);
   /** @type {any[]} */
   const _dl = window.dataLayer = window.dataLayer || [];
   /** @type {(...args: any[]) => void} */
@@ -128,6 +230,16 @@ if (_ga4Id || _googleAdsId) {
   _gtag('js', new Date());
   if (_ga4Id) _gtag('config', _ga4Id, { send_page_view: true });
   if (_googleAdsId) _gtag('config', _googleAdsId);
+  // Perf pass P.3: the stub above queues every call in dataLayer, so gtag.js
+  // can join after `load` and flush the queue — conversions fired during the
+  // boot window (e.g. a signup) are preserved, but the ~130 KB script stops
+  // competing with the app's own boot downloads.
+  _afterLoad(() => {
+    const _s = document.createElement('script');
+    _s.async = true;
+    _s.src = `https://www.googletagmanager.com/gtag/js?id=${_ga4Id || _googleAdsId}`;
+    document.head.appendChild(_s);
+  });
 }
 // Google Ads conversion `send_to` string ('AW-XXXXXXXXX/abcDEF12345').
 // Exposed to classic scripts via window — src/analytics.js fires the
@@ -150,6 +262,8 @@ if (_metaPixelId) {
   // properties (.callMethod, .queue, .push, .loaded, .version) so the inner
   // `n` binding is typed `any` to keep the upstream code shape intact while
   // satisfying strict TS.
+  // Perf pass P.3: stub installs eagerly (queues init/track calls); only the
+  // fbevents.js download itself is deferred past `load`, mirroring gtag above.
   (function (/** @type {any} */ f, /** @type {Document} */ b, /** @type {string} */ e, /** @type {string} */ v) {
     if (f.fbq) return;
     /** @type {any} */
@@ -158,9 +272,11 @@ if (_metaPixelId) {
     };
     if (!f._fbq) f._fbq = n;
     n.push = n; n.loaded = true; n.version = '2.0'; n.queue = [];
-    const t = b.createElement(e); /** @type {any} */ (t).async = true; /** @type {any} */ (t).src = v;
-    const s = b.getElementsByTagName(e)[0];
-    s.parentNode?.insertBefore(t, s);
+    _afterLoad(() => {
+      const t = b.createElement(e); /** @type {any} */ (t).async = true; /** @type {any} */ (t).src = v;
+      const s = b.getElementsByTagName(e)[0];
+      s.parentNode?.insertBefore(t, s);
+    });
   })(window, document, 'script', 'https://connect.facebook.net/en_US/fbevents.js');
   /** @type {any} */ (window).fbq('init', _metaPixelId);
   /** @type {any} */ (window).fbq('track', 'PageView');

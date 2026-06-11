@@ -31,14 +31,16 @@ async function loadAccountingConnections() {
   if (!_userId) return;
   try {
     // Explicit safe columns — the *_enc token columns are revoked from the
-    // client at the DB level, so a select('*') would be denied.
-    const { data: conns } = await _db('accounting_connections')
-      .select('provider, org_name, status, default_tax_code');
+    // client at the DB level, so a select('*') would be denied. Both queries
+    // may already be in flight via the early boot fetch (src/main.js) —
+    // _earlyBootOr falls back to the _db() query on any miss/error.
+    const { data: conns } = await _earlyBootOr('accounting_connections', _userId,
+      () => _db('accounting_connections').select('provider, org_name, status, default_tax_code'));
     _accountingConnections = /** @type {any} */ (conns || []);
   } catch (_e) { /* table not present yet / offline — stay empty */ }
   try {
-    const { data: links } = await _db('accounting_invoice_links')
-      .select('order_id, provider, external_url, external_number, status');
+    const { data: links } = await _earlyBootOr('accounting_invoice_links', _userId,
+      () => _db('accounting_invoice_links').select('order_id, provider, external_url, external_number, status'));
     /** @type {Record<number, any[]>} */
     const map = {};
     (links || []).forEach(/** @param {any} l */ l => { (map[l.order_id] = map[l.order_id] || []).push(l); });

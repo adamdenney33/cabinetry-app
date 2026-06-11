@@ -1625,15 +1625,18 @@ async function loadAllData() {
   if (typeof loadLinePhotos === 'function') loadLinePhotos().catch(() => null);
   if (typeof loadConnectStatus === 'function') loadConnectStatus().catch(() => null);
   if (typeof loadAllClientMessages === 'function') loadAllClientMessages().catch(() => null);
+  // Each query below may already be in flight: src/main.js starts them as the
+  // module bundle executes (window._earlyBoot) and _earlyBootOr (src/db.js)
+  // consumes that result, falling back to the _db() query on any miss/error.
   const [{ data: ord }, { data: quo }, { data: stk }, { data: cli }, { data: cat }, { data: biz }] = await Promise.all([
-    _db('orders').select('*').order('created_at', { ascending: false }),
-    _db('quotes').select('*').order('created_at', { ascending: false }),
-    _db('stock_items').select('*').order('created_at', { ascending: true }),
-    _db('clients').select('*').order('name', { ascending: true }).then(r => r).catch(() => ({data:[]})),
+    _earlyBootOr('orders', _userId, () => _db('orders').select('*').order('created_at', { ascending: false })),
+    _earlyBootOr('quotes', _userId, () => _db('quotes').select('*').order('created_at', { ascending: false })),
+    _earlyBootOr('stock_items', _userId, () => _db('stock_items').select('*').order('created_at', { ascending: true })),
+    _earlyBootOr('clients', _userId, () => _db('clients').select('*').order('name', { ascending: true })).catch(() => ({ data: [], error: null })),
     // Phase 3: catalog_items overlays cbSettings arrays
-    _db('catalog_items').select('*').eq('user_id', _userId).then(r => r).catch(() => ({data:[]})),
+    _earlyBootOr('catalog_items', _userId, () => _db('catalog_items').select('*').eq('user_id', _userId)).catch(() => ({ data: [], error: null })),
     // Phase 3: business_info overlays pc_biz / pc_biz_logo / pc_cb_settings rates
-    _db('business_info').select('*').eq('user_id', _userId).then(r => r).catch(() => ({data:[]})),
+    _earlyBootOr('business_info', _userId, () => _db('business_info').select('*').eq('user_id', _userId)).catch(() => ({ data: [], error: null })),
   ]);
   await subPromise;
   await acctPromise;
@@ -1644,7 +1647,7 @@ async function loadAllData() {
   // H0.2: hydrate shadow fields (thickness/width/length) from DB columns
   // (thickness_mm/width_mm/length_m). Cut-list and edge-band UI consumers
   // read the short names; load-time map closes the desync after reload.
-  stockItems = (stk || []).map(s => {
+  stockItems = (stk || []).map(/** @param {any} s */ s => {
     const out = /** @type {any} */ ({ ...s });
     if (s.thickness_mm != null) out.thickness = s.thickness_mm;
     if (s.width_mm != null)     out.width = s.width_mm;

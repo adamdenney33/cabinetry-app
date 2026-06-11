@@ -4,8 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ProCabinet — Cabinetry Production Dashboard</title>
-<link rel="icon" type="image/png" sizes="any" href="/brand/icons/procabinet-sunset-favicon.png">
-<link rel="apple-touch-icon" href="/brand/icons/procabinet-sunset-favicon.png">
+<link rel="icon" type="image/png" sizes="64x64" href="/brand/icons/procabinet-favicon-64.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/brand/icons/procabinet-touch-180.png">
+<!-- Auth, boot data and realtime all hit the Supabase origin within the first
+     second — open the connection (DNS+TCP+TLS) while the JS still downloads.
+     Vite replaces %VITE_*% in HTML at build/serve time. -->
+<link rel="preconnect" href="%VITE_SUPABASE_URL%" crossorigin>
 <script type="module" src="/src/main.js"></script>
 <link rel="stylesheet" href="styles.css">
 </head>
