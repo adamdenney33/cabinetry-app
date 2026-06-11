@@ -225,10 +225,24 @@ founders' offer. Details in SPEC.md § 13 (2026-06-10 growth entry).
   3. In Ads Manager create two custom audiences: "Video viewers 25% — 180d"
      (the Overview reel) and "Website visitors — 30d" (pixel) — then the
      retargeting ad set + founders ad can be built into `52550164627114`.
-  4. Enable the Signups campaign + pause the LPV traffic campaign once
-     CompleteRegistration events flow (keep the reel running until then).
+  4. ✅ Enable the Signups campaign + pause the LPV traffic campaign once
+     CompleteRegistration events flow — done by 2026-06-11: Signups ACTIVE
+     (£25/day), traffic campaign PAUSED; **8 registrations attributed
+     2026-06-11 on £36.81 (~£4.60/signup)** vs ~£15/signup implied by the
+     traffic test.
   5. Send the founders email — `marketing/founders-email-2026-06-10.md`
      (AFTER S.9; the Claim link hits test checkout until then).
+
+- ✅ **G.6 — Phase C: Advantage+ audience expansion (2026-06-11, built
+  PAUSED):** with conversion signal flowing (G.5.4), added ad set
+  `52552921435714` "Advantage+ audience — EN — optimise for signups" to the
+  Signups campaign — £15/day, OFFSITE_CONVERSIONS on COMPLETE_REGISTRATION,
+  lowest-cost, same 5-country EN geo, `advantage_audience: 1` — plus ad
+  `52552921521714` reusing the proven Overview-reel creative
+  (`2649365965481144`). A/Bs Meta's AI audience against the interest stack;
+  completes the original Meta plan's Phase C (conversions + Advantage+).
+  **PAUSED awaiting explicit enable** (per guardrails, no spend without
+  confirmation).
 
 ### Orders → cabinet line editing UX pass ✅ Done 2026-06-10
 
