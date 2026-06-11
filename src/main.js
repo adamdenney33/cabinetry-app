@@ -25,6 +25,12 @@ if (import.meta.env.VITE_SENTRY_DSN) {
   Sentry.init({
     dsn: import.meta.env.VITE_SENTRY_DSN,
     environment: import.meta.env.MODE,
+    ignoreErrors: [
+      // Microsoft Office/Outlook link-scanning + injected scripts (SafeLinks,
+      // Dynamics instrumentation) reject promises with this on pages they
+      // crawl or augment. Well-known third-party noise, not app code.
+      /Object Not Found Matching Id:\d+/,
+    ],
   });
 }
 window.Sentry = Sentry;
