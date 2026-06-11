@@ -17,6 +17,7 @@
   <div class="auth-card">
     <div class="auth-logo">ProCabinet<span>.App</span></div>
     <div class="auth-tagline">Cabinetry Production Dashboard</div>
+    <div id="auth-form-wrap">
     <div class="auth-heading" id="auth-heading">Create your account</div>
     <div id="auth-reassure" class="auth-reassure">✓ 14 days of Pro included · no card · no commitment</div>
     <div id="auth-msg"></div>
@@ -40,6 +41,7 @@
          accounts with no name. -->
     <input type="email" id="auth-email" class="auth-input" placeholder="Email address" autocomplete="email">
     <input type="password" id="auth-password" class="auth-input" placeholder="Password" autocomplete="current-password">
+    <div class="auth-forgot" id="auth-forgot" style="display:none"><span onclick="forgotPassword()">Forgot password?</span></div>
     <div id="auth-marketing-row" style="display:flex;flex-direction:column;gap:8px;margin:2px 2px 12px;text-align:left">
       <div style="font-size:12px;line-height:1.45;color:var(--muted)">Essential product and account updates will be sent to your email.</div>
       <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;font-size:12px;line-height:1.45;color:var(--text2)">
@@ -50,6 +52,23 @@
     <button class="auth-btn" id="auth-btn" onclick="authSubmit()">Create Account</button>
     <div class="auth-toggle" id="auth-toggle">Already have an account? <span onclick="toggleAuthMode()">Sign In</span></div>
     <a class="auth-learn" href="/" style="display:block;margin-top:14px;font-size:12px;color:var(--muted);text-decoration:none">&larr; Learn more about ProCabinet.App</a>
+    </div>
+    <!-- Post-signup / reset-sent confirmation panel — swapped in for the form
+         by _showConfirmPanel() (src/app.js). A full panel instead of the old
+         one-line green text, which was routinely missed. -->
+    <div id="auth-confirm-panel" style="display:none">
+      <div class="auth-confirm-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+      </div>
+      <div class="auth-heading" id="auth-confirm-title">You're nearly there!</div>
+      <div class="auth-confirm-text" id="auth-confirm-lead">We've sent a confirmation link to</div>
+      <div class="auth-confirm-email" id="auth-confirm-email"></div>
+      <div class="auth-confirm-text" id="auth-confirm-sub">Click the link in the email to activate your account — it signs you in automatically.</div>
+      <div class="auth-confirm-hint">Can't see it? Check your <b>spam / junk</b> folder — the sender is <b>noreply@procabinet.app</b>.</div>
+      <div id="auth-confirm-msg"></div>
+      <button class="auth-btn" id="auth-resend-btn" onclick="resendConfirmEmail()">Resend email</button>
+      <div class="auth-toggle"><span onclick="_backToAuthForm()">&larr; Used the wrong email? Go back</span></div>
+    </div>
   </div>
 </div>
 

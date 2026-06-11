@@ -1294,6 +1294,8 @@ function toggleAuthMode() {
   /** @type {HTMLElement} */ (document.getElementById('auth-marketing-row')).style.display = isSign ? 'none' : 'flex';
   const reassureEl = document.getElementById('auth-reassure');
   if (reassureEl) reassureEl.style.display = isSign ? 'none' : '';
+  const forgotEl = document.getElementById('auth-forgot');
+  if (forgotEl) forgotEl.style.display = isSign ? '' : 'none';
   /** @type {HTMLElement} */ (document.getElementById('auth-msg')).innerHTML = '';
 }
 
@@ -1312,6 +1314,12 @@ async function authSubmit() {
   // trigger → meta-capi-signup edge function (both use `signup-<user_id>`).
   /** @type {string | null} */
   let signupUserId = null;
+  // Anti-enumeration quirk: signUp() against an EXISTING CONFIRMED email
+  // "succeeds" but returns an obfuscated user with an empty identities array —
+  // and sends NO email. Detected here so we don't show "check your inbox" to
+  // someone whose inbox will stay empty. (Existing-but-unconfirmed emails get
+  // a fresh confirmation email and a populated identities array.)
+  let signupExistingAccount = false;
   try {
     if (_authMode === 'signin') {
       ({ error } = await _sb.auth.signInWithPassword({ email, password }));
@@ -1342,6 +1350,8 @@ async function authSubmit() {
         },
       }));
       signupUserId = signUpData?.user?.id ?? null;
+      signupExistingAccount = Array.isArray(signUpData?.user?.identities)
+        && signUpData.user.identities.length === 0;
     }
   } catch (e) {
     if (btn) { btn.disabled = false; btn.textContent = _authMode === 'signin' ? 'Sign In' : 'Create Account'; }
@@ -1349,18 +1359,209 @@ async function authSubmit() {
     return;
   }
   if (btn) { btn.disabled = false; btn.textContent = _authMode === 'signin' ? 'Sign In' : 'Create Account'; }
-  if (error) { if (msgEl) msgEl.innerHTML = `<div class="auth-error">${error.message}</div>`; return; }
-  if (typeof _track === 'function') _track(_authMode === 'signup' ? 'user_signed_up' : 'user_logged_in');
+  if (error) {
+    // "Email not confirmed" on sign-in strands the user behind a dead-end
+    // error (their original link may have expired). Route them to the
+    // confirmation panel instead — it has a working resend button.
+    const errCode = /** @type {{ code?: string }} */ (error).code || '';
+    if (_authMode === 'signin' && (errCode === 'email_not_confirmed' || /not confirmed/i.test(error.message || ''))) {
+      if (typeof _track === 'function') _track('signin_unconfirmed_email');
+      _showConfirmPanel(email, 'signup', false);
+      return;
+    }
+    if (msgEl) msgEl.innerHTML = `<div class="auth-error">${error.message}</div>`;
+    return;
+  }
+  if (_authMode === 'signin') {
+    if (typeof _track === 'function') _track('user_logged_in');
+    return; // onAuthStateChange (SIGNED_IN) takes over from here
+  }
+  // Repeated signup of a confirmed account (see signupExistingAccount above):
+  // no email was sent — flip to sign-in instead of pointing at an empty inbox.
+  if (signupExistingAccount) {
+    if (typeof _track === 'function') _track('signup_existing_account');
+    toggleAuthMode(); // → sign-in mode; the email field keeps its value
+    if (msgEl) msgEl.innerHTML = '<div class="auth-error">An account with this email already exists — sign in below, or use “Forgot password?”.</div>';
+    return;
+  }
+  if (typeof _track === 'function') _track('user_signed_up');
   // Fire ad-platform conversion pixels for paid-ads attribution. No-ops when
   // pixels are disabled (no env vars set in main.js). _trackSignupConversion
-  // is defined in src/analytics.js.
-  if (_authMode === 'signup' && typeof _trackSignupConversion === 'function') {
-    _trackSignupConversion(signupUserId);
-  }
+  // is defined in src/analytics.js. Deliberately after the repeated-signup
+  // guard — re-signups aren't conversions, and the obfuscated user id would
+  // poison the Meta CAPI dedup key.
+  if (typeof _trackSignupConversion === 'function') _trackSignupConversion(signupUserId);
   // The confirm link's tokens land on /os and the Supabase client exchanges
   // them automatically — clicking the link signs the user straight in, so
-  // don't tell them to come back and sign in again.
-  if (_authMode === 'signup' && msgEl) { msgEl.innerHTML = '<div class="auth-success">Almost there — check your email and click the confirmation link. It signs you in automatically.</div>'; }
+  // the panel says so instead of telling them to come back and sign in.
+  _showConfirmPanel(email, 'signup', true);
+}
+
+// ── "Check your inbox" confirmation panel ──────────────────────────────────
+// Replaces the old one-line green "check your email" text (routinely missed)
+// with a full panel that swaps in for the auth form. Serves three flows:
+// post-signup confirmation, password-reset sent, and unconfirmed-sign-in
+// recovery — anywhere the next step is "go click a link in your inbox".
+
+/** Email the panel is currently showing / resending to. */
+let _confirmPanelEmail = '';
+/** What a resend should send. */
+let _confirmPanelMode = /** @type {'signup' | 'recovery'} */ ('signup');
+/** @type {ReturnType<typeof setInterval> | null} */
+let _resendTimer = null;
+
+/**
+ * Swap the auth form for the confirmation panel.
+ * @param {string} email
+ * @param {'signup' | 'recovery'} mode what the Resend button sends
+ * @param {boolean} justSent true when an email was just sent (starts the
+ *   resend cooldown); false when arriving without a send (unconfirmed
+ *   sign-in) so the send button is immediately live.
+ */
+function _showConfirmPanel(email, mode, justSent) {
+  _confirmPanelEmail = email;
+  _confirmPanelMode = mode;
+  /** @param {string} id @param {string} text */
+  const set = (id, text) => { const el = document.getElementById(id); if (el) el.textContent = text; };
+  set('auth-confirm-title', justSent ? (mode === 'recovery' ? 'Check your inbox' : 'You’re nearly there!') : 'Confirm your email');
+  set('auth-confirm-lead', justSent
+    ? (mode === 'recovery' ? 'We’ve sent a password reset link to' : 'We’ve sent a confirmation link to')
+    : 'Your email isn’t confirmed yet. We can send a fresh link to');
+  set('auth-confirm-email', email);
+  set('auth-confirm-sub', mode === 'recovery'
+    ? 'Click the link in the email to choose a new password.'
+    : 'Click the link in the email to activate your account — it signs you in automatically.');
+  const msg = document.getElementById('auth-confirm-msg');
+  if (msg) msg.innerHTML = '';
+  const btn = /** @type {HTMLButtonElement | null} */ (document.getElementById('auth-resend-btn'));
+  if (btn) btn.textContent = justSent ? 'Resend email' : 'Send email';
+  const fw = document.getElementById('auth-form-wrap');
+  if (fw) fw.style.display = 'none';
+  const panel = document.getElementById('auth-confirm-panel');
+  if (panel) panel.style.display = '';
+  if (justSent) _startResendCooldown(60); else _clearResendCooldown();
+}
+
+function _backToAuthForm() {
+  _clearResendCooldown();
+  const panel = document.getElementById('auth-confirm-panel');
+  if (panel) panel.style.display = 'none';
+  const fw = document.getElementById('auth-form-wrap');
+  if (fw) fw.style.display = '';
+  const msgEl = document.getElementById('auth-msg');
+  if (msgEl) msgEl.innerHTML = '';
+}
+
+/**
+ * Disable the resend button for `secs` seconds. Supabase's smtp_max_frequency
+ * rejects same-address sends inside 60s anyway — surface that as a countdown
+ * instead of a server error.
+ * @param {number} secs
+ */
+function _startResendCooldown(secs) {
+  _clearResendCooldown();
+  const btn = /** @type {HTMLButtonElement | null} */ (document.getElementById('auth-resend-btn'));
+  if (!btn) return;
+  const base = btn.textContent || 'Resend email';
+  let left = secs;
+  btn.disabled = true;
+  btn.textContent = `${base} (${left}s)`;
+  _resendTimer = setInterval(() => {
+    left -= 1;
+    if (left <= 0) { _clearResendCooldown(); btn.textContent = base; return; }
+    btn.textContent = `${base} (${left}s)`;
+  }, 1000);
+}
+
+function _clearResendCooldown() {
+  if (_resendTimer) { clearInterval(_resendTimer); _resendTimer = null; }
+  const btn = /** @type {HTMLButtonElement | null} */ (document.getElementById('auth-resend-btn'));
+  if (btn) btn.disabled = false;
+}
+
+/** Resend whatever the panel is waiting on (confirmation or reset link). */
+async function resendConfirmEmail() {
+  const msg = document.getElementById('auth-confirm-msg');
+  const redirectTo = window.location.origin + (window._isDev ? '' : '/os');
+  let error = null;
+  try {
+    if (_confirmPanelMode === 'recovery') {
+      ({ error } = await _sb.auth.resetPasswordForEmail(_confirmPanelEmail, { redirectTo }));
+    } else {
+      ({ error } = await _sb.auth.resend({ type: 'signup', email: _confirmPanelEmail, options: { emailRedirectTo: redirectTo } }));
+    }
+  } catch (e) { error = /** @type {any} */ (e); }
+  if (error) {
+    const rate = /rate|second|frequency/i.test(error.message || '');
+    if (msg) msg.innerHTML = `<div class="auth-error">${rate ? 'Too many requests — wait a minute, then try again.' : (error.message || 'Could not send the email.')}</div>`;
+    return;
+  }
+  if (typeof _track === 'function') _track(_confirmPanelMode === 'recovery' ? 'password_reset_resent' : 'confirmation_email_resent');
+  const btn = /** @type {HTMLButtonElement | null} */ (document.getElementById('auth-resend-btn'));
+  if (btn) btn.textContent = 'Resend email';
+  if (msg) msg.innerHTML = '<div class="auth-success">Sent! Give it a minute — and check spam.</div>';
+  _startResendCooldown(60);
+}
+
+/**
+ * "Forgot password?" (sign-in mode). Sends the reset email and shows the
+ * confirmation panel. Supabase deliberately succeeds for unknown emails
+ * (anti-enumeration), so the panel shows either way.
+ */
+async function forgotPassword() {
+  const email = /** @type {HTMLInputElement | null} */ (document.getElementById('auth-email'))?.value.trim() || '';
+  const msgEl = document.getElementById('auth-msg');
+  if (!email) { if (msgEl) msgEl.innerHTML = '<div class="auth-error">Type your email address above first.</div>'; return; }
+  if (msgEl) msgEl.innerHTML = '';
+  let error = null;
+  try {
+    ({ error } = await _sb.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin + (window._isDev ? '' : '/os') }));
+  } catch (e) { error = /** @type {any} */ (e); }
+  if (error) { if (msgEl) msgEl.innerHTML = `<div class="auth-error">${error.message}</div>`; return; }
+  if (typeof _track === 'function') _track('password_reset_requested');
+  _showConfirmPanel(email, 'recovery', true);
+}
+
+/**
+ * Opened by onAuthStateChange on PASSWORD_RECOVERY — the reset link has
+ * already signed the user in; this collects the new password on top of the
+ * loading app.
+ */
+function _openSetNewPasswordPopup() {
+  _openPopup(`
+    <div class="popup-header">
+      <div class="popup-title">Set a new password</div>
+      <button class="popup-close" onclick="_closePopup()">×</button>
+    </div>
+    <div class="popup-body">
+      <div class="pf">
+        <label class="pf-label">New password</label>
+        <input class="pf-input" type="password" id="np-pass" autocomplete="new-password" placeholder="At least 6 characters">
+      </div>
+      <div class="pf">
+        <label class="pf-label">Repeat it</label>
+        <input class="pf-input" type="password" id="np-pass2" autocomplete="new-password">
+      </div>
+      <div id="np-msg"></div>
+    </div>
+    <div class="popup-footer">
+      <button class="btn btn-outline" onclick="_closePopup()">Cancel</button>
+      <button class="btn btn-primary" onclick="_saveNewPassword()">Save password</button>
+    </div>`, 'sm');
+}
+
+async function _saveNewPassword() {
+  const p1 = _popupVal('np-pass'), p2 = _popupVal('np-pass2');
+  const msg = document.getElementById('np-msg');
+  /** @param {string} t */
+  const fail = (t) => { if (msg) msg.innerHTML = `<div class="auth-error">${t}</div>`; };
+  if (!p1 || p1.length < 6) { fail('Password must be at least 6 characters.'); return; }
+  if (p1 !== p2) { fail('Passwords don’t match.'); return; }
+  const { error } = await _sb.auth.updateUser({ password: p1 });
+  if (error) { fail(error.message); return; }
+  if (typeof _track === 'function') _track('password_reset_completed');
+  _closePopup();
+  _toast('Password updated — you’re signed in.', 'success');
 }
 
 // One-click Google sign-in / sign-up. signInWithOAuth navigates the whole page
@@ -1673,6 +1874,10 @@ _sb.auth.onAuthStateChange(async (event, session) => {
       window.addEventListener('load', done, { once: true });
     });
   }
+  // Password-recovery landing: the reset link signs the user in (session
+  // present, so the app loads below as normal), but they still need to choose
+  // a new password — collect it on top of the loading app.
+  if (event === 'PASSWORD_RECOVERY') _openSetNewPasswordPopup();
   if (session) {
     // A real Supabase session — leave demo mode. Guard on _wtActive so a
     // TOKEN_REFRESHED firing while a signed-in user runs the walkthrough

@@ -1862,6 +1862,31 @@ input.li-num:focus { outline: none; border-color: var(--accent); }
 }
 .auth-error { font-size: 12px; color: var(--danger); margin-bottom: 10px; min-height: 16px; }
 .auth-success { font-size: 12px; color: var(--success); margin-bottom: 10px; }
+/* "Check your inbox" confirmation panel — swapped in for the auth form by
+   _showConfirmPanel() (src/app.js) after signup / password reset. */
+#auth-confirm-panel { text-align: center; }
+.auth-confirm-icon {
+  width: 46px; height: 46px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  margin: 2px auto 14px;
+  background: var(--surface2); border: 1px solid var(--border);
+  color: var(--accent);
+}
+.auth-confirm-text { font-size: 13px; color: var(--text2); line-height: 1.5; margin-bottom: 10px; }
+.auth-confirm-email {
+  font-size: 14px; font-weight: 700; color: var(--text);
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 8px; padding: 8px 12px; margin: 0 0 12px;
+  word-break: break-all;
+}
+.auth-confirm-hint {
+  font-size: 12px; color: var(--muted); line-height: 1.5; text-align: left;
+  background: var(--surface2); border-radius: 8px; padding: 8px 11px;
+  margin-bottom: 14px;
+}
+.auth-forgot { text-align: right; margin: -6px 2px 10px; font-size: 12px; }
+.auth-forgot span { color: var(--muted); cursor: pointer; text-decoration: underline; }
+.auth-forgot span:hover { color: var(--text2); }
 .auth-input {
   width: 100%; padding: 10px 14px; border: 1px solid var(--border);
   border-radius: 8px; background: var(--surface2); color: var(--text);
