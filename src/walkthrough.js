@@ -428,7 +428,12 @@ async function _wtClose(reason) {
 async function _wtPersistState(patch) {
   const next = Object.assign({}, _wtW._onboardingState || {}, patch);
   _wtW._onboardingState = next;
-  try { localStorage.setItem('pc_wt_state', JSON.stringify(next)); } catch (e) { void e; }
+  // Stamp the owning account into the browser copy so _wtMaybeAutoStart can
+  // tell this account's dismissal from another account's (or a guest's).
+  try {
+    localStorage.setItem('pc_wt_state',
+      JSON.stringify(_userId ? { ...next, user_id: _userId } : next));
+  } catch (e) { void e; }
   if (!_userId || typeof _db !== 'function') return;
   const uid = _userId;
   try {
@@ -1123,6 +1128,11 @@ async function _wtMaybeAutoStart() {
   /** @type {any} */
   let ls = null;
   try { ls = JSON.parse(localStorage.getItem('pc_wt_state') || 'null'); } catch (e) { ls = null; }
+  // localStorage is per-BROWSER but dismissal is per-ACCOUNT: an entry written
+  // by another account — or by a guest in the pre-launch demo era, which never
+  // stamped user_id — must not suppress a brand-new account's first run.
+  // business_info.onboarding_state (per-account, cross-device) still gates.
+  if (ls && ls.user_id !== _userId) ls = null;
   const ob = _wtW._onboardingState || {};
   const lsVersion = (ls && typeof ls.version === 'number') ? ls.version : -1;
   const obVersion = (typeof ob.version === 'number') ? ob.version : -1;

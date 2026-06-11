@@ -1778,7 +1778,12 @@ function _applyCatalogFromDB(rows) {
 // If DB has no row, existing localStorage-loaded values remain.
 /** @param {any[]} rows */
 function _applyBizInfoFromDB(rows) {
-  if (!rows || rows.length === 0) return;
+  if (!rows || rows.length === 0) {
+    // No business_info row (brand-new account): reset the walkthrough gate so
+    // a previous account's state can't leak across a same-tab account switch.
+    /** @type {any} */ (window)._onboardingState = {};
+    return;
+  }
   const b = rows[0];
   // O.2: stash the guided-walkthrough state for walkthrough.js's auto-start
   // gate. Absent/non-object => {} (treated as a never-onboarded user).
