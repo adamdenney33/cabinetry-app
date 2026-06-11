@@ -432,14 +432,10 @@ async function _wtPersistState(patch) {
   if (!_userId || typeof _db !== 'function') return;
   const uid = _userId;
   try {
-    const { data: existing } = await _db('business_info').select('id').eq('user_id', uid);
-    if (existing && existing.length > 0) {
-      await _db('business_info')
-        .update({ onboarding_state: next, updated_at: new Date().toISOString() })
-        .eq('user_id', uid);
-    } else {
-      await _db('business_info').insert([{ user_id: uid, name: '', onboarding_state: next }]);
-    }
+    await _db('business_info').upsert(
+      [{ user_id: uid, onboarding_state: next, updated_at: new Date().toISOString() }],
+      { onConflict: 'user_id' }
+    );
   } catch (e) {
     console.warn('[walkthrough] persist failed', e);
   }

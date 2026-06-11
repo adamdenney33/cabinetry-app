@@ -32,6 +32,31 @@ let _accessToken = null;
 /** @param {string | null} t */
 function _setAccessToken(t) { _accessToken = t || null; }
 
+// The SDK's TOKEN_REFRESHED timer can miss while a laptop sleeps or a mobile
+// tab is frozen, so the cached JWT may be expired when the user comes back —
+// PostgREST then rejects every request 401 PGRST303 ("JWT expired") and the
+// write is silently dropped (Sentry JAVASCRIPT-C). _db() recovers by forcing
+// one refresh and replaying the request; this helper dedupes concurrent 401s
+// into a single refreshSession() call.
+/** @type {Promise<string | null> | null} */
+let _tokenRefreshInFlight = null;
+/** Force-refresh the Supabase session and update the in-memory token cache.
+ *  Resolves with the fresh access token, or null if there is no session to
+ *  refresh (signed out / refresh token revoked). @returns {Promise<string | null>} */
+function _dbRefreshAuthToken() {
+  if (!_tokenRefreshInFlight) {
+    _tokenRefreshInFlight = _sb.auth.refreshSession()
+      .then(({ data }) => {
+        const t = data?.session?.access_token || null;
+        if (t) _setAccessToken(t);
+        return t;
+      })
+      .catch(() => /** @type {string | null} */ (null))
+      .finally(() => { _tokenRefreshInFlight = null; });
+  }
+  return _tokenRefreshInFlight;
+}
+
 /** Current best-effort user access token. Prefer the in-memory cache; fall back
  *  to a localStorage read only for the brief first-paint window before
  *  onAuthStateChange fires (and only where storage works). Shared by _dbHeaders()
@@ -91,12 +116,23 @@ class _DBBuilder {
     this._body = null;
     /** @type {number | null} */
     this._lim = null;
+    /** @type {string | null} */
+    this._onConflict = null;
   }
   _clone() { const b = new _DBBuilder(this._t); return Object.assign(b, this, { _where: { ...this._where } }); }
   /** @returns {_DBBuilder<K, Single>} */
   select(cols = '*') { const b = this._clone(); b._sel = cols; return /** @type {any} */ (b); }
   /** @param {_Tables[K]['Insert'] | _Tables[K]['Insert'][]} body @returns {_DBBuilder<K, Single>} */
   insert(body)       { const b = this._clone(); b._method = 'insert'; b._body = body; return /** @type {any} */ (b); }
+  /** PostgREST upsert — INSERT … ON CONFLICT (onConflict) DO UPDATE, limited to
+   *  the columns present in `body`: omitted columns take their DB defaults on
+   *  insert and are left untouched on update, so partial payloads are safe.
+   *  Replaces the select-then-insert/update pattern, which raced on flaky
+   *  networks (request commits server-side, client sees "Failed to fetch",
+   *  retry hits the unique constraint — Sentry JAVASCRIPT-A/B).
+   *  @param {_Tables[K]['Insert'] | _Tables[K]['Insert'][]} body
+   *  @param {{ onConflict?: string }} [opts] @returns {_DBBuilder<K, Single>} */
+  upsert(body, { onConflict } = {}) { const b = this._clone(); b._method = 'upsert'; b._body = body; b._onConflict = onConflict || null; return /** @type {any} */ (b); }
   /** @param {_Tables[K]['Update']} body @returns {_DBBuilder<K, Single>} */
   update(body)       { const b = this._clone(); b._method = 'update'; b._body = body; return /** @type {any} */ (b); }
   /** @returns {_DBBuilder<K, Single>} */
@@ -117,6 +153,7 @@ class _DBBuilder {
   _params() {
     const p = new URLSearchParams();
     if (this._method === 'select') p.set('select', this._sel);
+    if (this._method === 'upsert' && this._onConflict) p.set('on_conflict', this._onConflict);
     Object.entries(this._where).forEach(([c, v]) => p.set(c, v));
     if (this._orderBy) p.set('order', `${this._orderBy}.${this._orderAsc ? 'asc' : 'desc'}`);
     if (this._lim) p.set('limit', String(this._lim));
@@ -144,29 +181,46 @@ class _DBBuilder {
       // @ts-expect-error fake-thenable: `this` is structurally PromiseLike.
       return this;
     }
-    const h = _dbHeaders(), ps = this._params();
+    const ps = this._params();
     const url = `${_SBURL}/rest/v1/${this._t}${ps ? '?' + ps : ''}`;
-    /** @type {RequestInit} */
-    let opts = { headers: h };
-    if (this._method === 'insert') opts = { method: 'POST',  headers: { ...h, 'Prefer': 'return=representation' }, body: JSON.stringify(this._body) };
-    if (this._method === 'update') opts = { method: 'PATCH', headers: { ...h, 'Prefer': 'return=representation' }, body: JSON.stringify(this._body) };
-    if (this._method === 'delete') opts = { method: 'DELETE', headers: h };
-    fetch(url, opts).then(async r => {
-      const txt = await r.text();
-      let data; try { data = JSON.parse(txt); } catch(e) { data = null; }
-      // The conditional Single → Row|null vs Row[]|null return type can't statically
-      // narrow inside this generic handler, so cast through any at the resolve site.
-      const resolve = /** @type {(v: any) => any} */ (onfulfilled);
-      if (!r.ok) {
-        if (this._method !== 'select') _dbReportWriteError(this._t, this._method, r.status, data || txt);
-        return resolve && resolve({ data: null, error: data || { message: 'HTTP ' + r.status } });
-      }
-      if (this._isSingle) return resolve && resolve({ data: Array.isArray(data) ? (data[0] || null) : (data || null), error: null });
-      resolve && resolve({ data: data || [], error: null });
-    }).catch(e => {
-      if (this._method !== 'select') _dbReportWriteError(this._t, this._method, 0, { message: e && e.message });
-      return onfulfilled && /** @type {(v: any) => any} */ (onfulfilled)({ data: null, error: { message: e.message } });
-    });
+    // The conditional Single → Row|null vs Row[]|null return type can't statically
+    // narrow inside this generic handler, so cast through any at the resolve site.
+    const resolve = /** @type {(v: any) => any} */ (onfulfilled);
+    // Headers are built per attempt (not hoisted) so a retry after a token
+    // refresh picks up the fresh JWT.
+    const buildOpts = () => {
+      const h = _dbHeaders();
+      /** @type {RequestInit} */
+      let opts = { headers: h };
+      if (this._method === 'insert') opts = { method: 'POST',  headers: { ...h, 'Prefer': 'return=representation' }, body: JSON.stringify(this._body) };
+      if (this._method === 'upsert') opts = { method: 'POST',  headers: { ...h, 'Prefer': 'return=representation,resolution=merge-duplicates' }, body: JSON.stringify(this._body) };
+      if (this._method === 'update') opts = { method: 'PATCH', headers: { ...h, 'Prefer': 'return=representation' }, body: JSON.stringify(this._body) };
+      if (this._method === 'delete') opts = { method: 'DELETE', headers: h };
+      return opts;
+    };
+    const attempt = (/** @type {boolean} */ canRetryAuth) => {
+      fetch(url, buildOpts()).then(async r => {
+        // 401 = expired/stale JWT (PGRST303): nothing was committed, so force
+        // one session refresh and replay the request with the new token. Only
+        // once — a second 401 means the user is genuinely signed out.
+        if (r.status === 401 && canRetryAuth) {
+          const fresh = await _dbRefreshAuthToken();
+          if (fresh) return attempt(false);
+        }
+        const txt = await r.text();
+        let data; try { data = JSON.parse(txt); } catch(e) { data = null; }
+        if (!r.ok) {
+          if (this._method !== 'select') _dbReportWriteError(this._t, this._method, r.status, data || txt);
+          return resolve && resolve({ data: null, error: data || { message: 'HTTP ' + r.status } });
+        }
+        if (this._isSingle) return resolve && resolve({ data: Array.isArray(data) ? (data[0] || null) : (data || null), error: null });
+        resolve && resolve({ data: data || [], error: null });
+      }).catch(e => {
+        if (this._method !== 'select') _dbReportWriteError(this._t, this._method, 0, { message: e && e.message });
+        return resolve && resolve({ data: null, error: { message: e.message } });
+      });
+    };
+    attempt(true);
     // @ts-expect-error fake-thenable: `this` is structurally PromiseLike (it has .then),
     // but TS can't reconcile the fixed-shape resolve type with PromiseLike's generic signature
     return this;

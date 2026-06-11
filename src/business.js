@@ -64,14 +64,8 @@ function _syncBizInfoToDB(payload) {
       updated_at: new Date().toISOString()
     };
     let failed = false;
-    const { data: existing } = await _db('business_info').select('id').eq('user_id', uid);
-    if (existing && existing.length > 0) {
-      const { error } = await _db('business_info').update(fields).eq('user_id', uid);
-      if (error) { console.warn('[biz_info] DB sync failed:', error.message); failed = true; }
-    } else {
-      const { error } = await _db('business_info').insert([fields]);
-      if (error) { console.warn('[biz_info] DB sync failed:', error.message); failed = true; }
-    }
+    const { error } = await _db('business_info').upsert([fields], { onConflict: 'user_id' });
+    if (error) { console.warn('[biz_info] DB sync failed:', error.message); failed = true; }
     w._saveInFlight.delete('business');
     if (typeof _setSaveStatus === 'function') {
       _setSaveStatus('business', failed ? 'failed' : 'saved', failed ? { retry: () => _syncBizInfoToDB(payload) } : undefined);
@@ -161,16 +155,10 @@ function _syncCBSettingsToDB() {
     w._saveInFlight.add('cabinet-settings');
     if (typeof _setSaveStatus === 'function') _setSaveStatus('cabinet', 'saving');
     let failed = false;
-    const { data: existing } = await _db('business_info').select('id').eq('user_id', uid);
-    if (existing && existing.length > 0) {
-      const { error } = await _db('business_info').update(fields).eq('user_id', uid);
-      if (error) { console.warn('[cb_settings] DB sync failed:', error.message); failed = true; }
-    } else {
-      // Need name (NOT NULL) — ensure baseline before insert
-      fields.name = '';
-      const { error } = await _db('business_info').insert([fields]);
-      if (error) { console.warn('[cb_settings] DB sync failed:', error.message); failed = true; }
-    }
+    // Partial upsert: name (NOT NULL) is omitted — its DB default '' applies on
+    // first insert, and an existing business name is never overwritten.
+    const { error } = await _db('business_info').upsert([fields], { onConflict: 'user_id' });
+    if (error) { console.warn('[cb_settings] DB sync failed:', error.message); failed = true; }
     w._saveInFlight.delete('cabinet-settings');
     if (typeof _setSaveStatus === 'function') {
       _setSaveStatus('cabinet', failed ? 'failed' : 'saved', failed ? { retry: _syncCBSettingsToDB } : undefined);
@@ -309,13 +297,10 @@ function handleLogoUpload(input) {
         return;
       }
       if (url) {
-        // UPSERT business_info.logo_url
-        const { data: existing } = await _db('business_info').select('id').eq('user_id', _userId);
-        if (existing && existing.length > 0) {
-          await _db('business_info').update({ logo_url: url, updated_at: new Date().toISOString() }).eq('user_id', _userId);
-        } else {
-          await _db('business_info').insert([{ user_id: _userId, logo_url: url, name: '' }]);
-        }
+        await _db('business_info').upsert(
+          [{ user_id: _userId, logo_url: url, updated_at: new Date().toISOString() }],
+          { onConflict: 'user_id' }
+        );
         _toast('Logo saved & synced', 'success');
         return;
       }

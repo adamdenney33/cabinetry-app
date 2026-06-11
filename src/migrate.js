@@ -70,16 +70,9 @@ async function _migrateBizInfo(log) {
     default_tax_pct: parseFloat(cbSettings.tax) || 13,
     updated_at: new Date().toISOString()
   };
-  const { data: existing } = await _db('business_info').select('id').eq('user_id', uid);
-  if (existing && existing.length > 0) {
-    const { error } = await _db('business_info').update(fields).eq('user_id', uid);
-    if (error) { _migLog(log, sub, 'ERR', 'Update failed: ' + error.message); return; }
-    _migLog(log, sub, 'OK', 'Updated existing business_info row', 1);
-  } else {
-    const { error } = await _db('business_info').insert([fields]);
-    if (error) { _migLog(log, sub, 'ERR', 'Insert failed: ' + error.message); return; }
-    _migLog(log, sub, 'OK', 'Inserted business_info row', 1);
-  }
+  const { error } = await _db('business_info').upsert([fields], { onConflict: 'user_id' });
+  if (error) { _migLog(log, sub, 'ERR', 'Upsert failed: ' + error.message); return; }
+  _migLog(log, sub, 'OK', 'Upserted business_info row', 1);
 }
 
 // ── 2. Catalog items (materials/handles/finishes/hardware unified) ──
