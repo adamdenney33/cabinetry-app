@@ -42,6 +42,39 @@
   .qp-row.excluded .qp-price { text-decoration: line-through; }
   .qp-photo { width: 84px; height: 64px; border-radius: 8px; overflow: hidden; border: 1px solid var(--border); background: var(--surface2); flex-shrink: 0; }
   .qp-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  /* Photo thumb is a button when photos exist — tap to open the viewer. */
+  button.qp-photo { padding: 0; position: relative; display: block; cursor: zoom-in; appearance: none; -webkit-appearance: none; }
+  button.qp-photo:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .qp-photo-n { position: absolute; right: 4px; bottom: 4px; background: rgba(10,10,10,.62); color: #fff; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 999px; pointer-events: none; font-family: inherit; }
+  /* Photo viewer (lightbox) — fixed dark chrome on both themes. */
+  .qp-pv { position: fixed; inset: 0; z-index: 9300; background: rgba(8,8,10,.9); display: flex; flex-direction: column; animation: qp-pv-in .16s ease; }
+  @keyframes qp-pv-in { from { opacity: 0; } to { opacity: 1; } }
+  .qp-pv-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px; }
+  .qp-pv-cap { font-size: 13px; font-weight: 700; color: rgba(255,255,255,.92); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .qp-pv-x { border: none; background: rgba(255,255,255,.12); color: #fff; width: 36px; height: 36px; border-radius: 50%; font-size: 20px; line-height: 1; cursor: pointer; flex-shrink: 0; font-family: inherit; }
+  .qp-pv-x:hover { background: rgba(255,255,255,.24); }
+  .qp-pv-stage { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; padding: 0 64px; position: relative; }
+  .qp-pv-stage img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 8px; user-select: none; -webkit-user-drag: none; }
+  .qp-pv-arrow { position: absolute; top: 50%; transform: translateY(-50%); width: 42px; height: 42px; border-radius: 50%; border: none; background: rgba(255,255,255,.12); color: #fff; font-size: 26px; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0 0 3px; font-family: inherit; }
+  .qp-pv-arrow:hover { background: rgba(255,255,255,.24); }
+  .qp-pv-arrow.prev { left: 14px; }
+  .qp-pv-arrow.next { right: 14px; }
+  .qp-pv-arrow:focus-visible, .qp-pv-x:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .qp-pv-foot { padding: 10px 16px calc(16px + env(safe-area-inset-bottom)); text-align: center; }
+  .qp-pv-count { color: rgba(255,255,255,.8); font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .qp-pv-thumbs { display: flex; gap: 8px; margin-top: 10px; overflow-x: auto; padding: 2px; }
+  /* Auto-margins centre the strip when it fits, yet keep photo 1 reachable when it scrolls. */
+  .qp-pv-thumbs img:first-child { margin-left: auto; }
+  .qp-pv-thumbs img:last-child { margin-right: auto; }
+  .qp-pv-thumbs img { width: 54px; height: 40px; object-fit: cover; border-radius: 6px; opacity: .5; cursor: pointer; border: 2px solid transparent; flex-shrink: 0; transition: opacity .12s; }
+  .qp-pv-thumbs img.on { opacity: 1; border-color: var(--accent); }
+  .qp-pv-thumbs img:hover { opacity: .85; }
+  @media (max-width: 480px) {
+    .qp-pv-stage { padding: 0 44px; }
+    .qp-pv-arrow { width: 36px; height: 36px; font-size: 22px; }
+    .qp-pv-arrow.prev { left: 6px; }
+    .qp-pv-arrow.next { right: 6px; }
+  }
   .qp-price { font-weight: 800; font-size: 15px; font-variant-numeric: tabular-nums; }
   .qp-chip { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; padding: 2px 7px; border-radius: 999px; }
   .qp-chip.opt { background: rgba(232,168,56,.16); color: var(--accent); }

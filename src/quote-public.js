@@ -140,7 +140,7 @@ function row(l) {
   const accepted = !!D?.quote?.accepted_at;
   const photos = photosByLine[l.id] || [];
   const photo = photos.length
-    ? `<div class="qp-photo"><img src="${esc(photos[0])}" alt="" loading="lazy"></div>`
+    ? `<button type="button" class="qp-photo" onclick="__qp.openPhotos(${l.id},0)" aria-label="View ${photos.length > 1 ? photos.length + ' photos' : 'photo'} of ${esc(l.name || 'this item')}"><img src="${esc(photos[0])}" alt="" loading="lazy">${photos.length > 1 ? `<span class="qp-photo-n">+${photos.length - 1}</span>` : ''}</button>`
     : '';
   const chips = [];
   if (l.optional && !accepted) chips.push('<span class="qp-chip opt">Optional</span>');
@@ -461,8 +461,93 @@ function renderMsgs() {
   body.scrollTop = body.scrollHeight;
 }
 
+// ── photo viewer (lightbox) ──────────────────────────────────────────────────
+// Opened by tapping a line's photo thumb. Shows every photo attached to that
+// item with arrows / counter / thumb strip; Esc + arrow keys and touch swipe.
+/** @type {string[]} */ let pvUrls = [];
+let pvIdx = 0;
+
+function pvRender() {
+  const img = /** @type {HTMLImageElement|null} */ (document.getElementById('qp-pv-img'));
+  if (!img) return;
+  img.src = pvUrls[pvIdx] || '';
+  const count = document.getElementById('qp-pv-count');
+  if (count) count.textContent = (pvIdx + 1) + ' / ' + pvUrls.length;
+  const thumbs = document.getElementById('qp-pv-thumbs');
+  if (thumbs) [...thumbs.children].forEach((t, i) => t.classList.toggle('on', i === pvIdx));
+  // Preload the neighbours so the arrows feel instant.
+  [pvIdx + 1, pvIdx - 1].forEach((i) => {
+    const u = pvUrls[(i + pvUrls.length) % pvUrls.length];
+    if (u) { const pre = new Image(); pre.src = u; }
+  });
+}
+
+/** @param {KeyboardEvent} e */
+function pvKey(e) {
+  if (e.key === 'Escape') handlers.closePhotos();
+  else if (e.key === 'ArrowLeft') handlers.pvNav(-1);
+  else if (e.key === 'ArrowRight') handlers.pvNav(1);
+}
+
 // ── interactions (attached to window for inline handlers) ────────────────────
 const handlers = {
+  /** Open the photo viewer on a line's photos. @param {number} lineId @param {number} [idx] */
+  openPhotos(lineId, idx) {
+    const photos = photosByLine[lineId] || [];
+    if (!photos.length) return;
+    handlers.closePhotos();
+    const l = lines.find((x) => x.id === lineId);
+    const name = (l && l.name) || 'Item';
+    pvUrls = photos.slice();
+    pvIdx = Math.min(Math.max(idx || 0, 0), pvUrls.length - 1);
+    const multi = pvUrls.length > 1;
+    const el = document.createElement('div');
+    el.className = 'qp-pv'; el.id = 'qp-pv';
+    el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true');
+    el.setAttribute('aria-label', name + ' photos');
+    el.innerHTML = `
+      <div class="qp-pv-head"><span class="qp-pv-cap">${esc(name)}</span><button class="qp-pv-x" aria-label="Close photo viewer" onclick="__qp.closePhotos()">×</button></div>
+      <div class="qp-pv-stage" id="qp-pv-stage">
+        ${multi ? `<button class="qp-pv-arrow prev" aria-label="Previous photo" onclick="__qp.pvNav(-1)">‹</button>` : ''}
+        <img id="qp-pv-img" alt="${esc(name)} photo">
+        ${multi ? `<button class="qp-pv-arrow next" aria-label="Next photo" onclick="__qp.pvNav(1)">›</button>` : ''}
+      </div>
+      ${multi ? `<div class="qp-pv-foot"><div class="qp-pv-count" id="qp-pv-count"></div>
+        <div class="qp-pv-thumbs" id="qp-pv-thumbs">${pvUrls.map((u, i) => `<img src="${esc(u)}" alt="Photo ${i + 1}" loading="lazy" onclick="__qp.pvGo(${i})">`).join('')}</div></div>`
+      : '<div class="qp-pv-foot"></div>'}`;
+    // Tapping the dark backdrop (not the image or controls) closes the viewer.
+    el.addEventListener('click', (e) => {
+      const t = /** @type {HTMLElement} */ (e.target);
+      if (t === el || t.id === 'qp-pv-stage' || t.classList.contains('qp-pv-foot')) handlers.closePhotos();
+    });
+    // Touch swipe left/right to move between photos.
+    let x0 = 0, y0 = 0;
+    el.addEventListener('touchstart', (e) => { x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; }, { passive: true });
+    el.addEventListener('touchend', (e) => {
+      const dx = e.changedTouches[0].clientX - x0, dy = e.changedTouches[0].clientY - y0;
+      if (Math.abs(dx) > 44 && Math.abs(dx) > Math.abs(dy) * 1.5) handlers.pvNav(dx < 0 ? 1 : -1);
+    }, { passive: true });
+    document.body.appendChild(el);
+    document.addEventListener('keydown', pvKey);
+    document.body.style.overflow = 'hidden';   // page shouldn't scroll behind the viewer
+    pvRender();
+    const x = el.querySelector('.qp-pv-x');
+    if (x) /** @type {HTMLElement} */ (x).focus();
+  },
+  /** Step the open viewer forwards/backwards (wraps). @param {number} d */
+  pvNav(d) {
+    if (!pvUrls.length) return;
+    pvIdx = (pvIdx + d + pvUrls.length) % pvUrls.length;
+    pvRender();
+  },
+  /** Jump straight to a photo from the thumb strip. @param {number} i */
+  pvGo(i) { if (i >= 0 && i < pvUrls.length) { pvIdx = i; pvRender(); } },
+  closePhotos() {
+    const el = document.getElementById('qp-pv');
+    if (el) el.remove();
+    document.removeEventListener('keydown', pvKey);
+    document.body.style.overflow = '';
+  },
   /** @param {number} id */
   async toggle(id) {
     const l = lines.find((x) => x.id === id); if (!l) return;
