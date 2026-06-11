@@ -46,7 +46,7 @@ function corsHeaders(origin: string | null): Record<string, string> {
   const allowed = origin && ALLOWED_ORIGINS.has(origin) ? origin : 'https://procabinet.app';
   return {
     'access-control-allow-origin': allowed,
-    'access-control-allow-headers': 'authorization, content-type',
+    'access-control-allow-headers': 'authorization, content-type, apikey, x-client-info',
     'access-control-allow-methods': 'POST, OPTIONS',
   };
 }
