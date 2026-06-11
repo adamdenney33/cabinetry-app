@@ -1270,6 +1270,15 @@ function _saveCabinetPopup(idx) {
 
 /** @type {string | null} */
 let _userId = null;
+/** User id whose data this page session has already boot-loaded. Dedupes the
+ *  full loadAllData() across supabase-js's repeated session events — on every
+ *  page load it emits INITIAL_SESSION and then SIGNED_IN for the same stored
+ *  session, plus SIGNED_IN again on tab re-focus and TOKEN_REFRESHED hourly.
+ *  Before this guard each of those re-ran the entire boot load (every query
+ *  twice per page load, serialized — the dominant boot cost on slow
+ *  connections) and wiped the _lines/_totals caches mid-use.
+ *  @type {string | null} */
+let _bootLoadedUserId = null;
 // Default to sign-up: a logged-out visitor arriving from the landing site lands
 // on "Create your account", with a one-click "Sign In" toggle for returning
 // users. Keep in sync with the auth-screen markup defaults in index.html.
@@ -1892,6 +1901,13 @@ _sb.auth.onAuthStateChange(async (event, session) => {
   // a new password — collect it on top of the loading app.
   if (event === 'PASSWORD_RECOVERY') _openSetNewPasswordPopup();
   if (session) {
+    // Repeat event for the already-loaded user (SIGNED_IN after
+    // INITIAL_SESSION on the same page load, tab-focus SIGNED_IN, hourly
+    // TOKEN_REFRESHED): the bearer token was updated above, realtime keeps
+    // quotes/orders in sync — there is nothing else to redo. Bail before the
+    // full boot load duplicates every query.
+    if (session.user.id === _bootLoadedUserId) return;
+    _bootLoadedUserId = session.user.id;
     // A real Supabase session — leave demo mode. Guard on _wtActive so a
     // TOKEN_REFRESHED firing while a signed-in user runs the walkthrough
     // (which flips demo mode on temporarily) doesn't clobber the tour.
@@ -1957,6 +1973,7 @@ _sb.auth.onAuthStateChange(async (event, session) => {
     // mode: the demo seed (src/demo.js) now exists only for the in-app guided
     // walkthrough, which a signed-in user borrows via _wtRunStart(tempDemo).
     _userId = null;
+    _bootLoadedUserId = null;
     _userCreatedAt = null;
     _setAccessToken(null);
     _unsubscribeLiveStatus();

@@ -78,6 +78,13 @@ on a signed-in reload (verified in dev preview).**
   preconnect hint so auth/REST/realtime skip DNS+TLS setup.
 - ✅ **P.6 — Right-sized favicons:** 512px/137KB PNG served for both icon
   rels → 64px favicon + 180px apple-touch variants.
+- ✅ **P.7 — One boot load per user (app.js):** production waterfall showed
+  every boot query running TWICE — supabase-js emits INITIAL_SESSION then
+  SIGNED_IN for the same stored session on every page load (and SIGNED_IN on
+  tab refocus, TOKEN_REFRESHED hourly), and the auth handler ran the full
+  `loadAllData()` on each, serialized. `_bootLoadedUserId` guard: full load
+  only when the signed-in user changes; repeat events just update the bearer
+  token. 38 boot REST requests → 18.
 
 ### Conversion funnel — P0 fixes from full-funnel review ✅ Done 2026-06-09
 
