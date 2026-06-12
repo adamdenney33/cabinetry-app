@@ -203,7 +203,9 @@ Deno.serve(async (req) => {
       }
       await admin.from('quotes').update({
         accepted_at: new Date().toISOString(),
-        status: 'accepted',
+        // The pay webhook can land before the page's accept call — never
+        // downgrade a paid status back to 'accepted'.
+        status: quote.status === 'deposit_paid' || quote.status === 'paid' ? quote.status : 'accepted',
         accepted_snapshot: snapshot,
       }).eq('id', quote.id);
       return jsonResponse({ ok: true, accepted: true }, 200, cors);

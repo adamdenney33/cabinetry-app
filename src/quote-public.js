@@ -346,6 +346,7 @@ async function loadStripe() {
   return w.Stripe;
 }
 async function recordAccept() {
+  if (D?.quote?.accepted_at) return; // already recorded (server treats dupes as no-ops anyway)
   const t = totals();
   const snapshot = {
     lines: lines.filter((l) => l.customer_included).map((l) => ({ id: l.id, name: l.name, finish: l.finish, w_mm: l.w_mm, customer_price: l.customer_price })),
@@ -651,7 +652,6 @@ const handlers = {
       if (m === 'payments_unavailable' || m === 'payments_disabled') { await handlers.accept(); return; }
       toast(friendlyError(e, 'Could not start payment. Please try again.')); return;
     }
-    await recordAccept();
     const StripeCtor = await loadStripe();
     // Direct charge: the PaymentIntent lives on the connected account, so Stripe.js
     // must run in that account's context to confirm it.
@@ -672,6 +672,11 @@ const handlers = {
         confirmParams: { return_url: window.location.href },
       });
       if (error) { errEl.textContent = error.message || 'Payment could not be completed — please check your payment details.'; btn.removeAttribute('disabled'); btn.textContent = 'Pay ' + money(pay.amount); return; }
+      // Only NOW does the quote count as accepted — the payment is confirmed,
+      // settling, or (bank transfer) committed. Closing the sheet before this
+      // point leaves the quote untouched. The webhook backfills accepted_at on
+      // success too, so a closed tab can't lose it; duplicates are a no-op.
+      await recordAccept();
       const na = paymentIntent && paymentIntent.next_action;
       if (paymentIntent && paymentIntent.status === 'requires_action' && na && na.type === 'display_bank_transfer_instructions') {
         // Bank transfer: Stripe has just shown the account-details modal; the
@@ -776,6 +781,10 @@ async function boot() {
     if (redirectStatus === 'succeeded' || redirectStatus === 'processing' || redirectStatus === 'pending') {
       const t = totals();
       const payLike = { amount: t.depPct > 0 ? t.deposit : t.total, kind: t.depPct > 0 ? 'deposit' : 'full' };
+      // Redirect methods never return from confirmPayment, so the in-sheet
+      // recordAccept didn't run — stamp acceptance here instead (no-op if the
+      // webhook beat us to it).
+      await recordAccept();
       if (redirectStatus === 'succeeded') paidState(payLike); else processingState(payLike);
       mountChat();
       return;

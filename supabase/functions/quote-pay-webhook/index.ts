@@ -53,11 +53,17 @@ async function handleSucceeded(pi: Stripe.PaymentIntent) {
 
   const { data: quote } = await admin
     .from('quotes')
-    .select('id, user_id, client_id, markup, tax, discount, stock_markup')
+    .select('id, user_id, client_id, markup, tax, discount, stock_markup, accepted_at')
     .eq('id', quoteId).maybeSingle();
   if (!quote) return;
 
-  await admin.from('quotes').update({ status: kind === 'full' ? 'paid' : 'deposit_paid' }).eq('id', quoteId);
+  // Acceptance is normally stamped by the page right after confirmPayment;
+  // backfill it here so a closed tab can't leave a paid quote unaccepted
+  // (accepted_at is also what locks the public page against further edits).
+  await admin.from('quotes').update({
+    status: kind === 'full' ? 'paid' : 'deposit_paid',
+    accepted_at: quote.accepted_at ?? now,
+  }).eq('id', quoteId);
 
   // Create the order once (idempotent on quote_id).
   const { data: existing } = await admin.from('orders').select('id').eq('quote_id', quoteId).maybeSingle();
