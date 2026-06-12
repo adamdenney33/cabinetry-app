@@ -26,43 +26,46 @@ RPC) ticking up. Use that count as `{{seat_no}}`.
 
 ## Subject options
 
-1. `You're in — founder seat {{seat_no}} of 50`
-2. `Your ProCabinet founder seat + the WhatsApp group`
-3. `Thanks {{first_name}} — here's your founders' invite`
+1. `Thanks {{first_name}}, your founder seat's live`
+2. `You're founder {{seat_no}} of 50`
+3. `Your founder seat + the founders' WhatsApp group`
 
-(1) is the strongest — concrete, personal, and the scarcity is real.
+(1) is the strongest: it reads like a person, and the news is in the
+subject.
 
 ---
 
 ## Body
 
+No bold, no headings, no sign-off tagline — it should look like a normal
+email typed to one person.
+
 > Hi {{first_name}},
 >
-> You're in — founder seat {{seat_no}} of 50. Thank you. You've just backed
-> a one-man company with real money, and I don't take that lightly.
+> Adam here. Thank you for buying a founder seat, you're number {{seat_no}}
+> of the 50. ProCabinet is just me at the minute, so someone putting real
+> money behind it means a lot, honestly.
 >
-> What you've got:
+> Your account's already sorted: Pro, for good. Nothing renews and there's
+> nothing to cancel. The $299 is the only money you'll ever spend on
+> ProCabinet.
 >
-> **Pro, forever.** Every feature, no limits, and the $299 is the last money
-> ProCabinet will ever ask you for. No renewal, nothing to cancel, nothing
-> to remember.
->
-> **The founders' WhatsApp group.** This is the bit I care about most. It's
-> me and the other founders in one place: ask anything, flag what's broken,
-> tell me what the app should do next. What gets asked in there is what gets
-> built. Here's your invite:
+> The other half of the seat is the founders' WhatsApp group, and it's the
+> half I'd encourage you to actually use. It's small, just me and the other
+> founders, and it comes straight to my phone. If the app's missing
+> something your workshop needs, say so in there and there's a fair chance
+> I'll build it. Here's the link:
 >
 > https://chat.whatsapp.com/H8QI9EHNtJAE1WAlnj2dT0
 >
-> (QR attached too, if your phone's closer than your mouse.)
+> There's a QR code attached too if that's easier.
 >
-> And the standing offer: 15 minutes on a call and I'll set the app up
-> around how your workshop actually runs. Rates, sheet materials, your first
-> cabinet quote. Reply with a day that suits and we'll get it done.
+> And if you'd like a hand getting set up, I'm happy to do it with you on a
+> quick call. Fifteen minutes and we'll have your rates, sheet materials and
+> a first cabinet quote in place. Just reply with a day that suits.
 >
 > Cheers,
 > Adam
-> ProCabinet — built in a workshop, not a boardroom
 
 ---
 
