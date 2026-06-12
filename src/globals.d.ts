@@ -143,6 +143,9 @@ declare global {
     /** index.html head stub — nav tab tapped before the deferred scripts
      *  executed; replayed (then cleared) by restoreAppState. */
     _preBootSection?: string | null;
+    /** index.html head stub — fades out the #boot-loader overlay. Called once
+     *  boot data has rendered (signed-in) or the auth screen shows. */
+    _hideBootLoader: () => void;
     /** persist.js — refresh-state helpers. */
     _pcSaveSection?: (name: string) => void;
     _pcLoadSection?: () => string | null;

@@ -16,10 +16,35 @@
      undefined global (Sentry JAVASCRIPT-D, mobile Safari). Stash the tap;
      settings.js's function declaration replaces this stub, and
      restoreAppState (persist.js) replays the stash once the app has booted. -->
-<script>window.switchSection = function (name) { window._preBootSection = name; };</script>
+<script>
+window.switchSection = function (name) { window._preBootSection = name; };
+// Saved theme, applied before first paint so dark-mode users don't get a light
+// flash behind the boot loader. settings.js re-applies (and owns) this later.
+try { if (localStorage.getItem('pcDark') === '1') document.documentElement.classList.add('dark'); } catch (e) {}
+// Boot-loader teardown — app.js calls this once boot data has rendered
+// (signed-in) or the auth screen shows (signed-out). Defined here, not in a
+// deferred script, so the failsafe below still clears the overlay even if a
+// later script fails to load at all.
+window._hideBootLoader = function () {
+  var l = document.getElementById('boot-loader');
+  if (!l || l.classList.contains('fade')) return;
+  l.classList.add('fade');
+  setTimeout(function () { l.classList.add('hidden'); }, 350);
+};
+setTimeout(function () { window._hideBootLoader(); }, 15000);
+</script>
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+<!-- BOOT LOADER — covers the empty app shell from first paint until boot data
+     has rendered (signed-in) or the auth screen takes over (signed-out).
+     Cleared by window._hideBootLoader() (head pre-boot script), which also
+     carries a 15s failsafe so the overlay can never trap the user. -->
+<div id="boot-loader">
+  <div class="auth-logo">ProCabinet<span>.App</span></div>
+  <div class="boot-spinner"></div>
+  <div class="boot-loader-text">Loading your workspace&hellip;</div>
+</div>
 <div id="toast-container"></div>
 
 <!-- AUTH SCREEN -->

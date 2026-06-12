@@ -1295,6 +1295,9 @@ function _showApp() {
 }
 function _showAuth() {
   /** @type {HTMLElement} */ (document.getElementById('auth-screen')).classList.remove('hidden');
+  // The auth screen is the boot destination here — no data load follows, so
+  // drop the boot loader that has covered the shell since first paint.
+  window._hideBootLoader();
 }
 
 function toggleAuthMode() {
@@ -1929,7 +1932,9 @@ _sb.auth.onAuthStateChange(async (event, session) => {
     /** @type {HTMLElement} */ (document.getElementById('account-guest-view')).style.display = 'none';
     /** @type {HTMLElement} */ (document.getElementById('account-user-view')).style.display = '';
     _showApp();
-    await loadAllData();
+    // finally (not just after the await): the boot loader is an opaque
+    // overlay, so it must come down even when the load throws.
+    try { await loadAllData(); } finally { window._hideBootLoader(); }
     if (typeof _identifyUser === 'function') _identifyUser(session);
     if (typeof _syncMailingList === 'function') {
       _syncMailingList(session).catch(e => console.warn('[mailing-list] sync failed', e));
