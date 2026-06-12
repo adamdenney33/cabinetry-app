@@ -157,6 +157,27 @@ function _hasProAccess() {
 /** @typedef {keyof typeof FREE_LIMITS} LimitedLibrary */
 
 /**
+ * Count the user's OWN rows in a library array, excluding sample-data overlay
+ * rows (src/demo.js). Demo rows are identified by a negative id — or a
+ * negative `db_id` for cbLibrary entries, whose `id` is a local timestamp and
+ * whose DB row id lives on `db_id`. Pass this instead of `arr.length` to
+ * every free-tier cap check so seeded sample data can never eat the cap.
+ *
+ * @param {any[] | null | undefined} rows
+ * @returns {number}
+ */
+function _realCount(rows) {
+  let n = 0;
+  for (const r of rows || []) {
+    if (!r) continue;
+    if (typeof r.id === 'number' && r.id < 0) continue;
+    if (typeof r.db_id === 'number' && r.db_id < 0) continue;
+    n++;
+  }
+  return n;
+}
+
+/**
  * Return the cap for a library. Pro users get Infinity.
  *
  * @param {LimitedLibrary} library

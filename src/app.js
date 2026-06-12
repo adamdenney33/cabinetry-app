@@ -1675,9 +1675,21 @@ async function loadAllData() {
   // F6 (2026-05-13): projects table dropped — variable kept declared for
   // back-compat with any legacy reads that linger as null-state markers.
   projects = [];
-  if (orders.length) orderNextId = Math.max(...orders.map(o => o.id)) + 1;
-  if (quotes.length) quoteNextId = Math.max(...quotes.map(q => q.id)) + 1;
-  if (stockItems.length) stockNextId = Math.max(...stockItems.map(s => s.id)) + 1;
+  // Phase 3.3 — overlay business_info from DB (only if a row exists). Runs
+  // BEFORE _demoOverlayInit (it hydrates _onboardingState, the overlay's
+  // persisted gate) and before the lines/totals hydrates below (which must
+  // see demo ids in the arrays when the overlay is on).
+  _applyBizInfoFromDB(/** @type {any[]} */ (biz || []));
+  // Sample-data overlay (src/demo.js): keep the demo seed visible for
+  // accounts that haven't removed it yet — merges demo rows into the four
+  // boot arrays (the early-boot fetches bypass _db(), so the builder-level
+  // merge can't cover this path).
+  if (typeof _demoOverlayInit === 'function') _demoOverlayInit();
+  // Demo overlay rows carry negative ids — floor at 0 so local id counters
+  // stay positive even when the account's own libraries are empty.
+  if (orders.length) orderNextId = Math.max(0, ...orders.map(o => o.id)) + 1;
+  if (quotes.length) quoteNextId = Math.max(0, ...quotes.map(q => q.id)) + 1;
+  if (stockItems.length) stockNextId = Math.max(0, ...stockItems.map(s => s.id)) + 1;
   // Phase 7 step 1: hydrate quote totals from quote_lines (fire and forget; renders re-run when ready).
   _hydrateQuoteTotals().then(() => {
     try { renderQuoteMain(); } catch(e){}
@@ -1696,8 +1708,7 @@ async function loadAllData() {
   }
   // catalog_items deprecated — stock_items is now the single source of truth
   // for material/hardware/finish prices. _applyCatalogFromDB call removed.
-  // Phase 3.3 — overlay business_info from DB (only if a row exists)
-  _applyBizInfoFromDB(/** @type {any[]} */ (biz || []));
+  // Phase 3.3 _applyBizInfoFromDB moved up — it must precede _demoOverlayInit.
   // S.2 — load schedule day overrides for the production scheduler (fire and forget)
   loadDayOverrides().catch(/** @param {any} e */ e => console.warn('[day_overrides] load:', e.message || e));
   /** @type {HTMLElement} */ (document.getElementById('orders-badge')).textContent = String(orders.filter(o => o.status !== 'complete').length);

@@ -51,7 +51,7 @@ async function resolveClient(name) {
   const existing = clients.find(c => c.name.toLowerCase() === name.toLowerCase());
   if (existing) return existing.id;
   // Auto-creating a new client — gate on free-tier cap.
-  if (!_enforceFreeLimit('clients', clients.length)) return null;
+  if (!_enforceFreeLimit('clients', _realCount(clients))) return null;
   /** @type {any} */
   const row = { user_id: _userId, name };
   const { data, error } = await _db('clients').insert(row).select().single();
@@ -70,7 +70,7 @@ async function createClient() {
   const name = _clInput('cl-name')?.value.trim() || '';
   if (!name) { _toast('Enter a client name.', 'error'); return; }
   if (!_requireAuth()) return;
-  if (!_enforceFreeLimit('clients', clients.length)) return;
+  if (!_enforceFreeLimit('clients', _realCount(clients))) return;
   /** @type {any} */
   const row = {
     user_id: _userId, name,
@@ -173,7 +173,7 @@ async function removeClient(id) {
 /** @param {number} id */
 async function duplicateClient(id) {
   if (!_requireAuth()) return;
-  if (!_enforceFreeLimit('clients', clients.length)) return;
+  if (!_enforceFreeLimit('clients', _realCount(clients))) return;
   const c = /** @type {any} */ (clients.find(c => c.id === id));
   if (!c) return;
   /** @type {any} */

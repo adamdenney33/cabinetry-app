@@ -44,6 +44,7 @@ const _oBadge = () => {
 function _nextOrderNumber() {
   let max = 0;
   for (const o of orders) {
+    if (typeof o.id === 'number' && o.id < 0) continue; // sample data — ORD-0312… must not seed the user's own sequence
     if (o.order_number) {
       const m = String(o.order_number).match(/(\d+)/);
       if (m) max = Math.max(max, parseInt(m[1], 10));
@@ -68,7 +69,7 @@ async function removeOrder(id) {
 /** @param {number} id */
 async function duplicateOrder(id) {
   if (!_requireAuth()) return;
-  if (!_enforceFreeLimit('orders', orders.length)) return;
+  if (!_enforceFreeLimit('orders', _realCount(orders))) return;
   const o = orders.find(o => o.id === id);
   if (!o) return;
   /** @type {any} */
@@ -1100,7 +1101,7 @@ async function _oAddLine(kind) {
 async function createOrderFromEditor(silent) {
   if (!_requireAuth()) return false;
   if (!_opState.clientId) { _toast('Pick a client first.', 'error'); return false; }
-  if (!_enforceFreeLimit('orders', orders.length)) return false;
+  if (!_enforceFreeLimit('orders', _realCount(orders))) return false;
   const client = clients.find(c => c.id === _opState.clientId);
   if (!client) { _toast('Client not found.', 'error'); return false; }
   /** @type {any} */

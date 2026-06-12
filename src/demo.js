@@ -1,22 +1,39 @@
-// ProCabinet — Demo (guest) mode.
+// ProCabinet — Demo dataset: full demo mode + persistent sample-data overlay.
 //
-// Loaded as a classic <script defer> immediately after src/db.js. When
-// `window._demoMode` is true — a logged-out visitor exploring the app, or a
-// signed-in user running the guided walkthrough — src/db.js routes every
-// `_db()` call here instead of to Supabase:
-//   • select → served from the static demo dataset (`_demoSelect`)
-//   • insert / update / delete → blocked (`_demoBlockWrite`), which shows a
-//     non-blocking `_demoNudge()` toast. Explicit save/create actions already
-//     nudge via `_requireAuth()` / `_enforceFreeLimit()`; the `_db()`-level
-//     block is a backstop so a missed guard can't escape (and never throws up
-//     the full sign-in screen mid-demo).
+// Loaded as a classic <script defer> immediately after src/db.js. Two modes:
+//
+// 1. FULL DEMO (`window._demoMode`) — a signed-in user running the guided
+//    walkthrough (historically also the logged-out guest demo). src/db.js
+//    routes every `_db()` call here instead of to Supabase:
+//      • select → served from the static demo dataset (`_demoSelect`)
+//      • insert / update / delete → blocked (`_demoBlockWrite`), which shows a
+//        non-blocking `_demoNudge()` toast. Explicit save/create actions
+//        already nudge via `_requireAuth()` / `_enforceFreeLimit()`; the
+//        `_db()`-level block is a backstop so a missed guard can't escape.
+//
+// 2. SAMPLE-DATA OVERLAY (`window._demoOverlay`) — a signed-in account keeps
+//    the demo seed visible AFTER the walkthrough, merged into normal reads,
+//    until they hit "Remove demo data" on the Dashboard. Selects fetch the
+//    user's real rows and append demo rows; writes pass through to Supabase
+//    untouched — EXCEPT writes that target a demo row (negative id in the
+//    where-filter or payload), which are blocked with an explainer toast so a
+//    broken FK insert / phantom update can't happen. Activation is decided
+//    once per account in `_demoOverlayInit` (loadAllData) and persisted as
+//    `onboarding_state.demo_data: 'active' | 'removed'` in business_info —
+//    accounts that already have real data are marked 'removed' sight unseen.
+//
+// Every demo id (and demo-internal FK) is NEGATIVE — see `_demoNegateIds` —
+// so demo rows can never collide with real Supabase rows and `id < 0` is the
+// universal "this is sample data" discriminator (used by the free-tier cap
+// counts in src/limits.js and the QUO-/ORD- numbering scans).
 //
 // The dataset is built lazily on first use so `cbDefaultLine()` / `cbSettings`
-// (cabinet.js) are available. It is immutable — the demo is read-only, so a
-// guest's in-memory edits never reach it and a reload restores the pristine
-// seed.
+// (cabinet.js) are available. It is immutable — the demo is read-only, so
+// in-memory edits never reach it and a reload restores the pristine seed.
 //
-// Cross-file globals used: cbDefaultLine (cabinet.js), _toast (ui.js).
+// Cross-file globals used: cbDefaultLine (cabinet.js), _toast/_confirm (ui.js),
+// _userId (app.js), _wtPersistState (walkthrough.js), loadAllData (app.js),
+// _track (analytics.js) — all runtime-only, so script order doesn't matter.
 
 /** Lazily-built, memoized demo dataset, keyed by table name.
  *  @type {Record<string, any[]> | null} */
@@ -39,11 +56,35 @@ function _demoDue(/** @type {number} */ daysAhead) {
   return new Date(Date.now() + daysAhead * 86400000).toISOString().slice(0, 10);
 }
 
+/** Numeric columns negated by `_demoNegateIds`. `user_id` (uuid/null) is
+ *  deliberately absent; `quote_id: null` etc. stay null (typeof check). */
+const _DEMO_ID_COLS = ['id', 'client_id', 'quote_id', 'order_id', 'cutlist_id', 'cabinet_id'];
+
+/**
+ * Flip every id/FK in the dataset negative, in place. Negative ids cannot
+ * collide with real Supabase rows, which is what makes the sample-data
+ * overlay safe: `id < 0` identifies a demo row everywhere (write blocking,
+ * cap counts, numbering scans). Internal FK consistency is preserved because
+ * parent and child ids negate together.
+ * @param {Record<string, any[]>} data @returns {Record<string, any[]>}
+ */
+function _demoNegateIds(data) {
+  for (const table in data) {
+    for (const row of data[table]) {
+      for (const col of _DEMO_ID_COLS) {
+        if (typeof row[col] === 'number') row[col] = -row[col];
+      }
+    }
+  }
+  return data;
+}
+
 /**
  * Construct the demo dataset. Called once, memoized into `_demoData`. Every row
  * carries `user_id: null` so `loadAllData`'s `.eq('user_id', _userId)` filters
  * (with `_userId === null` for a guest) match. Each library is seeded to the
- * 5-item free cap; stock has 10 items.
+ * 5-item free cap; stock has 10 items. Ids are authored positive for
+ * readability and re-keyed negative by `_demoNegateIds` on the way out.
  * @returns {Record<string, any[]>}
  */
 function _demoBuildDataset() {
@@ -83,7 +124,7 @@ function _demoBuildDataset() {
     created_at: _demoDate(20),
   }, over);
 
-  return {
+  return _demoNegateIds({
     clients: [
       { id: 1, user_id: null, name: 'Sarah Mitchell', email: 'sarah.mitchell@example.com',
         phone: '0412 558 901', address: '14 Maple Drive, Kew VIC 3101',
@@ -311,7 +352,7 @@ function _demoBuildDataset() {
     catalog_items: [],
     subscriptions: [],
     schedule_day_overrides: [],
-  };
+  });
 }
 
 /** Return the demo rows for `table`, building the dataset on first use. */
@@ -338,41 +379,75 @@ function _demoWhereMatch(rowVal, expr) {
 }
 
 /**
+ * Sort `rows` in place the way PostgREST would for `order(col, {ascending})`
+ * — nulls last either direction. Shared by `_demoSelect` and the overlay
+ * merge (which must re-sort after appending demo rows to server rows).
+ * @param {any[]} rows @param {string | null} key @param {boolean} asc
+ * @returns {any[]}
+ */
+function _demoSortRows(rows, key, asc) {
+  if (!key) return rows;
+  const dir = asc ? 1 : -1;
+  rows.sort(/** @param {any} a @param {any} b */ (a, b) => {
+    const av = a[key], bv = b[key];
+    if (av == null && bv == null) return 0;
+    if (av == null) return 1;
+    if (bv == null) return -1;
+    return av > bv ? dir : av < bv ? -dir : 0;
+  });
+  return rows;
+}
+
+/**
+ * Attach the `cutlist_cabinets(cabinet_id, cabinet_templates(name))` embedded
+ * select to demo cutlist rows when the builder asked for it. Returns copies —
+ * the memoized seed rows stay clean.
+ * @param {any} builder a `_DBBuilder` instance @param {any[]} rows demo rows
+ * @returns {any[]}
+ */
+function _demoAttachEmbeds(builder, rows) {
+  if (typeof builder._sel !== 'string' || builder._sel.indexOf('cutlist_cabinets') === -1) return rows;
+  const links = _demoTable('cutlist_cabinets');
+  const tpls = _demoTable('cabinet_templates');
+  return rows.map(/** @param {any} r */ r => Object.assign({}, r, {
+    cutlist_cabinets: links
+      .filter(/** @param {any} l */ l => l.cutlist_id === r.id)
+      .map(/** @param {any} l */ l => {
+        const t = tpls.find(/** @param {any} x */ x => x.id === l.cabinet_id);
+        return { cabinet_id: l.cabinet_id, cabinet_templates: t ? { name: t.name } : null };
+      }),
+  }));
+}
+
+/**
+ * Demo rows for a builder's table matching its where-filters. `skipUserId`
+ * (overlay mode) ignores the `user_id` filter: seed rows carry
+ * `user_id: null`, which can never equal a signed-in user's uuid, but in the
+ * overlay they belong to the account visually.
+ * @param {any} builder a `_DBBuilder` instance @param {boolean} skipUserId
+ * @returns {any[]}
+ */
+function _demoFilterRows(builder, skipUserId) {
+  let rows = _demoTable(builder._t).slice();
+  const where = builder._where || {};
+  for (const col in where) {
+    if (skipUserId && col === 'user_id') continue;
+    rows = rows.filter(/** @param {any} r */ r => _demoWhereMatch(r[col], where[col]));
+  }
+  return rows;
+}
+
+/**
  * Resolve a `_DBBuilder` select against the demo dataset. Mirrors the shape the
  * real `fetch` branch resolves with: `{ data, error }`.
  * @param {any} builder a `_DBBuilder` instance
  * @returns {{ data: any, error: any }}
  */
 function _demoSelect(builder) {
-  let rows = _demoTable(builder._t).slice();
-  const where = builder._where || {};
-  for (const col in where) {
-    rows = rows.filter(/** @param {any} r */ r => _demoWhereMatch(r[col], where[col]));
-  }
-  if (builder._orderBy) {
-    const k = builder._orderBy, dir = builder._orderAsc ? 1 : -1;
-    rows.sort(/** @param {any} a @param {any} b */ (a, b) => {
-      const av = a[k], bv = b[k];
-      if (av == null && bv == null) return 0;
-      if (av == null) return 1;
-      if (bv == null) return -1;
-      return av > bv ? dir : av < bv ? -dir : 0;
-    });
-  }
+  let rows = _demoFilterRows(builder, false);
+  _demoSortRows(rows, builder._orderBy, builder._orderAsc);
   if (builder._lim != null) rows = rows.slice(0, builder._lim);
-  // Embedded select: cutlists with `cutlist_cabinets(cabinet_id, cabinet_templates(name))`.
-  if (typeof builder._sel === 'string' && builder._sel.indexOf('cutlist_cabinets') !== -1) {
-    const links = _demoTable('cutlist_cabinets');
-    const tpls = _demoTable('cabinet_templates');
-    rows = rows.map(/** @param {any} r */ r => Object.assign({}, r, {
-      cutlist_cabinets: links
-        .filter(/** @param {any} l */ l => l.cutlist_id === r.id)
-        .map(/** @param {any} l */ l => {
-          const t = tpls.find(/** @param {any} x */ x => x.id === l.cabinet_id);
-          return { cabinet_id: l.cabinet_id, cabinet_templates: t ? { name: t.name } : null };
-        }),
-    }));
-  }
+  rows = _demoAttachEmbeds(builder, rows);
   return { data: builder._isSingle ? (rows[0] || null) : rows, error: null };
 }
 
@@ -411,8 +486,241 @@ function _demoBlockWrite(builder) {
   return { data: builder && builder._isSingle ? null : [], error: { message: 'Sign in to save your work', _demo: true } };
 }
 
+// ══════════════════════════════════════════
+// SAMPLE-DATA OVERLAY (persistent demo data)
+// ══════════════════════════════════════════
+// Active when `window._demoOverlay` is true and `window._demoMode` is false
+// (full demo mode wins while the walkthrough runs). src/db.js consults the
+// helpers below from `_DBBuilder.then()`.
+
+/** Content tables the overlay merges demo rows into. Deliberately absent:
+ *  business_info (the user's OWN settings/letterhead), subscriptions
+ *  (real billing state), catalog_items (deprecated), schedule_day_overrides. */
+const _DEMO_OVERLAY_TABLES = new Set([
+  'clients', 'stock_items', 'cabinet_templates',
+  'quotes', 'quote_lines', 'orders', 'order_lines',
+  'cutlists', 'sheets', 'pieces', 'cutlist_cabinets',
+]);
+
+/** @param {string} table */
+function _demoOverlayHandles(table) { return _DEMO_OVERLAY_TABLES.has(table); }
+
+/**
+ * True when a select can ONLY match demo rows — an id-ish where-filter pinned
+ * to a negative id (`eq.-N`, or `in.(…)` of all-negative ids). Real rows have
+ * positive ids, so the network round-trip is skipped and the demo dataset
+ * answers directly (e.g. opening a demo cut list loads sheets/pieces by
+ * `cutlist_id=eq.-2`).
+ * @param {any} builder a `_DBBuilder` instance
+ */
+function _demoOverlaySelectsDemoOnly(builder) {
+  const w = builder._where || {};
+  for (const col in w) {
+    if (col === 'user_id' || (col !== 'id' && !/_id$/.test(col))) continue;
+    const v = String(w[col]);
+    if (v.indexOf('eq.-') === 0) return true;
+    if (v.indexOf('in.(') === 0) {
+      const parts = v.slice(4, -1).split(',');
+      if (parts.length && parts.every(s => s.trim().charAt(0) === '-')) return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Serve a select purely from the demo dataset, ignoring the `user_id` filter
+ * (seed rows carry `user_id: null`, which never equals a signed-in uuid, but
+ * in the overlay they belong to the account visually).
+ * @param {any} builder a `_DBBuilder` instance
+ * @returns {{ data: any, error: any }}
+ */
+function _demoOverlaySelect(builder) {
+  let rows = _demoFilterRows(builder, true);
+  _demoSortRows(rows, builder._orderBy, builder._orderAsc);
+  if (builder._lim != null) rows = rows.slice(0, builder._lim);
+  rows = _demoAttachEmbeds(builder, rows);
+  return { data: builder._isSingle ? (rows[0] || null) : rows, error: null };
+}
+
+/**
+ * Merge matching demo rows into a resolved server select. Errors pass through
+ * untouched (demo rows must never mask a real failure). Lists are re-sorted
+ * by the builder's order so demo rows interleave naturally; `.single()` falls
+ * back to a demo match only when the server found nothing.
+ * @param {any} builder a `_DBBuilder` instance
+ * @param {{ data: any, error: any }} res the real fetch's resolved value
+ * @returns {{ data: any, error: any }}
+ */
+function _demoOverlayMergeResult(builder, res) {
+  if (!res || res.error) return res;
+  let demoRows = _demoFilterRows(builder, true);
+  if (!demoRows.length) return res;
+  demoRows = _demoAttachEmbeds(builder, demoRows);
+  if (builder._isSingle) {
+    return res.data != null ? res : { data: demoRows[0] || null, error: null };
+  }
+  const merged = (Array.isArray(res.data) ? res.data : []).concat(demoRows);
+  _demoSortRows(merged, builder._orderBy, builder._orderAsc);
+  return { data: builder._lim != null ? merged.slice(0, builder._lim) : merged, error: null };
+}
+
+/**
+ * True when a write would touch demo rows: a negative id in an id-ish
+ * where-filter (update/delete on a demo row) or in the payload's top-level
+ * id/FK columns (inserting a child into a demo parent, or re-linking a real
+ * row to a demo entity — e.g. a new quote pointed at a demo client, which
+ * would be an FK violation server-side).
+ * @param {any} builder a `_DBBuilder` instance
+ */
+function _demoOverlayTargetsDemo(builder) {
+  const w = builder._where || {};
+  for (const col in w) {
+    if (col === 'user_id' || (col !== 'id' && !/_id$/.test(col))) continue;
+    const v = String(w[col]);
+    if (v.indexOf('eq.-') === 0) return true;
+    if (v.indexOf('in.(') === 0 && v.slice(4, -1).split(',').some(s => s.trim().charAt(0) === '-')) return true;
+  }
+  const bodies = Array.isArray(builder._body) ? builder._body : (builder._body != null ? [builder._body] : []);
+  for (const b of bodies) {
+    for (const k in b) {
+      if (k === 'user_id' || (k !== 'id' && !/_id$/.test(k))) continue;
+      if (typeof b[k] === 'number' && b[k] < 0) return true;
+    }
+  }
+  return false;
+}
+
+/** Timestamp (ms) of the last overlay block toast, for debouncing — editor
+ *  autosaves retry every few seconds and must not stack toasts. */
+let _demoOverlayToastAt = 0;
+
+/**
+ * Block a write aimed at demo rows while the overlay is on. Unlike the full
+ * demo mode's silent backstop, this always explains itself (debounced): the
+ * user is signed in and their OWN writes save fine, so a refused edit needs a
+ * why and a way out.
+ * @param {any} builder a `_DBBuilder` instance
+ * @returns {{ data: any, error: any }}
+ */
+function _demoOverlayBlockWrite(builder) {
+  const now = Date.now();
+  if (now - _demoOverlayToastAt > 4000) {
+    _demoOverlayToastAt = now;
+    if (typeof _toast === 'function') {
+      _toast('That’s sample data — it can’t be changed. Use “Remove demo data” on the Dashboard when you’re done exploring.', 'info');
+    }
+  }
+  return { data: builder && builder._isSingle ? null : [], error: { message: 'Sample data is read-only', _demo: true } };
+}
+
+/**
+ * Decide whether this account shows the sample-data overlay, then merge the
+ * seed into the boot arrays. Called from loadAllData after orders/quotes/
+ * stockItems/clients are assigned and business_info has hydrated
+ * `_onboardingState` (the early-boot fetches bypass `_db()`, so the boot
+ * arrays must be merged here rather than in the builder).
+ *
+ * Decision, first boot only (then persisted via `_wtPersistState`):
+ *   • account has any real content → 'removed' (existing users never see it)
+ *   • account is empty             → 'active'
+ * Skipped entirely while the walkthrough's full demo mode owns the data —
+ * the arrays hold seed rows then, so the emptiness check would lie.
+ */
+function _demoOverlayInit() {
+  if (window._demoMode) return;
+  if (typeof _userId === 'undefined' || !_userId) { window._demoOverlay = false; return; }
+  // Session latch: once removed, stay removed — even if a reload's
+  // business_info select races (or loses) the 'removed' upsert.
+  if (_demoRemovedLatch) { window._demoOverlay = false; return; }
+  const ob = _demoW._onboardingState || {};
+  /** @type {string | null} */
+  let st = (ob.demo_data === 'active' || ob.demo_data === 'removed') ? ob.demo_data : null;
+  if (!st) {
+    // LS fallback (same account-stamped key _wtPersistState writes) — covers a
+    // prior decision whose business_info upsert didn't land.
+    try {
+      const ls = JSON.parse(localStorage.getItem('pc_wt_state') || 'null');
+      if (ls && ls.user_id === _userId && (ls.demo_data === 'active' || ls.demo_data === 'removed')) st = ls.demo_data;
+    } catch (e) { /* storage blocked / bad JSON — fall through */ }
+  }
+  if (!st) {
+    const empty = !(clients && clients.length) && !(quotes && quotes.length)
+      && !(orders && orders.length) && !(stockItems && stockItems.length);
+    st = empty ? 'active' : 'removed';
+    if (typeof _wtPersistState === 'function') _wtPersistState({ demo_data: st });
+  }
+  window._demoOverlay = st === 'active';
+  if (window._demoOverlay) _demoOverlayMergeBoot();
+}
+
+/**
+ * Merge the seed into the four boot arrays, idempotently (strips any demo
+ * rows already present first — loadAllData's `_db()` fallback path merges in
+ * the builder, the early-boot path doesn't, and this runs after both). Sorts
+ * mirror loadAllData's query orders so demo rows interleave naturally.
+ */
+function _demoOverlayMergeBoot() {
+  /** @param {any[]} arr */
+  const strip = arr => (arr || []).filter(r => !(r && typeof r.id === 'number' && r.id < 0));
+  orders = _demoSortRows(strip(orders).concat(_demoTable('orders')), 'created_at', false);
+  quotes = _demoSortRows(strip(quotes).concat(_demoTable('quotes')), 'created_at', false);
+  clients = _demoSortRows(strip(clients).concat(_demoTable('clients')), 'name', true);
+  // Same shadow-field hydration loadAllData applies to real stock rows
+  // (thickness_mm → thickness etc.) — copies, so the seed stays clean.
+  const demoStock = _demoTable('stock_items').map(/** @param {any} s */ s => {
+    const out = /** @type {any} */ ({ ...s });
+    if (s.thickness_mm != null) out.thickness = s.thickness_mm;
+    if (s.width_mm != null)     out.width = s.width_mm;
+    if (s.length_m != null)     out.length = s.length_m;
+    return out;
+  });
+  stockItems = _demoSortRows(strip(stockItems).concat(demoStock), 'created_at', true);
+}
+
+/** True once the user removed the demo data this session — _demoOverlayInit
+ *  honours it unconditionally so a reload can never resurrect the overlay
+ *  from a stale business_info read. */
+let _demoRemovedLatch = false;
+
+/**
+ * Dashboard "Remove demo data" button. Flips the persisted flag and reloads
+ * in place — nothing is deleted server-side because nothing demo was ever
+ * written there. The user's own rows are untouched by construction.
+ */
+function _demoRemoveData() {
+  const doRemove = async () => {
+    window._demoOverlay = false;
+    _demoRemovedLatch = true;
+    // Await the persist: loadAllData below re-reads business_info, and the
+    // select must not race the 'removed' upsert (the latch covers a loss, but
+    // the next device/boot reads whatever actually landed).
+    try { if (typeof _wtPersistState === 'function') await _wtPersistState({ demo_data: 'removed' }); }
+    catch (e) { console.warn('[demo] removal persist failed', e); }
+    if (typeof _track === 'function') _track('demo_data_removed');
+    // A demo cut list open in the editor lives in cutlist.js module state that
+    // loadAllData doesn't touch — exit library-edit so demo parts can't linger.
+    try {
+      if (typeof _clCurrentCutlistId !== 'undefined' && typeof _clCurrentCutlistId === 'number'
+          && _clCurrentCutlistId < 0 && typeof _demoW._clExitLibraryEdit === 'function') {
+        _demoW._clExitLibraryEdit();
+      }
+    } catch (e) { /* best-effort */ }
+    try {
+      if (typeof loadAllData === 'function') await loadAllData();
+      if (typeof _loadCabinetTemplatesFromDB === 'function') await _loadCabinetTemplatesFromDB();
+      if (typeof renderCBLibraryView === 'function') { try { renderCBLibraryView(); } catch (e) { void e; } }
+    } catch (e) { console.warn('[demo] post-removal reload failed', e); }
+    if (typeof _toast === 'function') _toast('Demo data removed — the app is all yours.', 'success');
+  };
+  if (typeof _confirm === 'function') {
+    _confirm('Remove the demo data? Everything you created yourself stays.', doRemove);
+  } else { doRemove(); }
+}
+
 const _demoW = /** @type {any} */ (window);
 _demoW._demoSelect = _demoSelect;
 _demoW._demoBlockWrite = _demoBlockWrite;
 _demoW._demoNudge = _demoNudge;
 _demoW._demoBuildDataset = _demoBuildDataset;
+_demoW._demoOverlayInit = _demoOverlayInit;
+_demoW._demoRemoveData = _demoRemoveData;

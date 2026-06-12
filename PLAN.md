@@ -23,6 +23,36 @@ Companion docs: `SPEC.md` (refactor history), `SCHEMA.md` (DB schema),
 
 ## Active Work
 
+### Persistent demo data + dashboard "Remove demo data" ✅ Done 2026-06-12
+
+The demo seed (src/demo.js) used to exist only inside the guided
+walkthrough — the moment the tour closed, a new account landed in an empty
+app. Now the seed stays visible as a read-only **overlay** merged into
+normal signed-in reads until the user removes it via a dashboard button
+(button disappears with the data). Client-side only: demo rows are never
+written to Supabase; their ids are re-keyed negative so they can't collide
+with real rows, and removal is an `onboarding_state` flag flip.
+
+- ✅ **D.1 — Seed re-key**: negate all demo `id`/FK values in
+  `_demoBuildDataset` (`id < 0` ⇒ demo row everywhere).
+- ✅ **D.2 — Overlay engine** (demo.js + db.js): merge demo rows into
+  `_db()` selects on content tables (skip `user_id` filter for demo rows);
+  writes pass through to Supabase; writes targeting demo rows (negative id
+  in where/payload) blocked with a debounced explainer toast.
+- ✅ **D.3 — Activation + persistence**: `onboarding_state.demo_data`
+  (`'active'`/`'removed'`) in business_info; first boot decides — empty
+  account ⇒ active, account with data ⇒ removed (existing users never see
+  it). LS mirror via `_wtPersistState` + a session removal latch.
+- ✅ **D.4 — loadAllData merge**: decide overlay before hydrates; merge
+  demo rows into orders/quotes/stockItems/clients boot arrays (early-boot
+  fetches bypass `_db()`); keep next-id counters positive.
+- ✅ **D.5 — Caps + numbering**: demo rows don't count toward free-tier
+  caps (`_realCount` at call sites) and don't advance QUO-/ORD- numbering.
+- ✅ **D.6 — Dashboard banner**: sample-data banner + "Remove demo data"
+  button (gated on overlay flag); removal = flag flip + reload-in-place.
+- ✅ **D.7 — Verify**: typecheck + browser pass (overlay on, real rows
+  alongside, blocked demo writes, removal, post-removal boot all green).
+
 ### Onboarding welcome email for all new sign-ups 🚧 In progress 2026-06-12
 
 One-time founder-voiced welcome email, sent automatically to every new

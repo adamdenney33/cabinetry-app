@@ -181,11 +181,38 @@ class _DBBuilder {
       // @ts-expect-error fake-thenable: `this` is structurally PromiseLike.
       return this;
     }
+    // Sample-data overlay (src/demo.js): a signed-in account keeping the demo
+    // seed visible until "Remove demo data". Demo-only selects (negative-id
+    // filters) skip the network; writes aimed at demo rows are blocked with an
+    // explainer toast; every other call passes through to Supabase, with
+    // selects merging demo rows in at the resolve site below.
+    const _ovl = window._demoOverlay === true && _demoOverlayHandles(this._t);
+    if (_ovl) {
+      const oResolve = /** @type {(v: any) => any} */ (onfulfilled);
+      if (this._method === 'select' && _demoOverlaySelectsDemoOnly(this)) {
+        const oResult = _demoOverlaySelect(this);
+        Promise.resolve().then(() => { if (oResolve) oResolve(oResult); });
+        // @ts-expect-error fake-thenable: `this` is structurally PromiseLike.
+        return this;
+      }
+      if (this._method !== 'select' && _demoOverlayTargetsDemo(this)) {
+        const oResult = _demoOverlayBlockWrite(this);
+        Promise.resolve().then(() => { if (oResolve) oResolve(oResult); });
+        // @ts-expect-error fake-thenable: `this` is structurally PromiseLike.
+        return this;
+      }
+    }
     const ps = this._params();
     const url = `${_SBURL}/rest/v1/${this._t}${ps ? '?' + ps : ''}`;
     // The conditional Single → Row|null vs Row[]|null return type can't statically
     // narrow inside this generic handler, so cast through any at the resolve site.
-    const resolve = /** @type {(v: any) => any} */ (onfulfilled);
+    const rawResolve = /** @type {(v: any) => any} */ (onfulfilled);
+    // Overlay selects that can match both real and demo rows merge in one
+    // wrapper so every resolution path (list/single/error/catch) flows through
+    // it — _demoOverlayMergeResult passes errors through untouched.
+    const resolve = (_ovl && this._method === 'select')
+      ? (/** @type {any} */ v) => rawResolve && rawResolve(_demoOverlayMergeResult(this, v))
+      : rawResolve;
     // Headers are built per attempt (not hoisted) so a retry after a token
     // refresh picks up the fresh JWT.
     const buildOpts = () => {

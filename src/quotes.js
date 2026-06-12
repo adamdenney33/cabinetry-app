@@ -156,6 +156,7 @@ function _nextQuoteNumber() {
   let max = 0;
   for (const q of quotes) {
     if (_isDraftQuote(q)) continue;
+    if (typeof q.id === 'number' && q.id < 0) continue; // sample data — QUO-1042… must not seed the user's own sequence
     if (q.quote_number) {
       const m = String(q.quote_number).match(/(\d+)/);
       if (m) max = Math.max(max, parseInt(m[1], 10));
@@ -381,7 +382,7 @@ async function removeQuote(id) {
 /** @param {number} id */
 async function convertQuoteToOrder(id) {
   if (!_requireAuth()) return;
-  if (!_enforceFreeLimit('orders', orders.length)) return;
+  if (!_enforceFreeLimit('orders', _realCount(orders))) return;
   const q = quotes.find(q => q.id === id);
   if (!q) return;
   const { error: qErr } = await _db('quotes').update({ status: 'accepted' }).eq('id', id);
@@ -1098,7 +1099,7 @@ ${(() => {
 async function duplicateQuote(id) {
   if (!_requireAuth()) return;
   const customerQuotes = quotes.filter(q => !_isDraftQuote(q));
-  if (!_enforceFreeLimit('quotes', customerQuotes.length)) return;
+  if (!_enforceFreeLimit('quotes', _realCount(customerQuotes))) return;
   const q = quotes.find(q => q.id === id);
   if (!q) return;
   /** @type {any} */
@@ -1744,7 +1745,7 @@ async function createQuoteFromEditor(silent) {
   if (!_requireAuth()) return false;
   if (!_qpState.clientId) { _toast('Pick a client first.', 'error'); return false; }
   const customerQuotes = quotes.filter(q => !_isDraftQuote(q));
-  if (!_enforceFreeLimit('quotes', customerQuotes.length)) return false;
+  if (!_enforceFreeLimit('quotes', _realCount(customerQuotes))) return false;
   const client = clients.find(c => c.id === _qpState.clientId);
   if (!client) { _toast('Client not found.', 'error'); return false; }
   /** @type {any} */

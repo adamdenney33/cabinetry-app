@@ -86,6 +86,16 @@ function renderDashboard() {
         <button class="btn btn-outline" onclick="switchSection('clients');setTimeout(()=>document.getElementById('cl-name')?.focus(),100)" style="font-size:11px;padding:6px 12px;width:auto">+ Client</button>
       </div>
 
+      <!-- Sample-data banner (src/demo.js overlay) — gone for good once removed -->
+      ${window._demoOverlay ? `
+      <div id="dash-demo-banner" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--accent-dim);border:1px solid var(--accent);border-radius:var(--radius);padding:10px 14px;margin-bottom:16px">
+        <div style="flex:1;min-width:200px">
+          <div style="font-size:13px;font-weight:700;color:var(--text)">You're looking at sample data</div>
+          <div style="font-size:11.5px;color:var(--text2);margin-top:2px">Explore how a working shop looks in ProCabinet — quotes, orders, schedule, cut lists. Anything you create yourself saves alongside it and stays.</div>
+        </div>
+        <button class="btn btn-outline" onclick="_demoRemoveData()" style="font-size:11px;padding:6px 12px;width:auto;white-space:nowrap;flex-shrink:0">Remove demo data</button>
+      </div>` : ''}
+
       <!-- Getting started guide — shows until the first real quote/order -->
       ${orders.length === 0 && customerQuotes.length === 0 && !localStorage.getItem('pc_hide_guide') ? `
       <div id="getting-started-guide" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px 24px;margin-bottom:20px;position:relative">

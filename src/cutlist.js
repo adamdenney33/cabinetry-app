@@ -1138,7 +1138,7 @@ async function _clStartNewCutlist() {
   if (_clCurrentCabinetId) { return _clNewCabinetLinkedCutlist(); }
   if (!_requireAuth()) return;
   const { data: _clCountRows } = await _db('cutlists').select('id').eq('user_id', _userId);
-  if (!_enforceFreeLimit('cutlists', (_clCountRows || []).length)) return;
+  if (!_enforceFreeLimit('cutlists', _realCount(_clCountRows))) return;
   const insertNew = async () => {
     const name = await _clNextCutlistName(null);
     if (typeof _setSaveStatus === 'function') _setSaveStatus('cutlist', 'saving');
@@ -1196,7 +1196,7 @@ async function _clNewCabinetLinkedCutlist() {
   if (!parts || !parts.length) { _toast('Cabinet has no cut parts to copy', 'error'); return; }
 
   const { data: _clCountRows } = await _db('cutlists').select('id').eq('user_id', _userId);
-  if (!_enforceFreeLimit('cutlists', (_clCountRows || []).length)) return;
+  if (!_enforceFreeLimit('cutlists', _realCount(_clCountRows))) return;
 
   const name = await _clNextCutlistName(null);
   const insertCutlist = async () => {
@@ -4942,7 +4942,7 @@ async function _clDoOpenLibraryCutlist(id) {
 async function _clAddToCutlistLibrary() {
   if (!_requireAuth()) return;
   const { data: _clCountRows } = await _db('cutlists').select('id').eq('user_id', _userId);
-  if (!_enforceFreeLimit('cutlists', (_clCountRows || []).length)) return;
+  if (!_enforceFreeLimit('cutlists', _realCount(_clCountRows))) return;
   const name = (_clCurrentCutlistName || '').trim() || await _clNextCutlistName(null);
   try {
     const { data, error } = await _db('cutlists').insert(/** @type {any} */ ({
@@ -5115,7 +5115,7 @@ function _clOpenCabinetFromPicker(cabinetDbId) {
 async function _clDuplicateLibraryCutlist(id) {
   try {
     const { data: _clCountRows } = await _db('cutlists').select('id').eq('user_id', _userId);
-    if (!_enforceFreeLimit('cutlists', (_clCountRows || []).length)) return;
+    if (!_enforceFreeLimit('cutlists', _realCount(_clCountRows))) return;
     const { data: src } = await _db('cutlists').select('*').eq('id', id).single();
     if (!src) return;
     const newName = (/** @type {any} */ (src).name || 'Cutlist') + ' (copy)';

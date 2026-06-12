@@ -929,7 +929,7 @@ async function cbCreateQuoteFromDraft() {
   if (!_requireAuth()) return;
   // Free-tier cap: count only customer-facing quotes (drafts don't count).
   const customerQuotes = quotes.filter(q => typeof _isDraftQuote === 'function' ? !_isDraftQuote(q) : true);
-  if (!_enforceFreeLimit('quotes', customerQuotes.length)) return;
+  if (!_enforceFreeLimit('quotes', _realCount(customerQuotes))) return;
   const clientId = await _ensureCBClient();
   if (!clientId) return;
 
@@ -1012,7 +1012,7 @@ async function cbSendCabinetsToExistingOrder(orderId) {
 async function cbCreateOrderFromDraft() {
   if (!cbLines.length) { _toast('Add cabinets first.', 'error'); return; }
   if (!_requireAuth()) return;
-  if (!_enforceFreeLimit('orders', orders.length)) return;
+  if (!_enforceFreeLimit('orders', _realCount(orders))) return;
   const clientId = await _ensureCBClient();
   if (!clientId) return;
 
@@ -1781,7 +1781,7 @@ async function _cbSaveClientByName(name) {
 async function _loadCBClientById(clientId, clientName) {
   // A Cabinet Builder quote is a normal quote — enforce the free-tier cap.
   const customerQuotes = quotes.filter(q => !_isDraftQuote(q));
-  if (!_enforceFreeLimit('quotes', customerQuotes.length)) return;
+  if (!_enforceFreeLimit('quotes', _realCount(customerQuotes))) return;
   if (_cbLinesSyncTimer) { clearTimeout(_cbLinesSyncTimer); _cbLinesSyncTimer = null; }
   _cbSuppressDirty = true;
   cbEditingQuoteId = null;

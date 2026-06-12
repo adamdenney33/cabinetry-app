@@ -71,7 +71,7 @@ function cbImportLibrary() {
       // Free-tier cap on cabinet_templates: refuse the import outright if we'd
       // bust the cap. Pro users and trial users skip the check.
       if (typeof _hasProAccess === 'function' && !_hasProAccess()) {
-        const room = FREE_LIMITS.cabinet_templates - cbLibrary.length;
+        const room = FREE_LIMITS.cabinet_templates - _realCount(cbLibrary);
         const incoming = rows.length - 1;
         if (room <= 0) { _openLimitHitModal('cabinet_templates'); return; }
         if (incoming > room) { _toast(`Free plan only allows ${room} more cabinet${room === 1 ? '' : 's'}. Upgrade for unlimited.`, 'error'); _openLimitHitModal('cabinet_templates'); return; }
@@ -107,7 +107,7 @@ function cbSaveToLibrary() {
   const line = cbScratchpad;
   if (!line) { _toast('Open a cabinet first', 'error'); return; }
   if (!_requireAuth()) return;
-  if (!_enforceFreeLimit('cabinet_templates', cbLibrary.length)) return;
+  if (!_enforceFreeLimit('cabinet_templates', _realCount(cbLibrary))) return;
   const copy = JSON.parse(JSON.stringify(line));
   copy.id = Date.now();
   const libName = copy.name || copy.type || (typeof _cbNextCabinetName === 'function' ? _cbNextCabinetName(true) : 'Cabinet');
@@ -128,7 +128,7 @@ function cbAddLineToLibrary(idx) {
   const line = cbLines[idx];
   if (!line) { _toast('Cabinet not found', 'error'); return; }
   if (!_requireAuth()) return;
-  if (!_enforceFreeLimit('cabinet_templates', cbLibrary.length)) return;
+  if (!_enforceFreeLimit('cabinet_templates', _realCount(cbLibrary))) return;
   const copy = JSON.parse(JSON.stringify(line));
   copy.id = Date.now();
   const libName = copy.name || copy.type || (typeof _cbNextCabinetName === 'function' ? _cbNextCabinetName(true) : 'Cabinet');
@@ -225,7 +225,7 @@ function _cbExitLibraryEdit() {
 function cbDuplicateLibraryEntry(idx) {
   const src = cbLibrary[idx];
   if (!src) return;
-  if (!_enforceFreeLimit('cabinet_templates', cbLibrary.length)) return;
+  if (!_enforceFreeLimit('cabinet_templates', _realCount(cbLibrary))) return;
   const copy = JSON.parse(JSON.stringify(src));
   copy.id = Date.now();
   copy._libName = (src._libName || src.name || 'Cabinet') + ' (copy)';

@@ -42,7 +42,7 @@ function _renderCBLibSidebarGate() {
 // back-fills db_id.
 function cbStartNewLibraryEntry() {
   if (typeof _enforceFreeLimit === 'function'
-      && !_enforceFreeLimit('cabinet_templates', cbLibrary.length)) return;
+      && !_enforceFreeLimit('cabinet_templates', _realCount(cbLibrary))) return;
   /** @type {any} */
   const entry = cbDefaultLine();
   const name = (typeof _cbNextCabinetName === 'function') ? _cbNextCabinetName(true) : 'Cabinet';

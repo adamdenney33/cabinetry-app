@@ -74,6 +74,10 @@ declare global {
     /** Demo (guest) mode — src/db.js serves _db() reads from the seed dataset
      *  and blocks writes. Set by src/app.js and src/walkthrough.js. */
     _demoMode?: boolean;
+    /** Sample-data overlay — demo rows merged into a signed-in account's reads
+     *  until "Remove demo data" (Dashboard). Decided per account in
+     *  _demoOverlayInit (src/demo.js) from onboarding_state.demo_data. */
+    _demoOverlay?: boolean;
     /** Feature flag for line-item/template photos (Phase 2). Off until the line_photos migration is applied. Set in src/line-photos.js. */
     _FEAT_LINE_PHOTOS?: boolean;
     /** True while the guided walkthrough overlay is on screen (src/walkthrough.js). */
