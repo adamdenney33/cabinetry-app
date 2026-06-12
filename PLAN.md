@@ -62,10 +62,10 @@ signups, regardless of marketing opt-in; content stays non-promotional.
 Plan: `~/.claude/plans/help-me-create-an-federated-axolotl.md`.
 
 - ✅ **E.1 — Booking link**: Google Calendar appointment schedule
-  ("ProCabinet setup call", 15 min, Meet, Mon–Fri 9–5 UK) →
-  `https://calendar.app.google/3KU7rrEd8mnUu7599`. ⬜ One leftover: the
-  schedule title shows "(No title)" — Google's title field rejects synthetic
-  input; fix by typing it in Calendar → booking page → Edit.
+  ("ProCabinet Setup Call", 15 min, Meet, Mon–Fri 9–5 UK) →
+  `https://calendar.app.google/3KU7rrEd8mnUu7599`. Title typed by the
+  founder 2026-06-12 (Google's title field rejects synthetic input);
+  public booking page verified complete.
 - ✅ **E.2 — Copy doc**: `marketing/welcome-email-2026-06-12.md`, register of
   the founders' welcome email.
 - ✅ **E.3 — Edge function** `send-welcome-email` (deployed v1, verify_jwt
