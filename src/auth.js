@@ -52,6 +52,52 @@ async function _syncMailingList(session) {
   localStorage.setItem(flagKey, '1');
 }
 
+// Accounts created before this instant never get the welcome email. Must
+// match WELCOME_CUTOFF in supabase/functions/send-welcome-email/index.ts —
+// the server is authoritative; this copy only saves a pointless network
+// call on every old-user login.
+const _WELCOME_EMAIL_CUTOFF = Date.parse('2026-06-12T00:00:00Z');
+
+/**
+ * Send the one-time onboarding welcome email to a freshly signed-up user.
+ *
+ * Called fire-and-forget from onAuthStateChange, right beside
+ * _syncMailingList. The actual send runs server-side in the
+ * `send-welcome-email` edge function (which holds the Resend key and the
+ * durable per-account already-sent flag in app_metadata) — this only decides
+ * whether to invoke it:
+ *   - real session, not demo mode
+ *   - email confirmed (email signups can't hold a session before that;
+ *     OAuth emails arrive provider-confirmed)
+ *   - account created after the feature shipped (cheap old-user skip)
+ *   - not already handled on this device
+ * Unlike the mailing list there is NO marketing-opt-in gate: this is a
+ * transactional service email and goes to every new account.
+ *
+ * @param {import('@supabase/supabase-js').Session} session
+ */
+async function _sendWelcomeEmailOnce(session) {
+  const user = session?.user;
+  if (!user || window._demoMode) return;
+  if (!user.email_confirmed_at) return;
+  if (!user.created_at || Date.parse(user.created_at) < _WELCOME_EMAIL_CUTOFF) return;
+  const flagKey = `pc_welcome_sent_${user.id}`;
+  if (localStorage.getItem(flagKey)) return;
+  // Pass the session's access token explicitly. _sb.functions.invoke() otherwise
+  // takes its bearer from the SDK's persisted session, which is empty on
+  // storage-blocked browsers (iOS / in-app webviews) — there the call goes out
+  // as anon and the verify_jwt gateway 401s, silently dropping the send.
+  const { error } = await _sb.functions.invoke('send-welcome-email', {
+    headers: { Authorization: `Bearer ${session.access_token}` },
+  });
+  if (error) throw error;
+  // Every non-error outcome ({ok:true}, 'already sent', 'pre-launch user')
+  // is terminal for this device — the unconfirmed-email skip can't happen
+  // past the guard above. The flag just suppresses repeat invokes; the
+  // server stays authoritative either way.
+  localStorage.setItem(flagKey, '1');
+}
+
 /**
  * One-time marketing opt-in prompt for accounts that never recorded a choice.
  *

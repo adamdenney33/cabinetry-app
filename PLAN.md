@@ -53,7 +53,7 @@ with real rows, and removal is an `onboarding_state` flag flip.
 - ✅ **D.7 — Verify**: typecheck + browser pass (overlay on, real rows
   alongside, blocked demo writes, removal, post-removal boot all green).
 
-### Onboarding welcome email for all new sign-ups 🚧 In progress 2026-06-12
+### Onboarding welcome email for all new sign-ups ✅ Code done + verified 2026-06-12 — ⬜ activates on next push
 
 One-time founder-voiced welcome email, sent automatically to every new
 sign-up (email + Google OAuth), with a Google Calendar appointment-schedule
@@ -61,20 +61,30 @@ link to book a free 15-min setup call. Transactional/service email → all
 signups, regardless of marketing opt-in; content stays non-promotional.
 Plan: `~/.claude/plans/help-me-create-an-federated-axolotl.md`.
 
-- ⬜ **E.1 — Booking link**: Google Calendar appointment schedule
-  ("ProCabinet setup call", 15 min, Meet) → `calendar.app.google/…` URL.
-- ⬜ **E.2 — Copy doc**: `marketing/welcome-email-2026-06-12.md`, register of
+- ✅ **E.1 — Booking link**: Google Calendar appointment schedule
+  ("ProCabinet setup call", 15 min, Meet, Mon–Fri 9–5 UK) →
+  `https://calendar.app.google/3KU7rrEd8mnUu7599`. ⬜ One leftover: the
+  schedule title shows "(No title)" — Google's title field rejects synthetic
+  input; fix by typing it in Calendar → booking page → Edit.
+- ✅ **E.2 — Copy doc**: `marketing/welcome-email-2026-06-12.md`, register of
   the founders' welcome email.
-- ⬜ **E.3 — Edge function** `send-welcome-email`: JWT-verified, gates
-  (confirmed email · post-launch cutoff · `app_metadata.welcome_email_sent_at`
-  claim), claim-then-send via Resend with `Idempotency-Key`, rollback on
-  send failure.
-- ⬜ **E.4 — Client trigger**: `_sendWelcomeEmailOnce(session)` in
+- ✅ **E.3 — Edge function** `send-welcome-email` (deployed v1, verify_jwt
+  ON): gates (confirmed email · `WELCOME_CUTOFF` 2026-06-12T00:00Z ·
+  `app_metadata.welcome_email_sent_at` claim), claim-then-send via Resend
+  with `Idempotency-Key: welcome-email/<uid>`, claim rollback on send
+  failure.
+- ✅ **E.4 — Client trigger**: `_sendWelcomeEmailOnce(session)` in
   `src/auth.js` + fire-and-forget call beside `_syncMailingList` in
-  `src/app.js` `onAuthStateChange`.
-- ⬜ **E.5 — Deploy + verify**: typecheck, Resend domain check, real cutoff
-  timestamps, function deploy (verify_jwt ON), throwaway-signup end-to-end
-  (happy path / idempotency / old-user skip), edge-log check, cleanup.
+  `src/app.js` `onAuthStateChange`. **Prod users get the email once this
+  ships via push to `main`** — the deployed function is inert until then.
+- ✅ **E.5 — Deploy + verify** (all via throwaway
+  `adamdenney33+pcwelcome1@googlemail.com`, since deleted? see cleanup):
+  typecheck clean; `procabinet.app` verified in Resend; happy path = exactly
+  one "Welcome to ProCabinet" delivered (Resend `c544b827…`, claim stamped
+  12:54:14Z); idempotency = flag wipe + re-login → server skip, still one
+  send; old-user skip = real account (created 05-17) booted the new client
+  with no invocation. ⬜ Cleanup: delete the throwaway user in Supabase
+  dashboard → Authentication → Users.
 
 ### Guided walkthrough on phones ✅ Done 2026-06-11
 

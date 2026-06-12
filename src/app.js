@@ -1950,6 +1950,13 @@ _sb.auth.onAuthStateChange(async (event, session) => {
     if (typeof _syncMailingList === 'function') {
       _syncMailingList(session).catch(e => console.warn('[mailing-list] sync failed', e));
     }
+    // One-time founder welcome email for new signups (all of them — it's a
+    // transactional service email, no marketing-opt-in gate). Both auth
+    // paths reach here: email signups on the first post-confirmation load,
+    // OAuth signups immediately. Idempotency lives server-side.
+    if (typeof _sendWelcomeEmailOnce === 'function') {
+      _sendWelcomeEmailOnce(session).catch(e => console.warn('[welcome-email] send failed', e));
+    }
     await _loadCabinetTemplatesFromDB();
     // F.1 — landing-page pricing deep-link: consume the stashed tier and head
     // straight to Stripe Checkout. The localStorage backing means this also
