@@ -1,14 +1,15 @@
 # Founders' welcome email — seat buyers (2026-06-12)
 
-Sent personally to each founder-seat buyer, same day as the purchase if at
-all possible — this email delivers the WhatsApp group perk they just paid
-for, so speed is part of the product. Plain text, from adam@procabinet.app,
-QR attached. Never automated: at 50 seats maximum, a personal note from the
-founder IS the perk working.
+One standard email for every founder-seat buyer — signup only collects an
+email address, so there is nothing to personalise and no fields to fill.
+Send it the same day a seat sells (it delivers the WhatsApp perk they just
+paid for, so speed is part of the product), either one at a time as seats
+sell or to all current founders in one go (**BCC** so addresses are never
+exposed to each other). Plain text, from adam@procabinet.app, QR attached.
 
 **Spotting a purchase:** the live Stripe dashboard payment (founder price),
 a new `subscriptions` row, and the landing counter (`founder_seats_taken`
-RPC) ticking up. Use that count as `{{seat_no}}`.
+RPC) ticking up.
 
 ## WhatsApp group assets
 
@@ -26,53 +27,56 @@ RPC) ticking up. Use that count as `{{seat_no}}`.
 
 ## Subject options
 
-1. `Thanks {{first_name}}, your founder seat's live`
-2. `You're founder {{seat_no}} of 50`
-3. `Your founder seat + the founders' WhatsApp group`
+1. `Your ProCabinet founder seat`
+2. `Welcome to the ProCabinet founders`
+3. `Your founder seat and the founders' WhatsApp group`
 
-(1) is the strongest: it reads like a person, and the news is in the
-subject.
+(1) is the strongest: plain, clear, and obviously not a campaign.
 
 ---
 
 ## Body
 
-No bold, no headings, no sign-off tagline — it should look like a normal
-email typed to one person.
+No merge fields (no names are collected at signup), no bold, no headings,
+no sign-off tagline — a normal, well-written email that works for every
+founder unchanged.
 
-> Hi {{first_name}},
+> Hello,
 >
-> Adam here. Thank you for buying a founder seat, you're number {{seat_no}}
-> of the 50. ProCabinet is just me at the minute, so someone putting real
-> money behind it means a lot, honestly.
+> Thank you for buying a ProCabinet founder seat. I'm Adam, the cabinet
+> maker who built the app, and I wanted to welcome you personally rather
+> than leave it to an automated receipt.
 >
-> Your account's already sorted: Pro, for good. Nothing renews and there's
-> nothing to cancel. The $299 is the only money you'll ever spend on
-> ProCabinet.
+> Your account is now on the Pro plan permanently. Nothing renews and there
+> is nothing to cancel. The $299 is the only payment ProCabinet will ever
+> take from you.
 >
-> The other half of the seat is the founders' WhatsApp group, and it's the
-> half I'd encourage you to actually use. It's small, just me and the other
-> founders, and it comes straight to my phone. If the app's missing
-> something your workshop needs, say so in there and there's a fair chance
-> I'll build it. Here's the link:
+> The seat also includes the founders' WhatsApp group. It's a small group,
+> just me and the other founders, and it has a real say in what gets built
+> next. If the app is missing something your workshop needs, that is the
+> place to tell me. You can join here:
 >
 > https://chat.whatsapp.com/H8QI9EHNtJAE1WAlnj2dT0
 >
-> There's a QR code attached too if that's easier.
+> A QR code is attached if that's easier.
 >
-> And if you'd like a hand getting set up, I'm happy to do it with you on a
-> quick call. Fifteen minutes and we'll have your rates, sheet materials and
-> a first cabinet quote in place. Just reply with a day that suits.
+> The setup offer also stands for every founder: fifteen minutes on a call
+> and I will set up your rates, sheet materials and first cabinet quote
+> around how your workshop runs. Just reply with a day that suits.
 >
-> Cheers,
+> Thank you again for backing the app this early. It makes a real
+> difference.
+>
+> Kind regards,
 > Adam
+> Founder, ProCabinet
 
 ---
 
 ## After they join the group
 
-- Greet each founder by first name within the hour if you can — first
-  impressions of the group set its tone.
+- Greet each founder when they join, by name where WhatsApp shows their
+  profile name — first impressions of the group set its tone.
 - Post one short build-update in their first week so the group never looks
   like a ghost town: what shipped, what's next, one question for them.
 - When a founder's request ships, name them in the group when you announce
