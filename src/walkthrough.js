@@ -73,6 +73,7 @@ function _wtIsTouch() {
  * @property {boolean} [openFeatures]  Open the header New-features dropdown for this step.
  * @property {string} [target]         CSS selector to spotlight (spot steps).
  * @property {string} [preClickCard]   CSS selector — animate cursor to and click this before the step shows.
+ * @property {boolean} [clOptimize]    After the pre-click opens a cut list, run the optimiser once its rows load — switches the right pane to Cut Layout with the nested sheets on screen.
  * @property {'list'|'editor'} [mv]    Mobile pane (body[data-mv]) holding the step's target in the ≤760px single-column layout. Applied after preClickCard.
  * @property {'right'|'left'|'top'|'bottom'} [position]  Preferred tooltip side.
  * @property {string} [icon]           Emoji for centred steps.
@@ -146,15 +147,18 @@ const _wtSteps = [
 
   // ── Cut List ──────────────────────────────────────────────────────────────
   // The section gate lands on the Cut List Library; pre-clicking a library
-  // card opens a real demo cut list, so the spotlit pane shows populated
-  // sheet/piece tables instead of the "no cut list open" gate. [onclick]
-  // skips the grid's synchronous "Loading…" / empty-state placeholder divs.
+  // card opens a real demo cut list ([onclick] skips the grid's synchronous
+  // "Loading…" / empty-state placeholder divs), then clOptimize runs the
+  // optimiser over it once its rows load — so the spotlit pane shows a real
+  // nested cut layout, not the "Ready to Optimize" empty state.
   {
-    type: 'spot', phase: 'Cut List', section: 'cutlist', mv: 'editor',
+    type: 'spot', phase: 'Cut List', section: 'cutlist', mv: 'list',
     preClickCard: '#cl-lib-grid > div[onclick]',
-    target: '.cl-left', position: 'right',
-    title: 'Sheets & pieces',
-    body: 'Add your stock sheets and the pieces to cut — dimensions, quantity, grain and edge banding — then hit <span class="wt-hi">Optimise</span> and ProCabinet nests everything for minimum waste.'
+    clOptimize: true,
+    target: '#cl-view-layout', position: 'left',
+    title: 'Optimised cut layout',
+    body: 'Add your sheets and the pieces to cut on the left, hit <span class="wt-hi">Optimise</span>, and ProCabinet nests everything for <span class="wt-hi">minimum waste</span> — ready to print or export as PDF or DXF.',
+    bodyNarrow: 'Add your sheets and the pieces to cut, hit <span class="wt-hi">Optimise</span>, and ProCabinet nests everything for <span class="wt-hi">minimum waste</span> — ready to print or export as PDF or DXF.'
   },
 
   // ── Schedule ─────────────────────────────────────────────────────────────
@@ -306,9 +310,10 @@ function _wtGateSection(section) {
       _wtW._exitClient_cabinet();
     }
     if (section === 'cutlist') {
-      // Land on the Cut List Library. The "Sheets & pieces" step then opens a
-      // cut list by pre-clicking a library card, so the spotlit pane shows
-      // real sheet/piece data rather than the no-cut-list-open gate.
+      // Land on the Cut List Library. The "Optimised cut layout" step then
+      // opens a cut list by pre-clicking a library card and runs the
+      // optimiser over it (clOptimize), so the spotlit pane shows a real
+      // nested layout rather than the no-cut-list-open gate.
       if (typeof _wtW.switchCLMainView === 'function') _wtW.switchCLMainView('library');
     }
     if (section === 'orders' && typeof _opState !== 'undefined') {
@@ -494,6 +499,13 @@ async function _wtClose(reason) {
         new Promise((res) => setTimeout(res, 12000)),
       ]);
     } catch (e) { console.warn('[walkthrough] real-data restore failed', e); }
+    // The tour pre-clicked a demo cut list open and optimised it; that lives
+    // in cutlist.js module state (pieces/sheets/results) which loadAllData
+    // doesn't touch. Exit library-edit so the user's next visit to the Cut
+    // List tab doesn't show demo parts and a demo layout over their account.
+    try {
+      if (typeof _wtW._clExitLibraryEdit === 'function') _wtW._clExitLibraryEdit();
+    } catch (e) { console.warn('[walkthrough] cutlist reset failed', e); }
   }
   // Teardown — every handle cleared so a double call or a stale callback no-ops.
   if (_wtOverlay) { _wtOverlay.remove(); _wtOverlay = null; }
@@ -754,6 +766,36 @@ function _wtWaitFor(sel, cb) {
 }
 
 /**
+ * clOptimize steps: run the cut list optimiser once the pre-clicked cut list
+ * finishes its async load. _clDoOpenLibraryCutlist flips _clCutlistReady false
+ * synchronously inside the card click, so polling it (plus the in-memory rows)
+ * can't pass on stale pre-click state. optimize() switches the right pane to
+ * Cut Layout and renders the nested sheets; autosave is already suspended for
+ * the tour (_wtActive), so nothing persists. If the load never completes the
+ * pane is switched anyway so the step's #cl-view-layout target still resolves
+ * — worst case it shows its "Ready to Optimize" empty state.
+ * @param {() => void} done
+ */
+function _wtOptimizeCutlist(done) {
+  const deadline = performance.now() + 2500;
+  const tick = () => {
+    if (!_wtActive) return;
+    const ready = typeof _clCutlistReady !== 'undefined' && _clCutlistReady
+      && typeof pieces !== 'undefined' && pieces.length > 0
+      && typeof sheets !== 'undefined' && sheets.length > 0;
+    if (!ready && performance.now() < deadline) { setTimeout(tick, 50); return; }
+    if (ready) {
+      try { if (typeof optimize === 'function') optimize(); }
+      catch (e) { console.warn('[walkthrough] optimise failed', e); }
+    } else if (typeof _wtW.switchCLMainView === 'function') {
+      try { _wtW.switchCLMainView('layout'); } catch (e) { void e; }
+    }
+    done();
+  };
+  tick();
+}
+
+/**
  * Skip a step whose spotlight target never resolved, continuing in the current
  * navigation direction. Step 0 is a center step (always renders), so stepping
  * back always terminates; stepping forward past the end finishes the tour.
@@ -811,6 +853,16 @@ function _wtRender(i) {
       _wtWaitFor(step.preClickCard, (card) => {
         if (!_wtActive || _wtCurrent !== i) return;
         if (card) { try { card.click(); } catch (e) { void e; } }
+        if (step.clOptimize) {
+          // The optimiser must wait for the clicked cut list's async row load,
+          // and its own view switch must land before the pane/target resolve.
+          _wtOptimizeCutlist(() => {
+            if (!_wtActive || _wtCurrent !== i) return;
+            _wtApplyMv(step);
+            _wtResolveAndDraw(i, step);
+          });
+          return;
+        }
         _wtApplyMv(step);
         _wtResolveAndDraw(i, step);
       });
