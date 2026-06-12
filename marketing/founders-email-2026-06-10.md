@@ -1,29 +1,17 @@
-# Founders' offer email — free users (drafted 2026-06-10 · finalised 2026-06-12)
+# Founders' offer email — free users (2026-06-10)
 
 Send personally, one at a time (not BCC blast) — at this volume the personal
 touch is the whole point. Use their first name where known; where blank, the
 domain usually tells you the business (e.g. cheverell.co.uk → Cheverell).
-Sends are plain text, so paste URLs bare (no markdown links).
 
 **✅ Pre-send checklist — cleared 2026-06-12:** S.9 live-mode flip is done
-(verified 2026-06-11 via secret digests), so the Claim link now hits live
+(verified 2026-06-11 via secret digests), so the Claim link hits live
 Checkout. Ready to send.
 
-## WhatsApp group
-
-- **Invite link (use this clean form):**
-  `https://chat.whatsapp.com/H8QI9EHNtJAE1WAlnj2dT0`
-  (the `?s=cl&p=i…` share params WhatsApp appends are unnecessary; the
-  stripped form was verified live 2026-06-12 — resolves to
-  "ProCabinet.App Founders")
-- **QR code:** `marketing/assets/founders-whatsapp-qr.png` — attach to each
-  send for anyone reading on a desktop.
-- **Decision (2026-06-12):** the group is an open invite to every recipient,
-  not a perk gated behind the $299 seat as the first draft had it. At 16
-  prospects, having them all in one group with the founder is worth more than
-  the gate; the seat pitch leans on the lifetime price instead. (The landing
-  card's "WhatsApp group with the founder" perk line stays true — founders
-  are in it.)
+When a seat sells, send the buyer the welcome email —
+`marketing/founders-welcome-email-2026-06-12.md` — which delivers the
+WhatsApp group invite (the group is a buyers-only perk; no invite link in
+this offer email).
 
 ---
 
@@ -44,26 +32,18 @@ Checkout. Ready to send.
 > Adam here — I'm the cabinet maker who built ProCabinet. I saw you created
 > an account recently and wanted to reach out myself, not with a newsletter.
 >
-> Three things:
+> Two things:
 >
 > **1. Want me to set it up with you?** 15 minutes on a call and I'll get your
 > rates, sheet materials and first cabinet quote working around how your
 > workshop actually runs. No charge, no pitch — it's the fastest way to see
 > whether it saves you the hours it saves me. Just reply with a day that suits.
 >
-> **2. The founders' WhatsApp group.** I've opened a small group for the first
-> users. It's a straight line to me, no support tickets, and what gets asked
-> in there is what gets built next. Here's your invite:
->
-> https://chat.whatsapp.com/H8QI9EHNtJAE1WAlnj2dT0
->
-> (There's a QR attached too, if your phone's closer than your mouse.)
->
-> **3. A founders' seat, while they exist.** The first 50 users can buy
-> ProCabinet outright — **$299 once, Pro forever**. That's the same money as
-> a single year on the annual plan, kept for good. When the 50 are gone this
-> becomes $35/month, so if the app clicked for you, this is the moment:
-> https://procabinet.app/os?plan=founder
+> **2. A founders' seat, while they exist.** The first 50 users can buy
+> ProCabinet outright — **$299 once, Pro forever**, plus a private WhatsApp
+> group with me where what founders ask for shapes what gets built. When the
+> 50 are gone this becomes $35/month, so if the app clicked for you, this is
+> the moment: [Claim a founder seat](https://procabinet.app/os?plan=founder)
 >
 > Either way — if something about the app annoyed you or didn't fit how you
 > work, reply and tell me. I fix things fast and you'd be doing me a favour.
@@ -105,10 +85,7 @@ businesses with domains — those are your founder-seat buyers.
 
 ## Follow-up cadence
 
-- Day 0: email above (QR attached)
-- As people join the group: greet each by first name, and post one short
-  build-update in week one so it isn't a ghost town — the group selling the
-  seat beats the email doing it
+- Day 0: email above
 - Day 3: reply in-thread to non-openers — one line: "Any questions about the
   founder seat? Happy to show you the cut-list optimiser on a quick call."
 - Day 7: final in-thread nudge when ~40 seats remain (real count), creating

@@ -244,10 +244,11 @@ founders' offer. Details in SPEC.md § 13 (2026-06-10 growth entry).
      2026-06-11 on £36.81 (~£4.60/signup)** vs ~£15/signup implied by the
      traffic test.
   5. Send the founders email — `marketing/founders-email-2026-06-10.md`
-     — copy finalised 2026-06-12: founders' WhatsApp group invite added as
-     an open invite to all recipients (clean link + QR at
-     `marketing/assets/founders-whatsapp-qr.png`); S.9 is done so the Claim
-     link is live. **Ready to send** — remaining work is the sending itself.
+     (original two-item copy unchanged; stale S.9 warning cleared 2026-06-12
+     — the Claim link is live). **Ready to send.** When a seat sells,
+     deliver the WhatsApp-group perk with the new
+     `marketing/founders-welcome-email-2026-06-12.md` (buyers-only invite
+     link + QR at `marketing/assets/founders-whatsapp-qr.png`).
 
 - ✅ **G.6 — Phase C: Advantage+ audience expansion (2026-06-11, built
   PAUSED):** with conversion signal flowing (G.5.4), added ad set
