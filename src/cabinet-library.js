@@ -43,64 +43,146 @@ function _saveStockLibByName(name) {
   saveStockLibrary(name.trim());
 }
 
+// Column spec shared by export + header-mapped import. Aliases include the
+// pre-2026-06 export headers so old files keep importing cleanly.
+const _CABLIB_CSV_COLS = /** @type {Record<string, string[]>} */ ({
+  name:              ['name'],
+  type:              ['type', 'preset'],
+  room:              ['room'],
+  w:                 ['width', 'w', 'widthmm'],
+  h:                 ['height', 'h', 'heightmm'],
+  d:                 ['depth', 'd', 'depthmm'],
+  qty:               ['qty', 'quantity'],
+  material:          ['material', 'carcassmaterial'],
+  backMat:           ['backmaterial', 'back'],
+  finish:            ['finish'],
+  carcassType:       ['carcasstype', 'carcass'],
+  construction:      ['construction'],
+  baseType:          ['base', 'basetype'],
+  doors:             ['doors', 'doorcount'],
+  doorMat:           ['doormaterial'],
+  doorType:          ['doortype'],
+  doorFinish:        ['doorfinish'],
+  doorPct:           ['door', 'doorpct', 'doorheight'],
+  drawers:           ['drawers', 'drawercount'],
+  drawerFrontMat:    ['frontmaterial', 'drawerfrontmaterial'],
+  drawerFrontType:   ['drawerfronttype', 'fronttype'],
+  drawerFrontFinish: ['drawerfrontfinish', 'frontfinish'],
+  drawerInnerMat:    ['innermaterial', 'drawerinnermaterial', 'drawerboxmaterial'],
+  drawerBoxType:     ['drawerboxtype', 'boxtype'],
+  drawerBoxFinish:   ['drawerboxfinish', 'boxfinish'],
+  drawerPct:         ['drawer', 'drawerpct', 'drawerheight'],
+  shelves:           ['fixedshelves', 'shelves'],
+  adjShelves:        ['adjshelves', 'adjustableshelves'],
+  looseShelves:      ['looseshelves'],
+  partitions:        ['partitions'],
+  endPanels:         ['endpanels'],
+  labourHrs:         ['labourhrs', 'labourhours', 'laborhours'],
+  labourOverride:    ['labouroverride', 'laboroverride'],
+  matCostOverride:   ['materialcostoverride', 'matcostoverride', 'costoverride'],
+  hardware:          ['hardware'],
+  doorHardware:      ['doorhardware'],
+  drawerHardware:    ['drawerhardware'],
+  extras:            ['extras'],
+  notes:             ['notes', 'note'],
+});
+
 function cbExportLibrary() {
   if (!_enforceProFeature()) return;
   if (!cbLibrary.length) { _toast('No cabinets in library', 'error'); return; }
-  const headers = ['Name','Width','Height','Depth','Qty','Material','Back Material','Finish','Construction','Base','Doors','Door Material','Door %','Drawers','Front Material','Inner Material','Drawer %','Fixed Shelves','Adj Shelves','Loose Shelves','Partitions','End Panels'];
   /** @type {any[][]} */
-  const rows = [headers];
+  const rows = [['Name','Type','Room','Width','Height','Depth','Qty','Material','Back Material','Finish','Carcass Type','Construction','Base','Doors','Door Material','Door Type','Door Finish','Door %','Drawers','Front Material','Drawer Front Type','Drawer Front Finish','Inner Material','Drawer Box Type','Drawer Box Finish','Drawer %','Fixed Shelves','Adj Shelves','Loose Shelves','Partitions','End Panels','Labour Hrs','Labour Override','Material Cost Override','Hardware','Door Hardware','Drawer Hardware','Extras','Notes']];
+  /** @param {any[]} arr */
+  const json = arr => (Array.isArray(arr) && arr.length) ? JSON.stringify(arr) : '';
   cbLibrary.forEach(c => {
-    rows.push([c._libName||c.name||'Cabinet',c.w,c.h,c.d,c.qty||1,c.material||'',c.backMat||'',c.finish||'None',c.construction||'Overlay',c.baseType||'None',c.doors||0,c.doorMat||'',c.doorPct||95,c.drawers||0,c.drawerFrontMat||'',c.drawerInnerMat||'',c.drawerPct||85,c.shelves||0,c.adjShelves||0,c.looseShelves||0,c.partitions||0,c.endPanels||0]);
+    rows.push([
+      c._libName||c.name||'Cabinet', c.cabType||c.type||'', c.room||'', c.w, c.h, c.d, c.qty||1,
+      c.material||'', c.backMat||'', c.finish||'None', c.carcassType||'', c.construction||'Overlay', c.baseType||'None',
+      c.doors||0, c.doorMat||'', c.doorType||'', c.doorFinish||'', c.doorPct||95,
+      c.drawers||0, c.drawerFrontMat||'', c.drawerFrontType||'', c.drawerFrontFinish||'', c.drawerInnerMat||'', c.drawerBoxType||'', c.drawerBoxFinish||'', c.drawerPct||85,
+      c.shelves||0, c.adjShelves||0, c.looseShelves||0, c.partitions||0, c.endPanels||0,
+      c.labourHrs||0, c.labourOverride ? 'TRUE' : 'FALSE', c.matCostOverride ?? '',
+      json(c.hwItems), json(c.doorHwItems), json(c.drawerHwItems), json(c.extras), c.notes||'',
+    ]);
   });
-  const csv = rows.map(r => r.map(/** @param {any} v */ v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
-  const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([csv],{type:'text/csv'})), download: 'cabinet-library.csv' });
-  a.click(); URL.revokeObjectURL(a.href);
+  _csvDownload(rows, 'cabinet-library.csv');
   _toast('Library exported as CSV', 'success');
 }
 
 function cbImportLibrary() {
   if (!_enforceProFeature()) return;
-  const input = document.createElement('input');
-  input.type = 'file'; input.accept = '.csv';
-  input.onchange = async e => {
-    const file = /** @type {HTMLInputElement} */ (e.target).files?.[0]; if (!file) return;
-    try {
-      const text = await file.text();
-      const rows = text.split(/\r?\n/).map(r => r.split(',').map(c => c.replace(/^"|"$/g,'').trim()));
-      if (rows.length < 2) { _toast('CSV has no data rows', 'error'); return; }
-      // Free-tier cap on cabinet_templates: refuse the import outright if we'd
-      // bust the cap. Pro users and trial users skip the check.
-      if (typeof _hasProAccess === 'function' && !_hasProAccess()) {
-        const room = FREE_LIMITS.cabinet_templates - _realCount(cbLibrary);
-        const incoming = rows.length - 1;
-        if (room <= 0) { _openLimitHitModal('cabinet_templates'); return; }
-        if (incoming > room) { _toast(`Free plan only allows ${room} more cabinet${room === 1 ? '' : 's'}. Upgrade for unlimited.`, 'error'); _openLimitHitModal('cabinet_templates'); return; }
-      }
-      let imported = 0;
-      for (let i = 1; i < rows.length; i++) {
-        const r = rows[i]; if (r.length < 4 || !r[0]) continue;
-        /** @type {any} */
-        const cab = cbDefaultLine();
-        cab.id = Date.now() + Math.random();
-        cab._libName = r[0]; cab.name = r[0];
-        cab.w = parseFloat(r[1])||600; cab.h = parseFloat(r[2])||720; cab.d = parseFloat(r[3])||560;
-        cab.qty = parseInt(r[4])||1; cab.material = r[5]||cab.material; cab.backMat = r[6]||cab.backMat;
-        cab.finish = r[7]||'None'; cab.construction = r[8]||'Overlay'; cab.baseType = r[9]||'None';
-        cab.doors = parseInt(r[10])||0; cab.doorMat = r[11]||cab.material; cab.doorPct = parseInt(r[12])||95;
-        cab.drawers = parseInt(r[13])||0; cab.drawerFrontMat = r[14]||cab.material; cab.drawerInnerMat = r[15]||cab.backMat;
-        cab.drawerPct = parseInt(r[16])||85; cab.shelves = parseInt(r[17])||0; cab.adjShelves = parseInt(r[18])||0;
-        cab.looseShelves = parseInt(r[19])||0; cab.partitions = parseInt(r[20])||0; cab.endPanels = parseInt(r[21])||0;
-        cbLibrary.push(cab); imported++;
-      }
-      renderCBLibraryView();
-      _toast(imported + ' cabinets imported', 'success');
-      const p = _byId('cb-library-panel'); if (p) p.style.display = '';
-      const newEntries = cbLibrary.slice(-imported);
-      Promise.all(newEntries.map(e => _saveCabinetToDB(e).then(id => { if (id) e.db_id = id; })))
-        .catch(err => console.warn('[cabinet-template bulk save]', err.message || err));
-    } catch(e) { _toast('Could not read CSV: ' + (/** @type {any} */ (e)).message, 'error'); }
-  };
-  input.click();
+  _csvPickFile(rows => {
+    const col = _csvCol(rows[0], _CABLIB_CSV_COLS);
+    // Headerless file → legacy export order.
+    const legacyKeys = ['name','w','h','d','qty','material','backMat','finish','construction','baseType','doors','doorMat','doorPct','drawers','drawerFrontMat','drawerInnerMat','drawerPct','shelves','adjShelves','looseShelves','partitions','endPanels'];
+    const start = col ? 1 : 0;
+    /** @param {string[]} r @param {string} key */
+    const get = (r, key) => col ? col(r, key) : ((r[legacyKeys.indexOf(key)] ?? '').trim());
+    // Free-tier cap on cabinet_templates: refuse the import outright if we'd
+    // bust the cap. Pro users and trial users skip the check.
+    if (typeof _hasProAccess === 'function' && !_hasProAccess()) {
+      const room = FREE_LIMITS.cabinet_templates - _realCount(cbLibrary);
+      const incoming = rows.length - start;
+      if (room <= 0) { _openLimitHitModal('cabinet_templates'); return; }
+      if (incoming > room) { _toast(`Free plan only allows ${room} more cabinet${room === 1 ? '' : 's'}. Upgrade for unlimited.`, 'error'); _openLimitHitModal('cabinet_templates'); return; }
+    }
+    /** @param {string} v */
+    const jsonArr = v => { try { const a = JSON.parse(v); return Array.isArray(a) ? a : null; } catch (e) { return null; } };
+    let imported = 0;
+    for (let i = start; i < rows.length; i++) {
+      const r = rows[i];
+      const name = get(r, 'name');
+      if (!name) continue;
+      // Build from the preset when a Type column is present so unspecified
+      // fields inherit that preset's defaults, then override from the CSV.
+      const type = get(r, 'type');
+      /** @type {any} */
+      const cab = cbDefaultLine(type || undefined);
+      cab.id = Date.now() + Math.random();
+      if (type) cab.type = type;   // persisted via default_specs; cabinet_templates.type reads it
+      cab._libName = name; cab.name = name;
+      cab.w = parseFloat(get(r, 'w'))||600; cab.h = parseFloat(get(r, 'h'))||720; cab.d = parseFloat(get(r, 'd'))||560;
+      cab.qty = parseInt(get(r, 'qty'))||1;
+      cab.material = get(r, 'material')||cab.material; cab.backMat = get(r, 'backMat')||cab.backMat;
+      cab.finish = get(r, 'finish')||cab.finish||'None';
+      cab.carcassType = get(r, 'carcassType')||cab.carcassType;
+      cab.construction = get(r, 'construction')||cab.construction||'Overlay';
+      cab.baseType = get(r, 'baseType')||cab.baseType||'None';
+      cab.room = get(r, 'room')||cab.room;
+      cab.doors = parseInt(get(r, 'doors'))||0;
+      cab.doorMat = get(r, 'doorMat')||cab.material;
+      cab.doorType = get(r, 'doorType')||cab.doorType;
+      cab.doorFinish = get(r, 'doorFinish')||cab.doorFinish;
+      cab.doorPct = parseInt(get(r, 'doorPct'))||95;
+      cab.drawers = parseInt(get(r, 'drawers'))||0;
+      cab.drawerFrontMat = get(r, 'drawerFrontMat')||cab.material;
+      cab.drawerFrontType = get(r, 'drawerFrontType')||cab.drawerFrontType;
+      cab.drawerFrontFinish = get(r, 'drawerFrontFinish')||cab.drawerFrontFinish;
+      cab.drawerInnerMat = get(r, 'drawerInnerMat')||cab.backMat;
+      cab.drawerBoxType = get(r, 'drawerBoxType')||cab.drawerBoxType;
+      cab.drawerBoxFinish = get(r, 'drawerBoxFinish')||cab.drawerBoxFinish;
+      cab.drawerPct = parseInt(get(r, 'drawerPct'))||85;
+      cab.shelves = parseInt(get(r, 'shelves'))||0; cab.adjShelves = parseInt(get(r, 'adjShelves'))||0;
+      cab.looseShelves = parseInt(get(r, 'looseShelves'))||0; cab.partitions = parseInt(get(r, 'partitions'))||0;
+      cab.endPanels = parseInt(get(r, 'endPanels'))||0;
+      cab.labourHrs = parseFloat(get(r, 'labourHrs'))||0;
+      cab.labourOverride = /^(true|yes|1)$/i.test(get(r, 'labourOverride'));
+      const mco = parseFloat(get(r, 'matCostOverride'));
+      cab.matCostOverride = isFinite(mco) ? mco : null;
+      cab.hwItems = jsonArr(get(r, 'hardware')) || cab.hwItems;
+      cab.doorHwItems = jsonArr(get(r, 'doorHardware')) || cab.doorHwItems;
+      cab.drawerHwItems = jsonArr(get(r, 'drawerHardware')) || cab.drawerHwItems;
+      cab.extras = jsonArr(get(r, 'extras')) || cab.extras;
+      cab.notes = get(r, 'notes')||cab.notes;
+      cbLibrary.push(cab); imported++;
+    }
+    renderCBLibraryView();
+    _toast(imported + ' cabinets imported', 'success');
+    const p = _byId('cb-library-panel'); if (p) p.style.display = '';
+    const newEntries = cbLibrary.slice(-imported);
+    Promise.all(newEntries.map(e => _saveCabinetToDB(e).then(id => { if (id) e.db_id = id; })))
+      .catch(err => console.warn('[cabinet-template bulk save]', err.message || err));
+  });
 }
 
 function cbSaveToLibrary() {

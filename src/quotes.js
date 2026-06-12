@@ -638,44 +638,100 @@ function exportQuotesCSV() {
   if (!_enforceProFeature()) return;
   const customerQuotes = quotes.filter(q => !_isDraftQuote(q));
   if (!customerQuotes.length) { _toast('No quotes to export', 'error'); return; }
-  const cur = window.currency;
   /** @type {any[][]} */
-  const rows = [['Client','Project','Materials','Labour','Markup %','Tax %','Discount %','Status','Date','Notes']];
+  const rows = [['Quote #','Client','Project','Materials','Labour','Markup %','Tax %','Discount %','Stock Markup %','Status','Date','Notes','Total']];
   customerQuotes.forEach(q => {
     const matVal = q._totals ? q._totals.materials : (q.materials || 0);
     const labVal = q._totals ? q._totals.labour    : (q.labour    || 0);
-    rows.push([quoteClient(q),quoteProject(q),matVal,labVal,q.markup,q.tax,/** @type {any} */ (q).discount ?? 0,q.status,q.date,q.notes||'']);
+    rows.push([
+      q.quote_number||'', quoteClient(q), quoteProject(q), matVal, labVal,
+      q.markup, q.tax, /** @type {any} */ (q).discount ?? 0, /** @type {any} */ (q).stock_markup ?? 0,
+      q.status, q.date, q.notes||'', quoteTotal(q).toFixed(2),
+    ]);
   });
-  const csv = rows.map(r => r.map(/** @param {any} v */ v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
-  const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([csv],{type:'text/csv'})), download: `quotes-${new Date().toISOString().slice(0,10)}.csv` });
-  a.click(); URL.revokeObjectURL(a.href);
+  _csvDownload(rows, `quotes-${new Date().toISOString().slice(0,10)}.csv`);
   _toast('Quotes exported', 'success');
 }
 function importQuotesCSV() {
   if (!_enforceProFeature()) return;
-  const input = document.createElement('input');
-  input.type = 'file'; input.accept = '.csv';
-  input.onchange = async e => {
-    const file = /** @type {HTMLInputElement} */ (e.target).files?.[0]; if (!file) return;
-    const text = await file.text();
-    const rows = text.split(/\r?\n/).map(r => r.split(',').map(c => c.replace(/^"|"$/g,'').trim()));
-    if (rows.length < 2) { _toast('No data rows', 'error'); return; }
+  _csvPickFile(async rows => {
+    const col = _csvCol(rows[0], {
+      number:      ['quote', 'quotenumber', 'quoteno', 'number'],
+      client:      ['client', 'clientname', 'customer'],
+      project:     ['project', 'projectname', 'name'],
+      materials:   ['materials', 'material'],
+      labour:      ['labour', 'labor'],
+      markup:      ['markup'],
+      tax:         ['tax', 'taxvat', 'vat'],
+      discount:    ['discount'],
+      stockMarkup: ['stockmarkup'],
+      status:      ['status'],
+      date:        ['date'],
+      notes:       ['notes', 'note'],
+    });
+    // Headerless file → legacy import order (Client, Project, Materials,
+    // Labour, Markup, Tax, Discount, Status, Date, Notes).
+    /** @type {Record<string, number>} */
+    const legacy = { client:0, project:1, materials:2, labour:3, markup:4, tax:5, discount:6, status:7, date:8, notes:9 };
+    const start = col ? 1 : 0;
+    /** @param {string[]} r @param {string} key */
+    const get = (r, key) => col ? col(r, key) : (legacy[key] !== undefined ? (r[legacy[key]] ?? '').trim() : '');
+    /** @param {string} v */
+    const statusKey = v => {
+      const s = (v || '').trim().toLowerCase();
+      if (!s) return 'draft';
+      if (/** @type {any} */ (QUOTE_STATUS_LABELS)[s]) return s;
+      const byLabel = Object.keys(QUOTE_STATUS_LABELS).find(k => /** @type {any} */ (QUOTE_STATUS_LABELS)[k].toLowerCase() === s);
+      return byLabel || 'draft';
+    };
+    /** @param {string} v */
+    const num = v => { const n = parseFloat(v); return isFinite(n) ? n : null; };
     let imported = 0;
-    for (let i = 1; i < rows.length; i++) {
-      const r = rows[i]; if (r.length < 4 || !r[0]) continue;
-      const client_id = r[0] ? await resolveClient(r[0]) : null;
+    for (let i = start; i < rows.length; i++) {
+      const r = rows[i];
+      const clientName = get(r, 'client');
+      const project = get(r, 'project');
+      if (!clientName && !project) continue;
+      const client_id = clientName ? await resolveClient(clientName) : null;
+      // `materials`/`labour` are no longer columns on `quotes` (derived from
+      // quote_lines since the schema normalisation) — the £ values from the
+      // CSV become two quote_lines below so totals survive the round-trip.
+      const mat = num(get(r, 'materials')) ?? 0;
+      const lab = num(get(r, 'labour')) ?? 0;
       /** @type {any} */
-      const row = { user_id: _userId, materials: parseFloat(r[2])||0, labour: parseFloat(r[3])||0, markup: parseFloat(r[4])||20, tax: parseFloat(r[5])||13, discount: parseFloat(r[6])||0, status: r[7]||'draft', date: r[8]||new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short'}), notes: r[9]||'' };
+      const row = {
+        user_id: _userId,
+        quote_number: get(r, 'number') || _nextQuoteNumber(),
+        markup: num(get(r, 'markup')) ?? 20,
+        tax: num(get(r, 'tax')) ?? 13,
+        discount: num(get(r, 'discount')) ?? 0,
+        stock_markup: num(get(r, 'stockMarkup')) ?? 0,
+        status: statusKey(get(r, 'status')),
+        date: get(r, 'date') || new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short'}),
+        notes: get(r, 'notes') || '',
+      };
       if (client_id) row.client_id = client_id;
-      // r[1] historically held the project name — kept in the CSV header for
-      // round-trip compatibility but written into quotes.name now that the
-      // projects entity is gone.
-      if (r[1]) row.name = r[1];
-      if (_userId) { const{data}=await _db('quotes').insert(row).select().single(); if(data){quotes.unshift(data);imported++;} }
+      if (project) row.name = project;
+      if (_userId) {
+        const { data } = await _db('quotes').insert(row).select().single();
+        if (!data) continue;
+        // Uniform key set on both rows — PostgREST rejects bulk inserts whose
+        // rows don't share identical keys ("All object keys must match").
+        /** @type {any[]} */
+        const lineRows = [];
+        if (mat) lineRows.push({ quote_id: data.id, user_id: _userId, position: 0, line_kind: 'item', name: 'Imported materials', qty: 1, unit_price: mat, labour_hours: null });
+        if (lab) lineRows.push({ quote_id: data.id, user_id: _userId, position: 1, line_kind: 'labour', name: 'Imported labour', qty: 1, unit_price: lab, labour_hours: 1 });
+        const q = /** @type {any} */ (data);
+        if (lineRows.length) {
+          const { data: lines } = await _db('quote_lines').insert(lineRows).select();
+          q._lines = (lines || []).map(/** @param {any} l */ l => ({ ...l }));
+          q._totals = { materials: mat, labour: lab, stockMat: 0 };
+        }
+        quotes.unshift(q); imported++;
+      }
     }
     _toast(imported+' quotes imported','success'); renderQuoteMain();
-  };
-  input.click();
+  });
 }
 
 

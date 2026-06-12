@@ -1409,8 +1409,8 @@ function _doClearAll() {
 })();
 
 // ── SHEETS ──
-/** @param {string} [name] @param {number} [w] @param {number} [h] @param {number} [qty] */
-function addSheet(name, w, h, qty) {
+/** @param {string} [name] @param {number} [w] @param {number} [h] @param {number} [qty] @param {string} [grain] */
+function addSheet(name, w, h, qty, grain) {
   const m = window.units === 'metric';
   // Default name: next free "Sheet N", skipping numbers already in use.
   let sheetName = name;
@@ -1428,7 +1428,7 @@ function addSheet(name, w, h, qty) {
     w:       w    !== undefined ? w    : (m ? 2440 : 96),
     h:       h    !== undefined ? h    : (m ? 1220 : 48),
     qty:     qty  !== undefined ? qty  : 1,
-    grain:   'none',
+    grain:   (grain !== undefined && grain !== '') ? grain : 'none',
     kerf:    m ? 3 : 0.125,
     enabled: true,
     color:   COLORS[pieceColorIdx++ % COLORS.length],
@@ -1615,8 +1615,8 @@ function _loadCutList() {
 }
 
 // ── PIECES ──
-/** @param {string} [label] @param {number} [w] @param {number} [h] @param {number} [qty] @param {string} [grain] */
-function addPiece(label, w, h, qty, grain) {
+/** @param {string} [label] @param {number} [w] @param {number} [h] @param {number} [qty] @param {string} [grain] @param {string} [material] @param {string} [notes] */
+function addPiece(label, w, h, qty, grain, material, notes) {
   const m = window.units === 'metric';
   const color = COLORS[pieceColorIdx++ % COLORS.length];
   const prevMat = pieces.length > 0 ? (pieces[pieces.length-1].material || '') : '';
@@ -1637,8 +1637,8 @@ function addPiece(label, w, h, qty, grain) {
     h:        h     !== undefined ? h     : (m ? 600 : 24),
     qty:      qty   !== undefined ? qty   : 1,
     grain:    (grain !== undefined && grain !== '') ? grain : 'none',
-    material: prevMat,
-    notes:    '',
+    material: (material !== undefined && material !== '') ? material : prevMat,
+    notes:    notes || '',
     enabled:  true,
     color,
     edges:    {L1:null,W2:null,L3:null,W4:null},
@@ -1892,25 +1892,46 @@ document.addEventListener('paste', function(e) {
 });
 
 // ── CSV ──
+// Per-side edge band cell format: the band's name, with a `|trim` suffix when
+// the band is set to trim the panel (e.g. "Oak 22mm|trim"). Import matches the
+// name against the cut list's edge bands case-insensitively.
+/** @param {{id:number,trim?:boolean}|null} e */
+function _edgeCell(e) {
+  if (!e) return '';
+  const band = edgeBands.find(b => b.id === e.id);
+  if (!band) return '';
+  return band.name + (e.trim ? '|trim' : '');
+}
+/** @param {string} cell @returns {{id:number,trim:boolean}|null} */
+function _edgeFromCell(cell) {
+  const v = (cell || '').trim();
+  if (!v) return null;
+  const [name, ...flags] = v.split('|');
+  const band = edgeBands.find(b => (b.name || '').toLowerCase() === name.trim().toLowerCase());
+  if (!band) return null;
+  return { id: band.id, trim: flags.some(f => f.trim().toLowerCase() === 'trim') };
+}
 /** @param {string} type */
 function exportCSV(type) {
-  let csv, fn;
   if (type === 'pieces') {
-    csv = 'Label,W,H,Qty,Grain,Material\n' + pieces.map(p =>
-      `"${p.label}",${p.w},${p.h},${p.qty},${p.grain||'none'},"${p.material||''}"`).join('\n');
-    fn = 'cut-parts.csv';
+    /** @type {any[][]} */
+    const rows = [['Label','W','H','Qty','Grain','Material','Notes','Edge L1','Edge W2','Edge L3','Edge W4']];
+    pieces.forEach(p => rows.push([
+      p.label, p.w, p.h, p.qty, p.grain||'none', p.material||'', p.notes||'',
+      _edgeCell(p.edges?.L1), _edgeCell(p.edges?.W2), _edgeCell(p.edges?.L3), _edgeCell(p.edges?.W4),
+    ]));
+    _csvDownload(rows, 'cut-parts.csv');
   } else {
-    csv = 'Material,W,H,Qty,Grain\n' + sheets.map(s =>
-      `"${s.name}",${s.w},${s.h},${s.qty},${s.grain||'none'}`).join('\n');
-    fn = 'stock-panels.csv';
+    /** @type {any[][]} */
+    const rows = [['Material','W','H','Qty','Grain']];
+    sheets.forEach(s => rows.push([s.name, s.w, s.h, s.qty, s.grain||'none']));
+    _csvDownload(rows, 'stock-panels.csv');
   }
-  const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([csv],{type:'text/csv'})), download: fn });
-  a.click();
 }
 /** @param {string} type */
 function downloadTemplate(type) {
   const csv = type === 'pieces'
-    ? 'Label,W,H,Qty,Grain,Material\nSide Panel,23.25,30,2,none,3/4" Plywood'
+    ? 'Label,W,H,Qty,Grain,Material,Notes,Edge L1,Edge W2,Edge L3,Edge W4\nSide Panel,23.25,30,2,none,3/4" Plywood,Sand before finish,,,,'
     : 'Material,W,H,Qty,Grain\n3/4" Plywood,96,48,5,none';
   const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([csv],{type:'text/csv'})), download: type==='pieces'?'parts-template.csv':'panels-template.csv' });
   a.click();
@@ -1928,12 +1949,46 @@ function handleCSVImport(input) {
   const reader = new FileReader();
   reader.onload = e => {
     const text = /** @type {string} */ (/** @type {FileReader} */ (e.target).result);
-    const lines = text.trim().split(/\r?\n/).slice(1);
-    lines.forEach(line => {
-      const c = line.split(',').map(x => x.trim().replace(/^"|"$/g,''));
-      if (_csvImportTarget === 'pieces') addPiece(c[0]||undefined, parseDim(c[1]), parseDim(c[2]), parseInt(c[3])||1, c[4]||'none');
-      else addSheet(c[0]||undefined, parseDim(c[1]), parseDim(c[2]), parseInt(c[3])||1);
+    const rows = _csvParse(text);
+    if (!rows.length) return;
+    const isPieces = _csvImportTarget === 'pieces';
+    const col = _csvCol(rows[0], isPieces ? {
+      label:    ['label', 'name', 'part'],
+      w:        ['w', 'width', 'wmm', 'win'],
+      h:        ['h', 'height', 'hmm', 'hin', 'length'],
+      qty:      ['qty', 'quantity'],
+      grain:    ['grain'],
+      material: ['material'],
+      notes:    ['notes', 'note'],
+      edgeL1:   ['edgel1', 'l1'],
+      edgeW2:   ['edgew2', 'w2'],
+      edgeL3:   ['edgel3', 'l3'],
+      edgeW4:   ['edgew4', 'w4'],
+    } : {
+      label: ['material', 'name', 'sheet', 'panel'],
+      w:     ['w', 'width', 'wmm', 'win'],
+      h:     ['h', 'height', 'hmm', 'hin', 'length'],
+      qty:   ['qty', 'quantity'],
+      grain: ['grain'],
     });
+    // Headerless file → template column order.
+    /** @type {Record<string, number>} */
+    const legacy = { label:0, w:1, h:2, qty:3, grain:4, material:5, notes:6, edgeL1:7, edgeW2:8, edgeL3:9, edgeW4:10 };
+    const start = col ? 1 : 0;
+    /** @param {string[]} r @param {string} key */
+    const get = (r, key) => col ? col(r, key) : (legacy[key] !== undefined ? (r[legacy[key]] ?? '').trim() : '');
+    for (let i = start; i < rows.length; i++) {
+      const r = rows[i];
+      if (isPieces) {
+        addPiece(get(r,'label')||undefined, parseDim(get(r,'w')), parseDim(get(r,'h')), parseInt(get(r,'qty'))||1, get(r,'grain')||'none', get(r,'material')||undefined, get(r,'notes')||undefined);
+        const p = pieces[pieces.length - 1];
+        const edges = { L1: _edgeFromCell(get(r,'edgeL1')), W2: _edgeFromCell(get(r,'edgeW2')), L3: _edgeFromCell(get(r,'edgeL3')), W4: _edgeFromCell(get(r,'edgeW4')) };
+        if (p && (edges.L1 || edges.W2 || edges.L3 || edges.W4)) p.edges = edges;
+      } else {
+        addSheet(get(r,'label')||undefined, parseDim(get(r,'w')), parseDim(get(r,'h')), parseInt(get(r,'qty'))||1, get(r,'grain')||'none');
+      }
+    }
+    if (isPieces) { renderPieces(); _saveCutList(); }
   };
   reader.readAsText(file);
 }

@@ -294,38 +294,84 @@ function exportOrdersCSV() {
   if (!_enforceProFeature()) return;
   if (!orders.length) { _toast('No orders to export', 'error'); return; }
   /** @type {any[][]} */
-  const rows = [['Order #','Client','Project','Value','Status','Due','Notes']];
-  orders.forEach(o => rows.push([o.order_number||'',orderClient(o),orderProject(o),o.value,o.status,o.due||'TBD',o.notes||'']));
-  const csv = rows.map(r => r.map(/** @param {any} v */ v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
-  const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([csv],{type:'text/csv'})), download: `orders-${new Date().toISOString().slice(0,10)}.csv` });
-  a.click(); URL.revokeObjectURL(a.href);
+  const rows = [['Order #','Client','Project','Value','Status','Due','Markup %','Tax %','Discount %','Stock Markup %','Priority','Production Start','Notes','Created']];
+  orders.forEach(o => rows.push([
+    o.order_number||'', orderClient(o), orderProject(o), o.value, o.status, o.due||'TBD',
+    o.markup ?? 0, o.tax ?? 0, /** @type {any} */ (o).discount ?? 0, /** @type {any} */ (o).stock_markup ?? 0,
+    /** @type {any} */ (o).priority ?? 0, /** @type {any} */ (o).production_start_date || '',
+    o.notes||'', (o.created_at||'').slice(0,10),
+  ]));
+  _csvDownload(rows, `orders-${new Date().toISOString().slice(0,10)}.csv`);
   _toast('Orders exported', 'success');
 }
 function importOrdersCSV() {
   if (!_enforceProFeature()) return;
-  const input = document.createElement('input');
-  input.type = 'file'; input.accept = '.csv';
-  input.onchange = async e => {
-    const target = /** @type {HTMLInputElement} */ (e.target);
-    const file = target.files?.[0]; if (!file) return;
-    const text = await file.text();
-    const rows = text.split(/\r?\n/).map(r => r.split(',').map(c => c.replace(/^"|"$/g,'').trim()));
-    if (rows.length < 2) { _toast('No data rows', 'error'); return; }
+  _csvPickFile(async rows => {
+    const col = _csvCol(rows[0], {
+      number:      ['order', 'ordernumber', 'orderno', 'number'],
+      client:      ['client', 'clientname', 'customer'],
+      project:     ['project', 'projectname', 'name'],
+      value:       ['value', 'total', 'ordertotal'],
+      status:      ['status'],
+      due:         ['due', 'duedate'],
+      markup:      ['markup'],
+      tax:         ['tax', 'taxvat', 'vat'],
+      discount:    ['discount'],
+      stockMarkup: ['stockmarkup'],
+      priority:    ['priority'],
+      prodStart:   ['productionstart', 'productionstartdate', 'startdate'],
+      notes:       ['notes', 'note'],
+    });
+    // Headerless file → legacy import order (Client, Project, Value, Status, Due, Notes).
+    /** @type {Record<string, number>} */
+    const legacy = { client:0, project:1, value:2, status:3, due:4, notes:5 };
+    const start = col ? 1 : 0;
+    /** @param {string[]} r @param {string} key */
+    const get = (r, key) => col ? col(r, key) : (legacy[key] !== undefined ? (r[legacy[key]] ?? '').trim() : '');
+    // Accept the status key ('production') or its display label ('In Production').
+    /** @param {string} v */
+    const statusKey = v => {
+      const s = (v || '').trim().toLowerCase();
+      if (!s) return 'quote';
+      if (/** @type {any} */ (STATUS_LABELS)[s]) return s;
+      const byLabel = Object.keys(STATUS_LABELS).find(k => /** @type {any} */ (STATUS_LABELS)[k].toLowerCase() === s);
+      return byLabel || 'quote';
+    };
+    /** @param {string} v */
+    const num = v => { const n = parseFloat(v); return isFinite(n) ? n : null; };
     let imported = 0;
-    for (let i = 1; i < rows.length; i++) {
-      const r = rows[i]; if (r.length < 2 || !r[0]) continue;
-      const client_id = r[0] ? await resolveClient(r[0]) : null;
+    for (let i = start; i < rows.length; i++) {
+      const r = rows[i];
+      const clientName = get(r, 'client');
+      const project = get(r, 'project');
+      if (!clientName && !project) continue;
+      const client_id = clientName ? await resolveClient(clientName) : null;
       /** @type {any} */
-      const row = { user_id: _userId, value: parseFloat(r[2])||0, status: r[3]||'quote', due: r[4]||'TBD' };
+      const row = {
+        user_id: _userId,
+        order_number: get(r, 'number') || _nextOrderNumber(),
+        value: num(get(r, 'value')) ?? 0,
+        status: statusKey(get(r, 'status')),
+        due: get(r, 'due') || 'TBD',
+        markup: num(get(r, 'markup')) ?? 0,
+        tax: num(get(r, 'tax')) ?? 0,
+        discount: num(get(r, 'discount')) ?? 0,
+        stock_markup: num(get(r, 'stockMarkup')) ?? 0,
+        priority: Math.round(num(get(r, 'priority')) ?? 0),
+      };
       if (client_id) row.client_id = client_id;
-      // r[1] historically held the project name — written into orders.name now.
-      if (r[1]) row.name = r[1];
-      if (_userId) { const{data}=await _db('orders').insert(row).select().single(); if(data){data.notes=r[5]||'';_onSet(data.id,data.notes);orders.unshift(data);imported++;} }
+      if (project) row.name = project;
+      const notes = get(r, 'notes');     if (notes) row.notes = notes;
+      const prodStart = get(r, 'prodStart');
+      if (/^\d{4}-\d{2}-\d{2}$/.test(prodStart)) row.production_start_date = prodStart;
+      if (_userId) {
+        const { data } = await _db('orders').insert(row).select().single();
+        if (data) { orders.unshift(data); imported++; }
+      }
     }
     _toast(imported+' orders imported','success'); renderOrdersMain();
     _oBadge();
-  };
-  input.click();
+  });
 }
 
 // ══════════════════════════════════════════

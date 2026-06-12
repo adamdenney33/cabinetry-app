@@ -23,6 +23,44 @@ Companion docs: `SPEC.md` (refactor history), `SCHEMA.md` (DB schema),
 
 ## Active Work
 
+### CSV import/export — all fields available ✅ Done 2026-06-12
+
+Every CSV surface (clients, stock, orders, quotes, cabinet library, cut
+list) exported a subset of fields and several importers were broken or
+lossy: clients import was a stub, orders import read columns in a
+different order than its own export wrote them, quotes import inserted
+`materials`/`labour` columns that no longer exist on the table (every row
+400s), and cut-list import silently dropped Material (pieces) and Grain
+(sheets). Upgrade all six to full-field, header-mapped round-trips.
+
+- ✅ **CSV.1 — Shared helpers** (`src/ui.js`): `_csvParse` (quoted-field
+  RFC-4180 parser — current `split(',')` corrupts notes/addresses with
+  commas) + `_csvCol` header-to-index mapping with per-column aliases and
+  positional fallback for headerless files.
+- ✅ **CSV.2 — Clients**: export real fields (Name, Email, Phone, Address,
+  Notes) from the `clients` array + derived stats; real importer
+  (dedupe by name, free-cap gated) replacing the info-toast stub.
+- ✅ **CSV.3 — Stock**: export/import Variant, Thickness (mm), Supplier,
+  Reorder URL, Glue, EB Width (mm), EB Length (m), Coverage (m²/L)
+  alongside the existing columns; category inserted as the real column;
+  template updated.
+- ✅ **CSV.4 — Orders**: header-mapped import (fixes the export↔import
+  column mismatch); Order #, Markup %, Tax %, Discount %, Stock Markup %,
+  Priority, Production Start, Notes in both directions; `order_number`
+  auto-assigned when blank.
+- ✅ **CSV.5 — Quotes**: insert only live columns (fixes the broken
+  import); Materials/Labour £ preserved as `quote_lines` rows (item +
+  labour); export gains Quote #, Stock Markup %, Total.
+- ✅ **CSV.6 — Cabinet library**: full builder field set (type, room,
+  carcass/door/drawer types + finishes, labour hrs/override, cost
+  override, hardware ×3, extras, notes); legacy 22-col positional
+  fallback kept.
+- ✅ **CSV.7 — Cut list**: pieces import keeps Material; sheets import
+  keeps Grain; pieces gain Notes + per-side edge bands (band name,
+  `|trim` suffix); templates updated.
+- ✅ **CSV.8 — Verify**: typecheck + browser round-trip pass on all six
+  surfaces.
+
 ### Persistent demo data + dashboard "Remove demo data" ✅ Done 2026-06-12
 
 The demo seed (src/demo.js) used to exist only inside the guided

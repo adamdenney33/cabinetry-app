@@ -530,22 +530,61 @@ try { renderDashboard(); setTimeout(drawRevenueChart, 0); } catch(e) {}
 // ── Clients CSV import / export ──
 function exportClientsCSV() {
   if (!_enforceProFeature()) return;
-  const allClients = [...new Set([...quotes.map(q=>quoteClient(q)), ...orders.map(o=>orderClient(o))].filter(Boolean))].sort();
-  if (!allClients.length) { _toast('No clients to export', 'error'); return; }
+  // Real client rows first (full contact fields); quote/order client names
+  // that never became a client row are appended name-only so nothing the
+  // Clients tab can reach is missing from the file.
+  const rowNames = new Set(clients.map(c => c.name.toLowerCase()));
+  const orphans = [...new Set([...quotes.map(q=>quoteClient(q)), ...orders.map(o=>orderClient(o))].filter(Boolean))]
+    .filter(n => !rowNames.has(n.toLowerCase())).sort();
+  if (!clients.length && !orphans.length) { _toast('No clients to export', 'error'); return; }
+  /** @param {string} name @param {number|null} id */
+  const stats = (name, id) => {
+    const qs = quotes.filter(q => (id != null && q.client_id === id) || quoteClient(q) === name);
+    const os = orders.filter(o => (id != null && o.client_id === id) || orderClient(o) === name);
+    const totalVal = qs.reduce((s,q)=>s+quoteTotal(q),0) + os.reduce((s,o)=>s+(o.value??0),0);
+    return [qs.length, os.length, totalVal.toFixed(2)];
+  };
   /** @type {any[][]} */
-  const rows = [['Client Name','Quotes','Orders','Total Value']];
-  allClients.forEach(c => {
-    const qCount = quotes.filter(q=>quoteClient(q)===c).length;
-    const oCount = orders.filter(o=>orderClient(o)===c).length;
-    const totalVal = quotes.filter(q=>quoteClient(q)===c).reduce((s,q)=>s+quoteTotal(q),0) + orders.filter(o=>orderClient(o)===c).reduce((s,o)=>s+(o.value??0),0);
-    rows.push([c, qCount, oCount, totalVal.toFixed(2)]);
-  });
-  const csv = rows.map(r => r.map(/** @param {any} v */ v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
-  const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([csv],{type:'text/csv'})), download: `clients-${new Date().toISOString().slice(0,10)}.csv` });
-  a.click(); URL.revokeObjectURL(a.href);
+  const rows = [['Name','Email','Phone','Address','Notes','Quotes','Orders','Total Value']];
+  [...clients].sort((a,b)=>a.name.localeCompare(b.name)).forEach(c =>
+    rows.push([c.name, c.email||'', c.phone||'', c.address||'', c.notes||'', ...stats(c.name, c.id)]));
+  orphans.forEach(n => rows.push([n, '', '', '', '', ...stats(n, null)]));
+  _csvDownload(rows, `clients-${new Date().toISOString().slice(0,10)}.csv`);
   _toast('Clients exported', 'success');
 }
 function importClientsCSV() {
   if (!_enforceProFeature()) return;
-  _toast('Clients are created automatically from quotes and orders', 'info');
+  if (!_requireAuth()) return;
+  _csvPickFile(async rows => {
+    const col = _csvCol(rows[0], {
+      name:    ['name', 'clientname', 'client'],
+      email:   ['email', 'emailaddress'],
+      phone:   ['phone', 'phonenumber', 'tel', 'mobile'],
+      address: ['address'],
+      notes:   ['notes', 'note'],
+    });
+    // Headerless file → assume the template column order (name first).
+    const start = col ? 1 : 0;
+    /** @param {string[]} r @param {string} key @param {number} i */
+    const get = (r, key, i) => col ? col(r, key) : (r[i] ?? '').trim();
+    let imported = 0, skipped = 0;
+    for (let i = start; i < rows.length; i++) {
+      const r = rows[i];
+      const name = get(r, 'name', 0);
+      if (!name) continue;
+      if (clients.some(c => c.name.toLowerCase() === name.toLowerCase())) { skipped++; continue; }
+      if (!_enforceFreeLimit('clients', _realCount(clients))) break;
+      /** @type {any} */
+      const row = { user_id: _userId, name };
+      const email = get(r, 'email', 1);   if (email) row.email = email;
+      const phone = get(r, 'phone', 2);   if (phone) row.phone = phone;
+      const address = get(r, 'address', 3); if (address) row.address = address;
+      const notes = get(r, 'notes', 4);   if (notes) row.notes = notes;
+      const { data, error } = await _db('clients').insert(row).select().single();
+      if (!error && data) { clients.push(data); imported++; }
+    }
+    clients.sort((a,b) => a.name.localeCompare(b.name));
+    _toast(`${imported} client${imported===1?'':'s'} imported${skipped ? `, ${skipped} already existed` : ''}`, 'success');
+    renderClientsMain();
+  });
 }

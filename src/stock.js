@@ -129,54 +129,104 @@ function importStockLibrary() {
   input.click();
 }
 
+// Header set shared by export, template and the header-mapped import. The
+// metadata accessors (_scGet/_svGet/_ssGet) are used on export so rows whose
+// metadata still lives in the localStorage fallback maps export complete.
+const _STOCK_CSV_COLS = /** @type {Record<string, string[]>} */ ({
+  name:     ['name'],
+  sku:      ['sku'],
+  category: ['category', 'cat'],
+  variant:  ['variant', 'variantspec', 'spec'],
+  w:        ['wmm', 'win', 'w', 'length', 'lengthmm', 'lengthin'],
+  h:        ['hmm', 'hin', 'h', 'width', 'widthmm', 'widthin'],
+  thickness:['thicknessmm', 'thickness', 'thick'],
+  qty:      ['qty', 'quantity', 'qtyinstock'],
+  low:      ['lowalert', 'low', 'lowstock'],
+  cost:     ['cost', 'costsheet', 'costunit', 'costperunit', 'price'],
+  supplier: ['supplier', 'suppliername'],
+  url:      ['reorderlink', 'reorderurl', 'supplierurl', 'url', 'link'],
+  glue:     ['gluetype', 'glue'],
+  ebWidth:  ['ebwidthmm', 'ebwidth', 'bandwidthmm', 'bandwidth'],
+  ebLength: ['eblengthm', 'eblength', 'rolllengthm', 'rolllength'],
+  coverage: ['coverageml', 'coveragesqml', 'coveragesqm', 'coverage', 'coveragem2l', 'coverageftgal'],
+});
+
 function exportStockCSV() {
   if (!_enforceProFeature()) return;
+  if (!stockItems.length) { _toast('No stock items to export', 'error'); return; }
   const u = window.units === 'metric' ? 'mm' : 'in';
   /** @type {any[][]} */
-  const rows = [['Name','SKU','Category',`W (${u})`,`H (${u})`,'Qty','Low Alert','Cost/Sheet','Total Value','Status']];
+  const rows = [['Name','SKU','Category','Variant',`W (${u})`,`H (${u})`,'Thickness (mm)','Qty','Low Alert','Cost','Supplier','Reorder Link','Glue Type','EB Width (mm)','EB Length (m)','Coverage (m²/L)','Total Value','Status']];
   stockItems.forEach(i => {
     const cat = _scGet(i.id);
+    const sup = _ssGet(i.id);
+    const meta = _svGet(i.id);
     const status = (i.qty ?? 0) <= (i.low ?? 0) ? 'Low Stock' : 'OK';
-    rows.push([i.name, i.sku||'', cat, i.w, i.h, i.qty, i.low, (i.cost ?? 0).toFixed(2), ((i.qty ?? 0)*(i.cost ?? 0)).toFixed(2), status]);
+    rows.push([
+      i.name, i.sku||'', cat, meta.variant||'', i.w ?? '', i.h ?? '', meta.thickness ?? '',
+      i.qty ?? 0, i.low ?? 0, (i.cost ?? 0).toFixed(2),
+      sup.supplier||'', sup.url||'', meta.glue||'', meta.width ?? '', meta.length ?? '',
+      i.coverage_sqm ?? '', ((i.qty ?? 0)*(i.cost ?? 0)).toFixed(2), status,
+    ]);
   });
-  const csv = rows.map(r => r.map(/** @param {any} v */ v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
-  const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([csv],{type:'text/csv'})), download: `stock-inventory-${new Date().toISOString().slice(0,10)}.csv` });
-  a.click(); URL.revokeObjectURL(a.href);
+  _csvDownload(rows, `stock-inventory-${new Date().toISOString().slice(0,10)}.csv`);
   _toast('Inventory exported to CSV', 'success');
 }
 
 function downloadStockTemplate() {
   const u = window.units === 'metric' ? 'mm' : 'in';
-  const csv = `"Name","SKU","Category","W (${u})","H (${u})","Qty","Low Alert","Cost/Sheet"\n"18mm Birch Plywood","PLY-18-B","Sheet Goods",${u==='mm'?2440:96},${u==='mm'?1220:48},10,3,72.00`;
-  const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([csv],{type:'text/csv'})), download: 'stock-template.csv' });
-  a.click(); URL.revokeObjectURL(a.href);
+  /** @type {any[][]} */
+  const rows = [
+    ['Name','SKU','Category','Variant',`W (${u})`,`H (${u})`,'Thickness (mm)','Qty','Low Alert','Cost','Supplier','Reorder Link','Glue Type','EB Width (mm)','EB Length (m)','Coverage (m²/L)'],
+    ['18mm Birch Plywood','PLY-18-B','Sheet Goods','BB/BB grade',u==='mm'?2440:96,u==='mm'?1220:48,18,10,3,'72.00','Timber Co','https://example.com/ply','','','',''],
+    ['Oak Edge Banding','EB-OAK-22','Edge Banding','Pre-glued',50,22,1,50,10,'0.45','Banding Ltd','','Pre-glued',22,50,''],
+    ['Osmo Polyx Oil','FIN-OSMO','Finishing','Satin 3032','','','',2.5,1,'24.00','Finish Supplies','','','','',12],
+  ];
+  _csvDownload(rows, 'stock-template.csv');
   _toast('Template downloaded', 'success');
 }
 
 function importStockCSV() {
   if (!_enforceProFeature()) return;
-  const input = document.createElement('input');
-  input.type = 'file'; input.accept = '.csv';
-  input.onchange = async e => {
-    const file = /** @type {HTMLInputElement} */ (e.target).files?.[0]; if (!file) return;
-    const text = await file.text();
-    const rows = text.split(/\r?\n/).map(r => r.split(',').map(c => c.replace(/^"|"$/g,'').trim()));
-    if (rows.length < 2) { _toast('CSV has no data rows', 'error'); return; }
+  _csvPickFile(async rows => {
+    const col = _csvCol(rows[0], _STOCK_CSV_COLS);
+    // Headerless file → legacy template order (Name, SKU, Category, W, H, Qty, Low, Cost).
+    /** @type {Record<string, number>} */
+    const legacy = { name:0, sku:1, category:2, w:3, h:4, qty:5, low:6, cost:7 };
+    const start = col ? 1 : 0;
+    /** @param {string[]} r @param {string} key */
+    const get = (r, key) => col ? col(r, key) : (legacy[key] !== undefined ? (r[legacy[key]] ?? '').trim() : '');
+    /** @param {string} v */
+    const num = v => { const n = parseFloat(v); return isFinite(n) ? n : null; };
     let imported = 0;
-    for (let i = 1; i < rows.length; i++) {
-      const r = rows[i]; if (r.length < 6) continue;
+    for (let i = start; i < rows.length; i++) {
+      const r = rows[i];
+      const name = get(r, 'name');
+      if (!name) continue;
       /** @type {any} */
-      const row = { user_id: _userId, name: r[0], sku: r[1]||'', w: parseFloat(r[3])||0, h: parseFloat(r[4])||0, qty: parseInt(r[5])||0, low: parseInt(r[6])||3, cost: parseFloat(r[7])||0 };
-      if (!row.name) continue;
+      const row = {
+        user_id: _userId, name, sku: get(r, 'sku') || '',
+        w: num(get(r, 'w')) ?? 0, h: num(get(r, 'h')) ?? 0,
+        qty: num(get(r, 'qty')) ?? 0, low: num(get(r, 'low')) ?? 3,
+        cost: num(get(r, 'cost')) ?? 0,
+      };
+      const cat = get(r, 'category');      if (cat) row.category = cat;
+      const variant = get(r, 'variant');   if (variant) row.variant = variant;
+      const thick = num(get(r, 'thickness'));  if (thick !== null) row.thickness_mm = thick;
+      const supplier = get(r, 'supplier'); if (supplier) row.supplier = supplier;
+      const url = get(r, 'url');           if (url) row.supplier_url = url;
+      const glue = get(r, 'glue');         if (glue) row.glue = glue;
+      const ebW = num(get(r, 'ebWidth'));  if (ebW !== null) row.width_mm = ebW;
+      const ebL = num(get(r, 'ebLength')); if (ebL !== null) row.length_m = ebL;
+      const cov = num(get(r, 'coverage')); if (cov !== null) row.coverage_sqm = cov;
       if (_userId) {
         const { data } = await _db('stock_items').insert(row).select().single();
-        if (data) { stockItems.push(data); if (r[2]) _scSet(data.id, r[2]); imported++; }
+        if (data) { stockItems.push(data); imported++; }
       }
     }
     _toast(imported + ' items imported', 'success');
     renderStockMain();
-  };
-  input.click();
+  });
 }
 
 /** @param {number} id @param {any} val */

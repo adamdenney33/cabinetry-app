@@ -541,3 +541,83 @@ function _initChromeCollapse() {
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', _initChromeCollapse);
 else _initChromeCollapse();
 
+// ── CSV helpers (shared by every import/export surface) ──
+// The importers used to split rows on raw commas/newlines, which corrupts any
+// field that legitimately contains one (addresses, notes). This is a proper
+// RFC-4180 parser: quoted fields may contain commas, doubled quotes, and
+// embedded line breaks.
+/** @param {string} text @returns {string[][]} */
+function _csvParse(text) {
+  /** @type {string[][]} */
+  const rows = [];
+  /** @type {string[]} */
+  let row = [];
+  let field = '', inQuotes = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (inQuotes) {
+      if (ch === '"') {
+        if (text[i + 1] === '"') { field += '"'; i++; }
+        else inQuotes = false;
+      } else field += ch;
+    } else if (ch === '"') inQuotes = true;
+    else if (ch === ',') { row.push(field); field = ''; }
+    else if (ch === '\n' || ch === '\r') {
+      if (ch === '\r' && text[i + 1] === '\n') i++;
+      row.push(field); field = '';
+      rows.push(row); row = [];
+    } else field += ch;
+  }
+  if (field !== '' || row.length) { row.push(field); rows.push(row); }
+  // Drop fully-empty trailing rows (a final newline shouldn't import a blank).
+  return rows.filter(r => r.some(c => c.trim() !== ''));
+}
+
+/** Build a header-name → column-index accessor for an imported CSV.
+ *  `spec` maps canonical keys to alias lists (lowercase, punctuation-free);
+ *  headers are normalised the same way, so "Stock Markup %" matches
+ *  'stockmarkup'. Returns null when the first row doesn't look like a header
+ *  (no alias matches) — callers then fall back to positional columns.
+ *  @param {string[]} headerRow
+ *  @param {Record<string, string[]>} spec
+ *  @returns {((row: string[], key: string) => string) | null} */
+function _csvCol(headerRow, spec) {
+  /** @param {string} s */
+  const norm = s => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const headers = headerRow.map(norm);
+  /** @type {Record<string, number>} */
+  const idx = {};
+  let hits = 0;
+  for (const key of Object.keys(spec)) {
+    const aliases = spec[key].map(norm);
+    const at = headers.findIndex(h => h && aliases.includes(h));
+    if (at !== -1) { idx[key] = at; hits++; }
+  }
+  if (!hits) return null;
+  return (row, key) => idx[key] !== undefined ? (row[idx[key]] ?? '').trim() : '';
+}
+
+/** Quote + join rows and trigger a CSV download.
+ *  @param {any[][]} rows @param {string} filename */
+function _csvDownload(rows, filename) {
+  const csv = rows.map(r => r.map(/** @param {any} v */ v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
+  const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([csv], { type: 'text/csv' })), download: filename });
+  a.click(); URL.revokeObjectURL(a.href);
+}
+
+/** Open a file picker for a .csv and hand the parsed rows to `cb`.
+ *  @param {(rows: string[][]) => void | Promise<void>} cb */
+function _csvPickFile(cb) {
+  const input = document.createElement('input');
+  input.type = 'file'; input.accept = '.csv';
+  input.onchange = async e => {
+    const file = /** @type {HTMLInputElement} */ (e.target).files?.[0]; if (!file) return;
+    try {
+      const rows = _csvParse(await file.text());
+      if (rows.length < 1) { _toast('CSV is empty', 'error'); return; }
+      await cb(rows);
+    } catch (err) { _toast('Could not read CSV: ' + (/** @type {any} */ (err)).message, 'error'); }
+  };
+  input.click();
+}
+
