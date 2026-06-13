@@ -1002,6 +1002,26 @@ create table public.payments (
 ```
 RLS: owner **SELECT** only; `grant all … to service_role`.
 
+---
+
+### 3.27 `cowork_email_plan_state`
+
+Tooling, not app data (migration `cowork_email_plan_state`, 2026-06-13). The
+Cowork email-plan artifact's "Sync selections" button upserts the founder's
+marketing-email picks/edits/order here (single `id='main'` row, `data jsonb`)
+so Claude can read them in chat — the artifact's localStorage is unreadable
+from outside its sandboxed view.
+
+```sql
+create table public.cowork_email_plan_state (
+  id         text primary key,
+  data       jsonb not null,
+  updated_at timestamptz not null default now()
+);
+```
+RLS **enabled with no policies** — invisible to anon/authenticated; service
+role / postgres only.
+
 **Quote/order live-link columns (added 2026-06-04):** `quotes` + `orders` gained
 `share_token text` (partial-unique index), `share_settings jsonb`
 (`{ allow_select, allow_edit, accept_payment, deposit_pct, expires_at }`),
