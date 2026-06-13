@@ -1,13 +1,19 @@
-// ProCabinet — One-time onboarding welcome email (Resend).
+// ProCabinet — One-time onboarding welcome email (Resend, template-backed).
 //
 // Called by the authenticated client (with a Supabase JWT) on the first
 // signed-in load after signup — both auth paths land there: email signups
 // right after the confirmation link, Google OAuth signups immediately.
-// Sends the founder welcome email (copy: marketing/welcome-email-2026-06-12.md)
-// to EVERY new account regardless of marketing opt-in: it is a transactional
-// service email (welcome, first steps, free setup-call booking link), so it
-// carries no promotional content. The opt-in mailing list stays separate
-// (list-subscribe).
+// Sends to EVERY new account regardless of marketing opt-in: it is a
+// transactional service email (welcome, first steps, free setup-call booking
+// link), so it carries no promotional content. The opt-in mailing list stays
+// separate (list-subscribe).
+//
+// The email COPY now lives in a PUBLISHED Resend template (alias
+// `welcome-onboarding`), so it is visible and editable in the Resend
+// dashboard (Templates → version history) WITHOUT a code deploy. This
+// function only decides WHO gets it and WHEN, then fires a transactional
+// template send. The single dynamic field is GREETING ("Hi <name>," or
+// "Hello,"); everything else is owned by the template.
 //
 // Never-twice guarantee, in layers:
 //   1. `app_metadata.welcome_email_sent_at` — the durable, authoritative
@@ -20,8 +26,8 @@
 //      Resend honours the key for ~24h, which covers exactly that window.
 //   3. The client keeps a localStorage flag so it normally calls once per
 //      device (src/auth.js _sendWelcomeEmailOnce).
-// Existing accounts never get it: users created before WELCOME_CUTOFF are
-// skipped server-side.
+// Existing accounts never get it here: users created before WELCOME_CUTOFF
+// are skipped server-side (the one-off backfill handles them separately).
 //
 // Required env vars (set via `supabase secrets set`):
 //   RESEND_API_KEY             — re_... (full access)
@@ -44,21 +50,17 @@ if (!RESEND_API_KEY) {
   throw new Error('Missing RESEND_API_KEY for send-welcome-email function');
 }
 
-// Accounts created before this instant never receive the welcome email.
+// Accounts created before this instant never receive the welcome email here.
 // Start of the ship day (UTC): every pre-existing account is older, and a
 // same-day signup landing a few hours before the client deploy still gets
 // its welcome on the next login — which is correct, they're genuinely new.
 const WELCOME_CUTOFF = Date.parse('2026-06-12T00:00:00Z');
 
-// Google Calendar appointment schedule "ProCabinet setup call" (15 min,
-// Google Meet) on Adam's calendar — created 2026-06-12.
-const BOOKING_URL = 'https://calendar.app.google/3KU7rrEd8mnUu7599';
-
 const FROM = 'Adam at ProCabinet <adam@procabinet.app>';
 const REPLY_TO = 'adam@procabinet.app';
-// v2 (2026-06-13): founder-approved copy from the email-plan artifact —
-// "reply-first" variant. Subject changed from 'Welcome to ProCabinet'.
-const SUBJECT = 'Your ProCabinet account';
+// Published Resend template — the copy + subject live there, edit in the
+// dashboard. Sending references it by alias.
+const TEMPLATE_ID = 'welcome-onboarding';
 
 /** First name for the greeting, when signup collected one. */
 function firstNameOf(user: User): string | null {
@@ -74,49 +76,11 @@ function firstNameOf(user: User): string | null {
   return null;
 }
 
-function escapeHtml(s: string): string {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-}
-
-// Copy source of truth: marketing/welcome-email-2026-06-12.md. Plain text is
-// the primary artifact; the HTML variant is the same words in simple
-// paragraphs with one plain link.
-const PARAGRAPHS = (greeting: string) => [
-  greeting,
-  "Thanks for creating a ProCabinet account. I'm Adam, the cabinet maker and developer who built the app. The aim is to build the ultimate operating system for cabinetry businesses, the one I wish I had 15 years ago.",
-  "Before anything else: replies to this address come straight to me. If you have any questions or have experienced any issues with the app, write back and I'll sort it.",
-  'Your account has full Pro access for 14 days, no card needed. After that it moves to the free plan, and everything you have made will still be accessible.',
-  "If you'd like a hand getting started, I do a free fifteen-minute setup call — I can explain the workflow in more detail, show you how to set up your rates, cabinet quotes, schedule, billing etc, around how you already work. Pick a time here:",
-  BOOKING_URL,
-  "If you have any feedback for me or features that you would need for the app to work for you, I'd love to hear about them. Thank you for supporting the project.",
-  'Kind regards,\nAdam\nFounder, ProCabinet',
-];
-
-const FOOTER = "You're receiving this one-off email because a ProCabinet account was created with this address.";
-
-function buildText(firstName: string | null): string {
-  const greeting = firstName ? `Hi ${firstName},` : 'Hello,';
-  return PARAGRAPHS(greeting).join('\n\n') + '\n\nProCabinet.App\n\n--\n' + FOOTER + '\n';
-}
-
-function buildHtml(firstName: string | null): string {
-  const greeting = firstName ? `Hi ${escapeHtml(firstName)},` : 'Hello,';
-  const p = (s: string) =>
-    `<p style="margin:0 0 16px">${s.replace(/\n/g, '<br>')}</p>`;
-  const body = PARAGRAPHS(greeting)
-    .map((s) =>
-      s === BOOKING_URL
-        ? p(`<a href="${BOOKING_URL}">${BOOKING_URL}</a>`)
-        : p(s === greeting ? greeting : escapeHtml(s)),
-    )
-    .join('');
-  // Brand wordmark sign-off (founder-approved): styled text, links to the site.
-  const wordmark =
-    '<p style="margin:22px 0 0;font-weight:800;font-size:22px;letter-spacing:-0.5px;line-height:1.2">' +
-    '<a href="https://procabinet.app" style="color:#111111;text-decoration:none">ProCabinet<span style="color:#e8a838">.App</span></a></p>';
-  return `<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.55;color:#222;max-width:560px">${body}${wordmark}` +
-    `<p style="margin:24px 0 0;font-size:12px;color:#888;border-top:1px solid #eee;padding-top:10px">${escapeHtml(FOOTER)}</p></div>`;
+// GREETING is injected raw via triple-mustache ({{{GREETING}}}) in the
+// template, so strip the HTML-structural characters a name could carry.
+// Apostrophes/quotes are safe in both the HTML and plain-text bodies.
+function sanitizeName(s: string): string {
+  return s.replace(/[<>&]/g, '').trim();
 }
 
 Deno.serve(async (req) => {
@@ -176,6 +140,7 @@ Deno.serve(async (req) => {
 
   try {
     const firstName = firstNameOf(user);
+    const greeting = firstName ? `Hi ${sanitizeName(firstName)},` : 'Hello,';
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
@@ -189,9 +154,9 @@ Deno.serve(async (req) => {
         from: FROM,
         to: user.email,
         reply_to: REPLY_TO,
-        subject: SUBJECT,
-        text: buildText(firstName),
-        html: buildHtml(firstName),
+        // Subject + body come from the published template; GREETING is the
+        // only per-send variable.
+        template: { id: TEMPLATE_ID, variables: { GREETING: greeting } },
       }),
     });
 

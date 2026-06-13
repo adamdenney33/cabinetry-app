@@ -2,16 +2,16 @@
 //
 // Fired by DB trigger `trg_founders_welcome` on public.subscriptions
 // (AFTER INSERT OR UPDATE OF plan, firing when plan transitions to
-// 'founder') via pg_net — migration `founders_welcome_autosend`. Sends the
-// founder-approved welcome (copy synced from the Cowork email-plan
-// artifact, 2026-06-13): permanent-Pro confirmation, 15-minute
-// onboarding-call booking link, WhatsApp group invite with the QR shown
-// in the body.
+// 'founder') via pg_net — migration `founders_welcome_autosend`. Confirms
+// permanent Pro, a 15-minute onboarding-call booking link, and the founders'
+// WhatsApp group (the join QR is shown in the body).
 //
-// The QR is shown in the body via a normal <img src> pointing at the
-// public `founders-qr` edge function (which serves the PNG). A hosted
-// image renders reliably across mail clients, where inline cid:
-// attachments do not (Apple Mail/Gmail).
+// The email COPY now lives in a PUBLISHED Resend template (alias
+// `founder-welcome`), visible and editable in the Resend dashboard
+// (Templates) WITHOUT a code deploy. The template HTML embeds the WhatsApp
+// QR by URL, pointing at the public `founders-qr` edge function (a hosted
+// image renders reliably across mail clients, where inline cid: attachments
+// do not). This function only decides WHO/WHEN and fires the template send.
 //
 // Auth: static `x-fw-key` header (verify_jwt off — pg_net carries no JWT;
 // the key lives only in the trigger function and here).
@@ -53,47 +53,10 @@ const TEST_ALLOWLIST = new Set([
 
 const FROM = 'Adam at ProCabinet <adam@procabinet.app>';
 const REPLY_TO = 'adam@procabinet.app';
+// Subject lives in the template; kept here only to build the [TEST] prefix.
 const SUBJECT = 'Your ProCabinet founder seat';
-const BOOKING_URL = 'https://calendar.app.google/3KU7rrEd8mnUu7599';
-const WHATSAPP_URL = 'https://chat.whatsapp.com/H8QI9EHNtJAE1WAlnj2dT0';
-// The founders-qr edge function serves the QR PNG; the email embeds it by URL.
-const QR_URL = 'https://mhzneruvlfmhnsohfrdo.supabase.co/functions/v1/founders-qr';
-
-
-// ---- copy (founder-approved 2026-06-13; no merge fields by design) ----
-
-function buildText(): string {
-  return [
-    'Hello,',
-    "Thank you for buying a ProCabinet founder seat. I'm Adam, the builder of the app, and I wanted to welcome you personally.",
-    'Your account is now on the Pro plan permanently. Nothing renews and there is nothing to cancel. The $299 is the only payment ProCabinet will ever take from you.',
-    'It would be great to meet properly, and also explain the workflow in more detail as well as some of the new features. It would be great to hear about your experience so far and how you plan to use the app. Pick a time here to book in a fifteen-minute call:',
-    BOOKING_URL,
-    "The seat also includes the founders' WhatsApp group. It's a small group, just me and the other founders, and it has a real say in what gets built next. If the app is missing something your workshop needs, that is the place to tell me. You can join here:",
-    WHATSAPP_URL,
-    'Thank you again for backing the app this early. It makes a real difference.',
-    'Kind regards,\nAdam\nFounder, ProCabinet',
-    'ProCabinet.App',
-  ].join('\n\n') + '\n';
-}
-
-function buildHtml(): string {
-  const p = (s: string) => `<p style="margin:0 0 16px">${s}</p>`;
-  return '<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.55;color:#222;max-width:560px">' +
-    p('Hello,') +
-    p("Thank you for buying a ProCabinet founder seat. I&#39;m Adam, the builder of the app, and I wanted to welcome you personally.") +
-    p('Your account is now on the Pro plan permanently. Nothing renews and there is nothing to cancel. The $299 is the only payment ProCabinet will ever take from you.') +
-    p('It would be great to meet properly, and also explain the workflow in more detail as well as some of the new features. It would be great to hear about your experience so far and how you plan to use the app. Pick a time here to book in a fifteen-minute call:') +
-    p(`<a href="${BOOKING_URL}">${BOOKING_URL}</a>`) +
-    p("The seat also includes the founders&#39; WhatsApp group. It&#39;s a small group, just me and the other founders, and it has a real say in what gets built next. If the app is missing something your workshop needs, that is the place to tell me. You can join here:") +
-    p(`<a href="${WHATSAPP_URL}">${WHATSAPP_URL}</a>`) +
-    p('Or scan this code with your phone:') +
-    p(`<img src="${QR_URL}" alt="Founders WhatsApp group QR code" width="160" height="160" style="width:160px;height:160px;border:1px solid #e4e3df;border-radius:8px">`) +
-    p('Thank you again for backing the app this early. It makes a real difference.') +
-    '<p style="margin:18px 0 0">Kind regards,<br><b>Adam</b><br><span style="color:#6b6f76;font-size:14px">Founder, ProCabinet</span></p>' +
-    '<p style="margin:22px 0 0;font-weight:800;font-size:22px;letter-spacing:-0.5px;line-height:1.2"><a href="https://procabinet.app" style="color:#111111;text-decoration:none">ProCabinet<span style="color:#e8a838">.App</span></a></p>' +
-    '</div>';
-}
+// Published Resend template — copy + QR embed live there, edit in dashboard.
+const TEMPLATE_ID = 'founder-welcome';
 
 function json(body: unknown, status: number): Response {
   return new Response(JSON.stringify(body), {
@@ -102,7 +65,9 @@ function json(body: unknown, status: number): Response {
   });
 }
 
-async function sendViaResend(to: string, subject: string, idemKey: string): Promise<Response> {
+/** subjectOverride: pass a string to override the template subject (test
+ * mode); pass null to let the published template own the subject. */
+async function sendViaResend(to: string, subjectOverride: string | null, idemKey: string): Promise<Response> {
   return await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: {
@@ -114,9 +79,8 @@ async function sendViaResend(to: string, subject: string, idemKey: string): Prom
       from: FROM,
       to,
       reply_to: REPLY_TO,
-      subject,
-      text: buildText(),
-      html: buildHtml(),
+      template: { id: TEMPLATE_ID },
+      ...(subjectOverride ? { subject: subjectOverride } : {}),
     }),
   });
 }
@@ -174,7 +138,7 @@ Deno.serve(async (req) => {
 
   try {
     // Stable key for real sends — collapses concurrent duplicate triggers.
-    const res = await sendViaResend(email, SUBJECT, `founders-welcome/${email}`);
+    const res = await sendViaResend(email, null, `founders-welcome/${email}`);
     if (res.ok) {
       const data = await res.json();
       await admin.from('founders_welcome_sends')
