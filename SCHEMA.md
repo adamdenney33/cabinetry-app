@@ -1022,6 +1022,27 @@ create table public.cowork_email_plan_state (
 RLS **enabled with no policies** — invisible to anon/authenticated; service
 role / postgres only.
 
+---
+
+### 3.28 `founders_welcome_sends`
+
+Claim-then-send log for the automated founders' welcome email (migration
+`founders_welcome_autosend`, 2026-06-13). The `send-founders-welcome` edge
+function inserts a row (ignore-duplicates) before sending, so each buyer is
+emailed exactly once; the row is deleted if Resend fails so a retry can
+re-claim. Written by trigger `trg_founders_welcome` on `subscriptions` (fires
+when `plan` transitions to `'founder'`) → `notify_founder_purchase()` →
+pg_net → the edge function.
+
+```sql
+create table public.founders_welcome_sends (
+  email      text primary key,
+  resend_id  text,
+  sent_at    timestamptz not null default now()
+);
+```
+RLS **enabled with no policies** — service role / postgres only.
+
 **Quote/order live-link columns (added 2026-06-04):** `quotes` + `orders` gained
 `share_token text` (partial-unique index), `share_settings jsonb`
 (`{ allow_select, allow_edit, accept_payment, deposit_pct, expires_at }`),

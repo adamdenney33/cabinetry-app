@@ -26,37 +26,42 @@ in the edge function.
 ## Subject options
 
 1. `Welcome to ProCabinet`
-2. `Your ProCabinet account`
+2. `Your ProCabinet account` — ✅ **ships** (founder-picked 2026-06-13 in the email-plan artifact)
 3. `Getting set up with ProCabinet`
-
-(1) ships: plain, recognisable in a crowded inbox, obviously not a campaign.
 
 ---
 
 ## Body
 
+v2, founder-edited in the email-plan artifact, live since 2026-06-13
+(function `send-welcome-email` v2). HTML version ends with the ProCabinet.App
+wordmark (styled text, links to procabinet.app); plain text carries a bare
+`ProCabinet.App` line.
+
 > Hello, *(or: Hi {first name},)*
 >
-> Thanks for creating a ProCabinet account. I'm Adam, the cabinet maker who
-> built the app. Replies to this address come straight to me, so if anything
-> is unclear you can just write back.
+> Thanks for creating a ProCabinet account. I'm Adam, the cabinet maker and
+> developer who built the app. The aim is to build the ultimate operating
+> system for cabinetry businesses, the one I wish I had 15 years ago.
 >
-> Your account starts with full Pro access for 14 days. No card details
-> needed. After that it moves to the free plan unless you choose to upgrade,
-> and everything you have made stays yours.
+> Before anything else: replies to this address come straight to me. If you
+> have any questions or have experienced any issues with the app, write back
+> and I'll sort it.
 >
-> The quickest way in: open Settings, put in your rates and sheet materials,
-> then build your first cabinet. The app walks you through it, and once a
-> cabinet exists a quote is a couple of clicks.
+> Your account has full Pro access for 14 days, no card needed. After that
+> it moves to the free plan, and everything you have made will still be
+> accessible.
 >
-> If you would rather set it up together, I do a free fifteen-minute setup
-> call. Pick a time here:
+> If you'd like a hand getting started, I do a free fifteen-minute setup
+> call — I can explain the workflow in more detail, show you how to set up
+> your rates, cabinet quotes, schedule, billing etc, around how you already
+> work. Pick a time here:
 >
 > https://calendar.app.google/3KU7rrEd8mnUu7599
 >
-> Fifteen minutes is enough to get your rates, sheet materials and first
-> cabinet quote set up around how your workshop runs. If none of the times
-> fit, reply with a day that suits and we will sort something out.
+> If you have any feedback for me or features that you would need for the
+> app to work for you, I'd love to hear about them. Thank you for supporting
+> the project.
 >
 > Kind regards,
 > Adam

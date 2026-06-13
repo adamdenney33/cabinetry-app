@@ -23,6 +23,40 @@ Companion docs: `SPEC.md` (refactor history), `SCHEMA.md` (DB schema),
 
 ## Active Work
 
+### Production email sends — welcome v2 + founders' welcome automation (2026-06-13)
+
+Founder-approved copy synced from the Cowork email-plan artifact
+(`cowork_email_plan_state`, SCHEMA.md § 3.27). Scope: the two ticked
+one-offs only — the 8-topic drip series stays in the artifact, unticked,
+for later. Founders receive only the founders' welcome (they're existing
+accounts, so the signup welcome never targets them anyway).
+
+- ✅ **E.1 — `send-welcome-email` v2**: copy replaced with the founder's
+  chosen variant 2 ("Your ProCabinet account", reply-first body, mission
+  line, feedback ask, sig wordmark linking to procabinet.app); greeting
+  personalisation/claim-then-send/idempotency untouched; deployed v2;
+  `marketing/welcome-email-2026-06-12.md` updated.
+- ✅ **E.2 — `send-founders-welcome` (new)**: founder-approved copy (booking
+  link, WhatsApp invite + inline QR via cid attachment, sig wordmark).
+  Static `x-fw-key` auth (verify_jwt off), claim-then-send via
+  `founders_welcome_sends` (email PK), Resend Idempotency-Key, guarded
+  `[TEST]`-prefixed test mode to the own-address allowlist. Deployed v1.
+- ✅ **E.3 — auto-send trigger**: `trg_founders_welcome` AFTER INSERT OR
+  UPDATE OF plan on `subscriptions`, fires when plan → `'founder'` →
+  security-definer `notify_founder_purchase()` resolves the buyer's email
+  from `auth.users` and `net.http_post`s E.2; exception-guarded so it can
+  never abort the Stripe webhook's write; EXECUTE revoked from anon/auth.
+  Stripe webhook code untouched.
+- ✅ **E.4 — verify + tests**: both deployed; [TEST] sends of both finals
+  delivered to the founder via the production path (Resend 200s); security
+  advisor clean (trigger fn EXECUTE revoked); SCHEMA.md § 3.27/§ 3.28 +
+  SPEC § 13 updated.
+
+  **Outstanding (not blocking):** the welcome v2 client hook reaches prod
+  users on the next push to `main`; the founders' auto-send is live now
+  (trigger + function deployed) but unproven on a real purchase — first
+  real seat sale is the live test.
+
 ### CSV import/export — all fields available ✅ Done 2026-06-12
 
 Every CSV surface (clients, stock, orders, quotes, cabinet library, cut

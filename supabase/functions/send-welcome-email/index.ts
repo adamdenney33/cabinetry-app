@@ -56,7 +56,9 @@ const BOOKING_URL = 'https://calendar.app.google/3KU7rrEd8mnUu7599';
 
 const FROM = 'Adam at ProCabinet <adam@procabinet.app>';
 const REPLY_TO = 'adam@procabinet.app';
-const SUBJECT = 'Welcome to ProCabinet';
+// v2 (2026-06-13): founder-approved copy from the email-plan artifact —
+// "reply-first" variant. Subject changed from 'Welcome to ProCabinet'.
+const SUBJECT = 'Your ProCabinet account';
 
 /** First name for the greeting, when signup collected one. */
 function firstNameOf(user: User): string | null {
@@ -82,12 +84,12 @@ function escapeHtml(s: string): string {
 // paragraphs with one plain link.
 const PARAGRAPHS = (greeting: string) => [
   greeting,
-  "Thanks for creating a ProCabinet account. I'm Adam, the cabinet maker who built the app. Replies to this address come straight to me, so if anything is unclear you can just write back.",
-  'Your account starts with full Pro access for 14 days. No card details needed. After that it moves to the free plan unless you choose to upgrade, and everything you have made stays yours.',
-  'The quickest way in: open Settings, put in your rates and sheet materials, then build your first cabinet. The app walks you through it, and once a cabinet exists a quote is a couple of clicks.',
-  'If you would rather set it up together, I do a free fifteen-minute setup call. Pick a time here:',
+  "Thanks for creating a ProCabinet account. I'm Adam, the cabinet maker and developer who built the app. The aim is to build the ultimate operating system for cabinetry businesses, the one I wish I had 15 years ago.",
+  "Before anything else: replies to this address come straight to me. If you have any questions or have experienced any issues with the app, write back and I'll sort it.",
+  'Your account has full Pro access for 14 days, no card needed. After that it moves to the free plan, and everything you have made will still be accessible.',
+  "If you'd like a hand getting started, I do a free fifteen-minute setup call — I can explain the workflow in more detail, show you how to set up your rates, cabinet quotes, schedule, billing etc, around how you already work. Pick a time here:",
   BOOKING_URL,
-  'Fifteen minutes is enough to get your rates, sheet materials and first cabinet quote set up around how your workshop runs. If none of the times fit, reply with a day that suits and we will sort something out.',
+  "If you have any feedback for me or features that you would need for the app to work for you, I'd love to hear about them. Thank you for supporting the project.",
   'Kind regards,\nAdam\nFounder, ProCabinet',
 ];
 
@@ -95,7 +97,7 @@ const FOOTER = "You're receiving this one-off email because a ProCabinet account
 
 function buildText(firstName: string | null): string {
   const greeting = firstName ? `Hi ${firstName},` : 'Hello,';
-  return PARAGRAPHS(greeting).join('\n\n') + '\n\n--\n' + FOOTER + '\n';
+  return PARAGRAPHS(greeting).join('\n\n') + '\n\nProCabinet.App\n\n--\n' + FOOTER + '\n';
 }
 
 function buildHtml(firstName: string | null): string {
@@ -109,8 +111,12 @@ function buildHtml(firstName: string | null): string {
         : p(s === greeting ? greeting : escapeHtml(s)),
     )
     .join('');
-  return `<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.55;color:#222;max-width:560px">${body}` +
-    `<p style="margin:24px 0 0;font-size:12px;color:#888">${escapeHtml(FOOTER)}</p></div>`;
+  // Brand wordmark sign-off (founder-approved): styled text, links to the site.
+  const wordmark =
+    '<p style="margin:22px 0 0;font-weight:800;font-size:22px;letter-spacing:-0.5px;line-height:1.2">' +
+    '<a href="https://procabinet.app" style="color:#111111;text-decoration:none">ProCabinet<span style="color:#e8a838">.App</span></a></p>';
+  return `<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.55;color:#222;max-width:560px">${body}${wordmark}` +
+    `<p style="margin:24px 0 0;font-size:12px;color:#888;border-top:1px solid #eee;padding-top:10px">${escapeHtml(FOOTER)}</p></div>`;
 }
 
 Deno.serve(async (req) => {
