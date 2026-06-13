@@ -1,0 +1,18 @@
+{
+  "mcpServers": {
+    "resend": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "resend-mcp",
+        "--sender",
+        "Adam at ProCabinet <adam@procabinet.app>",
+        "--reply-to",
+        "adam@procabinet.app"
+      ],
+      "env": {
+        "RESEND_API_KEY": "${RESEND_API_KEY}"
+      }
+    }
+  }
+}
