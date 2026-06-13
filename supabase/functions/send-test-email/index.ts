@@ -19,7 +19,12 @@
 //
 // Required env vars: RESEND_API_KEY (already set for send-welcome-email).
 //
-// Request body:  { to: string, subject: string, html?: string, text?: string }
+// Request body:  { to: string, subject: string, html?: string, text?: string,
+//                  attachments?: [{ filename, content (base64), contentType,
+//                                   contentId? }] }
+//                contentId makes an attachment inline (cid: reference in the
+//                html) — used for the founders' welcome QR code, since Gmail
+//                strips data: URI images. Images only, 3 max, ~110KB each.
 // Response:      { ok: true, id: string }   — sent (Resend email id)
 //                { error: string }          — rejected / failed
 
@@ -45,6 +50,9 @@ const ALLOWED_RECIPIENTS = new Set([
 const FROM = 'Adam at ProCabinet <adam@procabinet.app>';
 const REPLY_TO = 'adam@procabinet.app';
 const MAX_BODY = 200_000;
+const MAX_ATTACHMENTS = 3;
+const MAX_ATTACHMENT_B64 = 150_000;
+const ALLOWED_ATTACHMENT_TYPES = new Set(['image/png', 'image/jpeg']);
 
 function json(body: unknown, status: number): Response {
   return new Response(JSON.stringify(body), {
@@ -87,6 +95,33 @@ Deno.serve(async (req) => {
     ? subjectRaw
     : `[TEST] ${subjectRaw || 'ProCabinet test email'}`;
 
+  // Optional inline/regular image attachments (e.g. the founders QR code).
+  const rawAttachments = Array.isArray(payload.attachments) ? payload.attachments : [];
+  if (rawAttachments.length > MAX_ATTACHMENTS) {
+    return json({ error: 'Too many attachments' }, 413);
+  }
+  const attachments: Record<string, string>[] = [];
+  for (const raw of rawAttachments) {
+    const rec = (raw ?? {}) as Record<string, unknown>;
+    const content = String(rec.content ?? '');
+    const contentType = String(rec.contentType ?? 'image/png');
+    if (!content || content.length > MAX_ATTACHMENT_B64) {
+      return json({ error: 'Attachment missing or too large' }, 413);
+    }
+    if (!/^[A-Za-z0-9+/=]+$/.test(content)) {
+      return json({ error: 'Attachment must be base64' }, 400);
+    }
+    if (!ALLOWED_ATTACHMENT_TYPES.has(contentType)) {
+      return json({ error: 'Attachment type not allowed' }, 400);
+    }
+    attachments.push({
+      filename: String(rec.filename ?? 'attachment.png').slice(0, 64),
+      content,
+      content_type: contentType,
+      ...(rec.contentId ? { content_id: String(rec.contentId).slice(0, 32) } : {}),
+    });
+  }
+
   try {
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
@@ -101,6 +136,7 @@ Deno.serve(async (req) => {
         subject,
         ...(text ? { text } : {}),
         ...(html ? { html } : {}),
+        ...(attachments.length ? { attachments } : {}),
       }),
     });
 
