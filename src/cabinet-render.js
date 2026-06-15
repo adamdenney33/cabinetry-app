@@ -237,7 +237,7 @@ function renderCBRates() {
     {name:'Loose Shelf',val:lt.looseShelf||0.2,path:'cbSettings.labourTimes.looseShelf',unit:'hrs'},
     {name:'Partition',val:lt.partition||0.5,path:'cbSettings.labourTimes.partition',unit:'hrs'},
     {name:'End Panel',val:lt.endPanel||0.3,path:'cbSettings.labourTimes.endPanel',unit:'hrs'},
-    {name:'Packaging',val:cbSettings.packagingHours||0,path:'cbSettings.packagingHours',unit:'hrs'},
+    {name:'Packaging',val:cbSettings.packagingHours||0,path:'cbSettings.packagingHours',unit:'hrs/cab'},
   ];
   const labourContent = labourItems.map(item => `<div class="cb-mat-row" style="margin-top:4px">
     <input value="${item.name}" disabled style="opacity:.7;cursor:default">

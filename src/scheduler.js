@@ -86,7 +86,12 @@ function orderHoursRequired(o, biz) {
     return Number.isFinite(v) && v >= 0 ? v : 0;
   }
   const lines = Array.isArray(o._lines) ? o._lines : [];
-  let cabinetHrs = 0, labourHrs = 0, itemHrs = 0;
+  // Packaging is a per-cabinet packing time (biz.packagingHours, set in the
+  // Cabinet Builder's My Rates). It applies only to cabinet lines and scales
+  // with their qty, so orders with no cabinets get zero packaging. The old
+  // per-order orders.packaging_hours override is no longer applied.
+  const packRate = biz?.packagingHours ?? 0;
+  let cabinetHrs = 0, labourHrs = 0, itemHrs = 0, packHrs = 0;
   for (const r of lines) {
     const kind = r.line_kind || 'cabinet';
     if (kind === 'cabinet') {
@@ -102,17 +107,17 @@ function orderHoursRequired(o, biz) {
           Object.defineProperty(r, '_hrs', { value: hrs, writable: true, enumerable: false, configurable: true });
         } catch (e) { hrs = 0; }
       }
-      cabinetHrs += hrs * (parseFloat(r.qty) || 1);
+      const qty = parseFloat(r.qty) || 1;
+      cabinetHrs += hrs * qty;
+      packHrs += packRate * qty;
     } else if (kind === 'labour') {
       labourHrs += parseFloat(r.labour_hours) || 0;
     } else if (kind === 'item') {
       itemHrs += (parseFloat(r.schedule_hours) || 0) * (parseFloat(r.qty) || 1);
     }
   }
-  // Order-level packaging override falls back to business default.
-  const pack = (o.packaging_hours != null) ? parseFloat(o.packaging_hours) : (biz?.packagingHours ?? 0);
   const over = parseFloat(o.run_over_hours) || 0;
-  return cabinetHrs + labourHrs + itemHrs + pack + over;
+  return cabinetHrs + labourHrs + itemHrs + packHrs + over;
 }
 
 // ══════════════════════════════════════════

@@ -223,7 +223,7 @@ function _stockSearchRender(q, suggestId, onPick) {
 // in hours; total is the sum used by the production scheduler.
 // Mirrors the formula documented in the plan; will move to src/scheduler.js
 // in S.4 alongside computeSchedule().
-/** @param {any[]} lines @param {{packagingHours?: number, runOverHours?: number, allocatedHours?: number|null}} [overrides] */
+/** @param {any[]} lines @param {{runOverHours?: number, allocatedHours?: number|null}} [overrides] */
 function _orderHoursBreakdown(lines, overrides) {
   // When the order has a manual hours_allocated override, the auto components
   // are bypassed entirely — the scheduler reserves exactly the override value.
@@ -231,7 +231,12 @@ function _orderHoursBreakdown(lines, overrides) {
   if (ovr.allocatedHours != null) {
     return { cabinet: 0, labour: 0, item: 0, packaging: 0, runOver: 0, total: parseFloat(String(ovr.allocatedHours)) || 0 };
   }
-  let cabinetHrs = 0, labourHrs = 0, itemHrs = 0;
+  // Packaging is a per-cabinet packing time (cbSettings.packagingHours, set in
+  // the Cabinet Builder's My Rates → Other Labour Times). It applies only to
+  // cabinet lines and scales with their qty, so orders with no cabinets get
+  // zero packaging. Kept out of the price path — schedule hours only.
+  const packRate = cbSettings.packagingHours || 0;
+  let cabinetHrs = 0, labourHrs = 0, itemHrs = 0, packHrs = 0;
   for (const r of lines || []) {
     const kind = r.line_kind || 'cabinet';
     if (kind === 'cabinet') {
@@ -247,22 +252,23 @@ function _orderHoursBreakdown(lines, overrides) {
           Object.defineProperty(r, '_hrs', { value: hrs, writable: true, enumerable: false, configurable: true });
         } catch (e) { hrs = 0; }
       }
-      cabinetHrs += hrs * (parseFloat(r.qty) || 1);
+      const qty = parseFloat(r.qty) || 1;
+      cabinetHrs += hrs * qty;
+      packHrs += packRate * qty;
     } else if (kind === 'labour') {
       labourHrs += parseFloat(r.labour_hours) || 0;
     } else if (kind === 'item') {
       itemHrs += (parseFloat(r.schedule_hours) || 0) * (parseFloat(r.qty) || 1);
     }
   }
-  const pack = ovr.packagingHours != null ? ovr.packagingHours : (cbSettings.packagingHours ?? 0);
   const over = ovr.runOverHours != null ? ovr.runOverHours : 0;
   return {
     cabinet: cabinetHrs,
     labour: labourHrs,
     item: itemHrs,
-    packaging: pack,
+    packaging: packHrs,
     runOver: over,
-    total: cabinetHrs + labourHrs + itemHrs + pack + over,
+    total: cabinetHrs + labourHrs + itemHrs + packHrs + over,
   };
 }
 
