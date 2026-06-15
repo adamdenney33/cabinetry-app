@@ -74,8 +74,8 @@ setTimeout(function () { window._hideBootLoader(); }, 15000);
          signups). Names are optional metadata; collect later in-app if ever
          needed. Downstream display (account dropdown) already tolerates
          accounts with no name. -->
-    <input type="email" id="auth-email" class="auth-input" placeholder="Email address" autocomplete="email">
-    <input type="password" id="auth-password" class="auth-input" placeholder="Password" autocomplete="current-password">
+    <input type="email" id="auth-email" class="auth-input" placeholder="Email address" autocomplete="email" onkeydown="if(event.key==='Enter'){event.preventDefault();authSubmit()}">
+    <input type="password" id="auth-password" class="auth-input" placeholder="Password" autocomplete="current-password" onkeydown="if(event.key==='Enter'){event.preventDefault();authSubmit()}">
     <div class="auth-forgot" id="auth-forgot" style="display:none"><span onclick="forgotPassword()">Forgot password?</span></div>
     <div id="auth-marketing-row" style="display:flex;flex-direction:column;gap:8px;margin:2px 2px 12px;text-align:left">
       <div style="font-size:12px;line-height:1.45;color:var(--muted)">Essential product and account updates will be sent to your email.</div>
