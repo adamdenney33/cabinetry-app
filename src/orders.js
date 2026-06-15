@@ -1285,7 +1285,14 @@ async function saveOrderEditor() {
   _opState.dirty = false;
   _oBadge();
   renderOrdersMain();
-  renderOrderEditor();
+  // Don't rebuild the editor DOM mid-edit. The autosave fires 600ms after the
+  // last keystroke (often while the field is still focused) and runs through an
+  // awaited DB round-trip; a full renderOrderEditor() here resets every input to
+  // the value captured *before* that round-trip, dropping any keystrokes typed
+  // during the save and jumping the cursor. Live helpers already keep on-screen
+  // totals/summaries fresh, so only re-render when focus is outside the editor.
+  const _oeHost = document.getElementById('order-editor-host');
+  if (!(_oeHost && _oeHost.contains(document.activeElement))) renderOrderEditor();
   if (typeof renderSchedule === 'function') renderSchedule();
   if (typeof _setSaveStatus === 'function') _setSaveStatus('order', 'saved');
   } catch (e) {
