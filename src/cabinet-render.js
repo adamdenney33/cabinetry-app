@@ -477,7 +477,7 @@ function renderCBEditor() {
         </div>
         <div ${SC('doors')}>
           <div style="margin-bottom:8px"><label style="${LB}">Count</label>${stepper('doors', line.doors, 0)}</div>
-          <div style="margin-bottom:8px"><label style="${LB}">Door Material</label>${matSmart('doorMat', line.doorMat||line.material)}</div>
+          <div style="margin-bottom:8px"><label style="${LB}">Door Material</label>${matSmart('doorMat', line.doorMat)}</div>
           <div style="margin-bottom:8px"><label style="${LB}">Door Type</label>
             <select style="${SL};width:100%" onchange="cbUpdateField('doorType',this.value)">
               ${(cbSettings.doorTypes||[]).map(/** @param {any} t */ t=>`<option value="${t.name}" ${t.name===line.doorType?'selected':''}>${t.name}</option>`).join('')}
@@ -500,7 +500,7 @@ function renderCBEditor() {
         </div>
         <div ${SC('drawerFronts')}>
           <div style="margin-bottom:8px"><label style="${LB}">Count</label>${stepper('drawers', line.drawers, 0)}</div>
-          <div style="margin-bottom:8px"><label style="${LB}">Front Material</label>${matSmart('drawerFrontMat', line.drawerFrontMat||line.material)}</div>
+          <div style="margin-bottom:8px"><label style="${LB}">Front Material</label>${matSmart('drawerFrontMat', line.drawerFrontMat)}</div>
           <div style="margin-bottom:8px"><label style="${LB}">Front Type</label>
             <select style="${SL};width:100%" onchange="cbUpdateField('drawerFrontType',this.value)">
               ${(cbSettings.drawerFrontTypes||[]).map(/** @param {any} t */ t=>`<option value="${t.name}" ${t.name===line.drawerFrontType?'selected':''}>${t.name}</option>`).join('')}
@@ -521,7 +521,7 @@ function renderCBEditor() {
           <span id="cb-live-drawer-boxes-count" style="${SS}">${line.drawers>0?line.drawers+' box'+(line.drawers!==1?'es':''):'None'}</span>
         </div>
         <div ${SC('drawerBoxes')}>
-          <div style="margin-bottom:8px"><label style="${LB}">Inner Box Material</label>${matSmart('drawerInnerMat', line.drawerInnerMat||line.backMat)}</div>
+          <div style="margin-bottom:8px"><label style="${LB}">Inner Box Material</label>${matSmart('drawerInnerMat', line.drawerInnerMat)}</div>
           <div style="margin-bottom:8px"><label style="${LB}">Box Type</label>
             <select style="${SL};width:100%" onchange="cbUpdateField('drawerBoxType',this.value)">
               ${(cbSettings.drawerBoxTypes||[]).map(/** @param {any} t */ t=>`<option value="${t.name}" ${t.name===line.drawerBoxType?'selected':''}>${t.name}</option>`).join('')}

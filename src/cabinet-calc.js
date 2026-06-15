@@ -104,7 +104,7 @@ function calcCBSections(line) {
   let doorTotalArea = 0;
   if (line.doors > 0) {
     doorTotalArea = (line.doorPct || 0) / 100 * front;
-    let doorMat = doorTotalArea * mp(line.doorMat || line.material);
+    let doorMat = doorTotalArea * mp(line.doorMat);
     doorMat += doorTotalArea * _finishPricePerM2(line.doorFinish || line.finish);
     doorMat *= matMarkupMult;
     const doorRefH = _typeRefHours(cbSettings.doorTypes, line.doorType) || lt.door || 0.4;
@@ -120,7 +120,7 @@ function calcCBSections(line) {
   if (line.drawers > 0) {
     drawerFrontTotalArea = (line.drawerPct || 0) / 100 * front;
     drwH = drawerFrontTotalArea / line.drawers / Math.max(0.001, innerW);
-    let frontMat = drawerFrontTotalArea * mp(line.drawerFrontMat || line.material);
+    let frontMat = drawerFrontTotalArea * mp(line.drawerFrontMat);
     frontMat += drawerFrontTotalArea * _finishPricePerM2(line.drawerFrontFinish || line.finish);
     frontMat *= matMarkupMult;
     const drwFrontRefH = _typeRefHours(cbSettings.drawerFrontTypes, line.drawerFrontType) || 0.3;
@@ -132,7 +132,7 @@ function calcCBSections(line) {
   let drawerBoxes = 0;
   if (line.drawers > 0) {
     const boxSurfArea = line.drawers * (2 * D * drwH + 2 * innerW * drwH + innerW * D);
-    let boxMat = boxSurfArea * mp(line.drawerInnerMat || line.backMat);
+    let boxMat = boxSurfArea * mp(line.drawerInnerMat);
     boxMat += boxSurfArea * _finishPricePerM2(line.drawerBoxFinish || line.finish);
     boxMat *= matMarkupMult;
     const drwBoxRefH = _typeRefHours(cbSettings.drawerBoxTypes, line.drawerBoxType) || 0.8;
@@ -212,7 +212,7 @@ function calcCBLine(line) {
   const doorPct = (line.doorPct || 0) / 100;
   const doorTotalArea = doorPct * front;
   if (line.doors > 0) {
-    matCost += doorTotalArea * mp(line.doorMat || line.material);
+    matCost += doorTotalArea * mp(line.doorMat);
   }
   // Drawers: drawerPct = % of FRONT FACE AREA taken by drawer fronts
   const drawerPct = (line.drawerPct || 0) / 100;
@@ -221,9 +221,9 @@ function calcCBLine(line) {
   let drawerBoxSurfArea = 0;
   if (line.drawers > 0) {
     drwH = drawerFrontTotalArea / line.drawers / Math.max(0.001, innerW);
-    matCost += drawerFrontTotalArea * mp(line.drawerFrontMat || line.material);
+    matCost += drawerFrontTotalArea * mp(line.drawerFrontMat);
     drawerBoxSurfArea = line.drawers * (2 * D * drwH + 2 * innerW * drwH + innerW * D);
-    matCost += drawerBoxSurfArea * mp(line.drawerInnerMat || line.backMat);
+    matCost += drawerBoxSurfArea * mp(line.drawerInnerMat);
   }
   // Shelves
   const shelfArea = innerW * (D - T);
