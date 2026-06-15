@@ -135,6 +135,7 @@ async function _findOrCreateDraftQuote(clientId) {
   const insertBody = {
     user_id: _userId,
     client_id: clientId,
+    quote_number: _nextQuoteNumber(),
     status: 'draft',
     markup: (typeof cbSettings !== 'undefined' && cbSettings && cbSettings.markup) ?? 0,
     tax: (typeof cbSettings !== 'undefined' && cbSettings && cbSettings.tax) ?? 0,
@@ -523,7 +524,12 @@ function renderQuoteMain() {
       : '';
     const pName = quoteProject(q);
     const cName = quoteClient(q);
-    const qNum = q.quote_number ? `${q.quote_number} · ` : '';
+    // Fall back to the id-derived number (matching PDF/orders/dashboard) so a
+    // quote still lacking a stored quote_number — e.g. older cabinet-builder
+    // drafts — never renders without one. Skip for negative-id demo/overlay
+    // rows, which carry their own quote_number.
+    const qNumStr = q.quote_number || (typeof q.id === 'number' && q.id > 0 ? 'QUO-' + String(q.id).padStart(4, '0') : '');
+    const qNum = qNumStr ? `${_escHtml(qNumStr)} · ` : '';
     const titleText = pName && cName
       ? `${qNum}${_escHtml(cName)} · ${_escHtml(pName)}`
       : `${qNum}${_escHtml(pName || cName || '')}`;

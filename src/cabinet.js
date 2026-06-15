@@ -940,6 +940,7 @@ async function cbCreateQuoteFromDraft() {
   /** @type {any} */
   const insertBody = {
     user_id: _userId, client_id: clientId,
+    quote_number: _nextQuoteNumber(),
     markup: cbSettings.markup ?? 0, tax: cbSettings.tax ?? 0,
     status: 'draft', date: new Date().toISOString().slice(0, 10), notes: ''
   };
