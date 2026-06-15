@@ -2596,6 +2596,51 @@ function _drawDocLineItems(pdf, rows, opts) {
   return y;
 }
 
+/**
+ * Draw the "addressee + project" two-column block shared by the quote and
+ * order documents. The left column shows the recipient name with their
+ * address / phone / email stacked beneath; the right column shows the project
+ * name. Returns the y baseline after the block (advanced past whichever column
+ * is taller). When no client record resolves it falls back to the prior
+ * name-only layout, so documents without saved contact details look unchanged.
+ *
+ * @param {any} pdf jsPDF instance
+ * @param {{label: string, clientName: string, projectName: string, client: any, M: number, y: number}} o
+ * @returns {number} new y baseline
+ */
+function _drawDocAddressee(pdf, o) {
+  const { M, y } = o;
+  const projX = M + 70;          // right-column origin (matches the prior layout)
+  const addrW = projX - M - 6;   // wrap width for the address lines
+  // Column labels.
+  pdf.setFontSize(7); pdf.setFont('helvetica', 'normal'); pdf.setTextColor(170);
+  pdf.text(o.label || 'PREPARED FOR', M, y);
+  pdf.text('PROJECT', projX, y);
+  // Recipient name + project name share the first content baseline.
+  let ly = y + 5;
+  pdf.setFontSize(13); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(17);
+  pdf.text(o.clientName || '—', M, ly);
+  pdf.setFontSize(12); pdf.setFont('helvetica', 'bold');
+  pdf.text(o.projectName || '—', projX, ly);
+  // Contact details stacked under the recipient name.
+  ly += 5.5;
+  const c = o.client;
+  if (c) {
+    /** @type {string[]} */
+    const detail = [];
+    if (c.address) pdf.splitTextToSize(String(c.address), addrW).forEach(/** @param {string} l */ l => detail.push(l));
+    if (c.phone) detail.push(String(c.phone));
+    if (c.email) detail.push(String(c.email));
+    if (detail.length) {
+      pdf.setFontSize(8.5); pdf.setFont('helvetica', 'normal'); pdf.setTextColor(95);
+      detail.forEach(/** @param {string} dl */ dl => { pdf.text(dl, M, ly); ly += 4.3; });
+    }
+  }
+  pdf.setTextColor(17);
+  // Advance past the taller column; y + 17 preserves the prior name-only gap.
+  return Math.max(ly, y + 17);
+}
+
 /** @param {any} q */
 /**
  * @param {any} q quote row
@@ -2669,15 +2714,11 @@ async function _buildQuotePDF(q, lineRows) {
   y += 10;
 
   // ── Client & Project ──
-  pdf.setFontSize(7); pdf.setFont('helvetica','normal'); pdf.setTextColor(170);
-  pdf.text('PREPARED FOR', M, y);
-  pdf.text('PROJECT', M + 70, y);
-  y += 5;
-  pdf.setFontSize(13); pdf.setFont('helvetica','bold'); pdf.setTextColor(17);
-  pdf.text(quoteClient(q) || '—', M, y);
-  pdf.setFontSize(12); pdf.setFont('helvetica','bold');
-  pdf.text(quoteProject(q) || '—', M + 70, y);
-  y += 12;
+  const qClient = (q && q.client_id) ? clients.find(/** @param {any} x */ x => x.id === q.client_id) : null;
+  y = _drawDocAddressee(pdf, {
+    label: 'PREPARED FOR', clientName: quoteClient(q), projectName: quoteProject(q),
+    client: qClient, M, y,
+  });
 
   // ── Line items ──
   const plainNotes = (q.notes||'').trim();
@@ -3086,15 +3127,11 @@ async function _buildOrderDocPDF(o, lines, type, photos) {
   y += 10;
 
   // ── Addressee ──
-  pdf.setFontSize(7); pdf.setFont('helvetica','normal'); pdf.setTextColor(170);
-  pdf.text(c.addresseeLabel, M, y);
-  pdf.text('PROJECT', M + 70, y);
-  y += 5;
-  pdf.setFontSize(13); pdf.setFont('helvetica','bold'); pdf.setTextColor(17);
-  pdf.text(orderClient(o) || '—', M, y);
-  pdf.setFontSize(12); pdf.setFont('helvetica','bold');
-  pdf.text(orderProject(o) || '—', M + 70, y);
-  y += 12;
+  const oClient = (o && o.client_id) ? clients.find(/** @param {any} x */ x => x.id === o.client_id) : null;
+  y = _drawDocAddressee(pdf, {
+    label: c.addresseeLabel, clientName: orderClient(o), projectName: orderProject(o),
+    client: oClient, M, y,
+  });
 
   // ── Line items ──
   if (rows.length > 0) {
