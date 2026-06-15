@@ -86,12 +86,7 @@ function orderHoursRequired(o, biz) {
     return Number.isFinite(v) && v >= 0 ? v : 0;
   }
   const lines = Array.isArray(o._lines) ? o._lines : [];
-  // Packaging is a per-cabinet packing time (biz.packagingHours, set in the
-  // Cabinet Builder's My Rates). It applies only to cabinet lines and scales
-  // with their qty, so orders with no cabinets get zero packaging. The old
-  // per-order orders.packaging_hours override is no longer applied.
-  const packRate = biz?.packagingHours ?? 0;
-  let cabinetHrs = 0, labourHrs = 0, itemHrs = 0, packHrs = 0;
+  let cabinetHrs = 0, labourHrs = 0, itemHrs = 0;
   for (const r of lines) {
     const kind = r.line_kind || 'cabinet';
     if (kind === 'cabinet') {
@@ -99,17 +94,18 @@ function orderHoursRequired(o, biz) {
       if (typeof hrs !== 'number') {
         try {
           // _quoteLineRowToCB and calcCBLine are globals from earlier-loaded scripts.
-          // calcCBLine bakes contingency (cbSettings.contingencyPct) into labour
-          // hours, so we don't add a separate contingency block here.
+          // calcCBLine bakes both contingency (cbSettings.contingencyPct) and
+          // packaging (cbSettings.packagingHours, per cabinet) into labour hours,
+          // so we don't add separate contingency/packaging blocks here. Packaging
+          // therefore only counts for cabinet lines; the old per-order
+          // orders.packaging_hours override is no longer applied.
           const cb = _quoteLineRowToCB(r);
           const c = calcCBLine(cb);
           hrs = c.labourHrs || 0;
           Object.defineProperty(r, '_hrs', { value: hrs, writable: true, enumerable: false, configurable: true });
         } catch (e) { hrs = 0; }
       }
-      const qty = parseFloat(r.qty) || 1;
-      cabinetHrs += hrs * qty;
-      packHrs += packRate * qty;
+      cabinetHrs += hrs * (parseFloat(r.qty) || 1);
     } else if (kind === 'labour') {
       labourHrs += parseFloat(r.labour_hours) || 0;
     } else if (kind === 'item') {
@@ -117,7 +113,7 @@ function orderHoursRequired(o, biz) {
     }
   }
   const over = parseFloat(o.run_over_hours) || 0;
-  return cabinetHrs + labourHrs + itemHrs + packHrs + over;
+  return cabinetHrs + labourHrs + itemHrs + over;
 }
 
 // ══════════════════════════════════════════

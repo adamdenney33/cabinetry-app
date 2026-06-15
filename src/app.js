@@ -229,20 +229,17 @@ function _orderHoursBreakdown(lines, overrides) {
   // are bypassed entirely — the scheduler reserves exactly the override value.
   const ovr = overrides || {};
   if (ovr.allocatedHours != null) {
-    return { cabinet: 0, labour: 0, item: 0, packaging: 0, runOver: 0, total: parseFloat(String(ovr.allocatedHours)) || 0 };
+    return { cabinet: 0, labour: 0, item: 0, runOver: 0, total: parseFloat(String(ovr.allocatedHours)) || 0 };
   }
-  // Packaging is a per-cabinet packing time (cbSettings.packagingHours, set in
-  // the Cabinet Builder's My Rates → Other Labour Times). It applies only to
-  // cabinet lines and scales with their qty, so orders with no cabinets get
-  // zero packaging. Kept out of the price path — schedule hours only.
-  const packRate = cbSettings.packagingHours || 0;
-  let cabinetHrs = 0, labourHrs = 0, itemHrs = 0, packHrs = 0;
+  let cabinetHrs = 0, labourHrs = 0, itemHrs = 0;
   for (const r of lines || []) {
     const kind = r.line_kind || 'cabinet';
     if (kind === 'cabinet') {
       // Use cached _hrs if present; otherwise compute via calcCBLine and cache.
-      // calcCBLine bakes contingency (cbSettings.contingencyPct) into the labour
-      // hours, so the cabinet line below already includes contingency time.
+      // calcCBLine bakes contingency (cbSettings.contingencyPct) AND packaging
+      // (cbSettings.packagingHours, per cabinet) into the labour hours, so the
+      // cabinet line below already includes both — packaging only counts for
+      // cabinet lines.
       let hrs = r._hrs;
       if (typeof hrs !== 'number') {
         try {
@@ -252,9 +249,7 @@ function _orderHoursBreakdown(lines, overrides) {
           Object.defineProperty(r, '_hrs', { value: hrs, writable: true, enumerable: false, configurable: true });
         } catch (e) { hrs = 0; }
       }
-      const qty = parseFloat(r.qty) || 1;
-      cabinetHrs += hrs * qty;
-      packHrs += packRate * qty;
+      cabinetHrs += hrs * (parseFloat(r.qty) || 1);
     } else if (kind === 'labour') {
       labourHrs += parseFloat(r.labour_hours) || 0;
     } else if (kind === 'item') {
@@ -266,9 +261,8 @@ function _orderHoursBreakdown(lines, overrides) {
     cabinet: cabinetHrs,
     labour: labourHrs,
     item: itemHrs,
-    packaging: packHrs,
     runOver: over,
-    total: cabinetHrs + labourHrs + itemHrs + packHrs + over,
+    total: cabinetHrs + labourHrs + itemHrs + over,
   };
 }
 
@@ -291,13 +285,19 @@ function _renderOrderHoursBreakdown() {
   });
   /** @param {number} v */
   const h = v => Number(v).toFixed(1) + ' h';
+  // Packaging and contingency are baked into cabinet labour (per cabinet, in
+  // calcCBLine), so the Cabinet-labour row already includes both — the tag just
+  // notes what's folded in. No standalone Packaging row.
   const contPct = cbSettings.contingencyPct ?? 0;
-  const contLabel = contPct > 0 ? ` <span class="pf-hours-tag">incl. ${contPct}% contingency</span>` : '';
+  const packRate = cbSettings.packagingHours || 0;
+  const inclParts = [];
+  if (contPct > 0)  inclParts.push(`${contPct}% contingency`);
+  if (packRate > 0) inclParts.push('packaging');
+  const contLabel = inclParts.length ? ` <span class="pf-hours-tag">incl. ${inclParts.join(' + ')}</span>` : '';
   /** @type {string[]} */
   const rows = [];
   if (b.cabinet > 0)   rows.push(`<div class="pf-hours-row"><span class="pf-hours-sub">• Cabinet labour <span class="pf-hours-tag">auto</span>${contLabel}</span><span>${h(b.cabinet)}</span></div>`);
   if (b.item    > 0)   rows.push(`<div class="pf-hours-row"><span class="pf-hours-sub">• Item lines</span><span>${h(b.item)}</span></div>`);
-  if (b.packaging > 0) rows.push(`<div class="pf-hours-row"><span class="pf-hours-sub">• Packaging</span><span>${h(b.packaging)}</span></div>`);
   if (b.runOver  > 0)  rows.push(`<div class="pf-hours-row"><span class="pf-hours-sub">• Run-over</span><span>${h(b.runOver)}</span></div>`);
   el.innerHTML = `<div class="pf-hours-row pf-hours-total"><span>Hours required</span><span>${h(b.total)}</span></div>${rows.join('')}`;
 }

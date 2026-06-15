@@ -95,7 +95,10 @@ function calcCBSections(line) {
   // Exact-match only: an unset/unknown base contributes 0 (base is optional,
   // unlike carcass which always falls back to the first type).
   const baseHrs = (cbSettings.baseTypes||[]).find(/** @param {any} b */ b => b.name === line.baseType)?.refHours || 0;
-  const cabinetLabour = (carcassHrs + baseHrs + carcassSurfArea * (lt.finishPerM2 || 0.5)) * cont * labourRate;
+  // Packaging (per-cabinet packing time) is folded into the Cabinet section so
+  // the section breakdown still sums to calcCBLine's labourCost.
+  const packHrs = cbSettings.packagingHours || 0;
+  const cabinetLabour = (carcassHrs + baseHrs + packHrs + carcassSurfArea * (lt.finishPerM2 || 0.5)) * cont * labourRate;
   const cabinet = cabinetMat + cabinetLabour;
 
   // ── Doors (material + door finish + labour) ──
@@ -285,6 +288,11 @@ function calcCBLine(line) {
   autoLabour += (line.looseShelves || 0) * (lt.looseShelf || 0.2);
   autoLabour += (line.partitions || 0) * (lt.partition || 0.5);
   autoLabour += (line.endPanels || 0) * (lt.endPanel || 0.3);
+  // Packaging — per-cabinet packing/wrapping time (cbSettings.packagingHours,
+  // set in My Rates → Other Labour Times). Billable like the other labour
+  // times: flows into labourCost (price) and labourHrs (schedule), subject to
+  // the contingency multiplier below. Per cabinet, so it scales with qty.
+  autoLabour += cbSettings.packagingHours || 0;
   const surfaceArea = 2*H*D + 2*innerW*D + W*H;
   autoLabour += surfaceArea * (lt.finishPerM2 || 0.5);
 
