@@ -342,6 +342,13 @@ header {
 #panel-stock .form-section > .form-row,
 #panel-clients .form-section > .form-group,
 #panel-clients .form-section > .form-row { padding-left: 14px; padding-right: 14px; }
+/* The category-specific fields (dimensions, edge-banding, finishing) live in
+   conditional wrapper divs, so they aren't direct children of .form-section and
+   miss the rule above. Pad the wrappers themselves so their inner rows/groups
+   line up with everything else instead of stretching flush to the edge. */
+#panel-stock .form-section > #stock-dims-fields,
+#panel-stock .form-section > #stock-eb-fields,
+#panel-stock .form-section > #stock-fin-fields { padding-left: 14px; padding-right: 14px; }
 /* Pad the gate (empty state) wrapper too so the recent-list / button align
    with the form-section content underneath. */
 #stock-gate, #clients-gate { padding: 16px 0; }
