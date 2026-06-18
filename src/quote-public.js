@@ -89,6 +89,12 @@ const isBiz = new URLSearchParams(location.search).get('biz') === '1';
 /** @type {any[]} */ let lines = [];    // mutable line state
 /** @type {Record<number, string[]>} */ let photosByLine = {};
 let cur = '£';
+// Dimension display follows the MAKER's unit preference (from the business
+// profile), not the viewer's — so an imperial maker's live link reads in
+// inches, matching their PDF. Self-contained here: the public page is a
+// standalone module and deliberately does not load the authed app's units.js.
+let unitSys = 'metric';
+const unitFmt = { mode: 'mm', decimals: 0, denominator: 16 };
 /** Buffered spec-editor changes, keyed by line id -- sent only on Send edits. */
 /** @type {Record<number, Record<string, unknown>>} */ const pendingEdits = {};
 /** Original line values saved when a spec editor opens, for cancel/revert. */
@@ -99,6 +105,80 @@ function money(n) {
   const v = Number(n) || 0;
   const dp = Math.round(v) === v ? 0 : 2;
   return cur + v.toLocaleString('en-GB', { minimumFractionDigits: dp, maximumFractionDigits: 2 });
+}
+
+// ── dimensions: mm is the canonical store; render/parse in the maker's unit ───
+/** @param {number} a @param {number} b @returns {number} */
+function _gcd(a, b) { return b === 0 ? a : _gcd(b, a % b); }
+/** @param {number} val @param {number} denom */
+function _toFraction(val, denom) {
+  const sign = val < 0 ? '-' : ''; val = Math.abs(val);
+  const whole = Math.floor(val);
+  let n = Math.round((val - whole) * denom);
+  if (n === 0) return sign + String(whole || '0');
+  if (n === denom) return sign + String(whole + 1);
+  const g = _gcd(n, denom);
+  return whole > 0 ? `${sign}${whole} ${n / g}/${denom / g}` : `${sign}${n / g}/${denom / g}`;
+}
+/** @param {number} val @param {number} denom */
+function _toFeetInches(val, denom) {
+  const sign = val < 0 ? '-' : ''; val = Math.abs(val);
+  let feet = Math.floor(val / 12);
+  let inchStr = _toFraction(val - feet * 12, denom);
+  if (parseFloat(inchStr) >= 12) { feet++; inchStr = '0'; }
+  return feet === 0 ? `${sign}${inchStr}"` : `${sign}${feet}' ${inchStr}"`;
+}
+/** Format an mm-stored dimension in the maker's unit (no unit suffix).
+ *  @param {number|string|null|undefined} mm @returns {string} */
+function fmtDim(mm) {
+  if (mm == null || mm === '' || isNaN(Number(mm))) return '';
+  let v = Number(mm);
+  if (unitSys === 'imperial') {
+    v = v / 25.4;
+    if (unitFmt.mode === 'fractional') return _toFraction(v, unitFmt.denominator || 16);
+    if (unitFmt.mode === 'feetInches') return _toFeetInches(v, unitFmt.denominator || 16);
+    return v.toFixed(unitFmt.decimals || 0);
+  }
+  if (unitFmt.mode === 'cm') return (v / 10).toFixed(unitFmt.decimals || 0);
+  if (unitFmt.mode === 'm') return (v / 1000).toFixed(unitFmt.decimals || 0);
+  return v.toFixed(unitFmt.decimals || 0);
+}
+/** Active unit label for headings/suffixes. @returns {string} */
+function unitLbl() {
+  if (unitSys === 'imperial') return unitFmt.mode === 'feetInches' ? 'ft/in' : 'in';
+  return unitFmt.mode === 'cm' ? 'cm' : unitFmt.mode === 'm' ? 'm' : 'mm';
+}
+/** "W × H × D <unit>" for mm-stored dims; blank dims dropped.
+ *  @param {any} w @param {any} h @param {any} d @returns {string} */
+function dimsLabel(w, h, d) {
+  const p = [w, h, d].filter((v) => v != null && v !== '' && !isNaN(Number(v))).map(fmtDim);
+  return p.length ? p.join(' × ') + ' ' + unitLbl() : '';
+}
+/** @param {string} s @returns {number} */
+function _inchish(s) {
+  const mixed = s.match(/^(-?\d+)\s+(\d+)\/(\d+)$/);
+  if (mixed) return parseFloat(mixed[1]) + parseFloat(mixed[2]) / parseFloat(mixed[3]);
+  const frac = s.match(/^(-?\d+)\/(\d+)$/);
+  if (frac) return parseFloat(frac[1]) / parseFloat(frac[2]);
+  return parseFloat(s) || 0;
+}
+/** Parse a maker-unit dimension string (incl. fractions / feet-inches) to mm.
+ *  @param {string|number} str @returns {number} */
+function parseDimToMm(str) {
+  if (typeof str === 'number') return unitSys === 'imperial' ? str * 25.4 : str;
+  let s = String(str).trim();
+  if (!s) return 0;
+  const ft = s.match(/^(\d+)[′'']\s*(.*)$/);
+  if (ft) {
+    const rest = ft[2].replace(/["″]/g, '').trim();
+    return (parseFloat(ft[1]) * 12 + (rest ? _inchish(rest) : 0)) * 25.4;
+  }
+  s = s.replace(/["″]/g, '').replace(/\s*(?:mm|cm|in|m)$/i, '').trim();
+  const v = _inchish(s);
+  if (unitSys === 'imperial') return v * 25.4;
+  if (unitFmt.mode === 'cm') return v * 10;
+  if (unitFmt.mode === 'm') return v * 1000;
+  return v;
 }
 
 function totals() {
@@ -153,7 +233,7 @@ function row(l) {
   let spec = '';
   if (l.line_kind === 'cabinet') {
     const parts = [];
-    if (l.w_mm || l.h_mm || l.d_mm) parts.push(`${l.w_mm || '—'}×${l.h_mm || '—'}×${l.d_mm || '—'}mm`);
+    if (l.w_mm || l.h_mm || l.d_mm) parts.push(dimsLabel(l.w_mm, l.h_mm, l.d_mm));
     if (l.material) parts.push(esc(l.material));
     if (l.finish && l.finish !== 'None') parts.push(esc(l.finish));
     if ((l.door_count || 0) > 0) parts.push(`${l.door_count} door${l.door_count !== 1 ? 's' : ''}`);
@@ -197,15 +277,20 @@ function specEditor(l) {
   /** @param {string} label @param {any} val @param {number} min @param {number} max @param {string} col @param {string} unit */
   const num = (label, val, min, max, col, unit) =>
     `<div class="r"><label>${label}</label><input type="number" value="${val != null ? val : ''}" min="${min}" max="${max}" step="${unit === 'mm' ? 10 : 1}" style="width:${unit ? 84 : 64}px" onchange="__qp.setField(${l.id},'${col}',this.value)">${unit ? ` <span style="font-size:11px;color:var(--muted)">${unit}</span>` : ''}<span class="qp-range">${min}–${max}${unit ? unit : ''}</span></div>`;
+  // Dimension row: shown + entered in the maker's unit (mm canonical underneath).
+  // Text input so fractional inches are typable; setField converts back to mm.
+  /** @param {string} label @param {any} mm @param {number} minMm @param {number} maxMm @param {string} col */
+  const dimRow = (label, mm, minMm, maxMm, col) =>
+    `<div class="r"><label>${label}</label><input type="text" inputmode="decimal" value="${fmtDim(mm)}" style="width:84px" onchange="__qp.setField(${l.id},'${col}',this.value)"> <span style="font-size:11px;color:var(--muted)">${unitLbl()}</span><span class="qp-range">${fmtDim(minMm)}–${fmtDim(maxMm)}${unitLbl()}</span></div>`;
   /** @param {string} label @param {string[]} opts @param {string} cur @param {string} col */
   const sel = (label, opts, cur, col) =>
     `<div class="r"><label>${label}</label><select onchange="__qp.setField(${l.id},'${col}',this.value)" style="flex:1">${optList(opts, cur)}</select></div>`;
   /** @type {Array<{t:string, rows:string[]}>} */
   const sections = [];
   if (specs.includes('dims')) sections.push({ t: 'Dimensions', rows: [
-    num('Width', l.w_mm, 100, 3600, 'w_mm', 'mm'),
-    num('Height', l.h_mm, 100, 3600, 'h_mm', 'mm'),
-    num('Depth', l.d_mm, 100, 1200, 'd_mm', 'mm'),
+    dimRow('Width', l.w_mm, 100, 3600, 'w_mm'),
+    dimRow('Height', l.h_mm, 100, 3600, 'h_mm'),
+    dimRow('Depth', l.d_mm, 100, 1200, 'd_mm'),
   ] });
   const carcass = [];
   if (specs.includes('material')) carcass.push(sel('Material', D?.materials || [], l.material, 'material'));
@@ -579,7 +664,10 @@ const handlers = {
   /** @param {number} id @param {string} col @param {string} v */
   setField(id, col, v) {
     pendingEdits[id] = pendingEdits[id] || {};
-    pendingEdits[id][col] = v;
+    // Dims are entered in the maker's unit but stored/sent canonically in mm.
+    pendingEdits[id][col] = (col === 'w_mm' || col === 'h_mm' || col === 'd_mm')
+      ? Math.round(parseDimToMm(v))
+      : v;
   },
   /** Send every buffered edit (one request per changed line), then close
    *  the editors and restore the normal accept CTA. */
@@ -765,6 +853,16 @@ async function boot() {
     D = await fn('quote-public-get', { token });
     clearTimeout(slow);
     cur = (D.business && D.business.default_currency) || '£';
+    try {
+      const uf = D.business && D.business.unit_format;
+      if (uf) Object.assign(unitFmt, typeof uf === 'string' ? JSON.parse(uf) : uf);
+    } catch (e) { /* keep mm defaults */ }
+    // unit_format.mode is the reliable live signal for imperial vs metric —
+    // business_info.default_units froze at the one-time migration and drifts
+    // (e.g. mode:'decimal' under default_units:'mm'), so it's only a fallback.
+    if (['decimal', 'fractional', 'feetInches'].includes(unitFmt.mode)) unitSys = 'imperial';
+    else if (['mm', 'cm', 'm'].includes(unitFmt.mode)) unitSys = 'metric';
+    else if (D.business && D.business.default_units === 'inches') unitSys = 'imperial';
     lines = (D.lines || []).map(/** @param {any} l */(l) => ({ ...l }));
     // A null customer_price on a quote line = a spec change awaiting the
     // business's re-priced confirmation (the edit endpoint clears it). Restore

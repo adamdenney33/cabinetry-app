@@ -86,9 +86,12 @@ Deno.serve(async (req) => {
     // `bank_details` must NOT reach an unauthenticated visitor — they're never
     // rendered on the customer page and would expose sensitive business data to
     // anyone holding (or guessing) a share link.
+    // default_units / unit_format drive the customer-facing dimension display
+    // (so an imperial maker's live link reads in inches, matching the PDF). Both
+    // are presentation preferences — safe to expose, unlike abn/bank_details.
     const { data: biz } = await admin
       .from('business_info')
-      .select('name, email, phone, address, logo_url, default_currency')
+      .select('name, email, phone, address, logo_url, default_currency, default_units, unit_format')
       .eq('user_id', entity.user_id)
       .maybeSingle();
 
