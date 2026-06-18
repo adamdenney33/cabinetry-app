@@ -1859,11 +1859,17 @@ function _applyBizInfoFromDB(rows) {
       }
     } catch(e) {}
   }
-  // Currency from DB is the source of truth (the public live link reads the
-  // same column). Overlay it onto window.currency so the in-app PDF/print can't
-  // drift to the '$' default while the live link shows the saved symbol.
-  // persistDB=false: this value came FROM the DB, no need to write it back.
-  if (b.default_currency) { try { setCurrency(b.default_currency, false); } catch(e) {} }
+  // Currency: window.currency (the in-app pick, from localStorage, shown on the
+  // PDF/print) is the user's authoritative choice. business_info.default_currency
+  // — which the public live link reads — was only ever written at the one-time
+  // migration (frozen, often a stale '£'), so the DEVICE wins: heal the DB from
+  // window.currency when they disagree, NEVER the reverse. (Overwriting
+  // window.currency from the stale DB would wrongly flip a correct '$' PDF to
+  // '£'.) Unlike unit_format, default_currency has no live sync to trust — this
+  // makes the live link follow the in-app selection / PDF.
+  if (window.currency && b.default_currency !== window.currency) {
+    try { if (typeof _syncCurrencyToDB === 'function') _syncCurrencyToDB(window.currency); } catch(e) {}
+  }
   // Persist back to localStorage so other reads pick it up (legacy compatibility)
   try {
     localStorage.setItem('pc_biz', JSON.stringify({
