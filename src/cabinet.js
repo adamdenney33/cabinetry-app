@@ -724,6 +724,11 @@ function cbUpdateField(field, val) {
   } else {
     cbScratchpad[field] = val;
   }
+  // Library entries treat _libName as the canonical name (used for both the
+  // card render and the cabinet_templates DB write). The editor's NAME input
+  // only writes `name`, so keep _libName in lockstep while editing a library
+  // entry — otherwise the rename never reaches the card or the DB.
+  if (field === 'name' && cbEditingLibraryIdx >= 0) cbScratchpad._libName = val;
   // Targeted update of section header live costs (preserves input focus)
   _refreshCBLiveCosts();
   renderCBResults();
