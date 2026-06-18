@@ -14,6 +14,7 @@ let cbSettings = {
   workdayHours: 8,
   weekdayHours: [8, 8, 8, 8, 8, 0, 0],   // Mon..Sun
   packagingHours: 0,
+  installationHours: 0,
   contingencyPct: 5,
   queueStartDate: null,                   // ISO date string or null (= today)
   materials: [

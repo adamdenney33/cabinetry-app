@@ -290,9 +290,11 @@ function _renderOrderHoursBreakdown() {
   // notes what's folded in. No standalone Packaging row.
   const contPct = cbSettings.contingencyPct ?? 0;
   const packRate = cbSettings.packagingHours || 0;
+  const installRate = cbSettings.installationHours || 0;
   const inclParts = [];
-  if (contPct > 0)  inclParts.push(`${contPct}% contingency`);
-  if (packRate > 0) inclParts.push('packaging');
+  if (contPct > 0)   inclParts.push(`${contPct}% labour time contingency`);
+  if (packRate > 0)  inclParts.push('packaging');
+  if (installRate > 0) inclParts.push('installation');
   const contLabel = inclParts.length ? ` <span class="pf-hours-tag">incl. ${inclParts.join(' + ')}</span>` : '';
   /** @type {string[]} */
   const rows = [];
@@ -1921,6 +1923,7 @@ function _applyBizInfoFromDB(rows) {
     // Production scheduler defaults (S.2):
     if (b.default_workday_hours     != null) cbSettings.workdayHours     = parseFloat(b.default_workday_hours);
     if (b.default_packaging_hours   != null) cbSettings.packagingHours   = parseFloat(b.default_packaging_hours);
+    if (b.default_installation_hours!= null) cbSettings.installationHours= parseFloat(b.default_installation_hours);
     if (b.default_contingency_pct   != null) cbSettings.contingencyPct   = parseFloat(b.default_contingency_pct);
     if (Array.isArray(b.default_weekday_hours) && b.default_weekday_hours.length === 7) {
       cbSettings.weekdayHours = b.default_weekday_hours.map(/** @param {any} h */ h => parseFloat(h) || 0);

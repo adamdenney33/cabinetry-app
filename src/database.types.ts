@@ -124,6 +124,7 @@ export type Database = {
           default_drawer_front_types: Json
           default_edge_banding: Json
           default_edging_per_m: number
+          default_installation_hours: number
           default_labour_rate: number
           default_labour_times: Json
           default_markup_pct: number
@@ -160,6 +161,7 @@ export type Database = {
           default_drawer_front_types?: Json
           default_edge_banding?: Json
           default_edging_per_m?: number
+          default_installation_hours?: number
           default_labour_rate?: number
           default_labour_times?: Json
           default_markup_pct?: number
@@ -196,6 +198,7 @@ export type Database = {
           default_drawer_front_types?: Json
           default_edge_banding?: Json
           default_edging_per_m?: number
+          default_installation_hours?: number
           default_labour_rate?: number
           default_labour_times?: Json
           default_markup_pct?: number
@@ -465,6 +468,24 @@ export type Database = {
         }
         Relationships: []
       }
+      cowork_email_plan_state: {
+        Row: {
+          data: Json
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          data: Json
+          id: string
+          updated_at?: string
+        }
+        Update: {
+          data?: Json
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       customer_messages: {
         Row: {
           body: string
@@ -706,6 +727,24 @@ export type Database = {
           title?: string
           updated_at?: string
           vote_count?: number
+        }
+        Relationships: []
+      }
+      founders_welcome_sends: {
+        Row: {
+          email: string
+          resend_id: string | null
+          sent_at: string
+        }
+        Insert: {
+          email: string
+          resend_id?: string | null
+          sent_at?: string
+        }
+        Update: {
+          email?: string
+          resend_id?: string | null
+          sent_at?: string
         }
         Relationships: []
       }

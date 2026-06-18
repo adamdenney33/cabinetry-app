@@ -288,11 +288,13 @@ function calcCBLine(line) {
   autoLabour += (line.looseShelves || 0) * (lt.looseShelf || 0.2);
   autoLabour += (line.partitions || 0) * (lt.partition || 0.5);
   autoLabour += (line.endPanels || 0) * (lt.endPanel || 0.3);
-  // Packaging — per-cabinet packing/wrapping time (cbSettings.packagingHours,
-  // set in My Rates → Other Labour Times). Billable like the other labour
-  // times: flows into labourCost (price) and labourHrs (schedule), subject to
-  // the contingency multiplier below. Per cabinet, so it scales with qty.
+  // Packaging + installation — per-cabinet packing/wrapping and on-site install
+  // time (cbSettings.packagingHours / cbSettings.installationHours, set in
+  // My Rates → Core Rates). Billable like the other labour times: flow into
+  // labourCost (price) and labourHrs (schedule), subject to the contingency
+  // multiplier below. Per cabinet, so they scale with qty.
   autoLabour += cbSettings.packagingHours || 0;
+  autoLabour += cbSettings.installationHours || 0;
   const surfaceArea = 2*H*D + 2*innerW*D + W*H;
   autoLabour += surfaceArea * (lt.finishPerM2 || 0.5);
 

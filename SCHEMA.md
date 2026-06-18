@@ -82,6 +82,7 @@ create table public.business_info (
   default_workday_hours       numeric not null default 8,
   default_weekday_hours       jsonb   not null default '[8,8,8,8,8,0,0]'::jsonb,  -- Mon..Sun
   default_packaging_hours     numeric not null default 0,
+  default_installation_hours  numeric not null default 0,                          -- added 2026-06-19; per-cabinet install time, folded into labour like packaging
   default_contingency_hours   numeric not null default 0,                          -- deprecated 2026-05-07; kept as legacy column, no longer read
   default_contingency_pct     numeric,                                             -- added 2026-05-07; % of cabinet labour time
   production_queue_start_date date,                                                -- nullable; null = use today

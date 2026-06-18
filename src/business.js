@@ -146,6 +146,7 @@ function _syncCBSettingsToDB() {
                                       ? cbSettings.weekdayHours.map(/** @param {any} h */ h => parseFloat(h) || 0)
                                       : [8, 8, 8, 8, 8, 0, 0],
       default_packaging_hours:      parseFloat(cbSettings.packagingHours) || 0,
+      default_installation_hours:   parseFloat(cbSettings.installationHours) || 0,
       default_contingency_pct:      parseFloat(cbSettings.contingencyPct) || 0,
       production_queue_start_date:  cbSettings.queueStartDate || null,
       updated_at: new Date().toISOString()
