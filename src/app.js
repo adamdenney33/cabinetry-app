@@ -1846,6 +1846,11 @@ function _applyBizInfoFromDB(rows) {
       if (uf) { Object.assign(window.unitFormat, uf); _syncUnitFormatUI(); }
     } catch(e) {}
   }
+  // Currency from DB is the source of truth (the public live link reads the
+  // same column). Overlay it onto window.currency so the in-app PDF/print can't
+  // drift to the '$' default while the live link shows the saved symbol.
+  // persistDB=false: this value came FROM the DB, no need to write it back.
+  if (b.default_currency) { try { setCurrency(b.default_currency, false); } catch(e) {} }
   // Persist back to localStorage so other reads pick it up (legacy compatibility)
   try {
     localStorage.setItem('pc_biz', JSON.stringify({

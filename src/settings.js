@@ -263,8 +263,8 @@ function _rerenderAll() {
 // ══════════════════════════════════════════
 const EURO_LOCALES = ['de','fr','es','it','nl','pt','fi','el','cs','sk','sl','hr','bg','ro','hu','lv','lt','et','mt','ga'];
 
-/** @param {string} c */
-function setCurrency(c) {
+/** @param {string} c @param {boolean} [persistDB] */
+function setCurrency(c, persistDB = true) {
   window.currency = c;
   localStorage.setItem('pcCurrency', c);
   const curMap = { '$': 'cur-usd', '£': 'cur-gbp', '€': 'cur-eur', 'A$': 'cur-aud' };
@@ -272,7 +272,25 @@ function setCurrency(c) {
     const el = document.getElementById(id);
     if (el) el.classList.toggle('active', c === sym);
   });
+  // Mirror to business_info.default_currency so the public live link (which
+  // reads that column server-side) stays in sync with the in-app PDF/print,
+  // which use window.currency. Skip when applying a value that just came FROM
+  // the DB (persistDB=false) to avoid a redundant write.
+  if (persistDB) _syncCurrencyToDB(c);
   try { renderStockMain(); renderQuoteMain(); renderOrdersMain(); } catch(e) {}
+}
+
+/** Fire-and-forget write of the currency symbol to the user's business_info
+ *  row. A subset upsert (onConflict user_id) leaves all other columns intact.
+ *  @param {string} c */
+function _syncCurrencyToDB(c) {
+  try {
+    if (typeof _userId === 'undefined' || !_userId) return;
+    if (typeof _db !== 'function') return;
+    _db('business_info')
+      .upsert([{ user_id: _userId, default_currency: c, updated_at: new Date().toISOString() }], { onConflict: 'user_id' })
+      .then(/** @param {any} r */ r => { if (r && r.error) console.warn('[currency] DB sync failed:', r.error.message); });
+  } catch (e) {}
 }
 
 (function() {
