@@ -222,7 +222,7 @@ function renderCBRates() {
     {name:'Labour Time Contingency',price:cbSettings.contingencyPct ?? 5,path:'cbSettings.contingencyPct',unit:'%'},
     // Packaging + installation: per-cabinet hours folded into cabinet labour by
     // calcCBLine (subject to the contingency above), so they live with the
-    // other pricing levers here rather than under Other Labour Times.
+    // other pricing levers here rather than under Extra Panels.
     {name:'Packaging',price:cbSettings.packagingHours||0,path:'cbSettings.packagingHours',unit:'hrs/cab',step:'0.05'},
     {name:'Installation',price:cbSettings.installationHours||0,path:'cbSettings.installationHours',unit:'hrs/cab',step:'0.05'},
   ];
@@ -234,7 +234,8 @@ function renderCBRates() {
     </div>
   </div>`).join('');
 
-  // Other (fixed) labour rates — power-law components handled per-type below.
+  // Extra Panels — fixed per-unit labour times for shelves, partitions & end
+  // panels (power-law carcass/door/etc. components handled per-type below).
   // Finish labour is intentionally omitted: finish material is driven from stock.
   const labourItems = [
     {name:'Fixed Shelf',val:lt.fixedShelf||0.3,path:'cbSettings.labourTimes.fixedShelf',unit:'hrs'},
@@ -272,10 +273,10 @@ function renderCBRates() {
     ${stockLink}
     ${section('core', 'Core Rates', '7 rates', coreContent)}
     ${section('carcassTypes', 'Carcass', '('+carcassTypes.length+')', typeListItems(carcassTypes, 'cbSettings.carcassTypes', 0.4))}
+    ${section('labour', 'Extra Panels', '5 rates', labourContent)}
     ${section('doorTypes', 'Door', '('+doorTypes.length+')', typeListItems(doorTypes, 'cbSettings.doorTypes', 0.4))}
     ${section('drawerFrontTypes', 'Drawer Front', '('+drawerFrontTypes.length+')', typeListItems(drawerFrontTypes, 'cbSettings.drawerFrontTypes', 0.3))}
     ${section('drawerBoxTypes', 'Drawer Box', '('+drawerBoxTypes.length+')', typeListItems(drawerBoxTypes, 'cbSettings.drawerBoxTypes', 0.8))}
-    ${section('labour', 'Other Labour Times', '5 rates', labourContent)}
     ${section('basetypes', 'Base', '('+(cbSettings.baseTypes||[]).length+')', typeListItems(cbSettings.baseTypes||[], 'cbSettings.baseTypes', 0.3))}
   `;
   targets.forEach(el => { if (el) el.innerHTML = html; });
