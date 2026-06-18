@@ -219,13 +219,18 @@ function renderCBRates() {
     {name:'Material Markup',price:cbSettings.materialMarkup||0,path:'cbSettings.materialMarkup',unit:'%'},
     {name:'Quote Markup',price:cbSettings.markup,path:'cbSettings.markup',unit:'%'},
     {name:'Tax / GST',price:cbSettings.tax,path:'cbSettings.tax',unit:'%'},
-    {name:'Contingency',price:cbSettings.contingencyPct ?? 5,path:'cbSettings.contingencyPct',unit:'%'},
+    {name:'Labour Time Contingency',price:cbSettings.contingencyPct ?? 5,path:'cbSettings.contingencyPct',unit:'%'},
+    // Packaging + installation: per-cabinet hours folded into cabinet labour by
+    // calcCBLine (subject to the contingency above), so they live with the
+    // other pricing levers here rather than under Other Labour Times.
+    {name:'Packaging',price:cbSettings.packagingHours||0,path:'cbSettings.packagingHours',unit:'hrs/cab',step:'0.05'},
+    {name:'Installation',price:cbSettings.installationHours||0,path:'cbSettings.installationHours',unit:'hrs/cab',step:'0.05'},
   ];
   const coreContent = coreItems.map(item => `<div class="cb-mat-row" style="margin-top:4px">
     <input value="${item.name}" disabled style="opacity:.7;cursor:default">
     <div style="display:flex;align-items:center;border:1px solid var(--border);border-radius:4px;overflow:hidden;background:var(--surface2)">
       <span style="font-size:10px;color:var(--muted);padding:3px 4px 3px 6px;background:var(--surface)">${item.unit}</span>
-      <input type="number" value="${item.price}" style="border:none;border-radius:0;padding:3px 6px 3px 2px;width:55px" onblur="${item.path}=parseFloat(this.value)||0;saveCBSettings();renderCBPanel()">
+      <input type="number" value="${item.price}"${item.step?` step="${item.step}"`:''} style="border:none;border-radius:0;padding:3px 6px 3px 2px;width:55px" onblur="${item.path}=parseFloat(this.value)||0;saveCBSettings();renderCBPanel()">
     </div>
   </div>`).join('');
 
@@ -237,7 +242,6 @@ function renderCBRates() {
     {name:'Loose Shelf',val:lt.looseShelf||0.2,path:'cbSettings.labourTimes.looseShelf',unit:'hrs'},
     {name:'Partition',val:lt.partition||0.5,path:'cbSettings.labourTimes.partition',unit:'hrs'},
     {name:'End Panel',val:lt.endPanel||0.3,path:'cbSettings.labourTimes.endPanel',unit:'hrs'},
-    {name:'Packaging',val:cbSettings.packagingHours||0,path:'cbSettings.packagingHours',unit:'hrs/cab'},
   ];
   const labourContent = labourItems.map(item => `<div class="cb-mat-row" style="margin-top:4px">
     <input value="${item.name}" disabled style="opacity:.7;cursor:default">
@@ -266,12 +270,12 @@ function renderCBRates() {
 
   const html = `
     ${stockLink}
-    ${section('core', 'Core Rates', '5 rates', coreContent)}
+    ${section('core', 'Core Rates', '7 rates', coreContent)}
     ${section('carcassTypes', 'Carcass', '('+carcassTypes.length+')', typeListItems(carcassTypes, 'cbSettings.carcassTypes', 0.4))}
     ${section('doorTypes', 'Door', '('+doorTypes.length+')', typeListItems(doorTypes, 'cbSettings.doorTypes', 0.4))}
     ${section('drawerFrontTypes', 'Drawer Front', '('+drawerFrontTypes.length+')', typeListItems(drawerFrontTypes, 'cbSettings.drawerFrontTypes', 0.3))}
     ${section('drawerBoxTypes', 'Drawer Box', '('+drawerBoxTypes.length+')', typeListItems(drawerBoxTypes, 'cbSettings.drawerBoxTypes', 0.8))}
-    ${section('labour', 'Other Labour Times', '6 rates', labourContent)}
+    ${section('labour', 'Other Labour Times', '5 rates', labourContent)}
     ${section('basetypes', 'Base', '('+(cbSettings.baseTypes||[]).length+')', typeListItems(cbSettings.baseTypes||[], 'cbSettings.baseTypes', 0.3))}
   `;
   targets.forEach(el => { if (el) el.innerHTML = html; });
@@ -397,7 +401,6 @@ function renderCBEditor() {
             <button class="cb-del-btn" style="font-size:16px" onclick="removeCBHw(${line.id},${hi},'${scope}')">×</button>
           </div>`).join('');
     return `${rows}<div style="position:relative;margin-top:4px">
-            <label style="font-size:10px;font-weight:600;color:var(--muted)">Add Hardware</label>
             <div class="smart-input-wrap">
               <input type="text" id="cb-hw-add-${scope}-${line.id}" placeholder="Search hardware..." style="font-size:12px" autocomplete="off" oninput="_smartCBHwAddSuggest(this,'cb-hw-add-suggest-${scope}-${line.id}',${line.id},'${scope}')" onfocus="_smartCBHwAddSuggest(this,'cb-hw-add-suggest-${scope}-${line.id}',${line.id},'${scope}')" onblur="setTimeout(()=>_byId('cb-hw-add-suggest-${scope}-${line.id}').style.display='none',150)">
               <div class="smart-input-add" onclick="_openNewCBHardwarePopup(${line.id},-1,'${scope}')" title="Add new hardware type">+</div>
@@ -783,7 +786,7 @@ function renderCBResults() {
         <div style="display:grid;grid-template-columns:1fr auto;gap:2px 16px">
           <span>Materials</span><span style="text-align:right;font-weight:600;color:var(--text)">${fmt(c.matCost)}</span>
           <span>Labour (${c.labourHrs.toFixed(1)} hrs @ ${cur}${cbSettings.labourRate}/hr)</span><span style="text-align:right;font-weight:600;color:var(--text)">${fmt(c.labourCost)}</span>
-          ${(cbSettings.contingencyPct||0) > 0 ? `<span style="color:var(--muted)">Contingency (${cbSettings.contingencyPct}%)</span><span style="text-align:right;color:var(--muted);font-style:italic">incl. +${fmt0(c.labourCost * cbSettings.contingencyPct / (100 + cbSettings.contingencyPct))}</span>` : ''}
+          ${(cbSettings.contingencyPct||0) > 0 ? `<span style="color:var(--muted)">Labour Time Contingency (${cbSettings.contingencyPct}%)</span><span style="text-align:right;color:var(--muted);font-style:italic">incl. +${fmt0(c.labourCost * cbSettings.contingencyPct / (100 + cbSettings.contingencyPct))}</span>` : ''}
           <span>Hardware</span><span style="text-align:right;font-weight:600;color:var(--text)">${fmt0(c.hwCost)}</span>
           ${line.qty > 1 ? `
           <span style="border-top:1px solid var(--border2);padding-top:4px;margin-top:2px">Unit Cost</span><span style="text-align:right;font-weight:600;border-top:1px solid var(--border2);padding-top:4px;margin-top:2px">${fmt0(unitCost)}</span>
@@ -823,7 +826,7 @@ function renderCBResults() {
       <div style="display:grid;grid-template-columns:1fr auto;gap:3px 16px;font-size:13px">
         <span style="color:var(--text2)">Materials</span><span style="text-align:right;font-weight:600">${fmt0(gMat)}</span>
         <span style="color:var(--text2)">Labour (${totalHrs.toFixed(1)} hrs)</span><span style="text-align:right;font-weight:600">${fmt0(gLabour)}</span>
-        ${(cbSettings.contingencyPct||0) > 0 ? `<span style="color:var(--muted)">Contingency (${cbSettings.contingencyPct}%)</span><span style="text-align:right;color:var(--muted);font-style:italic">incl. +${fmt0(gLabour * cbSettings.contingencyPct / (100 + cbSettings.contingencyPct))}</span>` : ''}
+        ${(cbSettings.contingencyPct||0) > 0 ? `<span style="color:var(--muted)">Labour Time Contingency (${cbSettings.contingencyPct}%)</span><span style="text-align:right;color:var(--muted);font-style:italic">incl. +${fmt0(gLabour * cbSettings.contingencyPct / (100 + cbSettings.contingencyPct))}</span>` : ''}
         <span style="color:var(--text2)">Hardware</span><span style="text-align:right;font-weight:600">${fmt0(gHw)}</span>
       </div>
       <div style="border-top:1px solid var(--border);margin-top:6px;padding-top:6px;display:grid;grid-template-columns:1fr auto;gap:3px 16px;font-size:13px">
