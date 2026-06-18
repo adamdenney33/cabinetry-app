@@ -1771,6 +1771,16 @@ function _subscribeLiveStatus() {
   const rerender = () => {
     try { renderQuoteMain(); } catch (e) {}
     try { renderOrdersMain(); } catch (e) {}
+    // The Schedule calendar is also derived from orders (priority/dates feed the
+    // auto-scheduler) but, unlike the card lists, it isn't refreshed in place —
+    // so a priority change persisted to the DB only reached the calendar on a
+    // manual reload. Re-render it when it's the visible tab so it self-heals.
+    try {
+      if (typeof renderSchedule === 'function' &&
+          document.getElementById('panel-schedule')?.classList.contains('active')) {
+        renderSchedule();
+      }
+    } catch (e) {}
     try { _oBadge(); } catch (e) {}
   };
   try {
