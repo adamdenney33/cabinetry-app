@@ -78,6 +78,49 @@ function parseDim(str) {
 }
 
 /**
+ * Format a dimension that is stored canonically in millimetres for display in
+ * the user's current unit system. The Cabinet Builder (and the quote/order
+ * docs it feeds) always persist dimensions in mm — unlike the Cut List, which
+ * stores values in the active unit. Use this wherever an mm-stored dimension
+ * is shown so it honours the imperial/metric + format-mode settings.
+ * @param {number|string|null|undefined} mm
+ * @param {{ showUnit?: boolean }} [opts]
+ * @returns {string}
+ */
+function dimDisplayFromMM(mm, opts) {
+  if (mm == null || mm === '' || isNaN(Number(mm))) return '';
+  var v = window.units === 'imperial' ? Number(mm) / 25.4 : Number(mm);
+  return formatDim(v, opts);
+}
+
+/**
+ * Parse a user-typed dimension (in the active unit) back to millimetres for
+ * canonical mm storage. Inverse of {@link dimDisplayFromMM}.
+ * @param {string|number} str
+ * @returns {number}
+ */
+function dimInputToMM(str) {
+  var v = parseDim(str);
+  return window.units === 'imperial' ? v * 25.4 : v;
+}
+
+/**
+ * Build a "W × H × D <unit>" label for mm-stored dimensions in the active unit.
+ * Blank dims are dropped; returns '' when nothing remains.
+ * @param {number|string|null|undefined} w
+ * @param {number|string|null|undefined} h
+ * @param {number|string|null|undefined} d
+ * @returns {string}
+ */
+function dimsLabelFromMM(w, h, d) {
+  var parts = [w, h, d]
+    .filter(function (v) { return v != null && v !== '' && !isNaN(Number(v)); })
+    .map(function (v) { return dimDisplayFromMM(v); });
+  if (!parts.length) return '';
+  return parts.join(' × ') + ' ' + unitLabel();
+}
+
+/**
  * Convert a dimension value between unit systems. Full precision, no rounding.
  * @param {number} val
  * @param {string} from - 'imperial' or 'metric'

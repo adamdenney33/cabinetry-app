@@ -949,9 +949,11 @@ function _lineDisplay(row) {
   const _disc = parseFloat(row.discount) || 0;
   const _discMult = 1 - _disc / 100;
   if (kind === 'cabinet') {
-    const dims = [row.w_mm, row.h_mm, row.d_mm].filter(Boolean).join('×');
+    // Dimensions persist in mm; render them in the user's active unit so the
+    // PDF/print output matches the Cabinet Builder.
+    const dims = dimsLabelFromMM(row.w_mm, row.h_mm, row.d_mm);
     const parts = [];
-    if (dims) parts.push(dims + 'mm');
+    if (dims) parts.push(dims);
     if (row.material) parts.push(row.material);
     if ((row.door_count || 0) > 0) parts.push(row.door_count + ' door' + (row.door_count !== 1 ? 's' : ''));
     if ((row.drawer_count || 0) > 0) parts.push(row.drawer_count + ' drawer' + (row.drawer_count !== 1 ? 's' : ''));

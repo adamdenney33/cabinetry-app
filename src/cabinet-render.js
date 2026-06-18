@@ -442,13 +442,13 @@ function renderCBEditor() {
           ${chev('cab')}
           <span style="${ST}">Cabinet</span>
           <span id="cb-live-cab">${liveCost(sec.cabinet)}</span>
-          <span id="cb-live-cab-dims" style="${SS}">${line.w}×${line.h}×${line.d}</span>
+          <span id="cb-live-cab-dims" style="${SS}">${dimDisplayFromMM(line.w)}×${dimDisplayFromMM(line.h)}×${dimDisplayFromMM(line.d)}</span>
         </div>
         <div ${SC('cab')}>
           <div class="form-row" style="margin-bottom:8px">
-            <div class="form-group" style="${FM}"><label style="${LB}">Width (mm)</label><input type="number" value="${line.w}" style="${IS}" oninput="cbUpdateField('w',this.value)"></div>
-            <div class="form-group" style="${FM}"><label style="${LB}">Height (mm)</label><input type="number" value="${line.h}" style="${IS}" oninput="cbUpdateField('h',this.value)"></div>
-            <div class="form-group" style="${FM}"><label style="${LB}">Depth (mm)</label><input type="number" value="${line.d}" style="${IS}" oninput="cbUpdateField('d',this.value)"></div>
+            <div class="form-group" style="${FM}"><label style="${LB}">Width (${unitLabel()})</label><input type="text" inputmode="decimal" value="${dimDisplayFromMM(line.w)}" style="${IS}" onchange="cbUpdateField('w',this.value)"></div>
+            <div class="form-group" style="${FM}"><label style="${LB}">Height (${unitLabel()})</label><input type="text" inputmode="decimal" value="${dimDisplayFromMM(line.h)}" style="${IS}" onchange="cbUpdateField('h',this.value)"></div>
+            <div class="form-group" style="${FM}"><label style="${LB}">Depth (${unitLabel()})</label><input type="text" inputmode="decimal" value="${dimDisplayFromMM(line.d)}" style="${IS}" onchange="cbUpdateField('d',this.value)"></div>
           </div>
           <div style="margin-bottom:8px"><label style="${LB}">Carcass Material</label>${matSmart('material', line.material)}</div>
           <div style="margin-bottom:8px"><label style="${LB}">Back Panel</label>${matSmart('backMat', line.backMat)}</div>
@@ -611,7 +611,7 @@ function _refreshCBLiveCosts() {
   const set = (id, html) => { const el = _byId(id); if (el) el.innerHTML = html; };
 
   set('cb-live-cab', liveCost(sec.cabinet));
-  set('cb-live-cab-dims', `${line.w}×${line.h}×${line.d}`);
+  set('cb-live-cab-dims', `${dimDisplayFromMM(line.w)}×${dimDisplayFromMM(line.h)}×${dimDisplayFromMM(line.d)}`);
   set('cb-live-doors', line.doors > 0 ? liveCost(sec.doors) : '');
   set('cb-live-doors-count', line.doors>0?line.doors+' door'+(line.doors!==1?'s':''):'None');
   set('cb-live-drawer-fronts', line.drawers > 0 ? liveCost(sec.drawerFronts) : '');
@@ -774,7 +774,7 @@ function renderCBResults() {
       <div style="display:flex;align-items:center;gap:10px;padding:12px 16px;background:${isActive?'var(--accent-dim)':'var(--surface2)'}">
         <div style="flex:1;min-width:0">
           <div style="font-size:14px;font-weight:700;color:var(--text)">${_escHtml(line.name||'Cabinet '+(idx+1))}</div>
-          <div style="font-size:11px;color:var(--muted)">${line.w} × ${line.h} × ${line.d} mm · ${_escHtml(line.material)}</div>
+          <div style="font-size:11px;color:var(--muted)">${dimsLabelFromMM(line.w, line.h, line.d)} · ${_escHtml(line.material)}</div>
         </div>
         <div style="font-size:16px;font-weight:800;color:var(--accent)">${fmt0(cabTotal)}</div>
       </div>
@@ -903,7 +903,7 @@ function _renderLibraryCards(items) {
     // Caption segments: each stays on one line (white-space:nowrap) so a whole
     // segment pushes to the next line at the " ·" separators rather than being
     // split mid-segment (e.g. dimensions never break across lines).
-    const _capSegs = [`${c.w} × ${c.h} × ${c.d} mm`];
+    const _capSegs = [dimsLabelFromMM(c.w, c.h, c.d)];
     if (c.material) _capSegs.push(_escHtml(c.material));
     if (details.length) _capSegs.push(details.join(', '));
     const _capHtml = _capSegs.map((s, si) => `<span style="white-space:nowrap">${s}${si < _capSegs.length - 1 ? ' ·' : ''}</span>`).join(' ');

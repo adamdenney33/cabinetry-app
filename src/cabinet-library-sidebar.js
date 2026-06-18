@@ -16,7 +16,7 @@ function _renderCBLibSidebarGate() {
     return bv - av;
   }).map(/** @param {any} c */ c => {
     const idx = lib.indexOf(c);
-    const dims = `${c.w||0} × ${c.h||0} × ${c.d||0} mm`;
+    const dims = dimsLabelFromMM(c.w || 0, c.h || 0, c.d || 0);
     return {
       id: c.db_id || idx,
       name: c._libName || c.name || 'Cabinet',

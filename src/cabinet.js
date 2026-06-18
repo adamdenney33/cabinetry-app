@@ -713,8 +713,13 @@ function cbStepField(field, dir) {
 /** @param {string} field @param {any} val */
 function cbUpdateField(field, val) {
   if (!cbScratchpad) return;
-  const numFields = ['w','h','d','qty','doors','drawers','shelves','adjShelves','endPanels','looseShelves','partitions','labourHrs','doorPct','drawerPct'];
-  if (numFields.includes(field)) {
+  // Dimensions are stored canonically in mm; the input shows the active unit,
+  // so parse imperial/metric text (incl. fractions) back to mm on the way in.
+  const dimFields = ['w','h','d'];
+  const numFields = ['qty','doors','drawers','shelves','adjShelves','endPanels','looseShelves','partitions','labourHrs','doorPct','drawerPct'];
+  if (dimFields.includes(field)) {
+    cbScratchpad[field] = dimInputToMM(val) || 0;
+  } else if (numFields.includes(field)) {
     cbScratchpad[field] = parseFloat(val) || 0;
   } else {
     cbScratchpad[field] = val;
@@ -1301,7 +1306,7 @@ function copyCBSummary() {
   const lineTexts = cbLines.map((line, i) => {
     const c = calcCBLine(line);
     grandSub += c.lineSubtotal;
-    return `${i+1}. ${line.name||line.type} (${line.w}x${line.h}x${line.d}mm) x${line.qty} — ${cur}${Math.round(c.lineSubtotal)}`;
+    return `${i+1}. ${line.name||line.type} (${dimsLabelFromMM(line.w, line.h, line.d)}) x${line.qty} — ${cur}${Math.round(c.lineSubtotal)}`;
   });
   const markupAmt = grandSub * cbSettings.markup / 100;
   const taxAmt = (grandSub + markupAmt) * cbSettings.tax / 100;

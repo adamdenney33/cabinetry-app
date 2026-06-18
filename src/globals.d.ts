@@ -170,6 +170,9 @@ declare global {
   function parseDim(str: string | number): number;
   function convertDim(val: number, from: string, to: string): number;
   function unitLabel(): string;
+  function dimDisplayFromMM(mm: number | string | null | undefined, opts?: { showUnit?: boolean }): string;
+  function dimInputToMM(str: string | number): number;
+  function dimsLabelFromMM(w: number | string | null | undefined, h: number | string | null | undefined, d: number | string | null | undefined): string;
 
   // ── db.js auth-token cache global ──
   /** Update the in-memory bearer token used by _db()'s raw-fetch layer.
