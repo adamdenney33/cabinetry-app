@@ -72,7 +72,10 @@ function calcCBSections(line) {
   /** @param {string} hwName */
   function hwp(hwName) {
     const h = cbSettings.hardware.find(/** @param {any} h */ h => h.name === hwName);
-    return h ? h.price : 0;
+    if (h) return h.price;
+    // "Other" stock items also appear in the hardware picker — resolve their unit cost.
+    const so = (typeof stockItems !== 'undefined' ? stockItems : []).find(/** @param {any} s */ s => s.name === hwName && ((typeof _scGet === 'function' ? _scGet(s.id) : '') || s.category) === 'Other');
+    return so ? (so.cost ?? 0) : 0;
   }
 
   const cont = _contingencyMult();
@@ -202,7 +205,10 @@ function calcCBLine(line) {
   /** @param {string} hwName */
   function hwp(hwName) {
     const h = cbSettings.hardware.find(/** @param {any} h */ h => h.name === hwName);
-    return h ? h.price : 0;
+    if (h) return h.price;
+    // "Other" stock items also appear in the hardware picker — resolve their unit cost.
+    const so = (typeof stockItems !== 'undefined' ? stockItems : []).find(/** @param {any} s */ s => s.name === hwName && ((typeof _scGet === 'function' ? _scGet(s.id) : '') || s.category) === 'Other');
+    return so ? (so.cost ?? 0) : 0;
   }
 
   // Auto material cost: carcass panels

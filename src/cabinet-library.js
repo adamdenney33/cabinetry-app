@@ -558,6 +558,25 @@ function _saveNewCBFinish(fieldName) {
 }
 
 // ── Cabinet Hardware Smart Suggest ──
+// Picker pool: the hardware catalog (cbSettings.hardware) plus any stock items
+// categorised as "Other", so loose/uncategorised stock can be added as cabinet
+// hardware. Catalog entries win on a name clash. Stock rows are tagged _stock so
+// the dropdown can label their source.
+function _cbHwPool() {
+  /** @type {{name:string, price:number, _stock?:boolean}[]} */
+  const pool = (cbSettings.hardware || []).map(/** @param {any} h */ h => ({ name: h.name, price: h.price }));
+  const seen = new Set(pool.map(h => h.name.toLowerCase()));
+  (typeof stockItems !== 'undefined' ? stockItems : []).forEach(/** @param {any} s */ s => {
+    const cat = (typeof _scGet === 'function' ? _scGet(s.id) : '') || s.category;
+    if (cat !== 'Other' || !s.name) return;
+    const key = s.name.toLowerCase();
+    if (seen.has(key)) return;
+    seen.add(key);
+    pool.push({ name: s.name, price: s.cost ?? 0, _stock: true });
+  });
+  return pool;
+}
+
 // scope = 'cabinet' | 'door' | 'drawer'. Defaults to 'cabinet' for back-compat.
 /** @param {HTMLInputElement} input @param {string} boxId @param {number} lineId @param {number} hwIdx @param {string} [scope] */
 function _smartCBHwSuggest(input, boxId, lineId, hwIdx, scope) {
@@ -567,13 +586,14 @@ function _smartCBHwSuggest(input, boxId, lineId, hwIdx, scope) {
   _posSuggest(input, box);
   const q = input.value.trim().toLowerCase();
   const cur = window.currency;
-  const matches = q ? cbSettings.hardware.filter(/** @param {any} h */ h => h.name.toLowerCase().includes(q)) : cbSettings.hardware;
+  const pool = _cbHwPool();
+  const matches = q ? pool.filter(/** @param {any} h */ h => h.name.toLowerCase().includes(q)) : pool;
   let html = '';
   matches.slice(0, 8).forEach(/** @param {any} h */ h => {
     html += `<div class="client-suggest-item" onmousedown="_byId('cb-hw-${sc}-${lineId}-${hwIdx}').value='${_escHtml(h.name)}';updateCBHw(${lineId},${hwIdx},'name','${_escHtml(h.name)}','${sc}');_byId('${boxId}').style.display='none'">
       <span class="suggest-icon" style="background:#6b8aff20;color:#6b8aff">H</span>
       <span style="flex:1">${_escHtml(h.name)}</span>
-      <span style="font-size:10px;color:var(--muted)">${cur}${h.price}/unit</span>
+      <span style="font-size:10px;color:var(--muted)">${cur}${h.price}/unit${h._stock?' · stock':''}</span>
     </div>`;
   });
   html += `<div class="client-suggest-add" onmousedown="_openNewCBHardwarePopup(${lineId},${hwIdx},'${sc}')">+ Add${q ? ' "'+_escHtml(input.value.trim())+'" as' : ''} new hardware</div>`;
@@ -589,13 +609,14 @@ function _smartCBHwAddSuggest(input, boxId, lineId, scope) {
   _posSuggest(input, box);
   const q = input.value.trim().toLowerCase();
   const cur = window.currency;
-  const matches = q ? cbSettings.hardware.filter(/** @param {any} h */ h => h.name.toLowerCase().includes(q)) : cbSettings.hardware;
+  const pool = _cbHwPool();
+  const matches = q ? pool.filter(/** @param {any} h */ h => h.name.toLowerCase().includes(q)) : pool;
   let html = '';
   matches.slice(0, 8).forEach(/** @param {any} h */ h => {
     html += `<div class="client-suggest-item" onmousedown="_addCBHwByName(${lineId},'${_escHtml(h.name)}','${sc}');_byId('cb-hw-add-${sc}-${lineId}').value='';_byId('${boxId}').style.display='none'">
       <span class="suggest-icon" style="background:#6b8aff20;color:#6b8aff">H</span>
       <span style="flex:1">${_escHtml(h.name)}</span>
-      <span style="font-size:10px;color:var(--muted)">${cur}${h.price}/unit</span>
+      <span style="font-size:10px;color:var(--muted)">${cur}${h.price}/unit${h._stock?' · stock':''}</span>
     </div>`;
   });
   html += `<div class="client-suggest-add" onmousedown="_openNewCBHardwarePopup(${lineId},-1,'${sc}')">+ Add${q ? ' "'+_escHtml(input.value.trim())+'" as' : ''} new hardware</div>`;
