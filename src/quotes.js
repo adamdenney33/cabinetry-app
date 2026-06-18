@@ -378,6 +378,10 @@ async function removeQuote(id) {
     }
   }
   renderQuoteMain();
+  // The Cabinet Builder shows the same quotes as clickable cards (the quote
+  // picker). Refresh it too so a quote deleted from that tab disappears
+  // immediately instead of lingering until the next page load.
+  if (typeof renderCBResults === 'function') { try { renderCBResults(); } catch (e) {} }
 }
 
 /** @param {number} id */
