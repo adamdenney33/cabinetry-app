@@ -362,7 +362,7 @@ function _smartRatesStockSuggest(input, boxId) {
   _posSuggest(input, box);
   const q = input.value.trim().toLowerCase();
   const cur = window.currency;
-  const pool = stockItems.filter(s => s.category === 'Sheet Goods' || s.category === 'Solid Timber' || s.category === 'Edge Banding' || ((s.w ?? 0) > 0 && (s.h ?? 0) > 0));
+  const pool = stockItems.filter(s => { const cat = _scGet(s.id) || s.category; return cat === 'Sheet Goods' || cat === 'Solid Timber' || cat === 'Edge Banding' || (!cat && (s.w ?? 0) > 0 && (s.h ?? 0) > 0); });
   const matches = q ? pool.filter(s => s.name.toLowerCase().includes(q)) : pool;
   let html = '';
   matches.slice(0, 10).forEach(s => {
@@ -435,7 +435,7 @@ function _smartCBMaterialSuggest(input, boxId, fieldName) {
   _posSuggest(input, box);
   const q = input.value.trim().toLowerCase();
   const cur = window.currency;
-  const pool = stockItems.filter(s => s.category === 'Sheet Goods' || s.category === 'Solid Timber' || s.category === 'Edge Banding' || ((s.w ?? 0) > 0 && (s.h ?? 0) > 0));
+  const pool = stockItems.filter(s => { const cat = _scGet(s.id) || s.category; return cat === 'Sheet Goods' || cat === 'Solid Timber' || cat === 'Edge Banding' || (!cat && (s.w ?? 0) > 0 && (s.h ?? 0) > 0); });
   const matches = q ? pool.filter(s => s.name.toLowerCase().includes(q)) : pool;
   let html = '';
   matches.slice(0, 8).forEach(s => {
