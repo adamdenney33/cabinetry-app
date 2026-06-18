@@ -628,6 +628,11 @@ function cancelStockEdit() {
   inp('stock-name').value = '';
   inp('stock-variant').value = '';
   inp('stock-sku').value = '';
+  // Reset the category to the default option so a stale value from the
+  // previously-edited item doesn't carry into a fresh "Add Material", and
+  // refresh the category-dependent field visibility to match.
+  inp('stock-cat').value = 'Sheet Goods';
+  if (typeof stockCatChanged === 'function') stockCatChanged();
   const sb = /** @type {HTMLElement} */ (_byId('stock-submit-btn'));
   if (sb) { sb.textContent = '+ Add to Stock'; sb.style.display = ''; }
   inp('stock-form-title-text').textContent = 'Add Material';
