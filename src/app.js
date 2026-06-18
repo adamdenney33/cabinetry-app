@@ -1843,7 +1843,20 @@ function _applyBizInfoFromDB(rows) {
   if (b.unit_format) {
     try {
       var uf = typeof b.unit_format === 'string' ? JSON.parse(b.unit_format) : b.unit_format;
-      if (uf) { Object.assign(window.unitFormat, uf); _syncUnitFormatUI(); }
+      if (uf) {
+        Object.assign(window.unitFormat, uf);
+        // The synced unit_format.mode is also the source of truth for the
+        // imperial/metric SYSTEM. Keep window.units in agreement so a second
+        // device (where localStorage pcUnits is stale or absent) doesn't render
+        // the wrong system. fromDB:true skips the mm<->inch data conversion —
+        // stored values are already in the maker's true unit.
+        var _sys = ['decimal', 'fractional', 'feetInches'].includes(uf.mode) ? 'imperial'
+                 : ['mm', 'cm', 'm'].includes(uf.mode) ? 'metric' : '';
+        if (_sys && _sys !== window.units && typeof setUnits === 'function') {
+          setUnits(_sys, { fromDB: true });
+        }
+        _syncUnitFormatUI();
+      }
     } catch(e) {}
   }
   // Currency from DB is the source of truth (the public live link reads the

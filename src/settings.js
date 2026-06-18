@@ -102,8 +102,13 @@ function toggleTheme() {
 // ══════════════════════════════════════════
 // UNITS
 // ══════════════════════════════════════════
-/** @param {string} u */
-function setUnits(u) {
+/** @param {string} u @param {{ fromDB?: boolean }} [opts] */
+function setUnits(u, opts) {
+  // fromDB = the value came from the synced business profile (boot overlay),
+  // not a user toggle. Stored cut-list/cabinet values are ALREADY in the
+  // maker's true unit, so skip the mm<->inch data conversion (only the local
+  // flag was wrong) and skip re-persisting the value we just read back.
+  const fromDB = !!(opts && opts.fromDB);
   const prevUnits = window.units;
   window.units = u;
   localStorage.setItem('pcUnits', u);
@@ -136,8 +141,9 @@ function setUnits(u) {
   if (stH) stH.value = String(m ? 1220 : 48);
   if (stN && !stN.value) stN.placeholder = m ? 'e.g. 18mm Birch Plywood' : 'e.g. 3/4" Birch Plywood';
 
-  // Convert existing sheets and pieces only when actually changing unit
-  if (prevUnits && prevUnits !== u) {
+  // Convert existing sheets and pieces only when the USER actually changes unit
+  // (never on a fromDB sync — that data is already in the right unit).
+  if (!fromDB && prevUnits && prevUnits !== u) {
     try {
       sheets.forEach(s => {
         s.w = convertDim(s.w, prevUnits, u);
@@ -154,8 +160,26 @@ function setUnits(u) {
     } catch(e) {}
   }
 
+  // Persist the system to business_info.default_units on genuine user changes so
+  // the column stays fresh (it otherwise froze at the one-time migration and
+  // drifts from unit_format.mode). Skip when the value just came FROM the DB.
+  if (!fromDB) _syncUnitsToDB(u);
+
   _syncUnitFormatUI();
-  try { renderStockMain(); renderQuoteMain(); renderOrdersMain(); } catch(e) {}
+  try { renderStockMain(); renderQuoteMain(); renderOrdersMain(); renderCBPanel(); } catch(e) {}
+}
+
+/** Fire-and-forget write of the unit system to business_info.default_units.
+ *  Encoded 'mm' | 'inches' to match the migration + the live-link fallback.
+ *  @param {string} u */
+function _syncUnitsToDB(u) {
+  try {
+    if (typeof _userId === 'undefined' || !_userId) return;
+    if (typeof _db !== 'function') return;
+    _db('business_info')
+      .upsert([{ user_id: _userId, default_units: u === 'metric' ? 'mm' : 'inches', updated_at: new Date().toISOString() }], { onConflict: 'user_id' })
+      .then(/** @param {any} r */ r => { if (r && r.error) console.warn('[units] DB sync failed:', r.error.message); });
+  } catch (e) {}
 }
 
 (function() {
