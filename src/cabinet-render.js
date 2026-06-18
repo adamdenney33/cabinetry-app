@@ -471,6 +471,27 @@ function renderCBEditor() {
         </div>
       </div>
 
+      <!-- SHELVES & PARTITIONS -->
+      <div style="${SB}">
+        <div style="${SH}" onclick="toggleCBSection(${line.id},'shelves')">
+          ${chev('shelves')}
+          <span style="${ST}">Shelves & Partitions</span>
+          <span id="cb-live-shelves">${(line.shelves+(line.adjShelves||0)+(line.looseShelves||0)+(line.partitions||0)+(line.endPanels||0))>0 ? liveCost(sec.shelves) : ''}</span>
+          <span id="cb-live-shelves-count" style="${SS}">${(line.shelves+(line.adjShelves||0)+(line.looseShelves||0)+(line.partitions||0)+(line.endPanels||0))>0?(line.shelves+(line.adjShelves||0)+(line.looseShelves||0)+(line.partitions||0)+(line.endPanels||0))+' total':'None'}</span>
+        </div>
+        <div ${SC('shelves')}>
+          <div class="form-row" style="margin-bottom:6px;align-items:flex-end">
+            <div class="form-group" style="flex:0 0 auto;${FM}"><label style="${LB}">Fixed Shelf</label>${stepper('shelves', line.shelves, 0)}</div>
+            <div class="form-group" style="flex:0 0 auto;${FM}"><label style="${LB}">Adj. Holes</label>${stepper('adjShelves', line.adjShelves, 0)}</div>
+            <div class="form-group" style="flex:0 0 auto;${FM}"><label style="${LB}">Loose Shelf</label>${stepper('looseShelves', line.looseShelves||0, 0)}</div>
+          </div>
+          <div class="form-row" style="margin-bottom:0;align-items:flex-end">
+            <div class="form-group" style="flex:0 0 auto;${FM}"><label style="${LB}">Partition</label>${stepper('partitions', line.partitions||0, 0)}</div>
+            <div class="form-group" style="flex:0 0 auto;${FM}"><label style="${LB}">End Panel</label>${stepper('endPanels', line.endPanels||0, 0)}</div>
+          </div>
+        </div>
+      </div>
+
       <!-- DOORS -->
       <div style="${SB}">
         <div style="${SH}" onclick="toggleCBSection(${line.id},'doors')">
@@ -535,28 +556,6 @@ function renderCBEditor() {
           <div style="margin-bottom:0"><label style="${LB}">Hardware</label>${hwListUI('drawer')}</div>
         </div>
       </div>
-
-      <!-- SHELVES & PARTITIONS -->
-      <div style="${SB}">
-        <div style="${SH}" onclick="toggleCBSection(${line.id},'shelves')">
-          ${chev('shelves')}
-          <span style="${ST}">Shelves & Partitions</span>
-          <span id="cb-live-shelves">${(line.shelves+(line.adjShelves||0)+(line.looseShelves||0)+(line.partitions||0)+(line.endPanels||0))>0 ? liveCost(sec.shelves) : ''}</span>
-          <span id="cb-live-shelves-count" style="${SS}">${(line.shelves+(line.adjShelves||0)+(line.looseShelves||0)+(line.partitions||0)+(line.endPanels||0))>0?(line.shelves+(line.adjShelves||0)+(line.looseShelves||0)+(line.partitions||0)+(line.endPanels||0))+' total':'None'}</span>
-        </div>
-        <div ${SC('shelves')}>
-          <div class="form-row" style="margin-bottom:6px;align-items:flex-end">
-            <div class="form-group" style="flex:0 0 auto;${FM}"><label style="${LB}">Fixed Shelf</label>${stepper('shelves', line.shelves, 0)}</div>
-            <div class="form-group" style="flex:0 0 auto;${FM}"><label style="${LB}">Adj. Holes</label>${stepper('adjShelves', line.adjShelves, 0)}</div>
-            <div class="form-group" style="flex:0 0 auto;${FM}"><label style="${LB}">Loose Shelf</label>${stepper('looseShelves', line.looseShelves||0, 0)}</div>
-          </div>
-          <div class="form-row" style="margin-bottom:0;align-items:flex-end">
-            <div class="form-group" style="flex:0 0 auto;${FM}"><label style="${LB}">Partition</label>${stepper('partitions', line.partitions||0, 0)}</div>
-            <div class="form-group" style="flex:0 0 auto;${FM}"><label style="${LB}">End Panel</label>${stepper('endPanels', line.endPanels||0, 0)}</div>
-          </div>
-        </div>
-      </div>
-
 
       <!-- EXTRAS -->
       <div style="${SB}">
