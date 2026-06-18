@@ -71,11 +71,16 @@ function calcCBSections(line) {
   }
   /** @param {string} hwName */
   function hwp(hwName) {
+    // Stock-first (Hardware/Other categories), mirroring mp() and _finishPricePerM2.
+    // Falls back to the legacy cbSettings.hardware catalog for old cabinet names.
+    const so = (typeof stockItems !== 'undefined' ? stockItems : []).find(/** @param {any} s */ s => {
+      if (s.name !== hwName) return false;
+      const cat = (typeof _scGet === 'function' ? _scGet(s.id) : '') || s.category;
+      return cat === 'Hardware' || cat === 'Other';
+    });
+    if (so) return so.cost ?? 0;
     const h = cbSettings.hardware.find(/** @param {any} h */ h => h.name === hwName);
-    if (h) return h.price;
-    // "Other" stock items also appear in the hardware picker — resolve their unit cost.
-    const so = (typeof stockItems !== 'undefined' ? stockItems : []).find(/** @param {any} s */ s => s.name === hwName && ((typeof _scGet === 'function' ? _scGet(s.id) : '') || s.category) === 'Other');
-    return so ? (so.cost ?? 0) : 0;
+    return h ? h.price : 0;
   }
 
   const cont = _contingencyMult();
@@ -204,11 +209,16 @@ function calcCBLine(line) {
   }
   /** @param {string} hwName */
   function hwp(hwName) {
+    // Stock-first (Hardware/Other categories), mirroring mp() and _finishPricePerM2.
+    // Falls back to the legacy cbSettings.hardware catalog for old cabinet names.
+    const so = (typeof stockItems !== 'undefined' ? stockItems : []).find(/** @param {any} s */ s => {
+      if (s.name !== hwName) return false;
+      const cat = (typeof _scGet === 'function' ? _scGet(s.id) : '') || s.category;
+      return cat === 'Hardware' || cat === 'Other';
+    });
+    if (so) return so.cost ?? 0;
     const h = cbSettings.hardware.find(/** @param {any} h */ h => h.name === hwName);
-    if (h) return h.price;
-    // "Other" stock items also appear in the hardware picker — resolve their unit cost.
-    const so = (typeof stockItems !== 'undefined' ? stockItems : []).find(/** @param {any} s */ s => s.name === hwName && ((typeof _scGet === 'function' ? _scGet(s.id) : '') || s.category) === 'Other');
-    return so ? (so.cost ?? 0) : 0;
+    return h ? h.price : 0;
   }
 
   // Auto material cost: carcass panels

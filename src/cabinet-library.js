@@ -558,21 +558,21 @@ function _saveNewCBFinish(fieldName) {
 }
 
 // ── Cabinet Hardware Smart Suggest ──
-// Picker pool: the hardware catalog (cbSettings.hardware) plus any stock items
-// categorised as "Other", so loose/uncategorised stock can be added as cabinet
-// hardware. Catalog entries win on a name clash. Stock rows are tagged _stock so
-// the dropdown can label their source.
+// Picker pool: stock items categorised "Hardware" or "Other", mirroring the
+// material/finish pickers which read straight from Stock. The legacy
+// cbSettings.hardware catalog is no longer offered here — it survives only as a
+// pricing fallback in cabinet-calc's hwp() for cabinets that reference old names.
 function _cbHwPool() {
-  /** @type {{name:string, price:number, _stock?:boolean}[]} */
-  const pool = (cbSettings.hardware || []).map(/** @param {any} h */ h => ({ name: h.name, price: h.price }));
-  const seen = new Set(pool.map(h => h.name.toLowerCase()));
+  /** @type {{name:string, price:number, qty?:number, low?:number}[]} */
+  const pool = [];
+  const seen = new Set();
   (typeof stockItems !== 'undefined' ? stockItems : []).forEach(/** @param {any} s */ s => {
     const cat = (typeof _scGet === 'function' ? _scGet(s.id) : '') || s.category;
-    if (cat !== 'Other' || !s.name) return;
+    if ((cat !== 'Hardware' && cat !== 'Other') || !s.name) return;
     const key = s.name.toLowerCase();
     if (seen.has(key)) return;
     seen.add(key);
-    pool.push({ name: s.name, price: s.cost ?? 0, _stock: true });
+    pool.push({ name: s.name, price: s.cost ?? 0, qty: s.qty, low: s.low });
   });
   return pool;
 }
@@ -590,13 +590,14 @@ function _smartCBHwSuggest(input, boxId, lineId, hwIdx, scope) {
   const matches = q ? pool.filter(/** @param {any} h */ h => h.name.toLowerCase().includes(q)) : pool;
   let html = '';
   matches.slice(0, 8).forEach(/** @param {any} h */ h => {
+    const qtyColor = (h.qty ?? 0) <= (h.low || 3) ? '#ef4444' : '#22c55e';
     html += `<div class="client-suggest-item" onmousedown="_byId('cb-hw-${sc}-${lineId}-${hwIdx}').value='${_escHtml(h.name)}';updateCBHw(${lineId},${hwIdx},'name','${_escHtml(h.name)}','${sc}');_byId('${boxId}').style.display='none'">
-      <span class="suggest-icon" style="background:#6b8aff20;color:#6b8aff">H</span>
+      <span class="suggest-icon" style="background:${qtyColor}20;color:${qtyColor}">${h.qty ?? ''}</span>
       <span style="flex:1">${_escHtml(h.name)}</span>
-      <span style="font-size:10px;color:var(--muted)">${cur}${h.price}/unit${h._stock?' · stock':''}</span>
+      <span style="font-size:10px;color:var(--muted)">${cur}${h.price}/unit</span>
     </div>`;
   });
-  html += `<div class="client-suggest-add" onmousedown="_openNewCBHardwarePopup(${lineId},${hwIdx},'${sc}')">+ Add${q ? ' "'+_escHtml(input.value.trim())+'" as' : ''} new hardware</div>`;
+  html += `<div class="client-suggest-add" onmousedown="_openNewCBHardwarePopup(${lineId},${hwIdx},'${sc}')">+ Add${q ? ' "'+_escHtml(input.value.trim())+'" as' : ''} new hardware to stock</div>`;
   box.innerHTML = html;
   box.style.display = '';
 }
@@ -613,13 +614,14 @@ function _smartCBHwAddSuggest(input, boxId, lineId, scope) {
   const matches = q ? pool.filter(/** @param {any} h */ h => h.name.toLowerCase().includes(q)) : pool;
   let html = '';
   matches.slice(0, 8).forEach(/** @param {any} h */ h => {
+    const qtyColor = (h.qty ?? 0) <= (h.low || 3) ? '#ef4444' : '#22c55e';
     html += `<div class="client-suggest-item" onmousedown="_addCBHwByName(${lineId},'${_escHtml(h.name)}','${sc}');_byId('cb-hw-add-${sc}-${lineId}').value='';_byId('${boxId}').style.display='none'">
-      <span class="suggest-icon" style="background:#6b8aff20;color:#6b8aff">H</span>
+      <span class="suggest-icon" style="background:${qtyColor}20;color:${qtyColor}">${h.qty ?? ''}</span>
       <span style="flex:1">${_escHtml(h.name)}</span>
-      <span style="font-size:10px;color:var(--muted)">${cur}${h.price}/unit${h._stock?' · stock':''}</span>
+      <span style="font-size:10px;color:var(--muted)">${cur}${h.price}/unit</span>
     </div>`;
   });
-  html += `<div class="client-suggest-add" onmousedown="_openNewCBHardwarePopup(${lineId},-1,'${sc}')">+ Add${q ? ' "'+_escHtml(input.value.trim())+'" as' : ''} new hardware</div>`;
+  html += `<div class="client-suggest-add" onmousedown="_openNewCBHardwarePopup(${lineId},-1,'${sc}')">+ Add${q ? ' "'+_escHtml(input.value.trim())+'" as' : ''} new hardware to stock</div>`;
   box.innerHTML = html;
   box.style.display = '';
 }
@@ -647,25 +649,52 @@ function _openNewCBHardwarePopup(lineId, hwIdx, scope) {
     </div>
     <div class="popup-body">
       <div class="pf"><label class="pf-label">Hardware Name</label><input class="pf-input pf-input-lg" id="pnh-name" value="${_escHtml(existing)}"></div>
-      <div class="pf"><label class="pf-label">Price per Unit</label><input class="pf-input" id="pnh-price" type="number" value="0" step="0.01"></div>
+      <div class="pf-row">
+        <div class="pf"><label class="pf-label">Qty in Stock</label><input class="pf-input" id="pnh-qty" type="number" value="0" style="text-align:center"></div>
+        <div class="pf"><label class="pf-label">Low Alert</label><input class="pf-input" id="pnh-low" type="number" value="3" style="text-align:center"></div>
+        <div class="pf"><label class="pf-label">Cost / Unit</label><input class="pf-input" id="pnh-price" type="number" value="0" step="0.01" style="text-align:right"></div>
+      </div>
     </div>
     <div class="popup-footer">
       <button class="btn btn-outline" onclick="_closePopup()">Cancel</button>
-      <button class="btn btn-primary" onclick="_saveNewCBHardware(${lineId},${hwIdx},'${sc}')">Add Hardware</button>
+      <button class="btn btn-primary" onclick="_saveNewCBHardware(${lineId},${hwIdx},'${sc}')">Add to Stock</button>
     </div>
   `, 'sm');
   setTimeout(() => _byId('pnh-name')?.focus(), 50);
 }
 
+// Create a Hardware stock item (mirrors _saveNewStockPopup's persistence) and
+// attach it to the cabinet line. Hardware lives in Stock alongside materials and
+// finishes now — there is no separate catalog to write to.
 /** @param {number} lineId @param {number} hwIdx @param {string} [scope] */
-function _saveNewCBHardware(lineId, hwIdx, scope) {
+async function _saveNewCBHardware(lineId, hwIdx, scope) {
   const sc = scope || 'cabinet';
   const name = _popupVal('pnh-name');
   if (!name) { _toast('Name is required', 'error'); return; }
-  const price = parseFloat(_popupVal('pnh-price')) || 0;
-  if (!cbSettings.hardware.some(/** @param {any} h */ h => h.name === name)) {
-    cbSettings.hardware.push({ name, price });
-    saveCBSettings();
+  const cost = parseFloat(_popupVal('pnh-price')) || 0;
+  const qty = parseInt(_popupVal('pnh-qty')) || 0;
+  const low = parseInt(_popupVal('pnh-low')) || 0;
+  // Reuse an existing Hardware/Other stock row of the same name, else create one.
+  const existing = stockItems.find(/** @param {any} s */ s => {
+    if (s.name !== name) return false;
+    const cat = (typeof _scGet === 'function' ? _scGet(s.id) : '') || s.category;
+    return cat === 'Hardware' || cat === 'Other';
+  });
+  if (!existing) {
+    /** @type {any} */
+    let row = { name, sku: '', w: 0, h: 0, qty, low, cost };
+    if (_userId) {
+      row.user_id = _userId;
+      const { data, error } = await _db('stock_items').insert(row).select().single();
+      if (error || !data) { _toast('Save failed: ' + (error?.message || ''), 'error'); return; }
+      row = data;
+      stockItems.push(row);
+    } else {
+      row.id = stockNextId++;
+      stockItems.push(row);
+    }
+    _scSet(row.id, 'Hardware');
+    if (typeof renderStockMain === 'function') renderStockMain();
   }
   if (hwIdx >= 0) {
     updateCBHw(lineId, hwIdx, 'name', name, sc);
@@ -675,7 +704,7 @@ function _saveNewCBHardware(lineId, hwIdx, scope) {
     _addCBHwByName(lineId, name, sc);
   }
   _closePopup();
-  _toast('"' + name + '" added to hardware', 'success');
+  _toast('"' + name + '" added to stock', 'success');
 }
 
 // F6 (2026-05-13): _smartCLProjectSuggest + _smartCBProjectSuggest removed
