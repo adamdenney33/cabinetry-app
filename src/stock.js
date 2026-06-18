@@ -615,6 +615,10 @@ function stockCatChanged() {
 }
 /** @param {string} id @param {string} text */
 function _setLabel(id, text) { const el = _byId(id); if (el) el.textContent = text; }
+/** Live-link visibility toggle (share-style mini-toggle in the stock editor). */
+function _stockCustVis() { return _byId('stock-customer-visible')?.getAttribute('aria-pressed') === 'true'; }
+/** @param {boolean} on */
+function _stockSetCustVis(on) { const b = _byId('stock-customer-visible'); if (b) b.setAttribute('aria-pressed', on ? 'true' : 'false'); }
 /** Round to 2dp and drop trailing zeros (tidies unit-conversion float noise). @param {number} n */
 function _fmtNum(n) { return String(Math.round((Number(n) || 0) * 100) / 100); }
 function cancelStockEdit() {
@@ -632,6 +636,7 @@ function cancelStockEdit() {
   // previously-edited item doesn't carry into a fresh "Add Material", and
   // refresh the category-dependent field visibility to match.
   inp('stock-cat').value = 'Sheet Goods';
+  _stockSetCustVis(false);
   if (typeof stockCatChanged === 'function') stockCatChanged();
   const sb = /** @type {HTMLElement} */ (_byId('stock-submit-btn'));
   if (sb) { sb.textContent = '+ Add to Stock'; sb.style.display = ''; }
@@ -660,6 +665,7 @@ async function duplicateStockItem(id) {
     low: src.low,
     cost: src.cost,
     coverage_sqm: /** @type {any} */ (src).coverage_sqm ?? null,
+    customer_visible: /** @type {any} */ (src).customer_visible ?? false,
   };
   const { data, error } = await _db('stock_items').insert(/** @type {any} */ (row)).select().single();
   if (error || !data) { _toast('Could not duplicate stock item', 'error'); return; }
@@ -718,6 +724,7 @@ async function addStockItem() {
         ? _finCostToPerL(parseFloat(inp('stock-cost').value) || 0)
         : (parseFloat(inp('stock-cost').value) || 0),
     coverage_sqm: finCov,
+    customer_visible: _stockCustVis(),
   };
   const { data, error } = await _db('stock_items').insert(/** @type {any} */ (row)).select().single();
   if (error || !data) { _toast('Could not save stock item — ' + (error?.message || JSON.stringify(error)), 'error'); console.error(error); return; }
@@ -748,6 +755,7 @@ async function addStockItem() {
   inp('stock-sku').value = '';
   const sup = _byId('stock-supplier'); if (sup) sup.value = '';
   const reord = _byId('stock-reorder-url'); if (reord) reord.value = '';
+  _stockSetCustVis(false);
   window._editingStockId = null;
   if (typeof /** @type {any} */ (window)._pcSaveOpenStockId === 'function') {
     /** @type {any} */ (window)._pcSaveOpenStockId(null);
@@ -801,6 +809,7 @@ function editStockItem(id) {
   const sup = _ssGet(id);
   const supEl = _byId('stock-supplier'); if (supEl) supEl.value = sup.supplier || '';
   const reordEl = _byId('stock-reorder-url'); if (reordEl) reordEl.value = sup.url || '';
+  _stockSetCustVis(!!(/** @type {any} */ (item).customer_visible));
   // Scroll sidebar to top and change button/title text
   const sidebar = document.querySelector('#panel-stock .sidebar-scroll');
   if (sidebar) sidebar.scrollTop = 0;
@@ -863,6 +872,7 @@ async function saveStockEdit() {
       coverage_sqm: null,
     };
   }
+  updates.customer_visible = _stockCustVis();
   /** @type {any} */
   const itemAny = item;
   Object.assign(item, updates);
@@ -946,6 +956,7 @@ async function _stockAutosaveRun() {
       coverage_sqm: null,
     };
   }
+  updates.customer_visible = _stockCustVis();
   Object.assign(item, updates);
   if (isEB) { item.thickness = thick; item.width = ebWidth; item.length = ebLength; item.glue = ebGlue; }
   else { delete item.thickness; delete item.width; delete item.length; delete item.glue; }

@@ -202,9 +202,15 @@ create index on public.stock_items(user_id, category);
 alter table public.stock_items
   alter column qty type numeric,        -- was integer; finishes are litres (decimals)
   add column coverage_sqm numeric;      -- m² covered per litre; drives per-area quote pricing
+
+-- Live-link visibility, added 2026-06-19 (migration 20260619130000_stock_customer_visible.sql):
+alter table public.stock_items
+  add column customer_visible boolean not null default false;  -- true → offered as a selectable material in the customer's live-link spec editor
 ```
 
 **Replaces:** localStorage `pc_stock_cats`, `pc_stock_suppliers`, `pc_stock_variants`.
+
+**`customer_visible` (added 2026-06-19):** per-item toggle in the Stock editor sidebar ("Visible to customers"). When `true`, the item's `name` is merged into the `materials` list returned by the `quote-public-get` edge function, so it appears as a selectable carcass/door/drawer material in the customer's live-link spec editor — `stock_items` is the source of truth for materials (`catalog_items` deprecated). Defaults `false` (private).
 
 Existing columns kept: `id, user_id, name, sku, w, h, qty, low, cost, created_at`.
 

@@ -105,11 +105,19 @@ Deno.serve(async (req) => {
     ])) as string[];
 
     // ── Allowed materials for the in-page spec editor ──
+    // Two sources merge here: legacy catalog_items (type='material') and the
+    // stock items the business has flagged customer_visible — stock_items is the
+    // current source of truth for materials, so flagging a sheet good offers it
+    // as a selectable carcass/door/drawer material on the live page.
     const { data: matRows } = await admin
       .from('catalog_items').select('name')
       .eq('user_id', entity.user_id).eq('type', 'material');
+    const { data: stockMatRows } = await admin
+      .from('stock_items').select('name')
+      .eq('user_id', entity.user_id).eq('customer_visible', true);
     const materials = Array.from(new Set([
       ...(matRows ?? []).map((m: { name: string }) => m.name),
+      ...(stockMatRows ?? []).map((m: { name: string }) => m.name),
       ...(lines ?? []).map((l: { material: string | null }) => l.material).filter(Boolean),
     ])) as string[];
 

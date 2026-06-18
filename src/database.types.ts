@@ -1562,6 +1562,7 @@ export type Database = {
           cost: number | null
           coverage_sqm: number | null
           created_at: string | null
+          customer_visible: boolean
           glue: string | null
           h: number | null
           id: number
@@ -1585,6 +1586,7 @@ export type Database = {
           cost?: number | null
           coverage_sqm?: number | null
           created_at?: string | null
+          customer_visible?: boolean
           glue?: string | null
           h?: number | null
           id?: never
@@ -1608,6 +1610,7 @@ export type Database = {
           cost?: number | null
           coverage_sqm?: number | null
           created_at?: string | null
+          customer_visible?: boolean
           glue?: string | null
           h?: number | null
           id?: never

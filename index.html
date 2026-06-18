@@ -508,6 +508,14 @@ setTimeout(function () { window._hideBootLoader(); }, 15000);
             <label>Reorder Link</label>
             <input type="text" id="stock-reorder-url" placeholder="https://supplier.com/product">
           </div>
+          <div class="share-toggle-row" style="margin-bottom:6px">
+            <div>
+              <div class="st-label">Visible to customers</div>
+              <div class="st-desc">Offer this item as a selectable material on live link quotes</div>
+            </div>
+            <button type="button" class="mini-toggle" id="stock-customer-visible" aria-pressed="false"
+              onclick="_shTgl(this);_stockScheduleAutosave()" title="Visible to customers in live link"></button>
+          </div>
           <button class="btn btn-primary" onclick="addStockItem()" id="stock-submit-btn" style="margin-top:4px;width:100%">+ Add to Stock</button>
         </div>
       </div>
