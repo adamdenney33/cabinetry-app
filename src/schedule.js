@@ -46,7 +46,7 @@ function _renderScheduleAgenda(sortedEvents, sortMode, filterStatus, overrideCou
       : [fmtD(e.start), fmtD(e.end)].filter(Boolean).join(' → ');
     const due = (o && o.due && o.due !== 'TBD') ? `Due ${_escHtml(String(o.due).slice(0,10))}` : '';
     const slack = slackChipHTML(/** @type {any} */ (e).slack);
-    const priStepper = `<div class="sched-pri" title="Priority — 1 = highest" onclick="event.stopPropagation()"><span class="sched-pri-num${pri>0?' has-priority':''}">${priLabel}</span><span class="sched-pri-arrows"><button type="button" class="sched-pri-btn" aria-label="Raise priority" onclick="event.stopPropagation();_schedStepPriority(${e.id},1)">${SCHED_CHEV_UP}</button><button type="button" class="sched-pri-btn" aria-label="Lower priority" ${pri<=1?'disabled':''} onclick="event.stopPropagation();_schedStepPriority(${e.id},-1)">${SCHED_CHEV_DOWN}</button></span></div>`;
+    const priStepper = `<div class="sched-pri" title="Priority — 1 = highest" onclick="event.stopPropagation()"><span class="sched-pri-num${pri>0?' has-priority':''}">${priLabel}</span><span class="sched-pri-arrows"><button type="button" class="sched-pri-btn" aria-label="Raise priority" ${pri===1?'disabled':''} onclick="event.stopPropagation();_schedStepPriority(${e.id},1)">${SCHED_CHEV_UP}</button><button type="button" class="sched-pri-btn" aria-label="Lower priority" onclick="event.stopPropagation();_schedStepPriority(${e.id},-1)">${SCHED_CHEV_DOWN}</button></span></div>`;
     cards += `<div class="sched-agenda-card" onclick="_openOrderPopup(${e.id})">
       <div class="sa-dot" style="background:${e.color}"></div>
       <div class="sa-main">
@@ -262,7 +262,7 @@ function renderSchedule(opts) {
       : '';
     const pri = (o && /** @type {any} */ (o).priority) || 0;
     const priLabel = pri > 0 ? pri : '—';
-    const priStepper = `<div class="sched-pri" title="Priority — 1 = highest. Dash = none." draggable="false" onmousedown="event.stopPropagation()" ondblclick="event.stopPropagation()"><span class="sched-pri-num${pri > 0 ? ' has-priority' : ''}">${priLabel}</span><span class="sched-pri-arrows"><button type="button" class="sched-pri-btn" aria-label="Raise priority" onclick="event.stopPropagation();_schedStepPriority(${e.id},1)">${SCHED_CHEV_UP}</button><button type="button" class="sched-pri-btn" aria-label="Lower priority" ${pri <= 1 ? 'disabled' : ''} onclick="event.stopPropagation();_schedStepPriority(${e.id},-1)">${SCHED_CHEV_DOWN}</button></span></div>`;
+    const priStepper = `<div class="sched-pri" title="Priority — 1 = highest. Dash = none." draggable="false" onmousedown="event.stopPropagation()" ondblclick="event.stopPropagation()"><span class="sched-pri-num${pri > 0 ? ' has-priority' : ''}">${priLabel}</span><span class="sched-pri-arrows"><button type="button" class="sched-pri-btn" aria-label="Raise priority" ${pri === 1 ? 'disabled' : ''} onclick="event.stopPropagation();_schedStepPriority(${e.id},1)">${SCHED_CHEV_UP}</button><button type="button" class="sched-pri-btn" aria-label="Lower priority" onclick="event.stopPropagation();_schedStepPriority(${e.id},-1)">${SCHED_CHEV_DOWN}</button></span></div>`;
     sidebarHTML += `<div style="display:flex;align-items:center;gap:8px;padding:5px 8px;margin-bottom:2px;border-radius:6px;cursor:pointer;background:var(--surface2)"${dragAttr} onclick="_scrollToSchedBar(${e.id})" ondblclick="_openOrderPopup(${e.id})" onmouseover="this.style.background='${e.color}33'" onmouseout="this.style.background='var(--surface2)'">${dragHandle}<div style="width:9px;height:9px;border-radius:50%;background:${e.color};flex-shrink:0"></div><div style="flex:1;min-width:0"><div style="font-size:11px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e.isManual?SCHED_LOCK_ICON:''}${[e.numberLabel, e.client, e.project].filter(Boolean).map(_escHtml).join(' · ')}</div>${meta?`<div style="font-size:9px;color:var(--muted);display:flex;align-items:center;gap:4px;margin-top:1px">${meta}</div>`:''}${dueText?`<div style="font-size:9px;color:var(--muted);margin-top:1px">${dueText}</div>`:''}</div>${priStepper}</div>`;
   });
   if(!sortedEvents.length)sidebarHTML+=`<div style="font-size:12px;color:var(--muted)">No active orders</div>`;
@@ -590,24 +590,39 @@ function setOrderProdStart(id, val) {
   renderOrdersMain();
 }
 
-/** Step an order's priority from the Schedule sidebar. dir>0 raises, dir<0
- *  lowers; floored at 1 (the stepper never yields 0 — "no priority" is only
- *  the never-set state). Persists immediately and re-renders (which re-runs
- *  computeSchedule, so the calendar re-lays-out).
+/** Pending priority DB writes, keyed by order id, so a burst of rapid clicks
+ *  debounces into a single update (see _schedStepPriority).
+ *  @type {Map<number, ReturnType<typeof setTimeout>>} */
+const _schedPriTimers = new Map();
+
+/** Step an order's priority from the Schedule sidebar. Priority 1 = highest, so
+ *  dir>0 RAISES priority by moving toward 1 (a LOWER number) and dir<0 lowers it
+ *  (a higher number). Floored at 1; an unset priority (0) becomes 1. The in-
+ *  memory value updates and the view re-renders immediately (re-running
+ *  computeSchedule so the calendar re-lays-out), but the DB write is debounced:
+ *  firing an independent update per click let rapid clicks reach Postgres out of
+ *  order and persist a stale priority, so we coalesce a burst into one write
+ *  carrying the final value.
  *  @param {number} orderId @param {number} dir */
 function _schedStepPriority(orderId, dir) {
   const o = orders.find(x => x.id === orderId);
   if (!o) return;
   const cur = parseInt(String(/** @type {any} */ (o).priority || 0), 10) || 0;
-  const next = Math.max(1, cur + (dir > 0 ? 1 : -1));
+  const next = dir > 0 ? (cur <= 1 ? 1 : cur - 1) : (cur < 1 ? 1 : cur + 1);
   if (next === cur) return;
   /** @type {any} */ (o).priority = next;
-  if (_userId) {
-    _db('orders').update({ priority: next, updated_at: new Date().toISOString() })
+  renderSchedule();
+  if (!_userId) return;
+  const prev = _schedPriTimers.get(orderId);
+  if (prev) clearTimeout(prev);
+  _schedPriTimers.set(orderId, setTimeout(() => {
+    _schedPriTimers.delete(orderId);
+    const latest = orders.find(x => x.id === orderId);
+    const val = latest ? (parseInt(String(/** @type {any} */ (latest).priority || 0), 10) || 0) : next;
+    _db('orders').update({ priority: val, updated_at: new Date().toISOString() })
       .eq('id', orderId)
       .then(({ error }) => { if (error) console.warn('[orders] priority sync failed:', error.message); });
-  }
-  renderSchedule();
+  }, 400));
 }
 
 // ── Restore prodStart: prefer DB column, fall back to localStorage ──
