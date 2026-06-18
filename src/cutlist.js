@@ -2522,11 +2522,15 @@ function _pdfNiceDate(s) {
  * cursor after the table's closing rule.
  * @param {any} pdf jsPDF instance
  * @param {any[]} rows quote_lines / order_lines
- * @param {{M:number,PW:number,PH:number,y:number,anyLineDisc:boolean,fmt:(v:number)=>string}} opts
+ * @param {{M:number,PW:number,PH:number,y:number,anyLineDisc:boolean,fmt:(v:number)=>string,priceScale?:number}} opts
  * @returns {number}
  */
 function _drawDocLineItems(pdf, rows, opts) {
   const { M, PW, PH, anyLineDisc, fmt } = opts;
+  // Markup is hidden on client documents (it's never shown as a line), so it's
+  // folded into the displayed line prices: each price/amount is scaled so the
+  // lines sum to the marked-up subtotal. Default 1 (no scaling).
+  const priceScale = opts.priceScale || 1;
   let y = opts.y;
   // Right-edge x for each numeric column (values are right-aligned to these).
   const colAmt = PW - M;
@@ -2571,7 +2575,7 @@ function _drawDocLineItems(pdf, rows, opts) {
     // Qty + unit Price (muted, regular weight) on the first line.
     pdf.setFontSize(9.5); pdf.setFont('helvetica', 'normal'); pdf.setTextColor(95);
     pdf.text(qtyStr(d.qty), colQty, y, { align: 'right' });
-    pdf.text(fmt(d.unitPrice), colPrice, y, { align: 'right' });
+    pdf.text(fmt(d.unitPrice * priceScale), colPrice, y, { align: 'right' });
     if (anyLineDisc) {
       const rowDisc = parseFloat(row.discount) || 0;
       pdf.setTextColor(130);
@@ -2579,7 +2583,7 @@ function _drawDocLineItems(pdf, rows, opts) {
     }
     // Amount (bold).
     pdf.setFontSize(11); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(17);
-    pdf.text(fmt(d.total), colAmt, y, { align: 'right' });
+    pdf.text(fmt(d.total * priceScale), colAmt, y, { align: 'right' });
     y += nameLines.length * 5;
     // Spec sub-line — cabinets only. Items/labour show qty×price in columns.
     if (d.kind === 'cabinet' && d.detail) {
@@ -2724,28 +2728,24 @@ async function _buildQuotePDF(q, lineRows) {
   const plainNotes = (q.notes||'').trim();
   const rows = Array.isArray(lineRows) ? lineRows : [];
 
+  // Markup is internal margin — never itemised on client documents. Fold it
+  // into the displayed line prices so they sum to the marked-up subtotal, and
+  // omit the Stock-markup / Markup rows. Tax, discount and the total are
+  // unchanged. (Matches the public live link, which already hides markup.)
+  const lineScale = sub > 0 ? afterMarkup / sub : 1;
+
   if (rows.length > 0) {
-    y = _drawDocLineItems(pdf, rows, { M, PW, PH, y, anyLineDisc, fmt });
+    y = _drawDocLineItems(pdf, rows, { M, PW, PH, y, anyLineDisc, fmt, priceScale: lineScale });
   }
 
   // ── Totals ──
   const totalsX = PW - M;
   const labelX = PW - M - 80;
 
-  if ((q.markup ?? 0) > 0 || (q.tax ?? 0) > 0 || orderDiscPct > 0 || stockMarkupAmt > 0) {
+  if ((q.tax ?? 0) > 0 || orderDiscPct > 0) {
     pdf.setFontSize(9); pdf.setFont('helvetica','normal'); pdf.setTextColor(140);
-    pdf.text('Subtotal', labelX, y); pdf.text(fmt(sub), totalsX, y, { align:'right' });
+    pdf.text('Subtotal', labelX, y); pdf.text(fmt(afterMarkup), totalsX, y, { align:'right' });
     y += 6;
-  }
-  if (stockMarkupAmt > 0) {
-    pdf.setFontSize(8.5); pdf.setTextColor(140);
-    pdf.text('Stock markup (' + stockMarkupPct + '%)', labelX, y); pdf.text('+ ' + fmt(stockMarkupAmt), totalsX, y, { align:'right' });
-    y += 5;
-  }
-  if ((q.markup ?? 0) > 0) {
-    pdf.setFontSize(8.5); pdf.setTextColor(140);
-    pdf.text('Markup (' + q.markup + '%)', labelX, y); pdf.text('+ ' + fmt(markupAmt), totalsX, y, { align:'right' });
-    y += 5;
   }
   if ((q.tax ?? 0) > 0) {
     pdf.setFontSize(8.5); pdf.setTextColor(140);
@@ -3134,28 +3134,21 @@ async function _buildOrderDocPDF(o, lines, type, photos) {
   });
 
   // ── Line items ──
+  // Markup is folded into the displayed line prices (never itemised on a client
+  // document); see the matching note in _buildQuotePDF.
+  const lineScale = sub > 0 ? afterMarkup / sub : 1;
   if (rows.length > 0) {
-    y = _drawDocLineItems(pdf, rows, { M, PW, PH, y, anyLineDisc, fmt });
+    y = _drawDocLineItems(pdf, rows, { M, PW, PH, y, anyLineDisc, fmt, priceScale: lineScale });
   }
 
   // ── Totals ──
   const totalsX = PW - M;
   const labelX = PW - M - 80;
 
-  if ((o.markup ?? 0) > 0 || (o.tax ?? 0) > 0 || orderDiscPct > 0 || stockMarkupAmt > 0) {
+  if ((o.tax ?? 0) > 0 || orderDiscPct > 0) {
     pdf.setFontSize(9); pdf.setFont('helvetica','normal'); pdf.setTextColor(140);
-    pdf.text('Subtotal', labelX, y); pdf.text(fmt(sub), totalsX, y, { align:'right' });
+    pdf.text('Subtotal', labelX, y); pdf.text(fmt(afterMarkup), totalsX, y, { align:'right' });
     y += 6;
-  }
-  if (stockMarkupAmt > 0) {
-    pdf.setFontSize(8.5); pdf.setTextColor(140);
-    pdf.text('Stock markup (' + stockMarkupPct + '%)', labelX, y); pdf.text('+ ' + fmt(stockMarkupAmt), totalsX, y, { align:'right' });
-    y += 5;
-  }
-  if ((o.markup ?? 0) > 0) {
-    pdf.setFontSize(8.5); pdf.setTextColor(140);
-    pdf.text('Markup (' + o.markup + '%)', labelX, y); pdf.text('+ ' + fmt(markupAmt), totalsX, y, { align:'right' });
-    y += 5;
   }
   if ((o.tax ?? 0) > 0) {
     pdf.setFontSize(8.5); pdf.setTextColor(140);

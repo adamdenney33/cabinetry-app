@@ -1016,6 +1016,9 @@ async function printQuote(id, mode='print') {
   const orderDiscAmt = afterTax * orderDiscPct / 100;
   const total = afterTax - orderDiscAmt;
   const anyLineDisc = rows.some(/** @param {any} r */ r => (parseFloat(r.discount) || 0) > 0);
+  // Markup is hidden on client documents — fold it into the displayed line
+  // amounts so they sum to the marked-up subtotal, and drop the markup rows.
+  const lineScale = sub > 0 ? afterMarkup / sub : 1;
   const biz = getBizInfo();
   /** @type {Record<string, string>} */
   const statusColMap = { draft:'#888', sent:'#2563eb', approved:'#16a34a' };
@@ -1112,12 +1115,10 @@ async function printQuote(id, mode='print') {
         + (d.qtyText ? ' <span style="font-weight:400;color:#888">' + d.qtyText + '</span>' : '')
         + '</strong>'
         + (d.detail ? '<br><span style="font-size:11px;color:#888;padding-left:14px">' + _escHtml(d.detail) + '</span>' : '')
-        + '</td>' + discCell + '<td class="r">' + fmt(d.total) + '</td></tr>';
+        + '</td>' + discCell + '<td class="r">' + fmt(d.total * lineScale) + '</td></tr>';
     }).join('')}
     ${rows.length ? `<tr><td colspan="${anyLineDisc ? 3 : 2}" style="border-bottom:1.5px solid #ddd;padding:0"></td></tr>` : ''}
-    ${(q.markup ?? 0) > 0 || (q.tax ?? 0) > 0 || orderDiscPct > 0 || stockMarkupAmt > 0 ? `<tr class="subtotal"><td style="color:#aaa"${anyLineDisc ? ' colspan="2"' : ''}>Subtotal</td><td class="r">${fmt(sub)}</td></tr>` : ''}
-    ${stockMarkupAmt > 0 ? `<tr class="subtotal"><td style="padding-left:20px"${anyLineDisc ? ' colspan="2"' : ''}>Stock markup &nbsp;<span style="color:#bbb">(${stockMarkupPct}%)</span></td><td class="r">+ ${fmt(stockMarkupAmt)}</td></tr>` : ''}
-    ${(q.markup ?? 0) > 0 ? `<tr class="subtotal"><td style="padding-left:20px"${anyLineDisc ? ' colspan="2"' : ''}>Markup &nbsp;<span style="color:#bbb">(${q.markup}%)</span></td><td class="r">+ ${fmt(markupAmt)}</td></tr>` : ''}
+    ${(q.tax ?? 0) > 0 || orderDiscPct > 0 ? `<tr class="subtotal"><td style="color:#aaa"${anyLineDisc ? ' colspan="2"' : ''}>Subtotal</td><td class="r">${fmt(afterMarkup)}</td></tr>` : ''}
     ${(q.tax ?? 0) > 0 ? `<tr class="subtotal"><td style="padding-left:20px"${anyLineDisc ? ' colspan="2"' : ''}>Tax &nbsp;<span style="color:#bbb">(${q.tax}%)</span></td><td class="r">+ ${fmt(taxAmt)}</td></tr>` : ''}
     ${orderDiscPct > 0 ? `<tr class="subtotal"><td style="padding-left:20px;color:#c44"${anyLineDisc ? ' colspan="2"' : ''}>Discount &nbsp;<span style="color:#bbb">(${orderDiscPct}%)</span></td><td class="r" style="color:#c44">− ${fmt(orderDiscAmt)}</td></tr>` : ''}
   </tbody>
