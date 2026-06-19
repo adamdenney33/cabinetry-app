@@ -85,6 +85,15 @@ async function _generateShareLink(quoteId, kind) {
   // page). The Live-link panel blocks this earlier; this guards direct callers.
   if (!q.share_token && !(Array.isArray(q._lines) && q._lines.length)) return;
   const wasShared = !!q.share_token;
+  // Guard against a debounced autosave (_llAutoSave's 450ms timer) firing after
+  // the Live-link panel was torn down — tab switch, editor close, mobile pane
+  // change. With the panel gone, every settings read below returns the element's
+  // empty/off default and would clobber the saved share_settings: deposit % →0,
+  // payment + selection toggles →off, and the per-line flags reset. The settings
+  // were already persisted while the panel was live, so bail instead of wiping
+  // them. (sh-pay + sh-dep are present whenever the panel or the legacy popup is
+  // on screen; sh-dep stays in the DOM even when the deposit row is hidden.)
+  if (!document.getElementById('sh-pay') && !document.getElementById('sh-dep')) return;
   const pressed = (/** @type {string} */ id) => { const b = document.getElementById(id); return b ? b.getAttribute('aria-pressed') === 'true' : false; };
   // The deposit + bank-transfer toggles may not be in the DOM (legacy share
   // popup) — fall back to the stored setting so a save from elsewhere never

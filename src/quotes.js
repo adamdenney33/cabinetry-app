@@ -644,10 +644,15 @@ function renderQuoteMain() {
 
 
 // ── CSV import / export ──
-function exportQuotesCSV() {
+async function exportQuotesCSV() {
   if (!_enforceProFeature()) return;
   const customerQuotes = quotes.filter(q => !_isDraftQuote(q));
   if (!customerQuotes.length) { _toast('No quotes to export', 'error'); return; }
+  // Ensure totals are hydrated before reading them — boot hydration
+  // (_hydrateQuoteTotals, fired from app.js) may not have resolved yet, and the
+  // legacy q.materials/q.labour fallback reads 0 for post-migration quotes, so
+  // an early export would emit £0 Materials/Labour/Total to a customer-facing CSV.
+  if (typeof _hydrateQuoteTotals === 'function') { try { await _hydrateQuoteTotals(); } catch (e) { /* fall back to per-quote values */ } }
   /** @type {any[][]} */
   const rows = [['Quote #','Client','Project','Materials','Labour','Markup %','Tax %','Discount %','Stock Markup %','Status','Date','Notes','Total']];
   customerQuotes.forEach(q => {
@@ -1679,6 +1684,10 @@ function _qMarkDirty() {
 
 /** Reset editor to empty state. */
 function _qClearEditor() {
+  // Cancel any pending autosave — once _qpState is reset, a trailing
+  // saveQuoteEditor() would clobber the quote from a torn-down DOM or (quoteId
+  // now null) spawn a junk quote via createQuoteFromEditor.
+  if (_qAutoSaveTimer) { clearTimeout(_qAutoSaveTimer); _qAutoSaveTimer = null; }
   _qpState = { quoteId: null, lines: [], dirty: false, clientId: null, startingNew: false };
   if (typeof /** @type {any} */ (window)._pcSaveOpenQuoteId === 'function') {
     /** @type {any} */ (window)._pcSaveOpenQuoteId(null);
@@ -1692,6 +1701,7 @@ function _qClearEditor() {
 function _qNewQuote() {
   // Clear any still-open quote so "+" always starts fresh (switching tabs can
   // leave one loaded while the list is shown).
+  if (_qAutoSaveTimer) { clearTimeout(_qAutoSaveTimer); _qAutoSaveTimer = null; }
   _qpState.quoteId = null; _qpState.lines = []; _qpState.dirty = false; _qpState.clientId = null;
   _qpState.startingNew = true;
   if (window._mvShowEditor) window._mvShowEditor();
@@ -1717,6 +1727,9 @@ function _qChangeClient() {
 async function loadQuoteIntoSidebar(id) {
   const q = quotes.find(qx => qx.id === id);
   if (!q) return;
+  // Cancel any pending autosave for the quote we're leaving — switching records
+  // (or discarding) must not let a stale 600ms timer write the previous edit.
+  if (_qAutoSaveTimer) { clearTimeout(_qAutoSaveTimer); _qAutoSaveTimer = null; }
   if (_qpState.dirty && _qpState.quoteId !== id) {
     _confirm('Discard unsaved changes?', () => { _qpState.dirty = false; loadQuoteIntoSidebar(id); });
     return;
@@ -1853,6 +1866,12 @@ async function createQuoteFromEditor(silent) {
 
 /** Save current editor state for the loaded quote. */
 async function saveQuoteEditor() {
+  // Backstop for the trailing autosave (_qAutoSaveTimer): if the editor isn't on
+  // screen, every _popupVal() read returns '' and we'd write null/0 over good
+  // values (quote_number, name, tax, …) — or, with _qpState reset, spawn a junk
+  // quote via createQuoteFromEditor. The close/switch paths already cancel the
+  // timer; this guards any path that slips through.
+  if (!document.getElementById('pq-quote-number')) return;
   if (!_qpState.quoteId) return createQuoteFromEditor();
   const id = /** @type {number} */ (_qpState.quoteId);
   const q = quotes.find(qx => qx.id === id);

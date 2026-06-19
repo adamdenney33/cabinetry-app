@@ -1014,6 +1014,10 @@ function _oMarkDirty() {
 }
 
 function _oClearEditor() {
+  // Cancel any pending autosave — once _opState is reset, a trailing
+  // saveOrderEditor() would either clobber the order from a torn-down DOM or
+  // (orderId now null) spawn a junk order via createOrderFromEditor.
+  if (_oAutoSaveTimer) { clearTimeout(_oAutoSaveTimer); _oAutoSaveTimer = null; }
   _opState = { orderId: null, lines: [], dirty: false, clientId: null, startingNew: false };
   if (typeof /** @type {any} */ (window)._pcSaveOpenOrderId === 'function') {
     /** @type {any} */ (window)._pcSaveOpenOrderId(null);
@@ -1027,6 +1031,7 @@ function _oClearEditor() {
 function _oNewOrder() {
   // Clear any still-open order so "+" always starts fresh (switching tabs can
   // leave one loaded while the list is shown).
+  if (_oAutoSaveTimer) { clearTimeout(_oAutoSaveTimer); _oAutoSaveTimer = null; }
   _opState.orderId = null; _opState.lines = []; _opState.dirty = false; _opState.clientId = null;
   _opState.startingNew = true;
   if (window._mvShowEditor) window._mvShowEditor();
@@ -1050,6 +1055,9 @@ function _oChangeClient() {
 async function loadOrderIntoSidebar(id) {
   const o = orders.find(ox => ox.id === id);
   if (!o) return;
+  // Cancel any pending autosave for the order we're leaving — switching records
+  // (or discarding) must not let a stale 600ms timer write the previous edit.
+  if (_oAutoSaveTimer) { clearTimeout(_oAutoSaveTimer); _oAutoSaveTimer = null; }
   if (_opState.dirty && _opState.orderId !== id) {
     _confirm('Discard unsaved changes?', () => { _opState.dirty = false; loadOrderIntoSidebar(id); });
     return;
@@ -1187,6 +1195,12 @@ async function createOrderFromEditor(silent) {
 }
 
 async function saveOrderEditor() {
+  // Backstop for the trailing autosave (_oAutoSaveTimer): if the editor isn't on
+  // screen, every _popupVal() read returns '' and we'd write null/0 over good
+  // values (order_number, name, tax, …) — or, with _opState reset, spawn a junk
+  // order via createOrderFromEditor. The close/switch paths already cancel the
+  // timer; this guards any path that slips through.
+  if (!document.getElementById('po-order-number')) return;
   if (!_opState.orderId) return createOrderFromEditor();
   const id = /** @type {number} */ (_opState.orderId);
   const o = orders.find(ox => ox.id === id);
