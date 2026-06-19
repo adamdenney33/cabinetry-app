@@ -116,12 +116,12 @@ function _orderLineRowHtml(row, i) {
     const hrsTotal = hrs * (parseFloat(row.qty) || 1);
     const unitPrice = (parseFloat(row.qty) || 1) > 0 ? (sub.materials + sub.labour) / (parseFloat(row.qty) || 1) : 0;
     const descDefault = row.name || 'Cabinet';
-    return `<tr ondblclick="if(!_liDblIgnore(event))_orderLineEditCabinetRow(${i})" title="Double-click to edit this cabinet in the Cabinet Builder">
+    return `<tr>
       <td class="col-handle" title="Drag to reorder (coming soon)">⋮</td>
       ${_lineDotCell('cabinet', row, i, true)}
       <td class="col-desc"><div class="li-desc-wrap">${_linePhotoBtn(row, 'order_line')}<textarea class="cl-input desc" rows="1" oninput="_orderLineUpdate(${i}, 'name', this.value);_autoGrowTextarea(this)">${_escHtml(descDefault)}</textarea></div></td>
       <td class="col-qty"><input class="cl-input right" type="number" min="1" step="1" value="${row.qty ?? 1}" oninput="_orderLineUpdate(${i}, 'qty', this.value)"></td>
-      <td class="col-price" title="Priced from the cabinet's specs — double-click to edit in the Builder"><div class="cl-input right is-computed" style="padding:5px 4px">${Number(unitPrice || 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</div></td>
+      <td class="col-price" title="Priced from the cabinet's specs — use the cabinet icon to edit in the Builder"><div class="cl-input right is-computed" style="padding:5px 4px">${Number(unitPrice || 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</div></td>
       <td class="col-hrs" title="Computed from cabinet labour"><div class="cl-input right is-computed" style="padding:5px 4px">${hrsTotal.toFixed(1)}</div></td>
       ${discCell}
       <td class="col-total"><div class="total-val">${fmt(total)}</div></td>
@@ -698,12 +698,12 @@ function _lineRowHtml(row, i) {
     } catch (e) { hrs = 0; }
     const unitPrice = (parseFloat(row.qty) || 1) > 0 ? (sub.materials + sub.labour) / (parseFloat(row.qty) || 1) : 0;
     const descDefault = row.name || 'Cabinet';
-    return `<tr ondblclick="if(!_liDblIgnore(event))_lineEditCabinetRow(${i})" title="Double-click to edit this cabinet in the Cabinet Builder">
+    return `<tr>
       <td class="col-handle">⋮</td>
       ${_lineDotCell('cabinet', row, i, false)}
       <td class="col-desc"><div class="li-desc-wrap">${_linePhotoBtn(row)}<textarea class="cl-input desc" rows="1" oninput="_lineUpdate(${i}, 'name', this.value);_autoGrowTextarea(this)">${_escHtml(descDefault)}</textarea></div></td>
       <td class="col-qty"><input class="cl-input right" type="number" min="1" step="1" value="${row.qty ?? 1}" oninput="_lineUpdate(${i}, 'qty', this.value)"></td>
-      <td class="col-price" title="Priced from the cabinet's specs — double-click to edit in the Builder"><div class="cl-input right is-computed" style="padding:5px 4px">${Number(unitPrice || 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</div></td>
+      <td class="col-price" title="Priced from the cabinet's specs — use the cabinet icon to edit in the Builder"><div class="cl-input right is-computed" style="padding:5px 4px">${Number(unitPrice || 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</div></td>
       <td class="col-hrs" title="Computed from cabinet labour"><div class="cl-input right is-computed" style="padding:5px 4px">${hrs.toFixed(1)}</div></td>
       ${discCell}
       <td class="col-total"><div class="total-val">${fmt(total)}</div></td>
@@ -945,15 +945,6 @@ function _orderLineEditCabinetRow(idx) {
   const lineId = row.id != null ? row.id : null;
   const after = () => { if (typeof editOrderInCB === 'function') editOrderInCB(oId, lineId); };
   if (typeof saveOrderEditor === 'function') saveOrderEditor().then(after); else after();
-}
-
-/** True when a dblclick landed on an editable control inside a line row —
- *  used to keep "double-click row to edit cabinet" from hijacking a
- *  double-click-to-select-word inside the description/qty/discount inputs.
- *  @param {Event} ev */
-function _liDblIgnore(ev) {
-  const t = /** @type {HTMLElement|null} */ (ev && ev.target);
-  return !!(t && t.closest && t.closest('input,textarea,button,.col-x'));
 }
 
 // Debounced per-line upsert: each edit waits 600ms before writing to the DB,
