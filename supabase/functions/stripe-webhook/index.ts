@@ -11,6 +11,10 @@
 //   STRIPE_PRICE_MONTHLY       — price_... for the monthly Pro plan
 //   STRIPE_PRICE_ANNUAL        — price_... for the annual Pro plan
 //   STRIPE_PRICE_FOUNDER       — price_... for the one-off Founder plan (optional)
+//   META_CAPI_ACCESS_TOKEN     — Events Manager → pixel → CAPI token (optional;
+//                                absent → Meta Purchase reporting no-ops). Same
+//                                secret the meta-capi-signup function uses.
+//   META_PIXEL_ID              — optional, defaults to the ProCabinet pixel.
 //   SUPABASE_URL               — auto-provided by Supabase
 //   SUPABASE_SERVICE_ROLE_KEY  — auto-provided by Supabase
 //
@@ -28,6 +32,12 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 const PRICE_MONTHLY = Deno.env.get('STRIPE_PRICE_MONTHLY');
 const PRICE_ANNUAL = Deno.env.get('STRIPE_PRICE_ANNUAL');
 const PRICE_FOUNDER = Deno.env.get('STRIPE_PRICE_FOUNDER');
+
+// Meta Conversions API 'Purchase' reporting (optional). Counterpart to the
+// signup CAPI in meta-capi-signup — lets Meta optimise ads toward paid, not
+// just CompleteRegistration. No-op when META_CAPI_ACCESS_TOKEN is unset.
+const META_CAPI_ACCESS_TOKEN = Deno.env.get('META_CAPI_ACCESS_TOKEN');
+const META_PIXEL_ID = Deno.env.get('META_PIXEL_ID') ?? '1913344152250764';
 
 // PostHog product-analytics capture (optional). When POSTHOG_KEY is unset the
 // capturePosthog() helper is a no-op, so the webhook works fine without it.
@@ -80,6 +90,61 @@ async function capturePosthog(
     });
   } catch (err) {
     console.warn('[stripe-webhook] PostHog capture failed:', (err as Error).message);
+  }
+}
+
+// SHA-256 hex of a normalised string, for Meta CAPI user_data matching.
+async function sha256Hex(input: string): Promise<string> {
+  const data = new TextEncoder().encode(input.trim().toLowerCase());
+  const digest = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+// Fire a server-side Meta CAPI 'Purchase'. Best-effort: no-op without
+// META_CAPI_ACCESS_TOKEN, and never throws (a tracking failure must not fail
+// the webhook → no Stripe retry storm). event_id `purchase-<session_id>` is
+// stable, so Meta dedupes if a browser Purchase pixel is ever re-added.
+// value/currency come from the Checkout session (amount_total is minor units).
+// NOTE: matches on hashed email only; to lift match quality later, stamp the
+// browser fbc cookie into the Checkout session metadata in stripe-checkout and
+// forward it here as user_data.fbc.
+async function sendMetaPurchase(
+  session: Stripe.Checkout.Session,
+  opts: { plan: string | null },
+) {
+  if (!META_CAPI_ACCESS_TOKEN) return;
+  try {
+    const email = session.customer_details?.email ?? session.customer_email ?? null;
+    if (!email) {
+      console.warn(`[stripe-webhook] Meta Purchase skipped — no email on session ${session.id}`);
+      return;
+    }
+    const value = typeof session.amount_total === 'number' ? session.amount_total / 100 : 0;
+    const currency = (session.currency ?? 'gbp').toUpperCase();
+    const payload = {
+      data: [
+        {
+          event_name: 'Purchase',
+          event_time: Math.floor(Date.now() / 1000),
+          event_id: `purchase-${session.id}`,
+          action_source: 'website',
+          event_source_url: `https://${APP_HOST}/os`,
+          user_data: { em: [await sha256Hex(email)] },
+          custom_data: { value, currency, content_name: opts.plan ?? 'pro' },
+        },
+      ],
+    };
+    const res = await fetch(
+      `https://graph.facebook.com/v23.0/${META_PIXEL_ID}/events?access_token=${META_CAPI_ACCESS_TOKEN}`,
+      { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) },
+    );
+    if (!res.ok) {
+      console.warn(`[stripe-webhook] Meta Purchase CAPI failed: ${res.status} ${await res.text()}`);
+    }
+  } catch (err) {
+    console.warn('[stripe-webhook] Meta Purchase CAPI threw:', (err as Error).message);
   }
 }
 
@@ -208,6 +273,8 @@ async function recordFounderPurchase(session: Stripe.Checkout.Session) {
     billing_cycle: 'founder',
     $set: { plan: 'pro', subscription_plan: 'founder' },
   });
+  // Meta CAPI Purchase — lets ads optimise toward paid founders.
+  await sendMetaPurchase(session, { plan: 'founder' });
 }
 
 // ── handler ────────────────────────────────────────────────────────────
@@ -256,6 +323,8 @@ Deno.serve(async (req) => {
             billing_cycle: synced.plan === 'pro_annual' ? 'annual' : 'monthly',
             $set: { plan: 'pro', subscription_plan: synced.plan },
           });
+          // Meta CAPI Purchase — server-side, canonical (no browser purchase pixel).
+          await sendMetaPurchase(session, { plan: synced.plan });
         }
         break;
       }
