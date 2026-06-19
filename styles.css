@@ -2742,12 +2742,23 @@ input.pf-input-compact[type="date"]:disabled::-webkit-calendar-picker-indicator 
     background: transparent !important;
   }
 
-  /* Drag handle + colour dot aren't useful on a phone card. */
-  .editor-li-table .col-handle,
-  .editor-li-table .col-dot { display: none; }
+  /* Drag handle isn't useful on a phone card. The line-type icon (cabinet /
+     stock / colour dot) stays, pinned to the card's top-left corner — it
+     mirrors the ✕ at top-right and is the tap target that opens the Builder /
+     stock item now that the row double-click is gone. */
+  .editor-li-table .col-handle { display: none; }
+  .editor-li-table .col-dot {
+    position: absolute; top: 8px; left: 6px;
+    width: 26px; height: 30px; padding: 0;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .editor-li-table .col-dot .li-dot-btn,
+  .editor-li-table .col-dot .li-dot-static { margin-top: 0; padding: 0; }
+  .editor-li-table .col-dot:not(.col-dot-icon) span { margin-top: 0; }
 
-  /* Name/description: full-width input box on its own line (right pad clears ✕). */
-  .editor-li-table .col-desc { flex: 0 0 100%; padding-right: 26px; }
+  /* Name/description: full-width input box on its own line (side pads clear the
+     type icon on the left and the ✕ on the right). */
+  .editor-li-table .col-desc { flex: 0 0 100%; padding-left: 30px; padding-right: 26px; }
   .editor-li-table .col-desc .desc,
   .editor-li-table .col-desc .cl-input {
     width: 100%; box-sizing: border-box; font-size: 16px;
