@@ -49,8 +49,16 @@ module.exports = defineConfig({
   // Playwright starts the Vite dev server itself, waits for it, and tears it
   // down after. Reuses an already-running dev server locally so it doesn't
   // fight `npm run dev`; always starts fresh in CI.
+  //
+  // Use `dev:test` (plain `vite`), NOT `dev`. `npm run dev` carries a `predev`
+  // hook — `pkill -f 'node_modules/.bin/vite'` — that frees port 3000 for local
+  // dev. Inside Playwright that pkill is a footgun: killing a Vite process also
+  // takes down its parent `npm run dev` (the very server Playwright is waiting
+  // on), surfacing as "webServer was not able to start. Exit code: 143"
+  // (SIGTERM). `dev:test` has no pre-hook, so Playwright fully owns the server's
+  // lifecycle. The local `npm run dev` convenience is left untouched.
   webServer: {
-    command: 'npm run dev',
+    command: 'npm run dev:test',
     url: BASE_URL,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,

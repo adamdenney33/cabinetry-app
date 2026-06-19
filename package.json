@@ -5,6 +5,7 @@
   "scripts": {
     "predev": "pkill -f 'node_modules/.bin/vite' || true",
     "dev": "vite",
+    "dev:test": "vite",
     "build": "vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
