@@ -310,9 +310,19 @@ function handleLogoUpload(input) {
   };
   reader.readAsDataURL(file);
 }
-function removeLogo() {
+async function removeLogo() {
   localStorage.removeItem('pc_biz_logo');
   loadLogoPreview();
+  // Also clear the synced URL so the customer live link (which reads
+  // business_info.logo_url server-side) stops showing the removed logo.
+  if (_userId) {
+    try {
+      await _db('business_info').upsert(
+        [{ user_id: _userId, logo_url: null, updated_at: new Date().toISOString() }],
+        { onConflict: 'user_id' }
+      );
+    } catch (e) { console.warn('[logo] remove sync failed:', (/** @type {any} */ (e))?.message || e); }
+  }
 }
 function loadLogoPreview() {
   const logo = localStorage.getItem('pc_biz_logo');
@@ -322,6 +332,43 @@ function loadLogoPreview() {
   if (btn) btn.style.display = logo ? '' : 'none';
 }
 function getBizLogo() { return localStorage.getItem('pc_biz_logo') || ''; }
+
+/**
+ * Self-heal the synced logo URL from the device's localStorage logo.
+ *
+ * The customer live link renders `business_info.logo_url` server-side, so a logo
+ * that only ever lived in localStorage (`pc_biz_logo`) never reaches it — it
+ * shows on PDFs but the live link falls back to the name initial. That gap opens
+ * whenever the upload→DB sync didn't run for the current logo: it was added
+ * before the one-time migration, before the upload-sync shipped, or on a run
+ * where the cloud upload failed ("saved on this device, but cloud sync failed").
+ *
+ * Called from _applyBizInfoFromDB on boot when the DB has no logo_url but
+ * localStorage does — mirrors the currency self-heal there (the device wins).
+ * Background + silent; runs at most once per successful sync per session.
+ */
+let _logoHealDone = false;
+async function _healLogoToDB() {
+  if (_logoHealDone || !_userId) return;
+  _logoHealDone = true;
+  const dataUrl = localStorage.getItem('pc_biz_logo') || '';
+  const m = /^data:(image\/[^;]+);base64,(.+)$/.exec(dataUrl);
+  if (!m) return;
+  try {
+    const bin = Uint8Array.from(atob(m[2]), c => c.charCodeAt(0));
+    const { url, error } = await _uploadLogoAsset(_userId, bin, m[1]);
+    if (error || !url) { console.warn('[logo] heal upload failed:', error?.message); _logoHealDone = false; return; }
+    const { error: upErr } = await _db('business_info').upsert(
+      [{ user_id: _userId, logo_url: url, updated_at: new Date().toISOString() }],
+      { onConflict: 'user_id' }
+    );
+    if (upErr) { console.warn('[logo] heal upsert failed:', upErr.message); return; }
+    console.info('[logo] synced device logo to business_info.logo_url — live link will now show it');
+  } catch (e) {
+    console.warn('[logo] heal exception:', (/** @type {any} */ (e))?.message || e);
+    _logoHealDone = false;
+  }
+}
 
 function getBizInfo() {
   try { return JSON.parse(localStorage.getItem('pc_biz') || '{}'); } catch(e) { return {}; }

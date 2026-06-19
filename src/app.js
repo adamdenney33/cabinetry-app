@@ -1839,12 +1839,16 @@ function _applyBizInfoFromDB(rows) {
   set('biz-address', b.address);
   set('biz-abn', b.abn);
   set('biz-bank-details', b.bank_details);
-  // Logo: if DB has a public URL, use it; otherwise fall through to localStorage base64
+  // Logo: if DB has a public URL, use it; otherwise fall through to localStorage
+  // base64 — and self-heal the DB from that localStorage logo so the customer
+  // live link (which reads business_info.logo_url server-side) shows it too.
   if (b.logo_url) {
     const img = /** @type {HTMLImageElement | null} */ (document.getElementById('biz-logo-preview'));
     const btn = document.getElementById('biz-logo-remove');
     if (img) { img.src = b.logo_url; img.style.display = ''; }
     if (btn) btn.style.display = '';
+  } else if (localStorage.getItem('pc_biz_logo') && typeof _healLogoToDB === 'function') {
+    _healLogoToDB();
   }
   // Unit format from DB overrides localStorage
   if (b.unit_format) {
