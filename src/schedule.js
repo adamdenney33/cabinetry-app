@@ -449,7 +449,7 @@ function _getSchedSortMode() {
     const v = localStorage.getItem('pc_sched_sort');
     if (v === 'start' || v === 'due' || v === 'priority' || v === 'manual' || v === 'created') return v;
   } catch(e) {}
-  return 'start';
+  return 'created';
 }
 
 /** @param {string} mode */
