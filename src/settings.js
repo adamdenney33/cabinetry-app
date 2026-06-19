@@ -225,7 +225,7 @@ function _saveUnitFormat() {
 }
 function _loadUnitFormat() {
   try {
-    const saved = JSON.parse(localStorage.getItem('pcUnitFormat') || '');
+    const saved = JSON.parse(localStorage.getItem('pcUnitFormat') || '{}');
     if (saved) Object.assign(window.unitFormat, saved);
   } catch(e) {}
 }

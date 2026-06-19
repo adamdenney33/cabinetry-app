@@ -67,10 +67,10 @@ function parseDim(str) {
   str = str.replace(/["″]/g, '').replace(/\s*(?:mm|cm|in|m)$/i, '').trim();
 
   var mixed = str.match(/^(-?\d+)\s+(\d+)\/(\d+)$/);
-  if (mixed) return parseFloat(mixed[1]) + parseFloat(mixed[2]) / parseFloat(mixed[3]);
+  if (mixed) { var md = parseFloat(mixed[3]); return parseFloat(mixed[1]) + (md ? parseFloat(mixed[2]) / md : 0); }
 
   var frac = str.match(/^(-?\d+)\/(\d+)$/);
-  if (frac) return parseFloat(frac[1]) / parseFloat(frac[2]);
+  if (frac) { var fd = parseFloat(frac[2]); return fd ? parseFloat(frac[1]) / fd : 0; }
 
   var safe = str.replace(/[^0-9+\-*/.() ]/g, '');
   try { var v = Function('"use strict";return(' + safe + ')')(); if (isFinite(v)) return v; } catch(e) {}
