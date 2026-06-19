@@ -785,6 +785,7 @@ export type Database = {
         Row: {
           adj_shelves: number
           base_type: string | null
+          carcass_type: string | null
           construction: string | null
           created_at: string
           customer_editable: boolean
@@ -800,6 +801,7 @@ export type Database = {
           door_pct: number | null
           door_type: string | null
           drawer_box_finish: string | null
+          drawer_box_type: string | null
           drawer_count: number
           drawer_front_finish: string | null
           drawer_front_material: string | null
@@ -839,6 +841,7 @@ export type Database = {
         Insert: {
           adj_shelves?: number
           base_type?: string | null
+          carcass_type?: string | null
           construction?: string | null
           created_at?: string
           customer_editable?: boolean
@@ -854,6 +857,7 @@ export type Database = {
           door_pct?: number | null
           door_type?: string | null
           drawer_box_finish?: string | null
+          drawer_box_type?: string | null
           drawer_count?: number
           drawer_front_finish?: string | null
           drawer_front_material?: string | null
@@ -893,6 +897,7 @@ export type Database = {
         Update: {
           adj_shelves?: number
           base_type?: string | null
+          carcass_type?: string | null
           construction?: string | null
           created_at?: string
           customer_editable?: boolean
@@ -908,6 +913,7 @@ export type Database = {
           door_pct?: number | null
           door_type?: string | null
           drawer_box_finish?: string | null
+          drawer_box_type?: string | null
           drawer_count?: number
           drawer_front_finish?: string | null
           drawer_front_material?: string | null
@@ -1230,6 +1236,7 @@ export type Database = {
         Row: {
           adj_shelves: number
           base_type: string | null
+          carcass_type: string | null
           construction: string | null
           created_at: string
           customer_editable: boolean
@@ -1245,6 +1252,7 @@ export type Database = {
           door_pct: number | null
           door_type: string | null
           drawer_box_finish: string | null
+          drawer_box_type: string | null
           drawer_count: number
           drawer_front_finish: string | null
           drawer_front_material: string | null
@@ -1284,6 +1292,7 @@ export type Database = {
         Insert: {
           adj_shelves?: number
           base_type?: string | null
+          carcass_type?: string | null
           construction?: string | null
           created_at?: string
           customer_editable?: boolean
@@ -1299,6 +1308,7 @@ export type Database = {
           door_pct?: number | null
           door_type?: string | null
           drawer_box_finish?: string | null
+          drawer_box_type?: string | null
           drawer_count?: number
           drawer_front_finish?: string | null
           drawer_front_material?: string | null
@@ -1338,6 +1348,7 @@ export type Database = {
         Update: {
           adj_shelves?: number
           base_type?: string | null
+          carcass_type?: string | null
           construction?: string | null
           created_at?: string
           customer_editable?: boolean
@@ -1353,6 +1364,7 @@ export type Database = {
           door_pct?: number | null
           door_type?: string | null
           drawer_box_finish?: string | null
+          drawer_box_type?: string | null
           drawer_count?: number
           drawer_front_finish?: string | null
           drawer_front_material?: string | null
