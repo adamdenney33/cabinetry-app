@@ -42,15 +42,18 @@ before it deploys, instead of via customers.
   helper is absent (prod build / CI without creds).
 - ✅ **T.4 — verified**: full suite green (7 tests); confirmed the boot test
   catches a real break (hid `src/auth.js` → red naming the file → restored).
-- ✅ **T.5 — CI deploy gate**: `deploy.yml` runs `npm run test:smoke` after
-  typecheck, before build/deploy — a failing smoke test blocks the production
-  deploy.
+- ✅ **T.5 — CI deploy gate**: `deploy.yml` runs the suite after typecheck,
+  before build/deploy — a failing test blocks the production deploy. Playwright
+  webServer uses the hook-free `dev:test` script, not `dev` (whose `predev`
+  `pkill` SIGTERMs the CI-managed server → exit 143; fixed in `374c1fd`).
+- ✅ **T.6 — logged-in coverage in CI** (`4749b11`): dedicated throwaway test
+  account `adamdenney33+e2e@googlemail.com` (created + email-confirmed via SQL,
+  NOT a personal/customer account); creds as GitHub secrets
+  `TEST_EMAIL`/`TEST_PASSWORD`; CI runs the full `npm run test:e2e` (logged-out
+  + logged-in). Verified green in CI (7 passed, logged-in tests ran not skipped).
 
-  **Outstanding (not blocking):** create a dedicated throwaway test account so
-  the logged-in suite can also run in CI (today CI runs logged-out only; the
-  logged-in suite is the local pre-push check). Then add its creds as GitHub
-  secrets and switch the CI step to `npm run test:e2e`. Extend coverage by
-  adding a read-only test for each customer-reported bug as it's fixed.
+  **Ongoing habit:** add a read-only test for each customer-reported bug as
+  it's fixed, so it can't silently return.
 
 ### Production email sends — welcome v2 + founders' welcome automation (2026-06-13)
 
