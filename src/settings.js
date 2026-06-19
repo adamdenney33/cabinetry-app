@@ -344,10 +344,12 @@ function switchSection(name) {
   if (typeof /** @type {any} */ (window)._pcSaveSection === 'function') {
     /** @type {any} */ (window)._pcSaveSection(name);
   }
-  document.querySelectorAll('.nav-tab').forEach((t,i) => {
-    // F1/F6 (2026-05-13): Projects nav tab + panel both gone.
-    const sections = ['dashboard','cutlist','cabinet','stock','orders','quote','clients','schedule'];
-    t.classList.toggle('active', sections[i] === name);
+  document.querySelectorAll('.nav-tab').forEach(t => {
+    // Derive each tab's section from its own onclick="switchSection('x')" so the
+    // active state never depends on DOM order (a positional array silently broke
+    // when the tabs were reordered — stock/cabinet and quote/orders swapped).
+    const m = /switchSection\(['"]([^'"]+)['"]\)/.exec(t.getAttribute('onclick') || '');
+    t.classList.toggle('active', !!m && m[1] === name);
   });
   document.querySelectorAll('.section-panel').forEach(p => {
     p.classList.toggle('active', p.id === 'panel-' + name);
