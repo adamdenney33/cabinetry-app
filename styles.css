@@ -348,7 +348,17 @@ header {
    line up with everything else instead of stretching flush to the edge. */
 #panel-stock .form-section > #stock-dims-fields,
 #panel-stock .form-section > #stock-eb-fields,
-#panel-stock .form-section > #stock-fin-fields { padding-left: 14px; padding-right: 14px; }
+#panel-stock .form-section > #stock-fin-fields,
+#panel-stock .form-section > #stock-qty-fields,
+#panel-stock .form-section > #stock-eb-qty-fields { padding-left: 14px; padding-right: 14px; }
+/* Section-title dividers and the customer-visibility toggle are also direct
+   children of .form-section, so they need the same 14px inset to line up with
+   the fields. The "Visibility" section title now provides the divider, so drop
+   the toggle row's own border-top inside the stock panel. */
+#panel-stock .form-section > .form-section-title,
+#panel-stock .form-section > .share-toggle-row { padding-left: 14px; padding-right: 14px; }
+#panel-stock .form-section > .form-section-title { margin-top: 14px; }
+#panel-stock .form-section > .share-toggle-row { border-top: none; }
 /* Pad the gate (empty state) wrapper too so the recent-list / button align
    with the form-section content underneath. */
 #stock-gate, #clients-gate { padding: 16px 0; }

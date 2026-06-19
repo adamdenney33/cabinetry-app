@@ -600,6 +600,16 @@ function stockCatChanged() {
   if (finEl) finEl.style.display = isFin ? '' : 'none';
   if (qtyEl) qtyEl.style.display = isEB ? 'none' : '';
   if (ebQtyEl) ebQtyEl.style.display = isEB ? '' : 'none';
+  // Spec section heading: "Dimensions" for sheet/timber/edge-banding,
+  // "Coverage" for finishing, hidden for Hardware/Other (which have no spec
+  // fields). The ::after divider line is a pseudo-element, so it survives
+  // setting textContent.
+  const specTitle = _byId('stock-spec-title');
+  if (specTitle) {
+    const hasSpec = sheetCats.includes(cat) || isEB || isFin;
+    specTitle.style.display = hasSpec ? '' : 'none';
+    specTitle.textContent = isFin ? 'Coverage' : 'Dimensions';
+  }
   // Relabel the generic qty/low/cost row for finishing (volume in L or gal).
   const vol = _finVolUnit();
   _setLabel('stock-qty-label', isFin ? `Volume (${vol})` : 'Qty');
@@ -636,7 +646,7 @@ function cancelStockEdit() {
   // previously-edited item doesn't carry into a fresh "Add Material", and
   // refresh the category-dependent field visibility to match.
   inp('stock-cat').value = 'Sheet Goods';
-  _stockSetCustVis(false);
+  _stockSetCustVis(true);
   if (typeof stockCatChanged === 'function') stockCatChanged();
   const sb = /** @type {HTMLElement} */ (_byId('stock-submit-btn'));
   if (sb) { sb.textContent = '+ Add to Stock'; sb.style.display = ''; }

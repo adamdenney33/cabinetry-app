@@ -402,6 +402,7 @@ setTimeout(function () { window._hideBootLoader(); }, 15000);
               <span class="cl-unsaved-pill" data-save-pill="stock" style="display:none"></span>
             </div>
           </div>
+          <div class="form-section-title">Details</div>
           <div class="form-group" style="margin-bottom:6px">
             <label>Category</label>
             <select id="stock-cat" onchange="stockCatChanged()" style="font-size:12px">
@@ -425,6 +426,7 @@ setTimeout(function () { window._hideBootLoader(); }, 15000);
             <label>SKU / Code</label>
             <input type="text" id="stock-sku" placeholder="e.g. PLY-34-B">
           </div>
+          <div class="form-section-title" id="stock-spec-title">Dimensions</div>
           <div id="stock-dims-fields">
             <div class="form-row">
               <div class="form-group">
@@ -474,30 +476,34 @@ setTimeout(function () { window._hideBootLoader(); }, 15000);
               <input type="number" id="stock-fin-coverage" value="10" min="0" step="0.1">
             </div>
           </div>
-          <div class="form-row" id="stock-qty-fields">
-            <div class="form-group">
-              <label id="stock-qty-label">Qty</label>
-              <input type="number" id="stock-qty" value="10" min="0" step="0.01">
+          <div class="form-section-title">Stock &amp; pricing</div>
+          <div id="stock-qty-fields">
+            <div class="form-row">
+              <div class="form-group">
+                <label id="stock-qty-label">Qty</label>
+                <input type="number" id="stock-qty" value="10" min="0" step="0.01">
+              </div>
+              <div class="form-group">
+                <label id="stock-low-label">Low Alert</label>
+                <input type="number" id="stock-low" value="3" min="0" step="0.01">
+              </div>
             </div>
-            <div class="form-group">
-              <label id="stock-low-label">Low Alert</label>
-              <input type="number" id="stock-low" value="3" min="0" step="0.01">
-            </div>
-            <div class="form-group">
+            <div class="form-group" style="margin-bottom:6px">
               <label id="stock-cost-label">Cost / Unit</label>
               <input type="number" id="stock-cost" value="65.00" min="0" step="0.01">
             </div>
           </div>
-          <div class="form-row" id="stock-eb-qty-fields" style="display:none">
-            <div class="form-group">
+          <div id="stock-eb-qty-fields" style="display:none">
+            <div class="form-group" style="margin-bottom:6px">
               <label>Low Alert (m)</label>
               <input type="number" id="stock-eb-low" value="10" min="0" step="0.1">
             </div>
-            <div class="form-group">
+            <div class="form-group" style="margin-bottom:6px">
               <label>Cost / m</label>
               <input type="number" id="stock-eb-cost" value="0.00" min="0" step="0.01">
             </div>
           </div>
+          <div class="form-section-title">Supplier</div>
           <div class="form-row">
             <div class="form-group">
               <label>Supplier</label>
@@ -508,15 +514,16 @@ setTimeout(function () { window._hideBootLoader(); }, 15000);
             <label>Reorder Link</label>
             <input type="text" id="stock-reorder-url" placeholder="https://supplier.com/product">
           </div>
+          <div class="form-section-title">Visibility</div>
           <div class="share-toggle-row" style="margin-bottom:6px">
             <div>
               <div class="st-label">Visible to customers</div>
               <div class="st-desc">Offer this item as a selectable material on live link quotes</div>
             </div>
-            <button type="button" class="mini-toggle" id="stock-customer-visible" aria-pressed="false"
+            <button type="button" class="mini-toggle" id="stock-customer-visible" aria-pressed="true"
               onclick="_shTgl(this);_stockScheduleAutosave()" title="Visible to customers in live link"></button>
           </div>
-          <button class="btn btn-primary" onclick="addStockItem()" id="stock-submit-btn" style="margin-top:4px;width:100%">+ Add to Stock</button>
+          <button class="btn btn-primary" onclick="addStockItem()" id="stock-submit-btn" style="margin:8px 14px 0;width:calc(100% - 28px)">+ Add to Stock</button>
         </div>
       </div>
     </div>

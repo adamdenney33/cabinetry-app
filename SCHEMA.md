@@ -206,11 +206,16 @@ alter table public.stock_items
 -- Live-link visibility, added 2026-06-19 (migration 20260619130000_stock_customer_visible.sql):
 alter table public.stock_items
   add column customer_visible boolean not null default false;  -- true → offered as a selectable material in the customer's live-link spec editor
+
+-- 2026-06-19 (migration stock_items_customer_visible_default_true): default flipped to true (visible by default).
+-- A one-time UPDATE also set every existing row true across all users — see SPEC.md § 13.
+alter table public.stock_items
+  alter column customer_visible set default true;
 ```
 
 **Replaces:** localStorage `pc_stock_cats`, `pc_stock_suppliers`, `pc_stock_variants`.
 
-**`customer_visible` (added 2026-06-19):** per-item toggle in the Stock editor sidebar ("Visible to customers"). When `true`, the item's `name` is merged into the `materials` list returned by the `quote-public-get` edge function, so it appears as a selectable carcass/door/drawer material in the customer's live-link spec editor — `stock_items` is the source of truth for materials (`catalog_items` deprecated). Defaults `false` (private).
+**`customer_visible` (added 2026-06-19):** per-item toggle in the Stock editor sidebar ("Visible to customers"). When `true`, the item's `name` is merged into the `materials` list returned by the `quote-public-get` edge function, so it appears as a selectable carcass/door/drawer material in the customer's live-link spec editor — `stock_items` is the source of truth for materials (`catalog_items` deprecated). **Defaults `true` (visible) since 2026-06-19** — the column default was flipped and a one-time backfill set all pre-existing rows `true` (see SPEC.md § 13).
 
 Existing columns kept: `id, user_id, name, sku, w, h, qty, low, cost, created_at`.
 
