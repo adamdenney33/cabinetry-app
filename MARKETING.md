@@ -39,8 +39,8 @@ Spend history: creative test (29 May–10 Jun) £326.73 → 915 LPVs @ £0.36; p
 
 | Channel | Status | Detail |
 |---|---|---|
-| Meta paid — Signups campaign | 🟢 ACTIVE £25/day | Ad set 52550164945314, COMPLETE_REGISTRATION-optimised, interest stack, 1 creative |
-| Meta paid — Advantage+ ad set | 🟡 BUILT, PAUSED | £15/day, awaiting explicit enable decision |
+| Meta paid — Signups campaign | ⏸️ PAUSED 19 Jun | Paused by Adam to reassess. Relaunch gated — see § 10 |
+| Meta paid — Advantage+ ad set | 🟡 BUILT, PAUSED | £15/day, hold for relaunch A/B vs interest stack |
 | Meta paid — Founders retargeting | 🔴 BLOCKED | Needs 2 custom audiences created in Ads Manager (manual — API can't) |
 | Email — welcome/activation flow | 🟡 IN SETUP | 5-email plan (`email-flow-plan.html`), welcome email drafted 12 Jun |
 | Email — founders push (16 prospects) | 🔵 READY TO SEND | `marketing/founders-email-2026-06-10.md`; welcome + WhatsApp perk prepared |
@@ -103,9 +103,41 @@ Spend history: creative test (29 May–10 Jun) £326.73 → 915 LPVs @ £0.36; p
 | 2026-06-11 | 8 ad-attributed signups @ £4.68; CAPI token confirmed set; S.9 Stripe live confirmed |
 | 2026-06-12 | Founders email unblocked (claim link live); welcome email drafted |
 | 2026-06-13 | MARKETING.md created; Marketing HQ dashboard launched; ads audit (this doc § 3–7) |
+| 2026-06-19 | **Meta ads PAUSED by Adam to reassess.** Relaunch plan agreed — see § 10 |
 
 ## 9. Operating cadence
 
-- **Daily (2 min):** dashboard → CPR + spend sanity check. Act only on kill-line breaches.
+- **Daily (2 min):** dashboard → CPR + spend sanity check. Act only on kill-line breaches. *(Suspended while paused.)*
 - **Monday (30 min):** weekly review against § 5 targets; update § 4 board + § 8 log; pick the week's P0s.
 - **Per cohort (14 d):** trial→paid review; scale/kill decision per § 6 rules.
+
+## 10. Relaunch plan (agreed 19 Jun 2026)
+
+**Decision: don't relaunch on a date — relaunch on a signal.** Ads stay paused until both gates clear. This pause is for *reassessment + relaunch prep*, not retreat.
+
+### Why we paused (diagnosis)
+- Acquisition works (10 ad signups @ £7.76, CTR 3.11%) but **trial→paid is unproven — 0 real paid conversions from ads.** The 1 founder seat was direct.
+- Tracking is partly blind: CAPI dedupe unverified, `POSTHOG_KEY` unset, `subscription_started` never fired.
+- Fragile setup: single creative, retargeting blocked (no custom audiences), ~70% of signups never return.
+
+### Relaunch gates — BOTH must be true before un-pausing
+1. **Trial→paid read from the 10 Jun cohort (~24 Jun).** First real signal of whether this audience pays. This is the most important number in the business right now. If trial→paid ≥ ~8% → relaunch with confidence; if near 0 → fix offer/activation before any spend.
+2. **Activation leak at least partly plugged** — welcome/activation email flow live, so new ad-driven signups can stick.
+
+### Strategic changes for the relaunch (vs the paused setup)
+| Lever | Was | Relaunch |
+|---|---|---|
+| Geography | US+NZ+CA+GB+AU in one ad set | Split US into its own ad set or drop it — concentrate budget, faster reads on lower-CPM geos |
+| Targeting | Interest stack only | Clean A/B: interest ad set vs Advantage+ (same creative) — finally learn which wins |
+| Creative | 1 reel (fatigue risk) | 2–3 fresh reels per ad set (scenes rendered; specs `marketing/posts/10`) |
+| Offer | Trial objective only | Keep trial objective + add £10/day founders-retargeting against new warm audiences |
+
+### Prep checklist while paused (no spend)
+1. Build 2 custom audiences (video viewers 25%/180d + site visitors/30d) — unblocks retargeting; needs time to populate.
+2. Verify CAPI dedupe in Events Manager + set `POSTHOG_KEY`. Non-negotiable before spend resumes.
+3. Get the welcome/activation email flow live (gate #2).
+4. Draft 2–3 new reel creatives.
+5. **24 Jun — trial→paid cohort review = the go/no-go gate.**
+
+### Recommended relaunch structure (when gates clear)
+Signups campaign £25–40/day · two ad sets A/B (interest vs Advantage+) · US split out · 2–3 creatives each · plus £10/day founders-retargeting on the new audiences. One change at a time thereafter.
