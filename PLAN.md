@@ -23,6 +23,42 @@ Companion docs: `SPEC.md` (refactor history), `SCHEMA.md` (DB schema),
 
 ## Active Work
 
+### Email ↔ in-app messages bridge (2026-06-19) ✅ Code done — ⬜ needs deploy + DNS
+
+Make the client-scoped chat (`customer_messages`) reachable by email both ways:
+business/customer get an email when a message is posted, and either party can
+reply straight from their inbox — the reply lands back in the same thread with a
+"via email" badge + "View original". Full design + decisions:
+`~/.claude/plans/i-would-like-messages-reactive-eagle.md`.
+
+- ✅ **M.1 — migration** (`20260619150000_email_message_bridge.sql`): `clients.reply_token`
+  (uuid, unique); `customer_messages.via / email_verified / inbound_email_id /
+  outbound_email_id / outbound_status`; new `inbound_emails` table (idempotency +
+  raw-HTML store) with owner-read RLS; `business_info.email_bridge_enabled`;
+  `customer_messages` added to `supabase_realtime`; `notify_message_posted()` +
+  `trg_message_notify` (founders-welcome pattern — security definer, exception-
+  guarded, `pg_net` → messages-notify, skips `via='email'` for loop safety).
+- ✅ **M.2 — messages-notify edge fn** (outbound): static `x-msg-key` auth,
+  reloads the row, claim-flips `outbound_status`, Resend send to the opposite
+  party with role-prefixed `reply_to` (`c-`/`b-<token>@reply.procabinet.app`),
+  `Idempotency-Key`, thread headers.
+- ✅ **M.3 — messages-inbound edge fn** (inbound webhook): Svix-verified
+  `email.received` → fetch body via Resend received-email API → parse token →
+  attribute sender (accept unverified, flag it) → strip quoted text → insert
+  `via='email'`; also folds `email.delivered/bounced/complained` → `outbound_status`.
+- ✅ **M.4 — frontend** (`clients-chat.js` + `app.js`): "via email" / "unverified"
+  badge + "View original" (sandboxed iframe), email-bridge columns in every
+  thread select, realtime `customer_messages` subscription. Typecheck clean;
+  render verified in preview.
+- ✅ **M.5 — docs**: PLAN / SPEC §13 / SCHEMA updated.
+- ⬜ **M.6 — deploy + infra** (needs the user): apply the migration + regen types;
+  deploy messages-notify & messages-inbound (`verify_jwt=false`); set
+  `RESEND_WEBHOOK_SECRET` secret (`MSG_BRIDGE_KEY` is inlined like `x-fw-key`);
+  add MX on `reply.procabinet.app` + enable Resend Receiving; register the Resend
+  webhook (`email.received` + delivery events) → messages-inbound URL; verify DMARC.
+- ⬜ **M.7 — fast-follow**: settings UI toggle for `email_bridge_enabled` (column
+  already defaults true); per-burst email coalescing if multi-message spam shows up.
+
 ### Smoke-test suite + CI deploy gate (2026-06-19)
 
 First automated tests in the project. Playwright smoke suite in `tests/e2e/`

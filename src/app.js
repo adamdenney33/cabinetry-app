@@ -1782,6 +1782,10 @@ function _subscribeLiveStatus() {
           /** @param {any} p */ p => { _applyRealtimeRow(quotes, p); rerender(); })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `user_id=eq.${_userId}` },
           /** @param {any} p */ p => { _applyRealtimeRow(orders, p); rerender(); })
+      // Email-bridge: a new chat message (live-page or emailed reply) lands in
+      // the thread cache + lights the unread badge without a manual reload.
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'customer_messages', filter: `user_id=eq.${_userId}` },
+          /** @param {any} p */ p => { if (typeof _applyRealtimeMessage === 'function') _applyRealtimeMessage(p); })
       .subscribe();
   } catch (e) { console.warn('[realtime] subscribe failed:', /** @type {any} */ (e)?.message || e); }
 }

@@ -87,6 +87,7 @@ create table public.business_info (
   default_contingency_pct     numeric,                                             -- added 2026-05-07; % of cabinet labour time
   production_queue_start_date date,                                                -- nullable; null = use today
   onboarding_state jsonb not null default '{}'::jsonb,                             -- O.2 guided-walkthrough state (added 2026-05-15)
+  email_bridge_enabled boolean not null default true,                             -- mute toggle for customer→business notification emails (added 2026-06-19)
   created_at      timestamptz not null default now(),
   updated_at      timestamptz not null default now()
 );
@@ -232,11 +233,14 @@ finish to a quote/order creates a stock line priced per surface area (`unit_pric
 Unchanged from current. Listed here for completeness.
 
 ```sql
--- Already exists. Schema:
 -- id, user_id, name, email, phone, address, notes, created_at
+-- + reply_token uuid not null default gen_random_uuid()  (unique)  -- added 2026-06-19
 ```
 
-No changes proposed.
+**Email-bridge (`reply_token`, added 2026-06-19):** one opaque per-client token —
+the local-part of the chat reply-to address (`c-<token>@` / `b-<token>@reply.procabinet.app`).
+Routes inbound email replies back to this client's `customer_messages` thread.
+Migration `email_message_bridge`. See § 3.24.
 
 ---
 
@@ -955,11 +959,50 @@ create table public.customer_messages (
   sender      text not null check (sender in ('business','customer')),
   body        text not null,
   read_at     timestamptz,
-  created_at  timestamptz not null default now()
+  created_at  timestamptz not null default now(),
+  -- Email bridge (added 2026-06-19, migration email_message_bridge):
+  via              text not null default 'app' check (via in ('app','email')),  -- how it entered the thread
+  email_verified   boolean,   -- via='email' only: From matched the address on file
+  inbound_email_id  text,      -- inbound_emails.message_id (powers "View original")
+  outbound_email_id text,      -- Resend id of the notification we sent for this row
+  outbound_status   text       -- null|sending|sent|delivered|bounced|complained|skipped|failed
 );
 ```
 RLS Pattern A (owner CRUD); customer-posted rows inserted by the edge function as
 `service_role`.
+
+**Email bridge (added 2026-06-19):** an AFTER-INSERT trigger (`trg_message_notify`)
+emails the opposite party via the `messages-notify` edge function; replies sent to
+`c-`/`b-<reply_token>@reply.procabinet.app` are received by `messages-inbound`
+(Resend `email.received` webhook) and inserted with `via='email'` (the trigger skips
+those → no loop). The table is in `supabase_realtime` so emailed/live-page replies
+surface in the business UI without a reload. See `inbound_emails` below + § 3.5
+(`clients.reply_token`).
+
+### 3.24b `inbound_emails`
+
+Log of inbound email replies (added 2026-06-19, migration `email_message_bridge`).
+`message_id` (RFC822 Message-ID) is the idempotency key — `messages-inbound` claims
+it before inserting, so Resend webhook retries are absorbed. `raw_html` powers the
+in-app "View original".
+
+```sql
+create table public.inbound_emails (
+  message_id          text primary key,                  -- RFC822 Message-ID (fallback: resend email_id)
+  resend_email_id     text,
+  user_id             uuid   references auth.users(id)  on delete cascade,
+  client_id           bigint references public.clients(id) on delete cascade,
+  role                text,                              -- 'business' | 'customer' (from the address prefix)
+  from_addr           text,
+  verified            boolean,                           -- From matched the party on file
+  status              text not null default 'received',  -- received|inserted|dropped_*|rejected_*
+  customer_message_id bigint references public.customer_messages(id) on delete set null,
+  raw_html            text,
+  created_at          timestamptz not null default now()
+);
+```
+RLS on: service-role writes (`messages-inbound`); owner may `select` their own rows
+(`user_id = (select auth.uid())`) for the "View original" popup.
 
 ---
 

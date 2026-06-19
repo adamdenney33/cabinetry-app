@@ -11,6 +11,13 @@
  *  types regenerated, so route its calls through an `any`-typed builder. */
 function _cmTable() { return /** @type {any} */ (_db(/** @type {any} */ ('customer_messages'))); }
 
+/** inbound_emails (raw stored reply) — also `any` until the migration types regen. */
+function _ieTable() { return /** @type {any} */ (_db(/** @type {any} */ ('inbound_emails'))); }
+
+/** Columns pulled for every thread load — one place so all paths get the
+ *  email-bridge fields (via / email_verified / inbound_email_id / outbound_status). */
+const _CM_COLS = 'id, client_id, sender, body, created_at, read_at, via, email_verified, inbound_email_id, outbound_status';
+
 /** @type {Record<number, Array<any>>} */
 let _clientMessages = {};
 
@@ -19,7 +26,7 @@ async function loadAllClientMessages() {
   _clientMessages = {};
   if (!_userId) return;
   try {
-    const { data } = await _cmTable().select('id, client_id, sender, body, created_at, read_at').order('created_at');
+    const { data } = await _cmTable().select(_CM_COLS).order('created_at');
     /** @type {Record<number, any[]>} */ const map = {};
     (data || []).forEach(/** @param {any} m */ m => { (map[m.client_id] = map[m.client_id] || []).push(m); });
     _clientMessages = map;
@@ -38,7 +45,7 @@ async function _openClientChat(clientId) {
   const c = /** @type {any} */ (clients.find(x => x.id === clientId));
   const name = c ? c.name : 'Client';
   try {
-    const { data } = await _cmTable().select('id, client_id, sender, body, created_at, read_at').eq('client_id', clientId).order('created_at');
+    const { data } = await _cmTable().select(_CM_COLS).eq('client_id', clientId).order('created_at');
     _clientMessages[clientId] = data || [];
   } catch (e) { /* offline / not applied */ }
   _openPopup(_clientChatHtml(clientId, name), 'md');
@@ -56,7 +63,7 @@ function _clientChatHtml(clientId, name) {
   const msgs = _clientMessages[clientId] || [];
   const bubble = (/** @type {any} */ m) => {
     const me = m.sender === 'business';
-    return `<div style="max-width:84%;align-self:${me ? 'flex-end' : 'flex-start'};padding:8px 12px;border-radius:12px;font-size:13px;line-height:1.45;${me ? 'background:var(--accent);color:#fff;border-bottom-right-radius:4px' : 'background:var(--surface2);border:1px solid var(--border);border-bottom-left-radius:4px'}">${_escHtml(m.body)}</div>`;
+    return `<div style="max-width:84%;align-self:${me ? 'flex-end' : 'flex-start'};padding:8px 12px;border-radius:12px;font-size:13px;line-height:1.45;${me ? 'background:var(--accent);color:#fff;border-bottom-right-radius:4px' : 'background:var(--surface2);border:1px solid var(--border);border-bottom-left-radius:4px'}">${_escHtml(m.body)}${_ccEmailBadge(m)}</div>`;
   };
   const thread = msgs.length
     ? msgs.map(bubble).join('')
@@ -93,7 +100,7 @@ async function _sendClientMessage(clientId) {
 /** A chat bubble (matches _clientChatHtml). @param {any} m @returns {string} */
 function _ccBubbleHtml(m) {
   const me = m.sender === 'business';
-  return `<div style="max-width:84%;align-self:${me ? 'flex-end' : 'flex-start'};padding:8px 12px;border-radius:12px;font-size:13px;line-height:1.45;${me ? 'background:var(--accent);color:#fff;border-bottom-right-radius:4px' : 'background:var(--surface2);border:1px solid var(--border);border-bottom-left-radius:4px'}">${_escHtml(m.body)}</div>`;
+  return `<div style="max-width:84%;align-self:${me ? 'flex-end' : 'flex-start'};padding:8px 12px;border-radius:12px;font-size:13px;line-height:1.45;${me ? 'background:var(--accent);color:#fff;border-bottom-right-radius:4px' : 'background:var(--surface2);border:1px solid var(--border);border-bottom-left-radius:4px'}">${_escHtml(m.body)}${_ccEmailBadge(m)}</div>`;
 }
 
 /** @param {number} orderId @param {number} clientId @returns {string} */
@@ -120,7 +127,7 @@ async function _toggleOrderThread(orderId) {
   if (!clientId) { _toast('No client on this order', 'error'); return; }
   // Pull the latest conversation for this client (the customer may have replied).
   try {
-    const { data } = await _cmTable().select('id, client_id, sender, body, created_at, read_at').eq('client_id', clientId).order('created_at');
+    const { data } = await _cmTable().select(_CM_COLS).eq('client_id', clientId).order('created_at');
     _clientMessages[clientId] = data || [];
   } catch (e) { /* offline / not applied */ }
   wrap.innerHTML = _orderThreadInner(orderId, clientId);
@@ -185,7 +192,7 @@ async function _toggleQuoteThread(quoteId) {
   if (!clientId) { _toast('No client on this quote', 'error'); return; }
   // Pull the latest conversation for this client (the customer may have replied).
   try {
-    const { data } = await _cmTable().select('id, client_id, sender, body, created_at, read_at').eq('client_id', clientId).order('created_at');
+    const { data } = await _cmTable().select(_CM_COLS).eq('client_id', clientId).order('created_at');
     _clientMessages[clientId] = data || [];
   } catch (e) { /* offline / not applied */ }
   wrap.innerHTML = _quoteThreadInner(quoteId, clientId);
@@ -254,7 +261,7 @@ async function _toggleClientThread(clientId) {
   if (wrap.style.display !== 'none') { wrap.style.display = 'none'; wrap.innerHTML = ''; return; }
   // Pull the latest conversation for this client (the customer may have replied).
   try {
-    const { data } = await _cmTable().select('id, client_id, sender, body, created_at, read_at').eq('client_id', clientId).order('created_at');
+    const { data } = await _cmTable().select(_CM_COLS).eq('client_id', clientId).order('created_at');
     _clientMessages[clientId] = data || [];
   } catch (e) { /* offline / not applied */ }
   wrap.innerHTML = _clientThreadInner(clientId);
@@ -289,4 +296,79 @@ async function _sendClientThreadMessage(clientId) {
   catch (e) { _toast('Message not sent (is the schema migration applied?)', 'error'); }
 }
 
-Object.assign(window, { loadAllClientMessages, _clientUnreadCount, _openClientChat, _sendClientMessage, _toggleOrderThread, _orderThreadInner, _sendOrderMessage, _quoteThreadInner, _toggleQuoteThread, _sendQuoteMessage, _clientThreadInner, _toggleClientThread, _sendClientThreadMessage });
+// ── Email-bridge UI ─────────────────────────────────────────────────────────
+// Messages that arrived by email (via='email') get a small badge under the
+// bubble; inbound ones link to the stored original. Outbound notifications keep
+// via='app' (they originated in-app), so they show no badge.
+
+/** Badge appended inside a bubble for email-origin messages. @param {any} m */
+function _ccEmailBadge(m) {
+  if (!m || m.via !== 'email') return '';
+  const unverified = m.email_verified === false;
+  const label = unverified ? '⚠ via email · unverified' : '✉ via email';
+  const view = m.inbound_email_id
+    ? ` · <a href="#" data-inbound="${_escHtml(String(m.inbound_email_id))}" onclick="event.preventDefault();event.stopPropagation();_viewOriginalEmail(this)" style="color:inherit;text-decoration:underline">View original</a>`
+    : '';
+  return `<div style="font-size:10px;margin-top:5px;opacity:.75;color:inherit">${label}${view}</div>`;
+}
+
+/** Open the stored raw email (owner RLS read) in a sandboxed iframe. @param {HTMLElement} el */
+async function _viewOriginalEmail(el) {
+  const id = el && el.dataset ? el.dataset.inbound : '';
+  if (!id) return;
+  let html = '';
+  try {
+    const { data } = await _ieTable().select('raw_html').eq('message_id', id).maybeSingle();
+    html = (data && data.raw_html) || '';
+  } catch (e) { /* not applied / offline */ }
+  const srcdoc = _escHtml(html || '<p style="color:#777;font-family:sans-serif;padding:16px">Original email not available.</p>');
+  _openPopup(`<div class="popup-header"><div class="popup-title">Original email</div><button class="popup-close" onclick="_closePopup()">&times;</button></div>
+    <div class="popup-body" style="padding:0">
+      <iframe sandbox style="width:100%;height:60vh;border:0;background:#fff" srcdoc="${srcdoc}"></iframe>
+    </div>`, 'md');
+}
+
+// ── Realtime: surface live-page + emailed replies without reopening a thread ──
+
+/** Merge a realtime customer_messages INSERT into the cache + refresh any open
+ *  thread / unread badges for that client. @param {any} payload */
+function _applyRealtimeMessage(payload) {
+  const row = payload && payload.new;
+  if (!row || row.id == null) return;
+  const cid = row.client_id;
+  const list = (_clientMessages[cid] = _clientMessages[cid] || []);
+  const idx = list.findIndex(/** @param {any} m */ m => m.id === row.id);
+  if (idx >= 0) { Object.assign(list[idx], row); }
+  else {
+    // Reconcile our own optimistic send (pushed without an id) instead of duplicating.
+    const opt = list.findIndex(/** @param {any} m */ m => m.id == null && m.sender === row.sender && m.body === row.body);
+    if (opt >= 0) Object.assign(list[opt], row); else list.push(row);
+  }
+  list.sort(/** @param {any} a @param {any} b */(a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+  _refreshClientThreadUI(cid);
+}
+
+/** Re-render any visible thread bodies + unread badges for a client from cache.
+ *  Avoids renderClientsMain() so it never collapses an open in-card thread.
+ *  @param {number} clientId */
+function _refreshClientThreadUI(clientId) {
+  const bubbles = (_clientMessages[clientId] || []).map(_ccBubbleHtml).join('');
+  const setBody = /** @param {string} id */ (id) => { const b = document.getElementById(id); if (b) { b.innerHTML = bubbles; b.scrollTop = b.scrollHeight; } };
+  setBody(`cc-thread-body-${clientId}`);
+  const refreshDeals = /** @param {any} arr @param {string} prefix */ (arr, prefix) => {
+    if (typeof arr === 'undefined' || !arr) return;
+    arr.filter(/** @param {any} x */ x => x.client_id === clientId).forEach(/** @param {any} x */ x => setBody(`${prefix}-thread-body-${x.id}`));
+  };
+  refreshDeals(typeof orders !== 'undefined' ? orders : null, 'oc');
+  refreshDeals(typeof quotes !== 'undefined' ? quotes : null, 'qc');
+  const badge = _clientUnreadCount(clientId) ? `(${_clientUnreadCount(clientId)})` : '';
+  document.querySelectorAll(`[data-client-unread="${clientId}"]`).forEach(el => { el.textContent = badge; });
+  if (typeof orders !== 'undefined' && orders) /** @type {any} */(orders).filter(/** @param {any} x */ x => x.client_id === clientId).forEach(/** @param {any} x */ x => {
+    document.querySelectorAll(`[data-order-unread="${x.id}"]`).forEach(el => { el.textContent = badge; });
+  });
+  if (typeof quotes !== 'undefined' && quotes) /** @type {any} */(quotes).filter(/** @param {any} x */ x => x.client_id === clientId).forEach(/** @param {any} x */ x => {
+    document.querySelectorAll(`[data-quote-unread="${x.id}"]`).forEach(el => { el.textContent = badge; });
+  });
+}
+
+Object.assign(window, { loadAllClientMessages, _clientUnreadCount, _openClientChat, _sendClientMessage, _toggleOrderThread, _orderThreadInner, _sendOrderMessage, _quoteThreadInner, _toggleQuoteThread, _sendQuoteMessage, _clientThreadInner, _toggleClientThread, _sendClientThreadMessage, _ccEmailBadge, _viewOriginalEmail, _applyRealtimeMessage, _refreshClientThreadUI });
