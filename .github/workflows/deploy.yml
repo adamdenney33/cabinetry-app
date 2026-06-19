@@ -35,21 +35,26 @@ jobs:
         run: npm run typecheck
 
       # Smoke gate: boot the app in a headless browser and verify it loads, every
-      # classic script is served, and the login screen works. If any of this
-      # breaks, the deploy is blocked before it reaches customers. These are the
-      # logged-OUT checks only — they need no account and no secrets. The fuller
-      # logged-in suite (tests/e2e/smoke.app.spec.js) runs locally via
-      # `npm run test:e2e`; it auto-skips here because no test credentials are set.
+      # classic script is served, the login screen works, AND (logged in via a
+      # dedicated test account) every main screen + the quote/order editors render
+      # without throwing. If any of this breaks, the deploy is blocked before it
+      # reaches customers. The logged-in tests sign into a throwaway test account
+      # (NOT a customer/personal one) and are read-only — they never write or pay.
+      # TEST_EMAIL/TEST_PASSWORD are GitHub Actions secrets; without them the
+      # logged-in tests auto-skip (tests/e2e/smoke.app.spec.js).
       - name: Install Playwright browser
         run: npx playwright install --with-deps chromium
 
       - name: Smoke tests
-        run: npm run test:smoke
+        run: npm run test:e2e
         env:
           # The dev server the tests boot needs these to start. Same publishable
           # values as the Build step below — safe for client exposure (RLS).
           VITE_SUPABASE_URL: https://mhzneruvlfmhnsohfrdo.supabase.co
           VITE_SUPABASE_ANON_KEY: sb_publishable_4lHAEgWPQz8DX8TH2KnuiA_oimj8J__
+          # Dedicated read-only test account — enables the logged-in render tests.
+          VITE_TEST_EMAIL: ${{ secrets.TEST_EMAIL }}
+          VITE_TEST_PASSWORD: ${{ secrets.TEST_PASSWORD }}
 
       - name: Build
         run: npm run build

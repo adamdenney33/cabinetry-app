@@ -45,24 +45,25 @@ that each screen renders:
 real data, and Stripe is in live mode, so the tests never create a quote/order
 or trigger a payment — they only open screens and confirm nothing crashes.
 
-These tests **auto-skip** when the sign-in helper is absent — which is the case
-in production builds and in CI (no test credentials there) — so they never fail
-for a missing-by-design reason. They run locally because `VITE_TEST_EMAIL` /
-`VITE_TEST_PASSWORD` in `.env.local` enable the helper in dev mode.
+These tests **auto-skip** when the sign-in helper is absent — production builds,
+or CI without the test-account secrets — so they never fail for a
+missing-by-design reason. The helper is enabled by `VITE_TEST_EMAIL` /
+`VITE_TEST_PASSWORD` in `.env.local` (locally) and by GitHub secrets (in CI).
 
-## Why CI only runs the logged-out tests
+## The test account
 
-The logged-in tests sign into a **real account**. Running them in CI would mean
-storing that password as a GitHub secret and having CI read live production data
-on every push. The clean way to enable logged-in coverage in CI is a **dedicated
-throwaway test account** (not your personal one). Once that exists:
+Both layers run in CI on every push. The logged-in tests sign into a **dedicated
+throwaway account** (`adamdenney33+e2e@googlemail.com`) — NOT your personal
+account and NOT any customer — created read-only-safe for exactly this purpose.
+They never write data or trigger a payment.
 
-1. Add its email/password as GitHub Actions secrets.
-2. Point `VITE_TEST_EMAIL` / `VITE_TEST_PASSWORD` at it.
-3. Switch the CI step from `npm run test:smoke` to `npm run test:e2e`.
+- **Locally:** `.env.local` holds the account's email + password (gitignored).
+- **In CI:** the same values live as GitHub Actions secrets `TEST_EMAIL` /
+  `TEST_PASSWORD`, passed to the test step in `.github/workflows/deploy.yml`.
 
-Until then, the logged-in tests are your **pre-push** check, and the logged-out
-tests are the **automatic deploy gate**.
+If you ever need to recreate or rotate it: sign the account up through Supabase,
+confirm its email, then update both `.env.local` and the two GitHub secrets
+(`gh secret set TEST_EMAIL` / `gh secret set TEST_PASSWORD`).
 
 ## Adding a test
 
