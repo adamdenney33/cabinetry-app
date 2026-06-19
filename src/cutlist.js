@@ -71,7 +71,7 @@ let _dragSrc = null;
 /** @type {any} */
 let _dragTable = null;
 
-// Project-state tracking — set by loadProject / _clSaveProjectByName, cleared by _doClearAll.
+// Project-state tracking — set by loadProject / _clSaveProjectByName, reset when a library cut list is opened or a new one is started.
 /** @type {number | null} */
 let _clCurrentProjectId = null;
 let _clCurrentProjectName = '';
@@ -1366,27 +1366,6 @@ function onDrop(e, table, idx) {
 }
 function onDragEnd() {
   document.querySelectorAll('.cl-drag-over').forEach(r => r.classList.remove('cl-drag-over'));
-}
-
-function clearCutList() {
-  _confirm('Start a new cut list? Current parts and panels will be cleared.', () => _doClearAll()); return;
-}
-function _doClearAll() {
-  pieces = []; sheets = []; edgeBands = []; _pieceId = 1; _sheetId = 1; _edgeBandId = 1; pieceColorIdx = 0; results = null;
-  _clSelectedIds = new Set(); _clSelectionAnchorId = null;
-  ['pc_cl_pieces','pc_cl_sheets','pc_cl_pid','pc_cl_sid','pc_cl_colorIdx','pc_cl_sheetColorIdx','pc_cl_edgebands','pc_cl_ebid'].forEach(k => localStorage.removeItem(k));
-  // Reset project tracking — clearing means a fresh, unloaded cut list.
-  _clCurrentProjectId = null;
-  _clCurrentProjectName = '';
-  _clCurrentCutlistId = null;
-  _clCurrentCutlistName = '';
-  _clDirty = false;
-  const inp = /** @type {HTMLInputElement|null} */ (_byId('cl-project'));
-  if (inp) inp.value = '';
-  _renderClCurrentProject();
-  renderPieces(); renderSheets();
-  if (typeof renderEdgeBands === 'function') { try { renderEdgeBands(); } catch(e) {} }
-  /** @type {HTMLElement} */ (_byId('results-area')).innerHTML = '<div class="empty-state"><div class="empty-icon" style="opacity:.18"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12.00 1.70 L12.90 3.45 L15.94 2.48 L16.10 4.44 L19.28 4.72 L18.68 6.59 L21.52 8.06 L20.25 9.56 L22.30 12.00 L20.55 12.90 L21.52 15.94 L19.56 16.10 L19.28 19.28 L17.41 18.68 L15.94 21.52 L14.44 20.25 L12.00 22.30 L11.10 20.55 L8.06 21.52 L7.90 19.56 L4.72 19.28 L5.32 17.41 L2.48 15.94 L3.75 14.44 L1.70 12.00 L3.45 11.10 L2.48 8.06 L4.44 7.90 L4.72 4.72 L6.59 5.32 L8.06 2.48 L9.56 3.75 Z"/><circle cx="12" cy="12" r="1.5"/></svg></div><h3>Ready to Optimize</h3><p>Add stock panels and cut pieces, then click "Optimize Cut Layout"</p></div>';
 }
 
 // ── ROW SELECTION — click-outside to clear ──
@@ -4870,6 +4849,8 @@ async function renderCLCutListLibraryView() {
     ${_renderContentHeader({ iconSvg: _CH_ICON_CUTLIST, title: 'Cut List Library', addOnclick: '_clStartNewCutlist()' })}
     <div class="lib-filter-row">
       <input type="text" id="cl-lib-filter" class="lib-filter-input" placeholder="Filter by name..." value="${_escHtml(q)}" oninput="renderCLCutListLibraryView()">
+      <button class="btn btn-outline lib-filter-btn" onclick="exportCSV('pieces')" title="Export the open cut list's parts to CSV">&darr; Export</button>
+      <button class="btn btn-outline lib-filter-btn" onclick="triggerImportCSV('pieces')" title="Import parts into the open cut list from CSV">&uarr; Import</button>
     </div>
     <div id="cl-lib-grid" style="display:flex;flex-direction:column;gap:8px">
       <div style="font-size:12px;color:var(--muted);text-align:center;padding:20px">Loading…</div>
