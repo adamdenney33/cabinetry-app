@@ -34,6 +34,23 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      # Smoke gate: boot the app in a headless browser and verify it loads, every
+      # classic script is served, and the login screen works. If any of this
+      # breaks, the deploy is blocked before it reaches customers. These are the
+      # logged-OUT checks only — they need no account and no secrets. The fuller
+      # logged-in suite (tests/e2e/smoke.app.spec.js) runs locally via
+      # `npm run test:e2e`; it auto-skips here because no test credentials are set.
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Smoke tests
+        run: npm run test:smoke
+        env:
+          # The dev server the tests boot needs these to start. Same publishable
+          # values as the Build step below — safe for client exposure (RLS).
+          VITE_SUPABASE_URL: https://mhzneruvlfmhnsohfrdo.supabase.co
+          VITE_SUPABASE_ANON_KEY: sb_publishable_4lHAEgWPQz8DX8TH2KnuiA_oimj8J__
+
       - name: Build
         run: npm run build
         env:

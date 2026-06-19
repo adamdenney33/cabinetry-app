@@ -22,6 +22,12 @@ vite.config.mjs.timestamp-*.mjs
 .playwright-mcp/
 ig-dashboard/
 
+# Playwright smoke-test artifacts (regenerated on each run)
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+
 # Local env (publishable Supabase keys live here in dev)
 .env
 .env.local

@@ -23,6 +23,35 @@ Companion docs: `SPEC.md` (refactor history), `SCHEMA.md` (DB schema),
 
 ## Active Work
 
+### Smoke-test suite + CI deploy gate (2026-06-19)
+
+First automated tests in the project. Playwright smoke suite in `tests/e2e/`
+(`tests/README.md` documents it). Goal: catch "an edit broke a whole flow"
+before it deploys, instead of via customers.
+
+- ✅ **T.1 — Playwright setup**: `@playwright/test` + chromium, `playwright.config.js`
+  (auto-starts the Vite dev server, serial, single worker), npm scripts
+  `test:e2e` / `test:e2e:ui` / `test:smoke`, gitignore for artifacts.
+- ✅ **T.2 — logged-out boot tests** (`smoke.public.spec.js`): app boots, every
+  classic `src/*.js` script loads (404 → red), no uncaught error on boot,
+  auth toggle + empty-field validation. No account/secrets — runs in CI.
+- ✅ **T.3 — logged-in render tests** (`smoke.app.spec.js`): sign in via the
+  built-in `window._signInForTesting()` helper, assert dashboard + all 8
+  sections + quote/order editor forms render without throwing. **Read-only**
+  (real account + live Stripe — never writes/charges). Auto-skips where the
+  helper is absent (prod build / CI without creds).
+- ✅ **T.4 — verified**: full suite green (7 tests); confirmed the boot test
+  catches a real break (hid `src/auth.js` → red naming the file → restored).
+- ✅ **T.5 — CI deploy gate**: `deploy.yml` runs `npm run test:smoke` after
+  typecheck, before build/deploy — a failing smoke test blocks the production
+  deploy.
+
+  **Outstanding (not blocking):** create a dedicated throwaway test account so
+  the logged-in suite can also run in CI (today CI runs logged-out only; the
+  logged-in suite is the local pre-push check). Then add its creds as GitHub
+  secrets and switch the CI step to `npm run test:e2e`. Extend coverage by
+  adding a read-only test for each customer-reported bug as it's fixed.
+
 ### Production email sends — welcome v2 + founders' welcome automation (2026-06-13)
 
 Founder-approved copy synced from the Cowork email-plan artifact

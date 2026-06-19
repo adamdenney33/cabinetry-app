@@ -19,10 +19,14 @@
     "render:ig": "node scripts/render-ig.mjs",
     "pdf:ig": "python3 scripts/build-ig-pdfs.py",
     "studio:ig-reel": "remotion studio remotion-ig/reel-entry.ts --no-open",
-    "render:ig-reel": "node scripts/render-reel.mjs"
+    "render:ig-reel": "node scripts/render-reel.mjs",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:smoke": "playwright test smoke.public.spec.js"
   },
   "devDependencies": {
     "@babel/core": "^7.29.0",
+    "@playwright/test": "^1.61.0",
     "@remotion/bundler": "^4.0.464",
     "@remotion/cli": "^4.0.464",
     "@remotion/google-fonts": "^4.0.464",
