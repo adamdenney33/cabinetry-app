@@ -104,6 +104,7 @@ Spend history: creative test (29 May–10 Jun) £326.73 → 915 LPVs @ £0.36; p
 | 2026-06-12 | Founders email unblocked (claim link live); welcome email drafted |
 | 2026-06-13 | MARKETING.md created; Marketing HQ dashboard launched; ads audit (this doc § 3–7) |
 | 2026-06-19 | **Meta ads PAUSED by Adam to reassess.** Relaunch plan agreed — see § 10 |
+| 2026-06-19 | **Tracking verified server-side:** CAPI signup token SET (live probe), dedup key correct, trigger enabled, POSTHOG_KEY working (`pro_subscription_started` fired 31 May). Gap found: `stripe-webhook` no longer sends Meta CAPI Purchase — re-add before a purchase-optimised relaunch |
 
 ## 9. Operating cadence
 
@@ -133,8 +134,8 @@ Spend history: creative test (29 May–10 Jun) £326.73 → 915 LPVs @ £0.36; p
 | Offer | Trial objective only | Keep trial objective + add £10/day founders-retargeting against new warm audiences |
 
 ### Prep checklist while paused (no spend)
-1. Build 2 custom audiences (video viewers 25%/180d + site visitors/30d) — unblocks retargeting; needs time to populate.
-2. Verify CAPI dedupe in Events Manager + set `POSTHOG_KEY`. Non-negotiable before spend resumes.
+1. Build 2 custom audiences (video viewers 25%/180d + site visitors/30d) — unblocks retargeting; needs time to populate. **Manual in Ads Manager (API can't create audiences).**
+2. ✅ Tracking verified server-side 19 Jun — CAPI signup token SET, dedup key correct, trigger enabled, POSTHOG_KEY working. Remaining manual check: confirm the Server channel + dedup in Meta Events Manager. **GAP to fix before a purchase-optimised relaunch:** `stripe-webhook` no longer sends a Meta CAPI Purchase/Subscribe — re-add it so Meta can optimise toward paid, not just signups.
 3. Get the welcome/activation email flow live (gate #2).
 4. Draft 2–3 new reel creatives.
 5. **24 Jun — trial→paid cohort review = the go/no-go gate.**
