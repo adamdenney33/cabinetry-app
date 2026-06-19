@@ -1797,8 +1797,14 @@ async function _loadCBClientById(clientId, clientName) {
   if (_cbLinesSyncTimer) { clearTimeout(_cbLinesSyncTimer); _cbLinesSyncTimer = null; }
   _cbSuppressDirty = true;
   cbEditingQuoteId = null;
+  // Detach any order-editing context too (mirrors _exitClient_cabinet /
+  // _cbNewClient). A stale cbEditingOrderId takes precedence in the autosave
+  // sync (_syncCBLinesToOrder, see the cbEditingOrderId branch above) and would
+  // route this new quote's cabinets into the previously-edited order.
+  cbEditingOrderId = null;
   cbEditingOriginalLines = null;
   localStorage.removeItem('pc_cb_editing_quote_id');
+  localStorage.removeItem('pc_cb_editing_order_id');
   cbLines = [];
   cbNextId = 1;
   cbScratchpad = null;
