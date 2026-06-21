@@ -1424,6 +1424,7 @@ export type Database = {
           name: string | null
           notes: string | null
           quote_number: string | null
+          rate_card: Json | null
           share_settings: Json
           share_token: string | null
           status: string | null
@@ -1445,6 +1446,7 @@ export type Database = {
           name?: string | null
           notes?: string | null
           quote_number?: string | null
+          rate_card?: Json | null
           share_settings?: Json
           share_token?: string | null
           status?: string | null
@@ -1466,6 +1468,7 @@ export type Database = {
           name?: string | null
           notes?: string | null
           quote_number?: string | null
+          rate_card?: Json | null
           share_settings?: Json
           share_token?: string | null
           status?: string | null
