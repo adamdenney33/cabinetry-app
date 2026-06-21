@@ -1376,8 +1376,10 @@ canvas { display: block; }
 .ll-link { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
 .ll-link code { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 7px 10px; }
 .ll-copy { width: auto !important; font-size: 11px; padding: 6px 12px; }
-.ll-link-actions { display: flex; gap: 8px; margin-bottom: 14px; }
+.ll-link-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
 .ll-link-actions .btn { width: auto; font-size: 12px; padding: 7px 12px; }
+.ll-copy-row { display: flex; align-items: center; gap: 8px; margin-top: 12px; font-size: 13px; cursor: pointer; }
+.ll-copy-row input { width: auto; margin: 0; flex: none; }
 .ll-empty { font-size: 12px; color: var(--muted); background: var(--surface2); border: 1px dashed var(--border); border-radius: 8px; padding: 12px; line-height: 1.5; margin-bottom: 12px; }
 /* Amber notice: a customer requested spec changes on the live page and the
    prices were just recalculated when this tab opened. */
