@@ -178,7 +178,7 @@ function calcCBSections(line) {
   const hardware = cabinetHardware + doorHardware + drawerHardware;
 
   // ── Extras (custom add-ons; markup applies since they're material-side) ──
-  const extras = (line.extras || []).reduce(/** @param {number} s @param {any} e */ (s, e) => s + (parseFloat(e.cost) || 0), 0) * matMarkupMult;
+  const extras = (line.extras || []).reduce(/** @param {number} s @param {any} e */ (s, e) => s + (parseFloat(e.cost) || 0) * (parseInt(e.qty) || 1), 0) * matMarkupMult;
 
   return { cabinet, doors, drawers, drawerFronts, drawerBoxes, shelves, hardware, cabinetHardware, doorHardware, drawerHardware, extras };
 }
@@ -258,7 +258,7 @@ function calcCBLine(line) {
   if (line.drawers > 0) matCost += drawerBoxSurfArea     * _finishPricePerM2(line.drawerBoxFinish   || line.finish);
 
   // Extras cost
-  const extrasCost = (line.extras||[]).reduce(/** @param {number} s @param {any} e */ (s, e) => s + (parseFloat(e.cost)||0), 0);
+  const extrasCost = (line.extras||[]).reduce(/** @param {number} s @param {any} e */ (s, e) => s + (parseFloat(e.cost)||0) * (parseInt(e.qty)||1), 0);
   matCost += extrasCost;
 
   // Edge banding

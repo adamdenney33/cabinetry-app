@@ -840,7 +840,7 @@ function cbAddExtra(lineId) {
   const line = cbScratchpad && cbScratchpad.id === lineId ? cbScratchpad : cbLines.find(l=>l.id===lineId);
   if (!line) return;
   if (!line.extras) line.extras = [];
-  line.extras.push({label:'',cost:0});
+  line.extras.push({label:'',cost:0,qty:1});
   renderCBEditor();
   _cbScheduleAutosave();
 }
@@ -849,6 +849,7 @@ function cbUpdateExtra(lineId, idx, field, val) {
   const line = cbScratchpad && cbScratchpad.id === lineId ? cbScratchpad : cbLines.find(l=>l.id===lineId);
   if (!line || !line.extras || !line.extras[idx]) return;
   if (field==='cost') line.extras[idx].cost = parseFloat(val)||0;
+  else if (field==='qty') { line.extras[idx].qty = parseInt(val)||1; renderCBEditor(); }
   else line.extras[idx].label = val;
   renderCBResults();
   _cbScheduleAutosave();
