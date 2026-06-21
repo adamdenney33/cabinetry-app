@@ -58,6 +58,11 @@ let cbSettings = {
     { name: 'Inset', price: 25 },
     { name: 'Face Frame', price: 35 },
   ],
+  // User-defined extra panel types, beyond the 5 built-ins (shelf/partition/end
+  // panel). Each: { id, name, hrs, basis } where basis sets the face-area /
+  // cut-list dimension rule — 'WD' (shelf-like), 'HD' (side-like), 'WH' (face-like).
+  // Per-cabinet quantities live on line.extraPanels keyed by type id.
+  extraPanelTypes: [],
   labourTimes: {
     carcass: 1.5, door: 0.4, drawer: 0.6, shelf: 0.25, finishPerM2: 0.5,
   }
@@ -220,6 +225,7 @@ function cbDefaultLine(type) {
     drawerBoxFinish: cbSettings.finishes?.[0]?.name || 'None',
     drawerInnerMat: '',
     shelves: preset?.shelves || 0, adjShelves: 0, looseShelves: 0, partitions: 0, endPanels: 0,
+    extraPanels: {},
     hwItems: [],
     doorHwItems: [],
     drawerHwItems: [],
@@ -298,6 +304,40 @@ function saveCBSettings() {
 function addCBMaterial() { cbSettings.materials.push({name:'New Material',price:0}); saveCBSettings(); renderCBRates(); }
 function addCBHardware() { cbSettings.hardware.push({name:'New Hardware',price:0}); saveCBSettings(); renderCBRates(); }
 function addCBFinish() { if (!cbSettings.finishes) cbSettings.finishes = []; cbSettings.finishes.push({name:'New Finish',price:0}); saveCBSettings(); renderCBRates(); }
+
+// ── Extra Panel Types (custom, user-defined) ──
+function _epId() { return 'ep_' + Math.random().toString(36).slice(2, 9); }
+/** Add a new custom extra-panel type to My Rates. Defaults to a vertical
+ *  side-style panel (basis 'HD') — gables, dividers and fillers are the common
+ *  case; the user can switch the basis per row. */
+function addCBExtraPanel() {
+  if (!cbSettings.extraPanelTypes) cbSettings.extraPanelTypes = [];
+  cbSettings.extraPanelTypes.push({ id: _epId(), name: 'New Panel', hrs: 0.3, basis: 'HD' });
+  saveCBSettings(); renderCBRates(); renderCBPanel();
+}
+/** Stepper +/- for a custom panel's per-cabinet quantity (mirrors cbStepField,
+ *  but writes into the nested cbScratchpad.extraPanels map keyed by type id). */
+/** @param {string} typeId @param {number} dir */
+function cbStepExtraPanel(typeId, dir) {
+  if (!cbScratchpad) return;
+  if (!cbScratchpad.extraPanels) cbScratchpad.extraPanels = {};
+  const cur = parseFloat(cbScratchpad.extraPanels[typeId]) || 0;
+  cbScratchpad.extraPanels[typeId] = Math.max(0, cur + dir);
+  renderCBEditor();
+  renderCBResults();
+  _cbScheduleAutosave();
+}
+/** Typed quantity for a custom panel (mirrors cbUpdateField's numeric branch;
+ *  no editor re-render so the focused input keeps focus while typing). */
+/** @param {string} typeId @param {any} val */
+function cbUpdateExtraPanel(typeId, val) {
+  if (!cbScratchpad) return;
+  if (!cbScratchpad.extraPanels) cbScratchpad.extraPanels = {};
+  cbScratchpad.extraPanels[typeId] = Math.max(0, parseFloat(val) || 0);
+  _refreshCBLiveCosts();
+  renderCBResults();
+  _cbScheduleAutosave();
+}
 
 // ── Line Persistence ──
 function loadCBLines() {

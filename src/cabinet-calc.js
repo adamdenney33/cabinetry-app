@@ -36,6 +36,45 @@ function _contingencyMult() {
   return 1 + (cbSettings.contingencyPct || 0) / 100;
 }
 
+// ── Custom Extra Panels (user-defined types in My Rates) ──
+// A panel's "basis" sets which two cabinet dimensions form its face — mirroring
+// the built-ins: shelves = Width×Depth, end panels/partitions = Height×Depth,
+// backs/faces = Width×Height. Dimensions are passed in whatever unit the caller
+// uses (metres for cost, mm for the cut list); T is the matching thickness.
+/** @param {string} basis @param {number} innerW @param {number} W @param {number} H @param {number} D @param {number} T */
+function _extraPanelArea(basis, innerW, W, H, D, T) {
+  if (basis === 'WD') return innerW * (D - T);   // shelf-like (lies between sides)
+  if (basis === 'WH') return W * H;              // back/face-like
+  return H * D;                                  // 'HD' — side/partition-like (default)
+}
+/** Cut-list piece dimensions {w, h} for a basis. @param {string} basis @param {number} W @param {number} H @param {number} D @param {number} iW @param {number} T */
+function _extraPanelCutDims(basis, W, H, D, iW, T) {
+  if (basis === 'WD') return { w: iW, h: D - T };
+  if (basis === 'WH') return { w: W, h: H };
+  return { w: H, h: D }; // 'HD'
+}
+/** Total per-cabinet count of all custom panels on a line. @param {any} cab */
+function _extraPanelCount(cab) {
+  const m = cab.extraPanels || {};
+  let n = 0;
+  for (const t of (cbSettings.extraPanelTypes || [])) n += parseFloat(m[t.id]) || 0;
+  return n;
+}
+/** Raw (pre-markup/pre-contingency) material cost + labour hours for a line's
+ *  custom panels. matPricePerM2 is mp(line.material) from the caller's scope.
+ *  @param {any} line @param {number} innerW @param {number} W @param {number} H @param {number} D @param {number} T @param {number} matPricePerM2 */
+function _extraPanelTotals(line, innerW, W, H, D, T, matPricePerM2) {
+  const map = line.extraPanels || {};
+  let matRaw = 0, hrs = 0;
+  for (const t of (cbSettings.extraPanelTypes || [])) {
+    const qty = parseFloat(map[t.id]) || 0;
+    if (!qty) continue;
+    matRaw += qty * _extraPanelArea(t.basis, innerW, W, H, D, T) * matPricePerM2;
+    hrs += qty * (parseFloat(t.hrs) || 0);
+  }
+  return { matRaw, hrs };
+}
+
 // Per-section cost breakdown for the editor's live displays.
 // Each section's total = material (with materialMarkup) + labour (× labourRate)
 //                       + hardware specific to that section.
@@ -157,8 +196,10 @@ function calcCBSections(line) {
 
   // ── Shelves & Partitions (material + labour for all shelf/partition/end-panel kinds) ──
   const shelfArea = innerW * (D - T);
+  const _ep = _extraPanelTotals(line, innerW, W, H, D, T, mp(line.material));
   let shelvesMat = ((line.shelves || 0) + (line.adjShelves || 0)) * shelfArea * mp(line.material);
   shelvesMat += (line.endPanels || 0) * H * D * mp(line.material);
+  shelvesMat += _ep.matRaw;                              // custom panels (raw; markup applied next)
   shelvesMat *= matMarkupMult;
   const shelvesLabour = (
       (line.shelves || 0)     * (lt.fixedShelf || 0.3)
@@ -166,6 +207,7 @@ function calcCBSections(line) {
     + (line.looseShelves || 0)* (lt.looseShelf || 0.2)
     + (line.partitions || 0)  * (lt.partition || 0.5)
     + (line.endPanels || 0)   * (lt.endPanel || 0.3)
+    + _ep.hrs                                            // custom panels labour
   ) * cont * labourRate;
   const shelves = shelvesMat + shelvesLabour;
 
@@ -249,6 +291,9 @@ function calcCBLine(line) {
   matCost += ((line.shelves || 0) + (line.adjShelves || 0)) * shelfArea * mp(line.material);
   // End panels
   matCost += (line.endPanels || 0) * H * D * mp(line.material);
+  // Custom extra panels — material (face area × carcass material) + labour (added below).
+  const _epLine = _extraPanelTotals(line, innerW, W, H, D, T, mp(line.material));
+  matCost += _epLine.matRaw;
 
   // Finishing cost — per-component, fall back to line.finish for legacy data.
   const carcassSurfArea = 2*H*D + 2*innerW*D + W*H;
@@ -304,6 +349,7 @@ function calcCBLine(line) {
   autoLabour += (line.looseShelves || 0) * (lt.looseShelf || 0.2);
   autoLabour += (line.partitions || 0) * (lt.partition || 0.5);
   autoLabour += (line.endPanels || 0) * (lt.endPanel || 0.3);
+  autoLabour += _epLine.hrs;  // custom extra panels (qty × hrs)
   // Packaging + installation — per-cabinet packing/wrapping and on-site install
   // time (cbSettings.packagingHours / cbSettings.installationHours, set in
   // My Rates → Core Rates). Billable like the other labour times: flow into
@@ -345,6 +391,7 @@ function _cabinetPartCount(cab) {
   n += (cab.drawers || 0) * 2;
   n += (cab.shelves || 0) + (cab.adjShelves || 0) + (cab.looseShelves || 0);
   n += (cab.partitions || 0) + (cab.endPanels || 0);
+  n += _extraPanelCount(cab);
   return n;
 }
 
@@ -385,5 +432,11 @@ function _cabinetPartsList(cab) {
   if (shelfCount > 0) add(name + ' — Shelf', iW, D - T, shelfCount);
   if (cab.partitions > 0) add(name + ' — Partition', H, D, cab.partitions);
   if (cab.endPanels > 0) add(name + ' — End Panel', H, D, cab.endPanels);
+  // Custom extra panels — one cut-list row per type with a quantity, sized by basis.
+  const epMap = cab.extraPanels || {};
+  for (const t of (cbSettings.extraPanelTypes || [])) {
+    const q = parseFloat(epMap[t.id]) || 0;
+    if (q > 0) { const dim = _extraPanelCutDims(t.basis, W, H, D, iW, T); add(name + ' — ' + (t.name || 'Panel'), dim.w, dim.h, q); }
+  }
   return parts;
 }

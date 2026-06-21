@@ -252,6 +252,25 @@ function renderCBRates() {
     </div>
   </div>`).join('');
 
+  // Custom extra-panel types — editable name + size basis + hrs + remove, shown
+  // below the 5 fixed built-ins. basis drives the face-area & cut-list dimensions.
+  const epTypes = cbSettings.extraPanelTypes || [];
+  const epBases = [['HD','H × D'],['WD','W × D'],['WH','W × H']];
+  /** @param {string} cur @param {number} i */
+  const epBasisSelect = (cur, i) => `<select title="Panel size basis (which two cabinet dimensions form its face)" onchange="cbSettings.extraPanelTypes[${i}].basis=this.value;saveCBSettings();renderCBPanel()" style="font-size:10px;padding:3px 2px;border:1px solid var(--border);border-radius:4px;background:var(--surface2);color:var(--text);max-width:62px">${epBases.map(/** @param {string[]} b */ b=>`<option value="${b[0]}"${cur===b[0]?' selected':''}>${b[1]}</option>`).join('')}</select>`;
+  const epCustomRows = epTypes.map(/** @param {any} t @param {number} i */ (t,i) => `<div class="cb-mat-row" style="margin-top:4px">
+    <input value="${t.name}" placeholder="Name" onblur="cbSettings.extraPanelTypes[${i}].name=this.value;saveCBSettings();renderCBPanel()">
+    ${epBasisSelect(t.basis, i)}
+    <div style="display:flex;align-items:center;border:1px solid var(--border);border-radius:4px;overflow:hidden;background:var(--surface2)">
+      <span style="font-size:10px;color:var(--muted);padding:3px 4px 3px 6px;background:var(--surface)">hrs</span>
+      <input type="number" value="${t.hrs}" step="0.05" style="border:none;border-radius:0;padding:3px 6px 3px 2px;width:46px" onblur="cbSettings.extraPanelTypes[${i}].hrs=parseFloat(this.value)||0;saveCBSettings();renderCBPanel()">
+    </div>
+    <button onclick="cbSettings.extraPanelTypes.splice(${i},1);saveCBSettings();renderCBRates();renderCBPanel()" style="font-size:16px;background:none;border:none;color:var(--muted);cursor:pointer" title="Remove panel type">&times;</button>
+  </div>`).join('');
+  const epCustomLabel = `<div style="font-size:10px;color:var(--muted);margin:10px 0 0;padding-top:8px;border-top:1px dashed var(--border)">Custom panels${epTypes.length?'':' — none yet'}</div>`;
+  const epAddBtn = `<button class="cl-add-btn" onclick="addCBExtraPanel()" style="font-size:11px;padding:4px 8px;margin:6px 0 0">+ Add panel type</button>`;
+  const extraPanelsContent = labourContent + epCustomLabel + epCustomRows + epAddBtn;
+
   if (!cbSettings.edgeBanding) cbSettings.edgeBanding = [{name:'Iron-on Veneer',price:3},{name:'PVC 1mm',price:4},{name:'PVC 2mm',price:5},{name:'Solid Timber',price:8}];
 
   // Single Stock link — materials, hardware, finishes, edge banding all live in Stock
@@ -273,7 +292,7 @@ function renderCBRates() {
     ${stockLink}
     ${section('core', 'Core Rates', '7 rates', coreContent)}
     ${section('carcassTypes', 'Carcass', '('+carcassTypes.length+')', typeListItems(carcassTypes, 'cbSettings.carcassTypes', 0.4))}
-    ${section('labour', 'Extra Panels', '5 rates', labourContent)}
+    ${section('labour', 'Extra Panels', (5+epTypes.length)+' rates', extraPanelsContent)}
     ${section('doorTypes', 'Door', '('+doorTypes.length+')', typeListItems(doorTypes, 'cbSettings.doorTypes', 0.4))}
     ${section('drawerFrontTypes', 'Drawer Front', '('+drawerFrontTypes.length+')', typeListItems(drawerFrontTypes, 'cbSettings.drawerFrontTypes', 0.3))}
     ${section('drawerBoxTypes', 'Drawer Box', '('+drawerBoxTypes.length+')', typeListItems(drawerBoxTypes, 'cbSettings.drawerBoxTypes', 0.8))}
@@ -411,6 +430,11 @@ function renderCBEditor() {
   };
   /** @param {string} field @param {any} val @param {number} [min] */
   const stepper = (field, val, min) => `<div class="cl-stepper"><button class="cl-step-btn" onclick="cbStepField('${field}',-1)">−</button><input type="number" class="cl-input cl-qty-input" value="${val}" min="${min||0}" style="font-size:14px;width:42px" onchange="cbUpdateField('${field}',this.value)"><button class="cl-step-btn" onclick="cbStepField('${field}',1)">+</button></div>`;
+  // Stepper variant for custom panels — writes into the nested line.extraPanels map.
+  /** @param {string} id @param {any} val */
+  const epStepper = (id, val) => `<div class="cl-stepper"><button class="cl-step-btn" onclick="cbStepExtraPanel('${id}',-1)">−</button><input type="number" class="cl-input cl-qty-input" value="${val}" min="0" style="font-size:14px;width:42px" onchange="cbUpdateExtraPanel('${id}',this.value)"><button class="cl-step-btn" onclick="cbStepExtraPanel('${id}',1)">+</button></div>`;
+  // Total panel count incl. custom — drives the section header summary.
+  const shelfTot = (line.shelves||0)+(line.adjShelves||0)+(line.looseShelves||0)+(line.partitions||0)+(line.endPanels||0)+_extraPanelCount(line);
   /** @param {string} sec */
   const so = sec => cbOpenSections.has(line.id + '-' + sec);
   /** @param {string} sec */
@@ -476,8 +500,8 @@ function renderCBEditor() {
         <div style="${SH}" onclick="toggleCBSection(${line.id},'shelves')">
           ${chev('shelves')}
           <span style="${ST}">Shelves & Partitions</span>
-          <span id="cb-live-shelves">${(line.shelves+(line.adjShelves||0)+(line.looseShelves||0)+(line.partitions||0)+(line.endPanels||0))>0 ? liveCost(sec.shelves) : ''}</span>
-          <span id="cb-live-shelves-count" style="${SS}">${(line.shelves+(line.adjShelves||0)+(line.looseShelves||0)+(line.partitions||0)+(line.endPanels||0))>0?(line.shelves+(line.adjShelves||0)+(line.looseShelves||0)+(line.partitions||0)+(line.endPanels||0))+' total':'None'}</span>
+          <span id="cb-live-shelves">${shelfTot>0 ? liveCost(sec.shelves) : ''}</span>
+          <span id="cb-live-shelves-count" style="${SS}">${shelfTot>0?shelfTot+' total':'None'}</span>
         </div>
         <div ${SC('shelves')}>
           <div class="form-row" style="margin-bottom:6px;align-items:flex-end">
@@ -489,6 +513,9 @@ function renderCBEditor() {
             <div class="form-group" style="flex:0 0 auto;${FM}"><label style="${LB}">Partition</label>${stepper('partitions', line.partitions||0, 0)}</div>
             <div class="form-group" style="flex:0 0 auto;${FM}"><label style="${LB}">End Panel</label>${stepper('endPanels', line.endPanels||0, 0)}</div>
           </div>
+          ${(cbSettings.extraPanelTypes||[]).length ? `<div class="form-row" style="margin:6px 0 0;align-items:flex-end;flex-wrap:wrap">
+            ${(cbSettings.extraPanelTypes||[]).map(/** @param {any} t */ t=>`<div class="form-group" style="flex:0 0 auto;${FM}"><label style="${LB}">${_escHtml(t.name||'Panel')}</label>${epStepper(t.id, (line.extraPanels&&line.extraPanels[t.id])||0)}</div>`).join('')}
+          </div>` : ''}
         </div>
       </div>
 
@@ -623,7 +650,7 @@ function _refreshCBLiveCosts() {
   set('cb-live-drawer-fronts-count', line.drawers>0?line.drawers+' front'+(line.drawers!==1?'s':''):'None');
   set('cb-live-drawer-boxes', line.drawers > 0 ? liveCost(sec.drawerBoxes) : '');
   set('cb-live-drawer-boxes-count', line.drawers>0?line.drawers+' box'+(line.drawers!==1?'es':''):'None');
-  const shelfTotal = (line.shelves||0)+(line.adjShelves||0)+(line.looseShelves||0)+(line.partitions||0)+(line.endPanels||0);
+  const shelfTotal = (line.shelves||0)+(line.adjShelves||0)+(line.looseShelves||0)+(line.partitions||0)+(line.endPanels||0)+_extraPanelCount(line);
   set('cb-live-shelves', shelfTotal > 0 ? liveCost(sec.shelves) : '');
   set('cb-live-shelves-count', shelfTotal > 0 ? shelfTotal + ' total' : 'None');
   set('cb-live-extras', sec.extras > 0 ? liveCost(sec.extras) : '');
@@ -802,7 +829,7 @@ function renderCBResults() {
         </div>
         <!-- Sub details -->
         <div style="margin-top:6px;padding-top:6px;border-top:1px solid var(--border2);font-size:11px;color:var(--muted);display:flex;gap:8px;flex-wrap:wrap">
-          ${line.finish&&line.finish!=='None'?`<span>${_escHtml(line.finish)}</span>`:''}${line.construction?`<span>${_escHtml(line.construction)}</span>`:''}${line.baseType&&line.baseType!=='None'?`<span>${_escHtml(line.baseType)}</span>`:''}${line.doors>0?`<span>${line.doors} door${line.doors!==1?'s':''}</span>`:''}${line.drawers>0?`<span>${line.drawers} drawer${line.drawers!==1?'s':''}</span>`:''}${(line.shelves||0)+(line.adjShelves||0)+(line.looseShelves||0)>0?`<span>${(line.shelves||0)+(line.adjShelves||0)+(line.looseShelves||0)} shelves</span>`:''}${(line.partitions||0)>0?`<span>${line.partitions} partition${line.partitions!==1?'s':''}</span>`:''}${(line.endPanels||0)>0?`<span>${line.endPanels} end panel${line.endPanels!==1?'s':''}</span>`:''}${line.room?`<span>${_escHtml(line.room)}</span>`:''}
+          ${line.finish&&line.finish!=='None'?`<span>${_escHtml(line.finish)}</span>`:''}${line.construction?`<span>${_escHtml(line.construction)}</span>`:''}${line.baseType&&line.baseType!=='None'?`<span>${_escHtml(line.baseType)}</span>`:''}${line.doors>0?`<span>${line.doors} door${line.doors!==1?'s':''}</span>`:''}${line.drawers>0?`<span>${line.drawers} drawer${line.drawers!==1?'s':''}</span>`:''}${(line.shelves||0)+(line.adjShelves||0)+(line.looseShelves||0)>0?`<span>${(line.shelves||0)+(line.adjShelves||0)+(line.looseShelves||0)} shelves</span>`:''}${(line.partitions||0)>0?`<span>${line.partitions} partition${line.partitions!==1?'s':''}</span>`:''}${(line.endPanels||0)>0?`<span>${line.endPanels} end panel${line.endPanels!==1?'s':''}</span>`:''}${_extraPanelCount(line)>0?`<span>${_extraPanelCount(line)} panel${_extraPanelCount(line)!==1?'s':''}</span>`:''}${line.room?`<span>${_escHtml(line.room)}</span>`:''}
         </div>
       </div>
       <!-- Actions -->
