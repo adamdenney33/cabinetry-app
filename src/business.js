@@ -370,6 +370,40 @@ async function _healLogoToDB() {
   }
 }
 
+/**
+ * Reverse of _healLogoToDB: when the DB has a logo_url but THIS device's
+ * localStorage has none — a second device, or after clearing site data — fetch
+ * the public image and cache it as a data URL in pc_biz_logo. The PDF/print
+ * header reads only getBizLogo()/localStorage, so without this a synced-from-DB
+ * device would render quotes/orders with no logo even though the live link has
+ * it. business-assets is a public bucket so the cross-origin GET is allowed;
+ * failure is non-fatal (PDF just falls back to the name, as before).
+ * @param {string} url
+ */
+let _logoHydrateDone = false;
+async function _hydrateLogoToLS(/** @type {string} */ url) {
+  if (_logoHydrateDone || !url || localStorage.getItem('pc_biz_logo')) return;
+  _logoHydrateDone = true;
+  try {
+    const res = await fetch(url, { cache: 'force-cache' });
+    if (!res.ok) { _logoHydrateDone = false; return; }
+    const blob = await res.blob();
+    const dataUrl = await /** @type {Promise<string>} */ (new Promise((resolve, reject) => {
+      const fr = new FileReader();
+      fr.onload = () => resolve(String(fr.result || ''));
+      fr.onerror = () => reject(fr.error);
+      fr.readAsDataURL(blob);
+    }));
+    if (dataUrl.startsWith('data:image/')) {
+      localStorage.setItem('pc_biz_logo', dataUrl);
+      loadLogoPreview();
+    }
+  } catch (e) {
+    console.warn('[logo] hydrate failed:', (/** @type {any} */ (e))?.message || e);
+    _logoHydrateDone = false;
+  }
+}
+
 function getBizInfo() {
   try { return JSON.parse(localStorage.getItem('pc_biz') || '{}'); } catch(e) { return {}; }
 }

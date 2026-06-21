@@ -1711,9 +1711,11 @@ async function loadAllData() {
   // S.2 — load schedule day overrides for the production scheduler (fire and forget)
   loadDayOverrides().catch(/** @param {any} e */ e => console.warn('[day_overrides] load:', e.message || e));
   /** @type {HTMLElement} */ (document.getElementById('orders-badge')).textContent = String(orders.filter(o => o.status !== 'complete').length);
-  renderStockMain();
-  renderQuoteMain();
-  renderOrdersMain();
+  // Guarded: a dropped domain script (main.js boot self-heal reloads once to
+  // recover) must not abort the rest of boot before the realtime subscribe below.
+  try { renderStockMain(); } catch (_e) {}
+  try { renderQuoteMain(); } catch (_e) {}
+  try { renderOrdersMain(); } catch (_e) {}
   // Realtime: reflect customer live-link activity (viewed / accepted / paid, and
   // webhook-created orders) on the cards without a manual reload.
   _subscribeLiveStatus();
@@ -1847,6 +1849,11 @@ function _applyBizInfoFromDB(rows) {
     const btn = document.getElementById('biz-logo-remove');
     if (img) { img.src = b.logo_url; img.style.display = ''; }
     if (btn) btn.style.display = '';
+    // Reverse self-heal: cache the logo into localStorage so the PDF/print header
+    // (getBizLogo(), localStorage-only) shows it on a device that synced from DB.
+    if (!localStorage.getItem('pc_biz_logo') && typeof _hydrateLogoToLS === 'function') {
+      _hydrateLogoToLS(b.logo_url);
+    }
   } else if (localStorage.getItem('pc_biz_logo') && typeof _healLogoToDB === 'function') {
     _healLogoToDB();
   }
@@ -2187,13 +2194,15 @@ function _readPendingPlan(consume) {
       window.location.pathname + (_cleaned ? `?${_cleaned}` : '') + window.location.hash);
   }
 })();
-loadBizInfo();
-loadLogoPreview();
+// Guarded: these fire at script-eval time, so a single dropped domain file must
+// not abort the rest of app.js top-level (main.js self-heals via one reload).
+try { loadBizInfo(); } catch (_e) {}
+try { loadLogoPreview(); } catch (_e) {}
 // (kerf restore removed — kerf is per-sheet in the cut list now; the global
 // '#kerf' input no longer exists.)
-renderStockMain();
-renderQuoteMain();
-renderOrdersMain();
+try { renderStockMain(); } catch (_e) {}
+try { renderQuoteMain(); } catch (_e) {}
+try { renderOrdersMain(); } catch (_e) {}
 
 // Cut list — restore saved state, or load demo data on first visit
 _loadCutList();
