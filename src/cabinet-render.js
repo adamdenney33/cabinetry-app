@@ -569,12 +569,12 @@ function renderCBEditor() {
           <div style="font-size:12px;color:var(--muted);margin-bottom:6px">Add custom items like cable holes, lighting cutouts, etc.</div>
           ${(line.extras||[]).map(/** @param {any} ex @param {number} ei */ (ex, ei) => `<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px">
             <input style="flex:1;min-width:0;font-size:13px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);font-family:inherit" value="${ex.label||''}" placeholder="Item name" onblur="cbUpdateExtra(${line.id},${ei},'label',this.value)">
-            <input type="number" min="1" title="Quantity" style="width:46px;text-align:center;font-size:13px;padding:6px 4px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text)" value="${ex.qty==null?1:ex.qty}" onblur="cbUpdateExtra(${line.id},${ei},'qty',this.value)">
-            <span style="font-size:11px;color:var(--muted)">×</span>
             <div style="display:flex;align-items:center;border:1px solid var(--border);border-radius:6px;overflow:hidden;background:var(--surface2)">
               <span style="font-size:11px;color:var(--muted);padding:4px 4px 4px 8px;background:var(--surface)">${cur}</span>
               <input type="number" style="width:60px;border:none;padding:6px 6px 6px 2px;font-size:13px;background:transparent;color:var(--text)" value="${ex.cost||0}" onblur="cbUpdateExtra(${line.id},${ei},'cost',this.value)">
             </div>
+            <span style="font-size:11px;color:var(--muted)">×</span>
+            <input type="number" min="1" title="Quantity" style="width:46px;text-align:center;font-size:13px;padding:6px 4px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text)" value="${ex.qty==null?1:ex.qty}" onblur="cbUpdateExtra(${line.id},${ei},'qty',this.value)">
             <button class="cb-del-btn" style="font-size:16px" onclick="cbRemoveExtra(${line.id},${ei})">×</button>
           </div>`).join('')}
           <button class="cl-add-btn" onclick="cbAddExtra(${line.id})" style="font-size:12px;padding:5px 10px;margin:4px 0 0">+ Add Extra</button>
