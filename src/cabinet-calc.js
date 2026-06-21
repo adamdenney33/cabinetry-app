@@ -131,7 +131,7 @@ function calcCBSections(line) {
   cabinetMat += W * H * mp(line.backMat);                      // back
   const carcassSurfArea = 2*H*D + 2*innerW*D + W*H;
   cabinetMat += carcassSurfArea * _finishPricePerM2(line.finish);  // carcass finish
-  const edgingLength = 2*H + 2*innerW + ((line.shelves || 0) + (line.adjShelves || 0)) * innerW;
+  const edgingLength = 2*H + 2*innerW + ((line.shelves || 0) + (line.adjShelves || 0) + (line.looseShelves || 0)) * innerW;
   cabinetMat += edgingLength * (cbSettings.edgingPerM || 0);   // edge banding
   const constPrice = (cbSettings.constructions||[]).find(/** @param {any} c */ c => c.name === line.construction)?.price || 0;
   cabinetMat += constPrice * front;
@@ -197,8 +197,8 @@ function calcCBSections(line) {
   // ── Shelves & Partitions (material + labour for all shelf/partition/end-panel kinds) ──
   const shelfArea = innerW * (D - T);
   const _ep = _extraPanelTotals(line, innerW, W, H, D, T, mp(line.material));
-  let shelvesMat = ((line.shelves || 0) + (line.adjShelves || 0)) * shelfArea * mp(line.material);
-  shelvesMat += (line.endPanels || 0) * H * D * mp(line.material);
+  let shelvesMat = ((line.shelves || 0) + (line.adjShelves || 0) + (line.looseShelves || 0)) * shelfArea * mp(line.material);
+  shelvesMat += ((line.partitions || 0) + (line.endPanels || 0)) * H * D * mp(line.material);
   shelvesMat += _ep.matRaw;                              // custom panels (raw; markup applied next)
   shelvesMat *= matMarkupMult;
   const shelvesLabour = (
@@ -286,11 +286,11 @@ function calcCBLine(line) {
     drawerBoxSurfArea = line.drawers * (2 * D * drwH + 2 * innerW * drwH + innerW * D);
     matCost += drawerBoxSurfArea * mp(line.drawerInnerMat);
   }
-  // Shelves
+  // Shelves (fixed + adjustable + loose all cut from the carcass material at shelf area)
   const shelfArea = innerW * (D - T);
-  matCost += ((line.shelves || 0) + (line.adjShelves || 0)) * shelfArea * mp(line.material);
-  // End panels
-  matCost += (line.endPanels || 0) * H * D * mp(line.material);
+  matCost += ((line.shelves || 0) + (line.adjShelves || 0) + (line.looseShelves || 0)) * shelfArea * mp(line.material);
+  // Partitions + end panels (full H×D panels — matches the cut list)
+  matCost += ((line.partitions || 0) + (line.endPanels || 0)) * H * D * mp(line.material);
   // Custom extra panels — material (face area × carcass material) + labour (added below).
   const _epLine = _extraPanelTotals(line, innerW, W, H, D, T, mp(line.material));
   matCost += _epLine.matRaw;
@@ -307,7 +307,7 @@ function calcCBLine(line) {
   matCost += extrasCost;
 
   // Edge banding
-  const edgingLength = 2*H + 2*innerW + ((line.shelves || 0) + (line.adjShelves || 0)) * innerW;
+  const edgingLength = 2*H + 2*innerW + ((line.shelves || 0) + (line.adjShelves || 0) + (line.looseShelves || 0)) * innerW;
   const edgingCost = edgingLength * (cbSettings.edgingPerM || 0);
   matCost += edgingCost;
 

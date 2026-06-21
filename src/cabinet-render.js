@@ -929,6 +929,10 @@ function _renderLibraryCards(items) {
     if (c.drawers > 0) details.push(c.drawers + ' drawer' + (c.drawers!==1?'s':''));
     const shelfTotal = (c.shelves||0) + (c.adjShelves||0) + (c.looseShelves||0);
     if (shelfTotal > 0) details.push(shelfTotal + ' shelves');
+    if (c.partitions > 0) details.push(c.partitions + ' partition' + (c.partitions!==1?'s':''));
+    if (c.endPanels > 0) details.push(c.endPanels + ' end panel' + (c.endPanels!==1?'s':''));
+    const _epN = _extraPanelCount(c);
+    if (_epN > 0) details.push(_epN + ' panel' + (_epN!==1?'s':''));
 
     const isEditingThis = cbEditingLibraryIdx === idx;
     const borderColor = isEditingThis ? 'var(--accent)' : 'var(--border)';

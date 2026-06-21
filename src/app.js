@@ -1198,10 +1198,13 @@ function _openCabinetPopup(idx) {
       <div class="pf-row">
         <div class="pf" style="flex:1"><label class="pf-label">DOORS</label><input class="pf-input" type="number" id="pcab-doors" value="${line.doors}" min="0"></div>
         <div class="pf" style="flex:1"><label class="pf-label">DRAWERS</label><input class="pf-input" type="number" id="pcab-drawers" value="${line.drawers}" min="0"></div>
-        <div class="pf" style="flex:1"><label class="pf-label">SHELVES</label><input class="pf-input" type="number" id="pcab-shelves" value="${line.shelves||0}" min="0"></div>
       </div>
       <div class="pf-row">
+        <div class="pf" style="flex:1"><label class="pf-label">SHELVES</label><input class="pf-input" type="number" id="pcab-shelves" value="${line.shelves||0}" min="0"></div>
         <div class="pf" style="flex:1"><label class="pf-label">ADJ SHELVES</label><input class="pf-input" type="number" id="pcab-adjshelves" value="${line.adjShelves||0}" min="0"></div>
+        <div class="pf" style="flex:1"><label class="pf-label">LOOSE SHELVES</label><input class="pf-input" type="number" id="pcab-looseshelves" value="${line.looseShelves||0}" min="0"></div>
+      </div>
+      <div class="pf-row">
         <div class="pf" style="flex:1"><label class="pf-label">PARTITIONS</label><input class="pf-input" type="number" id="pcab-partitions" value="${line.partitions||0}" min="0"></div>
         <div class="pf" style="flex:1"><label class="pf-label">END PANELS</label><input class="pf-input" type="number" id="pcab-endpanels" value="${line.endPanels||0}" min="0"></div>
       </div>
@@ -1258,6 +1261,7 @@ function _saveCabinetPopup(idx) {
   line.drawers = Math.max(0, parseInt(_popupVal('pcab-drawers')) || 0);
   line.shelves = Math.max(0, parseInt(_popupVal('pcab-shelves')) || 0);
   line.adjShelves = Math.max(0, parseInt(_popupVal('pcab-adjshelves')) || 0);
+  line.looseShelves = Math.max(0, parseInt(_popupVal('pcab-looseshelves')) || 0);
   line.partitions = Math.max(0, parseInt(_popupVal('pcab-partitions')) || 0);
   line.endPanels = Math.max(0, parseInt(_popupVal('pcab-endpanels')) || 0);
   line.notes = _popupVal('pcab-notes') || '';
