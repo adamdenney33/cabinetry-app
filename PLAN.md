@@ -24,6 +24,74 @@ Companion docs: `SPEC.md` (refactor history), `SCHEMA.md` (DB schema),
 
 ## Active Work
 
+### Live link — auto-accept edits + server-side re-pricing (2026-06-21) ✅ Code done + parity-verified — ⬜ needs deploy
+
+**Goal.** Add a Live-link toggle "Auto-accept customer changes". When ON, a
+customer spec edit (dims/material/doors/etc.) on `/q` is **priced instantly
+server-side** from the maker's rates and shown live — no "Price to confirm", no
+maker confirmation. When OFF, current behaviour is unchanged (price cleared →
+maker re-prices on Live-tab open).
+
+**Why it's a real build (not a toggle).** The public page never receives the
+maker's cost inputs by design (`quote-public.js` header), and the costing engine
+(`calcCBLine`, ~440 lines) runs only in the maker's browser. Worse, it isn't pure
+over `cbSettings` — `mp()`/`hwp()` do a **stock-first lookup** into the maker's
+stock library (`stockItems` + `_scGet` category overrides), then fall back to the
+`cbSettings` catalogue. So the server needs a faithful **resolved-rate snapshot**,
+not a reload of `business_info`.
+
+**Approach (chosen 2026-06-21): resolved-rate snapshot + thin Deno port.**
+Resolve all price lookups in the browser (where stock-first logic already lives)
+into a flat rate table, snapshot it onto the quote, and port only the geometry→
+cost math to Deno. Price resolution stays single-sourced; only the math is
+duplicated, guarded by a golden-parity test. We do **not** refactor the live
+calculator into a shared core now (too risky on money-critical, working code).
+
+- ✅ **LR.1 — migration** (`20260621160000_quote_rate_card.sql`): `quotes.rate_card
+  jsonb`, `add column if not exists`, with a column comment. Service-role only;
+  **never** selected by `quote-public-get`. `share_settings.auto_accept_edits`
+  lives in the existing jsonb (no DDL). SCHEMA.md § 3.13 documented. Type regen
+  deferred to deploy (LR.8).
+- ✅ **LR.2 — snapshot builder** (`share.js` `_buildRateCard`): resolves
+  `matPerM2` / `hwUnit` / `finishPerM2` for the full catalogue + stock + line-
+  referenced names via the SAME `_matPricePerM2` / `_hwUnitPrice` /
+  `_finishPricePerM2` (extracted to module scope in `cabinet-calc.js` so the
+  stock-first logic isn't duplicated), plus the scalars/arrays + quote
+  markup/discount/stock_markup. Written in `_generateShareLink` (resilient: falls
+  back if the column isn't migrated yet) and refreshed in `_llSyncCustomerPrices`.
+- ✅ **LR.3 — shared costing core** (`supabase/functions/_shared/costing.ts`):
+  statement-order-faithful port of `calcCBLine` + `_extraPanelTotals` /
+  `_typeRefHours` / contingency / constants, taking an explicit `rateCard`. Ports
+  `quoteLineRowToCB` + the `_shareLineCustomerPrice` wrapper. `priceCabinetLine`
+  also returns null when the snapshot doesn't cover a referenced rate (anti-
+  under-charge guard).
+- ✅ **LR.4 — parity test** (`costing.test.mjs`, `npm run test:costing`): golden
+  fixture captured from the LIVE browser engine against a real rate card — Deno
+  port matches all 6 prices **to the penny**; also asserts non-cabinet → null and
+  missing-rate → null. Correctness backstop (these prices drive real charges).
+- ✅ **LR.5 — edge fn** (`quote-public-update`, action `edit`): selects the line
+  with `*` + the quote's `markup/discount/stock_markup/rate_card`; if
+  `auto_accept_edits` && `rate_card` && cabinet → applies patch, prices via the
+  core (quote-level wrapper taken fresh from the row), sets
+  `patch.customer_price = newPrice`, posts an "auto-priced" chat note, returns
+  `{ ok, customer_price }`. Any failure → null + "to confirm" (never a guess).
+- ✅ **LR.6 — customer page** (`quote-public.js` `applyEdit` + `sendEdits`): uses
+  the echoed `customer_price` (skips `_pending`) so price + rail update live;
+  single summary toast worded per auto-priced vs awaiting-confirmation. Also
+  fixed `applyEdit`'s missing success return (buffer cleanup now runs).
+- ✅ **LR.7 — toggle UI** (`livelink.js`): "Auto-accept changes" row under
+  "Let customers request changes", `data-needs="edit"` (shows/hides with the edit
+  master), Pro-gated, default off, live caption swap (`_llAutoAcceptTgl`);
+  persisted in `share_settings` via `_generateShareLink`. Render + handler
+  verified in preview.
+- ⬜ **LR.8 — deploy** (needs the user): **apply the migration FIRST**
+  (`20260621160000_quote_rate_card.sql`) + regen types, **then** deploy
+  `quote-public-update` (`verify_jwt=false`) — the function selects `rate_card`,
+  so the column must exist first. The frontend is deploy-order-safe (the snapshot
+  write falls back if the column is missing). Then push to `main`. Post-deploy
+  smoke: share a quote with a cabinet line, unlock dims + turn Auto-accept on,
+  edit dims on `/q`, confirm the price + total update without a confirm step.
+
 ### Email ↔ in-app messages bridge (2026-06-19) ✅ Code done — ⬜ needs deploy + DNS
 
 Make the client-scoped chat (`customer_messages`) reachable by email both ways:

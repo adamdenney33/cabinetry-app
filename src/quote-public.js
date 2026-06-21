@@ -314,8 +314,12 @@ function specEditor(l) {
   if (specs.includes('drawerFinish')) drawer.push(sel('Finish', D?.finishes || [], l.drawer_front_finish, 'drawer_front_finish'));
   if (drawer.length) sections.push({ t: 'Drawers', rows: drawer });
   const storage = [];
-  if (specs.includes('shelves')) storage.push(num('Shelves', l.fixed_shelves, 0, 12, 'fixed_shelves', ''));
-  if (storage.length) sections.push({ t: 'Shelves', rows: storage });
+  if (specs.includes('shelves')) storage.push(num('Fixed shelves', l.fixed_shelves, 0, 12, 'fixed_shelves', ''));
+  if (specs.includes('adjShelves')) storage.push(num('Adjustable shelves', l.adj_shelves, 0, 12, 'adj_shelves', ''));
+  if (specs.includes('looseShelves')) storage.push(num('Loose shelves', l.loose_shelves, 0, 12, 'loose_shelves', ''));
+  if (specs.includes('partitions')) storage.push(num('Partitions', l.partitions, 0, 12, 'partitions', ''));
+  if (specs.includes('endPanels')) storage.push(num('End panels', l.end_panels, 0, 12, 'end_panels', ''));
+  if (storage.length) sections.push({ t: 'Shelves & panels', rows: storage });
   if (!sections.length) sections.push({ t: '', rows: [sel('Finish', D?.finishes || [], l.finish, 'finish')] });
   const body = sections.map(s => `${s.t ? `<div class="qp-spec-head">${s.t}</div>` : ''}${s.rows.join('')}`).join('');
   return `<div class="qp-spec">${body}
@@ -653,7 +657,8 @@ const handlers = {
         door_material: l.door_material, door_finish: l.door_finish, door_handle: l.door_handle,
         drawer_count: l.drawer_count, drawer_pct: l.drawer_pct, drawer_front_type: l.drawer_front_type,
         drawer_front_material: l.drawer_front_material, drawer_front_finish: l.drawer_front_finish,
-        fixed_shelves: l.fixed_shelves };
+        fixed_shelves: l.fixed_shelves, adj_shelves: l.adj_shelves, loose_shelves: l.loose_shelves,
+        partitions: l.partitions, end_panels: l.end_panels };
       pendingEdits[id] = {};
       host.innerHTML = specEditor(l); host.style.display = '';
       const railEl = document.getElementById('qp-rail'); if (railEl) railEl.innerHTML = rail();
@@ -673,14 +678,24 @@ const handlers = {
    *  the editors and restore the normal accept CTA. */
   async sendEdits() {
     const ids = Object.keys(pendingEdits).map(Number);
-    let sent = 0;
+    let auto = 0, pend = 0;
     for (const id of ids) {
       const patch = pendingEdits[id];
       if (!patch || !Object.keys(patch).length) { handlers.cancelEdits(id); continue; }
-      if (await applyEdit(id, patch)) { delete pendingEdits[id]; delete originalValues[id]; sent++; }
+      if (await applyEdit(id, patch)) {
+        const l = lines.find((x) => x.id === id);
+        if (l && !l._pending) auto++; else pend++;   // auto-priced vs awaiting confirmation
+        delete pendingEdits[id]; delete originalValues[id];
+      }
       // on failure the buffer and editor stay so the customer can retry
     }
-    if (sent) toast(`Change${sent > 1 ? 's' : ''} sent — ${(D?.business?.name || 'your maker')} will confirm the updated price.`, false);
+    if (auto || pend) {
+      const t = totals();
+      const maker = D?.business?.name || 'your maker';
+      if (auto && !pend) toast(`Updated — your new total is ${money(t.total)}${t.taxPct ? ' (incl. VAT)' : ''}.`, false);
+      else if (pend && !auto) toast(`Change${pend > 1 ? 's' : ''} sent — ${maker} will confirm the updated price.`, false);
+      else toast(`Changes sent — some prices updated; ${maker} will confirm the rest.`, false);
+    }
     const railEl = document.getElementById('qp-rail'); if (railEl) railEl.innerHTML = rail();
   },
   /** Discard buffered edits and close spec editors.
@@ -794,21 +809,29 @@ const handlers = {
   },
 };
 
-/** @param {number} id @param {Record<string, unknown>} patch */
+/** Send one line's spec edit. Returns true on success (caller clears the buffer
+ *  + composes the summary toast). The server echoes a re-priced `customer_price`
+ *  when the maker has auto-accept on; otherwise it clears the price (null) and
+ *  the line shows "Price to confirm" until the maker re-prices.
+ *  @param {number} id @param {Record<string, unknown>} patch @returns {Promise<boolean>} */
 async function applyEdit(id, patch) {
   const l = lines.find((x) => x.id === id); if (!l) return false;
   try {
-    await fn('quote-public-update', { token, action: 'edit', line_id: id, ...patch });
+    const resp = await fn('quote-public-update', { token, action: 'edit', line_id: id, ...patch });
     Object.assign(l, patch);
-    // Mirror the server: the old price no longer applies, so the line is
-    // pending a re-confirmed price (persists across reloads now).
-    l.customer_price = null;
-    l._pending = true;
+    if (resp && typeof resp.customer_price === 'number') {
+      l.customer_price = resp.customer_price;   // auto-accepted: priced live
+      l._pending = false;
+    } else {
+      l.customer_price = null;                  // maker re-confirms the price
+      l._pending = true;
+    }
     const host = byId('qp-spec-' + id); if (host) host.style.display = 'none';
     refreshLine(id);
-    toast(`Change sent — ${(D?.business?.name || 'your maker')} will confirm the updated price.`, false);
+    return true;
   } catch (e) {
     toast(friendlyError(e, 'Could not save that change — please try again.'));
+    return false;
   }
 }
 

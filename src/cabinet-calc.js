@@ -29,6 +29,44 @@ function _finishPricePerM2(finishName) {
   return (cbSettings.finishes || []).find(/** @param {any} f */ f => f.name === finishName)?.price || 0;
 }
 
+// Material £/m² by name. Stock items win over the cbSettings.materials catalogue
+// (a user-edited stock row always takes precedence), mirroring _finishPricePerM2.
+// Extracted to module scope (was a nested fn in calcCBLine) so the live-link
+// rate-card snapshot (share.js _buildRateCard) resolves prices through the SAME
+// code the calculator uses — no second copy of the stock-first logic.
+/** @param {string} matName */
+function _matPricePerM2(matName) {
+  const s = stockItems.find(s => s.name === matName);
+  if (s) {
+    // Sheet m² — prefer width_mm + length_m (canonical fields the app writes for
+    // sheet stock); fall back to legacy w/h treated as mm, then SHEET_M2.
+    let sheetM2 = (s.width_mm && s.length_m) ? (s.width_mm / 1000) * s.length_m
+                : (s.w && s.h) ? (s.w / 1000) * (s.h / 1000)
+                : SHEET_M2;
+    // Guard: a real sheet is ~1–3 m². If the stored size is implausibly small
+    // (e.g. inches mis-entered as mm, or a half-filled legacy row), fall back to
+    // the standard sheet so one bad row can't explode a cabinet/quote price.
+    if (!(sheetM2 >= 0.5)) sheetM2 = SHEET_M2;
+    return sheetM2 > 0 ? (s.cost ?? 0) / sheetM2 : 0;
+  }
+  const m = cbSettings.materials.find(/** @param {any} m */ m => m.name === matName);
+  return m ? m.price / SHEET_M2 : 0;
+}
+
+// Hardware unit £ by name. Stock items in the Hardware/Other categories win over
+// the legacy cbSettings.hardware catalogue. Extracted alongside _matPricePerM2.
+/** @param {string} hwName */
+function _hwUnitPrice(hwName) {
+  const so = (typeof stockItems !== 'undefined' ? stockItems : []).find(/** @param {any} s */ s => {
+    if (s.name !== hwName) return false;
+    const cat = (typeof _scGet === 'function' ? _scGet(s.id) : '') || s.category;
+    return cat === 'Hardware' || cat === 'Other';
+  });
+  if (so) return so.cost ?? 0;
+  const h = cbSettings.hardware.find(/** @param {any} h */ h => h.name === hwName);
+  return h ? h.price : 0;
+}
+
 // Contingency multiplier applied to autoLabour BEFORE conversion to cost.
 // Driven by cbSettings.contingencyPct (% of labour time), so both labourHrs
 // and labourCost reflect it.
@@ -231,37 +269,10 @@ function calcCBLine(line) {
   const T = 0.018;
   const innerW = Math.max(0, W - 2 * T);
 
-  /** @param {string} matName */
-  function mp(matName) {
-    const s = stockItems.find(s => s.name === matName);
-    if (s) {
-      // Sheet m² — prefer width_mm + length_m (canonical fields the app writes
-      // for sheet stock); fall back to legacy w/h treated as mm, then SHEET_M2.
-      let sheetM2 = (s.width_mm && s.length_m) ? (s.width_mm / 1000) * s.length_m
-                  : (s.w && s.h) ? (s.w / 1000) * (s.h / 1000)
-                  : SHEET_M2;
-      // Guard: a real sheet is ~1–3 m². If the stored size is implausibly small
-      // (e.g. inches mis-entered as mm, or a half-filled legacy row), fall back to
-      // the standard sheet so one bad row can't explode a cabinet/quote price.
-      if (!(sheetM2 >= 0.5)) sheetM2 = SHEET_M2;
-      return sheetM2 > 0 ? (s.cost ?? 0) / sheetM2 : 0;
-    }
-    const m = cbSettings.materials.find(/** @param {any} m */ m => m.name === matName);
-    return m ? m.price / SHEET_M2 : 0;
-  }
-  /** @param {string} hwName */
-  function hwp(hwName) {
-    // Stock-first (Hardware/Other categories), mirroring mp() and _finishPricePerM2.
-    // Falls back to the legacy cbSettings.hardware catalog for old cabinet names.
-    const so = (typeof stockItems !== 'undefined' ? stockItems : []).find(/** @param {any} s */ s => {
-      if (s.name !== hwName) return false;
-      const cat = (typeof _scGet === 'function' ? _scGet(s.id) : '') || s.category;
-      return cat === 'Hardware' || cat === 'Other';
-    });
-    if (so) return so.cost ?? 0;
-    const h = cbSettings.hardware.find(/** @param {any} h */ h => h.name === hwName);
-    return h ? h.price : 0;
-  }
+  // Price resolvers (stock-first) — module-level so the live-link rate-card
+  // snapshot resolves through the exact same logic. See _matPricePerM2 / _hwUnitPrice.
+  const mp = _matPricePerM2;
+  const hwp = _hwUnitPrice;
 
   // Auto material cost: carcass panels
   let matCost = 0;

@@ -19,6 +19,63 @@ function _shareLineCustomerPrice(q, row) {
   return Math.round(marked * 100) / 100;
 }
 
+/** Resolve the maker's CURRENT rates into a flat, self-contained snapshot the
+ *  `quote-public-update` edge function can re-price a customer's spec edit with —
+ *  identically to this browser, but WITHOUT ever shipping cost inputs to the
+ *  customer page (stored server-only on `quotes.rate_card`). Prices resolve
+ *  through the same `_matPricePerM2` / `_hwUnitPrice` / `_finishPricePerM2`
+ *  (stock-first) the calculator uses, so the edge function never re-implements
+ *  that logic — only the geometry→cost math is ported (see _shared/costing.ts).
+ *  @param {any} q @returns {any} */
+function _buildRateCard(q) {
+  if (typeof cbSettings === 'undefined' || !cbSettings) return null;
+  const cs = /** @type {any} */ (cbSettings);
+  const stock = (typeof stockItems !== 'undefined' && Array.isArray(stockItems)) ? stockItems : [];
+  // Every name a line could reference now OR after an edit: the full catalogue,
+  // all stock items, plus whatever the quote's lines already carry (legacy names).
+  const names = new Set();
+  (cs.materials || []).forEach(/** @param {any} m */ m => m && m.name && names.add(m.name));
+  (cs.hardware || []).forEach(/** @param {any} h */ h => h && h.name && names.add(h.name));
+  (cs.finishes || []).forEach(/** @param {any} f */ f => f && f.name && names.add(f.name));
+  stock.forEach(/** @param {any} s */ s => s && s.name && names.add(s.name));
+  for (const l of (q._lines || [])) {
+    [l.material, l.door_material, l.drawer_front_material, l.drawer_inner_material,
+     l.finish, l.door_finish, l.drawer_front_finish, l.drawer_box_finish].forEach(n => n && names.add(n));
+    [l.hardware, l.door_hardware, l.drawer_hardware].forEach(arr =>
+      Array.isArray(arr) && arr.forEach(/** @param {any} h */ h => h && h.name && names.add(h.name)));
+  }
+  /** @type {Record<string,number>} */ const matPerM2 = {};
+  /** @type {Record<string,number>} */ const hwUnit = {};
+  /** @type {Record<string,number>} */ const finishPerM2 = {};
+  for (const n of names) {
+    matPerM2[n] = _matPricePerM2(n);
+    hwUnit[n] = _hwUnitPrice(n);
+    finishPerM2[n] = _finishPricePerM2(n);
+  }
+  return {
+    v: 1,
+    matPerM2, hwUnit, finishPerM2,
+    labourRate: Number(cs.labourRate) || 0,
+    materialMarkup: Number(cs.materialMarkup) || 0,
+    edgingPerM: Number(cs.edgingPerM) || 0,
+    contingencyPct: Number(cs.contingencyPct) || 0,
+    packagingHours: Number(cs.packagingHours) || 0,
+    installationHours: Number(cs.installationHours) || 0,
+    labourTimes: cs.labourTimes || {},
+    constructions: cs.constructions || [],
+    baseTypes: cs.baseTypes || [],
+    carcassTypes: cs.carcassTypes || [],
+    doorTypes: cs.doorTypes || [],
+    drawerFrontTypes: cs.drawerFrontTypes || [],
+    drawerBoxTypes: cs.drawerBoxTypes || [],
+    extraPanelTypes: cs.extraPanelTypes || [],
+    // Quote-level wrapper (matches _shareLineCustomerPrice): pre-tax marked total.
+    markup: parseFloat(q.markup) || 0,
+    discount: parseFloat(q.discount) || 0,
+    stock_markup: parseFloat(q.stock_markup) || 0,
+  };
+}
+
 /** @param {string} token */
 function _shareLink(token) { return `${location.origin}/q.html?t=${token}`; }
 
@@ -100,13 +157,19 @@ async function _generateShareLink(quoteId, kind) {
   // flips them off.
   const depTog = document.getElementById('sh-dep-on');
   const bankTog = document.getElementById('sh-bank');
+  // Auto-accept toggle may be absent (legacy popup, or hidden when spec-editing
+  // is off) — fall back to the stored setting so a save from elsewhere never
+  // flips it. Forced off whenever spec editing itself is off (it's meaningless).
+  const autoTog = document.getElementById('sh-auto-accept');
+  const allowEdit = pressed('sh-edit');
   const settings = {
     allow_select: pressed('sh-select'),
-    allow_edit: pressed('sh-edit'),
+    allow_edit: allowEdit,
     accept_payment: pressed('sh-pay'),
     allow_bank_transfer: bankTog ? bankTog.getAttribute('aria-pressed') === 'true' : ((q.share_settings || {}).allow_bank_transfer === true),
     take_deposit: depTog ? depTog.getAttribute('aria-pressed') === 'true' : ((q.share_settings || {}).take_deposit !== false),
     deposit_pct: Math.max(0, Math.min(100, parseFloat(_popupVal('sh-dep')) || 0)),
+    auto_accept_edits: allowEdit && (autoTog ? autoTog.getAttribute('aria-pressed') === 'true' : ((q.share_settings || {}).auto_accept_edits === true)),
   };
   const token = q.share_token || (crypto.randomUUID ? crypto.randomUUID().replace(/-/g, '').slice(0, 16) : Math.random().toString(36).slice(2, 14));
   try {
@@ -125,8 +188,20 @@ async function _generateShareLink(quoteId, kind) {
       }
       Object.assign(l, { optional, customer_editable, customer_included: true, customer_price, editable_specs });
     }));
-    await _db('quotes').update(/** @type {any} */ ({ share_token: token, share_settings: settings, status: q.status === 'draft' ? 'sent' : q.status })).eq('id', quoteId);
-    q.share_token = token; q.share_settings = settings; if (q.status === 'draft') q.status = 'sent';
+    // Snapshot the resolved rate card so the edge function can re-price customer
+    // spec edits server-side (auto-accept). Omit when unavailable rather than
+    // clobbering a previously-saved snapshot with null.
+    const rate_card = _buildRateCard(q);
+    /** @type {any} */ const quotePatch = { share_token: token, share_settings: settings, status: q.status === 'draft' ? 'sent' : q.status };
+    if (rate_card) quotePatch.rate_card = rate_card;
+    const _qupd = await _db('quotes').update(quotePatch).eq('id', quoteId);
+    if (_qupd && _qupd.error && rate_card) {
+      // rate_card column not migrated yet — save the link without the snapshot so
+      // sharing still works (auto-accept just falls back to "Price to confirm").
+      delete quotePatch.rate_card;
+      await _db('quotes').update(quotePatch).eq('id', quoteId);
+    }
+    q.share_token = token; q.share_settings = settings; if (rate_card) q.rate_card = rate_card; if (q.status === 'draft') q.status = 'sent';
     if (typeof _track === 'function' && !wasShared) _track('quote_shared', { accept_payment: settings.accept_payment });
     if (typeof _llOnSaved === 'function') _llOnSaved(wasShared, 'quote');
   } catch (e) {

@@ -527,6 +527,8 @@ alter table public.quotes
 
 **`stock_markup` (added 2026-05-11):** numeric percentage 0-100, default 0. Mirror of `orders.stock_markup` — single rate applied to all `line_kind='stock'` line materials before legacy markup/tax/discount. Carried over to the order at quote→order conversion (see `convertQuoteToOrder` in `src/quotes.js`).
 
+**`rate_card` (jsonb, added 2026-06-21, migration `20260621160000_quote_rate_card`):** server-only snapshot of the maker's RESOLVED cabinet rate card — `{ matPerM2{name→£/m²}, hwUnit{name→£}, finishPerM2{name→£/m²}, labourRate, materialMarkup, edgingPerM, contingencyPct, packagingHours, installationHours, labourTimes, constructions/baseTypes/carcassTypes/doorTypes/drawerFrontTypes/drawerBoxTypes/extraPanelTypes, markup, discount, stock_markup }`. Written by the maker's browser (`_buildRateCard` in `src/share.js`, from `_generateShareLink` + `_llSyncCustomerPrices`) so the `quote-public-update` edge function can re-price a customer's spec edit identically to the browser when `share_settings.auto_accept_edits` is on. **Must stay server-only** — `quote-public-get`'s explicit select omits it and there is no anon RLS read on `quotes`. See PLAN.md → "Live link — auto-accept edits + server-side re-pricing".
+
 ---
 
 ### 3.14 `quote_lines`

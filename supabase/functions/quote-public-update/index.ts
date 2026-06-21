@@ -15,6 +15,7 @@
 
 import { corsHeaders, jsonResponse } from '../_shared/cors.ts';
 import { admin } from '../_shared/auth.ts';
+import { priceCabinetLine, type RateCard } from '../_shared/costing.ts';
 
 const MAX_SNAPSHOT_BYTES = 200_000;
 
@@ -28,7 +29,9 @@ const SPEC_LABELS: Record<string, string> = {
   door_finish: 'Door finish', door_handle: 'Handles',
   drawer_count: 'Drawers', drawer_pct: 'Drawer area %',
   drawer_front_type: 'Drawer front style', drawer_front_material: 'Drawer front material',
-  drawer_front_finish: 'Drawer front finish', fixed_shelves: 'Shelves',
+  drawer_front_finish: 'Drawer front finish', fixed_shelves: 'Fixed shelves',
+  adj_shelves: 'Adjustable shelves', loose_shelves: 'Loose shelves',
+  partitions: 'Partitions', end_panels: 'End panels',
 };
 
 Deno.serve(async (req) => {
@@ -48,7 +51,7 @@ Deno.serve(async (req) => {
     // ── Resolve the quote + its gate state ──
     const { data: quote, error: qErr } = await admin
       .from('quotes')
-      .select('id, user_id, client_id, status, share_settings, accepted_at')
+      .select('id, user_id, client_id, status, share_settings, accepted_at, markup, discount, stock_markup, rate_card')
       .eq('share_token', token)
       .maybeSingle();
     if (qErr) throw new Error(qErr.message);
@@ -81,9 +84,11 @@ Deno.serve(async (req) => {
     if (action === 'edit') {
       if (!settings.allow_edit) return jsonResponse({ error: 'editing_disabled' }, 403, cors);
       const lineId = Number(body.line_id);
+      // select('*') — server-only (service role). We need every pricing column for
+      // the auto-accept re-price below, and this row never reaches the customer.
       const { data: line } = await admin
         .from('quote_lines')
-        .select('id, quote_id, customer_editable, editable_specs, name, w_mm, h_mm, d_mm, finish, material, construction, base_type, door_count, door_pct, door_type, door_material, door_finish, door_handle, drawer_count, drawer_pct, drawer_front_type, drawer_front_material, drawer_front_finish, fixed_shelves')
+        .select('*')
         .eq('id', lineId).maybeSingle();
       if (!line || line.quote_id !== quote.id) return jsonResponse({ error: 'line_not_found' }, 404, cors);
       if (!line.customer_editable) return jsonResponse({ error: 'line_locked' }, 403, cors);
@@ -138,6 +143,10 @@ Deno.serve(async (req) => {
         patch.drawer_front_material = m;
       }
       if (body.fixed_shelves != null && allows('shelves')) { const n = clamp(body.fixed_shelves, 0, 12); if (n === null) return jsonResponse({ error: 'shelves_out_of_range' }, 422, cors); patch.fixed_shelves = n; }
+      if (body.adj_shelves != null && allows('adjShelves')) { const n = clamp(body.adj_shelves, 0, 12); if (n === null) return jsonResponse({ error: 'adj_shelves_out_of_range' }, 422, cors); patch.adj_shelves = n; }
+      if (body.loose_shelves != null && allows('looseShelves')) { const n = clamp(body.loose_shelves, 0, 12); if (n === null) return jsonResponse({ error: 'loose_shelves_out_of_range' }, 422, cors); patch.loose_shelves = n; }
+      if (body.partitions != null && allows('partitions')) { const n = clamp(body.partitions, 0, 12); if (n === null) return jsonResponse({ error: 'partitions_out_of_range' }, 422, cors); patch.partitions = n; }
+      if (body.end_panels != null && allows('endPanels')) { const n = clamp(body.end_panels, 0, 12); if (n === null) return jsonResponse({ error: 'end_panels_out_of_range' }, 422, cors); patch.end_panels = n; }
       // Style / build fields — door & drawer style, base, construction, handle:
       // free text (the customer picks from a dropdown client-side; the value is
       // reviewed by the business). Door material is validated like other materials.
@@ -153,10 +162,8 @@ Deno.serve(async (req) => {
         patch.door_material = m;
       }
       if (!Object.keys(patch).length) return jsonResponse({ error: 'nothing_to_update' }, 400, cors);
-      // The old customer_price no longer matches the requested spec — clear it
-      // so the page (and any reload) shows "Price to confirm" instead of a
-      // stale figure, and quote-pay refuses to charge until the business
-      // re-prices (its line sum treats null as pending).
+      // Human-readable diff for the chat note — computed from the OLD line values
+      // before we touch customer_price (which isn't a spec).
       const changes = Object.keys(patch)
         .map((k) => {
           const label = SPEC_LABELS[k] || k;
@@ -164,23 +171,52 @@ Deno.serve(async (req) => {
           const fmt = (v: unknown) => (v === null || v === undefined || v === '' ? '—' : String(v));
           return `${label}: ${fmt(oldVal)} → ${fmt(patch[k])}`;
         });
-      patch.customer_price = null;
+
+      // Auto-accept: when the maker has switched it on AND we hold a rate snapshot,
+      // re-price the line server-side from the maker's rates so the customer sees
+      // the new price immediately and can proceed — no manual re-confirmation.
+      // Otherwise (off, no snapshot, non-cabinet, or any failure) we CLEAR the
+      // price → the page shows "Price to confirm" and quote-pay refuses to charge
+      // until the maker re-prices (its line sum treats null as pending).
+      let autoPrice: number | null = null;
+      const rateCard = (quote.rate_card ?? null) as RateCard | null;
+      if (settings.auto_accept_edits && rateCard && ((line.line_kind ?? 'cabinet') === 'cabinet')) {
+        try {
+          // Catalogue rates come from the snapshot; the quote-level wrapper
+          // (markup / discount) is taken fresh from the quotes row.
+          const rc: RateCard = {
+            ...rateCard,
+            markup: Number(quote.markup) || 0,
+            discount: Number(quote.discount) || 0,
+            stock_markup: Number(quote.stock_markup) || 0,
+          };
+          const merged = { ...line, ...patch }; // apply the edit before pricing
+          const p = priceCabinetLine(merged, rc);
+          if (typeof p === 'number' && isFinite(p) && p >= 0) autoPrice = Math.round(p * 100) / 100;
+        } catch (_e) { autoPrice = null; } // never charge a guessed price — fall back
+      }
+
+      patch.customer_price = autoPrice; // number when auto-priced, else null ("to confirm")
       await admin.from('quote_lines').update(patch).eq('id', lineId);
-      // Drop a note into the existing client chat thread so the business sees
-      // the request (unread badge on the quote/client cards) and keeps an
-      // audit trail. Best-effort — the edit itself has already succeeded.
+      // Drop a note into the existing client chat thread so the business sees the
+      // change (unread badge on the quote/client cards) and keeps an audit trail.
+      // Best-effort — the edit itself has already succeeded.
       if (quote.client_id) {
+        const body = autoPrice != null
+          ? `Changed “${line.name || 'Item'}” — ${changes.join(', ')}. Auto-priced at your current rates (auto-accept is on). (Sent from the quote page.)`
+          : `Requested a change to “${line.name || 'Item'}” — ${changes.join(', ')}. (Sent from the quote page; price to be re-confirmed.)`;
         try {
           await admin.from('customer_messages').insert({
             user_id: quote.user_id,
             client_id: quote.client_id,
             quote_id: quote.id,
             sender: 'customer',
-            body: `Requested a change to “${line.name || 'Item'}” — ${changes.join(', ')}. (Sent from the quote page; price to be re-confirmed.)`,
+            body,
           });
         } catch (_e) { /* chat table missing / RLS issue — edit still recorded */ }
       }
-      return jsonResponse({ ok: true }, 200, cors);
+      // Return the new price (null = "to confirm") so the page can update live.
+      return jsonResponse({ ok: true, customer_price: autoPrice }, 200, cors);
     }
 
     // ── accept: record the customer's accepted state ──

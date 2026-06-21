@@ -100,6 +100,13 @@ async function _llSyncCustomerPrices(q) {
     l.customer_price = customer_price;
     writes.push(_db('quote_lines').update(/** @type {any} */ ({ customer_price })).eq('id', l.id));
   }
+  // Refresh the server-side rate snapshot (powers auto-accept live re-pricing in
+  // quote-public-update) so it tracks the maker's CURRENT rates. Opening the Live
+  // tab is the reconciliation point for any drift since the link was shared.
+  if (typeof _buildRateCard === 'function') {
+    const rate_card = _buildRateCard(q);
+    if (rate_card) { q.rate_card = rate_card; writes.push(_db('quotes').update(/** @type {any} */ ({ rate_card })).eq('id', q.id)); }
+  }
   q._llRepriced = repriced;
   if (writes.length) { try { await Promise.all(writes); } catch (e) { /* best-effort — the tab still works without it */ } }
 }
@@ -196,7 +203,8 @@ function _orderLinkPanel(o) {
   const linkBox = shared
     ? `<div class="ll-link"><code id="share-link">${_escHtml(link)}</code><button class="btn btn-primary ll-copy" onclick="_copyShareLink()">Copy</button></div>
        <div class="ll-link-actions">
-         <button class="btn btn-primary" onclick="_sendLiveLink('order',${o.id})">Send live link</button>
+         <button class="btn btn-primary" onclick="_sendLiveLink('order',${o.id})">Send via email</button>
+         <button class="btn btn-primary" onclick="_sendLiveLinkMsg('order',${o.id})">Send via messages</button>
          <a class="btn btn-outline" href="${_escHtml(link)}" target="_blank">Open ↗</a>
        </div>`
     : `<div class="ll-empty">Creating live link…</div>`;
@@ -213,6 +221,17 @@ function _orderLinkPanel(o) {
 // Deposit-row captions — swapped live with the toggle.
 const _LL_DEP_ON_DESC = 'Collected when the customer accepts · balance due on completion';
 const _LL_DEP_OFF_DESC = 'Off — no deposit requested';
+
+// Auto-accept-edits captions — swapped live with the toggle.
+const _LL_AUTO_ON_DESC = 'On — customer changes are priced instantly from your rates and applied automatically. No confirmation step.';
+const _LL_AUTO_OFF_DESC = 'Off — a customer change comes to you to confirm the new price before anything’s charged.';
+/** Auto-accept toggle: flip state, swap the caption, save. @param {HTMLElement} b @param {'quote'|'order'} kind */
+function _llAutoAcceptTgl(b, kind) {
+  _shTgl(b);
+  const on = b.getAttribute('aria-pressed') === 'true';
+  const d = document.getElementById('ll-auto-desc'); if (d) d.textContent = on ? _LL_AUTO_ON_DESC : _LL_AUTO_OFF_DESC;
+  _llAutoSave(kind);
+}
 /** One sentence stating what the customer will actually be asked to pay,
  *  given the payment + bank-transfer + deposit toggles combined — and which
  *  switch to flip to change it. Shown under the Payment rows, updated live.
@@ -277,7 +296,8 @@ function _liveLinkPanel(kind) {
   const linkBox = shared
     ? `<div class="ll-link"><code id="share-link">${_escHtml(link)}</code><button class="btn btn-primary ll-copy" onclick="_copyShareLink()">Copy</button></div>
        <div class="ll-link-actions">
-         <button class="btn btn-primary" onclick="_sendLiveLink('${kind}',${kind === 'quote' ? q.id : (_opState.orderId || 0)})">Send live link</button>
+         <button class="btn btn-primary" onclick="_sendLiveLink('${kind}',${kind === 'quote' ? q.id : (_opState.orderId || 0)})">Send via email</button>
+         <button class="btn btn-primary" onclick="_sendLiveLinkMsg('${kind}',${kind === 'quote' ? q.id : (_opState.orderId || 0)})">Send via messages</button>
          <a class="btn btn-outline" href="${_escHtml(link)}" target="_blank">Open ↗</a>
        </div>`
     : `<div class="ll-empty">Creating live link…</div>`;
@@ -339,7 +359,11 @@ function _liveLinkPanel(kind) {
     <div class="ll-pay-summary" id="ll-pay-summary">${_llPaySummaryText(stripeReady && !!s.accept_payment, s.take_deposit !== false, s.deposit_pct != null ? Number(s.deposit_pct) : 40, stripeReady && s.allow_bank_transfer === true)}</div>
     <div class="ll-h">What the customer can do</div>
     ${togPro('sh-select', 'Let customers choose items', 'They can include / exclude lines you mark optional below', s.allow_select !== false)}
-    ${togPro('sh-edit', 'Let customers request changes', 'They can request changes to specs you unlock — you confirm the new price before anything’s charged', !!s.allow_edit)}
+    ${togPro('sh-edit', 'Let customers request changes', 'They can change the specs you unlock below', !!s.allow_edit)}
+    ${pro ? `<div class="share-toggle-row" data-needs="edit"${s.allow_edit ? '' : ' style="display:none"'}>
+      <div><div class="st-label">Auto-accept changes</div><div class="st-desc" id="ll-auto-desc">${s.auto_accept_edits ? _LL_AUTO_ON_DESC : _LL_AUTO_OFF_DESC}</div></div>
+      <button class="mini-toggle" id="sh-auto-accept" aria-pressed="${s.auto_accept_edits ? 'true' : 'false'}" onclick="_llAutoAcceptTgl(this,'${kind}')"></button>
+    </div>` : ''}
     ${perLineSection}
     <div class="ll-autosave" id="ll-autosave">${shared ? 'Changes save automatically' : 'Creating live link…'}</div>
   </div>`;
@@ -369,7 +393,11 @@ function _llSpecsFor(l) {
     { key: 'drawerType', label: 'Drawer front style', used: drawers },
     { key: 'drawerMat', label: 'Drawer front material', used: drawers },
     { key: 'drawerFinish', label: 'Drawer front finish', used: drawers },
-    { key: 'shelves', label: 'Shelves', used: (l.fixed_shelves || 0) > 0 },
+    { key: 'shelves', label: 'Fixed shelves', used: (l.fixed_shelves || 0) > 0 },
+    { key: 'adjShelves', label: 'Adjustable shelves', used: (l.adj_shelves || 0) > 0 },
+    { key: 'looseShelves', label: 'Loose shelves', used: (l.loose_shelves || 0) > 0 },
+    { key: 'partitions', label: 'Partitions', used: (l.partitions || 0) > 0 },
+    { key: 'endPanels', label: 'End panels', used: (l.end_panels || 0) > 0 },
   ];
 }
 
@@ -514,6 +542,126 @@ function _llBizName() {
   return 'us';
 }
 
+/** Business email (for the "send me a copy" option). @returns {string} */
+function _llBizEmail() {
+  try {
+    const b = (typeof getBizInfo === 'function') ? /** @type {any} */ (getBizInfo()) : null;
+    if (b && b.email) return String(b.email).trim();
+  } catch (e) { /* ignore */ }
+  return '';
+}
+
+// ── Send live link via in-app message (+ auto-email to the customer) ──────────
+// Posting a business message into the customer's conversation makes it appear on
+// their live page AND fires the customer_messages → messages-notify bridge,
+// which emails them the same text. So one action reaches them both ways. A "send
+// me a copy" box additionally emails the business their own copy (send-live-link-copy).
+/** Open the "send via messages" dialogue. @param {'quote'|'order'} kind @param {number} id */
+async function _sendLiveLinkMsg(kind, id) {
+  /** @type {any} */ const entity = kind === 'quote'
+    ? quotes.find(/** @param {any} x */ x => x.id === id)
+    : orders.find(/** @param {any} x */ x => x.id === id);
+  if (!entity) { _toast(kind === 'order' ? 'Order not found' : 'Quote not found', 'info'); return; }
+  if (!entity.share_token) {
+    _toast('Set up the live link first', 'info');
+    if (kind === 'quote' && typeof loadQuoteIntoSidebar === 'function') { await loadQuoteIntoSidebar(entity.id); switchQuoteTab('live'); }
+    else if (kind === 'order' && typeof loadOrderIntoSidebar === 'function') { await loadOrderIntoSidebar(id); switchOrderTab('live'); }
+    return;
+  }
+  const client = entity.client_id ? clients.find(/** @param {any} c */ c => c.id === entity.client_id) : null;
+  const noun = kind === 'order' ? 'order' : 'quote';
+  if (!client) { _toast(`Add a client to this ${noun} first — messages go to the customer’s conversation`, 'error'); return; }
+  const email = (client.email || '').trim();
+  const biz = _llBizName();
+  const bizEmail = _llBizEmail();
+  const link = _shareLink(entity.share_token);
+  const first = client.name ? (' ' + String(client.name).split(/[ &]/)[0]) : '';
+  const num = (kind === 'order' ? entity.order_number : entity.quote_number) || `#${entity.id}`;
+  const defaultMsg = kind === 'order'
+    ? `Hi${first}, here's your ${noun} ${num} — you can view the details and message us any time on this page:\n\n${link}\n\nAny questions, just reply here. Thanks, ${biz}`
+    : `Hi${first}, here's your ${noun} ${num} — you can review the items, choose what you'd like, and approve it online here:\n\n${link}\n\nAny questions, just reply here. Thanks, ${biz}`;
+  const emailNote = email
+    ? `It appears on ${_escHtml(client.name || 'the customer')}’s live page, and we’ll email it to <strong>${_escHtml(email)}</strong>.`
+    : `It appears on ${_escHtml(client.name || 'the customer')}’s live page. <strong>No email on file</strong> — add one to the client to also email them.`;
+  const copyRow = bizEmail
+    ? `<label class="ll-copy-row"><input type="checkbox" id="llm-copy"> <span>Send me a copy at <strong>${_escHtml(bizEmail)}</strong></span></label>`
+    : `<label class="ll-copy-row"><input type="checkbox" id="llm-copy" disabled> <span style="color:var(--muted)">Add a business email in Settings to send yourself a copy</span></label>`;
+  _openPopup(`
+    <div class="popup-header"><div class="popup-title">Send live link via message</div><button class="popup-close" onclick="_closePopup()">&times;</button></div>
+    <div class="popup-body">
+      <div class="pf" style="margin-bottom:6px">
+        <label class="pf-label">Message</label>
+        <textarea class="pf-input" id="llm-body" rows="7" style="resize:vertical;line-height:1.45">${_escHtml(defaultMsg)}</textarea>
+      </div>
+      <div class="ll-hint">${emailNote}</div>
+      ${copyRow}
+    </div>
+    <div class="popup-footer">
+      <button class="btn btn-outline" onclick="_closePopup()">Cancel</button>
+      <button class="btn btn-primary" onclick="_sendLiveLinkMsgConfirm('${kind}',${id})">Send</button>
+    </div>`, 'md');
+}
+
+/** Post the composed message to the customer conversation (→ live page + the
+ *  email bridge), then optionally email the business a copy.
+ *  @param {'quote'|'order'} kind @param {number} id */
+async function _sendLiveLinkMsgConfirm(kind, id) {
+  const body = _popupVal('llm-body');
+  if (!body) { _toast('Write a message first', 'info'); return; }
+  /** @type {any} */ const entity = kind === 'quote'
+    ? quotes.find(/** @param {any} x */ x => x.id === id)
+    : orders.find(/** @param {any} x */ x => x.id === id);
+  if (!entity || !entity.client_id) { _toast(`No client on this ${kind === 'order' ? 'order' : 'quote'}`, 'error'); return; }
+  const clientId = entity.client_id;
+  const client = clients.find(/** @param {any} c */ c => c.id === clientId);
+  const wantCopy = !!(/** @type {HTMLInputElement|null} */ (document.getElementById('llm-copy')) || {}).checked;
+  const num = (kind === 'order' ? entity.order_number : entity.quote_number) || `#${entity.id}`;
+  const btn = /** @type {HTMLButtonElement|null} */ (document.querySelector('.popup-footer .btn-primary'));
+  if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
+  // 1) Post the business message → live page + bridge emails the customer.
+  /** @type {any} */ const row = { user_id: _userId, client_id: clientId, sender: 'business', body };
+  if (kind === 'quote') row.quote_id = id; else row.order_id = id;
+  try {
+    await _cmTable().insert(row);
+  } catch (e) {
+    if (btn) { btn.disabled = false; btn.textContent = 'Send'; }
+    _toast('Couldn’t send the message — check your connection', 'error');
+    return;
+  }
+  // Keep the in-memory thread cache + any open chat UI in step (optimistic).
+  try {
+    (_clientMessages[clientId] = _clientMessages[clientId] || []).push({ ...row, created_at: new Date().toISOString() });
+    if (typeof _refreshClientThreadUI === 'function') _refreshClientThreadUI(clientId);
+  } catch (e) { /* cache is best-effort */ }
+  // 2) Optional copy to the business's own inbox (the bridge only emails the customer).
+  let copyNote = '';
+  if (wantCopy) {
+    try {
+      const out = await _llSendCopyEmail({ body, customerName: (client && client.name) || '', ref: `${kind === 'order' ? 'Order' : 'Quote'} ${num}` });
+      copyNote = (out && out.skipped) ? ' · add a business email to get your copy' : ' · copy sent to you';
+    } catch (e) { copyNote = ' · couldn’t email your copy'; }
+  }
+  _closePopup();
+  _toast('Live link sent' + copyNote, 'success');
+}
+
+/** Email the signed-in business their own copy of a sent live-link message.
+ *  The recipient is resolved SERVER-SIDE from the caller's JWT, never sent from
+ *  the client. @param {{body:string, customerName?:string, ref?:string}} payload @returns {Promise<any>} */
+async function _llSendCopyEmail(payload) {
+  const token = (typeof _dbAuthToken === 'function' && _dbAuthToken()) || null;
+  if (!token) throw new Error('Not signed in');
+  const res = await fetch(`${window._SBURL}/functions/v1/send-live-link-copy`, {
+    method: 'POST',
+    headers: { 'authorization': `Bearer ${token}`, 'apikey': window._SBKEY, 'content-type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  /** @type {any} */ let out = {};
+  try { out = await res.json(); } catch (e) { /* non-JSON */ }
+  if (!res.ok) throw new Error(out.error || `Request failed (${res.status})`);
+  return out;
+}
+
 // ── Open a record's Live link sub-tab from its card ──────────────────────────
 /** @param {'quote'|'order'} kind @param {number} id */
 async function _openLiveLinkTab(kind, id) {
@@ -545,6 +693,6 @@ function _orderPdfMenu(orderId) {
 Object.assign(window, {
   _llTab, _llReset, _llShareQuote, _llClientId, _llEnsureLines, _llTabBar, _llLiveBodyDiv,
   _llEnterLive, switchQuoteTab, switchOrderTab, _liveLinkPanel, _llSpecsFor, _llLineControl,
-  _llToggleSpecs, _llSpecAll, _llSyncLineControls, _llRenderPreview, _llAfterSave, _sendLiveLink, _orderPdfMenu, _openLiveLinkTab,
-  _llAutoSave, _llOnSaved, _llSaveError, _llControlsProGate,
+  _llToggleSpecs, _llSpecAll, _llSyncLineControls, _llRenderPreview, _llAfterSave, _sendLiveLink, _sendLiveLinkMsg, _sendLiveLinkMsgConfirm, _orderPdfMenu, _openLiveLinkTab,
+  _llAutoSave, _llOnSaved, _llSaveError, _llControlsProGate, _llAutoAcceptTgl,
 });

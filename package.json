@@ -9,6 +9,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
+    "test:costing": "node --test supabase/functions/_shared/costing.test.mjs",
     "build:visual-guide": "node scripts/build-visual-guide.js",
     "gen:narration": "node remotion/_src/gen-narration.mjs",
     "studio:video": "remotion studio remotion/index.ts --port 3033",
