@@ -13,9 +13,12 @@
 
 import { createServer } from 'node:http';
 import { stat, open } from 'node:fs/promises';
-import { join, normalize, extname, sep } from 'node:path';
+import { join, normalize, extname, sep, dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const ROOT = process.cwd();
+// Repo root = parent of scripts/. Derived from this file's location so it works
+// regardless of the working directory (e.g. when launched by a LaunchAgent).
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const PORT = Number(process.env.VIDEO_PORT || 3050);
 const ALLOW_PREFIX = ['out/', 'marketing/', 'demo-video/'];
 const TYPES = {
