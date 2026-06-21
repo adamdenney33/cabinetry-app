@@ -27,10 +27,90 @@ if (import.meta.env.VITE_SENTRY_DSN) {
       // Dynamics instrumentation) reject promises with this on pages they
       // crawl or augment. Well-known third-party noise, not app code.
       /Object Not Found Matching Id:\d+/,
+      // Android in-app browsers (Facebook/Instagram/Gmail webviews) inject a
+      // native bridge that throws once the host Activity is torn down — not
+      // our code and unreachable from a normal browser (Sentry JAVASCRIPT-J).
+      /Java object is gone/,
+      // @supabase/auth-js serialises cross-tab token refresh with the Web Locks
+      // API; when two tabs/requests contend, the loser's lock is "stolen" and
+      // auth-js rejects. Benign — the refresh retries (Sentry JAVASCRIPT-E / -3).
+      /Lock was stolen by another request/,
+      /was released because another request stole it/,
     ],
   });
 }
 window.Sentry = Sentry;
+
+// ── Boot self-heal (resilience pass) ──
+// The 18 classic <script defer> domain files share one global scope; if any
+// single file fails to download — flaky mobile networks drop a request, and our
+// users are tradespeople on job sites / in workshops — every function it
+// defines silently goes missing, and the first unguarded caller throws
+// (Sentry JAVASCRIPT-M/N/4 were exactly this: a dropped quotes.js / settings.js
+// left renderQuoteMain / toggleAccount undefined). A failed `defer` script is
+// not cached, so a single reload re-fetches it. After `load`, probe one sentinel
+// global per critical domain file; if any stay absent through a short grace
+// window a script genuinely dropped, so reload exactly once per tab, guarded by
+// sessionStorage against a reload loop. HTML is served must-revalidate and /src
+// URLs carry ?v= content stamps (see _headers), so the reload always pulls a
+// consistent script set.
+const _HEAL_KEY = '_pc_boot_heal';
+/** One global per domain file that must exist after a complete boot. */
+const _bootSentinels = [
+  'loadAllData',      // app.js
+  'renderStockMain',  // stock.js
+  'renderQuoteMain',  // quotes.js
+  'renderOrdersMain', // orders.js
+  'toggleAccount',    // settings.js
+  '_loadCutList',     // cutlist.js
+];
+function _checkBootIntegrity() {
+  const w = /** @type {any} */ (window);
+  const stillMissing = () => _bootSentinels.filter((n) => typeof w[n] !== 'function');
+  // Decide once all sentinels are present, or once the grace window is spent.
+  // Returns true when a terminal decision is reached (stop polling).
+  let tries = 0;
+  const decide = () => {
+    const missing = stillMissing();
+    if (missing.length === 0) {
+      // Complete boot — clear the guard so a later dropped load can self-heal too.
+      try { sessionStorage.removeItem(_HEAL_KEY); } catch (_e) { /* storage blocked */ }
+      return true;
+    }
+    // Grace window: classic <script defer> files (and Vite's dev transforms of
+    // them) can finish just after `load`, so a sentinel missing right now may be
+    // merely slow, not dropped. Poll ~3s before concluding a genuine failure — a
+    // truly failed script stays missing the whole window.
+    if (tries++ < 12) return false;
+    let healed = false;
+    try { healed = sessionStorage.getItem(_HEAL_KEY) === '1'; } catch (_e) { /* storage blocked */ }
+    if (!healed) {
+      // First genuinely-incomplete boot this tab: a domain script dropped, and a
+      // failed `defer` request isn't cached, so one reload re-fetches it. Only
+      // reload if the guard flag persisted; in a storage-blocked browser we
+      // can't prevent a loop, so fall through and report instead.
+      let marked = false;
+      try { sessionStorage.setItem(_HEAL_KEY, '1'); marked = true; } catch (_e) { marked = false; }
+      if (marked) { window.location.reload(); return true; }
+    }
+    // Reloaded once and still incomplete (bad deploy, blocked CDN, an ad-blocker
+    // eating a file), or storage unavailable. Don't loop — report so it surfaces;
+    // the call-site try/catch guards keep the app usable meanwhile.
+    if (window.Sentry) {
+      window.Sentry.captureMessage(
+        'boot incomplete — domain scripts missing after self-heal: ' + missing.join(', '),
+        { level: 'error', extra: { missing } },
+      );
+    }
+    return true;
+  };
+  if (decide()) return;
+  const iv = setInterval(() => { if (decide()) clearInterval(iv); }, 250);
+}
+// Run after `load` — all deferred scripts have executed by then — rather than
+// DOMContentLoaded, which in Vite dev can fire before the classic scripts do.
+if (document.readyState === 'complete') { _checkBootIntegrity(); }
+else { window.addEventListener('load', _checkBootIntegrity, { once: true }); }
 
 if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
   throw new Error('Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY — copy .env.example to .env.local and fill in values.');
