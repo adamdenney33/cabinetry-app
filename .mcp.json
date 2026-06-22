@@ -9,10 +9,7 @@
         "Adam at ProCabinet <adam@procabinet.app>",
         "--reply-to",
         "adam@procabinet.app"
-      ],
-      "env": {
-        "RESEND_API_KEY": "${RESEND_API_KEY}"
-      }
+      ]
     }
   }
 }
