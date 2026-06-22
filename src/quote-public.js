@@ -196,25 +196,102 @@ function totals() {
   return { subtotal, tax, taxPct, total, deposit, balance: total - deposit, depPct, pending };
 }
 
-// ── header ───────────────────────────────────────────────────────────────────
-function renderTop() {
-  const b = D?.business || {};
-  const name = b.name || 'Your cabinetmaker';
-  const logo = b.logo_url
-    ? `<img src="${esc(b.logo_url)}" alt="${esc(name)} logo">`
-    : esc((name[0] || 'Q').toUpperCase());
-  // Show whatever contact the maker has on file — more ways to reach a real
-  // person is the single biggest trust signal on a page asking for money.
-  const contact = [b.email, b.phone].filter(Boolean).map(esc).join(' · ');
-  byId('qp-top').innerHTML = `
-    <div class="qp-brand">
-      <div class="qp-logo">${logo}</div>
-      <div><div class="qp-bizname">${esc(name)}</div>${contact ? `<div class="qp-biztag">${contact}</div>` : ''}</div>
-    </div>
-    <span class="qp-secure" title="This page is encrypted (HTTPS). Card payments are handled securely by Stripe."><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>Secure &amp; encrypted</span>`;
+// ── document building blocks (header / addressee / greeting / items) ──────────
+/** @returns {string} */
+function bizName() { return (D && D.business && D.business.name) || 'Your cabinetmaker'; }
+/** Capitalise each word. @param {string} s */
+function cap(s) { return String(s || '').replace(/\b\w/g, (c) => c.toUpperCase()); }
+/** Format an ISO date (YYYY-MM-DD) as "18 June 2026"; pass other strings through.
+ *  @param {string|null|undefined} s */
+function niceDate(s) {
+  const str = String(s || '');
+  if (!/^\d{4}-\d{2}-\d{2}/.test(str)) return str;
+  const d = new Date(str.slice(0, 10) + 'T00:00:00');
+  return isNaN(d.getTime()) ? str : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
 }
+/** Cabinet spec one-liner (dims · material · finish · doors · drawers), raw text.
+ *  @param {any} l */
+function cabinetSpecText(l) {
+  const parts = [];
+  if (l.w_mm || l.h_mm || l.d_mm) parts.push(dimsLabel(l.w_mm, l.h_mm, l.d_mm));
+  if (l.material) parts.push(l.material);
+  if (l.finish && l.finish !== 'None') parts.push(l.finish);
+  if ((l.door_count || 0) > 0) parts.push(`${l.door_count} door${l.door_count !== 1 ? 's' : ''}`);
+  if ((l.drawer_count || 0) > 0) parts.push(`${l.drawer_count} drawer${l.drawer_count !== 1 ? 's' : ''}`);
+  return parts.join(' · ');
+}
+/** Status stamp (right of the document title / top of the rail). */
+function stampHtml() {
+  const isOrder = D?.kind === 'order';
+  const q = D?.quote || {};
+  const accepted = !!q.accepted_at;
+  const txt = isOrder ? cap(String(q.status || 'order').replace(/_/g, ' ')) : (accepted ? 'Accepted' : 'Awaiting approval');
+  return `<div class="qpd-stamp${accepted || isOrder ? ' ok' : ''}"><span class="dot"></span> ${esc(txt)}</div>`;
+}
+/** Document header: business banner (left) + title / ref / status (right). */
+function docHead() {
+  const b = D?.business || {};
+  const isOrder = D?.kind === 'order';
+  const q = D?.quote || {};
+  // Every reachable contact is a trust signal on a page asking for money.
+  const sub = [b.address, b.phone, b.email].filter(Boolean).map(esc).join('  ·  ');
+  const meta = [q.number ? '#' + esc(q.number) : '', q.date ? esc(niceDate(q.date)) : ''].filter(Boolean).join('  ·  ');
+  return `<div class="qpd-head">
+      <div><div class="qpd-bizname">${esc(bizName())}</div>${sub ? `<div class="qpd-bizsub">${sub}</div>` : ''}</div>
+      <div class="qpd-titlewrap">
+        <div class="qpd-title">${isOrder ? 'Order' : 'Quote'}</div>
+        ${meta ? `<div class="qpd-meta">${meta}</div>` : ''}
+        ${stampHtml()}
+      </div>
+    </div>`;
+}
+/** PREPARED FOR / ISSUED block. */
+function addrBlock() {
+  const isOrder = D?.kind === 'order';
+  const q = D?.quote || {};
+  const cn = D?.client?.name ? esc(D.client.name) : '—';
+  const exp = D?.settings?.expires_at;
+  return `<div class="qpd-addr">
+      <div><div class="qpd-lab">Prepared for</div><div class="qpd-an">${cn}</div></div>
+      <div><div class="qpd-lab">${isOrder ? 'Created' : 'Issued'}</div><div class="qpd-an sm">${esc(niceDate(q.date) || '—')}</div>${(!isOrder && exp) ? `<div class="qpd-aline">Valid until ${esc(niceDate(exp))}</div>` : ''}</div>
+    </div>`;
+}
+/** Personalised greeting line. */
+function greet() {
+  if (D?.kind === 'order') return `<div class="qpd-greet">This is your confirmed order — no action needed. Review the details below, download a copy, or message us any time.</div>`;
+  const name = (D?.client?.name || '').split(/[ &]/)[0] || 'there';
+  const biz = D?.business?.name ? ` from <strong>${esc(D.business.name)}</strong>` : '';
+  const optCount = lines.filter((l) => l.optional).length;
+  const bits = [];
+  if (D?.settings?.allow_select && optCount >= 1) bits.push('Tick any optional items to include them.');
+  if (D?.settings?.allow_edit) bits.push('Tap Edit on a line to request a change.');
+  return `<div class="qpd-greet">Hi ${esc(name)} — here's your quote${biz}. ${bits.join(' ')}</div>`;
+}
+/** Group label for a line kind. @param {string} k */
+function grpLabel(k) { return k === 'cabinet' ? 'Cabinets' : k === 'labour' ? 'Labour' : k === 'stock' ? 'Materials' : 'Items'; }
+/** Grouped line-item table (header row + group headings + rows). */
+function itemsHtml() {
+  let html = `<div class="qpd-ihead"><span class="lab">Description</span><span class="qpd-nums"><span class="qpd-num qty">Qty</span><span class="qpd-num price">Price</span><span class="qpd-num amt">Amount</span></span></div>`;
+  let lastG = '';
+  for (const l of lines) {
+    const g = l.line_kind || 'item';
+    if (g !== lastG) { html += `<div class="qpd-grp">${esc(grpLabel(g))}</div>`; lastG = g; }
+    html += row(l);
+  }
+  html += `<div class="qpd-items-foot"></div>`;
+  return html;
+}
+/** Notes + VAT closing line at the foot of the document body. */
+function closingHtml() {
+  const q = D?.quote || {};
+  const noun = D?.kind === 'order' ? 'order' : 'quote';
+  const vat = Number(q.tax) > 0 ? `Total includes VAT (${Number(q.tax)}%).` : `No VAT applies to this ${noun}.`;
+  return `<div class="qpd-closing">${q.notes ? esc(q.notes) + ' · ' : ''}${vat}</div>`;
+}
+/** Brand line shown above the success / error state cards (was the top bar). */
+function stateBrand() { return D?.business?.name ? `<div class="qp-statebrand">${esc(D.business.name)}</div>` : ''; }
 
-// ── line row ─────────────────────────────────────────────────────────────────
+// ── line row (document table row) ────────────────────────────────────────────
 /** @param {any} l */
 function row(l) {
   const accepted = !!D?.quote?.accepted_at;
@@ -223,44 +300,34 @@ function row(l) {
     ? `<button type="button" class="qp-photo" onclick="__qp.openPhotos(${l.id},0)" aria-label="View ${photos.length > 1 ? photos.length + ' photos' : 'photo'} of ${esc(l.name || 'this item')}"><img src="${esc(photos[0])}" alt="" loading="lazy">${photos.length > 1 ? `<span class="qp-photo-n">+${photos.length - 1}</span>` : ''}</button>`
     : '';
   const chips = [];
-  if (l.optional && !accepted) chips.push('<span class="qp-chip opt">Optional</span>');
+  if (l.optional && !accepted) chips.push('<span class="qpd-tag">Optional</span>');
   // Once accepted, the quote is locked server-side — don't render controls
   // that would only error with "already accepted".
-  if (!accepted && (((l.editable_specs && l.editable_specs.length) || l.customer_editable)) && D?.settings?.allow_edit) chips.push(`<button class="qp-chip edit" onclick="__qp.toggleSpec(${l.id})">Edit ▾</button>`);
+  if (!accepted && (((l.editable_specs && l.editable_specs.length) || l.customer_editable)) && D?.settings?.allow_edit) chips.push(`<button class="qp-chip edit" onclick="__qp.toggleSpec(${l.id})">Edit</button>`);
   if (l._pending) chips.push('<span class="qp-chip pending">Price to confirm</span>');
-  // Richer cabinet description — mirrors what the PDF shows (dims, material,
-  // finish, fronts) so the page reads like a real spec, not a mystery box.
-  let spec = '';
-  if (l.line_kind === 'cabinet') {
-    const parts = [];
-    if (l.w_mm || l.h_mm || l.d_mm) parts.push(dimsLabel(l.w_mm, l.h_mm, l.d_mm));
-    if (l.material) parts.push(esc(l.material));
-    if (l.finish && l.finish !== 'None') parts.push(esc(l.finish));
-    if ((l.door_count || 0) > 0) parts.push(`${l.door_count} door${l.door_count !== 1 ? 's' : ''}`);
-    if ((l.drawer_count || 0) > 0) parts.push(`${l.drawer_count} drawer${l.drawer_count !== 1 ? 's' : ''}`);
-    spec = parts.join(' · ');
-  } else {
-    spec = esc(l.notes || l.type || '');
-  }
-  const priceHtml = l._pending
-    ? '<div class="qp-price" style="font-size:12px;color:var(--danger)">To confirm</div>'
-    : (l.customer_price != null ? `<div class="qp-price">${money(l.customer_price)}</div>` : '<div class="qp-price" style="color:var(--muted)">—</div>');
-  const toggle = (l.optional && D?.settings?.allow_select && !accepted)
-    ? `<button class="qp-toggle" aria-pressed="${!!l.customer_included}" aria-label="Include ${esc(l.name || 'this item')} in your ${D?.kind === 'order' ? 'order' : 'quote'}" onclick="__qp.toggle(${l.id})" title="Include / exclude"></button>`
+  // Cabinet description mirrors the PDF (dims · material · finish · fronts).
+  const spec = l.line_kind === 'cabinet' ? esc(cabinetSpecText(l)) : esc(l.notes || l.type || '');
+  // Optional items get a document-style include checkbox (not a SaaS switch).
+  const canSelect = l.optional && D?.settings?.allow_select && !accepted;
+  const chk = canSelect
+    ? `<button class="qpd-chk" aria-pressed="${!!l.customer_included}" aria-label="Include ${esc(l.name || 'this item')} in your ${D?.kind === 'order' ? 'order' : 'quote'}" onclick="__qp.toggle(${l.id})"><svg viewBox="0 0 12 12"><path d="M2 6l3 3 5-6" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>`
     : '';
-  return `<div class="qp-row${l.customer_included ? '' : ' excluded'}" id="qp-row-${l.id}">
-    <div style="display:flex;gap:14px;width:100%;align-items:flex-start">
-      ${photo}
-      <div style="flex:1;min-width:0">
-        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="font-weight:700;font-size:14px">${esc(l.name || 'Item')}</span>${chips.join('')}</div>
-        <div style="font-size:12px;color:var(--muted);margin-top:3px">${spec}${l.qty > 1 ? ' · Qty ' + l.qty : ''}</div>
+  const qty = Number(l.qty) || 1;
+  const total = l.customer_price;
+  const unit = total != null ? Number(total) / (qty || 1) : null;
+  const qtyCell = `<span class="qpd-num qty">${qty}</span>`;
+  const priceCell = l._pending ? `<span class="qpd-num price">—</span>` : `<span class="qpd-num price">${unit != null ? money(unit) : '—'}</span>`;
+  const amtCell = l._pending
+    ? `<span class="qpd-num amt" style="color:var(--danger);font-size:11px">To confirm</span>`
+    : `<span class="qpd-num amt">${total != null ? money(total) : '—'}</span>`;
+  return `<div class="qpd-li${l.customer_included ? '' : ' off'}" id="qp-row-${l.id}">
+      <div class="qpd-li-main">${chk}${photo}<div class="qpd-li-text">
+        <div class="qpd-li-name">${esc(l.name || 'Item')}${chips.join('')}</div>
+        <div class="qpd-li-spec">${spec}${qty > 1 ? ' · Qty ' + qty : ''}</div>
         <div id="qp-spec-${l.id}" style="display:none"></div>
-      </div>
-      <div style="text-align:right;flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end;gap:7px">
-        ${priceHtml}${toggle}
-      </div>
-    </div>
-  </div>`;
+      </div></div>
+      <span class="qpd-li-nums">${qtyCell}${priceCell}${amtCell}</span>
+    </div>`;
 }
 
 /** @param {any} l */
@@ -327,91 +394,110 @@ function specEditor(l) {
   </div>`;
 }
 
-// ── rail ─────────────────────────────────────────────────────────────────────
-function rail() {
+// ── totals / rail / action bar ───────────────────────────────────────────────
+/** Decide which CTA the page shows, shared by the rail + mobile action bar.
+ *  @returns {{kind:string, t:ReturnType<typeof totals>, label?:string, shortLabel?:string, hint?:string, disabled?:boolean}} */
+function ctaState() {
   const t = totals();
   const isOrder = D?.kind === 'order';
   const accepted = !!D?.quote?.accepted_at;
-  // Orders are confirmed — no accept / pay CTA on the live page.
   const payMode = !!D?.settings?.accept_payment;
-  const btnLabel = payMode
-    ? (t.depPct ? `Accept &amp; pay ${money(t.deposit)} deposit` : `Accept &amp; pay ${money(t.total)}`)
-    : 'Accept this quote';
-  // One line under the button so the customer knows exactly what the click does.
-  const hasPending = t.pending > 0;
-  const ctaHint = hasPending
-    ? `Accepting unlocks once ${esc(D?.business?.name || 'your maker')} confirms the updated price${t.pending > 1 ? 's' : ''}.`
-    : payMode
-      ? (t.depPct
-        ? `Pay a ${t.depPct}% deposit now to confirm — the ${money(t.balance)} balance is due on completion.`
-        : `Pay in full to confirm your ${isOrder ? 'order' : 'quote'}.`)
-      : 'Confirms you’re happy to go ahead — your maker will be in touch about next steps and payment.';
-  // Edit mode: while any spec editor is open the accept/pay CTA is replaced
-  // by Send edits + Cancel, with its own explanatory caption.
   const editing = Object.keys(originalValues).length > 0;
-  const editCta = `<div style="display:flex;gap:8px;margin-top:16px">
-      <button class="btn btn-primary btn-lg" style="flex:1" onclick="__qp.sendEdits()">Send edits</button>
-      <button class="btn btn-lg" style="width:auto;flex-shrink:0;background:none;border:1px solid var(--border);color:var(--text2)" onclick="__qp.cancelEdits()">Cancel</button>
-    </div>
-    <div style="font-size:11px;color:var(--muted);margin-top:8px;line-height:1.4;text-align:center">Sends your requested changes to ${esc(D?.business?.name || 'your maker')} — the updated price will be confirmed before anything is charged.</div>`;
-  const cta = editing
-    ? editCta
-    : isOrder
-    ? ''
-    : (accepted
-      ? `<div class="qp-chip" style="background:var(--success);color:#fff;display:block;text-align:center;padding:14px 16px;font-size:12px;margin-top:16px;line-height:1.2">✓ Accepted — thank you</div>`
-      : `<button class="btn btn-primary btn-lg" style="margin-top:16px${hasPending ? ';opacity:.55;cursor:not-allowed' : ''}"${hasPending ? ' disabled' : ''} onclick="${payMode ? '__qp.payDeposit()' : '__qp.confirmAccept()'}">${btnLabel}</button>
-       <div style="font-size:11px;color:var(--muted);margin-top:8px;line-height:1.4;text-align:center">${ctaHint}</div>`);
-  // The customer's discount is baked into each line price — surface it so they
-  // can see what they're saving (and the subtotal reads pre-discount).
+  const hasPending = t.pending > 0;
+  if (editing) return { kind: 'edit', t };
+  if (isOrder) return { kind: 'order', t };
+  if (accepted) return { kind: 'accepted', t };
+  const label = payMode ? (t.depPct ? `Accept &amp; pay ${money(t.deposit)} deposit` : `Accept &amp; pay ${money(t.total)}`) : 'Accept this quote';
+  const shortLabel = payMode ? (t.depPct ? 'Accept &amp; pay deposit' : 'Accept &amp; pay') : 'Accept quote';
+  const hint = hasPending
+    ? `Accepting unlocks once ${esc(bizName())} confirms the updated price${t.pending > 1 ? 's' : ''}.`
+    : payMode
+      ? (t.depPct ? `Pay a ${t.depPct}% deposit now to confirm — the ${money(t.balance)} balance is due on completion.` : 'Pay in full to confirm your quote.')
+      : 'Confirms you’re happy to go ahead — your maker will be in touch about next steps and payment.';
+  return { kind: payMode ? 'pay' : 'accept', label, shortLabel, hint, disabled: hasPending, t };
+}
+/** Primary CTA button(s). @param {ReturnType<typeof ctaState>} cs @param {boolean} compact */
+function ctaHtml(cs, compact) {
+  if (cs.kind === 'edit') {
+    return `<div style="display:flex;gap:8px;margin-top:9px">
+        <button class="qpd-b dark" style="flex:1" onclick="__qp.sendEdits()">Send edits</button>
+        <button class="qpd-b ghost sm" onclick="__qp.cancelEdits()">Cancel</button>
+      </div>${compact ? '' : `<div class="qpd-cta-hint">Sends your changes to ${esc(bizName())} — the updated price is confirmed before anything is charged.</div>`}`;
+  }
+  if (cs.kind === 'order') return '';
+  if (cs.kind === 'accepted') return `<div class="qpd-accepted">✓ Accepted — thank you</div>`;
+  const label = compact ? cs.shortLabel : cs.label;
+  return `<button class="qpd-b dark" style="margin-top:9px"${cs.disabled ? ' disabled' : ''} onclick="${cs.kind === 'pay' ? '__qp.payDeposit()' : '__qp.confirmAccept()'}">${label}</button>${compact ? '' : `<div class="qpd-cta-hint">${cs.hint}</div>`}`;
+}
+/** Totals + black pill + deposit block shown in the document body (id qp-doctot). */
+function docTotals() {
+  const t = totals();
+  const isOrder = D?.kind === 'order';
+  // The discount is baked into each line price; show it back so the subtotal
+  // reads pre-discount and the customer sees what they're saving.
   const discPct = Number(D?.quote?.discount) || 0;
   const preDiscount = discPct > 0 && discPct < 100 ? t.subtotal / (1 - discPct / 100) : t.subtotal;
   const saving = preDiscount - t.subtotal;
-  const discRows = discPct > 0
-    ? `<div class="qp-rl"><span>Subtotal</span><span>${money(preDiscount)}</span></div>
-       <div class="qp-rl" style="color:var(--success);font-weight:600"><span>Your discount (${discPct}%)</span><span>−${money(saving)}</span></div>`
-    : `<div class="qp-rl"><span>Subtotal</span><span>${money(t.subtotal)}</span></div>`;
-  return `<h3>Your ${isOrder ? 'order' : 'quote'}</h3>
-    <div style="font-size:12px;color:var(--muted);margin-bottom:10px">${lines.filter((l) => l.customer_included).length} of ${lines.length} items included</div>
-    ${discRows}
-    ${t.taxPct ? `<div class="qp-rl"><span>VAT (${t.taxPct}%)</span><span>${money(t.tax)}</span></div>` : ''}
-    <div class="qp-rl grand"><span>Total</span><span>${money(t.total)}${t.pending ? '+' : ''}</span></div>
-    ${t.depPct ? `<div class="qp-dep"><div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:12px;font-weight:700;color:var(--text2)">Deposit (${t.depPct}%)</span><span class="amt">${money(t.deposit)}</span></div><div class="bal">Balance of ${money(t.balance)} on completion</div></div>` : ''}
-    ${t.pending ? `<div style="font-size:11px;color:var(--danger);margin-top:10px">${t.pending} item${t.pending > 1 ? 's' : ''} awaiting a confirmed price after your spec change — we’ll update this page.</div>` : ''}
-    ${cta}
-    <div style="display:flex;align-items:center;justify-content:center;gap:6px;font-size:10.5px;color:var(--muted);margin-top:14px"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg> Secured · ${esc(D?.business?.name || '')}</div>`;
+  return `<div class="qpd-tot">
+      <div class="qpd-tline"><span>Subtotal</span><span class="v">${money(discPct > 0 ? preDiscount : t.subtotal)}</span></div>
+      ${discPct > 0 ? `<div class="qpd-tline disc"><span>Discount (${discPct}%)</span><span class="v">− ${money(saving)}</span></div>` : ''}
+      ${t.taxPct ? `<div class="qpd-tline"><span>VAT (${t.taxPct}%)</span><span class="v">+ ${money(t.tax)}</span></div>` : ''}
+    </div>
+    <div class="qpd-pill"><span class="pl">${isOrder ? 'Order' : 'Quote'} total</span><span class="pa">${money(t.total)}${t.pending ? '+' : ''}</span></div>
+    ${t.depPct ? `<div class="qpd-pay"><div class="qpd-pay-lab">Deposit to begin</div><div class="qpd-pay-amt">${money(t.deposit)}</div><div class="qpd-pay-bal">${t.depPct}% now · balance ${money(t.balance)} on completion</div></div>` : ''}
+    ${t.pending ? `<div class="qpd-pendnote">${t.pending} item${t.pending > 1 ? 's' : ''} awaiting a confirmed price after your change — we’ll update this page.</div>` : ''}`;
+}
+/** Desktop checkout rail (hidden on mobile; the action bar takes over). */
+function rail() {
+  const cs = ctaState();
+  const isOrder = D?.kind === 'order';
+  return `${stampHtml()}
+    <div class="rlab">${isOrder ? 'Order total' : 'Amount to approve'}</div>
+    <div class="qpd-pill"><span class="pl">${isOrder ? 'Order' : 'Quote'} total</span><span class="pa">${money(cs.t.total)}${cs.t.pending ? '+' : ''}</span></div>
+    ${cs.t.depPct ? `<div class="qpd-pay"><div class="qpd-pay-lab">Deposit to begin</div><div class="qpd-pay-amt">${money(cs.t.deposit)}</div><div class="qpd-pay-bal">${cs.t.depPct}% now · balance ${money(cs.t.balance)} on completion</div></div>` : ''}
+    ${cs.t.pending ? `<div class="qpd-pendnote">${cs.t.pending} item${cs.t.pending > 1 ? 's' : ''} awaiting a confirmed price — we’ll update this page.</div>` : ''}
+    ${ctaHtml(cs, false)}
+    <button class="qpd-b ghost" onclick="__qp.downloadPdf()">↓ Download PDF</button>
+    <div class="qpd-secure"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg> Payments secured by Stripe</div>`;
+}
+/** Mobile sticky action bar (hidden on desktop). */
+function actionBar() {
+  const cs = ctaState();
+  if (cs.kind === 'edit') return `<button class="qpd-b dark" onclick="__qp.sendEdits()">Send edits</button><button class="qpd-b ghost" onclick="__qp.cancelEdits()">Cancel</button>`;
+  if (cs.kind === 'accepted') return `<div class="qpd-accepted" style="flex:1;margin:0">✓ Accepted — thank you</div>`;
+  if (cs.kind === 'order') return `<button class="qpd-b ghost" style="flex:1" onclick="__qp.downloadPdf()">↓ Download PDF</button>`;
+  return `<button class="qpd-b ghost" onclick="__qp.downloadPdf()">↓ PDF</button><button class="qpd-b dark"${cs.disabled ? ' disabled' : ''} onclick="${cs.kind === 'pay' ? '__qp.payDeposit()' : '__qp.confirmAccept()'}">${cs.shortLabel}</button>`;
+}
+/** Re-render the three summary surfaces after a toggle / edit. */
+function updateSummaries() {
+  const dt = document.getElementById('qp-doctot'); if (dt) dt.innerHTML = docTotals();
+  const r = document.getElementById('qp-rail'); if (r) r.innerHTML = rail();
+  const a = document.getElementById('qp-actionbar'); if (a) a.innerHTML = actionBar();
 }
 
 // ── full render ──────────────────────────────────────────────────────────────
 function render() {
-  const q = D.quote || {};
-  const isOrder = D.kind === 'order';
-  const noun = isOrder ? 'order' : 'quote';
-  const statusChip = isOrder
-    ? esc(String(q.status || 'order').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()))
-    : esc(q.accepted_at ? 'Accepted' : 'Awaiting your approval');
-  const greetingName = (D.client?.name || '').split(/[ &]/)[0] || 'there';
-  // Orders are already confirmed — a banner removes any "do I need to do
-  // something?" doubt that a quote-style page would otherwise create.
-  const orderBanner = isOrder
-    ? `<div class="qp-banner"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg><div>This is your confirmed order — no action needed. You can review the details below or message us any time.</div></div>`
-    : '';
   byId('qp-root').innerHTML = `
-    ${orderBanner}
-    <div class="qp-hero">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap">
-        <div><h1>Your ${noun}${q.number ? ' · ' + esc(q.number) : ''}</h1><div class="sub">${q.date ? (isOrder ? 'Created ' : 'Issued ') + esc(q.date) : ''}</div></div>
-        <span class="qp-chip" style="background:rgba(80,140,220,.15);color:#2962d9">${statusChip}</span>
+    <div class="qpd-desk"><div class="qpd-grid">
+      <div class="qpd-paper">
+        <div class="qpd-pad">
+          ${docHead()}
+          <div class="qpd-rule"></div>
+          ${addrBlock()}
+          ${greet()}
+          <div class="qpd-items" id="qp-lines"></div>
+          <div id="qp-doctot"></div>
+          ${closingHtml()}
+        </div>
+        <div class="qpd-foot"><span>${esc(bizName())}${D?.quote?.date ? '  ·  ' + esc(niceDate(D.quote.date)) : ''}</span><span class="sec"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg> Secured by Stripe</span></div>
       </div>
-      <div class="qp-greeting">Hi ${esc(greetingName)}, here's your ${noun}${D.business?.name ? ' from <strong>' + esc(D.business.name) + '</strong>' : ''}. ${(D.settings?.allow_select && lines.filter((l) => l.optional).length >= 2) ? 'Toggle any optional items and the total updates as you go.' : ''} ${D.settings?.allow_edit ? 'Tap Edit on a line to request a spec change.' : ''}</div>
-    </div>
-    <div class="qp-two">
-      <div class="card" style="overflow:hidden"><div class="card-header"><div class="card-title">Your items</div></div><div id="qp-lines"></div></div>
-      <div class="qp-rail-wrap"><div class="qp-rail" id="qp-rail"></div></div>
-    </div>
-    <div style="font-size:11px;color:var(--muted);text-align:center;margin-top:18px">${q.notes ? esc(q.notes) + ' · ' : ''}${Number(q.tax) > 0 ? 'Total includes VAT (' + Number(q.tax) + '%).' : 'No VAT applies to this ' + noun + '.'}</div>`;
-  byId('qp-lines').innerHTML = lines.map(row).join('');
+      <div class="qpd-rail-wrap"><div class="qpd-rail" id="qp-rail"></div></div>
+    </div></div>
+    <div class="qpd-actionbar" id="qp-actionbar"></div>`;
+  byId('qp-lines').innerHTML = itemsHtml();
+  byId('qp-doctot').innerHTML = docTotals();
   byId('qp-rail').innerHTML = rail();
+  byId('qp-actionbar').innerHTML = actionBar();
   mountChat();
 }
 
@@ -420,7 +506,7 @@ function refreshLine(id) {
   const l = lines.find((x) => x.id === id);
   const el = byId('qp-row-' + id);
   if (l && el) el.outerHTML = row(l);
-  byId('qp-rail').innerHTML = rail();
+  updateSummaries();
 }
 
 // ── Stripe.js (loaded on demand for the pay flow) ────────────────────────────
@@ -477,7 +563,7 @@ function paidState(pay) {
   if (D.quote) D.quote.accepted_at = new Date().toISOString();
   const t = totals();
   const isDep = pay.kind === 'deposit';
-  byId('qp-root').innerHTML = `<div class="qp-state">
+  byId('qp-root').innerHTML = `${stateBrand()}<div class="qp-state">
     <div class="check"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
     <h1 style="font-size:22px;font-weight:800;color:var(--text)">Payment received 🎉</h1>
     <p style="font-size:14px;margin-top:8px;color:var(--text2)">Your ${money(pay.amount)} ${isDep ? 'deposit' : 'payment'} is confirmed and your order is booked in.</p>
@@ -497,7 +583,7 @@ function bankPendingState(pay, pi) {
   const isDep = pay.kind === 'deposit';
   const url = (pi && pi.next_action && pi.next_action.display_bank_transfer_instructions
     && pi.next_action.display_bank_transfer_instructions.hosted_instructions_url) || '';
-  byId('qp-root').innerHTML = `<div class="qp-state">
+  byId('qp-root').innerHTML = `${stateBrand()}<div class="qp-state">
     <div class="check"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V10"/><path d="M19 21V10"/><path d="M12 3L3 8h18l-9-5z"/><path d="M9 21v-7"/><path d="M15 21v-7"/></svg></div>
     <h1 style="font-size:22px;font-weight:800;color:var(--text)">One step left — send your bank transfer</h1>
     <p style="font-size:14px;margin-top:8px;color:var(--text2)">Transfer <strong>${money(pay.amount)}</strong> using the bank details from Stripe — your ${isDep ? 'deposit' : 'payment'} is confirmed automatically when it arrives.</p>
@@ -514,7 +600,7 @@ function bankPendingState(pay, pi) {
 function processingState(pay) {
   if (D.quote && !D.quote.accepted_at) D.quote.accepted_at = new Date().toISOString();
   const isDep = pay.kind === 'deposit';
-  byId('qp-root').innerHTML = `<div class="qp-state">
+  byId('qp-root').innerHTML = `${stateBrand()}<div class="qp-state">
     <div class="check"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg></div>
     <h1 style="font-size:22px;font-weight:800;color:var(--text)">Payment processing</h1>
     <p style="font-size:14px;margin-top:8px;color:var(--text2)">Your ${money(pay.amount)} ${isDep ? 'deposit' : 'payment'} is on its way — your order is booked in as soon as it's confirmed.</p>
@@ -661,7 +747,7 @@ const handlers = {
         partitions: l.partitions, end_panels: l.end_panels };
       pendingEdits[id] = {};
       host.innerHTML = specEditor(l); host.style.display = '';
-      const railEl = document.getElementById('qp-rail'); if (railEl) railEl.innerHTML = rail();
+      updateSummaries();
     } else {
       handlers.cancelEdits(id);
     }
@@ -696,7 +782,7 @@ const handlers = {
       else if (pend && !auto) toast(`Change${pend > 1 ? 's' : ''} sent — ${maker} will confirm the updated price.`, false);
       else toast(`Changes sent — some prices updated; ${maker} will confirm the rest.`, false);
     }
-    const railEl = document.getElementById('qp-rail'); if (railEl) railEl.innerHTML = rail();
+    updateSummaries();
   },
   /** Discard buffered edits and close spec editors.
    * @param {number} [id] one line, or every open editor when omitted */
@@ -709,7 +795,7 @@ const handlers = {
       delete originalValues[lid];
       const host = byId('qp-spec-' + lid); if (host) host.style.display = 'none';
     }
-    const railEl = document.getElementById('qp-rail'); if (railEl) railEl.innerHTML = rail();
+    updateSummaries();
   },
   /** Confirmation sheet before the (irreversible) non-payment accept — one
    *  mis-click shouldn't lock the quote. The pay flow has the payment sheet
@@ -807,6 +893,16 @@ const handlers = {
     _chatMsgs.push({ sender: 'customer', body: text }); renderMsgs();
     try { await fn('quote-messages', { token, action: 'send', body: text }); } catch (e) { /* keep optimistic */ }
   },
+  /** Build + download a PDF copy of this quote/order. jsPDF is loaded on demand
+   *  so it never weighs down the first paint of the customer page. */
+  async downloadPdf() {
+    if (!D) return;
+    toast('Preparing your PDF…', false);
+    try {
+      const mod = /** @type {any} */ (await import('jspdf'));
+      buildQuotePdf(mod.jsPDF || mod.default);
+    } catch (e) { toast('Could not generate the PDF — please try again.'); }
+  },
 };
 
 /** Send one line's spec edit. Returns true on success (caller clears the buffer
@@ -838,7 +934,7 @@ async function applyEdit(id, patch) {
 /** @param {ReturnType<typeof totals>} t */
 function successState(t) {
   D.quote.accepted_at = new Date().toISOString();
-  byId('qp-root').innerHTML = `<div class="qp-state">
+  byId('qp-root').innerHTML = `${stateBrand()}<div class="qp-state">
     <div class="check"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
     <h1 style="font-size:22px;font-weight:800;color:var(--text)">Quote accepted 🎉</h1>
     <p style="font-size:14px;margin-top:8px;color:var(--text2)">Thanks — we've let ${esc(D.business?.name || 'your cabinetmaker')} know.</p>
@@ -850,10 +946,157 @@ function successState(t) {
   </div>`;
 }
 
+/** Render a PDF copy of the live quote/order, mirroring the maker's app-generated
+ *  document (_buildOrderDocPDF): Helvetica, heavy header rule, grouped line items,
+ *  black total pill, red discount. Drawn from the public payload only — no logo
+ *  image (the remote logo URL would need a CORS-friendly fetch), name banner
+ *  instead; no ProCabinet footer (the public page can't read the maker's tier).
+ *  @param {any} JsPDF the jsPDF constructor (lazy-imported). */
+function buildQuotePdf(JsPDF) {
+  const isOrder = D.kind === 'order';
+  const biz = D.business || {};
+  const q = D.quote || {};
+  const t = totals();
+  /** @param {number} v */
+  const fmt = (v) => cur + (Number(v) || 0).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const pdf = new JsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const PW = 210, PH = 297, M = 18, W = PW - 2 * M;
+  let y = M;
+  const dateStr = niceDate(q.date) || '';
+
+  // ── Header: business banner (left) + doc title / ref / date (right) ──
+  pdf.setFont('helvetica', 'bold'); pdf.setFontSize(16); pdf.setTextColor(17);
+  pdf.text(biz.name || 'Your cabinetmaker', M, y + 6);
+  const sub = [biz.address, biz.phone, biz.email].filter(Boolean).join('  ·  ');
+  if (sub) { pdf.setFont('helvetica', 'normal'); pdf.setFontSize(8); pdf.setTextColor(120); pdf.text(sub, M, y + 12); }
+  pdf.setFont('helvetica', 'normal'); pdf.setFontSize(22); pdf.setTextColor(50);
+  pdf.text(isOrder ? 'ORDER' : 'QUOTE', PW - M, y + 7, { align: 'right' });
+  pdf.setFontSize(8); pdf.setTextColor(140);
+  pdf.text([q.number ? '#' + q.number : '', dateStr].filter(Boolean).join('  ·  '), PW - M, y + 13.5, { align: 'right' });
+  y += 22;
+  pdf.setDrawColor(17); pdf.setLineWidth(0.6); pdf.line(M, y, PW - M, y); y += 10;
+
+  // ── Addressee ──
+  pdf.setFontSize(7); pdf.setFont('helvetica', 'normal'); pdf.setTextColor(170);
+  pdf.text('PREPARED FOR', M, y); pdf.text(isOrder ? 'CREATED' : 'ISSUED', M + 96, y);
+  let ay = y + 5;
+  pdf.setFontSize(13); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(17);
+  pdf.text((D.client && D.client.name) || '—', M, ay);
+  pdf.setFontSize(11); pdf.text(dateStr || '—', M + 96, ay);
+  y = ay + 12;
+
+  // ── Line items (only the customer's included selection) ──
+  const colAmt = PW - M, colPrice = colAmt - 30, colQty = colPrice - 24;
+  const descMaxW = (colQty - 12) - M;
+  pdf.setFontSize(7); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(140);
+  pdf.text('DESCRIPTION', M, y);
+  pdf.text('QTY', colQty, y, { align: 'right' });
+  pdf.text('PRICE', colPrice, y, { align: 'right' });
+  pdf.text('AMOUNT', colAmt, y, { align: 'right' });
+  y += 2; pdf.setDrawColor(17); pdf.setLineWidth(0.4); pdf.line(M, y, PW - M, y); y += 6;
+  let lastG = '';
+  for (const l of lines) {
+    if (!l.customer_included) continue;
+    const g = l.line_kind || 'item';
+    if (g !== lastG) { pdf.setFontSize(7); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(160); pdf.text(grpLabel(g).toUpperCase(), M, y); y += 4; lastG = g; }
+    pdf.setFontSize(11); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(17);
+    const name = String(l.name || '—').replace(/\s+/g, ' ').trim() || '—';
+    const nameLines = pdf.splitTextToSize(name, descMaxW);
+    pdf.text(nameLines, M, y);
+    const qty = Number(l.qty) || 1;
+    const total = Number(l.customer_price) || 0;
+    pdf.setFontSize(9.5); pdf.setFont('helvetica', 'normal'); pdf.setTextColor(95);
+    pdf.text(String(qty), colQty, y, { align: 'right' });
+    pdf.text(l.customer_price != null ? fmt(total / (qty || 1)) : '—', colPrice, y, { align: 'right' });
+    pdf.setFontSize(11); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(17);
+    pdf.text(l.customer_price != null ? fmt(total) : '—', colAmt, y, { align: 'right' });
+    y += nameLines.length * 5;
+    if (g === 'cabinet') {
+      const spec = cabinetSpecText(l);
+      if (spec) {
+        pdf.setFontSize(8.5); pdf.setFont('helvetica', 'normal'); pdf.setTextColor(130);
+        pdf.splitTextToSize(spec, descMaxW).forEach(/** @param {string} dl */(dl) => { pdf.text(dl, M + 4, y); y += 4; });
+      }
+    }
+    y += 3;
+    if (y > PH - 60) { pdf.addPage(); y = M + 10; }
+  }
+  pdf.setDrawColor(210); pdf.setLineWidth(0.25); pdf.line(M, y, PW - M, y); y += 8;
+
+  // ── Totals ──
+  const discPct = Number(q.discount) || 0;
+  const preDiscount = discPct > 0 && discPct < 100 ? t.subtotal / (1 - discPct / 100) : t.subtotal;
+  const saving = preDiscount - t.subtotal;
+  const lx = PW - M - 80, rx = PW - M;
+  pdf.setFontSize(9); pdf.setFont('helvetica', 'normal'); pdf.setTextColor(140);
+  pdf.text('Subtotal', lx, y); pdf.text(fmt(discPct > 0 ? preDiscount : t.subtotal), rx, y, { align: 'right' }); y += 6;
+  if (discPct > 0) { pdf.setFontSize(8.5); pdf.setTextColor(196, 68, 68); pdf.text('Discount (' + discPct + '%)', lx, y); pdf.text('- ' + fmt(saving), rx, y, { align: 'right' }); pdf.setTextColor(140); y += 5; }
+  if (t.taxPct) { pdf.setFontSize(8.5); pdf.setTextColor(140); pdf.text('VAT (' + t.taxPct + '%)', lx, y); pdf.text('+ ' + fmt(t.tax), rx, y, { align: 'right' }); y += 5; }
+  y += 3;
+  if (y > PH - 46) { pdf.addPage(); y = M + 10; }
+  pdf.setFillColor(17, 17, 17); pdf.roundedRect(M, y, W, 14, 3, 3, 'F');
+  pdf.setFontSize(8); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(255);
+  pdf.text((isOrder ? 'ORDER' : 'QUOTE') + ' TOTAL', M + 8, y + 9);
+  pdf.setFontSize(18); pdf.text(fmt(t.total), PW - M - 8, y + 9.5, { align: 'right' }); y += 22;
+
+  // ── Deposit + closing ──
+  if (t.depPct) {
+    pdf.setFontSize(8.5); pdf.setFont('helvetica', 'normal'); pdf.setTextColor(90);
+    pdf.text('Deposit to begin: ' + fmt(t.deposit) + ' (' + t.depPct + '%) · balance ' + fmt(t.balance) + ' on completion.', M, y); y += 8;
+  }
+  if (q.notes) {
+    pdf.setFontSize(8); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(100); pdf.text('NOTES', M, y); y += 5;
+    pdf.setFontSize(10); pdf.setFont('helvetica', 'normal'); pdf.setTextColor(40);
+    pdf.splitTextToSize(String(q.notes), W).forEach(/** @param {string} n */(n) => { if (y > PH - 24) { pdf.addPage(); y = M + 10; } pdf.text(n, M, y); y += 5; });
+    y += 4;
+  }
+  pdf.setFontSize(8.5); pdf.setFont('helvetica', 'italic'); pdf.setTextColor(120);
+  const closing = isOrder ? 'Thank you for your order.' : 'This quote is valid for 30 days from issue.';
+  pdf.text(pdf.splitTextToSize(closing, W), M, y);
+
+  // ── Footer (business name + date; no ProCabinet branding) ──
+  pdf.setFontSize(7); pdf.setFont('helvetica', 'normal'); pdf.setTextColor(150);
+  if (biz.name) pdf.text(String(biz.name), M, PH - M);
+  if (dateStr) pdf.text(dateStr, PW - M, PH - M, { align: 'right' });
+
+  const fname = ((isOrder ? 'Order' : 'Quote') + (q.number ? '-' + String(q.number) : '')).replace(/[^\w-]+/g, '-') + '.pdf';
+  const blob = pdf.output('blob');
+  const url = URL.createObjectURL(blob);
+  const a = Object.assign(document.createElement('a'), { href: url, download: fname });
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+}
+
 (/** @type {any} */ (window)).__qp = handlers;
 
 // ── boot ─────────────────────────────────────────────────────────────────────
 async function boot() {
+  // Dev-only mock (`/q.html?mock=1` under `npm run dev`): renders the document
+  // with sample data so the layout/PDF can be worked on without a live token.
+  // Stripped from the production build (import.meta.env.DEV is false there).
+  if (import.meta.env.DEV && new URLSearchParams(location.search).has('mock')) {
+    D = {
+      kind: 'quote',
+      quote: { number: 'Q-2048', date: '2026-06-18', status: 'sent', tax: 20, discount: 0, notes: '', accepted_at: null },
+      settings: { allow_select: true, allow_edit: true, accept_payment: true, deposit_pct: 40, expires_at: '2026-07-18' },
+      business: { name: 'Oakline Joinery', email: 'hello@oaklinejoinery.co.uk', phone: '01632 960 142', address: '14 Mill Lane, Bristol BS1 4QA', default_currency: '£' },
+      client: { name: 'Sarah Whitfield' },
+      lines: [
+        { id: 1, line_kind: 'cabinet', name: 'Tall larder unit, 600mm', w_mm: 600, h_mm: 2150, d_mm: 580, material: 'Oak veneer', finish: 'Matt lacquer', door_count: 2, drawer_count: 0, qty: 1, customer_price: 1240, customer_included: true, optional: false, editable_specs: [] },
+        { id: 2, line_kind: 'cabinet', name: 'Base cabinet, 800mm', w_mm: 800, h_mm: 720, d_mm: 580, material: 'Birch ply', finish: 'Painted, Sage green', door_count: 1, drawer_count: 1, qty: 1, customer_price: 680, customer_included: true, optional: false, editable_specs: [] },
+        { id: 3, line_kind: 'cabinet', name: 'Drawer pack, 500mm', w_mm: 500, h_mm: 720, d_mm: 580, material: 'Birch ply', finish: 'Painted, Sage green', door_count: 0, drawer_count: 3, qty: 1, customer_price: 540, customer_included: true, optional: false, editable_specs: [] },
+        { id: 4, line_kind: 'cabinet', name: 'Island unit, 1200mm', w_mm: 1200, h_mm: 900, d_mm: 700, material: 'American walnut', finish: 'Hardwax oil', door_count: 0, drawer_count: 4, qty: 1, customer_price: 2150, customer_included: false, optional: true, editable_specs: ['material', 'finish'] },
+        { id: 5, line_kind: 'cabinet', name: 'Wall cabinet, 600mm', w_mm: 600, h_mm: 700, d_mm: 320, material: 'Oak veneer', finish: 'Matt lacquer', door_count: 2, drawer_count: 0, qty: 1, customer_price: 420, customer_included: true, optional: false, editable_specs: [] },
+        { id: 6, line_kind: 'labour', name: 'Installation & fitting', qty: 1, customer_price: 480, customer_included: true, optional: false, editable_specs: [] },
+      ],
+      photos: [], finishes: ['Matt lacquer', 'Painted, Sage green', 'Hardwax oil'], materials: ['Oak veneer', 'Birch ply', 'American walnut'], doorTypes: [], drawerFrontTypes: [], baseTypes: [], constructions: [], handles: [],
+    };
+    cur = '£';
+    lines = D.lines.map(/** @param {any} l */(l) => ({ ...l }));
+    photosByLine = {};
+    render();
+    return;
+  }
   if (!SBURL || !SBKEY) { byId('qp-root').innerHTML = `<div class="qp-state">Configuration error.</div>`; return; }
   if (!token) { byId('qp-root').innerHTML = `<div class="qp-state">This link is missing its quote reference.</div>`; return; }
   // Redirect-based payment methods (e.g. Pay by bank) bounce via the bank and
@@ -895,7 +1138,6 @@ async function boot() {
     }
     photosByLine = {};
     for (const p of (D.photos || [])) { (photosByLine[p.line_id] = photosByLine[p.line_id] || []).push(p.url); }
-    renderTop();
     // Back from a redirect payment: show the outcome instead of the quote.
     // The amount mirrors the server's choice in quote-pay (deposit when a
     // deposit % is set, else the full total).

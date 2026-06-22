@@ -10,144 +10,230 @@
 <link rel="preconnect" href="%VITE_SUPABASE_URL%" crossorigin>
 <link rel="stylesheet" href="/styles.css">
 <style>
-  /* Public quote/order page — self-contained chrome (no app nav, no mockup CSS). */
-  body.qp { height: auto; min-height: 100dvh; overflow: auto; display: block; background: var(--bg); }
-  .qp-wrap { max-width: 1080px; margin: 0 auto; padding: 0 20px 56px; }
-  .qp-top { max-width: 1080px; margin: 0 auto; padding: 22px 20px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-  .qp-brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
-  .qp-logo { width: 44px; height: 44px; border-radius: 10px; background: var(--accent); color: #fff; font-weight: 800; font-size: 21px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; overflow: hidden; box-shadow: var(--shadow); }
-  .qp-logo img { width: 100%; height: 100%; object-fit: contain; }
-  .qp-bizname { font-size: 16px; font-weight: 800; line-height: 1.1; }
-  .qp-biztag { font-size: 11px; color: var(--muted); margin-top: 2px; }
-  .qp-secure { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; color: var(--success); }
-  .qp-hero { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 24px 26px; margin-bottom: 20px; }
-  .qp-hero h1 { font-size: 22px; font-weight: 800; letter-spacing: -.3px; }
-  .qp-hero .sub { font-size: 13px; color: var(--muted); margin-top: 4px; }
-  .qp-greeting { font-size: 14px; color: var(--text2); line-height: 1.55; margin-top: 14px; }
-  .qp-two { display: grid; grid-template-columns: 1fr 360px; gap: 24px; align-items: start; }
-  .qp-rail-wrap { position: sticky; top: 20px; }
-  .qp-rail { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 22px; }
-  .qp-rail h3 { font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin-bottom: 10px; }
-  .qp-rl { display: flex; justify-content: space-between; font-size: 13px; color: var(--text2); padding: 6px 0; }
-  .qp-rl.grand { font-size: 18px; font-weight: 800; color: var(--text); border-top: 1px solid var(--border); margin-top: 10px; padding-top: 14px; }
-  .qp-dep { background: var(--accent-dim); border: 1px solid rgba(232,168,56,.3); border-radius: 10px; padding: 14px 16px; margin-top: 16px; }
-  .qp-dep .amt { font-size: 24px; font-weight: 800; }
-  .qp-dep .bal { font-size: 11px; color: var(--muted); margin-top: 4px; }
-  /* Single-column on narrow viewports — rail stacks under items. */
-  @media (max-width: 760px) {
-    .qp-two { grid-template-columns: 1fr; gap: 16px; }
-    .qp-rail-wrap { position: static; }
-    .qp-wrap, .qp-top { padding-left: 16px; padding-right: 16px; }
+  /* ===================================================================
+     Public quote/order page — a customer-facing DOCUMENT, styled to
+     match the PDF the app generates (_buildOrderDocPDF): Helvetica,
+     ink #111, heavy header rule, grouped line-item table, black total
+     pill, red discounts. Always light ("paper"), regardless of the
+     viewer's OS dark mode — an invoice is conventionally light and this
+     keeps the page identical to the downloadable PDF.
+     =================================================================== */
+  body.qp{
+    /* Pin the document palette on this page's subtree (overrides styles.css
+       :root / html.dark so the page never goes dark). */
+    --bg:#e7e4dc; --surface:#ffffff; --surface2:#f7f6f2;
+    --text:#111111; --text2:#3f3c33; --muted:#8b8678;
+    --border:#e4e1d8; --border2:#efece4;
+    --accent:#111111;          /* repurpose gold → ink (buttons, launcher) */
+    --accent-dim:#f4f3ee;
+    --success:#3d9970; --danger:#c44444;
+    --hair:#d4d2cc;
+    --radius:12px;
+    --shadow:0 1px 2px rgba(20,18,10,.05),0 10px 30px rgba(20,18,10,.09);
+    --shadow-md:0 20px 54px rgba(20,18,10,.18);
+    height:auto; min-height:100dvh; overflow:auto; display:block;
+    background:var(--bg); color:var(--text);
+    font-family:'Helvetica Neue',Helvetica,Arial,-apple-system,BlinkMacSystemFont,sans-serif;
   }
-  .qp-row { display: flex; gap: 14px; align-items: flex-start; padding: 14px 16px; border-top: 1px solid var(--border2); }
-  .qp-row:first-child { border-top: none; }
-  .qp-row.excluded { opacity: .5; }
-  .qp-row.excluded .qp-price { text-decoration: line-through; }
-  .qp-photo { width: 84px; height: 64px; border-radius: 8px; overflow: hidden; border: 1px solid var(--border); background: var(--surface2); flex-shrink: 0; }
-  .qp-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
-  /* Photo thumb is a button when photos exist — tap to open the viewer. */
-  button.qp-photo { padding: 0; position: relative; display: block; cursor: zoom-in; appearance: none; -webkit-appearance: none; }
-  button.qp-photo:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-  .qp-photo-n { position: absolute; right: 4px; bottom: 4px; background: rgba(10,10,10,.62); color: #fff; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 999px; pointer-events: none; font-family: inherit; }
-  /* Photo viewer (lightbox) — fixed dark chrome on both themes. */
-  .qp-pv { position: fixed; inset: 0; z-index: 9300; background: rgba(8,8,10,.9); display: flex; flex-direction: column; animation: qp-pv-in .16s ease; }
-  @keyframes qp-pv-in { from { opacity: 0; } to { opacity: 1; } }
-  .qp-pv-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px; }
-  .qp-pv-cap { font-size: 13px; font-weight: 700; color: rgba(255,255,255,.92); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .qp-pv-x { border: none; background: rgba(255,255,255,.12); color: #fff; width: 36px; height: 36px; border-radius: 50%; font-size: 20px; line-height: 1; cursor: pointer; flex-shrink: 0; font-family: inherit; }
-  .qp-pv-x:hover { background: rgba(255,255,255,.24); }
-  .qp-pv-stage { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; padding: 0 64px; position: relative; }
-  .qp-pv-stage img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 8px; user-select: none; -webkit-user-drag: none; }
-  .qp-pv-arrow { position: absolute; top: 50%; transform: translateY(-50%); width: 42px; height: 42px; border-radius: 50%; border: none; background: rgba(255,255,255,.12); color: #fff; font-size: 26px; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0 0 3px; font-family: inherit; }
-  .qp-pv-arrow:hover { background: rgba(255,255,255,.24); }
-  .qp-pv-arrow.prev { left: 14px; }
-  .qp-pv-arrow.next { right: 14px; }
-  .qp-pv-arrow:focus-visible, .qp-pv-x:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-  .qp-pv-foot { padding: 10px 16px calc(16px + env(safe-area-inset-bottom)); text-align: center; }
-  .qp-pv-count { color: rgba(255,255,255,.8); font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
-  .qp-pv-thumbs { display: flex; gap: 8px; margin-top: 10px; overflow-x: auto; padding: 2px; }
-  /* Auto-margins centre the strip when it fits, yet keep photo 1 reachable when it scrolls. */
-  .qp-pv-thumbs img:first-child { margin-left: auto; }
-  .qp-pv-thumbs img:last-child { margin-right: auto; }
-  .qp-pv-thumbs img { width: 54px; height: 40px; object-fit: cover; border-radius: 6px; opacity: .5; cursor: pointer; border: 2px solid transparent; flex-shrink: 0; transition: opacity .12s; }
-  .qp-pv-thumbs img.on { opacity: 1; border-color: var(--accent); }
-  .qp-pv-thumbs img:hover { opacity: .85; }
-  @media (max-width: 480px) {
-    .qp-pv-stage { padding: 0 44px; }
-    .qp-pv-arrow { width: 36px; height: 36px; font-size: 22px; }
-    .qp-pv-arrow.prev { left: 6px; }
-    .qp-pv-arrow.next { right: 6px; }
+
+  /* ── desk + paper ── */
+  .qpd-desk{ padding:28px 18px 64px; }
+  .qpd-grid{ max-width:1040px; margin:0 auto; display:grid; grid-template-columns:1fr 308px; gap:22px; align-items:start; }
+  .qpd-paper{ background:var(--surface); box-shadow:var(--shadow); border-radius:4px; overflow:hidden; }
+  .qpd-pad{ padding:44px 48px 30px; }
+
+  /* ── document header ── */
+  .qpd-head{ display:flex; justify-content:space-between; align-items:flex-start; gap:22px; }
+  .qpd-bizname{ font-size:20px; font-weight:800; letter-spacing:-.2px; line-height:1.15; }
+  .qpd-bizsub{ font-size:11.5px; color:var(--muted); margin-top:6px; line-height:1.5; }
+  .qpd-titlewrap{ text-align:right; flex-shrink:0; }
+  .qpd-title{ font-size:25px; font-weight:400; color:#323232; letter-spacing:2px; text-transform:uppercase; }
+  .qpd-meta{ font-size:11.5px; color:var(--muted); margin-top:7px; letter-spacing:.3px; }
+  .qpd-stamp{ display:inline-flex; align-items:center; gap:6px; margin-top:10px; border:1px solid var(--hair);
+    color:var(--text2); font-size:10px; font-weight:700; letter-spacing:.09em; text-transform:uppercase; padding:4px 9px; border-radius:4px; }
+  .qpd-stamp .dot{ width:6px; height:6px; border-radius:50%; background:#e8a838; }
+  .qpd-stamp.ok .dot{ background:var(--success); }
+  .qpd-rule{ border-top:1.5px solid var(--text); margin:18px 0 0; }
+
+  /* ── addressee ── */
+  .qpd-addr{ display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-top:18px; }
+  .qpd-lab{ font-size:10px; font-weight:600; letter-spacing:.1em; text-transform:uppercase; color:#aaa; }
+  .qpd-an{ font-size:15px; font-weight:700; margin-top:5px; }
+  .qpd-an.sm{ font-size:13px; }
+  .qpd-aline{ font-size:12px; color:var(--text2); margin-top:3px; line-height:1.5; }
+  .qpd-greet{ font-size:12.5px; font-style:italic; color:var(--muted); margin-top:16px; line-height:1.6; }
+
+  /* ── line-item table ── */
+  .qpd-items{ margin-top:22px; }
+  .qpd-ihead{ display:flex; gap:16px; align-items:flex-end; padding-bottom:5px; border-bottom:1.2px solid var(--text); }
+  .qpd-ihead .lab{ flex:1; font-size:10px; font-weight:700; letter-spacing:.07em; color:var(--muted); }
+  .qpd-nums{ display:flex; flex-shrink:0; }
+  .qpd-num{ text-align:right; font-variant-numeric:tabular-nums; }
+  .qpd-num.qty{ width:46px; } .qpd-num.price{ width:90px; } .qpd-num.amt{ width:100px; }
+  .qpd-ihead .qpd-num{ font-size:10px; font-weight:700; letter-spacing:.07em; color:var(--muted); }
+  .qpd-grp{ font-size:10px; font-weight:700; letter-spacing:.09em; text-transform:uppercase; color:#aaa; margin:16px 0 2px; }
+  .qpd-li{ display:flex; gap:16px; align-items:flex-start; padding:10px 0; }
+  .qpd-li.off{ opacity:.5; }
+  .qpd-li.off .qpd-num.amt{ text-decoration:line-through; }
+  .qpd-li-main{ flex:1; min-width:0; display:flex; gap:12px; }
+  .qpd-li-text{ flex:1; min-width:0; }
+  .qpd-li-name{ font-size:14px; font-weight:700; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .qpd-li-spec{ font-size:12px; color:var(--muted); margin-top:4px; line-height:1.5; }
+  .qpd-li-nums{ display:flex; flex-shrink:0; }
+  .qpd-li .qpd-num.qty, .qpd-li .qpd-num.price{ font-size:12.5px; color:var(--text2); padding-top:1px; }
+  .qpd-li .qpd-num.amt{ font-size:14px; font-weight:700; }
+  /* include checkbox for optional lines (document control, not a SaaS switch) */
+  .qpd-chk{ width:19px; height:19px; border:1.5px solid var(--muted); border-radius:4px; background:#fff; cursor:pointer;
+    flex-shrink:0; display:flex; align-items:center; justify-content:center; margin-top:1px; padding:0; transition:.12s; }
+  .qpd-chk[aria-pressed="true"]{ background:var(--text); border-color:var(--text); }
+  .qpd-chk svg{ width:11px; height:11px; opacity:0; }
+  .qpd-chk[aria-pressed="true"] svg{ opacity:1; }
+  .qpd-chk:focus-visible{ outline:2px solid var(--text); outline-offset:2px; }
+  .qpd-tag{ font-size:8.5px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:var(--text2);
+    border:1px solid var(--hair); padding:2px 6px; border-radius:3px; }
+  .qpd-items-foot{ border-top:1px solid var(--hair); margin-top:6px; }
+
+  /* line photo thumbnail (opens the lightbox) */
+  .qp-photo{ width:46px; height:46px; border-radius:6px; overflow:hidden; border:1px solid rgba(0,0,0,.08); background:var(--surface2); flex-shrink:0; }
+  .qp-photo img{ width:100%; height:100%; object-fit:cover; display:block; }
+  button.qp-photo{ padding:0; position:relative; display:block; cursor:zoom-in; appearance:none; -webkit-appearance:none; }
+  button.qp-photo:focus-visible{ outline:2px solid var(--text); outline-offset:2px; }
+  .qp-photo-n{ position:absolute; right:3px; bottom:3px; background:rgba(10,10,10,.62); color:#fff; font-size:9px; font-weight:700; padding:1px 5px; border-radius:999px; pointer-events:none; }
+
+  /* ── chips (edit / pending) ── */
+  .qp-chip{ font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; padding:3px 8px; border-radius:4px; }
+  .qp-chip.edit{ background:#fff; border:1px solid var(--hair); color:var(--text2); cursor:pointer; font-family:inherit; line-height:inherit; }
+  .qp-chip.edit:hover{ border-color:var(--text); }
+  .qp-chip.pending{ background:rgba(196,68,68,.1); color:var(--danger); }
+
+  /* ── totals + black pill ── */
+  .qpd-tot{ margin-top:16px; margin-left:auto; width:300px; }
+  .qpd-tline{ display:flex; justify-content:space-between; font-size:12.5px; color:var(--muted); padding:4px 0; }
+  .qpd-tline .v{ font-variant-numeric:tabular-nums; color:var(--text2); }
+  .qpd-tline.disc, .qpd-tline.disc .v{ color:var(--danger); }
+  .qpd-pill{ display:flex; align-items:center; justify-content:space-between; background:var(--text); color:#fff; border-radius:6px; padding:13px 18px; margin-top:10px; }
+  .qpd-pill .pl{ font-size:10.5px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:rgba(255,255,255,.7); }
+  .qpd-pill .pa{ font-size:22px; font-weight:800; letter-spacing:-.3px; font-variant-numeric:tabular-nums; }
+  /* deposit block */
+  .qpd-pay{ margin-top:18px; }
+  .qpd-pay-lab{ font-size:10px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); }
+  .qpd-pay-amt{ font-size:19px; font-weight:800; margin-top:4px; }
+  .qpd-pay-bal{ font-size:11.5px; color:var(--muted); margin-top:3px; }
+  .qpd-closing{ font-size:11.5px; font-style:italic; color:var(--muted); margin-top:18px; line-height:1.6; }
+  .qpd-pendnote{ font-size:11.5px; color:var(--danger); margin-top:12px; line-height:1.5; }
+
+  /* document footer (business name + secured-by-Stripe trust line) */
+  .qpd-foot{ border-top:1px solid var(--border2); padding:14px 48px; display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; font-size:11px; color:var(--muted); }
+  .qpd-foot .sec{ display:inline-flex; align-items:center; gap:6px; }
+
+  /* ── checkout rail (desktop) ── */
+  .qpd-rail-wrap{ position:sticky; top:20px; }
+  .qpd-rail{ background:var(--surface); box-shadow:var(--shadow); border-radius:10px; padding:20px; }
+  .qpd-rail .rlab{ font-size:10px; font-weight:700; letter-spacing:.09em; text-transform:uppercase; color:var(--muted); margin:14px 0 10px; }
+  .qpd-rail .qpd-stamp{ margin:0; }
+
+  /* ── mobile sticky action bar ── */
+  .qpd-actionbar{ display:none; position:fixed; left:0; right:0; bottom:0; z-index:60; gap:10px; padding:11px 14px calc(11px + env(safe-area-inset-bottom));
+    background:rgba(255,255,255,.96); backdrop-filter:blur(8px); border-top:1px solid var(--hair); }
+  .qpd-actionbar .qpd-b{ flex:1; padding:13px 10px; }
+
+  /* buttons */
+  .qpd-b{ display:inline-flex; align-items:center; justify-content:center; gap:8px; width:100%; border:none; border-radius:8px;
+    font-family:inherit; font-size:13.5px; font-weight:700; padding:13px 16px; cursor:pointer; transition:.15s; }
+  .qpd-b.dark{ background:var(--text); color:#fff; }
+  .qpd-b.dark:hover{ background:#2c2c2c; }
+  .qpd-b.dark[disabled]{ opacity:.5; cursor:not-allowed; }
+  .qpd-b.ghost{ background:#fff; border:1.5px solid var(--text); color:var(--text); }
+  .qpd-b.ghost:hover{ background:var(--surface2); }
+  .qpd-b.sm{ width:auto; flex:0 0 auto; padding:13px 16px; }
+  .qpd-rail .qpd-b{ margin-top:9px; }
+  .qpd-secure{ display:flex; align-items:center; justify-content:center; gap:6px; font-size:10.5px; color:var(--muted); margin-top:13px; }
+  .qpd-cta-hint{ font-size:11px; color:var(--muted); margin-top:8px; line-height:1.4; text-align:center; }
+  .qpd-accepted{ background:var(--success); color:#fff; text-align:center; padding:13px 16px; border-radius:8px; font-size:13px; font-weight:700; margin-top:9px; }
+
+  @media (max-width:880px){
+    .qpd-grid{ grid-template-columns:1fr; gap:0; }
+    .qpd-rail-wrap{ display:none; }
+    .qpd-actionbar{ display:flex; }
+    .qpd-desk{ padding:18px 14px 100px; }
+    .qpd-pad{ padding:30px 22px 24px; }
+    .qpd-foot{ padding:14px 22px; }
+    .qpd-num.qty, .qpd-num.price, .qpd-ihead .qpd-num.qty, .qpd-ihead .qpd-num.price{ display:none; }
+    .qpd-num.amt{ width:84px; }
+    .qpd-tot{ width:100%; }
+    .qpd-title{ font-size:20px; letter-spacing:1.5px; }
+    .qpd-bizname{ font-size:17px; }
+    .qpd-addr{ gap:12px; }
   }
-  .qp-price { font-weight: 800; font-size: 15px; font-variant-numeric: tabular-nums; }
-  .qp-chip { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; padding: 2px 7px; border-radius: 999px; }
-  .qp-chip.opt { background: rgba(232,168,56,.16); color: var(--accent); }
-  .qp-chip.edit { background: rgba(13,148,136,.14); color: var(--accent2); cursor: pointer; border: none; font-family: inherit; line-height: inherit; }
-  .qp-chip.pending { background: rgba(224,82,82,.12); color: var(--danger); }
-  /* Include/exclude switch — knob RIGHT + green when included (the
-     conventional "on" position), LEFT + grey when excluded. */
-  .qp-toggle { position: relative; width: 42px; height: 24px; border-radius: 999px; border: none; background: var(--success); cursor: pointer; flex-shrink: 0; transition: background .18s; }
-  .qp-toggle::after { content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; transition: transform .18s; box-shadow: 0 1px 3px rgba(0,0,0,.3); }
-  .qp-toggle[aria-pressed="true"]::after { transform: translateX(18px); }
-  .qp-toggle[aria-pressed="false"] { background: var(--border); }
-  .qp-spec { border: 1px solid var(--border); border-radius: 10px; background: var(--surface2); padding: 12px; margin-top: 10px; }
-  .qp-spec .r { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
-  .qp-spec label { font-size: 11px; font-weight: 600; color: var(--muted); width: 60px; }
-  .qp-spec select, .qp-spec input { font-size: 12px; padding: 6px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--text); }
-  .qp-spec-head { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--accent); margin: 14px 0 7px; padding-top: 10px; border-top: 1px solid var(--border); }
-  .qp-spec-head:first-child { margin-top: 0; padding-top: 0; border-top: none; }
-  .qp-state { max-width: 520px; margin: 60px auto; text-align: center; color: var(--muted); }
-  .qp-state .check { width: 64px; height: 64px; border-radius: 50%; background: var(--success); color: #fff; display: flex; align-items: center; justify-content: center; margin: 0 auto 14px; }
-  /* Sheet centers via margin:auto (not flex align) so when it outgrows the
-     viewport — e.g. Stripe's payment element with the Link signup section —
-     the overlay scrolls and both top and bottom stay reachable. */
-  .qp-overlay { position: fixed; inset: 0; z-index: 9000; background: rgba(10,10,10,.55); display: flex; padding: 16px; overflow-y: auto; overscroll-behavior: contain; }
-  .qp-sheet { width: 400px; max-width: 100%; margin: auto; background: var(--surface); border-radius: 14px; box-shadow: var(--shadow-md); padding: 20px; }
-  .qp-field { border: 1px solid var(--border); border-radius: 7px; background: var(--surface2); display: flex; align-items: center; padding: 0 10px; margin-top: 8px; }
-  .qp-field input { border: none; background: transparent; flex: 1; padding: 10px 0; font-size: 13px; font-family: inherit; color: var(--text); outline: none; }
-  @media (max-width: 720px) { .qp-two { grid-template-columns: 1fr; } .qp-rail-wrap { position: static; } }
-  /* live chat widget */
-  .qp-chat-launcher { position: fixed; bottom: 18px; right: 18px; z-index: 700; height: 48px; padding: 0 18px; border-radius: 999px; background: var(--accent); color: #fff; border: none; box-shadow: var(--shadow-md); cursor: pointer; font-family: inherit; font-size: 13px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
-  .qp-chat-pop { position: fixed; bottom: 76px; right: 18px; z-index: 701; width: 340px; max-width: calc(100vw - 32px); height: 60vh; max-height: 520px; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow-md); display: none; flex-direction: column; overflow: hidden; }
-  .qp-chat-pop.open { display: flex; }
-  .qp-chat-head { padding: 12px 14px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; font-weight: 700; font-size: 13px; }
-  .qp-chat-body { flex: 1; overflow: auto; padding: 12px; display: flex; flex-direction: column; gap: 8px; background: var(--bg); }
-  .qp-bub { max-width: 84%; padding: 8px 12px; border-radius: 12px; font-size: 13px; line-height: 1.45; }
-  .qp-bub.them { align-self: flex-start; background: var(--surface); border: 1px solid var(--border); border-bottom-left-radius: 4px; }
-  .qp-bub.me { align-self: flex-end; background: var(--accent); color: #fff; border-bottom-right-radius: 4px; }
-  .qp-chat-foot { border-top: 1px solid var(--border); padding: 8px; display: flex; gap: 6px; }
-  .qp-chat-foot input { flex: 1; border: 1px solid var(--border); border-radius: 999px; padding: 8px 12px; font-family: inherit; font-size: 13px; background: var(--surface2); color: var(--text); outline: none; }
-  /* Order banner — makes it obvious an order link is already confirmed. */
-  .qp-banner { background: var(--accent-dim); border: 1px solid rgba(232,168,56,.35); border-radius: 12px; padding: 12px 16px; margin-bottom: 16px; font-size: 13px; color: var(--text2); display: flex; align-items: center; gap: 8px; }
-  /* Loading spinner (replaces the bare "Loading…" text). */
-  .qp-spin { width: 30px; height: 30px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; margin: 0 auto 12px; animation: qp-spin .8s linear infinite; }
-  @keyframes qp-spin { to { transform: rotate(360deg); } }
-  /* a11y: keyboard focus ring on the include/exclude switch. */
-  .qp-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-  .qp-chip.edit:focus-visible { outline: 2px solid var(--accent2); outline-offset: 1px; }
-  /* Toast — replaces native alert() so errors match the page, not the OS. */
-  .qp-toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(8px); z-index: 9500; max-width: min(440px, calc(100vw - 32px)); background: var(--text); color: var(--bg); font-size: 13px; line-height: 1.45; padding: 11px 16px; border-radius: 10px; box-shadow: var(--shadow-md); opacity: 0; transition: opacity .2s, transform .2s; pointer-events: none; }
-  .qp-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-  .qp-toast.err { background: #a81d1d; color: #fff; }
-  /* Allowed-range hint inside the spec editor. */
-  .qp-range { font-size: 10px; color: var(--muted); margin-left: auto; white-space: nowrap; }
-  /* Stronger chip contrast for low-vision readability. */
-  .qp-chip.opt { background: rgba(232,168,56,.22); color: #8a5a00; }
-  .qp-chip.pending { background: rgba(224,82,82,.18); color: #a81d1d; }
-  html.dark .qp-chip.opt { color: #f0c460; }
-  html.dark .qp-chip.pending { color: #f5a0a0; }
-  @media (max-width: 480px) {
-    /* 16px inputs stop iOS auto-zooming the page when the spec editor opens. */
-    .qp-spec select, .qp-spec input { font-size: 16px; padding: 9px 8px; }
-    /* Shrink the chat launcher so it never sits on top of the Accept CTA. */
-    .qp-chat-launcher { bottom: 14px; right: 14px; height: 44px; padding: 0 14px; font-size: 12px; }
-  }
+
+  /* ── spec editor (kept; restyled to the document) ── */
+  .qp-spec{ border:1px solid var(--border); border-radius:8px; background:var(--surface2); padding:12px; margin-top:10px; }
+  .qp-spec .r{ display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+  .qp-spec label{ font-size:11px; font-weight:600; color:var(--muted); width:60px; }
+  .qp-spec select, .qp-spec input{ font-size:12px; padding:6px 8px; border:1px solid var(--border); border-radius:6px; background:#fff; color:var(--text); }
+  .qp-spec-head{ font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:var(--text2); margin:14px 0 7px; padding-top:10px; border-top:1px solid var(--border); }
+  .qp-spec-head:first-child{ margin-top:0; padding-top:0; border-top:none; }
+  .qp-range{ font-size:10px; color:var(--muted); margin-left:auto; white-space:nowrap; }
+
+  /* ── state views (loading / accepted / paid / error) ── */
+  .qp-statebrand{ max-width:1040px; margin:0 auto; padding:22px 22px 0; font-size:16px; font-weight:800; }
+  .qp-state{ max-width:560px; margin:48px auto; text-align:center; color:var(--muted); padding:0 20px; }
+  .qp-state .check{ width:64px; height:64px; border-radius:50%; background:var(--success); color:#fff; display:flex; align-items:center; justify-content:center; margin:0 auto 14px; }
+  .qp-spin{ width:30px; height:30px; border:3px solid var(--border); border-top-color:var(--text); border-radius:50%; margin:0 auto 12px; animation:qp-spin .8s linear infinite; }
+  @keyframes qp-spin{ to{ transform:rotate(360deg); } }
+
+  /* ── pay / confirm sheet (kept) ── */
+  .qp-overlay{ position:fixed; inset:0; z-index:9000; background:rgba(10,10,10,.55); display:flex; padding:16px; overflow-y:auto; overscroll-behavior:contain; }
+  .qp-sheet{ width:400px; max-width:100%; margin:auto; background:var(--surface); border-radius:14px; box-shadow:var(--shadow-md); padding:20px; }
+
+  /* ── live chat (kept; launcher restyled to a dark pill) ── */
+  .qp-chat-launcher{ position:fixed; bottom:18px; right:18px; z-index:700; height:48px; padding:0 18px; border-radius:999px; background:var(--text); color:#fff; border:none; box-shadow:var(--shadow-md); cursor:pointer; font-family:inherit; font-size:13px; font-weight:700; display:flex; align-items:center; gap:8px; }
+  .qp-chat-pop{ position:fixed; bottom:76px; right:18px; z-index:701; width:340px; max-width:calc(100vw - 32px); height:60vh; max-height:520px; background:var(--surface); border:1px solid var(--border); border-radius:14px; box-shadow:var(--shadow-md); display:none; flex-direction:column; overflow:hidden; }
+  .qp-chat-pop.open{ display:flex; }
+  .qp-chat-head{ padding:12px 14px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; font-weight:700; font-size:13px; }
+  .qp-chat-body{ flex:1; overflow:auto; padding:12px; display:flex; flex-direction:column; gap:8px; background:var(--surface2); }
+  .qp-bub{ max-width:84%; padding:8px 12px; border-radius:12px; font-size:13px; line-height:1.45; }
+  .qp-bub.them{ align-self:flex-start; background:#fff; border:1px solid var(--border); border-bottom-left-radius:4px; }
+  .qp-bub.me{ align-self:flex-end; background:var(--text); color:#fff; border-bottom-right-radius:4px; }
+  .qp-chat-foot{ border-top:1px solid var(--border); padding:8px; display:flex; gap:6px; }
+  .qp-chat-foot input{ flex:1; border:1px solid var(--border); border-radius:999px; padding:8px 12px; font-family:inherit; font-size:13px; background:#fff; color:var(--text); outline:none; }
+  /* On mobile the launcher sits above the sticky pay bar and shrinks. */
+  @media (max-width:880px){ .qp-chat-launcher{ bottom:78px; right:14px; height:44px; padding:0 14px; font-size:12px; } .qp-chat-pop{ bottom:130px; } }
+
+  /* ── photo viewer / lightbox (kept; dark on purpose) ── */
+  .qp-pv{ position:fixed; inset:0; z-index:9300; background:rgba(8,8,10,.9); display:flex; flex-direction:column; animation:qp-pv-in .16s ease; }
+  @keyframes qp-pv-in{ from{ opacity:0; } to{ opacity:1; } }
+  .qp-pv-head{ display:flex; align-items:center; justify-content:space-between; gap:12px; padding:14px 16px; }
+  .qp-pv-cap{ font-size:13px; font-weight:700; color:rgba(255,255,255,.92); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .qp-pv-x{ border:none; background:rgba(255,255,255,.12); color:#fff; width:36px; height:36px; border-radius:50%; font-size:20px; line-height:1; cursor:pointer; flex-shrink:0; font-family:inherit; }
+  .qp-pv-x:hover{ background:rgba(255,255,255,.24); }
+  .qp-pv-stage{ flex:1; min-height:0; display:flex; align-items:center; justify-content:center; padding:0 64px; position:relative; }
+  .qp-pv-stage img{ max-width:100%; max-height:100%; object-fit:contain; border-radius:8px; user-select:none; -webkit-user-drag:none; }
+  .qp-pv-arrow{ position:absolute; top:50%; transform:translateY(-50%); width:42px; height:42px; border-radius:50%; border:none; background:rgba(255,255,255,.12); color:#fff; font-size:26px; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0 0 3px; font-family:inherit; }
+  .qp-pv-arrow:hover{ background:rgba(255,255,255,.24); }
+  .qp-pv-arrow.prev{ left:14px; } .qp-pv-arrow.next{ right:14px; }
+  .qp-pv-foot{ padding:10px 16px calc(16px + env(safe-area-inset-bottom)); text-align:center; }
+  .qp-pv-count{ color:rgba(255,255,255,.8); font-size:12px; font-weight:600; font-variant-numeric:tabular-nums; }
+  .qp-pv-thumbs{ display:flex; gap:8px; margin-top:10px; overflow-x:auto; padding:2px; }
+  .qp-pv-thumbs img:first-child{ margin-left:auto; } .qp-pv-thumbs img:last-child{ margin-right:auto; }
+  .qp-pv-thumbs img{ width:54px; height:40px; object-fit:cover; border-radius:6px; opacity:.5; cursor:pointer; border:2px solid transparent; flex-shrink:0; transition:opacity .12s; }
+  .qp-pv-thumbs img.on{ opacity:1; border-color:#fff; }
+  @media (max-width:480px){ .qp-pv-stage{ padding:0 44px; } .qp-pv-arrow{ width:36px; height:36px; font-size:22px; } .qp-pv-arrow.prev{ left:6px; } .qp-pv-arrow.next{ right:6px; } }
+
+  /* ── toast (kept) ── */
+  .qp-toast{ position:fixed; left:50%; bottom:24px; transform:translateX(-50%) translateY(8px); z-index:9500; max-width:min(440px, calc(100vw - 32px)); background:var(--text); color:#fff; font-size:13px; line-height:1.45; padding:11px 16px; border-radius:10px; box-shadow:var(--shadow-md); opacity:0; transition:opacity .2s, transform .2s; pointer-events:none; }
+  .qp-toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+  .qp-toast.err{ background:#a81d1d; color:#fff; }
+  @media (max-width:880px){ .qp-toast{ bottom:84px; } }
+
+  /* keep tap-target inputs from zooming iOS in the spec editor */
+  @media (max-width:480px){ .qp-spec select, .qp-spec input{ font-size:16px; padding:9px 8px; } }
 </style>
 </head>
 <body class="qp">
-<div id="qp-top" class="qp-top"></div>
-<div class="qp-wrap"><div id="qp-root">
+<div id="qp-root">
   <div class="qp-state"><div class="qp-spin"></div>Loading your quote…</div>
-</div></div>
+</div>
 <script type="module" src="/src/quote-public.js"></script>
 </body>
 </html>
