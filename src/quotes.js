@@ -1371,8 +1371,10 @@ function renderQuoteEditor() {
 
   const headerName = clientName || 'Untitled quote';
 
-  host.innerHTML = `${typeof _llTabBar === 'function' ? _llTabBar('quote') : ''}<div id="qb-body"${(typeof _llTab !== 'undefined' && _llTab.quote === 'live') ? ' style="display:none"' : ''}><div class="form-section editor-shell">
-    <div class="project-header">
+  // Project header sits ABOVE the Quote builder / Live link tab bar so the client
+  // name + Saved pill + Back stay visible on BOTH sub-tabs (was inside #qb-body,
+  // which is hidden on the Live link tab).
+  const _projHeader = `<div class="project-header">
       <div class="ph-row1">
         <button class="ph-back" onclick="_qChangeClient()" title="Back to quotes" aria-label="Back">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
@@ -1381,8 +1383,8 @@ function renderQuoteEditor() {
         <span class="ph-title">${_escHtml(headerName)}</span>
         <span class="cl-unsaved-pill" data-save-pill="quote" style="display:none"></span>
       </div>
-    </div>
-
+    </div>`;
+  host.innerHTML = `${_projHeader}${typeof _llTabBar === 'function' ? _llTabBar('quote') : ''}<div id="qb-body"${(typeof _llTab !== 'undefined' && _llTab.quote === 'live') ? ' style="display:none"' : ''}><div class="form-section editor-shell">
     <div class="form-group" style="padding:10px 14px">
       <label>Quote Number</label>
       <div class="prefixed-input">
