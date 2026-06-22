@@ -246,14 +246,25 @@ function docHead() {
       </div>
     </div>`;
 }
-/** PREPARED FOR / ISSUED block. */
+/** Customer contact lines (address split on newlines, then phone, then email).
+ *  @param {any} c @returns {string[]} */
+function clientDetailLines(c) {
+  const out = [];
+  if (c && c.address) String(c.address).split(/\r?\n/).forEach((a) => { if (a.trim()) out.push(a.trim()); });
+  if (c && c.phone) out.push(String(c.phone));
+  if (c && c.email) out.push(String(c.email));
+  return out;
+}
+/** PREPARED FOR (name + contact) / ISSUED block. */
 function addrBlock() {
   const isOrder = D?.kind === 'order';
   const q = D?.quote || {};
-  const cn = D?.client?.name ? esc(D.client.name) : '—';
+  const c = D?.client || {};
+  const cn = c.name ? esc(c.name) : '—';
+  const detail = clientDetailLines(c).map((d) => `<div class="qpd-aline">${esc(d)}</div>`).join('');
   const exp = D?.settings?.expires_at;
   return `<div class="qpd-addr">
-      <div><div class="qpd-lab">Prepared for</div><div class="qpd-an">${cn}</div></div>
+      <div><div class="qpd-lab">Prepared for</div><div class="qpd-an">${cn}</div>${detail}</div>
       <div><div class="qpd-lab">${isOrder ? 'Created' : 'Issued'}</div><div class="qpd-an sm">${esc(niceDate(q.date) || '—')}</div>${(!isOrder && exp) ? `<div class="qpd-aline">Valid until ${esc(niceDate(exp))}</div>` : ''}</div>
     </div>`;
 }
@@ -996,7 +1007,7 @@ async function buildQuotePdf(JsPDF) {
   const logo = await loadImageDataUrl(biz.logo_url);
   if (logo) {
     // Caption mode: logo at top, small bold name + contact beneath (matches the app PDF).
-    const maxW = 40, maxH = 18, ratio = logo.w / logo.h;
+    const maxW = 76, maxH = 34, ratio = logo.w / logo.h;
     let w = maxW, h = maxW / ratio;
     if (h > maxH) { h = maxH; w = maxH * ratio; }
     try { pdf.addImage(logo.dataUrl, 'PNG', M, y, w, h); } catch (e) { /* skip a bad image */ }
@@ -1025,7 +1036,14 @@ async function buildQuotePdf(JsPDF) {
   pdf.setFontSize(13); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(17);
   pdf.text((D.client && D.client.name) || '—', M, ay);
   pdf.setFontSize(11); pdf.text(dateStr || '—', M + 96, ay);
-  y = ay + 12;
+  // Customer's own contact details stacked under their name.
+  let cy = ay + 5.5;
+  const cd = clientDetailLines(D.client);
+  if (cd.length) {
+    pdf.setFontSize(8.5); pdf.setFont('helvetica', 'normal'); pdf.setTextColor(95);
+    cd.forEach(/** @param {string} line */(line) => { pdf.text(line, M, cy); cy += 4.3; });
+  }
+  y = Math.max(ay + 12, cy + 4);
 
   // ── Line items (only the customer's included selection) ──
   const colAmt = PW - M, colPrice = colAmt - 30, colQty = colPrice - 24;
@@ -1122,7 +1140,7 @@ async function boot() {
       quote: { number: 'Q-2048', date: '2026-06-18', status: 'sent', tax: 20, discount: 0, notes: '', accepted_at: null },
       settings: { allow_select: true, allow_edit: true, accept_payment: true, deposit_pct: 40, expires_at: '2026-07-18' },
       business: { name: 'Oakline Joinery', email: 'hello@oaklinejoinery.co.uk', phone: '01632 960 142', address: '14 Mill Lane, Bristol BS1 4QA', logo_url: '/brand/icons/procabinet-favicon-64.png', default_currency: '£' },
-      client: { name: 'Sarah Whitfield' },
+      client: { name: 'Sarah Whitfield', address: '22 Elmwood Drive, Bristol BS9 3PL', phone: '07700 900 481', email: 'sarah.whitfield@example.com' },
       lines: [
         { id: 1, line_kind: 'cabinet', name: 'Tall larder unit, 600mm', w_mm: 600, h_mm: 2150, d_mm: 580, material: 'Oak veneer', finish: 'Matt lacquer', door_count: 2, drawer_count: 0, qty: 1, customer_price: 1240, customer_included: true, optional: false, editable_specs: [] },
         { id: 2, line_kind: 'cabinet', name: 'Base cabinet, 800mm', w_mm: 800, h_mm: 720, d_mm: 580, material: 'Birch ply', finish: 'Painted, Sage green', door_count: 1, drawer_count: 1, qty: 1, customer_price: 680, customer_included: true, optional: false, editable_specs: [] },

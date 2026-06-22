@@ -131,10 +131,13 @@ Deno.serve(async (req) => {
     const constructions = mergeOpts(['Overlay', 'Inset', 'Face Frame'], 'construction');
     const handles = mergeOpts(['None'], 'door_handle');
 
-    // ── Client name (greeting only) ──
-    let client: { name: string } | null = null;
+    // ── Client (addressee block: name + their own contact details) ──
+    // Safe to return: it's the customer's OWN details on their OWN quote link —
+    // the "PREPARED FOR" block of a printed invoice (and what the app PDF shows).
+    // Only the single client tied to this quote/order is returned, never others'.
+    let client: { name: string; email: string | null; phone: string | null; address: string | null } | null = null;
     if (entity.client_id) {
-      const { data } = await admin.from('clients').select('name').eq('id', entity.client_id).maybeSingle();
+      const { data } = await admin.from('clients').select('name, email, phone, address').eq('id', entity.client_id).maybeSingle();
       client = data as typeof client;
     }
 

@@ -279,12 +279,15 @@ async function _uploadLogoAsset(_uid, body, contentType) {
 function handleLogoUpload(input) {
   const file = input.files?.[0];
   if (!file) return;
-  if (file.size > 500000) { _toast('Logo too large (max 500KB)', 'error'); return; }
+  // 2MB client cap (the image-upload edge fn hard-caps at 16MB). Kept under the
+  // localStorage quota so the data-URL cache below doesn't overflow.
+  if (file.size > 2_000_000) { _toast('Logo too large (max 2MB)', 'error'); return; }
   const reader = new FileReader();
   reader.onload = async e => {
-    // 1. Always write to localStorage (legacy compatibility)
+    // 1. Always write to localStorage (legacy compatibility). A large logo can
+    //    exceed the storage quota — guard it so the cloud upload still proceeds.
     const result = /** @type {string} */ (/** @type {FileReader} */ (e.target).result);
-    localStorage.setItem('pc_biz_logo', result);
+    try { localStorage.setItem('pc_biz_logo', result); } catch (e2) { /* over quota — cloud copy below is the source of truth */ }
     loadLogoPreview();
     // 2. Phase 3.3: also upload to Supabase Storage and store URL on business_info.
     //    Uses _uploadLogoAsset (raw fetch + in-memory token) rather than
