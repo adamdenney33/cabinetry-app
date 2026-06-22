@@ -30,6 +30,11 @@ export interface RateCard {
   matPerM2: Record<string, number>;
   hwUnit: Record<string, number>;
   finishPerM2: Record<string, number>;
+  // Typed name lists for the customer-page spec editor (added with the
+  // catalog_items → rate_card migration). Optional: snapshots written before
+  // that change lack them, so readers fall back gracefully.
+  materialNames?: string[];
+  finishNames?: string[];
   labourRate: number;
   materialMarkup: number;
   edgingPerM: number;

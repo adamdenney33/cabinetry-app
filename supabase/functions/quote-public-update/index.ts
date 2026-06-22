@@ -98,22 +98,35 @@ Deno.serve(async (req) => {
       const allows = (k: string) => specs.length === 0 || specs.includes(k);
 
       const patch: Record<string, unknown> = {};
-      // Finish / material must be one of the business's catalogued names (prevents
-      // arbitrary strings); only when that spec is unlocked.
-      const catNames = async (type: string) => {
+      // Finish / material must be one of the maker's catalogued names (prevents
+      // arbitrary strings); only when that spec is unlocked. Source of truth is
+      // the quote's `rate_card` snapshot — the SAME set quote-public-get offers
+      // the customer, and guaranteed priceable (a key in the cost maps) so an
+      // accepted edit can always be auto-priced. (`catalog_items` is no longer
+      // populated; we fall back to the snapshot's cost-map keys for older
+      // snapshots that predate the typed name lists, then to catalog_items for
+      // pre-rate_card quotes.)
+      const rateCard = (quote.rate_card ?? null) as RateCard | null;
+      const allowedNames = async (kind: 'material' | 'finish'): Promise<Set<string>> => {
+        if (rateCard) {
+          const typed = kind === 'material' ? rateCard.materialNames : rateCard.finishNames;
+          if (Array.isArray(typed) && typed.length) return new Set(typed);
+          const maps = kind === 'material' ? rateCard.matPerM2 : rateCard.finishPerM2;
+          if (maps && Object.keys(maps).length) return new Set(Object.keys(maps));
+        }
         const { data: cat } = await admin
           .from('catalog_items').select('name')
-          .eq('user_id', quote.user_id).eq('type', type);
+          .eq('user_id', quote.user_id).eq('type', kind);
         return new Set((cat ?? []).map((c: { name: string }) => c.name));
       };
       if (typeof body.finish === 'string' && allows('finish')) {
         const finish = body.finish.slice(0, 80);
-        if (!(await catNames('finish')).has(finish)) return jsonResponse({ error: 'finish_not_allowed' }, 422, cors);
+        if (!(await allowedNames('finish')).has(finish)) return jsonResponse({ error: 'finish_not_allowed' }, 422, cors);
         patch.finish = finish;
       }
       if (typeof body.material === 'string' && allows('material')) {
         const material = body.material.slice(0, 80);
-        if (!(await catNames('material')).has(material)) return jsonResponse({ error: 'material_not_allowed' }, 422, cors);
+        if (!(await allowedNames('material')).has(material)) return jsonResponse({ error: 'material_not_allowed' }, 422, cors);
         patch.material = material;
       }
       // Dimensions / counts clamped to sane ranges.
@@ -129,17 +142,17 @@ Deno.serve(async (req) => {
       // Per-component finishes / drawer-front material — catalogued names only.
       if (typeof body.door_finish === 'string' && allows('doorFinish')) {
         const f = body.door_finish.slice(0, 80);
-        if (!(await catNames('finish')).has(f)) return jsonResponse({ error: 'door_finish_not_allowed' }, 422, cors);
+        if (!(await allowedNames('finish')).has(f)) return jsonResponse({ error: 'door_finish_not_allowed' }, 422, cors);
         patch.door_finish = f;
       }
       if (typeof body.drawer_front_finish === 'string' && allows('drawerFinish')) {
         const f = body.drawer_front_finish.slice(0, 80);
-        if (!(await catNames('finish')).has(f)) return jsonResponse({ error: 'drawer_front_finish_not_allowed' }, 422, cors);
+        if (!(await allowedNames('finish')).has(f)) return jsonResponse({ error: 'drawer_front_finish_not_allowed' }, 422, cors);
         patch.drawer_front_finish = f;
       }
       if (typeof body.drawer_front_material === 'string' && allows('drawerMat')) {
         const m = body.drawer_front_material.slice(0, 80);
-        if (!(await catNames('material')).has(m)) return jsonResponse({ error: 'drawer_front_material_not_allowed' }, 422, cors);
+        if (!(await allowedNames('material')).has(m)) return jsonResponse({ error: 'drawer_front_material_not_allowed' }, 422, cors);
         patch.drawer_front_material = m;
       }
       if (body.fixed_shelves != null && allows('shelves')) { const n = clamp(body.fixed_shelves, 0, 12); if (n === null) return jsonResponse({ error: 'shelves_out_of_range' }, 422, cors); patch.fixed_shelves = n; }
@@ -158,7 +171,7 @@ Deno.serve(async (req) => {
       if (typeof body.door_handle === 'string' && allows('handle')) patch.door_handle = str(body.door_handle);
       if (typeof body.door_material === 'string' && allows('doorMat')) {
         const m = body.door_material.slice(0, 80);
-        if (!(await catNames('material')).has(m)) return jsonResponse({ error: 'door_material_not_allowed' }, 422, cors);
+        if (!(await allowedNames('material')).has(m)) return jsonResponse({ error: 'door_material_not_allowed' }, 422, cors);
         patch.door_material = m;
       }
       if (!Object.keys(patch).length) return jsonResponse({ error: 'nothing_to_update' }, 400, cors);
@@ -179,7 +192,6 @@ Deno.serve(async (req) => {
       // price → the page shows "Price to confirm" and quote-pay refuses to charge
       // until the maker re-prices (its line sum treats null as pending).
       let autoPrice: number | null = null;
-      const rateCard = (quote.rate_card ?? null) as RateCard | null;
       if (settings.auto_accept_edits && rateCard && ((line.line_kind ?? 'cabinet') === 'cabinet')) {
         try {
           // Catalogue rates come from the snapshot; the quote-level wrapper

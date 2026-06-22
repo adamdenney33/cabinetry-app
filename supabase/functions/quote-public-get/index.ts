@@ -35,7 +35,7 @@ Deno.serve(async (req) => {
     let kind: 'quote' | 'order' = 'quote';
     const { data: q, error: qErr } = await admin
       .from('quotes')
-      .select('id, user_id, client_id, quote_number, date, status, markup, tax, discount, stock_markup, notes, share_settings, viewed_at, accepted_at')
+      .select('id, user_id, client_id, quote_number, date, status, markup, tax, discount, stock_markup, notes, share_settings, viewed_at, accepted_at, rate_card')
       .eq('share_token', token)
       .maybeSingle();
     if (qErr) throw new Error(qErr.message);
@@ -95,31 +95,48 @@ Deno.serve(async (req) => {
       .eq('user_id', entity.user_id)
       .maybeSingle();
 
-    // ── Allowed finishes for the in-page spec editor (names only, not sensitive) ──
-    const { data: finRows } = await admin
-      .from('catalog_items').select('name')
-      .eq('user_id', entity.user_id).eq('type', 'finish');
-    const finishes = Array.from(new Set([
-      ...(finRows ?? []).map((f: { name: string }) => f.name),
-      ...(lines ?? []).map((l: { finish: string | null }) => l.finish).filter(Boolean),
-    ])) as string[];
+    // ── Allowed finish / material names for the in-page spec editor ──
+    // Source of truth is the quote's `rate_card` snapshot (written on share and
+    // refreshed each time the maker opens the Live-link tab): the SAME names the
+    // costing engine can price, so every option offered is guaranteed priceable
+    // and quote-public-update accepts + auto-prices it. `catalog_items` is no
+    // longer populated — it stays only as a fallback for quotes whose snapshot
+    // predates the typed name lists (and for orders, which aren't editable).
+    const rc = (kind === 'quote' ? entity.rate_card : null) as
+      { materialNames?: string[]; finishNames?: string[] } | null;
+    const lineNames = (col: 'finish' | 'material') =>
+      (lines ?? []).map((l: Record<string, unknown>) => l[col] as string | null).filter(Boolean) as string[];
 
-    // ── Allowed materials for the in-page spec editor ──
-    // Two sources merge here: legacy catalog_items (type='material') and the
-    // stock items the business has flagged customer_visible — stock_items is the
-    // current source of truth for materials, so flagging a sheet good offers it
-    // as a selectable carcass/door/drawer material on the live page.
-    const { data: matRows } = await admin
-      .from('catalog_items').select('name')
-      .eq('user_id', entity.user_id).eq('type', 'material');
-    const { data: stockMatRows } = await admin
-      .from('stock_items').select('name')
-      .eq('user_id', entity.user_id).eq('customer_visible', true);
-    const materials = Array.from(new Set([
-      ...(matRows ?? []).map((m: { name: string }) => m.name),
-      ...(stockMatRows ?? []).map((m: { name: string }) => m.name),
-      ...(lines ?? []).map((l: { material: string | null }) => l.material).filter(Boolean),
-    ])) as string[];
+    let finishes: string[];
+    if (rc && Array.isArray(rc.finishNames) && rc.finishNames.length) {
+      finishes = Array.from(new Set([...rc.finishNames, ...lineNames('finish')]));
+    } else {
+      const { data: finRows } = await admin
+        .from('catalog_items').select('name')
+        .eq('user_id', entity.user_id).eq('type', 'finish');
+      finishes = Array.from(new Set([
+        ...(finRows ?? []).map((f: { name: string }) => f.name),
+        ...lineNames('finish'),
+      ]));
+    }
+
+    let materials: string[];
+    if (rc && Array.isArray(rc.materialNames) && rc.materialNames.length) {
+      materials = Array.from(new Set([...rc.materialNames, ...lineNames('material')]));
+    } else {
+      // Legacy fallback: catalog_items (type='material') + customer-visible stock.
+      const { data: matRows } = await admin
+        .from('catalog_items').select('name')
+        .eq('user_id', entity.user_id).eq('type', 'material');
+      const { data: stockMatRows } = await admin
+        .from('stock_items').select('name')
+        .eq('user_id', entity.user_id).eq('customer_visible', true);
+      materials = Array.from(new Set([
+        ...(matRows ?? []).map((m: { name: string }) => m.name),
+        ...(stockMatRows ?? []).map((m: { name: string }) => m.name),
+        ...lineNames('material'),
+      ]));
+    }
 
     // ── Style / build option lists: standard cabinetry sets merged with used values. ──
     const ls = (lines ?? []) as Array<Record<string, unknown>>;

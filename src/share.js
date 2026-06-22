@@ -52,9 +52,28 @@ function _buildRateCard(q) {
     hwUnit[n] = _hwUnitPrice(n);
     finishPerM2[n] = _finishPricePerM2(n);
   }
+  // Typed name lists for the customer-page spec editor. The public edge functions
+  // read these (NOT the dead `catalog_items` table) to BOTH offer the dropdown
+  // options and validate the customer's pick — so every option offered is a key
+  // in the maps above and therefore priceable (the "offered == priceable ==
+  // accepted" invariant auto-accept relies on). Materials mirror the
+  // quote-public-get sources: the maker's catalogue + customer-visible stock +
+  // any name a line already carries. 'None' is dropped (it's a no-cost default
+  // the editor offers implicitly, never a catalogue entry).
+  /** @type {Set<string>} */ const matNames = new Set();
+  /** @type {Set<string>} */ const finNames = new Set();
+  (cs.materials || []).forEach(/** @param {any} m */ m => m && m.name && matNames.add(m.name));
+  stock.forEach(/** @param {any} s */ s => s && s.name && s.customer_visible && matNames.add(s.name));
+  (cs.finishes || []).forEach(/** @param {any} f */ f => f && f.name && finNames.add(f.name));
+  for (const l of (q._lines || [])) {
+    [l.material, l.door_material, l.drawer_front_material, l.drawer_inner_material].forEach(n => n && matNames.add(n));
+    [l.finish, l.door_finish, l.drawer_front_finish, l.drawer_box_finish].forEach(n => n && n !== 'None' && finNames.add(n));
+  }
   return {
     v: 1,
     matPerM2, hwUnit, finishPerM2,
+    materialNames: Array.from(matNames),
+    finishNames: Array.from(finNames),
     labourRate: Number(cs.labourRate) || 0,
     materialMarkup: Number(cs.materialMarkup) || 0,
     edgingPerM: Number(cs.edgingPerM) || 0,
