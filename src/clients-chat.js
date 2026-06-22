@@ -14,9 +14,14 @@ function _cmTable() { return /** @type {any} */ (_db(/** @type {any} */ ('custom
 /** inbound_emails (raw stored reply) — also `any` until the migration types regen. */
 function _ieTable() { return /** @type {any} */ (_db(/** @type {any} */ ('inbound_emails'))); }
 
-/** Columns pulled for every thread load — one place so all paths get the
- *  email-bridge fields (via / email_verified / inbound_email_id / outbound_status). */
-const _CM_COLS = 'id, client_id, sender, body, created_at, read_at, via, email_verified, inbound_email_id, outbound_status';
+/** Columns pulled for every thread load. Uses `*` deliberately: the email-bridge
+ *  columns (via / email_verified / inbound_email_id / outbound_status) only exist
+ *  once the `email_message_bridge` migration is applied — which it is NOT in prod.
+ *  An explicit list naming them made every select 400 ("column ... does not exist"),
+ *  which the callers swallow → the business saw an empty thread even with messages.
+ *  `*` returns whatever columns exist (so it works pre- and post-migration); the
+ *  bridge UI (`_ccEmailBadge`) already no-ops when `via` is absent. */
+const _CM_COLS = '*';
 
 /** @type {Record<number, Array<any>>} */
 let _clientMessages = {};
