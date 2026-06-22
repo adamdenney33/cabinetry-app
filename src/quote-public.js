@@ -236,8 +236,9 @@ function docHead() {
   // Every reachable contact is a trust signal on a page asking for money.
   const sub = [b.address, b.phone, b.email].filter(Boolean).map(esc).join('  ·  ');
   const meta = [q.number ? '#' + esc(q.number) : '', q.date ? esc(niceDate(q.date)) : ''].filter(Boolean).join('  ·  ');
+  const logo = b.logo_url ? `<img class="qpd-logo" src="${esc(b.logo_url)}" alt="${esc(bizName())} logo">` : '';
   return `<div class="qpd-head">
-      <div><div class="qpd-bizname">${esc(bizName())}</div>${sub ? `<div class="qpd-bizsub">${sub}</div>` : ''}</div>
+      <div>${logo}<div class="qpd-bizname">${esc(bizName())}</div>${sub ? `<div class="qpd-bizsub">${sub}</div>` : ''}</div>
       <div class="qpd-titlewrap">
         <div class="qpd-title">${isOrder ? 'Order' : 'Quote'}</div>
         ${meta ? `<div class="qpd-meta">${meta}</div>` : ''}
@@ -900,7 +901,7 @@ const handlers = {
     toast('Preparing your PDF…', false);
     try {
       const mod = /** @type {any} */ (await import('jspdf'));
-      buildQuotePdf(mod.jsPDF || mod.default);
+      await buildQuotePdf(mod.jsPDF || mod.default);
     } catch (e) { toast('Could not generate the PDF — please try again.'); }
   },
 };
@@ -946,13 +947,38 @@ function successState(t) {
   </div>`;
 }
 
+/** Load a (possibly remote) image as a PNG data URL for jsPDF. Resolves null if it
+ *  can't be read — a network error, or a CORS-tainted canvas (Supabase public
+ *  buckets send permissive CORS, but a custom CDN might not) — so the PDF falls
+ *  back to the name banner rather than failing. @param {string|null|undefined} url
+ *  @returns {Promise<{dataUrl:string, w:number, h:number}|null>} */
+function loadImageDataUrl(url) {
+  return new Promise((resolve) => {
+    if (!url) { resolve(null); return; }
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      try {
+        const c = document.createElement('canvas');
+        c.width = img.naturalWidth; c.height = img.naturalHeight;
+        const ctx = c.getContext('2d');
+        if (!ctx) { resolve(null); return; }
+        ctx.drawImage(img, 0, 0);
+        resolve({ dataUrl: c.toDataURL('image/png'), w: img.naturalWidth || 1, h: img.naturalHeight || 1 });
+      } catch (e) { resolve(null); }
+    };
+    img.onerror = () => resolve(null);
+    img.src = url;
+  });
+}
+
 /** Render a PDF copy of the live quote/order, mirroring the maker's app-generated
  *  document (_buildOrderDocPDF): Helvetica, heavy header rule, grouped line items,
- *  black total pill, red discount. Drawn from the public payload only — no logo
- *  image (the remote logo URL would need a CORS-friendly fetch), name banner
- *  instead; no ProCabinet footer (the public page can't read the maker's tier).
+ *  black total pill, red discount. Drawn from the public payload; the business
+ *  logo is embedded when it loads (CORS-permitting, else a name banner). No
+ *  ProCabinet footer (the public page can't read the maker's tier).
  *  @param {any} JsPDF the jsPDF constructor (lazy-imported). */
-function buildQuotePdf(JsPDF) {
+async function buildQuotePdf(JsPDF) {
   const isOrder = D.kind === 'order';
   const biz = D.business || {};
   const q = D.quote || {};
@@ -963,17 +989,33 @@ function buildQuotePdf(JsPDF) {
   const PW = 210, PH = 297, M = 18, W = PW - 2 * M;
   let y = M;
   const dateStr = niceDate(q.date) || '';
-
-  // ── Header: business banner (left) + doc title / ref / date (right) ──
-  pdf.setFont('helvetica', 'bold'); pdf.setFontSize(16); pdf.setTextColor(17);
-  pdf.text(biz.name || 'Your cabinetmaker', M, y + 6);
   const sub = [biz.address, biz.phone, biz.email].filter(Boolean).join('  ·  ');
-  if (sub) { pdf.setFont('helvetica', 'normal'); pdf.setFontSize(8); pdf.setTextColor(120); pdf.text(sub, M, y + 12); }
+
+  // ── Header: logo (or name banner) on the left + doc title / ref / date right ──
+  let leftBottom;
+  const logo = await loadImageDataUrl(biz.logo_url);
+  if (logo) {
+    // Caption mode: logo at top, small bold name + contact beneath (matches the app PDF).
+    const maxW = 40, maxH = 18, ratio = logo.w / logo.h;
+    let w = maxW, h = maxW / ratio;
+    if (h > maxH) { h = maxH; w = maxH * ratio; }
+    try { pdf.addImage(logo.dataUrl, 'PNG', M, y, w, h); } catch (e) { /* skip a bad image */ }
+    let by = y + h + 6;
+    pdf.setFont('helvetica', 'bold'); pdf.setFontSize(9); pdf.setTextColor(17);
+    pdf.text(biz.name || 'Your cabinetmaker', M, by); by += 5;
+    if (sub) { pdf.setFont('helvetica', 'normal'); pdf.setFontSize(7.5); pdf.setTextColor(120); pdf.text(sub, M, by); by += 4; }
+    leftBottom = by;
+  } else {
+    pdf.setFont('helvetica', 'bold'); pdf.setFontSize(16); pdf.setTextColor(17);
+    pdf.text(biz.name || 'Your cabinetmaker', M, y + 6);
+    leftBottom = y + 6;
+    if (sub) { pdf.setFont('helvetica', 'normal'); pdf.setFontSize(8); pdf.setTextColor(120); pdf.text(sub, M, y + 12); leftBottom = y + 12; }
+  }
   pdf.setFont('helvetica', 'normal'); pdf.setFontSize(22); pdf.setTextColor(50);
   pdf.text(isOrder ? 'ORDER' : 'QUOTE', PW - M, y + 7, { align: 'right' });
   pdf.setFontSize(8); pdf.setTextColor(140);
   pdf.text([q.number ? '#' + q.number : '', dateStr].filter(Boolean).join('  ·  '), PW - M, y + 13.5, { align: 'right' });
-  y += 22;
+  y = Math.max(leftBottom, y + 16) + 6;
   pdf.setDrawColor(17); pdf.setLineWidth(0.6); pdf.line(M, y, PW - M, y); y += 10;
 
   // ── Addressee ──
@@ -1079,7 +1121,7 @@ async function boot() {
       kind: 'quote',
       quote: { number: 'Q-2048', date: '2026-06-18', status: 'sent', tax: 20, discount: 0, notes: '', accepted_at: null },
       settings: { allow_select: true, allow_edit: true, accept_payment: true, deposit_pct: 40, expires_at: '2026-07-18' },
-      business: { name: 'Oakline Joinery', email: 'hello@oaklinejoinery.co.uk', phone: '01632 960 142', address: '14 Mill Lane, Bristol BS1 4QA', default_currency: '£' },
+      business: { name: 'Oakline Joinery', email: 'hello@oaklinejoinery.co.uk', phone: '01632 960 142', address: '14 Mill Lane, Bristol BS1 4QA', logo_url: '/brand/icons/procabinet-favicon-64.png', default_currency: '£' },
       client: { name: 'Sarah Whitfield' },
       lines: [
         { id: 1, line_kind: 'cabinet', name: 'Tall larder unit, 600mm', w_mm: 600, h_mm: 2150, d_mm: 580, material: 'Oak veneer', finish: 'Matt lacquer', door_count: 2, drawer_count: 0, qty: 1, customer_price: 1240, customer_included: true, optional: false, editable_specs: [] },
