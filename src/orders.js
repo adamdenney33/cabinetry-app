@@ -551,8 +551,10 @@ function renderOrderEditor() {
 
   const headerName = clientName || 'Untitled order';
 
-  host.innerHTML = `${typeof _llTabBar === 'function' ? _llTabBar('order') : ''}<div id="ob-body"${(typeof _llTab !== 'undefined' && _llTab.order === 'live') ? ' style="display:none"' : ''}><div class="form-section editor-shell">
-    <div class="project-header">
+  // Project header sits ABOVE the Order builder / Live link tab bar so the client
+  // name + Saved pill + Back stay visible on BOTH sub-tabs (was inside #ob-body,
+  // which is hidden on the Live link tab). Mirrors the quote editor.
+  const _projHeader = `<div class="project-header">
       <div class="ph-row1">
         <button class="ph-back" onclick="_oChangeClient()" title="Back to orders" aria-label="Back">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
@@ -561,8 +563,8 @@ function renderOrderEditor() {
         <span class="ph-title">${_escHtml(headerName)}</span>
         <span class="cl-unsaved-pill" data-save-pill="order" style="display:none"></span>
       </div>
-    </div>
-
+    </div>`;
+  host.innerHTML = `${_projHeader}${typeof _llTabBar === 'function' ? _llTabBar('order') : ''}<div id="ob-body"${(typeof _llTab !== 'undefined' && _llTab.order === 'live') ? ' style="display:none"' : ''}><div class="form-section editor-shell">
     <div class="form-group" style="padding:10px 14px">
       <label>Order Number</label>
       <div class="prefixed-input">
