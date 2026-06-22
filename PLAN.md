@@ -24,6 +24,27 @@ Companion docs: `SPEC.md` (refactor history), `SCHEMA.md` (DB schema),
 
 ## Active Work
 
+### Live link — customer-facing redesign + PDF download (2026-06-22) ✅ Built + verified (mock) — ⬜ verify against a live token after deploy
+
+**Goal.** Make the customer live link (`/q/<token>`) look professional and
+**consistent with the PDF the app generates** (`_buildOrderDocPDF`), and let the
+customer **download a PDF** of their quote/order from the page.
+
+**Design (approved via `livelink-redesign-mockups.html`).** One document identity
+matched to the PDF: Helvetica, heavy `#111` rule under the header, `PREPARED FOR`
+block, grouped line-item table (`CABINETS`/`LABOUR`), black total pill, red
+discounts. Two responsive treatments of the same skin: desktop = document sheet +
+sticky monochrome checkout rail; mobile = same document edge-to-edge with a sticky
+bottom pay bar. The existing **floating Message launcher** is kept (restyled).
+
+**Sub-steps.**
+- ✅ `q.html` — reskinned to the document palette (forces light/paper via `body.qp` var overrides, ignores dark mode); kept overlays restyled (pay sheet, spec editor, photo viewer, chat launcher→dark pill, toast, states).
+- ✅ `quote-public.js` — `render()`/`row()`/`rail()` rewritten to grouped-table document + sticky rail (desktop) / sticky action bar (mobile); new `docTotals()`/`ctaState()`/`actionBar()`/`updateSummaries()`; every handler kept (toggle, spec edit, accept/pay, chat, photo viewer). `renderTop()` removed (brand now lives in the document header; success states carry a `stateBrand()` line).
+- ✅ Customer PDF — lazy `import('jspdf')` on `__qp.downloadPdf()`; `buildQuotePdf()` mirrors `_buildOrderDocPDF` from the public payload (name banner, no logo image; PREPARED FOR = client name; reuses the page discount logic). jsPDF stays code-split (not in the first-paint bundle).
+- ✅ Decision logged: **no "Made with ProCabinet.app" branding** on the customer page/PDF (public payload has no tier flag — don't stamp paying makers; revisit if a tier signal is added). Footer = business name + date + Stripe-secured trust line.
+- ✅ Verified via dev mock (`/q.html?mock=1`): desktop + mobile layouts, optional-toggle summary sync, spec-edit mode, chat, and a valid 9.6 KB PDF generated. `npm run typecheck` + `npm run build` clean.
+- ⬜ Verify against a **live token** after deploy (mock can't exercise the edge-fn round-trips: toggle/edit persistence, real photos, Stripe pay sheet, the redirect-payment outcome states).
+
 ### Live link — auto-accept edits + server-side re-pricing (2026-06-21) ✅ Code done + parity-verified — ⬜ needs deploy
 
 **Goal.** Add a Live-link toggle "Auto-accept customer changes". When ON, a
