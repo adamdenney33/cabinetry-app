@@ -553,10 +553,9 @@ function _llBizEmail() {
 
 // ── Send live link via message (posts to the live page + emails the customer) ─
 // Posting a business message makes the link appear on the customer's live page
-// (quote-messages list). The email is sent DIRECTLY by the send-live-link edge
-// fn — the customer_messages → messages-notify email bridge isn't applied in
-// prod, so the chat row alone never emails anyone. A "send me a copy" box also
-// emails the business their own copy via the same function.
+// (quote-messages list) AND fires the customer_messages → messages-notify bridge
+// trigger, which emails the customer the same text. A "send me a copy" box
+// additionally emails the business their own copy via the send-live-link fn.
 /** Open the "send via messages" dialogue. @param {'quote'|'order'} kind @param {number} id */
 async function _sendLiveLinkMsg(kind, id) {
   /** @type {any} */ const entity = kind === 'quote'
@@ -634,27 +633,26 @@ async function _sendLiveLinkMsgConfirm(kind, id) {
     (_clientMessages[clientId] = _clientMessages[clientId] || []).push({ ...row, created_at: new Date().toISOString() });
     if (typeof _refreshClientThreadUI === 'function') _refreshClientThreadUI(clientId);
   } catch (e) { /* cache is best-effort */ }
-  // 2) Email the customer the link directly (the messages→email bridge isn't in
-  //    prod, so the chat row alone never emails them), plus an optional copy.
-  let msg = 'Live link sent'; let type = /** @type {'success'|'info'|'error'} */ ('success');
-  try {
-    const out = await _llSendLiveLink({ client_id: clientId, body, ref: `${kind === 'order' ? 'Order' : 'Quote'} ${num}`, copyToBusiness: wantCopy });
-    if (out.customer === 'sent') { msg = 'Live link emailed to the customer'; }
-    else if (out.customer === 'skipped') { msg = 'Posted to their live page — no email on file for the customer'; type = 'info'; }
-    else { msg = 'Posted to their live page, but the customer email failed'; type = 'error'; }
-    if (wantCopy) msg += out.copy === 'sent' ? ' · copy sent to you' : (out.copy === 'skipped' ? ' · add a business email for your copy' : ' · your copy failed');
-  } catch (e) {
-    msg = 'Posted to their live page, but emailing failed — check your connection'; type = 'error';
+  // 2) The notify trigger emails the customer on this business message (the
+  //    email bridge). We only send the optional business copy from here.
+  const hasEmail = !!(client && String(client.email || '').trim());
+  let msg = hasEmail ? 'Live link sent — emailing the customer' : 'Posted to their live page — no email on file for the customer';
+  let type = /** @type {'success'|'info'|'error'} */ (hasEmail ? 'success' : 'info');
+  if (wantCopy) {
+    try {
+      const out = await _llSendLiveLink({ body, customerName: (client && client.name) || '', ref: `${kind === 'order' ? 'Order' : 'Quote'} ${num}` });
+      msg += out.copy === 'sent' ? ' · copy sent to you' : (out.copy === 'skipped' ? ' · add a business email for your copy' : ' · your copy failed');
+    } catch (e) { msg += ' · your copy failed'; }
   }
   _closePopup();
   _toast(msg, type);
 }
 
-/** Email the live link to the customer (and optionally a copy to the business)
- *  via the send-live-link edge fn. Recipients are resolved SERVER-SIDE from the
- *  caller's JWT — the client must belong to the caller, and the copy goes to the
- *  caller's own business email — never from these fields.
- *  @param {{client_id:number, body:string, ref?:string, copyToBusiness?:boolean}} payload @returns {Promise<any>} */
+/** Email the business their own copy of a sent live-link message via the
+ *  send-live-link edge fn. The CUSTOMER email is handled by the messages-notify
+ *  bridge trigger; this call is copy-only. Recipient is resolved SERVER-SIDE
+ *  from the caller's JWT (their business email), never from these fields.
+ *  @param {{body:string, customerName?:string, ref?:string}} payload @returns {Promise<any>} */
 async function _llSendLiveLink(payload) {
   const token = (typeof _dbAuthToken === 'function' && _dbAuthToken()) || null;
   if (!token) throw new Error('Not signed in');
