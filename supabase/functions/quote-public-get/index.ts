@@ -203,6 +203,10 @@ Deno.serve(async (req) => {
       settings: {
         allow_select: !!settings.allow_select,
         allow_edit: !!settings.allow_edit,
+        // Drives the in-page editor's copy + status: when on, spec edits are
+        // re-priced server-side instantly; when off they become "Price to
+        // confirm" change requests the maker re-prices. (Orders never set it.)
+        auto_accept: !!settings.auto_accept_edits,
         accept_payment: !!settings.accept_payment,
         deposit_pct: settings.take_deposit === false ? 0 : Number(settings.deposit_pct) || 0,
         expires_at: settings.expires_at ?? null,

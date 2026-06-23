@@ -95,10 +95,64 @@ let cur = '£';
 // standalone module and deliberately does not load the authed app's units.js.
 let unitSys = 'metric';
 const unitFmt = { mode: 'mm', decimals: 0, denominator: 16 };
-/** Buffered spec-editor changes, keyed by line id -- sent only on Send edits. */
+/** Buffered field changes per line, drained by the debounced auto-save. */
 /** @type {Record<number, Record<string, unknown>>} */ const pendingEdits = {};
-/** Original line values saved when a spec editor opens, for cancel/revert. */
-/** @type {Record<number, Record<string, unknown>>} */ const originalValues = {};
+/** Per-line debounce timers for the auto-save. */
+/** @type {Record<number, any>} */ const editTimers = {};
+/** Line ids whose inline spec editor is currently expanded. */
+const openEditors = new Set();
+/** The maker's spec for each line as first loaded — the baseline that the
+ *  "edited" indicator compares against and "Revert to original" restores to.
+ *  Captured before any customer edit, so on a fresh link it IS the original
+ *  quote; it only drifts if edits from a prior session were already persisted. */
+/** @type {Record<number, Record<string, unknown>>} */ const baseline = {};
+
+/** Every spec column the editor can touch — snapshotted into `baseline`. */
+const SPEC_FIELDS = ['w_mm', 'h_mm', 'd_mm', 'material', 'finish', 'construction', 'base_type',
+  'door_count', 'door_pct', 'door_type', 'door_material', 'door_finish', 'door_handle',
+  'drawer_count', 'drawer_pct', 'drawer_front_type', 'drawer_front_material', 'drawer_front_finish',
+  'fixed_shelves', 'adj_shelves', 'loose_shelves', 'partitions', 'end_panels'];
+/** Map each `editable_specs` token to the line columns it unlocks. */
+/** @type {Record<string, string[]>} */
+const SPEC_TO_FIELDS = {
+  dims: ['w_mm', 'h_mm', 'd_mm'], material: ['material'], finish: ['finish'],
+  construction: ['construction'], base: ['base_type'],
+  doors: ['door_count'], doorPct: ['door_pct'], doorType: ['door_type'], doorMat: ['door_material'], doorFinish: ['door_finish'], handle: ['door_handle'],
+  drawers: ['drawer_count'], drawerPct: ['drawer_pct'], drawerType: ['drawer_front_type'], drawerMat: ['drawer_front_material'], drawerFinish: ['drawer_front_finish'],
+  shelves: ['fixed_shelves'], adjShelves: ['adj_shelves'], looseShelves: ['loose_shelves'], partitions: ['partitions'], endPanels: ['end_panels'],
+};
+/** Snapshot every line's current spec as the revert baseline. */
+function captureBaseline() {
+  for (const l of lines) {
+    /** @type {Record<string, unknown>} */ const snap = {};
+    for (const f of SPEC_FIELDS) snap[f] = l[f];
+    baseline[l.id] = snap;
+  }
+}
+/** The spec tokens a line lets the customer edit (legacy lines → dims+finish). */
+/** @param {any} l */
+function lineSpecs(l) {
+  return (Array.isArray(l.editable_specs) && l.editable_specs.length)
+    ? l.editable_specs
+    : (l.customer_editable ? ['dims', 'finish'] : []);
+}
+/** @param {any} l */
+function hasEditableSpecs(l) { return lineSpecs(l).length > 0; }
+/** The line columns the customer may change on this line. @param {any} l */
+function editableFields(l) {
+  const out = [];
+  for (const s of lineSpecs(l)) for (const f of (SPEC_TO_FIELDS[s] || [])) out.push(f);
+  return out;
+}
+/** Has the customer changed this line away from its baseline? @param {any} l */
+function isLineEdited(l) {
+  const b = baseline[l.id]; if (!b) return false;
+  return editableFields(l).some((f) => String(l[f] ?? '') !== String(b[f] ?? ''));
+}
+/** Has anything on the quote been edited? */
+function isQuoteEdited() { return lines.some(isLineEdited); }
+/** Whether the maker has auto-accept (instant re-pricing) on. */
+function autoAccept() { return !!(D && D.settings && D.settings.auto_accept); }
 
 /** @param {number} n */
 function money(n) {
@@ -306,24 +360,44 @@ function stateBrand() { return D?.business?.name ? `<div class="qp-statebrand">$
 // ── line row (document table row) ────────────────────────────────────────────
 /** @param {any} l */
 function row(l) {
-  const accepted = !!D?.quote?.accepted_at;
   const photos = photosByLine[l.id] || [];
   const photo = photos.length
     ? `<button type="button" class="qp-photo" onclick="__qp.openPhotos(${l.id},0)" aria-label="View ${photos.length > 1 ? photos.length + ' photos' : 'photo'} of ${esc(l.name || 'this item')}"><img src="${esc(photos[0])}" alt="" loading="lazy">${photos.length > 1 ? `<span class="qp-photo-n">+${photos.length - 1}</span>` : ''}</button>`
     : '';
+  // Cabinet description mirrors the PDF (dims · material · finish · fronts).
+  const spec = l.line_kind === 'cabinet' ? esc(cabinetSpecText(l)) : esc(l.notes || l.type || '');
+  // Optional items get a document-style include checkbox (not a SaaS switch).
+  const canSelect = l.optional && D?.settings?.allow_select && !D?.quote?.accepted_at;
+  const chk = canSelect
+    ? `<button class="qpd-chk" aria-pressed="${!!l.customer_included}" aria-label="Include ${esc(l.name || 'this item')} in your ${D?.kind === 'order' ? 'order' : 'quote'}" onclick="__qp.toggle(${l.id})"><svg viewBox="0 0 12 12"><path d="M2 6l3 3 5-6" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>`
+    : '';
+  const qty = Number(l.qty) || 1;
+  const open = openEditors.has(l.id);
+  return `<div class="qpd-li${l.customer_included ? '' : ' off'}" id="qp-row-${l.id}">
+      <div class="qpd-li-main">${chk}${photo}<div class="qpd-li-text">
+        <div class="qpd-li-name">${esc(l.name || 'Item')}<span id="qp-chips-${l.id}">${chipsHtml(l)}</span></div>
+        <div class="qpd-li-spec">${spec}${qty > 1 ? ' · Qty ' + qty : ''}</div>
+        <div id="qp-spec-${l.id}" style="${open ? '' : 'display:none'}">${open ? specEditor(l) : ''}</div>
+      </div></div>
+      <span class="qpd-li-nums" id="qp-nums-${l.id}">${numsHtml(l)}</span>
+    </div>`;
+}
+/** The chip cluster after a line's name (Optional / Edit / Edited / pending). @param {any} l */
+function chipsHtml(l) {
+  const accepted = !!D?.quote?.accepted_at;
   const chips = [];
   if (l.optional && !accepted) chips.push('<span class="qpd-tag">Optional</span>');
   // Once accepted, the quote is locked server-side — don't render controls
   // that would only error with "already accepted".
-  if (!accepted && (((l.editable_specs && l.editable_specs.length) || l.customer_editable)) && D?.settings?.allow_edit) chips.push(`<button class="qp-chip edit" onclick="__qp.toggleSpec(${l.id})">Edit</button>`);
+  if (!accepted && hasEditableSpecs(l) && D?.settings?.allow_edit) {
+    chips.push(`<button class="qp-chip edit" onclick="__qp.toggleSpec(${l.id})">${openEditors.has(l.id) ? 'Done' : 'Edit'}</button>`);
+  }
+  if (isLineEdited(l)) chips.push('<span class="qp-chip edited">Edited</span>');
   if (l._pending) chips.push('<span class="qp-chip pending">Price to confirm</span>');
-  // Cabinet description mirrors the PDF (dims · material · finish · fronts).
-  const spec = l.line_kind === 'cabinet' ? esc(cabinetSpecText(l)) : esc(l.notes || l.type || '');
-  // Optional items get a document-style include checkbox (not a SaaS switch).
-  const canSelect = l.optional && D?.settings?.allow_select && !accepted;
-  const chk = canSelect
-    ? `<button class="qpd-chk" aria-pressed="${!!l.customer_included}" aria-label="Include ${esc(l.name || 'this item')} in your ${D?.kind === 'order' ? 'order' : 'quote'}" onclick="__qp.toggle(${l.id})"><svg viewBox="0 0 12 12"><path d="M2 6l3 3 5-6" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>`
-    : '';
+  return chips.join('');
+}
+/** The qty / unit / amount number cells for a line. @param {any} l */
+function numsHtml(l) {
   const qty = Number(l.qty) || 1;
   const total = l.customer_price;
   const unit = total != null ? Number(total) / (qty || 1) : null;
@@ -332,21 +406,12 @@ function row(l) {
   const amtCell = l._pending
     ? `<span class="qpd-num amt" style="color:var(--danger);font-size:11px">To confirm</span>`
     : `<span class="qpd-num amt">${total != null ? money(total) : '—'}</span>`;
-  return `<div class="qpd-li${l.customer_included ? '' : ' off'}" id="qp-row-${l.id}">
-      <div class="qpd-li-main">${chk}${photo}<div class="qpd-li-text">
-        <div class="qpd-li-name">${esc(l.name || 'Item')}${chips.join('')}</div>
-        <div class="qpd-li-spec">${spec}${qty > 1 ? ' · Qty ' + qty : ''}</div>
-        <div id="qp-spec-${l.id}" style="display:none"></div>
-      </div></div>
-      <span class="qpd-li-nums">${qtyCell}${priceCell}${amtCell}</span>
-    </div>`;
+  return `${qtyCell}${priceCell}${amtCell}`;
 }
 
 /** @param {any} l */
 function specEditor(l) {
-  const specs = (Array.isArray(l.editable_specs) && l.editable_specs.length)
-    ? l.editable_specs
-    : (l.customer_editable ? ['dims', 'finish'] : []);   // legacy lines: the old dims+finish editor
+  const specs = lineSpecs(l);
   /** @param {string[]} list @param {string} cur */
   const optList = (list, cur) => {
     const opts = (list && list.length ? list.slice() : []);
@@ -355,12 +420,12 @@ function specEditor(l) {
   };
   /** @param {string} label @param {any} val @param {number} min @param {number} max @param {string} col @param {string} unit */
   const num = (label, val, min, max, col, unit) =>
-    `<div class="r"><label>${label}</label><input type="number" value="${val != null ? val : ''}" min="${min}" max="${max}" step="${unit === 'mm' ? 10 : 1}" style="width:${unit ? 84 : 64}px" onchange="__qp.setField(${l.id},'${col}',this.value)">${unit ? ` <span style="font-size:11px;color:var(--muted)">${unit}</span>` : ''}<span class="qp-range">${min}–${max}${unit ? unit : ''}</span></div>`;
+    `<div class="r"><label>${label}</label><input type="number" value="${val != null ? val : ''}" min="${min}" max="${max}" step="${unit === 'mm' ? 10 : 1}" style="width:${unit ? 84 : 64}px" oninput="__qp.setField(${l.id},'${col}',this.value)">${unit ? ` <span style="font-size:11px;color:var(--muted)">${unit}</span>` : ''}<span class="qp-range">${min}–${max}${unit ? unit : ''}</span></div>`;
   // Dimension row: shown + entered in the maker's unit (mm canonical underneath).
   // Text input so fractional inches are typable; setField converts back to mm.
   /** @param {string} label @param {any} mm @param {number} minMm @param {number} maxMm @param {string} col */
   const dimRow = (label, mm, minMm, maxMm, col) =>
-    `<div class="r"><label>${label}</label><input type="text" inputmode="decimal" value="${fmtDim(mm)}" style="width:84px" onchange="__qp.setField(${l.id},'${col}',this.value)"> <span style="font-size:11px;color:var(--muted)">${unitLbl()}</span><span class="qp-range">${fmtDim(minMm)}–${fmtDim(maxMm)}${unitLbl()}</span></div>`;
+    `<div class="r"><label>${label}</label><input type="text" inputmode="decimal" value="${fmtDim(mm)}" style="width:84px" oninput="__qp.setField(${l.id},'${col}',this.value)"> <span style="font-size:11px;color:var(--muted)">${unitLbl()}</span><span class="qp-range">${fmtDim(minMm)}–${fmtDim(maxMm)}${unitLbl()}</span></div>`;
   /** @param {string} label @param {string[]} opts @param {string} cur @param {string} col */
   const sel = (label, opts, cur, col) =>
     `<div class="r"><label>${label}</label><select onchange="__qp.setField(${l.id},'${col}',this.value)" style="flex:1">${optList(opts, cur)}</select></div>`;
@@ -402,8 +467,17 @@ function specEditor(l) {
   if (!sections.length) sections.push({ t: '', rows: [sel('Finish', D?.finishes || [], l.finish, 'finish')] });
   const body = sections.map(s => `${s.t ? `<div class="qp-spec-head">${s.t}</div>` : ''}${s.rows.join('')}`).join('');
   return `<div class="qp-spec">${body}
-    <div style="font-size:11px;color:var(--muted);line-height:1.5;margin-top:10px">Adjust anything above, then press <strong>Send edits</strong> in the summary to submit your changes.</div>
+    <div class="qp-edstat" id="qp-edstat-${l.id}">${editorStatusText(l)}</div>
+    ${isLineEdited(l) ? `<button class="qp-edrevert" id="qp-edrevert-${l.id}" onclick="__qp.revertLine(${l.id})">↩ Revert this item to the original</button>` : ''}
   </div>`;
+}
+/** Resting status copy under a line's editor — reflects auto-accept + pending. @param {any} l */
+function editorStatusText(l) {
+  if (l._pending) return `Sent to ${esc(bizName())} to confirm the updated price.`;
+  if (isLineEdited(l)) return autoAccept() ? 'Saved — your price updated automatically.' : 'Saved.';
+  return autoAccept()
+    ? 'Changes save automatically and update your price as you go.'
+    : `Changes save automatically; ${esc(bizName())} confirms the new price.`;
 }
 
 // ── totals / rail / action bar ───────────────────────────────────────────────
@@ -414,9 +488,7 @@ function ctaState() {
   const isOrder = D?.kind === 'order';
   const accepted = !!D?.quote?.accepted_at;
   const payMode = !!D?.settings?.accept_payment;
-  const editing = Object.keys(originalValues).length > 0;
   const hasPending = t.pending > 0;
-  if (editing) return { kind: 'edit', t };
   if (isOrder) return { kind: 'order', t };
   if (accepted) return { kind: 'accepted', t };
   const label = payMode ? (t.depPct ? `Accept &amp; pay ${money(t.deposit)} deposit` : `Accept &amp; pay ${money(t.total)}`) : 'Accept this quote';
@@ -430,16 +502,15 @@ function ctaState() {
 }
 /** Primary CTA button(s). @param {ReturnType<typeof ctaState>} cs @param {boolean} compact */
 function ctaHtml(cs, compact) {
-  if (cs.kind === 'edit') {
-    return `<div style="display:flex;gap:8px;margin-top:9px">
-        <button class="qpd-b dark" style="flex:1" onclick="__qp.sendEdits()">Send edits</button>
-        <button class="qpd-b ghost sm" onclick="__qp.cancelEdits()">Cancel</button>
-      </div>${compact ? '' : `<div class="qpd-cta-hint">Sends your changes to ${esc(bizName())} — the updated price is confirmed before anything is charged.</div>`}`;
-  }
   if (cs.kind === 'order') return '';
   if (cs.kind === 'accepted') return `<div class="qpd-accepted">✓ Accepted — thank you</div>`;
   const label = compact ? cs.shortLabel : cs.label;
   return `<button class="qpd-b dark" style="margin-top:9px"${cs.disabled ? ' disabled' : ''} onclick="${cs.kind === 'pay' ? '__qp.payDeposit()' : '__qp.confirmAccept()'}">${label}</button>${compact ? '' : `<div class="qpd-cta-hint">${cs.hint}</div>`}`;
+}
+/** "You've changed this quote" banner + revert, shown once anything is edited. */
+function editBanner() {
+  if (!isQuoteEdited() || D?.quote?.accepted_at) return '';
+  return `<div class="qpd-editbanner">✎ You've changed this quote<button class="qpd-revert" onclick="__qp.revertAll()">Revert to original</button></div>`;
 }
 /** Totals + black pill + deposit block shown in the document body (id qp-doctot). */
 function docTotals() {
@@ -450,7 +521,7 @@ function docTotals() {
   const discPct = Number(D?.quote?.discount) || 0;
   const preDiscount = discPct > 0 && discPct < 100 ? t.subtotal / (1 - discPct / 100) : t.subtotal;
   const saving = preDiscount - t.subtotal;
-  return `<div class="qpd-tot">
+  return `${editBanner()}<div class="qpd-tot">
       <div class="qpd-tline"><span>Subtotal</span><span class="v">${money(discPct > 0 ? preDiscount : t.subtotal)}</span></div>
       ${discPct > 0 ? `<div class="qpd-tline disc"><span>Discount (${discPct}%)</span><span class="v">− ${money(saving)}</span></div>` : ''}
       ${t.taxPct ? `<div class="qpd-tline"><span>VAT (${t.taxPct}%)</span><span class="v">+ ${money(t.tax)}</span></div>` : ''}
@@ -463,7 +534,7 @@ function docTotals() {
 function rail() {
   const cs = ctaState();
   const isOrder = D?.kind === 'order';
-  return `${stampHtml()}
+  return `${stampHtml()}${editBanner()}
     <div class="rlab">${isOrder ? 'Order total' : 'Amount to approve'}</div>
     <div class="qpd-pill"><span class="pl">${isOrder ? 'Order' : 'Quote'} total</span><span class="pa">${money(cs.t.total)}${cs.t.pending ? '+' : ''}</span></div>
     ${cs.t.depPct ? `<div class="qpd-pay"><div class="qpd-pay-lab">Deposit to begin</div><div class="qpd-pay-amt">${money(cs.t.deposit)}</div><div class="qpd-pay-bal">${cs.t.depPct}% now · balance ${money(cs.t.balance)} on completion</div></div>` : ''}
@@ -475,7 +546,6 @@ function rail() {
 /** Mobile sticky action bar (hidden on desktop). */
 function actionBar() {
   const cs = ctaState();
-  if (cs.kind === 'edit') return `<button class="qpd-b dark" onclick="__qp.sendEdits()">Send edits</button><button class="qpd-b ghost" onclick="__qp.cancelEdits()">Cancel</button>`;
   if (cs.kind === 'accepted') return `<div class="qpd-accepted" style="flex:1;margin:0">✓ Accepted — thank you</div>`;
   if (cs.kind === 'order') return `<button class="qpd-b ghost" style="flex:1" onclick="__qp.downloadPdf()">↓ Download PDF</button>`;
   return `<button class="qpd-b ghost" onclick="__qp.downloadPdf()">↓ PDF</button><button class="qpd-b dark"${cs.disabled ? ' disabled' : ''} onclick="${cs.kind === 'pay' ? '__qp.payDeposit()' : '__qp.confirmAccept()'}">${cs.shortLabel}</button>`;
@@ -744,76 +814,63 @@ const handlers = {
     try { await fn('quote-public-update', { token, action: 'toggle', line_id: id, included: l.customer_included }); }
     catch (e) { l.customer_included = !l.customer_included; refreshLine(id); toast(friendlyError(e, 'Could not update that item — please try again.')); }
   },
-  /** @param {number} id */
+  /** Expand / collapse a line's inline editor. Closing flushes any pending
+   *  change so nothing the customer typed is lost. @param {number} id */
   toggleSpec(id) {
-    const host = byId('qp-spec-' + id); const l = lines.find((x) => x.id === id);
-    if (!host || !l) return;
-    if (host.style.display === 'none') {
-      originalValues[id] = { finish: l.finish, w_mm: l.w_mm, h_mm: l.h_mm, d_mm: l.d_mm,
-        material: l.material, construction: l.construction, base_type: l.base_type,
-        door_count: l.door_count, door_pct: l.door_pct, door_type: l.door_type,
-        door_material: l.door_material, door_finish: l.door_finish, door_handle: l.door_handle,
-        drawer_count: l.drawer_count, drawer_pct: l.drawer_pct, drawer_front_type: l.drawer_front_type,
-        drawer_front_material: l.drawer_front_material, drawer_front_finish: l.drawer_front_finish,
-        fixed_shelves: l.fixed_shelves, adj_shelves: l.adj_shelves, loose_shelves: l.loose_shelves,
-        partitions: l.partitions, end_panels: l.end_panels };
-      pendingEdits[id] = {};
-      host.innerHTML = specEditor(l); host.style.display = '';
-      updateSummaries();
+    if (openEditors.has(id)) {
+      openEditors.delete(id);
+      flushLine(id);            // persist anything still buffered before collapsing
     } else {
-      handlers.cancelEdits(id);
+      openEditors.add(id);
     }
+    refreshLine(id);
   },
-  /** @param {number} id @param {string} col @param {string} v */
+  /** Buffer a field change and (re)arm the debounced auto-save.
+   *  @param {number} id @param {string} col @param {string} v */
   setField(id, col, v) {
     pendingEdits[id] = pendingEdits[id] || {};
     // Dims are entered in the maker's unit but stored/sent canonically in mm.
     pendingEdits[id][col] = (col === 'w_mm' || col === 'h_mm' || col === 'd_mm')
       ? Math.round(parseDimToMm(v))
       : v;
+    scheduleSave(id);
   },
-  /** Send every buffered edit (one request per changed line), then close
-   *  the editors and restore the normal accept CTA. */
-  async sendEdits() {
-    const ids = Object.keys(pendingEdits).map(Number);
-    let auto = 0, pend = 0;
-    for (const id of ids) {
-      const patch = pendingEdits[id];
-      if (!patch || !Object.keys(patch).length) { handlers.cancelEdits(id); continue; }
-      if (await applyEdit(id, patch)) {
-        const l = lines.find((x) => x.id === id);
-        if (l && !l._pending) auto++; else pend++;   // auto-priced vs awaiting confirmation
-        delete pendingEdits[id]; delete originalValues[id];
-      }
-      // on failure the buffer and editor stay so the customer can retry
-    }
-    if (auto || pend) {
-      const t = totals();
-      const maker = D?.business?.name || 'your maker';
-      if (auto && !pend) toast(`Updated — your new total is ${money(t.total)}${t.taxPct ? ' (incl. VAT)' : ''}.`, false);
-      else if (pend && !auto) toast(`Change${pend > 1 ? 's' : ''} sent — ${maker} will confirm the updated price.`, false);
-      else toast(`Changes sent — some prices updated; ${maker} will confirm the rest.`, false);
-    }
-    updateSummaries();
+  /** Revert ONE line to its loaded baseline (the maker's original) + persist. @param {number} id */
+  async revertLine(id) {
+    const l = lines.find((x) => x.id === id); const b = baseline[id];
+    if (!l || !b) return;
+    if (editTimers[id]) { clearTimeout(editTimers[id]); editTimers[id] = null; }
+    pendingEdits[id] = {};
+    /** @type {Record<string, unknown>} */ const patch = {};
+    for (const f of editableFields(l)) if (String(l[f] ?? '') !== String(b[f] ?? '')) patch[f] = b[f];
+    if (!Object.keys(patch).length) return;
+    const ok = await applyEdit(id, patch);
+    refreshLine(id);
+    if (ok) toast('Reverted to the original.', false);
   },
-  /** Discard buffered edits and close spec editors.
-   * @param {number} [id] one line, or every open editor when omitted */
-  cancelEdits(id) {
-    const ids = id != null ? [id] : Object.keys(originalValues).map(Number);
-    for (const lid of ids) {
-      const orig = originalValues[lid];
-      if (orig) { const l = lines.find((x) => x.id === lid); if (l) Object.assign(l, orig); }
-      delete pendingEdits[lid];
-      delete originalValues[lid];
-      const host = byId('qp-spec-' + lid); if (host) host.style.display = 'none';
+  /** Revert EVERY edited line back to the original quote. */
+  async revertAll() {
+    const edited = lines.filter(isLineEdited);
+    if (!edited.length) return;
+    let okAll = true;
+    for (const l of edited) {
+      const b = baseline[l.id]; if (!b) continue;
+      if (editTimers[l.id]) { clearTimeout(editTimers[l.id]); editTimers[l.id] = null; }
+      pendingEdits[l.id] = {};
+      /** @type {Record<string, unknown>} */ const patch = {};
+      for (const f of editableFields(l)) if (String(l[f] ?? '') !== String(b[f] ?? '')) patch[f] = b[f];
+      if (Object.keys(patch).length && !(await applyEdit(l.id, patch))) okAll = false;
     }
+    byId('qp-lines').innerHTML = itemsHtml();
     updateSummaries();
+    if (okAll) toast('Reverted to the original quote.', false);
   },
   /** Confirmation sheet before the (irreversible) non-payment accept — one
    *  mis-click shouldn't lock the quote. The pay flow has the payment sheet
    *  as its natural confirm step, so it skips this. */
-  confirmAccept() {
+  async confirmAccept() {
     if (D?.quote?.accepted_at) return;
+    await flushAllPending();   // commit any in-flight edit before reading totals
     const t = totals();
     if (t.pending) { toast(friendlyError('price_pending')); return; }
     closePaySheet();
@@ -844,6 +901,7 @@ const handlers = {
   },
   async payDeposit() {
     if (D?.quote?.accepted_at) return;
+    await flushAllPending();   // commit any in-flight edit before charging
     /** @type {any} */ let pay;
     try { pay = await fn('quote-pay', { token, kind: 'deposit' }); }
     catch (e) {
@@ -917,10 +975,10 @@ const handlers = {
   },
 };
 
-/** Send one line's spec edit. Returns true on success (caller clears the buffer
- *  + composes the summary toast). The server echoes a re-priced `customer_price`
- *  when the maker has auto-accept on; otherwise it clears the price (null) and
- *  the line shows "Price to confirm" until the maker re-prices.
+/** Persist one line's spec edit to the server and fold the result into local
+ *  state. Pure data — callers own the DOM (so an open editor isn't torn down
+ *  mid-typing). The server echoes a re-priced `customer_price` when the maker
+ *  has auto-accept on; otherwise it clears the price (null) → "Price to confirm".
  *  @param {number} id @param {Record<string, unknown>} patch @returns {Promise<boolean>} */
 async function applyEdit(id, patch) {
   const l = lines.find((x) => x.id === id); if (!l) return false;
@@ -934,13 +992,64 @@ async function applyEdit(id, patch) {
       l.customer_price = null;                  // maker re-confirms the price
       l._pending = true;
     }
-    const host = byId('qp-spec-' + id); if (host) host.style.display = 'none';
-    refreshLine(id);
     return true;
   } catch (e) {
     toast(friendlyError(e, 'Could not save that change — please try again.'));
     return false;
   }
+}
+
+// ── debounced auto-save ───────────────────────────────────────────────────────
+const SAVE_DEBOUNCE_MS = 700;
+/** (Re)arm the per-line debounce after a field change. */
+function scheduleSave(/** @type {number} */ id) {
+  setLineStatus(id, 'pending');
+  if (editTimers[id]) clearTimeout(editTimers[id]);
+  editTimers[id] = setTimeout(() => { editTimers[id] = null; flushLine(id); }, SAVE_DEBOUNCE_MS);
+}
+/** Send a line's buffered changes now (if any), then refresh its price + chips
+ *  WITHOUT rebuilding the open editor. @returns {Promise<void>} */
+async function flushLine(/** @type {number} */ id) {
+  if (editTimers[id]) { clearTimeout(editTimers[id]); editTimers[id] = null; }
+  const patch = pendingEdits[id];
+  if (!patch || !Object.keys(patch).length) return;
+  pendingEdits[id] = {};
+  setLineStatus(id, 'saving');
+  const ok = await applyEdit(id, patch);
+  liveRefreshLine(id);
+  setLineStatus(id, ok ? 'saved' : 'error');
+}
+/** Flush every pending line (used before accept / pay so no edit is lost). */
+async function flushAllPending() {
+  for (const k of Object.keys(pendingEdits)) {
+    if (pendingEdits[Number(k)] && Object.keys(pendingEdits[Number(k)]).length) await flushLine(Number(k));
+  }
+}
+/** Update a line's price + chips in place; leaves the editor inputs untouched
+ *  (so typing isn't interrupted), but syncs the per-item revert link. */
+function liveRefreshLine(/** @type {number} */ id) {
+  const l = lines.find((x) => x.id === id); if (!l) return;
+  const nums = byId('qp-nums-' + id); if (nums) nums.innerHTML = numsHtml(l);
+  const chips = byId('qp-chips-' + id); if (chips) chips.innerHTML = chipsHtml(l);
+  // Sync the "Revert this item" link without rebuilding the editor inputs.
+  const stat = byId('qp-edstat-' + id);
+  const rev = byId('qp-edrevert-' + id);
+  if (rev && !isLineEdited(l)) rev.remove();
+  else if (!rev && stat && isLineEdited(l)) {
+    stat.insertAdjacentHTML('afterend',
+      `<button class="qp-edrevert" id="qp-edrevert-${id}" onclick="__qp.revertLine(${id})">↩ Revert this item to the original</button>`);
+  }
+  updateSummaries();
+}
+/** Set the auto-save status line under a line's editor. @param {number} id @param {string} state */
+function setLineStatus(id, state) {
+  const el = byId('qp-edstat-' + id); if (!el) return;
+  const l = lines.find((x) => x.id === id);
+  el.className = 'qp-edstat' + (state === 'saving' || state === 'saved' || state === 'error' ? ' ' + state : '');
+  if (state === 'saving') el.textContent = 'Saving…';
+  else if (state === 'pending') el.textContent = 'Editing…';
+  else if (state === 'error') el.textContent = 'Could not save — please try again.';
+  else el.textContent = editorStatusText(l);   // 'saved' / idle → resting copy
 }
 
 /** @param {ReturnType<typeof totals>} t */
@@ -1153,6 +1262,7 @@ async function boot() {
     };
     cur = '£';
     lines = D.lines.map(/** @param {any} l */(l) => ({ ...l }));
+    captureBaseline();
     photosByLine = {};
     render();
     return;
@@ -1196,6 +1306,7 @@ async function boot() {
     if (D.kind !== 'order') {
       for (const l of lines) { if (l.customer_included && l.customer_price == null) l._pending = true; }
     }
+    captureBaseline();
     photosByLine = {};
     for (const p of (D.photos || [])) { (photosByLine[p.line_id] = photosByLine[p.line_id] || []).push(p.url); }
     // Back from a redirect payment: show the outcome instead of the quote.

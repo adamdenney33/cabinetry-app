@@ -106,6 +106,20 @@
   .qp-chip.edit{ background:#fff; border:1px solid var(--hair); color:var(--text2); cursor:pointer; font-family:inherit; line-height:inherit; }
   .qp-chip.edit:hover{ border-color:var(--text); }
   .qp-chip.pending{ background:rgba(196,68,68,.1); color:var(--danger); }
+  .qp-chip.edited{ background:rgba(56,118,84,.12); color:#2f6b48; }
+
+  /* ── editor auto-save status + per-item revert ── */
+  .qp-edstat{ font-size:11px; color:var(--muted); line-height:1.5; margin-top:10px; min-height:15px; transition:color .15s; }
+  .qp-edstat.saving{ color:var(--text2); }
+  .qp-edstat.saved{ color:#2f6b48; }
+  .qp-edstat.error{ color:var(--danger); }
+  .qp-edrevert{ margin-top:8px; font-size:11px; font-weight:600; color:var(--text2); background:none; border:none; padding:0; cursor:pointer; text-decoration:underline; font-family:inherit; }
+  .qp-edrevert:hover{ color:var(--text); }
+
+  /* ── quote-level "edited" banner + revert ── */
+  .qpd-editbanner{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-top:14px; padding:9px 12px; border:1px solid rgba(56,118,84,.3); background:rgba(56,118,84,.07); border-radius:8px; font-size:12px; color:#2f6b48; font-weight:600; }
+  .qpd-editbanner .qpd-revert{ margin-left:auto; font-size:11px; font-weight:700; color:var(--text); background:#fff; border:1px solid var(--border); border-radius:6px; padding:5px 10px; cursor:pointer; font-family:inherit; }
+  .qpd-editbanner .qpd-revert:hover{ border-color:var(--text); }
 
   /* ── totals + black pill ── */
   .qpd-tot{ margin-top:16px; margin-left:auto; width:300px; }
