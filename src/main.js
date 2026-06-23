@@ -6,8 +6,8 @@
 // the rest of the codebase (db.js, ui.js, app.js, migrate.js) stay as
 // classic globals-only scripts unchanged.
 //
-// This bridge is the ONLY module-syntax file in the codebase right now.
-// Phase C of the modernization plan converts everything else.
+// This is the ONLY module-syntax file in the codebase. Phase C converts the
+// rest. Force-rebuilt 2026-06-23 to invalidate a poisoned CF edge-cache entry.
 
 import { createClient } from '@supabase/supabase-js';
 import * as Sentry from '@sentry/browser';
