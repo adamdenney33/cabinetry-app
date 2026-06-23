@@ -181,6 +181,7 @@ async function _generateShareLink(quoteId, kind) {
   // flips it. Forced off whenever spec editing itself is off (it's meaningless).
   const autoTog = document.getElementById('sh-auto-accept');
   const allowEdit = pressed('sh-edit');
+  /** @type {Record<string, any>} */
   const settings = {
     allow_select: pressed('sh-select'),
     allow_edit: allowEdit,
@@ -207,6 +208,25 @@ async function _generateShareLink(quoteId, kind) {
       }
       Object.assign(l, { optional, customer_editable, customer_included: true, customer_price, editable_specs });
     }));
+    // Durable revert baseline: snapshot each line's ORIGINAL editable spec the
+    // first time it's shared, into share_settings.original_lines, so the
+    // customer page's "Revert to original" restores the maker's spec even across
+    // sessions. FIRST-CAPTURE-WINS — never overwrite an existing entry: a later
+    // customer edit writes quote_lines (not this), so the original survives. Read
+    // fresh from the DB so it's the saved spec columns, not the in-memory shape.
+    // Best-effort: on any failure the page falls back to its load-time snapshot.
+    try {
+      const existingOrig = (q.share_settings && q.share_settings.original_lines) || {};
+      const needIds = (q._lines || []).map(/** @param {any} l */ l => l.id).filter(/** @param {number} id */ id => !(String(id) in existingOrig));
+      /** @type {Record<string, any>} */ const original_lines = { ...existingOrig };
+      if (needIds.length) {
+        const { data: origRows } = await _db('quote_lines')
+          .select('id, w_mm, h_mm, d_mm, material, finish, construction, base_type, door_count, door_pct, door_type, door_material, door_finish, door_handle, drawer_count, drawer_pct, drawer_front_type, drawer_front_material, drawer_front_finish, fixed_shelves, adj_shelves, loose_shelves, partitions, end_panels')
+          .in('id', needIds);
+        for (const r of (origRows || [])) { const { id, ...spec } = /** @type {any} */ (r); original_lines[id] = spec; }
+      }
+      settings.original_lines = original_lines;
+    } catch (e) { /* baseline capture is best-effort — revert falls back to load-time state */ }
     // Snapshot the resolved rate card so the edge function can re-price customer
     // spec edits server-side (auto-accept). Omit when unavailable rather than
     // clobbering a previously-saved snapshot with null.

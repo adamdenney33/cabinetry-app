@@ -121,11 +121,16 @@ const SPEC_TO_FIELDS = {
   drawers: ['drawer_count'], drawerPct: ['drawer_pct'], drawerType: ['drawer_front_type'], drawerMat: ['drawer_front_material'], drawerFinish: ['drawer_front_finish'],
   shelves: ['fixed_shelves'], adjShelves: ['adj_shelves'], looseShelves: ['loose_shelves'], partitions: ['partitions'], endPanels: ['end_panels'],
 };
-/** Snapshot every line's current spec as the revert baseline. */
+/** Build the revert baseline. Prefers the maker's share-time `original_lines`
+ *  snapshot (durable across sessions, so revert restores the maker's original
+ *  even after a prior-session edit), falling back per-field to the load-time
+ *  value for legacy shares / fields the snapshot doesn't carry. */
 function captureBaseline() {
+  const orig = (D && D.original_lines) || {};
   for (const l of lines) {
+    const o = orig[l.id];
     /** @type {Record<string, unknown>} */ const snap = {};
-    for (const f of SPEC_FIELDS) snap[f] = l[f];
+    for (const f of SPEC_FIELDS) snap[f] = (o && Object.prototype.hasOwnProperty.call(o, f)) ? o[f] : l[f];
     baseline[l.id] = snap;
   }
 }
@@ -1361,7 +1366,7 @@ async function boot() {
   const slow = setTimeout(() => {
     const root = byId('qp-root');
     if (root && root.querySelector('.qp-spin')) {
-      root.innerHTML = `<div class="qp-state"><div class="qp-spin"></div>Still loading… this is taking a little longer than usual.</div>`;
+      root.innerHTML = `<div class="qp-boot"><div class="qp-spin"></div><div class="qp-boot-text">Still loading… this is taking a little longer than usual.</div></div>`;
     }
   }, 8000);
   try {

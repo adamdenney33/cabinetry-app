@@ -214,6 +214,11 @@ Deno.serve(async (req) => {
       business: biz ?? null,
       client,
       lines: lines ?? [],
+      // Maker's original editable spec per line (share-time snapshot) so the
+      // page's "Revert to original" works across sessions. Quote-only; safe to
+      // expose (it's spec dims/finish names the customer already sees). Older
+      // shares lack it → the page falls back to its load-time snapshot.
+      original_lines: kind === 'quote' ? (settings.original_lines ?? null) : null,
       photos: photoUrls,
       finishes,
       materials,
