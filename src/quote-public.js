@@ -154,6 +154,64 @@ function isQuoteEdited() { return lines.some(isLineEdited); }
 /** Whether the maker has auto-accept (instant re-pricing) on. */
 function autoAccept() { return !!(D && D.settings && D.settings.auto_accept); }
 
+/** Human labels for the change-summary message sent to the maker. */
+/** @type {Record<string, string>} */
+const FIELD_LABELS = {
+  w_mm: 'Width', h_mm: 'Height', d_mm: 'Depth', material: 'Material', finish: 'Finish',
+  construction: 'Construction', base_type: 'Base', door_count: 'Doors', door_pct: 'Door area %',
+  door_type: 'Door style', door_material: 'Door material', door_finish: 'Door finish', door_handle: 'Handles',
+  drawer_count: 'Drawers', drawer_pct: 'Drawer area %', drawer_front_type: 'Drawer front style',
+  drawer_front_material: 'Drawer front material', drawer_front_finish: 'Drawer front finish',
+  fixed_shelves: 'Fixed shelves', adj_shelves: 'Adjustable shelves', loose_shelves: 'Loose shelves',
+  partitions: 'Partitions', end_panels: 'End panels',
+};
+/** Display one field value for the summary (dims in the maker's unit). */
+function fmtFieldVal(/** @type {string} */ f, /** @type {unknown} */ v) {
+  if (v === null || v === undefined || v === '') return '—';
+  if (f === 'w_mm' || f === 'h_mm' || f === 'd_mm') return `${fmtDim(Number(v))}${unitLbl()}`;
+  return String(v);
+}
+
+// ── change summary → maker message (sent only on "Send edits" / accept) ───────
+/** A stable signature of the current edited state, to tell "already sent" from
+ *  "edited again since last send". */
+let lastSentSignature = '';
+function editSignature() {
+  return JSON.stringify(lines.filter(isLineEdited).map((l) => {
+    /** @type {Record<string, unknown>} */ const o = { id: l.id };
+    for (const f of editableFields(l)) o[f] = l[f];
+    return o;
+  }));
+}
+/** True once the current edits have already been messaged to the maker. */
+function changesAlreadySent() { return isQuoteEdited() && lastSentSignature === editSignature(); }
+/** Build the human-readable "I've updated my quote" note, or '' if nothing changed. */
+function composeChangeSummary() {
+  const parts = [];
+  for (const l of lines) {
+    if (!isLineEdited(l)) continue;
+    const b = baseline[l.id]; const diffs = [];
+    for (const f of editableFields(l)) {
+      if (String(l[f] ?? '') !== String(b[f] ?? '')) diffs.push(`${FIELD_LABELS[f] || f}: ${fmtFieldVal(f, b[f])} → ${fmtFieldVal(f, l[f])}`);
+    }
+    if (diffs.length) parts.push(`• ${l.name || 'Item'} — ${diffs.join('; ')}`);
+  }
+  return parts.length ? `I've updated my quote:\n${parts.join('\n')}` : '';
+}
+/** Post the change summary to the maker's chat (idempotent per edit set).
+ *  @returns {Promise<boolean>} */
+async function sendChangeMessage() {
+  const summary = composeChangeSummary();
+  if (!summary) return true;                 // nothing edited
+  const sig = editSignature();
+  if (lastSentSignature === sig) return true; // this exact set already sent
+  try {
+    await fn('quote-messages', { token, action: 'send', body: summary });
+    lastSentSignature = sig;
+    return true;
+  } catch (e) { toast(friendlyError(e, 'Could not send your changes — please try again.')); return false; }
+}
+
 /** @param {number} n */
 function money(n) {
   const v = Number(n) || 0;
@@ -471,13 +529,15 @@ function specEditor(l) {
     ${isLineEdited(l) ? `<button class="qp-edrevert" id="qp-edrevert-${l.id}" onclick="__qp.revertLine(${l.id})">↩ Revert this item to the original</button>` : ''}
   </div>`;
 }
-/** Resting status copy under a line's editor — reflects auto-accept + pending. @param {any} l */
+/** Resting status copy under a line's editor. Changes save live, but the maker
+ *  isn't messaged until "Send edits" / accept — so the copy points there. @param {any} l */
 function editorStatusText(l) {
-  if (l._pending) return `Sent to ${esc(bizName())} to confirm the updated price.`;
-  if (isLineEdited(l)) return autoAccept() ? 'Saved — your price updated automatically.' : 'Saved.';
-  return autoAccept()
-    ? 'Changes save automatically and update your price as you go.'
-    : `Changes save automatically; ${esc(bizName())} confirms the new price.`;
+  if (isLineEdited(l)) {
+    return (autoAccept() && !l._pending)
+      ? `Saved — your price updated. Press "Send edits" to tell ${esc(bizName())}.`
+      : `Saved — press "Send edits" so ${esc(bizName())} can confirm the price.`;
+  }
+  return 'Changes save automatically as you go.';
 }
 
 // ── totals / rail / action bar ───────────────────────────────────────────────
@@ -507,10 +567,17 @@ function ctaHtml(cs, compact) {
   const label = compact ? cs.shortLabel : cs.label;
   return `<button class="qpd-b dark" style="margin-top:9px"${cs.disabled ? ' disabled' : ''} onclick="${cs.kind === 'pay' ? '__qp.payDeposit()' : '__qp.confirmAccept()'}">${label}</button>${compact ? '' : `<div class="qpd-cta-hint">${cs.hint}</div>`}`;
 }
-/** "You've changed this quote" banner + revert, shown once anything is edited. */
+/** "You've changed this quote" banner: send-to-maker + revert, shown once edited. */
 function editBanner() {
   if (!isQuoteEdited() || D?.quote?.accepted_at) return '';
-  return `<div class="qpd-editbanner">✎ You've changed this quote<button class="qpd-revert" onclick="__qp.revertAll()">Revert to original</button></div>`;
+  const sent = changesAlreadySent();
+  return `<div class="qpd-editbanner">
+    <span class="qpd-editbanner-lab">✎ You've changed this quote</span>
+    <div class="qpd-editbanner-actions">
+      <button class="qpd-revert" onclick="__qp.revertAll()">Revert to original</button>
+      <button class="qpd-sendedits${sent ? ' sent' : ''}" onclick="__qp.sendEdits()"${sent ? ' disabled' : ''}>${sent ? '✓ Changes sent' : 'Send edits'}</button>
+    </div>
+  </div>`;
 }
 /** Totals + black pill + deposit block shown in the document body (id qp-doctot). */
 function docTotals() {
@@ -604,6 +671,7 @@ async function loadStripe() {
 }
 async function recordAccept() {
   if (D?.quote?.accepted_at) return; // already recorded (server treats dupes as no-ops anyway)
+  await sendChangeMessage();   // notify the maker of any unsent edits on accept/pay
   const t = totals();
   const snapshot = {
     lines: lines.filter((l) => l.customer_included).map((l) => ({ id: l.id, name: l.name, finish: l.finish, w_mm: l.w_mm, customer_price: l.customer_price })),
@@ -865,6 +933,16 @@ const handlers = {
     updateSummaries();
     if (okAll) toast('Reverted to the original quote.', false);
   },
+  /** Post the change summary to the maker — the explicit "Send edits" press.
+   *  Spec edits were already saved live; this is purely the notification. */
+  async sendEdits() {
+    await flushAllPending();                 // commit anything still buffered
+    if (!isQuoteEdited()) { toast('No changes to send yet.'); return; }
+    if (changesAlreadySent()) { toast('Your changes have already been sent.', false); return; }
+    const ok = await sendChangeMessage();
+    updateSummaries();                       // reflect "✓ Changes sent" in the banner
+    if (ok) toast(`Sent to ${bizName()} — they'll see your changes.`, false);
+  },
   /** Confirmation sheet before the (irreversible) non-payment accept — one
    *  mis-click shouldn't lock the quote. The pay flow has the payment sheet
    *  as its natural confirm step, so it skips this. */
@@ -888,6 +966,7 @@ const handlers = {
   },
   async accept() {
     if (D?.quote?.accepted_at) return;
+    await sendChangeMessage();   // notify the maker of any unsent edits on accept
     const t = totals();
     const snapshot = {
       lines: lines.filter((l) => l.customer_included).map((l) => ({ id: l.id, name: l.name, finish: l.finish, w_mm: l.w_mm, customer_price: l.customer_price })),

@@ -19,21 +19,6 @@ import { priceCabinetLine, type RateCard } from '../_shared/costing.ts';
 
 const MAX_SNAPSHOT_BYTES = 200_000;
 
-// Human-readable labels for the change-request message dropped into the
-// business's client chat when a customer edits a spec.
-const SPEC_LABELS: Record<string, string> = {
-  w_mm: 'Width (mm)', h_mm: 'Height (mm)', d_mm: 'Depth (mm)',
-  finish: 'Finish', material: 'Material', construction: 'Construction',
-  base_type: 'Base', door_count: 'Doors', door_pct: 'Door area %',
-  door_type: 'Door style', door_material: 'Door material',
-  door_finish: 'Door finish', door_handle: 'Handles',
-  drawer_count: 'Drawers', drawer_pct: 'Drawer area %',
-  drawer_front_type: 'Drawer front style', drawer_front_material: 'Drawer front material',
-  drawer_front_finish: 'Drawer front finish', fixed_shelves: 'Fixed shelves',
-  adj_shelves: 'Adjustable shelves', loose_shelves: 'Loose shelves',
-  partitions: 'Partitions', end_panels: 'End panels',
-};
-
 Deno.serve(async (req) => {
   const cors = corsHeaders(req.headers.get('origin'));
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
@@ -175,15 +160,6 @@ Deno.serve(async (req) => {
         patch.door_material = m;
       }
       if (!Object.keys(patch).length) return jsonResponse({ error: 'nothing_to_update' }, 400, cors);
-      // Human-readable diff for the chat note — computed from the OLD line values
-      // before we touch customer_price (which isn't a spec).
-      const changes = Object.keys(patch)
-        .map((k) => {
-          const label = SPEC_LABELS[k] || k;
-          const oldVal = (line as Record<string, unknown>)[k];
-          const fmt = (v: unknown) => (v === null || v === undefined || v === '' ? '—' : String(v));
-          return `${label}: ${fmt(oldVal)} → ${fmt(patch[k])}`;
-        });
 
       // Auto-accept: when the maker has switched it on AND we hold a rate snapshot,
       // re-price the line server-side from the maker's rates so the customer sees
@@ -210,23 +186,10 @@ Deno.serve(async (req) => {
 
       patch.customer_price = autoPrice; // number when auto-priced, else null ("to confirm")
       await admin.from('quote_lines').update(patch).eq('id', lineId);
-      // Drop a note into the existing client chat thread so the business sees the
-      // change (unread badge on the quote/client cards) and keeps an audit trail.
-      // Best-effort — the edit itself has already succeeded.
-      if (quote.client_id) {
-        const body = autoPrice != null
-          ? `Changed “${line.name || 'Item'}” — ${changes.join(', ')}. Auto-priced at your current rates (auto-accept is on). (Sent from the quote page.)`
-          : `Requested a change to “${line.name || 'Item'}” — ${changes.join(', ')}. (Sent from the quote page; price to be re-confirmed.)`;
-        try {
-          await admin.from('customer_messages').insert({
-            user_id: quote.user_id,
-            client_id: quote.client_id,
-            quote_id: quote.id,
-            sender: 'customer',
-            body,
-          });
-        } catch (_e) { /* chat table missing / RLS issue — edit still recorded */ }
-      }
+      // NOTE: spec edits are saved + re-priced silently — they no longer drop a
+      // chat note here. The customer page batches changes and posts ONE summary
+      // message to the maker only when "Send edits" is pressed or the quote is
+      // accepted (via quote-messages), so a debounced auto-save can't spam chat.
       // Return the new price (null = "to confirm") so the page can update live.
       return jsonResponse({ ok: true, customer_price: autoPrice }, 200, cors);
     }
