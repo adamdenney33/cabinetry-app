@@ -20,12 +20,15 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v6
         with:
-          # 'lts/*' tracks the current Node LTS automatically — Node 22
-          # today, becomes Node 24 in October 2025, etc. Avoids the
-          # need to manually bump major versions ahead of GitHub's
-          # action-runtime deprecation deadlines (which retire old
-          # Node majors every ~12 months).
-          node-version: 'lts/*'
+          # PINNED — do NOT use a moving target like 'lts/*' here. The build
+          # output (Rollup chunk ordering) is Node-version-sensitive: when
+          # 'lts/*' silently rolled to a newer Node, the vendor bundle picked up
+          # a cross-chunk TDZ ("Cannot access '_sb' before initialization") that
+          # broke the live app on the next rebuild — even though the source was
+          # unchanged. This exact version is verified to produce a clean,
+          # loadable production build (built + smoke-loaded locally). Bump it
+          # only deliberately, after re-verifying the built output boots.
+          node-version: '25.8.2'
           cache: npm
 
       - name: Install dependencies
