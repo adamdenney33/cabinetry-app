@@ -2080,7 +2080,7 @@ or before specific features that touch these areas.
     Projects entity (F5/F6, 2026-05-13)
   - Cosmetic; do alongside R.2 if convenient
 
-- **R.5 — Retire the deprecated `catalog_items` table** (2026-06-24)
+- ✅ **R.5 — Retire the deprecated `catalog_items` table** — done 2026-06-24
   - **Context.** `stock_items` is the single source of truth for
     material/hardware/finish prices. The client-side catalog code was deleted
     2026-06-24 (commit `efe651a`: `_applyCatalogFromDB` / `_syncCatalogToDB` /
@@ -2100,19 +2100,14 @@ or before specific features that touch these areas.
     Customer dropdowns for those 12 quotes already come from customer-visible
     stock, not `catalog_items`. So no `rate_card` backfill is required; the
     remaining work is pure dead-code/table removal.
-  - **Sub-steps (remaining).**
-    - ⬜ Remove the `catalog_items` fallback branches from both edge functions
-      (`quote-public-get` `index.ts:115,129`, `quote-public-update`
-      `index.ts:103`); redeploy. Re-confirm `catalog_items` is still empty
-      immediately before.
-    - ⬜ Drop the table (+ RLS policies in the `…rls_initplan` migration) and
-      regenerate `database.types.ts`. Neuter/remove `_migrateCatalog` in
-      `migrate.js` and the `catalog_items: []` demo seed in `demo.js`.
-  - **Risk.** Low — table is empty, fallback is already inert. Only caveat:
-    `migrate.js`'s one-time `_migrateCatalog` writes to `catalog_items`; if any
-    maker still has un-migrated localStorage catalogs, that path would 404 after
-    the drop. Verify the LS→DB migration is fully retired (or make the insert
-    best-effort) before dropping.
+  - **Done (2026-06-24).** Removed the `catalog_items` fallback branches from
+    both edge functions and redeployed (`quote-public-get` v31, `quote-public-update`
+    v27, both `--no-verify-jwt`); smoke-tested (bogus token → clean 404, no 500).
+    Removed `_migrateCatalog` + its orchestrator entry from `migrate.js` and the
+    `catalog_items: []` demo seed from `demo.js`. Re-confirmed 0 rows / 0 FKs /
+    0 dependent views, then dropped the table (migration
+    `20260624130000_drop_deprecated_catalog_items.sql`) and regenerated
+    `database.types.ts`. `npm run typecheck` + `npm run build` clean.
 
 ### Deferred (don't pick up unless something forces it)
 

@@ -87,31 +87,27 @@ Deno.serve(async (req) => {
       // arbitrary strings); only when that spec is unlocked. Source of truth is
       // the quote's `rate_card` snapshot — the SAME set quote-public-get offers
       // the customer, and guaranteed priceable (a key in the cost maps) so an
-      // accepted edit can always be auto-priced. (`catalog_items` is no longer
-      // populated; we fall back to the snapshot's cost-map keys for older
-      // snapshots that predate the typed name lists, then to catalog_items for
-      // pre-rate_card quotes.)
+      // accepted edit can always be auto-priced. Pre-`rate_card` quotes have no
+      // snapshot, so no material/finish edit is allowed (the empty set rejects
+      // it) — those quotes only ever got an empty list anyway.
       const rateCard = (quote.rate_card ?? null) as RateCard | null;
-      const allowedNames = async (kind: 'material' | 'finish'): Promise<Set<string>> => {
+      const allowedNames = (kind: 'material' | 'finish'): Set<string> => {
         if (rateCard) {
           const typed = kind === 'material' ? rateCard.materialNames : rateCard.finishNames;
           if (Array.isArray(typed) && typed.length) return new Set(typed);
           const maps = kind === 'material' ? rateCard.matPerM2 : rateCard.finishPerM2;
           if (maps && Object.keys(maps).length) return new Set(Object.keys(maps));
         }
-        const { data: cat } = await admin
-          .from('catalog_items').select('name')
-          .eq('user_id', quote.user_id).eq('type', kind);
-        return new Set((cat ?? []).map((c: { name: string }) => c.name));
+        return new Set<string>();
       };
       if (typeof body.finish === 'string' && allows('finish')) {
         const finish = body.finish.slice(0, 80);
-        if (!(await allowedNames('finish')).has(finish)) return jsonResponse({ error: 'finish_not_allowed' }, 422, cors);
+        if (!allowedNames('finish').has(finish)) return jsonResponse({ error: 'finish_not_allowed' }, 422, cors);
         patch.finish = finish;
       }
       if (typeof body.material === 'string' && allows('material')) {
         const material = body.material.slice(0, 80);
-        if (!(await allowedNames('material')).has(material)) return jsonResponse({ error: 'material_not_allowed' }, 422, cors);
+        if (!allowedNames('material').has(material)) return jsonResponse({ error: 'material_not_allowed' }, 422, cors);
         patch.material = material;
       }
       // Dimensions / counts clamped to sane ranges.

@@ -134,6 +134,7 @@ export type Database = {
           default_weekday_hours: Json
           default_workday_hours: number
           email: string | null
+          email_bridge_enabled: boolean
           id: number
           logo_url: string | null
           name: string
@@ -171,6 +172,7 @@ export type Database = {
           default_weekday_hours?: Json
           default_workday_hours?: number
           email?: string | null
+          email_bridge_enabled?: boolean
           id?: number
           logo_url?: string | null
           name?: string
@@ -208,6 +210,7 @@ export type Database = {
           default_weekday_hours?: Json
           default_workday_hours?: number
           email?: string | null
+          email_bridge_enabled?: boolean
           id?: number
           logo_url?: string | null
           name?: string
@@ -396,45 +399,6 @@ export type Database = {
         }
         Relationships: []
       }
-      catalog_items: {
-        Row: {
-          created_at: string
-          id: number
-          name: string
-          notes: string | null
-          price: number
-          specs: Json
-          type: string
-          unit: string
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: number
-          name: string
-          notes?: string | null
-          price?: number
-          specs?: Json
-          type: string
-          unit?: string
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: number
-          name?: string
-          notes?: string | null
-          price?: number
-          specs?: Json
-          type?: string
-          unit?: string
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
       clients: {
         Row: {
           address: string | null
@@ -444,6 +408,7 @@ export type Database = {
           name: string
           notes: string | null
           phone: string | null
+          reply_token: string
           user_id: string
         }
         Insert: {
@@ -454,6 +419,7 @@ export type Database = {
           name: string
           notes?: string | null
           phone?: string | null
+          reply_token?: string
           user_id?: string
         }
         Update: {
@@ -464,6 +430,7 @@ export type Database = {
           name?: string
           notes?: string | null
           phone?: string | null
+          reply_token?: string
           user_id?: string
         }
         Relationships: []
@@ -491,34 +458,49 @@ export type Database = {
           body: string
           client_id: number
           created_at: string
+          email_verified: boolean | null
           id: number
+          inbound_email_id: string | null
           order_id: number | null
+          outbound_email_id: string | null
+          outbound_status: string | null
           quote_id: number | null
           read_at: string | null
           sender: string
           user_id: string
+          via: string
         }
         Insert: {
           body: string
           client_id: number
           created_at?: string
+          email_verified?: boolean | null
           id?: number
+          inbound_email_id?: string | null
           order_id?: number | null
+          outbound_email_id?: string | null
+          outbound_status?: string | null
           quote_id?: number | null
           read_at?: string | null
           sender: string
           user_id: string
+          via?: string
         }
         Update: {
           body?: string
           client_id?: number
           created_at?: string
+          email_verified?: boolean | null
           id?: number
+          inbound_email_id?: string | null
           order_id?: number | null
+          outbound_email_id?: string | null
+          outbound_status?: string | null
           quote_id?: number | null
           read_at?: string | null
           sender?: string
           user_id?: string
+          via?: string
         }
         Relationships: [
           {
@@ -747,6 +729,63 @@ export type Database = {
           sent_at?: string
         }
         Relationships: []
+      }
+      inbound_emails: {
+        Row: {
+          client_id: number | null
+          created_at: string
+          customer_message_id: number | null
+          from_addr: string | null
+          message_id: string
+          raw_html: string | null
+          resend_email_id: string | null
+          role: string | null
+          status: string
+          user_id: string | null
+          verified: boolean | null
+        }
+        Insert: {
+          client_id?: number | null
+          created_at?: string
+          customer_message_id?: number | null
+          from_addr?: string | null
+          message_id: string
+          raw_html?: string | null
+          resend_email_id?: string | null
+          role?: string | null
+          status?: string
+          user_id?: string | null
+          verified?: boolean | null
+        }
+        Update: {
+          client_id?: number | null
+          created_at?: string
+          customer_message_id?: number | null
+          from_addr?: string | null
+          message_id?: string
+          raw_html?: string | null
+          resend_email_id?: string | null
+          role?: string | null
+          status?: string
+          user_id?: string | null
+          verified?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inbound_emails_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inbound_emails_customer_message_id_fkey"
+            columns: ["customer_message_id"]
+            isOneToOne: false
+            referencedRelation: "customer_messages"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       line_photos: {
         Row: {

@@ -99,9 +99,9 @@ Deno.serve(async (req) => {
     // Source of truth is the quote's `rate_card` snapshot (written on share and
     // refreshed each time the maker opens the Live-link tab): the SAME names the
     // costing engine can price, so every option offered is guaranteed priceable
-    // and quote-public-update accepts + auto-prices it. `catalog_items` is no
-    // longer populated — it stays only as a fallback for quotes whose snapshot
-    // predates the typed name lists (and for orders, which aren't editable).
+    // and quote-public-update accepts + auto-prices it. Pre-`rate_card` quotes
+    // have no snapshot — they fall back to the names already used on their lines
+    // (plus customer-visible stock for materials).
     const rc = (kind === 'quote' ? entity.rate_card : null) as
       { materialNames?: string[]; finishNames?: string[] } | null;
     const lineNames = (col: 'finish' | 'material') =>
@@ -111,28 +111,18 @@ Deno.serve(async (req) => {
     if (rc && Array.isArray(rc.finishNames) && rc.finishNames.length) {
       finishes = Array.from(new Set([...rc.finishNames, ...lineNames('finish')]));
     } else {
-      const { data: finRows } = await admin
-        .from('catalog_items').select('name')
-        .eq('user_id', entity.user_id).eq('type', 'finish');
-      finishes = Array.from(new Set([
-        ...(finRows ?? []).map((f: { name: string }) => f.name),
-        ...lineNames('finish'),
-      ]));
+      finishes = Array.from(new Set(lineNames('finish')));
     }
 
     let materials: string[];
     if (rc && Array.isArray(rc.materialNames) && rc.materialNames.length) {
       materials = Array.from(new Set([...rc.materialNames, ...lineNames('material')]));
     } else {
-      // Legacy fallback: catalog_items (type='material') + customer-visible stock.
-      const { data: matRows } = await admin
-        .from('catalog_items').select('name')
-        .eq('user_id', entity.user_id).eq('type', 'material');
+      // Legacy fallback: customer-visible stock + names already on the lines.
       const { data: stockMatRows } = await admin
         .from('stock_items').select('name')
         .eq('user_id', entity.user_id).eq('customer_visible', true);
       materials = Array.from(new Set([
-        ...(matRows ?? []).map((m: { name: string }) => m.name),
         ...(stockMatRows ?? []).map((m: { name: string }) => m.name),
         ...lineNames('material'),
       ]));

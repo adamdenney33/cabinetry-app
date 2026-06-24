@@ -75,49 +75,11 @@ async function _migrateBizInfo(log) {
   _migLog(log, sub, 'OK', 'Upserted business_info row', 1);
 }
 
-// ── 2. Catalog items (materials/handles/finishes/hardware unified) ──
-/** @param {MigLog} log */
-async function _migrateCatalog(log) {
-  const sub = 'catalog_items';
-  const cab = _migReadLS('pc_cab_settings') || {};
-  const cb = _migReadLS('pc_cq_settings') || {};
-  /** @type {any[]} */
-  const items = [];
-  const seen = new Set();
-  /** @param {string} type @param {string} name @param {any} price @param {string} unit @param {any} [specs] */
-  function add(type, name, price, unit, specs) {
-    if (!name) return;
-    const key = type + '|' + name;
-    if (seen.has(key)) return;
-    seen.add(key);
-    items.push({
-      user_id: _userId, type, name,
-      price: parseFloat(price) || 0,
-      unit: unit || 'each',
-      specs: specs || {}
-    });
-  }
-  (cab.materials || []).forEach(/** @param {any} m */ m => add('material', m.name, m.price, 'sheet', m.specs || {}));
-  (cb.materials || []).forEach(/** @param {any} m */ m => add('material', m.name, m.price, 'sheet', m.specs || {}));
-  (cab.handles || []).forEach(/** @param {any} h */ h => add('handle', h.name, h.price, 'each'));
-  (cb.handles || []).forEach(/** @param {any} h */ h => add('handle', h.name, h.price, 'each'));
-  (cb.hardware || []).forEach(/** @param {any} h */ h => add('hardware', h.name, h.price, 'each'));
-  (cb.finishes || []).forEach(/** @param {any} f */ f => add('finish', f.name, f.price, 'm²'));
-  if (items.length === 0) {
-    _migLog(log, sub, 'SKIP', 'No catalog items in localStorage');
-    return;
-  }
-  const { data: existing } = await _db('catalog_items').select('type,name').eq('user_id', _userId);
-  const existingSet = new Set((existing || []).map(r => r.type + '|' + r.name));
-  const toInsert = items.filter(it => !existingSet.has(it.type + '|' + it.name));
-  if (toInsert.length === 0) {
-    _migLog(log, sub, 'SKIP', 'All ' + items.length + ' catalog items already in DB', 0);
-    return;
-  }
-  const { error } = await _db('catalog_items').insert(toInsert);
-  if (error) { _migLog(log, sub, 'ERR', 'Insert failed: ' + error.message); return; }
-  _migLog(log, sub, 'OK', 'Inserted ' + toInsert.length + ' new catalog items (' + (items.length - toInsert.length) + ' already existed)', toInsert.length);
-}
+// ── 2. (removed) Catalog items migration ──
+// The deprecated `catalog_items` table was dropped (R.5, 2026-06-24);
+// stock_items is the source of truth and legacy materials/handles/finishes/
+// hardware stay loaded into the in-memory cbSettings fallback at boot. The
+// one-time _migrateCatalog importer that targeted catalog_items is gone.
 
 // ── 3. Stock metadata (UPDATE existing rows) ──
 /** @param {MigLog} log */
@@ -462,7 +424,6 @@ async function migrateLocalToDB() {
   /** @type {[string, (log: MigLog) => Promise<void>][]} */
   const subs = [
     ['business_info', _migrateBizInfo],
-    ['catalog_items', _migrateCatalog],
     ['stock_metadata', _migrateStock],
     ['cabinet_templates', _migrateCabinets],
     ['cutlist_projects', _migrateCutListProjects],

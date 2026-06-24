@@ -349,7 +349,6 @@ function _demoBuildDataset() {
         created_at: _demoDate(48), updated_at: _demoDate(2) },
     ],
 
-    catalog_items: [],
     subscriptions: [],
     schedule_day_overrides: [],
   });
@@ -495,7 +494,7 @@ function _demoBlockWrite(builder) {
 
 /** Content tables the overlay merges demo rows into. Deliberately absent:
  *  business_info (the user's OWN settings/letterhead), subscriptions
- *  (real billing state), catalog_items (deprecated), schedule_day_overrides. */
+ *  (real billing state), schedule_day_overrides. */
 const _DEMO_OVERLAY_TABLES = new Set([
   'clients', 'stock_items', 'cabinet_templates',
   'quotes', 'quote_lines', 'orders', 'order_lines',
