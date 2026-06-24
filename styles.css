@@ -1120,6 +1120,7 @@ textarea { resize: vertical; min-height: 70px; }
   text-decoration: none; padding: 0;
 }
 .stock-icon-btn:hover { border-color: var(--accent); color: var(--accent); }
+.stock-icon-btn.stock-icon-del:hover { border-color: var(--danger); color: var(--danger); }
 
 /* Supplier name as external link (only when supplier_url is set) */
 .stock-supplier-link {

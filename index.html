@@ -525,6 +525,7 @@ setTimeout(function () { window._hideBootLoader(); }, 15000);
               onclick="_shTgl(this);_stockScheduleAutosave()" title="Visible to customers in live link"></button>
           </div>
           <button class="btn btn-primary" onclick="addStockItem()" id="stock-submit-btn" style="margin:8px 14px 0;width:calc(100% - 28px)">+ Add to Stock</button>
+          <button class="btn btn-outline" onclick="deleteStockItem(window._editingStockId)" id="stock-delete-btn" style="display:none;margin:8px 14px 16px;width:calc(100% - 28px);color:var(--danger);border-color:var(--danger)">Delete Material</button>
         </div>
       </div>
     </div>

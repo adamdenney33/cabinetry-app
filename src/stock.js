@@ -650,6 +650,8 @@ function cancelStockEdit() {
   if (typeof stockCatChanged === 'function') stockCatChanged();
   const sb = /** @type {HTMLElement} */ (_byId('stock-submit-btn'));
   if (sb) { sb.textContent = '+ Add to Stock'; sb.style.display = ''; }
+  const db = /** @type {HTMLElement} */ (_byId('stock-delete-btn'));
+  if (db) db.style.display = 'none';
   inp('stock-form-title-text').textContent = 'Add Material';
   if (typeof _setSaveStatus === 'function') _setSaveStatus('stock', 'clean');
   _stockShowForm = false;
@@ -825,6 +827,8 @@ function editStockItem(id) {
   if (sidebar) sidebar.scrollTop = 0;
   const sb = /** @type {HTMLElement} */ (_byId('stock-submit-btn'));
   if (sb) sb.style.display = 'none';
+  const db = /** @type {HTMLElement} */ (_byId('stock-delete-btn'));
+  if (db) db.style.display = '';
   inp('stock-form-title-text').textContent = 'Edit Material';
   if (typeof _setSaveStatus === 'function') _setSaveStatus('stock', 'clean');
   renderStockMain();
@@ -1011,10 +1015,28 @@ async function _stockAutosaveRun() {
 /** @param {number} id */
 async function removeStock(id) {
   if (!_requireAuth()) return;
-  await _db('stock_items').delete().eq('id', id);
+  const { error } = await _db('stock_items').delete().eq('id', id);
+  if (error) {
+    _toast('Could not delete item — ' + (error.message || 'unknown error'), 'error');
+    return;
+  }
   stockItems = stockItems.filter(s => s.id !== id);
-  renderStockMain();
+  // If the deleted item is the one open in the sidebar editor, return to "Add" mode.
+  if (window._editingStockId === id) {
+    cancelStockEdit();
+  } else {
+    renderStockMain();
+  }
+  _toast('Stock item deleted', 'success');
 }
+
+/** Confirm, then delete a stock item. @param {number} id */
+function deleteStockItem(id) {
+  const item = stockItems.find(s => s.id === id);
+  if (!item) return;
+  _confirm(`Delete <strong>${_escHtml(item.name)}</strong>? This cannot be undone.`, () => removeStock(id));
+}
+/** @type {any} */ (window).deleteStockItem = deleteStockItem;
 
 /** @param {number} id @param {number} delta */
 async function adjustStock(id, delta) {
@@ -1223,6 +1245,9 @@ function renderStockMain() {
         <div class="stock-row-actions">
           <span class="stock-icon-btn" onclick="duplicateStockItem(${item.id})" title="Duplicate">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+          </span>
+          <span class="stock-icon-btn stock-icon-del" onclick="deleteStockItem(${item.id})" title="Delete">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
           </span>
         </div>
       </td>
