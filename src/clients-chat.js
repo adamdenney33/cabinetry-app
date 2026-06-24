@@ -98,6 +98,14 @@ function _msgBtnClass(clientId) {
   return 'btn btn-outline' + (n > 0 ? ' unread' : '');
 }
 
+/** Deal-scoped variant of `_msgBtnClass` for a quote/order card's Messages button
+ *  — highlights only when that specific quote/order has unread. Pair with
+ *  data-msg-btn-quote / data-msg-btn-order. @param {'quote'|'order'} kind @param {number} dealId */
+function _dealMsgBtnClass(kind, dealId) {
+  const n = (typeof _dealUnreadCount === 'function') ? _dealUnreadCount(kind, dealId) : 0;
+  return 'btn btn-outline' + (n > 0 ? ' unread' : '');
+}
+
 /** Sync ALL of a client's unread UI in place — count spans, alert chips, the
  *  Messages-button highlight, and the nav badge — to the current unread count.
  *  Replaces the scattered per-handler span clears so every surface stays in
@@ -105,14 +113,15 @@ function _msgBtnClass(clientId) {
 function _applyUnreadUI(clientId) {
   const n = (typeof _clientUnreadCount === 'function') ? _clientUnreadCount(clientId) : 0;
   const countTxt = n ? `(${n})` : '';
-  // Per-deal surfaces. The Messages-button count stays client-scoped (the thread
-  // it opens is the whole client conversation), but the "New Message" chip is
-  // deal-scoped — each quote/order card lights up only for its own unread.
+  // Per-deal surfaces — the chip, the Messages-button highlight, and its count
+  // are all scoped to the individual quote/order, so only the card the customer
+  // actually messaged from lights up (not every card for that client).
   const dealSurfaces = /** @param {any} arr @param {'quote'|'order'} kind */ (arr, kind) => {
     if (typeof arr === 'undefined' || !arr) return;
     arr.filter(/** @param {any} x */ x => x.client_id === clientId).forEach(/** @param {any} x */ x => {
-      document.querySelectorAll(`[data-${kind}-unread="${x.id}"]`).forEach(el => { el.textContent = countTxt; });
       const dn = (typeof _dealUnreadCount === 'function') ? _dealUnreadCount(kind, x.id) : 0;
+      document.querySelectorAll(`[data-${kind}-unread="${x.id}"]`).forEach(el => { el.textContent = dn ? `(${dn})` : ''; });
+      document.querySelectorAll(`[data-msg-btn-${kind}="${x.id}"]`).forEach(el => { el.classList.toggle('unread', dn > 0); });
       document.querySelectorAll(`[data-msg-chip-${kind}="${x.id}"]`).forEach(el => {
         el.textContent = dn ? 'New Message' : '';
         /** @type {HTMLElement} */ (el).style.display = dn ? '' : 'none';
@@ -440,4 +449,4 @@ function _refreshClientThreadUI(clientId) {
   _applyUnreadUI(clientId);
 }
 
-Object.assign(window, { loadAllClientMessages, _clientUnreadCount, _dealUnreadCount, _totalUnreadCount, _refreshMsgNav, _msgChipHtml, _dealMsgChipHtml, _msgBtnClass, _applyUnreadUI, _openClientChat, _sendClientMessage, _toggleOrderThread, _orderThreadInner, _sendOrderMessage, _quoteThreadInner, _toggleQuoteThread, _sendQuoteMessage, _clientThreadInner, _toggleClientThread, _sendClientThreadMessage, _ccEmailBadge, _viewOriginalEmail, _applyRealtimeMessage, _refreshClientThreadUI });
+Object.assign(window, { loadAllClientMessages, _clientUnreadCount, _dealUnreadCount, _totalUnreadCount, _refreshMsgNav, _msgChipHtml, _dealMsgChipHtml, _msgBtnClass, _dealMsgBtnClass, _applyUnreadUI, _openClientChat, _sendClientMessage, _toggleOrderThread, _orderThreadInner, _sendOrderMessage, _quoteThreadInner, _toggleQuoteThread, _sendQuoteMessage, _clientThreadInner, _toggleClientThread, _sendClientThreadMessage, _ccEmailBadge, _viewOriginalEmail, _applyRealtimeMessage, _refreshClientThreadUI });
