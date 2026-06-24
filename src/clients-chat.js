@@ -66,7 +66,7 @@ function _refreshMsgNav() {
  *  every instance at once on read / receive. @param {number} clientId */
 function _msgChipHtml(clientId) {
   const n = (typeof _clientUnreadCount === 'function') ? _clientUnreadCount(clientId) : 0;
-  return `<span class="msg-chip" data-msg-chip="${clientId}"${n ? '' : ' style="display:none"'}>💬 ${n} new</span>`;
+  return `<span class="msg-chip" data-msg-chip="${clientId}"${n ? '' : ' style="display:none"'}>New Message</span>`;
 }
 
 /** The class list for a card's "Messages" button — adds `unread` (highlight)
@@ -93,7 +93,7 @@ function _applyUnreadUI(clientId) {
   document.querySelectorAll(`[data-client-unread="${clientId}"]`).forEach(el => { el.textContent = countTxt; });
   document.querySelectorAll(`[data-msg-btn="${clientId}"]`).forEach(el => { el.classList.toggle('unread', n > 0); });
   document.querySelectorAll(`[data-msg-chip="${clientId}"]`).forEach(el => {
-    el.textContent = n ? `💬 ${n} new` : '';
+    el.textContent = n ? 'New Message' : '';
     /** @type {HTMLElement} */ (el).style.display = n ? '' : 'none';
   });
   _refreshMsgNav();
