@@ -534,13 +534,15 @@ header {
   padding: 2px 7px; border-radius: 999px; vertical-align: middle;
   white-space: nowrap; line-height: 1.4;
 }
-/* "Messages" button highlighted (amber) while the client has unread replies. */
+/* "Messages" button highlighted while the client has unread replies — matches
+   the app's primary amber button (solid fill, white text). */
 .btn-outline.unread {
   border-color: var(--accent);
-  color: var(--accent);
-  background: var(--accent-dim);
+  background: var(--accent);
+  color: #fff;
   font-weight: 700;
 }
+.btn-outline.unread:hover { filter: brightness(1.1); }
 /* Chrome wing pseudo-elements — disabled for cleaner look */
 
 /* Icon-only mode at narrow viewports — tabs fill the bar evenly */
