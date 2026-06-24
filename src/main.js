@@ -172,13 +172,12 @@ try {
       quotes: _ebGet('quotes', 'select=*&order=created_at.desc'),
       stock_items: _ebGet('stock_items', 'select=*&order=created_at.asc'),
       clients: _ebGet('clients', 'select=*&order=name.asc'),
-      catalog_items: _ebGet('catalog_items', `select=*&user_id=eq.${_ebUid}`),
       business_info: _ebGet('business_info', `select=*&user_id=eq.${_ebUid}`),
       subscriptions: _ebGet('subscriptions', `select=*&user_id=eq.${_ebUid}`),
       accounting_connections: _ebGet('accounting_connections', 'select=provider,org_name,status,default_tax_code'),
       accounting_invoice_links: _ebGet('accounting_invoice_links', 'select=order_id,provider,external_url,external_number,status'),
     };
-    // Pre-handle rejections: a revoked token rejects all nine at once, and the
+    // Pre-handle rejections: a revoked token rejects all eight at once, and the
     // consumers only catch the copies they await — this silences the
     // unhandled-rejection noise for any slot that never gets consumed.
     for (const v of Object.values(window._earlyBoot)) {

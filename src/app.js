@@ -1648,13 +1648,11 @@ async function loadAllData() {
   // Each query below may already be in flight: src/main.js starts them as the
   // module bundle executes (window._earlyBoot) and _earlyBootOr (src/db.js)
   // consumes that result, falling back to the _db() query on any miss/error.
-  const [{ data: ord }, { data: quo }, { data: stk }, { data: cli }, { data: cat }, { data: biz }] = await Promise.all([
+  const [{ data: ord }, { data: quo }, { data: stk }, { data: cli }, { data: biz }] = await Promise.all([
     _earlyBootOr('orders', _userId, () => _db('orders').select('*').order('created_at', { ascending: false })),
     _earlyBootOr('quotes', _userId, () => _db('quotes').select('*').order('created_at', { ascending: false })),
     _earlyBootOr('stock_items', _userId, () => _db('stock_items').select('*').order('created_at', { ascending: true })),
     _earlyBootOr('clients', _userId, () => _db('clients').select('*').order('name', { ascending: true })).catch(() => ({ data: [], error: null })),
-    // Phase 3: catalog_items overlays cbSettings arrays
-    _earlyBootOr('catalog_items', _userId, () => _db('catalog_items').select('*').eq('user_id', _userId)).catch(() => ({ data: [], error: null })),
     // Phase 3: business_info overlays pc_biz / pc_biz_logo / pc_cb_settings rates
     _earlyBootOr('business_info', _userId, () => _db('business_info').select('*').eq('user_id', _userId)).catch(() => ({ data: [], error: null })),
   ]);
@@ -1710,7 +1708,7 @@ async function loadAllData() {
     _loadCutListsByClient().catch(/** @param {any} e */ e => console.warn('[cutlists by client] load:', e.message || e));
   }
   // catalog_items deprecated — stock_items is now the single source of truth
-  // for material/hardware/finish prices. _applyCatalogFromDB call removed.
+  // for material/hardware/finish prices (client-side catalog code removed).
   // Phase 3.3 _applyBizInfoFromDB moved up — it must precede _demoOverlayInit.
   // S.2 — load schedule day overrides for the production scheduler (fire and forget)
   loadDayOverrides().catch(/** @param {any} e */ e => console.warn('[day_overrides] load:', e.message || e));
@@ -1801,24 +1799,6 @@ function _unsubscribeLiveStatus() {
   if (!window._rtChannel) return;
   try { _sb.removeChannel(window._rtChannel); } catch (e) {}
   window._rtChannel = null;
-}
-
-// Phase 3.2: overlay catalog_items rows onto in-memory cbSettings.
-// If DB has no rows, the existing localStorage-loaded arrays remain untouched.
-// Phase 4.1: race guard — bail when a catalog sync is pending so a TOKEN_REFRESHED
-// during the 800ms debounce window doesn't clobber unsaved rates-panel edits.
-/** @param {any[]} rows */
-function _applyCatalogFromDB(rows) {
-  if (typeof _catalogSyncTimer !== 'undefined' && _catalogSyncTimer) return;
-  if (!rows || rows.length === 0) return;
-  /** @type {Record<string, {name: string, price: number}[]>} */
-  const byType = { material: [], handle: [], finish: [], hardware: [] };
-  for (const r of rows) {
-    if (byType[r.type]) byType[r.type].push({ name: r.name, price: parseFloat(r.price) || 0 });
-  }
-  if (byType.material.length && typeof cbSettings !== 'undefined') cbSettings.materials = byType.material;
-  if (byType.finish.length && typeof cbSettings !== 'undefined') cbSettings.finishes = byType.finish;
-  if (byType.hardware.length && typeof cbSettings !== 'undefined') cbSettings.hardware = byType.hardware;
 }
 
 // Phase 3.3: overlay business_info row onto pc_biz fields and form inputs.
