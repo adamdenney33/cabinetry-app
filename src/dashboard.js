@@ -143,7 +143,7 @@ function renderDashboard() {
                 const oCaption = [oProj, o.due ? `Due ${String(o.due).slice(0, 10)}${isOD ? ' ⚠' : ''}` : null].filter(Boolean).join(' · ');
                 return `<div class="dash-row${isOD ? ' is-overdue' : ''}" onclick="_openOrderPopup(${o.id})">
                 <div style="flex:1;min-width:0">
-                  <div style="font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_escHtml(oTopLine)}</div>
+                  <div style="font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_escHtml(oTopLine)}${o.client_id != null && typeof _msgChipHtml === 'function' ? ' ' + _msgChipHtml(o.client_id) : ''}</div>
                   <div style="font-size:11px;color:${isOD?'var(--danger)':'var(--muted)'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_escHtml(oCaption)}</div>
                 </div>
                 <div style="text-align:right;margin-left:12px;flex-shrink:0">
@@ -173,7 +173,7 @@ function renderDashboard() {
               return `
               <div class="dash-row" onclick="_openQuotePopup(${q.id})">
                 <div style="flex:1;min-width:0">
-                  <div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_escHtml(qTopLine)}</div>
+                  <div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_escHtml(qTopLine)}${q.client_id != null && typeof _msgChipHtml === 'function' ? ' ' + _msgChipHtml(q.client_id) : ''}</div>
                   ${qProj ? `<div style="font-size:11px;color:var(--muted)">${_escHtml(qProj)}</div>` : ''}
                 </div>
                 <div style="text-align:right;margin-left:8px;flex-shrink:0">

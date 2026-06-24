@@ -561,6 +561,7 @@ function renderQuoteMain() {
         <div class="oc-info">
           <div class="oc-title-row">
             <div class="qc-title">${titleText}${isEditing ? ' <span style="font-weight:500;color:var(--accent);font-size:11px">· editing</span>' : ''}</div>
+            ${typeof _msgChipHtml === 'function' ? _msgChipHtml(q.client_id) : ''}
           </div>
           ${(q.date || lineCounts || _linkHint) ? `<div class="qc-meta">${[[q.date, lineCounts].filter(Boolean).join(' · '), _linkHint].filter(Boolean).join(' · ')}</div>` : ''}
         </div>
@@ -578,7 +579,7 @@ function renderQuoteMain() {
       <div class="qc-footer">
         <button class="btn btn-outline" onclick="event.stopPropagation();printQuote(${q.id},'pdf')">PDF</button>
         ${typeof _openLiveLinkTab === 'function' ? `<button class="btn btn-outline" onclick="event.stopPropagation();_openLiveLinkTab('quote',${q.id})" title="Open the live link page">Live link</button>` : (typeof _openSharePanel === 'function' ? `<button class="btn btn-outline" onclick="event.stopPropagation();_openSharePanel(${q.id})">Live link</button>` : '')}
-        ${typeof _toggleQuoteThread === 'function' ? (() => { const _u = typeof _clientUnreadCount === 'function' ? _clientUnreadCount(q.client_id) : 0; return `<button class="btn btn-outline" onclick="event.stopPropagation();_toggleQuoteThread(${q.id})">Messages <span data-quote-unread="${q.id}">${_u ? `(${_u})` : ''}</span></button>`; })() : ''}
+        ${typeof _toggleQuoteThread === 'function' ? (() => { const _u = typeof _clientUnreadCount === 'function' ? _clientUnreadCount(q.client_id) : 0; const _cls = typeof _msgBtnClass === 'function' ? _msgBtnClass(q.client_id) : 'btn btn-outline'; return `<button class="${_cls}" data-msg-btn="${q.client_id}" onclick="event.stopPropagation();_toggleQuoteThread(${q.id})">Messages <span data-quote-unread="${q.id}">${_u ? `(${_u})` : ''}</span></button>`; })() : ''}
         <span style="flex:1"></span>
         ${(() => { const matchingOrder = orders.find(o => o.quote_id === q.id); return matchingOrder ? `<button class="btn btn-outline" onclick="event.stopPropagation();_openOrderPopup(${matchingOrder.id})" style="color:var(--success)">✓ View Order</button>` : `<button class="btn btn-outline" onclick="event.stopPropagation();convertQuoteToOrder(${q.id})">Create Order</button>`; })()}
         <button class="btn btn-outline" onclick="event.stopPropagation();duplicateQuote(${q.id})">Duplicate</button>

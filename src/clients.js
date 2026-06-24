@@ -448,7 +448,7 @@ function renderClientsMain() {
       <div style="display:flex;align-items:center;gap:10px">
         <div style="width:30px;height:30px;border-radius:50%;background:var(--accent-dim);color:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;flex-shrink:0">${c.name.charAt(0).toUpperCase()}</div>
         <div style="flex:1;min-width:0">
-          <div style="font-size:14px;font-weight:700;color:var(--text)">${_escHtml(c.name)}${isEditing ? ' <span style="font-weight:500;color:var(--accent);font-size:11px">· editing</span>' : ''}</div>
+          <div style="font-size:14px;font-weight:700;color:var(--text)">${_escHtml(c.name)}${isEditing ? ' <span style="font-weight:500;color:var(--accent);font-size:11px">· editing</span>' : ''}${typeof _msgChipHtml === 'function' ? ' ' + _msgChipHtml(c.id) : ''}</div>
           <div style="font-size:10px;color:var(--muted);margin-top:1px">
             ${c.email ? _escHtml(c.email) : ''}${c.email && c.phone ? ' · ' : ''}${c.phone ? _escHtml(c.phone) : ''}
             ${(c.email || c.phone) ? ' · ' : ''}${cQuotes.length} quote${cQuotes.length!==1?'s':''} · ${cOrders.length} order${cOrders.length!==1?'s':''} · ${fmt(totalValue)}
@@ -460,7 +460,7 @@ function renderClientsMain() {
       ${cutListRows}
       <div style="display:flex;align-items:center;gap:4px;margin-top:10px;padding-top:8px;border-top:1px solid var(--border2)" onclick="event.stopPropagation()">
         <span style="flex:1"></span>
-        ${typeof _toggleClientThread === 'function' ? '<button class="btn btn-outline" style="font-size:11px;padding:4px 8px;width:auto" onclick="event.stopPropagation();_toggleClientThread(' + c.id + ')">Messages <span data-client-unread="' + c.id + '">' + (typeof _clientUnreadCount === 'function' && _clientUnreadCount(c.id) ? '(' + _clientUnreadCount(c.id) + ')' : '') + '</span></button>' : ''}
+        ${typeof _toggleClientThread === 'function' ? '<button class="' + (typeof _msgBtnClass === 'function' ? _msgBtnClass(c.id) : 'btn btn-outline') + '" data-msg-btn="' + c.id + '" style="font-size:11px;padding:4px 8px;width:auto" onclick="event.stopPropagation();_toggleClientThread(' + c.id + ')">Messages <span data-client-unread="' + c.id + '">' + (typeof _clientUnreadCount === 'function' && _clientUnreadCount(c.id) ? '(' + _clientUnreadCount(c.id) + ')' : '') + '</span></button>' : ''}
         <button class="btn btn-outline" style="font-size:11px;padding:4px 8px;width:auto" onclick="duplicateClient(${c.id})">Duplicate</button>
         <button class="btn btn-outline" style="color:var(--danger);font-size:11px;padding:4px 8px;width:auto" onclick="_confirmRemoveClient(${c.id})">Delete</button>
       </div>

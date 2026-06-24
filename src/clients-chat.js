@@ -36,12 +36,67 @@ async function loadAllClientMessages() {
     (data || []).forEach(/** @param {any} m */ m => { (map[m.client_id] = map[m.client_id] || []).push(m); });
     _clientMessages = map;
     try { renderClientsMain(); } catch (e) { /* tab not mounted */ }
+    _refreshMsgNav();
   } catch (e) { /* table not present yet — stay empty */ }
 }
 
 /** Unread = customer messages the business hasn't opened. @param {number} clientId */
 function _clientUnreadCount(clientId) {
   return (_clientMessages[clientId] || []).filter(/** @param {any} m */ m => m.sender === 'customer' && !m.read_at).length;
+}
+
+/** Total unread customer messages across all clients (drives the nav badge). */
+function _totalUnreadCount() {
+  let n = 0;
+  for (const cid in _clientMessages) n += _clientUnreadCount(Number(cid));
+  return n;
+}
+
+/** Update the Clients nav-tab unread badge (hidden when zero). */
+function _refreshMsgNav() {
+  const el = document.getElementById('clients-badge');
+  if (!el) return;
+  const n = _totalUnreadCount();
+  el.textContent = n ? String(n) : '';
+  el.style.display = n ? '' : 'none';
+}
+
+/** Unread-message alert chip for a card / dashboard row — empty + hidden when the
+ *  client has no unread messages. Keyed by client so `_applyUnreadUI` can toggle
+ *  every instance at once on read / receive. @param {number} clientId */
+function _msgChipHtml(clientId) {
+  const n = (typeof _clientUnreadCount === 'function') ? _clientUnreadCount(clientId) : 0;
+  return `<span class="msg-chip" data-msg-chip="${clientId}"${n ? '' : ' style="display:none"'}>💬 ${n} new</span>`;
+}
+
+/** The class list for a card's "Messages" button — adds `unread` (highlight)
+ *  when the client has unread messages. Pair with data-msg-btn. @param {number} clientId */
+function _msgBtnClass(clientId) {
+  const n = (typeof _clientUnreadCount === 'function') ? _clientUnreadCount(clientId) : 0;
+  return 'btn btn-outline' + (n > 0 ? ' unread' : '');
+}
+
+/** Sync ALL of a client's unread UI in place — count spans, alert chips, the
+ *  Messages-button highlight, and the nav badge — to the current unread count.
+ *  Replaces the scattered per-handler span clears so every surface stays in
+ *  step on both read (→0) and a new inbound message (→N). @param {number} clientId */
+function _applyUnreadUI(clientId) {
+  const n = (typeof _clientUnreadCount === 'function') ? _clientUnreadCount(clientId) : 0;
+  const countTxt = n ? `(${n})` : '';
+  const dealSpans = /** @param {any} arr @param {string} attr */ (arr, attr) => {
+    if (typeof arr === 'undefined' || !arr) return;
+    arr.filter(/** @param {any} x */ x => x.client_id === clientId).forEach(/** @param {any} x */ x =>
+      document.querySelectorAll(`[data-${attr}-unread="${x.id}"]`).forEach(el => { el.textContent = countTxt; }));
+  };
+  dealSpans(typeof quotes !== 'undefined' ? quotes : null, 'quote');
+  dealSpans(typeof orders !== 'undefined' ? orders : null, 'order');
+  document.querySelectorAll(`[data-client-unread="${clientId}"]`).forEach(el => { el.textContent = countTxt; });
+  document.querySelectorAll(`[data-msg-btn="${clientId}"]`).forEach(el => { el.classList.toggle('unread', n > 0); });
+  document.querySelectorAll(`[data-msg-chip="${clientId}"]`).forEach(el => {
+    el.textContent = n ? `💬 ${n} new` : '';
+    /** @type {HTMLElement} */ (el).style.display = n ? '' : 'none';
+  });
+  _refreshMsgNav();
 }
 
 /** @param {number} clientId */
@@ -59,6 +114,7 @@ async function _openClientChat(clientId) {
   try {
     await _cmTable().update({ read_at: new Date().toISOString() }).eq('client_id', clientId).eq('sender', 'customer').is('read_at', null);
     (_clientMessages[clientId] || []).forEach(/** @param {any} m */ m => { if (m.sender === 'customer' && !m.read_at) m.read_at = new Date().toISOString(); });
+    _applyUnreadUI(clientId);
     try { renderClientsMain(); } catch (e) { /* tab not mounted */ }
   } catch (e) { /* ignore */ }
 }
@@ -143,9 +199,7 @@ async function _toggleOrderThread(orderId) {
   try {
     await _cmTable().update({ read_at: new Date().toISOString() }).eq('client_id', clientId).eq('sender', 'customer').is('read_at', null);
     (_clientMessages[clientId] || []).forEach(/** @param {any} m */ m => { if (m.sender === 'customer' && !m.read_at) m.read_at = new Date().toISOString(); });
-    /** @type {any} */ (orders).filter(/** @param {any} x */ x => x.client_id === clientId).forEach(/** @param {any} x */ x => {
-      document.querySelectorAll(`[data-order-unread="${x.id}"]`).forEach(el => { el.textContent = ''; });
-    });
+    _applyUnreadUI(clientId);
     try { renderClientsMain(); } catch (e) { /* Clients tab not mounted */ }
   } catch (e) { /* ignore */ }
 }
@@ -208,17 +262,7 @@ async function _toggleQuoteThread(quoteId) {
   try {
     await _cmTable().update({ read_at: new Date().toISOString() }).eq('client_id', clientId).eq('sender', 'customer').is('read_at', null);
     (_clientMessages[clientId] || []).forEach(/** @param {any} m */ m => { if (m.sender === 'customer' && !m.read_at) m.read_at = new Date().toISOString(); });
-    if (typeof quotes !== 'undefined' && quotes) {
-      /** @type {any} */ (quotes).filter(/** @param {any} x */ x => x.client_id === clientId).forEach(/** @param {any} x */ x => {
-        document.querySelectorAll(`[data-quote-unread="${x.id}"]`).forEach(el => { el.textContent = ''; });
-      });
-    }
-    if (typeof orders !== 'undefined' && orders) {
-      /** @type {any} */ (orders).filter(/** @param {any} x */ x => x.client_id === clientId).forEach(/** @param {any} x */ x => {
-        document.querySelectorAll(`[data-order-unread="${x.id}"]`).forEach(el => { el.textContent = ''; });
-      });
-    }
-    document.querySelectorAll(`[data-client-unread="${clientId}"]`).forEach(el => { el.textContent = ''; });
+    _applyUnreadUI(clientId);
     try { renderClientsMain(); } catch (e) { /* Clients tab not mounted */ }
   } catch (e) { /* ignore */ }
 }
@@ -277,12 +321,7 @@ async function _toggleClientThread(clientId) {
   try {
     await _cmTable().update({ read_at: new Date().toISOString() }).eq('client_id', clientId).eq('sender', 'customer').is('read_at', null);
     (_clientMessages[clientId] || []).forEach(/** @param {any} m */ m => { if (m.sender === 'customer' && !m.read_at) m.read_at = new Date().toISOString(); });
-    document.querySelectorAll(`[data-client-unread="${clientId}"]`).forEach(el => { el.textContent = ''; });
-    if (typeof orders !== 'undefined' && orders) {
-      /** @type {any} */ (orders).filter(/** @param {any} x */ x => x.client_id === clientId).forEach(/** @param {any} x */ x => {
-        document.querySelectorAll(`[data-order-unread="${x.id}"]`).forEach(el => { el.textContent = ''; });
-      });
-    }
+    _applyUnreadUI(clientId);
   } catch (e) { /* ignore */ }
 }
 
@@ -366,14 +405,8 @@ function _refreshClientThreadUI(clientId) {
   };
   refreshDeals(typeof orders !== 'undefined' ? orders : null, 'oc');
   refreshDeals(typeof quotes !== 'undefined' ? quotes : null, 'qc');
-  const badge = _clientUnreadCount(clientId) ? `(${_clientUnreadCount(clientId)})` : '';
-  document.querySelectorAll(`[data-client-unread="${clientId}"]`).forEach(el => { el.textContent = badge; });
-  if (typeof orders !== 'undefined' && orders) /** @type {any} */(orders).filter(/** @param {any} x */ x => x.client_id === clientId).forEach(/** @param {any} x */ x => {
-    document.querySelectorAll(`[data-order-unread="${x.id}"]`).forEach(el => { el.textContent = badge; });
-  });
-  if (typeof quotes !== 'undefined' && quotes) /** @type {any} */(quotes).filter(/** @param {any} x */ x => x.client_id === clientId).forEach(/** @param {any} x */ x => {
-    document.querySelectorAll(`[data-quote-unread="${x.id}"]`).forEach(el => { el.textContent = badge; });
-  });
+  // Sync every unread surface (count spans, alert chips, button highlight, nav badge).
+  _applyUnreadUI(clientId);
 }
 
-Object.assign(window, { loadAllClientMessages, _clientUnreadCount, _openClientChat, _sendClientMessage, _toggleOrderThread, _orderThreadInner, _sendOrderMessage, _quoteThreadInner, _toggleQuoteThread, _sendQuoteMessage, _clientThreadInner, _toggleClientThread, _sendClientThreadMessage, _ccEmailBadge, _viewOriginalEmail, _applyRealtimeMessage, _refreshClientThreadUI });
+Object.assign(window, { loadAllClientMessages, _clientUnreadCount, _totalUnreadCount, _refreshMsgNav, _msgChipHtml, _msgBtnClass, _applyUnreadUI, _openClientChat, _sendClientMessage, _toggleOrderThread, _orderThreadInner, _sendOrderMessage, _quoteThreadInner, _toggleQuoteThread, _sendQuoteMessage, _clientThreadInner, _toggleClientThread, _sendClientThreadMessage, _ccEmailBadge, _viewOriginalEmail, _applyRealtimeMessage, _refreshClientThreadUI });

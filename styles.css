@@ -523,6 +523,24 @@ header {
   color: #fff;
   padding: 1px 6px; border-radius: 10px;
 }
+/* Unread-messages badge on the Clients tab — red so it reads as "needs attention". */
+.nav-tab .tab-badge-msg { background: var(--danger); }
+
+/* ── Unread customer-message alerts (cards + dashboard rows) ── */
+.msg-chip {
+  display: inline-flex; align-items: center; gap: 3px;
+  font-size: 9px; font-weight: 800; letter-spacing: .02em;
+  color: #fff; background: var(--danger);
+  padding: 2px 7px; border-radius: 999px; vertical-align: middle;
+  white-space: nowrap; line-height: 1.4;
+}
+/* "Messages" button highlighted while the client has unread replies. */
+.btn-outline.unread {
+  border-color: var(--danger);
+  color: var(--danger);
+  background: rgba(224,82,82,0.08);
+  font-weight: 700;
+}
 /* Chrome wing pseudo-elements — disabled for cleaner look */
 
 /* Icon-only mode at narrow viewports — tabs fill the bar evenly */
