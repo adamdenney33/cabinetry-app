@@ -1131,6 +1131,10 @@ textarea { resize: vertical; min-height: 70px; }
 }
 .stock-bulk-count { font-size: 12px; font-weight: 600; color: var(--text); }
 .stock-bulk-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-left: auto; }
+.stock-drag-handle { cursor: grab; color: var(--muted); display: inline-flex; align-items: center; flex: 0 0 auto; }
+.stock-drag-handle:active { cursor: grabbing; }
+.stock-row.draggable-row:hover .stock-drag-handle { color: var(--text2); }
+.stock-row.stock-drag-over td { border-top: 2px solid var(--accent); }
 
 /* Supplier name as external link (only when supplier_url is set) */
 .stock-supplier-link {

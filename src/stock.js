@@ -528,6 +528,27 @@ function _svSet(id, data) {
   _stockUpdateCols(id, updates, 'pc_stock_variants', data);
 }
 
+// ── Stock Manual Sort Order Storage (DB column first, localStorage fallback) ──
+function _soMap() { try { return JSON.parse(localStorage.getItem('pc_stock_order') || '{}'); } catch(e) { return {}; } }
+/** Manual position for an item, or null when unset. @param {number} id @returns {number | null} */
+function _soGet(id) {
+  const item = stockItems.find(s => s.id === id);
+  if (item && /** @type {any} */ (item).sort_order != null) return /** @type {any} */ (item).sort_order;
+  const v = _soMap()[String(id)];
+  return (v != null) ? v : null;
+}
+/** @param {number} id @param {number | null} val */
+function _soSet(id, val) {
+  _stockUpdateCols(id, { sort_order: val }, 'pc_stock_order', val);
+}
+/** Comparator key for manual order: positioned items first (by position),
+ *  unpositioned fall back to id so they keep insertion order at the end.
+ *  @param {any} item */
+function _stockManualKey(item) {
+  const v = _soGet(item.id);
+  return (v != null) ? v : (item.id + 1e7);
+}
+
 // Order-to-quote reference (Phase 3.8: orders.quote_id is now the source of truth) ──
 function _oqMap() { try { return JSON.parse(localStorage.getItem('pc_order_quote_ref') || '{}'); } catch(e) { return {}; } }
 /** @param {number} id */
@@ -1102,6 +1123,57 @@ async function _stockBulkVisibility(visible) {
   _toast(`${ids.length} item${ids.length !== 1 ? 's' : ''} ${visible ? 'shown to' : 'hidden from'} customers`, 'success');
 }
 
+// ── Sorting + manual drag-and-drop reorder ────────────────────────────────
+/** @param {string} v */
+function _stockSetSort(v) {
+  /** @type {any} */ (window)._stockSort = v;
+  try { localStorage.setItem('pc_stock_sort', v); } catch(e) {}
+  renderStockMain();
+}
+
+/** @type {number | null} */
+let _stockDragId = null;
+/** @param {DragEvent} e @param {number} id */
+function _stockDragStart(e, id) {
+  _stockDragId = id;
+  if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
+}
+/** @param {DragEvent} e @param {HTMLElement} row */
+function _stockDragOver(e, row) {
+  e.preventDefault();
+  document.querySelectorAll('.stock-drag-over').forEach(r => r.classList.remove('stock-drag-over'));
+  row.classList.add('stock-drag-over');
+}
+/** @param {DragEvent} e @param {string} cat @param {number} targetId */
+function _stockDrop(e, cat, targetId) {
+  e.preventDefault();
+  document.querySelectorAll('.stock-drag-over').forEach(r => r.classList.remove('stock-drag-over'));
+  if (_stockDragId == null || _stockDragId === targetId) { _stockDragId = null; return; }
+  _stockManualReorder(cat, _stockDragId, targetId);
+  _stockDragId = null;
+}
+function _stockDragEnd() {
+  _stockDragId = null;
+  document.querySelectorAll('.stock-drag-over').forEach(r => r.classList.remove('stock-drag-over'));
+}
+
+/** Move dragId to targetId's slot within its category and persist sequential
+ *  sort_order for every item in that category. @param {string} cat @param {number} dragId @param {number} targetId */
+function _stockManualReorder(cat, dragId, targetId) {
+  // Items currently shown in this category, in their displayed (manual) order.
+  const inCat = stockItems
+    .filter(s => (_scGet(s.id) || 'Uncategorised') === cat)
+    .sort((a, b) => _stockManualKey(a) - _stockManualKey(b));
+  const from = inCat.findIndex(s => s.id === dragId);
+  const to = inCat.findIndex(s => s.id === targetId);
+  if (from < 0 || to < 0) return;
+  const [moved] = inCat.splice(from, 1);
+  inCat.splice(to, 0, moved);
+  // Reassign + persist a clean 0..n sequence for the whole group.
+  inCat.forEach((s, i) => { if (_soGet(s.id) !== i) _soSet(s.id, i); });
+  renderStockMain();
+}
+
 /** @param {number} id @param {number} delta */
 async function adjustStock(id, delta) {
   if (!_requireAuth()) return;
@@ -1242,7 +1314,17 @@ function renderStockMain() {
     const matchCat = activeCat === 'All' || _scGet(i.id) === activeCat || (activeCat === 'Uncategorised' && !_scGet(i.id));
     return matchSearch && matchCat;
   });
-  filtered.sort((a,b) => ((a.qty ?? 0)<=(a.low ?? 0) ? 0 : 1) - ((b.qty ?? 0)<=(b.low ?? 0) ? 0 : 1));
+  const sortMode = /** @type {any} */ (window)._stockSort
+    || (/** @type {any} */ (window)._stockSort = (localStorage.getItem('pc_stock_sort') || 'low'));
+  const isManual = sortMode === 'manual';
+  switch (sortMode) {
+    case 'name':      filtered.sort((a,b) => a.name.localeCompare(b.name)); break;
+    case 'name_desc': filtered.sort((a,b) => b.name.localeCompare(a.name)); break;
+    case 'qty':       filtered.sort((a,b) => (b.qty ?? 0) - (a.qty ?? 0)); break;
+    case 'value':     filtered.sort((a,b) => ((b.qty ?? 0)*(b.cost ?? 0)) - ((a.qty ?? 0)*(a.cost ?? 0))); break;
+    case 'manual':    filtered.sort((a,b) => _stockManualKey(a) - _stockManualKey(b)); break;
+    default:          filtered.sort((a,b) => ((a.qty ?? 0)<=(a.low ?? 0) ? 0 : 1) - ((b.qty ?? 0)<=(b.low ?? 0) ? 0 : 1));
+  }
 
   /** @param {any} item */
   const stockRowHTML = (item) => {
@@ -1286,13 +1368,22 @@ function renderStockMain() {
     const costDisp = isFin ? _finCostFromPerL(item.cost ?? 0) : (item.cost ?? 0);
     const qtySetter = isFin ? `setStockQtyFin(${item.id}, this.value)` : `setStockQty(${item.id}, this.value)`;
     const isSel = sel.has(item.id);
-    return `<tr class="stock-row${isEditing ? ' editing' : ''}${isSel ? ' selected' : ''}" onclick="_openStockPopup(${item.id})">
+    const catJs = (cat || 'Uncategorised').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    const dragAttrs = isManual
+      ? ` draggable="true" ondragstart="_stockDragStart(event,${item.id})" ondragover="_stockDragOver(event,this)" ondrop="_stockDrop(event,'${catJs}',${item.id})" ondragend="_stockDragEnd()"`
+      : '';
+    return `<tr class="stock-row${isEditing ? ' editing' : ''}${isSel ? ' selected' : ''}${isManual ? ' draggable-row' : ''}"${dragAttrs} onclick="_openStockPopup(${item.id})">
       <td class="stock-sel-cell" onclick="event.stopPropagation()" style="width:28px;text-align:center">
         <input type="checkbox" class="stock-sel-cb" value="${item.id}" ${isSel ? 'checked' : ''} onclick="_stockToggleSel(${item.id}, this.checked)" title="Select for bulk actions">
       </td>
       <td>
-        <div style="font-weight:600;color:var(--text)">${_escHtml(item.name)}${isEditing ? ' <span style="font-weight:500;color:var(--accent);font-size:11px">· editing</span>' : ''}</div>
-        ${sku ? `<div style="font-size:9px;color:var(--muted);margin-top:1px">${_escHtml(sku)}</div>` : ''}
+        <div style="display:flex;align-items:center;gap:6px">
+          ${isManual ? `<span class="stock-drag-handle" title="Drag to reorder">${DRAG_HANDLE}</span>` : ''}
+          <div>
+            <div style="font-weight:600;color:var(--text)">${_escHtml(item.name)}${isEditing ? ' <span style="font-weight:500;color:var(--accent);font-size:11px">· editing</span>' : ''}</div>
+            ${sku ? `<div style="font-size:9px;color:var(--muted);margin-top:1px">${_escHtml(sku)}</div>` : ''}
+          </div>
+        </div>
       </td>
       <td style="color:var(--text2)">${_escHtml(variant) || '—'}</td>
       <td style="color:var(--text2)">${_escHtml(dims) || '—'}</td>
@@ -1394,6 +1485,9 @@ function renderStockMain() {
       <button class="btn btn-primary" style="margin-top:12px" onclick="loadDefaultStockItems()">Load default stock list</button></div>` : `
     <div class="lib-filter-row" style="padding:0 ${_hp}">
       <input class="lib-filter-input" type="search" placeholder="Search…" value="${window._stockSearch||''}" oninput="window._stockSearch=this.value;renderStockMain()">
+      <select class="lib-filter-input stock-sort-select" style="flex:0 0 auto;width:auto;min-width:150px" title="Sort items" onchange="_stockSetSort(this.value)">
+        ${[['low','Low stock first'],['name','Name (A–Z)'],['name_desc','Name (Z–A)'],['qty','Quantity (high→low)'],['value','Value (high→low)'],['manual','Manual (drag)']].map(o => `<option value="${o[0]}"${sortMode===o[0]?' selected':''}>${o[1]}</option>`).join('')}
+      </select>
       <button class="btn btn-outline lib-filter-btn" onclick="_buildStockPDF()" title="PDF">PDF</button>
       <button class="btn btn-outline lib-filter-btn" onclick="exportStockCSV()" title="Export CSV">&darr; Export</button>
       <button class="btn btn-outline lib-filter-btn" onclick="importStockCSV()" title="Import CSV">&uarr; Import</button>

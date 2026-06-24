@@ -1586,6 +1586,7 @@ export type Database = {
           name: string
           qty: number | null
           sku: string | null
+          sort_order: number | null
           supplier: string | null
           supplier_url: string | null
           tags: Json
@@ -1610,6 +1611,7 @@ export type Database = {
           name?: string
           qty?: number | null
           sku?: string | null
+          sort_order?: number | null
           supplier?: string | null
           supplier_url?: string | null
           tags?: Json
@@ -1634,6 +1636,7 @@ export type Database = {
           name?: string
           qty?: number | null
           sku?: string | null
+          sort_order?: number | null
           supplier?: string | null
           supplier_url?: string | null
           tags?: Json
