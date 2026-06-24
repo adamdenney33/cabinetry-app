@@ -45,6 +45,19 @@ function _clientUnreadCount(clientId) {
   return (_clientMessages[clientId] || []).filter(/** @param {any} m */ m => m.sender === 'customer' && !m.read_at).length;
 }
 
+/** Unread customer messages tagged to a specific deal. Every customer reply is
+ *  tagged with the quote_id OR order_id of the live page it was sent from
+ *  (quote-messages edge fn), so the "New Message" alert can light up only the
+ *  card the customer actually messaged about — not every card for that client.
+ *  @param {'quote'|'order'} kind @param {number} dealId */
+function _dealUnreadCount(kind, dealId) {
+  const key = kind === 'order' ? 'order_id' : 'quote_id';
+  let n = 0;
+  for (const cid in _clientMessages)
+    n += _clientMessages[cid].filter(/** @param {any} m */ m => m.sender === 'customer' && !m.read_at && m[key] === dealId).length;
+  return n;
+}
+
 /** Total unread customer messages across all clients (drives the nav badge). */
 function _totalUnreadCount() {
   let n = 0;
@@ -69,6 +82,15 @@ function _msgChipHtml(clientId) {
   return `<span class="msg-chip" data-msg-chip="${clientId}"${n ? '' : ' style="display:none"'}>New Message</span>`;
 }
 
+/** Per-deal "New Message" chip for a quote/order card (and the dashboard rows).
+ *  Hidden unless that specific quote/order has an unread customer message, keyed
+ *  by deal so `_applyUnreadUI` can toggle it in place. @param {'quote'|'order'} kind
+ *  @param {number} dealId */
+function _dealMsgChipHtml(kind, dealId) {
+  const n = (typeof _dealUnreadCount === 'function') ? _dealUnreadCount(kind, dealId) : 0;
+  return `<span class="msg-chip" data-msg-chip-${kind}="${dealId}"${n ? '' : ' style="display:none"'}>New Message</span>`;
+}
+
 /** The class list for a card's "Messages" button — adds `unread` (highlight)
  *  when the client has unread messages. Pair with data-msg-btn. @param {number} clientId */
 function _msgBtnClass(clientId) {
@@ -83,13 +105,22 @@ function _msgBtnClass(clientId) {
 function _applyUnreadUI(clientId) {
   const n = (typeof _clientUnreadCount === 'function') ? _clientUnreadCount(clientId) : 0;
   const countTxt = n ? `(${n})` : '';
-  const dealSpans = /** @param {any} arr @param {string} attr */ (arr, attr) => {
+  // Per-deal surfaces. The Messages-button count stays client-scoped (the thread
+  // it opens is the whole client conversation), but the "New Message" chip is
+  // deal-scoped — each quote/order card lights up only for its own unread.
+  const dealSurfaces = /** @param {any} arr @param {'quote'|'order'} kind */ (arr, kind) => {
     if (typeof arr === 'undefined' || !arr) return;
-    arr.filter(/** @param {any} x */ x => x.client_id === clientId).forEach(/** @param {any} x */ x =>
-      document.querySelectorAll(`[data-${attr}-unread="${x.id}"]`).forEach(el => { el.textContent = countTxt; }));
+    arr.filter(/** @param {any} x */ x => x.client_id === clientId).forEach(/** @param {any} x */ x => {
+      document.querySelectorAll(`[data-${kind}-unread="${x.id}"]`).forEach(el => { el.textContent = countTxt; });
+      const dn = (typeof _dealUnreadCount === 'function') ? _dealUnreadCount(kind, x.id) : 0;
+      document.querySelectorAll(`[data-msg-chip-${kind}="${x.id}"]`).forEach(el => {
+        el.textContent = dn ? 'New Message' : '';
+        /** @type {HTMLElement} */ (el).style.display = dn ? '' : 'none';
+      });
+    });
   };
-  dealSpans(typeof quotes !== 'undefined' ? quotes : null, 'quote');
-  dealSpans(typeof orders !== 'undefined' ? orders : null, 'order');
+  dealSurfaces(typeof quotes !== 'undefined' ? quotes : null, 'quote');
+  dealSurfaces(typeof orders !== 'undefined' ? orders : null, 'order');
   document.querySelectorAll(`[data-client-unread="${clientId}"]`).forEach(el => { el.textContent = countTxt; });
   document.querySelectorAll(`[data-msg-btn="${clientId}"]`).forEach(el => { el.classList.toggle('unread', n > 0); });
   document.querySelectorAll(`[data-msg-chip="${clientId}"]`).forEach(el => {
@@ -409,4 +440,4 @@ function _refreshClientThreadUI(clientId) {
   _applyUnreadUI(clientId);
 }
 
-Object.assign(window, { loadAllClientMessages, _clientUnreadCount, _totalUnreadCount, _refreshMsgNav, _msgChipHtml, _msgBtnClass, _applyUnreadUI, _openClientChat, _sendClientMessage, _toggleOrderThread, _orderThreadInner, _sendOrderMessage, _quoteThreadInner, _toggleQuoteThread, _sendQuoteMessage, _clientThreadInner, _toggleClientThread, _sendClientThreadMessage, _ccEmailBadge, _viewOriginalEmail, _applyRealtimeMessage, _refreshClientThreadUI });
+Object.assign(window, { loadAllClientMessages, _clientUnreadCount, _dealUnreadCount, _totalUnreadCount, _refreshMsgNav, _msgChipHtml, _dealMsgChipHtml, _msgBtnClass, _applyUnreadUI, _openClientChat, _sendClientMessage, _toggleOrderThread, _orderThreadInner, _sendOrderMessage, _quoteThreadInner, _toggleQuoteThread, _sendQuoteMessage, _clientThreadInner, _toggleClientThread, _sendClientThreadMessage, _ccEmailBadge, _viewOriginalEmail, _applyRealtimeMessage, _refreshClientThreadUI });
