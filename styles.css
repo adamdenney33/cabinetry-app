@@ -1121,6 +1121,16 @@ textarea { resize: vertical; min-height: 70px; }
 }
 .stock-icon-btn:hover { border-color: var(--accent); color: var(--accent); }
 .stock-icon-btn.stock-icon-del:hover { border-color: var(--danger); color: var(--danger); }
+.stock-sel-cb, .stock-grp-sel { cursor: pointer; accent-color: var(--accent); margin: 0; }
+.stock-grp-sel { margin-right: 4px; }
+.stock-row.selected td { background: rgba(127,127,127,0.10); }
+.stock-bulk-bar {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  margin: 10px 0 0; padding: 8px 12px;
+  background: var(--surface); border: 1px solid var(--accent); border-radius: 8px;
+}
+.stock-bulk-count { font-size: 12px; font-weight: 600; color: var(--text); }
+.stock-bulk-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-left: auto; }
 
 /* Supplier name as external link (only when supplier_url is set) */
 .stock-supplier-link {

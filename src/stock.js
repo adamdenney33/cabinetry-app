@@ -1038,6 +1038,70 @@ function deleteStockItem(id) {
 }
 /** @type {any} */ (window).deleteStockItem = deleteStockItem;
 
+// ── Bulk selection / actions ──────────────────────────────────────────────
+/** Set of currently-checked stock-item ids for bulk actions. @returns {Set<number>} */
+function _stockSel() {
+  const w = /** @type {any} */ (window);
+  return (w._stockSelected ||= new Set());
+}
+/** @param {number} id @param {boolean} checked */
+function _stockToggleSel(id, checked) {
+  const sel = _stockSel();
+  if (checked) sel.add(id); else sel.delete(id);
+  renderStockMain();
+}
+/** Select/deselect every rendered row in a category section.
+ *  @param {HTMLInputElement} el the group header checkbox */
+function _stockToggleGroupSel(el) {
+  const wrap = el.closest('.stock-sheet-wrap');
+  if (!wrap) return;
+  const sel = _stockSel();
+  wrap.querySelectorAll('input.stock-sel-cb').forEach(cb => {
+    const id = Number(/** @type {HTMLInputElement} */ (cb).value);
+    if (el.checked) sel.add(id); else sel.delete(id);
+  });
+  renderStockMain();
+}
+function _stockClearSel() { _stockSel().clear(); renderStockMain(); }
+
+/** Delete every selected stock item after one confirm. */
+function _stockBulkDelete() {
+  if (!_requireAuth()) return;
+  const ids = [..._stockSel()];
+  if (!ids.length) return;
+  const n = ids.length;
+  _confirm(`Delete <strong>${n}</strong> stock item${n !== 1 ? 's' : ''}? This cannot be undone.`, async () => {
+    const { error } = await _db('stock_items').delete().in('id', ids);
+    if (error) {
+      _toast('Could not delete items — ' + (error.message || 'unknown error'), 'error');
+      return;
+    }
+    const idset = new Set(ids);
+    stockItems = stockItems.filter(s => !idset.has(s.id));
+    if (window._editingStockId && idset.has(window._editingStockId)) cancelStockEdit();
+    _stockSel().clear();
+    renderStockMain();
+    _toast(`${n} item${n !== 1 ? 's' : ''} deleted`, 'success');
+  });
+}
+
+/** Set customer visibility on every selected stock item. @param {boolean} visible */
+async function _stockBulkVisibility(visible) {
+  if (!_requireAuth()) return;
+  const ids = [..._stockSel()];
+  if (!ids.length) return;
+  const { error } = await _db('stock_items').update({ customer_visible: visible }).in('id', ids);
+  if (error) {
+    _toast('Could not update items — ' + (error.message || 'unknown error'), 'error');
+    return;
+  }
+  const idset = new Set(ids);
+  stockItems.forEach(s => { if (idset.has(s.id)) /** @type {any} */ (s).customer_visible = visible; });
+  if (window._editingStockId && idset.has(window._editingStockId)) _stockSetCustVis(visible);
+  renderStockMain();
+  _toast(`${ids.length} item${ids.length !== 1 ? 's' : ''} ${visible ? 'shown to' : 'hidden from'} customers`, 'success');
+}
+
 /** @param {number} id @param {number} delta */
 async function adjustStock(id, delta) {
   if (!_requireAuth()) return;
@@ -1165,6 +1229,7 @@ function renderStockMain() {
   if (!el) return;
   const activeCat = window._stockCatFilter || 'All';
   const q = (window._stockSearch || '').toLowerCase();
+  const sel = _stockSel();
 
   // Build list of used categories for filter bar
   const usedCats = [...new Set(stockItems.map(i => _scGet(i.id)).filter(Boolean))].sort();
@@ -1220,7 +1285,11 @@ function renderStockMain() {
     const lowDisp = isFin ? _fmtNum(_finVolFromL(item.low ?? 0)) : (item.low ?? 0);
     const costDisp = isFin ? _finCostFromPerL(item.cost ?? 0) : (item.cost ?? 0);
     const qtySetter = isFin ? `setStockQtyFin(${item.id}, this.value)` : `setStockQty(${item.id}, this.value)`;
-    return `<tr class="stock-row${isEditing ? ' editing' : ''}" onclick="_openStockPopup(${item.id})">
+    const isSel = sel.has(item.id);
+    return `<tr class="stock-row${isEditing ? ' editing' : ''}${isSel ? ' selected' : ''}" onclick="_openStockPopup(${item.id})">
+      <td class="stock-sel-cell" onclick="event.stopPropagation()" style="width:28px;text-align:center">
+        <input type="checkbox" class="stock-sel-cb" value="${item.id}" ${isSel ? 'checked' : ''} onclick="_stockToggleSel(${item.id}, this.checked)" title="Select for bulk actions">
+      </td>
       <td>
         <div style="font-weight:600;color:var(--text)">${_escHtml(item.name)}${isEditing ? ' <span style="font-weight:500;color:var(--accent);font-size:11px">· editing</span>' : ''}</div>
         ${sku ? `<div style="font-size:9px;color:var(--muted);margin-top:1px">${_escHtml(sku)}</div>` : ''}
@@ -1255,6 +1324,7 @@ function renderStockMain() {
   };
 
   const theadHTML = `<thead><tr>
+    <th style="width:28px"></th>
     <th style="min-width:160px">Material</th>
     <th>Variant</th>
     <th>Dimensions</th>
@@ -1277,8 +1347,10 @@ function renderStockMain() {
     const value = items.reduce((s, i) => s + (i.qty ?? 0) * (i.cost ?? 0), 0);
     const lowCount = items.filter(i => (i.qty ?? 0) <= (i.low ?? 0)).length;
     const unitLabel = isEB ? 'metres' : (isFin ? (_finImperial() ? 'gal' : 'litres') : (sheetCat ? 'sheets' : 'units'));
+    const allSel = items.length > 0 && items.every(i => sel.has(i.id));
     return `<div class="stock-sheet-wrap${collapsed ? ' collapsed' : ''}">
       <div class="stock-cat-header" onclick="_stockToggleGroup('${cat.replace(/'/g,"\\'")}')">
+        ${collapsed ? '' : `<input type="checkbox" class="stock-grp-sel" onclick="event.stopPropagation();_stockToggleGroupSel(this)" ${allSel ? 'checked' : ''} title="Select all in ${_escHtml(cat)}">`}
         <span class="stock-grp-chevron">▼</span>
         <span class="stock-grp-name">${_escHtml(cat)}</span>
         <span class="stock-grp-count">${items.length} item${items.length !== 1 ? 's' : ''}</span>
@@ -1327,6 +1399,15 @@ function renderStockMain() {
       <button class="btn btn-outline lib-filter-btn" onclick="importStockCSV()" title="Import CSV">&uarr; Import</button>
     </div>
     ${showCatFilter ? `<div class="stock-cat-filter-bar">${allCatPills.map(c => `<span class="stock-cat-pill${c===activeCat?' active':''}" onclick="window._stockCatFilter='${c}';renderStockMain()">${c}</span>`).join('')}</div>` : ''}
+    ${sel.size > 0 ? `<div style="padding:0 ${_hp}"><div class="stock-bulk-bar">
+      <span class="stock-bulk-count">${sel.size} selected</span>
+      <div class="stock-bulk-actions">
+        <button class="btn btn-outline lib-filter-btn" onclick="_stockBulkVisibility(true)">Show to customers</button>
+        <button class="btn btn-outline lib-filter-btn" onclick="_stockBulkVisibility(false)">Hide from customers</button>
+        <button class="btn btn-outline lib-filter-btn" style="color:var(--danger);border-color:var(--danger)" onclick="_stockBulkDelete()">Delete</button>
+        <button class="btn btn-outline lib-filter-btn" onclick="_stockClearSel()">Clear</button>
+      </div>
+    </div></div>` : ''}
     <div style="padding:0 ${_hp}">${sectionsHTML}</div>
     `}
   </div>`;
