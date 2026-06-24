@@ -671,6 +671,8 @@ function cancelStockEdit() {
   if (typeof stockCatChanged === 'function') stockCatChanged();
   const sb = /** @type {HTMLElement} */ (_byId('stock-submit-btn'));
   if (sb) { sb.textContent = '+ Add to Stock'; sb.style.display = ''; }
+  const dup = /** @type {HTMLElement} */ (_byId('stock-dup-btn'));
+  if (dup) dup.style.display = 'none';
   const db = /** @type {HTMLElement} */ (_byId('stock-delete-btn'));
   if (db) db.style.display = 'none';
   inp('stock-form-title-text').textContent = 'Add Material';
@@ -848,6 +850,8 @@ function editStockItem(id) {
   if (sidebar) sidebar.scrollTop = 0;
   const sb = /** @type {HTMLElement} */ (_byId('stock-submit-btn'));
   if (sb) sb.style.display = 'none';
+  const dup = /** @type {HTMLElement} */ (_byId('stock-dup-btn'));
+  if (dup) dup.style.display = '';
   const db = /** @type {HTMLElement} */ (_byId('stock-delete-btn'));
   if (db) db.style.display = '';
   inp('stock-form-title-text').textContent = 'Edit Material';
