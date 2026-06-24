@@ -143,12 +143,12 @@ function renderDashboard() {
                 const oCaption = [oProj, o.due ? `Due ${String(o.due).slice(0, 10)}${isOD ? ' ⚠' : ''}` : null].filter(Boolean).join(' · ');
                 return `<div class="dash-row${isOD ? ' is-overdue' : ''}" onclick="_openOrderPopup(${o.id})">
                 <div style="flex:1;min-width:0">
-                  <div style="font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_escHtml(oTopLine)}${typeof _dealMsgChipHtml === 'function' ? ' ' + _dealMsgChipHtml('order', o.id) : ''}</div>
+                  <div style="font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_escHtml(oTopLine)}</div>
                   <div style="font-size:11px;color:${isOD?'var(--danger)':'var(--muted)'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_escHtml(oCaption)}</div>
                 </div>
                 <div style="text-align:right;margin-left:12px;flex-shrink:0">
                   <div style="font-size:12px;font-weight:700">${cur}${fmt(o.value ?? 0)}</div>
-                  <span class="badge ${(/** @type {Record<string,string>} */(STATUS_BADGES))[o.status||''] || 'badge-gray'}" style="font-size:9px">${(/** @type {Record<string,string>} */(STATUS_LABELS))[o.status||''] || o.status || 'Unknown'}</span>
+                  <div style="display:inline-flex;align-items:center;gap:5px">${typeof _dealMsgChipHtml === 'function' ? _dealMsgChipHtml('order', o.id) : ''}<span class="badge ${(/** @type {Record<string,string>} */(STATUS_BADGES))[o.status||''] || 'badge-gray'}" style="font-size:9px">${(/** @type {Record<string,string>} */(STATUS_LABELS))[o.status||''] || o.status || 'Unknown'}</span></div>
                 </div>
               </div>`;}).join('')}
           </div>
@@ -173,12 +173,12 @@ function renderDashboard() {
               return `
               <div class="dash-row" onclick="_openQuotePopup(${q.id})">
                 <div style="flex:1;min-width:0">
-                  <div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_escHtml(qTopLine)}${typeof _dealMsgChipHtml === 'function' ? ' ' + _dealMsgChipHtml('quote', q.id) : ''}</div>
+                  <div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_escHtml(qTopLine)}</div>
                   ${qProj ? `<div style="font-size:11px;color:var(--muted)">${_escHtml(qProj)}</div>` : ''}
                 </div>
                 <div style="text-align:right;margin-left:8px;flex-shrink:0">
                   <div style="font-size:12px;font-weight:700">${cur}${fmt(quoteTotal(q))}</div>
-                  <span class="badge ${qStatusBadge}" style="font-size:9px">${qStatusText}</span>
+                  <div style="display:inline-flex;align-items:center;gap:5px">${typeof _dealMsgChipHtml === 'function' ? _dealMsgChipHtml('quote', q.id) : ''}<span class="badge ${qStatusBadge}" style="font-size:9px">${qStatusText}</span></div>
                 </div>
               </div>`;
             }).join('')}

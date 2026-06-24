@@ -82,13 +82,14 @@ function _msgChipHtml(clientId) {
   return `<span class="msg-chip" data-msg-chip="${clientId}"${n ? '' : ' style="display:none"'}>New Message</span>`;
 }
 
-/** Per-deal "New Message" chip for a quote/order card (and the dashboard rows).
- *  Hidden unless that specific quote/order has an unread customer message, keyed
- *  by deal so `_applyUnreadUI` can toggle it in place. @param {'quote'|'order'} kind
+/** Per-deal unread-message chip for the dashboard rows. Hidden unless that
+ *  specific quote/order has an unread customer message, keyed by deal so
+ *  `_applyUnreadUI` can toggle it in place. Labelled "Messages" to mirror the
+ *  amber Messages button on the quote/order cards. @param {'quote'|'order'} kind
  *  @param {number} dealId */
 function _dealMsgChipHtml(kind, dealId) {
   const n = (typeof _dealUnreadCount === 'function') ? _dealUnreadCount(kind, dealId) : 0;
-  return `<span class="msg-chip" data-msg-chip-${kind}="${dealId}"${n ? '' : ' style="display:none"'}>New Message</span>`;
+  return `<span class="msg-chip" data-msg-chip-${kind}="${dealId}"${n ? '' : ' style="display:none"'}>Messages</span>`;
 }
 
 /** The class list for a card's "Messages" button — adds `unread` (highlight)
@@ -123,7 +124,7 @@ function _applyUnreadUI(clientId) {
       document.querySelectorAll(`[data-${kind}-unread="${x.id}"]`).forEach(el => { el.textContent = dn ? `(${dn})` : ''; });
       document.querySelectorAll(`[data-msg-btn-${kind}="${x.id}"]`).forEach(el => { el.classList.toggle('unread', dn > 0); });
       document.querySelectorAll(`[data-msg-chip-${kind}="${x.id}"]`).forEach(el => {
-        el.textContent = dn ? 'New Message' : '';
+        el.textContent = dn ? 'Messages' : '';
         /** @type {HTMLElement} */ (el).style.display = dn ? '' : 'none';
       });
     });

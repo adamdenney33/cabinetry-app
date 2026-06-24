@@ -195,7 +195,6 @@ function renderOrdersMain() {
         <div class="oc-info">
           <div class="oc-title-row">
             <div class="oc-title">${titleText}${isEditing ? ' <span style="font-weight:500;color:var(--accent);font-size:11px">· editing</span>' : ''}</div>
-            ${typeof _dealMsgChipHtml === 'function' ? _dealMsgChipHtml('order', o.id) : ''}
           </div>
           <div class="oc-meta">
             ${isComplete

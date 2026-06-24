@@ -561,7 +561,6 @@ function renderQuoteMain() {
         <div class="oc-info">
           <div class="oc-title-row">
             <div class="qc-title">${titleText}${isEditing ? ' <span style="font-weight:500;color:var(--accent);font-size:11px">· editing</span>' : ''}</div>
-            ${typeof _dealMsgChipHtml === 'function' ? _dealMsgChipHtml('quote', q.id) : ''}
           </div>
           ${(q.date || lineCounts || _linkHint) ? `<div class="qc-meta">${[[q.date, lineCounts].filter(Boolean).join(' · '), _linkHint].filter(Boolean).join(' · ')}</div>` : ''}
         </div>
