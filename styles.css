@@ -534,11 +534,11 @@ header {
   padding: 2px 7px; border-radius: 999px; vertical-align: middle;
   white-space: nowrap; line-height: 1.4;
 }
-/* "Messages" button highlighted while the client has unread replies. */
+/* "Messages" button highlighted (amber) while the client has unread replies. */
 .btn-outline.unread {
-  border-color: var(--danger);
-  color: var(--danger);
-  background: rgba(224,82,82,0.08);
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-dim);
   font-weight: 700;
 }
 /* Chrome wing pseudo-elements — disabled for cleaner look */
