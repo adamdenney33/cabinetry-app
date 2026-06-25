@@ -139,6 +139,11 @@ Deno.serve(async (req) => {
 
   // Parse + validate the requested plan. `cadence` is the legacy field name.
   let plan: 'monthly' | 'annual' | 'founder';
+  // Meta click/browser-id cookies, forwarded by the client (src/stripe.js) so
+  // the webhook's Purchase CAPI can match on them. Stamped into the Checkout
+  // session metadata below and read back in stripe-webhook's sendMetaPurchase.
+  let fbc = '';
+  let fbp = '';
   try {
     const body = await req.json();
     const raw = body.plan ?? body.cadence;
@@ -146,9 +151,16 @@ Deno.serve(async (req) => {
       throw new Error('plan must be "monthly", "annual" or "founder"');
     }
     plan = raw;
+    if (typeof body.fbc === 'string') fbc = body.fbc.slice(0, 400);
+    if (typeof body.fbp === 'string') fbp = body.fbp.slice(0, 400);
   } catch (err) {
     return json({ error: (err as Error).message }, 400);
   }
+
+  // Only the present cookies — keep metadata clean when a signup had no ad click.
+  const metaIds: Record<string, string> = {};
+  if (fbc) metaIds.fbc = fbc;
+  if (fbp) metaIds.fbp = fbp;
 
   try {
     const customerId = await getOrCreateCustomer(user.id, user.email ?? null);
@@ -168,7 +180,7 @@ Deno.serve(async (req) => {
         mode: 'payment',
         customer: customerId,
         line_items: [{ price: PRICE_FOUNDER, quantity: 1 }],
-        metadata: { plan: 'founder', user_id: user.id },
+        metadata: { plan: 'founder', user_id: user.id, ...metaIds },
         payment_intent_data: { metadata: { plan: 'founder', user_id: user.id } },
         success_url: `${APP_URL}/os?upgrade=success&plan=founder`,
         cancel_url: `${APP_URL}/os?upgrade=cancelled`,
@@ -180,6 +192,8 @@ Deno.serve(async (req) => {
         mode: 'subscription',
         customer: customerId,
         line_items: [{ price: priceId, quantity: 1 }],
+        // Forwarded for the webhook's Purchase CAPI match (empty → omitted).
+        metadata: metaIds,
         // Adaptive Pricing handles local-currency conversion automatically
         // (must be enabled in Stripe Dashboard → Settings → Currency settings).
         success_url: `${APP_URL}/os?upgrade=success&plan=${plan}`,

@@ -107,9 +107,9 @@ async function sha256Hex(input: string): Promise<string> {
 // the webhook → no Stripe retry storm). event_id `purchase-<session_id>` is
 // stable, so Meta dedupes if a browser Purchase pixel is ever re-added.
 // value/currency come from the Checkout session (amount_total is minor units).
-// NOTE: matches on hashed email only; to lift match quality later, stamp the
-// browser fbc cookie into the Checkout session metadata in stripe-checkout and
-// forward it here as user_data.fbc.
+// Match quality: hashed email + the _fbc/_fbp cookies the client forwards into
+// the Checkout session metadata via stripe-checkout. No client IP/UA here —
+// Stripe (not the browser) calls this webhook, so those aren't available.
 async function sendMetaPurchase(
   session: Stripe.Checkout.Session,
   opts: { plan: string | null },
@@ -123,6 +123,11 @@ async function sendMetaPurchase(
     }
     const value = typeof session.amount_total === 'number' ? session.amount_total / 100 : 0;
     const currency = (session.currency ?? 'gbp').toUpperCase();
+    const userData: Record<string, unknown> = { em: [await sha256Hex(email)] };
+    const fbc = session.metadata?.fbc;
+    const fbp = session.metadata?.fbp;
+    if (fbc) userData.fbc = fbc;
+    if (fbp) userData.fbp = fbp;
     const payload = {
       data: [
         {
@@ -131,7 +136,7 @@ async function sendMetaPurchase(
           event_id: `purchase-${session.id}`,
           action_source: 'website',
           event_source_url: `https://${APP_HOST}/os`,
-          user_data: { em: [await sha256Hex(email)] },
+          user_data: userData,
           custom_data: { value, currency, content_name: opts.plan ?? 'pro' },
         },
       ],

@@ -34,7 +34,15 @@ async function startCheckout(plan) {
       'apikey': window._SBKEY,
       'content-type': 'application/json',
     },
-    body: JSON.stringify({ plan }),
+    // Forward Meta's click-id (_fbc) / browser-id (_fbp) cookies so the
+    // server-side Purchase CAPI (stripe-webhook) can match on them — lifts
+    // Event Match Quality the same way the signup CAPI does. Best-effort: ''
+    // when absent. _readCookie lives in src/analytics.js (shared global).
+    body: JSON.stringify({
+      plan,
+      fbc: (typeof _readCookie === 'function' ? _readCookie('_fbc') : ''),
+      fbp: (typeof _readCookie === 'function' ? _readCookie('_fbp') : ''),
+    }),
   });
 
   if (!res.ok) {
