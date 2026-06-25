@@ -89,16 +89,18 @@ function _identifyUser(session) {
  * user completes the form, not on a later email click that breaks the
  * referrer chain.
  *
- * Dedupe: the auth.users insert trigger also fires a server-side Meta CAPI
- * CompleteRegistration (meta-capi-signup edge function) with
- * event_id `signup-<user_id>`. Passing the same eventID here lets Meta
- * deduplicate the pair, so browser-blocked environments still convert via
- * the server path without double-counting where both arrive.
+ * Dedupe: the same CompleteRegistration also fires server-side via the
+ * meta-capi-signup edge function, from TWO callers — the `auth.users` trigger
+ * (catches every signup incl. Google OAuth and browser-blocked environments,
+ * matches on email + reconstructed fbc) and the client POST below (adds the
+ * real _fbc/_fbp + client IP/UA for higher match quality). All three events
+ * (browser pixel + both server calls) share event_id `signup-<user_id>`, so
+ * Meta counts the signup once and keeps the richest match data.
  *
  * @param {string | null} [userId] Supabase auth user id from signUp()
  */
 function _trackSignupConversion(userId) {
-  // ── Meta Pixel ──
+  // ── Meta Pixel (browser) ──
   try {
     if (typeof window.fbq === 'function') {
       if (userId) {
@@ -106,6 +108,36 @@ function _trackSignupConversion(userId) {
       } else {
         window.fbq('track', 'CompleteRegistration');
       }
+    }
+  } catch (e) { /* best-effort */ }
+
+  // ── Meta Conversions API (server) — match-quality path ──
+  // The auth.users trigger already fires this CompleteRegistration server-side
+  // for every signup (email + reconstructed fbc). This client POST adds what a
+  // DB trigger can't see — the real _fbc/_fbp cookies + client IP/UA — lifting
+  // match quality; the function dedupes the two via event_id signup-<user_id>.
+  // Fire-and-forget: never blocks or fails signup, and no-ops without a user id
+  // or Supabase config (local dev). `keepalive` lets it outlive the post-signup
+  // nav to the confirm panel. The function verifies the user id and reads the
+  // real email server-side, so the only sensitive thing the browser sends is
+  // the Meta cookies the pixel already set.
+  try {
+    if (userId && window._SBURL && window._SBKEY) {
+      fetch(window._SBURL + '/functions/v1/meta-capi-signup', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          apikey: window._SBKEY,
+          authorization: 'Bearer ' + window._SBKEY,
+        },
+        body: JSON.stringify({
+          user_id: userId,
+          fbc: _readCookie('_fbc'),
+          fbp: _readCookie('_fbp'),
+          event_source_url: window.location.href,
+        }),
+        keepalive: true,
+      }).catch(function () { /* best-effort */ });
     }
   } catch (e) { /* best-effort */ }
 
@@ -127,6 +159,25 @@ function _trackSignupConversion(userId) {
       }
     }
   } catch (e) { /* best-effort */ }
+}
+
+/**
+ * Read a browser cookie by name, '' when absent. Used to forward Meta's click
+ * id (_fbc) and browser id (_fbp) cookies — set by the pixel on the landing
+ * page, readable same-origin at /os — to the server-side signup CAPI for match
+ * quality.
+ *
+ * @param {string} name Cookie name, e.g. '_fbc'
+ * @returns {string} Decoded cookie value, or '' if not present
+ */
+function _readCookie(name) {
+  try {
+    const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const m = document.cookie.match(new RegExp('(?:^|; )' + escaped + '=([^;]*)'));
+    return m ? decodeURIComponent(m[1]) : '';
+  } catch (e) {
+    return '';
+  }
 }
 
 /**

@@ -1329,9 +1329,9 @@ async function authSubmit() {
   if (btn) { btn.disabled = true; btn.textContent = '…'; }
   let error;
   // Supabase user id from a successful signUp() — passed to
-  // _trackSignupConversion as the Meta Pixel eventID so the browser event
-  // dedupes against the server-side CAPI event fired by the auth.users
-  // trigger → meta-capi-signup edge function (both use `signup-<user_id>`).
+  // _trackSignupConversion, which uses it as the Meta Pixel eventID AND posts
+  // it to the meta-capi-signup edge function, so the browser event dedupes
+  // against the server-side CAPI event (both use `signup-<user_id>`).
   /** @type {string | null} */
   let signupUserId = null;
   // Anti-enumeration quirk: signUp() against an EXISTING CONFIRMED email

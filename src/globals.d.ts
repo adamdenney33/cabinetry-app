@@ -204,6 +204,8 @@ declare global {
   function _resetAnalytics(): void;
   /** Fire ad-platform conversion pixels (Meta Pixel + Google Ads + GA4) at signup. Pass the Supabase user id so the Meta event dedupes against the server-side CAPI event (`signup-<user_id>`). No-ops if pixels are disabled. */
   function _trackSignupConversion(userId?: string | null): void;
+  /** Read a browser cookie by name, '' when absent. Used to forward Meta's _fbc/_fbp cookies to the server-side CAPI for match quality. Defined in src/analytics.js. */
+  function _readCookie(name: string): string;
   /** Fire ad-platform purchase conversions (GA4 purchase + Google Ads) on a successful Pro checkout. Meta Subscribe/Purchase fires server-side via CAPI from stripe-webhook. No-ops if pixels are disabled. */
   function _trackPurchaseConversion(plan: string | null | undefined): void;
 

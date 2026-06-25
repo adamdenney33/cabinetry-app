@@ -24,6 +24,44 @@ Companion docs: `SPEC.md` (refactor history), `SCHEMA.md` (DB schema),
 
 ## Active Work
 
+### Meta CAPI — lift signup + purchase match quality (2026-06-25) ✅ Built + typechecked — ⬜ deploy (3 fns) + verify in Events Manager
+
+**Goal.** Close the two Events Manager recommendations on the Signups pixel
+(weak event-match-quality + "add web-only CAPI") and lift the Purchase CAPI too.
+
+**Discovery (corrected a wrong premise).** The signup server CAPI was NOT
+missing — it already exists in prod: trigger `trg_meta_capi_signup` on
+`auth.users` → `notify_meta_capi_signup()` → pg_net POST `{user_id}` →
+deployed `meta-capi-signup` fn (v11). It fires for **every** signup incl.
+Google OAuth, with a 1-hour freshness guard, matching on hashed email + an
+`fbc` reconstructed from the stored `fbclid`. The repo just never had the
+source. So the gap was only the higher-quality match signals a DB trigger
+can't see (real `_fbc`/`_fbp` cookies + client IP/UA).
+
+**Built (merge, not rebuild).**
+- `supabase/functions/meta-capi-signup/index.ts` — brought the deployed v11
+  into the repo and **extended** it: still serves the trigger's `{user_id}`
+  call (email + reconstructed fbc, OAuth coverage, freshness guard, UUID
+  validation all preserved), now **also** accepts `{fbc,fbp,event_source_url}`
+  from a browser caller and reads client IP/UA from headers → richer
+  `user_data` for email signups. Same `event_id signup-<user_id>` dedupes all
+  three events (browser pixel + both server callers).
+- `src/analytics.js` — `_trackSignupConversion()` now also POSTs the function
+  (fire-and-forget, `keepalive`) with the real `_fbc`/`_fbp`; new `_readCookie`
+  helper. Comments corrected to describe the dual server path.
+- **Purchase CAPI** (`stripe-webhook`) matched email only — now the client
+  (`src/stripe.js`) forwards `_fbc`/`_fbp` through `stripe-checkout` (stamped
+  into the Checkout session metadata) into `sendMetaPurchase`'s `user_data`.
+- `META_CAPI_ACCESS_TOKEN` confirmed set in prod.
+
+**Remaining.**
+1. Deploy 3 fns, all `--no-verify-jwt` (preserve current settings — `meta-capi-signup`
+   is hit by pg_net; `stripe-checkout`/`stripe-webhook` both already false):
+   `meta-capi-signup`, `stripe-checkout`, `stripe-webhook`.
+2. Push client (Cloudflare) for the analytics.js + stripe.js wiring.
+3. Verify in Events Manager: deduped CompleteRegistration with a Processed
+   server event + rising EMQ; Purchase event carries fbc/fbp.
+
 ### Live link — customer-facing redesign + PDF download (2026-06-22) ✅ Built + verified (mock) — ⬜ verify against a live token after deploy
 
 **Goal.** Make the customer live link (`/q/<token>`) look professional and
