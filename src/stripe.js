@@ -118,12 +118,15 @@ function handleCheckoutReturn() {
   if (!upgrade) return;
   if (upgrade === 'success') {
     if (typeof _toast === 'function') _toast('Welcome to Pro! Your subscription is active.', 'success');
-    // Product-analytics conversion event (PostHog). This is the real "became Pro"
-    // signal the landing → app → signup → pro funnel ends on — distinct from
-    // `upgrade_clicked` (mere intent) and from the ad-platform pixels below. Fires
-    // on the Stripe success return. `plan` arrives as ?plan=<monthly|annual|founder>.
-    if (typeof _track === 'function') _track('pro_subscription_started', { plan: params.get('plan') || 'unknown' });
-    // Fire ad-platform purchase conversions (Meta / GA4 / Google Ads). The plan
+    // NOTE: the PostHog `pro_subscription_started` conversion event is fired
+    // SERVER-SIDE from stripe-webhook on `checkout.session.completed` (the single
+    // canonical source — POSTHOG_KEY is set). It is deliberately NOT fired here:
+    // this success-return handler only runs when the browser makes it back to
+    // `?upgrade=success`, so firing it client-side too would (a) miss conversions
+    // where the user never returns (mobile/in-app webview, closed tab) and
+    // (b) double-count the ones who do. See supabase/functions/stripe-webhook.
+    // Fire ad-platform purchase conversions (GA4 / Google Ads — Meta Purchase is
+    // also server-side via stripe-webhook's CAPI). The plan
     // arrives as ?plan=<monthly|annual|founder> from the Stripe success_url.
     if (typeof _trackPurchaseConversion === 'function') _trackPurchaseConversion(params.get('plan'));
     setTimeout(() => { if (typeof loadSubscription === 'function') loadSubscription(); }, 2000);
