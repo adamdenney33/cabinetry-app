@@ -1492,13 +1492,13 @@ function renderSheets() {
         ${dis ? 'disabled' : ''}></td>
       <td>
         <div class="cl-stepper">
-          <button class="cl-step-btn" onclick="stepQty('sheet',${s.id},-1)">−</button>
+          <button class="cl-step-btn" onmousedown="event.preventDefault();stepQty('sheet',${s.id},-1)">−</button>
           <input class="cl-input cl-qty-input" value="${s.qty}"
             data-table="sheets" data-row="${i}" data-col="qty"
             onblur="updateSheet(${s.id},'qty',this.value)"
             onkeydown="clKeydown(event,'sheets',${i},'qty')"
             min="1" max="99" ${dis ? 'disabled' : ''}>
-          <button class="cl-step-btn" onclick="stepQty('sheet',${s.id},1)">+</button>
+          <button class="cl-step-btn" onmousedown="event.preventDefault();stepQty('sheet',${s.id},1)">+</button>
         </div>
       </td>
       <td></td>
@@ -1735,13 +1735,13 @@ function renderPieces() {
         ${dis ? 'disabled' : ''}></td>
       <td>
         <div class="cl-stepper">
-          <button class="cl-step-btn" tabindex="-1" onclick="stepQty('piece',${p.id},-1)">−</button>
+          <button class="cl-step-btn" tabindex="-1" onmousedown="event.preventDefault();stepQty('piece',${p.id},-1)">−</button>
           <input class="cl-input cl-qty-input" value="${p.qty}"
             data-table="pieces" data-row="${i}" data-col="qty"
             onblur="updatePiece(${p.id},'qty',this.value)"
             onkeydown="clKeydown(event,'pieces',${i},'qty')"
             min="1" max="999" ${dis ? 'disabled' : ''}>
-          <button class="cl-step-btn" tabindex="-1" onclick="stepQty('piece',${p.id},1)">+</button>
+          <button class="cl-step-btn" tabindex="-1" onmousedown="event.preventDefault();stepQty('piece',${p.id},1)">+</button>
         </div>
       </td>
       <td class="cl-col-material" style="${colsVisible.material?'':'display:none'}">
