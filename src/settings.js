@@ -30,6 +30,7 @@
 // GLOBALS
 // ══════════════════════════════════════════
 window.currency = '$';
+window.currencyCode = '$';
 window.units = 'imperial';
 
 // ══════════════════════════════════════════
@@ -287,9 +288,15 @@ function _rerenderAll() {
 // ══════════════════════════════════════════
 const EURO_LOCALES = ['de','fr','es','it','nl','pt','fi','el','cs','sk','sl','hr','bg','ro','hu','lv','lt','et','mt','ga'];
 
+/** Display symbol for a stored currency code. AUD ('A$') shows as a plain '$'
+ *  in-app; the canonical 'A$' is still persisted for the DB / live link.
+ *  @param {string} c */
+function _currencyDisplay(c) { return c === 'A$' ? '$' : c; }
+
 /** @param {string} c @param {boolean} [persistDB] */
 function setCurrency(c, persistDB = true) {
-  window.currency = c;
+  window.currencyCode = c;
+  window.currency = _currencyDisplay(c);
   localStorage.setItem('pcCurrency', c);
   const curMap = { '$': 'cur-usd', '£': 'cur-gbp', '€': 'cur-eur', 'A$': 'cur-aud' };
   Object.entries(curMap).forEach(([sym, id]) => {

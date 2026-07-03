@@ -1373,6 +1373,7 @@ async function boot() {
     D = await fn('quote-public-get', { token });
     clearTimeout(slow);
     cur = (D.business && D.business.default_currency) || '£';
+    if (cur === 'A$') cur = '$';  // AUD shows as a plain '$' — drop the 'A'
     try {
       const uf = D.business && D.business.unit_format;
       if (uf) Object.assign(unitFmt, typeof uf === 'string' ? JSON.parse(uf) : uf);

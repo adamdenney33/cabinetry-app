@@ -63,8 +63,12 @@ declare global {
     _TEST_PASSWORD?: string;
     /** Dev-only: sign in via VITE_TEST_* creds. Defined in src/db.js. */
     _signInForTesting?: () => Promise<{ ok: boolean, error?: string, userId?: string }>;
-    /** App-wide currency symbol — assigned by src/settings.js GLOBALS section. */
+    /** App-wide currency display symbol — assigned by src/settings.js GLOBALS
+     *  section. AUD renders as a plain '$' (the 'A' is dropped in-app). */
     currency: string;
+    /** Canonical selected currency code (e.g. 'A$' for AUD) — persisted to
+     *  localStorage / business_info.default_currency. Set by src/settings.js. */
+    currencyCode: string;
     /** App-wide units mode ('imperial' | 'metric') — set by src/settings.js. */
     units: string;
     /** Unit display format — set by src/units.js, managed by src/settings.js. */

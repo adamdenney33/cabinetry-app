@@ -526,8 +526,8 @@ function _applyBizInfoFromDB(rows) {
   // window.currency from the stale DB would wrongly flip a correct '$' PDF to
   // '£'.) Unlike unit_format, default_currency has no live sync to trust — this
   // makes the live link follow the in-app selection / PDF.
-  if (window.currency && b.default_currency !== window.currency) {
-    try { if (typeof _syncCurrencyToDB === 'function') _syncCurrencyToDB(window.currency); } catch(e) {}
+  if (window.currencyCode && b.default_currency !== window.currencyCode) {
+    try { if (typeof _syncCurrencyToDB === 'function') _syncCurrencyToDB(window.currencyCode); } catch(e) {}
   }
   // Persist back to localStorage so other reads pick it up (legacy compatibility)
   try {
