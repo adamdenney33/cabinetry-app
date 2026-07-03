@@ -374,12 +374,10 @@ function _cbSecBadge(v) {
   return `<span class="cb-rc-badge">${window.currency}${Math.round(v)}</span>`;
 }
 
-/** Header/footer live total (line subtotal incl. qty, with ×qty hint).
+/** Header/footer live total (line subtotal incl. qty).
  *  @param {any} line @param {any} calc */
 function _cbEdTotalHTML(line, calc) {
-  const qty = parseFloat(line.qty) || 1;
-  return `${window.currency}${Math.round(calc.lineSubtotal).toLocaleString()}` +
-    (qty > 1 ? `<span style="font-size:11px;font-weight:600;color:var(--muted)"> · ×${qty}</span>` : '');
+  return `${window.currency}${Math.round(calc.lineSubtotal).toLocaleString()}`;
 }
 
 // ── Render the active cabinet editor in sidebar ──
