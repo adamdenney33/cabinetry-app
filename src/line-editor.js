@@ -1246,6 +1246,10 @@ function _duplicateCabinet(idx) {
   copy.id = cbNextId++;
   copy.name = (copy.name || 'Cabinet') + ' (copy)';
   cbLines.splice(idx + 1, 0, copy);
+  // Keep the editing index pointing at the same cabinet when the copy lands
+  // above it (mirrors _cbConfirmDeleteLine's shift on delete) — the editor
+  // footer bakes cbEditingLineIdx into its action handlers at render time.
+  if (cbEditingLineIdx > idx) cbEditingLineIdx++;
   saveCBLines();
   _closePopup();
   renderCBPanel();

@@ -521,7 +521,7 @@ function renderCBEditor() {
         <div><label>W (${unitLabel()})</label><input type="text" inputmode="decimal" value="${dimDisplayFromMM(line.w)}" onchange="cbUpdateField('w',this.value)"></div>
         <div><label>H (${unitLabel()})</label><input type="text" inputmode="decimal" value="${dimDisplayFromMM(line.h)}" onchange="cbUpdateField('h',this.value)"></div>
         <div><label>D (${unitLabel()})</label><input type="text" inputmode="decimal" value="${dimDisplayFromMM(line.d)}" onchange="cbUpdateField('d',this.value)"></div>
-        <div><label>Qty</label><input type="number" min="1" value="${line.qty||1}" onchange="cbUpdateField('qty',this.value)"></div>
+        <div><label>Qty</label><input type="number" min="1" value="${line.qty||1}" onchange="cbUpdateField('qty',this.value);if(cbScratchpad)this.value=cbScratchpad.qty"></div>
       </div>
     </div>
 

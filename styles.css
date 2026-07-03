@@ -1328,13 +1328,14 @@ canvas { display: block; }
 .cb-li-table .cb-col-qty { width:80px; }
 .cb-li-table .cb-col-each { width:72px; text-align:right; color:var(--text2); }
 .cb-li-table .cb-col-total { width:78px; text-align:right; }
-.cb-li-table .cb-col-act { width:128px; text-align:right; }
+.cb-li-table .cb-col-act { width:150px; text-align:right; }
 .cb-li-name { display:block; font-weight:600; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .cb-li-sub { display:block; font-size:11px; color:var(--muted); font-weight:400; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .cb-li-sub-mobile { display:none; }
 .cb-li-actions { display:flex; gap:2px; justify-content:flex-end; align-items:center; visibility:hidden; }
 .cb-li-table tr:hover .cb-li-actions, .cb-li-table tr.editing .cb-li-actions { visibility:visible; }
 .cb-li-actions .proj-act-label { display:none; }
+.cb-li-actions ._cbct-btn, .cb-li-actions .cb-dup-btn, .cb-li-actions .cb-del-btn { flex-shrink:0; }
 .cb-li-add { display:block; width:100%; margin-top:8px; padding:9px 14px; border:1px dashed var(--border); border-radius:8px; background:none; color:var(--muted); font-size:12px; font-weight:600; cursor:pointer; text-align:center; font-family:inherit; transition:border-color .15s, color .15s, background .15s; }
 .cb-li-add:hover { border-color:var(--accent); color:var(--accent); background:var(--accent-dim); }
 .cb-results-footer { flex-shrink:0; border-top:2px solid var(--border); background:var(--surface); padding:10px 20px; display:none; align-items:center; gap:10px; flex-wrap:wrap; }
@@ -1351,6 +1352,7 @@ canvas { display: block; }
   .cb-li-table tbody td { display:block; border:none; padding:0; }
   .cb-li-table tbody tr:nth-child(even) td { background:none; }
   .cb-li-table tr.editing { background:var(--accent-dim); box-shadow:inset 3px 0 0 var(--accent); }
+  .cb-li-table tr.editing td:first-child { box-shadow:none; }
   .cb-li-table .cb-col-name { grid-area:name; }
   .cb-li-table .cb-col-size, .cb-li-table .cb-col-each { display:none; }
   .cb-li-table .cb-col-qty { grid-area:qty; width:auto; }
