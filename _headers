@@ -21,6 +21,15 @@
 /landing.css
   Cache-Control: public, max-age=31536000, immutable
 
+# Blog stylesheet: stable filename with a build-time ?v=<contenthash> stamp
+# (added by blogPlugin), same scheme as /landing.css above.
+/blog.css
+  Cache-Control: public, max-age=31536000, immutable
+
+# Wiki stylesheet: same ?v=<contenthash> scheme (stamped by build-wiki.mjs).
+/wiki.css
+  Cache-Control: public, max-age=31536000, immutable
+
 # HTML must always revalidate. This is the lynchpin: the browser re-reads the
 # document on every load, so it always sees the latest ?v= script URLs. Without
 # this, an aggressively cached HTML would keep pointing at old script URLs.
@@ -28,8 +37,22 @@
   Cache-Control: public, max-age=0, must-revalidate
 /os
   Cache-Control: public, max-age=0, must-revalidate
+  X-Robots-Tag: noindex
 /os/
   Cache-Control: public, max-age=0, must-revalidate
+  X-Robots-Tag: noindex
+# Anything under /os (auth-gated app) stays out of search indexes —
+# belt-and-braces with the noindex meta in the app shell.
+/os/*
+  X-Robots-Tag: noindex
+# Private customer quote documents: never index. Also adds the previously
+# missing must-revalidate rule (quote pages could go stale for 4h without it).
+/q
+  Cache-Control: public, max-age=0, must-revalidate
+  X-Robots-Tag: noindex
+/q.html
+  Cache-Control: public, max-age=0, must-revalidate
+  X-Robots-Tag: noindex
 /landing.html
   Cache-Control: public, max-age=0, must-revalidate
 /privacy
@@ -39,4 +62,32 @@
 /terms
   Cache-Control: public, max-age=0, must-revalidate
 /terms.html
+  Cache-Control: public, max-age=0, must-revalidate
+# Previously missing revalidate rules (parity with /privacy and /terms).
+/payment-fees
+  Cache-Control: public, max-age=0, must-revalidate
+/payment-fees.html
+  Cache-Control: public, max-age=0, must-revalidate
+
+# Blog pages revalidate like all other HTML.
+/blog
+  Cache-Control: public, max-age=0, must-revalidate
+/blog/*
+  Cache-Control: public, max-age=0, must-revalidate
+
+# Wiki guide pages revalidate like all other HTML.
+/wiki
+  Cache-Control: public, max-age=0, must-revalidate
+/wiki/*
+  Cache-Control: public, max-age=0, must-revalidate
+
+# SEO plumbing: short cache so robots/sitemap/llms changes propagate within an
+# hour of a deploy; 404 page revalidates like HTML.
+/robots.txt
+  Cache-Control: public, max-age=3600
+/sitemap.xml
+  Cache-Control: public, max-age=3600
+/llms.txt
+  Cache-Control: public, max-age=3600
+/404.html
   Cache-Control: public, max-age=0, must-revalidate

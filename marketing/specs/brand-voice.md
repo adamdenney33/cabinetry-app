@@ -4,7 +4,7 @@ A single-source-of-truth Claude can re-read for any future copy run. Keeps the v
 
 ## Founder story (use as origin in every long-form piece)
 
-Adam ran a 5-man bespoke cabinetry shop for 14 years. The business ran on a stack of spreadsheets and disconnected apps for pricing, quoting, invoicing, scheduling and cut lists.
+Adam ran his own bespoke cabinetry workshop for over 10 years (canonical bio claim — decision 2026-07-03; keep every byline, author schema and about-blurb on this exact framing). The business ran on a stack of spreadsheets and disconnected apps for pricing, quoting, invoicing, scheduling and cut lists.
 
 Over those years he built his own quoting system — and it changed the business. Quote turnaround dropped from **hours to minutes**. More importantly, it became simple enough to **hand off to an assistant**, freeing Adam up for the parts he actually loved: design, the workshop, talking to clients.
 

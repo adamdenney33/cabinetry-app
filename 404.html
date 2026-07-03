@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Page not found — ProCabinet.App</title>
+  <!-- 404s must never enter the index. NOTE: this file's presence in dist/
+       switches Cloudflare Pages from SPA fallback (unknown path -> 200 + home
+       page) to real 404 responses — that behaviour change is deliberate, it
+       closes the soft-404 / duplicate-content hole. Deleting this file would
+       silently bring the soft-404s back. -->
+  <meta name="robots" content="noindex" />
+  <link rel="icon" type="image/png" sizes="64x64" href="/brand/icons/procabinet-favicon-64.png" />
+  <style>
+    :root { --accent:#e8a838; --ink:#111111; --bg:#f7f7f7; --muted:#5b5b5b; --line:#e2e2e2; }
+    * { box-sizing:border-box; }
+    html { -webkit-text-size-adjust:100%; }
+    body {
+      margin:0; background:var(--bg); color:var(--ink);
+      font-family:-apple-system,BlinkMacSystemFont,"Inter","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+      line-height:1.65; font-size:16px;
+      display:flex; flex-direction:column; min-height:100vh;
+    }
+    header.bar { background:var(--ink); color:#fff; }
+    header.bar .inner { max-width:780px; margin:0 auto; padding:18px 24px; display:flex; align-items:center; justify-content:space-between; }
+    header.bar a.brand { color:#fff; text-decoration:none; font-weight:800; letter-spacing:-.5px; font-size:19px; }
+    header.bar nav a { color:#cfcfcf; text-decoration:none; font-size:13px; margin-left:18px; }
+    header.bar nav a:hover { color:var(--accent); }
+    main { max-width:780px; margin:0 auto; padding:64px 24px 80px; flex:1; }
+    .code { font-size:15px; font-weight:700; color:var(--accent); letter-spacing:2px; margin:0 0 8px; }
+    h1 { font-size:34px; font-weight:800; letter-spacing:-1px; margin:0 0 14px; }
+    p { color:#2a2a2a; max-width:52ch; }
+    .links { margin-top:28px; display:flex; flex-wrap:wrap; gap:12px; }
+    .links a {
+      display:inline-block; padding:10px 18px; border-radius:8px; text-decoration:none;
+      font-weight:600; font-size:14.5px; border:1px solid var(--line); color:var(--ink); background:#fff;
+    }
+    .links a.primary { background:var(--ink); border-color:var(--ink); color:#fff; }
+    .links a.primary:hover { background:#000; }
+    .links a:hover { border-color:var(--accent); }
+    footer.foot { border-top:1px solid var(--line); }
+    footer.foot .inner { max-width:780px; margin:0 auto; padding:26px 24px; display:flex; flex-wrap:wrap; gap:16px; justify-content:space-between; color:var(--muted); font-size:13px; }
+    footer.foot a { color:var(--muted); text-decoration:none; margin-right:16px; }
+    footer.foot a:hover { color:var(--ink); }
+    .accent { color:var(--accent); }
+  </style>
+</head>
+<body>
+  <header class="bar">
+    <div class="inner">
+      <a class="brand" href="/">ProCabinet<span class="accent">.App</span></a>
+      <nav>
+        <a href="/blog">Blog</a>
+        <a href="/os">Open the app</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <p class="code">404</p>
+    <h1>That page isn't in the workshop.</h1>
+    <p>The link you followed doesn't exist — it may have been mistyped, or the
+      page has moved. Nothing's been lost on your account.</p>
+    <div class="links">
+      <a class="primary" href="/">Back to the home page</a>
+      <a href="/os">Open the app</a>
+      <a href="mailto:adam@procabinet.app">Email support</a>
+    </div>
+  </main>
+
+  <footer class="foot">
+    <div class="inner">
+      <span>© 2026 ProCabinet.App</span>
+      <nav>
+        <a href="/privacy">Privacy</a>
+        <a href="/terms">Terms</a>
+        <a href="/blog">Blog</a>
+      </nav>
+    </div>
+  </footer>
+</body>
+</html>

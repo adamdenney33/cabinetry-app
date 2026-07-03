@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Your quote</title>
+<!-- Private customer quote documents — must never be indexed. _headers adds a
+     matching X-Robots-Tag for /q and /q.html. -->
+<meta name="robots" content="noindex">
 <link rel="icon" type="image/png" sizes="64x64" href="/brand/icons/procabinet-favicon-64.png">
 <!-- The quote data + payment status load from the Supabase origin straight
      away — open the connection while the page assets download. -->

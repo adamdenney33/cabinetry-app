@@ -24,6 +24,34 @@ Companion docs: `SPEC.md` (refactor history), `SCHEMA.md` (DB schema),
 
 ## Active Work
 
+### Public wiki + workflow clips (2026-07-03) ⬜ in progress
+
+**Goal.** Public how-to wiki at `/wiki` — one guide page per main function, each
+with a short non-interactive screen-recording clip of the real workflow
+(walkthrough-style, watch-only) + numbered steps. SEO-facing (sitemap/robots/
+JSON-LD, currently absent site-wide) + an in-app Help-menu entry.
+Full plan: `~/.claude/plans/i-want-to-create-kind-bachman.md`.
+
+**Key constraints.** Video binaries stay out of git (existing .gitignore
+policy) → clips live in a new public Supabase Storage bucket `wiki-clips`;
+only the text manifest `wiki/clips.json` is committed. Pages render without
+clips, so the wiki ships independently of recording.
+
+**Sub-steps.**
+- ⬜ Phase 1 — pages: `wiki/guides.mjs` (9 guides, copy seeded from
+  walkthrough) + `wiki/wiki.css` + `scripts/build-wiki.mjs` generator
+  (pages + sitemap.xml + robots.txt) + `buildWikiPlugin` in vite.config.mjs +
+  `_headers` entries + landing "Guides" links + Help-menu "Guides & Videos"
+  (`_openGuides()` in src/help.js, per-tab deep link).
+- ⬜ Phase 2 — recording pipeline: dedicated `+wiki@` account (auto-created),
+  `scripts/reset-wiki-account.mjs` (wipe + seed from seed_demo.sql shapes +
+  onboarding suppression + permanent Pro grant), Playwright recorder with
+  synthetic cursor (`wiki/recordings/_driver.mjs` + 9 drive scripts),
+  ffmpeg post-process via Remotion's bundled binaries (webm → faststart mp4
+  + poster), npm scripts `wiki:reset/record/encode/publish/clips`.
+- ⬜ Phase 3 — publish: `scripts/publish-wiki-clips.mjs` (bucket upload +
+  manifest merge), record all 9 clips, rebuild + verify.
+
 ### Meta CAPI — lift signup + purchase match quality (2026-06-25) ✅ Built + typechecked — ⬜ deploy (3 fns) + verify in Events Manager
 
 **Goal.** Close the two Events Manager recommendations on the Signups pixel
@@ -1881,11 +1909,11 @@ analytics widgets) available to all users.
   ⬜ embed on the landing page (same gap as the funnel backlog's
   "pre-signup product proof" item).
 
-- **C.4 — SEO blog posts (3 launch posts)**
-  - "Best cut list software 2026"
-  - "How to price cabinet jobs"
-  - "Reduce plywood waste with smart nesting"
-  - Decide hosting: separate `/blog` route, Notion, or Substack
+- ✅ **C.4 — SEO blog posts** (2026-07-03 — expanded into the full SEO/AEO build; see SPEC.md § 13)
+  - ✅ Hosting decided: `/blog` on procabinet.app — markdown in `content/blog/` → static HTML at build time (`scripts/blog.mjs` + `blogPlugin` in vite.config.mjs)
+  - ✅ FIVE launch posts (the 3 planned + 2): best cut list software · how to price cabinet jobs · reduce plywood waste · how I stopped underpricing my work · software vs spreadsheets
+  - ✅ Technical SEO/AEO alongside: robots.txt, generated sitemap.xml, llms.txt, 404.html (kills the soft-404 fallback), canonicals + absolute OG everywhere, Organization/WebSite/SoftwareApplication JSON-LD, noindex on `/os` + `/q`
+  - ⬜ Manual dashboard steps remain (Cloudflare AI-crawler unblock + managed-robots.txt off, GSC, Bing) — ordered checklist in `docs/SEO.md`
 
 - **C.5 — Analytics + Search Console (PostHog + Cloudflare Web Analytics)**
   - ✅ PostHog Cloud account live — events, session replays, and funnel reviews in routine prod use (2026-06-10 growth review; 2026-06-11 walkthrough diagnosis via replay + autocapture)
@@ -1898,7 +1926,7 @@ analytics widgets) available to all users.
     `library` / `type` / `source` properties so funnels stay flexible.
   - ✅ Build core funnels in PostHog — acquisition funnel "Landing → App → Signup → Pro" saved + pinned to dashboard 683581 (insight `e1bs6UMd`, 2026-05-31); added `pro_subscription_started` (`src/stripe.js`, on Stripe-success return) so it ends on a real paid conversion, not `upgrade_clicked` intent. See SPEC.md § 13 (2026-05-31). ⬜ remaining: activation funnel (signup → library item created → PDF created); localhost test-account filter (manual — MCP can't write it).
   - ⬜ Enable Cloudflare Web Analytics for marketing-site numbers (free, auto on Pages)
-  - ⬜ Verify Google Search Console + submit sitemap
+  - ⬜ Verify Google Search Console + submit sitemap (sitemap now generated at build — step-by-step in `docs/SEO.md`)
 
 - **C.6 — Beta outreach (10 cabinet makers)**
   - List candidates from existing network + targeted forums
@@ -2123,11 +2151,11 @@ or before specific features that touch these areas.
   - Drop the load-time hydration map in `app.js loadAllData`
   - Drop the intersection type in `stock.js`
 
-- **R.4 — Relocate stragglers to conceptual homes**
-  - `clients` array declaration → `clients.js` (still in `stock.js:230`)
+- ✅ **R.4 — Relocate stragglers to conceptual homes** — done 2026-07-03
+  - ✅ `clients` array declaration → `clients.js` (was `stock.js:279`; moved with
+    header/TDZ audit — see SPEC.md § 13)
   - ~~`projects` array~~ / ~~`_clProjectCache`~~ — moot: removed with the
-    Projects entity (F5/F6, 2026-05-13)
-  - Cosmetic; do alongside R.2 if convenient
+    Projects entity (F5/F6, 2026-05-13); `projects` stays in `stock.js` (legacy)
 
 - ✅ **R.5 — Retire the deprecated `catalog_items` table** — done 2026-06-24
   - **Context.** `stock_items` is the single source of truth for

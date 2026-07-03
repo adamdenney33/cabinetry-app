@@ -1,0 +1,34 @@
+# ProCabinet.App
+
+> The workshop OS for cabinet makers. Set your rates once, then quote, cut,
+> schedule and bill from one place — cabinet quoting, cut lists with sheet
+> nesting and DXF export, cabinet and stock libraries, job scheduling, and
+> live customer quote links with e-sign and deposit payments. Web app, no
+> install. Free to start.
+
+Key facts:
+
+- Built by Adam Denney, a cabinet maker who ran his own cabinetry workshop
+  for over 10 years.
+- Pricing (USD, checkout bills in your local currency): Free $0 forever ·
+  Pro Monthly $35/mo list (launch price $25/mo for the first 6 months) ·
+  Pro Annual $299/yr list (launch price $180 billed for year one) ·
+  Founder Lifetime $299 one-off, only 50 seats ever sold.
+- Every account starts with a 14-day Pro trial, no card required.
+- The free plan keeps all core functions: unlimited stock items and 5 saved
+  items per other library (clients, cabinets, quotes, orders, cut lists).
+- The cut list optimiser respects grain direction and kerf, nests parts for
+  minimum sheet waste, and exports a standard DXF that opens in any CAM
+  software (Vectric, Fusion 360, AlphaCAM, Cabinet Vision).
+- Works in both metric and imperial.
+- Customers view, adjust options, sign and pay a deposit on quotes through
+  one live link — no account, portal or app download needed.
+- Integrates with QuickBooks Online and Xero (invoice push) and Stripe
+  (customer payments).
+
+## Pages
+
+- [Home — features, pricing, FAQ](https://procabinet.app/)
+- [How payment fees work](https://procabinet.app/payment-fees)
+- [Privacy policy](https://procabinet.app/privacy)
+- [Terms of service](https://procabinet.app/terms)

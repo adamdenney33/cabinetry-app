@@ -1,0 +1,76 @@
+/* Blog pages (/blog and /blog/<slug>/) — same visual language as the legal
+   pages (privacy.html et al.): dark header bar, 780px column, amber accent.
+   Served with a build-time ?v=<contenthash> stamp (see blogPlugin) and an
+   immutable cache header (_headers), like /landing.css. */
+
+:root { --accent:#e8a838; --ink:#111111; --bg:#f7f7f7; --muted:#5b5b5b; --line:#e2e2e2; }
+* { box-sizing:border-box; }
+html { -webkit-text-size-adjust:100%; }
+body {
+  margin:0; background:var(--bg); color:var(--ink);
+  font-family:-apple-system,BlinkMacSystemFont,"Inter","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  line-height:1.65; font-size:16px;
+}
+header.bar { background:var(--ink); color:#fff; }
+header.bar .inner { max-width:780px; margin:0 auto; padding:18px 24px; display:flex; align-items:center; justify-content:space-between; }
+header.bar a.brand { color:#fff; text-decoration:none; font-weight:800; letter-spacing:-.5px; font-size:19px; }
+header.bar nav a { color:#cfcfcf; text-decoration:none; font-size:13px; margin-left:18px; }
+header.bar nav a:hover { color:var(--accent); }
+main { max-width:780px; margin:0 auto; padding:44px 24px 80px; }
+h1 { font-size:34px; font-weight:800; letter-spacing:-1px; margin:0 0 14px; }
+h2 { font-size:22px; font-weight:700; letter-spacing:-.3px; margin:40px 0 10px; }
+h3 { font-size:17px; font-weight:700; margin:24px 0 6px; }
+p, li { color:#2a2a2a; }
+a { color:#9a6c10; }
+ul, ol { padding-left:22px; }
+li { margin:5px 0; }
+.accent { color:var(--accent); }
+.lead { font-size:18px; color:#333; }
+.crumbs { margin:0 0 18px; font-size:13.5px; }
+.crumbs a { color:var(--muted); text-decoration:none; }
+.crumbs a:hover { color:var(--ink); }
+
+/* Author byline box — the E-E-A-T anchor on every post. */
+.byline { border-left:3px solid var(--accent); padding:2px 0 2px 14px; margin:0 0 30px; }
+.byline p { margin:0; }
+.byline-author { font-size:14.5px; color:#2a2a2a; }
+.byline-dates { font-size:13px; color:var(--muted); margin-top:2px; }
+
+/* Tables (comparisons, worked examples) — same treatment as the legal pages. */
+table { width:100%; border-collapse:collapse; margin:16px 0; font-size:14.5px; }
+th, td { text-align:left; padding:9px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
+th { color:var(--muted); font-weight:700; }
+article img { max-width:100%; height:auto; border-radius:8px; }
+blockquote { margin:16px 0; padding:2px 0 2px 14px; border-left:3px solid var(--line); color:var(--muted); }
+code { background:#efefef; padding:1px 5px; border-radius:4px; font-size:14px; }
+
+/* Single CTA block near the end of each post. */
+.cta { background:var(--ink); color:#fff; border-radius:12px; padding:22px 24px; margin:40px 0 8px; }
+.cta p { color:#e8e8e8; margin:0 0 14px; }
+.cta .btn {
+  display:inline-block; background:var(--accent); color:var(--ink); text-decoration:none;
+  font-weight:700; font-size:15px; padding:10px 22px; border-radius:8px;
+}
+.cta .btn:hover { filter:brightness(1.06); }
+
+.related { margin-top:36px; padding-top:8px; border-top:1px solid var(--line); }
+.related h2 { font-size:17px; margin:18px 0 8px; }
+.related ul { padding-left:0; list-style:none; }
+.related li { margin:7px 0; }
+
+/* Blog index. */
+.post-list { list-style:none; padding:0; margin:34px 0 0; }
+.post-item { margin:0 0 8px; }
+.post-item a {
+  display:block; text-decoration:none; color:inherit; background:#fff;
+  border:1px solid var(--line); border-radius:12px; padding:20px 22px; transition:border-color .15s;
+}
+.post-item a:hover { border-color:var(--accent); }
+.post-item h2 { font-size:19px; margin:0 0 4px; }
+.post-item p { margin:0; font-size:14.5px; }
+.post-item .post-date { color:var(--muted); font-size:13px; margin:0 0 6px; }
+
+footer.foot { border-top:1px solid var(--line); }
+footer.foot .inner { max-width:780px; margin:0 auto; padding:26px 24px; display:flex; flex-wrap:wrap; gap:16px; justify-content:space-between; color:var(--muted); font-size:13px; }
+footer.foot a { color:var(--muted); text-decoration:none; margin-right:16px; }
+footer.foot a:hover { color:var(--ink); }

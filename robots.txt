@@ -1,0 +1,20 @@
+# procabinet.app — served verbatim from the repo (copied to dist/ by
+# seoFilesPlugin in vite.config.mjs).
+#
+# Cloudflare's managed robots.txt / Content Signals feature must stay OFF for
+# this zone (see docs/SEO.md): if this file ever appears live with a prepended
+# Cloudflare block, that toggle got re-enabled.
+#
+# Policy: ALL crawlers welcome, including AI answer engines and AI training
+# bots (decision 2026-07-03 — the public pages are marketing copy; the app
+# itself is behind auth).
+#
+# /os and /q are deliberately NOT disallowed: crawlers must be able to fetch
+# them to see their noindex meta tag / X-Robots-Tag header. A Disallow here
+# would leave leaked quote URLs indexable as URL-only entries.
+
+User-agent: *
+Allow: /
+Content-Signal: search=yes, ai-input=yes, ai-train=yes
+
+Sitemap: https://procabinet.app/sitemap.xml

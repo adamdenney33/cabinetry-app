@@ -134,12 +134,19 @@
   <title>ProCabinet.App — Quote custom cabinetry in minutes, not hours</title>
   <meta name="description" content="The workshop OS for cabinet makers. Set your rates once, then quote, cut, schedule and bill from one place. Free to start." />
   <meta name="theme-color" content="#111111" />
+  <!-- Self-canonical: also collapses the /landing.html back-compat alias
+       (copyLandingPlugin writes the same bytes to both) onto /. -->
+  <link rel="canonical" href="https://procabinet.app/" />
 
-  <!-- Open Graph / social -->
+  <!-- Open Graph / social (og:image/og:url must be absolute — scrapers don't
+       resolve relative URLs) -->
   <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="ProCabinet.App" />
+  <meta property="og:url" content="https://procabinet.app/" />
   <meta property="og:title" content="ProCabinet.App — Quote custom cabinetry in minutes, not hours" />
   <meta property="og:description" content="The workshop OS for cabinet makers. Quote, cut, schedule and bill from one place." />
-  <meta property="og:image" content="/brand/screenshots/01-dashboard.png" />
+  <meta property="og:image" content="https://procabinet.app/brand/screenshots/01-dashboard.png" />
+  <meta property="og:image:alt" content="ProCabinet dashboard — quotes, cut lists and production at a glance" />
   <meta name="twitter:card" content="summary_large_image" />
 
   <link rel="icon" type="image/png" sizes="64x64" href="/brand/icons/procabinet-favicon-64.png" />
@@ -183,6 +190,78 @@
         "@type": "Question",
         "name": "Do my customers need an account to view quotes?",
         "acceptedAnswer": { "@type": "Answer", "text": "No. You send one live link per job — your customer opens it in their browser to view the quote, tick optional items in or out, sign off and pay a deposit. No portal, no login, no app to download." }
+      }
+    ]
+  }
+  </script>
+  <!-- Entity structured data: who publishes this site and what the product is.
+       Offer prices = the CURRENT launch prices shown on the pricing cards (list
+       prices live in the descriptions, mirroring the visible copy). When launch
+       pricing ends, update these offers in the SAME commit as the pricing
+       cards. No aggregateRating — none exists, never fabricate one. -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Organization",
+        "@id": "https://procabinet.app/#org",
+        "name": "ProCabinet.App",
+        "url": "https://procabinet.app/",
+        "logo": "https://procabinet.app/brand/logo/logo-colour-on-dark-square.png",
+        "email": "adam@procabinet.app",
+        "founder": {
+          "@type": "Person",
+          "name": "Adam Denney",
+          "description": "Cabinet maker and founder of ProCabinet.App. Ran his own cabinetry workshop for over 10 years."
+        }
+      },
+      {
+        "@type": "WebSite",
+        "@id": "https://procabinet.app/#website",
+        "url": "https://procabinet.app/",
+        "name": "ProCabinet.App",
+        "publisher": { "@id": "https://procabinet.app/#org" }
+      },
+      {
+        "@type": "SoftwareApplication",
+        "@id": "https://procabinet.app/#app",
+        "name": "ProCabinet.App",
+        "applicationCategory": "BusinessApplication",
+        "operatingSystem": "Web browser",
+        "url": "https://procabinet.app/",
+        "description": "The workshop OS for cabinet makers: cabinet quoting, cut lists with sheet nesting and DXF export, cabinet and stock libraries, job scheduling, and live customer quote links with e-sign and deposit payments.",
+        "publisher": { "@id": "https://procabinet.app/#org" },
+        "offers": [
+          {
+            "@type": "Offer",
+            "name": "Free",
+            "price": "0",
+            "priceCurrency": "USD",
+            "description": "Free forever, no card needed. Starts with 14 days of Pro; unlimited stock items; 5 saved items per other library after the trial."
+          },
+          {
+            "@type": "Offer",
+            "name": "Pro Monthly",
+            "price": "25.00",
+            "priceCurrency": "USD",
+            "description": "Launch price $25/mo for the first 6 months, then $35/mo list price."
+          },
+          {
+            "@type": "Offer",
+            "name": "Pro Annual",
+            "price": "180.00",
+            "priceCurrency": "USD",
+            "description": "Launch price: $180 billed for year one, then $299/yr list price."
+          },
+          {
+            "@type": "Offer",
+            "name": "Founder Lifetime",
+            "price": "299.00",
+            "priceCurrency": "USD",
+            "description": "One-off payment, lifetime access. Only 50 seats ever sold."
+          }
+        ]
       }
     ]
   }
@@ -765,6 +844,8 @@
         <a href="#features">Features</a>
         <a href="#pricing">Pricing</a>
         <a href="#faq">FAQ</a>
+        <a href="/wiki/">Guides</a>
+        <a href="/blog">Blog</a>
         <a href="/os">Open the app</a>
         <a href="/privacy">Privacy</a>
         <a href="/terms">Terms</a>

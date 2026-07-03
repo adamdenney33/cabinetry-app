@@ -4,6 +4,15 @@ import { dirname, join } from 'node:path';
 import { createHash } from 'node:crypto';
 import { transformSync } from 'esbuild';
 import { sentryVitePlugin } from '@sentry/vite-plugin';
+// Static imports (not dynamic) on purpose: Vite bundles the config + all its
+// imports into a temp file and auto-restarts the dev server whenever any of
+// them change, so blog/wiki template or guide-copy edits stay fresh in dev.
+// Dynamic `import('...?t=')` cache-busting does NOT work here — non-literal
+// specifiers can't resolve from inside the bundled config ("Module not found
+// in bundle"). Blog .md content is re-read from disk per request regardless.
+import * as blog from './scripts/blog.mjs';
+import * as wiki from './scripts/build-wiki.mjs';
+import { GUIDES } from './wiki/guides.mjs';
 
 // Phase A: Vite is currently a thin shell around the existing vanilla codebase.
 // index.html still uses classic <script src="src/*.js"> tags; Vite serves them
@@ -170,6 +179,153 @@ function versionClassicScriptsPlugin() {
   };
 }
 
+// Blog: content/blog/*.md → static pages at /blog/<slug>/ plus the /blog
+// index. Markdown is parsed at build time (marked — dev dependency, nothing
+// ships to the client); the frontmatter loader + HTML templates live in
+// scripts/blog.mjs so seoFilesPlugin can read the SAME post metadata (single
+// source of truth — see loadPosts()). Pages are written straight into dist/
+// during closeBundle — like landing.html they are NOT Vite build inputs, so
+// analytics IDs are injected here from the build env, not import.meta.env.
+// In dev, configureServer middleware renders the same templates per request,
+// so /blog and /blog/<slug>/ preview live under `npm run dev` — edit the .md,
+// refresh the browser, done (.md files are re-read per request; template
+// edits restart the server via config-dependency watching — see the static
+// imports at the top). Dev renders with an EMPTY env so analytics no-op and
+// dev traffic stays out of prod numbers, mirroring how copyLandingPlugin
+// simply doesn't run in dev.
+/** @param {Record<string, string>} env */
+function blogPlugin(env) {
+  return {
+    name: 'blog',
+    /** @param {import('vite').ViteDevServer} server */
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        const m = (req.url || '').split('?')[0].match(/^\/blog(?:\/([\w-]+)\/?)?$/);
+        if (!m) return next();
+        try {
+          const posts = blog.loadPosts();
+          const post = m[1] ? posts.find((p) => p.slug === m[1]) : null;
+          if (m[1] && !post) return next(); // unknown slug → Vite's own 404
+          res.setHeader('Content-Type', 'text/html');
+          res.end(post ? blog.renderPost(post, posts, {}, '') : blog.renderIndex(posts, {}, ''));
+        } catch (e) {
+          next(e);
+        }
+      });
+    },
+    closeBundle() {
+      // blog.css first — its content hash stamps every page's <link> (?v=…),
+      // same scheme as versionClassicScriptsPlugin; /blog.css is immutable in
+      // _headers, so the stamp is what busts it.
+      copyFileSync('blog.css', join('dist', 'blog.css'));
+      const ver = createHash('sha256').update(readFileSync('blog.css')).digest('hex').slice(0, 8);
+      const posts = blog.loadPosts();
+      for (const post of posts) {
+        mkdirSync(join('dist', 'blog', post.slug), { recursive: true });
+        writeFileSync(join('dist', 'blog', post.slug, 'index.html'), blog.renderPost(post, posts, env, ver));
+      }
+      mkdirSync(join('dist', 'blog'), { recursive: true });
+      writeFileSync(join('dist', 'blog', 'index.html'), blog.renderIndex(posts, env, ver));
+    },
+  };
+}
+
+// Wiki: wiki/guides.mjs → static how-to pages at /wiki/<slug> plus the /wiki/
+// index (scripts/build-wiki.mjs owns the templates; workflow clips referenced
+// from wiki/clips.json live in the public Supabase Storage bucket — video
+// binaries stay out of git). Same shape as blogPlugin: pages written straight
+// into dist/ during closeBundle with analytics IDs from the build env, dev
+// middleware renders per request with an EMPTY env (guide-copy edits restart
+// the server via config-dependency watching; clips.json is re-read per
+// request). seoFilesPlugin appends the wiki URLs to sitemap.xml and llms.txt
+// from the same GUIDES source.
+/** @param {Record<string, string>} env */
+function buildWikiPlugin(env) {
+  return {
+    name: 'build-wiki',
+    /** @param {import('vite').ViteDevServer} server */
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        const url = req.url || '';
+        if (!/^\/wiki(\/|\.css|$)/.test(url.split('?')[0] || '')) return next();
+        try {
+          const hit = wiki.handleWikiRequest(url);
+          if (!hit) return next(); // unknown slug → Vite's own 404
+          res.setHeader('Content-Type', `${hit.type}; charset=utf-8`);
+          res.end(hit.body);
+        } catch (e) {
+          next(e);
+        }
+      });
+    },
+    closeBundle() {
+      wiki.buildWiki({ outDir: 'dist', env });
+    },
+  };
+}
+
+// SEO/AEO plumbing: copies the hand-written robots.txt and 404.html into
+// dist/ (publicDir is false, so nothing ships implicitly), writes llms.txt
+// with a Blog section appended from the live post list, then generates
+// dist/sitemap.xml. The sitemap lists the public marketing pages by their
+// canonical extensionless URLs plus every blog page from loadPosts() — the
+// same source of truth blogPlugin renders from, so pages and sitemap can
+// never disagree. /os, /q and /landing.html are noindexed and must NEVER
+// appear here (GSC would flag "submitted URL marked noindex").
+// NOTE: the mere presence of dist/404.html switches Cloudflare Pages from SPA
+// fallback (unknown path → 200 + home page) to real 404s — deliberate, it
+// closes the soft-404/duplicate-content hole.
+function seoFilesPlugin() {
+  const ORIGIN = 'https://procabinet.app';
+  return {
+    name: 'seo-files',
+    closeBundle() {
+      for (const f of ['robots.txt', '404.html']) {
+        if (existsSync(f)) copyFileSync(f, join('dist', f));
+      }
+      const posts = blog.loadPosts();
+      // Wiki guides (GUIDES import) share the sitemap/llms.txt treatment —
+      // same source of truth buildWikiPlugin renders from (wiki/guides.mjs).
+      // llms.txt: hand-written product facts + generated guide/post lists.
+      if (existsSync('llms.txt')) {
+        let llms = readFileSync('llms.txt', 'utf8');
+        if (GUIDES.length) {
+          llms += '\n## Guides\n\n'
+            + GUIDES.map((g) => `- [${g.title}](${ORIGIN}/wiki/${g.slug}) — ${g.metaDescription}`).join('\n')
+            + '\n';
+        }
+        if (posts.length) {
+          llms += '\n## Blog\n\n'
+            + posts.map((p) => `- [${p.title}](${ORIGIN}${p.url}) — ${p.description}`).join('\n')
+            + '\n';
+        }
+        writeFileSync(join('dist', 'llms.txt'), llms);
+      }
+      // Sitemap: static marketing pages (no lastmod — file mtimes lie in CI)
+      // + wiki guides + blog pages with real lastmod from frontmatter.
+      const entries = ['/', '/privacy', '/terms', '/payment-fees']
+        .map((u) => `  <url><loc>${ORIGIN}${u}</loc></url>`);
+      if (GUIDES.length) {
+        entries.push(`  <url><loc>${ORIGIN}/wiki/</loc></url>`);
+        for (const g of GUIDES) {
+          entries.push(`  <url><loc>${ORIGIN}/wiki/${g.slug}</loc></url>`);
+        }
+      }
+      if (posts.length) {
+        entries.push(`  <url><loc>${ORIGIN}/blog/</loc></url>`);
+        for (const p of posts) {
+          entries.push(`  <url><loc>${ORIGIN}${p.url}</loc><lastmod>${p.updated}</lastmod></url>`);
+        }
+      }
+      const xml = '<?xml version="1.0" encoding="UTF-8"?>\n'
+        + '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+        + entries.join('\n')
+        + '\n</urlset>\n';
+      writeFileSync(join('dist', 'sitemap.xml'), xml);
+    },
+  };
+}
+
 // Cloudflare Pages reads dist/_headers for per-path cache rules. publicDir is
 // false, so the root _headers file must be copied into the build output
 // explicitly. It marks the hashed /assets and the ?v=-stamped /src as immutable
@@ -220,6 +376,12 @@ export default defineConfig(({ mode }) => {
     // Must run after copyLandingPlugin — it needs the app HTML in its final
     // home at dist/os/index.html before stamping the /src script URLs.
     versionClassicScriptsPlugin(),
+    // Blog + wiki pages first, then the SEO files: seoFilesPlugin reads the
+    // same loadPosts()/GUIDES sources, but keeping the order pages → sitemap
+    // is tidy.
+    blogPlugin(env),
+    buildWikiPlugin(env),
+    seoFilesPlugin(),
     copyHeadersPlugin(),
     // Source-map upload + release/commit grouping. Needs build.sourcemap (set
     // above). org/project/authToken come from the build env — see
