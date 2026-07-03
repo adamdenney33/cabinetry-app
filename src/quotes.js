@@ -436,7 +436,12 @@ async function convertQuoteToOrder(id) {
       }
     } catch(e) { console.warn('[convertQuoteToOrder] copy lines failed:', (/** @type {any} */ (e)).message || e); }
   }
-  orders.unshift(data);
+  // The realtime channel (_subscribeLiveStatus) can deliver this row's INSERT
+  // and unshift it while the line-copy above is still awaiting — guard so the
+  // new order doesn't appear twice in the list until the next reload.
+  const _rtCopy = orders.find(o => o.id === data.id);
+  if (_rtCopy) Object.assign(_rtCopy, data);
+  else orders.unshift(data);
   /** @type {HTMLElement} */ (_byId('orders-badge')).textContent = String(orders.filter(o => o.status !== 'complete').length);
   _toast(`Order created for ${quoteClient(q)} — ${quoteProject(q)}`, 'success');
   renderQuoteMain();
