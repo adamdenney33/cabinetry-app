@@ -24,7 +24,7 @@ Companion docs: `SPEC.md` (refactor history), `SCHEMA.md` (DB schema),
 
 ## Active Work
 
-### Public wiki + workflow clips (2026-07-03) ⬜ in progress
+### Public wiki + workflow clips (2026-07-03) ✅ Built + verified — ⬜ commit/push (tree shared with blog work)
 
 **Goal.** Public how-to wiki at `/wiki` — one guide page per main function, each
 with a short non-interactive screen-recording clip of the real workflow
@@ -38,19 +38,22 @@ only the text manifest `wiki/clips.json` is committed. Pages render without
 clips, so the wiki ships independently of recording.
 
 **Sub-steps.**
-- ⬜ Phase 1 — pages: `wiki/guides.mjs` (9 guides, copy seeded from
+- ✅ Phase 1 — pages: `wiki/guides.mjs` (9 guides, copy seeded from
   walkthrough) + `wiki/wiki.css` + `scripts/build-wiki.mjs` generator
   (pages + sitemap.xml + robots.txt) + `buildWikiPlugin` in vite.config.mjs +
   `_headers` entries + landing "Guides" links + Help-menu "Guides & Videos"
   (`_openGuides()` in src/help.js, per-tab deep link).
-- ⬜ Phase 2 — recording pipeline: dedicated `+wiki@` account (auto-created),
+- ✅ Phase 2 — recording pipeline: dedicated `+wiki@` account (auto-created),
   `scripts/reset-wiki-account.mjs` (wipe + seed from seed_demo.sql shapes +
   onboarding suppression + permanent Pro grant), Playwright recorder with
   synthetic cursor (`wiki/recordings/_driver.mjs` + 9 drive scripts),
   ffmpeg post-process via Remotion's bundled binaries (webm → faststart mp4
   + poster), npm scripts `wiki:reset/record/encode/publish/clips`.
-- ⬜ Phase 3 — publish: `scripts/publish-wiki-clips.mjs` (bucket upload +
-  manifest merge), record all 9 clips, rebuild + verify.
+- ✅ Phase 3 — publish: `scripts/publish-wiki-clips.mjs` (bucket upload +
+  manifest merge), all 9 clips recorded/encoded/published + pages verified
+  with embedded video (Range 206 from the bucket confirmed). Storage gotcha:
+  user-JWT uploads need a SELECT policy too (API uses INSERT … RETURNING) —
+  see SPEC.md § 13 2026-07-03.
 
 ### Meta CAPI — lift signup + purchase match quality (2026-06-25) ✅ Built + typechecked — ⬜ deploy (3 fns) + verify in Events Manager
 

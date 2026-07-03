@@ -35,6 +35,30 @@ function _openUserGuide() {
   }
 }
 
+// "Guides & Videos" opens the public wiki (procabinet.app/wiki) in a new tab,
+// deep-linked to the guide for the active tab when one exists. The tab is read
+// the same way _helpContext reads it (.nav-tab.active title). The slug map
+// duplicates wiki/guides.mjs (appSection ↔ slug) — this is a classic script
+// and cannot import the module; keep both sides in sync.
+/** @type {Record<string, string>} */
+const _WIKI_GUIDE_BY_TAB = {
+  'Dashboard': 'dashboard-overview',
+  'Cut List': 'optimised-cut-list',
+  'Stock': 'stock-and-materials',
+  'Cabinet': 'build-and-price-a-cabinet',
+  'Quotes': 'create-and-send-a-quote',
+  'Orders': 'convert-a-quote-to-an-order',
+  'Clients': 'manage-clients',
+  'Schedule': 'schedule-your-workshop',
+};
+
+function _openGuides() {
+  document.getElementById('help-dropdown')?.classList.remove('open');
+  const tab = document.querySelector('.nav-tab.active')?.getAttribute('title') || '';
+  const slug = _WIKI_GUIDE_BY_TAB[tab];
+  window.open(slug ? `/wiki/${slug}` : '/wiki/', '_blank', 'noopener');
+}
+
 function _openBugReport() {
   document.getElementById('help-dropdown')?.classList.remove('open');
   const body = `Steps to reproduce:\n1.\n2.\n3.\n\nExpected:\n\nActual:\n${_helpContext()}`;

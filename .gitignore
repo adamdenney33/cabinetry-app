@@ -50,3 +50,8 @@ out/
 
 # Supabase local temp
 supabase/.temp/
+
+# Wiki workflow-clip recordings (webm/mp4/posters — published to the Supabase
+# wiki-clips bucket by scripts/publish-wiki-clips.mjs; only wiki/clips.json is
+# committed)
+wiki/recordings/out/
