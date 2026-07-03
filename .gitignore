@@ -51,6 +51,16 @@ out/
 # Supabase local temp
 supabase/.temp/
 
+# Local helper app (machine-specific Remotion Studio launcher; not part of the build)
+/Edit a Reel.app/
+
+# Collected reels for manual upload (copies of gitignored renders)
+/Reels to upload/
+
+# Loom source copied into the Remotion public dir (large, regenerate via cp)
+remotion-loom/public/*.mp4
+Looms/
+
 # Wiki workflow-clip recordings (webm/mp4/posters — published to the Supabase
 # wiki-clips bucket by scripts/publish-wiki-clips.mjs; only wiki/clips.json is
 # committed)
