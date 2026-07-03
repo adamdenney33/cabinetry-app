@@ -1018,7 +1018,7 @@ async function cbCreateQuoteFromDraft() {
   };
   const { data, error } = await _db('quotes').insert(insertBody).select().single();
   if (error || !data) { _toast('Could not create quote: ' + (error?.message || ''), 'error'); return; }
-  quotes.unshift(data);
+  _mergeLocalRow(quotes, data);
 
   /** @type {any[]} */
   const lineRows = cbLines.map((l, i) => _cbLineToRow(l, i, data.id));
@@ -1104,7 +1104,7 @@ async function cbCreateOrderFromDraft() {
   const { data, error } = await _dbInsertSafe('orders', insertBody);
   if (error || !data) { _toast('Could not create order: ' + (error?.message || ''), 'error'); return; }
   if (typeof _track === 'function') _track('library_item_created', { library: 'orders', item_id: data.id, source: 'cabinet_builder' });
-  orders.unshift(data);
+  _mergeLocalRow(orders, data);
 
   await _syncCBLinesToOrder(data.id);
 
@@ -1350,7 +1350,7 @@ function cbConvertToOrder() {
   if (!_requireAuth()) return;
   _db('quotes').insert(row).select().single().then(({data, error}) => {
     if (error || !data) { _toast('Could not save quote: ' + (error?.message||''), 'error'); return; }
-    quotes.unshift(data);
+    _mergeLocalRow(quotes, data);
     _toast('Quote created from cabinet quote', 'success');
     renderQuoteMain();
     switchSection('quote');

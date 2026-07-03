@@ -153,7 +153,7 @@ async function _findOrCreateDraftQuote(clientId) {
     _toast('Could not create quote.', 'error');
     return null;
   }
-  quotes.unshift(data);
+  _mergeLocalRow(quotes, data);
   return data;
 }
 
@@ -436,12 +436,7 @@ async function convertQuoteToOrder(id) {
       }
     } catch(e) { console.warn('[convertQuoteToOrder] copy lines failed:', (/** @type {any} */ (e)).message || e); }
   }
-  // The realtime channel (_subscribeLiveStatus) can deliver this row's INSERT
-  // and unshift it while the line-copy above is still awaiting — guard so the
-  // new order doesn't appear twice in the list until the next reload.
-  const _rtCopy = orders.find(o => o.id === data.id);
-  if (_rtCopy) Object.assign(_rtCopy, data);
-  else orders.unshift(data);
+  _mergeLocalRow(orders, data);
   /** @type {HTMLElement} */ (_byId('orders-badge')).textContent = String(orders.filter(o => o.status !== 'complete').length);
   _toast(`Order created for ${quoteClient(q)} — ${quoteProject(q)}`, 'success');
   renderQuoteMain();
@@ -754,7 +749,7 @@ function importQuotesCSV() {
           q._lines = (lines || []).map(/** @param {any} l */ l => ({ ...l }));
           q._totals = { materials: mat, labour: lab, stockMat: 0 };
         }
-        quotes.unshift(q); imported++;
+        _mergeLocalRow(quotes, q); imported++;
       }
     }
     _toast(imported+' quotes imported','success'); renderQuoteMain();
@@ -776,7 +771,7 @@ async function duplicateQuote(id) {
   if (q.name) row.name = q.name;
   const { data, error } = await _db('quotes').insert(row).select().single();
   if (error || !data) { _toast('Could not duplicate quote — ' + (error?.message || JSON.stringify(error)), 'error'); console.error(error); return; }
-  quotes.unshift(data);
+  _mergeLocalRow(quotes, data);
   // Copy any existing quote_lines so the duplicate has matching totals
   try {
     const { data: oldLines } = await _db('quote_lines').select('*').eq('quote_id', q.id);

@@ -733,7 +733,7 @@ async function _qStartNewQuote(numOverride) {
         return;
       }
       const newId = /** @type {any} */ (data).id;
-      quotes.unshift(/** @type {any} */ (data));
+      _mergeLocalRow(quotes, /** @type {any} */ (data));
       _qpState = { quoteId: newId, lines: [], dirty: false, clientId: _qpState.clientId, startingNew: false };
       if (typeof /** @type {any} */ (window)._pcSaveOpenQuoteId === 'function') {
         /** @type {any} */ (window)._pcSaveOpenQuoteId(newId);
@@ -1015,7 +1015,7 @@ async function createQuoteFromEditor(silent) {
   const { data, error } = await _dbInsertSafe('quotes', row);
   if (error || !data) { _toast('Could not create quote — ' + ((error && error.message) || ''), 'error'); return false; }
   if (typeof _track === 'function') _track('library_item_created', { library: 'quotes', item_id: data.id, source: 'editor' });
-  quotes.unshift(data);
+  _mergeLocalRow(quotes, data);
   _qpState.quoteId = data.id;
   _qpState.dirty = false;
   if (typeof /** @type {any} */ (window)._pcSaveOpenQuoteId === 'function') {

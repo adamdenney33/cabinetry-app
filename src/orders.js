@@ -100,7 +100,7 @@ async function duplicateOrder(id) {
       await _db('order_lines').insert(newLines);
     }
   } catch(e) { console.warn('[duplicateOrder] copy lines failed:', (/** @type {any} */ (e)).message || e); }
-  orders.unshift(data);
+  _mergeLocalRow(orders, data);
   _oBadge();
   _toast('Order duplicated', 'success');
   renderOrdersMain();
@@ -366,7 +366,7 @@ function importOrdersCSV() {
       if (/^\d{4}-\d{2}-\d{2}$/.test(prodStart)) row.production_start_date = prodStart;
       if (_userId) {
         const { data } = await _db('orders').insert(row).select().single();
-        if (data) { orders.unshift(data); imported++; }
+        if (data) { _mergeLocalRow(orders, data); imported++; }
       }
     }
     _toast(imported+' orders imported','success'); renderOrdersMain();
@@ -841,7 +841,7 @@ async function _oStartNewOrder(numOverride) {
         return;
       }
       const newId = /** @type {any} */ (data).id;
-      orders.unshift(/** @type {any} */ (data));
+      _mergeLocalRow(orders, /** @type {any} */ (data));
       _opState = { orderId: newId, lines: [], dirty: false, clientId: _opState.clientId, startingNew: false };
       if (typeof /** @type {any} */ (window)._pcSaveOpenOrderId === 'function') {
         /** @type {any} */ (window)._pcSaveOpenOrderId(newId);
@@ -1183,7 +1183,7 @@ async function createOrderFromEditor(silent) {
   // Save notes locally
   const notesVal = _popupVal('po-notes') || '';
   if (notesVal) { /** @type {any} */ (data).notes = notesVal; _onSet(data.id, notesVal); }
-  orders.unshift(data);
+  _mergeLocalRow(orders, data);
   _opState.orderId = data.id;
   _opState.dirty = false;
   if (typeof /** @type {any} */ (window)._pcSaveOpenOrderId === 'function') {

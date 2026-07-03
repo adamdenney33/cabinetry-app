@@ -700,6 +700,7 @@ Object.assign(window, {
   _llEnterLive, switchQuoteTab, switchOrderTab, _liveLinkPanel, _llSpecsFor, _llLineControl,
   _llToggleSpecs, _llSpecAll, _llSyncLineControls, _llRenderPreview, _llAfterSave, _sendLiveLink, _sendLiveLinkMsg, _sendLiveLinkMsgConfirm, _orderPdfMenu, _openLiveLinkTab,
   _llAutoSave, _llOnSaved, _llSaveError, _llControlsProGate, _llAutoAcceptTgl,
+  _mergeLocalRow,
 });
 
 // (moved here from src/app.js — the live-link surface owns its realtime sync;
@@ -729,6 +730,22 @@ function _applyRealtimeRow(arr, payload) {
   const idx = arr.findIndex(x => x.id === row.id);
   if (idx >= 0) Object.assign(arr[idx], row);   // keep _lines/notes already on the object
   else arr.unshift({ ...row });
+}
+
+/** Add a just-inserted row to its local array (quotes/orders), tolerating the
+ *  realtime channel above having delivered the same INSERT first — the fetch
+ *  response and the websocket event race, and the websocket regularly wins
+ *  when the creating flow awaits more work after the insert (seen live:
+ *  convertQuoteToOrder showed the new order twice until reload). Drops the
+ *  realtime's bare copy and keeps the LOCAL object canonical, since call
+ *  sites hold references to it and attach fields (`_lines`, notes) that the
+ *  later realtime UPDATE merge preserves in place.
+ *  @param {any[]} arr @param {any} row */
+function _mergeLocalRow(arr, row) {
+  if (!row || row.id == null) return;
+  const idx = arr.findIndex(x => x.id === row.id);
+  if (idx >= 0) arr.splice(idx, 1);
+  arr.unshift(row);
 }
 
 /** Subscribe once to quotes/orders changes for the signed-in user. Re-renders
