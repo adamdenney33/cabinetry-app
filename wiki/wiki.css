@@ -1,0 +1,162 @@
+/* ProCabinet public wiki (/wiki) — shared stylesheet for the generated guide
+   pages. Same visual language as the other public satellite pages: landing.css
+   tokens + privacy.html's dark-bar/780px-column layout. Copied to
+   dist/wiki.css with a ?v=<hash> stamp by scripts/build-wiki.mjs. */
+
+:root {
+  --accent: #e8a838;
+  --accent-dim: rgba(232, 168, 56, 0.12);
+  --ink: #111111;
+  --bg: #f7f7f7;
+  --muted: #5b5b5b;
+  --line: #e2e2e2;
+  --maxw: 1020px;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  line-height: 1.65; font-size: 16px;
+}
+.accent { color: var(--accent); }
+
+/* ── Header bar (privacy.html pattern + landing amber button) ── */
+header.bar { background: var(--ink); color: #fff; }
+header.bar .inner {
+  max-width: var(--maxw); margin: 0 auto; padding: 15px 24px;
+  display: flex; align-items: center; justify-content: space-between; gap: 14px;
+}
+header.bar a.brand { color: #fff; text-decoration: none; font-weight: 800; letter-spacing: -.5px; font-size: 19px; white-space: nowrap; }
+header.bar nav { display: flex; align-items: center; gap: 18px; }
+header.bar nav a { color: #cfcfcf; text-decoration: none; font-size: 13px; }
+header.bar nav a:hover { color: var(--accent); }
+header.bar nav a.btn-amber-sm {
+  background: var(--accent); color: #1a1a1a; font-weight: 700;
+  padding: 8px 14px; border-radius: 8px; transition: transform .15s, box-shadow .15s;
+}
+header.bar nav a.btn-amber-sm:hover { color: #1a1a1a; transform: translateY(-1px); box-shadow: 0 6px 16px rgba(232, 168, 56, .4); }
+
+/* ── Guide page column ── */
+main { max-width: 780px; margin: 0 auto; padding: 40px 24px 72px; }
+.crumbs { font-size: 13px; color: var(--muted); margin: 0 0 18px; }
+.crumbs a { color: var(--muted); text-decoration: none; }
+.crumbs a:hover { color: var(--accent); }
+h1 { font-size: 34px; font-weight: 800; letter-spacing: -1px; margin: 0 0 6px; }
+.byline { color: var(--muted); font-size: 14px; margin: 0 0 20px; }
+.lede { font-size: 17.5px; color: #333; margin: 0 0 26px; }
+a { color: #9a6c10; }
+
+/* ── Clip ── */
+figure.clip { margin: 0 0 34px; }
+figure.clip video {
+  display: block; width: 100%; height: auto;
+  border-radius: 12px; border: 1px solid var(--line);
+  box-shadow: 0 14px 40px rgba(0, 0, 0, .12); background: #fff;
+}
+figure.clip figcaption { color: var(--muted); font-size: 13px; margin-top: 10px; }
+
+/* ── Numbered steps ── */
+ol.steps { list-style: none; counter-reset: step; margin: 0 0 40px; padding: 0; }
+ol.steps > li {
+  counter-increment: step; position: relative;
+  padding: 0 0 26px 56px; margin: 0;
+}
+ol.steps > li::before {
+  content: counter(step);
+  position: absolute; left: 0; top: 0;
+  width: 36px; height: 36px; border-radius: 50%;
+  background: var(--accent); color: #1a1a1a;
+  font-weight: 800; font-size: 16px;
+  display: flex; align-items: center; justify-content: center;
+}
+ol.steps > li:not(:last-child)::after {
+  content: ""; position: absolute; left: 17px; top: 42px; bottom: 4px;
+  width: 2px; background: var(--line);
+}
+ol.steps h3 { font-size: 17px; font-weight: 700; margin: 5px 0 5px; letter-spacing: -.2px; }
+ol.steps .step-body { color: #2a2a2a; font-size: 15.5px; }
+
+/* ── Related guides ── */
+section.related { margin: 0 0 44px; }
+section.related h2 { font-size: 20px; font-weight: 700; letter-spacing: -.3px; margin: 0 0 14px; }
+.related-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 12px; }
+a.related-card {
+  display: flex; align-items: center; gap: 11px;
+  background: #fff; border: 1px solid var(--line); border-radius: 10px;
+  padding: 13px 15px; text-decoration: none; color: var(--ink);
+  font-size: 14.5px; font-weight: 600; letter-spacing: -.2px;
+  transition: border-color .15s, box-shadow .15s;
+}
+a.related-card:hover { border-color: var(--accent); box-shadow: 0 4px 14px rgba(0, 0, 0, .07); }
+a.related-card img { width: 22px; height: 22px; }
+
+/* ── CTA band ── */
+.cta-band {
+  background: var(--ink); color: #fff; border-radius: 14px;
+  padding: 30px 30px; display: flex; flex-wrap: wrap;
+  align-items: center; justify-content: space-between; gap: 16px;
+}
+.cta-band .cta-copy strong { display: block; font-size: 20px; font-weight: 800; letter-spacing: -.4px; }
+.cta-band .cta-copy span { color: #cfcfcf; font-size: 14px; }
+.cta-band .cta-actions { display: flex; align-items: center; gap: 14px; }
+.cta-band a.btn-amber {
+  background: var(--accent); color: #1a1a1a; text-decoration: none; font-weight: 700;
+  padding: 11px 18px; border-radius: 9px; font-size: 15px; white-space: nowrap;
+  transition: transform .15s, box-shadow .15s;
+}
+.cta-band a.btn-amber:hover { transform: translateY(-1px); box-shadow: 0 8px 20px rgba(232, 168, 56, .45); }
+.cta-band a.cta-secondary { color: #cfcfcf; font-size: 14px; }
+.cta-band a.cta-secondary:hover { color: var(--accent); }
+
+/* ── Index page ── */
+main.index { max-width: var(--maxw); }
+.index-hero { margin: 0 0 30px; max-width: 720px; }
+.guide-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 18px; margin: 0 0 48px;
+}
+a.guide-card {
+  display: block; background: #fff; border: 1px solid var(--line); border-radius: 12px;
+  overflow: hidden; text-decoration: none; color: var(--ink);
+  transition: border-color .15s, box-shadow .15s, transform .15s;
+}
+a.guide-card:hover { border-color: var(--accent); box-shadow: 0 10px 26px rgba(0, 0, 0, .1); transform: translateY(-2px); }
+.guide-thumb { position: relative; aspect-ratio: 16 / 10; background: var(--ink); }
+.guide-thumb img.poster { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.guide-thumb .icon-tile {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  background: radial-gradient(120% 120% at 20% 0%, rgba(232, 168, 56, .28), rgba(0, 0, 0, 0) 60%), var(--ink);
+}
+.guide-thumb .icon-tile img { width: 52px; height: 52px; opacity: .95; }
+.guide-thumb .duration {
+  position: absolute; right: 10px; bottom: 10px;
+  background: rgba(0, 0, 0, .72); color: #fff; font-size: 12px; font-weight: 700;
+  padding: 3px 8px; border-radius: 6px;
+}
+.guide-card-body { padding: 15px 17px 17px; }
+.guide-card-body h2 { font-size: 17px; font-weight: 700; letter-spacing: -.3px; margin: 0 0 5px; }
+.guide-card-body p { margin: 0; color: var(--muted); font-size: 13.5px; line-height: 1.5; }
+
+/* ── Footer (privacy.html pattern) ── */
+footer.foot { border-top: 1px solid var(--line); }
+footer.foot .inner {
+  max-width: var(--maxw); margin: 0 auto; padding: 26px 24px;
+  display: flex; flex-wrap: wrap; gap: 16px; justify-content: space-between;
+  color: var(--muted); font-size: 13px;
+}
+footer.foot a { color: var(--muted); text-decoration: none; margin-right: 16px; }
+footer.foot a:hover { color: var(--ink); }
+
+/* ── Mobile ── */
+@media (max-width: 560px) {
+  main { padding: 30px 18px 56px; }
+  h1 { font-size: 27px; }
+  header.bar .inner { padding: 13px 18px; }
+  header.bar nav { gap: 12px; }
+  header.bar nav a.nav-plain { display: none; }
+  ol.steps > li { padding-left: 48px; }
+  ol.steps > li::before { width: 32px; height: 32px; font-size: 14.5px; }
+  ol.steps > li:not(:last-child)::after { left: 15px; }
+  .cta-band { padding: 24px 20px; }
+}
