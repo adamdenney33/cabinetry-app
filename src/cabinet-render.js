@@ -494,6 +494,13 @@ function renderCBEditor() {
         + `<div style="display:grid;grid-template-columns:1fr 1fr;gap:0 10px">${rr('Type', typeSel('carcassType', cbSettings.carcassTypes, 'Carcass type'))}${rr('Base', typeSel('baseType', cbSettings.baseTypes, 'Base'))}</div>`
         + rr('Finish', smart(finishSmart('finish')))
         + hwChips('cabinet'), true)}
+      ${card('Shelves &amp; Partitions', 'cb-live-shelves', shelfTot > 0 ? _cbSecBadge(sec.shelves) : '',
+        rr('Fixed shelf', stepper('shelves', line.shelves, 0))
+        + rr('Adj. holes', stepper('adjShelves', line.adjShelves, 0))
+        + rr('Loose shelf', stepper('looseShelves', line.looseShelves||0, 0))
+        + rr('Partition', stepper('partitions', line.partitions||0, 0))
+        + rr('End panel', stepper('endPanels', line.endPanels||0, 0))
+        + (cbSettings.extraPanelTypes||[]).map(/** @param {any} t */ t => rr(_escHtml(t.name||'Panel'), epStepper(t.id, (line.extraPanels&&line.extraPanels[t.id])||0))).join(''))}
       ${card('Doors', 'cb-live-doors', line.doors > 0 ? _cbSecBadge(sec.doors + sec.doorHardware) : '',
         rr('Count', stepper('doors', line.doors, 0))
         + rr('Material', smart(matSmart('doorMat', line.doorMat)))
@@ -512,13 +519,6 @@ function renderCBEditor() {
         + rr('Type', typeSel('drawerBoxType', cbSettings.drawerBoxTypes, 'Box type'))
         + rr('Finish', smart(finishSmart('drawerBoxFinish')))
         + hwChips('drawer'))}
-      ${card('Shelves &amp; Partitions', 'cb-live-shelves', shelfTot > 0 ? _cbSecBadge(sec.shelves) : '',
-        rr('Fixed shelf', stepper('shelves', line.shelves, 0))
-        + rr('Adj. holes', stepper('adjShelves', line.adjShelves, 0))
-        + rr('Loose shelf', stepper('looseShelves', line.looseShelves||0, 0))
-        + rr('Partition', stepper('partitions', line.partitions||0, 0))
-        + rr('End panel', stepper('endPanels', line.endPanels||0, 0))
-        + (cbSettings.extraPanelTypes||[]).map(/** @param {any} t */ t => rr(_escHtml(t.name||'Panel'), epStepper(t.id, (line.extraPanels&&line.extraPanels[t.id])||0))).join(''))}
       ${card('Extras', 'cb-live-extras', sec.extras > 0 ? _cbSecBadge(sec.extras) : '',
         (line.extras||[]).map(/** @param {any} ex @param {number} ei */ (ex, ei) => `<div class="cb-rr">
           <input type="text" value="${_escHtml(ex.label||'')}" placeholder="Item name" onblur="cbUpdateExtra(${line.id},${ei},'label',this.value)">
