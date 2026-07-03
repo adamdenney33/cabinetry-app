@@ -335,7 +335,11 @@ function _smartCBLibrarySuggest(input, boxId) {
   _posSuggest(input, box);
   const q = input.value.trim().toLowerCase();
   const cur = window.currency;
-  const matches = q ? cbLibrary.filter(c => (c._libName||c.name||'').toLowerCase().includes(q)) : cbLibrary;
+  // Show the full library when the value already exactly matches a template
+  // (an entry is selected — user is opening to browse, not searching). Only
+  // filter once the text no longer matches, i.e. the pick was edited/deleted.
+  const isExisting = cbLibrary.some(c => (c._libName||c.name||'').toLowerCase() === q);
+  const matches = (q && !isExisting) ? cbLibrary.filter(c => (c._libName||c.name||'').toLowerCase().includes(q)) : cbLibrary;
   let html = '';
   matches.slice(0, 8).forEach(c => {
     const idx = cbLibrary.indexOf(c);
@@ -436,7 +440,10 @@ function _smartCBMaterialSuggest(input, boxId, fieldName) {
   const q = input.value.trim().toLowerCase();
   const cur = window.currency;
   const pool = stockItems.filter(s => { const cat = _scGet(s.id) || s.category; return cat === 'Sheet Goods' || cat === 'Solid Timber' || cat === 'Edge Banding' || (!cat && (s.w ?? 0) > 0 && (s.h ?? 0) > 0); });
-  const matches = q ? pool.filter(s => s.name.toLowerCase().includes(q)) : pool;
+  // Show all when the value already matches a stock item (an entry is selected —
+  // opening to browse, not searching). Filter only once the pick is edited/deleted.
+  const isExisting = pool.some(s => s.name.toLowerCase() === q);
+  const matches = (q && !isExisting) ? pool.filter(s => s.name.toLowerCase().includes(q)) : pool;
   let html = '';
   matches.slice(0, 8).forEach(s => {
     const dims = s.w && s.h ? `${s.w}×${s.h}` : '';
@@ -587,7 +594,10 @@ function _smartCBHwSuggest(input, boxId, lineId, hwIdx, scope) {
   const q = input.value.trim().toLowerCase();
   const cur = window.currency;
   const pool = _cbHwPool();
-  const matches = q ? pool.filter(/** @param {any} h */ h => h.name.toLowerCase().includes(q)) : pool;
+  // Show all when the value already matches a hardware item (an entry is selected —
+  // opening to browse, not searching). Filter only once the pick is edited/deleted.
+  const isExisting = pool.some(/** @param {any} h */ h => h.name.toLowerCase() === q);
+  const matches = (q && !isExisting) ? pool.filter(/** @param {any} h */ h => h.name.toLowerCase().includes(q)) : pool;
   let html = '';
   matches.slice(0, 8).forEach(/** @param {any} h */ h => {
     const qtyColor = (h.qty ?? 0) <= (h.low || 3) ? '#ef4444' : '#22c55e';
