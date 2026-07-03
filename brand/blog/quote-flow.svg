@@ -1,0 +1,66 @@
+<svg viewBox="0 0 1200 620" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#e8a838"/>
+    </marker>
+  </defs>
+  <rect width="1200" height="620" fill="#ffffff"/>
+
+  <!-- Top: spreadsheets -->
+  <text x="70" y="64" font-size="24" font-weight="700" fill="#111111">The spreadsheet stack</text>
+  <text x="70" y="92" font-size="16" fill="#5b5b5b">five files, nothing connected, every price re-typed by hand</text>
+  <g stroke="#111111" stroke-width="2" fill="#ffffff">
+    <rect x="70"  y="120" width="180" height="60" rx="10"/>
+    <rect x="290" y="120" width="180" height="60" rx="10"/>
+    <rect x="510" y="120" width="180" height="60" rx="10"/>
+    <rect x="730" y="120" width="180" height="60" rx="10"/>
+    <rect x="950" y="120" width="180" height="60" rx="10"/>
+  </g>
+  <g font-size="16.5" font-weight="600" fill="#111111" text-anchor="middle">
+    <text x="160"  y="157">Price list</text>
+    <text x="380"  y="157">Quote sheet</text>
+    <text x="600"  y="157">Cut list</text>
+    <text x="820"  y="157">Diary</text>
+    <text x="1040" y="157">Invoices</text>
+  </g>
+  <g stroke="#9b9b9b" stroke-width="2.5" stroke-dasharray="4 8">
+    <line x1="250" y1="150" x2="290" y2="150"/>
+    <line x1="470" y1="150" x2="510" y2="150"/>
+    <line x1="690" y1="150" x2="730" y2="150"/>
+    <line x1="910" y1="150" x2="950" y2="150"/>
+  </g>
+  <g font-size="13.5" fill="#9b6a10" text-anchor="middle">
+    <text x="270" y="205">re-typed</text>
+    <text x="490" y="205">re-typed</text>
+    <text x="710" y="205">re-typed</text>
+    <text x="930" y="205">re-typed</text>
+  </g>
+
+  <line x1="70" y1="270" x2="1130" y2="270" stroke="#e2e2e2" stroke-width="2"/>
+
+  <!-- Bottom: linked -->
+  <text x="70" y="330" font-size="24" font-weight="700" fill="#111111">Linked</text>
+  <text x="70" y="358" font-size="16" fill="#5b5b5b">rates set once; a price change flows through everything after it</text>
+  <g stroke="#111111" stroke-width="2">
+    <rect x="70"  y="390" width="180" height="60" rx="10" fill="#111111"/>
+    <rect x="290" y="390" width="180" height="60" rx="10" fill="#ffffff"/>
+    <rect x="510" y="390" width="180" height="60" rx="10" fill="#ffffff"/>
+    <rect x="730" y="390" width="180" height="60" rx="10" fill="#ffffff"/>
+    <rect x="950" y="390" width="180" height="60" rx="10" fill="#ffffff"/>
+  </g>
+  <g font-size="16.5" font-weight="600" text-anchor="middle">
+    <text x="160"  y="427" fill="#e8a838">My Rates</text>
+    <text x="380"  y="427" fill="#111111">Quote</text>
+    <text x="600"  y="427" fill="#111111">Cut list</text>
+    <text x="820"  y="427" fill="#111111">Schedule</text>
+    <text x="1040" y="427" fill="#111111">Invoice</text>
+  </g>
+  <g stroke="#e8a838" stroke-width="3.5" marker-end="url(#arrow)">
+    <line x1="250" y1="420" x2="284" y2="420"/>
+    <line x1="470" y1="420" x2="504" y2="420"/>
+    <line x1="690" y1="420" x2="724" y2="420"/>
+    <line x1="910" y1="420" x2="944" y2="420"/>
+  </g>
+
+  <text x="70" y="540" font-size="18" fill="#111111">Same jobs, same numbers. The difference is how many times a human has to copy them.</text>
+</svg>

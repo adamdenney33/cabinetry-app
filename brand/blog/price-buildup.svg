@@ -1,0 +1,39 @@
+<svg viewBox="0 0 1200 560" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif">
+  <rect width="1200" height="560" fill="#ffffff"/>
+  <text x="70" y="64" font-size="26" font-weight="700" fill="#111111">What a £5,700 kitchen quote is made of</text>
+  <text x="70" y="94" font-size="17" fill="#5b5b5b">the 12-cabinet worked example, priced in four honest parts</text>
+
+  <!-- Stacked bar: total width 1000px ∝ £5,700 -->
+  <!-- materials 2300 → 404, markup 460 → 81, labour 2380 → 417, fitting 560 → 98 -->
+  <g stroke="#111111" stroke-width="2">
+    <rect x="70"  y="220" width="404" height="110" fill="#ececec"/>
+    <rect x="474" y="220" width="81"  height="110" fill="#e8a838"/>
+    <rect x="555" y="220" width="417" height="110" fill="#d5d5d5"/>
+    <rect x="972" y="220" width="98"  height="110" fill="#ffffff"/>
+  </g>
+
+  <!-- Segment labels above -->
+  <text x="272" y="190" font-size="17" font-weight="700" fill="#111111" text-anchor="middle">Materials</text>
+  <text x="272" y="212" font-size="15" fill="#5b5b5b" text-anchor="middle">£2,300 at supplier prices</text>
+  <text x="514" y="150" font-size="17" font-weight="700" fill="#111111" text-anchor="middle">Markup 20%</text>
+  <text x="514" y="172" font-size="15" fill="#5b5b5b" text-anchor="middle">£460</text>
+  <line x1="514" y1="180" x2="514" y2="214" stroke="#5b5b5b" stroke-width="1.5"/>
+  <text x="763" y="190" font-size="17" font-weight="700" fill="#111111" text-anchor="middle">Workshop labour</text>
+  <text x="763" y="212" font-size="15" fill="#5b5b5b" text-anchor="middle">68 hours at £35</text>
+  <text x="1021" y="150" font-size="17" font-weight="700" fill="#111111" text-anchor="middle">Fitting</text>
+  <text x="1021" y="172" font-size="15" fill="#5b5b5b" text-anchor="middle">£560</text>
+  <line x1="1021" y1="180" x2="1021" y2="214" stroke="#5b5b5b" stroke-width="1.5"/>
+
+  <!-- Values inside -->
+  <text x="272" y="286" font-size="20" font-weight="700" fill="#111111" text-anchor="middle">£2,300</text>
+  <text x="763" y="286" font-size="20" font-weight="700" fill="#111111" text-anchor="middle">£2,380</text>
+
+  <!-- Total -->
+  <line x1="70" y1="370" x2="1070" y2="370" stroke="#111111" stroke-width="2"/>
+  <line x1="70" y1="362" x2="70" y2="378" stroke="#111111" stroke-width="2"/>
+  <line x1="1070" y1="362" x2="1070" y2="378" stroke="#111111" stroke-width="2"/>
+  <rect x="470" y="400" width="260" height="64" rx="32" fill="#111111"/>
+  <text x="600" y="441" font-size="24" font-weight="700" fill="#ffffff" text-anchor="middle">£5,700 quote</text>
+
+  <text x="70" y="520" font-size="17" fill="#5b5b5b">The £35 labour rate already carries overheads and wage. Nothing here is a guess.</text>
+</svg>

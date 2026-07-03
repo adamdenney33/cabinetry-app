@@ -41,6 +41,13 @@ table { width:100%; border-collapse:collapse; margin:16px 0; font-size:14.5px; }
 th, td { text-align:left; padding:9px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
 th { color:var(--muted); font-weight:700; }
 article img { max-width:100%; height:auto; border-radius:8px; }
+
+/* Figures: product screenshots + hand-drawn SVG diagrams (never stock). */
+article figure { margin:26px 0; }
+article figure img { display:block; width:100%; border:1px solid var(--line); border-radius:10px; background:#fff; }
+article figcaption { font-size:13px; color:var(--muted); margin-top:8px; text-align:center; }
+.hero-fig { margin:6px 0 30px; }
+.hero-fig img { border:1px solid var(--line); border-radius:12px; box-shadow:0 10px 30px rgba(17,17,17,.08); }
 blockquote { margin:16px 0; padding:2px 0 2px 14px; border-left:3px solid var(--line); color:var(--muted); }
 code { background:#efefef; padding:1px 5px; border-radius:4px; font-size:14px; }
 
@@ -58,17 +65,26 @@ code { background:#efefef; padding:1px 5px; border-radius:4px; font-size:14px; }
 .related ul { padding-left:0; list-style:none; }
 .related li { margin:7px 0; }
 
-/* Blog index. */
-.post-list { list-style:none; padding:0; margin:34px 0 0; }
-.post-item { margin:0 0 8px; }
+/* Blog index — thumbnail cards. */
+.post-list { list-style:none; padding:0; margin:34px 0 0; display:grid; grid-template-columns:1fr 1fr; gap:18px; }
 .post-item a {
-  display:block; text-decoration:none; color:inherit; background:#fff;
-  border:1px solid var(--line); border-radius:12px; padding:20px 22px; transition:border-color .15s;
+  display:flex; flex-direction:column; height:100%; overflow:hidden;
+  text-decoration:none; color:inherit; background:#fff;
+  border:1px solid var(--line); border-radius:14px; transition:border-color .15s, box-shadow .15s;
 }
-.post-item a:hover { border-color:var(--accent); }
-.post-item h2 { font-size:19px; margin:0 0 4px; }
-.post-item p { margin:0; font-size:14.5px; }
-.post-item .post-date { color:var(--muted); font-size:13px; margin:0 0 6px; }
+.post-item a:hover { border-color:var(--accent); box-shadow:0 8px 24px rgba(17,17,17,.08); }
+.post-thumb { display:block; aspect-ratio:16/9; overflow:hidden; background:var(--ink); border-bottom:1px solid var(--line); }
+/* App screenshots have a dark header strip along the top — crop to the centre
+   of the UI so cards show real content, not the black bar. */
+.post-thumb img { display:block; width:100%; height:100%; object-fit:cover; object-position:center; }
+.post-body { display:block; padding:16px 18px 18px; }
+.post-item h2 { font-size:17.5px; margin:0 0 4px; letter-spacing:-.2px; }
+.post-item p { margin:0; font-size:14px; }
+.post-item .post-date { color:var(--muted); font-size:12.5px; margin:0 0 6px; }
+/* First card spans both columns for a featured feel. */
+.post-item:first-child { grid-column:1 / -1; }
+.post-item:first-child .post-thumb { aspect-ratio:21/9; }
+@media (max-width:640px) { .post-list { grid-template-columns:1fr; } .post-item:first-child .post-thumb { aspect-ratio:16/9; } }
 
 footer.foot { border-top:1px solid var(--line); }
 footer.foot .inner { max-width:780px; margin:0 auto; padding:26px 24px; display:flex; flex-wrap:wrap; gap:16px; justify-content:space-between; color:var(--muted); font-size:13px; }

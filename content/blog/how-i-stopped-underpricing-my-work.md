@@ -23,11 +23,13 @@ Here is mine from the day I finally did it:
 
 Three different jobs, one answer: £26 and change, against the £35 I would have told you my rate was. And that flatters me, because the sum ignores overheads entirely. Rent, power, insurance and the van all came out of that £26 before I saw a wage. I ran my own cabinetry workshop for over 10 years, and this table is from the middle of that run. It was not a beginner's mistake. It was a habit with years of practice behind it.
 
+![Bar chart of three jobs each paying about £26 an hour against the £35 rate I believed I charged](/brand/blog/effective-rate.svg "Three jobs, one answer")
+
 ## Why was I underpricing in the first place?
 
 Three habits, none of which felt like mistakes at the time.
 
-**I absorbed price rises instead of passing them on.** The price list in my head was always a year or two out of date. Birch ply I still thought of as £45 a sheet was £61 by the time the invoice arrived, and because the quote had already gone out, the difference came out of my margin. Then the next quote used the same stale number, because updating a dozen spreadsheet templates was an admin job that never reached the top of the pile.
+**I absorbed price rises instead of passing them on.** The price list in my head was always a year or two out of date. Birch ply I still thought of as £45 a sheet was £61 by the time the invoice arrived, and because the quote had already gone out, the difference came out of my margin. Then the next quote used the same stale number, because updating a dozen spreadsheet templates never reached the top of the pile.
 
 **I quoted hours for the job going perfectly.** The media wall above went out as roughly 60 hours in my head. The recorded truth was 74, because real jobs contain sanding, second coats, a drawer that binds and a phone call in the middle of a glue-up. Quoting imagined hours instead of recorded ones shaved 15 to 20% off my labour on nearly every job.
 
@@ -43,7 +45,7 @@ I dated every material price. If a price had no date next to it, I treated it as
 
 I recorded hours on every job, on a clipboard by the bench, and quoted the next similar job from those records instead of from optimism. Boring, and worth more than any single price rise.
 
-I put my rates in one place. This is the part I eventually built a tool for, because it was the part spreadsheets fought me on. In ProCabinet you set your rates once, in a tab called My Rates, and every quote after that prices itself from them, so when ply goes up the change reaches the next quote instead of waiting for me to edit templates. Declared interest, it is my tool, built after I had run my own workshop for over 10 years. Every account starts with a 14-day Pro trial, no card needed, and the [free plan](/#pricing) stays free after it.
+I put my rates in one place. This is the part I eventually built a tool for, because it was the part spreadsheets fought me on. In ProCabinet you set your rates once, in a tab called My Rates, and every quote after that prices itself from them, so when ply goes up the change reaches the next quote instead of waiting for me to edit templates. Declared interest, it is my tool. Every account starts with a 14-day Pro trial, no card needed, and the [free plan](/#pricing) stays free after it.
 
 There was a fifth leak I only measured later: material waste, sheets I had paid for and turned into unrecorded offcuts. I put numbers on that one in [how to reduce plywood waste with nesting](/blog/reduce-plywood-waste-nesting/).
 
@@ -61,11 +63,7 @@ A full order book with nothing left in the account at the end of the month is th
 
 ### Should I raise prices on jobs I have already quoted?
 
-No. A quoted price is a promise, and breaking it costs more in reputation than the margin recovers. Raise from the next quote onward. If an old quote resurfaces months later, re-quote it openly against current material prices, and put a validity period on the new one so it cannot go stale the same way.
-
-### How much more should I be charging?
-
-There is no universal answer, only your answer, and it comes from your own overheads, your target wage and your honest billable hours rather than from anyone else's rate card. When I did that sum properly my rate came out £9 an hour above what I had been earning, and yours may surprise you by more. Work it out before you decide it sounds too high.
+No. A quoted price is a promise, and breaking it costs more in reputation than the margin recovers. Raise from the next quote onward. If an old quote resurfaces months later, re-quote it openly against current material prices, and put a validity period on the new one.
 
 ### What if I am always the cheapest quote?
 

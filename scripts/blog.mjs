@@ -18,6 +18,21 @@ import { marked } from 'marked';
 
 marked.use({ gfm: true });
 
+// Body images become real <figure>s: lazy-loaded (the hero is the only eager
+// image on a post), with the markdown "title" (![alt](src "title")) rendered
+// as a visible <figcaption>. All post images are our own product screenshots
+// (/brand/screenshots/) or hand-drawn SVG diagrams (/brand/blog/) — no stock.
+marked.use({
+  renderer: {
+    image({ href, title, text }) {
+      const img = `<img src="${esc(href || '')}" alt="${esc(text || '')}" loading="lazy" decoding="async">`;
+      return title
+        ? `<figure>${img}<figcaption>${esc(title)}</figcaption></figure>`
+        : `<figure>${img}</figure>`;
+    },
+  },
+});
+
 // Shared site identity — also read by seoFilesPlugin (sitemap/llms.txt) and
 // kept in sync with the Organization JSON-LD in landing.html.
 export const SITE = {
@@ -126,6 +141,7 @@ export function loadPosts() {
       author: fm.author,
       tags: fm.tags ? fm.tags.split(',').map((t) => t.trim()).filter(Boolean) : [],
       hero: fm.hero || '',
+      heroAlt: fm.heroAlt || '',
       itemlist: fm.itemlist ? fm.itemlist.split(',').map((t) => t.trim()).filter(Boolean) : [],
       html: /** @type {string} */ (marked.parse(body)),
       faq: extractFaq(body),
@@ -338,7 +354,12 @@ ${jsonLd(post, allPosts)}
   </script>`;
 
   // First paragraph is the direct answer — give it the .lead treatment.
-  const body = post.html.replace('<p>', '<p class="lead">');
+  const body = post.html
+    .replace('<p>', '<p class="lead">')
+    // A standalone markdown image renders as a <figure> (see the marked
+    // renderer above) but arrives wrapped in the paragraph marked made for
+    // the inline token — unwrap for valid block-level HTML.
+    .replace(/<p>(<figure>[\s\S]*?<\/figure>)<\/p>/g, '$1');
 
   const related = relatedPosts(post, allPosts);
   const relatedHtml = related.length
@@ -351,6 +372,13 @@ ${related.map((p) => `        <li><a href="${p.url}">${esc(p.title)}</a></li>`).
     </aside>`
     : '';
 
+  // Hero (frontmatter `hero:`) is the one eager image — it doubles as the
+  // post's og:image, so it should be a PNG screenshot, not an SVG diagram
+  // (social scrapers don't render SVG). heroAlt frontmatter is its alt text.
+  const heroHtml = post.hero
+    ? `      <figure class="hero-fig"><img src="${esc(post.hero)}" alt="${esc(post.heroAlt || post.title)}" fetchpriority="high" decoding="async"></figure>\n`
+    : '';
+
   const main = `    <article>
       <p class="crumbs"><a href="/blog/">← Blog</a></p>
       <h1>${esc(post.title)}</h1>
@@ -358,7 +386,7 @@ ${related.map((p) => `        <li><a href="${p.url}">${esc(p.title)}</a></li>`).
         <p class="byline-author">${esc(SITE.author.name)} — ${esc(SITE.author.bio)}</p>
         <p class="byline-dates">${updatedLine}</p>
       </div>
-${body}
+${heroHtml}${body}
       <div class="cta">
         <p><strong>Try ProCabinet free.</strong> Every account starts with 14 days of Pro — no card needed. Set your rates once, then quote, cut, schedule and bill from one place.</p>
         <a class="btn" href="/os?signup&utm_source=blog&utm_medium=organic&utm_campaign=${encodeURIComponent(post.slug)}">Start free</a>
@@ -412,9 +440,12 @@ ${ld}
 
   const list = posts.map((p) => `      <li class="post-item">
         <a href="${p.url}">
-          <h2>${esc(p.title)}</h2>
-          <p class="post-date">${niceDate(p.date)}</p>
-          <p>${esc(p.description)}</p>
+          <span class="post-thumb"><img src="${esc(p.hero || '/brand/screenshots/01-dashboard.png')}" alt="" loading="lazy" decoding="async"></span>
+          <span class="post-body">
+            <h2>${esc(p.title)}</h2>
+            <p class="post-date">${niceDate(p.date)}</p>
+            <p>${esc(p.description)}</p>
+          </span>
         </a>
       </li>`).join('\n');
 

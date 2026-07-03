@@ -102,7 +102,8 @@ function copyLandingPlugin(env) {
       for (const f of ['privacy.html', 'terms.html', 'payment-fees.html']) {
         if (existsSync(f)) copyFileSync(f, join('dist', f));
       }
-      for (const dir of ['brand/icons', 'brand/screenshots', 'brand/logo']) {
+      // brand/blog holds the hand-drawn SVG diagrams the blog posts embed.
+      for (const dir of ['brand/icons', 'brand/screenshots', 'brand/logo', 'brand/blog']) {
         if (existsSync(dir)) cpSync(dir, join('dist', dir), { recursive: true });
       }
     },
