@@ -276,8 +276,7 @@ function setStockCatInline(id, tagEl) {
 // codebase is mid-rename, see G.4 SPEC entry).
 /** @type {(import('./database.types').Tables<'stock_items'> & { thickness?: number, width?: number, length?: number, thick?: number })[]} */
 let stockItems = [];
-/** @type {import('./database.types').Tables<'clients'>[]} */
-let clients = [];
+// `clients` now lives in src/clients.js (R.4 relocation). `projects` stays here.
 // F6 (2026-05-13): projects table dropped; declared as any[] for null-state
 // reads in straggler code paths that have not yet been cleaned up.
 /** @type {any[]} */

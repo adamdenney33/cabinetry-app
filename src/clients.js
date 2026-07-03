@@ -1,11 +1,14 @@
 // ProCabinet — Clients & projects CRUD/render (carved out of src/app.js
 // in phase E carve 11 — the last functional section of app.js).
 //
-// Loaded as a classic <script defer> AFTER src/app.js. No state declarations
-// here — `clients` and `projects` arrays live at the top of app.js's STOCK
-// section and resolve through the global env at call time.
+// Loaded as a classic <script defer> AFTER src/app.js. Declares the `clients`
+// array (R.4 relocation — below); `projects` still lives in src/stock.js's
+// STOCK section and resolves through the global env at call time. `clients` is
+// declared here at the top so it is bound before the trailing init block
+// (renderDashboard) runs; parse-time boot code in earlier-loading files only
+// reaches `clients` behind null-drill short-circuits, never at load time.
 //
-// Cross-file dependencies: `clients` / `projects` arrays (app.js STOCK),
+// Cross-file dependencies: `projects` array (src/stock.js STOCK section),
 // `_db` / Supabase RLS-bound table builders (src/db.js), `_userId` /
 // `_toast` / `_requireAuth` / `_escHtml` / `_openPopup` / `_closePopup` /
 // `_popupVal` / `switchSection` (app.js / ui.js), `renderDashboard` /
@@ -21,6 +24,9 @@
 // ══════════════════════════════════════════
 // CLIENTS & PROJECTS — CRUD + RENDER
 // ══════════════════════════════════════════
+
+/** @type {import('./database.types').Tables<'clients'>[]} */
+let clients = [];
 
 // ── Safe insert — retries by stripping columns the schema doesn't have yet ──
 /**
