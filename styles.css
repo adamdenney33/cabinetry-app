@@ -1377,6 +1377,11 @@ canvas { display: block; }
 .cb-pct-slider::-webkit-slider-thumb { -webkit-appearance:none; width:14px; height:14px; border-radius:50%; background:var(--accent); cursor:pointer; }
 .cb-pct-slider::-moz-range-thumb { width:14px; height:14px; border-radius:50%; background:var(--accent); cursor:pointer; border:none; }
 .cb-pct-val { font-size:12px; font-weight:700; color:var(--text); min-width:36px; text-align:right; }
+/* In the compact spec-card rows the range input won't shrink below its
+   intrinsic width, which pushes the % value past the card edge (clipped by
+   overflow:hidden). Force the slider to shrink and pin the value visible. */
+.cb-rr .cb-pct-slider { min-width:0; }
+.cb-rr .cb-pct-val { flex-shrink:0; min-width:32px; }
 
 /* ── CB editor: always-open spec cards, My Rates styling (2026-07-03 v2) ──
    Pinned header (name + qty + live total), 2-col grid of always-open section

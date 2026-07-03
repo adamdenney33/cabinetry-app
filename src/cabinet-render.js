@@ -472,7 +472,7 @@ function renderCBEditor() {
   };
   // Coverage slider (shared markup with the old editor — cbUpdatePct clamp).
   /** @param {string} field */
-  const pctRow = (field) => rr('% of front', `<div class="cb-pct-row"><input type="range" class="cb-pct-slider" min="0" max="100" value="${line[field]||0}" oninput="this.nextElementSibling.textContent=this.value+'%'" onchange="cbUpdatePct('${field}',this.value)"><span class="cb-pct-val">${line[field]||0}%</span></div>`);
+  const pctRow = (field) => rr('% of front', `<div class="cb-pct-row"><input type="range" class="cb-pct-slider" min="0" max="100" step="5" value="${line[field]||0}" oninput="this.nextElementSibling.textContent=this.value+'%'" onchange="cbUpdatePct('${field}',this.value)"><span class="cb-pct-val">${line[field]||0}%</span></div>`);
 
   // Sticky-footer actions — context-dependent (quote row vs library template).
   const isLib = cbEditingLibraryIdx >= 0;
