@@ -2145,11 +2145,16 @@ or before specific features that touch these areas.
   `quotes.js` 1,939 → **787** (sidebar editor → `src/quote-editor.js`); `stock.js`
   1,554 → **1,399** (persistence maps → `src/stock-persist.js`) + R.4 below. Detail: SPEC.md § 13 (2026-07-03).
 
-- **R.3 — Cut-list shadow-name unification (~30 sites)**
-  - Replace `thickness` / `width` / `length` shadows with `thickness_mm` /
-    `width_mm` / `length_m` everywhere
-  - Drop the load-time hydration map in `app.js loadAllData`
-  - Drop the intersection type in `stock.js`
+- ✅ **R.3 — Cut-list shadow-name unification** — done 2026-07-03. The "~30
+  sites" estimate was stale: dimension consumers had already migrated to the
+  `_mm`/`_m` columns via `_svGet`/`_svSet`; the short-name shadow
+  (`thickness`/`width`/`length`) was a redundant parallel copy. Removed both
+  hydration maps (`app.js loadAllData` + the demo-overlay twin), the shadow
+  intersection type in `stock.js`, and every shadow read/write (edit-populate,
+  stock-list display, cabinet-library edge picker, seed/duplicate/add/save
+  paths). Dropping the type made any missed read a typecheck error (none
+  surfaced); edge-band dims verified end-to-end in a headless browser. `thick`
+  was already dead. Detail: SPEC.md § 13 (2026-07-03).
 
 - ✅ **R.4 — Relocate stragglers to conceptual homes** — done 2026-07-03
   - ✅ `clients` array declaration → `clients.js` (was `stock.js:279`; moved with
