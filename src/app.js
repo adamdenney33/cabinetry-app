@@ -269,16 +269,6 @@ _sb.auth.onAuthStateChange(async (event, session) => {
   // localStorage stash deliberately survives until the user authenticates.
 });
 
-// ══════════════════════════════════════════
-// UTILS
-// ══════════════════════════════════════════
-/** @param {string} hex @param {number} a */
-function hexRgba(hex, a) {
-  const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
-  return `rgba(${r},${g},${b},${a})`;
-}
-/** @param {string} s @param {number} n */
-function trunc(s, n) { return s.length <= n ? s : s.slice(0, n-1) + '…'; }
 
 
 // ══════════════════════════════════════════
@@ -292,69 +282,6 @@ if (typeof handlePortalReturn === 'function') handlePortalReturn();
 // (?accounting=connected / error), then strip the param.
 if (typeof handleAccountingReturn === 'function') handleAccountingReturn();
 if (typeof handleConnectReturn === 'function') handleConnectReturn();
-// Landing-page pricing deep-link: the static landing page links its pricing
-// CTAs to /?plan=<tier>. Stash the tier and strip the param (mirrors
-// handleCheckoutReturn); the onAuthStateChange handler above consumes it once
-// the session is known. Runs before that handler clears its readyState await.
-//
-// F.1: the stash is localStorage-backed (48 h TTL), not just `window`, because
-// a NEW user's path to checkout crosses page loads: click paid CTA → sign up →
-// confirm email (fresh load, often a different tab) → first signed-in session.
-// The in-memory stash alone died at that boundary and the paid click was lost.
-const _PENDING_PLAN_KEY = 'pc_pending_plan';
-const _PENDING_PLAN_TTL_MS = 48 * 3600000;
-
-/** @param {'monthly'|'annual'|'founder'} plan */
-function _storePendingPlan(plan) {
-  window._pendingPlan = plan;
-  try {
-    localStorage.setItem(_PENDING_PLAN_KEY, JSON.stringify({ plan, at: Date.now() }));
-  } catch (e) { void e; /* private mode — in-memory stash still covers same-load flows */ }
-}
-
-/**
- * Read the stashed plan — memory first, then localStorage — discarding stale
- * or malformed entries. Pass `consume: true` only once a session exists (the
- * user can actually reach Checkout); otherwise the stash survives the signup
- * → email-confirm round trip it exists for.
- * @param {boolean} consume
- * @returns {'monthly'|'annual'|'founder'|null}
- */
-function _readPendingPlan(consume) {
-  /** @type {'monthly'|'annual'|'founder'|null} */
-  let plan = window._pendingPlan || null;
-  if (!plan) {
-    try {
-      const raw = localStorage.getItem(_PENDING_PLAN_KEY);
-      if (raw) {
-        const obj = JSON.parse(raw);
-        if (obj && (obj.plan === 'monthly' || obj.plan === 'annual' || obj.plan === 'founder')
-            && typeof obj.at === 'number' && Date.now() - obj.at < _PENDING_PLAN_TTL_MS) {
-          plan = obj.plan;
-        } else {
-          localStorage.removeItem(_PENDING_PLAN_KEY); // stale or garbage — drop it
-        }
-      }
-    } catch (e) { void e; }
-  }
-  if (plan && consume) {
-    window._pendingPlan = null;
-    try { localStorage.removeItem(_PENDING_PLAN_KEY); } catch (e) { void e; }
-  }
-  return plan;
-}
-
-(function () {
-  const _params = new URLSearchParams(window.location.search);
-  const _plan = _params.get('plan');
-  if (_plan === 'monthly' || _plan === 'annual' || _plan === 'founder') {
-    _storePendingPlan(_plan);
-    _params.delete('plan');
-    const _cleaned = _params.toString();
-    window.history.replaceState({}, '',
-      window.location.pathname + (_cleaned ? `?${_cleaned}` : '') + window.location.hash);
-  }
-})();
 // Guarded: these fire at script-eval time, so a single dropped domain file must
 // not abort the rest of app.js top-level (main.js self-heals via one reload).
 try { loadBizInfo(); } catch (_e) {}
@@ -394,36 +321,6 @@ if (typeof _syncCutMethodToggle === 'function') _syncCutMethodToggle();
 if (typeof _clRenderContext === 'function') _clRenderContext();
 if (typeof _cbRenderContext === 'function') _cbRenderContext();
 
-// ── Pipeline hover preview ──
-/** @param {HTMLElement} stepEl */
-function pipePreview(stepEl) {
-  const container = stepEl.closest('.oc-pipeline');
-  if (!container) return;
-  const hoverIdx = parseInt(/** @type {HTMLElement} */(stepEl).dataset.idx || '0');
-  container.querySelectorAll('.pipe-step').forEach((/** @type {any} */ step, i) => {
-    const dot = /** @type {HTMLElement|null} */(step.querySelector('.pipe-dot'));
-    if (!dot) return;
-    const c = i < hoverIdx ? 'var(--success)' : i === hoverIdx ? step.dataset.hoverColor : 'var(--border)';
-    dot.style.background = c;
-    dot.style.borderColor = c;
-  });
-  container.querySelectorAll('.pipe-line').forEach((/** @type {any} */ line, i) => {
-    line.style.background = i < hoverIdx ? 'var(--success)' : 'var(--border)';
-  });
-}
-
-/** @param {HTMLElement} stepEl */
-function pipeRestorePreview(stepEl) {
-  const container = stepEl.closest('.oc-pipeline');
-  if (!container) return;
-  container.querySelectorAll('.pipe-step').forEach((/** @type {any} */ step) => {
-    const dot = /** @type {HTMLElement|null} */(step.querySelector('.pipe-dot'));
-    if (dot) { dot.style.background = dot.dataset.origColor || ''; dot.style.borderColor = dot.dataset.origColor || ''; }
-  });
-  container.querySelectorAll('.pipe-line').forEach((/** @type {any} */ line) => {
-    line.style.background = line.classList.contains('pipe-line-done') ? 'var(--success)' : 'var(--border)';
-  });
-}
 
 // ── Strategy C: global beforeunload guard ──
 // Block tab close while any sidebar / editor is dirty or has a save in flight.

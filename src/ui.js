@@ -621,3 +621,40 @@ function _csvPickFile(cb) {
   input.click();
 }
 
+
+// ── General string util (moved from app.js) ──
+/** @param {string} s @param {number} n */
+function trunc(s, n) { return s.length <= n ? s : s.slice(0, n-1) + '…'; }
+
+// (moved from app.js — order/quote card pipeline dot hover; inline
+// onmouseenter/onmouseleave handlers in orders.js/quotes.js card HTML.)
+// ── Pipeline hover preview ──
+/** @param {HTMLElement} stepEl */
+function pipePreview(stepEl) {
+  const container = stepEl.closest('.oc-pipeline');
+  if (!container) return;
+  const hoverIdx = parseInt(/** @type {HTMLElement} */(stepEl).dataset.idx || '0');
+  container.querySelectorAll('.pipe-step').forEach((/** @type {any} */ step, i) => {
+    const dot = /** @type {HTMLElement|null} */(step.querySelector('.pipe-dot'));
+    if (!dot) return;
+    const c = i < hoverIdx ? 'var(--success)' : i === hoverIdx ? step.dataset.hoverColor : 'var(--border)';
+    dot.style.background = c;
+    dot.style.borderColor = c;
+  });
+  container.querySelectorAll('.pipe-line').forEach((/** @type {any} */ line, i) => {
+    line.style.background = i < hoverIdx ? 'var(--success)' : 'var(--border)';
+  });
+}
+
+/** @param {HTMLElement} stepEl */
+function pipeRestorePreview(stepEl) {
+  const container = stepEl.closest('.oc-pipeline');
+  if (!container) return;
+  container.querySelectorAll('.pipe-step').forEach((/** @type {any} */ step) => {
+    const dot = /** @type {HTMLElement|null} */(step.querySelector('.pipe-dot'));
+    if (dot) { dot.style.background = dot.dataset.origColor || ''; dot.style.borderColor = dot.dataset.origColor || ''; }
+  });
+  container.querySelectorAll('.pipe-line').forEach((/** @type {any} */ line) => {
+    line.style.background = line.classList.contains('pipe-line-done') ? 'var(--success)' : 'var(--border)';
+  });
+}

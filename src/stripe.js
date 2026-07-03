@@ -684,3 +684,70 @@ function _trialBannerDismiss() {
   const el = document.getElementById('trial-banner');
   if (el) el.remove();
 }
+
+// (moved from src/app.js — stripe.js owns the checkout path this feeds:
+// _handleUpgradeClick/handleCheckoutReturn consume the stashed plan via
+// _readPendingPlan from app.js's onAuthStateChange at runtime.)
+// Landing-page pricing deep-link: the static landing page links its pricing
+// CTAs to /?plan=<tier>. Stash the tier and strip the param (mirrors
+// handleCheckoutReturn); the onAuthStateChange handler above consumes it once
+// the session is known. Runs before that handler clears its readyState await.
+//
+// F.1: the stash is localStorage-backed (48 h TTL), not just `window`, because
+// a NEW user's path to checkout crosses page loads: click paid CTA → sign up →
+// confirm email (fresh load, often a different tab) → first signed-in session.
+// The in-memory stash alone died at that boundary and the paid click was lost.
+const _PENDING_PLAN_KEY = 'pc_pending_plan';
+const _PENDING_PLAN_TTL_MS = 48 * 3600000;
+
+/** @param {'monthly'|'annual'|'founder'} plan */
+function _storePendingPlan(plan) {
+  window._pendingPlan = plan;
+  try {
+    localStorage.setItem(_PENDING_PLAN_KEY, JSON.stringify({ plan, at: Date.now() }));
+  } catch (e) { void e; /* private mode — in-memory stash still covers same-load flows */ }
+}
+
+/**
+ * Read the stashed plan — memory first, then localStorage — discarding stale
+ * or malformed entries. Pass `consume: true` only once a session exists (the
+ * user can actually reach Checkout); otherwise the stash survives the signup
+ * → email-confirm round trip it exists for.
+ * @param {boolean} consume
+ * @returns {'monthly'|'annual'|'founder'|null}
+ */
+function _readPendingPlan(consume) {
+  /** @type {'monthly'|'annual'|'founder'|null} */
+  let plan = window._pendingPlan || null;
+  if (!plan) {
+    try {
+      const raw = localStorage.getItem(_PENDING_PLAN_KEY);
+      if (raw) {
+        const obj = JSON.parse(raw);
+        if (obj && (obj.plan === 'monthly' || obj.plan === 'annual' || obj.plan === 'founder')
+            && typeof obj.at === 'number' && Date.now() - obj.at < _PENDING_PLAN_TTL_MS) {
+          plan = obj.plan;
+        } else {
+          localStorage.removeItem(_PENDING_PLAN_KEY); // stale or garbage — drop it
+        }
+      }
+    } catch (e) { void e; }
+  }
+  if (plan && consume) {
+    window._pendingPlan = null;
+    try { localStorage.removeItem(_PENDING_PLAN_KEY); } catch (e) { void e; }
+  }
+  return plan;
+}
+
+(function () {
+  const _params = new URLSearchParams(window.location.search);
+  const _plan = _params.get('plan');
+  if (_plan === 'monthly' || _plan === 'annual' || _plan === 'founder') {
+    _storePendingPlan(_plan);
+    _params.delete('plan');
+    const _cleaned = _params.toString();
+    window.history.replaceState({}, '',
+      window.location.pathname + (_cleaned ? `?${_cleaned}` : '') + window.location.hash);
+  }
+})();
