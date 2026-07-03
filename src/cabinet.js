@@ -874,6 +874,20 @@ function removeCBHw(lineId, idx, scope) {
   _cbScheduleAutosave();
   renderCBEditor(); renderCBResults();
 }
+/** Append a blank hardware row and focus it — the "+ add" button on the
+ *  spec-card hardware lines (no trailing search box until asked).
+ *  @param {number} lineId @param {string} [scope] */
+function cbAddBlankHw(lineId, scope) {
+  const sc = scope || 'cabinet';
+  const line = cbScratchpad && cbScratchpad.id === lineId ? cbScratchpad : cbLines.find(l => l.id === lineId);
+  if (!line) return;
+  const list = _hwList(line, sc);
+  list.push({ name: '', qty: 1 });
+  renderCBEditor();
+  const inp = _byId('cb-hw-' + sc + '-' + lineId + '-' + (list.length - 1));
+  if (inp) inp.focus();
+}
+/** @type {any} */ (window).cbAddBlankHw = cbAddBlankHw;
 
 // ── Extras CRUD ──
 /** @param {number} lineId */

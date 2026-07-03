@@ -404,25 +404,20 @@ function renderCBEditor() {
   // (`finish` | `doorFinish` | `drawerFrontFinish` | `drawerBoxFinish`).
   /** @param {string} field */
   const finishSmart = (field) => `<div style="position:relative"><div class="smart-input-wrap"><input type="text" id="cb-mat-${field}" value="${_escHtml(line[field]||'None')}" autocomplete="off" style="font-size:13px" oninput="_smartCBFinishSuggest(this,'cb-mat-suggest-${field}','${field}')" onfocus="_smartCBFinishSuggest(this,'cb-mat-suggest-${field}','${field}')" onblur="setTimeout(()=>{_byId('cb-mat-suggest-${field}').style.display='none';cbUpdateField('${field}',this.value)},150)"><div class="smart-input-add" onclick="_openNewCBFinishPopup('${field}')" title="Add new finish">+</div></div><div id="cb-mat-suggest-${field}" class="client-suggest-list" style="display:none"></div></div>`;
-  // Per-component hardware list. `scope` ∈ {'cabinet','door','drawer'} maps
-  // to line.hwItems / line.doorHwItems / line.drawerHwItems respectively.
+  // Per-component hardware. `scope` ∈ {'cabinet','door','drawer'} maps to
+  // line.hwItems / line.doorHwItems / line.drawerHwItems.
+  // Add-search smart input (shown inline with the Hardware header when the
+  // list is empty). matSmart-shaped so smart() compacts it to rates scale.
   /** @param {string} scope */
-  const hwListUI = (scope) => {
-    const list = scope === 'door' ? (line.doorHwItems || []) : scope === 'drawer' ? (line.drawerHwItems || []) : (line.hwItems || []);
-    const rows = list.map(/** @param {any} hw @param {number} hi */ (hw, hi) => `<div style="display:flex;gap:4px;align-items:center;margin-bottom:6px;position:relative">
-            <div style="flex:1;position:relative"><div class="smart-input-wrap"><input type="text" id="cb-hw-${scope}-${line.id}-${hi}" value="${_escHtml(hw.name)}" style="font-size:12px" autocomplete="off" oninput="_smartCBHwSuggest(this,'cb-hw-suggest-${scope}-${line.id}-${hi}',${line.id},${hi},'${scope}')" onfocus="_smartCBHwSuggest(this,'cb-hw-suggest-${scope}-${line.id}-${hi}',${line.id},${hi},'${scope}')" onblur="setTimeout(()=>{_byId('cb-hw-suggest-${scope}-${line.id}-${hi}').style.display='none';updateCBHw(${line.id},${hi},'name',this.value,'${scope}')},150)"><div class="smart-input-add" onclick="_openNewCBHardwarePopup(${line.id},${hi},'${scope}')" title="Add new hardware type">+</div></div><div id="cb-hw-suggest-${scope}-${line.id}-${hi}" class="client-suggest-list" style="display:none"></div></div>
-            <span style="font-size:10px;color:var(--muted)">×</span>
-            <input type="number" style="width:40px;text-align:center;padding:5px;font-size:12px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text)" value="${hw.qty}" min="1" onchange="updateCBHw(${line.id},${hi},'qty',this.value,'${scope}')">
-            <button class="cb-del-btn" style="font-size:16px" onclick="removeCBHw(${line.id},${hi},'${scope}')">×</button>
-          </div>`).join('');
-    return `${rows}<div style="position:relative;margin-top:4px">
-            <div class="smart-input-wrap">
-              <input type="text" id="cb-hw-add-${scope}-${line.id}" placeholder="Search hardware..." style="font-size:12px" autocomplete="off" oninput="_smartCBHwAddSuggest(this,'cb-hw-add-suggest-${scope}-${line.id}',${line.id},'${scope}')" onfocus="_smartCBHwAddSuggest(this,'cb-hw-add-suggest-${scope}-${line.id}',${line.id},'${scope}')" onblur="setTimeout(()=>_byId('cb-hw-add-suggest-${scope}-${line.id}').style.display='none',150)">
-              <div class="smart-input-add" onclick="_openNewCBHardwarePopup(${line.id},-1,'${scope}')" title="Add new hardware type">+</div>
-            </div>
-            <div id="cb-hw-add-suggest-${scope}-${line.id}" class="client-suggest-list" style="display:none"></div>
-          </div>`;
-  };
+  const hwAddSearch = (scope) => `<div style="position:relative"><div class="smart-input-wrap"><input type="text" id="cb-hw-add-${scope}-${line.id}" placeholder="Search hardware..." autocomplete="off" oninput="_smartCBHwAddSuggest(this,'cb-hw-add-suggest-${scope}-${line.id}',${line.id},'${scope}')" onfocus="_smartCBHwAddSuggest(this,'cb-hw-add-suggest-${scope}-${line.id}',${line.id},'${scope}')" onblur="setTimeout(()=>_byId('cb-hw-add-suggest-${scope}-${line.id}').style.display='none',150)"><div class="smart-input-add" onclick="_openNewCBHardwarePopup(${line.id},-1,'${scope}')" title="Add new hardware type">+</div></div><div id="cb-hw-add-suggest-${scope}-${line.id}" class="client-suggest-list" style="display:none"></div></div>`;
+  // One editable hardware item row: name smart-input + qty + delete.
+  /** @param {string} scope @param {any} hw @param {number} hi */
+  const hwItemRow = (scope, hw, hi) => `<div class="cb-hw-row">
+      <div class="cb-hw-item"><div class="smart-input-wrap"><input type="text" id="cb-hw-${scope}-${line.id}-${hi}" value="${_escHtml(hw.name)}" placeholder="Search hardware..." autocomplete="off" oninput="_smartCBHwSuggest(this,'cb-hw-suggest-${scope}-${line.id}-${hi}',${line.id},${hi},'${scope}')" onfocus="_smartCBHwSuggest(this,'cb-hw-suggest-${scope}-${line.id}-${hi}',${line.id},${hi},'${scope}')" onblur="setTimeout(()=>{_byId('cb-hw-suggest-${scope}-${line.id}-${hi}').style.display='none';updateCBHw(${line.id},${hi},'name',this.value,'${scope}')},150)"><div class="smart-input-add" onclick="_openNewCBHardwarePopup(${line.id},${hi},'${scope}')" title="Add new hardware type">+</div></div><div id="cb-hw-suggest-${scope}-${line.id}-${hi}" class="client-suggest-list" style="display:none"></div></div>
+      <span class="cb-hw-x">×</span>
+      <input type="number" class="cb-hw-qty" value="${hw.qty}" min="1" onchange="updateCBHw(${line.id},${hi},'qty',this.value,'${scope}')">
+      <button class="cb-del-btn" onclick="removeCBHw(${line.id},${hi},'${scope}')">×</button>
+    </div>`;
   /** @param {string} field @param {any} val @param {number} [min] */
   const stepper = (field, val, min) => `<div class="cl-stepper"><button class="cl-step-btn" onclick="cbStepField('${field}',-1)">−</button><input type="number" class="cl-input cl-qty-input" value="${val}" min="${min||0}" style="font-size:14px;width:42px" onchange="cbUpdateField('${field}',this.value)"><button class="cl-step-btn" onclick="cbStepField('${field}',1)">+</button></div>`;
   // Stepper variant for custom panels — writes into the nested line.extraPanels map.
@@ -448,11 +443,18 @@ function renderCBEditor() {
     <div class="cb-rc-hd"><span class="cb-rc-title">${title}</span><span id="${badgeId}">${badgeHtml}</span></div>
     <div class="cb-rc-bd">${body}</div>
   </div>`;
-  // Hardware as its own always-visible list line (original layout): a
-  // "Hardware" label above the full hwListUI (per-item smart-search rows +
-  // qty + delete, plus the add-search row).
+  // Hardware line: "Hardware" header + control on one row. Empty → the
+  // add-search dropdown sits inline with the header; once items exist the
+  // header carries a "+ add" button (no second search box) and each item
+  // renders as its own row below. "+ add" appends a blank row to fill.
   /** @param {string} scope */
-  const hwLine = (scope) => `<div class="cb-hw-line"><label>Hardware</label>${hwListUI(scope)}</div>`;
+  const hwLine = (scope) => {
+    const list = scope === 'door' ? (line.doorHwItems || []) : scope === 'drawer' ? (line.drawerHwItems || []) : (line.hwItems || []);
+    const headerCtl = list.length
+      ? `<button class="cb-hw-addbtn" onclick="cbAddBlankHw(${line.id},'${scope}')">+ add</button>`
+      : smart(hwAddSearch(scope));
+    return `<div class="cb-hw-line">${rr('Hardware', headerCtl)}${list.map(/** @param {any} hw @param {number} hi */ (hw, hi) => hwItemRow(scope, hw, hi)).join('')}</div>`;
+  };
   // Coverage slider (shared markup with the old editor — cbUpdatePct clamp).
   /** @param {string} field */
   const pctRow = (field) => rr('% of front', `<div class="cb-pct-row"><input type="range" class="cb-pct-slider" min="0" max="100" step="5" value="${line[field]||0}" oninput="this.nextElementSibling.value=this.value" onchange="cbUpdatePct('${field}',this.value)"><input type="number" class="cb-pct-num" min="0" max="100" step="5" value="${line[field]||0}" oninput="this.previousElementSibling.value=this.value" onchange="cbUpdatePct('${field}',this.value)"><span class="cb-pct-suffix">%</span></div>`);

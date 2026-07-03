@@ -702,7 +702,7 @@ header {
   #cb-cab-editor .cb-rr .cl-step-btn { min-width: 38px; }
   #cb-cab-editor .cb-rr .cl-stepper .cl-qty-input { height: 42px; font-size: 16px !important; width: 40px !important; }
   #cb-cab-editor .cb-rr .cb-pct-num { height: 38px; width: 44px; font-size: 16px; }
-  #cb-cab-editor .cb-hw-chip { min-height: 32px; }
+  #cb-cab-editor .cb-hw-chip, #cb-cab-editor .cb-hw-addbtn { min-height: 38px; }
 }
 
 /* ── HEADER & NAV ON MOBILE (Phase 3) ──
@@ -1424,13 +1424,20 @@ canvas { display: block; }
 .cb-rr .cl-stepper .cl-qty-input { font-size:11px !important; width:30px !important; padding:2px !important; height:22px; min-height:0; border:none; background:var(--surface); }
 /* Coverage slider row */
 .cb-rr .cb-pct-row { flex:1; min-width:0; }
-/* Hardware: own always-visible list line (original layout) */
-.cb-hw-line { margin-top:6px; }
-.cb-hw-line > label { display:block; font-size:10px; font-weight:600; color:var(--muted); margin-bottom:3px; }
-/* hwListUI rows are full-width smart-search rows + qty + delete + an add row */
-.cb-hw-line .smart-input-wrap { border-radius:5px; }
-.cb-hw-line .smart-input-wrap > input[type=text] { font-size:11px; padding:3px 6px; }
-.cb-hw-line .smart-input-add { width:24px; font-size:13px; }
+/* Hardware line: header row (label + add-search / + add button) then one
+   editable item row per hardware item. */
+.cb-hw-line .cb-rr { margin-top:5px; }
+.cb-hw-addbtn { font-size:11px; font-weight:600; color:var(--muted); background:none; border:1px dashed var(--border); border-radius:6px; padding:3px 12px; cursor:pointer; font-family:inherit; }
+.cb-hw-addbtn:hover { border-color:var(--accent); color:var(--accent); }
+.cb-hw-row { display:flex; gap:4px; align-items:center; margin-top:4px; }
+.cb-hw-item { flex:1; min-width:0; position:relative; }
+.cb-hw-item .smart-input-wrap { border-radius:5px; }
+.cb-hw-item .smart-input-wrap > input[type=text] { font-size:11px; padding:3px 6px; height:22px; min-height:0; }
+.cb-hw-item .smart-input-add { width:24px; font-size:13px; }
+.cb-hw-x { font-size:10px; color:var(--muted); flex-shrink:0; }
+/* Scoped with the host id so width:38px beats the base
+   input[type=number]{width:100%} rule (higher specificity than a bare class). */
+#cb-cab-editor .cb-hw-qty { width:38px; flex-shrink:0; text-align:center; padding:3px; font-size:11px; border:1px solid var(--border); border-radius:5px; background:var(--surface2); color:var(--text); height:24px; min-height:0; }
 /* "+ add item" chip reused by the Extras card */
 .cb-hw-chip { display:inline-flex; align-items:center; font-size:10px; font-weight:600; padding:2px 8px; border-radius:10px; white-space:nowrap; cursor:pointer; }
 .cb-hw-chip.add { background:none; border:1px dashed var(--border); color:var(--muted); }
