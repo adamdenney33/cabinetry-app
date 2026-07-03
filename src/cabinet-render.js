@@ -103,6 +103,10 @@ function _syncCBMainViewChrome() {
   const sbL = _byId('cb-sidebar-library');
   if (results) results.style.display = view === 'results' ? '' : 'none';
   if (library) library.style.display = view === 'library' ? '' : 'none';
+  // Pinned results footer lives outside #cb-results — hide it whenever the
+  // Library view is showing (renderCBResults re-populates it on the way back).
+  const foot = _byId('cb-results-footer');
+  if (foot && view !== 'results') foot.style.display = 'none';
   if (tabR) { tabR.style.borderBottomColor = view === 'results' ? 'var(--accent)' : 'transparent'; tabR.style.fontWeight = view === 'results' ? '700' : '500'; tabR.style.color = view === 'results' ? 'var(--text)' : 'var(--muted)'; }
   if (tabL) { tabL.style.borderBottomColor = view === 'library' ? 'var(--accent)' : 'transparent'; tabL.style.fontWeight = view === 'library' ? '700' : '500'; tabL.style.color = view === 'library' ? 'var(--text)' : 'var(--muted)'; }
   // Sidebar wrapper visibility. The builder wrapper houses the cabinet editor,
@@ -363,6 +367,9 @@ function cbSelectLine(idx) {
 /** @param {number} idx */
 function cbEditCabinetFromOutput(idx) {
   cbSelectLine(idx);
+  // Refresh the table so the .editing row highlight follows the selection
+  // (the old cards had the same lag — cbSelectLine only re-renders the editor).
+  renderCBResults();
   if (window._mvShowEditor) window._mvShowEditor();
   // Scroll to the editor's TOP — with the pinned header, scrolling to the
   // bottom would land the user on the sticky footer instead of the name/dims.
@@ -631,6 +638,17 @@ function _refreshCBLiveCosts() {
   set('cb-live-total-ft', _cbEdTotalHTML(line, c));
 }
 
+/** Write (or hide, when html === '') the pinned results footer bar. Lives
+ *  outside #cb-results, so every render path must set it explicitly or a
+ *  stale total survives into the empty states.
+ *  @param {string} html */
+function _setCBFooter(html) {
+  const el = _byId('cb-results-footer');
+  if (!el) return;
+  el.innerHTML = html;
+  el.style.display = (html && cbMainView === 'results') ? 'flex' : 'none';
+}
+
 // ── Render right panel: cost breakdown ──
 function renderCBResults() {
   const el = _byId('cb-results');
@@ -674,6 +692,7 @@ function renderCBResults() {
     // If a quote is already opened (drilled in), don't show the all-quotes
     // picker — just show an empty state for THIS quote.
     if (cbEditingQuoteId || cbEditingOrderId) {
+      _setCBFooter('');
       el.innerHTML = `${emptyHeader}<div style="max-width:700px">${orderBanner}</div><div class="empty-state" style="max-width:700px">
         <div class="empty-icon" style="opacity:.18"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg></div>
         <h3>No cabinets yet</h3>
@@ -686,6 +705,7 @@ function renderCBResults() {
       .slice()
       .sort(/** @param {any} a @param {any} b */ (a, b) => (+new Date(b.updated_at || 0)) - (+new Date(a.updated_at || 0)));
     if (!allQuotes.length) {
+      _setCBFooter('');
       el.innerHTML = `${emptyHeader}<div class="empty-state">
         <div class="empty-icon" style="opacity:.18"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg></div>
         <h3>No quotes yet</h3>
@@ -725,6 +745,7 @@ function renderCBResults() {
         </div>
       </div>`;
     }).join('');
+    _setCBFooter('');
     el.innerHTML = `${emptyHeader}<div style="max-width:700px">${cardsHtml}</div>`;
     return;
   }
@@ -754,99 +775,76 @@ function renderCBResults() {
   if (projName) {
     html += _renderContentHeader({ iconSvg: _CH_ICON_QUOTE, title: cbHeaderTitle, addOnclick: 'window._mvShowEditor()', backOnclick: cbEditingQuoteId ? '_exitClient_cabinet()' : undefined, addIcon: _CH_ICON_CABINET.replace('class="ch-icon"', '') });
   }
-  html += `<div style="font-size:12px;color:var(--muted);margin: -8px 0 16px">${cbLines.length} cabinet${cbLines.length!==1?'s':''} · ${cbLines.reduce((s,l)=>s+l.qty,0)} units</div>`;
-
-  // Top buttons bar
-  html += `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;align-items:center">`;
-  if (!cbEditingOrderId) {
-    html += `<button class="btn btn-outline" onclick="cbGoToQuote()" style="font-size:12px;padding:8px 14px">Go to Quote &rarr;</button>`;
-  }
-  if (!cbEditingQuoteId && !cbEditingOrderId) {
-    html += `<button class="btn btn-primary" onclick="cbSendToQuote()" style="font-size:12px;padding:8px 14px">Send to Quote &rarr;</button>`;
-    html += `<button class="btn btn-primary" onclick="cbSendToOrder()" style="font-size:12px;padding:8px 14px">Send to Order &rarr;</button>`;
-  }
-  html += `</div>`;
-
-  // Individual cabinet cards
-  cbLines.forEach((line, idx) => {
+  // Line-item table (quote-editor style). Row click selects the cabinet into
+  // the editor; qty/actions cells stop propagation. Row Total = pre-markup
+  // line subtotal (rows sum to the Subtotal below); markup/tax/discount only
+  // appear in the totals block.
+  /** @param {any} line @param {number} idx */
+  const rowHtml = (line, idx) => {
     const c = calcs[idx];
     const isActive = idx === cbEditingLineIdx;
     const unitCost = c.matCost + c.labourCost + c.hwCost;
-    const cabMarkup = c.lineSubtotal * effMarkup / 100;
-    const cabTotal = (c.lineSubtotal + cabMarkup) * (1 + effTax / 100) * (1 - effDisc / 100);
-    html += `<div class="cb-cab-card${isActive?' editing':''}" onclick="cbEditCabinetFromOutput(${idx})">
-      <!-- Header -->
-      <div style="display:flex;align-items:center;gap:10px;padding:12px 16px;background:${isActive?'var(--accent-dim)':'var(--surface2)'}">
-        <div style="flex:1;min-width:0">
-          <div style="font-size:14px;font-weight:700;color:var(--text)">${_escHtml(line.name||'Cabinet '+(idx+1))}</div>
-          <div style="font-size:11px;color:var(--muted)">${dimsLabelFromMM(line.w, line.h, line.d)} · ${_escHtml(line.material)}</div>
-        </div>
-        <div style="font-size:16px;font-weight:800;color:var(--accent)">${fmt0(cabTotal)}</div>
-      </div>
-      <!-- Details -->
-      <div style="padding:10px 16px;font-size:12px;color:var(--text2)">
-        <div style="display:grid;grid-template-columns:1fr auto;gap:2px 16px">
-          <span>Materials</span><span style="text-align:right;font-weight:600;color:var(--text)">${fmt(c.matCost)}</span>
-          <span>Labour (${c.labourHrs.toFixed(1)} hrs @ ${cur}${cbSettings.labourRate}/hr)</span><span style="text-align:right;font-weight:600;color:var(--text)">${fmt(c.labourCost)}</span>
-          ${(cbSettings.contingencyPct||0) > 0 ? `<span style="color:var(--muted)">Labour Time Contingency (${cbSettings.contingencyPct}%)</span><span style="text-align:right;color:var(--muted);font-style:italic">incl. +${fmt0(c.labourCost * cbSettings.contingencyPct / (100 + cbSettings.contingencyPct))}</span>` : ''}
-          <span>Hardware</span><span style="text-align:right;font-weight:600;color:var(--text)">${fmt0(c.hwCost)}</span>
-          ${line.qty > 1 ? `
-          <span style="border-top:1px solid var(--border2);padding-top:4px;margin-top:2px">Unit Cost</span><span style="text-align:right;font-weight:600;border-top:1px solid var(--border2);padding-top:4px;margin-top:2px">${fmt0(unitCost)}</span>
-          <span>× ${line.qty} units</span><span style="text-align:right;font-weight:700">${fmt0(c.lineSubtotal)}</span>
-          ` : `
-          <span style="color:var(--muted);border-top:1px solid var(--border2);padding-top:4px;margin-top:2px">Subtotal</span><span style="text-align:right;font-weight:700;border-top:1px solid var(--border2);padding-top:4px;margin-top:2px">${fmt0(c.lineSubtotal)}</span>
-          `}
-          ${effMarkup>0?`<span style="color:var(--muted)">Markup (${effMarkup}%)</span><span style="text-align:right;color:var(--muted)">+${fmt0(cabMarkup)}</span>`:''}
-          ${effTax>0?`<span style="color:var(--muted)">Tax (${effTax}%)</span><span style="text-align:right;color:var(--muted)">+${fmt0((c.lineSubtotal+cabMarkup)*effTax/100)}</span>`:''}
-          ${effDisc>0?`<span style="color:var(--muted)">Discount (${effDisc}%)</span><span style="text-align:right;color:var(--muted)">−${fmt0((c.lineSubtotal+cabMarkup)*(1+effTax/100)*effDisc/100)}</span>`:''}
-        </div>
-        <!-- Sub details -->
-        <div style="margin-top:6px;padding-top:6px;border-top:1px solid var(--border2);font-size:11px;color:var(--muted);display:flex;gap:8px;flex-wrap:wrap">
-          ${line.finish&&line.finish!=='None'?`<span>${_escHtml(line.finish)}</span>`:''}${line.construction?`<span>${_escHtml(line.construction)}</span>`:''}${line.baseType&&line.baseType!=='None'?`<span>${_escHtml(line.baseType)}</span>`:''}${line.doors>0?`<span>${line.doors} door${line.doors!==1?'s':''}</span>`:''}${line.drawers>0?`<span>${line.drawers} drawer${line.drawers!==1?'s':''}</span>`:''}${(line.shelves||0)+(line.adjShelves||0)+(line.looseShelves||0)>0?`<span>${(line.shelves||0)+(line.adjShelves||0)+(line.looseShelves||0)} shelves</span>`:''}${(line.partitions||0)>0?`<span>${line.partitions} partition${line.partitions!==1?'s':''}</span>`:''}${(line.endPanels||0)>0?`<span>${line.endPanels} end panel${line.endPanels!==1?'s':''}</span>`:''}${_extraPanelCount(line)>0?`<span>${_extraPanelCount(line)} panel${_extraPanelCount(line)!==1?'s':''}</span>`:''}${line.room?`<span>${_escHtml(line.room)}</span>`:''}
-        </div>
-      </div>
-      <!-- Actions -->
-      <div style="padding:6px 12px;border-top:1px solid var(--border2);display:flex;gap:6px;align-items:stretch;background:var(--surface2)">
-        <button class="btn btn-outline" style="font-size:11px;padding:4px 10px;width:auto" onclick="event.stopPropagation();cbAddLineToLibrary(${idx})" title="Save this cabinet as a library template">Add to Library</button>
+    return `<tr class="cb-li-row${isActive ? ' editing' : ''}" onclick="cbEditCabinetFromOutput(${idx})">
+      <td class="cb-col-name"><span class="cb-li-name">${_escHtml(line.name||'Cabinet '+(idx+1))}</span><span class="cb-li-sub cb-li-sub-desktop">${_escHtml(line.material||'')}</span><span class="cb-li-sub cb-li-sub-mobile">${dimsLabelFromMM(line.w, line.h, line.d)}${line.material ? ' · ' + _escHtml(line.material) : ''}</span></td>
+      <td class="cb-col-size">${dimsLabelFromMM(line.w, line.h, line.d)}</td>
+      <td class="cb-col-qty" onclick="event.stopPropagation()"><div class="cl-stepper">
+        <button class="cl-step-btn" style="padding:0 6px" onclick="cbStepLineQty(${idx},-1)" title="Decrease quantity">−</button>
+        <input type="number" class="cl-input cl-qty-input" value="${line.qty}" min="1" style="font-size:11px;width:32px;padding:4px 2px" onchange="cbSetLineQty(${idx},this.value)">
+        <button class="cl-step-btn" style="padding:0 6px" onclick="cbStepLineQty(${idx},1)" title="Increase quantity">+</button>
+      </div></td>
+      <td class="cb-col-each">${fmt0(unitCost)}</td>
+      <td class="cb-col-total"><strong>${fmt0(c.lineSubtotal)}</strong></td>
+      <td class="cb-col-act" onclick="event.stopPropagation()"><div class="cb-li-actions">
         ${_cbCutListProjActHtml(`_cbOpenCabinetCutListsForLine(${idx})`, `_cbNewCutListForLine(${idx})`, line.db_id||'')}
-        <span style="flex:1"></span>
-        <div class="cl-stepper" style="flex:0 0 auto" onclick="event.stopPropagation()">
-          <button class="cl-step-btn" style="padding:0 6px" onclick="event.stopPropagation();cbStepLineQty(${idx},-1)" title="Decrease quantity">−</button>
-          <input type="number" class="cl-input cl-qty-input" value="${line.qty}" min="1" style="font-size:11px;width:32px;padding:4px 2px" onclick="event.stopPropagation()" onchange="event.stopPropagation();cbSetLineQty(${idx},this.value)">
-          <button class="cl-step-btn" style="padding:0 6px" onclick="event.stopPropagation();cbStepLineQty(${idx},1)" title="Increase quantity">+</button>
-        </div>
-        <button class="btn btn-outline" style="font-size:11px;padding:4px 10px;width:auto" onclick="event.stopPropagation();_duplicateCabinet(${idx})" title="Duplicate cabinet">Duplicate</button>
-        <button class="btn btn-outline" style="font-size:11px;padding:4px 10px;width:auto;color:var(--danger)" onclick="event.stopPropagation();_cbConfirmDeleteLine(${idx})" title="Delete cabinet">Delete</button>
-      </div>
-    </div>`;
-  });
+        <button class="cb-dup-btn" onclick="_duplicateCabinet(${idx})" title="Duplicate cabinet">⧉</button>
+        <button class="cb-del-btn" onclick="_cbConfirmDeleteLine(${idx})" title="Delete cabinet">×</button>
+      </div></td>
+    </tr>`;
+  };
+  html += `<div class="cb-li-wrap"><table class="cb-li-table">
+    <thead><tr><th>Cabinet</th><th class="cb-col-size">Size</th><th class="cb-col-qty">Qty</th><th class="cb-col-each">Each</th><th class="cb-col-total" style="text-align:right">Total</th><th class="cb-col-act"></th></tr></thead>
+    <tbody>${cbLines.map(rowHtml).join('')}</tbody>
+  </table></div>`;
+  html += `<button class="cb-li-add" onclick="addCBLine();if(window._mvShowEditor)window._mvShowEditor()">+ Add cabinet</button>`;
 
-  // All Cabinets Total card
-  html += `<div style="background:var(--surface);border:2px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow)">
-    <div style="padding:12px 16px;background:var(--surface2);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)">All Cabinets (${cbLines.length})</div>
-    <div style="padding:12px 16px">
-      <div style="display:grid;grid-template-columns:1fr auto;gap:3px 16px;font-size:13px">
-        <span style="color:var(--text2)">Materials</span><span style="text-align:right;font-weight:600">${fmt0(gMat)}</span>
-        <span style="color:var(--text2)">Labour (${totalHrs.toFixed(1)} hrs)</span><span style="text-align:right;font-weight:600">${fmt0(gLabour)}</span>
-        ${(cbSettings.contingencyPct||0) > 0 ? `<span style="color:var(--muted)">Labour Time Contingency (${cbSettings.contingencyPct}%)</span><span style="text-align:right;color:var(--muted);font-style:italic">incl. +${fmt0(gLabour * cbSettings.contingencyPct / (100 + cbSettings.contingencyPct))}</span>` : ''}
-        <span style="color:var(--text2)">Hardware</span><span style="text-align:right;font-weight:600">${fmt0(gHw)}</span>
-      </div>
-      <div style="border-top:1px solid var(--border);margin-top:6px;padding-top:6px;display:grid;grid-template-columns:1fr auto;gap:3px 16px;font-size:13px">
-        <span style="font-weight:700">Subtotal</span><span style="text-align:right;font-weight:700">${fmt0(gSub)}</span>
-        ${effMarkup>0?`<span style="color:var(--muted)">Markup (${effMarkup}%)</span><span style="text-align:right;color:var(--muted)">+${fmt0(gMarkup)}</span>`:''}
-        ${effTax>0?`<span style="color:var(--muted)">Tax (${effTax}%)</span><span style="text-align:right;color:var(--muted)">+${fmt0(gPreDisc-gSub-gMarkup)}</span>`:''}
-        ${effDisc>0?`<span style="color:var(--muted)">Discount (${effDisc}%)</span><span style="text-align:right;color:var(--muted)">−${fmt0(gDiscAmt)}</span>`:''}
-      </div>
-      <div style="border-top:2px solid var(--accent);margin-top:6px;padding-top:8px;display:flex;justify-content:space-between;font-size:16px">
-        <span style="font-weight:700;color:var(--accent)">${_editEnt && cbEditingOrderId ? 'Order Total' : 'Quote Total'}${_editEnt ? '' : ' (est.)'}</span>
-        <span style="font-weight:800;color:var(--accent)">${fmt0(gTotal)}</span>
-      </div>
-      ${_editEnt ? '' : `<div style="font-size:10px;color:var(--muted);margin-top:4px;text-align:right">Using your default markup/tax — attaches to the quote's own rates when sent.</div>`}
-    </div>
+  // Totals block — same math + conditional rows as the old All-Cabinets card
+  // (markup/tax/discount parity with the Quotes tab and the customer page).
+  html += `<div class="pf-totals" style="max-width:300px;margin:12px 0 0 auto">
+    <div class="pf-total-row"><span class="t-label">Materials</span><span class="t-val">${fmt0(gMat)}</span></div>
+    <div class="pf-total-row"><span class="t-label">Labour (${totalHrs.toFixed(1)} hrs)</span><span class="t-val">${fmt0(gLabour)}</span></div>
+    ${(cbSettings.contingencyPct||0) > 0 ? `<div class="pf-total-row"><span class="t-label" style="color:var(--muted)">Labour Time Contingency (${cbSettings.contingencyPct}%)</span><span class="t-val" style="color:var(--muted);font-weight:400;font-style:italic">incl. +${fmt0(gLabour * cbSettings.contingencyPct / (100 + cbSettings.contingencyPct))}</span></div>` : ''}
+    <div class="pf-total-row"><span class="t-label">Hardware</span><span class="t-val">${fmt0(gHw)}</span></div>
+    <div class="pf-total-row" style="border-top:1px solid var(--border2);padding-top:4px;margin-top:2px"><span class="t-label" style="font-weight:700;color:var(--text)">Subtotal</span><span class="t-val" style="font-weight:700">${fmt0(gSub)}</span></div>
+    ${effMarkup>0?`<div class="pf-total-row"><span class="t-label" style="color:var(--muted)">Markup (${effMarkup}%)</span><span class="t-val" style="color:var(--muted);font-weight:400">+${fmt0(gMarkup)}</span></div>`:''}
+    ${effTax>0?`<div class="pf-total-row"><span class="t-label" style="color:var(--muted)">Tax (${effTax}%)</span><span class="t-val" style="color:var(--muted);font-weight:400">+${fmt0(gPreDisc-gSub-gMarkup)}</span></div>`:''}
+    ${effDisc>0?`<div class="pf-total-row discount"><span class="t-label" style="color:var(--muted)">Discount (${effDisc}%)</span><span class="t-val">−${fmt0(gDiscAmt)}</span></div>`:''}
+    <div class="pf-total-row t-main"><span class="t-label">${_editEnt && cbEditingOrderId ? 'Order Total' : 'Quote Total'}${_editEnt ? '' : ' (est.)'}</span><span class="t-val" style="font-size:14px;font-weight:800;color:var(--accent)">${fmt0(gTotal)}</span></div>
+    ${_editEnt ? '' : `<div style="font-size:10px;color:var(--muted);text-align:right">Using your default markup/tax — attaches to the quote's own rates when sent.</div>`}
   </div>`;
 
   html += `</div>`;
   el.innerHTML = html;
+
+  // Pinned footer: counts · total · context action (relocates the old top
+  // buttons bar; order context folds "Back to order" in as the primary —
+  // the banner keeps Discard).
+  const units = cbLines.reduce((s, l) => s + l.qty, 0);
+  let footBtns = '';
+  if (cbEditingOrderId) {
+    footBtns = `<button class="btn btn-primary" onclick="finishEditingOrder()" style="font-size:12px;padding:8px 14px;width:auto" title="Cabinets autosave — this returns you to the order editor">&larr; Back to order</button>`;
+  } else if (cbEditingQuoteId) {
+    footBtns = `<button class="btn btn-primary" onclick="cbGoToQuote()" style="font-size:12px;padding:8px 14px;width:auto">Go to Quote &rarr;</button>`;
+  } else {
+    footBtns = `<button class="btn btn-outline" onclick="cbGoToQuote()" style="font-size:12px;padding:8px 14px;width:auto">Go to Quote &rarr;</button>
+      <button class="btn btn-outline" onclick="cbSendToOrder()" style="font-size:12px;padding:8px 14px;width:auto">Send to Order &rarr;</button>
+      <button class="btn btn-primary" onclick="cbSendToQuote()" style="font-size:12px;padding:8px 14px;width:auto">Send to Quote &rarr;</button>`;
+  }
+  _setCBFooter(`<span class="cb-foot-meta">${cbLines.length} cabinet${cbLines.length!==1?'s':''} · ${units} unit${units!==1?'s':''}</span>
+    <span style="flex:1"></span>
+    <span class="cb-foot-total-label">${cbEditingOrderId ? 'Order' : 'Quote'} Total${_editEnt ? '' : ' (est.)'}</span>
+    <span class="cb-foot-total">${fmt0(gTotal)}</span>
+    ${footBtns}`);
+
   if (typeof _cbApplyCutListCounts === 'function') _cbApplyCutListCounts();
 }
 

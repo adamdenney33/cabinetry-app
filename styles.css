@@ -1335,10 +1335,60 @@ canvas { display: block; }
 .cb-gv-card input:focus { border-color:var(--accent); background:var(--surface); box-shadow:0 0 0 2px var(--accent-dim); }
 .cb-gv-card .cb-gv-unit { font-size:10px; color:var(--muted); margin-top:2px; }
 
-/* CB Cabinet Card */
-.cb-cab-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow); overflow:hidden; margin-bottom:10px; transition:box-shadow .15s, border-color .15s; cursor:pointer; }
-.cb-cab-card:hover { box-shadow:var(--shadow-md); border-color:var(--accent); }
-.cb-cab-card.editing { border-width:2px; border-color:var(--accent); }
+/* ── CB Results line-item table (2026-07-03 rework) ──
+   Quote-editor-style table replacing the per-cabinet detail cards. Cloned
+   skin (NOT .editor-li-table — its mobile block force-converts rows into
+   quote-specific editable cards). */
+.cb-li-wrap { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow); overflow:hidden; }
+.cb-li-table { width:100%; border-collapse:collapse; table-layout:fixed; }
+.cb-li-table thead th { padding:8px; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:var(--muted); background:var(--surface2); border-bottom:1px solid var(--border); text-align:left; }
+.cb-li-table tbody td { padding:8px; border-bottom:1px solid var(--border2); font-size:12px; color:var(--text); font-variant-numeric:tabular-nums; vertical-align:middle; }
+.cb-li-table tbody tr:last-child td { border-bottom:none; }
+.cb-li-table tbody tr { cursor:pointer; }
+.cb-li-table tbody tr:nth-child(even) td { background:var(--zebra); }
+.cb-li-table tbody tr:hover td { background:var(--accent-dim) !important; }
+.cb-li-table tr.editing td { background:var(--accent-dim) !important; }
+.cb-li-table tr.editing td:first-child { box-shadow:inset 3px 0 0 var(--accent); }
+.cb-li-table .cb-col-size { width:112px; color:var(--text2); }
+.cb-li-table .cb-col-qty { width:80px; }
+.cb-li-table .cb-col-each { width:72px; text-align:right; color:var(--text2); }
+.cb-li-table .cb-col-total { width:78px; text-align:right; }
+.cb-li-table .cb-col-act { width:128px; text-align:right; }
+.cb-li-name { display:block; font-weight:600; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.cb-li-sub { display:block; font-size:11px; color:var(--muted); font-weight:400; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.cb-li-sub-mobile { display:none; }
+.cb-li-actions { display:flex; gap:2px; justify-content:flex-end; align-items:center; visibility:hidden; }
+.cb-li-table tr:hover .cb-li-actions, .cb-li-table tr.editing .cb-li-actions { visibility:visible; }
+.cb-li-actions .proj-act-label { display:none; }
+.cb-li-add { display:block; width:100%; margin-top:8px; padding:9px 14px; border:1px dashed var(--border); border-radius:8px; background:none; color:var(--muted); font-size:12px; font-weight:600; cursor:pointer; text-align:center; font-family:inherit; transition:border-color .15s, color .15s, background .15s; }
+.cb-li-add:hover { border-color:var(--accent); color:var(--accent); background:var(--accent-dim); }
+.cb-results-footer { flex-shrink:0; border-top:2px solid var(--border); background:var(--surface); padding:10px 20px; display:none; align-items:center; gap:10px; flex-wrap:wrap; }
+.cb-foot-meta { font-size:11px; color:var(--muted); white-space:nowrap; }
+.cb-foot-total-label { font-size:11px; font-weight:600; color:var(--text2); white-space:nowrap; }
+.cb-foot-total { font-size:18px; font-weight:800; color:var(--accent); white-space:nowrap; margin-right:4px; }
+@media (max-width: 760px) {
+  /* Rows become a 2-row grid: name+total / qty+actions. Size & Each fold
+     into the name sub-line; actions always visible (no hover on touch). */
+  .cb-li-table thead { display:none; }
+  .cb-li-table, .cb-li-table tbody { display:block; width:100%; }
+  .cb-li-table tr { display:grid; grid-template-columns:minmax(0,1fr) auto; grid-template-areas:"name total" "qty act"; gap:6px 8px; padding:9px 10px; border-bottom:1px solid var(--border2); align-items:center; }
+  .cb-li-table tbody tr:last-child { border-bottom:none; }
+  .cb-li-table tbody td { display:block; border:none; padding:0; }
+  .cb-li-table tbody tr:nth-child(even) td { background:none; }
+  .cb-li-table tr.editing { background:var(--accent-dim); box-shadow:inset 3px 0 0 var(--accent); }
+  .cb-li-table .cb-col-name { grid-area:name; }
+  .cb-li-table .cb-col-size, .cb-li-table .cb-col-each { display:none; }
+  .cb-li-table .cb-col-qty { grid-area:qty; width:auto; }
+  .cb-li-table .cb-col-total { grid-area:total; width:auto; font-size:14px; font-weight:700; }
+  .cb-li-table .cb-col-act { grid-area:act; width:auto; }
+  .cb-li-sub-desktop { display:none; }
+  .cb-li-sub-mobile { display:block; }
+  .cb-li-actions { visibility:visible; }
+  .cb-li-actions .cb-dup-btn, .cb-li-actions .cb-del-btn { width:40px; height:40px; }
+  .cb-li-table .cl-step-btn { min-width:36px; min-height:38px; }
+  .cb-li-table .cl-qty-input { font-size:16px; }
+  .cb-results-footer { padding:10px 12px; }
+}
 .cb-cab-header { display:flex; align-items:center; gap:8px; padding:10px 14px; background:var(--surface); border-bottom:1px solid var(--border2); }
 .cb-cab-header .cb-cab-num { font-size:11px; font-weight:800; color:var(--muted); width:24px; text-align:center; flex-shrink:0; }
 .cb-cab-header .cb-cab-name-input { flex:1; font-size:13px; font-weight:600; color:var(--text); padding:4px 8px; border:1px solid transparent; border-radius:5px; background:transparent; outline:none; font-family:inherit; min-width:0; }

@@ -125,7 +125,7 @@ const _wtSteps = [
   },
   {
     type: 'spot', phase: 'Cabinet', section: 'cabinet', cbView: 'results', subtab: 'builder', mv: 'editor',
-    preClickCard: '#cb-results .cb-cab-card',
+    preClickCard: '#cb-results .cb-li-row',
     target: '#cb-sidebar-builder', position: 'right',
     title: 'Cabinet Builder',
     body: 'Open any cabinet to set its full spec — <span class="wt-hi">carcass size, doors, drawers, shelves and hardware</span>. Labour pricing scales with size, so every cabinet is costed accurately.'

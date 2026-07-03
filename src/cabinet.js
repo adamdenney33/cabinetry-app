@@ -1153,10 +1153,9 @@ async function editQuoteInCB(quoteId, lineId) {
  *  highlighted card into view in the workspace. */
 function _cbRevealSelectedCabinet() {
   if (window._mvShowEditor) window._mvShowEditor();
-  const sidebar = _byId('cb-sidebar');
-  if (sidebar) sidebar.scrollTop = sidebar.scrollHeight;
+  _scrollCBEditorIntoView();
   setTimeout(() => {
-    const card = document.querySelector('.cb-cab-card.editing');
+    const card = document.querySelector('.cb-li-row.editing');
     if (card && typeof card.scrollIntoView === 'function') card.scrollIntoView({ block: 'nearest' });
   }, 0);
 }
