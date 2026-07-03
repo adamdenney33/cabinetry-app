@@ -701,6 +701,7 @@ header {
   #cb-cab-editor .cb-rr .cl-stepper { height: 44px; }
   #cb-cab-editor .cb-rr .cl-step-btn { min-width: 38px; }
   #cb-cab-editor .cb-rr .cl-stepper .cl-qty-input { height: 42px; font-size: 16px !important; width: 40px !important; }
+  #cb-cab-editor .cb-rr .cb-pct-num { height: 38px; width: 44px; font-size: 16px; }
   #cb-cab-editor .cb-hw-chip { min-height: 32px; }
 }
 
@@ -1378,10 +1379,14 @@ canvas { display: block; }
 .cb-pct-slider::-moz-range-thumb { width:14px; height:14px; border-radius:50%; background:var(--accent); cursor:pointer; border:none; }
 .cb-pct-val { font-size:12px; font-weight:700; color:var(--text); min-width:36px; text-align:right; }
 /* In the compact spec-card rows the range input won't shrink below its
-   intrinsic width, which pushes the % value past the card edge (clipped by
-   overflow:hidden). Force the slider to shrink and pin the value visible. */
+   intrinsic width, which pushes the % control past the card edge (clipped by
+   overflow:hidden). Force the slider to shrink; keep the editable number
+   input + % suffix pinned visible at the end of the row. */
 .cb-rr .cb-pct-slider { min-width:0; }
-.cb-rr .cb-pct-val { flex-shrink:0; min-width:32px; }
+.cb-rr .cb-pct-num { flex-shrink:0; width:34px; font-size:12px; font-weight:700; text-align:right; padding:2px 4px; border:1px solid var(--border); border-radius:4px; background:var(--surface2); color:var(--text); min-height:0; height:22px; -moz-appearance:textfield; }
+.cb-rr .cb-pct-num::-webkit-inner-spin-button, .cb-rr .cb-pct-num::-webkit-outer-spin-button { -webkit-appearance:none; margin:0; }
+.cb-rr .cb-pct-num:focus { border-color:var(--accent); box-shadow:0 0 0 2px var(--accent-dim); outline:none; }
+.cb-rr .cb-pct-suffix { flex-shrink:0; font-size:11px; font-weight:700; color:var(--muted); }
 
 /* ── CB editor: always-open spec cards, My Rates styling (2026-07-03 v2) ──
    Pinned header (name + qty + live total), 2-col grid of always-open section
