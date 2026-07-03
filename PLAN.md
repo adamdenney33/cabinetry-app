@@ -37,6 +37,15 @@ cards (My Rates box styling, original section groupings, real controls,
 hardware chips + tap-to-expand editor). Whole spec visible without scroll.
 Part B results table unchanged. Detail: SPEC.md § 13 (2026-07-03 later).
 
+**v2 follow-ups (same day):** ×qty suffix removed from editor totals
+(`2547544`); card reorder shelves·doors·fronts·boxes (`8b0f06c`); coverage
+sliders show an editable number field + 5% steps (`610575f`, `a739b1f`);
+hardware reverted to an inline list line with header+dropdown on one row and
+a "+ add" row button (`cf993b7`, `5fc450b`); **hardware added to Shelves &
+Partitions + Drawer Fronts — 2 new priced buckets, cross-stack + prod
+migration applied (`536e0b1`)**. ⬜ Deploy: redeploy quote-pay edge fns
+(server costing) before the frontend push — SPEC.md § 13 (2026-07-03 later).
+
 **Sub-steps.**
 - ✅ Part A — editor sidebar (`e2d4e32`): pinned header (name + W/H/D/Qty +
   live total), 6 section rows with inline header controls (steppers, type
