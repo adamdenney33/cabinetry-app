@@ -455,3 +455,129 @@ async function deleteDayOverride(id) {
   }
 }
 
+
+// (moved here from src/app.js — business.js owns the business-info surface;
+// loadAllData (app.js) calls this at runtime with the boot business_info rows.)
+// Phase 3.3: overlay business_info row onto pc_biz fields and form inputs.
+// If DB has no row, existing localStorage-loaded values remain.
+/** @param {any[]} rows */
+function _applyBizInfoFromDB(rows) {
+  if (!rows || rows.length === 0) {
+    // No business_info row (brand-new account): reset the walkthrough gate so
+    // a previous account's state can't leak across a same-tab account switch.
+    /** @type {any} */ (window)._onboardingState = {};
+    return;
+  }
+  const b = rows[0];
+  // O.2: stash the guided-walkthrough state for walkthrough.js's auto-start
+  // gate. Absent/non-object => {} (treated as a never-onboarded user).
+  /** @type {any} */ (window)._onboardingState =
+    (b && b.onboarding_state && typeof b.onboarding_state === 'object') ? b.onboarding_state : {};
+  // Update form inputs (these mirror what saveBizInfo / loadBizInfo manage)
+  /** @param {string} id @param {any} v */
+  const set = (id, v) => { const el = /** @type {HTMLInputElement | null} */ (document.getElementById(id)); if (el && v != null) el.value = v; };
+  set('biz-name', b.name);
+  set('biz-phone', b.phone);
+  set('biz-email', b.email);
+  set('biz-address', b.address);
+  set('biz-abn', b.abn);
+  set('biz-bank-details', b.bank_details);
+  // Logo: if DB has a public URL, use it; otherwise fall through to localStorage
+  // base64 — and self-heal the DB from that localStorage logo so the customer
+  // live link (which reads business_info.logo_url server-side) shows it too.
+  if (b.logo_url) {
+    const img = /** @type {HTMLImageElement | null} */ (document.getElementById('biz-logo-preview'));
+    const btn = document.getElementById('biz-logo-remove');
+    if (img) { img.src = b.logo_url; img.style.display = ''; }
+    if (btn) btn.style.display = '';
+    // Reverse self-heal: cache the logo into localStorage so the PDF/print header
+    // (getBizLogo(), localStorage-only) shows it on a device that synced from DB.
+    if (!localStorage.getItem('pc_biz_logo') && typeof _hydrateLogoToLS === 'function') {
+      _hydrateLogoToLS(b.logo_url);
+    }
+  } else if (localStorage.getItem('pc_biz_logo') && typeof _healLogoToDB === 'function') {
+    _healLogoToDB();
+  }
+  // Unit format from DB overrides localStorage
+  if (b.unit_format) {
+    try {
+      var uf = typeof b.unit_format === 'string' ? JSON.parse(b.unit_format) : b.unit_format;
+      if (uf) {
+        Object.assign(window.unitFormat, uf);
+        // The synced unit_format.mode is also the source of truth for the
+        // imperial/metric SYSTEM. Keep window.units in agreement so a second
+        // device (where localStorage pcUnits is stale or absent) doesn't render
+        // the wrong system. fromDB:true skips the mm<->inch data conversion —
+        // stored values are already in the maker's true unit.
+        var _sys = ['decimal', 'fractional', 'feetInches'].includes(uf.mode) ? 'imperial'
+                 : ['mm', 'cm', 'm'].includes(uf.mode) ? 'metric' : '';
+        if (_sys && _sys !== window.units && typeof setUnits === 'function') {
+          setUnits(_sys, { fromDB: true });
+        }
+        _syncUnitFormatUI();
+      }
+    } catch(e) {}
+  }
+  // Currency: window.currency (the in-app pick, from localStorage, shown on the
+  // PDF/print) is the user's authoritative choice. business_info.default_currency
+  // — which the public live link reads — was only ever written at the one-time
+  // migration (frozen, often a stale '£'), so the DEVICE wins: heal the DB from
+  // window.currency when they disagree, NEVER the reverse. (Overwriting
+  // window.currency from the stale DB would wrongly flip a correct '$' PDF to
+  // '£'.) Unlike unit_format, default_currency has no live sync to trust — this
+  // makes the live link follow the in-app selection / PDF.
+  if (window.currency && b.default_currency !== window.currency) {
+    try { if (typeof _syncCurrencyToDB === 'function') _syncCurrencyToDB(window.currency); } catch(e) {}
+  }
+  // Persist back to localStorage so other reads pick it up (legacy compatibility)
+  try {
+    localStorage.setItem('pc_biz', JSON.stringify({
+      name: b.name || '', phone: b.phone || '', email: b.email || '',
+      address: b.address || '', abn: b.abn || '',
+      bank_details: b.bank_details || ''
+    }));
+  } catch(e) {}
+  // Phase 3: business_info is the source of truth for all cbSettings scalars
+  // and labour/list defaults. Hard overlay — DB always wins. Hardcoded defaults
+  // in cabinet.js still apply for new users with no business_info row.
+  // Race guard (mirrors _loadCBLinesFromDB): _applyBizInfoFromDB re-runs on
+  // every auth event including hourly TOKEN_REFRESHED. If a sync is pending,
+  // the user has unsaved cbSettings edits — leave them alone.
+  if (typeof cbSettings !== 'undefined' && (typeof _cbSettingsSyncTimer === 'undefined' || !_cbSettingsSyncTimer)) {
+    if (b.default_labour_rate != null) cbSettings.labourRate = parseFloat(b.default_labour_rate);
+    if (b.default_markup_pct  != null) cbSettings.markup     = parseFloat(b.default_markup_pct);
+    if (b.default_tax_pct     != null) cbSettings.tax        = parseFloat(b.default_tax_pct);
+    if (b.default_deposit_pct  != null) cbSettings.deposit    = parseFloat(b.default_deposit_pct);
+    if (b.default_edging_per_m != null) cbSettings.edgingPerM = parseFloat(b.default_edging_per_m);
+    if (b.default_labour_times && typeof b.default_labour_times === 'object' && Object.keys(b.default_labour_times).length > 0) {
+      // Merge: DB values override defaults for known keys; new defaults fill in
+      // for keys not yet present in the DB row (e.g. carcass power-law fields
+      // added 2026-05-05). Wholesale replace would wipe forward-compat defaults.
+      cbSettings.labourTimes = { ...cbSettings.labourTimes, ...b.default_labour_times };
+    }
+    if (Array.isArray(b.default_base_types)         && b.default_base_types.length         > 0) {
+      // Migrate legacy base types (flat price → labour hours). Old rows hold
+      // {name, price}; base now contributes labour (hours × rate), so drop the
+      // price and default refHours to 0 rather than double-counting it.
+      cbSettings.baseTypes = b.default_base_types.map(/** @param {any} bt */ bt => ({ name: bt.name, refHours: bt.refHours != null ? bt.refHours : 0 }));
+    }
+    if (Array.isArray(b.default_constructions)      && b.default_constructions.length      > 0) cbSettings.constructions     = b.default_constructions;
+    if (Array.isArray(b.default_edge_banding)       && b.default_edge_banding.length       > 0) cbSettings.edgeBanding       = b.default_edge_banding;
+    if (Array.isArray(b.default_carcass_types)      && b.default_carcass_types.length      > 0) cbSettings.carcassTypes      = b.default_carcass_types;
+    if (Array.isArray(b.default_door_types)         && b.default_door_types.length         > 0) cbSettings.doorTypes         = b.default_door_types;
+    if (Array.isArray(b.default_drawer_front_types) && b.default_drawer_front_types.length > 0) cbSettings.drawerFrontTypes  = b.default_drawer_front_types;
+    if (Array.isArray(b.default_drawer_box_types)   && b.default_drawer_box_types.length   > 0) cbSettings.drawerBoxTypes    = b.default_drawer_box_types;
+    // Production scheduler defaults (S.2):
+    if (b.default_workday_hours     != null) cbSettings.workdayHours     = parseFloat(b.default_workday_hours);
+    if (b.default_packaging_hours   != null) cbSettings.packagingHours   = parseFloat(b.default_packaging_hours);
+    if (b.default_installation_hours!= null) cbSettings.installationHours= parseFloat(b.default_installation_hours);
+    if (b.default_contingency_pct   != null) cbSettings.contingencyPct   = parseFloat(b.default_contingency_pct);
+    if (Array.isArray(b.default_weekday_hours) && b.default_weekday_hours.length === 7) {
+      cbSettings.weekdayHours = b.default_weekday_hours.map(/** @param {any} h */ h => parseFloat(h) || 0);
+    }
+    if (b.production_queue_start_date) cbSettings.queueStartDate = b.production_queue_start_date;
+    // Phase 3 cleanup: DB is authoritative; drop the legacy LS key so it
+    // can't shadow on a future session.
+    localStorage.removeItem('pc_cq_settings');
+  }
+}
