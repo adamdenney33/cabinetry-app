@@ -83,6 +83,8 @@ const _CABLIB_CSV_COLS = /** @type {Record<string, string[]>} */ ({
   hardware:          ['hardware'],
   doorHardware:      ['doorhardware'],
   drawerHardware:    ['drawerhardware'],
+  shelfHardware:     ['shelfhardware'],
+  drawerFrontHardware: ['drawerfronthardware'],
   extras:            ['extras'],
   notes:             ['notes', 'note'],
 });
@@ -91,7 +93,7 @@ function cbExportLibrary() {
   if (!_enforceProFeature()) return;
   if (!cbLibrary.length) { _toast('No cabinets in library', 'error'); return; }
   /** @type {any[][]} */
-  const rows = [['Name','Type','Room','Width','Height','Depth','Qty','Material','Back Material','Finish','Carcass Type','Construction','Base','Doors','Door Material','Door Type','Door Finish','Door %','Drawers','Front Material','Drawer Front Type','Drawer Front Finish','Inner Material','Drawer Box Type','Drawer Box Finish','Drawer %','Fixed Shelves','Adj Shelves','Loose Shelves','Partitions','End Panels','Labour Hrs','Labour Override','Material Cost Override','Hardware','Door Hardware','Drawer Hardware','Extras','Notes']];
+  const rows = [['Name','Type','Room','Width','Height','Depth','Qty','Material','Back Material','Finish','Carcass Type','Construction','Base','Doors','Door Material','Door Type','Door Finish','Door %','Drawers','Front Material','Drawer Front Type','Drawer Front Finish','Inner Material','Drawer Box Type','Drawer Box Finish','Drawer %','Fixed Shelves','Adj Shelves','Loose Shelves','Partitions','End Panels','Labour Hrs','Labour Override','Material Cost Override','Hardware','Door Hardware','Drawer Hardware','Shelf Hardware','Drawer Front Hardware','Extras','Notes']];
   /** @param {any[]} arr */
   const json = arr => (Array.isArray(arr) && arr.length) ? JSON.stringify(arr) : '';
   cbLibrary.forEach(c => {
@@ -102,7 +104,7 @@ function cbExportLibrary() {
       c.drawers||0, c.drawerFrontMat||'', c.drawerFrontType||'', c.drawerFrontFinish||'', c.drawerInnerMat||'', c.drawerBoxType||'', c.drawerBoxFinish||'', c.drawerPct||85,
       c.shelves||0, c.adjShelves||0, c.looseShelves||0, c.partitions||0, c.endPanels||0,
       c.labourHrs||0, c.labourOverride ? 'TRUE' : 'FALSE', c.matCostOverride ?? '',
-      json(c.hwItems), json(c.doorHwItems), json(c.drawerHwItems), json(c.extras), c.notes||'',
+      json(c.hwItems), json(c.doorHwItems), json(c.drawerHwItems), json(c.shelfHwItems), json(c.drawerFrontHwItems), json(c.extras), c.notes||'',
     ]);
   });
   _csvDownload(rows, 'cabinet-library.csv');
@@ -172,6 +174,8 @@ function cbImportLibrary() {
       cab.hwItems = jsonArr(get(r, 'hardware')) || cab.hwItems;
       cab.doorHwItems = jsonArr(get(r, 'doorHardware')) || cab.doorHwItems;
       cab.drawerHwItems = jsonArr(get(r, 'drawerHardware')) || cab.drawerHwItems;
+      cab.shelfHwItems = jsonArr(get(r, 'shelfHardware')) || cab.shelfHwItems;
+      cab.drawerFrontHwItems = jsonArr(get(r, 'drawerFrontHardware')) || cab.drawerFrontHwItems;
       cab.extras = jsonArr(get(r, 'extras')) || cab.extras;
       cab.notes = get(r, 'notes')||cab.notes;
       cbLibrary.push(cab); imported++;

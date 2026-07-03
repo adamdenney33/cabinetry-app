@@ -30,6 +30,7 @@ const FIXTURE = {
     },
     "hwUnit": {
       "Blum Hinges (pair)": 12, "Soft-close Slides (pair)": 24, "Handle - Bar": 8,
+      "Shelf Pins (set)": 3,
       "Birch Ply 18mm": 0, "Solid Oak 20mm": 0, "None": 0
     },
     "finishPerM2": {
@@ -57,10 +58,10 @@ const FIXTURE = {
     { "line_kind": "cabinet", "qty": 1, "discount": 0, "material": "Birch Ply 18mm", "finish": "None", "id": 2, "name": "Two-door base", "w_mm": 800, "h_mm": 720, "d_mm": 580, "door_count": 2, "door_pct": 90, "door_material": "Birch Ply 18mm", "door_finish": "Lacquer", "door_type": "Shaker", "door_handle": "Bar", "hardware": [{ "name": "Blum Hinges (pair)", "qty": 2 }], "door_hardware": [{ "name": "Handle - Bar", "qty": 2 }] },
     { "line_kind": "cabinet", "qty": 1, "discount": 0, "material": "Birch Ply 18mm", "finish": "None", "id": 3, "name": "Drawer bank", "w_mm": 500, "h_mm": 720, "d_mm": 580, "drawer_count": 3, "drawer_pct": 40, "drawer_front_material": "Birch Ply 18mm", "drawer_front_finish": "Paint", "drawer_inner_material": "Birch Ply 12mm", "drawer_box_finish": "None", "drawer_hardware": [{ "name": "Soft-close Slides (pair)", "qty": 3 }] },
     { "line_kind": "cabinet", "qty": 2, "discount": 10, "material": "Birch Ply 18mm", "finish": "Oil (Osmo/Rubio)", "id": 4, "name": "Tall unit", "w_mm": 900, "h_mm": 2100, "d_mm": 600, "fixed_shelves": 3, "adj_shelves": 2, "partitions": 1, "end_panels": 1, "construction": "Inset", "base_type": "Plinth", "extras": [{ "cost": 35.5, "qty": 2 }] },
-    { "line_kind": "cabinet", "qty": 1, "discount": 0, "material": "Birch Ply 18mm", "finish": "None", "id": 5, "name": "Dresser", "w_mm": 1200, "h_mm": 900, "d_mm": 450, "door_count": 2, "door_pct": 55, "door_material": "Solid Oak 20mm", "door_finish": "Lacquer", "door_type": "Slab", "drawer_count": 2, "drawer_pct": 30, "drawer_front_material": "Solid Oak 20mm", "drawer_front_finish": "Lacquer", "drawer_inner_material": "Birch Ply 12mm", "fixed_shelves": 1, "construction": "Face Frame", "base_type": "Feet / Legs", "hardware": [{ "name": "Blum Hinges (pair)", "qty": 2 }], "drawer_hardware": [{ "name": "Soft-close Slides (pair)", "qty": 2 }] },
+    { "line_kind": "cabinet", "qty": 1, "discount": 0, "material": "Birch Ply 18mm", "finish": "None", "id": 5, "name": "Dresser", "w_mm": 1200, "h_mm": 900, "d_mm": 450, "door_count": 2, "door_pct": 55, "door_material": "Solid Oak 20mm", "door_finish": "Lacquer", "door_type": "Slab", "drawer_count": 2, "drawer_pct": 30, "drawer_front_material": "Solid Oak 20mm", "drawer_front_finish": "Lacquer", "drawer_inner_material": "Birch Ply 12mm", "fixed_shelves": 1, "construction": "Face Frame", "base_type": "Feet / Legs", "hardware": [{ "name": "Blum Hinges (pair)", "qty": 2 }], "drawer_hardware": [{ "name": "Soft-close Slides (pair)", "qty": 2 }], "shelf_hardware": [{ "name": "Shelf Pins (set)", "qty": 4 }], "drawer_front_hardware": [{ "name": "Handle - Bar", "qty": 2 }] },
     { "line_kind": "cabinet", "qty": 1, "discount": 0, "material": "Birch Ply 18mm", "finish": "None", "id": 6, "name": "Override unit", "w_mm": 700, "h_mm": 720, "d_mm": 580, "labour_override": true, "labour_hours": 9.25, "material_cost_override": 142.4 }
   ],
-  "expected": [127.38, 293, 297.13, 1531.12, 613.45, 653.29]
+  "expected": [127.38, 293, 297.13, 1531.12, 643.69, 653.29]
 };
 
 test('priceCabinetLine matches the browser engine to the penny', () => {

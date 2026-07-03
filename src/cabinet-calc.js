@@ -252,15 +252,17 @@ function calcCBSections(line) {
   // ── Hardware (per-component manual items — no auto hinges/slides) ──
   /** @param {any[]} list */
   const hwSum = (list) => (Array.isArray(list) ? list : []).reduce((s, hw) => s + hwp(hw.name) * hw.qty, 0);
-  const cabinetHardware = hwSum(line.hwItems);
-  const doorHardware    = hwSum(line.doorHwItems);
-  const drawerHardware  = hwSum(line.drawerHwItems);
-  const hardware = cabinetHardware + doorHardware + drawerHardware;
+  const cabinetHardware     = hwSum(line.hwItems);
+  const doorHardware        = hwSum(line.doorHwItems);
+  const drawerHardware      = hwSum(line.drawerHwItems);
+  const shelfHardware       = hwSum(line.shelfHwItems);
+  const drawerFrontHardware = hwSum(line.drawerFrontHwItems);
+  const hardware = cabinetHardware + doorHardware + drawerHardware + shelfHardware + drawerFrontHardware;
 
   // ── Extras (custom add-ons; markup applies since they're material-side) ──
   const extras = (line.extras || []).reduce(/** @param {number} s @param {any} e */ (s, e) => s + (parseFloat(e.cost) || 0) * (parseInt(e.qty) || 1), 0) * matMarkupMult;
 
-  return { cabinet, doors, drawers, drawerFronts, drawerBoxes, shelves, hardware, cabinetHardware, doorHardware, drawerHardware, extras };
+  return { cabinet, doors, drawers, drawerFronts, drawerBoxes, shelves, hardware, cabinetHardware, doorHardware, drawerHardware, shelfHardware, drawerFrontHardware, extras };
 }
 
 /** @param {any} line */
@@ -379,10 +381,12 @@ function calcCBLine(line) {
   const labourHrs = line.labourOverride ? line.labourHrs : autoLabour;
   const labourCost = labourHrs * cbSettings.labourRate;
 
-  // Hardware — sum across cabinet/door/drawer scopes. No auto hinges/slides.
+  // Hardware — sum across all five scopes (cabinet/door/drawer/shelf/
+  // drawer-front). No auto hinges/slides. Keep in lock-step with
+  // _shared/costing.ts hwCost (npm run test:costing parity).
   /** @param {any[]} list */
   const hwSum = (list) => (Array.isArray(list) ? list : []).reduce((s, hw) => s + hwp(hw.name) * hw.qty, 0);
-  const hwCost = hwSum(line.hwItems) + hwSum(line.doorHwItems) + hwSum(line.drawerHwItems);
+  const hwCost = hwSum(line.hwItems) + hwSum(line.doorHwItems) + hwSum(line.drawerHwItems) + hwSum(line.shelfHwItems) + hwSum(line.drawerFrontHwItems);
 
   const lineSubtotal = (finalMatCost + labourCost + hwCost) * line.qty;
 

@@ -843,6 +843,7 @@ export type Database = {
           drawer_box_type: string | null
           drawer_count: number
           drawer_front_finish: string | null
+          drawer_front_hardware: Json | null
           drawer_front_material: string | null
           drawer_front_type: string | null
           drawer_hardware: Json | null
@@ -871,6 +872,7 @@ export type Database = {
           qty: number
           room: string | null
           schedule_hours: number | null
+          shelf_hardware: Json | null
           type: string | null
           unit_price: number | null
           updated_at: string
@@ -899,6 +901,7 @@ export type Database = {
           drawer_box_type?: string | null
           drawer_count?: number
           drawer_front_finish?: string | null
+          drawer_front_hardware?: Json | null
           drawer_front_material?: string | null
           drawer_front_type?: string | null
           drawer_hardware?: Json | null
@@ -927,6 +930,7 @@ export type Database = {
           qty?: number
           room?: string | null
           schedule_hours?: number | null
+          shelf_hardware?: Json | null
           type?: string | null
           unit_price?: number | null
           updated_at?: string
@@ -955,6 +959,7 @@ export type Database = {
           drawer_box_type?: string | null
           drawer_count?: number
           drawer_front_finish?: string | null
+          drawer_front_hardware?: Json | null
           drawer_front_material?: string | null
           drawer_front_type?: string | null
           drawer_hardware?: Json | null
@@ -983,6 +988,7 @@ export type Database = {
           qty?: number
           room?: string | null
           schedule_hours?: number | null
+          shelf_hardware?: Json | null
           type?: string | null
           unit_price?: number | null
           updated_at?: string
@@ -1294,6 +1300,7 @@ export type Database = {
           drawer_box_type: string | null
           drawer_count: number
           drawer_front_finish: string | null
+          drawer_front_hardware: Json | null
           drawer_front_material: string | null
           drawer_front_type: string | null
           drawer_hardware: Json | null
@@ -1322,6 +1329,7 @@ export type Database = {
           quote_id: number
           room: string | null
           schedule_hours: number
+          shelf_hardware: Json | null
           type: string | null
           unit_price: number | null
           updated_at: string
@@ -1350,6 +1358,7 @@ export type Database = {
           drawer_box_type?: string | null
           drawer_count?: number
           drawer_front_finish?: string | null
+          drawer_front_hardware?: Json | null
           drawer_front_material?: string | null
           drawer_front_type?: string | null
           drawer_hardware?: Json | null
@@ -1378,6 +1387,7 @@ export type Database = {
           quote_id: number
           room?: string | null
           schedule_hours?: number
+          shelf_hardware?: Json | null
           type?: string | null
           unit_price?: number | null
           updated_at?: string
@@ -1406,6 +1416,7 @@ export type Database = {
           drawer_box_type?: string | null
           drawer_count?: number
           drawer_front_finish?: string | null
+          drawer_front_hardware?: Json | null
           drawer_front_material?: string | null
           drawer_front_type?: string | null
           drawer_hardware?: Json | null
@@ -1434,6 +1445,7 @@ export type Database = {
           quote_id?: number
           room?: string | null
           schedule_hours?: number
+          shelf_hardware?: Json | null
           type?: string | null
           unit_price?: number | null
           updated_at?: string

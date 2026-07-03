@@ -578,6 +578,8 @@ create table public.quote_lines (
   drawer_box_finish     text,                                 -- finish picked in the Drawer Boxes section
   door_hardware         jsonb default '[]'::jsonb,            -- [{name, qty}] hardware attached to doors
   drawer_hardware       jsonb default '[]'::jsonb,            -- [{name, qty}] hardware attached to drawers (slides etc.)
+  shelf_hardware        jsonb default '[]'::jsonb,            -- [{name, qty}] shelf/partition hardware (pins, brackets) — added 2026-07-03
+  drawer_front_hardware jsonb default '[]'::jsonb,            -- [{name, qty}] drawer-front hardware (handles) — added 2026-07-03
   extras                jsonb not null default '[]'::jsonb,  -- [{label, cost}]
   notes                 text,
   created_at            timestamptz not null default now(),

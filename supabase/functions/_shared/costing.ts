@@ -132,6 +132,8 @@ export function quoteLineRowToCB(row: Row): CBLine {
     hwItems: Array.isArray(row.hardware) ? row.hardware : [],
     doorHwItems: Array.isArray(row.door_hardware) ? row.door_hardware : [],
     drawerHwItems: Array.isArray(row.drawer_hardware) ? row.drawer_hardware : [],
+    shelfHwItems: Array.isArray(row.shelf_hardware) ? row.shelf_hardware : [],
+    drawerFrontHwItems: Array.isArray(row.drawer_front_hardware) ? row.drawer_front_hardware : [],
     extras: row.extras || [],
     notes: row.notes || '',
   };
@@ -248,9 +250,10 @@ export function calcCabinetLine(line: CBLine, rc: RateCard): { matCost: number; 
   const labourHrs = line.labourOverride ? line.labourHrs : autoLabour;
   const labourCost = labourHrs * rc.labourRate;
 
-  // Hardware — sum across cabinet/door/drawer scopes.
+  // Hardware — sum across all five scopes (cabinet/door/drawer/shelf/
+  // drawer-front). Must match cabinet-calc.js calcCBLine hwCost.
   const hwSum = (list: any[]): number => (Array.isArray(list) ? list : []).reduce((s, hw) => s + hwp(hw.name) * hw.qty, 0);
-  const hwCost = hwSum(line.hwItems) + hwSum(line.doorHwItems) + hwSum(line.drawerHwItems);
+  const hwCost = hwSum(line.hwItems) + hwSum(line.doorHwItems) + hwSum(line.drawerHwItems) + hwSum(line.shelfHwItems) + hwSum(line.drawerFrontHwItems);
 
   return { matCost: finalMatCost, labourCost, hwCost };
 }
@@ -268,7 +271,7 @@ function coversLine(cb: CBLine, rc: RateCard): boolean {
   const hwOk = (list: any[]) => (Array.isArray(list) ? list : []).every((h) => !h || !h.name || (h.name in rc.hwUnit));
   return matOk(cb.material) && matOk(cb.backMat) && matOk(cb.doorMat) && matOk(cb.drawerFrontMat) && matOk(cb.drawerInnerMat)
     && finOk(cb.finish) && finOk(cb.doorFinish) && finOk(cb.drawerFrontFinish) && finOk(cb.drawerBoxFinish)
-    && hwOk(cb.hwItems) && hwOk(cb.doorHwItems) && hwOk(cb.drawerHwItems);
+    && hwOk(cb.hwItems) && hwOk(cb.doorHwItems) && hwOk(cb.drawerHwItems) && hwOk(cb.shelfHwItems) && hwOk(cb.drawerFrontHwItems);
 }
 
 /**

@@ -448,8 +448,10 @@ function renderCBEditor() {
   // header carries a "+ add" button (no second search box) and each item
   // renders as its own row below. "+ add" appends a blank row to fill.
   /** @param {string} scope */
+  const hwKey = (scope) => scope === 'door' ? 'doorHwItems' : scope === 'drawer' ? 'drawerHwItems' : scope === 'shelf' ? 'shelfHwItems' : scope === 'drawerFront' ? 'drawerFrontHwItems' : 'hwItems';
+  /** @param {string} scope */
   const hwLine = (scope) => {
-    const list = scope === 'door' ? (line.doorHwItems || []) : scope === 'drawer' ? (line.drawerHwItems || []) : (line.hwItems || []);
+    const list = line[hwKey(scope)] || [];
     const headerCtl = list.length
       ? `<button class="cb-hw-addbtn" onclick="cbAddBlankHw(${line.id},'${scope}')">+ add</button>`
       : smart(hwAddSearch(scope));
@@ -479,13 +481,14 @@ function renderCBEditor() {
         + `<div style="display:grid;grid-template-columns:1fr 1fr;gap:0 10px">${rr('Type', typeSel('carcassType', cbSettings.carcassTypes, 'Carcass type'))}${rr('Base', typeSel('baseType', cbSettings.baseTypes, 'Base'))}</div>`
         + rr('Finish', smart(finishSmart('finish')))
         + hwLine('cabinet'), true)}
-      ${card('Shelves &amp; Partitions', 'cb-live-shelves', shelfTot > 0 ? _cbSecBadge(sec.shelves) : '',
+      ${card('Shelves &amp; Partitions', 'cb-live-shelves', (shelfTot > 0 || sec.shelfHardware > 0) ? _cbSecBadge(sec.shelves + sec.shelfHardware) : '',
         rr('Fixed shelf', stepper('shelves', line.shelves, 0))
         + rr('Adj. holes', stepper('adjShelves', line.adjShelves, 0))
         + rr('Loose shelf', stepper('looseShelves', line.looseShelves||0, 0))
         + rr('Partition', stepper('partitions', line.partitions||0, 0))
         + rr('End panel', stepper('endPanels', line.endPanels||0, 0))
-        + (cbSettings.extraPanelTypes||[]).map(/** @param {any} t */ t => rr(_escHtml(t.name||'Panel'), epStepper(t.id, (line.extraPanels&&line.extraPanels[t.id])||0))).join(''))}
+        + (cbSettings.extraPanelTypes||[]).map(/** @param {any} t */ t => rr(_escHtml(t.name||'Panel'), epStepper(t.id, (line.extraPanels&&line.extraPanels[t.id])||0))).join('')
+        + hwLine('shelf'))}
       ${card('Doors', 'cb-live-doors', line.doors > 0 ? _cbSecBadge(sec.doors + sec.doorHardware) : '',
         rr('Count', stepper('doors', line.doors, 0))
         + rr('Material', smart(matSmart('doorMat', line.doorMat)))
@@ -493,12 +496,13 @@ function renderCBEditor() {
         + rr('Finish', smart(finishSmart('doorFinish')))
         + pctRow('doorPct')
         + hwLine('door'))}
-      ${card('Drawer Fronts', 'cb-live-dfronts', line.drawers > 0 ? _cbSecBadge(sec.drawerFronts) : '',
+      ${card('Drawer Fronts', 'cb-live-dfronts', (line.drawers > 0 || sec.drawerFrontHardware > 0) ? _cbSecBadge(sec.drawerFronts + sec.drawerFrontHardware) : '',
         rr('Count', stepper('drawers', line.drawers, 0))
         + rr('Material', smart(matSmart('drawerFrontMat', line.drawerFrontMat)))
         + rr('Type', typeSel('drawerFrontType', cbSettings.drawerFrontTypes, 'Front type'))
         + rr('Finish', smart(finishSmart('drawerFrontFinish')))
-        + pctRow('drawerPct'))}
+        + pctRow('drawerPct')
+        + hwLine('drawerFront'))}
       ${card('Drawer Boxes', 'cb-live-dboxes', line.drawers > 0 ? _cbSecBadge(sec.drawerBoxes + sec.drawerHardware) : '',
         rr('Inner mat', smart(matSmart('drawerInnerMat', line.drawerInnerMat)))
         + rr('Type', typeSel('drawerBoxType', cbSettings.drawerBoxTypes, 'Box type'))
@@ -539,10 +543,10 @@ function _refreshCBLiveCosts() {
   // extras visibly sum to the unit total.
   set('cb-live-cabinet', _cbSecBadge(sec.cabinet + sec.cabinetHardware));
   set('cb-live-doors', line.doors > 0 ? _cbSecBadge(sec.doors + sec.doorHardware) : '');
-  set('cb-live-dfronts', line.drawers > 0 ? _cbSecBadge(sec.drawerFronts) : '');
+  set('cb-live-dfronts', (line.drawers > 0 || sec.drawerFrontHardware > 0) ? _cbSecBadge(sec.drawerFronts + sec.drawerFrontHardware) : '');
   set('cb-live-dboxes', line.drawers > 0 ? _cbSecBadge(sec.drawerBoxes + sec.drawerHardware) : '');
   const interiorTot = (line.shelves||0)+(line.adjShelves||0)+(line.looseShelves||0)+(line.partitions||0)+(line.endPanels||0)+_extraPanelCount(line);
-  set('cb-live-shelves', interiorTot > 0 ? _cbSecBadge(sec.shelves) : '');
+  set('cb-live-shelves', (interiorTot > 0 || sec.shelfHardware > 0) ? _cbSecBadge(sec.shelves + sec.shelfHardware) : '');
   set('cb-live-extras', sec.extras > 0 ? _cbSecBadge(sec.extras) : '');
   const c = calcCBLine(line);
   set('cb-live-total', _cbEdTotalHTML(line, c));

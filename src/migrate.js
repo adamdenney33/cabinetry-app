@@ -220,6 +220,8 @@ function _quoteLineRowToCB(row) {
     hwItems: Array.isArray(row.hardware) ? row.hardware : [],
     doorHwItems: Array.isArray(row.door_hardware) ? row.door_hardware : [],
     drawerHwItems: Array.isArray(row.drawer_hardware) ? row.drawer_hardware : [],
+    shelfHwItems: Array.isArray(row.shelf_hardware) ? row.shelf_hardware : [],
+    drawerFrontHwItems: Array.isArray(row.drawer_front_hardware) ? row.drawer_front_hardware : [],
     extras: row.extras || [],
     notes: row.notes || ''
   };
@@ -266,6 +268,8 @@ function _cbLineToRow(l, position, quoteId) {
     hardware: l.hwItems || [],
     door_hardware: l.doorHwItems || [],
     drawer_hardware: l.drawerHwItems || [],
+    shelf_hardware: l.shelfHwItems || [],
+    drawer_front_hardware: l.drawerFrontHwItems || [],
     extras: l.extras || [],
     notes: l.notes || null
   };

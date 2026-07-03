@@ -41,7 +41,7 @@ function _buildRateCard(q) {
   for (const l of (q._lines || [])) {
     [l.material, l.door_material, l.drawer_front_material, l.drawer_inner_material,
      l.finish, l.door_finish, l.drawer_front_finish, l.drawer_box_finish].forEach(n => n && names.add(n));
-    [l.hardware, l.door_hardware, l.drawer_hardware].forEach(arr =>
+    [l.hardware, l.door_hardware, l.drawer_hardware, l.shelf_hardware, l.drawer_front_hardware].forEach(arr =>
       Array.isArray(arr) && arr.forEach(/** @param {any} h */ h => h && h.name && names.add(h.name)));
   }
   /** @type {Record<string,number>} */ const matPerM2 = {};

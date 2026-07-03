@@ -229,6 +229,8 @@ function cbDefaultLine(type) {
     hwItems: [],
     doorHwItems: [],
     drawerHwItems: [],
+    shelfHwItems: [],
+    drawerFrontHwItems: [],
     extras: [],
     labourHrs: 0, labourOverride: false,
     matCostOverride: null,
@@ -841,11 +843,14 @@ function cbUpdatePct(field, val) {
 }
 
 // ── Hardware CRUD on scratchpad ──
-// scope = 'cabinet' | 'door' | 'drawer' (default 'cabinet' for back-compat).
+// scope = 'cabinet' | 'door' | 'drawer' | 'shelf' | 'drawerFront'
+// (default 'cabinet' for back-compat).
 /** @param {string} scope */
 function _hwListKey(scope) {
   if (scope === 'door') return 'doorHwItems';
   if (scope === 'drawer') return 'drawerHwItems';
+  if (scope === 'shelf') return 'shelfHwItems';
+  if (scope === 'drawerFront') return 'drawerFrontHwItems';
   return 'hwItems';
 }
 /** @param {any} line @param {string} scope */
