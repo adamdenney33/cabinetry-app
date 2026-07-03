@@ -191,7 +191,7 @@ try {
 // PDF generation is never on the boot path, and jspdf + autotable are ~450 KB
 // minified — dynamic-import them on first use instead of shipping them in the
 // boot bundle. window.jspdf keeps the exact shape the eager import used to
-// set, so the `!window.jspdf` guards in cutlist.js still work as a fallback.
+// set, so the `!window.jspdf` guards in cutlist-pdf.js still work as a fallback.
 /** @type {Promise<{ jsPDF: typeof import('jspdf').jsPDF }> | null} */
 let _jspdfLoad = null;
 window._ensureJsPDF = function _ensureJsPDF() {
