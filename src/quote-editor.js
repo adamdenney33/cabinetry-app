@@ -32,27 +32,6 @@
 // QUOTE HELPERS (smart-input, popups, printing — formerly section in app.js,
 // pulled in during phase E carve 14)
 // ══════════════════════════════════════════
-// ── Smart Suggest System ──
-/** @param {HTMLInputElement} input @param {string} boxId */
-function _smartClientSuggest(input, boxId) {
-  const val = input.value.toLowerCase().trim();
-  const box = _byId(boxId);
-  if (!box) return;
-  _posSuggest(input, box);
-  const allClients = [...new Set([...clients.map(c => c.name), ...quotes.map(q => quoteClient(q)), ...orders.map(o => orderClient(o))].filter(Boolean))];
-  const matches = val ? allClients.filter(c => c.toLowerCase().includes(val) && c.toLowerCase() !== val) : allClients;
-  const inputId = input.id;
-  let html = matches.slice(0,8).map(c => {
-    const initial = c.charAt(0).toUpperCase();
-    return `<div class="client-suggest-item" onmousedown="_byId('${inputId}').value='${c.replace(/'/g,'&#39;')}';_byId('${boxId}').style.display='none'">
-      <span class="suggest-icon">${initial}</span>
-      <span>${_escHtml(c)}</span>
-    </div>`;
-  }).join('');
-  html += `<div class="client-suggest-add" onmousedown="_openNewClientPopup('${inputId}')">+ Add${val ? ' "'+_escHtml(input.value.trim())+'" as' : ''} new client</div>`;
-  box.innerHTML = html;
-  box.style.display = '';
-}
 
 // F6 (2026-05-13): _smartProjectSuggest + _autoFillClientFromProject removed.
 // Smart-input pickers across the app now select clients directly.
@@ -179,48 +158,6 @@ async function printOrderDoc(id, type) {
     } catch (e) { /* best-effort; the PDF still prints without photos */ }
   }
   _buildOrderDocPDF(o, rows, type, photos);
-}
-
-async function deductStockFromCutList() {
-  if (!window.results || !window.results.layouts) { _toast('Run optimization first.', 'error'); return; }
-  if (!_requireAuth()) return;
-  // Count sheets used by name
-  /** @type {Record<string, number>} */
-  const usage = {};
-  window.results.layouts.forEach(/** @param {any} l */ l => {
-    const name = l.sheet.label || l.sheet.name || '';
-    usage[name] = (usage[name] || 0) + 1;
-  });
-  let deducted = 0;
-  for (const [name, count] of Object.entries(usage)) {
-    const stock = stockItems.find(s => s.name === name);
-    if (!stock) continue;
-    const newQty = Math.max(0, (stock.qty ?? 0) - count);
-    await _db('stock_items').update({ qty: newQty }).eq('id', stock.id);
-    stock.qty = newQty;
-    deducted += count;
-  }
-  if (deducted) {
-    _toast(deducted + ' sheet' + (deducted !== 1 ? 's' : '') + ' deducted from stock', 'success');
-    renderStockMain();
-  } else {
-    _toast('No matching stock items found to deduct', 'info');
-  }
-}
-
-/**
- * Send a cut-list materials cost to the Quotes tab. The legacy aggregate
- * "Materials Cost" input is gone; we now switch to the tab, prefill the
- * project name if empty, and toast the figure for the user to add as a
- * line item once the quote is created.
- * @param {number} matCost
- */
-function quoteFromCutList(matCost) {
-  switchSection('quote');
-  const pn = _byId('q-project');
-  if (pn && !pn.value) pn.value = 'Untitled Job';
-  const cur = window.currency;
-  _toast('Cut list materials: ' + cur + matCost.toFixed(2) + ' — add as item line after creating the quote', 'info');
 }
 
 /** Build a flat per-line summary from a quote_lines / order_lines row.
@@ -445,32 +382,6 @@ ${(() => {
 </body></html>`;
 
   _printInFrame(html);
-}
-/** @type {Map<string, ReturnType<typeof setTimeout>>} */
-const _qFieldDebounceTimers = new Map();
-/** @param {number} id @param {string} field @param {any} val */
-function updateQuoteField(id, field, val) {
-  if (!_requireAuth()) return;
-  const q = quotes.find(q => q.id === id);
-  if (!q) return;
-  const numFields = ['materials','labour','markup','tax','discount'];
-  const v = numFields.includes(field) ? (parseFloat(val) || 0) : val;
-  // Optimistic in-memory update + immediate re-render.
-  /** @type {any} */ (q)[field] = v;
-  renderQuoteMain();
-  // Strategy C: debounce DB writes so a fast typist doesn't fire one per keystroke.
-  const key = id + ':' + field;
-  const prev = _qFieldDebounceTimers.get(key);
-  if (prev) clearTimeout(prev);
-  _qFieldDebounceTimers.set(key, setTimeout(async () => {
-    _qFieldDebounceTimers.delete(key);
-    try {
-      await _db('quotes').update(/** @type {any} */ ({ [field]: v })).eq('id', id);
-    } catch (e) {
-      console.warn('[updateQuoteField]', (/** @type {any} */ (e)).message || e);
-      _toast('Save failed — check connection', 'error');
-    }
-  }, 600));
 }
 
 // ══════════════════════════════════════════
