@@ -691,12 +691,17 @@ header {
   .popup-close { width: 36px; height: 36px; }
   .pf-step-btn { min-width: 38px; }
 
-  /* CB edit-in-place header controls (pills, chips, steppers). */
-  .cb-sec-pill { min-height: 38px; }
-  .cb-chip { min-height: 38px; }
-  .cb-chip-btn { min-width: 34px; }
-  .cb-sec-ctl .cl-step-btn { min-width: 38px; min-height: 38px; }
-  .cb-ed-head-grid input { min-height: 40px; }
+  /* CB spec-card editor: single column + touch-sized controls. Scoped with
+     the host id so these beat the equal-specificity base rules that appear
+     LATER in the file (same-specificity ties go to source order). */
+  #cb-cab-editor .cb-rc-grid { grid-template-columns: 1fr; }
+  #cb-cab-editor .cb-rr select, #cb-cab-editor .cb-rr > input, #cb-cab-editor .cb-rc-dims input, #cb-cab-editor .cb-ed-qty input { min-height: 40px; height: auto; font-size: 16px; }
+  #cb-cab-editor .cb-rr-smart .smart-input-wrap > input[type=text] { min-height: 38px; height: auto; font-size: 16px !important; }
+  #cb-cab-editor .cb-rr > label { width: 80px; font-size: 11px; }
+  #cb-cab-editor .cb-rr .cl-stepper { height: 44px; }
+  #cb-cab-editor .cb-rr .cl-step-btn { min-width: 38px; }
+  #cb-cab-editor .cb-rr .cl-stepper .cl-qty-input { height: 42px; font-size: 16px !important; width: 40px !important; }
+  #cb-cab-editor .cb-hw-chip { min-height: 32px; }
 }
 
 /* ── HEADER & NAV ON MOBILE (Phase 3) ──
@@ -1373,43 +1378,50 @@ canvas { display: block; }
 .cb-pct-slider::-moz-range-thumb { width:14px; height:14px; border-radius:50%; background:var(--accent); cursor:pointer; border:none; }
 .cb-pct-val { font-size:12px; font-weight:700; color:var(--text); min-width:36px; text-align:right; }
 
-/* ── CB "edit in place" editor (2026-07-03 rework) ──
-   Pinned header (name + dims + qty + live total), section rows with inline
-   header controls, sticky action footer. Sticky bars use the sidebar surface
-   and negative margins to span #cb-cab-editor's inline 14px side padding. */
-.cb-ed-head { position:sticky; top:0; z-index:20; background:var(--surface); margin:0 -14px 8px; padding:10px 14px 10px; border-bottom:1px solid var(--border); }
-.cb-ed-name-row { display:flex; align-items:center; gap:8px; }
-.cb-ed-name { flex:1; min-width:0; font-size:14px; font-weight:700; color:var(--text); padding:4px 0; border:none; border-bottom:1px dashed transparent; border-radius:0; background:transparent; outline:none; font-family:inherit; }
+/* ── CB editor: always-open spec cards, My Rates styling (2026-07-03 v2) ──
+   Pinned header (name + qty + live total), 2-col grid of always-open section
+   cards matching the My Rates section boxes (border, 8px radius, 13px/600
+   title row, hairline above the body), sticky action footer. Negative margins
+   span #cb-cab-editor's inline 14px side padding. */
+.cb-ed-head { position:sticky; top:0; z-index:20; background:var(--surface); margin:0 -14px 8px; padding:8px 14px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:10px; }
+.cb-ed-name { flex:1; min-width:0; font-size:14px; font-weight:700; color:var(--text); padding:2px 0; border:none; border-bottom:1px dashed transparent; border-radius:0; background:transparent; outline:none; font-family:inherit; }
 .cb-ed-name:hover { border-bottom-color:var(--border); }
 .cb-ed-name:focus { border-bottom-color:var(--accent); box-shadow:none; }
+.cb-ed-qty { display:flex; align-items:center; gap:5px; font-size:10px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.4px; flex-shrink:0; }
+.cb-ed-qty input { width:46px; font-size:12px; padding:2px 4px; min-height:0; height:24px; text-align:center; border:1px solid var(--border); border-radius:4px; background:var(--surface2); }
 .cb-ed-total { font-size:15px; font-weight:800; color:var(--accent); white-space:nowrap; }
-.cb-ed-head-grid { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:6px; margin-top:6px; }
-.cb-ed-head-grid label { display:block; font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:.4px; color:var(--muted); margin-bottom:3px; }
-.cb-ed-head-grid input { width:100%; font-size:13px; }
 
-.cb-sec { border:1px solid var(--border); border-radius:var(--radius); background:var(--surface); margin-bottom:8px; overflow:hidden; }
-.cb-sec-hd { display:flex; flex-direction:column; gap:7px; padding:9px 12px; cursor:pointer; user-select:none; transition:background .15s; }
-.cb-sec-hd:hover { background:var(--surface2); }
-.cb-sec-hd-row { display:flex; align-items:center; gap:8px; min-height:20px; }
-.cb-sec-title { font-size:13px; font-weight:600; color:var(--text); white-space:nowrap; }
-.cb-sec-title.grow { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; }
-.cb-sec-badge-wrap { margin-left:auto; }
-.cb-sec-badge { font-size:11px; font-weight:700; color:var(--accent); background:var(--accent-dim); padding:2px 8px; border-radius:999px; white-space:nowrap; }
-.cb-sec-sum { flex:1; min-width:0; font-size:11px; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.cb-sec-ctl { display:flex; align-items:center; gap:6px; flex-wrap:wrap; cursor:default; }
-.cb-sec-ctl .cl-stepper { flex:0 0 auto; }
-.cb-ctl-smart { flex:1 1 130px; min-width:0; }
-.cb-sec-pill { appearance:none; -webkit-appearance:none; -moz-appearance:none; font-size:12px; font-weight:500; color:var(--text); font-family:inherit; padding:5px 24px 5px 10px; border:1px solid var(--border); border-radius:999px; background:var(--surface2) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' stroke='%23888888' stroke-width='1.5' fill='none' stroke-linecap='round'/></svg>") no-repeat right 8px center; cursor:pointer; min-width:0; flex:0 1 auto; max-width:220px; text-overflow:ellipsis; }
-.cb-sec-pill:focus { border-color:var(--accent); outline:none; box-shadow:0 0 0 2px var(--accent-dim); }
-.cb-chip { display:inline-flex; align-items:center; border:1px solid var(--border); border-radius:999px; background:var(--surface2); overflow:hidden; }
-.cb-chip.on { border-color:var(--accent); background:var(--accent-dim); }
-.cb-chip-btn { border:none; background:transparent; color:var(--text2); font-size:13px; font-weight:700; padding:4px 8px; cursor:pointer; line-height:1; }
-.cb-chip-btn:hover { background:var(--border); }
-.cb-chip-lab { font-size:11px; font-weight:600; color:var(--text2); padding:0 2px; white-space:nowrap; }
-.cb-chip.on .cb-chip-lab { color:var(--accent); }
-.cb-sec-body { padding:10px 12px; border-top:1px solid var(--border); }
-.cb-sec-sublabel { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:var(--muted); margin:10px 0 6px; }
-.cb-sec-sublabel:first-child { margin-top:0; }
+.cb-rc-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.cb-rc { border:1px solid var(--border); border-radius:8px; background:var(--surface); overflow:hidden; min-width:0; }
+.cb-rc.s2 { grid-column:1/-1; }
+.cb-rc-hd { display:flex; align-items:center; gap:8px; padding:8px 12px; }
+.cb-rc-title { font-size:13px; font-weight:600; color:var(--text); flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.cb-rc-badge { font-size:11px; font-weight:700; color:var(--accent); white-space:nowrap; }
+.cb-rc-bd { padding:0 12px 10px; border-top:1px solid var(--border); }
+.cb-rr { display:flex; align-items:center; gap:6px; margin-top:5px; min-width:0; }
+.cb-rr > label { width:62px; flex-shrink:0; font-size:10px; font-weight:600; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin:0; }
+.cb-rr select, .cb-rr > input, .cb-rc-dims input { flex:1; min-width:0; width:auto; font-size:11px; padding:3px 6px; border:1px solid var(--border); border-radius:4px; background:var(--surface2); color:var(--text); min-height:0; height:24px; }
+.cb-rc-dims { display:flex; gap:4px; flex:1; min-width:0; }
+.cb-rr textarea { flex:1; min-width:0; font-size:11px; padding:3px 6px; border:1px solid var(--border); border-radius:4px; background:var(--surface2); color:var(--text); min-height:36px; resize:vertical; font-family:inherit; }
+/* Smart inputs (materials/finishes) compacted to rates scale inside rows */
+.cb-rr-smart { flex:1; min-width:0; position:relative; }
+.cb-rr-smart .smart-input-wrap { border-radius:4px; }
+.cb-rr-smart .smart-input-wrap > input[type=text] { font-size:11px !important; padding:3px 6px; height:22px; min-height:0; }
+.cb-rr-smart .smart-input-add { width:24px; font-size:13px; }
+/* Steppers at rates scale */
+.cb-rr .cl-stepper { flex:0 0 auto; border:1px solid var(--border); border-radius:4px; overflow:hidden; background:var(--surface2); height:24px; align-items:center; }
+.cb-rr .cl-step-btn { width:22px; height:100%; }
+.cb-rr .cl-stepper .cl-qty-input { font-size:11px !important; width:30px !important; padding:2px !important; height:22px; min-height:0; border:none; background:var(--surface); }
+/* Coverage slider row */
+.cb-rr .cb-pct-row { flex:1; min-width:0; }
+/* Hardware chips + tap-to-expand editor */
+.cb-hw-wrap { display:flex; gap:4px; flex-wrap:wrap; align-items:center; flex:1; min-width:0; }
+.cb-hw-chip { display:inline-flex; align-items:center; gap:2px; font-size:10px; font-weight:600; padding:2px 3px 2px 8px; border-radius:10px; background:var(--accent-dim); color:var(--accent); white-space:nowrap; cursor:pointer; }
+.cb-hw-chip u { text-decoration:none; padding:0 4px; opacity:.7; }
+.cb-hw-chip u:hover { opacity:1; }
+.cb-hw-chip.add { background:none; border:1px dashed var(--border); color:var(--muted); padding:2px 8px; }
+.cb-hw-chip.add:hover { border-color:var(--accent); color:var(--accent); }
+.cb-hw-editor { margin-top:5px; padding:6px 8px; border:1px dashed var(--border); border-radius:6px; }
 
 .cb-ed-foot { position:sticky; bottom:0; z-index:20; background:var(--surface); border-top:1px solid var(--border); margin:8px -14px -14px; padding:10px 14px; display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
 .cb-ed-foot .btn { width:auto; font-size:11px; padding:5px 10px; }

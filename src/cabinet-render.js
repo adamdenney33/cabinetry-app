@@ -2,10 +2,12 @@
 // All DOM rendering lives here. Reads globals, writes innerHTML.
 
 // ── UI state ──
-let cbOpenSections = new Set();
 let cbExpandedRows = new Set();
 let cbMainView = 'results';
 let cbActiveTab = 'builder'; // 'builder' | 'rates' — active Quote Builder sidebar sub-tab
+// Hardware editors open per `${lineId}-${scope}` — the spec cards show hardware
+// as chips; tapping a chip (or +) expands the full hwListUI editor below.
+let cbHwEditOpen = new Set();
 
 /** @param {number} id */
 function toggleCBExpand(id) {
@@ -14,22 +16,11 @@ function toggleCBExpand(id) {
   renderCBPanel();
 }
 
-/** @param {number} lineId @param {string} section */
-function toggleCBSection(lineId, section) {
-  const key = lineId + '-' + section;
-  if (cbOpenSections.has(key)) cbOpenSections.delete(key);
-  else cbOpenSections.add(key);
-  renderCBEditor();
-}
-
-function cbExpandAll() {
-  const secs = ['cab','doors','drawers','shelves','hw','notes'];
-  const line = cbScratchpad;
-  if (line) secs.forEach(s => cbOpenSections.add(line.id + '-' + s));
-  renderCBEditor();
-}
-function cbCollapseAll() {
-  cbOpenSections.clear();
+/** @param {number} lineId @param {string} scope */
+function cbToggleHwEdit(lineId, scope) {
+  const key = lineId + '-' + scope;
+  if (cbHwEditOpen.has(key)) cbHwEditOpen.delete(key);
+  else cbHwEditOpen.add(key);
   renderCBEditor();
 }
 
@@ -376,31 +367,11 @@ function cbEditCabinetFromOutput(idx) {
   _scrollCBEditorIntoView();
 }
 
-// ── Edit-in-place editor helpers (2026-07-03 rework) ──
-/** Live cost pill for section headers. @param {number} v */
+// ── Spec-card editor helpers (2026-07-03 v2) ──
+/** Live cost text for card headers (My Rates styling: plain accent, no pill).
+ *  @param {number} v */
 function _cbSecBadge(v) {
-  return `<span class="cb-sec-badge">${window.currency}${Math.round(v)}</span>`;
-}
-
-/** One-line hardware summary across all three scopes (first 2 + "+n more").
- *  @param {any} line */
-function _cbHwSummary(line) {
-  const all = [...(line.hwItems || []), ...(line.doorHwItems || []), ...(line.drawerHwItems || [])];
-  if (!all.length) return 'None';
-  const parts = all.slice(0, 2).map(/** @param {any} h */ h => `${h.name} ×${h.qty}`);
-  if (all.length > 2) parts.push('+' + (all.length - 2) + ' more');
-  return parts.join(' · ');
-}
-
-/** One-line room/extras/notes summary for the Notes & Extras header.
- *  @param {any} line */
-function _cbNotesSummary(line) {
-  const n = (line.extras || []).length;
-  const bits = [];
-  if (line.room) bits.push(line.room);
-  if (n) bits.push(n + ' extra' + (n !== 1 ? 's' : ''));
-  if (line.notes) bits.push('✓ notes');
-  return bits.length ? bits.join(' · ') : '—';
+  return `<span class="cb-rc-badge">${window.currency}${Math.round(v)}</span>`;
 }
 
 /** Header/footer live total (line subtotal incl. qty, with ×qty hint).
@@ -409,13 +380,6 @@ function _cbEdTotalHTML(line, calc) {
   const qty = parseFloat(line.qty) || 1;
   return `${window.currency}${Math.round(calc.lineSubtotal).toLocaleString()}` +
     (qty > 1 ? `<span style="font-size:11px;font-weight:600;color:var(--muted)"> · ×${qty}</span>` : '');
-}
-
-/** Mini −/+ chip for interior counts in the section header. Lives inside the
- *  .cb-sec-ctl wrapper, which already stops click propagation.
- *  @param {string} label @param {string} field @param {number} count */
-function _cbChip(label, field, count) {
-  return `<span class="cb-chip${count > 0 ? ' on' : ''}"><button class="cb-chip-btn" onclick="cbStepField('${field}',-1)">−</button><span class="cb-chip-lab">${label} <b id="cb-hd-n-${field}">${count}</b></span><button class="cb-chip-btn" onclick="cbStepField('${field}',1)">+</button></span>`;
 }
 
 // ── Render the active cabinet editor in sidebar ──
@@ -440,9 +404,9 @@ function renderCBEditor() {
     return;
   }
 
-  // Edit-in-place (2026-07-03): sections start COLLAPSED — the common
-  // controls live inline in each section header, so expanding is only for
-  // the long tail (finishes, coverage, hardware editing, notes).
+  // Spec cards (2026-07-03 v2): the whole spec is ALWAYS visible — a 2-col
+  // grid of always-open section cards styled like the My Rates boxes. Nothing
+  // collapses; only the per-scope hardware editors expand on demand.
   const displayedName = line.name || (cbEditingLineIdx >= 0 ? 'Cabinet ' + (cbEditingLineIdx + 1) : 'Cabinet');
 
   const cur = window.currency;
@@ -479,31 +443,38 @@ function renderCBEditor() {
   const epStepper = (id, val) => `<div class="cl-stepper"><button class="cl-step-btn" onclick="cbStepExtraPanel('${id}',-1)">−</button><input type="number" class="cl-input cl-qty-input" value="${val}" min="0" style="font-size:14px;width:42px" onchange="cbUpdateExtraPanel('${id}',this.value)"><button class="cl-step-btn" onclick="cbStepExtraPanel('${id}',1)">+</button></div>`;
   // Total panel count incl. custom — drives the section header summary.
   const shelfTot = (line.shelves||0)+(line.adjShelves||0)+(line.looseShelves||0)+(line.partitions||0)+(line.endPanels||0)+_extraPanelCount(line);
-  /** @param {string} sec */
-  const so = sec => cbOpenSections.has(line.id + '-' + sec);
-  /** @param {string} sec */
-  const chev = sec => `<span style="font-size:10px;color:var(--muted);transition:transform .2s;display:inline-block;${so(sec)?'transform:rotate(90deg)':''}">&#9654;</span>`;
-  const FM = 'margin:0';
-  const LB = 'font-size:12px';
-  const SL = 'font-size:13px';
-
   // Per-section cost breakdown (material + labour + section-specific hardware)
   const sec = calcCBSections(line);
 
-  // Section-row builder: header row 1 = chevron + title + (summary) + badge;
-  // optional row 2 = inline controls (wrapper stops propagation so taps edit
-  // instead of toggling); body renders only while open.
-  /** @param {string} key @param {string} title @param {string} badgeId @param {string} badgeHtml @param {string} ctl @param {string} body @param {string} [sumId] @param {string} [sumHtml] */
-  const secRow = (key, title, badgeId, badgeHtml, ctl, body, sumId, sumHtml) => `<div class="cb-sec">
-    <div class="cb-sec-hd" onclick="toggleCBSection(${line.id},'${key}')">
-      <div class="cb-sec-hd-row">${chev(key)}<span class="cb-sec-title${sumId ? '' : ' grow'}">${title}</span>${sumId ? `<span id="${sumId}" class="cb-sec-sum">${sumHtml || ''}</span>` : ''}<span id="${badgeId}" class="cb-sec-badge-wrap">${badgeHtml}</span></div>
-      ${ctl ? `<div class="cb-sec-ctl" onclick="event.stopPropagation()">${ctl}</div>` : ''}
-    </div>
-    ${so(key) ? `<div class="cb-sec-body">${body}</div>` : ''}
-  </div>`;
-  // Pill-styled native select for cbSettings type arrays (header inline control).
+  // Row: fixed 62px label + control (rates-tab scale).
+  /** @param {string} label @param {string} ctl */
+  const rr = (label, ctl) => `<div class="cb-rr"><label>${label}</label>${ctl}</div>`;
+  // Smart-input wrapper so matSmart/finishSmart flex correctly inside a row.
+  /** @param {string} html */
+  const smart = html => `<div class="cb-rr-smart">${html}</div>`;
+  // Rates-style native select for cbSettings type arrays.
   /** @param {string} field @param {any[]} types @param {string} title */
-  const pillSelect = (field, types, title) => `<select class="cb-sec-pill" title="${title}" onchange="cbUpdateField('${field}',this.value)">${(types || []).map(/** @param {any} t */ t => `<option value="${_escHtml(t.name)}" ${t.name === line[field] ? 'selected' : ''}>${_escHtml(t.name)}</option>`).join('')}</select>`;
+  const typeSel = (field, types, title) => `<select title="${title}" onchange="cbUpdateField('${field}',this.value)">${(types || []).map(/** @param {any} t */ t => `<option value="${_escHtml(t.name)}" ${t.name === line[field] ? 'selected' : ''}>${_escHtml(t.name)}</option>`).join('')}</select>`;
+  // Always-open section card (My Rates box styling).
+  /** @param {string} title @param {string} badgeId @param {string} badgeHtml @param {string} body @param {boolean} [span2] */
+  const card = (title, badgeId, badgeHtml, body, span2) => `<div class="cb-rc${span2 ? ' s2' : ''}">
+    <div class="cb-rc-hd"><span class="cb-rc-title">${title}</span><span id="${badgeId}">${badgeHtml}</span></div>
+    <div class="cb-rc-bd">${body}</div>
+  </div>`;
+  // Hardware as always-visible chips; tapping a chip or + expands the full
+  // hwListUI editor (qty edits, smart-suggest add, popup flow) below the row.
+  /** @param {string} scope */
+  const hwChips = (scope) => {
+    const list = scope === 'door' ? (line.doorHwItems || []) : scope === 'drawer' ? (line.drawerHwItems || []) : (line.hwItems || []);
+    const open = cbHwEditOpen.has(line.id + '-' + scope);
+    const chips = list.map(/** @param {any} hw @param {number} hi */ (hw, hi) =>
+      `<span class="cb-hw-chip" onclick="cbToggleHwEdit(${line.id},'${scope}')" title="Edit hardware">${_escHtml(hw.name)} ×${hw.qty}<u onclick="event.stopPropagation();removeCBHw(${line.id},${hi},'${scope}')" title="Remove">×</u></span>`).join('');
+    return rr('Hardware', `<div class="cb-hw-wrap">${chips}<span class="cb-hw-chip add" onclick="cbToggleHwEdit(${line.id},'${scope}')">${open ? '− close' : '+'}</span></div>`)
+      + (open ? `<div class="cb-hw-editor">${hwListUI(scope)}</div>` : '');
+  };
+  // Coverage slider (shared markup with the old editor — cbUpdatePct clamp).
+  /** @param {string} field */
+  const pctRow = (field) => rr('% of front', `<div class="cb-pct-row"><input type="range" class="cb-pct-slider" min="0" max="100" value="${line[field]||0}" oninput="this.nextElementSibling.textContent=this.value+'%'" onchange="cbUpdatePct('${field}',this.value)"><span class="cb-pct-val">${line[field]||0}%</span></div>`);
 
   // Sticky-footer actions — context-dependent (quote row vs library template).
   const isLib = cbEditingLibraryIdx >= 0;
@@ -513,85 +484,55 @@ function renderCBEditor() {
 
   el.innerHTML = `
     <div class="cb-ed-head">
-      <div class="cb-ed-name-row">
-        <input type="text" id="cb-name" class="cb-ed-name" value="${_escHtml(line.name||'')}" placeholder="${_escHtml(displayedName)}" autocomplete="off" oninput="cbUpdateField('name',this.value)">
-        <span class="cb-ed-total" id="cb-live-total">${_cbEdTotalHTML(line, c)}</span>
-      </div>
-      <div class="cb-ed-head-grid">
-        <div><label>W (${unitLabel()})</label><input type="text" inputmode="decimal" value="${dimDisplayFromMM(line.w)}" onchange="cbUpdateField('w',this.value)"></div>
-        <div><label>H (${unitLabel()})</label><input type="text" inputmode="decimal" value="${dimDisplayFromMM(line.h)}" onchange="cbUpdateField('h',this.value)"></div>
-        <div><label>D (${unitLabel()})</label><input type="text" inputmode="decimal" value="${dimDisplayFromMM(line.d)}" onchange="cbUpdateField('d',this.value)"></div>
-        <div><label>Qty</label><input type="number" min="1" value="${line.qty||1}" onchange="cbUpdateField('qty',this.value);if(cbScratchpad)this.value=cbScratchpad.qty"></div>
-      </div>
+      <input type="text" id="cb-name" class="cb-ed-name" value="${_escHtml(line.name||'')}" placeholder="${_escHtml(displayedName)}" autocomplete="off" oninput="cbUpdateField('name',this.value)">
+      <span class="cb-ed-qty">Qty <input type="number" min="1" value="${line.qty||1}" onchange="cbUpdateField('qty',this.value);if(cbScratchpad)this.value=cbScratchpad.qty"></span>
+      <span class="cb-ed-total" id="cb-live-total">${_cbEdTotalHTML(line, c)}</span>
     </div>
-
-    ${secRow('cab', 'Box', 'cb-live-box', _cbSecBadge(sec.cabinet),
-      `<div class="cb-ctl-smart">${matSmart('material', line.material)}</div>${pillSelect('baseType', cbSettings.baseTypes, 'Base type')}`,
-      `<div style="margin-bottom:8px"><label style="${LB}">Back Panel</label>${matSmart('backMat', line.backMat)}</div>
-      <div style="margin-bottom:8px"><label style="${LB}">Carcass Type</label>
-        <select style="${SL};width:100%" onchange="cbUpdateField('carcassType',this.value)">
-          ${(cbSettings.carcassTypes||[]).map(/** @param {any} t */ t=>`<option value="${t.name}" ${t.name===line.carcassType?'selected':''}>${t.name}</option>`).join('')}
-        </select>
-      </div>
-      <div style="margin-bottom:0"><label style="${LB}">Finish</label>${finishSmart('finish')}</div>`)}
-
-    ${secRow('doors', 'Doors', 'cb-live-doors', line.doors > 0 ? _cbSecBadge(sec.doors) : '',
-      `${stepper('doors', line.doors, 0)}${pillSelect('doorType', cbSettings.doorTypes, 'Door type')}`,
-      `<div style="margin-bottom:8px"><label style="${LB}">Door Material</label>${matSmart('doorMat', line.doorMat)}</div>
-      <label style="font-size:11px;color:var(--muted)">% of front area</label><div class="cb-pct-row"><input type="range" class="cb-pct-slider" min="0" max="100" value="${line.doorPct||0}" oninput="this.nextElementSibling.textContent=this.value+'%'" onchange="cbUpdatePct('doorPct',this.value)"><span class="cb-pct-val">${line.doorPct||0}%</span></div>
-      <div style="font-size:10px;color:var(--muted);margin-top:6px">Open: ${Math.max(0, 100 - (line.doorPct||0) - (line.drawerPct||0))}%</div>
-      <div style="margin-top:10px;margin-bottom:0"><label style="${LB}">Finish</label>${finishSmart('doorFinish')}</div>`)}
-
-    ${secRow('drawers', 'Drawers', 'cb-live-drawers', line.drawers > 0 ? _cbSecBadge(sec.drawers) : '',
-      `${stepper('drawers', line.drawers, 0)}${pillSelect('drawerFrontType', cbSettings.drawerFrontTypes, 'Front type')}${pillSelect('drawerBoxType', cbSettings.drawerBoxTypes, 'Box type')}`,
-      `<div style="margin-bottom:8px"><label style="${LB}">Front Material</label>${matSmart('drawerFrontMat', line.drawerFrontMat)}</div>
-      <label style="font-size:11px;color:var(--muted)">% of front area</label><div class="cb-pct-row"><input type="range" class="cb-pct-slider" min="0" max="100" value="${line.drawerPct||0}" oninput="this.nextElementSibling.textContent=this.value+'%'" onchange="cbUpdatePct('drawerPct',this.value)"><span class="cb-pct-val">${line.drawerPct||0}%</span></div>
-      <div style="font-size:10px;color:var(--muted);margin-top:6px">Open: ${Math.max(0, 100 - (line.doorPct||0) - (line.drawerPct||0))}%</div>
-      <div style="margin-top:10px;margin-bottom:8px"><label style="${LB}">Front Finish</label>${finishSmart('drawerFrontFinish')}</div>
-      <div style="border-top:1px dashed var(--border);margin:10px 0 8px"></div>
-      <div style="margin-bottom:8px"><label style="${LB}">Inner Box Material</label>${matSmart('drawerInnerMat', line.drawerInnerMat)}</div>
-      <div style="margin-bottom:0"><label style="${LB}">Box Finish</label>${finishSmart('drawerBoxFinish')}</div>`)}
-
-    ${secRow('shelves', 'Interior', 'cb-live-interior', shelfTot > 0 ? _cbSecBadge(sec.shelves) : '',
-      `${_cbChip('Fixed', 'shelves', line.shelves||0)}${_cbChip('Adj', 'adjShelves', line.adjShelves||0)}${_cbChip('End', 'endPanels', line.endPanels||0)}`,
-      `<div class="form-row" style="margin-bottom:6px;align-items:flex-end">
-        <div class="form-group" style="flex:0 0 auto;${FM}"><label style="${LB}">Fixed Shelf</label>${stepper('shelves', line.shelves, 0)}</div>
-        <div class="form-group" style="flex:0 0 auto;${FM}"><label style="${LB}">Adj. Holes</label>${stepper('adjShelves', line.adjShelves, 0)}</div>
-        <div class="form-group" style="flex:0 0 auto;${FM}"><label style="${LB}">Loose Shelf</label>${stepper('looseShelves', line.looseShelves||0, 0)}</div>
-      </div>
-      <div class="form-row" style="margin-bottom:0;align-items:flex-end">
-        <div class="form-group" style="flex:0 0 auto;${FM}"><label style="${LB}">Partition</label>${stepper('partitions', line.partitions||0, 0)}</div>
-        <div class="form-group" style="flex:0 0 auto;${FM}"><label style="${LB}">End Panel</label>${stepper('endPanels', line.endPanels||0, 0)}</div>
-      </div>
-      ${(cbSettings.extraPanelTypes||[]).length ? `<div class="form-row" style="margin:6px 0 0;align-items:flex-end;flex-wrap:wrap">
-        ${(cbSettings.extraPanelTypes||[]).map(/** @param {any} t */ t=>`<div class="form-group" style="flex:0 0 auto;${FM}"><label style="${LB}">${_escHtml(t.name||'Panel')}</label>${epStepper(t.id, (line.extraPanels&&line.extraPanels[t.id])||0)}</div>`).join('')}
-      </div>` : ''}`)}
-
-    ${secRow('hw', 'Hardware', 'cb-live-hw', sec.hardware > 0 ? _cbSecBadge(sec.hardware) : '', '',
-      `<div class="cb-sec-sublabel">Cabinet</div>${hwListUI('cabinet')}
-      <div class="cb-sec-sublabel">Doors</div>${hwListUI('door')}
-      <div class="cb-sec-sublabel">Drawers</div>${hwListUI('drawer')}`,
-      'cb-live-hw-sum', _escHtml(_cbHwSummary(line)))}
-
-    ${secRow('notes', 'Notes &amp; Extras', 'cb-live-extras', sec.extras > 0 ? _cbSecBadge(sec.extras) : '', '',
-      `<div class="form-row" style="margin-bottom:8px">
-        <div class="form-group" style="${FM}"><label style="${LB}">Room / Area</label><input type="text" value="${line.room||''}" placeholder="e.g. Kitchen" style="${SL}" list="cb-room-list" onchange="cbUpdateField('room',this.value)"></div>
-      </div>
-      <div class="form-group" style="${FM}"><label style="${LB}">Notes</label><textarea style="${SL};min-height:60px;resize:vertical" onblur="cbUpdateField('notes',this.value)">${line.notes||''}</textarea></div>
-      <div style="font-size:12px;color:var(--muted);margin:12px 0 6px;padding-top:10px;border-top:1px dashed var(--border)">Extras — custom items like cable holes, lighting cutouts, etc.</div>
-      ${(line.extras||[]).map(/** @param {any} ex @param {number} ei */ (ex, ei) => `<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px">
-        <input style="flex:1;min-width:0;font-size:13px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);font-family:inherit" value="${ex.label||''}" placeholder="Item name" onblur="cbUpdateExtra(${line.id},${ei},'label',this.value)">
-        <div style="display:flex;align-items:center;border:1px solid var(--border);border-radius:6px;overflow:hidden;background:var(--surface2)">
-          <span style="font-size:11px;color:var(--muted);padding:4px 4px 4px 8px;background:var(--surface)">${cur}</span>
-          <input type="number" style="width:60px;border:none;padding:6px 6px 6px 2px;font-size:13px;background:transparent;color:var(--text)" value="${ex.cost||0}" onblur="cbUpdateExtra(${line.id},${ei},'cost',this.value)">
-        </div>
-        <span style="font-size:11px;color:var(--muted)">×</span>
-        <input type="number" min="1" title="Quantity" style="width:46px;text-align:center;font-size:13px;padding:6px 4px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text)" value="${ex.qty==null?1:ex.qty}" onblur="cbUpdateExtra(${line.id},${ei},'qty',this.value)">
-        <button class="cb-del-btn" style="font-size:16px" onclick="cbRemoveExtra(${line.id},${ei})">×</button>
-      </div>`).join('')}
-      <button class="cl-add-btn" onclick="cbAddExtra(${line.id})" style="font-size:12px;padding:5px 10px;margin:4px 0 0">+ Add Extra</button>`,
-      'cb-live-notes', _escHtml(_cbNotesSummary(line)))}
-
+    <div class="cb-rc-grid">
+      ${card('Cabinet', 'cb-live-cabinet', _cbSecBadge(sec.cabinet + sec.cabinetHardware),
+        rr(`Dims (${unitLabel()})`, `<div class="cb-rc-dims"><input type="text" inputmode="decimal" value="${dimDisplayFromMM(line.w)}" title="Width" onchange="cbUpdateField('w',this.value)"><input type="text" inputmode="decimal" value="${dimDisplayFromMM(line.h)}" title="Height" onchange="cbUpdateField('h',this.value)"><input type="text" inputmode="decimal" value="${dimDisplayFromMM(line.d)}" title="Depth" onchange="cbUpdateField('d',this.value)"></div>`)
+        + rr('Carcass', smart(matSmart('material', line.material)))
+        + rr('Back panel', smart(matSmart('backMat', line.backMat)))
+        + `<div style="display:grid;grid-template-columns:1fr 1fr;gap:0 10px">${rr('Type', typeSel('carcassType', cbSettings.carcassTypes, 'Carcass type'))}${rr('Base', typeSel('baseType', cbSettings.baseTypes, 'Base'))}</div>`
+        + rr('Finish', smart(finishSmart('finish')))
+        + hwChips('cabinet'), true)}
+      ${card('Doors', 'cb-live-doors', line.doors > 0 ? _cbSecBadge(sec.doors + sec.doorHardware) : '',
+        rr('Count', stepper('doors', line.doors, 0))
+        + rr('Material', smart(matSmart('doorMat', line.doorMat)))
+        + rr('Type', typeSel('doorType', cbSettings.doorTypes, 'Door type'))
+        + rr('Finish', smart(finishSmart('doorFinish')))
+        + pctRow('doorPct')
+        + hwChips('door'))}
+      ${card('Drawer Fronts', 'cb-live-dfronts', line.drawers > 0 ? _cbSecBadge(sec.drawerFronts) : '',
+        rr('Count', stepper('drawers', line.drawers, 0))
+        + rr('Material', smart(matSmart('drawerFrontMat', line.drawerFrontMat)))
+        + rr('Type', typeSel('drawerFrontType', cbSettings.drawerFrontTypes, 'Front type'))
+        + rr('Finish', smart(finishSmart('drawerFrontFinish')))
+        + pctRow('drawerPct'))}
+      ${card('Drawer Boxes', 'cb-live-dboxes', line.drawers > 0 ? _cbSecBadge(sec.drawerBoxes + sec.drawerHardware) : '',
+        rr('Inner mat', smart(matSmart('drawerInnerMat', line.drawerInnerMat)))
+        + rr('Type', typeSel('drawerBoxType', cbSettings.drawerBoxTypes, 'Box type'))
+        + rr('Finish', smart(finishSmart('drawerBoxFinish')))
+        + hwChips('drawer'))}
+      ${card('Shelves &amp; Partitions', 'cb-live-shelves', shelfTot > 0 ? _cbSecBadge(sec.shelves) : '',
+        rr('Fixed shelf', stepper('shelves', line.shelves, 0))
+        + rr('Adj. holes', stepper('adjShelves', line.adjShelves, 0))
+        + rr('Loose shelf', stepper('looseShelves', line.looseShelves||0, 0))
+        + rr('Partition', stepper('partitions', line.partitions||0, 0))
+        + rr('End panel', stepper('endPanels', line.endPanels||0, 0))
+        + (cbSettings.extraPanelTypes||[]).map(/** @param {any} t */ t => rr(_escHtml(t.name||'Panel'), epStepper(t.id, (line.extraPanels&&line.extraPanels[t.id])||0))).join(''))}
+      ${card('Extras', 'cb-live-extras', sec.extras > 0 ? _cbSecBadge(sec.extras) : '',
+        (line.extras||[]).map(/** @param {any} ex @param {number} ei */ (ex, ei) => `<div class="cb-rr">
+          <input type="text" value="${_escHtml(ex.label||'')}" placeholder="Item name" onblur="cbUpdateExtra(${line.id},${ei},'label',this.value)">
+          <input type="number" style="flex:0 0 52px" title="Cost (${cur})" value="${ex.cost||0}" onblur="cbUpdateExtra(${line.id},${ei},'cost',this.value)">
+          <input type="number" style="flex:0 0 40px" min="1" title="Quantity" value="${ex.qty==null?1:ex.qty}" onblur="cbUpdateExtra(${line.id},${ei},'qty',this.value)">
+          <button class="cb-del-btn" style="font-size:14px;width:22px;height:22px" onclick="cbRemoveExtra(${line.id},${ei})">×</button>
+        </div>`).join('')
+        + `<div class="cb-rr"><span class="cb-hw-chip add" onclick="cbAddExtra(${line.id})">+ add item</span></div>`)}
+      ${card('Notes', 'cb-live-notes-badge', '',
+        rr('Room', `<input type="text" value="${_escHtml(line.room||'')}" placeholder="e.g. Kitchen" list="cb-room-list" onchange="cbUpdateField('room',this.value)">`)
+        + rr('Notes', `<textarea onblur="cbUpdateField('notes',this.value)">${_escHtml(line.notes||'')}</textarea>`))}
+    </div>
     <div class="cb-ed-foot">
       ${footActions}
       <span class="cb-ed-foot-total" id="cb-live-total-ft">${_cbEdTotalHTML(line, c)}</span>
@@ -610,29 +551,16 @@ function _refreshCBLiveCosts() {
 
   /** @param {string} id @param {string} html */
   const set = (id, html) => { const el = _byId(id); if (el) el.innerHTML = html; };
-  // Interior header chips: update the count AND the on/off tint without
-  // re-rendering (the buttons may be mid-tap).
-  /** @param {string} field @param {number} count */
-  const chip = (field, count) => {
-    const b = _byId('cb-hd-n-' + field);
-    if (!b) return;
-    b.textContent = String(count);
-    const wrap = b.closest('.cb-chip');
-    if (wrap) wrap.classList.toggle('on', count > 0);
-  };
 
-  set('cb-live-box', _cbSecBadge(sec.cabinet));
-  set('cb-live-doors', line.doors > 0 ? _cbSecBadge(sec.doors) : '');
-  set('cb-live-drawers', line.drawers > 0 ? _cbSecBadge(sec.drawers) : '');
+  // Card badges include their section's hardware bucket so the six cards +
+  // extras visibly sum to the unit total.
+  set('cb-live-cabinet', _cbSecBadge(sec.cabinet + sec.cabinetHardware));
+  set('cb-live-doors', line.doors > 0 ? _cbSecBadge(sec.doors + sec.doorHardware) : '');
+  set('cb-live-dfronts', line.drawers > 0 ? _cbSecBadge(sec.drawerFronts) : '');
+  set('cb-live-dboxes', line.drawers > 0 ? _cbSecBadge(sec.drawerBoxes + sec.drawerHardware) : '');
   const interiorTot = (line.shelves||0)+(line.adjShelves||0)+(line.looseShelves||0)+(line.partitions||0)+(line.endPanels||0)+_extraPanelCount(line);
-  set('cb-live-interior', interiorTot > 0 ? _cbSecBadge(sec.shelves) : '');
-  set('cb-live-hw', sec.hardware > 0 ? _cbSecBadge(sec.hardware) : '');
-  set('cb-live-hw-sum', _escHtml(_cbHwSummary(line)));
+  set('cb-live-shelves', interiorTot > 0 ? _cbSecBadge(sec.shelves) : '');
   set('cb-live-extras', sec.extras > 0 ? _cbSecBadge(sec.extras) : '');
-  set('cb-live-notes', _escHtml(_cbNotesSummary(line)));
-  chip('shelves', line.shelves||0);
-  chip('adjShelves', line.adjShelves||0);
-  chip('endPanels', line.endPanels||0);
   const c = calcCBLine(line);
   set('cb-live-total', _cbEdTotalHTML(line, c));
   set('cb-live-total-ft', _cbEdTotalHTML(line, c));
