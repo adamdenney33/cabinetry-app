@@ -24,6 +24,28 @@ Companion docs: `SPEC.md` (refactor history), `SCHEMA.md` (DB schema),
 
 ## Active Work
 
+### Cabinet Builder "edit in place" UI rework (2026-07-03) ⬜ in progress
+
+**Goal.** Reduce scroll + click cost in the Cabinet Builder (user-picked
+"Variant 2" from three mockups). UI-only — no schema, autosave, or costing
+changes. Full plan: `~/.claude/plans/i-want-to-improve-delegated-swing.md`.
+
+**Sub-steps.**
+- ⬜ Part A — editor sidebar: pinned header (name + W/H/D/Qty + live total),
+  6 section rows with inline header controls (steppers, type pills, carcass
+  smart input), sections start collapsed, sticky action footer
+  (duplicate/delete/save-to-library). `renderCBEditor` +
+  `_refreshCBLiveCosts` rewrite; new `.cb-ed-*`/`.cb-sec-*`/`.cb-chip` CSS.
+- ⬜ Part B — results panel: replace per-cabinet detail cards with a
+  quote-editor-style line table (`.cb-li-table`), right-aligned totals
+  (markup/tax/discount parity math verbatim), pinned footer bar
+  (`#cb-results-footer`) with quote total + context action. Selector fixes:
+  `walkthrough.js:128`, `_cbRevealSelectedCabinet`.
+- ⬜ Cleanup — dead CSS (`.cb-section-*`, `.cb-cab-sec-*`, `.cb-cab-card`,
+  `.cb-summary*`, `.cb-grand-total`); typecheck + e2e + walkthrough re-run.
+- ⬜ Follow-up (non-blocking): re-record cabinet-builder wiki clips
+  (`wiki/recordings/*.mjs` reference `.cb-cab-card` → `.cb-li-row`).
+
 ### Public wiki + workflow clips (2026-07-03) ✅ Built + verified — ⬜ commit/push (tree shared with blog work)
 
 **Goal.** Public how-to wiki at `/wiki` — one guide page per main function, each

@@ -639,7 +639,6 @@ function addCBLine() {
   cbLines.push(fresh);
   cbEditingLineIdx = cbLines.length - 1;
   cbScratchpad = fresh; // reference into cbLines, NOT a copy
-  cbOpenSections.add(fresh.id + '-cab');
   saveCBLines();
   renderCBPanel();
   _scrollCBEditorIntoView();
@@ -652,7 +651,6 @@ function addCBLineFromPreset(type) {
   cbLines.push(fresh);
   cbEditingLineIdx = cbLines.length - 1;
   cbScratchpad = fresh;
-  cbOpenSections.add(fresh.id + '-cab');
   saveCBLines();
   renderCBPanel();
   _scrollCBEditorIntoView();
@@ -762,6 +760,9 @@ function cbUpdateField(field, val) {
     cbScratchpad[field] = dimInputToMM(val) || 0;
   } else if (numFields.includes(field)) {
     cbScratchpad[field] = parseFloat(val) || 0;
+    // Qty comes from the pinned-header input now — clamp to a whole ≥1 like
+    // cbStepField/cbSetLineQty already do on their paths.
+    if (field === 'qty') cbScratchpad.qty = Math.max(1, Math.round(cbScratchpad.qty) || 1);
   } else {
     cbScratchpad[field] = val;
   }

@@ -3,7 +3,6 @@
 
 // ── UI state ──
 let cbOpenSections = new Set();
-let _cbSectionsSeen = new Set();
 let cbExpandedRows = new Set();
 let cbMainView = 'results';
 let cbActiveTab = 'builder'; // 'builder' | 'rates' — active Quote Builder sidebar sub-tab
@@ -24,7 +23,7 @@ function toggleCBSection(lineId, section) {
 }
 
 function cbExpandAll() {
-  const secs = ['cab','doors','drawers','shelves','hw','extras','notes'];
+  const secs = ['cab','doors','drawers','shelves','hw','notes'];
   const line = cbScratchpad;
   if (line) secs.forEach(s => cbOpenSections.add(line.id + '-' + s));
   renderCBEditor();
@@ -365,8 +364,51 @@ function cbSelectLine(idx) {
 function cbEditCabinetFromOutput(idx) {
   cbSelectLine(idx);
   if (window._mvShowEditor) window._mvShowEditor();
-  const sidebar = _byId('cb-sidebar');
-  if (sidebar) sidebar.scrollTop = sidebar.scrollHeight;
+  // Scroll to the editor's TOP — with the pinned header, scrolling to the
+  // bottom would land the user on the sticky footer instead of the name/dims.
+  _scrollCBEditorIntoView();
+}
+
+// ── Edit-in-place editor helpers (2026-07-03 rework) ──
+/** Live cost pill for section headers. @param {number} v */
+function _cbSecBadge(v) {
+  return `<span class="cb-sec-badge">${window.currency}${Math.round(v)}</span>`;
+}
+
+/** One-line hardware summary across all three scopes (first 2 + "+n more").
+ *  @param {any} line */
+function _cbHwSummary(line) {
+  const all = [...(line.hwItems || []), ...(line.doorHwItems || []), ...(line.drawerHwItems || [])];
+  if (!all.length) return 'None';
+  const parts = all.slice(0, 2).map(/** @param {any} h */ h => `${h.name} ×${h.qty}`);
+  if (all.length > 2) parts.push('+' + (all.length - 2) + ' more');
+  return parts.join(' · ');
+}
+
+/** One-line room/extras/notes summary for the Notes & Extras header.
+ *  @param {any} line */
+function _cbNotesSummary(line) {
+  const n = (line.extras || []).length;
+  const bits = [];
+  if (line.room) bits.push(line.room);
+  if (n) bits.push(n + ' extra' + (n !== 1 ? 's' : ''));
+  if (line.notes) bits.push('✓ notes');
+  return bits.length ? bits.join(' · ') : '—';
+}
+
+/** Header/footer live total (line subtotal incl. qty, with ×qty hint).
+ *  @param {any} line @param {any} calc */
+function _cbEdTotalHTML(line, calc) {
+  const qty = parseFloat(line.qty) || 1;
+  return `${window.currency}${Math.round(calc.lineSubtotal).toLocaleString()}` +
+    (qty > 1 ? `<span style="font-size:11px;font-weight:600;color:var(--muted)"> · ×${qty}</span>` : '');
+}
+
+/** Mini −/+ chip for interior counts in the section header. Lives inside the
+ *  .cb-sec-ctl wrapper, which already stops click propagation.
+ *  @param {string} label @param {string} field @param {number} count */
+function _cbChip(label, field, count) {
+  return `<span class="cb-chip${count > 0 ? ' on' : ''}"><button class="cb-chip-btn" onclick="cbStepField('${field}',-1)">−</button><span class="cb-chip-lab">${label} <b id="cb-hd-n-${field}">${count}</b></span><button class="cb-chip-btn" onclick="cbStepField('${field}',1)">+</button></span>`;
 }
 
 // ── Render the active cabinet editor in sidebar ──
@@ -391,14 +433,9 @@ function renderCBEditor() {
     return;
   }
 
-  // Cabinet editor sections start expanded the first time each cabinet's
-  // editor renders; collapsing one then sticks (re-renders don't re-add).
-  if (!_cbSectionsSeen.has(line.id)) {
-    _cbSectionsSeen.add(line.id);
-    ['cab', 'doors', 'drawerFronts', 'drawerBoxes', 'shelves', 'extras', 'notes']
-      .forEach(s => cbOpenSections.add(line.id + '-' + s));
-  }
-
+  // Edit-in-place (2026-07-03): sections start COLLAPSED — the common
+  // controls live inline in each section header, so expanding is only for
+  // the long tail (finishes, coverage, hardware editing, notes).
   const displayedName = line.name || (cbEditingLineIdx >= 0 ? 'Cabinet ' + (cbEditingLineIdx + 1) : 'Cabinet');
 
   const cur = window.currency;
@@ -439,190 +476,118 @@ function renderCBEditor() {
   const so = sec => cbOpenSections.has(line.id + '-' + sec);
   /** @param {string} sec */
   const chev = sec => `<span style="font-size:10px;color:var(--muted);transition:transform .2s;display:inline-block;${so(sec)?'transform:rotate(90deg)':''}">&#9654;</span>`;
-  const SB = 'border:1px solid var(--border);border-radius:8px;margin-bottom:8px;overflow:hidden;background:var(--surface)';
-  const SH = 'display:flex;align-items:center;gap:8px;padding:10px 12px;cursor:pointer;user-select:none';
-  const ST = 'font-size:13px;font-weight:600;color:var(--text);flex:1';
-  const SS = 'font-size:11px;color:var(--muted)';
-  /** @param {string} sec */
-  const SC = sec => `style="padding:10px 12px;border-top:1px solid var(--border);${so(sec)?'':'display:none'}"`;
   const FM = 'margin:0';
   const LB = 'font-size:12px';
-  const IS = 'font-size:14px';
   const SL = 'font-size:13px';
-  /** @param {number} v */
-  const liveCost = v => `<span style="font-size:12px;font-weight:700;color:var(--accent);white-space:nowrap">${cur}${Math.round(v)}</span>`;
 
   // Per-section cost breakdown (material + labour + section-specific hardware)
   const sec = calcCBSections(line);
 
+  // Section-row builder: header row 1 = chevron + title + (summary) + badge;
+  // optional row 2 = inline controls (wrapper stops propagation so taps edit
+  // instead of toggling); body renders only while open.
+  /** @param {string} key @param {string} title @param {string} badgeId @param {string} badgeHtml @param {string} ctl @param {string} body @param {string} [sumId] @param {string} [sumHtml] */
+  const secRow = (key, title, badgeId, badgeHtml, ctl, body, sumId, sumHtml) => `<div class="cb-sec">
+    <div class="cb-sec-hd" onclick="toggleCBSection(${line.id},'${key}')">
+      <div class="cb-sec-hd-row">${chev(key)}<span class="cb-sec-title${sumId ? '' : ' grow'}">${title}</span>${sumId ? `<span id="${sumId}" class="cb-sec-sum">${sumHtml || ''}</span>` : ''}<span id="${badgeId}" class="cb-sec-badge-wrap">${badgeHtml}</span></div>
+      ${ctl ? `<div class="cb-sec-ctl" onclick="event.stopPropagation()">${ctl}</div>` : ''}
+    </div>
+    ${so(key) ? `<div class="cb-sec-body">${body}</div>` : ''}
+  </div>`;
+  // Pill-styled native select for cbSettings type arrays (header inline control).
+  /** @param {string} field @param {any[]} types @param {string} title */
+  const pillSelect = (field, types, title) => `<select class="cb-sec-pill" title="${title}" onchange="cbUpdateField('${field}',this.value)">${(types || []).map(/** @param {any} t */ t => `<option value="${_escHtml(t.name)}" ${t.name === line[field] ? 'selected' : ''}>${_escHtml(t.name)}</option>`).join('')}</select>`;
+
+  // Sticky-footer actions — context-dependent (quote row vs library template).
+  const isLib = cbEditingLibraryIdx >= 0;
+  const footActions = isLib
+    ? `<button class="btn btn-outline" onclick="cbAddFromLibrary(${cbEditingLibraryIdx})">Add to Quote</button><button class="btn btn-outline" onclick="cbDuplicateLibraryEntry(${cbEditingLibraryIdx})">Duplicate</button><button class="btn btn-outline" style="color:var(--danger)" onclick="_confirm('Delete this template?',()=>cbRemoveFromLibrary(${cbEditingLibraryIdx}))">Delete</button>`
+    : `<button class="btn btn-outline" onclick="_duplicateCabinet(${cbEditingLineIdx})" title="Duplicate cabinet">Duplicate</button><button class="btn btn-outline" onclick="cbAddLineToLibrary(${cbEditingLineIdx})" title="Save this cabinet as a library template">To Library</button><button class="btn btn-outline" style="color:var(--danger)" onclick="_cbConfirmDeleteLine(${cbEditingLineIdx})" title="Delete cabinet">Delete</button>`;
+
   el.innerHTML = `
-    <div class="form-group" style="padding:10px 14px">
-      <label>Name</label>
-      <div class="prefixed-input">
-        <input type="text" id="cb-name" value="${_escHtml(line.name||'')}" oninput="cbUpdateField('name',this.value)">
+    <div class="cb-ed-head">
+      <div class="cb-ed-name-row">
+        <input type="text" id="cb-name" class="cb-ed-name" value="${_escHtml(line.name||'')}" placeholder="${_escHtml(displayedName)}" autocomplete="off" oninput="cbUpdateField('name',this.value)">
+        <span class="cb-ed-total" id="cb-live-total">${_cbEdTotalHTML(line, c)}</span>
+      </div>
+      <div class="cb-ed-head-grid">
+        <div><label>W (${unitLabel()})</label><input type="text" inputmode="decimal" value="${dimDisplayFromMM(line.w)}" onchange="cbUpdateField('w',this.value)"></div>
+        <div><label>H (${unitLabel()})</label><input type="text" inputmode="decimal" value="${dimDisplayFromMM(line.h)}" onchange="cbUpdateField('h',this.value)"></div>
+        <div><label>D (${unitLabel()})</label><input type="text" inputmode="decimal" value="${dimDisplayFromMM(line.d)}" onchange="cbUpdateField('d',this.value)"></div>
+        <div><label>Qty</label><input type="number" min="1" value="${line.qty||1}" onchange="cbUpdateField('qty',this.value)"></div>
       </div>
     </div>
-    <div style="border-top:1px solid var(--border);padding-top:10px;margin-top:6px">
 
-      <!-- CABINET (dims + material + finish + construction + base) -->
-      <div style="${SB}">
-        <div style="${SH}" onclick="toggleCBSection(${line.id},'cab')">
-          ${chev('cab')}
-          <span style="${ST}">Cabinet</span>
-          <span id="cb-live-cab">${liveCost(sec.cabinet)}</span>
-          <span id="cb-live-cab-dims" style="${SS}">${dimDisplayFromMM(line.w)}×${dimDisplayFromMM(line.h)}×${dimDisplayFromMM(line.d)}</span>
-        </div>
-        <div ${SC('cab')}>
-          <div class="form-row" style="margin-bottom:8px">
-            <div class="form-group" style="${FM}"><label style="${LB}">Width (${unitLabel()})</label><input type="text" inputmode="decimal" value="${dimDisplayFromMM(line.w)}" style="${IS}" onchange="cbUpdateField('w',this.value)"></div>
-            <div class="form-group" style="${FM}"><label style="${LB}">Height (${unitLabel()})</label><input type="text" inputmode="decimal" value="${dimDisplayFromMM(line.h)}" style="${IS}" onchange="cbUpdateField('h',this.value)"></div>
-            <div class="form-group" style="${FM}"><label style="${LB}">Depth (${unitLabel()})</label><input type="text" inputmode="decimal" value="${dimDisplayFromMM(line.d)}" style="${IS}" onchange="cbUpdateField('d',this.value)"></div>
-          </div>
-          <div style="margin-bottom:8px"><label style="${LB}">Carcass Material</label>${matSmart('material', line.material)}</div>
-          <div style="margin-bottom:8px"><label style="${LB}">Back Panel</label>${matSmart('backMat', line.backMat)}</div>
-          <div style="margin-bottom:8px"><label style="${LB}">Carcass Type</label>
-            <select style="${SL};width:100%" onchange="cbUpdateField('carcassType',this.value)">
-              ${(cbSettings.carcassTypes||[]).map(/** @param {any} t */ t=>`<option value="${t.name}" ${t.name===line.carcassType?'selected':''}>${t.name}</option>`).join('')}
-            </select>
-          </div>
-          <div style="margin-bottom:8px"><label style="${LB}">Base</label>
-            <select style="${SL};width:100%" onchange="cbUpdateField('baseType',this.value)">
-              ${(cbSettings.baseTypes||[]).map(/** @param {any} b */ b=>`<option value="${b.name}" ${b.name===line.baseType?'selected':''}>${b.name}</option>`).join('')}
-            </select>
-          </div>
-          <div style="margin-bottom:8px"><label style="${LB}">Finish</label>${finishSmart('finish')}</div>
-          <div style="margin-bottom:0"><label style="${LB}">Hardware</label>${hwListUI('cabinet')}</div>
-        </div>
+    ${secRow('cab', 'Box', 'cb-live-box', _cbSecBadge(sec.cabinet),
+      `<div class="cb-ctl-smart">${matSmart('material', line.material)}</div>${pillSelect('baseType', cbSettings.baseTypes, 'Base type')}`,
+      `<div style="margin-bottom:8px"><label style="${LB}">Back Panel</label>${matSmart('backMat', line.backMat)}</div>
+      <div style="margin-bottom:8px"><label style="${LB}">Carcass Type</label>
+        <select style="${SL};width:100%" onchange="cbUpdateField('carcassType',this.value)">
+          ${(cbSettings.carcassTypes||[]).map(/** @param {any} t */ t=>`<option value="${t.name}" ${t.name===line.carcassType?'selected':''}>${t.name}</option>`).join('')}
+        </select>
       </div>
+      <div style="margin-bottom:0"><label style="${LB}">Finish</label>${finishSmart('finish')}</div>`)}
 
-      <!-- SHELVES & PARTITIONS -->
-      <div style="${SB}">
-        <div style="${SH}" onclick="toggleCBSection(${line.id},'shelves')">
-          ${chev('shelves')}
-          <span style="${ST}">Shelves & Partitions</span>
-          <span id="cb-live-shelves">${shelfTot>0 ? liveCost(sec.shelves) : ''}</span>
-          <span id="cb-live-shelves-count" style="${SS}">${shelfTot>0?shelfTot+' total':'None'}</span>
-        </div>
-        <div ${SC('shelves')}>
-          <div class="form-row" style="margin-bottom:6px;align-items:flex-end">
-            <div class="form-group" style="flex:0 0 auto;${FM}"><label style="${LB}">Fixed Shelf</label>${stepper('shelves', line.shelves, 0)}</div>
-            <div class="form-group" style="flex:0 0 auto;${FM}"><label style="${LB}">Adj. Holes</label>${stepper('adjShelves', line.adjShelves, 0)}</div>
-            <div class="form-group" style="flex:0 0 auto;${FM}"><label style="${LB}">Loose Shelf</label>${stepper('looseShelves', line.looseShelves||0, 0)}</div>
-          </div>
-          <div class="form-row" style="margin-bottom:0;align-items:flex-end">
-            <div class="form-group" style="flex:0 0 auto;${FM}"><label style="${LB}">Partition</label>${stepper('partitions', line.partitions||0, 0)}</div>
-            <div class="form-group" style="flex:0 0 auto;${FM}"><label style="${LB}">End Panel</label>${stepper('endPanels', line.endPanels||0, 0)}</div>
-          </div>
-          ${(cbSettings.extraPanelTypes||[]).length ? `<div class="form-row" style="margin:6px 0 0;align-items:flex-end;flex-wrap:wrap">
-            ${(cbSettings.extraPanelTypes||[]).map(/** @param {any} t */ t=>`<div class="form-group" style="flex:0 0 auto;${FM}"><label style="${LB}">${_escHtml(t.name||'Panel')}</label>${epStepper(t.id, (line.extraPanels&&line.extraPanels[t.id])||0)}</div>`).join('')}
-          </div>` : ''}
-        </div>
+    ${secRow('doors', 'Doors', 'cb-live-doors', line.doors > 0 ? _cbSecBadge(sec.doors) : '',
+      `${stepper('doors', line.doors, 0)}${pillSelect('doorType', cbSettings.doorTypes, 'Door type')}`,
+      `<div style="margin-bottom:8px"><label style="${LB}">Door Material</label>${matSmart('doorMat', line.doorMat)}</div>
+      <label style="font-size:11px;color:var(--muted)">% of front area</label><div class="cb-pct-row"><input type="range" class="cb-pct-slider" min="0" max="100" value="${line.doorPct||0}" oninput="this.nextElementSibling.textContent=this.value+'%'" onchange="cbUpdatePct('doorPct',this.value)"><span class="cb-pct-val">${line.doorPct||0}%</span></div>
+      <div style="font-size:10px;color:var(--muted);margin-top:6px">Open: ${Math.max(0, 100 - (line.doorPct||0) - (line.drawerPct||0))}%</div>
+      <div style="margin-top:10px;margin-bottom:0"><label style="${LB}">Finish</label>${finishSmart('doorFinish')}</div>`)}
+
+    ${secRow('drawers', 'Drawers', 'cb-live-drawers', line.drawers > 0 ? _cbSecBadge(sec.drawers) : '',
+      `${stepper('drawers', line.drawers, 0)}${pillSelect('drawerFrontType', cbSettings.drawerFrontTypes, 'Front type')}${pillSelect('drawerBoxType', cbSettings.drawerBoxTypes, 'Box type')}`,
+      `<div style="margin-bottom:8px"><label style="${LB}">Front Material</label>${matSmart('drawerFrontMat', line.drawerFrontMat)}</div>
+      <label style="font-size:11px;color:var(--muted)">% of front area</label><div class="cb-pct-row"><input type="range" class="cb-pct-slider" min="0" max="100" value="${line.drawerPct||0}" oninput="this.nextElementSibling.textContent=this.value+'%'" onchange="cbUpdatePct('drawerPct',this.value)"><span class="cb-pct-val">${line.drawerPct||0}%</span></div>
+      <div style="font-size:10px;color:var(--muted);margin-top:6px">Open: ${Math.max(0, 100 - (line.doorPct||0) - (line.drawerPct||0))}%</div>
+      <div style="margin-top:10px;margin-bottom:8px"><label style="${LB}">Front Finish</label>${finishSmart('drawerFrontFinish')}</div>
+      <div style="border-top:1px dashed var(--border);margin:10px 0 8px"></div>
+      <div style="margin-bottom:8px"><label style="${LB}">Inner Box Material</label>${matSmart('drawerInnerMat', line.drawerInnerMat)}</div>
+      <div style="margin-bottom:0"><label style="${LB}">Box Finish</label>${finishSmart('drawerBoxFinish')}</div>`)}
+
+    ${secRow('shelves', 'Interior', 'cb-live-interior', shelfTot > 0 ? _cbSecBadge(sec.shelves) : '',
+      `${_cbChip('Fixed', 'shelves', line.shelves||0)}${_cbChip('Adj', 'adjShelves', line.adjShelves||0)}${_cbChip('End', 'endPanels', line.endPanels||0)}`,
+      `<div class="form-row" style="margin-bottom:6px;align-items:flex-end">
+        <div class="form-group" style="flex:0 0 auto;${FM}"><label style="${LB}">Fixed Shelf</label>${stepper('shelves', line.shelves, 0)}</div>
+        <div class="form-group" style="flex:0 0 auto;${FM}"><label style="${LB}">Adj. Holes</label>${stepper('adjShelves', line.adjShelves, 0)}</div>
+        <div class="form-group" style="flex:0 0 auto;${FM}"><label style="${LB}">Loose Shelf</label>${stepper('looseShelves', line.looseShelves||0, 0)}</div>
       </div>
-
-      <!-- DOORS -->
-      <div style="${SB}">
-        <div style="${SH}" onclick="toggleCBSection(${line.id},'doors')">
-          ${chev('doors')}
-          <span style="${ST}">Doors</span>
-          <span id="cb-live-doors">${line.doors > 0 ? liveCost(sec.doors) : ''}</span>
-          <span id="cb-live-doors-count" style="${SS}">${line.doors>0?line.doors+' door'+(line.doors!==1?'s':''):'None'}</span>
-        </div>
-        <div ${SC('doors')}>
-          <div style="margin-bottom:8px"><label style="${LB}">Count</label>${stepper('doors', line.doors, 0)}</div>
-          <div style="margin-bottom:8px"><label style="${LB}">Door Material</label>${matSmart('doorMat', line.doorMat)}</div>
-          <div style="margin-bottom:8px"><label style="${LB}">Door Type</label>
-            <select style="${SL};width:100%" onchange="cbUpdateField('doorType',this.value)">
-              ${(cbSettings.doorTypes||[]).map(/** @param {any} t */ t=>`<option value="${t.name}" ${t.name===line.doorType?'selected':''}>${t.name}</option>`).join('')}
-            </select>
-          </div>
-          <label style="font-size:11px;color:var(--muted)">% of front area</label><div class="cb-pct-row"><input type="range" class="cb-pct-slider" min="0" max="100" value="${line.doorPct||0}" oninput="this.nextElementSibling.textContent=this.value+'%'" onchange="cbUpdatePct('doorPct',this.value)"><span class="cb-pct-val">${line.doorPct||0}%</span></div>
-          <div style="font-size:10px;color:var(--muted);margin-top:6px">Open: ${Math.max(0, 100 - (line.doorPct||0) - (line.drawerPct||0))}%</div>
-          <div style="margin-top:10px"><label style="${LB}">Finish</label>${finishSmart('doorFinish')}</div>
-          <div style="margin-top:8px"><label style="${LB}">Hardware</label>${hwListUI('door')}</div>
-        </div>
+      <div class="form-row" style="margin-bottom:0;align-items:flex-end">
+        <div class="form-group" style="flex:0 0 auto;${FM}"><label style="${LB}">Partition</label>${stepper('partitions', line.partitions||0, 0)}</div>
+        <div class="form-group" style="flex:0 0 auto;${FM}"><label style="${LB}">End Panel</label>${stepper('endPanels', line.endPanels||0, 0)}</div>
       </div>
+      ${(cbSettings.extraPanelTypes||[]).length ? `<div class="form-row" style="margin:6px 0 0;align-items:flex-end;flex-wrap:wrap">
+        ${(cbSettings.extraPanelTypes||[]).map(/** @param {any} t */ t=>`<div class="form-group" style="flex:0 0 auto;${FM}"><label style="${LB}">${_escHtml(t.name||'Panel')}</label>${epStepper(t.id, (line.extraPanels&&line.extraPanels[t.id])||0)}</div>`).join('')}
+      </div>` : ''}`)}
 
-      <!-- DRAWER FRONTS -->
-      <div style="${SB}">
-        <div style="${SH}" onclick="toggleCBSection(${line.id},'drawerFronts')">
-          ${chev('drawerFronts')}
-          <span style="${ST}">Drawer Fronts</span>
-          <span id="cb-live-drawer-fronts">${line.drawers > 0 ? liveCost(sec.drawerFronts) : ''}</span>
-          <span id="cb-live-drawer-fronts-count" style="${SS}">${line.drawers>0?line.drawers+' front'+(line.drawers!==1?'s':''):'None'}</span>
-        </div>
-        <div ${SC('drawerFronts')}>
-          <div style="margin-bottom:8px"><label style="${LB}">Count</label>${stepper('drawers', line.drawers, 0)}</div>
-          <div style="margin-bottom:8px"><label style="${LB}">Front Material</label>${matSmart('drawerFrontMat', line.drawerFrontMat)}</div>
-          <div style="margin-bottom:8px"><label style="${LB}">Front Type</label>
-            <select style="${SL};width:100%" onchange="cbUpdateField('drawerFrontType',this.value)">
-              ${(cbSettings.drawerFrontTypes||[]).map(/** @param {any} t */ t=>`<option value="${t.name}" ${t.name===line.drawerFrontType?'selected':''}>${t.name}</option>`).join('')}
-            </select>
-          </div>
-          <label style="font-size:11px;color:var(--muted)">% of front area</label><div class="cb-pct-row"><input type="range" class="cb-pct-slider" min="0" max="100" value="${line.drawerPct||0}" oninput="this.nextElementSibling.textContent=this.value+'%'" onchange="cbUpdatePct('drawerPct',this.value)"><span class="cb-pct-val">${line.drawerPct||0}%</span></div>
-          <div style="font-size:10px;color:var(--muted);margin-top:6px">Open: ${Math.max(0, 100 - (line.doorPct||0) - (line.drawerPct||0))}%</div>
-          <div style="margin-top:10px"><label style="${LB}">Finish</label>${finishSmart('drawerFrontFinish')}</div>
-        </div>
+    ${secRow('hw', 'Hardware', 'cb-live-hw', sec.hardware > 0 ? _cbSecBadge(sec.hardware) : '', '',
+      `<div class="cb-sec-sublabel">Cabinet</div>${hwListUI('cabinet')}
+      <div class="cb-sec-sublabel">Doors</div>${hwListUI('door')}
+      <div class="cb-sec-sublabel">Drawers</div>${hwListUI('drawer')}`,
+      'cb-live-hw-sum', _escHtml(_cbHwSummary(line)))}
+
+    ${secRow('notes', 'Notes &amp; Extras', 'cb-live-extras', sec.extras > 0 ? _cbSecBadge(sec.extras) : '', '',
+      `<div class="form-row" style="margin-bottom:8px">
+        <div class="form-group" style="${FM}"><label style="${LB}">Room / Area</label><input type="text" value="${line.room||''}" placeholder="e.g. Kitchen" style="${SL}" list="cb-room-list" onchange="cbUpdateField('room',this.value)"></div>
       </div>
+      <div class="form-group" style="${FM}"><label style="${LB}">Notes</label><textarea style="${SL};min-height:60px;resize:vertical" onblur="cbUpdateField('notes',this.value)">${line.notes||''}</textarea></div>
+      <div style="font-size:12px;color:var(--muted);margin:12px 0 6px;padding-top:10px;border-top:1px dashed var(--border)">Extras — custom items like cable holes, lighting cutouts, etc.</div>
+      ${(line.extras||[]).map(/** @param {any} ex @param {number} ei */ (ex, ei) => `<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px">
+        <input style="flex:1;min-width:0;font-size:13px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);font-family:inherit" value="${ex.label||''}" placeholder="Item name" onblur="cbUpdateExtra(${line.id},${ei},'label',this.value)">
+        <div style="display:flex;align-items:center;border:1px solid var(--border);border-radius:6px;overflow:hidden;background:var(--surface2)">
+          <span style="font-size:11px;color:var(--muted);padding:4px 4px 4px 8px;background:var(--surface)">${cur}</span>
+          <input type="number" style="width:60px;border:none;padding:6px 6px 6px 2px;font-size:13px;background:transparent;color:var(--text)" value="${ex.cost||0}" onblur="cbUpdateExtra(${line.id},${ei},'cost',this.value)">
+        </div>
+        <span style="font-size:11px;color:var(--muted)">×</span>
+        <input type="number" min="1" title="Quantity" style="width:46px;text-align:center;font-size:13px;padding:6px 4px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text)" value="${ex.qty==null?1:ex.qty}" onblur="cbUpdateExtra(${line.id},${ei},'qty',this.value)">
+        <button class="cb-del-btn" style="font-size:16px" onclick="cbRemoveExtra(${line.id},${ei})">×</button>
+      </div>`).join('')}
+      <button class="cl-add-btn" onclick="cbAddExtra(${line.id})" style="font-size:12px;padding:5px 10px;margin:4px 0 0">+ Add Extra</button>`,
+      'cb-live-notes', _escHtml(_cbNotesSummary(line)))}
 
-      <!-- DRAWER BOXES -->
-      <div style="${SB}">
-        <div style="${SH}" onclick="toggleCBSection(${line.id},'drawerBoxes')">
-          ${chev('drawerBoxes')}
-          <span style="${ST}">Drawer Boxes</span>
-          <span id="cb-live-drawer-boxes">${line.drawers > 0 ? liveCost(sec.drawerBoxes) : ''}</span>
-          <span id="cb-live-drawer-boxes-count" style="${SS}">${line.drawers>0?line.drawers+' box'+(line.drawers!==1?'es':''):'None'}</span>
-        </div>
-        <div ${SC('drawerBoxes')}>
-          <div style="margin-bottom:8px"><label style="${LB}">Inner Box Material</label>${matSmart('drawerInnerMat', line.drawerInnerMat)}</div>
-          <div style="margin-bottom:8px"><label style="${LB}">Box Type</label>
-            <select style="${SL};width:100%" onchange="cbUpdateField('drawerBoxType',this.value)">
-              ${(cbSettings.drawerBoxTypes||[]).map(/** @param {any} t */ t=>`<option value="${t.name}" ${t.name===line.drawerBoxType?'selected':''}>${t.name}</option>`).join('')}
-            </select>
-          </div>
-          <div style="margin-bottom:8px"><label style="${LB}">Finish</label>${finishSmart('drawerBoxFinish')}</div>
-          <div style="margin-bottom:0"><label style="${LB}">Hardware</label>${hwListUI('drawer')}</div>
-        </div>
-      </div>
-
-      <!-- EXTRAS -->
-      <div style="${SB}">
-        <div style="${SH}" onclick="toggleCBSection(${line.id},'extras')">
-          ${chev('extras')}
-          <span style="${ST}">Extras</span>
-          <span id="cb-live-extras">${sec.extras > 0 ? liveCost(sec.extras) : ''}</span>
-          <span id="cb-live-extras-count" style="${SS}">${(line.extras||[]).length>0?(line.extras.length)+' item'+(line.extras.length!==1?'s':''):'None'}</span>
-        </div>
-        <div ${SC('extras')}>
-          <div style="font-size:12px;color:var(--muted);margin-bottom:6px">Add custom items like cable holes, lighting cutouts, etc.</div>
-          ${(line.extras||[]).map(/** @param {any} ex @param {number} ei */ (ex, ei) => `<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px">
-            <input style="flex:1;min-width:0;font-size:13px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);font-family:inherit" value="${ex.label||''}" placeholder="Item name" onblur="cbUpdateExtra(${line.id},${ei},'label',this.value)">
-            <div style="display:flex;align-items:center;border:1px solid var(--border);border-radius:6px;overflow:hidden;background:var(--surface2)">
-              <span style="font-size:11px;color:var(--muted);padding:4px 4px 4px 8px;background:var(--surface)">${cur}</span>
-              <input type="number" style="width:60px;border:none;padding:6px 6px 6px 2px;font-size:13px;background:transparent;color:var(--text)" value="${ex.cost||0}" onblur="cbUpdateExtra(${line.id},${ei},'cost',this.value)">
-            </div>
-            <span style="font-size:11px;color:var(--muted)">×</span>
-            <input type="number" min="1" title="Quantity" style="width:46px;text-align:center;font-size:13px;padding:6px 4px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text)" value="${ex.qty==null?1:ex.qty}" onblur="cbUpdateExtra(${line.id},${ei},'qty',this.value)">
-            <button class="cb-del-btn" style="font-size:16px" onclick="cbRemoveExtra(${line.id},${ei})">×</button>
-          </div>`).join('')}
-          <button class="cl-add-btn" onclick="cbAddExtra(${line.id})" style="font-size:12px;padding:5px 10px;margin:4px 0 0">+ Add Extra</button>
-        </div>
-      </div>
-
-      <!-- NOTES -->
-      <div style="${SB}">
-        <div style="${SH}" onclick="toggleCBSection(${line.id},'notes')">
-          ${chev('notes')}
-          <span style="${ST}">Notes</span>
-          <span id="cb-live-notes" style="${SS}">${line.notes?'✓':''} ${line.room||''}</span>
-        </div>
-        <div ${SC('notes')}>
-          <div class="form-row" style="margin-bottom:8px">
-            <div class="form-group" style="${FM}"><label style="${LB}">Room / Area</label><input type="text" value="${line.room||''}" placeholder="e.g. Kitchen" style="${SL}" list="cb-room-list" onchange="cbUpdateField('room',this.value)"></div>
-          </div>
-          <div class="form-group" style="${FM}"><label style="${LB}">Notes</label><textarea style="${SL};min-height:60px;resize:vertical" onblur="cbUpdateField('notes',this.value)">${line.notes||''}</textarea></div>
-        </div>
-      </div>
-
+    <div class="cb-ed-foot">
+      ${footActions}
+      <span class="cb-ed-foot-total" id="cb-live-total-ft">${_cbEdTotalHTML(line, c)}</span>
     </div>
     <datalist id="cb-room-list">${['Kitchen','Bathroom','Bedroom','Living Room','Laundry','Garage','Office','Pantry'].map(r=>'<option value="'+r+'">').join('')}</datalist>
   `;
@@ -634,28 +599,36 @@ function renderCBEditor() {
 function _refreshCBLiveCosts() {
   if (!cbScratchpad) return;
   const line = cbScratchpad;
-  const cur = window.currency;
   const sec = calcCBSections(line);
 
-  /** @param {number} v */
-  const liveCost = v => `<span style="font-size:12px;font-weight:700;color:var(--accent);white-space:nowrap">${cur}${Math.round(v)}</span>`;
   /** @param {string} id @param {string} html */
   const set = (id, html) => { const el = _byId(id); if (el) el.innerHTML = html; };
+  // Interior header chips: update the count AND the on/off tint without
+  // re-rendering (the buttons may be mid-tap).
+  /** @param {string} field @param {number} count */
+  const chip = (field, count) => {
+    const b = _byId('cb-hd-n-' + field);
+    if (!b) return;
+    b.textContent = String(count);
+    const wrap = b.closest('.cb-chip');
+    if (wrap) wrap.classList.toggle('on', count > 0);
+  };
 
-  set('cb-live-cab', liveCost(sec.cabinet));
-  set('cb-live-cab-dims', `${dimDisplayFromMM(line.w)}×${dimDisplayFromMM(line.h)}×${dimDisplayFromMM(line.d)}`);
-  set('cb-live-doors', line.doors > 0 ? liveCost(sec.doors) : '');
-  set('cb-live-doors-count', line.doors>0?line.doors+' door'+(line.doors!==1?'s':''):'None');
-  set('cb-live-drawer-fronts', line.drawers > 0 ? liveCost(sec.drawerFronts) : '');
-  set('cb-live-drawer-fronts-count', line.drawers>0?line.drawers+' front'+(line.drawers!==1?'s':''):'None');
-  set('cb-live-drawer-boxes', line.drawers > 0 ? liveCost(sec.drawerBoxes) : '');
-  set('cb-live-drawer-boxes-count', line.drawers>0?line.drawers+' box'+(line.drawers!==1?'es':''):'None');
-  const shelfTotal = (line.shelves||0)+(line.adjShelves||0)+(line.looseShelves||0)+(line.partitions||0)+(line.endPanels||0)+_extraPanelCount(line);
-  set('cb-live-shelves', shelfTotal > 0 ? liveCost(sec.shelves) : '');
-  set('cb-live-shelves-count', shelfTotal > 0 ? shelfTotal + ' total' : 'None');
-  set('cb-live-extras', sec.extras > 0 ? liveCost(sec.extras) : '');
-  set('cb-live-extras-count', (line.extras||[]).length>0 ? line.extras.length+' item'+(line.extras.length!==1?'s':''):'None');
-  set('cb-live-notes', (line.notes?'✓':'') + ' ' + (line.room||''));
+  set('cb-live-box', _cbSecBadge(sec.cabinet));
+  set('cb-live-doors', line.doors > 0 ? _cbSecBadge(sec.doors) : '');
+  set('cb-live-drawers', line.drawers > 0 ? _cbSecBadge(sec.drawers) : '');
+  const interiorTot = (line.shelves||0)+(line.adjShelves||0)+(line.looseShelves||0)+(line.partitions||0)+(line.endPanels||0)+_extraPanelCount(line);
+  set('cb-live-interior', interiorTot > 0 ? _cbSecBadge(sec.shelves) : '');
+  set('cb-live-hw', sec.hardware > 0 ? _cbSecBadge(sec.hardware) : '');
+  set('cb-live-hw-sum', _escHtml(_cbHwSummary(line)));
+  set('cb-live-extras', sec.extras > 0 ? _cbSecBadge(sec.extras) : '');
+  set('cb-live-notes', _escHtml(_cbNotesSummary(line)));
+  chip('shelves', line.shelves||0);
+  chip('adjShelves', line.adjShelves||0);
+  chip('endPanels', line.endPanels||0);
+  const c = calcCBLine(line);
+  set('cb-live-total', _cbEdTotalHTML(line, c));
+  set('cb-live-total-ft', _cbEdTotalHTML(line, c));
 }
 
 // ── Render right panel: cost breakdown ──
