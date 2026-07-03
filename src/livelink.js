@@ -9,12 +9,12 @@
 // share_settings and its live page is view-only (the customer reviews items +
 // messages, but can't re-select or re-spec — that all happens on the quote).
 //
-// Cross-file deps: quotes/orders/clients (arrays), _qpState (quotes.js) /
-// _opState (orders.js), _db/_userId (db.js), _toast/_escHtml/_openPopup/
+// Cross-file deps: quotes/orders/clients (arrays), _qpState/_opState
+// (line-editor.js), _db/_userId (db.js), _toast/_escHtml/_openPopup/
 // _closePopup (ui.js), _shareLink/_generateShareLink/_copyShareLink/_shTgl
-// (share.js), _openClientChat (clients-chat.js), renderQuoteMain/renderQuoteEditor
-// (quotes.js), renderOrdersMain/renderOrderEditor (orders.js), printOrderDoc
-// (quotes.js), _lineDisplay (quotes.js).
+// (share.js), _openClientChat (clients-chat.js), renderQuoteMain (quotes.js),
+// renderOrdersMain (orders.js), renderQuoteEditor/printOrderDoc/_lineDisplay
+// (quote-editor.js), renderOrderEditor (orders.js).
 
 /** @type {{quote:'builder'|'live', order:'builder'|'live'}} */
 let _llTab = { quote: 'builder', order: 'builder' };
