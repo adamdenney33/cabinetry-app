@@ -754,7 +754,7 @@ function _smartCLStockSuggest(input, boxId) {
     const qtyColor = (s.qty ?? 0) <= (s.lowAlert || s.low || 3) ? '#ef4444' : '#22c55e';
     const edge = isEdge(s);
     const meta = edge
-      ? `Edge${s.thickness ? ' · ' + s.thickness + 'mm' : ''}`
+      ? `Edge${s.thickness_mm ? ' · ' + s.thickness_mm + 'mm' : ''}`
       : (s.w && s.h ? `${s.w}×${s.h}` : '');
     const onClick = edge
       ? `_clAddEdgeBandFromStockIdx(${origIdx})`
@@ -797,9 +797,9 @@ function _clAddEdgeBandFromStockIdx(idx) {
   if (exists) { _toast(`${s.name} already in project`, 'error'); return; }
   /** @type {any} */
   const vd = _svGet(s.id) || {};
-  const thickness = vd.thickness ?? s.thickness ?? 0;
-  const width = vd.width ?? s.width ?? s.h ?? 0;
-  const length = vd.length ?? s.length ?? s.w ?? 0;
+  const thickness = vd.thickness ?? 0;
+  const width = vd.width ?? s.h ?? 0;
+  const length = vd.length ?? s.w ?? 0;
   const glue = vd.glue || s.glue || '';
   addEdgeBand(s.name, thickness, width, null, length, glue);
   _toast(`Added ${s.name}`, 'success');

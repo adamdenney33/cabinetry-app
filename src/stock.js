@@ -271,10 +271,10 @@ function setStockCatInline(id, tagEl) {
 // ══════════════════════════════════════════
 // STOCK
 // ══════════════════════════════════════════
-// In-memory shadow fields beyond the DB schema: thickness/width/length/glue
-// (legacy edge-band field names that shadow the DB's *_mm/*_m columns; the
-// codebase is mid-rename, see G.4 SPEC entry).
-/** @type {(import('./database.types').Tables<'stock_items'> & { thickness?: number, width?: number, length?: number, thick?: number })[]} */
+// Stock items are plain DB rows (R.3, 2026-07-03: the legacy short-name shadow
+// fields thickness/width/length were removed — dimension consumers read the
+// thickness_mm/width_mm/length_m columns via _svGet).
+/** @type {import('./database.types').Tables<'stock_items'>[]} */
 let stockItems = [];
 // `clients` now lives in src/clients.js (R.4 relocation). `projects` stays here.
 // F6 (2026-05-13): projects table dropped; declared as any[] for null-state
@@ -356,18 +356,11 @@ async function loadDefaultStockItems() {
   }));
   const { data, error } = await _db('stock_items').insert(/** @type {any} */ (rows)).select();
   if (error || !data) { _toast('Could not load defaults — ' + (error?.message || 'unknown error'), 'error'); console.error(error); return; }
-  // Attach category + variant/edge-band metadata to each new row.
+  // Attach category + variant/edge-band metadata to each new row. Dimensions
+  // persist through _svSet (thickness_mm/width_mm/length_m columns), which also
+  // writes them onto the in-memory row via _stockUpdateCols.
   data.forEach((row, i) => {
     const d = batch[i];
-    const dataAny = /** @type {any} */ (row);
-    if (d.cat === 'Edge Banding') {
-      dataAny.thickness = d.thickness;
-      dataAny.width = d.ebWidth;
-      dataAny.length = d.ebLength;
-      dataAny.glue = d.glue;
-    } else if (d.thickness != null) {
-      dataAny.thickness = d.thickness;
-    }
     stockItems.push(row);
     if (d.cat) _scSet(row.id, d.cat);
     if (d.cat === 'Edge Banding') {
@@ -548,13 +541,10 @@ async function duplicateStockItem(id) {
   };
   const { data, error } = await _db('stock_items').insert(/** @type {any} */ (row)).select().single();
   if (error || !data) { _toast('Could not duplicate stock item', 'error'); return; }
-  // Carry over edge-band shadow fields so cut-list dropdowns see them this session.
-  /** @type {any} */ (data).thickness = /** @type {any} */ (src).thickness;
-  /** @type {any} */ (data).width     = /** @type {any} */ (src).width;
-  /** @type {any} */ (data).length    = /** @type {any} */ (src).length;
-  /** @type {any} */ (data).glue      = /** @type {any} */ (src).glue;
   stockItems.push(data);
   const cat = _scGet(src.id);  if (cat) _scSet(data.id, cat);
+  // Carry over variant/edge-band dims + glue via the _mm columns (also writes
+  // them onto the in-memory `data` row so cut-list dropdowns see them now).
   const meta = _svGet(src.id); if (meta) _svSet(data.id, meta);
   const supp = _ssGet(src.id); if (supp) _ssSet(data.id, supp);
   _toast(`"${row.name}" duplicated`, 'success');
@@ -608,16 +598,6 @@ async function addStockItem() {
   const { data, error } = await _db('stock_items').insert(/** @type {any} */ (row)).select().single();
   if (error || !data) { _toast('Could not save stock item — ' + (error?.message || JSON.stringify(error)), 'error'); console.error(error); return; }
   if (typeof _track === 'function') _track('library_item_created', { library: 'stock', item_id: data.id, source: 'editor' });
-  // Attach edge-band shadow fields (thickness/width/length/glue) to the
-  // in-memory item so cut-list dropdowns see them THIS session. Reloads
-  // re-hydrate via app.js loadAllData (H0.2 map of *_mm/*_m → short names).
-  const dataAny = /** @type {any} */ (data);
-  if (isEB) {
-    dataAny.thickness = thick;
-    dataAny.width = ebWidth;
-    dataAny.length = ebLength;
-    dataAny.glue = ebGlue;
-  }
   stockItems.push(data);
   if (cat) _scSet(data.id, cat);
   // Store variant/thickness (and edge banding extras) in local metadata
@@ -664,9 +644,9 @@ function editStockItem(id) {
   inp('stock-variant').value = vd.variant || '';
   inp('stock-sku').value = item.sku || '';
   if (cat === 'Edge Banding') {
-    inp('stock-eb-thick').value = vd.thickness ?? item.thickness ?? '';
-    inp('stock-eb-width').value = vd.width ?? item.width ?? item.h ?? '';
-    inp('stock-eb-length').value = vd.length ?? item.length ?? item.w ?? '';
+    inp('stock-eb-thick').value = vd.thickness ?? '';
+    inp('stock-eb-width').value = vd.width ?? item.h ?? '';
+    inp('stock-eb-length').value = vd.length ?? item.w ?? '';
     inp('stock-eb-glue').value = vd.glue || item.glue || 'EVA';
     inp('stock-eb-low').value = String(item.low ?? '');
     inp('stock-eb-cost').value = String(item.cost ?? '');
@@ -756,11 +736,7 @@ async function saveStockEdit() {
     };
   }
   updates.customer_visible = _stockCustVis();
-  /** @type {any} */
-  const itemAny = item;
   Object.assign(item, updates);
-  if (isEB) { itemAny.thickness = thick; itemAny.width = ebWidth; itemAny.length = ebLength; itemAny.glue = ebGlue; }
-  else { delete itemAny.thickness; delete itemAny.width; delete itemAny.length; delete itemAny.glue; }
   if (_userId) await _db('stock_items').update(updates).eq('id', id);
   _scSet(id, cat);
   /** @type {{variant: string, thickness: number, width?: number, length?: number, glue?: string}} */
@@ -841,8 +817,6 @@ async function _stockAutosaveRun() {
   }
   updates.customer_visible = _stockCustVis();
   Object.assign(item, updates);
-  if (isEB) { item.thickness = thick; item.width = ebWidth; item.length = ebLength; item.glue = ebGlue; }
-  else { delete item.thickness; delete item.width; delete item.length; delete item.glue; }
   if (_userId) {
     if (typeof _setSaveStatus === 'function') _setSaveStatus('stock', 'saving');
     const { error } = await _db('stock_items').update(updates).eq('id', id);
@@ -1186,9 +1160,9 @@ function renderStockMain() {
     const sheetCat = ['Sheet Goods','Solid Timber'].includes(cat);
     let dims = ''; let thk = ''; let glue = '';
     if (isEB) {
-      const t = vd.thickness ?? item.thickness;
-      const w = vd.width ?? item.width ?? item.h;
-      const l = vd.length ?? item.length ?? item.w;
+      const t = vd.thickness;
+      const w = vd.width ?? item.h;
+      const l = vd.length ?? item.w;
       thk = t ? `${t}mm` : '';
       dims = (w && l) ? `${w}mm × ${l}m` : (w ? `${w}mm` : '');
       glue = vd.glue || item.glue || '';

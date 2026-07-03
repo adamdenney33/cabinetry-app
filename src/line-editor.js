@@ -1136,7 +1136,6 @@ async function _saveNewStockPopup() {
     saved = row;
     stockItems.push(row);
   }
-  if (isEB) { saved.thickness = thick; saved.width = ebWidth; saved.length = ebLength; saved.glue = ebGlue; }
   _scSet(saved.id, cat);
   /** @type {{variant: string, thickness: number, width?: number, length?: number, glue?: string}} */
   const meta = { variant, thickness: thick };

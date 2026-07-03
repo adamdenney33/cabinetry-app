@@ -664,15 +664,8 @@ function _demoOverlayMergeBoot() {
   orders = _demoSortRows(strip(orders).concat(_demoTable('orders')), 'created_at', false);
   quotes = _demoSortRows(strip(quotes).concat(_demoTable('quotes')), 'created_at', false);
   clients = _demoSortRows(strip(clients).concat(_demoTable('clients')), 'name', true);
-  // Same shadow-field hydration loadAllData applies to real stock rows
-  // (thickness_mm → thickness etc.) — copies, so the seed stays clean.
-  const demoStock = _demoTable('stock_items').map(/** @param {any} s */ s => {
-    const out = /** @type {any} */ ({ ...s });
-    if (s.thickness_mm != null) out.thickness = s.thickness_mm;
-    if (s.width_mm != null)     out.width = s.width_mm;
-    if (s.length_m != null)     out.length = s.length_m;
-    return out;
-  });
+  // Shallow-copy the seed rows so later overlay edits can't mutate the seed.
+  const demoStock = _demoTable('stock_items').map(/** @param {any} s */ s => ({ ...s }));
   stockItems = _demoSortRows(strip(stockItems).concat(demoStock), 'created_at', true);
 }
 
