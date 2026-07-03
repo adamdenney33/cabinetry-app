@@ -13,11 +13,11 @@ Read these before making structural decisions or schema changes:
 When a sub-step from `PLAN.md` is completed, mark it ✅ in `PLAN.md` and append a brief summary to `SPEC.md § 13`. When introducing a new pending change, add it to `PLAN.md` with sub-steps before starting work.
 
 ## Stack
-- `index.html` — markup shell (~800 lines), single `<script type="module" src="/src/main.js">` bridge entry plus 18 classic `<script defer>` tags for the carved domain files
+- `index.html` — markup shell (~800 lines), single `<script type="module" src="/src/main.js">` bridge entry plus ~47 classic `<script defer>` tags for the carved domain files (order matters only for parse-time refs — see the classic-script note below)
 - `styles.css` — extracted in Phase 4
 - `src/main.js` — ES module bridge: imports `@supabase/supabase-js` + `jspdf` + `jspdf-autotable` from npm and re-exposes them on `window`. Also reads `import.meta.env.VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` and stashes them on `window._SBURL` / `window._SBKEY`
-- `src/app.js` — bootstrap entry (~1.1k lines after Phase E carving; was ~10k pre-Phase-E)
-- `src/{auth,backup,business,cabinet,clients,cutlist,dashboard,db,forms,migrate,orders,projects,quotes,schedule,settings,stock,ui}.js` — domain files split out via Phase E (16 carves). All classic-script-loaded; cross-file references work through the global lexical environment
+- `src/app.js` — bootstrap/orchestration entry (~350 lines: `_requireAuth`, `_userId`, `loadAllData`, `onAuthStateChange`, boot block; was ~10k pre-Phase-E, ~2.3k before the 2026-07-03 file-size pass carved the line editors / auth / realtime / biz-apply out)
+- `src/*.js` — ~48 domain files split by feature (Phase E + R.1 cabinet split + the 2026-07-03 completion pass: `line-editor`, `quote-editor`, `stock-persist`, `cutlist-{pdf,layout,edge,render}`). Every file is <1,500 lines (SPEC § 7 target; `cabinet.js` at 1,884 is the one accepted residual). All classic-script-loaded; cross-file references (top-level `let`/`const`/`function`) resolve through the shared global lexical environment. Adding a file = create `src/X.js` + one `<script defer>` tag (vite auto-discovers `src/*.js`)
 - `src/database.types.ts` — Supabase row types, generated via the Supabase MCP `generate_typescript_types` tool. Regenerate after schema migrations
 - `src/globals.d.ts` — ambient type declarations for `window.*` slots and cross-file globals
 - Auth/DB: Supabase (PostgreSQL)

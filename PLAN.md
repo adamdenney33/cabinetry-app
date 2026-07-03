@@ -2099,12 +2099,23 @@ or before specific features that touch these areas.
   batch). `cabinet.js` itself is 1,825 lines (2026-06-11) — still above the
   1,500 target; residual accepted.
 
-- **R.2 — Split `src/cutlist.js`** (now **5,167 lines** as of 2026-06-11 — grew with the nested packer, DXF export, and PDF work; the largest file in the codebase. SPEC § 7 target <1500)
-  - Extract `src/cutlist-layout.js` (guillotine algorithm + canvas drawing)
-  - Extract `src/cutlist-render.js` (sheet/piece tables)
-  - Extract `src/cutlist-edge.js` (edge band UI + assignment)
-  - Extract `src/cutlist-pdf.js` (PDF + print pipeline)
-  - Smoke test after each carve
+- ✅ **R.2 — Split `src/cutlist.js`** — done 2026-07-03 (part of the R.6
+  file-size completion pass below). `cutlist.js` 5,233 → **923**, carved into:
+  - ✅ `src/cutlist-pdf.js` (~1,285) — print/PDF pipeline + the 5 document builders
+  - ✅ `src/cutlist-layout.js` (~1,405) — guillotine + nested packers, canvas drawing
+  - ✅ `src/cutlist-edge.js` (~490) — edge-band UI + column visibility
+  - ✅ `src/cutlist-render.js` (~1,190) — sheet/piece table CRUD, keyboard nav, CSV, library view
+  - Residual keeps module state, state machine, DXF export, CRUD orchestration.
+  - Typecheck + build + smoke green after each carve.
+
+- ✅ **R.6 — File-size completion pass** — done 2026-07-03. Brought every source
+  file over the SPEC § 7 <1,500-line target back under it (except `cabinet.js`,
+  residual accepted in R.1). 12 mechanical carve commits, each bisectable:
+  R.2 above (cutlist ×4); `app.js` 2,274 → **348** (line editors → `src/line-editor.js`;
+  auth → `auth.js`; realtime → `livelink.js`; `_applyBizInfoFromDB` → `business.js`;
+  pipeline hover + `trunc` → `ui.js`; pending-plan → `stripe.js`; dead `hexRgba` dropped);
+  `quotes.js` 1,939 → **787** (sidebar editor → `src/quote-editor.js`); `stock.js`
+  1,554 → **1,399** (persistence maps → `src/stock-persist.js`) + R.4 below. Detail: SPEC.md § 13 (2026-07-03).
 
 - **R.3 — Cut-list shadow-name unification (~30 sites)**
   - Replace `thickness` / `width` / `length` shadows with `thickness_mm` /
