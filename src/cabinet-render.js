@@ -5,23 +5,12 @@
 let cbExpandedRows = new Set();
 let cbMainView = 'results';
 let cbActiveTab = 'builder'; // 'builder' | 'rates' — active Quote Builder sidebar sub-tab
-// Hardware editors open per `${lineId}-${scope}` — the spec cards show hardware
-// as chips; tapping a chip (or +) expands the full hwListUI editor below.
-let cbHwEditOpen = new Set();
 
 /** @param {number} id */
 function toggleCBExpand(id) {
   if (cbExpandedRows.has(id)) cbExpandedRows.delete(id);
   else cbExpandedRows.add(id);
   renderCBPanel();
-}
-
-/** @param {number} lineId @param {string} scope */
-function cbToggleHwEdit(lineId, scope) {
-  const key = lineId + '-' + scope;
-  if (cbHwEditOpen.has(key)) cbHwEditOpen.delete(key);
-  else cbHwEditOpen.add(key);
-  renderCBEditor();
 }
 
 function toggleCBSettings() {
@@ -459,17 +448,11 @@ function renderCBEditor() {
     <div class="cb-rc-hd"><span class="cb-rc-title">${title}</span><span id="${badgeId}">${badgeHtml}</span></div>
     <div class="cb-rc-bd">${body}</div>
   </div>`;
-  // Hardware as always-visible chips; tapping a chip or + expands the full
-  // hwListUI editor (qty edits, smart-suggest add, popup flow) below the row.
+  // Hardware as its own always-visible list line (original layout): a
+  // "Hardware" label above the full hwListUI (per-item smart-search rows +
+  // qty + delete, plus the add-search row).
   /** @param {string} scope */
-  const hwChips = (scope) => {
-    const list = scope === 'door' ? (line.doorHwItems || []) : scope === 'drawer' ? (line.drawerHwItems || []) : (line.hwItems || []);
-    const open = cbHwEditOpen.has(line.id + '-' + scope);
-    const chips = list.map(/** @param {any} hw @param {number} hi */ (hw, hi) =>
-      `<span class="cb-hw-chip" onclick="cbToggleHwEdit(${line.id},'${scope}')" title="Edit hardware">${_escHtml(hw.name)} ×${hw.qty}<u onclick="event.stopPropagation();removeCBHw(${line.id},${hi},'${scope}')" title="Remove">×</u></span>`).join('');
-    return rr('Hardware', `<div class="cb-hw-wrap">${chips}<span class="cb-hw-chip add" onclick="cbToggleHwEdit(${line.id},'${scope}')">${open ? '− close' : '+'}</span></div>`)
-      + (open ? `<div class="cb-hw-editor">${hwListUI(scope)}</div>` : '');
-  };
+  const hwLine = (scope) => `<div class="cb-hw-line"><label>Hardware</label>${hwListUI(scope)}</div>`;
   // Coverage slider (shared markup with the old editor — cbUpdatePct clamp).
   /** @param {string} field */
   const pctRow = (field) => rr('% of front', `<div class="cb-pct-row"><input type="range" class="cb-pct-slider" min="0" max="100" step="5" value="${line[field]||0}" oninput="this.nextElementSibling.value=this.value" onchange="cbUpdatePct('${field}',this.value)"><input type="number" class="cb-pct-num" min="0" max="100" step="5" value="${line[field]||0}" oninput="this.previousElementSibling.value=this.value" onchange="cbUpdatePct('${field}',this.value)"><span class="cb-pct-suffix">%</span></div>`);
@@ -493,7 +476,7 @@ function renderCBEditor() {
         + rr('Back panel', smart(matSmart('backMat', line.backMat)))
         + `<div style="display:grid;grid-template-columns:1fr 1fr;gap:0 10px">${rr('Type', typeSel('carcassType', cbSettings.carcassTypes, 'Carcass type'))}${rr('Base', typeSel('baseType', cbSettings.baseTypes, 'Base'))}</div>`
         + rr('Finish', smart(finishSmart('finish')))
-        + hwChips('cabinet'), true)}
+        + hwLine('cabinet'), true)}
       ${card('Shelves &amp; Partitions', 'cb-live-shelves', shelfTot > 0 ? _cbSecBadge(sec.shelves) : '',
         rr('Fixed shelf', stepper('shelves', line.shelves, 0))
         + rr('Adj. holes', stepper('adjShelves', line.adjShelves, 0))
@@ -507,7 +490,7 @@ function renderCBEditor() {
         + rr('Type', typeSel('doorType', cbSettings.doorTypes, 'Door type'))
         + rr('Finish', smart(finishSmart('doorFinish')))
         + pctRow('doorPct')
-        + hwChips('door'))}
+        + hwLine('door'))}
       ${card('Drawer Fronts', 'cb-live-dfronts', line.drawers > 0 ? _cbSecBadge(sec.drawerFronts) : '',
         rr('Count', stepper('drawers', line.drawers, 0))
         + rr('Material', smart(matSmart('drawerFrontMat', line.drawerFrontMat)))
@@ -518,7 +501,7 @@ function renderCBEditor() {
         rr('Inner mat', smart(matSmart('drawerInnerMat', line.drawerInnerMat)))
         + rr('Type', typeSel('drawerBoxType', cbSettings.drawerBoxTypes, 'Box type'))
         + rr('Finish', smart(finishSmart('drawerBoxFinish')))
-        + hwChips('drawer'))}
+        + hwLine('drawer'))}
       ${card('Extras', 'cb-live-extras', sec.extras > 0 ? _cbSecBadge(sec.extras) : '',
         (line.extras||[]).map(/** @param {any} ex @param {number} ei */ (ex, ei) => `<div class="cb-rr">
           <input type="text" value="${_escHtml(ex.label||'')}" placeholder="Item name" onblur="cbUpdateExtra(${line.id},${ei},'label',this.value)">

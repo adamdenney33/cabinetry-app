@@ -1424,14 +1424,17 @@ canvas { display: block; }
 .cb-rr .cl-stepper .cl-qty-input { font-size:11px !important; width:30px !important; padding:2px !important; height:22px; min-height:0; border:none; background:var(--surface); }
 /* Coverage slider row */
 .cb-rr .cb-pct-row { flex:1; min-width:0; }
-/* Hardware chips + tap-to-expand editor */
-.cb-hw-wrap { display:flex; gap:4px; flex-wrap:wrap; align-items:center; flex:1; min-width:0; }
-.cb-hw-chip { display:inline-flex; align-items:center; gap:2px; font-size:10px; font-weight:600; padding:2px 3px 2px 8px; border-radius:10px; background:var(--accent-dim); color:var(--accent); white-space:nowrap; cursor:pointer; }
-.cb-hw-chip u { text-decoration:none; padding:0 4px; opacity:.7; }
-.cb-hw-chip u:hover { opacity:1; }
-.cb-hw-chip.add { background:none; border:1px dashed var(--border); color:var(--muted); padding:2px 8px; }
+/* Hardware: own always-visible list line (original layout) */
+.cb-hw-line { margin-top:6px; }
+.cb-hw-line > label { display:block; font-size:10px; font-weight:600; color:var(--muted); margin-bottom:3px; }
+/* hwListUI rows are full-width smart-search rows + qty + delete + an add row */
+.cb-hw-line .smart-input-wrap { border-radius:5px; }
+.cb-hw-line .smart-input-wrap > input[type=text] { font-size:11px; padding:3px 6px; }
+.cb-hw-line .smart-input-add { width:24px; font-size:13px; }
+/* "+ add item" chip reused by the Extras card */
+.cb-hw-chip { display:inline-flex; align-items:center; font-size:10px; font-weight:600; padding:2px 8px; border-radius:10px; white-space:nowrap; cursor:pointer; }
+.cb-hw-chip.add { background:none; border:1px dashed var(--border); color:var(--muted); }
 .cb-hw-chip.add:hover { border-color:var(--accent); color:var(--accent); }
-.cb-hw-editor { margin-top:5px; padding:6px 8px; border:1px dashed var(--border); border-radius:6px; }
 
 .cb-ed-foot { position:sticky; bottom:0; z-index:20; background:var(--surface); border-top:1px solid var(--border); margin:8px -14px -14px; padding:10px 14px; display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
 .cb-ed-foot .btn { width:auto; font-size:11px; padding:5px 10px; }
