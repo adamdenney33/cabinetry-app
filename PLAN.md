@@ -31,6 +31,12 @@ Companion docs: `SPEC.md` (refactor history), `SCHEMA.md` (DB schema),
 changes. Full plan: `~/.claude/plans/i-want-to-improve-delegated-swing.md`.
 Detail: SPEC.md § 13 (2026-07-03).
 
+**v2 (same day, `09d8f0a`):** the Part A editor was superseded after user
+feedback — collapsed sections hid the spec. Now a 2-col grid of ALWAYS-OPEN
+cards (My Rates box styling, original section groupings, real controls,
+hardware chips + tap-to-expand editor). Whole spec visible without scroll.
+Part B results table unchanged. Detail: SPEC.md § 13 (2026-07-03 later).
+
 **Sub-steps.**
 - ✅ Part A — editor sidebar (`e2d4e32`): pinned header (name + W/H/D/Qty +
   live total), 6 section rows with inline header controls (steppers, type
