@@ -138,11 +138,9 @@ declare global {
     saveStockItems?: () => void;
     /** Cutlist clipboard support — assigned in some browsers' paste handler. */
     clipboardData?: any;
-    /** Strategy C: dirty flags + in-flight save set, watched by beforeunload guard. */
-    _cbDirty?: boolean;
-    _clDirty?: boolean;
-    _qpState?: { dirty?: boolean };
-    _opState?: { dirty?: boolean };
+    /** Strategy C: set of in-flight debounced-autosave keys, watched by the
+     *  beforeunload guard. (The dirty flags _cbDirty/_clDirty/_qpState/_opState
+     *  are bare top-level globals in their owning files, not window props.) */
     _saveInFlight?: Set<string>;
     /** index.html head stub — nav tab tapped before the deferred scripts
      *  executed; replayed (then cleared) by restoreAppState. */

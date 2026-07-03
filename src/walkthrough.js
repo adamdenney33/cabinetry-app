@@ -347,8 +347,10 @@ async function _wtStart(opts) {
   const needTempDemo = !!_userId && !window._demoMode;
   if (needTempDemo) {
     const w = _wtW;
-    const dirty = !!w._cbDirty || !!w._clDirty
-      || !!(w._qpState && w._qpState.dirty) || !!(w._opState && w._opState.dirty);
+    // Dirty flags are bare top-level globals, not window props (see app.js's
+    // beforeunload guard); read them directly so the confirm actually fires.
+    const dirty = !!_cbDirty || !!_clDirty
+      || !!(_qpState && _qpState.dirty) || !!(_opState && _opState.dirty);
     if (dirty && typeof w._confirm === 'function') {
       w._confirm('Start the walkthrough? Unsaved changes on the current screen will be discarded.',
         () => { _wtRunStart(true); });

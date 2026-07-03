@@ -324,18 +324,20 @@ if (typeof _cbRenderContext === 'function') _cbRenderContext();
 
 // ── Strategy C: global beforeunload guard ──
 // Block tab close while any sidebar / editor is dirty or has a save in flight.
-// Surfaces register intent via these globals (already present pre-Strategy-C):
+// The dirty flags are top-level `let` globals in their owning files (read them
+// bare — they are NOT window properties):
 //   _cbDirty (cabinet.js), _clDirty (cutlist.js),
-//   _qpState.dirty (quotes.js), _opState.dirty (orders.js)
-// Plus the in-flight set populated by debounced autosaves in business.js etc.
+//   _qpState.dirty / _opState.dirty (line-editor.js).
+// _saveInFlight IS a window Set (lazily created + add/delete'd by the debounced
+// autosaves in business.js / cabinet.js / orders.js / quote-editor.js).
 window.addEventListener('beforeunload', (e) => {
   /** @type {any} */
   const w = window;
   const dirty =
-    !!w._cbDirty ||
-    !!w._clDirty ||
-    !!(w._qpState && w._qpState.dirty) ||
-    !!(w._opState && w._opState.dirty) ||
+    !!_cbDirty ||
+    !!_clDirty ||
+    !!(_qpState && _qpState.dirty) ||
+    !!(_opState && _opState.dirty) ||
     !!(w._saveInFlight && w._saveInFlight.size > 0);
   if (dirty) {
     e.preventDefault();
