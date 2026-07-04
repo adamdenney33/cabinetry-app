@@ -66,6 +66,13 @@ async function resolveClient(name) {
   clients.sort((a,b) => a.name.localeCompare(b.name));
   return data.id;
 }
+/** True only for a client_id that maps to a real, persisted client row — a
+ *  positive server id present in the loaded `clients` list. Quote/order inserts
+ *  must gate on this: a stale (deleted) or demo-overlay (negative sample-data)
+ *  client id otherwise reaches the server and trips quotes_client_id_fkey /
+ *  the FK 409 (Sentry JAVASCRIPT-2). @param {number|null|undefined} id */
+function _isRealClientId(id) { return typeof id === 'number' && id > 0 && clients.some(c => c.id === id); }
+
 // F6 (2026-05-13): resolveProject removed alongside the projects entity.
 
 /** @param {string} id */

@@ -789,7 +789,7 @@ function _oOrderSuggest(input, boxId) {
     const isActive = o.id === _opState.orderId;
     const label = _orderLabel(o, { client: false });
     const meta = o.status ? `<span class="csi-meta">${esc(o.status)}</span>` : '';
-    html += `<div class="client-suggest-item" onmousedown="loadOrderIntoSidebar(${o.id});document.getElementById('${boxId}').style.display='none'">
+    html += `<div class="client-suggest-item" onmousedown="loadOrderIntoSidebar(${o.id});_hideEl('${boxId}')">
       <span class="suggest-icon" style="background:var(--accent-dim);color:var(--accent)">#</span>
       <span class="csi-name">${esc(label)}${isActive ? ' <span style="font-weight:500;color:var(--accent);font-size:11px">· editing</span>' : ''}</span>
       ${meta}

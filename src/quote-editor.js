@@ -684,7 +684,7 @@ function _qQuoteSuggest(input, boxId) {
     const isActive = x.id === _qpState.quoteId;
     const num = numFor(x);
     const meta = x.status ? `<span class="csi-meta">${esc(x.status)}</span>` : '';
-    html += `<div class="client-suggest-item" onmousedown="loadQuoteIntoSidebar(${x.id});document.getElementById('${boxId}').style.display='none'">
+    html += `<div class="client-suggest-item" onmousedown="loadQuoteIntoSidebar(${x.id});_hideEl('${boxId}')">
       <span class="suggest-icon" style="background:var(--accent-dim);color:var(--accent)">Q</span>
       <span class="csi-name">${esc(num)}${isActive ? ' <span style="font-weight:500;color:var(--accent);font-size:11px">· editing</span>' : ''}</span>
       ${meta}
@@ -712,7 +712,7 @@ function _qQuoteSuggest(input, boxId) {
  *  the suggest dropdown's "Start new quote QUO-X" row to honour the typed number. */
 async function _qStartNewQuote(numOverride) {
   if (!_requireAuth()) return;
-  if (!_qpState.clientId) { _toast('Pick a client first', 'error'); return; }
+  if (!_isRealClientId(_qpState.clientId)) { _toast('Pick a client first', 'error'); return; }
   const insertNew = async () => {
     const quoteNum = (typeof numOverride === 'string' && numOverride) ? numOverride : _nextQuoteNumber();
     if (typeof _setSaveStatus === 'function') _setSaveStatus('quote', 'saving');
@@ -988,7 +988,7 @@ async function _qAddLine(kind) {
  *  @param {boolean} [silent] suppress toast (used when auto-creating from line add) */
 async function createQuoteFromEditor(silent) {
   if (!_requireAuth()) return false;
-  if (!_qpState.clientId) { _toast('Pick a client first.', 'error'); return false; }
+  if (!_isRealClientId(_qpState.clientId)) { _toast('Pick a client first.', 'error'); return false; }
   const customerQuotes = quotes.filter(q => !_isDraftQuote(q));
   if (!_enforceFreeLimit('quotes', _realCount(customerQuotes))) return false;
   const client = clients.find(c => c.id === _qpState.clientId);

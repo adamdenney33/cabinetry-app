@@ -225,14 +225,17 @@ class _DBBuilder {
       if (this._method === 'delete') opts = { method: 'DELETE', headers: h };
       return opts;
     };
-    const attempt = (/** @type {boolean} */ canRetryAuth) => {
+    // Upsert/update/delete are idempotent — replaying them is safe. INSERT is
+    // not (a replay could double-create), so it never auto-retries on network.
+    const _idempotent = this._method === 'upsert' || this._method === 'update' || this._method === 'delete';
+    const attempt = (/** @type {boolean} */ canRetryAuth, /** @type {boolean} */ canRetryNet) => {
       fetch(url, buildOpts()).then(async r => {
         // 401 = expired/stale JWT (PGRST303): nothing was committed, so force
         // one session refresh and replay the request with the new token. Only
         // once — a second 401 means the user is genuinely signed out.
         if (r.status === 401 && canRetryAuth) {
           const fresh = await _dbRefreshAuthToken();
-          if (fresh) return attempt(false);
+          if (fresh) return attempt(false, canRetryNet);
         }
         const txt = await r.text();
         let data; try { data = JSON.parse(txt); } catch(e) { data = null; }
@@ -243,11 +246,19 @@ class _DBBuilder {
         if (this._isSingle) return resolve && resolve({ data: Array.isArray(data) ? (data[0] || null) : (data || null), error: null });
         resolve && resolve({ data: data || [], error: null });
       }).catch(e => {
+        // Network-level failure (status 0 — the request never got a reply).
+        // For idempotent writes, one delayed retry clears the flaky-connection
+        // blips that were the bulk of the _db network warnings (Sentry
+        // JAVASCRIPT-H) without risking a duplicate commit.
+        if (canRetryNet && _idempotent) {
+          setTimeout(() => attempt(canRetryAuth, false), 500);
+          return;
+        }
         if (this._method !== 'select') _dbReportWriteError(this._t, this._method, 0, { message: e && e.message });
         return resolve && resolve({ data: null, error: { message: e.message } });
       });
     };
-    attempt(true);
+    attempt(true, true);
     // @ts-expect-error fake-thenable: `this` is structurally PromiseLike (it has .then),
     // but TS can't reconcile the fixed-shape resolve type with PromiseLike's generic signature
     return this;

@@ -348,7 +348,7 @@ function _smartCBLibrarySuggest(input, boxId) {
   matches.slice(0, 8).forEach(c => {
     const idx = cbLibrary.indexOf(c);
     const calc = calcCBLine(c);
-    html += `<div class="client-suggest-item" onmousedown="cbLoadFromLibrary(${idx});_byId('${boxId}').style.display='none'">
+    html += `<div class="client-suggest-item" onmousedown="cbLoadFromLibrary(${idx});_hideEl('${boxId}')">
       <span class="suggest-icon" style="background:var(--accent-dim);color:var(--accent)">C</span>
       <span style="flex:1">${_escHtml(c._libName||c.name||'Cabinet')}</span>
       <span style="font-size:10px;color:var(--muted)">${c.w}×${c.h}</span>
@@ -376,7 +376,7 @@ function _smartRatesStockSuggest(input, boxId) {
   matches.slice(0, 10).forEach(s => {
     const dims = s.w && s.h ? `${s.w}×${s.h}` : '';
     const qtyColor = (s.qty ?? 0) <= (s.low || 3) ? '#ef4444' : '#22c55e';
-    html += `<div class="client-suggest-item" onmousedown="_byId('rates-stock-search').value='';_byId('${boxId}').style.display='none';_openStockPopup(${s.id})">
+    html += `<div class="client-suggest-item" onmousedown="_setElVal('rates-stock-search','');_hideEl('${boxId}');_openStockPopup(${s.id})">
       <span class="suggest-icon" style="background:${qtyColor}20;color:${qtyColor}">${s.qty}</span>
       <span style="flex:1">${_escHtml(s.name)}</span>
       <span style="font-size:10px;color:var(--muted)">${dims ? dims + ' · ' : ''}${cur}${s.cost}/sheet</span>
@@ -400,7 +400,7 @@ function _smartRatesFinishSuggest(input, boxId) {
   let html = '';
   matches.slice(0, 10).forEach(s => {
     const qtyColor = (s.qty ?? 0) <= (s.low || 3) ? '#ef4444' : '#22c55e';
-    html += `<div class="client-suggest-item" onmousedown="_byId('rates-finish-search').value='';_byId('${boxId}').style.display='none';_openStockPopup(${s.id})">
+    html += `<div class="client-suggest-item" onmousedown="_setElVal('rates-finish-search','');_hideEl('${boxId}');_openStockPopup(${s.id})">
       <span class="suggest-icon" style="background:${qtyColor}20;color:${qtyColor}">${s.qty}</span>
       <span style="flex:1">${_escHtml(s.name)}</span>
       <span style="font-size:10px;color:var(--muted)">${cur}${s.cost}/m²</span>
@@ -424,7 +424,7 @@ function _smartRatesEdgeSuggest(input, boxId) {
   let html = '';
   matches.slice(0, 10).forEach(s => {
     const qtyColor = (s.qty ?? 0) <= (s.low || 3) ? '#ef4444' : '#22c55e';
-    html += `<div class="client-suggest-item" onmousedown="_byId('rates-edge-search').value='';_byId('${boxId}').style.display='none';_openStockPopup(${s.id})">
+    html += `<div class="client-suggest-item" onmousedown="_setElVal('rates-edge-search','');_hideEl('${boxId}');_openStockPopup(${s.id})">
       <span class="suggest-icon" style="background:${qtyColor}20;color:${qtyColor}">${s.qty}</span>
       <span style="flex:1">${_escHtml(s.name)}</span>
       <span style="font-size:10px;color:var(--muted)">${cur}${s.cost}/m</span>
@@ -452,7 +452,7 @@ function _smartCBMaterialSuggest(input, boxId, fieldName) {
   matches.slice(0, 8).forEach(s => {
     const dims = s.w && s.h ? `${s.w}×${s.h}` : '';
     const qtyColor = (s.qty ?? 0) <= (s.low || 3) ? '#ef4444' : '#22c55e';
-    html += `<div class="client-suggest-item" onmousedown="_byId('cb-mat-${fieldName}').value='${_escHtml(s.name)}';cbUpdateField('${fieldName}','${_escHtml(s.name)}');_byId('${boxId}').style.display='none'">
+    html += `<div class="client-suggest-item" onmousedown="_setElVal('cb-mat-${fieldName}','${_escHtml(s.name)}');cbUpdateField('${fieldName}','${_escHtml(s.name)}');_hideEl('${boxId}')">
       <span class="suggest-icon" style="background:${qtyColor}20;color:${qtyColor}">${s.qty}</span>
       <span style="flex:1">${_escHtml(s.name)}</span>
       <span style="font-size:10px;color:var(--muted)">${dims ? dims + ' · ' : ''}${cur}${s.cost}/sheet</span>
@@ -479,7 +479,7 @@ function _smartCBFinishSuggest(input, boxId, fieldName) {
   let html = '';
   matches.slice(0, 8).forEach(s => {
     const qtyColor = (s.qty ?? 0) <= (s.low || 3) ? '#ef4444' : '#22c55e';
-    html += `<div class="client-suggest-item" onmousedown="_byId('cb-mat-${field}').value='${_escHtml(s.name)}';cbUpdateField('${field}','${_escHtml(s.name)}');_byId('${boxId}').style.display='none'">
+    html += `<div class="client-suggest-item" onmousedown="_setElVal('cb-mat-${field}','${_escHtml(s.name)}');cbUpdateField('${field}','${_escHtml(s.name)}');_hideEl('${boxId}')">
       <span class="suggest-icon" style="background:${qtyColor}20;color:${qtyColor}">${s.qty}</span>
       <span style="flex:1">${_escHtml(s.name)}</span>
       <span style="font-size:10px;color:var(--muted)">${cur}${s.cost}/unit</span>
@@ -605,7 +605,7 @@ function _smartCBHwSuggest(input, boxId, lineId, hwIdx, scope) {
   let html = '';
   matches.slice(0, 8).forEach(/** @param {any} h */ h => {
     const qtyColor = (h.qty ?? 0) <= (h.low || 3) ? '#ef4444' : '#22c55e';
-    html += `<div class="client-suggest-item" onmousedown="_byId('cb-hw-${sc}-${lineId}-${hwIdx}').value='${_escHtml(h.name)}';updateCBHw(${lineId},${hwIdx},'name','${_escHtml(h.name)}','${sc}');_byId('${boxId}').style.display='none'">
+    html += `<div class="client-suggest-item" onmousedown="_setElVal('cb-hw-${sc}-${lineId}-${hwIdx}','${_escHtml(h.name)}');updateCBHw(${lineId},${hwIdx},'name','${_escHtml(h.name)}','${sc}');_hideEl('${boxId}')">
       <span class="suggest-icon" style="background:${qtyColor}20;color:${qtyColor}">${h.qty ?? ''}</span>
       <span style="flex:1">${_escHtml(h.name)}</span>
       <span style="font-size:10px;color:var(--muted)">${cur}${h.price}/unit</span>
@@ -629,7 +629,7 @@ function _smartCBHwAddSuggest(input, boxId, lineId, scope) {
   let html = '';
   matches.slice(0, 8).forEach(/** @param {any} h */ h => {
     const qtyColor = (h.qty ?? 0) <= (h.low || 3) ? '#ef4444' : '#22c55e';
-    html += `<div class="client-suggest-item" onmousedown="_addCBHwByName(${lineId},'${_escHtml(h.name)}','${sc}');_byId('cb-hw-add-${sc}-${lineId}').value='';_byId('${boxId}').style.display='none'">
+    html += `<div class="client-suggest-item" onmousedown="_addCBHwByName(${lineId},'${_escHtml(h.name)}','${sc}');_setElVal('cb-hw-add-${sc}-${lineId}','');_hideEl('${boxId}')">
       <span class="suggest-icon" style="background:${qtyColor}20;color:${qtyColor}">${h.qty ?? ''}</span>
       <span style="flex:1">${_escHtml(h.name)}</span>
       <span style="font-size:10px;color:var(--muted)">${cur}${h.price}/unit</span>
@@ -763,7 +763,7 @@ function _smartCLStockSuggest(input, boxId) {
     const onClick = edge
       ? `_clAddEdgeBandFromStockIdx(${origIdx})`
       : `_clAddPanelFromStock(${origIdx})`;
-    return `<div class="client-suggest-item" onmousedown="${onClick};_byId('cl-stock').value='';_byId('${boxId}').style.display='none'">
+    return `<div class="client-suggest-item" onmousedown="${onClick};_setElVal('cl-stock','');_hideEl('${boxId}')">
       <span class="suggest-icon" style="background:${qtyColor}20;color:${qtyColor}">${s.qty}</span>
       <span style="flex:1">${_escHtml(s.name)}</span>
       <span style="font-size:10px;color:var(--muted)">${meta}</span>

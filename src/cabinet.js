@@ -376,7 +376,10 @@ function _getCBClientId() {
 
 async function _ensureCBClient() {
   const cliId = _getCBClientId();
-  if (cliId) return cliId;
+  // Only trust an id that maps to a real, persisted client — a stale or
+  // demo-overlay id would FK-violate on the quote/order insert. Otherwise
+  // fall through and (re)create the client by name so the FK resolves.
+  if (_isRealClientId(cliId)) return cliId;
   if (!_requireAuth()) return null;
   const name = _cbCurrentClientName || (/** @type {HTMLInputElement|null} */ (_byId('cb-client'))?.value?.trim() || '');
   if (!name) { _toast('Pick a client first', 'error'); return null; }

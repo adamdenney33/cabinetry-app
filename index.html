@@ -655,7 +655,7 @@ setTimeout(function () { window._hideBootLoader(); }, 15000);
         <div style="padding:8px 14px 6px;position:relative">
           <span class="cl-section-title" style="display:block;margin-bottom:4px">Stock Library</span>
           <div class="smart-input-wrap">
-            <input type="text" id="cl-stock" placeholder="Load or add Sheet goods..." autocomplete="off" style="font-size:12px" oninput="_smartCLStockSuggest(this,'cl-stock-suggest')" onfocus="_smartCLStockSuggest(this,'cl-stock-suggest')" onblur="setTimeout(()=>document.getElementById('cl-stock-suggest').style.display='none',150)">
+            <input type="text" id="cl-stock" placeholder="Load or add Sheet goods..." autocomplete="off" style="font-size:12px" oninput="_smartCLStockSuggest(this,'cl-stock-suggest')" onfocus="_smartCLStockSuggest(this,'cl-stock-suggest')" onblur="setTimeout(()=>_hideEl('cl-stock-suggest'),150)">
             <div class="smart-input-add" onclick="_openNewStockPopup()" title="Add new stock material">+</div>
           </div>
           <div id="cl-stock-suggest" class="client-suggest-list suggest-up" style="display:none"></div>

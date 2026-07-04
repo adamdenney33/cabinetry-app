@@ -17,6 +17,21 @@
  */
 function _byId(id) { return /** @type {HTMLInputElement | null} */ (document.getElementById(id)); }
 
+/**
+ * Null-safe hide: sets display:none only if the element still exists. Inline
+ * suggest-dropdown handlers (and their onblur setTimeouts) often fire after a
+ * re-render has already removed the element — guard so a missing node is a
+ * no-op instead of a `null.style` TypeError. @param {string} id
+ */
+function _hideEl(id) { const e = _byId(id); if (e) e.style.display = 'none'; }
+
+/**
+ * Null-safe value set: only assigns if the element still exists. Same re-render
+ * race as _hideEl — the element the handler targets may already be gone.
+ * @param {string} id @param {string} v
+ */
+function _setElVal(id, v) { const e = _byId(id); if (e) e.value = v; }
+
 /** @param {string} msg @param {string} [type] @param {number} [duration] */
 function _toast(msg, type = 'info', duration = 3500) {
   const c = document.getElementById('toast-container');
