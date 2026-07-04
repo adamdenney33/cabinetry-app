@@ -1,11 +1,11 @@
 {
   "build-and-price-a-cabinet": {
-    "clip": "https://mhzneruvlfmhnsohfrdo.supabase.co/storage/v1/object/public/wiki-clips/build-and-price-a-cabinet.mp4?v=1783046501541",
-    "poster": "https://mhzneruvlfmhnsohfrdo.supabase.co/storage/v1/object/public/wiki-clips/build-and-price-a-cabinet-poster.jpg?v=1783046501541",
+    "clip": "https://mhzneruvlfmhnsohfrdo.supabase.co/storage/v1/object/public/wiki-clips/build-and-price-a-cabinet.mp4?v=1783162081976",
+    "poster": "https://mhzneruvlfmhnsohfrdo.supabase.co/storage/v1/object/public/wiki-clips/build-and-price-a-cabinet-poster.jpg?v=1783162081976",
     "durationSec": 11,
     "width": 1440,
     "height": 900,
-    "uploadDate": "2026-07-03"
+    "uploadDate": "2026-07-04"
   },
   "convert-a-quote-to-an-order": {
     "clip": "https://mhzneruvlfmhnsohfrdo.supabase.co/storage/v1/object/public/wiki-clips/convert-a-quote-to-an-order.mp4?v=1783046501541",
@@ -56,12 +56,12 @@
     "uploadDate": "2026-07-03"
   },
   "set-up-your-rates": {
-    "clip": "https://mhzneruvlfmhnsohfrdo.supabase.co/storage/v1/object/public/wiki-clips/set-up-your-rates.mp4?v=1783046501541",
-    "poster": "https://mhzneruvlfmhnsohfrdo.supabase.co/storage/v1/object/public/wiki-clips/set-up-your-rates-poster.jpg?v=1783046501541",
-    "durationSec": 10.7,
+    "clip": "https://mhzneruvlfmhnsohfrdo.supabase.co/storage/v1/object/public/wiki-clips/set-up-your-rates.mp4?v=1783162081976",
+    "poster": "https://mhzneruvlfmhnsohfrdo.supabase.co/storage/v1/object/public/wiki-clips/set-up-your-rates-poster.jpg?v=1783162081976",
+    "durationSec": 14.7,
     "width": 1440,
     "height": 900,
-    "uploadDate": "2026-07-03"
+    "uploadDate": "2026-07-04"
   },
   "stock-and-materials": {
     "clip": "https://mhzneruvlfmhnsohfrdo.supabase.co/storage/v1/object/public/wiki-clips/stock-and-materials.mp4?v=1783046501541",
