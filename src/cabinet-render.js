@@ -465,7 +465,7 @@ function renderCBEditor() {
   const isLib = cbEditingLibraryIdx >= 0;
   const footActions = isLib
     ? `<button class="btn btn-outline" onclick="cbAddFromLibrary(${cbEditingLibraryIdx})">Add to Quote</button><button class="btn btn-outline" onclick="cbDuplicateLibraryEntry(${cbEditingLibraryIdx})">Duplicate</button><button class="btn btn-outline" style="color:var(--danger)" onclick="_confirm('Delete this template?',()=>cbRemoveFromLibrary(${cbEditingLibraryIdx}))">Delete</button>`
-    : `<button class="btn btn-outline" onclick="_duplicateCabinet(${cbEditingLineIdx})" title="Duplicate cabinet">Duplicate</button><button class="btn btn-outline" onclick="cbAddLineToLibrary(${cbEditingLineIdx})" title="Save this cabinet as a library template">To Library</button><button class="btn btn-outline" style="color:var(--danger)" onclick="_cbConfirmDeleteLine(${cbEditingLineIdx})" title="Delete cabinet">Delete</button>`;
+    : `<button class="btn btn-outline" onclick="_duplicateCabinet(${cbEditingLineIdx})" title="Duplicate cabinet">Duplicate</button><button class="btn btn-outline" onclick="cbAddLineToLibrary(${cbEditingLineIdx})" title="Save this cabinet as a library template">Add to Library</button><button class="btn btn-outline" style="color:var(--danger)" onclick="_cbConfirmDeleteLine(${cbEditingLineIdx})" title="Delete cabinet">Delete</button>`;
 
   el.innerHTML = `
     <div class="cb-ed-head">
@@ -509,7 +509,7 @@ function renderCBEditor() {
         + rr('Finish', smart(finishSmart('drawerBoxFinish')))
         + hwLine('drawer'))}
       ${card('Extras', 'cb-live-extras', sec.extras > 0 ? _cbSecBadge(sec.extras) : '',
-        (line.extras||[]).map(/** @param {any} ex @param {number} ei */ (ex, ei) => `<div class="cb-rr">
+        (line.extras||[]).map(/** @param {any} ex @param {number} ei */ (ex, ei) => `<div class="cb-rr cb-rr-extra">
           <input type="text" value="${_escHtml(ex.label||'')}" placeholder="Item name" onblur="cbUpdateExtra(${line.id},${ei},'label',this.value)">
           <span class="cb-rr-affix" title="Cost per item">${cur}</span>
           <input type="number" style="flex:0 0 56px" title="Cost per item (${cur})" value="${ex.cost||0}" onblur="cbUpdateExtra(${line.id},${ei},'cost',this.value)">
