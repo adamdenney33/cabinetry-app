@@ -1352,6 +1352,14 @@ canvas { display: block; }
 .cb-li-table tr:hover .cb-li-actions, .cb-li-table tr.editing .cb-li-actions { visibility:visible; }
 .cb-li-actions .proj-act-label { display:none; }
 .cb-li-actions ._cbct-btn, .cb-li-actions .cb-dup-btn, .cb-li-actions .cb-del-btn { flex-shrink:0; }
+/* Keep the inline qty stepper + cut-list pill FLAT in the results rows — their
+   filled surface2 boxes read as highlighted input fields. (Scoped to the
+   results table; the editor form keeps its filled controls.) */
+#cb-results .cb-li-table .cl-stepper,
+#cb-results .cb-li-table .cl-step-btn,
+#cb-results .cb-li-table .cl-qty-input { background:transparent; }
+#cb-results .cb-li-table .cl-qty-input { border-color:transparent; }
+#cb-results .cb-li-actions .proj-act { background:transparent; border-color:transparent; }
 .cb-li-add { display:block; width:100%; margin-top:8px; padding:9px 14px; border:1px dashed var(--border); border-radius:8px; background:none; color:var(--muted); font-size:12px; font-weight:600; cursor:pointer; text-align:center; font-family:inherit; transition:border-color .15s, color .15s, background .15s; }
 .cb-li-add:hover { border-color:var(--accent); color:var(--accent); background:var(--accent-dim); }
 .cb-results-footer { flex-shrink:0; border-top:2px solid var(--border); background:var(--surface); padding:10px 20px; display:none; align-items:center; gap:10px; flex-wrap:wrap; }
