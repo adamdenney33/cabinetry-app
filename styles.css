@@ -1358,9 +1358,15 @@ canvas { display: block; }
 .cb-foot-meta { font-size:11px; color:var(--muted); white-space:nowrap; }
 .cb-foot-total-label { font-size:11px; font-weight:600; color:var(--text2); white-space:nowrap; }
 .cb-foot-total { font-size:18px; font-weight:800; color:var(--accent); white-space:nowrap; margin-right:4px; }
-@media (max-width: 760px) {
-  /* Rows become a 2-row grid: name+total / qty+actions. Size & Each fold
-     into the name sub-line; actions always visible (no hover on touch). */
+/* Make the results panel a query container so the table adapts to the PANEL
+   width (which varies with the resizable sidebar), not the viewport — a plain
+   media query can't see a narrow panel on a wide screen. */
+#cb-results { container-type: inline-size; container-name: cbres; }
+/* The full table needs ~620px (Actions alone ~150px). Below that the panel
+   can't fit all columns without the "Cabinet" header collapsing into "Size",
+   so fall back to a 2-row card per cabinet — Size + Each fold into the name
+   sub-line, actions always shown. */
+@container cbres (max-width: 660px) {
   .cb-li-table thead { display:none; }
   .cb-li-table, .cb-li-table tbody { display:block; width:100%; }
   .cb-li-table tr { display:grid; grid-template-columns:minmax(0,1fr) auto; grid-template-areas:"name total" "qty act"; gap:6px 8px; padding:9px 10px; border-bottom:1px solid var(--border2); align-items:center; }
@@ -1377,6 +1383,9 @@ canvas { display: block; }
   .cb-li-sub-desktop { display:none; }
   .cb-li-sub-mobile { display:block; }
   .cb-li-actions { visibility:visible; }
+}
+/* Touch-target sizing for the card layout on phones (viewport-based). */
+@media (max-width: 760px) {
   .cb-li-actions .cb-dup-btn, .cb-li-actions .cb-del-btn { width:40px; height:40px; }
   .cb-li-table .cl-step-btn { min-width:36px; min-height:38px; }
   .cb-li-table .cl-qty-input { font-size:16px; }
