@@ -30,6 +30,15 @@ const ENV = useBundled ? { ...process.env, DYLD_FALLBACK_LIBRARY_PATH: REMOTION_
 /** @param {string} bin @param {string[]} args */
 const run = (bin, args) => execFileSync(bin, args, { env: ENV, stdio: ['ignore', 'pipe', 'pipe'] });
 
+// Uniform playback speed-up applied at encode time (same idea as the
+// remotion-loom reels): drive scripts stay readable/reliable at natural
+// pacing, and the published clips play brisk. Re-encoding alone (no
+// re-record) is enough to retune this. Implemented with -itsscale (input
+// timestamp scaling) because Remotion's slim ffmpeg build ships ~50 filters
+// and setpts is NOT one of them; note -ss after -itsscale seeks in SCALED
+// time, so the head trim is divided by SPEED too.
+const SPEED = 1.4;
+
 const named = process.argv.slice(2);
 const slugs = named.length
   ? named
@@ -52,8 +61,9 @@ for (const slug of slugs) {
 
   const mp4 = join(OUT, `${slug}.mp4`);
   run(FFMPEG, [
-    '-y', '-ss', String(trim), '-i', webm,
+    '-y', '-itsscale', String(1 / SPEED), '-ss', String(trim / SPEED), '-i', webm,
     '-an', // silent clips — no audio track at all
+    '-r', '30',
     '-c:v', 'libx264', '-preset', 'slow', '-crf', '23',
     '-pix_fmt', 'yuv420p', // maximum-compatibility H.264
     '-movflags', '+faststart', // moov atom up front → instant web playback

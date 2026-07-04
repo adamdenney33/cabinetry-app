@@ -49,13 +49,16 @@ const CURSOR_INIT = `(() => {
       '#rec-cursor { position: fixed; left: 0; top: 0; z-index: 2147483647;',
       '  pointer-events: none; will-change: transform; transform: translate(-40px,-40px); }',
       '#rec-cursor svg { filter: drop-shadow(0 1px 3px rgba(0,0,0,0.45)); display:block; }',
-      '#rec-cursor.rec-click svg { animation: recClick 0.24s ease-out; }',
-      '@keyframes recClick { 0% {transform:scale(1)} 35% {transform:scale(0.72)} 100% {transform:scale(1)} }',
+      '#rec-cursor.rec-click svg { animation: recClick 0.3s ease-out; }',
+      '@keyframes recClick { 0% {transform:scale(1)} 35% {transform:scale(0.68)} 100% {transform:scale(1)} }',
+      // Click highlight: sized and timed to survive the encode-time speed-up
+      // (scripts/postprocess-wiki-clips.mjs SPEED) still clearly visible.
       '.rec-ripple { position: fixed; z-index: 2147483646; pointer-events: none;',
-      '  width: 36px; height: 36px; border-radius: 50%; margin: -18px 0 0 -18px;',
-      '  background: rgba(232,168,56,0.35); border: 2px solid rgba(232,168,56,0.7);',
-      '  animation: recRipple 0.45s ease-out forwards; }',
-      '@keyframes recRipple { from {transform:scale(0.3);opacity:1} to {transform:scale(1.6);opacity:0} }',
+      '  width: 76px; height: 76px; border-radius: 50%; margin: -38px 0 0 -38px;',
+      '  background: rgba(232,168,56,0.35); border: 3px solid rgba(232,168,56,0.95);',
+      '  box-shadow: 0 0 0 2px rgba(255,255,255,0.6), 0 2px 14px rgba(232,168,56,0.55);',
+      '  animation: recRipple 0.75s cubic-bezier(0.2, 0.7, 0.4, 1) forwards; }',
+      '@keyframes recRipple { 0% {transform:scale(0.2);opacity:1} 55% {opacity:0.95} 100% {transform:scale(1.45);opacity:0} }',
     ].join('\\n');
     document.head.appendChild(style);
     const cur = document.createElement('div');

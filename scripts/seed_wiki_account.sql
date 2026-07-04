@@ -552,10 +552,14 @@ BEGIN
   -- (src/business.js overrides localStorage from it). Pin metric — the seeded
   -- dimensions are mm; without this the app can boot imperial (locale sniff /
   -- a stale value a previous recording session saved) and display nonsense.
-  INSERT INTO public.business_info (user_id, name, phone, email, address, default_units, unit_format, onboarding_state)
+  -- default_labour_rate resets to 75 so the set-up-your-rates clip's on-camera
+  -- edit (types 65, the app default) always produces a visible re-price —
+  -- recordings themselves persist 65 back, so without this a re-record would
+  -- type the value already shown.
+  INSERT INTO public.business_info (user_id, name, phone, email, address, default_units, unit_format, default_labour_rate, onboarding_state)
        VALUES (uid, 'Oakline Cabinetry', '0117 900 1234', 'hello@oakline.example',
                'Unit 9, Ashton Trade Park, Bristol BS3 2JJ',
-               'mm', '{"mode":"mm"}',
+               'mm', '{"mode":"mm"}', 75,
                jsonb_build_object(
                  'version', 4,
                  'dismissed_at', to_char(now(), 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
@@ -567,6 +571,7 @@ BEGIN
             address = EXCLUDED.address,
             default_units = EXCLUDED.default_units,
             unit_format = EXCLUDED.unit_format,
+            default_labour_rate = EXCLUDED.default_labour_rate,
             onboarding_state = EXCLUDED.onboarding_state,
             updated_at = now();
 
