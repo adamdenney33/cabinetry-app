@@ -32,11 +32,21 @@ function copyClassicScriptsPlugin() {
         // Minify whitespace + syntax only — NOT identifiers. The classic
         // scripts share state through the global lexical environment, so
         // renaming top-level names would break cross-file references.
-        const { code } = transformSync(readFileSync(join(srcDir, f), 'utf8'), {
+        // Emit an external source map so a runtime error inside a minified
+        // classic script resolves back to the original line in Sentry —
+        // sentryVitePlugin uploads dist/src/*.js.map (its `sourcemaps.assets`
+        // glob covers them) and stripSourceMapsPlugin deletes them from the
+        // deploy after upload, so they are never served publicly. No
+        // sourceMappingURL comment is written (hidden-style, matching the
+        // Rollup 'hidden' output) — Sentry matches via the debug id the
+        // plugin injects into both the script and its map.
+        const { code, map } = transformSync(readFileSync(join(srcDir, f), 'utf8'), {
           loader: 'js', target: 'es2020',
           minifyWhitespace: true, minifySyntax: true, minifyIdentifiers: false,
+          sourcemap: 'external', sourcefile: f,
         });
         writeFileSync(join(outDir, f), code);
+        writeFileSync(join(outDir, f + '.map'), map);
       }
     },
   };
@@ -394,6 +404,10 @@ export default defineConfig(({ mode }) => {
       project: process.env.SENTRY_PROJECT,
       authToken: process.env.SENTRY_AUTH_TOKEN,
       disable: !process.env.SENTRY_AUTH_TOKEN,
+      // The app's logic lives in the hand-copied classic scripts (dist/src/*.js),
+      // not the Rollup bundle — include them (and their maps) so debug ids are
+      // injected and uploaded for the files that actually throw at runtime.
+      sourcemaps: { assets: ['./dist/**/*.js', './dist/**/*.js.map'] },
     }),
     // Must run after sentryVitePlugin so source maps are uploaded before
     // they are stripped from the deploy output.
