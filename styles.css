@@ -695,14 +695,24 @@ header {
      the host id so these beat the equal-specificity base rules that appear
      LATER in the file (same-specificity ties go to source order). */
   #cb-cab-editor .cb-rc-grid { grid-template-columns: 1fr; }
-  #cb-cab-editor .cb-rr select, #cb-cab-editor .cb-rr > input, #cb-cab-editor .cb-rc-dims input, #cb-cab-editor .cb-ed-qty input { min-height: 40px; height: auto; font-size: 16px; }
-  #cb-cab-editor .cb-rr-smart .smart-input-wrap > input[type=text] { min-height: 38px; height: auto; font-size: 16px !important; }
+  /* One consistent 40px touch height for EVERY editor control (text inputs,
+     selects, smart-search inputs, steppers, qty/pct number fields) so nothing
+     is a different size on the phone. */
+  #cb-cab-editor .cb-rr select,
+  #cb-cab-editor .cb-rr > input,
+  #cb-cab-editor .cb-rc-dims input,
+  #cb-cab-editor .cb-ed-qty input,
+  #cb-cab-editor .cb-rr-smart .smart-input-wrap > input[type=text],
+  #cb-cab-editor .cb-hw-item .smart-input-wrap > input[type=text],
+  #cb-cab-editor .cb-hw-qty,
+  #cb-cab-editor .cb-rr .cb-pct-num { min-height: 40px; height: 40px; font-size: 16px !important; }
   #cb-cab-editor .cb-rr > label { width: 80px; font-size: 11px; }
-  #cb-cab-editor .cb-rr .cl-stepper { height: 44px; }
-  #cb-cab-editor .cb-rr .cl-step-btn { min-width: 38px; }
-  #cb-cab-editor .cb-rr .cl-stepper .cl-qty-input { height: 42px; font-size: 16px !important; width: 40px !important; }
-  #cb-cab-editor .cb-rr .cb-pct-num { height: 38px; width: 44px; font-size: 16px; }
-  #cb-cab-editor .cb-hw-chip, #cb-cab-editor .cb-hw-addbtn { min-height: 38px; }
+  #cb-cab-editor .cb-rr .cl-stepper { height: 40px; }
+  #cb-cab-editor .cb-rr .cl-step-btn { min-width: 40px; height: 40px; }
+  #cb-cab-editor .cb-rr .cl-stepper .cl-qty-input { height: 40px; font-size: 16px !important; width: 40px !important; }
+  #cb-cab-editor .cb-hw-chip, #cb-cab-editor .cb-hw-addbtn { min-height: 40px; }
+  /* Stack the Type/Base pair full-width so neither select truncates. */
+  #cb-cab-editor .cb-rr-2col { grid-template-columns: 1fr; }
 }
 
 /* ── HEADER & NAV ON MOBILE (Phase 3) ──
@@ -1415,6 +1425,10 @@ canvas { display: block; }
 .cb-rr textarea { flex:1; min-width:0; font-size:11px; padding:3px 6px; border:1px solid var(--border); border-radius:4px; background:var(--surface2); color:var(--text); min-height:36px; resize:vertical; font-family:inherit; }
 /* Smart inputs (materials/finishes) compacted to rates scale inside rows */
 .cb-rr-smart { flex:1; min-width:0; position:relative; }
+/* Two fields on one line (Type / Base) — stacks to 1 col on mobile. */
+.cb-rr-2col { display:grid; grid-template-columns:1fr 1fr; gap:0 10px; }
+/* Currency / × affixes between the Extras item name, cost and qty. */
+.cb-rr-affix { flex-shrink:0; font-size:11px; font-weight:600; color:var(--muted); }
 .cb-rr-smart .smart-input-wrap { border-radius:4px; }
 .cb-rr-smart .smart-input-wrap > input[type=text] { font-size:11px !important; padding:3px 6px; height:22px; min-height:0; }
 .cb-rr-smart .smart-input-add { width:24px; font-size:13px; }
