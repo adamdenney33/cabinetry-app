@@ -1338,7 +1338,15 @@ canvas { display: block; }
 .cb-li-table tbody tr { cursor:pointer; }
 .cb-li-table tbody tr:nth-child(even) td { background:var(--zebra); }
 .cb-li-table tbody tr:hover td { background:var(--accent-dim) !important; }
+.cb-li-table tr.editing td { background:var(--accent-dim) !important; }
 .cb-li-table tr.editing td:first-child { box-shadow:inset 3px 0 0 var(--accent); }
+/* The qty stepper + cut-list pill carry their own surface2 fill (a separate,
+   smaller "boxed" highlight nested inside the already-highlighted row/cell).
+   Flatten just those inner controls so only the row-level highlight shows. */
+#cb-results .cb-li-table .cl-stepper,
+#cb-results .cb-li-table .cl-step-btn,
+#cb-results .cb-li-table .cl-qty-input { background:transparent; }
+#cb-results .cb-li-actions .proj-act { background:transparent; }
 .cb-li-table .cb-col-size { width:112px; color:var(--text2); }
 .cb-li-table .cb-col-qty { width:80px; }
 .cb-li-table .cb-col-each { width:72px; text-align:right; color:var(--text2); }
@@ -1372,7 +1380,7 @@ canvas { display: block; }
   .cb-li-table tbody tr:last-child { border-bottom:none; }
   .cb-li-table tbody td { display:block; border:none; padding:0; }
   .cb-li-table tbody tr:nth-child(even) td { background:none; }
-  .cb-li-table tr.editing { box-shadow:inset 3px 0 0 var(--accent); }
+  .cb-li-table tr.editing { background:var(--accent-dim); box-shadow:inset 3px 0 0 var(--accent); }
   .cb-li-table tr.editing td:first-child { box-shadow:none; }
   .cb-li-table .cb-col-name { grid-area:name; }
   .cb-li-table .cb-col-size, .cb-li-table .cb-col-each { display:none; }
