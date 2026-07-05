@@ -1407,7 +1407,12 @@ canvas { display: block; }
 @container cbres (max-width: 640px) {
   .cb-li-table thead { display:none; }
   .cb-li-table, .cb-li-table tbody { display:block; width:100%; }
-  .cb-li-table tr { display:grid; grid-template-columns:minmax(0,1fr) auto; grid-template-areas:"name total" "qty act"; gap:6px 8px; padding:9px 10px; border-bottom:1px solid var(--border2); align-items:center; }
+  /* 3 tracks (not 2): name needs to span the flexible column so it can grow,
+     but qty must NOT share that column — a "qty" cell placed in a 1fr track
+     stretches to fill it (the stepper going full-width). Col1 auto-sizes to
+     the stepper's own width; col2 is the flexible track name/act share;
+     col3 auto-sizes to the price / stays out of act's way. */
+  .cb-li-table tr { display:grid; grid-template-columns:auto minmax(0,1fr) auto; grid-template-areas:"name name total" "qty act act"; gap:6px 8px; padding:9px 10px; border-bottom:1px solid var(--border2); align-items:center; }
   .cb-li-table tbody tr:last-child { border-bottom:none; }
   .cb-li-table tbody td { display:block; border:none; padding:0; }
   /* Card mode: the row is a grid with gaps, so paint the highlight on the ROW
