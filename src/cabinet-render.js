@@ -709,14 +709,16 @@ function renderCBResults() {
       .filter(h => h && h.name).map(h => `${h.name} ×${h.qty||1}`).join(', ');
     const carcass = [line.material, fin(line.finish)].filter(Boolean).join(' · ');
     const doorsVal = line.doors > 0 ? [`${line.doors} × ${line.doorType||'—'}`, line.doorMat, fin(line.doorFinish)].filter(Boolean).join(' · ') : '';
-    const drawersVal = line.drawers > 0 ? [`${line.drawers} × ${line.drawerFrontType||'—'} front`, line.drawerFrontMat, `${line.drawerBoxType||'—'} box`].filter(Boolean).join(' · ') : '';
+    const drawerFrontsVal = line.drawers > 0 ? [`${line.drawers} × ${line.drawerFrontType||'—'}`, line.drawerFrontMat, fin(line.drawerFrontFinish)].filter(Boolean).join(' · ') : '';
+    const drawerBoxesVal = line.drawers > 0 ? [line.drawerInnerMat, line.drawerBoxType, fin(line.drawerBoxFinish)].filter(Boolean).join(' · ') : '';
     const construction = [line.carcassType, line.baseType ? line.baseType + ' base' : ''].filter(Boolean).join(' · ');
     const spec = kv('Dimensions', dimsLabelFromMM(line.w, line.h, line.d))
       + kv('Carcass', carcass)
       + kv('Back panel', line.backMat)
       + kv('Construction', construction)
       + kv('Doors', doorsVal)
-      + kv('Drawers', drawersVal)
+      + kv('Drawer fronts', drawerFrontsVal)
+      + kv('Drawer boxes', drawerBoxesVal)
       + kv('Interior', parts)
       + kv('Hardware', hwAll)
       + kv('Room', line.room)
