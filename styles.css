@@ -1331,6 +1331,10 @@ canvas { display: block; }
    skin (NOT .editor-li-table — its mobile block force-converts rows into
    quote-specific editable cards). */
 .cb-li-wrap { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow); overflow:hidden; }
+/* Totals summary reads as a light card matching the cabinet list above it —
+   the base .pf-totals surface2 fill all but vanishes against the grey results
+   panel. Scoped to #cb-results so the quote editor's totals are untouched. */
+#cb-results .pf-totals { background:var(--surface); border-color:var(--border); border-radius:var(--radius); box-shadow:var(--shadow); }
 .cb-li-table { width:100%; border-collapse:collapse; table-layout:fixed; }
 .cb-li-table thead th { padding:8px; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:var(--muted); background:var(--surface2); border-bottom:1px solid var(--border); text-align:left; }
 .cb-li-table tbody td { padding:8px; border-bottom:1px solid var(--border2); font-size:12px; color:var(--text); font-variant-numeric:tabular-nums; vertical-align:middle; }
