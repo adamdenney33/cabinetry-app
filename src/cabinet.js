@@ -924,6 +924,14 @@ function cbRemoveExtra(lineId, idx) {
   line.extras.splice(idx,1);
   renderCBEditor(); renderCBResults();
 }
+/** Step an extra's quantity by ±1 (min 1) — backs the −/+ stepper buttons.
+ *  @param {number} lineId @param {number} idx @param {number} dir */
+function cbStepExtra(lineId, idx, dir) {
+  const line = cbScratchpad && cbScratchpad.id === lineId ? cbScratchpad : cbLines.find(l=>l.id===lineId);
+  if (!line || !line.extras || !line.extras[idx]) return;
+  const cur = parseInt(line.extras[idx].qty) || 1;
+  cbUpdateExtra(lineId, idx, 'qty', Math.max(1, cur + dir));
+}
 
 // ── Quote Creation & Editing ──
 

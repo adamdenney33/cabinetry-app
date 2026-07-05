@@ -1344,15 +1344,12 @@ canvas { display: block; }
 .cb-li-table tbody tr:hover td { background:var(--accent-dim) !important; }
 .cb-li-table tr.editing td { background:var(--accent-dim) !important; }
 .cb-li-table tr.editing td:first-child { box-shadow:inset 3px 0 0 var(--accent); }
-/* The qty stepper + cut-list pill carry their own borders/fills (surface2,
-   accent-tinted count/add chips) — separate, smaller "boxed" highlights
-   nested inside the already-highlighted row/cell. Flatten every layer of
-   those inner controls (base + hover + empty variants) so only the
-   row-level highlight shows. */
-#cb-results .cb-li-table .cl-stepper,
-#cb-results .cb-li-table .cl-step-btn,
-#cb-results .cb-li-table .cl-step-btn:hover,
-#cb-results .cb-li-table .cl-qty-input { background:transparent; border-color:transparent; }
+/* Qty stepper matches the editor's count steppers (bordered surface2 shell
+   with a white input) so every quantity control in the builder looks alike. */
+#cb-results .cb-li-table .cl-stepper { border:1px solid var(--border); border-radius:4px; overflow:hidden; background:var(--surface2); height:26px; align-items:center; }
+#cb-results .cb-li-table .cl-step-btn { background:var(--surface2); height:100%; }
+#cb-results .cb-li-table .cl-step-btn:hover { background:var(--border); }
+#cb-results .cb-li-table .cl-qty-input { background:var(--surface); border:none; }
 /* Actions row = a set of buttons. The cut-list pill gets a white button
    surface (not surface2 — that read as a grey highlight on the amber row)
    with a border; its inner count/add chips stay flat so the pill is one

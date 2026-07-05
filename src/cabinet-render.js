@@ -514,7 +514,7 @@ function renderCBEditor() {
           <span class="cb-rr-affix" title="Cost per item">${cur}</span>
           <input type="number" style="flex:0 0 56px" title="Cost per item (${cur})" value="${ex.cost||0}" onblur="cbUpdateExtra(${line.id},${ei},'cost',this.value)">
           <span class="cb-rr-affix" title="Quantity">×</span>
-          <input type="number" style="flex:0 0 44px" min="1" title="Quantity" value="${ex.qty==null?1:ex.qty}" onblur="cbUpdateExtra(${line.id},${ei},'qty',this.value)">
+          <div class="cl-stepper" style="flex:0 0 auto" title="Quantity"><button class="cl-step-btn" onclick="cbStepExtra(${line.id},${ei},-1)">−</button><input type="number" class="cl-input cl-qty-input" min="1" value="${ex.qty==null?1:ex.qty}" onchange="cbUpdateExtra(${line.id},${ei},'qty',this.value)"><button class="cl-step-btn" onclick="cbStepExtra(${line.id},${ei},1)">+</button></div>
           <button class="cb-del-btn" style="font-size:14px;width:22px;height:22px" onclick="cbRemoveExtra(${line.id},${ei})">×</button>
         </div>`).join('')
         + `<div class="cb-rr"><span class="cb-hw-chip add" onclick="cbAddExtra(${line.id})">+ add item</span></div>`)}
