@@ -2,6 +2,7 @@ import { defineConfig, loadEnv } from 'vite';
 import { copyFileSync, mkdirSync, readdirSync, existsSync, readFileSync, writeFileSync, unlinkSync, cpSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { createHash } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
 import { transformSync } from 'esbuild';
 import { sentryVitePlugin } from '@sentry/vite-plugin';
 // Static imports (not dynamic) on purpose: Vite bundles the config + all its
@@ -44,21 +45,41 @@ function copyClassicScriptsPlugin() {
         // Minify whitespace + syntax only — NOT identifiers. The classic
         // scripts share state through the global lexical environment, so
         // renaming top-level names would break cross-file references.
-        // Emit an external source map so a runtime error inside a minified
-        // classic script resolves back to the original line in Sentry —
-        // sentryVitePlugin's writeBundle scan picks up dist/src/*.js(.map)
-        // (see the writeBundle/enforce note above) and stripSourceMapsPlugin
-        // deletes them from the deploy after upload, so they are never served
-        // publicly. No sourceMappingURL comment is written (hidden-style,
-        // matching the Rollup 'hidden' output) — Sentry matches via the debug
-        // id the plugin injects into both the script and its map.
+        // Emit an external source map + a sourceMappingURL comment pointing
+        // at it. The comment is required, not cosmetic: sentry-cli's
+        // `sourcemaps inject` (below) can only pair a .js with its .map — and
+        // so inject a matching debug id into BOTH — by reading this comment;
+        // without it, "sourcemaps inject" silently injects a debug id into
+        // the .js alone and leaves the .map untouched, so Sentry's upload
+        // scan can never associate the two and drops the file with "Could
+        // not determine debug ID from bundle" (confirmed locally: identical
+        // to what a stripped-down repro of Sentry's own upload path reported
+        // for these files before this comment was added). The .map itself
+        // still never reaches production — stripSourceMapsPlugin deletes it
+        // after upload, so the comment just 404s harmlessly in devtools.
         const { code, map } = transformSync(readFileSync(join(srcDir, f), 'utf8'), {
           loader: 'js', target: 'es2020',
           minifyWhitespace: true, minifySyntax: true, minifyIdentifiers: false,
           sourcemap: 'external', sourcefile: f,
         });
-        writeFileSync(join(outDir, f), code);
+        writeFileSync(join(outDir, f), code + `\n//# sourceMappingURL=${f}.map\n`);
         writeFileSync(join(outDir, f + '.map'), map);
+      }
+      // Rollup's own chunks get a debug id automatically (via @sentry/rollup-
+      // plugin's renderChunk hook, which only sees files that go through
+      // Rollup's module graph). These classic scripts are copied straight
+      // from disk, bypassing that graph entirely, so nothing ever injects
+      // their debug id — do it ourselves, using Sentry's own CLI so the id
+      // format/matching logic stays authoritative rather than hand-rolled.
+      // Purely local file rewriting, no network/auth needed (verified) — but
+      // skip it when Sentry itself is disabled (no token) so a plain local
+      // build doesn't pay for a step whose output nothing will ever read.
+      if (process.env.SENTRY_AUTH_TOKEN) {
+        try {
+          execFileSync('node_modules/.bin/sentry-cli', ['sourcemaps', 'inject', outDir], { stdio: 'inherit' });
+        } catch (e) {
+          console.warn('[copy-classic-scripts] sentry-cli sourcemaps inject failed — classic scripts will upload without debug ids:', (/** @type {any} */ (e)).message || e);
+        }
       }
     },
   };
