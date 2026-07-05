@@ -22,16 +22,19 @@ import { GUIDES } from './wiki/guides.mjs';
 function copyClassicScriptsPlugin() {
   return {
     name: 'copy-classic-scripts',
-    // sentryVitePlugin hardcodes enforce:'pre' on itself (see @sentry/vite-plugin's
-    // index.js), which puts its closeBundle-based sourcemap-upload scan in Rollup's
-    // "pre" hook tier — run before every plugin without an explicit enforce,
-    // REGARDLESS of array position. Without this, dist/src/*.js(.map) don't exist
-    // yet when Sentry's glob runs, so the classic scripts silently get 0 maps
-    // uploaded (confirmed via a throwaway diag plugin: dist/src existed=false at
-    // that point). Matching enforce:'pre' here moves this plugin into the same
-    // tier, and its earlier position in the `plugins` array wins the tie-break.
+    // The actual sourcemap-upload scan (inside @sentry/rollup-plugin, which
+    // @sentry/vite-plugin wraps) runs in `writeBundle` — hardcoded to glob the
+    // whole outDir at that instant — NOT in `closeBundle` as its own comments
+    // suggest. writeBundle always completes, for every plugin regardless of
+    // enforce tier, before any closeBundle hook starts, so this MUST also be a
+    // writeBundle hook (closeBundle is too late — confirmed via a throwaway
+    // diagnostic plugin: dist/src was still absent whenever it hooked
+    // closeBundle, present once switched to writeBundle). enforce:'pre' plus
+    // this plugin's earlier position in the `plugins` array then wins the
+    // tie-break against sentryVitePlugin's own (also enforce:'pre') writeBundle.
+    /** @type {'pre'} */
     enforce: 'pre',
-    closeBundle() {
+    writeBundle() {
       const srcDir = 'src';
       const outDir = 'dist/src';
       if (!existsSync(srcDir)) return;
@@ -43,12 +46,12 @@ function copyClassicScriptsPlugin() {
         // renaming top-level names would break cross-file references.
         // Emit an external source map so a runtime error inside a minified
         // classic script resolves back to the original line in Sentry —
-        // sentryVitePlugin uploads dist/src/*.js.map (its `sourcemaps.assets`
-        // glob covers them) and stripSourceMapsPlugin deletes them from the
-        // deploy after upload, so they are never served publicly. No
-        // sourceMappingURL comment is written (hidden-style, matching the
-        // Rollup 'hidden' output) — Sentry matches via the debug id the
-        // plugin injects into both the script and its map.
+        // sentryVitePlugin's writeBundle scan picks up dist/src/*.js(.map)
+        // (see the writeBundle/enforce note above) and stripSourceMapsPlugin
+        // deletes them from the deploy after upload, so they are never served
+        // publicly. No sourceMappingURL comment is written (hidden-style,
+        // matching the Rollup 'hidden' output) — Sentry matches via the debug
+        // id the plugin injects into both the script and its map.
         const { code, map } = transformSync(readFileSync(join(srcDir, f), 'utf8'), {
           loader: 'js', target: 'es2020',
           minifyWhitespace: true, minifySyntax: true, minifyIdentifiers: false,
@@ -413,10 +416,13 @@ export default defineConfig(({ mode }) => {
       project: process.env.SENTRY_PROJECT,
       authToken: process.env.SENTRY_AUTH_TOKEN,
       disable: !process.env.SENTRY_AUTH_TOKEN,
-      // The app's logic lives in the hand-copied classic scripts (dist/src/*.js),
-      // not the Rollup bundle — include them (and their maps) so debug ids are
-      // injected and uploaded for the files that actually throw at runtime.
-      sourcemaps: { assets: ['./dist/**/*.js', './dist/**/*.js.map'] },
+      // No `sourcemaps.assets` override needed: with build.outDir set (it is —
+      // 'dist'), @sentry/rollup-plugin's writeBundle hook ignores that option
+      // entirely and hardcodes a glob over the whole outDir, so dist/src/*.js
+      // (the hand-copied classic scripts, not part of the Rollup bundle) is
+      // picked up automatically as long as it already exists on disk by then
+      // — which is what copyClassicScriptsPlugin's writeBundle+enforce:'pre'
+      // guarantees (see that plugin's comment).
     }),
     // Must run after sentryVitePlugin so source maps are uploaded before
     // they are stripped from the deploy output.
