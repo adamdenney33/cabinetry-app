@@ -692,18 +692,15 @@ function renderCBResults() {
   if (projName) {
     html += _renderContentHeader({ iconSvg: _CH_ICON_QUOTE, title: cbHeaderTitle, addOnclick: 'window._mvShowEditor()', backOnclick: cbEditingQuoteId ? '_exitClient_cabinet()' : undefined, addIcon: _CH_ICON_CABINET.replace('class="ch-icon"', '') });
   }
-  // Expanded detail panel for the selected cabinet — a spec read-out + a
-  // per-section cost breakdown, rendered as a full-width row directly under
-  // the .editing row. Spans all 6 columns; card-mode CSS reflows it to block.
-  /** @param {any} line @param {any} c */
-  const expandRowHtml = (line, c) => {
-    const sec = calcCBSections(line);
+  // Expanded spec read-out for the selected cabinet — a full-width row
+  // directly under the .editing row. Spans all 6 columns; card-mode CSS
+  // reflows the key/value grid to a single column.
+  /** @param {any} line */
+  const expandRowHtml = (line) => {
     /** @param {string} label @param {any} val */
     const kv = (label, val) => (val === 0 || val) && String(val).trim() ? `<div class="cb-x-kv"><dt>${label}</dt><dd>${_escHtml(String(val))}</dd></div>` : '';
     /** @param {string} f */
     const fin = (f) => f && f !== 'None' ? f : '';
-    /** @param {string} label @param {number} v @param {boolean} [strong] */
-    const cr = (label, v, strong) => `<div class="cb-x-cr${strong ? ' cb-x-cr-sub' : ''}"><span>${label}</span><span>${fmt0(v)}</span></div>`;
     // Interior parts summary (only non-zero counts).
     const parts = [[line.shelves, 'fixed shelf', 'fixed shelves'], [line.adjShelves, 'adj. shelf', 'adj. shelves'], [line.looseShelves, 'loose shelf', 'loose shelves'], [line.partitions, 'partition', 'partitions'], [line.endPanels, 'end panel', 'end panels']]
       .filter(([n]) => n > 0).map(([n, s, p]) => `${n} ${n === 1 ? s : p}`).join(', ');
@@ -714,7 +711,6 @@ function renderCBResults() {
     const doorsVal = line.doors > 0 ? [`${line.doors} × ${line.doorType||'—'}`, line.doorMat, fin(line.doorFinish)].filter(Boolean).join(' · ') : '';
     const drawersVal = line.drawers > 0 ? [`${line.drawers} × ${line.drawerFrontType||'—'} front`, line.drawerFrontMat, `${line.drawerBoxType||'—'} box`].filter(Boolean).join(' · ') : '';
     const construction = [line.carcassType, line.baseType ? line.baseType + ' base' : ''].filter(Boolean).join(' · ');
-    const unitCost = c.matCost + c.labourCost + c.hwCost;
     const spec = kv('Dimensions', dimsLabelFromMM(line.w, line.h, line.d))
       + kv('Carcass', carcass)
       + kv('Back panel', line.backMat)
@@ -725,19 +721,7 @@ function renderCBResults() {
       + kv('Hardware', hwAll)
       + kv('Room', line.room)
       + kv('Notes', line.notes);
-    const cost = cr('Cabinet', sec.cabinet + sec.cabinetHardware)
-      + ((sec.shelves + sec.shelfHardware) > 0 ? cr('Shelves &amp; partitions', sec.shelves + sec.shelfHardware) : '')
-      + (line.doors > 0 ? cr('Doors', sec.doors + sec.doorHardware) : '')
-      + ((line.drawers > 0 || sec.drawerFrontHardware > 0) ? cr('Drawer fronts', sec.drawerFronts + sec.drawerFrontHardware) : '')
-      + (line.drawers > 0 ? cr('Drawer boxes', sec.drawerBoxes + sec.drawerHardware) : '')
-      + (sec.extras > 0 ? cr('Extras', sec.extras) : '')
-      + cr('Unit cost', unitCost, true)
-      + (line.qty > 1 ? `<div class="cb-x-cr cb-x-cr-sub"><span>Line total <span class="cb-x-mult">× ${line.qty}</span></span><span>${fmt0(c.lineSubtotal)}</span></div>` : '');
-    return `<tr class="cb-li-xrow"><td colspan="6"><div class="cb-li-expand">
-      <div class="cb-x-col"><div class="cb-x-h">Specification</div><dl class="cb-x-list">${spec}</dl></div>
-      <div class="cb-x-col"><div class="cb-x-h">Cost breakdown</div><div class="cb-x-costrows">${cost}</div>
-        <div class="cb-x-note">Materials ${fmt0(c.matCost)} · Labour ${c.labourHrs.toFixed(1)}h · Hardware ${fmt0(c.hwCost)}</div></div>
-    </div></td></tr>`;
+    return `<tr class="cb-li-xrow"><td colspan="6"><div class="cb-li-expand"><dl class="cb-x-list">${spec}</dl></div></td></tr>`;
   };
   // Line-item table (quote-editor style). Row click selects the cabinet into
   // the editor; qty/actions cells stop propagation. Row Total = pre-markup
@@ -763,7 +747,7 @@ function renderCBResults() {
         <button class="cb-dup-btn" onclick="_duplicateCabinet(${idx})" title="Duplicate cabinet">⧉</button>
         <button class="cb-del-btn" onclick="_cbConfirmDeleteLine(${idx})" title="Delete cabinet">×</button>
       </div></td>
-    </tr>${isActive ? expandRowHtml(line, c) : ''}`;
+    </tr>${isActive ? expandRowHtml(line) : ''}`;
   };
   html += `<div class="cb-li-wrap"><table class="cb-li-table">
     <thead><tr><th>Cabinet</th><th class="cb-col-size">Size</th><th class="cb-col-qty">Qty</th><th class="cb-col-each">Each</th><th class="cb-col-total" style="text-align:right">Total</th><th class="cb-col-act"></th></tr></thead>
