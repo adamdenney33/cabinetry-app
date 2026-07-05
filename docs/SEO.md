@@ -7,7 +7,7 @@ live OUTSIDE the repo (dashboards) and the rules that keep the repo side honest.
 
 ## One-time dashboard steps (in order, after the deploy is live)
 
-### 1. Cloudflare — allow AI crawlers  ⬜
+### 1. Cloudflare — allow AI crawlers  ✅ done 2026-07-03
 Decision (2026-07-03): allow **everything** — answer engines AND training bots.
 Until this is done, GPTBot/ClaudeBot/PerplexityBot/ChatGPT-User/Claude-User get
 403s and the site cannot appear in AI answers.
@@ -20,7 +20,7 @@ Until this is done, GPTBot/ClaudeBot/PerplexityBot/ChatGPT-User/Claude-User get
 3. Sanity-check Security → WAF → Custom rules for any hand-made bot rule (none
    expected).
 
-### 2. Cloudflare — turn off managed robots.txt  ⬜
+### 2. Cloudflare — turn off managed robots.txt  ✅ done 2026-07-03
 Its `Content-Signal: ai-train=no` contradicts the policy above, and it prepends
 onto our real robots.txt.
 
@@ -31,7 +31,7 @@ onto our real robots.txt.
 3. Verify: `curl -s https://procabinet.app/robots.txt` is byte-identical to the
    repo file (no prepended block).
 
-### 3. Google Search Console  ⬜
+### 3. Google Search Console  ✅ done 2026-07-03
 1. search.google.com/search-console → Add property → **Domain** → `procabinet.app`.
 2. Copy the TXT value → Cloudflare zone → DNS → Add record: Type `TXT`, Name
    `@`, Content = the value. (Permanent — deleting it un-verifies.)
@@ -39,20 +39,28 @@ onto our real robots.txt.
    `https://procabinet.app/sitemap.xml`.
 4. URL Inspection → `https://procabinet.app/` → Request indexing.
 
-### 4. Bing Webmaster Tools  ⬜
-bing.com/webmasters → Add site → **Import from Google Search Console** (needs
-step 3). Confirm the sitemap imported.
+### 4. Bing Webmaster Tools  ✅ done 2026-07-03
+Verified: URL Inspection on `/` shows "Indexed successfully", 2 markup types
+detected (JSON-LD, OpenGraph). One notice — "alt attribute for images is
+missing" on 35 instances — is a false positive: every flagged image is a
+decorative nav/feature icon (`brand/icons/individual/*.svg`) always paired
+with a visible text label ("Dashboard", "Cut List", etc.), some inside a
+parent with `role="img" aria-label="..."` already set. `alt=""` on a
+decorative image next to its own text label is the WCAG-correct pattern —
+adding real alt text there would double-announce on screen readers. No fix
+needed; don't let a future audit "fix" this into a regression.
 
-### 5. Post-change verification  ⬜
+### 5. Post-change verification  ✅ done 2026-07-03
 ```sh
-for ua in GPTBot ClaudeBot PerplexityBot "ChatGPT-User" "Claude-User"; do
+for ua in GPTBot ClaudeBot PerplexityBot "ChatGPT-User" "Claude-User" "OAI-SearchBot"; do
   curl -s -o /dev/null -w "$ua %{http_code}\n" -A "$ua" https://procabinet.app/; done
 ```
-Expect 200s. Caveat: Cloudflare verifies real crawlers by IP, so a spoofed-UA
-curl is not authoritative — the real check is AI Crawl Control → Metrics
-showing 200s for genuine crawler traffic over the following days. Also run the
-Rich Results Test (search.google.com/test/rich-results) on `/` and one blog
-post, and Meta's Sharing Debugger → Scrape Again (absolute og:image now).
+All six returned **200** (spoofed-UA curl, so indicative not authoritative —
+Cloudflare verifies real crawlers by IP; confirm again via AI Crawl Control →
+Metrics once genuine crawler traffic accrues). `robots.txt` confirmed
+byte-identical to the repo file, no Cloudflare prepend. Still open: Rich
+Results Test on `/` + one blog post, and Meta's Sharing Debugger → Scrape
+Again (absolute og:image now).
 
 ## Standing rules (repo side)
 
@@ -87,9 +95,12 @@ post, and Meta's Sharing Debugger → Scrape Again (absolute og:image now).
 
 | Step | Done | Date |
 |------|------|------|
-| Deploy (code) | ⬜ | |
-| Cloudflare AI crawlers allowed | ⬜ | |
-| Managed robots.txt off | ⬜ | |
-| GSC verified + sitemap submitted | ⬜ | |
-| Bing imported | ⬜ | |
-| AI-crawler 200s confirmed in metrics | ⬜ | |
+| Deploy (code) | ✅ | 2026-07-03 |
+| Cloudflare AI crawlers allowed | ✅ | 2026-07-03 |
+| Managed robots.txt off | ✅ | 2026-07-03 |
+| GSC verified + sitemap submitted | ✅ | 2026-07-03 |
+| Bing imported | ✅ | 2026-07-03 |
+| AI-crawler 200s confirmed (spoofed-UA curl) | ✅ | 2026-07-03 |
+| AI-crawler 200s confirmed in AI Crawl Control → Metrics (real traffic) | ⬜ | |
+| Rich Results Test on `/` + one blog post | ⬜ | |
+| Meta Sharing Debugger → Scrape Again | ⬜ | |
