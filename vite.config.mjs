@@ -80,6 +80,23 @@ function copyClassicScriptsPlugin() {
         } catch (e) {
           console.warn('[copy-classic-scripts] sentry-cli sourcemaps inject failed — classic scripts will upload without debug ids:', (/** @type {any} */ (e)).message || e);
         }
+        // sentryVitePlugin's own upload only discovers these files via its
+        // internal buildArtifactPaths glob, which (confirmed across 3 deploys
+        // of debugging: 2026-07-05, JAVASCRIPT source-map investigation) never
+        // ends up including dist/src even once the debug-id linkage above is
+        // correct — an undocumented constraint somewhere in its shared
+        // discovery path that isn't worth chasing further. Upload dist/src
+        // ourselves instead, as a fully independent step: debug-id matching is
+        // release-agnostic (the shared id embedded in the shipped script and
+        // its map is what resolves a stack frame, not a release lookup), so no
+        // --release/--org/--project flags are needed beyond what sentry-cli
+        // already reads from the SENTRY_ORG/SENTRY_PROJECT/SENTRY_AUTH_TOKEN
+        // env vars set alongside this token.
+        try {
+          execFileSync('node_modules/.bin/sentry-cli', ['sourcemaps', 'upload', outDir], { stdio: 'inherit' });
+        } catch (e) {
+          console.warn('[copy-classic-scripts] sentry-cli sourcemaps upload failed — classic scripts will have no server-side source maps:', (/** @type {any} */ (e)).message || e);
+        }
       }
     },
   };
