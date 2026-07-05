@@ -86,3 +86,12 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: pages deploy dist --project-name=cabinetry-app --branch=main
+
+      # Pushes every public URL (scripts/site-urls.mjs) to IndexNow so Bing/
+      # Yandex/etc. crawl the change within minutes instead of on their own
+      # discovery schedule. Google doesn't participate in IndexNow — GSC
+      # sitemap submission covers that engine (see docs/SEO.md). Best-effort:
+      # the script itself never throws (see scripts/indexnow.mjs), so a
+      # third-party API hiccup can't fail a deploy that already succeeded.
+      - name: Notify IndexNow (Bing/Yandex)
+        run: npm run indexnow

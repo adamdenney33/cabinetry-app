@@ -91,3 +91,8 @@
   Cache-Control: public, max-age=3600
 /404.html
   Cache-Control: public, max-age=0, must-revalidate
+
+# IndexNow key file (see vite.config.mjs INDEXNOW_KEY_FILE / scripts/indexnow.mjs)
+# — a static ownership proof that never changes, so it can cache indefinitely.
+/2ca9a129f6b24e39a121200ca7d45482.txt
+  Cache-Control: public, max-age=31536000, immutable

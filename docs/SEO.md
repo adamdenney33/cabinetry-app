@@ -62,6 +62,32 @@ byte-identical to the repo file, no Cloudflare prepend. Still open: Rich
 Results Test on `/` + one blog post, and Meta's Sharing Debugger → Scrape
 Again (absolute og:image now).
 
+### 6. IndexNow  ✅ code shipped 2026-07-03 — verify after next deploy
+Pushes every public URL to Bing/Yandex/Seznam/Naver so they crawl changes in
+minutes instead of on their own schedule. **Google does not participate** —
+GSC sitemap submission (step 3) is what covers Google; this is purely
+additive for the other engines.
+
+- Key file `2ca9a129f6b24e39a121200ca7d45482.txt` at the repo root, content =
+  the key itself (32 hex chars, no trailing newline). Copied into `dist/` by
+  `seoFilesPlugin` (`INDEXNOW_KEY_FILE` in vite.config.mjs).
+- `scripts/site-urls.mjs` is the single source of truth for "every public
+  URL" — both `sitemap.xml` and the IndexNow submission read from it, so a
+  new blog post or wiki guide reaches both automatically.
+- `scripts/indexnow.mjs` POSTs the list to `api.indexnow.org/indexnow`. Runs
+  as a step in `.github/workflows/deploy.yml`, **after** the Cloudflare
+  deploy — so a failure there can never block or fail a deploy that already
+  shipped (the script itself never throws; it warns and exits 0).
+- **Not yet verified live**: IndexNow checks that the key file actually
+  resolves at `https://procabinet.app/<key>.txt` before accepting a
+  submission, so nothing can be tested until this ships. First real deploy
+  after this change will run it automatically — check the Action log for
+  "IndexNow: submitted 20 URLs (HTTP 200)" (or 202).
+- To rotate the key: delete the old `<key>.txt`, generate a new one
+  (`node -e "console.log(crypto.randomUUID().replace(/-/g,''))"`), write the
+  new file, and update `INDEXNOW_KEY_FILE` (vite.config.mjs) and
+  `INDEXNOW_KEY` (scripts/indexnow.mjs) together — they must always match.
+
 ## Standing rules (repo side)
 
 - **Pricing changes**: the SoftwareApplication JSON-LD offers in landing.html

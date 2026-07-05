@@ -14,6 +14,14 @@ import { sentryVitePlugin } from '@sentry/vite-plugin';
 import * as blog from './scripts/blog.mjs';
 import * as wiki from './scripts/build-wiki.mjs';
 import { GUIDES } from './wiki/guides.mjs';
+import { siteUrls } from './scripts/site-urls.mjs';
+
+// IndexNow key file: proves ownership to the IndexNow API (scripts/indexnow.mjs,
+// run from CI after each deploy — see .github/workflows/deploy.yml). Its content
+// IS the key, so the filename is not a secret; regenerate both together if ever
+// rotated (delete the old file, `node -e "console.log(crypto.randomUUID().replace(/-/g,''))"`,
+// write the new one, update indexnow.mjs's INDEXNOW_KEY to match).
+const INDEXNOW_KEY_FILE = '2ca9a129f6b24e39a121200ca7d45482.txt';
 
 // Phase A: Vite is currently a thin shell around the existing vanilla codebase.
 // index.html still uses classic <script src="src/*.js"> tags; Vite serves them
@@ -341,7 +349,7 @@ function seoFilesPlugin() {
   return {
     name: 'seo-files',
     closeBundle() {
-      for (const f of ['robots.txt', '404.html']) {
+      for (const f of ['robots.txt', '404.html', INDEXNOW_KEY_FILE]) {
         if (existsSync(f)) copyFileSync(f, join('dist', f));
       }
       const posts = blog.loadPosts();
@@ -362,22 +370,11 @@ function seoFilesPlugin() {
         }
         writeFileSync(join('dist', 'llms.txt'), llms);
       }
-      // Sitemap: static marketing pages (no lastmod — file mtimes lie in CI)
-      // + wiki guides + blog pages with real lastmod from frontmatter.
-      const entries = ['/', '/privacy', '/terms', '/payment-fees']
-        .map((u) => `  <url><loc>${ORIGIN}${u}</loc></url>`);
-      if (GUIDES.length) {
-        entries.push(`  <url><loc>${ORIGIN}/wiki/</loc></url>`);
-        for (const g of GUIDES) {
-          entries.push(`  <url><loc>${ORIGIN}/wiki/${g.slug}</loc></url>`);
-        }
-      }
-      if (posts.length) {
-        entries.push(`  <url><loc>${ORIGIN}/blog/</loc></url>`);
-        for (const p of posts) {
-          entries.push(`  <url><loc>${ORIGIN}${p.url}</loc><lastmod>${p.updated}</lastmod></url>`);
-        }
-      }
+      // Sitemap: same URL list scripts/indexnow.mjs submits to IndexNow (see
+      // scripts/site-urls.mjs) — no lastmod on the static pages, file mtimes
+      // lie in CI; blog posts carry their real lastmod from frontmatter.
+      const entries = siteUrls().map(({ url, lastmod }) =>
+        lastmod ? `  <url><loc>${url}</loc><lastmod>${lastmod}</lastmod></url>` : `  <url><loc>${url}</loc></url>`);
       const xml = '<?xml version="1.0" encoding="UTF-8"?>\n'
         + '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
         + entries.join('\n')
