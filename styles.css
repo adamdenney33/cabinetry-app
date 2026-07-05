@@ -1388,7 +1388,16 @@ canvas { display: block; }
   .cb-li-table tr { display:grid; grid-template-columns:minmax(0,1fr) auto; grid-template-areas:"name total" "qty act"; gap:6px 8px; padding:9px 10px; border-bottom:1px solid var(--border2); align-items:center; }
   .cb-li-table tbody tr:last-child { border-bottom:none; }
   .cb-li-table tbody td { display:block; border:none; padding:0; }
-  .cb-li-table tbody tr:nth-child(even) td { background:none; }
+  /* Card mode: the row is a grid with gaps, so paint the highlight on the ROW
+     only. The base `tr:hover td` / `tr.editing td` rules apply accent-dim to
+     each cell too — and because it's translucent it double-paints over the row,
+     making every cell a darker amber box ("localised highlights of each
+     section"). Force the cells transparent so the whole card reads as one
+     even highlight. */
+  .cb-li-table tbody tr:nth-child(even) td,
+  .cb-li-table tbody tr:hover td,
+  .cb-li-table tr.editing td { background:transparent !important; }
+  .cb-li-table tbody tr:hover { background:var(--accent-dim); }
   .cb-li-table tr.editing { background:var(--accent-dim); box-shadow:inset 3px 0 0 var(--accent); }
   .cb-li-table tr.editing td:first-child { box-shadow:none; }
   .cb-li-table .cb-col-name { grid-area:name; }
