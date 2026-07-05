@@ -1353,8 +1353,12 @@ canvas { display: block; }
 #cb-results .cb-li-table .cl-step-btn,
 #cb-results .cb-li-table .cl-step-btn:hover,
 #cb-results .cb-li-table .cl-qty-input { background:transparent; border-color:transparent; }
-#cb-results .cb-li-actions .proj-act,
-#cb-results .cb-li-actions .proj-act:hover,
+/* Actions row = a set of buttons. The cut-list pill gets a white button
+   surface (not surface2 — that read as a grey highlight on the amber row)
+   with a border; its inner count/add chips stay flat so the pill is one
+   clean button showing icon · count · +. */
+#cb-results .cb-li-actions .proj-act { background:var(--surface); border-color:var(--border); height:28px; }
+#cb-results .cb-li-actions .proj-act:hover { background:var(--surface); border-color:var(--accent); }
 #cb-results .cb-li-actions .proj-act-count,
 #cb-results .cb-li-actions .proj-act-add,
 #cb-results .cb-li-actions .proj-act-add:hover,
@@ -1363,13 +1367,21 @@ canvas { display: block; }
 .cb-li-table .cb-col-qty { width:80px; }
 .cb-li-table .cb-col-each { width:72px; text-align:right; color:var(--text2); }
 .cb-li-table .cb-col-total { width:78px; text-align:right; }
-.cb-li-table .cb-col-act { width:150px; text-align:right; }
+.cb-li-table .cb-col-act { width:236px; text-align:right; }
 .cb-li-name { display:block; font-weight:600; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .cb-li-sub { display:block; font-size:11px; color:var(--muted); font-weight:400; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .cb-li-sub-mobile { display:none; }
-.cb-li-actions { display:flex; gap:2px; justify-content:flex-end; align-items:center; visibility:hidden; }
-.cb-li-table tr:hover .cb-li-actions, .cb-li-table tr.editing .cb-li-actions { visibility:visible; }
+.cb-li-actions { display:flex; gap:6px; justify-content:flex-end; align-items:center; }
 .cb-li-actions .proj-act-label { display:none; }
+/* Every control in the actions row reads as a button (like the original
+   editor footer): white surface, border, rounded — text for Add to Library,
+   compact squares for duplicate/delete. */
+.cb-li-actions .cb-act-btn { height:28px; padding:0 11px; border:1px solid var(--border); background:var(--surface); color:var(--text2); border-radius:6px; font-family:inherit; font-size:12px; font-weight:600; line-height:1; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; transition:border-color .12s, color .12s, background .12s; }
+.cb-li-actions .cb-act-btn.cb-dup-btn { width:28px; padding:0; font-size:15px; }
+.cb-li-actions .cb-act-btn.cb-del-btn { width:28px; padding:0; font-size:18px; }
+.cb-li-actions .cb-act-btn.cb-lib-btn:hover,
+.cb-li-actions .cb-act-btn.cb-dup-btn:hover { border-color:var(--accent); color:var(--accent); background:var(--accent-dim); }
+.cb-li-actions .cb-act-btn.cb-del-btn:hover { border-color:var(--danger); color:var(--danger); background:rgba(224,82,82,0.08); }
 /* Expanded spec read-out for the selected cabinet, tinted amber to merge
    with the .editing row above it. The key/value list flows into as many
    columns as the panel width allows. */
@@ -1380,7 +1392,7 @@ canvas { display: block; }
 .cb-x-kv { display:flex; gap:10px; font-size:11px; line-height:1.4; }
 .cb-x-kv dt { flex:0 0 74px; color:var(--muted); }
 .cb-x-kv dd { flex:1; min-width:0; margin:0; color:var(--text); font-weight:500; }
-.cb-li-actions ._cbct-btn, .cb-li-actions .cb-dup-btn, .cb-li-actions .cb-del-btn { flex-shrink:0; }
+.cb-li-actions ._cbct-btn, .cb-li-actions .cb-dup-btn, .cb-li-actions .cb-lib-btn, .cb-li-actions .cb-del-btn { flex-shrink:0; }
 .cb-li-add { display:block; width:100%; margin-top:8px; padding:9px 14px; border:1px dashed var(--border); border-radius:8px; background:none; color:var(--muted); font-size:12px; font-weight:600; cursor:pointer; text-align:center; font-family:inherit; transition:border-color .15s, color .15s, background .15s; }
 .cb-li-add:hover { border-color:var(--accent); color:var(--accent); background:var(--accent-dim); }
 .cb-results-footer { flex-shrink:0; border-top:2px solid var(--border); background:var(--surface); padding:10px 20px; display:none; align-items:center; gap:10px; flex-wrap:wrap; }
@@ -1391,10 +1403,11 @@ canvas { display: block; }
    width (which varies with the resizable sidebar), not the viewport — a plain
    media query can't see a narrow panel on a wide screen. */
 #cb-results { container-type: inline-size; container-name: cbres; }
-/* Below ~560px the panel can't fit all columns without the name squashing,
-   so fall back to a 2-row card per cabinet — the Each column folds away and
-   the dimensions sit in the name sub-line, actions always shown. */
-@container cbres (max-width: 560px) {
+/* Below ~640px the panel can't fit all columns (the actions button row alone
+   needs ~236px) without the name squashing, so fall back to a 2-row card per
+   cabinet — the Each column folds away and the dimensions sit in the name
+   sub-line, actions on their own row. */
+@container cbres (max-width: 640px) {
   .cb-li-table thead { display:none; }
   .cb-li-table, .cb-li-table tbody { display:block; width:100%; }
   .cb-li-table tr { display:grid; grid-template-columns:minmax(0,1fr) auto; grid-template-areas:"name total" "qty act"; gap:6px 8px; padding:9px 10px; border-bottom:1px solid var(--border2); align-items:center; }
@@ -1432,6 +1445,7 @@ canvas { display: block; }
 /* Touch-target sizing for the card layout on phones (viewport-based). */
 @media (max-width: 760px) {
   .cb-li-actions .cb-dup-btn, .cb-li-actions .cb-del-btn { width:40px; height:40px; }
+  .cb-li-actions .cb-lib-btn { height:40px; }
   .cb-li-table .cl-step-btn { min-width:36px; min-height:38px; }
   .cb-li-table .cl-qty-input { font-size:16px; }
   .cb-results-footer { padding:10px 12px; }

@@ -465,7 +465,7 @@ function renderCBEditor() {
   const isLib = cbEditingLibraryIdx >= 0;
   const footActions = isLib
     ? `<button class="btn btn-outline" onclick="cbAddFromLibrary(${cbEditingLibraryIdx})">Add to Quote</button><button class="btn btn-outline" onclick="cbDuplicateLibraryEntry(${cbEditingLibraryIdx})">Duplicate</button><button class="btn btn-outline" style="color:var(--danger)" onclick="_confirm('Delete this template?',()=>cbRemoveFromLibrary(${cbEditingLibraryIdx}))">Delete</button>`
-    : `<button class="btn btn-outline" onclick="_duplicateCabinet(${cbEditingLineIdx})" title="Duplicate cabinet">Duplicate</button><button class="btn btn-outline" onclick="cbAddLineToLibrary(${cbEditingLineIdx})" title="Save this cabinet as a library template">Add to Library</button><button class="btn btn-outline" style="color:var(--danger)" onclick="_cbConfirmDeleteLine(${cbEditingLineIdx})" title="Delete cabinet">Delete</button>`;
+    : `<button class="btn btn-outline" onclick="_duplicateCabinet(${cbEditingLineIdx})" title="Duplicate cabinet">Duplicate</button><button class="btn btn-outline" style="color:var(--danger)" onclick="_cbConfirmDeleteLine(${cbEditingLineIdx})" title="Delete cabinet">Delete</button>`;
 
   el.innerHTML = `
     <div class="cb-ed-head">
@@ -742,9 +742,10 @@ function renderCBResults() {
       <td class="cb-col-each">${fmt0(unitCost)}</td>
       <td class="cb-col-total"><strong>${fmt0(c.lineSubtotal)}</strong></td>
       <td class="cb-col-act" onclick="event.stopPropagation()"><div class="cb-li-actions">
+        <button class="cb-act-btn cb-lib-btn" onclick="cbAddLineToLibrary(${idx})" title="Save this cabinet as a library template">Add to Library</button>
         ${_cbCutListProjActHtml(`_cbOpenCabinetCutListsForLine(${idx})`, `_cbNewCutListForLine(${idx})`, line.db_id||'')}
-        <button class="cb-dup-btn" onclick="_duplicateCabinet(${idx})" title="Duplicate cabinet">⧉</button>
-        <button class="cb-del-btn" onclick="_cbConfirmDeleteLine(${idx})" title="Delete cabinet">×</button>
+        <button class="cb-act-btn cb-dup-btn" onclick="_duplicateCabinet(${idx})" title="Duplicate cabinet">⧉</button>
+        <button class="cb-act-btn cb-del-btn" onclick="_cbConfirmDeleteLine(${idx})" title="Delete cabinet">×</button>
       </div></td>
     </tr>${isActive ? expandRowHtml(line) : ''}`;
   };
