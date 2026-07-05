@@ -721,7 +721,7 @@ function renderCBResults() {
       + kv('Hardware', hwAll)
       + kv('Room', line.room)
       + kv('Notes', line.notes);
-    return `<tr class="cb-li-xrow"><td colspan="6"><div class="cb-li-expand"><dl class="cb-x-list">${spec}</dl></div></td></tr>`;
+    return `<tr class="cb-li-xrow"><td colspan="5"><div class="cb-li-expand"><dl class="cb-x-list">${spec}</dl></div></td></tr>`;
   };
   // Line-item table (quote-editor style). Row click selects the cabinet into
   // the editor; qty/actions cells stop propagation. Row Total = pre-markup
@@ -733,8 +733,7 @@ function renderCBResults() {
     const isActive = idx === cbEditingLineIdx;
     const unitCost = c.matCost + c.labourCost + c.hwCost;
     return `<tr class="cb-li-row${isActive ? ' editing' : ''}" onclick="cbEditCabinetFromOutput(${idx})">
-      <td class="cb-col-name"><span class="cb-li-name">${_escHtml(line.name||'Cabinet '+(idx+1))}</span><span class="cb-li-sub cb-li-sub-desktop">${_escHtml(line.material||'')}</span><span class="cb-li-sub cb-li-sub-mobile">${dimsLabelFromMM(line.w, line.h, line.d)}${line.material ? ' · ' + _escHtml(line.material) : ''}</span></td>
-      <td class="cb-col-size">${dimsLabelFromMM(line.w, line.h, line.d)}</td>
+      <td class="cb-col-name"><span class="cb-li-name">${_escHtml(line.name||'Cabinet '+(idx+1))}</span><span class="cb-li-sub cb-li-sub-desktop">${dimsLabelFromMM(line.w, line.h, line.d)}</span><span class="cb-li-sub cb-li-sub-mobile">${dimsLabelFromMM(line.w, line.h, line.d)}${line.material ? ' · ' + _escHtml(line.material) : ''}</span></td>
       <td class="cb-col-qty" onclick="event.stopPropagation()"><div class="cl-stepper">
         <button class="cl-step-btn" style="padding:0 6px" onclick="cbStepLineQty(${idx},-1)" title="Decrease quantity">−</button>
         <input type="number" class="cl-input cl-qty-input" value="${line.qty}" min="1" style="font-size:11px;width:32px;padding:4px 2px" onchange="cbSetLineQty(${idx},this.value)">
@@ -750,7 +749,7 @@ function renderCBResults() {
     </tr>${isActive ? expandRowHtml(line) : ''}`;
   };
   html += `<div class="cb-li-wrap"><table class="cb-li-table">
-    <thead><tr><th>Cabinet</th><th class="cb-col-size">Size</th><th class="cb-col-qty">Qty</th><th class="cb-col-each">Each</th><th class="cb-col-total" style="text-align:right">Total</th><th class="cb-col-act"></th></tr></thead>
+    <thead><tr><th>Cabinet</th><th class="cb-col-qty">Qty</th><th class="cb-col-each">Each</th><th class="cb-col-total" style="text-align:right">Total</th><th class="cb-col-act"></th></tr></thead>
     <tbody>${cbLines.map(rowHtml).join('')}</tbody>
   </table></div>`;
   html += `<button class="cb-li-add" onclick="addCBLine();if(window._mvShowEditor)window._mvShowEditor()">+ Add cabinet</button>`;

@@ -1360,7 +1360,6 @@ canvas { display: block; }
 #cb-results .cb-li-actions .proj-act-add:hover,
 #cb-results .cb-li-actions .proj-act.empty .proj-act-count,
 #cb-results .cb-li-actions .proj-act.empty .proj-act-add { background:transparent; border-color:transparent; }
-.cb-li-table .cb-col-size { width:112px; color:var(--text2); }
 .cb-li-table .cb-col-qty { width:80px; }
 .cb-li-table .cb-col-each { width:72px; text-align:right; color:var(--text2); }
 .cb-li-table .cb-col-total { width:78px; text-align:right; }
@@ -1392,11 +1391,10 @@ canvas { display: block; }
    width (which varies with the resizable sidebar), not the viewport — a plain
    media query can't see a narrow panel on a wide screen. */
 #cb-results { container-type: inline-size; container-name: cbres; }
-/* The full table needs ~620px (Actions alone ~150px). Below that the panel
-   can't fit all columns without the "Cabinet" header collapsing into "Size",
-   so fall back to a 2-row card per cabinet — Size + Each fold into the name
-   sub-line, actions always shown. */
-@container cbres (max-width: 660px) {
+/* Below ~560px the panel can't fit all columns without the name squashing,
+   so fall back to a 2-row card per cabinet — the Each column folds away and
+   the dimensions sit in the name sub-line, actions always shown. */
+@container cbres (max-width: 560px) {
   .cb-li-table thead { display:none; }
   .cb-li-table, .cb-li-table tbody { display:block; width:100%; }
   .cb-li-table tr { display:grid; grid-template-columns:minmax(0,1fr) auto; grid-template-areas:"name total" "qty act"; gap:6px 8px; padding:9px 10px; border-bottom:1px solid var(--border2); align-items:center; }
@@ -1419,7 +1417,7 @@ canvas { display: block; }
   .cb-li-table tbody tr.cb-li-row.editing { background:var(--accent-dim); box-shadow:inset 3px 0 0 var(--accent); }
   .cb-li-table tbody tr.cb-li-row.editing td:first-child { box-shadow:none; }
   .cb-li-table .cb-col-name { grid-area:name; }
-  .cb-li-table .cb-col-size, .cb-li-table .cb-col-each { display:none; }
+  .cb-li-table .cb-col-each { display:none; }
   .cb-li-table .cb-col-qty { grid-area:qty; width:auto; }
   .cb-li-table .cb-col-total { grid-area:total; width:auto; font-size:14px; font-weight:700; }
   .cb-li-table .cb-col-act { grid-area:act; width:auto; }
