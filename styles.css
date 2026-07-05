@@ -1340,13 +1340,22 @@ canvas { display: block; }
 .cb-li-table tbody tr:hover td { background:var(--accent-dim) !important; }
 .cb-li-table tr.editing td { background:var(--accent-dim) !important; }
 .cb-li-table tr.editing td:first-child { box-shadow:inset 3px 0 0 var(--accent); }
-/* The qty stepper + cut-list pill carry their own surface2 fill (a separate,
-   smaller "boxed" highlight nested inside the already-highlighted row/cell).
-   Flatten just those inner controls so only the row-level highlight shows. */
+/* The qty stepper + cut-list pill carry their own borders/fills (surface2,
+   accent-tinted count/add chips) — separate, smaller "boxed" highlights
+   nested inside the already-highlighted row/cell. Flatten every layer of
+   those inner controls (base + hover + empty variants) so only the
+   row-level highlight shows. */
 #cb-results .cb-li-table .cl-stepper,
 #cb-results .cb-li-table .cl-step-btn,
-#cb-results .cb-li-table .cl-qty-input { background:transparent; }
-#cb-results .cb-li-actions .proj-act { background:transparent; }
+#cb-results .cb-li-table .cl-step-btn:hover,
+#cb-results .cb-li-table .cl-qty-input { background:transparent; border-color:transparent; }
+#cb-results .cb-li-actions .proj-act,
+#cb-results .cb-li-actions .proj-act:hover,
+#cb-results .cb-li-actions .proj-act-count,
+#cb-results .cb-li-actions .proj-act-add,
+#cb-results .cb-li-actions .proj-act-add:hover,
+#cb-results .cb-li-actions .proj-act.empty .proj-act-count,
+#cb-results .cb-li-actions .proj-act.empty .proj-act-add { background:transparent; border-color:transparent; }
 .cb-li-table .cb-col-size { width:112px; color:var(--text2); }
 .cb-li-table .cb-col-qty { width:80px; }
 .cb-li-table .cb-col-each { width:72px; text-align:right; color:var(--text2); }
