@@ -481,7 +481,7 @@ function renderCBEditor() {
         + `<div class="cb-rr-2col">${rr('Type', typeSel('carcassType', cbSettings.carcassTypes, 'Carcass type'))}${rr('Base', typeSel('baseType', cbSettings.baseTypes, 'Base'))}</div>`
         + rr('Finish', smart(finishSmart('finish')))
         + hwLine('cabinet'), true)}
-      ${card('Shelves &amp; Partitions', 'cb-live-shelves', (shelfTot > 0 || sec.shelfHardware > 0) ? _cbSecBadge(sec.shelves + sec.shelfHardware) : '',
+      ${card('Panels', 'cb-live-shelves', (shelfTot > 0 || sec.shelfHardware > 0) ? _cbSecBadge(sec.shelves + sec.shelfHardware) : '',
         rr('Fixed shelf', stepper('shelves', line.shelves, 0))
         + rr('Adj. holes', stepper('adjShelves', line.adjShelves, 0))
         + rr('Loose shelf', stepper('looseShelves', line.looseShelves||0, 0))
@@ -719,7 +719,7 @@ function renderCBResults() {
       + kv('Doors', doorsVal)
       + kv('Drawer fronts', drawerFrontsVal)
       + kv('Drawer boxes', drawerBoxesVal)
-      + kv('Interior', parts)
+      + kv('Panels', parts)
       + kv('Hardware', hwAll)
       + kv('Room', line.room)
       + kv('Notes', line.notes);
