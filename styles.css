@@ -1407,12 +1407,11 @@ canvas { display: block; }
 @container cbres (max-width: 640px) {
   .cb-li-table thead { display:none; }
   .cb-li-table, .cb-li-table tbody { display:block; width:100%; }
-  /* 3 tracks (not 2): name needs to span the flexible column so it can grow,
-     but qty must NOT share that column — a "qty" cell placed in a 1fr track
-     stretches to fill it (the stepper going full-width). Col1 auto-sizes to
-     the stepper's own width; col2 is the flexible track name/act share;
-     col3 auto-sizes to the price / stays out of act's way. */
-  .cb-li-table tr { display:grid; grid-template-columns:auto minmax(0,1fr) auto; grid-template-areas:"name name total" "qty act act"; gap:6px 8px; padding:9px 10px; border-bottom:1px solid var(--border2); align-items:center; }
+  /* 3 rows: name+total on top, the qty stepper on its own line, then the
+     action buttons on their own bottom line. (qty must not share a 1fr track
+     with anything or the stepper stretches to fill it — here it sits in its
+     own row and shrinks to content.) */
+  .cb-li-table tr { display:grid; grid-template-columns:minmax(0,1fr) auto; grid-template-areas:"name total" "qty qty" "act act"; gap:6px 8px; padding:9px 10px; border-bottom:1px solid var(--border2); align-items:center; }
   .cb-li-table tbody tr:last-child { border-bottom:none; }
   .cb-li-table tbody td { display:block; border:none; padding:0; }
   /* Card mode: the row is a grid with gaps, so paint the highlight on the ROW
@@ -1433,7 +1432,11 @@ canvas { display: block; }
   .cb-li-table tbody tr.cb-li-row.editing td:first-child { box-shadow:none; }
   .cb-li-table .cb-col-name { grid-area:name; }
   .cb-li-table .cb-col-each { display:none; }
-  .cb-li-table .cb-col-qty { grid-area:qty; width:auto; }
+  /* justify-self:start shrinks the qty cell to its stepper's width instead of
+     stretching across the full-width grid area (the block-level flex stepper
+     would otherwise fill the row). */
+  .cb-li-table .cb-col-qty { grid-area:qty; width:auto; justify-self:start; }
+  .cb-li-table .cb-col-qty .cl-stepper { width:max-content; }
   .cb-li-table .cb-col-total { grid-area:total; width:auto; font-size:14px; font-weight:700; }
   .cb-li-table .cb-col-act { grid-area:act; width:auto; }
   /* Expanded spec row: opt out of the card grid so the td spans full width
@@ -1442,7 +1445,7 @@ canvas { display: block; }
   .cb-li-table tr.cb-li-xrow > td { display:block; border-bottom:none; }
   .cb-li-sub-desktop { display:none; }
   .cb-li-sub-mobile { display:block; }
-  .cb-li-actions { visibility:visible; }
+  .cb-li-actions { visibility:visible; justify-content:flex-start; flex-wrap:wrap; }
 }
 /* Touch-target sizing for the card layout on phones (viewport-based). */
 @media (max-width: 760px) {
