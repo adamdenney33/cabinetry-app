@@ -716,10 +716,10 @@ function renderCBResults() {
       + kv('Carcass', carcass)
       + kv('Back panel', line.backMat)
       + kv('Construction', construction)
+      + kv('Panels', parts)
       + kv('Doors', doorsVal)
       + kv('Drawer fronts', drawerFrontsVal)
       + kv('Drawer boxes', drawerBoxesVal)
-      + kv('Panels', parts)
       + kv('Hardware', hwAll)
       + kv('Room', line.room)
       + kv('Notes', line.notes);
