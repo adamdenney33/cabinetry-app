@@ -1371,6 +1371,23 @@ canvas { display: block; }
 .cb-li-actions { display:flex; gap:2px; justify-content:flex-end; align-items:center; visibility:hidden; }
 .cb-li-table tr:hover .cb-li-actions, .cb-li-table tr.editing .cb-li-actions { visibility:visible; }
 .cb-li-actions .proj-act-label { display:none; }
+/* Expanded detail row for the selected cabinet — spec read-out + cost
+   breakdown, tinted amber to merge with the .editing row above it. */
+.cb-li-xrow > td { padding:0 !important; background:var(--accent-dim) !important; box-shadow:inset 3px 0 0 var(--accent); border-bottom:1px solid var(--border2); }
+.cb-li-xrow:hover > td { background:var(--accent-dim) !important; }
+.cb-li-expand { display:grid; grid-template-columns:1.2fr 1fr; gap:14px 22px; padding:12px 14px 14px; }
+.cb-x-h { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:var(--muted); margin-bottom:7px; }
+.cb-x-list { display:flex; flex-direction:column; gap:5px; margin:0; }
+.cb-x-kv { display:flex; gap:10px; font-size:11px; line-height:1.4; }
+.cb-x-kv dt { flex:0 0 74px; color:var(--muted); }
+.cb-x-kv dd { flex:1; min-width:0; margin:0; color:var(--text); font-weight:500; }
+.cb-x-costrows { display:flex; flex-direction:column; }
+.cb-x-cr { display:flex; justify-content:space-between; gap:12px; font-size:11px; color:var(--text2); padding:2px 0; font-variant-numeric:tabular-nums; }
+.cb-x-cr > span:last-child { font-weight:600; color:var(--text); }
+.cb-x-cr-sub { border-top:1px solid var(--border); margin-top:3px; padding-top:5px; font-weight:700; }
+.cb-x-cr-sub > span { font-weight:700; color:var(--text); }
+.cb-x-mult { font-weight:400; color:var(--muted); font-size:10px; }
+.cb-x-note { font-size:10px; color:var(--muted); margin-top:8px; }
 .cb-li-actions ._cbct-btn, .cb-li-actions .cb-dup-btn, .cb-li-actions .cb-del-btn { flex-shrink:0; }
 .cb-li-add { display:block; width:100%; margin-top:8px; padding:9px 14px; border:1px dashed var(--border); border-radius:8px; background:none; color:var(--muted); font-size:12px; font-weight:600; cursor:pointer; text-align:center; font-family:inherit; transition:border-color .15s, color .15s, background .15s; }
 .cb-li-add:hover { border-color:var(--accent); color:var(--accent); background:var(--accent-dim); }
@@ -1398,20 +1415,25 @@ canvas { display: block; }
      making every cell a darker amber box ("localised highlights of each
      section"). Force the cells transparent so the whole card reads as one
      even highlight. */
-  .cb-li-table tbody tr:nth-child(even) td,
-  .cb-li-table tbody tr:hover td,
-  .cb-li-table tr.editing td { background:transparent !important; }
+  .cb-li-table tbody tr.cb-li-row:nth-child(even) td,
+  .cb-li-table tbody tr.cb-li-row:hover td,
+  .cb-li-table tr.cb-li-row.editing td { background:transparent !important; }
   /* Zebra, hover and editing all ride on the ROW (source order sets the
-     precedence: hover + editing beat zebra) so each card stays one even fill. */
-  .cb-li-table tbody tr:nth-child(even) { background:var(--zebra); }
-  .cb-li-table tbody tr:hover { background:var(--accent-dim); }
-  .cb-li-table tbody tr.editing { background:var(--accent-dim); box-shadow:inset 3px 0 0 var(--accent); }
-  .cb-li-table tbody tr.editing td:first-child { box-shadow:none; }
+     precedence: hover + editing beat zebra) so each card stays one even fill.
+     Scoped to .cb-li-row so the expanded detail row keeps its own amber. */
+  .cb-li-table tbody tr.cb-li-row:nth-child(even) { background:var(--zebra); }
+  .cb-li-table tbody tr.cb-li-row:hover { background:var(--accent-dim); }
+  .cb-li-table tbody tr.cb-li-row.editing { background:var(--accent-dim); box-shadow:inset 3px 0 0 var(--accent); }
+  .cb-li-table tbody tr.cb-li-row.editing td:first-child { box-shadow:none; }
   .cb-li-table .cb-col-name { grid-area:name; }
   .cb-li-table .cb-col-size, .cb-li-table .cb-col-each { display:none; }
   .cb-li-table .cb-col-qty { grid-area:qty; width:auto; }
   .cb-li-table .cb-col-total { grid-area:total; width:auto; font-size:14px; font-weight:700; }
   .cb-li-table .cb-col-act { grid-area:act; width:auto; }
+  /* Expanded detail row: opt out of the card grid, stack the two panels. */
+  .cb-li-table tr.cb-li-xrow { display:block; padding:0; background:none; box-shadow:none; border-bottom:1px solid var(--border2); }
+  .cb-li-table tr.cb-li-xrow > td { display:block; border-bottom:none; }
+  .cb-li-expand { grid-template-columns:1fr; gap:12px; }
   .cb-li-sub-desktop { display:none; }
   .cb-li-sub-mobile { display:block; }
   .cb-li-actions { visibility:visible; }
