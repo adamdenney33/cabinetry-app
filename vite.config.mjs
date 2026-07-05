@@ -22,6 +22,15 @@ import { GUIDES } from './wiki/guides.mjs';
 function copyClassicScriptsPlugin() {
   return {
     name: 'copy-classic-scripts',
+    // sentryVitePlugin hardcodes enforce:'pre' on itself (see @sentry/vite-plugin's
+    // index.js), which puts its closeBundle-based sourcemap-upload scan in Rollup's
+    // "pre" hook tier — run before every plugin without an explicit enforce,
+    // REGARDLESS of array position. Without this, dist/src/*.js(.map) don't exist
+    // yet when Sentry's glob runs, so the classic scripts silently get 0 maps
+    // uploaded (confirmed via a throwaway diag plugin: dist/src existed=false at
+    // that point). Matching enforce:'pre' here moves this plugin into the same
+    // tier, and its earlier position in the `plugins` array wins the tie-break.
+    enforce: 'pre',
     closeBundle() {
       const srcDir = 'src';
       const outDir = 'dist/src';
