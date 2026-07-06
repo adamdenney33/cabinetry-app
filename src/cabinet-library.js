@@ -1,13 +1,18 @@
 // ProCabinet — Cabinet library + smart-suggest dropdowns (extracted from cabinet.js, R.1 split)
 
 // ── Position suggest box as fixed overlay (avoids overflow clipping) ──
+// Anchored to the input's left edge; grows rightward to fit content on one
+// line (never narrower than the input, capped so it can't run past the
+// viewport's right edge).
 /** @param {HTMLElement | null} input @param {HTMLElement | null} box */
 function _posSuggest(input, box) {
   if (!input || !box) return;
   const r = (input.parentElement || input).getBoundingClientRect();
   box.style.position = 'fixed';
   box.style.left = r.left + 'px';
-  box.style.width = r.width + 'px';
+  box.style.width = 'auto';
+  box.style.minWidth = r.width + 'px';
+  box.style.maxWidth = Math.max(160, window.innerWidth - r.left - 12) + 'px';
   box.style.right = 'auto';
   const spaceBelow = window.innerHeight - r.bottom;
   if (spaceBelow < 220) {
