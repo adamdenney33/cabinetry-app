@@ -374,10 +374,13 @@ function _cbSecBadge(v) {
   return `<span class="cb-rc-badge">${window.currency}${Math.round(v)}</span>`;
 }
 
-/** Header/footer live total (line subtotal incl. qty).
+/** Header/footer live total — per-unit price (qty lives on the card, not the
+ *  sidebar). calc.lineSubtotal already multiplies by qty; divide back out.
  *  @param {any} line @param {any} calc */
 function _cbEdTotalHTML(line, calc) {
-  return `${window.currency}${Math.round(calc.lineSubtotal).toLocaleString()}`;
+  const qty = Math.max(1, Number(line.qty) || 1);
+  const unit = calc.lineSubtotal / qty;
+  return `${window.currency}${Math.round(unit).toLocaleString()}`;
 }
 
 // ── Render the active cabinet editor in sidebar ──
@@ -481,7 +484,6 @@ function renderCBEditor() {
   el.innerHTML = `
     <div class="cb-ed-head">
       <input type="text" id="cb-name" class="cb-ed-name" value="${_escHtml(line.name||'')}" placeholder="${_escHtml(displayedName)}" autocomplete="off" oninput="cbUpdateField('name',this.value)">
-      <span class="cb-ed-qty">Qty <input type="number" min="1" value="${line.qty||1}" onchange="cbUpdateField('qty',this.value);if(cbScratchpad)this.value=cbScratchpad.qty"></span>
       <span class="cb-ed-total" id="cb-live-total">${_cbEdTotalHTML(line, c)}</span>
     </div>
     <div class="cb-rc-grid">
