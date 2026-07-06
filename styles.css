@@ -1403,11 +1403,11 @@ canvas { display: block; }
    width (which varies with the resizable sidebar), not the viewport — a plain
    media query can't see a narrow panel on a wide screen. */
 #cb-results { container-type: inline-size; container-name: cbres; }
-/* Below ~640px the panel can't fit all columns (the actions button row alone
-   needs ~236px) without the name squashing, so fall back to a 2-row card per
-   cabinet — the Each column folds away and the dimensions sit in the name
-   sub-line, actions on their own row. */
-@container cbres (max-width: 640px) {
+/* Use the card layout (name/total, then qty, then the action-button row on
+   its own line) for all normal panel widths — only the very widest panels
+   fall back to the single-row table. The card layout is the intended look;
+   the table just packs better on huge screens. */
+@container cbres (max-width: 1100px) {
   .cb-li-table thead { display:none; }
   .cb-li-table, .cb-li-table tbody { display:block; width:100%; }
   /* 3 rows: name+total on top, the qty stepper on its own line, then the
