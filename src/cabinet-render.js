@@ -1,6 +1,17 @@
 // ProCabinet — Cabinet UI rendering (extracted from cabinet.js, R.1 split)
 // All DOM rendering lives here. Reads globals, writes innerHTML.
 
+// W/H/D-labelled dimensions string (e.g. "W 1016 × H 720 × D 560 mm"). A
+// labelled variant of dimsLabelFromMM (which stays plain — it's shared with
+// quotes / cut lists / PDFs). Used in the builder card + expanded spec.
+/** @param {number|string|null|undefined} w @param {number|string|null|undefined} h @param {number|string|null|undefined} d */
+function _dimsWHD(w, h, d) {
+  /** @param {string} lbl @param {any} v */
+  const seg = (lbl, v) => (v != null && v !== '' && !isNaN(Number(v))) ? `${lbl} ${dimDisplayFromMM(Number(v))}` : '';
+  const parts = [seg('W', w), seg('H', h), seg('D', d)].filter(Boolean);
+  return parts.length ? parts.join(' × ') + ' ' + unitLabel() : '';
+}
+
 // ── UI state ──
 let cbExpandedRows = new Set();
 let cbMainView = 'results';
@@ -475,7 +486,7 @@ function renderCBEditor() {
     </div>
     <div class="cb-rc-grid">
       ${card('Cabinet', 'cb-live-cabinet', _cbSecBadge(sec.cabinet + sec.cabinetHardware),
-        rr(`Dims (${unitLabel()})`, `<div class="cb-rc-dims"><input type="text" inputmode="decimal" value="${dimDisplayFromMM(line.w)}" title="Width" onchange="cbUpdateField('w',this.value)"><input type="text" inputmode="decimal" value="${dimDisplayFromMM(line.h)}" title="Height" onchange="cbUpdateField('h',this.value)"><input type="text" inputmode="decimal" value="${dimDisplayFromMM(line.d)}" title="Depth" onchange="cbUpdateField('d',this.value)"></div>`)
+        rr(`Dims (${unitLabel()})`, `<div class="cb-rc-dims"><label class="cb-dim-f"><span>W</span><input type="text" inputmode="decimal" value="${dimDisplayFromMM(line.w)}" title="Width" onchange="cbUpdateField('w',this.value)"></label><label class="cb-dim-f"><span>H</span><input type="text" inputmode="decimal" value="${dimDisplayFromMM(line.h)}" title="Height" onchange="cbUpdateField('h',this.value)"></label><label class="cb-dim-f"><span>D</span><input type="text" inputmode="decimal" value="${dimDisplayFromMM(line.d)}" title="Depth" onchange="cbUpdateField('d',this.value)"></label></div>`)
         + rr('Carcass', smart(matSmart('material', line.material)))
         + rr('Back panel', smart(matSmart('backMat', line.backMat)))
         + `<div class="cb-rr-2col">${rr('Type', typeSel('carcassType', cbSettings.carcassTypes, 'Carcass type'))}${rr('Base', typeSel('baseType', cbSettings.baseTypes, 'Base'))}</div>`
@@ -701,18 +712,26 @@ function renderCBResults() {
     const kv = (label, val) => (val === 0 || val) && String(val).trim() ? `<div class="cb-x-kv"><dt>${label}</dt><dd>${_escHtml(String(val))}</dd></div>` : '';
     /** @param {string} f */
     const fin = (f) => f && f !== 'None' ? f : '';
-    // Interior parts summary (only non-zero counts).
-    const parts = [[line.shelves, 'fixed shelf', 'fixed shelves'], [line.adjShelves, 'adj. shelf', 'adj. shelves'], [line.looseShelves, 'loose shelf', 'loose shelves'], [line.partitions, 'partition', 'partitions'], [line.endPanels, 'end panel', 'end panels']]
-      .filter(([n]) => n > 0).map(([n, s, p]) => `${n} ${n === 1 ? s : p}`).join(', ');
+    // Panels summary (only non-zero counts) incl. any custom panel types.
+    const baseParts = [[line.shelves, 'fixed shelf', 'fixed shelves'], [line.adjShelves, 'adj. shelf', 'adj. shelves'], [line.looseShelves, 'loose shelf', 'loose shelves'], [line.partitions, 'partition', 'partitions'], [line.endPanels, 'end panel', 'end panels']]
+      .filter(([n]) => n > 0).map(([n, s, p]) => `${n} ${n === 1 ? s : p}`);
+    const customPanels = (cbSettings.extraPanelTypes || []).map(/** @param {any} t */ t => { const n = (line.extraPanels && line.extraPanels[t.id]) || 0; return n > 0 ? `${n} ${t.name}` : ''; }).filter(Boolean);
+    const parts = [...baseParts, ...customPanels].join(', ');
     // Hardware across every scope → "Name ×N".
     const hwAll = [...(line.hwItems||[]), ...(line.doorHwItems||[]), ...(line.drawerHwItems||[]), ...(line.shelfHwItems||[]), ...(line.drawerFrontHwItems||[])]
       .filter(h => h && h.name).map(h => `${h.name} ×${h.qty||1}`).join(', ');
+    // Extras → "Label ×qty (£cost)".
+    const extrasVal = (line.extras || []).filter(/** @param {any} e */ e => e && (String(e.label||'').trim() || Number(e.cost))).map(/** @param {any} e */ e => {
+      const q = e.qty == null ? 1 : Number(e.qty) || 1;
+      const label = String(e.label||'').trim() || 'Item';
+      return `${label}${q > 1 ? ` ×${q}` : ''}${Number(e.cost) ? ` (${cur}${e.cost})` : ''}`;
+    }).join(', ');
     const carcass = [line.material, fin(line.finish)].filter(Boolean).join(' · ');
-    const doorsVal = line.doors > 0 ? [`${line.doors} × ${line.doorType||'—'}`, line.doorMat, fin(line.doorFinish)].filter(Boolean).join(' · ') : '';
-    const drawerFrontsVal = line.drawers > 0 ? [`${line.drawers} × ${line.drawerFrontType||'—'}`, line.drawerFrontMat, fin(line.drawerFrontFinish)].filter(Boolean).join(' · ') : '';
+    const doorsVal = line.doors > 0 ? [`${line.doors} × ${line.doorType||'—'}`, line.doorMat, fin(line.doorFinish), line.doorPct ? `${line.doorPct}% of front` : ''].filter(Boolean).join(' · ') : '';
+    const drawerFrontsVal = line.drawers > 0 ? [`${line.drawers} × ${line.drawerFrontType||'—'}`, line.drawerFrontMat, fin(line.drawerFrontFinish), line.drawerPct ? `${line.drawerPct}% of front` : ''].filter(Boolean).join(' · ') : '';
     const drawerBoxesVal = line.drawers > 0 ? [line.drawerInnerMat, line.drawerBoxType, fin(line.drawerBoxFinish)].filter(Boolean).join(' · ') : '';
     const construction = [line.carcassType, line.baseType ? line.baseType + ' base' : ''].filter(Boolean).join(' · ');
-    const spec = kv('Dimensions', dimsLabelFromMM(line.w, line.h, line.d))
+    const spec = kv('Dimensions', _dimsWHD(line.w, line.h, line.d))
       + kv('Carcass', carcass)
       + kv('Back panel', line.backMat)
       + kv('Construction', construction)
@@ -721,6 +740,7 @@ function renderCBResults() {
       + kv('Drawer fronts', drawerFrontsVal)
       + kv('Drawer boxes', drawerBoxesVal)
       + kv('Hardware', hwAll)
+      + kv('Extras', extrasVal)
       + kv('Room', line.room)
       + kv('Notes', line.notes);
     return `<tr class="cb-li-xrow"><td colspan="5"><div class="cb-li-expand"><dl class="cb-x-list">${spec}</dl></div></td></tr>`;
@@ -735,7 +755,7 @@ function renderCBResults() {
     const isActive = idx === cbEditingLineIdx;
     const unitCost = c.matCost + c.labourCost + c.hwCost;
     return `<tr class="cb-li-row${isActive ? ' editing' : ''}" onclick="cbEditCabinetFromOutput(${idx})">
-      <td class="cb-col-name"><span class="cb-li-name">${_escHtml(line.name||'Cabinet '+(idx+1))}</span><span class="cb-li-sub cb-li-sub-desktop">${dimsLabelFromMM(line.w, line.h, line.d)}</span><span class="cb-li-sub cb-li-sub-mobile">${dimsLabelFromMM(line.w, line.h, line.d)}${line.material ? ' · ' + _escHtml(line.material) : ''}</span></td>
+      <td class="cb-col-name"><span class="cb-li-name">${_escHtml(line.name||'Cabinet '+(idx+1))}</span><span class="cb-li-sub cb-li-sub-desktop">${_dimsWHD(line.w, line.h, line.d)}</span><span class="cb-li-sub cb-li-sub-mobile">${_dimsWHD(line.w, line.h, line.d)}${line.material ? ' · ' + _escHtml(line.material) : ''}</span></td>
       <td class="cb-col-qty" onclick="event.stopPropagation()"><div class="cl-stepper">
         <button class="cl-step-btn" style="padding:0 6px" onclick="cbStepLineQty(${idx},-1)" title="Decrease quantity">−</button>
         <input type="number" class="cl-input cl-qty-input" value="${line.qty}" min="1" style="font-size:11px;width:32px;padding:4px 2px" onchange="cbSetLineQty(${idx},this.value)">
