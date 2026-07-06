@@ -1410,11 +1410,10 @@ canvas { display: block; }
 @container cbres (max-width: 1100px) {
   .cb-li-table thead { display:none; }
   .cb-li-table, .cb-li-table tbody { display:block; width:100%; }
-  /* 2 rows: name+total on top; qty stepper + the action buttons together on
-     the bottom row. 3 tracks so qty sits in its own auto column (shrinks to
-     the stepper) while name spans col1+col2 and act spans col2+col3 — a qty
-     cell placed in a 1fr track would stretch the stepper to fill it. */
-  .cb-li-table tr { display:grid; grid-template-columns:auto minmax(0,1fr) auto; grid-template-areas:"name name total" "qty act act"; gap:6px 8px; padding:9px 10px; border-bottom:1px solid var(--border2); align-items:center; }
+  /* 2 rows: name+total on top; the action buttons stay left-aligned on the
+     bottom row (col1) with the qty stepper on the right (col2, under the
+     total). qty in its own auto column shrinks to the stepper. */
+  .cb-li-table tr { display:grid; grid-template-columns:minmax(0,1fr) auto; grid-template-areas:"name total" "act qty"; gap:6px 8px; padding:9px 10px; border-bottom:1px solid var(--border2); align-items:center; }
   .cb-li-table tbody tr:last-child { border-bottom:none; }
   .cb-li-table tbody td { display:block; border:none; padding:0; }
   /* Card mode: the row is a grid with gaps, so paint the highlight on the ROW
