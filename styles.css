@@ -1385,8 +1385,11 @@ canvas { display: block; }
 .cb-li-xrow > td { padding:0 !important; background:var(--accent-dim) !important; box-shadow:inset 3px 0 0 var(--accent); border-bottom:1px solid var(--border2); }
 .cb-li-xrow:hover > td { background:var(--accent-dim) !important; }
 .cb-li-expand { padding:12px 14px 14px; }
-.cb-x-list { display:grid; grid-template-columns:repeat(auto-fill, minmax(240px, 1fr)); gap:6px 24px; margin:0; }
-.cb-x-kv { display:flex; gap:10px; font-size:11px; line-height:1.4; }
+/* Multi-column (not grid) so the spec reads DOWN each column then across —
+   grid auto-flow fills across rows first. break-inside:avoid keeps a label
+   with its value. */
+.cb-x-list { columns:250px; column-gap:24px; margin:0; }
+.cb-x-kv { display:flex; gap:10px; font-size:11px; line-height:1.4; break-inside:avoid; margin-bottom:6px; }
 .cb-x-kv dt { flex:0 0 88px; color:var(--muted); }
 .cb-x-kv dd { flex:1; min-width:0; margin:0; color:var(--text); font-weight:500; }
 .cb-li-actions ._cbct-btn, .cb-li-actions .cb-dup-btn, .cb-li-actions .cb-lib-btn, .cb-li-actions .cb-del-btn { flex-shrink:0; }
