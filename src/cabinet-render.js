@@ -731,19 +731,21 @@ function renderCBResults() {
     const drawerFrontsVal = line.drawers > 0 ? [`${line.drawers} × ${line.drawerFrontType||'—'}`, line.drawerFrontMat, fin(line.drawerFrontFinish), line.drawerPct ? `${line.drawerPct}% of front` : ''].filter(Boolean).join(' · ') : '';
     const drawerBoxesVal = line.drawers > 0 ? [line.drawerInnerMat, line.drawerBoxType, fin(line.drawerBoxFinish)].filter(Boolean).join(' · ') : '';
     const construction = [line.carcassType, line.baseType ? line.baseType + ' base' : ''].filter(Boolean).join(' · ');
-    const spec = kv('Dimensions', _dimsWHD(line.w, line.h, line.d))
+    // Split into two explicit columns: cabinet + panels in col 1, everything
+    // else in col 2 (auto-balancing columns wouldn't pin the split reliably).
+    const col1 = kv('Dimensions', _dimsWHD(line.w, line.h, line.d))
       + kv('Carcass', carcass)
       + kv('Back panel', line.backMat)
       + kv('Construction', construction)
-      + kv('Panels', parts)
-      + kv('Doors', doorsVal)
+      + kv('Panels', parts);
+    const col2 = kv('Doors', doorsVal)
       + kv('Drawer fronts', drawerFrontsVal)
       + kv('Drawer boxes', drawerBoxesVal)
       + kv('Hardware', hwAll)
       + kv('Extras', extrasVal)
       + kv('Room', line.room)
       + kv('Notes', line.notes);
-    return `<tr class="cb-li-xrow"><td colspan="5"><div class="cb-li-expand"><dl class="cb-x-list">${spec}</dl></div></td></tr>`;
+    return `<tr class="cb-li-xrow"><td colspan="5"><div class="cb-li-expand"><dl class="cb-x-list">${col1}</dl><dl class="cb-x-list">${col2}</dl></div></td></tr>`;
   };
   // Line-item table (quote-editor style). Row click selects the cabinet into
   // the editor; qty/actions cells stop propagation. Row Total = pre-markup
@@ -756,18 +758,18 @@ function renderCBResults() {
     const unitCost = c.matCost + c.labourCost + c.hwCost;
     return `<tr class="cb-li-row${isActive ? ' editing' : ''}" onclick="cbEditCabinetFromOutput(${idx})">
       <td class="cb-col-name"><span class="cb-li-name">${_escHtml(line.name||'Cabinet '+(idx+1))}</span><span class="cb-li-sub cb-li-sub-desktop">${_dimsWHD(line.w, line.h, line.d)}</span><span class="cb-li-sub cb-li-sub-mobile">${_dimsWHD(line.w, line.h, line.d)}${line.material ? ' · ' + _escHtml(line.material) : ''}</span></td>
-      <td class="cb-col-qty" onclick="event.stopPropagation()"><div class="cl-stepper">
-        <button class="cl-step-btn" style="padding:0 6px" onclick="cbStepLineQty(${idx},-1)" title="Decrease quantity">−</button>
-        <input type="number" class="cl-input cl-qty-input" value="${line.qty}" min="1" style="font-size:11px;width:32px;padding:4px 2px" onchange="cbSetLineQty(${idx},this.value)">
-        <button class="cl-step-btn" style="padding:0 6px" onclick="cbStepLineQty(${idx},1)" title="Increase quantity">+</button>
+      <td class="cb-col-qty"><div class="cl-stepper" onclick="event.stopPropagation()">
+        <button class="cl-step-btn" style="padding:0 6px" onclick="event.stopPropagation();cbStepLineQty(${idx},-1)" title="Decrease quantity">−</button>
+        <input type="number" class="cl-input cl-qty-input" value="${line.qty}" min="1" style="font-size:11px;width:32px;padding:4px 2px" onclick="event.stopPropagation()" onchange="cbSetLineQty(${idx},this.value)">
+        <button class="cl-step-btn" style="padding:0 6px" onclick="event.stopPropagation();cbStepLineQty(${idx},1)" title="Increase quantity">+</button>
       </div></td>
       <td class="cb-col-each">${fmt0(unitCost)}</td>
       <td class="cb-col-total"><strong>${fmt0(c.lineSubtotal)}</strong></td>
-      <td class="cb-col-act" onclick="event.stopPropagation()"><div class="cb-li-actions">
-        <button class="cb-act-btn cb-lib-btn" onclick="cbAddLineToLibrary(${idx})" title="Save this cabinet as a library template">Add to Library</button>
+      <td class="cb-col-act"><div class="cb-li-actions" onclick="event.stopPropagation()">
+        <button class="cb-act-btn cb-lib-btn" onclick="event.stopPropagation();cbAddLineToLibrary(${idx})" title="Save this cabinet as a library template">Add to Library</button>
         ${_cbCutListProjActHtml(`_cbOpenCabinetCutListsForLine(${idx})`, `_cbNewCutListForLine(${idx})`, line.db_id||'')}
-        <button class="cb-act-btn cb-dup-btn" onclick="_duplicateCabinet(${idx})" title="Duplicate cabinet">⧉</button>
-        <button class="cb-act-btn cb-del-btn" onclick="_cbConfirmDeleteLine(${idx})" title="Delete cabinet">×</button>
+        <button class="cb-act-btn cb-dup-btn" onclick="event.stopPropagation();_duplicateCabinet(${idx})" title="Duplicate cabinet">⧉</button>
+        <button class="cb-act-btn cb-del-btn" onclick="event.stopPropagation();_cbConfirmDeleteLine(${idx})" title="Delete cabinet">×</button>
       </div></td>
     </tr>${isActive ? expandRowHtml(line) : ''}`;
   };
