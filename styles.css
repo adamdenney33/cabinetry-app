@@ -1410,10 +1410,10 @@ canvas { display: block; }
 @container cbres (max-width: 1100px) {
   .cb-li-table thead { display:none; }
   .cb-li-table, .cb-li-table tbody { display:block; width:100%; }
-  /* 2 rows: name+total on top; the action buttons stay left-aligned on the
-     bottom row (col1) with the qty stepper on the right (col2, under the
-     total). qty in its own auto column shrinks to the stepper. */
-  .cb-li-table tr { display:grid; grid-template-columns:minmax(0,1fr) auto; grid-template-areas:"name total" "act qty"; gap:6px 8px; padding:9px 10px; border-bottom:1px solid var(--border2); align-items:center; }
+  /* 2 rows: name+total on top; the qty stepper sits on the left of the bottom
+     row (col1, 1fr) with the action buttons right-aligned (col2, auto, under
+     the total). qty shrinks to the stepper via justify-self:start. */
+  .cb-li-table tr { display:grid; grid-template-columns:minmax(0,1fr) auto; grid-template-areas:"name total" "qty act"; gap:6px 8px; padding:9px 10px; border-bottom:1px solid var(--border2); align-items:center; }
   .cb-li-table tbody tr:last-child { border-bottom:none; }
   .cb-li-table tbody td { display:block; border:none; padding:0; }
   /* Card mode: the row is a grid with gaps, so paint the highlight on the ROW
@@ -1447,7 +1447,7 @@ canvas { display: block; }
   .cb-li-table tr.cb-li-xrow > td { display:block; border-bottom:none; }
   .cb-li-sub-desktop { display:none; }
   .cb-li-sub-mobile { display:block; }
-  .cb-li-actions { visibility:visible; justify-content:flex-start; flex-wrap:wrap; }
+  .cb-li-actions { visibility:visible; justify-content:flex-end; flex-wrap:wrap; }
 }
 /* Touch-target sizing for the card layout on phones (viewport-based). */
 @media (max-width: 760px) {
