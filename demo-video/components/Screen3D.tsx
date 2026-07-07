@@ -183,12 +183,6 @@ export const Screen3D: React.FC<{
         </div>
       </AbsoluteFill>
       {/* speed badge — makes the speed-up an intentional flex */}
-      {speed > 1.05 && (
-        <div style={{ position: 'absolute', top: 42, right: 56, color: 'rgba(255,255,255,0.75)', fontSize: 15, fontWeight: 600, textShadow: '0 2px 12px rgba(0,0,0,0.8)', opacity: interpolate(frame, [6, 16], [0, 1], clampOpts) }}>
-          {speed}× speed · real app
-        </div>
-      )}
-      {kicker && <Kicker3D n={kicker.n} label={kicker.label} dur={dur} />}
       {lines && <Cap3D lines={lines} dur={dur} />}
       {children}
     </AbsoluteFill>

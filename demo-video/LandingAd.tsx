@@ -54,92 +54,88 @@ const SHOTS: Shot[] = [
 
   // ── CABINET BUILDER — one continuous take ──
   { key: 'br1', dur: 90, el: (d) => <SectionBreak tab="cabinet" title="Custom Cabinet Quote Builder" sub="Set your rates and times once — then let the builder do the maths." dur={d} /> },
-  // trim 3.0 opens ON the My Rates moment (cursor already over the button);
-  // camera: full screen → zoom into the rates editor → stay on the sidebar
-  // through rates + builder specs → ONE slow zoom-out to the whole screen
-  // (re-priced cards in view, stock tab clicked) → ease into the stock editor.
-  clipShot('cabinet', 530, 'cabinet-tour.mp4', 3.0, 1.6,
+  // v10: the take is pre-staged — it OPENS with My Rates already on screen
+  // and a cabinet already selected. Camera: full screen (cursor on the tab)
+  // → rates editor → full-screen ZOOM-OUT for the switch to Cabinet Builder
+  // → spec edits → the one zoom-out with the re-priced cards → stock editor.
+  clipShot('cabinet', 483, 'cabinet-tour.mp4', 0.7, 1.5,
     [
       { f: 0, s: 1.02, rx: 4, ry: 10 },
-      { f: 24, s: 1.02, rx: 0, ry: 0 },                    // full screen, mouse on My Rates
-      { f: 48, s: 1.02 },
-      { f: 78, s: 1.75, x: 250, y: 330 },                  // zoom into the rates editor
-      { f: 115, s: 1.75, x: 250, y: 390 },
-      { f: 155, s: 1.7, x: 250, y: 470 },                  // scrolling the full rates editor
-      { f: 228, s: 1.7, x: 250, y: 520 },
-      { f: 250, s: 1.75, x: 245, y: 360 },                 // builder: dims typed
-      { f: 304, s: 1.75, x: 245, y: 480 },                 // doors/panels steppers
-      { f: 358, s: 1.75, x: 245, y: 540 },                 // drawer fronts/boxes
-      { f: 386, s: 1.75, x: 245, y: 500 },
-      { f: 422, s: 1.02, x: 720, y: 450 },                 // the ONE slow zoom-out: whole screen, cards in view
-      { f: 470, s: 1.02 },                                  // hold — stock tab clicked in view
-      { f: 502, s: 1.6, x: 270, y: 400 },                  // ease into the stock editor
-      { f: 528, s: 1.6, x: 270, y: 420 },
+      { f: 20, s: 1.02, rx: 0, ry: 0 },                    // full screen: My Rates open
+      { f: 45, s: 1.75, x: 250, y: 330 },                  // zoom into the rates editor
+      { f: 90, s: 1.75, x: 250, y: 400 },
+      { f: 120, s: 1.7, x: 250, y: 480 },                  // full rates scroll
+      { f: 148, s: 1.7, x: 250, y: 500 },
+      { f: 150, s: 1.02, x: 720, y: 450 },                 // zoom OUT: the switch to Cabinet Builder
+      { f: 190, s: 1.02 },
+      { f: 212, s: 1.75, x: 245, y: 360 },                 // dims typed
+      { f: 240, s: 1.75, x: 245, y: 440 },                 // doors stepper
+      { f: 290, s: 1.75, x: 245, y: 520 },                 // drawer fronts/boxes
+      { f: 330, s: 1.75, x: 245, y: 540 },
+      { f: 352, s: 1.02, x: 720, y: 450 },                 // the one zoom-out: re-priced cards
+      { f: 396, s: 1.02 },                                  // stock tab clicked in view
+      { f: 420, s: 1.6, x: 270, y: 400 },                  // stock editor
+      { f: 478, s: 1.6, x: 270, y: 420 },
     ],
-    'Cabinet Builder',
+    undefined,
     [
-      { at: 20, text: <>Your labour rate, markups and {B('per-step times')} — set once.</> },
-      { at: 160, text: <>Carcass, panels, doors, bases — {B('every rate, one editor')}.</> },
-      { at: 252, text: <>Type the {B('dimensions')}, step the {B('doors and drawers')} — priced as you build.</> },
-      { at: 362, text: <>Drawer fronts, boxes, hardware — {B('every spec')} works for its price.</> },
-      { at: 400, text: <>Change a number — {B('every cabinet re-prices instantly')}.</> },
-      { at: 465, text: <>Your {B('stock library')} feeds it all — {B('low-stock alerts')} included.</> },
+      { at: 16, text: <>Your labour rate, markups and {B('per-step times')} — set once.</> },
+      { at: 100, text: <>Carcass, panels, doors, bases — {B('every rate, one editor')}.</> },
+      { at: 160, text: <>One tab over — {B('the Cabinet Builder')}.</> },
+      { at: 216, text: <>Type the {B('dimensions')}, step the {B('doors and drawers')} — priced as you build.</> },
+      { at: 300, text: <>Drawer fronts, boxes, hardware — {B('every spec')} works for its price.</> },
+      { at: 356, text: <>Change a number — {B('every cabinet re-prices instantly')}.</> },
+      { at: 424, text: <>Your {B('stock library')} feeds it all — {B('low-stock alerts')} included.</> },
     ], 11),
 
   // ── LIVE LINK — one continuous take, ends on the Stripe deposit checkout ──
   { key: 'br2', dur: 90, el: (d) => <SectionBreak tab="quotes" title="The Live Link" sub="Send a link, not a PDF — your customer signs off and pays a deposit." dur={d} /> },
-  clipShot('livelink', 514, 'live-link-tour.mp4', 1.8, 1.4,
+  clipShot('livelink', 465, 'live-link-tour.mp4', 1.8, 1.55,
     [
       { f: 0, s: 1.15, rx: 6, ry: -16 },
-      { f: 24, s: 1.7, x: 250, y: 340, rx: 0, ry: 0 },     // quote sidebar editor
-      { f: 95, s: 1.7, x: 250, y: 480 },
-      { f: 115, s: 1.7, x: 240, y: 400, ry: 4 },           // live-link controls (payment ON)
-      { f: 205, s: 1.7, x: 240, y: 460, ry: 0 },
-      { f: 232, s: 1.05 },                                  // breathe: page swap
-      { f: 258, s: 1.5, x: 720, y: 400 },                  // the customer page
-      { f: 330, s: 1.6, x: 620, y: 500 },
-      { f: 400, s: 1.5, x: 700, y: 450 },                  // Accept & pay clicked
-      { f: 430, s: 1.7, x: 720, y: 450 },                  // Stripe deposit sheet
-      { f: 510, s: 1.7, x: 720, y: 450 },
+      { f: 22, s: 1.7, x: 250, y: 340, rx: 0, ry: 0 },     // quote sidebar editor
+      { f: 86, s: 1.7, x: 250, y: 480 },
+      { f: 104, s: 1.7, x: 240, y: 400, ry: 4 },           // live-link controls (payment ON)
+      { f: 185, s: 1.7, x: 240, y: 460, ry: 0 },
+      { f: 210, s: 1.05 },                                  // breathe: page swap
+      { f: 233, s: 1.5, x: 720, y: 400 },                  // the customer page
+      { f: 298, s: 1.6, x: 620, y: 500 },
+      { f: 361, s: 1.5, x: 700, y: 450 },                  // Accept & pay clicked
+      { f: 388, s: 1.7, x: 720, y: 450 },                  // Stripe deposit sheet
+      { f: 461, s: 1.7, x: 720, y: 450 },
     ],
-    'The Live Link',
+    undefined,
     [
-      { at: 20, text: <>Cabinets drop onto the quote — {B('lines, pricing, totals')} in one sidebar.</> },
-      { at: 120, text: <>Turn on {B('online payment')}, optional items and {B('editable specs')}.</> },
-      { at: 262, text: <>Your customer opens a {B('live page')} — the full quote, on their phone.</> },
-      { at: 425, text: <>One tap: they {B('pay the deposit')} — {B('secured by Stripe')}.</> },
+      { at: 18, text: <>Cabinets drop onto the quote — {B('lines, pricing, totals')} in one sidebar.</> },
+      { at: 108, text: <>Turn on {B('online payment')}, optional items and {B('editable specs')}.</> },
+      { at: 237, text: <>Your customer opens a {B('live page')} — the full quote, on their phone.</> },
+      { at: 384, text: <>One tap: they {B('pay the deposit')} — {B('secured by Stripe')}.</> },
     ], 12),
 
   // ── AUTO-SCHEDULE — one continuous take, opens on the Xero-synced invoice ──
   { key: 'br3', dur: 90, el: (d) => <SectionBreak tab="schedule" title="Auto-Schedule Production" sub="Set your hours and a priority — work allocates itself." dur={d} /> },
-  clipShot('schedule', 405, 'schedule-tour.mp4', 0.6, 1.4,
+  clipShot('schedule', 365, 'schedule-tour.mp4', 0.6, 1.55,
     [
       { f: 0, s: 1.2, rx: -6, ry: 15 },
-      { f: 18, s: 1.45, x: 1050, y: 520, rx: 0, ry: 0 },   // ✓ Xero chip on the order
-      { f: 60, s: 1.45, x: 1050, y: 540 },
-      { f: 80, s: 1.6, x: 240, y: 500 },                   // order sidebar opens
-      { f: 110, s: 1.7, x: 240, y: 700 },                  // scrolling to the bottom…
-      { f: 165, s: 1.7, x: 240, y: 780 },                  // …full Schedule block in view
-      { f: 245, s: 1.7, x: 240, y: 800 },
-      { f: 262, s: 1.05, ry: -4 },                          // tab swap breathe
-      { f: 285, s: 1.5, x: 150, y: 430, ry: 0 },           // priority steppers
-      { f: 330, s: 1.25, x: 750, y: 460 },                 // calendar reflows
-      { f: 400, s: 1.25, x: 780, y: 470 },
+      { f: 16, s: 1.45, x: 1050, y: 520, rx: 0, ry: 0 },   // ✓ Xero chip on the order
+      { f: 54, s: 1.45, x: 1050, y: 540 },
+      { f: 72, s: 1.6, x: 240, y: 500 },                   // order sidebar opens
+      { f: 99, s: 1.7, x: 240, y: 700 },                   // scrolling to the bottom…
+      { f: 149, s: 1.7, x: 240, y: 780 },                  // …full Schedule block in view
+      { f: 221, s: 1.7, x: 240, y: 800 },
+      { f: 237, s: 1.05, ry: -4 },                          // tab swap breathe
+      { f: 257, s: 1.5, x: 150, y: 430, ry: 0 },           // priority steppers
+      { f: 298, s: 1.25, x: 750, y: 460 },                 // calendar reflows
+      { f: 361, s: 1.25, x: 780, y: 470 },
     ],
-    'Auto-Schedule',
+    undefined,
     [
-      { at: 16, text: <>Invoice {B('synced to Xero')} — accounting handled.</> },
-      { at: 120, text: <>Every order carries its own {B('schedule block')} — auto on, priority, hours, dates.</> },
-      { at: 290, text: <>Bump a {B('priority')} — the calendar {B('reflows live')} around it.</> },
+      { at: 14, text: <>Invoice {B('synced to Xero')} — accounting handled.</> },
+      { at: 108, text: <>Every order carries its own {B('schedule block')} — auto on, priority, hours, dates.</> },
+      { at: 262, text: <>Bump a {B('priority')} — the calendar {B('reflows live')} around it.</> },
     ], 13),
 
-  // ── quick hit ──
-  clipShot('dash1', 56, 'dashboard-overview.mp4', 0, 1.9,
-    [{ f: 0, s: 1.08, ry: -11 }, { f: 52, s: 1.22, ry: 4 }],
-    'Dashboard',
-    [{ at: 4, text: <>Your {B('whole business')} on one screen.</> }], 24),
-
-  { key: 'outro', dur: 178, el: (d) => <AdOutro dur={d} /> },
+  { key: 'outro', dur: 162, el: (d) => <AdOutro dur={d} /> },
 ];
 
 const X = 5;
