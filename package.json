@@ -21,7 +21,7 @@
     "render:ig": "node scripts/render-ig.mjs",
     "pdf:ig": "python3 scripts/build-ig-pdfs.py",
     "studio:ig-reel": "remotion studio remotion-ig/reel-entry.ts --public-dir=remotion-loom/public --no-open --port 3031",
-    "studio:demo": "remotion studio demo-video/index.ts --no-open --port 3034",
+    "studio:demo": "remotion studio demo-video/index.ts --public-dir=demo-video/public --no-open --port 3034",
     "render:ig-reel": "node scripts/render-reel.mjs",
     "render:loom-email": "remotion render remotion-loom/index.ts loom-email marketing/videos/loom-quote-email.mp4 --public-dir=remotion-loom/public",
     "render:loom-reel": "remotion render remotion-loom/index.ts loom-reel marketing/videos/loom-quote-reel.mp4 --public-dir=remotion-loom/public",
