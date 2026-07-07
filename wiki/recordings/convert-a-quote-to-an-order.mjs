@@ -31,12 +31,14 @@ export async function record(page, meta) {
   await clickThrough(page, COOPER_CREATE);
 
   // 4. The app lands on the Orders tab with the new order in the list.
-  await page.waitForSelector('.order-card', { timeout: 15_000 });
+  //    Scoped to #panel-orders — an unscoped .order-card resolves first to a
+  //    hidden card rendered in another panel at boot, and the wait times out.
+  await page.waitForSelector('#panel-orders .order-card', { timeout: 15_000 });
   await settle(page, 1000);
 
   // 5. Glide over the new order's status pipeline, then its value.
-  await glideTo(page, '.order-card:has-text("Cooper") .oc-pipeline');
+  await glideTo(page, '#panel-orders .order-card:has-text("Cooper") .oc-pipeline');
   await settle(page, 1200);
-  await glideTo(page, '.order-card:has-text("Cooper")');
+  await glideTo(page, '#panel-orders .order-card:has-text("Cooper")');
   await settle(page, 2000);
 }

@@ -557,7 +557,7 @@ BEGIN
   -- recordings themselves persist 65 back, so without this a re-record would
   -- type the value already shown.
   INSERT INTO public.business_info (user_id, name, phone, email, address, default_units, unit_format, default_labour_rate, onboarding_state)
-       VALUES (uid, 'Oakline Cabinetry', '0117 900 1234', 'hello@oakline.example',
+       VALUES (uid, 'Pro Cabinet Co', '0117 900 1234', 'hello@procabinet.example',
                'Unit 9, Ashton Trade Park, Bristol BS3 2JJ',
                'mm', '{"mode":"mm"}', 75,
                jsonb_build_object(
