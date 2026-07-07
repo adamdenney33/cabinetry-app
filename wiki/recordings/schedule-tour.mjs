@@ -31,10 +31,16 @@ export async function record(page, meta) {
   const open = await page.$eval('#po-sched-details', (el) => el.hasAttribute('open')).catch(() => false);
   if (!open) await clickThrough(page, '#po-sched-details summary');
   await page.waitForSelector('#po-priority', { timeout: 8_000 });
-  await settle(page, 700);
+  // Scroll the sidebar fully to the bottom so the WHOLE schedule block
+  // (toggles, priority, hours, start/due dates) is on screen.
+  await glideTo(page, '#po-sched-details');
+  for (let i = 0; i < 8; i++) { await page.mouse.wheel(0, 90); await page.waitForTimeout(90); }
+  await settle(page, 900);
   await clickThrough(page, '#po-priority-wrap .step-btn[aria-label="Increase"]');
   await settle(page, 600);
   await clickThrough(page, '#po-hours-override');
+  await settle(page, 700);
+  for (let i = 0; i < 5; i++) { await page.mouse.wheel(0, 90); await page.waitForTimeout(90); }
   await settle(page, 1300);
 
   // — Schedule tab: priority change reflows the calendar live —

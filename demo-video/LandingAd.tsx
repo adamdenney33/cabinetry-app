@@ -54,25 +54,31 @@ const SHOTS: Shot[] = [
 
   // ── CABINET BUILDER — one continuous take ──
   { key: 'br1', dur: 90, el: (d) => <SectionBreak tab="cabinet" title="Custom Cabinet Quote Builder" sub="Set your rates and times once — then let the builder do the maths." dur={d} /> },
-  clipShot('cabinet', 448, 'cabinet-tour.mp4', 0.8, 1.3,
+  clipShot('cabinet', 568, 'cabinet-tour.mp4', 0.9, 1.6,
     [
       { f: 0, s: 1.15, rx: 6, ry: 16 },
-      { f: 26, s: 1.75, x: 250, y: 330, rx: 0, ry: 0 },   // My Rates fields
-      { f: 105, s: 1.75, x: 250, y: 360 },
-      { f: 140, s: 1.5, x: 1050, y: 300, ry: 5 },          // list re-prices
-      { f: 178, s: 1.75, x: 245, y: 380, ry: 0 },          // builder spec editor
-      { f: 268, s: 1.75, x: 245, y: 430 },
-      { f: 288, s: 1.3, x: 800, y: 400, ry: -6 },          // stock library
-      { f: 330, s: 1.7, x: 260, y: 400, ry: 0 },           // stock editor
-      { f: 425, s: 1.7, x: 260, y: 430 },
-      { f: 444, s: 1.4, x: 500, y: 400 },
+      { f: 48, s: 1.75, x: 250, y: 330, rx: 0, ry: 0 },   // My Rates: labour + markup typed
+      { f: 110, s: 1.75, x: 250, y: 400 },
+      { f: 150, s: 1.7, x: 250, y: 480, ry: 3 },           // scrolling the full rates editor
+      { f: 225, s: 1.7, x: 250, y: 520, ry: 0 },
+      { f: 240, s: 1.5, x: 1050, y: 300, ry: 5 },          // list re-prices
+      { f: 266, s: 1.75, x: 245, y: 360, ry: 0 },          // builder: dims typed
+      { f: 315, s: 1.75, x: 245, y: 480 },                 // doors/panels steppers
+      { f: 370, s: 1.75, x: 245, y: 540 },                 // drawer fronts/boxes
+      { f: 425, s: 1.75, x: 245, y: 500 },
+      { f: 440, s: 1.5, x: 1050, y: 350, ry: -5 },         // re-priced line
+      { f: 470, s: 1.65, x: 270, y: 400, ry: 0 },          // stock editor
+      { f: 555, s: 1.65, x: 270, y: 430 },
+      { f: 564, s: 1.4, x: 500, y: 400 },
     ],
     'Cabinet Builder',
     [
-      { at: 24, text: <>Your labour rate and {B('per-step times')} — set once.</> },
-      { at: 140, text: <>Every cabinet {B('re-prices instantly')} from your numbers.</> },
-      { at: 182, text: <>Dimensions, carcass, doors, drawers — {B('every spec, one editor')}.</> },
-      { at: 292, text: <>Your {B('stock library')} feeds it all — costs and {B('low-stock alerts')} included.</> },
+      { at: 55, text: <>Your labour rate, markups and {B('per-step times')} — set once.</> },
+      { at: 150, text: <>Carcass, panels, doors, bases — {B('every rate, one editor')}.</> },
+      { at: 240, text: <>Change a number — {B('every cabinet re-prices instantly')}.</> },
+      { at: 270, text: <>Type the {B('dimensions')}, step the {B('doors and drawers')} — priced as you build.</> },
+      { at: 380, text: <>Drawer fronts, boxes, hardware — {B('every spec')} works for its price.</> },
+      { at: 475, text: <>Your {B('stock library')} feeds it all — costs and {B('low-stock alerts')} included.</> },
     ], 11),
 
   // ── LIVE LINK — one continuous take, ends on the Stripe deposit checkout ──
@@ -101,23 +107,25 @@ const SHOTS: Shot[] = [
 
   // ── AUTO-SCHEDULE — one continuous take, opens on the Xero-synced invoice ──
   { key: 'br3', dur: 90, el: (d) => <SectionBreak tab="schedule" title="Auto-Schedule Production" sub="Set your hours and a priority — work allocates itself." dur={d} /> },
-  clipShot('schedule', 397, 'schedule-tour.mp4', 1.0, 1.3,
+  clipShot('schedule', 405, 'schedule-tour.mp4', 0.6, 1.4,
     [
       { f: 0, s: 1.2, rx: -6, ry: 15 },
-      { f: 20, s: 1.5, x: 1050, y: 520, rx: 0, ry: 0 },    // ✓ Xero chip on the order
-      { f: 70, s: 1.5, x: 1050, y: 540 },
-      { f: 95, s: 1.75, x: 240, y: 770 },                  // order's Schedule block
-      { f: 215, s: 1.75, x: 240, y: 790 },
-      { f: 240, s: 1.05, ry: -4 },                          // tab swap breathe
-      { f: 268, s: 1.5, x: 150, y: 430, ry: 0 },           // priority steppers
+      { f: 18, s: 1.45, x: 1050, y: 520, rx: 0, ry: 0 },   // ✓ Xero chip on the order
+      { f: 60, s: 1.45, x: 1050, y: 540 },
+      { f: 80, s: 1.6, x: 240, y: 500 },                   // order sidebar opens
+      { f: 110, s: 1.7, x: 240, y: 700 },                  // scrolling to the bottom…
+      { f: 165, s: 1.7, x: 240, y: 780 },                  // …full Schedule block in view
+      { f: 245, s: 1.7, x: 240, y: 800 },
+      { f: 262, s: 1.05, ry: -4 },                          // tab swap breathe
+      { f: 285, s: 1.5, x: 150, y: 430, ry: 0 },           // priority steppers
       { f: 330, s: 1.25, x: 750, y: 460 },                 // calendar reflows
-      { f: 393, s: 1.25, x: 780, y: 470 },
+      { f: 400, s: 1.25, x: 780, y: 470 },
     ],
     'Auto-Schedule',
     [
       { at: 16, text: <>Invoice {B('synced to Xero')} — accounting handled.</> },
-      { at: 100, text: <>Every order carries its own {B('schedule block')} — auto on, priority, hours.</> },
-      { at: 245, text: <>Bump a {B('priority')} — the calendar {B('reflows live')} around it.</> },
+      { at: 120, text: <>Every order carries its own {B('schedule block')} — auto on, priority, hours, dates.</> },
+      { at: 290, text: <>Bump a {B('priority')} — the calendar {B('reflows live')} around it.</> },
     ], 13),
 
   // ── quick hit ──

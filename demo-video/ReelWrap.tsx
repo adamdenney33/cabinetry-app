@@ -12,8 +12,8 @@ import { clampOpts, EASE_OUT } from './primitives';
 const W = 1080;
 const H = 1920;
 export const REEL_SPEED = 1.1;
-// source: 1875 frames @30 → reel duration
-export const REEL_DUR = Math.ceil(1875 / REEL_SPEED);
+// source: 2003 frames @30 → reel duration
+export const REEL_DUR = Math.ceil(2003 / REEL_SPEED);
 
 export const ReelWrap: React.FC = () => {
   const frame = useCurrentFrame();
