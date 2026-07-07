@@ -1,7 +1,10 @@
 /**
- * LandingAd v5 — cabinet-tab-first cut.
+ * LandingAd v6 — cabinet-tab-first cut.
  *
- * v5 notes: bare white text on dark (no pills/cards), flat oversized break
+ * v6: each of the three chapters plays as ONE continuous, uncut take
+ * (cabinet-tour / live-link-tour / schedule-tour recordings) with a single
+ * long camera path — no jump cuts within a section.
+ * Carried over: bare white text on dark (no pills/cards), flat oversized break
  * icons, no caption bullets, deep-Z screen entrances, longer editor dwell
  * time (rates + builder sidebar), live-link chapter shows the quote sidebar
  * editor → live-link controls → the ACTUAL customer /q page (Optional +
@@ -49,78 +52,67 @@ const clipShot = (
 const SHOTS: Shot[] = [
   { key: 'intro', dur: 90, el: (d) => <AdIntro dur={d} /> },
 
-  // ── CABINET BUILDER ──
+  // ── CABINET BUILDER — one continuous take ──
   { key: 'br1', dur: 90, el: (d) => <SectionBreak tab="cabinet" title="Custom Cabinet Quote Builder" sub="Set your rates and times once — then let the builder do the maths." dur={d} /> },
-
-  // My Rates editor — long dwell on the actual rate fields (no gate)
-  clipShot('rates1', 120, 'set-up-your-rates.mp4', 4.4, 0.95,
-    [{ f: 0, s: 1.6, x: 270, y: 310, ry: -16, rx: 5 }, { f: 20, s: 1.8, x: 250, y: 330, ry: 0, rx: 0 }, { f: 70, s: 1.8, x: 250, y: 380 }, { f: 95, s: 1.5, x: 700, y: 350, ry: 4 }, { f: 116, s: 1.5, x: 800, y: 320 }],
-    'My Rates',
+  clipShot('cabinet', 466, 'cabinet-tour.mp4', 0.8, 1.25,
     [
-      { at: 8, text: <>Your labour rate and {B('per-step times')} — set once.</> },
-      { at: 78, text: <>Every price is built from {B('your numbers')}.</> },
+      { f: 0, s: 1.15, rx: 6, ry: 16 },
+      { f: 28, s: 1.75, x: 250, y: 330, rx: 0, ry: 0 },   // My Rates fields
+      { f: 120, s: 1.75, x: 250, y: 360 },
+      { f: 150, s: 1.5, x: 1050, y: 300, ry: 5 },          // list re-prices
+      { f: 185, s: 1.75, x: 245, y: 380, ry: 0 },          // builder spec editor
+      { f: 280, s: 1.75, x: 245, y: 430 },
+      { f: 302, s: 1.3, x: 800, y: 400, ry: -6 },          // stock library
+      { f: 345, s: 1.7, x: 260, y: 400, ry: 0 },           // stock editor
+      { f: 440, s: 1.7, x: 260, y: 430 },
+      { f: 462, s: 1.4, x: 500, y: 400 },
+    ],
+    'Cabinet Builder',
+    [
+      { at: 26, text: <>Your labour rate and {B('per-step times')} — set once.</> },
+      { at: 148, text: <>Every cabinet {B('re-prices instantly')} from your numbers.</> },
+      { at: 190, text: <>Dimensions, carcass, doors, drawers — {B('every spec, one editor')}.</> },
+      { at: 305, text: <>Your {B('stock library')} feeds it all — costs and {B('low-stock alerts')} included.</> },
     ], 11),
 
-  // Builder sidebar — the spec being built, long dwell
-  clipShot('build1', 110, 'build-and-price-a-cabinet.mp4', 3.0, 0.95,
-    [{ f: 0, s: 1.65, x: 250, y: 280, ry: -16, rx: 6 }, { f: 20, s: 1.85, x: 235, y: 290, ry: 0, rx: 0 }, { f: 105, s: 1.85, x: 235, y: 340 }],
-    'Cabinet Builder',
-    [{ at: 8, text: <>Type the {B('dimensions')}, pick the {B('carcass material')} — right in the sidebar.</> }], 13),
-  clipShot('build2', 92, 'build-and-price-a-cabinet.mp4', 4.6, 0.95,
-    [{ f: 0, s: 1.85, x: 235, y: 590, ry: 13 }, { f: 16, s: 1.85, x: 235, y: 540, ry: 0 }, { f: 88, s: 1.85, x: 235, y: 480 }],
-    'Cabinet Builder',
-    [{ at: 6, text: <>Doors, panels, drawer fronts — {B('every spec')}, one editor.</> }], 14),
-  clipShot('build3', 90, 'build-and-price-a-cabinet.mp4', 5.7, 1.0,
-    [{ f: 0, s: 1.5, x: 1020, y: 320, ry: -13 }, { f: 18, s: 1.6, x: 1050, y: 390, ry: 0 }, { f: 86, s: 1.6, x: 1050, y: 430 }],
-    'Cabinet Builder',
-    [{ at: 6, text: <>Materials, labour, markup, tax — {B('priced live')} as you build.</> }], 15),
-
-  // Stock feeds the builder
-  clipShot('stock1', 66, 'stock-and-materials.mp4', 2.2, 1.25,
-    [{ f: 0, s: 1.55, x: 280, y: 350, ry: -14 }, { f: 14, s: 1.65, x: 260, y: 390, ry: 0 }, { f: 62, s: 1.65, x: 260, y: 410 }],
-    'Stock Library',
-    [{ at: 5, text: <>Your {B('stock library')} feeds it all — sheet goods, hardware, edge banding.</> }], 16),
-  clipShot('stock2', 54, 'stock-and-materials.mp4', 4.7, 1.25,
-    [{ f: 0, s: 1.65, x: 260, y: 430 }, { f: 50, s: 1.65, x: 280, y: 440, ry: 8 }],
-    'Stock Library',
-    [{ at: 4, text: <>Costs and {B('low-stock alerts')}, straight into every quote.</> }], 17),
-
-  // ── LIVE LINK ──
+  // ── LIVE LINK — one continuous take ──
   { key: 'br2', dur: 90, el: (d) => <SectionBreak tab="quotes" title="The Live Link" sub="Send a link, not a PDF — your customer signs off and pays a deposit." dur={d} /> },
-
-  // the quote sidebar editor: line items + totals
-  clipShot('liveSide', 96, 'live-link-tour.mp4', 2.2, 1.0,
-    [{ f: 0, s: 1.55, x: 260, y: 320, ry: -15, rx: 5 }, { f: 18, s: 1.75, x: 245, y: 340, ry: 0, rx: 0 }, { f: 60, s: 1.75, x: 245, y: 480 }, { f: 92, s: 1.75, x: 245, y: 520 }],
-    'Quote Editor',
-    [{ at: 6, text: <>Cabinets drop onto the quote — {B('lines, pricing, totals')} in one sidebar.</> }], 18),
-  // live-link controls: toggles, optional lines, editable specs
-  clipShot('liveCtl', 84, 'live-link-tour.mp4', 7.0, 1.05,
-    [{ f: 0, s: 1.6, x: 250, y: 350, ry: 12 }, { f: 16, s: 1.7, x: 240, y: 400, ry: 0 }, { f: 80, s: 1.7, x: 240, y: 460 }],
-    'Live Link Controls',
-    [{ at: 6, text: <>Choose what customers can do — {B('optional items')}, {B('editable specs')}, deposits.</> }], 19),
-  // the ACTUAL customer page: quote, Optional + Edit chips, spec editor
-  clipShot('liveCust', 156, 'live-link-tour.mp4', 12.8, 0.85,
-    [{ f: 0, s: 1.1, rx: 6, ry: 15 }, { f: 22, s: 1.35, x: 720, y: 380, rx: 0, ry: 0 }, { f: 80, s: 1.55, x: 620, y: 470 }, { f: 130, s: 1.55, x: 620, y: 520 }, { f: 152, s: 1.5, x: 700, y: 520 }],
-    'What the customer sees',
+  clipShot('livelink', 417, 'live-link-tour.mp4', 1.8, 1.25,
     [
-      { at: 8, text: <>Your customer opens a {B('live page')} — the full quote, on their phone.</> },
-      { at: 80, text: <>They tick options, {B('edit specs you unlock')}, and {B('pay the deposit')}.</> },
-    ], 20),
+      { f: 0, s: 1.15, rx: 6, ry: -16 },
+      { f: 26, s: 1.7, x: 250, y: 340, rx: 0, ry: 0 },     // quote sidebar editor
+      { f: 100, s: 1.7, x: 250, y: 480 },
+      { f: 128, s: 1.7, x: 240, y: 400, ry: 4 },           // live-link controls
+      { f: 215, s: 1.7, x: 240, y: 460, ry: 0 },
+      { f: 242, s: 1.05 },                                  // breathe: page swap
+      { f: 272, s: 1.5, x: 720, y: 400 },                  // the customer page
+      { f: 330, s: 1.6, x: 620, y: 500 },
+      { f: 413, s: 1.6, x: 660, y: 520 },
+    ],
+    'The Live Link',
+    [
+      { at: 24, text: <>Cabinets drop onto the quote — {B('lines, pricing, totals')} in one sidebar.</> },
+      { at: 132, text: <>Choose what customers can do — {B('optional items')}, {B('editable specs')}, deposits.</> },
+      { at: 276, text: <>Then they open a {B('live page')}: tick options, {B('edit unlocked specs')}, {B('pay the deposit')}.</> },
+    ], 12),
 
-  // ── AUTO-SCHEDULE ──
+  // ── AUTO-SCHEDULE — one continuous take ──
   { key: 'br3', dur: 90, el: (d) => <SectionBreak tab="schedule" title="Auto-Schedule Production" sub="Set your hours and a priority — work allocates itself." dur={d} /> },
-  clipShot('schedOrder', 100, 'order-auto-schedule.mp4', 3.2, 1.05,
-    [{ f: 0, s: 1.55, x: 260, y: 700, ry: -15, rx: 5 }, { f: 18, s: 1.75, x: 240, y: 780, ry: 0, rx: 0 }, { f: 96, s: 1.75, x: 240, y: 800 }],
-    'Order · Schedule',
-    [{ at: 6, text: <>Every order carries its own {B('schedule block')} — auto on, priority, hours.</> }], 21),
-  // priority change → calendar reflows live
-  clipShot('schedPri', 130, 'schedule-priority.mp4', 2.2, 0.95,
-    [{ f: 0, s: 1.35, x: 180, y: 400, ry: 13, rx: 4 }, { f: 18, s: 1.55, x: 140, y: 420, ry: 0, rx: 0 }, { f: 70, s: 1.55, x: 150, y: 440 }, { f: 95, s: 1.25, x: 750, y: 460 }, { f: 126, s: 1.25, x: 780, y: 480 }],
+  clipShot('schedule', 353, 'schedule-tour.mp4', 0.6, 1.2,
+    [
+      { f: 0, s: 1.15, rx: -6, ry: 15 },
+      { f: 25, s: 1.75, x: 240, y: 760, rx: 0, ry: 0 },    // order's Schedule block
+      { f: 165, s: 1.75, x: 240, y: 790 },
+      { f: 195, s: 1.05, ry: -4 },                          // tab swap breathe
+      { f: 228, s: 1.5, x: 150, y: 430, ry: 0 },           // priority steppers
+      { f: 300, s: 1.25, x: 750, y: 460 },                 // calendar reflows
+      { f: 349, s: 1.25, x: 780, y: 470 },
+    ],
     'Auto-Schedule',
     [
-      { at: 6, text: <>Bump a job's {B('priority')}…</> },
-      { at: 70, text: <>…and the calendar {B('reflows live')} around it.</> },
-    ], 22),
+      { at: 24, text: <>Every order carries its own {B('schedule block')} — auto on, priority, hours.</> },
+      { at: 215, text: <>Bump a {B('priority')} — the calendar {B('reflows live')} around it.</> },
+    ], 13),
 
   // ── quick hits ──
   clipShot('cut1', 72, 'optimised-cut-list.mp4', 4.9, 1.15,
