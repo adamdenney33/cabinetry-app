@@ -33,7 +33,14 @@ export async function record(page, meta) {
   await page.waitForSelector('#share-link', { timeout: 15_000 });
   await settle(page, 900);
 
-  // 4. Turn on "Let customers request changes" (choose-items is on by default).
+  // 4. Turn on "Accept online payment" (Stripe Connect must be live on the
+  //    recording account) and "Let customers request changes".
+  const payOn = await page.$eval('#sh-pay', (el) => el.getAttribute('aria-pressed') === 'true').catch(() => null);
+  if (payOn === null) throw new Error('sh-pay toggle not rendered — Stripe Connect not live on this account');
+  if (!payOn) {
+    await clickThrough(page, '#sh-pay');
+    await settle(page, 700);
+  }
   const editOn = await page.$eval('#sh-edit', (el) => el.getAttribute('aria-pressed') === 'true').catch(() => false);
   if (!editOn) {
     await clickThrough(page, '#sh-edit');
@@ -59,7 +66,16 @@ export async function record(page, meta) {
   await glideTo(page, '.qp-chip.edit');
   await settle(page, 600);
   await clickThrough(page, '.qp-chip.edit');
-  await settle(page, 1600);
+  await settle(page, 1400);
   await page.mouse.wheel(0, 420);
-  await settle(page, 2200);
+  await settle(page, 1200);
+
+  // 8. The money ending: hit "Accept & pay deposit" — quote-pay creates a
+  //    PaymentIntent on the connected account and the Stripe Payment Element
+  //    sheet opens. We do NOT click Pay — just hold on the checkout.
+  await glideTo(page, '.qpd-b.dark');
+  await settle(page, 500);
+  await clickThrough(page, '.qpd-b.dark');
+  await page.waitForSelector('#qp-pay-el iframe', { timeout: 25_000 });
+  await settle(page, 3200); // Stripe element paints inside its iframe
 }

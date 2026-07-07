@@ -12,10 +12,19 @@ import { bootApp, clickThrough, glideTo, settle } from './_driver.mjs';
 export async function record(page, meta) {
   await bootApp(page, meta);
 
-  // — Order sidebar: the schedule block on the order itself —
+  // — Xero: the order's invoice is synced to accounting (✓ Xero chip on the
+  //   card — seeded link row; a live push needs the Xero OAuth re-connected
+  //   since ACCOUNTING_TOKEN_KEY rotated) —
   await clickThrough(page, '.nav-tab[title="Orders"]');
   await page.waitForSelector('#panel-orders .order-card', { timeout: 10_000 });
   await settle(page, 500);
+  await page.waitForSelector('#panel-orders .order-card:has-text("Greenwood") a[title^="Synced to Xero"]', { timeout: 10_000 });
+  await glideTo(page, '#panel-orders .order-card:has-text("Greenwood") button:has-text("Sync")');
+  await settle(page, 700);
+  await glideTo(page, '#panel-orders .order-card:has-text("Greenwood") a[title^="Synced to Xero"]');
+  await settle(page, 1700);
+
+  // — Order sidebar: the schedule block on the order itself —
   await clickThrough(page, '#panel-orders .order-card:has-text("Greenwood")');
   await page.waitForSelector('#po-sched-details', { timeout: 10_000 });
   await settle(page, 600);
