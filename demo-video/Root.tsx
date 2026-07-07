@@ -11,6 +11,8 @@ import { Stock } from './app/Stock';
 import { Quotes } from './app/Quotes';
 import { Schedule } from './app/Schedule';
 import { Master, TOTAL } from './Master';
+import { LandingAd, AD_TOTAL } from './LandingAd';
+import { LiveLink } from './scenes/LiveLink';
 import { Intro } from './scenes/Intro';
 import { Outro } from './scenes/Outro';
 
@@ -31,11 +33,14 @@ const DbgSchedule = dbg('schedule', <>Production that <b style={{ color: A }}>sc
 const comp = (id: string, c: React.FC) => <Composition id={id} component={c} durationInFrames={120} fps={FPS} width={1920} height={1080} />;
 
 const IntroDbg: React.FC = () => <Intro dur={180} />;
+const DbgLiveLink: React.FC = () => <LiveLink dur={380} />;
 const OutroDbg: React.FC = () => <Outro dur={209} />;
 
 export const RemotionRoot: React.FC = () => (
   <>
     <Composition id="ProCabinetDemo" component={Master} durationInFrames={TOTAL} fps={FPS} width={1920} height={1080} />
+    <Composition id="LandingAd" component={LandingAd} durationInFrames={AD_TOTAL} fps={FPS} width={1920} height={1080} />
+    <Composition id="Dbg-LiveLink" component={DbgLiveLink} durationInFrames={380} fps={FPS} width={1920} height={1080} />
     <Composition id="Dbg-Intro" component={IntroDbg} durationInFrames={180} fps={FPS} width={1920} height={1080} />
     <Composition id="Dbg-Outro" component={OutroDbg} durationInFrames={209} fps={FPS} width={1920} height={1080} />
     {comp('Dbg-Dashboard', DbgDashboard)}
