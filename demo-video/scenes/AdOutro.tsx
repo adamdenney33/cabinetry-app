@@ -19,10 +19,7 @@ export const AdOutro: React.FC<{ dur: number }> = ({ dur }) => {
   return (
     <AbsoluteFill style={{ background: 'radial-gradient(120% 120% at 50% 0%, #1c1c20 0%, #121214 55%, #0a0a0c 100%)', fontFamily: FONT, alignItems: 'center', justifyContent: 'center', opacity: inOp }}>
       <AbsoluteFill style={{ background: `radial-gradient(46% 36% at 50% 46%, rgba(232,168,56,0.14) 0%, rgba(232,168,56,0) 70%)` }} />
-      <div style={{ textAlign: 'center', maxWidth: 1300, opacity: l1, transform: `translateY(${(1 - l1) * 16}px)` }}>
-        <div style={{ fontSize: 46, fontWeight: 800, color: '#fff', letterSpacing: -1.1 }}>Eight tabs. One workshop.</div>
-      </div>
-      <div style={{ textAlign: 'center', maxWidth: 1340, marginTop: 14, opacity: l2, transform: `translateY(${(1 - l2) * 16}px)` }}>
+      <div style={{ textAlign: 'center', maxWidth: 1340, marginTop: 14, opacity: Math.max(l1, l2), transform: `translateY(${(1 - l2) * 16}px)` }}>
         <div style={{ fontSize: 58, fontWeight: 800, letterSpacing: -1.6, lineHeight: 1.15 }}>
           <span style={{ color: '#fff' }}>It's not just an app. It's your workshop's </span>
           <span style={{ color: C.accent }}>operating system.</span>

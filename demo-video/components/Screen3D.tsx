@@ -78,7 +78,6 @@ const Shards: React.FC<{ seed?: number }> = ({ seed = 0 }) => {
             border: `2px solid ${i % 2 ? C.accent2 : C.accent}`,
             borderRadius: i % 2 ? '50%' : 6,
             transform: `rotate(${sh.r + frame * sh.sp * 0.4}deg)`,
-            boxShadow: `0 0 22px ${i % 2 ? 'rgba(13,148,136,0.35)' : 'rgba(232,168,56,0.35)'}`,
           }}
         />
       ))}
@@ -86,16 +85,15 @@ const Shards: React.FC<{ seed?: number }> = ({ seed = 0 }) => {
   );
 };
 
-/** Section kicker pill. */
-export const Kicker3D: React.FC<{ n: string; label: string; dur: number }> = ({ n, label, dur }) => {
+/** Section kicker — app-style white pill, label only. */
+export const Kicker3D: React.FC<{ n?: string; label: string; dur: number }> = ({ label, dur }) => {
   const frame = useCurrentFrame();
   const t = interpolate(frame, [4, 16], [0, 1], { ...clampOpts, easing: EASE_OUT });
   const out = interpolate(frame, [dur - 10, dur - 2], [1, 0], clampOpts);
   return (
-    <div style={{ position: 'absolute', top: 38, left: 52, display: 'flex', alignItems: 'center', gap: 13, opacity: Math.min(t, out), transform: `translateX(${(1 - t) * -20}px)`, background: 'rgba(10,10,12,0.78)', border: '1px solid rgba(232,168,56,0.35)', borderRadius: 11, padding: '9px 18px', boxShadow: '0 8px 28px rgba(0,0,0,0.4), 0 0 24px rgba(232,168,56,0.12)', fontFamily: FONT }}>
-      <span style={{ fontSize: 14, fontWeight: 800, color: C.accent, letterSpacing: 1 }}>{n}</span>
-      <span style={{ width: 28, height: 2, background: C.accent }} />
-      <span style={{ fontSize: 14, fontWeight: 700, color: 'rgba(255,255,255,0.92)', letterSpacing: 3.5, textTransform: 'uppercase' }}>{label}</span>
+    <div style={{ position: 'absolute', top: 38, left: 52, display: 'flex', alignItems: 'center', gap: 10, opacity: Math.min(t, out), transform: `translateX(${(1 - t) * -20}px)`, background: '#ffffff', border: `1px solid ${C.border}`, borderRadius: 20, padding: '9px 20px', boxShadow: '0 8px 28px rgba(0,0,0,0.35)', fontFamily: FONT }}>
+      <span style={{ width: 8, height: 8, borderRadius: '50%', background: C.accent }} />
+      <span style={{ fontSize: 15, fontWeight: 700, color: C.text, letterSpacing: 0.2 }}>{label}</span>
     </div>
   );
 };
@@ -128,7 +126,7 @@ export const Screen3D: React.FC<{
   dur: number;
   fadeIn?: number;
   fadeOut?: number;
-  kicker?: { n: string; label: string };
+  kicker?: { n?: string; label: string };
   lines?: { at: number; text: React.ReactNode }[];
   children?: React.ReactNode; // extra overlays (badges, callouts)
   seed?: number;
@@ -186,8 +184,8 @@ export const Screen3D: React.FC<{
       </AbsoluteFill>
       {/* speed badge — makes the speed-up an intentional flex */}
       {speed > 1.05 && (
-        <div style={{ position: 'absolute', top: 40, right: 56, background: 'rgba(10,10,12,0.78)', border: '1px solid rgba(255,255,255,0.14)', borderRadius: 10, padding: '8px 15px', color: C.accent, fontSize: 15, fontWeight: 800, letterSpacing: 1, opacity: interpolate(frame, [6, 16], [0, 1], clampOpts) }}>
-          {speed}× SPEED · REAL APP
+        <div style={{ position: 'absolute', top: 38, right: 56, background: '#ffffff', border: `1px solid ${C.border}`, borderRadius: 20, padding: '8px 16px', color: C.text2, fontSize: 14, fontWeight: 700, opacity: interpolate(frame, [6, 16], [0, 1], clampOpts) }}>
+          {speed}× speed · real app
         </div>
       )}
       {kicker && <Kicker3D n={kicker.n} label={kicker.label} dur={dur} />}

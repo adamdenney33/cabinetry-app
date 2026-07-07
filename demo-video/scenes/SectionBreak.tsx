@@ -1,66 +1,65 @@
 /**
- * SectionBreak — 3D interstitial between sections: a large glowing tab icon
- * flies in with perspective, with the section number + feature title.
- * Gives each feature a clear chapter marker (and buys energy between cuts).
+ * SectionBreak — 3D interstitial between sections, styled like the app
+ * itself: a white surface card with the tab icon on an accent-dim tile
+ * (mirrors the app's card + badge language — no glow, no numbering).
+ * The card flies in with real perspective depth and holds.
  */
 import React from 'react';
-import { AbsoluteFill, useCurrentFrame, interpolate, spring, useVideoConfig, Easing } from 'remotion';
-import { FONT, C, TabId } from '../theme';
+import { AbsoluteFill, useCurrentFrame, interpolate, spring, useVideoConfig } from 'remotion';
+import { FONT, C, TabId, RADIUS } from '../theme';
 import { TabIcon } from '../icons';
 import { EASE_OUT, clampOpts } from '../primitives';
 
 export const SectionBreak: React.FC<{
-  n: string;
   title: string;
   sub?: string;
   tab: TabId;
   dur: number;
-}> = ({ n, title, sub, tab, dur }) => {
+}> = ({ title, sub, tab, dur }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
-  const icon = spring({ frame: frame - 2, fps, config: { damping: 12, mass: 0.7, stiffness: 130 } });
-  const ry = interpolate(icon, [0, 1], [78, 0]); // flies in rotated on Y
-  const tz = interpolate(icon, [0, 1], [-500, 0]);
-  const num = interpolate(frame, [8, 18], [0, 1], { ...clampOpts, easing: EASE_OUT });
-  const ttl = interpolate(frame, [12, 24], [0, 1], { ...clampOpts, easing: EASE_OUT });
-  const sb = interpolate(frame, [20, 32], [0, 1], { ...clampOpts, easing: EASE_OUT });
-  const out = interpolate(frame, [dur - 8, dur], [1, 0], clampOpts);
-  const push = 1 + interpolate(frame, [0, dur], [0, 0.05], clampOpts);
-  // sweep line
-  const sweep = interpolate(frame, [4, dur], [-30, 110], { ...clampOpts, easing: Easing.linear });
+  // Deep 3D entrance: card starts far back and rotated, settles flat.
+  const fly = spring({ frame: frame - 2, fps, config: { damping: 15, mass: 1.1, stiffness: 70 } });
+  const ry = interpolate(fly, [0, 1], [58, 0]);
+  const rx = interpolate(fly, [0, 1], [14, 0]);
+  const tz = interpolate(fly, [0, 1], [-1150, 0]);
+  const ttl = interpolate(frame, [16, 30], [0, 1], { ...clampOpts, easing: EASE_OUT });
+  const sb = interpolate(frame, [26, 40], [0, 1], { ...clampOpts, easing: EASE_OUT });
+  // Slow residual drift so the hold never feels frozen.
+  const drift = interpolate(frame, [30, dur], [0, -4], clampOpts);
+  const out = interpolate(frame, [dur - 10, dur], [1, 0], clampOpts);
 
   return (
     <AbsoluteFill style={{ background: 'radial-gradient(120% 120% at 50% 0%, #1c1c20 0%, #121214 55%, #0a0a0c 100%)', fontFamily: FONT, alignItems: 'center', justifyContent: 'center', opacity: out }}>
-      {/* grid floor */}
-      <div style={{ position: 'absolute', left: '-30%', right: '-30%', bottom: '-42%', height: '80%', backgroundImage: 'linear-gradient(rgba(232,168,56,0.10) 1.5px, transparent 1.5px), linear-gradient(90deg, rgba(232,168,56,0.10) 1.5px, transparent 1.5px)', backgroundSize: '90px 90px', backgroundPosition: `0px ${(frame * 0.8) % 90}px`, transform: 'perspective(900px) rotateX(64deg)', transformOrigin: 'center top', maskImage: 'linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.7) 30%, transparent 95%)', WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.7) 30%, transparent 95%)' }} />
-      {/* diagonal light sweep */}
-      <div style={{ position: 'absolute', top: 0, bottom: 0, left: `${sweep}%`, width: 260, background: 'linear-gradient(100deg, rgba(232,168,56,0) 0%, rgba(232,168,56,0.08) 50%, rgba(232,168,56,0) 100%)', transform: 'skewX(-14deg)' }} />
+      {/* subtle grid floor — same texture as the footage scenes, no glows */}
+      <div style={{ position: 'absolute', left: '-30%', right: '-30%', bottom: '-42%', height: '80%', backgroundImage: 'linear-gradient(rgba(255,255,255,0.05) 1.5px, transparent 1.5px), linear-gradient(90deg, rgba(255,255,255,0.05) 1.5px, transparent 1.5px)', backgroundSize: '90px 90px', backgroundPosition: `0px ${(frame * 0.8) % 90}px`, transform: 'perspective(900px) rotateX(64deg)', transformOrigin: 'center top', maskImage: 'linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.6) 30%, transparent 95%)', WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.6) 30%, transparent 95%)' }} />
 
-      <div style={{ transform: `scale(${push})`, display: 'flex', alignItems: 'center', gap: 60, perspective: 1100 }}>
-        {/* big glowing tab icon */}
+      <div style={{ perspective: 1400 }}>
         <div
           style={{
-            width: 210, height: 210, borderRadius: 42,
-            background: 'linear-gradient(150deg, rgba(232,168,56,0.20) 0%, rgba(232,168,56,0.06) 100%)',
-            border: '1.5px solid rgba(232,168,56,0.55)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: C.accent,
-            boxShadow: '0 30px 90px rgba(0,0,0,0.6), 0 0 90px rgba(232,168,56,0.28), inset 0 1px 0 rgba(255,255,255,0.12)',
-            transform: `rotateY(${ry}deg) translateZ(${tz}px)`,
-            opacity: interpolate(icon, [0, 0.3, 1], [0, 1, 1]),
+            transform: `translateZ(${tz}px) rotateY(${ry}deg) rotateX(${rx + drift * 0.2}deg) translateY(${drift}px)`,
+            transformStyle: 'preserve-3d',
+            background: '#ffffff',
+            borderRadius: RADIUS + 6,
+            border: `1px solid ${C.border}`,
+            boxShadow: '0 40px 110px rgba(0,0,0,0.55)',
+            padding: '46px 64px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 44,
+            minWidth: 900,
+            opacity: interpolate(fly, [0, 0.25, 1], [0, 1, 1]),
           }}
         >
-          <TabIcon tab={tab} size={104} strokeWidth={1.6} />
-        </div>
-
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16, opacity: num, transform: `translateX(${(1 - num) * -24}px)` }}>
-            <span style={{ fontSize: 22, fontWeight: 800, color: C.accent, letterSpacing: 2 }}>{n}</span>
-            <span style={{ width: 46, height: 2.5, background: C.accent }} />
+          {/* icon tile — app badge language: accent-dim tile, amber icon */}
+          <div style={{ width: 150, height: 150, borderRadius: 28, background: C.accentDim, border: `1px solid ${C.accent}`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.accent, flexShrink: 0 }}>
+            <TabIcon tab={tab} size={76} strokeWidth={1.7} />
           </div>
-          <div style={{ fontSize: 68, fontWeight: 800, color: '#fff', letterSpacing: -1.8, marginTop: 10, opacity: ttl, transform: `translateY(${(1 - ttl) * 22}px)` }}>{title}</div>
-          {sub && <div style={{ fontSize: 25, fontWeight: 600, color: 'rgba(255,255,255,0.62)', marginTop: 12, maxWidth: 760, lineHeight: 1.35, opacity: sb, transform: `translateY(${(1 - sb) * 16}px)` }}>{sub}</div>}
+          <div>
+            <div style={{ fontSize: 52, fontWeight: 800, color: C.text, letterSpacing: -1.4, opacity: ttl, transform: `translateY(${(1 - ttl) * 16}px)` }}>{title}</div>
+            {sub && <div style={{ fontSize: 23, fontWeight: 500, color: C.text2, marginTop: 12, maxWidth: 720, lineHeight: 1.4, opacity: sb, transform: `translateY(${(1 - sb) * 12}px)` }}>{sub}</div>}
+          </div>
         </div>
       </div>
     </AbsoluteFill>
