@@ -48,8 +48,8 @@ export const ReelWrap: React.FC = () => {
       </div>
 
       {/* footer — brand logo */}
-      <div style={{ position: 'absolute', bottom: 220, left: 0, right: 0, display: 'flex', justifyContent: 'center', opacity: cta, transform: `scale(${pulse})` }}>
-        <Img src={staticFile('logo.png')} style={{ height: 96 }} />
+      <div style={{ position: 'absolute', bottom: 175, left: 0, right: 0, display: 'flex', justifyContent: 'center', opacity: cta, transform: `scale(${pulse})` }}>
+        <Img src={staticFile('logo.png')} style={{ height: 192 }} />
       </div>
     </AbsoluteFill>
   );
