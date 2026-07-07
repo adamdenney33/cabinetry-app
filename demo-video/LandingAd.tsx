@@ -54,31 +54,36 @@ const SHOTS: Shot[] = [
 
   // ── CABINET BUILDER — one continuous take ──
   { key: 'br1', dur: 90, el: (d) => <SectionBreak tab="cabinet" title="Custom Cabinet Quote Builder" sub="Set your rates and times once — then let the builder do the maths." dur={d} /> },
-  clipShot('cabinet', 568, 'cabinet-tour.mp4', 0.9, 1.6,
+  // trim 3.0 opens ON the My Rates moment (cursor already over the button);
+  // camera: full screen → zoom into the rates editor → stay on the sidebar
+  // through rates + builder specs → ONE slow zoom-out to the whole screen
+  // (re-priced cards in view, stock tab clicked) → ease into the stock editor.
+  clipShot('cabinet', 530, 'cabinet-tour.mp4', 3.0, 1.6,
     [
-      { f: 0, s: 1.15, rx: 6, ry: 16 },
-      { f: 48, s: 1.75, x: 250, y: 330, rx: 0, ry: 0 },   // My Rates: labour + markup typed
-      { f: 110, s: 1.75, x: 250, y: 400 },
-      { f: 150, s: 1.7, x: 250, y: 480, ry: 3 },           // scrolling the full rates editor
-      { f: 225, s: 1.7, x: 250, y: 520, ry: 0 },
-      { f: 240, s: 1.5, x: 1050, y: 300, ry: 5 },          // list re-prices
-      { f: 266, s: 1.75, x: 245, y: 360, ry: 0 },          // builder: dims typed
-      { f: 315, s: 1.75, x: 245, y: 480 },                 // doors/panels steppers
-      { f: 370, s: 1.75, x: 245, y: 540 },                 // drawer fronts/boxes
-      { f: 425, s: 1.75, x: 245, y: 500 },
-      { f: 440, s: 1.5, x: 1050, y: 350, ry: -5 },         // re-priced line
-      { f: 470, s: 1.65, x: 270, y: 400, ry: 0 },          // stock editor
-      { f: 555, s: 1.65, x: 270, y: 430 },
-      { f: 564, s: 1.4, x: 500, y: 400 },
+      { f: 0, s: 1.02, rx: 4, ry: 10 },
+      { f: 24, s: 1.02, rx: 0, ry: 0 },                    // full screen, mouse on My Rates
+      { f: 48, s: 1.02 },
+      { f: 78, s: 1.75, x: 250, y: 330 },                  // zoom into the rates editor
+      { f: 115, s: 1.75, x: 250, y: 390 },
+      { f: 155, s: 1.7, x: 250, y: 470 },                  // scrolling the full rates editor
+      { f: 228, s: 1.7, x: 250, y: 520 },
+      { f: 250, s: 1.75, x: 245, y: 360 },                 // builder: dims typed
+      { f: 304, s: 1.75, x: 245, y: 480 },                 // doors/panels steppers
+      { f: 358, s: 1.75, x: 245, y: 540 },                 // drawer fronts/boxes
+      { f: 386, s: 1.75, x: 245, y: 500 },
+      { f: 422, s: 1.02, x: 720, y: 450 },                 // the ONE slow zoom-out: whole screen, cards in view
+      { f: 470, s: 1.02 },                                  // hold — stock tab clicked in view
+      { f: 502, s: 1.6, x: 270, y: 400 },                  // ease into the stock editor
+      { f: 528, s: 1.6, x: 270, y: 420 },
     ],
     'Cabinet Builder',
     [
-      { at: 55, text: <>Your labour rate, markups and {B('per-step times')} — set once.</> },
-      { at: 150, text: <>Carcass, panels, doors, bases — {B('every rate, one editor')}.</> },
-      { at: 240, text: <>Change a number — {B('every cabinet re-prices instantly')}.</> },
-      { at: 270, text: <>Type the {B('dimensions')}, step the {B('doors and drawers')} — priced as you build.</> },
-      { at: 380, text: <>Drawer fronts, boxes, hardware — {B('every spec')} works for its price.</> },
-      { at: 475, text: <>Your {B('stock library')} feeds it all — costs and {B('low-stock alerts')} included.</> },
+      { at: 20, text: <>Your labour rate, markups and {B('per-step times')} — set once.</> },
+      { at: 160, text: <>Carcass, panels, doors, bases — {B('every rate, one editor')}.</> },
+      { at: 252, text: <>Type the {B('dimensions')}, step the {B('doors and drawers')} — priced as you build.</> },
+      { at: 362, text: <>Drawer fronts, boxes, hardware — {B('every spec')} works for its price.</> },
+      { at: 400, text: <>Change a number — {B('every cabinet re-prices instantly')}.</> },
+      { at: 465, text: <>Your {B('stock library')} feeds it all — {B('low-stock alerts')} included.</> },
     ], 11),
 
   // ── LIVE LINK — one continuous take, ends on the Stripe deposit checkout ──
@@ -134,7 +139,7 @@ const SHOTS: Shot[] = [
     'Dashboard',
     [{ at: 4, text: <>Your {B('whole business')} on one screen.</> }], 24),
 
-  { key: 'outro', dur: 140, el: (d) => <AdOutro dur={d} /> },
+  { key: 'outro', dur: 178, el: (d) => <AdOutro dur={d} /> },
 ];
 
 const X = 5;
