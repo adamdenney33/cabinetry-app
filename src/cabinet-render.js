@@ -732,7 +732,9 @@ function renderCBResults() {
     const doorsVal = line.doors > 0 ? [`${line.doors} × ${line.doorType||'—'}`, line.doorMat, fin(line.doorFinish), line.doorPct ? `${line.doorPct}% of front` : ''].filter(Boolean).join(' · ') : '';
     const drawerFrontsVal = line.drawers > 0 ? [`${line.drawers} × ${line.drawerFrontType||'—'}`, line.drawerFrontMat, fin(line.drawerFrontFinish), line.drawerPct ? `${line.drawerPct}% of front` : ''].filter(Boolean).join(' · ') : '';
     const drawerBoxesVal = line.drawers > 0 ? [line.drawerInnerMat, line.drawerBoxType, fin(line.drawerBoxFinish)].filter(Boolean).join(' · ') : '';
-    const construction = [line.carcassType, line.baseType ? line.baseType + ' base' : ''].filter(Boolean).join(' · ');
+    // baseType 'none' means NO base — rendering it as "none base" reads like a
+    // (nonsense) base type, so only show a real base choice.
+    const construction = [line.carcassType, (line.baseType && line.baseType !== 'none') ? line.baseType + ' base' : ''].filter(Boolean).join(' · ');
     // Split into two explicit columns: cabinet + panels in col 1, everything
     // else in col 2 (auto-balancing columns wouldn't pin the split reliably).
     const col1 = kv('Dimensions', _dimsWHD(line.w, line.h, line.d))
