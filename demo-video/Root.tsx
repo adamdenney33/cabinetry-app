@@ -12,6 +12,7 @@ import { Quotes } from './app/Quotes';
 import { Schedule } from './app/Schedule';
 import { Master, TOTAL } from './Master';
 import { LandingAd, AD_TOTAL } from './LandingAd';
+import { ReelWrap, REEL_DUR } from './ReelWrap';
 import { LiveLink } from './scenes/LiveLink';
 import { Intro } from './scenes/Intro';
 import { Outro } from './scenes/Outro';
@@ -40,6 +41,7 @@ export const RemotionRoot: React.FC = () => (
   <>
     <Composition id="ProCabinetDemo" component={Master} durationInFrames={TOTAL} fps={FPS} width={1920} height={1080} />
     <Composition id="LandingAd" component={LandingAd} durationInFrames={AD_TOTAL} fps={FPS} width={1920} height={1080} />
+    <Composition id="LandingAdReel" component={ReelWrap} durationInFrames={REEL_DUR} fps={FPS} width={1080} height={1920} />
     <Composition id="Dbg-LiveLink" component={DbgLiveLink} durationInFrames={380} fps={FPS} width={1920} height={1080} />
     <Composition id="Dbg-Intro" component={IntroDbg} durationInFrames={180} fps={FPS} width={1920} height={1080} />
     <Composition id="Dbg-Outro" component={OutroDbg} durationInFrames={209} fps={FPS} width={1920} height={1080} />

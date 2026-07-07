@@ -191,6 +191,11 @@ h1, h2, h3, p, ul { margin: 0; }
 .browser-dots i { width: 10px; height: 10px; border-radius: 50%; background: #d8d8d8; }
 .browser-frame img { width: 100%; }
 
+/* ── Demo video section (between hero and tab bar) ── */
+.demo-video { max-width: var(--maxw); margin: 0 auto; padding: 64px 24px 24px; text-align: center; }
+.demo-video-frame { max-width: 960px; margin: 28px auto 0; }
+.demo-video-frame video { width: 100%; display: block; background: #000; }
+
 /* Hover-to-reveal second screenshot ("active edit" view) */
 .shot-stack { position: relative; line-height: 0; }
 .shot-stack img { width: 100%; display: block; }
