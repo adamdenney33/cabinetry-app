@@ -12,6 +12,8 @@ import * as scheduleYourWorkshop from './schedule-your-workshop.mjs';
 import * as manageClients from './manage-clients.mjs';
 import * as dashboardOverview from './dashboard-overview.mjs';
 import * as orderAutoSchedule from './order-auto-schedule.mjs'; // ad-only clip (not a wiki guide)
+import * as liveLinkTour from './live-link-tour.mjs'; // ad-only clip
+import * as schedulePriority from './schedule-priority.mjs'; // ad-only clip
 
 // Registry order = full-batch RECORDING order: read-only tours first, flows
 // that write rows last, so early clips show the pristine seed (no stray
@@ -28,4 +30,6 @@ export const REGISTRY = {
   'create-and-send-a-quote': createAndSendAQuote,
   'convert-a-quote-to-an-order': convertAQuoteToAnOrder,
   'order-auto-schedule': orderAutoSchedule,
+  'live-link-tour': liveLinkTour,
+  'schedule-priority': schedulePriority,
 };

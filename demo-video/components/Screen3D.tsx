@@ -85,15 +85,14 @@ const Shards: React.FC<{ seed?: number }> = ({ seed = 0 }) => {
   );
 };
 
-/** Section kicker — app-style white pill, label only. */
+/** Section kicker — bare white text on the dark backdrop. */
 export const Kicker3D: React.FC<{ n?: string; label: string; dur: number }> = ({ label, dur }) => {
   const frame = useCurrentFrame();
   const t = interpolate(frame, [4, 16], [0, 1], { ...clampOpts, easing: EASE_OUT });
   const out = interpolate(frame, [dur - 10, dur - 2], [1, 0], clampOpts);
   return (
-    <div style={{ position: 'absolute', top: 38, left: 52, display: 'flex', alignItems: 'center', gap: 10, opacity: Math.min(t, out), transform: `translateX(${(1 - t) * -20}px)`, background: '#ffffff', border: `1px solid ${C.border}`, borderRadius: 20, padding: '9px 20px', boxShadow: '0 8px 28px rgba(0,0,0,0.35)', fontFamily: FONT }}>
-      <span style={{ width: 8, height: 8, borderRadius: '50%', background: C.accent }} />
-      <span style={{ fontSize: 15, fontWeight: 700, color: C.text, letterSpacing: 0.2 }}>{label}</span>
+    <div style={{ position: 'absolute', top: 40, left: 56, opacity: Math.min(t, out), transform: `translateX(${(1 - t) * -20}px)`, fontFamily: FONT }}>
+      <span style={{ fontSize: 19, fontWeight: 700, color: '#fff', letterSpacing: 0.3, textShadow: '0 2px 12px rgba(0,0,0,0.8)' }}>{label}</span>
     </div>
   );
 };
@@ -110,8 +109,7 @@ export const Cap3D: React.FC<{ lines: { at: number; text: React.ReactNode }[]; d
   const outT = interpolate(frame, [end - 7, end - 1], [1, 0], clampOpts);
   return (
     <div style={{ position: 'absolute', left: 0, right: 0, bottom: 46, display: 'flex', justifyContent: 'center', opacity: Math.min(inT, outT), transform: `translateY(${(1 - inT) * 22}px)`, fontFamily: FONT }}>
-      <div style={{ maxWidth: 1460, background: 'rgba(10,10,12,0.82)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 15, padding: '14px 30px', boxShadow: '0 14px 46px rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', gap: 15 }}>
-        <span style={{ width: 10, height: 10, borderRadius: '50%', background: C.accent, flexShrink: 0, boxShadow: `0 0 16px ${C.accent}` }} />
+      <div style={{ maxWidth: 1460, background: 'rgba(10,10,12,0.82)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 15, padding: '14px 32px', boxShadow: '0 14px 46px rgba(0,0,0,0.5)' }}>
         <span style={{ color: '#fff', fontSize: 30, fontWeight: 700, letterSpacing: -0.4, lineHeight: 1.25, textAlign: 'center' }}>{lines[idx].text}</span>
       </div>
     </div>
@@ -135,6 +133,8 @@ export const Screen3D: React.FC<{
   const { s, x, y, rx, ry } = usePose(pose);
   const inOp = fadeIn ? interpolate(frame, [0, fadeIn], [0, 1], clampOpts) : 1;
   const outOp = fadeOut ? interpolate(frame, [dur - fadeOut, dur], [1, 0], clampOpts) : 1;
+  // Deep-Z entrance: the screen rushes in from far back over the first ~26f.
+  const zIn = interpolate(frame, [0, 26], [-1500, 0], { ...clampOpts, easing: CAM_EASE });
 
   // Fit 1440×900 + chrome into 1920×1080 with margin, then apply camera.
   const BASE = Math.min(1760 / CLIP_W, 930 / (CLIP_H + 44));
@@ -148,7 +148,7 @@ export const Screen3D: React.FC<{
       <AbsoluteFill style={{ alignItems: 'center', justifyContent: 'center', perspective: 1500 }}>
         <div
           style={{
-            transform: `translate(${dx}px, ${dy}px) scale(${BASE * s}) rotateX(${rx}deg) rotateY(${ry}deg)`,
+            transform: `translate3d(${dx}px, ${dy}px, ${zIn}px) scale(${BASE * s}) rotateX(${rx}deg) rotateY(${ry}deg)`,
             transformStyle: 'preserve-3d',
             borderRadius: 14,
             overflow: 'hidden',
@@ -184,7 +184,7 @@ export const Screen3D: React.FC<{
       </AbsoluteFill>
       {/* speed badge — makes the speed-up an intentional flex */}
       {speed > 1.05 && (
-        <div style={{ position: 'absolute', top: 38, right: 56, background: '#ffffff', border: `1px solid ${C.border}`, borderRadius: 20, padding: '8px 16px', color: C.text2, fontSize: 14, fontWeight: 700, opacity: interpolate(frame, [6, 16], [0, 1], clampOpts) }}>
+        <div style={{ position: 'absolute', top: 42, right: 56, color: 'rgba(255,255,255,0.75)', fontSize: 15, fontWeight: 600, textShadow: '0 2px 12px rgba(0,0,0,0.8)', opacity: interpolate(frame, [6, 16], [0, 1], clampOpts) }}>
           {speed}× speed · real app
         </div>
       )}
