@@ -128,7 +128,11 @@ export const Screen3D: React.FC<{
   lines?: { at: number; text: React.ReactNode }[];
   children?: React.ReactNode; // extra overlays (badges, callouts)
   seed?: number;
-}> = ({ clip, trimSec = 0, speed = 1, pose, dur, fadeIn = 0, fadeOut = 0, kicker, lines, children, seed }) => {
+  // Override the base fit-scale — used by non-16:9 (e.g. portrait) comps,
+  // where the 1920×1080 landscape fit margins below don't apply. Landscape
+  // call sites omit this and get the original behavior unchanged.
+  baseOverride?: number;
+}> = ({ clip, trimSec = 0, speed = 1, pose, dur, fadeIn = 0, fadeOut = 0, kicker, lines, children, seed, baseOverride }) => {
   const frame = useCurrentFrame();
   const { s, x, y, rx, ry } = usePose(pose);
   const inOp = fadeIn ? interpolate(frame, [0, fadeIn], [0, 1], clampOpts) : 1;
@@ -137,7 +141,7 @@ export const Screen3D: React.FC<{
   const zIn = interpolate(frame, [0, 26], [-1500, 0], { ...clampOpts, easing: CAM_EASE });
 
   // Fit 1440×900 + chrome into 1920×1080 with margin, then apply camera.
-  const BASE = Math.min(1760 / CLIP_W, 930 / (CLIP_H + 44));
+  const BASE = baseOverride ?? Math.min(1760 / CLIP_W, 930 / (CLIP_H + 44));
   const dx = (CLIP_W / 2 - x) * BASE * s;
   const dy = (CLIP_H / 2 - y) * BASE * s;
 
