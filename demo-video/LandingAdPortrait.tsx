@@ -102,9 +102,11 @@ const SHOTS: Shot[] = [
       { f: 233, s: 2.3, x: 570, y: 420 },
       { f: 298, s: 2.3, x: 500, y: 480 },
       { f: 316, s: 1.1, x: 720, y: 450 },                 // breathe: pull back before Accept & Pay (avoids panning through the blank page gutter)
-      { f: 344, s: 2.0, x: 700, y: 450 },                 // Accept & pay clicked
-      { f: 361, s: 2.0, x: 700, y: 450 },
-      { f: 388, s: 3.2, x: 720, y: 450 },
+      { f: 348, s: 1.8, x: 1085, y: 265 },                // Accept & Pay button comes into view (verified against source clip)
+      { f: 380, s: 1.9, x: 1085, y: 258 },                // the click — cursor on the button, click glow visible here
+      { f: 400, s: 1.9, x: 1085, y: 258 },                // hold on the click
+      { f: 415, s: 1.3, x: 720, y: 450 },                 // breathe as the Stripe modal opens (modal isn't rendered yet before ~f405)
+      { f: 428, s: 3.2, x: 720, y: 450 },                 // Stripe deposit sheet, fully open
       { f: 461, s: 3.2, x: 720, y: 450 },
     ],
     [
