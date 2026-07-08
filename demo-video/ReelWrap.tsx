@@ -1,25 +1,23 @@
 /**
  * ReelWrap — 9:16 Instagram reel built from the finished landing ad:
  * the 16:9 render sits full-width in a branded vertical frame (same
- * technique as the loom reels), with wordmark + hook above and CTA below.
- * Audio comes from the source video (its music track).
+ * technique as the loom reels), with the affiliate hook above.
+ * Audio comes from the source video (its music track). No footer logo.
  */
 import React from 'react';
-import { AbsoluteFill, OffthreadVideo, Img, staticFile, useCurrentFrame, interpolate } from 'remotion';
+import { AbsoluteFill, OffthreadVideo, staticFile, useCurrentFrame, interpolate } from 'remotion';
 import { C, FONT } from './theme';
 import { clampOpts, EASE_OUT } from './primitives';
 
 const W = 1080;
 const H = 1920;
 export const REEL_SPEED = 1.1;
-// source: 2003 frames @30 → reel duration
-export const REEL_DUR = Math.ceil(2003 / REEL_SPEED);
+// source: 1800 frames @30 (v10 cut, v8 music) → reel duration
+export const REEL_DUR = Math.ceil(1800 / REEL_SPEED);
 
 export const ReelWrap: React.FC = () => {
   const frame = useCurrentFrame();
   const inT = interpolate(frame, [0, 14], [0, 1], { ...clampOpts, easing: EASE_OUT });
-  const cta = interpolate(frame, [24, 40], [0, 1], { ...clampOpts, easing: EASE_OUT });
-  const pulse = 1 + Math.sin(frame / 22) * 0.01;
 
   const vidW = W;
   const vidH = Math.round((vidW * 1080) / 1920); // 608
@@ -47,10 +45,6 @@ export const ReelWrap: React.FC = () => {
         <OffthreadVideo src={staticFile('clips/landing-ad-full.mp4')} playbackRate={REEL_SPEED} style={{ width: '100%', height: '100%' }} />
       </div>
 
-      {/* footer — brand logo */}
-      <div style={{ position: 'absolute', bottom: 175, left: 0, right: 0, display: 'flex', justifyContent: 'center', opacity: cta, transform: `scale(${pulse})` }}>
-        <Img src={staticFile('logo.png')} style={{ height: 192 }} />
-      </div>
     </AbsoluteFill>
   );
 };
