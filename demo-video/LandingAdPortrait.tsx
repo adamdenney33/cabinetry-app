@@ -101,7 +101,9 @@ const SHOTS: Shot[] = [
       { f: 210, s: 1.05 },
       { f: 233, s: 2.3, x: 570, y: 420 },
       { f: 298, s: 2.3, x: 500, y: 480 },
-      { f: 361, s: 2.6, x: 700, y: 450 },
+      { f: 316, s: 1.1, x: 720, y: 450 },                 // breathe: pull back before Accept & Pay (avoids panning through the blank page gutter)
+      { f: 344, s: 2.0, x: 700, y: 450 },                 // Accept & pay clicked
+      { f: 361, s: 2.0, x: 700, y: 450 },
       { f: 388, s: 3.2, x: 720, y: 450 },
       { f: 461, s: 3.2, x: 720, y: 450 },
     ],
@@ -119,8 +121,8 @@ const SHOTS: Shot[] = [
   clipShot('schedule', 365, 'schedule-tour.mp4', 0.6, 1.55,
     [
       { f: 0, s: 1.05, rx: -6, ry: 15 },
-      { f: 16, s: 2.2, x: 1050, y: 520, rx: 0, ry: 0 },
-      { f: 54, s: 2.2, x: 1050, y: 540 },
+      { f: 16, s: 2.6, x: 800, y: 495, rx: 0, ry: 0 },    // push in tight on the ✓ Xero chip itself (kept clear of the caption bar)
+      { f: 54, s: 2.6, x: 800, y: 505 },
       { f: 72, s: 1.9, x: 240, y: 560 },
       { f: 99, s: 1.9, x: 240, y: 620 },
       { f: 149, s: 1.9, x: 240, y: 660 },
