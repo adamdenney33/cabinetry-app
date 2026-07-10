@@ -414,7 +414,8 @@ async function convertQuoteToOrder(id) {
   };
   if (q.client_id) orderRow.client_id = q.client_id;
   if (q.name) orderRow.name = q.name;
-  const { data, error: oErr } = await _dbInsertSafe('orders', orderRow);
+  const { data, error: oErr } = await _dbInsertSafe('orders', orderRow,
+    orderRow.order_number ? { dedupeMatch: { user_id: _userId, order_number: orderRow.order_number } } : undefined);
   if (oErr || !data) { _toast('Could not create order — ' + (oErr?.message || JSON.stringify(oErr)), 'error'); console.error(oErr); return; }
   if (typeof _track === 'function') _track('library_item_created', { library: 'orders', item_id: data.id, source: 'quote_conversion' });
   // Carry quote notes to order notes & store quote reference

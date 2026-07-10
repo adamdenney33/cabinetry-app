@@ -834,7 +834,7 @@ async function _oStartNewOrder(numOverride) {
         due: 'TBD',
         value: 0,
         name: autoName,
-      }));
+      }), { dedupeMatch: { user_id: _userId, order_number: orderNum } });
       if (error || !data) {
         if (typeof _setSaveStatus === 'function') _setSaveStatus('order', 'failed', { retry: _oStartNewOrder });
         _toast('Could not create order', 'error');
@@ -1177,7 +1177,8 @@ async function createOrderFromEditor(silent) {
   };
   // client_id already set on the row above (line "client_id: client.id"); no
   // secondary lookup needed post-F5.
-  const { data, error } = await _dbInsertSafe('orders', row);
+  const { data, error } = await _dbInsertSafe('orders', row,
+    row.order_number ? { dedupeMatch: { user_id: _userId, order_number: row.order_number } } : undefined);
   if (error || !data) { _toast('Could not create order — ' + ((error && error.message) || ''), 'error'); return false; }
   if (typeof _track === 'function') _track('library_item_created', { library: 'orders', item_id: data.id, source: 'editor' });
   // Save notes locally

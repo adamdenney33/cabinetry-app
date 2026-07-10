@@ -1112,7 +1112,8 @@ async function cbCreateOrderFromDraft() {
     due: 'TBD',
     order_number: typeof _nextOrderNumber === 'function' ? _nextOrderNumber() : null,
   };
-  const { data, error } = await _dbInsertSafe('orders', insertBody);
+  const { data, error } = await _dbInsertSafe('orders', insertBody,
+    insertBody.order_number ? { dedupeMatch: { user_id: _userId, order_number: insertBody.order_number } } : undefined);
   if (error || !data) { _toast('Could not create order: ' + (error?.message || ''), 'error'); return; }
   if (typeof _track === 'function') _track('library_item_created', { library: 'orders', item_id: data.id, source: 'cabinet_builder' });
   _mergeLocalRow(orders, data);

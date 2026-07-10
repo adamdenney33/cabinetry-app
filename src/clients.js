@@ -29,23 +29,75 @@
 let clients = [];
 
 // ── Safe insert — retries by stripping columns the schema doesn't have yet ──
+/** True for a `_db()` write error that was a transport-level drop (fetch never
+ *  got a reply) rather than a server rejection. Network failures resolve as
+ *  `{ error: { message } }` with no PostgREST `code` and a "Failed to fetch" /
+ *  "NetworkError" / "Load failed" message; HTTP rejections carry a `code` or an
+ *  `HTTP <status>` message. Only the former is safe to replay.
+ *  @param {any} err */
+function _dbIsNetworkError(err) {
+  if (!err || err.code) return false;
+  const m = String(err.message || '');
+  if (/^HTTP \d/.test(m)) return false;
+  return /failed to fetch|networkerror|network error|load failed|fetch/i.test(m);
+}
+
+/** Best-effort lookup of a single row matching every column in `match` (for the
+ *  current user). Used to tell whether a network-dropped INSERT actually
+ *  committed server-side before we replay it. Resolves null on any error or no
+ *  match. @param {keyof import('./database.types').Database['public']['Tables']} table
+ *  @param {Record<string, any>} match @returns {Promise<any>} */
+async function _dbFindByMatch(table, match) {
+  try {
+    let q = _db(table).select('*');
+    for (const [k, v] of Object.entries(match)) q = /** @type {any} */ (q).eq(k, v);
+    const { data, error } = await /** @type {any} */ (q).limit(1);
+    if (error) return null;
+    return Array.isArray(data) ? (data[0] || null) : (data || null);
+  } catch (e) { return null; }
+}
+
 /**
  * Insert a row, retrying with stripped columns if the schema rejects unknown
  * fields. Returns `data` typed as `any` because the table param is
  * polymorphic; callers narrow at the use site (the in-memory shape of each
  * collection includes ad-hoc fields beyond the DB row).
  *
+ * `opts.dedupeMatch` opts a caller into transient-network recovery: a plain
+ * INSERT is never auto-replayed by _db() (a blind retry could double-create —
+ * see src/db.js `_idempotent`), so a "Failed to fetch" otherwise surfaces as an
+ * outright create failure (Sentry JAVASCRIPT-S: order creation died on a
+ * network blip). When the caller passes a set of columns that uniquely identify
+ * this row for the user (e.g. `{ user_id, order_number }`, whose value comes
+ * fresh from `_nextOrderNumber()` so no prior row owns it), we can safely retry:
+ * before each replay we re-check for the row, so a commit whose response was
+ * lost is adopted rather than duplicated.
+ *
  * @param {keyof import('./database.types').Database['public']['Tables']} table
  * @param {Record<string, any>} row
+ * @param {{ dedupeMatch?: Record<string, any> }} [opts]
  * @returns {Promise<{data: any, error: any}>}
  */
-async function _dbInsertSafe(table, row) {
-  let { data, error } = await _db(table).insert(/** @type {any} */ (row)).select().single();
-  while (error && error.message) {
-    const m = error.message.match(/Could not find the '(\w+)' column/);
-    if (!m) break;
-    delete row[m[1]];
-    ({ data, error } = await _db(table).insert(/** @type {any} */ (row)).select().single());
+async function _dbInsertSafe(table, row, opts) {
+  const doInsert = async () => {
+    let { data, error } = await _db(table).insert(/** @type {any} */ (row)).select().single();
+    while (error && error.message) {
+      const m = error.message.match(/Could not find the '(\w+)' column/);
+      if (!m) break;
+      delete row[m[1]];
+      ({ data, error } = await _db(table).insert(/** @type {any} */ (row)).select().single());
+    }
+    return { data, error };
+  };
+  let { data, error } = await doInsert();
+  const dedupeMatch = opts && opts.dedupeMatch;
+  let tries = 0;
+  while (error && dedupeMatch && _dbIsNetworkError(error) && tries < 2) {
+    tries++;
+    await new Promise(r => setTimeout(r, 400 * tries));
+    const existing = await _dbFindByMatch(table, dedupeMatch);
+    if (existing) return { data: existing, error: null };
+    ({ data, error } = await doInsert());
   }
   return { data, error };
 }
