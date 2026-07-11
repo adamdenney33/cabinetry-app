@@ -17,7 +17,7 @@
 //   commit-upload <token> <name> → {ok,path,b64}          decode chunks → out/instagram/studio/_uploads/
 //
 // Thumbnails are made with macOS `sips` at 240px so JSON payloads stay small.
-import { execFileSync, spawn } from 'node:child_process';
+import { execFileSync, spawn, spawnSync } from 'node:child_process';
 import {
   appendFileSync, existsSync, mkdirSync, openSync, readFileSync, readdirSync, statSync, writeFileSync,
 } from 'node:fs';
@@ -67,6 +67,41 @@ try {
     case 'templates': {
       out(listImages(TEMPLATES).map((f) => ({ name: f.replace(/\.[^.]+$/, ''), b64: thumb(join(TEMPLATES, f)) })));
       break;
+    }
+
+    // One-shot bundle for the artifact's copy/paste bridge (artifacts can't
+    // call local desktop-extension MCP tools, so the user runs
+    // `… sync | pbcopy` in Terminal and pastes the JSON into the artifact).
+    case 'sync': {
+      const templates = listImages(TEMPLATES).map((f) => ({ name: f.replace(/\.[^.]+$/, ''), b64: thumb(join(TEMPLATES, f), 200) }));
+      const shots = listImages(SHOTS)
+        .map((f) => ({ f, m: statSync(join(SHOTS, f)).mtimeMs }))
+        .sort((x, y) => y.m - x.m)
+        .slice(0, 10)
+        .map(({ f }) => ({ name: f, path: join(SHOTS, f), b64: thumb(join(SHOTS, f), 200), src: 'capture' }));
+      const screens = listImages(join(ROOT, 'brand', 'screenshots')).map((f) => ({
+        name: f, path: join(ROOT, 'brand', 'screenshots', f), b64: thumb(join(ROOT, 'brand', 'screenshots', f), 200), src: 'screenshot',
+      }));
+      const audioDir = join(ROOT, 'marketing', 'audio');
+      const audio = existsSync(audioDir) ? readdirSync(audioDir).filter((f) => f.startsWith('music_') && f.endsWith('.mp3')).sort().reverse() : [];
+      out({ synced: Date.now(), templates, assets: [...shots, ...screens], audio });
+      break;
+    }
+
+    // Terminal-friendly render: decode job, render inline (progress streams to
+    // the terminal), then reveal the output folder in Finder.
+    case 'render-open': {
+      if (!a1) fail('render-open: missing base64 job');
+      const jobPath = '/tmp/procabinet-ig-studio-job.json';
+      writeFileSync(jobPath, Buffer.from(a1, 'base64').toString('utf8'));
+      const job = JSON.parse(readFileSync(jobPath, 'utf8'));
+      const slugDir = join(ROOT, 'out', 'instagram', 'studio', String(job.slug || 'post').replace(/[^a-z0-9-_]/gi, '-').toLowerCase());
+      const r = spawnSync('node', [join(ROOT, 'scripts', 'render-social-studio.mjs'), jobPath], {
+        cwd: ROOT, stdio: 'inherit',
+        env: { ...process.env, PATH: `${process.env.PATH}:/opt/homebrew/bin:/usr/local/bin` },
+      });
+      if (r.status === 0) spawnSync('open', [slugDir]);
+      process.exit(r.status || 0);
     }
 
     case 'assets': {
