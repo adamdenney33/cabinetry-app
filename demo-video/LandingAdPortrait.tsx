@@ -29,9 +29,9 @@ const B = (n: React.ReactNode) => <b style={{ color: C.accent }}>{n}</b>;
 const BASE_PORTRAIT = 0.75;
 
 // Instagram's reel chrome (username, caption, action buttons) eats roughly the
-// bottom fifth of a 9:16 frame. Sit the caption bar above it rather than at the
-// landscape default of 46px, so every line stays fully readable in-feed.
-const CAP_BOTTOM = 430;
+// bottom sixth of a 9:16 frame. Sit the caption slab just clear of it rather
+// than at the landscape default of 46px, so every line stays readable in-feed.
+const CAP_BOTTOM = 250;
 
 const Flash: React.FC = () => {
   const frame = useCurrentFrame();
@@ -51,7 +51,7 @@ const clipShot = (
   key, dur,
   el: (d) => (
     <>
-      <Screen3D clip={clip} trimSec={trimSec} speed={speed} dur={d} pose={pose} lines={lines} seed={seed} baseOverride={BASE_PORTRAIT} capBottom={CAP_BOTTOM} />
+      <Screen3D clip={clip} trimSec={trimSec} speed={speed} dur={d} pose={pose} lines={lines} seed={seed} baseOverride={BASE_PORTRAIT} capBottom={CAP_BOTTOM} brand />
       <Flash />
     </>
   ),

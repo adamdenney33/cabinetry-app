@@ -4,6 +4,8 @@
  * This project is fully self-contained and does NOT depend on the existing remotion/ work.
  */
 
+import type React from 'react';
+
 export const FPS = 30;
 
 export const C = {
@@ -46,6 +48,24 @@ export const FONT =
 
 /** Soft cinematic backdrop the app window floats on. */
 export const BACKDROP = 'radial-gradient(120% 120% at 50% 0%, #2a2a2e 0%, #161618 60%, #0d0d0f 100%)';
+
+// ── Brand style (2026 social system) ──
+// Flat ink ground + hard-stop diagonal pinstripes, heavy uppercase display type.
+// Mirrors the `diagonal-pinstripes` variant in remotion-ig/SocialTemplate.tsx —
+// keep the two in step if the brand system moves.
+export const INK = '#111111';
+export const PINSTRIPES: React.CSSProperties = {
+  background: INK,
+  backgroundImage:
+    'repeating-linear-gradient(45deg, #1c1c1c 0px, #1c1c1c 22px, #111111 22px, #111111 44px)',
+};
+/** Heavy uppercase display type — the one text treatment the brand system uses. */
+export const DISPLAY: React.CSSProperties = {
+  fontWeight: 800,
+  letterSpacing: '-1.5px',
+  textTransform: 'uppercase',
+  lineHeight: 1.08,
+};
 
 // ── App-window geometry (logical px the app is drawn at, then scaled to frame) ──
 export const WIN = {

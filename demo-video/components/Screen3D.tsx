@@ -7,10 +7,22 @@
  */
 import React from 'react';
 import { AbsoluteFill, OffthreadVideo, staticFile, useCurrentFrame, interpolate, Easing } from 'remotion';
-import { C, FONT } from '../theme';
+import { C, FONT, PINSTRIPES, DISPLAY, INK } from '../theme';
 import { clampOpts, EASE_OUT } from '../primitives';
 
 const CAM_EASE = Easing.bezier(0.5, 0, 0.15, 1);
+
+/**
+ * Brand backdrop: the flat ink + diagonal-pinstripe ground from the social
+ * system. No gradients, no glows, no floating shards — the brand look is flat
+ * on purpose. The stripes creep very slowly so the frame isn't dead-static.
+ */
+export const BrandBackdrop: React.FC = () => {
+  const frame = useCurrentFrame();
+  return (
+    <AbsoluteFill style={{ ...PINSTRIPES, backgroundPosition: `${(frame * 0.25) % 44}px 0px` }} />
+  );
+};
 
 // Source clips are 1440×900 (wiki recording viewport).
 export const CLIP_W = 1440;
@@ -102,7 +114,7 @@ export const Kicker3D: React.FC<{ n?: string; label: string; dur: number }> = ({
  * landscape offset; portrait comps raise it so the bar clears Instagram's
  * caption/username/action-button chrome at the foot of a 9:16 reel.
  */
-export const Cap3D: React.FC<{ lines: { at: number; text: React.ReactNode }[]; dur: number; bottom?: number }> = ({ lines, dur, bottom = 46 }) => {
+export const Cap3D: React.FC<{ lines: { at: number; text: React.ReactNode }[]; dur: number; bottom?: number; brand?: boolean }> = ({ lines, dur, bottom = 46, brand = false }) => {
   const frame = useCurrentFrame();
   let idx = -1;
   for (let i = 0; i < lines.length; i++) if (frame >= lines[i].at) idx = i;
@@ -113,9 +125,17 @@ export const Cap3D: React.FC<{ lines: { at: number; text: React.ReactNode }[]; d
   const outT = interpolate(frame, [end - 7, end - 1], [1, 0], clampOpts);
   return (
     <div style={{ position: 'absolute', left: 0, right: 0, bottom, display: 'flex', justifyContent: 'center', opacity: Math.min(inT, outT), transform: `translateY(${(1 - inT) * 22}px)`, fontFamily: FONT }}>
-      <div style={{ maxWidth: 1460, background: 'rgba(10,10,12,0.82)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 15, padding: '14px 32px', boxShadow: '0 14px 46px rgba(0,0,0,0.5)' }}>
-        <span style={{ color: '#fff', fontSize: 30, fontWeight: 700, letterSpacing: -0.4, lineHeight: 1.25, textAlign: 'center' }}>{lines[idx].text}</span>
-      </div>
+      {brand ? (
+        // Brand system: solid ink slab, hard edges, heavy uppercase display type
+        // with amber highlights. No glass, no blur, no gradient.
+        <div style={{ maxWidth: 940, background: INK, borderLeft: `10px solid ${C.accent}`, padding: '22px 30px 24px' }}>
+          <span style={{ ...DISPLAY, color: '#fff', fontSize: 36, display: 'block', textAlign: 'left' }}>{lines[idx].text}</span>
+        </div>
+      ) : (
+        <div style={{ maxWidth: 1460, background: 'rgba(10,10,12,0.82)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 15, padding: '14px 32px', boxShadow: '0 14px 46px rgba(0,0,0,0.5)' }}>
+          <span style={{ color: '#fff', fontSize: 30, fontWeight: 700, letterSpacing: -0.4, lineHeight: 1.25, textAlign: 'center' }}>{lines[idx].text}</span>
+        </div>
+      )}
     </div>
   );
 };
@@ -138,7 +158,10 @@ export const Screen3D: React.FC<{
   baseOverride?: number;
   // Raise the caption bar off the foot of the frame (portrait/IG safe area).
   capBottom?: number;
-}> = ({ clip, trimSec = 0, speed = 1, pose, dur, fadeIn = 0, fadeOut = 0, kicker, lines, children, seed, baseOverride, capBottom }) => {
+  // Brand system look: flat pinstripe ground + ink caption slab, in place of the
+  // cinematic gradient/glow backdrop. Landscape call sites omit this.
+  brand?: boolean;
+}> = ({ clip, trimSec = 0, speed = 1, pose, dur, fadeIn = 0, fadeOut = 0, kicker, lines, children, seed, baseOverride, capBottom, brand = false }) => {
   const frame = useCurrentFrame();
   const { s, x, y, rx, ry } = usePose(pose);
   const inOp = fadeIn ? interpolate(frame, [0, fadeIn], [0, 1], clampOpts) : 1;
@@ -153,8 +176,7 @@ export const Screen3D: React.FC<{
 
   return (
     <AbsoluteFill style={{ fontFamily: FONT, opacity: Math.min(inOp, outOp) }}>
-      <TechBackdrop />
-      <Shards seed={seed} />
+      {brand ? <BrandBackdrop /> : <><TechBackdrop /><Shards seed={seed} /></>}
       <AbsoluteFill style={{ alignItems: 'center', justifyContent: 'center', perspective: 1500 }}>
         <div
           style={{
@@ -193,7 +215,7 @@ export const Screen3D: React.FC<{
         </div>
       </AbsoluteFill>
       {/* speed badge — makes the speed-up an intentional flex */}
-      {lines && <Cap3D lines={lines} dur={dur} bottom={capBottom} />}
+      {lines && <Cap3D lines={lines} dur={dur} bottom={capBottom} brand={brand} />}
       {children}
     </AbsoluteFill>
   );
