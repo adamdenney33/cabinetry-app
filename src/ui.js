@@ -620,18 +620,45 @@ function _csvDownload(rows, filename) {
   a.click(); URL.revokeObjectURL(a.href);
 }
 
-/** Open a file picker for a .csv and hand the parsed rows to `cb`.
+// File types the tabular importers accept: comma/tab text plus the spreadsheet
+// formats SheetJS can read (Excel, Apple Numbers, OpenDocument). Used for the
+// <input accept> attribute and to decide the parse path in _readTabularFile.
+const _TABULAR_ACCEPT = '.csv,.tsv,.txt,.xlsx,.xlsm,.xls,.numbers,.ods';
+
+/** Read any supported tabular file into a rows array, matching the shape
+ *  `_csvParse` returns. `.csv`/`.tsv`/`.txt` parse locally; spreadsheet formats
+ *  (.xlsx/.xls/.numbers/.ods) are decoded by SheetJS (lazy-loaded) — the first
+ *  sheet only, with every cell coerced to a trimmed string so downstream
+ *  parseDim/parseInt logic is unchanged. Fully-empty rows are dropped.
+ *  @param {File} file @returns {Promise<string[][]>} */
+async function _readTabularFile(file) {
+  const name = (file.name || '').toLowerCase();
+  const isText = /\.(csv|tsv|txt)$/.test(name) || (!/\.(xlsx|xlsm|xls|numbers|ods)$/.test(name) && (file.type || '').startsWith('text/'));
+  if (isText) return _csvParse(await file.text());
+  const XLSX = await window._ensureXLSX();
+  const wb = XLSX.read(await file.arrayBuffer(), { type: 'array' });
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  if (!ws) return [];
+  /** @type {any[][]} */
+  const aoa = XLSX.utils.sheet_to_json(ws, { header: 1, raw: false, defval: '', blankrows: false });
+  return aoa
+    .map(r => r.map(/** @param {any} c */ c => String(c ?? '').trim()))
+    .filter(r => r.some(c => c !== ''));
+}
+
+/** Open a file picker for a spreadsheet/CSV and hand the parsed rows to `cb`.
+ *  Accepts CSV plus Excel and Apple Numbers files (via _readTabularFile).
  *  @param {(rows: string[][]) => void | Promise<void>} cb */
 function _csvPickFile(cb) {
   const input = document.createElement('input');
-  input.type = 'file'; input.accept = '.csv';
+  input.type = 'file'; input.accept = _TABULAR_ACCEPT;
   input.onchange = async e => {
     const file = /** @type {HTMLInputElement} */ (e.target).files?.[0]; if (!file) return;
     try {
-      const rows = _csvParse(await file.text());
-      if (rows.length < 1) { _toast('CSV is empty', 'error'); return; }
+      const rows = await _readTabularFile(file);
+      if (rows.length < 1) { _toast('File is empty', 'error'); return; }
       await cb(rows);
-    } catch (err) { _toast('Could not read CSV: ' + (/** @type {any} */ (err)).message, 'error'); }
+    } catch (err) { _toast('Could not read file: ' + (/** @type {any} */ (err)).message, 'error'); }
   };
   input.click();
 }

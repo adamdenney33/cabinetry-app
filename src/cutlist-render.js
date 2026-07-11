@@ -698,6 +698,42 @@ function exportCSV(type) {
     _csvDownload(rows, 'stock-panels.csv');
   }
 }
+/** Export the whole cut list as a single 3-tab Excel workbook — Parts, Stock
+ *  Panels, and Edge Banding — so panels and edge banding travel with the parts
+ *  (a flat CSV can only carry one of the three). Falls back to the parts CSV if
+ *  SheetJS can't load. This is the Cut List Library "Export" button. */
+async function exportCutlistWorkbook() {
+  if (!pieces.length && !sheets.length && !edgeBands.length) { _toast('Nothing to export yet', 'info'); return; }
+  const u = window.units === 'metric' ? 'mm' : 'in';
+  /** @type {any[][]} */
+  const partRows = [['Label', `W (${u})`, `H (${u})`, 'Qty', 'Grain', 'Material', 'Notes', 'Edge L1', 'Edge W2', 'Edge L3', 'Edge W4']];
+  pieces.forEach(p => partRows.push([
+    p.label, p.w, p.h, p.qty, p.grain || 'none', p.material || '', p.notes || '',
+    _edgeCell(p.edges?.L1), _edgeCell(p.edges?.W2), _edgeCell(p.edges?.L3), _edgeCell(p.edges?.W4),
+  ]));
+  /** @type {any[][]} */
+  const panelRows = [['Material', `W (${u})`, `H (${u})`, 'Qty', 'Grain']];
+  sheets.forEach(s => panelRows.push([s.name, s.w, s.h, s.qty, s.grain || 'none']));
+  /** @type {any[][]} */
+  const edgeRows = [['Name', 'Thickness (mm)', 'Width (mm)', 'Length (m)', 'Glue']];
+  edgeBands.forEach(e => edgeRows.push([e.name, e.thickness || 0, e.width || 0, e.length || 0, e.glue || '']));
+
+  try {
+    const XLSX = await window._ensureXLSX();
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(partRows),  'Parts');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(panelRows), 'Stock Panels');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(edgeRows),  'Edge Banding');
+    const base = (_clCurrentCutlistName || 'cut-list').replace(/[^\w.-]+/g, '-').replace(/^-+|-+$/g, '') || 'cut-list';
+    XLSX.writeFile(wb, base + '.xlsx');
+    _toast('Exported parts, panels & edge banding', 'success');
+  } catch (err) {
+    // SheetJS failed to load (offline first click, blocked CDN) — still give the
+    // user their parts as CSV rather than nothing.
+    _csvDownload(partRows, 'cut-parts.csv');
+    _toast('Exported parts to CSV (spreadsheet export unavailable offline)', 'error');
+  }
+}
 /** @param {string} type */
 function downloadTemplate(type) {
   const csv = type === 'pieces'
@@ -716,10 +752,8 @@ function triggerImportCSV(type) {
 /** @param {HTMLInputElement} input */
 function handleCSVImport(input) {
   const file = input.files?.[0]; if (!file) return;
-  const reader = new FileReader();
-  reader.onload = e => {
-    const text = /** @type {string} */ (/** @type {FileReader} */ (e.target).result);
-    const rows = _csvParse(text);
+  // Accepts CSV plus Excel/Numbers/ODS via the shared reader (src/ui.js).
+  _readTabularFile(file).then(rows => {
     if (!rows.length) return;
     const isPieces = _csvImportTarget === 'pieces';
     const col = _csvCol(rows[0], isPieces ? {
@@ -759,8 +793,7 @@ function handleCSVImport(input) {
       }
     }
     if (isPieces) { renderPieces(); _saveCutList(); }
-  };
-  reader.readAsText(file);
+  }).catch(err => _toast('Could not read file: ' + (/** @type {any} */ (err)).message, 'error'));
 }
 // ── Main content tabs (Cut Layout / Cabinet Library — F5 dropped middle tab) ──
 /** @param {string} view */
@@ -814,7 +847,7 @@ async function renderCLCutListLibraryView() {
     ${_renderContentHeader({ iconSvg: _CH_ICON_CUTLIST, title: 'Cut List Library', addOnclick: '_clStartNewCutlist()' })}
     <div class="lib-filter-row">
       <input type="text" id="cl-lib-filter" class="lib-filter-input" placeholder="Filter by name..." value="${_escHtml(q)}" oninput="renderCLCutListLibraryView()">
-      <button class="btn btn-outline lib-filter-btn" onclick="exportCSV('pieces')" title="Export the open cut list's parts to CSV">&darr; Export</button>
+      <button class="btn btn-outline lib-filter-btn" onclick="exportCutlistWorkbook()" title="Export the open cut list — parts, stock panels & edge banding — as an Excel workbook">&darr; Export</button>
       <button class="btn btn-outline lib-filter-btn" onclick="triggerImportCSV('pieces')" title="Import parts into the open cut list from CSV">&uarr; Import</button>
     </div>
     <div id="cl-lib-grid" style="display:flex;flex-direction:column;gap:8px">

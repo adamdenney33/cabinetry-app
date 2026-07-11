@@ -66,7 +66,8 @@
     "@supabase/supabase-js": "^2.105.1",
     "jspdf": "^2.5.2",
     "jspdf-autotable": "^3.8.4",
-    "posthog-js": "^1.373.4"
+    "posthog-js": "^1.373.4",
+    "xlsx": "^0.18.5"
   },
   "overrides": {
     "dotenv": "^16.6.1"
