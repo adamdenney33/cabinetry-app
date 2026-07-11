@@ -146,6 +146,7 @@ async function _saveTaskPopup(id) {
     renderSchedule();
     const { error } = await _db('schedule_tasks').update(body).eq('id', id);
     if (error) { console.warn('[schedule_tasks] update failed:', error.message); _toast('Save failed — check connection', 'error'); }
+    else if (typeof _gcalQueueSync === 'function') _gcalQueueSync();
   } else {
     body.user_id = _userId;
     _closePopup();
@@ -159,6 +160,7 @@ async function _saveTaskPopup(id) {
     _sortScheduleTasks();
     renderSchedule();
     _toast('Task added', 'success');
+    if (typeof _gcalQueueSync === 'function') _gcalQueueSync();
   }
 }
 
@@ -174,6 +176,7 @@ function _deleteTaskFromPopup(id) {
     renderSchedule();
     const { error } = await _db('schedule_tasks').delete().eq('id', id);
     if (error) { console.warn('[schedule_tasks] delete failed:', error.message); _toast('Delete failed — check connection', 'error'); }
+    else if (typeof _gcalQueueSync === 'function') _gcalQueueSync();
   });
 }
 
@@ -201,5 +204,6 @@ function _persistTaskTimes(id, start, end) {
       .update({ start_at: latest.start_at, end_at: latest.end_at, updated_at: new Date().toISOString() })
       .eq('id', id);
     if (error) { console.warn('[schedule_tasks] move failed:', error.message); _toast('Save failed — check connection', 'error'); }
+    else if (typeof _gcalQueueSync === 'function') _gcalQueueSync();
   }, 500));
 }

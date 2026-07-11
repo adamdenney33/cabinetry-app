@@ -64,32 +64,38 @@ function _schedOpenDay(iso) {
   _schedSetView('day');
 }
 
-// ── Layer visibility (SV.7) — Orders / Tasks (Google arrives in phase 2) ──
-/** @type {{ orders: boolean, tasks: boolean }} */
+// ── Layer visibility (SV.7) — Orders / Tasks / Google ──
+/** @type {{ orders: boolean, tasks: boolean, google: boolean }} */
 let _schedLayers = (() => {
   try {
     const v = JSON.parse(localStorage.getItem('pc_sched_layers') || '{}');
-    return { orders: v.orders !== false, tasks: v.tasks !== false };
-  } catch (e) { return { orders: true, tasks: true }; }
+    return { orders: v.orders !== false, tasks: v.tasks !== false, google: v.google !== false };
+  } catch (e) { return { orders: true, tasks: true, google: true }; }
 })();
-/** @param {'orders'|'tasks'} key */
+/** @param {'orders'|'tasks'|'google'} key */
 function _schedToggleLayer(key) {
   _schedLayers[key] = !_schedLayers[key];
   try { localStorage.setItem('pc_sched_layers', JSON.stringify(_schedLayers)); } catch (e) {}
   if (typeof renderSchedule === 'function') renderSchedule();
 }
-/** Sidebar rows — GCal-style coloured checkboxes. */
+/** Sidebar rows — GCal-style coloured checkboxes, plus the Google Calendar
+ *  connect/status block (src/gcal.js). */
 function _schedLayersHTML() {
-  const row = /** @param {'orders'|'tasks'} key @param {string} color @param {string} label */
+  const row = /** @param {'orders'|'tasks'|'google'} key @param {string} color @param {string} label */
     (key, color, label) => `<label class="sched-layer">
       <input type="checkbox" ${_schedLayers[key] ? 'checked' : ''} onchange="_schedToggleLayer('${key}')">
       <span class="sched-layer-dot" style="background:${color}"></span>${label}
     </label>`;
+  const gcalConnected = typeof _gcalConn !== 'undefined' && _gcalConn.connected;
   return `<div class="sched-layers">
     ${row('orders', 'var(--accent)', 'Orders')}
     ${row('tasks', TASK_COLOR, 'Tasks')}
+    ${gcalConnected ? row('google', GCAL_COLOR, 'Google Calendar') : ''}
+    ${typeof _gcalSidebarHTML === 'function' ? _gcalSidebarHTML() : ''}
   </div>`;
 }
+/** Google-brand-ish blue for overlay events. */
+const GCAL_COLOR = '#4c8df6';
 
 // ── View bar (SV.3) ──
 const _SCHED_CHEV_L = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>`;
@@ -222,16 +228,23 @@ function _renderSchedTimeGrid(opts) {
     </div>`;
   }
   head += `</div>`;
-  // All-day strip (all-day tasks live here, like GCal's all-day row)
-  if (showTasks) {
+  // All-day strip (all-day tasks + all-day Google events, like GCal's row)
+  {
     let adCells = '';
     let anyAllDay = false;
     for (const d of dayList) {
       const dEnd = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1);
-      const ad = _tasksBetween(d, dEnd).filter(t => t.all_day);
-      if (ad.length) anyAllDay = true;
-      adCells += `<div class="sgh-allday-cell">${ad.map(t =>
-        `<span class="sched-ad-chip${t.done ? ' done' : ''}" onclick="event.stopPropagation();_openTaskPopup(${t.id})" title="${_escHtml(t.title)}">${_escHtml(t.title)}</span>`).join('')}</div>`;
+      let chips = '';
+      if (showTasks) {
+        chips += _tasksBetween(d, dEnd).filter(t => t.all_day).map(t =>
+          `<span class="sched-ad-chip${t.done ? ' done' : ''}" onclick="event.stopPropagation();_openTaskPopup(${t.id})" title="${_escHtml(t.title)}">${_escHtml(t.title)}</span>`).join('');
+      }
+      if (typeof _gcalEventsBetween === 'function') {
+        chips += _gcalEventsBetween(d, dEnd).filter(g => g.allDay).map(g =>
+          `<span class="sched-ad-chip gcal" title="${_escHtml(g.title)} (Google Calendar)">${_escHtml(g.title)}</span>`).join('');
+      }
+      if (chips) anyAllDay = true;
+      adCells += `<div class="sgh-allday-cell">${chips}</div>`;
     }
     if (anyAllDay) {
       head += `<div class="sgh-allday" style="grid-template-columns:56px repeat(${days},1fr)"><div class="sgh-adlabel">all-day</div>${adCells}</div>`;
@@ -274,6 +287,17 @@ function _renderSchedTimeGrid(opts) {
         blocks.push({ kind: 'task', t, startMin, endMin });
       }
     }
+    // Google Calendar overlay (read-only)
+    if (typeof _gcalEventsBetween === 'function') {
+      const dEnd = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1);
+      for (const g of _gcalEventsBetween(d, dEnd)) {
+        if (g.allDay) continue;
+        const s = new Date(g.start), en = new Date(g.end);
+        const startMin = Math.max(0, (+s - +d) / 60000);
+        const endMin = Math.min(24 * 60, Math.max(startMin + 15, (+en - +d) / 60000));
+        blocks.push({ kind: 'gcal', g, startMin, endMin });
+      }
+    }
     _schedLayoutOverlaps(blocks);
 
     let colInner = '';
@@ -298,6 +322,12 @@ function _renderSchedTimeGrid(opts) {
         colInner += `<div class="sched-ord-block" style="top:${top}px;height:${height}px;left:calc(${leftPct}% + ${gap}px);width:calc(${wPct}% - ${gap * 2}px);background:${b.e.color};${manual}"
           onclick="event.stopPropagation();_openOrderPopup(${b.e.id})" title="${label} — ${b.hours}h">
           <span class="sob-title">${label}</span><span class="sob-time">${b.hours}h</span>
+        </div>`;
+      } else if (b.kind === 'gcal') {
+        colInner += `<div class="sched-gcal-block" style="top:${top}px;height:${height}px;left:calc(${leftPct}% + ${gap}px);width:calc(${wPct}% - ${gap * 2}px)"
+          onclick="event.stopPropagation()" title="${_escHtml(b.g.title)} (Google Calendar)">
+          <span class="sgc-title">${_escHtml(b.g.title)}</span>
+          <span class="sgc-time">${_taskTimeStr(new Date(b.g.start))} – ${_taskTimeStr(new Date(b.g.end))}</span>
         </div>`;
       } else {
         const t = b.t;
@@ -515,28 +545,47 @@ function _schedMonthTasks(iso) {
   return _tasksBetween(day, dayEnd);
 }
 
+/** Google overlay events on a month-view day. @param {string} iso */
+function _schedMonthGcal(iso) {
+  if (typeof _gcalEventsBetween !== 'function') return [];
+  const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return [];
+  const day = new Date(parseInt(m[1]), parseInt(m[2]) - 1, parseInt(m[3]));
+  return _gcalEventsBetween(day, new Date(day.getFullYear(), day.getMonth(), day.getDate() + 1));
+}
+
 /** Chip-row count for a day cell (max 3 chips + "+N more"), used by the
  *  month renderer to size the week's cells. @param {string} iso */
 function _schedMonthTaskCount(iso) {
-  const n = _schedMonthTasks(iso).length;
+  const n = _schedMonthTasks(iso).length + _schedMonthGcal(iso).length;
   return n > 3 ? 4 : n;
 }
 
-/** Task chips for a month-view day cell, absolutely positioned below the
- *  order-bar zone. @param {string} iso @param {number} top */
+/** Task + Google chips for a month-view day cell, absolutely positioned
+ *  below the order-bar zone. @param {string} iso @param {number} top */
 function _schedMonthTaskChipsHTML(iso, top) {
-  const list = _schedMonthTasks(iso);
-  if (!list.length) return '';
-  const shown = list.slice(0, 3);
+  const tasks = _schedMonthTasks(iso);
+  const gcal = _schedMonthGcal(iso);
+  const total = tasks.length + gcal.length;
+  if (!total) return '';
   let html = `<div class="sched-cell-tasks" style="top:${top}px">`;
-  for (const t of shown) {
+  let shown = 0;
+  for (const t of tasks) {
+    if (shown >= 3) break;
+    shown++;
     const time = t.all_day ? '' : `<span class="sct-time">${_taskTimeStr(new Date(t.start_at))}</span>`;
     html += `<div class="sched-task-chip${t.done ? ' done' : ''}" draggable="true"
       ondragstart="_taskChipDragStart(event,${t.id})"
       onclick="event.stopPropagation();_openTaskPopup(${t.id})" title="${_escHtml(t.title)}">${time}${_escHtml(t.title)}</div>`;
   }
-  if (list.length > shown.length) {
-    html += `<div class="sched-task-chip more" onclick="event.stopPropagation();_schedOpenDay('${iso}')">+${list.length - shown.length} more</div>`;
+  for (const g of gcal) {
+    if (shown >= 3) break;
+    shown++;
+    const time = g.allDay ? '' : `<span class="sct-time">${_taskTimeStr(new Date(g.start))}</span>`;
+    html += `<div class="sched-task-chip gcal" onclick="event.stopPropagation()" title="${_escHtml(g.title)} (Google Calendar)">${time}${_escHtml(g.title)}</div>`;
+  }
+  if (total > shown) {
+    html += `<div class="sched-task-chip more" onclick="event.stopPropagation();_schedOpenDay('${iso}')">+${total - shown} more</div>`;
   }
   html += '</div>';
   return html;

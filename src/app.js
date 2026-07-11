@@ -106,6 +106,12 @@ async function loadAllData() {
   if (typeof loadScheduleTasks === 'function') {
     loadScheduleTasks().catch(/** @param {any} e */ e => console.warn('[schedule_tasks] load:', e.message || e));
   }
+  // GC.4 — Google Calendar connection status + boot sync (no-ops when not connected)
+  if (typeof loadGcalStatus === 'function') {
+    loadGcalStatus().then(() => {
+      if (typeof _gcalSyncNow === 'function') _gcalSyncNow('boot');
+    }).catch(/** @param {any} e */ e => console.warn('[gcal] status:', e.message || e));
+  }
   /** @type {HTMLElement} */ (document.getElementById('orders-badge')).textContent = String(orders.filter(o => o.status !== 'complete').length);
   // Guarded: a dropped domain script (main.js boot self-heal reloads once to
   // recover) must not abort the rest of boot before the realtime subscribe below.
@@ -280,6 +286,9 @@ if (typeof handlePortalReturn === 'function') handlePortalReturn();
 // (?accounting=connected / error), then strip the param.
 if (typeof handleAccountingReturn === 'function') handleAccountingReturn();
 if (typeof handleConnectReturn === 'function') handleConnectReturn();
+// Toast + status refresh on return from the Google Calendar consent screen
+// (?gcal=connected / error), then strip the param.
+if (typeof handleGcalReturn === 'function') handleGcalReturn();
 // Guarded: these fire at script-eval time, so a single dropped domain file must
 // not abort the rest of app.js top-level (main.js self-heals via one reload).
 try { loadBizInfo(); } catch (_e) {}

@@ -60,7 +60,7 @@ migration cost for connected users.
   open a quote with lines, Sync ▾ → confirm a DRAFT estimate/quote appears in the
   provider with matching line totals + a "✓ Synced" chip deep-links to it.
 
-### Schedule — day/week views, tasks, drag + Google Calendar 2-way (2026-07-11) ✅ Phase 1 built + verified — ⬜ push · Phase 2 (GC) blocked on Google Cloud setup
+### Schedule — day/week views, tasks, drag + Google Calendar 2-way (2026-07-11) ✅ Phases 1+2 built (fns deployed) — ⬜ GC end-to-end test + push
 
 **Goal.** Grow the Schedule tab from the single continuous month Gantt into a
 Google-Calendar-style surface: Day / Week / Month view switcher, standalone
@@ -122,26 +122,43 @@ sync. Minimal UI — GCal interaction cues, existing app styling.
   SQL-cleaned). ⚠️ Order hour-blocks not visually exercised (e2e account
   has no orders) — eyeball on real data. SPEC § 13 entry written.
 
-**Phase 2 — Google Calendar 2-way (GC) — blocked on Google Cloud setup.**
-- ⬜ **GC.0 — user-side checklist**: Google Cloud project → enable
-  Calendar API → OAuth consent screen (external; scope
-  `.../auth/calendar.events` is *sensitive* → verification needed to
-  exit the 100-test-user cap) → Web OAuth client (redirect URI = the
-  `gcal-oauth` edge fn URL) → client id/secret as Supabase secrets.
-  Same project can host the pending Google sign-in activation.
-- ⬜ **GC.1 — `google_connections` table**: encrypted refresh-token store
-  (accounting_connections pattern), calendar_id, sync_token, webhook
-  channel id/expiry.
-- ⬜ **GC.2 — edge fns**: `gcal-oauth` (consent redirect + code exchange),
-  `gcal-sync` (incremental 2-way: push local task/order changes, pull via
-  syncToken, last-write-wins on updated_at; tasks tagged
-  `extendedProperties.private.pc_task_id`, orders `pc_order_id`
-  all-day events), `gcal-webhook` (push-channel notifications → sync).
-- ⬜ **GC.3 — app wiring**: "Connect Google Calendar" in schedule sidebar,
-  Google layer toggle + read-only overlay events in all views, sync
-  status line, disconnect.
-- ⬜ **GC.4 — verify + docs**: round-trip tests (create/edit/delete both
-  sides), SCHEMA.md + SPEC § 13.
+**Phase 2 — Google Calendar 2-way (GC) ✅ built + deployed 2026-07-11 — ⬜ end-to-end test (needs user's Google consent) + push.**
+- ✅ **GC.0 — user-side setup**: Google Cloud project + Calendar API +
+  external consent screen (`calendar.events` scope; Testing mode, user
+  added as test user) + Web OAuth client done by the user 2026-07-11.
+  Redirect URIs: `/auth/v1/callback` (Google sign-in) + the `gcal-oauth`
+  fn URL. ⬜ Confirm `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` edge
+  secrets set + Google provider enabled in Supabase Auth (sign-in
+  activation rides the same client).
+- ✅ **GC.1 — `gcal_connections`** (migration `20260711150000`, applied):
+  encrypted token row (AES-GCM via shared ACCOUNTING_TOKEN_KEY), owner
+  SELECT only, service-role writes. SCHEMA § 3.30; types hand-edited.
+- ✅ **GC.2 — `gcal-oauth`** (deployed v1, verify_jwt=false): POST start
+  (manual JWT auth → consent URL with HMAC state), GET callback (state
+  verify → code exchange → encrypted upsert → 302 `/os?gcal=…`), POST
+  disconnect (revoke + row delete). Smoke: bogus state → `gcal=error`.
+- ✅ **GC.3 — `gcal-sync`** (deployed v1, verify_jwt=true): **wide-window
+  reconcile (today −30d…+180d), no syncToken/webhooks** — simpler than
+  the planned webhook design; GCal-side edits land on the next sync
+  (≤5 min while Schedule is open). Tasks 2-way LWW vs `gcal_synced_at`
+  (deletes propagate both ways via tag-matching + events.get
+  disambiguation); orders push-only all-day events rebuilt from the
+  client's computed placements (`transparency:transparent`, demo rows
+  skipped); untagged events → read-only overlay (never stored).
+- ✅ **GC.4 — app wiring** (`src/gcal.js` + hooks): Connect/Reconnect
+  button + connected status row (sync-now ⟳ / disconnect ✕) under the
+  sidebar layer toggles; Google layer checkbox (blue) appears when
+  connected; `?gcal=` return handler; sync triggers = boot, 4s-debounced
+  after task create/edit/delete/drag, 5-min interval while Schedule
+  open, manual. Overlay renders as blue read-only blocks + all-day chips
+  (Day/Week) and month chips. Placements computed via `computeSchedule`
+  directly (pure fn, no render coupling).
+- 🚧 **GC.5 — verify + docs**: typecheck clean; smoke 9/9 (one transient
+  auth blip re-ran green); endpoints smoke-tested. SPEC § 13 + SCHEMA
+  written. ⬜ **End-to-end round-trip needs the user**: Connect on
+  procabinet.app (or localhost), confirm orders + a task appear in
+  Google Calendar, edit the task in GCal → syncs back, overlay shows
+  personal events. ⬜ push to `main`.
 
 ### Cabinet Builder "edit in place" UI rework (2026-07-03) ✅ built + verified — ⬜ push
 

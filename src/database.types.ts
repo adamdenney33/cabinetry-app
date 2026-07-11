@@ -733,6 +733,48 @@ export type Database = {
         }
         Relationships: []
       }
+      gcal_connections: {
+        Row: {
+          access_token_enc: string | null
+          calendar_id: string
+          connected_at: string
+          expires_at: string | null
+          google_email: string | null
+          id: number
+          last_synced_at: string | null
+          refresh_token_enc: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_token_enc?: string | null
+          calendar_id?: string
+          connected_at?: string
+          expires_at?: string | null
+          google_email?: string | null
+          id?: number
+          last_synced_at?: string | null
+          refresh_token_enc?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_token_enc?: string | null
+          calendar_id?: string
+          connected_at?: string
+          expires_at?: string | null
+          google_email?: string | null
+          id?: number
+          last_synced_at?: string | null
+          refresh_token_enc?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       inbound_emails: {
         Row: {
           client_id: number | null
