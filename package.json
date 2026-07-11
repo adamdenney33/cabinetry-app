@@ -25,6 +25,7 @@
     "render:ig-reel": "node scripts/render-reel.mjs",
     "studio:social": "remotion studio remotion-ig/studio-entry.ts --public-dir=marketing/audio --no-open --port 3035",
     "render:social": "node scripts/render-social-studio.mjs",
+    "ig-studio": "node scripts/ig-studio-server.mjs",
     "render:loom-email": "remotion render remotion-loom/index.ts loom-email marketing/videos/loom-quote-email.mp4 --public-dir=remotion-loom/public",
     "render:loom-reel": "remotion render remotion-loom/index.ts loom-reel marketing/videos/loom-quote-reel.mp4 --public-dir=remotion-loom/public",
     "render:loom-portrait": "remotion render remotion-loom/index.ts loom-portrait marketing/videos/loom-quote-portrait.mp4 --public-dir=remotion-loom/public",

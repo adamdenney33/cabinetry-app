@@ -21,7 +21,8 @@
 // artifact polls the log for exactly those markers.
 import { bundle } from '@remotion/bundler';
 import { selectComposition, renderStill, renderMedia, openBrowser } from '@remotion/renderer';
-import { existsSync, mkdirSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { join, dirname, isAbsolute, extname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -91,12 +92,44 @@ mkdirSync(outDir, { recursive: true });
 
 // ── render ───────────────────────────────────────────────────────
 console.log(`▶ job: ${type} · ${inputProps.ratio} · ${variant} · ${slides.length} slide(s) → ${outDir}`);
-console.log('▶ bundling…');
-const serveUrl = await bundle({
-  entryPoint: join(ROOT, 'remotion-ig', 'studio-entry.ts'),
-  // audio tracks resolve via staticFile() — only needed for reels but harmless otherwise
-  publicDir: join(ROOT, 'marketing', 'audio'),
-});
+
+// Bundle cache in /tmp — OUTSIDE the Cowork-synced project folder. Bundling
+// reads thousands of node_modules files through the sync layer, which can
+// transiently wedge (blocking read() forever — see SPEC.md § 13 2026-07-11);
+// a cached bundle sidesteps that exposure and makes every render ~3-5x
+// faster. Cache key = every file under remotion-ig/ + marketing/audio/.
+const BUNDLE_DIR = '/tmp/procabinet-ig-studio-bundle';
+const HASH_FILE = `${BUNDLE_DIR}.hash`;
+const bundleHash = () => {
+  const h = createHash('sha1');
+  const walk = (dir) => {
+    for (const f of readdirSync(dir).sort()) {
+      const p = join(dir, f);
+      const s = statSync(p);
+      if (s.isDirectory()) walk(p);
+      else h.update(`${p}:${s.size}:${s.mtimeMs};`);
+    }
+  };
+  for (const dir of [join(ROOT, 'remotion-ig'), join(ROOT, 'marketing', 'audio')]) {
+    if (existsSync(dir)) walk(dir);
+  }
+  return h.digest('hex');
+};
+const hash = bundleHash();
+let serveUrl;
+if (existsSync(BUNDLE_DIR) && existsSync(HASH_FILE) && readFileSync(HASH_FILE, 'utf8') === hash) {
+  serveUrl = BUNDLE_DIR;
+  console.log('▶ using cached bundle');
+} else {
+  console.log('▶ bundling…');
+  serveUrl = await bundle({
+    entryPoint: join(ROOT, 'remotion-ig', 'studio-entry.ts'),
+    outDir: BUNDLE_DIR,
+    // audio tracks resolve via staticFile() — only needed for reels but harmless otherwise
+    publicDir: join(ROOT, 'marketing', 'audio'),
+  });
+  writeFileSync(HASH_FILE, hash);
+}
 
 const compId = type === 'reel' ? 'studio-reel' : 'studio-still';
 const composition = await selectComposition({ serveUrl, id: compId, inputProps });

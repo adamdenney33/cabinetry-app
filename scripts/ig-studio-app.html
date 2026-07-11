@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IG Content Studio — ProCabinet.App</title>
+<style>
+  :root { color-scheme: light;
+    --amber:#e8a838; --amber-dim:#fbf0d8; --ink:#111; --text2:#444; --muted:#8a8a8a;
+    --bg:#f2f2f2; --surface:#fff; --border:#e3e3e3; --border-soft:#ededed;
+    --green:#3d9970; --red:#e05252;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink);
+    font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,sans-serif; }
+  .wrap { display:grid; grid-template-columns: 1fr 360px; gap:16px; padding:16px; max-width:1280px; margin:0 auto; }
+  @media (max-width: 900px){ .wrap{ grid-template-columns:1fr; } .side{ order:-1; } }
+  .card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:16px; margin-bottom:14px; }
+  .card h2 { margin:0 0 10px; font-size:13px; letter-spacing:1.6px; text-transform:uppercase; color:var(--muted); font-weight:800; }
+  .card h2 .n { display:inline-block; width:20px; height:20px; border-radius:50%; background:var(--ink); color:#fff; text-align:center; line-height:20px; font-size:11px; margin-right:8px; letter-spacing:0; }
+  label { display:block; font-size:12px; font-weight:700; color:var(--text2); margin:10px 0 4px; }
+  input[type=text], input[type=number], textarea, select {
+    width:100%; padding:9px 11px; border:1px solid var(--border); border-radius:8px; font:inherit; background:#fff; color:var(--ink);
+  }
+  textarea { resize:vertical; min-height:64px; }
+  input:focus, textarea:focus, select:focus { outline:2px solid var(--amber); outline-offset:0; border-color:var(--amber); }
+  .hint { font-size:11.5px; color:var(--muted); margin-top:4px; }
+  .seg { display:flex; gap:6px; flex-wrap:wrap; }
+  .seg button { flex:1; padding:9px 10px; border:1px solid var(--border); background:#fff; border-radius:8px; font:inherit; font-weight:700; cursor:pointer; color:var(--text2); }
+  .seg button.on { background:var(--ink); color:#fff; border-color:var(--ink); }
+  .chips { display:flex; gap:6px; flex-wrap:wrap; }
+  .chips button { padding:6px 12px; border:1px solid var(--border); background:#fff; border-radius:99px; font:inherit; font-size:12.5px; font-weight:700; cursor:pointer; color:var(--text2); }
+  .chips button.on { background:var(--amber-dim); border-color:var(--amber); color:var(--ink); }
+  .tgrid { display:grid; grid-template-columns:repeat(auto-fill,minmax(96px,1fr)); gap:8px; }
+  .tpl { border:2px solid transparent; border-radius:10px; overflow:hidden; cursor:pointer; position:relative; background:#111; aspect-ratio:9/16; }
+  .tpl img { width:100%; height:100%; object-fit:cover; display:block; }
+  .tpl.on { border-color:var(--amber); box-shadow:0 0 0 2px var(--amber-dim); }
+  .tpl .nm { position:absolute; left:0; right:0; bottom:0; font-size:9.5px; font-weight:700; color:#fff; background:rgba(0,0,0,.55); padding:3px 5px; text-align:center; }
+  .btn { display:inline-flex; align-items:center; gap:6px; padding:9px 14px; border-radius:8px; border:1px solid var(--border); background:#fff; font:inherit; font-weight:700; cursor:pointer; color:var(--ink); }
+  .btn:hover { border-color:var(--amber); }
+  .btn.primary { background:var(--ink); color:#fff; border-color:var(--ink); }
+  .btn.primary:hover { background:#000; }
+  .btn.sm { padding:6px 10px; font-size:12px; }
+  .btn:disabled { opacity:.45; cursor:default; }
+  .row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .grow { flex:1; min-width:120px; }
+  .slide-ed { border:1px solid var(--border-soft); border-radius:10px; padding:10px 12px; margin-top:8px; }
+  .slide-ed .hd { display:flex; justify-content:space-between; align-items:center; cursor:pointer; font-weight:800; font-size:12.5px; color:var(--text2); }
+  .slide-ed .hd .tag { font-size:10.5px; color:var(--muted); font-weight:600; max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .imgpick { display:flex; gap:8px; align-items:center; margin-top:6px; flex-wrap:wrap; }
+  .imgpick .pv { width:64px; height:40px; border-radius:6px; border:1px solid var(--border); object-fit:cover; background:#f7f7f7; }
+  .status { font-size:12px; padding:8px 10px; border-radius:8px; background:#f7f7f7; border:1px solid var(--border-soft); color:var(--text2); white-space:pre-wrap; word-break:break-word; }
+  .status.err { background:#fbe9e9; border-color:#f3caca; color:#a33; }
+  .status.ok { background:#e6f2ec; border-color:#cfe6da; color:#2b6e4f; }
+  .side { position:sticky; top:12px; align-self:start; }
+  .pv-stage { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:14px; }
+  .pv-frame { margin:0 auto; overflow:hidden; border-radius:10px; box-shadow:0 10px 30px rgba(0,0,0,.18); position:relative; }
+  .pv-inner { position:absolute; top:0; left:0; transform-origin:top left; font-family:Inter,-apple-system,sans-serif; }
+  .pv-nav { display:flex; justify-content:center; gap:8px; margin-top:10px; }
+  .outs { display:grid; grid-template-columns:repeat(auto-fill,minmax(120px,1fr)); gap:8px; margin-top:10px; }
+  .outs .o { border:1px solid var(--border); border-radius:8px; overflow:hidden; background:#fff; }
+  .outs img { width:100%; display:block; }
+  .outs .cap { font-size:10.5px; padding:4px 6px; color:var(--text2); display:flex; justify-content:space-between; gap:4px; align-items:center; }
+  .modal { position:fixed; inset:0; background:rgba(17,17,17,.45); display:none; align-items:center; justify-content:center; z-index:50; }
+  .modal.on { display:flex; }
+  .modal .box { background:#fff; border-radius:14px; width:min(760px,94vw); max-height:86vh; overflow:auto; padding:16px; }
+  .agrid { display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:10px; margin-top:10px; }
+  .agrid .a { border:1px solid var(--border); border-radius:8px; overflow:hidden; cursor:pointer; background:#fff; }
+  .agrid .a:hover { border-color:var(--amber); }
+  .agrid img { width:100%; height:88px; object-fit:cover; display:block; background:#f2f2f2; }
+  .agrid .cap { font-size:10px; padding:4px 6px; color:var(--text2); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .grp { font-size:11px; font-weight:800; letter-spacing:1px; text-transform:uppercase; color:var(--muted); margin:14px 0 0; }
+  .spin { display:inline-block; width:13px; height:13px; border:2px solid var(--border); border-top-color:var(--amber); border-radius:50%; animation:sp .8s linear infinite; vertical-align:-2px; }
+  @keyframes sp { to { transform:rotate(360deg); } }
+  .titlebar { display:flex; align-items:baseline; gap:10px; padding:14px 16px 0; max-width:1280px; margin:0 auto; }
+  .titlebar h1 { font-size:18px; margin:0; font-weight:900; letter-spacing:-.3px; }
+  .titlebar h1 em { color:var(--amber); font-style:normal; }
+  .titlebar .sub { font-size:12px; color:var(--muted); }
+</style>
+</head>
+<body>
+<div class="titlebar"><h1>IG Content Studio<em>.</em></h1><div class="sub">ProCabinet.App — single · carousel · reel, on-brand every time · local</div></div>
+<div class="wrap">
+<div class="main">
+
+  <div class="card">
+    <h2><span class="n">1</span>Format</h2>
+    <div class="seg" id="typeSeg">
+      <button data-t="single">Single image</button>
+      <button data-t="carousel">Carousel</button>
+      <button data-t="reel">Reel</button>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <div class="grow">
+        <label>Aspect ratio</label>
+        <div class="chips" id="ratioChips"></div>
+      </div>
+      <div id="countWrap" style="display:none;width:110px">
+        <label id="countLabel">Slides</label>
+        <input type="number" id="count" min="2" max="10" value="3">
+      </div>
+      <div id="reelWrap" style="display:none" class="row">
+        <div style="width:110px"><label>Length (s)</label><input type="number" id="seconds" min="3" max="90" value="12"></div>
+        <div class="grow"><label>Music</label><select id="audio"><option value="">— none —</option></select></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2><span class="n">2</span>Template <button class="btn sm" style="float:right" onclick="loadSync(true)">↻ Rescan folder</button></h2>
+    <div class="tgrid" id="tplGrid"><span class="spin"></span></div>
+    <div class="hint">Templates live in <b>out/instagram/social-templates/</b> — drop a new PNG in and hit Rescan; unknown names render as full-bleed backgrounds.</div>
+  </div>
+
+  <div class="card">
+    <h2><span class="n">3</span>Content</h2>
+    <label>Title</label>
+    <textarea id="title" rows="2" placeholder="Quote custom cabinetry *in minutes*.">Our affiliate program is *coming soon.*</textarea>
+    <div class="hint">*word* = amber highlight · new line = line break</div>
+    <div class="row">
+      <div class="grow"><label>Kicker (small amber line above)</label><input type="text" id="kicker" placeholder="Content creators"></div>
+      <div class="grow"><label>Sub line (optional)</label><input type="text" id="sub" placeholder="Real screens, real speed."></div>
+    </div>
+    <div id="multiWrap" style="display:none">
+      <div class="row" style="margin-top:12px">
+        <button class="btn sm" onclick="copySlidesPrompt()">✦ Copy slide-copy prompt for Claude</button>
+        <button class="btn sm" onclick="toggle('slidesPaste')">📥 Paste Claude’s JSON…</button>
+        <label style="margin:0;display:flex;align-items:center;gap:6px;font-size:12px"><input type="checkbox" id="cta" checked> End on CTA slide</label>
+        <span id="slidesMsg" class="hint"></span>
+      </div>
+      <div id="slidesPaste" style="display:none">
+        <textarea id="slidesJson" rows="3" placeholder='[{"kicker":"","title":"","sub":""}, …]'></textarea>
+        <button class="btn sm" style="margin-top:6px" onclick="applySlidesJson()">Apply</button>
+      </div>
+      <div id="slideList"></div>
+    </div>
+    <div id="singleImgWrap" style="margin-top:12px">
+      <label>Visual (optional)</label>
+      <div class="imgpick" id="imgpick0"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2><span class="n">4</span>Caption</h2>
+    <div class="row">
+      <button class="btn sm" onclick="copyCaptionPrompt('title')">✦ Copy caption prompt (from title)</button>
+      <button class="btn sm" onclick="copyCaptionPrompt('prompt')">✦ Copy caption prompt (custom)…</button>
+      <span id="capMsg" class="hint"></span>
+    </div>
+    <div class="hint">Paste the prompt into Claude (chat or the menu-bar app), then paste the caption back below.</div>
+    <textarea id="caption" rows="7" placeholder="Paste or write the caption here." style="margin-top:10px"></textarea>
+    <div class="row" style="margin-top:8px">
+      <button class="btn sm" onclick="copyCaption()">Copy caption</button>
+      <button class="btn sm" onclick="saveCaption()">Save to marketing/captions</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2><span class="n">5</span>Render</h2>
+    <div class="row">
+      <div class="grow"><label>Output name</label><input type="text" id="slug" placeholder="auto from title"></div>
+      <button class="btn primary" id="renderBtn" onclick="startRender()" style="margin-top:22px">▶ Render</button>
+    </div>
+    <div id="renderStatus" style="margin-top:10px"></div>
+    <div class="outs" id="outGrid"></div>
+  </div>
+
+</div>
+<div class="side">
+  <div class="pv-stage">
+    <h2 style="margin:0 0 10px;font-size:13px;letter-spacing:1.6px;text-transform:uppercase;color:var(--muted);font-weight:800">Preview</h2>
+    <div class="pv-frame" id="pvFrame"><div class="pv-inner" id="pvInner"></div></div>
+    <div class="pv-nav" id="pvNav"></div>
+  </div>
+</div>
+</div>
+
+<div class="modal" id="assetModal">
+  <div class="box">
+    <div class="row" style="justify-content:space-between">
+      <b>Choose an image</b>
+      <div class="row">
+        <button class="btn sm" onclick="pickUpload()">⬆ Upload…</button>
+        <select id="capTab" style="width:130px">
+          <option>Dashboard</option><option>Cut List</option><option>Stock</option><option>Cabinet</option>
+          <option>Quotes</option><option>Orders</option><option>Clients</option><option>Schedule</option>
+        </select>
+        <button class="btn sm" onclick="captureFresh()">📷 Capture fresh</button>
+        <button class="btn sm" onclick="closeModal()">✕</button>
+      </div>
+    </div>
+    <div id="capMsg2" class="hint"></div>
+    <div id="assetBody"></div>
+  </div>
+</div>
+<input type="file" id="fileIn" accept="image/*" style="display:none">
+
+<script>
+'use strict';
+/* ── constants ─────────────────────────────────────────────── */
+const RATIOS = { '1:1':[1080,1080], '4:5':[1080,1350], '9:16':[1080,1920], '1.91:1':[1200,628] };
+const RATIO_BY_TYPE = { single:['4:5','1:1','1.91:1'], carousel:['4:5','1:1'], reel:['9:16'] };
+const TITLE_SIZE = { '1:1':76, '4:5':84, '9:16':88, '1.91:1':54 };
+const CODE_VARIANTS = {
+  'flat-ink':      { css:'background:#111111;' },
+  'amber-block':   { css:'background:#e8a838;', inverted:true },
+  'dot-grid':      { css:'background:#111111;background-image:radial-gradient(#e8a838 2px, transparent 2px);background-size:34px 34px;' },
+  'blueprint-grid':{ css:'background:#111111;background-image:linear-gradient(rgba(232,168,56,0.35) 1.5px, transparent 1.5px),linear-gradient(90deg, rgba(232,168,56,0.35) 1.5px, transparent 1.5px);background-size:40px 40px;' },
+  'diagonal-pinstripes':{ css:'background:#111111;background-image:repeating-linear-gradient(45deg,#1c1c1c 0px,#1c1c1c 22px,#111111 22px,#111111 44px);' },
+  'fine-grain':    { css:'background:#111111;background-image:radial-gradient(rgba(255,255,255,0.18) 3px, transparent 3px);background-size:28px 28px;' },
+};
+const BRAND_VOICE = `ProCabinet.App caption voice: plain trade-speak aimed at cabinet makers, joiners, kitchen fitters and furniture builders. Confident, concrete, zero corporate fluff. Short opening hook line (one emoji max, often none). Body uses "▸ " bullet lines for benefit lists. Mentions real product facts only: quoting custom cabinetry in minutes, cut-list optimisation, live client sign-off (LiveLink), auto-scheduling, stock, orders — zero spreadsheets. CTA: link in bio / procabinet.app, or DM us. End with ONE line of 8-12 lowercase hashtags mixing #cabinetmaker #woodworking #joinery #kitchendesign #cabinetry #saas #procabinet plus topic tags. British English.`;
+
+/* ── state ─────────────────────────────────────────────────── */
+const blankSlide = () => ({ kicker:'', title:'', sub:'', image:'', thumb:'', builtin:'none' });
+let S = {
+  type:'single', ratio:'4:5', variant:'flat-ink', seconds:12, audio:'', cta:true,
+  slides:[blankSlide()], pv:0,
+};
+try { const saved = JSON.parse(localStorage.getItem('igstudio')||'null'); if (saved) S = Object.assign(S, saved); } catch {}
+let SYNC = { templates:[], assets:[], audio:[] };
+let activeSlide = 0;
+let pollTimer = null;
+
+const $ = (id) => document.getElementById(id);
+const save = () => { try { localStorage.setItem('igstudio', JSON.stringify(S)); } catch {} };
+const esc = (s) => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+const toggle = (id) => { const el = $(id); el.style.display = el.style.display==='none' ? '' : 'none'; };
+async function copyText(t){ try { await navigator.clipboard.writeText(t); return true; } catch { window.prompt('Copy this:', t); return false; } }
+
+/* ── api ───────────────────────────────────────────────────── */
+async function api(path, opts){
+  const r = await fetch(path, opts);
+  const j = await r.json().catch(()=>({ error:'bad response' }));
+  if (!r.ok || j.error) throw new Error(j.error || ('HTTP '+r.status));
+  return j;
+}
+
+/* ── sync (templates / assets / audio) ─────────────────────── */
+async function loadSync(showSpin){
+  if (showSpin) $('tplGrid').innerHTML = '<span class="spin"></span>';
+  try {
+    SYNC = await api('/api/sync');
+    fillAudio();
+    paintAll();
+  } catch(e){ $('tplGrid').innerHTML = '<div class="status err">'+esc(e.message)+' — is the server still running?</div>'; }
+}
+function fillAudio(){
+  const sel = $('audio');
+  sel.innerHTML = '<option value="">— none —</option>';
+  (SYNC.audio||[]).forEach(f => { const o = document.createElement('option'); o.value=f; o.textContent=f.replace('music_','').replace('.mp3',''); sel.appendChild(o); });
+  sel.value = S.audio || '';
+}
+function paintTemplates(){
+  const grid = $('tplGrid'); grid.innerHTML = '';
+  const list = SYNC.templates || [];
+  if (!list.length){ grid.innerHTML = '<div class="hint">No template PNGs found in the folder yet.</div>'; return; }
+  list.forEach(t => {
+    const d = document.createElement('div');
+    d.className = 'tpl' + (t.name===S.variant ? ' on':'');
+    d.innerHTML = '<img src="'+t.url+'" loading="lazy"><div class="nm">'+esc(t.name)+'</div>';
+    d.onclick = () => { S.variant = t.name; save(); paintAll(); };
+    grid.appendChild(d);
+  });
+  if (!list.find(t=>t.name===S.variant) && list[0]) S.variant = list[0].name;
+}
+
+/* ── format controls ───────────────────────────────────────── */
+function paintFormat(){
+  document.querySelectorAll('#typeSeg button').forEach(b => b.classList.toggle('on', b.dataset.t===S.type));
+  const chips = $('ratioChips'); chips.innerHTML = '';
+  RATIO_BY_TYPE[S.type].forEach(r => {
+    const b = document.createElement('button');
+    b.textContent = r; b.classList.toggle('on', S.ratio===r);
+    b.onclick = () => { S.ratio = r; save(); paintAll(); };
+    chips.appendChild(b);
+  });
+  if (!RATIO_BY_TYPE[S.type].includes(S.ratio)) S.ratio = RATIO_BY_TYPE[S.type][0];
+  const multi = S.type!=='single';
+  $('countWrap').style.display = multi ? '' : 'none';
+  $('countLabel').textContent = S.type==='reel' ? 'Text beats' : 'Slides';
+  $('count').min = S.type==='reel' ? 1 : 2;
+  $('count').value = S.slides.length;
+  $('reelWrap').style.display = S.type==='reel' ? '' : 'none';
+  $('multiWrap').style.display = multi ? '' : 'none';
+  $('singleImgWrap').style.display = multi ? 'none' : '';
+  if (S.type==='single') paintImgPick($('imgpick0'), 0);
+}
+document.querySelectorAll('#typeSeg button').forEach(b => b.onclick = () => {
+  S.type = b.dataset.t;
+  if (S.type==='single') S.slides = S.slides.slice(0,1);
+  if (S.type==='carousel' && S.slides.length<2) setCount(3);
+  S.ratio = RATIO_BY_TYPE[S.type][0]; S.pv = 0; save(); paintAll();
+});
+$('count').onchange = (e) => setCount(Math.max(Number(e.target.min), Math.min(10, Number(e.target.value)||2)));
+function setCount(n){
+  while (S.slides.length < n) S.slides.push(blankSlide());
+  S.slides = S.slides.slice(0, n);
+  S.pv = Math.min(S.pv, n-1); save(); paintAll();
+}
+$('seconds').onchange = (e) => { S.seconds = Math.max(3, Math.min(90, Number(e.target.value)||12)); save(); };
+$('audio').onchange = (e) => { S.audio = e.target.value; save(); };
+$('cta').onchange = (e) => { S.cta = e.target.checked; save(); paintAll(); };
+
+/* ── content inputs (slide 0 = main title fields) ──────────── */
+['title','kicker','sub'].forEach(k => $(k).addEventListener('input', () => {
+  S.slides[0][k] = $(k).value; save(); paintPreview();
+}));
+
+/* ── slide editor ──────────────────────────────────────────── */
+function paintSlides(){
+  const list = $('slideList'); list.innerHTML = '';
+  if (S.type==='single') return;
+  S.slides.forEach((s, i) => {
+    const d = document.createElement('div'); d.className = 'slide-ed';
+    const isCta = S.cta && i===S.slides.length-1 && S.slides.length>1;
+    d.innerHTML =
+      '<div class="hd"><span>'+(S.type==='reel'?'Beat ':'Slide ')+(i+1)+(i===0?' · cover':'')+(isCta?' · CTA':'')+'</span><span class="tag">'+esc(s.title||'—')+'</span></div>'+
+      '<div class="bd" style="display:'+(i===S.pv?'':'none')+'">'+
+        '<label>Kicker</label><input type="text" class="sk" value="'+esc(s.kicker)+'">'+
+        '<label>Title</label><textarea class="st" rows="2">'+esc(s.title)+'</textarea>'+
+        '<label>Sub</label><input type="text" class="ss" value="'+esc(s.sub)+'">'+
+        '<label>Visual</label><div class="imgpick"></div>'+
+      '</div>';
+    d.querySelector('.hd').onclick = () => { S.pv = i; paintAll(); };
+    d.querySelector('.sk').oninput = (e)=>{ s.kicker=e.target.value; save(); paintPreview(); };
+    d.querySelector('.st').oninput = (e)=>{ s.title=e.target.value; save(); paintPreview(); syncSlide0(i); };
+    d.querySelector('.ss').oninput = (e)=>{ s.sub=e.target.value; save(); paintPreview(); };
+    list.appendChild(d);
+    paintImgPick(d.querySelector('.imgpick'), i);
+  });
+}
+function syncSlide0(i){ if (i===0){ $('title').value=S.slides[0].title; $('kicker').value=S.slides[0].kicker; $('sub').value=S.slides[0].sub; } }
+
+function paintImgPick(el, i){
+  if (!el) return;
+  const s = S.slides[i];
+  el.innerHTML = '';
+  if (s.thumb) { const im = document.createElement('img'); im.className='pv'; im.src=s.thumb; el.appendChild(im); }
+  const pick = document.createElement('button'); pick.className='btn sm'; pick.textContent = s.image ? 'Change…' : '🖼 Choose / capture / upload…';
+  pick.onclick = () => openModal(i);
+  el.appendChild(pick);
+  const bi = document.createElement('select'); bi.style.width='140px';
+  bi.innerHTML = '<option value="none">no built-in</option><option value="quote-card">quote card</option><option value="icon-strip">icon strip</option>';
+  bi.value = s.builtin; bi.onchange = (e)=>{ s.builtin=e.target.value; save(); paintPreview(); };
+  el.appendChild(bi);
+  if (s.image){ const x = document.createElement('button'); x.className='btn sm'; x.textContent='✕'; x.onclick=()=>{ s.image=''; s.thumb=''; save(); paintAll(); }; el.appendChild(x); }
+}
+
+/* ── asset modal ───────────────────────────────────────────── */
+function openModal(i){ activeSlide = i; $('assetModal').classList.add('on'); $('capMsg2').innerHTML=''; paintAssets(); }
+function closeModal(){ $('assetModal').classList.remove('on'); }
+function paintAssets(){
+  const groups = { capture:'Fresh captures', upload:'Uploads', screenshot:'Brand screenshots', logo:'Logos' };
+  const body = $('assetBody'); body.innerHTML = '';
+  Object.entries(groups).forEach(([key,label]) => {
+    const items = (SYNC.assets||[]).filter(a=>a.src===key);
+    if (!items.length) return;
+    const h = document.createElement('div'); h.className='grp'; h.textContent = label; body.appendChild(h);
+    const g = document.createElement('div'); g.className='agrid';
+    items.forEach(a => {
+      const d = document.createElement('div'); d.className='a';
+      d.innerHTML = '<img src="'+a.url+'" loading="lazy"><div class="cap">'+esc(a.name)+'</div>';
+      d.onclick = () => assignImage(a.path, a.url);
+      g.appendChild(d);
+    });
+    body.appendChild(g);
+  });
+  if (!body.children.length) body.innerHTML = '<div class="hint">No assets yet — upload or capture one.</div>';
+}
+function assignImage(path, thumb){
+  const s = S.slides[activeSlide]; s.image = path; s.thumb = thumb; s.builtin='none';
+  save(); closeModal(); paintAll();
+}
+async function captureFresh(){
+  const tab = $('capTab').value;
+  $('capMsg2').innerHTML = '<span class="spin"></span> capturing "'+esc(tab)+'" — signs into the app, ~20-40s… (needs `npm run dev` running on :3000)';
+  try {
+    const r = await api('/api/capture', { method:'POST', body: JSON.stringify({ tab }) });
+    await loadSync();
+    assignImage(r.path, r.url);
+  } catch(e){ $('capMsg2').innerHTML = '<span style="color:var(--red)">'+esc(e.message)+'</span>'; }
+}
+function pickUpload(){ $('fileIn').click(); }
+$('fileIn').onchange = async (e) => {
+  const f = e.target.files[0]; if (!f) return;
+  $('capMsg2').innerHTML = '<span class="spin"></span> uploading '+esc(f.name)+'…';
+  try {
+    const r = await api('/api/upload?name='+encodeURIComponent(f.name.replace(/\s+/g,'-')), { method:'POST', body: f });
+    await loadSync();
+    assignImage(r.path, r.url);
+  } catch(err){ $('capMsg2').innerHTML = '<span style="color:var(--red)">'+esc(err.message)+'</span>'; }
+  e.target.value = '';
+};
+
+/* ── caption + slide-copy prompts (paste into Claude) ──────── */
+function flash(id, msg){ $(id).textContent = msg; setTimeout(()=>$(id).textContent='', 3000); }
+async function copyCaptionPrompt(mode){
+  let seed = $('title').value.replace(/\*/g,'');
+  if (mode==='prompt'){ seed = prompt('Describe what this post should say:'); if (!seed) return; }
+  await copyText(BRAND_VOICE + '\n\nWrite ONE Instagram caption (no options, no preamble, no quotes) for a ' + S.type + ' about: ' + seed);
+  flash('capMsg', 'prompt copied — paste into Claude ✓');
+}
+async function copySlidesPrompt(){
+  const seed = $('title').value.replace(/\*/g,'');
+  const n = S.slides.length;
+  await copyText(BRAND_VOICE + '\n\nDraft copy for a ' + n + '-slide ProCabinet Instagram ' + (S.type==='reel'?'reel (text beats)':'carousel') + ' about: ' + seed +
+    '\nSlide 1 is the cover hook.' + (S.cta ? ' The LAST slide is a follow/CTA card.' : '') +
+    '\nIn titles, wrap the single most important word or phrase in *asterisks* (it renders amber). Titles max 8 words. Kickers max 3 words, may be empty. Subs max 14 words, may be empty.' +
+    '\nReply with STRICT JSON only: [{"kicker":"","title":"","sub":""}] with exactly ' + n + ' items.');
+  flash('slidesMsg', 'prompt copied — paste into Claude, paste its JSON back ✓');
+}
+function applySlidesJson(){
+  try {
+    const raw = $('slidesJson').value.replace(/```[a-z]*\n?/g,'').replace(/```/g,'').trim();
+    const arr = JSON.parse(raw);
+    if (!Array.isArray(arr)) throw new Error('expected a JSON array');
+    arr.slice(0, S.slides.length).forEach((x, i) => { S.slides[i].kicker = x.kicker||''; S.slides[i].title = x.title||''; S.slides[i].sub = x.sub||''; });
+    $('slidesJson').value = ''; $('slidesPaste').style.display='none';
+    syncSlide0(0); save(); paintAll();
+  } catch(e){ flash('slidesMsg', e.message); }
+}
+async function copyCaption(){ await copyText($('caption').value); flash('capMsg', 'caption copied ✓'); }
+async function saveCaption(){
+  try {
+    const r = await api('/api/save-caption', { method:'POST', body: JSON.stringify({ slug: currentSlug(), text: $('caption').value }) });
+    flash('capMsg', 'saved → ' + r.path.split('/').slice(-2).join('/') + ' ✓');
+  } catch(e){ flash('capMsg', e.message); }
+}
+
+/* ── preview ───────────────────────────────────────────────── */
+function richHTML(t, accent){
+  return esc(t).replace(/\n/g,'<br>').replace(/\*([^*]+)\*/g,'<span style="color:'+accent+'">$1</span>');
+}
+function paintPreview(){
+  const [W,H] = RATIOS[S.ratio];
+  const boxW = 320, scale = boxW / W;
+  const frame = $('pvFrame');
+  frame.style.width = boxW+'px'; frame.style.height = (H*scale)+'px';
+  const inner = $('pvInner');
+  inner.style.width = W+'px'; inner.style.height = H+'px'; inner.style.transform = 'scale('+scale+')';
+  const v = CODE_VARIANTS[S.variant];
+  const tpl = (SYNC.templates||[]).find(t=>t.name===S.variant);
+  const inverted = v && v.inverted;
+  const accent = inverted ? '#ffffff' : '#e8a838';
+  const textC = inverted ? '#111111' : '#ffffff';
+  const kickC = inverted ? '#111111' : '#e8a838';
+  const i = Math.min(S.pv, S.slides.length-1);
+  const s = S.slides[i];
+  const isCta = S.cta && S.slides.length>1 && i===S.slides.length-1;
+  const size = TITLE_SIZE[S.ratio];
+  let bg = v ? v.css : (tpl ? 'background:#111 url('+tpl.url+') center/cover;' : 'background:#111;');
+  let visual = '';
+  if (s.thumb) visual = '<div style="margin-top:52px;border-radius:24px;overflow:hidden;border:1px solid #e3e3e3;box-shadow:0 40px 100px rgba(0,0,0,.45)"><div style="height:44px;background:#f7f7f7;border-bottom:1px solid #ededed;display:flex;align-items:center;gap:9px;padding:0 18px"><span style="width:13px;height:13px;border-radius:50%;background:#ff5f57"></span><span style="width:13px;height:13px;border-radius:50%;background:#febc2e"></span><span style="width:13px;height:13px;border-radius:50%;background:#28c840"></span></div><img src="'+s.thumb+'" style="width:100%;display:block"></div>';
+  else if (s.builtin==='quote-card') visual = '<div style="margin-top:52px;background:#fff;border-radius:30px;padding:44px;color:#111;font-size:32px;font-weight:800">Quote card ✓ <span style="color:#8a8a8a;font-size:22px;font-weight:500">(exact card renders on export)</span></div>';
+  else if (s.builtin==='icon-strip') visual = '<div style="margin-top:52px;font-size:40px;letter-spacing:18px">▦ ▤ ▥ ▨ ▧</div>';
+  let dots = '';
+  if (S.slides.length>1){
+    dots = '<div style="position:absolute;bottom:54px;left:0;right:0;display:flex;justify-content:center;gap:12px">' +
+      S.slides.map((_,k)=>'<span style="width:'+(k===i?30:11)+'px;height:11px;border-radius:6px;background:'+(k===i?(inverted?'#111':'#e8a838'):(inverted?'rgba(17,17,17,.28)':'rgba(255,255,255,.25)'))+'"></span>').join('') + '</div>';
+  }
+  inner.innerHTML = '<div style="position:absolute;inset:0;'+bg+'"></div>' +
+    '<div style="position:absolute;inset:0;padding:0 80px;display:flex;flex-direction:column;justify-content:center;align-items:'+(isCta?'center':'flex-start')+';text-align:'+(isCta?'center':'left')+'">' +
+      (s.kicker ? '<div style="font-size:'+size+'px;font-weight:800;letter-spacing:-1.5px;text-transform:uppercase;line-height:1.08;color:'+kickC+'">'+esc(s.kicker)+'</div>' : '') +
+      '<div style="font-size:'+size+'px;font-weight:800;letter-spacing:-1.5px;text-transform:uppercase;line-height:1.08;color:'+textC+';margin-top:'+(s.kicker?28:0)+'px">'+richHTML(s.title||'…', accent)+'</div>' +
+      (s.sub ? '<div style="font-size:'+Math.round(size*0.36)+'px;font-weight:500;line-height:1.45;color:'+(inverted?'rgba(17,17,17,.75)':'rgba(255,255,255,.72)')+';margin-top:30px;max-width:820px">'+richHTML(s.sub, accent)+'</div>' : '') +
+      visual +
+      (isCta ? '<div style="margin-top:48px;font-size:30px;font-weight:800;color:'+textC+'">ProCabinet<span style="color:'+accent+'">.App</span></div>' : '') +
+    '</div>' + dots;
+  const nav = $('pvNav'); nav.innerHTML = '';
+  if (S.slides.length>1) S.slides.forEach((_,k)=>{
+    const b = document.createElement('button'); b.className='btn sm'; b.textContent=k+1;
+    if (k===i) b.style.borderColor='var(--amber)';
+    b.onclick=()=>{ S.pv=k; paintAll(); };
+    nav.appendChild(b);
+  });
+}
+
+/* ── render ────────────────────────────────────────────────── */
+function currentSlug(){
+  const manual = $('slug').value.trim();
+  const base = manual || ($('title').value||'post').replace(/\*/g,'');
+  return base.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,48) || 'post';
+}
+function buildJob(){
+  return {
+    type: S.type, slug: currentSlug(), ratio: S.ratio, variant: S.variant,
+    slides: (S.type==='single' ? S.slides.slice(0,1) : S.slides).map(s => ({
+      kicker:s.kicker, title:s.title, sub:s.sub, image:s.image||'', builtin:s.builtin||'none',
+    })),
+    seconds: S.seconds, audio: S.type==='reel' ? S.audio : '', cta: S.type!=='single' && S.cta,
+  };
+}
+async function startRender(){
+  const st = $('renderStatus'), btn = $('renderBtn');
+  const job = buildJob();
+  if (!job.slides[0].title){ st.innerHTML = '<div class="status err">Add a title first.</div>'; return; }
+  btn.disabled = true;
+  st.innerHTML = '<div class="status"><span class="spin"></span> launching render…</div>';
+  $('outGrid').innerHTML = '';
+  try {
+    await api('/api/render', { method:'POST', body: JSON.stringify(job) });
+    pollStatus(job.slug, Date.now());
+  } catch(e){ st.innerHTML = '<div class="status err">'+esc(e.message)+'</div>'; btn.disabled = false; }
+}
+function pollStatus(slug, t0){
+  clearTimeout(pollTimer);
+  pollTimer = setTimeout(async () => {
+    const st = $('renderStatus');
+    try {
+      const s = await api('/api/status');
+      const secs = Math.round((Date.now()-t0)/1000);
+      if (s.error){ st.innerHTML = '<div class="status err">'+esc(s.error)+'</div>'; $('renderBtn').disabled=false; return; }
+      if (s.stalled){
+        st.innerHTML = '<div class="status err">Render looks stalled (file-sync hiccup on this folder). Hit ▶ Render again — it kills the stuck one and retries.</div>';
+        $('renderBtn').disabled = false; return;
+      }
+      if (s.done){
+        st.innerHTML = '<div class="status ok">Done in ~'+secs+'s → '+esc(s.dir)+'</div>';
+        $('renderBtn').disabled = false;
+        showOutputs(slug);
+        return;
+      }
+      st.innerHTML = '<div class="status"><span class="spin"></span> rendering… '+secs+'s · '+esc(s.tail.split(' | ').pop()||'')+'</div>';
+      pollStatus(slug, t0);
+    } catch(e){ st.innerHTML = '<div class="status err">'+esc(e.message)+'</div>'; $('renderBtn').disabled=false; }
+  }, 2000);
+}
+async function showOutputs(slug){
+  try {
+    const files = await api('/api/outputs?slug='+encodeURIComponent(slug));
+    const g = $('outGrid'); g.innerHTML = '';
+    files.forEach(f => {
+      const d = document.createElement('div'); d.className='o';
+      d.innerHTML = (f.url ? '<img src="'+f.url+'&t='+Date.now()+'">' : '<div style="padding:18px;text-align:center;font-size:22px">🎬</div>') +
+        '<div class="cap"><span>'+esc(f.name)+' · '+(f.size/1024/1024 > 1 ? (f.size/1048576).toFixed(1)+'MB' : Math.round(f.size/1024)+'KB')+'</span><button class="btn sm" title="Reveal in Finder">📂</button></div>';
+      d.querySelector('button').onclick = () => api('/api/reveal', { method:'POST', body: JSON.stringify({ path: f.path }) }).catch(()=>{});
+      g.appendChild(d);
+    });
+  } catch(e){}
+}
+
+/* ── paint all ─────────────────────────────────────────────── */
+function paintAll(){
+  paintFormat();
+  paintTemplates();
+  paintSlides();
+  paintPreview();
+}
+
+/* boot */
+$('title').value = S.slides[0].title || $('title').value;
+S.slides[0].title = $('title').value;
+$('kicker').value = S.slides[0].kicker||'';
+$('sub').value = S.slides[0].sub||'';
+$('cta').checked = S.cta;
+$('seconds').value = S.seconds;
+paintAll();
+loadSync(true);
+</script>
+</body>
+</html>
