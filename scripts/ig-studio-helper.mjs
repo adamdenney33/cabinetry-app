@@ -6,7 +6,10 @@
 //   node scripts/ig-studio-helper.mjs <cmd> [args]
 //
 //   templates                    → [{name,b64}]           template PNGs in out/instagram/social-templates
-//   assets                       → [{name,path,b64,src}]  brand/screenshots + captured _shots + logo SVGs
+//   assets-meta                  → [{name,path,src}]      asset list WITHOUT thumbnails (~5KB) — use this
+//   thumbs <src> <name,name,…>   → [{name,b64}]           thumbnails for one batch (keep batches ≤ 8)
+//   assets                       → [{name,path,b64,src}]  legacy all-in-one (~320KB — too big for the
+//                                                          artifact bridge; kept for `sync`/CLI use only)
 //   audio                        → [names]                mp3s in marketing/audio
 //   capture <Tab> [subSelector]  → {ok,path,b64}          fresh app screenshot (needs `npm run dev` up)
 //   render <b64-job-json>        → {ok,log}               detached render via render-social-studio.mjs
@@ -60,6 +63,20 @@ const listImages = (dir) =>
         .sort()
     : [];
 
+const ASSET_DIRS = {
+  capture: SHOTS,
+  upload: UPLOADS,
+  screenshot: join(ROOT, 'brand', 'screenshots'),
+  logo: join(ROOT, 'brand', 'logo'),
+};
+
+const listLogos = () =>
+  existsSync(ASSET_DIRS.logo)
+    ? readdirSync(ASSET_DIRS.logo)
+        .filter((f) => ['.svg', '.png'].includes(extname(f).toLowerCase()))
+        .sort()
+    : [];
+
 const [cmd, a1, a2] = process.argv.slice(2);
 
 try {
@@ -102,6 +119,37 @@ try {
       });
       if (r.status === 0) spawnSync('open', [slugDir]);
       process.exit(r.status || 0);
+    }
+
+    // Metadata only — no base64. The full `assets` payload is ~320KB of
+    // inlined thumbnails, which the artifact's callMcpTool bridge truncates
+    // (it tops out somewhere between the 75KB `templates` payload and this
+    // one), so JSON.parse blew up with "bad helper output". The artifact now
+    // calls `assets-meta` (~5KB) to paint the grid, then fills thumbnails in
+    // via batched `thumbs` calls that each stay well under the ceiling.
+    case 'assets-meta': {
+      const meta = [];
+      listImages(SHOTS)
+        .map((f) => ({ f, m: statSync(join(SHOTS, f)).mtimeMs }))
+        .sort((x, y) => y.m - x.m)
+        .slice(0, 12)
+        .forEach(({ f }) => meta.push({ name: f, path: join(SHOTS, f), src: 'capture' }));
+      listImages(UPLOADS).forEach((f) => meta.push({ name: f, path: join(UPLOADS, f), src: 'upload' }));
+      listImages(ASSET_DIRS.screenshot).forEach((f) => meta.push({ name: f, path: join(ASSET_DIRS.screenshot, f), src: 'screenshot' }));
+      listLogos().forEach((f) => meta.push({ name: f, path: join(ASSET_DIRS.logo, f), src: 'logo' }));
+      out(meta);
+      break;
+    }
+
+    // thumbs <src> <name,name,…> → [{name,b64}]. Keep batches small (the
+    // artifact sends 8 at a time ≈ 55KB) so the bridge never truncates.
+    case 'thumbs': {
+      const dir = ASSET_DIRS[a1];
+      if (!dir) fail(`thumbs: unknown src "${a1}" (expected capture|upload|screenshot|logo)`);
+      const names = String(a2 || '').split(',').map((s) => s.trim()).filter(Boolean);
+      if (!names.length) fail('thumbs: no names given');
+      out(names.map((n) => ({ name: n, b64: existsSync(join(dir, n)) ? thumb(join(dir, n), 140) : '' })));
+      break;
     }
 
     case 'assets': {
