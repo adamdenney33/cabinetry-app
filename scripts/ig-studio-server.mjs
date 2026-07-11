@@ -24,7 +24,7 @@
 import { createServer } from 'node:http';
 import { execFile, spawn } from 'node:child_process';
 import {
-  existsSync, mkdirSync, openSync, readFileSync, readdirSync, statSync, writeFileSync,
+  createReadStream, existsSync, mkdirSync, openSync, readFileSync, readdirSync, statSync, writeFileSync,
 } from 'node:fs';
 import { join, dirname, extname, resolve, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -133,8 +133,12 @@ const server = createServer(async (req, res) => {
     if (req.method === 'GET' && url.pathname === '/img') {
       const p = inRepo(url.searchParams.get('p') || '');
       if (!p || !IMG.has(extname(p).toLowerCase()) || !existsSync(p)) return bad(res, 'not found', 404);
+      // stream asynchronously — a synchronous read here can wedge the whole
+      // server if iCloud has evicted the file (see SPEC § 13, 2026-07-11)
       res.writeHead(200, { 'content-type': MIME[extname(p).toLowerCase()], 'cache-control': 'no-cache' });
-      res.end(readFileSync(p));
+      const stream = createReadStream(p);
+      stream.on('error', () => res.end());
+      stream.pipe(res);
       return;
     }
     if (req.method === 'GET' && url.pathname === '/api/sync') return json(res, sync());
