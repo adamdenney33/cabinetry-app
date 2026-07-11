@@ -28,6 +28,11 @@ const B = (n: React.ReactNode) => <b style={{ color: C.accent }}>{n}</b>;
 // canvas (1080/1440 = 0.75) — the shared "full screen" reference scale.
 const BASE_PORTRAIT = 0.75;
 
+// Instagram's reel chrome (username, caption, action buttons) eats roughly the
+// bottom fifth of a 9:16 frame. Sit the caption bar above it rather than at the
+// landscape default of 46px, so every line stays fully readable in-feed.
+const CAP_BOTTOM = 430;
+
 const Flash: React.FC = () => {
   const frame = useCurrentFrame();
   const op = interpolate(frame, [0, 2, 6], [0, 0.4, 0], clampOpts);
@@ -46,7 +51,7 @@ const clipShot = (
   key, dur,
   el: (d) => (
     <>
-      <Screen3D clip={clip} trimSec={trimSec} speed={speed} dur={d} pose={pose} lines={lines} seed={seed} baseOverride={BASE_PORTRAIT} />
+      <Screen3D clip={clip} trimSec={trimSec} speed={speed} dur={d} pose={pose} lines={lines} seed={seed} baseOverride={BASE_PORTRAIT} capBottom={CAP_BOTTOM} />
       <Flash />
     </>
   ),

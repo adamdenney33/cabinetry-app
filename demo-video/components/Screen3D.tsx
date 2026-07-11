@@ -97,8 +97,12 @@ export const Kicker3D: React.FC<{ n?: string; label: string; dur: number }> = ({
   );
 };
 
-/** Fast lower-third caption, swappable mid-scene. */
-export const Cap3D: React.FC<{ lines: { at: number; text: React.ReactNode }[]; dur: number }> = ({ lines, dur }) => {
+/**
+ * Fast lower-third caption, swappable mid-scene. `bottom` defaults to the
+ * landscape offset; portrait comps raise it so the bar clears Instagram's
+ * caption/username/action-button chrome at the foot of a 9:16 reel.
+ */
+export const Cap3D: React.FC<{ lines: { at: number; text: React.ReactNode }[]; dur: number; bottom?: number }> = ({ lines, dur, bottom = 46 }) => {
   const frame = useCurrentFrame();
   let idx = -1;
   for (let i = 0; i < lines.length; i++) if (frame >= lines[i].at) idx = i;
@@ -108,7 +112,7 @@ export const Cap3D: React.FC<{ lines: { at: number; text: React.ReactNode }[]; d
   const inT = interpolate(frame, [start, start + 8], [0, 1], { ...clampOpts, easing: EASE_OUT });
   const outT = interpolate(frame, [end - 7, end - 1], [1, 0], clampOpts);
   return (
-    <div style={{ position: 'absolute', left: 0, right: 0, bottom: 46, display: 'flex', justifyContent: 'center', opacity: Math.min(inT, outT), transform: `translateY(${(1 - inT) * 22}px)`, fontFamily: FONT }}>
+    <div style={{ position: 'absolute', left: 0, right: 0, bottom, display: 'flex', justifyContent: 'center', opacity: Math.min(inT, outT), transform: `translateY(${(1 - inT) * 22}px)`, fontFamily: FONT }}>
       <div style={{ maxWidth: 1460, background: 'rgba(10,10,12,0.82)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 15, padding: '14px 32px', boxShadow: '0 14px 46px rgba(0,0,0,0.5)' }}>
         <span style={{ color: '#fff', fontSize: 30, fontWeight: 700, letterSpacing: -0.4, lineHeight: 1.25, textAlign: 'center' }}>{lines[idx].text}</span>
       </div>
@@ -132,7 +136,9 @@ export const Screen3D: React.FC<{
   // where the 1920×1080 landscape fit margins below don't apply. Landscape
   // call sites omit this and get the original behavior unchanged.
   baseOverride?: number;
-}> = ({ clip, trimSec = 0, speed = 1, pose, dur, fadeIn = 0, fadeOut = 0, kicker, lines, children, seed, baseOverride }) => {
+  // Raise the caption bar off the foot of the frame (portrait/IG safe area).
+  capBottom?: number;
+}> = ({ clip, trimSec = 0, speed = 1, pose, dur, fadeIn = 0, fadeOut = 0, kicker, lines, children, seed, baseOverride, capBottom }) => {
   const frame = useCurrentFrame();
   const { s, x, y, rx, ry } = usePose(pose);
   const inOp = fadeIn ? interpolate(frame, [0, fadeIn], [0, 1], clampOpts) : 1;
@@ -187,7 +193,7 @@ export const Screen3D: React.FC<{
         </div>
       </AbsoluteFill>
       {/* speed badge — makes the speed-up an intentional flex */}
-      {lines && <Cap3D lines={lines} dur={dur} />}
+      {lines && <Cap3D lines={lines} dur={dur} bottom={capBottom} />}
       {children}
     </AbsoluteFill>
   );
