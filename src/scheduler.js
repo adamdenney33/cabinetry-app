@@ -119,7 +119,8 @@ function orderHoursRequired(o, biz) {
 // ══════════════════════════════════════════
 // LAYOUT — computeSchedule
 // ══════════════════════════════════════════
-/** @typedef {{ id: any, startISO: string, endISO: string, lane: number, hoursRequired: number, isManual: boolean, isMissingDates?: boolean }} ScheduledOrder */
+/** @typedef {{ date: string, hours: number }} SchedSegment */
+/** @typedef {{ id: any, startISO: string, endISO: string, lane: number, hoursRequired: number, isManual: boolean, isMissingDates?: boolean, segments: SchedSegment[] }} ScheduledOrder */
 
 /** @param {any[]} ordersList
  *  @param {{ workdayHours?: number, weekdayHours?: number[], packagingHours?: number, contingencyPct?: number, queueStartDate?: string|null }} biz
@@ -158,7 +159,7 @@ function computeSchedule(ordersList, biz, overrides, today) {
   const queueStart = biz?.queueStartDate ? _schedFromISO(biz.queueStartDate) : null;
   const anchor = queueStart && +queueStart > +today ? queueStart : today;
 
-  /** @type {{ id: any, startISO: string, endISO: string, hoursRequired: number, isManual: boolean }[]} */
+  /** @type {{ id: any, startISO: string, endISO: string, hoursRequired: number, isManual: boolean, segments: SchedSegment[] }[]} */
   const placements = [];
 
   let pointer = anchor;
@@ -183,12 +184,17 @@ function computeSchedule(ordersList, biz, overrides, today) {
     /** @type {Date} */
     let end = pointer;
     let remaining = required;
+    // Per-day hour segments consumed by this order (SV.2) — drives the timed
+    // order blocks in the Day/Week views. Same walk, recorded per day.
+    /** @type {SchedSegment[]} */
+    const segments = [];
 
     if (remaining <= 0) {
       // Zero-hour order — single-day placeholder at the pointer; doesn't
       // consume capacity and doesn't push the group end.
       start = cursor;
       end = cursor;
+      segments.push({ date: _schedISO(cursor), hours: 0 });
     } else {
       // Walk forward consuming capacity. Cap at 5y to guarantee termination.
       let safety = 365 * 5;
@@ -199,6 +205,7 @@ function computeSchedule(ordersList, biz, overrides, today) {
           const consume = Math.min(h, remaining);
           remaining -= consume;
           end = cursor;
+          segments.push({ date: _schedISO(cursor), hours: consume });
           if (remaining > 0 || consume === h) cursor = _schedNextDay(cursor);
         } else {
           cursor = _schedNextDay(cursor);
@@ -207,7 +214,7 @@ function computeSchedule(ordersList, biz, overrides, today) {
       if (start === null) start = cursor; // defensive
     }
 
-    placements.push({ id: o.id, startISO: _schedISO(start), endISO: _schedISO(end), hoursRequired: required, isManual: false });
+    placements.push({ id: o.id, startISO: _schedISO(start), endISO: _schedISO(end), hoursRequired: required, isManual: false, segments });
     if (required > 0 && (!groupMaxEnd || +end > +groupMaxEnd)) groupMaxEnd = end;
   }
 
@@ -218,12 +225,31 @@ function computeSchedule(ordersList, biz, overrides, today) {
     const required = orderHoursRequired(o, biz);
     const startISO = o.manual_start_date || o.production_start_date || '';
     if (!startISO) {
-      out.set(o.id, { id: o.id, startISO: '', endISO: '', lane: 0, hoursRequired: required, isManual: true, isMissingDates: true });
+      out.set(o.id, { id: o.id, startISO: '', endISO: '', lane: 0, hoursRequired: required, isManual: true, isMissingDates: true, segments: [] });
       continue;
     }
+    /** @type {SchedSegment[]} */
+    const segments = [];
     let endISO;
     if (o.manual_end_date) {
       endISO = o.manual_end_date;
+      // Legacy explicit end: spread hours across the pinned span's working
+      // days (capacity-capped) so Day/Week still gets sensible blocks.
+      const s = _schedFromISO(startISO), e = _schedFromISO(endISO);
+      if (s && e && +e >= +s) {
+        let cursor = s;
+        let remaining = required;
+        let safety = 365 * 5;
+        while (+cursor <= +e && safety-- > 0) {
+          const h = getWorkdayHours(cursor, weekdayDefaults, overrideMap, biz);
+          if (h > 0) {
+            const consume = remaining > 0 ? Math.min(h, remaining) : h;
+            remaining -= consume;
+            segments.push({ date: _schedISO(cursor), hours: consume });
+          }
+          cursor = _schedNextDay(cursor);
+        }
+      }
     } else {
       // Walk forward consuming workday capacity until hours are exhausted.
       const startDate = _schedFromISO(startISO);
@@ -241,16 +267,19 @@ function computeSchedule(ordersList, biz, overrides, today) {
               const consume = Math.min(h, remaining);
               remaining -= consume;
               end = cursor;
+              segments.push({ date: _schedISO(cursor), hours: consume });
               if (remaining > 0 || consume === h) cursor = _schedNextDay(cursor);
             } else {
               cursor = _schedNextDay(cursor);
             }
           }
+        } else {
+          segments.push({ date: _schedISO(startDate), hours: 0 });
         }
         endISO = _schedISO(end);
       }
     }
-    placements.push({ id: o.id, startISO, endISO: endISO || startISO, hoursRequired: required, isManual: true });
+    placements.push({ id: o.id, startISO, endISO: endISO || startISO, hoursRequired: required, isManual: true, segments });
   }
 
   // Lane assignment — first-fit Gantt layout. An order keeps its lane across
@@ -273,7 +302,7 @@ function computeSchedule(ordersList, biz, overrides, today) {
       lanes.push([{ start: s, end: e }]);
       assigned = lanes.length - 1;
     }
-    out.set(p.id, { id: p.id, startISO: p.startISO, endISO: p.endISO, lane: assigned, hoursRequired: p.hoursRequired, isManual: p.isManual });
+    out.set(p.id, { id: p.id, startISO: p.startISO, endISO: p.endISO, lane: assigned, hoursRequired: p.hoursRequired, isManual: p.isManual, segments: p.segments });
   }
 
   return out;

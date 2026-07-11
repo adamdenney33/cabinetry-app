@@ -218,6 +218,12 @@ function renderSchedule(opts) {
   const isManualMode = sortMode === 'manual';
   /** @type {any} */ (window)._lastSchedSidebarEvents = sortedEvents;
 
+  // SV.3/SV.7 — view switcher + layer toggles. The sidebar job queue always
+  // lists orders; the layer checkboxes control the CALENDAR surfaces only.
+  const schedView = (typeof _schedGetView === 'function') ? _schedGetView() : 'month';
+  const viewBar = (typeof _schedViewBarHTML === 'function') ? _schedViewBarHTML() : '';
+  const calEvents = (typeof _schedLayers === 'undefined' || _schedLayers.orders) ? visibleEvents : [];
+
   let sidebarHTML = '';
   // HEAD
   sidebarHTML += `<div class="sched-sidebar-head">
@@ -228,6 +234,8 @@ function renderSchedule(opts) {
   </div>`;
   // BODY
   sidebarHTML += `<div class="sched-sidebar-body">`;
+  // SV.7 — layer visibility toggles (Orders / Tasks; Google in phase 2)
+  if (typeof _schedLayersHTML === 'function') sidebarHTML += _schedLayersHTML();
   sidebarHTML += `<div class="sched-sort-row" title="Sort orders">
     <select onchange="_setSchedSortMode(this.value)">
       <option value="start" ${sortMode==='start'?'selected':''}>Sort by: Start date</option>
@@ -288,8 +296,11 @@ function renderSchedule(opts) {
   if (renderSidebar && sidebarEl) sidebarEl.innerHTML = sidebarHTML;
 
   // Calendar using CSS grid per week
-  // Calendar (rendered into main area)
-  let cal = `<div style="position:sticky;top:0;z-index:5;background:var(--surface);display:grid;grid-template-columns:repeat(7,1fr);border-bottom:1px solid var(--border)">
+  // Calendar (rendered into main area). Only built for the Month view —
+  // Day/Week render through _renderSchedTimeGrid (src/schedule-views.js).
+  let cal = '';
+  if (schedView === 'month') {
+  cal = `<div style="position:sticky;top:44px;z-index:5;background:var(--surface);display:grid;grid-template-columns:repeat(7,1fr);border-bottom:1px solid var(--border)">
     ${dayNames.map((d,i)=>`<div style="padding:8px 4px;font-size:11px;font-weight:600;color:${i>=5?'var(--muted)':'var(--text2)'};text-align:center">${d}</div>`).join('')}
   </div>`;
 
@@ -302,16 +313,21 @@ function renderSchedule(opts) {
     }
 
     // Compute lane layout for the week. Cells always grow to fit all stacked
-    // bars at the normal 20px stride — no overlap.
+    // bars at the normal 20px stride — no overlap. Task chips (SV.5) render
+    // below the bar zone, so their max count also grows the cells.
     const weekStart = week[0], weekEnd = week[6];
-    const weekEvents = visibleEvents.filter(e => {
+    const weekEvents = calEvents.filter(e => {
       // events array invariant: at least one of e.start / e.end is non-null
       const s = /** @type {Date} */ (e.start||e.end), d = /** @type {Date} */ (e.end||e.start);
       return d >= weekStart && s <= weekEnd;
     });
     const maxLane = weekEvents.length ? Math.max(0, ...weekEvents.map(e => e.lane)) : 0;
     const stride = 20;
-    const cellMinHeight = Math.max(90, 28 + (maxLane + 1) * stride + 4);
+    const chipTop = 28 + (maxLane + 1) * stride;
+    const maxChips = (typeof _schedMonthTaskCount === 'function')
+      ? Math.max(0, ...week.map(day => _schedMonthTaskCount(`${day.getFullYear()}-${String(day.getMonth()+1).padStart(2,'0')}-${String(day.getDate()).padStart(2,'0')}`)))
+      : 0;
+    const cellMinHeight = Math.max(90, chipTop + 4 + maxChips * 17);
 
     // Week container with grid overlay
     cal += `<div data-week-idx="${weekIdx}" style="position:relative;display:grid;grid-template-columns:repeat(7,1fr);min-height:${cellMinHeight}px">`;
@@ -344,9 +360,11 @@ function renderSchedule(opts) {
       const chipColor = hasOverride ? 'var(--accent)' : (isHoliday ? '#f87171' : (isPartial ? '#fbbf24' : 'var(--muted)'));
       const chipBg = hasOverride ? 'rgba(232,168,56,0.18)' : 'rgba(255,255,255,0.04)';
       const hoursChip = `<div class="sched-day-hours" onclick="event.stopPropagation();_quickOverrideDate('${dayISO}')" title="Click to override hours for this date" style="position:absolute;top:3px;right:3px;font-size:9px;font-weight:700;color:${chipColor};background:${chipBg};padding:1px 4px;border-radius:3px;cursor:pointer;pointer-events:auto;z-index:3">${dh}h</div>`;
-      cal += `<div style="${styleParts.join(';')};position:relative;min-height:${cellMinHeight}px"${td?' id="schedule-today-marker"':''}>
+      const taskChips = (typeof _schedMonthTaskChipsHTML === 'function') ? _schedMonthTaskChipsHTML(dayISO, chipTop) : '';
+      cal += `<div style="${styleParts.join(';')};position:relative;min-height:${cellMinHeight}px"${td?' id="schedule-today-marker"':''} ondragover="_taskChipDragOver(event)" ondrop="_taskChipDrop(event,'${dayISO}')">
         <div style="font-size:${td?'12':'11'}px;font-weight:${td?'800':'500'};color:${td?'#fff':we?'var(--muted)':'var(--text2)'};${td?'background:var(--accent);border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center':'padding:1px 3px'}">${day.getDate()}</div>
         ${hoursChip}
+        ${taskChips}
       </div>`;
     });
 
@@ -399,10 +417,16 @@ function renderSchedule(opts) {
 
     cal += `</div>`; // close week container
   });
+  } // end month build (schedView === 'month')
 
-  // Mobile: the 7-column grid is unreadable, so show sub-tabs in the (always-
-  // visible) list pane — "Orders" (stacked agenda) and "Calendar" (the week grid,
-  // horizontally scrollable). The sidebar's sort/filter/hours move into the agenda.
+  // SV.4 — Day/Week render through the time grid.
+  const gridHTML = (schedView === 'day' || schedView === 'week')
+    ? _renderSchedTimeGrid({ view: schedView, events: calEvents, computed, dayHours })
+    : '';
+
+  // Mobile: sub-tabs in the (always-visible) list pane — "Orders" (stacked
+  // agenda) and "Calendar" (the selected Day/Week/Month view, horizontally
+  // scrollable where needed). Sort/filter/hours move into the agenda.
   if (typeof window._mvIsMobile === 'function' && window._mvIsMobile()) {
     const mv = _schedMobileView;
     const tabs = `<div class="sched-mobile-tabs">
@@ -410,16 +434,24 @@ function renderSchedule(opts) {
       <button type="button" class="sched-mtab${mv === 'calendar' ? ' active' : ''}" onclick="_setSchedMobileView('calendar')">Calendar</button>
     </div>`;
     el.innerHTML = tabs + (mv === 'calendar'
-      ? `<div class="sched-mobile-cal">${cal}</div>`
+      ? viewBar + `<div class="sched-mobile-cal">${gridHTML || cal}</div>`
       : _renderScheduleAgenda(sortedEvents, sortMode, filterStatus, overrideCount));
-    if (renderSidebar && mv === 'calendar') setTimeout(() => {
-      const t = document.getElementById('schedule-today-marker');
-      if (t) t.scrollIntoView({ block: 'center' });
-    }, 100);
+    if (renderSidebar && mv === 'calendar') {
+      if (gridHTML) _schedGridAutoScroll();
+      else setTimeout(() => {
+        const t = document.getElementById('schedule-today-marker');
+        if (t) t.scrollIntoView({ block: 'center' });
+      }, 100);
+    }
     return;
   }
 
-  el.innerHTML = cal;
+  if (gridHTML) {
+    el.innerHTML = viewBar + gridHTML;
+    if (renderSidebar) _schedGridAutoScroll();
+    return;
+  }
+  el.innerHTML = viewBar + cal;
   // Auto-scroll to today on load — skipped for sidebar:false re-renders so
   // editing the Working Hours inputs doesn't yank the calendar viewport.
   if (renderSidebar) setTimeout(() => {
@@ -689,6 +721,10 @@ function _schedHoursSectionHTML() {
   return `<div class="pf"><label class="pf-label">Default workday hours</label>
     <input class="pf-input" type="number" min="0" max="24" step="0.5" value="${cbSettings.workdayHours ?? 8}" onchange="_updateSchedDefault('workdayHours', this.value)">
   </div>
+  <div class="pf"><label class="pf-label">Workday start time</label>
+    <input class="pf-input" type="time" value="${cbSettings.workdayStart || '08:00'}" onchange="_updateSchedDefault('workdayStart', this.value)">
+    <div style="font-size:10px;color:var(--muted);margin-top:4px">When order blocks begin in the Day &amp; Week views.</div>
+  </div>
   <div class="pf"><label class="pf-label">Hours per weekday</label>
     <div class="sched-wd-grid">${weekdayInputs}</div>
     <div style="font-size:10px;color:var(--muted);margin-top:4px">Mon–Sun. Set Sat/Sun to 0 for a 5-day workweek; reduce one day for a recurring half-day.</div>
@@ -729,6 +765,8 @@ function _refreshHolidaysList() {
 function _updateSchedDefault(key, val) {
   if (key === 'queueStartDate') {
     cbSettings.queueStartDate = val || null;
+  } else if (key === 'workdayStart') {
+    cbSettings.workdayStart = /^\d{2}:\d{2}$/.test(val) ? val : '08:00';
   } else {
     const n = parseFloat(val);
     cbSettings[key] = isFinite(n) ? n : 0;

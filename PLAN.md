@@ -24,6 +24,89 @@ Companion docs: `SPEC.md` (refactor history), `SCHEMA.md` (DB schema),
 
 ## Active Work
 
+### Schedule — day/week views, tasks, drag + Google Calendar 2-way (2026-07-11) ✅ Phase 1 built + verified — ⬜ push · Phase 2 (GC) blocked on Google Cloud setup
+
+**Goal.** Grow the Schedule tab from the single continuous month Gantt into a
+Google-Calendar-style surface: Day / Week / Month view switcher, standalone
+timed **tasks** (non-order work) creatable in every view, drag-to-adjust
+times, per-layer visibility toggles, and (phase 2) 2-way Google Calendar
+sync. Minimal UI — GCal interaction cues, existing app styling.
+
+**Decisions (2026-07-11, user-confirmed).**
+- GCal sync: **tasks 2-way, orders push-only** (all-day events; the
+  auto-scheduler owns order dates). Other GCal events = read-only overlay.
+- **Single task type** — visibility toggles are per layer: Orders / Tasks /
+  Google. No task-type management UI.
+- Orders in day/week grids get **real hour slots**: `computeSchedule` walk
+  already consumes `min(dayHours, remaining)` per day → emit per-day
+  `{date, hours}` segments, anchored at a new **workday start time**
+  setting. Same-priority orders run in parallel → side-by-side overlap
+  layout (GCal style). Auto-scheduler algorithm itself unchanged.
+- Google Cloud OAuth client not set up yet → **phase 2 is blocked on
+  user-side setup** (checklist below); phase 1 ships standalone.
+
+**Phase 1 — views + tasks (no Google).**
+- ✅ **SV.1 — migration** (`20260711120000_schedule_tasks`, applied to
+  prod): `schedule_tasks` (RLS Pattern A; gcal_event_id/gcal_synced_at
+  phase-2 ready) + `business_info.workday_start_time` (text 'HH:MM',
+  default '08:00'). SCHEMA.md § 3.29; types hand-edited into
+  `database.types.ts` (deterministic additions).
+- ✅ **SV.2 — scheduler segments + workday start**: `computeSchedule`
+  returns `segments: {date, hours}[]` per order (auto + manual walks;
+  legacy pinned manual_end_date spans spread capacity-capped);
+  `cbSettings.workdayStart` ↔ `workday_start_time`, editable in Working
+  Hours ("Workday start time").
+- ✅ **SV.3 — view switcher**: sticky 44px view bar — Today, ‹ ›, range
+  label, Day|Week|Month segmented, "+ Task"; `pc_sched_view` persisted,
+  Day/Week anchor in-memory (always lands on today). Month = existing
+  Gantt (day-name header re-stuck at top:44px; ‹ › page the scroll).
+- ✅ **SV.4 — time-grid renderer** (`src/schedule-views.js`): shared
+  day/week grid — 24h hour rows @48px, auto-scroll to workday start,
+  60s-refreshed now-line, off-hours shading + holiday hatch, order
+  blocks from segments (side-by-side overlap clusters), task blocks,
+  all-day strip, click-empty-slot → new task (30-min snap), week day
+  headers → Day view.
+- ✅ **SV.5 — tasks CRUD** (`src/schedule-tasks.js`): `scheduleTasks`
+  mirror + `loadAllData` hydrate; popup (title/date/start/end/all-day/
+  done/notes/delete), optimistic writes; month-cell chips (max 3 +
+  "+N more" → Day view, cells grow per week); demo seed added.
+- ✅ **SV.6 — drag**: pointer-capture move (15-min snap; week view
+  crosses days) + bottom-handle resize with live time label; <5px = tap
+  → edit popup; month chips HTML5-DnD between days; 500ms debounced
+  writes.
+- ✅ **SV.7 — visibility toggles**: Orders/Tasks coloured checkboxes atop
+  the sidebar (`pc_sched_layers`); filter calendar surfaces only — the
+  sidebar job queue always lists orders. Google row lands in phase 2.
+- ✅ **SV.8 — mobile**: pointer events + touch-action cover touch drag;
+  Day fits phones, week grid scrolls horizontally (min-width 640px);
+  mobile Calendar sub-tab hosts the view bar + selected view.
+- ✅ **SV.9 — verify + docs**: typecheck src-clean; Playwright smoke 9/9;
+  scripted headless pass (Month/Week/Day, popup task-create → correct
+  block, overlap layout, layer toggle, zero page errors; test rows
+  SQL-cleaned). ⚠️ Order hour-blocks not visually exercised (e2e account
+  has no orders) — eyeball on real data. SPEC § 13 entry written.
+
+**Phase 2 — Google Calendar 2-way (GC) — blocked on Google Cloud setup.**
+- ⬜ **GC.0 — user-side checklist**: Google Cloud project → enable
+  Calendar API → OAuth consent screen (external; scope
+  `.../auth/calendar.events` is *sensitive* → verification needed to
+  exit the 100-test-user cap) → Web OAuth client (redirect URI = the
+  `gcal-oauth` edge fn URL) → client id/secret as Supabase secrets.
+  Same project can host the pending Google sign-in activation.
+- ⬜ **GC.1 — `google_connections` table**: encrypted refresh-token store
+  (accounting_connections pattern), calendar_id, sync_token, webhook
+  channel id/expiry.
+- ⬜ **GC.2 — edge fns**: `gcal-oauth` (consent redirect + code exchange),
+  `gcal-sync` (incremental 2-way: push local task/order changes, pull via
+  syncToken, last-write-wins on updated_at; tasks tagged
+  `extendedProperties.private.pc_task_id`, orders `pc_order_id`
+  all-day events), `gcal-webhook` (push-channel notifications → sync).
+- ⬜ **GC.3 — app wiring**: "Connect Google Calendar" in schedule sidebar,
+  Google layer toggle + read-only overlay events in all views, sync
+  status line, disconnect.
+- ⬜ **GC.4 — verify + docs**: round-trip tests (create/edit/delete both
+  sides), SCHEMA.md + SPEC § 13.
+
 ### Cabinet Builder "edit in place" UI rework (2026-07-03) ✅ built + verified — ⬜ push
 
 **Goal.** Reduce scroll + click cost in the Cabinet Builder (user-picked

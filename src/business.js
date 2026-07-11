@@ -114,6 +114,7 @@ function _syncCBSettingsToDB() {
       default_installation_hours:   parseFloat(cbSettings.installationHours) || 0,
       default_contingency_pct:      parseFloat(cbSettings.contingencyPct) || 0,
       production_queue_start_date:  cbSettings.queueStartDate || null,
+      workday_start_time:           /^\d{2}:\d{2}$/.test(String(cbSettings.workdayStart || '')) ? cbSettings.workdayStart : '08:00',
       updated_at: new Date().toISOString()
     };
     /** @type {any} */ const w = window;
@@ -576,6 +577,7 @@ function _applyBizInfoFromDB(rows) {
       cbSettings.weekdayHours = b.default_weekday_hours.map(/** @param {any} h */ h => parseFloat(h) || 0);
     }
     if (b.production_queue_start_date) cbSettings.queueStartDate = b.production_queue_start_date;
+    if (b.workday_start_time && /^\d{2}:\d{2}$/.test(String(b.workday_start_time))) cbSettings.workdayStart = b.workday_start_time;
     // Phase 3 cleanup: DB is authoritative; drop the legacy LS key so it
     // can't shadow on a future session.
     localStorage.removeItem('pc_cq_settings');

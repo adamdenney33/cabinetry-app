@@ -762,6 +762,117 @@ header {
 .sched-mobile-cal { overflow-x: auto; }
 .sched-mobile-cal > div { min-width: 600px; }
 
+/* ── SCHEDULE VIEWS (SV.3–SV.7): view bar, layer toggles, Day/Week grid ── */
+.sched-viewbar {
+  position: sticky; top: 0; z-index: 7;
+  display: flex; align-items: center; gap: 6px;
+  height: 44px; box-sizing: border-box; padding: 6px 10px;
+  background: var(--surface); border-bottom: 1px solid var(--border);
+}
+.sched-viewbar .sched-vb-today, .sched-viewbar .sched-vb-add { font-size: 11px; padding: 5px 10px; width: auto; flex-shrink: 0; }
+.sched-vb-nav {
+  background: none; border: none; color: var(--text2); cursor: pointer;
+  padding: 6px; border-radius: 6px; display: inline-flex; align-items: center;
+}
+.sched-vb-nav:hover { background: var(--surface2); color: var(--text); }
+.sched-vb-label { font-size: 14px; font-weight: 700; color: var(--text); margin-left: 2px; white-space: nowrap; }
+.sched-seg { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; flex-shrink: 0; }
+.sched-seg button {
+  background: none; border: none; border-left: 1px solid var(--border);
+  padding: 6px 12px; font-size: 12px; color: var(--muted); cursor: pointer; font-family: inherit;
+}
+.sched-seg button:first-child { border-left: none; }
+.sched-seg button.active { background: var(--surface2); color: var(--text); font-weight: 700; }
+
+/* Layer visibility toggles (sidebar) */
+.sched-layers { display: flex; flex-direction: column; gap: 5px; padding: 2px 8px 10px; }
+.sched-layer { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--text2); cursor: pointer; }
+.sched-layer input { accent-color: var(--accent); cursor: pointer; margin: 0; }
+.sched-layer-dot { width: 9px; height: 9px; border-radius: 3px; flex-shrink: 0; }
+
+/* Day/Week grid — header */
+.sched-gridhead { position: sticky; z-index: 5; background: var(--surface); border-bottom: 1px solid var(--border); }
+.sgh-row { display: grid; }
+.sgh-day { text-align: center; padding: 6px 4px; display: flex; align-items: baseline; justify-content: center; gap: 5px; border-left: 1px solid var(--border2); }
+.sgh-day[onclick] { cursor: pointer; }
+.sgh-day[onclick]:hover { background: var(--surface2); }
+.sgh-dow { font-size: 11px; font-weight: 600; color: var(--text2); }
+.sgh-num { font-size: 15px; font-weight: 800; color: var(--text); }
+.sgh-day.today .sgh-num {
+  background: var(--accent); color: #fff; border-radius: 50%;
+  width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; font-size: 13px;
+}
+.sgh-allday { display: grid; border-top: 1px solid var(--border2); }
+.sgh-adlabel { font-size: 9px; color: var(--muted); text-align: right; padding: 4px 6px; }
+.sgh-allday-cell { padding: 2px; display: flex; flex-direction: column; gap: 2px; min-height: 20px; border-left: 1px solid var(--border2); }
+.sched-ad-chip {
+  font-size: 10px; font-weight: 600; color: #fff; background: #0d9488;
+  border-radius: 4px; padding: 2px 6px; cursor: pointer;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.sched-ad-chip.done { opacity: 0.55; text-decoration: line-through; }
+
+/* Day/Week grid — body */
+.sched-gridbody { display: grid; position: relative; }
+.sgb-gutter { position: relative; }
+.sgb-hour { position: absolute; right: 6px; transform: translateY(-50%); font-size: 10px; color: var(--muted); }
+.sgb-col {
+  position: relative; border-left: 1px solid var(--border2);
+  background-image: repeating-linear-gradient(to bottom, var(--border2) 0 1px, transparent 1px 48px);
+}
+.sgb-col.weekend { background-color: rgba(255,255,255,0.015); }
+.sgb-col.today { background-color: rgba(232,168,56,0.04); }
+.sgb-offhours { position: absolute; left: 0; right: 0; background: rgba(0,0,0,0.16); pointer-events: none; z-index: 1; }
+.sgb-holiday { background: rgba(0,0,0,0.16) repeating-linear-gradient(-45deg, transparent 0 6px, rgba(255,255,255,0.04) 6px 12px); }
+
+/* Order blocks (scheduler segments — click to open, not draggable) */
+.sched-ord-block {
+  position: absolute; z-index: 2; border-radius: 5px; color: #fff;
+  padding: 3px 6px; overflow: hidden; cursor: pointer;
+  display: flex; flex-direction: column; gap: 1px; box-sizing: border-box;
+}
+.sched-ord-block .sob-title { font-size: 10px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sched-ord-block .sob-time { font-size: 9px; opacity: 0.85; }
+
+/* Task blocks (drag to move, bottom handle to resize) */
+.sched-task-block {
+  position: absolute; z-index: 3; border-radius: 5px; box-sizing: border-box;
+  background: #0d9488; color: #fff; padding: 3px 6px; overflow: hidden;
+  display: flex; flex-direction: column; gap: 1px;
+  cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none;
+}
+.sched-task-block.dragging { opacity: 0.9; cursor: grabbing; z-index: 6; box-shadow: 0 6px 18px rgba(0,0,0,0.45); }
+.sched-task-block.done { opacity: 0.55; }
+.sched-task-block.done .stb-title { text-decoration: line-through; }
+.sched-task-block .stb-title { font-size: 10px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sched-task-block .stb-time { font-size: 9px; opacity: 0.85; }
+.stb-resize { position: absolute; left: 0; right: 0; bottom: 0; height: 7px; cursor: ns-resize; touch-action: none; }
+
+/* Current-time line */
+.sched-nowline { position: absolute; left: 0; right: 0; height: 2px; background: #ef4444; z-index: 4; pointer-events: none; }
+.sched-nowdot { position: absolute; left: -4px; top: -3px; width: 8px; height: 8px; border-radius: 50%; background: #ef4444; }
+
+/* Month-view task chips (below the order-bar zone in each day cell) */
+.sched-cell-tasks { position: absolute; left: 2px; right: 2px; z-index: 2; display: flex; flex-direction: column; gap: 2px; }
+.sched-task-chip {
+  font-size: 9.5px; font-weight: 600; color: var(--text);
+  background: rgba(13,148,136,0.22); border-left: 3px solid #0d9488;
+  border-radius: 3px; padding: 1px 4px; cursor: pointer;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.sched-task-chip.done { opacity: 0.55; text-decoration: line-through; }
+.sched-task-chip.more { background: transparent; border-left-color: transparent; color: var(--muted); }
+.sched-task-chip .sct-time { font-weight: 700; margin-right: 3px; opacity: 0.8; }
+
+@media (max-width: 760px) {
+  .sched-viewbar { position: static; height: auto; flex-wrap: wrap; row-gap: 6px; }
+  .sched-vb-label { font-size: 12px; }
+  .sched-mobile-cal .sched-gridhead { top: 0; }
+  /* Day view fits a phone; only the 7-column week grid needs to scroll. */
+  .sched-mobile-cal > .sched-gridhead, .sched-mobile-cal > .sched-gridbody { min-width: 0; }
+  .sched-mobile-cal > .sched-gridhead.sched-grid-week, .sched-mobile-cal > .sched-gridbody.sched-grid-week { min-width: 640px; }
+}
+
 /* ── FORM ELEMENTS ── */
 .form-section { margin-bottom: 14px; }
 .form-section-title {

@@ -13,6 +13,7 @@ let cbSettings = {
   // Production scheduler defaults (mirrors business_info.default_*)
   workdayHours: 8,
   weekdayHours: [8, 8, 8, 8, 8, 0, 0],   // Mon..Sun
+  workdayStart: '08:00',                  // HH:MM — time-of-day anchor for Day/Week order blocks (SV.2)
   packagingHours: 0,
   installationHours: 0,
   contingencyPct: 5,

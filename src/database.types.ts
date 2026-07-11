@@ -144,6 +144,7 @@ export type Database = {
           unit_format: Json | null
           updated_at: string
           user_id: string
+          workday_start_time: string
         }
         Insert: {
           abn?: string | null
@@ -182,6 +183,7 @@ export type Database = {
           unit_format?: Json | null
           updated_at?: string
           user_id: string
+          workday_start_time?: string
         }
         Update: {
           abn?: string | null
@@ -220,6 +222,7 @@ export type Database = {
           unit_format?: Json | null
           updated_at?: string
           user_id?: string
+          workday_start_time?: string
         }
         Relationships: []
       }
@@ -1562,6 +1565,51 @@ export type Database = {
           hours?: number
           id?: number
           label?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      schedule_tasks: {
+        Row: {
+          all_day: boolean
+          created_at: string
+          done: boolean
+          end_at: string
+          gcal_event_id: string | null
+          gcal_synced_at: string | null
+          id: number
+          notes: string | null
+          start_at: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          all_day?: boolean
+          created_at?: string
+          done?: boolean
+          end_at: string
+          gcal_event_id?: string | null
+          gcal_synced_at?: string | null
+          id?: number
+          notes?: string | null
+          start_at: string
+          title?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          all_day?: boolean
+          created_at?: string
+          done?: boolean
+          end_at?: string
+          gcal_event_id?: string | null
+          gcal_synced_at?: string | null
+          id?: number
+          notes?: string | null
+          start_at?: string
+          title?: string
+          updated_at?: string
           user_id?: string
         }
         Relationships: []

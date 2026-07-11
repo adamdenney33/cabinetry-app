@@ -351,6 +351,7 @@ function _demoBuildDataset() {
 
     subscriptions: [],
     schedule_day_overrides: [],
+    schedule_tasks: [],
   });
 }
 

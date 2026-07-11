@@ -102,6 +102,10 @@ async function loadAllData() {
   // Phase 3.3 _applyBizInfoFromDB moved up — it must precede _demoOverlayInit.
   // S.2 — load schedule day overrides for the production scheduler (fire and forget)
   loadDayOverrides().catch(/** @param {any} e */ e => console.warn('[day_overrides] load:', e.message || e));
+  // SV.5 — load schedule tasks (fire and forget; Schedule re-renders on open)
+  if (typeof loadScheduleTasks === 'function') {
+    loadScheduleTasks().catch(/** @param {any} e */ e => console.warn('[schedule_tasks] load:', e.message || e));
+  }
   /** @type {HTMLElement} */ (document.getElementById('orders-badge')).textContent = String(orders.filter(o => o.status !== 'complete').length);
   // Guarded: a dropped domain script (main.js boot self-heal reloads once to
   // recover) must not abort the rest of boot before the realtime subscribe below.
