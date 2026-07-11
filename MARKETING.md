@@ -8,7 +8,7 @@
 
 - **Product:** Workshop OS for cabinetmakers — quote, price, cut-list, schedule, stock, clients, orders in one tool.
 - **ICP:** owner-operator cabinet shops (1–10 people), UK/US/CA/AU/NZ, currently on spreadsheets + paper. Subscription-sceptical trades audience — lead with time saved and "built by a maker", not software-speak.
-- **Voice:** British English, peer-to-peer trade voice, founder-led (`marketing/specs/brand-voice.md`).
+- **Voice:** British English. Plain third person by default; first-person founder voice reserved for channels where it's genuinely Adam speaking (Stories, DMs, LinkedIn, cold email, origin story). Considered and understated, never punchy. Full spec + hard banned-patterns list: `marketing/specs/brand-voice.md` — **read it before writing any copy.**
 - **Core proof asset:** the Overview reel ("workshop OS") — best performer at £0.33/LPV, CTR 1.78%.
 
 ## 2. Offers (source of truth)

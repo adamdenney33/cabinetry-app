@@ -9,6 +9,7 @@ Read these before making structural decisions or schema changes:
 - **`SCHEMA.md`** — full database schema with DDL, RLS patterns, and migration order. Source of truth for all tables, columns, and FKs.
 - **`~/.claude/plans/item-2-cabinet-quote-unification.md`** — detailed architecture and decision rationale for the in-progress Cabinet Builder/Quote unification (`PLAN.md` references this for sub-step context).
 - **`Building Docs/Database_Visual_Guide.docx`** — plain-English version of the schema for non-technical reading.
+- **`marketing/specs/brand-voice.md`** — **read before writing ANY customer-facing words**: landing page, ads, social, email, blog, PR, and in-app/UX copy. It contains a hard banned-patterns list (§ 6). Copy that violates it is wrong even if it reads well. Rewritten 2026-07-11 after the previous spec produced AI-sounding, patronising copy.
 
 When a sub-step from `PLAN.md` is completed, mark it ✅ in `PLAN.md` and append a brief summary to `SPEC.md § 13`. When introducing a new pending change, add it to `PLAN.md` with sub-steps before starting work.
 
