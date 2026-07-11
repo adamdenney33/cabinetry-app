@@ -1,13 +1,16 @@
-// ProCabinet — QuickBooks Online + Xero invoice integration (client side).
+// ProCabinet — QuickBooks Online + Xero integration (client side).
 //
 // Loaded as a classic <script defer> after src/orders.js / src/quotes.js (it
-// reuses their _lineDisplay / _lineSubtotal). One-way push: turn an order into a
-// DRAFT invoice in the user's connected accounting system. Pro-only.
+// reuses their _lineDisplay / _lineSubtotal). One-way push, Pro-only:
+//   • an ORDER → a DRAFT invoice  (QBO Invoice / Xero invoice)
+//   • a QUOTE → a DRAFT estimate  (QBO Estimate / Xero Quote — the pre-sale doc)
+// Both go to the same edge function (accounting-push-invoice) with a docType.
 //
 // Cross-file deps: _sb / _db / _userId (db.js, limits.js), isPro /
 // _enforceProFeature (limits.js), _requireAuth (app.js), _toast / _confirm /
 // _openPopup / _closePopup / _escHtml (ui.js), _lineDisplay / _lineSubtotal /
-// orders / renderOrdersMain (quotes.js / orders.js), _track (analytics.js).
+// orders / renderOrdersMain / quotes / renderQuoteMain (quotes.js / orders.js),
+// _track (analytics.js).
 
 /** @typedef {'quickbooks'|'xero'} AcctProvider */
 
@@ -17,17 +20,21 @@ const _ACCT_PROVIDERS = {
   xero: { label: 'Xero', short: 'Xero' },
 };
 
-// In-memory mirror of the user's connections + order→invoice links. Hydrated by
-// loadAccountingConnections() on boot and after connect/disconnect/push.
+// In-memory mirror of the user's connections + order/quote → external-doc links.
+// Hydrated by loadAccountingConnections() on boot and after connect/disconnect/push.
 /** @type {Array<{ provider: string, org_name: string|null, status: string, default_tax_code: string|null }>} */
 let _accountingConnections = [];
-/** @type {Record<number, Array<{ order_id: number, provider: string, external_url: string|null, external_number: string|null, status: string|null }>>} */
+/** @typedef {{ order_id: number|null, quote_id: number|null, provider: string, external_url: string|null, external_number: string|null, status: string|null }} AcctLink */
+/** @type {Record<number, AcctLink[]>} */
 let _accountingLinksByOrder = {};
+/** @type {Record<number, AcctLink[]>} */
+let _accountingLinksByQuote = {};
 
 // ── Boot hydrate ────────────────────────────────────────────────────────────
 async function loadAccountingConnections() {
   _accountingConnections = [];
   _accountingLinksByOrder = {};
+  _accountingLinksByQuote = {};
   if (!_userId) return;
   try {
     // Explicit safe columns — the *_enc token columns are revoked from the
@@ -40,12 +47,18 @@ async function loadAccountingConnections() {
   } catch (_e) { /* table not present yet / offline — stay empty */ }
   try {
     const { data: links } = await _earlyBootOr('accounting_invoice_links', _userId,
-      () => _db('accounting_invoice_links').select('order_id, provider, external_url, external_number, status'));
+      () => _db('accounting_invoice_links').select('order_id, quote_id, provider, external_url, external_number, status'));
     /** @type {Record<number, any[]>} */
-    const map = {};
-    (links || []).forEach(/** @param {any} l */ l => { (map[l.order_id] = map[l.order_id] || []).push(l); });
-    _accountingLinksByOrder = map;
-  } catch (_e) { /* ditto */ }
+    const byOrder = {};
+    /** @type {Record<number, any[]>} */
+    const byQuote = {};
+    (links || []).forEach(/** @param {any} l */ l => {
+      if (l.quote_id != null) (byQuote[l.quote_id] = byQuote[l.quote_id] || []).push(l);
+      else if (l.order_id != null) (byOrder[l.order_id] = byOrder[l.order_id] || []).push(l);
+    });
+    _accountingLinksByOrder = byOrder;
+    _accountingLinksByQuote = byQuote;
+  } catch (_e) { /* ditto — older schema (pre-quote_id) still selects order_id */ }
 }
 
 /** @returns {Array<{ provider: string, org_name: string|null, status: string, default_tax_code: string|null }>} */
@@ -98,7 +111,7 @@ function disconnectAccounting(provider) {
       _toast(`${meta.label} disconnected`, 'success');
       await loadAccountingConnections();
       _openAccountingPopup();             // re-render the popup in place
-      try { renderOrdersMain(); } catch (_e) {}
+      _accountingRerenderCards();
     } catch (e) {
       _toast((/** @type {Error} */ (e)).message || 'Disconnect failed', 'error');
     }
@@ -117,7 +130,7 @@ function handleAccountingReturn() {
     _toast(`${label} connected.`, 'success');
     if (typeof _track === 'function') _track('accounting_connected', { provider });
     setTimeout(() => {
-      loadAccountingConnections().then(() => { try { renderOrdersMain(); } catch (_e) {} });
+      loadAccountingConnections().then(() => { _accountingRerenderCards(); });
     }, 500);
   } else if (status === 'error') {
     _toast(`Could not connect ${label}. Please try again.`, 'error');
@@ -170,7 +183,7 @@ function _accountingPopupHtml() {
       <button class="popup-close" onclick="_closePopup()">&times;</button>
     </div>
     <div class="popup-body">
-      <p style="font-size:12px;color:var(--muted);margin:0 0 14px">Push an order's invoice straight into your accounting system as a <strong>draft</strong> — you review and send it from there. Tokens are encrypted; we never see your QuickBooks/Xero password.</p>
+      <p style="font-size:12px;color:var(--muted);margin:0 0 14px">Push straight into your accounting system as a <strong>draft</strong> you review before sending: an <strong>order</strong> becomes a draft invoice, a <strong>quote</strong> becomes a draft estimate (QuickBooks) / quote (Xero). Tokens are encrypted; we never see your QuickBooks/Xero password.</p>
       ${card('quickbooks')}
       ${card('xero')}
     </div>`;
@@ -212,63 +225,100 @@ function _accountingBuildLines(o, rows) {
   return { lines, taxApplies };
 }
 
-/** @param {number} orderId @param {AcctProvider} provider */
-async function pushOrderToAccounting(orderId, provider) {
+/** Re-render whichever card grids exist (order + quote). */
+function _accountingRerenderCards() {
+  try { renderOrdersMain(); } catch (_e) {}
+  try { if (typeof renderQuoteMain === 'function') renderQuoteMain(); } catch (_e) {}
+}
+
+/**
+ * Push an order (→ invoice) or quote (→ estimate) to the given provider.
+ * @param {'order'|'quote'} kind @param {number} id @param {AcctProvider} provider
+ */
+async function _accountingPush(kind, id, provider) {
   if (!_requireAuth()) return;
   if (!_enforceProFeature()) return;
-  const o = orders.find(x => x.id === orderId);
-  if (!o) { _toast('Order not found', 'error'); return; }
+  const isQuote = kind === 'quote';
+  const doc = (isQuote ? quotes : orders).find(/** @param {any} x */ x => x.id === id);
+  if (!doc) { _toast(`${isQuote ? 'Quote' : 'Order'} not found`, 'error'); return; }
   const meta = (/** @type {any} */ (_ACCT_PROVIDERS))[provider] || { label: provider };
   _toast(`Sending to ${meta.label}…`, 'info', 8000);
   try {
-    const { data: rows } = await _db('order_lines').select('*').eq('order_id', orderId).order('position');
-    const { lines, taxApplies } = _accountingBuildLines(o, /** @type {any} */ (rows) || []);
-    if (!lines.length) { _toast('This order has no line items to invoice', 'error'); return; }
-    const resp = await _accountingFn('accounting-push-invoice', { orderId, provider, lines, taxApplies });
-    if (typeof _track === 'function') _track('accounting_invoice_pushed', { provider });
+    const table = isQuote ? 'quote_lines' : 'order_lines';
+    const fk = isQuote ? 'quote_id' : 'order_id';
+    // Dynamic table+column: cast the builder to loosen the typed-client generics
+    // (the union table/column cross-product includes combos tsc can't reconcile).
+    const { data: rows } = await (/** @type {any} */ (_db(table))).select('*').eq(fk, id).order('position');
+    const { lines, taxApplies } = _accountingBuildLines(doc, /** @type {any} */ (rows) || []);
+    if (!lines.length) { _toast(`This ${isQuote ? 'quote' : 'order'} has no line items to send`, 'error'); return; }
+    const resp = await _accountingFn('accounting-push-invoice', { docType: kind, id, provider, lines, taxApplies });
+    if (typeof _track === 'function') _track('accounting_doc_pushed', { provider, doc_type: isQuote ? 'estimate' : 'invoice' });
     // Optimistic link cache so the "Synced" chip appears immediately.
-    const arr = (_accountingLinksByOrder[orderId] || []).filter(l => l.provider !== provider);
-    arr.push({ order_id: orderId, provider, external_url: resp.external_url, external_number: resp.external_number, status: 'draft' });
-    _accountingLinksByOrder[orderId] = arr;
-    try { renderOrdersMain(); } catch (_e) {}
+    const store = isQuote ? _accountingLinksByQuote : _accountingLinksByOrder;
+    const arr = (store[id] || []).filter(l => l.provider !== provider);
+    arr.push({ order_id: isQuote ? null : id, quote_id: isQuote ? id : null, provider, external_url: resp.external_url, external_number: resp.external_number, status: 'draft' });
+    store[id] = arr;
+    _accountingRerenderCards();
     const num = resp.external_number ? ` ${resp.external_number}` : '';
-    _toast(`Draft invoice${num} created in ${meta.label}.`, 'success');
+    _toast(`Draft ${isQuote ? 'estimate' : 'invoice'}${num} created in ${meta.label}.`, 'success');
   } catch (e) {
     _toast((/** @type {Error} */ (e)).message || 'Push to accounting failed', 'error');
   }
 }
 
-/** Order-card entry point: route by how many providers are connected. @param {number} orderId */
-function _accountingSyncMenu(orderId) {
+/** @param {number} orderId @param {AcctProvider} provider */
+function pushOrderToAccounting(orderId, provider) { return _accountingPush('order', orderId, provider); }
+/** @param {number} quoteId @param {AcctProvider} provider */
+function pushQuoteToAccounting(quoteId, provider) { return _accountingPush('quote', quoteId, provider); }
+
+/**
+ * Card entry point: route by how many providers are connected.
+ * @param {'order'|'quote'} kind @param {number} id
+ */
+function _accountingSync(kind, id) {
   if (!_requireAuth()) return;
   if (!_enforceProFeature()) return;
+  const isQuote = kind === 'quote';
+  const noun = isQuote ? 'estimate' : 'invoice';
   const connected = _accountingConnected();
   if (connected.length === 0) {
     _toast('Connect QuickBooks or Xero first', 'info');
     _openAccountingPopup();
     return;
   }
-  if (connected.length === 1) { pushOrderToAccounting(orderId, /** @type {AcctProvider} */ (connected[0].provider)); return; }
+  if (connected.length === 1) { _accountingPush(kind, id, /** @type {AcctProvider} */ (connected[0].provider)); return; }
   // Both connected — pick one.
   const btns = connected.map(c => {
     const meta = (/** @type {any} */ (_ACCT_PROVIDERS))[c.provider] || { label: c.provider };
-    return `<button class="btn btn-primary" style="width:100%;margin-bottom:8px" onclick="_closePopup();pushOrderToAccounting(${orderId},'${c.provider}')">Send to ${meta.label}</button>`;
+    return `<button class="btn btn-primary" style="width:100%;margin-bottom:8px" onclick="_closePopup();_accountingPush('${kind}',${id},'${c.provider}')">Send to ${meta.label}</button>`;
   }).join('');
-  _openPopup(`<div class="popup-header"><div class="popup-title">Send invoice to…</div><button class="popup-close" onclick="_closePopup()">&times;</button></div><div class="popup-body">${btns}</div>`, 'sm');
+  _openPopup(`<div class="popup-header"><div class="popup-title">Send ${noun} to…</div><button class="popup-close" onclick="_closePopup()">&times;</button></div><div class="popup-body">${btns}</div>`, 'sm');
 }
 
+/** Order-card entry point (kept for the src/orders.js onclick). @param {number} orderId */
+function _accountingSyncMenu(orderId) { _accountingSync('order', orderId); }
+/** Quote-card entry point. @param {number} quoteId */
+function _accountingSyncMenuQuote(quoteId) { _accountingSync('quote', quoteId); }
+
 /**
- * HTML for the order card: a "Synced" chip per existing link + the Sync button.
- * Rendered inline by src/orders.js (guarded by typeof).
- * @param {number} orderId @returns {string}
+ * HTML for a card footer: a "Synced" chip per existing link + the Sync button.
+ * Rendered inline by src/orders.js / src/quotes.js (guarded by typeof).
+ * @param {'order'|'quote'} kind @param {number} id @returns {string}
  */
-function _accountingOrderFooter(orderId) {
-  const links = _accountingLinksByOrder[orderId] || [];
+function _accountingCardFooter(kind, id) {
+  const isQuote = kind === 'quote';
+  const links = (isQuote ? _accountingLinksByQuote : _accountingLinksByOrder)[id] || [];
+  const syncFn = isQuote ? '_accountingSyncMenuQuote' : '_accountingSyncMenu';
   const chips = links.map(l => {
     const meta = (/** @type {any} */ (_ACCT_PROVIDERS))[l.provider] || { label: l.provider };
     const title = `Synced to ${meta.label}${l.external_number ? ' · ' + l.external_number : ''}`;
     const href = l.external_url || '#';
     return `<a href="${_escHtml(href)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="${_escHtml(title)}" style="display:inline-flex;align-items:center;gap:3px;font-size:9px;font-weight:700;padding:3px 7px;border-radius:10px;background:var(--success);color:#fff;text-decoration:none">✓ ${meta.label}</a>`;
   }).join('');
-  return `${chips}<button class="btn btn-outline" onclick="event.stopPropagation();_accountingSyncMenu(${orderId})" style="font-size:11px;padding:5px 8px;width:auto" title="Send to QuickBooks / Xero">Sync ▾</button>`;
+  return `${chips}<button class="btn btn-outline" onclick="event.stopPropagation();${syncFn}(${id})" style="font-size:11px;padding:5px 8px;width:auto" title="Send to QuickBooks / Xero">Sync ▾</button>`;
 }
+
+/** Order-card footer (kept for the src/orders.js call). @param {number} orderId @returns {string} */
+function _accountingOrderFooter(orderId) { return _accountingCardFooter('order', orderId); }
+/** Quote-card footer. @param {number} quoteId @returns {string} */
+function _accountingQuoteFooter(quoteId) { return _accountingCardFooter('quote', quoteId); }

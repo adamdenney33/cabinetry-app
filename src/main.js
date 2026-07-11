@@ -175,7 +175,7 @@ try {
       business_info: _ebGet('business_info', `select=*&user_id=eq.${_ebUid}`),
       subscriptions: _ebGet('subscriptions', `select=*&user_id=eq.${_ebUid}`),
       accounting_connections: _ebGet('accounting_connections', 'select=provider,org_name,status,default_tax_code'),
-      accounting_invoice_links: _ebGet('accounting_invoice_links', 'select=order_id,provider,external_url,external_number,status'),
+      accounting_invoice_links: _ebGet('accounting_invoice_links', 'select=order_id,quote_id,provider,external_url,external_number,status'),
     };
     // Pre-handle rejections: a revoked token rejects all eight at once, and the
     // consumers only catch the copies they await — this silences the
@@ -211,6 +211,33 @@ window._ensureJsPDF = function _ensureJsPDF() {
 // normal session never actually waits on the network.
 _afterLoad(() => {
   setTimeout(() => { window._ensureJsPDF().catch(() => {}); }, 3000);
+});
+
+// ── SheetJS / xlsx (lazy) ──
+// Spreadsheet import (.xlsx/.xls/.numbers/.ods) and the multi-tab cut-list
+// export both use SheetJS. It's ~900 KB and never on the boot path, so it's
+// dynamic-imported on first use — the first Import/Export click awaits this,
+// and a post-load warm-up keeps that wait off the network in a normal session.
+// window.XLSX matches the shape `import * as XLSX from 'xlsx'` provides.
+/** @type {Promise<any> | null} */
+let _xlsxLoad = null;
+window._ensureXLSX = function _ensureXLSX() {
+  if (window.XLSX) return Promise.resolve(window.XLSX);
+  if (!_xlsxLoad) {
+    _xlsxLoad = import('xlsx')
+      .then((m) => {
+        // Named or default namespace depending on interop — pick the one that
+        // actually carries the SheetJS API (utils/read/writeFile).
+        const XLSX = (/** @type {any} */ (m).utils ? m : /** @type {any} */ (m).default) || m;
+        window.XLSX = XLSX;
+        return XLSX;
+      })
+      .catch((e) => { _xlsxLoad = null; throw e; }); // failed fetch → retry on next call
+  }
+  return _xlsxLoad;
+};
+_afterLoad(() => {
+  setTimeout(() => { window._ensureXLSX().catch(() => {}); }, 3500);
 });
 
 // ── Product analytics ──

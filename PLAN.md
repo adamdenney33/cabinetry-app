@@ -24,6 +24,42 @@ Companion docs: `SPEC.md` (refactor history), `SCHEMA.md` (DB schema),
 
 ## Active Work
 
+### Accounting — push QUOTES as estimates (QBO Estimate / Xero Quote) (2026-07-11) ✅ Built + typechecked — ⬜ deploy (migration + fn) + verify
+
+**Goal.** Mirror the existing order→invoice accounting sync on the **quote** side:
+a Pro-gated **Sync ▾** on each quote card pushes the quote into the connected
+accounting system as a DRAFT **estimate** (QuickBooks) / **quote** (Xero) — the
+pre-sale document type, not a draft invoice. Full rationale: SPEC § 13 (2026-07-11).
+
+**Key finding.** No OAuth scope change / no reconnect needed — QBO's accounting
+scope already covers the Estimate entity; Xero's granular `accounting.invoices`
+scope already covers the Quotes endpoint. So the correct mapping has zero
+migration cost for connected users.
+
+**Built.**
+- ✅ **A.1 — migration** (`20260711130000_accounting_quote_estimate_links.sql`):
+  `accounting_invoice_links` gains nullable `quote_id` FK + `doc_type`
+  (`invoice`|`estimate`), `order_id` relaxed to nullable, mutually-exclusive
+  check, second unique key `(user_id, quote_id, provider)` + quote_id index.
+  SCHEMA § 3.22 updated. Type regen deferred to deploy.
+- ✅ **A.2 — providers.ts** `createDraftEstimate`: QBO `/estimate` (ItemRef +
+  estimate deep link), Xero `/Quotes` (DRAFT + issue Date + quote deep link);
+  same normalised `InvoiceInput` (dueDate → estimate/quote expiry).
+- ✅ **A.3 — edge fn** `accounting-push-invoice` generalised: `docType`
+  (`order` default, still accepts legacy `orderId`), sources the quote/order
+  row + client server-side, branches invoice/estimate, upserts the right link.
+- ✅ **A.4 — frontend**: `accounting.js` generalised (`_accountingPush`,
+  `_accountingCardFooter`, quote link map, `quote_id` added to the early-boot
+  select in `main.js`); `quotes.js` quote-card footer gets the Sync button;
+  `globals.d.ts` declarations. Popup copy updated (order→invoice, quote→estimate).
+- ✅ **A.5 — typecheck** clean on all touched `src/` + `supabase/` files (the
+  only tsc errors are the pre-existing `scripts/blog.mjs` ones).
+- ⬜ **A.6 — deploy** (needs the user; **migration-first**): apply
+  `20260711130000` + regen types → deploy `accounting-push-invoice`
+  (`verify_jwt` on) → push frontend to `main`. Post-deploy smoke: connect QB/Xero,
+  open a quote with lines, Sync ▾ → confirm a DRAFT estimate/quote appears in the
+  provider with matching line totals + a "✓ Synced" chip deep-links to it.
+
 ### Schedule — day/week views, tasks, drag + Google Calendar 2-way (2026-07-11) ✅ Phase 1 built + verified — ⬜ push · Phase 2 (GC) blocked on Google Cloud setup
 
 **Goal.** Grow the Schedule tab from the single continuous month Gantt into a

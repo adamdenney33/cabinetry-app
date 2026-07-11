@@ -23,6 +23,10 @@ declare global {
     jspdf?: { jsPDF: typeof JsPDFConstructor };
     /** Lazy jsPDF loader (src/main.js): dynamic-imports jspdf + jspdf-autotable on first use, then resolves with (and sets) window.jspdf. */
     _ensureJsPDF: () => Promise<{ jsPDF: typeof JsPDFConstructor }>;
+    /** SheetJS bridge — set lazily by window._ensureXLSX() (src/main.js); undefined until the first spreadsheet import or the multi-tab cut-list export pulls the chunk. */
+    XLSX?: any;
+    /** Lazy SheetJS loader (src/main.js): dynamic-imports xlsx on first use, then resolves with (and sets) window.XLSX. */
+    _ensureXLSX: () => Promise<any>;
     /** Early boot fetch (src/main.js): in-flight render-gating queries keyed by
      *  table name, started before the classic scripts finish loading, plus the
      *  `userId` they were issued for. Slots are consumed (nulled) at most once
@@ -211,13 +215,17 @@ declare global {
   /** Fire ad-platform purchase conversions (GA4 purchase + Google Ads) on a successful Pro checkout. Meta Subscribe/Purchase fires server-side via CAPI from stripe-webhook. No-ops if pixels are disabled. */
   function _trackPurchaseConversion(plan: string | null | undefined): void;
 
-  // ── accounting.js globals (QuickBooks/Xero invoice push) ──
-  /** Hydrate the user's accounting connections + order→invoice links. Called from loadAllData. */
+  // ── accounting.js globals (QuickBooks/Xero: order→invoice, quote→estimate) ──
+  /** Hydrate the user's accounting connections + order/quote → external-doc links. Called from loadAllData. */
   function loadAccountingConnections(): Promise<void>;
   /** Toast + refresh on return from the OAuth consent screen (?accounting=). Called once on load. */
   function handleAccountingReturn(): void;
   /** HTML for the order card: "Synced" chip(s) + the Sync button. Rendered by src/orders.js. */
   function _accountingOrderFooter(orderId: number): string;
+  /** HTML for the quote card: "Synced" chip(s) + the Sync button. Rendered by src/quotes.js. */
+  function _accountingQuoteFooter(quoteId: number): string;
+  /** Quote-card Sync ▾ entry point (routes by connected providers, pushes a draft estimate). */
+  function _accountingSyncMenuQuote(quoteId: number): void;
   /** Open the Pro-gated "Accounting integrations" connect/disconnect popup. */
   function _openAccountingPopup(): void;
 

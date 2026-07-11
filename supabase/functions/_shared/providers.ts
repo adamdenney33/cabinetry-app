@@ -362,6 +362,76 @@ export async function createDraftInvoice(provider: Provider, conn: Conn, accessT
   };
 }
 
+// ── Create DRAFT estimate (from a QUOTE) ──────────────────────────────────
+// A quote maps to a QBO **Estimate** / Xero **Quote** — the pre-sale document,
+// NOT a receivable. Same normalised InvoiceInput (reference = "QUO-…"; dueDate
+// is treated as the estimate/quote expiry). No extra OAuth scope required: QBO's
+// accounting scope covers Estimate and Xero's accounting.invoices scope covers
+// Quotes.
+export async function createDraftEstimate(provider: Provider, conn: Conn, accessToken: string, inv: InvoiceInput): Promise<CreatedInvoice> {
+  if (provider === 'xero') {
+    const accountCode = await xeroRevenueAccountCode(conn, accessToken);
+    const body = {
+      Contact: { ContactID: inv.contactId },
+      Date: new Date().toISOString().slice(0, 10), // Xero Quotes require an issue date
+      ExpiryDate: inv.dueDate ?? undefined,
+      Reference: inv.reference,
+      Status: 'DRAFT',
+      LineAmountTypes: 'Exclusive',
+      LineItems: inv.lines.map((l) => ({
+        Description: l.description || '.',
+        Quantity: 1.0,
+        UnitAmount: round2(l.amount),
+        AccountCode: accountCode,
+        TaxType: inv.taxCode ?? 'NONE',
+      })),
+    };
+    const res = await fetch('https://api.xero.com/api.xro/2.0/Quotes', {
+      method: 'POST',
+      headers: xeroHeaders(accessToken, conn.tenant_id),
+      body: JSON.stringify({ Quotes: [body] }),
+    });
+    if (!res.ok) throw new Error(`Xero quote create ${res.status}: ${(await res.text()).slice(0, 300)}`);
+    const j = await res.json() as { Quotes: Array<{ QuoteID: string; QuoteNumber?: string }> };
+    const created = j.Quotes[0];
+    return {
+      externalId: created.QuoteID,
+      externalNumber: created.QuoteNumber ?? null,
+      externalUrl: `https://go.xero.com/app/quotes/edit/${created.QuoteID}`,
+    };
+  }
+  // QuickBooks — Estimate entity (a proposed sale that can later be converted to
+  // an invoice inside QBO). Same line shape as the invoice push.
+  const itemRef = await qboDefaultItemRef(conn, accessToken);
+  const lineTax = inv.taxCode ? { TaxCodeRef: { value: inv.taxCode } } : { TaxCodeRef: { value: 'NON' } };
+  const body: Record<string, unknown> = {
+    CustomerRef: { value: inv.contactId },
+    ExpirationDate: inv.dueDate ?? undefined,
+    GlobalTaxCalculation: inv.taxCode ? 'TaxExcluded' : 'NotApplicable',
+    PrivateNote: `ProCabinet ${inv.reference}`,
+    Line: inv.lines.map((l) => ({
+      DetailType: 'SalesItemLineDetail',
+      Amount: round2(l.amount),
+      Description: l.description || '.',
+      SalesItemLineDetail: { ItemRef: { value: itemRef }, ...lineTax },
+    })),
+  };
+  const res = await fetch(`${QBO_API_BASE}/v3/company/${conn.realm_id}/estimate?minorversion=70`, {
+    method: 'POST',
+    headers: { 'authorization': `Bearer ${accessToken}`, 'accept': 'application/json', 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const qbTid = res.headers.get('intuit_tid') || '';
+  if (!res.ok) throw new Error(`QBO estimate create ${res.status}${qbTid ? ` [intuit_tid ${qbTid}]` : ''}: ${(await res.text()).slice(0, 300)}`);
+  console.log(`[QBO] estimate created intuit_tid=${qbTid}`);
+  const j = await res.json() as { Estimate: { Id: string; DocNumber?: string } };
+  return {
+    externalId: j.Estimate.Id,
+    externalNumber: j.Estimate.DocNumber ?? null,
+    externalUrl: `${QBO_APP_BASE}/app/estimate?txnId=${j.Estimate.Id}`,
+  };
+}
+
 // ── Revoke (disconnect) ────────────────────────────────────────────────────
 export async function revokeToken(provider: Provider, refreshToken: string): Promise<void> {
   try {
