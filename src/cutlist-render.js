@@ -889,6 +889,11 @@ async function renderCLCutListLibraryView() {
     }
   } catch (e) { /* leave empty */ }
 
+  // "Add to Cut List" needs somewhere to add *into* — only meaningful when a
+  // cut list is already open in the editor.
+  const _hasOpenCl = !!_clCurrentCutlistId;
+  const _openClName = _escHtml(_clCurrentCutlistName || 'the open cut list');
+
   grid.innerHTML = filtered.map(/** @param {any} r */ (r) => {
     const isActive = r.id === _clCurrentCutlistId;
     const partCount = counts[r.id] != null ? counts[r.id] : '–';
@@ -917,6 +922,9 @@ async function renderCLCutListLibraryView() {
           </div>
           <div class="proj-act-add" onclick="event.stopPropagation();_clLinkToCabinet(${r.id})" title="Link to a cabinet">+</div>
         </div>
+        ${isActive ? '' : `<button class="btn btn-outline" style="font-size:11px;padding:4px 10px;width:auto;color:var(--accent)"
+          onclick="event.stopPropagation();_clAddLibraryToCurrent(${r.id})"
+          title="${_hasOpenCl ? `Merge these parts and sheets into &quot;${_openClName}&quot;` : 'Open a cut list first, then add this one into it'}">Add to Cut List</button>`}
         <button class="btn btn-outline" style="font-size:11px;padding:4px 10px;width:auto" onclick="event.stopPropagation();_clDuplicateLibraryCutlist(${r.id})">Duplicate</button>
         <button class="btn btn-outline" style="font-size:11px;padding:4px 10px;width:auto;color:var(--danger)" onclick="event.stopPropagation();_clDeleteLibraryCutlist(${r.id})">Delete</button>
       </div>
@@ -1042,6 +1050,134 @@ async function _clAddToCutlistLibrary() {
   }
 }
 /** @type {any} */ (window)._clAddToCutlistLibrary = _clAddToCutlistLibrary;
+
+/** Merge key for a piece. Material and grain are part of the key on purpose:
+ *  a 720x560 "Side" in 18mm MDF and the same part in oak ply are different
+ *  parts and must not collapse into one row.
+ *  @param {any} p */
+function _clPieceMergeKey(p) {
+  return [
+    String(p.label || '').trim().toLowerCase(),
+    Number(p.w) || 0, Number(p.h) || 0,
+    String(p.material || '').trim().toLowerCase(),
+    String(p.grain || 'none').toLowerCase(),
+  ].join('|');
+}
+
+/** Merge key for a sheet. Kerf is deliberately excluded — it's a property of
+ *  the saw, not of the stock, so the open cut list's kerf always wins.
+ *  @param {any} s */
+function _clSheetMergeKey(s) {
+  return [
+    String(s.name || '').trim().toLowerCase(),
+    Number(s.w) || 0, Number(s.h) || 0,
+    String(s.grain || 'none').toLowerCase(),
+  ].join('|');
+}
+
+/** Add a saved library cut list INTO the currently-open cut list.
+ *  Pieces and sheets are merged, not blindly appended: a row whose merge key
+ *  already exists has its qty bumped; anything new is appended. Edge bands are
+ *  not carried across — neither _clDoOpenLibraryCutlist nor
+ *  _clAddToCutlistLibrary round-trips them, so there is nothing reliable to
+ *  merge from.
+ *
+ *  Persistence rides on the existing debounced autosave: _setClDirty(true)
+ *  schedules _clRunAutosave, which re-syncs children onto _clCurrentCutlistId.
+ *  @param {number} id */
+async function _clAddLibraryToCurrent(id) {
+  if (!_requireAuth()) return;
+  if (!id) return;
+  if (!_clCurrentCutlistId) {
+    _toast('Open a cut list first, then add a library list into it', 'error');
+    return;
+  }
+  if (id === _clCurrentCutlistId) {
+    _toast('That’s the cut list you’re editing', 'error');
+    return;
+  }
+
+  try {
+    const { data: ps } = await _db('pieces').select('*').eq('cutlist_id', id).order('position');
+    const { data: ss } = await _db('sheets').select('*').eq('cutlist_id', id).order('position');
+
+    /** @type {Record<string, any>} */ const pIdx = {};
+    for (const p of pieces) pIdx[_clPieceMergeKey(p)] = p;
+    /** @type {Record<string, any>} */ const sIdx = {};
+    for (const s of sheets) sIdx[_clSheetMergeKey(s)] = s;
+
+    let pAdded = 0, pMerged = 0, sAdded = 0, sMerged = 0;
+
+    for (const row of (ps || [])) {
+      const r = /** @type {any} */ (row);
+      const inc = r.qty || 1;
+      const cand = {
+        label: r.label || '', w: r.w_mm, h: r.h_mm,
+        material: r.material || '', grain: r.grain || 'none',
+      };
+      const key = _clPieceMergeKey(cand);
+      const hit = pIdx[key];
+      if (hit) {
+        hit.qty = (hit.qty || 1) + inc;
+        pMerged++;
+      } else {
+        const np = {
+          id: _pieceId++, label: cand.label, w: cand.w, h: cand.h, qty: inc,
+          grain: cand.grain, material: cand.material, notes: r.notes || '',
+          enabled: r.enabled !== false,
+          color: r.color || COLORS[pieceColorIdx++ % COLORS.length],
+          edgeBand: 'none',
+        };
+        pieces.push(np);
+        pIdx[key] = np;
+        pAdded++;
+      }
+    }
+
+    for (const row of (ss || [])) {
+      const r = /** @type {any} */ (row);
+      const inc = r.qty || 1;
+      const cand = { name: r.name || 'Sheet', w: r.w_mm, h: r.h_mm, grain: r.grain || 'none' };
+      const key = _clSheetMergeKey(cand);
+      const hit = sIdx[key];
+      if (hit) {
+        hit.qty = (hit.qty || 1) + inc;
+        sMerged++;
+      } else {
+        const ns = {
+          id: _sheetId++, name: cand.name, w: cand.w, h: cand.h, qty: inc,
+          grain: cand.grain, kerf: r.kerf_mm || 3, enabled: r.enabled !== false,
+          color: r.color || COLORS[pieceColorIdx++ % COLORS.length],
+        };
+        sheets.push(ns);
+        sIdx[key] = ns;
+        sAdded++;
+      }
+    }
+
+    if (!pAdded && !pMerged && !sAdded && !sMerged) {
+      _toast('That library cut list is empty — nothing to add', 'error');
+      return;
+    }
+
+    // Any existing layout is now stale — force a re-optimise.
+    results = null;
+    renderPieces();
+    renderSheets();
+    if (typeof renderEdgeBands === 'function') { try { renderEdgeBands(); } catch (e) {} }
+    _setClDirty(true);
+
+    const bits = [];
+    if (pAdded) bits.push(`${pAdded} new part${pAdded === 1 ? '' : 's'}`);
+    if (pMerged) bits.push(`${pMerged} part${pMerged === 1 ? '' : 's'} merged`);
+    if (sAdded) bits.push(`${sAdded} new sheet${sAdded === 1 ? '' : 's'}`);
+    if (sMerged) bits.push(`${sMerged} sheet${sMerged === 1 ? '' : 's'} merged`);
+    _toast(`Added to "${_clCurrentCutlistName || 'cut list'}" — ${bits.join(', ')}`, 'success');
+  } catch (e) {
+    _toast('Could not add that cut list', 'error');
+  }
+}
+/** @type {any} */ (window)._clAddLibraryToCurrent = _clAddLibraryToCurrent;
 
 /** Open a multi-toggle picker: every cabinet in the user's library is listed,
  *  with currently-linked ones marked. Clicking a row toggles the link (insert

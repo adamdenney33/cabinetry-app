@@ -24,6 +24,48 @@ Companion docs: `SPEC.md` (refactor history), `SCHEMA.md` (DB schema),
 
 ## Active Work
 
+### Cut List Library — "Add to Cut List" card action (2026-07-11) ✅ Built + typechecked — ⬜ browser-verify
+
+**Goal.** Restore a missing bridge: from a **Cut List Library** card, push that
+saved cut list **into the currently-open cut list** (rather than only Open /
+Duplicate / Link / Delete, which all replace or clone rather than combine).
+This is what lets a maker assemble one job's cut list from several saved
+library lists (e.g. pull in "Base Carcass" + "Wall Unit" + "Drawer Bank").
+
+- ✅ **New `_clAddLibraryToCurrent(id)`** in `src/cutlist-render.js`. Fetches the
+  library list's `pieces` + `sheets`, then **merges** them into the in-memory
+  `pieces` / `sheets` arrays rather than blindly appending.
+- ✅ **Merge semantics (locked with Adam 2026-07-11):** a row whose merge key
+  already exists gets its **qty bumped**; anything new is appended.
+  Piece key = `label + w + h + material + grain` (material/grain are in the key
+  on purpose — a 720×560 "Side" in 18mm MDF is not the same part as one in oak
+  ply). Sheet key = `name + w + h + grain`; **kerf is excluded** from the key
+  because it's a property of the saw, not the stock, so the open cut list's
+  kerf always wins.
+- ✅ **Edge bands not carried across** — neither `_clDoOpenLibraryCutlist` nor
+  `_clAddToCutlistLibrary` round-trips `edge_bands`, so there is nothing
+  reliable to merge from. Consistent with the existing open/save paths.
+- ✅ **Persistence rides the existing autosave** — `_setClDirty(true)` schedules
+  the 800 ms `_clRunAutosave`, which re-syncs children onto
+  `_clCurrentCutlistId`. No new DB writes, no new migration, no schema change.
+- ✅ **Stale layout invalidated** — `results = null` after a merge, so the
+  optimiser must re-run rather than showing a layout that predates the added
+  parts.
+- ✅ **Guards** — no-op with an explanatory toast when no cut list is open, or
+  when the card *is* the open cut list. The button is hidden on the card that's
+  currently being edited (already marked "· editing").
+- ⬜ **Browser-verify** with Adam: merge two library lists into one open list,
+  confirm qty bumps on shared parts, sheet dedupe, and that the optimiser
+  re-runs against the combined list.
+
+**Related cleanup found while investigating (not yet done):** `_clAddToCutlistLibrary`
+(the reverse direction — save the open cut list *into* the library) is still
+defined and window-exposed in `src/cutlist-render.js` but has **zero callers** —
+its "Add to Library" button under Optimize is gone from the UI. The library
+tab's empty state (line ~842) still tells users to *"Use 'Add to Library' under
+Optimize"*, so that instruction currently points at a button that doesn't exist.
+Either re-wire the trigger or rewrite the empty-state copy.
+
 ### Accounting — push QUOTES as estimates (QBO Estimate / Xero Quote) (2026-07-11) ✅ Built + typechecked — ⬜ deploy (migration + fn) + verify
 
 **Goal.** Mirror the existing order→invoice accounting sync on the **quote** side:
