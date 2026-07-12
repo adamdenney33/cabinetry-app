@@ -159,7 +159,9 @@ export const AD_PORTRAIT_TOTAL = timeline[timeline.length - 1].from + SHOTS[SHOT
 
 export const LandingAdPortrait: React.FC = () => (
   <AbsoluteFill style={{ background: '#0a0a0c' }}>
-    <Audio src={staticFile('ad-music.mp3')} volume={0.5} />
+    {/* Same track as the live landing-page ad — extracted from brand/videos/landing-ad.mp4,
+        so it already carries that render's 0.5 mix (don't halve it again). */}
+    <Audio src={staticFile('landing-ad-music.mp3')} />
     {timeline.map((s) => (
       <Sequence key={s.key} from={s.from} durationInFrames={s.dur}>
         {s.el(s.dur)}
