@@ -42,7 +42,7 @@ const clipShot = (
   el: (d) => (
     <>
       <Screen3D clip={clip} trimSec={trimSec} speed={speed} dur={d} pose={pose}
-        kicker={label ? { label } : undefined} lines={lines} seed={seed} />
+        kicker={label ? { label } : undefined} lines={lines} seed={seed} brand capBottom={64} />
       <Flash />
     </>
   ),

@@ -6,7 +6,7 @@
  * "high-tech SaaS" rather than a flat screen capture.
  */
 import React from 'react';
-import { AbsoluteFill, OffthreadVideo, staticFile, useCurrentFrame, interpolate, Easing } from 'remotion';
+import { AbsoluteFill, OffthreadVideo, staticFile, useCurrentFrame, useVideoConfig, interpolate, Easing } from 'remotion';
 import { C, FONT, PINSTRIPES, DISPLAY, INK } from '../theme';
 import { clampOpts, EASE_OUT } from '../primitives';
 
@@ -116,6 +116,8 @@ export const Kicker3D: React.FC<{ n?: string; label: string; dur: number }> = ({
  */
 export const Cap3D: React.FC<{ lines: { at: number; text: React.ReactNode }[]; dur: number; bottom?: number; brand?: boolean }> = ({ lines, dur, bottom = 46, brand = false }) => {
   const frame = useCurrentFrame();
+  const { width } = useVideoConfig();
+  const wide = width > 1400; // landscape 1920 vs portrait 1080
   let idx = -1;
   for (let i = 0; i < lines.length; i++) if (frame >= lines[i].at) idx = i;
   if (idx === -1) return null;
@@ -128,8 +130,8 @@ export const Cap3D: React.FC<{ lines: { at: number; text: React.ReactNode }[]; d
       {brand ? (
         // Brand system: solid ink slab, hard edges, heavy uppercase display type
         // with amber highlights. No glass, no blur, no gradient.
-        <div style={{ maxWidth: 940, background: INK, borderLeft: `10px solid ${C.accent}`, padding: '22px 30px 24px' }}>
-          <span style={{ ...DISPLAY, color: '#fff', fontSize: 36, display: 'block', textAlign: 'left' }}>{lines[idx].text}</span>
+        <div style={{ maxWidth: wide ? 1500 : 940, background: INK, borderLeft: `10px solid ${C.accent}`, padding: wide ? '24px 36px 26px' : '22px 30px 24px' }}>
+          <span style={{ ...DISPLAY, color: '#fff', fontSize: wide ? 44 : 36, display: 'block', textAlign: 'left' }}>{lines[idx].text}</span>
         </div>
       ) : (
         <div style={{ maxWidth: 1460, background: 'rgba(10,10,12,0.82)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 15, padding: '14px 32px', boxShadow: '0 14px 46px rgba(0,0,0,0.5)' }}>

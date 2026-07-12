@@ -5,7 +5,7 @@
  */
 import React from 'react';
 import { AbsoluteFill, useCurrentFrame, interpolate, spring, useVideoConfig } from 'remotion';
-import { FONT, C, TabId } from '../theme';
+import { FONT, C, TabId, PINSTRIPES, DISPLAY } from '../theme';
 import { TabIcon } from '../icons';
 import { EASE_OUT, clampOpts } from '../primitives';
 
@@ -28,10 +28,7 @@ export const SectionBreak: React.FC<{
   const out = interpolate(frame, [dur - 10, dur], [1, 0], clampOpts);
 
   return (
-    <AbsoluteFill style={{ background: 'radial-gradient(120% 120% at 50% 0%, #1c1c20 0%, #121214 55%, #0a0a0c 100%)', fontFamily: FONT, alignItems: 'center', justifyContent: 'center', opacity: out }}>
-      {/* subtle grid floor */}
-      <div style={{ position: 'absolute', left: '-30%', right: '-30%', bottom: '-42%', height: '80%', backgroundImage: 'linear-gradient(rgba(255,255,255,0.05) 1.5px, transparent 1.5px), linear-gradient(90deg, rgba(255,255,255,0.05) 1.5px, transparent 1.5px)', backgroundSize: '90px 90px', backgroundPosition: `0px ${(frame * 0.8) % 90}px`, transform: 'perspective(900px) rotateX(64deg)', transformOrigin: 'center top', maskImage: 'linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.6) 30%, transparent 95%)', WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.6) 30%, transparent 95%)' }} />
-
+    <AbsoluteFill style={{ ...PINSTRIPES, backgroundPosition: `${(frame * 0.25) % 44}px 0px`, fontFamily: FONT, alignItems: 'center', justifyContent: 'center', opacity: out }}>
       <div style={{ perspective: 1400 }}>
         <div
           style={{
@@ -47,8 +44,8 @@ export const SectionBreak: React.FC<{
             <TabIcon tab={tab} size={190} strokeWidth={1.4} />
           </div>
           <div>
-            <div style={{ fontSize: 58, fontWeight: 800, color: '#fff', letterSpacing: -1.6, opacity: ttl, transform: `translateY(${(1 - ttl) * 16}px)` }}>{title}</div>
-            {sub && <div style={{ fontSize: 25, fontWeight: 500, color: 'rgba(255,255,255,0.68)', marginTop: 14, maxWidth: 780, lineHeight: 1.4, opacity: sb, transform: `translateY(${(1 - sb) * 12}px)` }}>{sub}</div>}
+            <div style={{ ...DISPLAY, fontSize: 70, color: '#fff', maxWidth: 900, opacity: ttl, transform: `translateY(${(1 - ttl) * 16}px)` }}>{title}</div>
+            {sub && <div style={{ fontSize: 26, fontWeight: 600, color: 'rgba(255,255,255,0.62)', marginTop: 18, maxWidth: 800, lineHeight: 1.4, opacity: sb, transform: `translateY(${(1 - sb) * 12}px)` }}>{sub}</div>}
           </div>
         </div>
       </div>
