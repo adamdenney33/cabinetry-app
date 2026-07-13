@@ -14,8 +14,9 @@
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "types": ["vite/client", "node"]
+    "types": ["vite/client", "node"],
+    "preserveSymlinks": true
   },
   "include": ["src/**/*", "vite.config.mjs"],
-  "exclude": ["node_modules", "dist", "scripts/output"]
+  "exclude": ["node_modules", "node_modules.nosync", "dist", "scripts/output"]
 }
