@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Launch pricing ends on Tuesday</title>
+<!--
+  SEND-READY — ProCabinet.App · to all existing users · 12–13 July 2026
+  Version 3 ("three cards"), chosen 2026-07-12.
+
+  Subject:    Launch pricing ends on Tuesday
+  Preheader:  Monthly, annual and lifetime — what each costs before the 14th, and after.
+  From:       Adam <adam@procabinet.app>
+
+  Facts: monthly $25/mo for 6 months → $35 · annual $180 year one → $299 ·
+  Founders' Lifetime $299 once → $499 from 15 July. No seat cap — the Founder
+  plan is unlimited (cap removed 2026-07-12). Never mention seats.
+
+  Before sending: redeploy the stripe-checkout Edge Function (the live build
+  still enforces the old 50-seat cap), and confirm STRIPE_COUPON_MONTHLY_LAUNCH
+  / STRIPE_COUPON_ANNUAL_LAUNCH expire at the end of 14 July and the Founder
+  price flips to $499 on the 15th.
+-->
+</head>
+<body style="margin:0;padding:0;background:#f2f2f2;">
+
+<!-- preheader -->
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;color:#f2f2f2;font-size:1px;line-height:1px;">Monthly, annual and lifetime &mdash; what each costs before the 14th, and after.</div>
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f2f2f2;">
+<tr><td align="center" style="padding:32px 16px;">
+
+<table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:100%;background:#ffffff;border:1px solid #e0e0e0;border-radius:16px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+
+  <tr>
+    <td style="padding:28px 36px 6px 36px;">
+      <span style="font-size:16px;font-weight:800;letter-spacing:-0.3px;color:#111111;">ProCabinet<span style="color:#e8a838;">.App</span></span>
+    </td>
+  </tr>
+
+  <tr>
+    <td style="padding:14px 36px 6px 36px;font-size:16px;line-height:26px;color:#111111;">
+      <p style="margin:0 0 18px 0;">Hello,</p>
+      <p style="margin:0 0 18px 0;">A short note about pricing, because it changes this week and this will be your last chance to lock in the current prices.</p>
+      <p style="margin:0 0 18px 0;">Launch pricing ends on the 14th of July. From the 15th there will be no discounted first period on monthly or annual plans, and the Founders plan goes from $299 to $499.</p>
+      <p style="margin:0 0 20px 0;">Here are the current discounted rates if you take one by Tuesday, and what they will cost from Wednesday onwards:</p>
+    </td>
+  </tr>
+
+  <!-- ── plan picker ── -->
+  <tr>
+    <td style="padding:0 30px 4px 30px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+
+          <td width="33.33%" valign="top" style="padding:6px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#ffffff;border:1px solid #e0e0e0;border-radius:16px;">
+              <tr><td style="padding:20px 16px 18px 16px;" align="center">
+                <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#888888;">Monthly</div>
+                <div style="font-size:30px;font-weight:800;letter-spacing:-1px;color:#111111;padding:6px 0 2px;">$25<span style="font-size:13px;font-weight:600;color:#888888;letter-spacing:0;">/mo</span></div>
+                <div style="font-size:12px;color:#444444;line-height:18px;">6 months,<br>then $35/mo</div>
+                <div style="font-size:11px;color:#888888;padding:8px 0 14px;">$35/mo from the 15th</div>
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                  <tr><td align="center" style="border:1px solid #e0e0e0;border-radius:10px;">
+                    <a href="https://procabinet.app/os?plan=monthly" style="display:block;padding:11px 8px;font-size:13px;font-weight:600;color:#111111;text-decoration:none;">Choose Monthly</a>
+                  </td></tr>
+                </table>
+              </td></tr>
+            </table>
+          </td>
+
+          <td width="33.33%" valign="top" style="padding:6px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#ffffff;border:1px solid #e0e0e0;border-radius:16px;">
+              <tr><td style="padding:20px 16px 18px 16px;" align="center">
+                <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#888888;">Annual</div>
+                <div style="font-size:30px;font-weight:800;letter-spacing:-1px;color:#111111;padding:6px 0 2px;">$180<span style="font-size:13px;font-weight:600;color:#888888;letter-spacing:0;">/yr</span></div>
+                <div style="font-size:12px;color:#444444;line-height:18px;">year one,<br>then $299/yr</div>
+                <div style="font-size:11px;color:#888888;padding:8px 0 14px;">$299/yr from the 15th</div>
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                  <tr><td align="center" style="border:1px solid #e0e0e0;border-radius:10px;">
+                    <a href="https://procabinet.app/os?plan=annual" style="display:block;padding:11px 8px;font-size:13px;font-weight:600;color:#111111;text-decoration:none;">Choose Annual</a>
+                  </td></tr>
+                </table>
+              </td></tr>
+            </table>
+          </td>
+
+          <td width="33.33%" valign="top" style="padding:6px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#ffffff;border:1px solid #e8a838;border-radius:16px;box-shadow:0 0 0 3px rgba(232,168,56,.14);">
+              <tr><td style="padding:20px 16px 18px 16px;" align="center">
+                <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#888888;">Founder</div>
+                <div style="font-size:30px;font-weight:800;letter-spacing:-1px;color:#111111;padding:6px 0 2px;">$299<span style="font-size:13px;font-weight:600;color:#888888;letter-spacing:0;">/once</span></div>
+                <div style="font-size:12px;color:#444444;line-height:18px;">one payment,<br>no renewal</div>
+                <div style="font-size:11px;color:#888888;padding:8px 0 14px;">$499 from the 15th</div>
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                  <tr><td align="center" style="background:#e8a838;border-radius:10px;">
+                    <a href="https://procabinet.app/os?plan=founder" style="display:block;padding:11px 8px;font-size:13px;font-weight:600;color:#1a1a1a;text-decoration:none;">Choose Founder</a>
+                  </td></tr>
+                </table>
+              </td></tr>
+            </table>
+          </td>
+
+        </tr>
+      </table>
+    </td>
+  </tr>
+
+  <tr>
+    <td style="padding:18px 36px 4px 36px;font-size:16px;line-height:26px;color:#111111;">
+      <p style="margin:0 0 18px 0;"><a href="https://procabinet.app/#pricing" style="color:#111111;text-decoration:underline;">procabinet.app/#pricing</a></p>
+      <p style="margin:0 0 18px 0;">If you&rsquo;re already on a plan, nothing about your price changes. This is only about what&rsquo;s available to lock in before Wednesday.</p>
+      <p style="margin:0 0 18px 0;">On Wednesday, we will also be launching a generous referral plan for all users and an affiliate plan for content creators. Watch this space!</p>
+      <p style="margin:0 0 18px 0;">On the app itself: the cabinet quote builder tab and the client live link page have both had major upgrades recently. Google Calendar integration is in progress, along with improved Xero and QuickBooks integration for estimates and quotes. As always, if you have a question or a feature request, reply to this email.</p>
+      <p style="margin:0 0 4px 0;">Best regards,</p>
+      <p style="margin:0 0 2px 0;">Adam</p>
+      <p style="margin:0 0 26px 0;color:#888888;font-size:14px;">Founder, ProCabinet</p>
+    </td>
+  </tr>
+
+  <tr>
+    <td style="padding:18px 36px 26px 36px;border-top:1px solid #e0e0e0;font-size:12px;line-height:20px;color:#888888;">
+      ProCabinet.App &middot; <a href="{{unsubscribe_url}}" style="color:#888888;text-decoration:underline;">Unsubscribe</a>
+    </td>
+  </tr>
+
+</table>
+
+</td></tr>
+</table>
+
+</body>
+</html>
