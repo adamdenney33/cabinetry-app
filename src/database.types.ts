@@ -781,6 +781,7 @@ export type Database = {
           id: number
           last_synced_at: string | null
           refresh_token_enc: string | null
+          selected_calendars: Json | null
           status: string
           updated_at: string
           user_id: string
@@ -794,6 +795,7 @@ export type Database = {
           id?: number
           last_synced_at?: string | null
           refresh_token_enc?: string | null
+          selected_calendars?: Json | null
           status?: string
           updated_at?: string
           user_id: string
@@ -807,6 +809,7 @@ export type Database = {
           id?: number
           last_synced_at?: string | null
           refresh_token_enc?: string | null
+          selected_calendars?: Json | null
           status?: string
           updated_at?: string
           user_id?: string

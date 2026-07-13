@@ -241,7 +241,7 @@ function _renderSchedTimeGrid(opts) {
       }
       if (typeof _gcalEventsBetween === 'function') {
         chips += _gcalEventsBetween(d, dEnd).filter(g => g.allDay).map(g =>
-          `<span class="sched-ad-chip gcal" title="${_escHtml(g.title)} (Google Calendar)">${_escHtml(g.title)}</span>`).join('');
+          `<span class="sched-ad-chip gcal" title="${_escHtml(g.title)} (${_escHtml(g.cal || 'Google Calendar')})">${_escHtml(g.title)}</span>`).join('');
       }
       if (chips) anyAllDay = true;
       adCells += `<div class="sgh-allday-cell">${chips}</div>`;
@@ -326,9 +326,10 @@ function _renderSchedTimeGrid(opts) {
         </div>`;
       } else if (b.kind === 'gcal') {
         const gTitle = (b.g.title || '').trim() || '(busy)';
+        const gSrc = b.g.cal ? _escHtml(b.g.cal) : 'Google Calendar';
         const slim = height < 34 ? ' slim' : ''; // short events: one "title · time" line
         colInner += `<div class="sched-gcal-block${slim}" style="top:${top}px;height:${height}px;left:calc(${leftPct}% + ${gap}px);width:calc(${wPct}% - ${gap * 2}px)"
-          onclick="event.stopPropagation()" title="${_escHtml(gTitle)} · ${_taskTimeStr(new Date(b.g.start))} – ${_taskTimeStr(new Date(b.g.end))} (Google Calendar)">
+          onclick="event.stopPropagation()" title="${_escHtml(gTitle)} · ${_taskTimeStr(new Date(b.g.start))} – ${_taskTimeStr(new Date(b.g.end))} (${gSrc})">
           <span class="sgc-title">${_escHtml(gTitle)}</span>
           <span class="sgc-time">${_taskTimeStr(new Date(b.g.start))} – ${_taskTimeStr(new Date(b.g.end))}</span>
         </div>`;
@@ -586,7 +587,7 @@ function _schedMonthTaskChipsHTML(iso, top) {
     if (shown >= 3) break;
     shown++;
     const time = g.allDay ? '' : `<span class="sct-time">${_taskTimeStr(new Date(g.start))}</span>`;
-    html += `<div class="sched-task-chip gcal" onclick="event.stopPropagation()" title="${_escHtml(g.title)} (Google Calendar)">${time}${_escHtml(g.title)}</div>`;
+    html += `<div class="sched-task-chip gcal" onclick="event.stopPropagation()" title="${_escHtml(g.title)} (${_escHtml(g.cal || 'Google Calendar')})">${time}${_escHtml(g.title)}</div>`;
   }
   if (total > shown) {
     html += `<div class="sched-task-chip more" onclick="event.stopPropagation();_schedOpenDay('${iso}')">+${total - shown} more</div>`;

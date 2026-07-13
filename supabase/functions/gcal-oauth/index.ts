@@ -29,7 +29,10 @@ const CLIENT_SECRET = Deno.env.get('GOOGLE_CLIENT_SECRET') ?? '';
 // match the Google client's Authorised redirect URIs exactly, in both the
 // consent URL and the code exchange.
 const REDIRECT_URI = Deno.env.get('GCAL_REDIRECT_URI') ?? `${APP_URL}/api/gcal-callback`;
-const SCOPE = 'https://www.googleapis.com/auth/calendar.events';
+// calendar.events    — read/write events (sync core)
+// calendarlist.readonly — list the user's calendars for the overlay picker
+//   (GC.7). Grants added to the consent screen's Data access config too.
+const SCOPE = 'https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar.calendarlist.readonly';
 const STATE_MAX_AGE_MS = 15 * 60 * 1000;
 
 function back(status: 'connected' | 'error'): Response {
@@ -103,6 +106,37 @@ async function handleCallback(qp: URLSearchParams): Promise<Response> {
   }
 }
 
+/** Fresh access token for the caller's connection (refreshing + persisting
+ *  when <2 min of life left). Throws 'not_connected' / 'refresh_failed:…'. */
+async function freshAccessToken(uid: string): Promise<string> {
+  const { data: conn } = await admin.from('gcal_connections')
+    .select('access_token_enc,refresh_token_enc,expires_at,status')
+    .eq('user_id', uid).maybeSingle();
+  if (!conn || conn.status !== 'connected' || !conn.refresh_token_enc) throw new Error('not_connected');
+  const expMs = conn.expires_at ? Date.parse(conn.expires_at) || 0 : 0;
+  if (conn.access_token_enc && expMs - Date.now() > 120_000) {
+    return await decrypt(conn.access_token_enc);
+  }
+  const res = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'content-type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      refresh_token: await decrypt(conn.refresh_token_enc),
+      client_id: CLIENT_ID,
+      client_secret: CLIENT_SECRET,
+      grant_type: 'refresh_token',
+    }),
+  });
+  const tok = await res.json();
+  if (!res.ok || !tok.access_token) throw new Error(`refresh_failed:${tok.error ?? res.status}`);
+  await admin.from('gcal_connections').update({
+    access_token_enc: await encrypt(tok.access_token),
+    expires_at: new Date(Date.now() + (tok.expires_in ?? 3600) * 1000).toISOString(),
+    updated_at: new Date().toISOString(),
+  }).eq('user_id', uid);
+  return tok.access_token as string;
+}
+
 Deno.serve(async (req) => {
   const url = new URL(req.url);
   if (req.method === 'GET') return handleCallback(url.searchParams);
@@ -114,8 +148,9 @@ Deno.serve(async (req) => {
   const auth = await authenticateCaller(req, cors);
   if ('error' in auth) return auth.error;
 
-  let action = '';
-  try { action = (await req.json()).action; } catch { /* fall through */ }
+  let body: any = {};
+  try { body = await req.json(); } catch { /* fall through */ }
+  const action = body.action ?? '';
 
   if (action === 'start') {
     if (!CLIENT_ID || !CLIENT_SECRET) {
@@ -132,6 +167,64 @@ Deno.serve(async (req) => {
       state,
     });
     return jsonResponse({ url: `https://accounts.google.com/o/oauth2/v2/auth?${q}` }, 200, cors);
+  }
+
+  // GC.7 — list the user's calendars for the overlay picker.
+  if (action === 'calendars') {
+    try {
+      const token = await freshAccessToken(auth.user.id);
+      const res = await fetch(
+        'https://www.googleapis.com/calendar/v3/users/me/calendarList?minAccessRole=reader&maxResults=100',
+        { headers: { authorization: `Bearer ${token}` } },
+      );
+      if (res.status === 403) {
+        // Grant predates the calendarlist.readonly scope → user must reconnect.
+        return jsonResponse({ needsReconnect: true }, 200, cors);
+      }
+      if (!res.ok) throw new Error(`calendarlist_failed:${res.status}`);
+      const body = await res.json();
+      const calendars = (body.items ?? [])
+        .filter((c: any) => c && c.id && !c.deleted)
+        .map((c: any) => ({
+          // Normalise the primary calendar's id to the literal 'primary' so the
+          // sync never double-reads it under its email id.
+          id: c.primary ? 'primary' : String(c.id),
+          summary: String(c.summaryOverride || c.summary || c.id),
+          primary: !!c.primary,
+          color: c.backgroundColor || null,
+        }));
+      const { data: conn } = await admin.from('gcal_connections')
+        .select('selected_calendars').eq('user_id', auth.user.id).maybeSingle();
+      const selected = Array.isArray(conn?.selected_calendars)
+        ? (conn!.selected_calendars as { id: string }[]).map((s) => s.id)
+        : ['primary'];
+      return jsonResponse({ calendars, selected }, 200, cors);
+    } catch (err) {
+      const msg = (err as Error).message;
+      console.error('[gcal-oauth] calendars:', msg);
+      if (msg === 'not_connected') return jsonResponse({ connected: false }, 200, cors);
+      if (msg.startsWith('refresh_failed:invalid_grant')) return jsonResponse({ needsReconnect: true }, 200, cors);
+      return jsonResponse({ error: msg }, 500, cors);
+    }
+  }
+
+  // GC.7 — persist the picker selection ([{id, summary}], max 25).
+  if (action === 'set-calendars') {
+    try {
+      const list: unknown = body.calendars;
+      if (!Array.isArray(list)) return jsonResponse({ error: 'calendars must be an array' }, 400, cors);
+      const clean = list.slice(0, 25)
+        .filter((c: any) => c && typeof c.id === 'string' && c.id.length < 256)
+        .map((c: any) => ({ id: c.id, summary: String(c.summary ?? '').slice(0, 120) }));
+      const { error } = await admin.from('gcal_connections')
+        .update({ selected_calendars: clean, updated_at: new Date().toISOString() })
+        .eq('user_id', auth.user.id);
+      if (error) throw new Error(error.message);
+      return jsonResponse({ ok: true, selected: clean.map((c) => c.id) }, 200, cors);
+    } catch (err) {
+      console.error('[gcal-oauth] set-calendars:', (err as Error).message);
+      return jsonResponse({ error: (err as Error).message }, 500, cors);
+    }
   }
 
   if (action === 'disconnect') {

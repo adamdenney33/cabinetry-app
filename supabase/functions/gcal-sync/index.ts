@@ -26,6 +26,8 @@ import { decrypt, encrypt } from '../_shared/crypto.ts';
 const CLIENT_ID = Deno.env.get('GOOGLE_CLIENT_ID') ?? '';
 const CLIENT_SECRET = Deno.env.get('GOOGLE_CLIENT_SECRET') ?? '';
 const CAL = 'https://www.googleapis.com/calendar/v3/calendars/primary/events';
+const calEventsURL = (calId: string) =>
+  `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calId)}/events`;
 const WINDOW_BACK_DAYS = 30;
 const WINDOW_FWD_DAYS = 180;
 const OVERLAY_CAP = 500;
@@ -143,7 +145,7 @@ async function gfetch(token: string, url: string, init?: RequestInit): Promise<R
   });
 }
 
-async function listWindow(token: string, timeMin: string, timeMax: string): Promise<GEvent[]> {
+async function listWindow(token: string, timeMin: string, timeMax: string, calId = 'primary'): Promise<GEvent[]> {
   const out: GEvent[] = [];
   let pageToken = '';
   for (let page = 0; page < 5; page++) {
@@ -151,7 +153,7 @@ async function listWindow(token: string, timeMin: string, timeMax: string): Prom
       singleEvents: 'true', maxResults: '2500', timeMin, timeMax, orderBy: 'startTime',
     });
     if (pageToken) q.set('pageToken', pageToken);
-    const res = await gfetch(token, `${CAL}?${q}`);
+    const res = await gfetch(token, `${calEventsURL(calId)}?${q}`);
     if (!res.ok) throw new Error(`events_list_failed:${res.status}`);
     const body = await res.json();
     out.push(...(body.items ?? []));
@@ -201,9 +203,28 @@ Deno.serve(async (req) => {
     const timeMax = iso(new Date(Date.now() + WINDOW_FWD_DAYS * 86400_000));
     const remote = await listWindow(accessToken, timeMin, timeMax);
 
+    // GC.7 — overlay calendar selection ([{id, summary}]); default = primary.
+    const selection: { id: string; summary?: string }[] = Array.isArray(conn.selected_calendars)
+      ? conn.selected_calendars
+      : [{ id: 'primary' }];
+    const includePrimaryOverlay = selection.some((s) => s && s.id === 'primary');
+
     const remoteTaskEvents = new Map<string, GEvent>();   // pc_task_id → event
     const remoteOrderEvents = new Map<string, GEvent[]>(); // pc_order_id → events
-    const overlay: { id: string; title: string; start: string; end: string; allDay: boolean }[] = [];
+    const overlay: { id: string; title: string; start: string; end: string; allDay: boolean; cal?: string }[] = [];
+    // All-day bounds at noon → the event stays on its own calendar date(s)
+    // after local-time conversion (see allDayDate note).
+    const toOverlay = (ev: GEvent, cal?: string) => {
+      if (overlay.length >= OVERLAY_CAP) return;
+      overlay.push({
+        id: ev.id,
+        title: (ev.summary ?? '').trim() || '(busy)',
+        start: ev.start?.dateTime ?? (ev.start?.date ? `${ev.start.date}T12:00:00.000Z` : ''),
+        end: ev.end?.dateTime ?? (ev.end?.date ? `${addDays(ev.end.date, -1)}T13:00:00.000Z` : ''),
+        allDay: !!ev.start?.date,
+        ...(cal ? { cal } : {}),
+      });
+    };
     for (const ev of remote) {
       if (ev.status === 'cancelled') continue;
       const priv = ev.extendedProperties?.private ?? {};
@@ -213,16 +234,22 @@ Deno.serve(async (req) => {
         const arr = remoteOrderEvents.get(priv.pc_order_id) ?? [];
         arr.push(ev);
         remoteOrderEvents.set(priv.pc_order_id, arr);
-      } else if (overlay.length < OVERLAY_CAP) {
-        // All-day bounds at noon → the event stays on its own calendar
-        // date(s) after local-time conversion (see allDayDate note).
-        overlay.push({
-          id: ev.id,
-          title: ev.summary ?? '(busy)',
-          start: ev.start?.dateTime ?? (ev.start?.date ? `${ev.start.date}T12:00:00.000Z` : ''),
-          end: ev.end?.dateTime ?? (ev.end?.date ? `${addDays(ev.end.date, -1)}T13:00:00.000Z` : ''),
-          allDay: !!ev.start?.date,
-        });
+      } else if (includePrimaryOverlay) {
+        toOverlay(ev);
+      }
+    }
+    // Extra selected calendars → read-only overlay (per-calendar failures are
+    // non-fatal: a renamed/unshared calendar just drops out until re-picked).
+    for (const sel of selection) {
+      if (!sel || !sel.id || sel.id === 'primary') continue;
+      try {
+        for (const ev of await listWindow(accessToken, timeMin, timeMax, sel.id)) {
+          if (ev.status === 'cancelled') continue;
+          if (ev.extendedProperties?.private?.pc_task_id || ev.extendedProperties?.private?.pc_order_id) continue;
+          toOverlay(ev, sel.summary);
+        }
+      } catch (e) {
+        console.warn('[gcal-sync] overlay calendar failed:', sel.id, (e as Error).message);
       }
     }
 

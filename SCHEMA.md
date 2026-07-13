@@ -1201,6 +1201,15 @@ orders push-only (all-day events rebuilt from the client's computed
 placements), untagged → returned to the client as a read-only overlay (never
 stored).
 
+**Calendar picker (GC.7, 2026-07-13):** `selected_calendars jsonb` (migration
+`20260713170000`) — array of `{ id, summary }`, NULL = primary only; the
+primary calendar's id is normalised to the literal `'primary'`. Extra selected
+calendars are read via per-calendar `events.list` into the same overlay
+(tagged with the calendar name); tasks/orders always reconcile against the
+primary. Requires the additional read-only scope
+`calendar.calendarlist.readonly` (grants predating it get `needsReconnect`
+from the `gcal-oauth` `calendars` action).
+
 ---
 
 ## 4. Row-Level Security
