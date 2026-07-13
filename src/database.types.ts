@@ -12,6 +12,31 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.4"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       accounting_connections: {
@@ -64,35 +89,41 @@ export type Database = {
       }
       accounting_invoice_links: {
         Row: {
+          doc_type: string
           external_id: string
           external_number: string | null
           external_url: string | null
           id: number
-          order_id: number
+          order_id: number | null
           provider: string
           pushed_at: string
+          quote_id: number | null
           status: string | null
           user_id: string
         }
         Insert: {
+          doc_type?: string
           external_id: string
           external_number?: string | null
           external_url?: string | null
           id?: number
-          order_id: number
+          order_id?: number | null
           provider: string
           pushed_at?: string
+          quote_id?: number | null
           status?: string | null
           user_id: string
         }
         Update: {
+          doc_type?: string
           external_id?: string
           external_number?: string | null
           external_url?: string | null
           id?: number
-          order_id?: number
+          order_id?: number | null
           provider?: string
           pushed_at?: string
+          quote_id?: number | null
           status?: string | null
           user_id?: string
         }
@@ -102,6 +133,13 @@ export type Database = {
             columns: ["order_id"]
             isOneToOne: false
             referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "accounting_invoice_links_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
             referencedColumns: ["id"]
           },
         ]
@@ -2008,6 +2046,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {},
   },
