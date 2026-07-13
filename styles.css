@@ -863,16 +863,14 @@ header {
 .sched-gcal-block .sgc-time { font-size: 9px; opacity: 0.75; }
 .sched-ad-chip.gcal { background: rgba(76,141,246,0.16); border: 1px solid rgba(76,141,246,0.55); color: var(--text); cursor: default; }
 .sched-task-chip.gcal { background: rgba(76,141,246,0.14); border-left-color: #4c8df6; cursor: default; }
-.gcal-connect-row { padding: 4px 0 2px; }
-.sched-layers .gcal-connect-btn { width: 100%; font-size: 11px; padding: 5px 8px; justify-content: center; gap: 6px; }
-.gcal-status-row { display: flex; align-items: center; gap: 5px; padding: 2px 0; min-width: 0; }
-.gcal-status-email { flex: 1; min-width: 0; font-size: 10px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gcal-status-row { display: flex; align-items: center; gap: 6px; padding: 2px 0; min-width: 0; }
 .gcal-sync-state { font-size: 9px; color: var(--muted); flex-shrink: 0; }
-.gcal-mini-btn {
-  background: none; border: none; color: var(--muted); cursor: pointer;
-  font-size: 11px; padding: 2px 4px; border-radius: 4px; flex-shrink: 0;
+.gcal-sync-btn {
+  background: none; border: 1px solid var(--border); color: var(--text2); cursor: pointer;
+  font-size: 10px; font-weight: 600; padding: 3px 8px; border-radius: 6px;
+  font-family: inherit; flex-shrink: 0;
 }
-.gcal-mini-btn:hover { background: var(--surface2); color: var(--text); }
+.gcal-sync-btn:hover { background: var(--surface2); color: var(--text); }
 
 /* Month-view task chips (below the order-bar zone in each day cell) */
 .sched-cell-tasks { position: absolute; left: 2px; right: 2px; z-index: 2; display: flex; flex-direction: column; gap: 2px; }

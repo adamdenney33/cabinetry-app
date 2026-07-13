@@ -25,11 +25,12 @@ async function loadGcalStatus() {
     const { data, error } = await _db('gcal_connections')
       .select('google_email,status,last_synced_at').eq('user_id', _userId).limit(1);
     const row = Array.isArray(data) ? data[0] : null;
-    if (error || !row) { _gcalConn = { connected: false, email: null, status: '' }; return; }
-    _gcalConn = { connected: row.status === 'connected', email: row.google_email, status: row.status };
+    if (error || !row) { _gcalConn = { connected: false, email: null, status: '' }; }
+    else _gcalConn = { connected: row.status === 'connected', email: row.google_email, status: row.status };
   } catch (e) {
     console.warn('[gcal] status load:', (/** @type {any} */ (e)).message || e);
   }
+  _gcalRenderMenuSection();
 }
 
 /** @param {string} action @param {any} [body] */
@@ -64,6 +65,7 @@ function _gcalDisconnect() {
       await _gcalFn('disconnect');
       _gcalConn = { connected: false, email: null, status: '' };
       gcalOverlayEvents = [];
+      _gcalRenderMenuSection();
       renderSchedule();
       _toast('Google Calendar disconnected', 'success');
     } catch (e) {
@@ -134,11 +136,12 @@ async function _gcalSyncNow(reason) {
     if (!res.connected) {
       _gcalConn.connected = false;
       if (res.reauth) { _gcalConn.reauth = true; _toast('Google Calendar needs reconnecting', 'error'); }
+      _gcalRenderMenuSection();
       renderSchedule();
       return;
     }
     gcalOverlayEvents = Array.isArray(res.overlay) ? res.overlay : [];
-    if (res.email && !_gcalConn.email) _gcalConn.email = res.email;
+    if (res.email && !_gcalConn.email) { _gcalConn.email = res.email; _gcalRenderMenuSection(); }
     if (res.tasksChanged && typeof loadScheduleTasks === 'function') await loadScheduleTasks();
     renderSchedule();
   } catch (e) {
@@ -175,24 +178,35 @@ function _gcalSetSyncState(state) {
   el.textContent = state === 'syncing' ? 'Syncing…' : state === 'error' ? 'Sync failed' : '';
 }
 
-// ── Sidebar block (rendered by schedule.js under the layer toggles) ──────────
+// ── Schedule-sidebar block (rendered under the layer toggles) ────────────────
+// Connect/disconnect live in the account menu (top-right ≡ →
+// _gcalRenderMenuSection); the sidebar keeps only a Sync button while
+// connected.
 function _gcalSidebarHTML() {
-  if (!_userId) return '';
-  if (!_gcalConn.connected) {
-    const label = _gcalConn.reauth || _gcalConn.status === 'error' ? 'Reconnect Google Calendar' : 'Connect Google Calendar';
-    return `<div class="gcal-connect-row">
-      <button type="button" class="btn btn-outline gcal-connect-btn" onclick="_gcalConnect()">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21.35 11.1H12v2.9h5.35c-.5 2.5-2.6 3.9-5.35 3.9a5.9 5.9 0 110-11.8c1.5 0 2.85.55 3.9 1.45l2.15-2.15A8.9 8.9 0 1012 20.9c4.45 0 8.55-3.2 8.55-8.9 0-.3-.05-.6-.2-.9z"/></svg>
-        ${label}
-      </button>
-    </div>`;
-  }
+  if (!_userId || !_gcalConn.connected) return '';
   return `<div class="gcal-status-row">
-    <span class="gcal-status-email" title="${_escHtml(_gcalConn.email || 'Connected')}">${_escHtml(_gcalConn.email || 'Google Calendar connected')}</span>
+    <button type="button" class="gcal-sync-btn" title="Sync with Google Calendar now" onclick="_gcalSyncNow('manual')">⟳ Sync</button>
     <span id="gcal-sync-state" class="gcal-sync-state"></span>
-    <button type="button" class="gcal-mini-btn" title="Sync now" onclick="_gcalSyncNow('manual')">⟳</button>
-    <button type="button" class="gcal-mini-btn" title="Disconnect" onclick="_gcalDisconnect()">✕</button>
   </div>`;
+}
+
+// ── Account-menu section (top-right ≡ → "Calendar") ─────────────────────────
+function _gcalRenderMenuSection() {
+  const host = document.getElementById('account-gcal-body');
+  if (!host) return;
+  if (!_gcalConn.connected) {
+    const label = _gcalConn.reauth || _gcalConn.status === 'error'
+      ? 'Reconnect Google Calendar' : 'Connect Google Calendar';
+    host.innerHTML = `<button class="btn btn-outline btn-sm" style="width:100%;justify-content:center"
+      onclick="toggleAccount();_gcalConnect()">${label}</button>`;
+    return;
+  }
+  host.innerHTML = `
+    <div style="font-size:11px;color:var(--muted);margin-bottom:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+      Connected${_gcalConn.email ? ' · ' + _escHtml(_gcalConn.email) : ''}
+    </div>
+    <button class="btn btn-outline btn-sm" style="width:100%;justify-content:center"
+      onclick="toggleAccount();_gcalDisconnect()">Disconnect Google Calendar</button>`;
 }
 
 /** Google overlay events overlapping [start, end). @param {Date} start @param {Date} end */
@@ -207,5 +221,6 @@ function _gcalEventsBetween(start, end) {
 
 Object.assign(window, {
   loadGcalStatus, handleGcalReturn, _gcalConnect, _gcalDisconnect,
-  _gcalSyncNow, _gcalQueueSync, _gcalSidebarHTML, _gcalEventsBetween,
+  _gcalSyncNow, _gcalQueueSync, _gcalSidebarHTML, _gcalRenderMenuSection,
+  _gcalEventsBetween,
 });
