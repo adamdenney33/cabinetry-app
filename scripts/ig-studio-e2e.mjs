@@ -102,6 +102,31 @@ try {
   const capMsg = await page.$eval('#capMsg', (el) => el.textContent);
   /saved/.test(capMsg) ? ok('caption saved') : no('caption save', capMsg || 'no message');
 
+  // 9 — library feed (the render above must appear as the newest tile)
+  await page.click('#navLibrary');
+  await page.waitForTimeout(1000);
+  const tile = await page.$('#feed .post');
+  tile ? ok('library feed shows posts') : no('library feed', 'no tiles');
+  if (tile) {
+    await tile.click();
+    await page.waitForTimeout(400);
+    const title = await page.$eval('#pdTitle', (el) => el.textContent);
+    title === 'e2e-check' ? ok('post detail opens (newest = e2e-check)') : no('post detail', 'expected e2e-check, got ' + title);
+    const cap = await page.$eval('#pdCaption', (el) => el.value);
+    cap.includes('e2e test caption') || cap === '' ? ok('post caption field present') : no('post caption', cap.slice(0, 40));
+    // mark used → should appear under the Used tab
+    await page.click('#pdUsedBtn');
+    await page.waitForTimeout(800);
+    await page.click('#libUsed');
+    await page.waitForTimeout(400);
+    const usedHasIt = await page.$$eval('#feed .post .meta', (els) => els.some((e) => e.textContent.includes('e2e-check')));
+    usedHasIt ? ok('mark-as-used moves post to Used tab') : no('used tab', 'e2e-check not in Used');
+  }
+  // cleanup: delete the e2e post through the API (targets the slug exactly)
+  const del = await page.evaluate(() =>
+    fetch('/api/posts/delete', { method: 'POST', body: JSON.stringify({ slug: 'e2e-check' }) }).then((r) => r.status));
+  del === 200 ? ok('post delete endpoint') : no('post delete', 'HTTP ' + del);
+
   consoleErrors.length === 0 ? ok('no console errors') : no('console errors', consoleErrors.slice(0, 3).join(' | '));
 } catch (e) {
   no('e2e crashed', e.message);

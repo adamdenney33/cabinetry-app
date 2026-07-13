@@ -31,6 +31,7 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = resolve(join(dirname(fileURLToPath(import.meta.url)), '..'));
 const PORT = 3036;
+const STUDIO = join(ROOT, 'out', 'instagram', 'studio');
 
 // IG_STUDIO_DAEMONIZE=1 → respawn detached in a NEW process group and exit.
 // Needed by "IG Content Studio.app": AppleScript applets kill their child
@@ -136,6 +137,57 @@ function killRender() {
   try { process.kill(Number(readFileSync(PID, 'utf8')), 'SIGKILL'); } catch {}
 }
 
+// ── post library ─────────────────────────────────────────────
+// A post = one slug dir under out/instagram/studio/ (underscore dirs are
+// working folders: _shots/_uploads). post.json is written by the render
+// script; legacy dirs without one get a synthesized entry.
+function listPosts() {
+  if (!existsSync(STUDIO)) return [];
+  return readdirSync(STUDIO)
+    .filter((d) => !d.startsWith('_') && statSync(join(STUDIO, d)).isDirectory())
+    .map((slug) => {
+      const dir = join(STUDIO, slug);
+      const files = readdirSync(dir).sort();
+      const pngs = files.filter((f) => f.endsWith('.png'));
+      const mp4 = files.find((f) => f.endsWith('.mp4'));
+      if (!pngs.length && !mp4) return null;
+      let meta = {};
+      try { meta = JSON.parse(readFileSync(join(dir, 'post.json'), 'utf8')); } catch {}
+      const cover = pngs.find((f) => f.includes('-cover')) || pngs[0];
+      return {
+        slug,
+        type: meta.type || (mp4 ? 'reel' : pngs.length > 1 ? 'carousel' : 'single'),
+        ratio: meta.ratio || '',
+        caption: meta.caption || '',
+        createdAt: meta.createdAt || statSync(dir).mtimeMs,
+        usedAt: meta.usedAt || null,
+        slideCount: meta.slides ? meta.slides.length : pngs.filter((f) => !f.includes('-cover')).length,
+        cover: cover ? '/img?p=' + encodeURIComponent(join(dir, cover)) : '',
+        images: pngs.filter((f) => !f.includes('-cover')).map((f) => '/img?p=' + encodeURIComponent(join(dir, f))),
+        video: mp4 ? '/media?p=' + encodeURIComponent(join(dir, mp4)) : '',
+        dir,
+        job: meta.slides ? meta : null,
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => b.createdAt - a.createdAt);
+}
+
+function updatePost(slug, patch) {
+  const dir = join(STUDIO, slug.replace(/[^a-z0-9-_]/gi, ''));
+  if (!existsSync(dir)) throw new Error('no such post');
+  const p = join(dir, 'post.json');
+  let meta = {};
+  try { meta = JSON.parse(readFileSync(p, 'utf8')); } catch {}
+  if (patch.used === true && !meta.usedAt) meta.usedAt = Date.now();
+  if (patch.used === false) meta.usedAt = null;
+  if (typeof patch.caption === 'string') meta.caption = patch.caption;
+  meta.slug = slug;
+  meta.createdAt = meta.createdAt || Date.now();
+  writeFileSync(p, JSON.stringify(meta, null, 2));
+  return meta;
+}
+
 const server = createServer(async (req, res) => {
   const url = new URL(req.url, 'http://localhost');
   try {
@@ -169,6 +221,45 @@ const server = createServer(async (req, res) => {
       stream.on('error', () => res.end());
       stream.pipe(res);
       return;
+    }
+    if (req.method === 'GET' && url.pathname === '/media') {
+      // mp4 streaming with Range support (Safari/WebKit requires it for <video>)
+      const p = inRepo(url.searchParams.get('p') || '');
+      if (!p || !p.endsWith('.mp4') || !existsSync(p)) return bad(res, 'not found', 404);
+      const size = statSync(p).size;
+      const range = /bytes=(\d+)-(\d*)/.exec(req.headers.range || '');
+      if (range) {
+        const start = Number(range[1]);
+        const end = range[2] ? Number(range[2]) : size - 1;
+        res.writeHead(206, {
+          'content-type': 'video/mp4',
+          'content-range': `bytes ${start}-${end}/${size}`,
+          'accept-ranges': 'bytes',
+          'content-length': end - start + 1,
+        });
+        const s = createReadStream(p, { start, end });
+        s.on('error', () => res.end());
+        s.pipe(res);
+      } else {
+        res.writeHead(200, { 'content-type': 'video/mp4', 'content-length': size, 'accept-ranges': 'bytes' });
+        const s = createReadStream(p);
+        s.on('error', () => res.end());
+        s.pipe(res);
+      }
+      return;
+    }
+    if (req.method === 'GET' && url.pathname === '/api/posts') return json(res, listPosts());
+    if (req.method === 'POST' && url.pathname === '/api/posts/update') {
+      const { slug, used, caption } = JSON.parse((await readBody(req)).toString('utf8'));
+      return json(res, updatePost(slug, { used, caption }));
+    }
+    if (req.method === 'POST' && url.pathname === '/api/posts/delete') {
+      const { slug } = JSON.parse((await readBody(req)).toString('utf8'));
+      const dir = join(STUDIO, String(slug).replace(/[^a-z0-9-_]/gi, ''));
+      if (!dir.startsWith(STUDIO + '/') || !existsSync(dir)) return bad(res, 'no such post', 404);
+      const { rmSync } = await import('node:fs');
+      rmSync(dir, { recursive: true, force: true });
+      return json(res, { ok: true });
     }
     if (req.method === 'GET' && url.pathname === '/api/sync') return json(res, sync());
     if (req.method === 'GET' && url.pathname === '/api/status') return json(res, status());

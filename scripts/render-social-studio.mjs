@@ -153,6 +153,11 @@ if (type === 'reel') {
     },
   });
   console.log('✓', out);
+  // cover still for the library feed + IG cover upload (frame ~0.8s in, after
+  // the first beat's Rise animations have landed)
+  const coverOut = join(outDir, `${slug}-cover.png`);
+  await renderStill({ serveUrl, composition, frame: Math.min(24, composition.durationInFrames - 1), output: coverOut, imageFormat: 'png', inputProps, overwrite: true });
+  console.log('✓', coverOut);
 } else {
   const browser = await openBrowser('chrome');
   const n = type === 'single' ? 1 : slides.length;
@@ -163,6 +168,26 @@ if (type === 'reel') {
   }
   await browser.close({ silent: true });
 }
+
+// post.json — the library's source of truth for this post. Re-renders keep
+// the existing usedAt/caption unless the job supplies a fresh caption.
+const postPath = join(outDir, 'post.json');
+let prev = {};
+try { prev = JSON.parse(readFileSync(postPath, 'utf8')); } catch {}
+writeFileSync(postPath, JSON.stringify({
+  slug,
+  type,
+  ratio: inputProps.ratio,
+  variant,
+  slides: job.slides,
+  seconds: type === 'reel' ? inputProps.seconds : undefined,
+  audio: job.audio || undefined,
+  cta: inputProps.cta,
+  caption: job.caption || prev.caption || '',
+  createdAt: prev.createdAt || Date.now(),
+  renderedAt: Date.now(),
+  usedAt: prev.usedAt || null,
+}, null, 2));
 
 console.log(`DONE ${outDir}`);
 process.exit(0);

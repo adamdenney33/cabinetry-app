@@ -81,12 +81,52 @@
   .titlebar { display:flex; align-items:baseline; gap:10px; padding:14px 16px 0; max-width:1280px; margin:0 auto; }
   .titlebar h1 { font-size:18px; margin:0; font-weight:900; letter-spacing:-.3px; }
   .titlebar h1 em { color:var(--amber); font-style:normal; }
-  .titlebar .sub { font-size:12px; color:var(--muted); }
+  .titlebar .sub { font-size:12px; color:var(--muted); flex:1; }
+  .nav { display:flex; gap:6px; }
+  .nav button { padding:7px 16px; border:1px solid var(--border); background:#fff; border-radius:99px; font:inherit; font-size:13px; font-weight:800; cursor:pointer; color:var(--text2); }
+  .nav button.on { background:var(--ink); color:#fff; border-color:var(--ink); }
+  /* ── library (IG-style feed) ── */
+  #libraryView { display:none; max-width:1000px; margin:0 auto; padding:16px; }
+  .lib-tabs { display:flex; gap:6px; margin-bottom:14px; align-items:center; }
+  .lib-tabs button { padding:7px 16px; border:1px solid var(--border); background:#fff; border-radius:99px; font:inherit; font-size:12.5px; font-weight:800; cursor:pointer; color:var(--text2); }
+  .lib-tabs button.on { background:var(--amber-dim); border-color:var(--amber); color:var(--ink); }
+  .feed { display:grid; grid-template-columns:repeat(3,1fr); gap:3px; background:#fff; border:1px solid var(--border); border-radius:12px; padding:3px; }
+  @media (max-width:640px){ .feed{ grid-template-columns:repeat(2,1fr);} }
+  .post { position:relative; aspect-ratio:3/4; overflow:hidden; cursor:pointer; background:#111; border-radius:4px; }
+  .post img { width:100%; height:100%; object-fit:cover; display:block; transition:transform .15s; }
+  .post:hover img { transform:scale(1.03); }
+  .post .badge { position:absolute; top:8px; right:8px; color:#fff; font-size:15px; text-shadow:0 1px 4px rgba(0,0,0,.7); }
+  .post .meta { position:absolute; left:0; right:0; bottom:0; padding:18px 10px 8px; font-size:11px; font-weight:700; color:#fff;
+    background:linear-gradient(transparent, rgba(0,0,0,.65)); opacity:0; transition:opacity .15s; }
+  .post:hover .meta { opacity:1; }
+  .post .used-tag { position:absolute; top:8px; left:8px; font-size:10px; font-weight:800; background:var(--green); color:#fff; padding:2px 7px; border-radius:99px; }
+  .empty { text-align:center; color:var(--muted); padding:40px 0; font-size:13px; }
+  /* post detail modal */
+  .pd-media { display:flex; gap:8px; overflow-x:auto; padding-bottom:6px; }
+  .pd-media img, .pd-media video { height:340px; border-radius:10px; border:1px solid var(--border); flex:none; }
+  .pd-cap { width:100%; margin-top:10px; }
 </style>
 </head>
 <body>
-<div class="titlebar"><h1>IG Content Studio<em>.</em></h1><div class="sub">ProCabinet.App — single · carousel · reel, on-brand every time · local</div></div>
-<div class="wrap">
+<div class="titlebar">
+  <h1>IG Content Studio<em>.</em></h1>
+  <div class="sub">ProCabinet.App — single · carousel · reel, on-brand every time · local</div>
+  <div class="nav">
+    <button id="navCreate" class="on" onclick="showView('create')">✏️ Create</button>
+    <button id="navLibrary" onclick="showView('library')">▦ Library</button>
+  </div>
+</div>
+
+<div id="libraryView">
+  <div class="lib-tabs">
+    <button id="libReady" class="on" onclick="setLibTab('ready')">Ready</button>
+    <button id="libUsed" onclick="setLibTab('used')">Posted / used</button>
+    <span class="hint" style="margin-left:auto" id="libCount"></span>
+  </div>
+  <div class="feed" id="feed"></div>
+</div>
+
+<div class="wrap" id="createView">
 <div class="main">
 
   <div class="card">
@@ -179,6 +219,30 @@
     <div class="pv-nav" id="pvNav"></div>
   </div>
 </div>
+</div>
+
+<div class="modal" id="postModal">
+  <div class="box">
+    <div class="row" style="justify-content:space-between">
+      <b id="pdTitle"></b>
+      <div class="row">
+        <button class="btn sm" id="pdUsedBtn"></button>
+        <button class="btn sm" onclick="loadPostIntoEditor()">✏️ Load into editor</button>
+        <button class="btn sm" onclick="revealPost()">📂</button>
+        <button class="btn sm" onclick="deletePost()" style="color:var(--red)">🗑</button>
+        <button class="btn sm" onclick="closePostModal()">✕</button>
+      </div>
+    </div>
+    <div class="hint" id="pdMeta" style="margin:6px 0 10px"></div>
+    <div class="pd-media" id="pdMedia"></div>
+    <label>Caption</label>
+    <textarea id="pdCaption" rows="6" class="pd-cap" placeholder="No caption saved for this post."></textarea>
+    <div class="row" style="margin-top:8px">
+      <button class="btn sm" onclick="copyPostCaption()">Copy caption</button>
+      <button class="btn sm" onclick="savePostCaption()">Save caption</button>
+      <span class="hint" id="pdMsg"></span>
+    </div>
+  </div>
 </div>
 
 <div class="modal" id="assetModal">
@@ -495,6 +559,7 @@ function buildJob(){
       kicker:s.kicker, title:s.title, sub:s.sub, image:s.image||'', builtin:s.builtin||'none',
     })),
     seconds: S.seconds, audio: S.type==='reel' ? S.audio : '', cta: S.type!=='single' && S.cta,
+    caption: $('caption').value || '',
   };
 }
 async function startRender(){
@@ -522,9 +587,10 @@ function pollStatus(slug, t0){
         $('renderBtn').disabled = false; return;
       }
       if (s.done){
-        st.innerHTML = '<div class="status ok">Done in ~'+secs+'s → '+esc(s.dir)+'</div>';
+        st.innerHTML = '<div class="status ok">Done in ~'+secs+'s → saved to the library <button class="btn sm" onclick="showView(\'library\')" style="margin-left:8px">▦ View in Library</button></div>';
         $('renderBtn').disabled = false;
         showOutputs(slug);
+        loadPosts();
         return;
       }
       st.innerHTML = '<div class="status"><span class="spin"></span> rendering… '+secs+'s · '+esc(s.tail.split(' | ').pop()||'')+'</div>';
@@ -544,6 +610,107 @@ async function showOutputs(slug){
       g.appendChild(d);
     });
   } catch(e){}
+}
+
+/* ── library (IG-style feed) ───────────────────────────────── */
+let POSTS = [];
+let LIB_TAB = 'ready';
+let ACTIVE_POST = null;
+
+function showView(v){
+  $('navCreate').classList.toggle('on', v==='create');
+  $('navLibrary').classList.toggle('on', v==='library');
+  $('createView').style.display = v==='create' ? 'grid' : 'none';
+  $('libraryView').style.display = v==='library' ? 'block' : 'none';
+  if (v==='library') loadPosts();
+}
+function setLibTab(t){ LIB_TAB = t; paintFeed(); }
+async function loadPosts(){
+  try { POSTS = await api('/api/posts'); } catch(e){ POSTS = []; }
+  paintFeed();
+}
+function fmtDate(ms){ return new Date(ms).toLocaleDateString('en-GB', { day:'numeric', month:'short' }); }
+function paintFeed(){
+  $('libReady').classList.toggle('on', LIB_TAB==='ready');
+  $('libUsed').classList.toggle('on', LIB_TAB==='used');
+  const ready = POSTS.filter(p=>!p.usedAt), used = POSTS.filter(p=>p.usedAt);
+  $('libReady').textContent = 'Ready ('+ready.length+')';
+  $('libUsed').textContent = 'Posted / used ('+used.length+')';
+  const list = LIB_TAB==='ready' ? ready : used;
+  const feed = $('feed'); feed.innerHTML = '';
+  if (!list.length){
+    feed.innerHTML = '<div class="empty" style="grid-column:1/-1">'+(LIB_TAB==='ready' ? 'Nothing here yet — render a post in Create and it lands in this feed.' : 'Nothing marked as used yet — open a post and hit “Mark as used” once it’s published.')+'</div>';
+    return;
+  }
+  list.forEach(p => {
+    const d = document.createElement('div'); d.className='post';
+    const badge = p.type==='reel' ? '▶' : p.type==='carousel' ? '⧉ '+p.slideCount : '';
+    d.innerHTML =
+      (p.cover ? '<img src="'+p.cover+'" loading="lazy">' : '<div style="color:#666;text-align:center;padding-top:45%">🎬</div>') +
+      (badge ? '<div class="badge">'+badge+'</div>' : '') +
+      (p.usedAt ? '<div class="used-tag">USED '+fmtDate(p.usedAt)+'</div>' : '') +
+      '<div class="meta">'+esc(p.slug)+' · '+fmtDate(p.createdAt)+'</div>';
+    d.onclick = () => openPostModal(p);
+    feed.appendChild(d);
+  });
+  $('libCount').textContent = POSTS.length + ' post' + (POSTS.length===1?'':'s') + ' in the library';
+}
+function openPostModal(p){
+  ACTIVE_POST = p;
+  $('pdTitle').textContent = p.slug;
+  $('pdMeta').textContent = p.type + (p.ratio ? ' · '+p.ratio : '') + ' · created '+fmtDate(p.createdAt) + (p.usedAt ? ' · used '+fmtDate(p.usedAt) : '');
+  $('pdUsedBtn').textContent = p.usedAt ? '↩︎ Mark as not used' : '✓ Mark as used';
+  $('pdUsedBtn').onclick = toggleUsed;
+  const m = $('pdMedia'); m.innerHTML = '';
+  if (p.video){
+    const v = document.createElement('video'); v.src = p.video; v.controls = true; v.muted = false; m.appendChild(v);
+  }
+  p.images.forEach(u => { const im = document.createElement('img'); im.src = u; m.appendChild(im); });
+  $('pdCaption').value = p.caption || '';
+  $('pdMsg').textContent = '';
+  $('postModal').classList.add('on');
+}
+function closePostModal(){ $('postModal').classList.remove('on'); const m=$('pdMedia'); m.querySelectorAll('video').forEach(v=>v.pause()); }
+async function toggleUsed(){
+  try {
+    await api('/api/posts/update', { method:'POST', body: JSON.stringify({ slug: ACTIVE_POST.slug, used: !ACTIVE_POST.usedAt }) });
+    closePostModal(); loadPosts();
+  } catch(e){ $('pdMsg').textContent = e.message; }
+}
+async function savePostCaption(){
+  try {
+    await api('/api/posts/update', { method:'POST', body: JSON.stringify({ slug: ACTIVE_POST.slug, caption: $('pdCaption').value }) });
+    ACTIVE_POST.caption = $('pdCaption').value;
+    $('pdMsg').textContent = 'saved ✓'; setTimeout(()=>$('pdMsg').textContent='',2500);
+  } catch(e){ $('pdMsg').textContent = e.message; }
+}
+async function copyPostCaption(){ await copyText($('pdCaption').value); $('pdMsg').textContent='copied ✓'; setTimeout(()=>$('pdMsg').textContent='',2500); }
+async function revealPost(){ api('/api/reveal', { method:'POST', body: JSON.stringify({ path: ACTIVE_POST.dir }) }).catch(()=>{}); }
+async function deletePost(){
+  if (!confirm('Delete "'+ACTIVE_POST.slug+'" and its files? This can’t be undone.')) return;
+  try { await api('/api/posts/delete', { method:'POST', body: JSON.stringify({ slug: ACTIVE_POST.slug }) }); closePostModal(); loadPosts(); }
+  catch(e){ $('pdMsg').textContent = e.message; }
+}
+function loadPostIntoEditor(){
+  const j = ACTIVE_POST.job;
+  if (!j || !j.slides){ $('pdMsg').textContent = 'no editable data saved for this post (older render)'; return; }
+  S.type = j.type || 'single';
+  S.ratio = j.ratio || RATIO_BY_TYPE[S.type][0];
+  S.variant = j.variant || S.variant;
+  S.seconds = j.seconds || S.seconds;
+  S.audio = j.audio || '';
+  S.cta = Boolean(j.cta);
+  S.slides = j.slides.map(s => ({
+    kicker: s.kicker||'', title: s.title||'', sub: s.sub||'',
+    image: s.image||'', thumb: s.image ? '/img?p='+encodeURIComponent(s.image) : '',
+    builtin: s.builtin||'none',
+  }));
+  S.pv = 0;
+  $('slug').value = ACTIVE_POST.slug;
+  $('caption').value = ACTIVE_POST.caption || '';
+  $('cta').checked = S.cta; $('seconds').value = S.seconds;
+  syncSlide0(0); save();
+  closePostModal(); showView('create'); paintAll();
 }
 
 /* ── paint all ─────────────────────────────────────────────── */
