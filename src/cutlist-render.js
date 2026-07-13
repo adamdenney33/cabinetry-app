@@ -698,41 +698,110 @@ function exportCSV(type) {
     _csvDownload(rows, 'stock-panels.csv');
   }
 }
-/** Export the whole cut list as a single 3-tab Excel workbook — Parts, Stock
- *  Panels, and Edge Banding — so panels and edge banding travel with the parts
- *  (a flat CSV can only carry one of the three). Falls back to the parts CSV if
- *  SheetJS can't load. This is the Cut List Library "Export" button. */
-async function exportCutlistWorkbook() {
-  if (!pieces.length && !sheets.length && !edgeBands.length) { _toast('Nothing to export yet', 'info'); return; }
+// ── Sectioned cut-list CSV ──
+// A flat CSV can only carry one record type, but the export has to cover all
+// three tables. So the file is written as three labelled sections, separated by
+// a blank line — the same layout the app shows on screen:
+//
+//   PARTS
+//   Label,W (mm),H (mm),Qty,…,Edge L1,…
+//   …
+//
+//   PROJECT PANELS
+//   Material,W (mm),H (mm),Qty,Grain
+//   …
+//
+//   EDGE BANDING
+//   Name,Thickness (mm),Width (mm),Length (m),Glue
+//   …
+//
+// _clSplitSections reads the markers back on import, so the file round-trips.
+const CL_SEC_PARTS  = 'PARTS';
+const CL_SEC_PANELS = 'PROJECT PANELS';
+const CL_SEC_EDGE   = 'EDGE BANDING';
+
+/** Split a sectioned cut-list CSV into its three row groups (each still led by
+ *  its own header row). Returns null when the file carries no section markers —
+ *  i.e. it's a plain single-table CSV — so callers fall back to flat parsing.
+ *  @param {string[][]} rows
+ *  @returns {{parts:string[][], panels:string[][], edge:string[][]} | null} */
+function _clSplitSections(rows) {
+  /** @param {string} s */
+  const norm = s => String(s || '').toUpperCase().replace(/[^A-Z]/g, '');
+  /** @type {Record<string,'parts'|'panels'|'edge'>} */
+  const KEY = {
+    PARTS: 'parts', CUTPARTS: 'parts',
+    PROJECTPANELS: 'panels', STOCKPANELS: 'panels', PANELS: 'panels', SHEETS: 'panels',
+    EDGEBANDING: 'edge', EDGEBANDS: 'edge',
+  };
+  const out = { parts: /** @type {string[][]} */ ([]), panels: /** @type {string[][]} */ ([]), edge: /** @type {string[][]} */ ([]) };
+  /** @type {'parts'|'panels'|'edge'|null} */
+  let cur = null;
+  let found = false;
+  for (const r of rows) {
+    const filled = r.filter(c => c.trim() !== '');
+    // A marker is a row with exactly one filled cell naming a known section.
+    if (filled.length === 1 && KEY[norm(filled[0])]) { cur = KEY[norm(filled[0])]; found = true; continue; }
+    if (cur) out[cur].push(r);
+  }
+  return found ? out : null;
+}
+
+/** Create any edge bands named in an imported EDGE BANDING section that the cut
+ *  list doesn't already have, so the per-side Edge cells on the parts rows can
+ *  resolve against them (_edgeFromCell matches by name).
+ *  @param {string[][]} rows section rows, header first */
+function _clImportEdgeBands(rows) {
+  const col = _csvCol(rows[0], {
+    name:      ['name', 'material', 'band', 'edgeband'],
+    thickness: ['thickness', 'thicknessmm', 't'],
+    width:     ['width', 'widthmm', 'w'],
+    length:    ['length', 'lengthm', 'l'],
+    glue:      ['glue', 'gluetype'],
+  });
+  const start = col ? 1 : 0;
+  /** @type {Record<string, number>} */
+  const legacy = { name: 0, thickness: 1, width: 2, length: 3, glue: 4 };
+  /** @param {string[]} r @param {string} k */
+  const get = (r, k) => col ? col(r, k) : (legacy[k] !== undefined ? (r[legacy[k]] ?? '').trim() : '');
+  for (let i = start; i < rows.length; i++) {
+    const name = get(rows[i], 'name');
+    if (!name) continue;
+    if (edgeBands.some(b => (b.name || '').toLowerCase() === name.toLowerCase())) continue;
+    addEdgeBand(name, parseFloat(get(rows[i], 'thickness')) || 0, parseFloat(get(rows[i], 'width')) || 0,
+      null, parseFloat(get(rows[i], 'length')) || 0, get(rows[i], 'glue') || '');
+  }
+}
+
+/** Export the whole cut list as one sectioned CSV — parts, project panels and
+ *  edge banding in a single file. Exports even when the cut list is empty: the
+ *  section headers alone serve as a fill-in template. Cut List Library "Export". */
+function exportCutlistCSV() {
   const u = window.units === 'metric' ? 'mm' : 'in';
   /** @type {any[][]} */
-  const partRows = [['Label', `W (${u})`, `H (${u})`, 'Qty', 'Grain', 'Material', 'Notes', 'Edge L1', 'Edge W2', 'Edge L3', 'Edge W4']];
-  pieces.forEach(p => partRows.push([
+  const rows = [];
+
+  rows.push([CL_SEC_PARTS]);
+  rows.push(['Label', `W (${u})`, `H (${u})`, 'Qty', 'Grain', 'Material', 'Notes', 'Edge L1', 'Edge W2', 'Edge L3', 'Edge W4']);
+  pieces.forEach(p => rows.push([
     p.label, p.w, p.h, p.qty, p.grain || 'none', p.material || '', p.notes || '',
     _edgeCell(p.edges?.L1), _edgeCell(p.edges?.W2), _edgeCell(p.edges?.L3), _edgeCell(p.edges?.W4),
   ]));
-  /** @type {any[][]} */
-  const panelRows = [['Material', `W (${u})`, `H (${u})`, 'Qty', 'Grain']];
-  sheets.forEach(s => panelRows.push([s.name, s.w, s.h, s.qty, s.grain || 'none']));
-  /** @type {any[][]} */
-  const edgeRows = [['Name', 'Thickness (mm)', 'Width (mm)', 'Length (m)', 'Glue']];
-  edgeBands.forEach(e => edgeRows.push([e.name, e.thickness || 0, e.width || 0, e.length || 0, e.glue || '']));
 
-  try {
-    const XLSX = await window._ensureXLSX();
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(partRows),  'Parts');
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(panelRows), 'Stock Panels');
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(edgeRows),  'Edge Banding');
-    const base = (_clCurrentCutlistName || 'cut-list').replace(/[^\w.-]+/g, '-').replace(/^-+|-+$/g, '') || 'cut-list';
-    XLSX.writeFile(wb, base + '.xlsx');
-    _toast('Exported parts, panels & edge banding', 'success');
-  } catch (err) {
-    // SheetJS failed to load (offline first click, blocked CDN) — still give the
-    // user their parts as CSV rather than nothing.
-    _csvDownload(partRows, 'cut-parts.csv');
-    _toast('Exported parts to CSV (spreadsheet export unavailable offline)', 'error');
-  }
+  rows.push([]);
+  rows.push([CL_SEC_PANELS]);
+  rows.push(['Material', `W (${u})`, `H (${u})`, 'Qty', 'Grain']);
+  sheets.forEach(s => rows.push([s.name, s.w, s.h, s.qty, s.grain || 'none']));
+
+  rows.push([]);
+  rows.push([CL_SEC_EDGE]);
+  rows.push(['Name', 'Thickness (mm)', 'Width (mm)', 'Length (m)', 'Glue']);
+  edgeBands.forEach(e => rows.push([e.name, e.thickness || 0, e.width || 0, e.length || 0, e.glue || '']));
+
+  const base = (_clCurrentCutlistName || 'cut-list').replace(/[^\w.-]+/g, '-').replace(/^-+|-+$/g, '') || 'cut-list';
+  _csvDownload(rows, base + '.csv');
+  const empty = !pieces.length && !sheets.length && !edgeBands.length;
+  _toast(empty ? 'Exported a blank cut-list template' : 'Exported parts, panels & edge banding', 'success');
 }
 /** @param {string} type */
 function downloadTemplate(type) {
@@ -756,6 +825,19 @@ function handleCSVImport(input) {
   _readTabularFile(file).then(rows => {
     if (!rows.length) return;
     const isPieces = _csvImportTarget === 'pieces';
+    // A file exported by exportCutlistCSV carries all three tables in labelled
+    // sections — pick the one this import targets. Edge bands are created first
+    // so the parts rows' per-side Edge cells can resolve against them. A plain
+    // single-table CSV has no markers and falls through to flat parsing.
+    const sec = _clSplitSections(rows);
+    if (sec) {
+      if (isPieces && sec.edge.length > 1) _clImportEdgeBands(sec.edge);
+      rows = isPieces ? sec.parts : sec.panels;
+      if (rows.length < 2) {
+        _toast(`No ${isPieces ? 'parts' : 'panels'} rows in that file`, 'error');
+        return;
+      }
+    }
     const col = _csvCol(rows[0], isPieces ? {
       label:    ['label', 'name', 'part'],
       w:        ['w', 'width', 'wmm', 'win'],
@@ -847,7 +929,7 @@ async function renderCLCutListLibraryView() {
     ${_renderContentHeader({ iconSvg: _CH_ICON_CUTLIST, title: 'Cut List Library', addOnclick: '_clStartNewCutlist()' })}
     <div class="lib-filter-row">
       <input type="text" id="cl-lib-filter" class="lib-filter-input" placeholder="Filter by name..." value="${_escHtml(q)}" oninput="renderCLCutListLibraryView()">
-      <button class="btn btn-outline lib-filter-btn" onclick="exportCutlistWorkbook()" title="Export the open cut list — parts, stock panels & edge banding — as an Excel workbook">&darr; Export</button>
+      <button class="btn btn-outline lib-filter-btn" onclick="exportCutlistCSV()" title="Export the open cut list — parts, project panels & edge banding — as a CSV. Exports headers only when empty, so it doubles as a template.">&darr; Export</button>
       <button class="btn btn-outline lib-filter-btn" onclick="triggerImportCSV('pieces')" title="Import parts into the open cut list from CSV">&uarr; Import</button>
     </div>
     <div id="cl-lib-grid" style="display:flex;flex-direction:column;gap:8px">
