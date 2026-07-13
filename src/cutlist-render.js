@@ -872,7 +872,7 @@ async function renderCLCutListLibraryView() {
   if (!grid) return;
   if (!filtered.length) {
     grid.innerHTML = `<div style="font-size:13px;color:var(--muted);text-align:center;padding:30px;border:1px dashed var(--border);border-radius:var(--radius)">
-      ${rows.length ? 'No cut lists match this filter.' : 'No cut lists in your library yet. Use "Add to Library" under Optimize to save the current cut list here.'}
+      ${rows.length ? 'No cut lists match this filter.' : 'No cut lists yet. Use + above to start one — every cut list you make is saved here automatically.'}
     </div>`;
     return;
   }
@@ -1009,47 +1009,13 @@ async function _clDoOpenLibraryCutlist(id) {
   }
 }
 
-/** Insert a new library cutlist row (no project) and copy the in-memory
- *  pieces/sheets/edge_bands into it. Switches to the Cut List Library tab. */
-async function _clAddToCutlistLibrary() {
-  if (!_requireAuth()) return;
-  const { data: _clCountRows } = await _db('cutlists').select('id').eq('user_id', _userId);
-  if (!_enforceFreeLimit('cutlists', _realCount(_clCountRows))) return;
-  const name = (_clCurrentCutlistName || '').trim() || await _clNextCutlistName(null);
-  try {
-    const { data, error } = await _db('cutlists').insert(/** @type {any} */ ({
-      user_id: _userId,
-      name,
-      position: 0,
-      ui_prefs: {}
-    })).select().single();
-    if (error || !data) { _toast('Could not save to library', 'error'); return; }
-    const newId = /** @type {any} */ (data).id;
-    // Copy pieces/sheets/edge_bands.
-    if (pieces.length) {
-      const rows = pieces.map((p, i) => /** @type {any} */ ({
-        user_id: _userId, cutlist_id: newId, label: p.label || '',
-        w_mm: p.w, h_mm: p.h, qty: p.qty || 1, grain: p.grain || 'none',
-        material: p.material || '', notes: p.notes || '', enabled: p.enabled !== false,
-        color: p.color, position: i
-      }));
-      await _db('pieces').insert(rows);
-    }
-    if (sheets.length) {
-      const rows = sheets.map((s, i) => /** @type {any} */ ({
-        user_id: _userId, cutlist_id: newId, name: s.name || 'Sheet',
-        w_mm: s.w, h_mm: s.h, qty: s.qty || 1, grain: s.grain || 'none',
-        kerf_mm: s.kerf || 3, enabled: s.enabled !== false, color: s.color, position: i
-      }));
-      await _db('sheets').insert(rows);
-    }
-    _toast(`"${name}" saved to Cut List Library`, 'success');
-    if (typeof switchCLMainView === 'function') switchCLMainView('library');
-  } catch (e) {
-    _toast('Could not save to library', 'error');
-  }
-}
-/** @type {any} */ (window)._clAddToCutlistLibrary = _clAddToCutlistLibrary;
+// NOTE: `_clAddToCutlistLibrary` used to live here — it inserted a *second*
+// library row and copied the in-memory pieces/sheets into it, behind an "Add to
+// Library" button under Optimize. It was removed 2026-07-11 (dead code, zero
+// callers): `_clStartNewCutlist` now inserts the `cutlists` row up front and
+// autosave keeps it in sync, so every cut list already IS a library cut list
+// from the moment it's created. An explicit "save to library" step would just
+// fork a duplicate.
 
 /** Merge key for a piece. Material and grain are part of the key on purpose:
  *  a 720x560 "Side" in 18mm MDF and the same part in oak ply are different

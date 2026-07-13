@@ -971,7 +971,7 @@ async function _cbLinkToCutList(libIdx) {
     title: 'Link to Cut Lists',
     hint: 'Click a cut list to add or remove its link. Close when done.',
     items,
-    emptyText: 'No cut lists in your library yet. Create one in <strong>Cut List</strong> &rarr; <strong>Add to Library</strong>.',
+    emptyText: 'No cut lists yet. Start one in the <strong>Cut List</strong> tab — it saves here automatically.',
     size: 'md',
   });
 }

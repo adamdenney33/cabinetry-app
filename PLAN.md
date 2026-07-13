@@ -58,13 +58,15 @@ library lists (e.g. pull in "Base Carcass" + "Wall Unit" + "Drawer Bank").
   confirm qty bumps on shared parts, sheet dedupe, and that the optimiser
   re-runs against the combined list.
 
-**Related cleanup found while investigating (not yet done):** `_clAddToCutlistLibrary`
-(the reverse direction — save the open cut list *into* the library) is still
-defined and window-exposed in `src/cutlist-render.js` but has **zero callers** —
-its "Add to Library" button under Optimize is gone from the UI. The library
-tab's empty state (line ~842) still tells users to *"Use 'Add to Library' under
-Optimize"*, so that instruction currently points at a button that doesn't exist.
-Either re-wire the trigger or rewrite the empty-state copy.
+- ✅ **Dead "Add to Library" path removed.** `_clAddToCutlistLibrary` was still
+  defined + window-exposed in `src/cutlist-render.js` with **zero callers**.
+  Not a regression: `_clStartNewCutlist` inserts the `cutlists` row up front and
+  autosave keeps it in sync, so **every cut list already IS a library cut list
+  from creation** — an explicit "save to library" step would only fork a
+  duplicate row. Function deleted (comment left in its place explaining why);
+  the two stale empty-states that still pointed at the missing button rewritten:
+  the Cut List Library tab (`cutlist-render.js`) and the cabinet builder's
+  cut-list picker (`cabinet-library.js`).
 
 ### Accounting — push QUOTES as estimates (QBO Estimate / Xero Quote) (2026-07-11) ✅ Built + typechecked — ⬜ deploy (migration + fn) + verify
 
