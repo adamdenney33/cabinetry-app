@@ -262,6 +262,8 @@ function _showAuth() {
   // The auth screen is the boot destination here — no data load follows, so
   // drop the boot loader that has covered the shell since first paint.
   window._hideBootLoader();
+  // GIS sign-in button (lazy: script only loads for logged-out visitors).
+  if (typeof _gisEnsure === 'function') _gisEnsure();
 }
 
 function toggleAuthMode() {
@@ -545,7 +547,76 @@ async function _saveNewPassword() {
   _toast('Password updated — you’re signed in.', 'success');
 }
 
-// One-click Google sign-in / sign-up. signInWithOAuth navigates the whole page
+// ── Google Identity Services (GIS) sign-in — preferred path ──
+// The GIS popup/token flow is validated by JavaScript ORIGIN (not redirect
+// URI), so Google's consent UI shows procabinet.app rather than the Supabase
+// project URL that signInWithOAuth's redirect exposes. The ID token goes to
+// Supabase via signInWithIdToken — same google identity (`sub`), so existing
+// Google users land in their same accounts — and onAuthStateChange(SIGNED_IN)
+// drives the rest exactly like a password login.
+//
+// Setup contract: the client ID below must have https://procabinet.app (+
+// http://localhost:3000 for dev) in its Authorised JavaScript origins, and be
+// listed in the Supabase Google provider's "Client IDs" (token audiences).
+// Empty string = GIS disabled → the legacy redirect button stays visible.
+const GOOGLE_SIGNIN_CLIENT_ID = '';
+
+let _gisScriptRequested = false;
+/** Load the GIS script once the auth screen is actually shown (keeps it off
+ *  the signed-in boot path), then swap the buttons when it initialises. */
+function _gisEnsure() {
+  if (!GOOGLE_SIGNIN_CLIENT_ID || _gisScriptRequested) { _gisInit(); return; }
+  _gisScriptRequested = true;
+  const s = document.createElement('script');
+  s.src = 'https://accounts.google.com/gsi/client';
+  s.async = true;
+  s.defer = true;
+  s.onload = () => _gisInit();
+  s.onerror = () => { /* legacy button stays visible */ };
+  document.head.appendChild(s);
+}
+
+/** Render the official GIS button into #auth-gsi-host and hide the legacy
+ *  redirect button. Safe to call repeatedly. */
+function _gisInit() {
+  if (!GOOGLE_SIGNIN_CLIENT_ID) return;
+  const gsi = /** @type {any} */ (window).google?.accounts?.id;
+  const host = document.getElementById('auth-gsi-host');
+  if (!gsi || !host) return;
+  if (!host.dataset.rendered) {
+    gsi.initialize({
+      client_id: GOOGLE_SIGNIN_CLIENT_ID,
+      callback: _gisHandleCredential,
+      use_fedcm_for_prompt: true,
+    });
+    gsi.renderButton(host, {
+      theme: 'outline', size: 'large', text: 'continue_with',
+      width: 320, logo_alignment: 'left',
+    });
+    host.dataset.rendered = '1';
+  }
+  host.style.display = '';
+  const legacy = document.getElementById('auth-google-btn');
+  if (legacy) legacy.style.display = 'none';
+}
+
+/** GIS credential callback → Supabase session. @param {{ credential?: string }} resp */
+async function _gisHandleCredential(resp) {
+  const msgEl = document.getElementById('auth-msg');
+  if (!resp || !resp.credential) return;
+  if (typeof _track === 'function') _track('google_signin_clicked');
+  try {
+    const { error } = await _sb.auth.signInWithIdToken({ provider: 'google', token: resp.credential });
+    if (error) throw error;
+    // Success: onAuthStateChange(SIGNED_IN) takes over from here.
+  } catch (e) {
+    const msg = (/** @type {{ message?: string }} */ (e)).message || 'Google sign-in failed.';
+    if (msgEl) msgEl.innerHTML = `<div class="auth-error">${_escHtml(msg)}</div>`;
+  }
+}
+
+// Legacy one-click Google sign-in / sign-up (fallback when GIS is disabled or
+// its script is blocked). signInWithOAuth navigates the whole page
 // to Google's consent screen, so on success nothing after it runs — Google
 // redirects back to redirectTo, the SDK's detectSessionInUrl exchanges the code
 // for a session, and onAuthStateChange (SIGNED_IN) drives the rest exactly like

@@ -19,11 +19,16 @@ import { corsHeaders, jsonResponse } from '../_shared/cors.ts';
 import { admin, authenticateCaller } from '../_shared/auth.ts';
 import { decrypt, encrypt, signState, verifyState } from '../_shared/crypto.ts';
 
-const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const APP_URL = Deno.env.get('APP_URL') ?? 'https://procabinet.app';
 const CLIENT_ID = Deno.env.get('GOOGLE_CLIENT_ID') ?? '';
 const CLIENT_SECRET = Deno.env.get('GOOGLE_CLIENT_SECRET') ?? '';
-const REDIRECT_URI = `${SUPABASE_URL}/functions/v1/gcal-oauth`;
+// The registered redirect URI is a Cloudflare Pages Function on the app's own
+// domain (functions/api/gcal-callback.js) that proxies the callback here —
+// Google shows (and brand verification requires ownership of) the redirect
+// URI's domain, and *.supabase.co can't be claimed in Search Console. Must
+// match the Google client's Authorised redirect URIs exactly, in both the
+// consent URL and the code exchange.
+const REDIRECT_URI = Deno.env.get('GCAL_REDIRECT_URI') ?? `${APP_URL}/api/gcal-callback`;
 const SCOPE = 'https://www.googleapis.com/auth/calendar.events';
 const STATE_MAX_AGE_MS = 15 * 60 * 1000;
 
