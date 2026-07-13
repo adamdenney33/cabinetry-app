@@ -36,9 +36,10 @@ const APP_URL = Deno.env.get('APP_URL') ?? 'https://procabinet.app';
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
-// Founder plan — total lifetime accounts ever sold. Mirrors FOUNDER_CAP in
-// src/limits.js. Enforced here so the cap can't be bypassed client-side.
-const FOUNDER_CAP = 50;
+// Founder plan — one-off purchase, lifetime access, UNLIMITED seats. The
+// 50-seat cap (FOUNDER_CAP) and its server-side enforcement were removed on
+// 2026-07-12; the plan is now gated by price alone ($299 until 14 July, $499
+// after), not by scarcity.
 
 if (!STRIPE_SECRET_KEY || !PRICE_MONTHLY || !PRICE_ANNUAL || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
   throw new Error('Missing required env vars for stripe-checkout function');
@@ -100,18 +101,6 @@ async function getOrCreateCustomer(userId: string, email: string | null): Promis
   return customer.id;
 }
 
-// Count Founder accounts already sold. Enforces the 50-seat cap before a
-// Founder Checkout session is created. (A brief race between two simultaneous
-// buyers could let one extra through — acceptable for a launch promo.)
-async function founderSeatsTaken(): Promise<number> {
-  const { count } = await supabase
-    .from('subscriptions')
-    .select('*', { count: 'exact', head: true })
-    .eq('plan', 'founder')
-    .eq('status', 'active');
-  return count ?? 0;
-}
-
 Deno.serve(async (req) => {
   const origin = req.headers.get('origin');
   const cors = corsHeaders(origin);
@@ -170,9 +159,6 @@ Deno.serve(async (req) => {
     if (plan === 'founder') {
       if (!PRICE_FOUNDER) {
         return json({ error: 'The Founder plan is not available yet.' }, 400);
-      }
-      if ((await founderSeatsTaken()) >= FOUNDER_CAP) {
-        return json({ error: 'Founder seats are sold out.' }, 409);
       }
       // One-off payment — no subscription. The webhook reads metadata.plan to
       // record a lifetime 'founder' subscription row.

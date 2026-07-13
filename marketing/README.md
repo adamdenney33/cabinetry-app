@@ -65,7 +65,7 @@ Use a per-channel UTM so you can see what works:
 - **Free** to start — 5 of each (clients, cabinets, quotes, orders, cut lists)
 - **$35/mo** monthly Pro
 - **$299/yr** annual Pro (save 29% vs monthly)
-- **$299 once · capped at 50** — Founders' Lifetime, launch week only
+- **$299 once · capped at 10** — Founders' Lifetime (cap cut 50 → 10 on 2026-07-12; price rises to $499 on 15 July)
 - **Free for ~20 creators** — Creator Lifetime gifting programme (see `05-instagram-dms-influencers.md`)
 
 ## Screenshots &amp; brand assets

@@ -25,10 +25,10 @@ const FREE_LIMITS = Object.freeze({
   cutlists: 5,
 });
 
-/** Founder plan — total lifetime accounts ever sold (one-off $299 purchase).
- *  Surfaced as the "N of 50 left" counter on the walkthrough's final CTA and
- *  enforced server-side in the stripe-checkout Edge Function. */
-const FOUNDER_CAP = 50;
+// Founder plan — one-off purchase, lifetime access. NO seat cap: the 50-seat
+// limit and its live counter were removed on 2026-07-12. Founder seats are
+// unlimited; the price (not scarcity) is what changes — $299 until 14 July,
+// $499 after. Nothing client- or server-side counts them any more.
 
 /** Length of the automatic, no-card Pro trial every new account gets, in days.
  *  After it lapses the account silently drops to the 5-item free tier. */

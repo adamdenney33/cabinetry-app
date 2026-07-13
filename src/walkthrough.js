@@ -204,9 +204,6 @@ let _wtOverlay = null;
 let _wtResizeTimer = 0;
 /** @type {HTMLElement | null} */
 let _wtCursorEl = null;
-/** Founder seats remaining for the final CTA, or null until the public
- *  `founder_seats_taken` RPC resolves. @type {number | null} */
-let _wtFounderSeatsLeft = null;
 /** True while the overlay is showing ONLY the final Pro CTA — the
  *  once-per-browser-session reminder for a returning free user, not the full
  *  tour. Suppresses the demo-mode borrow, section switches and first-run
@@ -384,7 +381,6 @@ async function _wtRunStart(tempDemo) {
   }
   _wtActive = true;
   _wtW._wtActive = true; // window-visible so other modules can suspend autosaves
-  _wtFetchFounderSeats(); // best-effort — populates the final CTA's seat counter
   _wtCurrent = 0;
   _wtDir = 1;
   const ov = document.createElement('div');
@@ -419,7 +415,6 @@ function _wtStartCta() {
   _wtActive = true;
   _wtW._wtActive = true;
   _wtCtaOnly = true;
-  _wtFetchFounderSeats(); // best-effort — populates the CTA's seat counter
   _wtCurrent = ctaIdx;
   _wtDir = 1;
   const ov = document.createElement('div');
@@ -1152,15 +1147,8 @@ function _wtCenterHTML(step) {
  * @returns {string}
  */
 function _wtCtaHTML() {
-  const cap = FOUNDER_CAP;
-  const left = _wtFounderSeatsLeft;
-  const soldOut = typeof left === 'number' && left <= 0;
-  const flag = (typeof left === 'number')
-    ? (soldOut ? 'Sold out' : left + ' of ' + cap + ' left')
-    : 'Limited to ' + cap;
-  const founderBtn = soldOut
-    ? '<button class="wt-cta-btn wt-cta-btn-amber" disabled>Sold out</button>'
-    : '<button class="wt-cta-btn wt-cta-btn-amber" data-wt-act="cta-founder">Claim a seat</button>';
+  const flag = 'Best value';
+  const founderBtn = '<button class="wt-cta-btn wt-cta-btn-amber" data-wt-act="cta-founder">Choose Founder</button>';
   return '' +
     '<div class="wt-cta-head">' +
       '<div class="wt-cta-eyebrow">Support the project</div>' +
@@ -1218,7 +1206,7 @@ function _wtCtaHTML() {
         '<div class="wt-cta-per">one-off · lifetime</div>' +
         '<ul class="wt-cta-feats">' +
           '<li>Pay once, use forever</li>' +
-          '<li>Only <strong>' + cap + ' accounts</strong> ever sold</li>' +
+          '<li><strong>No renewal</strong>, ever</li>' +
           '<li><strong>Everything</strong> in the paid plans</li>' +
           '<li>CNC / DXF export</li>' +
           '<li>New feature requests prioritised</li>' +
@@ -1227,27 +1215,6 @@ function _wtCtaHTML() {
         founderBtn +
       '</div>' +
     '</div>';
-}
-
-/**
- * Fetch the live Founder seat count via the public `founder_seats_taken` RPC
- * and cache the remaining count for the CTA. Best-effort — on failure the CTA
- * shows a static "Limited to N" label. Re-renders the CTA if it is on screen
- * when the count arrives.
- * @returns {Promise<void>}
- */
-async function _wtFetchFounderSeats() {
-  if (_wtFounderSeatsLeft !== null) return;
-  try {
-    const { data, error } = await _sb.rpc('founder_seats_taken');
-    if (error || typeof data !== 'number') return;
-    _wtFounderSeatsLeft = Math.max(0, FOUNDER_CAP - data);
-    if (_wtActive && _wtSteps[_wtCurrent] && _wtSteps[_wtCurrent].showPricing) {
-      _wtRender(_wtCurrent);
-    }
-  } catch (e) {
-    console.warn('[walkthrough] founder seat count failed', e);
-  }
 }
 
 /**
