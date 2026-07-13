@@ -206,11 +206,17 @@ sync. Minimal UI — GCal interaction cues, existing app styling.
   gcal_event_id (push leg proven). `google_email` label came back null
   (calendars.get denied under the events-only scope — UI falls back to
   "Google Calendar connected"; cosmetic). Pushed to `main` 2026-07-13.
-- ⬜ **GC.6 — before offering GCal sync to customers**: publish the
-  Google app to Production + submit `calendar.events` for verification
-  (Testing mode limits connects to listed test users; sign-in is
-  unaffected — it runs on the separate June client). Consider Pro-gating
-  the connect button (`_enforceProFeature`) as a paid-tier hook.
+- 🚧 **GC.6 — customer rollout: published + branding path (2026-07-13).**
+  App published to Production (unverified: warning screen + 100-user cap
+  until verification). Verification attempt #1 rejected → root causes +
+  the no-custom-domain fix are in SPEC § 13 (2026-07-13 later):
+  `functions/api/gcal-callback.js` Pages proxy so the calendar redirect
+  URI lives on procabinet.app, and GIS + `signInWithIdToken` sign-in so
+  the consent popup shows procabinet.app (legacy redirect button kept as
+  fallback). ⬜ push (deploys the proxy + GIS button — new calendar
+  connects are DOWN until then) → verify both flows → GSC-verify
+  procabinet.app → resubmit brand verification ("I have fixed the
+  issues"). Consider Pro-gating the connect button later.
 
 ### Cabinet Builder "edit in place" UI rework (2026-07-03) ✅ built + verified — ⬜ push
 

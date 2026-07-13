@@ -559,7 +559,7 @@ async function _saveNewPassword() {
 // http://localhost:3000 for dev) in its Authorised JavaScript origins, and be
 // listed in the Supabase Google provider's "Client IDs" (token audiences).
 // Empty string = GIS disabled → the legacy redirect button stays visible.
-const GOOGLE_SIGNIN_CLIENT_ID = '';
+const GOOGLE_SIGNIN_CLIENT_ID = '144285919589-7h041t5l4bsogr43tkbue6qioev2grgv.apps.googleusercontent.com';
 
 let _gisScriptRequested = false;
 /** Load the GIS script once the auth screen is actually shown (keeps it off
