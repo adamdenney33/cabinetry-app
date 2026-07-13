@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Affiliate Program Plan — Rewardful Audit</title>
+<style>
+  :root{--ink:#1a1d21;--muted:#5c6470;--line:#e4e7ec;--good:#0f7b45;--warn:#b45309;--bad:#b91c1c;--accent:#1d4ed8;--bg:#fafbfc}
+  *{box-sizing:border-box}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:var(--ink);background:var(--bg);margin:0;padding:40px 20px;line-height:1.55}
+  .wrap{max-width:860px;margin:0 auto}
+  h1{font-size:1.7rem;margin:0 0 4px}
+  h2{font-size:1.2rem;margin:36px 0 12px;border-bottom:2px solid var(--line);padding-bottom:6px}
+  .sub{color:var(--muted);margin-bottom:28px}
+  .score{display:flex;gap:16px;flex-wrap:wrap;margin:20px 0}
+  .score .card{background:#fff;border:1px solid var(--line);border-radius:10px;padding:14px 18px;flex:1;min-width:160px}
+  .card .n{font-size:1.5rem;font-weight:700}
+  .card .l{font-size:.8rem;color:var(--muted)}
+  table{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--line);border-radius:8px;overflow:hidden;font-size:.92rem}
+  th{background:#f1f3f6;text-align:left;padding:9px 12px;font-size:.8rem;text-transform:uppercase;letter-spacing:.03em;color:var(--muted)}
+  td{padding:9px 12px;border-top:1px solid var(--line);vertical-align:top}
+  .pill{display:inline-block;padding:2px 9px;border-radius:99px;font-size:.75rem;font-weight:600}
+  .p-good{background:#e7f6ee;color:var(--good)} .p-warn{background:#fef3e2;color:var(--warn)} .p-bad{background:#fdeaea;color:var(--bad)}
+  .callout{background:#fff;border-left:4px solid var(--accent);border-radius:0 8px 8px 0;padding:14px 18px;margin:14px 0;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+  .callout.warn{border-left-color:var(--warn)}
+  ol.actions li{margin-bottom:10px}
+  code{background:#eef1f5;padding:1px 6px;border-radius:4px;font-size:.85em}
+  a{color:var(--accent)}
+  .foot{color:var(--muted);font-size:.8rem;margin-top:40px;border-top:1px solid var(--line);padding-top:12px}
+</style>
+</head>
+<body><div class="wrap">
+
+<h1>Affiliate Program Plan — Audit</h1>
+<p class="sub">ProCabinet.App · Audited against Rewardful's SaaS affiliate frameworks (top-250 program data, 2,500+ campaign analysis) · 7 July 2026 · Source: <code>Building Docs/Affiliate_Program_Plan.md</code></p>
+
+<div class="score">
+  <div class="card"><div class="n">8.5 / 10</div><div class="l">Overall alignment with best practice</div></div>
+  <div class="card"><div class="n">30% / 12mo</div><div class="l">Commission — squarely in the SaaS sweet spot (benchmark 20–30% recurring)</div></div>
+  <div class="card"><div class="n">1 big gap</div><div class="l">Recruitment is underweighted — 70% of affiliate revenue comes from outbound</div></div>
+</div>
+
+<h2>Section-by-section verdict</h2>
+<table>
+<tr><th>Plan area</th><th>Verdict</th><th>Notes vs Rewardful benchmarks</th></tr>
+<tr><td>Commission: 30% recurring / 12 months</td><td><span class="pill p-good">Strong</span></td><td>Top-250 Rewardful programs average 19–25%; 30% reads generous while SaaS margins (75–80%) keep it safe. 12-month cap correctly protects margin vs lifetime.</td></tr>
+<tr><td>Trigger on first paid invoice + 30-day hold + refund clawback</td><td><span class="pill p-good">Strong</span></td><td>Exactly right. Never pay on trials. Rewardful automates the hold.</td></tr>
+<tr><td>60-day cookie window</td><td><span class="pill p-good">Strong</span></td><td>Rewardful's recommended SaaS default. Fits your 14-day trial + decision time.</td></tr>
+<tr><td>Tooling: Rewardful over FirstPromoter / PartnerStack / DIY</td><td><span class="pill p-good">Strong</span></td><td>Correct call for a Stripe-native solo operation (~$49/mo starter).</td></tr>
+<tr><td>Double-sided incentive (extended trial via code)</td><td><span class="pill p-good">Strong</span></td><td>Coupon codes also plug the attribution-leakage risk you flagged — push codes as hard as links.</td></tr>
+<tr><td>Compliance: FTC/ASA disclosure, brand-bidding ban, no self-referral</td><td><span class="pill p-good">Strong</span></td><td>Brand bidding is the #1 guardrail Rewardful tells programs to write into T&amp;Cs — you have it.</td></tr>
+<tr><td>Asset kit + content angles</td><td><span class="pill p-good">Strong</span></td><td>Providing ready assets is a top activation lever. Reusing Remotion output is efficient.</td></tr>
+<tr><td>Recruitment strategy</td><td><span class="pill p-bad">Biggest gap</span></td><td>Plan is ~80% funnel-build, ~20% recruitment. Rewardful data: ~70% of new affiliate revenue comes from <em>outbound</em>, only ~7.6% of affiliates ever refer anyone. Self-serve inbound alone will fill the program with inactive sign-ups. See recommendations.</td></tr>
+<tr><td>Attribution model</td><td><span class="pill p-warn">Undefined</span></td><td>First-touch vs last-touch isn't specified. Pick one (last-touch is the common default) and state it in T&amp;Cs before launch — changing later damages trust.</td></tr>
+<tr><td>Internal ownership &amp; time budget</td><td><span class="pill p-warn">Missing</span></td><td>No owner/time allocation defined. Programs stall from neglect, not bad strategy. As a solo founder, budget a fixed slot (e.g. 2 hrs/week) for outreach + affiliate replies. Pallyy runs theirs in ~10 min/month <em>after</em> setup — but setup and recruiting take real time for 3–6 months.</td></tr>
+<tr><td>Customers-as-affiliates</td><td><span class="pill p-warn">Missing</span></td><td>Your happiest Pro users are the highest-trust affiliates. Add an in-app "Earn 30% recommending ProCabinet" prompt after a milestone (e.g. first accepted live quote). Near-zero cost, catches peak satisfaction.</td></tr>
+<tr><td>KPIs &amp; expectations</td><td><span class="pill p-warn">Tune</span></td><td>Targets are sane, but define "active" as ≥1 <em>referral</em> (not clicks), and add <em>time-to-first-referral</em> and <em>% active within 30–60 days</em>. Expect real results at month 3–6, not week 6 — don't kill it early.</td></tr>
+<tr><td>Unit economics (~$126 CAC vs ~$525 LTV)</td><td><span class="pill p-warn">Validate</span></td><td>The math holds <em>if</em> ~15-month average life is real. High churn kills recurring-commission programs (affiliates lose motivation too). Pull actual retention from Stripe/PostHog before scaling spend on recruitment.</td></tr>
+</table>
+
+<h2>Strategic advice — what to change</h2>
+
+<div class="callout warn"><strong>1. Flip the effort: recruitment is the product, the funnel is plumbing.</strong><br>
+Your 90-day plan spends weeks 1–6 building and only softly recruits. Invert it: run outbound continuously from week 2. Concretely, mine where cabinet-software buyers already look:
+<ul>
+<li><strong>Listicles:</strong> Google <code>intitle:("best" OR "top") intitle:"cabinet software"</code> (also "cutlist software", "woodworking business software") — writers of these already monetise with affiliate links.</li>
+<li><strong>Competitor mentions/reviews:</strong> creators covering CutList Plus, Mozaik, Cabinet Vision, SketchList — pitch a review + program invite + free access.</li>
+<li><strong>Competitor affiliates:</strong> if you ever get Ahrefs access, filter competitor backlinks for <code>?ref=</code>/<code>?via=</code> tags to extract their affiliate lists.</li>
+<li>Target: 10 personalised outreach emails/week, 2 follow-ups each (follow-ups produce ~half of all replies). Rewardful's free <a href="https://outreach.rewardful.com/">outreach generator</a> drafts these.</li>
+</ul></div>
+
+<div class="callout"><strong>2. Expect the Pareto shape and plan for it.</strong> 1–5% of affiliates will drive most revenue. Your job after launch is finding your 2–3 real performers and treating them like partners: beta access, a call, custom assets, maybe a private higher-rate campaign in Rewardful later. Your tiering table (§3) is good — but relevance beats reach: a 3k-follower one-man-band joiner channel can outperform a 100k generic woodworking channel.</div>
+
+<div class="callout"><strong>3. Lock the two undefined rules before launch.</strong> Attribution model (recommend last-touch) and a payout threshold (your $50 is fine) go in the T&amp;Cs and the affiliate FAQ. No retroactive changes ever — existing referrals keep original terms if you adjust rates later.</div>
+
+<div class="callout"><strong>4. Keep 30%/12mo public — don't launch with variants.</strong> Your instinct in §4 is right: one clean public rate. Rewardful's 2,500-campaign analysis shows higher commissions don't buy better results; product ease-of-pitch does. Your live-quote-link demo is the pitch — lead every outreach with it.</div>
+
+<div class="callout"><strong>Decided 2026-07-10 — Founding creator cohort: lifetime commission, capped at 10.</strong> The first creators get <strong>25–30% recurring lifetime (gross)</strong> as a private Rewardful campaign; the public program stays 30%/12mo. Rationale: at ~15-month average customer life, lifetime costs only ~$31 more per customer than the 12-month cap ($157 vs $126) and only gets expensive if retention improves — exactly when it's affordable. The "after payment fees" idea was <strong>dropped</strong>: netting out ~3% Stripe fees saves ~$0.09/customer/mo but wrecks the headline and creator trust — if margin worries, use 25% lifetime gross instead of 30% net. Grandfathering is clean (Rewardful keeps original terms on existing referrals); add a good-standing clause to the T&amp;Cs. The lifetime hook is the pitch for the Phase 2 warm invites.</div>
+
+<div class="callout"><strong>5. Add the two free passive channels the plan misses.</strong> (a) In-app affiliate invite for existing customers at a satisfaction milestone; (b) email-signature mention + a line in the Resend welcome flow you already run. Both compound at zero cost.</div>
+
+<h2>Revised priority order (next 4 weeks)</h2>
+<ol class="actions">
+<li><strong>Week 1:</strong> Rewardful signup + Stripe connect, set 30%/12mo public + private founding-cohort campaign (25–30% lifetime gross, cap 10), 60-day cookie, last-touch, $50 threshold, 30-day hold. Write T&amp;Cs incl. good-standing clause (Rewardful template). Confirm extended-trial incentive.</li>
+<li><strong>Week 2:</strong> Ship a minimal <code>/affiliates</code> page (one screen: rate, real $ table, join CTA) — polish later. Start outreach list: 30 named creators + every "best cabinet/cutlist software" listicle author you can find.</li>
+<li><strong>Weeks 2–4 (ongoing):</strong> 10 outreach emails/week with follow-ups. Assemble asset kit from existing Remotion output. Load 4-email Resend onboarding.</li>
+<li><strong>Week 4:</strong> Add in-app "Earn with ProCabinet" prompt + footer link. Wire affiliate-source tracking in PostHog to compare referred-customer retention vs paid-ad baseline — this is the number that proves the channel.</li>
+</ol>
+
+<p>To sanity-check the payout math with your own retention data: <a href="https://www.rewardful.com/affiliate-marketing-roi-calculator">Rewardful ROI calculator</a>.</p>
+
+<div class="foot">Benchmarks: Rewardful top-250 program revenue report, 2,500+ campaign commission analysis, recruitment &amp; setup guides (rewardful.com/guides). Audit generated 2026-07-07.</div>
+
+</div></body>
+</html>
