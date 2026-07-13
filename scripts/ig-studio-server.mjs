@@ -31,6 +31,20 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = resolve(join(dirname(fileURLToPath(import.meta.url)), '..'));
 const PORT = 3036;
+
+// IG_STUDIO_DAEMONIZE=1 → respawn detached in a NEW process group and exit.
+// Needed by "IG Content Studio.app": AppleScript applets kill their child
+// process group on quit (nohup doesn't survive it); detached:true escapes.
+if (process.env.IG_STUDIO_DAEMONIZE === '1' && !process.env.IG_STUDIO_DAEMON_CHILD) {
+  const { openSync: o } = await import('node:fs');
+  const fd = o('/tmp/ig-studio-server.log', 'a');
+  spawn(process.execPath, [fileURLToPath(import.meta.url)], {
+    detached: true, stdio: ['ignore', fd, fd],
+    env: { ...process.env, IG_STUDIO_DAEMON_CHILD: '1' },
+  }).unref();
+  console.log('daemonized → /tmp/ig-studio-server.log');
+  process.exit(0);
+}
 const TEMPLATES = join(ROOT, 'out', 'instagram', 'social-templates');
 const SHOTS = join(ROOT, 'out', 'instagram', 'studio', '_shots');
 const UPLOADS = join(ROOT, 'out', 'instagram', 'studio', '_uploads');
@@ -128,6 +142,21 @@ const server = createServer(async (req, res) => {
     if (req.method === 'GET' && url.pathname === '/') {
       res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
       res.end(readFileSync(join(ROOT, 'scripts', 'ig-studio-app.html')));
+      return;
+    }
+    if (req.method === 'GET' && url.pathname === '/manifest.webmanifest') {
+      // PWA manifest → "Add to Dock" (Safari/Orion) or "Install" (Chrome)
+      const icon = (px) => '/img?p=' + encodeURIComponent(join(ROOT, 'brand', 'logo', `ig-studio-${px}.png`));
+      res.writeHead(200, { 'content-type': 'application/manifest+json' });
+      res.end(JSON.stringify({
+        name: 'IG Content Studio', short_name: 'IG Studio',
+        start_url: '/', display: 'standalone',
+        background_color: '#f2f2f2', theme_color: '#111111',
+        icons: [
+          { src: icon(192), sizes: '192x192', type: 'image/png' },
+          { src: icon(512), sizes: '512x512', type: 'image/png' },
+        ],
+      }));
       return;
     }
     if (req.method === 'GET' && url.pathname === '/img') {
