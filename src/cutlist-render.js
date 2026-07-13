@@ -749,8 +749,9 @@ function _clSplitSections(rows) {
 
 /** Create any edge bands named in an imported EDGE BANDING section that the cut
  *  list doesn't already have, so the per-side Edge cells on the parts rows can
- *  resolve against them (_edgeFromCell matches by name).
- *  @param {string[][]} rows section rows, header first */
+ *  resolve against them (_edgeFromCell matches by name). Existing bands are left
+ *  alone (matched case-insensitively), so re-importing doesn't duplicate them.
+ *  @param {string[][]} rows section rows, header first @returns {number} bands created */
 function _clImportEdgeBands(rows) {
   const col = _csvCol(rows[0], {
     name:      ['name', 'material', 'band', 'edgeband'],
@@ -764,13 +765,16 @@ function _clImportEdgeBands(rows) {
   const legacy = { name: 0, thickness: 1, width: 2, length: 3, glue: 4 };
   /** @param {string[]} r @param {string} k */
   const get = (r, k) => col ? col(r, k) : (legacy[k] !== undefined ? (r[legacy[k]] ?? '').trim() : '');
+  let n = 0;
   for (let i = start; i < rows.length; i++) {
     const name = get(rows[i], 'name');
     if (!name) continue;
     if (edgeBands.some(b => (b.name || '').toLowerCase() === name.toLowerCase())) continue;
     addEdgeBand(name, parseFloat(get(rows[i], 'thickness')) || 0, parseFloat(get(rows[i], 'width')) || 0,
       null, parseFloat(get(rows[i], 'length')) || 0, get(rows[i], 'glue') || '');
+    n++;
   }
+  return n;
 }
 
 /** Export the whole cut list as one sectioned CSV — parts, project panels and
@@ -824,21 +828,40 @@ function handleCSVImport(input) {
   // Accepts CSV plus Excel/Numbers/ODS via the shared reader (src/ui.js).
   _readTabularFile(file).then(rows => {
     if (!rows.length) return;
-    const isPieces = _csvImportTarget === 'pieces';
-    // A file exported by exportCutlistCSV carries all three tables in labelled
-    // sections — pick the one this import targets. Edge bands are created first
-    // so the parts rows' per-side Edge cells can resolve against them. A plain
-    // single-table CSV has no markers and falls through to flat parsing.
+    // A file written by exportCutlistCSV carries all three tables in labelled
+    // sections. Import ALL of them — parts, project panels and edge banding —
+    // so one Export round-trips through one Import. Edge bands go in first so
+    // the parts rows' per-side Edge cells resolve against them, and panels
+    // before parts so a part's Panel reference has something to point at.
+    // A plain single-table CSV has no markers → flat parse against the button's
+    // target (_csvImportTarget), preserving the old per-table import.
     const sec = _clSplitSections(rows);
     if (sec) {
-      if (isPieces && sec.edge.length > 1) _clImportEdgeBands(sec.edge);
-      rows = isPieces ? sec.parts : sec.panels;
-      if (rows.length < 2) {
-        _toast(`No ${isPieces ? 'parts' : 'panels'} rows in that file`, 'error');
-        return;
-      }
+      const nEdge   = sec.edge.length   > 1 ? _clImportEdgeBands(sec.edge)      : 0;
+      const nPanels = sec.panels.length > 1 ? _clImportRows(sec.panels, false)  : 0;
+      const nParts  = sec.parts.length  > 1 ? _clImportRows(sec.parts,  true)   : 0;
+      if (!nEdge && !nPanels && !nParts) { _toast('No rows found in that file', 'error'); return; }
+      renderPieces(); renderSheets(); renderEdgeBands(); _saveCutList();
+      /** @param {number} n @param {string} one @param {string} many */
+      const bit = (n, one, many) => n ? `${n} ${n === 1 ? one : many}` : '';
+      const parts = [bit(nParts,'part','parts'), bit(nPanels,'panel','panels'), bit(nEdge,'edge band','edge bands')].filter(Boolean);
+      _toast('Imported ' + parts.join(', '), 'success');
+      return;
     }
-    const col = _csvCol(rows[0], isPieces ? {
+    const n = _clImportRows(rows, _csvImportTarget === 'pieces');
+    if (_csvImportTarget === 'pieces') { renderPieces(); } else { renderSheets(); }
+    _saveCutList();
+    _toast(n ? `Imported ${n} row${n === 1 ? '' : 's'}` : 'No rows found in that file', n ? 'success' : 'error');
+  }).catch(err => _toast('Could not read file: ' + (/** @type {any} */ (err)).message, 'error'));
+}
+
+/** Import one table of cut-list rows (header row first). `isPieces` selects the
+ *  parts column spec + addPiece, otherwise the panels spec + addSheet. Returns
+ *  the number of rows added.
+ *  @param {string[][]} rows @param {boolean} isPieces @returns {number} */
+function _clImportRows(rows, isPieces) {
+  if (!rows.length) return 0;
+  const col = _csvCol(rows[0], isPieces ? {
       label:    ['label', 'name', 'part'],
       w:        ['w', 'width', 'wmm', 'win'],
       h:        ['h', 'height', 'hmm', 'hin', 'length'],
@@ -857,25 +880,28 @@ function handleCSVImport(input) {
       qty:   ['qty', 'quantity'],
       grain: ['grain'],
     });
-    // Headerless file → template column order.
-    /** @type {Record<string, number>} */
-    const legacy = { label:0, w:1, h:2, qty:3, grain:4, material:5, notes:6, edgeL1:7, edgeW2:8, edgeL3:9, edgeW4:10 };
-    const start = col ? 1 : 0;
-    /** @param {string[]} r @param {string} key */
-    const get = (r, key) => col ? col(r, key) : (legacy[key] !== undefined ? (r[legacy[key]] ?? '').trim() : '');
-    for (let i = start; i < rows.length; i++) {
-      const r = rows[i];
-      if (isPieces) {
-        addPiece(get(r,'label')||undefined, parseDim(get(r,'w')), parseDim(get(r,'h')), parseInt(get(r,'qty'))||1, get(r,'grain')||'none', get(r,'material')||undefined, get(r,'notes')||undefined);
-        const p = pieces[pieces.length - 1];
-        const edges = { L1: _edgeFromCell(get(r,'edgeL1')), W2: _edgeFromCell(get(r,'edgeW2')), L3: _edgeFromCell(get(r,'edgeL3')), W4: _edgeFromCell(get(r,'edgeW4')) };
-        if (p && (edges.L1 || edges.W2 || edges.L3 || edges.W4)) p.edges = edges;
-      } else {
-        addSheet(get(r,'label')||undefined, parseDim(get(r,'w')), parseDim(get(r,'h')), parseInt(get(r,'qty'))||1, get(r,'grain')||'none');
-      }
+  // Headerless file → template column order.
+  /** @type {Record<string, number>} */
+  const legacy = { label:0, w:1, h:2, qty:3, grain:4, material:5, notes:6, edgeL1:7, edgeW2:8, edgeL3:9, edgeW4:10 };
+  const start = col ? 1 : 0;
+  /** @param {string[]} r @param {string} key */
+  const get = (r, key) => col ? col(r, key) : (legacy[key] !== undefined ? (r[legacy[key]] ?? '').trim() : '');
+  let n = 0;
+  for (let i = start; i < rows.length; i++) {
+    const r = rows[i];
+    // Skip a blank/label-less row rather than adding an empty part or panel.
+    if (!get(r, 'label') && !get(r, 'w') && !get(r, 'h')) continue;
+    if (isPieces) {
+      addPiece(get(r,'label')||undefined, parseDim(get(r,'w')), parseDim(get(r,'h')), parseInt(get(r,'qty'))||1, get(r,'grain')||'none', get(r,'material')||undefined, get(r,'notes')||undefined);
+      const p = pieces[pieces.length - 1];
+      const edges = { L1: _edgeFromCell(get(r,'edgeL1')), W2: _edgeFromCell(get(r,'edgeW2')), L3: _edgeFromCell(get(r,'edgeL3')), W4: _edgeFromCell(get(r,'edgeW4')) };
+      if (p && (edges.L1 || edges.W2 || edges.L3 || edges.W4)) p.edges = edges;
+    } else {
+      addSheet(get(r,'label')||undefined, parseDim(get(r,'w')), parseDim(get(r,'h')), parseInt(get(r,'qty'))||1, get(r,'grain')||'none');
     }
-    if (isPieces) { renderPieces(); _saveCutList(); }
-  }).catch(err => _toast('Could not read file: ' + (/** @type {any} */ (err)).message, 'error'));
+    n++;
+  }
+  return n;
 }
 // ── Main content tabs (Cut Layout / Cabinet Library — F5 dropped middle tab) ──
 /** @param {string} view */
@@ -930,7 +956,7 @@ async function renderCLCutListLibraryView() {
     <div class="lib-filter-row">
       <input type="text" id="cl-lib-filter" class="lib-filter-input" placeholder="Filter by name..." value="${_escHtml(q)}" oninput="renderCLCutListLibraryView()">
       <button class="btn btn-outline lib-filter-btn" onclick="exportCutlistCSV()" title="Export the open cut list — parts, project panels & edge banding — as a CSV. Exports headers only when empty, so it doubles as a template.">&darr; Export</button>
-      <button class="btn btn-outline lib-filter-btn" onclick="triggerImportCSV('pieces')" title="Import parts into the open cut list from CSV">&uarr; Import</button>
+      <button class="btn btn-outline lib-filter-btn" onclick="triggerImportCSV('pieces')" title="Import into the open cut list — a file exported from here brings back parts, project panels & edge banding. CSV, Excel or Numbers.">&uarr; Import</button>
     </div>
     <div id="cl-lib-grid" style="display:flex;flex-direction:column;gap:8px">
       <div style="font-size:12px;color:var(--muted);text-align:center;padding:20px">Loading…</div>
