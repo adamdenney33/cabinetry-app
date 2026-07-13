@@ -71,3 +71,6 @@ Looms/
 # wiki-clips bucket by scripts/publish-wiki-clips.mjs; only wiki/clips.json is
 # committed)
 wiki/recordings/out/
+
+# Demo-video source clips (mp4 renders; re-copy from Remotion out/ as needed)
+demo-video/public/clips/
