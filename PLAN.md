@@ -104,7 +104,7 @@ migration cost for connected users.
   open a quote with lines, Sync ▾ → confirm a DRAFT estimate/quote appears in the
   provider with matching line totals + a "✓ Synced" chip deep-links to it.
 
-### Schedule — day/week views, tasks, drag + Google Calendar 2-way (2026-07-11) ✅ Phases 1+2 built (fns deployed) — ⬜ GC end-to-end test + push
+### Schedule — day/week views, tasks, drag + Google Calendar 2-way (2026-07-11) ✅ SHIPPED — live + end-to-end verified 2026-07-13 (⬜ GC.6 before customer rollout)
 
 **Goal.** Grow the Schedule tab from the single continuous month Gantt into a
 Google-Calendar-style surface: Day / Week / Month view switcher, standalone
@@ -197,12 +197,20 @@ sync. Minimal UI — GCal interaction cues, existing app styling.
   open, manual. Overlay renders as blue read-only blocks + all-day chips
   (Day/Week) and month chips. Placements computed via `computeSchedule`
   directly (pure fn, no render coupling).
-- 🚧 **GC.5 — verify + docs**: typecheck clean; smoke 9/9 (one transient
-  auth blip re-ran green); endpoints smoke-tested. SPEC § 13 + SCHEMA
-  written. ⬜ **End-to-end round-trip needs the user**: Connect on
-  procabinet.app (or localhost), confirm orders + a task appear in
-  Google Calendar, edit the task in GCal → syncs back, overlay shows
-  personal events. ⬜ push to `main`.
+- ✅ **GC.5 — verify + docs**: typecheck clean; smoke 9/9 (one transient
+  auth blip re-ran green); endpoints smoke-tested. **End-to-end verified
+  live 2026-07-13**: user connected on procabinet.app (after fixing a
+  redirect_uri_mismatch — the gcal-oauth URI wasn't registered on the
+  client at first), user confirms it works; server row shows
+  status=connected, repeated syncs, and a task carrying a
+  gcal_event_id (push leg proven). `google_email` label came back null
+  (calendars.get denied under the events-only scope — UI falls back to
+  "Google Calendar connected"; cosmetic). Pushed to `main` 2026-07-13.
+- ⬜ **GC.6 — before offering GCal sync to customers**: publish the
+  Google app to Production + submit `calendar.events` for verification
+  (Testing mode limits connects to listed test users; sign-in is
+  unaffected — it runs on the separate June client). Consider Pro-gating
+  the connect button (`_enforceProFeature`) as a paid-tier hook.
 
 ### Cabinet Builder "edit in place" UI rework (2026-07-03) ✅ built + verified — ⬜ push
 
