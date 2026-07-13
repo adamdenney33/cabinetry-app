@@ -319,9 +319,10 @@ function _renderSchedTimeGrid(opts) {
       if (b.kind === 'order') {
         const label = [b.e.numberLabel, b.e.client].filter(Boolean).map(_escHtml).join(' · ');
         const manual = b.e.isManual ? 'border:1px dashed rgba(255,255,255,0.55);' : '';
+        const hrs = Math.round(b.hours * 10) / 10; // segment hours are raw floats
         colInner += `<div class="sched-ord-block" style="top:${top}px;height:${height}px;left:calc(${leftPct}% + ${gap}px);width:calc(${wPct}% - ${gap * 2}px);background:${b.e.color};${manual}"
-          onclick="event.stopPropagation();_openOrderPopup(${b.e.id})" title="${label} — ${b.hours}h">
-          <span class="sob-title">${label}</span><span class="sob-time">${b.hours}h</span>
+          onclick="event.stopPropagation();_openOrderPopup(${b.e.id})" title="${label} — ${hrs}h">
+          <span class="sob-title">${label}</span><span class="sob-time">${hrs}h</span>
         </div>`;
       } else if (b.kind === 'gcal') {
         colInner += `<div class="sched-gcal-block" style="top:${top}px;height:${height}px;left:calc(${leftPct}% + ${gap}px);width:calc(${wPct}% - ${gap * 2}px)"
