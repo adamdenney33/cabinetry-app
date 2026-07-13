@@ -222,7 +222,8 @@ function renderDashboard() {
           if (iso) return new Date(parseInt(iso[1]), parseInt(iso[2]) - 1, parseInt(iso[3]));
           const d = new Date(str); return isNaN(+d) ? null : new Date(d.getFullYear(), d.getMonth(), d.getDate());
         };
-        const palette = ['#e8a838','#2563eb','#0d9488','#9333ea','#dc2626','#059669','#d97706','#6366f1','#ec4899','#14b8a6'];
+        // Keep in sync with schedule.js — no teals/mid-blues (task + Google layer colours).
+        const palette = ['#e8a838','#9333ea','#dc2626','#16a34a','#d97706','#7c3aed','#ec4899','#b45309','#f43f5e','#64748b'];
         const dayShort = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
         const today = _schedToday;
 

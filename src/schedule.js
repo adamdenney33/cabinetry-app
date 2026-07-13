@@ -102,7 +102,10 @@ function renderSchedule(opts) {
   const renderSidebar = !opts || opts.sidebar !== false;
   _restoreProdStarts(orders); // ensure prodStart dates loaded
   const today = new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
-  const palette = ['#e8a838','#2563eb','#0d9488','#9333ea','#dc2626','#059669','#d97706','#6366f1','#ec4899','#14b8a6'];
+  // Per-order bar colours. Deliberately NO teals (tasks own #0d9488) and no
+  // mid-blues (the Google Calendar overlay owns #4c8df6) so an order can never
+  // impersonate another layer. Mirrored in dashboard.js mini-gantt.
+  const palette = ['#e8a838','#9333ea','#dc2626','#16a34a','#d97706','#7c3aed','#ec4899','#b45309','#f43f5e','#64748b'];
   const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
   const dayNames = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 
