@@ -13,11 +13,11 @@ const SCHED_HOUR_PX = 48;               // 1 hour of grid height
 const SCHED_VIEWBAR_H = 44;             // viewbar height (sticky offsets)
 
 // ── View state ──
-/** @returns {'day'|'week'|'month'} */
+/** @returns {'day'|'5day'|'week'|'month'} */
 function _schedGetView() {
   try {
     const v = localStorage.getItem('pc_sched_view');
-    if (v === 'day' || v === 'week' || v === 'month') return v;
+    if (v === 'day' || v === '5day' || v === 'week' || v === 'month') return v;
   } catch (e) {}
   return 'month';
 }
@@ -51,7 +51,7 @@ function _schedNav(dir) {
     if (el) el.scrollBy({ top: dir * Math.round(el.clientHeight * 0.8), behavior: 'smooth' });
     return;
   }
-  const step = view === 'day' ? 1 : 7;
+  const step = view === 'day' ? 1 : 7; // 5-day pages by a full week too
   _schedAnchor = new Date(_schedAnchor.getFullYear(), _schedAnchor.getMonth(), _schedAnchor.getDate() + dir * step);
   if (typeof renderSchedule === 'function') renderSchedule();
 }
@@ -117,9 +117,9 @@ function _schedRangeLabel() {
   if (view === 'day') {
     return `${_SCHED_DAY_SHORT[(a.getDay() + 6) % 7]}, ${a.getDate()} ${_SCHED_MON_SHORT[a.getMonth()]} ${a.getFullYear()}`;
   }
-  if (view === 'week') {
+  if (view === 'week' || view === '5day') {
     const s = _schedWeekStart(a);
-    const e = new Date(s.getFullYear(), s.getMonth(), s.getDate() + 6);
+    const e = new Date(s.getFullYear(), s.getMonth(), s.getDate() + (view === '5day' ? 4 : 6));
     const sm = _SCHED_MON_SHORT[s.getMonth()], em = _SCHED_MON_SHORT[e.getMonth()];
     return s.getMonth() === e.getMonth()
       ? `${s.getDate()} – ${e.getDate()} ${em} ${e.getFullYear()}`
@@ -138,7 +138,7 @@ function _schedViewBarHTML() {
     <button type="button" class="sched-vb-nav" aria-label="Forward" onclick="_schedNav(1)">${_SCHED_CHEV_R}</button>
     <div class="sched-vb-label">${_schedRangeLabel()}</div>
     <div style="flex:1"></div>
-    <div class="sched-seg">${seg('day', 'Day')}${seg('week', 'Week')}${seg('month', 'Month')}</div>
+    <div class="sched-seg">${seg('day', 'Day')}${seg('5day', '5 Day')}${seg('week', 'Week')}${seg('month', 'Month')}</div>
     <button type="button" class="btn btn-primary sched-vb-add" onclick="_schedNewTaskFromBar()">+ Task</button>
   </div>`;
 }
@@ -184,13 +184,13 @@ function _schedLayoutOverlaps(blocks) {
 }
 
 /**
- * Render the Day/Week time grid.
- * @param {{ view: 'day'|'week', events: any[], computed: Map<any, any>,
+ * Render the Day / 5-Day / Week time grid.
+ * @param {{ view: 'day'|'5day'|'week', events: any[], computed: Map<any, any>,
  *           dayHours: (d: Date) => number }} opts
  * @returns {string} HTML
  */
 function _renderSchedTimeGrid(opts) {
-  const days = opts.view === 'day' ? 1 : 7;
+  const days = opts.view === 'day' ? 1 : opts.view === '5day' ? 5 : 7;
   const start = opts.view === 'day'
     ? new Date(_schedAnchor.getFullYear(), _schedAnchor.getMonth(), _schedAnchor.getDate())
     : _schedWeekStart(_schedAnchor);
@@ -211,8 +211,8 @@ function _renderSchedTimeGrid(opts) {
     }
   }
 
-  // Header row + all-day strip
-  const weekCls = days === 7 ? ' sched-grid-week' : '';
+  // Header row + all-day strip (multi-day grids scroll horizontally on phones)
+  const weekCls = days >= 5 ? ' sched-grid-week' : '';
   let head = `<div class="sched-gridhead${weekCls}" style="top:${SCHED_VIEWBAR_H}px">`;
   head += `<div class="sgh-row" style="grid-template-columns:56px repeat(${days},1fr)"><div></div>`;
   /** @type {Date[]} */

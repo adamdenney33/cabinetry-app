@@ -422,8 +422,8 @@ function renderSchedule(opts) {
   });
   } // end month build (schedView === 'month')
 
-  // SV.4 — Day/Week render through the time grid.
-  const gridHTML = (schedView === 'day' || schedView === 'week')
+  // SV.4 — Day / 5-Day / Week render through the time grid.
+  const gridHTML = (schedView === 'day' || schedView === '5day' || schedView === 'week')
     ? _renderSchedTimeGrid({ view: schedView, events: calEvents, computed, dayHours })
     : '';
 

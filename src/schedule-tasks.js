@@ -85,9 +85,10 @@ function _openTaskPopup(id, presetStart, presetAllDay) {
     <div class="popup-body">
       <div class="pf"><label class="pf-label">TITLE</label><input class="pf-input pf-input-lg" id="ptk-title" value="${t ? _escHtml(t.title) : ''}" placeholder="e.g. Delivery — Oak St install"></div>
       <div class="pf-row">
-        <div class="pf" style="flex:1.4"><label class="pf-label">DATE</label><input class="pf-input" id="ptk-date" type="date" value="${_taskDateISO(start)}"></div>
-        <div class="pf" style="flex:1${allDay ? ';display:none' : ''}" id="ptk-start-wrap"><label class="pf-label">START</label><input class="pf-input" id="ptk-start" type="time" value="${_taskTimeStr(start)}"></div>
-        <div class="pf" style="flex:1${allDay ? ';display:none' : ''}" id="ptk-end-wrap"><label class="pf-label">END</label><input class="pf-input" id="ptk-end" type="time" value="${_taskTimeStr(end)}"></div>
+        <div class="pf" style="flex:1.3"><label class="pf-label">DATE</label><input class="pf-input" id="ptk-date" type="date" value="${_taskDateISO(start)}"></div>
+        <div class="pf" style="flex:0.9${allDay ? ';display:none' : ''}" id="ptk-start-wrap"><label class="pf-label">START</label><input class="pf-input" id="ptk-start" type="time" value="${_taskTimeStr(start)}" oninput="_taskStartChanged()"></div>
+        <div class="pf" style="flex:0.7${allDay ? ';display:none' : ''}" id="ptk-hours-wrap"><label class="pf-label">HOURS</label><input class="pf-input" id="ptk-hours" type="number" min="0.25" step="0.25" value="${Math.round((+end - +start) / 36000) / 100}" oninput="_taskHoursChanged()"></div>
+        <div class="pf" style="flex:0.9${allDay ? ';display:none' : ''}" id="ptk-end-wrap"><label class="pf-label">END</label><input class="pf-input" id="ptk-end" type="time" value="${_taskTimeStr(end)}" oninput="_taskEndChanged()"></div>
       </div>
       <div class="pf" style="display:flex;align-items:center;gap:14px">
         <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer"><input type="checkbox" id="ptk-allday" ${allDay ? 'checked' : ''} onchange="_taskToggleAllDay(this.checked)"> All day</label>
@@ -105,10 +106,45 @@ function _openTaskPopup(id, presetStart, presetAllDay) {
 
 /** @param {boolean} allDay */
 function _taskToggleAllDay(allDay) {
-  const s = document.getElementById('ptk-start-wrap');
-  const e = document.getElementById('ptk-end-wrap');
-  if (s) s.style.display = allDay ? 'none' : '';
-  if (e) e.style.display = allDay ? 'none' : '';
+  for (const id of ['ptk-start-wrap', 'ptk-hours-wrap', 'ptk-end-wrap']) {
+    const el = document.getElementById(id);
+    if (el) el.style.display = allDay ? 'none' : '';
+  }
+}
+
+// ── Start / Hours / End are live-linked (GCal behaviour) ─────────────────────
+// Hours → moves End; End → recalculates Hours; Start → keeps Hours, moves End.
+/** 'HH:MM' field → minutes from midnight, or null. @param {string} id */
+function _tkMin(id) {
+  const m = _popupVal(id).match(/^(\d{1,2}):(\d{2})$/);
+  return m ? parseInt(m[1]) * 60 + parseInt(m[2]) : null;
+}
+/** Write minutes-from-midnight into a time field (clamped to the day).
+ *  @param {string} id @param {number} mins */
+function _tkSetTime(id, mins) {
+  const el = /** @type {HTMLInputElement|null} */ (document.getElementById(id));
+  if (!el) return;
+  const v = Math.max(0, Math.min(23 * 60 + 59, Math.round(mins)));
+  el.value = `${String(Math.floor(v / 60)).padStart(2, '0')}:${String(v % 60).padStart(2, '0')}`;
+}
+function _taskHoursChanged() {
+  const s = _tkMin('ptk-start');
+  const h = parseFloat(_popupVal('ptk-hours'));
+  if (s == null || !isFinite(h) || h <= 0) return;
+  _tkSetTime('ptk-end', s + h * 60);
+}
+function _taskStartChanged() {
+  const s = _tkMin('ptk-start');
+  const h = parseFloat(_popupVal('ptk-hours'));
+  if (s == null) return;
+  if (isFinite(h) && h > 0) _tkSetTime('ptk-end', s + h * 60);
+  else _taskEndChanged();
+}
+function _taskEndChanged() {
+  const s = _tkMin('ptk-start'), e = _tkMin('ptk-end');
+  const el = /** @type {HTMLInputElement|null} */ (document.getElementById('ptk-hours'));
+  if (s == null || e == null || !el) return;
+  if (e > s) el.value = String(Math.round((e - s) / 60 * 100) / 100);
 }
 
 /** @param {number} id  0 = create */
