@@ -121,10 +121,13 @@ async function _saveTaskPopup(id) {
   const allDayEl = /** @type {HTMLInputElement|null} */ (document.getElementById('ptk-allday'));
   const doneEl = /** @type {HTMLInputElement|null} */ (document.getElementById('ptk-done'));
   const allDay = !!(allDayEl && allDayEl.checked);
-  let start = _taskCombine(dateISO, allDay ? '00:00' : _popupVal('ptk-start') || '08:00');
+  // All-day tasks anchor at local NOON — midnight-anchored timestamps change
+  // calendar date once converted to UTC (BST pushed them to Google a day
+  // early, and pulled GCal all-day events bled into the next local day).
+  let start = _taskCombine(dateISO, allDay ? '12:00' : _popupVal('ptk-start') || '08:00');
   if (!start) { _toast('Invalid date', 'error'); return; }
   let end = allDay
-    ? _taskCombine(dateISO, '23:59')
+    ? _taskCombine(dateISO, '12:30')
     : _taskCombine(dateISO, _popupVal('ptk-end') || '');
   // Guard: end must follow start — silently default to +1h instead of nagging.
   if (!end || +end <= +start) end = new Date(+start + 3600000);

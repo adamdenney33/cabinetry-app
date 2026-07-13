@@ -49,13 +49,22 @@ type TaskRow = {
 
 // ── small helpers ────────────────────────────────────────────────────────────
 const iso = (d: Date) => d.toISOString();
-const dateOnly = (isoStr: string) => isoStr.slice(0, 10);
 function addDays(dateISO: string, n: number): string {
   const d = new Date(`${dateISO}T00:00:00Z`);
   d.setUTCDate(d.getUTCDate() + n);
   return d.toISOString().slice(0, 10);
 }
 const ts = (s: string | null | undefined) => (s ? Date.parse(s) || 0 : 0);
+
+// All-day timestamps are anchored at NOON so the calendar date survives
+// timezone conversion (naive UTC-midnight anchoring bled events into the
+// neighbouring local day — e.g. BST rendered a 1-day GCal event on two days,
+// and an app-created all-day task stored at local midnight sliced to the
+// previous UTC date when pushed). `allDayDate` extracts the intended date
+// from EITHER convention (legacy local-midnight rows or noon rows) by
+// sampling 6h into the stored instant; correct for offsets within ±11h.
+const allDayDate = (isoStr: string) =>
+  new Date(ts(isoStr) + 6 * 3600_000).toISOString().slice(0, 10);
 
 /** Task → GCal event body. All-day tasks map to date-only events
  *  (GCal's all-day end date is EXCLUSIVE). */
@@ -66,8 +75,8 @@ function taskToEventBody(t: TaskRow) {
     extendedProperties: { private: { pc_task_id: String(t.id) } },
   };
   if (t.all_day) {
-    const s = dateOnly(t.start_at);
-    const e = addDays(dateOnly(t.end_at), 1);
+    const s = allDayDate(t.start_at);
+    const e = addDays(allDayDate(t.end_at), 1);
     return { ...base, start: { date: s }, end: { date: e } };
   }
   return {
@@ -85,8 +94,8 @@ function eventTimesToTask(ev: GEvent): { start_at: string; end_at: string; all_d
     const endIncl = addDays(ev.end?.date ?? ev.start.date, -1);
     return {
       all_day: true,
-      start_at: `${ev.start.date}T00:00:00.000Z`,
-      end_at: `${endIncl}T23:59:00.000Z`,
+      start_at: `${ev.start.date}T12:00:00.000Z`,
+      end_at: `${endIncl}T12:30:00.000Z`,
     };
   }
   const s = ev.start?.dateTime ?? new Date().toISOString();
@@ -205,11 +214,13 @@ Deno.serve(async (req) => {
         arr.push(ev);
         remoteOrderEvents.set(priv.pc_order_id, arr);
       } else if (overlay.length < OVERLAY_CAP) {
+        // All-day bounds at noon → the event stays on its own calendar
+        // date(s) after local-time conversion (see allDayDate note).
         overlay.push({
           id: ev.id,
           title: ev.summary ?? '(busy)',
-          start: ev.start?.dateTime ?? (ev.start?.date ? `${ev.start.date}T00:00:00.000Z` : ''),
-          end: ev.end?.dateTime ?? (ev.end?.date ? `${addDays(ev.end.date, -1)}T23:59:00.000Z` : ''),
+          start: ev.start?.dateTime ?? (ev.start?.date ? `${ev.start.date}T12:00:00.000Z` : ''),
+          end: ev.end?.dateTime ?? (ev.end?.date ? `${addDays(ev.end.date, -1)}T13:00:00.000Z` : ''),
           allDay: !!ev.start?.date,
         });
       }
