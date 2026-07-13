@@ -583,21 +583,24 @@ function _gisInit() {
   const gsi = /** @type {any} */ (window).google?.accounts?.id;
   const host = document.getElementById('auth-gsi-host');
   if (!gsi || !host) return;
+  // Unhide first so the host has a measurable width — the button is sized to
+  // the card's content width (GIS accepts 120–400px; a fixed 320 overflowed).
+  host.style.display = '';
+  const legacy = document.getElementById('auth-google-btn');
+  if (legacy) legacy.style.display = 'none';
   if (!host.dataset.rendered) {
     gsi.initialize({
       client_id: GOOGLE_SIGNIN_CLIENT_ID,
       callback: _gisHandleCredential,
       use_fedcm_for_prompt: true,
     });
+    const w = Math.max(200, Math.min(400, Math.round(host.clientWidth) || 280));
     gsi.renderButton(host, {
       theme: 'outline', size: 'large', text: 'continue_with',
-      width: 320, logo_alignment: 'left',
+      width: w, logo_alignment: 'left',
     });
     host.dataset.rendered = '1';
   }
-  host.style.display = '';
-  const legacy = document.getElementById('auth-google-btn');
-  if (legacy) legacy.style.display = 'none';
 }
 
 /** GIS credential callback → Supabase session. @param {{ credential?: string }} resp */
