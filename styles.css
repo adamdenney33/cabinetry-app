@@ -861,6 +861,9 @@ header {
 }
 .sched-gcal-block .sgc-title { font-size: 10px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sched-gcal-block .sgc-time { font-size: 9px; opacity: 0.75; }
+/* Short (≲30 min) blocks: title + time on one line instead of stacked. */
+.sched-gcal-block.slim, .sched-task-block.slim { flex-direction: row; align-items: center; gap: 5px; padding-top: 2px; padding-bottom: 2px; }
+.sched-gcal-block.slim .sgc-time, .sched-task-block.slim .stb-time { white-space: nowrap; flex-shrink: 0; }
 .sched-ad-chip.gcal { background: rgba(76,141,246,0.16); border: 1px solid rgba(76,141,246,0.55); color: var(--text); cursor: default; }
 .sched-task-chip.gcal { background: rgba(76,141,246,0.14); border-left-color: #4c8df6; cursor: default; }
 .gcal-status-row { display: flex; align-items: center; gap: 6px; padding: 2px 0; min-width: 0; }

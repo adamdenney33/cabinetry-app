@@ -325,14 +325,17 @@ function _renderSchedTimeGrid(opts) {
           <span class="sob-title">${label}</span><span class="sob-time">${hrs}h</span>
         </div>`;
       } else if (b.kind === 'gcal') {
-        colInner += `<div class="sched-gcal-block" style="top:${top}px;height:${height}px;left:calc(${leftPct}% + ${gap}px);width:calc(${wPct}% - ${gap * 2}px)"
-          onclick="event.stopPropagation()" title="${_escHtml(b.g.title)} (Google Calendar)">
-          <span class="sgc-title">${_escHtml(b.g.title)}</span>
+        const gTitle = (b.g.title || '').trim() || '(busy)';
+        const slim = height < 34 ? ' slim' : ''; // short events: one "title · time" line
+        colInner += `<div class="sched-gcal-block${slim}" style="top:${top}px;height:${height}px;left:calc(${leftPct}% + ${gap}px);width:calc(${wPct}% - ${gap * 2}px)"
+          onclick="event.stopPropagation()" title="${_escHtml(gTitle)} · ${_taskTimeStr(new Date(b.g.start))} – ${_taskTimeStr(new Date(b.g.end))} (Google Calendar)">
+          <span class="sgc-title">${_escHtml(gTitle)}</span>
           <span class="sgc-time">${_taskTimeStr(new Date(b.g.start))} – ${_taskTimeStr(new Date(b.g.end))}</span>
         </div>`;
       } else {
         const t = b.t;
-        colInner += `<div class="sched-task-block${t.done ? ' done' : ''}" data-task-id="${t.id}" data-date="${iso}"
+        const slim = height < 34 ? ' slim' : '';
+        colInner += `<div class="sched-task-block${t.done ? ' done' : ''}${slim}" data-task-id="${t.id}" data-date="${iso}"
           style="top:${top}px;height:${height}px;left:calc(${leftPct}% + ${gap}px);width:calc(${wPct}% - ${gap * 2}px)"
           onpointerdown="_taskPointerDown(event,${t.id},'move')">
           <span class="stb-title">${_escHtml(t.title)}</span>
