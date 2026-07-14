@@ -27,6 +27,8 @@ declare global {
     XLSX?: any;
     /** Lazy SheetJS loader (src/main.js): dynamic-imports xlsx on first use, then resolves with (and sets) window.XLSX. */
     _ensureXLSX: () => Promise<any>;
+    /** Lazy pdf.js loader (src/main.js): dynamic-imports pdfjs-dist (worker configured) on first use. Powers the main-window PDF preview's render-to-canvas (doc-preview.js). */
+    _ensurePdfJs: () => Promise<any>;
     /** Early boot fetch (src/main.js): in-flight render-gating queries keyed by
      *  table name, started before the classic scripts finish loading, plus the
      *  `userId` they were issued for. Slots are consumed (nulled) at most once

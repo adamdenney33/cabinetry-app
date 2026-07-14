@@ -95,9 +95,9 @@ function _dpRender(kind) {
       <div class="ll-preview-bar"><span class="ll-preview-label">PDF preview · updates as you edit</span>
         ${docPicker}
         <button class="btn btn-outline ll-preview-open" onclick="${dl}">Download</button></div>
-      <div class="ll-preview-stage dp-stage">
+      <div class="ll-preview-stage dp-stage" id="dp-stage-${kind}">
         <div class="dp-loading" id="dp-loading-${kind}">Building preview…</div>
-        <iframe class="ll-preview-frame dp-frame" id="dp-frame-${kind}" title="PDF preview" style="visibility:hidden"></iframe>
+        <div class="dp-pages" id="dp-pages-${kind}"></div>
       </div>
     </div>
   </div>`;
@@ -116,12 +116,12 @@ function _dpRefresh(kind) {
 
 /** @param {'quote'|'order'} kind */
 async function _dpBuild(kind) {
-  const frame = /** @type {HTMLIFrameElement|null} */ (document.getElementById(`dp-frame-${kind}`));
-  if (!frame) return;
+  const pagesEl = document.getElementById(`dp-pages-${kind}`);
+  if (!pagesEl) return;
   const rec = _dpRecord(kind);
   if (!rec) return;
   const gen = ++_dpGen[kind];
-  /** @type {string|void} */ let url;
+  /** @type {ArrayBuffer|void} */ let buf;
   try {
     if (kind === 'quote') {
       // The editor's in-memory rows are the freshest truth (autosave may still
@@ -133,9 +133,9 @@ async function _dpBuild(kind) {
         rows = data || [];
       }
       if (gen !== _dpGen[kind]) return;
-      url = await _buildQuotePDF(rec, rows, { output: 'bloburl', silent: true });
+      buf = /** @type {any} */ (await _buildQuotePDF(rec, rows, { output: 'arraybuffer', silent: true }));
     } else if (_dpOrderDocType === 'work_order') {
-      url = await _buildWorkOrderPDF(rec, { output: 'bloburl', silent: true });
+      buf = /** @type {any} */ (await _buildWorkOrderPDF(rec, { output: 'arraybuffer', silent: true }));
     } else {
       let rows = (_opState.orderId === rec.id && Array.isArray(_opState.lines)) ? _opState.lines
         : (Array.isArray(rec._lines) ? rec._lines : null);
@@ -144,20 +144,77 @@ async function _dpBuild(kind) {
         rows = data || [];
       }
       if (gen !== _dpGen[kind]) return;
-      url = await _buildOrderDocPDF(rec, rows, /** @type {any} */ (_dpOrderDocType), undefined, { output: 'bloburl', silent: true });
+      buf = /** @type {any} */ (await _buildOrderDocPDF(rec, rows, /** @type {any} */ (_dpOrderDocType), undefined, { output: 'arraybuffer', silent: true }));
     }
   } catch (e) {
     console.warn('[pdf preview]', /** @type {any} */ (e).message || e);
     return;
   }
-  if (gen !== _dpGen[kind] || !url) return;
-  if (_dpUrl[kind]) { try { URL.revokeObjectURL(/** @type {string} */ (_dpUrl[kind])); } catch (e) {} }
-  _dpUrl[kind] = url;
-  // Hide Chrome's PDF chrome where supported; harmless elsewhere.
-  frame.src = url + '#toolbar=0&navpanes=0&view=FitH';
-  frame.style.visibility = '';
+  if (gen !== _dpGen[kind] || !buf) return;
+  // Snapshot bytes BEFORE pdf.js (getDocument transfers/detaches the buffer)
+  // so the iframe fallback still has something to show.
+  const blob = new Blob([buf], { type: 'application/pdf' });
+  try {
+    await _dpRenderPages(kind, gen, buf);
+  } catch (e) {
+    console.warn('[pdf preview] pdf.js render failed — iframe fallback', /** @type {any} */ (e).message || e);
+    if (gen !== _dpGen[kind]) return;
+    _dpIframeFallback(kind, blob);
+  }
+  if (gen !== _dpGen[kind]) return;
   const loading = document.getElementById(`dp-loading-${kind}`);
   if (loading) loading.style.display = 'none';
+}
+
+/** Render every page of the PDF onto canvases inside #dp-pages-<kind> — our
+ *  own backdrop (var(--bg)) shows between/around pages, unlike Chrome's
+ *  unstylable grey iframe viewer. @param {'quote'|'order'} kind
+ *  @param {number} gen @param {ArrayBuffer} buf */
+async function _dpRenderPages(kind, gen, buf) {
+  const pdfjs = await /** @type {any} */ (window)._ensurePdfJs();
+  if (gen !== _dpGen[kind]) return;
+  const doc = await pdfjs.getDocument({ data: buf }).promise;
+  if (gen !== _dpGen[kind]) { doc.destroy(); return; }
+  const stage = document.getElementById(`dp-stage-${kind}`);
+  const pagesEl = document.getElementById(`dp-pages-${kind}`);
+  if (!stage || !pagesEl) { doc.destroy(); return; }
+  const scrollTop = stage.scrollTop; // keep the reader's place across refreshes
+  const pageW = Math.min(Math.max(stage.clientWidth - 48, 320), 820);
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const frag = document.createDocumentFragment();
+  for (let n = 1; n <= doc.numPages; n++) {
+    const page = await doc.getPage(n);
+    if (gen !== _dpGen[kind]) { doc.destroy(); return; }
+    const vp1 = page.getViewport({ scale: 1 });
+    const scale = pageW / vp1.width;
+    const vp = page.getViewport({ scale: scale * dpr });
+    const canvas = document.createElement('canvas');
+    canvas.className = 'dp-page';
+    canvas.width = Math.floor(vp.width);
+    canvas.height = Math.floor(vp.height);
+    // Width only — CSS height:auto + max-width:100% keep the aspect ratio even
+    // when a narrow viewport squeezes the page below pageW.
+    canvas.style.width = pageW + 'px';
+    await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
+    if (gen !== _dpGen[kind]) { doc.destroy(); return; }
+    frag.appendChild(canvas);
+  }
+  pagesEl.replaceChildren(frag);
+  stage.scrollTop = scrollTop;
+  doc.destroy();
+}
+
+/** pdf.js unavailable (offline first hit / import failure): show the browser's
+ *  built-in viewer instead. Grey backdrop, but a working preview beats none.
+ *  @param {'quote'|'order'} kind @param {Blob} blob */
+function _dpIframeFallback(kind, blob) {
+  const pagesEl = document.getElementById(`dp-pages-${kind}`);
+  if (!pagesEl) return;
+  const url = URL.createObjectURL(blob);
+  if (_dpUrl[kind]) { try { URL.revokeObjectURL(/** @type {string} */ (_dpUrl[kind])); } catch (e) {} }
+  _dpUrl[kind] = url;
+  pagesEl.innerHTML = `<iframe class="ll-preview-frame dp-frame" title="PDF preview" src="${url}#toolbar=0&navpanes=0&view=FitH"></iframe>`;
+  pagesEl.classList.add('dp-pages-iframe');
 }
 
 Object.assign(window, { _dpTab, _dpReset, _dpActive, _dpTabBar, _dpSwitch, _dpSetDocType, _dpRender, _dpRefresh });

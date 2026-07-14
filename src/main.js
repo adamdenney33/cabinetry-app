@@ -213,6 +213,26 @@ _afterLoad(() => {
   setTimeout(() => { window._ensureJsPDF().catch(() => {}); }, 3000);
 });
 
+// ── pdf.js (lazy) ──
+// The main-window PDF preview (doc-preview.js) renders pages onto canvases so
+// the backdrop matches the app (Chrome's iframe PDF viewer forces its own grey
+// and can't be styled). Loaded on first preview only; doc-preview falls back
+// to the iframe viewer when this fails.
+/** @type {Promise<any> | null} */
+let _pdfjsLoad = null;
+window._ensurePdfJs = function _ensurePdfJs() {
+  if (!_pdfjsLoad) {
+    _pdfjsLoad = import('pdfjs-dist')
+      .then((m) => {
+        m.GlobalWorkerOptions.workerSrc =
+          new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).toString();
+        return m;
+      })
+      .catch((e) => { _pdfjsLoad = null; throw e; }); // failed fetch → retry on next call
+  }
+  return _pdfjsLoad;
+};
+
 // ── SheetJS / xlsx (lazy) ──
 // Spreadsheet import (.xlsx/.xls/.numbers/.ods) and the multi-tab cut-list
 // export both use SheetJS. It's ~900 KB and never on the boot path, so it's

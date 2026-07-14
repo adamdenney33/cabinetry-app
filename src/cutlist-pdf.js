@@ -490,12 +490,13 @@ function _drawDocAddressee(pdf, o) {
 /**
  * Deliver a finished jsPDF doc: default = force-download via a temporary
  * anchor (the historical behaviour of every builder); opts.output='bloburl'
- * = return an object URL instead (used by the main-window PDF preview
- * sub-tab, which loads it into an iframe and revokes it itself).
- * @param {any} pdf @param {{output?: 'bloburl', silent?: boolean}} [opts]
- * @returns {string|void}
+ * = return an object URL instead; opts.output='arraybuffer' = return the raw
+ * bytes (the main-window PDF preview feeds these to pdf.js canvases).
+ * @param {any} pdf @param {{output?: 'bloburl'|'arraybuffer', silent?: boolean}} [opts]
+ * @returns {string|ArrayBuffer|void}
  */
 function _pdfDeliver(pdf, opts) {
+  if (opts && opts.output === 'arraybuffer') return /** @type {ArrayBuffer} */ (pdf.output('arraybuffer'));
   if (opts && opts.output === 'bloburl') return /** @type {string} */ (pdf.output('bloburl'));
   const blob = pdf.output('blob');
   const url = URL.createObjectURL(blob);
@@ -510,7 +511,7 @@ function _pdfDeliver(pdf, opts) {
  * @param {any[]} [lineRows] quote_lines rows; when omitted, uses cached totals
  *                           (so legacy callers like cabinet.js's preview path
  *                           keep working without an extra fetch).
- * @param {{output?: 'bloburl', silent?: boolean}} [opts] silent skips analytics
+ * @param {{output?: 'bloburl'|'arraybuffer', silent?: boolean}} [opts] silent skips analytics
  *                           (previews shouldn't count as pdf_created).
  */
 async function _buildQuotePDF(q, lineRows, opts) {
@@ -784,7 +785,7 @@ async function _buildStockPDF() {
   setTimeout(() => URL.revokeObjectURL(url), 60000);
 }
 
-/** @param {any} o @param {{output?: 'bloburl', silent?: boolean}} [opts] */
+/** @param {any} o @param {{output?: 'bloburl'|'arraybuffer', silent?: boolean}} [opts] */
 async function _buildWorkOrderPDF(o, opts) {
   if (!window.jspdf) {
     try { await window._ensureJsPDF(); } catch (e) {}
@@ -887,7 +888,7 @@ async function _buildWorkOrderPDF(o, opts) {
  * @param {any[]} lines order_lines rows (may be empty for legacy orders)
  * @param {'order_confirmation'|'proforma'|'invoice'} type
  * @param {Record<number, string[]>} [photos] per-line photo dataURLs (Phase 2; flag-gated)
- * @param {{output?: 'bloburl', silent?: boolean}} [opts]
+ * @param {{output?: 'bloburl'|'arraybuffer', silent?: boolean}} [opts]
  */
 async function _buildOrderDocPDF(o, lines, type, photos, opts) {
   if (!window.jspdf) {
