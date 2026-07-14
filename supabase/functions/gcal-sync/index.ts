@@ -240,8 +240,8 @@ Deno.serve(async (req) => {
     }
     // Extra selected calendars → read-only overlay (per-calendar failures are
     // non-fatal: a renamed/unshared calendar just drops out until re-picked).
-    for (const sel of selection) {
-      if (!sel || !sel.id || sel.id === 'primary') continue;
+    await Promise.all(selection.map(async (sel) => {
+      if (!sel || !sel.id || sel.id === 'primary') return;
       try {
         for (const ev of await listWindow(accessToken, timeMin, timeMax, sel.id)) {
           if (ev.status === 'cancelled') continue;
@@ -251,7 +251,7 @@ Deno.serve(async (req) => {
       } catch (e) {
         console.warn('[gcal-sync] overlay calendar failed:', sel.id, (e as Error).message);
       }
-    }
+    }));
 
     // 3. Local tasks overlapping the window.
     const { data: taskRows, error: tErr } = await admin.from('schedule_tasks')
@@ -262,11 +262,13 @@ Deno.serve(async (req) => {
     let pushed = 0, pulled = 0, deletedLocal = 0, deletedRemote = 0;
     const syncStamp = new Date().toISOString();
 
-    // 4. Tasks — two-way reconcile.
-    const seenTaskIds = new Set<string>();
-    for (const t of tasks) {
+    // 4. Tasks — two-way reconcile. Tasks are independent, so reconcile them
+    // concurrently (was a sequential per-task chain of Google round-trips — the
+    // dominant sync cost). The counters below are safe to ++ across interleaved
+    // awaits: an edge function runs single-threaded, so no update is lost.
+    const seenTaskIds = new Set<string>(tasks.map((t) => String(t.id)));
+    await Promise.all(tasks.map(async (t) => {
       const key = String(t.id);
-      seenTaskIds.add(key);
       let ev = remoteTaskEvents.get(key) ?? null;
 
       // Task believes it has an event that the window listing didn't return:
@@ -279,16 +281,16 @@ Deno.serve(async (req) => {
           if (got.status === 'cancelled') {
             await admin.from('schedule_tasks').delete().eq('id', t.id);
             deletedLocal++;
-            continue;
+            return;
           }
           ev = got;
         } else if (res.status === 404 || res.status === 410) {
           await admin.from('schedule_tasks').delete().eq('id', t.id);
           deletedLocal++;
-          continue;
+          return;
         }
         // other errors: skip this task this round
-        if (!ev) continue;
+        if (!ev) return;
       }
 
       if (!ev) {
@@ -303,7 +305,7 @@ Deno.serve(async (req) => {
           }).eq('id', t.id);
           pushed++;
         }
-        continue;
+        return;
       }
 
       // Adopt the event id if the local row lost it (re-connect etc.).
@@ -337,24 +339,28 @@ Deno.serve(async (req) => {
         }).eq('id', t.id);
         pulled++;
       }
-    }
+    }));
 
     // Tagged remote events with no local row → the task was deleted in-app.
-    for (const [key, ev] of remoteTaskEvents) {
-      if (seenTaskIds.has(key)) continue;
+    await Promise.all(Array.from(remoteTaskEvents).map(async ([key, ev]) => {
+      if (seenTaskIds.has(key)) return;
       const res = await gfetch(accessToken, `${CAL}/${encodeURIComponent(ev.id)}`, { method: 'DELETE' });
       if (res.ok || res.status === 404 || res.status === 410) deletedRemote++;
-    }
+    }));
 
     // 5. Orders — push-only mirror of the client's computed placements.
     if (Array.isArray(payload.orders)) {
+      // Date-only window bounds. An order event outside the listed window can't
+      // be seen — so we must not blind-create one for it (see the guard below).
+      const winMinDate = timeMin.slice(0, 10);
+      const winMaxDate = timeMax.slice(0, 10);
       const wanted = new Map<string, { id: number; label: string; startISO: string; endISO: string }>();
       for (const o of payload.orders) {
         if (o && o.id != null && /^\d{4}-\d{2}-\d{2}$/.test(o.startISO) && /^\d{4}-\d{2}-\d{2}$/.test(o.endISO)) {
           wanted.set(String(o.id), o);
         }
       }
-      for (const [key, o] of wanted) {
+      await Promise.all(Array.from(wanted).map(async ([key, o]) => {
         const body = {
           summary: o.label || `Order ${key}`,
           start: { date: o.startISO },
@@ -364,6 +370,12 @@ Deno.serve(async (req) => {
         };
         const existing = remoteOrderEvents.get(key) ?? [];
         if (existing.length === 0) {
+          // Only create when the placement overlaps the listed window. Beyond it
+          // the next sync can't see the event we just made, so it would be
+          // recreated every run — silently spawning duplicate events. It gets
+          // created once the order moves inside the window.
+          const overlapsWindow = o.startISO <= winMaxDate && o.endISO >= winMinDate;
+          if (!overlapsWindow) return;
           const res = await gfetch(accessToken, CAL, { method: 'POST', body: JSON.stringify(body) });
           if (res.ok) pushed++;
         } else {
@@ -380,15 +392,15 @@ Deno.serve(async (req) => {
             await gfetch(accessToken, `${CAL}/${encodeURIComponent(dup.id)}`, { method: 'DELETE' });
           }
         }
-      }
+      }));
       // Order events whose order left the schedule (completed/deleted) → delete.
-      for (const [key, evs] of remoteOrderEvents) {
-        if (wanted.has(key)) continue;
+      await Promise.all(Array.from(remoteOrderEvents).map(async ([key, evs]) => {
+        if (wanted.has(key)) return;
         for (const ev of evs) {
           const res = await gfetch(accessToken, `${CAL}/${encodeURIComponent(ev.id)}`, { method: 'DELETE' });
           if (res.ok || res.status === 404 || res.status === 410) deletedRemote++;
         }
-      }
+      }));
     }
 
     await admin.from('gcal_connections').update({
