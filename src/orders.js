@@ -132,6 +132,10 @@ function renderOrdersMain() {
   // renderQuoteMain for why background refreshes must not repaint cards here.
   if (typeof _llTab !== 'undefined' && _llTab.order === 'live'
       && typeof _opState !== 'undefined' && _opState && _opState.orderId != null) return;
+  // PDF-preview sub-tab (see renderQuoteMain) — default main-pane view while
+  // an order is open; refreshes in place on autosave re-entry.
+  const _dpOn = typeof _dpActive === 'function' && _dpActive('order');
+  if (_dpOn && _dpTab.order === 'pdf') { _dpRender('order'); return; }
   /** @param {number} v */
   const fmt = v => cur + v.toLocaleString('en-US', {minimumFractionDigits:0, maximumFractionDigits:0});
   // Drill-down: when the sidebar editor has a client picked, scope this list
@@ -259,7 +263,7 @@ function renderOrdersMain() {
   const header = drillClient
     ? _renderProjectHeader('orders', {
         name: drillClient.name,
-        exitFn: '_oChangeClient',
+        exitFn: '_oBack',
         iconSvg: _CH_ICON_ORDER.replace('ch-icon', 'ph-icon'),
         clientName: undefined,
         addOnclick: '_oNewOrder()',
@@ -269,6 +273,7 @@ function renderOrdersMain() {
   const drillEmpty = `<div class="empty-state" style="padding:40px 0"><p style="color:var(--muted)">No orders for this client yet.</p></div>`;
 
   el.innerHTML = `<div style="max-width:800px;margin:0 auto">
+    ${_dpOn ? _dpTabBar('order') : ''}
     ${header}
     ${scopedOrders.length === 0 && !drillClient ? emptyState : filterTabs + `<div class="orders-list">${filtered.length === 0 && drillClient ? drillEmpty : filtered.map(orderCard).join('')}</div>`}
   </div>`;
@@ -556,7 +561,7 @@ function renderOrderEditor() {
   // which is hidden on the Live link tab). Mirrors the quote editor.
   const _projHeader = `<div class="project-header">
       <div class="ph-row1">
-        <button class="ph-back" onclick="_oChangeClient()" title="Back to orders" aria-label="Back">
+        <button class="ph-back" onclick="_oBack()" title="Back to this client’s orders" aria-label="Back">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
         </button>
         <svg class="ph-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/></svg>
@@ -1053,6 +1058,32 @@ function _oChangeClient() {
 }
 /** @type {any} */ (window)._oChangeClient = _oChangeClient;
 
+/** Stage-1 back: close the open order but STAY on this client — the sidebar
+ *  drops to the pick-an-order gate and the main pane shows the client's cards. */
+function _oCloseOrder() {
+  if (_oAutoSaveTimer) { clearTimeout(_oAutoSaveTimer); _oAutoSaveTimer = null; }
+  const clientId = _opState.clientId;
+  _opState = { orderId: null, lines: [], dirty: false, clientId, startingNew: false };
+  if (typeof /** @type {any} */ (window)._pcSaveOpenOrderId === 'function') {
+    /** @type {any} */ (window)._pcSaveOpenOrderId(null);
+  }
+  renderOrderEditor();
+  renderOrdersMain();
+}
+
+/** Two-stage back button: order open → close it (client-scoped list stays);
+ *  no order open → leave the client (all-clients list + pick-client gate). */
+function _oBack() {
+  if (_opState.orderId != null && _opState.clientId != null) {
+    if (_opState.dirty) { _confirm('Discard unsaved changes?', () => { _opState.dirty = false; _oCloseOrder(); }); return; }
+    _oCloseOrder();
+    return;
+  }
+  _oChangeClient();
+}
+/** @type {any} */ (window)._oCloseOrder = _oCloseOrder;
+/** @type {any} */ (window)._oBack = _oBack;
+
 /** @param {number} id */
 async function loadOrderIntoSidebar(id) {
   const o = orders.find(ox => ox.id === id);
@@ -1075,6 +1106,7 @@ async function loadOrderIntoSidebar(id) {
     /** @type {any} */ (window)._pcSaveOpenOrderId(id);
   }
   if (typeof _llReset === 'function') _llReset('order');
+  if (typeof _dpReset === 'function') _dpReset('order');
   if (window._mvShowEditor) window._mvShowEditor();
   renderOrderEditor();
   renderOrdersMain();

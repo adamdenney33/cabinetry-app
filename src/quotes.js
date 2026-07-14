@@ -506,6 +506,12 @@ function renderQuoteMain() {
   // clobber it with the cards grid; _llSwitch repaints the cards on tab exit.
   if (typeof _llTab !== 'undefined' && _llTab.quote === 'live'
       && typeof _qpState !== 'undefined' && _qpState && _qpState.quoteId != null) return;
+  // PDF-preview sub-tab: while a quote is open (and Live link isn't active)
+  // the main pane defaults to a live PDF preview; the cards list moves to the
+  // second sub-tab. _dpRender refreshes in place when the shell already exists
+  // (autosave completion re-enters here), so no flash on save.
+  const _dpOn = typeof _dpActive === 'function' && _dpActive('quote');
+  if (_dpOn && _dpTab.quote === 'pdf') { _dpRender('quote'); return; }
   /** @param {number} v */
   const fmt = v => cur + v.toLocaleString('en-US', {minimumFractionDigits:0, maximumFractionDigits:0});
   // Drill-down: when the sidebar editor has a client picked, scope this list
@@ -641,7 +647,7 @@ function renderQuoteMain() {
   const header = drillClient
     ? _renderProjectHeader('quotes', {
         name: drillClient.name,
-        exitFn: '_qChangeClient',
+        exitFn: '_qBack',
         iconSvg: _CH_ICON_QUOTE.replace('ch-icon', 'ph-icon'),
         addOnclick: '_qNewQuote()',
       })
@@ -652,6 +658,7 @@ function renderQuoteMain() {
     : '<div class="empty-state" style="padding:40px 0"><p style="color:var(--muted)">No quotes match this filter.</p></div>';
 
   el.innerHTML = `<div style="max-width:800px;margin:0 auto">
+    ${_dpOn ? _dpTabBar('quote') : ''}
     ${header}
     ${customerQuotes.length === 0 && !drillClient ? emptyState : filterBar + `<div class="quote-list">${filteredQ.map(qCard).join('')}${filteredQ.length === 0 ? noMatchMsg : ''}</div>`}
   </div>`;

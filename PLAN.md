@@ -24,6 +24,42 @@ Companion docs: `SPEC.md` (refactor history), `SCHEMA.md` (DB schema),
 
 ## Active Work
 
+### Main-window PDF preview sub-tab + two-stage back (2026-07-14) ✅ Built + typechecked — ⬜ browser-verify
+
+**Goal (Adam).** (1) With a quote/order open in the sidebar, the main window
+gets sub-tabs: **PDF preview** (default — live PDF that updates with the
+autosave) and the existing cards view. (2) Back buttons become two-stage:
+back from an open quote/order → that client's card list (record closed,
+pick-a-quote/order gate in the sidebar); back again → all clients + cards.
+
+- ✅ **`src/cutlist-pdf.js`** — new `_pdfDeliver(pdf, opts)` tail shared by
+  `_buildQuotePDF` / `_buildOrderDocPDF` / `_buildWorkOrderPDF`: default is the
+  historical download anchor; `opts.output='bloburl'` returns an object URL
+  instead. `opts.silent` skips the `pdf_created` analytics event (previews
+  must not pollute it). All builders gain the opts param (back-compatible).
+- ✅ **New `src/doc-preview.js`** (+ `<script defer>` tag): `_dpTab`
+  (`'pdf'|'cards'` per kind, reset to `'pdf'` on record open via `_dpReset`
+  in `loadQuoteIntoSidebar`/`loadOrderIntoSidebar`), `.ll-tabs`-styled main-pane
+  sub-tab bar, `_dpRender` preview shell (Download button; order **doc-type
+  picker** — confirmation/proforma/invoice/work order, persisted in
+  `pc_dp_doctype`), `_dpRefresh` 250 ms-debounced + generation-counter-guarded
+  rebuild that swaps the iframe src in place (no flash), old blob URLs revoked.
+  Lines sourced from `_qpState/_opState` (freshest in-memory truth).
+- ✅ **Integration** — `renderQuoteMain`/`renderOrdersMain` branch after the
+  Live-link guard: preview tab active → `_dpRender` + return (autosave's
+  existing render call thus becomes the live refresh — no new save hooks);
+  cards tab → bar prepended above the existing list. Live link still wins.
+- ✅ **Two-stage back** — new `_qCloseQuote`/`_qBack` (quote-editor.js) and
+  `_oCloseOrder`/`_oBack` (orders.js): record open → close it, KEEP
+  `clientId` (client-scoped list + sidebar sub-gate); else →
+  `_qChangeClient`/`_oChangeClient` (existing full clear). Editor header +
+  main drill header back buttons point at `_qBack`/`_oBack`; sub-gate and
+  new-record headers unchanged (already stage-2).
+- ✅ Typecheck clean; vite build compiles (sandbox).
+- ⬜ **Browser-verify** with Adam: preview renders + updates ~1 s after an
+  edit, order doc-type switch, tab flip to cards and back, two-stage back on
+  quotes and orders, Live-link tab unaffected, mobile OK.
+
 ### Markup applies to cabinets only — never a quote/order line (2026-07-14) ✅ Built + typechecked + parity-green — ⬜ browser-verify in the real quote builder (login-gated; pure pricing fns verified in page context)
 
 **Goal.** Markup (the Cabinet Builder Quote Markup, stored on `quotes.markup` /

@@ -487,19 +487,38 @@ function _drawDocAddressee(pdf, o) {
   return Math.max(ly, y + 17);
 }
 
+/**
+ * Deliver a finished jsPDF doc: default = force-download via a temporary
+ * anchor (the historical behaviour of every builder); opts.output='bloburl'
+ * = return an object URL instead (used by the main-window PDF preview
+ * sub-tab, which loads it into an iframe and revokes it itself).
+ * @param {any} pdf @param {{output?: 'bloburl', silent?: boolean}} [opts]
+ * @returns {string|void}
+ */
+function _pdfDeliver(pdf, opts) {
+  if (opts && opts.output === 'bloburl') return /** @type {string} */ (pdf.output('bloburl'));
+  const blob = pdf.output('blob');
+  const url = URL.createObjectURL(blob);
+  const a = Object.assign(document.createElement('a'), { href:url, target:'_blank', rel:'noopener' });
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+}
+
 /** @param {any} q */
 /**
  * @param {any} q quote row
  * @param {any[]} [lineRows] quote_lines rows; when omitted, uses cached totals
  *                           (so legacy callers like cabinet.js's preview path
  *                           keep working without an extra fetch).
+ * @param {{output?: 'bloburl', silent?: boolean}} [opts] silent skips analytics
+ *                           (previews shouldn't count as pdf_created).
  */
-async function _buildQuotePDF(q, lineRows) {
+async function _buildQuotePDF(q, lineRows, opts) {
   if (!window.jspdf) {
     try { await window._ensureJsPDF(); } catch (e) {}
     if (!window.jspdf) { _toast('PDF library not loaded yet — try again', 'error'); return; }
   }
-  if (typeof _track === 'function') _track('pdf_created', { type: 'quote' });
+  if (typeof _track === 'function' && !(opts && opts.silent)) _track('pdf_created', { type: 'quote' });
   const { jsPDF } = window.jspdf;
   const cur = window.currency;
   const biz = getBizInfo();
@@ -668,11 +687,7 @@ async function _buildQuotePDF(q, lineRows) {
   _drawPdfFooter(pdf, biz, dateStr, PW, PH, M);
 
   // Output
-  const blob = pdf.output('blob');
-  const url = URL.createObjectURL(blob);
-  const a = Object.assign(document.createElement('a'), { href:url, target:'_blank', rel:'noopener' });
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  setTimeout(() => URL.revokeObjectURL(url), 60000);
+  return _pdfDeliver(pdf, opts);
 }
 
 
@@ -769,13 +784,13 @@ async function _buildStockPDF() {
   setTimeout(() => URL.revokeObjectURL(url), 60000);
 }
 
-/** @param {any} o */
-async function _buildWorkOrderPDF(o) {
+/** @param {any} o @param {{output?: 'bloburl', silent?: boolean}} [opts] */
+async function _buildWorkOrderPDF(o, opts) {
   if (!window.jspdf) {
     try { await window._ensureJsPDF(); } catch (e) {}
     if (!window.jspdf) { _toast('PDF library not loaded yet', 'error'); return; }
   }
-  if (typeof _track === 'function') _track('pdf_created', { type: 'work_order' });
+  if (typeof _track === 'function' && !(opts && opts.silent)) _track('pdf_created', { type: 'work_order' });
   const { jsPDF } = window.jspdf;
   const biz = getBizInfo();
   const cur = window.currency;
@@ -855,11 +870,7 @@ async function _buildWorkOrderPDF(o) {
   // Footer
   _drawPdfFooter(pdf, biz, dateStr, PW, PH, M);
 
-  const blob = pdf.output('blob');
-  const url = URL.createObjectURL(blob);
-  const a = Object.assign(document.createElement('a'), { href:url, target:'_blank', rel:'noopener' });
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  setTimeout(() => URL.revokeObjectURL(url), 60000);
+  return _pdfDeliver(pdf, opts);
 }
 
 /**
@@ -876,13 +887,14 @@ async function _buildWorkOrderPDF(o) {
  * @param {any[]} lines order_lines rows (may be empty for legacy orders)
  * @param {'order_confirmation'|'proforma'|'invoice'} type
  * @param {Record<number, string[]>} [photos] per-line photo dataURLs (Phase 2; flag-gated)
+ * @param {{output?: 'bloburl', silent?: boolean}} [opts]
  */
-async function _buildOrderDocPDF(o, lines, type, photos) {
+async function _buildOrderDocPDF(o, lines, type, photos, opts) {
   if (!window.jspdf) {
     try { await window._ensureJsPDF(); } catch (e) {}
     if (!window.jspdf) { _toast('PDF library not loaded yet — try again', 'error'); return; }
   }
-  if (typeof _track === 'function') _track('pdf_created', { type: 'order_document', document_type: type });
+  if (typeof _track === 'function' && !(opts && opts.silent)) _track('pdf_created', { type: 'order_document', document_type: type });
   const { jsPDF } = window.jspdf;
   const cur = window.currency;
   const biz = getBizInfo();
@@ -1102,11 +1114,7 @@ async function _buildOrderDocPDF(o, lines, type, photos) {
     }
   } catch (e) { /* photos are best-effort — never fail the PDF */ }
 
-  const blob = pdf.output('blob');
-  const url = URL.createObjectURL(blob);
-  const a = Object.assign(document.createElement('a'), { href:url, target:'_blank', rel:'noopener' });
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  setTimeout(() => URL.revokeObjectURL(url), 60000);
+  return _pdfDeliver(pdf, opts);
 }
 
 /** @param {{biz: any, layouts: any[], imgs: string[], pieces: any[], u: string, cur: string, totalPieces: number, avgUtil: string, matCost: number}} arg */

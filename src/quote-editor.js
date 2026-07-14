@@ -542,7 +542,7 @@ function renderQuoteEditor() {
   // which is hidden on the Live link tab).
   const _projHeader = `<div class="project-header">
       <div class="ph-row1">
-        <button class="ph-back" onclick="_qChangeClient()" title="Back to quotes" aria-label="Back">
+        <button class="ph-back" onclick="_qBack()" title="Back to this client’s quotes" aria-label="Back">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
         </button>
         <svg class="ph-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
@@ -889,6 +889,32 @@ function _qChangeClient() {
   _qClearEditor();
 }
 
+/** Stage-1 back: close the open quote but STAY on this client — the sidebar
+ *  drops to the pick-a-quote gate and the main pane shows the client's cards. */
+function _qCloseQuote() {
+  if (_qAutoSaveTimer) { clearTimeout(_qAutoSaveTimer); _qAutoSaveTimer = null; }
+  const clientId = _qpState.clientId;
+  _qpState = { quoteId: null, lines: [], dirty: false, clientId, startingNew: false };
+  if (typeof /** @type {any} */ (window)._pcSaveOpenQuoteId === 'function') {
+    /** @type {any} */ (window)._pcSaveOpenQuoteId(null);
+  }
+  renderQuoteEditor();
+  renderQuoteMain();
+}
+
+/** Two-stage back button: quote open → close it (client-scoped list stays);
+ *  no quote open → leave the client (all-clients list + pick-client gate). */
+function _qBack() {
+  if (_qpState.quoteId != null && _qpState.clientId != null) {
+    if (_qpState.dirty) { _confirm('Discard unsaved changes?', () => { _qpState.dirty = false; _qCloseQuote(); }); return; }
+    _qCloseQuote();
+    return;
+  }
+  _qChangeClient();
+}
+/** @type {any} */ (window)._qCloseQuote = _qCloseQuote;
+/** @type {any} */ (window)._qBack = _qBack;
+
 /** Load an existing quote into the sidebar editor.
  *  Replaces the former _openQuotePopup. Hydrates lines from cache or DB.
  *  @param {number} id */
@@ -913,6 +939,7 @@ async function loadQuoteIntoSidebar(id) {
     /** @type {any} */ (window)._pcSaveOpenQuoteId(id);
   }
   if (typeof _llReset === 'function') _llReset('quote');
+  if (typeof _dpReset === 'function') _dpReset('quote');
   if (window._mvShowEditor) window._mvShowEditor();
   renderQuoteEditor();
   renderQuoteMain();
