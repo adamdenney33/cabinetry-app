@@ -39,7 +39,9 @@ async function loadAllData() {
   // Quote/order overhaul: hydrate line-item photos (Phase 2) + Stripe Connect
   // status (Phase 4) in the background. Both no-op until their flag/schema is on.
   if (typeof loadLinePhotos === 'function') loadLinePhotos().catch(() => null);
-  if (typeof loadConnectStatus === 'function') loadConnectStatus().catch(() => null);
+  // Stripe Connect status is a slow edge call (connect-status runs 5–12s). It's
+  // only needed on the Live-link tab / Card-payments popup, so it's lazy-loaded
+  // there now (src/livelink.js, src/connect.js) instead of on the boot path.
   if (typeof loadAllClientMessages === 'function') loadAllClientMessages().catch(() => null);
   // Each query below may already be in flight: src/main.js starts them as the
   // module bundle executes (window._earlyBoot) and _earlyBootOr (src/db.js)
@@ -106,11 +108,12 @@ async function loadAllData() {
   if (typeof loadScheduleTasks === 'function') {
     loadScheduleTasks().catch(/** @param {any} e */ e => console.warn('[schedule_tasks] load:', e.message || e));
   }
-  // GC.4 — Google Calendar connection status + boot sync (no-ops when not connected)
+  // GC.4 — Google Calendar connection status (cheap DB read; powers the account
+  // menu). The actual sync is a slow edge call (gcal-sync runs 1–13s), so it no
+  // longer fires on boot — it's deferred to the first Schedule-tab open
+  // (_gcalSyncOnScheduleOpen in src/gcal.js) and the 5-min interval after that.
   if (typeof loadGcalStatus === 'function') {
-    loadGcalStatus().then(() => {
-      if (typeof _gcalSyncNow === 'function') _gcalSyncNow('boot');
-    }).catch(/** @param {any} e */ e => console.warn('[gcal] status:', e.message || e));
+    loadGcalStatus().catch(/** @param {any} e */ e => console.warn('[gcal] status:', e.message || e));
   }
   /** @type {HTMLElement} */ (document.getElementById('orders-badge')).textContent = String(orders.filter(o => o.status !== 'complete').length);
   // Guarded: a dropped domain script (main.js boot self-heal reloads once to

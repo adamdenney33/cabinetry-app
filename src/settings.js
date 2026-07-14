@@ -368,7 +368,7 @@ function switchSection(name) {
   }
   if (name === 'quote') { renderQuoteMain(); if (typeof renderQuoteEditor === 'function') renderQuoteEditor(); }
   if (name === 'orders') { renderOrdersMain(); if (typeof renderOrderEditor === 'function') renderOrderEditor(); }
-  if (name === 'schedule') renderSchedule();
+  if (name === 'schedule') { renderSchedule(); if (typeof _gcalSyncOnScheduleOpen === 'function') _gcalSyncOnScheduleOpen(); }
   if (name === 'dashboard') { renderDashboard(); setTimeout(drawRevenueChart, 0); }
   // F6 (2026-05-13): 'projects' branch removed alongside the panel + entity.
   if (name === 'clients') {

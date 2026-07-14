@@ -182,7 +182,7 @@ function _llControlsProGate() {
 /** @param {'quote'|'order'} kind @param {'builder'|'live'} tab */
 async function _llSwitch(kind, tab) {
   _llTab[kind] = tab;
-  if (tab === 'live') { await _llEnsureLines(_llShareQuote(kind), kind); }
+  if (tab === 'live') { await _llEnsureLines(_llShareQuote(kind), kind); _llMaybeLoadConnectStatus(kind); }
   // Re-render the editor (rebuilds the tab bar + bodies with correct active state).
   if (kind === 'quote') { if (typeof renderQuoteEditor === 'function') renderQuoteEditor(); }
   else { if (typeof renderOrderEditor === 'function') renderOrderEditor(); }
@@ -266,6 +266,25 @@ function _llDepTgl(b, kind) {
 function _llStripeReady() {
   const s = typeof _connectStatus !== 'undefined' ? _connectStatus : null;
   return !!(s && s.connected && s.charges_enabled);
+}
+
+/** connect-status is no longer fetched on boot (it's a 5–12s edge call). The
+ *  first time the Live-link tab is opened, fetch it once in the background and
+ *  re-render only if Stripe turns out to be ready (so the payment controls stop
+ *  reading as "not connected"). Cheap no-op on every later open.
+ *  @type {boolean} */
+let _llConnectStatusKicked = false;
+/** @param {'quote'|'order'} kind */
+function _llMaybeLoadConnectStatus(kind) {
+  if (_llConnectStatusKicked) return;
+  if (typeof _connectStatus !== 'undefined' && _connectStatus) return; // already loaded
+  if (typeof loadConnectStatus !== 'function') return;
+  _llConnectStatusKicked = true;
+  loadConnectStatus().then(() => {
+    if (!_llStripeReady() || _llTab[kind] !== 'live') return;
+    if (kind === 'quote') { if (typeof renderQuoteEditor === 'function') renderQuoteEditor(); }
+    else { if (typeof renderOrderEditor === 'function') renderOrderEditor(); }
+  }).catch(() => {});
 }
 
 /** A one-line "where this link is at" banner so the maker can see customer

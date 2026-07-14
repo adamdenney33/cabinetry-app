@@ -83,6 +83,7 @@ function _connectPopupHtml() {
     : `<button class="btn btn-primary btn-sm" style="flex:none" onclick="startConnectOnboarding()">${pending ? 'Finish setup' : 'Connect'}</button>`;
   return `<div class="popup-header"><div class="popup-title">Card payments</div><button class="popup-close" onclick="_closePopup()">&times;</button></div>
     <div class="popup-body">
+      <span id="connect-popup-marker" hidden></span>
       <p style="font-size:12px;color:var(--muted);margin:0 0 14px">Let customers pay a deposit or balance by card or bank transfer straight from their live quote. Funds go to your Stripe account; a small platform fee applies per payment. <a href="/payment-fees" target="_blank" style="color:var(--accent);font-weight:600">How fees work →</a></p>
       <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;border:1px solid var(--border);border-radius:10px;padding:12px">${head}${action}</div>
       ${live ? '<div style="font-size:11px;color:var(--success);margin-top:10px">✓ Ready — turn on “Accept card payment” when sharing a quote.</div>' : ''}
@@ -93,6 +94,16 @@ function _openConnectPopup() {
   if (!_requireAuth()) return;
   if (!_enforceProFeature()) return;
   _openPopup(_connectPopupHtml(), 'md');
+  // connect-status is lazy now (off the boot path). If we don't have it yet,
+  // fetch it and refresh the popup in place when it lands — but only if this
+  // same popup is still open (the marker span survives only until it's closed).
+  if (!_connectStatus && typeof loadConnectStatus === 'function') {
+    loadConnectStatus().then(() => {
+      if (!document.getElementById('connect-popup-marker')) return;
+      const modal = document.querySelector('#popup-overlay .popup-modal');
+      if (modal) modal.innerHTML = _connectPopupHtml();
+    }).catch(() => {});
+  }
 }
 
 Object.assign(window, { loadConnectStatus, startConnectOnboarding, handleConnectReturn, _openConnectPopup });

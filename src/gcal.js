@@ -155,6 +155,17 @@ async function _gcalSyncNow(reason) {
   _gcalSetSyncState('idle');
 }
 
+/** First-sync-on-open guard. Boot no longer syncs Google (it added a slow
+ *  1–13s edge call to every load); instead the first time the Schedule tab is
+ *  opened this session we sync once, then the 5-min interval keeps it fresh.
+ *  Only trips once connected — if status hasn't loaded yet the next open retries. */
+let _gcalOpenSynced = false;
+function _gcalSyncOnScheduleOpen() {
+  if (_gcalOpenSynced || !_gcalConn.connected) return;
+  _gcalOpenSynced = true;
+  if (typeof _gcalSyncNow === 'function') _gcalSyncNow('open');
+}
+
 /** Debounced sync after local task edits (create/edit/delete/drag). */
 /** @type {ReturnType<typeof setTimeout> | null} */
 let _gcalQueueTimer = null;
@@ -298,4 +309,5 @@ Object.assign(window, {
   loadGcalStatus, handleGcalReturn, _gcalConnect, _gcalDisconnect,
   _gcalSyncNow, _gcalQueueSync, _gcalSidebarHTML, _gcalRenderMenuSection,
   _gcalEventsBetween, _gcalOpenCalendarsPopup, _gcalSaveCalendars,
+  _gcalSyncOnScheduleOpen,
 });
