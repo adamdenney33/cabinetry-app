@@ -96,12 +96,23 @@ function packSheetRecGuillotine(sheetW, sheetH, sheetGrain, items, kerf) {
   // Inner packer: given a pre-sorted item list, recursively fill regions using
   // best-short-side-fit picks. Orderings is the tiebreak when multiple items
   // tie on BSSF score — earlier-in-list wins.
+  //
+  // `regionBudget` bounds total packRegion calls across ALL orderings. Each
+  // region branches into up to 4 recursive calls (2 orientations × 2 splits),
+  // so worst case is exponential in item count. A normal cut list only puts a
+  // handful of parts per sheet, so this never bites — but a corrupt/mismatched
+  // list (e.g. a batch of inch-dimensioned parts imported while units=mm, so
+  // dozens of accidentally-tiny "parts" all fit on one sheet) can blow the
+  // branching factor up and hang the tab. Once the budget is spent, deeper
+  // calls bail immediately so the recursion unwinds fast — the result degrades
+  // to a partial pack instead of the browser freezing.
   /** @param {any[]} orderedItems */
   function packOrdered(orderedItems) {
     /** @param {number} x0 @param {number} y0 @param {number} x1 @param {number} y1 @param {any[]} items @returns {any} */
     function packRegion(x0, y0, x1, y1, items) {
       const rw = x1 - x0, rh = y1 - y0;
       if (rw < 1 || rh < 1 || !items.length) return { placed: [], leftover: items };
+      if (--regionBudget <= 0) return { placed: [], leftover: items };
 
       // Best Short Side Fit: pick the item+orientation that leaves the smallest
       // minor leftover. Ties broken by the caller-provided item order.
@@ -165,6 +176,7 @@ function packSheetRecGuillotine(sheetW, sheetH, sheetGrain, items, kerf) {
     [...items].sort((a, b) => (b.w + b.h) - (a.w + a.h)),                         // perimeter desc
   ];
 
+  let regionBudget = 200000;
   let best = null;
   for (const ord of orderings) {
     const res = packOrdered(ord);
