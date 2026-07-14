@@ -89,7 +89,7 @@ function _dpRender(kind) {
       <option value="invoice"${_dpOrderDocType==='invoice'?' selected':''}>Invoice</option>
       <option value="work_order"${_dpOrderDocType==='work_order'?' selected':''}>Work Order</option>
     </select>` : '';
-  host.innerHTML = `<div style="max-width:800px;margin:0 auto;height:100%;display:flex;flex-direction:column" id="dp-wrap-${kind}">
+  host.innerHTML = `<div class="dp-shell" id="dp-wrap-${kind}">
     ${_dpTabBar(kind)}
     <div class="ll-preview-wrap dp-preview-wrap">
       <div class="ll-preview-bar"><span class="ll-preview-label">PDF preview · updates as you edit</span>

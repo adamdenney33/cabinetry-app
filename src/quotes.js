@@ -657,11 +657,15 @@ function renderQuoteMain() {
     ? '<div class="empty-state" style="padding:40px 0"><p style="color:var(--muted)">No quotes for this client yet.</p></div>'
     : '<div class="empty-state" style="padding:40px 0"><p style="color:var(--muted)">No quotes match this filter.</p></div>';
 
-  el.innerHTML = `<div style="max-width:800px;margin:0 auto">
-    ${_dpOn ? _dpTabBar('quote') : ''}
+  const _inner = `<div style="max-width:800px;margin:0 auto">
     ${header}
     ${customerQuotes.length === 0 && !drillClient ? emptyState : filterBar + `<div class="quote-list">${filteredQ.map(qCard).join('')}${filteredQ.length === 0 ? noMatchMsg : ''}</div>`}
   </div>`;
+  // Cards sub-tab: the bar hugs the pane's top edge (dp-shell cancels the
+  // main-scroll padding), the list scrolls beneath it with normal padding.
+  el.innerHTML = _dpOn
+    ? `<div class="dp-shell">${_dpTabBar('quote')}<div class="dp-body">${_inner}</div></div>`
+    : _inner;
 }
 
 

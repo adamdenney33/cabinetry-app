@@ -272,11 +272,14 @@ function renderOrdersMain() {
 
   const drillEmpty = `<div class="empty-state" style="padding:40px 0"><p style="color:var(--muted)">No orders for this client yet.</p></div>`;
 
-  el.innerHTML = `<div style="max-width:800px;margin:0 auto">
-    ${_dpOn ? _dpTabBar('order') : ''}
+  const _inner = `<div style="max-width:800px;margin:0 auto">
     ${header}
     ${scopedOrders.length === 0 && !drillClient ? emptyState : filterTabs + `<div class="orders-list">${filtered.length === 0 && drillClient ? drillEmpty : filtered.map(orderCard).join('')}</div>`}
   </div>`;
+  // Cards sub-tab: bar flush at the pane's top edge (see renderQuoteMain).
+  el.innerHTML = _dpOn
+    ? `<div class="dp-shell">${_dpTabBar('order')}<div class="dp-body">${_inner}</div></div>`
+    : _inner;
 }
 
 

@@ -1800,9 +1800,13 @@ canvas { display: block; }
 .ll-preview-empty-icon svg { width: 44px; height: 44px; }
 .ll-preview-empty h3 { margin: 0 0 6px; color: var(--text2); }
 .ll-preview-empty p { font-size: 13px; max-width: 340px; line-height: 1.6; }
-/* Main-window PDF preview sub-tab (doc-preview.js) */
-.dp-tabs { margin-bottom: 12px; }
-.dp-preview-wrap { min-height: calc(100vh - 180px); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+/* Main-window PDF preview sub-tab (doc-preview.js). The shell takes over the
+   whole pane so the .ll-tabs bar sits flush against the top edge — identical
+   to the sidebar's Quote builder / Live link bar (no padding gap around it). */
+.main-scroll:has(> .dp-shell) { padding: 0; }
+.dp-shell { height: 100%; display: flex; flex-direction: column; }
+.dp-body { flex: 1; min-height: 0; overflow: auto; padding: 20px; }
+.dp-preview-wrap { flex: 1; min-height: 0; }
 .dp-stage { position: relative; }
 .dp-loading { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 13px; color: var(--muted); }
 .dp-frame { position: relative; z-index: 1; background: transparent; }
