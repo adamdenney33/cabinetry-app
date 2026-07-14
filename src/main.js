@@ -222,10 +222,13 @@ _afterLoad(() => {
 let _pdfjsLoad = null;
 window._ensurePdfJs = function _ensurePdfJs() {
   if (!_pdfjsLoad) {
-    _pdfjsLoad = import('pdfjs-dist')
+    // LEGACY build on purpose: the modern build targets bleeding-edge engines
+    // (v6 uses Map.getOrInsertComputed etc.) and hard-crashes on Safari and
+    // even current Node — the legacy build transpiles those away.
+    _pdfjsLoad = import('pdfjs-dist/legacy/build/pdf.mjs')
       .then((m) => {
         m.GlobalWorkerOptions.workerSrc =
-          new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).toString();
+          new URL('pdfjs-dist/legacy/build/pdf.worker.min.mjs', import.meta.url).toString();
         return m;
       })
       .catch((e) => { _pdfjsLoad = null; throw e; }); // failed fetch → retry on next call

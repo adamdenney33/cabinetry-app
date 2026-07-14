@@ -195,7 +195,8 @@ async function _dpRenderPages(kind, gen, buf) {
     // Width only — CSS height:auto + max-width:100% keep the aspect ratio even
     // when a narrow viewport squeezes the page below pageW.
     canvas.style.width = pageW + 'px';
-    await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
+    // pdf.js v6 API: pass the canvas element (canvasContext-only throws).
+    await page.render({ canvas, viewport: vp }).promise;
     if (gen !== _dpGen[kind]) { doc.destroy(); return; }
     frag.appendChild(canvas);
   }
