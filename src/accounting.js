@@ -202,22 +202,23 @@ function _accountingPopupHtml() {
 function _accountingBuildLines(o, rows) {
   /** @type {Array<{description:string,amount:number}>} */
   const lines = [];
+  // Markup lives in the Cabinet Builder: it's baked into the cabinet line
+  // amounts and never pushed as its own line (PLAN.md 2026-07-14). Items/labour
+  // get no markup; stock keeps its own stock_markup line below.
+  const markupPct = Number(o.markup) || 0;
   let sub = 0, stockMat = 0;
   rows.forEach(/** @param {any} row */ row => {
     const d = _lineDisplay(row);
+    const amount = (row.line_kind || 'cabinet') === 'cabinet' ? d.total * (1 + markupPct / 100) : d.total;
     const desc = d.detail ? `${d.name} — ${d.detail}` : d.name;
-    lines.push({ description: desc, amount: d.total });
-    sub += d.total;
+    lines.push({ description: desc, amount });
+    sub += amount;
     if (row.line_kind === 'stock') stockMat += _lineSubtotal(row).materials;
   });
   const stockMarkupPct = Number(o.stock_markup) || 0;
   const stockMarkupAmt = stockMat * stockMarkupPct / 100;
   if (stockMarkupAmt > 0) lines.push({ description: `Stock markup (${stockMarkupPct}%)`, amount: stockMarkupAmt });
-  const subWithStock = sub + stockMarkupAmt;
-  const markupPct = Number(o.markup) || 0;
-  const markupAmt = subWithStock * markupPct / 100;
-  if (markupAmt > 0) lines.push({ description: `Markup (${markupPct}%)`, amount: markupAmt });
-  const afterMarkup = subWithStock + markupAmt;
+  const afterMarkup = sub + stockMarkupAmt;
   const discPct = Number(o.discount) || 0;
   const discAmt = afterMarkup * discPct / 100;   // pushed pre-tax as a negative line (see SPEC § 13)
   if (discAmt > 0) lines.push({ description: `Discount (${discPct}%)`, amount: -discAmt });

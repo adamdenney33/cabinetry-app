@@ -226,14 +226,15 @@ async function quoteTotalsFromLines(quoteId) {
   const q = quotes.find(x => x.id === quoteId);
   if (q) q._lines = lines.map(/** @param {any} r */ r => ({ ...r }));
   if (lines.length === 0) return null;
-  let materials = 0, labour = 0, stockMat = 0;
+  let materials = 0, labour = 0, stockMat = 0, cabSub = 0;
   for (const row of lines) {
     const sub = _lineSubtotal(row);
     materials += sub.materials;
     labour += sub.labour;
     if (row.line_kind === 'stock') stockMat += sub.materials;
+    if ((row.line_kind || 'cabinet') === 'cabinet') cabSub += sub.materials + sub.labour;
   }
-  return { materials, labour, stockMat };
+  return { materials, labour, stockMat, cabSub };
 }
 
 // Same shape as quoteTotalsFromLines, against order_lines. Caches lines on
@@ -248,14 +249,15 @@ async function orderTotalsFromLines(orderId) {
   const o = orders.find(x => x.id === orderId);
   if (o) /** @type {any} */ (o)._lines = lines.map(/** @param {any} r */ r => ({ ...r }));
   if (lines.length === 0) return null;
-  let materials = 0, labour = 0, stockMat = 0;
+  let materials = 0, labour = 0, stockMat = 0, cabSub = 0;
   for (const row of lines) {
     const sub = _lineSubtotal(row);
     materials += sub.materials;
     labour += sub.labour;
     if (row.line_kind === 'stock') stockMat += sub.materials;
+    if ((row.line_kind || 'cabinet') === 'cabinet') cabSub += sub.materials + sub.labour;
   }
-  return { materials, labour, stockMat };
+  return { materials, labour, stockMat, cabSub };
 }
 
 async function _hydrateQuoteTotals() {
@@ -278,14 +280,15 @@ async function _hydrateQuoteTotals() {
     q._lines = rows;
     if (!rows.length) continue;
     try {
-      let materials = 0, labour = 0, stockMat = 0;
+      let materials = 0, labour = 0, stockMat = 0, cabSub = 0;
       for (const row of rows) {
         const sub = _lineSubtotal(row);
         materials += sub.materials;
         labour += sub.labour;
         if (row.line_kind === 'stock') stockMat += sub.materials;
+        if ((row.line_kind || 'cabinet') === 'cabinet') cabSub += sub.materials + sub.labour;
       }
-      const totals = { materials, labour, stockMat };
+      const totals = { materials, labour, stockMat, cabSub };
       q._totals = totals;
     } catch (e) {
       console.warn('[quote totals] compute failed for', q.id, (/** @type {any} */ (e)).message || e);
@@ -348,12 +351,15 @@ function quoteTotal(q) {
   const mat = q._totals ? q._totals.materials : (q.materials || 0);
   const lab = q._totals ? q._totals.labour    : (q.labour    || 0);
   const stockMat = q._totals ? (q._totals.stockMat || 0) : 0;
-  const nonStockMat = mat - stockMat;
+  const cabSub = q._totals ? (q._totals.cabSub || 0) : 0;
   const stockMarkup = parseFloat(q.stock_markup) || 0;
-  const stockSub = stockMat * (1 + stockMarkup / 100);
-  const sub = nonStockMat + lab + stockSub;
-  const marked = sub * (1 + (q.markup || 0) / 100);
-  const taxed = marked * (1 + (q.tax || 0) / 100);
+  // Markup lives in the Cabinet Builder: it applies to cabinet lines only,
+  // never to items/stock, and is never a separate quote line (see PLAN.md
+  // 2026-07-14). Stock keeps its own stock_markup.
+  const cabMarkupAmt = cabSub * (q.markup || 0) / 100;
+  const stockMarkupAmt = stockMat * stockMarkup / 100;
+  const sub = mat + lab + cabMarkupAmt + stockMarkupAmt;
+  const taxed = sub * (1 + (q.tax || 0) / 100);
   return taxed * (1 - (q.discount || 0) / 100);
 }
 

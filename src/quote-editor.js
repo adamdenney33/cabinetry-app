@@ -224,16 +224,17 @@ async function printQuote(id, mode='print') {
       acc.materials += s.materials;
       acc.labour += s.labour;
       if (row.line_kind === 'stock') acc.stockMat += s.materials;
+      if ((row.line_kind || 'cabinet') === 'cabinet') acc.cabSub += s.materials + s.labour;
       return acc;
     },
-    { materials: 0, labour: 0, stockMat: 0 }
+    { materials: 0, labour: 0, stockMat: 0, cabSub: 0 }
   );
   const sub = subParts.materials + subParts.labour;
   const stockMarkupPct = /** @type {any} */ (q).stock_markup ?? 0;
   const stockMarkupAmt = subParts.stockMat * stockMarkupPct / 100;
-  const subWithStock = sub + stockMarkupAmt;
-  const markupAmt = subWithStock * (q.markup ?? 0) / 100;
-  const afterMarkup = subWithStock + markupAmt;
+  // Markup applies to cabinet lines only (PLAN.md 2026-07-14).
+  const markupAmt = subParts.cabSub * (q.markup ?? 0) / 100;
+  const afterMarkup = sub + stockMarkupAmt + markupAmt;
   const taxAmt = afterMarkup * (q.tax ?? 0) / 100;
   const afterTax = afterMarkup + taxAmt;
   const orderDiscPct = /** @type {any} */ (q).discount ?? 0;
@@ -241,8 +242,12 @@ async function printQuote(id, mode='print') {
   const total = afterTax - orderDiscAmt;
   const anyLineDisc = rows.some(/** @param {any} r */ r => (parseFloat(r.discount) || 0) > 0);
   // Markup is hidden on client documents — fold it into the displayed line
-  // amounts so they sum to the marked-up subtotal, and drop the markup rows.
-  const lineScale = sub > 0 ? afterMarkup / sub : 1;
+  // amounts and drop the markup rows. Markup applies to cabinet lines only;
+  // stock uses stock_markup; items/labour get nothing (PLAN.md 2026-07-14).
+  const _mkFrac = (q.markup ?? 0) / 100;
+  const _smFrac = stockMarkupPct / 100;
+  /** @param {string} k */
+  const scaleFor = k => k === 'cabinet' ? 1 + _mkFrac : k === 'stock' ? 1 + _smFrac : 1;
   const biz = getBizInfo();
   /** @type {Record<string, string>} */
   const statusColMap = { draft:'#888', sent:'#2563eb', approved:'#16a34a' };
@@ -339,7 +344,7 @@ async function printQuote(id, mode='print') {
         + (d.qtyText ? ' <span style="font-weight:400;color:#888">' + d.qtyText + '</span>' : '')
         + '</strong>'
         + (d.detail ? '<br><span style="font-size:11px;color:#888;padding-left:14px">' + _escHtml(d.detail) + '</span>' : '')
-        + '</td>' + discCell + '<td class="r">' + fmt(d.total * lineScale) + '</td></tr>';
+        + '</td>' + discCell + '<td class="r">' + fmt(d.total * scaleFor(d.kind)) + '</td></tr>';
     }).join('')}
     ${rows.length ? `<tr><td colspan="${anyLineDisc ? 3 : 2}" style="border-bottom:1.5px solid #ddd;padding:0"></td></tr>` : ''}
     ${(q.tax ?? 0) > 0 || orderDiscPct > 0 ? `<tr class="subtotal"><td style="color:#aaa"${anyLineDisc ? ' colspan="2"' : ''}>Subtotal</td><td class="r">${fmt(afterMarkup)}</td></tr>` : ''}

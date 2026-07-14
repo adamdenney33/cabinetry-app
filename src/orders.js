@@ -1289,7 +1289,8 @@ async function saveOrderEditor() {
       const nonStockMat = t.materials - (t.stockMat || 0);
       const stockSub = (t.stockMat || 0) * (1 + (stock_markup||0)/100);
       const subPostLine = nonStockMat + t.labour + stockSub;
-      const afterMarkup = subPostLine * (1 + (markup||0)/100);
+      // Markup applies to cabinet lines only (PLAN.md 2026-07-14).
+      const afterMarkup = subPostLine + (t.cabSub || 0) * (markup||0)/100;
       const afterTax = afterMarkup * (1 + (tax||0)/100);
       newValue = Math.round(afterTax * (1 - (discount||0)/100));
     }

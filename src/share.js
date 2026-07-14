@@ -13,9 +13,15 @@
 /** @param {any} q @param {any} row @returns {number} */
 function _shareLineCustomerPrice(q, row) {
   const sub = _lineSubtotal(row);
+  const kind = row.line_kind || 'cabinet';
+  // Markup lives in the Cabinet Builder: it applies to cabinet lines only, never
+  // to items/labour, and stock uses stock_markup instead (PLAN.md 2026-07-14).
+  // Server parity: _shared/costing.ts priceCabinetLine already marks up cabinet
+  // lines only — keep this in step with it.
   let base = (sub.materials || 0) + (sub.labour || 0);
-  if (row.line_kind === 'stock') base = (sub.materials || 0) * (1 + (parseFloat(q.stock_markup) || 0) / 100);
-  const marked = base * (1 + (parseFloat(q.markup) || 0) / 100) * (1 - (parseFloat(q.discount) || 0) / 100);
+  if (kind === 'stock') base = (sub.materials || 0) * (1 + (parseFloat(q.stock_markup) || 0) / 100);
+  else if (kind === 'cabinet') base = base * (1 + (parseFloat(q.markup) || 0) / 100);
+  const marked = base * (1 - (parseFloat(q.discount) || 0) / 100);
   return Math.round(marked * 100) / 100;
 }
 

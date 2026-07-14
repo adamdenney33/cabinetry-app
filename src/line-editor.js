@@ -107,8 +107,13 @@ function _orderLineRowHtml(row, i) {
   /** @param {number} v */
   const fmt = v => cur + Number(v || 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
   const sub = _lineSubtotal(row);
-  const total = sub.materials + sub.labour;
   const kind = row.line_kind || 'cabinet';
+  // Markup lives in the Cabinet Builder — bake it into the cabinet line price so
+  // the order never shows a separate markup row (PLAN.md 2026-07-14). Other line
+  // kinds are shown at cost (no markup).
+  const _o = _opState.orderId ? orders.find(x => x.id === _opState.orderId) : null;
+  const _mkMult = kind === 'cabinet' ? 1 + (_o ? (parseFloat(/** @type {any} */ (_o).markup) || 0) : 0) / 100 : 1;
+  const total = (sub.materials + sub.labour) * _mkMult;
   const disc = parseFloat(row.discount) || 0;
   const discCell = `<td class="col-disc${disc > 0 ? '' : ' zero'}"><input class="cl-input right" type="number" min="0" max="100" step="1" value="${disc || ''}" placeholder="—" oninput="_orderLineUpdate(${i}, 'discount', this.value)"></td>`;
   if (kind === 'cabinet') {
@@ -124,7 +129,7 @@ function _orderLineRowHtml(row, i) {
       } catch (e) { hrs = 0; }
     }
     const hrsTotal = hrs * (parseFloat(row.qty) || 1);
-    const unitPrice = (parseFloat(row.qty) || 1) > 0 ? (sub.materials + sub.labour) / (parseFloat(row.qty) || 1) : 0;
+    const unitPrice = (parseFloat(row.qty) || 1) > 0 ? total / (parseFloat(row.qty) || 1) : 0;
     const descDefault = row.name || 'Cabinet';
     return `<tr>
       <td class="col-handle" title="Drag to reorder (coming soon)">⋮</td>
@@ -362,9 +367,10 @@ function _renderOrderLineTotals() {
         acc.materials += s.materials;
         acc.labour += s.labour;
       }
+      if ((row.line_kind || 'cabinet') === 'cabinet') acc.cabSub += s.materials + s.labour;
       return acc;
     },
-    { materials: 0, labour: 0, stockMat: 0 }
+    { materials: 0, labour: 0, stockMat: 0, cabSub: 0 }
   );
   // Stock markup is a single rate applied to all stock-kind lines (set in the
   // editor below the stock library). NOTE: stock materials themselves belong
@@ -372,14 +378,14 @@ function _renderOrderLineTotals() {
   // stock lines understated its total vs. the card/dashboard/webhook math.
   const stockMarkup = parseFloat(_popupVal('po-stock-markup')) || 0;
   const stockMarkupAmt = subParts.stockMat * stockMarkup / 100;
-  const sub = subParts.materials + subParts.labour + subParts.stockMat + stockMarkupAmt;
-  // The order's stored `markup` has no editor input (per mockup J) but it IS
-  // applied everywhere else (order value, card, webhook, live link). Surface
-  // it read-only so the editor total matches what everyone else sees.
+  // Markup lives in the Cabinet Builder: baked into the cabinet line prices, it
+  // applies to no other line kind and is never a separate order row (PLAN.md
+  // 2026-07-14). Subtotal already includes the folded cabinet markup.
   const _o = _opState.orderId ? orders.find(x => x.id === _opState.orderId) : null;
   const markupPct = _o ? (parseFloat(/** @type {any} */ (_o).markup) || 0) : 0;
-  const markupAmt = sub * markupPct / 100;
-  const afterMarkup = sub + markupAmt;
+  const cabMarkupAmt = subParts.cabSub * markupPct / 100;
+  const subDisplay = subParts.materials + subParts.labour + subParts.stockMat + cabMarkupAmt;
+  const afterMarkup = subDisplay + stockMarkupAmt;
   const tax = parseFloat(_popupVal('po-tax')) || 0;
   const discount = parseFloat(_popupVal('po-discount')) || 0;
   const taxAmt = afterMarkup * tax / 100;
@@ -391,16 +397,12 @@ function _renderOrderLineTotals() {
   const stockMarkupRow = stockMarkupAmt > 0
     ? `<div class="pf-total-row"><span class="t-label">Stock markup (${stockMarkup}%)</span><span class="t-val">+${fmt(stockMarkupAmt)}</span></div>`
     : '';
-  const markupRow = markupAmt > 0
-    ? `<div class="pf-total-row"><span class="t-label" title="Set when this order was created (Cabinet Builder markup)">Markup (${markupPct}%)</span><span class="t-val">+${fmt(markupAmt)}</span></div>`
-    : '';
   const discRow = discount > 0
     ? `<div class="pf-total-row discount"><span class="t-label">Discount (${discount}%)</span><span class="t-val">−${fmt(discountAmt)}</span></div>`
     : '';
   el.innerHTML = `
-    <div class="pf-total-row"><span class="t-label">Subtotal</span><span class="t-val">${fmt(subParts.materials + subParts.labour + subParts.stockMat)}</span></div>
+    <div class="pf-total-row"><span class="t-label">Subtotal</span><span class="t-val">${fmt(subDisplay)}</span></div>
     ${stockMarkupRow}
-    ${markupRow}
     <div class="pf-total-row"><span class="t-label">Tax (${tax}%)</span><span class="t-val">+${fmt(taxAmt)}</span></div>
     ${discRow}
     <div class="pf-total-row t-main"><span class="t-label">Order Total</span><span class="t-val">${fmt(total)}</span></div>`;
@@ -426,7 +428,11 @@ function _orderLineUpdate(idx, field, val) {
     if (rowEl) {
       const cur = window.currency;
       const sub = _lineSubtotal(row);
-      const total = sub.materials + sub.labour;
+      // Cabinet lines carry the folded Cabinet Builder markup (see _orderLineRowHtml).
+      const _o = _opState.orderId ? orders.find(x => x.id === _opState.orderId) : null;
+      const _mkMult = (row.line_kind || 'cabinet') === 'cabinet'
+        ? 1 + (_o ? (parseFloat(/** @type {any} */ (_o).markup) || 0) : 0) / 100 : 1;
+      const total = (sub.materials + sub.labour) * _mkMult;
       const amt = rowEl.querySelector('.col-total .total-val');
       if (amt) amt.textContent = cur + Number(total).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
     }
@@ -588,7 +594,8 @@ async function _recomputeOrderValuePersist(id) {
     const nonStockMat = t.materials - (t.stockMat || 0);
     const stockSub = (t.stockMat || 0) * (1 + sm / 100);
     const subPostLine = nonStockMat + t.labour + stockSub;
-    const afterMarkup = subPostLine * (1 + mk / 100);
+    // Markup applies to cabinet lines only (PLAN.md 2026-07-14).
+    const afterMarkup = subPostLine + (t.cabSub || 0) * mk / 100;
     const afterTax = afterMarkup * (1 + tx / 100);
     newValue = Math.round(afterTax * (1 - dc / 100));
   }
@@ -695,8 +702,13 @@ function _lineRowHtml(row, i) {
   /** @param {number} v */
   const fmt = v => cur + Number(v || 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
   const sub = _lineSubtotal(row);
-  const total = (sub.materials + sub.labour);
   const kind = row.line_kind || 'cabinet';
+  // Markup lives in the Cabinet Builder — bake it into the cabinet line price
+  // so the quote never shows a separate markup row (PLAN.md 2026-07-14). Other
+  // line kinds are shown at cost (no markup).
+  const _q = _qpState.quoteId ? quotes.find(x => x.id === _qpState.quoteId) : null;
+  const _mkMult = kind === 'cabinet' ? 1 + (_q ? (parseFloat(/** @type {any} */ (_q).markup) || 0) : 0) / 100 : 1;
+  const total = (sub.materials + sub.labour) * _mkMult;
   const disc = parseFloat(row.discount) || 0;
   const discCell = `<td class="col-disc${disc > 0 ? '' : ' zero'}"><input class="cl-input right" type="number" min="0" max="100" step="1" value="${disc || ''}" placeholder="—" oninput="_lineUpdate(${i}, 'discount', this.value)"></td>`;
   if (kind === 'cabinet') {
@@ -706,7 +718,7 @@ function _lineRowHtml(row, i) {
       const c = calcCBLine(cb);
       hrs = (c.labourHrs || 0) * (parseFloat(row.qty) || 1);
     } catch (e) { hrs = 0; }
-    const unitPrice = (parseFloat(row.qty) || 1) > 0 ? (sub.materials + sub.labour) / (parseFloat(row.qty) || 1) : 0;
+    const unitPrice = (parseFloat(row.qty) || 1) > 0 ? total / (parseFloat(row.qty) || 1) : 0;
     const descDefault = row.name || 'Cabinet';
     return `<tr>
       <td class="col-handle">⋮</td>
@@ -751,21 +763,22 @@ function _renderQuoteLineTotals() {
         acc.materials += s.materials;
         acc.labour += s.labour;
       }
+      if ((row.line_kind || 'cabinet') === 'cabinet') acc.cabSub += s.materials + s.labour;
       return acc;
     },
-    { materials: 0, labour: 0, stockMat: 0 }
+    { materials: 0, labour: 0, stockMat: 0, cabSub: 0 }
   );
-  // Stock markup is the only EDITABLE markup here, but the quote's stored
-  // `markup` (seeded by the Cabinet Builder's Quote Markup setting) is applied
-  // by the card total, live customer page, and order conversion — so it must
-  // show here too or the editor disagrees with every other surface.
   const stockMarkup = parseFloat(_popupVal('pq-stock-markup')) || 0;
   const stockMarkupAmt = subParts.stockMat * stockMarkup / 100;
-  const sub = subParts.materials + subParts.labour + subParts.stockMat + stockMarkupAmt;
   const _q = _qpState.quoteId ? quotes.find(x => x.id === _qpState.quoteId) : null;
   const markupPct = _q ? (parseFloat(/** @type {any} */ (_q).markup) || 0) : 0;
-  const markupAmt = sub * markupPct / 100;
-  const afterMarkup = sub + markupAmt;
+  // Markup lives in the Cabinet Builder: it's baked into the cabinet line prices
+  // (see _lineRowHtml) and applies to NO other line kind, so it's never shown as
+  // its own quote row (PLAN.md 2026-07-14). Subtotal here already includes the
+  // folded cabinet markup so it matches the sum of the line-item totals above.
+  const cabMarkupAmt = subParts.cabSub * markupPct / 100;
+  const subDisplay = subParts.materials + subParts.labour + subParts.stockMat + cabMarkupAmt;
+  const afterMarkup = subDisplay + stockMarkupAmt;
   const tax = parseFloat(_popupVal('pq-tax')) || 0;
   const discount = parseFloat(_popupVal('pq-discount')) || 0;
   const taxAmt = afterMarkup * tax / 100;
@@ -777,16 +790,12 @@ function _renderQuoteLineTotals() {
   const stockMarkupRow = stockMarkupAmt > 0
     ? `<div class="pf-total-row"><span class="t-label">Stock markup (${stockMarkup}%)</span><span class="t-val">+${fmt(stockMarkupAmt)}</span></div>`
     : '';
-  const markupRow = markupAmt > 0
-    ? `<div class="pf-total-row"><span class="t-label" title="From Cabinet Builder → Settings → Quote Markup, set when this quote was created">Markup (${markupPct}%)</span><span class="t-val">+${fmt(markupAmt)}</span></div>`
-    : '';
   const discRow = discount > 0
     ? `<div class="pf-total-row discount"><span class="t-label">Discount (${discount}%)</span><span class="t-val">−${fmt(discountAmt)}</span></div>`
     : '';
   el.innerHTML = `
-    <div class="pf-total-row"><span class="t-label">Subtotal</span><span class="t-val">${fmt(subParts.materials + subParts.labour + subParts.stockMat)}</span></div>
+    <div class="pf-total-row"><span class="t-label">Subtotal</span><span class="t-val">${fmt(subDisplay)}</span></div>
     ${stockMarkupRow}
-    ${markupRow}
     <div class="pf-total-row"><span class="t-label">Tax (${tax}%)</span><span class="t-val">+${fmt(taxAmt)}</span></div>
     ${discRow}
     <div class="pf-total-row t-main"><span class="t-label">Total</span><span class="t-val">${fmt(total)}</span></div>`;
@@ -812,7 +821,11 @@ function _lineUpdate(idx, field, val) {
     if (rowEl) {
       const cur = window.currency;
       const sub = _lineSubtotal(row);
-      const total = sub.materials + sub.labour;
+      // Cabinet lines carry the folded Cabinet Builder markup (see _lineRowHtml).
+      const _q = _qpState.quoteId ? quotes.find(x => x.id === _qpState.quoteId) : null;
+      const _mkMult = (row.line_kind || 'cabinet') === 'cabinet'
+        ? 1 + (_q ? (parseFloat(/** @type {any} */ (_q).markup) || 0) : 0) / 100 : 1;
+      const total = (sub.materials + sub.labour) * _mkMult;
       const amt = rowEl.querySelector('.col-total .total-val');
       if (amt) amt.textContent = cur + Number(total).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
     }

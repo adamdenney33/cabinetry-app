@@ -360,15 +360,18 @@ function _pdfNiceDate(s) {
  * cursor after the table's closing rule.
  * @param {any} pdf jsPDF instance
  * @param {any[]} rows quote_lines / order_lines
- * @param {{M:number,PW:number,PH:number,y:number,anyLineDisc:boolean,fmt:(v:number)=>string,priceScale?:number}} opts
+ * @param {{M:number,PW:number,PH:number,y:number,anyLineDisc:boolean,fmt:(v:number)=>string,priceScale?:number,scaleFor?:(kind:string)=>number}} opts
  * @returns {number}
  */
 function _drawDocLineItems(pdf, rows, opts) {
   const { M, PW, PH, anyLineDisc, fmt } = opts;
   // Markup is hidden on client documents (it's never shown as a line), so it's
-  // folded into the displayed line prices: each price/amount is scaled so the
-  // lines sum to the marked-up subtotal. Default 1 (no scaling).
-  const priceScale = opts.priceScale || 1;
+  // folded into the displayed line prices. Markup applies to cabinet lines only
+  // (stock uses stock_markup, items/labour get nothing), so scaling is per-kind
+  // via scaleFor(kind); priceScale is the legacy uniform fallback. Default 1.
+  const scaleFor = typeof opts.scaleFor === 'function'
+    ? opts.scaleFor
+    : /** @param {string} _k */ (_k) => (opts.priceScale || 1);
   let y = opts.y;
   // Right-edge x for each numeric column (values are right-aligned to these).
   const colAmt = PW - M;
@@ -411,9 +414,10 @@ function _drawDocLineItems(pdf, rows, opts) {
     const nameLines = pdf.splitTextToSize(cleanName, descMaxW);
     pdf.text(nameLines, M, y);
     // Qty + unit Price (muted, regular weight) on the first line.
+    const scale = scaleFor(d.kind);
     pdf.setFontSize(9.5); pdf.setFont('helvetica', 'normal'); pdf.setTextColor(95);
     pdf.text(qtyStr(d.qty), colQty, y, { align: 'right' });
-    pdf.text(fmt(d.unitPrice * priceScale), colPrice, y, { align: 'right' });
+    pdf.text(fmt(d.unitPrice * scale), colPrice, y, { align: 'right' });
     if (anyLineDisc) {
       const rowDisc = parseFloat(row.discount) || 0;
       pdf.setTextColor(130);
@@ -421,7 +425,7 @@ function _drawDocLineItems(pdf, rows, opts) {
     }
     // Amount (bold).
     pdf.setFontSize(11); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(17);
-    pdf.text(fmt(d.total * priceScale), colAmt, y, { align: 'right' });
+    pdf.text(fmt(d.total * scale), colAmt, y, { align: 'right' });
     y += nameLines.length * 5;
     // Spec sub-line — cabinets only. Items/labour show qty×price in columns.
     if (d.kind === 'cabinet' && d.detail) {
@@ -503,7 +507,7 @@ async function _buildQuotePDF(q, lineRows) {
   const dateStr = new Date().toLocaleDateString('en-GB', { day:'numeric', month:'long', year:'numeric' });
   // If lines were passed, recompute from them (source of truth). Otherwise
   // fall back to the in-memory _totals cache.
-  let sub, stockMat = 0;
+  let sub, stockMat = 0, cabSub = 0;
   if (Array.isArray(lineRows)) {
     let matSum = 0, labSum = 0;
     for (const row of lineRows) {
@@ -511,19 +515,21 @@ async function _buildQuotePDF(q, lineRows) {
       matSum += s.materials;
       labSum += s.labour;
       if (row.line_kind === 'stock') stockMat += s.materials;
+      if ((row.line_kind || 'cabinet') === 'cabinet') cabSub += s.materials + s.labour;
     }
     sub = matSum + labSum;
   } else {
     const matVal = q._totals ? q._totals.materials : (q.materials || 0);
     const labVal = q._totals ? q._totals.labour    : (q.labour    || 0);
     stockMat = q._totals ? (q._totals.stockMat || 0) : 0;
+    cabSub = q._totals ? (q._totals.cabSub || 0) : 0;
     sub = matVal + labVal;
   }
   const stockMarkupPct = /** @type {any} */ (q).stock_markup ?? 0;
   const stockMarkupAmt = stockMat * stockMarkupPct / 100;
-  const subWithStock = sub + stockMarkupAmt;
-  const markupAmt = subWithStock * (q.markup ?? 0) / 100;
-  const afterMarkup = subWithStock + markupAmt;
+  // Markup applies to cabinet lines only (PLAN.md 2026-07-14).
+  const markupAmt = cabSub * (q.markup ?? 0) / 100;
+  const afterMarkup = sub + stockMarkupAmt + markupAmt;
   const taxAmt = afterMarkup * (q.tax ?? 0) / 100;
   const afterTax = afterMarkup + taxAmt;
   const orderDiscPct = /** @type {any} */ (q).discount ?? 0;
@@ -567,13 +573,16 @@ async function _buildQuotePDF(q, lineRows) {
   const rows = Array.isArray(lineRows) ? lineRows : [];
 
   // Markup is internal margin — never itemised on client documents. Fold it
-  // into the displayed line prices so they sum to the marked-up subtotal, and
-  // omit the Stock-markup / Markup rows. Tax, discount and the total are
-  // unchanged. (Matches the public live link, which already hides markup.)
-  const lineScale = sub > 0 ? afterMarkup / sub : 1;
+  // into the displayed line prices and omit the Stock-markup / Markup rows.
+  // Markup applies to cabinet lines only; stock uses stock_markup; items/labour
+  // get nothing (PLAN.md 2026-07-14). Tax, discount and the total are unchanged.
+  const mkFrac = (q.markup ?? 0) / 100;
+  const smFrac = stockMarkupPct / 100;
+  /** @param {string} k */
+  const scaleFor = k => k === 'cabinet' ? 1 + mkFrac : k === 'stock' ? 1 + smFrac : 1;
 
   if (rows.length > 0) {
-    y = _drawDocLineItems(pdf, rows, { M, PW, PH, y, anyLineDisc, fmt, priceScale: lineScale });
+    y = _drawDocLineItems(pdf, rows, { M, PW, PH, y, anyLineDisc, fmt, scaleFor });
   }
 
   // ── Totals ──
@@ -910,7 +919,7 @@ async function _buildOrderDocPDF(o, lines, type, photos) {
   // Compute totals from order_lines. If no lines (legacy orders), invert
   // o.value back through markup+tax so the breakdown still adds up.
   const rows = Array.isArray(lines) ? lines : [];
-  let sub, stockMat = 0;
+  let sub, stockMat = 0, cabSub = 0;
   if (rows.length > 0) {
     let matSum = 0, labSum = 0;
     for (const row of rows) {
@@ -918,19 +927,24 @@ async function _buildOrderDocPDF(o, lines, type, photos) {
       matSum += s.materials;
       labSum += s.labour;
       if (row.line_kind === 'stock') stockMat += s.materials;
+      if ((row.line_kind || 'cabinet') === 'cabinet') cabSub += s.materials + s.labour;
     }
     sub = matSum + labSum;
   } else {
+    // Legacy order with no lines: invert o.value back through markup+tax. Here
+    // the whole subtotal is treated as the markup base (no per-line kinds to
+    // split), so cabSub = the inferred subtotal.
     const mFrac = (o.markup ?? 0) / 100;
     const tFrac = (o.tax ?? 0) / 100;
     const denom = (1 + mFrac) * (1 + tFrac);
     sub = denom > 0 ? (o.value ?? 0) / denom : (o.value ?? 0);
+    cabSub = sub;
   }
   const stockMarkupPct = /** @type {any} */ (o).stock_markup ?? 0;
   const stockMarkupAmt = stockMat * stockMarkupPct / 100;
-  const subWithStock = sub + stockMarkupAmt;
-  const markupAmt = subWithStock * (o.markup ?? 0) / 100;
-  const afterMarkup = subWithStock + markupAmt;
+  // Markup applies to cabinet lines only (PLAN.md 2026-07-14).
+  const markupAmt = cabSub * (o.markup ?? 0) / 100;
+  const afterMarkup = sub + stockMarkupAmt + markupAmt;
   const taxAmt = afterMarkup * (o.tax ?? 0) / 100;
   const afterTax = afterMarkup + taxAmt;
   const orderDiscPct = /** @type {any} */ (o).discount ?? 0;
@@ -973,10 +987,13 @@ async function _buildOrderDocPDF(o, lines, type, photos) {
 
   // ── Line items ──
   // Markup is folded into the displayed line prices (never itemised on a client
-  // document); see the matching note in _buildQuotePDF.
-  const lineScale = sub > 0 ? afterMarkup / sub : 1;
+  // document); see the matching note in _buildQuotePDF. Cabinet lines only.
+  const mkFrac = (o.markup ?? 0) / 100;
+  const smFrac = stockMarkupPct / 100;
+  /** @param {string} k */
+  const scaleFor = k => k === 'cabinet' ? 1 + mkFrac : k === 'stock' ? 1 + smFrac : 1;
   if (rows.length > 0) {
-    y = _drawDocLineItems(pdf, rows, { M, PW, PH, y, anyLineDisc, fmt, priceScale: lineScale });
+    y = _drawDocLineItems(pdf, rows, { M, PW, PH, y, anyLineDisc, fmt, scaleFor });
   }
 
   // ── Totals ──

@@ -24,6 +24,34 @@ Companion docs: `SPEC.md` (refactor history), `SCHEMA.md` (DB schema),
 
 ## Active Work
 
+### Markup applies to cabinets only — never a quote/order line (2026-07-14) ✅ Built + typechecked + parity-green — ⬜ browser-verify in the real quote builder (login-gated; pure pricing fns verified in page context)
+
+**Goal.** Markup (the Cabinet Builder Quote Markup, stored on `quotes.markup` /
+`orders.markup`) is currently applied to the WHOLE quote/order subtotal —
+cabinets, custom items *and* stock — and shown as its own "Markup (20%)" row in
+the quote/order builder. Adam: markup lives in the Cabinet Builder; it should be
+**baked into cabinet line prices only** and never shown as a separate quote row.
+Non-cabinet lines (items, standalone labour) get **no** markup; stock keeps its
+own `stock_markup`.
+
+**New model.** `markupAmt = cabSub × markup%` where `cabSub` = Σ cabinet-line
+(materials+labour). Folded into the displayed cabinet line price; no markup row.
+`subDisplay = rawSub + cabMarkupAmt + stockMarkupAmt`; tax then discount as before.
+
+**Surfaces (must move together or totals disagree across quote/PDF/live-link/invoice):**
+- ✅ `quotes.js` — `cabSub` into `quoteTotalsFromLines` / `orderTotalsFromLines` /
+  `_hydrateQuoteTotals`; `quoteTotal()` markup on cabSub.
+- ✅ `line-editor.js` — quote + order sidebar totals (drop Markup row, fold into
+  cabinet lines); `_lineRowHtml` / `_orderLineRowHtml` cabinet price fold; the
+  focus-preserving single-row total updaters; `_recomputeOrderValuePersist`.
+- ✅ `quote-editor.js` `printQuote` + `cutlist-pdf.js` quote/order PDFs +
+  `_drawDocLineItems` (uniform lineScale → per-kind `scaleFor`).
+- ✅ `orders.js` + `cabinet.js` order-value snapshots — markup on cabSub.
+- ✅ `accounting.js` — fold markup into cabinet lines for the QBO/Xero push.
+- ✅ `share.js` `_shareLineCustomerPrice` — no markup on item/labour lines.
+- ✅ **No server change:** `_shared/costing.ts` `priceCabinetLine` already prices
+  cabinet lines only → `npm run test:costing` parity holds (3/3 green).
+
 ### Cut List Library — "Add to Cut List" card action (2026-07-11) ✅ Built + typechecked — ⬜ browser-verify
 
 **Goal.** Restore a missing bridge: from a **Cut List Library** card, push that

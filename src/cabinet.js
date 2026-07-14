@@ -496,7 +496,8 @@ async function _syncCBLinesToOrder(orderId) {
       const t = await orderTotalsFromLines(orderId);
       const o = orders.find(x => x.id === orderId);
       if (o && t) {
-        const value = Math.round((t.materials + t.labour) * (1 + (o.markup || 0) / 100) * (1 + (o.tax || 0) / 100));
+        // Markup applies to cabinet lines only (PLAN.md 2026-07-14).
+        const value = Math.round(((t.materials + t.labour) + (t.cabSub || 0) * (o.markup || 0) / 100) * (1 + (o.tax || 0) / 100));
         /** @type {any} */ (o).value = value;
         await _db('orders').update(/** @type {any} */ ({ value })).eq('id', orderId);
       }
