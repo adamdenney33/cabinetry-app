@@ -372,7 +372,9 @@ function _drawDocLineItems(pdf, rows, opts) {
   const scaleFor = typeof opts.scaleFor === 'function'
     ? opts.scaleFor
     : /** @param {string} _k */ (_k) => (opts.priceScale || 1);
-  let y = opts.y;
+  // Breathing room between the customer/project block above and this table's
+  // DESCRIPTION header row.
+  let y = opts.y + 6;
   // Right-edge x for each numeric column (values are right-aligned to these).
   const colAmt = PW - M;
   const colDisc = colAmt - 28;
@@ -394,17 +396,8 @@ function _drawDocLineItems(pdf, rows, opts) {
   pdf.setDrawColor(17); pdf.setLineWidth(0.4); pdf.line(M, y, PW - M, y);
   y += 6;
 
-  let lastKind = '';
   rows.forEach(/** @param {any} row */ row => {
     const d = _lineDisplay(row);
-    // Group header when the kind changes
-    if (d.kind !== lastKind) {
-      pdf.setFontSize(7); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(160);
-      const groupLabel = { cabinet: 'CABINETS', item: 'ITEMS', labour: 'LABOUR' };
-      pdf.text((/** @type {any} */ (groupLabel))[d.kind] || d.kind.toUpperCase(), M, y);
-      y += 4;
-      lastKind = d.kind;
-    }
     // Description (wrapped within the description column). Collapse any stray
     // whitespace/line breaks in the user-entered name first — a leading blank
     // line would otherwise become an empty first row and push the qty/price/
@@ -468,8 +461,10 @@ function _drawDocAddressee(pdf, o) {
   pdf.text(o.clientName || '—', M, ly);
   pdf.setFontSize(12); pdf.setFont('helvetica', 'bold');
   pdf.text(o.projectName || '—', projX, ly);
-  // Contact details stacked under the recipient name.
-  ly += 5.5;
+  // Contact details stacked under the recipient name, on one even line rhythm
+  // (name → first detail → each subsequent detail all share the same gap).
+  const lineGap = 5;
+  ly += lineGap;
   const c = o.client;
   if (c) {
     /** @type {string[]} */
@@ -479,7 +474,7 @@ function _drawDocAddressee(pdf, o) {
     if (c.email) detail.push(String(c.email));
     if (detail.length) {
       pdf.setFontSize(8.5); pdf.setFont('helvetica', 'normal'); pdf.setTextColor(95);
-      detail.forEach(/** @param {string} dl */ dl => { pdf.text(dl, M, ly); ly += 4.3; });
+      detail.forEach(/** @param {string} dl */ dl => { pdf.text(dl, M, ly); ly += lineGap; });
     }
   }
   pdf.setTextColor(17);

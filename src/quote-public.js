@@ -397,14 +397,10 @@ function greet() {
   return `<div class="qpd-greet">Hi ${esc(name)} — here's your quote${biz}. ${bits.join(' ')}</div>`;
 }
 /** Group label for a line kind. @param {string} k */
-function grpLabel(k) { return k === 'cabinet' ? 'Cabinets' : k === 'labour' ? 'Labour' : k === 'stock' ? 'Materials' : 'Items'; }
-/** Grouped line-item table (header row + group headings + rows). */
+/** Line-item table (header row + rows — line-kind groupings are not shown). */
 function itemsHtml() {
   let html = `<div class="qpd-ihead"><span class="lab">Description</span><span class="qpd-nums"><span class="qpd-num qty">Qty</span><span class="qpd-num price">Price</span><span class="qpd-num amt">Amount</span></span></div>`;
-  let lastG = '';
   for (const l of lines) {
-    const g = l.line_kind || 'item';
-    if (g !== lastG) { html += `<div class="qpd-grp">${esc(grpLabel(g))}</div>`; lastG = g; }
     html += row(l);
   }
   html += `<div class="qpd-items-foot"></div>`;
@@ -1247,11 +1243,9 @@ async function buildQuotePdf(JsPDF) {
   pdf.text('PRICE', colPrice, y, { align: 'right' });
   pdf.text('AMOUNT', colAmt, y, { align: 'right' });
   y += 2; pdf.setDrawColor(17); pdf.setLineWidth(0.4); pdf.line(M, y, PW - M, y); y += 6;
-  let lastG = '';
   for (const l of lines) {
     if (!l.customer_included) continue;
     const g = l.line_kind || 'item';
-    if (g !== lastG) { pdf.setFontSize(7); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(160); pdf.text(grpLabel(g).toUpperCase(), M, y); y += 4; lastG = g; }
     pdf.setFontSize(11); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(17);
     const name = String(l.name || '—').replace(/\s+/g, ' ').trim() || '—';
     const nameLines = pdf.splitTextToSize(name, descMaxW);
