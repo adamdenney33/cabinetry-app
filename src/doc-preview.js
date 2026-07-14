@@ -173,18 +173,22 @@ async function _dpBuild(kind) {
 async function _dpRenderPages(kind, gen, buf) {
   const pdfjs = await /** @type {any} */ (window)._ensurePdfJs();
   if (gen !== _dpGen[kind]) return;
-  const doc = await pdfjs.getDocument({ data: buf }).promise;
-  if (gen !== _dpGen[kind]) { doc.destroy(); return; }
+  // pdf.js v6: destroy() lives on the loadingTask, not the resolved
+  // PDFDocumentProxy (doc.destroy no longer exists — calling it throws and
+  // silently punts every render to the iframe fallback).
+  const loadingTask = pdfjs.getDocument({ data: buf });
+  const doc = await loadingTask.promise;
+  if (gen !== _dpGen[kind]) { loadingTask.destroy(); return; }
   const stage = document.getElementById(`dp-stage-${kind}`);
   const pagesEl = document.getElementById(`dp-pages-${kind}`);
-  if (!stage || !pagesEl) { doc.destroy(); return; }
+  if (!stage || !pagesEl) { loadingTask.destroy(); return; }
   const scrollTop = stage.scrollTop; // keep the reader's place across refreshes
   const pageW = Math.min(Math.max(stage.clientWidth - 48, 320), 820);
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
   const frag = document.createDocumentFragment();
   for (let n = 1; n <= doc.numPages; n++) {
     const page = await doc.getPage(n);
-    if (gen !== _dpGen[kind]) { doc.destroy(); return; }
+    if (gen !== _dpGen[kind]) { loadingTask.destroy(); return; }
     const vp1 = page.getViewport({ scale: 1 });
     const scale = pageW / vp1.width;
     const vp = page.getViewport({ scale: scale * dpr });
@@ -197,12 +201,12 @@ async function _dpRenderPages(kind, gen, buf) {
     canvas.style.width = pageW + 'px';
     // pdf.js v6 API: pass the canvas element (canvasContext-only throws).
     await page.render({ canvas, viewport: vp }).promise;
-    if (gen !== _dpGen[kind]) { doc.destroy(); return; }
+    if (gen !== _dpGen[kind]) { loadingTask.destroy(); return; }
     frag.appendChild(canvas);
   }
   pagesEl.replaceChildren(frag);
   stage.scrollTop = scrollTop;
-  doc.destroy();
+  loadingTask.destroy();
 }
 
 /** pdf.js unavailable (offline first hit / import failure): show the browser's
