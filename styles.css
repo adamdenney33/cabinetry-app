@@ -322,6 +322,25 @@ header {
 .prefixed-input > input { flex: 1; min-width: 0; }
 .input-prefix { font-size: 11px; color: var(--muted); font-weight: 700; letter-spacing: 0.4px; white-space: nowrap; user-select: none; flex-shrink: 0; }
 .form-group:has(> .prefixed-input) > label { font-size: 11px; color: var(--text2); font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; }
+
+/* From-quote chip in the order editor. Mirrors the 14px gutter + uppercase
+   caption of the .form-group fields above it, so don't swap in the popup
+   .pf/.pf-chip classes here — those carry popup padding and sit ~14px left. */
+.fq-group { padding: 0 14px 10px; }
+.fq-group > label { font-size: 11px; color: var(--text2); font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; }
+.fq-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  max-width: 100%;
+  padding: 6px 9px; border-radius: 7px;
+  border: 1px solid var(--border); background: var(--surface2);
+  font-size: 11px; font-weight: 600; color: var(--text2);
+  cursor: pointer;
+  transition: border-color .1s, color .1s, background .1s;
+}
+.fq-chip:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+.fq-chip svg { width: 12px; height: 12px; flex-shrink: 0; }
+.fq-chip > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
 .cl-current-project { font-size: 11px; color: var(--muted); padding: 4px 2px 0; display: flex; align-items: center; gap: 6px; }
 .cl-current-project .cl-cp-label { opacity: 0.7; }
 .cl-current-project .cl-cp-name { color: var(--text); font-weight: 600; }
@@ -3050,11 +3069,16 @@ input.pf-input-compact[type="date"]:disabled::-webkit-calendar-picker-indicator 
 .editor-li-table .col-dot.is-item span   { background: #f97316; }
 .editor-li-table .col-dot.is-stock span  { background: var(--success); }
 .editor-li-table .col-dot.is-labour span { background: #f97316; }
-/* Type icons in the leading cell (cabinet / stock) replace the bare dot. */
-.editor-li-table .col-dot .li-dot-btn { margin-top: 5px; padding: 1px; }
-.editor-li-table .col-dot .li-dot-static { display: inline-flex; margin-top: 5px; color: var(--muted); }
+/* Type icons in the leading cell (cabinet / stock) replace the bare dot.
+   Offsets must match .li-icon-btn (the photo button in the description cell)
+   so both icons and the description's first text line share a centre line:
+   3px margin + 2px padding + 15px icon → centre ~12.5px, level with the
+   desc textarea's first line (4px padding + 12px/1.35 line box) and the bare
+   dot (9px margin + 6px). Change all three together or they drift apart. */
+.editor-li-table .col-dot .li-dot-btn { margin-top: 3px; padding: 2px; }
+.editor-li-table .col-dot .li-dot-static { display: inline-flex; margin-top: 3px; padding: 2px; color: var(--muted); }
 .editor-li-table .col-dot .li-dot-btn svg,
-.editor-li-table .col-dot .li-dot-static svg { width: 16px; height: 16px; }
+.editor-li-table .col-dot .li-dot-static svg { width: 15px; height: 15px; display: block; }
 .editor-li-table .col-desc  { min-width: 0; }
 .editor-li-table .col-qty   { width: 38px; }
 .editor-li-table .col-price { width: 60px; text-align: right; }

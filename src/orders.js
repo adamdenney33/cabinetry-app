@@ -526,7 +526,20 @@ function renderOrderEditor() {
   // the column was added.
   const qRef = o ? (/** @type {any} */ (o).quote_id ?? _oqGet(o.id)) : null;
   const fromQuote = qRef ? quotes.find(q => q.id === qRef) : null;
-  const quoteChip = fromQuote ? `<div class="pf" style="margin:8px 0"><label class="pf-label">From Quote</label><div class="pf-chips"><span class="pf-chip" style="border-color:rgba(37,99,235,0.3);color:#6b9bf4" onclick="switchSection('quote');loadQuoteIntoSidebar(${fromQuote.id})">${_escHtml(fromQuote.quote_number || ('QUO-' + String(fromQuote.id).padStart(4,'0')))} · ${_escHtml(quoteProject(fromQuote))}</span></div></div>` : '';
+  // Uses .fq-group (not the popup .pf classes) so the caption and 14px gutter
+  // line up with the Order Number / Project Name fields directly above it.
+  let quoteChip = '';
+  if (fromQuote) {
+    const qNum = fromQuote.quote_number || ('QUO-' + String(fromQuote.id).padStart(4, '0'));
+    const qProj = quoteProject(fromQuote) || '';
+    quoteChip = `<div class="fq-group">
+      <label>From Quote</label>
+      <span class="fq-chip" title="Open the source quote" onclick="switchSection('quote');loadQuoteIntoSidebar(${fromQuote.id})">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>
+        <span>${_escHtml(qNum)}${qProj ? ' · ' + _escHtml(qProj) : ''}</span>
+      </span>
+    </div>`;
+  }
 
   // Overdue badge
   let isOverdue = false;
