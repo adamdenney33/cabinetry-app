@@ -1804,7 +1804,10 @@ canvas { display: block; }
    whole pane so the .ll-tabs bar sits flush against the top edge — identical
    to the sidebar's Quote builder / Live link bar (no padding gap around it). */
 .main-scroll:has(> .dp-shell) { padding: 0; }
-.dp-shell { height: 100%; display: flex; flex-direction: column; }
+.dp-shell { height: 100%; display: flex; flex-direction: column; background: var(--bg); }
+/* Main pane sits on the darker --bg (unlike the sidebar's --surface), so the
+   dp-scoped tab bar + preview bar adopt it — no lighter strips in the pane. */
+.dp-shell .ll-tabs, .dp-shell .ll-preview-bar { background: var(--bg); }
 .dp-body { flex: 1; min-height: 0; overflow: auto; padding: 20px; }
 .dp-preview-wrap { flex: 1; min-height: 0; }
 .dp-stage { position: relative; }
