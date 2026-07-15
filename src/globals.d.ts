@@ -51,6 +51,8 @@ declare global {
     fbq?: (...args: any[]) => void;
     /** Meta Pixel internal — set by the pixel bootstrap snippet. */
     _fbq?: any;
+    /** Tolt affiliate referral id — set by tlt.js on the window when the visitor arrived via an affiliate link. Forwarded to stripe-checkout as client_reference_id for conversion attribution. */
+    tolt_referral?: string;
     /** First-touch attribution blob captured by src/main.js. Returns {} if no UTMs were present at landing. */
     _getAttribution?: () => Record<string, string>;
     /** Google Ads conversion `send_to` string ('AW-XXX/LABEL') — set by src/main.js when VITE_GOOGLE_ADS_CONVERSION_SEND_TO is set. */

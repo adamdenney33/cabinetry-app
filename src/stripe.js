@@ -42,6 +42,11 @@ async function startCheckout(plan) {
       plan,
       fbc: (typeof _readCookie === 'function' ? _readCookie('_fbc') : ''),
       fbp: (typeof _readCookie === 'function' ? _readCookie('_fbp') : ''),
+      // Tolt affiliate referral id — set by tlt.js on the window when the
+      // visitor arrived via an affiliate link. The server stamps it as the
+      // Checkout session's client_reference_id so Tolt attributes the paid
+      // conversion to that affiliate. '' when the visit wasn't referred.
+      tolt: window.tolt_referral || '',
     }),
   });
 

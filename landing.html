@@ -118,6 +118,12 @@
       }
     })();
   </script>
+  <!-- ── Tolt affiliate tracking (Rewardful-style) ───────────────────────────
+       Tracks referral clicks landing here and attributes the signup when the
+       visitor reaches /os. data-tolt is the publishable program key, safe to
+       embed. Load on the front door AND the app shell so the referral cookie
+       survives the landing → /os hop. -->
+  <script async src="https://files.tlt-cdn.com/tlt.js" data-tolt="pk_q4qhVvhLCAwEFdKEtx93Webn"></script>
   <!-- ── Supabase config for the live Founder-seats counter ──────────────────
        Injected at BUILD time by copyLandingPlugin() (this file is copied
        verbatim — import.meta.env is NOT available here). The anon key is the
