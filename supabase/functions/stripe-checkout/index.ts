@@ -13,9 +13,7 @@
 //   SUPABASE_SERVICE_ROLE_KEY  — auto-provided
 //
 // Optional env vars (monthly/annual still work without them):
-//   STRIPE_PRICE_FOUNDER          — price_... for the one-off $299 Founder plan
-//   STRIPE_COUPON_MONTHLY_LAUNCH  — coupon_... auto-applied to monthly checkouts
-//   STRIPE_COUPON_ANNUAL_LAUNCH   — coupon_... auto-applied to annual checkouts
+//   STRIPE_PRICE_FOUNDER          — price_... for the one-off $499 Founder plan
 //
 // Request body: { plan: 'monthly' | 'annual' | 'founder' }
 //   (legacy `{ cadence }` is still accepted)
@@ -30,16 +28,15 @@ const STRIPE_SECRET_KEY = Deno.env.get('STRIPE_SECRET_KEY');
 const PRICE_MONTHLY = Deno.env.get('STRIPE_PRICE_MONTHLY');
 const PRICE_ANNUAL = Deno.env.get('STRIPE_PRICE_ANNUAL');
 const PRICE_FOUNDER = Deno.env.get('STRIPE_PRICE_FOUNDER');
-const COUPON_MONTHLY = Deno.env.get('STRIPE_COUPON_MONTHLY_LAUNCH');
-const COUPON_ANNUAL = Deno.env.get('STRIPE_COUPON_ANNUAL_LAUNCH');
 const APP_URL = Deno.env.get('APP_URL') ?? 'https://procabinet.app';
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
 // Founder plan — one-off purchase, lifetime access, UNLIMITED seats. The
 // 50-seat cap (FOUNDER_CAP) and its server-side enforcement were removed on
-// 2026-07-12; the plan is now gated by price alone ($299 until 14 July, $499
-// after), not by scarcity.
+// 2026-07-12; the plan is now gated by price alone ($499 one-off), not by
+// scarcity. The launch discount coupons were removed on 2026-07-15 — monthly
+// and annual now bill at full list price.
 
 if (!STRIPE_SECRET_KEY || !PRICE_MONTHLY || !PRICE_ANNUAL || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
   throw new Error('Missing required env vars for stripe-checkout function');
@@ -173,7 +170,6 @@ Deno.serve(async (req) => {
       });
     } else {
       const priceId = plan === 'monthly' ? PRICE_MONTHLY! : PRICE_ANNUAL!;
-      const coupon = plan === 'monthly' ? COUPON_MONTHLY : COUPON_ANNUAL;
       const params: Stripe.Checkout.SessionCreateParams = {
         mode: 'subscription',
         customer: customerId,
@@ -184,15 +180,10 @@ Deno.serve(async (req) => {
         // (must be enabled in Stripe Dashboard → Settings → Currency settings).
         success_url: `${APP_URL}/os?upgrade=success&plan=${plan}`,
         cancel_url: `${APP_URL}/os?upgrade=cancelled`,
+        // Launch coupons were removed 2026-07-15 — no automatic discount. Let
+        // the user enter a promo code at Checkout if we ever issue one.
+        allow_promotion_codes: true,
       };
-      // `discounts` and `allow_promotion_codes` are mutually exclusive. Apply
-      // the launch coupon automatically when one is configured; otherwise let
-      // the user enter a promo code at Checkout.
-      if (coupon) {
-        params.discounts = [{ coupon }];
-      } else {
-        params.allow_promotion_codes = true;
-      }
       session = await stripe.checkout.sessions.create(params);
     }
 

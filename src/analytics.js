@@ -187,9 +187,9 @@ function _readCookie(name) {
  * helper — with no pixel/ads IDs configured, every branch is a safe no-op.
  *
  * `value` is the USD list price from the stripe-checkout function (monthly $35,
- * annual $299, founder $299 one-off). The amount actually charged can differ
- * with launch coupons or Adaptive Pricing currency conversion, so treat this as
- * the reporting / value-optimisation figure, not the exact receipt.
+ * annual $299, founder $499 one-off). The amount actually charged can differ
+ * with Adaptive Pricing currency conversion, so treat this as the reporting /
+ * value-optimisation figure, not the exact receipt.
  *
  * Meta is NOT fired from the browser here (since 2026-06-10): the Stripe
  * webhook fires a server-side CAPI 'Subscribe'/'Purchase' with the exact
@@ -208,7 +208,7 @@ function _trackPurchaseConversion(plan) {
   // USD list prices keyed by plan. Fall back to the monthly price if the plan
   // param is missing, so the conversion still carries a sensible value.
   /** @type {Record<string, number>} */
-  const PRICES = { monthly: 35, annual: 299, founder: 299 };
+  const PRICES = { monthly: 35, annual: 299, founder: 499 };
   const value = (plan && PRICES[plan]) || PRICES.monthly;
   const currency = 'USD';
 

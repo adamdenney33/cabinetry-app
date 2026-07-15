@@ -1173,10 +1173,10 @@ function _wtCtaHTML() {
       '</div>' +
       '<div class="wt-cta-col">' +
         '<div class="wt-cta-tier">Monthly</div>' +
-        '<div class="wt-cta-price">$25<span>/mo</span></div>' +
-        '<div class="wt-cta-per"><s>$35/mo</s> · launch price</div>' +
+        '<div class="wt-cta-price">$35<span>/mo</span></div>' +
+        '<div class="wt-cta-per">billed monthly</div>' +
         '<ul class="wt-cta-feats">' +
-          '<li>First 6 months, then $35/mo</li>' +
+          '<li>Billed monthly, cancel anytime</li>' +
           '<li><strong>Unlimited saved items</strong></li>' +
           '<li>Import / export libraries (CSV)</li>' +
           '<li>CNC / DXF export</li>' +
@@ -1187,10 +1187,10 @@ function _wtCtaHTML() {
       '</div>' +
       '<div class="wt-cta-col">' +
         '<div class="wt-cta-tier">Annual</div>' +
-        '<div class="wt-cta-price">$15<span>/mo</span></div>' +
-        '<div class="wt-cta-per"><s>$25/mo</s> · launch price</div>' +
+        '<div class="wt-cta-price">$25<span>/mo</span></div>' +
+        '<div class="wt-cta-per">billed $299/yr</div>' +
         '<ul class="wt-cta-feats">' +
-          '<li>$180 billed for year one, then $299/yr</li>' +
+          '<li>$299 billed once a year</li>' +
           '<li><strong>Unlimited saved items</strong></li>' +
           '<li>Import / export libraries (CSV)</li>' +
           '<li>CNC / DXF export</li>' +
@@ -1202,7 +1202,7 @@ function _wtCtaHTML() {
       '<div class="wt-cta-col wt-cta-col-hero">' +
         '<div class="wt-cta-flag">' + flag + '</div>' +
         '<div class="wt-cta-tier wt-cta-tier-hero">Founder</div>' +
-        '<div class="wt-cta-price">$299</div>' +
+        '<div class="wt-cta-price">$499</div>' +
         '<div class="wt-cta-per">one-off · lifetime</div>' +
         '<ul class="wt-cta-feats">' +
           '<li>Pay once, use forever</li>' +

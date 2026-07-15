@@ -195,10 +195,10 @@
   }
   </script>
   <!-- Entity structured data: who publishes this site and what the product is.
-       Offer prices = the CURRENT launch prices shown on the pricing cards (list
-       prices live in the descriptions, mirroring the visible copy). When launch
-       pricing ends, update these offers in the SAME commit as the pricing
-       cards. No aggregateRating — none exists, never fabricate one. -->
+       Offer prices = the list prices shown on the pricing cards, mirroring the
+       visible copy. Launch discounts were removed 2026-07-15. When prices
+       change, update these offers in the SAME commit as the pricing cards.
+       No aggregateRating — none exists, never fabricate one. -->
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -243,21 +243,21 @@
           {
             "@type": "Offer",
             "name": "Pro Monthly",
-            "price": "25.00",
+            "price": "35.00",
             "priceCurrency": "USD",
-            "description": "Launch price $25/mo for the first 6 months, then $35/mo list price."
+            "description": "$35/mo, billed monthly. Cancel anytime."
           },
           {
             "@type": "Offer",
             "name": "Pro Annual",
-            "price": "180.00",
+            "price": "299.00",
             "priceCurrency": "USD",
-            "description": "Launch price: $180 billed for year one, then $299/yr list price."
+            "description": "$299/yr, billed once a year (works out at about $25/mo)."
           },
           {
             "@type": "Offer",
             "name": "Founder Lifetime",
-            "price": "299.00",
+            "price": "499.00",
             "priceCurrency": "USD",
             "description": "One-off payment, lifetime access. No renewal."
           }
@@ -307,7 +307,7 @@
         <a class="btn btn-ghost" href="https://calendar.app.google/3KU7rrEd8mnUu7599" target="_blank" rel="noopener">Book a demo</a>
       </div>
       <p class="micro">Free forever. Includes 14 days of Pro, no card needed.</p>
-      <p class="micro micro-founder"><a href="#pricing">Founders&rsquo; Lifetime — <strong class="amber">$299 once, yours forever</strong> · <span id="founder-hero-left">the price of one year, used forever</span> →</a></p>
+      <p class="micro micro-founder"><a href="#pricing">Founders&rsquo; Lifetime — <strong class="amber">$499 once, yours forever</strong> · <span id="founder-hero-left">pay once, never again</span> →</a></p>
     </div>
     <div class="hero-media" data-parallax>
       <div class="browser-frame" data-tilt>
@@ -767,10 +767,10 @@
 
       <div class="price-card">
         <div class="price-tier">Monthly</div>
-        <div class="price-amount">$25<span>/mo</span></div>
-        <div class="price-sub"><s>$35/mo</s> · launch price</div>
+        <div class="price-amount">$35<span>/mo</span></div>
+        <div class="price-sub">billed monthly</div>
         <ul class="price-feats">
-          <li>First 6 months, then $35/mo</li>
+          <li>Billed monthly, cancel anytime</li>
           <li><strong>Unlimited</strong> saved items</li>
           <li>Import / export libraries (CSV)</li>
           <li>CNC / DXF export</li>
@@ -782,10 +782,10 @@
 
       <div class="price-card">
         <div class="price-tier">Annual</div>
-        <div class="price-amount">$15<span>/mo</span></div>
-        <div class="price-sub"><s>$25/mo</s> · launch price</div>
+        <div class="price-amount">$25<span>/mo</span></div>
+        <div class="price-sub">billed $299/yr</div>
         <ul class="price-feats">
-          <li>$180 billed for year one, then $299/yr</li>
+          <li>$299 billed once a year</li>
           <li><strong>Unlimited</strong> saved items</li>
           <li>Import / export libraries (CSV)</li>
           <li>CNC / DXF export</li>
@@ -798,7 +798,7 @@
       <div class="price-card hero-card">
         <div class="price-flag" id="founder-flag">Best value</div>
         <div class="price-tier">Founder</div>
-        <div class="price-amount">$299<span>/once</span></div>
+        <div class="price-amount">$499<span>/once</span></div>
         <div class="price-sub">one-off · lifetime</div>
         <ul class="price-feats">
           <li>Pay once, use forever</li>

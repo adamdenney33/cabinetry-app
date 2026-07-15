@@ -518,8 +518,8 @@ function _openLimitHitModal(library) {
       <div class="pf-divider"></div>
       <button class="btn btn-primary btn-lg" onclick="_closePopup();_handleUpgradeClick('annual')">Upgrade to Pro</button>
       <div style="display:flex;justify-content:space-between;font-size:10px;margin-top:8px;color:var(--muted)">
-        <span style="cursor:pointer" onclick="_closePopup();_handleUpgradeClick('annual')"><strong style="color:var(--text)">$15</strong> / mo · billed yearly</span>
-        <span style="cursor:pointer" onclick="_closePopup();_handleUpgradeClick('monthly')"><strong style="color:var(--text)">$25</strong> / mo</span>
+        <span style="cursor:pointer" onclick="_closePopup();_handleUpgradeClick('annual')"><strong style="color:var(--text)">$25</strong> / mo · billed yearly</span>
+        <span style="cursor:pointer" onclick="_closePopup();_handleUpgradeClick('monthly')"><strong style="color:var(--text)">$35</strong> / mo</span>
       </div>
     </div>
     <div class="popup-footer">
@@ -554,8 +554,8 @@ function _openProFeatureModal(messageHtml) {
       <div class="pf-divider"></div>
       <button class="btn btn-primary btn-lg" onclick="_closePopup();_handleUpgradeClick('annual')">Upgrade to Pro</button>
       <div style="display:flex;justify-content:space-between;font-size:10px;margin-top:8px;color:var(--muted)">
-        <span style="cursor:pointer" onclick="_closePopup();_handleUpgradeClick('annual')"><strong style="color:var(--text)">$15</strong> / mo · billed yearly</span>
-        <span style="cursor:pointer" onclick="_closePopup();_handleUpgradeClick('monthly')"><strong style="color:var(--text)">$25</strong> / mo</span>
+        <span style="cursor:pointer" onclick="_closePopup();_handleUpgradeClick('annual')"><strong style="color:var(--text)">$25</strong> / mo · billed yearly</span>
+        <span style="cursor:pointer" onclick="_closePopup();_handleUpgradeClick('monthly')"><strong style="color:var(--text)">$35</strong> / mo</span>
       </div>
     </div>
     <div class="popup-footer">
@@ -609,8 +609,8 @@ function _openManagePopupFree() {
       <div class="pf-divider"></div>
       <button class="btn btn-primary btn-lg" onclick="_closePopup();_handleUpgradeClick('annual')">Upgrade to Pro</button>
       <div style="display:flex;justify-content:space-between;font-size:10px;margin-top:8px;color:var(--muted)">
-        <span style="cursor:pointer" onclick="_closePopup();_handleUpgradeClick('annual')"><strong style="color:var(--text)">$15</strong> / mo · billed yearly</span>
-        <span style="cursor:pointer" onclick="_closePopup();_handleUpgradeClick('monthly')"><strong style="color:var(--text)">$25</strong> / mo</span>
+        <span style="cursor:pointer" onclick="_closePopup();_handleUpgradeClick('annual')"><strong style="color:var(--text)">$25</strong> / mo · billed yearly</span>
+        <span style="cursor:pointer" onclick="_closePopup();_handleUpgradeClick('monthly')"><strong style="color:var(--text)">$35</strong> / mo</span>
       </div>
     </div>
     <div class="popup-footer">
@@ -662,7 +662,7 @@ function _renderTrialBanner() {
     if (typeof _track === 'function') _track('trial_banner_shown', { days_left: daysLeft });
   }
   el.innerHTML = `
-    <span style="flex:1;min-width:0"><strong>${label}.</strong> Keep unlimited saved items, CSV import/export and CNC/DXF export — from $15/mo.</span>
+    <span style="flex:1;min-width:0"><strong>${label}.</strong> Keep unlimited saved items, CSV import/export and CNC/DXF export — from $25/mo.</span>
     <button onclick="_trialBannerUpgrade()" style="flex-shrink:0;padding:5px 14px;border:none;border-radius:6px;background:var(--accent);color:#fff;font-size:12px;font-weight:600;font-family:inherit;cursor:pointer">See plans</button>
     <button onclick="_trialBannerDismiss()" title="Dismiss" style="flex-shrink:0;background:none;border:none;color:var(--muted);font-size:16px;line-height:1;cursor:pointer;padding:2px 4px">&times;</button>`;
 }
