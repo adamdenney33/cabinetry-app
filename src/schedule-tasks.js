@@ -219,6 +219,84 @@ function _deleteTaskFromPopup(id) {
   });
 }
 
+// ── Sidebar task list (SV.10) ──
+// Collapsible to-do list in the Schedule sidebar: open tasks (checkbox to
+// tick off, click to edit) + recently completed, with a + to create. Same
+// <details> pattern as the Working Hours section (schedule.js).
+
+/** Persist the Tasks section's open/closed state. Default open — it's the
+ *  to-do list. @param {HTMLDetailsElement} el */
+function _schedTasksToggle(el) {
+  try { localStorage.setItem('pc_sched_tasks_open', String(el.open)); } catch (e) {}
+}
+
+const _TASK_MON_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+/** Friendly one-line date label for a sidebar task row.
+ *  @param {import('./database.types').Tables<'schedule_tasks'>} t */
+function _schedTaskDayLabel(t) {
+  const s = new Date(t.start_at);
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const day = new Date(s.getFullYear(), s.getMonth(), s.getDate());
+  const diff = Math.round((+day - +today) / 86400000);
+  let d;
+  if (diff === 0) d = 'Today';
+  else if (diff === 1) d = 'Tomorrow';
+  else if (diff === -1) d = 'Yesterday';
+  else d = `${s.getDate()} ${_TASK_MON_SHORT[s.getMonth()]}${s.getFullYear() !== today.getFullYear() ? ' ' + s.getFullYear() : ''}`;
+  return t.all_day ? d : `${d} · ${_taskTimeStr(s)}`;
+}
+
+/** Checkbox tick in the sidebar list — optimistic done toggle, one DB write.
+ *  @param {number} id @param {boolean} done */
+async function _taskToggleDoneQuick(id, done) {
+  const t = _taskById(id);
+  if (!t) return;
+  t.done = done;
+  renderSchedule();
+  const { error } = await _db('schedule_tasks')
+    .update({ done, updated_at: new Date().toISOString() })
+    .eq('id', id);
+  if (error) { console.warn('[schedule_tasks] done toggle failed:', error.message); _toast('Save failed — check connection', 'error'); }
+  else if (typeof _gcalQueueSync === 'function') _gcalQueueSync();
+}
+
+/** One sidebar to-do row.
+ *  @param {import('./database.types').Tables<'schedule_tasks'>} t @param {number} nowMs */
+function _schedTaskRowHTML(t, nowMs) {
+  const overdue = !t.done && +new Date(t.end_at) < nowMs;
+  return `<div class="sched-task-row${t.done ? ' done' : ''}" onclick="_openTaskPopup(${t.id})">
+    <input type="checkbox" ${t.done ? 'checked' : ''} onclick="event.stopPropagation()" onchange="_taskToggleDoneQuick(${t.id},this.checked)" title="${t.done ? 'Mark as not done' : 'Mark as done'}">
+    <div class="stl-main">
+      <div class="stl-title">${_escHtml(t.title)}</div>
+      <div class="stl-meta${overdue ? ' overdue' : ''}">${_schedTaskDayLabel(t)}</div>
+    </div>
+  </div>`;
+}
+
+/** The collapsible Tasks <details> section for the Schedule sidebar (and the
+ *  mobile agenda). Open tasks chronologically, then up to 6 recently
+ *  completed, greyed. */
+function _schedTaskListHTML() {
+  const isOpen = localStorage.getItem('pc_sched_tasks_open') !== 'false';
+  const open = scheduleTasks.filter(t => !t.done);
+  const done = scheduleTasks.filter(t => t.done).slice(-6).reverse();
+  const nowMs = Date.now();
+  let rows = open.map(t => _schedTaskRowHTML(t, nowMs)).join('');
+  rows += done.map(t => _schedTaskRowHTML(t, nowMs)).join('');
+  if (!rows) rows = `<div style="font-size:12px;color:var(--muted)">No tasks yet — add one with +</div>`;
+  return `<details class="sched sched-tasks-section" id="sched-tasks-details" ${isOpen ? 'open' : ''} ontoggle="_schedTasksToggle(this)">
+    <summary>
+      <span class="chev"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <span class="sched-label">Tasks</span>
+      <span class="sched-summary">${open.length ? `${open.length} open` : ''}</span>
+      <button type="button" class="sched-tasks-add" title="Add task" aria-label="Add task" onclick="event.preventDefault();event.stopPropagation();_schedNewTaskFromBar()">+</button>
+    </summary>
+    <div class="sched-body">${rows}</div>
+  </details>`;
+}
+
 // ── Drag persistence (SV.6) ──
 // Optimistic in-memory move + debounced DB write, so a drag (or a burst of
 // nudges) coalesces into one update — same pattern as the priority stepper.

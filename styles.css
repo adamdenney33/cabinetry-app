@@ -2724,6 +2724,32 @@ details.sched .sched-label { font-size: 12px; font-weight: 700; color: var(--tex
 details.sched .sched-summary { margin-left: auto; font-size: 11px; color: var(--muted); font-weight: 500; }
 details.sched .sched-body { padding: 4px 14px 12px; display: flex; flex-direction: column; gap: 6px; }
 
+/* Tasks section (SV.10) — collapsible to-do list between the job queue and
+   Working Hours. Rows mirror the sidebar job entries; teal = task colour. */
+.sched-tasks-section { border-top: 1px solid var(--border); margin-top: 8px; }
+.sched-tasks-add {
+  width: 22px; height: 22px; flex-shrink: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid var(--border); border-radius: 5px;
+  background: var(--surface2); color: var(--text2);
+  font-size: 15px; line-height: 1; cursor: pointer;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+.sched-tasks-add:hover { background: var(--accent-dim); color: var(--accent); border-color: var(--accent); }
+.sched-task-row {
+  display: flex; align-items: flex-start; gap: 8px;
+  padding: 5px 8px; border-radius: 6px;
+  background: var(--surface2); cursor: pointer;
+}
+.sched-task-row:hover { background: #0d948833; } /* TASK_COLOR @ 20% */
+.sched-task-row input { accent-color: #0d9488; margin: 2px 0 0; cursor: pointer; flex-shrink: 0; }
+.sched-task-row .stl-main { flex: 1; min-width: 0; }
+.sched-task-row .stl-title { font-size: 11px; font-weight: 600; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sched-task-row.done .stl-title { text-decoration: line-through; color: var(--muted); font-weight: 500; }
+.sched-task-row .stl-meta { font-size: 9px; color: var(--muted); margin-top: 1px; }
+.sched-task-row .stl-meta.overdue { color: #f87171; font-weight: 600; }
+.sched-agenda .sched-tasks-section { margin-top: 14px; }
+
 /* Working Hours section — the <details class="sched"> pinned at the bottom of
    the Schedule sidebar body; a top border separates it from the job list. */
 .sched-hours-section { border-top: 1px solid var(--border); margin-top: 8px; }

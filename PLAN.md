@@ -229,6 +229,15 @@ sync. Minimal UI — GCal interaction cues, existing app styling.
   block, overlap layout, layer toggle, zero page errors; test rows
   SQL-cleaned). ⚠️ Order hour-blocks not visually exercised (e2e account
   has no orders) — eyeball on real data. SPEC § 13 entry written.
+- ✅ **SV.10 — sidebar task list (2026-07-16)**: collapsible "Tasks"
+  <details> in the Schedule sidebar (and mobile agenda) between the job
+  queue and Working Hours — to-do list of open tasks (checkbox tick-off
+  via one optimistic DB write, overdue meta in red, click → edit popup)
+  + last 6 completed greyed, "+" in the summary opens the New Task
+  popup. `_schedTaskListHTML` in schedule-tasks.js; `pc_sched_tasks_open`
+  persists open/closed (default open). Verified headless on the e2e
+  account (create → row + "1 open", tick → done persisted, row → Edit
+  popup; test row cleaned).
 
 **Phase 2 — Google Calendar 2-way (GC) ✅ built + deployed 2026-07-11 — ⬜ end-to-end test (needs user's Google consent) + push.**
 - ✅ **GC.0 — user-side setup**: Google Cloud project + Calendar API +

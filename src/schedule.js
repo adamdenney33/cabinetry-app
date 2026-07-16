@@ -69,6 +69,7 @@ function _renderScheduleAgenda(sortedEvents, sortMode, filterStatus, overrideCou
   return `<div class="sched-agenda">
     ${controls}
     <div class="sched-agenda-list">${cards}</div>
+    ${typeof _schedTaskListHTML === 'function' ? _schedTaskListHTML() : ''}
     ${hours}
   </div>`;
 }
@@ -277,6 +278,8 @@ function renderSchedule(opts) {
     sidebarHTML += `<div style="display:flex;align-items:center;gap:8px;padding:5px 8px;margin-bottom:2px;border-radius:6px;cursor:pointer;background:var(--surface2)"${dragAttr} onclick="_scrollToSchedBar(${e.id})" ondblclick="_openOrderPopup(${e.id})" onmouseover="this.style.background='${e.color}33'" onmouseout="this.style.background='var(--surface2)'">${dragHandle}<div style="width:9px;height:9px;border-radius:50%;background:${e.color};flex-shrink:0"></div><div style="flex:1;min-width:0"><div style="font-size:11px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e.isManual?SCHED_LOCK_ICON:''}${[e.numberLabel, e.client, e.project].filter(Boolean).map(_escHtml).join(' · ')}</div>${meta?`<div style="font-size:9px;color:var(--muted);display:flex;align-items:center;gap:4px;margin-top:1px">${meta}</div>`:''}${dueText?`<div style="font-size:9px;color:var(--muted);margin-top:1px">${dueText}</div>`:''}</div>${priStepper}</div>`;
   });
   if(!sortedEvents.length)sidebarHTML+=`<div style="font-size:12px;color:var(--muted)">No active orders</div>`;
+  // Tasks — collapsible to-do list (SV.10, src/schedule-tasks.js).
+  if (typeof _schedTaskListHTML === 'function') sidebarHTML += _schedTaskListHTML();
   // Working Hours — collapsible section at the bottom of the body (replaces
   // the old ⚙ Hours footer button + popup).
   const hoursOpen = localStorage.getItem('pc_sched_hours_open') === 'true';
