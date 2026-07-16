@@ -229,6 +229,17 @@ sync. Minimal UI — GCal interaction cues, existing app styling.
   block, overlap layout, layer toggle, zero page errors; test rows
   SQL-cleaned). ⚠️ Order hour-blocks not visually exercised (e2e account
   has no orders) — eyeball on real data. SPEC § 13 entry written.
+- ✅ **SV.11 — schedule order popup + task duplicate (2026-07-16)**:
+  clicking an order on the Schedule tab (month bar, day/week block,
+  agenda card, sidebar dblclick) opens a compact popup
+  (`_openSchedOrderPopup`, schedule.js) — read-only summary (client,
+  project, status, value, scheduled placement + hours) + editable
+  schedule settings (auto toggle, priority, production start, due; save
+  mirrors saveOrderFromEditor's manual_start/prodStart/due semantics) —
+  instead of jumping tabs; "Open in Orders" footer button does the old
+  jump. Dashboard/quotes call sites keep `_openOrderPopup`. Task edit
+  popup gains a **Duplicate** button (`_duplicateTaskFromPopup`): copies
+  the saved row with done=false and opens the copy for editing.
 - ✅ **SV.10 — sidebar task list (2026-07-16)**: collapsible "Tasks"
   <details> in the Schedule sidebar (and mobile agenda) between the job
   queue and Working Hours — to-do list of open tasks (checkbox tick-off

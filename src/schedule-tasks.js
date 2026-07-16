@@ -97,7 +97,8 @@ function _openTaskPopup(id, presetStart, presetAllDay) {
       <div class="pf"><label class="pf-label">NOTES</label><textarea class="pf-textarea" id="ptk-notes" rows="2" placeholder="Optional notes...">${t && t.notes ? _escHtml(t.notes) : ''}</textarea></div>
     </div>
     <div class="popup-footer">
-      ${t ? `<button class="btn btn-outline" style="color:#f87171;border-color:#f8717155;margin-right:auto" onclick="_deleteTaskFromPopup(${t.id})">Delete</button>` : ''}
+      ${t ? `<button class="btn btn-outline" style="color:#f87171;border-color:#f8717155" onclick="_deleteTaskFromPopup(${t.id})">Delete</button>
+      <button class="btn btn-outline" style="margin-right:auto" onclick="_duplicateTaskFromPopup(${t.id})">Duplicate</button>` : ''}
       <button class="btn btn-outline" onclick="_closePopup()">Cancel</button>
       <button class="btn btn-primary" onclick="_saveTaskPopup(${t ? t.id : 0})">${t ? 'Save' : 'Add Task'}</button>
     </div>`;
@@ -205,6 +206,40 @@ async function _saveTaskPopup(id) {
 
 function _sortScheduleTasks() {
   scheduleTasks.sort((a, b) => String(a.start_at).localeCompare(String(b.start_at)));
+}
+
+/** Duplicate a task from its edit popup: insert a copy of the SAVED row
+ *  (done reset to false), then open the copy for editing — the usual reason
+ *  to duplicate is "same job, different day".
+ *  @param {number} id */
+async function _duplicateTaskFromPopup(id) {
+  if (!_requireAuth()) return;
+  const t = _taskById(id);
+  if (!t) return;
+  _closePopup();
+  /** @type {any} */
+  const body = {
+    user_id: _userId,
+    title: t.title,
+    notes: t.notes,
+    start_at: t.start_at,
+    end_at: t.end_at,
+    all_day: t.all_day,
+    done: false,
+    updated_at: new Date().toISOString(),
+  };
+  const { data, error } = await _db('schedule_tasks').insert([body]).select().single();
+  if (error || !data) {
+    if (error) console.warn('[schedule_tasks] duplicate failed:', error.message);
+    _toast('Duplicate failed — check connection', 'error');
+    return;
+  }
+  scheduleTasks.push(data);
+  _sortScheduleTasks();
+  renderSchedule();
+  _toast('Task duplicated', 'success');
+  if (typeof _gcalQueueSync === 'function') _gcalQueueSync();
+  _openTaskPopup(data.id);
 }
 
 /** @param {number} id */

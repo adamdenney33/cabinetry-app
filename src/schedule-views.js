@@ -6,7 +6,7 @@
 //
 // Cross-file dependencies (globals): cbSettings, scheduleTasks, TASK_COLOR,
 // _tasksBetween, _taskDateISO, _taskTimeStr, _openTaskPopup,
-// _persistTaskTimes, _openOrderPopup, _escHtml, renderSchedule.
+// _persistTaskTimes, _openSchedOrderPopup, _escHtml, renderSchedule.
 
 // ── Constants ──
 const SCHED_HOUR_PX = 48;               // 1 hour of grid height
@@ -321,7 +321,7 @@ function _renderSchedTimeGrid(opts) {
         const manual = b.e.isManual ? 'border:1px dashed rgba(255,255,255,0.55);' : '';
         const hrs = Math.round(b.hours * 10) / 10; // segment hours are raw floats
         colInner += `<div class="sched-ord-block" style="top:${top}px;height:${height}px;left:calc(${leftPct}% + ${gap}px);width:calc(${wPct}% - ${gap * 2}px);background:${b.e.color};${manual}"
-          onclick="event.stopPropagation();_openOrderPopup(${b.e.id})" title="${label} — ${hrs}h">
+          onclick="event.stopPropagation();_openSchedOrderPopup(${b.e.id})" title="${label} — ${hrs}h">
           <span class="sob-title">${label}</span><span class="sob-time">${hrs}h</span>
         </div>`;
       } else if (b.kind === 'gcal') {

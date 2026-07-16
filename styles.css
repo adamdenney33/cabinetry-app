@@ -2724,6 +2724,13 @@ details.sched .sched-label { font-size: 12px; font-weight: 700; color: var(--tex
 details.sched .sched-summary { margin-left: auto; font-size: 11px; color: var(--muted); font-weight: 500; }
 details.sched .sched-body { padding: 4px 14px 12px; display: flex; flex-direction: column; gap: 6px; }
 
+/* Schedule order popup — read-only summary rows above the editable
+   schedule settings (see _openSchedOrderPopup, schedule.js). */
+.pso-info { display: flex; flex-direction: column; gap: 4px; }
+.pso-row { display: flex; align-items: baseline; gap: 12px; font-size: 12px; }
+.pso-label { flex: 0 0 92px; color: var(--muted); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+.pso-value { color: var(--text); min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+
 /* Tasks section (SV.10) — collapsible to-do list between the job queue and
    Working Hours. Rows mirror the sidebar job entries; teal = task colour. */
 .sched-tasks-section { border-top: 1px solid var(--border); margin-top: 8px; }

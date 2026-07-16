@@ -47,7 +47,7 @@ function _renderScheduleAgenda(sortedEvents, sortMode, filterStatus, overrideCou
     const due = (o && o.due && o.due !== 'TBD') ? `Due ${_escHtml(String(o.due).slice(0,10))}` : '';
     const slack = slackChipHTML(/** @type {any} */ (e).slack);
     const priStepper = `<div class="sched-pri" title="Priority — 1 = highest" onclick="event.stopPropagation()"><span class="sched-pri-num${pri>0?' has-priority':''}">${priLabel}</span><span class="sched-pri-arrows"><button type="button" class="sched-pri-btn" aria-label="Raise priority" ${pri===1?'disabled':''} onclick="event.stopPropagation();_schedStepPriority(${e.id},1)">${SCHED_CHEV_UP}</button><button type="button" class="sched-pri-btn" aria-label="Lower priority" onclick="event.stopPropagation();_schedStepPriority(${e.id},-1)">${SCHED_CHEV_DOWN}</button></span></div>`;
-    cards += `<div class="sched-agenda-card" onclick="_openOrderPopup(${e.id})">
+    cards += `<div class="sched-agenda-card" onclick="_openSchedOrderPopup(${e.id})">
       <div class="sa-dot" style="background:${e.color}"></div>
       <div class="sa-main">
         <div class="sa-title">${e.isManual?SCHED_LOCK_ICON:''}${[e.numberLabel,e.client,e.project].filter(Boolean).map(_escHtml).join(' · ')}</div>
@@ -275,7 +275,7 @@ function renderSchedule(opts) {
     const pri = (o && /** @type {any} */ (o).priority) || 0;
     const priLabel = pri > 0 ? pri : '—';
     const priStepper = `<div class="sched-pri" title="Priority — 1 = highest. Dash = none." draggable="false" onmousedown="event.stopPropagation()" ondblclick="event.stopPropagation()"><span class="sched-pri-num${pri > 0 ? ' has-priority' : ''}">${priLabel}</span><span class="sched-pri-arrows"><button type="button" class="sched-pri-btn" aria-label="Raise priority" ${pri === 1 ? 'disabled' : ''} onclick="event.stopPropagation();_schedStepPriority(${e.id},1)">${SCHED_CHEV_UP}</button><button type="button" class="sched-pri-btn" aria-label="Lower priority" onclick="event.stopPropagation();_schedStepPriority(${e.id},-1)">${SCHED_CHEV_DOWN}</button></span></div>`;
-    sidebarHTML += `<div style="display:flex;align-items:center;gap:8px;padding:5px 8px;margin-bottom:2px;border-radius:6px;cursor:pointer;background:var(--surface2)"${dragAttr} onclick="_scrollToSchedBar(${e.id})" ondblclick="_openOrderPopup(${e.id})" onmouseover="this.style.background='${e.color}33'" onmouseout="this.style.background='var(--surface2)'">${dragHandle}<div style="width:9px;height:9px;border-radius:50%;background:${e.color};flex-shrink:0"></div><div style="flex:1;min-width:0"><div style="font-size:11px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e.isManual?SCHED_LOCK_ICON:''}${[e.numberLabel, e.client, e.project].filter(Boolean).map(_escHtml).join(' · ')}</div>${meta?`<div style="font-size:9px;color:var(--muted);display:flex;align-items:center;gap:4px;margin-top:1px">${meta}</div>`:''}${dueText?`<div style="font-size:9px;color:var(--muted);margin-top:1px">${dueText}</div>`:''}</div>${priStepper}</div>`;
+    sidebarHTML += `<div style="display:flex;align-items:center;gap:8px;padding:5px 8px;margin-bottom:2px;border-radius:6px;cursor:pointer;background:var(--surface2)"${dragAttr} onclick="_scrollToSchedBar(${e.id})" ondblclick="_openSchedOrderPopup(${e.id})" onmouseover="this.style.background='${e.color}33'" onmouseout="this.style.background='var(--surface2)'">${dragHandle}<div style="width:9px;height:9px;border-radius:50%;background:${e.color};flex-shrink:0"></div><div style="flex:1;min-width:0"><div style="font-size:11px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e.isManual?SCHED_LOCK_ICON:''}${[e.numberLabel, e.client, e.project].filter(Boolean).map(_escHtml).join(' · ')}</div>${meta?`<div style="font-size:9px;color:var(--muted);display:flex;align-items:center;gap:4px;margin-top:1px">${meta}</div>`:''}${dueText?`<div style="font-size:9px;color:var(--muted);margin-top:1px">${dueText}</div>`:''}</div>${priStepper}</div>`;
   });
   if(!sortedEvents.length)sidebarHTML+=`<div style="font-size:12px;color:var(--muted)">No active orders</div>`;
   // Tasks — collapsible to-do list (SV.10, src/schedule-tasks.js).
@@ -414,7 +414,7 @@ function renderSchedule(opts) {
         const segShowLabel = isFirstRun && (isRealStart || startInWeek === 0);
         const segChipHTML = segIsRealEnd ? slackChipHTML(/** @type {any} */ (e).slack) : '';
 
-        cal += `<div class="sched-bar sched-bar-${e.id}" style="position:absolute;top:${barTop}px;left:${left}%;width:${width}%;height:18px;padding:0 2px;z-index:2;pointer-events:auto;display:flex;align-items:center;gap:3px" onclick="_openOrderPopup(${e.id})">
+        cal += `<div class="sched-bar sched-bar-${e.id}" style="position:absolute;top:${barTop}px;left:${left}%;width:${width}%;height:18px;padding:0 2px;z-index:2;pointer-events:auto;display:flex;align-items:center;gap:3px" onclick="_openSchedOrderPopup(${e.id})">
           <div style="background:${e.color};${manualStyle}color:#fff;font-size:10px;font-weight:600;padding:1px 6px;border-radius:${radius};height:16px;line-height:16px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;cursor:pointer;flex:1;min-width:0" title="${labelText}${e.isManual?' (manual)':''}">${segShowLabel?lockIcon+labelText:''}</div>
           ${segChipHTML}
         </div>`;
@@ -661,6 +661,142 @@ function _schedStepPriority(orderId, dir) {
       .eq('id', orderId)
       .then(({ error }) => { if (error) console.warn('[orders] priority sync failed:', error.message); });
   }, 400));
+}
+
+// ── Order popup (Schedule tab) ──
+// Clicking an order anywhere on the Schedule tab opens this compact popup —
+// order summary + the schedule-relevant settings — instead of yanking the
+// user off to the Orders tab. "Open in Orders" does the old jump into the
+// Orders sidebar editor (via the _openOrderPopup routing alias).
+
+/** 'YYYY-MM-DD' → '16 Jul' (with year when not current). @param {string} iso */
+function _psoFmtISO(iso) {
+  const m = String(iso || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return '';
+  const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const y = parseInt(m[1]);
+  return `${parseInt(m[3])} ${MON[parseInt(m[2]) - 1]}${y !== new Date().getFullYear() ? ' ' + y : ''}`;
+}
+
+/** @param {number} id */
+function _openSchedOrderPopup(id) {
+  const o = /** @type {any} */ (orders.find(x => x.id === id));
+  if (!o) { _openOrderPopup(id); return; }
+  const auto = o.auto_schedule !== false;
+  const st = o.status ? ((/** @type {Record<string,string>} */ (STATUS_LABELS))[o.status] || o.status) : '';
+  const numberLabel = o.order_number || ('ORD-' + String(o.id).padStart(4, '0'));
+
+  // Scheduled placement — same inputs as renderSchedule's computeSchedule call.
+  const today = new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
+  const biz = {
+    workdayHours: cbSettings.workdayHours,
+    weekdayHours: cbSettings.weekdayHours,
+    packagingHours: cbSettings.packagingHours,
+    contingencyHours: cbSettings.contingencyHours,
+    queueStartDate: cbSettings.queueStartDate,
+  };
+  const overrides = (typeof dayOverrides !== 'undefined' && Array.isArray(dayOverrides)) ? dayOverrides : [];
+  const sched = computeSchedule(orders, biz, overrides, today).get(id);
+  const hrs = sched ? Math.round(sched.hoursRequired * 10) / 10 : 0;
+  let placement;
+  if (sched && sched.isMissingDates) placement = '<span style="color:#f87171;font-weight:600">No dates set</span>';
+  else if (sched && sched.startISO) placement = `${_psoFmtISO(sched.startISO)} → ${_psoFmtISO(sched.endISO)} · ${hrs}h`;
+  else placement = '—';
+
+  const cur = typeof cbSettings !== 'undefined' && cbSettings.currency ? cbSettings.currency : '£';
+  const valueTxt = (o.value != null && o.value !== '') ? cur + Number(o.value).toLocaleString('en-US', { maximumFractionDigits: 0 }) : '—';
+  /** @param {string} label @param {string} value */
+  const infoRow = (label, value) => `<div class="pso-row"><span class="pso-label">${label}</span><span class="pso-value">${value}</span></div>`;
+
+  const html = `
+    <div class="popup-header">
+      <div class="popup-title"><div style="font-size:16px;font-weight:700">${_escHtml(numberLabel)}</div></div>
+      <span class="popup-close" onclick="_closePopup()">&times;</span>
+    </div>
+    <div class="popup-body">
+      <div class="pso-info">
+        ${infoRow('Client', _escHtml(orderClient(o) || '—'))}
+        ${infoRow('Project', _escHtml(orderProject(o) || '—'))}
+        ${infoRow('Status', _escHtml(st || '—'))}
+        ${infoRow('Value', valueTxt)}
+        ${infoRow('Scheduled', placement)}
+      </div>
+      <div class="editor-section-title" style="margin:12px 0 6px">Schedule</div>
+      <div class="sched-body" style="padding:0">
+        <div class="sched-toggles">
+          <label><input type="checkbox" id="pso-auto" ${auto ? 'checked' : ''} onchange="_psoAutoToggle(this.checked)">Auto schedule</label>
+        </div>
+        <div class="sched-fields">
+          <label class="sched-field">
+            <span class="sched-field-label">Priority</span>
+            <input class="pf-input-compact" type="number" min="1" step="1" id="pso-priority" value="${o.priority || ''}" placeholder="—" title="1 = highest priority. Leave blank for none.">
+          </label>
+        </div>
+        <div class="sched-fields is-dates">
+          <label class="sched-field">
+            <span class="sched-field-label">Production Start<span class="sched-field-hint" id="pso-start-hint"${auto ? '' : ' style="display:none"'}> (auto)</span></span>
+            <input class="pf-input-compact" type="date" id="pso-start" value="${_orderDateToISO(o.prodStart || '')}" ${auto ? 'disabled title="Auto-scheduled — toggle off to set manually"' : ''}>
+          </label>
+          <label class="sched-field">
+            <span class="sched-field-label">Due</span>
+            <input class="pf-input-compact" type="date" id="pso-due" value="${_orderDateToISO(o.due || '')}">
+          </label>
+        </div>
+      </div>
+    </div>
+    <div class="popup-footer">
+      <button class="btn btn-outline" style="margin-right:auto" onclick="_closePopup();_openOrderPopup(${id})">Open in Orders</button>
+      <button class="btn btn-outline" onclick="_closePopup()">Cancel</button>
+      <button class="btn btn-primary" onclick="_saveSchedOrderPopup(${id})">Save</button>
+    </div>`;
+  _openPopup(html, 'sm');
+}
+
+/** Auto-schedule toggle inside the popup: manual → enable the start date.
+ *  @param {boolean} auto */
+function _psoAutoToggle(auto) {
+  const start = /** @type {HTMLInputElement|null} */ (document.getElementById('pso-start'));
+  if (start) { start.disabled = auto; start.title = auto ? 'Auto-scheduled — toggle off to set manually' : ''; }
+  const hint = document.getElementById('pso-start-hint');
+  if (hint) hint.style.display = auto ? '' : 'none';
+}
+
+/** Save the schedule settings — mirrors saveOrderFromEditor's semantics for
+ *  these fields (manual_start_date doubles production_start_date when auto is
+ *  off; manual_end_date cleared; due stored in the display format).
+ *  @param {number} id */
+async function _saveSchedOrderPopup(id) {
+  if (!_requireAuth()) return;
+  const o = /** @type {any} */ (orders.find(x => x.id === id));
+  if (!o) return;
+  const autoEl = /** @type {HTMLInputElement|null} */ (document.getElementById('pso-auto'));
+  const auto_schedule = autoEl ? autoEl.checked : true;
+  const priority = parseInt(_popupVal('pso-priority'), 10) || 0;
+  const startISO = _popupVal('pso-start');
+  const dueISO = _popupVal('pso-due');
+  /** @type {any} */
+  const update = {
+    priority,
+    auto_schedule,
+    manual_start_date: auto_schedule ? null : (startISO || null),
+    manual_end_date: null,
+    updated_at: new Date().toISOString(),
+  };
+  if (startISO) update.production_start_date = startISO;
+  if (dueISO) update.due = new Date(dueISO + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  Object.assign(o, update); // optimistic
+  if (startISO) {
+    o.prodStart = startISO;
+    try {
+      const ps = JSON.parse(localStorage.getItem('pc_order_prodstarts') || '{}');
+      ps[String(id)] = startISO;
+      localStorage.setItem('pc_order_prodstarts', JSON.stringify(ps));
+    } catch (e) {}
+  }
+  _closePopup();
+  renderSchedule();
+  const { error } = await _db('orders').update(update).eq('id', id);
+  if (error) { console.warn('[orders] schedule popup save failed:', error.message); _toast('Save failed — check connection', 'error'); }
 }
 
 // ── Restore prodStart: prefer DB column, fall back to localStorage ──
