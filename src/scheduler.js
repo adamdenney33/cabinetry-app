@@ -122,6 +122,58 @@ function orderHoursRequired(o, biz) {
 /** @typedef {{ date: string, hours: number }} SchedSegment */
 /** @typedef {{ id: any, startISO: string, endISO: string, lane: number, hoursRequired: number, isManual: boolean, isMissingDates?: boolean, segments: SchedSegment[] }} ScheduledOrder */
 
+// Walk the calendar forward from `startCursor`, consuming working-hour capacity
+// until `required` hours are placed. `startDayUsed` is the hours already
+// consumed on `startCursor` by an earlier order in the queue — passing it lets
+// the next order continue filling a partially-used final day instead of jumping
+// to the next working day (the fix for jobs never packing onto the same day a
+// predecessor finishes). `endDayUsed` in the return is the running total of
+// hours consumed on the `end` day, ready to be threaded into the next order.
+/** @param {Date} startCursor
+ *  @param {number} startDayUsed
+ *  @param {number} required
+ *  @param {number[]} weekdayDefaults
+ *  @param {Record<string, number>} overrideMap
+ *  @param {{ workdayHours?: number }} biz
+ *  @returns {{ start: Date, end: Date, segments: SchedSegment[], endDayUsed: number }} */
+function _schedForwardPlace(startCursor, startDayUsed, required, weekdayDefaults, overrideMap, biz) {
+  if (required <= 0) {
+    // Zero-hour order — single-day placeholder at the cursor; consumes nothing,
+    // so the start day's used-hours tally is unchanged.
+    return { start: startCursor, end: startCursor, segments: [{ date: _schedISO(startCursor), hours: 0 }], endDayUsed: startDayUsed };
+  }
+  /** @type {SchedSegment[]} */
+  const segments = [];
+  let cursor = startCursor;
+  let dayUsed = startDayUsed;
+  /** @type {Date|null} */
+  let start = null;
+  let end = startCursor;
+  let endDayUsed = 0;
+  let remaining = required;
+  // Cap at 5y to guarantee termination.
+  let safety = 365 * 5;
+  while (remaining > 0 && safety-- > 0) {
+    const h = getWorkdayHours(cursor, weekdayDefaults, overrideMap, biz);
+    const avail = h - dayUsed;
+    if (avail > 0) {
+      if (start === null) start = cursor;
+      const consume = Math.min(avail, remaining);
+      remaining -= consume;
+      dayUsed += consume;
+      end = cursor;
+      endDayUsed = dayUsed;
+      segments.push({ date: _schedISO(cursor), hours: consume });
+      if (remaining > 0 || dayUsed >= h) { cursor = _schedNextDay(cursor); dayUsed = 0; }
+    } else {
+      cursor = _schedNextDay(cursor);
+      dayUsed = 0;
+    }
+  }
+  if (start === null) start = cursor; // defensive
+  return { start, end, segments, endDayUsed };
+}
+
 /** @param {any[]} ordersList
  *  @param {{ workdayHours?: number, weekdayHours?: number[], packagingHours?: number, contingencyPct?: number, queueStartDate?: string|null }} biz
  *  @param {Array<{ date: string, hours: number }>} overrides
@@ -163,59 +215,44 @@ function computeSchedule(ordersList, biz, overrides, today) {
   const placements = [];
 
   let pointer = anchor;
+  // Hours already consumed on `pointer` by the previous priority group's
+  // longest order — lets a new group continue on the same day rather than
+  // waiting for the next working day.
+  let pointerDayUsed = 0;
   let groupPriority = autoOrders[0] ? parseInt(String(autoOrders[0].priority || 0), 10) : 0;
   /** @type {Date | null} */
   let groupMaxEnd = null;
+  let groupMaxEndUsed = 0;
 
   for (const o of autoOrders) {
     const p = parseInt(String(o.priority || 0), 10);
     if (p !== groupPriority) {
-      // New priority group: advance the pointer past the longest end of the
-      // previous group, so lower priorities only start after higher ones finish.
-      if (groupMaxEnd) pointer = _schedNextDay(groupMaxEnd);
+      // New priority group: continue from where the previous group's longest
+      // order ended — including a partially-filled final day, so a lower
+      // priority uses the remaining hours of that day instead of skipping to
+      // the next working day. Only when that day is full does the walk roll
+      // over to tomorrow.
+      if (groupMaxEnd) { pointer = groupMaxEnd; pointerDayUsed = groupMaxEndUsed; }
       groupPriority = p;
       groupMaxEnd = null;
+      groupMaxEndUsed = 0;
     }
     const required = orderHoursRequired(o, biz);
-    /** @type {Date} */
-    let cursor = pointer;
-    /** @type {Date|null} */
-    let start = null;
-    /** @type {Date} */
-    let end = pointer;
-    let remaining = required;
-    // Per-day hour segments consumed by this order (SV.2) — drives the timed
-    // order blocks in the Day/Week views. Same walk, recorded per day.
-    /** @type {SchedSegment[]} */
-    const segments = [];
+    // Per-day hour segments consumed by this order (SV.2) drive the timed order
+    // blocks in the Day/Week views; the walk records them as it goes.
+    const placed = _schedForwardPlace(pointer, pointerDayUsed, required, weekdayDefaults, overrideMap, biz);
 
-    if (remaining <= 0) {
-      // Zero-hour order — single-day placeholder at the pointer; doesn't
-      // consume capacity and doesn't push the group end.
-      start = cursor;
-      end = cursor;
-      segments.push({ date: _schedISO(cursor), hours: 0 });
-    } else {
-      // Walk forward consuming capacity. Cap at 5y to guarantee termination.
-      let safety = 365 * 5;
-      while (remaining > 0 && safety-- > 0) {
-        const h = getWorkdayHours(cursor, weekdayDefaults, overrideMap, biz);
-        if (h > 0) {
-          if (start === null) start = cursor;
-          const consume = Math.min(h, remaining);
-          remaining -= consume;
-          end = cursor;
-          segments.push({ date: _schedISO(cursor), hours: consume });
-          if (remaining > 0 || consume === h) cursor = _schedNextDay(cursor);
-        } else {
-          cursor = _schedNextDay(cursor);
-        }
+    placements.push({ id: o.id, startISO: _schedISO(placed.start), endISO: _schedISO(placed.end), hoursRequired: required, isManual: false, segments: placed.segments });
+    // Track the group's furthest end and the hours used on that day, so the
+    // next group can pick up mid-day. Ties on the end day keep the busiest lane.
+    if (required > 0) {
+      if (!groupMaxEnd || +placed.end > +groupMaxEnd) {
+        groupMaxEnd = placed.end;
+        groupMaxEndUsed = placed.endDayUsed;
+      } else if (+placed.end === +groupMaxEnd) {
+        groupMaxEndUsed = Math.max(groupMaxEndUsed, placed.endDayUsed);
       }
-      if (start === null) start = cursor; // defensive
     }
-
-    placements.push({ id: o.id, startISO: _schedISO(start), endISO: _schedISO(end), hoursRequired: required, isManual: false, segments });
-    if (required > 0 && (!groupMaxEnd || +end > +groupMaxEnd)) groupMaxEnd = end;
   }
 
   // Manual orders: user pins start; end is computed from hoursRequired by
@@ -251,32 +288,15 @@ function computeSchedule(ordersList, biz, overrides, today) {
         }
       }
     } else {
-      // Walk forward consuming workday capacity until hours are exhausted.
+      // Walk forward from the pinned start consuming workday capacity until
+      // hours are exhausted (dayUsed starts at 0 — a pinned start owns its day).
       const startDate = _schedFromISO(startISO);
       if (!startDate) {
         endISO = startISO;
       } else {
-        let cursor = startDate;
-        let end = startDate;
-        let remaining = required;
-        if (remaining > 0) {
-          let safety = 365 * 5;
-          while (remaining > 0 && safety-- > 0) {
-            const h = getWorkdayHours(cursor, weekdayDefaults, overrideMap, biz);
-            if (h > 0) {
-              const consume = Math.min(h, remaining);
-              remaining -= consume;
-              end = cursor;
-              segments.push({ date: _schedISO(cursor), hours: consume });
-              if (remaining > 0 || consume === h) cursor = _schedNextDay(cursor);
-            } else {
-              cursor = _schedNextDay(cursor);
-            }
-          }
-        } else {
-          segments.push({ date: _schedISO(startDate), hours: 0 });
-        }
-        endISO = _schedISO(end);
+        const placed = _schedForwardPlace(startDate, 0, required, weekdayDefaults, overrideMap, biz);
+        for (const s of placed.segments) segments.push(s);
+        endISO = _schedISO(placed.end);
       }
     }
     placements.push({ id: o.id, startISO, endISO: endISO || startISO, hoursRequired: required, isManual: true, segments });
