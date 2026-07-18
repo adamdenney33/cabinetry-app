@@ -301,7 +301,12 @@ function _renderSchedTimeGrid(opts) {
       const endMin = Math.min(24 * 60, startMin + drawn * 60);
       blocks.push({ kind: 'order', e, hours, startMin, endMin });
     }
-    // Timed tasks
+    // Timed tasks. Tasks with "Allocate hours" on cost the day real capacity
+    // (the scheduler has already shrunk the orders around them), so they earn a
+    // column of their own. Tasks with it off cost the queue nothing — they'd be
+    // lying to claim a column, so they're drawn as an overlay across the orders.
+    /** @type {any[]} */
+    const overlays = [];
     if (showTasks) {
       const dEnd = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1);
       for (const t of _tasksBetween(d, dEnd)) {
@@ -309,7 +314,9 @@ function _renderSchedTimeGrid(opts) {
         const s = new Date(t.start_at), en = new Date(t.end_at);
         const startMin = Math.max(0, (+s - +d) / 60000);
         const endMin = Math.min(24 * 60, Math.max(startMin + 15, (+en - +d) / 60000));
-        blocks.push({ kind: 'task', t, startMin, endMin });
+        const blk = { kind: 'task', t, startMin, endMin };
+        if (/** @type {any} */ (t).allocate_hours === false) overlays.push(blk);
+        else blocks.push(blk);
       }
     }
     // Google Calendar overlay (read-only)
@@ -324,6 +331,20 @@ function _renderSchedTimeGrid(opts) {
       }
     }
     _schedLayoutOverlaps(blocks);
+    // Overlays sit outside the column layout — full width, on top (their CSS
+    // z-index already beats the order blocks). Where one covers the TOP of an
+    // order block it would hide that block's label, so record how far the label
+    // has to drop to clear it.
+    for (const ov of overlays) { ov._col = 0; ov._cols = 1; ov._overlay = true; }
+    for (const b of blocks) {
+      if (b.kind !== 'order') continue;
+      let shift = 0;
+      for (const ov of overlays) {
+        if (ov.endMin <= b.startMin || ov.startMin >= b.endMin) continue;
+        if (ov.startMin <= b.startMin) shift = Math.max(shift, ov.endMin - b.startMin);
+      }
+      if (shift > 0) b._labelShift = shift;
+    }
 
     let colInner = '';
     // Non-working-time shading (before workday start / after capacity ends).
@@ -335,7 +356,8 @@ function _renderSchedTimeGrid(opts) {
       colInner += `<div class="sgb-offhours sgb-holiday" style="top:0;height:${bodyH}px"></div>`;
     }
 
-    for (const b of blocks) {
+    // Overlays render after the columned blocks so they paint on top.
+    for (const b of blocks.concat(overlays)) {
       const top = b.startMin / 60 * SCHED_HOUR_PX;
       const height = Math.max(20, (b.endMin - b.startMin) / 60 * SCHED_HOUR_PX - 2);
       const gap = 2;
@@ -345,7 +367,13 @@ function _renderSchedTimeGrid(opts) {
         const label = [b.e.numberLabel, b.e.client].filter(Boolean).map(_escHtml).join(' · ');
         const manual = b.e.isManual ? 'border:1px dashed rgba(255,255,255,0.55);' : '';
         const hrs = Math.round(b.hours * 10) / 10; // segment hours are raw floats
-        colInner += `<div class="sched-ord-block" style="top:${top}px;height:${height}px;left:calc(${leftPct}% + ${gap}px);width:calc(${wPct}% - ${gap * 2}px);background:${b.e.color};${manual}"
+        // Drop the label clear of any overlay covering the block's top, but
+        // never so far it pushes itself out of the block.
+        const shiftPx = b._labelShift
+          ? Math.min(b._labelShift / 60 * SCHED_HOUR_PX, Math.max(0, height - 20))
+          : 0;
+        const shift = shiftPx > 0 ? `padding-top:${Math.round(shiftPx)}px;` : '';
+        colInner += `<div class="sched-ord-block" style="top:${top}px;height:${height}px;left:calc(${leftPct}% + ${gap}px);width:calc(${wPct}% - ${gap * 2}px);background:${b.e.color};${shift}${manual}"
           onclick="event.stopPropagation();_openSchedOrderPopup(${b.e.id})" title="${label} — ${hrs}h">
           <span class="sob-title">${label}</span><span class="sob-time">${hrs}h</span>
         </div>`;
@@ -361,7 +389,8 @@ function _renderSchedTimeGrid(opts) {
       } else {
         const t = b.t;
         const slim = height < 34 ? ' slim' : '';
-        colInner += `<div class="sched-task-block${t.done ? ' done' : ''}${slim}" data-task-id="${t.id}" data-date="${iso}"
+        const ovr = b._overlay ? ' overlay' : '';
+        colInner += `<div class="sched-task-block${t.done ? ' done' : ''}${slim}${ovr}" data-task-id="${t.id}" data-date="${iso}"
           style="top:${top}px;height:${height}px;left:calc(${leftPct}% + ${gap}px);width:calc(${wPct}% - ${gap * 2}px)"
           onpointerdown="_taskPointerDown(event,${t.id},'move')">
           <span class="stb-title">${_escHtml(t.title)}</span>

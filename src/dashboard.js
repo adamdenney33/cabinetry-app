@@ -51,7 +51,7 @@ function renderDashboard() {
   const _schedOverrides = (typeof dayOverrides !== 'undefined' && Array.isArray(dayOverrides)) ? dayOverrides : [];
   const _schedToday = new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
   const _schedComputed = (typeof computeSchedule === 'function')
-    ? computeSchedule(orders, _schedBiz, _schedOverrides, _schedToday)
+    ? computeSchedule(orders, _schedBiz, _schedOverrides, _schedToday, (typeof _schedTaskReservations === 'function' ? _schedTaskReservations() : undefined))
     : new Map();
 
   /** @param {number} v */
@@ -288,7 +288,7 @@ function renderDashboard() {
           const dueISO = o ? _orderDateToISO(o.due || '') : '';
           const endISO = e.end ? `${e.end.getFullYear()}-${String(e.end.getMonth()+1).padStart(2,'0')}-${String(e.end.getDate()).padStart(2,'0')}` : '';
           /** @type {any} */ (e).slack = (endISO && dueISO)
-            ? slackDays(endISO, dueISO, cbSettings.weekdayHours || [8,8,8,8,8,0,0], overrideByDate, _schedBiz)
+            ? slackDays(endISO, dueISO, cbSettings.weekdayHours || [8,8,8,8,8,0,0], overrideByDate, _schedBiz, (typeof _schedTaskReservations === 'function' ? _schedTaskReservations() : undefined))
             : null;
         }
 

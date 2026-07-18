@@ -77,6 +77,9 @@ function _openTaskPopup(id, presetStart, presetAllDay) {
   const start = t ? new Date(t.start_at) : (presetStart || (() => { const d = new Date(); d.setMinutes(0, 0, 0); return new Date(+d + 3600000); })());
   const end = t ? new Date(t.end_at) : new Date(+start + 3600000);
   const allDay = t ? !!t.all_day : !!presetAllDay;
+  // Defaults to on: a task is real committed time, so it should cost the
+  // production queue hours unless the user says otherwise.
+  const allocate = t ? /** @type {any} */ (t).allocate_hours !== false : true;
   const html = `
     <div class="popup-header">
       <div class="popup-title"><div style="font-size:16px;font-weight:700">${t ? 'Edit Task' : 'New Task'}</div></div>
@@ -92,6 +95,7 @@ function _openTaskPopup(id, presetStart, presetAllDay) {
       </div>
       <div class="pf" style="display:flex;align-items:center;gap:14px">
         <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer"><input type="checkbox" id="ptk-allday" ${allDay ? 'checked' : ''} onchange="_taskToggleAllDay(this.checked)"> All day</label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer" title="On: this task's time comes out of the day's order capacity. Off: it costs the production queue nothing and just overlays the orders."><input type="checkbox" id="ptk-allocate" ${allocate ? 'checked' : ''}> Allocate hours</label>
         ${t ? `<label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer"><input type="checkbox" id="ptk-done" ${t.done ? 'checked' : ''}> Done</label>` : ''}
       </div>
       <div class="pf"><label class="pf-label">NOTES</label><textarea class="pf-textarea" id="ptk-notes" rows="2" placeholder="Optional notes...">${t && t.notes ? _escHtml(t.notes) : ''}</textarea></div>
@@ -157,6 +161,7 @@ async function _saveTaskPopup(id) {
   if (!dateISO) { _toast('Pick a date', 'error'); return; }
   const allDayEl = /** @type {HTMLInputElement|null} */ (document.getElementById('ptk-allday'));
   const doneEl = /** @type {HTMLInputElement|null} */ (document.getElementById('ptk-done'));
+  const allocateEl = /** @type {HTMLInputElement|null} */ (document.getElementById('ptk-allocate'));
   const allDay = !!(allDayEl && allDayEl.checked);
   // All-day tasks anchor at local NOON — midnight-anchored timestamps change
   // calendar date once converted to UTC (BST pushed them to Google a day
@@ -175,6 +180,7 @@ async function _saveTaskPopup(id) {
     start_at: start.toISOString(),
     end_at: end.toISOString(),
     all_day: allDay,
+    allocate_hours: !allocateEl || allocateEl.checked,
     done: !!(doneEl && doneEl.checked),
     updated_at: new Date().toISOString(),
   };
@@ -208,6 +214,42 @@ function _sortScheduleTasks() {
   scheduleTasks.sort((a, b) => String(a.start_at).localeCompare(String(b.start_at)));
 }
 
+// Hours each date owes to tasks, for computeSchedule to subtract from that
+// day's order capacity. Only tasks with allocate_hours on are counted; the rest
+// are pure overlay and cost the production queue nothing.
+//
+// All-day tasks reserve Infinity — they represent a day that isn't available
+// for production at all, and the scheduler floors the remaining capacity at 0
+// rather than trying to guess a partial figure. Timed tasks that straddle
+// midnight are split across the dates they actually cover.
+/** @returns {Record<string, number>} date (YYYY-MM-DD) → hours reserved */
+function _schedTaskReservations() {
+  /** @type {Record<string, number>} */
+  const map = {};
+  if (typeof scheduleTasks === 'undefined' || !Array.isArray(scheduleTasks)) return map;
+  for (const t of scheduleTasks) {
+    if (!t || /** @type {any} */ (t).allocate_hours === false) continue;
+    const s = new Date(t.start_at), e = new Date(t.end_at);
+    if (isNaN(+s) || isNaN(+e)) continue;
+    if (t.all_day) { map[_taskDateISO(s)] = Infinity; continue; }
+    if (+e <= +s) continue;
+    // Walk the local days the task touches, adding only the overlapping slice
+    // of each so a task running 23:00→01:00 bills both dates correctly.
+    let day = new Date(s.getFullYear(), s.getMonth(), s.getDate());
+    let guard = 400;
+    while (+day <= +e && guard-- > 0) {
+      const dayEnd = new Date(day.getFullYear(), day.getMonth(), day.getDate() + 1);
+      const from = Math.max(+s, +day), to = Math.min(+e, +dayEnd);
+      if (to > from) {
+        const iso = _taskDateISO(day);
+        map[iso] = (map[iso] || 0) + (to - from) / 3600000;
+      }
+      day = dayEnd;
+    }
+  }
+  return map;
+}
+
 /** Duplicate a task from its edit popup: insert a copy of the SAVED row
  *  (done reset to false), then open the copy for editing — the usual reason
  *  to duplicate is "same job, different day".
@@ -225,6 +267,7 @@ async function _duplicateTaskFromPopup(id) {
     start_at: t.start_at,
     end_at: t.end_at,
     all_day: t.all_day,
+    allocate_hours: /** @type {any} */ (t).allocate_hours !== false,
     done: false,
     updated_at: new Date().toISOString(),
   };

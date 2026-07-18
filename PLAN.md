@@ -24,6 +24,37 @@ Companion docs: `SPEC.md` (refactor history), `SCHEMA.md` (DB schema),
 
 ## Active Work
 
+### Tasks consume order capacity — "Allocate hours" toggle (2026-07-18) ✅ Done
+
+**Goal (Adam).** Tasks currently sit beside the production queue without costing
+it anything, so a day can show 8h of orders *plus* a 1h task. Tasks gain an
+**Allocate hours** toggle: **on** (default) the task's time comes out of the
+day's order capacity and it keeps today's side-by-side column layout; **off**
+it costs nothing and simply overlays the order blocks — and where the overlay
+would cover an order's label, that label shifts down so it stays readable.
+
+- ✅ **Migration** `add_allocate_hours_to_schedule_tasks` — `allocate_hours
+  boolean not null default true`. Default **true** per Adam, so existing tasks
+  start consuming capacity immediately (order dates will shift out).
+- ✅ **Regenerate** `src/database.types.ts` (Supabase MCP).
+- ✅ **`src/schedule-tasks.js`** — "Allocate hours" checkbox beside All day /
+  Done (checked for new tasks); persist in `_saveTaskPopup` + the duplicate
+  path. New `_schedTaskReservations()` builds a `date → hours` map from
+  `scheduleTasks` (all-day + allocate = whole day reserved; multi-day tasks
+  split per date).
+- ✅ **`src/scheduler.js`** — `computeSchedule` gains an optional 5th
+  `reservations` arg; `getWorkdayHours` subtracts the date's reserved hours
+  (floored at 0). All 4 call sites (dashboard, gcal, line-editor, schedule ×2)
+  pass it so every surface agrees on dates.
+- ✅ **`src/schedule-views.js`** — split task blocks: allocating tasks stay in
+  `_schedLayoutOverlaps`; non-allocating ones are excluded from the column
+  layout and drawn as an overlay above the order blocks. Order blocks covered
+  at the top by an overlay get a `padding-top` label shift (`.sched-ord-block`
+  is a border-box flex column, so padding pushes the label down in place).
+- ✅ **Verify** logged-in: capacity drops on a day with an allocating task and
+  orders shift; toggling off restores dates and overlays instead; covered order
+  label moves down. Screenshot + typecheck.
+
 ### Main-window PDF preview sub-tab + two-stage back (2026-07-14) ✅ Built + typechecked — ⬜ browser-verify
 
 **Goal (Adam).** (1) With a quote/order open in the sidebar, the main window

@@ -349,7 +349,7 @@ function _orderAutoScheduleToggle(on) {
             packagingHours: cbSettings.packagingHours,
             contingencyPct: cbSettings.contingencyPct,
             queueStartDate: cbSettings.queueStartDate,
-          }, dayOverrides || [], new Date()).get(_opState.orderId)
+          }, dayOverrides || [], new Date(), (typeof _schedTaskReservations === 'function' ? _schedTaskReservations() : undefined)).get(_opState.orderId)
         : null;
       const o = orders.find(x => x.id === _opState.orderId);
       startInput.value = (sched && sched.startISO) || (o ? _orderDateToISO(o.prodStart || '') : '') || '';

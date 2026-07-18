@@ -861,6 +861,15 @@ header {
   cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none;
 }
 .sched-task-block.dragging { opacity: 0.9; cursor: grabbing; z-index: 6; box-shadow: 0 6px 18px rgba(0,0,0,0.45); }
+/* "Allocate hours" off — the task costs the production queue nothing, so it
+   lays over the order blocks instead of taking a column of its own. Translucent
+   with a dashed edge so the order underneath stays readable and the block reads
+   as an annotation rather than booked shop time. */
+.sched-task-block.overlay {
+  z-index: 5; background: rgba(13, 148, 136, 0.72);
+  border: 1px dashed rgba(255, 255, 255, 0.65);
+  backdrop-filter: saturate(1.1);
+}
 .sched-task-block.done { opacity: 0.55; }
 .sched-task-block.done .stb-title { text-decoration: line-through; }
 .sched-task-block .stb-title { font-size: 10px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

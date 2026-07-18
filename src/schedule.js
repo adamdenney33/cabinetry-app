@@ -141,7 +141,7 @@ function renderSchedule(opts) {
     queueStartDate: cbSettings.queueStartDate,
   };
   const overrides = (typeof dayOverrides !== 'undefined' && Array.isArray(dayOverrides)) ? dayOverrides : [];
-  const computed = computeSchedule(orders, biz, overrides, today);
+  const computed = computeSchedule(orders, biz, overrides, today, (typeof _schedTaskReservations === 'function' ? _schedTaskReservations() : undefined));
 
   /** @typedef {{id:any,numberLabel:string,project:string,client:string,start:Date|null,end:Date|null,color:string,lane:number,isManual:boolean,isMissingDates:boolean}} SchedEvent */
   /** @type {SchedEvent[]} */
@@ -187,7 +187,7 @@ function renderSchedule(opts) {
     const dueISO = o ? _orderDateToISO(o.due || '') : '';
     const endISO = (!e.isMissingDates && e.end) ? `${e.end.getFullYear()}-${String(e.end.getMonth()+1).padStart(2,'0')}-${String(e.end.getDate()).padStart(2,'0')}` : '';
     /** @type {any} */ (e).slack = (endISO && dueISO)
-      ? slackDays(endISO, dueISO, cbSettings.weekdayHours || [8,8,8,8,8,0,0], overrideByDate, biz)
+      ? slackDays(endISO, dueISO, cbSettings.weekdayHours || [8,8,8,8,8,0,0], overrideByDate, biz, (typeof _schedTaskReservations === 'function' ? _schedTaskReservations() : undefined))
       : null;
   }
   /** @param {Date} d */
@@ -849,7 +849,7 @@ function _psoPlacementHTML(id, pending) {
   const list = pending
     ? orders.map(x => x.id === id ? Object.assign({}, x, pending) : x)
     : orders;
-  const sched = computeSchedule(list, biz, overrides, today).get(id);
+  const sched = computeSchedule(list, biz, overrides, today, (typeof _schedTaskReservations === 'function' ? _schedTaskReservations() : undefined)).get(id);
   const hrs = sched ? Math.round(sched.hoursRequired * 10) / 10 : 0;
   if (sched && sched.isMissingDates) return '<span style="color:#f87171;font-weight:600">No dates set</span>';
   if (sched && sched.startISO) return `${_psoFmtISO(sched.startISO)} → ${_psoFmtISO(sched.endISO)} · ${hrs}h`;

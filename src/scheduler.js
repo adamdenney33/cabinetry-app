@@ -41,21 +41,31 @@ function _schedWeekdayIdx(d) {
 // ══════════════════════════════════════════
 // WORKING HOURS
 // ══════════════════════════════════════════
-// Precedence: date override → weekday default → workday fallback.
+// Precedence: date override → weekday default → workday fallback. Hours already
+// reserved by tasks on that date (see _schedTaskReservations) come off the top,
+// floored at 0 — a day booked solid with tasks has no capacity for orders.
 /** @param {Date} d
  *  @param {number[]} weekdayDefaults
  *  @param {Record<string, number>} overrideMap
- *  @param {{ workdayHours?: number }} biz */
-function getWorkdayHours(d, weekdayDefaults, overrideMap, biz) {
+ *  @param {{ workdayHours?: number }} biz
+ *  @param {Record<string, number>} [reservedMap] */
+function getWorkdayHours(d, weekdayDefaults, overrideMap, biz, reservedMap) {
   const iso = _schedISO(d);
+  let hours;
   if (overrideMap && Object.prototype.hasOwnProperty.call(overrideMap, iso)) {
-    return parseFloat(String(overrideMap[iso])) || 0;
+    hours = parseFloat(String(overrideMap[iso])) || 0;
+  } else {
+    hours = parseFloat(String(biz?.workdayHours)) || 8;
+    if (Array.isArray(weekdayDefaults) && weekdayDefaults.length === 7) {
+      const w = parseFloat(String(weekdayDefaults[_schedWeekdayIdx(d)]));
+      if (isFinite(w)) hours = w;
+    }
   }
-  if (Array.isArray(weekdayDefaults) && weekdayDefaults.length === 7) {
-    const w = parseFloat(String(weekdayDefaults[_schedWeekdayIdx(d)]));
-    if (isFinite(w)) return w;
+  if (reservedMap && hours > 0) {
+    const reserved = reservedMap[iso];
+    if (reserved) hours = Math.max(0, hours - reserved);
   }
-  return parseFloat(String(biz?.workdayHours)) || 8;
+  return hours;
 }
 
 // Build the override map once per render to avoid linear scans inside the
@@ -174,8 +184,9 @@ function _schedShareDay(actives, capacity) {
  *  @param {number[]} weekdayDefaults
  *  @param {Record<string, number>} overrideMap
  *  @param {{ workdayHours?: number }} biz
+ *  @param {Record<string, number>} [reservedMap]
  *  @returns {{ start: Date, end: Date, segments: SchedSegment[], endDayUsed: number }} */
-function _schedForwardPlace(startCursor, startDayUsed, required, weekdayDefaults, overrideMap, biz) {
+function _schedForwardPlace(startCursor, startDayUsed, required, weekdayDefaults, overrideMap, biz, reservedMap) {
   if (required <= 0) {
     // Zero-hour order — single-day placeholder at the cursor; consumes nothing,
     // so the start day's used-hours tally is unchanged.
@@ -193,7 +204,7 @@ function _schedForwardPlace(startCursor, startDayUsed, required, weekdayDefaults
   // Cap at 5y to guarantee termination.
   let safety = 365 * 5;
   while (remaining > 0 && safety-- > 0) {
-    const h = getWorkdayHours(cursor, weekdayDefaults, overrideMap, biz);
+    const h = getWorkdayHours(cursor, weekdayDefaults, overrideMap, biz, reservedMap);
     const avail = h - dayUsed;
     if (avail > 0) {
       if (start === null) start = cursor;
@@ -218,8 +229,10 @@ function _schedForwardPlace(startCursor, startDayUsed, required, weekdayDefaults
  *  @param {{ workdayHours?: number, weekdayHours?: number[], packagingHours?: number, contingencyPct?: number, queueStartDate?: string|null }} biz
  *  @param {Array<{ date: string, hours: number }>} overrides
  *  @param {Date} today
+ *  @param {Record<string, number>} [reservedMap]  date → hours already taken by
+ *         tasks (see _schedTaskReservations); deducted from that day's capacity
  *  @returns {Map<any, ScheduledOrder>} */
-function computeSchedule(ordersList, biz, overrides, today) {
+function computeSchedule(ordersList, biz, overrides, today, reservedMap) {
   /** @type {Map<any, ScheduledOrder>} */
   const out = new Map();
   if (!Array.isArray(ordersList) || ordersList.length === 0) return out;
@@ -295,7 +308,7 @@ function computeSchedule(ordersList, biz, overrides, today) {
     const working = states.filter(s => s.required > 0);
     let safety = 365 * 5;
     while (working.some(s => s.remaining > 1e-9) && safety-- > 0) {
-      const h = getWorkdayHours(cursor, weekdayDefaults, overrideMap, biz);
+      const h = getWorkdayHours(cursor, weekdayDefaults, overrideMap, biz, reservedMap);
       const avail = h - cursorDayUsed;
       if (avail <= 1e-9) { cursor = _schedNextDay(cursor); cursorDayUsed = 0; continue; }
 
@@ -351,7 +364,7 @@ function computeSchedule(ordersList, biz, overrides, today) {
         let remaining = required;
         let safety = 365 * 5;
         while (+cursor <= +e && safety-- > 0) {
-          const h = getWorkdayHours(cursor, weekdayDefaults, overrideMap, biz);
+          const h = getWorkdayHours(cursor, weekdayDefaults, overrideMap, biz, reservedMap);
           if (h > 0) {
             const consume = remaining > 0 ? Math.min(h, remaining) : h;
             remaining -= consume;
@@ -368,7 +381,7 @@ function computeSchedule(ordersList, biz, overrides, today) {
       if (!startDate) {
         endISO = startISO;
       } else {
-        const placed = _schedForwardPlace(startDate, 0, required, weekdayDefaults, overrideMap, biz);
+        const placed = _schedForwardPlace(startDate, 0, required, weekdayDefaults, overrideMap, biz, reservedMap);
         for (const s of placed.segments) segments.push(s);
         endISO = _schedISO(placed.end);
       }
@@ -413,8 +426,10 @@ function computeSchedule(ordersList, biz, overrides, today) {
  *  @param {string|null|undefined} dueISO  YYYY-MM-DD
  *  @param {number[]} weekdayDefaults
  *  @param {Record<string, number>} overrideMap
- *  @param {{ workdayHours?: number }} biz */
-function slackDays(scheduledEndISO, dueISO, weekdayDefaults, overrideMap, biz) {
+ *  @param {{ workdayHours?: number }} biz
+ *  @param {Record<string, number>} [reservedMap]  a day booked solid by tasks
+ *         has no capacity left, so it isn't slack either */
+function slackDays(scheduledEndISO, dueISO, weekdayDefaults, overrideMap, biz, reservedMap) {
   if (!dueISO) return null;
   const start = _schedFromISO(scheduledEndISO);
   const due = _schedFromISO(dueISO);
@@ -426,7 +441,7 @@ function slackDays(scheduledEndISO, dueISO, weekdayDefaults, overrideMap, biz) {
   let count = 0;
   let safety = 365 * 5;
   while (+cursor <= +limit && safety-- > 0) {
-    const h = getWorkdayHours(cursor, weekdayDefaults, overrideMap, biz);
+    const h = getWorkdayHours(cursor, weekdayDefaults, overrideMap, biz, reservedMap);
     if (h > 0) count++;
     cursor = _schedNextDay(cursor);
   }

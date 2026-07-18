@@ -108,7 +108,7 @@ function _gcalOrderPlacements() {
     };
     const overrides = (typeof dayOverrides !== 'undefined' && Array.isArray(dayOverrides)) ? dayOverrides : [];
     const computed = computeSchedule(orders, biz, overrides,
-      new Date(today.getFullYear(), today.getMonth(), today.getDate()));
+      new Date(today.getFullYear(), today.getMonth(), today.getDate()), (typeof _schedTaskReservations === 'function' ? _schedTaskReservations() : undefined));
     /** @type {{ id: number, label: string, startISO: string, endISO: string }[]} */
     const out = [];
     for (const o of orders) {

@@ -1143,6 +1143,7 @@ create table public.schedule_tasks (
   start_at       timestamptz not null,
   end_at         timestamptz not null,
   all_day        boolean not null default false,
+  allocate_hours boolean not null default true,  -- migration 20260718: costs order capacity
   done           boolean not null default false,
   gcal_event_id  text,          -- Google Calendar event id (sync phase 2)
   gcal_synced_at timestamptz,   -- last successful GCal sync (sync phase 2)
@@ -1156,6 +1157,16 @@ create index schedule_tasks_user_start_idx
 alter table public.schedule_tasks enable row level security;
 -- Pattern A policies (read/insert/update/delete by owner) — see § 4
 ```
+
+`allocate_hours` (added 2026-07-18, **defaults true**) decides whether the task
+costs the production queue anything. When true, `_schedTaskReservations()`
+(schedule-tasks.js) folds the task's hours into a `date → hours` map that
+`computeSchedule`/`slackDays` subtract from that day's capacity (floored at 0;
+`all_day` tasks reserve `Infinity`, blocking the day outright) — so orders
+shrink and shift around it. When false the task costs nothing and the Day/Week
+grid draws it as a translucent overlay across the order blocks instead of
+giving it a column. Default is true because an existing task represents time
+already committed.
 
 Times are `timestamptz`; the client renders in local time. `all_day` tasks
 ignore the time-of-day component. The same migration added
