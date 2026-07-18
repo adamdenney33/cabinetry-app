@@ -198,15 +198,16 @@ function _renderSchedTimeGrid(opts) {
   const workStart = _schedWorkStartMin();
   const showTasks = _schedLayers.tasks && typeof scheduleTasks !== 'undefined';
 
-  // Per-event segment lookup: date → [{event, hours}]
-  /** @type {Record<string, {e: any, hours: number}[]>} */
+  // Per-event segment lookup: date → [{event, hours, offset, span}]. offset/span
+  // are the slice's window within the working day (hours from the day's start).
+  /** @type {Record<string, {e: any, hours: number, offset: number, span: number}[]>} */
   const segsByDate = {};
   if (_schedLayers.orders) {
     for (const e of opts.events) {
       const sched = opts.computed.get(e.id);
       if (!sched || !Array.isArray(sched.segments)) continue;
       for (const seg of sched.segments) {
-        (segsByDate[seg.date] = segsByDate[seg.date] || []).push({ e, hours: seg.hours });
+        (segsByDate[seg.date] = segsByDate[seg.date] || []).push({ e, hours: seg.hours, offset: seg.offset, span: seg.span });
       }
     }
   }
@@ -270,13 +271,16 @@ function _renderSchedTimeGrid(opts) {
 
     /** @type {any[]} */
     const blocks = [];
-    // Order blocks from scheduler segments (SV.2): stacked back-to-back from the
-    // workday start. Every block used to be anchored at workStart, which read as
-    // parallel columns once the scheduler started packing several jobs onto one
-    // day; the shop works them consecutively, so lay them out that way.
-    // Sequenced by the scheduler's own placement order (start date, then
-    // priority with 0 = unset last, then id) — segsByDate is built from the
-    // sidebar's event list, whose order follows the chosen sort mode.
+    // Order blocks from scheduler segments (SV.2). Each segment carries the
+    // window it occupies within the working day (`offset`/`span`, in hours from
+    // the day's start), so sequential jobs land back-to-back and concurrent
+    // ones share a window — _schedLayoutOverlaps then splits those into
+    // side-by-side columns, each labelled with its own (smaller) hours. Blocks
+    // can't run past the end of the day because the scheduler never books more
+    // than a day's capacity into it.
+    // Sorted by the scheduler's placement order (start date, then priority with
+    // 0 = unset last, then id) so column order is stable — segsByDate is built
+    // from the sidebar's event list, whose order follows the chosen sort mode.
     const daySegs = (segsByDate[iso] || []).slice().sort((a, b) => {
       const sa = opts.computed.get(a.e.id), sb = opts.computed.get(b.e.id);
       const da = (sa && sa.startISO) || '', db = (sb && sb.startISO) || '';
@@ -290,15 +294,12 @@ function _renderSchedTimeGrid(opts) {
       }
       return (a.e.id || 0) - (b.e.id || 0);
     });
-    let orderCursorMin = workStart;
-    for (const { e, hours } of daySegs) {
-      const startMin = orderCursorMin;
-      // Zero-hour placeholders still get a visible 0.5h block; advancing the
-      // cursor by the rendered height keeps blocks from stacking on top of
-      // each other (a day's real segments sum to at most its capacity).
-      const endMin = Math.min(24 * 60, startMin + Math.max(0.5, hours) * 60);
+    for (const { e, hours, offset, span } of daySegs) {
+      const startMin = workStart + (offset || 0) * 60;
+      // Zero-hour placeholders still get a visible 0.5h block.
+      const drawn = Math.max(0.5, span != null ? span : hours);
+      const endMin = Math.min(24 * 60, startMin + drawn * 60);
       blocks.push({ kind: 'order', e, hours, startMin, endMin });
-      orderCursorMin = endMin;
     }
     // Timed tasks
     if (showTasks) {

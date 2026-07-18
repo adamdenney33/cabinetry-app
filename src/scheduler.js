@@ -116,10 +116,49 @@ function orderHoursRequired(o, biz) {
   return cabinetHrs + labourHrs + itemHrs + over;
 }
 
+// Split one day's capacity between orders running concurrently (same priority).
+// Max-min fair: everyone gets an equal share, and anyone needing less than
+// their share hands the surplus back to the rest — so two 4h jobs in an 8h day
+// both finish that day, and a 2h job beside a 30h job doesn't strand 2h of
+// unused capacity. Returns hours allocated, parallel to `actives`.
+/** @param {{ remaining: number }[]} actives
+ *  @param {number} capacity
+ *  @returns {number[]} */
+function _schedShareDay(actives, capacity) {
+  const alloc = actives.map(() => 0);
+  let cap = capacity;
+  let pool = actives.map((_, i) => i).filter(i => actives[i].remaining > 1e-9);
+  // Each pass either exhausts the capacity or retires at least one order.
+  let guard = actives.length + 2;
+  while (cap > 1e-9 && pool.length > 0 && guard-- > 0) {
+    const share = cap / pool.length;
+    let used = 0;
+    /** @type {number[]} */
+    const next = [];
+    for (const i of pool) {
+      const want = actives[i].remaining - alloc[i];
+      const give = Math.min(share, want);
+      alloc[i] += give;
+      used += give;
+      if (want - give > 1e-9) next.push(i);
+    }
+    cap -= used;
+    if (used <= 1e-9) break;
+    pool = next;
+  }
+  return alloc;
+}
+
 // ══════════════════════════════════════════
 // LAYOUT — computeSchedule
 // ══════════════════════════════════════════
-/** @typedef {{ date: string, hours: number }} SchedSegment */
+// A segment is one order's slice of one day. `hours` is the work actually done
+// (what the block labels); `offset`/`span` describe the wall-clock window that
+// slice occupies within the working day, measured in hours from the day's start.
+// Orders running concurrently share an identical offset/span — same window,
+// smaller `hours` each — which is what lets the Day/Week grid draw them
+// side-by-side instead of stacking them past the end of the workday.
+/** @typedef {{ date: string, hours: number, offset: number, span: number }} SchedSegment */
 /** @typedef {{ id: any, startISO: string, endISO: string, lane: number, hoursRequired: number, isManual: boolean, isMissingDates?: boolean, segments: SchedSegment[] }} ScheduledOrder */
 
 // Walk the calendar forward from `startCursor`, consuming working-hour capacity
@@ -140,7 +179,7 @@ function _schedForwardPlace(startCursor, startDayUsed, required, weekdayDefaults
   if (required <= 0) {
     // Zero-hour order — single-day placeholder at the cursor; consumes nothing,
     // so the start day's used-hours tally is unchanged.
-    return { start: startCursor, end: startCursor, segments: [{ date: _schedISO(startCursor), hours: 0 }], endDayUsed: startDayUsed };
+    return { start: startCursor, end: startCursor, segments: [{ date: _schedISO(startCursor), hours: 0, offset: startDayUsed, span: 0 }], endDayUsed: startDayUsed };
   }
   /** @type {SchedSegment[]} */
   const segments = [];
@@ -159,11 +198,12 @@ function _schedForwardPlace(startCursor, startDayUsed, required, weekdayDefaults
     if (avail > 0) {
       if (start === null) start = cursor;
       const consume = Math.min(avail, remaining);
+      const offset = dayUsed;
       remaining -= consume;
       dayUsed += consume;
       end = cursor;
       endDayUsed = dayUsed;
-      segments.push({ date: _schedISO(cursor), hours: consume });
+      segments.push({ date: _schedISO(cursor), hours: consume, offset, span: consume });
       if (remaining > 0 || dayUsed >= h) { cursor = _schedNextDay(cursor); dayUsed = 0; }
     } else {
       cursor = _schedNextDay(cursor);
@@ -214,44 +254,77 @@ function computeSchedule(ordersList, biz, overrides, today) {
   /** @type {{ id: any, startISO: string, endISO: string, hoursRequired: number, isManual: boolean, segments: SchedSegment[] }[]} */
   const placements = [];
 
-  let pointer = anchor;
-  // Hours already consumed on `pointer` by the previous priority group's
-  // longest order — lets a new group continue on the same day rather than
-  // waiting for the next working day.
-  let pointerDayUsed = 0;
-  let groupPriority = autoOrders[0] ? parseInt(String(autoOrders[0].priority || 0), 10) : 0;
-  /** @type {Date | null} */
-  let groupMaxEnd = null;
-  let groupMaxEndUsed = 0;
-
+  // Orders sharing a priority form a group that runs CONCURRENTLY: they split
+  // each day's capacity between them rather than each consuming it in full
+  // (which booked N× the shop's real hours and pushed work past the end of the
+  // day). Groups themselves are sequential — a lower priority only starts once
+  // the group above it is done, picking up mid-day if that group left capacity.
+  /** @type {any[][]} */
+  const groups = [];
   for (const o of autoOrders) {
     const p = parseInt(String(o.priority || 0), 10);
-    if (p !== groupPriority) {
-      // New priority group: continue from where the previous group's longest
-      // order ended — including a partially-filled final day, so a lower
-      // priority uses the remaining hours of that day instead of skipping to
-      // the next working day. Only when that day is full does the walk roll
-      // over to tomorrow.
-      if (groupMaxEnd) { pointer = groupMaxEnd; pointerDayUsed = groupMaxEndUsed; }
-      groupPriority = p;
-      groupMaxEnd = null;
-      groupMaxEndUsed = 0;
-    }
-    const required = orderHoursRequired(o, biz);
-    // Per-day hour segments consumed by this order (SV.2) drive the timed order
-    // blocks in the Day/Week views; the walk records them as it goes.
-    const placed = _schedForwardPlace(pointer, pointerDayUsed, required, weekdayDefaults, overrideMap, biz);
+    const last = groups[groups.length - 1];
+    if (last && parseInt(String(last[0].priority || 0), 10) === p) last.push(o);
+    else groups.push([o]);
+  }
 
-    placements.push({ id: o.id, startISO: _schedISO(placed.start), endISO: _schedISO(placed.end), hoursRequired: required, isManual: false, segments: placed.segments });
-    // Track the group's furthest end and the hours used on that day, so the
-    // next group can pick up mid-day. Ties on the end day keep the busiest lane.
-    if (required > 0) {
-      if (!groupMaxEnd || +placed.end > +groupMaxEnd) {
-        groupMaxEnd = placed.end;
-        groupMaxEndUsed = placed.endDayUsed;
-      } else if (+placed.end === +groupMaxEnd) {
-        groupMaxEndUsed = Math.max(groupMaxEndUsed, placed.endDayUsed);
+  // Running position of the queue: the day being filled, and how much of that
+  // day is already spoken for.
+  let cursor = anchor;
+  let cursorDayUsed = 0;
+
+  for (const group of groups) {
+    const groupStart = cursor;
+    /** @type {{ o: any, required: number, remaining: number, segments: SchedSegment[], start: Date|null, end: Date }[]} */
+    const states = group.map(o => {
+      const required = orderHoursRequired(o, biz);
+      return { o, required, remaining: required, segments: [], start: null, end: groupStart };
+    });
+
+    // Zero-hour orders — placeholders at the group's start; consume nothing and
+    // don't hold up the orders they sit beside.
+    for (const s of states) {
+      if (s.required > 0) continue;
+      s.start = groupStart;
+      s.end = groupStart;
+      s.segments.push({ date: _schedISO(groupStart), hours: 0, offset: cursorDayUsed, span: 0 });
+    }
+
+    // Day-by-day simulation: fill each working day, splitting it between
+    // whichever orders in the group still have work outstanding.
+    const working = states.filter(s => s.required > 0);
+    let safety = 365 * 5;
+    while (working.some(s => s.remaining > 1e-9) && safety-- > 0) {
+      const h = getWorkdayHours(cursor, weekdayDefaults, overrideMap, biz);
+      const avail = h - cursorDayUsed;
+      if (avail <= 1e-9) { cursor = _schedNextDay(cursor); cursorDayUsed = 0; continue; }
+
+      const actives = working.filter(s => s.remaining > 1e-9);
+      const alloc = _schedShareDay(actives, avail);
+      const total = alloc.reduce((a, b) => a + b, 0);
+      if (total <= 1e-9) { cursor = _schedNextDay(cursor); cursorDayUsed = 0; continue; } // defensive
+
+      // Everyone working today shares one window: it opens where the day was
+      // already filled to and runs for the total hours booked into it.
+      const offset = cursorDayUsed;
+      for (let i = 0; i < actives.length; i++) {
+        const hrs = alloc[i];
+        if (hrs <= 1e-9) continue;
+        const s = actives[i];
+        if (s.start === null) s.start = cursor;
+        s.end = cursor;
+        s.segments.push({ date: _schedISO(cursor), hours: hrs, offset, span: total });
+        s.remaining -= hrs;
       }
+      cursorDayUsed += total;
+      // Day full → roll over. Otherwise hold position so the next group (or the
+      // next day's pass) continues from the partially-filled day.
+      if (cursorDayUsed >= h - 1e-9) { cursor = _schedNextDay(cursor); cursorDayUsed = 0; }
+    }
+
+    for (const s of states) {
+      const start = s.start || groupStart;
+      placements.push({ id: s.o.id, startISO: _schedISO(start), endISO: _schedISO(s.end || start), hoursRequired: s.required, isManual: false, segments: s.segments });
     }
   }
 
@@ -282,7 +355,8 @@ function computeSchedule(ordersList, biz, overrides, today) {
           if (h > 0) {
             const consume = remaining > 0 ? Math.min(h, remaining) : h;
             remaining -= consume;
-            segments.push({ date: _schedISO(cursor), hours: consume });
+            // Pinned span owns its days outright, so each slice opens the day.
+            segments.push({ date: _schedISO(cursor), hours: consume, offset: 0, span: consume });
           }
           cursor = _schedNextDay(cursor);
         }
