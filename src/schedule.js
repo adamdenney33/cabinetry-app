@@ -693,6 +693,7 @@ function _openSchedOrderPopup(id) {
   // Hours override mirrors the Orders editor: NULL = auto sum, non-null = pinned.
   const hoursOverride = o.hours_allocated != null;
   const hoursAllocVal = hoursOverride ? Number(o.hours_allocated).toFixed(1) : '';
+  const lineCount = Array.isArray(o._lines) ? o._lines.length : 0;
 
   const placement = _psoPlacementHTML(id, null);
 
@@ -714,6 +715,8 @@ function _openSchedOrderPopup(id) {
         ${infoRow('Value', valueTxt)}
         <div class="pso-row"><span class="pso-label">Scheduled</span><span class="pso-value" id="pso-placement">${placement}</span></div>
       </div>
+      <div class="editor-section-title" style="margin:12px 0 6px">Line items${lineCount ? ` <span class="pso-lines-count">${lineCount}</span>` : ''}</div>
+      ${_psoLinesHTML(o)}
       <div class="editor-section-title" style="margin:12px 0 6px">Schedule</div>
       <div class="sched-body" style="padding:0">
         <div class="sched-toggles">
@@ -850,6 +853,32 @@ function _psoPlacementHTML(id, pending) {
   if (sched && sched.isMissingDates) return '<span style="color:#f87171;font-weight:600">No dates set</span>';
   if (sched && sched.startISO) return `${_psoFmtISO(sched.startISO)} → ${_psoFmtISO(sched.endISO)} · ${hrs}h`;
   return '—';
+}
+
+/** Read-only line-item list for the popup. Hours come from the same
+ *  `_lineScheduleHours` the breakdown uses, so the rows sum to the "Hours
+ *  required" figure shown below them. Editing stays in the Orders tab — the
+ *  footer's "Open in Orders" is one click away.
+ *  @param {any} o @returns {string} */
+function _psoLinesHTML(o) {
+  /** @type {any[]} */
+  const lines = Array.isArray(o && o._lines) ? o._lines.slice() : [];
+  if (!lines.length) return '<div class="pso-lines-empty">No line items on this order.</div>';
+  lines.sort((/** @type {any} */ a, /** @type {any} */ b) => (a.position ?? 0) - (b.position ?? 0));
+  /** @type {Record<string, string>} */
+  const fallback = { cabinet: 'Cabinet', stock: 'Stock item', labour: 'Labour', item: 'Item' };
+  const rows = lines.map((/** @type {any} */ r) => {
+    const { kind, hours } = _lineScheduleHours(r);
+    const qty = parseFloat(r.qty) || 1;
+    const name = String(r.name || '').trim() || fallback[kind] || 'Item';
+    return `<div class="pso-line">
+        <span class="pso-line-dot ${_escHtml(kind)}"></span>
+        <span class="pso-line-desc" title="${_escHtml(name)}">${_escHtml(name)}</span>
+        <span class="pso-line-qty">${qty > 1 ? '&times;' + qty : ''}</span>
+        <span class="pso-line-hrs">${hours > 0 ? hours.toFixed(1) + 'h' : '—'}</span>
+      </div>`;
+  }).join('');
+  return `<div class="pso-lines">${rows}</div>`;
 }
 
 /** Re-run the placement + hours readout against the popup's unsaved values. */

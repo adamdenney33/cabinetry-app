@@ -234,6 +234,35 @@ function _stockSearchRender(q, suggestId, onPick) {
   };
 }
 
+// Scheduled hours a single line contributes, with its kind. Shared by the
+// hours breakdown and the Schedule-tab popup's line list so the rows always sum
+// to the "Hours required" figure shown beside them. Kinds outside
+// cabinet/labour/item (i.e. stock) carry no workshop time.
+//
+// calcCBLine bakes contingency (cbSettings.contingencyPct) AND packaging
+// (cbSettings.packagingHours, per cabinet) into its labour hours, so a cabinet
+// line already includes both — packaging only ever counts for cabinet lines.
+/** @param {any} r @returns {{kind: string, hours: number}} */
+function _lineScheduleHours(r) {
+  const kind = r.line_kind || 'cabinet';
+  if (kind === 'cabinet') {
+    // Use cached _hrs if present; otherwise compute via calcCBLine and cache.
+    let hrs = r._hrs;
+    if (typeof hrs !== 'number') {
+      try {
+        const cb = _quoteLineRowToCB(r);
+        const c = calcCBLine(cb);
+        hrs = c.labourHrs || 0;
+        Object.defineProperty(r, '_hrs', { value: hrs, writable: true, enumerable: false, configurable: true });
+      } catch (e) { hrs = 0; }
+    }
+    return { kind, hours: hrs * (parseFloat(r.qty) || 1) };
+  }
+  if (kind === 'labour') return { kind, hours: parseFloat(r.labour_hours) || 0 };
+  if (kind === 'item') return { kind, hours: (parseFloat(r.schedule_hours) || 0) * (parseFloat(r.qty) || 1) };
+  return { kind, hours: 0 };
+}
+
 // S.3: Per-order hours breakdown for the popup readout. Returns components
 // in hours; total is the sum used by the production scheduler.
 // Mirrors the formula documented in the plan; will move to src/scheduler.js
@@ -248,28 +277,10 @@ function _orderHoursBreakdown(lines, overrides) {
   }
   let cabinetHrs = 0, labourHrs = 0, itemHrs = 0;
   for (const r of lines || []) {
-    const kind = r.line_kind || 'cabinet';
-    if (kind === 'cabinet') {
-      // Use cached _hrs if present; otherwise compute via calcCBLine and cache.
-      // calcCBLine bakes contingency (cbSettings.contingencyPct) AND packaging
-      // (cbSettings.packagingHours, per cabinet) into the labour hours, so the
-      // cabinet line below already includes both — packaging only counts for
-      // cabinet lines.
-      let hrs = r._hrs;
-      if (typeof hrs !== 'number') {
-        try {
-          const cb = _quoteLineRowToCB(r);
-          const c = calcCBLine(cb);
-          hrs = c.labourHrs || 0;
-          Object.defineProperty(r, '_hrs', { value: hrs, writable: true, enumerable: false, configurable: true });
-        } catch (e) { hrs = 0; }
-      }
-      cabinetHrs += hrs * (parseFloat(r.qty) || 1);
-    } else if (kind === 'labour') {
-      labourHrs += parseFloat(r.labour_hours) || 0;
-    } else if (kind === 'item') {
-      itemHrs += (parseFloat(r.schedule_hours) || 0) * (parseFloat(r.qty) || 1);
-    }
+    const { kind, hours } = _lineScheduleHours(r);
+    if (kind === 'cabinet') cabinetHrs += hours;
+    else if (kind === 'labour') labourHrs += hours;
+    else if (kind === 'item') itemHrs += hours;
   }
   const over = ovr.runOverHours != null ? ovr.runOverHours : 0;
   return {
@@ -322,6 +333,9 @@ function _orderHoursBreakdownHTML(b) {
   /** @type {string[]} */
   const rows = [];
   if (b.cabinet > 0)   rows.push(`<div class="pf-hours-row"><span class="pf-hours-sub">• Cabinet labour <span class="pf-hours-tag">auto</span>${contLabel}</span><span>${h(b.cabinet)}</span></div>`);
+  // Legacy labour lines counted toward the total but had no row of their own,
+  // so the itemised rows didn't add up to it.
+  if (b.labour  > 0)   rows.push(`<div class="pf-hours-row"><span class="pf-hours-sub">• Labour lines</span><span>${h(b.labour)}</span></div>`);
   if (b.item    > 0)   rows.push(`<div class="pf-hours-row"><span class="pf-hours-sub">• Item lines</span><span>${h(b.item)}</span></div>`);
   if (b.runOver  > 0)  rows.push(`<div class="pf-hours-row"><span class="pf-hours-sub">• Run-over</span><span>${h(b.runOver)}</span></div>`);
   return `<div class="pf-hours-row pf-hours-total"><span>Hours required</span><span>${h(b.total)}</span></div>${rows.join('')}`;

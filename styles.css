@@ -2740,6 +2740,34 @@ details.sched .sched-body { padding: 4px 14px 12px; display: flex; flex-directio
 .pso-label { flex: 0 0 92px; color: var(--muted); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
 .pso-value { color: var(--text); min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 
+/* Read-only line list in the Schedule-tab order popup. Scrolls past ~6 rows so
+   a big order can't push the schedule controls off the bottom of the popup. */
+.pso-lines {
+  display: flex; flex-direction: column;
+  max-height: 168px; overflow-y: auto;
+  border: 1px solid var(--border); border-radius: 6px; background: var(--surface2);
+}
+.pso-line {
+  display: flex; align-items: center; gap: 8px;
+  padding: 5px 8px; font-size: 12px; color: var(--text);
+  border-bottom: 1px solid var(--border);
+}
+.pso-line:last-child { border-bottom: 0; }
+.pso-line-dot { flex: 0 0 6px; width: 6px; height: 6px; border-radius: 50%; background: var(--muted); }
+.pso-line-dot.cabinet { background: #8b5cf6; }
+.pso-line-dot.item    { background: #3f7fb4; }
+.pso-line-dot.stock   { background: #4f9d69; }
+.pso-line-dot.labour  { background: #d9a441; }
+.pso-line-desc { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pso-line-qty { flex: 0 0 auto; color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+.pso-line-hrs { flex: 0 0 46px; text-align: right; color: var(--text2); font-size: 11px; font-variant-numeric: tabular-nums; }
+.pso-lines-empty { font-size: 12px; color: var(--muted); padding: 6px 2px; }
+.pso-lines-count {
+  font-size: 10px; font-weight: 700; color: var(--muted);
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 999px; padding: 1px 6px; margin-left: 4px;
+}
+
 /* Tasks section (SV.10) — collapsible to-do list between the job queue and
    Working Hours. Rows mirror the sidebar job entries; teal = task colour. */
 .sched-tasks-section { border-top: 1px solid var(--border); margin-top: 8px; }
