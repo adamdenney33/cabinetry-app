@@ -669,6 +669,10 @@ function _schedStepPriority(orderId, dir) {
 // user off to the Orders tab. "Open in Orders" does the old jump into the
 // Orders sidebar editor (via the _openOrderPopup routing alias).
 
+/** Order id backing the open popup, so the live handlers can reach its cached
+ *  lines without re-querying. Null when no schedule popup is open. */
+let _psoOrderId = /** @type {number|null} */ (null);
+
 /** 'YYYY-MM-DD' → '16 Jul' (with year when not current). @param {string} iso */
 function _psoFmtISO(iso) {
   const m = String(iso || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
@@ -682,26 +686,15 @@ function _psoFmtISO(iso) {
 function _openSchedOrderPopup(id) {
   const o = /** @type {any} */ (orders.find(x => x.id === id));
   if (!o) { _openOrderPopup(id); return; }
+  _psoOrderId = id;
   const auto = o.auto_schedule !== false;
   const st = o.status ? ((/** @type {Record<string,string>} */ (STATUS_LABELS))[o.status] || o.status) : '';
   const numberLabel = o.order_number || ('ORD-' + String(o.id).padStart(4, '0'));
+  // Hours override mirrors the Orders editor: NULL = auto sum, non-null = pinned.
+  const hoursOverride = o.hours_allocated != null;
+  const hoursAllocVal = hoursOverride ? Number(o.hours_allocated).toFixed(1) : '';
 
-  // Scheduled placement — same inputs as renderSchedule's computeSchedule call.
-  const today = new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
-  const biz = {
-    workdayHours: cbSettings.workdayHours,
-    weekdayHours: cbSettings.weekdayHours,
-    packagingHours: cbSettings.packagingHours,
-    contingencyHours: cbSettings.contingencyHours,
-    queueStartDate: cbSettings.queueStartDate,
-  };
-  const overrides = (typeof dayOverrides !== 'undefined' && Array.isArray(dayOverrides)) ? dayOverrides : [];
-  const sched = computeSchedule(orders, biz, overrides, today).get(id);
-  const hrs = sched ? Math.round(sched.hoursRequired * 10) / 10 : 0;
-  let placement;
-  if (sched && sched.isMissingDates) placement = '<span style="color:#f87171;font-weight:600">No dates set</span>';
-  else if (sched && sched.startISO) placement = `${_psoFmtISO(sched.startISO)} → ${_psoFmtISO(sched.endISO)} · ${hrs}h`;
-  else placement = '—';
+  const placement = _psoPlacementHTML(id, null);
 
   const cur = typeof cbSettings !== 'undefined' && cbSettings.currency ? cbSettings.currency : '£';
   const valueTxt = (o.value != null && o.value !== '') ? cur + Number(o.value).toLocaleString('en-US', { maximumFractionDigits: 0 }) : '—';
@@ -719,23 +712,47 @@ function _openSchedOrderPopup(id) {
         ${infoRow('Project', _escHtml(orderProject(o) || '—'))}
         ${infoRow('Status', _escHtml(st || '—'))}
         ${infoRow('Value', valueTxt)}
-        ${infoRow('Scheduled', placement)}
+        <div class="pso-row"><span class="pso-label">Scheduled</span><span class="pso-value" id="pso-placement">${placement}</span></div>
       </div>
       <div class="editor-section-title" style="margin:12px 0 6px">Schedule</div>
       <div class="sched-body" style="padding:0">
         <div class="sched-toggles">
           <label><input type="checkbox" id="pso-auto" ${auto ? 'checked' : ''} onchange="_psoAutoToggle(this.checked)">Auto schedule</label>
+          <label><input type="checkbox" id="pso-hours-override" ${hoursOverride ? 'checked' : ''} onchange="_psoHoursOverrideToggle(this.checked);_psoRefresh()">Override hours</label>
         </div>
         <div class="sched-fields">
           <label class="sched-field">
             <span class="sched-field-label">Priority</span>
-            <input class="pf-input-compact" type="number" min="1" step="1" id="pso-priority" value="${o.priority || ''}" placeholder="—" title="1 = highest priority. Leave blank for none.">
+            <div class="sched-stepper">
+              <button type="button" class="step-btn" onclick="_oStep('pso-priority',-1)" tabindex="-1" aria-label="Decrease">−</button>
+              <input class="pf-input-compact" type="number" min="1" step="1" id="pso-priority" value="${o.priority || ''}" placeholder="—" oninput="_psoRefresh()" title="1 = highest priority. Leave blank for none.">
+              <button type="button" class="step-btn" onclick="_oStep('pso-priority',1)" tabindex="-1" aria-label="Increase">+</button>
+            </div>
+          </label>
+          <label class="sched-field" id="pso-hours-alloc-wrap" style="${hoursOverride ? '' : 'display:none'}">
+            <span class="sched-field-label">Allocated</span>
+            <div class="sched-stepper">
+              <button type="button" class="step-btn" onclick="_oStep('pso-hours-allocated',-1)" tabindex="-1" aria-label="Decrease">−</button>
+              <input class="pf-input-compact" type="number" min="0" step="0.5" id="pso-hours-allocated" value="${hoursAllocVal}" oninput="_psoRefresh()">
+              <span class="step-unit">h</span>
+              <button type="button" class="step-btn" onclick="_oStep('pso-hours-allocated',1)" tabindex="-1" aria-label="Increase">+</button>
+            </div>
+          </label>
+          <label class="sched-field">
+            <span class="sched-field-label">Run-over</span>
+            <div class="sched-stepper">
+              <button type="button" class="step-btn" onclick="_oStep('pso-run-over',-1)" tabindex="-1" aria-label="Decrease">−</button>
+              <input class="pf-input-compact" type="number" min="0" step="0.5" id="pso-run-over" value="${o.run_over_hours ?? 0}" oninput="_psoRefresh()">
+              <span class="step-unit">h</span>
+              <button type="button" class="step-btn" onclick="_oStep('pso-run-over',1)" tabindex="-1" aria-label="Increase">+</button>
+            </div>
           </label>
         </div>
+        <div class="pf-hours-readout" id="pso-hours-breakdown" style="${hoursOverride ? 'display:none' : ''}"></div>
         <div class="sched-fields is-dates">
           <label class="sched-field">
             <span class="sched-field-label">Production Start<span class="sched-field-hint" id="pso-start-hint"${auto ? '' : ' style="display:none"'}> (auto)</span></span>
-            <input class="pf-input-compact" type="date" id="pso-start" value="${_orderDateToISO(o.prodStart || '')}" ${auto ? 'disabled title="Auto-scheduled — toggle off to set manually"' : ''}>
+            <input class="pf-input-compact" type="date" id="pso-start" value="${_orderDateToISO(o.prodStart || '')}" ${auto ? 'disabled title="Auto-scheduled — toggle off to set manually"' : ''} oninput="_psoRefresh()">
           </label>
           <label class="sched-field">
             <span class="sched-field-label">Due</span>
@@ -750,6 +767,7 @@ function _openSchedOrderPopup(id) {
       <button class="btn btn-primary" onclick="_saveSchedOrderPopup(${id})">Save</button>
     </div>`;
   _openPopup(html, 'sm');
+  _psoRenderHoursBreakdown();
 }
 
 /** Auto-schedule toggle inside the popup: manual → enable the start date.
@@ -759,6 +777,91 @@ function _psoAutoToggle(auto) {
   if (start) { start.disabled = auto; start.title = auto ? 'Auto-scheduled — toggle off to set manually' : ''; }
   const hint = document.getElementById('pso-start-hint');
   if (hint) hint.style.display = auto ? '' : 'none';
+  _psoRefresh();
+}
+
+/** Hours-override toggle inside the popup — mirrors _orderHoursOverrideToggle:
+ *  reveal the Allocated field, hide the auto breakdown, and seed the input with
+ *  the computed total so the user adjusts from a real number.
+ *  @param {boolean} on */
+function _psoHoursOverrideToggle(on) {
+  const wrap = document.getElementById('pso-hours-alloc-wrap');
+  if (wrap) wrap.style.display = on ? '' : 'none';
+  const breakdown = document.getElementById('pso-hours-breakdown');
+  if (breakdown) breakdown.style.display = on ? 'none' : '';
+  if (!on) return;
+  const input = /** @type {HTMLInputElement|null} */ (document.getElementById('pso-hours-allocated'));
+  if (!input || input.value) return;
+  const o = /** @type {any} */ (orders.find(x => x.id === _psoOrderId));
+  const b = _orderHoursBreakdown(o ? o._lines : [], {});
+  if (b) input.value = (b.total || 0).toFixed(1);
+}
+
+/** Hours readout for the popup. Same markup as the Orders editor, but computed
+ *  from the order's own cached lines rather than the open editor's _opState. */
+function _psoRenderHoursBreakdown() {
+  const el = document.getElementById('pso-hours-breakdown');
+  if (!el) return;
+  const overrideEl = /** @type {HTMLInputElement|null} */ (document.getElementById('pso-hours-override'));
+  if (overrideEl && overrideEl.checked) { el.innerHTML = ''; return; }
+  const o = /** @type {any} */ (orders.find(x => x.id === _psoOrderId));
+  const runOver = parseFloat(_popupVal('pso-run-over'));
+  el.innerHTML = _orderHoursBreakdownHTML(_orderHoursBreakdown(o ? o._lines : [], {
+    runOverHours: Number.isFinite(runOver) ? runOver : undefined,
+  }));
+}
+
+/** The unsaved edits currently in the popup, shaped like an orders row so the
+ *  scheduler can be re-run against them. */
+function _psoPendingRow() {
+  const autoEl = /** @type {HTMLInputElement|null} */ (document.getElementById('pso-auto'));
+  const overrideEl = /** @type {HTMLInputElement|null} */ (document.getElementById('pso-hours-override'));
+  const auto_schedule = autoEl ? autoEl.checked : true;
+  const startISO = _popupVal('pso-start');
+  return {
+    priority: parseInt(_popupVal('pso-priority'), 10) || 0,
+    auto_schedule,
+    manual_start_date: auto_schedule ? null : (startISO || null),
+    manual_end_date: null,
+    production_start_date: startISO || null,
+    run_over_hours: parseFloat(_popupVal('pso-run-over')) || 0,
+    hours_allocated: (overrideEl && overrideEl.checked)
+      ? (parseFloat(_popupVal('pso-hours-allocated')) || 0)
+      : null,
+  };
+}
+
+/** Build the "Scheduled" row. `pending` (optional) overlays unsaved popup edits
+ *  onto the order before scheduling, so the dates react as the user types.
+ *  The whole queue is re-run, not just this order — changing its priority or
+ *  hours moves the orders scheduled around it too.
+ *  @param {number} id @param {any} pending @returns {string} */
+function _psoPlacementHTML(id, pending) {
+  const today = new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
+  const biz = {
+    workdayHours: cbSettings.workdayHours,
+    weekdayHours: cbSettings.weekdayHours,
+    packagingHours: cbSettings.packagingHours,
+    contingencyHours: cbSettings.contingencyHours,
+    queueStartDate: cbSettings.queueStartDate,
+  };
+  const overrides = (typeof dayOverrides !== 'undefined' && Array.isArray(dayOverrides)) ? dayOverrides : [];
+  const list = pending
+    ? orders.map(x => x.id === id ? Object.assign({}, x, pending) : x)
+    : orders;
+  const sched = computeSchedule(list, biz, overrides, today).get(id);
+  const hrs = sched ? Math.round(sched.hoursRequired * 10) / 10 : 0;
+  if (sched && sched.isMissingDates) return '<span style="color:#f87171;font-weight:600">No dates set</span>';
+  if (sched && sched.startISO) return `${_psoFmtISO(sched.startISO)} → ${_psoFmtISO(sched.endISO)} · ${hrs}h`;
+  return '—';
+}
+
+/** Re-run the placement + hours readout against the popup's unsaved values. */
+function _psoRefresh() {
+  if (_psoOrderId == null) return;
+  const el = document.getElementById('pso-placement');
+  if (el) el.innerHTML = _psoPlacementHTML(_psoOrderId, _psoPendingRow());
+  _psoRenderHoursBreakdown();
 }
 
 /** Save the schedule settings — mirrors saveOrderFromEditor's semantics for
@@ -770,6 +873,7 @@ async function _saveSchedOrderPopup(id) {
   const o = /** @type {any} */ (orders.find(x => x.id === id));
   if (!o) return;
   const autoEl = /** @type {HTMLInputElement|null} */ (document.getElementById('pso-auto'));
+  const overrideEl = /** @type {HTMLInputElement|null} */ (document.getElementById('pso-hours-override'));
   const auto_schedule = autoEl ? autoEl.checked : true;
   const priority = parseInt(_popupVal('pso-priority'), 10) || 0;
   const startISO = _popupVal('pso-start');
@@ -780,6 +884,11 @@ async function _saveSchedOrderPopup(id) {
     auto_schedule,
     manual_start_date: auto_schedule ? null : (startISO || null),
     manual_end_date: null,
+    run_over_hours: parseFloat(_popupVal('pso-run-over')) || 0,
+    // NULL = use the computed line sum; non-null = pinned manual override.
+    hours_allocated: (overrideEl && overrideEl.checked)
+      ? (parseFloat(_popupVal('pso-hours-allocated')) || 0)
+      : null,
     updated_at: new Date().toISOString(),
   };
   if (startISO) update.production_start_date = startISO;

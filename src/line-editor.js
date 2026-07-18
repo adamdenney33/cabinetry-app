@@ -298,6 +298,14 @@ function _renderOrderHoursBreakdown() {
   const b = _orderHoursBreakdown(_opState.lines, {
     runOverHours: popupVal('po-run-over'),
   });
+  el.innerHTML = _orderHoursBreakdownHTML(b);
+}
+
+// Markup for the hours readout. Split out of _renderOrderHoursBreakdown so the
+// Schedule-tab order popup renders an identical breakdown from its own lines.
+/** @param {{cabinet: number, labour: number, item: number, runOver: number, total: number}} b
+ *  @returns {string} */
+function _orderHoursBreakdownHTML(b) {
   /** @param {number} v */
   const h = v => Number(v).toFixed(1) + ' h';
   // Packaging and contingency are baked into cabinet labour (per cabinet, in
@@ -316,7 +324,7 @@ function _renderOrderHoursBreakdown() {
   if (b.cabinet > 0)   rows.push(`<div class="pf-hours-row"><span class="pf-hours-sub">• Cabinet labour <span class="pf-hours-tag">auto</span>${contLabel}</span><span>${h(b.cabinet)}</span></div>`);
   if (b.item    > 0)   rows.push(`<div class="pf-hours-row"><span class="pf-hours-sub">• Item lines</span><span>${h(b.item)}</span></div>`);
   if (b.runOver  > 0)  rows.push(`<div class="pf-hours-row"><span class="pf-hours-sub">• Run-over</span><span>${h(b.runOver)}</span></div>`);
-  el.innerHTML = `<div class="pf-hours-row pf-hours-total"><span>Hours required</span><span>${h(b.total)}</span></div>${rows.join('')}`;
+  return `<div class="pf-hours-row pf-hours-total"><span>Hours required</span><span>${h(b.total)}</span></div>${rows.join('')}`;
 }
 
 // When auto-schedule toggles, enable/disable the Production Start input.
