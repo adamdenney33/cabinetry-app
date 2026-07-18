@@ -270,11 +270,35 @@ function _renderSchedTimeGrid(opts) {
 
     /** @type {any[]} */
     const blocks = [];
-    // Order blocks from scheduler segments (SV.2): anchored at workday start.
-    for (const { e, hours } of (segsByDate[iso] || [])) {
-      const startMin = workStart;
+    // Order blocks from scheduler segments (SV.2): stacked back-to-back from the
+    // workday start. Every block used to be anchored at workStart, which read as
+    // parallel columns once the scheduler started packing several jobs onto one
+    // day; the shop works them consecutively, so lay them out that way.
+    // Sequenced by the scheduler's own placement order (start date, then
+    // priority with 0 = unset last, then id) — segsByDate is built from the
+    // sidebar's event list, whose order follows the chosen sort mode.
+    const daySegs = (segsByDate[iso] || []).slice().sort((a, b) => {
+      const sa = opts.computed.get(a.e.id), sb = opts.computed.get(b.e.id);
+      const da = (sa && sa.startISO) || '', db = (sb && sb.startISO) || '';
+      if (da !== db) return da < db ? -1 : 1;
+      const pa = parseInt(String(a.e.priority || 0), 10) || 0;
+      const pb = parseInt(String(b.e.priority || 0), 10) || 0;
+      if (pa !== pb) {
+        if (pa === 0) return 1;
+        if (pb === 0) return -1;
+        return pa - pb;
+      }
+      return (a.e.id || 0) - (b.e.id || 0);
+    });
+    let orderCursorMin = workStart;
+    for (const { e, hours } of daySegs) {
+      const startMin = orderCursorMin;
+      // Zero-hour placeholders still get a visible 0.5h block; advancing the
+      // cursor by the rendered height keeps blocks from stacking on top of
+      // each other (a day's real segments sum to at most its capacity).
       const endMin = Math.min(24 * 60, startMin + Math.max(0.5, hours) * 60);
       blocks.push({ kind: 'order', e, hours, startMin, endMin });
+      orderCursorMin = endMin;
     }
     // Timed tasks
     if (showTasks) {
