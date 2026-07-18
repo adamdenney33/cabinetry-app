@@ -723,11 +723,7 @@ function _openSchedOrderPopup(id) {
         <div class="sched-fields">
           <label class="sched-field">
             <span class="sched-field-label">Priority</span>
-            <div class="sched-stepper">
-              <button type="button" class="step-btn" onclick="_oStep('pso-priority',-1)" tabindex="-1" aria-label="Decrease">−</button>
-              <input class="pf-input-compact" type="number" min="1" step="1" id="pso-priority" value="${o.priority || ''}" placeholder="—" oninput="_psoRefresh()" title="1 = highest priority. Leave blank for none.">
-              <button type="button" class="step-btn" onclick="_oStep('pso-priority',1)" tabindex="-1" aria-label="Increase">+</button>
-            </div>
+            ${_priorityStepperHTML('pso-priority', o.priority || '', '_psoRefresh()')}
           </label>
           <label class="sched-field" id="pso-hours-alloc-wrap" style="${hoursOverride ? '' : 'display:none'}">
             <span class="sched-field-label">Allocated</span>

@@ -686,11 +686,7 @@ function renderOrderEditor() {
         <div class="sched-fields">
           <label class="sched-field" id="po-priority-wrap">
             <span class="sched-field-label">Priority</span>
-            <div class="sched-stepper">
-              <button type="button" class="step-btn" onclick="_oStep('po-priority',-1)" tabindex="-1" aria-label="Decrease">−</button>
-              <input class="pf-input-compact" type="number" min="1" id="po-priority" value="${(o && o.priority) || ''}" step="1" placeholder="—" oninput="_oMarkDirty();_renderOrderSchedSummary()" title="1 = highest priority. Leave blank for none.">
-              <button type="button" class="step-btn" onclick="_oStep('po-priority',1)" tabindex="-1" aria-label="Increase">+</button>
-            </div>
+            ${_priorityStepperHTML('po-priority', (o && o.priority) || '', '_oMarkDirty();_renderOrderSchedSummary()')}
           </label>
           <label class="sched-field" id="po-hours-alloc-wrap" style="${hoursOverride ? '' : 'display:none'}">
             <span class="sched-field-label">Allocated</span>
@@ -772,6 +768,32 @@ function _oStep(id, dir) {
     input.value = String(Math.max(min, cur + dir * step));
   }
   input.dispatchEvent(new Event('input', { bubbles: true }));
+}
+
+// Priority counts DOWN from 1 (1 = highest), so a +/− stepper reads backwards:
+// "+" would make the job less important. The control uses up/down arrows
+// instead — up = more important = a lower number — matching the Schedule
+// sidebar's _schedStepPriority convention.
+const _PRI_ARROW_UP = `<svg width="9" height="7" viewBox="0 0 8 6" fill="none" aria-hidden="true"><path d="M1 5l3-3 3 3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+const _PRI_ARROW_DOWN = `<svg width="9" height="7" viewBox="0 0 8 6" fill="none" aria-hidden="true"><path d="M1 1l3 3 3-3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+
+/** Step a priority input by intent rather than by number: dir > 0 RAISES
+ *  priority, which steps the value down toward 1. The input's own min="1"
+ *  stops it going below the top of the queue.
+ *  @param {string} id @param {number} dir */
+function _oStepPriority(id, dir) { _oStep(id, dir > 0 ? -1 : 1); }
+
+/** Shared priority stepper markup — used by the Orders editor and the
+ *  Schedule-tab order popup so the two can't drift apart.
+ *  @param {string} id @param {string|number} value @param {string} oninput */
+function _priorityStepperHTML(id, value, oninput) {
+  // Down on the left, up on the right — raising priority sits on the right,
+  // where the "increase" half of a stepper is normally expected.
+  return `<div class="sched-stepper">
+              <button type="button" class="step-btn" onclick="_oStepPriority('${id}',-1)" tabindex="-1" aria-label="Lower priority" title="Lower priority">${_PRI_ARROW_DOWN}</button>
+              <input class="pf-input-compact" type="number" min="1" step="1" id="${id}" value="${value}" placeholder="—" oninput="${oninput}" title="1 = highest priority. Leave blank for none.">
+              <button type="button" class="step-btn" onclick="_oStepPriority('${id}',1)" tabindex="-1" aria-label="Raise priority" title="Raise priority (toward 1)">${_PRI_ARROW_UP}</button>
+            </div>`;
 }
 
 /** Oninput handler for #po-order-number. Marks dirty (so autosave picks up the
