@@ -861,6 +861,15 @@ header {
   cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none;
 }
 .sched-task-block.dragging { opacity: 0.9; cursor: grabbing; z-index: 6; box-shadow: 0 6px 18px rgba(0,0,0,0.45); }
+/* Auto-scheduled — the production queue owns this task's dates, so it isn't
+   draggable. Dashed edge is the same "not yours to move" signal manual order
+   blocks already use, and the default cursor stops it inviting a grab. */
+.sched-task-block.auto {
+  cursor: pointer;
+  border: 1px dashed rgba(255, 255, 255, 0.55);
+}
+.sched-task-chip.auto { cursor: pointer; border: 1px dashed rgba(255, 255, 255, 0.35); }
+
 /* "Allocate hours" off — the task costs the production queue nothing, so it
    lays over the order blocks instead of taking a column of its own. Translucent
    with a dashed edge so the order underneath stays readable and the block reads

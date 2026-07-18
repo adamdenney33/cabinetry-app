@@ -4,11 +4,20 @@
 // each call lists the user's primary-calendar events in a fixed window
 // (today −30d … +180d) and partitions them by extendedProperties.private:
 //
-//   pc_task_id  → schedule_tasks, TWO-WAY. Last-write-wins against the
-//                 task's gcal_synced_at watermark; local deletes propagate
-//                 (tagged event with no local row → remote delete), remote
-//                 deletes propagate (task's event vanished → events.get
-//                 confirm → local delete). No tombstones needed.
+//   pc_task_id  → schedule_tasks. The DIRECTION depends on the task's
+//                 auto_schedule flag, so the bucket is chosen by the LOCAL row,
+//                 never by anything on the event:
+//                   auto_schedule = false → TWO-WAY. Last-write-wins against
+//                     the task's gcal_synced_at watermark; local deletes
+//                     propagate (tagged event with no local row → remote
+//                     delete), remote deletes propagate (task's event vanished
+//                     → events.get confirm → local delete). No tombstones.
+//                   auto_schedule = true  → PUSH-ONLY, like orders. The
+//                     production queue owns these dates; start_at/end_at are
+//                     only a duration carrier, so the client sends the computed
+//                     placement in `autoTasks` and Google edits are overwritten.
+//                     Flipping the flag re-buckets the SAME event (PATCHed, not
+//                     recreated), so the event id survives.
 //   pc_order_id → orders, PUSH-ONLY. The client sends its computed schedule
 //                 placements (the scheduler runs client-side); the server
 //                 rebuilds matching all-day events and deletes strays. GCal
@@ -46,6 +55,7 @@ type GEvent = {
 type TaskRow = {
   id: number; title: string; notes: string | null;
   start_at: string; end_at: string; all_day: boolean; done: boolean;
+  auto_schedule: boolean;
   gcal_event_id: string | null; gcal_synced_at: string | null; updated_at: string;
 };
 
@@ -209,8 +219,20 @@ Deno.serve(async (req) => {
       : [{ id: 'primary' }];
     const includePrimaryOverlay = selection.some((s) => s && s.id === 'primary');
 
-    const remoteTaskEvents = new Map<string, GEvent>();   // pc_task_id → event
-    const remoteOrderEvents = new Map<string, GEvent[]>(); // pc_order_id → events
+    // Auto-scheduled tasks are PUSH-ONLY: the production queue owns their dates,
+    // so Google must never write back into them. This id set is fetched
+    // UNWINDOWED on purpose — an auto task's start_at/end_at are only a duration
+    // carrier with a possibly stale date, so the windowed query below can miss a
+    // task whose computed placement is squarely inside the window.
+    const { data: idRows, error: idErr } = await admin.from('schedule_tasks')
+      .select('id,auto_schedule').eq('user_id', uid);
+    if (idErr) throw new Error(idErr.message);
+    const autoIds = new Set<string>((idRows ?? []).filter((r) => r.auto_schedule).map((r) => String(r.id)));
+    const allTaskIds = new Set<string>((idRows ?? []).map((r) => String(r.id)));
+
+    const remoteTaskEvents = new Map<string, GEvent>();     // pinned  pc_task_id → event
+    const remoteAutoTaskEvents = new Map<string, GEvent>(); // auto    pc_task_id → event
+    const remoteOrderEvents = new Map<string, GEvent[]>();  // pc_order_id → events
     const overlay: { id: string; title: string; start: string; end: string; allDay: boolean; cal?: string }[] = [];
     // All-day bounds at noon → the event stays on its own calendar date(s)
     // after local-time conversion (see allDayDate note).
@@ -229,7 +251,10 @@ Deno.serve(async (req) => {
       if (ev.status === 'cancelled') continue;
       const priv = ev.extendedProperties?.private ?? {};
       if (priv.pc_task_id) {
-        remoteTaskEvents.set(priv.pc_task_id, ev);
+        // Bucket by the LOCAL flag, not by anything on the event: a task flipped
+        // to auto keeps its existing event, which the auto path then PATCHes to
+        // date-only rather than deleting and recreating (no churn, no lost id).
+        (autoIds.has(priv.pc_task_id) ? remoteAutoTaskEvents : remoteTaskEvents).set(priv.pc_task_id, ev);
       } else if (priv.pc_order_id) {
         const arr = remoteOrderEvents.get(priv.pc_order_id) ?? [];
         arr.push(ev);
@@ -266,8 +291,11 @@ Deno.serve(async (req) => {
     // concurrently (was a sequential per-task chain of Google round-trips — the
     // dominant sync cost). The counters below are safe to ++ across interleaved
     // awaits: an edge function runs single-threaded, so no update is lost.
-    const seenTaskIds = new Set<string>(tasks.map((t) => String(t.id)));
-    await Promise.all(tasks.map(async (t) => {
+    // Auto-scheduled tasks are excluded here — this is the load-bearing line.
+    // Leaving them in lets LWW on updated_at hand Google the win and write its
+    // times straight back into the duration carrier, fighting the scheduler.
+    const pinnedTasks = tasks.filter((t) => !autoIds.has(String(t.id)));
+    await Promise.all(pinnedTasks.map(async (t) => {
       const key = String(t.id);
       let ev = remoteTaskEvents.get(key) ?? null;
 
@@ -341,12 +369,74 @@ Deno.serve(async (req) => {
       }
     }));
 
-    // Tagged remote events with no local row → the task was deleted in-app.
-    await Promise.all(Array.from(remoteTaskEvents).map(async ([key, ev]) => {
-      if (seenTaskIds.has(key)) return;
+    // Tagged remote events whose task no longer exists locally → deleted in-app.
+    //
+    // ONE pass over BOTH buckets, keyed on the UNWINDOWED allTaskIds. Two things
+    // matter here and getting either wrong destroys real calendar events:
+    //   • the id set must be unwindowed — the old code compared against the
+    //     windowed task list, so an auto task pinned outside the window but
+    //     placed inside it would have its event deleted every sync;
+    //   • it must be one pass — with two buckets claiming pc_task_id, a
+    //     per-bucket check would treat the other bucket's ids as strays.
+    for (const [key, ev] of [...remoteTaskEvents, ...remoteAutoTaskEvents]) {
+      if (allTaskIds.has(key)) continue;
       const res = await gfetch(accessToken, `${CAL}/${encodeURIComponent(ev.id)}`, { method: 'DELETE' });
       if (res.ok || res.status === 404 || res.status === 410) deletedRemote++;
-    }));
+      remoteTaskEvents.delete(key);
+      remoteAutoTaskEvents.delete(key);
+    }
+
+    // 4b. Auto-scheduled tasks — push-only, exactly like orders. The client
+    // sends the computed placement; the stored start_at/end_at are only a
+    // duration carrier and must not be used to position the event.
+    if (Array.isArray(payload.autoTasks)) {
+      const winMinDate = timeMin.slice(0, 10);
+      const winMaxDate = timeMax.slice(0, 10);
+      const wantedTasks = new Map<string, { id: number; label: string; startISO: string; endISO: string }>();
+      for (const t of payload.autoTasks) {
+        if (t && t.id != null && /^\d{4}-\d{2}-\d{2}$/.test(t.startISO) && /^\d{4}-\d{2}-\d{2}$/.test(t.endISO)) {
+          wantedTasks.set(String(t.id), t);
+        }
+      }
+      await Promise.all(Array.from(wantedTasks).map(async ([key, t]) => {
+        const body = {
+          summary: t.label || `Task ${key}`,
+          start: { date: t.startISO },
+          end: { date: addDays(t.endISO, 1) },
+          transparency: 'transparent',
+          extendedProperties: { private: { pc_task_id: key, pc_auto: '1' } },
+        };
+        const ev = remoteAutoTaskEvents.get(key);
+        if (!ev) {
+          // Same guard as orders: creating for a placement the next listing
+          // can't see would spawn a duplicate on every run.
+          if (!(t.startISO <= winMaxDate && t.endISO >= winMinDate)) return;
+          const res = await gfetch(accessToken, CAL, { method: 'POST', body: JSON.stringify(body) });
+          if (res.ok) {
+            pushed++;
+            const created = await res.json().catch(() => null);
+            if (created?.id) {
+              await admin.from('schedule_tasks')
+                .update({ gcal_event_id: created.id, gcal_synced_at: syncStamp }).eq('id', Number(key));
+            }
+          }
+          return;
+        }
+        // Push unconditionally when anything differs — no LWW, no pull. A title
+        // edited in Google is overwritten, which is the point of push-only.
+        if ((ev.summary ?? '') !== body.summary
+          || ev.start?.date !== body.start.date || ev.end?.date !== body.end.date) {
+          const res = await gfetch(accessToken, `${CAL}/${encodeURIComponent(ev.id)}`, {
+            method: 'PATCH', body: JSON.stringify(body),
+          });
+          if (res.ok) pushed++;
+        }
+        if (ev.id) {
+          await admin.from('schedule_tasks')
+            .update({ gcal_event_id: ev.id, gcal_synced_at: syncStamp }).eq('id', Number(key));
+        }
+      }));
+    }
 
     // 5. Orders — push-only mirror of the client's computed placements.
     if (Array.isArray(payload.orders)) {

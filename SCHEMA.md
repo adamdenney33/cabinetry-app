@@ -1144,6 +1144,8 @@ create table public.schedule_tasks (
   end_at         timestamptz not null,
   all_day        boolean not null default false,
   allocate_hours boolean not null default true,  -- migration 20260718: costs order capacity
+  auto_schedule  boolean not null default false, -- migration 20260718: placed by the queue
+  priority       integer not null default 0,     -- 1 = highest, 0 = unset (mirrors orders.priority)
   done           boolean not null default false,
   gcal_event_id  text,          -- Google Calendar event id (sync phase 2)
   gcal_synced_at timestamptz,   -- last successful GCal sync (sync phase 2)
@@ -1167,6 +1169,30 @@ shrink and shift around it. When false the task costs nothing and the Day/Week
 grid draws it as a translucent overlay across the order blocks instead of
 giving it a column. Default is true because an existing task represents time
 already committed.
+
+`auto_schedule` + `priority` (added 2026-07-18, **auto defaults false**) let an
+allocating task be **placed by the production queue like an order** instead of
+pinned by the user. A task is then strictly one of two things — an *input* to
+the scheduler or an *output* of it, never both:
+
+| | reserved (input) | placed (output) |
+|---|---|---|
+| `allocate_hours = false` | no | no |
+| allocate + pinned | **yes** — shrinks that day's capacity | no |
+| allocate + auto | no | **yes** — queues and fair-shares like an order |
+
+That partition is what stops `_schedTaskReservations()` (an *argument to*
+`computeSchedule`) from depending on the result of the call it feeds. Both sides
+branch on the single predicate `_taskIsAutoPlaced(t)` in `schedule-tasks.js`,
+which also requires `!all_day && !done` so any combination the UI can't produce
+degrades to pinned behaviour rather than to a blank placement.
+
+**Duration-carrier convention:** for an auto task `start_at`/`end_at` store only
+the **duration** (`end_at − start_at` = the hours the queue reserves, anchored
+at 08:00 on save) plus a fallback pin used if the user switches auto back off.
+The computed placement is **never written back** — that would amplify writes on
+every recompute and churn Google Calendar. Auto tasks are therefore push-only to
+GCal (see § 3.30); pinned tasks keep the 2-way reconcile.
 
 Times are `timestamptz`; the client renders in local time. `all_day` tasks
 ignore the time-of-day component. The same migration added

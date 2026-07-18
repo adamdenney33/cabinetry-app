@@ -64,6 +64,28 @@ function _schedOpenDay(iso) {
   _schedSetView('day');
 }
 
+// ── Auto-placed task lookup ────────────────────────────────────────────────
+// An auto-scheduled task's position comes from the scheduler, not from its
+// stored start_at. The Day/Week grid already receives `computed`, but the month
+// chips and the sidebar list are built in code paths that don't — so
+// renderSchedule publishes its result here rather than have those surfaces
+// re-run computeSchedule per cell (O(cells × queue)).
+/** @type {Map<any, any>} */
+let _schedLastComputed = new Map();
+
+/** The scheduler's placement for an auto task, or null for a pinned one.
+ *  @param {any} t */
+function _taskPlacement(t) {
+  return (typeof _taskIsAutoPlaced === 'function' && _taskIsAutoPlaced(t))
+    ? (_schedLastComputed.get('task:' + t.id) || null)
+    : null;
+}
+/** ISO dates an auto task actually occupies. @param {any} t @returns {string[]} */
+function _taskPlacedDates(t) {
+  const p = _taskPlacement(t);
+  return p && Array.isArray(p.segments) ? p.segments.map((/** @type {any} */ s) => s.date) : [];
+}
+
 // ── Layer visibility (SV.7) — Orders / Tasks / Google ──
 /** @type {{ orders: boolean, tasks: boolean, google: boolean }} */
 let _schedLayers = (() => {
@@ -237,6 +259,8 @@ function _renderSchedTimeGrid(opts) {
       const dEnd = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1);
       let chips = '';
       if (showTasks) {
+        // No auto-task handling needed here: _taskIsAutoPlaced requires
+        // !all_day, so an auto task can never reach the all-day strip.
         chips += _tasksBetween(d, dEnd).filter(t => t.all_day).map(t =>
           `<span class="sched-ad-chip${t.done ? ' done' : ''}" onclick="event.stopPropagation();_openTaskPopup(${t.id})" title="${_escHtml(t.title)}">${_escHtml(t.title)}</span>`).join('');
       }
@@ -301,22 +325,45 @@ function _renderSchedTimeGrid(opts) {
       const endMin = Math.min(24 * 60, startMin + drawn * 60);
       blocks.push({ kind: 'order', e, hours, startMin, endMin });
     }
-    // Timed tasks. Tasks with "Allocate hours" on cost the day real capacity
-    // (the scheduler has already shrunk the orders around them), so they earn a
-    // column of their own. Tasks with it off cost the queue nothing — they'd be
-    // lying to claim a column, so they're drawn as an overlay across the orders.
+    // Timed tasks come in three classes:
+    //   (a) auto  — placed by the scheduler; positioned from its segments below,
+    //               exactly like an order block
+    //   (b) pinned + allocate — costs the day real capacity (the scheduler has
+    //               already shrunk the orders around it), so it earns a column
+    //   (c) allocate off — costs the queue nothing; it would be lying to claim a
+    //               column, so it's drawn as an overlay across the orders
     /** @type {any[]} */
     const overlays = [];
     if (showTasks) {
       const dEnd = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1);
       for (const t of _tasksBetween(d, dEnd)) {
         if (t.all_day) continue;
+        if (_taskIsAutoPlaced(t)) continue;                 // (a) — handled below
         const s = new Date(t.start_at), en = new Date(t.end_at);
         const startMin = Math.max(0, (+s - +d) / 60000);
         const endMin = Math.min(24 * 60, Math.max(startMin + 15, (+en - +d) / 60000));
         const blk = { kind: 'task', t, startMin, endMin };
-        if (/** @type {any} */ (t).allocate_hours === false) overlays.push(blk);
-        else blocks.push(blk);
+        if (/** @type {any} */ (t).allocate_hours === false) overlays.push(blk);   // (c)
+        else blocks.push(blk);                                                     // (b)
+      }
+      // (a) Auto-scheduled tasks — driven by the scheduler's segments, not by
+      // start_at (whose stored date is only a duration carrier). offset/span are
+      // hours from the working day's start, same as an order block, so
+      // _schedLayoutOverlaps columns them beside orders with no new layout code.
+      // Gated on the Tasks layer, not Orders — an auto task is still a task.
+      for (const t of scheduleTasks) {
+        if (!_taskIsAutoPlaced(t)) continue;
+        const p = opts.computed.get('task:' + t.id);
+        if (!p || !Array.isArray(p.segments)) continue;
+        for (const seg of p.segments) {
+          if (seg.date !== iso) continue;
+          const startMin = workStart + (seg.offset || 0) * 60;
+          const drawn = Math.max(0.5, seg.span != null ? seg.span : seg.hours);
+          blocks.push({
+            kind: 'task', t, autoPlaced: true, segHours: seg.hours,
+            startMin, endMin: Math.min(24 * 60, startMin + drawn * 60),
+          });
+        }
       }
     }
     // Google Calendar overlay (read-only)
@@ -390,13 +437,27 @@ function _renderSchedTimeGrid(opts) {
         const t = b.t;
         const slim = height < 34 ? ' slim' : '';
         const ovr = b._overlay ? ' overlay' : '';
-        colInner += `<div class="sched-task-block${t.done ? ' done' : ''}${slim}${ovr}" data-task-id="${t.id}" data-date="${iso}"
-          style="top:${top}px;height:${height}px;left:calc(${leftPct}% + ${gap}px);width:calc(${wPct}% - ${gap * 2}px)"
-          onpointerdown="_taskPointerDown(event,${t.id},'move')">
-          <span class="stb-title">${_escHtml(t.title)}</span>
-          <span class="stb-time">${_taskTimeStr(new Date(t.start_at))} – ${_taskTimeStr(new Date(t.end_at))}</span>
-          <div class="stb-resize" onpointerdown="_taskPointerDown(event,${t.id},'resize')"></div>
-        </div>`;
+        if (b.autoPlaced) {
+          // The scheduler owns these dates, so no drag/resize handlers are
+          // emitted at all — a block that grabs and then refuses is worse than
+          // one that never grabs. Same rule as order blocks. The stored clock
+          // range is meaningless here, so the label carries the hours instead.
+          const hrs = Math.round(b.segHours * 10) / 10;
+          colInner += `<div class="sched-task-block auto${t.done ? ' done' : ''}${slim}" data-task-id="${t.id}" data-date="${iso}"
+            style="top:${top}px;height:${height}px;left:calc(${leftPct}% + ${gap}px);width:calc(${wPct}% - ${gap * 2}px)"
+            onclick="event.stopPropagation();_openTaskPopup(${t.id})" title="${_escHtml(t.title)} — ${hrs}h (auto-scheduled)">
+            <span class="stb-title">${_escHtml(t.title)}</span>
+            <span class="stb-time">${hrs}h</span>
+          </div>`;
+        } else {
+          colInner += `<div class="sched-task-block${t.done ? ' done' : ''}${slim}${ovr}" data-task-id="${t.id}" data-date="${iso}"
+            style="top:${top}px;height:${height}px;left:calc(${leftPct}% + ${gap}px);width:calc(${wPct}% - ${gap * 2}px)"
+            onpointerdown="_taskPointerDown(event,${t.id},'move')">
+            <span class="stb-title">${_escHtml(t.title)}</span>
+            <span class="stb-time">${_taskTimeStr(new Date(t.start_at))} – ${_taskTimeStr(new Date(t.end_at))}</span>
+            <div class="stb-resize" onpointerdown="_taskPointerDown(event,${t.id},'resize')"></div>
+          </div>`;
+        }
       }
     }
 
@@ -601,7 +662,14 @@ function _schedMonthTasks(iso) {
   if (!m) return [];
   const day = new Date(parseInt(m[1]), parseInt(m[2]) - 1, parseInt(m[3]));
   const dayEnd = new Date(day.getFullYear(), day.getMonth(), day.getDate() + 1);
-  return _tasksBetween(day, dayEnd);
+  // Auto tasks sit on the dates the SCHEDULER gave them, not on the stale pin
+  // in start_at — so drop them from the time-window match and add them back by
+  // their computed segments (a multi-day one appears on each day it occupies).
+  const list = _tasksBetween(day, dayEnd).filter(t => !_taskIsAutoPlaced(t));
+  for (const t of scheduleTasks) {
+    if (_taskIsAutoPlaced(t) && _taskPlacedDates(t).includes(iso)) list.push(t);
+  }
+  return list;
 }
 
 /** Google overlay events on a month-view day. @param {string} iso */
@@ -632,10 +700,13 @@ function _schedMonthTaskChipsHTML(iso, top) {
   for (const t of tasks) {
     if (shown >= 3) break;
     shown++;
-    const time = t.all_day ? '' : `<span class="sct-time">${_taskTimeStr(new Date(t.start_at))}</span>`;
-    html += `<div class="sched-task-chip${t.done ? ' done' : ''}" draggable="true"
-      ondragstart="_taskChipDragStart(event,${t.id})"
-      onclick="event.stopPropagation();_openTaskPopup(${t.id})" title="${_escHtml(t.title)}">${time}${_escHtml(t.title)}</div>`;
+    // Auto tasks: the scheduler owns the date, so no drag, and the stored clock
+    // time is a duration carrier rather than a real start — don't show it.
+    const auto = _taskIsAutoPlaced(t);
+    const time = (t.all_day || auto) ? '' : `<span class="sct-time">${_taskTimeStr(new Date(t.start_at))}</span>`;
+    const drag = auto ? '' : ` draggable="true" ondragstart="_taskChipDragStart(event,${t.id})"`;
+    html += `<div class="sched-task-chip${t.done ? ' done' : ''}${auto ? ' auto' : ''}"${drag}
+      onclick="event.stopPropagation();_openTaskPopup(${t.id})" title="${_escHtml(t.title)}${auto ? ' (auto-scheduled)' : ''}">${time}${_escHtml(t.title)}</div>`;
   }
   for (const g of gcal) {
     if (shown >= 3) break;

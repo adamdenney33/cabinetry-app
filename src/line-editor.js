@@ -357,7 +357,7 @@ function _orderAutoScheduleToggle(on) {
       // Seed with the current scheduler-computed start so the bar doesn't
       // jump on toggle.
       const sched = (typeof computeSchedule === 'function')
-        ? computeSchedule(orders, {
+        ? computeSchedule(_schedList(orders), {
             workdayHours: cbSettings.workdayHours,
             weekdayHours: cbSettings.weekdayHours,
             packagingHours: cbSettings.packagingHours,

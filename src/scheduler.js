@@ -225,7 +225,9 @@ function _schedForwardPlace(startCursor, startDayUsed, required, weekdayDefaults
   return { start, end, segments, endDayUsed };
 }
 
-/** @param {any[]} ordersList
+/** @param {any[]} ordersList  orders, plus auto-scheduled tasks shaped as
+ *         pseudo-orders by _schedAutoTaskOrders() (id `task:<n>`, hours in
+ *         `hours_allocated`) — they queue and fair-share exactly like orders
  *  @param {{ workdayHours?: number, weekdayHours?: number[], packagingHours?: number, contingencyPct?: number, queueStartDate?: string|null }} biz
  *  @param {Array<{ date: string, hours: number }>} overrides
  *  @param {Date} today
@@ -258,7 +260,13 @@ function computeSchedule(ordersList, biz, overrides, today, reservedMap) {
     if (pa === 0 && pb !== 0) return 1;
     if (pb === 0 && pa !== 0) return -1;
     if (pa !== pb) return pa - pb;
-    return (a.id || 0) - (b.id || 0);
+    // Auto-scheduled tasks enter this list as pseudo-orders with a STRING id
+    // ('task:<n>'), which would make `a.id - b.id` NaN and the sort
+    // non-deterministic. They carry a numeric `_schedTieBreak` instead,
+    // offset so real orders win the tie.
+    const ka = a._schedTieBreak ?? a.id ?? 0;
+    const kb = b._schedTieBreak ?? b.id ?? 0;
+    return ka - kb;
   });
 
   const queueStart = biz?.queueStartDate ? _schedFromISO(biz.queueStartDate) : null;

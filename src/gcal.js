@@ -94,10 +94,15 @@ function handleGcalReturn() {
 }
 
 // ── Sync driver ──────────────────────────────────────────────────────────────
-/** Build the push-only order placements from the client-side scheduler —
- *  the same inputs renderSchedule feeds computeSchedule. */
-function _gcalOrderPlacements() {
-  if (typeof computeSchedule !== 'function' || typeof orders === 'undefined') return [];
+/** Build the push-only placements from the client-side scheduler — the same
+ *  inputs renderSchedule feeds computeSchedule. Returns orders AND
+ *  auto-scheduled tasks: both are placed by the queue, so both are push-only
+ *  and neither can be positioned from anything stored on the row.
+ *  @returns {{orders: any[], tasks: any[]}} */
+function _gcalPlacements() {
+  const empty = { orders: [], tasks: [] };
+  if (typeof computeSchedule !== 'function' || typeof orders === 'undefined') return empty;
+  if (typeof _schedList !== 'function') return empty;
   try {
     const today = new Date();
     const biz = {
@@ -107,7 +112,7 @@ function _gcalOrderPlacements() {
       queueStartDate: cbSettings.queueStartDate,
     };
     const overrides = (typeof dayOverrides !== 'undefined' && Array.isArray(dayOverrides)) ? dayOverrides : [];
-    const computed = computeSchedule(orders, biz, overrides,
+    const computed = computeSchedule(_schedList(orders), biz, overrides,
       new Date(today.getFullYear(), today.getMonth(), today.getDate()), (typeof _schedTaskReservations === 'function' ? _schedTaskReservations() : undefined));
     /** @type {{ id: number, label: string, startISO: string, endISO: string }[]} */
     const out = [];
@@ -119,10 +124,20 @@ function _gcalOrderPlacements() {
       const client = (typeof orderClient === 'function' && orderClient(o)) || '';
       out.push({ id: o.id, label: [num, client].filter(Boolean).join(' · '), startISO: s.startISO, endISO: s.endISO });
     }
-    return out;
+    /** @type {{ id: number, label: string, startISO: string, endISO: string }[]} */
+    const taskOut = [];
+    if (typeof scheduleTasks !== 'undefined' && Array.isArray(scheduleTasks)) {
+      for (const t of scheduleTasks) {
+        if (!_taskIsAutoPlaced(t) || t.id < 0) continue; // skip demo rows
+        const s = computed.get('task:' + t.id);
+        if (!s || !s.startISO || !s.endISO) continue;
+        taskOut.push({ id: t.id, label: t.title || '(untitled task)', startISO: s.startISO, endISO: s.endISO });
+      }
+    }
+    return { orders: out, tasks: taskOut };
   } catch (e) {
     console.warn('[gcal] placements:', (/** @type {any} */ (e)).message || e);
-    return [];
+    return { orders: [], tasks: [] };
   }
 }
 
@@ -133,7 +148,12 @@ async function _gcalSyncNow(reason) {
   _gcalSyncInFlight = true;
   _gcalSetSyncState('syncing');
   try {
-    const res = await _gcalFn('sync', { orders: _gcalOrderPlacements(), reason: reason || 'manual' });
+    // `autoTasks` is a NEW key rather than folded into `orders`: during the
+    // deploy gap an old server simply ignores it (auto tasks don't sync yet),
+    // whereas order-tagging them would create events the task path then treats
+    // as strays and deletes.
+    const _p = _gcalPlacements();
+    const res = await _gcalFn('sync', { orders: _p.orders, autoTasks: _p.tasks, reason: reason || 'manual' });
     if (!res.connected) {
       _gcalConn.connected = false;
       if (res.reauth) { _gcalConn.reauth = true; _toast('Google Calendar needs reconnecting', 'error'); }

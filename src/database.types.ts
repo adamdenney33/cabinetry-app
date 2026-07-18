@@ -1631,6 +1631,7 @@ export type Database = {
         Row: {
           all_day: boolean
           allocate_hours: boolean
+          auto_schedule: boolean
           created_at: string
           done: boolean
           end_at: string
@@ -1638,6 +1639,7 @@ export type Database = {
           gcal_synced_at: string | null
           id: number
           notes: string | null
+          priority: number
           start_at: string
           title: string
           updated_at: string
@@ -1646,6 +1648,7 @@ export type Database = {
         Insert: {
           all_day?: boolean
           allocate_hours?: boolean
+          auto_schedule?: boolean
           created_at?: string
           done?: boolean
           end_at: string
@@ -1653,6 +1656,7 @@ export type Database = {
           gcal_synced_at?: string | null
           id?: number
           notes?: string | null
+          priority?: number
           start_at: string
           title?: string
           updated_at?: string
@@ -1661,6 +1665,7 @@ export type Database = {
         Update: {
           all_day?: boolean
           allocate_hours?: boolean
+          auto_schedule?: boolean
           created_at?: string
           done?: boolean
           end_at?: string
@@ -1668,6 +1673,7 @@ export type Database = {
           gcal_synced_at?: string | null
           id?: number
           notes?: string | null
+          priority?: number
           start_at?: string
           title?: string
           updated_at?: string

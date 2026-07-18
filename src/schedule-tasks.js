@@ -80,6 +80,12 @@ function _openTaskPopup(id, presetStart, presetAllDay) {
   // Defaults to on: a task is real committed time, so it should cost the
   // production queue hours unless the user says otherwise.
   const allocate = t ? /** @type {any} */ (t).allocate_hours !== false : true;
+  // Auto = the production queue places this task by priority, like an order.
+  // Only coherent alongside "Allocate hours" and only for timed (non-all-day)
+  // tasks — an all-day task blocks the whole day rather than asking for a slice.
+  const auto = t ? /** @type {any} */ (t).auto_schedule === true : false;
+  const autoOk = allocate && !allDay;
+  _tkEditingId = t ? t.id : 0;
   const html = `
     <div class="popup-header">
       <div class="popup-title"><div style="font-size:16px;font-weight:700">${t ? 'Edit Task' : 'New Task'}</div></div>
@@ -88,15 +94,20 @@ function _openTaskPopup(id, presetStart, presetAllDay) {
     <div class="popup-body">
       <div class="pf"><label class="pf-label">TITLE</label><input class="pf-input pf-input-lg" id="ptk-title" value="${t ? _escHtml(t.title) : ''}" placeholder="e.g. Delivery — Oak St install"></div>
       <div class="pf-row">
-        <div class="pf" style="flex:1.3"><label class="pf-label">DATE</label><input class="pf-input" id="ptk-date" type="date" value="${_taskDateISO(start)}"></div>
-        <div class="pf" style="flex:0.9${allDay ? ';display:none' : ''}" id="ptk-start-wrap"><label class="pf-label">START</label><input class="pf-input" id="ptk-start" type="time" value="${_taskTimeStr(start)}" oninput="_taskStartChanged()"></div>
+        <div class="pf" style="flex:1.3"><label class="pf-label">DATE<span class="sched-field-hint" id="ptk-date-hint"${auto ? '' : ' style="display:none"'}> (auto)</span></label><input class="pf-input" id="ptk-date" type="date" value="${_taskDateISO(start)}" ${auto ? 'disabled title="Auto-scheduled — toggle off to set the date manually"' : ''}></div>
+        <div class="pf" style="flex:0.9${allDay || auto ? ';display:none' : ''}" id="ptk-start-wrap"><label class="pf-label">START</label><input class="pf-input" id="ptk-start" type="time" value="${_taskTimeStr(start)}" oninput="_taskStartChanged()"></div>
         <div class="pf" style="flex:0.7${allDay ? ';display:none' : ''}" id="ptk-hours-wrap"><label class="pf-label">HOURS</label><input class="pf-input" id="ptk-hours" type="number" min="0.25" step="0.25" value="${Math.round((+end - +start) / 36000) / 100}" oninput="_taskHoursChanged()"></div>
-        <div class="pf" style="flex:0.9${allDay ? ';display:none' : ''}" id="ptk-end-wrap"><label class="pf-label">END</label><input class="pf-input" id="ptk-end" type="time" value="${_taskTimeStr(end)}" oninput="_taskEndChanged()"></div>
+        <div class="pf" style="flex:0.9${allDay || auto ? ';display:none' : ''}" id="ptk-end-wrap"><label class="pf-label">END</label><input class="pf-input" id="ptk-end" type="time" value="${_taskTimeStr(end)}" oninput="_taskEndChanged()"></div>
       </div>
-      <div class="pf" style="display:flex;align-items:center;gap:14px">
-        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer"><input type="checkbox" id="ptk-allday" ${allDay ? 'checked' : ''} onchange="_taskToggleAllDay(this.checked)"> All day</label>
-        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer" title="On: this task's time comes out of the day's order capacity. Off: it costs the production queue nothing and just overlays the orders."><input type="checkbox" id="ptk-allocate" ${allocate ? 'checked' : ''}> Allocate hours</label>
+      <div class="pf" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer"><input type="checkbox" id="ptk-allday" ${allDay ? 'checked' : ''} ${auto ? 'disabled' : ''} onchange="_taskToggleAllDay(this.checked)"> All day</label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer" title="On: this task's time comes out of the day's order capacity. Off: it costs the production queue nothing and just overlays the orders."><input type="checkbox" id="ptk-allocate" ${allocate ? 'checked' : ''} onchange="_taskToggleAllocate(this.checked)"> Allocate hours</label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer" title="On: the production queue places this task by priority, like an order — you set the hours, it picks the day. Off: it stays on the date you set."><input type="checkbox" id="ptk-auto" ${auto ? 'checked' : ''} ${autoOk ? '' : 'disabled'} onchange="_taskToggleAuto(this.checked)"> Auto schedule</label>
         ${t ? `<label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer"><input type="checkbox" id="ptk-done" ${t.done ? 'checked' : ''}> Done</label>` : ''}
+      </div>
+      <div class="pf" id="ptk-pri-wrap" style="${auto ? '' : 'display:none'}">
+        <label class="pf-label">PRIORITY</label>
+        ${_priorityStepperHTML('ptk-priority', (t && /** @type {any} */ (t).priority) || '', '')}
       </div>
       <div class="pf"><label class="pf-label">NOTES</label><textarea class="pf-textarea" id="ptk-notes" rows="2" placeholder="Optional notes...">${t && t.notes ? _escHtml(t.notes) : ''}</textarea></div>
     </div>
@@ -109,12 +120,83 @@ function _openTaskPopup(id, presetStart, presetAllDay) {
   _openPopup(html, 'sm');
 }
 
+/** Task id backing the open popup (0 = creating), so the toggle handlers can
+ *  reach the row's computed placement. Mirrors _psoOrderId in schedule.js. */
+let _tkEditingId = 0;
+
 /** @param {boolean} allDay */
 function _taskToggleAllDay(allDay) {
+  const autoOn = _tkAutoChecked();
   for (const id of ['ptk-start-wrap', 'ptk-hours-wrap', 'ptk-end-wrap']) {
     const el = document.getElementById(id);
-    if (el) el.style.display = allDay ? 'none' : '';
+    if (!el) continue;
+    // HOURS stays visible under auto (it's the input the queue needs); START and
+    // END do not — the scheduler picks the time of day.
+    const hiddenByAuto = autoOn && id !== 'ptk-hours-wrap';
+    el.style.display = (allDay || hiddenByAuto) ? 'none' : '';
   }
+  // All-day and auto are mutually exclusive: all-day blocks the whole day,
+  // auto asks for a finite slice of one.
+  _tkSetAutoEnabled(!allDay && _tkAllocateChecked());
+}
+
+/** @returns {boolean} */
+function _tkAutoChecked() {
+  const el = /** @type {HTMLInputElement|null} */ (document.getElementById('ptk-auto'));
+  return !!(el && el.checked);
+}
+/** @returns {boolean} */
+function _tkAllocateChecked() {
+  const el = /** @type {HTMLInputElement|null} */ (document.getElementById('ptk-allocate'));
+  return !el || el.checked;
+}
+/** Enable/disable the auto checkbox, force-unticking it when it becomes
+ *  unavailable so an incoherent combination can't be saved.
+ *  @param {boolean} ok */
+function _tkSetAutoEnabled(ok) {
+  const el = /** @type {HTMLInputElement|null} */ (document.getElementById('ptk-auto'));
+  if (!el) return;
+  el.disabled = !ok;
+  if (!ok && el.checked) { el.checked = false; _taskToggleAuto(false); }
+}
+
+/** "Allocate hours" drives whether auto is even meaningful — a task that costs
+ *  the queue nothing has no business being placed by it.
+ *  @param {boolean} on */
+function _taskToggleAllocate(on) {
+  const allDayEl = /** @type {HTMLInputElement|null} */ (document.getElementById('ptk-allday'));
+  _tkSetAutoEnabled(on && !(allDayEl && allDayEl.checked));
+}
+
+/** Auto-schedule toggle. The model flips from "when and how long" (pinned) to
+ *  "how long and how urgent" (auto): DATE goes read-only, START/END disappear,
+ *  HOURS becomes the primary input, and PRIORITY appears.
+ *  @param {boolean} auto */
+function _taskToggleAuto(auto) {
+  for (const id of ['ptk-start-wrap', 'ptk-end-wrap']) {
+    const el = document.getElementById(id);
+    if (el) el.style.display = auto ? 'none' : '';
+  }
+  const pri = document.getElementById('ptk-pri-wrap');
+  if (pri) pri.style.display = auto ? '' : 'none';
+  const date = /** @type {HTMLInputElement|null} */ (document.getElementById('ptk-date'));
+  if (date) {
+    date.disabled = auto;
+    date.title = auto ? 'Auto-scheduled — toggle off to set the date manually' : '';
+  }
+  const hint = document.getElementById('ptk-date-hint');
+  if (hint) hint.style.display = auto ? '' : 'none';
+  const allDayEl = /** @type {HTMLInputElement|null} */ (document.getElementById('ptk-allday'));
+  if (allDayEl) allDayEl.disabled = auto;
+  // Turning auto OFF: seed the pin from where the scheduler last placed it, so
+  // the task doesn't teleport back to a stale date. Mirrors _psoAutoToggle.
+  if (!auto && _tkEditingId && date) {
+    const p = typeof _taskPlacement === 'function' ? _taskPlacement(_taskById(_tkEditingId)) : null;
+    if (p && p.startISO) date.value = p.startISO;
+  }
+  // HOURS is the driver under auto — make sure it holds a usable number.
+  const h = /** @type {HTMLInputElement|null} */ (document.getElementById('ptk-hours'));
+  if (auto && h && !(parseFloat(h.value) > 0)) h.value = '1';
 }
 
 // ── Start / Hours / End are live-linked (GCal behaviour) ─────────────────────
@@ -173,6 +255,22 @@ async function _saveTaskPopup(id) {
     : _taskCombine(dateISO, _popupVal('ptk-end') || '');
   // Guard: end must follow start — silently default to +1h instead of nagging.
   if (!end || +end <= +start) end = new Date(+start + 3600000);
+
+  const autoEl = /** @type {HTMLInputElement|null} */ (document.getElementById('ptk-auto'));
+  const allocate = !allocateEl || allocateEl.checked;
+  // Belt-and-braces: the UI disables auto in these states, but never persist a
+  // combination _taskIsAutoPlaced would reject.
+  const auto = !!(autoEl && autoEl.checked) && allocate && !allDay;
+  if (auto) {
+    // Under auto the scheduler picks the day and the time of day, so start_at /
+    // end_at carry only the DURATION (plus a fallback pin for switching back).
+    // Anchoring at 08:00 keeps the carrier canonical, so end_at − start_at reads
+    // cleanly as the hours in the DB.
+    const hrs = Math.max(0.25, parseFloat(_popupVal('ptk-hours')) || 1);
+    start = _taskCombine(dateISO, '08:00') || start;
+    end = new Date(+start + hrs * 3600000);
+  }
+
   /** @type {any} */
   const body = {
     title,
@@ -180,7 +278,9 @@ async function _saveTaskPopup(id) {
     start_at: start.toISOString(),
     end_at: end.toISOString(),
     all_day: allDay,
-    allocate_hours: !allocateEl || allocateEl.checked,
+    allocate_hours: allocate,
+    auto_schedule: auto,
+    priority: parseInt(_popupVal('ptk-priority'), 10) || 0,
     done: !!(doneEl && doneEl.checked),
     updated_at: new Date().toISOString(),
   };
@@ -214,6 +314,77 @@ function _sortScheduleTasks() {
   scheduleTasks.sort((a, b) => String(a.start_at).localeCompare(String(b.start_at)));
 }
 
+// ── Auto-scheduled tasks (placed by the queue, like an order) ───────────────
+// A task is EITHER an input to the scheduler (a reservation that shrinks a
+// day's capacity) OR an output of it (a placed queue item) — never both. That
+// partition is what keeps `_schedTaskReservations` (an *argument to*
+// computeSchedule) from depending on the result of the call it feeds:
+//
+//   allocate_hours = false  → neither: pure overlay, costs the queue nothing
+//   allocate + pinned       → reserved: subtracts capacity on its pinned date
+//   allocate + auto         → placed:   joins the priority queue like an order
+
+/** A task the scheduler PLACES, rather than one the user pinned. Every surface
+ *  that has to choose between "read start_at" and "read the computed
+ *  placement" branches on THIS predicate — the partition above is only safe
+ *  while both sides can't drift apart.
+ *
+ *  The three conjuncts beyond `auto_schedule` make each combination the UI
+ *  can't produce degrade to today's pinned behaviour instead of to a blank
+ *  placement: an all-day task reserves the whole day (incompatible with asking
+ *  for an hours slice), a done task has no future placement to draw, and
+ *  auto-without-allocate would let the queue stack unlimited free work into a
+ *  day.
+ *  @param {any} t */
+function _taskIsAutoPlaced(t) {
+  return !!t && t.auto_schedule === true
+    && t.allocate_hours !== false
+    && !t.all_day && !t.done;
+}
+
+/** Hours an auto task asks the queue for. start_at/end_at are the carrier —
+ *  for an auto task only their DIFFERENCE is meaningful; the stored date is a
+ *  fallback pin used if the user switches auto back off.
+ *  @param {any} t */
+function _taskDurationHours(t) {
+  const h = (+new Date(t.end_at) - +new Date(t.start_at)) / 3600000;
+  return Number.isFinite(h) && h > 0 ? h : 0;
+}
+
+/** Auto tasks shaped as pseudo-orders for computeSchedule. `hours_allocated`
+ *  is read verbatim by orderHoursRequired(), so these need no `_lines`.
+ *  The `task:<n>` id can never collide with a numeric order id, and order-side
+ *  consumers only ever call `.get(numericId)`, so they never see these entries.
+ *  @returns {any[]} */
+function _schedAutoTaskOrders() {
+  if (typeof scheduleTasks === 'undefined' || !Array.isArray(scheduleTasks)) return [];
+  return scheduleTasks.filter(_taskIsAutoPlaced).map(t => ({
+    id: 'task:' + t.id,
+    // Numeric sort key — the scheduler's tie-break can't subtract string ids.
+    // Offset so real orders win a priority tie.
+    _schedTieBreak: 1e9 + t.id,
+    _taskRow: t,
+    priority: /** @type {any} */ (t).priority || 0,
+    auto_schedule: true,
+    status: 'active',            // must not be 'complete' — computeSchedule filters that
+    hours_allocated: _taskDurationHours(t),
+    run_over_hours: 0,
+  }));
+}
+
+/** The list every computeSchedule call site passes: orders + auto tasks.
+ *  @param {any[]} ordersList @returns {any[]} */
+function _schedSchedulables(ordersList) {
+  return (ordersList || []).concat(_schedAutoTaskOrders());
+}
+
+/** Guarded wrapper for call sites in files that load before this one — matches
+ *  the existing `typeof _schedTaskReservations === 'function'` idiom.
+ *  @param {any[]} ordersList @returns {any[]} */
+function _schedList(ordersList) {
+  return typeof _schedSchedulables === 'function' ? _schedSchedulables(ordersList) : ordersList;
+}
+
 // Hours each date owes to tasks, for computeSchedule to subtract from that
 // day's order capacity. Only tasks with allocate_hours on are counted; the rest
 // are pure overlay and cost the production queue nothing.
@@ -229,6 +400,10 @@ function _schedTaskReservations() {
   if (typeof scheduleTasks === 'undefined' || !Array.isArray(scheduleTasks)) return map;
   for (const t of scheduleTasks) {
     if (!t || /** @type {any} */ (t).allocate_hours === false) continue;
+    // Auto tasks are PLACED by computeSchedule, not reserved from it. Counting
+    // them here would both double-book their hours and make this map depend on
+    // the result of the call it's an argument to.
+    if (_taskIsAutoPlaced(t)) continue;
     const s = new Date(t.start_at), e = new Date(t.end_at);
     if (isNaN(+s) || isNaN(+e)) continue;
     if (t.all_day) { map[_taskDateISO(s)] = Infinity; continue; }
@@ -268,6 +443,8 @@ async function _duplicateTaskFromPopup(id) {
     end_at: t.end_at,
     all_day: t.all_day,
     allocate_hours: /** @type {any} */ (t).allocate_hours !== false,
+    auto_schedule: /** @type {any} */ (t).auto_schedule === true,
+    priority: /** @type {any} */ (t).priority || 0,
     done: false,
     updated_at: new Date().toISOString(),
   };
@@ -313,6 +490,17 @@ const _TASK_MON_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','
 /** Friendly one-line date label for a sidebar task row.
  *  @param {import('./database.types').Tables<'schedule_tasks'>} t */
 function _schedTaskDayLabel(t) {
+  // Auto tasks: report where the SCHEDULER put it, not the stored pin. No clock
+  // time — the queue owns the day, not an hour of it.
+  if (_taskIsAutoPlaced(t)) {
+    const p = typeof _taskPlacement === 'function' ? _taskPlacement(t) : null;
+    const iso = p && p.startISO;
+    if (!iso) return 'Auto · unplaced';
+    const m = String(iso).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!m) return 'Auto';
+    const y = parseInt(m[1]);
+    return `Auto · ${parseInt(m[3])} ${_TASK_MON_SHORT[parseInt(m[2]) - 1]}${y !== new Date().getFullYear() ? ' ' + y : ''}`;
+  }
   const s = new Date(t.start_at);
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -343,7 +531,9 @@ async function _taskToggleDoneQuick(id, done) {
 /** One sidebar to-do row.
  *  @param {import('./database.types').Tables<'schedule_tasks'>} t @param {number} nowMs */
 function _schedTaskRowHTML(t, nowMs) {
-  const overdue = !t.done && +new Date(t.end_at) < nowMs;
+  // end_at is a stale duration carrier for an auto task, so comparing it to now
+  // would mark every one of them permanently overdue.
+  const overdue = !t.done && !_taskIsAutoPlaced(t) && +new Date(t.end_at) < nowMs;
   return `<div class="sched-task-row${t.done ? ' done' : ''}" onclick="_openTaskPopup(${t.id})">
     <input type="checkbox" ${t.done ? 'checked' : ''} onclick="event.stopPropagation()" onchange="_taskToggleDoneQuick(${t.id},this.checked)" title="${t.done ? 'Mark as not done' : 'Mark as done'}">
     <div class="stl-main">
@@ -385,6 +575,10 @@ const _taskMoveTimers = new Map();
 function _persistTaskTimes(id, start, end) {
   const t = _taskById(id);
   if (!t) return;
+  // The scheduler owns an auto task's dates. The drag/resize/chip handlers are
+  // no longer emitted for them, but this is the single write funnel — a stray
+  // path here would corrupt the duration carrier.
+  if (_taskIsAutoPlaced(t)) return;
   t.start_at = start.toISOString();
   t.end_at = end.toISOString();
   _sortScheduleTasks();

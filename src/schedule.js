@@ -141,7 +141,11 @@ function renderSchedule(opts) {
     queueStartDate: cbSettings.queueStartDate,
   };
   const overrides = (typeof dayOverrides !== 'undefined' && Array.isArray(dayOverrides)) ? dayOverrides : [];
-  const computed = computeSchedule(orders, biz, overrides, today, (typeof _schedTaskReservations === 'function' ? _schedTaskReservations() : undefined));
+  const computed = computeSchedule(_schedList(orders), biz, overrides, today, (typeof _schedTaskReservations === 'function' ? _schedTaskReservations() : undefined));
+  // Publish for the surfaces built below that don't receive `computed` directly
+  // (month chips, sidebar task list). Must be assigned BEFORE the month build,
+  // or first-render cells size off an empty map.
+  _schedLastComputed = computed;
 
   /** @typedef {{id:any,numberLabel:string,project:string,client:string,start:Date|null,end:Date|null,color:string,lane:number,isManual:boolean,isMissingDates:boolean}} SchedEvent */
   /** @type {SchedEvent[]} */
@@ -660,6 +664,9 @@ function _schedStepPriority(orderId, dir) {
     _db('orders').update({ priority: val, updated_at: new Date().toISOString() })
       .eq('id', orderId)
       .then(({ error }) => { if (error) console.warn('[orders] priority sync failed:', error.message); });
+    // An order's priority now also moves auto-scheduled TASK placements, which
+    // are pushed to Google — so re-sync, not just re-render.
+    if (typeof _gcalQueueSync === 'function') _gcalQueueSync();
   }, 400));
 }
 
@@ -848,7 +855,7 @@ function _psoPlacementHTML(id, pending) {
   const list = pending
     ? orders.map(x => x.id === id ? Object.assign({}, x, pending) : x)
     : orders;
-  const sched = computeSchedule(list, biz, overrides, today, (typeof _schedTaskReservations === 'function' ? _schedTaskReservations() : undefined)).get(id);
+  const sched = computeSchedule(_schedList(list), biz, overrides, today, (typeof _schedTaskReservations === 'function' ? _schedTaskReservations() : undefined)).get(id);
   const hrs = sched ? Math.round(sched.hoursRequired * 10) / 10 : 0;
   if (sched && sched.isMissingDates) return '<span style="color:#f87171;font-weight:600">No dates set</span>';
   if (sched && sched.startISO) return `${_psoFmtISO(sched.startISO)} → ${_psoFmtISO(sched.endISO)} · ${hrs}h`;
@@ -931,6 +938,7 @@ async function _saveSchedOrderPopup(id) {
   renderSchedule();
   const { error } = await _db('orders').update(update).eq('id', id);
   if (error) { console.warn('[orders] schedule popup save failed:', error.message); _toast('Save failed — check connection', 'error'); }
+  else if (typeof _gcalQueueSync === 'function') _gcalQueueSync(); // may have moved auto-task placements
 }
 
 // ── Restore prodStart: prefer DB column, fall back to localStorage ──

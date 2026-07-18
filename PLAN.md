@@ -24,6 +24,25 @@ Companion docs: `SPEC.md` (refactor history), `SCHEMA.md` (DB schema),
 
 ## Active Work
 
+### Tasks can be auto-scheduled — "treated like an order" (2026-07-18) ✅ Done
+
+**Goal (Adam).** An allocating task gains the order scheduling options, so the
+production queue can place it by priority instead of it sitting on a pinned date.
+
+- ✅ Migration `20260718120000_schedule_task_auto_schedule.sql` (`auto_schedule`
+  default **false**, `priority` default 0) + types regenerated.
+- ✅ `_taskIsAutoPlaced` partition (reserved vs placed) + `_schedAutoTaskOrders`
+  pseudo-orders; `_schedList` at all 5 `computeSchedule` call sites.
+- ✅ `scheduler.js` tie-break reads `_schedTieBreak` (string ids made it NaN).
+- ✅ Renderer: three task-block classes, `_schedLastComputed` cache, month chips
+  on computed dates, sidebar `Auto · <date>` + overdue suppressed.
+- ✅ Drag/resize/chip-drag not emitted for auto tasks + `_persistTaskTimes` guard.
+- ✅ Popup: Auto schedule + Priority; HOURS becomes the input, DATE read-only.
+- ✅ GCal push-only for auto tasks; server deployed first (v7→v8). Fixed two
+  latent hazards: unwindowed id fetch, and single-pass stray deletion.
+- ⬜ **Open:** GCal round-trip unverified — the test account has no Google
+  connection. Needs a live check on a connected account after push.
+
 ### Tasks consume order capacity — "Allocate hours" toggle (2026-07-18) ✅ Done
 
 **Goal (Adam).** Tasks currently sit beside the production queue without costing

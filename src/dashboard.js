@@ -51,7 +51,7 @@ function renderDashboard() {
   const _schedOverrides = (typeof dayOverrides !== 'undefined' && Array.isArray(dayOverrides)) ? dayOverrides : [];
   const _schedToday = new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
   const _schedComputed = (typeof computeSchedule === 'function')
-    ? computeSchedule(orders, _schedBiz, _schedOverrides, _schedToday, (typeof _schedTaskReservations === 'function' ? _schedTaskReservations() : undefined))
+    ? computeSchedule(_schedList(orders), _schedBiz, _schedOverrides, _schedToday, (typeof _schedTaskReservations === 'function' ? _schedTaskReservations() : undefined))
     : new Map();
 
   /** @param {number} v */
