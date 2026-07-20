@@ -2950,6 +2950,13 @@ input.pf-input-compact[type="date"]:disabled::-webkit-calendar-picker-indicator 
 .sched-stepper .step-btn:hover { background: var(--accent-dim); color: var(--accent); border-color: var(--accent); }
 .sched-stepper .step-btn:active { background: var(--accent); color: #fff; }
 
+/* Task popup priority — same cell width as the orders sidebar's priority line
+   (a third of the row, minus the two 10px gaps it would sit beside), rather
+   than a stepper stretched across the whole popup. The sidebar gets this from
+   `.sched-body .sched-field`, which doesn't apply here: the popup's field is a
+   plain `.pf` so its label matches TITLE / DATE / NOTES around it. */
+#ptk-pri-wrap .sched-stepper { width: calc((100% - 20px) / 3); }
+
 /* Schedule sidebar — per-order priority stepper */
 .sched-pri { display:inline-flex; align-items:center; gap:4px; flex-shrink:0; }
 .sched-pri-num {
