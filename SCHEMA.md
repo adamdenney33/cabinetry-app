@@ -1147,6 +1147,7 @@ create table public.schedule_tasks (
   auto_schedule  boolean not null default false, -- migration 20260718: placed by the queue
   priority       integer not null default 0,     -- 1 = highest, 0 = unset (mirrors orders.priority)
   done           boolean not null default false,
+  order_id       bigint references public.orders(id) on delete set null, -- migration 20260721: optional order link
   gcal_event_id  text,          -- Google Calendar event id (sync phase 2)
   gcal_synced_at timestamptz,   -- last successful GCal sync (sync phase 2)
   created_at     timestamptz not null default now(),
@@ -1155,10 +1156,22 @@ create table public.schedule_tasks (
 
 create index schedule_tasks_user_start_idx
   on public.schedule_tasks (user_id, start_at);
+create index schedule_tasks_order_idx
+  on public.schedule_tasks (order_id);
 
 alter table public.schedule_tasks enable row level security;
 -- Pattern A policies (read/insert/update/delete by owner) — see § 4
 ```
+
+`order_id` (added 2026-07-21, **nullable**) links a task to the order it belongs
+to — deliveries, installs and site visits created from within an order. The link
+is an *attribute of the task*: the task stays first-class, so the FK is
+`on delete set null` (deleting an order unlinks its tasks, leaving them on the
+calendar as standalone tasks rather than deleting them). A task is assigned an
+order via the Order picker in the task popup or by dragging it onto an order
+(day/week block, month bar, or sidebar row); order-linked tasks are listed in the
+schedule-tab order popup and tinted with the order's colour in the Day/Week grid.
+The link is app-internal — it is **not** pushed to Google Calendar.
 
 `allocate_hours` (added 2026-07-18, **defaults true**) decides whether the task
 costs the production queue anything. When true, `_schedTaskReservations()`

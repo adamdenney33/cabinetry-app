@@ -1639,6 +1639,7 @@ export type Database = {
           gcal_synced_at: string | null
           id: number
           notes: string | null
+          order_id: number | null
           priority: number
           start_at: string
           title: string
@@ -1656,6 +1657,7 @@ export type Database = {
           gcal_synced_at?: string | null
           id?: number
           notes?: string | null
+          order_id?: number | null
           priority?: number
           start_at: string
           title?: string
@@ -1673,13 +1675,22 @@ export type Database = {
           gcal_synced_at?: string | null
           id?: number
           notes?: string | null
+          order_id?: number | null
           priority?: number
           start_at?: string
           title?: string
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "schedule_tasks_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       sheets: {
         Row: {

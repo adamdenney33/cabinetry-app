@@ -885,6 +885,21 @@ header {
 .sched-task-block .stb-time { font-size: 9px; opacity: 0.85; }
 .stb-resize { position: absolute; left: 0; right: 0; bottom: 0; height: 7px; cursor: ns-resize; touch-action: none; }
 
+/* Order-linked tasks: a left accent in the order's colour + a small tag with
+   the order number, so a task reads as part of its order on the grid. */
+.sched-task-block.linked { border-left: 3px solid var(--order-accent, #0d9488); }
+.stb-order {
+  align-self: flex-start; font-size: 8px; font-weight: 700; line-height: 1.35;
+  padding: 0 4px; border-radius: 4px; white-space: nowrap;
+  background: rgba(255, 255, 255, 0.22); color: #fff;
+}
+.sched-task-block.slim .stb-order { align-self: center; }
+
+/* Drop target highlight — an order the dragged task is hovering over. Used by
+   the day/week order block, the sidebar order row, and the month-view bar. */
+.sched-drop-target { outline: 2px solid var(--accent); outline-offset: -2px; }
+.sched-ord-block.sched-drop-target { box-shadow: 0 0 0 2px var(--accent) inset; }
+
 /* Current-time line */
 .sched-nowline { position: absolute; left: 0; right: 0; height: 2px; background: #ef4444; z-index: 4; pointer-events: none; }
 .sched-nowdot { position: absolute; left: -4px; top: -3px; width: 8px; height: 8px; border-radius: 50%; background: #ef4444; }
@@ -2767,6 +2782,7 @@ details.sched .sched-body { padding: 4px 14px 12px; display: flex; flex-directio
 .pso-line-dot.item    { background: #3f7fb4; }
 .pso-line-dot.stock   { background: #4f9d69; }
 .pso-line-dot.labour  { background: #d9a441; }
+.pso-line-dot.task    { background: #0d9488; }
 .pso-line-desc { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pso-line-qty { flex: 0 0 auto; color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
 .pso-line-hrs { flex: 0 0 46px; text-align: right; color: var(--text2); font-size: 11px; font-variant-numeric: tabular-nums; }
@@ -2776,6 +2792,16 @@ details.sched .sched-body { padding: 4px 14px 12px; display: flex; flex-directio
   background: var(--surface2); border: 1px solid var(--border);
   border-radius: 999px; padding: 1px 6px; margin-left: 4px;
 }
+/* Order popup Tasks section — clickable task rows + the "+ Add task" pill. */
+.pso-task:hover { background: var(--surface2); }
+.pso-task.done .pso-line-desc { text-decoration: line-through; color: var(--muted); }
+.pso-task-add {
+  margin-left: auto; font-size: 11px; font-weight: 600; cursor: pointer;
+  padding: 2px 8px; border-radius: 5px;
+  border: 1px solid var(--border); background: var(--surface2); color: var(--text2);
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+.pso-task-add:hover { background: var(--accent-dim); color: var(--accent); border-color: var(--accent); }
 
 /* Tasks section (SV.10) — collapsible to-do list between the job queue and
    Working Hours. Rows mirror the sidebar job entries; teal = task colour. */
@@ -2801,6 +2827,11 @@ details.sched .sched-body { padding: 4px 14px 12px; display: flex; flex-directio
 .sched-task-row.done .stl-title { text-decoration: line-through; color: var(--muted); font-weight: 500; }
 .sched-task-row .stl-meta { font-size: 9px; color: var(--muted); margin-top: 1px; }
 .sched-task-row .stl-meta.overdue { color: #f87171; font-weight: 600; }
+.sched-task-row .stl-order {
+  display: inline-block; margin-left: 6px; font-size: 8px; font-weight: 700;
+  padding: 0 5px; border-radius: 999px; vertical-align: middle;
+  background: var(--accent-dim); color: var(--accent);
+}
 .sched-agenda .sched-tasks-section { margin-top: 14px; }
 
 /* Working Hours section — the <details class="sched"> pinned at the bottom of

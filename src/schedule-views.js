@@ -420,7 +420,7 @@ function _renderSchedTimeGrid(opts) {
           ? Math.min(b._labelShift / 60 * SCHED_HOUR_PX, Math.max(0, height - 20))
           : 0;
         const shift = shiftPx > 0 ? `padding-top:${Math.round(shiftPx)}px;` : '';
-        colInner += `<div class="sched-ord-block" style="top:${top}px;height:${height}px;left:calc(${leftPct}% + ${gap}px);width:calc(${wPct}% - ${gap * 2}px);background:${b.e.color};${shift}${manual}"
+        colInner += `<div class="sched-ord-block" data-order-id="${b.e.id}" style="top:${top}px;height:${height}px;left:calc(${leftPct}% + ${gap}px);width:calc(${wPct}% - ${gap * 2}px);background:${b.e.color};${shift}${manual}"
           onclick="event.stopPropagation();_openSchedOrderPopup(${b.e.id})" title="${label} — ${hrs}h">
           <span class="sob-title">${label}</span><span class="sob-time">${hrs}h</span>
         </div>`;
@@ -437,23 +437,36 @@ function _renderSchedTimeGrid(opts) {
         const t = b.t;
         const slim = height < 34 ? ' slim' : '';
         const ovr = b._overlay ? ' overlay' : '';
+        // Order-linked tasks borrow the order's calendar colour (left accent) and
+        // show its number, so they read as part of the order on the grid.
+        const linkedOrderId = /** @type {any} */ (t).order_id || 0;
+        const lo = linkedOrderId && typeof orders !== 'undefined' ? orders.find(o => o.id === linkedOrderId) : null;
+        const oColor = lo && typeof _schedOrderColor === 'function' ? _schedOrderColor(lo.id) : null;
+        const linkCls = oColor ? ' linked' : '';
+        const linkStyle = oColor ? `--order-accent:${oColor};` : '';
+        const orderNum = lo ? (lo.order_number || ('ORD-' + String(lo.id).padStart(4, '0'))) : '';
+        const orderTag = orderNum
+          ? `<span class="stb-order"${oColor ? ` style="background:${oColor}22;color:${oColor}"` : ''}>${_escHtml(orderNum)}</span>`
+          : '';
         if (b.autoPlaced) {
           // The scheduler owns these dates, so no drag/resize handlers are
           // emitted at all — a block that grabs and then refuses is worse than
           // one that never grabs. Same rule as order blocks. The stored clock
           // range is meaningless here, so the label carries the hours instead.
           const hrs = Math.round(b.segHours * 10) / 10;
-          colInner += `<div class="sched-task-block auto${t.done ? ' done' : ''}${slim}" data-task-id="${t.id}" data-date="${iso}"
-            style="top:${top}px;height:${height}px;left:calc(${leftPct}% + ${gap}px);width:calc(${wPct}% - ${gap * 2}px)"
+          colInner += `<div class="sched-task-block auto${linkCls}${t.done ? ' done' : ''}${slim}" data-task-id="${t.id}" data-date="${iso}"
+            style="top:${top}px;height:${height}px;left:calc(${leftPct}% + ${gap}px);width:calc(${wPct}% - ${gap * 2}px);${linkStyle}"
             onclick="event.stopPropagation();_openTaskPopup(${t.id})" title="${_escHtml(t.title)} — ${hrs}h (auto-scheduled)">
             <span class="stb-title">${_escHtml(t.title)}</span>
+            ${orderTag}
             <span class="stb-time">${hrs}h</span>
           </div>`;
         } else {
-          colInner += `<div class="sched-task-block${t.done ? ' done' : ''}${slim}${ovr}" data-task-id="${t.id}" data-date="${iso}"
-            style="top:${top}px;height:${height}px;left:calc(${leftPct}% + ${gap}px);width:calc(${wPct}% - ${gap * 2}px)"
+          colInner += `<div class="sched-task-block${linkCls}${t.done ? ' done' : ''}${slim}${ovr}" data-task-id="${t.id}" data-date="${iso}"
+            style="top:${top}px;height:${height}px;left:calc(${leftPct}% + ${gap}px);width:calc(${wPct}% - ${gap * 2}px);${linkStyle}"
             onpointerdown="_taskPointerDown(event,${t.id},'move')">
             <span class="stb-title">${_escHtml(t.title)}</span>
+            ${orderTag}
             <span class="stb-time">${_taskTimeStr(new Date(t.start_at))} – ${_taskTimeStr(new Date(t.end_at))}</span>
             <div class="stb-resize" onpointerdown="_taskPointerDown(event,${t.id},'resize')"></div>
           </div>`;
@@ -581,6 +594,15 @@ function _taskPointerMove(ev) {
     if (lbl) lbl.textContent =
       `${String(Math.floor(sMin / 60)).padStart(2, '0')}:${String(sMin % 60).padStart(2, '0')} – ${String(Math.floor(eMin / 60)).padStart(2, '0')}:${String(eMin % 60).padStart(2, '0')}`;
   }
+  // Highlight an order block under the cursor as a drop target (drop → link).
+  if (typeof document.elementsFromPoint === 'function') {
+    document.querySelectorAll('.sched-ord-block.sched-drop-target').forEach(el => el.classList.remove('sched-drop-target'));
+    for (const el of document.elementsFromPoint(ev.clientX, ev.clientY)) {
+      if (el === d.block || d.block.contains(el)) continue;
+      const ob = /** @type {HTMLElement|null} */ (el.closest && el.closest('.sched-ord-block[data-order-id]'));
+      if (ob) { ob.classList.add('sched-drop-target'); break; }
+    }
+  }
 }
 
 /** @param {PointerEvent} ev */
@@ -599,6 +621,18 @@ function _taskPointerUp(ev) {
   }
   const t = typeof _taskById === 'function' ? _taskById(d.id) : null;
   if (!t) return;
+  // Dropped onto an order block? Link the task to that order (on top of the time
+  // move). Topmost-first stack under the cursor, skipping the dragged block and
+  // its children. Dropping on empty space leaves the existing link untouched.
+  let droppedOrderId = 0;
+  if (typeof document.elementsFromPoint === 'function') {
+    for (const el of document.elementsFromPoint(ev.clientX, ev.clientY)) {
+      if (el === d.block || d.block.contains(el)) continue;
+      const ob = /** @type {HTMLElement|null} */ (el.closest && el.closest('.sched-ord-block[data-order-id]'));
+      if (ob) { droppedOrderId = parseInt(ob.getAttribute('data-order-id') || '0', 10) || 0; break; }
+    }
+  }
+  document.querySelectorAll('.sched-drop-target').forEach(el => el.classList.remove('sched-drop-target'));
   const baseISO = d.block.dataset.date || '';
   const m = baseISO.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (!m) return;
@@ -620,7 +654,9 @@ function _taskPointerUp(ev) {
     newEnd = new Date(+newStart + oldDur);
   }
   if (typeof _persistTaskTimes === 'function') _persistTaskTimes(d.id, newStart, newEnd);
-  if (typeof renderSchedule === 'function') renderSchedule({ sidebar: false });
+  // Link to the dropped-on order (renders itself); otherwise just repaint.
+  if (droppedOrderId && typeof _assignTaskOrder === 'function') _assignTaskOrder(d.id, droppedOrderId);
+  else if (typeof renderSchedule === 'function') renderSchedule({ sidebar: false });
 }
 
 // ── Month-view task chips: HTML5 drag to another day (SV.6) ──
@@ -630,6 +666,12 @@ let _taskChipDragId = 0;
 function _taskChipDragStart(ev, id) {
   _taskChipDragId = id;
   if (ev.dataTransfer) ev.dataTransfer.effectAllowed = 'move';
+}
+/** Drag ended (dropped anywhere or cancelled) — clear the id and any lingering
+ *  drop-target highlight so a no-drop drag doesn't leave stale state. */
+function _taskChipDragEnd() {
+  _taskChipDragId = 0;
+  document.querySelectorAll('.sched-drop-target').forEach(el => el.classList.remove('sched-drop-target'));
 }
 /** @param {DragEvent} ev */
 function _taskChipDragOver(ev) {
@@ -704,7 +746,7 @@ function _schedMonthTaskChipsHTML(iso, top) {
     // time is a duration carrier rather than a real start — don't show it.
     const auto = _taskIsAutoPlaced(t);
     const time = (t.all_day || auto) ? '' : `<span class="sct-time">${_taskTimeStr(new Date(t.start_at))}</span>`;
-    const drag = auto ? '' : ` draggable="true" ondragstart="_taskChipDragStart(event,${t.id})"`;
+    const drag = auto ? '' : ` draggable="true" ondragstart="_taskChipDragStart(event,${t.id})" ondragend="_taskChipDragEnd()"`;
     html += `<div class="sched-task-chip${t.done ? ' done' : ''}${auto ? ' auto' : ''}"${drag}
       onclick="event.stopPropagation();_openTaskPopup(${t.id})" title="${_escHtml(t.title)}${auto ? ' (auto-scheduled)' : ''}">${time}${_escHtml(t.title)}</div>`;
   }

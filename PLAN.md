@@ -24,6 +24,35 @@ Companion docs: `SPEC.md` (refactor history), `SCHEMA.md` (DB schema),
 
 ## Active Work
 
+### Link a schedule task to an order (2026-07-21) ✅ Done
+
+**Goal (Adam).** Order-related tasks (deliveries, installs, site visits) belong
+to their order — kept in the task function, not a new Orders-tab section. Assign
+an order when creating a task, or drag a task onto an order; the order's tasks are
+reachable from its calendar popup and read as part of it in the day/week grid.
+
+- ✅ Migration `20260721120000_schedule_task_order_link.sql` — nullable
+  `order_id` FK to `orders`, **`on delete set null`** (a task outlives its order).
+  Applied; `SCHEMA.md § 3.29` + `database.types.ts` updated.
+- ✅ `src/schedule-tasks.js` — helpers `_taskOrder` / `_orderTasks` /
+  `_assignTaskOrder` (single link write path) + `_taskOrderLabelById`; ORDER
+  picker in the task popup (`_taskOrderSuggest` / `_taskPickOrder`, `_tkOrderId`);
+  `order_id` persisted in save + duplicate; sidebar task rows draggable.
+- ✅ `src/schedule.js` — order popup gains a Tasks list (`_psoTasksHTML`) + "+ Add
+  task" (pre-linked); `_schedOrderColors` map + `_schedOrderColor`; drop handlers
+  `_taskOrderDragOver` / `_taskOrderDrop`; sidebar order rows + month bars are
+  drop targets (sidebar dispatcher coexists with manual-reorder drag).
+- ✅ `src/schedule-views.js` — day/week task blocks get the order's colour accent
+  + number tag; `data-order-id` on order blocks; `_taskPointerUp` hit-tests an
+  order under the drop to link; drag-over highlight; `_taskChipDragEnd` cleanup.
+- ✅ `styles.css` — `.linked` accent, `.stb-order` / `.stl-order` tags,
+  `.sched-drop-target`, `.pso-task*`. `order_id` is **not** synced to GCal.
+- ✅ **Verified logged-in** (test account): picker persists to DB; order popup
+  Tasks list + pre-linked "+ Add task"; day/week `.linked` accent + `ORD-` tag
+  (screenshot); all 3 drops persist (sidebar dispatcher, month/shared handler,
+  **genuine grid pointer-drag** onto an order block); popup "No order" unlinks;
+  FK `on delete set null` confirmed (`confdeltype='n'`); typecheck clean.
+
 ### Tasks can be auto-scheduled — "treated like an order" (2026-07-18) ✅ Done
 
 **Goal (Adam).** An allocating task gains the order scheduling options, so the

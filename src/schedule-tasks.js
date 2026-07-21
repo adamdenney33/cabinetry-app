@@ -66,11 +66,59 @@ function _tasksBetween(start, end) {
   });
 }
 
+// ── Order link (SCHEMA.md § 3.29 order_id) ──
+// A task may belong to an order — deliveries, installs, site visits. The link is
+// an attribute of the task; the task stays first-class (deleting the order sets
+// order_id null). The helpers below are the one read/write surface reused by the
+// popup picker and every drag-drop target (day/week block, month bar, sidebar).
+
+/** The order a task belongs to, or null. @param {any} t @returns {any} */
+function _taskOrder(t) {
+  const oid = t && /** @type {any} */ (t).order_id;
+  return (oid != null && typeof orders !== 'undefined') ? (orders.find(o => o.id === oid) || null) : null;
+}
+
+/** Tasks linked to an order, in start order (scheduleTasks is already sorted).
+ *  @param {number} orderId */
+function _orderTasks(orderId) {
+  return scheduleTasks.filter(t => /** @type {any} */ (t).order_id === orderId);
+}
+
+/** Short display label for an order id — "0007 · Client" (mirrors the sidebar's
+ *  numberLabel), or '' if the order is unknown. @param {number} orderId */
+function _taskOrderLabelById(orderId) {
+  const o = (typeof orders !== 'undefined') ? orders.find(x => x.id === orderId) : null;
+  if (!o) return '';
+  const num = o.order_number || ('ORD-' + String(o.id).padStart(4, '0'));
+  const client = (typeof orderClient === 'function') ? (orderClient(o) || '') : '';
+  return [num, client].filter(Boolean).join(' · ');
+}
+
+/** Link (orderId>0) or unlink (0/null) a task to an order — the single write
+ *  path for the popup picker and every drag-drop target. Optimistic, then one DB
+ *  update. order_id is app-internal and deliberately NOT synced to GCal.
+ *  @param {number} taskId @param {number|null} orderId */
+async function _assignTaskOrder(taskId, orderId) {
+  const t = _taskById(taskId);
+  if (!t) return;
+  const next = orderId || null;
+  if ((/** @type {any} */ (t).order_id ?? null) === next) return; // no-op — same order
+  const now = new Date().toISOString();
+  /** @type {any} */ (t).order_id = next;   // optimistic
+  /** @type {any} */ (t).updated_at = now;
+  if (typeof renderSchedule === 'function') renderSchedule();
+  const { error } = await _db('schedule_tasks').update({ order_id: next, updated_at: now }).eq('id', taskId);
+  if (error) { console.warn('[schedule_tasks] order link failed:', error.message); _toast('Save failed — check connection', 'error'); return; }
+  const label = next ? _taskOrderLabelById(next) : '';
+  _toast(next ? `Task linked to ${label || 'order'}` : 'Task unlinked from order', 'success');
+}
+
 // ── Create / edit popup ──
 /** Open the task popup. id=0 → create. presetStart is an optional Date used
- *  by grid clicks ("new task at that slot") and +Task buttons.
- *  @param {number} id @param {Date} [presetStart] @param {boolean} [presetAllDay] */
-function _openTaskPopup(id, presetStart, presetAllDay) {
+ *  by grid clicks ("new task at that slot") and +Task buttons. presetOrderId
+ *  pre-links a new task to an order (e.g. the order popup's "+ Add task").
+ *  @param {number} id @param {Date} [presetStart] @param {boolean} [presetAllDay] @param {number} [presetOrderId] */
+function _openTaskPopup(id, presetStart, presetAllDay, presetOrderId) {
   if (!_requireAuth()) return;
   const t = id ? _taskById(id) : null;
   if (id && !t) return;
@@ -86,6 +134,7 @@ function _openTaskPopup(id, presetStart, presetAllDay) {
   const auto = t ? /** @type {any} */ (t).auto_schedule === true : false;
   const autoOk = allocate && !allDay;
   _tkEditingId = t ? t.id : 0;
+  _tkOrderId = t ? (/** @type {any} */ (t).order_id || 0) : (presetOrderId || 0);
   const html = `
     <div class="popup-header">
       <div class="popup-title"><div style="font-size:16px;font-weight:700">${t ? 'Edit Task' : 'New Task'}</div></div>
@@ -93,6 +142,16 @@ function _openTaskPopup(id, presetStart, presetAllDay) {
     </div>
     <div class="popup-body">
       <div class="pf"><label class="pf-label">TITLE</label><input class="pf-input pf-input-lg" id="ptk-title" value="${t ? _escHtml(t.title) : ''}" placeholder="e.g. Delivery — Oak St install"></div>
+      <div class="pf"><label class="pf-label">ORDER</label>
+        <div class="smart-input-wrap">
+          <input class="pf-input" id="ptk-order" autocomplete="off" placeholder="Link to an order (optional)…"
+            value="${_tkOrderId ? _escHtml(_taskOrderLabelById(_tkOrderId)) : ''}"
+            oninput="_taskOrderSuggest(this,'ptk-order-suggest')"
+            onfocus="_taskOrderSuggest(this,'ptk-order-suggest')"
+            onblur="setTimeout(()=>_hideEl('ptk-order-suggest'),150)">
+        </div>
+        <div id="ptk-order-suggest" class="client-suggest-list" style="display:none"></div>
+      </div>
       <div class="pf-row">
         <div class="pf" style="flex:1.3"><label class="pf-label">DATE<span class="sched-field-hint" id="ptk-date-hint"${auto ? '' : ' style="display:none"'}> (auto)</span></label><input class="pf-input" id="ptk-date" type="date" value="${_taskDateISO(start)}" ${auto ? 'disabled title="Auto-scheduled — toggle off to set the date manually"' : ''}></div>
         <div class="pf" style="flex:0.9${allDay || auto ? ';display:none' : ''}" id="ptk-start-wrap"><label class="pf-label">START</label><input class="pf-input" id="ptk-start" type="time" value="${_taskTimeStr(start)}" oninput="_taskStartChanged()"></div>
@@ -123,6 +182,58 @@ function _openTaskPopup(id, presetStart, presetAllDay) {
 /** Task id backing the open popup (0 = creating), so the toggle handlers can
  *  reach the row's computed placement. Mirrors _psoOrderId in schedule.js. */
 let _tkEditingId = 0;
+
+/** Order the popup is currently linked to (0 = none). Set by _taskPickOrder,
+ *  read by _saveTaskPopup — the input text is display only. */
+let _tkOrderId = 0;
+
+/** Order picker for the task popup — search-as-you-type over ALL orders (by
+ *  number / client / project). Select-only, no create (mirrors _oOrderSuggest
+ *  but not scoped to a client). @param {HTMLInputElement} input @param {string} boxId */
+function _taskOrderSuggest(input, boxId) {
+  const box = document.getElementById(boxId);
+  if (!box) return;
+  const all = (typeof orders !== 'undefined') ? orders.slice() : [];
+  const q = input.value.trim().toLowerCase();
+  // When an order is already linked its label sits in the box; don't let that
+  // prefill filter the list down to one word — treat it as "no query".
+  const linkedLabel = _tkOrderId ? _taskOrderLabelById(_tkOrderId).toLowerCase() : '';
+  const eff = (q && q !== linkedLabel) ? q : '';
+  const scored = all.map(o => {
+    const num = String(o.order_number || ('ORD-' + String(o.id).padStart(4, '0')));
+    const client = (typeof orderClient === 'function') ? (orderClient(o) || '') : '';
+    const project = (typeof orderProject === 'function') ? (orderProject(o) || '') : '';
+    return { o, hay: `${num} ${client} ${project}`.toLowerCase() };
+  });
+  const matches = (eff ? scored.filter(s => s.hay.includes(eff)) : scored)
+    .sort((a, b) => (+new Date(b.o.updated_at || 0)) - (+new Date(a.o.updated_at || 0)));
+  let html = '';
+  matches.slice(0, 8).forEach(({ o }) => {
+    const active = o.id === _tkOrderId;
+    const st = o.status ? `<span class="csi-meta">${_escHtml(String(o.status))}</span>` : '';
+    html += `<div class="client-suggest-item" onmousedown="_taskPickOrder(${o.id})">
+      <span class="suggest-icon" style="background:var(--accent-dim);color:var(--accent)">#</span>
+      <span class="csi-name">${_escHtml(_taskOrderLabelById(o.id))}${active ? ' <span style="font-weight:500;color:var(--accent);font-size:11px">· linked</span>' : ''}</span>
+      ${st}
+    </div>`;
+  });
+  if (!matches.length) html += `<div class="client-suggest-add" style="color:var(--muted)">No matching orders</div>`;
+  // Clear row — always present so a task can be unlinked from here.
+  html += `<div class="client-suggest-item client-suggest-add" onmousedown="_taskPickOrder(0)">
+    <span class="csi-icon">&times;</span><span class="csi-name">No order${_tkOrderId ? ' (clear link)' : ''}</span>
+  </div>`;
+  box.innerHTML = html;
+  box.style.display = 'block';
+}
+
+/** Set/clear the popup's order link (does not persist — _saveTaskPopup writes
+ *  it). @param {number} id  0 = clear */
+function _taskPickOrder(id) {
+  _tkOrderId = id || 0;
+  const input = /** @type {HTMLInputElement|null} */ (document.getElementById('ptk-order'));
+  if (input) input.value = id ? _taskOrderLabelById(id) : '';
+  _hideEl('ptk-order-suggest');
+}
 
 /** @param {boolean} allDay */
 function _taskToggleAllDay(allDay) {
@@ -282,6 +393,7 @@ async function _saveTaskPopup(id) {
     auto_schedule: auto,
     priority: parseInt(_popupVal('ptk-priority'), 10) || 0,
     done: !!(doneEl && doneEl.checked),
+    order_id: _tkOrderId || null,
     updated_at: new Date().toISOString(),
   };
   if (id) {
@@ -446,6 +558,7 @@ async function _duplicateTaskFromPopup(id) {
     auto_schedule: /** @type {any} */ (t).auto_schedule === true,
     priority: /** @type {any} */ (t).priority || 0,
     done: false,
+    order_id: /** @type {any} */ (t).order_id || null,
     updated_at: new Date().toISOString(),
   };
   const { data, error } = await _db('schedule_tasks').insert([body]).select().single();
@@ -534,11 +647,16 @@ function _schedTaskRowHTML(t, nowMs) {
   // end_at is a stale duration carrier for an auto task, so comparing it to now
   // would mark every one of them permanently overdue.
   const overdue = !t.done && !_taskIsAutoPlaced(t) && +new Date(t.end_at) < nowMs;
-  return `<div class="sched-task-row${t.done ? ' done' : ''}" onclick="_openTaskPopup(${t.id})">
+  // Draggable so it can be dropped onto an order (sidebar row / month bar) to
+  // link it — reuses the month-chip drag id in schedule-views.js.
+  const linkedTag = /** @type {any} */ (t).order_id
+    ? `<span class="stl-order" title="Linked to order">${_escHtml(_taskOrderLabelById(/** @type {any} */ (t).order_id) || 'Order')}</span>`
+    : '';
+  return `<div class="sched-task-row${t.done ? ' done' : ''}" draggable="true" ondragstart="_taskChipDragStart(event,${t.id})" ondragend="_taskChipDragEnd()" onclick="_openTaskPopup(${t.id})">
     <input type="checkbox" ${t.done ? 'checked' : ''} onclick="event.stopPropagation()" onchange="_taskToggleDoneQuick(${t.id},this.checked)" title="${t.done ? 'Mark as not done' : 'Mark as done'}">
     <div class="stl-main">
       <div class="stl-title">${_escHtml(t.title)}</div>
-      <div class="stl-meta${overdue ? ' overdue' : ''}">${_schedTaskDayLabel(t)}</div>
+      <div class="stl-meta${overdue ? ' overdue' : ''}">${_schedTaskDayLabel(t)}${linkedTag}</div>
     </div>
   </div>`;
 }

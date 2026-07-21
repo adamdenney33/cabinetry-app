@@ -177,6 +177,12 @@ function renderSchedule(opts) {
     };
   }).filter(Boolean));
 
+  // Publish each order's calendar colour by id so order-linked tasks can borrow
+  // it (day/week visual tie). Rebuilt every render — colours are index-based, so
+  // a task always shows the exact colour its order currently has.
+  _schedOrderColors = {};
+  for (const e of events) _schedOrderColors[e.id] = e.color;
+
   // Build override map for cell tinting (avoid linear scans inside the day loop).
   /** @type {Record<string, number>} */
   const overrideByDate = {};
@@ -270,16 +276,22 @@ function renderSchedule(opts) {
     if (e.isMissingDates) metaParts.push('<span style="color:#f87171;font-weight:600">Manual: no dates set</span>');
     else if (st) metaParts.push(_escHtml(st));
     const meta = metaParts.join(' · ');
+    // Reorder-source attrs (manual sort only). The dragover/drop targets are
+    // split out into dropAttr below so the row can accept a dropped TASK (link)
+    // regardless of sort mode.
     const dragAttr = isManualMode
-      ? ` draggable="true" ondragstart="_schedDragStart(event,${idx})" ondragover="_schedDragOver(event,this)" ondrop="_schedDrop(event,${idx})" ondragend="_schedDragEnd()"`
+      ? ` draggable="true" ondragstart="_schedDragStart(event,${idx})" ondragend="_schedDragEnd()"`
       : '';
+    // Always a drop target: a dropped task links to this order; in manual sort a
+    // dropped order row reorders. _schedOrderRow* dispatch by the live drag.
+    const dropAttr = ` ondragover="_schedOrderRowDragOver(event,this,${idx})" ondrop="_schedOrderRowDrop(event,${idx},${e.id})" ondragleave="this.classList.remove('sched-drop-target')"`;
     const dragHandle = isManualMode
       ? `<span class="cl-drag-handle" title="Drag to reorder" style="cursor:grab;color:var(--muted);display:inline-flex;align-items:center;flex-shrink:0">${SCHED_DRAG_HANDLE}</span>`
       : '';
     const pri = (o && /** @type {any} */ (o).priority) || 0;
     const priLabel = pri > 0 ? pri : '—';
     const priStepper = `<div class="sched-pri" title="Priority — 1 = highest. Dash = none." draggable="false" onmousedown="event.stopPropagation()" ondblclick="event.stopPropagation()"><span class="sched-pri-num${pri > 0 ? ' has-priority' : ''}">${priLabel}</span><span class="sched-pri-arrows"><button type="button" class="sched-pri-btn" aria-label="Raise priority" ${pri === 1 ? 'disabled' : ''} onclick="event.stopPropagation();_schedStepPriority(${e.id},1)">${SCHED_CHEV_UP}</button><button type="button" class="sched-pri-btn" aria-label="Lower priority" onclick="event.stopPropagation();_schedStepPriority(${e.id},-1)">${SCHED_CHEV_DOWN}</button></span></div>`;
-    sidebarHTML += `<div style="display:flex;align-items:center;gap:8px;padding:5px 8px;margin-bottom:2px;border-radius:6px;cursor:pointer;background:var(--surface2)"${dragAttr} onclick="_scrollToSchedBar(${e.id})" ondblclick="_openSchedOrderPopup(${e.id})" onmouseover="this.style.background='${e.color}33'" onmouseout="this.style.background='var(--surface2)'">${dragHandle}<div style="width:9px;height:9px;border-radius:50%;background:${e.color};flex-shrink:0"></div><div style="flex:1;min-width:0"><div style="font-size:11px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e.isManual?SCHED_LOCK_ICON:''}${[e.numberLabel, e.client, e.project].filter(Boolean).map(_escHtml).join(' · ')}</div>${meta?`<div style="font-size:9px;color:var(--muted);display:flex;align-items:center;gap:4px;margin-top:1px">${meta}</div>`:''}${dueText?`<div style="font-size:9px;color:var(--muted);margin-top:1px">${dueText}</div>`:''}</div>${priStepper}</div>`;
+    sidebarHTML += `<div style="display:flex;align-items:center;gap:8px;padding:5px 8px;margin-bottom:2px;border-radius:6px;cursor:pointer;background:var(--surface2)"${dragAttr}${dropAttr} onclick="_scrollToSchedBar(${e.id})" ondblclick="_openSchedOrderPopup(${e.id})" onmouseover="this.style.background='${e.color}33'" onmouseout="this.style.background='var(--surface2)'">${dragHandle}<div style="width:9px;height:9px;border-radius:50%;background:${e.color};flex-shrink:0"></div><div style="flex:1;min-width:0"><div style="font-size:11px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e.isManual?SCHED_LOCK_ICON:''}${[e.numberLabel, e.client, e.project].filter(Boolean).map(_escHtml).join(' · ')}</div>${meta?`<div style="font-size:9px;color:var(--muted);display:flex;align-items:center;gap:4px;margin-top:1px">${meta}</div>`:''}${dueText?`<div style="font-size:9px;color:var(--muted);margin-top:1px">${dueText}</div>`:''}</div>${priStepper}</div>`;
   });
   if(!sortedEvents.length)sidebarHTML+=`<div style="font-size:12px;color:var(--muted)">No active orders</div>`;
   // Tasks — collapsible to-do list (SV.10, src/schedule-tasks.js).
@@ -418,7 +430,7 @@ function renderSchedule(opts) {
         const segShowLabel = isFirstRun && (isRealStart || startInWeek === 0);
         const segChipHTML = segIsRealEnd ? slackChipHTML(/** @type {any} */ (e).slack) : '';
 
-        cal += `<div class="sched-bar sched-bar-${e.id}" style="position:absolute;top:${barTop}px;left:${left}%;width:${width}%;height:18px;padding:0 2px;z-index:2;pointer-events:auto;display:flex;align-items:center;gap:3px" onclick="_openSchedOrderPopup(${e.id})">
+        cal += `<div class="sched-bar sched-bar-${e.id}" style="position:absolute;top:${barTop}px;left:${left}%;width:${width}%;height:18px;padding:0 2px;z-index:2;pointer-events:auto;display:flex;align-items:center;gap:3px" onclick="_openSchedOrderPopup(${e.id})" ondragover="_taskOrderDragOver(event,this)" ondrop="_taskOrderDrop(event,${e.id})" ondragleave="this.classList.remove('sched-drop-target')">
           <div style="background:${e.color};${manualStyle}color:#fff;font-size:10px;font-weight:600;padding:1px 6px;border-radius:${radius};height:16px;line-height:16px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;cursor:pointer;flex:1;min-width:0" title="${labelText}${e.isManual?' (manual)':''}">${segShowLabel?lockIcon+labelText:''}</div>
           ${segChipHTML}
         </div>`;
@@ -612,6 +624,47 @@ function _schedDragEnd() {
   document.querySelectorAll('.cl-drag-over').forEach(r => r.classList.remove('cl-drag-over'));
 }
 
+// ── Order colour map (order-linked task tint) ──
+/** order id → calendar colour, rebuilt each renderSchedule. @type {Record<number,string>} */
+let _schedOrderColors = {};
+/** The calendar colour for an order id, or null if it isn't on the calendar
+ *  (complete/date-less orders fall back to the default task colour).
+ *  @param {number} id */
+function _schedOrderColor(id) { return _schedOrderColors[id] || null; }
+
+// ── Task → order drop targets (shared by sidebar rows + month-view order bars) ──
+// The dragged task's id lives in _taskChipDragId (schedule-views.js), set by the
+// same HTML5 drag that moves month chips. Dropping onto an order links the task.
+/** @param {DragEvent} ev @param {HTMLElement} [el] */
+function _taskOrderDragOver(ev, el) {
+  if (!_taskChipDragId) return;               // not a task drag — ignore
+  ev.preventDefault();
+  if (ev.dataTransfer) ev.dataTransfer.dropEffect = 'move';
+  if (el) el.classList.add('sched-drop-target');
+}
+/** @param {DragEvent} ev @param {number} orderId */
+function _taskOrderDrop(ev, orderId) {
+  if (!_taskChipDragId) return;
+  ev.preventDefault();
+  const id = _taskChipDragId;
+  _taskChipDragId = 0;
+  document.querySelectorAll('.sched-drop-target').forEach(r => r.classList.remove('sched-drop-target'));
+  if (typeof _assignTaskOrder === 'function') _assignTaskOrder(id, orderId);
+}
+
+// Sidebar order rows are BOTH task-link drop targets (always) and manual-reorder
+// targets (manual sort mode). One dispatcher routes by which drag is live.
+/** @param {DragEvent} ev @param {HTMLElement} row @param {number} idx */
+function _schedOrderRowDragOver(ev, row, idx) {
+  if (_taskChipDragId) { _taskOrderDragOver(ev, row); return; }
+  if (_schedDragSrcIdx !== -1) _schedDragOver(ev, row);
+}
+/** @param {DragEvent} ev @param {number} idx @param {number} orderId */
+function _schedOrderRowDrop(ev, idx, orderId) {
+  if (_taskChipDragId) { _taskOrderDrop(ev, orderId); return; }
+  if (_schedDragSrcIdx !== -1) return _schedDrop(ev, idx);
+}
+
 /** @param {number} id @param {string} val */
 function setOrderProdStart(id, val) {
   const o = orders.find(o => o.id === id);
@@ -724,6 +777,11 @@ function _openSchedOrderPopup(id) {
       </div>
       <div class="editor-section-title" style="margin:12px 0 6px">Line items${lineCount ? ` <span class="pso-lines-count">${lineCount}</span>` : ''}</div>
       ${_psoLinesHTML(o)}
+      <div class="editor-section-title" style="margin:12px 0 6px;display:flex;align-items:center;gap:8px">
+        <span>Tasks${_orderTasks(id).length ? ` <span class="pso-lines-count">${_orderTasks(id).length}</span>` : ''}</span>
+        <button type="button" class="pso-task-add" title="Add a task for this order" onclick="_closePopup();_openTaskPopup(0,null,false,${id})">+ Add task</button>
+      </div>
+      ${_psoTasksHTML(o)}
       <div class="editor-section-title" style="margin:12px 0 6px">Schedule</div>
       <div class="sched-body" style="padding:0">
         <div class="sched-toggles">
@@ -883,6 +941,25 @@ function _psoLinesHTML(o) {
         <span class="pso-line-desc" title="${_escHtml(name)}">${_escHtml(name)}</span>
         <span class="pso-line-qty">${qty > 1 ? '&times;' + qty : ''}</span>
         <span class="pso-line-hrs">${hours > 0 ? hours.toFixed(1) + 'h' : '—'}</span>
+      </div>`;
+  }).join('');
+  return `<div class="pso-lines">${rows}</div>`;
+}
+
+/** Read-only list of the order's linked schedule tasks. Click a row to edit;
+ *  the header's "+ Add task" creates one pre-linked to this order. Reuses the
+ *  `.pso-line` layout so tasks and line items align. @param {any} o */
+function _psoTasksHTML(o) {
+  const tasks = (typeof _orderTasks === 'function' && o) ? _orderTasks(o.id) : [];
+  if (!tasks.length) return '<div class="pso-lines-empty">No tasks for this order yet.</div>';
+  const rows = tasks.map((/** @type {any} */ t) => {
+    const auto = (typeof _taskIsAutoPlaced === 'function' && _taskIsAutoPlaced(t));
+    const when = auto ? 'Auto' : (typeof _schedTaskDayLabel === 'function' ? _schedTaskDayLabel(t) : '');
+    return `<div class="pso-line pso-task${t.done ? ' done' : ''}" style="cursor:pointer" onclick="_closePopup();_openTaskPopup(${t.id})" title="Edit task">
+        <span class="pso-line-dot task"></span>
+        <span class="pso-line-desc" title="${_escHtml(t.title)}">${_escHtml(t.title)}</span>
+        <span class="pso-line-qty">${t.done ? '&check;' : ''}</span>
+        <span class="pso-line-hrs">${_escHtml(when)}</span>
       </div>`;
   }).join('');
   return `<div class="pso-lines">${rows}</div>`;
