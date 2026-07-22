@@ -455,6 +455,18 @@ function _renderSchedTimeGrid(opts) {
         if (ov.endMin <= b.startMin || ov.startMin >= b.endMin) continue;
         if (ov.startMin <= b.startMin) shift = Math.max(shift, ov.endMin - b.startMin);
       }
+      // Nested tasks pack contiguously from the order's top, so they sit over its
+      // label — drop the label below the contiguous run so the two never overlap.
+      const nrects = (nestedByDate[iso] || [])
+        .filter(r => r.orderId === b.e.id)
+        .map(r => ({ top: workStart + r.startHrs * 60, bot: workStart + r.endHrs * 60 }))
+        .sort((a, z) => a.top - z.top);
+      let cover = b.startMin;
+      for (const r of nrects) {
+        if (r.top <= cover + 1) cover = Math.max(cover, r.bot); // still contiguous from the top
+        else break;
+      }
+      if (cover > b.startMin) shift = Math.max(shift, cover - b.startMin);
       if (shift > 0) b._labelShift = shift;
     }
 
