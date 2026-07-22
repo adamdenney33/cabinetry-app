@@ -549,16 +549,17 @@ function _renderSchedTimeGrid(opts) {
       const geom = orderGeom.get(r.orderId);
       if (!geom) continue;                    // order not drawn on this day (e.g. Orders layer hidden)
       const t = r.t;
-      const gap = 2, inset = 5;
-      const top = (workStart + r.startHrs * 60) / 60 * SCHED_HOUR_PX;
-      const height = Math.max(14, (r.endHrs - r.startHrs) * SCHED_HOUR_PX - 2);
+      // gap = the order block's own inset from the column; pad = the small gap
+      // the task leaves to the order on every side (so it sits just inside it).
+      const gap = 2, pad = 3;
+      const top = (workStart + r.startHrs * 60) / 60 * SCHED_HOUR_PX + pad;
+      const height = Math.max(12, (r.endHrs - r.startHrs) * SCHED_HOUR_PX - pad * 2);
       const wPct = 100 / (geom._cols || 1);
       const leftPct = (geom._col || 0) * wPct;
-      const oColor = typeof _schedOrderColor === 'function' ? (_schedOrderColor(r.orderId) || '') : '';
       const slim = height < 30 ? ' slim' : '';
       const hrs = Math.round((r.endHrs - r.startHrs) * 100) / 100;
       colInner += `<div class="sched-task-block nested${t.done ? ' done' : ''}${slim}" data-task-id="${t.id}" data-date="${iso}"
-        style="top:${top}px;height:${height}px;left:calc(${leftPct}% + ${gap + inset}px);width:calc(${wPct}% - ${(gap + inset) * 2}px);z-index:5;${oColor ? `--order-accent:${oColor};` : ''}"
+        style="top:${top}px;height:${height}px;left:calc(${leftPct}% + ${gap + pad}px);width:calc(${wPct}% - ${(gap + pad) * 2}px);z-index:5"
         onclick="event.stopPropagation();_openTaskPopup(${t.id})" title="${_escHtml(t.title)} — ${hrs}h in ${_escHtml(_taskOrderLabelById(r.orderId))}">
         <span class="stb-title">${_escHtml(t.title)}</span>
         <span class="stb-time">${hrs}h</span>

@@ -149,6 +149,7 @@ function _openTaskPopup(id, presetStart, presetAllDay, presetOrderId) {
             oninput="_taskOrderSuggest(this,'ptk-order-suggest')"
             onfocus="_taskOrderSuggest(this,'ptk-order-suggest')"
             onblur="setTimeout(()=>_hideEl('ptk-order-suggest'),150)">
+          <div class="smart-input-add" id="ptk-order-clear" title="Remove order link" onmousedown="event.preventDefault();_taskPickOrder(0)" style="${_tkOrderId ? '' : 'display:none'}">&times;</div>
         </div>
         <div id="ptk-order-suggest" class="client-suggest-list" style="display:none"></div>
       </div>
@@ -232,6 +233,8 @@ function _taskPickOrder(id) {
   _tkOrderId = id || 0;
   const input = /** @type {HTMLInputElement|null} */ (document.getElementById('ptk-order'));
   if (input) input.value = id ? _taskOrderLabelById(id) : '';
+  const clr = document.getElementById('ptk-order-clear');
+  if (clr) clr.style.display = id ? '' : 'none';
   _hideEl('ptk-order-suggest');
 }
 

@@ -890,16 +890,18 @@ header {
    border + the order-number tag, so it still reads as belonging to the order. */
 .sched-task-block.linked { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.5); }
 
-/* Order-linked task nested INSIDE its order's block: a pale chip carved into the
-   order bar, at the task's time, with the order's colour as a left edge. Stacked
-   above the order (z-index inline) so it reads as contained within it. */
+/* Order-linked task nested INSIDE its order's block: an almost-transparent light
+   overlay with a dashed boundary (like the other overlay tasks), letting the
+   order's colour read through from behind — no coloured edge of its own. Stacked
+   above the order (z-index inline) so it reads as carved into the order bar. */
 .sched-task-block.nested {
-  background: rgba(255, 255, 255, 0.93); color: #222; cursor: pointer;
-  border-left: 3px solid var(--order-accent, #0d9488);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  background: rgba(255, 255, 255, 0.18); color: #fff; cursor: pointer;
+  border: 1px dashed rgba(255, 255, 255, 0.8);
+  box-shadow: none;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
 }
-.sched-task-block.nested .stb-title { color: #1a1a1a; }
-.sched-task-block.nested .stb-time { color: #555; opacity: 1; }
+.sched-task-block.nested .stb-title { color: #fff; }
+.sched-task-block.nested .stb-time { color: rgba(255, 255, 255, 0.9); opacity: 1; }
 .stb-order {
   align-self: flex-start; font-size: 8px; font-weight: 700; line-height: 1.35;
   padding: 0 4px; border-radius: 4px; white-space: nowrap;
