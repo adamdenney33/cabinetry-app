@@ -455,18 +455,6 @@ function _renderSchedTimeGrid(opts) {
         if (ov.endMin <= b.startMin || ov.startMin >= b.endMin) continue;
         if (ov.startMin <= b.startMin) shift = Math.max(shift, ov.endMin - b.startMin);
       }
-      // Nested tasks pack contiguously from the order's top, so they sit over its
-      // label — drop the label below the contiguous run so the two never overlap.
-      const nrects = (nestedByDate[iso] || [])
-        .filter(r => r.orderId === b.e.id)
-        .map(r => ({ top: workStart + r.startHrs * 60, bot: workStart + r.endHrs * 60 }))
-        .sort((a, z) => a.top - z.top);
-      let cover = b.startMin;
-      for (const r of nrects) {
-        if (r.top <= cover + 1) cover = Math.max(cover, r.bot); // still contiguous from the top
-        else break;
-      }
-      if (cover > b.startMin) shift = Math.max(shift, cover - b.startMin);
       if (shift > 0) b._labelShift = shift;
     }
 
@@ -512,7 +500,13 @@ function _renderSchedTimeGrid(opts) {
         </div>`;
       } else {
         const t = b.t;
-        const slim = height < 34 ? ' slim' : '';
+        // Non-order tasks get the same small gap to every boundary as the nested
+        // ones, so they sit slightly inside their slot rather than filling it.
+        const tpad = 3;
+        const tTop = top + tpad;
+        const tHeight = Math.max(12, height - tpad * 2);
+        const tLeftPx = gap + tpad, tWidthSub = (gap + tpad) * 2;
+        const slim = tHeight < 34 ? ' slim' : '';
         const ovr = b._overlay ? ' overlay' : '';
         // Order-linked tasks borrow the order's calendar colour (left accent) and
         // show its number, so they read as part of the order on the grid.
@@ -534,7 +528,7 @@ function _renderSchedTimeGrid(opts) {
           // range is meaningless here, so the label carries the hours instead.
           const hrs = Math.round(b.segHours * 10) / 10;
           colInner += `<div class="sched-task-block auto${linkCls}${t.done ? ' done' : ''}${slim}" data-task-id="${t.id}" data-date="${iso}"
-            style="top:${top}px;height:${height}px;left:calc(${leftPct}% + ${gap}px);width:calc(${wPct}% - ${gap * 2}px);${linkStyle}"
+            style="top:${tTop}px;height:${tHeight}px;left:calc(${leftPct}% + ${tLeftPx}px);width:calc(${wPct}% - ${tWidthSub}px);${linkStyle}"
             onclick="event.stopPropagation();_openTaskPopup(${t.id})" title="${_escHtml(t.title)} — ${hrs}h (auto-scheduled)">
             <span class="stb-title">${_escHtml(t.title)}</span>
             ${orderTag}
@@ -542,7 +536,7 @@ function _renderSchedTimeGrid(opts) {
           </div>`;
         } else {
           colInner += `<div class="sched-task-block${linkCls}${t.done ? ' done' : ''}${slim}${ovr}" data-task-id="${t.id}" data-date="${iso}"
-            style="top:${top}px;height:${height}px;left:calc(${leftPct}% + ${gap}px);width:calc(${wPct}% - ${gap * 2}px);${linkStyle}"
+            style="top:${tTop}px;height:${tHeight}px;left:calc(${leftPct}% + ${tLeftPx}px);width:calc(${wPct}% - ${tWidthSub}px);${linkStyle}"
             onpointerdown="_taskPointerDown(event,${t.id},'move')">
             <span class="stb-title">${_escHtml(t.title)}</span>
             ${orderTag}
@@ -564,8 +558,13 @@ function _renderSchedTimeGrid(opts) {
       // gap = the order block's own inset from the column; pad = the small gap
       // the task leaves to the order on every side (so it sits just inside it).
       const gap = 2, pad = 3;
-      const top = (workStart + r.startHrs * 60) / 60 * SCHED_HOUR_PX + pad;
-      const height = Math.max(12, (r.endHrs - r.startHrs) * SCHED_HOUR_PX - pad * 2);
+      // The top task sits over the order's own number/hours label. Keep that
+      // label at the order's top and start this first task a little lower so the
+      // two never collide (later tasks are unaffected).
+      const isFirst = (workStart + r.startHrs * 60) <= (geom.startMin || 0) + 1;
+      const head = isFirst ? 16 : 0;
+      const top = (workStart + r.startHrs * 60) / 60 * SCHED_HOUR_PX + pad + head;
+      const height = Math.max(12, (r.endHrs - r.startHrs) * SCHED_HOUR_PX - pad * 2 - head);
       const wPct = 100 / (geom._cols || 1);
       const leftPct = (geom._col || 0) * wPct;
       const slim = height < 30 ? ' slim' : '';
