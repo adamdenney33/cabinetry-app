@@ -470,7 +470,9 @@ function _taskDurationHours(t) {
  *  @returns {any[]} */
 function _schedAutoTaskOrders() {
   if (typeof scheduleTasks === 'undefined' || !Array.isArray(scheduleTasks)) return [];
-  return scheduleTasks.filter(_taskIsAutoPlaced).map(t => ({
+  // Order-linked tasks are NOT independently queued — they pack inside their
+  // order's bar (schedule-views.js). Only unlinked auto tasks become pseudo-orders.
+  return scheduleTasks.filter(t => _taskIsAutoPlaced(t) && !(/** @type {any} */ (t).order_id)).map(t => ({
     id: 'task:' + t.id,
     // Numeric sort key — the scheduler's tie-break can't subtract string ids.
     // Offset so real orders win a priority tie.
@@ -512,6 +514,9 @@ function _schedTaskReservations() {
   if (typeof scheduleTasks === 'undefined' || !Array.isArray(scheduleTasks)) return map;
   for (const t of scheduleTasks) {
     if (!t || /** @type {any} */ (t).allocate_hours === false) continue;
+    // Order-linked tasks are drawn inside their order's bar and cost the queue
+    // nothing on their own — they never reserve capacity.
+    if (/** @type {any} */ (t).order_id) continue;
     // Auto tasks are PLACED by computeSchedule, not reserved from it. Counting
     // them here would both double-book their hours and make this map depend on
     // the result of the call it's an argument to.
@@ -603,6 +608,20 @@ const _TASK_MON_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','
 /** Friendly one-line date label for a sidebar task row.
  *  @param {import('./database.types').Tables<'schedule_tasks'>} t */
 function _schedTaskDayLabel(t) {
+  // Order-linked tasks live inside their order's bar — report the order's
+  // scheduled day (from the last computed queue), not the task's own time.
+  const oid = /** @type {any} */ (t).order_id;
+  if (oid) {
+    const p = (typeof _schedLastComputed !== 'undefined' && _schedLastComputed && _schedLastComputed.get)
+      ? _schedLastComputed.get(oid) : null;
+    const iso = p && p.startISO;
+    const m = iso && String(iso).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (m) {
+      const y = parseInt(m[1]);
+      return `In order · ${parseInt(m[3])} ${_TASK_MON_SHORT[parseInt(m[2]) - 1]}${y !== new Date().getFullYear() ? ' ' + y : ''}`;
+    }
+    return 'In order';
+  }
   // Auto tasks: report where the SCHEDULER put it, not the stored pin. No clock
   // time — the queue owns the day, not an hour of it.
   if (_taskIsAutoPlaced(t)) {

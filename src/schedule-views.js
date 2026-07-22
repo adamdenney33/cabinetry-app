@@ -302,7 +302,9 @@ function _renderSchedTimeGrid(opts) {
     const byOrder = new Map();
     for (const t of scheduleTasks) {
       const oid = /** @type {any} */ (t).order_id;
-      if (!oid || t.all_day || t.done || _taskIsAutoPlaced(t)) continue;
+      // Every linked timed task packs inside its order — auto or pinned alike; a
+      // linked task is never queued independently (see _schedAutoTaskOrders).
+      if (!oid || t.all_day || t.done) continue;
       if (!byOrder.has(oid)) byOrder.set(oid, []);
       /** @type {any[]} */ (byOrder.get(oid)).push(t);
     }
@@ -311,8 +313,13 @@ function _renderSchedTimeGrid(opts) {
       const segs = /** @type {any[]} */ ((sched && Array.isArray(sched.segments)) ? sched.segments.slice() : []);
       if (!segs.length) continue;                    // order not scheduled → task falls back to a block
       segs.sort((/** @type {any} */ a, /** @type {any} */ b) => a.date < b.date ? -1 : a.date > b.date ? 1 : (a.offset || 0) - (b.offset || 0));
-      // Earliest task first; stable by id. Duration = the task's own hours.
-      tasks.sort((a, b) => (+new Date(a.start_at) - +new Date(b.start_at)) || (a.id - b.id));
+      // Priority first (1 highest, 0 = unset last, mirroring the order queue),
+      // then earliest start, then id. Duration = the task's own hours.
+      tasks.sort((a, b) => {
+        const pa = /** @type {any} */ (a).priority || 0, pb = /** @type {any} */ (b).priority || 0;
+        if (pa !== pb) return pa === 0 ? 1 : pb === 0 ? -1 : pa - pb;
+        return (+new Date(a.start_at) - +new Date(b.start_at)) || (a.id - b.id);
+      });
       let si = 0, used = 0;                           // segment index, hours filled in it
       for (const t of tasks) {
         packedTaskIds.add(t.id);
@@ -386,8 +393,8 @@ function _renderSchedTimeGrid(opts) {
       const dEnd = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1);
       for (const t of _tasksBetween(d, dEnd)) {
         if (t.all_day) continue;
-        if (_taskIsAutoPlaced(t)) continue;                 // (a) — handled below
-        if (packedTaskIds.has(t.id)) continue;              // linked → nested inside its order
+        if (packedTaskIds.has(t.id)) continue;                                    // linked → nested inside its order
+        if (_taskIsAutoPlaced(t) && !(/** @type {any} */ (t).order_id)) continue; // (a) unlinked auto → handled below
         const s = new Date(t.start_at), en = new Date(t.end_at);
         const startMin = Math.max(0, (+s - +d) / 60000);
         const endMin = Math.min(24 * 60, Math.max(startMin + 15, (+en - +d) / 60000));
@@ -405,6 +412,7 @@ function _renderSchedTimeGrid(opts) {
       // Gated on the Tasks layer, not Orders — an auto task is still a task.
       for (const t of scheduleTasks) {
         if (!_taskIsAutoPlaced(t)) continue;
+        if (/** @type {any} */ (t).order_id) continue;   // linked → packed inside its order, not queued
         const p = opts.computed.get('task:' + t.id);
         if (!p || !Array.isArray(p.segments)) continue;
         for (const seg of p.segments) {
