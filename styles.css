@@ -885,9 +885,21 @@ header {
 .sched-task-block .stb-time { font-size: 9px; opacity: 0.85; }
 .stb-resize { position: absolute; left: 0; right: 0; bottom: 0; height: 7px; cursor: ns-resize; touch-action: none; }
 
-/* Order-linked tasks: a left accent in the order's colour + a small tag with
-   the order number, so a task reads as part of its order on the grid. */
-.sched-task-block.linked { border-left: 3px solid var(--order-accent, #0d9488); }
+/* Order-linked task, standalone (its order isn't drawn on this day, or it's
+   auto-placed): the block takes the order's colour (set inline) + a thin inset
+   border + the order-number tag, so it still reads as belonging to the order. */
+.sched-task-block.linked { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.5); }
+
+/* Order-linked task nested INSIDE its order's block: a pale chip carved into the
+   order bar, at the task's time, with the order's colour as a left edge. Stacked
+   above the order (z-index inline) so it reads as contained within it. */
+.sched-task-block.nested {
+  background: rgba(255, 255, 255, 0.93); color: #222; cursor: pointer;
+  border-left: 3px solid var(--order-accent, #0d9488);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+.sched-task-block.nested .stb-title { color: #1a1a1a; }
+.sched-task-block.nested .stb-time { color: #555; opacity: 1; }
 .stb-order {
   align-self: flex-start; font-size: 8px; font-weight: 700; line-height: 1.35;
   padding: 0 4px; border-radius: 4px; white-space: nowrap;

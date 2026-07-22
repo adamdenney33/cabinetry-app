@@ -325,6 +325,9 @@ function _renderSchedTimeGrid(opts) {
       const endMin = Math.min(24 * 60, startMin + drawn * 60);
       blocks.push({ kind: 'order', e, hours, startMin, endMin });
     }
+    // Orders present on this day — a linked task whose order is here renders
+    // NESTED inside that order's block (below, once its geometry is known).
+    const dayOrderIds = new Set(daySegs.map(s => s.e.id));
     // Timed tasks come in three classes:
     //   (a) auto  — placed by the scheduler; positioned from its segments below,
     //               exactly like an order block
@@ -332,8 +335,11 @@ function _renderSchedTimeGrid(opts) {
     //               already shrunk the orders around it), so it earns a column
     //   (c) allocate off — costs the queue nothing; it would be lying to claim a
     //               column, so it's drawn as an overlay across the orders
+    // Order-linked tasks are a fourth: they render inside their order's block.
     /** @type {any[]} */
     const overlays = [];
+    /** @type {any[]} */
+    const nested = [];
     if (showTasks) {
       const dEnd = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1);
       for (const t of _tasksBetween(d, dEnd)) {
@@ -342,9 +348,15 @@ function _renderSchedTimeGrid(opts) {
         const s = new Date(t.start_at), en = new Date(t.end_at);
         const startMin = Math.max(0, (+s - +d) / 60000);
         const endMin = Math.min(24 * 60, Math.max(startMin + 15, (+en - +d) / 60000));
-        const blk = { kind: 'task', t, startMin, endMin };
-        if (/** @type {any} */ (t).allocate_hours === false) overlays.push(blk);   // (c)
-        else blocks.push(blk);                                                     // (b)
+        const blk = /** @type {any} */ ({ kind: 'task', t, startMin, endMin });
+        const oid = /** @type {any} */ (t).order_id;
+        // Linked task whose order is on this day → render nested INSIDE the order's
+        // block (positioned from its geometry once _schedLayoutOverlaps has run).
+        // Linked-but-order-elsewhere and allocating tasks take their own column;
+        // only unlinked non-allocating tasks stay full-width overlays.
+        if (oid && dayOrderIds.has(oid)) { blk._nestInOrder = oid; nested.push(blk); }
+        else if (!oid && /** @type {any} */ (t).allocate_hours === false) overlays.push(blk); // (c) unlinked overlay
+        else blocks.push(blk);                                                                 // (b) allocating / off-day linked → column
       }
       // (a) Auto-scheduled tasks — driven by the scheduler's segments, not by
       // start_at (whose stored date is only a duration carrier). offset/span are
@@ -378,6 +390,11 @@ function _renderSchedTimeGrid(opts) {
       }
     }
     _schedLayoutOverlaps(blocks);
+    // Order block geometry (column index/count) by order id, so nested tasks can
+    // borrow their order's horizontal slot and sit inside it.
+    /** @type {Map<number, any>} */
+    const orderGeom = new Map();
+    for (const b of blocks) if (b.kind === 'order') orderGeom.set(b.e.id, b);
     // Overlays sit outside the column layout — full width, on top (their CSS
     // z-index already beats the order blocks). Where one covers the TOP of an
     // order block it would hide that block's label, so record how far the label
@@ -443,10 +460,12 @@ function _renderSchedTimeGrid(opts) {
         const lo = linkedOrderId && typeof orders !== 'undefined' ? orders.find(o => o.id === linkedOrderId) : null;
         const oColor = lo && typeof _schedOrderColor === 'function' ? _schedOrderColor(lo.id) : null;
         const linkCls = oColor ? ' linked' : '';
-        const linkStyle = oColor ? `--order-accent:${oColor};` : '';
+        // Take the order's colour so the task reads as part of it; the .linked
+        // inset border keeps it distinguishable from the solid order block.
+        const linkStyle = oColor ? `background:${oColor};--order-accent:${oColor};` : '';
         const orderNum = lo ? (lo.order_number || ('ORD-' + String(lo.id).padStart(4, '0'))) : '';
         const orderTag = orderNum
-          ? `<span class="stb-order"${oColor ? ` style="background:${oColor}22;color:${oColor}"` : ''}>${_escHtml(orderNum)}</span>`
+          ? `<span class="stb-order" style="background:rgba(255,255,255,0.25);color:#fff">${_escHtml(orderNum)}</span>`
           : '';
         if (b.autoPlaced) {
           // The scheduler owns these dates, so no drag/resize handlers are
@@ -472,6 +491,29 @@ function _renderSchedTimeGrid(opts) {
           </div>`;
         }
       }
+    }
+
+    // Order-linked tasks — rendered INSIDE their order's block: same column slot
+    // as the order, inset a few px and stacked above it, at the task's own time,
+    // so the task reads as contained within the order rather than beside it.
+    // Click-to-open (not drag) — a nested sub-item is edited via its popup.
+    for (const b of nested) {
+      const geom = orderGeom.get(b._nestInOrder);
+      if (!geom) continue;                    // order not drawn (gated on dayOrderIds, so rare)
+      const t = b.t;
+      const gap = 2, inset = 5;
+      const top = b.startMin / 60 * SCHED_HOUR_PX;
+      const height = Math.max(16, (b.endMin - b.startMin) / 60 * SCHED_HOUR_PX - 2);
+      const wPct = 100 / (geom._cols || 1);
+      const leftPct = (geom._col || 0) * wPct;
+      const oColor = typeof _schedOrderColor === 'function' ? (_schedOrderColor(b._nestInOrder) || '') : '';
+      const slim = height < 30 ? ' slim' : '';
+      colInner += `<div class="sched-task-block nested${t.done ? ' done' : ''}${slim}" data-task-id="${t.id}" data-date="${iso}"
+        style="top:${top}px;height:${height}px;left:calc(${leftPct}% + ${gap + inset}px);width:calc(${wPct}% - ${(gap + inset) * 2}px);z-index:5;${oColor ? `--order-accent:${oColor};` : ''}"
+        onclick="event.stopPropagation();_openTaskPopup(${t.id})" title="${_escHtml(t.title)} — in ${_escHtml(_taskOrderLabelById(b._nestInOrder))}">
+        <span class="stb-title">${_escHtml(t.title)}</span>
+        <span class="stb-time">${_taskTimeStr(new Date(t.start_at))} – ${_taskTimeStr(new Date(t.end_at))}</span>
+      </div>`;
     }
 
     if (isToday) {

@@ -1170,8 +1170,8 @@ is an *attribute of the task*: the task stays first-class, so the FK is
 calendar as standalone tasks rather than deleting them). A task is assigned an
 order via the Order picker in the task popup or by dragging it onto an order
 (day/week block, month bar, or sidebar row); order-linked tasks are listed in the
-schedule-tab order popup and tinted with the order's colour in the Day/Week grid.
-The link is app-internal — it is **not** pushed to Google Calendar.
+schedule-tab order popup and, in the Day/Week grid, render nested inside their order's
+block. The link is app-internal — it is **not** pushed to Google Calendar.
 
 `allocate_hours` (added 2026-07-18, **defaults true**) decides whether the task
 costs the production queue anything. When true, `_schedTaskReservations()`
