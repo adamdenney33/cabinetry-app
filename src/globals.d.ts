@@ -51,8 +51,10 @@ declare global {
     fbq?: (...args: any[]) => void;
     /** Meta Pixel internal — set by the pixel bootstrap snippet. */
     _fbq?: any;
-    /** Tolt affiliate referral id — set by tlt.js on the window when the visitor arrived via an affiliate link. Forwarded to stripe-checkout as client_reference_id for conversion attribution. */
-    tolt_referral?: string;
+    /** Refgrow tracking/conversion global — set by scripts.refgrowcdn.com/latest.js. Call as Refgrow(value, type, email) to record an event (e.g. Refgrow(0, 'signup', email)); reads the referral cookie internally. */
+    Refgrow?: (value: number, type: string, email: string) => void;
+    /** Email of the currently signed-in user — set in src/app.js onAuthStateChange. Used to pre-authenticate the Refgrow affiliate widget (src/affiliates.js). */
+    _userEmail?: string;
     /** First-touch attribution blob captured by src/main.js. Returns {} if no UTMs were present at landing. */
     _getAttribution?: () => Record<string, string>;
     /** Google Ads conversion `send_to` string ('AW-XXX/LABEL') — set by src/main.js when VITE_GOOGLE_ADS_CONVERSION_SEND_TO is set. */

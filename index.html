@@ -37,10 +37,12 @@ window._hideBootLoader = function () {
 };
 setTimeout(function () { window._hideBootLoader(); }, 15000);
 </script>
-<!-- Tolt affiliate tracking — attributes signups completed on the app shell to
-     the referral cookie set when the visitor first hit /landing. data-tolt is
-     the publishable program key, safe to embed. -->
-<script async src="https://files.tlt-cdn.com/tlt.js" data-tolt="pk_q4qhVvhLCAwEFdKEtx93Webn"></script>
+<!-- Refgrow affiliate tracking — exposes the Refgrow() global used to fire the
+     signup event (src/auth.js) and reads the referral cookie set when the
+     visitor first hit the landing page, so signups completed on the app shell
+     attribute to the referring affiliate. data-project-id is the public
+     project id, safe to embed. -->
+<script src="https://scripts.refgrowcdn.com/latest.js" data-project-id="1137" async defer></script>
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -291,6 +293,15 @@ setTimeout(function () { window._hideBootLoader(); }, 15000);
             <!-- Populated by _gcalRenderMenuSection (src/gcal.js): connect /
                  connected-status + disconnect. -->
             <div id="account-gcal-body"></div>
+          </div>
+          <div class="sd-section">
+            <div class="sd-label">Refer &amp; earn</div>
+            <!-- Opens the Refgrow affiliate dashboard (panel-affiliates),
+                 pre-authenticated with the signed-in user's email. -->
+            <button class="btn btn-outline btn-sm" style="width:100%;justify-content:center"
+                    onclick="toggleAccount();switchSection('affiliates')">
+              Affiliate program
+            </button>
           </div>
           <div class="account-menu-item" id="account-name-item" style="font-weight:600;font-size:13px;cursor:default;padding-bottom:2px;display:none"></div>
           <div class="account-menu-item" id="account-email-item" style="color:var(--muted);font-size:11px;cursor:default"></div>
@@ -863,6 +874,19 @@ setTimeout(function () { window._hideBootLoader(); }, 15000);
     </div>
   </div>
 
+  <!-- AFFILIATE / REFERRAL DASHBOARD (Refgrow) — reached from the account
+       menu → "Affiliate program". The #refgrow div is the widget mount point;
+       src/affiliates.js sets data-project-email to the signed-in user and
+       lazy-loads page.js once (the widget renders the affiliate's referral
+       link, stats and payouts). -->
+  <div class="section-panel" id="panel-affiliates">
+    <div class="main-content">
+      <div class="main-scroll" style="max-width:1100px;margin:0 auto;padding:20px 16px">
+        <div id="refgrow" data-project-id="1137" data-lang="en"></div>
+      </div>
+    </div>
+  </div>
+
 </div><!-- end app-body -->
 
 <!-- Module load order matters: db.js + ui.js define globals app.js depends on. -->
@@ -917,5 +941,6 @@ setTimeout(function () { window._hideBootLoader(); }, 15000);
 <script defer src="/src/mobile-notice.js"></script>
 <script defer src="/src/walkthrough.js"></script>
 <script defer src="/src/mobile-nav.js"></script>
+<script defer src="/src/affiliates.js"></script>
 </body>
 </html>

@@ -38,15 +38,13 @@ async function startCheckout(plan) {
     // server-side Purchase CAPI (stripe-webhook) can match on them — lifts
     // Event Match Quality the same way the signup CAPI does. Best-effort: ''
     // when absent. _readCookie lives in src/analytics.js (shared global).
+    // Affiliate attribution is handled by Refgrow's Stripe webhook (matched on
+    // customer email), not by a client_reference_id passed through here — so no
+    // referral id is forwarded to stripe-checkout anymore (was: Tolt).
     body: JSON.stringify({
       plan,
       fbc: (typeof _readCookie === 'function' ? _readCookie('_fbc') : ''),
       fbp: (typeof _readCookie === 'function' ? _readCookie('_fbp') : ''),
-      // Tolt affiliate referral id — set by tlt.js on the window when the
-      // visitor arrived via an affiliate link. The server stamps it as the
-      // Checkout session's client_reference_id so Tolt attributes the paid
-      // conversion to that affiliate. '' when the visit wasn't referred.
-      tolt: window.tolt_referral || '',
     }),
   });
 

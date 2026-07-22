@@ -130,10 +130,6 @@ Deno.serve(async (req) => {
   // session metadata below and read back in stripe-webhook's sendMetaPurchase.
   let fbc = '';
   let fbp = '';
-  // Tolt affiliate referral id, forwarded by the client (src/stripe.js). Stamped
-  // as the Checkout session's client_reference_id below — Tolt watches Stripe for
-  // that field to attribute the paid conversion to the referring affiliate.
-  let tolt = '';
   try {
     const body = await req.json();
     const raw = body.plan ?? body.cadence;
@@ -143,13 +139,9 @@ Deno.serve(async (req) => {
     plan = raw;
     if (typeof body.fbc === 'string') fbc = body.fbc.slice(0, 400);
     if (typeof body.fbp === 'string') fbp = body.fbp.slice(0, 400);
-    if (typeof body.tolt === 'string') tolt = body.tolt.slice(0, 200);
   } catch (err) {
     return json({ error: (err as Error).message }, 400);
   }
-
-  // Omit the field entirely when the visit wasn't referred (empty → undefined).
-  const clientReferenceId = tolt || undefined;
 
   // Only the present cookies — keep metadata clean when a signup had no ad click.
   const metaIds: Record<string, string> = {};
@@ -170,7 +162,6 @@ Deno.serve(async (req) => {
       session = await stripe.checkout.sessions.create({
         mode: 'payment',
         customer: customerId,
-        client_reference_id: clientReferenceId,
         line_items: [{ price: PRICE_FOUNDER, quantity: 1 }],
         metadata: { plan: 'founder', user_id: user.id, ...metaIds },
         payment_intent_data: { metadata: { plan: 'founder', user_id: user.id } },
@@ -182,7 +173,6 @@ Deno.serve(async (req) => {
       const params: Stripe.Checkout.SessionCreateParams = {
         mode: 'subscription',
         customer: customerId,
-        client_reference_id: clientReferenceId,
         line_items: [{ price: priceId, quantity: 1 }],
         // Forwarded for the webhook's Purchase CAPI match (empty → omitted).
         metadata: metaIds,

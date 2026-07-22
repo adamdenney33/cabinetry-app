@@ -375,5 +375,6 @@ function switchSection(name) {
     if (typeof _clientsMaybeResetFormFlag === 'function') _clientsMaybeResetFormFlag();
     renderClientsMain();
   }
+  if (name === 'affiliates' && typeof renderAffiliates === 'function') renderAffiliates();
 }
 

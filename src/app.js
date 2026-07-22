@@ -181,6 +181,29 @@ _sb.auth.onAuthStateChange(async (event, session) => {
     window.Sentry.setUser({ id: session.user.id, email: session.user.email });
     const emailEl = document.getElementById('account-email-item');
     if (emailEl) emailEl.textContent = session.user.email ?? '';
+    // Stash the email for the Refgrow affiliate widget (src/affiliates.js),
+    // which pre-authenticates the dashboard with data-project-email.
+    window._userEmail = session.user.email ?? '';
+    // Refgrow signup attribution for OAuth (Google) signups. The email/password
+    // path fires Refgrow('signup') in src/auth.js at form-submit; OAuth users
+    // never pass through there, so fire it here on their first authenticated
+    // load. Gated two ways: to non-email providers (so the email path isn't
+    // double-counted) AND to a fresh account — created within 60s of this
+    // sign-in — so returning Google logins don't re-fire. This block runs once
+    // per user per page-load (the _bootLoadedUserId guard above). Best-effort:
+    // Refgrow() reads the referral cookie and no-ops if the script is blocked.
+    try {
+      const _appMeta = /** @type {any} */ (session.user.app_metadata) || {};
+      const _provider = _appMeta.provider || '';
+      const _createdMs = Date.parse(session.user.created_at || '');
+      const _lastMs = Date.parse(session.user.last_sign_in_at || session.user.created_at || '');
+      const _isFreshSignup = Number.isFinite(_createdMs) && Number.isFinite(_lastMs)
+        && (_lastMs - _createdMs) < 60000;
+      if (_provider && _provider !== 'email' && _isFreshSignup
+          && session.user.email && typeof window.Refgrow === 'function') {
+        window.Refgrow(0, 'signup', session.user.email);
+      }
+    } catch (_e) { /* tracking is best-effort */ }
     // Name collected at signup (user_metadata.full_name / first_name+last_name).
     // Older accounts created before the name field won't have it — hide the row.
     const meta = session.user.user_metadata || {};

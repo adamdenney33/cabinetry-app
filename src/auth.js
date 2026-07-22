@@ -374,6 +374,15 @@ async function authSubmit() {
   // guard — re-signups aren't conversions, and the obfuscated user id would
   // poison the Meta CAPI dedup key.
   if (typeof _trackSignupConversion === 'function') _trackSignupConversion(signupUserId);
+  // Attribute the signup to the referring affiliate (Refgrow). Reads the
+  // referral cookie set by latest.js when the visitor first arrived via
+  // ?ref=CODE, keyed to this email so the later Stripe-webhook purchase
+  // conversion attributes to the same affiliate. Same repeated-signup guard as
+  // above — a genuine new account only. Best-effort: no-op if the script hasn't
+  // loaded (e.g. blocked). Value 0 — signup carries no revenue.
+  if (typeof window.Refgrow === 'function') {
+    try { window.Refgrow(0, 'signup', email); } catch (_e) { /* tracking is best-effort */ }
+  }
   // The confirm link's tokens land on /os and the Supabase client exchanges
   // them automatically — clicking the link signs the user straight in, so
   // the panel says so instead of telling them to come back and sign in.
