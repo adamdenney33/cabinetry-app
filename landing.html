@@ -118,12 +118,14 @@
       }
     })();
   </script>
-  <!-- ── Tolt affiliate tracking (Rewardful-style) ───────────────────────────
-       Tracks referral clicks landing here and attributes the signup when the
-       visitor reaches /os. data-tolt is the publishable program key, safe to
-       embed. Load on the front door AND the app shell so the referral cookie
-       survives the landing → /os hop. -->
-  <script async src="https://files.tlt-cdn.com/tlt.js" data-tolt="pk_q4qhVvhLCAwEFdKEtx93Webn"></script>
+  <!-- ── Refgrow affiliate tracking ──────────────────────────────────────────
+       Captures the referral code from ?ref=CODE landing here and stores it in
+       a cookie; Refgrow attributes the signup (fired via Refgrow('signup') on
+       /os) and the paid conversion (Stripe webhook) back to that affiliate.
+       data-project-id is the public project id, safe to embed. Load on the
+       front door AND the app shell so the referral cookie survives the
+       landing → /os hop. -->
+  <script src="https://scripts.refgrowcdn.com/latest.js" data-project-id="1137" async defer></script>
   <!-- ── Supabase config for the live Founder-seats counter ──────────────────
        Injected at BUILD time by copyLandingPlugin() (this file is copied
        verbatim — import.meta.env is NOT available here). The anon key is the
@@ -385,8 +387,11 @@
     <div class="feature-copy">
       <span class="feature-icon"><img src="/brand/icons/individual/schedule.svg" alt="" /></span>
       <h3>Auto-Schedule Production Calendar</h3>
-      <p class="promise">Production that schedules itself. Set your available working hours and a priority for each order — work is allocated automatically, in line or concurrently.</p>
+      <p class="promise">Production that schedules itself. Set your working hours and a priority for each order, and every job is laid out for you — in line or running concurrently.</p>
       <ul class="ticks">
+        <li>Drop in one-off tasks — deliveries, site visits, fittings — right alongside your orders on the same calendar.</li>
+        <li>Sync with Google Calendar: your orders and tasks appear in Google, and your Google events come back as a read-only layer so nothing clashes.</li>
+        <li>Switch between Day, Week and Month, and toggle the Orders, Tasks and Google layers on and off.</li>
         <li>Add extra time when a job runs over, and track exactly where you're losing money.</li>
         <li>Manual overrides for fixed start dates or set durations — auto-schedule works around them.</li>
       </ul>
@@ -394,7 +399,7 @@
     <div class="feature-media" data-tilt>
       <div class="browser-frame">
         <span class="browser-dots" aria-hidden="true"><i></i><i></i><i></i></span>
-        <img src="/brand/screenshots/08-schedule.png" alt="Production schedule calendar" loading="lazy" />
+        <img src="/brand/screenshots/08-schedule.png?v=20260721" alt="Production schedule calendar with auto-scheduled order bars, one-off tasks, and Google Calendar layers" loading="lazy" />
       </div>
     </div>
   </section>
@@ -862,6 +867,7 @@
         <a href="#faq">FAQ</a>
         <a href="/wiki/">Guides</a>
         <a href="/blog">Blog</a>
+        <a href="/affiliates">Affiliates</a>
         <a href="/os">Open the app</a>
         <a href="/privacy">Privacy</a>
         <a href="/terms">Terms</a>

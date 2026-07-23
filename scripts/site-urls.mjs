@@ -20,6 +20,7 @@ export function siteUrls() {
     { url: `${ORIGIN}/privacy` },
     { url: `${ORIGIN}/terms` },
     { url: `${ORIGIN}/payment-fees` },
+    { url: `${ORIGIN}/affiliates` },
   ];
   if (GUIDES.length) {
     urls.push({ url: `${ORIGIN}/wiki/` });

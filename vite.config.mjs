@@ -166,8 +166,9 @@ function copyLandingPlugin(env) {
         if (existsSync(f)) copyFileSync(f, join('dist', f));
       }
       // Static legal/info pages — self-contained, no build-time injection needed.
-      // Cloudflare Pages serves these extensionless (/privacy, /terms, /payment-fees).
-      for (const f of ['privacy.html', 'terms.html', 'payment-fees.html']) {
+      // Cloudflare Pages serves these extensionless (/privacy, /terms,
+      // /payment-fees, /affiliates).
+      for (const f of ['privacy.html', 'terms.html', 'payment-fees.html', 'affiliates.html']) {
         if (existsSync(f)) copyFileSync(f, join('dist', f));
       }
       // brand/blog holds the hand-drawn SVG diagrams the blog posts embed;
@@ -408,7 +409,9 @@ export default defineConfig(({ mode }) => {
   root: '.',
   publicDir: false,
   server: {
-    port: 3000,
+    // Honour a harness-assigned port when present (preview autoPort so multiple
+    // sessions can run at once); otherwise the usual local 3000.
+    port: process.env.PORT ? Number(process.env.PORT) : 3000,
     open: false,
     strictPort: true,
   },
