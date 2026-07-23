@@ -143,15 +143,9 @@ function _openTaskPopup(id, presetStart, presetAllDay, presetOrderId) {
     <div class="popup-body">
       <div class="pf"><label class="pf-label">TITLE</label><input class="pf-input pf-input-lg" id="ptk-title" value="${t ? _escHtml(t.title) : ''}" placeholder="e.g. Delivery — Oak St install"></div>
       <div class="pf"><label class="pf-label">ORDER</label>
-        <div class="smart-input-wrap">
-          <input class="pf-input" id="ptk-order" autocomplete="off" placeholder="Link to an order (optional)…"
-            value="${_tkOrderId ? _escHtml(_taskOrderLabelById(_tkOrderId)) : ''}"
-            oninput="_taskOrderSuggest(this,'ptk-order-suggest')"
-            onfocus="_taskOrderSuggest(this,'ptk-order-suggest')"
-            onblur="setTimeout(()=>_hideEl('ptk-order-suggest'),150)">
-          <div class="smart-input-add" id="ptk-order-clear" title="Remove order link" onmousedown="event.preventDefault();_taskPickOrder(0)" style="${_tkOrderId ? '' : 'display:none'}">&times;</div>
-        </div>
-        <div id="ptk-order-suggest" class="client-suggest-list" style="display:none"></div>
+        <select class="pf-input" id="ptk-order" onchange="_tkOrderId = parseInt(this.value, 10) || 0">
+          ${_taskOrderSelectOptions()}
+        </select>
       </div>
       <div class="pf-row">
         <div class="pf" style="flex:1.3"><label class="pf-label">DATE<span class="sched-field-hint" id="ptk-date-hint"${auto ? '' : ' style="display:none"'}> (auto)</span></label><input class="pf-input" id="ptk-date" type="date" value="${_taskDateISO(start)}" ${auto ? 'disabled title="Auto-scheduled — toggle off to set the date manually"' : ''}></div>
@@ -184,58 +178,20 @@ function _openTaskPopup(id, presetStart, presetAllDay, presetOrderId) {
  *  reach the row's computed placement. Mirrors _psoOrderId in schedule.js. */
 let _tkEditingId = 0;
 
-/** Order the popup is currently linked to (0 = none). Set by _taskPickOrder,
- *  read by _saveTaskPopup — the input text is display only. */
+/** Order the popup is currently linked to (0 = none). Set by the ORDER <select>'s
+ *  onchange, read by _saveTaskPopup. */
 let _tkOrderId = 0;
 
-/** Order picker for the task popup — search-as-you-type over ALL orders (by
- *  number / client / project). Select-only, no create (mirrors _oOrderSuggest
- *  but not scoped to a client). @param {HTMLInputElement} input @param {string} boxId */
-function _taskOrderSuggest(input, boxId) {
-  const box = document.getElementById(boxId);
-  if (!box) return;
+/** Options for the task popup's ORDER <select>: "No order" plus every order
+ *  (most-recent first), with the currently-linked one pre-selected. */
+function _taskOrderSelectOptions() {
   const all = (typeof orders !== 'undefined') ? orders.slice() : [];
-  const q = input.value.trim().toLowerCase();
-  // When an order is already linked its label sits in the box; don't let that
-  // prefill filter the list down to one word — treat it as "no query".
-  const linkedLabel = _tkOrderId ? _taskOrderLabelById(_tkOrderId).toLowerCase() : '';
-  const eff = (q && q !== linkedLabel) ? q : '';
-  const scored = all.map(o => {
-    const num = String(o.order_number || ('ORD-' + String(o.id).padStart(4, '0')));
-    const client = (typeof orderClient === 'function') ? (orderClient(o) || '') : '';
-    const project = (typeof orderProject === 'function') ? (orderProject(o) || '') : '';
-    return { o, hay: `${num} ${client} ${project}`.toLowerCase() };
-  });
-  const matches = (eff ? scored.filter(s => s.hay.includes(eff)) : scored)
-    .sort((a, b) => (+new Date(b.o.updated_at || 0)) - (+new Date(a.o.updated_at || 0)));
-  let html = '';
-  matches.slice(0, 8).forEach(({ o }) => {
-    const active = o.id === _tkOrderId;
-    const st = o.status ? `<span class="csi-meta">${_escHtml(String(o.status))}</span>` : '';
-    html += `<div class="client-suggest-item" onmousedown="_taskPickOrder(${o.id})">
-      <span class="suggest-icon" style="background:var(--accent-dim);color:var(--accent)">#</span>
-      <span class="csi-name">${_escHtml(_taskOrderLabelById(o.id))}${active ? ' <span style="font-weight:500;color:var(--accent);font-size:11px">· linked</span>' : ''}</span>
-      ${st}
-    </div>`;
-  });
-  if (!matches.length) html += `<div class="client-suggest-add" style="color:var(--muted)">No matching orders</div>`;
-  // Clear row — always present so a task can be unlinked from here.
-  html += `<div class="client-suggest-item client-suggest-add" onmousedown="_taskPickOrder(0)">
-    <span class="csi-icon">&times;</span><span class="csi-name">No order${_tkOrderId ? ' (clear link)' : ''}</span>
-  </div>`;
-  box.innerHTML = html;
-  box.style.display = 'block';
-}
-
-/** Set/clear the popup's order link (does not persist — _saveTaskPopup writes
- *  it). @param {number} id  0 = clear */
-function _taskPickOrder(id) {
-  _tkOrderId = id || 0;
-  const input = /** @type {HTMLInputElement|null} */ (document.getElementById('ptk-order'));
-  if (input) input.value = id ? _taskOrderLabelById(id) : '';
-  const clr = document.getElementById('ptk-order-clear');
-  if (clr) clr.style.display = id ? '' : 'none';
-  _hideEl('ptk-order-suggest');
+  all.sort((a, b) => (+new Date(b.updated_at || 0)) - (+new Date(a.updated_at || 0)));
+  let html = `<option value="0"${_tkOrderId ? '' : ' selected'}>No order</option>`;
+  for (const o of all) {
+    html += `<option value="${o.id}"${o.id === _tkOrderId ? ' selected' : ''}>${_escHtml(_taskOrderLabelById(o.id))}</option>`;
+  }
+  return html;
 }
 
 /** @param {boolean} allDay */
