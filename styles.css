@@ -850,8 +850,10 @@ header {
   padding: 3px 6px; overflow: hidden; cursor: pointer;
   display: flex; flex-direction: column; gap: 1px; box-sizing: border-box;
 }
-.sched-ord-block .sob-title { font-size: 10px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.sched-ord-block .sob-time { font-size: 9px; opacity: 0.85; }
+/* Text-shadow keeps the label legible through a nested task's translucent panel,
+   which sits over the order's top-left. */
+.sched-ord-block .sob-title { font-size: 10px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35); }
+.sched-ord-block .sob-time { font-size: 9px; opacity: 0.85; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35); }
 
 /* Task blocks (drag to move, bottom handle to resize) */
 .sched-task-block {
@@ -899,9 +901,12 @@ header {
   border: 1px dashed rgba(255, 255, 255, 0.8);
   box-shadow: none;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  /* Single line (title + hours) so the label stays compact — leaves room for the
+     top task to sit below the order label without clipping its own time. */
+  flex-direction: row; align-items: baseline; gap: 6px;
 }
-.sched-task-block.nested .stb-title { color: #fff; }
-.sched-task-block.nested .stb-time { color: rgba(255, 255, 255, 0.9); opacity: 1; }
+.sched-task-block.nested .stb-title { color: #fff; flex: 1; min-width: 0; }
+.sched-task-block.nested .stb-time { color: rgba(255, 255, 255, 0.9); opacity: 1; flex: 0 0 auto; }
 .stb-order {
   align-self: flex-start; font-size: 8px; font-weight: 700; line-height: 1.35;
   padding: 0 4px; border-radius: 4px; white-space: nowrap;

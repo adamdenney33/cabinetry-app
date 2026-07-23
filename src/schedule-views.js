@@ -558,19 +558,19 @@ function _renderSchedTimeGrid(opts) {
       // gap = the order block's own inset from the column; pad = the small gap
       // the task leaves to the order on every side (so it sits just inside it).
       const gap = 2, pad = 3;
-      // The top task sits over the order's own number/hours label. Keep that
-      // label at the order's top and start this first task a little lower so the
-      // two never collide (later tasks are unaffected).
+      // The top task's box still fills its slot (so its own text/time isn't
+      // clipped), but its TEXT is padded down to clear the order's number/hours
+      // label, which stays at the order's top. Later tasks are unaffected.
       const isFirst = (workStart + r.startHrs * 60) <= (geom.startMin || 0) + 1;
-      const head = isFirst ? 16 : 0;
-      const top = (workStart + r.startHrs * 60) / 60 * SCHED_HOUR_PX + pad + head;
-      const height = Math.max(12, (r.endHrs - r.startHrs) * SCHED_HOUR_PX - pad * 2 - head);
+      const top = (workStart + r.startHrs * 60) / 60 * SCHED_HOUR_PX + pad;
+      const height = Math.max(12, (r.endHrs - r.startHrs) * SCHED_HOUR_PX - pad * 2);
       const wPct = 100 / (geom._cols || 1);
       const leftPct = (geom._col || 0) * wPct;
       const slim = height < 30 ? ' slim' : '';
       const hrs = Math.round((r.endHrs - r.startHrs) * 100) / 100;
+      const headPad = isFirst ? 'padding-top:24px;' : '';
       colInner += `<div class="sched-task-block nested${t.done ? ' done' : ''}${slim}" data-task-id="${t.id}" data-date="${iso}"
-        style="top:${top}px;height:${height}px;left:calc(${leftPct}% + ${gap + pad}px);width:calc(${wPct}% - ${(gap + pad) * 2}px);z-index:5"
+        style="top:${top}px;height:${height}px;left:calc(${leftPct}% + ${gap + pad}px);width:calc(${wPct}% - ${(gap + pad) * 2}px);${headPad}z-index:5"
         onclick="event.stopPropagation();_openTaskPopup(${t.id})" title="${_escHtml(t.title)} — ${hrs}h in ${_escHtml(_taskOrderLabelById(r.orderId))}">
         <span class="stb-title">${_escHtml(t.title)}</span>
         <span class="stb-time">${hrs}h</span>
