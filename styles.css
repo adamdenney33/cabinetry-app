@@ -869,6 +869,10 @@ header {
 .sched-task-block.auto {
   cursor: pointer;
   border: 1px dashed rgba(255, 255, 255, 0.55);
+  /* The scheduler owns an auto task's placement, so it yields to everything the
+     user placed by hand: on any overlap it sits behind pinned tasks (z 3),
+     overlays (z 5) and nested tasks (z 5). */
+  z-index: 2;
 }
 .sched-task-chip.auto { cursor: pointer; border: 1px dashed rgba(255, 255, 255, 0.35); }
 
