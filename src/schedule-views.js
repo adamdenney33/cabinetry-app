@@ -697,15 +697,6 @@ function _taskPointerMove(ev) {
     if (lbl) lbl.textContent =
       `${String(Math.floor(sMin / 60)).padStart(2, '0')}:${String(sMin % 60).padStart(2, '0')} – ${String(Math.floor(eMin / 60)).padStart(2, '0')}:${String(eMin % 60).padStart(2, '0')}`;
   }
-  // Highlight an order block under the cursor as a drop target (drop → link).
-  if (typeof document.elementsFromPoint === 'function') {
-    document.querySelectorAll('.sched-ord-block.sched-drop-target').forEach(el => el.classList.remove('sched-drop-target'));
-    for (const el of document.elementsFromPoint(ev.clientX, ev.clientY)) {
-      if (el === d.block || d.block.contains(el)) continue;
-      const ob = /** @type {HTMLElement|null} */ (el.closest && el.closest('.sched-ord-block[data-order-id]'));
-      if (ob) { ob.classList.add('sched-drop-target'); break; }
-    }
-  }
 }
 
 /** @param {PointerEvent} ev */
@@ -724,18 +715,9 @@ function _taskPointerUp(ev) {
   }
   const t = typeof _taskById === 'function' ? _taskById(d.id) : null;
   if (!t) return;
-  // Dropped onto an order block? Link the task to that order (on top of the time
-  // move). Topmost-first stack under the cursor, skipping the dragged block and
-  // its children. Dropping on empty space leaves the existing link untouched.
-  let droppedOrderId = 0;
-  if (typeof document.elementsFromPoint === 'function') {
-    for (const el of document.elementsFromPoint(ev.clientX, ev.clientY)) {
-      if (el === d.block || d.block.contains(el)) continue;
-      const ob = /** @type {HTMLElement|null} */ (el.closest && el.closest('.sched-ord-block[data-order-id]'));
-      if (ob) { droppedOrderId = parseInt(ob.getAttribute('data-order-id') || '0', 10) || 0; break; }
-    }
-  }
-  document.querySelectorAll('.sched-drop-target').forEach(el => el.classList.remove('sched-drop-target'));
+  // A grid drag only moves the task's time — it never attaches the task to an
+  // order it happens to land on (that would fire constantly, since orders fill
+  // the grid). Linking is done deliberately from the task popup's Order dropdown.
   const baseISO = d.block.dataset.date || '';
   const m = baseISO.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (!m) return;
@@ -757,9 +739,7 @@ function _taskPointerUp(ev) {
     newEnd = new Date(+newStart + oldDur);
   }
   if (typeof _persistTaskTimes === 'function') _persistTaskTimes(d.id, newStart, newEnd);
-  // Link to the dropped-on order (renders itself); otherwise just repaint.
-  if (droppedOrderId && typeof _assignTaskOrder === 'function') _assignTaskOrder(d.id, droppedOrderId);
-  else if (typeof renderSchedule === 'function') renderSchedule({ sidebar: false });
+  if (typeof renderSchedule === 'function') renderSchedule({ sidebar: false });
 }
 
 // ── Month-view task chips: HTML5 drag to another day (SV.6) ──
